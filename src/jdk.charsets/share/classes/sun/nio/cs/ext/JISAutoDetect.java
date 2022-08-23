@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2010, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,11 +46,11 @@ public class JISAutoDetect
     implements HistoricallyNamedCharset
 {
 
-    private final static int EUCJP_MASK       = 0x01;
-    private final static int SJIS2B_MASK      = 0x02;
-    private final static int SJIS1B_MASK      = 0x04;
-    private final static int EUCJP_KANA1_MASK = 0x08;
-    private final static int EUCJP_KANA2_MASK = 0x10;
+    private static final int EUCJP_MASK       = 0x01;
+    private static final int SJIS2B_MASK      = 0x02;
+    private static final int SJIS1B_MASK      = 0x04;
+    private static final int EUCJP_KANA1_MASK = 0x08;
+    private static final int EUCJP_KANA2_MASK = 0x10;
 
     public JISAutoDetect() {
         super("x-JISAutoDetect", ExtendedCharsets.aliasesFor("x-JISAutoDetect"));
@@ -93,11 +93,12 @@ public class JISAutoDetect
     }
 
     private static class Decoder extends CharsetDecoder {
-        private final static String osName = AccessController.doPrivileged(
+        @SuppressWarnings("removal")
+        private static final String osName = AccessController.doPrivileged(
             (PrivilegedAction<String>) () -> System.getProperty("os.name"));
 
-        private final static String SJISName = getSJISName();
-        private final static String EUCJPName = getEUCJPName();
+        private static final String SJISName = getSJISName();
+        private static final String EUCJPName = "EUC_JP";
         private DelegatableDecoder detectedDecoder = null;
 
         public Decoder(Charset cs) {
@@ -225,23 +226,10 @@ public class JISAutoDetect
          * Returned Shift_JIS Charset name is OS dependent
          */
         private static String getSJISName() {
-            if (osName.equals("Solaris") || osName.equals("SunOS"))
-                return("PCK");
-            else if (osName.startsWith("Windows"))
+            if (osName.startsWith("Windows"))
                 return("windows-31J");
             else
                 return("Shift_JIS");
-        }
-
-        /**
-         * Returned EUC-JP Charset name is OS dependent
-         */
-
-        private static String getEUCJPName() {
-            if (osName.equals("Solaris") || osName.equals("SunOS"))
-                return("x-eucjp-open");
-            else
-                return("EUC_JP");
         }
 
     }

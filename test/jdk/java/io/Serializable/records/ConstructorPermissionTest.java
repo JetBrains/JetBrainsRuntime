@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,10 +23,10 @@
 
 /*
  * @test
+ * @bug 8246774
  * @summary Verifies that privileged operations performed in the record
  *          constructor throw, when run without the required permissions
- * @compile --enable-preview -source ${jdk.version} ConstructorPermissionTest.java
- * @run testng/othervm/java.security.policy=empty_security.policy --enable-preview ConstructorPermissionTest
+ * @run testng/othervm/java.security.policy=empty_security.policy ConstructorPermissionTest
  */
 
 import java.io.ByteArrayInputStream;
@@ -72,7 +72,6 @@ public class ConstructorPermissionTest {
                 try { new Socket("localhost", 8080); }
                 catch (IOException unexpected) { throw new AssertionError(unexpected); }
             }
-            this.x = x;
         }
     }
 
@@ -80,7 +79,6 @@ public class ConstructorPermissionTest {
         public R3 {
             if (firstDataSetCreated)
                 ProcessHandle.current();
-            this.args = args;
         }
     }
 

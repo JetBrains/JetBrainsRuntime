@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@
 #include "gc/z/zBitField.hpp"
 #include "memory/allocation.hpp"
 #include "metaprogramming/primitiveConversions.hpp"
+#include <type_traits>
 
 //
 // Forwarding entry layout
@@ -46,7 +47,8 @@
 //
 
 class ZForwardingEntry {
-  friend class PrimitiveConversions;
+  friend struct PrimitiveConversions::Translate<ZForwardingEntry>;
+  friend class VMStructs;
 
 private:
   typedef ZBitField<uint64_t, bool,   0,   1> field_populated;
@@ -79,7 +81,7 @@ public:
 
 // Needed to allow atomic operations on ZForwardingEntry
 template <>
-struct PrimitiveConversions::Translate<ZForwardingEntry> : public TrueType {
+struct PrimitiveConversions::Translate<ZForwardingEntry> : public std::true_type {
   typedef ZForwardingEntry Value;
   typedef uint64_t         Decayed;
 

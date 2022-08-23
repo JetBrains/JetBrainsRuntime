@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,9 +29,10 @@ import java.util.*;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
+import jdk.javadoc.internal.doclets.formats.html.AbstractMemberWriter;
 
 import jdk.javadoc.internal.doclets.toolkit.AnnotationTypeRequiredMemberWriter;
-import jdk.javadoc.internal.doclets.toolkit.BaseConfiguration;
+import jdk.javadoc.internal.doclets.toolkit.BaseOptions;
 import jdk.javadoc.internal.doclets.toolkit.Content;
 import jdk.javadoc.internal.doclets.toolkit.DocletException;
 import jdk.javadoc.internal.doclets.toolkit.util.VisibleMemberTable;
@@ -78,7 +79,7 @@ public class AnnotationTypeRequiredMemberBuilder extends AbstractMemberBuilder {
             AnnotationTypeRequiredMemberWriter writer,
             VisibleMemberTable.Kind memberType) {
         super(context, typeElement);
-        this.writer = writer;
+        this.writer = Objects.requireNonNull(writer);
         this.members = getVisibleMembers(memberType);
     }
 
@@ -107,9 +108,6 @@ public class AnnotationTypeRequiredMemberBuilder extends AbstractMemberBuilder {
         return !members.isEmpty();
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void build(Content contentTree) throws DocletException {
         buildAnnotationTypeRequiredMember(contentTree);
@@ -129,18 +127,15 @@ public class AnnotationTypeRequiredMemberBuilder extends AbstractMemberBuilder {
     /**
      * Build the member documentation.
      *
-     * @param memberDetailsTree the content tree to which the documentation will be added
+     * @param detailsList the content tree to which the documentation will be added
      * @throws DocletException if an error occurs
      */
-    protected void buildAnnotationTypeMember(Content memberDetailsTree)
+    protected void buildAnnotationTypeMember(Content detailsList)
             throws DocletException {
-        if (writer == null) {
-            return;
-        }
         if (hasMembersToDocument()) {
-            writer.addAnnotationDetailsMarker(memberDetailsTree);
+            writer.addAnnotationDetailsMarker(detailsList);
             Content annotationDetailsTreeHeader = writer.getAnnotationDetailsTreeHeader();
-            Content detailsTree = writer.getMemberTreeHeader();
+            Content memberList = writer.getMemberList();
 
             for (Element member : members) {
                 currentMember = member;
@@ -148,15 +143,17 @@ public class AnnotationTypeRequiredMemberBuilder extends AbstractMemberBuilder {
 
                 buildAnnotationTypeMemberChildren(annotationDocTree);
 
-                detailsTree.add(writer.getAnnotationDoc(annotationDocTree));
+                memberList.add(writer.getMemberListItem(annotationDocTree));
             }
-            memberDetailsTree.add(writer.getAnnotationDetails(annotationDetailsTreeHeader, detailsTree));
+            Content annotationDetails = writer.getAnnotationDetails(annotationDetailsTreeHeader, memberList);
+            detailsList.add(annotationDetails);
         }
     }
 
     protected void buildAnnotationTypeMemberChildren(Content annotationDocTree) {
         buildSignature(annotationDocTree);
         buildDeprecationInfo(annotationDocTree);
+        buildPreviewInfo(annotationDocTree);
         buildMemberComments(annotationDocTree);
         buildTagInfo(annotationDocTree);
     }
@@ -180,13 +177,22 @@ public class AnnotationTypeRequiredMemberBuilder extends AbstractMemberBuilder {
     }
 
     /**
+     * Build the preview information.
+     *
+     * @param annotationDocTree the content tree to which the documentation will be added
+     */
+    protected void buildPreviewInfo(Content annotationDocTree) {
+        writer.addPreview(currentMember, annotationDocTree);
+    }
+
+    /**
      * Build the comments for the member.  Do nothing if
-     * {@link BaseConfiguration#nocomment} is set to true.
+     * {@link BaseOptions#noComment()} is set to true.
      *
      * @param annotationDocTree the content tree to which the documentation will be added
      */
     protected void buildMemberComments(Content annotationDocTree) {
-        if (!configuration.nocomment) {
+        if (!options.noComment()) {
             writer.addComments(currentMember, annotationDocTree);
         }
     }

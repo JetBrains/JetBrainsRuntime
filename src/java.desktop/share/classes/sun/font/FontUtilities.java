@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,7 @@
 
 package sun.font;
 
-import java.awt.Font;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStreamReader;
+import java.awt.*;
 import java.lang.ref.SoftReference;
 import java.util.concurrent.ConcurrentHashMap;
 import java.security.AccessController;
@@ -42,17 +38,19 @@ import sun.util.logging.PlatformLogger;
 /**
  * A collection of utility methods.
  */
+@SuppressWarnings("removal")
 public final class FontUtilities {
-
-    public static boolean isSolaris;
 
     public static boolean isLinux;
 
     public static boolean isMacOSX;
+    public static boolean isMacOSX14;
 
     public static boolean useJDKScaler;
 
     public static boolean isWindows;
+
+    static Dimension subpixelResolution;
 
     private static boolean debugFonts = false;
     private static PlatformLogger logger = null;
@@ -66,12 +64,29 @@ public final class FontUtilities {
             @Override
             public Object run() {
                 String osName = System.getProperty("os.name", "unknownOS");
-                isSolaris = osName.startsWith("SunOS");
 
                 isLinux = osName.startsWith("Linux");
 
                 isMacOSX = osName.contains("OS X"); // TODO: MacOSX
-
+                if (isMacOSX) {
+                    // os.version has values like 10.13.6, 10.14.6
+                    // If it is not positively recognised as 10.13 or less,
+                    // assume it means 10.14 or some later version.
+                    isMacOSX14 = true;
+                    String version = System.getProperty("os.version", "");
+                    if (version.startsWith("10.")) {
+                        version = version.substring(3);
+                        int periodIndex = version.indexOf('.');
+                        if (periodIndex != -1) {
+                            version = version.substring(0, periodIndex);
+                        }
+                        try {
+                            int v = Integer.parseInt(version);
+                            isMacOSX14 = (v >= 14);
+                        } catch (NumberFormatException e) {
+                        }
+                     }
+                 }
                 /* If set to "jdk", use the JDK's scaler rather than
                  * the platform one. This may be a no-op on platforms where
                  * JDK has been configured so that it always relies on the
@@ -96,16 +111,30 @@ public final class FontUtilities {
                     } else if (debugLevel.equals("severe")) {
                         logger.setLevel(PlatformLogger.Level.SEVERE);
                     }
+                    logging = logger.isEnabled();
                 }
 
-                if (debugFonts) {
-                    logger = PlatformLogger.getLogger("sun.java2d");
-                    logging = logger.isEnabled();
+                try {
+                    String property = System.getProperty("java2d.font.subpixelResolution", "");
+                    int separatorIndex = property.indexOf('x');
+                    final int MAX_RESOLUTION = 16;
+                    subpixelResolution = new Dimension(
+                            Math.max(Math.min(Integer.parseUnsignedInt(
+                                    property.substring(0, separatorIndex)), MAX_RESOLUTION), 1),
+                            Math.max(Math.min(Integer.parseUnsignedInt(
+                                    property.substring(separatorIndex + 1)), MAX_RESOLUTION), 1)
+                    );
+                } catch (Exception ignore) {
+                    subpixelResolution = new Dimension(4, 1);
                 }
 
                 return null;
             }
         });
+    }
+
+    static Dimension getSubpixelResolution() {
+        return subpixelResolution;
     }
 
     /**
@@ -126,7 +155,7 @@ public final class FontUtilities {
      * where the caller interprets 'layout' to mean any case where
      * one 'char' (ie the java type char) does not map to one glyph
      */
-    public static final int MAX_LAYOUT_CHARCODE = 0x206F;
+    public static final int MAX_LAYOUT_CHARCODE = CharToGlyphMapper.VSS_END;
 
     /**
      * Calls the private getFont2D() method in java.awt.Font objects.
@@ -293,6 +322,21 @@ public final class FontUtilities {
         else if (code >= 0x206a && code <= 0x206f) { // directional control
             return true;
         }
+        else if (code >= 0x20d0 && code <= 0x20f0) { // U+20D0 - U+20F0 combining diacritical marks for symbols
+            return true;
+        }
+        else if (code >= 0x1f1e6 && code <= 0x1f1ff) { // U+1F1E6 - U+1F1FF flag letters https://emojipedia.org/emoji-flag-sequence/
+            return true;
+        }
+        else if (code == 0x1f3f4) { // black flag https://emojipedia.org/emoji-tag-sequence/
+            return true;
+        }
+        else if (code >= 0x1f3fb && code <= 0x1f3ff) { // U+1F3FB - U+1F3FF emoji modifiers
+            return true;
+        }
+        else if (CharToGlyphMapper.isVariationSelector(code)) {
+            return true;
+        }
         return false;
     }
 
@@ -308,6 +352,17 @@ public final class FontUtilities {
         return debugFonts;
     }
 
+    public static void logWarning(String s) {
+        getLogger().warning(s);
+    }
+
+    public static void logInfo(String s) {
+        getLogger().info(s);
+    }
+
+    public static void logSevere(String s) {
+        getLogger().severe(s);
+    }
 
     // The following methods are used by Swing.
 
@@ -406,10 +461,10 @@ public final class FontUtilities {
             compMap.put(physicalFont, compFont);
         }
         FontAccess.getFontAccess().setFont2D(fuir, compFont.handle);
-        /* marking this as a created font is needed as only created fonts
-         * copy their creator's handles.
+        /* marking this as a font with fallback to make sure its
+         * handle is copied to derived fonts.
          */
-        FontAccess.getFontAccess().setCreatedFont(fuir);
+        FontAccess.getFontAccess().setWithFallback(fuir);
         return fuir;
     }
 

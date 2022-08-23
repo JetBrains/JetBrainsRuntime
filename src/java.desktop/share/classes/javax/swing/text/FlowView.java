@@ -242,7 +242,7 @@ public abstract class FlowView extends BoxView {
         float min = layoutPool.getMinimumSpan(axis);
         // Don't include insets, Box.getXXXSpan will include them.
         r.minimum = (int)min;
-        r.preferred = Math.max(r.minimum, (int) pref);
+        r.preferred = Math.max(r.minimum, (int) Math.ceil(pref));
         r.maximum = Integer.MAX_VALUE;
         r.alignment = 0.5f;
         return r;
@@ -290,6 +290,15 @@ public abstract class FlowView extends BoxView {
     public void changedUpdate(DocumentEvent changes, Shape a, ViewFactory f) {
         layoutPool.changedUpdate(changes, a, f);
         strategy.changedUpdate(this, changes, getInsideAllocation(a));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void preferenceChanged(View child, boolean width, boolean height) {
+        super.preferenceChanged(child, width, height);
+        if (strategy instanceof TextLayoutStrategy) {
+            ((TextLayoutStrategy) strategy).syncFRC(this);
+        }
     }
 
     /** {@inheritDoc} */
@@ -341,6 +350,11 @@ public abstract class FlowView extends BoxView {
      * @since 1.3
      */
     public static class FlowStrategy {
+        /**
+         * Constructs a {@code FlowStrategy}.
+         */
+        public FlowStrategy() {}
+
         Position damageStart = null;
         Vector<View> viewBuffer;
 

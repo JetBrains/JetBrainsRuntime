@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -285,7 +285,7 @@ import sun.swing.SwingAccessor;
  * future Swing releases. The current serialization support is
  * appropriate for short term storage or RMI between applications running
  * the same version of Swing.  As of 1.4, support for long term storage
- * of all JavaBeans&trade;
+ * of all JavaBeans
  * has been added to the <code>java.beans</code> package.
  * Please see {@link java.beans.XMLEncoder}.
  *
@@ -1130,7 +1130,7 @@ public abstract class JTextComponent extends JComponent implements Scrollable, A
      * future Swing releases. The current serialization support is
      * appropriate for short term storage or RMI between applications running
      * the same version of Swing.  As of 1.4, support for long term storage
-     * of all JavaBeans&trade;
+     * of all JavaBeans
      * has been added to the <code>java.beans</code> package.
      * Please see {@link java.beans.XMLEncoder}.
      */
@@ -2554,7 +2554,7 @@ public abstract class JTextComponent extends JComponent implements Scrollable, A
      * future Swing releases. The current serialization support is
      * appropriate for short term storage or RMI between applications running
      * the same version of Swing.  As of 1.4, support for long term storage
-     * of all JavaBeans&trade;
+     * of all JavaBeans
      * has been added to the <code>java.beans</code> package.
      * Please see {@link java.beans.XMLEncoder}.
      */
@@ -3807,6 +3807,7 @@ public abstract class JTextComponent extends JComponent implements Scrollable, A
 
     // --- serialization ---------------------------------------------
 
+    @Serial
     private void readObject(ObjectInputStream s)
         throws IOException, ClassNotFoundException
     {
@@ -3964,6 +3965,7 @@ public abstract class JTextComponent extends JComponent implements Scrollable, A
      * Maps from class name to Boolean indicating if
      * <code>processInputMethodEvent</code> has been overriden.
      */
+    @SuppressWarnings("removal")
     private static Cache<Class<?>,Boolean> METHOD_OVERRIDDEN
             = new Cache<Class<?>,Boolean>(Cache.Kind.WEAK, Cache.Kind.STRONG) {
         /**
@@ -4785,6 +4787,9 @@ public abstract class JTextComponent extends JComponent implements Scrollable, A
         AttributedCharacterIterator text = e.getText();
         int composedTextIndex;
 
+        boolean isCaretMoved = false;
+        int caretPositionToRestore = 0;
+
         // old composed text deletion
         Document doc = getDocument();
         if (composedTextExists()) {
@@ -4792,6 +4797,15 @@ public abstract class JTextComponent extends JComponent implements Scrollable, A
                 doc.remove(composedTextStart.getOffset(),
                            composedTextEnd.getOffset() -
                            composedTextStart.getOffset());
+                isCaretMoved = caret.getDot() != composedTextStart.getOffset();
+                if (isCaretMoved) {
+                    caretPositionToRestore = caret.getDot();
+                    // if caret set furter in the doc, we should add commitCount
+                    if (caretPositionToRestore > composedTextStart.getOffset()) {
+                        caretPositionToRestore += commitCount;
+                    }
+                    caret.setDot(composedTextStart.getOffset());
+                }
             } catch (BadLocationException ble) {}
             composedTextStart = composedTextEnd = null;
             composedTextAttribute = null;
@@ -4866,6 +4880,10 @@ public abstract class JTextComponent extends JComponent implements Scrollable, A
                 latestCommittedTextStart =
                     latestCommittedTextEnd = null;
             }
+        }
+
+        if (isCaretMoved) {
+            caret.setDot(caretPositionToRestore);
         }
     }
 

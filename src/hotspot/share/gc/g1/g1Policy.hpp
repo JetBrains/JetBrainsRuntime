@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,11 @@
 #define SHARE_GC_G1_G1POLICY_HPP
 
 #include "gc/g1/g1CollectorState.hpp"
+#include "gc/g1/g1ConcurrentStartToMixedTimeTracker.hpp"
 #include "gc/g1/g1GCPhaseTimes.hpp"
 #include "gc/g1/g1HeapRegionAttr.hpp"
-#include "gc/g1/g1InitialMarkToMixedTimeTracker.hpp"
 #include "gc/g1/g1MMUTracker.hpp"
+#include "gc/g1/g1OldGenAllocationTracker.hpp"
 #include "gc/g1/g1RemSetTrackingPolicy.hpp"
 #include "gc/g1/g1Predictions.hpp"
 #include "gc/g1/g1YoungGenSizer.hpp"
@@ -48,17 +49,16 @@ class G1CollectionSetChooser;
 class G1IHOPControl;
 class G1Analytics;
 class G1SurvivorRegions;
-class G1YoungGenSizer;
 class GCPolicyCounters;
 class STWGCTimer;
 
 class G1Policy: public CHeapObj<mtGC> {
  private:
 
-  static G1IHOPControl* create_ihop_control(const G1Predictions* predictor);
+  static G1IHOPControl* create_ihop_control(const G1OldGenAllocationTracker* old_gen_alloc_tracker,
+                                            const G1Predictions* predictor);
   // Update the IHOP control with necessary statistics.
   void update_ihop_prediction(double mutator_time_s,
-                              size_t mutator_alloc_bytes,
                               size_t young_gen_size,
                               bool this_gc_was_young_only);
   void report_ihop_statistics();
@@ -67,13 +67,15 @@ class G1Policy: public CHeapObj<mtGC> {
   G1Analytics* _analytics;
   G1RemSetTrackingPolicy _remset_tracker;
   G1MMUTracker* _mmu_tracker;
+
+  // Tracking the allocation in the old generation between
+  // two GCs.
+  G1OldGenAllocationTracker _old_gen_alloc_tracker;
   G1IHOPControl* _ihop_control;
 
   GCPolicyCounters* _policy_counters;
 
   double _full_collection_start_sec;
-
-  jlong _collection_pause_end_millis;
 
   uint _young_list_target_length;
   uint _young_list_fixed_length;
@@ -92,25 +94,22 @@ class G1Policy: public CHeapObj<mtGC> {
   // for the first time during initialization.
   uint   _reserve_regions;
 
-  G1YoungGenSizer* _young_gen_sizer;
+  G1YoungGenSizer _young_gen_sizer;
 
   uint _free_regions_at_end_of_collection;
+
+  // These values are predictions of how much we think will survive in each
+  // section of the heap.
+  size_t _predicted_surviving_bytes_from_survivor;
+  size_t _predicted_surviving_bytes_from_old;
 
   size_t _rs_length;
 
   size_t _rs_length_prediction;
 
   size_t _pending_cards_at_gc_start;
-  size_t _pending_cards_at_prev_gc_end;
-  size_t _total_mutator_refined_cards;
-  size_t _total_concurrent_refined_cards;
-  Tickspan _total_concurrent_refinement_time;
 
-  // The amount of allocated bytes in old gen during the last mutator and the following
-  // young GC phase.
-  size_t _bytes_allocated_in_old_since_last_gc;
-
-  G1InitialMarkToMixedTimeTracker _initial_mark_to_mixed;
+  G1ConcurrentStartToMixedTimeTracker _concurrent_start_to_mixed;
 
   bool should_update_surv_rate_group_predictors() {
     return collector_state()->in_young_only_phase() && !collector_state()->mark_or_rebuild_in_progress();
@@ -123,8 +122,7 @@ public:
 
   G1RemSetTrackingPolicy* remset_tracker() { return &_remset_tracker; }
 
-  // Add the given number of bytes to the total number of allocated bytes in the old gen.
-  void add_bytes_allocated_in_old_since_last_gc(size_t bytes) { _bytes_allocated_in_old_since_last_gc += bytes; }
+  G1OldGenAllocationTracker* old_gen_alloc_tracker() { return &_old_gen_alloc_tracker; }
 
   void set_region_eden(HeapRegion* hr) {
     hr->set_eden();
@@ -186,7 +184,9 @@ private:
   // Stash a pointer to the g1 heap.
   G1CollectedHeap* _g1h;
 
-  G1GCPhaseTimes* _phase_times;
+  STWGCTimer*     _phase_times_timer;
+  // Lazily initialized
+  mutable G1GCPhaseTimes* _phase_times;
 
   // This set of variables tracks the collector efficiency, in order to
   // determine whether we should initiate a new marking.
@@ -251,7 +251,7 @@ public:
 
   // Calculate the minimum number of old regions we'll add to the CSet
   // during a mixed GC.
-  uint calc_min_old_cset_length() const;
+  uint calc_min_old_cset_length(G1CollectionSetCandidates* candidates) const;
 
   // Calculate the maximum number of old regions we'll add to the CSet
   // during a mixed GC.
@@ -262,32 +262,24 @@ public:
   // percentage of the current heap capacity.
   double reclaimable_bytes_percent(size_t reclaimable_bytes) const;
 
-  jlong collection_pause_end_millis() { return _collection_pause_end_millis; }
-
 private:
   void clear_collection_set_candidates();
   // Sets up marking if proper conditions are met.
   void maybe_start_marking();
-
-  // The kind of STW pause.
-  enum PauseKind {
-    FullGC,
-    YoungOnlyGC,
-    MixedGC,
-    LastYoungGC,
-    InitialMarkGC,
-    Cleanup,
-    Remark
-  };
-
-  // Calculate PauseKind from internal state.
-  PauseKind young_gc_pause_kind() const;
+  // Manage time-to-mixed tracking.
+  void update_time_to_mixed_tracking(G1GCPauseType gc_type, double start, double end);
   // Record the given STW pause with the given start and end times (in s).
-  void record_pause(PauseKind kind, double start, double end);
+  void record_pause(G1GCPauseType gc_type, double start, double end);
+
+  bool should_update_gc_stats();
+
+  void update_gc_pause_time_ratios(G1GCPauseType gc_type, double start_sec, double end_sec);
+
   // Indicate that we aborted marking before doing any mixed GCs.
   void abort_time_to_mixed_tracking();
 
-  void record_concurrent_refinement_data(bool is_full_collection);
+  // Record and log stats before not-full collection.
+  void record_concurrent_refinement_stats();
 
 public:
 
@@ -295,11 +287,9 @@ public:
 
   virtual ~G1Policy();
 
-  static G1Policy* create_policy(STWGCTimer* gc_timer_stw);
-
   G1CollectorState* collector_state() const;
 
-  G1GCPhaseTimes* phase_times() const { return _phase_times; }
+  G1GCPhaseTimes* phase_times() const;
 
   // Check the current value of the young list RSet length and
   // compare it against the last prediction. If the current value is
@@ -309,24 +299,26 @@ public:
   // This should be called after the heap is resized.
   void record_new_heap_size(uint new_number_of_regions);
 
-  virtual void init(G1CollectedHeap* g1h, G1CollectionSet* collection_set);
+  void init(G1CollectedHeap* g1h, G1CollectionSet* collection_set);
 
   void note_gc_start();
 
   bool need_to_start_conc_mark(const char* source, size_t alloc_word_size = 0);
 
+  bool concurrent_operation_is_full_mark(const char* msg = NULL);
+
   bool about_to_start_mixed_phase() const;
 
   // Record the start and end of an evacuation pause.
   void record_collection_pause_start(double start_time_sec);
-  virtual void record_collection_pause_end(double pause_time_ms);
+  void record_collection_pause_end(double pause_time_ms, bool concurrent_operation_is_full_mark);
 
   // Record the start and end of a full collection.
   void record_full_collection_start();
-  virtual void record_full_collection_end();
+  void record_full_collection_end();
 
   // Must currently be called while the world is stopped.
-  void record_concurrent_mark_init_end(double mark_init_elapsed_time_ms);
+  void record_concurrent_mark_init_end();
 
   // Record start and end of remark.
   void record_concurrent_mark_remark_start();
@@ -334,13 +326,15 @@ public:
 
   // Record start, end, and completion of cleanup.
   void record_concurrent_mark_cleanup_start();
-  void record_concurrent_mark_cleanup_end();
+  void record_concurrent_mark_cleanup_end(bool has_rebuilt_remembered_sets);
 
   void print_phases();
 
   bool next_gc_should_be_mixed(const char* true_action_str,
                                const char* false_action_str) const;
 
+  // Amount of allowed waste in bytes in the collection set.
+  size_t allowed_waste_in_collection_set() const;
   // Calculate and return the number of initial and optional old gen regions from
   // the given collection set candidates and the remaining time.
   void calculate_old_collection_set_regions(G1CollectionSetCandidates* candidates,
@@ -356,7 +350,17 @@ public:
                                                  double time_remaining_ms,
                                                  uint& num_optional_regions);
 
+  // Returns whether a collection should be done proactively, taking into
+  // account the current number of free regions and the expected survival
+  // rates in each section of the heap.
+  bool preventive_collection_required(uint region_count);
+
 private:
+
+  // Predict the number of bytes of surviving objects from survivor and old
+  // regions and update the associated members.
+  void update_survival_estimates_for_next_collection();
+
   // Set the state to start a concurrent marking cycle and clear
   // _initiate_conc_mark_if_possible because it has now been
   // acted on.
@@ -367,14 +371,14 @@ public:
   // new cycle, as long as we are not already in one. It's best if it
   // is called during a safepoint when the test whether a cycle is in
   // progress or not is stable.
-  bool force_initial_mark_if_outside_cycle(GCCause::Cause gc_cause);
+  bool force_concurrent_start_if_outside_cycle(GCCause::Cause gc_cause);
 
   // This is called at the very beginning of an evacuation pause (it
   // has to be the first thing that the pause does). If
   // initiate_conc_mark_if_possible() is true, and the concurrent
   // marking thread has completed its work during the previous cycle,
-  // it will set in_initial_mark_gc() to so that the pause does
-  // the initial-mark work and start a marking cycle.
+  // it will set in_concurrent_start_gc() to so that the pause does
+  // the concurrent start work and start a marking cycle.
   void decide_on_conc_mark_initiation();
 
   size_t young_list_target_length() const { return _young_list_target_length; }
@@ -440,10 +444,6 @@ public:
   void update_max_gc_locker_expansion();
 
   void update_survivors_policy();
-
-  virtual bool force_upgrade_to_full() {
-    return false;
-  }
 };
 
 #endif // SHARE_GC_G1_G1POLICY_HPP

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright 2007, 2008, 2009, 2010, 2011 Red Hat, Inc.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -24,26 +24,18 @@
  */
 
 #include "precompiled.hpp"
-#include "code/scopeDesc.hpp"
+#include "gc/shared/collectedHeap.hpp"
 #include "interpreter/interpreter.hpp"
 #include "interpreter/interpreterRuntime.hpp"
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
-#include "oops/markWord.hpp"
 #include "oops/method.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/frame.inline.hpp"
 #include "runtime/handles.inline.hpp"
-#include "runtime/javaCalls.hpp"
-#include "runtime/monitorChunk.hpp"
 #include "runtime/signature.hpp"
-#include "runtime/stubCodeGenerator.hpp"
-#include "runtime/stubRoutines.hpp"
+#include "runtime/stackWatermarkSet.hpp"
 #include "vmreg_zero.inline.hpp"
-#ifdef COMPILER1
-#include "c1/c1_Runtime1.hpp"
-#include "runtime/vframeArray.hpp"
-#endif
 
 #ifdef ASSERT
 void RegisterMap::check_location_valid() {
@@ -70,6 +62,16 @@ frame frame::sender_for_entry_frame(RegisterMap *map) const {
   return frame(zeroframe()->next(), sender_sp());
 }
 
+OptimizedEntryBlob::FrameData* OptimizedEntryBlob::frame_data_for_frame(const frame& frame) const {
+  ShouldNotCallThis();
+  return nullptr;
+}
+
+bool frame::optimized_entry_frame_is_first() const {
+  ShouldNotCallThis();
+  return false;
+}
+
 frame frame::sender_for_nonentry_frame(RegisterMap *map) const {
   assert(zeroframe()->is_interpreter_frame() ||
          zeroframe()->is_fake_stub_frame(), "wrong type of frame");
@@ -81,13 +83,17 @@ frame frame::sender(RegisterMap* map) const {
   // sender_for_xxx methods update this accordingly.
   map->set_include_argument_oops(false);
 
-  if (is_entry_frame())
-    return sender_for_entry_frame(map);
-  else
-    return sender_for_nonentry_frame(map);
+  frame result = zeroframe()->is_entry_frame() ?
+                 sender_for_entry_frame(map) :
+                 sender_for_nonentry_frame(map);
+
+  if (map->process_frames()) {
+    StackWatermarkSet::on_iteration(map->thread(), result);
+  }
+
+  return result;
 }
 
-#ifdef CC_INTERP
 BasicObjectLock* frame::interpreter_frame_monitor_begin() const {
   return get_interpreterState()->monitor_base();
 }
@@ -95,20 +101,17 @@ BasicObjectLock* frame::interpreter_frame_monitor_begin() const {
 BasicObjectLock* frame::interpreter_frame_monitor_end() const {
   return (BasicObjectLock*) get_interpreterState()->stack_base();
 }
-#endif // CC_INTERP
 
 void frame::patch_pc(Thread* thread, address pc) {
-
   if (pc != NULL) {
-    _cb = CodeCache::find_blob(pc);
+    assert(_cb == CodeCache::find_blob(pc), "unexpected pc");
     _pc = pc;
     _deopt_state = is_deoptimized;
-
   } else {
     // We borrow this call to set the thread pointer in the interpreter
     // state; the hook to set up deoptimized frames isn't supplied it.
     assert(pc == NULL, "should be");
-    get_interpreterState()->set_thread((JavaThread *) thread);
+    get_interpreterState()->set_thread(thread->as_Java_thread());
   }
 }
 

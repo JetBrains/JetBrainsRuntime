@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,7 @@
 
 package jdk.javadoc.internal.doclets.toolkit.builders;
 
-import java.util.Set;
-import java.util.SortedSet;
-
 import javax.lang.model.element.PackageElement;
-import javax.lang.model.element.TypeElement;
 
 import jdk.javadoc.internal.doclets.toolkit.Content;
 import jdk.javadoc.internal.doclets.toolkit.DocFilesHandler;
@@ -108,7 +104,7 @@ public class PackageSummaryBuilder extends AbstractBuilder {
      * @throws DocletException if there is a problem while building the documentation
      */
     protected void buildPackageDoc() throws DocletException {
-        Content contentTree = packageWriter.getPackageHeader(utils.getPackageName(packageElement));
+        Content contentTree = packageWriter.getPackageHeader();
 
         buildContent();
 
@@ -128,6 +124,7 @@ public class PackageSummaryBuilder extends AbstractBuilder {
     protected void buildContent() throws DocletException {
         Content packageContentTree = packageWriter.getContentHeader();
 
+        packageWriter.addPackageSignature(packageContentTree);
         buildPackageDescription(packageContentTree);
         buildPackageTags(packageContentTree);
         buildSummary(packageContentTree);
@@ -136,142 +133,39 @@ public class PackageSummaryBuilder extends AbstractBuilder {
     }
 
     /**
-     * Build the package summary.
+     * Builds the list of summaries for the different kinds of types in this package.
      *
      * @param packageContentTree the package content tree to which the summaries will
      *                           be added
      * @throws DocletException if there is a problem while building the documentation
      */
     protected void buildSummary(Content packageContentTree) throws DocletException {
-        Content summaryContentTree = packageWriter.getSummaryHeader();
+        Content summariesList = packageWriter.getSummariesList();
 
-        buildInterfaceSummary(summaryContentTree);
-        buildClassSummary(summaryContentTree);
-        buildEnumSummary(summaryContentTree);
-        buildRecordSummary(summaryContentTree);
-        buildExceptionSummary(summaryContentTree);
-        buildErrorSummary(summaryContentTree);
-        buildAnnotationTypeSummary(summaryContentTree);
+        buildRelatedPackagesSummary(summariesList);
+        buildAllClassesAndInterfacesSummary(summariesList);
 
-        packageContentTree.add(packageWriter.getPackageSummary(summaryContentTree));
+        packageContentTree.add(packageWriter.getPackageSummary(summariesList));
     }
 
     /**
-     * Build the summary for the interfaces in this package.
+     * Builds a list of "nearby" packages (subpackages, super and sibling packages).
      *
-     * @param summaryContentTree the summary tree to which the interface summary
-     *                           will be added
+     * @param summariesList the list of summaries to which the summary will be added
      */
-    protected void buildInterfaceSummary(Content summaryContentTree) {
-        SortedSet<TypeElement> ilist = utils.isSpecified(packageElement)
-                        ? utils.getTypeElementsAsSortedSet(utils.getInterfaces(packageElement))
-                        : configuration.typeElementCatalog.interfaces(packageElement);
-        SortedSet<TypeElement> interfaces = utils.filterOutPrivateClasses(ilist, configuration.javafx);
-        if (!interfaces.isEmpty()) {
-            packageWriter.addInterfaceSummary(interfaces, summaryContentTree);
-        }
+    protected void buildRelatedPackagesSummary(Content summariesList) {
+        packageWriter.addRelatedPackagesSummary(summariesList);
     }
 
     /**
-     * Build the summary for the classes in this package.
+     * Builds the summary for all classes and interfaces in this package.
      *
-     * @param summaryContentTree the summary tree to which the class summary will
-     *                           be added
+     * @param summariesList the list of summaries to which the summary will be added
      */
-    protected void buildClassSummary(Content summaryContentTree) {
-        SortedSet<TypeElement> clist = utils.isSpecified(packageElement)
-            ? utils.getTypeElementsAsSortedSet(utils.getOrdinaryClasses(packageElement))
-            : configuration.typeElementCatalog.ordinaryClasses(packageElement);
-        SortedSet<TypeElement> classes = utils.filterOutPrivateClasses(clist, configuration.javafx);
-        if (!classes.isEmpty()) {
-            packageWriter.addClassSummary(classes, summaryContentTree);
-        }
+    protected void buildAllClassesAndInterfacesSummary(Content summariesList) {
+        packageWriter.addAllClassesAndInterfacesSummary(summariesList);
     }
 
-    /**
-     * Build the summary for the enums in this package.
-     *
-     * @param summaryContentTree the summary tree to which the enum summary will
-     *                           be added
-     */
-    protected void buildEnumSummary(Content summaryContentTree) {
-        SortedSet<TypeElement> elist = utils.isSpecified(packageElement)
-            ? utils.getTypeElementsAsSortedSet(utils.getEnums(packageElement))
-            : configuration.typeElementCatalog.enums(packageElement);
-        SortedSet<TypeElement> enums = utils.filterOutPrivateClasses(elist, configuration.javafx);
-        if (!enums.isEmpty()) {
-            packageWriter.addEnumSummary(enums, summaryContentTree);
-        }
-    }
-
-    /**
-     * Build the summary for the records in this package.
-     *
-     * @param summaryContentTree the summary tree to which the record summary will
-     *                           be added
-     */
-    protected void buildRecordSummary(Content summaryContentTree) {
-        SortedSet<TypeElement> rlist = utils.isSpecified(packageElement)
-                ? utils.getTypeElementsAsSortedSet(utils.getRecords(packageElement))
-                : configuration.typeElementCatalog.records(packageElement);
-        SortedSet<TypeElement> records = utils.filterOutPrivateClasses(rlist, configuration.javafx);
-        if (!records.isEmpty()) {
-            packageWriter.addRecordSummary(records, summaryContentTree);
-        }
-    }
-
-    /**
-     * Build the summary for the exceptions in this package.
-     *
-     * @param summaryContentTree the summary tree to which the exception summary will
-     *                           be added
-     */
-    protected void buildExceptionSummary(Content summaryContentTree) {
-        Set<TypeElement> iexceptions =
-            utils.isSpecified(packageElement)
-                ? utils.getTypeElementsAsSortedSet(utils.getExceptions(packageElement))
-                : configuration.typeElementCatalog.exceptions(packageElement);
-        SortedSet<TypeElement> exceptions = utils.filterOutPrivateClasses(iexceptions,
-                configuration.javafx);
-        if (!exceptions.isEmpty()) {
-            packageWriter.addExceptionSummary(exceptions, summaryContentTree);
-        }
-    }
-
-    /**
-     * Build the summary for the errors in this package.
-     *
-     * @param summaryContentTree the summary tree to which the error summary will
-     *                           be added
-     */
-    protected void buildErrorSummary(Content summaryContentTree) {
-        Set<TypeElement> ierrors =
-            utils.isSpecified(packageElement)
-                ? utils.getTypeElementsAsSortedSet(utils.getErrors(packageElement))
-                : configuration.typeElementCatalog.errors(packageElement);
-        SortedSet<TypeElement> errors = utils.filterOutPrivateClasses(ierrors, configuration.javafx);
-        if (!errors.isEmpty()) {
-            packageWriter.addErrorSummary(errors, summaryContentTree);
-        }
-    }
-
-    /**
-     * Build the summary for the annotation type in this package.
-     *
-     * @param summaryContentTree the summary tree to which the annotation type
-     *                           summary will be added
-     */
-    protected void buildAnnotationTypeSummary(Content summaryContentTree) {
-        SortedSet<TypeElement> iannotationTypes =
-            utils.isSpecified(packageElement)
-                ? utils.getTypeElementsAsSortedSet(utils.getAnnotationTypes(packageElement))
-                : configuration.typeElementCatalog.annotationTypes(packageElement);
-        SortedSet<TypeElement> annotationTypes = utils.filterOutPrivateClasses(iannotationTypes,
-                configuration.javafx);
-        if (!annotationTypes.isEmpty()) {
-            packageWriter.addAnnotationTypeSummary(annotationTypes, summaryContentTree);
-        }
-    }
 
     /**
      * Build the description of the summary.
@@ -280,7 +174,7 @@ public class PackageSummaryBuilder extends AbstractBuilder {
      *                           be added
      */
     protected void buildPackageDescription(Content packageContentTree) {
-        if (configuration.nocomment) {
+        if (options.noComment()) {
             return;
         }
         packageWriter.addPackageDescription(packageContentTree);
@@ -292,7 +186,7 @@ public class PackageSummaryBuilder extends AbstractBuilder {
      * @param packageContentTree the tree to which the package tags will be added
      */
     protected void buildPackageTags(Content packageContentTree) {
-        if (configuration.nocomment) {
+        if (options.noComment()) {
             return;
         }
         packageWriter.addPackageTags(packageContentTree);

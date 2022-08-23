@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
 package jdk.vm.ci.hotspot;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
@@ -65,18 +66,35 @@ abstract class HotSpotObjectConstantImpl implements HotSpotObjectConstant {
     @Override
     public abstract int getIdentityHashCode();
 
+    private boolean isFullyInitializedConstantCallSite() {
+        if (!runtime().getConstantCallSite().isInstance(this)) {
+            return false;
+        }
+        // read ConstantCallSite.isFrozen as a volatile field
+        HotSpotResolvedJavaField field = HotSpotMethodHandleAccessProvider.Internals.instance().constantCallSiteFrozenField;
+        boolean isFrozen = readFieldValue(field).asBoolean();
+        // isFrozen true implies fully-initialized
+        return isFrozen;
+    }
+
+    private HotSpotObjectConstantImpl readTarget() {
+        // read CallSite.target as a volatile field
+        HotSpotResolvedJavaField field = HotSpotMethodHandleAccessProvider.Internals.instance().callSiteTargetField;
+        return (HotSpotObjectConstantImpl) readFieldValue(field);
+    }
+
     @Override
     public JavaConstant getCallSiteTarget(Assumptions assumptions) {
         if (runtime().getCallSite().isInstance(this)) {
-            HotSpotObjectConstantImpl target = (HotSpotObjectConstantImpl) runtime().getHostJVMCIBackend().getConstantReflection().readFieldValue(
-                            HotSpotMethodHandleAccessProvider.Internals.instance().callSiteTargetField, this);
-            if (!runtime().getConstantCallSite().isInstance(this)) {
+            // For ConstantCallSites, we need to read "isFrozen" before reading "target"
+            // isFullyInitializedConstantCallSite() reads "isFrozen"
+            if (!isFullyInitializedConstantCallSite()) {
                 if (assumptions == null) {
                     return null;
                 }
-                assumptions.record(new Assumptions.CallSiteTargetValue(this, target));
+                assumptions.record(new Assumptions.CallSiteTargetValue(this, readTarget()));
             }
-            return target;
+            return readTarget();
         }
         return null;
     }
@@ -166,8 +184,16 @@ abstract class HotSpotObjectConstantImpl implements HotSpotObjectConstant {
         return (compressed ? "NarrowOop" : getJavaKind().getJavaName()) + "[" + runtime().reflection.formatString(this) + "]";
     }
 
-    public JavaConstant readFieldValue(HotSpotResolvedJavaField field, boolean isVolatile) {
-        return runtime().reflection.readFieldValue(this, field, isVolatile);
+    public JavaConstant readFieldValue(HotSpotResolvedJavaField field) {
+        if (IS_IN_NATIVE_IMAGE && this instanceof DirectHotSpotObjectConstantImpl) {
+            // cannot read fields from objects due to lack of
+            // general reflection support in native image
+            return null;
+        }
+        if (field.isStatic()) {
+            return null;
+        }
+        return runtime().compilerToVm.readFieldValue(this, (HotSpotResolvedObjectTypeImpl) field.getDeclaringClass(), field.getOffset(), field.getType().getJavaKind());
     }
 
     public ResolvedJavaType asJavaType() {

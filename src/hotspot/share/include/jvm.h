@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@
 
 #include "jni.h"
 #include "jvm_md.h"
+#include "jvm_constants.h"
+#include "jvm_io.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,29 +46,16 @@ extern "C" {
  * libraries in the standard Java API. For example, the java.lang.Object
  * class needs VM-level functions that wait for and notify monitors.
  *
- * Second, this file contains the functions and constant definitions
+ * Second, (included from jvm_constants.h) constant definitions
  * needed by the byte code verifier and class file format checker.
- * These functions allow the verifier and format checker to be written
+ * These definitions allow the verifier and format checker to be written
  * in a VM-independent way.
  *
  * Third, this file contains various I/O and network operations needed
- * by the standard Java I/O and network APIs.
+ * by the standard Java I/O and network APIs. A part of these APIs,
+ * namely the jio_xxxprintf functions, are included from jvm_io.h.
  */
 
-/*
- * Bump the version number when either of the following happens:
- *
- * 1. There is a change in JVM_* functions.
- *
- * 2. There is a change in the contract between VM and Java classes.
- *    For example, if the VM relies on a new private field in Thread
- *    class.
- */
-
-#define JVM_INTERFACE_VERSION 6
-
-JNIEXPORT jint JNICALL
-JVM_GetInterfaceVersion(void);
 
 /*************************************************************************
  PART 1: Functions for Native Libraries
@@ -158,8 +147,11 @@ JVM_MaxMemory(void);
 JNIEXPORT jint JNICALL
 JVM_ActiveProcessorCount(void);
 
+JNIEXPORT jboolean JNICALL
+JVM_IsUseContainerSupport(void);
+
 JNIEXPORT void * JNICALL
-JVM_LoadLibrary(const char *name);
+JVM_LoadLibrary(const char *name, jboolean throwException);
 
 JNIEXPORT void JNICALL
 JVM_UnloadLibrary(void * handle);
@@ -175,6 +167,44 @@ JVM_GetVmArguments(JNIEnv *env);
 
 JNIEXPORT void JNICALL
 JVM_InitializeFromArchive(JNIEnv* env, jclass cls);
+
+JNIEXPORT void JNICALL
+JVM_RegisterLambdaProxyClassForArchiving(JNIEnv* env, jclass caller,
+                                         jstring interfaceMethodName,
+                                         jobject factoryType,
+                                         jobject interfaceMethodType,
+                                         jobject implementationMember,
+                                         jobject dynamicMethodType,
+                                         jclass lambdaProxyClass);
+
+JNIEXPORT jclass JNICALL
+JVM_LookupLambdaProxyClassFromArchive(JNIEnv* env, jclass caller,
+                                      jstring interfaceMethodName,
+                                      jobject factoryType,
+                                      jobject interfaceMethodType,
+                                      jobject implementationMember,
+                                      jobject dynamicMethodType);
+
+JNIEXPORT jboolean JNICALL
+JVM_IsCDSDumpingEnabled(JNIEnv* env);
+
+JNIEXPORT jboolean JNICALL
+JVM_IsSharingEnabled(JNIEnv* env);
+
+JNIEXPORT jboolean JNICALL
+JVM_IsDumpingClassList(JNIEnv* env);
+
+JNIEXPORT jlong JNICALL
+JVM_GetRandomSeedForDumping();
+
+JNIEXPORT void JNICALL
+JVM_LogLambdaFormInvoker(JNIEnv* env, jstring line);
+
+JNIEXPORT void JNICALL
+JVM_DumpClassListToFile(JNIEnv* env, jstring fileName);
+
+JNIEXPORT void JNICALL
+JVM_DumpDynamicArchive(JNIEnv* env, jstring archiveName);
 
 /*
  * java.lang.Throwable
@@ -294,6 +324,18 @@ JVM_HasReferencePendingList(JNIEnv *env);
 JNIEXPORT void JNICALL
 JVM_WaitForReferencePendingList(JNIEnv *env);
 
+JNIEXPORT jboolean JNICALL
+JVM_ReferenceRefersTo(JNIEnv *env, jobject ref, jobject o);
+
+JNIEXPORT void JNICALL
+JVM_ReferenceClear(JNIEnv *env, jobject ref);
+
+/*
+ * java.lang.ref.PhantomReference
+ */
+JNIEXPORT jboolean JNICALL
+JVM_PhantomReferenceRefersTo(JNIEnv *env, jobject ref, jobject o);
+
 /*
  * java.io.ObjectInputStream
  */
@@ -389,6 +431,21 @@ JVM_DefineClassWithSource(JNIEnv *env, const char *name, jobject loader,
                           const char *source);
 
 /*
+ * Define a class with the specified lookup class.
+ *  lookup:  Lookup class
+ *  name:    the name of the class
+ *  buf:     class bytes
+ *  len:     length of class bytes
+ *  pd:      protection domain
+ *  init:    initialize the class
+ *  flags:   properties of the class
+ *  classData: private static pre-initialized field; may be null
+ */
+JNIEXPORT jclass JNICALL
+JVM_LookupDefineClass(JNIEnv *env, jclass lookup, const char *name, const jbyte *buf,
+                      jsize len, jobject pd, jboolean init, int flags, jobject classData);
+
+/*
  * Module support funcions
  */
 
@@ -399,12 +456,11 @@ JVM_DefineClassWithSource(JNIEnv *env, const char *name, jobject loader,
  *  is_open:      specifies if module is open (currently ignored)
  *  version:      the module version
  *  location:     the module location
- *  packages:     list of packages in the module
- *  num_packages: number of packages in the module
+ *  packages:     array of packages in the module
  */
 JNIEXPORT void JNICALL
 JVM_DefineModule(JNIEnv *env, jobject module, jboolean is_open, jstring version,
-                 jstring location, const char* const* packages, jsize num_packages);
+                 jstring location, jobjectArray packages);
 
 /*
  * Set the boot loader's unnamed module.
@@ -420,7 +476,7 @@ JVM_SetBootLoaderUnnamedModule(JNIEnv *env, jobject module);
  *  to_module:   module to export the package to
  */
 JNIEXPORT void JNICALL
-JVM_AddModuleExports(JNIEnv *env, jobject from_module, const char* package, jobject to_module);
+JVM_AddModuleExports(JNIEnv *env, jobject from_module, jstring package, jobject to_module);
 
 /*
  * Do an export of a package to all unnamed modules.
@@ -428,7 +484,7 @@ JVM_AddModuleExports(JNIEnv *env, jobject from_module, const char* package, jobj
  *  package:     name of the package to export to all unnamed modules
  */
 JNIEXPORT void JNICALL
-JVM_AddModuleExportsToAllUnnamed(JNIEnv *env, jobject from_module, const char* package);
+JVM_AddModuleExportsToAllUnnamed(JNIEnv *env, jobject from_module, jstring package);
 
 /*
  * Do an unqualified export of a package.
@@ -436,7 +492,7 @@ JVM_AddModuleExportsToAllUnnamed(JNIEnv *env, jobject from_module, const char* p
  *  package:     name of the package to export
  */
 JNIEXPORT void JNICALL
-JVM_AddModuleExportsToAll(JNIEnv *env, jobject from_module, const char* package);
+JVM_AddModuleExportsToAll(JNIEnv *env, jobject from_module, jstring package);
 
 /*
  * Add a module to the list of modules that a given module can read.
@@ -445,6 +501,14 @@ JVM_AddModuleExportsToAll(JNIEnv *env, jobject from_module, const char* package)
  */
 JNIEXPORT void JNICALL
 JVM_AddReadsModule(JNIEnv *env, jobject from_module, jobject source_module);
+
+/*
+ * Define all modules that have been stored in the CDS archived heap.
+ *  platform_loader: the built-in platform class loader
+ *  system_loader:   the built-in system class loader
+ */
+JNIEXPORT void JNICALL
+JVM_DefineArchivedModules(JNIEnv *env, jobject platform_loader, jobject system_loader);
 
 /*
  * Reflection support functions
@@ -473,6 +537,9 @@ JVM_IsArrayClass(JNIEnv *env, jclass cls);
 
 JNIEXPORT jboolean JNICALL
 JVM_IsPrimitiveClass(JNIEnv *env, jclass cls);
+
+JNIEXPORT jboolean JNICALL
+JVM_IsHiddenClass(JNIEnv *env, jclass cls);
 
 JNIEXPORT jint JNICALL
 JVM_GetClassModifiers(JNIEnv *env, jclass cls);
@@ -539,13 +606,18 @@ JVM_GetNestHost(JNIEnv *env, jclass current);
 JNIEXPORT jobjectArray JNICALL
 JVM_GetNestMembers(JNIEnv *env, jclass current);
 
-/* Records - since JDK 14 */
+/* Records - since JDK 16 */
 
 JNIEXPORT jboolean JNICALL
 JVM_IsRecord(JNIEnv *env, jclass cls);
 
 JNIEXPORT jobjectArray JNICALL
 JVM_GetRecordComponents(JNIEnv *env, jclass ofClass);
+
+/* Sealed classes - since JDK 17 */
+
+JNIEXPORT jobjectArray JNICALL
+JVM_GetPermittedSubclasses(JNIEnv *env, jclass current);
 
 /* The following two reflection routines are still needed due to startup time issues */
 /*
@@ -680,80 +752,6 @@ JVM_AssertionStatusDirectives(JNIEnv *env, jclass unused);
  */
 JNIEXPORT jboolean JNICALL
 JVM_SupportsCX8(void);
-
-/*
- * com.sun.dtrace.jsdt support
- */
-
-#define JVM_TRACING_DTRACE_VERSION 1
-
-/*
- * Structure to pass one probe description to JVM
- */
-typedef struct {
-    jmethodID method;
-    jstring   function;
-    jstring   name;
-    void*            reserved[4];     // for future use
-} JVM_DTraceProbe;
-
-/**
- * Encapsulates the stability ratings for a DTrace provider field
- */
-typedef struct {
-    jint nameStability;
-    jint dataStability;
-    jint dependencyClass;
-} JVM_DTraceInterfaceAttributes;
-
-/*
- * Structure to pass one provider description to JVM
- */
-typedef struct {
-    jstring                       name;
-    JVM_DTraceProbe*              probes;
-    jint                          probe_count;
-    JVM_DTraceInterfaceAttributes providerAttributes;
-    JVM_DTraceInterfaceAttributes moduleAttributes;
-    JVM_DTraceInterfaceAttributes functionAttributes;
-    JVM_DTraceInterfaceAttributes nameAttributes;
-    JVM_DTraceInterfaceAttributes argsAttributes;
-    void*                         reserved[4]; // for future use
-} JVM_DTraceProvider;
-
-/*
- * Get the version number the JVM was built with
- */
-JNIEXPORT jint JNICALL
-JVM_DTraceGetVersion(JNIEnv* env);
-
-/*
- * Register new probe with given signature, return global handle
- *
- * The version passed in is the version that the library code was
- * built with.
- */
-JNIEXPORT jlong JNICALL
-JVM_DTraceActivate(JNIEnv* env, jint version, jstring module_name,
-  jint providers_count, JVM_DTraceProvider* providers);
-
-/*
- * Check JSDT probe
- */
-JNIEXPORT jboolean JNICALL
-JVM_DTraceIsProbeEnabled(JNIEnv* env, jmethodID method);
-
-/*
- * Destroy custom DOF
- */
-JNIEXPORT void JNICALL
-JVM_DTraceDispose(JNIEnv* env, jlong activation_handle);
-
-/*
- * Check to see if DTrace is supported by OS
- */
-JNIEXPORT jboolean JNICALL
-JVM_DTraceIsSupported(JNIEnv* env);
 
 /*************************************************************************
  PART 2: Support for the Verifier and Class File Format Checker
@@ -1045,64 +1043,6 @@ JVM_ReleaseUTF(const char *utf);
 JNIEXPORT jboolean JNICALL
 JVM_IsSameClassPackage(JNIEnv *env, jclass class1, jclass class2);
 
-/* Get classfile constants */
-#include "classfile_constants.h"
-
-/*
- * Support for a VM-independent class format checker.
- */
-typedef struct {
-    unsigned long code;    /* byte code */
-    unsigned long excs;    /* exceptions */
-    unsigned long etab;    /* catch table */
-    unsigned long lnum;    /* line number */
-    unsigned long lvar;    /* local vars */
-} method_size_info;
-
-typedef struct {
-    unsigned int constants;    /* constant pool */
-    unsigned int fields;
-    unsigned int methods;
-    unsigned int interfaces;
-    unsigned int fields2;      /* number of static 2-word fields */
-    unsigned int innerclasses; /* # of records in InnerClasses attr */
-
-    method_size_info clinit;   /* memory used in clinit */
-    method_size_info main;     /* used everywhere else */
-} class_size_info;
-
-#define JVM_RECOGNIZED_CLASS_MODIFIERS (JVM_ACC_PUBLIC | \
-                                        JVM_ACC_FINAL | \
-                                        JVM_ACC_SUPER | \
-                                        JVM_ACC_INTERFACE | \
-                                        JVM_ACC_ABSTRACT | \
-                                        JVM_ACC_ANNOTATION | \
-                                        JVM_ACC_ENUM | \
-                                        JVM_ACC_SYNTHETIC)
-
-#define JVM_RECOGNIZED_FIELD_MODIFIERS (JVM_ACC_PUBLIC | \
-                                        JVM_ACC_PRIVATE | \
-                                        JVM_ACC_PROTECTED | \
-                                        JVM_ACC_STATIC | \
-                                        JVM_ACC_FINAL | \
-                                        JVM_ACC_VOLATILE | \
-                                        JVM_ACC_TRANSIENT | \
-                                        JVM_ACC_ENUM | \
-                                        JVM_ACC_SYNTHETIC)
-
-#define JVM_RECOGNIZED_METHOD_MODIFIERS (JVM_ACC_PUBLIC | \
-                                         JVM_ACC_PRIVATE | \
-                                         JVM_ACC_PROTECTED | \
-                                         JVM_ACC_STATIC | \
-                                         JVM_ACC_FINAL | \
-                                         JVM_ACC_SYNCHRONIZED | \
-                                         JVM_ACC_BRIDGE | \
-                                         JVM_ACC_VARARGS | \
-                                         JVM_ACC_NATIVE | \
-                                         JVM_ACC_ABSTRACT | \
-                                         JVM_ACC_STRICT | \
-                                         JVM_ACC_SYNTHETIC)
-
 
 /*************************************************************************
  PART 3: I/O and Network Support
@@ -1115,33 +1055,6 @@ typedef struct {
  */
 JNIEXPORT char * JNICALL
 JVM_NativePath(char *);
-
-/*
- * The standard printing functions supported by the Java VM. (Should they
- * be renamed to JVM_* in the future?
- */
-
-/* jio_snprintf() and jio_vsnprintf() behave like snprintf(3) and vsnprintf(3),
- *  respectively, with the following differences:
- * - The string written to str is always zero-terminated, also in case of
- *   truncation (count is too small to hold the result string), unless count
- *   is 0. In case of truncation count-1 characters are written and '\0'
- *   appendend.
- * - If count is too small to hold the whole string, -1 is returned across
- *   all platforms. */
-
-JNIEXPORT int
-jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args);
-
-JNIEXPORT int
-jio_snprintf(char *str, size_t count, const char *fmt, ...);
-
-JNIEXPORT int
-jio_fprintf(FILE *, const char *fmt, ...);
-
-JNIEXPORT int
-jio_vfprintf(FILE *, const char *fmt, va_list args);
-
 
 JNIEXPORT void * JNICALL
 JVM_RawMonitorCreate(void);

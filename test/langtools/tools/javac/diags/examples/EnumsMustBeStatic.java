@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,7 +21,9 @@
  * questions.
  */
 
-// key: compiler.err.enums.must.be.static
+// key: compiler.err.static.declaration.not.allowed.in.inner.classes
+// key: compiler.warn.source.no.system.modules.path
+// options: -source 15
 
 class EnumsMustBeStatic {
     class Nested {

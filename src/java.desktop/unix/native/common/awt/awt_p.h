@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1995, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1995, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -94,7 +94,6 @@ typedef struct _AwtScreenData {
 typedef AwtScreenData* AwtScreenDataPtr;
 
 extern AwtGraphicsConfigDataPtr getDefaultConfig(int screen);
-extern AwtScreenDataPtr getScreenData(int screen);
 #endif /* !HEADLESS */
 
 /* allocated and initialize a structure */
@@ -105,7 +104,6 @@ extern AwtScreenDataPtr getScreenData(int screen);
 extern int awt_allocate_colors(AwtGraphicsConfigDataPtr);
 extern void awt_allocate_systemrgbcolors(jint *, int, AwtGraphicsConfigDataPtr);
 
-extern int awtJNI_GetColorForVis (JNIEnv *, jobject, AwtGraphicsConfigDataPtr);
 extern jobject awtJNI_GetColorModel(JNIEnv *, AwtGraphicsConfigDataPtr);
 extern void awtJNI_CreateColorData (JNIEnv *, AwtGraphicsConfigDataPtr, int lock);
 

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ default: build
 include $(SPEC)
 include MakeBase.gmk
 include JavaCompilation.gmk
-include SetupJavaCompilers.gmk
 include NativeCompilation.gmk
 
 TARGETS :=
@@ -49,33 +48,17 @@ TOOLS_JAR := $(wildcard $(BOOT_JDK)/lib/tools.jar)
 FH_CLASSPATH := $(call PathList, $(JTREG_JAR) $(TOOLS_JAR))
 
 $(eval $(call SetupJavaCompilation, BUILD_FAILURE_HANDLER, \
-    SETUP := GENERATE_OLDBYTECODE, \
+    TARGET_RELEASE := $(TARGET_RELEASE_BOOTJDK), \
     SRC := $(FH_BASEDIR)/src/share/classes $(FH_BASEDIR)/src/share/conf, \
     BIN := $(FH_SUPPORT)/classes, \
+    DISABLED_WARNINGS := options serial try, \
     COPY := .properties, \
     CLASSPATH := $(JTREG_JAR) $(TOOLS_JAR), \
     JAR := $(FH_JAR), \
+    JAVAC_FLAGS := -XDstringConcat=inline, \
 ))
 
 TARGETS += $(BUILD_FAILURE_HANDLER)
-
-################################################################################
-
-ifeq ($(call isTargetOs, windows), true)
-
-  $(eval $(call SetupNativeCompilation, BUILD_LIBTIMEOUT_HANDLER, \
-        NAME := timeoutHandler, \
-        SRC := $(FH_BASEDIR)/src/windows/native/libtimeoutHandler, \
-        OBJECT_DIR := $(FH_SUPPORT)/libtimeoutHandler, \
-        OUTPUT_DIR := $(FH_SUPPORT), \
-        CFLAGS := $(CFLAGS_JDKLIB), \
-        LDFLAGS := $(LDFLAGS_JDKLIB), \
-        OPTIMIZATION := LOW, \
-  ))
-
-  TARGETS += $(BUILD_LIBTIMEOUT_HANDLER)
-
-endif
 
 ################################################################################
 # Targets for building test-image.
@@ -98,15 +81,12 @@ IMAGES_TARGETS += $(COPY_FH)
 # Use JTREG_TESTS for jtreg tests parameter
 #
 RUN_DIR := $(FH_SUPPORT)/test
-# Add the dir of the dll to the path on windows
-ifeq ($(call isTargetOs, windows), true)
-  export PATH := $(PATH);$(FH_SUPPORT)
-endif
 
 test:
 	$(RM) -r $(RUN_DIR)
 	$(MKDIR) -p $(RUN_DIR)
-	$(CD) $(FH_BASEDIR)/test && JT_JAVA=$(BOOT_JDK) $(JTREGEXE) \
+	$(CD) $(FH_BASEDIR)/test && $(JAVA) -Dprogram=jtreg \
+	    -jar $(JT_HOME)/lib/jtreg.jar \
 	    -jdk:$(BOOT_JDK) \
 	    $(JTREG_TEST_OPTS) \
 	    -timeout:0.1 -va -retain:all \

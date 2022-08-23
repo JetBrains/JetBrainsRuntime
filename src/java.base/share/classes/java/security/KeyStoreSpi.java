@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,6 +52,11 @@ import javax.security.auth.callback.*;
  */
 
 public abstract class KeyStoreSpi {
+
+    /**
+     * Constructor for subclasses to call.
+     */
+    public KeyStoreSpi() {}
 
     /**
      * Returns the key associated with the given alias, using the given
@@ -297,20 +302,25 @@ public abstract class KeyStoreSpi {
 
     /**
      * Stores this keystore using the given
-     * {@code KeyStore.LoadStoreParmeter}.
+     * {@code KeyStore.LoadStoreParameter}.
      *
-     * @param param the {@code KeyStore.LoadStoreParmeter}
+     * @implSpec The default implementation throws
+     *          an {@link UnsupportedOperationException}.
+     *
+     * @param param the {@code KeyStore.LoadStoreParameter}
      *          that specifies how to store the keystore,
      *          which may be {@code null}
      *
      * @throws    IllegalArgumentException if the given
-     *          {@code KeyStore.LoadStoreParmeter}
+     *          {@code KeyStore.LoadStoreParameter}
      *          input is not recognized
      * @throws    IOException if there was an I/O problem with data
      * @throws    NoSuchAlgorithmException if the appropriate data integrity
      *          algorithm could not be found
      * @throws    CertificateException if any of the certificates included in
      *          the keystore data could not be stored
+     * @throws    UnsupportedOperationException if the implementation does
+     *          not support this operation
      *
      * @since 1.5
      */

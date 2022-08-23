@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@
 // - ConstantValue   describes a constant
 
 class ConstantOopReadValue;
+class LocationValue;
 class ObjectValue;
 
 class ScopeValue: public ResourceObj {
@@ -50,6 +51,7 @@ class ScopeValue: public ResourceObj {
   virtual bool is_location() const { return false; }
   virtual bool is_object() const { return false; }
   virtual bool is_auto_box() const { return false; }
+  virtual bool is_marker() const { return false; }
   virtual bool is_constant_int() const { return false; }
   virtual bool is_constant_double() const { return false; }
   virtual bool is_constant_long() const { return false; }
@@ -64,6 +66,11 @@ class ScopeValue: public ResourceObj {
   ObjectValue* as_ObjectValue() {
     assert(is_object(), "must be");
     return (ObjectValue*)this;
+  }
+
+  LocationValue* as_LocationValue() {
+    assert(is_location(), "must be");
+    return (LocationValue*)this;
   }
 
   // Serialization of debugging information
@@ -91,6 +98,19 @@ class LocationValue: public ScopeValue {
   void print_on(outputStream* st) const;
 };
 
+// A placeholder value that has no concrete meaning other than helping constructing
+// other values.
+
+class MarkerValue: public ScopeValue {
+public:
+  bool      is_marker() const                { return true; }
+
+  // Serialization of debugging information
+  void write_on(DebugInfoWriteStream* stream);
+
+  // Printing
+  void print_on(outputStream* st) const;
+};
 
 // An ObjectValue describes an object eliminated by escape analysis.
 
@@ -129,7 +149,7 @@ class ObjectValue: public ScopeValue {
   bool                        is_visited() const        { return _visited; }
 
   void                        set_value(oop value);
-  void                        set_visited(bool visited) { _visited = false; }
+  void                        set_visited(bool visited) { _visited = visited; }
 
   // Serialization of debugging information
   void read_object(DebugInfoReadStream* stream);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
 /**
  * @test
  * @bug 8156034
- * @requires vm.jvmci & !vm.graal.enabled & vm.compMode == "Xmixed"
+ * @requires vm.jvmci & !vm.graal.enabled & vm.compMode == "Xmixed" & vm.opt.TieredStopAtLevel == null
  * @library / /test/lib
  * @library ../common/patches
  * @modules java.base/jdk.internal.misc
@@ -40,19 +40,19 @@
  * @build compiler.jvmci.common.JVMCIHelpers
  * @run driver jdk.test.lib.FileInstaller ./JvmciNotifyBootstrapFinishedEventTest.config
  *     ./META-INF/services/jdk.vm.ci.services.JVMCIServiceLocator
- * @run driver ClassFileInstaller
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller
  *      compiler.jvmci.common.JVMCIHelpers$EmptyHotspotCompiler
  *      compiler.jvmci.common.JVMCIHelpers$EmptyCompilerFactory
  *      compiler.jvmci.common.JVMCIHelpers$EmptyCompilationRequestResult
  *      compiler.jvmci.common.JVMCIHelpers$EmptyVMEventListener
  * @run main/othervm -XX:+UnlockExperimentalVMOptions
  *     -Djvmci.Compiler=EmptyCompiler -Xbootclasspath/a:.
- *     -XX:+UseJVMCICompiler -XX:-BootstrapJVMCI
+ *     -XX:+UseJVMCICompiler -XX:-BootstrapJVMCI -XX:-UseJVMCINativeLibrary
  *     -Dcompiler.jvmci.events.JvmciNotifyBootstrapFinishedEventTest.bootstrap=false
  *     compiler.jvmci.events.JvmciNotifyBootstrapFinishedEventTest
  * @run main/othervm -XX:+UnlockExperimentalVMOptions
  *     -Djvmci.Compiler=EmptyCompiler -Xbootclasspath/a:.
- *     -XX:+UseJVMCICompiler -XX:+BootstrapJVMCI
+ *     -XX:+UseJVMCICompiler -XX:+BootstrapJVMCI -XX:-UseJVMCINativeLibrary
  *     -Dcompiler.jvmci.events.JvmciNotifyBootstrapFinishedEventTest.bootstrap=true
  *     compiler.jvmci.events.JvmciNotifyBootstrapFinishedEventTest
  */

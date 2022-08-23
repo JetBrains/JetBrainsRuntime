@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.io.Serializable;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * A Red-Black tree based {@link NavigableMap} implementation.
@@ -341,8 +342,7 @@ public class TreeMap<K,V>
         // Offload comparator-based version for sake of performance
         if (comparator != null)
             return getEntryUsingComparator(key);
-        if (key == null)
-            throw new NullPointerException();
+        Objects.requireNonNull(key);
         @SuppressWarnings("unchecked")
             Comparable<? super K> k = (Comparable<? super K>) key;
         Entry<K,V> p = root;
@@ -531,14 +531,128 @@ public class TreeMap<K,V>
      *         does not permit null keys
      */
     public V put(K key, V value) {
+        return put(key, value, true);
+    }
+
+    @Override
+    public V putIfAbsent(K key, V value) {
+        return put(key, value, false);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>This method will, on a best-effort basis, throw a
+     * {@link ConcurrentModificationException} if it is detected that the
+     * mapping function modifies this map during computation.
+     *
+     * @throws ConcurrentModificationException if it is detected that the
+     * mapping function modified this map
+     */
+    @Override
+    public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
+        Objects.requireNonNull(mappingFunction);
+        V newValue;
         Entry<K,V> t = root;
         if (t == null) {
-            compare(key, key); // type (and possibly null) check
+            newValue = callMappingFunctionWithCheck(key, mappingFunction);
+            if (newValue != null) {
+                addEntryToEmptyMap(key, newValue);
+                return newValue;
+            } else {
+                return null;
+            }
+        }
+        int cmp;
+        Entry<K,V> parent;
+        // split comparator and comparable paths
+        Comparator<? super K> cpr = comparator;
+        if (cpr != null) {
+            do {
+                parent = t;
+                cmp = cpr.compare(key, t.key);
+                if (cmp < 0)
+                    t = t.left;
+                else if (cmp > 0)
+                    t = t.right;
+                else {
+                    if (t.value == null) {
+                        t.value = callMappingFunctionWithCheck(key, mappingFunction);
+                    }
+                    return t.value;
+                }
+            } while (t != null);
+        } else {
+            Objects.requireNonNull(key);
+            @SuppressWarnings("unchecked")
+            Comparable<? super K> k = (Comparable<? super K>) key;
+            do {
+                parent = t;
+                cmp = k.compareTo(t.key);
+                if (cmp < 0)
+                    t = t.left;
+                else if (cmp > 0)
+                    t = t.right;
+                else {
+                    if (t.value == null) {
+                        t.value = callMappingFunctionWithCheck(key, mappingFunction);
+                    }
+                    return t.value;
+                }
+            } while (t != null);
+        }
+        newValue = callMappingFunctionWithCheck(key, mappingFunction);
+        if (newValue != null) {
+            addEntry(key, newValue, parent, cmp < 0);
+            return newValue;
+        }
+        return null;
+    }
 
-            root = new Entry<>(key, value, null);
-            size = 1;
-            modCount++;
+    /**
+     * {@inheritDoc}
+     *
+     * <p>This method will, on a best-effort basis, throw a
+     * {@link ConcurrentModificationException} if it is detected that the
+     * remapping function modifies this map during computation.
+     *
+     * @throws ConcurrentModificationException if it is detected that the
+     * remapping function modified this map
+     */
+    @Override
+    public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(remappingFunction);
+        Entry<K,V> oldEntry = getEntry(key);
+        if (oldEntry != null && oldEntry.value != null) {
+            return remapValue(oldEntry, key, remappingFunction);
+        } else {
             return null;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>This method will, on a best-effort basis, throw a
+     * {@link ConcurrentModificationException} if it is detected that the
+     * remapping function modifies this map during computation.
+     *
+     * @throws ConcurrentModificationException if it is detected that the
+     * remapping function modified this map
+     */
+    @Override
+    public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(remappingFunction);
+        V newValue;
+        Entry<K,V> t = root;
+        if (t == null) {
+            newValue = callRemappingFunctionWithCheck(key, null, remappingFunction);
+            if (newValue != null) {
+                addEntryToEmptyMap(key, newValue);
+                return newValue;
+            } else {
+                return null;
+            }
         }
         int cmp;
         Entry<K,V> parent;
@@ -553,14 +667,12 @@ public class TreeMap<K,V>
                 else if (cmp > 0)
                     t = t.right;
                 else
-                    return t.setValue(value);
+                    return remapValue(t, key, remappingFunction);
             } while (t != null);
-        }
-        else {
-            if (key == null)
-                throw new NullPointerException();
+        } else {
+            Objects.requireNonNull(key);
             @SuppressWarnings("unchecked")
-                Comparable<? super K> k = (Comparable<? super K>) key;
+            Comparable<? super K> k = (Comparable<? super K>) key;
             do {
                 parent = t;
                 cmp = k.compareTo(t.key);
@@ -569,18 +681,186 @@ public class TreeMap<K,V>
                 else if (cmp > 0)
                     t = t.right;
                 else
-                    return t.setValue(value);
+                    return remapValue(t, key, remappingFunction);
             } while (t != null);
         }
+        newValue = callRemappingFunctionWithCheck(key, null, remappingFunction);
+        if (newValue != null) {
+            addEntry(key, newValue, parent, cmp < 0);
+            return newValue;
+        }
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>This method will, on a best-effort basis, throw a
+     * {@link ConcurrentModificationException} if it is detected that the
+     * remapping function modifies this map during computation.
+     *
+     * @throws ConcurrentModificationException if it is detected that the
+     * remapping function modified this map
+     */
+    @Override
+    public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(remappingFunction);
+        Objects.requireNonNull(value);
+        Entry<K,V> t = root;
+        if (t == null) {
+            addEntryToEmptyMap(key, value);
+            return value;
+        }
+        int cmp;
+        Entry<K,V> parent;
+        // split comparator and comparable paths
+        Comparator<? super K> cpr = comparator;
+        if (cpr != null) {
+            do {
+                parent = t;
+                cmp = cpr.compare(key, t.key);
+                if (cmp < 0)
+                    t = t.left;
+                else if (cmp > 0)
+                    t = t.right;
+                else return mergeValue(t, value, remappingFunction);
+            } while (t != null);
+        } else {
+            Objects.requireNonNull(key);
+            @SuppressWarnings("unchecked")
+            Comparable<? super K> k = (Comparable<? super K>) key;
+            do {
+                parent = t;
+                cmp = k.compareTo(t.key);
+                if (cmp < 0)
+                    t = t.left;
+                else if (cmp > 0)
+                    t = t.right;
+                else return mergeValue(t, value, remappingFunction);
+            } while (t != null);
+        }
+        addEntry(key, value, parent, cmp < 0);
+        return value;
+    }
+
+    private V callMappingFunctionWithCheck(K key, Function<? super K, ? extends V> mappingFunction) {
+        int mc = modCount;
+        V newValue = mappingFunction.apply(key);
+        if (mc != modCount) {
+            throw new ConcurrentModificationException();
+        }
+        return newValue;
+    }
+
+    private V callRemappingFunctionWithCheck(K key, V oldValue, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        int mc = modCount;
+        V newValue = remappingFunction.apply(key, oldValue);
+        if (mc != modCount) {
+            throw new ConcurrentModificationException();
+        }
+        return newValue;
+    }
+
+    private void addEntry(K key, V value, Entry<K, V> parent, boolean addToLeft) {
         Entry<K,V> e = new Entry<>(key, value, parent);
-        if (cmp < 0)
+        if (addToLeft)
             parent.left = e;
         else
             parent.right = e;
         fixAfterInsertion(e);
         size++;
         modCount++;
+    }
+
+    private void addEntryToEmptyMap(K key, V value) {
+        compare(key, key); // type (and possibly null) check
+        root = new Entry<>(key, value, null);
+        size = 1;
+        modCount++;
+    }
+
+    private V put(K key, V value, boolean replaceOld) {
+        Entry<K,V> t = root;
+        if (t == null) {
+            addEntryToEmptyMap(key, value);
+            return null;
+        }
+        int cmp;
+        Entry<K,V> parent;
+        // split comparator and comparable paths
+        Comparator<? super K> cpr = comparator;
+        if (cpr != null) {
+            do {
+                parent = t;
+                cmp = cpr.compare(key, t.key);
+                if (cmp < 0)
+                    t = t.left;
+                else if (cmp > 0)
+                    t = t.right;
+                else {
+                    V oldValue = t.value;
+                    if (replaceOld || oldValue == null) {
+                        t.value = value;
+                    }
+                    return oldValue;
+                }
+            } while (t != null);
+        } else {
+            Objects.requireNonNull(key);
+            @SuppressWarnings("unchecked")
+            Comparable<? super K> k = (Comparable<? super K>) key;
+            do {
+                parent = t;
+                cmp = k.compareTo(t.key);
+                if (cmp < 0)
+                    t = t.left;
+                else if (cmp > 0)
+                    t = t.right;
+                else {
+                    V oldValue = t.value;
+                    if (replaceOld || oldValue == null) {
+                        t.value = value;
+                    }
+                    return oldValue;
+                }
+            } while (t != null);
+        }
+        addEntry(key, value, parent, cmp < 0);
         return null;
+    }
+
+    private V remapValue(Entry<K,V> t, K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        V newValue = callRemappingFunctionWithCheck(key, t.value, remappingFunction);
+        if (newValue == null) {
+            deleteEntry(t);
+            return null;
+        } else {
+            // replace old mapping
+            t.value = newValue;
+            return newValue;
+        }
+    }
+
+    private V mergeValue(Entry<K,V> t, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+        V oldValue = t.value;
+        V newValue;
+        if (t.value == null) {
+            newValue = value;
+        } else {
+            int mc = modCount;
+            newValue = remappingFunction.apply(oldValue, value);
+            if (mc != modCount) {
+                throw new ConcurrentModificationException();
+            }
+        }
+        if (newValue == null) {
+            deleteEntry(t);
+            return null;
+        } else {
+            // replace old mapping
+            t.value = newValue;
+            return newValue;
+        }
     }
 
     /**
@@ -1061,18 +1341,16 @@ public class TreeMap<K,V>
         }
 
         public boolean contains(Object o) {
-            if (!(o instanceof Map.Entry))
+            if (!(o instanceof Map.Entry<?, ?> entry))
                 return false;
-            Map.Entry<?,?> entry = (Map.Entry<?,?>) o;
             Object value = entry.getValue();
             Entry<K,V> p = getEntry(entry.getKey());
             return p != null && valEquals(p.getValue(), value);
         }
 
         public boolean remove(Object o) {
-            if (!(o instanceof Map.Entry))
+            if (!(o instanceof Map.Entry<?, ?> entry))
                 return false;
-            Map.Entry<?,?> entry = (Map.Entry<?,?>) o;
             Object value = entry.getValue();
             Entry<K,V> p = getEntry(entry.getKey());
             if (p != null && valEquals(p.getValue(), value)) {
@@ -1518,6 +1796,42 @@ public class TreeMap<K,V>
             return m.put(key, value);
         }
 
+        public V putIfAbsent(K key, V value) {
+            if (!inRange(key))
+                throw new IllegalArgumentException("key out of range");
+            return m.putIfAbsent(key, value);
+        }
+
+        public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+            if (!inRange(key))
+                throw new IllegalArgumentException("key out of range");
+            return m.merge(key, value, remappingFunction);
+        }
+
+        public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
+            if (!inRange(key)) {
+                // Do not throw if mapping function returns null
+                // to preserve compatibility with default computeIfAbsent implementation
+                if (mappingFunction.apply(key) == null) return null;
+                throw new IllegalArgumentException("key out of range");
+            }
+            return m.computeIfAbsent(key, mappingFunction);
+        }
+
+        public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+            if (!inRange(key)) {
+                // Do not throw if remapping function returns null
+                // to preserve compatibility with default computeIfAbsent implementation
+                if (remappingFunction.apply(key, null) == null) return null;
+                throw new IllegalArgumentException("key out of range");
+            }
+            return m.compute(key, remappingFunction);
+        }
+
+        public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+            return !inRange(key) ? null : m.computeIfPresent(key, remappingFunction);
+        }
+
         public final V get(Object key) {
             return !inRange(key) ? null :  m.get(key);
         }
@@ -1647,9 +1961,8 @@ public class TreeMap<K,V>
             }
 
             public boolean contains(Object o) {
-                if (!(o instanceof Map.Entry))
+                if (!(o instanceof Entry<?, ?> entry))
                     return false;
-                Map.Entry<?,?> entry = (Map.Entry<?,?>) o;
                 Object key = entry.getKey();
                 if (!inRange(key))
                     return false;
@@ -1659,9 +1972,8 @@ public class TreeMap<K,V>
             }
 
             public boolean remove(Object o) {
-                if (!(o instanceof Map.Entry))
+                if (!(o instanceof Entry<?, ?> entry))
                     return false;
-                Map.Entry<?,?> entry = (Map.Entry<?,?>) o;
                 Object key = entry.getKey();
                 if (!inRange(key))
                     return false;
@@ -2109,11 +2421,9 @@ public class TreeMap<K,V>
         }
 
         public boolean equals(Object o) {
-            if (!(o instanceof Map.Entry))
-                return false;
-            Map.Entry<?,?> e = (Map.Entry<?,?>)o;
-
-            return valEquals(key,e.getKey()) && valEquals(value,e.getValue());
+            return o instanceof Map.Entry<?, ?> e
+                    && valEquals(key,e.getKey())
+                    && valEquals(value,e.getValue());
         }
 
         public int hashCode() {

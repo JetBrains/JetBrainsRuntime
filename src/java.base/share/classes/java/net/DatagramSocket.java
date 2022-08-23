@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1995, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1995, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,12 +26,14 @@
 package java.net;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.channels.DatagramChannel;
+import java.nio.channels.MulticastChannel;
 import java.security.AccessController;
-import java.security.PrivilegedExceptionAction;
-import java.util.Objects;
+import java.security.PrivilegedAction;
 import java.util.Set;
-import java.util.Collections;
+import sun.net.NetProperties;
+import sun.nio.ch.DefaultSelectorProvider;
 
 /**
  * This class represents a socket for sending and receiving datagram packets.
@@ -80,11 +82,11 @@ import java.util.Collections;
  * <tbody>
  *   <tr>
  *     <th scope="row"> {@link java.net.StandardSocketOptions#SO_SNDBUF SO_SNDBUF} </th>
- *     <td> The size of the socket send buffer </td>
+ *     <td> The size of the socket send buffer in bytes </td>
  *   </tr>
  *   <tr>
  *     <th scope="row"> {@link java.net.StandardSocketOptions#SO_RCVBUF SO_RCVBUF} </th>
- *     <td> The size of the socket receive buffer </td>
+ *     <td> The size of the socket receive buffer in bytes </td>
  *   </tr>
  *   <tr>
  *     <th scope="row"> {@link java.net.StandardSocketOptions#SO_REUSEADDR SO_REUSEADDR} </th>
@@ -101,10 +103,142 @@ import java.util.Collections;
  * </tbody>
  * </table>
  * </blockquote>
- * An implementation may also support additional options. In particular an implementation
- * may support <a href="MulticastSocket.html#MulticastOptions">multicast options</a> which
- * can be useful when using a plain {@code DatagramSocket} to send datagrams to a
- * multicast group.
+ * <p> In addition, the {@code DatagramSocket} class defines methods to {@linkplain
+ * #joinGroup(SocketAddress, NetworkInterface) join} and {@linkplain
+ * #leaveGroup(SocketAddress, NetworkInterface) leave} a multicast group, and
+ * supports <a href="DatagramSocket.html#MulticastOptions">multicast options</a> which
+ * are useful when {@linkplain #joinGroup(SocketAddress, NetworkInterface) joining},
+ * {@linkplain #leaveGroup(SocketAddress, NetworkInterface) leaving}, or sending datagrams
+ * to a multicast group.
+ * The following multicast options are supported:
+ * <blockquote>
+ * <a id="MulticastOptions"></a>
+ * <table class="striped">
+ * <caption style="display:none">Multicast options</caption>
+ * <thead>
+ *   <tr>
+ *     <th scope="col">Option Name</th>
+ *     <th scope="col">Description</th>
+ *   </tr>
+ * </thead>
+ * <tbody>
+ *   <tr>
+ *     <th scope="row"> {@link java.net.StandardSocketOptions#IP_MULTICAST_IF IP_MULTICAST_IF} </th>
+ *     <td> The network interface for Internet Protocol (IP) multicast datagrams </td>
+ *   </tr>
+ *   <tr>
+ *     <th scope="row"> {@link java.net.StandardSocketOptions#IP_MULTICAST_TTL
+ *       IP_MULTICAST_TTL} </th>
+ *     <td> The <em>time-to-live</em> for Internet Protocol (IP) multicast
+ *       datagrams </td>
+ *   </tr>
+ *   <tr>
+ *     <th scope="row"> {@link java.net.StandardSocketOptions#IP_MULTICAST_LOOP
+ *       IP_MULTICAST_LOOP} </th>
+ *     <td> Loopback for Internet Protocol (IP) multicast datagrams </td>
+ *   </tr>
+ * </tbody>
+ * </table>
+ * </blockquote>
+ * An implementation may also support additional options.
+ *
+ * @apiNote  <a id="Multicasting"></a><b>Multicasting with DatagramSocket</b>
+ *
+ * <p> {@link DatagramChannel} implements the {@link MulticastChannel} interface
+ * and provides an alternative API for sending and receiving multicast datagrams.
+ * The {@link MulticastChannel} API supports both {@linkplain
+ * MulticastChannel#join(InetAddress, NetworkInterface) any-source} and
+ * {@linkplain MulticastChannel#join(InetAddress, NetworkInterface, InetAddress)
+ * source-specific} multicast. Consider using {@code DatagramChannel} for
+ * multicasting.
+ *
+ * <p> {@code DatagramSocket} can be used directly for multicasting. However,
+ * contrarily to {@link MulticastSocket}, {@code DatagramSocket} doesn't call the
+ * {@link DatagramSocket#setReuseAddress(boolean)} method to enable the SO_REUSEADDR
+ * socket option by default. If creating a {@code DatagramSocket} intended to
+ * later join a multicast group, the caller should consider explicitly enabling
+ * the SO_REUSEADDR option.
+ *
+ * <p> An instance of {@code DatagramSocket} can be used to send or
+ * receive multicast datagram packets. It is not necessary to join a multicast
+ * group in order to send multicast datagrams. Before sending out multicast
+ * datagram packets however, the default outgoing interface for sending
+ * multicast datagram should first be configured using
+ * {@link #setOption(SocketOption, Object) setOption} and
+ * {@link StandardSocketOptions#IP_MULTICAST_IF}:
+ *
+ * <pre>{@code
+ *    DatagramSocket sender = new DatagramSocket(new InetSocketAddress(0));
+ *    NetworkInterface outgoingIf = NetworkInterface.getByName("en0");
+ *    sender.setOption(StandardSocketOptions.IP_MULTICAST_IF, outgoingIf);
+ *
+ *    // optionally configure multicast TTL; the TTL defines the scope of a
+ *    // multicast datagram, for example, confining it to host local (0) or
+ *    // link local (1) etc...
+ *    int ttl = ...; // a number betwen 0 and 255
+ *    sender.setOption(StandardSocketOptions.IP_MULTICAST_TTL, ttl);
+ *
+ *    // send a packet to a multicast group
+ *    byte[] msgBytes = ...;
+ *    InetAddress mcastaddr = InetAddress.getByName("228.5.6.7");
+ *    int port = 6789;
+ *    InetSocketAddress dest = new InetSocketAddress(mcastaddr, port);
+ *    DatagramPacket hi = new DatagramPacket(msgBytes, msgBytes.length, dest);
+ *    sender.send(hi);
+ * }</pre>
+ *
+ * <p> An instance of {@code DatagramSocket} can also be used to receive
+ * multicast datagram packets. A {@code DatagramSocket} that is created
+ * with the intent of receiving multicast datagrams should be created
+ * <i>unbound</i>. Before binding the socket, {@link #setReuseAddress(boolean)
+ * setReuseAddress(true)} should be configured:
+ *
+ * <pre>{@code
+ *    DatagramSocket socket = new DatagramSocket(null); // unbound
+ *    socket.setReuseAddress(true); // set reuse address before binding
+ *    socket.bind(new InetSocketAddress(6789)); // bind
+ *
+ *    // joinGroup 228.5.6.7
+ *    InetAddress mcastaddr = InetAddress.getByName("228.5.6.7");
+ *    InetSocketAddress group = new InetSocketAddress(mcastaddr, 0);
+ *    NetworkInterface netIf = NetworkInterface.getByName("en0");
+ *    socket.joinGroup(group, netIf);
+ *    byte[] msgBytes = new byte[1024]; // up to 1024 bytes
+ *    DatagramPacket packet = new DatagramPacket(msgBytes, msgBytes.length);
+ *    socket.receive(packet);
+ *    ....
+ *    // eventually leave group
+ *    socket.leaveGroup(group, netIf);
+ * }</pre>
+ *
+ * <p><a id="PlatformDependencies"></a><b>Platform dependencies</b>
+ * <p>The multicast implementation is intended to map directly to the native
+ * multicasting facility. Consequently, the following items should be considered
+ * when developing an application that receives IP multicast datagrams:
+ * <ol>
+ *    <li> Contrarily to {@link DatagramChannel}, the constructors of {@code DatagramSocket}
+ *        do not allow to specify the {@link ProtocolFamily} of the underlying socket.
+ *        Consequently, the protocol family of the underlying socket may not
+ *        correspond to the protocol family of the multicast groups that
+ *        the {@code DatagramSocket} will attempt to join.
+ *        <br>
+ *        There is no guarantee that a {@code DatagramSocket} with an underlying
+ *        socket created in one protocol family can join and receive multicast
+ *        datagrams when the address of the multicast group corresponds to
+ *        another protocol family. For example, it is implementation specific if a
+ *        {@code DatagramSocket} to an IPv6 socket can join an IPv4 multicast group
+ *        and receive multicast datagrams sent to the group.
+ *    </li>
+ *    <li> Before joining a multicast group, the {@code DatagramSocket} should be
+ *        bound to the wildcard address.
+ *        If the socket is bound to a specific address, rather than the wildcard address
+ *        then it is implementation specific if multicast datagrams are received
+ *        by the socket.
+ *    </li>
+ *    <li> The SO_REUSEADDR option should be enabled prior to binding the socket.
+ *        This is required to allow multiple members of the group to bind to the same address.
+ *    </li>
+ * </ol>
  *
  * @author  Pavani Diwanji
  * @see     java.net.DatagramPacket
@@ -112,119 +246,32 @@ import java.util.Collections;
  * @since 1.0
  */
 public class DatagramSocket implements java.io.Closeable {
-    /**
-     * Various states of this socket.
-     */
-    private boolean bound = false;
-    private boolean closed = false;
-    private Object closeLock = new Object();
 
-    /*
-     * The implementation of this DatagramSocket.
-     */
-    private final DatagramSocketImpl impl;
+    // An instance of DatagramSocketAdaptor, NetMulticastSocket, or null
+    private final DatagramSocket delegate;
 
-    /**
-     * Are we using an older DatagramSocketImpl?
-     */
-    final boolean oldImpl;
-
-    /**
-     * Set when a socket is ST_CONNECTED until we are certain
-     * that any packets which might have been received prior
-     * to calling connect() but not read by the application
-     * have been read. During this time we check the source
-     * address of all packets received to be sure they are from
-     * the connected destination. Other packets are read but
-     * silently dropped.
-     */
-    private boolean explicitFilter = false;
-    private int bytesLeftToFilter;
-    /*
-     * Connection state:
-     * ST_NOT_CONNECTED = socket not connected
-     * ST_CONNECTED = socket connected
-     * ST_CONNECTED_NO_IMPL = socket connected but not at impl level
-     */
-    static final int ST_NOT_CONNECTED = 0;
-    static final int ST_CONNECTED = 1;
-    static final int ST_CONNECTED_NO_IMPL = 2;
-
-    int connectState = ST_NOT_CONNECTED;
-
-    /*
-     * Connected address & port
-     */
-    InetAddress connectedAddress = null;
-    int connectedPort = -1;
-
-    /**
-     * Connects this socket to a remote socket address (IP address + port number).
-     * Binds socket if not already bound.
-     *
-     * @param   address The remote address.
-     * @param   port    The remote port
-     * @throws  SocketException if binding the socket fails.
-     */
-    private synchronized void connectInternal(InetAddress address, int port) throws SocketException {
-        if (port < 0 || port > 0xFFFF) {
-            throw new IllegalArgumentException("connect: " + port);
+    DatagramSocket delegate() {
+        if (delegate == null) {
+            throw new InternalError("Should not get here");
         }
-        if (address == null) {
-            throw new IllegalArgumentException("connect: null address");
-        }
-        checkAddress (address, "connect");
-        if (isClosed())
-            return;
-        SecurityManager security = System.getSecurityManager();
-        if (security != null) {
-            if (address.isMulticastAddress()) {
-                security.checkMulticast(address);
-            } else {
-                security.checkConnect(address.getHostAddress(), port);
-                security.checkAccept(address.getHostAddress(), port);
-            }
-        }
-
-        if (!isBound())
-          bind(new InetSocketAddress(0));
-
-        // old impls do not support connect/disconnect
-        if (oldImpl || (impl instanceof AbstractPlainDatagramSocketImpl &&
-             ((AbstractPlainDatagramSocketImpl)impl).nativeConnectDisabled())) {
-            connectState = ST_CONNECTED_NO_IMPL;
-        } else {
-            try {
-                getImpl().connect(address, port);
-
-                // socket is now connected by the impl
-                connectState = ST_CONNECTED;
-                // Do we need to filter some packets?
-                int avail = getImpl().dataAvailable();
-                if (avail == -1) {
-                    throw new SocketException();
-                }
-                explicitFilter = avail > 0;
-                if (explicitFilter) {
-                    bytesLeftToFilter = getReceiveBufferSize();
-                }
-            } catch (SocketException se) {
-
-                // connection will be emulated by DatagramSocket
-                connectState = ST_CONNECTED_NO_IMPL;
-            }
-        }
-
-        connectedAddress = address;
-        connectedPort = port;
+        return delegate;
     }
 
+    /**
+     * All constructors eventually call this one.
+     * @param delegate The wrapped DatagramSocket implementation, or null.
+     */
+    DatagramSocket(DatagramSocket delegate) {
+        assert delegate == null
+                || delegate instanceof NetMulticastSocket
+                || delegate instanceof sun.nio.ch.DatagramSocketAdaptor;
+        this.delegate = delegate;
+    }
 
     /**
      * Constructs a datagram socket and binds it to any available port
      * on the local host machine.  The socket will be bound to the
-     * {@link InetAddress#isAnyLocalAddress wildcard} address,
-     * an IP address chosen by the kernel.
+     * {@link InetAddress#isAnyLocalAddress wildcard} address.
      *
      * <p>If there is a security manager,
      * its {@code checkListen} method is first called
@@ -232,7 +279,7 @@ public class DatagramSocket implements java.io.Closeable {
      * This could result in a SecurityException.
      *
      * @throws     SocketException  if the socket could not be opened,
-     *               or the socket could not bind to the specified local port.
+     *              or the socket could not be bound.
      * @throws     SecurityException  if a security manager exists and its
      *             {@code checkListen} method doesn't allow the operation.
      *
@@ -251,17 +298,14 @@ public class DatagramSocket implements java.io.Closeable {
      * @since   1.4
      */
     protected DatagramSocket(DatagramSocketImpl impl) {
-        if (impl == null)
-            throw new NullPointerException();
-        this.impl = impl;
-        this.oldImpl = checkOldImpl(impl);
+        this(new NetMulticastSocket(impl));
     }
 
     /**
      * Creates a datagram socket, bound to the specified local
      * socket address.
      * <p>
-     * If, if the address is {@code null}, creates an unbound socket.
+     * If the address is {@code null} an unbound socket will be created.
      *
      * <p>If there is a security manager,
      * its {@code checkListen} method is first called
@@ -276,37 +320,20 @@ public class DatagramSocket implements java.io.Closeable {
      *               or the socket could not bind to the specified local port.
      * @throws     SecurityException  if a security manager exists and its
      *             {@code checkListen} method doesn't allow the operation.
+     * @throws     IllegalArgumentException  if bindaddr is a
+     *              SocketAddress subclass not supported by this socket.
      *
      * @see SecurityManager#checkListen
      * @since   1.4
      */
     public DatagramSocket(SocketAddress bindaddr) throws SocketException {
-        // Special case initialization for the DatagramChannel socket adaptor.
-        if (this instanceof sun.nio.ch.DatagramSocketAdaptor) {
-            this.impl = null;  // no DatagramSocketImpl
-            this.oldImpl = false;
-            return;
-        }
-
-        // create a datagram socket.
-        boolean multicast = (this instanceof MulticastSocket);
-        this.impl = createImpl(multicast);
-        this.oldImpl = checkOldImpl(impl);
-        if (bindaddr != null) {
-            try {
-                bind(bindaddr);
-            } finally {
-                if (!isBound())
-                    close();
-            }
-        }
+        this(createDelegate(bindaddr, DatagramSocket.class));
     }
 
     /**
      * Constructs a datagram socket and binds it to the specified port
      * on the local host machine.  The socket will be bound to the
-     * {@link InetAddress#isAnyLocalAddress wildcard} address,
-     * an IP address chosen by the kernel.
+     * {@link InetAddress#isAnyLocalAddress wildcard} address.
      *
      * <p>If there is a security manager,
      * its {@code checkListen} method is first called
@@ -314,11 +341,13 @@ public class DatagramSocket implements java.io.Closeable {
      * as its argument to ensure the operation is allowed.
      * This could result in a SecurityException.
      *
-     * @param      port port to use.
+     * @param      port local port to use in the bind operation.
      * @throws     SocketException  if the socket could not be opened,
      *               or the socket could not bind to the specified local port.
      * @throws     SecurityException  if a security manager exists and its
      *             {@code checkListen} method doesn't allow the operation.
+     * @throws     IllegalArgumentException  if port is <a href="#PortRange">
+     *              out of range.</a>
      *
      * @see SecurityManager#checkListen
      */
@@ -328,10 +357,14 @@ public class DatagramSocket implements java.io.Closeable {
 
     /**
      * Creates a datagram socket, bound to the specified local
-     * address.  The local port must be between 0 and 65535 inclusive.
-     * If the IP address is 0.0.0.0, the socket will be bound to the
-     * {@link InetAddress#isAnyLocalAddress wildcard} address,
-     * an IP address chosen by the kernel.
+     * address.
+     * <p><a id="PortRange"></a>The local port must be between 0 and
+     * 65535 inclusive. A port number of {@code zero} will let the system pick
+     * up an ephemeral port in a {@code bind} operation.
+     * <p>
+     * If the IP address is a {@link InetAddress#isAnyLocalAddress wildcard}
+     * address, or is {@code null}, the socket will be bound to the wildcard
+     * address.
      *
      * <p>If there is a security manager,
      * its {@code checkListen} method is first called
@@ -339,73 +372,21 @@ public class DatagramSocket implements java.io.Closeable {
      * as its argument to ensure the operation is allowed.
      * This could result in a SecurityException.
      *
-     * @param port local port to use
-     * @param laddr local address to bind
+     * @param port local port to use in the bind operation.
+     * @param laddr local address to bind (can be {@code null})
      *
      * @throws     SocketException  if the socket could not be opened,
      *               or the socket could not bind to the specified local port.
      * @throws     SecurityException  if a security manager exists and its
      *             {@code checkListen} method doesn't allow the operation.
+     * @throws     IllegalArgumentException  if port is <a href="#PortRange">
+     *              out of range.</a>
      *
      * @see SecurityManager#checkListen
      * @since   1.1
      */
     public DatagramSocket(int port, InetAddress laddr) throws SocketException {
         this(new InetSocketAddress(laddr, port));
-    }
-
-    /**
-     * Return true if the given DatagramSocketImpl is an "old" impl. An old impl
-     * is one that doesn't implement the abstract methods added in Java SE 1.4.
-     */
-    private static boolean checkOldImpl(DatagramSocketImpl impl) {
-        // DatagramSocketImpl.peekData() is a protected method, therefore we need to use
-        // getDeclaredMethod, therefore we need permission to access the member
-        try {
-            AccessController.doPrivileged(
-                new PrivilegedExceptionAction<>() {
-                    public Void run() throws NoSuchMethodException {
-                        Class<?>[] cl = new Class<?>[1];
-                        cl[0] = DatagramPacket.class;
-                        impl.getClass().getDeclaredMethod("peekData", cl);
-                        return null;
-                    }
-                });
-            return false;
-        } catch (java.security.PrivilegedActionException e) {
-            return true;
-        }
-    }
-
-    static Class<?> implClass = null;
-
-    /**
-     * Creates a DatagramSocketImpl.
-     * @param multicast true if the DatagramSocketImpl is for a MulticastSocket
-     */
-    private static DatagramSocketImpl createImpl(boolean multicast) throws SocketException {
-        DatagramSocketImpl impl;
-        DatagramSocketImplFactory factory = DatagramSocket.factory;
-        if (factory != null) {
-            impl = factory.createDatagramSocketImpl();
-        } else {
-            impl = DefaultDatagramSocketImplFactory.createDatagramSocketImpl(multicast);
-        }
-        // creates a udp socket
-        impl.create();
-        return impl;
-    }
-
-    /**
-     * Return the {@code DatagramSocketImpl} attached to this socket.
-     *
-     * @return  the {@code DatagramSocketImpl} attached to that
-     *          DatagramSocket
-     * @throws SocketException never thrown
-     * @since 1.4
-     */
-    DatagramSocketImpl getImpl() throws SocketException {
-        return impl;
     }
 
     /**
@@ -423,54 +404,25 @@ public class DatagramSocket implements java.io.Closeable {
      *         not supported by this socket.
      * @since 1.4
      */
-    public synchronized void bind(SocketAddress addr) throws SocketException {
-        if (isClosed())
-            throw new SocketException("Socket is closed");
-        if (isBound())
-            throw new SocketException("already bound");
-        if (addr == null)
-            addr = new InetSocketAddress(0);
-        if (!(addr instanceof InetSocketAddress))
-            throw new IllegalArgumentException("Unsupported address type!");
-        InetSocketAddress epoint = (InetSocketAddress) addr;
-        if (epoint.isUnresolved())
-            throw new SocketException("Unresolved address");
-        InetAddress iaddr = epoint.getAddress();
-        int port = epoint.getPort();
-        checkAddress(iaddr, "bind");
-        SecurityManager sec = System.getSecurityManager();
-        if (sec != null) {
-            sec.checkListen(port);
-        }
-        try {
-            getImpl().bind(port, iaddr);
-        } catch (SocketException e) {
-            getImpl().close();
-            throw e;
-        }
-        bound = true;
-    }
-
-    void checkAddress (InetAddress addr, String op) {
-        if (addr == null) {
-            return;
-        }
-        if (!(addr instanceof Inet4Address || addr instanceof Inet6Address)) {
-            throw new IllegalArgumentException(op + ": invalid address type");
-        }
+    public void bind(SocketAddress addr) throws SocketException {
+        delegate().bind(addr);
     }
 
     /**
      * Connects the socket to a remote address for this socket. When a
      * socket is connected to a remote address, packets may only be
      * sent to or received from that address. By default a datagram
-     * socket is not connected.
+     * socket is not connected. If the socket is already closed,
+     * then this method has no effect.
      *
-     * <p>If the remote destination to which the socket is connected does not
-     * exist, or is otherwise unreachable, and if an ICMP destination unreachable
-     * packet has been received for that address, then a subsequent call to
-     * send or receive may throw a PortUnreachableException. Note, there is no
-     * guarantee that the exception will be thrown.
+     * <p> If this socket is not bound then this method will first cause the
+     * socket to be bound to an address that is assigned automatically,
+     * as if invoking the {@link #bind bind} method with a parameter of
+     * {@code null}. If the remote destination to which the socket is connected
+     * does not exist, or is otherwise unreachable, and if an ICMP destination
+     * unreachable packet has been received for that address, then a subsequent
+     * call to send or receive may throw a PortUnreachableException. Note,
+     * there is no guarantee that the exception will be thrown.
      *
      * <p> If a security manager has been installed then it is invoked to check
      * access to the remote address. Specifically, if the given {@code address}
@@ -493,28 +445,33 @@ public class DatagramSocket implements java.io.Closeable {
      * operation, if the packet's address is set and the packet's address
      * and the socket's address do not match, an {@code IllegalArgumentException}
      * will be thrown. A socket connected to a multicast address may only
-     * be used to send packets.
+     * be used to send packets. Datagrams in the socket's {@linkplain
+     * java.net.StandardSocketOptions#SO_RCVBUF socket receive buffer}, which
+     * have not been {@linkplain #receive(DatagramPacket) received} before invoking
+     * this method, may be discarded.
      *
      * @param address the remote address for the socket
      *
      * @param port the remote port for the socket.
      *
      * @throws IllegalArgumentException
-     *         if the address is null, or the port is out of range.
+     *         if the address is null, or the port is <a href="#PortRange">
+     *         out of range.</a>
      *
      * @throws SecurityException
      *         if a security manager has been installed and it does
      *         not permit access to the given remote address
      *
+     * @throws UncheckedIOException
+     *         may be thrown if connect fails, for example, if the
+     *         destination address is non-routable
+     *
      * @see #disconnect
+     *
      * @since 1.2
      */
     public void connect(InetAddress address, int port) {
-        try {
-            connectInternal(address, port);
-        } catch (SocketException se) {
-            throw new Error("connect failed", se);
-        }
+        delegate().connect(address, port);
     }
 
     /**
@@ -522,7 +479,12 @@ public class DatagramSocket implements java.io.Closeable {
      *
      * <p> If given an {@link InetSocketAddress InetSocketAddress}, this method
      * behaves as if invoking {@link #connect(InetAddress,int) connect(InetAddress,int)}
-     * with the given socket addresses IP address and port number.
+     * with the given socket addresses IP address and port number, except that the
+     * {@code SocketException} that may be raised is not wrapped in an
+     * {@code UncheckedIOException}. Datagrams in the socket's {@linkplain
+     * java.net.StandardSocketOptions#SO_RCVBUF socket receive buffer}, which
+     * have not been {@linkplain #receive(DatagramPacket) received} before invoking
+     * this method, may be discarded.
      *
      * @param   addr    The remote address.
      *
@@ -540,35 +502,28 @@ public class DatagramSocket implements java.io.Closeable {
      * @since 1.4
      */
     public void connect(SocketAddress addr) throws SocketException {
-        if (addr == null)
-            throw new IllegalArgumentException("Address can't be null");
-        if (!(addr instanceof InetSocketAddress))
-            throw new IllegalArgumentException("Unsupported address type");
-        InetSocketAddress epoint = (InetSocketAddress) addr;
-        if (epoint.isUnresolved())
-            throw new SocketException("Unresolved address");
-        connectInternal(epoint.getAddress(), epoint.getPort());
+        delegate().connect(addr);
     }
 
     /**
      * Disconnects the socket. If the socket is closed or not connected,
      * then this method has no effect.
      *
+     * @apiNote If this method throws an UncheckedIOException, the socket
+     *          may be left in an unspecified state. It is strongly
+     *          recommended that the socket be closed when disconnect
+     *          fails.
+     *
+     * @throws  UncheckedIOException
+     *          may be thrown if disconnect fails to dissolve the
+     *          association and restore the socket to a consistent state.
+     *
      * @see #connect
+     *
      * @since 1.2
      */
     public void disconnect() {
-        synchronized (this) {
-            if (isClosed())
-                return;
-            if (connectState == ST_CONNECTED) {
-                impl.disconnect ();
-            }
-            connectedAddress = null;
-            connectedPort = -1;
-            connectState = ST_NOT_CONNECTED;
-            explicitFilter = false;
-        }
+        delegate().disconnect();
     }
 
     /**
@@ -582,7 +537,7 @@ public class DatagramSocket implements java.io.Closeable {
      * @since 1.4
      */
     public boolean isBound() {
-        return bound;
+        return delegate().isBound();
     }
 
     /**
@@ -596,7 +551,7 @@ public class DatagramSocket implements java.io.Closeable {
      * @since 1.4
      */
     public boolean isConnected() {
-        return connectState != ST_NOT_CONNECTED;
+        return delegate().isConnected();
     }
 
     /**
@@ -611,7 +566,7 @@ public class DatagramSocket implements java.io.Closeable {
      * @since 1.2
      */
     public InetAddress getInetAddress() {
-        return connectedAddress;
+        return delegate().getInetAddress();
     }
 
     /**
@@ -626,7 +581,7 @@ public class DatagramSocket implements java.io.Closeable {
      * @since 1.2
      */
     public int getPort() {
-        return connectedPort;
+        return delegate().getPort();
     }
 
     /**
@@ -646,9 +601,7 @@ public class DatagramSocket implements java.io.Closeable {
      * @since 1.4
      */
     public SocketAddress getRemoteSocketAddress() {
-        if (!isConnected())
-            return null;
-        return new InetSocketAddress(getInetAddress(), getPort());
+        return delegate().getRemoteSocketAddress();
     }
 
     /**
@@ -662,11 +615,7 @@ public class DatagramSocket implements java.io.Closeable {
      * @since 1.4
      */
     public SocketAddress getLocalSocketAddress() {
-        if (isClosed())
-            return null;
-        if (!isBound())
-            return null;
-        return new InetSocketAddress(getLocalAddress(), getLocalPort());
+        return delegate().getLocalSocketAddress();
     }
 
     /**
@@ -703,60 +652,16 @@ public class DatagramSocket implements java.io.Closeable {
      * @throws     IllegalArgumentException if the socket is connected,
      *             and connected address and packet address differ, or
      *             if the socket is not connected and the packet address
-     *             is not set or if its port is out of range.
+     *             is not set or if its port is <a href="#PortRange">out of
+     *             range.</a>
      *
      * @see        java.net.DatagramPacket
      * @see        SecurityManager#checkMulticast(InetAddress)
      * @see        SecurityManager#checkConnect
      * @revised 1.4
-     * @spec JSR-51
      */
     public void send(DatagramPacket p) throws IOException  {
-        synchronized (p) {
-            if (isClosed())
-                throw new SocketException("Socket is closed");
-            InetAddress packetAddress = p.getAddress();
-            int packetPort = p.getPort();
-            checkAddress (packetAddress, "send");
-            if (connectState == ST_NOT_CONNECTED) {
-                if (packetAddress == null) {
-                    throw new IllegalArgumentException("Address not set");
-                }
-                if (packetPort < 0 || packetPort > 0xFFFF)
-                    throw new IllegalArgumentException("port out of range:" + packetPort);
-                // check the address is ok with the security manager on every send.
-                SecurityManager security = System.getSecurityManager();
-
-                // The reason you want to synchronize on datagram packet
-                // is because you don't want an applet to change the address
-                // while you are trying to send the packet for example
-                // after the security check but before the send.
-                if (security != null) {
-                    if (packetAddress.isMulticastAddress()) {
-                        security.checkMulticast(packetAddress);
-                    } else {
-                        security.checkConnect(packetAddress.getHostAddress(),
-                                packetPort);
-                    }
-                }
-            } else {
-                // we're connected
-                if (packetAddress == null) {
-                    p.setAddress(connectedAddress);
-                    p.setPort(connectedPort);
-                } else if ((!packetAddress.equals(connectedAddress)) ||
-                        packetPort != connectedPort) {
-                    throw new IllegalArgumentException("connected address " +
-                                                       "and packet address" +
-                                                       " differ");
-                }
-            }
-            // Check whether the socket is bound
-            if (!isBound())
-                bind(new InetSocketAddress(0));
-            // call the  method to send
-            getImpl().send(p);
-        }
+        delegate().send(p);
     }
 
     /**
@@ -790,107 +695,9 @@ public class DatagramSocket implements java.io.Closeable {
      * @see        java.net.DatagramPacket
      * @see        java.net.DatagramSocket
      * @revised 1.4
-     * @spec JSR-51
      */
-    public synchronized void receive(DatagramPacket p) throws IOException {
-        synchronized (p) {
-            if (!isBound())
-                bind(new InetSocketAddress(0));
-            if (connectState == ST_NOT_CONNECTED) {
-                // check the address is ok with the security manager before every recv.
-                SecurityManager security = System.getSecurityManager();
-                if (security != null) {
-                    while(true) {
-                        String peekAd = null;
-                        int peekPort = 0;
-                        // peek at the packet to see who it is from.
-                        if (!oldImpl) {
-                            // We can use the new peekData() API
-                            DatagramPacket peekPacket = new DatagramPacket(new byte[1], 1);
-                            peekPort = getImpl().peekData(peekPacket);
-                            peekAd = peekPacket.getAddress().getHostAddress();
-                        } else {
-                            InetAddress adr = new InetAddress();
-                            peekPort = getImpl().peek(adr);
-                            peekAd = adr.getHostAddress();
-                        }
-                        try {
-                            security.checkAccept(peekAd, peekPort);
-                            // security check succeeded - so now break
-                            // and recv the packet.
-                            break;
-                        } catch (SecurityException se) {
-                            // Throw away the offending packet by consuming
-                            // it in a tmp buffer.
-                            DatagramPacket tmp = new DatagramPacket(new byte[1], 1);
-                            getImpl().receive(tmp);
-
-                            // silently discard the offending packet
-                            // and continue: unknown/malicious
-                            // entities on nets should not make
-                            // runtime throw security exception and
-                            // disrupt the applet by sending random
-                            // datagram packets.
-                            continue;
-                        }
-                    } // end of while
-                }
-            }
-            DatagramPacket tmp = null;
-            if ((connectState == ST_CONNECTED_NO_IMPL) || explicitFilter) {
-                // We have to do the filtering the old fashioned way since
-                // the native impl doesn't support connect or the connect
-                // via the impl failed, or .. "explicitFilter" may be set when
-                // a socket is connected via the impl, for a period of time
-                // when packets from other sources might be queued on socket.
-                boolean stop = false;
-                while (!stop) {
-                    InetAddress peekAddress = null;
-                    int peekPort = -1;
-                    // peek at the packet to see who it is from.
-                    if (!oldImpl) {
-                        // We can use the new peekData() API
-                        DatagramPacket peekPacket = new DatagramPacket(new byte[1], 1);
-                        peekPort = getImpl().peekData(peekPacket);
-                        peekAddress = peekPacket.getAddress();
-                    } else {
-                        // this api only works for IPv4
-                        peekAddress = new InetAddress();
-                        peekPort = getImpl().peek(peekAddress);
-                    }
-                    if ((!connectedAddress.equals(peekAddress)) ||
-                        (connectedPort != peekPort)) {
-                        // throw the packet away and silently continue
-                        tmp = new DatagramPacket(
-                                                new byte[1024], 1024);
-                        getImpl().receive(tmp);
-                        if (explicitFilter) {
-                            if (checkFiltering(tmp)) {
-                                stop = true;
-                            }
-                        }
-                    } else {
-                        stop = true;
-                    }
-                }
-            }
-            // If the security check succeeds, or the datagram is
-            // connected then receive the packet
-            getImpl().receive(p);
-            if (explicitFilter && tmp == null) {
-                // packet was not filtered, account for it here
-                checkFiltering(p);
-            }
-        }
-    }
-
-    private boolean checkFiltering(DatagramPacket p) throws SocketException {
-        bytesLeftToFilter -= p.getLength();
-        if (bytesLeftToFilter <= 0 || getImpl().dataAvailable() <= 0) {
-            explicitFilter = false;
-            return true;
-        }
-        return false;
+    public void receive(DatagramPacket p) throws IOException {
+        delegate().receive(p);
     }
 
     /**
@@ -912,22 +719,7 @@ public class DatagramSocket implements java.io.Closeable {
      * @since   1.1
      */
     public InetAddress getLocalAddress() {
-        if (isClosed())
-            return null;
-        InetAddress in;
-        try {
-            in = (InetAddress) getImpl().getOption(SocketOptions.SO_BINDADDR);
-            if (in.isAnyLocalAddress()) {
-                in = InetAddress.anyLocalAddress();
-            }
-            SecurityManager s = System.getSecurityManager();
-            if (s != null) {
-                s.checkConnect(in.getHostAddress(), -1);
-            }
-        } catch (Exception e) {
-            in = InetAddress.anyLocalAddress(); // "0.0.0.0"
-        }
-        return in;
+        return delegate().getLocalAddress();
     }
 
     /**
@@ -939,13 +731,7 @@ public class DatagramSocket implements java.io.Closeable {
      *          {@code 0} if it is not bound yet.
      */
     public int getLocalPort() {
-        if (isClosed())
-            return -1;
-        try {
-            return getImpl().getLocalPort();
-        } catch (Exception e) {
-            return 0;
-        }
+        return delegate().getLocalPort();
     }
 
     /**
@@ -965,12 +751,8 @@ public class DatagramSocket implements java.io.Closeable {
      * @since   1.1
      * @see #getSoTimeout()
      */
-    public synchronized void setSoTimeout(int timeout) throws SocketException {
-        if (isClosed())
-            throw new SocketException("Socket is closed");
-        if (timeout < 0)
-            throw new IllegalArgumentException("timeout < 0");
-        getImpl().setOption(SocketOptions.SO_TIMEOUT, timeout);
+    public void setSoTimeout(int timeout) throws SocketException {
+        delegate().setSoTimeout(timeout);
     }
 
     /**
@@ -982,18 +764,8 @@ public class DatagramSocket implements java.io.Closeable {
      * @since   1.1
      * @see #setSoTimeout(int)
      */
-    public synchronized int getSoTimeout() throws SocketException {
-        if (isClosed())
-            throw new SocketException("Socket is closed");
-        if (getImpl() == null)
-            return 0;
-        Object o = getImpl().getOption(SocketOptions.SO_TIMEOUT);
-        /* extra type safety */
-        if (o instanceof Integer) {
-            return ((Integer) o).intValue();
-        } else {
-            return 0;
-        }
+    public int getSoTimeout() throws SocketException {
+        return delegate().getSoTimeout();
     }
 
     /**
@@ -1016,44 +788,43 @@ public class DatagramSocket implements java.io.Closeable {
      * of SO_SNDBUF then it is implementation specific if the
      * packet is sent or discarded.
      *
+     * @apiNote
+     * If {@code size > 0}, this method is equivalent to calling
+     * {@link #setOption(SocketOption, Object)
+     * setOption(StandardSocketOptions.SO_SNDBUF, size)}.
+     *
      * @param size the size to which to set the send buffer
-     * size. This value must be greater than 0.
+     * size, in bytes. This value must be greater than 0.
      *
      * @throws    SocketException if there is an error
      * in the underlying protocol, such as an UDP error.
      * @throws    IllegalArgumentException if the value is 0 or is
      * negative.
      * @see #getSendBufferSize()
+     * @see StandardSocketOptions#SO_SNDBUF
      * @since 1.2
      */
-    public synchronized void setSendBufferSize(int size) throws SocketException {
-        if (!(size > 0)) {
-            throw new IllegalArgumentException("negative send size");
-        }
-        if (isClosed())
-            throw new SocketException("Socket is closed");
-        getImpl().setOption(SocketOptions.SO_SNDBUF, size);
+    public void setSendBufferSize(int size) throws SocketException {
+        delegate().setSendBufferSize(size);
     }
 
     /**
      * Get value of the SO_SNDBUF option for this {@code DatagramSocket}, that is the
-     * buffer size used by the platform for output on this {@code DatagramSocket}.
+     * buffer size, in bytes, used by the platform for output on this {@code DatagramSocket}.
+     *
+     * @apiNote
+     * This method is equivalent to calling {@link #getOption(SocketOption)
+     * getOption(StandardSocketOptions.SO_SNDBUF)}.
      *
      * @return the value of the SO_SNDBUF option for this {@code DatagramSocket}
      * @throws    SocketException if there is an error in
      * the underlying protocol, such as an UDP error.
      * @see #setSendBufferSize
+     * @see StandardSocketOptions#SO_SNDBUF
      * @since 1.2
      */
-    public synchronized int getSendBufferSize() throws SocketException {
-        if (isClosed())
-            throw new SocketException("Socket is closed");
-        int result = 0;
-        Object o = getImpl().getOption(SocketOptions.SO_SNDBUF);
-        if (o instanceof Integer) {
-            result = ((Integer)o).intValue();
-        }
-        return result;
+    public int getSendBufferSize() throws SocketException {
+        return delegate().getSendBufferSize();
     }
 
     /**
@@ -1075,43 +846,42 @@ public class DatagramSocket implements java.io.Closeable {
      * Note: It is implementation specific if a packet larger
      * than SO_RCVBUF can be received.
      *
+     * @apiNote
+     * If {@code size > 0}, this method is equivalent to calling
+     * {@link #setOption(SocketOption, Object)
+     * setOption(StandardSocketOptions.SO_RCVBUF, size)}.
+     *
      * @param size the size to which to set the receive buffer
-     * size. This value must be greater than 0.
+     * size, in bytes. This value must be greater than 0.
      *
      * @throws    SocketException if there is an error in
      * the underlying protocol, such as an UDP error.
      * @throws    IllegalArgumentException if the value is 0 or is
      * negative.
      * @see #getReceiveBufferSize()
+     * @see StandardSocketOptions#SO_RCVBUF
      * @since 1.2
      */
-    public synchronized void setReceiveBufferSize(int size) throws SocketException {
-        if (size <= 0) {
-            throw new IllegalArgumentException("invalid receive size");
-        }
-        if (isClosed())
-            throw new SocketException("Socket is closed");
-        getImpl().setOption(SocketOptions.SO_RCVBUF, size);
+    public void setReceiveBufferSize(int size) throws SocketException {
+        delegate().setReceiveBufferSize(size);
     }
 
     /**
      * Get value of the SO_RCVBUF option for this {@code DatagramSocket}, that is the
-     * buffer size used by the platform for input on this {@code DatagramSocket}.
+     * buffer size, in bytes, used by the platform for input on this {@code DatagramSocket}.
+     *
+     * @apiNote
+     * This method is equivalent to calling {@link #getOption(SocketOption)
+     * getOption(StandardSocketOptions.SO_RCVBUF)}.
      *
      * @return the value of the SO_RCVBUF option for this {@code DatagramSocket}
      * @throws    SocketException if there is an error in the underlying protocol, such as an UDP error.
      * @see #setReceiveBufferSize(int)
+     * @see StandardSocketOptions#SO_RCVBUF
      * @since 1.2
      */
-    public synchronized int getReceiveBufferSize() throws SocketException {
-        if (isClosed())
-            throw new SocketException("Socket is closed");
-        int result = 0;
-        Object o = getImpl().getOption(SocketOptions.SO_RCVBUF);
-        if (o instanceof Integer) {
-            result = ((Integer)o).intValue();
-        }
-        return result;
+    public int getReceiveBufferSize() throws SocketException {
+        return delegate().getReceiveBufferSize();
     }
 
     /**
@@ -1138,6 +908,10 @@ public class DatagramSocket implements java.io.Closeable {
      * disabled after a socket is bound (See {@link #isBound()})
      * is not defined.
      *
+     * @apiNote
+     * This method is equivalent to calling {@link #setOption(SocketOption, Object)
+     * setOption(StandardSocketOptions.SO_REUSEADDR, on)}.
+     *
      * @param on  whether to enable or disable the
      * @throws    SocketException if an error occurs enabling or
      *            disabling the {@code SO_REUSEADDR} socket option,
@@ -1147,31 +921,28 @@ public class DatagramSocket implements java.io.Closeable {
      * @see #bind(SocketAddress)
      * @see #isBound()
      * @see #isClosed()
+     * @see StandardSocketOptions#SO_REUSEADDR
      */
-    public synchronized void setReuseAddress(boolean on) throws SocketException {
-        if (isClosed())
-            throw new SocketException("Socket is closed");
-        // Integer instead of Boolean for compatibility with older DatagramSocketImpl
-        if (oldImpl)
-            getImpl().setOption(SocketOptions.SO_REUSEADDR, on?-1:0);
-        else
-            getImpl().setOption(SocketOptions.SO_REUSEADDR, Boolean.valueOf(on));
+    public void setReuseAddress(boolean on) throws SocketException {
+        delegate().setReuseAddress(on);
     }
 
     /**
      * Tests if SO_REUSEADDR is enabled.
+     *
+     * @apiNote
+     * This method is equivalent to calling {@link #getOption(SocketOption)
+     * getOption(StandardSocketOptions.SO_REUSEADDR)}.
      *
      * @return a {@code boolean} indicating whether or not SO_REUSEADDR is enabled.
      * @throws    SocketException if there is an error
      * in the underlying protocol, such as an UDP error.
      * @since   1.4
      * @see #setReuseAddress(boolean)
+     * @see StandardSocketOptions#SO_REUSEADDR
      */
-    public synchronized boolean getReuseAddress() throws SocketException {
-        if (isClosed())
-            throw new SocketException("Socket is closed");
-        Object o = getImpl().getOption(SocketOptions.SO_REUSEADDR);
-        return ((Boolean)o).booleanValue();
+    public boolean getReuseAddress() throws SocketException {
+        return delegate().getReuseAddress();
     }
 
     /**
@@ -1180,6 +951,10 @@ public class DatagramSocket implements java.io.Closeable {
      * <p> Some operating systems may require that the Java virtual machine be
      * started with implementation specific privileges to enable this option or
      * send broadcast datagrams.
+     *
+     * @apiNote
+     * This method is equivalent to calling {@link #setOption(SocketOption, Object)
+     * setOption(StandardSocketOptions.SO_BROADCAST, on)}.
      *
      * @param  on
      *         whether or not to have broadcast turned on.
@@ -1190,25 +965,28 @@ public class DatagramSocket implements java.io.Closeable {
      *
      * @since 1.4
      * @see #getBroadcast()
+     * @see StandardSocketOptions#SO_BROADCAST
      */
-    public synchronized void setBroadcast(boolean on) throws SocketException {
-        if (isClosed())
-            throw new SocketException("Socket is closed");
-        getImpl().setOption(SocketOptions.SO_BROADCAST, Boolean.valueOf(on));
+    public void setBroadcast(boolean on) throws SocketException {
+        delegate().setBroadcast(on);
     }
 
     /**
      * Tests if SO_BROADCAST is enabled.
+     *
+     * @apiNote
+     * This method is equivalent to calling {@link #getOption(SocketOption)
+     * getOption(StandardSocketOptions.SO_BROADCAST)}.
+     *
      * @return a {@code boolean} indicating whether or not SO_BROADCAST is enabled.
      * @throws    SocketException if there is an error
      * in the underlying protocol, such as an UDP error.
      * @since 1.4
      * @see #setBroadcast(boolean)
+     * @see StandardSocketOptions#SO_BROADCAST
      */
-    public synchronized boolean getBroadcast() throws SocketException {
-        if (isClosed())
-            throw new SocketException("Socket is closed");
-        return ((Boolean)(getImpl().getOption(SocketOptions.SO_BROADCAST))).booleanValue();
+    public boolean getBroadcast() throws SocketException {
+        return delegate().getBroadcast();
     }
 
     /**
@@ -1242,26 +1020,19 @@ public class DatagramSocket implements java.io.Closeable {
      * for Internet Protocol v6 {@code tc} is the value that
      * would be placed into the sin6_flowinfo field of the IP header.
      *
+     * @apiNote
+     * This method is equivalent to calling {@link #setOption(SocketOption, Object)
+     * setOption(StandardSocketOptions.IP_TOS, tc)}.
+     *
      * @param tc        an {@code int} value for the bitset.
      * @throws SocketException if there is an error setting the
      * traffic class or type-of-service
      * @since 1.4
      * @see #getTrafficClass
+     * @see StandardSocketOptions#IP_TOS
      */
-    public synchronized void setTrafficClass(int tc) throws SocketException {
-        if (tc < 0 || tc > 255)
-            throw new IllegalArgumentException("tc is not in range 0 -- 255");
-
-        if (isClosed())
-            throw new SocketException("Socket is closed");
-        try {
-            getImpl().setOption(SocketOptions.IP_TOS, tc);
-        } catch (SocketException se) {
-            // not supported if socket already connected
-            // Solaris returns error in such cases
-            if(!isConnected())
-                throw se;
-        }
+    public void setTrafficClass(int tc) throws SocketException {
+        delegate().setTrafficClass(tc);
     }
 
     /**
@@ -1274,16 +1045,19 @@ public class DatagramSocket implements java.io.Closeable {
      * set using the {@link #setTrafficClass(int)} method on this
      * DatagramSocket.
      *
+     * @apiNote
+     * This method is equivalent to calling {@link #getOption(SocketOption)
+     * getOption(StandardSocketOptions.IP_TOS)}.
+     *
      * @return the traffic class or type-of-service already set
      * @throws SocketException if there is an error obtaining the
      * traffic class or type-of-service value.
      * @since 1.4
      * @see #setTrafficClass(int)
+     * @see StandardSocketOptions#IP_TOS
      */
-    public synchronized int getTrafficClass() throws SocketException {
-        if (isClosed())
-            throw new SocketException("Socket is closed");
-        return ((Integer)(getImpl().getOption(SocketOptions.IP_TOS))).intValue();
+    public int getTrafficClass() throws SocketException {
+        return delegate().getTrafficClass();
     }
 
     /**
@@ -1296,15 +1070,9 @@ public class DatagramSocket implements java.io.Closeable {
      * as well.
      *
      * @revised 1.4
-     * @spec JSR-51
      */
     public void close() {
-        synchronized(closeLock) {
-            if (isClosed())
-                return;
-            impl.close();
-            closed = true;
-        }
+        delegate().close();
     }
 
     /**
@@ -1314,9 +1082,7 @@ public class DatagramSocket implements java.io.Closeable {
      * @since 1.4
      */
     public boolean isClosed() {
-        synchronized(closeLock) {
-            return closed;
-        }
+        return delegate().isClosed();
     }
 
     /**
@@ -1331,7 +1097,6 @@ public class DatagramSocket implements java.io.Closeable {
      *          or {@code null} if this socket was not created for a channel
      *
      * @since 1.4
-     * @spec JSR-51
      */
     public DatagramChannel getChannel() {
         return null;
@@ -1367,14 +1132,26 @@ public class DatagramSocket implements java.io.Closeable {
      * @see       java.net.DatagramSocketImplFactory#createDatagramSocketImpl()
      * @see       SecurityManager#checkSetFactory
      * @since 1.3
+     *
+     * @deprecated Use {@link DatagramChannel}, or subclass {@code DatagramSocket}
+     *    directly.
+     *    <br> This method provided a way in early JDK releases to replace the
+     *    system wide implementation of {@code DatagramSocket}. It has been mostly
+     *    obsolete since Java 1.4. If required, a {@code DatagramSocket} can be
+     *    created to use a custom implementation by extending {@code DatagramSocket}
+     *    and using the {@linkplain #DatagramSocket(DatagramSocketImpl) protected
+     *    constructor} that takes an {@linkplain DatagramSocketImpl implementation}
+     *    as a parameter.
      */
+    @Deprecated(since = "17")
     public static synchronized void
     setDatagramSocketImplFactory(DatagramSocketImplFactory fac)
-       throws IOException
+            throws IOException
     {
         if (factory != null) {
             throw new SocketException("factory already defined");
         }
+        @SuppressWarnings("removal")
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
             security.checkSetFactory();
@@ -1413,10 +1190,7 @@ public class DatagramSocket implements java.io.Closeable {
     public <T> DatagramSocket setOption(SocketOption<T> name, T value)
         throws IOException
     {
-        Objects.requireNonNull(name);
-        if (isClosed())
-            throw new SocketException("Socket is closed");
-        getImpl().setOption(name, value);
+        delegate().setOption(name, value);
         return this;
     }
 
@@ -1444,14 +1218,8 @@ public class DatagramSocket implements java.io.Closeable {
      * @since 9
      */
     public <T> T getOption(SocketOption<T> name) throws IOException {
-        Objects.requireNonNull(name);
-        if (isClosed())
-            throw new SocketException("Socket is closed");
-        return getImpl().getOption(name);
+        return delegate().getOption(name);
     }
-
-    private static Set<SocketOption<?>> options;
-    private static boolean optionsSet = false;
 
     /**
      * Returns a set of the socket options supported by this socket.
@@ -1465,18 +1233,218 @@ public class DatagramSocket implements java.io.Closeable {
      * @since 9
      */
     public Set<SocketOption<?>> supportedOptions() {
-        synchronized(DatagramSocket.class) {
-            if (optionsSet) {
-                return options;
-            }
-            try {
-                DatagramSocketImpl impl = getImpl();
-                options = Collections.unmodifiableSet(impl.supportedOptions());
-            } catch (IOException e) {
-                options = Collections.emptySet();
-            }
-            optionsSet = true;
-            return options;
-        }
+        return delegate().supportedOptions();
     }
+
+    /**
+     * Joins a multicast group.
+     *
+     * <p> In order to join a multicast group, the caller should specify
+     * the IP address of the multicast group to join, and the local
+     * {@linkplain NetworkInterface network interface} to receive multicast
+     * packets from.
+     * <ul>
+     *  <li> The {@code mcastaddr} argument indicates the IP address
+     *   of the multicast group to join. For historical reasons this is
+     *   specified as a {@code SocketAddress}.
+     *   The default implementation only supports {@link InetSocketAddress} and
+     *   the {@link InetSocketAddress#getPort() port} information is ignored.
+     *  </li>
+     *  <li> The {@code netIf} argument specifies the local interface to receive
+     *       multicast datagram packets, or {@code null} to defer to the interface
+     *       set for outgoing multicast datagrams.
+     *       If {@code null}, and no interface has been set, the behaviour is
+     *       unspecified: any interface may be selected or the operation may fail
+     *       with a {@code SocketException}.
+     *  </li>
+     * </ul>
+     *
+     * <p> It is possible to call this method several times to join
+     * several different multicast groups, or join the same group
+     * in several different networks. However, if the socket is already a
+     * member of the group, an {@link IOException} will be thrown.
+     *
+     * <p>If there is a security manager, this method first
+     * calls its {@code checkMulticast} method with the {@code mcastaddr}
+     * argument as its argument.
+     *
+     * @apiNote The default interface for sending outgoing multicast datagrams
+     * can be configured with {@link #setOption(SocketOption, Object)}
+     * with {@link StandardSocketOptions#IP_MULTICAST_IF}.
+     *
+     * @param  mcastaddr indicates the multicast address to join.
+     * @param  netIf specifies the local interface to receive multicast
+     *         datagram packets, or {@code null}.
+     * @throws IOException if there is an error joining, or when the address
+     *         is not a multicast address, or the platform does not support
+     *         multicasting
+     * @throws SecurityException if a security manager exists and its
+     *         {@code checkMulticast} method doesn't allow the join.
+     * @throws IllegalArgumentException if mcastaddr is {@code null} or is a
+     *         SocketAddress subclass not supported by this socket
+     * @see    SecurityManager#checkMulticast(InetAddress)
+     * @see    DatagramChannel#join(InetAddress, NetworkInterface)
+     * @see    StandardSocketOptions#IP_MULTICAST_IF
+     * @since  17
+     */
+    public void joinGroup(SocketAddress mcastaddr, NetworkInterface netIf)
+            throws IOException {
+        delegate().joinGroup(mcastaddr, netIf);
+    }
+
+    /**
+     * Leave a multicast group on a specified local interface.
+     *
+     * <p>If there is a security manager, this method first
+     * calls its {@code checkMulticast} method with the
+     * {@code mcastaddr} argument as its argument.
+     *
+     * @apiNote
+     * The {@code mcastaddr} and {@code netIf} arguments should identify
+     * a multicast group that was previously {@linkplain
+     * #joinGroup(SocketAddress, NetworkInterface) joined} by
+     * this {@code DatagramSocket}.
+     * <p> It is possible to call this method several times to leave
+     * multiple different multicast groups previously joined, or leave
+     * the same group previously joined in multiple different networks.
+     * However, if the socket is not a member of the specified group
+     * in the specified network, an {@link IOException} will be
+     * thrown.
+     *
+     * @param  mcastaddr is the multicast address to leave. This should
+     *         contain the same IP address than that used for {@linkplain
+     *         #joinGroup(SocketAddress, NetworkInterface) joining}
+     *         the group.
+     * @param  netIf specifies the local interface or {@code null} to defer
+     *         to the interface set for outgoing multicast datagrams.
+     *         If {@code null}, and no interface has been set, the behaviour
+     *         is unspecified: any interface may be selected or the operation
+     *         may fail with a {@code SocketException}.
+     * @throws IOException if there is an error leaving or when the address
+     *         is not a multicast address.
+     * @throws SecurityException if a security manager exists and its
+     *         {@code checkMulticast} method doesn't allow the operation.
+     * @throws IllegalArgumentException if mcastaddr is {@code null} or is a
+     *         SocketAddress subclass not supported by this socket.
+     * @see    SecurityManager#checkMulticast(InetAddress)
+     * @see    #joinGroup(SocketAddress, NetworkInterface)
+     * @see    StandardSocketOptions#IP_MULTICAST_IF
+     * @since  17
+     */
+    public void leaveGroup(SocketAddress mcastaddr, NetworkInterface netIf)
+            throws IOException {
+        delegate().leaveGroup(mcastaddr, netIf);
+    }
+
+    // Temporary solution until JDK-8237352 is addressed
+    private static final SocketAddress NO_DELEGATE = new SocketAddress() {};
+    private static final boolean USE_PLAINDATAGRAMSOCKET = usePlainDatagramSocketImpl();
+
+    private static boolean usePlainDatagramSocketImpl() {
+        PrivilegedAction<String> pa = () -> NetProperties.get("jdk.net.usePlainDatagramSocketImpl");
+        @SuppressWarnings("removal")
+        String s = AccessController.doPrivileged(pa);
+        return (s != null) && (s.isEmpty() || s.equalsIgnoreCase("true"));
+    }
+
+    /**
+     * Best effort to convert an {@link IOException}
+     * into a {@link SocketException}.
+     *
+     * @param e an instance of {@link IOException}
+     * @return an instance of {@link SocketException}
+     */
+    private static SocketException toSocketException(IOException e) {
+        if (e instanceof SocketException)
+            return (SocketException) e;
+        Throwable cause = e.getCause();
+        if (cause instanceof SocketException)
+            return (SocketException) cause;
+        SocketException se = new SocketException(e.getMessage());
+        se.initCause(e);
+        return se;
+    }
+
+    /**
+     * Creates a delegate for the specific requested {@code type}. This method should
+     * only be called by {@code DatagramSocket} and {@code MulticastSocket}
+     * public constructors.
+     *
+     * @param bindaddr An address to bind to, or {@code null} if creating an unbound
+     *                 socket.
+     * @param type     This is either {@code MulticastSocket.class}, if the delegate needs
+     *                 to support joining multicast groups, or {@code DatagramSocket.class},
+     *                 if it doesn't. Typically, this will be {@code DatagramSocket.class}
+     *                 when creating a delegate for {@code DatagramSocket}, and
+     *                 {@code MulticastSocket.class} when creating a delegate for
+     *                 {@code MulticastSocket}.
+     * @param <T>      The target type for which the delegate is created.
+     *                 This is either {@code java.net.DatagramSocket} or
+     *                 {@code java.net.MulticastSocket}.
+     * @return {@code null} if {@code bindaddr == NO_DELEGATE}, otherwise returns a
+     * delegate for the requested {@code type}.
+     * @throws SocketException if an exception occurs while creating or binding the
+     *                         the delegate.
+     */
+    static <T extends DatagramSocket> T createDelegate(SocketAddress bindaddr, Class<T> type)
+            throws SocketException {
+
+        // Temporary solution until JDK-8237352 is addressed
+        if (bindaddr == NO_DELEGATE) return null;
+
+        assert type == DatagramSocket.class || type == MulticastSocket.class;
+        boolean multicast = (type == MulticastSocket.class);
+        DatagramSocket delegate = null;
+        boolean initialized = false;
+        try {
+            DatagramSocketImplFactory factory = DatagramSocket.factory;
+            if (USE_PLAINDATAGRAMSOCKET || factory != null) {
+                // create legacy DatagramSocket delegate
+                DatagramSocketImpl impl;
+                if (factory != null) {
+                    impl = factory.createDatagramSocketImpl();
+                } else {
+                    impl = DefaultDatagramSocketImplFactory.createDatagramSocketImpl(multicast);
+                }
+                delegate = new NetMulticastSocket(impl);
+                ((NetMulticastSocket) delegate).getImpl(); // ensure impl.create() is called.
+            } else {
+                // create NIO adaptor
+                delegate = DefaultSelectorProvider.get()
+                        .openUninterruptibleDatagramChannel()
+                        .socket();
+            }
+
+            if (multicast) {
+                // set reuseaddress if multicasting
+                // (must be set before binding)
+                delegate.setReuseAddress(true);
+            }
+
+            if (bindaddr != null) {
+                // bind if needed
+                delegate.bind(bindaddr);
+            }
+
+            // enable broadcast if possible
+            try {
+                delegate.setBroadcast(true);
+            } catch (IOException ioe) {
+            }
+
+            initialized = true;
+        } catch (IOException ioe) {
+            throw toSocketException(ioe);
+        } finally {
+            // make sure the delegate is closed if anything
+            // went wrong
+            if (!initialized && delegate != null) {
+                delegate.close();
+            }
+        }
+        @SuppressWarnings("unchecked")
+        T result = (T) delegate;
+        return result;
+    }
+
 }

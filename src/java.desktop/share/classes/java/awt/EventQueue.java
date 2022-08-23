@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,6 +46,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import java.security.AccessControlContext;
+import java.util.function.BooleanSupplier;
 
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.JavaSecurityAccess;
@@ -94,8 +95,9 @@ import jdk.internal.access.JavaSecurityAccess;
  *
  * @since       1.1
  */
+@SuppressWarnings("removal")
 public class EventQueue {
-    private static final AtomicInteger threadInitNumber = new AtomicInteger(0);
+    private static final AtomicInteger threadInitNumber = new AtomicInteger();
 
     private static final int LOW_PRIORITY = 0;
     private static final int NORM_PRIORITY = 1;
@@ -228,6 +230,11 @@ public class EventQueue {
                 public long getMostRecentEventTime(EventQueue eventQueue) {
                     return eventQueue.getMostRecentEventTimeImpl();
                 }
+
+                @Override
+                public SecondaryLoop createSecondaryLoop(EventQueue eventQueue, BooleanSupplier cond) {
+                    return eventQueue.createSecondaryLoop(cond::getAsBoolean, null, 0);
+                }
             });
         AccessController.doPrivileged(new PrivilegedAction<Object>() {
             public Object run() {
@@ -351,6 +358,7 @@ public class EventQueue {
             if (shouldNotify) {
                 if (theEvent.getSource() != AWTAutoShutdown.getInstance()) {
                     AWTAutoShutdown.getInstance().notifyThreadBusy(dispatchThread);
+                    AWTThreading.getInstance(dispatchThread).notifyEventDispatchThreadBusy();
                 }
                 pushPopCond.signalAll();
             } else if (notifyID) {
@@ -563,6 +571,7 @@ public class EventQueue {
                     return event;
                 }
                 AWTAutoShutdown.getInstance().notifyThreadFree(dispatchThread);
+                AWTThreading.getInstance(dispatchThread).notifyEventDispatchThreadFree();
                 pushPopCond.await();
             } finally {
                 pushPopLock.unlock();
@@ -1019,8 +1028,8 @@ public class EventQueue {
     }
 
     private class FwSecondaryLoopWrapper implements SecondaryLoop {
-        final private SecondaryLoop loop;
-        final private EventFilter filter;
+        private final SecondaryLoop loop;
+        private final EventFilter filter;
 
         public FwSecondaryLoopWrapper(SecondaryLoop loop, EventFilter filter) {
             this.loop = loop;
@@ -1105,6 +1114,7 @@ public class EventQueue {
         }
     }
 
+    @SuppressWarnings({"deprecation", "removal"})
     final void initDispatchThread() {
         pushPopLock.lock();
         try {
@@ -1120,6 +1130,7 @@ public class EventQueue {
                             t.setPriority(Thread.NORM_PRIORITY + 1);
                             t.setDaemon(false);
                             AWTAutoShutdown.getInstance().notifyThreadBusy(t);
+                            AWTThreading.getInstance(t).notifyEventDispatchThreadBusy();
                             return t;
                         }
                     }
@@ -1150,6 +1161,7 @@ public class EventQueue {
                 dispatchThread = null;
             }
             AWTAutoShutdown.getInstance().notifyThreadFree(edt);
+            AWTThreading.getInstance(edt).notifyEventDispatchThreadFree();
             /*
              * Event was posted after EDT events pumping had stopped, so start
              * another EDT to handle this event

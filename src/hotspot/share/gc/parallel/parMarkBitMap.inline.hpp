@@ -26,6 +26,7 @@
 #define SHARE_GC_PARALLEL_PARMARKBITMAP_INLINE_HPP
 
 #include "gc/parallel/parMarkBitMap.hpp"
+
 #include "utilities/align.hpp"
 #include "utilities/bitMap.inline.hpp"
 
@@ -81,7 +82,7 @@ inline bool ParMarkBitMap::is_marked(HeapWord* addr) const {
 }
 
 inline bool ParMarkBitMap::is_marked(oop obj) const {
-  return is_marked((HeapWord*)obj);
+  return is_marked(cast_from_oop<HeapWord*>(obj));
 }
 
 inline bool ParMarkBitMap::is_unmarked(idx_t bit) const {
@@ -144,7 +145,7 @@ inline ParMarkBitMap::IterationStatus ParMarkBitMap::iterate(ParMarkBitMapClosur
 }
 
 inline bool ParMarkBitMap::mark_obj(oop obj, int size) {
-  return mark_obj((HeapWord*)obj, (size_t)size);
+  return mark_obj(cast_from_oop<HeapWord*>(obj), (size_t)size);
 }
 
 inline ParMarkBitMap::idx_t ParMarkBitMap::addr_to_bit(HeapWord* addr) const {

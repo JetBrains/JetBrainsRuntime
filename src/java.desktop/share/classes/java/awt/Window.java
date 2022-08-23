@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1995, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1995, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,14 +44,19 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OptionalDataException;
+import java.io.Serial;
 import java.io.Serializable;
+import java.lang.annotation.Native;
+import java.lang.invoke.MethodHandles;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EventListener;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.Vector;
@@ -63,6 +68,7 @@ import javax.accessibility.AccessibleRole;
 import javax.accessibility.AccessibleState;
 import javax.accessibility.AccessibleStateSet;
 
+import com.jetbrains.internal.JBRApi;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTPermissions;
 import sun.awt.AppContext;
@@ -133,6 +139,11 @@ import sun.util.logging.PlatformLogger;
  * management system may ignore such requests, or modify the requested
  * geometry in order to place and size the {@code Window} in a way
  * that more closely matches the desktop settings.
+ * <p>
+ * Visual effects such as halos, shadows, motion effects and animations may be
+ * applied to the window by the desktop window management system. These are
+ * outside the knowledge and control of the AWT and so for the purposes of this
+ * specification are not considered part of the top-level window.
  * <p>
  * Due to the asynchronous nature of native event handling, the results
  * returned by {@code getBounds}, {@code getLocation},
@@ -236,7 +247,11 @@ public class Window extends Container implements Accessible {
     private transient Component temporaryLostComponent;
 
     static boolean systemSyncLWRequests = false;
-    boolean     syncLWRequests = false;
+
+    /**
+     * Focus transfers should be synchronous for lightweight component requests.
+     */
+    boolean syncLWRequests = false;
     transient boolean beforeFirstShow = true;
     private transient boolean disposing = false;
     transient WindowDisposerRecord disposerRecord = null;
@@ -378,12 +393,14 @@ public class Window extends Container implements Accessible {
     private static final String base = "win";
     private static int nameCounter = 0;
 
-    /*
-     * JDK 1.1 serialVersionUID
+    /**
+     * Use serialVersionUID from JDK 1.1 for interoperability.
      */
+    @Serial
     private static final long serialVersionUID = 4497834738069338734L;
 
     private static final PlatformLogger log = PlatformLogger.getLogger("java.awt.Window");
+    private static final PlatformLogger focusRequestLog = PlatformLogger.getLogger("jb.focus.requests");
 
     private static final boolean locationByPlatformProp;
 
@@ -403,12 +420,14 @@ public class Window extends Container implements Accessible {
             initIDs();
         }
 
+        @SuppressWarnings("removal")
         String s = java.security.AccessController.doPrivileged(
             new GetPropertyAction("java.awt.syncLWRequests"));
         systemSyncLWRequests = (s != null && s.equals("true"));
-        s = java.security.AccessController.doPrivileged(
+        @SuppressWarnings("removal")
+        String s2 = java.security.AccessController.doPrivileged(
             new GetPropertyAction("java.awt.Window.locationByPlatform"));
-        locationByPlatformProp = (s != null && s.equals("true"));
+        locationByPlatformProp = (s2 != null && s2.equals("true"));
     }
 
     /**
@@ -1062,7 +1081,13 @@ public class Window extends Container implements Accessible {
             } else {
                 // fix for 6532736: after this window is shown, its blocker
                 // should be raised to front
-                modalBlocker.toFront_NoClientCode();
+                boolean storedValue = modalBlocker.isAutoRequestFocus();
+                modalBlocker.setAutoRequestFocus(false);
+                try {
+                    modalBlocker.toFront_NoClientCode();
+                } finally {
+                    modalBlocker.setAutoRequestFocus(storedValue);
+                }
             }
             if (this instanceof Frame || this instanceof Dialog) {
                 updateChildFocusableWindowState(this);
@@ -1108,14 +1133,18 @@ public class Window extends Container implements Accessible {
      * {@link #setVisible(boolean)}.
      */
     @Deprecated
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public void hide() {
+        WeakReference<Window>[] ownedWindowArray;
         synchronized(ownedWindowList) {
-            for (int i = 0; i < ownedWindowList.size(); i++) {
-                Window child = ownedWindowList.elementAt(i).get();
-                if ((child != null) && child.visible) {
-                    child.hide();
-                    child.showWithParent = true;
-                }
+            ownedWindowArray = new WeakReference[ownedWindowList.size()];
+            ownedWindowList.copyInto(ownedWindowArray);
+        }
+        for (WeakReference<Window> childRef : ownedWindowArray) {
+            Window child = childRef.get();
+            if ((child != null) && child.visible) {
+                child.hide();
+                child.showWithParent = true;
             }
         }
         if (isModalBlocked()) {
@@ -1299,6 +1328,9 @@ public class Window extends Container implements Accessible {
     // This functionality is implemented in a final package-private method
     // to insure that it cannot be overridden by client subclasses.
     final void toFront_NoClientCode() {
+        if (focusRequestLog.isLoggable(PlatformLogger.Level.FINE)) {
+            focusRequestLog.fine("toFront() for" + this, new Throwable());
+        }
         if (visible) {
             WindowPeer peer = (WindowPeer)this.peer;
             if (peer != null) {
@@ -1342,6 +1374,9 @@ public class Window extends Container implements Accessible {
     // This functionality is implemented in a final package-private method
     // to insure that it cannot be overridden by client subclasses.
     final void toBack_NoClientCode() {
+        if (focusRequestLog.isLoggable(PlatformLogger.Level.FINE)) {
+            focusRequestLog.fine("toBack() for " + this, new Throwable());
+        }
         if(isAlwaysOnTop()) {
             try {
                 setAlwaysOnTop(false);
@@ -1386,6 +1421,7 @@ public class Window extends Container implements Accessible {
         return warningString;
     }
 
+    @SuppressWarnings("removal")
     private void setWarningString() {
         warningString = null;
         SecurityManager sm = System.getSecurityManager();
@@ -1690,6 +1726,7 @@ public class Window extends Container implements Accessible {
             return;
         }
         if (exclusionType == Dialog.ModalExclusionType.TOOLKIT_EXCLUDE) {
+            @SuppressWarnings("removal")
             SecurityManager sm = System.getSecurityManager();
             if (sm != null) {
                 sm.checkPermission(AWTPermissions.TOOLKIT_MODALITY_PERMISSION);
@@ -2240,6 +2277,7 @@ public class Window extends Container implements Accessible {
      * @since 1.5
      */
     public final void setAlwaysOnTop(boolean alwaysOnTop) throws SecurityException {
+        @SuppressWarnings("removal")
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
             security.checkPermission(AWTPermissions.SET_WINDOW_ALWAYS_ON_TOP_PERMISSION);
@@ -2931,7 +2969,8 @@ public class Window extends Container implements Accessible {
      * Writes a list of child windows as optional data.
      * Writes a list of icon images as optional data
      *
-     * @param s the {@code ObjectOutputStream} to write
+     * @param  s the {@code ObjectOutputStream} to write
+     * @throws IOException if an I/O error occurs
      * @serialData {@code null} terminated sequence of
      *    0 or more pairs; the pair consists of a {@code String}
      *    and {@code Object}; the {@code String}
@@ -2949,6 +2988,7 @@ public class Window extends Container implements Accessible {
      * @see Component#ownedWindowK
      * @see #readObject(ObjectInputStream)
      */
+    @Serial
     private void writeObject(ObjectOutputStream s) throws IOException {
         synchronized (this) {
             // Update old focusMgr fields so that our object stream can be read
@@ -3086,13 +3126,16 @@ public class Window extends Container implements Accessible {
      * (possibly {@code null}) child windows.
      * Unrecognized keys or values will be ignored.
      *
-     * @param s the {@code ObjectInputStream} to read
-     * @exception HeadlessException if
-     *   {@code GraphicsEnvironment.isHeadless} returns
-     *   {@code true}
+     * @param  s the {@code ObjectInputStream} to read
+     * @throws ClassNotFoundException if the class of a serialized object could
+     *         not be found
+     * @throws IOException if an I/O error occurs
+     * @throws HeadlessException if {@code GraphicsEnvironment.isHeadless()}
+     *         returns {@code true}
      * @see java.awt.GraphicsEnvironment#isHeadless
      * @see #writeObject
      */
+    @Serial
     private void readObject(ObjectInputStream s)
       throws ClassNotFoundException, IOException, HeadlessException
     {
@@ -3153,10 +3196,16 @@ public class Window extends Container implements Accessible {
      */
     protected class AccessibleAWTWindow extends AccessibleAWTContainer
     {
-        /*
-         * JDK 1.3 serialVersionUID
+        /**
+         * Use serialVersionUID from JDK 1.3 for interoperability.
          */
+        @Serial
         private static final long serialVersionUID = 4215068635060671780L;
+
+        /**
+         * Constructs an {@code AccessibleAWTWindow}.
+         */
+        protected AccessibleAWTWindow() {}
 
         /**
          * Get the role of this object.
@@ -3417,6 +3466,10 @@ public class Window extends Container implements Accessible {
         return super.canContainFocusOwner(focusOwnerCandidate) && isFocusableWindow();
     }
 
+    /**
+     * {@code true} if this Window should appear at the default location,
+     * {@code false} if at the current location.
+     */
     private volatile boolean locationByPlatform = locationByPlatformProp;
 
 
@@ -3958,6 +4011,133 @@ public class Window extends Container implements Accessible {
         }
     }
 
+    private volatile boolean hasCustomDecoration;
+    private volatile List<Map.Entry<Shape, Integer>> customDecorHitTestSpots;
+    private volatile int customDecorTitleBarHeight = -1; // 0 can be a legal value when no title bar is expected
+
+    // called from native
+    private int hitTestCustomDecoration(int x, int y) {
+        var spots = customDecorHitTestSpots;
+        if (spots == null) return CustomWindowDecoration.NO_HIT_SPOT;
+        for (var spot : spots) {
+            if (spot.getKey().contains(x, y)) return spot.getValue();
+        }
+        return CustomWindowDecoration.NO_HIT_SPOT;
+    }
+
+    private static class CustomWindowDecoration {
+
+        @Native public static final int
+                NO_HIT_SPOT = 0,
+                OTHER_HIT_SPOT = 1,
+                MINIMIZE_BUTTON = 2,
+                MAXIMIZE_BUTTON = 3,
+                CLOSE_BUTTON = 4,
+                MENU_BAR = 5,
+                DRAGGABLE_AREA = 6;
+
+        void setCustomDecorationEnabled(Window window, boolean enabled) {
+            window.hasCustomDecoration = enabled;
+            if (Win.INSTANCE != null) {
+                Win.INSTANCE.updateCustomDecoration(window.peer);
+            } else if (MacOS.INSTANCE != null && window.customDecorTitleBarHeight > 0f) {
+                MacOS.INSTANCE.setTitleBarHeight(window, window.peer, enabled ? window.customDecorTitleBarHeight : 0);
+            }
+        }
+        boolean isCustomDecorationEnabled(Window window) {
+            return window.hasCustomDecoration;
+        }
+
+        void setCustomDecorationHitTestSpots(Window window, List<Map.Entry<Shape, Integer>> spots) {
+            window.customDecorHitTestSpots = List.copyOf(spots);
+        }
+        List<Map.Entry<Shape, Integer>> getCustomDecorationHitTestSpots(Window window) {
+            return window.customDecorHitTestSpots;
+        }
+
+        void setCustomDecorationTitleBarHeight(Window window, int height) {
+            if (height >= 0) {
+                window.customDecorTitleBarHeight = height;
+                if (MacOS.INSTANCE != null && window.hasCustomDecoration) {
+                    MacOS.INSTANCE.setTitleBarHeight(window, window.peer, height);
+                }
+            }
+        }
+        int getCustomDecorationTitleBarHeight(Window window) {
+            return window.customDecorTitleBarHeight;
+        }
+
+        private interface Win {
+            Win INSTANCE = (Win) JBRApi.internalServiceBuilder(MethodHandles.lookup(), null)
+                    .withStatic("updateCustomDecoration", "sun.awt.windows.WFramePeer").build();
+            void updateCustomDecoration(ComponentPeer peer);
+        }
+
+        private interface MacOS {
+            MacOS INSTANCE = (MacOS) JBRApi.internalServiceBuilder(MethodHandles.lookup(), null)
+                    .withStatic("setTitleBarHeight", "sun.lwawt.macosx.CPlatformWindow", "setCustomDecorationTitleBarHeight").build();
+            void setTitleBarHeight(Window target, ComponentPeer peer, float height);
+        }
+    }
+
+    @Deprecated
+    boolean hasCustomDecoration() {
+        return hasCustomDecoration;
+    }
+
+    /**
+     * Set via reflection (JB JdkEx API).
+     */
+    @Deprecated
+    void setHasCustomDecoration() {
+        hasCustomDecoration = true;
+    }
+
+    private volatile boolean ignoreMouseEvents;
+
+    boolean isIgnoreMouseEvents() {
+        return ignoreMouseEvents;
+    }
+
+    /**
+     * Set via reflection (JB JdkEx API).
+     */
+    void setIgnoreMouseEvents(boolean ignore) {
+        ignoreMouseEvents = ignore;
+    }
+
+    private volatile boolean hasTabbingMode;
+
+    boolean hasTabbingMode() {
+        return hasTabbingMode;
+    }
+
+    /**
+     * Set via reflection (JB JdkEx API).
+     */
+    void setTabbingMode() {
+        hasTabbingMode = true;
+    }
+
+    private volatile Runnable moveTabToNewWindowCallback;
+
+    void runMoveTabToNewWindowCallback() {
+        if (moveTabToNewWindowCallback != null) {
+            Runnable callback = moveTabToNewWindowCallback;
+            SunToolkit.executeOnEventHandlerThread(this, new Runnable() {
+                public void run() {
+                    callback.run();
+                }
+            });
+        }
+    }
+
+    /**
+     * Set via reflection (JB JdkEx API).
+     */
+    void setMoveTabToNewWindowCallback(Runnable moveTabToNewWindowCallback) {
+        this.moveTabToNewWindowCallback = moveTabToNewWindowCallback;
+    }
 
     // ************************** MIXING CODE *******************************
 
@@ -4105,8 +4285,9 @@ class FocusManager implements java.io.Serializable {
     Container focusRoot;
     Component focusOwner;
 
-    /*
-     * JDK 1.1 serialVersionUID
+    /**
+     * Use serialVersionUID from JDK 1.1 for interoperability.
      */
-    static final long serialVersionUID = 2491878825643557906L;
+    @Serial
+    private static final long serialVersionUID = 2491878825643557906L;
 }

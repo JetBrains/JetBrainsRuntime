@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
 
 /*
  * @test
+ * @key randomness
  *
  * @summary converted from VM Testbase nsk/jvmti/scenarios/allocation/AP12/ap12t001.
  * VM Testbase keywords: [jpda, jvmti, noras, nonconcurrent]
@@ -37,11 +38,9 @@
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
- * @build ExecDriver
- *        nsk.jvmti.scenarios.allocation.AP12.ap12t001
- * @run main/othervm/native PropertyResolvingWrapper ExecDriver --java
- *      "-agentlib:ap12t001=-waittime=5 -verbose"
+ * @build nsk.jvmti.scenarios.allocation.AP12.ap12t001
+ * @run main/othervm/native
+ *      -agentlib:ap12t001=-waittime=5,-verbose
  *      -XX:-UseGCOverheadLimit
  *      nsk.jvmti.scenarios.allocation.AP12.ap12t001
  */

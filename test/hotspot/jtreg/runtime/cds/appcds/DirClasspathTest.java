@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,11 +33,13 @@
  */
 
 import jdk.test.lib.Platform;
+import jdk.test.lib.cds.CDSTestUtils;
 import jdk.test.lib.process.OutputAnalyzer;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 
 public class DirClasspathTest {
@@ -51,7 +53,7 @@ public class DirClasspathTest {
     }
 
     public static void main(String[] args) throws Exception {
-        File dir = new File(System.getProperty("user.dir"));
+        File dir = CDSTestUtils.getOutputDirAsFile();
         File emptydir = new File(dir, "emptydir");
         emptydir.mkdir();
 
@@ -118,7 +120,7 @@ public class DirClasspathTest {
         // Long path to non-empty dir in -cp: should report error if a class is loaded from it
         File srcClass = new File(classDir.toFile(), "Super.class");
         File destClass = new File(longDir, "Super.class");
-        Files.copy(srcClass.toPath(), destClass.toPath());
+        Files.copy(srcClass.toPath(), destClass.toPath(), StandardCopyOption.REPLACE_EXISTING);
         output = doDump(longDir.getPath(), appClassList2, "-Xlog:class+path=info");
         output.shouldNotHaveExitValue(0);
         output.shouldContain("Cannot have non-empty directory in paths");

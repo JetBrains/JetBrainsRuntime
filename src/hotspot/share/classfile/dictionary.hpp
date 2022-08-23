@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,15 +25,15 @@
 #ifndef SHARE_CLASSFILE_DICTIONARY_HPP
 #define SHARE_CLASSFILE_DICTIONARY_HPP
 
-#include "classfile/protectionDomainCache.hpp"
-#include "classfile/systemDictionary.hpp"
 #include "oops/instanceKlass.hpp"
 #include "oops/oop.hpp"
+#include "oops/oopHandle.hpp"
 #include "utilities/hashtable.hpp"
 #include "utilities/ostream.hpp"
 
 class DictionaryEntry;
-class BoolObjectClosure;
+class ProtectionDomainEntry;
+template <typename T> class GrowableArray;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // The data structure for the class loader data dictionaries.
@@ -61,26 +61,31 @@ public:
 
   void add_klass(unsigned int hash, Symbol* class_name, InstanceKlass* obj);
 
-  InstanceKlass* find_class(int index, unsigned int hash, Symbol* name);
+  InstanceKlass* find_class(unsigned int hash, Symbol* name);
 
   void classes_do(void f(InstanceKlass*));
+  void classes_do(KlassClosure* closure);
   void classes_do(void f(InstanceKlass*, TRAPS), TRAPS);
   void all_entries_do(KlassClosure* closure);
   void classes_do(MetaspaceClosure* it);
 
-  void clean_cached_protection_domains();
+  void clean_cached_protection_domains(GrowableArray<ProtectionDomainEntry*>* delete_list);
 
   // Protection domains
   InstanceKlass* find(unsigned int hash, Symbol* name, Handle protection_domain);
-  bool is_valid_protection_domain(unsigned int hash,
-                                  Symbol* name,
-                                  Handle protection_domain);
-  void add_protection_domain(int index, unsigned int hash,
-                             InstanceKlass* klass,
-                             Handle protection_domain, TRAPS);
+  void validate_protection_domain(unsigned int name_hash,
+                                  InstanceKlass* klass,
+                                  Handle class_loader,
+                                  Handle protection_domain,
+                                  TRAPS);
 
   void print_on(outputStream* st) const;
   void verify();
+
+  // (DCEVM) Enhanced class redefinition
+  bool update_klass(Symbol* name, InstanceKlass* k, InstanceKlass* old_klass);
+
+  void rollback_redefinition();
 
  private:
   DictionaryEntry* new_entry(unsigned int hash, InstanceKlass* klass);
@@ -94,15 +99,19 @@ public:
     return (DictionaryEntry**)Hashtable<InstanceKlass*, mtClass>::bucket_addr(i);
   }
 
-  void add_entry(int index, DictionaryEntry* new_entry) {
-    Hashtable<InstanceKlass*, mtClass>::add_entry(index, (HashtableEntry<InstanceKlass*, mtClass>*)new_entry);
-  }
-
-  void unlink_entry(DictionaryEntry* entry) {
-    Hashtable<InstanceKlass*, mtClass>::unlink_entry((HashtableEntry<InstanceKlass*, mtClass>*)entry);
-  }
-
   void free_entry(DictionaryEntry* entry);
+
+  bool is_valid_protection_domain(unsigned int hash,
+                                  Symbol* name,
+                                  Handle protection_domain);
+  void add_protection_domain(int index, unsigned int hash,
+                             InstanceKlass* klass,
+                             Handle protection_domain);
+
+  // (DCEVM) return old class if redefining in AllowEnhancedClassRedefinition, otherwise return "k"
+  static InstanceKlass* old_if_redefining(InstanceKlass* k) {
+    return (k != NULL && k->is_redefining()) ? ((InstanceKlass* )k->old_version()) : k;
+  }
 };
 
 // An entry in the class loader data dictionaries, this describes a class as
@@ -114,18 +123,11 @@ class DictionaryEntry : public HashtableEntry<InstanceKlass*, mtClass> {
   // Contains the set of approved protection domains that can access
   // this dictionary entry.
   //
-  // This protection domain set is a set of tuples:
-  //
-  // (InstanceKlass C, initiating class loader ICL, Protection Domain PD)
-  //
   // [Note that C.protection_domain(), which is stored in the java.lang.Class
   // mirror of C, is NOT the same as PD]
   //
-  // If such an entry (C, ICL, PD) exists in the table, it means that
-  // it is okay for a class Foo to reference C, where
-  //
-  //    Foo.protection_domain() == PD, and
-  //    Foo's defining class loader == ICL
+  // If an entry for PD exists in the list, it means that
+  // it is okay for a caller class to reference the class in this dictionary entry.
   //
   // The usage of the PD set can be seen in SystemDictionary::validate_protection_domain()
   // It is essentially a cache to avoid repeated Java up-calls to
@@ -137,7 +139,7 @@ class DictionaryEntry : public HashtableEntry<InstanceKlass*, mtClass> {
   // Tells whether a protection is in the approved set.
   bool contains_protection_domain(oop protection_domain) const;
   // Adds a protection domain to the approved set.
-  void add_protection_domain(Dictionary* dict, Handle protection_domain);
+  void add_protection_domain(ClassLoaderData* loader_data, Handle protection_domain);
 
   InstanceKlass* instance_klass() const { return literal(); }
   InstanceKlass** klass_addr() { return (InstanceKlass**)literal_addr(); }
@@ -150,24 +152,12 @@ class DictionaryEntry : public HashtableEntry<InstanceKlass*, mtClass> {
     return (DictionaryEntry**)HashtableEntry<InstanceKlass*, mtClass>::next_addr();
   }
 
-  ProtectionDomainEntry* pd_set() const            { return _pd_set; }
-  void set_pd_set(ProtectionDomainEntry* new_head) {  _pd_set = new_head; }
+  ProtectionDomainEntry* pd_set_acquire() const            { return Atomic::load_acquire(&_pd_set); }
+  void release_set_pd_set(ProtectionDomainEntry* entry)    { Atomic::release_store(&_pd_set, entry); }
 
   // Tells whether the initiating class' protection domain can access the klass in this entry
-  bool is_valid_protection_domain(Handle protection_domain) {
-    if (!ProtectionDomainVerification) return true;
-
-    return protection_domain() == NULL
-         ? true
-         : contains_protection_domain(protection_domain());
-  }
-
+  inline bool is_valid_protection_domain(Handle protection_domain);
   void verify_protection_domain_set();
-
-  bool equals(const Symbol* class_name) const {
-    InstanceKlass* klass = (InstanceKlass*)literal();
-    return (klass->name() == class_name);
-  }
 
   void print_count(outputStream *st);
   void verify();
@@ -180,7 +170,7 @@ class SymbolPropertyEntry : public HashtableEntry<Symbol*, mtSymbol> {
  private:
   intptr_t _symbol_mode;  // secondary key
   Method*   _method;
-  oop       _method_type;
+  OopHandle _method_type;
 
  public:
   Symbol* symbol() const            { return literal(); }
@@ -191,9 +181,13 @@ class SymbolPropertyEntry : public HashtableEntry<Symbol*, mtSymbol> {
   Method*        method() const     { return _method; }
   void set_method(Method* p)        { _method = p; }
 
-  oop      method_type() const      { return _method_type; }
-  oop*     method_type_addr()       { return &_method_type; }
-  void set_method_type(oop p)       { _method_type = p; }
+  oop      method_type() const;
+  void set_method_type(oop p);
+
+  // We need to clear the OopHandle because these hashtable entries are not constructed properly.
+  void clear_method_type() { _method_type = OopHandle(); }
+
+  void free_entry();
 
   SymbolPropertyEntry* next() const {
     return (SymbolPropertyEntry*)HashtableEntry<Symbol*, mtSymbol>::next();
@@ -203,22 +197,7 @@ class SymbolPropertyEntry : public HashtableEntry<Symbol*, mtSymbol> {
     return (SymbolPropertyEntry**)HashtableEntry<Symbol*, mtSymbol>::next_addr();
   }
 
-  void print_entry(outputStream* st) const {
-    symbol()->print_value_on(st);
-    st->print("/mode=" INTX_FORMAT, symbol_mode());
-    st->print(" -> ");
-    bool printed = false;
-    if (method() != NULL) {
-      method()->print_value_on(st);
-      printed = true;
-    }
-    if (method_type() != NULL) {
-      if (printed)  st->print(" and ");
-      st->print(INTPTR_FORMAT, p2i((void *)method_type()));
-      printed = true;
-    }
-    st->print_cr(printed ? "" : "(empty)");
-  }
+  void print_entry(outputStream* st) const;
 };
 
 // A system-internal mapping of symbols to pointers, both managed
@@ -245,7 +224,7 @@ private:
     symbol->increment_refcount();
     entry->set_symbol_mode(symbol_mode);
     entry->set_method(NULL);
-    entry->set_method_type(NULL);
+    entry->clear_method_type();
     return entry;
   }
 
@@ -253,11 +232,7 @@ public:
   SymbolPropertyTable(int table_size);
   SymbolPropertyTable(int table_size, HashtableBucket<mtSymbol>* t, int number_of_entries);
 
-  void free_entry(SymbolPropertyEntry* entry) {
-    // decrement Symbol refcount here because hashtable doesn't.
-    entry->literal()->decrement_refcount();
-    Hashtable<Symbol*, mtSymbol>::free_entry(entry);
-  }
+  void free_entry(SymbolPropertyEntry* entry);
 
   unsigned int compute_hash(Symbol* sym, intptr_t symbol_mode) {
     // Use the regular identity_hash.
@@ -273,9 +248,6 @@ public:
 
   // must be done under SystemDictionary_lock
   SymbolPropertyEntry* add_entry(int index, unsigned int hash, Symbol* name, intptr_t name_mode);
-
-  // GC support
-  void oops_do(OopClosure* f);
 
   void methods_do(void f(Method*));
 

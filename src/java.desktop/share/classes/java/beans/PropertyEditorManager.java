@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,11 @@ package java.beans;
 public class PropertyEditorManager {
 
     /**
+     * Constructs a {@code PropertyEditorManager}.
+     */
+    public PropertyEditorManager() {}
+
+    /**
      * Registers an editor class to edit values of the given target class.
      * If the editor class is {@code null},
      * then any existing definition will be removed.
@@ -74,6 +79,7 @@ public class PropertyEditorManager {
      * @see SecurityManager#checkPropertiesAccess
      */
     public static void registerEditor(Class<?> targetType, Class<?> editorClass) {
+        @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPropertiesAccess();
@@ -118,6 +124,7 @@ public class PropertyEditorManager {
      * @see SecurityManager#checkPropertiesAccess
      */
     public static void setEditorSearchPath(String[] path) {
+        @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPropertiesAccess();

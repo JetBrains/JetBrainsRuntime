@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,7 +66,7 @@ public class DocCommentTester {
         this.useBreakIterator = useBreakIterator;
     }
     public static void main(String... args) throws Exception {
-        ArrayList<String> list = new ArrayList(Arrays.asList(args));
+        ArrayList<String> list = new ArrayList<>(Arrays.asList(args));
         if (!list.isEmpty() && "-useBreakIterator".equals(list.get(0))) {
             list.remove(0);
             new DocCommentTester(true).run(list);
@@ -255,7 +255,7 @@ public class DocCommentTester {
          * changes are approved, the new files can be used to replace the old.
          */
         public static void main(String... args) throws Exception {
-            List<File> files = new ArrayList<File>();
+            List<File> files = new ArrayList<>();
             File o = null;
             for (int i = 0; i < args.length; i++) {
                 String arg = args[i];
@@ -305,11 +305,8 @@ public class DocCommentTester {
                     File f = new File(tree.getSourceFile().getName());
                     File outFile = new File(outDir, f.getName());
                     try {
-                        FileWriter out = new FileWriter(outFile);
-                        try {
+                        try (FileWriter out = new FileWriter(outFile)) {
                             out.write(source);
-                        } finally {
-                            out.close();
                         }
                     } catch (IOException e) {
                         System.err.println("Can't write " + tree.getSourceFile().getName()
@@ -701,7 +698,7 @@ public class DocCommentTester {
 
             /*
              * Use this method to start printing a multi-line representation of a
-             * DocTree node. The representation should be termintated by calling
+             * DocTree node. The representation should be terminated by calling
              * out.println("]").
              */
             void header(DocTree node) {
@@ -804,7 +801,7 @@ public class DocCommentTester {
             final DCDocComment dc = (DCDocComment) trees.getDocCommentTree(path);
             DCTree t = (DCTree) trees.getDocCommentTree(path);
 
-            DocTreeScanner scanner = new DocTreeScanner<Void,Void>() {
+            DocTreeScanner<Void, Void> scanner = new DocTreeScanner<>() {
                 @Override
                 public Void scan(DocTree node, Void ignore) {
                     if (node != null) {
@@ -873,22 +870,57 @@ public class DocCommentTester {
                 System.err.println(normRaw.replace(" ", "_"));
                 System.err.println("*** found:");
                 System.err.println(pretty.replace(" ", "_"));
-    //            throw new Error();
             }
         }
 
         /**
          * Normalize white space in places where the tree does not preserve it.
+         * Maintain contents of at-code and at-literal inline tags.
          */
         String normalize(String s) {
-            s = s.trim()
-                    .replaceFirst("\\.\\s*\\n *@", ".\n@")
-                    .replaceAll("\\{@docRoot\\s+\\}", "{@docRoot}")
+            String s2 = s.trim().replaceFirst("\\.\\s*\\n *@", ".\n@");
+            StringBuilder sb = new StringBuilder();
+            Pattern p = Pattern.compile("\\{@(code|literal)( )?");
+            Matcher m = p.matcher(s2);
+            int start = 0;
+            while (m.find(start)) {
+                sb.append(normalizeFragment(s2.substring(start, m.start())));
+                sb.append(m.group().trim());
+                start = copyLiteral(s2, m.end(), sb);
+            }
+            sb.append(normalizeFragment(s2.substring(start)));
+            return sb.toString();
+        }
+
+        String normalizeFragment(String s) {
+            return s.replaceAll("\\{@docRoot\\s+\\}", "{@docRoot}")
                     .replaceAll("\\{@inheritDoc\\s+\\}", "{@inheritDoc}")
                     .replaceAll("(\\{@value\\s+[^}]+)\\s+(\\})", "$1$2")
-                    .replaceAll("\n[ \t]+@", "\n@")
-                    .replaceAll("(\\{@code)(\\x20)(\\s+.*)", "$1$3");
-            return s;
+                    .replaceAll("\n[ \t]+@", "\n@");
+        }
+
+        int copyLiteral(String s, int start, StringBuilder sb) {
+            int depth = 0;
+            for (int i = start; i < s.length(); i++) {
+                char ch = s.charAt(i);
+                if (i == start && !Character.isWhitespace(ch)) {
+                    sb.append(' ');
+                }
+                switch (ch) {
+                    case '{':
+                        depth++;
+                        break;
+                    case '}':
+                        depth--;
+                        if (depth < 0) {
+                            sb.append(ch);
+                            return i + 1;
+                        }
+                        break;
+                }
+                sb.append(ch);
+            }
+            return s.length();
         }
     }
 }

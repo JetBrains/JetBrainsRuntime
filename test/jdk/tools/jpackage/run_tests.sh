@@ -1,5 +1,26 @@
 #!/bin/bash
 
+# Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+# or visit www.oracle.com if you need additional information or have any
+# questions.
+
 #
 # Script to run jpackage tests.
 #
@@ -248,18 +269,18 @@ installJtreg ()
 
 preRun ()
 {
-  local xargs_args=(-t --no-run-if-empty rm)
-  if [ -n "$dry_run" ]; then
-    xargs_args=(--no-run-if-empty echo rm)
-  fi
-
   if [ ! -d "$output_dir" ]; then
     exec_command mkdir -p "$output_dir"
   fi
   [ ! -d "$output_dir" ] || output_dir=$(cd "$output_dir" && pwd)
 
   # Clean output directory
-  [ "$mode" != "create" ] || find $output_dir -maxdepth 1 -type f -name '*.exe' -or -name '*.msi' -or -name '*.rpm' -or -name '*.deb' | xargs "${xargs_args[@]}"
+  if [ "$mode" == "create" ]; then
+    for f in $(find $output_dir -maxdepth 1 -type f -name '*.exe' -or -name '*.msi' -or -name '*.rpm' -or -name '*.deb'); do
+      echo rm "$f"
+      [ -n "$dry_run" ] || rm "$f"
+    done
+  fi
 }
 
 

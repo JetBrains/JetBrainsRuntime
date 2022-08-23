@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,13 +25,16 @@
 #include "precompiled.hpp"
 #include "jfr/jfr.hpp"
 #include "jfr/leakprofiler/leakProfiler.hpp"
-#include "jfr/periodic/sampling/jfrThreadSampler.hpp"
+#include "jfr/recorder/checkpoint/types/traceid/jfrTraceIdLoadBarrier.inline.hpp"
 #include "jfr/recorder/jfrRecorder.hpp"
 #include "jfr/recorder/checkpoint/jfrCheckpointManager.hpp"
 #include "jfr/recorder/repository/jfrEmergencyDump.hpp"
 #include "jfr/recorder/service/jfrOptionSet.hpp"
+#include "jfr/recorder/repository/jfrRepository.hpp"
 #include "jfr/support/jfrThreadLocal.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/java.hpp"
+#include "runtime/thread.hpp"
 
 bool Jfr::is_enabled() {
   return JfrRecorder::is_enabled();
@@ -65,7 +68,7 @@ void Jfr::on_create_vm_3() {
 
 void Jfr::on_unloading_classes() {
   if (JfrRecorder::is_created()) {
-    JfrCheckpointManager::write_type_set_for_unloaded_classes();
+    JfrCheckpointManager::on_unloading_classes();
   }
 }
 
@@ -89,21 +92,15 @@ bool Jfr::is_excluded(Thread* t) {
   return t != NULL && t->jfr_thread_local()->is_excluded();
 }
 
-void Jfr::on_java_thread_dismantle(JavaThread* jt) {
-  if (JfrRecorder::is_recording()) {
-    JfrCheckpointManager::write_thread_checkpoint(jt);
-  }
-}
-
 void Jfr::on_vm_shutdown(bool exception_handler) {
   if (JfrRecorder::is_recording()) {
     JfrEmergencyDump::on_vm_shutdown(exception_handler);
   }
 }
 
-void Jfr::weak_oops_do(BoolObjectClosure* is_alive, OopClosure* f) {
-  if (LeakProfiler::is_running()) {
-    LeakProfiler::weak_oops_do(is_alive, f);
+void Jfr::on_vm_error_report(outputStream* st) {
+  if (JfrRecorder::is_recording()) {
+    JfrRepository::on_vm_error_report(st);
   }
 }
 
@@ -113,4 +110,17 @@ bool Jfr::on_flight_recorder_option(const JavaVMOption** option, char* delimiter
 
 bool Jfr::on_start_flight_recording_option(const JavaVMOption** option, char* delimiter) {
   return JfrOptionSet::parse_start_flight_recording_option(option, delimiter);
+}
+
+JRT_LEAF(void, Jfr::get_class_id_intrinsic(const Klass* klass))
+  assert(klass != NULL, "sanity");
+  JfrTraceIdLoadBarrier::load_barrier(klass);
+JRT_END
+
+address Jfr::epoch_address() {
+  return JfrTraceIdEpoch::epoch_address();
+}
+
+address Jfr::signal_address() {
+  return JfrTraceIdEpoch::signal_address();
 }

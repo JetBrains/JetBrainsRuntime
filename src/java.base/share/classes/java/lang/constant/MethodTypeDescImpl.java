@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -134,6 +134,7 @@ final class MethodTypeDescImpl implements MethodTypeDesc {
 
     @Override
     public MethodType resolveConstantDesc(MethodHandles.Lookup lookup) throws ReflectiveOperationException {
+        @SuppressWarnings("removal")
         MethodType mtype = AccessController.doPrivileged(new PrivilegedAction<>() {
             @Override
             public MethodType run() {
@@ -158,8 +159,8 @@ final class MethodTypeDescImpl implements MethodTypeDesc {
      *
      * @param o the {@code MethodTypeDescImpl} to compare to this
      *       {@code MethodTypeDescImpl}
-     * @return {@code true} if the specified {@code MethodTypeDescImpl} is
-     *      equals to this {@code MethodTypeDescImpl}.
+     * @return {@code true} if the specified {@code MethodTypeDescImpl}
+     *      is equal to this {@code MethodTypeDescImpl}.
      */
     @Override
     public boolean equals(Object o) {

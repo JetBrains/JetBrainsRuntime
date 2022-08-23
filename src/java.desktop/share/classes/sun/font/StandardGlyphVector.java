@@ -876,27 +876,19 @@ public class StandardGlyphVector extends GlyphVector {
         return result;
     }
 
-    /**
-     * !!! not used currently, but might be by getPixelbounds?
-     */
-    public void pixellate(FontRenderContext renderFRC, Point2D loc, Point pxResult) {
-        if (renderFRC == null) {
-            renderFRC = frc;
+    public GlyphRenderData getGlyphRenderData(float x, float y) {
+        setFRCTX();
+        initPositions();
+
+        GlyphRenderData result = new GlyphRenderData();
+        for (int i = 0, n = 0; i < glyphs.length; ++i, n += 2) {
+            float px = x + positions[n];
+            float py = y + positions[n+1];
+
+            getGlyphStrike(i).appendGlyphRenderData(glyphs[i], result, px, py);
         }
 
-        // it is a total pain that you have to copy the transform.
-
-        AffineTransform at = renderFRC.getTransform();
-        at.transform(loc, loc);
-        pxResult.x = (int)loc.getX(); // but must not behave oddly around zero
-        pxResult.y = (int)loc.getY();
-        loc.setLocation(pxResult.x, pxResult.y);
-        try {
-            at.inverseTransform(loc, loc);
-        }
-        catch (NoninvertibleTransformException e) {
-            throw new IllegalArgumentException("must be able to invert frc transform");
-        }
+        return result;
     }
 
     //////////////////////
@@ -1805,9 +1797,19 @@ public class StandardGlyphVector extends GlyphVector {
                 result = new Rectangle2D.Float();
                 result.setRect(strike.getGlyphOutlineBounds(glyphID)); // don't mutate cached rect
             } else {
-                GeneralPath gp = strike.getGlyphOutline(glyphID, 0, 0);
-                gp.transform(sgv.invdtx);
-                result = gp.getBounds2D();
+                if (sgv.invdtx.getShearX() == 0 && sgv.invdtx.getShearY() == 0 &&
+                        sgv.invdtx.getScaleX() > 0 && sgv.invdtx.getScaleY() > 0) {
+                    final Rectangle2D.Float rect = strike.getGlyphOutlineBounds(glyphID);
+                    result = new Rectangle2D.Float(
+                        (float)(rect.x*sgv.invdtx.getScaleX() + sgv.invdtx.getTranslateX()),
+                        (float)(rect.y*sgv.invdtx.getScaleY() + sgv.invdtx.getTranslateY()),
+                        (float)(rect.width*sgv.invdtx.getScaleX()),
+                        (float)(rect.height*sgv.invdtx.getScaleY()));
+                } else {
+                    GeneralPath gp = strike.getGlyphOutline(glyphID, 0, 0);
+                    gp.transform(sgv.invdtx);
+                    result = gp.getBounds2D();
+                }
             }
             /* Since x is the logical advance of the glyph to this point.
              * Because of the way that Rectangle.union is specified, this
@@ -1837,6 +1839,19 @@ public class StandardGlyphVector extends GlyphVector {
             }
             PathIterator iterator = gp.getPathIterator(null);
             result.append(iterator, false);
+        }
+
+        void appendGlyphRenderData(int glyphID, GlyphRenderData result, float x, float y) {
+            // !!! fontStrike needs a method for this.  For that matter, GeneralPath does.
+            GlyphRenderData grd;
+            if (sgv.invdtx == null) {
+                grd = strike.getGlyphRenderData(glyphID, x + dx, y + dy);
+            } else {
+                grd = strike.getGlyphRenderData(glyphID, 0, 0);
+                grd.transform(sgv.invdtx);
+                grd.transform(AffineTransform.getTranslateInstance(x + dx, y + dy));
+            }
+            result.merge(grd);
         }
     }
 

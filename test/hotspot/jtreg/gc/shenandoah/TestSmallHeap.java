@@ -23,9 +23,8 @@
  */
 
 /*
- * @test TestSmallHeap
- * @key gc
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @test
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC         TestSmallHeap
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx64m TestSmallHeap

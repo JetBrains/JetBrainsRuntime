@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,11 +35,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import sun.awt.CGraphicsEnvironment;
-import sun.java2d.SurfaceData;
-import sun.java2d.opengl.CGLLayer;
+import sun.awt.CGraphicsDevice;
+import sun.java2d.metal.MTLLayer;
 import sun.lwawt.LWWindowPeer;
 
+import sun.java2d.SurfaceData;
+import sun.java2d.opengl.CGLLayer;
+import sun.util.logging.PlatformLogger;
+
 public class CPlatformView extends CFRetainedResource {
+    private static final PlatformLogger logger =
+            PlatformLogger.getLogger(CPlatformView.class.getName());
     private native long nativeCreateView(int x, int y, int width, int height, long windowLayerPtr);
     private static native void nativeSetAutoResizable(long awtView, boolean toResize);
     private static native int nativeGetNSViewDisplayID(long awtView);
@@ -48,7 +54,7 @@ public class CPlatformView extends CFRetainedResource {
 
     private LWWindowPeer peer;
     private SurfaceData surfaceData;
-    private CGLLayer windowLayer;
+    private CFLayer windowLayer;
     private CPlatformResponder responder;
 
     public CPlatformView() {
@@ -58,13 +64,18 @@ public class CPlatformView extends CFRetainedResource {
     public void initialize(LWWindowPeer peer, CPlatformResponder responder) {
         initializeBase(peer, responder);
 
-        this.windowLayer = createCGLayer();
+        this.windowLayer = CGraphicsDevice.usingMetalPipeline()? createMTLLayer() : createCGLayer();
         setPtr(nativeCreateView(0, 0, 0, 0, getWindowLayerPtr()));
     }
 
     public CGLLayer createCGLayer() {
         return new CGLLayer(peer);
     }
+
+    public MTLLayer createMTLLayer() {
+        return new MTLLayer(peer);
+    }
+
 
     protected void initializeBase(LWWindowPeer peer, CPlatformResponder responder) {
         this.peer = peer;
@@ -187,7 +198,8 @@ public class CPlatformView extends CFRetainedResource {
 
     private void deliverKeyEvent(NSEvent event) {
         responder.handleKeyEvent(event.getType(), event.getModifierFlags(), event.getCharacters(),
-                                 event.getCharactersIgnoringModifiers(), event.getKeyCode(), true, false);
+                event.getCharactersIgnoringModifiers(), event.getCharactersIgnoringModifiersAndShift(),
+                event.getKeyCode(), true, false);
     }
 
     /**
@@ -196,5 +208,14 @@ public class CPlatformView extends CFRetainedResource {
      */
     private void deliverWindowDidExposeEvent() {
         peer.notifyExpose(peer.getSize());
+    }
+
+    private void deliverChangeBackingProperties(float scale) {
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("Changed backing properties, scale = " + scale);
+        }
+        if (scale > 0) {
+            windowLayer.replaceSurfaceData(Math.round(scale));
+        }
     }
 }

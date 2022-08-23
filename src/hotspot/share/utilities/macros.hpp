@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -261,22 +261,16 @@
 
 #if INCLUDE_JFR
 #define JFR_ONLY(code) code
+#define NOT_JFR_RETURN()      /* next token must be ; */
 #define NOT_JFR_RETURN_(code) /* next token must be ; */
 #else
 #define JFR_ONLY(code)
+#define NOT_JFR_RETURN()      {}
 #define NOT_JFR_RETURN_(code) { return code; }
 #endif
 
 #ifndef INCLUDE_JVMCI
 #define INCLUDE_JVMCI 1
-#endif
-
-#ifndef INCLUDE_AOT
-#define INCLUDE_AOT 1
-#endif
-
-#if INCLUDE_AOT && !INCLUDE_JVMCI
-#  error "Must have JVMCI for AOT"
 #endif
 
 #if INCLUDE_JVMCI
@@ -289,21 +283,8 @@
 #define NOT_JVMCI_RETURN {}
 #endif // INCLUDE_JVMCI
 
-#if INCLUDE_AOT
-#define AOT_ONLY(code) code
-#define NOT_AOT(code)
-#define NOT_AOT_RETURN /* next token must be ; */
-#else
-#define AOT_ONLY(code)
-#define NOT_AOT(code) code
-#define NOT_AOT_RETURN {}
-#endif // INCLUDE_AOT
-
 // COMPILER1 variant
 #ifdef COMPILER1
-#ifdef COMPILER2
-  #define TIERED
-#endif
 #define COMPILER1_PRESENT(code) code
 #define NOT_COMPILER1(code)
 #else // COMPILER1
@@ -325,19 +306,33 @@
 #define COMPILER2_OR_JVMCI 1
 #define COMPILER2_OR_JVMCI_PRESENT(code) code
 #define NOT_COMPILER2_OR_JVMCI(code)
+#define NOT_COMPILER2_OR_JVMCI_RETURN        /* next token must be ; */
+#define NOT_COMPILER2_OR_JVMCI_RETURN_(code) /* next token must be ; */
 #else
 #define COMPILER2_OR_JVMCI 0
 #define COMPILER2_OR_JVMCI_PRESENT(code)
 #define NOT_COMPILER2_OR_JVMCI(code) code
+#define NOT_COMPILER2_OR_JVMCI_RETURN {}
+#define NOT_COMPILER2_OR_JVMCI_RETURN_(code) { return code; }
 #endif
 
-#ifdef TIERED
-#define TIERED_ONLY(code) code
-#define NOT_TIERED(code)
-#else // TIERED
-#define TIERED_ONLY(code)
-#define NOT_TIERED(code) code
-#endif // TIERED
+// COMPILER1 and COMPILER2
+#if defined(COMPILER1) && defined(COMPILER2)
+#define COMPILER1_AND_COMPILER2 1
+#define COMPILER1_AND_COMPILER2_PRESENT(code) code
+#else
+#define COMPILER1_AND_COMPILER2 0
+#define COMPILER1_AND_COMPILER2_PRESENT(code)
+#endif
+
+// COMPILER1 or COMPILER2
+#if defined(COMPILER1) || defined(COMPILER2)
+#define COMPILER1_OR_COMPILER2 1
+#define COMPILER1_OR_COMPILER2_PRESENT(code) code
+#else
+#define COMPILER1_OR_COMPILER2 0
+#define COMPILER1_OR_COMPILER2_PRESENT(code)
+#endif
 
 
 // PRODUCT variant
@@ -364,14 +359,6 @@
 #define CHECK_UNHANDLED_OOPS_ONLY(code)
 #define NOT_CHECK_UNHANDLED_OOPS(code)  code
 #endif // CHECK_UNHANDLED_OOPS
-
-#ifdef CC_INTERP
-#define CC_INTERP_ONLY(code) code
-#define NOT_CC_INTERP(code)
-#else
-#define CC_INTERP_ONLY(code)
-#define NOT_CC_INTERP(code) code
-#endif // CC_INTERP
 
 #ifdef ASSERT
 #define DEBUG_ONLY(code) code
@@ -402,20 +389,20 @@
 #define NOT_LINUX(code) code
 #endif
 
+#ifdef __APPLE__
+#define MACOS_ONLY(code) code
+#define NOT_MACOS(code)
+#else
+#define MACOS_ONLY(code)
+#define NOT_MACOS(code) code
+#endif
+
 #ifdef AIX
 #define AIX_ONLY(code) code
 #define NOT_AIX(code)
 #else
 #define AIX_ONLY(code)
 #define NOT_AIX(code) code
-#endif
-
-#ifdef SOLARIS
-#define SOLARIS_ONLY(code) code
-#define NOT_SOLARIS(code)
-#else
-#define SOLARIS_ONLY(code)
-#define NOT_SOLARIS(code) code
 #endif
 
 #ifdef _WINDOWS
@@ -448,9 +435,11 @@
 #if defined(ZERO)
 #define ZERO_ONLY(code) code
 #define NOT_ZERO(code)
+#define NOT_ZERO_RETURN {}
 #else
 #define ZERO_ONLY(code)
 #define NOT_ZERO(code) code
+#define NOT_ZERO_RETURN
 #endif
 
 #if defined(IA32) || defined(AMD64)
@@ -497,14 +486,6 @@
 #else
 #define S390_ONLY(code)
 #define NOT_S390(code) code
-#endif
-
-#ifdef SPARC
-#define SPARC_ONLY(code) code
-#define NOT_SPARC(code)
-#else
-#define SPARC_ONLY(code)
-#define NOT_SPARC(code) code
 #endif
 
 #if defined(PPC32) || defined(PPC64)
@@ -570,6 +551,8 @@
 #define NOT_AARCH64(code) code
 #endif
 
+#define MACOS_AARCH64_ONLY(x) MACOS_ONLY(AARCH64_ONLY(x))
+
 #ifdef VM_LITTLE_ENDIAN
 #define LITTLE_ENDIAN_ONLY(code) code
 #define BIG_ENDIAN_ONLY(code)
@@ -591,9 +574,9 @@
 // This macro constructs from basename and INCLUDE_SUFFIX_OS /
 // INCLUDE_SUFFIX_CPU / INCLUDE_SUFFIX_COMPILER, which are set on
 // the command line, the name of platform dependent files to be included.
-// Example: INCLUDE_SUFFIX_OS=_linux / INCLUDE_SUFFIX_CPU=_sparc
-//   CPU_HEADER_INLINE(macroAssembler) --> macroAssembler_sparc.inline.hpp
-//   OS_CPU_HEADER(vmStructs)          --> vmStructs_linux_sparc.hpp
+// Example: INCLUDE_SUFFIX_OS=_linux / INCLUDE_SUFFIX_CPU=_x86
+//   CPU_HEADER_INLINE(macroAssembler) --> macroAssembler_x86.inline.hpp
+//   OS_CPU_HEADER(vmStructs)          --> vmStructs_linux_x86.hpp
 //
 // basename<cpu>.hpp / basename<cpu>.inline.hpp
 #define CPU_HEADER_H(basename)         XSTR(CPU_HEADER_STEM(basename).h)

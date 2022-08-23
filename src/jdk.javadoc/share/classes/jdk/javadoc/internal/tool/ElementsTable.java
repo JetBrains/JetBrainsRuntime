@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -164,8 +164,8 @@ public class ElementsTable {
     private final JavaFileManager fm;
     private final List<Location> locations;
     private final Modules modules;
-    private final Map<ToolOption, Object> opts;
-    private final Messager messager;
+    private final ToolOptions options;
+    private final JavadocLog log;
     private final JavaCompiler compiler;
 
     private final Map<String, Entry> entries = new LinkedHashMap<>();
@@ -173,7 +173,7 @@ public class ElementsTable {
     // specified elements
     private Set<ModuleElement> specifiedModuleElements = new LinkedHashSet<>();
     private Set<PackageElement> specifiedPackageElements = new LinkedHashSet<>();
-    private Set<TypeElement> specifiedTypeElements =new LinkedHashSet<>();
+    private Set<TypeElement> specifiedTypeElements = new LinkedHashSet<>();
 
     // included elements
     private Set<ModuleElement> includedModuleElements = null;
@@ -201,16 +201,16 @@ public class ElementsTable {
      * Creates the table to manage included and excluded elements.
      *
      * @param context the context to locate commonly used objects
-     * @param location the location used to locate source files
+     * @param options the tool options
      */
-    ElementsTable(Context context, Map<ToolOption, Object> opts) {
+    ElementsTable(Context context, ToolOptions options) {
         this.toolEnv = ToolEnvironment.instance(context);
         this.syms = Symtab.instance(context);
         this.names = Names.instance(context);
         this.fm = toolEnv.fileManager;
         this.modules = Modules.instance(context);
-        this.opts = opts;
-        this.messager = Messager.instance0(context);
+        this.options = options;
+        this.log = JavadocLog.instance0(context);
         this.compiler = JavaCompiler.instance(context);
         Source source = Source.instance(context);
 
@@ -229,9 +229,9 @@ public class ElementsTable {
 
         getEntry("").excluded = false;
 
-        accessFilter = new ModifierFilter(opts);
-        xclasses = (boolean)opts.getOrDefault(ToolOption.XCLASSES, false);
-        expandRequires = (AccessKind)opts.get(ToolOption.EXPAND_REQUIRES);
+        accessFilter = new ModifierFilter(options);
+        xclasses = options.xclasses();
+        expandRequires = options.expandRequires();
     }
 
     /**
@@ -318,9 +318,7 @@ public class ElementsTable {
      *
      * @param e the element in question
      *
-     * @see getIncludedModuleElements
-     * @see getIncludedPackageElements
-     * @see getIncludedTypeElements
+     * @see #getIncludedElements()
      *
      * @return true if included
      */
@@ -372,19 +370,19 @@ public class ElementsTable {
             return;
 
         if (moduleNames.size() > 1) {
-            String text = messager.getText("main.cannot_use_sourcepath_for_modules",
+            String text = log.getText("main.cannot_use_sourcepath_for_modules",
                     String.join(", ", moduleNames));
             throw new ToolException(CMDERR, text);
         }
 
         String foundModule = getModuleName(StandardLocation.SOURCE_PATH);
         if (foundModule == null) {
-            String text = messager.getText("main.module_not_found_on_sourcepath", moduleNames.get(0));
+            String text = log.getText("main.module_not_found_on_sourcepath", moduleNames.get(0));
             throw new ToolException(CMDERR, text);
         }
 
         if (!moduleNames.get(0).equals(foundModule)) {
-            String text = messager.getText("main.sourcepath_does_not_contain_module", moduleNames.get(0));
+            String text = log.getText("main.sourcepath_does_not_contain_module", moduleNames.get(0));
             throw new ToolException(CMDERR, text);
         }
     }
@@ -401,45 +399,40 @@ public class ElementsTable {
                 }
             }
         } catch (IOException ioe) {
-            String text = messager.getText("main.file.manager.list", location);
+            String text = log.getText("main.file.manager.list", location);
             throw new ToolException(SYSERR, text, ioe);
         }
         return null;
     }
 
-    @SuppressWarnings("unchecked")
     ElementsTable scanSpecifiedItems() throws ToolException {
 
         // scan modules specified on the command line
-        List<String> moduleNames = (List<String>) opts.computeIfAbsent(ToolOption.MODULE,
-                s -> Collections.EMPTY_LIST);
+        List<String> modules = options.modules();
         List<String> mlist = new ArrayList<>();
-        for (String m : moduleNames) {
+        for (String m : modules) {
             List<Location> moduleLocations = getModuleLocation(locations, m);
             if (moduleLocations.isEmpty()) {
-                String text = messager.getText("main.module_not_found", m);
+                String text = log.getText("main.module_not_found", m);
                 throw new ToolException(CMDERR, text);
             }
             if (moduleLocations.contains(StandardLocation.SOURCE_PATH)) {
-                sanityCheckSourcePathModules(moduleNames);
+                sanityCheckSourcePathModules(modules);
             }
             mlist.add(m);
             ModuleSymbol msym = syms.enterModule(names.fromString(m));
-            specifiedModuleElements.add((ModuleElement) msym);
+            specifiedModuleElements.add(msym);
         }
 
         // scan for modules with qualified packages
         cmdLinePackages.stream()
-                .filter((mpkg) -> (mpkg.hasModule()))
-                .forEachOrdered((mpkg) -> {
-                    mlist.add(mpkg.moduleName);
-        });
+                .filter(ModulePackage::hasModule)
+                .forEachOrdered(mpkg -> mlist.add(mpkg.moduleName));
 
         // scan for modules with qualified subpackages
-        ((List<String>)opts.computeIfAbsent(ToolOption.SUBPACKAGES, v -> Collections.EMPTY_LIST))
-            .stream()
+        options.subpackages().stream()
             .map(ModulePackage::new)
-            .forEachOrdered((mpkg) -> {
+            .forEachOrdered(mpkg -> {
                 subPackages.add(mpkg);
                 if (mpkg.hasModule()) {
                     mlist.add(mpkg.moduleName);
@@ -448,8 +441,8 @@ public class ElementsTable {
 
         // all the modules specified on the command line have been scraped
         // init the module systems
-        modules.addExtraAddModules(mlist.toArray(new String[mlist.size()]));
-        modules.initModules(this.classTreeList);
+        this.modules.addExtraAddModules(mlist.toArray(new String[mlist.size()]));
+        this.modules.initModules(this.classTreeList);
 
         return this;
     }
@@ -486,7 +479,7 @@ public class ElementsTable {
     ElementsTable packages(Collection<String> packageNames) {
         packageNames.stream()
             .map(ModulePackage::new)
-            .forEachOrdered((mpkg) -> cmdLinePackages.add(mpkg));
+            .forEachOrdered(mpkg -> cmdLinePackages.add(mpkg));
         return this;
     }
 
@@ -504,16 +497,12 @@ public class ElementsTable {
         return result;
     }
 
-    @SuppressWarnings("unchecked")
     private void computeSubpackages() throws ToolException {
-        ((List<String>) opts.computeIfAbsent(ToolOption.EXCLUDE, v -> Collections.EMPTY_LIST))
-                .stream()
+        options.excludes().stream()
                 .map(ModulePackage::new)
-                .forEachOrdered((mpkg) -> excludePackages.add(mpkg));
+                .forEachOrdered(mpkg -> excludePackages.add(mpkg));
 
-        excludePackages.forEach((p) -> {
-            getEntry(p).excluded = true;
-        });
+        excludePackages.forEach(p -> getEntry(p).excluded = true);
 
         for (ModulePackage modpkg : subPackages) {
             List<Location> locs = getLocation(modpkg);
@@ -531,7 +520,7 @@ public class ElementsTable {
         try {
             return fm.list(location, packagename, kinds, recurse);
         } catch (IOException ioe) {
-            String text = messager.getText("main.file.manager.list", packagename);
+            String text = log.getText("main.file.manager.list", packagename);
             throw new ToolException(SYSERR, text, ioe);
         }
     }
@@ -577,7 +566,10 @@ public class ElementsTable {
                 continue;
             if (!isMandated(mdle, rd) && onlyTransitive == rd.isTransitive()) {
                 if (!haveModuleSources(dep)) {
-                    messager.printWarning(dep, "main.module_not_found", dep.getSimpleName());
+                    if (!warnedNoSources.contains(dep)) {
+                        log.printWarningUsingKey(dep, "main.module_source_not_found", dep.getQualifiedName());
+                        warnedNoSources.add(dep);
+                    }
                 }
                 result.add(dep);
             } else if (isMandated(mdle, rd) && haveModuleSources(dep)) {
@@ -591,9 +583,11 @@ public class ElementsTable {
         return toolEnv.elements.getOrigin(mdle, rd) == MANDATED;
     }
 
+    Set<ModuleElement> warnedNoSources = new HashSet<>();
+
     Map<ModuleSymbol, Boolean> haveModuleSourcesCache = new HashMap<>();
     private boolean haveModuleSources(ModuleElement mdle) throws ToolException {
-        ModuleSymbol msym =  (ModuleSymbol)mdle;
+        ModuleSymbol msym =  (ModuleSymbol) mdle;
         if (msym.sourceLocation != null) {
             return true;
         }
@@ -631,7 +625,7 @@ public class ElementsTable {
 
             if (expandAll) {
                  // add non-public requires if needed
-                result.addAll(getModuleRequires(mdle, !expandAll));
+                result.addAll(getModuleRequires(mdle, false));
             }
         }
 
@@ -728,11 +722,9 @@ public class ElementsTable {
         // process types
         Set<TypeElement> iclasses = new LinkedHashSet<>();
         // add all types enclosed in expanded modules and packages
-        ipackages.forEach((pkg) -> {
-            addAllClasses(iclasses, pkg);
-        });
+        ipackages.forEach(pkg -> addAllClasses(iclasses, pkg));
         // add all types and its nested types
-        specifiedTypeElements.forEach((klass) -> {
+        specifiedTypeElements.forEach(klass -> {
             ModuleElement mdle = toolEnv.elements.getModuleOf(klass);
             if (mdle != null && !mdle.isUnnamed())
                 imodules.add(mdle);
@@ -755,7 +747,7 @@ public class ElementsTable {
         computeSubpackages();
 
         Set<PackageElement> packlist = new LinkedHashSet<>();
-        cmdLinePackages.forEach((modpkg) -> {
+        cmdLinePackages.forEach(modpkg -> {
             PackageElement pkg;
             if (modpkg.hasModule()) {
                 ModuleElement mdle = toolEnv.elements.getModuleElement(modpkg.moduleName);
@@ -767,7 +759,7 @@ public class ElementsTable {
             if (pkg != null) {
                 packlist.add(pkg);
             } else {
-                messager.printWarningUsingKey("main.package_not_found", modpkg.toString());
+                log.printWarningUsingKey("main.package_not_found", modpkg.toString());
             }
         });
         specifiedPackageElements = Collections.unmodifiableSet(packlist);
@@ -779,8 +771,8 @@ public class ElementsTable {
      */
     private void computeSpecifiedTypes() throws ToolException {
         Set<TypeElement> classes = new LinkedHashSet<>();
-          classDecList.forEach((def) -> {
-            TypeElement te = (TypeElement) def.sym;
+          classDecList.forEach(def -> {
+            TypeElement te = def.sym;
             if (te != null) {
                 addAllClasses(classes, te, true);
             }
@@ -788,7 +780,7 @@ public class ElementsTable {
         for (String className : classArgList) {
             TypeElement te = toolEnv.loadClass(className);
             if (te == null) {
-                String text = messager.getText("javadoc.class_not_found", className);
+                String text = log.getText("javadoc.class_not_found", className);
                 throw new ToolException(CMDERR, text);
             } else {
                 addAllClasses(classes, te, true);
@@ -804,7 +796,7 @@ public class ElementsTable {
             toolEnv.notice("main.Loading_source_files_for_package", modpkg.toString());
             List<JavaFileObject> files = getFiles(modpkg, recurse);
             if (files.isEmpty()) {
-                String text = messager.getText("main.no_source_files_for_package",
+                String text = log.getText("main.no_source_files_for_package",
                         modpkg.toString());
                 throw new ToolException(CMDERR, text);
             } else {
@@ -830,7 +822,7 @@ public class ElementsTable {
     /**
      * Returns the set of source files for a package.
      *
-     * @param packageName the specified package
+     * @param modpkg the specified package
      * @return the set of file objects for the specified package
      * @throws ToolException if an error occurs while accessing the files
      */
@@ -917,7 +909,7 @@ public class ElementsTable {
         try {
             return fm.getLocationForModule(location, msymName);
         } catch (IOException ioe) {
-            String text = messager.getText("main.doclet_could_not_get_location", msymName);
+            String text = log.getText("main.doclet_could_not_get_location", msymName);
             throw new ToolException(ERROR, text, ioe);
         }
     }
@@ -964,9 +956,9 @@ public class ElementsTable {
             }
         } catch (CompletionFailure e) {
             if (e.getMessage() != null)
-                messager.printWarning(e.getMessage());
+                log.printWarning(e.getMessage());
             else
-                messager.printWarningUsingKey("main.unexpected.exception", e);
+                log.printWarningUsingKey("main.unexpected.exception", e);
         }
     }
 
@@ -985,7 +977,6 @@ public class ElementsTable {
         return (xclasses || toolEnv.getFileKind(te) == SOURCE) && isSelected(te);
     }
 
-    @SuppressWarnings("preview")
     SimpleElementVisitor14<Boolean, Void> visibleElementVisitor = null;
     /**
      * Returns true if the element is selected, by applying
@@ -997,7 +988,6 @@ public class ElementsTable {
      * @param e the element to be checked
      * @return true if the element is visible
      */
-    @SuppressWarnings("preview")
     public boolean isSelected(Element e) {
         if (toolEnv.isSynthetic((Symbol) e)) {
             return false;
@@ -1037,7 +1027,6 @@ public class ElementsTable {
         return visibleElementVisitor.visit(e);
     }
 
-    @SuppressWarnings("preview")
     private class IncludedVisitor extends SimpleElementVisitor14<Boolean, Void> {
         private final Set<Element> includedCache;
 
@@ -1170,8 +1159,7 @@ public class ElementsTable {
 
         @Override
         public boolean equals(Object obj) {
-            if (obj instanceof ModulePackage) {
-                ModulePackage that = (ModulePackage)obj;
+            if (obj instanceof ModulePackage that) {
                 return this.toString().equals(that.toString());
             }
             return false;
@@ -1214,24 +1202,24 @@ public class ElementsTable {
         /**
          * Constructor - Specify a filter.
          *
-         * @param accessSet an Access filter.
+         * @param options the tool options
          */
-        ModifierFilter(Map<ToolOption, Object> opts) {
+        ModifierFilter(ToolOptions options) {
 
             AccessKind accessValue = null;
             for (ElementKind kind : ALLOWED_KINDS) {
                 switch (kind) {
                     case METHOD:
-                        accessValue  = (AccessKind)opts.get(ToolOption.SHOW_MEMBERS);
+                        accessValue  = options.showMembersAccess();
                         break;
                     case CLASS:
-                        accessValue  = (AccessKind)opts.get(ToolOption.SHOW_TYPES);
+                        accessValue  = options.showTypesAccess();
                         break;
                     case PACKAGE:
-                        accessValue  = (AccessKind)opts.get(ToolOption.SHOW_PACKAGES);
+                        accessValue  = options.showPackagesAccess();
                         break;
                     case MODULE:
-                        accessValue  = (AccessKind)opts.get(ToolOption.SHOW_MODULE_CONTENTS);
+                        accessValue  = options.showModuleContents();
                         break;
                     default:
                         throw new AssertionError("unknown element: " + kind);
@@ -1293,6 +1281,7 @@ public class ElementsTable {
                 case CONSTRUCTOR: case ENUM_CONSTANT: case EXCEPTION_PARAMETER:
                 case FIELD: case INSTANCE_INIT: case LOCAL_VARIABLE: case PARAMETER:
                 case RESOURCE_VARIABLE: case STATIC_INIT: case TYPE_PARAMETER:
+                case RECORD_COMPONENT:
                     return ElementKind.METHOD;
                 default:
                     throw new AssertionError("unsupported kind: " + kind);

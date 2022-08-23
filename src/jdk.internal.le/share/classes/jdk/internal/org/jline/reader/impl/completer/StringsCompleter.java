@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2016, the original author or authors.
+ * Copyright (c) 2002-2019, the original author or authors.
  *
  * This software is distributable under the BSD license. See the terms of the
  * BSD license in the documentation provided with this software.
@@ -11,7 +11,9 @@ package jdk.internal.org.jline.reader.impl.completer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.function.Supplier;
 
 import jdk.internal.org.jline.reader.Candidate;
 import jdk.internal.org.jline.reader.Completer;
@@ -27,9 +29,17 @@ import jdk.internal.org.jline.utils.AttributedString;
  */
 public class StringsCompleter implements Completer
 {
-    protected final Collection<Candidate> candidates = new ArrayList<>();
+    protected Collection<Candidate> candidates;
+    protected Supplier<Collection<String>> stringsSupplier;
 
     public StringsCompleter() {
+        this(Collections.<Candidate>emptyList());
+    }
+
+    public StringsCompleter(Supplier<Collection<String>> stringsSupplier) {
+        assert stringsSupplier != null;
+        candidates = null;
+        this.stringsSupplier = stringsSupplier;
     }
 
     public StringsCompleter(String... strings) {
@@ -38,20 +48,37 @@ public class StringsCompleter implements Completer
 
     public StringsCompleter(Iterable<String> strings) {
         assert strings != null;
+        this.candidates = new ArrayList<>();
         for (String string : strings) {
             candidates.add(new Candidate(AttributedString.stripAnsi(string), string, null, null, null, null, true));
         }
     }
 
     public StringsCompleter(Candidate ... candidates) {
-        assert candidates != null;
-        this.candidates.addAll(Arrays.asList(candidates));
+        this(Arrays.asList(candidates));
     }
 
+    public StringsCompleter(Collection<Candidate> candidates) {
+        assert candidates != null;
+        this.candidates = new ArrayList<>(candidates);
+    }
+
+    @Override
     public void complete(LineReader reader, final ParsedLine commandLine, final List<Candidate> candidates) {
         assert commandLine != null;
         assert candidates != null;
-        candidates.addAll(this.candidates);
+        if (this.candidates != null) {
+            candidates.addAll(this.candidates);
+        } else {
+            for (String string : stringsSupplier.get()) {
+                candidates.add(new Candidate(AttributedString.stripAnsi(string), string, null, null, null, null, true));
+            }
+        }
     }
 
+    @Override
+    public String toString() {
+        String value = candidates != null ? candidates.toString() : "{" + stringsSupplier.toString() + "}";
+        return "StringsCompleter" + value;
+    }
 }

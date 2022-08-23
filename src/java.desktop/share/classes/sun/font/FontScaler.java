@@ -168,6 +168,10 @@ public abstract class FontScaler implements DisposerRecord {
                                                int numGlyphs, float x, float y)
                 throws FontScalerException;
 
+    abstract GlyphRenderData getGlyphRenderData(long pScalerContext, int glyphCode,
+                                                float x, float y)
+                throws FontScalerException;
+
     /* Used by Java2D disposer to ensure native resources are released.
        Note: this method does not release any of created
              scaler context objects! */
@@ -205,8 +209,7 @@ public abstract class FontScaler implements DisposerRecord {
      */
     abstract long createScalerContext(double[] matrix,
                                       int aa, int fm,
-                                      float boldness, float italic,
-                                      boolean disableHinting);
+                                      float boldness, float italic);
 
     /* Marks context as invalid because native scaler is invalid.
        Notes:

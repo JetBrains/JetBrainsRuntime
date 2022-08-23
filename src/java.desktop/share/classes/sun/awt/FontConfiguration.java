@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -83,8 +83,7 @@ public abstract class FontConfiguration {
      */
     public FontConfiguration(SunFontManager fm) {
         if (FontUtilities.debugFonts()) {
-            FontUtilities.getLogger()
-                .info("Creating standard Font Configuration");
+            FontUtilities.logInfo("Creating standard Font Configuration");
         }
         if (FontUtilities.debugFonts() && logger == null) {
             logger = PlatformLogger.getLogger("sun.awt.FontConfiguration");
@@ -116,8 +115,7 @@ public abstract class FontConfiguration {
                              boolean preferPropFonts) {
         fontManager = fm;
         if (FontUtilities.debugFonts()) {
-            FontUtilities.getLogger()
-                .info("Creating alternate Font Configuration");
+            FontUtilities.logInfo("Creating alternate Font Configuration");
         }
         this.preferLocaleFonts = preferLocaleFonts;
         this.preferPropFonts = preferPropFonts;
@@ -159,6 +157,7 @@ public abstract class FontConfiguration {
         short fontNameID = compFontNameIDs[0][0][0];
         short fileNameID = getComponentFileID(fontNameID);
         final String fileName = mapFileName(getComponentFileName(fileNameID));
+        @SuppressWarnings("removal")
         Boolean exists = java.security.AccessController.doPrivileged(
             new java.security.PrivilegedAction<Boolean>() {
                  public Boolean run() {
@@ -964,9 +963,12 @@ public abstract class FontConfiguration {
             return fc.newEncoder();
         }
 
-        if (!charsetName.startsWith("sun.awt.") && !charsetName.equals("default")) {
+        if (!charsetName.startsWith("sun.awt.") &&
+            !charsetName.equals("default") &&
+            !charsetName.startsWith("sun.font.")) {
             fc = Charset.forName(charsetName);
         } else {
+            @SuppressWarnings("removal")
             Class<?> fcc = AccessController.doPrivileged(new PrivilegedAction<Class<?>>() {
                     public Class<?> run() {
                         try {
@@ -1375,6 +1377,7 @@ public abstract class FontConfiguration {
 
         //This method will only be called during build time, do we
         //need do PrivilegedAction?
+        @SuppressWarnings("removal")
         String osName = java.security.AccessController.doPrivileged(
                             new java.security.PrivilegedAction<String>() {
             public String run() {
@@ -1425,22 +1428,6 @@ public abstract class FontConfiguration {
                             errors++;
                         }
                     }
-                }
-            }
-        }
-        if ("SunOS".equals(osName)) {
-            for (int ii = 0; ii < table_awtfontpaths.length; ii++) {
-                if (table_awtfontpaths[ii] == 0) {
-                    String script = getString(table_scriptIDs[ii]);
-                    if (script.contains("dingbats") ||
-                        script.contains("symbol")) {
-                        continue;
-                    }
-                    System.err.println("\nError: "
-                                       + "<awtfontpath."
-                                       + script
-                                       + "> entry is missing!!!");
-                    errors++;
                 }
             }
         }

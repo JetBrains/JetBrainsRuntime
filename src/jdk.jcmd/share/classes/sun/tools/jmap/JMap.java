@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -169,6 +169,7 @@ public class JMap {
                UnsupportedEncodingException {
         String liveopt = "-all";
         String filename = null;
+        String parallel = null;
         String subopts[] = options.split(",");
 
         for (int i = 0; i < subopts.length; i++) {
@@ -180,9 +181,17 @@ public class JMap {
             } else if (subopt.startsWith("file=")) {
                 filename = parseFileName(subopt);
                 if (filename == null) {
-                    usage(1); // invalid options or no filename
+                    System.err.println("Fail: invalid option or no file name '" + subopt + "'");
+                    usage(1);
                 }
+            } else if (subopt.startsWith("parallel=")) {
+               parallel = subopt.substring("parallel=".length());
+               if (parallel == null) {
+                    System.err.println("Fail: no number provided in option: '" + subopt + "'");
+                    usage(1);
+               }
             } else {
+                System.err.println("Fail: invalid option: '" + subopt + "'");
                 usage(1);
             }
         }
@@ -190,7 +199,7 @@ public class JMap {
         System.out.flush();
 
         // inspectHeap is not the same as jcmd GC.class_histogram
-        executeCommandForPid(pid, "inspectheap", liveopt, filename);
+        executeCommandForPid(pid, "inspectheap", liveopt, filename, parallel);
     }
 
     private static void dump(String pid, String options)
@@ -200,22 +209,43 @@ public class JMap {
         String subopts[] = options.split(",");
         String filename = null;
         String liveopt = "-all";
+        String compress_level = null;
 
         for (int i = 0; i < subopts.length; i++) {
             String subopt = subopts[i];
-            if (subopt.equals("live")) {
+            if (subopt.equals("") || subopt.equals("all")) {
+                // pass
+            } else if (subopt.equals("live")) {
                 liveopt = "-live";
             } else if (subopt.startsWith("file=")) {
                 filename = parseFileName(subopt);
+                if (filename == null) {
+                    System.err.println("Fail: invalid option or no file name '" + subopt + "'");
+                    usage(1);
+                }
+            } else if (subopt.equals("format=b")) {
+                // ignore format (not needed at this time)
+            } else if (subopt.startsWith("gz=")) {
+                compress_level = subopt.substring("gz=".length());
+                if (compress_level.length() == 0) {
+                    System.err.println("Fail: no number provided in option: '" + subopt + "'");
+                    usage(1);
+                }
+            } else {
+                System.err.println("Fail: invalid option: '" + subopt + "'");
+                usage(1);
             }
         }
 
         if (filename == null) {
-            usage(1);  // invalid options or no filename
+            System.err.println("Fail: invalid option or no file name");
+            usage(1);
         }
 
+        System.out.flush();
+
         // dumpHeap is not the same as jcmd GC.heap_dump
-        executeCommandForPid(pid, "dumpheap", filename, liveopt);
+        executeCommandForPid(pid, "dumpheap", filename, liveopt, compress_level);
     }
 
     private static void checkForUnsupportedOptions(String[] args) {
@@ -276,17 +306,23 @@ public class JMap {
         System.err.println("        to print this help message");
         System.err.println("");
         System.err.println("    dump-options:");
-        System.err.println("      live         dump only live objects");
-        System.err.println("      all          dump all objects in the heap (default if one of \"live\" or \"all\" is not specified");
+        System.err.println("      live         dump only live objects (takes precedence if both \"live\" and \"all\" are specified)");
+        System.err.println("      all          dump all objects in the heap (default if one of \"live\" or \"all\" is not specified)");
         System.err.println("      format=b     binary format");
         System.err.println("      file=<file>  dump heap to <file>");
+        System.err.println("      gz=<number>  If specified, the heap dump is written in gzipped format using the given compression level.");
+        System.err.println("                   1 (recommended) is the fastest, 9 the strongest compression.");
         System.err.println("");
         System.err.println("    Example: jmap -dump:live,format=b,file=heap.bin <pid>");
         System.err.println("");
         System.err.println("    histo-options:");
-        System.err.println("      live         count only live objects");
-        System.err.println("      all          count all objects in the heap (default if one of \"live\" or \"all\" is not specified)");
-        System.err.println("      file=<file>  dump data to <file>");
+        System.err.println("      live                count only live objects (takes precedence if both \"live\" and \"all\" are specified)");
+        System.err.println("      all                 count all objects in the heap (default if one of \"live\" or \"all\" is not specified)");
+        System.err.println("      file=<file>         dump data to <file>");
+        System.err.println("      parallel=<number>   Number of parallel threads to use for heap inspection:");
+        System.err.println("                          0 (the default) means let the VM determine the number of threads to use");
+        System.err.println("                          1 means use one thread (disable parallelism).");
+        System.err.println("                          For any other value the VM will try to use the specified number of threads, but might use fewer.");
         System.err.println("");
         System.err.println("    Example: jmap -histo:live,file=/tmp/histo.data <pid>");
         System.exit(exit);

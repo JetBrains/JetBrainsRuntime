@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,6 +74,22 @@ public abstract class JavaKeyStore extends KeyStoreSpi {
     public static final class DualFormatJKS extends KeyStoreDelegator {
         public DualFormatJKS() {
             super("JKS", JKS.class, "PKCS12", PKCS12KeyStore.class);
+        }
+
+        /**
+         * Probe the first few bytes of the keystore data stream for a valid
+         * JKS keystore encoding.
+         */
+        @Override
+        public boolean engineProbe(InputStream stream) throws IOException {
+            DataInputStream dataStream;
+            if (stream instanceof DataInputStream) {
+                dataStream = (DataInputStream)stream;
+            } else {
+                dataStream = new DataInputStream(stream);
+            }
+
+            return MAGIC == dataStream.readInt();
         }
     }
 
@@ -264,6 +280,9 @@ public abstract class JavaKeyStore extends KeyStoreSpi {
 
         if (!(key instanceof java.security.PrivateKey)) {
             throw new KeyStoreException("Cannot store non-PrivateKeys");
+        }
+        if (password == null) {
+            throw new KeyStoreException("password can't be null");
         }
         try {
             synchronized(entries) {
@@ -535,7 +554,7 @@ public abstract class JavaKeyStore extends KeyStoreSpi {
              *     }
              *
              * ended by a keyed SHA1 hash (bytes only) of
-             *     { password + whitener + preceding body }
+             *     { password + extra data + preceding body }
              */
 
             // password is mandatory when storing
@@ -801,7 +820,7 @@ public abstract class JavaKeyStore extends KeyStoreSpi {
 
     /**
      * To guard against tampering with the keystore, we append a keyed
-     * hash with a bit of whitener.
+     * hash with a bit of extra data.
      */
     private MessageDigest getPreKeyedHash(char[] password)
         throws NoSuchAlgorithmException
@@ -827,21 +846,5 @@ public abstract class JavaKeyStore extends KeyStoreSpi {
             passwdBytes[j++] = (byte)password[i];
         }
         return passwdBytes;
-    }
-
-    /**
-     * Probe the first few bytes of the keystore data stream for a valid
-     * JKS keystore encoding.
-     */
-    @Override
-    public boolean engineProbe(InputStream stream) throws IOException {
-        DataInputStream dataStream;
-        if (stream instanceof DataInputStream) {
-            dataStream = (DataInputStream)stream;
-        } else {
-            dataStream = new DataInputStream(stream);
-        }
-
-        return MAGIC == dataStream.readInt();
     }
 }

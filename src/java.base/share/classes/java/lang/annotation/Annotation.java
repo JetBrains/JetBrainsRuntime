@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,16 +26,16 @@
 package java.lang.annotation;
 
 /**
- * The common interface extended by all annotation types.  Note that an
+ * The common interface extended by all annotation interfaces.  Note that an
  * interface that manually extends this one does <i>not</i> define
- * an annotation type.  Also note that this interface does not itself
- * define an annotation type.
+ * an annotation interface.  Also note that this interface does not itself
+ * define an annotation interface.
  *
- * More information about annotation types can be found in section 9.6 of
- * <cite>The Java&trade; Language Specification</cite>.
+ * More information about annotation interfaces can be found in section
+ * {@jls 9.6} of <cite>The Java Language Specification</cite>.
  *
  * The {@link java.lang.reflect.AnnotatedElement} interface discusses
- * compatibility concerns when evolving an annotation type from being
+ * compatibility concerns when evolving an annotation interface from being
  * non-repeatable to being repeatable.
  *
  * @author  Josh Bloch
@@ -46,7 +46,7 @@ public interface Annotation {
      * Returns true if the specified object represents an annotation
      * that is logically equivalent to this one.  In other words,
      * returns true if the specified object is an instance of the same
-     * annotation type as this instance, all of whose members are equal
+     * annotation interface as this instance, all of whose members are equal
      * to the corresponding member of this annotation, as defined below:
      * <ul>
      *    <li>Two corresponding primitive typed members whose values are
@@ -72,7 +72,7 @@ public interface Annotation {
      *
      *    <li>Two corresponding array typed members {@code x} and {@code y}
      *    are considered equal if {@code Arrays.equals(x, y)}, for the
-     *    appropriate overloading of {@link java.util.Arrays#equals}.
+     *    appropriate overloading of {@link java.util.Arrays#equals Arrays.equals}.
      * </ul>
      *
      * @return true if the specified object represents an annotation
@@ -81,17 +81,15 @@ public interface Annotation {
     boolean equals(Object obj);
 
     /**
-     * Returns the hash code of this annotation, as defined below:
+     * Returns the hash code of this annotation.
      *
      * <p>The hash code of an annotation is the sum of the hash codes
-     * of its members (including those with default values), as defined
-     * below:
+     * of its members (including those with default values).
      *
      * The hash code of an annotation member is (127 times the hash code
      * of the member-name as computed by {@link String#hashCode()}) XOR
-     * the hash code of the member-value, as defined below:
-     *
-     * <p>The hash code of a member-value depends on its type:
+     * the hash code of the member-value.
+     * The hash code of a member-value depends on its type as defined below:
      * <ul>
      * <li>The hash code of a primitive value <i>{@code v}</i> is equal to
      *     <code><i>WrapperType</i>.valueOf(<i>v</i>).hashCode()</code>, where
@@ -101,7 +99,7 @@ public interface Annotation {
      *     {@link Long}, {@link Short}, or {@link Boolean}).
      *
      * <li>The hash code of a string, enum, class, or annotation member-value
-     I     <i>{@code v}</i> is computed as by calling
+     *     <i>{@code v}</i> is computed as by calling
      *     <code><i>v</i>.hashCode()</code>.  (In the case of annotation
      *     member values, this is a recursive definition.)
      *
@@ -121,7 +119,7 @@ public interface Annotation {
      * of the representation are implementation-dependent, but the following
      * may be regarded as typical:
      * <pre>
-     *   &#064;com.acme.util.Name(first=Alfred, middle=E., last=Neuman)
+     *   &#064;com.example.Name(first="Duke", middle="of", last="Java")
      * </pre>
      *
      * @return a string representation of this annotation
@@ -129,8 +127,16 @@ public interface Annotation {
     String toString();
 
     /**
-     * Returns the annotation type of this annotation.
-     * @return the annotation type of this annotation
+     * Returns the annotation interface of this annotation.
+     *
+     * @apiNote Implementation-dependent classes are used to provide
+     * the implementations of annotations. Therefore, calling {@link
+     * Object#getClass getClass} on an annotation will return an
+     * implementation-dependent class. In contrast, this method will
+     * reliably return the annotation interface of the annotation.
+     *
+     * @return the annotation interface of this annotation
+     * @see Enum#getDeclaringClass
      */
     Class<? extends Annotation> annotationType();
 }

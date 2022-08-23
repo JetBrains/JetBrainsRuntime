@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,6 @@
  */
 
 #include "precompiled.hpp"
-#include "classfile/systemDictionary.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "gc/shared/collectedHeap.hpp"
 #include "logging/logConfiguration.hpp"
@@ -44,13 +43,13 @@
 #include "utilities/macros.hpp"
 
 GrowableArray<MemoryPool*>* MemoryService::_pools_list =
-  new (ResourceObj::C_HEAP, mtInternal) GrowableArray<MemoryPool*>(init_pools_list_size, true);
+  new (ResourceObj::C_HEAP, mtServiceability) GrowableArray<MemoryPool*>(init_pools_list_size, mtServiceability);
 GrowableArray<MemoryManager*>* MemoryService::_managers_list =
-  new (ResourceObj::C_HEAP, mtInternal) GrowableArray<MemoryManager*>(init_managers_list_size, true);
+  new (ResourceObj::C_HEAP, mtServiceability) GrowableArray<MemoryManager*>(init_managers_list_size, mtServiceability);
 
 MemoryManager*   MemoryService::_code_cache_manager    = NULL;
 GrowableArray<MemoryPool*>* MemoryService::_code_heap_pools =
-    new (ResourceObj::C_HEAP, mtInternal) GrowableArray<MemoryPool*>(init_code_heap_pools_size, true);
+    new (ResourceObj::C_HEAP, mtServiceability) GrowableArray<MemoryPool*>(init_code_heap_pools_size, mtServiceability);
 MemoryPool*      MemoryService::_metaspace_pool        = NULL;
 MemoryPool*      MemoryService::_compressed_class_pool = NULL;
 
@@ -187,19 +186,6 @@ void MemoryService::gc_end(GCMemoryManager* manager, bool recordPostGCUsage,
   // register the GC end statistics and memory usage
   manager->gc_end(recordPostGCUsage, recordAccumulatedGCTime, recordGCEndTime,
                   countCollection, cause, allMemoryPoolsAffected);
-}
-
-void MemoryService::oops_do(OopClosure* f) {
-  int i;
-
-  for (i = 0; i < _pools_list->length(); i++) {
-    MemoryPool* pool = _pools_list->at(i);
-    pool->oops_do(f);
-  }
-  for (i = 0; i < _managers_list->length(); i++) {
-    MemoryManager* mgr = _managers_list->at(i);
-    mgr->oops_do(f);
-  }
 }
 
 bool MemoryService::set_verbose(bool verbose) {

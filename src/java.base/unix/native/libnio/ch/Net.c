@@ -170,7 +170,7 @@ Java_sun_nio_ch_Net_shouldSetBothIPv4AndIPv6Options0(JNIEnv* env, jclass cl)
 JNIEXPORT jboolean JNICALL
 Java_sun_nio_ch_Net_canIPv6SocketJoinIPv4Group0(JNIEnv* env, jclass cl)
 {
-#if defined(__linux__) || defined(__APPLE__) || defined(__solaris__)
+#if defined(__linux__) || defined(__APPLE__)
     /* IPv6 sockets can join IPv4 multicast groups */
     return JNI_TRUE;
 #else
@@ -182,7 +182,7 @@ Java_sun_nio_ch_Net_canIPv6SocketJoinIPv4Group0(JNIEnv* env, jclass cl)
 JNIEXPORT jboolean JNICALL
 Java_sun_nio_ch_Net_canJoin6WithIPv4Group0(JNIEnv* env, jclass cl)
 {
-#if defined(__APPLE__) || defined(__solaris__)
+#if defined(__APPLE__)
     /* IPV6_ADD_MEMBERSHIP can be used to join IPv4 multicast groups */
     return JNI_TRUE;
 #else
@@ -265,6 +265,24 @@ Java_sun_nio_ch_Net_socket0(JNIEnv *env, jclass cl, jboolean preferIPv6,
         }
     }
 #endif
+
+#ifdef __APPLE__
+    /**
+     * Attempt to set SO_SNDBUF to a minimum size to allow sending large datagrams
+     * (net.inet.udp.maxdgram defaults to 9216).
+     */
+    if (type == SOCK_DGRAM) {
+        int size;
+        socklen_t arglen = sizeof(size);
+        if (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &size, &arglen) == 0) {
+            int minSize = (domain == AF_INET6) ? 65527  : 65507;
+            if (size < minSize) {
+                setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &minSize, sizeof(minSize));
+            }
+        }
+    }
+#endif
+
     return fd;
 }
 

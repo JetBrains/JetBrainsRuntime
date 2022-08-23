@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,9 @@
 #define SHARE_INTERPRETER_INTERPRETER_HPP
 
 #include "code/stubs.hpp"
-#include "interpreter/cppInterpreter.hpp"
+#include "interpreter/interp_masm.hpp"
 #include "interpreter/templateInterpreter.hpp"
+#include "interpreter/zero/zeroInterpreter.hpp"
 #include "memory/resourceArea.hpp"
 #include "utilities/align.hpp"
 
@@ -48,14 +49,14 @@ class InterpreterCodelet: public Stub {
   int         _size;                             // the size in bytes
   const char* _description;                      // a description of the codelet, for debugging & printing
   Bytecodes::Code _bytecode;                     // associated bytecode if any
-  DEBUG_ONLY(CodeStrings _strings;)              // Comments for annotating assembler output.
+  NOT_PRODUCT(CodeStrings _strings;)              // Comments for annotating assembler output.
 
  public:
   // Initialization/finalization
   void    initialize(int size,
                      CodeStrings& strings)       { _size = size;
-                                                   DEBUG_ONLY(::new(&_strings) CodeStrings();)
-                                                   DEBUG_ONLY(_strings.assign(strings);) }
+                                                   NOT_PRODUCT(_strings = CodeStrings();)
+                                                   NOT_PRODUCT(_strings.copy(strings);) }
   void    finalize()                             { ShouldNotCallThis(); }
 
   // General info/converters
@@ -115,8 +116,8 @@ class CodeletMark: ResourceMark {
 };
 
 // Wrapper typedef to use the name Interpreter to mean either
-// the c++ interpreter or the template interpreter.
+// the Zero interpreter or the template interpreter.
 
-typedef CC_INTERP_ONLY(CppInterpreter) NOT_CC_INTERP(TemplateInterpreter) Interpreter;
+typedef ZERO_ONLY(ZeroInterpreter) NOT_ZERO(TemplateInterpreter) Interpreter;
 
 #endif // SHARE_INTERPRETER_INTERPRETER_HPP

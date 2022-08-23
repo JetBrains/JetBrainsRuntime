@@ -22,16 +22,19 @@
  *
  */
 
-/* @test TestJNICritical
+/* @test
  * @summary test JNI critical arrays support in Shenandoah
- * @key gc
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @key randomness
+ * @requires vm.gc.Shenandoah
+ * @library /test/lib
  *
  * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:+ShenandoahVerify                 TestJNICritical
  * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive TestJNICritical
  */
 
 import java.util.Arrays;
+import java.util.Random;
+import jdk.test.lib.Utils;
 
 public class TestJNICritical {
     static {
@@ -65,8 +68,9 @@ public class TestJNICritical {
     }
 
     private static void fillArray(int[] array) {
+        Random r = Utils.getRandomInstance();
         for (int i = 0; i < ARRAY_SIZE; i++) {
-            int val = (int) (Math.random() * Integer.MAX_VALUE);
+            int val = (int) (r.nextDouble() * Integer.MAX_VALUE);
             array[i] = val;
         }
     }

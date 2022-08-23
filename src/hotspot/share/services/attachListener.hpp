@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,9 +26,10 @@
 #define SHARE_SERVICES_ATTACHLISTENER_HPP
 
 #include "memory/allocation.hpp"
-#include "metaprogramming/isRegisteredEnum.hpp"
 #include "runtime/atomic.hpp"
+#include "runtime/globals.hpp"
 #include "utilities/debug.hpp"
+#include "utilities/exceptions.hpp"
 #include "utilities/globalDefinitions.hpp"
 #include "utilities/macros.hpp"
 #include "utilities/ostream.hpp"
@@ -56,8 +57,6 @@ enum AttachListenerState {
   AL_INITIALIZING,
   AL_INITIALIZED
 };
-
-template<> struct IsRegisteredEnum<AttachListenerState> : public TrueType {};
 
 class AttachListener: AllStatic {
  public:

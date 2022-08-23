@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -95,6 +95,13 @@ JNU_ThrowIOExceptionWithLastError(JNIEnv *env, const char *defaultDetail);
 /* Convert between Java strings and i18n C strings */
 JNIEXPORT const char *
 GetStringPlatformChars(JNIEnv *env, jstring jstr, jboolean *isCopy);
+
+/* Convert the Java string to UTF-8 (not "modified UTF-8") */
+JNIEXPORT const char *
+GetStringUTF8Chars(JNIEnv *env, jstring jstr);
+
+JNIEXPORT void
+ReleaseStringUTF8Chars(JNIEnv* env, jstring jstr, const char *str);
 
 JNIEXPORT jstring JNICALL
 JNU_NewStringPlatform(JNIEnv *env, const char *str);

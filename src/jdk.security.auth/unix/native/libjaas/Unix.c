@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,10 +32,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* For POSIX-compliant getpwuid_r on Solaris */
-#if defined(__solaris__)
-#define _POSIX_PTHREAD_SEMANTICS
-#endif
 #include <pwd.h>
 
 /*
@@ -49,7 +45,7 @@ Java_com_sun_security_auth_module_UnixSystem_getUnixInfo
 
     int i;
     char pwd_buf[1024];
-    struct passwd *pwd;
+    struct passwd *pwd = NULL;
     struct passwd resbuf;
     jfieldID userNameID;
     jfieldID userID;

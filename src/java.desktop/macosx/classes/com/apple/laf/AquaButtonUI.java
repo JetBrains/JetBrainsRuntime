@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -185,17 +185,13 @@ public class AquaButtonUI extends BasicButtonUI implements Sizeable {
     }
 
     protected void installListeners(final AbstractButton b) {
-        final AquaButtonListener listener = createButtonListener(b);
+        super.installListeners(b);
+        AquaButtonListener listener = getAquaButtonListener(b);
         if (listener != null) {
             // put the listener in the button's client properties so that
             // we can get at it later
             b.putClientProperty(this, listener);
 
-            b.addMouseListener(listener);
-            b.addMouseMotionListener(listener);
-            b.addFocusListener(listener);
-            b.addPropertyChangeListener(listener);
-            b.addChangeListener(listener);
             b.addAncestorListener(listener);
         }
         installHierListener(b);
@@ -221,19 +217,14 @@ public class AquaButtonUI extends BasicButtonUI implements Sizeable {
     }
 
     protected void uninstallListeners(final AbstractButton b) {
+        super.uninstallListeners(b);
         final AquaButtonListener listener = (AquaButtonListener)b.getClientProperty(this);
         b.putClientProperty(this, null);
         if (listener != null) {
-            b.removeMouseListener(listener);
-            b.removeMouseListener(listener);
-            b.removeMouseMotionListener(listener);
-            b.removeFocusListener(listener);
-            b.removeChangeListener(listener);
-            b.removePropertyChangeListener(listener);
             b.removeAncestorListener(listener);
         }
         uninstallHierListener(b);
-        AquaUtilControlSize.addSizePropertyListener(b);
+        AquaUtilControlSize.removeSizePropertyListener(b);
     }
 
     protected void uninstallDefaults(final AbstractButton b) {
@@ -244,6 +235,23 @@ public class AquaButtonUI extends BasicButtonUI implements Sizeable {
     // Create Listeners
     protected AquaButtonListener createButtonListener(final AbstractButton b) {
         return new AquaButtonListener(b);
+    }
+
+    /**
+     * Returns the AquaButtonListener for the passed in Button, or null if one
+     * could not be found.
+     */
+    private AquaButtonListener getAquaButtonListener(AbstractButton b) {
+        MouseMotionListener[] listeners = b.getMouseMotionListeners();
+
+        if (listeners != null) {
+            for (MouseMotionListener listener : listeners) {
+                if (listener instanceof AquaButtonListener) {
+                    return (AquaButtonListener) listener;
+                }
+            }
+        }
+        return null;
     }
 
     // Paint Methods
@@ -316,6 +324,35 @@ public class AquaButtonUI extends BasicButtonUI implements Sizeable {
                 paintText(g, b, textRect, text);
             }
         }
+    }
+
+    protected void paintFocus(Graphics g, AbstractButton b,
+                              Rectangle viewRect, Rectangle textRect, Rectangle iconRect) {
+        Graphics2D g2d = null;
+        Stroke oldStroke = null;
+        Object oldAntialiasingHint = null;
+        Color oldColor = g.getColor();
+        if (g instanceof Graphics2D) {
+            g2d = (Graphics2D)g;
+            oldStroke = g2d.getStroke();
+            oldAntialiasingHint = g2d.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
+            g2d.setStroke(new BasicStroke(3));
+            g2d.setRenderingHint(
+                    RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON);
+
+        }
+        Color ringColor = UIManager.getColor("Focus.color");
+        g.setColor(ringColor);
+        g.drawRoundRect(5, 3, b.getWidth() - 10, b.getHeight() - 7, 15, 15);
+        if (g2d != null) {
+            // Restore old state of Java2D renderer
+            g2d.setStroke(oldStroke);
+            g2d.setRenderingHint(
+                    RenderingHints.KEY_ANTIALIASING,
+                    oldAntialiasingHint);
+        }
+        g.setColor(oldColor);
     }
 
     protected String layoutAndGetText(final Graphics g, final AbstractButton b, final AquaButtonBorder aquaBorder, final Insets i, Rectangle viewRect, Rectangle iconRect, Rectangle textRect) {
@@ -522,6 +559,7 @@ public class AquaButtonUI extends BasicButtonUI implements Sizeable {
             // If focusLost arrives while the button has been left-clicked this would disarm the button,
             // causing actionPerformed not to fire on mouse release!
             //b.getModel().setArmed(false);
+            b.getModel().setPressed(false);
             ((Component)e.getSource()).repaint();
         }
 

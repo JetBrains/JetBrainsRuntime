@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1995, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1995, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 
 package java.awt;
 
+import java.awt.geom.AffineTransform;
 import java.applet.Applet;
 import java.awt.dnd.DropTarget;
 import java.awt.event.ActionEvent;
@@ -67,6 +68,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.io.Serial;
 import java.io.Serializable;
 import java.security.AccessControlContext;
 import java.security.AccessController;
@@ -92,6 +94,10 @@ import javax.swing.JRootPane;
 import sun.awt.AWTAccessor;
 import sun.awt.AppContext;
 import sun.awt.ComponentFactory;
+import sun.security.action.GetBooleanAction;
+import sun.security.action.GetPropertyAction;
+import sun.awt.AppContext;
+import sun.awt.AWTAccessor;
 import sun.awt.ConstrainableGraphics;
 import sun.awt.EmbeddedFrame;
 import sun.awt.RequestFocusController;
@@ -207,7 +213,7 @@ import static sun.java2d.pipe.hw.ExtendedBufferCapabilities.VSyncType.VSYNC_ON;
  * <a href="https://docs.oracle.com/javase/tutorial/uiswing/misc/focus.html">
  * How to Use the Focus Subsystem</a>,
  * a section in <em>The Java Tutorial</em>, and the
- * <a href="../../java/awt/doc-files/FocusSpec.html">Focus Specification</a>
+ * <a href="doc-files/FocusSpec.html">Focus Specification</a>
  * for more information.
  *
  * @author      Arthur van Hoff
@@ -221,6 +227,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
     private static final PlatformLogger eventLog = PlatformLogger.getLogger("java.awt.event.Component");
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("java.awt.focus.Component");
     private static final PlatformLogger mixingLog = PlatformLogger.getLogger("java.awt.mixing.Component");
+    private static final PlatformLogger focusRequestLog = PlatformLogger.getLogger("jb.focus.requests");
 
     /**
      * The peer of the component. The peer implements the component's
@@ -504,6 +511,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
     /*
      * The component's AccessControlContext.
      */
+    @SuppressWarnings("removal")
     private transient volatile AccessControlContext acc =
         AccessController.getContext();
 
@@ -611,6 +619,8 @@ public abstract class Component implements ImageObserver, MenuContainer,
      */
     long eventMask = AWTEvent.INPUT_METHODS_ENABLED_MASK;
 
+    private static boolean INPUT_METHODS_DISABLED;
+
     /**
      * Static properties for incremental drawing.
      * @see #imageUpdate
@@ -625,13 +635,19 @@ public abstract class Component implements ImageObserver, MenuContainer,
             initIDs();
         }
 
+        @SuppressWarnings("removal")
         String s = java.security.AccessController.doPrivileged(
                                                                new GetPropertyAction("awt.image.incrementaldraw"));
         isInc = (s == null || s.equals("true"));
 
-        s = java.security.AccessController.doPrivileged(
+        @SuppressWarnings("removal")
+        String s2 = java.security.AccessController.doPrivileged(
                                                         new GetPropertyAction("awt.image.redrawrate"));
-        incRate = (s != null) ? Integer.parseInt(s) : 100;
+        incRate = (s2 != null) ? Integer.parseInt(s2) : 100;
+
+        @SuppressWarnings("removal")
+        boolean imeDisabled = java.security.AccessController.doPrivileged(new GetBooleanAction("awt.ime.disabled"));
+        INPUT_METHODS_DISABLED = imeDisabled;
     }
 
     /**
@@ -671,9 +687,10 @@ public abstract class Component implements ImageObserver, MenuContainer,
      */
     public static final float RIGHT_ALIGNMENT = 1.0f;
 
-    /*
-     * JDK 1.1 serialVersionUID
+    /**
+     * Use serialVersionUID from JDK 1.1 for interoperability.
      */
+    @Serial
     private static final long serialVersionUID = -7644114512714619750L;
 
     /**
@@ -709,6 +726,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
     /*
      * Returns the acc this component was constructed with.
      */
+    @SuppressWarnings("removal")
     final AccessControlContext getAccessControlContext() {
         if (acc == null) {
             throw new SecurityException("Component is missing AccessControlContext");
@@ -716,6 +734,9 @@ public abstract class Component implements ImageObserver, MenuContainer,
         return acc;
     }
 
+    /**
+     * Whether the component is packed or not;
+     */
     boolean isPacked = false;
 
     /**
@@ -968,6 +989,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
                 comp.processEvent(e);
             }
 
+            @SuppressWarnings("removal")
             public AccessControlContext getAccessControlContext(Component comp) {
                 return comp.getAccessControlContext();
             }
@@ -1184,7 +1206,15 @@ public abstract class Component implements ImageObserver, MenuContainer,
         if (graphicsConfig == gc) {
             return false;
         }
+
+        AffineTransform tx = graphicsConfig != null ? graphicsConfig.getDefaultTransform() : new AffineTransform();
+        AffineTransform newTx = gc != null ? gc.getDefaultTransform() : new AffineTransform();
         graphicsConfig = gc;
+        if (tx.getScaleX() != newTx.getScaleX() ||
+            tx.getScaleY() != newTx.getScaleY())
+        {
+            firePropertyChange("graphicsContextScaleTransform", tx, newTx);
+        }
 
         ComponentPeer peer = this.peer;
         if (peer != null) {
@@ -1421,6 +1451,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
             throw new HeadlessException();
         }
 
+        @SuppressWarnings("removal")
         PointerInfo pi = java.security.AccessController.doPrivileged(
                                                                      new java.security.PrivilegedAction<PointerInfo>() {
                                                                          public PointerInfo run() {
@@ -1618,6 +1649,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * @since 1.2
      */
     public void enableInputMethods(boolean enable) {
+        if (INPUT_METHODS_DISABLED) return;
         if (enable) {
             if ((eventMask & AWTEvent.INPUT_METHODS_ENABLED_MASK) != 0)
                 return;
@@ -3633,10 +3665,6 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * @since     1.0
      */
     public Image createImage(ImageProducer producer) {
-        ComponentPeer peer = this.peer;
-        if ((peer != null) && ! (peer instanceof LightweightPeer)) {
-            return peer.createImage(producer);
-        }
         return getToolkit().createImage(producer);
     }
 
@@ -3752,16 +3780,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
      */
     public boolean prepareImage(Image image, int width, int height,
                                 ImageObserver observer) {
-        ComponentPeer peer = this.peer;
-        if (peer instanceof LightweightPeer) {
-            return (parent != null)
-                ? parent.prepareImage(image, width, height, observer)
-                : getToolkit().prepareImage(image, width, height, observer);
-        } else {
-            return (peer != null)
-                ? peer.prepareImage(image, width, height, observer)
-                : getToolkit().prepareImage(image, width, height, observer);
-        }
+        return getToolkit().prepareImage(image, width, height, observer);
     }
 
     /**
@@ -3824,16 +3843,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
      */
     public int checkImage(Image image, int width, int height,
                           ImageObserver observer) {
-        ComponentPeer peer = this.peer;
-        if (peer instanceof LightweightPeer) {
-            return (parent != null)
-                ? parent.checkImage(image, width, height, observer)
-                : getToolkit().checkImage(image, width, height, observer);
-        } else {
-            return (peer != null)
-                ? peer.checkImage(image, width, height, observer)
-                : getToolkit().checkImage(image, width, height, observer);
-        }
+        return getToolkit().checkImage(image, width, height, observer);
     }
 
     /**
@@ -4064,7 +4074,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
          * {@code true}.
          * @see #createBuffers(int, BufferCapabilities)
          */
-        @SuppressWarnings("deprecation")
+        @SuppressWarnings("removal")
         protected FlipBufferStrategy(int numBuffers, BufferCapabilities caps)
             throws AWTException
         {
@@ -5165,6 +5175,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
     }
 
     boolean areInputMethodsEnabled() {
+        if (INPUT_METHODS_DISABLED) return false;
         // in 1.2, we assume input method support is required for all
         // components that handle key events, but components can turn off
         // input methods by calling enableInputMethods(false).
@@ -6269,6 +6280,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
              }
 
              // Need to check non-bootstraps.
+             @SuppressWarnings("removal")
              Boolean enabled = java.security.AccessController.doPrivileged(
                  new java.security.PrivilegedAction<Boolean>() {
                      public Boolean run() {
@@ -7670,7 +7682,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * @param temporary true if the focus change is temporary,
      *        such as when the window loses the focus; for
      *        more information on temporary focus changes see the
-     *<a href="../../java/awt/doc-files/FocusSpec.html">Focus Specification</a>
+     *<a href="doc-files/FocusSpec.html">Focus Specification</a>
      * @return {@code false} if the focus change request is guaranteed to
      *         fail; {@code true} if it is likely to succeed
      * @see java.awt.event.FocusEvent
@@ -7738,7 +7750,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * @param temporary true if the focus change is temporary,
      *        such as when the window loses the focus; for
      *        more information on temporary focus changes see the
-     *<a href="../../java/awt/doc-files/FocusSpec.html">Focus Specification</a>
+     *<a href="doc-files/FocusSpec.html">Focus Specification</a>
      *
      * @param  cause the cause why the focus is requested
      * @return {@code false} if the focus change request is guaranteed to
@@ -7905,7 +7917,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * @param temporary true if the focus change is temporary,
      *        such as when the window loses the focus; for
      *        more information on temporary focus changes see the
-     *<a href="../../java/awt/doc-files/FocusSpec.html">Focus Specification</a>
+     *<a href="doc-files/FocusSpec.html">Focus Specification</a>
      * @return {@code false} if the focus change request is guaranteed to
      *         fail; {@code true} if it is likely to succeed
      * @see #requestFocus
@@ -7933,6 +7945,12 @@ public abstract class Component implements ImageObserver, MenuContainer,
                                      boolean focusedWindowChangeAllowed,
                                      FocusEvent.Cause cause)
     {
+        if (focusRequestLog.isLoggable(PlatformLogger.Level.FINE)) {
+            focusRequestLog.fine("requestFocus("
+                    + (temporary ? "temporary," : "")
+                    + (focusedWindowChangeAllowed ? "" : "inWindow,")
+                    + cause + ") for " + this, new Throwable());
+        }
         // 1) Check if the event being dispatched is a system-generated mouse event.
         AWTEvent currentEvent = EventQueue.getCurrentEvent();
         if (currentEvent instanceof MouseEvent &&
@@ -8196,7 +8214,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
         return res;
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("removal")
     final Component getNextFocusCandidate() {
         Container rootAncestor = getTraversalRoot();
         Component comp = this;
@@ -8350,7 +8368,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
         return hasFocus();
     }
 
-    /*
+    /**
      * Used to disallow auto-focus-transfer on disposal of the focus owner
      * in the process of disposing its parent container.
      */
@@ -8925,7 +8943,8 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * The non-serializable listeners are detected and
      * no attempt is made to serialize them.
      *
-     * @param s the {@code ObjectOutputStream} to write
+     * @param  s the {@code ObjectOutputStream} to write
+     * @throws IOException if an I/O error occurs
      * @serialData {@code null} terminated sequence of
      *   0 or more pairs; the pair consists of a {@code String}
      *   and an {@code Object}; the {@code String} indicates
@@ -8963,6 +8982,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * @see #mouseWheelListenerK
      * @see #readObject(ObjectInputStream)
      */
+    @Serial
     private void writeObject(ObjectOutputStream s)
       throws IOException
     {
@@ -8996,9 +9016,14 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * of events fired by the component.
      * Unrecognized keys or values will be ignored.
      *
-     * @param s the {@code ObjectInputStream} to read
+     * @param  s the {@code ObjectInputStream} to read
+     * @throws ClassNotFoundException if the class of a serialized object could
+     *         not be found
+     * @throws IOException if an I/O error occurs
      * @see #writeObject(ObjectOutputStream)
      */
+    @SuppressWarnings("removal")
+    @Serial
     private void readObject(ObjectInputStream s)
       throws ClassNotFoundException, IOException
     {
@@ -9325,6 +9350,10 @@ public abstract class Component implements ImageObserver, MenuContainer,
     protected abstract class AccessibleAWTComponent extends AccessibleContext
         implements Serializable, AccessibleComponent {
 
+        /**
+         * Use serialVersionUID from JDK 1.3 for interoperability.
+         */
+        @Serial
         private static final long serialVersionUID = 642321655757800191L;
 
         /**
@@ -9361,7 +9390,17 @@ public abstract class Component implements ImageObserver, MenuContainer,
          * @since 1.3
          */
         protected class AccessibleAWTComponentHandler implements ComponentListener, Serializable {
+
+            /**
+             * Use serialVersionUID from JDK 1.3 for interoperability.
+             */
+            @Serial
             private static final long serialVersionUID = -1009684107426231869L;
+
+            /**
+             * Constructs an {@code AccessibleAWTComponentHandler}.
+             */
+            protected AccessibleAWTComponentHandler() {}
 
             public void componentHidden(ComponentEvent e)  {
                 if (accessibleContext != null) {
@@ -9393,7 +9432,17 @@ public abstract class Component implements ImageObserver, MenuContainer,
          * @since 1.3
          */
         protected class AccessibleAWTFocusHandler implements FocusListener, Serializable {
+
+            /**
+             * Use serialVersionUID from JDK 1.3 for interoperability.
+             */
+            @Serial
             private static final long serialVersionUID = 3150908257351582233L;
+
+            /**
+             * Constructs an {@code AccessibleAWTFocusHandler}.
+             */
+            protected AccessibleAWTFocusHandler() {}
 
             public void focusGained(FocusEvent event) {
                 if (accessibleContext != null) {
@@ -10518,5 +10567,11 @@ public abstract class Component implements ImageObserver, MenuContainer,
     void updateZOrder() {
         peer.setZOrder(getHWPeerAboveMe());
     }
-
+    /**
+     * Disable IM-events dispatching (global).
+     * Usage of IM under Linux can cause freezes and crashes, disabling increases stability
+     */
+    public static void disableInputMethodSupport() {
+        INPUT_METHODS_DISABLED = true;
+    }
 }

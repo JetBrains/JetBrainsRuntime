@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,6 +57,19 @@ public class Diagnostics implements javax.tools.DiagnosticListener<JavaFileObjec
                     .collect(toList());
     }
 
+    public Diagnostic<?> getDiagWithKey(String key) {
+        for (Diagnostic<?> d : diags) {
+            if (d.getCode().equals(key)) {
+                return d;
+            }
+        }
+        return null;
+    }
+
+    public List<Diagnostic<?>> getAllDiags() {
+        return diags.stream().map(d -> (Diagnostic<?>)d).collect(toList());
+    }
+
     /** Do the diagnostics contain the specified error key? */
     public boolean containsErrorKey(String key) {
         return diags.stream()
@@ -67,7 +80,7 @@ public class Diagnostics implements javax.tools.DiagnosticListener<JavaFileObjec
     /** Do the diagnostics contain the specified warning key? */
     public boolean containsWarningKey(String key) {
         return diags.stream()
-                    .filter(d -> d.getKind() == Diagnostic.Kind.WARNING)
+                    .filter(d -> d.getKind() == Diagnostic.Kind.WARNING || d.getKind() == Diagnostic.Kind.MANDATORY_WARNING)
                     .anyMatch(d -> d.getCode().equals(key));
     }
 

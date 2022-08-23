@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -49,24 +47,24 @@ public class TestRecordedEventGetThread {
     public static void main(String[] args) throws Throwable {
         Thread currentThread = Thread.currentThread();
         currentThread.setName(MY_THREAD_NAME);
-        long expectedThreadId = currentThread.getId();
 
-        Recording r = new Recording();
-        r.start();
-        SimpleEvent t = new SimpleEvent();
-        t.commit();
-        r.stop();
-        List<RecordedEvent> events = Events.fromRecording(r);
-        r.close();
-        Events.hasEvents(events);
-        RecordedEvent event = events.get(0);
-        RecordedThread recordedThread = event.getThread();
+        try (Recording r = new Recording()) {
+            r.start();
+            SimpleEvent t = new SimpleEvent();
+            t.commit();
+            r.stop();
 
-        Asserts.assertNotNull(recordedThread);
-        Asserts.assertEquals(recordedThread.getJavaName(), MY_THREAD_NAME);
-        Asserts.assertEquals(recordedThread.getJavaThreadId(), expectedThreadId);
-        Asserts.assertNotNull(recordedThread.getOSThreadId());
-        Asserts.assertNotNull(recordedThread.getId());
-        Asserts.assertEquals(recordedThread.getOSName(), MY_THREAD_NAME);
+            List<RecordedEvent> events = Events.fromRecording(r);
+            Events.hasEvents(events);
+            RecordedEvent event = events.get(0);
+            RecordedThread recordedThread = event.getThread();
+            Asserts.assertNotNull(recordedThread);
+
+            Asserts.assertEquals(recordedThread.getJavaName(), MY_THREAD_NAME);
+            Asserts.assertEquals(recordedThread.getJavaThreadId(), currentThread.getId());
+            Asserts.assertNotNull(recordedThread.getOSThreadId());
+            Asserts.assertNotNull(recordedThread.getId());
+            Asserts.assertEquals(recordedThread.getOSName(), MY_THREAD_NAME);
+        }
     }
 }

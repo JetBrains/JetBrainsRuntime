@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug 6251120 8231950
+ * @bug 6251120 8231950 8242151
  * @summary Testing keytool
  *
  * Run through autotest.sh and manualtest.sh
@@ -35,10 +35,6 @@
  *       # testing NSS
  *       # make sure the NSS db files are in current directory and writable
  *       echo | java -Dnss -Dnss.lib=/path/to/libsoftokn3.so KeyToolTest
- *
- * Testing Solaris Cryptography Framework PKCS11 keystores:
- *       # make sure you've already run pktool and set test12 as pin
- *       echo | java -Dsolaris KeyToolTest
  *
  * ATTENTION:
  * Exception in thread "main" java.security.ProviderException:
@@ -106,9 +102,6 @@ public class KeyToolTest {
             "-srcproviderName SunPKCS11-nzz " +
             "-addprovider SunPKCS11 " +
             "-providerArg p11-nzz.txt ";
-    static final String SUN_P11_ARG = "-keystore NONE -storetype PKCS11 ";
-    static final String SUN_SRC_P11_ARG =
-            "-srckeystore NONE -srcstoretype PKCS11 ";
 
     String p11Arg, srcP11Arg;
 
@@ -1602,7 +1595,7 @@ public class KeyToolTest {
                 int pos = 0;
                 System.err.print("x");
                 Extension ex = ((X509CertImpl)ks.getCertificate(alias))
-                        .getExtension(new ObjectIdentifier(oid));
+                        .getExtension(ObjectIdentifier.of(oid));
                 if (!Arrays.equals(value, ex.getValue())) {
                     throw new RuntimeException("Not same content in " +
                             alias + " for " + oid);
@@ -1611,9 +1604,9 @@ public class KeyToolTest {
         }
         CheckOid coid = new CheckOid();
         assertTrue(((X509CertImpl)ks.getCertificate("oid1"))
-                .getExtension(new ObjectIdentifier("1.2.3")).isCritical());
+                .getExtension(ObjectIdentifier.of("1.2.3")).isCritical());
         assertTrue(!((X509CertImpl)ks.getCertificate("oid2"))
-                .getExtension(new ObjectIdentifier("1.2.3")).isCritical());
+                .getExtension(ObjectIdentifier.of("1.2.3")).isCritical());
         coid.check(ks, "oid1", "1.2.3", new byte[]{1,2});
         coid.check(ks, "oid2", "1.2.3", new byte[]{});
         coid.check(ks, "oid12", "1.2.3", new byte[]{});
@@ -1643,14 +1636,14 @@ public class KeyToolTest {
         assertTrue(a.getAuthorityKeyIdentifierExtension() != null);
         assertTrue(a.getSubjectKeyIdentifierExtension() != null);
         assertTrue(a.getKeyUsage() == null);
-        assertTrue(a.getExtension(new ObjectIdentifier("1.2.3")).isCritical());
-        assertTrue(!a.getExtension(new ObjectIdentifier("1.2.4")).isCritical());
-        assertTrue(!a.getExtension(new ObjectIdentifier("1.2.5")).isCritical());
+        assertTrue(a.getExtension(ObjectIdentifier.of("1.2.3")).isCritical());
+        assertTrue(!a.getExtension(ObjectIdentifier.of("1.2.4")).isCritical());
+        assertTrue(!a.getExtension(ObjectIdentifier.of("1.2.5")).isCritical());
         assertTrue(a.getExtensionValue("1.2.3").length == 3);
         assertTrue(a.getExtensionValue("1.2.4").length == 4);
         assertTrue(a.getExtensionValue("1.2.5").length == 5);
         assertTrue(a.getBasicConstraints() == 2);
-        assertTrue(!a.getExtension(new ObjectIdentifier("2.3.4")).isCritical());
+        assertTrue(!a.getExtension(ObjectIdentifier.of("2.3.4")).isCritical());
         assertTrue(a.getExtensionValue("2.3.4").length == 6);
 
         // 8073181: keytool -ext honored not working correctly
@@ -1660,8 +1653,8 @@ public class KeyToolTest {
         testOK("", simple+"-importcert -file test2.cert -alias b");
         ks = loadStore("x.jks", "changeit", "JKS");
         X509CertImpl b = (X509CertImpl)ks.getCertificate("b");
-        assertTrue(!b.getExtension(new ObjectIdentifier("1.2.3")).isCritical());
-        assertTrue(b.getExtension(new ObjectIdentifier("1.2.4")).isCritical());
+        assertTrue(!b.getExtension(ObjectIdentifier.of("1.2.3")).isCritical());
+        assertTrue(b.getExtension(ObjectIdentifier.of("1.2.4")).isCritical());
 
         // 8073182: keytool may generate duplicate extensions
         testOK("", pre+"dup -ext bc=2 -ext 2.5.29.19=30030101FF -ext bc=3");
@@ -1858,15 +1851,6 @@ public class KeyToolTest {
                 //FAIL: currently PKCS11-NSS does not support
                 // 2 NSS KeyStores to be loaded at the same time
                 //t.sszzTest();
-            }
-
-            if (System.getProperty("solaris") != null) {
-                // For Solaris Cryptography Framework
-                t.srcP11Arg = SUN_SRC_P11_ARG;
-                t.p11Arg = SUN_P11_ARG;
-                t.testPKCS11();
-                t.testPKCS11ImportKeyStore();
-                t.i18nPKCS11Test();
             }
 
             System.out.println("Test pass!!!");

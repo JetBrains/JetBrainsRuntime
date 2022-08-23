@@ -43,18 +43,25 @@ public class TestTypeVariableLinks extends JavadocTester {
     @Test
     public void test1() {
         javadoc("-d", "out",
+                "--no-platform-links",
                 "-sourcepath", testSrc,
                 "-package",
                 "pkg1");
         checkExit(Exit.OK);
 
         checkOutput("pkg1/C.html", true,
-                "<div class=\"block\">Linking to Object.equals() <code>Object.equals(Object)</code></div>");
+                """
+                    <div class="block">Linking to Object.equals() <code>Object.equals(Object)</code></div>""");
         checkOutput("pkg1/C.html", true,
-                "<div class=\"block\">Linking to List.clear() <code>List.clear()</code></div>");
+                """
+                    <div class="block">Linking to List.clear() <code>List.clear()</code></div>""");
         checkOutput("pkg1/C.html", true,
-                "<div class=\"block\">Linking to Additional.doAction() <a href=\"Additional.html#doAction()\"><code>Additional.doAction()</code></a></div>");
+                """
+                    <div class="block">Linking to Additional.doAction() <a href="Additional.html#doA\
+                    ction()"><code>Additional.doAction()</code></a></div>""");
         checkOutput("pkg1/C.html", true,
-                "<div class=\"block\">Linking to I.abstractAction() <a href=\"I.html#abstractAction()\"><code>I.abstractAction()</code></a></div>");
+                """
+                    <div class="block">Linking to I.abstractAction() <a href="I.html#abstractAction(\
+                    )"><code>I.abstractAction()</code></a></div>""");
     }
 }

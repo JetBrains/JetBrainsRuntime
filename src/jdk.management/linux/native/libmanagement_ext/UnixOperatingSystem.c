@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,8 @@
 #include <inttypes.h>
 #include "com_sun_management_internal_OperatingSystemImpl.h"
 
+#include <assert.h>
+
 struct ticks {
     uint64_t  used;
     uint64_t  usedKernel;
@@ -59,9 +61,15 @@ static struct perfbuf {
 } counters;
 
 #define DEC_64 "%"SCNd64
+#define NS_PER_SEC 1000000000
 
-static void next_line(FILE *f) {
-    while (fgetc(f) != '\n');
+static int next_line(FILE *f) {
+    int c;
+    do {
+        c = fgetc(f);
+    } while (c != '\n' && c != EOF);
+
+    return c;
 }
 
 /**
@@ -90,7 +98,10 @@ static int get_totalticks(int which, ticks *pticks) {
            &iowTicks, &irqTicks, &sirqTicks);
 
     // Move to next line
-    next_line(fh);
+    if (next_line(fh) == EOF) {
+        fclose(fh);
+        return -2;
+    }
 
     //find the line for requested cpu faster to just iterate linefeeds?
     if (which != -1) {
@@ -103,7 +114,10 @@ static int get_totalticks(int which, ticks *pticks) {
                 fclose(fh);
                 return -2;
             }
-            next_line(fh);
+            if (next_line(fh) == EOF) {
+                fclose(fh);
+                return -2;
+            }
         }
         n = fscanf(fh, "cpu%*d " DEC_64 " " DEC_64 " " DEC_64 " " DEC_64 " "
                        DEC_64 " " DEC_64 " " DEC_64 "\n",
@@ -250,7 +264,7 @@ static double get_cpuload_internal(int which, double *pkernelLoad, CpuLoadTarget
 
     pthread_mutex_lock(&lock);
 
-    if(perfInit() == 0) {
+    if (perfInit() == 0) {
 
         if (target == CPU_LOAD_VM_ONLY) {
             pticks = &counters.jvmTicks;
@@ -270,14 +284,10 @@ static double get_cpuload_internal(int which, double *pkernelLoad, CpuLoadTarget
             failed = 1;
         }
 
-        if(!failed) {
-            // seems like we sometimes end up with less kernel ticks when
-            // reading /proc/self/stat a second time, timing issue between cpus?
-            if (pticks->usedKernel < tmp.usedKernel) {
-                kdiff = 0;
-            } else {
-                kdiff = pticks->usedKernel - tmp.usedKernel;
-            }
+        if (!failed) {
+
+            assert(pticks->usedKernel >= tmp.usedKernel);
+            kdiff = pticks->usedKernel - tmp.usedKernel;
             tdiff = pticks->total - tmp.total;
             udiff = pticks->used - tmp.used;
 
@@ -364,3 +374,40 @@ Java_com_sun_management_internal_OperatingSystemImpl_getHostConfiguredCpuCount0
        return -1;
     }
 }
+
+// Return the host cpu ticks since boot in nanoseconds
+JNIEXPORT jlong JNICALL
+Java_com_sun_management_internal_OperatingSystemImpl_getHostTotalCpuTicks0
+(JNIEnv *env, jobject mbean)
+{
+    if (perfInit() == 0) {
+        if (get_totalticks(-1, &counters.cpuTicks) < 0) {
+            return -1;
+        } else {
+            long ticks_per_sec = sysconf(_SC_CLK_TCK);
+            jlong result = (jlong)counters.cpuTicks.total;
+            if (ticks_per_sec <= NS_PER_SEC) {
+                long scale_factor = NS_PER_SEC/ticks_per_sec;
+                result = result * scale_factor;
+            } else {
+                long scale_factor = ticks_per_sec/NS_PER_SEC;
+                result = result / scale_factor;
+            }
+            return result;
+        }
+    } else {
+        return -1;
+    }
+}
+
+JNIEXPORT jint JNICALL
+Java_com_sun_management_internal_OperatingSystemImpl_getHostOnlineCpuCount0
+(JNIEnv *env, jobject mbean)
+{
+    int n = sysconf(_SC_NPROCESSORS_ONLN);
+    if (n <= 0) {
+        n = 1;
+    }
+    return n;
+}
+

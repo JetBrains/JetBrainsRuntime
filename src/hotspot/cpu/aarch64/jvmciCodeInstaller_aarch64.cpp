@@ -21,12 +21,16 @@
  * questions.
  */
 
+#include "precompiled.hpp"
+#include "asm/macroAssembler.hpp"
+#include "jvmci/jvmci.hpp"
 #include "jvmci/jvmciCodeInstaller.hpp"
 #include "jvmci/jvmciRuntime.hpp"
 #include "jvmci/jvmciCompilerToVM.hpp"
 #include "jvmci/jvmciJavaClasses.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/handles.inline.hpp"
+#include "runtime/jniHandles.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "vmreg_aarch64.inline.hpp"
 
@@ -61,7 +65,7 @@ void CodeInstaller::pd_patch_OopConstant(int pc_offset, JVMCIObject constant, JV
 #endif // ASSERT
   Handle obj = jvmci_env()->asConstant(constant, JVMCI_CHECK);
   jobject value = JNIHandles::make_local(obj());
-  MacroAssembler::patch_oop(pc, (address)obj());
+  MacroAssembler::patch_oop(pc, cast_from_oop<address>(obj()));
   int oop_index = _oop_recorder->find_index(value);
   RelocationHolder rspec = oop_Relocation::spec(oop_index);
   _instructions->relocate(pc, rspec);
@@ -72,12 +76,12 @@ void CodeInstaller::pd_patch_MetaspaceConstant(int pc_offset, JVMCIObject consta
   if (jvmci_env()->get_HotSpotMetaspaceConstantImpl_compressed(constant)) {
     narrowKlass narrowOop = record_narrow_metadata_reference(_instructions, pc, constant, JVMCI_CHECK);
     MacroAssembler::patch_narrow_klass(pc, narrowOop);
-    TRACE_jvmci_3("relocating (narrow metaspace constant) at " PTR_FORMAT "/0x%x", p2i(pc), narrowOop);
+    JVMCI_event_3("relocating (narrow metaspace constant) at " PTR_FORMAT "/0x%x", p2i(pc), narrowOop);
   } else {
     NativeMovConstReg* move = nativeMovConstReg_at(pc);
     void* reference = record_metadata_reference(_instructions, pc, constant, JVMCI_CHECK);
     move->set_data((intptr_t) reference);
-    TRACE_jvmci_3("relocating (metaspace constant) at " PTR_FORMAT "/" PTR_FORMAT, p2i(pc), p2i(reference));
+    JVMCI_event_3("relocating (metaspace constant) at " PTR_FORMAT "/" PTR_FORMAT, p2i(pc), p2i(reference));
   }
 }
 
@@ -88,7 +92,7 @@ void CodeInstaller::pd_patch_DataSectionReference(int pc_offset, int data_offset
       || (NativeInstruction::maybe_cpool_ref(pc))) {
     address dest = _constants->start() + data_offset;
     _instructions->relocate(pc, section_word_Relocation::spec((address) dest, CodeBuffer::SECT_CONSTS));
-    TRACE_jvmci_3("relocating at " PTR_FORMAT " (+%d) with destination at %d", p2i(pc), pc_offset, data_offset);
+    JVMCI_event_3("relocating at " PTR_FORMAT " (+%d) with destination at %d", p2i(pc), pc_offset, data_offset);
   } else {
     JVMCI_ERROR("unknown load or move instruction at " PTR_FORMAT, p2i(pc));
   }
@@ -115,7 +119,7 @@ void CodeInstaller::pd_relocate_ForeignCall(NativeInstruction* inst, jlong forei
   } else {
     JVMCI_ERROR("unknown call or jump instruction at " PTR_FORMAT, p2i(pc));
   }
-  TRACE_jvmci_3("relocating (foreign call) at " PTR_FORMAT, p2i(inst));
+  JVMCI_event_3("relocating (foreign call) at " PTR_FORMAT, p2i(inst));
 }
 
 void CodeInstaller::pd_relocate_JavaMethod(CodeBuffer &cbuf, JVMCIObject hotspot_method, jint pc_offset, JVMCI_TRAPS) {

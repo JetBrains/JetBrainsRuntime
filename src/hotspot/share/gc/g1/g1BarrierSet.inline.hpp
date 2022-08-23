@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@
 #define SHARE_GC_G1_G1BARRIERSET_INLINE_HPP
 
 #include "gc/g1/g1BarrierSet.hpp"
+
 #include "gc/g1/g1CardTable.hpp"
 #include "gc/shared/accessBarrierSupport.inline.hpp"
 #include "oops/access.inline.hpp"
@@ -39,7 +40,7 @@ inline void G1BarrierSet::write_ref_field_pre(T* field) {
     return;
   }
 
-  T heap_oop = RawAccess<MO_VOLATILE>::oop_load(field);
+  T heap_oop = RawAccess<MO_RELAXED>::oop_load(field);
   if (!CompressedOops::is_null(heap_oop)) {
     enqueue(CompressedOops::decode_not_null(heap_oop));
   }

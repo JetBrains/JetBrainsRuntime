@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,6 +89,28 @@ class CodeStubList: public GrowableArray<CodeStub*> {
   }
 };
 
+class C1SafepointPollStub: public CodeStub {
+ private:
+  uintptr_t _safepoint_offset;
+
+ public:
+  C1SafepointPollStub() :
+      _safepoint_offset(0) {
+  }
+
+  uintptr_t safepoint_offset() { return _safepoint_offset; }
+  void set_safepoint_offset(uintptr_t safepoint_offset) { _safepoint_offset = safepoint_offset; }
+
+  virtual void emit_code(LIR_Assembler* e);
+  virtual void visit(LIR_OpVisitState* visitor) {
+    // don't pass in the code emit info since it's processed in the fast path
+    visitor->do_slow_case();
+  }
+#ifndef PRODUCT
+  virtual void print_name(outputStream* out) const { out->print("C1SafepointPollStub"); }
+#endif // PRODUCT
+};
+
 class CounterOverflowStub: public CodeStub {
  private:
   CodeEmitInfo* _info;
@@ -123,6 +145,7 @@ class ConversionStub: public CodeStub {
  public:
   ConversionStub(Bytecodes::Code bytecode, LIR_Opr input, LIR_Opr result)
     : _bytecode(bytecode), _input(input), _result(result) {
+    NOT_IA32( ShouldNotReachHere(); ) // used only on x86-32
   }
 
   Bytecodes::Code bytecode() { return _bytecode; }
@@ -382,7 +405,7 @@ class PatchingStub: public CodeStub {
   Label         _patch_site_continuation;
   Register      _obj;
   CodeEmitInfo* _info;
-  int           _index;  // index of the patchable oop or Klass* in nmethod oop or metadata table if needed
+  int           _index;  // index of the patchable oop or Klass* in nmethod or metadata table if needed
   static int    _patch_info_offset;
 
   void align_patch_site(MacroAssembler* masm);

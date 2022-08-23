@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -147,12 +147,10 @@ final class MemberName implements Member, Cloneable {
 
         // type is not a MethodType yet.  Convert it thread-safely.
         synchronized (this) {
-            if (type instanceof String) {
-                String sig = (String) type;
+            if (type instanceof String sig) {
                 MethodType res = MethodType.fromDescriptor(sig, getClassLoader());
                 type = res;
-            } else if (type instanceof Object[]) {
-                Object[] typeInfo = (Object[]) type;
+            } else if (type instanceof Object[] typeInfo) {
                 Class<?>[] ptypes = (Class<?>[]) typeInfo[1];
                 Class<?> rtype = (Class<?>) typeInfo[0];
                 MethodType res = MethodType.makeImpl(rtype, ptypes, true);
@@ -235,8 +233,7 @@ final class MemberName implements Member, Cloneable {
 
         // type is not a Class yet.  Convert it thread-safely.
         synchronized (this) {
-            if (type instanceof String) {
-                String sig = (String) type;
+            if (type instanceof String sig) {
                 MethodType mtype = MethodType.fromDescriptor("()"+sig, getClassLoader());
                 Class<?> res = mtype.returnType();
                 type = res;
@@ -316,20 +313,22 @@ final class MemberName implements Member, Cloneable {
     /*non-public*/
     boolean referenceKindIsConsistentWith(int originalRefKind) {
         int refKind = getReferenceKind();
-        if (refKind == originalRefKind)  return true;
-        switch (originalRefKind) {
-        case REF_invokeInterface:
-            // Looking up an interface method, can get (e.g.) Object.hashCode
-            assert(refKind == REF_invokeVirtual ||
-                   refKind == REF_invokeSpecial) : this;
-            return true;
-        case REF_invokeVirtual:
-        case REF_newInvokeSpecial:
-            // Looked up a virtual, can get (e.g.) final String.hashCode.
-            assert(refKind == REF_invokeSpecial) : this;
-            return true;
+        if (refKind == originalRefKind) return true;
+        if (getClass().desiredAssertionStatus()) {
+            switch (originalRefKind) {
+                case REF_invokeInterface -> {
+                    // Looking up an interface method, can get (e.g.) Object.hashCode
+                    assert (refKind == REF_invokeVirtual || refKind == REF_invokeSpecial) : this;
+                }
+                case REF_invokeVirtual, REF_newInvokeSpecial -> {
+                    // Looked up a virtual, can get (e.g.) final String.hashCode.
+                    assert (refKind == REF_invokeSpecial) : this;
+                }
+                default -> {
+                    assert (false) : this + " != " + MethodHandleNatives.refKindName((byte) originalRefKind);
+                }
+            }
         }
-        assert(false) : this+" != "+MethodHandleNatives.refKindName((byte)originalRefKind);
         return true;
     }
     private boolean staticIsConsistent() {
@@ -480,7 +479,8 @@ final class MemberName implements Member, Cloneable {
             IS_CONSTRUCTOR   = MN_IS_CONSTRUCTOR,   // constructor
             IS_FIELD         = MN_IS_FIELD,         // field
             IS_TYPE          = MN_IS_TYPE,          // nested type
-            CALLER_SENSITIVE = MN_CALLER_SENSITIVE; // @CallerSensitive annotation detected
+            CALLER_SENSITIVE = MN_CALLER_SENSITIVE, // @CallerSensitive annotation detected
+            TRUSTED_FINAL    = MN_TRUSTED_FINAL;    // trusted final field
 
     static final int ALL_ACCESS = Modifier.PUBLIC | Modifier.PRIVATE | Modifier.PROTECTED;
     static final int ALL_KINDS = IS_METHOD | IS_CONSTRUCTOR | IS_FIELD | IS_TYPE;
@@ -520,6 +520,8 @@ final class MemberName implements Member, Cloneable {
     public boolean isCallerSensitive() {
         return testAllFlags(CALLER_SENSITIVE);
     }
+    /** Query whether this member is a trusted final field. */
+    public boolean isTrustedFinalField() { return testAllFlags(TRUSTED_FINAL|IS_FIELD); }
 
     /** Utility method to query whether this member is accessible from a given lookup class. */
     public boolean isAccessibleFrom(Class<?> lookupClass) {
@@ -770,7 +772,7 @@ final class MemberName implements Member, Cloneable {
     }
 
     @Override
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "removal"})
     public int hashCode() {
         // Avoid autoboxing getReferenceKind(), since this is used early and will force
         // early initialization of Byte$ByteCache
@@ -935,8 +937,7 @@ final class MemberName implements Member, Cloneable {
             } else {
                 Module m;
                 Class<?> plc;
-                if (from instanceof MethodHandles.Lookup) {
-                    MethodHandles.Lookup lookup = (MethodHandles.Lookup)from;
+                if (from instanceof MethodHandles.Lookup lookup) {
                     from = lookup.lookupClass();
                     m = lookup.lookupClass().getModule();
                     plc = lookup.previousLookupClass();
@@ -1061,7 +1062,7 @@ final class MemberName implements Member, Cloneable {
          *  If lookup fails or access is not permitted, null is returned.
          *  Otherwise a fresh copy of the given member is returned, with modifier bits filled in.
          */
-        private MemberName resolve(byte refKind, MemberName ref, Class<?> lookupClass,
+        private MemberName resolve(byte refKind, MemberName ref, Class<?> lookupClass, int allowedModes,
                                    boolean speculativeResolve) {
             MemberName m = ref.clone();  // JVM will side-effect the ref
             assert(refKind == m.getReferenceKind());
@@ -1081,7 +1082,7 @@ final class MemberName implements Member, Cloneable {
                 //
                 // REFC view on PTYPES doesn't matter, since it is used only as a starting point for resolution and doesn't
                 // participate in method selection.
-                m = MethodHandleNatives.resolve(m, lookupClass, speculativeResolve);
+                m = MethodHandleNatives.resolve(m, lookupClass, allowedModes, speculativeResolve);
                 if (m == null && speculativeResolve) {
                     return null;
                 }
@@ -1105,10 +1106,12 @@ final class MemberName implements Member, Cloneable {
          *  Otherwise a fresh copy of the given member is returned, with modifier bits filled in.
          */
         public <NoSuchMemberException extends ReflectiveOperationException>
-                MemberName resolveOrFail(byte refKind, MemberName m, Class<?> lookupClass,
-                                 Class<NoSuchMemberException> nsmClass)
+                MemberName resolveOrFail(byte refKind, MemberName m,
+                                         Class<?> lookupClass, int allowedModes,
+                                         Class<NoSuchMemberException> nsmClass)
                 throws IllegalAccessException, NoSuchMemberException {
-            MemberName result = resolve(refKind, m, lookupClass, false);
+            assert lookupClass != null || allowedModes == LM_TRUSTED;
+            MemberName result = resolve(refKind, m, lookupClass, allowedModes, false);
             if (result.isResolved())
                 return result;
             ReflectiveOperationException ex = result.makeAccessException();
@@ -1121,8 +1124,9 @@ final class MemberName implements Member, Cloneable {
          *  If lookup fails or access is not permitted, return null.
          *  Otherwise a fresh copy of the given member is returned, with modifier bits filled in.
          */
-        public MemberName resolveOrNull(byte refKind, MemberName m, Class<?> lookupClass) {
-            MemberName result = resolve(refKind, m, lookupClass, true);
+        public MemberName resolveOrNull(byte refKind, MemberName m, Class<?> lookupClass, int allowedModes) {
+            assert lookupClass != null || allowedModes == LM_TRUSTED;
+            MemberName result = resolve(refKind, m, lookupClass, allowedModes, true);
             if (result != null && result.isResolved())
                 return result;
             return null;

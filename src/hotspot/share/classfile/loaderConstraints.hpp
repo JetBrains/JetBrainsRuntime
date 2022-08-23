@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,14 +55,18 @@ public:
     return (LoaderConstraintEntry**)Hashtable<InstanceKlass*, mtClass>::bucket_addr(i);
   }
 
+  // (DCEVM) update all klasses with newest version
+  void update_after_redefinition();
+
   // Check class loader constraints
   bool add_entry(Symbol* name, InstanceKlass* klass1, Handle loader1,
                                     InstanceKlass* klass2, Handle loader2);
 
   // Note:  The main entry point for this module is via SystemDictionary.
   // SystemDictionary::check_signature_loaders(Symbol* signature,
+  //                                           Klass* klass_being_linked,
   //                                           Handle loader1, Handle loader2,
-  //                                           bool is_method, TRAPS)
+  //                                           bool is_method)
 
   InstanceKlass* find_constrained_klass(Symbol* name, Handle loader);
 
@@ -79,6 +83,7 @@ public:
   void purge_loader_constraints();
 
   void verify(PlaceholderTable* placeholders);
+  void print() const;
   void print_on(outputStream* st) const;
 };
 

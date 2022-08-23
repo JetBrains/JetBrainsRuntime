@@ -23,10 +23,9 @@
  */
 
 /*
- * @test TestLoopMiningArguments
+ * @test
  * @summary Test that loop mining arguments are sane
- * @key gc
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  * @requires vm.flavor == "server"
  * @library /test/lib
  * @run driver TestLoopMiningArguments
@@ -41,9 +40,10 @@ import jdk.test.lib.process.OutputAnalyzer;
 public class TestLoopMiningArguments {
 
     public static void testWith(String msg, boolean cls, int iters, String... args) throws Exception {
-        String[] cmds = Arrays.copyOf(args, args.length + 2);
-        cmds[args.length] = "-XX:+PrintFlagsFinal";
-        cmds[args.length + 1] = "-version";
+        String[] cmds = Arrays.copyOf(args, args.length + 3);
+        cmds[args.length] = "-Xmx128m";
+        cmds[args.length + 1] = "-XX:+PrintFlagsFinal";
+        cmds[args.length + 2] = "-version";
         ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(cmds);
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         output.shouldHaveExitValue(0);

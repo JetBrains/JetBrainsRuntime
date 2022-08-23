@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,14 +29,9 @@
  * @build java.base/sun.security.rsa.RSAKeyPairGenerator
  *        java.base/sun.security.provider.DSAKeyPairGenerator
  *        jdk.crypto.ec/sun.security.ec.ECKeyPairGenerator
- * @requires os.family != "solaris"
  * @run main DefaultSignatureAlgorithm
  * @modules jdk.crypto.ec
  */
-
-// This test is excluded from Solaris because the RSA key pair generator
-// is extremely slow there with a big keysize. Please note the fake
-// KeyPairGenerator will not be used because of provider preferences.
 
 import jdk.test.lib.Asserts;
 import jdk.test.lib.SecurityTools;
@@ -60,11 +55,9 @@ public class DefaultSignatureAlgorithm {
         check("DSA", 1024, null, "SHA256withDSA");
         check("DSA", 3072, null, "SHA256withDSA");
 
-        check("EC", 192, null, "SHA256withECDSA");
         check("EC", 384, null, "SHA384withECDSA");
-        check("EC", 571, null, "SHA512withECDSA");
 
-        check("EC", 571, "SHA256withECDSA", "SHA256withECDSA");
+        check("EC", 384, "SHA256withECDSA", "SHA256withECDSA");
     }
 
     private static void check(String keyAlg, int keySize,
@@ -92,7 +85,7 @@ public class DefaultSignatureAlgorithm {
                 + File.separator + "patches" + File.separator + "java.base"
                 + " -J--patch-module=jdk.crypto.ec="
                 + System.getProperty("test.classes")
-                + File.separator + "patches" + File.separator + "jdk.crypto.ec";;
+                + File.separator + "patches" + File.separator + "jdk.crypto.ec";
         return kt(patchArg + " -genkeypair -alias " + alias
                 + " -dname CN=" + alias + " " + options);
     }

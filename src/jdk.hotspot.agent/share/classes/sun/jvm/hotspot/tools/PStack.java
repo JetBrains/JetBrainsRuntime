@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,23 +26,30 @@ package sun.jvm.hotspot.tools;
 
 import java.io.*;
 import java.util.*;
+import sun.jvm.hotspot.*;
 import sun.jvm.hotspot.code.*;
 import sun.jvm.hotspot.interpreter.*;
 import sun.jvm.hotspot.debugger.*;
 import sun.jvm.hotspot.debugger.cdbg.*;
+import sun.jvm.hotspot.debugger.remote.*;
 import sun.jvm.hotspot.oops.*;
 import sun.jvm.hotspot.runtime.*;
 import sun.jvm.hotspot.utilities.PlatformInfo;
 
 public class PStack extends Tool {
     // in non-verbose mode, Method*s are not printed in java frames
-   public PStack(boolean v, boolean concurrentLocks) {
+   public PStack(boolean v, boolean concurrentLocks, HotSpotAgent agent) {
+      super(agent);
       this.verbose = v;
       this.concurrentLocks = concurrentLocks;
    }
 
+   public PStack(boolean v, boolean concurrentLocks) {
+      this(v, concurrentLocks, null);
+   }
+
    public PStack() {
-      this(true, true);
+      this(true, true, null);
    }
 
    public PStack(JVMDebugger d) {
@@ -59,11 +66,6 @@ public class PStack extends Tool {
    }
 
    public void run(PrintStream out, Debugger dbg) {
-      if (PlatformInfo.getOS().equals("darwin")) {
-        out.println("Not available on Darwin");
-        return;
-      }
-
       CDebugger cdbg = dbg.getCDebugger();
       if (cdbg != null) {
          ConcurrentLocksPrinter concLocksPrinter = null;
@@ -79,10 +81,17 @@ public class PStack extends Tool {
             out.println("can't print deadlock information: " + exp.getMessage());
          }
 
-         List l = cdbg.getThreadList();
+         List<ThreadProxy> l = cdbg.getThreadList();
+         if (l.isEmpty() && PlatformInfo.getOS().equals("darwin")) {
+           // If the list is empty, we assume we attached to a process, and on OSX we can only
+           // get the native thread list for core files.
+           out.println("Not available for Mac OS X processes");
+           return;
+        }
          final boolean cdbgCanDemangle = cdbg.canDemangle();
-         for (Iterator itr = l.iterator() ; itr.hasNext();) {
-            ThreadProxy th = (ThreadProxy) itr.next();
+         String fillerForAddress = " ".repeat(2 + 2 * (int) VM.getVM().getAddressSize()) + "\t";
+         for (Iterator<ThreadProxy> itr = l.iterator() ; itr.hasNext();) {
+            ThreadProxy th = itr.next();
             try {
                CFrame f = cdbg.topFrameForThread(th);
                out.print("----------------- ");
@@ -167,6 +176,9 @@ public class PStack extends Tool {
                       if (names != null && names.length != 0) {
                          // print java frame(s)
                          for (int i = 0; i < names.length; i++) {
+                             if (i > 0) {
+                                 out.print(fillerForAddress);
+                             }
                              out.println(names[i]);
                          }
                       }
@@ -186,7 +198,7 @@ public class PStack extends Tool {
          } // for threads
       } else {
           if (getDebugeeType() == DEBUGEE_REMOTE) {
-              out.println("remote configuration is not yet implemented");
+              out.print(((RemoteDebuggerClient)dbg).execCommandOnServer("pstack", Map.of("concurrentLocks", concurrentLocks)));
           } else {
               out.println("not yet implemented (debugger does not support CDebugger)!");
           }
@@ -199,20 +211,20 @@ public class PStack extends Tool {
    }
 
    // -- Internals only below this point
-   private Map jframeCache; // Map<ThreadProxy, JavaVFrame[]>
-   private Map proxyToThread; // Map<ThreadProxy, JavaThread>
+   private Map<ThreadProxy, JavaVFrame[]> jframeCache;
+   private Map<ThreadProxy, JavaThread> proxyToThread;
    private PrintStream out;
    private boolean verbose;
    private boolean concurrentLocks;
 
    private void initJFrameCache() {
       // cache frames for subsequent reference
-      jframeCache = new HashMap();
-      proxyToThread = new HashMap();
+      jframeCache = new HashMap<>();
+      proxyToThread = new HashMap<>();
       Threads threads = VM.getVM().getThreads();
       for (int i = 0; i < threads.getNumberOfThreads(); i++) {
          JavaThread cur = threads.getJavaThreadAt(i);
-         List tmp = new ArrayList(10);
+         List<JavaVFrame> tmp = new ArrayList<>(10);
          try {
             for (JavaVFrame vf = cur.getLastJavaVFrameDbg(); vf != null; vf = vf.javaSender()) {
                tmp.add(vf);
@@ -239,24 +251,24 @@ public class PStack extends Tool {
       }
       JavaVFrame[] jvframes = (JavaVFrame[]) jframeCache.get(th);
       if (jvframes == null) return null; // not a java thread
-      List names = new ArrayList(10);
+      List<String> names = new ArrayList<>(10);
       for (int fCount = 0; fCount < jvframes.length; fCount++) {
          JavaVFrame vf = jvframes[fCount];
          Frame f = vf.getFrame();
          if (fp.equals(f.getFP())) {
-            StringBuffer sb = new StringBuffer();
+            StringBuilder sb = new StringBuilder();
             Method method = vf.getMethod();
             // a special char to identify java frames in output
             sb.append("* ");
             sb.append(method.externalNameAndSignature());
-            sb.append(" bci:" + vf.getBCI());
+            sb.append(" bci:").append(vf.getBCI());
             int lineNumber = method.getLineNumberFromBCI(vf.getBCI());
             if (lineNumber != -1) {
-                sb.append(" line:" + lineNumber);
+                sb.append(" line:").append(lineNumber);
             }
 
             if (verbose) {
-               sb.append(" Method*:" + method.getAddress());
+               sb.append(" Method*:").append(method.getAddress());
             }
 
             if (vf.isCompiledFrame()) {
@@ -277,5 +289,13 @@ public class PStack extends Tool {
       String[] res = new String[names.size()];
       System.arraycopy(names.toArray(), 0, res, 0, res.length);
       return res;
+   }
+
+   public void setVerbose(boolean verbose) {
+       this.verbose = verbose;
+   }
+
+   public void setConcurrentLocks(boolean concurrentLocks) {
+       this.concurrentLocks = concurrentLocks;
    }
 }

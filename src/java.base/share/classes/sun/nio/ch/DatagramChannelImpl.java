@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import java.net.NetworkInterface;
 import java.net.PortUnreachableException;
 import java.net.ProtocolFamily;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.net.SocketOption;
 import java.net.SocketTimeoutException;
 import java.net.StandardProtocolFamily;
@@ -535,6 +536,7 @@ class DatagramChannelImpl
             try {
                 SocketAddress remote = beginRead(blocking, false);
                 boolean connected = (remote != null);
+                @SuppressWarnings("removal")
                 SecurityManager sm = System.getSecurityManager();
                 if (connected || (sm == null)) {
                     // connected or no security manager
@@ -570,6 +572,7 @@ class DatagramChannelImpl
      * manager.
      */
     private SocketAddress untrustedReceive(ByteBuffer dst) throws IOException {
+        @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
         assert readLock.isHeldByCurrentThread()
                 && sm != null && remoteAddress == null;
@@ -621,6 +624,7 @@ class DatagramChannelImpl
             ensureOpen();
             if (!isBlocking())
                 throw new IllegalBlockingModeException();
+            @SuppressWarnings("removal")
             SecurityManager sm = System.getSecurityManager();
             boolean connected = isConnected();
             SocketAddress sender;
@@ -800,6 +804,7 @@ class DatagramChannelImpl
                     completed = (n > 0);
                 } else {
                     // not connected
+                    @SuppressWarnings("removal")
                     SecurityManager sm = System.getSecurityManager();
                     InetAddress ia = isa.getAddress();
                     if (sm != null) {
@@ -811,6 +816,8 @@ class DatagramChannelImpl
                     }
                     if (ia.isLinkLocalAddress())
                         isa = IPAddressUtil.toScopedAddress(isa);
+                    if (isa.getPort() == 0)
+                        throw new SocketException("Can't send to port 0");
                     n = send(fd, src, isa);
                     if (blocking) {
                         while (IOStatus.okayToRetry(n) && isOpen()) {
@@ -1179,6 +1186,7 @@ class DatagramChannelImpl
         } else {
             isa = Net.checkAddress(local, family);
         }
+        @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
         if (sm != null)
             sm.checkListen(isa.getPort());
@@ -1207,6 +1215,7 @@ class DatagramChannelImpl
      */
     DatagramChannel connect(SocketAddress sa, boolean check) throws IOException {
         InetSocketAddress isa = Net.checkAddress(sa, family);
+        @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             InetAddress ia = isa.getAddress();
@@ -1226,6 +1235,8 @@ class DatagramChannelImpl
                     ensureOpen();
                     if (check && state == ST_CONNECTED)
                         throw new AlreadyConnectedException();
+                    if (isa.getPort() == 0)
+                        throw new SocketException("Can't connect to port 0");
 
                     // ensure that the socket is bound
                     if (localAddress == null) {
@@ -1420,6 +1431,7 @@ class DatagramChannelImpl
     /**
      * Defines static methods to access AbstractSelectableChannel non-public members.
      */
+    @SuppressWarnings("removal")
     private static class AbstractSelectableChannels {
         private static final Method FOREACH;
         static {
@@ -1476,6 +1488,7 @@ class DatagramChannelImpl
                 throw new IllegalArgumentException("Source address is different type to group");
         }
 
+        @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
         if (sm != null)
             sm.checkMulticast(group);

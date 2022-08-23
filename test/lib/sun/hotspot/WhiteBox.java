@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,8 +32,9 @@ import java.util.function.Function;
 import java.security.BasicPermission;
 import java.util.Objects;
 
-import sun.hotspot.parser.DiagnosticCommand;
+import jdk.test.whitebox.parser.DiagnosticCommand;
 
+@Deprecated
 public class WhiteBox {
   @SuppressWarnings("serial")
   public static class WhiteBoxPermission extends BasicPermission {
@@ -55,9 +56,10 @@ public class WhiteBox {
    * untrusted code.
    */
   public synchronized static WhiteBox getWhiteBox() {
+    @SuppressWarnings("removal")
     SecurityManager sm = System.getSecurityManager();
     if (sm != null) {
-      sm.checkPermission(new WhiteBoxPermission("getInstance"));
+      throw new SecurityException("can't use old whitebox with SecurityManager, please switch to jdk.test.whitebox.WhiteBox");
     }
     return instance;
   }
@@ -110,6 +112,8 @@ public class WhiteBox {
 
   public  native int getSymbolRefcount(String name);
 
+  public native boolean deflateIdleMonitors();
+
   private native boolean isMonitorInflated0(Object obj);
   public         boolean isMonitorInflated(Object obj) {
     Objects.requireNonNull(obj);
@@ -161,6 +165,7 @@ public class WhiteBox {
 
   // G1
   public native boolean g1InConcurrentMark();
+  public native boolean g1HasRegionsToUncommit();
   private native boolean g1IsHumongous0(Object o);
   public         boolean g1IsHumongous(Object o) {
     Objects.requireNonNull(o);
@@ -187,10 +192,6 @@ public class WhiteBox {
   public native long    g1NumMaxRegions();
   public native long    g1NumFreeRegions();
   public native int     g1RegionSize();
-  public native long    dramReservedStart();
-  public native long    dramReservedEnd();
-  public native long    nvdimmReservedStart();
-  public native long    nvdimmReservedEnd();
   public native MemoryUsage g1AuxiliaryMemoryUsage();
   private  native Object[]    parseCommandLine0(String commandline, char delim, DiagnosticCommand[] args);
   public          Object[]    parseCommandLine(String commandline, char delim, DiagnosticCommand[] args) {
@@ -232,12 +233,14 @@ public class WhiteBox {
   public native void NMTArenaMalloc(long arena, long size);
 
   // Compiler
-  public native boolean isC2OrJVMCIIncludedInVmBuild();
+  public native boolean isC2OrJVMCIIncluded();
+  public native boolean isJVMCISupportedByGC();
 
   public native int     matchesMethod(Executable method, String pattern);
   public native int     matchesInline(Executable method, String pattern);
   public native boolean shouldPrintAssembly(Executable method, int comp_level);
   public native int     deoptimizeFrames(boolean makeNotEntrant);
+  public native boolean isFrameDeoptimized(int depth);
   public native void    deoptimizeAll();
 
   public        boolean isMethodCompiled(Executable method) {
@@ -249,7 +252,7 @@ public class WhiteBox {
     return isMethodCompiled0(method, isOsr);
   }
   public        boolean isMethodCompilable(Executable method) {
-    return isMethodCompilable(method, -2 /*any*/);
+    return isMethodCompilable(method, -1 /*any*/);
   }
   public        boolean isMethodCompilable(Executable method, int compLevel) {
     return isMethodCompilable(method, compLevel, false /*not osr*/);
@@ -297,7 +300,7 @@ public class WhiteBox {
     return deoptimizeMethod0(method, isOsr);
   }
   public        void    makeMethodNotCompilable(Executable method) {
-    makeMethodNotCompilable(method, -2 /*any*/);
+    makeMethodNotCompilable(method, -1 /*any*/);
   }
   public        void    makeMethodNotCompilable(Executable method, int compLevel) {
     makeMethodNotCompilable(method, compLevel, false /*not osr*/);
@@ -308,7 +311,7 @@ public class WhiteBox {
     makeMethodNotCompilable0(method, compLevel, isOsr);
   }
   public        int     getMethodCompilationLevel(Executable method) {
-    return getMethodCompilationLevel(method, false /*not ost*/);
+    return getMethodCompilationLevel(method, false /*not osr*/);
   }
   private native int     getMethodCompilationLevel0(Executable method, boolean isOsr);
   public         int     getMethodCompilationLevel(Executable method, boolean isOsr) {
@@ -321,7 +324,7 @@ public class WhiteBox {
     return testSetDontInlineMethod0(method, value);
   }
   public        int     getCompileQueuesSize() {
-    return getCompileQueueSize(-2 /*any*/);
+    return getCompileQueueSize(-1 /*any*/);
   }
   public native int     getCompileQueueSize(int compLevel);
   private native boolean testSetForceInlineMethod0(Executable method, boolean value);
@@ -394,14 +397,28 @@ public class WhiteBox {
   // Memory
   public native void readReservedMemory();
   public native long allocateMetaspace(ClassLoader classLoader, long size);
-  public native void freeMetaspace(ClassLoader classLoader, long addr, long size);
   public native long incMetaspaceCapacityUntilGC(long increment);
   public native long metaspaceCapacityUntilGC();
-  public native long metaspaceReserveAlignment();
+  public native long metaspaceSharedRegionAlignment();
+
+  // Metaspace Arena Tests
+  public native long createMetaspaceTestContext(long commit_limit, long reserve_limit);
+  public native void destroyMetaspaceTestContext(long context);
+  public native void purgeMetaspaceTestContext(long context);
+  public native void printMetaspaceTestContext(long context);
+  public native long getTotalCommittedWordsInMetaspaceTestContext(long context);
+  public native long getTotalUsedWordsInMetaspaceTestContext(long context);
+  public native long createArenaInTestContext(long context, boolean is_micro);
+  public native void destroyMetaspaceTestArena(long arena);
+  public native long allocateFromMetaspaceTestArena(long arena, long word_size);
+  public native void deallocateToMetaspaceTestArena(long arena, long p, long word_size);
+
+  public native long maxMetaspaceAllocationSize();
 
   // Don't use these methods directly
   // Use sun.hotspot.gc.GC class instead.
   public native boolean isGCSupported(int name);
+  public native boolean isGCSupportedByJVMCICompiler(int name);
   public native boolean isGCSelected(int name);
   public native boolean isGCSelectedErgonomically();
 
@@ -411,33 +428,82 @@ public class WhiteBox {
   // Force Full GC
   public native void fullGC();
 
-  // Returns true if the current GC supports control of its concurrent
-  // phase via requestConcurrentGCPhase().  If false, a request will
-  // always fail.
-  public native boolean supportsConcurrentGCPhaseControl();
+  // Returns true if the current GC supports concurrent collection control.
+  public native boolean supportsConcurrentGCBreakpoints();
 
-  // Attempt to put the collector into the indicated concurrent phase,
-  // and attempt to remain in that state until a new request is made.
-  //
-  // Returns immediately if already in the requested phase.
-  // Otherwise, waits until the phase is reached.
-  //
-  // Throws IllegalStateException if unsupported by the current collector.
-  // Throws NullPointerException if phase is null.
-  // Throws IllegalArgumentException if phase is not valid for the current collector.
-  public void requestConcurrentGCPhase(String phase) {
-    if (!supportsConcurrentGCPhaseControl()) {
-      throw new IllegalStateException("Concurrent GC phase control not supported");
-    } else if (phase == null) {
-      throw new NullPointerException("null phase");
-    } else if (!requestConcurrentGCPhase0(phase)) {
-      throw new IllegalArgumentException("Unknown concurrent GC phase: " + phase);
+  private void checkConcurrentGCBreakpointsSupported() {
+    if (!supportsConcurrentGCBreakpoints()) {
+      throw new UnsupportedOperationException("Concurrent GC breakpoints not supported");
     }
   }
 
-  // Helper for requestConcurrentGCPhase().  Returns true if request
-  // succeeded, false if the phase is invalid.
-  private native boolean requestConcurrentGCPhase0(String phase);
+  private native void concurrentGCAcquireControl0();
+  private native void concurrentGCReleaseControl0();
+  private native void concurrentGCRunToIdle0();
+  private native boolean concurrentGCRunTo0(String breakpoint);
+
+  private static boolean concurrentGCIsControlled = false;
+  private void checkConcurrentGCIsControlled() {
+    if (!concurrentGCIsControlled) {
+      throw new IllegalStateException("Not controlling concurrent GC");
+    }
+  }
+
+  // All collectors supporting concurrent GC breakpoints are expected
+  // to provide at least the following breakpoints.
+  public final String AFTER_MARKING_STARTED = "AFTER MARKING STARTED";
+  public final String BEFORE_MARKING_COMPLETED = "BEFORE MARKING COMPLETED";
+
+  // Collectors supporting concurrent GC breakpoints that do reference
+  // processing concurrently should provide the following breakpoint.
+  public final String AFTER_CONCURRENT_REFERENCE_PROCESSING_STARTED =
+    "AFTER CONCURRENT REFERENCE PROCESSING STARTED";
+
+  public void concurrentGCAcquireControl() {
+    checkConcurrentGCBreakpointsSupported();
+    if (concurrentGCIsControlled) {
+      throw new IllegalStateException("Already controlling concurrent GC");
+    }
+    concurrentGCAcquireControl0();
+    concurrentGCIsControlled = true;
+  }
+
+  public void concurrentGCReleaseControl() {
+    checkConcurrentGCBreakpointsSupported();
+    concurrentGCReleaseControl0();
+    concurrentGCIsControlled = false;
+  }
+
+  // Keep concurrent GC idle.  Release from breakpoint.
+  public void concurrentGCRunToIdle() {
+    checkConcurrentGCBreakpointsSupported();
+    checkConcurrentGCIsControlled();
+    concurrentGCRunToIdle0();
+  }
+
+  // Allow concurrent GC to run to breakpoint.
+  // Throws IllegalStateException if reached end of cycle first.
+  public void concurrentGCRunTo(String breakpoint) {
+    concurrentGCRunTo(breakpoint, true);
+  }
+
+  // Allow concurrent GC to run to breakpoint.
+  // Returns true if reached breakpoint.  If reached end of cycle first,
+  // then throws IllegalStateException if errorIfFail is true, returning
+  // false otherwise.
+  public boolean concurrentGCRunTo(String breakpoint, boolean errorIfFail) {
+    checkConcurrentGCBreakpointsSupported();
+    checkConcurrentGCIsControlled();
+    if (breakpoint == null) {
+      throw new NullPointerException("null breakpoint");
+    } else if (concurrentGCRunTo0(breakpoint)) {
+      return true;
+    } else if (errorIfFail) {
+      throw new IllegalStateException("Missed requested breakpoint \"" + breakpoint + "\"");
+    } else {
+      return false;
+    }
+  }
 
   // Method tries to start concurrent mark cycle.
   // It returns false if CM Thread is always in concurrent cycle.
@@ -445,7 +511,6 @@ public class WhiteBox {
 
   // Tests on ReservedSpace/VirtualSpace classes
   public native int stressVirtualSpaceResize(long reservedSpaceSize, long magnitude, long iterations);
-  public native void runMemoryUnitTests();
   public native void readFromNoaccessArea();
   public native long getThreadStackSize();
   public native long getThreadRemainingStackSize();
@@ -521,10 +586,6 @@ public class WhiteBox {
                               .orElse(null);
   }
 
-  // Safepoint Checking
-  public native void assertMatchingSafepointCalls(boolean mutexSafepointValue, boolean attemptedNoSafepointValue);
-  public native void assertSpecialLock(boolean allowVMBlock, boolean safepointCheck);
-
   // Sharing & archiving
   public native String  getDefaultArchivePath();
   public native boolean cdsMemoryMappingFailed();
@@ -532,8 +593,9 @@ public class WhiteBox {
   public native boolean isShared(Object o);
   public native boolean isSharedClass(Class<?> c);
   public native boolean areSharedStringsIgnored();
-  public native boolean isCDSIncludedInVmBuild();
-  public native boolean isJFRIncludedInVmBuild();
+  public native boolean isCDSIncluded();
+  public native boolean isJFRIncluded();
+  public native boolean isDTraceIncluded();
   public native boolean isJavaHeapArchiveSupported();
   public native Object  getResolvedReferences(Class<?> c);
   public native void    linkClass(Class<?> c);
@@ -545,12 +607,18 @@ public class WhiteBox {
 
   // Handshakes
   public native int handshakeWalkStack(Thread t, boolean all_threads);
+  public native void asyncHandshakeWalkStack(Thread t);
+
+  public native void lockAndBlock(boolean suspender);
 
   // Returns true on linux if library has the noexecstack flag set.
   public native boolean checkLibSpecifiesNoexecstack(String libfilename);
 
   // Container testing
   public native boolean isContainerized();
+  public native int validateCgroup(String procCgroups,
+                                   String procSelfCgroup,
+                                   String procSelfMountinfo);
   public native void printOsInfo();
 
   // Decoder
@@ -562,8 +630,22 @@ public class WhiteBox {
   // Protection Domain Table
   public native int protectionDomainRemovedCount();
 
-  // Number of loaded AOT libraries
-  public native int aotLibrariesCount();
-
   public native int getKlassMetadataSize(Class<?> c);
+
+  // ThreadSMR GC safety check for threadObj
+  public native void checkThreadObjOfTerminatingThread(Thread target);
+
+  // libc name
+  public native String getLibcName();
+
+  // Walk stack frames of current thread
+  public native void verifyFrames(boolean log, boolean updateRegisterMap);
+
+  public native boolean isJVMTIIncluded();
+
+  public native void waitUnsafe(int time_ms);
+
+  public native void lockCritical();
+
+  public native void unlockCritical();
 }

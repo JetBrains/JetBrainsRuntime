@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,7 @@
  * @library /test/lib /test/hotspot/jtreg/runtime/cds/appcds
  * @compile ../test-classes/Hello.java
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run main/othervm/timeout=160 -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI -Xbootclasspath/a:. DifferentHeapSizes
  */
 
@@ -79,7 +79,9 @@ public class DifferentHeapSizes {
                             out.shouldNotContain(CDSTestUtils.MSG_RANGE_ALREADT_IN_USE);
                         });
                 } else {
-                    result.assertAbnormalExit(CDSTestUtils.MSG_COMPRESSION_MUST_BE_USED);
+                    result
+                        .assertAbnormalExit("Unable to use shared archive.",
+                                            "The saved state of UseCompressedOops and UseCompressedClassPointers is different from runtime, CDS will be disabled.");
                 }
             }
         }

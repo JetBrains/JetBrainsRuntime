@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,13 +28,14 @@
  * @requires vm.cds
  * @library /test/lib
  * @compile test-classes/Hello.java
+ * @compile test-classes/C2.java
  * @run driver BootClassPathMismatch
  */
 
 import jdk.test.lib.Platform;
 import jdk.test.lib.cds.CDSOptions;
 import jdk.test.lib.cds.CDSTestUtils;
-import jdk.test.lib.process.OutputAnalyzer;
+import jdk.test.lib.helpers.ClassFileInstaller;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.FileAlreadyExistsException;
@@ -61,6 +62,7 @@ public class BootClassPathMismatch {
             test.testBootClassPathMatchWithAppend();
         }
         test.testBootClassPathMatch();
+        test.testBootClassPathMismatchTwoJars();
     }
 
     /* Archive contains boot classes only, with Hello class on -Xbootclasspath/a path.
@@ -185,8 +187,7 @@ public class BootClassPathMismatch {
      */
     public void testBootClassPathMatchWithAppend() throws Exception {
       CDSOptions opts = new CDSOptions().setUseVersion(false);
-      OutputAnalyzer out = CDSTestUtils.createArchive(opts);
-      CDSTestUtils.checkDump(out);
+      CDSTestUtils.createArchiveAndCheck(opts);
 
       String appJar = JarBuilder.getOrCreateHelloJar();
       opts.addPrefix("-Xbootclasspath/a:" + appJar, "-showversion").addSuffix("Hello");
@@ -215,8 +216,27 @@ public class BootClassPathMismatch {
             .assertAbnormalExit(mismatchMessage);
     }
 
+    /* Archive contains app classes, with 2 jars in bootclasspath at dump time.
+     *
+     * Error should be detected if:
+     * dump time: -Xbootclasspath/a:hello.jar:jar2.jar
+     * run-time : -Xbootclasspath/a:hello.jar:jar2.jarx
+     * Note: the second jar (jar2.jarx) specified for run-time doesn't exist.
+     */
+    public void testBootClassPathMismatchTwoJars() throws Exception {
+        String appJar = JarBuilder.getOrCreateHelloJar();
+        String jar2 = ClassFileInstaller.writeJar("jar2.jar", "pkg/C2");
+        String jars = appJar + File.pathSeparator + jar2;
+        String appClasses[] = {"Hello", "pkg/C2"};
+        TestCommon.dump(
+            appJar, appClasses, "-Xbootclasspath/a:" + jars);
+        TestCommon.run(
+                "-cp", appJar, "-Xbootclasspath/a:" + jars + "x", "Hello")
+            .assertAbnormalExit(mismatchMessage);
+    }
+
     private static void copyHelloToNewDir() throws Exception {
-        String classDir = System.getProperty("test.classes");
+        String classDir = CDSTestUtils.getOutputDir();
         String dstDir = classDir + File.separator + "newdir";
         try {
             Files.createDirectory(Paths.get(dstDir));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,8 +22,6 @@
  *
  */
 
-#include <jni.h> // just include something, or else solaris compiler will complain that this file is empty
-
 #if defined(LINUX) || defined(__APPLE__)
 #include <unistd.h>
 #include <fcntl.h>
@@ -41,6 +39,13 @@
 
 #ifdef __APPLE__
 #include "sun_jvm_hotspot_debugger_amd64_AMD64ThreadContext.h"
+#endif
+
+// Define a segment permission flag allowing read if there is a read flag. Otherwise use 0.
+#ifdef PF_R
+#define MAP_R_FLAG PF_R
+#else
+#define MAP_R_FLAG 0
 #endif
 
 #ifdef LINUX
@@ -115,7 +120,7 @@ void core_release(struct ps_prochandle* ph) {
   }
 }
 
-static map_info* allocate_init_map(int fd, off_t offset, uintptr_t vaddr, size_t memsz) {
+static map_info* allocate_init_map(int fd, off_t offset, uintptr_t vaddr, size_t memsz, uint32_t flags) {
   map_info* map;
   if ( (map = (map_info*) calloc(1, sizeof(map_info))) == NULL) {
     print_debug("can't allocate memory for map_info\n");
@@ -127,14 +132,15 @@ static map_info* allocate_init_map(int fd, off_t offset, uintptr_t vaddr, size_t
   map->offset = offset;
   map->vaddr  = vaddr;
   map->memsz  = memsz;
+  map->flags  = flags;
   return map;
 }
 
 // add map info with given fd, offset, vaddr and memsz
 map_info* add_map_info(struct ps_prochandle* ph, int fd, off_t offset,
-                       uintptr_t vaddr, size_t memsz) {
+                       uintptr_t vaddr, size_t memsz, uint32_t flags) {
   map_info* map;
-  if ((map = allocate_init_map(fd, offset, vaddr, memsz)) == NULL) {
+  if ((map = allocate_init_map(fd, offset, vaddr, memsz, flags)) == NULL) {
     return NULL;
   }
 
@@ -151,7 +157,7 @@ static map_info* add_class_share_map_info(struct ps_prochandle* ph, off_t offset
                              uintptr_t vaddr, size_t memsz) {
   map_info* map;
   if ((map = allocate_init_map(ph->core->classes_jsa_fd,
-                               offset, vaddr, memsz)) == NULL) {
+                               offset, vaddr, memsz, MAP_R_FLAG)) == NULL) {
     return NULL;
   }
 

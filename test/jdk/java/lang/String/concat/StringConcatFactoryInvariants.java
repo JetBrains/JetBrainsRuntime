@@ -28,36 +28,11 @@ import java.util.concurrent.Callable;
 /**
  * @test
  * @summary Test input invariants for StringConcatFactory
+ * @bug 8246152 8247681
  *
  * @compile StringConcatFactoryInvariants.java
  *
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=BC_SB                                                                                                          StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=BC_SB_SIZED                                                                                                    StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=MH_SB_SIZED                                                                                                    StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=BC_SB_SIZED_EXACT                                                                                              StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=MH_SB_SIZED_EXACT                                                                                              StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=MH_INLINE_SIZED_EXACT                                                                                          StringConcatFactoryInvariants
- *
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=BC_SB                  -Djava.lang.invoke.stringConcat.debug=true                                              StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=BC_SB_SIZED            -Djava.lang.invoke.stringConcat.debug=true                                              StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=MH_SB_SIZED            -Djava.lang.invoke.stringConcat.debug=true                                              StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=BC_SB_SIZED_EXACT      -Djava.lang.invoke.stringConcat.debug=true                                              StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=MH_SB_SIZED_EXACT      -Djava.lang.invoke.stringConcat.debug=true                                              StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=MH_INLINE_SIZED_EXACT  -Djava.lang.invoke.stringConcat.debug=true                                              StringConcatFactoryInvariants
- *
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=BC_SB                                                              -Djava.lang.invoke.stringConcat.cache=true  StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=BC_SB_SIZED                                                        -Djava.lang.invoke.stringConcat.cache=true  StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=MH_SB_SIZED                                                        -Djava.lang.invoke.stringConcat.cache=true  StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=BC_SB_SIZED_EXACT                                                  -Djava.lang.invoke.stringConcat.cache=true  StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=MH_SB_SIZED_EXACT                                                  -Djava.lang.invoke.stringConcat.cache=true  StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=MH_INLINE_SIZED_EXACT                                              -Djava.lang.invoke.stringConcat.cache=true  StringConcatFactoryInvariants
- *
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=BC_SB                  -Djava.lang.invoke.stringConcat.debug=true  -Djava.lang.invoke.stringConcat.cache=true  StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=BC_SB_SIZED            -Djava.lang.invoke.stringConcat.debug=true  -Djava.lang.invoke.stringConcat.cache=true  StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=MH_SB_SIZED            -Djava.lang.invoke.stringConcat.debug=true  -Djava.lang.invoke.stringConcat.cache=true  StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=BC_SB_SIZED_EXACT      -Djava.lang.invoke.stringConcat.debug=true  -Djava.lang.invoke.stringConcat.cache=true  StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=MH_SB_SIZED_EXACT      -Djava.lang.invoke.stringConcat.debug=true  -Djava.lang.invoke.stringConcat.cache=true  StringConcatFactoryInvariants
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=MH_INLINE_SIZED_EXACT  -Djava.lang.invoke.stringConcat.debug=true  -Djava.lang.invoke.stringConcat.cache=true  StringConcatFactoryInvariants
+ * @run main/othervm -Xverify:all StringConcatFactoryInvariants
  *
 */
 public class StringConcatFactoryInvariants {
@@ -71,6 +46,7 @@ public class StringConcatFactoryInvariants {
         MethodType mt = MethodType.methodType(String.class, String.class, int.class);
         String recipe = "" + TAG_ARG + TAG_ARG + TAG_CONST;
         Object[][] constants = new Object[][] {
+                new String[] { "" },
                 new String[] { "bar" },
                 new Integer[] { 1 },
                 new Short[] { 2 },
@@ -85,6 +61,7 @@ public class StringConcatFactoryInvariants {
         // The string representation that should end up if the corresponding
         // Object[] in constants is used as an argument to makeConcatWithConstants
         String[] constantString = new String[] {
+                "",
                 "bar",
                 "1",
                 "2",
@@ -138,6 +115,21 @@ public class StringConcatFactoryInvariants {
             for (int i = 0; i < constants.length; i++) {
                 CallSite cs = StringConcatFactory.makeConcatWithConstants(lookup, methodName, mt, recipe, constants[i]);
                 test("foo42".concat(constantString[i]), (String) cs.getTarget().invokeExact("foo", 42));
+            }
+        }
+
+        // Check unary expressions with pre- and postfix constants
+        {
+            String constArgRecipe = "" + TAG_CONST + TAG_ARG;
+            String argConstRecipe = "" + TAG_ARG + TAG_CONST;
+            MethodType unaryMt = MethodType.methodType(String.class, String.class);
+
+            for (int i = 0; i < constants.length; i++) {
+                CallSite prefixCS = StringConcatFactory.makeConcatWithConstants(lookup, methodName, unaryMt, constArgRecipe, constants[i]);
+                test(constantString[i].concat("foo"), (String) prefixCS.getTarget().invokeExact("foo"));
+
+                CallSite postfixCS = StringConcatFactory.makeConcatWithConstants(lookup, methodName, unaryMt, argConstRecipe, constants[i]);
+                test("foo".concat(constantString[i]), (String) postfixCS.getTarget().invokeExact("foo"));
             }
         }
 
@@ -239,8 +231,14 @@ public class StringConcatFactoryInvariants {
         ok("Static arguments and recipe match",
                 () -> StringConcatFactory.makeConcatWithConstants(lookup, methodName, mtThreshold, recipeThreshold, "bar"));
 
-        fail("Static arguments and recipe mismatch",
+        fail("Static arguments and recipe mismatch: too few",
+                () -> StringConcatFactory.makeConcatWithConstants(lookup, methodName, mtThreshold, recipeThreshold));
+
+        fail("Static arguments and recipe mismatch: too many",
                 () -> StringConcatFactory.makeConcatWithConstants(lookup, methodName, mtThreshold, recipeThreshold, "bar", "baz"));
+
+        failNPE("Static arguments and recipe mismatch, too many, overflowing constant is null",
+                () -> StringConcatFactory.makeConcatWithConstants(lookup, methodName, mtThreshold, recipeThreshold, "bar", null));
 
         // Advanced factory: check for mismatched recipe and dynamic arguments
         fail("Dynamic arguments and recipe mismatch",

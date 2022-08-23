@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,13 +25,11 @@
  * @test
  * @bug 8035968
  * @summary Verify UseSHA option processing on supported CPU.
- * @library /test/lib testcases /
- * @modules java.base/jdk.internal.misc
- *          java.management
+ * @library /test/lib /
+ * @requires vm.flagless
  *
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox
- *                                sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run main/othervm -Xbootclasspath/a:. -XX:+UnlockDiagnosticVMOptions
  *                   -XX:+WhiteBoxAPI
  *                   compiler.intrinsics.sha.cli.TestUseSHAOptionOnSupportedCPU
@@ -44,10 +42,10 @@ import compiler.intrinsics.sha.cli.testcases.UseSHASpecificTestCaseForSupportedC
 
 public class TestUseSHAOptionOnSupportedCPU {
     public static void main(String args[]) throws Throwable {
-        new SHAOptionsBase(
+        new DigestOptionsBase(
                 new GenericTestCaseForSupportedCPU(
-                        SHAOptionsBase.USE_SHA_OPTION),
+                        DigestOptionsBase.USE_SHA_OPTION),
                 new UseSHASpecificTestCaseForSupportedCPU(
-                        SHAOptionsBase.USE_SHA_OPTION)).test();
+                        DigestOptionsBase.USE_SHA_OPTION)).test();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,9 +34,14 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import jdk.internal.jmod.JmodFile;
+import java.time.LocalDateTime;
 
 import static jdk.internal.jmod.JmodFile.*;
 
@@ -44,19 +49,23 @@ import static jdk.internal.jmod.JmodFile.*;
  * Output stream to write to JMOD file
  */
 class JmodOutputStream extends OutputStream implements AutoCloseable {
+    private final Map<Section, Set<String>> entries = new HashMap<>();
+
     /**
      * This method creates (or overrides, if exists) the JMOD file,
      * returning the the output stream to write to the JMOD file.
      */
-    static JmodOutputStream newOutputStream(Path file) throws IOException {
+    static JmodOutputStream newOutputStream(Path file, LocalDateTime date) throws IOException {
         OutputStream out = Files.newOutputStream(file);
         BufferedOutputStream bos = new BufferedOutputStream(out);
-        return new JmodOutputStream(bos);
+        return new JmodOutputStream(bos, date);
     }
 
     private final ZipOutputStream zos;
-    private JmodOutputStream(OutputStream out) {
+    private final LocalDateTime date;
+    private JmodOutputStream(OutputStream out, LocalDateTime date) {
         this.zos = new ZipOutputStream(out);
+        this.date = date;
         try {
             JmodFile.writeMagicNumber(out);
         } catch (IOException e) {
@@ -92,16 +101,46 @@ class JmodOutputStream extends OutputStream implements AutoCloseable {
      * Writes the given entry to the given input stream.
      */
     public void writeEntry(InputStream in, Entry e) throws IOException {
-        zos.putNextEntry(e.zipEntry());
+        ZipEntry e1 = e.zipEntry();
+        // Only preserve attributes which won't change by
+        // inflating and deflating the entry. See:
+        // sun.tools.jar.Main.update()
+        ZipEntry e2 = new ZipEntry(e1.getName());
+        e2.setMethod(e1.getMethod());
+        if (date != null) {
+            e2.setTimeLocal(date);
+        } else {
+            e2.setTime(e1.getTime());
+        }
+        e2.setComment(e1.getComment());
+        e2.setExtra(e1.getExtra());
+        if (e1.getMethod() == ZipEntry.STORED) {
+            e2.setSize(e1.getSize());
+            e2.setCrc(e1.getCrc());
+        }
+        zos.putNextEntry(e2);
         zos.write(in.readAllBytes());
         zos.closeEntry();
     }
 
-    private ZipEntry newEntry(Section section, String path) {
+    private ZipEntry newEntry(Section section, String path) throws IOException {
+        if (contains(section, path)) {
+            throw new IOException("duplicate entry: " + path + " in section " + section);
+        }
         String prefix = section.jmodDir();
         String name = Paths.get(prefix, path).toString()
                            .replace(File.separatorChar, '/');
-        return new ZipEntry(name);
+        entries.get(section).add(path);
+        ZipEntry zipEntry = new ZipEntry(name);
+        if (date != null) {
+            zipEntry.setTimeLocal(date);
+        }
+        return zipEntry;
+    }
+
+    public boolean contains(Section section, String path) {
+        Set<String> set = entries.computeIfAbsent(section, k -> new HashSet<>());
+        return set.contains(path);
     }
 
     @Override

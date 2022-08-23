@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,12 +27,13 @@
  *      5026830 5023243 5070673 4052517 4811767 6192449 6397034 6413313
  *      6464154 6523983 6206031 4960438 6631352 6631966 6850957 6850958
  *      4947220 7018606 7034570 4244896 5049299 8003488 8054494 8058464
- *      8067796 8224905
+ *      8067796 8224905 8263729 8265173 8272600 8231297 8282219
  * @key intermittent
  * @summary Basic tests for Process and Environment Variable code
  * @modules java.base/java.lang:open
- * @run main/othervm/timeout=300 Basic
- * @run main/othervm/timeout=300 -Djdk.lang.Process.launchMechanism=fork Basic
+ * @library /test/lib
+ * @run main/othervm/native/timeout=300 -Djava.security.manager=allow Basic
+ * @run main/othervm/native/timeout=300 -Djava.security.manager=allow -Djdk.lang.Process.launchMechanism=fork Basic
  * @author Martin Buchholz
  */
 
@@ -40,7 +41,8 @@
  * @test
  * @modules java.base/java.lang:open
  * @requires (os.family == "linux")
- * @run main/othervm/timeout=300 -Djdk.lang.Process.launchMechanism=posix_spawn Basic
+ * @library /test/lib
+ * @run main/othervm/timeout=300 -Djava.security.manager=allow -Djdk.lang.Process.launchMechanism=posix_spawn Basic
  */
 
 import java.lang.ProcessBuilder.Redirect;
@@ -48,8 +50,8 @@ import java.lang.ProcessHandle;
 import static java.lang.ProcessBuilder.Redirect.*;
 
 import java.io.*;
-import java.lang.reflect.Field;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
@@ -63,6 +65,8 @@ import static java.lang.System.out;
 import static java.lang.Boolean.TRUE;
 import static java.util.AbstractMap.SimpleImmutableEntry;
 
+import jdk.test.lib.Platform;
+
 public class Basic {
 
     /* used for Windows only */
@@ -74,10 +78,14 @@ public class Basic {
     /* used for AIX only */
     static final String libpath = System.getenv("LIBPATH");
 
+    /* Used for regex String matching for long error messages */
+    static final String PERMISSION_DENIED_ERROR_MSG = "(Permission denied|error=13)";
+    static final String NO_SUCH_FILE_ERROR_MSG = "(No such file|error=2)";
+
     /**
      * Returns the number of milliseconds since time given by
      * startNanoTime, which must have been previously returned from a
-     * call to {@link System.nanoTime()}.
+     * call to {@link System#nanoTime()}.
      */
     private static long millisElapsedSince(long startNanoTime) {
         return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanoTime);
@@ -305,7 +313,7 @@ public class Basic {
         } catch (IOException e) {
             String m = e.getMessage();
             if (EnglishUnix.is() &&
-                ! matches(m, "Permission denied"))
+                ! matches(m, PERMISSION_DENIED_ERROR_MSG))
                 unexpected(e);
         } catch (Throwable t) { unexpected(t); }
     }
@@ -396,8 +404,8 @@ public class Basic {
                 if (failed != 0) throw new Error("null PATH");
             } else if (action.equals("PATH search algorithm")) {
                 equal(System.getenv("PATH"), "dir1:dir2:");
-                check(new File("/bin/true").exists());
-                check(new File("/bin/false").exists());
+                check(new File(TrueExe.path()).exists());
+                check(new File(FalseExe.path()).exists());
                 String[] cmd = {"prog"};
                 ProcessBuilder pb1 = new ProcessBuilder(cmd);
                 ProcessBuilder pb2 = new ProcessBuilder(cmd);
@@ -415,7 +423,7 @@ public class Basic {
                         } catch (IOException e) {
                             String m = e.getMessage();
                             if (EnglishUnix.is() &&
-                                ! matches(m, "No such file"))
+                                ! matches(m, NO_SUCH_FILE_ERROR_MSG))
                                 unexpected(e);
                         } catch (Throwable t) { unexpected(t); }
 
@@ -428,7 +436,7 @@ public class Basic {
                         } catch (IOException e) {
                             String m = e.getMessage();
                             if (EnglishUnix.is() &&
-                                ! matches(m, "No such file"))
+                                ! matches(m, NO_SUCH_FILE_ERROR_MSG))
                                 unexpected(e);
                         } catch (Throwable t) { unexpected(t); }
 
@@ -438,13 +446,13 @@ public class Basic {
                         checkPermissionDenied(pb);
 
                         // continue searching if EACCES
-                        copy("/bin/true", "dir2/prog");
+                        copy(TrueExe.path(), "dir2/prog");
                         equal(run(pb).exitValue(), True.exitValue());
                         new File("dir1/prog").delete();
                         new File("dir2/prog").delete();
 
                         new File("dir2/prog").mkdirs();
-                        copy("/bin/true", "dir1/prog");
+                        copy(TrueExe.path(), "dir1/prog");
                         equal(run(pb).exitValue(), True.exitValue());
 
                         // Check empty PATH component means current directory.
@@ -460,10 +468,10 @@ public class Basic {
                             pb.command(command);
                             File prog = new File("./prog");
                             // "Normal" binaries
-                            copy("/bin/true", "./prog");
+                            copy(TrueExe.path(), "./prog");
                             equal(run(pb).exitValue(),
                                   True.exitValue());
-                            copy("/bin/false", "./prog");
+                            copy(FalseExe.path(), "./prog");
                             equal(run(pb).exitValue(),
                                   False.exitValue());
                             prog.delete();
@@ -518,12 +526,12 @@ public class Basic {
                         new File("dir2/prog").delete();
                         new File("prog").delete();
                         new File("dir3").mkdirs();
-                        copy("/bin/true", "dir1/prog");
-                        copy("/bin/false", "dir3/prog");
+                        copy(TrueExe.path(), "dir1/prog");
+                        copy(FalseExe.path(), "dir3/prog");
                         pb.environment().put("PATH","dir3");
                         equal(run(pb).exitValue(), True.exitValue());
-                        copy("/bin/true", "dir3/prog");
-                        copy("/bin/false", "dir1/prog");
+                        copy(TrueExe.path(), "dir3/prog");
+                        copy(FalseExe.path(), "dir1/prog");
                         equal(run(pb).exitValue(), False.exitValue());
 
                     } finally {
@@ -655,6 +663,43 @@ public class Basic {
                     return rc;
                 }
             } catch (Throwable t) { unexpected(t); return -1; }
+        }
+    }
+
+    // On Alpine Linux, /bin/true and /bin/false are just links to /bin/busybox.
+    // Some tests copy /bin/true and /bin/false to files with a different filename.
+    // However, copying the busbox executable into a file with a different name
+    // won't result in the expected return codes. As workaround, we create
+    // executable files that can be copied and produce the expected return
+    // values.
+
+    private static class TrueExe {
+        public static String path() { return path; }
+        private static final String path = path0();
+        private static String path0(){
+            if (!Platform.isBusybox("/bin/true")) {
+                return "/bin/true";
+            } else {
+                File trueExe = new File("true");
+                setFileContents(trueExe, "#!/bin/true\n");
+                trueExe.setExecutable(true);
+                return trueExe.getAbsolutePath();
+            }
+        }
+    }
+
+    private static class FalseExe {
+        public static String path() { return path; }
+        private static final String path = path0();
+        private static String path0(){
+            if (!Platform.isBusybox("/bin/false")) {
+                return "/bin/false";
+            } else {
+                File falseExe = new File("false");
+                setFileContents(falseExe, "#!/bin/false\n");
+                falseExe.setExecutable(true);
+                return falseExe.getAbsolutePath();
+            }
         }
     }
 
@@ -854,6 +899,7 @@ public class Basic {
         } catch (Throwable t) { unexpected(t); return ""; }
     }
 
+    @SuppressWarnings("removal")
     static void testIORedirection() throws Throwable {
         final File ifile = new File("ifile");
         final File ofile = new File("ofile");
@@ -1258,6 +1304,7 @@ public class Basic {
 
     }
 
+    @SuppressWarnings("removal")
     private static void realMain(String[] args) throws Throwable {
         if (Windows.is())
             System.out.println("This appears to be a Windows system.");
@@ -1823,6 +1870,8 @@ public class Basic {
             String[] envpOth = {"=ExitValue=3", "=C:=\\"};
             if (Windows.is()) {
                 envp = envpWin;
+            } else if (AIX.is()) {
+                envp = new String[] {"=ExitValue=3", "=C:=\\", "LIBPATH=" + libpath};
             } else {
                 envp = envpOth;
             }
@@ -1871,6 +1920,9 @@ public class Basic {
             String[] envp;
             if (Windows.is()) {
                 envp = envpWin;
+            } else if (AIX.is()) {
+                envp = new String[] {"LC_ALL=C\u0000\u0000", // Yuck!
+                        "FO\u0000=B\u0000R", "LIBPATH=" + libpath};
             } else {
                 envp = envpOth;
             }
@@ -1961,7 +2013,7 @@ public class Basic {
             //----------------------------------------------------------------
             try {
                 new File("suBdiR").mkdirs();
-                copy("/bin/true", "suBdiR/unliKely");
+                copy(TrueExe.path(), "suBdiR/unliKely");
                 final ProcessBuilder pb =
                     new ProcessBuilder(new String[]{"unliKely"});
                 pb.environment().put("PATH", "suBdiR");
@@ -1982,7 +2034,7 @@ public class Basic {
         } catch (IOException e) {
             String m = e.getMessage();
             if (EnglishUnix.is() &&
-                ! matches(m, "No such file or directory"))
+                ! matches(m, NO_SUCH_FILE_ERROR_MSG))
                 unexpected(e);
         } catch (Throwable t) { unexpected(t); }
 
@@ -1998,8 +2050,8 @@ public class Basic {
                 String m = e.getMessage();
                 Pattern p = Pattern.compile(programName);
                 if (! matches(m, programName)
-                    || (EnglishUnix.is()
-                        && ! matches(m, "No such file or directory")))
+                    || (EnglishUnix.is() &&
+                        ! matches(m, NO_SUCH_FILE_ERROR_MSG)))
                     unexpected(e);
             } catch (Throwable t) { unexpected(t); }
 
@@ -2015,7 +2067,7 @@ public class Basic {
             String m = e.getMessage();
             if (! matches(m, "in directory")
                 || (EnglishUnix.is() &&
-                    ! matches(m, "No such file or directory")))
+                    ! matches(m, NO_SUCH_FILE_ERROR_MSG)))
                 unexpected(e);
         } catch (Throwable t) { unexpected(t); }
 
@@ -2090,10 +2142,10 @@ public class Basic {
             final int cases = 4;
             for (int i = 0; i < cases; i++) {
                 final int action = i;
-                List<String> childArgs = new ArrayList<String>(javaChildArgs);
-                childArgs.add("sleep");
+                List<String> childArgs = getSleepArgs();
+                final ProcessBuilder pb = new ProcessBuilder(childArgs);
                 final byte[] bytes = new byte[10];
-                final Process p = new ProcessBuilder(childArgs).start();
+                final Process p = pb.start();
                 final CountDownLatch latch = new CountDownLatch(1);
                 final InputStream s;
                 switch (action & 0x1) {
@@ -2113,7 +2165,9 @@ public class Basic {
                             }
                             if (r >= 0) {
                                 // The child sent unexpected output; print it to diagnose
-                                System.out.println("Unexpected child output:");
+                                System.out.println("Unexpected child output, to: " +
+                                        ((action & 0x1) == 0 ? "getInputStream" : "getErrorStream"));
+                                System.out.println("Child args: " + childArgs);
                                 if ((action & 0x2) == 0) {
                                     System.out.write(r);    // Single character
 
@@ -2134,32 +2188,9 @@ public class Basic {
 
                 thread.start();
                 latch.await();
-                Thread.sleep(10);
+                Thread.sleep(30);
 
-                String os = System.getProperty("os.name");
-                if (os.equalsIgnoreCase("Solaris") ||
-                    os.equalsIgnoreCase("SunOS"))
-                {
-                    final Object deferred;
-                    Class<?> c = s.getClass();
-                    if (c.getName().equals(
-                        "java.lang.ProcessImpl$DeferredCloseInputStream"))
-                    {
-                        deferred = s;
-                    } else {
-                        Field deferredField = p.getClass().
-                            getDeclaredField("stdout_inner_stream");
-                        deferredField.setAccessible(true);
-                        deferred = deferredField.get(p);
-                    }
-                    Field useCountField = deferred.getClass().
-                        getDeclaredField("useCount");
-                    useCountField.setAccessible(true);
-
-                    while (useCountField.getInt(deferred) <= 0) {
-                        Thread.yield();
-                    }
-                } else if (s instanceof BufferedInputStream) {
+                if (s instanceof BufferedInputStream) {
                     // Wait until after the s.read occurs in "thread" by
                     // checking when the input stream monitor is acquired
                     // (BufferedInputStream.read is synchronized)
@@ -2185,9 +2216,10 @@ public class Basic {
                 // our child) but not our grandchild (i.e. '/bin/sleep'). So
                 // pay attention that the grandchild doesn't run too long to
                 // avoid polluting the process space with useless processes.
-                // Running the grandchild for 60s should be more than enough.
-                final String[] cmd = { "/bin/bash", "-c", "(/bin/sleep 60)" };
-                final String[] cmdkill = { "/bin/bash", "-c", "(/usr/bin/pkill -f \"sleep 60\")" };
+                // Running the grandchild for 59s should be more than enough.
+                // A unique (59s) time is needed to avoid killing other sleep processes.
+                final String[] cmd = { "/bin/bash", "-c", "(/bin/sleep 59)" };
+                final String[] cmdkill = { "/bin/bash", "-c", "(/usr/bin/pkill -f \"sleep 59\")" };
                 final ProcessBuilder pb = new ProcessBuilder(cmd);
                 final Process p = pb.start();
                 final InputStream stdout = p.getInputStream();
@@ -2295,7 +2327,7 @@ public class Basic {
             new File("./emptyCommand").delete();
             String m = e.getMessage();
             if (EnglishUnix.is() &&
-                ! matches(m, "Permission denied"))
+                ! matches(m, PERMISSION_DENIED_ERROR_MSG))
                 unexpected(e);
         } catch (Throwable t) { unexpected(t); }
 
@@ -2389,8 +2421,7 @@ public class Basic {
         // Process.waitFor(0, TimeUnit.MILLISECONDS) work as expected.
         //----------------------------------------------------------------
         try {
-            List<String> childArgs = new ArrayList<String>(javaChildArgs);
-            childArgs.add("sleep");
+            List<String> childArgs = getSleepArgs();
             final Process p = new ProcessBuilder(childArgs).start();
             long start = System.nanoTime();
             if (!p.isAlive() || p.waitFor(0, TimeUnit.MILLISECONDS)) {
@@ -2419,17 +2450,19 @@ public class Basic {
         // works as expected.
         //----------------------------------------------------------------
         try {
-            List<String> childArgs = new ArrayList<String>(javaChildArgs);
-            childArgs.add("sleep");
+            List<String> childArgs = getSleepArgs();
             final Process p = new ProcessBuilder(childArgs).start();
             long start = System.nanoTime();
 
-            p.waitFor(10, TimeUnit.MILLISECONDS);
-
-            long end = System.nanoTime();
-            if ((end - start) < TimeUnit.MILLISECONDS.toNanos(10))
-                fail("Test failed: waitFor didn't take long enough (" + (end - start) + "ns)");
-
+            if (p.waitFor(10, TimeUnit.MILLISECONDS)) {
+                var msg = "External sleep process terminated early: exitValue: %d, (%dns)%n"
+                        .formatted(p.exitValue(), (System.nanoTime() - start));
+                fail(msg);
+            } else {
+                long end = System.nanoTime();
+                if ((end - start) < TimeUnit.MILLISECONDS.toNanos(10))
+                    fail("Test failed: waitFor didn't take long enough (" + (end - start) + "ns)");
+            }
             p.destroy();
         } catch (Throwable t) { unexpected(t); }
 
@@ -2438,8 +2471,7 @@ public class Basic {
         // interrupt works as expected, if interrupted while waiting.
         //----------------------------------------------------------------
         try {
-            List<String> childArgs = new ArrayList<String>(javaChildArgs);
-            childArgs.add("sleep");
+            List<String> childArgs = getSleepArgs();
             final Process p = new ProcessBuilder(childArgs).start();
             final long start = System.nanoTime();
             final CountDownLatch aboutToWaitFor = new CountDownLatch(1);
@@ -2470,8 +2502,7 @@ public class Basic {
         // interrupt works as expected, if interrupted while waiting.
         //----------------------------------------------------------------
         try {
-            List<String> childArgs = new ArrayList<String>(javaChildArgs);
-            childArgs.add("sleep");
+            List<String> childArgs = getSleepArgs();
             final Process p = new ProcessBuilder(childArgs).start();
             final long start = System.nanoTime();
             final CountDownLatch aboutToWaitFor = new CountDownLatch(1);
@@ -2502,8 +2533,7 @@ public class Basic {
         // interrupt works as expected, if interrupted before waiting.
         //----------------------------------------------------------------
         try {
-            List<String> childArgs = new ArrayList<String>(javaChildArgs);
-            childArgs.add("sleep");
+            List<String> childArgs = getSleepArgs();
             final Process p = new ProcessBuilder(childArgs).start();
             final long start = System.nanoTime();
             final CountDownLatch threadStarted = new CountDownLatch(1);
@@ -2534,8 +2564,7 @@ public class Basic {
         // Check that Process.waitFor(timeout, null) throws NPE.
         //----------------------------------------------------------------
         try {
-            List<String> childArgs = new ArrayList<String>(javaChildArgs);
-            childArgs.add("sleep");
+            List<String> childArgs = getSleepArgs();
             final Process p = new ProcessBuilder(childArgs).start();
             THROWS(NullPointerException.class,
                     () ->  p.waitFor(10L, null));
@@ -2558,8 +2587,7 @@ public class Basic {
         // Check that default implementation of Process.waitFor(timeout, null) throws NPE.
         //----------------------------------------------------------------
         try {
-            List<String> childArgs = new ArrayList<String>(javaChildArgs);
-            childArgs.add("sleep");
+            List<String> childArgs = getSleepArgs();
             final Process proc = new ProcessBuilder(childArgs).start();
             final DelegatingProcess p = new DelegatingProcess(proc);
 
@@ -2585,22 +2613,73 @@ public class Basic {
         // Process.waitFor(long, TimeUnit)
         //----------------------------------------------------------------
         try {
-            List<String> childArgs = new ArrayList<String>(javaChildArgs);
-            childArgs.add("sleep");
+            List<String> childArgs = getSleepArgs();
             final Process proc = new ProcessBuilder(childArgs).start();
             DelegatingProcess p = new DelegatingProcess(proc);
             long start = System.nanoTime();
 
-            p.waitFor(1000, TimeUnit.MILLISECONDS);
-
-            long end = System.nanoTime();
-            if ((end - start) < 500000000)
-                fail("Test failed: waitFor didn't take long enough");
-
+            if (p.waitFor(1000, TimeUnit.MILLISECONDS)) {
+                var msg = "External sleep process terminated early: exitValue: %02x, (%dns)"
+                        .formatted(p.exitValue(), (System.nanoTime() - start));
+                fail(msg);
+            } else {
+                long end = System.nanoTime();
+                if ((end - start) < 500000000)
+                    fail("Test failed: waitFor didn't take long enough (" + (end - start) + "ns)");
+            }
             p.destroy();
 
             p.waitFor(1000, TimeUnit.MILLISECONDS);
         } catch (Throwable t) { unexpected(t); }
+    }
+
+    // Path to native executables, if any
+    private static final String TEST_NATIVEPATH = System.getProperty("test.nativepath");
+
+    // Path where "sleep" program may be found" or null
+    private static final Path SLEEP_PATH = initSleepPath();
+
+    /**
+     * Compute the Path to a sleep executable.
+     * @return a Path to sleep or BasicSleep(.exe) or null if none
+     */
+    private static Path initSleepPath() {
+        if (Windows.is() && TEST_NATIVEPATH != null) {
+            // exeBasicSleep is equivalent to sleep on Unix
+            Path exePath = Path.of(TEST_NATIVEPATH).resolve("BasicSleep.exe");
+            if (Files.isExecutable(exePath)) {
+                return exePath;
+            }
+        }
+
+        List<String> binPaths = List.of("/bin", "/usr/bin");
+        for (String dir : binPaths) {
+            Path exePath = Path.of(dir).resolve("sleep");
+            if (Files.isExecutable(exePath)) {
+                return exePath;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Return the list of process arguments for a child to sleep 10 minutes (600 seconds).
+     *
+     * @return A list of process arguments to sleep 10 minutes.
+     */
+    private static List<String> getSleepArgs() {
+        List<String> childArgs = null;
+        if (SLEEP_PATH != null) {
+            childArgs = List.of(SLEEP_PATH.toString(), "600");
+        } else {
+            // Fallback to the JavaChild ; its 'sleep' command is for 10 minutes.
+            // The fallback the Java$Child is used if the test is run without building
+            // the BasicSleep native executable (for Windows).
+            childArgs = new ArrayList<>(javaChildArgs);
+            childArgs.add("sleep");
+            System.out.println("Sleep not found, fallback to JavaChild: " + childArgs);
+        }
+        return childArgs;
     }
 
     static void closeStreams(Process p) {
@@ -2614,6 +2693,7 @@ public class Basic {
     //----------------------------------------------------------------
     // A Policy class designed to make permissions fiddling very easy.
     //----------------------------------------------------------------
+    @SuppressWarnings("removal")
     private static class Policy extends java.security.Policy {
         static final java.security.Policy DEFAULT_POLICY = java.security.Policy.getPolicy();
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import jdk.internal.misc.VM;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
 
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.util.Set;
 
@@ -39,7 +40,7 @@ import java.util.Set;
  * Although the class and all methods are public, use of this class is
  * limited because only trusted code can obtain instances of it.
  *
- * <em>Note:</em> It is the resposibility of the caller to make sure
+ * <em>Note:</em> It is the responsibility of the caller to make sure
  * arguments are checked before methods of this class are
  * called. While some rudimentary checks are performed on the input,
  * the checks are best effort and when performance is an overriding
@@ -439,7 +440,7 @@ public final class Unsafe {
      * aligned for all value types.  Dispose of this memory by calling {@link
      * #freeMemory}, or resize it with {@link #reallocateMemory}.
      *
-     * <em>Note:</em> It is the resposibility of the caller to make
+     * <em>Note:</em> It is the responsibility of the caller to make
      * sure arguments are checked before the methods are called. While
      * some rudimentary checks are performed on the input, the checks
      * are best effort and when performance is an overriding priority,
@@ -471,7 +472,7 @@ public final class Unsafe {
      * #reallocateMemory}.  The address passed to this method may be null, in
      * which case an allocation will be performed.
      *
-     * <em>Note:</em> It is the resposibility of the caller to make
+     * <em>Note:</em> It is the responsibility of the caller to make
      * sure arguments are checked before the methods are called. While
      * some rudimentary checks are performed on the input, the checks
      * are best effort and when performance is an overriding priority,
@@ -507,7 +508,7 @@ public final class Unsafe {
      * If the effective address and length are (resp.) even modulo 4 or 2,
      * the stores take place in units of 'int' or 'short'.
      *
-     * <em>Note:</em> It is the resposibility of the caller to make
+     * <em>Note:</em> It is the responsibility of the caller to make
      * sure arguments are checked before the methods are called. While
      * some rudimentary checks are performed on the input, the checks
      * are best effort and when performance is an overriding priority,
@@ -552,7 +553,7 @@ public final class Unsafe {
      * If the effective addresses and length are (resp.) even modulo 4 or 2,
      * the transfer takes place in units of 'int' or 'short'.
      *
-     * <em>Note:</em> It is the resposibility of the caller to make
+     * <em>Note:</em> It is the responsibility of the caller to make
      * sure arguments are checked before the methods are called. While
      * some rudimentary checks are performed on the input, the checks
      * are best effort and when performance is an overriding priority,
@@ -589,7 +590,7 @@ public final class Unsafe {
      * #allocateMemory} or {@link #reallocateMemory}.  The address passed to
      * this method may be null, in which case no action is taken.
      *
-     * <em>Note:</em> It is the resposibility of the caller to make
+     * <em>Note:</em> It is the responsibility of the caller to make
      * sure arguments are checked before the methods are called. While
      * some rudimentary checks are performed on the input, the checks
      * are best effort and when performance is an overriding priority,
@@ -636,6 +637,16 @@ public final class Unsafe {
      */
     @ForceInline
     public long objectFieldOffset(Field f) {
+        if (f == null) {
+            throw new NullPointerException();
+        }
+        Class<?> declaringClass = f.getDeclaringClass();
+        if (declaringClass.isHidden()) {
+            throw new UnsupportedOperationException("can't get field offset on a hidden class: " + f);
+        }
+        if (declaringClass.isRecord()) {
+            throw new UnsupportedOperationException("can't get field offset on a record class: " + f);
+        }
         return theInternalUnsafe.objectFieldOffset(f);
     }
 
@@ -658,6 +669,16 @@ public final class Unsafe {
      */
     @ForceInline
     public long staticFieldOffset(Field f) {
+        if (f == null) {
+            throw new NullPointerException();
+        }
+        Class<?> declaringClass = f.getDeclaringClass();
+        if (declaringClass.isHidden()) {
+            throw new UnsupportedOperationException("can't get field offset on a hidden class: " + f);
+        }
+        if (declaringClass.isRecord()) {
+            throw new UnsupportedOperationException("can't get field offset on a record class: " + f);
+        }
         return theInternalUnsafe.staticFieldOffset(f);
     }
 
@@ -673,6 +694,16 @@ public final class Unsafe {
      */
     @ForceInline
     public Object staticFieldBase(Field f) {
+        if (f == null) {
+            throw new NullPointerException();
+        }
+        Class<?> declaringClass = f.getDeclaringClass();
+        if (declaringClass.isHidden()) {
+            throw new UnsupportedOperationException("can't get base address on a hidden class: " + f);
+        }
+        if (declaringClass.isRecord()) {
+            throw new UnsupportedOperationException("can't get base address on a record class: " + f);
+        }
         return theInternalUnsafe.staticFieldBase(f);
     }
 
@@ -680,8 +711,19 @@ public final class Unsafe {
      * Detects if the given class may need to be initialized. This is often
      * needed in conjunction with obtaining the static field base of a
      * class.
+     *
+     * @deprecated No replacement API for this method.  As multiple threads
+     * may be trying to initialize the same class or interface at the same time.
+     * The only reliable result returned by this method is {@code false}
+     * indicating that the given class has been initialized.  Instead, simply
+     * call {@link java.lang.invoke.MethodHandles.Lookup#ensureInitialized(Class)}
+     * that does nothing if the given class has already been initialized.
+     * This method is subject to removal in a future version of JDK.
+     *
      * @return false only if a call to {@code ensureClassInitialized} would have no effect
+     *
      */
+    @Deprecated(since = "15", forRemoval = true)
     @ForceInline
     public boolean shouldBeInitialized(Class<?> c) {
         return theInternalUnsafe.shouldBeInitialized(c);
@@ -691,7 +733,11 @@ public final class Unsafe {
      * Ensures the given class has been initialized. This is often
      * needed in conjunction with obtaining the static field base of a
      * class.
+     *
+     * @deprecated Use the {@link java.lang.invoke.MethodHandles.Lookup#ensureInitialized(Class)}
+     * method instead.  This method is subject to removal in a future version of JDK.
      */
+    @Deprecated(since = "15", forRemoval = true)
     @ForceInline
     public void ensureClassInitialized(Class<?> c) {
         theInternalUnsafe.ensureClassInitialized(c);
@@ -807,27 +853,6 @@ public final class Unsafe {
 
 
     /// random trusted operations from JNI:
-
-    /**
-     * Defines a class but does not make it known to the class loader or system dictionary.
-     * <p>
-     * For each CP entry, the corresponding CP patch must either be null or have
-     * the a format that matches its tag:
-     * <ul>
-     * <li>Integer, Long, Float, Double: the corresponding wrapper object type from java.lang
-     * <li>Utf8: a string (must have suitable syntax if used as signature or name)
-     * <li>Class: any java.lang.Class object
-     * <li>String: any object (not just a java.lang.String)
-     * <li>InterfaceMethodRef: (NYI) a method handle to invoke on that call site's arguments
-     * </ul>
-     * @param hostClass context for linkage, access control, protection domain, and class loader
-     * @param data      bytes of a class file
-     * @param cpPatches where non-null entries exist, they replace corresponding CP entries in data
-     */
-    @ForceInline
-    public Class<?> defineAnonymousClass(Class<?> hostClass, byte[] data, Object[] cpPatches) {
-        return theInternalUnsafe.defineAnonymousClass(hostClass, data, cpPatches);
-    }
 
     /**
      * Allocates an instance but does not run any constructor.

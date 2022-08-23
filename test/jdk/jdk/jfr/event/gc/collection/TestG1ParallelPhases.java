@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -32,7 +30,6 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.IntStream.range;
-import static jdk.jfr.event.gc.collection.Provoker.provokeMixedGC;
 import static jdk.test.lib.Asserts.assertEquals;
 import static jdk.test.lib.Asserts.assertTrue;
 import static jdk.test.lib.jfr.Events.fromRecording;
@@ -46,6 +43,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
+import gc.testlibrary.g1.MixedGCProvoker;
 import jdk.jfr.Recording;
 import jdk.test.lib.Asserts;
 import jdk.test.lib.jfr.EventNames;
@@ -56,9 +54,9 @@ import sun.hotspot.WhiteBox;
  * @key jfr
  * @requires vm.hasJFR
  * @requires vm.gc == "G1" | vm.gc == null
- * @library /test/lib /test/jdk
+ * @library /test/lib /test/jdk /test/hotspot/jtreg
  * @build sun.hotspot.WhiteBox
- * @run main ClassFileInstaller sun.hotspot.WhiteBox
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+AlwaysTenure
  *      -Xms20M -Xmx20M -Xlog:gc=debug,gc+heap*=debug,gc+ergo*=debug,gc+start=debug
  *      -XX:G1MixedGCLiveThresholdPercent=100 -XX:G1HeapWastePercent=0 -XX:G1HeapRegionSize=1m
@@ -81,7 +79,7 @@ public class TestG1ParallelPhases {
             .collect(toList()); // force evaluation of lazy stream (all weak refs must be created)
 
         final var MEG = 1024 * 1024;
-        provokeMixedGC(1 * MEG);
+        MixedGCProvoker.allocateAndProvokeMixedGC(MEG);
         recording.stop();
 
         Set<String> usedPhases = fromRecording(recording).stream()
@@ -91,13 +89,12 @@ public class TestG1ParallelPhases {
         Set<String> allPhases = of(
             "ExtRootScan",
             "ThreadRoots",
-            "UniverseRoots",
-            "JNIRoots",
-            "ObjectSynchronizerRoots",
-            "ManagementRoots",
-            "SystemDictionaryRoots",
+            "VM Global",
+            "JNI Global",
+            "Thread OopStorage",
+            "ThreadService OopStorage",
+            "JVMTI OopStorage",
             "CLDGRoots",
-            "JVMTIRoots",
             "CMRefRoots",
             "MergeER",
             "MergeHCC",
@@ -107,10 +104,15 @@ public class TestG1ParallelPhases {
             "CodeRoots",
             "ObjCopy",
             "Termination",
-            "StringDedupQueueFixup",
-            "StringDedupTableFixup",
             "RedirtyCards",
-            "ParFreeCSet",
+            "RecalculateUsed",
+            "ResetHotCardCache",
+            "FreeCSet",
+            "PurgeCodeRoots",
+            "UpdateDerivedPointers",
+            "EagerlyReclaimHumongousObjects",
+            "ClearLoggedCards",
+            "MergePSS",
             "NonYoungFreeCSet",
             "YoungFreeCSet",
             "RebuildFreeList"
@@ -119,6 +121,10 @@ public class TestG1ParallelPhases {
         // Some GC phases may or may not occur depending on environment. Filter them out
         // since we can not reliably guarantee that they occur (or not).
         Set<String> optPhases = of(
+            // The following two phases only occur on evacuation failure.
+            "RemoveSelfForwardingPtr",
+            "RestorePreservedMarks",
+
             "OptScanHR",
             "OptMergeRS",
             "OptCodeRoots",
@@ -129,66 +135,5 @@ public class TestG1ParallelPhases {
         assertTrue(usedPhases.equals(allPhases), "Compare events expected and received"
             + ", Not found phases: " + allPhases.stream().filter(p -> !usedPhases.contains(p)).collect(joining(", "))
             + ", Not expected phases: " + usedPhases.stream().filter(p -> !allPhases.contains(p)).collect(joining(", ")));
-    }
-}
-
-/**
- * Utility class to guarantee a mixed GC. The class allocates several arrays and
- * promotes them to the oldgen. After that it tries to provoke mixed GC by
- * allocating new objects.
- */
-class Provoker {
-    private static void allocateOldObjects(
-            List<byte[]> liveOldObjects,
-            int g1HeapRegionSize,
-            int arraySize) {
-
-        var toUnreachable = new ArrayList<byte[]>();
-
-        // Allocates buffer and promotes it to the old gen. Mix live and dead old objects.
-        // allocate about two regions of old memory. At least one full old region will guarantee
-        // mixed collection in the future
-        range(0, g1HeapRegionSize/arraySize).forEach(n -> {
-            liveOldObjects.add(new byte[arraySize]);
-            toUnreachable.add(new byte[arraySize]);
-        });
-
-        // Do one young collection, AlwaysTenure will force promotion.
-        getWhiteBox().youngGC();
-
-        // Check it is promoted & keep alive
-        Asserts.assertTrue(getWhiteBox().isObjectInOldGen(liveOldObjects), "List of the objects is suppose to be in OldGen");
-        Asserts.assertTrue(getWhiteBox().isObjectInOldGen(toUnreachable), "List of the objects is suppose to be in OldGen");
-    }
-
-    private static void waitTillCMCFinished(int sleepTime) {
-        while (getWhiteBox().g1InConcurrentMark()) {
-              try {sleep(sleepTime);} catch (Exception e) {}
-        }
-    }
-
-    /**
-    * The necessary condition for guaranteed mixed GC is running in VM with the following flags:
-    * -XX:+UnlockExperimentalVMOptions -XX:+AlwaysTenure -Xms{HEAP_SIZE}M
-    * -Xmx{HEAP_SIZE}M -XX:G1MixedGCLiveThresholdPercent=100 -XX:G1HeapWastePercent=0
-    * -XX:G1HeapRegionSize={REGION_SIZE}m
-    *
-    * @param g1HeapRegionSize The size of your regions in bytes
-    */
-    public static void provokeMixedGC(int g1HeapRegionSize) {
-        final var arraySize = 20_000;
-        var liveOldObjects = new ArrayList<byte[]>();
-
-        // Make sure the heap is in a known state.
-        getWhiteBox().fullGC();
-        allocateOldObjects(liveOldObjects, g1HeapRegionSize, arraySize);
-        waitTillCMCFinished(10);
-        getWhiteBox().g1StartConcMarkCycle();
-        waitTillCMCFinished(10);
-        getWhiteBox().youngGC();
-        getWhiteBox().youngGC();
-
-        // check that liveOldObjects still alive
-        assertTrue(getWhiteBox().isObjectInOldGen(liveOldObjects), "List of the objects is suppose to be in OldGen");
     }
 }

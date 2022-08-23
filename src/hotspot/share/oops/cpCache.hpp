@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -148,13 +148,13 @@ class ConstantPoolCacheEntry {
   void set_bytecode_2(Bytecodes::Code code);
   void set_f1(Metadata* f1) {
     Metadata* existing_f1 = _f1; // read once
-    assert(existing_f1 == NULL || existing_f1 == f1, "illegal field change");
+    assert(AllowEnhancedClassRedefinition || existing_f1 == NULL || existing_f1 == f1, "illegal field change");
     _f1 = f1;
   }
   void release_set_f1(Metadata* f1);
   void set_f2(intx f2) {
     intx existing_f2 = _f2; // read once
-    assert(existing_f2 == 0 || existing_f2 == f2, "illegal field change");
+    assert(AllowEnhancedClassRedefinition || existing_f2 == 0 || existing_f2 == f2, "illegal field change");
     _f2 = f2;
   }
   void set_f2_as_vfinal_method(Method* f2) {
@@ -180,6 +180,9 @@ class ConstantPoolCacheEntry {
     tos_state_bits             = 4,
     tos_state_mask             = right_n_bits(tos_state_bits),
     tos_state_shift            = BitsPerInt - tos_state_bits,  // see verify_tos_state_shift below
+    // (DCEVM) dcevm additional indicator, that f1 is NULL. DCEVM need to keep the old value of the f1 until the
+    //         cache entry is reresolved to avoid race condition
+    is_f1_null_dcevm_shift     = 27,
     // misc. option bits; can be any bit position in [16..27]
     is_field_entry_shift       = 26,  // (F) is it a field or a method?
     has_local_signature_shift  = 25,  // (S) does the call site have a per-site signature (sig-poly methods)?
@@ -223,8 +226,7 @@ class ConstantPoolCacheEntry {
     int             field_offset,                // the field offset in words in the field holder
     TosState        field_type,                  // the (machine) field type
     bool            is_final,                    // the field is final
-    bool            is_volatile,                 // the field is volatile
-    Klass*          root_klass                   // needed by the GC to dirty the klass
+    bool            is_volatile                  // the field is volatile
   );
 
  private:
@@ -379,6 +381,10 @@ class ConstantPoolCacheEntry {
          bool* trace_name_printed);
   bool check_no_old_or_obsolete_entries();
   Method* get_interesting_method_entry();
+
+  // Enhanced RedefineClasses() API support (DCEVM):
+  // Clear cached entry, let it be re-resolved
+  void clear_entry();
 #endif // INCLUDE_JVMTI
 
   // Debugging & Printing
@@ -392,6 +398,7 @@ class ConstantPoolCacheEntry {
 
   void verify_just_initialized(bool f2_used);
   void reinitialize(bool f2_used);
+
 };
 
 
@@ -417,7 +424,7 @@ class ConstantPoolCache: public MetaspaceObj {
   Array<u2>*           _reference_map;
   // The narrowOop pointer to the archived resolved_references. Set at CDS dump
   // time when caching java heap object is supported.
-  CDS_JAVA_HEAP_ONLY(narrowOop _archived_references;)
+  CDS_JAVA_HEAP_ONLY(int _archived_references_index;)
 
   // Sizing
   debug_only(friend class ClassVerifier;)
@@ -444,6 +451,7 @@ class ConstantPoolCache: public MetaspaceObj {
 
   oop  archived_references() NOT_CDS_JAVA_HEAP_RETURN_(NULL);
   void set_archived_references(oop o) NOT_CDS_JAVA_HEAP_RETURN;
+  void clear_archived_references() NOT_CDS_JAVA_HEAP_RETURN;
 
   inline oop resolved_references();
   void set_resolved_references(OopHandle s) { _resolved_references = s; }
@@ -501,6 +509,10 @@ class ConstantPoolCache: public MetaspaceObj {
   void adjust_method_entries(bool* trace_name_printed);
   bool check_no_old_or_obsolete_entries();
   void dump_cache();
+
+  // Enhanced RedefineClasses() API support (DCEVM):
+  // Clear all entries
+  void clear_entries();
 #endif // INCLUDE_JVMTI
 
   // RedefineClasses support

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,7 +66,7 @@
  * Because an automatic module has no explicit module declaration, it has no
  * 'requires' directives of its own, although its name may be given by a
  * 'requires' directive of an explicit module declaration. </p>
-
+ *
  * <p> The set of root modules, whose names are the initial input to this
  * algorithm, is determined in an implementation specific manner. The set of
  * root modules may include automatic modules. </p>
@@ -147,7 +147,7 @@
  * <p> Otherwise, resolution succeeds, and the result of resolution is the
  * readability graph.
  *
- * <h3> Root modules </h3>
+ * <h3><a id="root-modules"></a> Root modules </h3>
  *
  * <p> The set of root modules at compile-time is usually the set of modules
  * being compiled. At run-time, the set of root modules is usually the
@@ -208,7 +208,6 @@
  * was enumerated by previous (or parent) resolution. </p>
  *
  * @since 9
- * @spec JPMS
  */
 
 package java.lang.module;

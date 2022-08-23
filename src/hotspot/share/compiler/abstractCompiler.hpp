@@ -31,7 +31,6 @@
 
 typedef void (*initializer)(void);
 
-#if INCLUDE_JVMCI
 // Per-compiler statistics
 class CompilerStatistics {
   friend class VMStructs;
@@ -58,17 +57,20 @@ class CompilerStatistics {
   Data _osr;       // stats for OSR compilations
   int _nmethods_size; //
   int _nmethods_code_size;
-  int bytes_per_second() {
+
+  double total_time() { return _standard._time.seconds() + _osr._time.seconds(); }
+
+  double bytes_per_second() {
     int bytes = _standard._bytes + _osr._bytes;
     if (bytes == 0) {
-      return 0;
+      return 0.0;
     }
-    double seconds = _standard._time.seconds() + _osr._time.seconds();
-    return seconds == 0.0 ? 0 : (int) (bytes / seconds);
+    double seconds = total_time();
+    return seconds == 0.0 ? 0.0 : (bytes / seconds);
   }
+
   CompilerStatistics() : _nmethods_size(0), _nmethods_code_size(0) {}
 };
-#endif // INCLUDE_JVMCI
 
 class AbstractCompiler : public CHeapObj<mtCompiler> {
  private:
@@ -86,9 +88,7 @@ class AbstractCompiler : public CHeapObj<mtCompiler> {
  private:
   const CompilerType _type;
 
-#if INCLUDE_JVMCI
   CompilerStatistics _stats;
-#endif
 
  public:
   AbstractCompiler(CompilerType type) : _num_compiler_threads(0), _compiler_state(uninitialized), _type(type) {}
@@ -99,11 +99,6 @@ class AbstractCompiler : public CHeapObj<mtCompiler> {
 
   // Name of this compiler
   virtual const char* name() = 0;
-
-  // Missing feature tests
-  virtual bool supports_native()                 { return true; }
-  virtual bool supports_osr   ()                 { return true; }
-  virtual bool can_compile_method(const methodHandle& method)  { return true; }
 
   // Determine if the current compiler provides an intrinsic
   // for method 'method'. An intrinsic is available if:
@@ -140,7 +135,7 @@ class AbstractCompiler : public CHeapObj<mtCompiler> {
   // the compiler provides the instructions necessary to generate
   // the intrinsic code for method 'method'.
   //
-  // The 'is_intrinsic_supported' method is a white list, that is,
+  // The 'is_intrinsic_supported' method is an allow-list, that is,
   // by default no intrinsics are supported by a compiler except
   // the ones listed in the method. Overriding methods should conform
   // to this behavior.
@@ -149,10 +144,10 @@ class AbstractCompiler : public CHeapObj<mtCompiler> {
   }
 
   // Compiler type queries.
-  const bool is_c1()                             { return _type == compiler_c1; }
-  const bool is_c2()                             { return _type == compiler_c2; }
-  const bool is_jvmci()                          { return _type == compiler_jvmci; }
-  const CompilerType type()                      { return _type; }
+  bool is_c1() const                     { return _type == compiler_c1; }
+  bool is_c2() const                     { return _type == compiler_c2; }
+  bool is_jvmci() const                  { return _type == compiler_jvmci; }
+  CompilerType type() const              { return _type; }
 
   // Customization
   virtual void initialize () = 0;
@@ -166,19 +161,16 @@ class AbstractCompiler : public CHeapObj<mtCompiler> {
   void set_state     (int state);
   void set_shut_down ()           { set_state(shut_down); }
   // Compilation entry point for methods
-  virtual void compile_method(ciEnv* env, ciMethod* target, int entry_bci, DirectiveSet* directive) {
+  virtual void compile_method(ciEnv* env, ciMethod* target, int entry_bci, bool install_code, DirectiveSet* directive) {
     ShouldNotReachHere();
   }
-
 
   // Print compilation timers and statistics
   virtual void print_timers() {
     ShouldNotReachHere();
   }
 
-#if INCLUDE_JVMCI
   CompilerStatistics* stats() { return &_stats; }
-#endif
 };
 
 #endif // SHARE_COMPILER_ABSTRACTCOMPILER_HPP

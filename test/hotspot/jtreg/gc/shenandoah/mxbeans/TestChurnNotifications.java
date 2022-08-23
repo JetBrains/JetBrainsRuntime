@@ -23,9 +23,10 @@
  */
 
 /*
- * @test TestChurnNotifications
+ * @test id=passive
  * @summary Check that MX notifications are reported for all cycles
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @library /test/lib /
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -Xmx128m -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=passive
@@ -39,24 +40,46 @@
  */
 
 /*
- * @test TestChurnNotifications
+ * @test id=aggressive
  * @summary Check that MX notifications are reported for all cycles
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @library /test/lib /
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -Xmx128m -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive
  *      -Dprecise=false
  *      TestChurnNotifications
+ */
+
+/*
+ * @test id=adaptive
+ * @summary Check that MX notifications are reported for all cycles
+ * @library /test/lib /
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -Xmx128m -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=adaptive
  *      -Dprecise=false
  *      TestChurnNotifications
+ */
+
+/*
+ * @test id=static
+ * @summary Check that MX notifications are reported for all cycles
+ * @library /test/lib /
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -Xmx128m -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=static
  *      -Dprecise=false
  *      TestChurnNotifications
+ */
+
+/*
+ * @test id=compact
+ * @summary Check that MX notifications are reported for all cycles
+ * @library /test/lib /
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -Xmx128m -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=compact
@@ -65,17 +88,18 @@
  */
 
 /*
- * @test TestChurnNotifications
+ * @test id=iu
  * @summary Check that MX notifications are reported for all cycles
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @library /test/lib /
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -Xmx128m -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
- *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=traversal -XX:ShenandoahGCHeuristics=aggressive
+ *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=iu -XX:ShenandoahGCHeuristics=aggressive
  *      -Dprecise=false
  *      TestChurnNotifications
  *
  * @run main/othervm -Xmx128m -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
- *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=traversal
+ *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=iu
  *      -Dprecise=false
  *      TestChurnNotifications
  */
@@ -86,12 +110,14 @@ import javax.management.*;
 import java.lang.management.*;
 import javax.management.openmbean.*;
 
+import jdk.test.lib.Utils;
+
 import com.sun.management.GarbageCollectionNotificationInfo;
 
 public class TestChurnNotifications {
 
     static final long HEAP_MB = 128;                           // adjust for test configuration above
-    static final long TARGET_MB = Long.getLong("target", 8_000); // 8 Gb allocation
+    static final long TARGET_MB = Long.getLong("target", 2_000); // 2 Gb allocation
 
     // Should we track the churn precisely?
     // Precise tracking is only reliable when GC is fully stop-the-world. Otherwise,
@@ -103,6 +129,8 @@ public class TestChurnNotifications {
     static volatile Object sink;
 
     public static void main(String[] args) throws Exception {
+        final long startTime = System.currentTimeMillis();
+
         final AtomicLong churnBytes = new AtomicLong();
 
         NotificationListener listener = new NotificationListener() {
@@ -141,15 +169,31 @@ public class TestChurnNotifications {
 
         System.gc();
 
-        Thread.sleep(1000);
-
-        long actual = churnBytes.get();
-
         long minExpected = PRECISE ? (mem - HEAP_MB * 1024 * 1024) : 1;
         long maxExpected = mem + HEAP_MB * 1024 * 1024;
+        long actual = 0;
+
+        // Look at test timeout to figure out how long we can wait without breaking into timeout.
+        // Default to 1/4 of the remaining time in 1s steps.
+        final long STEP_MS = 1000;
+        long spentTime = System.currentTimeMillis() - startTime;
+        long maxTries = (Utils.adjustTimeout(Utils.DEFAULT_TEST_TIMEOUT) - spentTime) / STEP_MS / 4;
+
+        // Wait until enough notifications are accrued to match minimum boundary.
+        long tries = 0;
+        while (tries++ < maxTries) {
+            actual = churnBytes.get();
+            if (minExpected <= actual) {
+                // Wait some more to test if we are breaking the maximum boundary.
+                Thread.sleep(5000);
+                actual = churnBytes.get();
+                break;
+            }
+            Thread.sleep(STEP_MS);
+        }
 
         String msg = "Expected = [" + minExpected / M + "; " + maxExpected / M + "] (" + mem / M + "), actual = " + actual / M;
-        if (minExpected < actual && actual < maxExpected) {
+        if (minExpected <= actual && actual <= maxExpected) {
             System.out.println(msg);
         } else {
             throw new IllegalStateException(msg);

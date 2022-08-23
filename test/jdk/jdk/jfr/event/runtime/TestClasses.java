@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,6 +22,12 @@
  */
 
 package jdk.jfr.event.runtime;
+
+import java.lang.invoke.MethodType;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.reflect.Array;
+import static java.lang.invoke.MethodHandles.Lookup.ClassOption.*;
 
 public class TestClasses {
 
@@ -76,8 +80,15 @@ public class TestClasses {
 
 class TestClass {
     static {
-        // force creation of anonymous class (for the lambda form)
+        // force creation of hidden class (for the lambda form)
         Runnable r = () -> System.out.println("Hello");
         r.run();
+    }
+
+    public static void createNonFindableClasses(byte[] klassbuf) throws Throwable {
+        // Create a hidden class and an array of hidden classes.
+        Lookup lookup = MethodHandles.lookup();
+        Class<?> clh = lookup.defineHiddenClass(klassbuf, false, NESTMATE).lookupClass();
+        Class<?> arrayOfHidden = Array.newInstance(clh, 10).getClass(); // HAS ISSUES?
     }
 }

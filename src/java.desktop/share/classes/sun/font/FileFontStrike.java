@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,10 +35,12 @@ import java.awt.geom.GeneralPath;
 import java.awt.geom.NoninvertibleTransformException;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.concurrent.ConcurrentHashMap;
 import static sun.awt.SunHints.*;
 
-
+@SuppressWarnings("removal")
 public class FileFontStrike extends PhysicalStrike {
 
     /* fffe and ffff are values we specially interpret as meaning
@@ -110,13 +112,77 @@ public class FileFontStrike extends PhysicalStrike {
     /* Used only for communication to native layer */
     private int intPtSize;
 
+    // -1 - undefined, 0 - horizontal (normal direction), 1 - 90 degrees CCW, 2 - 180 degrees, 3 - 90 degrees CW
+    private int rotation = -1;
+
     /* Perform global initialisation needed for Windows native rasterizer */
     private static native boolean initNative();
+    private static native boolean isDirectWriteAvailable();
     private static boolean isXPorLater = false;
+
+    private static boolean useNativesForRotatedText;
+
+    private static boolean useDirectWrite;
+
+    // DirectWrite rendering options' values can be found in MSDN documentation
+    // for IDWriteBitmapRenderTarget::DrawGlyphRun method and its parameters
+    // (https://msdn.microsoft.com/en-us/library/windows/desktop/dd368167(v=vs.85).aspx)
+
+    // Measuring mode doesn't seem to impact glyph rendering directly,
+    // but values other that 0 ('natural' measuring mode) seem to limit possible other options' values.
+    private static int dwMeasuringMode = 0;
+    // Only 'natural' and 'natural symmetric' rendering modes seem to use requested gamma value,
+    // so only they can be used to produce valid glyph images.
+    // 'Natural' mode is said to look better for smaller font sizes.
+    private static int dwRenderingMode = 4;
+    // 'Full' ClearType
+    private static float dwClearTypeLevel = 1;
+    // Disabling enhanced contrast - it doesn't seem to be doing anything for white-on-black glyphs being generated.
+    private static float dwEnhancedContrast = 0;
+    // gamma correction will be applied when glyph image is blitted onto target surface, so for a cached glyph image
+    // we don't need any gamma correction
+    private static float dwGamma = 1;
+    // use monitor-default pixel geometry
+    private static int dwPixelGeometry = -1;
+
     static {
         if (FontUtilities.isWindows && !FontUtilities.useJDKScaler &&
             !GraphicsEnvironment.isHeadless()) {
             isXPorLater = initNative();
+            if (isXPorLater) {
+                AccessController.doPrivileged(new PrivilegedAction<Void>() {
+                    public Void run() {
+                        String rotatedProperty = System.getProperty("rotated.text.native.rendering");
+                        useNativesForRotatedText = rotatedProperty == null || Boolean.parseBoolean(rotatedProperty);
+                        useDirectWrite = Boolean.getBoolean("directwrite.font.rendering") && isDirectWriteAvailable();
+                        if (useDirectWrite) {
+                            String options = System.getProperty("directwrite.font.rendering.options");
+                            if (options != null) {
+                                String[] parts = options.split(":");
+                                if (parts.length > 0 && parts[0].length() > 0) {
+                                    try { dwMeasuringMode = Integer.parseInt(parts[0]); } catch (NumberFormatException ignored) { }
+                                }
+                                if (parts.length > 1 && parts[1].length() > 0) {
+                                    try { dwRenderingMode = Integer.parseInt(parts[1]); } catch (NumberFormatException ignored) { }
+                                }
+                                if (parts.length > 2 && parts[2].length() > 0) {
+                                    try { dwClearTypeLevel = Float.parseFloat(parts[2]); } catch (NumberFormatException ignored) { }
+                                }
+                                if (parts.length > 3 && parts[3].length() > 0) {
+                                    try { dwEnhancedContrast = Float.parseFloat(parts[3]); } catch (NumberFormatException ignored) { }
+                                }
+                                if (parts.length > 4 && parts[4].length() > 0) {
+                                    try { dwGamma = Float.parseFloat(parts[4]); } catch (NumberFormatException ignored) { }
+                                }
+                                if (parts.length > 5 && parts[5].length() > 0) {
+                                    try { dwPixelGeometry = Integer.parseInt(parts[5]); } catch (NumberFormatException ignored) { }
+                                }
+                            }
+                        }
+                        return null;
+                    }
+                });
+            }
         }
     }
 
@@ -151,23 +217,6 @@ public class FileFontStrike extends PhysicalStrike {
             }
         }
 
-        /* Amble fonts are better rendered unhinted although there's the
-         * inevitable fuzziness that accompanies this due to no longer
-         * snapping stems to the pixel grid. The exception is that in B&W
-         * mode they are worse without hinting. The down side to that is that
-         * B&W metrics will differ which normally isn't the case, although
-         * since AA mode is part of the measuring context that should be OK.
-         * We don't expect Amble to be installed in the Windows fonts folder.
-         * If we were to, then we'd also might want to disable using the
-         * native rasteriser path which is used for LCD mode for platform
-         * fonts. since we have no way to disable hinting by GDI.
-         * In the case of Amble, since its 'gasp' table says to disable
-         * hinting, I'd expect GDI to follow that, so likely it should
-         * all be consistent even if GDI used.
-         */
-        boolean disableHinting = desc.aaHint != INTVAL_TEXT_ANTIALIAS_OFF &&
-                                 fileFont.familyName.startsWith("Amble");
-
         /* If any of the values is NaN then substitute the null scaler context.
          * This will return null images, zero advance, and empty outlines
          * as no rendering need take place in this case.
@@ -181,7 +230,7 @@ public class FileFontStrike extends PhysicalStrike {
         } else {
             pScalerContext = fileFont.getScaler().createScalerContext(matrix,
                                     desc.aaHint, desc.fmHint,
-                                    boldness, italic, disableHinting);
+                                    boldness, italic);
         }
 
         mapper = fileFont.getMapper();
@@ -220,6 +269,20 @@ public class FileFontStrike extends PhysicalStrike {
             SunFontManager.getInstance().deRegisterBadFont(fileFont);
             return;
         }
+
+        /* Always get the image and the advance together for smaller sizes
+         * that are likely to be important to rendering performance.
+         * The pixel size of 48.0 can be thought of as
+         * "maximumSizeForGetImageWithAdvance".
+         * This should be no greater than OutlineTextRender.THRESHOLD.
+         */
+        double maxSz = 48.0;
+        getImageWithAdvance =
+                Math.abs(at.getScaleX()) <= maxSz &&
+                        Math.abs(at.getScaleY()) <= maxSz &&
+                        Math.abs(at.getShearX()) <= maxSz &&
+                        Math.abs(at.getShearY()) <= maxSz;
+
         /* First, see if native code should be used to create the glyph.
          * GDI will return the integer metrics, not fractional metrics, which
          * may be requested for this strike, so we would require here that :
@@ -232,34 +295,23 @@ public class FileFontStrike extends PhysicalStrike {
             !GraphicsEnvironment.isHeadless() &&
             !fileFont.useJavaRasterizer &&
             (desc.aaHint == INTVAL_TEXT_ANTIALIAS_LCD_HRGB ||
-             desc.aaHint == INTVAL_TEXT_ANTIALIAS_LCD_HBGR) &&
-            (matrix[1] == 0.0 && matrix[2] == 0.0 &&
-             matrix[0] == matrix[3] &&
-             matrix[0] >= 3.0 && matrix[0] <= 100.0) &&
-            !((TrueTypeFont)fileFont).useEmbeddedBitmapsForSize(intPtSize)) {
-            useNatives = true;
-        }
-        else if (fileFont.checkUseNatives() && desc.aaHint==0 && !algoStyle) {
-            /* Check its a simple scale of a pt size in the range
-             * where native bitmaps typically exist (6-36 pts) */
-            if (matrix[1] == 0.0 && matrix[2] == 0.0 &&
-                matrix[0] >= 6.0 && matrix[0] <= 36.0 &&
-                matrix[0] == matrix[3]) {
-                useNatives = true;
-                int numNatives = fileFont.nativeFonts.length;
-                nativeStrikes = new NativeStrike[numNatives];
-                /* Maybe initialise these strikes lazily?. But we
-                 * know we need at least one
-                 */
-                for (int i=0; i<numNatives; i++) {
-                    nativeStrikes[i] =
-                        new NativeStrike(fileFont.nativeFonts[i], desc, false);
-                }
+             desc.aaHint == INTVAL_TEXT_ANTIALIAS_LCD_HBGR)) {
+            double pts = 0;
+            if (matrix[1] == 0.0 && matrix[2] == 0.0 && matrix[0] == matrix[3]) {
+                rotation = matrix[0] > 0 ? 0 : 2;
+                pts = Math.abs(matrix[0]);
+            } else if (matrix[0] == 0.0 && matrix[3] == 0.0 && matrix[1] == -matrix[2]) {
+                rotation = matrix[1] > 0 ? 3 : 1;
+                pts = Math.abs(matrix[1]);
             }
+            intPtSize = (int) pts;
+            useNatives = (rotation == 0 || rotation > 0 && useNativesForRotatedText) && pts >= 3.0 && pts <= 100.0 &&
+                    (getImageWithAdvance || desc.fmHint == INTVAL_FRACTIONALMETRICS_ON) &&
+                    !((TrueTypeFont)fileFont).useEmbeddedBitmapsForSize(intPtSize) &&
+                    !((TrueTypeFont)fileFont).hasCOLRTable();
         }
         if (FontUtilities.isLogging() && FontUtilities.isWindows) {
-            FontUtilities.getLogger().info
-                ("Strike for " + fileFont + " at size = " + intPtSize +
+            FontUtilities.logInfo("Strike for " + fileFont + " at size = " + intPtSize +
                  " use natives = " + useNatives +
                  " useJavaRasteriser = " + fileFont.useJavaRasterizer +
                  " AAHint = " + desc.aaHint +
@@ -268,19 +320,6 @@ public class FileFontStrike extends PhysicalStrike {
                  useEmbeddedBitmapsForSize(intPtSize));
         }
         this.disposer = new FontStrikeDisposer(fileFont, desc, pScalerContext);
-
-        /* Always get the image and the advance together for smaller sizes
-         * that are likely to be important to rendering performance.
-         * The pixel size of 48.0 can be thought of as
-         * "maximumSizeForGetImageWithAdvance".
-         * This should be no greater than OutlineTextRender.THRESHOLD.
-         */
-        double maxSz = 48.0;
-        getImageWithAdvance =
-            Math.abs(at.getScaleX()) <= maxSz &&
-            Math.abs(at.getScaleY()) <= maxSz &&
-            Math.abs(at.getShearX()) <= maxSz &&
-            Math.abs(at.getShearY()) <= maxSz;
 
         /* Some applications request advance frequently during layout.
          * If we are not getting and caching the image with the advance,
@@ -328,31 +367,64 @@ public class FileFontStrike extends PhysicalStrike {
                                                   int style,
                                                   int size,
                                                   int glyphCode,
-                                                  boolean fracMetrics);
+                                                  boolean fracMetrics,
+                                                  int rotation,
+                                                  byte charset,
+                                                  int fontDataSize);
+
+    private native long _getGlyphImageFromWindowsUsingDirectWrite(String family,
+                                                                  int style,
+                                                                  int size,
+                                                                  int glyphCode,
+                                                                  int rotation,
+                                                                  int measuringMode,
+                                                                  int renderingMode,
+                                                                  float clearTypeLevel,
+                                                                  float enhancedContrast,
+                                                                  float gamma,
+                                                                  int pixelGeometry,
+                                                                  byte charset);
 
     long getGlyphImageFromWindows(int glyphCode) {
         String family = fileFont.getFamilyName(null);
+        FontFamily fontFamily = FontFamily.getFamily(family);
         int style = desc.style & Font.BOLD | desc.style & Font.ITALIC
             | fileFont.getStyle();
-        int size = intPtSize;
-        long ptr = _getGlyphImageFromWindows
-            (family, style, size, glyphCode,
-             desc.fmHint == INTVAL_FRACTIONALMETRICS_ON);
-        if (ptr != 0) {
-            /* Get the advance from the JDK rasterizer. This is mostly
-             * necessary for the fractional metrics case, but there are
-             * also some very small number (<0.25%) of marginal cases where
-             * there is some rounding difference between windows and JDK.
-             * After these are resolved, we can restrict this extra
-             * work to the FM case.
-             */
-            float advance = getGlyphAdvance(glyphCode, false);
-            StrikeCache.unsafe.putFloat(ptr + StrikeCache.xAdvanceOffset,
-                                        advance);
-            return ptr;
-        } else {
-            return fileFont.getGlyphImage(pScalerContext, glyphCode);
+        if (fontFamily != null && fontFamily.getFont(style) != fileFont) {
+            style = fileFont.getStyle();
         }
+        int size = intPtSize;
+        byte charset = fileFont.getSupportedCharset();
+        long ptr = 0;
+        if (useDirectWrite) {
+            ptr = _getGlyphImageFromWindowsUsingDirectWrite(family, style, size, glyphCode, rotation,
+                    dwMeasuringMode, dwRenderingMode, dwClearTypeLevel, dwEnhancedContrast, dwGamma, dwPixelGeometry,
+                    charset);
+            if (ptr == 0 && FontUtilities.isLogging()) {
+                FontUtilities.logWarning("Failed to render glyph via DirectWrite: code=" + glyphCode
+                        + ", fontFamily=" + family + ", style=" + style + ", size=" + size + ", rotation=" + rotation);
+            }
+        }
+        if (ptr == 0) {
+            boolean fm = desc.fmHint == INTVAL_FRACTIONALMETRICS_ON;
+            ptr = _getGlyphImageFromWindows(family, style, size, glyphCode, fm,
+                    rotation, charset, ((TrueTypeFont)fileFont).fontDataSize);
+            if (ptr != 0 && fm) {
+                Point2D.Float metrics = new Point2D.Float();
+                fileFont.getGlyphMetrics(pScalerContext, glyphCode, metrics);
+                StrikeCache.unsafe.putFloat(ptr + StrikeCache.xAdvanceOffset, metrics.x);
+                StrikeCache.unsafe.putFloat(ptr + StrikeCache.yAdvanceOffset, metrics.y);
+            }
+        }
+        if (ptr == 0) {
+            if (FontUtilities.isLogging()) {
+                FontUtilities.logWarning("Failed to render glyph using GDI: code=" + glyphCode
+                                    + ", fontFamily=" + family + ", style=" + style
+                                    + ", size=" + size);
+            }
+            ptr = fileFont.getGlyphImage(pScalerContext, glyphCode);
+        }
+        return ptr;
     }
 
     /* Try the native strikes first, then try the fileFont strike */
@@ -383,14 +455,13 @@ public class FileFontStrike extends PhysicalStrike {
             if (useNatives) {
                 glyphPtr = getGlyphImageFromNative(glyphCode);
                 if (glyphPtr == 0L && FontUtilities.isLogging()) {
-                    FontUtilities.getLogger().info
-                        ("Strike for " + fileFont +
+                    FontUtilities.logInfo("Strike for " + fileFont +
                          " at size = " + intPtSize +
                          " couldn't get native glyph for code = " + glyphCode);
-                 }
-            } if (glyphPtr == 0L) {
-                glyphPtr = fileFont.getGlyphImage(pScalerContext,
-                                                  glyphCode);
+                }
+            }
+            if (glyphPtr == 0L) {
+                glyphPtr = fileFont.getGlyphImage(pScalerContext, glyphCode);
             }
             return setCachedGlyphPtr(glyphCode, glyphPtr);
         }
@@ -769,14 +840,12 @@ public class FileFontStrike extends PhysicalStrike {
 
     private int getGlyphImageMinX(long ptr, int origMinX) {
 
-        int width = StrikeCache.unsafe.getChar(ptr+StrikeCache.widthOffset);
+        byte format = StrikeCache.unsafe.getByte(ptr+StrikeCache.formatOffset);
+        if (format != StrikeCache.PIXEL_FORMAT_LCD) return origMinX;
+
         int height = StrikeCache.unsafe.getChar(ptr+StrikeCache.heightOffset);
         int rowBytes =
             StrikeCache.unsafe.getChar(ptr+StrikeCache.rowBytesOffset);
-
-        if (rowBytes == width) {
-            return origMinX;
-        }
 
         long pixelData =
             StrikeCache.unsafe.getAddress(ptr + StrikeCache.pixelDataOffset);
@@ -967,6 +1036,36 @@ public class FileFontStrike extends PhysicalStrike {
     GeneralPath getGlyphVectorOutline(int[] glyphs, float x, float y) {
         return fileFont.getGlyphVectorOutline(pScalerContext,
                                               glyphs, glyphs.length, x, y);
+    }
+
+    private
+        WeakReference<ConcurrentHashMap<Integer, GlyphRenderData>> glyphRenderDataMapRef;
+
+    GlyphRenderData getGlyphRenderData(int glyphCode, float x, float y) {
+
+        GlyphRenderData grd = null;
+        ConcurrentHashMap<Integer, GlyphRenderData> glyphRenderDataMap = null;
+
+        if (glyphRenderDataMapRef != null) {
+            glyphRenderDataMap = glyphRenderDataMapRef.get();
+            if (glyphRenderDataMap != null) {
+                grd = glyphRenderDataMap.get(glyphCode);
+            }
+        }
+
+        if (grd == null) {
+            grd = fileFont.getGlyphRenderData(pScalerContext, glyphCode, 0, 0);
+            if (glyphRenderDataMap == null) {
+                glyphRenderDataMap = new ConcurrentHashMap<>();
+                glyphRenderDataMapRef = new WeakReference<>(glyphRenderDataMap);
+            }
+            glyphRenderDataMap.put(glyphCode, grd);
+        }
+        grd = new GlyphRenderData(grd); // mutable!
+        if (x != 0f || y != 0f) {
+            grd.transform(AffineTransform.getTranslateInstance(x, y));
+        }
+        return grd;
     }
 
     protected void adjustPoint(Point2D.Float pt) {

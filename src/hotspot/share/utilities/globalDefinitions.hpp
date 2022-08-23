@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,10 @@
 
 #include COMPILER_HEADER(utilities/globalDefinitions)
 
+#include <cstddef>
+
+class oopDesc;
+
 // Defaults for macros that might be defined per compiler.
 #ifndef NOINLINE
 #define NOINLINE
@@ -44,6 +48,10 @@
 
 #ifndef ATTRIBUTE_ALIGNED
 #define ATTRIBUTE_ALIGNED(x)
+#endif
+
+#ifndef ATTRIBUTE_FLATTEN
+#define ATTRIBUTE_FLATTEN
 #endif
 
 // These are #defines to selectively turn on/off the Print(Opto)Assembly
@@ -69,18 +77,12 @@
 // This file holds all globally used constants & types, class (forward)
 // declarations and a few frequently used utility functions.
 
-// Declare the named class to be noncopyable.  This macro must be used in
-// a private part of the class's definition, followed by a semi-colon.
-// Doing so provides private declarations for the class's copy constructor
-// and assignment operator.  Because these operations are private, most
-// potential callers will fail to compile because they are inaccessible.
-// The operations intentionally lack a definition, to provoke link-time
-// failures for calls from contexts where they are accessible, e.g. from
-// within the class or from a friend of the class.
-// Note: The lack of definitions is still not completely bullet-proof, as
-// an apparent call might be optimized away by copy elision.
-// For C++11 the declarations should be changed to deleted definitions.
-#define NONCOPYABLE(C) C(C const&); C& operator=(C const&) /* next token must be ; */
+// Declare the named class to be noncopyable.  This macro must be followed by
+// a semi-colon.  The macro provides deleted declarations for the class's copy
+// constructor and assignment operator.  Because these operations are deleted,
+// they cannot be defined and potential callers will fail to compile.
+#define NONCOPYABLE(C) C(C const&) = delete; C& operator=(C const&) = delete /* next token must be ; */
+
 
 //----------------------------------------------------------------------------------------------------
 // Printf-style formatters for fixed- and variable-width types as pointers and
@@ -148,6 +150,11 @@
 #define UINTX_FORMAT          "%" PRIuPTR
 #define INTX_FORMAT_W(width)  "%" #width PRIdPTR
 #define UINTX_FORMAT_W(width) "%" #width PRIuPTR
+
+// Convert pointer to intptr_t, for use in printing pointers.
+inline intptr_t p2i(const volatile void* p) {
+  return (intptr_t) p;
+}
 
 //----------------------------------------------------------------------------------------------------
 // Constants
@@ -233,6 +240,9 @@ inline size_t heap_word_size(size_t byte_size) {
   return (byte_size + (HeapWordSize-1)) >> LogHeapWordSize;
 }
 
+inline jfloat jfloat_cast(jint x);
+inline jdouble jdouble_cast(jlong x);
+
 //-------------------------------------------
 // Constant for jlong (standardized by C++11)
 
@@ -242,6 +252,13 @@ inline size_t heap_word_size(size_t byte_size) {
 
 const jlong min_jlong = CONST64(0x8000000000000000);
 const jlong max_jlong = CONST64(0x7fffffffffffffff);
+
+//-------------------------------------------
+// Constant for jdouble
+const jlong min_jlongDouble = CONST64(0x0000000000000001);
+const jdouble min_jdouble = jdouble_cast(min_jlongDouble);
+const jlong max_jlongDouble = CONST64(0x7fefffffffffffff);
+const jdouble max_jdouble = jdouble_cast(max_jlongDouble);
 
 const size_t K                  = 1024;
 const size_t M                  = K*K;
@@ -404,6 +421,7 @@ inline address_word  castable_address(void* x)                { return address_w
 inline size_t pointer_delta(const volatile void* left,
                             const volatile void* right,
                             size_t element_size) {
+  assert(left >= right, "avoid underflow - left: " PTR_FORMAT " right: " PTR_FORMAT, p2i(left), p2i(right));
   return (((uintptr_t) left) - ((uintptr_t) right)) / element_size;
 }
 
@@ -432,6 +450,26 @@ inline size_t pointer_delta(const MetaWord* left, const MetaWord* right) {
 #define CAST_TO_FN_PTR(func_type, value) (reinterpret_cast<func_type>(value))
 #define CAST_FROM_FN_PTR(new_type, func_ptr) ((new_type)((address_word)(func_ptr)))
 
+// In many places we've added C-style casts to silence compiler
+// warnings, for example when truncating a size_t to an int when we
+// know the size_t is a small struct. Such casts are risky because
+// they effectively disable useful compiler warnings. We can make our
+// lives safer with this function, which ensures that any cast is
+// reversible without loss of information. It doesn't check
+// everything: it isn't intended to make sure that pointer types are
+// compatible, for example.
+template <typename T2, typename T1>
+T2 checked_cast(T1 thing) {
+  T2 result = static_cast<T2>(thing);
+  assert(static_cast<T1>(result) == thing, "must be");
+  return result;
+}
+
+// Need the correct linkage to call qsort without warnings
+extern "C" {
+  typedef int (*_sort_Fn)(const void *, const void *);
+}
+
 // Unsigned byte types for os and stream.hpp
 
 // Unsigned one, two, four and eigth byte quantities used for describing
@@ -459,6 +497,11 @@ const jshort max_jshort = (1 << 15) - 1; // largest jshort
 
 const jint min_jint = (jint)1 << (sizeof(jint)*BitsPerByte-1); // 0x80000000 == smallest jint
 const jint max_jint = (juint)min_jint - 1;                     // 0x7FFFFFFF == largest jint
+
+const jint min_jintFloat = (jint)(0x00000001);
+const jfloat min_jfloat = jfloat_cast(min_jintFloat);
+const jint max_jintFloat = (jint)(0x7f7fffff);
+const jfloat max_jfloat = jfloat_cast(max_jintFloat);
 
 //----------------------------------------------------------------------------------------------------
 // JVM spec restrictions
@@ -625,6 +668,24 @@ enum BasicType {
   T_ILLEGAL     = 99
 };
 
+#define SIGNATURE_TYPES_DO(F, N)                \
+    F(JVM_SIGNATURE_BOOLEAN, T_BOOLEAN, N)      \
+    F(JVM_SIGNATURE_CHAR,    T_CHAR,    N)      \
+    F(JVM_SIGNATURE_FLOAT,   T_FLOAT,   N)      \
+    F(JVM_SIGNATURE_DOUBLE,  T_DOUBLE,  N)      \
+    F(JVM_SIGNATURE_BYTE,    T_BYTE,    N)      \
+    F(JVM_SIGNATURE_SHORT,   T_SHORT,   N)      \
+    F(JVM_SIGNATURE_INT,     T_INT,     N)      \
+    F(JVM_SIGNATURE_LONG,    T_LONG,    N)      \
+    F(JVM_SIGNATURE_CLASS,   T_OBJECT,  N)      \
+    F(JVM_SIGNATURE_ARRAY,   T_ARRAY,   N)      \
+    F(JVM_SIGNATURE_VOID,    T_VOID,    N)      \
+    /*end*/
+
+inline bool is_java_type(BasicType t) {
+  return T_BOOLEAN <= t && t <= T_VOID;
+}
+
 inline bool is_java_primitive(BasicType t) {
   return T_BOOLEAN <= t && t <= T_LONG;
 }
@@ -646,22 +707,12 @@ inline bool is_reference_type(BasicType t) {
   return (t == T_OBJECT || t == T_ARRAY);
 }
 
-// Convert a char from a classfile signature to a BasicType
-inline BasicType char2type(char c) {
-  switch( c ) {
-  case JVM_SIGNATURE_BYTE:    return T_BYTE;
-  case JVM_SIGNATURE_CHAR:    return T_CHAR;
-  case JVM_SIGNATURE_DOUBLE:  return T_DOUBLE;
-  case JVM_SIGNATURE_FLOAT:   return T_FLOAT;
-  case JVM_SIGNATURE_INT:     return T_INT;
-  case JVM_SIGNATURE_LONG:    return T_LONG;
-  case JVM_SIGNATURE_SHORT:   return T_SHORT;
-  case JVM_SIGNATURE_BOOLEAN: return T_BOOLEAN;
-  case JVM_SIGNATURE_VOID:    return T_VOID;
-  case JVM_SIGNATURE_CLASS:   return T_OBJECT;
-  case JVM_SIGNATURE_ARRAY:   return T_ARRAY;
-  }
-  return T_ILLEGAL;
+inline bool is_integral_type(BasicType t) {
+  return is_subword_type(t) || t == T_INT || t == T_LONG;
+}
+
+inline bool is_floating_point_type(BasicType t) {
+  return (t == T_FLOAT || t == T_DOUBLE);
 }
 
 extern char type2char_tab[T_CONFLICT+1];     // Map a BasicType to a jchar
@@ -670,6 +721,22 @@ extern int type2size[T_CONFLICT+1];         // Map BasicType to result stack ele
 extern const char* type2name_tab[T_CONFLICT+1];     // Map a BasicType to a jchar
 inline const char* type2name(BasicType t) { return (uint)t < T_CONFLICT+1 ? type2name_tab[t] : NULL; }
 extern BasicType name2type(const char* name);
+
+inline jlong max_signed_integer(BasicType bt) {
+  if (bt == T_INT) {
+    return max_jint;
+  }
+  assert(bt == T_LONG, "unsupported");
+  return max_jlong;
+}
+
+inline jlong min_signed_integer(BasicType bt) {
+  if (bt == T_INT) {
+    return min_jint;
+  }
+  assert(bt == T_LONG, "unsupported");
+  return min_jlong;
+}
 
 // Auxiliary math routines
 // least common multiple
@@ -693,6 +760,13 @@ enum BasicTypeSize {
   T_VOID_size        = 0
 };
 
+// this works on valid parameter types but not T_VOID, T_CONFLICT, etc.
+inline int parameter_type_word_count(BasicType t) {
+  if (is_double_word_type(t))  return 2;
+  assert(is_java_primitive(t) || is_reference_type(t), "no goofy types here please");
+  assert(type2size[t] == 1, "must be");
+  return 1;
+}
 
 // maps a BasicType to its instance field storage type:
 // all sub-word integral types are widened to T_INT
@@ -741,6 +815,7 @@ class JavaValue {
     jint     i;
     jlong    l;
     jobject  h;
+    oopDesc* o;
   } JavaCallValue;
 
  private:
@@ -765,6 +840,7 @@ class JavaValue {
  jint get_jint() const { return _value.i; }
  jlong get_jlong() const { return _value.l; }
  jobject get_jobject() const { return _value.h; }
+ oopDesc* get_oop() const { return _value.o; }
  JavaCallValue* get_value_addr() { return &_value; }
  BasicType get_type() const { return _type; }
 
@@ -773,6 +849,7 @@ class JavaValue {
  void set_jint(jint i) { _value.i = i;}
  void set_jlong(jlong l) { _value.l = l;}
  void set_jobject(jobject h) { _value.h = h;}
+ void set_oop(oopDesc* o) { _value.o = o;}
  void set_type(BasicType t) { _type = t; }
 
  jboolean get_jboolean() const { return (jboolean) (_value.i);}
@@ -781,15 +858,6 @@ class JavaValue {
  jshort get_jshort() const { return (jshort) (_value.i);}
 
 };
-
-
-#define STACK_BIAS      0
-// V9 Sparc CPU's running in 64 Bit mode use a stack bias of 7ff
-// in order to extend the reach of the stack pointer.
-#if defined(SPARC) && defined(_LP64)
-#undef STACK_BIAS
-#define STACK_BIAS      0x7ff
-#endif
 
 
 // TosState describes the top-of-stack state before and after the execution of
@@ -927,7 +995,6 @@ const intptr_t OneBit     =  1; // only right_most bit set in a word
 // (note: #define used only so that they can be used in enum constant definitions)
 #define nth_bit(n)        (((n) >= BitsPerWord) ? 0 : (OneBit << (n)))
 #define right_n_bits(n)   (nth_bit(n) - 1)
-#define left_n_bits(n)    (right_n_bits(n) << (((n) >= BitsPerWord) ? 0 : (BitsPerWord - (n))))
 
 // bit-operations using a mask m
 inline void   set_bits    (intptr_t& x, intptr_t m) { x |= m; }
@@ -965,12 +1032,12 @@ inline intptr_t bitfield(intptr_t x, int start_bit_no, int field_length) {
 // and 64-bit overloaded functions, which does not work, and having
 // explicitly-typed versions of these routines (i.e., MAX2I, MAX2L)
 // will be even more error-prone than macros.
-template<class T> inline T MAX2(T a, T b)           { return (a > b) ? a : b; }
-template<class T> inline T MIN2(T a, T b)           { return (a < b) ? a : b; }
-template<class T> inline T MAX3(T a, T b, T c)      { return MAX2(MAX2(a, b), c); }
-template<class T> inline T MIN3(T a, T b, T c)      { return MIN2(MIN2(a, b), c); }
-template<class T> inline T MAX4(T a, T b, T c, T d) { return MAX2(MAX3(a, b, c), d); }
-template<class T> inline T MIN4(T a, T b, T c, T d) { return MIN2(MIN3(a, b, c), d); }
+template<class T> constexpr T MAX2(T a, T b)           { return (a > b) ? a : b; }
+template<class T> constexpr T MIN2(T a, T b)           { return (a < b) ? a : b; }
+template<class T> constexpr T MAX3(T a, T b, T c)      { return MAX2(MAX2(a, b), c); }
+template<class T> constexpr T MIN3(T a, T b, T c)      { return MIN2(MIN2(a, b), c); }
+template<class T> constexpr T MAX4(T a, T b, T c, T d) { return MAX2(MAX3(a, b, c), d); }
+template<class T> constexpr T MIN4(T a, T b, T c, T d) { return MIN2(MIN3(a, b, c), d); }
 
 template<class T> inline T ABS(T x)                 { return (x > 0) ? x : -x; }
 
@@ -979,81 +1046,6 @@ template<typename T>
 inline T clamp(T value, T min, T max) {
   assert(min <= max, "must be");
   return MIN2(MAX2(value, min), max);
-}
-
-// true if x is a power of 2, false otherwise
-inline bool is_power_of_2(intptr_t x) {
-  return ((x != NoBits) && (mask_bits(x, x - 1) == NoBits));
-}
-
-// long version of is_power_of_2
-inline bool is_power_of_2_long(jlong x) {
-  return ((x != NoLongBits) && (mask_long_bits(x, x - 1) == NoLongBits));
-}
-
-// Returns largest i such that 2^i <= x.
-// If x == 0, the function returns -1.
-inline int log2_intptr(uintptr_t x) {
-  int i = -1;
-  uintptr_t p = 1;
-  while (p != 0 && p <= x) {
-    // p = 2^(i+1) && p <= x (i.e., 2^(i+1) <= x)
-    i++; p *= 2;
-  }
-  // p = 2^(i+1) && x < p (i.e., 2^i <= x < 2^(i+1))
-  // If p = 0, overflow has occurred and i = 31 or i = 63 (depending on the machine word size).
-  return i;
-}
-
-//* largest i such that 2^i <= x
-inline int log2_long(julong x) {
-  int i = -1;
-  julong p =  1;
-  while (p != 0 && p <= x) {
-    // p = 2^(i+1) && p <= x (i.e., 2^(i+1) <= x)
-    i++; p *= 2;
-  }
-  // p = 2^(i+1) && x < p (i.e., 2^i <= x < 2^(i+1))
-  // (if p = 0 then overflow occurred and i = 63)
-  return i;
-}
-
-// If x < 0, the function returns 31 on a 32-bit machine and 63 on a 64-bit machine.
-inline int log2_intptr(intptr_t x) {
-  return log2_intptr((uintptr_t)x);
-}
-
-inline int log2_int(int x) {
-  STATIC_ASSERT(sizeof(int) <= sizeof(uintptr_t));
-  return log2_intptr((uintptr_t)x);
-}
-
-inline int log2_jint(jint x) {
-  STATIC_ASSERT(sizeof(jint) <= sizeof(uintptr_t));
-  return log2_intptr((uintptr_t)x);
-}
-
-inline int log2_uint(uint x) {
-  STATIC_ASSERT(sizeof(uint) <= sizeof(uintptr_t));
-  return log2_intptr((uintptr_t)x);
-}
-
-//  A negative value of 'x' will return '63'
-inline int log2_jlong(jlong x) {
-  STATIC_ASSERT(sizeof(jlong) <= sizeof(julong));
-  return log2_long((julong)x);
-}
-
-//* the argument must be exactly a power of 2
-inline int exact_log2(intptr_t x) {
-  assert(is_power_of_2(x), "x must be a power of 2: " INTPTR_FORMAT, x);
-  return log2_intptr(x);
-}
-
-//* the argument must be exactly a power of 2
-inline int exact_log2_long(jlong x) {
-  assert(is_power_of_2_long(x), "x must be a power of 2: " JLONG_FORMAT, x);
-  return log2_long(x);
 }
 
 inline bool is_odd (intx x) { return x & 1;      }
@@ -1102,11 +1094,6 @@ inline int build_int_from_shorts( jushort low, jushort high ) {
   return ((int)((unsigned int)high << 16) | (unsigned int)low);
 }
 
-// Convert pointer to intptr_t, for use in printing pointers.
-inline intptr_t p2i(const void * p) {
-  return (intptr_t) p;
-}
-
 // swap a & b
 template<class T> static void swap(T& a, T& b) {
   T tmp = a;
@@ -1114,7 +1101,11 @@ template<class T> static void swap(T& a, T& b) {
   b = tmp;
 }
 
-#define ARRAY_SIZE(array) (sizeof(array)/sizeof((array)[0]))
+// array_size_impl is a function that takes a reference to T[N] and
+// returns a reference to char[N].  It is not ODR-used, so not defined.
+template<typename T, size_t N> char (&array_size_impl(T (&)[N]))[N];
+
+#define ARRAY_SIZE(array) sizeof(array_size_impl(array))
 
 //----------------------------------------------------------------------------------------------------
 // Sum and product which can never overflow: they wrap, just like the

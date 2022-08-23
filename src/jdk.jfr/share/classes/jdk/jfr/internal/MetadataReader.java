@@ -66,6 +66,7 @@ final class MetadataReader {
     public MetadataReader(RecordingInput input) throws IOException {
         this.input = input;
         int size = input.readInt();
+        input.require(size, "Metadata string pool size %d exceeds available data" );
         this.pool = new ArrayList<>(size);
         StringParser p = new StringParser(null, false);
         for (int i = 0; i < size; i++) {
@@ -124,8 +125,8 @@ final class MetadataReader {
             type.setAnnotations(aes);
 
             int index = 0;
-            if (type instanceof PlatformEventType) {
-                List<SettingDescriptor> settings = ((PlatformEventType) type).getAllSettings();
+            if (type instanceof PlatformEventType pType) {
+                List<SettingDescriptor> settings = pType.getAllSettings();
                 for (Element settingElement : typeElement.elements(ELEMENT_SETTING)) {
                     ArrayList<AnnotationElement> annotations = new ArrayList<>();
                     for (Element annotationElement : settingElement.elements(ELEMENT_ANNOTATION)) {
@@ -221,8 +222,8 @@ final class MetadataReader {
 
     private void buildEvenTypes() {
         for (Type type : descriptor.types) {
-            if (type instanceof PlatformEventType) {
-                descriptor.eventTypes.add(PrivateAccess.getInstance().newEventType((PlatformEventType) type));
+            if (type instanceof PlatformEventType pType) {
+                descriptor.eventTypes.add(PrivateAccess.getInstance().newEventType(pType));
             }
         }
     }
@@ -261,7 +262,7 @@ final class MetadataReader {
             if (Type.SUPER_TYPE_EVENT.equals(superType)) {
                 t = new PlatformEventType(typeName, id, false, false);
             } else {
-                t = new Type(typeName, superType, id, false, simpleType);
+                t = new Type(typeName, superType, id, simpleType);
             }
             types.put(id, t);
             descriptor.types.add(t);

@@ -22,18 +22,17 @@
  */
 
 #include "precompiled.hpp"
+#include "gc/shared/gcLogPrecious.hpp"
 #include "gc/z/zNUMA.hpp"
-#include "logging/log.hpp"
-#include "runtime/os.hpp"
 
 bool ZNUMA::_enabled;
 
 void ZNUMA::initialize() {
-  initialize_platform();
+  pd_initialize();
 
-  log_info(gc, init)("NUMA Support: %s", to_string());
+  log_info_p(gc, init)("NUMA Support: %s", to_string());
   if (_enabled) {
-    log_info(gc, init)("NUMA Nodes: %u", count());
+    log_info_p(gc, init)("NUMA Nodes: %u", count());
   }
 }
 

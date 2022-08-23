@@ -27,6 +27,7 @@ package javax.swing.text;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.font.TextAttribute;
+import java.io.Serial;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.Enumeration;
@@ -62,7 +63,7 @@ import static sun.swing.SwingUtilities2.IMPLIED_CR;
  * future Swing releases. The current serialization support is
  * appropriate for short term storage or RMI between applications running
  * the same version of Swing.  As of 1.4, support for long term storage
- * of all JavaBeans&trade;
+ * of all JavaBeans
  * has been added to the <code>java.beans</code> package.
  * Please see {@link java.beans.XMLEncoder}.
  *
@@ -1082,6 +1083,7 @@ public class DefaultStyledDocument extends AbstractDocument implements StyledDoc
         }
     }
 
+    @Serial
     private void readObject(ObjectInputStream s)
             throws ClassNotFoundException, IOException {
         listeningStyles = new Vector<>();
@@ -1132,7 +1134,7 @@ public class DefaultStyledDocument extends AbstractDocument implements StyledDoc
      * future Swing releases. The current serialization support is
      * appropriate for short term storage or RMI between applications running
      * the same version of Swing.  As of 1.4, support for long term storage
-     * of all JavaBeans&trade;
+     * of all JavaBeans
      * has been added to the <code>java.beans</code> package.
      * Please see {@link java.beans.XMLEncoder}.
      */
@@ -1164,7 +1166,7 @@ public class DefaultStyledDocument extends AbstractDocument implements StyledDoc
      * future Swing releases. The current serialization support is
      * appropriate for short term storage or RMI between applications running
      * the same version of Swing.  As of 1.4, support for long term storage
-     * of all JavaBeans&trade;
+     * of all JavaBeans
      * has been added to the <code>java.beans</code> package.
      * Please see {@link java.beans.XMLEncoder}.
      */
@@ -1400,7 +1402,7 @@ public class DefaultStyledDocument extends AbstractDocument implements StyledDoc
      * future Swing releases. The current serialization support is
      * appropriate for short term storage or RMI between applications running
      * the same version of Swing.  As of 1.4, support for long term storage
-     * of all JavaBeans&trade;
+     * of all JavaBeans
      * has been added to the <code>java.beans</code> package.
      * Please see {@link java.beans.XMLEncoder}.
      */

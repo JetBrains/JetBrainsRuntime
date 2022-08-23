@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug 8158123 8161906 8162713 8202832
+ * @bug 8158123 8161906 8162713 8202832 8235229
  * @summary tests for module declarations
  * @library /tools/lib
  * @modules
@@ -38,7 +38,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.jar.Attributes;
 
+import toolbox.JarTask;
 import toolbox.JavacTask;
 import toolbox.Task;
 
@@ -746,27 +748,31 @@ public class ModuleInfoTest extends ModuleTestBase {
     public void testJDK8202832(Path base) throws Exception {
         Path src = base.resolve("src");
         tb.writeJavaFiles(src.resolve("m1a"),
-                          "module m1a {\n" +
-                          "    requires m2a;\n" +
-                          "    requires m2b;\n" +
-                          "}");
+                          """
+                              module m1a {
+                                  requires m2a;
+                                  requires m2b;
+                              }""");
         tb.writeJavaFiles(src.resolve("m1b"),
-                          "module m1b {\n" +
-                          "    requires m2b;\n" +
-                          "    requires m2a;\n" +
-                          "}");
+                          """
+                              module m1b {
+                                  requires m2b;
+                                  requires m2a;
+                              }""");
         tb.writeJavaFiles(src.resolve("m2a"),
-                          "module m2a {\n" +
-                          "    requires m3;\n" +
-                          "    requires m1a;\n" +
-                          "    requires m1b;\n" +
-                          "}");
+                          """
+                              module m2a {
+                                  requires m3;
+                                  requires m1a;
+                                  requires m1b;
+                              }""");
         tb.writeJavaFiles(src.resolve("m2b"),
-                          "module m2b {\n" +
-                          "    requires m3;\n" +
-                          "    requires m1a;\n" +
-                          "    requires m1b;\n" +
-                          "}");
+                          """
+                              module m2b {
+                                  requires m3;
+                                  requires m1a;
+                                  requires m1b;
+                              }""");
         tb.writeJavaFiles(src.resolve("m3"),
                           "module m3 { }");
 
@@ -798,4 +804,53 @@ public class ModuleInfoTest extends ModuleTestBase {
         if (!expected.equals(log))
             throw new Exception("expected output not found");
     }
+
+    @Test
+    public void testMultiReleaseJarAndReleaseOption(Path base) throws Exception {
+        Path src = base.resolve("src");
+        tb.writeJavaFiles(src, "package api; public class A { }");
+        Path classes = base.resolve("classes");
+        Files.createDirectories(classes);
+        new JavacTask(tb)
+                .outdir(classes)
+                .files(findJavaFiles(src))
+                .run()
+                .writeAll();
+
+        Path src9 = base.resolve("src9");
+        tb.writeJavaFiles(src9, "module m { exports api; }");
+        Path classes9 = classes.resolve("META-INF").resolve("versions").resolve("9");
+        Files.createDirectories(classes9);
+        new JavacTask(tb)
+                .sourcepath(src, src9)
+                .outdir(classes9)
+                .files(findJavaFiles(src9))
+                .run()
+                .writeAll();
+        Path jar = base.resolve("lib.jar");
+        new JarTask(tb, jar)
+                .baseDir(classes)
+                .files(Arrays.stream(tb.findFiles("class", classes)).map(f -> classes.relativize(f).toString()).toArray(i -> new String[i]))
+                .manifest(Attributes.Name.MULTI_RELEASE + ": true\n\n")
+                .run();
+        Path testSrc = base.resolve("test-src");
+        tb.writeJavaFiles(testSrc, "module test { requires transitive m; }", "package impl; public class I { api.A a; }");
+        Path testClasses = base.resolve("test-classes");
+        Files.createDirectories(testClasses);
+        new JavacTask(tb)
+                .options("-Werror", "--module-path", jar.toString())
+                .sourcepath(testSrc)
+                .outdir(testClasses)
+                .files(findJavaFiles(testSrc))
+                .run()
+                .writeAll();
+        new JavacTask(tb)
+                .options("-Werror", "--module-path", jar.toString(), "--release", "9", "-doe")
+                .sourcepath(testSrc)
+                .outdir(testClasses)
+                .files(findJavaFiles(testSrc))
+                .run()
+                .writeAll();
+    }
+
 }

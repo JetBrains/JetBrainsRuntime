@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 
 package jdk.javadoc.internal.doclets.toolkit;
 
-import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 
 
@@ -38,7 +37,7 @@ import javax.lang.model.element.VariableElement;
  *  deletion without notice.</b>
  */
 
-public interface FieldWriter {
+public interface FieldWriter extends MemberWriter {
 
     /**
      * Get the field details tree header.
@@ -73,6 +72,14 @@ public interface FieldWriter {
     void addDeprecated(VariableElement field, Content fieldDocTree);
 
     /**
+     * Adds the preview output for the given member.
+     *
+     * @param member the member being documented
+     * @param contentTree content tree to which the preview information will be added
+     */
+    void addPreview(VariableElement member, Content contentTree);
+
+    /**
      * Add the comments for the given field.
      *
      * @param field the field being documented
@@ -96,14 +103,6 @@ public interface FieldWriter {
      * @return content tree for the field details
      */
     Content getFieldDetails(Content memberDetailsTreeHeader, Content memberDetailsTree);
-
-    /**
-     * Get the field documentation.
-     *
-     * @param fieldDocTree the content tree representing field documentation
-     * @return content tree for the field documentation
-     */
-    Content getFieldDoc(Content fieldDocTree);
 
     /**
      * Gets the member header tree.

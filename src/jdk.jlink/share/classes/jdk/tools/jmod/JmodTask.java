@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,56 +35,38 @@ import java.io.PrintWriter;
 import java.io.UncheckedIOException;
 import java.lang.module.Configuration;
 import java.lang.module.FindException;
-import java.lang.module.ModuleReader;
-import java.lang.module.ModuleReference;
-import java.lang.module.ModuleFinder;
 import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleDescriptor.Exports;
 import java.lang.module.ModuleDescriptor.Opens;
 import java.lang.module.ModuleDescriptor.Provides;
-import java.lang.module.ModuleDescriptor.Requires;
 import java.lang.module.ModuleDescriptor.Version;
+import java.lang.module.ModuleFinder;
+import java.lang.module.ModuleReader;
+import java.lang.module.ModuleReference;
 import java.lang.module.ResolutionException;
 import java.lang.module.ResolvedModule;
 import java.net.URI;
-import java.nio.file.FileSystems;
-import java.nio.file.FileVisitOption;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
-import java.nio.file.Path;
-import java.nio.file.PathMatcher;
-import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.MissingResourceException;
-import java.util.Optional;
-import java.util.ResourceBundle;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
-import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 import jdk.internal.jmod.JmodFile;
 import jdk.internal.jmod.JmodFile.Section;
@@ -183,7 +165,12 @@ public class JmodTask {
         boolean dryrun;
         List<PathMatcher> excludes;
         Path extractDir;
+        LocalDateTime date;
     }
+
+    // Valid --date range
+    static final ZonedDateTime DATE_MIN = ZonedDateTime.parse("1980-01-01T00:00:02Z");
+    static final ZonedDateTime DATE_MAX = ZonedDateTime.parse("2099-12-31T23:59:59Z");
 
     public int run(String[] args) {
 
@@ -282,19 +269,35 @@ public class JmodTask {
         }
     }
 
-    private boolean hashModules() {
+    private boolean hashModules() throws IOException {
+        String moduleName = null;
+        if (options.jmodFile != null) {
+            try (JmodFile jf = new JmodFile(options.jmodFile)) {
+                try (InputStream in = jf.getInputStream(Section.CLASSES, MODULE_INFO)) {
+                    ModuleInfo.Attributes attrs = ModuleInfo.read(in, null);
+                    moduleName = attrs.descriptor().name();
+                } catch (IOException e) {
+                    throw new CommandException("err.module.descriptor.not.found");
+                }
+            }
+        }
+        Hasher hasher = new Hasher(moduleName, options.moduleFinder);
+
         if (options.dryrun) {
             out.println("Dry run:");
         }
 
-        Hasher hasher = new Hasher(options.moduleFinder);
-        hasher.computeHashes().forEach((mn, hashes) -> {
+        Map<String, ModuleHashes> moduleHashes = hasher.computeHashes();
+        if (moduleHashes.isEmpty()) {
+            throw new CommandException("err.no.moduleToHash", "\"" + options.modulesToHash + "\"");
+        }
+        moduleHashes.forEach((mn, hashes) -> {
             if (options.dryrun) {
                 out.format("%s%n", mn);
                 hashes.names().stream()
-                    .sorted()
-                    .forEach(name -> out.format("  hashes %s %s %s%n",
-                        name, hashes.algorithm(), toHex(hashes.hashFor(name))));
+                      .sorted()
+                      .forEach(name -> out.format("  hashes %s %s %s%n",
+                            name, hashes.algorithm(), toHex(hashes.hashFor(name))));
             } else {
                 try {
                     hasher.updateModuleInfo(mn, hashes);
@@ -434,7 +437,7 @@ public class JmodTask {
         Path target = options.jmodFile;
         Path tempTarget = jmodTempFilePath(target);
         try {
-            try (JmodOutputStream jos = JmodOutputStream.newOutputStream(tempTarget)) {
+            try (JmodOutputStream jos = JmodOutputStream.newOutputStream(tempTarget, options.date)) {
                 jmod.write(jos);
             }
             Files.move(tempTarget, target);
@@ -681,7 +684,8 @@ public class JmodTask {
         Set<String> findPackages(Path dir) {
             try {
                 return Files.find(dir, Integer.MAX_VALUE,
-                                  ((path, attrs) -> attrs.isRegularFile()))
+                                  ((path, attrs) -> attrs.isRegularFile()),
+                                  FileVisitOption.FOLLOW_LINKS)
                         .map(dir::relativize)
                         .filter(path -> isResource(path.toString()))
                         .map(path -> toPackageName(path))
@@ -773,6 +777,10 @@ public class JmodTask {
         void processSection(JmodOutputStream out, Section section, Path path)
             throws IOException
         {
+            // Keep a sorted set of files to be processed, so that the jmod
+            // content is reproducible as Files.walkFileTree order is not defined
+            SortedMap<String, Path> filesToProcess = new TreeMap<String, Path>();
+
             Files.walkFileTree(path, Set.of(FileVisitOption.FOLLOW_LINKS),
                 Integer.MAX_VALUE, new SimpleFileVisitor<Path>() {
                     @Override
@@ -780,26 +788,29 @@ public class JmodTask {
                         throws IOException
                     {
                         Path relPath = path.relativize(file);
-                        if (relPath.toString().equals(MODULE_INFO)
-                                && !Section.CLASSES.equals(section))
-                            warning("warn.ignore.entry", MODULE_INFO, section);
-
-                        if (!relPath.toString().equals(MODULE_INFO)
-                                && !matches(relPath, excludes)) {
-                            try (InputStream in = Files.newInputStream(file)) {
-                                out.writeEntry(in, section, relPath.toString());
-                            } catch (IOException x) {
-                                if (x.getMessage().contains("duplicate entry")) {
-                                    warning("warn.ignore.duplicate.entry",
-                                            relPath.toString(), section);
-                                    return FileVisitResult.CONTINUE;
-                                }
-                                throw x;
+                        String name = relPath.toString();
+                        if (name.equals(MODULE_INFO)) {
+                            if (!Section.CLASSES.equals(section))
+                                warning("warn.ignore.entry", name, section);
+                        } else if (!matches(relPath, excludes)) {
+                            if (out.contains(section, name)) {
+                                warning("warn.ignore.duplicate.entry", name, section);
+                            } else {
+                                filesToProcess.put(name, file);
                             }
                         }
                         return FileVisitResult.CONTINUE;
                     }
                 });
+
+            // Process files in sorted order for deterministic jmod content
+            for (Map.Entry<String, Path> entry : filesToProcess.entrySet()) {
+                String name = entry.getKey();
+                Path   file = entry.getValue();
+                try (InputStream in = Files.newInputStream(file)) {
+                    out.writeEntry(in, section, name);
+                }
+            }
         }
 
         boolean matches(Path path, List<PathMatcher> matchers) {
@@ -831,7 +842,14 @@ public class JmodTask {
             public boolean test(JarEntry je) {
                 String name = je.getName();
                 // ## no support for excludes. Is it really needed?
-                return !name.endsWith(MODULE_INFO) && !je.isDirectory();
+                if (name.endsWith(MODULE_INFO) || je.isDirectory()) {
+                    return false;
+                }
+                if (out.contains(Section.CLASSES, name)) {
+                    warning("warn.ignore.duplicate.entry", name, Section.CLASSES);
+                    return false;
+                }
+                return true;
             }
         }
     }
@@ -846,25 +864,19 @@ public class JmodTask {
         final String moduleName;  // a specific module to record hashes, if set
 
         /**
-         * This constructor is for jmod hash command.
-         *
-         * This Hasher will determine which modules to record hashes, i.e.
-         * the module in a subgraph of modules to be hashed and that
-         * has no outgoing edges.  It will record in each of these modules,
-         * say `M`, with the the hashes of modules that depend upon M
-         * directly or indirectly matching the specified --hash-modules pattern.
-         */
-        Hasher(ModuleFinder finder) {
-            this(null, finder);
-        }
-
-        /**
          * Constructs a Hasher to compute hashes.
          *
          * If a module name `M` is specified, it will compute the hashes of
          * modules that depend upon M directly or indirectly matching the
          * specified --hash-modules pattern and record in the ModuleHashes
          * attribute in M's module-info.class.
+         *
+         * If name is null, this Hasher will determine which modules to
+         * record hashes, i.e. the module in a subgraph of modules to be
+         * hashed and that has no outgoing edges.  It will record in each
+         * of these modules, say `M`, with the hashes of modules that
+         * depend upon M directly or indirectly matching the specified
+         * --hash-modules pattern.
          *
          * @param name    name of the module to record hashes
          * @param finder  module finder for the specified --module-path
@@ -982,11 +994,21 @@ public class JmodTask {
                         if (e.getName().equals(MODULE_INFO)) {
                             // what about module-info.class in versioned entries?
                             ZipEntry ze = new ZipEntry(e.getName());
-                            ze.setTime(System.currentTimeMillis());
+                            if (options.date != null) {
+                                ze.setTimeLocal(options.date);
+                            } else {
+                                ze.setTime(System.currentTimeMillis());
+                            }
                             jos.putNextEntry(ze);
                             recordHashes(in, jos, moduleHashes);
                             jos.closeEntry();
                         } else {
+                            // Setting "compressedSize" to "-1" prevents an error
+                            // in ZipOutputStream.closeEntry() if the newly
+                            // deflated entry will have another size than the
+                            // original compressed entry. See:
+                            // ZipOutputStream.putNextEntry()/closeEntry()
+                            e.setCompressedSize(-1);
                             jos.putNextEntry(e);
                             jos.write(in.readAllBytes());
                             jos.closeEntry();
@@ -1004,7 +1026,7 @@ public class JmodTask {
         {
 
             try (JmodFile jf = new JmodFile(target);
-                 JmodOutputStream jos = JmodOutputStream.newOutputStream(tempTarget))
+                 JmodOutputStream jos = JmodOutputStream.newOutputStream(tempTarget, options.date))
             {
                 jf.stream().forEach(e -> {
                     try (InputStream in = jf.getInputStream(e.section(), e.name())) {
@@ -1137,6 +1159,26 @@ public class JmodTask {
         @Override public Class<Version> valueType() { return Version.class; }
 
         @Override public String valuePattern() { return "module-version"; }
+    }
+
+    static class DateConverter implements ValueConverter<LocalDateTime> {
+        @Override
+        public LocalDateTime convert(String value) {
+            try {
+                ZonedDateTime date = ZonedDateTime.parse(value, DateTimeFormatter.ISO_ZONED_DATE_TIME)
+                                                          .withZoneSameInstant(ZoneOffset.UTC);
+                if (date.isBefore(DATE_MIN) || date.isAfter(DATE_MAX)) {
+                    throw new CommandException("err.date.out.of.range", value);
+                }
+                return date.toLocalDateTime();
+            } catch (DateTimeParseException x) {
+                throw new CommandException("err.invalid.date", value, x.getMessage());
+            }
+        }
+
+        @Override public Class<LocalDateTime> valueType() { return LocalDateTime.class; }
+
+        @Override public String valuePattern() { return "date"; }
     }
 
     static class WarnIfResolvedReasonConverter
@@ -1374,6 +1416,11 @@ public class JmodTask {
         OptionSpec<Void> version
                 = parser.accepts("version", getMessage("main.opt.version"));
 
+        OptionSpec<LocalDateTime> date
+                = parser.accepts("date", getMessage("main.opt.date"))
+                        .withRequiredArg()
+                        .withValuesConvertedBy(new DateConverter());
+
         NonOptionArgumentSpec<String> nonOptions
                 = parser.nonOptions();
 
@@ -1417,6 +1464,8 @@ public class JmodTask {
                 options.manPages = getLastElement(opts.valuesOf(manPages));
             if (opts.has(legalNotices))
                 options.legalNotices = getLastElement(opts.valuesOf(legalNotices));
+            if (opts.has(date))
+                options.date = opts.valueOf(date);
             if (opts.has(modulePath)) {
                 Path[] dirs = getLastElement(opts.valuesOf(modulePath)).toArray(new Path[0]);
                 options.moduleFinder = ModulePath.of(Runtime.version(), true, dirs);
@@ -1446,6 +1495,18 @@ public class JmodTask {
                 if (options.moduleFinder == null || options.modulesToHash == null)
                     throw new CommandException("err.modulepath.must.be.specified")
                             .showUsage(true);
+                // It's optional to specify jmod-file.  If not specified, then
+                // it will find all the modules that have no outgoing read edges
+                if (words.size() >= 2) {
+                    Path path = Paths.get(words.get(1));
+                    if (Files.notExists(path))
+                        throw new CommandException("err.jmod.not.found", path);
+
+                    options.jmodFile = path;
+                }
+                if (words.size() > 2)
+                    throw new CommandException("err.unknown.option",
+                            words.subList(2, words.size())).showUsage(true);
             } else {
                 if (words.size() <= 1)
                     throw new CommandException("err.jmod.must.be.specified").showUsage(true);

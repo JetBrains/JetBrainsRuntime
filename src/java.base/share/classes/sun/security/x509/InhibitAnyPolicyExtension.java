@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,10 +29,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Enumeration;
 
-import sun.security.util.Debug;
-import sun.security.util.DerOutputStream;
-import sun.security.util.DerValue;
-import sun.security.util.ObjectIdentifier;
+import sun.security.util.*;
 
 /**
  * This class represents the Inhibit Any-Policy Extension.
@@ -75,14 +72,8 @@ implements CertAttrSet<String> {
     /**
      * Object identifier for "any-policy"
      */
-    public static ObjectIdentifier AnyPolicy_Id;
-    static {
-        try {
-            AnyPolicy_Id = new ObjectIdentifier("2.5.29.32.0");
-        } catch (IOException ioe) {
-            // Should not happen
-        }
-    }
+    public static ObjectIdentifier AnyPolicy_Id =
+            ObjectIdentifier.of(KnownOIDs.CE_CERT_POLICIES_ANY);
 
     /**
      * Attribute names.

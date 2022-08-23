@@ -113,11 +113,11 @@ module jdk.compiler {
         jdk.javadoc,
         jdk.jshell;
     exports jdk.internal.shellsupport.doc to
-        jdk.jshell,
-        jdk.scripting.nashorn.shell;
+        jdk.jshell;
 
     uses javax.annotation.processing.Processor;
     uses com.sun.source.util.Plugin;
+    uses com.sun.tools.doclint.DocLint;
     uses com.sun.tools.javac.platform.PlatformProvider;
 
     provides java.util.spi.ToolProvider with

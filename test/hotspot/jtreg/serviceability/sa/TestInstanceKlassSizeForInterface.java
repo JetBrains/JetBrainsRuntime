@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,7 +21,6 @@
  * questions.
  */
 
-import java.util.ArrayList;
 import java.util.List;
 
 import sun.jvm.hotspot.HotSpotAgent;
@@ -30,26 +29,27 @@ import sun.jvm.hotspot.oops.InstanceKlass;
 import sun.jvm.hotspot.debugger.*;
 
 import jdk.test.lib.apps.LingeredApp;
+import jdk.test.lib.Asserts;
 import jdk.test.lib.JDKToolLauncher;
 import jdk.test.lib.JDKToolFinder;
 import jdk.test.lib.Platform;
 import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.process.OutputAnalyzer;
+import jdk.test.lib.SA.SATestUtils;
 import jdk.test.lib.Utils;
-import jdk.test.lib.Asserts;
 
 /**
  * @test
  * @library /test/lib
- * @requires vm.hasSAandCanAttach
+ * @requires vm.hasSA
  * @modules java.base/jdk.internal.misc
  *          jdk.hotspot.agent/sun.jvm.hotspot
  *          jdk.hotspot.agent/sun.jvm.hotspot.utilities
  *          jdk.hotspot.agent/sun.jvm.hotspot.oops
  *          jdk.hotspot.agent/sun.jvm.hotspot.debugger
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox sun.hotspot.WhiteBox$WhiteBoxPermission
- * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI -Xbootclasspath/a:. TestInstanceKlassSize
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI -Xbootclasspath/a:. TestInstanceKlassSizeForInterface
  */
 
 import sun.hotspot.WhiteBox;
@@ -102,8 +102,8 @@ public class TestInstanceKlassSizeForInterface {
     private static void createAnotherToAttach(
                             String[] instanceKlassNames,
                             int lingeredAppPid) throws Exception {
-
-        String[] toolArgs = {
+        // Start a new process to attach to the LingeredApp process to get SA info
+        ProcessBuilder processBuilder = ProcessTools.createJavaProcessBuilder(
             "--add-modules=jdk.hotspot.agent",
             "--add-exports=jdk.hotspot.agent/sun.jvm.hotspot=ALL-UNNAMED",
             "--add-exports=jdk.hotspot.agent/sun.jvm.hotspot.utilities=ALL-UNNAMED",
@@ -113,12 +113,8 @@ public class TestInstanceKlassSizeForInterface {
             "-XX:+WhiteBoxAPI",
             "-Xbootclasspath/a:.",
             "TestInstanceKlassSizeForInterface",
-            Integer.toString(lingeredAppPid)
-        };
-
-        // Start a new process to attach to the LingeredApp process to get SA info
-        ProcessBuilder processBuilder = ProcessTools
-                  .createJavaProcessBuilder(toolArgs);
+            Integer.toString(lingeredAppPid));
+        SATestUtils.addPrivilegesIfNeeded(processBuilder);
         OutputAnalyzer SAOutput = ProcessTools.executeProcess(processBuilder);
         SAOutput.shouldHaveExitValue(0);
         System.out.println(SAOutput.getOutput());
@@ -142,6 +138,7 @@ public class TestInstanceKlassSizeForInterface {
     }
 
     public static void main (String... args) throws Exception {
+        SATestUtils.skipIfCannotAttach(); // throws SkippedException if attach not expected to work.
         String[] instanceKlassNames = new String[] {
                                           "Language",
                                           "ParselTongue",
@@ -150,9 +147,8 @@ public class TestInstanceKlassSizeForInterface {
 
         if (args == null || args.length == 0) {
             try {
-                List<String> vmArgs = Arrays.asList(Utils.getTestJavaOpts());
                 theApp = new LingeredAppWithInterface();
-                LingeredApp.startApp(vmArgs, theApp);
+                LingeredApp.startApp(theApp);
                 createAnotherToAttach(instanceKlassNames,
                                       (int)theApp.getPid());
             } finally {

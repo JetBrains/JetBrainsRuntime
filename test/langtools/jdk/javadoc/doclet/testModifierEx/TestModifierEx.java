@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,15 +46,25 @@ public class TestModifierEx extends JavadocTester {
                 "-package", "pkg1");
         checkExit(Exit.OK);
         checkOutput("pkg1/Abstract.html", true,
-                "<pre>public abstract class <span class=\"typeNameLabel\">Abstract</span>");
+                """
+                    <div class="type-signature"><span class="modifiers">public abstract class </span\
+                    ><span class="element-name type-name-label">Abstract</span>""");
         checkOutput("pkg1/Interface.html", true,
-                "<pre>interface <span class=\"typeNameLabel\">Interface</span></pre>");
+                """
+                    <div class="type-signature"><span class="modifiers">interface </span><span class\
+                    ="element-name type-name-label">Interface</span></div>""");
         checkOutput("pkg1/Interface.Kind.html", true,
-                "<pre>public static interface <span class=\"typeNameLabel\">Interface.Kind</span></pre>");
+                """
+                    <div class="type-signature"><span class="modifiers">public static interface </sp\
+                    an><span class="element-name type-name-label">Interface.Kind</span></div>""");
         checkOutput("pkg1/Enum.html", true,
-                "<pre>public enum <span class=\"typeNameLabel\">Enum</span>");
+                """
+                    <div class="type-signature"><span class="modifiers">public enum </span><span cla\
+                    ss="element-name type-name-label">Enum</span>""");
         checkOutput("pkg1/Klass.StaticEnum.html", true,
-                "<pre>public static enum <span class=\"typeNameLabel\">Klass.StaticEnum</span>");
+                """
+                    <div class="type-signature"><span class="modifiers">public static enum </span><s\
+                    pan class="element-name type-name-label">Klass.StaticEnum</span>""");
     }
 
 }

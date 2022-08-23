@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
@@ -43,6 +44,7 @@ import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeMirror;
 
 import com.sun.source.doctree.DocTree;
+import com.sun.source.doctree.ThrowsTree;
 
 import jdk.javadoc.doclet.Taglet.Location;
 import jdk.javadoc.internal.doclets.toolkit.Content;
@@ -72,27 +74,27 @@ public class ThrowsTaglet extends BaseTaglet
         Element exception;
         CommentHelper ch = utils.getCommentHelper(input.element);
         if (input.tagId == null) {
-            exception = ch.getException(utils.configuration, input.docTreeInfo.docTree);
+            exception = input.docTreeInfo.docTree instanceof ThrowsTree tt
+                    ? ch.getException(tt) : null;
             input.tagId = exception == null
                     ? ch.getExceptionName(input.docTreeInfo.docTree).getSignature()
                     : utils.getFullyQualifiedName(exception);
         } else {
-            TypeElement element = input.utils.findClass(input.element, input.tagId);
-            exception = (element == null) ? null : element;
+            exception = input.utils.findClass(input.element, input.tagId);
         }
 
-        for (DocTree dt : input.utils.getThrowsTrees(input.element)) {
-            Element texception = ch.getException(utils.configuration, dt);
-            if (texception != null && (input.tagId.equals(utils.getSimpleName(texception)) ||
-                 (input.tagId.equals(utils.getFullyQualifiedName(texception))))) {
+        for (ThrowsTree tt : input.utils.getThrowsTrees(input.element)) {
+            Element exc = ch.getException(tt);
+            if (exc != null && (input.tagId.equals(utils.getSimpleName(exc)) ||
+                 (input.tagId.equals(utils.getFullyQualifiedName(exc))))) {
                 output.holder = input.element;
-                output.holderTag = dt;
-                output.inlineTags = ch.getBody(input.utils.configuration, output.holderTag);
-                output.tagList.add(dt);
-            } else if (exception != null && texception != null &&
-                    utils.isTypeElement(texception) && utils.isTypeElement(exception) &&
-                    utils.isSubclassOf((TypeElement)texception, (TypeElement)exception)) {
-                output.tagList.add(dt);
+                output.holderTag = tt;
+                output.inlineTags = ch.getBody(output.holderTag);
+                output.tagList.add(tt);
+            } else if (exception != null && exc != null &&
+                    utils.isTypeElement(exc) && utils.isTypeElement(exception) &&
+                    utils.isSubclassOf((TypeElement)exc, (TypeElement)exception)) {
+                output.tagList.add(tt);
             }
         }
     }
@@ -106,15 +108,15 @@ public class ThrowsTaglet extends BaseTaglet
         Content result = writer.getOutputInstance();
         //Add links to the exceptions declared but not documented.
         for (TypeMirror declaredExceptionType : declaredExceptionTypes) {
-            TypeElement klass = utils.asTypeElement(declaredExceptionType);
-            if (klass != null &&
+            TypeElement te = utils.asTypeElement(declaredExceptionType);
+            if (te != null &&
                 !alreadyDocumented.contains(declaredExceptionType.toString()) &&
-                !alreadyDocumented.contains(utils.getFullyQualifiedName(klass, false))) {
+                !alreadyDocumented.contains(utils.getFullyQualifiedName(te, false))) {
                 if (alreadyDocumented.isEmpty()) {
                     result.add(writer.getThrowsHeader());
                 }
                 result.add(writer.throwsTagOutput(declaredExceptionType));
-                alreadyDocumented.add(utils.getSimpleName(klass));
+                alreadyDocumented.add(utils.getSimpleName(te));
             }
         }
         return result;
@@ -130,7 +132,7 @@ public class ThrowsTaglet extends BaseTaglet
         Utils utils = writer.configuration().utils;
         Content result = writer.getOutputInstance();
         if (utils.isExecutableElement(holder)) {
-            Map<List<? extends DocTree>, ExecutableElement> declaredExceptionTags = new LinkedHashMap<>();
+            Map<List<? extends ThrowsTree>, ExecutableElement> declaredExceptionTags = new LinkedHashMap<>();
             for (TypeMirror declaredExceptionType : declaredExceptionTypes) {
                 Input input = new DocFinder.Input(utils, holder, this,
                         utils.getTypeName(declaredExceptionType, false));
@@ -144,7 +146,10 @@ public class ThrowsTaglet extends BaseTaglet
                     if (inheritedDoc.holder == null) {
                         inheritedDoc.holder = holder;
                     }
-                    declaredExceptionTags.put(inheritedDoc.tagList, (ExecutableElement)inheritedDoc.holder);
+                    List<? extends ThrowsTree> inheritedTags = inheritedDoc.tagList.stream()
+                            .map(t -> (ThrowsTree) t)
+                            .toList();
+                    declaredExceptionTags.put(inheritedTags, (ExecutableElement) inheritedDoc.holder);
                 }
             }
             result.add(throwsTagsOutput(declaredExceptionTags, writer, alreadyDocumented,
@@ -153,10 +158,8 @@ public class ThrowsTaglet extends BaseTaglet
         return result;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public Content getTagletOutput(Element holder, TagletWriter writer) {
+    @Override
+    public Content getAllBlockTagOutput(Element holder, TagletWriter writer) {
         Utils utils = writer.configuration().utils;
         ExecutableElement execHolder = (ExecutableElement) holder;
         ExecutableType instantiatedType = utils.asInstantiatedMethodType(
@@ -164,7 +167,7 @@ public class ThrowsTaglet extends BaseTaglet
         List<? extends TypeMirror> thrownTypes = instantiatedType.getThrownTypes();
         Map<String, TypeMirror> typeSubstitutions = getSubstitutedThrownTypes(
                 ((ExecutableElement) holder).getThrownTypes(), thrownTypes);
-        Map<List<? extends DocTree>, ExecutableElement> tagsMap = new LinkedHashMap<>();
+        Map<List<? extends ThrowsTree>, ExecutableElement> tagsMap = new LinkedHashMap<>();
         tagsMap.put(utils.getThrowsTrees(execHolder), execHolder);
         Content result = writer.getOutputInstance();
         HashSet<String> alreadyDocumented = new HashSet<>();
@@ -178,29 +181,28 @@ public class ThrowsTaglet extends BaseTaglet
     }
 
     /**
-     * Given an array of <code>Tag</code>s representing this custom
-     * tag, return its string representation.
-     * @param throwTags the array of <code>ThrowsTag</code>s to convert.
-     * @param writer the TagletWriter that will write this tag.
-     * @param alreadyDocumented the set of exceptions that have already
-     *        been documented.
-     * @param allowDups True if we allow duplicate throws tags to be documented.
-     * @return the Content representation of this <code>Tag</code>.
+     * Returns the generated content for a collection of {@code @throws} tags.
+     *
+     * @param throwTags         the collection of tags to be converted
+     * @param writer            the taglet-writer used by the doclet
+     * @param alreadyDocumented the set of exceptions that have already been documented
+     * @param allowDuplicates   {@code true} if we allow duplicate tags to be documented
+     * @return the generated content for the tags
      */
-    protected Content throwsTagsOutput(Map<List<? extends DocTree>, ExecutableElement> throwTags,
+    protected Content throwsTagsOutput(Map<List<? extends ThrowsTree>, ExecutableElement> throwTags,
                                        TagletWriter writer, Set<String> alreadyDocumented,
-                                       Map<String,TypeMirror> typeSubstitutions, boolean allowDups) {
+                                       Map<String,TypeMirror> typeSubstitutions, boolean allowDuplicates) {
         Utils utils = writer.configuration().utils;
         Content result = writer.getOutputInstance();
         if (!throwTags.isEmpty()) {
-            for (Entry<List<? extends DocTree>, ExecutableElement> entry : throwTags.entrySet()) {
+            for (Entry<List<? extends ThrowsTree>, ExecutableElement> entry : throwTags.entrySet()) {
                 CommentHelper ch = utils.getCommentHelper(entry.getValue());
                 Element e = entry.getValue();
-                for (DocTree dt : entry.getKey()) {
-                    Element te = ch.getException(utils.configuration, dt);
+                for (ThrowsTree dt : entry.getKey()) {
+                    Element te = ch.getException(dt);
                     String excName = ch.getExceptionName(dt).toString();
                     TypeMirror substituteType = typeSubstitutions.get(excName);
-                    if ((!allowDups) &&
+                    if ((!allowDuplicates) &&
                         (alreadyDocumented.contains(excName) ||
                         (te != null && alreadyDocumented.contains(utils.getFullyQualifiedName(te, false)))) ||
                         (substituteType != null && alreadyDocumented.contains(substituteType.toString()))) {

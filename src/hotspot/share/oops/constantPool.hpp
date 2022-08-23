@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@
 #include "oops/symbol.hpp"
 #include "oops/typeArrayOop.hpp"
 #include "runtime/handles.hpp"
+#include "runtime/thread.hpp"
 #include "utilities/align.hpp"
 #include "utilities/bytes.hpp"
 #include "utilities/constantTag.hpp"
@@ -58,7 +59,6 @@ class CPSlot {
   CPSlot(Symbol* ptr, int tag_bits = 0): _ptr((intptr_t)ptr | tag_bits) {}
 
   intptr_t value()   { return _ptr; }
-  bool is_pseudo_string() { return (_ptr & _pseudo_bit) != 0; }
 
   Symbol* get_symbol() {
     return (Symbol*)(_ptr & ~_pseudo_bit);
@@ -110,6 +110,16 @@ class ConstantPool : public Metadata {
   // save space on 64-bit platforms.
   Array<Klass*>*       _resolved_klasses;
 
+  u2              _major_version;        // major version number of class file
+  u2              _minor_version;        // minor version number of class file
+
+  // Constant pool index to the utf8 entry of the Generic signature,
+  // or 0 if none.
+  u2              _generic_signature_index;
+  // Constant pool index to the utf8 entry for the name of source file
+  // containing this klass, 0 if not specified.
+  u2              _source_file_name_index;
+
   enum {
     _has_preresolution    = 1,       // Flags
     _on_stack             = 2,
@@ -117,8 +127,9 @@ class ConstantPool : public Metadata {
     _has_dynamic_constant = 8
   };
 
-  int                  _flags;  // old fashioned bit twiddling
-  int                  _length; // number of elements in the array
+  u2              _flags;  // old fashioned bit twiddling
+
+  int             _length; // number of elements in the array
 
   union {
     // set for CDS to restore resolved references
@@ -135,8 +146,8 @@ class ConstantPool : public Metadata {
 
   void set_operands(Array<u2>* operands)       { _operands = operands; }
 
-  int flags() const                            { return _flags; }
-  void set_flags(int f)                        { _flags = f; }
+  u2 flags() const                             { return _flags; }
+  void set_flags(u2 f)                         { _flags = f; }
 
  private:
   intptr_t* base() const { return (intptr_t*) (((char*) this) + sizeof(ConstantPool)); }
@@ -178,7 +189,7 @@ class ConstantPool : public Metadata {
  public:
   static ConstantPool* allocate(ClassLoaderData* loader_data, int length, TRAPS);
 
-  bool is_constantPool() const volatile     { return true; }
+  virtual bool is_constantPool() const      { return true; }
 
   Array<u1>* tags() const                   { return _tags; }
   Array<u2>* operands() const               { return _operands; }
@@ -188,6 +199,30 @@ class ConstantPool : public Metadata {
     assert(!is_shared(), "should never be called on shared ConstantPools");
     _flags |= _has_preresolution;
   }
+
+  // minor and major version numbers of class file
+  u2 major_version() const                 { return _major_version; }
+  void set_major_version(u2 major_version) { _major_version = major_version; }
+  u2 minor_version() const                 { return _minor_version; }
+  void set_minor_version(u2 minor_version) { _minor_version = minor_version; }
+
+  // generics support
+  Symbol* generic_signature() const {
+    return (_generic_signature_index == 0) ?
+      (Symbol*)NULL : symbol_at(_generic_signature_index);
+  }
+  u2 generic_signature_index() const                   { return _generic_signature_index; }
+  void set_generic_signature_index(u2 sig_index)       { _generic_signature_index = sig_index; }
+
+  // source file name
+  Symbol* source_file_name() const {
+    return (_source_file_name_index == 0) ?
+      (Symbol*)NULL : symbol_at(_source_file_name_index);
+  }
+  u2 source_file_name_index() const                    { return _source_file_name_index; }
+  void set_source_file_name_index(u2 sourcefile_index) { _source_file_name_index = sourcefile_index; }
+
+  void copy_fields(const ConstantPool* orig);
 
   // Redefine classes support.  If a method refering to this constant pool
   // is on the executing stack, or as a handle in vm code, this constant pool
@@ -275,8 +310,7 @@ class ConstantPool : public Metadata {
     *int_at_addr(which) = name_index;
   }
 
-  // Unsafe anonymous class support:
-  void klass_at_put(int class_index, int name_index, int resolved_klass_index, Klass* k, Symbol* name);
+  // Hidden class support:
   void klass_at_put(int class_index, Klass* k);
 
   void unresolved_klass_at_put(int which, int name_index, int resolved_klass_index) {
@@ -383,13 +417,7 @@ class ConstantPool : public Metadata {
 
   Klass* klass_at(int which, TRAPS) {
     constantPoolHandle h_this(THREAD, this);
-    return klass_at_impl(h_this, which, true, THREAD);
-  }
-
-  // Version of klass_at that doesn't save the resolution error, called during deopt
-  Klass* klass_at_ignore_error(int which, TRAPS) {
-    constantPoolHandle h_this(THREAD, this);
-    return klass_at_impl(h_this, which, false, THREAD);
+    return klass_at_impl(h_this, which, THREAD);
   }
 
   CPKlassSlot klass_slot_at(int which) const {
@@ -455,26 +483,6 @@ class ConstantPool : public Metadata {
 
   // Version that can be used before string oop array is created.
   oop uncached_string_at(int which, TRAPS);
-
-  // A "pseudo-string" is an non-string oop that has found its way into
-  // a String entry.
-  // This can happen if the user patches a live
-  // object into a CONSTANT_String entry of an unsafe anonymous class.
-  // Method oops internally created for method handles may also
-  // use pseudo-strings to link themselves to related metaobjects.
-
-  bool is_pseudo_string_at(int which);
-
-  oop pseudo_string_at(int which, int obj_index);
-
-  oop pseudo_string_at(int which);
-
-  void pseudo_string_at_put(int which, int obj_index, oop x) {
-    assert(tag_at(which).is_string(), "Corrupted constant pool");
-    Symbol* sym = unresolved_string_at(which);
-    slot_at_put(which, CPSlot(sym, CPSlot::_pseudo_bit));
-    string_at_put(which, obj_index, x);    // this works just fine
-  }
 
   // only called when we are sure a string entry is already resolved (via an
   // earlier string_at call.
@@ -631,10 +639,10 @@ class ConstantPool : public Metadata {
   }
   // Compare a bootstrap specifier data in the operands arrays
   bool compare_operand_to(int bsms_attribute_index1, const constantPoolHandle& cp2,
-                          int bsms_attribute_index2, TRAPS);
+                          int bsms_attribute_index2);
   // Find a bootstrap specifier data in the operands array
   int find_matching_operand(int bsms_attribute_index, const constantPoolHandle& search_cp,
-                            int operands_cur_len, TRAPS);
+                            int operands_cur_len);
   // Resize the operands array with delta_len and delta_size
   void resize_operands(int delta_len, int delta_size, TRAPS);
   // Extend the operands array with the length and size of the ext_cp operands
@@ -704,7 +712,8 @@ class ConstantPool : public Metadata {
   }
 
   // CDS support
-  void archive_resolved_references(Thread *THREAD) NOT_CDS_JAVA_HEAP_RETURN;
+  void archive_resolved_references() NOT_CDS_JAVA_HEAP_RETURN;
+  void add_dumped_interned_strings() NOT_CDS_JAVA_HEAP_RETURN;
   void resolve_class_constants(TRAPS) NOT_CDS_JAVA_HEAP_RETURN;
   void remove_unshareable_info();
   void restore_unshareable_info(TRAPS);
@@ -824,9 +833,6 @@ class ConstantPool : public Metadata {
   Array<u2>* reference_map() const        {  return (_cache == NULL) ? NULL :  _cache->reference_map(); }
   void set_reference_map(Array<u2>* o)    { _cache->set_reference_map(o); }
 
-  // patch JSR 292 resolved references after the class is linked.
-  void patch_resolved_references(GrowableArray<Handle>* cp_patches);
-
   Symbol* impl_name_ref_at(int which, bool uncached);
   Symbol* impl_signature_ref_at(int which, bool uncached);
 
@@ -850,8 +856,7 @@ class ConstantPool : public Metadata {
 
   // Implementation of methods that needs an exposed 'this' pointer, in order to
   // handle GC while executing the method
-  static Klass* klass_at_impl(const constantPoolHandle& this_cp, int which,
-                              bool save_resolution_error, TRAPS);
+  static Klass* klass_at_impl(const constantPoolHandle& this_cp, int which, TRAPS);
   static oop string_at_impl(const constantPoolHandle& this_cp, int which, int obj_index, TRAPS);
 
   static void trace_class_resolution(const constantPoolHandle& this_cp, Klass* k);
@@ -867,7 +872,6 @@ class ConstantPool : public Metadata {
                                                bool must_resolve, Handle if_not_available, TRAPS);
 
   // Exception handling
-  static Symbol* exception_message(const constantPoolHandle& this_cp, int which, constantTag tag, oop pending_exception);
   static void save_and_throw_exception(const constantPoolHandle& this_cp, int which, constantTag tag, TRAPS);
 
  public:
@@ -875,15 +879,15 @@ class ConstantPool : public Metadata {
   static void throw_resolution_error(const constantPoolHandle& this_cp, int which, TRAPS);
 
   // Merging ConstantPool* support:
-  bool compare_entry_to(int index1, const constantPoolHandle& cp2, int index2, TRAPS);
+  bool compare_entry_to(int index1, const constantPoolHandle& cp2, int index2);
   void copy_cp_to(int start_i, int end_i, const constantPoolHandle& to_cp, int to_i, TRAPS) {
     constantPoolHandle h_this(THREAD, this);
     copy_cp_to_impl(h_this, start_i, end_i, to_cp, to_i, THREAD);
   }
   static void copy_cp_to_impl(const constantPoolHandle& from_cp, int start_i, int end_i, const constantPoolHandle& to_cp, int to_i, TRAPS);
-  static void copy_entry_to(const constantPoolHandle& from_cp, int from_i, const constantPoolHandle& to_cp, int to_i, TRAPS);
+  static void copy_entry_to(const constantPoolHandle& from_cp, int from_i, const constantPoolHandle& to_cp, int to_i);
   static void copy_operands(const constantPoolHandle& from_cp, const constantPoolHandle& to_cp, TRAPS);
-  int  find_matching_entry(int pattern_i, const constantPoolHandle& search_cp, TRAPS);
+  int  find_matching_entry(int pattern_i, const constantPoolHandle& search_cp);
   int  version() const                    { return _saved._version; }
   void set_version(int version)           { _saved._version = version; }
   void increment_and_save_version(int version) {
@@ -931,9 +935,9 @@ class ConstantPool : public Metadata {
 
 class SymbolHashMapEntry : public CHeapObj<mtSymbol> {
  private:
-  unsigned int        _hash;   // 32-bit hash for item
   SymbolHashMapEntry* _next;   // Next element in the linked list for this bucket
   Symbol*             _symbol; // 1-st part of the mapping: symbol => value
+  unsigned int        _hash;   // 32-bit hash for item
   u2                  _value;  // 2-nd part of the mapping: symbol => value
 
  public:
@@ -950,7 +954,7 @@ class SymbolHashMapEntry : public CHeapObj<mtSymbol> {
   void       set_value(u2 value)          { _value = value; }
 
   SymbolHashMapEntry(unsigned int hash, Symbol* symbol, u2 value)
-    : _hash(hash), _next(NULL), _symbol(symbol), _value(value) {}
+    : _next(NULL), _symbol(symbol), _hash(hash), _value(value) {}
 
 }; // End SymbolHashMapEntry class
 

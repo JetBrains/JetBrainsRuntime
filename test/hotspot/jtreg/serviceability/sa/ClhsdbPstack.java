@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,44 +26,75 @@ import java.util.List;
 import java.util.Map;
 
 import jdk.test.lib.apps.LingeredApp;
+import jdk.test.lib.util.CoreUtils;
+import jdk.test.lib.Platform;
 import jtreg.SkippedException;
 
 /**
  * @test
  * @bug 8190198
- * @summary Test clhsdb pstack command
- * @requires vm.hasSA & os.family != "mac"
+ * @summary Test clhsdb pstack command on a live process
+ * @requires vm.hasSA
  * @library /test/lib
- * @run main/othervm ClhsdbPstack
+ * @run main/othervm ClhsdbPstack false
+ */
+
+/**
+ * @test
+ * @bug 8190198
+ * @summary Test clhsdb pstack command on a core file
+ * @requires vm.hasSA
+ * @library /test/lib
+ * @run main/othervm/timeout=480 ClhsdbPstack true
  */
 
 public class ClhsdbPstack {
 
     public static void main(String[] args) throws Exception {
-        System.out.println("Starting ClhsdbPstack test");
+        boolean withCore = Boolean.parseBoolean(args[0]);
+        System.out.println("Starting ClhsdbPstack test: withCore==" + withCore);
 
         LingeredApp theApp = null;
+        String coreFileName = null;
         try {
             ClhsdbLauncher test = new ClhsdbLauncher();
-            theApp = LingeredApp.startApp();
+            theApp = new LingeredApp();
+            theApp.setForceCrash(withCore);
+            LingeredApp.startApp(theApp);
             System.out.println("Started LingeredApp with pid " + theApp.getPid());
+
+            if (withCore) {
+                String crashOutput = theApp.getOutput().getStdout();
+                coreFileName = CoreUtils.getCoreFileLocation(crashOutput, theApp.getPid());
+            }
 
             List<String> cmds = List.of("pstack -v");
 
             Map<String, List<String>> expStrMap = new HashMap<>();
-            expStrMap.put("pstack -v", List.of(
+            if (!withCore && Platform.isOSX()) {
+                expStrMap.put("pstack -v", List.of(
+                    "Not available for Mac OS X processes"));
+            } else {
+                expStrMap.put("pstack -v", List.of(
                     "No deadlocks found", "Common-Cleaner",
                     "Signal Dispatcher", "CompilerThread",
                     "Sweeper thread", "Service Thread",
                     "Reference Handler", "Finalizer", "main"));
+            }
 
-            test.run(theApp.getPid(), cmds, expStrMap, null);
+            if (withCore) {
+                test.runOnCore(coreFileName, cmds, expStrMap, null);
+            } else {
+                test.run(theApp.getPid(), cmds, expStrMap, null);
+            }
         } catch (SkippedException se) {
             throw se;
         } catch (Exception ex) {
             throw new RuntimeException("Test ERROR " + ex, ex);
         } finally {
-            LingeredApp.stopApp(theApp);
+            if (!withCore) {
+                LingeredApp.stopApp(theApp);
+            }
         }
         System.out.println("Test PASSED");
     }

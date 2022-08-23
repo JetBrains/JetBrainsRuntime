@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,53 +24,59 @@
 
 #include "precompiled.hpp"
 #include "classfile/stringTable.hpp"
+#include "gc/shared/gc_globals.hpp"
 #include "gc/shared/oopStorage.inline.hpp"
 #include "gc/shared/oopStorageParState.inline.hpp"
 #include "gc/shared/oopStorageSet.hpp"
 #include "gc/shared/weakProcessor.inline.hpp"
-#include "gc/shared/weakProcessorPhases.hpp"
-#include "gc/shared/weakProcessorPhaseTimes.hpp"
+#include "gc/shared/oopStorageSetParState.inline.hpp"
+#include "gc/shared/weakProcessorTimes.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/iterator.hpp"
 #include "prims/resolvedMethodTable.hpp"
 #include "runtime/globals.hpp"
 #include "utilities/macros.hpp"
 
-template <typename Container>
-class OopsDoAndReportCounts {
-public:
-  void operator()(BoolObjectClosure* is_alive, OopClosure* keep_alive, OopStorage* storage) {
-    Container::reset_dead_counter();
+#if INCLUDE_JVMTI
+#include "prims/jvmtiTagMap.hpp"
+#endif // INCLUDE_JVMTI
 
-    CountingSkippedIsAliveClosure<BoolObjectClosure, OopClosure> cl(is_alive, keep_alive);
-    storage->oops_do(&cl);
+void notify_jvmti_tagmaps() {
+#if INCLUDE_JVMTI
+  // Notify JVMTI tagmaps that a STW weak reference processing might be
+  // clearing entries, so the tagmaps need cleaning.  Doing this here allows
+  // the tagmap's oopstorage notification handler to not care whether it's
+  // invoked by STW or concurrent reference processing.
+  JvmtiTagMap::set_needs_cleaning();
 
-    Container::inc_dead_counter(cl.num_dead() + cl.num_skipped());
-    Container::finish_dead_counter();
-  }
-};
+  // Notify JVMTI tagmaps that a STW collection may have moved objects, so
+  // the tagmaps need rehashing.  This isn't the right place for this, but
+  // is convenient because all the STW collectors use WeakProcessor.  One
+  // problem is that the end of a G1 concurrent collection also comes here,
+  // possibly triggering unnecessary rehashes.
+  JvmtiTagMap::set_needs_rehashing();
+#endif // INCLUDE_JVMTI
+}
 
 void WeakProcessor::weak_oops_do(BoolObjectClosure* is_alive, OopClosure* keep_alive) {
-  WeakProcessorPhases::Iterator pit = WeakProcessorPhases::serial_iterator();
-  for ( ; !pit.is_end(); ++pit) {
-    WeakProcessorPhases::processor(*pit)(is_alive, keep_alive);
-  }
 
-  OopStorageSet::Iterator it = OopStorageSet::weak_iterator();
-  for ( ; !it.is_end(); ++it) {
-    if (OopStorageSet::string_table_weak() == *it) {
-      OopsDoAndReportCounts<StringTable>()(is_alive, keep_alive, *it);
-    } else if (OopStorageSet::resolved_method_table_weak() == *it) {
-      OopsDoAndReportCounts<ResolvedMethodTable>()(is_alive, keep_alive, *it);
+  notify_jvmti_tagmaps();
+
+  for (OopStorage* storage : OopStorageSet::Range<OopStorageSet::WeakId>()) {
+    if (storage->should_report_num_dead()) {
+      CountingClosure<BoolObjectClosure, OopClosure> cl(is_alive, keep_alive);
+      storage->oops_do(&cl);
+      storage->report_num_dead(cl.dead());
     } else {
-      it->weak_oops_do(is_alive, keep_alive);
+      storage->weak_oops_do(is_alive, keep_alive);
     }
   }
 }
 
 void WeakProcessor::oops_do(OopClosure* closure) {
-  AlwaysTrueClosure always_true;
-  weak_oops_do(&always_true, closure);
+  for (OopStorage* storage : OopStorageSet::Range<OopStorageSet::WeakId>()) {
+    storage->weak_oops_do(closure);
+  }
 }
 
 uint WeakProcessor::ergo_workers(uint max_workers) {
@@ -82,16 +88,9 @@ uint WeakProcessor::ergo_workers(uint max_workers) {
 
   // One thread per ReferencesPerThread references (or fraction thereof)
   // in the various OopStorage objects, bounded by max_threads.
-  //
-  // Serial phases are ignored in this calculation, because of the
-  // cost of running unnecessary threads.  These phases are normally
-  // small or empty (assuming they are configured to exist at all),
-  // and development oriented, so not allocating any threads
-  // specifically for them is okay.
   size_t ref_count = 0;
-  OopStorageSet::Iterator it = OopStorageSet::weak_iterator();
-  for ( ; !it.is_end(); ++it) {
-    ref_count += it->allocation_count();
+  for (OopStorage* storage : OopStorageSet::Range<OopStorageSet::WeakId>()) {
+    ref_count += storage->allocation_count();
   }
 
   // +1 to (approx) round up the ref per thread division.
@@ -102,57 +101,28 @@ uint WeakProcessor::ergo_workers(uint max_workers) {
 
 void WeakProcessor::Task::initialize() {
   assert(_nworkers != 0, "must be");
-  assert(_phase_times == NULL || _nworkers <= _phase_times->max_threads(),
+  assert(_times == nullptr || _nworkers <= _times->max_threads(),
          "nworkers (%u) exceeds max threads (%u)",
-         _nworkers, _phase_times->max_threads());
+         _nworkers, _times->max_threads());
 
-  if (_phase_times) {
-    _phase_times->set_active_workers(_nworkers);
+  if (_times) {
+    _times->set_active_workers(_nworkers);
   }
-
-  uint storage_count = WeakProcessorPhases::oopstorage_phase_count;
-  _storage_states = NEW_C_HEAP_ARRAY(StorageState, storage_count, mtGC);
-
-  StorageState* cur_state = _storage_states;
-  OopStorageSet::Iterator it = OopStorageSet::weak_iterator();
-  for ( ; !it.is_end(); ++it, ++cur_state) {
-    assert(pointer_delta(cur_state, _storage_states, sizeof(StorageState)) < storage_count, "invariant");
-    new (cur_state) StorageState(*it, _nworkers);
-  }
-  assert(pointer_delta(cur_state, _storage_states, sizeof(StorageState)) == storage_count, "invariant");
-  StringTable::reset_dead_counter();
-  ResolvedMethodTable::reset_dead_counter();
+  notify_jvmti_tagmaps();
 }
 
-WeakProcessor::Task::Task(uint nworkers) :
-  _phase_times(NULL),
+WeakProcessor::Task::Task(uint nworkers) : Task(nullptr, nworkers) {}
+
+WeakProcessor::Task::Task(WeakProcessorTimes* times, uint nworkers) :
+  _times(times),
   _nworkers(nworkers),
-  _serial_phases_done(WeakProcessorPhases::serial_phase_count),
-  _storage_states(NULL)
+  _storage_states()
 {
   initialize();
 }
 
-WeakProcessor::Task::Task(WeakProcessorPhaseTimes* phase_times, uint nworkers) :
-  _phase_times(phase_times),
-  _nworkers(nworkers),
-  _serial_phases_done(WeakProcessorPhases::serial_phase_count),
-  _storage_states(NULL)
-{
-  initialize();
-}
-
-WeakProcessor::Task::~Task() {
-  if (_storage_states != NULL) {
-    StorageState* states = _storage_states;
-    for (uint i = 0; i < WeakProcessorPhases::oopstorage_phase_count; ++i) {
-      states->StorageState::~StorageState();
-      ++states;
-    }
-    FREE_C_HEAP_ARRAY(StorageState, _storage_states);
-  }
-  StringTable::finish_dead_counter();
-  ResolvedMethodTable::finish_dead_counter();
+void WeakProcessor::Task::report_num_dead() {
+  _storage_states.report_num_dead();
 }
 
 void WeakProcessor::GangTask::work(uint worker_id) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,11 +36,11 @@ import java.util.Arrays;
 import java.util.logging.Logger;
 
 /**
-  * Base class for implementing CRAM-MD5 client and server mechanisms.
-  *
-  * @author Vincent Ryan
-  * @author Rosanna Lee
-  */
+ * Base class for implementing CRAM-MD5 client and server mechanisms.
+ *
+ * @author Vincent Ryan
+ * @author Rosanna Lee
+ */
 abstract class CramMD5Base {
     protected boolean completed = false;
     protected boolean aborted = false;
@@ -70,10 +70,10 @@ abstract class CramMD5Base {
     }
 
     /**
-      * Unwraps the incoming buffer. CRAM-MD5 supports no security layer.
-      *
-      * @throws SaslException If attempt to use this method.
-      */
+     * Unwraps the incoming buffer. CRAM-MD5 supports no security layer.
+     *
+     * @throws SaslException If attempt to use this method.
+     */
     public byte[] unwrap(byte[] incoming, int offset, int len)
         throws SaslException {
         if (completed) {
@@ -86,10 +86,10 @@ abstract class CramMD5Base {
     }
 
     /**
-      * Wraps the outgoing buffer. CRAM-MD5 supports no security layer.
-      *
-      * @throws SaslException If attempt to use this method.
-      */
+     * Wraps the outgoing buffer. CRAM-MD5 supports no security layer.
+     *
+     * @throws SaslException If attempt to use this method.
+     */
     public byte[] wrap(byte[] outgoing, int offset, int len) throws SaslException {
         if (completed) {
             throw new IllegalStateException(
@@ -141,7 +141,7 @@ abstract class CramMD5Base {
         clearPassword();
     }
 
-    static private final int MD5_BLOCKSIZE = 64;
+    private static final int MD5_BLOCKSIZE = 64;
     /**
      * Hashes its input arguments according to HMAC-MD5 (RFC 2104)
      * and returns the resulting digest in its ASCII representation.
@@ -155,7 +155,7 @@ abstract class CramMD5Base {
      *       opad is the byte 0x5c repeated 64 times
      *       text is the data to be protected
      */
-    final static String HMAC_MD5(byte[] key, byte[] text)
+    static final String HMAC_MD5(byte[] key, byte[] text)
         throws NoSuchAlgorithmException {
 
         MessageDigest md5 = MessageDigest.getInstance("MD5");

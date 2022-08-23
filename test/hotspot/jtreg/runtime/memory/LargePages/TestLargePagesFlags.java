@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +25,11 @@
  * @summary Tests how large pages are choosen depending on the given large pages flag combinations.
  * @requires vm.gc != "Z"
  * @requires os.family == "linux"
+ * @requires vm.flagless
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management
- * @run main TestLargePagesFlags
+ * @run driver TestLargePagesFlags
  */
 
 import jdk.test.lib.process.OutputAnalyzer;
@@ -327,8 +328,9 @@ public class TestLargePagesFlags {
     args.add("-XX:+PrintFlagsFinal");
     args.add("-version");
 
-    ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(args.toArray(new String[args.size()]));
+    ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(args);
     OutputAnalyzer output = new OutputAnalyzer(pb.start());
+    output.shouldHaveExitValue(0);
 
     return output;
   }

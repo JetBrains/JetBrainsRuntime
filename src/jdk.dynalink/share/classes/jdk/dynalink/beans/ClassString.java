@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,7 +61,6 @@
 package jdk.dynalink.beans;
 
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodType;
 import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -79,6 +78,7 @@ import jdk.dynalink.linker.support.TypeUtilities;
  * JLS.
  */
 final class ClassString {
+    @SuppressWarnings("removal")
     private static final AccessControlContext GET_CLASS_LOADER_CONTEXT =
             AccessControlContextFactory.createAccessControlContext("getClassLoader");
 
@@ -92,10 +92,6 @@ final class ClassString {
 
     ClassString(final Class<?>[] classes) {
         this.classes = classes;
-    }
-
-    ClassString(final MethodType type) {
-        this(type.parameterArray());
     }
 
     @Override
@@ -119,8 +115,8 @@ final class ClassString {
     public int hashCode() {
         if(hashCode == 0) {
             int h = 0;
-            for(int i = 0; i < classes.length; ++i) {
-                h ^= classes[i].hashCode();
+            for(final Class<?> cls: classes) {
+                h ^= cls.hashCode();
             }
             hashCode = h;
         }
@@ -132,17 +128,15 @@ final class ClassString {
         return "ClassString[" + Arrays.toString(classes) + "]";
     }
 
+    @SuppressWarnings("removal")
     boolean isVisibleFrom(final ClassLoader classLoader) {
-        return AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
-            @Override
-            public Boolean run() {
-                for(final Class<?> clazz: classes) {
-                    if(!InternalTypeUtilities.canReferenceDirectly(classLoader, clazz.getClassLoader())) {
-                        return false;
-                    }
+        return AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
+            for(final Class<?> clazz: classes) {
+                if(!InternalTypeUtilities.canReferenceDirectly(classLoader, clazz.getClassLoader())) {
+                    return false;
                 }
-                return true;
             }
+            return true;
         }, GET_CLASS_LOADER_CONTEXT);
     }
 

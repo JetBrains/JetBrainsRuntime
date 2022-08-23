@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,7 @@
  * @modules java.base/jdk.internal.misc
  *          java.management
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run main/othervm/timeout=480 -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI -Xbootclasspath/a:. UseCompressedOops
  */
 import java.util.ArrayList;
@@ -86,12 +86,11 @@ public class UseCompressedOops {
                 .shouldContain("Compressed Oops mode")
                 .shouldHaveExitValue(0);
 
-            // Skip the following seven test cases if we're on OSX, Windows, or Solaris.
+            // Skip the following seven test cases if we're on OSX or Windows.
             //
             // OSX doesn't seem to care about HeapBaseMinAddress.  Windows memory
-            // locations are affected by ASLR.  Solaris puts the heap way up,
-            // forcing different behaviour.
-            if (!Platform.isOSX() && !Platform.isWindows() && !Platform.isSolaris()) {
+            // locations are affected by ASLR.
+            if (!Platform.isOSX() && !Platform.isWindows()) {
 
                 // Larger than 4gb heap should result in zero based with shift 3
                 testCompressedOops(args, "-XX:+UseCompressedOops", "-Xmx5g")
@@ -189,7 +188,7 @@ public class UseCompressedOops {
 
         args.add("-version");
 
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(args.toArray(new String[0]));
+        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(args);
         return new OutputAnalyzer(pb.start());
     }
 }

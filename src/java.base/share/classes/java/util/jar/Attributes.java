@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 
 package java.util.jar;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Collection;
@@ -34,7 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import jdk.internal.misc.VM;
+import jdk.internal.misc.CDS;
 import jdk.internal.vm.annotation.Stable;
 
 import sun.nio.cs.UTF_8;
@@ -366,7 +367,7 @@ public class Attributes implements Map<Object,Object>, Cloneable {
 
     int read(Manifest.FastInputStream is, byte[] lbuf, String filename, int lineNumber) throws IOException {
         String name = null, value;
-        byte[] lastline = null;
+        ByteArrayOutputStream fullLine = new ByteArrayOutputStream();
 
         int len;
         while ((len = is.readLine(lbuf)) != -1) {
@@ -392,15 +393,12 @@ public class Attributes implements Map<Object,Object>, Cloneable {
                                 + Manifest.getErrorPosition(filename, lineNumber) + ")");
                 }
                 lineContinued = true;
-                byte[] buf = new byte[lastline.length + len - 1];
-                System.arraycopy(lastline, 0, buf, 0, lastline.length);
-                System.arraycopy(lbuf, 1, buf, lastline.length, len - 1);
+                fullLine.write(lbuf, 1, len - 1);
                 if (is.peek() == ' ') {
-                    lastline = buf;
                     continue;
                 }
-                value = new String(buf, 0, buf.length, UTF_8.INSTANCE);
-                lastline = null;
+                value = fullLine.toString(UTF_8.INSTANCE);
+                fullLine.reset();
             } else {
                 while (lbuf[i++] != ':') {
                     if (i >= len) {
@@ -414,8 +412,8 @@ public class Attributes implements Map<Object,Object>, Cloneable {
                 }
                 name = new String(lbuf, 0, i - 2, UTF_8.INSTANCE);
                 if (is.peek() == ' ') {
-                    lastline = new byte[len - i];
-                    System.arraycopy(lbuf, i, lastline, 0, len - i);
+                    fullLine.reset();
+                    fullLine.write(lbuf, i, len - i);
                     continue;
                 }
                 value = new String(lbuf, i, len - i, UTF_8.INSTANCE);
@@ -514,12 +512,8 @@ public class Attributes implements Map<Object,Object>, Cloneable {
             if (this == o) {
                 return true;
             }
-            if (o instanceof Name) {
-                Name other = (Name)o;
-                return other.name.equalsIgnoreCase(name);
-            } else {
-                return false;
-            }
+            return o instanceof Name other
+                    && other.name.equalsIgnoreCase(name);
         }
 
         /**
@@ -591,7 +585,7 @@ public class Attributes implements Map<Object,Object>, Cloneable {
         public static final Name EXTENSION_LIST;
 
         /**
-         * {@code Name} object for {@code Extension-Name} manifest attribute.
+         * {@code Name} object for {@code Extension-Name} manifest attribute
          * used for the extension mechanism that is no longer supported.
          */
         public static final Name EXTENSION_NAME;
@@ -672,7 +666,7 @@ public class Attributes implements Map<Object,Object>, Cloneable {
 
         static {
 
-            VM.initializeFromArchive(Attributes.Name.class);
+            CDS.initializeFromArchive(Attributes.Name.class);
 
             if (KNOWN_NAMES == null) {
                 MANIFEST_VERSION = new Name("Manifest-Version");

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012, 2019, SAP SE. All rights reserved.
+ * Copyright (c) 2000, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,9 @@
 #include "runtime/frame.inline.hpp"
 #include "runtime/safepointMechanism.inline.hpp"
 #include "runtime/sharedRuntime.hpp"
+#include "runtime/stubRoutines.hpp"
+#include "runtime/vm_version.hpp"
+#include "utilities/powerOfTwo.hpp"
 
 #define __ _masm->
 
@@ -339,7 +342,7 @@ void LIR_Assembler::arithmetic_idiv(LIR_Code code, LIR_Opr left, LIR_Opr right, 
 
     } else if (is_power_of_2(divisor)) {
       // Convert division by a power of two into some shifts and logical operations.
-      int log2 = log2_intptr(divisor);
+      int log2 = log2i_exact(divisor);
 
       // Round towards 0.
       if (divisor == 2) {
@@ -702,12 +705,6 @@ void LIR_Assembler::ic_call(LIR_OpJavaCall* op) {
   __ bl(__ pc());
   add_call_info(code_offset(), op->info());
 }
-
-
-void LIR_Assembler::vtable_call(LIR_OpJavaCall* op) {
-  ShouldNotReachHere(); // ic_call is used instead.
-}
-
 
 void LIR_Assembler::explicit_null_check(Register addr, CodeEmitInfo* info) {
   ImplicitNullCheckStub* stub = new ImplicitNullCheckStub(code_offset(), info);
@@ -1196,7 +1193,7 @@ void LIR_Assembler::stack2reg(LIR_Opr src, LIR_Opr dest, BasicType type) {
     addr = frame_map()->address_for_double_slot(src->double_stack_ix());
   }
 
-  bool unaligned = (addr.disp() - STACK_BIAS) % 8 != 0;
+  bool unaligned = addr.disp() % 8 != 0;
   load(addr.base(), addr.disp(), dest, dest->type(), true /*wide*/, unaligned);
 }
 
@@ -1208,7 +1205,7 @@ void LIR_Assembler::reg2stack(LIR_Opr from_reg, LIR_Opr dest, BasicType type, bo
   } else if (dest->is_double_word())  {
     addr = frame_map()->address_for_slot(dest->double_stack_ix());
   }
-  bool unaligned = (addr.disp() - STACK_BIAS) % 8 != 0;
+  bool unaligned = addr.disp() % 8 != 0;
   store(from_reg, addr.base(), addr.disp(), from_reg->type(), true /*wide*/, unaligned);
 }
 
@@ -1322,9 +1319,9 @@ void LIR_Assembler::reg2mem(LIR_Opr from_reg, LIR_Opr dest, BasicType type,
 }
 
 
-void LIR_Assembler::return_op(LIR_Opr result) {
-  const Register return_pc        = R31;  // Must survive C-call to enable_stack_reserved_zone().
-  const Register polling_page     = R12;
+void LIR_Assembler::return_op(LIR_Opr result, C1SafepointPollStub* code_stub) {
+  const Register return_pc = R31;  // Must survive C-call to enable_stack_reserved_zone().
+  const Register temp      = R12;
 
   // Pop the stack before the safepoint code.
   int frame_size = initial_frame_size_in_bytes();
@@ -1334,14 +1331,8 @@ void LIR_Assembler::return_op(LIR_Opr result) {
     __ pop_frame();
   }
 
-  if (SafepointMechanism::uses_thread_local_poll()) {
-    __ ld(polling_page, in_bytes(Thread::polling_page_offset()), R16_thread);
-  } else {
-    __ load_const_optimized(polling_page, (long)(address) os::get_polling_page(), R0);
-  }
-
   // Restore return pc relative to callers' sp.
-  __ ld(return_pc, _abi(lr), R1_SP);
+  __ ld(return_pc, _abi0(lr), R1_SP);
   // Move return pc to LR.
   __ mtlr(return_pc);
 
@@ -1351,8 +1342,11 @@ void LIR_Assembler::return_op(LIR_Opr result) {
 
   // We need to mark the code position where the load from the safepoint
   // polling page was emitted as relocInfo::poll_return_type here.
-  __ relocate(relocInfo::poll_return_type);
-  __ load_from_polling_page(polling_page);
+  if (!UseSIGTRAP) {
+    code_stub->set_safepoint_offset(__ offset());
+    __ relocate(relocInfo::poll_return_type);
+  }
+  __ safepoint_poll(*code_stub->entry(), temp, true /* at_return */, true /* in_nmethod */);
 
   // Return.
   __ blr();
@@ -1361,11 +1355,7 @@ void LIR_Assembler::return_op(LIR_Opr result) {
 
 int LIR_Assembler::safepoint_poll(LIR_Opr tmp, CodeEmitInfo* info) {
   const Register poll_addr = tmp->as_register();
-  if (SafepointMechanism::uses_thread_local_poll()) {
-    __ ld(poll_addr, in_bytes(Thread::polling_page_offset()), R16_thread);
-  } else {
-    __ load_const_optimized(poll_addr, (intptr_t)os::get_polling_page(), R0);
-  }
+  __ ld(poll_addr, in_bytes(JavaThread::polling_page_offset()), R16_thread);
   if (info != NULL) {
     add_debug_info_for_branch(info);
   }
@@ -1533,7 +1523,6 @@ void LIR_Assembler::comp_op(LIR_Condition condition, LIR_Opr opr1, LIR_Opr opr2,
 
 void LIR_Assembler::comp_fl2i(LIR_Code code, LIR_Opr left, LIR_Opr right, LIR_Opr dst, LIR_Op2* op){
   const Register Rdst = dst->as_register();
-  Label done;
   if (code == lir_cmp_fd2i || code == lir_ucmp_fd2i) {
     bool is_unordered_less = (code == lir_ucmp_fd2i);
     if (left->is_single_fpu()) {
@@ -1543,18 +1532,13 @@ void LIR_Assembler::comp_fl2i(LIR_Code code, LIR_Opr left, LIR_Opr right, LIR_Op
     } else {
       ShouldNotReachHere();
     }
-    __ li(Rdst, is_unordered_less ? -1 : 1);
-    __ bso(CCR0, done);
+    __ set_cmpu3(Rdst, is_unordered_less); // is_unordered_less ? -1 : 1
   } else if (code == lir_cmp_l2i) {
     __ cmpd(CCR0, left->as_register_lo(), right->as_register_lo());
+    __ set_cmp3(Rdst);  // set result as follows: <: -1, =: 0, >: 1
   } else {
     ShouldNotReachHere();
   }
-  __ mfcr(R0); // set bit 32..33 as follows: <: 0b10, =: 0b00, >: 0b01
-  __ srwi(Rdst, R0, 30);
-  __ srawi(R0, R0, 31);
-  __ orr(Rdst, R0, Rdst); // set result as follows: <: -1, =: 0, >: 1
-  __ bind(done);
 }
 
 
@@ -1643,10 +1627,8 @@ void LIR_Assembler::arith_op(LIR_Code code, LIR_Opr left, LIR_Opr right, LIR_Opr
         switch (code) {
           case lir_add: __ fadds(res, lreg, rreg); break;
           case lir_sub: __ fsubs(res, lreg, rreg); break;
-          case lir_mul: // fall through
-          case lir_mul_strictfp: __ fmuls(res, lreg, rreg); break;
-          case lir_div: // fall through
-          case lir_div_strictfp: __ fdivs(res, lreg, rreg); break;
+          case lir_mul: __ fmuls(res, lreg, rreg); break;
+          case lir_div: __ fdivs(res, lreg, rreg); break;
           default: ShouldNotReachHere();
         }
       } else {
@@ -1656,10 +1638,8 @@ void LIR_Assembler::arith_op(LIR_Code code, LIR_Opr left, LIR_Opr right, LIR_Opr
         switch (code) {
           case lir_add: __ fadd(res, lreg, rreg); break;
           case lir_sub: __ fsub(res, lreg, rreg); break;
-          case lir_mul: // fall through
-          case lir_mul_strictfp: __ fmul(res, lreg, rreg); break;
-          case lir_div: // fall through
-          case lir_div_strictfp: __ fdiv(res, lreg, rreg); break;
+          case lir_mul: __ fmul(res, lreg, rreg); break;
+          case lir_div: __ fdiv(res, lreg, rreg); break;
           default: ShouldNotReachHere();
         }
       }
@@ -1726,12 +1706,6 @@ void LIR_Assembler::arith_op(LIR_Code code, LIR_Opr left, LIR_Opr right, LIR_Opr
 }
 
 
-void LIR_Assembler::fpop() {
-  Unimplemented();
-  // do nothing
-}
-
-
 void LIR_Assembler::intrinsic_op(LIR_Code code, LIR_Opr value, LIR_Opr thread, LIR_Opr dest, LIR_Op* op) {
   switch (code) {
     case lir_sqrt: {
@@ -1768,7 +1742,7 @@ void LIR_Assembler::logic_op(LIR_Code code, LIR_Opr left, LIR_Opr right, LIR_Opr
 
     switch (code) {
       case lir_logic_and:
-        if (uimmss != 0 || (uimms != 0 && (uimm & 0xFFFF) != 0) || is_power_of_2_long(uimm)) {
+        if (uimmss != 0 || (uimms != 0 && (uimm & 0xFFFF) != 0) || is_power_of_2(uimm)) {
           __ andi(d, l, uimm); // special cases
         } else if (uimms != 0) { __ andis_(d, l, uimms); }
         else { __ andi_(d, l, uimm); }
@@ -2691,16 +2665,6 @@ void LIR_Assembler::emit_compare_and_swap(LIR_OpCompareAndSwap* op) {
   }
 }
 
-
-void LIR_Assembler::set_24bit_FPU() {
-  Unimplemented();
-}
-
-void LIR_Assembler::reset_FPU() {
-  Unimplemented();
-}
-
-
 void LIR_Assembler::breakpoint() {
   __ illtrap();
 }
@@ -2894,19 +2858,6 @@ void LIR_Assembler::negate(LIR_Opr left, LIR_Opr dest, LIR_Opr tmp) {
 }
 
 
-void LIR_Assembler::fxch(int i) {
-  Unimplemented();
-}
-
-void LIR_Assembler::fld(int i) {
-  Unimplemented();
-}
-
-void LIR_Assembler::ffree(int i) {
-  Unimplemented();
-}
-
-
 void LIR_Assembler::rt_call(LIR_Opr result, address dest,
                             const LIR_OprList* args, LIR_Opr tmp, CodeEmitInfo* info) {
   // Stubs: Called via rt_call, but dest is a stub address (no function descriptor).
@@ -2965,12 +2916,20 @@ void LIR_Assembler::on_spin_wait() {
 }
 
 void LIR_Assembler::leal(LIR_Opr addr_opr, LIR_Opr dest, LIR_PatchCode patch_code, CodeEmitInfo* info) {
-  assert(patch_code == lir_patch_none, "Patch code not supported");
   LIR_Address* addr = addr_opr->as_address_ptr();
   assert(addr->scale() == LIR_Address::times_1, "no scaling on this platform");
+
   if (addr->index()->is_illegal()) {
-    __ add_const_optimized(dest->as_pointer_register(), addr->base()->as_pointer_register(), addr->disp());
+    if (patch_code != lir_patch_none) {
+      PatchingStub* patch = new PatchingStub(_masm, PatchingStub::access_field_id);
+      __ load_const32(R0, 0); // patchable int
+      __ add(dest->as_pointer_register(), addr->base()->as_pointer_register(), R0);
+      patching_epilog(patch, patch_code, addr->base()->as_register(), info);
+    } else {
+      __ add_const_optimized(dest->as_pointer_register(), addr->base()->as_pointer_register(), addr->disp());
+    }
   } else {
+    assert(patch_code == lir_patch_none, "Patch code not supported");
     assert(addr->disp() == 0, "can't have both: index and disp");
     __ add(dest->as_pointer_register(), addr->index()->as_pointer_register(), addr->base()->as_pointer_register());
   }
@@ -3122,7 +3081,7 @@ void LIR_Assembler::emit_profile_type(LIR_OpProfileType* op) {
   } else {
     __ cmpdi(CCR0, obj, 0);
     __ bne(CCR0, Lupdate);
-    __ stop("unexpect null obj", 0x9652);
+    __ stop("unexpect null obj");
 #endif
   }
 
@@ -3139,7 +3098,7 @@ void LIR_Assembler::emit_profile_type(LIR_OpProfileType* op) {
       metadata2reg(exact_klass->constant_encoding(), R0);
       __ cmpd(CCR0, klass, R0);
       __ beq(CCR0, ok);
-      __ stop("exact klass and actual klass differ", 0x8564);
+      __ stop("exact klass and actual klass differ");
       __ bind(ok);
     }
 #endif
@@ -3206,7 +3165,7 @@ void LIR_Assembler::emit_profile_type(LIR_OpProfileType* op) {
           __ clrrdi_(R0, tmp, exact_log2(-TypeEntries::type_mask));
           __ beq(CCR0, ok); // First time here.
 
-          __ stop("unexpected profiling mismatch", 0x7865);
+          __ stop("unexpected profiling mismatch");
           __ bind(ok);
         }
 #endif

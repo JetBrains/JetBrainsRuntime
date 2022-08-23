@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,7 @@
  * As described in the Java Virtual Machine Specification, certain types in this package
  * are given special treatment by the virtual machine:
  * <ul>
- * <li>The classes {@link java.lang.invoke.MethodHandle MethodHandle}
+ * <li>The classes {@link java.lang.invoke.MethodHandle MethodHandle} and
  * {@link java.lang.invoke.VarHandle VarHandle} contain
  * <a href="MethodHandle.html#sigpoly">signature polymorphic methods</a>
  * which can be linked regardless of their type descriptor.
@@ -162,7 +162,6 @@
  * call site or constant, the JVM must choose one bootstrap method result and install it visibly to
  * all threads.  Any other bootstrap method calls are allowed to complete, but their
  * results are ignored.
-
  * <p style="font-size:smaller;">
  * <em>Discussion:</em>
  * These rules do not enable the JVM to share call sites,
@@ -191,7 +190,7 @@
  * invoked with just the parameter types of static arguments, thereby supporting a wider
  * range of methods compatible with the static arguments (such as methods that don't declare
  * or require the lookup, name, and type meta-data parameters).
- * <p> For example, for dynamically-computed call site, a the first argument
+ * <p> For example, for dynamically-computed call site, the first argument
  * could be {@code Object} instead of {@code MethodHandles.Lookup}, and the return type
  * could also be {@code Object} instead of {@code CallSite}.
  * (Note that the types and number of the stacked arguments limit

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,9 +46,17 @@ import java.lang.reflect.Method;
 import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.security.cert.Certificate;
+import java.security.cert.X509Certificate;
 import java.util.Arrays;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import javax.net.SocketFactory;
 import javax.net.ssl.SSLParameters;
+import javax.net.ssl.HandshakeCompletedEvent;
+import javax.net.ssl.HandshakeCompletedListener;
+import javax.net.ssl.SSLPeerUnverifiedException;
+import javax.security.sasl.SaslException;
 
 /**
   * A thread that creates a connection to an LDAP server.
@@ -115,13 +123,13 @@ public final class Connection implements Runnable {
     private static final int dump = 0; // > 0 r, > 1 rw
 
 
-    final private Thread worker;    // Initialized in constructor
+    private final Thread worker;    // Initialized in constructor
 
     private boolean v3 = true;       // Set in setV3()
 
-    final public String host;  // used by LdapClient for generating exception messages
+    public final String host;  // used by LdapClient for generating exception messages
                          // used by StartTlsResponse when creating an SSL socket
-    final public int port;     // used by LdapClient for generating exception messages
+    public final int port;     // used by LdapClient for generating exception messages
                          // used by StartTlsResponse when creating an SSL socket
 
     private boolean bound = false;   // Set in setBound()
@@ -145,7 +153,7 @@ public final class Connection implements Runnable {
 
     // For processing "disconnect" unsolicited notification
     // Initialized in constructor
-    final private LdapClient parent;
+    private final LdapClient parent;
 
     // Incremented and returned in sync getMsgId()
     private int outMsgId = 0;
@@ -161,12 +169,20 @@ public final class Connection implements Runnable {
 
     int readTimeout;
     int connectTimeout;
+
+    // Is connection upgraded to SSL via STARTTLS extended operation
+    private volatile boolean isUpgradedToStartTls;
+
+    // Lock to maintain isUpgradedToStartTls state
+    final Object startTlsLock = new Object();
+
     private static final boolean IS_HOSTNAME_VERIFICATION_DISABLED
             = hostnameVerificationDisabledValue();
 
     private static boolean hostnameVerificationDisabledValue() {
         PrivilegedAction<String> act = () -> System.getProperty(
                 "com.sun.jndi.ldap.object.disableEndpointIdentification");
+        @SuppressWarnings("removal")
         String prop = AccessController.doPrivileged(act);
         if (prop == null) {
             return false;
@@ -223,7 +239,7 @@ public final class Connection implements Runnable {
             outStream = new BufferedOutputStream(sock.getOutputStream());
 
         } catch (InvocationTargetException e) {
-            Throwable realException = e.getTargetException();
+            Throwable realException = e.getCause();
             // realException.printStackTrace();
 
             CommunicationException ce =
@@ -342,6 +358,7 @@ public final class Connection implements Runnable {
                 param.setEndpointIdentificationAlgorithm("LDAPS");
                 sslSocket.setSSLParameters(param);
             }
+            setHandshakeCompletedListener(sslSocket);
             if (connectTimeout > 0) {
                 int socketTimeout = sslSocket.getSoTimeout();
                 sslSocket.setSoTimeout(connectTimeout); // reuse full timeout value
@@ -419,22 +436,34 @@ public final class Connection implements Runnable {
             }
         }
 
+        NamingException namingException = null;
         try {
             // if no timeout is set so we wait infinitely until
-            // a response is received
+            // a response is received OR until the connection is closed or cancelled
             // http://docs.oracle.com/javase/8/docs/technotes/guides/jndi/jndi-ldap.html#PROP
             rber = ldr.getReplyBer(readTimeout);
         } catch (InterruptedException ex) {
             throw new InterruptedNamingException(
                 "Interrupted during LDAP operation");
+        } catch (CommunicationException ce) {
+            // Re-throw
+            throw ce;
+        } catch (NamingException ne) {
+            // Connection is timed out OR closed/cancelled
+            namingException = ne;
+            rber = null;
         }
 
         if (rber == null) {
             abandonRequest(ldr, null);
-            throw new NamingException(
-                    "LDAP response read timed out, timeout used:"
-                            + readTimeout + "ms." );
-
+        }
+        // namingException can be not null in the following cases:
+        //  a) The response is timed-out
+        //  b) LDAP request connection has been closed or cancelled
+        // The exception message is initialized in LdapRequest::getReplyBer
+        if (namingException != null) {
+            // Re-throw NamingException after all cleanups are done
+            throw namingException;
         }
         return rber;
     }
@@ -625,6 +654,15 @@ public final class Connection implements Runnable {
                             ldr = ldr.next;
                         }
                     }
+                    if (isTlsConnection() && tlsHandshakeListener != null) {
+                        if (closureReason != null) {
+                            CommunicationException ce = new CommunicationException();
+                            ce.setRootCause(closureReason);
+                            tlsHandshakeListener.tlsHandshakeCompleted.completeExceptionally(ce);
+                        } else {
+                            tlsHandshakeListener.tlsHandshakeCompleted.cancel(false);
+                        }
+                    }
                     sock = null;
                 }
                 nparent = notifyParent;
@@ -665,6 +703,23 @@ public final class Connection implements Runnable {
 
         // Replace stream
         outStream = newOut;
+    }
+
+    /*
+     * Replace streams and set isUpdradedToStartTls flag to the provided value
+     */
+    synchronized public void replaceStreams(InputStream newIn, OutputStream newOut, boolean isStartTls) {
+        synchronized (startTlsLock) {
+            replaceStreams(newIn, newOut);
+            isUpgradedToStartTls = isStartTls;
+        }
+    }
+
+    /*
+     * Returns true if connection was upgraded to SSL with STARTTLS extended operation
+     */
+    public boolean isUpgradedToStartTls() {
+        return isUpgradedToStartTls;
     }
 
     /**
@@ -821,6 +876,11 @@ public final class Connection implements Runnable {
                     // is equal to & 0x80 (i.e. length byte with high bit off).
                     if ((seqlen & 0x80) == 0x80) {
                         seqlenlen = seqlen & 0x7f;  // number of length bytes
+                        // Check the length of length field, since seqlen is int
+                        // the number of bytes can't be greater than 4
+                        if (seqlenlen > 4) {
+                            throw new IOException("Length coded with too many bytes: " + seqlenlen);
+                        }
 
                         bytesread = 0;
                         eos = false;
@@ -848,20 +908,18 @@ public final class Connection implements Runnable {
                         offset += bytesread;
                     }
 
+                    if (seqlenlen > bytesread) {
+                        throw new IOException("Unexpected EOF while reading length");
+                    }
+
+                    if (seqlen < 0) {
+                        throw new IOException("Length too big: " + (((long) seqlen) & 0xFFFFFFFFL));
+                    }
                     // read in seqlen bytes
                     byte[] left = readFully(in, seqlen);
                     inbuf = Arrays.copyOf(inbuf, offset + left.length);
                     System.arraycopy(left, 0, inbuf, offset, left.length);
                     offset += left.length;
-/*
-if (dump > 0) {
-System.err.println("seqlen: " + seqlen);
-System.err.println("bufsize: " + offset);
-System.err.println("bytesleft: " + bytesleft);
-System.err.println("bytesread: " + bytesread);
-}
-*/
-
 
                     try {
                         retBer = new BerDecoder(inbuf, 0, offset);
@@ -970,35 +1028,62 @@ System.err.println("bytesread: " + bytesread);
         return buf;
     }
 
-    // This code must be uncommented to run the LdapAbandonTest.
-    /*public void sendSearchReqs(String dn, int numReqs) {
-        int i;
-        String attrs[] = null;
-        for(i = 1; i <= numReqs; i++) {
-            BerEncoder ber = new BerEncoder(2048);
+    public boolean isTlsConnection() {
+        return (sock instanceof SSLSocket) || isUpgradedToStartTls;
+    }
 
-            try {
-            ber.beginSeq(Ber.ASN_SEQUENCE | Ber.ASN_CONSTRUCTOR);
-                ber.encodeInt(i);
-                ber.beginSeq(LdapClient.LDAP_REQ_SEARCH);
-                    ber.encodeString(dn == null ? "" : dn);
-                    ber.encodeInt(0, LdapClient.LBER_ENUMERATED);
-                    ber.encodeInt(3, LdapClient.LBER_ENUMERATED);
-                    ber.encodeInt(0);
-                    ber.encodeInt(0);
-                    ber.encodeBoolean(true);
-                    LdapClient.encodeFilter(ber, "");
-                    ber.beginSeq(Ber.ASN_SEQUENCE | Ber.ASN_CONSTRUCTOR);
-                        ber.encodeStringArray(attrs);
-                    ber.endSeq();
-                ber.endSeq();
-            ber.endSeq();
-            writeRequest(ber, i);
-            //System.err.println("wrote request " + i);
-            } catch (Exception ex) {
-            //System.err.println("ldap.search: Caught " + ex + " building req");
-            }
+    /*
+     * tlsHandshakeListener can be created for initial secure connection
+     * and updated by StartTLS extended operation. It is used later by LdapClient
+     * to create TLS Channel Binding data on the base of TLS server certificate
+     */
+    private volatile HandshakeListener tlsHandshakeListener;
 
+    synchronized public void setHandshakeCompletedListener(SSLSocket sslSocket) {
+        if (tlsHandshakeListener != null)
+            tlsHandshakeListener.tlsHandshakeCompleted.cancel(false);
+
+        tlsHandshakeListener = new HandshakeListener();
+        sslSocket.addHandshakeCompletedListener(tlsHandshakeListener);
+    }
+
+    public X509Certificate getTlsServerCertificate()
+        throws SaslException {
+        try {
+            if (isTlsConnection() && tlsHandshakeListener != null)
+                return tlsHandshakeListener.tlsHandshakeCompleted.get();
+        } catch (InterruptedException iex) {
+            throw new SaslException("TLS Handshake Exception ", iex);
+        } catch (ExecutionException eex) {
+            throw new SaslException("TLS Handshake Exception ", eex.getCause());
         }
-    } */
+        return null;
+    }
+
+    private class HandshakeListener implements HandshakeCompletedListener {
+
+        private final CompletableFuture<X509Certificate> tlsHandshakeCompleted =
+                new CompletableFuture<>();
+        @Override
+        public void handshakeCompleted(HandshakeCompletedEvent event) {
+            try {
+                X509Certificate tlsServerCert = null;
+                Certificate[] certs;
+                if (event.getSocket().getUseClientMode()) {
+                    certs = event.getPeerCertificates();
+                } else {
+                    certs = event.getLocalCertificates();
+                }
+                if (certs != null && certs.length > 0 &&
+                        certs[0] instanceof X509Certificate) {
+                    tlsServerCert = (X509Certificate) certs[0];
+                }
+                tlsHandshakeCompleted.complete(tlsServerCert);
+            } catch (SSLPeerUnverifiedException ex) {
+                CommunicationException ce = new CommunicationException();
+                ce.setRootCause(closureReason);
+                tlsHandshakeCompleted.completeExceptionally(ex);
+            }
+        }
+    }
 }

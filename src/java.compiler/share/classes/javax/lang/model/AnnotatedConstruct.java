@@ -39,10 +39,16 @@ import javax.lang.model.type.*;
  * are on a <em>declaration</em>, whereas annotations on a type are on
  * a specific <em>use</em> of a type name.
  *
+ * As defined by <cite>The Java Language Specification</cite>
+ * section {@jls 9.7.4}, an annotation on an element is a
+ * <em>declaration annotation</em> and an annotation on a type is a
+ * <em>type annotation</em>.
+ *
  * The terms <em>directly present</em>, <em>present</em>,
  * <em>indirectly present</em>, and <em>associated </em> are used
- * throughout this interface to describe precisely which annotations
- * are returned by the methods defined herein.
+ * throughout this interface to describe precisely which annotations,
+ * either declaration annotations or type annotations, are returned by
+ * the methods in this interface.
  *
  * <p>In the definitions below, an annotation <i>A</i> has an
  * annotation type <i>AT</i>. If <i>AT</i> is a repeatable annotation
@@ -53,7 +59,10 @@ import javax.lang.model.type.*;
  *
  * <ul>
  *
- * <li><i>A</i> is explicitly or implicitly declared as applying to
+ * <li><i>A</i> is {@linkplain
+ * javax.lang.model.util.Elements#getOrigin(AnnotatedConstruct,
+ * AnnotationMirror) explicitly or implicitly}
+ * declared as applying to
  * the source code representation of <i>C</i>.
  *
  * <p>Typically, if exactly one annotation of type <i>AT</i> appears in
@@ -65,15 +74,15 @@ import javax.lang.model.type.*;
  * down to affiliated mandated members. Type annotations modifying the
  * type of a record component can be also propagated to mandated
  * members. Propagation of the annotations to mandated members is
- * governed by rules given in the <cite>The Java&trade; Language
+ * governed by rules given in the <cite>The Java Language
  * Specification</cite>.
  *
  * If there are multiple annotations of type <i>AT</i> present on
  * <i>C</i>, then if <i>AT</i> is repeatable annotation type, an
  * annotation of type <i>ATC</i> is {@linkplain javax.lang.model.util.Elements#getOrigin(AnnotatedConstruct, AnnotationMirror) implicitly declared} on <i>C</i>.
  * <li> A representation of <i>A</i> appears in the executable output
- * for <i>C</i>, such as the {@code RuntimeVisibleAnnotations} or
- * {@code RuntimeVisibleParameterAnnotations} attributes of a class
+ * for <i>C</i>, such as the {@code RuntimeVisibleAnnotations} (JVMS {@jvms 4.7.16}) or
+ * {@code RuntimeVisibleParameterAnnotations} (JVMS {@jvms 4.7.17}) attributes of a class
  * file.
  *
  * </ul>
@@ -120,8 +129,10 @@ import javax.lang.model.type.*;
  * </ul>
  *
  * @since 1.8
- * @jls 9.6 Annotation Types
+ * @jls 9.6 Annotation Interfaces
  * @jls 9.6.4.3 {@code @Inherited}
+ * @jls 9.7.4 Where Annotations May Appear
+ * @jls 9.7.5 Multiple Annotations of the Same Interface
  */
 public interface AnnotatedConstruct {
     /**
@@ -134,8 +145,8 @@ public interface AnnotatedConstruct {
     List<? extends AnnotationMirror> getAnnotationMirrors();
 
     /**
-     * Returns this construct's annotation of the specified type if
-     * such an annotation is <em>present</em>, else {@code null}.
+     * {@return this construct's annotation of the specified type if
+     * such an annotation is <em>present</em>, else {@code null}}
      *
      * <p> The annotation returned by this method could contain an element
      * whose value is of type {@code Class}.
@@ -165,8 +176,6 @@ public interface AnnotatedConstruct {
      * @param <A>  the annotation type
      * @param annotationType  the {@code Class} object corresponding to
      *          the annotation type
-     * @return this construct's annotation for the specified
-     * annotation type if present, else {@code null}
      *
      * @see #getAnnotationMirrors()
      * @see java.lang.reflect.AnnotatedElement#getAnnotation
@@ -175,7 +184,7 @@ public interface AnnotatedConstruct {
      * @see IncompleteAnnotationException
      * @see MirroredTypeException
      * @see MirroredTypesException
-     * @jls 9.6.1 Annotation Type Elements
+     * @jls 9.6.1 Annotation Interface Elements
      */
     <A extends Annotation> A getAnnotation(Class<A> annotationType);
 
@@ -235,8 +244,8 @@ public interface AnnotatedConstruct {
      * @see IncompleteAnnotationException
      * @see MirroredTypeException
      * @see MirroredTypesException
-     * @jls 9.6 Annotation Types
-     * @jls 9.6.1 Annotation Type Elements
+     * @jls 9.6 Annotation Interfaces
+     * @jls 9.6.1 Annotation Interface Elements
      */
     <A extends Annotation> A[] getAnnotationsByType(Class<A> annotationType);
 }

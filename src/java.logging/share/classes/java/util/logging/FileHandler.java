@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.channels.FileChannel;
 import java.nio.channels.OverlappingFileLockException;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -262,10 +263,10 @@ public class FileHandler extends StreamHandler {
      * Construct a default {@code FileHandler}.  This will be configured
      * entirely from {@code LogManager} properties (or their default values).
      *
-     * @exception  IOException if there are IO problems opening the files.
-     * @exception  SecurityException  if a security manager exists and if
+     * @throws  IOException if there are IO problems opening the files.
+     * @throws  SecurityException  if a security manager exists and if
      *             the caller does not have {@code LoggingPermission("control"))}.
-     * @exception  NullPointerException if pattern property is an empty String.
+     * @throws  NullPointerException if pattern property is an empty String.
      */
     public FileHandler() throws IOException, SecurityException {
         checkPermission();
@@ -290,10 +291,10 @@ public class FileHandler extends StreamHandler {
      * so use this with care.
      *
      * @param pattern  the name of the output file
-     * @exception  IOException if there are IO problems opening the files.
-     * @exception  SecurityException  if a security manager exists and if
+     * @throws  IOException if there are IO problems opening the files.
+     * @throws  SecurityException  if a security manager exists and if
      *             the caller does not have {@code LoggingPermission("control")}.
-     * @exception  IllegalArgumentException if pattern is an empty string
+     * @throws  IllegalArgumentException if pattern is an empty string
      */
     public FileHandler(String pattern) throws IOException, SecurityException {
         if (pattern.length() < 1 ) {
@@ -322,10 +323,10 @@ public class FileHandler extends StreamHandler {
      *
      * @param pattern  the name of the output file
      * @param append  specifies append mode
-     * @exception  IOException if there are IO problems opening the files.
-     * @exception  SecurityException  if a security manager exists and if
+     * @throws  IOException if there are IO problems opening the files.
+     * @throws  SecurityException  if a security manager exists and if
      *             the caller does not have {@code LoggingPermission("control")}.
-     * @exception  IllegalArgumentException if pattern is an empty string
+     * @throws  IllegalArgumentException if pattern is an empty string
      */
     public FileHandler(String pattern, boolean append) throws IOException,
             SecurityException {
@@ -358,11 +359,11 @@ public class FileHandler extends StreamHandler {
      * @param pattern  the pattern for naming the output file
      * @param limit  the maximum number of bytes to write to any one file
      * @param count  the number of files to use
-     * @exception  IOException if there are IO problems opening the files.
-     * @exception  SecurityException  if a security manager exists and if
+     * @throws  IOException if there are IO problems opening the files.
+     * @throws  SecurityException  if a security manager exists and if
      *             the caller does not have {@code LoggingPermission("control")}.
-     * @exception  IllegalArgumentException if {@code limit < 0}, or {@code count < 1}.
-     * @exception  IllegalArgumentException if pattern is an empty string
+     * @throws  IllegalArgumentException if {@code limit < 0}, or {@code count < 1}.
+     * @throws  IllegalArgumentException if pattern is an empty string
      */
     public FileHandler(String pattern, int limit, int count)
                                         throws IOException, SecurityException {
@@ -396,11 +397,11 @@ public class FileHandler extends StreamHandler {
      * @param limit  the maximum number of bytes to write to any one file
      * @param count  the number of files to use
      * @param append  specifies append mode
-     * @exception  IOException if there are IO problems opening the files.
-     * @exception  SecurityException  if a security manager exists and if
+     * @throws  IOException if there are IO problems opening the files.
+     * @throws  SecurityException  if a security manager exists and if
      *             the caller does not have {@code LoggingPermission("control")}.
-     * @exception  IllegalArgumentException if {@code limit < 0}, or {@code count < 1}.
-     * @exception  IllegalArgumentException if pattern is an empty string
+     * @throws  IllegalArgumentException if {@code limit < 0}, or {@code count < 1}.
+     * @throws  IllegalArgumentException if pattern is an empty string
      *
      */
     public FileHandler(String pattern, int limit, int count, boolean append)
@@ -427,11 +428,11 @@ public class FileHandler extends StreamHandler {
      * @param limit  the maximum number of bytes to write to any one file
      * @param count  the number of files to use
      * @param append  specifies append mode
-     * @exception  IOException if there are IO problems opening the files.
-     * @exception  SecurityException  if a security manager exists and if
+     * @throws  IOException if there are IO problems opening the files.
+     * @throws  SecurityException  if a security manager exists and if
      *             the caller does not have {@code LoggingPermission("control")}.
-     * @exception  IllegalArgumentException if {@code limit < 0}, or {@code count < 1}.
-     * @exception  IllegalArgumentException if pattern is an empty string
+     * @throws  IllegalArgumentException if {@code limit < 0}, or {@code count < 1}.
+     * @throws  IllegalArgumentException if pattern is an empty string
      *
      * @since 9
      *
@@ -511,6 +512,22 @@ public class FileHandler extends StreamHandler {
                         channel = FileChannel.open(lockFilePath,
                                 CREATE_NEW, WRITE);
                         fileCreated = true;
+                    } catch (AccessDeniedException ade) {
+                        // This can be either a temporary, or a more permanent issue.
+                        // The lock file might be still pending deletion from a previous run
+                        // (temporary), or the parent directory might not be accessible,
+                        // not writable, etc..
+                        // If we can write to the current directory, and this is a regular file,
+                        // let's try again.
+                        if (Files.isRegularFile(lockFilePath, LinkOption.NOFOLLOW_LINKS)
+                            && isParentWritable(lockFilePath)) {
+                            // Try again. If it doesn't work, then this will
+                            // eventually ensure that we increment "unique" and
+                            // use another file name.
+                            continue;
+                        } else {
+                            throw ade; // no need to retry
+                        }
                     } catch (FileAlreadyExistsException ix) {
                         // This may be a zombie file left over by a previous
                         // execution. Reuse it - but only if we can actually
@@ -743,6 +760,7 @@ public class FileHandler extends StreamHandler {
      * @param  record  description of the log event. A null record is
      *                 silently ignored and is not published
      */
+    @SuppressWarnings("removal")
     @Override
     public synchronized void publish(LogRecord record) {
         if (!isLoggable(record)) {
@@ -769,7 +787,7 @@ public class FileHandler extends StreamHandler {
     /**
      * Close all the files.
      *
-     * @exception  SecurityException  if a security manager exists and if
+     * @throws  SecurityException  if a security manager exists and if
      *             the caller does not have {@code LoggingPermission("control")}.
      */
     @Override

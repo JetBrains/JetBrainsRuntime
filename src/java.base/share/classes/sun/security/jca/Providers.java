@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@
 package sun.security.jca;
 
 import java.security.Provider;
+import sun.security.x509.AlgorithmId;
 
 /**
  * Collection of methods to get and set provider list. Also includes
@@ -37,7 +38,7 @@ import java.security.Provider;
 public class Providers {
 
     private static final ThreadLocal<ProviderList> threadLists =
-        new InheritableThreadLocal<>();
+        new ThreadLocal<>();
 
     // number of threads currently using thread-local provider lists
     // tracked to allow an optimization if == 0
@@ -87,6 +88,7 @@ public class Providers {
         // Note: when SunEC is in a signed JAR file, it's not signed
         // by EC algorithms. So it's still safe to be listed here.
         "SunEC",
+        "SunJCE",
     };
 
     // Return Sun provider.
@@ -149,6 +151,17 @@ public class Providers {
         } else {
             changeThreadProviderList(newList);
         }
+        clearCachedValues();
+    }
+
+    /**
+     * Clears the cached provider-list-specific values. These values need to
+     * be re-generated whenever provider list is changed. The logic for
+     * generating them is in the respective classes.
+     */
+    private static void clearCachedValues() {
+        JCAUtil.clearDefSecureRandom();
+        AlgorithmId.clearAliasOidsTable();
     }
 
     /**
@@ -204,7 +217,7 @@ public class Providers {
 
     /**
      * Methods to manipulate the thread local provider list. It is for use by
-     * JAR verification (see above) and the SunJSSE FIPS mode only.
+     * JAR verification (see above).
      *
      * It should be used as follows:
      *

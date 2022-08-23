@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,11 @@
  * @test
  * @bug 8174749 8213307
  * @summary MemberNameTable should reuse entries
- * @library /test/lib /runtime/testlibrary
+ * @library /test/lib
  * @modules java.base/jdk.internal.misc
  * @modules java.compiler
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI -Xbootclasspath/a:. MemberNameLeak
  */
 
@@ -45,6 +45,7 @@ import jdk.test.lib.Utils;
 import sun.hotspot.WhiteBox;
 import sun.hotspot.code.Compiler;
 import sun.hotspot.gc.GC;
+import jdk.test.lib.classloader.ClassWithManyMethodsClassLoader;
 
 public class MemberNameLeak {
     private static String className  = "MemberNameLeakTestClass";
@@ -103,7 +104,7 @@ public class MemberNameLeak {
             System.gc();  // make mh unused
           }
 
-          if (after != wb.resolvedMethodItemsCount()) {
+          if (after > wb.resolvedMethodItemsCount() + 50) {
             // Entries have been removed.
             break;
           }

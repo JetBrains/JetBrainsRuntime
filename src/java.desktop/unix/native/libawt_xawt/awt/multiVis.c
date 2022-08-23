@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,6 +62,10 @@ other dealings in this Software without prior written authorization
 from The Open Group.
 
     ------------------------------------------------------------------------ **/
+
+#ifdef HEADLESS
+    #error This file should not be included in headless library
+#endif
 
 #include <stdlib.h>
 #include <X11/Xlib.h>
@@ -437,9 +441,9 @@ ReadRegionsInList(Display *disp, Visual *fakeVis, int depth, int format,
     bytes_per_line = ximage->bytes_per_line;
 
     if (format == ZPixmap)
-          ximage->data = malloc(height*bytes_per_line);
+          ximage->data = malloc((size_t) height * bytes_per_line);
     else
-        ximage->data = malloc(height*bytes_per_line*depth);
+        ximage->data = malloc((size_t) height * bytes_per_line * depth);
 
     ximage->bits_per_pixel = depth; /** Valid only if format is ZPixmap ***/
 

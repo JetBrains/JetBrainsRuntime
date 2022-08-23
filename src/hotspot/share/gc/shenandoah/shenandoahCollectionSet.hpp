@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2016, 2020, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,10 @@
 #define SHARE_GC_SHENANDOAH_SHENANDOAHCOLLECTIONSET_HPP
 
 #include "memory/allocation.hpp"
+#include "memory/virtualspace.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
+#include "gc/shenandoah/shenandoahPadding.hpp"
 
 class ShenandoahCollectionSet : public CHeapObj<mtGC> {
   friend class ShenandoahHeap;
@@ -42,28 +44,18 @@ private:
   ShenandoahHeap* const _heap;
 
   size_t                _garbage;
-  size_t                _live_data;
   size_t                _used;
   size_t                _region_count;
 
-  DEFINE_PAD_MINUS_SIZE(0, DEFAULT_CACHE_LINE_SIZE, sizeof(volatile size_t));
-  volatile jint         _current_index;
-  DEFINE_PAD_MINUS_SIZE(1, DEFAULT_CACHE_LINE_SIZE, 0);
+  shenandoah_padding(0);
+  volatile size_t       _current_index;
+  shenandoah_padding(1);
 
 public:
-  ShenandoahCollectionSet(ShenandoahHeap* heap, char* heap_base, size_t size);
+  ShenandoahCollectionSet(ShenandoahHeap* heap, ReservedSpace space, char* heap_base);
 
   // Add region to collection set
   void add_region(ShenandoahHeapRegion* r);
-  bool add_region_check_for_duplicates(ShenandoahHeapRegion* r);
-
-  // Bring per-region statuses to consistency with this collection.
-  // TODO: This is a transitional interface that bridges the gap between
-  // region statuses and this collection. Should go away after we merge them.
-  void update_region_status();
-
-  // Remove region from collection set
-  void remove_region(ShenandoahHeapRegion* r);
 
   // MT version
   ShenandoahHeapRegion* claim_next();
@@ -79,13 +71,13 @@ public:
   }
 
   inline bool is_in(ShenandoahHeapRegion* r) const;
-  inline bool is_in(size_t region_number)    const;
-  inline bool is_in(HeapWord* p)             const;
+  inline bool is_in(size_t region_idx)       const;
+  inline bool is_in(oop obj)                 const;
+  inline bool is_in_loc(void* loc)           const;
 
   void print_on(outputStream* out) const;
 
   size_t used()      const { return _used; }
-  size_t live_data() const { return _live_data; }
   size_t garbage()   const { return _garbage;   }
   void clear();
 

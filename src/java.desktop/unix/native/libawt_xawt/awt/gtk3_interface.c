@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+#ifdef HEADLESS
+    #error This file should not be included in headless library
+#endif
+
 #include <dlfcn.h>
 #include <setjmp.h>
 #include <X11/Xlib.h>
@@ -32,7 +37,9 @@
 #include "sizecalc.h"
 #include <jni_util.h>
 #include <stdio.h>
+#include <math.h>
 #include "awt.h"
+#include "debug_assert.h"
 
 static void *gtk3_libhandle = NULL;
 static void *gthread_libhandle = NULL;
@@ -52,26 +59,6 @@ static cairo_t *cr = NULL;
 static const char ENV_PREFIX[] = "GTK_MODULES=";
 
 static GtkWidget *gtk3_widgets[_GTK_WIDGET_TYPE_SIZE];
-
-static void throw_exception(JNIEnv *env, const char* name, const char* message)
-{
-    jclass class = (*env)->FindClass(env, name);
-
-    if (class != NULL)
-        (*env)->ThrowNew(env, class, message);
-
-    (*env)->DeleteLocalRef(env, class);
-}
-
-static void gtk3_add_state(GtkWidget *widget, GtkStateType state) {
-    GtkStateType old_state = fp_gtk_widget_get_state(widget);
-    fp_gtk_widget_set_state(widget, old_state | state);
-}
-
-static void gtk3_remove_state(GtkWidget *widget, GtkStateType state) {
-    GtkStateType old_state = fp_gtk_widget_get_state(widget);
-    fp_gtk_widget_set_state(widget, old_state & ~state);
-}
 
 /* This is a workaround for the bug:
  * http://sourceware.org/bugzilla/show_bug.cgi?id=1814
@@ -347,8 +334,10 @@ GtkApi* gtk3_load(JNIEnv *env, const char* lib_name)
 
         fp_cairo_image_surface_create = dl_symbol("cairo_image_surface_create");
         fp_cairo_surface_destroy = dl_symbol("cairo_surface_destroy");
+        fp_cairo_surface_status = dl_symbol("cairo_surface_status");
         fp_cairo_create = dl_symbol("cairo_create");
         fp_cairo_destroy = dl_symbol("cairo_destroy");
+        fp_cairo_status = dl_symbol("cairo_status");
         fp_cairo_fill = dl_symbol("cairo_fill");
         fp_cairo_rectangle = dl_symbol("cairo_rectangle");
         fp_cairo_set_source_rgb = dl_symbol("cairo_set_source_rgb");
@@ -701,7 +690,7 @@ static int gtk3_unload()
  */
 static void flush_gtk_event_loop()
 {
-    while((*fp_g_main_context_iteration)(NULL));
+    while((*fp_g_main_context_iteration)(NULL, FALSE));
 }
 
 /*
@@ -777,6 +766,9 @@ static void gtk3_init_painting(JNIEnv *env, gint width, gint height)
     }
 
     cr = fp_cairo_create(surface);
+    if (fp_cairo_surface_status(surface) || fp_cairo_status(cr)) {
+        JNU_ThrowOutOfMemoryError(env, "The surface size is too big");
+    }
 }
 
 /*
@@ -799,16 +791,17 @@ static gint gtk3_copy_image(gint *dst, gint width, gint height)
     data = (*fp_cairo_image_surface_get_data)(surface);
     stride = (*fp_cairo_image_surface_get_stride)(surface);
     padding = stride - width * 4;
-
-    for (i = 0; i < height; i++) {
-        for (j = 0; j < width; j++) {
-            int r = *data++;
-            int g = *data++;
-            int b = *data++;
-            int a = *data++;
-            *dst++ = (a << 24 | b << 16 | g << 8 | r);
+    if (stride > 0 && padding >= 0) {
+        for (i = 0; i < height; i++) {
+            for (j = 0; j < width; j++) {
+                int r = *data++;
+                int g = *data++;
+                int b = *data++;
+                int a = *data++;
+                *dst++ = (a << 24 | b << 16 | g << 8 | r);
+            }
+            data += padding;
         }
-        data += padding;
     }
     return java_awt_Transparency_TRANSLUCENT;
 }
@@ -825,21 +818,6 @@ static void gtk3_set_direction(GtkWidget *widget, GtkTextDirection dir)
     if (parent != NULL) {
         fp_gtk_widget_set_direction(parent, dir);
     }
-}
-
-/* GTK state_type filter */
-static GtkStateType get_gtk_state_type(WidgetType widget_type, gint synth_state)
-{
-    GtkStateType result = GTK_STATE_NORMAL;
-
-    if ((synth_state & DISABLED) != 0) {
-        result = GTK_STATE_INSENSITIVE;
-    } else if ((synth_state & PRESSED) != 0) {
-        result = GTK_STATE_ACTIVE;
-    } else if ((synth_state & MOUSE_OVER) != 0) {
-        result = GTK_STATE_PRELIGHT;
-    }
-    return result;
 }
 
 static GtkStateFlags get_gtk_state_flags(gint synth_state)
@@ -885,19 +863,6 @@ static GtkStateFlags get_gtk_flags(GtkStateType state_type) {
     }
     return flags;
 }
-
-/* GTK shadow_type filter */
-static GtkShadowType get_gtk_shadow_type(WidgetType widget_type,
-                                                               gint synth_state)
-{
-    GtkShadowType result = GTK_SHADOW_OUT;
-
-    if ((synth_state & SELECTED) != 0) {
-        result = GTK_SHADOW_IN;
-    }
-    return result;
-}
-
 
 static GtkWidget* gtk3_get_arrow(GtkArrowType arrow_type,
                                                       GtkShadowType shadow_type)
@@ -2728,6 +2693,8 @@ static jobject gtk3_get_setting(JNIEnv *env, Setting property)
             return get_string_property(env, settings, "gtk-font-name");
         case GTK_ICON_SIZES:
             return get_string_property(env, settings, "gtk-icon-sizes");
+        case GTK_XFT_DPI:
+            return get_integer_property(env, settings, "gtk-xft-dpi");
         case GTK_CURSOR_BLINK:
             return get_boolean_property(env, settings, "gtk-cursor-blink");
         case GTK_CURSOR_BLINK_TIME:
@@ -2898,17 +2865,45 @@ static void transform_detail_string (const gchar *detail,
     }
 }
 
+inline static int scale_down_to_plus_inf(int what, int scale) {
+    return (int)ceilf(what / (float)scale);
+}
+
+inline static int scale_down_to_minus_inf(int what, int scale) {
+    return (int)floorf(what / (float)scale);
+}
+
 static gboolean gtk3_get_drawable_data(JNIEnv *env, jintArray pixelArray,
      int x, jint y, jint width, jint height, jint jwidth, int dx, int dy,
                                                                    jint scale) {
     GdkPixbuf *pixbuf;
     jint *ary;
 
+    int skip_left = 0;
+    int skip_top = 0;
     GdkWindow *root = (*fp_gdk_get_default_root_window)();
     if (gtk3_version_3_10) {
         int win_scale = (*fp_gdk_window_get_scale_factor)(root);
+
+        // Scale the coordinate and size carefully such that the captured area
+        // is at least as large as requested. We trim off excess later by
+        // using the skip_* variables.
+        const int x_scaled = scale_down_to_minus_inf(x, win_scale);
+        const int y_scaled = scale_down_to_minus_inf(y, win_scale);
+        skip_left = x - x_scaled*win_scale;
+        skip_top  = y - y_scaled*win_scale;
+        DASSERT(skip_left >= 0 && skip_top >= 0);
+
+        const int x_right_scaled = scale_down_to_plus_inf(x + width, win_scale);
+        const int width_scaled = x_right_scaled - x_scaled;
+        DASSERT(width_scaled > 0);
+
+        const int y_bottom_scaled = scale_down_to_plus_inf(y + height, win_scale);
+        const int height_scaled = y_bottom_scaled - y_scaled;
+        DASSERT(height_scaled > 0);
+
         pixbuf = (*fp_gdk_pixbuf_get_from_drawable)(
-            root, x, y, (int) (width / (float) win_scale + 0.5), (int) (height / (float) win_scale + 0.5));
+            root, x_scaled, y_scaled, width_scaled, height_scaled);
     } else {
         pixbuf = (*fp_gdk_pixbuf_get_from_drawable)(root, x, y, width, height);
     }
@@ -2943,7 +2938,8 @@ static gboolean gtk3_get_drawable_data(JNIEnv *env, jintArray pixelArray,
                 int index;
                 for (_y = 0; _y < height; _y++) {
                     for (_x = 0; _x < width; _x++) {
-                        p = pix + _y * stride + _x * nchan;
+                        p = pix + (intptr_t) (_y + skip_top) * stride
+                                + (_x + skip_left) * nchan;
 
                         index = (_y + dy) * jwidth + (_x + dx);
                         ary[index] = 0xff000000

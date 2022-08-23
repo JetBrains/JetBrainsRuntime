@@ -75,21 +75,25 @@
 // Return a node which is more "ideal" than the current node.
 // Move constants to the right.
 Node *CMoveNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  if( in(0) && remove_dead_region(phase, can_reshape) ) return this;
+  if (in(0) != NULL && remove_dead_region(phase, can_reshape)) {
+    return this;
+  }
   // Don't bother trying to transform a dead node
-  if( in(0) && in(0)->is_top() )  return NULL;
-  assert( !phase->eqv(in(Condition), this) &&
-         !phase->eqv(in(IfFalse), this) &&
-         !phase->eqv(in(IfTrue), this), "dead loop in CMoveNode::Ideal" );
-  if( phase->type(in(Condition)) == Type::TOP )
-  return NULL; // return NULL when Condition is dead
-
-  if( in(IfFalse)->is_Con() && !in(IfTrue)->is_Con() ) {
-    if( in(Condition)->is_Bool() ) {
-      BoolNode* b  = in(Condition)->as_Bool();
-      BoolNode* b2 = b->negate(phase);
-      return make(in(Control), phase->transform(b2), in(IfTrue), in(IfFalse), _type);
-    }
+  if (in(0) != NULL && in(0)->is_top()) {
+    return NULL;
+  }
+  assert(in(Condition) != this &&
+         in(IfFalse)   != this &&
+         in(IfTrue)    != this, "dead loop in CMoveNode::Ideal");
+  if (phase->type(in(Condition)) == Type::TOP ||
+      phase->type(in(IfFalse))   == Type::TOP ||
+      phase->type(in(IfTrue))    == Type::TOP) {
+    return NULL;
+  }
+  // Canonicalize the node by moving constants to the right input.
+  if (in(Condition)->is_Bool() && phase->type(in(IfFalse))->singleton() && !phase->type(in(IfTrue))->singleton()) {
+    BoolNode* b = in(Condition)->as_Bool()->negate(phase);
+    return make(in(Control), phase->transform(b), in(IfTrue), in(IfFalse), _type);
   }
   return NULL;
 }
@@ -98,11 +102,9 @@ Node *CMoveNode::Ideal(PhaseGVN *phase, bool can_reshape) {
 // Helper function to check for CMOVE identity.  Shared with PhiNode::Identity
 Node *CMoveNode::is_cmove_id( PhaseTransform *phase, Node *cmp, Node *t, Node *f, BoolNode *b ) {
   // Check for Cmp'ing and CMove'ing same values
-  if( (phase->eqv(cmp->in(1),f) &&
-       phase->eqv(cmp->in(2),t)) ||
-     // Swapped Cmp is OK
-     (phase->eqv(cmp->in(2),f) &&
-      phase->eqv(cmp->in(1),t)) ) {
+  if ((cmp->in(1) == f && cmp->in(2) == t) ||
+      // Swapped Cmp is OK
+      (cmp->in(2) == f && cmp->in(1) == t)) {
        // Give up this identity check for floating points because it may choose incorrect
        // value around 0.0 and -0.0
        if ( cmp->Opcode()==Op_CmpF || cmp->Opcode()==Op_CmpD )
@@ -122,12 +124,16 @@ Node *CMoveNode::is_cmove_id( PhaseTransform *phase, Node *cmp, Node *t, Node *f
 // Conditional-move is an identity if both inputs are the same, or the test
 // true or false.
 Node* CMoveNode::Identity(PhaseGVN* phase) {
-  if( phase->eqv(in(IfFalse),in(IfTrue)) ) // C-moving identical inputs?
-  return in(IfFalse);         // Then it doesn't matter
-  if( phase->type(in(Condition)) == TypeInt::ZERO )
-  return in(IfFalse);         // Always pick left(false) input
-  if( phase->type(in(Condition)) == TypeInt::ONE )
-  return in(IfTrue);          // Always pick right(true) input
+  // C-moving identical inputs?
+  if (in(IfFalse) == in(IfTrue)) {
+    return in(IfFalse); // Then it doesn't matter
+  }
+  if (phase->type(in(Condition)) == TypeInt::ZERO) {
+    return in(IfFalse); // Always pick left(false) input
+  }
+  if (phase->type(in(Condition)) == TypeInt::ONE) {
+    return in(IfTrue);  // Always pick right(true) input
+  }
 
   // Check for CMove'ing a constant after comparing against the constant.
   // Happens all the time now, since if we compare equality vs a constant in
@@ -150,9 +156,14 @@ Node* CMoveNode::Identity(PhaseGVN* phase) {
 //------------------------------Value------------------------------------------
 // Result is the meet of inputs
 const Type* CMoveNode::Value(PhaseGVN* phase) const {
-  if( phase->type(in(Condition)) == Type::TOP )
-  return Type::TOP;
-  return phase->type(in(IfFalse))->meet_speculative(phase->type(in(IfTrue)));
+  if (phase->type(in(Condition)) == Type::TOP) {
+    return Type::TOP;
+  }
+  if (phase->type(in(IfTrue)) == Type::TOP || phase->type(in(IfFalse)) == Type::TOP) {
+    return Type::TOP;
+  }
+  const Type* t = phase->type(in(IfFalse))->meet_speculative(phase->type(in(IfTrue)));
+  return t->filter(_type);
 }
 
 //------------------------------make-------------------------------------------
@@ -184,14 +195,10 @@ Node *CMoveINode::Ideal(PhaseGVN *phase, bool can_reshape) {
 
   // If zero is on the left (false-case, no-move-case) it must mean another
   // constant is on the right (otherwise the shared CMove::Ideal code would
-  // have moved the constant to the right).  This situation is bad for Intel
-  // and a don't-care for Sparc.  It's bad for Intel because the zero has to
-  // be manifested in a register with a XOR which kills flags, which are live
-  // on input to the CMoveI, leading to a situation which causes excessive
-  // spilling on Intel.  For Sparc, if the zero in on the left the Sparc will
-  // zero a register via G0 and conditionally-move the other constant.  If the
-  // zero is on the right, the Sparc will load the first constant with a
-  // 13-bit set-lo and conditionally move G0.  See bug 4677505.
+  // have moved the constant to the right). This situation is bad for x86 because
+  // the zero has to be manifested in a register with a XOR which kills flags,
+  // which are live on input to the CMoveI, leading to a situation which causes
+  // excessive spilling. See bug 4677505.
   if( phase->type(in(IfFalse)) == TypeInt::ZERO && !(phase->type(in(IfTrue)) == TypeInt::ZERO) ) {
     if( in(Condition)->is_Bool() ) {
       BoolNode* b  = in(Condition)->as_Bool();
@@ -350,6 +357,36 @@ Node *CMoveDNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   return abs;
 }
 
+//------------------------------MoveNode------------------------------------------
+
+Node* MoveNode::Ideal(PhaseGVN* phase, bool can_reshape) {
+  if (can_reshape) {
+    // Fold reinterpret cast into memory operation:
+    //    MoveX2Y (LoadX mem) => LoadY mem
+    LoadNode* ld = in(1)->isa_Load();
+    if (ld != NULL && (ld->outcnt() == 1)) { // replace only
+      const Type* rt = bottom_type();
+      if (ld->has_reinterpret_variant(rt)) {
+        if (phase->C->post_loop_opts_phase()) {
+          return ld->convert_to_reinterpret_load(*phase, rt);
+        } else {
+          phase->C->record_for_post_loop_opts_igvn(this); // attempt the transformation once loop opts are over
+        }
+      }
+    }
+  }
+  return NULL;
+}
+
+Node* MoveNode::Identity(PhaseGVN* phase) {
+  if (in(1)->is_Move()) {
+    // Back-to-back moves: MoveX2Y (MoveY2X v) => v
+    assert(bottom_type() == in(1)->in(1)->bottom_type(), "sanity");
+    return in(1)->in(1);
+  }
+  return this;
+}
+
 //------------------------------Value------------------------------------------
 const Type* MoveL2DNode::Value(PhaseGVN* phase) const {
   const Type *t = phase->type( in(1) );
@@ -359,6 +396,14 @@ const Type* MoveL2DNode::Value(PhaseGVN* phase) const {
   JavaValue v;
   v.set_jlong(tl->get_con());
   return TypeD::make( v.get_jdouble() );
+}
+
+//------------------------------Identity----------------------------------------
+Node* MoveL2DNode::Identity(PhaseGVN* phase) {
+  if (in(1)->Opcode() == Op_MoveD2L) {
+    return in(1)->in(1);
+  }
+  return this;
 }
 
 //------------------------------Value------------------------------------------
@@ -372,6 +417,14 @@ const Type* MoveI2FNode::Value(PhaseGVN* phase) const {
   return TypeF::make( v.get_jfloat() );
 }
 
+//------------------------------Identity----------------------------------------
+Node* MoveI2FNode::Identity(PhaseGVN* phase) {
+  if (in(1)->Opcode() == Op_MoveF2I) {
+    return in(1)->in(1);
+  }
+  return this;
+}
+
 //------------------------------Value------------------------------------------
 const Type* MoveF2INode::Value(PhaseGVN* phase) const {
   const Type *t = phase->type( in(1) );
@@ -383,6 +436,14 @@ const Type* MoveF2INode::Value(PhaseGVN* phase) const {
   return TypeInt::make( v.get_jint() );
 }
 
+//------------------------------Identity----------------------------------------
+Node* MoveF2INode::Identity(PhaseGVN* phase) {
+  if (in(1)->Opcode() == Op_MoveI2F) {
+    return in(1)->in(1);
+  }
+  return this;
+}
+
 //------------------------------Value------------------------------------------
 const Type* MoveD2LNode::Value(PhaseGVN* phase) const {
   const Type *t = phase->type( in(1) );
@@ -392,6 +453,14 @@ const Type* MoveD2LNode::Value(PhaseGVN* phase) const {
   JavaValue v;
   v.set_jdouble(td->getd());
   return TypeLong::make( v.get_jlong() );
+}
+
+//------------------------------Identity----------------------------------------
+Node* MoveD2LNode::Identity(PhaseGVN* phase) {
+  if (in(1)->Opcode() == Op_MoveL2D) {
+    return in(1)->in(1);
+  }
+  return this;
 }
 
 #ifndef PRODUCT

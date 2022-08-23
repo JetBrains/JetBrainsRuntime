@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -185,8 +185,10 @@ public class Net {
             nx = new SocketException("Socket is not bound yet");
         else if (x instanceof UnsupportedAddressTypeException)
             nx = new SocketException("Unsupported address type");
-        else if (x instanceof UnresolvedAddressException) {
+        else if (x instanceof UnresolvedAddressException)
             nx = new SocketException("Unresolved address");
+        else if (x instanceof IOException) {
+            nx = new SocketException(x.getMessage());
         }
         if (nx != x)
             nx.initCause(x);
@@ -224,35 +226,91 @@ public class Net {
     /**
      * Returns the local address after performing a SecurityManager#checkConnect.
      */
-    static InetSocketAddress getRevealedLocalAddress(InetSocketAddress addr) {
+    static InetSocketAddress getRevealedLocalAddress(SocketAddress sa) {
+        InetSocketAddress isa = (InetSocketAddress) sa;
+        @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
-        if (addr == null || sm == null)
-            return addr;
-
-        try{
-            sm.checkConnect(addr.getAddress().getHostAddress(), -1);
-            // Security check passed
-        } catch (SecurityException e) {
-            // Return loopback address only if security check fails
-            addr = getLoopbackAddress(addr.getPort());
+        if (isa != null && sm != null) {
+            try {
+                sm.checkConnect(isa.getAddress().getHostAddress(), -1);
+            } catch (SecurityException e) {
+                // Return loopback address only if security check fails
+                isa = getLoopbackAddress(isa.getPort());
+            }
         }
-        return addr;
+        return isa;
     }
 
-    static String getRevealedLocalAddressAsString(InetSocketAddress addr) {
-        return System.getSecurityManager() == null ? addr.toString() :
-                getLoopbackAddress(addr.getPort()).toString();
+    @SuppressWarnings("removal")
+    static String getRevealedLocalAddressAsString(SocketAddress sa) {
+        InetSocketAddress isa = (InetSocketAddress) sa;
+        if (System.getSecurityManager() == null) {
+            return isa.toString();
+        } else {
+            return getLoopbackAddress(isa.getPort()).toString();
+        }
     }
 
     private static InetSocketAddress getLoopbackAddress(int port) {
-        return new InetSocketAddress(InetAddress.getLoopbackAddress(),
-                                     port);
+        return new InetSocketAddress(InetAddress.getLoopbackAddress(), port);
+    }
+
+    private static final InetAddress anyLocalInet4Address;
+    private static final InetAddress anyLocalInet6Address;
+    private static final InetAddress inet4LoopbackAddress;
+    private static final InetAddress inet6LoopbackAddress;
+    static {
+        try {
+            anyLocalInet4Address = inet4FromInt(0);
+            assert anyLocalInet4Address instanceof Inet4Address
+                    && anyLocalInet4Address.isAnyLocalAddress();
+
+            anyLocalInet6Address = InetAddress.getByAddress(new byte[16]);
+            assert anyLocalInet6Address instanceof Inet6Address
+                    && anyLocalInet6Address.isAnyLocalAddress();
+
+            inet4LoopbackAddress = inet4FromInt(0x7f000001);
+            assert inet4LoopbackAddress instanceof Inet4Address
+                    && inet4LoopbackAddress.isLoopbackAddress();
+
+            byte[] bytes = new byte[16];
+            bytes[15] = 0x01;
+            inet6LoopbackAddress = InetAddress.getByAddress(bytes);
+            assert inet6LoopbackAddress instanceof Inet6Address
+                    && inet6LoopbackAddress.isLoopbackAddress();
+        } catch (Exception e) {
+            throw new InternalError(e);
+        }
+    }
+
+    static InetAddress inet4LoopbackAddress() {
+        return inet4LoopbackAddress;
+    }
+
+    static InetAddress inet6LoopbackAddress() {
+        return inet6LoopbackAddress;
+    }
+
+    /**
+     * Returns the wildcard address that corresponds to the given protocol family.
+     *
+     * @see InetAddress#isAnyLocalAddress()
+     */
+    static InetAddress anyLocalAddress(ProtocolFamily family) {
+        if (family == StandardProtocolFamily.INET) {
+            return anyLocalInet4Address;
+        } else if (family == StandardProtocolFamily.INET6) {
+            return anyLocalInet6Address;
+        } else {
+            throw new IllegalArgumentException();
+        }
     }
 
     /**
      * Returns any IPv4 address of the given network interface, or
      * null if the interface does not have any IPv4 addresses.
      */
+    @SuppressWarnings("removal")
     static Inet4Address anyInet4Address(final NetworkInterface interf) {
         return AccessController.doPrivileged(new PrivilegedAction<Inet4Address>() {
             public Inet4Address run() {
@@ -444,7 +502,7 @@ public class Net {
     private static native boolean isReusePortAvailable0();
 
     /*
-     * Returns 1 for Windows and -1 for Solaris/Linux/Mac OS
+     * Returns 1 for Windows and -1 for Linux/Mac OS
      */
     private static native int isExclusiveBindAvailable();
 
@@ -467,7 +525,13 @@ public class Net {
     }
 
     static FileDescriptor serverSocket(boolean stream) {
-        return IOUtil.newFD(socket0(isIPv6Available(), stream, true, fastLoopback));
+        return serverSocket(UNSPEC, stream);
+    }
+
+    static FileDescriptor serverSocket(ProtocolFamily family, boolean stream) {
+        boolean preferIPv6 = isIPv6Available() &&
+            (family != StandardProtocolFamily.INET);
+        return IOUtil.newFD(socket0(preferIPv6, stream, true, fastLoopback));
     }
 
     // Due to oddities SO_REUSEADDR on windows reuse is ignored
@@ -513,6 +577,13 @@ public class Net {
         boolean preferIPv6 = isIPv6Available() &&
             (family != StandardProtocolFamily.INET);
         return connect0(preferIPv6, fd, remote, remotePort);
+    }
+
+    static int connect(ProtocolFamily family, FileDescriptor fd, SocketAddress remote)
+        throws IOException
+    {
+        InetSocketAddress isa = (InetSocketAddress) remote;
+        return connect(family, fd, isa.getAddress(), isa.getPort());
     }
 
     private static native int connect0(boolean preferIPv6,
@@ -611,6 +682,10 @@ public class Net {
      */
     static native int sendOOB(FileDescriptor fd, byte data) throws IOException;
 
+    /**
+     * Read and discard urgent data (MSG_OOB) on the socket.
+     */
+    static native boolean discardOOB(FileDescriptor fd) throws IOException;
 
     // -- Multicast support --
 

@@ -37,11 +37,15 @@ import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.concurrent.atomic.AtomicBoolean;
+import sun.security.action.GetPropertyAction;
 
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.loops.SurfaceType;
+import sun.awt.X11.XToolkit;
 import sun.java2d.opengl.GLXGraphicsConfig;
+import sun.java2d.pipe.Region;
 import sun.java2d.xr.XRGraphicsConfig;
 
 /**
@@ -53,7 +57,11 @@ import sun.java2d.xr.XRGraphicsConfig;
  */
 public final class X11GraphicsDevice extends GraphicsDevice
         implements DisplayChangedListener {
-    int screen;
+    /**
+     * X11 screen number. This identifier can become non-valid at any time
+     * therefore methods, which is using this id should be ready to it.
+     */
+    private volatile int screen;
     HashMap<SurfaceType, Object> x11ProxyKeyMap = new HashMap<>();
 
     private static AWTPermission fullScreenExclusivePermission;
@@ -63,10 +71,27 @@ public final class X11GraphicsDevice extends GraphicsDevice
     private DisplayMode origDisplayMode;
     private boolean shutdownHookRegistered;
     private int scale;
+    private final AtomicBoolean isScaleFactorDefault = new AtomicBoolean(false);
+    private static volatile int xrmXftDpi;
+    private static volatile int xftDpi;
+    private static final int GDK_SCALE;
+    private static final double GDK_DPI_SCALE;
+    private static final double GDK_SCALE_MULTIPLIER;
 
     public X11GraphicsDevice(int screennum) {
         this.screen = screennum;
-        this.scale = initScaleFactor();
+        int scaleFactor = initScaleFactor(-1);
+        synchronized (isScaleFactorDefault) {
+            isScaleFactorDefault.set(scaleFactor == -1);
+            this.scale = isScaleFactorDefault.get() ? 1 : scaleFactor;
+        }
+    }
+
+    static {
+        xrmXftDpi = getXrmXftDpi(-1);
+        GDK_SCALE = (int)getGdkScale("GDK_SCALE", -1);
+        GDK_DPI_SCALE = getGdkScale("GDK_DPI_SCALE", -1);
+        GDK_SCALE_MULTIPLIER = GDK_SCALE != -1 ? GDK_SCALE * (GDK_DPI_SCALE != -1 ? GDK_DPI_SCALE : 1) : 1;
     }
 
     /**
@@ -105,6 +130,53 @@ public final class X11GraphicsDevice extends GraphicsDevice
         return TYPE_RASTER_SCREEN;
     }
 
+    public int scaleUp(int x) {
+        return Region.clipRound(x * (double)getScaleFactor());
+    }
+
+    public int scaleDown(int x) {
+        return Region.clipRound(x / (double)getScaleFactor());
+    }
+
+    private Rectangle getBoundsImpl() {
+        Rectangle rect = pGetBounds(getScreen());
+        if (getScaleFactor() != 1) {
+            rect.x = scaleDown(rect.x);
+            rect.y = scaleDown(rect.y);
+            rect.width = scaleDown(rect.width);
+            rect.height = scaleDown(rect.height);
+        }
+        return rect;
+    }
+
+    private volatile Rectangle boundsCached;
+
+    private Rectangle getBoundsCached() {
+        // A local copy is needed in order to avoid races with other
+        // threads doing resetBoundsCache(). We may not return null.
+        final Rectangle localBoundsCached = boundsCached;
+        if (localBoundsCached == null) {
+            final Rectangle newBounds = getBoundsImpl();
+            boundsCached = newBounds;
+            return newBounds;
+        } else {
+            return localBoundsCached;
+        }
+    }
+
+    public void resetBoundsCache() {
+        boundsCached = null;
+    }
+
+    public Rectangle getBounds() {
+        if (X11GraphicsEnvironment.useBoundsCache()) {
+            return new Rectangle(getBoundsCached());
+        }
+        else {
+            return getBoundsImpl();
+        }
+    }
+
     /**
      * Returns the identification string associated with this graphics
      * device.
@@ -135,46 +207,50 @@ public final class X11GraphicsDevice extends GraphicsDevice
 
     private void makeConfigurations() {
         if (configs == null) {
-            int i = 1;  // Index 0 is always the default config
-            int num = getNumConfigs(screen);
-            GraphicsConfiguration[] ret = new GraphicsConfiguration[num];
-            if (defaultConfig == null) {
-                ret [0] = getDefaultConfiguration();
-            }
-            else {
-                ret [0] = defaultConfig;
-            }
-
-            boolean glxSupported = X11GraphicsEnvironment.isGLXAvailable();
-            boolean xrenderSupported = X11GraphicsEnvironment.isXRenderAvailable();
-
-            boolean dbeSupported = isDBESupported();
-            if (dbeSupported && doubleBufferVisuals == null) {
-                doubleBufferVisuals = new HashSet<>();
-                getDoubleBufferVisuals(screen);
-            }
-            for ( ; i < num; i++) {
-                int visNum = getConfigVisualId(i, screen);
-                int depth = getConfigDepth (i, screen);
-                if (glxSupported) {
-                    ret[i] = GLXGraphicsConfig.getConfig(this, visNum);
+            XToolkit.awtLock();
+            try {
+                int i = 1;  // Index 0 is always the default config
+                int num = getNumConfigs(screen);
+                GraphicsConfiguration[] ret = new GraphicsConfiguration[num];
+                if (defaultConfig == null) {
+                    ret[0] = getDefaultConfiguration();
+                } else {
+                    ret[0] = defaultConfig;
                 }
-                if (ret[i] == null) {
-                    boolean doubleBuffer =
-                        (dbeSupported &&
-                         doubleBufferVisuals.contains(Integer.valueOf(visNum)));
 
-                    if (xrenderSupported) {
-                        ret[i] = XRGraphicsConfig.getConfig(this, visNum, depth,                                getConfigColormap(i, screen),
-                                doubleBuffer);
-                    } else {
-                       ret[i] = X11GraphicsConfig.getConfig(this, visNum, depth,
-                              getConfigColormap(i, screen),
-                              doubleBuffer);
+                boolean glxSupported = X11GraphicsEnvironment.isGLXAvailable();
+                boolean xrenderSupported = X11GraphicsEnvironment.isXRenderAvailable();
+
+                boolean dbeSupported = isDBESupported();
+                if (dbeSupported && doubleBufferVisuals == null) {
+                    doubleBufferVisuals = new HashSet<>();
+                    getDoubleBufferVisuals(screen);
+                }
+                for (; i < num; i++) {
+                    int visNum = getConfigVisualId(i, screen);
+                    int depth = getConfigDepth(i, screen);
+                    if (glxSupported) {
+                        ret[i] = GLXGraphicsConfig.getConfig(this, visNum);
+                    }
+                    if (ret[i] == null) {
+                        boolean doubleBuffer =
+                                (dbeSupported &&
+                                        doubleBufferVisuals.contains(Integer.valueOf(visNum)));
+
+                        if (xrenderSupported) {
+                            ret[i] = XRGraphicsConfig.getConfig(this, visNum, depth,
+                                    getConfigColormap(i, screen), doubleBuffer);
+                        } else {
+                            ret[i] = X11GraphicsConfig.getConfig(this, visNum, depth,
+                                    getConfigColormap(i, screen),
+                                    doubleBuffer);
+                        }
                     }
                 }
+                configs = ret;
+            } finally {
+                XToolkit.awtUnlock();
             }
-            configs = ret;
         }
     }
 
@@ -223,41 +299,50 @@ public final class X11GraphicsDevice extends GraphicsDevice
 
     private void makeDefaultConfiguration() {
         if (defaultConfig == null) {
-            int visNum = getConfigVisualId(0, screen);
-            if (X11GraphicsEnvironment.isGLXAvailable()) {
-                defaultConfig = GLXGraphicsConfig.getConfig(this, visNum);
-                if (X11GraphicsEnvironment.isGLXVerbose()) {
-                    if (defaultConfig != null) {
-                        System.out.print("OpenGL pipeline enabled");
-                    } else {
-                        System.out.print("Could not enable OpenGL pipeline");
+            XToolkit.awtLock();
+            try {
+                // what if this was called after the screen number has changed
+                // and initNativeData() was called to re-set x11Screens, but before invalidate()
+                // was called to set the right this.screen?
+                // Then getConfigColormap() may get called with a wrong screen.
+                int visNum = getConfigVisualId(0, screen);
+                if (X11GraphicsEnvironment.isGLXAvailable()) {
+                    defaultConfig = GLXGraphicsConfig.getConfig(this, visNum);
+                    if (X11GraphicsEnvironment.isGLXVerbose()) {
+                        if (defaultConfig != null) {
+                            System.out.print("OpenGL pipeline enabled");
+                        } else {
+                            System.out.print("Could not enable OpenGL pipeline");
+                        }
+                        System.out.println(" for default config on screen " +
+                                screen);
                     }
-                    System.out.println(" for default config on screen " +
-                                       screen);
                 }
-            }
-            if (defaultConfig == null) {
-                int depth = getConfigDepth(0, screen);
-                boolean doubleBuffer = false;
-                if (isDBESupported() && doubleBufferVisuals == null) {
-                    doubleBufferVisuals = new HashSet<>();
-                    getDoubleBufferVisuals(screen);
-                    doubleBuffer =
-                        doubleBufferVisuals.contains(Integer.valueOf(visNum));
-                }
+                if (defaultConfig == null) {
+                    int depth = getConfigDepth(0, screen);
+                    boolean doubleBuffer = false;
+                    if (isDBESupported() && doubleBufferVisuals == null) {
+                        doubleBufferVisuals = new HashSet<>();
+                        getDoubleBufferVisuals(screen);
+                        doubleBuffer =
+                                doubleBufferVisuals.contains(Integer.valueOf(visNum));
+                    }
 
-                if (X11GraphicsEnvironment.isXRenderAvailable()) {
-                    if (X11GraphicsEnvironment.isXRenderVerbose()) {
-                        System.out.println("XRender pipeline enabled");
+                    if (X11GraphicsEnvironment.isXRenderAvailable()) {
+                        if (X11GraphicsEnvironment.isXRenderVerbose()) {
+                            System.out.println("XRender pipeline enabled");
+                        }
+                        defaultConfig = XRGraphicsConfig.getConfig(this, visNum,
+                                depth, getConfigColormap(0, screen),
+                                doubleBuffer);
+                    } else {
+                        defaultConfig = X11GraphicsConfig.getConfig(this, visNum,
+                                depth, getConfigColormap(0, screen),
+                                doubleBuffer);
                     }
-                    defaultConfig = XRGraphicsConfig.getConfig(this, visNum,
-                            depth, getConfigColormap(0, screen),
-                            doubleBuffer);
-                } else {
-                    defaultConfig = X11GraphicsConfig.getConfig(this, visNum,
-                                        depth, getConfigColormap(0, screen),
-                                        doubleBuffer);
                 }
+            } finally {
+                XToolkit.awtUnlock();
             }
         }
     }
@@ -272,7 +357,10 @@ public final class X11GraphicsDevice extends GraphicsDevice
                                                  int width, int height,
                                                  int displayMode);
     private static native void resetNativeData(int screen);
-    private static native double getNativeScaleFactor(int screen);
+    private native Rectangle pGetBounds(int screenNum);
+    private static native double getNativeScaleFactor(int screen, double defValue);
+    private static native double getGdkScale(String name, double defValue);
+    private static native int getXrmXftDpi(int defValue);
 
     /**
      * Returns true only if:
@@ -291,6 +379,7 @@ public final class X11GraphicsDevice extends GraphicsDevice
     public boolean isFullScreenSupported() {
         boolean fsAvailable = isXrandrExtensionSupported();
         if (fsAvailable) {
+            @SuppressWarnings("removal")
             SecurityManager security = System.getSecurityManager();
             if (security != null) {
                 if (fullScreenExclusivePermission == null) {
@@ -395,6 +484,7 @@ public final class X11GraphicsDevice extends GraphicsDevice
         return modes.toArray(retArray);
     }
 
+    @SuppressWarnings("removal")
     @Override
     public synchronized void setDisplayMode(DisplayMode dm) {
         if (!isDisplayChangeSupported()) {
@@ -480,7 +570,11 @@ public final class X11GraphicsDevice extends GraphicsDevice
      */
     @Override
     public synchronized void displayChanged() {
-        scale = initScaleFactor();
+        xrmXftDpi = getXrmXftDpi(-1);
+        scale = initScaleFactor(1);
+
+        if (X11GraphicsEnvironment.useBoundsCache()) resetBoundsCache();
+
         // On X11 the visuals do not change, and therefore we don't need
         // to reset the defaultConfig, config, doubleBufferVisuals,
         // neither do we need to reset the native data.
@@ -510,25 +604,67 @@ public final class X11GraphicsDevice extends GraphicsDevice
         return scale;
     }
 
-    public int getNativeScale() {
+    private double getNativeScale() {
         isXrandrExtensionSupported();
-        return (int)Math.round(getNativeScaleFactor(screen));
+        return getNativeScaleFactor(screen, -1);
     }
 
-    private int initScaleFactor() {
+    public static void setXftDpi(int dpi) {
+        xftDpi = dpi;
+        boolean uiScaleEnabled = SunGraphicsEnvironment.isUIScaleEnabled(dpi);
+        double xftDpiScale = uiScaleEnabled ? xftDpi / 96.0 : 1.0;
+        for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
+            X11GraphicsDevice x11gd = (X11GraphicsDevice)gd;
+            synchronized (x11gd.isScaleFactorDefault) {
+                if (x11gd.isScaleFactorDefault.get() || !uiScaleEnabled) {
+                    x11gd.scale = (int)Math.round(xftDpiScale * (uiScaleEnabled ? GDK_SCALE_MULTIPLIER : 1));
+                    x11gd.isScaleFactorDefault.set(false);
+                    if (X11GraphicsEnvironment.useBoundsCache()) x11gd.resetBoundsCache();
+                }
+            }
+        }
+    }
 
-        if (SunGraphicsEnvironment.isUIScaleEnabled()) {
-
+    private int initScaleFactor(int defValue) {
+        boolean uiScaleEnabled = SunGraphicsEnvironment.isUIScaleEnabled();
+        if (uiScaleEnabled) {
             double debugScale = SunGraphicsEnvironment.getDebugScale();
 
             if (debugScale >= 1) {
                 return (int) debugScale;
             }
-            int nativeScale = getNativeScale();
-            return nativeScale >= 1 ? nativeScale : 1;
+            double gdkScaleMult = uiScaleEnabled ? GDK_SCALE_MULTIPLIER : 1;
+            double nativeScale = getNativeScale();
+            if (nativeScale > 0) {
+                return (int)Math.round(nativeScale * gdkScaleMult);
+            }
+            if (xrmXftDpi > 0) {
+                return (int)Math.round((xrmXftDpi / 96.0) * gdkScaleMult);
+            }
+            if (xftDpi > 0) {
+                return (int)Math.round((xftDpi / 96.0) * gdkScaleMult);
+            }
         }
+        return defValue;
+    }
 
-        return 1;
+    /**
+     * Used externally for diagnostic purpose.
+     */
+    public String[][] getDpiInfo() {
+        int dpi = xrmXftDpi != -1 ? xrmXftDpi : xftDpi;
+        String xftDpiStr = dpi != -1 ? String.valueOf(dpi) : "undefined";
+        double gsettingsScale = getNativeScaleFactor(screen, -1);
+        String gsettingsScaleStr = gsettingsScale != -1 ? String.valueOf(gsettingsScale) : "undefined";
+        String gdkScaleStr = GDK_SCALE != -1 ? String.valueOf(GDK_SCALE) : "undefined";
+        String gdkDpiScaleStr = GDK_DPI_SCALE != -1 ? String.valueOf(GDK_DPI_SCALE) : "undefined";
+
+        return new String[][] {
+                {"Xft.DPI", xftDpiStr, "Font DPI (X resources value)"},
+                {"GSettings scale factor", gsettingsScaleStr, "http://wiki.archlinux.org/index.php/HiDPI"},
+                {"GDK_SCALE", gdkScaleStr, "http://developer.gnome.org/gtk3/stable/gtk-x11.html"},
+                {"GDK_DPI_SCALE", gdkDpiScaleStr, "http://developer.gnome.org/gtk3/stable/gtk-x11.html"}
+        };
     }
 
     /**
@@ -540,5 +676,10 @@ public final class X11GraphicsDevice extends GraphicsDevice
 
     public String toString() {
         return ("X11GraphicsDevice[screen="+screen+"]");
+    }
+
+    public void invalidate(X11GraphicsDevice device) {
+        screen = device.screen; // Only done while holding the AWT lock
+        if (X11GraphicsEnvironment.useBoundsCache()) resetBoundsCache();
     }
 }

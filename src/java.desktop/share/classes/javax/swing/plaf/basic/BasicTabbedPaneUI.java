@@ -211,6 +211,11 @@ public class BasicTabbedPaneUI extends TabbedPaneUI implements SwingConstants {
 // UI creation
 
     /**
+     * Constructs a {@code BasicTabbedPaneUI}.
+     */
+    public BasicTabbedPaneUI() {}
+
+    /**
      * Create a UI.
      * @param c a component
      * @return a UI
@@ -2657,6 +2662,10 @@ public class BasicTabbedPaneUI extends TabbedPaneUI implements SwingConstants {
      * Instantiate it only within subclasses of BasicTabbedPaneUI.
      */
     public class TabbedPaneLayout implements LayoutManager {
+        /**
+         * Constructs a {@code TabbedPaneLayout}.
+         */
+        public TabbedPaneLayout() {}
 
         public void addLayoutComponent(String name, Component comp) {}
 
@@ -3907,11 +3916,13 @@ public class BasicTabbedPaneUI extends TabbedPaneUI implements SwingConstants {
         public ScrollableTabPanel() {
             super(null);
             setOpaque(tabPane.isOpaque());
-            Color bgColor = UIManager.getColor("TabbedPane.tabAreaBackground");
-            if (bgColor == null) {
-                bgColor = tabPane.getBackground();
+            Color background = tabPane.getBackground();
+            Color tabAreaBackground = UIManager.getColor("TabbedPane.tabAreaBackground");
+            if (background instanceof UIResource && tabAreaBackground != null) {
+                setBackground(tabAreaBackground);
+            } else {
+                setBackground(background);
             }
-            setBackground(bgColor);
         }
         public void paintComponent(Graphics g) {
             super.paintComponent(g);
@@ -4193,6 +4204,11 @@ public class BasicTabbedPaneUI extends TabbedPaneUI implements SwingConstants {
      * Instantiate it only within subclasses of BasicTabbedPaneUI.
      */
     public class PropertyChangeHandler implements PropertyChangeListener {
+        /**
+         * Constructs a {@code PropertyChangeHandler}.
+         */
+        public PropertyChangeHandler() {}
+
         // NOTE: This class exists only for backward compatibility. All
         // its functionality has been moved into Handler. If you need to add
         // new functionality add it to the Handler, but make sure this
@@ -4207,6 +4223,11 @@ public class BasicTabbedPaneUI extends TabbedPaneUI implements SwingConstants {
      * Instantiate it only within subclasses of BasicTabbedPaneUI.
      */
     public class TabSelectionHandler implements ChangeListener {
+        /**
+         * Constructs a {@code TabSelectionHandler}.
+         */
+        public TabSelectionHandler() {}
+
         // NOTE: This class exists only for backward compatibility. All
         // its functionality has been moved into Handler. If you need to add
         // new functionality add it to the Handler, but make sure this
@@ -4221,6 +4242,11 @@ public class BasicTabbedPaneUI extends TabbedPaneUI implements SwingConstants {
      * Instantiate it only within subclasses of BasicTabbedPaneUI.
      */
     public class MouseHandler extends MouseAdapter {
+        /**
+         * Constructs a {@code MouseHandler}.
+         */
+        public MouseHandler() {}
+
         // NOTE: This class exists only for backward compatibility. All
         // its functionality has been moved into Handler. If you need to add
         // new functionality add it to the Handler, but make sure this
@@ -4239,6 +4265,11 @@ public class BasicTabbedPaneUI extends TabbedPaneUI implements SwingConstants {
         // its functionality has been moved into Handler. If you need to add
         // new functionality add it to the Handler, but make sure this
         // class calls into the Handler.
+        /**
+         * Constructs a {@code FocusHandler}.
+         */
+        public FocusHandler() {}
+
         public void focusGained(FocusEvent e) {
             getHandler().focusGained(e);
         }

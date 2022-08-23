@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,13 +25,31 @@
 
 package javax.swing.plaf.metal;
 
-import java.awt.event.*;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Cursor;
+import java.awt.Dialog;
+import java.awt.Dimension;
+import java.awt.Frame;
+import java.awt.Insets;
+import java.awt.LayoutManager;
+import java.awt.LayoutManager2;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.Toolkit;
+import java.awt.Window;
+import java.awt.event.InputEvent;
+import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
-import javax.swing.*;
-import javax.swing.event.*;
-import javax.swing.plaf.*;
-import javax.swing.plaf.basic.*;
-import java.awt.*;
+
+import javax.swing.JComponent;
+import javax.swing.JLayeredPane;
+import javax.swing.JRootPane;
+import javax.swing.LookAndFeel;
+import javax.swing.SwingUtilities;
+import javax.swing.event.MouseInputListener;
+import javax.swing.plaf.ComponentUI;
+import javax.swing.plaf.basic.BasicRootPaneUI;
 
 /**
  * Provides the metal look and feel implementation of <code>RootPaneUI</code>.
@@ -52,7 +70,7 @@ import java.awt.*;
  * future Swing releases. The current serialization support is
  * appropriate for short term storage or RMI between applications running
  * the same version of Swing.  As of 1.4, support for long term storage
- * of all JavaBeans&trade;
+ * of all JavaBeans
  * has been added to the <code>java.beans</code> package.
  * Please see {@link java.beans.XMLEncoder}.
  *
@@ -122,6 +140,11 @@ public class MetalRootPaneUI extends BasicRootPaneUI
      */
     private Cursor lastCursor =
             Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR);
+
+    /**
+     * Constructs a {@code MetalRootPaneUI}.
+     */
+    public MetalRootPaneUI() {}
 
     /**
      * Creates a UI for a <code>JRootPane</code>.
@@ -210,6 +233,7 @@ public class MetalRootPaneUI extends BasicRootPaneUI
      * @param parent The parent of the JRootPane
      */
     private void installWindowListeners(JRootPane root, Component parent) {
+        if (parent == null) return;
         if (parent instanceof Window) {
             window = (Window)parent;
         }
@@ -480,7 +504,7 @@ public class MetalRootPaneUI extends BasicRootPaneUI
             }
 
             return new Dimension(Math.max(Math.max(cpWidth, mbWidth), tpWidth) + i.left + i.right,
-                                 cpHeight + mbHeight + tpWidth + i.top + i.bottom);
+                                 cpHeight + mbHeight + tpHeight + i.top + i.bottom);
         }
 
         /**
@@ -531,7 +555,7 @@ public class MetalRootPaneUI extends BasicRootPaneUI
             }
 
             return new Dimension(Math.max(Math.max(cpWidth, mbWidth), tpWidth) + i.left + i.right,
-                                 cpHeight + mbHeight + tpWidth + i.top + i.bottom);
+                                 cpHeight + mbHeight + tpHeight + i.top + i.bottom);
         }
 
         /**

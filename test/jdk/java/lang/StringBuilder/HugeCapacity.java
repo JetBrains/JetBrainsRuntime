@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,16 +26,21 @@
  * @bug 8149330 8218227
  * @summary Capacity should not get close to Integer.MAX_VALUE unless
  *          necessary
- * @requires os.maxMemory >= 6G
- * @run main/othervm -Xms5G -Xmx5G HugeCapacity
- * @ignore This test has huge memory requirements
+ * @requires (sun.arch.data.model == "64" & os.maxMemory >= 6G)
+ * @run main/othervm -Xms5G -Xmx5G -XX:+CompactStrings HugeCapacity true
+ * @run main/othervm -Xms5G -Xmx5G -XX:-CompactStrings HugeCapacity false
  */
 
 public class HugeCapacity {
     private static int failures = 0;
 
     public static void main(String[] args) {
-        testLatin1();
+        if (args.length == 0) {
+           throw new IllegalArgumentException("Need the argument");
+        }
+        boolean isCompact = Boolean.parseBoolean(args[0]);
+
+        testLatin1(isCompact);
         testUtf16();
         testHugeInitialString();
         testHugeInitialCharSequence();
@@ -44,11 +49,12 @@ public class HugeCapacity {
         }
     }
 
-    private static void testLatin1() {
+    private static void testLatin1(boolean isCompact) {
         try {
+            int divisor = isCompact ? 2 : 4;
             StringBuilder sb = new StringBuilder();
-            sb.ensureCapacity(Integer.MAX_VALUE / 2);
-            sb.ensureCapacity(Integer.MAX_VALUE / 2 + 1);
+            sb.ensureCapacity(Integer.MAX_VALUE / divisor);
+            sb.ensureCapacity(Integer.MAX_VALUE / divisor + 1);
         } catch (OutOfMemoryError oom) {
             oom.printStackTrace();
             failures++;

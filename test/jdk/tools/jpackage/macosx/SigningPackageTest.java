@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,25 @@
  */
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import jdk.jpackage.test.*;
+import jdk.jpackage.test.JPackageCommand;
+import jdk.jpackage.test.PackageTest;
+import jdk.jpackage.test.PackageType;
+import jdk.jpackage.test.MacHelper;
+import jdk.jpackage.test.Annotations.Test;
 
 /**
- * Tests generation of dmg and pkg with --mac-sign and related arguments. Test will
- * generate pkg and verifies its signature. It verifies that dmg is not signed, but app
- * image inside dmg is signed. This test requires that machine is configured with test
- * certificate for "Developer ID Installer: jpackage.openjdk.java.net" in jpackagerTest
- * keychain with always allowed access to this keychain for user which runs test.
+ * Tests generation of dmg and pkg with --mac-sign and related arguments.
+ * Test will generate pkg and verifies its signature. It verifies that dmg
+ * is not signed, but app image inside dmg is signed. This test requires that
+ * the machine is configured with test certificate for
+ * "Developer ID Installer: jpackage.openjdk.java.net" in
+ * jpackagerTest keychain with
+ * always allowed access to this keychain for user which runs test.
+ * note:
+ * "jpackage.openjdk.java.net" can be over-ridden by systerm property
+ * "jpackage.mac.signing.key.user.name", and
+ * "jpackagerTest" can be over-ridden by system property
+ * "jpackage.mac.signing.keychain"
  */
 
 /*
@@ -44,9 +54,11 @@ import jdk.jpackage.test.*;
  * @build SigningCheck
  * @build jtreg.SkippedException
  * @build jdk.jpackage.test.*
- * @modules jdk.incubator.jpackage/jdk.incubator.jpackage.internal
+ * @build SigningPackageTest
+ * @modules jdk.jpackage/jdk.jpackage.internal
  * @requires (os.family == "mac")
- * @run main/othervm -Xmx512m SigningPackageTest
+ * @run main/othervm/timeout=360 -Xmx512m jdk.jpackage.test.Main
+ *  --jpt-run=SigningPackageTest
  */
 public class SigningPackageTest {
 
@@ -70,24 +82,23 @@ public class SigningPackageTest {
         });
     }
 
-    public static void main(String[] args) throws Exception {
-        TKit.run(args, () -> {
-            SigningCheck.checkCertificates();
+    @Test
+    public static void test() throws Exception {
+        SigningCheck.checkCertificates();
 
-            new PackageTest()
-                    .configureHelloApp()
-                    .forTypes(PackageType.MAC)
-                    .addInitializer(cmd -> {
-                        cmd.addArguments("--mac-sign",
-                                "--mac-signing-key-user-name", SigningBase.DEV_NAME,
-                                "--mac-signing-keychain", "jpackagerTest.keychain");
-                    })
-                    .forTypes(PackageType.MAC_PKG)
-                    .addBundleVerifier(SigningPackageTest::verifyPKG)
-                    .forTypes(PackageType.MAC_DMG)
-                    .addBundleVerifier(SigningPackageTest::verifyDMG)
-                    .addBundleVerifier(SigningPackageTest::verifyAppImageInDMG)
-                    .run();
-        });
+        new PackageTest()
+                .configureHelloApp()
+                .forTypes(PackageType.MAC)
+                .addInitializer(cmd -> {
+                    cmd.addArguments("--mac-sign",
+                            "--mac-signing-key-user-name", SigningBase.DEV_NAME,
+                            "--mac-signing-keychain", SigningBase.KEYCHAIN);
+                })
+                .forTypes(PackageType.MAC_PKG)
+                .addBundleVerifier(SigningPackageTest::verifyPKG)
+                .forTypes(PackageType.MAC_DMG)
+                .addBundleVerifier(SigningPackageTest::verifyDMG)
+                .addBundleVerifier(SigningPackageTest::verifyAppImageInDMG)
+                .run();
     }
 }

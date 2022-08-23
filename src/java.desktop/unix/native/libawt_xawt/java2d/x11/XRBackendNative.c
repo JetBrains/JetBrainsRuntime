@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,10 @@
  * questions.
  */
 
+#ifdef HEADLESS
+    #error This file should not be included in headless library
+#endif
+
 #include "X11SurfaceData.h"
 #include <jni.h>
 #include <math.h>
@@ -33,21 +37,6 @@
 
 #ifdef __linux__
     #include <sys/utsname.h>
-#endif
-
-/* On Solaris 10 updates 8, 9, the render.h file defines these
- * protocol values but does not define the structs in Xrender.h.
- * Thus in order to get these always defined on Solaris 10
- * we will undefine the symbols if we have determined via the
- * makefiles that Xrender.h is lacking the structs. This will
- * trigger providing our own definitions as on earlier updates.
- * We could assume that *all* Solaris 10 update versions will lack the updated
- * Xrender.h and do this based solely on O/S being any 5.10 version, but this
- * could still change and we'd be broken again as we'd be re-defining them.
- */
-#ifdef SOLARIS10_NO_XRENDER_STRUCTS
-#undef X_RenderCreateLinearGradient
-#undef X_RenderCreateRadialGradient
 #endif
 
 #ifndef X_RenderCreateLinearGradient
@@ -70,30 +59,15 @@ typedef struct _XRadialGradient {
 } XRadialGradient;
 #endif
 
+/* BGRA glyph that is rendered using XRenderComposite instead of
+ * XRenderCompositeText32. Used for colored glyphs */
+typedef struct _BGRAGlyphInfo {
+    GlyphInfo* glyphInfo;
+    Pixmap pixmap;
+    Picture picture;
+} BGRAGlyphInfo;
+
 #include <dlfcn.h>
-
-#if defined(__solaris__)
-/* Solaris 10 will not have these symbols at compile time */
-
-typedef Picture (*XRenderCreateLinearGradientFuncType)
-                                     (Display *dpy,
-                                     const XLinearGradient *gradient,
-                                     const XFixed *stops,
-                                     const XRenderColor *colors,
-                                     int nstops);
-
-typedef Picture (*XRenderCreateRadialGradientFuncType)
-                                     (Display *dpy,
-                                     const XRadialGradient *gradient,
-                                     const XFixed *stops,
-                                     const XRenderColor *colors,
-                                     int nstops);
-
-static
-XRenderCreateLinearGradientFuncType XRenderCreateLinearGradientFunc = NULL;
-static
- XRenderCreateRadialGradientFuncType XRenderCreateRadialGradientFunc = NULL;
-#endif
 
 #define BUILD_TRANSFORM_MATRIX(TRANSFORM, M00, M01, M02, M10, M11, M12)                        \
     {                                                                                          \
@@ -158,27 +132,6 @@ static jboolean IsXRenderAvailable(jboolean verbose, jboolean ignoreLinuxVersion
       xrenderlib = dlopen("libXrender.a(libXrender.so.0)", RTLD_GLOBAL | RTLD_LAZY | RTLD_MEMBER);
     }
     if (xrenderlib != NULL) {
-      dlclose(xrenderlib);
-    } else {
-      available = JNI_FALSE;
-    }
-#elif defined(__solaris__)
-    xrenderlib = dlopen("libXrender.so",RTLD_GLOBAL|RTLD_LAZY);
-    if (xrenderlib != NULL) {
-
-      XRenderCreateLinearGradientFunc =
-        (XRenderCreateLinearGradientFuncType)
-        dlsym(xrenderlib, "XRenderCreateLinearGradient");
-
-      XRenderCreateRadialGradientFunc =
-        (XRenderCreateRadialGradientFuncType)
-        dlsym(xrenderlib, "XRenderCreateRadialGradient");
-
-      if (XRenderCreateLinearGradientFunc == NULL ||
-          XRenderCreateRadialGradientFunc == NULL)
-      {
-        available = JNI_FALSE;
-      }
       dlclose(xrenderlib);
     } else {
       available = JNI_FALSE;
@@ -308,7 +261,6 @@ JNIEXPORT jboolean JNICALL
 Java_sun_awt_X11GraphicsEnvironment_initXRender
 (JNIEnv *env, jclass x11ge, jboolean verbose, jboolean ignoreLinuxVersion)
 {
-#ifndef HEADLESS
     static jboolean xrenderAvailable = JNI_FALSE;
     static jboolean firstTime = JNI_TRUE;
 
@@ -326,9 +278,6 @@ Java_sun_awt_X11GraphicsEnvironment_initXRender
         firstTime = JNI_FALSE;
     }
     return xrenderAvailable;
-#else
-    return JNI_FALSE;
-#endif /* !HEADLESS */
 }
 
 
@@ -593,13 +542,7 @@ Java_sun_java2d_xr_XRBackendNative_XRCreateLinearGradientPaintNative
       colors[i].green = pixels[i*4 + 2];
       colors[i].blue = pixels[i*4 + 3];
     }
-#ifdef __solaris__
-    if (XRenderCreateLinearGradientFunc!=NULL) {
-      gradient = (*XRenderCreateLinearGradientFunc)(awt_display, &grad, stops, colors, numStops);
-    }
-#else
     gradient = XRenderCreateLinearGradient(awt_display, &grad, stops, colors, numStops);
-#endif
     free(colors);
     free(stops);
 
@@ -677,13 +620,7 @@ Java_sun_java2d_xr_XRBackendNative_XRCreateRadialGradientPaintNative
       colors[i].green = pixels[i*4 + 2];
       colors[i].blue = pixels[i*4 + 3];
     }
-#ifdef __solaris__
-    if (XRenderCreateRadialGradientFunc != NULL) {
-        gradient = (jint) (*XRenderCreateRadialGradientFunc)(awt_display, &grad, stops, colors, numStops);
-    }
-#else
     gradient = (jint) XRenderCreateRadialGradient(awt_display, &grad, stops, colors, numStops);
-#endif
     free(colors);
     free(stops);
 
@@ -771,7 +708,7 @@ Java_sun_java2d_xr_XRBackendNative_putMaskNative
     if (ea != 1.0f) {
         for (line=0; line < height; line++) {
             for (pix=0; pix < width; pix++) {
-                int index = maskScan*line + pix + maskOff;
+                size_t index = (size_t) maskScan * line + pix + maskOff;
                 mask[index] = (((unsigned char) mask[index])*ea);
             }
         }
@@ -796,8 +733,8 @@ Java_sun_java2d_xr_XRBackendNative_putMaskNative
         if (imageFits) {
             for (line=0; line < height; line++) {
                 for (pix=0; pix < width; pix++) {
-                    img->data[line*img->bytes_per_line + pix] =
-                        (unsigned char) (mask[maskScan*line + pix + maskOff]);
+                    img->data[(size_t) line * img->bytes_per_line + pix] =
+                        (unsigned char) (mask[(size_t) maskScan * line + pix + maskOff]);
                 }
             }
         } else {
@@ -821,19 +758,20 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_xr_XRBackendNative_XRAddGlyphsNative
  (JNIEnv *env, jclass cls, jint glyphSet,
   jlongArray glyphInfoPtrsArray, jint glyphCnt,
-  jbyteArray pixelDataArray, int pixelDataLength) {
+  jbyteArray pixelDataArray, jint pixelDataLength,
+  jint subglyphs) {
     jlong *glyphInfoPtrs;
     unsigned char *pixelData;
-    int i;
+    int i, j;
 
     if (MAX_PAYLOAD / (sizeof(XGlyphInfo) + sizeof(Glyph))
-        < (unsigned)glyphCnt) {
-        /* glyphCnt too big, payload overflow */
+        < (unsigned)subglyphs) {
+        /* subglyphs too big, payload overflow */
         return;
     }
 
-    XGlyphInfo *xginfo = (XGlyphInfo *) malloc(sizeof(XGlyphInfo) * glyphCnt);
-    Glyph *gid = (Glyph *) malloc(sizeof(Glyph) * glyphCnt);
+    XGlyphInfo *xginfo = (XGlyphInfo *) malloc(sizeof(XGlyphInfo) * subglyphs);
+    Glyph *gid = (Glyph *) malloc(sizeof(Glyph) * subglyphs);
 
     if (xginfo == NULL || gid == NULL) {
         if (xginfo != NULL) {
@@ -863,24 +801,29 @@ Java_sun_java2d_xr_XRBackendNative_XRAddGlyphsNative
         return;
     }
 
+    int outputGlyph = 0;
     for (i=0; i < glyphCnt; i++) {
       GlyphInfo *jginfo = (GlyphInfo *) jlong_to_ptr(glyphInfoPtrs[i]);
 
-      // 'jginfo->cellInfo' is of type 'void*'
-      // (see definition of 'GlyphInfo' in fontscalerdefs.h)
-      // 'Glyph' is typedefed to 'unsigned long'
-      // (see http://www.x.org/releases/X11R7.7/doc/libXrender/libXrender.txt)
-      // Maybe we should assert that (sizeof(void*) == sizeof(Glyph)) ?
-      gid[i] = (Glyph) (jginfo->cellInfo);
-      xginfo[i].x = (-jginfo->topLeftX);
-      xginfo[i].y = (-jginfo->topLeftY);
-      xginfo[i].width = jginfo->width;
-      xginfo[i].height = jginfo->height;
-      xginfo[i].xOff = round(jginfo->advanceX);
-      xginfo[i].yOff = round(jginfo->advanceY);
+      int images = jginfo->subpixelResolutionX * jginfo->subpixelResolutionY;
+      for (j=0; j < images; j++) {
+        // 'jginfo->cellInfo' is of type 'void*'
+        // (see definition of 'GlyphInfo' in fontscalerdefs.h)
+        // 'Glyph' is typedefed to 'unsigned long'
+        // (see http://www.x.org/releases/X11R7.7/doc/libXrender/libXrender.txt)
+        // Maybe we should assert that (sizeof(void*) == sizeof(Glyph)) ?
+        gid[outputGlyph] = (Glyph) (jginfo->cellInfo) + j;
+        xginfo[outputGlyph].x = (-jginfo->topLeftX);
+        xginfo[outputGlyph].y = (-jginfo->topLeftY);
+        xginfo[outputGlyph].width = jginfo->width;
+        xginfo[outputGlyph].height = jginfo->height;
+        xginfo[outputGlyph].xOff = round(jginfo->advanceX);
+        xginfo[outputGlyph].yOff = round(jginfo->advanceY);
+        outputGlyph++;
+      }
     }
 
-    XRenderAddGlyphs(awt_display, glyphSet, &gid[0], &xginfo[0], glyphCnt,
+    XRenderAddGlyphs(awt_display, glyphSet, &gid[0], &xginfo[0], subglyphs,
                      (const char*)pixelData, pixelDataLength);
 
     (*env)->ReleasePrimitiveArrayCritical(env, glyphInfoPtrsArray, glyphInfoPtrs, JNI_ABORT);
@@ -950,10 +893,82 @@ Java_sun_java2d_xr_XRBackendNative_XRFreeGlyphsNative
     }
 }
 
+JNIEXPORT void JNICALL
+Java_sun_java2d_xr_XRBackendNative_addBGRAGlyphImagesNative
+        (JNIEnv* env, jclass clazz, jint drawable,
+         jlongArray javaGlyphInfoPointersArray, jint glyphCnt, jlong format32) {
+    jlong* glyphInfoPointers;
+    if ((glyphInfoPointers = (jlong *)
+        (*env)->GetPrimitiveArrayCritical(env, javaGlyphInfoPointersArray, NULL)) == NULL) {
+        return;
+    }
+
+    XRenderPictFormat* format = (XRenderPictFormat*) jlong_to_ptr(format32);
+    XRenderPictureAttributes pictureAttributes;
+
+    int i;
+    for (i = 0; i < glyphCnt; i++) {
+        GlyphInfo* glyphInfo = (GlyphInfo*) jlong_to_ptr(glyphInfoPointers[i]);
+
+        Pixmap pixmap = XCreatePixmap(awt_display, (Drawable) drawable,
+                                      glyphInfo->width, glyphInfo->height, 32);
+        GC gc = XCreateGC(awt_display, (Drawable) pixmap, 0L, NULL);
+        XImage* image = XCreateImage(awt_display, NULL, 32, ZPixmap, 0,
+                                     (char*) glyphInfo->image,
+                                     glyphInfo->width, glyphInfo->height,
+                                     32, glyphInfo->rowBytes);
+        XPutImage(awt_display, pixmap, gc, image, 0, 0, 0, 0,
+                  glyphInfo->width, glyphInfo->height);
+        image->data = NULL;
+        XDestroyImage(image);
+        XFreeGC(awt_display, gc);
+        Picture picture = XRenderCreatePicture(awt_display, pixmap, format,
+                                               0, &pictureAttributes);
+
+        BGRAGlyphInfo* bgraGlyphInfo =
+                (BGRAGlyphInfo*) malloc(sizeof(BGRAGlyphInfo));
+        bgraGlyphInfo->glyphInfo = glyphInfo;
+        bgraGlyphInfo->pixmap = pixmap;
+        bgraGlyphInfo->picture = picture;
+
+        glyphInfoPointers[i] = (jlong) bgraGlyphInfo;
+    }
+
+    (*env)->ReleasePrimitiveArrayCritical(env, javaGlyphInfoPointersArray,
+                                          glyphInfoPointers, JNI_ABORT);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_xr_XRBackendNative_freeBGRAGlyphImages
+        (JNIEnv* env, jclass clazz,
+         jlongArray javaGlyphInfoPointersArray, jint glyphCnt) {
+    jlong* glyphInfoPointers;
+    if ((glyphInfoPointers = (jlong *)
+        (*env)->GetPrimitiveArrayCritical(env, javaGlyphInfoPointersArray, NULL)) == NULL) {
+        return;
+    }
+
+    int i;
+    for (i = 0; i < glyphCnt; i++) {
+        BGRAGlyphInfo* bgraGlyphInfo =
+                (BGRAGlyphInfo*) jlong_to_ptr(glyphInfoPointers[i]);
+        XRenderFreePicture(awt_display, bgraGlyphInfo->picture);
+        XFreePixmap(awt_display, bgraGlyphInfo->pixmap);
+        free(bgraGlyphInfo);
+    }
+
+    (*env)->ReleasePrimitiveArrayCritical(env, javaGlyphInfoPointersArray,
+                                          glyphInfoPointers, JNI_ABORT);
+}
+
 JNIEXPORT jint JNICALL
 Java_sun_java2d_xr_XRBackendNative_XRenderCreateGlyphSetNative
  (JNIEnv *env, jclass cls, jlong format) {
   return XRenderCreateGlyphSet(awt_display, (XRenderPictFormat *) jlong_to_ptr(format));
+}
+
+static jboolean fits16Bit(jint x) {
+    return (((x & 0xffff8000) + 0x8000) & 0xffff0000) == 0 ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL
@@ -969,6 +984,11 @@ Java_sun_java2d_xr_XRBackendNative_XRenderCompositeTextNative
     XGlyphElt32 selts[24];
     unsigned int sids[256];
     int charCnt = 0;
+
+    if (fits16Bit(sx) == JNI_FALSE || fits16Bit(sy) == JNI_FALSE) {
+        // X Rendering Extension protocol supports only 16-bit initial coordinates
+        return;
+    }
 
     if ((MAX_PAYLOAD / sizeof(XGlyphElt32) < (unsigned)eltCnt)
         || (MAX_PAYLOAD / sizeof(unsigned int) < (unsigned)glyphCnt)
@@ -1027,19 +1047,48 @@ Java_sun_java2d_xr_XRBackendNative_XRenderCompositeTextNative
       xids[i] = ids[i];
     }
 
-    for (i=0; i < eltCnt; i++) {
-      xelts[i].nchars = elts[i*4 + 0];
-      xelts[i].xOff = elts[i*4 + 1];
-      xelts[i].yOff = elts[i*4 + 2];
-      xelts[i].glyphset = (GlyphSet) elts[i*4 + 3];
-      xelts[i].chars = &xids[charCnt];
-
-      charCnt += xelts[i].nchars;
+    int totalXElts = 0;
+    for (i = 0; i < eltCnt; i++) {
+        int nchars = elts[i*4];
+        int xOff = elts[i*4 + 1];
+        int yOff = elts[i*4 + 2];
+        int glyphset = (GlyphSet) elts[i*4 + 3];
+        if (glyphset == -1) { // BGRA glyph, render as image
+            float x = (float) xOff;
+            float y = (float) yOff;
+            int ch;
+            for (ch = 0; ch < nchars; ch++) {
+                BGRAGlyphInfo* bgraGlyphInfo = (BGRAGlyphInfo*)
+                        (((jlong) xids[charCnt + ch * 2] << 32) |
+                        (((jlong) xids[charCnt + ch * 2 + 1]) & 0xFFFFFFFF));
+                GlyphInfo* glyph = bgraGlyphInfo->glyphInfo;
+                XRenderComposite(awt_display, PictOpOver,
+                                 bgraGlyphInfo->picture,
+                                 (Picture) 0, (Picture) dst,
+                                 0, 0, 0, 0,
+                                 (int) (x + glyph->topLeftX),
+                                 (int) (y + glyph->topLeftY),
+                                 glyph->width, glyph->height);
+                x += glyph->advanceX;
+                y += glyph->advanceY;
+            }
+            charCnt += nchars * 2;
+        } else { // Standard XRender glyph
+            xelts[totalXElts].nchars = nchars;
+            xelts[totalXElts].xOff = xOff;
+            xelts[totalXElts].yOff = yOff;
+            xelts[totalXElts].glyphset = glyphset;
+            xelts[totalXElts].chars = &xids[charCnt];
+            charCnt += nchars;
+            totalXElts++;
+        }
     }
 
-    XRenderCompositeText32(awt_display, op, (Picture) src, (Picture) dst,
-                           (XRenderPictFormat *) jlong_to_ptr(maskFmt),
-                            sx, sy, 0, 0, xelts, eltCnt);
+    if (totalXElts > 0) {
+        XRenderCompositeText32(awt_display, op, (Picture) src, (Picture) dst,
+                               (XRenderPictFormat *) jlong_to_ptr(maskFmt),
+                               sx, sy, 0, 0, xelts, totalXElts);
+    }
 
     (*env)->ReleasePrimitiveArrayCritical(env, glyphIDArray, ids, JNI_ABORT);
     (*env)->ReleasePrimitiveArrayCritical(env, eltArray, elts, JNI_ABORT);

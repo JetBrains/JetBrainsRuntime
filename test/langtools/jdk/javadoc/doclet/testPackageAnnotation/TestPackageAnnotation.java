@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug  8222091
+ * @bug  8222091 8245058
  * @summary  Javadoc does not handle package annotations correctly on package-info.java
  * @library  ../../lib/
  * @modules jdk.javadoc/jdk.javadoc.internal.tool
@@ -44,15 +44,20 @@ public class TestPackageAnnotation extends JavadocTester {
     public void testPackageInfoAnnotationNoComment() {
         javadoc("-d", "out-annotation",
                 "-sourcepath", testSrc,
+                "--no-platform-links",
                 "-use",
                 "pkg1");
         checkExit(Exit.OK);
         checkOutput("pkg1/package-summary.html", true,
-                "<main role=\"main\">\n<div class=\"header\">\n"
-                + "<p>@Deprecated(since=\"1&lt;2&gt;3\")\n"
-                + "</p>\n"
-                + "<h1 title=\"Package\" class=\"title\">Package&nbsp;pkg1</h1>\n"
-                + "</div>\n");
+                """
+                    <main role="main">
+                    <div class="header">
+                    <h1 title="Package pkg1" class="title">Package pkg1</h1>
+                    </div>
+                    <hr>
+                    <div class="package-signature"><span class="annotations">@Deprecated(since="1&lt;2&gt;3")
+                    </span>package <span class="element-name">pkg1</span></div>
+                    """);
     }
 
     @Test
@@ -63,26 +68,31 @@ public class TestPackageAnnotation extends JavadocTester {
                 "pkg2");
         checkExit(Exit.OK);
         checkOutput("pkg2/package-summary.html", true,
-                "<div class=\"deprecationBlock\"><span class=\"deprecatedLabel\">Deprecated.</span>\n"
-                + "<div class=\"deprecationComment\">This package is deprecated.</div>\n"
-                + "</div>\n"
-                + "<div class=\"block\">This is the description of package pkg2.</div>\n"
-                + "</section>");
+                """
+                    <div class="deprecation-block"><span class="deprecated-label">Deprecated.</span>
+                    <div class="deprecation-comment">This package is deprecated.</div>
+                    </div>
+                    <div class="block">This is the description of package pkg2.</div>
+                    </section>""");
     }
 
     @Test
     public void testPackageInfoAndHtml() {
         javadoc("-d", "out-annotation-3",
                 "-sourcepath", testSrc,
+                "--no-platform-links",
                 "-use",
                 "pkg3");
         checkExit(Exit.OK);
         checkOutput("pkg3/package-summary.html", true,
-                "<main role=\"main\">\n"
-                + "<div class=\"header\">\n"
-                + "<p>@Deprecated(since=\"1&lt;2&gt;3\")\n"
-                + "</p>\n"
-                + "<h1 title=\"Package\" class=\"title\">Package&nbsp;pkg3</h1>\n"
-                + "</div>\n");
+                """
+                    <main role="main">
+                    <div class="header">
+                    <h1 title="Package pkg3" class="title">Package pkg3</h1>
+                    </div>
+                    <hr>
+                    <div class="package-signature"><span class="annotations">@Deprecated(since="1&lt;2&gt;3")
+                    </span>package <span class="element-name">pkg3</span></div>
+                    """);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,12 +29,13 @@
 #include "gc/shared/gcWhen.hpp"
 #include "gc/shared/verifyOption.hpp"
 #include "memory/allocation.hpp"
+#include "memory/metaspace.hpp"
+#include "memory/universe.hpp"
 #include "runtime/handles.hpp"
-#include "runtime/perfData.hpp"
+#include "runtime/perfDataTypes.hpp"
 #include "runtime/safepoint.hpp"
 #include "services/memoryUsage.hpp"
 #include "utilities/debug.hpp"
-#include "utilities/events.hpp"
 #include "utilities/formatBuffer.hpp"
 #include "utilities/growableArray.hpp"
 
@@ -43,8 +44,10 @@
 // class defines the functions that a heap must implement, and contains
 // infrastructure common to all heaps.
 
+class AbstractGangTask;
 class AdaptiveSizePolicy;
 class BarrierSet;
+class GCHeapLog;
 class GCHeapSummary;
 class GCTimer;
 class GCTracer;
@@ -59,29 +62,10 @@ class VirtualSpaceSummary;
 class WorkGang;
 class nmethod;
 
-class GCMessage : public FormatBuffer<1024> {
- public:
-  bool is_before;
-
- public:
-  GCMessage() {}
-};
-
-class CollectedHeap;
-
-class GCHeapLog : public EventLogBase<GCMessage> {
- private:
-  void log_heap(CollectedHeap* heap, bool before);
-
- public:
-  GCHeapLog() : EventLogBase<GCMessage>("GC Heap History", "gc") {}
-
-  void log_heap_before(CollectedHeap* heap) {
-    log_heap(heap, true);
-  }
-  void log_heap_after(CollectedHeap* heap) {
-    log_heap(heap, false);
-  }
+class ParallelObjectIterator : public CHeapObj<mtGC> {
+public:
+  virtual void object_iterate(ObjectClosure* cl, uint worker_id) = 0;
+  virtual ~ParallelObjectIterator() {}
 };
 
 //
@@ -102,6 +86,10 @@ class CollectedHeap : public CHeapObj<mtInternal> {
  private:
   GCHeapLog* _gc_heap_log;
 
+  // Historic gc information
+  size_t _capacity_at_last_gc;
+  size_t _used_at_last_gc;
+
  protected:
   // Not used by all GCs
   MemRegion _reserved;
@@ -110,6 +98,12 @@ class CollectedHeap : public CHeapObj<mtInternal> {
 
   // Used for filler objects (static, but initialized in ctor).
   static size_t _filler_array_max_size;
+
+  // Last time the whole heap has been examined in support of RMI
+  // MaxObjectInspectionAge.
+  // This timestamp must be monotonically non-decreasing to avoid
+  // time-warp warnings.
+  jlong _last_whole_heap_examined_time_ns;
 
   unsigned int _total_collections;          // ... started
   unsigned int _total_full_collections;     // ... started
@@ -177,6 +171,20 @@ class CollectedHeap : public CHeapObj<mtInternal> {
     Shenandoah
   };
 
+ protected:
+  // Get a pointer to the derived heap object.  Used to implement
+  // derived class heap() functions rather than being called directly.
+  template<typename T>
+  static T* named_heap(Name kind) {
+    CollectedHeap* heap = Universe::heap();
+    assert(heap != NULL, "Uninitialized heap");
+    assert(kind == heap->kind(), "Heap kind %u should be %u",
+           static_cast<uint>(heap->kind()), static_cast<uint>(kind));
+    return static_cast<T*>(heap);
+  }
+
+ public:
+
   static inline size_t filler_array_max_size() {
     return _filler_array_max_size;
   }
@@ -211,6 +219,11 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   // Returns unused capacity.
   virtual size_t unused() const;
 
+  // Historic gc information
+  size_t free_at_last_gc() const { return _capacity_at_last_gc - _used_at_last_gc; }
+  size_t used_at_last_gc() const { return _used_at_last_gc; }
+  void update_capacity_and_used_at_gc();
+
   // Return "true" if the part of the heap that allocates Java
   // objects has reached the maximal committed limit that it can
   // reach, without a garbage collection.
@@ -233,14 +246,7 @@ class CollectedHeap : public CHeapObj<mtInternal> {
 
   virtual uint32_t hash_oop(oop obj) const;
 
-  void set_gc_cause(GCCause::Cause v) {
-     if (UsePerfData) {
-       _gc_lastcause = _gc_cause;
-       _perf_gc_lastcause->set_value(GCCause::to_string(_gc_lastcause));
-       _perf_gc_cause->set_value(GCCause::to_string(v));
-     }
-    _gc_cause = v;
-  }
+  void set_gc_cause(GCCause::Cause v);
   GCCause::Cause gc_cause() { return _gc_cause; }
 
   oop obj_allocate(Klass* klass, int size, TRAPS);
@@ -271,12 +277,6 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   virtual void fill_with_dummy_object(HeapWord* start, HeapWord* end, bool zap);
   virtual size_t min_dummy_object_size() const;
   size_t tlab_alloc_reserve() const;
-
-  // Return the address "addr" aligned by "alignment_in_bytes" if such
-  // an address is below "end".  Return NULL otherwise.
-  inline static HeapWord* align_allocation_or_fail(HeapWord* addr,
-                                                   HeapWord* end,
-                                                   unsigned short alignment_in_bytes);
 
   // Some heaps may offer a contiguous region for shared non-blocking
   // allocation, via inlined code (by exporting the address of the top and
@@ -316,13 +316,6 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   // allocation from them and necessitating allocation of new TLABs.
   virtual void ensure_parsability(bool retire_tlabs);
 
-  // Section on thread-local allocation buffers (TLABs)
-  // If the heap supports thread-local allocation buffers, it should override
-  // the following methods:
-  // Returns "true" iff the heap supports thread-local allocation buffers.
-  // The default is "no".
-  virtual bool supports_tlab_allocation() const = 0;
-
   // The amount of space available for thread-local allocation buffers.
   virtual size_t tlab_capacity(Thread *thr) const = 0;
 
@@ -338,6 +331,11 @@ class CollectedHeap : public CHeapObj<mtInternal> {
     guarantee(false, "thread-local allocation buffers not supported");
     return 0;
   }
+
+  // If a GC uses a stack watermark barrier, the stack processing is lazy, concurrent,
+  // incremental and cooperative. In order for that to work well, mechanisms that stop
+  // another thread might want to ensure its roots are in a sane state.
+  virtual bool uses_stack_watermark_barrier() const { return false; }
 
   // Perform a collection of the heap; intended for use in implementing
   // "System.gc".  This probably implies as full a collection as the
@@ -386,18 +384,25 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   // Iterate over all objects, calling "cl.do_object" on each.
   virtual void object_iterate(ObjectClosure* cl) = 0;
 
+  virtual ParallelObjectIterator* parallel_object_iterator(uint thread_num) {
+    return NULL;
+  }
+
   // Keep alive an object that was loaded with AS_NO_KEEPALIVE.
   virtual void keep_alive(oop obj) {}
-
-  // Returns the longest time (in ms) that has elapsed since the last
-  // time that any part of the heap was examined by a garbage collection.
-  virtual jlong millis_since_last_gc() = 0;
 
   // Perform any cleanup actions necessary before allowing a verification.
   virtual void prepare_for_verify() = 0;
 
-  // Generate any dumps preceding or following a full gc
+  // Returns the longest time (in ms) that has elapsed since the last
+  // time that the whole heap has been examined by a garbage collection.
+  jlong millis_since_last_whole_heap_examined();
+  // GC should call this when the next whole heap analysis has completed to
+  // satisfy above requirement.
+  void record_whole_heap_examined_timestamp();
+
  private:
+  // Generate any dumps preceding or following a full gc
   void full_gc_dump(GCTimer* timer, bool before);
 
   virtual void initialize_serviceability() = 0;
@@ -429,13 +434,6 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   // Used to print information about locations in the hs_err file.
   virtual bool print_location(outputStream* st, void* addr) const = 0;
 
-  // Print all GC threads (other than the VM thread)
-  // used by this heap.
-  virtual void print_gc_threads_on(outputStream* st) const = 0;
-  // The default behavior is to call print_gc_threads_on() on tty.
-  void print_gc_threads() {
-    print_gc_threads_on(tty);
-  }
   // Iterator for all GC threads (other than VM thread)
   virtual void gc_threads_do(ThreadClosure* tc) const = 0;
 
@@ -459,24 +457,9 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   // Heap verification
   virtual void verify(VerifyOption option) = 0;
 
-  // Return true if concurrent phase control (via
-  // request_concurrent_phase_control) is supported by this collector.
-  // The default implementation returns false.
-  virtual bool supports_concurrent_phase_control() const;
-
-  // Request the collector enter the indicated concurrent phase, and
-  // wait until it does so.  Supports WhiteBox testing.  Only one
-  // request may be active at a time.  Phases are designated by name;
-  // the set of names and their meaning is GC-specific.  Once the
-  // requested phase has been reached, the collector will attempt to
-  // avoid transitioning to a new phase until a new request is made.
-  // [Note: A collector might not be able to remain in a given phase.
-  // For example, a full collection might cancel an in-progress
-  // concurrent collection.]
-  //
-  // Returns true when the phase is reached.  Returns false for an
-  // unknown phase.  The default implementation returns false.
-  virtual bool request_concurrent_phase(const char* phase);
+  // Return true if concurrent gc control via WhiteBox is supported by
+  // this collector.  The default implementation returns false.
+  virtual bool supports_concurrent_gc_breakpoints() const;
 
   // Provides a thread pool to SafepointSynchronize to use
   // for parallel safepoint cleanup.
@@ -486,7 +469,7 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   // concurrent marking) for an intermittent non-GC safepoint.
   // If this method returns NULL, SafepointSynchronize will
   // perform cleanup tasks serially in the VMThread.
-  virtual WorkGang* get_safepoint_workers() { return NULL; }
+  virtual WorkGang* safepoint_workers() { return NULL; }
 
   // Support for object pinning. This is used by JNI Get*Critical()
   // and Release*Critical() family of functions. If supported, the GC
@@ -495,13 +478,10 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   virtual oop pin_object(JavaThread* thread, oop obj);
   virtual void unpin_object(JavaThread* thread, oop obj);
 
-  // Deduplicate the string, iff the GC supports string deduplication.
-  virtual void deduplicate_string(oop str);
+  // Is the given object inside a CDS archive area?
+  virtual bool is_archived_object(oop object) const;
 
   virtual bool is_oop(oop object) const;
-
-  virtual size_t obj_size(oop obj) const;
-
   // Non product verification and debugging.
 #ifndef PRODUCT
   // Support for PromotionFailureALot.  Return true if it's time to cause a

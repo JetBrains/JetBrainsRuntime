@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -97,13 +97,18 @@ public class JavacTaskImpl extends BasicJavacTask {
     /* Internal version of call exposing Main.Result. */
     public Main.Result doCall() {
         try {
-            return handleExceptions(() -> {
+            Pair<Main.Result, Throwable> result = invocationHelper(() -> {
                 prepareCompiler(false);
                 if (compiler.errorCount() > 0)
                     return Main.Result.ERROR;
                 compiler.compile(args.getFileObjects(), args.getClassNames(), processors, addModules);
                 return (compiler.errorCount() > 0) ? Main.Result.ERROR : Main.Result.OK; // FIXME?
-            }, Main.Result.SYSERR, Main.Result.ABNORMAL);
+            });
+            if (result.snd == null) {
+                return result.fst;
+            } else {
+                return (result.snd instanceof FatalError) ? Main.Result.SYSERR : Main.Result.ABNORMAL;
+            }
         } finally {
             try {
                 cleanup();
@@ -141,10 +146,10 @@ public class JavacTaskImpl extends BasicJavacTask {
         this.locale = locale;
     }
 
-    private <T> T handleExceptions(Callable<T> c, T sysErrorResult, T abnormalErrorResult) {
+    private <T> Pair<T, Throwable> invocationHelper(Callable<T> c) {
         Handler prevDeferredHandler = dcfh.setHandler(dcfh.javacCodeHandler);
         try {
-            return c.call();
+            return new Pair<>(c.call(), null);
         } catch (FatalError ex) {
             Log log = Log.instance(context);
             Options options = Options.instance(context);
@@ -152,7 +157,7 @@ public class JavacTaskImpl extends BasicJavacTask {
             if (ex.getCause() != null && options.isSet("dev")) {
                 ex.getCause().printStackTrace(log.getWriter(WriterKind.NOTICE));
             }
-            return sysErrorResult;
+            return new Pair<>(null, ex);
         } catch (AnnotationProcessingError | ClientCodeException e) {
             // AnnotationProcessingError is thrown from JavacProcessingEnvironment,
             // to forward errors thrown from an annotation processor
@@ -175,7 +180,7 @@ public class JavacTaskImpl extends BasicJavacTask {
                 log.printLines(PrefixKind.JAVAC, "msg.bug", JavaCompiler.version());
                 ex.printStackTrace(log.getWriter(WriterKind.NOTICE));
             }
-            return abnormalErrorResult;
+            return new Pair<>(null, ex);
         } finally {
             dcfh.setHandler(prevDeferredHandler);
         }
@@ -227,7 +232,7 @@ public class JavacTaskImpl extends BasicJavacTask {
     void cleanup() {
         if (compiler != null)
             compiler.close();
-        if (fileManager instanceof BaseFileManager && ((BaseFileManager) fileManager).autoClose) {
+        if (fileManager instanceof BaseFileManager baseFileManager && baseFileManager.autoClose) {
             try {
                 fileManager.close();
             } catch (IOException ignore) {
@@ -240,7 +245,11 @@ public class JavacTaskImpl extends BasicJavacTask {
 
     @Override @DefinedBy(Api.COMPILER_TREE)
     public Iterable<? extends CompilationUnitTree> parse() {
-        return handleExceptions(this::parseInternal, List.nil(), List.nil());
+        Pair<Iterable<? extends CompilationUnitTree>, Throwable> result =  invocationHelper(this::parseInternal);
+        if (result.snd == null) {
+            return result.fst;
+        }
+        throw new IllegalStateException(result.snd);
     }
 
     private Iterable<? extends CompilationUnitTree> parseInternal() {
@@ -312,10 +321,10 @@ public class JavacTaskImpl extends BasicJavacTask {
         }
         else {
             for (CompilationUnitTree cu : trees) {
-                if (cu instanceof JCCompilationUnit) {
+                if (cu instanceof JCCompilationUnit compilationUnit) {
                     if (roots == null)
                         roots = new ListBuffer<>();
-                    roots.append((JCCompilationUnit)cu);
+                    roots.append(compilationUnit);
                     notYetEntered.remove(cu.getSourceFile());
                 }
                 else
@@ -367,7 +376,11 @@ public class JavacTaskImpl extends BasicJavacTask {
 
     @Override @DefinedBy(Api.COMPILER_TREE)
     public Iterable<? extends Element> analyze() {
-        return handleExceptions(() -> analyze(null), List.nil(), List.nil());
+        Pair<Iterable<? extends Element>, Throwable> result =  invocationHelper(() -> analyze(null));
+        if (result.snd == null) {
+            return result.fst;
+        }
+        throw new IllegalStateException(result.snd);
     }
 
     /**
@@ -429,7 +442,11 @@ public class JavacTaskImpl extends BasicJavacTask {
 
     @Override @DefinedBy(Api.COMPILER_TREE)
     public Iterable<? extends JavaFileObject> generate() {
-        return handleExceptions(() -> generate(null), List.nil(), List.nil());
+        Pair<Iterable<? extends JavaFileObject>, Throwable> result =  invocationHelper(() -> generate(null));
+        if (result.snd == null) {
+            return result.fst;
+        }
+        throw new IllegalStateException(result.snd);
     }
 
     /**

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2019, NTT DATA.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, NTT DATA.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,10 +52,6 @@
 #include "sun_jvm_hotspot_debugger_amd64_AMD64ThreadContext.h"
 #endif
 
-#if defined(sparc) || defined(sparcv9)
-#include "sun_jvm_hotspot_debugger_sparc_SPARCThreadContext.h"
-#endif
-
 #if defined(ppc64) || defined(ppc64le)
 #include "sun_jvm_hotspot_debugger_ppc64_PPC64ThreadContext.h"
 #endif
@@ -63,6 +59,28 @@
 #ifdef aarch64
 #include "sun_jvm_hotspot_debugger_aarch64_AARCH64ThreadContext.h"
 #endif
+
+class AutoJavaString {
+  JNIEnv* m_env;
+  jstring m_str;
+  const char* m_buf;
+
+public:
+  // check env->ExceptionOccurred() after ctor
+  AutoJavaString(JNIEnv* env, jstring str)
+    : m_env(env), m_str(str), m_buf(str == NULL ? NULL : env->GetStringUTFChars(str, NULL)) {
+  }
+
+  ~AutoJavaString() {
+    if (m_buf) {
+      m_env->ReleaseStringUTFChars(m_str, m_buf);
+    }
+  }
+
+  operator const char* () const {
+    return m_buf;
+  }
+};
 
 static jfieldID p_ps_prochandle_ID = 0;
 static jfieldID threadList_ID = 0;
@@ -165,28 +183,33 @@ static void fillThreadsAndLoadObjects(JNIEnv* env, jobject this_obj, struct ps_p
     CHECK_EXCEPTION;
     env->CallBooleanMethod(threadList, listAdd_ID, thread);
     CHECK_EXCEPTION;
+    env->DeleteLocalRef(thread);
+    env->DeleteLocalRef(threadList);
   }
 
   // add load objects
   n = get_num_libs(ph);
   for (i = 0; i < n; i++) {
-     uintptr_t base;
+     uintptr_t base, memsz;
      const char* name;
      jobject loadObject;
      jobject loadObjectList;
      jstring str;
 
-     base = get_lib_base(ph, i);
+     get_lib_addr_range(ph, i, &base, &memsz);
      name = get_lib_name(ph, i);
 
      str = env->NewStringUTF(name);
      CHECK_EXCEPTION;
-     loadObject = env->CallObjectMethod(this_obj, createLoadObject_ID, str, (jlong)0, (jlong)base);
+     loadObject = env->CallObjectMethod(this_obj, createLoadObject_ID, str, (jlong)memsz, (jlong)base);
      CHECK_EXCEPTION;
      loadObjectList = env->GetObjectField(this_obj, loadObjectList_ID);
      CHECK_EXCEPTION;
      env->CallBooleanMethod(loadObjectList, listAdd_ID, loadObject);
      CHECK_EXCEPTION;
+     env->DeleteLocalRef(str);
+     env->DeleteLocalRef(loadObject);
+     env->DeleteLocalRef(loadObjectList);
   }
 }
 
@@ -234,7 +257,8 @@ JNIEXPORT void JNICALL Java_sun_jvm_hotspot_debugger_linux_LinuxDebuggerLocal_se
   if (saaltroot != NULL) {
     free(saaltroot);
   }
-  const char *path = env->GetStringUTFChars(altroot, JNI_FALSE);
+  const char *path = env->GetStringUTFChars(altroot, NULL);
+  if (path == NULL) { return; }
   /*
    * `saaltroot` is used for putenv().
    * So we need to keep this memory.
@@ -281,27 +305,19 @@ JNIEXPORT void JNICALL Java_sun_jvm_hotspot_debugger_linux_LinuxDebuggerLocal_at
 extern "C"
 JNIEXPORT void JNICALL Java_sun_jvm_hotspot_debugger_linux_LinuxDebuggerLocal_attach0__Ljava_lang_String_2Ljava_lang_String_2
   (JNIEnv *env, jobject this_obj, jstring execName, jstring coreName) {
-  const char *execName_cstr;
-  const char *coreName_cstr;
-  jboolean isCopy;
   struct ps_prochandle* ph;
-
-  execName_cstr = env->GetStringUTFChars(execName, &isCopy);
+  AutoJavaString execName_cstr(env, execName);
   CHECK_EXCEPTION;
-  coreName_cstr = env->GetStringUTFChars(coreName, &isCopy);
+  AutoJavaString coreName_cstr(env, coreName);
   CHECK_EXCEPTION;
 
   verifyBitness(env, execName_cstr);
   CHECK_EXCEPTION;
 
   if ( (ph = Pgrab_core(execName_cstr, coreName_cstr)) == NULL) {
-    env->ReleaseStringUTFChars(execName, execName_cstr);
-    env->ReleaseStringUTFChars(coreName, coreName_cstr);
     THROW_NEW_DEBUGGER_EXCEPTION("Can't attach to the core file");
   }
   env->SetLongField(this_obj, p_ps_prochandle_ID, (jlong)(intptr_t)ph);
-  env->ReleaseStringUTFChars(execName, execName_cstr);
-  env->ReleaseStringUTFChars(coreName, coreName_cstr);
   fillThreadsAndLoadObjects(env, this_obj, ph);
 }
 
@@ -331,25 +347,17 @@ JNIEXPORT void JNICALL Java_sun_jvm_hotspot_debugger_linux_LinuxDebuggerLocal_de
 extern "C"
 JNIEXPORT jlong JNICALL Java_sun_jvm_hotspot_debugger_linux_LinuxDebuggerLocal_lookupByName0
   (JNIEnv *env, jobject this_obj, jstring objectName, jstring symbolName) {
-  const char *objectName_cstr, *symbolName_cstr;
   jlong addr;
   jboolean isCopy;
   struct ps_prochandle* ph = get_proc_handle(env, this_obj);
-
-  objectName_cstr = NULL;
-  if (objectName != NULL) {
-    objectName_cstr = env->GetStringUTFChars(objectName, &isCopy);
-    CHECK_EXCEPTION_(0);
-  }
-  symbolName_cstr = env->GetStringUTFChars(symbolName, &isCopy);
+  // Note, objectName is ignored, and may in fact be NULL.
+  // lookup_symbol will always search all objects/libs
+  AutoJavaString objectName_cstr(env, objectName);
+  CHECK_EXCEPTION_(0);
+  AutoJavaString symbolName_cstr(env, symbolName);
   CHECK_EXCEPTION_(0);
 
-  addr = (jlong) lookup_symbol(ph, objectName_cstr, symbolName_cstr);
-
-  if (objectName_cstr != NULL) {
-    env->ReleaseStringUTFChars(objectName, objectName_cstr);
-  }
-  env->ReleaseStringUTFChars(symbolName, symbolName_cstr);
+  addr = (jlong) lookup_symbol(ph, NULL, symbolName_cstr);
   return addr;
 }
 
@@ -400,7 +408,7 @@ JNIEXPORT jbyteArray JNICALL Java_sun_jvm_hotspot_debugger_linux_LinuxDebuggerLo
   return (err == PS_OK)? array : 0;
 }
 
-#if defined(i586) || defined(amd64) || defined(sparc) || defined(sparcv9) | defined(ppc64) || defined(ppc64le) || defined(aarch64)
+#if defined(i586) || defined(amd64) || defined(ppc64) || defined(ppc64le) || defined(aarch64)
 extern "C"
 JNIEXPORT jlongArray JNICALL Java_sun_jvm_hotspot_debugger_linux_LinuxDebuggerLocal_getThreadIntegerRegisterSet0
   (JNIEnv *env, jobject this_obj, jint lwp_id) {
@@ -413,7 +421,13 @@ JNIEXPORT jlongArray JNICALL Java_sun_jvm_hotspot_debugger_linux_LinuxDebuggerLo
 
   struct ps_prochandle* ph = get_proc_handle(env, this_obj);
   if (get_lwp_regs(ph, lwp_id, &gregs) != true) {
-     THROW_NEW_DEBUGGER_EXCEPTION_("get_thread_regs failed for a lwp", 0);
+    // This is not considered fatal and does happen on occassion, usually with an
+    // ESRCH error. The root cause is not fully understood, but by ignoring this error
+    // and returning NULL, stacking walking code will get null registers and fallback
+    // to using the "last java frame" if setup.
+    fprintf(stdout, "WARNING: getThreadIntegerRegisterSet0: get_lwp_regs failed for lwp (%d)\n", lwp_id);
+    fflush(stdout);
+    return NULL;
   }
 
 #undef NPRGREG
@@ -425,9 +439,6 @@ JNIEXPORT jlongArray JNICALL Java_sun_jvm_hotspot_debugger_linux_LinuxDebuggerLo
 #endif
 #ifdef aarch64
 #define NPRGREG sun_jvm_hotspot_debugger_aarch64_AARCH64ThreadContext_NPRGREG
-#endif
-#if defined(sparc) || defined(sparcv9)
-#define NPRGREG sun_jvm_hotspot_debugger_sparc_SPARCThreadContext_NPRGREG
 #endif
 #if defined(ppc64) || defined(ppc64le)
 #define NPRGREG sun_jvm_hotspot_debugger_ppc64_PPC64ThreadContext_NPRGREG
@@ -491,39 +502,6 @@ JNIEXPORT jlongArray JNICALL Java_sun_jvm_hotspot_debugger_linux_LinuxDebuggerLo
   regs[REG_INDEX(GS)] = gregs.gs;
 
 #endif /* amd64 */
-
-#if defined(sparc) || defined(sparcv9)
-
-#define REG_INDEX(reg) sun_jvm_hotspot_debugger_sparc_SPARCThreadContext_##reg
-
-#ifdef _LP64
-  regs[REG_INDEX(R_PSR)] = gregs.tstate;
-  regs[REG_INDEX(R_PC)]  = gregs.tpc;
-  regs[REG_INDEX(R_nPC)] = gregs.tnpc;
-  regs[REG_INDEX(R_Y)]   = gregs.y;
-#else
-  regs[REG_INDEX(R_PSR)] = gregs.psr;
-  regs[REG_INDEX(R_PC)]  = gregs.pc;
-  regs[REG_INDEX(R_nPC)] = gregs.npc;
-  regs[REG_INDEX(R_Y)]   = gregs.y;
-#endif
-  regs[REG_INDEX(R_G0)]  =            0 ;
-  regs[REG_INDEX(R_G1)]  = gregs.u_regs[0];
-  regs[REG_INDEX(R_G2)]  = gregs.u_regs[1];
-  regs[REG_INDEX(R_G3)]  = gregs.u_regs[2];
-  regs[REG_INDEX(R_G4)]  = gregs.u_regs[3];
-  regs[REG_INDEX(R_G5)]  = gregs.u_regs[4];
-  regs[REG_INDEX(R_G6)]  = gregs.u_regs[5];
-  regs[REG_INDEX(R_G7)]  = gregs.u_regs[6];
-  regs[REG_INDEX(R_O0)]  = gregs.u_regs[7];
-  regs[REG_INDEX(R_O1)]  = gregs.u_regs[8];
-  regs[REG_INDEX(R_O2)]  = gregs.u_regs[ 9];
-  regs[REG_INDEX(R_O3)]  = gregs.u_regs[10];
-  regs[REG_INDEX(R_O4)]  = gregs.u_regs[11];
-  regs[REG_INDEX(R_O5)]  = gregs.u_regs[12];
-  regs[REG_INDEX(R_O6)]  = gregs.u_regs[13];
-  regs[REG_INDEX(R_O7)]  = gregs.u_regs[14];
-#endif /* sparc */
 
 #if defined(aarch64)
 
@@ -594,7 +572,10 @@ JNIEXPORT jstring JNICALL Java_sun_jvm_hotspot_debugger_linux_LinuxDebuggerLocal
   int status;
   jstring result = NULL;
 
-  const char *sym = env->GetStringUTFChars(jsym, JNI_FALSE);
+  const char *sym = env->GetStringUTFChars(jsym, NULL);
+  if (sym == NULL) {
+    THROW_NEW_DEBUGGER_EXCEPTION_("Error getting symbol string", NULL);
+  }
   char *demangled = abi::__cxa_demangle(sym, NULL, 0, &status);
   env->ReleaseStringUTFChars(jsym, sym);
   if ((demangled != NULL) && (status == 0)) {
@@ -607,4 +588,16 @@ JNIEXPORT jstring JNICALL Java_sun_jvm_hotspot_debugger_linux_LinuxDebuggerLocal
   }
 
   return result;
+}
+
+/*
+ * Class:     sun_jvm_hotspot_debugger_linux_LinuxDebuggerLocal
+ * Method:    findLibPtrByAddress0
+ * Signature: (J)J
+ */
+extern "C"
+JNIEXPORT jlong JNICALL Java_sun_jvm_hotspot_debugger_linux_LinuxDebuggerLocal_findLibPtrByAddress0
+  (JNIEnv *env, jobject this_obj, jlong pc) {
+  struct ps_prochandle* ph = get_proc_handle(env, this_obj);
+  return reinterpret_cast<jlong>(find_lib_by_address(ph, pc));
 }

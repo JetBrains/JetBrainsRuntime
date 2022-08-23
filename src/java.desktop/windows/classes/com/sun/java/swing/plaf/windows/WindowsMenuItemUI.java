@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,30 +25,40 @@
 
 package com.sun.java.swing.plaf.windows;
 
-import java.awt.*;
-import javax.swing.*;
-import javax.swing.plaf.*;
-import javax.swing.plaf.basic.*;
+import java.awt.Color;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Rectangle;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 
+import javax.swing.ButtonModel;
+import javax.swing.JComponent;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
+import javax.swing.UIManager;
+import javax.swing.plaf.ComponentUI;
+import javax.swing.plaf.UIResource;
+import javax.swing.plaf.basic.BasicMenuItemUI;
+
+import com.sun.java.swing.plaf.windows.TMSchema.Part;
+import com.sun.java.swing.plaf.windows.TMSchema.State;
+import com.sun.java.swing.plaf.windows.XPStyle.Skin;
+import sun.swing.MenuItemCheckIconFactory;
+import sun.swing.MenuItemLayoutHelper;
 import sun.swing.SwingUtilities2;
-
-import com.sun.java.swing.plaf.windows.TMSchema.*;
-import com.sun.java.swing.plaf.windows.XPStyle.*;
 
 /**
  * Windows rendition of the component.
- * <p>
- * <strong>Warning:</strong>
- * Serialized objects of this class will not be compatible with
- * future Swing releases.  The current serialization support is appropriate
- * for short term storage or RMI between applications running the same
- * version of Swing.  A future release of Swing will provide support for
- * long term persistence.
  *
  * @author Igor Kushnirskiy
  */
-
 public class WindowsMenuItemUI extends BasicMenuItemUI {
+    /**
+     * The instance of {@code PropertyChangeListener}.
+     */
+    private PropertyChangeListener changeListener;
+
     final WindowsMenuItemUIAccessor accessor =
         new  WindowsMenuItemUIAccessor() {
 
@@ -66,6 +76,60 @@ public class WindowsMenuItemUI extends BasicMenuItemUI {
     };
     public static ComponentUI createUI(JComponent c) {
         return new WindowsMenuItemUI();
+    }
+
+    private void updateCheckIcon() {
+        String prefix = getPropertyPrefix();
+
+        if (checkIcon == null ||
+                checkIcon instanceof UIResource) {
+            checkIcon = UIManager.getIcon(prefix + ".checkIcon");
+            //In case of column layout, .checkIconFactory is defined for this UI,
+            //the icon is compatible with it and useCheckAndArrow() is true,
+            //then the icon is handled by the checkIcon.
+            boolean isColumnLayout = MenuItemLayoutHelper.isColumnLayout(
+                    menuItem.getComponentOrientation().isLeftToRight(), menuItem);
+            if (isColumnLayout) {
+                MenuItemCheckIconFactory iconFactory =
+                        (MenuItemCheckIconFactory) UIManager.get(prefix
+                                + ".checkIconFactory");
+                if (iconFactory != null
+                        && MenuItemLayoutHelper.useCheckAndArrow(menuItem)
+                        && iconFactory.isCompatible(checkIcon, prefix)) {
+                    checkIcon = iconFactory.getIcon(menuItem);
+                }
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void installListeners() {
+        super.installListeners();
+        changeListener = new PropertyChangeListener() {
+            @Override
+            public void propertyChange(PropertyChangeEvent e) {
+                String name = e.getPropertyName();
+                if (name == "horizontalTextPosition") {
+                    updateCheckIcon();
+                }
+            }
+        };
+        menuItem.addPropertyChangeListener(changeListener);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void uninstallListeners() {
+        super.uninstallListeners();
+        if (changeListener != null) {
+            menuItem.removePropertyChangeListener(changeListener);
+        }
+        changeListener = null;
     }
 
     /**

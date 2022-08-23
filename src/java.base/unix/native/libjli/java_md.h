@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,11 +27,13 @@
 #define JAVA_MD_H
 
 /*
- * This file contains common defines and includes for Solaris, Linux and MacOSX.
+ * This file contains common defines and includes for unix.
  */
 #include <limits.h>
 #include <unistd.h>
 #include <sys/param.h>
+#include <dlfcn.h>
+#include <pthread.h>
 #include "manifest_info.h"
 #include "jli_util.h"
 
@@ -61,9 +63,11 @@ static jboolean GetJREPath(char *path, jint pathsize, jboolean speculative);
 #include "java_md_aix.h"
 #endif
 
-#ifdef MACOSX
-#include "java_md_macosx.h"
-#else  /* !MACOSX */
-#include "java_md_solinux.h"
-#endif /* MACOSX */
+#if defined(MACOSX)
+#include <crt_externs.h>
+#define environ (*_NSGetEnviron())
+#else
+extern char **environ;
+#endif
+
 #endif /* JAVA_MD_H */

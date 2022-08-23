@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,6 @@ import java.security.AccessController;
 
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.VM;
-import jdk.internal.module.IllegalAccessLogger;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.reflect.ReflectionFactory;
@@ -75,7 +74,6 @@ import sun.security.util.SecurityConstants;
  * @jls 6.6 Access Control
  * @since 1.2
  * @revised 9
- * @spec JPMS
  */
 public class AccessibleObject implements AnnotatedElement {
     static {
@@ -84,6 +82,7 @@ public class AccessibleObject implements AnnotatedElement {
     }
 
     static void checkPermission() {
+        @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             // SecurityConstants.ACCESS_PERMISSION is used to check
@@ -120,7 +119,6 @@ public class AccessibleObject implements AnnotatedElement {
      * @see SecurityManager#checkPermission
      * @see ReflectPermission
      * @revised 9
-     * @spec JPMS
      */
     @CallerSensitive
     public static void setAccessible(AccessibleObject[] array, boolean flag) {
@@ -176,6 +174,18 @@ public class AccessibleObject implements AnnotatedElement {
      * to the caller and the package containing the declaring class is not open
      * to the caller's module. </p>
      *
+     * <p> This method cannot be used to enable {@linkplain Field#set <em>write</em>}
+     * access to a <em>non-modifiable</em> final field.  The following fields
+     * are non-modifiable:
+     * <ul>
+     * <li>static final fields declared in any class or interface</li>
+     * <li>final fields declared in a {@linkplain Class#isHidden() hidden class}</li>
+     * <li>final fields declared in a {@linkplain Class#isRecord() record}</li>
+     * </ul>
+     * <p> The {@code accessible} flag when {@code true} suppresses Java language access
+     * control checks to only enable {@linkplain Field#get <em>read</em>} access to
+     * these non-modifiable final fields.
+     *
      * <p> If there is a security manager, its
      * {@code checkPermission} method is first called with a
      * {@code ReflectPermission("suppressAccessChecks")} permission.
@@ -186,7 +196,6 @@ public class AccessibleObject implements AnnotatedElement {
      * @see #trySetAccessible
      * @see java.lang.invoke.MethodHandles#privateLookupIn
      * @revised 9
-     * @spec JPMS
      */
     @CallerSensitive   // overrides in Method/Field/Constructor are @CS
     public void setAccessible(boolean flag) {
@@ -246,7 +255,6 @@ public class AccessibleObject implements AnnotatedElement {
      * @throws SecurityException if the request is denied by the security manager
      *
      * @since 9
-     * @spec JPMS
      * @see java.lang.invoke.MethodHandles#privateLookupIn
      */
     @CallerSensitive
@@ -316,7 +324,6 @@ public class AccessibleObject implements AnnotatedElement {
         if (isClassPublic && declaringModule.isExported(pn, callerModule)) {
             // member is public
             if (Modifier.isPublic(modifiers)) {
-                logIfExportedForIllegalAccess(caller, declaringClass);
                 return true;
             }
 
@@ -324,14 +331,12 @@ public class AccessibleObject implements AnnotatedElement {
             if (Modifier.isProtected(modifiers)
                 && Modifier.isStatic(modifiers)
                 && isSubclassOf(caller, declaringClass)) {
-                logIfExportedForIllegalAccess(caller, declaringClass);
                 return true;
             }
         }
 
         // package is open to caller
         if (declaringModule.isOpen(pn, callerModule)) {
-            logIfOpenedForIllegalAccess(caller, declaringClass);
             return true;
         }
 
@@ -365,30 +370,6 @@ public class AccessibleObject implements AnnotatedElement {
         return false;
     }
 
-    private void logIfOpenedForIllegalAccess(Class<?> caller, Class<?> declaringClass) {
-        Module callerModule = caller.getModule();
-        Module targetModule = declaringClass.getModule();
-        // callerModule is null during early startup
-        if (callerModule != null && !callerModule.isNamed() && targetModule.isNamed()) {
-            IllegalAccessLogger logger = IllegalAccessLogger.illegalAccessLogger();
-            if (logger != null) {
-                logger.logIfOpenedForIllegalAccess(caller, declaringClass, this::toShortString);
-            }
-        }
-    }
-
-    private void logIfExportedForIllegalAccess(Class<?> caller, Class<?> declaringClass) {
-        Module callerModule = caller.getModule();
-        Module targetModule = declaringClass.getModule();
-        // callerModule is null during early startup
-        if (callerModule != null && !callerModule.isNamed() && targetModule.isNamed()) {
-            IllegalAccessLogger logger = IllegalAccessLogger.illegalAccessLogger();
-            if (logger != null) {
-                logger.logIfExportedForIllegalAccess(caller, declaringClass, this::toShortString);
-            }
-        }
-    }
-
     /**
      * Returns a short descriptive string to describe this object in log messages.
      */
@@ -410,7 +391,6 @@ public class AccessibleObject implements AnnotatedElement {
      * it should use {@link #canAccess(Object)}.
      *
      * @revised 9
-     * @spec JPMS
      */
     @Deprecated(since="9")
     public boolean isAccessible() {
@@ -428,7 +408,7 @@ public class AccessibleObject implements AnnotatedElement {
      * <p> This method returns {@code true} if the {@code accessible} flag
      * is set to {@code true}, i.e. the checks for Java language access control
      * are suppressed, or if the caller can access the member as
-     * specified in <cite>The Java&trade; Language Specification</cite>,
+     * specified in <cite>The Java Language Specification</cite>,
      * with the variation noted in the class description. </p>
      *
      * @param obj an instance object of the declaring class of this reflected
@@ -447,7 +427,6 @@ public class AccessibleObject implements AnnotatedElement {
      *         </ul>
      *
      * @since 9
-     * @spec JPMS
      * @jls 6.6 Access Control
      * @see #trySetAccessible
      * @see #setAccessible(boolean)
@@ -491,6 +470,7 @@ public class AccessibleObject implements AnnotatedElement {
     /**
      * Constructor: only used by the Java Virtual Machine.
      */
+    @Deprecated(since="17")
     protected AccessibleObject() {}
 
     // Indicates whether language-level access checks are overridden
@@ -504,20 +484,32 @@ public class AccessibleObject implements AnnotatedElement {
     // Reflection factory used by subclasses for creating field,
     // method, and constructor accessors. Note that this is called
     // very early in the bootstrapping process.
+    @SuppressWarnings("removal")
     static final ReflectionFactory reflectionFactory =
         AccessController.doPrivileged(
             new ReflectionFactory.GetReflectionFactoryAction());
 
     /**
+     * {@inheritDoc}
+     *
+     * <p> Note that any annotation returned by this method is a
+     * declaration annotation.
+     *
+     * @implSpec
+     * The default implementation throws {@link
+     * UnsupportedOperationException}; subclasses should override this method.
+     *
      * @throws NullPointerException {@inheritDoc}
      * @since 1.5
      */
+    @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        throw new AssertionError("All subclasses should override this method");
+        throw new UnsupportedOperationException("All subclasses should override this method");
     }
 
     /**
      * {@inheritDoc}
+     *
      * @throws NullPointerException {@inheritDoc}
      * @since 1.5
      */
@@ -527,22 +519,42 @@ public class AccessibleObject implements AnnotatedElement {
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * <p> Note that any annotations returned by this method are
+     * declaration annotations.
+     *
+     * @implSpec
+     * The default implementation throws {@link
+     * UnsupportedOperationException}; subclasses should override this method.
+     *
      * @throws NullPointerException {@inheritDoc}
      * @since 1.8
      */
     @Override
     public <T extends Annotation> T[] getAnnotationsByType(Class<T> annotationClass) {
-        throw new AssertionError("All subclasses should override this method");
+        throw new UnsupportedOperationException("All subclasses should override this method");
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * <p> Note that any annotations returned by this method are
+     * declaration annotations.
+     *
      * @since 1.5
      */
+    @Override
     public Annotation[] getAnnotations() {
         return getDeclaredAnnotations();
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * <p> Note that any annotation returned by this method is a
+     * declaration annotation.
+     *
      * @throws NullPointerException {@inheritDoc}
      * @since 1.8
      */
@@ -555,6 +567,11 @@ public class AccessibleObject implements AnnotatedElement {
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * <p> Note that any annotations returned by this method are
+     * declaration annotations.
+     *
      * @throws NullPointerException {@inheritDoc}
      * @since 1.8
      */
@@ -567,10 +584,20 @@ public class AccessibleObject implements AnnotatedElement {
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * <p> Note that any annotations returned by this method are
+     * declaration annotations.
+     *
+     * @implSpec
+     * The default implementation throws {@link
+     * UnsupportedOperationException}; subclasses should override this method.
+     *
      * @since 1.5
      */
+    @Override
     public Annotation[] getDeclaredAnnotations()  {
-        throw new AssertionError("All subclasses should override this method");
+        throw new UnsupportedOperationException("All subclasses should override this method");
     }
 
     // Shared access checking logic.
@@ -602,7 +629,7 @@ public class AccessibleObject implements AnnotatedElement {
         }
 
         boolean isCacheFor(Class<?> caller, Class<?> refc) {
-            return callerRef.get() == caller && targetRef.get() == refc;
+            return callerRef.refersTo(caller) && targetRef.refersTo(refc);
         }
 
         static Object protectedMemberCallerCache(Class<?> caller, Class<?> refc) {
@@ -634,7 +661,7 @@ public class AccessibleObject implements AnnotatedElement {
         if (cache instanceof WeakReference) {
             @SuppressWarnings("unchecked")
             WeakReference<Class<?>> ref = (WeakReference<Class<?>>) cache;
-            return ref.get() == caller;
+            return ref.refersTo(caller);
         }
         return false;
     }
@@ -689,9 +716,6 @@ public class AccessibleObject implements AnnotatedElement {
             // access denied
             return false;
         }
-
-        // access okay
-        logIfExportedForIllegalAccess(caller, memberClass);
 
         // Success: Update the cache.
         Object cache = (targetClass != null

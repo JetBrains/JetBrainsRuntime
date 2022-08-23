@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.internal.misc.VM;
+import jdk.internal.misc.CDS;
 import jdk.internal.module.ModuleReferenceImpl;
 import jdk.internal.module.ModuleTarget;
 import jdk.internal.vm.annotation.Stable;
@@ -99,7 +99,6 @@ import jdk.internal.vm.annotation.Stable;
  * }</pre>
  *
  * @since 9
- * @spec JPMS
  * @see java.lang.ModuleLayer
  */
 public final class Configuration {
@@ -110,7 +109,7 @@ public final class Configuration {
 
     static {
         // Initialize EMPTY_CONFIGURATION from the archive.
-        VM.initializeFromArchive(Configuration.class);
+        CDS.initializeFromArchive(Configuration.class);
         // Create a new empty Configuration if there is no archived version.
         if (EMPTY_CONFIGURATION == null) {
             EMPTY_CONFIGURATION = new Configuration();
@@ -509,7 +508,7 @@ public final class Configuration {
 
     /**
      * Returns an unmodifiable list of this configuration's parents, in search
-     * order. If this is the {@linkplain #empty empty configuration} then an
+     * order. If this is the {@linkplain #empty() empty configuration} then an
      * empty list is returned.
      *
      * @return A possibly-empty unmodifiable list of this parent configurations
@@ -520,7 +519,7 @@ public final class Configuration {
 
 
     /**
-     * Returns an immutable set of the resolved modules in this configuration.
+     * Returns an unmodifiable set of the resolved modules in this configuration.
      *
      * @return A possibly-empty unmodifiable set of the resolved modules
      *         in this configuration

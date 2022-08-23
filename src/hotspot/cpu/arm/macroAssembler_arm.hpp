@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@
 #define CPU_ARM_MACROASSEMBLER_ARM_HPP
 
 #include "code/relocInfo.hpp"
+#include "utilities/powerOfTwo.hpp"
 
 class BiasedLockingCounters;
 
@@ -221,14 +222,6 @@ public:
   // returning false to preserve all relocation information.
   inline bool ignore_non_patchable_relocations() { return true; }
 
-  // Initially added to the Assembler interface as a pure virtual:
-  //   RegisterConstant delayed_value(..)
-  // for:
-  //   6812678 macro assembler needs delayed binding of a few constants (for 6655638)
-  // this was subsequently modified to its present name and return type
-  virtual RegisterOrConstant delayed_value_impl(intptr_t* delayed_value_addr, Register tmp, int offset);
-
-
   void align(int modulus);
 
   // Support for VM calls
@@ -374,18 +367,14 @@ public:
   // biased and we acquired it. Slow case label is branched to with
   // condition code NE set if the lock is biased but we failed to acquire
   // it. Otherwise fall through.
-  // Returns offset of first potentially-faulting instruction for null
-  // check info (currently consumed only by C1). If
-  // swap_reg_contains_mark is true then returns -1 as it is assumed
-  // the calling code has already passed any potential faults.
   // Notes:
   // - swap_reg and tmp_reg are scratched
   // - Rtemp was (implicitly) scratched and can now be specified as the tmp2
-  int biased_locking_enter(Register obj_reg, Register swap_reg, Register tmp_reg,
-                           bool swap_reg_contains_mark,
-                           Register tmp2,
-                           Label& done, Label& slow_case,
-                           BiasedLockingCounters* counters = NULL);
+  void biased_locking_enter(Register obj_reg, Register swap_reg, Register tmp_reg,
+                            bool swap_reg_contains_mark,
+                            Register tmp2,
+                            Label& done, Label& slow_case,
+                            BiasedLockingCounters* counters = NULL);
   void biased_locking_exit(Register obj_reg, Register temp_reg, Label& done);
 
   // Building block for CAS cases of biased locking: makes CAS and records statistics.
@@ -433,6 +422,26 @@ public:
 
   void fpops(FloatRegister fd, AsmCondition cond = al) {
     fldmias(SP, FloatRegisterSet(fd), writeback, cond);
+  }
+
+  void fpush(FloatRegisterSet reg_set) {
+    fstmdbd(SP, reg_set, writeback);
+  }
+
+  void fpop(FloatRegisterSet reg_set) {
+    fldmiad(SP, reg_set, writeback);
+  }
+
+  void fpush_hardfp(FloatRegisterSet reg_set) {
+#ifndef __SOFTFP__
+    fpush(reg_set);
+#endif
+  }
+
+  void fpop_hardfp(FloatRegisterSet reg_set) {
+#ifndef __SOFTFP__
+    fpop(reg_set);
+#endif
   }
 
   // Order access primitives
@@ -869,11 +878,6 @@ public:
   void access_load_at(BasicType type, DecoratorSet decorators, Address src, Register dst, Register tmp1, Register tmp2, Register tmp3);
   void access_store_at(BasicType type, DecoratorSet decorators, Address obj, Register new_val, Register tmp1, Register tmp2, Register tmp3, bool is_null);
 
-  // Resolves obj for access. Result is placed in the same register.
-  // All other registers are preserved.
-  void resolve(DecoratorSet decorators, Register obj);
-
-
   void ldr_global_ptr(Register reg, address address_of_global);
   void ldr_global_s32(Register reg, address address_of_global);
   void ldrb_global(Register reg, address address_of_global);
@@ -1047,11 +1051,6 @@ public:
                                Register temp_reg2,
                                Label& L_no_such_interface);
 
-  // Compare char[] arrays aligned to 4 bytes.
-  void char_arrays_equals(Register ary1, Register ary2,
-                          Register limit, Register result,
-                          Register chr1, Register chr2, Label& Ldone);
-
 
   void floating_cmp(Register dst);
 
@@ -1069,12 +1068,9 @@ public:
 
   void restore_default_fp_mode();
 
-#ifdef COMPILER2
-  void fast_lock(Register obj, Register box, Register scratch, Register scratch2, Register scratch3 = noreg);
-  void fast_unlock(Register obj, Register box, Register scratch, Register scratch2);
-#endif
-
-
+  void safepoint_poll(Register tmp1, Label& slow_path);
+  void get_polling_page(Register dest);
+  void read_polling_page(Register dest, relocInfo::relocType rtype);
 };
 
 

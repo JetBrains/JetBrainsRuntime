@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+#ifdef HEADLESS
+    #error This file should not be included in headless library
+#endif
+
 #ifndef _GTK_INTERFACE_H
 #define _GTK_INTERFACE_H
 
@@ -311,6 +316,7 @@ typedef enum
 {
     GTK_FONT_NAME,
     GTK_ICON_SIZES,
+    GTK_XFT_DPI,
     GTK_CURSOR_BLINK,
     GTK_CURSOR_BLINK_TIME
 } Setting;

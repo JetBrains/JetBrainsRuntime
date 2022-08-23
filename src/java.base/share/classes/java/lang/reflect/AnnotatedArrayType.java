@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ package java.lang.reflect;
  * array type, whose component type may itself represent the annotated use of a
  * type.
  *
+ * @jls 10.1 Array Types
  * @since 1.8
  */
 public interface AnnotatedArrayType extends AnnotatedType {
@@ -45,8 +46,8 @@ public interface AnnotatedArrayType extends AnnotatedType {
 
     /**
      * Returns the potentially annotated type that this type is a member of, if
-     * this type represents a nested type. For example, if this type is
-     * {@code @TA O<T>.I<S>}, return a representation of {@code @TA O<T>}.
+     * this type represents a nested class or interface. For example, if this
+     * type is {@code @TA O<T>.I<S>}, return a representation of {@code @TA O<T>}.
      *
      * <p>Returns {@code null} for an {@code AnnotatedType} that is an instance
      *     of {@code AnnotatedArrayType}.

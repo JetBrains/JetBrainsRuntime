@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -119,6 +119,18 @@ public class JavadocExamples {
                 .uri(URI.create("https://foo.com/"))
                 .POST(BodyPublishers.ofByteArray(new byte[] { /*...*/ }))
                 .build();
+
+        // HttpRequest.Builder
+        // API note - newBuilder(HttpRequest, BiPredicate<String, String>)
+        // Retain all headers:
+        HttpRequest.newBuilder(request, (n, v) -> true);
+
+        //Remove all headers:
+        HttpRequest.newBuilder(request, (n, v) -> false);
+
+        // Remove a particular header (e.g. Foo-Bar):
+        HttpRequest.newBuilder(request, (name, value) ->
+                !name.equalsIgnoreCase("Foo-Bar"));
     }
 
     void fromHttpResponse() throws Exception {
@@ -165,8 +177,8 @@ public class JavadocExamples {
 
         // HttpResponse.BodySubscribers class-level description
         // Streams the response body to a File
-        HttpResponse<byte[]> response5 = client
-                .send(request, responseInfo -> BodySubscribers.ofByteArray());
+        HttpResponse<Path> response5 = client
+                .send(request, responseInfo -> BodySubscribers.ofFile(Paths.get("example.html")));
 
         // Accumulates the response body and returns it as a byte[]
         HttpResponse<byte[]> response6 = client

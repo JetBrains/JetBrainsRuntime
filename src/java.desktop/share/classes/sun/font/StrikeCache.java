@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package sun.font;
 
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
+import java.lang.annotation.Native;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
@@ -61,6 +62,7 @@ free native memory resources.
 
  */
 
+@SuppressWarnings("removal")
 public final class StrikeCache {
 
     static final Unsafe unsafe = Unsafe.getUnsafe();
@@ -114,7 +116,15 @@ public final class StrikeCache {
     static int pixelDataOffset;
     static int cacheCellOffset;
     static int managedOffset;
+    static int subpixelResolutionXOffset;
+    static int subpixelResolutionYOffset;
+    static int formatOffset;
     static long invisibleGlyphPtr;
+
+    @Native public static final byte PIXEL_FORMAT_UNKNOWN   = -1;
+    @Native public static final byte PIXEL_FORMAT_GREYSCALE = 1;
+    @Native public static final byte PIXEL_FORMAT_LCD       = 3;
+    @Native public static final byte PIXEL_FORMAT_BGRA      = 4;
 
     /* Native method used to return information used for unsafe
      * access to native data.
@@ -130,12 +140,17 @@ public final class StrikeCache {
      * arr[8] = offset of topLeftY
      * arr[9] = offset of pixel data.
      * arr[10] = address of a GlyphImageRef representing the invisible glyph
+     * arr[11] = offset of cellInfo
+     * arr[12] = offset of managed
+     * arr[13] = offset of subpixelResolutionX
+     * arr[14] = offset of subpixelResolutionY
+     * arr[15] = offset of format
      */
     static native void getGlyphCacheDescription(long[] infoArray);
 
     static {
 
-        long[] nativeInfo = new long[13];
+        long[] nativeInfo = new long[16];
         getGlyphCacheDescription(nativeInfo);
         //Can also get address size from Unsafe class :-
         //nativeAddressSize = unsafe.addressSize();
@@ -152,6 +167,9 @@ public final class StrikeCache {
         invisibleGlyphPtr = nativeInfo[10];
         cacheCellOffset = (int) nativeInfo[11];
         managedOffset = (int) nativeInfo[12];
+        subpixelResolutionXOffset = (int) nativeInfo[13];
+        subpixelResolutionYOffset = (int) nativeInfo[14];
+        formatOffset = (int) nativeInfo[15];
 
         if (nativeAddressSize < 4) {
             throw new InternalError("Unexpected address size for font data: " +

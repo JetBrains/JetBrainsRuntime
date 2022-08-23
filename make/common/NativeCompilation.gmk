@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -72,10 +72,10 @@ define WriteCompileCommandsFragment
   $(call LogInfo, Creating compile commands fragment for $(notdir $3))
   $(call MakeDir, $(dir $1))
   $(call WriteFile,{ \
-      "directory": "$(strip $2)"$(COMMA) \
-      "file": "$(strip $3)"$(COMMA) \
+      "directory": "$(strip $(call FixPath, $2))"$(COMMA) \
+      "file": "$(strip $(call FixPath, $3))"$(COMMA) \
       "command": "$(strip $(subst $(DQUOTE),\$(DQUOTE),$(subst \,\\,\
-        $(subst $(FIXPATH),,$4))))" \
+        $(subst $(FIXPATH),,$(call FixPath, $4)))))" \
     }$(COMMA), \
     $1)
 endef
@@ -163,7 +163,7 @@ $(eval $(call DefineNativeToolchain, TOOLCHAIN_BUILD_LINK_CXX, \
 ################################################################################
 
 # Extensions of files handled by this macro.
-NATIVE_SOURCE_EXTENSIONS := %.s %.S %.c %.cpp %.cc %.m %.mm
+NATIVE_SOURCE_EXTENSIONS := %.S %.c %.cpp %.cc %.m %.mm
 
 # Replaces native source extensions with the object file extension in a string.
 # Param 1: the string containing source file names with extensions
@@ -175,12 +175,6 @@ $(strip \
 )
 endef
 
-ifeq ($(call isBuildOsEnv, windows.cygwin), true)
-  UNIX_PATH_PREFIX := /cygdrive
-else ifeq ($(call isBuildOsEnv, windows.msys), true)
-  UNIX_PATH_PREFIX :=
-endif
-
 # This pattern is used to transform the output of the microsoft CL compiler
 # into a make syntax dependency file (.d)
 WINDOWS_SHOWINCLUDE_SED_PATTERN := \
@@ -188,7 +182,7 @@ WINDOWS_SHOWINCLUDE_SED_PATTERN := \
     -e 's|Note: including file: *||' \
     -e 's|\r||g' \
     -e 's|\\|/|g' \
-    -e 's|^\([a-zA-Z]\):|$(UNIX_PATH_PREFIX)/\1|g' \
+    -e 's|^\([a-zA-Z]\):|$(WINENV_PREFIX)/\1|g' \
     -e '\|$(TOPDIR)|I !d' \
     -e 's|$$$$| \\|g' \
     #
@@ -205,6 +199,82 @@ DEPENDENCY_TARGET_SED_PATTERN := \
     #
 
 ################################################################################
+# When absolute paths are not allowed in the output, and the compiler does not
+# support any options to avoid it, we need to rewrite compile commands to use
+# relative paths. By doing this, the __FILE__ macro will resolve to relative
+# paths. The relevant input paths on the command line are the -I flags and the
+# path to the source file itself.
+#
+# The macro MakeCommandRelative is used to rewrite the command line like this:
+# 'CD $(WORKSPACE_ROOT) && <cmd>'
+# and changes all paths in cmd to be relative to the workspace root. This only
+# works properly if the build dir is inside the workspace root. If it's not,
+# relative paths are still calculated, but depending on the distance between the
+# dirs, paths in the build dir may end up as essentially absolute anyway.
+#
+# The fix-deps-file macro is used to adjust the contents of the generated make
+# dependency files to contain paths compatible with make.
+#
+ifeq ($(ALLOW_ABSOLUTE_PATHS_IN_OUTPUT)-$(FILE_MACRO_CFLAGS), false-)
+  # Need to handle -I flags as both '-Ifoo' and '-I foo'.
+  MakeCommandRelative = \
+      $(CD) $(WORKSPACE_ROOT) && \
+      $(foreach o, $1, \
+        $(if $(filter $(WORKSPACE_ROOT)/% $(OUTPUTDIR)/%, $o), \
+          $(call RelativePath, $o, $(WORKSPACE_ROOT)) \
+        , \
+          $(if $(filter -I$(WORKSPACE_ROOT)/%, $o), \
+            -I$(call RelativePath, $(patsubst -I%, %, $o), $(WORKSPACE_ROOT)) \
+          , \
+            $o \
+          ) \
+        ) \
+      )
+
+  # When compiling with relative paths, the deps file may come out with relative
+  # paths, and that path may start with './'. First remove any leading ./, then
+  # add WORKSPACE_ROOT to any line not starting with /, while allowing for
+  # leading spaces. There may also be multiple entries on the same line, so start
+  # with splitting such lines.
+  # Non GNU sed (BSD on macosx) cannot substitue in literal \n using regex.
+  # Instead use a bash escaped literal newline. To avoid having unmatched quotes
+  # ruin the ability for an editor to properly syntax highlight this file, define
+  # that newline sequence as a separate variable and add the closing quote behind
+  # a comment.
+  sed_newline := \'$$'\n''#'
+  define fix-deps-file
+	$(SED) \
+	    -e 's|\([^ ]\) \{1,\}\([^\\:]\)|\1 \\$(sed_newline) \2|g' \
+	    $1.tmp \
+	    | $(SED) \
+	        -e 's|^\([ ]*\)\./|\1|' \
+	        -e '/^[ ]*[^/ ]/s|^\([ ]*\)|\1$(WORKSPACE_ROOT)/|' \
+	        > $1
+  endef
+else
+  # By default the MakeCommandRelative macro does nothing.
+  MakeCommandRelative = $1
+
+  # No adjustment is needed.
+  define fix-deps-file
+	$(MV) $1.tmp $1
+  endef
+endif
+
+################################################################################
+# GetEntitlementsFile
+# Find entitlements file for executable when signing on macosx. If no
+# specialized file is found, returns the default file.
+# $1 Executable to find entitlements file for.
+ENTITLEMENTS_DIR := $(TOPDIR)/make/data/macosxsigning
+DEFAULT_ENTITLEMENTS_FILE := $(ENTITLEMENTS_DIR)/default.plist
+
+GetEntitlementsFile = \
+    $(foreach f, $(ENTITLEMENTS_DIR)/$(strip $(notdir $1)).plist, \
+      $(if $(wildcard $f), $f, $(DEFAULT_ENTITLEMENTS_FILE)) \
+    )
+
+################################################################################
 # Create the recipe needed to compile a single native source file.
 #
 # Parameter 1 is the name of the rule, based on the name of the library/
@@ -214,7 +284,6 @@ DEPENDENCY_TARGET_SED_PATTERN := \
 # Remaining parameters are named arguments:
 #   FILE - The full path of the source file to compiler
 #   BASE - The name of the rule for the entire binary to build ($1)
-#   DISABLE_THIS_FILE_DEFINE - Set to true to disable the THIS_FILE define.
 #
 SetupCompileNativeFile = $(NamedParamsMacroTemplate)
 define SetupCompileNativeFileBody
@@ -235,12 +304,6 @@ define SetupCompileNativeFileBody
     $1_OBJ_PROCESSED := true
     # This is the definite source file to use for $1_FILENAME.
     $1_SRC_FILE := $$($1_FILE)
-
-    ifneq ($$($1_DEFINE_THIS_FILE), false)
-      ifneq ($$($$($1_BASE)_DEFINE_THIS_FILE), false)
-        $1_THIS_FILE = -DTHIS_FILE='"$$($1_FILENAME)"'
-      endif
-    endif
 
     ifeq ($$($1_OPTIMIZATION), )
       $1_OPT_CFLAGS := $$($$($1_BASE)_OPT_CFLAGS)
@@ -284,44 +347,52 @@ define SetupCompileNativeFileBody
     ifneq ($$(filter %.c, $$($1_FILENAME)), )
       # Compile as a C file
       $1_FLAGS := $(CFLAGS_CCACHE) $$($1_USE_PCH_FLAGS) $$($1_BASE_CFLAGS) \
-          $$($1_OPT_CFLAGS) $$($1_CFLAGS) $$($1_THIS_FILE) -c
+          $$($1_OPT_CFLAGS) $$($1_CFLAGS) -c
       $1_COMPILER := $$($$($1_BASE)_CC)
-      $1_DEP_FLAG := $(C_FLAG_DEPS)
     else ifneq ($$(filter %.m, $$($1_FILENAME)), )
       # Compile as an Objective-C file
       $1_FLAGS := -x objective-c $(CFLAGS_CCACHE) $$($1_USE_PCH_FLAGS) \
-          $$($1_BASE_CFLAGS) $$($1_OPT_CFLAGS) $$($1_CFLAGS) $$($1_THIS_FILE) -c
+          $$($1_BASE_CFLAGS) $$($1_OPT_CFLAGS) $$($1_CFLAGS) -c
       $1_COMPILER := $$($$($1_BASE)_CC)
-      $1_DEP_FLAG := $(C_FLAG_DEPS)
-    else ifneq ($$(filter %.s %.S, $$($1_FILENAME)), )
-      # Compile as assembler file
-      $1_FLAGS := $$($1_BASE_ASFLAGS)
+    else ifneq ($$(filter %.S, $$($1_FILENAME)), )
+      # Compile as preprocessed assembler file
+      $1_FLAGS := $(BASIC_ASFLAGS) $$($1_BASE_ASFLAGS)
       $1_COMPILER := $(AS)
-      $1_DEP_FLAG :=
+
+      # gcc or clang assembly files must contain an appropriate relative .file
+      # path for reproducible builds.
+      ifneq ($(findstring $(TOOLCHAIN_TYPE), gcc clang), )
+        # If no absolute paths allowed, work out relative source file path
+        # for assembly .file substitution, otherwise use full file path
+        ifeq ($(ALLOW_ABSOLUTE_PATHS_IN_OUTPUT), false)
+          $1_REL_ASM_SRC := $$(call RelativePath, $$($1_FILE), $(WORKSPACE_ROOT))
+        else
+          $1_REL_ASM_SRC := $$($1_FILE)
+        endif
+        $1_FLAGS := $$($1_FLAGS) -DASSEMBLY_SRC_FILE='"$$($1_REL_ASM_SRC)"' \
+            -include $(TOPDIR)/make/data/autoheaders/assemblyprefix.h
+      endif
     else ifneq ($$(filter %.cpp %.cc %.mm, $$($1_FILENAME)), )
       # Compile as a C++ or Objective-C++ file
       $1_FLAGS := $(CFLAGS_CCACHE) $$($1_USE_PCH_FLAGS) $$($1_BASE_CXXFLAGS) \
-          $$($1_OPT_CXXFLAGS) $$($1_CXXFLAGS) $$($1_THIS_FILE) -c
+          $$($1_OPT_CXXFLAGS) $$($1_CXXFLAGS) -c
       $1_COMPILER := $$($$($1_BASE)_CXX)
-      $1_DEP_FLAG := $(CXX_FLAG_DEPS)
     else
       $$(error Internal error in NativeCompilation.gmk: no compiler for file $$($1_FILENAME))
     endif
 
-    ifeq ($$(filter %.s %.S, $$($1_FILENAME)), )
-      # And this is the dependency file for this obj file.
-      $1_DEPS_FILE := $$(patsubst %$(OBJ_SUFFIX),%.d,$$($1_OBJ))
-      # The dependency target file lists all dependencies as empty targets to
-      # avoid make error "No rule to make target" for removed files
-      $1_DEPS_TARGETS_FILE := $$(patsubst %$(OBJ_SUFFIX),%.d.targets,$$($1_OBJ))
+    # And this is the dependency file for this obj file.
+    $1_DEPS_FILE := $$(patsubst %$(OBJ_SUFFIX),%.d,$$($1_OBJ))
+    # The dependency target file lists all dependencies as empty targets to
+    # avoid make error "No rule to make target" for removed files
+    $1_DEPS_TARGETS_FILE := $$(patsubst %$(OBJ_SUFFIX),%.d.targets,$$($1_OBJ))
 
-      # Only try to load individual dependency information files if the global
-      # file hasn't been loaded (could happen if make was interrupted).
-      ifneq ($$($$($1_BASE)_DEPS_FILE_LOADED), true)
-        # Include previously generated dependency information. (if it exists)
-        -include $$($1_DEPS_FILE)
-        -include $$($1_DEPS_TARGETS_FILE)
-      endif
+    # Only try to load individual dependency information files if the global
+    # file hasn't been loaded (could happen if make was interrupted).
+    ifneq ($$($$($1_BASE)_DEPS_FILE_LOADED), true)
+      # Include previously generated dependency information. (if it exists)
+      -include $$($1_DEPS_FILE)
+      -include $$($1_DEPS_TARGETS_FILE)
     endif
 
     ifneq ($$(strip $$($1_CFLAGS) $$($1_CXXFLAGS) $$($1_OPTIMIZATION)), )
@@ -332,6 +403,13 @@ define SetupCompileNativeFileBody
     $1_OBJ_DEPS := $$($1_SRC_FILE) $$($$($1_BASE)_COMPILE_VARDEPS_FILE) \
         $$($$($1_BASE)_EXTRA_DEPS) $$($1_VARDEPS_FILE)
     $1_COMPILE_OPTIONS := $$($1_FLAGS) $(CC_OUT_OPTION)$$($1_OBJ) $$($1_SRC_FILE)
+    # For reproducible builds with gcc and clang ensure random symbol generation is
+    # seeded deterministically
+    ifneq ($(findstring $(TOOLCHAIN_TYPE), gcc clang), )
+       ifeq ($$(ENABLE_REPRODUCIBLE_BUILD), true)
+         $1_COMPILE_OPTIONS += -frandom-seed="$$($1_FILENAME)"
+       endif
+    endif
 
     $$($1_OBJ_JSON): $$($1_OBJ_DEPS)
 	$$(call WriteCompileCommandsFragment, $$@, $$(PWD), $$($1_SRC_FILE), \
@@ -341,21 +419,17 @@ define SetupCompileNativeFileBody
 	$$(call LogInfo, Compiling $$($1_FILENAME) (for $$($$($1_BASE)_BASENAME)))
 	$$(call MakeDir, $$(@D))
         ifneq ($(TOOLCHAIN_TYPE), microsoft)
-          ifeq ($(TOOLCHAIN_TYPE)$$(filter %.s, $$($1_FILENAME)), solstudio)
-            # The Solaris studio compiler doesn't output the full path to the
-            # object file in the generated deps files. Fixing it with sed. If
-            # compiling assembly, don't try this.
-	    $$(call ExecuteWithLog, $$@, \
-	        $$($1_COMPILER) $$($1_DEP_FLAG) $$($1_DEPS_FILE).tmp $$($1_COMPILE_OPTIONS))
-	    $(SED) 's|^$$(@F):|$$@:|' $$($1_DEPS_FILE).tmp > $$($1_DEPS_FILE)
-          else
-	    $$(call ExecuteWithLog, $$@, \
-	        $$($1_COMPILER) $$($1_DEP_FLAG) $$($1_DEPS_FILE) $$($1_COMPILE_OPTIONS))
-          endif
-          # Create a dependency target file from the dependency file.
-          # Solution suggested by http://make.mad-scientist.net/papers/advanced-auto-dependency-generation/
+	  $$(call ExecuteWithLog, $$@, $$(call MakeCommandRelative, \
+	      $$($1_COMPILER) $$(GENDEPS_FLAGS) \
+	      $$(addsuffix .tmp, $$($1_DEPS_FILE)) \
+	      $$($1_COMPILE_OPTIONS)))
           ifneq ($$($1_DEPS_FILE), )
-	    $(SED) $(DEPENDENCY_TARGET_SED_PATTERN) $$($1_DEPS_FILE) > $$($1_DEPS_TARGETS_FILE)
+	    $$(call fix-deps-file, $$($1_DEPS_FILE))
+            # Create a dependency target file from the dependency file.
+            # Solution suggested by:
+            # http://make.mad-scientist.net/papers/advanced-auto-dependency-generation/
+	    $(SED) $(DEPENDENCY_TARGET_SED_PATTERN) $$($1_DEPS_FILE) \
+	        > $$($1_DEPS_TARGETS_FILE)
           endif
         else
           # The Visual Studio compiler lacks a feature for generating make
@@ -365,15 +439,25 @@ define SetupCompileNativeFileBody
           # Keep as much as possible on one execution line for best performance
           # on Windows. No need to save exit code from compilation since
           # pipefail is always active on Windows.
-	  $$(call ExecuteWithLog, $$@, \
-	      $$($1_COMPILER) -showIncludes $$($1_COMPILE_OPTIONS)) \
-	      | $(TR) -d '\r' | $(GREP) -v -e "^Note: including file:" \
-	          -e "^$$($1_FILENAME)$$$$" || test "$$$$?" = "1" ; \
-	  $(ECHO) $$@: \\ > $$($1_DEPS_FILE) ; \
-	  $(SED) $(WINDOWS_SHOWINCLUDE_SED_PATTERN) $$($1_OBJ).log \
-	      | $(SORT) -u >> $$($1_DEPS_FILE) ; \
-	  $(ECHO) >> $$($1_DEPS_FILE) ; \
-	  $(SED) $(DEPENDENCY_TARGET_SED_PATTERN) $$($1_DEPS_FILE) > $$($1_DEPS_TARGETS_FILE)
+          ifeq ($$(filter %.S, $$($1_FILENAME)), )
+	    $$(call ExecuteWithLog, $$@, $$(call MakeCommandRelative, \
+	        $$($1_COMPILER) -showIncludes $$($1_COMPILE_OPTIONS))) \
+	        | $(TR) -d '\r' | $(GREP) -v -e "^Note: including file:" \
+	            -e "^$$($1_FILENAME)$$$$" || test "$$$$?" = "1" ; \
+	    $(ECHO) $$@: \\ > $$($1_DEPS_FILE) ; \
+	    $(SED) $(WINDOWS_SHOWINCLUDE_SED_PATTERN) $$($1_OBJ).log \
+	        | $(SORT) -u >> $$($1_DEPS_FILE) ; \
+	    $(ECHO) >> $$($1_DEPS_FILE) ; \
+	    $(SED) $(DEPENDENCY_TARGET_SED_PATTERN) $$($1_DEPS_FILE) > $$($1_DEPS_TARGETS_FILE)
+          else
+            # For assembler calls just create empty dependency lists
+	    $$(call ExecuteWithLog, $$@, $$(call MakeCommandRelative, \
+	        $$($1_COMPILER) $$($1_FLAGS) \
+	        $(CC_OUT_OPTION)$$($1_OBJ) -Ta $$($1_SRC_FILE))) \
+	        | $(TR) -d '\r' | $(GREP) -v -e "Assembling:" || test "$$$$?" = "1" ; \
+	    $(ECHO) > $$($1_DEPS_FILE) ; \
+	    $(ECHO) > $$($1_DEPS_TARGETS_FILE)
+          endif
         endif
   endif
 endef
@@ -407,10 +491,9 @@ endef
 #   EXTRA_OBJECT_FILES List of extra object files to include when linking
 #   EXTRA_DEPS List of extra dependencies to be added to each compiled file
 #   VERSIONINFO_RESOURCE Input file for RC. Setting this implies that RC will be run
-#   RC_FLAGS flags for RC.
+#   RCFLAGS flags for RC.
 #   EMBED_MANIFEST if true, embed manifest on Windows.
 #   MAPFILE mapfile
-#   REORDER reorder file
 #   USE_MAPFILE_FOR_SYMBOLS if true and this is a STATIC_BUILD, just copy the
 #       mapfile for the output symbols file
 #   CC the compiler to use, default is $(CC)
@@ -430,7 +513,6 @@ endef
 #   STRIPFLAGS Optionally change the flags given to the strip command
 #   PRECOMPILED_HEADER Header file to use as precompiled header
 #   PRECOMPILED_HEADER_EXCLUDE List of source files that should not use PCH
-#   DEFINE_THIS_FILE Set to false to not set the THIS_FILE preprocessor macro
 #
 # After being called, some variables are exported from this macro, all prefixed
 # with parameter 1 followed by a '_':
@@ -479,7 +561,7 @@ define SetupNativeCompilationBody
   ifeq ($$($1_TYPE), EXECUTABLE)
     $1_PREFIX :=
     ifeq ($$($1_SUFFIX), )
-      $1_SUFFIX := $(EXE_SUFFIX)
+      $1_SUFFIX := $(EXECUTABLE_SUFFIX)
     endif
   else
     $1_PREFIX := $(LIBRARY_PREFIX)
@@ -649,11 +731,6 @@ define SetupNativeCompilationBody
     $1_EXTRA_ASFLAGS += $$(ASFLAGS_DEBUG_SYMBOLS)
   endif
 
-  ifneq ($$($1_REORDER), )
-    $1_EXTRA_CFLAGS += $$(C_FLAG_REORDER)
-    $1_EXTRA_CXXFLAGS += $$(C_FLAG_REORDER)
-  endif
-
   # Pass the library name for static JNI library naming
   ifeq ($$($1_TYPE), STATIC_LIBRARY)
     $1_EXTRA_CFLAGS += -DLIBRARY_NAME=$$($1_NAME)
@@ -687,7 +764,6 @@ define SetupNativeCompilationBody
   ifeq ($$($1_WARNINGS_AS_ERRORS_$(TOOLCHAIN_TYPE)), true)
     $1_EXTRA_CFLAGS += $(CFLAGS_WARNINGS_ARE_ERRORS)
     $1_EXTRA_CXXFLAGS += $(CFLAGS_WARNINGS_ARE_ERRORS)
-    $1_EXTRA_LDFLAGS += $(LDFLAGS_WARNINGS_ARE_ERRORS)
   endif
 
   ifeq (NONE, $$($1_OPTIMIZATION))
@@ -734,7 +810,6 @@ define SetupNativeCompilationBody
             FILE := $$($1_GENERATED_PCH_SRC), \
             BASE := $1, \
             EXTRA_CXXFLAGS := -Fp$$($1_PCH_FILE) -Yc$$(notdir $$($1_PRECOMPILED_HEADER)), \
-            DEFINE_THIS_FILE := false, \
         ))
 
         $1_USE_PCH_FLAGS := \
@@ -764,12 +839,15 @@ define SetupNativeCompilationBody
         -include $$($1_PCH_DEPS_TARGETS_FILE)
 
         $1_PCH_COMMAND := $$($1_CC) $$($1_CFLAGS) $$($1_EXTRA_CFLAGS) $$($1_SYSROOT_CFLAGS) \
-            $$($1_OPT_CFLAGS) -x c++-header -c $(C_FLAG_DEPS) $$($1_PCH_DEPS_FILE)
+            $$($1_OPT_CFLAGS) -x c++-header -c $(GENDEPS_FLAGS) \
+            $$(addsuffix .tmp, $$($1_PCH_DEPS_FILE))
 
         $$($1_PCH_FILE): $$($1_PRECOMPILED_HEADER) $$($1_COMPILE_VARDEPS_FILE)
 		$$(call LogInfo, Generating precompiled header)
 		$$(call MakeDir, $$(@D))
-		$$(call ExecuteWithLog, $$@, $$($1_PCH_COMMAND) $$< -o $$@)
+		$$(call ExecuteWithLog, $$@, $$(call MakeCommandRelative, \
+		    $$($1_PCH_COMMAND) $$< -o $$@))
+		$$(call fix-deps-file, $$($1_PCH_DEPS_FILE))
 		$(SED) $(DEPENDENCY_TARGET_SED_PATTERN) $$($1_PCH_DEPS_FILE) \
 		    > $$($1_PCH_DEPS_TARGETS_FILE)
 
@@ -818,23 +896,23 @@ define SetupNativeCompilationBody
       -include $$($1_RES_DEPS_FILE)
       -include $$($1_RES_DEPS_TARGETS_FILE)
 
-      $1_RES_VARDEPS := $$($1_RC) $$($1_RC_FLAGS)
+      $1_RES_VARDEPS := $$($1_RC) $$($1_RCFLAGS)
       $1_RES_VARDEPS_FILE := $$(call DependOnVariable, $1_RES_VARDEPS, \
           $$($1_RES).vardeps)
 
       $$($1_RES): $$($1_VERSIONINFO_RESOURCE) $$($1_RES_VARDEPS_FILE)
 		$$(call LogInfo, Compiling resource $$(notdir $$($1_VERSIONINFO_RESOURCE)) (for $$($1_BASENAME)))
 		$$(call MakeDir, $$(@D) $$($1_OBJECT_DIR))
-		$$(call ExecuteWithLog, $$@, \
-		    $$($1_RC) $$($1_RC_FLAGS) $$($1_SYSROOT_CFLAGS) $(CC_OUT_OPTION)$$@ \
-		    $$($1_VERSIONINFO_RESOURCE) 2>&1 )
+		$$(call ExecuteWithLog, $$@, $$(call MakeCommandRelative, \
+		    $$($1_RC) $$($1_RCFLAGS) $$($1_SYSROOT_CFLAGS) $(CC_OUT_OPTION)$$@ \
+		    $$($1_VERSIONINFO_RESOURCE) 2>&1 ))
                 # Windows RC compiler does not support -showIncludes, so we mis-use CL
                 # for this. Filter out RC specific arguments that are unknown to CL.
                 # For some unknown reason, in this case CL actually outputs the show
                 # includes to stderr so need to redirect it to hide the output from the
                 # main log.
 		$$(call ExecuteWithLog, $$($1_RES_DEPS_FILE).obj, \
-		    $$($1_CC) $$(filter-out -l%, $$($1_RC_FLAGS)) \
+		    $$($1_CC) $$(filter-out -l%, $$($1_RCFLAGS)) \
 		        $$($1_SYSROOT_CFLAGS) -showIncludes -nologo -TC \
 		        $(CC_OUT_OPTION)$$($1_RES_DEPS_FILE).obj -P -Fi$$($1_RES_DEPS_FILE).pp \
 		        $$($1_VERSIONINFO_RESOURCE)) 2>&1 \
@@ -879,17 +957,6 @@ define SetupNativeCompilationBody
 
   ifneq ($(DISABLE_MAPFILES), true)
     $1_REAL_MAPFILE := $$($1_MAPFILE)
-    ifeq ($(call isTargetOs, windows), false)
-      ifneq ($$($1_REORDER), )
-        $1_REAL_MAPFILE := $$($1_OBJECT_DIR)/mapfile
-
-        $$($1_REAL_MAPFILE) : $$($1_MAPFILE) $$($1_REORDER)
-		$$(call MakeDir, $$(@D))
-		$$(CP) $$($1_MAPFILE) $$@.tmp
-		$$(SED) -e 's=OUTPUTDIR=$$($1_OBJECT_DIR)=' $$($1_REORDER) >> $$@.tmp
-		$$(MV) $$@.tmp $$@
-      endif
-    endif
   endif
 
   # Pickup extra OPENJDK_TARGET_OS_TYPE and/or OPENJDK_TARGET_OS dependent variables
@@ -917,10 +984,13 @@ define SetupNativeCompilationBody
         ifeq ($(call isTargetOs, windows), true)
           $1_EXTRA_LDFLAGS += -debug "-pdb:$$($1_SYMBOLS_DIR)/$$($1_NOSUFFIX).pdb" \
               "-map:$$($1_SYMBOLS_DIR)/$$($1_NOSUFFIX).map"
+          ifeq ($(SHIP_DEBUG_SYMBOLS), public)
+            $1_EXTRA_LDFLAGS += "-pdbstripped:$$($1_SYMBOLS_DIR)/$$($1_NOSUFFIX).stripped.pdb"
+          endif
           $1_DEBUGINFO_FILES := $$($1_SYMBOLS_DIR)/$$($1_NOSUFFIX).pdb \
               $$($1_SYMBOLS_DIR)/$$($1_NOSUFFIX).map
 
-        else ifeq ($(call isTargetOs, linux solaris), true)
+        else ifeq ($(call isTargetOs, linux), true)
           $1_DEBUGINFO_FILES := $$($1_SYMBOLS_DIR)/$$($1_NOSUFFIX).debuginfo
           # Setup the command line creating debuginfo files, to be run after linking.
           # It cannot be run separately since it updates the original target file
@@ -928,6 +998,13 @@ define SetupNativeCompilationBody
               $$($1_OBJCOPY) --only-keep-debug $$($1_TARGET) $$($1_DEBUGINFO_FILES) $$(NEWLINE) \
               $(CD) $$($1_SYMBOLS_DIR) && \
                   $$($1_OBJCOPY) --add-gnu-debuglink=$$($1_DEBUGINFO_FILES) $$($1_TARGET)
+
+        else ifeq ($(call isTargetOs, aix), true)
+          # AIX does not provide the equivalent of OBJCOPY to extract debug symbols,
+          # so we copy the compiled object with symbols to the .debuginfo file, which
+          # happens prior to the STRIP_CMD on the original target object file.
+          $1_DEBUGINFO_FILES := $$($1_SYMBOLS_DIR)/$$($1_NOSUFFIX).debuginfo
+          $1_CREATE_DEBUGINFO_CMDS := $(CP) $$($1_TARGET) $$($1_DEBUGINFO_FILES)
 
         else ifeq ($(call isTargetOs, macosx), true)
           $1_DEBUGINFO_FILES := \
@@ -983,7 +1060,7 @@ define SetupNativeCompilationBody
   endif
 
   ifeq ($$($1_TYPE), STATIC_LIBRARY)
-    $1_VARDEPS := $$($1_AR) $$($1_ARFLAGS) $$($1_LIBS) \
+    $1_VARDEPS := $$($1_AR) $$(ARFLAGS) $$($1_ARFLAGS) $$($1_LIBS) \
         $$($1_EXTRA_LIBS)
     $1_VARDEPS_FILE := $$(call DependOnVariable, $1_VARDEPS, \
         $$($1_OBJECT_DIR)/$$($1_NOSUFFIX).vardeps)
@@ -1001,7 +1078,7 @@ define SetupNativeCompilationBody
 	$$(call LogInfo, Building static library $$($1_BASENAME))
 	$$(call MakeDir, $$($1_OUTPUT_DIR) $$($1_SYMBOLS_DIR))
 	$$(call ExecuteWithLog, $$($1_OBJECT_DIR)/$$($1_SAFE_NAME)_link, \
-	    $$($1_AR) $$($1_ARFLAGS) $(AR_OUT_OPTION)$$($1_TARGET) $$($1_ALL_OBJS) \
+	    $$($1_AR) $$(ARFLAGS) $$($1_ARFLAGS) $(AR_OUT_OPTION)$$($1_TARGET) $$($1_ALL_OBJS) \
 	        $$($1_RES))
         ifeq ($(STATIC_BUILD), true)
           ifeq ($$($1_USE_MAPFILE_FOR_SYMBOLS), true)
@@ -1047,7 +1124,7 @@ define SetupNativeCompilationBody
     endif
 
     $1_VARDEPS := $$($1_LD) $$($1_SYSROOT_LDFLAGS) $$($1_LDFLAGS) $$($1_EXTRA_LDFLAGS) \
-        $$(GLOBAL_LIBS) $$($1_LIBS) $$($1_EXTRA_LIBS) $$($1_MT) \
+        $$($1_LIBS) $$($1_EXTRA_LIBS) $$($1_MT) \
         $$($1_CREATE_DEBUGINFO_CMDS) $$($1_MANIFEST_VERSION) \
         $$($1_STRIP_CMD)
     $1_VARDEPS_FILE := $$(call DependOnVariable, $1_VARDEPS, \
@@ -1106,17 +1183,20 @@ define SetupNativeCompilationBody
 
 		  $$(call ExecuteWithLog, $$($1_OBJECT_DIR)/$$($1_SAFE_NAME)_link, \
 		      $$($1_LD) $$($1_LDFLAGS) $$($1_EXTRA_LDFLAGS) $$($1_SYSROOT_LDFLAGS) \
-		          $(LD_OUT_OPTION)$$($1_TARGET) $$($1_LD_OBJ_ARG) $$($1_RES) $$(GLOBAL_LIBS) \
+		          $(LD_OUT_OPTION)$$($1_TARGET) $$($1_LD_OBJ_ARG) $$($1_RES) \
 		          $$($1_LIBS) $$($1_EXTRA_LIBS)) \
 		      | $(GREP) -v "^   Creating library .*\.lib and object .*\.exp" || \
 		          test "$$$$?" = "1" ; \
 		  $$($1_CREATE_DEBUGINFO_CMDS)
 		  $$($1_STRIP_CMD)
+                 ifeq ($(call isBuildOsEnv, windows.wsl2), true)
+		    $$(CHMOD) +x $$($1_TARGET)
+                 endif
                 else
 		  $$(call ExecuteWithLog, $$($1_OBJECT_DIR)/$$($1_SAFE_NAME)_link, \
 		      $$(if $$($1_LINK_OBJS_RELATIVE), $$(CD) $$(OUTPUTDIR) ; ) \
 		      $$($1_LD) $$($1_LDFLAGS) $$($1_EXTRA_LDFLAGS) $$($1_SYSROOT_LDFLAGS) \
-		          $(LD_OUT_OPTION)$$($1_TARGET) $$($1_LD_OBJ_ARG) $$($1_RES) $$(GLOBAL_LIBS) \
+		          $(LD_OUT_OPTION)$$($1_TARGET) $$($1_LD_OBJ_ARG) $$($1_RES) \
 		          $$($1_LIBS) $$($1_EXTRA_LIBS)) ; \
 		  $$($1_CREATE_DEBUGINFO_CMDS)
 		  $$($1_STRIP_CMD)
@@ -1129,8 +1209,8 @@ define SetupNativeCompilationBody
                 # This only works if the openjdk_codesign identity is present on the system. Let
                 # silently fail otherwise.
                 ifneq ($(CODESIGN), )
-		  $(CODESIGN) -s "$(MACOSX_CODESIGN_IDENTITY)" --timestamp --options runtime \
-		  --entitlements $(TOPDIR)/make/data/macosxsigning/entitlements.plist $$@
+		  $(CODESIGN) -f -s "$(MACOSX_CODESIGN_IDENTITY)" --timestamp --options runtime \
+		      --entitlements $$(call GetEntitlementsFile, $$@) $$@
                 endif
   endif
 

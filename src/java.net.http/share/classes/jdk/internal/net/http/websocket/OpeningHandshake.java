@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -171,24 +171,26 @@ public class OpeningHandshake {
     static URI createRequestURI(URI uri) {
         String s = uri.getScheme();
         assert "ws".equalsIgnoreCase(s) || "wss".equalsIgnoreCase(s);
-        String scheme = "ws".equalsIgnoreCase(s) ? "http" : "https";
+        String newUri = uri.toString();
+        if (s.equalsIgnoreCase("ws")) {
+            newUri = "http" + newUri.substring(2);
+        }
+        else {
+            newUri = "https" + newUri.substring(3);
+        }
+
         try {
-            return new URI(scheme,
-                           uri.getUserInfo(),
-                           uri.getHost(),
-                           uri.getPort(),
-                           uri.getPath(),
-                           uri.getQuery(),
-                           null); // No fragment
+            return new URI(newUri);
         } catch (URISyntaxException e) {
             // Shouldn't happen: URI invariant
             throw new InternalError(e);
         }
     }
 
+    @SuppressWarnings("removal")
     public CompletableFuture<Result> send() {
         PrivilegedAction<CompletableFuture<Result>> pa = () ->
-                client.sendAsync(this.request, BodyHandlers.discarding())
+                client.sendAsync(this.request, BodyHandlers.ofString())
                       .thenCompose(this::resultFrom);
         return AccessController.doPrivileged(pa);
     }
@@ -383,6 +385,7 @@ public class OpeningHandshake {
      * @throws SecurityException if the security manager denies access
      */
     static void checkPermissions(BuilderImpl b, Proxy proxy) {
+        @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
         if (sm == null) {
             return;

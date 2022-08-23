@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,10 @@ package java.lang;
 
 import jdk.internal.misc.Unsafe;
 import jdk.internal.vm.annotation.ForceInline;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 
 /**
  * Helper for string concatenation. These methods are mostly looked up with private lookups
@@ -184,13 +188,11 @@ final class StringConcatHelper {
      * @param indexCoder final char index in the buffer, along with coder packed
      *                   into higher bits.
      * @param buf        buffer to append to
-     * @param prefix     a constant to prepend before value
      * @param value      boolean value to encode
-     * @param suffix     a constant to prepend after value
+     * @param prefix     a constant to prepend before value
      * @return           updated index (coder value retained)
      */
-    static long prepend(long indexCoder, byte[] buf, String prefix, boolean value, String suffix) {
-        if (suffix != null) indexCoder = prepend(indexCoder, buf, suffix);
+    static long prepend(long indexCoder, byte[] buf, boolean value, String prefix) {
         indexCoder = prepend(indexCoder, buf, value);
         if (prefix != null) indexCoder = prepend(indexCoder, buf, prefix);
         return indexCoder;
@@ -203,13 +205,11 @@ final class StringConcatHelper {
      * @param indexCoder final char index in the buffer, along with coder packed
      *                   into higher bits.
      * @param buf        buffer to append to
-     * @param prefix     a constant to prepend before value
      * @param value      boolean value to encode
-     * @param suffix     a constant to prepend after value
+     * @param prefix     a constant to prepend before value
      * @return           updated index (coder value retained)
      */
-    static long prepend(long indexCoder, byte[] buf, String prefix, byte value, String suffix) {
-        if (suffix != null) indexCoder = prepend(indexCoder, buf, suffix);
+    static long prepend(long indexCoder, byte[] buf, byte value, String prefix) {
         indexCoder = prepend(indexCoder, buf, (int)value);
         if (prefix != null) indexCoder = prepend(indexCoder, buf, prefix);
         return indexCoder;
@@ -241,13 +241,11 @@ final class StringConcatHelper {
      * @param indexCoder final char index in the buffer, along with coder packed
      *                   into higher bits.
      * @param buf        buffer to append to
-     * @param prefix     a constant to prepend before value
      * @param value      boolean value to encode
-     * @param suffix     a constant to prepend after value
+     * @param prefix     a constant to prepend before value
      * @return           updated index (coder value retained)
      */
-    static long prepend(long indexCoder, byte[] buf, String prefix, char value, String suffix) {
-        if (suffix != null) indexCoder = prepend(indexCoder, buf, suffix);
+    static long prepend(long indexCoder, byte[] buf, char value, String prefix) {
         indexCoder = prepend(indexCoder, buf, value);
         if (prefix != null) indexCoder = prepend(indexCoder, buf, prefix);
         return indexCoder;
@@ -260,13 +258,11 @@ final class StringConcatHelper {
      * @param indexCoder final char index in the buffer, along with coder packed
      *                   into higher bits.
      * @param buf        buffer to append to
-     * @param prefix     a constant to prepend before value
      * @param value      boolean value to encode
-     * @param suffix     a constant to prepend after value
+     * @param prefix     a constant to prepend before value
      * @return           updated index (coder value retained)
      */
-    static long prepend(long indexCoder, byte[] buf, String prefix, short value, String suffix) {
-        if (suffix != null) indexCoder = prepend(indexCoder, buf, suffix);
+    static long prepend(long indexCoder, byte[] buf, short value, String prefix) {
         indexCoder = prepend(indexCoder, buf, (int)value);
         if (prefix != null) indexCoder = prepend(indexCoder, buf, prefix);
         return indexCoder;
@@ -297,13 +293,11 @@ final class StringConcatHelper {
      * @param indexCoder final char index in the buffer, along with coder packed
      *                   into higher bits.
      * @param buf        buffer to append to
-     * @param prefix     a constant to prepend before value
      * @param value      boolean value to encode
-     * @param suffix     a constant to prepend after value
+     * @param prefix     a constant to prepend before value
      * @return           updated index (coder value retained)
      */
-    static long prepend(long indexCoder, byte[] buf, String prefix, int value, String suffix) {
-        if (suffix != null) indexCoder = prepend(indexCoder, buf, suffix);
+    static long prepend(long indexCoder, byte[] buf, int value, String prefix) {
         indexCoder = prepend(indexCoder, buf, value);
         if (prefix != null) indexCoder = prepend(indexCoder, buf, prefix);
         return indexCoder;
@@ -334,13 +328,11 @@ final class StringConcatHelper {
      * @param indexCoder final char index in the buffer, along with coder packed
      *                   into higher bits.
      * @param buf        buffer to append to
-     * @param prefix     a constant to prepend before value
      * @param value      boolean value to encode
-     * @param suffix     a constant to prepend after value
+     * @param prefix     a constant to prepend before value
      * @return           updated index (coder value retained)
      */
-    static long prepend(long indexCoder, byte[] buf, String prefix, long value, String suffix) {
-        if (suffix != null) indexCoder = prepend(indexCoder, buf, suffix);
+    static long prepend(long indexCoder, byte[] buf, long value, String prefix) {
         indexCoder = prepend(indexCoder, buf, value);
         if (prefix != null) indexCoder = prepend(indexCoder, buf, prefix);
         return indexCoder;
@@ -373,13 +365,11 @@ final class StringConcatHelper {
      * @param indexCoder final char index in the buffer, along with coder packed
      *                   into higher bits.
      * @param buf        buffer to append to
-     * @param prefix     a constant to prepend before value
      * @param value      boolean value to encode
-     * @param suffix     a constant to prepend after value
+     * @param prefix     a constant to prepend before value
      * @return           updated index (coder value retained)
      */
-    static long prepend(long indexCoder, byte[] buf, String prefix, String value, String suffix) {
-        if (suffix != null) indexCoder = prepend(indexCoder, buf, suffix);
+    static long prepend(long indexCoder, byte[] buf, String value, String prefix) {
         indexCoder = prepend(indexCoder, buf, value);
         if (prefix != null) indexCoder = prepend(indexCoder, buf, prefix);
         return indexCoder;
@@ -416,16 +406,40 @@ final class StringConcatHelper {
     static String simpleConcat(Object first, Object second) {
         String s1 = stringOf(first);
         String s2 = stringOf(second);
+        if (s1.isEmpty()) {
+            // newly created string required, see JLS 15.18.1
+            return new String(s2);
+        }
+        if (s2.isEmpty()) {
+            // newly created string required, see JLS 15.18.1
+            return new String(s1);
+        }
         // start "mixing" in length and coder or arguments, order is not
         // important
-        long indexCoder = mix(initialCoder(), s2);
-        indexCoder = mix(indexCoder, s1);
+        long indexCoder = mix(initialCoder(), s1);
+        indexCoder = mix(indexCoder, s2);
         byte[] buf = newArray(indexCoder);
         // prepend each argument in reverse order, since we prepending
         // from the end of the byte array
         indexCoder = prepend(indexCoder, buf, s2);
         indexCoder = prepend(indexCoder, buf, s1);
         return newString(buf, indexCoder);
+    }
+
+    /**
+     * Produce a String from a concatenation of single argument, which we
+     * end up using for trivial concatenations like {@code "" + arg}.
+     *
+     * This will always create a new Object to comply with JLS 15.18.1:
+     * "The String object is newly created unless the expression is a
+     * compile-time constant expression".
+     *
+     * @param arg           the only argument
+     * @return String       resulting string
+     */
+    @ForceInline
+    static String newStringOf(Object arg) {
+        return new String(stringOf(arg));
     }
 
     /**
@@ -446,6 +460,28 @@ final class StringConcatHelper {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     /**
+     * Allocates an uninitialized byte array based on the length and coder
+     * information, then prepends the given suffix string at the end of the
+     * byte array before returning it. The calling code must adjust the
+     * indexCoder so that it's taken the coder of the suffix into account, but
+     * subtracted the length of the suffix.
+     *
+     * @param suffix
+     * @param indexCoder
+     * @return the newly allocated byte array
+     */
+    @ForceInline
+    static byte[] newArrayWithSuffix(String suffix, long indexCoder) {
+        byte[] buf = newArray(indexCoder + suffix.length());
+        if (indexCoder < UTF16) {
+            suffix.getBytes(buf, (int)indexCoder, String.LATIN1);
+        } else {
+            suffix.getBytes(buf, (int)indexCoder, String.UTF16);
+        }
+        return buf;
+    }
+
+    /**
      * Allocates an uninitialized byte array based on the length and coder information
      * in indexCoder
      * @param indexCoder
@@ -464,6 +500,14 @@ final class StringConcatHelper {
      */
     static long initialCoder() {
         return String.COMPACT_STRINGS ? LATIN1 : UTF16;
+    }
+
+    static MethodHandle lookupStatic(String name, MethodType methodType) {
+        try {
+            return MethodHandles.lookup().findStatic(StringConcatHelper.class, name, methodType);
+        } catch (NoSuchMethodException|IllegalAccessException e) {
+            throw new AssertionError(e);
+        }
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@
 #include "c1/c1_Instruction.hpp"
 #include "c1/c1_LIR.hpp"
 #include "c1/c1_LIRGenerator.hpp"
+#include "compiler/oopMap.hpp"
 #include "utilities/align.hpp"
 #include "utilities/macros.hpp"
 
@@ -177,7 +178,7 @@ class LinearScan : public CompilationResourceObj {
   bool          is_interval_in_loop(int interval, int loop) const { return _interval_in_loop.at(interval, loop); }
 
   // handling of fpu stack allocation (platform dependent, needed for debug information generation)
-#ifdef X86
+#ifdef IA32
   FpuStackAllocator* _fpu_stack_allocator;
   bool use_fpu_stack_allocation() const          { return UseSSE < 2 && has_fpu_registers(); }
 #else
@@ -367,6 +368,9 @@ class LinearScan : public CompilationResourceObj {
   static void print_bitmap(BitMap& bitmap);
   void        print_intervals(const char* label);
   void        print_lir(int level, const char* label, bool hir_valid = true);
+  static void print_reg_num(int reg_num) { print_reg_num(tty, reg_num); }
+  static void print_reg_num(outputStream* out, int reg_num);
+  static LIR_Opr get_operand(int reg_num);
 #endif
 
 #ifdef ASSERT
@@ -390,10 +394,13 @@ class LinearScan : public CompilationResourceObj {
   int         max_spills()  const { return _max_spills; }
   int         num_calls() const   { assert(_num_calls >= 0, "not set"); return _num_calls; }
 
-  // entry functions for printing
 #ifndef PRODUCT
+  // entry functions for printing
   static void print_statistics();
   static void print_timers(double total);
+
+  // Used for debugging
+  Interval* find_interval_at(int reg_num) const;
 #endif
 };
 
@@ -430,6 +437,7 @@ class MoveResolver: public StackObj {
   void append_insertion_buffer();
   void insert_move(Interval* from_interval, Interval* to_interval);
   void insert_move(LIR_Opr from_opr, Interval* to_interval);
+  LIR_Opr get_virtual_register(Interval* interval);
 
   DEBUG_ONLY(void verify_before_resolve();)
   void resolve_mappings();
@@ -613,6 +621,7 @@ class Interval : public CompilationResourceObj {
   bool   covers(int op_id, LIR_OpVisitState::OprMode mode) const;
   bool   has_hole_between(int from, int to);
   bool   intersects(Interval* i) const           { return _first->intersects(i->_first); }
+  bool   intersects_any_children_of(Interval* i) const;
   int    intersects_at(Interval* i) const        { return _first->intersects_at(i->_first); }
 
   // range iteration
@@ -625,7 +634,19 @@ class Interval : public CompilationResourceObj {
   int    current_intersects_at(Interval* it)     { return _current->intersects_at(it->_current); };
 
   // printing
-  void print(outputStream* out = tty) const      PRODUCT_RETURN;
+#ifndef PRODUCT
+  void print() const { print_on(tty); }
+  void print_on(outputStream* out) const {
+    print_on(out, false);
+  }
+  // Special version for compatibility with C1 Visualizer.
+  void print_on(outputStream* out, bool is_cfg_printer) const;
+
+  // Used for debugging
+  void print_parent() const;
+  void print_children() const;
+#endif
+
 };
 
 
@@ -673,9 +694,9 @@ class IntervalWalker : public CompilationResourceObj {
   // It is safe to append current to any interval list but the unhandled list.
   virtual bool activate_current() { return true; }
 
-  // interval_moved() is called whenever an interval moves from one interval list to another.
-  // In the implementation of this method it is prohibited to move the interval to any list.
-  virtual void interval_moved(Interval* interval, IntervalKind kind, IntervalState from, IntervalState to);
+  // This method is called whenever an interval moves from one interval list to another to print some
+  // information about it and its state change if TraceLinearScanLevel is set appropriately.
+  DEBUG_ONLY(void interval_moved(Interval* interval, IntervalKind kind, IntervalState from, IntervalState to);)
 
  public:
   IntervalWalker(LinearScan* allocator, Interval* unhandled_fixed_first, Interval* unhandled_any_first);

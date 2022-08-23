@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,11 +36,12 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 
+import static compiler.compilercontrol.share.IntrinsicCommand.VALID_INTRINSIC_SAMPLES;
+
 /**
  * Creates a huge directive file
  */
 public final class HugeDirectiveUtil {
-    private static final Random RANDOM = Utils.getRandomInstance();
     protected static final String EXPECTED_ERROR_STRING = "Parsing of compiler "
             + "directives failed";
 
@@ -77,23 +78,27 @@ public final class HugeDirectiveUtil {
         // get random amount of methods for the match
         List<String> methods = getRandomDescriptors(descriptors);
         file.match(methods.toArray(new String[methods.size()]));
+        Random random = Utils.getRandomInstance();
         for (int i = 0; i < objectSize; i++) {
             // emit compiler block
             file.emitCompiler(Utils.getRandomElement(
                     Scenario.Compiler.values()));
             // add option inside the compiler block
-            file.option(Utils.getRandomElement(DirectiveWriter.Option.values()),
-                    RANDOM.nextBoolean());
+            DirectiveWriter.Option option = Utils.getRandomElement(DirectiveWriter.Option.values());
+            file.option(option,
+                    option != DirectiveWriter.Option.INTRINSIC
+                    ? random.nextBoolean()
+                    : "\"" + Utils.getRandomElement(VALID_INTRINSIC_SAMPLES) + "\"");
             file.end(); // ends compiler block
 
             // add standalone option, enable can't be used standalone
             EnumSet<DirectiveWriter.Option> options = EnumSet.complementOf(
                     EnumSet.of(DirectiveWriter.Option.ENABLE));
-            file.option(Utils.getRandomElement(options), RANDOM.nextBoolean());
+            file.option(Utils.getRandomElement(options), random.nextBoolean());
         }
         // add inline block with random inlinees
         methods = getRandomDescriptors(descriptors).stream()
-                .map(s -> (RANDOM.nextBoolean() ? "+" : "-") + s)
+                .map(s -> (random.nextBoolean() ? "+" : "-") + s)
                 .collect(Collectors.toList());
         file.inline(methods);
 
@@ -103,8 +108,9 @@ public final class HugeDirectiveUtil {
 
     private static List<String> getRandomDescriptors(
             List<MethodDescriptor> descriptors) {
-        int amount = 1 + RANDOM.nextInt(descriptors.size() - 1);
-        int skipAmount = RANDOM.nextInt(descriptors.size() - amount);
+        Random random = Utils.getRandomInstance();
+        int amount = 1 + random.nextInt(descriptors.size() - 1);
+        int skipAmount = random.nextInt(descriptors.size() - amount);
         return descriptors.stream()
                 .skip(skipAmount)
                 .limit(amount)

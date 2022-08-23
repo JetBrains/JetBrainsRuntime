@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -237,6 +237,16 @@ public class DefineClassTest {
         lookup().defineClass(null);
     }
 
+    @Test(expectedExceptions = { NoClassDefFoundError.class })
+    public void testLinking() throws Exception {
+        lookup().defineClass(generateNonLinkableClass(THIS_PACKAGE + ".NonLinkableClass"));
+    }
+
+    @Test(expectedExceptions = { IllegalArgumentException.class })
+    public void testModuleInfo() throws Exception {
+        lookup().defineClass(generateModuleInfo());
+    }
+
     /**
      * Generates a class file with the given class name
      */
@@ -331,6 +341,48 @@ public class DefineClassTest {
         mv.visitInsn(RETURN);
         mv.visitMaxs(0, 0);
         mv.visitEnd();
+
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    /**
+     * Generates a non-linkable class file with the given class name
+     */
+    byte[] generateNonLinkableClass(String className) {
+        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS
+                + ClassWriter.COMPUTE_FRAMES);
+        cw.visit(V14,
+                ACC_PUBLIC + ACC_SUPER,
+                className.replace(".", "/"),
+                null,
+                "MissingSuperClass",
+                null);
+
+        // <init>
+        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitMethodInsn(INVOKESPECIAL, "MissingSuperClass", "<init>", "()V", false);
+        mv.visitInsn(RETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    /**
+     * Generates a class file with the given class name
+     */
+    byte[] generateModuleInfo() {
+        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS
+                + ClassWriter.COMPUTE_FRAMES);
+        cw.visit(V14,
+                ACC_MODULE,
+                "module-info",
+                null,
+                null,
+                null);
 
         cw.visitEnd();
         return cw.toByteArray();

@@ -1,0 +1,1 @@
+javax/imageio/plugins/external_plugin_tests/TestClassPathPlugin.sh nobug generic-all line 59: /opt/teamcity-agent/work/efb45cc305c2e813/jbr/Contents/Home/bin/jar: No such file or directory

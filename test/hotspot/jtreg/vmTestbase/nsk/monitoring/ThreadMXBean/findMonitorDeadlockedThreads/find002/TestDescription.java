@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,16 +30,15 @@
  * VM Testbase readme:
  * DESCRIPTION
  *     The test checks that
- *         ThreadMBean.findMonitorDeadlockedThreads()
+ *         ThreadMXBean.findMonitorDeadlockedThreads()
  *     does not return the id of the currect thread, since it is not deadlocked.
  *     The test implements access to the metrics via default MBean server.
  * COMMENT
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm
- *      nsk.monitoring.ThreadMBean.findMonitorDeadlockedThreads.find001
+ *      nsk.monitoring.ThreadMXBean.findMonitorDeadlockedThreads.find001
  *      -testMode=server
  */
 

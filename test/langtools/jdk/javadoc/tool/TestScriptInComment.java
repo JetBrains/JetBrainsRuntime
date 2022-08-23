@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,7 +61,8 @@ public class TestScriptInComment {
         LC("<script>#ALERT</script>", true), // script tag in Lower Case
         UC("<SCRIPT>#ALERT</script>", true), // script tag in Upper Case
         WS("< script >#ALERT</script>", false, "-Xdoclint:none"), // script tag with invalid white space
-        SP("<script src=\"file\"> #ALERT </script>", true), // script tag with an attribute
+        SP("""
+            <script src="file"> #ALERT </script>""", true), // script tag with an attribute
         ON("<a onclick='#ALERT'>x</a>", true), // event handler attribute
         OME("<img alt='1' onmouseenter='#ALERT'>", true), // onmouseenter event handler attribute
         OML("<img alt='1' onmouseleave='#ALERT'>", true), // onmouseleave event handler attribute
@@ -102,7 +103,6 @@ public class TestScriptInComment {
         MTH("package p; public class C { #COMMENT public void m() { } }"),
         TOP("-top", "lorem #COMMENT ipsum", "package p; public class C { }"),
         HDR("-header", "lorem #COMMENT ipsum", "package p; public class C { }"),
-        FTR("-footer", "lorem #COMMENT ipsum", "package p; public class C { }"),
         BTM("-bottom", "lorem #COMMENT ipsum", "package p; public class C { }"),
         DTTL("-doctitle", "lorem #COMMENT ipsum", "package p; public class C { }"),
         PHDR("-packagesheader", "lorem #COMMENT ipsum", "package p; public class C { }");

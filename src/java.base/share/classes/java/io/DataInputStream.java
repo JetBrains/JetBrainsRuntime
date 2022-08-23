@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1994, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1994, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,15 +25,18 @@
 
 package java.io;
 
+import java.util.Objects;
+
 /**
  * A data input stream lets an application read primitive Java data
  * types from an underlying input stream in a machine-independent
  * way. An application uses a data output stream to write data that
  * can later be read by a data input stream.
  * <p>
- * DataInputStream is not necessarily safe for multithreaded access.
- * Thread safety is optional and is the responsibility of users of
- * methods in this class.
+ * A DataInputStream is not safe for use by multiple concurrent
+ * threads. If a DataInputStream is to be used by more than one
+ * thread then access to the data input stream should be controlled
+ * by appropriate synchronization.
  *
  * @author  Arthur van Hoff
  * @see     java.io.DataOutputStream
@@ -192,8 +195,7 @@ public class DataInputStream extends FilterInputStream implements DataInput {
      * @see        java.io.FilterInputStream#in
      */
     public final void readFully(byte b[], int off, int len) throws IOException {
-        if (len < 0)
-            throw new IndexOutOfBoundsException();
+        Objects.checkFromIndexSize(off, len, b.length);
         int n = 0;
         while (n < len) {
             int count = in.read(b, off + n, len - n);
@@ -593,8 +595,7 @@ loop:   while (true) {
         int utflen = in.readUnsignedShort();
         byte[] bytearr = null;
         char[] chararr = null;
-        if (in instanceof DataInputStream) {
-            DataInputStream dis = (DataInputStream)in;
+        if (in instanceof DataInputStream dis) {
             if (dis.bytearr.length < utflen){
                 dis.bytearr = new byte[utflen*2];
                 dis.chararr = new char[utflen*2];
@@ -622,12 +623,12 @@ loop:   while (true) {
         while (count < utflen) {
             c = (int) bytearr[count] & 0xff;
             switch (c >> 4) {
-                case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7:
+                case 0, 1, 2, 3, 4, 5, 6, 7 -> {
                     /* 0xxxxxxx*/
                     count++;
                     chararr[chararr_count++]=(char)c;
-                    break;
-                case 12: case 13:
+                }
+                case 12, 13 -> {
                     /* 110x xxxx   10xx xxxx*/
                     count += 2;
                     if (count > utflen)
@@ -639,8 +640,8 @@ loop:   while (true) {
                             "malformed input around byte " + count);
                     chararr[chararr_count++]=(char)(((c & 0x1F) << 6) |
                                                     (char2 & 0x3F));
-                    break;
-                case 14:
+                }
+                case 14 -> {
                     /* 1110 xxxx  10xx xxxx  10xx xxxx */
                     count += 3;
                     if (count > utflen)
@@ -654,8 +655,8 @@ loop:   while (true) {
                     chararr[chararr_count++]=(char)(((c     & 0x0F) << 12) |
                                                     ((char2 & 0x3F) << 6)  |
                                                     ((char3 & 0x3F) << 0));
-                    break;
-                default:
+                }
+                default ->
                     /* 10xx xxxx,  1111 xxxx */
                     throw new UTFDataFormatException(
                         "malformed input around byte " + count);

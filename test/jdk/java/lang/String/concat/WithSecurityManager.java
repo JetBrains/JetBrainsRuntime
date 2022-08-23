@@ -31,21 +31,8 @@ import java.security.Permission;
  *
  * @compile WithSecurityManager.java
  *
- * @run main/othervm -Xverify:all WithSecurityManager
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=BC_SB                  WithSecurityManager
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=BC_SB_SIZED            WithSecurityManager
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=MH_SB_SIZED            WithSecurityManager
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=BC_SB_SIZED_EXACT      WithSecurityManager
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=MH_SB_SIZED_EXACT      WithSecurityManager
- * @run main/othervm -Xverify:all -Djava.lang.invoke.stringConcat=MH_INLINE_SIZED_EXACT  WithSecurityManager
- *
- * @run main/othervm -Xverify:all --limit-modules=java.base WithSecurityManager
- * @run main/othervm -Xverify:all --limit-modules=java.base -Djava.lang.invoke.stringConcat=BC_SB                  WithSecurityManager
- * @run main/othervm -Xverify:all --limit-modules=java.base -Djava.lang.invoke.stringConcat=BC_SB_SIZED            WithSecurityManager
- * @run main/othervm -Xverify:all --limit-modules=java.base -Djava.lang.invoke.stringConcat=MH_SB_SIZED            WithSecurityManager
- * @run main/othervm -Xverify:all --limit-modules=java.base -Djava.lang.invoke.stringConcat=BC_SB_SIZED_EXACT      WithSecurityManager
- * @run main/othervm -Xverify:all --limit-modules=java.base -Djava.lang.invoke.stringConcat=MH_SB_SIZED_EXACT      WithSecurityManager
- * @run main/othervm -Xverify:all --limit-modules=java.base -Djava.lang.invoke.stringConcat=MH_INLINE_SIZED_EXACT  WithSecurityManager
+ * @run main/othervm -Xverify:all -Djava.security.manager=allow WithSecurityManager
+ * @run main/othervm -Xverify:all --limit-modules=java.base -Djava.security.manager=allow WithSecurityManager
 */
 public class WithSecurityManager {
     public static void main(String[] args) throws Throwable {

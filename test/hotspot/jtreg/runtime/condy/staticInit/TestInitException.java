@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,7 @@
  * @library /test/lib
  * @compile Example.jasm
  * @compile StaticInit.java
- * @run main/othervm TestInitException
+ * @run driver TestInitException
  */
 
 import jdk.test.lib.process.ProcessTools;
@@ -40,13 +40,14 @@ public class TestInitException {
         ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("Example");
         OutputAnalyzer oa = new OutputAnalyzer(pb.start());
         // First call stack trace
-        oa.shouldContain("at Example.$jacocoInit(Example.jasm)");
+        // shouldMatch is used to workaround CODETOOLS-7902686
+        oa.shouldMatch("^\tat Example\\.\\$jacocoInit\\(.*Example\\.jasm\\)$");
         oa.shouldContain("Caused by: java.lang.RuntimeException");
         oa.shouldContain("at StaticInit.<clinit>(StaticInit.java:27)");
         // Second call stack trace, with the message
         oa.shouldContain("java.lang.ExceptionInInitializerError: $jacocoData");
-        oa.shouldContain("at Example.foo(Example.jasm)");
-        oa.shouldContain("at Example.main(Example.jasm)");
+        oa.shouldMatch("^\tat Example\\.foo\\(.*Example\\.jasm\\)$");
+        oa.shouldMatch("^\tat Example\\.main\\(.*Example\\.jasm\\)$");
         oa.shouldHaveExitValue(1);
     }
 }

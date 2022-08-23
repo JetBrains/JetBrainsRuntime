@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,12 +23,14 @@
  */
 
 #include "precompiled.hpp"
-#include "runtime/arguments.hpp"
 #include "runtime/flags/jvmFlag.hpp"
+#include "runtime/flags/jvmFlagLimit.hpp"
 #include "runtime/flags/jvmFlagConstraintsRuntime.hpp"
 #include "runtime/globals.hpp"
+#include "runtime/os.hpp"
 #include "runtime/safepointMechanism.hpp"
 #include "runtime/task.hpp"
+#include "utilities/powerOfTwo.hpp"
 
 JVMFlag::Error ObjectAlignmentInBytesConstraintFunc(intx value, bool verbose) {
   if (!is_power_of_2(value)) {
@@ -129,4 +131,42 @@ JVMFlag::Error PerfDataSamplingIntervalFunc(intx value, bool verbose) {
   } else {
     return JVMFlag::SUCCESS;
   }
+}
+
+JVMFlag::Error VMPageSizeConstraintFunc(uintx value, bool verbose) {
+  uintx min = (uintx)os::vm_page_size();
+  if (value < min) {
+    JVMFlag::printError(verbose,
+                        "%s %s=" UINTX_FORMAT " is outside the allowed range [ " UINTX_FORMAT
+                        " ... " UINTX_FORMAT " ]\n",
+                        JVMFlagLimit::last_checked_flag()->type_string(),
+                        JVMFlagLimit::last_checked_flag()->name(),
+                        value, min, max_uintx);
+    return JVMFlag::VIOLATES_CONSTRAINT;
+  }
+
+  return JVMFlag::SUCCESS;
+}
+
+JVMFlag::Error NUMAInterleaveGranularityConstraintFunc(size_t value, bool verbose) {
+  size_t min = os::vm_allocation_granularity();
+  size_t max = NOT_LP64(2*G) LP64_ONLY(8192*G);
+
+  if (value < min || value > max) {
+    JVMFlag::printError(verbose,
+                        "size_t NUMAInterleaveGranularity=" UINTX_FORMAT " is outside the allowed range [ " UINTX_FORMAT
+                        " ... " UINTX_FORMAT " ]\n", value, min, max);
+    return JVMFlag::VIOLATES_CONSTRAINT;
+  }
+  return JVMFlag::SUCCESS;
+}
+
+JVMFlag::Error HotswapAgentConstraintFunc(ccstr value, bool verbose) {
+  if (value != NULL) {
+    if (strcmp("disabled", value) != 0 && strcmp("fatjar", value) != 0 && strcmp("core", value) != 0 && strcmp("external", value) != 0) {
+      JVMFlag::printError(verbose, "HotswapAgent(%s) must be one of disabled,fatjar,core or external.\n", value);
+      return JVMFlag::VIOLATES_CONSTRAINT;
+    }
+  }
+  return JVMFlag::SUCCESS;
 }

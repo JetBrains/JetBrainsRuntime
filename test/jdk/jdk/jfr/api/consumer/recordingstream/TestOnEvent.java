@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -96,7 +94,7 @@ public class TestOnEvent {
                 System.out.println("testTwoEventWithSameName" +  e);
                 eventA.countDown();
             });
-            r.startAsync();
+            start(r);
             EventA a1 = new EventA();
             a1.commit();
             EventAlsoA a2 = new EventAlsoA();
@@ -124,7 +122,7 @@ public class TestOnEvent {
                 }
             });
 
-            r.startAsync();
+            start(r);
             EventA a = new EventA();
             a.commit();
             EventC c = new EventC();
@@ -142,7 +140,7 @@ public class TestOnEvent {
             r.onEvent(e -> {
                 event.countDown();
             });
-            r.startAsync();
+            start(r);
             EventA a = new EventA();
             a.commit();
             event.await();
@@ -172,6 +170,18 @@ public class TestOnEvent {
         }
     }
 
+    // Starts recording stream and ensures stream
+    // is receiving events before method returns.
+    private static void start(RecordingStream rs) throws InterruptedException {
+        CountDownLatch started = new CountDownLatch(1);
+        rs.onFlush(() -> {
+            if (started.getCount() > 0) {
+              started.countDown();
+            }
+        });
+        rs.startAsync();
+        started.await();
+    }
 
     private static void log(String msg) {
         System.out.println(msg);

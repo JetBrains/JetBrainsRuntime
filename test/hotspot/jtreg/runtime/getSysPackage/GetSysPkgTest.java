@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,7 @@
  * @modules java.base/jdk.internal.loader
  *          java.logging
  * @library /test/lib
- * @run main/othervm GetSysPkgTest
+ * @run driver GetSysPkgTest
  */
 
 import java.io.File;
@@ -36,6 +36,7 @@ import java.lang.reflect.Method;
 import jdk.test.lib.compiler.InMemoryJavaCompiler;
 import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.process.OutputAnalyzer;
+import jdk.test.lib.helpers.ClassFileInstaller;
 
 // Test that JVM get_system_package() returns the module location for defined packages.
 public class GetSysPkgTest {

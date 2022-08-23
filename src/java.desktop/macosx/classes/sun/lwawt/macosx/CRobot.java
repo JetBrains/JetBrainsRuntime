@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,14 +27,15 @@ package sun.lwawt.macosx;
 
 import java.awt.Point;
 import java.awt.Rectangle;
-import java.awt.Robot;
 import java.awt.peer.RobotPeer;
 
 import sun.awt.CGraphicsDevice;
+import sun.security.action.GetIntegerAction;
 
 final class CRobot implements RobotPeer {
 
     private static final int MOUSE_LOCATION_UNKNOWN      = -1;
+    private static final int DEFAULT_SAFE_DELAY_MILLIS   = 50;
 
     private final CGraphicsDevice fDevice;
     private int mouseLastX = MOUSE_LOCATION_UNKNOWN;
@@ -49,9 +50,14 @@ final class CRobot implements RobotPeer {
      * Uses the given GraphicsDevice as the coordinate system for subsequent
      * coordinate calls.
      */
-    public CRobot(Robot r, CGraphicsDevice d) {
+    CRobot(CGraphicsDevice d) {
         fDevice = d;
-        initRobot();
+        int safeDelayMillis = GetIntegerAction.privilegedGetProperty(
+                "sun.awt.osx.RobotSafeDelayMillis", DEFAULT_SAFE_DELAY_MILLIS);
+        if (safeDelayMillis < 0) {
+            safeDelayMillis = DEFAULT_SAFE_DELAY_MILLIS;
+        }
+        initRobot(safeDelayMillis);
     }
 
     /**
@@ -169,9 +175,9 @@ final class CRobot implements RobotPeer {
      */
     @Override
     public int getRGBPixel(int x, int y) {
-        int[] c = new int[1];
-        double scale = fDevice.getScaleFactor();
-        getScreenPixels(new Rectangle(x, y, (int) scale, (int) scale), c);
+        int scale = fDevice.getScaleFactor();
+        int[] c = new int[scale * scale];
+        getScreenPixels(new Rectangle(x, y, scale, scale), c);
         return c[0];
     }
 
@@ -188,7 +194,7 @@ final class CRobot implements RobotPeer {
         return c;
     }
 
-    private native void initRobot();
+    private native void initRobot(int safeDelayMillis);
     private native void mouseEvent(int lastX, int lastY, int buttonsState,
                                    boolean isButtonsDownState,
                                    boolean isMouseMove);

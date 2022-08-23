@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2018 SAP SE. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,14 +40,6 @@
  */
 
 import java.io.File;
-import java.io.FileFilter;
-import java.util.Map;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.HashSet;
-import java.util.Set;
-
 
 public class HelpFlagsTest extends TestHelper {
 
@@ -55,7 +47,9 @@ public class HelpFlagsTest extends TestHelper {
     static final String[] TOOLS_NOT_TO_TEST = {
         "appletviewer",     // deprecated, don't test
         "jaccessinspector", // gui, don't test, win only
+        "jaccessinspector-32", // gui, don't test, win-32 only
         "jaccesswalker",    // gui, don't test, win only
+        "jaccesswalker-32", // gui, don't test, win-32 only
         "jconsole",         // gui, don't test
         "servertool",       // none. Shell, don't test.
         "javaw",            // don't test, win only
@@ -128,7 +122,6 @@ public class HelpFlagsTest extends TestHelper {
         //                                            of help          docu   of wrong
         //                                                             mented flag
         new ToolHelpSpec("jabswitch",   0,   0,   0,   0,         0,    0,     0),     // /?, prints help message anyways, win only
-        new ToolHelpSpec("jaotc",       1,   1,   1,   0,         0,    0,     2),     // -?, -h, --help
         new ToolHelpSpec("jar",         1,   1,   1,   0,         0,    0,     1),     // -?, -h, --help
         new ToolHelpSpec("jarsigner",   1,   1,   1,   0,         1,    0,     1),     // -?, -h, --help, -help accepted but not documented.
         new ToolHelpSpec("java",        1,   1,   1,   0,         1,    1,     1),     // -?, -h, --help -help, Documents -help
@@ -155,29 +148,10 @@ public class HelpFlagsTest extends TestHelper {
         new ToolHelpSpec("jstat",       1,   1,   1,   0,         1,    1,     1),     // -?, -h, --help -help, Documents -help
         new ToolHelpSpec("jstatd",      1,   1,   1,   0,         0,    0,     1),     // -?, -h, --help
         new ToolHelpSpec("keytool",     1,   1,   1,   0,         1,    0,     1),     // none, prints help message anyways.
-        new ToolHelpSpec("rmic",        0,   0,   0,   0,         0,    0,     1),     // none, prints help message anyways.
-        new ToolHelpSpec("rmid",        0,   0,   0,   0,         0,    0,     1),     // none, prints help message anyways.
         new ToolHelpSpec("rmiregistry", 0,   0,   0,   0,         0,    0,     1),     // none, prints help message anyways.
         new ToolHelpSpec("serialver",   0,   0,   0,   0,         0,    0,     1),     // none, prints help message anyways.
         new ToolHelpSpec("jpackage",    0,   1,   1,   0,         0,    1,     1),     //     -h, --help,
     };
-
-    // Returns true if the file is not a tool.
-    static boolean notATool(String file) {
-        if (isWindows && !file.endsWith(EXE_FILE_EXT))
-            return true;
-        return false;
-    }
-
-    // Returns true if tool is listed in TOOLS_NOT_TO_TEST.
-    static boolean dontTestTool(String tool) {
-        tool = tool.toLowerCase();
-        for (String x : TOOLS_NOT_TO_TEST) {
-            if (tool.toLowerCase().startsWith(x))
-                return true;
-        }
-        return false;
-    }
 
     // Returns corresponding object from jdkTools array.
     static ToolHelpSpec getToolHelpSpec(String tool) {
@@ -353,17 +327,8 @@ public class HelpFlagsTest extends TestHelper {
         // help messages. Thus it only works with english locale.
         if (!isEnglishLocale()) { return; }
 
-        for (File f : new File(JAVA_BIN).listFiles()) {
+        for (File f : new File(JAVA_BIN).listFiles(new ToolFilter(TOOLS_NOT_TO_TEST))) {
             String toolName = f.getName();
-
-            if (notATool(toolName)) {
-                continue;
-            }
-            if (dontTestTool(toolName)) {
-                System.out.println("Skipping test of tool " + toolName +
-                                   ". Tool has no help message.");
-                continue;
-            }
 
             ToolHelpSpec tool = getToolHelpSpec(toolName);
             if (tool == null) {

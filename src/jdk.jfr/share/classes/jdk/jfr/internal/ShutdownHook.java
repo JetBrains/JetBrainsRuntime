@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,10 +71,13 @@ final class ShutdownHook implements Runnable {
                 recording.stop("Dump on exit");
             }
         } catch (Exception e) {
-            Logger.log(LogTag.JFR, LogLevel.DEBUG, () -> "Could not dump recording " + recording.getName() + " on exit.");
+            if (Logger.shouldLog(LogTag.JFR, LogLevel.DEBUG)) {
+                Logger.log(LogTag.JFR, LogLevel.DEBUG, "Could not dump recording " + recording.getName() + " on exit.");
+            }
         }
     }
 
+    @SuppressWarnings("removal")
     private WriteableUserPath makeDumpOnExitPath(PlatformRecording recording) {
         try {
             String name = Utils.makeFilename(recording.getRecording());
@@ -98,6 +101,7 @@ final class ShutdownHook implements Runnable {
     }
 
     static final class ExceptionHandler implements Thread.UncaughtExceptionHandler {
+        @Override
         public void uncaughtException(Thread t, Throwable e) {
             JVM.getJVM().uncaughtException(t, e);
         }

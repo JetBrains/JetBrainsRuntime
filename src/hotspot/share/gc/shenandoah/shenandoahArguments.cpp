@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2018, 2021, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +24,18 @@
 
 #include "precompiled.hpp"
 #include "gc/shared/gcArguments.hpp"
+#include "gc/shared/tlab_globals.hpp"
 #include "gc/shared/workerPolicy.hpp"
 #include "gc/shenandoah/shenandoahArguments.hpp"
 #include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
+#include "runtime/globals_extension.hpp"
+#include "runtime/java.hpp"
 #include "utilities/defaultStream.hpp"
 
 void ShenandoahArguments::initialize() {
-#if !(defined AARCH64 || defined AMD64 || defined IA32)
+#if !(defined AARCH64 || defined AMD64 || defined IA32 || defined PPC64)
   vm_exit_during_initialization("Shenandoah GC is not supported on this platform.");
 #endif
 
@@ -45,18 +48,19 @@ void ShenandoahArguments::initialize() {
 
   FLAG_SET_DEFAULT(ShenandoahSATBBarrier,            false);
   FLAG_SET_DEFAULT(ShenandoahLoadRefBarrier,         false);
-  FLAG_SET_DEFAULT(ShenandoahKeepAliveBarrier,       false);
-  FLAG_SET_DEFAULT(ShenandoahStoreValEnqueueBarrier, false);
+  FLAG_SET_DEFAULT(ShenandoahIUBarrier,              false);
   FLAG_SET_DEFAULT(ShenandoahCASBarrier,             false);
   FLAG_SET_DEFAULT(ShenandoahCloneBarrier,           false);
 
   FLAG_SET_DEFAULT(ShenandoahVerifyOptoBarriers,     false);
 #endif
-
-  if (UseLargePages && (MaxHeapSize / os::large_page_size()) < ShenandoahHeapRegion::MIN_NUM_REGIONS) {
-    warning("Large pages size (" SIZE_FORMAT "K) is too large to afford page-sized regions, disabling uncommit",
-            os::large_page_size() / K);
-    FLAG_SET_DEFAULT(ShenandoahUncommit, false);
+  if (UseLargePages) {
+    size_t large_page_size = os::large_page_size();
+    if ((align_up(MaxHeapSize, large_page_size) / large_page_size) < ShenandoahHeapRegion::MIN_NUM_REGIONS) {
+      warning("Large pages size (" SIZE_FORMAT "K) is too large to afford page-sized regions, disabling uncommit",
+              os::large_page_size() / K);
+      FLAG_SET_DEFAULT(ShenandoahUncommit, false);
+    }
   }
 
   // Enable NUMA by default. While Shenandoah is not NUMA-aware, enabling NUMA makes
@@ -109,10 +113,6 @@ void ShenandoahArguments::initialize() {
     }
   }
 
-  if (FLAG_IS_DEFAULT(ParallelRefProcEnabled)) {
-    FLAG_SET_DEFAULT(ParallelRefProcEnabled, true);
-  }
-
   if (ShenandoahRegionSampling && FLAG_IS_DEFAULT(PerfDataMemorySize)) {
     // When sampling is enabled, max out the PerfData memory to get more
     // Shenandoah data in, including Matrix.
@@ -132,8 +132,7 @@ void ShenandoahArguments::initialize() {
   if (ShenandoahVerifyOptoBarriers &&
           (!FLAG_IS_DEFAULT(ShenandoahSATBBarrier)            ||
            !FLAG_IS_DEFAULT(ShenandoahLoadRefBarrier)         ||
-           !FLAG_IS_DEFAULT(ShenandoahKeepAliveBarrier)       ||
-           !FLAG_IS_DEFAULT(ShenandoahStoreValEnqueueBarrier) ||
+           !FLAG_IS_DEFAULT(ShenandoahIUBarrier)              ||
            !FLAG_IS_DEFAULT(ShenandoahCASBarrier)             ||
            !FLAG_IS_DEFAULT(ShenandoahCloneBarrier)
           )) {
@@ -145,24 +144,9 @@ void ShenandoahArguments::initialize() {
 #endif // ASSERT
 #endif // COMPILER2
 
-  if (AlwaysPreTouch) {
-    // Shenandoah handles pre-touch on its own. It does not let the
-    // generic storage code to do the pre-touch before Shenandoah has
-    // a chance to do it on its own.
-    FLAG_SET_DEFAULT(AlwaysPreTouch, false);
-    FLAG_SET_DEFAULT(ShenandoahAlwaysPreTouch, true);
-  }
-
   // Record more information about previous cycles for improved debugging pleasure
   if (FLAG_IS_DEFAULT(LogEventsBufferEntries)) {
     FLAG_SET_DEFAULT(LogEventsBufferEntries, 250);
-  }
-
-  if (ShenandoahAlwaysPreTouch) {
-    if (!FLAG_IS_DEFAULT(ShenandoahUncommit)) {
-      warning("AlwaysPreTouch is enabled, disabling ShenandoahUncommit");
-    }
-    FLAG_SET_DEFAULT(ShenandoahUncommit, false);
   }
 
   if ((InitialHeapSize == MaxHeapSize) && ShenandoahUncommit) {
@@ -175,14 +159,6 @@ void ShenandoahArguments::initialize() {
     FLAG_SET_DEFAULT(ClassUnloadingWithConcurrentMark, false);
   }
 
-  // AOT is not supported yet
-  if (UseAOT) {
-    if (!FLAG_IS_DEFAULT(UseAOT)) {
-      warning("Shenandoah does not support AOT at this moment, disabling UseAOT");
-    }
-    FLAG_SET_DEFAULT(UseAOT, false);
-  }
-
   // TLAB sizing policy makes resizing decisions before each GC cycle. It averages
   // historical data, assigning more recent data the weight according to TLABAllocationWeight.
   // Current default is good for generational collectors that run frequent young GCs.
@@ -191,25 +167,6 @@ void ShenandoahArguments::initialize() {
   if (FLAG_IS_DEFAULT(TLABAllocationWeight)) {
     FLAG_SET_DEFAULT(TLABAllocationWeight, 90);
   }
-
-  // Shenandoah needs more C2 nodes to compile some methods with lots of barriers.
-  // NodeLimitFudgeFactor needs to stay the same relative to MaxNodeLimit.
-#ifdef COMPILER2
-  if (FLAG_IS_DEFAULT(MaxNodeLimit)) {
-    FLAG_SET_DEFAULT(MaxNodeLimit, MaxNodeLimit * 3);
-    FLAG_SET_DEFAULT(NodeLimitFudgeFactor, NodeLimitFudgeFactor * 3);
-  }
-#endif
-
-  // Make sure safepoint deadlocks are failing predictably. This sets up VM to report
-  // fatal error after 10 seconds of wait for safepoint syncronization (not the VM
-  // operation itself). There is no good reason why Shenandoah would spend that
-  // much time synchronizing.
-#ifdef ASSERT
-  FLAG_SET_DEFAULT(SafepointTimeout, true);
-  FLAG_SET_DEFAULT(SafepointTimeoutDelay, 10000);
-  FLAG_SET_DEFAULT(AbortVMOnSafepointTimeout, true);
-#endif
 }
 
 size_t ShenandoahArguments::conservative_max_heap_alignment() {
@@ -222,7 +179,7 @@ size_t ShenandoahArguments::conservative_max_heap_alignment() {
 
 void ShenandoahArguments::initialize_alignments() {
   // Need to setup sizes early to get correct alignments.
-  ShenandoahHeapRegion::setup_sizes(MaxHeapSize);
+  MaxHeapSize = ShenandoahHeapRegion::setup_sizes(MaxHeapSize);
 
   // This is expected by our algorithm for ShenandoahHeap::heap_region_containing().
   size_t align = ShenandoahHeapRegion::region_size_bytes();

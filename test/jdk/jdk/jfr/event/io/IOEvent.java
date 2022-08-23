@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -197,14 +195,11 @@ public class IOEvent {
             }
             return canonical_path;
         } else {
-            return String.format("%s/%s:%d",
-                                event.getValue("host"),
-                                event.getValue("address"),
-                                event.getValue("port"));
+            return event.getValue("address") + ":"  + event.getValue("port");
         }
     }
 
     private static String getAddress(Socket s) {
-        return s.getInetAddress().toString() + ":" + s.getPort();
+        return s.getInetAddress().getHostAddress() + ":" + s.getPort();
     }
 }

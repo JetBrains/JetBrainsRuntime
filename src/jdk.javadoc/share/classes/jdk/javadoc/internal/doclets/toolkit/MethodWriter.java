@@ -26,7 +26,6 @@
 package jdk.javadoc.internal.doclets.toolkit;
 
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
 /**
@@ -38,7 +37,7 @@ import javax.lang.model.type.TypeMirror;
  *  deletion without notice.</b>
  */
 
-public interface MethodWriter {
+public interface MethodWriter extends MemberWriter {
 
     /**
      * Get the method details tree header.
@@ -73,6 +72,14 @@ public interface MethodWriter {
     void addDeprecated(ExecutableElement method, Content methodDocTree);
 
     /**
+     * Adds the preview output for the given member.
+     *
+     * @param member the member being documented
+     * @param annotationDocTree content tree to which the preview information will be added
+     */
+    void addPreview(ExecutableElement member, Content contentTree);
+
+    /**
      * Add the comments for the given method.
      *
      * @param holder the holder type (not erasure) of the method
@@ -97,14 +104,6 @@ public interface MethodWriter {
      * @return content tree for the method details
      */
     Content getMethodDetails(Content methodDetailsTreeHeader, Content methodDetailsTree);
-
-    /**
-     * Get the method documentation.
-     *
-     * @param methodDocTree the content tree representing method documentation
-     * @return content tree for the method documentation
-     */
-    Content getMethodDoc(Content methodDocTree);
 
     /**
      * Gets the member header tree.

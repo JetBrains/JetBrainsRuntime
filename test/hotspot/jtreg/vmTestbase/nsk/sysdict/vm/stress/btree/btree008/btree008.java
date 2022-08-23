@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
 
 /*
  * @test
- * @key stress
+ * @key stress randomness
  *
  * @summary converted from VM Testbase nsk/sysdict/vm/stress/btree/btree008.
  * VM Testbase keywords: [stress, sysdict, stressopt, nonconcurrent]
@@ -44,11 +44,9 @@
  * @run driver nsk.sysdict.share.GenClassesBuilder btree
  * @comment build fats.jar
  * @run driver nsk.sysdict.share.GenClassesBuilder fats
- * @run driver jdk.test.lib.FileInstaller . .
  * @build nsk.sysdict.share.BTreeTest
  * @run main/othervm
  *      -XX:-UseGCOverheadLimit
- *      PropertyResolvingWrapper
  *      nsk.sysdict.share.BTreeTest
  *      -jarpath btree.jar${path.separator}fats.jar
  *      -useSingleLoader

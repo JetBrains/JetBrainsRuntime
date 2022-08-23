@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,26 +26,24 @@ package gc;
 /*
  * @test TestAgeOutputSerial
  * @bug 8164936
- * @key gc
  * @requires vm.gc.Serial
  * @modules java.base/jdk.internal.misc
  * @library /test/lib
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox
- * @run main/othervm -XX:+UseSerialGC gc.TestAgeOutput UseSerialGC
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
+ * @run driver gc.TestAgeOutput UseSerialGC
  */
 
 /*
  * @test TestAgeOutputG1
  * @bug 8164936
  * @summary Check that collectors using age table based aging print an age table even for the first garbage collection
- * @key gc
  * @requires vm.gc.G1
  * @modules java.base/jdk.internal.misc
  * @library /test/lib
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox
- * @run main/othervm -XX:+UseG1GC gc.TestAgeOutput UseG1GC
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
+ * @run driver gc.TestAgeOutput UseG1GC
  */
 
 import sun.hotspot.WhiteBox;
@@ -68,7 +66,7 @@ public class TestAgeOutput {
     }
 
     public static void runTest(String gcArg) throws Exception {
-        final String[] arguments = {
+        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
             "-Xbootclasspath/a:.",
             "-XX:+UnlockExperimentalVMOptions",
             "-XX:+UnlockDiagnosticVMOptions",
@@ -76,10 +74,7 @@ public class TestAgeOutput {
             "-XX:+" + gcArg,
             "-Xmx10M",
             "-Xlog:gc+age=trace",
-            GCTest.class.getName()
-            };
-
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(arguments);
+            GCTest.class.getName());
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
 
         output.shouldHaveExitValue(0);

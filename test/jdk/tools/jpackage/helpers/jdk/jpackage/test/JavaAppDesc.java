@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,11 @@ public final class JavaAppDesc {
     public JavaAppDesc() {
     }
 
+    public JavaAppDesc setSrcJavaPath(Path v) {
+        srcJavaPath = v;
+        return this;
+    }
+
     public JavaAppDesc setClassName(String v) {
         qualifiedClassName = v;
         return this;
@@ -53,6 +58,15 @@ public final class JavaAppDesc {
     public JavaAppDesc setWithMainClass(boolean v) {
         withMainClass = v;
         return this;
+    }
+
+    public Path srcJavaPath() {
+        return srcJavaPath;
+    }
+
+    public String srcClassName() {
+        String fname = srcJavaPath().getFileName().toString();
+        return fname.substring(0, fname.lastIndexOf('.'));
     }
 
     public String className() {
@@ -84,6 +98,10 @@ public final class JavaAppDesc {
     }
 
     public String jmodFileName() {
+        if (isExplodedModule()) {
+            return bundleFileName;
+        }
+
         if (bundleFileName != null && bundleFileName.endsWith(".jmod")) {
             return bundleFileName;
         }
@@ -92,6 +110,10 @@ public final class JavaAppDesc {
 
     public boolean isWithBundleFileName() {
         return bundleFileName != null;
+    }
+
+    public boolean isExplodedModule() {
+        return bundleFileName != null && bundleFileName.endsWith(".ejmod");
     }
 
     public String moduleVersion() {
@@ -105,6 +127,9 @@ public final class JavaAppDesc {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
+        if (srcJavaPath != null) {
+            sb.append(srcJavaPath.toString()).append('*');
+        }
         if (bundleFileName != null) {
             sb.append(bundleFileName).append(':');
         }
@@ -127,7 +152,7 @@ public final class JavaAppDesc {
      * Create Java application description form encoded string value.
      *
      * Syntax of encoded Java application description is
-     * [(jar_file|jmods_file):][module_name/]qualified_class_name[!][@module_version].
+     * [src_java_file*][(jar_file|jmods_file|exploded_jmods_file):][module_name/]qualified_class_name[!][@module_version].
      *
      * E.g.: `duke.jar:com.other/com.other.foo.bar.Buz!@3.7` encodes modular
      * application. Module name is `com.other`. Main class is
@@ -139,6 +164,12 @@ public final class JavaAppDesc {
      * application. Module name is `com.another`. Main class is
      * `com.another.One`. Application will be
      * compiled and packed in `bar.jmod` jmod file.
+     *
+     * E.g.: `bar.ejmod:com.another/com.another.One` encodes modular
+     * application. Module name is `com.another`. Main class is
+     * `com.another.One`. Application will be
+     * compiled and packed in temporary jmod file that will be exploded in
+     * `bar.ejmod` directory.
      *
      * E.g.: `Ciao` encodes non-modular `Ciao` class in the default package.
      * jar command will not put main class attribute in the jar file.
@@ -154,8 +185,16 @@ public final class JavaAppDesc {
             return desc;
         }
 
+        String srcJavaPathAndOther = Functional.identity(() -> {
+            String[] components = javaAppDesc.split("\\*", 2);
+            if (components.length == 2) {
+                desc.setSrcJavaPath(Path.of(components[0]));
+            }
+            return components[components.length - 1];
+        }).get();
+
         String moduleNameAndOther = Functional.identity(() -> {
-            String[] components = javaAppDesc.split(":", 2);
+            String[] components = srcJavaPathAndOther.split(":", 2);
             if (components.length == 2) {
                 desc.setBundleFileName(components[0]);
             }
@@ -192,6 +231,7 @@ public final class JavaAppDesc {
         return desc;
     }
 
+    private Path srcJavaPath;
     private String qualifiedClassName;
     private String moduleName;
     private String bundleFileName;

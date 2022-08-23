@@ -26,6 +26,7 @@
 #define SHARE_JFR_LEAKPROFILER_UTILITIES_UNIFIEDOOPREF_INLINE_HPP
 
 #include "jfr/leakprofiler/utilities/unifiedOopRef.hpp"
+
 #include "oops/access.inline.hpp"
 #include "utilities/debug.hpp"
 
@@ -85,7 +86,8 @@ inline UnifiedOopRef UnifiedOopRef::encode_in_heap(const oop* ref) {
 }
 
 inline UnifiedOopRef UnifiedOopRef::encode_null() {
-  return UnifiedOopRef();
+  UnifiedOopRef result = { 0 };
+  return result;
 }
 
 inline oop UnifiedOopRef::dereference() const {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug 8210244
+ * @bug 8210244 8261976
  * @summary {@value} should be permitted in module documentation
  * @library /tools/lib ../../lib
  * @modules jdk.javadoc/jdk.javadoc.internal.tool
@@ -68,9 +68,10 @@ public class TestValueTagInModule extends JavadocTester {
         checkExit(Exit.OK);
 
         checkOutput("m1/module-summary.html", true,
-                "<section class=\"moduleDescription\" id=\"module.description\">\n"
-                + "<!-- ============ MODULE DESCRIPTION =========== -->\n"
-                + "<div class=\"block\">value of field CONS : <a href=\"pkg/A.html#CONS\">100</a></div>");
+                """
+                    <section class="module-description" id="module-description">
+                    <!-- ============ MODULE DESCRIPTION =========== -->
+                    <div class="block">value of field CONS : <a href="pkg/A.html#CONS">100</a></div>""");
     }
 
     void createTestClass(Path srcDir) throws Exception {

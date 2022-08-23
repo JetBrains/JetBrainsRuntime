@@ -50,6 +50,11 @@ import static sun.swing.SwingUtilities2.getFontCharsWidth;
  */
 public class Utilities {
     /**
+     * Constructs a {@code Utilities}.
+     */
+    public Utilities() {}
+
+    /**
      * If <code>view</code>'s container is a <code>JComponent</code> it
      * is returned, after casting.
      */
@@ -396,6 +401,14 @@ public class Utilities {
                                          int[] justificationData) {
         return getTabbedTextOffset(view, s, metrics, x0, x, e, startOffset, true,
                                    justificationData, false);
+    }
+
+    static final int getTabbedTextOffset(View view, Segment s, FontMetrics metrics,
+                                         float x0, float x, TabExpander e,
+                                         int startOffset,
+                                         int[] justificationData) {
+        return getTabbedTextOffset(view, s, metrics, x0, x, e, startOffset, true,
+                justificationData, true);
     }
 
     /**

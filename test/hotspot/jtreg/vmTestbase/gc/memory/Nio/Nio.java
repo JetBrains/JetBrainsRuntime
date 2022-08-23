@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,13 @@
 /*
  * @test
  * @modules java.base/jdk.internal.misc
- * @key stress gc
+ * @key stress
  *
  * @summary converted from VM Testbase gc/memory/Nio.
  * VM Testbase keywords: [gc, stress, stressopt, monitoring]
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm -XX:MaxDirectMemorySize=50M gc.memory.Nio.Nio
  */
 

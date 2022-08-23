@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,8 +33,8 @@ import java.lang.ref.PhantomReference;
 import java.lang.ref.WeakReference;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 /**
  * This class is used for registering and disposing the native
@@ -50,6 +50,7 @@ import java.util.Hashtable;
  *
  * @see DisposerRecord
  */
+@SuppressWarnings("removal")
 public class Disposer implements Runnable {
     private static final ReferenceQueue<Object> queue = new ReferenceQueue<>();
     private static final Hashtable<java.lang.ref.Reference<Object>, DisposerRecord> records =
@@ -144,12 +145,12 @@ public class Disposer implements Runnable {
                 Object obj = queue.remove();
                 ((Reference)obj).clear();
                 DisposerRecord rec = records.remove(obj);
-                rec.dispose();
+                safeDispose(rec);
                 obj = null;
                 rec = null;
                 clearDeferredRecords();
             } catch (Exception e) {
-                System.out.println("Exception while removing reference.");
+                e.printStackTrace(System.err);
             }
         }
     }
@@ -163,21 +164,23 @@ public class Disposer implements Runnable {
     public static interface PollDisposable {
     };
 
-    private static ArrayList<DisposerRecord> deferredRecords = null;
+    private static ConcurrentLinkedDeque<DisposerRecord> deferredRecords = new ConcurrentLinkedDeque<>();
+
+    private static void safeDispose(DisposerRecord rec) {
+        try {
+            rec.dispose();
+        } catch (final Exception e) {
+            e.printStackTrace(System.err);
+        }
+    }
 
     private static void clearDeferredRecords() {
-        if (deferredRecords == null || deferredRecords.isEmpty()) {
-            return;
-        }
-        for (int i=0;i<deferredRecords.size(); i++) {
-            try {
-                DisposerRecord rec = deferredRecords.get(i);
-                rec.dispose();
-            } catch (Exception e) {
-                System.out.println("Exception while disposing deferred rec.");
+        while (!deferredRecords.isEmpty()) {
+            final DisposerRecord rec = deferredRecords.pollFirst();
+            if (rec != null) {
+                safeDispose(rec);
             }
         }
-        deferredRecords.clear();
     }
 
     /*
@@ -210,7 +213,7 @@ public class Disposer implements Runnable {
                 ((Reference)obj).clear();
                 DisposerRecord rec = records.remove(obj);
                 if (rec instanceof PollDisposable) {
-                    rec.dispose();
+                    safeDispose(rec);
                     obj = null;
                     rec = null;
                 } else {
@@ -218,14 +221,11 @@ public class Disposer implements Runnable {
                         continue;
                     }
                     deferred++;
-                    if (deferredRecords == null) {
-                      deferredRecords = new ArrayList<DisposerRecord>(5);
-                    }
-                    deferredRecords.add(rec);
+                    deferredRecords.offerLast(rec);
                 }
             }
         } catch (Exception e) {
-            System.out.println("Exception while removing reference.");
+            e.printStackTrace(System.err);
         } finally {
             pollingQueue = false;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
 
 #include "precompiled.hpp"
 #include "classfile/classLoaderData.inline.hpp"
+#include "classfile/javaClasses.inline.hpp"
 #include "classfile/symbolTable.hpp"
 #include "jfr/recorder/checkpoint/types/traceid/jfrTraceId.inline.hpp"
 #include "jfr/utilities/jfrTypes.hpp"
@@ -51,7 +52,7 @@ static traceid atomic_inc(traceid volatile* const dest) {
 }
 
 static traceid next_class_id() {
-  static volatile traceid class_id_counter = MaxJfrEventId + 100;
+  static volatile traceid class_id_counter = LAST_TYPE_ID + 1; // + 1 is for the void.class primitive
   return atomic_inc(&class_id_counter) << TRACE_ID_SHIFT;
 }
 
@@ -61,17 +62,17 @@ static traceid next_thread_id() {
 }
 
 static traceid next_module_id() {
-  static volatile traceid module_id_counter = 1;
+  static volatile traceid module_id_counter = 0;
   return atomic_inc(&module_id_counter) << TRACE_ID_SHIFT;
 }
 
 static traceid next_package_id() {
-  static volatile traceid package_id_counter = 1;
+  static volatile traceid package_id_counter = 0;
   return atomic_inc(&package_id_counter) << TRACE_ID_SHIFT;
 }
 
 static traceid next_class_loader_data_id() {
-  static volatile traceid cld_id_counter = 1;
+  static volatile traceid cld_id_counter = 0;
   return atomic_inc(&cld_id_counter) << TRACE_ID_SHIFT;
 }
 
@@ -140,15 +141,51 @@ void JfrTraceId::assign(const PackageEntry* package) {
 
 void JfrTraceId::assign(const ClassLoaderData* cld) {
   assert(cld != NULL, "invariant");
-  if (cld->is_unsafe_anonymous()) {
+  if (cld->has_class_mirror_holder()) {
     cld->set_trace_id(0);
     return;
   }
   cld->set_trace_id(next_class_loader_data_id());
 }
 
+traceid JfrTraceId::assign_primitive_klass_id() {
+  return next_class_id();
+}
+
 traceid JfrTraceId::assign_thread_id() {
   return next_thread_id();
+}
+
+// A mirror representing a primitive class (e.g. int.class) has no reified Klass*,
+// instead it has an associated TypeArrayKlass* (e.g. int[].class).
+// We can use the TypeArrayKlass* as a proxy for deriving the id of the primitive class.
+// The exception is the void.class, which has neither a Klass* nor a TypeArrayKlass*.
+// It will use a reserved constant.
+static traceid load_primitive(const oop mirror) {
+  assert(java_lang_Class::is_primitive(mirror), "invariant");
+  const Klass* const tak = java_lang_Class::array_klass_acquire(mirror);
+  traceid id;
+  if (tak == NULL) {
+    // The first klass id is reserved for the void.class
+    id = LAST_TYPE_ID + 1;
+  } else {
+    id = JfrTraceId::load_raw(tak) + 1;
+  }
+  JfrTraceIdEpoch::set_changed_tag_state();
+  return id;
+}
+
+traceid JfrTraceId::load(jclass jc, bool raw /* false */) {
+  assert(jc != NULL, "invariant");
+  assert(JavaThread::current()->thread_state() == _thread_in_vm, "invariant");
+  const oop mirror = JNIHandles::resolve(jc);
+  assert(mirror != NULL, "invariant");
+  const Klass* const k = java_lang_Class::as_Klass(mirror);
+  return k != NULL ? (raw ? load_raw(k) : load(k)) : load_primitive(mirror);
+}
+
+traceid JfrTraceId::load_raw(jclass jc) {
+  return load(jc, true);
 }
 
 // used by CDS / APPCDS as part of "remove_unshareable_info"
@@ -161,6 +198,13 @@ void JfrTraceId::remove(const Klass* k) {
   k->set_trace_id(EVENT_KLASS_MASK(k));
 }
 
+// used by CDS / APPCDS as part of "remove_unshareable_info"
+void JfrTraceId::remove(const Method* method) {
+  assert(method != NULL, "invariant");
+  // Clear all bits.
+  method->set_trace_flags(0);
+}
+
 // used by CDS / APPCDS as part of "restore_unshareable_info"
 void JfrTraceId::restore(const Klass* k) {
   assert(k != NULL, "invariant");
@@ -170,27 +214,15 @@ void JfrTraceId::restore(const Klass* k) {
   const traceid event_flags = k->trace_id();
   // get a fresh traceid and restore the original event flags
   k->set_trace_id(next_class_id() | event_flags);
-}
-
-traceid JfrTraceId::get(jclass jc) {
-  assert(jc != NULL, "invariant");
-  assert(((JavaThread*)Thread::current())->thread_state() == _thread_in_vm, "invariant");
-  const oop my_oop = JNIHandles::resolve(jc);
-  assert(my_oop != NULL, "invariant");
-  return get(java_lang_Class::as_Klass(my_oop));
-}
-
-traceid JfrTraceId::use(jclass jc) {
-  assert(jc != NULL, "invariant");
-  assert(((JavaThread*)Thread::current())->thread_state() == _thread_in_vm, "invariant");
-  const oop my_oop = JNIHandles::resolve(jc);
-  assert(my_oop != NULL, "invariant");
-  return use(java_lang_Class::as_Klass(my_oop));
+  if (k->is_typeArray_klass()) {
+    // the next id is reserved for the corresponding primitive class
+    next_class_id();
+  }
 }
 
 bool JfrTraceId::in_visible_set(const jclass jc) {
   assert(jc != NULL, "invariant");
-  assert(((JavaThread*)Thread::current())->thread_state() == _thread_in_vm, "invariant");
+  assert(JavaThread::current()->thread_state() == _thread_in_vm, "invariant");
   const oop mirror = JNIHandles::resolve(jc);
   assert(mirror != NULL, "invariant");
   return in_visible_set(java_lang_Class::as_Klass(mirror));

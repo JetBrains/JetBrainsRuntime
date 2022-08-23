@@ -34,14 +34,14 @@ bool Opaque1Node::cmp( const Node &n ) const {
 }
 
 //------------------------------Identity---------------------------------------
-// If _major_progress, then more loop optimizations follow.  Do NOT remove
-// the opaque Node until no more loop ops can happen.  Note the timing of
-// _major_progress; it's set in the major loop optimizations THEN comes the
-// call to IterGVN and any chance of hitting this code.  Hence there's no
-// phase-ordering problem with stripping Opaque1 in IGVN followed by some
-// more loop optimizations that require it.
+// Do NOT remove the opaque Node until no more loop ops can happen.
 Node* Opaque1Node::Identity(PhaseGVN* phase) {
-  return phase->C->major_progress() ? this : in(1);
+  if (phase->C->post_loop_opts_phase()) {
+    return in(1);
+  } else {
+    phase->C->record_for_post_loop_opts_igvn(this);
+  }
+  return this;
 }
 
 //=============================================================================

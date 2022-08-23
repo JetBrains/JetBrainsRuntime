@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@
 #include "memory/memRegion.hpp"
 #include "oops/oopsHierarchy.hpp"
 #include "utilities/globalDefinitions.hpp"
+#include <type_traits>
 
 class outputStream;
 class ReservedHeapSpace;
@@ -76,6 +77,10 @@ public:
     AnyNarrowOopMode = 4
   };
 
+  // The representation type for narrowOop is assumed to be uint32_t.
+  static_assert(std::is_same<uint32_t, std::underlying_type_t<narrowOop>>::value,
+                "narrowOop has unexpected representation type");
+
   static void initialize(const ReservedHeapSpace& heap_space);
 
   static void set_base(address base);
@@ -112,8 +117,9 @@ public:
   static void     print_mode(outputStream* st);
 
   static bool is_null(oop v)       { return v == NULL; }
-  static bool is_null(narrowOop v) { return v == 0; }
+  static bool is_null(narrowOop v) { return v == narrowOop::null; }
 
+  static inline oop decode_raw_not_null(narrowOop v);
   static inline oop decode_raw(narrowOop v);
   static inline oop decode_not_null(narrowOop v);
   static inline oop decode(narrowOop v);
@@ -121,10 +127,16 @@ public:
   static inline narrowOop encode(oop v);
 
   // No conversions needed for these overloads
-  static oop decode_not_null(oop v)             { return v; }
-  static oop decode(oop v)                      { return v; }
-  static narrowOop encode_not_null(narrowOop v) { return v; }
-  static narrowOop encode(narrowOop v)          { return v; }
+  static inline oop decode_not_null(oop v);
+  static inline oop decode(oop v);
+  static inline narrowOop encode_not_null(narrowOop v);
+  static inline narrowOop encode(narrowOop v);
+
+  static inline uint32_t narrow_oop_value(oop o);
+  static inline uint32_t narrow_oop_value(narrowOop o);
+
+  template<typename T>
+  static inline narrowOop narrow_oop_cast(T i);
 };
 
 // For UseCompressedClassPointers.
@@ -133,26 +145,51 @@ class CompressedKlassPointers : public AllStatic {
 
   static NarrowPtrStruct _narrow_klass;
 
-  // CompressedClassSpaceSize set to 1GB, but appear 3GB away from _narrow_ptrs_base during CDS dump.
-  static uint64_t _narrow_klass_range;
+  // Together with base, this defines the address range within which Klass
+  //  structures will be located: [base, base+range). While the maximal
+  //  possible encoding range is 4|32G for shift 0|3, if we know beforehand
+  //  the expected range of Klass* pointers will be smaller, a platform
+  //  could use this info to optimize encoding.
+  static size_t _range;
+
+  static void set_base(address base);
+  static void set_range(size_t range);
 
 public:
-  static void set_base(address base);
+
   static void set_shift(int shift);
-  static void set_range(uint64_t range);
+
+
+  // Given an address p, return true if p can be used as an encoding base.
+  //  (Some platforms have restrictions of what constitutes a valid base
+  //   address).
+  static bool is_valid_base(address p);
+
+  // Given an address range [addr, addr+len) which the encoding is supposed to
+  //  cover, choose base, shift and range.
+  //  The address range is the expected range of uncompressed Klass pointers we
+  //  will encounter (and the implicit promise that there will be no Klass
+  //  structures outside this range).
+  static void initialize(address addr, size_t len);
+
+  static void     print_mode(outputStream* st);
 
   static address  base()               { return  _narrow_klass._base; }
-  static uint64_t range()              { return  _narrow_klass_range; }
+  static size_t   range()              { return  _range; }
   static int      shift()              { return  _narrow_klass._shift; }
 
   static bool is_null(Klass* v)      { return v == NULL; }
   static bool is_null(narrowKlass v) { return v == 0; }
 
+  static inline Klass* decode_raw(narrowKlass v, address base);
   static inline Klass* decode_raw(narrowKlass v);
   static inline Klass* decode_not_null(narrowKlass v);
+  static inline Klass* decode_not_null(narrowKlass v, address base);
   static inline Klass* decode(narrowKlass v);
   static inline narrowKlass encode_not_null(Klass* v);
+  static inline narrowKlass encode_not_null(Klass* v, address base);
   static inline narrowKlass encode(Klass* v);
+
 };
 
 #endif // SHARE_OOPS_COMPRESSEDOOPS_HPP

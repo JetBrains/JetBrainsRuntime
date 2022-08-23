@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,13 +22,15 @@
  */
 package jdk.vm.ci.code.test;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.code.test.aarch64.AArch64TestAssembler;
 import jdk.vm.ci.code.test.amd64.AMD64TestAssembler;
-import jdk.vm.ci.code.test.sparc.SPARCTestAssembler;
+import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompiledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
@@ -36,7 +38,6 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCIBackend;
-import jdk.vm.ci.sparc.SPARC;
 import org.junit.Assert;
 
 import java.lang.reflect.Method;
@@ -45,6 +46,8 @@ import java.lang.reflect.Method;
  * Base class for code installation tests.
  */
 public class CodeInstallationTest {
+
+    private static final boolean DEBUG = false;
 
     protected final MetaAccessProvider metaAccess;
     protected final CodeCacheProvider codeCache;
@@ -70,8 +73,8 @@ public class CodeInstallationTest {
         Architecture arch = codeCache.getTarget().arch;
         if (arch instanceof AMD64) {
             return new AMD64TestAssembler(codeCache, config);
-        } else if (arch instanceof SPARC) {
-            return new SPARCTestAssembler(codeCache, config);
+        } else if (arch instanceof AArch64) {
+            return new AArch64TestAssembler(codeCache, config);
         } else {
             Assert.fail("unsupported architecture");
             return null;
@@ -98,6 +101,11 @@ public class CodeInstallationTest {
 
             HotSpotCompiledCode code = asm.finish(resolvedMethod);
             InstalledCode installed = codeCache.addCode(resolvedMethod, code, null, null);
+
+            if (DEBUG) {
+                String str = ((HotSpotCodeCacheProvider) codeCache).disassemble(installed);
+                System.out.println(str);
+            }
 
             Object expected = method.invoke(null, args);
             Object actual = installed.executeVarargs(args);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@
 
 #include "code/codeBlob.hpp"
 #include "memory/allocation.hpp"
+#include "prims/vectorSupport.hpp"
 #include "runtime/frame.hpp"
 #include "runtime/mutexLocker.hpp"
 #include "runtime/stubCodeGenerator.hpp"
@@ -150,15 +151,6 @@ class StubRoutines: AllStatic {
   static address _atomic_add_entry;
   static address _atomic_add_long_entry;
   static address _fence_entry;
-  static address _d2i_wrapper;
-  static address _d2l_wrapper;
-
-  static jint    _fpu_cntrl_wrd_std;
-  static jint    _fpu_cntrl_wrd_24;
-  static jint    _fpu_cntrl_wrd_trunc;
-  static jint    _mxcsr_std;
-  static jint    _fpu_subnormal_bias1[3];
-  static jint    _fpu_subnormal_bias2[3];
 
   static BufferBlob* _code1;                               // code buffer for initial routines
   static BufferBlob* _code2;                               // code buffer for all other routines
@@ -207,9 +199,6 @@ class StubRoutines: AllStatic {
   static address _arrayof_jshort_fill;
   static address _arrayof_jint_fill;
 
-  // zero heap space aligned to jlong (8 bytes)
-  static address _zero_aligned_words;
-
   static address _aescrypt_encryptBlock;
   static address _aescrypt_decryptBlock;
   static address _cipherBlockChaining_encryptAESCrypt;
@@ -219,13 +208,18 @@ class StubRoutines: AllStatic {
   static address _counterMode_AESCrypt;
   static address _ghash_processBlocks;
   static address _base64_encodeBlock;
+  static address _base64_decodeBlock;
 
+  static address _md5_implCompress;
+  static address _md5_implCompressMB;
   static address _sha1_implCompress;
   static address _sha1_implCompressMB;
   static address _sha256_implCompress;
   static address _sha256_implCompressMB;
   static address _sha512_implCompress;
   static address _sha512_implCompressMB;
+  static address _sha3_implCompress;
+  static address _sha3_implCompressMB;
 
   static address _updateBytesCRC32;
   static address _crc_table_adr;
@@ -262,6 +256,10 @@ class StubRoutines: AllStatic {
   static address _safefetchN_entry;
   static address _safefetchN_fault_pc;
   static address _safefetchN_continuation_pc;
+
+  // Vector Math Routines
+  static address _vector_f_math[VectorSupport::NUM_VEC_SIZES][VectorSupport::NUM_SVML_OP];
+  static address _vector_d_math[VectorSupport::NUM_VEC_SIZES][VectorSupport::NUM_SVML_OP];
 
  public:
   // Initialization/Testing
@@ -319,17 +317,6 @@ class StubRoutines: AllStatic {
   static address atomic_add_entry()                        { return _atomic_add_entry; }
   static address atomic_add_long_entry()                   { return _atomic_add_long_entry; }
   static address fence_entry()                             { return _fence_entry; }
-
-  static address d2i_wrapper()                             { return _d2i_wrapper; }
-  static address d2l_wrapper()                             { return _d2l_wrapper; }
-  static jint    fpu_cntrl_wrd_std()                       { return _fpu_cntrl_wrd_std;   }
-  static address addr_fpu_cntrl_wrd_std()                  { return (address)&_fpu_cntrl_wrd_std;   }
-  static address addr_fpu_cntrl_wrd_24()                   { return (address)&_fpu_cntrl_wrd_24;   }
-  static address addr_fpu_cntrl_wrd_trunc()                { return (address)&_fpu_cntrl_wrd_trunc; }
-  static address addr_mxcsr_std()                          { return (address)&_mxcsr_std; }
-  static address addr_fpu_subnormal_bias1()                { return (address)&_fpu_subnormal_bias1; }
-  static address addr_fpu_subnormal_bias2()                { return (address)&_fpu_subnormal_bias2; }
-
 
   static address select_arraycopy_function(BasicType t, bool aligned, bool disjoint, const char* &name, bool dest_uninitialized);
 
@@ -397,12 +384,17 @@ class StubRoutines: AllStatic {
   static address counterMode_AESCrypt()  { return _counterMode_AESCrypt; }
   static address ghash_processBlocks()   { return _ghash_processBlocks; }
   static address base64_encodeBlock()    { return _base64_encodeBlock; }
+  static address base64_decodeBlock()    { return _base64_decodeBlock; }
+  static address md5_implCompress()      { return _md5_implCompress; }
+  static address md5_implCompressMB()    { return _md5_implCompressMB; }
   static address sha1_implCompress()     { return _sha1_implCompress; }
   static address sha1_implCompressMB()   { return _sha1_implCompressMB; }
   static address sha256_implCompress()   { return _sha256_implCompress; }
   static address sha256_implCompressMB() { return _sha256_implCompressMB; }
   static address sha512_implCompress()   { return _sha512_implCompress; }
   static address sha512_implCompressMB() { return _sha512_implCompressMB; }
+  static address sha3_implCompress()     { return _sha3_implCompress; }
+  static address sha3_implCompressMB()   { return _sha3_implCompressMB; }
 
   static address updateBytesCRC32()    { return _updateBytesCRC32; }
   static address crc_table_addr()      { return _crc_table_adr; }
@@ -433,8 +425,6 @@ class StubRoutines: AllStatic {
   static address dtan()                { return _dtan; }
 
   static address select_fill_function(BasicType t, bool aligned, const char* &name);
-
-  static address zero_aligned_words()  { return _zero_aligned_words; }
 
   //
   // Safefetch stub support
@@ -483,24 +473,4 @@ class StubRoutines: AllStatic {
   static void arrayof_oop_copy_uninit(HeapWord* src, HeapWord* dest, size_t count);
 };
 
-// Safefetch allows to load a value from a location that's not known
-// to be valid. If the load causes a fault, the error value is returned.
-inline int SafeFetch32(int* adr, int errValue) {
-  assert(StubRoutines::SafeFetch32_stub(), "stub not yet generated");
-  return StubRoutines::SafeFetch32_stub()(adr, errValue);
-}
-inline intptr_t SafeFetchN(intptr_t* adr, intptr_t errValue) {
-  assert(StubRoutines::SafeFetchN_stub(), "stub not yet generated");
-  return StubRoutines::SafeFetchN_stub()(adr, errValue);
-}
-
-
-// returns true if SafeFetch32 and SafeFetchN can be used safely (stubroutines are already generated)
-inline bool CanUseSafeFetch32() {
-  return StubRoutines::SafeFetch32_stub() ? true : false;
-}
-
-inline bool CanUseSafeFetchN() {
-  return StubRoutines::SafeFetchN_stub() ? true : false;
-}
 #endif // SHARE_RUNTIME_STUBROUTINES_HPP

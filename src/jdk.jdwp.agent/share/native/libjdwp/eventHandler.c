@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,6 +67,7 @@
 #include "classTrack.h"
 #include "commonRef.h"
 #include "debugLoop.h"
+#include "signature.h"
 
 static HandlerID requestIdCounter;
 static jbyte currentSessionID;
@@ -268,7 +269,7 @@ eventHandlerRestricted_iterator(EventIndex ei,
 
 /* BREAKPOINT, METHOD_ENTRY and SINGLE_STEP events are covered by
  * the co-location of events policy. Of these three co-located
- * events, METHOD_ENTRY is  always reported first and BREAKPOINT
+ * events, METHOD_ENTRY is always reported first and BREAKPOINT
  * is always reported last. Here are the possible combinations and
  * their order:
  *
@@ -533,7 +534,8 @@ synthesizeUnloadEvent(void *signatureVoid, void *envVoid)
 /* Garbage Collection Happened */
 static unsigned int garbageCollected = 0;
 
-/* The JVMTI generic event callback. Each event is passed to a sequence of
+/*
+ * The JVMTI generic event callback. Each event is passed to a sequence of
  * handlers in a chain until the chain ends or one handler
  * consumes the event.
  */
@@ -544,8 +546,9 @@ event_callback(JNIEnv *env, EventInfo *evinfo)
     jbyte eventSessionID = currentSessionID; /* session could change */
     jthrowable currentException;
     jthread thread;
+    EventIndex ei = evinfo->ei;
 
-    LOG_MISC(("event_callback(): ei=%s", eventText(evinfo->ei)));
+    LOG_MISC(("event_callback(): ei=%s", eventText(ei)));
     log_debugee_location("event_callback()", evinfo->thread, evinfo->method, evinfo->location);
 
     /* We want to preserve any current exception that might get
@@ -601,8 +604,7 @@ event_callback(JNIEnv *env, EventInfo *evinfo)
          * resources can be allocated.  This must be done before
          * grabbing any locks.
          */
-        eventBag = threadControl_onEventHandlerEntry(eventSessionID,
-                                 evinfo->ei, thread, currentException);
+        eventBag = threadControl_onEventHandlerEntry(eventSessionID, evinfo, currentException);
         if ( eventBag == NULL ) {
             jboolean invoking;
             do {
@@ -1625,6 +1627,9 @@ installHandler(HandlerNode *node,
 
     node->handlerID = external? ++requestIdCounter : 0;
     error = eventFilterRestricted_install(node);
+    if (node->ei == EI_GC_FINISH) {
+        classTrack_activate(getEnv());
+    }
     if (error == JVMTI_ERROR_NONE) {
         insert(getHandlerChain(node->ei), node);
     }
@@ -1709,3 +1714,47 @@ eventHandler_installExternal(HandlerNode *node)
                           standardHandlers_defaultHandler(node->ei),
                           JNI_TRUE);
 }
+
+/***** debugging *****/
+
+#ifdef DEBUG
+
+void
+eventHandler_dumpAllHandlers(jboolean dumpPermanent)
+{
+    int ei;
+    for (ei = EI_min; ei <= EI_max; ++ei) {
+        eventHandler_dumpHandlers(ei, dumpPermanent);
+    }
+}
+
+void
+eventHandler_dumpHandlers(EventIndex ei, jboolean dumpPermanent)
+{
+  HandlerNode *nextNode;
+  nextNode = getHandlerChain(ei)->first;
+  if (nextNode != NULL) {
+      tty_message("\nHandlers for %s(%d)", eventIndex2EventName(ei), ei);
+      while (nextNode != NULL) {
+          HandlerNode *node = nextNode;
+          nextNode = NEXT(node);
+
+          if (node->permanent && !dumpPermanent) {
+              continue; // ignore permanent handlers
+          }
+
+          tty_message("node(%p) handlerID(%d) suspendPolicy(%d) permanent(%d)",
+                      node, node->handlerID, node->suspendPolicy, node->permanent);
+          eventFilter_dumpHandlerFilters(node);
+      }
+  }
+}
+
+void
+eventHandler_dumpHandler(HandlerNode *node)
+{
+    tty_message("Handler for %s(%d)\n", eventIndex2EventName(node->ei), node->ei);
+    eventFilter_dumpHandlerFilters(node);
+}
+
+#endif /* DEBUG */

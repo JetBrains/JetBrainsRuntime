@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,15 +32,14 @@
 // lookups for that information all over the place.
 struct G1HeapRegionAttr {
 public:
-  // We use different types to represent the state value depending on platform as
-  // some have issues loading parts of words.
-#ifdef SPARC
+#if defined(_M_ARM64)&& defined(_MSC_VER) && _MSC_VER <= 1927
+  // workaround for MSCV ARM64 bug
+  // https://developercommunity.visualstudio.com/content/problem/1079221/arm64-bad-code-generation-around-signed-char-arith.html
   typedef int32_t region_type_t;
-  typedef uint32_t needs_remset_update_t;
 #else
   typedef int8_t region_type_t;
-  typedef uint8_t needs_remset_update_t;
 #endif
+  typedef uint8_t needs_remset_update_t;
 
 private:
   needs_remset_update_t _needs_remset_update;

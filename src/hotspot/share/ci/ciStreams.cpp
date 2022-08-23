@@ -27,6 +27,7 @@
 #include "ci/ciConstant.hpp"
 #include "ci/ciField.hpp"
 #include "ci/ciStreams.hpp"
+#include "ci/ciSymbols.hpp"
 #include "ci/ciUtilities.inline.hpp"
 #include "runtime/handles.inline.hpp"
 
@@ -248,6 +249,14 @@ ciConstant ciBytecodeStream::get_constant() {
 constantTag ciBytecodeStream::get_constant_pool_tag(int index) const {
   VM_ENTRY_MARK;
   return _method->get_Method()->constants()->constant_tag_at(index);
+}
+
+// ------------------------------------------------------------------
+// ciBytecodeStream::get_basic_type_for_constant_at
+//
+BasicType ciBytecodeStream::get_basic_type_for_constant_at(int index) const {
+  VM_ENTRY_MARK;
+  return _method->get_Method()->constants()->basic_type_for_constant_at(index);
 }
 
 // ------------------------------------------------------------------
@@ -475,8 +484,9 @@ ciKlass* ciBytecodeStream::get_declared_method_holder() {
   constantPoolHandle cpool(THREAD, _method->get_Method()->constants());
   bool ignore;
   // report as MethodHandle for invokedynamic, which is syntactically classless
-  if (cur_bc() == Bytecodes::_invokedynamic)
-    return CURRENT_ENV->get_klass_by_name(_holder, ciSymbol::java_lang_invoke_MethodHandle(), false);
+  if (cur_bc() == Bytecodes::_invokedynamic) {
+    return CURRENT_ENV->MethodHandle_klass();
+  }
   return CURRENT_ENV->get_klass_by_index(cpool, get_method_holder_index(), ignore, _holder);
 }
 

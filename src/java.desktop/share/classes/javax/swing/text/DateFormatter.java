@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,7 @@ import javax.swing.text.*;
  * future Swing releases. The current serialization support is
  * appropriate for short term storage or RMI between applications running
  * the same version of Swing.  As of 1.4, support for long term storage
- * of all JavaBeans&trade;
+ * of all JavaBeans
  * has been added to the <code>java.beans</code> package.
  * Please see {@link java.beans.XMLEncoder}.
  *
@@ -109,11 +109,7 @@ public class DateFormatter extends InternationalFormatter {
      * Returns the field that will be adjusted by adjustValue.
      */
     Object getAdjustField(int start, Map<?, ?> attributes) {
-        Iterator<?> attrs = attributes.keySet().iterator();
-
-        while (attrs.hasNext()) {
-            Object key = attrs.next();
-
+        for (Object key : attributes.keySet()) {
             if ((key instanceof DateFormat.Field) &&
                 (key == DateFormat.Field.HOUR1 ||
                  ((DateFormat.Field)key).getCalendarField() != -1)) {

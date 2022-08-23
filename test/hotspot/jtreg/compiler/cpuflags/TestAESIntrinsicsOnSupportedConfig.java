@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,8 +28,7 @@
  *          java.management
  * @requires vm.cpu.features ~= ".*aes.*" & !vm.graal.enabled
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox
- *                                sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run main/othervm/timeout=600 -Xbootclasspath/a:.
  *                   -XX:+UnlockDiagnosticVMOptions
  *                   -XX:+WhiteBoxAPI -Xbatch
@@ -49,10 +48,8 @@ public class TestAESIntrinsicsOnSupportedConfig extends AESIntrinsicsBase {
     protected void runTestCases() throws Throwable {
         testUseAES();
         testUseAESUseSSE2();
-        testUseAESUseVIS2();
         testNoUseAES();
         testNoUseAESUseSSE2();
-        testNoUseAESUseVIS2();
         testNoUseAESIntrinsic();
     }
 
@@ -148,65 +145,6 @@ public class TestAESIntrinsicsOnSupportedConfig extends AESIntrinsicsBase {
             verifyOptionValue(AESIntrinsicsBase.USE_AES_INTRINSICS, "false",
                     errorMessage, outputAnalyzer);
             verifyOptionValue(AESIntrinsicsBase.USE_SSE, "2", errorMessage,
-                    outputAnalyzer);
-        }
-    }
-
-    /**
-     * Test checks following situation: <br/>
-     * UseAES flag is set to true, UseVIS flag is set to 2,
-     * Platform should support UseVIS (sparc) <br/>
-     * TestAESMain is executed <br/>
-     * Expected result: UseAESIntrinsics flag is set to false <br/>
-     * Output shouldn't contain intrinsics usage <br/>
-     *
-     * @throws Throwable
-     */
-    private void testUseAESUseVIS2() throws Throwable {
-        if (Platform.isSparc()) {
-            OutputAnalyzer outputAnalyzer = ProcessTools.executeTestJvm(
-                    prepareArguments(prepareBooleanFlag(AESIntrinsicsBase
-                                    .USE_AES_INTRINSICS, true),
-                            prepareNumericFlag(AESIntrinsicsBase.USE_VIS, 2)));
-            final String errorMessage = "Case testUseAESUseVIS2 failed";
-            verifyOutput(null, new String[]{AESIntrinsicsBase.CIPHER_INTRINSIC,
-                            AESIntrinsicsBase.AES_INTRINSIC},
-                    errorMessage, outputAnalyzer);
-            verifyOptionValue(AESIntrinsicsBase.USE_AES, "true", errorMessage,
-                    outputAnalyzer);
-            verifyOptionValue(AESIntrinsicsBase.USE_AES_INTRINSICS, "false",
-                    errorMessage, outputAnalyzer);
-            verifyOptionValue(AESIntrinsicsBase.USE_VIS, "2", errorMessage,
-                    outputAnalyzer);
-        }
-    }
-
-
-    /**
-     * Test checks following situation: <br/>
-     * UseAES flag is set to false, UseVIS flag is set to 2,
-     * Platform should support UseVIS (sparc) <br/>
-     * TestAESMain is executed <br/>
-     * Expected result: UseAESIntrinsics flag is set to false <br/>
-     * Output shouldn't contain intrinsics usage <br/>
-     *
-     * @throws Throwable
-     */
-    private void testNoUseAESUseVIS2() throws Throwable {
-        if (Platform.isSparc()) {
-            OutputAnalyzer outputAnalyzer = ProcessTools.executeTestJvm(
-                    prepareArguments(prepareBooleanFlag(AESIntrinsicsBase
-                                    .USE_AES, false),
-                            prepareNumericFlag(AESIntrinsicsBase.USE_VIS, 2)));
-            final String errorMessage = "Case testNoUseAESUseVIS2 failed";
-            verifyOutput(null, new String[]{AESIntrinsicsBase.CIPHER_INTRINSIC,
-                            AESIntrinsicsBase.AES_INTRINSIC},
-                    errorMessage, outputAnalyzer);
-            verifyOptionValue(AESIntrinsicsBase.USE_AES, "false", errorMessage,
-                    outputAnalyzer);
-            verifyOptionValue(AESIntrinsicsBase.USE_AES_INTRINSICS, "false",
-                    errorMessage, outputAnalyzer);
-            verifyOptionValue(AESIntrinsicsBase.USE_VIS, "2", errorMessage,
                     outputAnalyzer);
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,8 @@
 package sun.jvm.hotspot.memory;
 
 import java.io.PrintStream;
-import java.util.Observable;
-import java.util.Observer;
+import sun.jvm.hotspot.utilities.Observable;
+import sun.jvm.hotspot.utilities.Observer;
 
 import sun.jvm.hotspot.debugger.Address;
 import sun.jvm.hotspot.debugger.OopHandle;
@@ -40,6 +40,7 @@ import sun.jvm.hotspot.gc.z.ZCollectedHeap;
 import sun.jvm.hotspot.oops.Oop;
 import sun.jvm.hotspot.runtime.BasicType;
 import sun.jvm.hotspot.runtime.VM;
+import sun.jvm.hotspot.runtime.VMObject;
 import sun.jvm.hotspot.runtime.VirtualConstructor;
 import sun.jvm.hotspot.types.AddressField;
 import sun.jvm.hotspot.types.CIntegerField;
@@ -50,8 +51,6 @@ import sun.jvm.hotspot.types.TypeDataBase;
 public class Universe {
   private static AddressField collectedHeapField;
   private static VirtualConstructor heapConstructor;
-  private static sun.jvm.hotspot.types.OopField mainThreadGroupField;
-  private static sun.jvm.hotspot.types.OopField systemThreadGroupField;
 
   static {
     VM.registerVMInitializedObserver(new Observer() {
@@ -70,7 +69,7 @@ public class Universe {
       return true;
   }
 
-  private static void addHeapTypeIfInDB(TypeDataBase db, Class heapClass) {
+  private static void addHeapTypeIfInDB(TypeDataBase db, Class<? extends VMObject> heapClass) {
       String heapName = heapClass.getSimpleName();
       if (typeExists(db, heapName)) {
           heapConstructor.addMapping(heapName, heapClass);
@@ -89,9 +88,6 @@ public class Universe {
     addHeapTypeIfInDB(db, EpsilonHeap.class);
     addHeapTypeIfInDB(db, ZCollectedHeap.class);
     addHeapTypeIfInDB(db, ShenandoahHeap.class);
-
-    mainThreadGroupField   = type.getOopField("_main_thread_group");
-    systemThreadGroupField = type.getOopField("_system_thread_group");
 
     UniverseExt.initialize(heapConstructor);
   }
@@ -112,19 +108,6 @@ public class Universe {
   public boolean isInReserved(Address p) {
     return heap().isInReserved(p);
   }
-
-  private Oop newOop(OopHandle handle) {
-    return VM.getVM().getObjectHeap().newOop(handle);
-  }
-
-  public Oop mainThreadGroup() {
-    return newOop(mainThreadGroupField.getValue());
-  }
-
-  public Oop systemThreadGroup() {
-    return newOop(systemThreadGroupField.getValue());
-  }
-
 
   public void print() { printOn(System.out); }
   public void printOn(PrintStream tty) {

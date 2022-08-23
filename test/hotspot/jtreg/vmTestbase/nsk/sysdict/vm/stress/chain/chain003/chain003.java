@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
 
 /*
  * @test
- * @key stress
+ * @key stress randomness
  *
  * @summary converted from VM Testbase nsk/sysdict/vm/stress/chain/chain003.
  * VM Testbase keywords: [stress, sysdict, stressopt, nonconcurrent]
@@ -41,12 +41,10 @@
  * @run driver nsk.sysdict.share.GenClassesBuilder fats
  * @comment build leans.jar
  * @run driver nsk.sysdict.share.GenClassesBuilder leans
- * @run driver jdk.test.lib.FileInstaller . .
  * @build nsk.sysdict.share.ChainTest
  * @run main/othervm
  *      -XX:-UseGCOverheadLimit
  *      -Xss2048k
- *      PropertyResolvingWrapper
  *      nsk.sysdict.share.ChainTest
  *      -jarpath leans.jar${path.separator}fats.jar
  */

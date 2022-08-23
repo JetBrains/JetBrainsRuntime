@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,21 +73,21 @@ public class TestLinksWithNoDeprecatedOption extends JavadocTester {
         checkExit(Exit.OK);
 
         checkOutput("pkg/class-use/A.html", true,
-                "<span class=\"memberNameLink\">"
-                + "<a href=\"../B.html#a2\">a2</a></span>");
+                """
+                    <a href="../B.html#a2" class="member-name-link">a2</a>""");
 
         //links for deprecated items will not be found
         checkOutput("pkg/class-use/A.html", false,
-                "<span class=\"memberNameLink\">"
-                + "<a href=\"../B.html#deprecatedField\">deprecatedField</a></span>");
+                """
+                    <a href="../B.html#deprecatedField" class="member-name-link">deprecatedField</a>""");
 
         checkOutput("pkg/class-use/A.html", false,
-                "<span class=\"memberNameLink\">"
-                + "<a href=\"../B.html#deprecatedMethod(pkg.A)\">deprecatedMethod</a></span>");
+                """
+                    <a href="../B.html#deprecatedMethod(pkg.A)" class="member-name-link">deprecatedMethod</a>""");
 
         checkOutput("pkg/class-use/A.html",false,
-                "<span class=\"memberNameLink\">"
-                + "<a href=\"../B.html#%3Cinit%3E(pkg.A)\">B</a></span>");
+                """
+                    <a href="../B.html#%3Cinit%3E(pkg.A)" class="member-name-link">B</a>""");
 
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,13 +31,6 @@ import static javax.lang.model.SourceVersion.*;
 import javax.lang.model.SourceVersion;
 
 /**
- * {@preview Associated with records, a preview feature of the Java language.
- *
- *           This class is associated with <i>records</i>, a preview
- *           feature of the Java language. Preview features
- *           may be removed in a future release, or upgraded to permanent
- *           features of the Java language.}
- *
  * A visitor of program elements based on their {@linkplain
  * ElementKind kind} with default behavior appropriate for the {@link
  * SourceVersion#RELEASE_14 RELEASE_14} source version.
@@ -50,29 +43,9 @@ import javax.lang.model.SourceVersion;
  * call {@link #defaultAction defaultAction}, passing their arguments
  * to {@code defaultAction}'s corresponding parameters.
  *
- * <p> Methods in this class may be overridden subject to their
- * general contract.  Note that annotating methods in concrete
- * subclasses with {@link java.lang.Override @Override} will help
- * ensure that methods are overridden as intended.
- *
- * <p> <b>WARNING:</b> The {@code ElementVisitor} interface
- * implemented by this class may have methods added to it or the
- * {@code ElementKind} {@code enum} used in this case may have
- * constants added to it in the future to accommodate new, currently
- * unknown, language structures added to future versions of the
- * Java&trade; programming language.  Therefore, methods whose names
- * begin with {@code "visit"} may be added to this class in the
- * future; to avoid incompatibilities, classes which extend this class
- * should not declare any instance methods with names beginning with
- * {@code "visit"}.
- *
- * <p>When such a new visit method is added, the default
- * implementation in this class will be to call the {@link
- * #visitUnknown visitUnknown} method.  A new abstract element kind
- * visitor class will also be introduced to correspond to the new
- * language level; this visitor will have different default behavior
- * for the visit method in question.  When the new visitor is
- * introduced, all or portions of this visitor may be deprecated.
+ * @apiNote
+ * Methods in this class may be overridden subject to their general
+ * contract.
  *
  * @param <R> the return type of this visitor's methods.  Use {@link
  *            Void} for visitors that do not need to return results.
@@ -80,15 +53,15 @@ import javax.lang.model.SourceVersion;
  *            methods.  Use {@code Void} for visitors that do not need an
  *            additional parameter.
  *
+ * @see <a href="ElementKindVisitor6.html#note_for_subclasses">
+ * <strong>Compatibility note for subclasses</strong></a>
  * @see ElementKindVisitor6
  * @see ElementKindVisitor7
  * @see ElementKindVisitor8
  * @see ElementKindVisitor9
- * @since 14
+ * @since 16
  */
-@jdk.internal.PreviewFeature(feature=jdk.internal.PreviewFeature.Feature.RECORDS,
-                             essentialAPI=false)
-@SupportedSourceVersion(RELEASE_15)
+@SupportedSourceVersion(RELEASE_17)
 public class ElementKindVisitor14<R, P> extends ElementKindVisitor9<R, P> {
     /**
      * Constructor for concrete subclasses; uses {@code null} for the
@@ -117,7 +90,6 @@ public class ElementKindVisitor14<R, P> extends ElementKindVisitor9<R, P> {
      * @param p a visitor-specified parameter
      * @return  the result of {@code defaultAction}
      */
-    @SuppressWarnings("preview")
     @Override
     public R visitRecordComponent(RecordComponentElement e, P p) {
         return defaultAction(e, p);

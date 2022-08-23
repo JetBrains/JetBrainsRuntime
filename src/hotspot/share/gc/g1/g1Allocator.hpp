@@ -112,10 +112,19 @@ public:
 
   // Allocate blocks of memory during mutator time.
 
+  // Attempt allocation in the current alloc region.
   inline HeapWord* attempt_allocation(size_t min_word_size,
                                       size_t desired_word_size,
                                       size_t* actual_word_size);
+
+  // Attempt allocation, retiring the current region and allocating a new one. It is
+  // assumed that attempt_allocation() has been tried and failed already first.
+  inline HeapWord* attempt_allocation_using_new_region(size_t word_size);
+
+  // This is to be called when holding an appropriate lock. It first tries in the
+  // current allocation region, and then attempts an allocation using a new region.
   inline HeapWord* attempt_allocation_locked(size_t word_size);
+
   inline HeapWord* attempt_allocation_force(size_t word_size);
 
   size_t unsafe_max_tlab_alloc();
@@ -149,13 +158,6 @@ private:
 
   PLAB** _alloc_buffers[G1HeapRegionAttr::Num];
 
-  // The survivor alignment in effect in bytes.
-  // == 0 : don't align survivors
-  // != 0 : align survivors to that alignment
-  // These values were chosen to favor the non-alignment case since some
-  // architectures have a special compare against zero instructions.
-  const uint _survivor_alignment_bytes;
-
   // Number of words allocated directly (not counting PLAB allocation).
   size_t _direct_allocated[G1HeapRegionAttr::Num];
 
@@ -167,10 +169,6 @@ private:
   // There is only 1 buffer for Old while Young may have multiple buffers depending on
   // active NUMA nodes.
   inline uint alloc_buffers_length(region_type_t dest) const;
-
-  // Calculate the survivor space object alignment in bytes. Returns that or 0 if
-  // there are no restrictions on survivor alignment.
-  static uint calc_survivor_alignment_bytes();
 
   bool may_throw_away_buffer(size_t const allocation_word_sz, size_t const buffer_size) const;
 public:
@@ -201,19 +199,6 @@ public:
                             uint node_index);
 
   void undo_allocation(G1HeapRegionAttr dest, HeapWord* obj, size_t word_sz, uint node_index);
-};
-
-// G1ArchiveRegionMap is an array used to mark G1 regions as
-// archive regions.  This allows a quick check for whether an object
-// should not be marked because it is in an archive region.
-class G1ArchiveRegionMap : public G1BiasedMappedArray<uint8_t> {
-public:
-  static const uint8_t NoArchive = 0;
-  static const uint8_t OpenArchive = 1;
-  static const uint8_t ClosedArchive = 2;
-
-protected:
-  uint8_t default_value() const { return NoArchive; }
 };
 
 // G1ArchiveAllocator is used to allocate memory in archive
@@ -257,7 +242,7 @@ public:
     _allocation_region(NULL),
     _allocated_regions((ResourceObj::set_allocation_type((address) &_allocated_regions,
                                                          ResourceObj::C_HEAP),
-                        2), true /* C_Heap */),
+                        2), mtGC),
     _summary_bytes_used(0),
     _bottom(NULL),
     _top(NULL),
@@ -289,33 +274,6 @@ public:
   void clear_used() {
     _summary_bytes_used = 0;
   }
-
-  // Create the _archive_region_map which is used to identify archive objects.
-  static inline void enable_archive_object_check();
-
-  // Mark regions containing the specified address range as archive/non-archive.
-  static inline void set_range_archive(MemRegion range, bool open);
-  static inline void clear_range_archive(MemRegion range);
-
-  // Check if the object is in closed archive
-  static inline bool is_closed_archive_object(oop object);
-  // Check if the object is in open archive
-  static inline bool is_open_archive_object(oop object);
-  // Check if the object is either in closed archive or open archive
-  static inline bool is_archived_object(oop object);
-
-private:
-  static bool _archive_check_enabled;
-  static G1ArchiveRegionMap  _archive_region_map;
-
-  // Check if an object is in a closed archive region using the _closed_archive_region_map.
-  static inline bool in_closed_archive_range(oop object);
-  // Check if an object is in open archive region using the _open_archive_region_map.
-  static inline bool in_open_archive_range(oop object);
-
-  // Check if archive object checking is enabled, to avoid calling in_open/closed_archive_range
-  // unnecessarily.
-  static inline bool archive_check_enabled();
 };
 
 #endif // SHARE_GC_G1_G1ALLOCATOR_HPP

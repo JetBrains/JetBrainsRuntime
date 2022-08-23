@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,14 +34,15 @@ import jdk.test.lib.process.OutputAnalyzer;
  *
  * @test
  * @bug 8005056 8009728 8218399
+ * @requires vm.jvmti
  * @requires !vm.graal.enabled
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.instrument
  *          java.management
  * @build Agent
- * @run driver ClassFileInstaller Agent
- * @run main TestRedefineObject
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller Agent
+ * @run driver TestRedefineObject
  * @run main/othervm -javaagent:agent.jar -Xlog:redefine+class+load=debug,redefine+class+timer=info Agent
  */
 public class TestRedefineObject {

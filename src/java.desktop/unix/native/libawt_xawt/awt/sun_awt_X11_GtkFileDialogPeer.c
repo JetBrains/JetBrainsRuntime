@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,10 @@
  * questions.
  */
 
+#ifdef HEADLESS
+    #error This file should not be included in headless library
+#endif
+
 #include <jni.h>
 #include <stdio.h>
 #include <jni_util.h>
@@ -41,6 +45,7 @@ static jmethodID filenameFilterCallbackMethodID = NULL;
 static jmethodID setFileInternalMethodID = NULL;
 static jfieldID  widgetFieldID = NULL;
 static jmethodID  setWindowMethodID = NULL;
+static jmethodID  onCloseMethodID = NULL;
 
 JNIEXPORT void JNICALL Java_sun_awt_X11_GtkFileDialogPeer_initIDs
 (JNIEnv *env, jclass cx)
@@ -61,6 +66,9 @@ JNIEXPORT void JNICALL Java_sun_awt_X11_GtkFileDialogPeer_initIDs
 
     setWindowMethodID = (*env)->GetMethodID(env, cx, "setWindow", "(J)Z");
     DASSERT(setWindowMethodID != NULL);
+
+    onCloseMethodID = (*env)->GetMethodID(env, cx, "onClose", "()V");
+    DASSERT(onCloseMethodID != NULL);
 }
 
 static gboolean filenameFilterCallback(const GtkFileFilterInfo * filter_info, gpointer obj)
@@ -87,6 +95,8 @@ static void quit(JNIEnv * env, jobject jpeer, gboolean isSignalHandler)
     GtkWidget * dialog = (GtkWidget*)jlong_to_ptr(
             (*env)->GetLongField(env, jpeer, widgetFieldID));
 
+    (*env)->CallVoidMethod(env, jpeer, onCloseMethodID);
+
     if (dialog != NULL)
     {
         // Callbacks from GTK signals are made within the GTK lock
@@ -100,8 +110,6 @@ static void quit(JNIEnv * env, jobject jpeer, gboolean isSignalHandler)
         gtk->gtk_widget_destroy (dialog);
 
         gtk->gtk_main_quit ();
-
-        (*env)->SetLongField(env, jpeer, widgetFieldID, 0);
 
         if (!isSignalHandler) {
             gtk->gdk_threads_leave();

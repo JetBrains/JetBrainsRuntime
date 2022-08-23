@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,13 @@
 
 /*
  * @test
- * @key gc
+ * @key randomness
  *
  * @summary converted from VM Testbase gc/gctests/gctest04.
  * VM Testbase keywords: [gc]
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
  * @compile reqgen.java
  * @run main/othervm gc.gctests.gctest04.gctest04
  */
@@ -42,9 +41,6 @@ import nsk.share.test.*;
 import nsk.share.TestFailure;
 //gctest04.java
 
-//import queue;
-//import LocalRandom;
-import java.util.Random;
 import nsk.share.TestBug;
 import nsk.share.TestFailure;
 
@@ -54,13 +50,11 @@ public class gctest04 {
   public static void main(String args[] )
   {
     int queueLimit = 1000;
-    long randomSeed = System.currentTimeMillis();
-
     if (args.length > 0)
     {
         try
         {
-            queueLimit = new Integer(args[0]).intValue();
+            queueLimit = Integer.valueOf(args[0]).intValue();
         }
         catch (NumberFormatException e)
         {
@@ -68,22 +62,6 @@ public class gctest04 {
                             " got: ->" + args[0] + "<-", e);
         }
     }
-
-    if (args.length == 2)
-    {
-        try
-        {
-            randomSeed = new Long(args[1]).longValue();
-        }
-        catch (NumberFormatException e)
-        {
-            throw new TestFailure("Bad input to gctest04. Expected long, got: ->" +
- args[0] + "<-", e);
-        }
-    }
-
-    System.out.println("Seed value: " + randomSeed);
-
 
 
     queue  requestque = new queue(queueLimit);

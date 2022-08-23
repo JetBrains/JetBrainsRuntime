@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,7 +87,7 @@ package java.util.logging;
  */
 
 public class MemoryHandler extends Handler {
-    private final static int DEFAULT_SIZE = 1000;
+    private static final int DEFAULT_SIZE = 1000;
     private volatile Level pushLevel;
     private int size;
     private Handler target;
@@ -226,7 +226,7 @@ public class MemoryHandler extends Handler {
      * Close the {@code Handler} and free all associated resources.
      * This will also close the target {@code Handler}.
      *
-     * @exception  SecurityException  if a security manager exists and if
+     * @throws  SecurityException  if a security manager exists and if
      *             the caller does not have {@code LoggingPermission("control")}.
      */
     @Override
@@ -241,7 +241,7 @@ public class MemoryHandler extends Handler {
      * the {@code pushLevel}, then {@code push} will be called.
      *
      * @param newLevel the new value of the {@code pushLevel}
-     * @exception  SecurityException  if a security manager exists and if
+     * @throws  SecurityException  if a security manager exists and if
      *             the caller does not have {@code LoggingPermission("control")}.
      */
     public synchronized void setPushLevel(Level newLevel) throws SecurityException {

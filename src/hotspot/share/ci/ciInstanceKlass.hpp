@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@
 #include "ci/ciFlags.hpp"
 #include "ci/ciKlass.hpp"
 #include "ci/ciSymbol.hpp"
+#include "oops/instanceKlass.hpp"
 
 // ciInstanceKlass
 //
@@ -55,7 +56,8 @@ private:
   SubklassValue          _has_subklass;
   bool                   _has_nonstatic_fields;
   bool                   _has_nonstatic_concrete_methods;
-  bool                   _is_unsafe_anonymous;
+  bool                   _is_hidden;
+  bool                   _is_record;
 
   ciFlags                _flags;
   jint                   _nonstatic_field_size;
@@ -150,15 +152,21 @@ public:
     return _has_finalizer; }
   bool                   has_subklass()   {
     assert(is_loaded(), "must be loaded");
-    if (_has_subklass == subklass_unknown ||
-        (_is_shared && _has_subklass == subklass_false)) {
-      if (flags().is_final()) {
-        return false;
-      } else {
-        return compute_shared_has_subklass();
-      }
+    // Ignore cached subklass_false case.
+    // It could be invalidated by concurrent class loading and
+    // can result in type paradoxes during compilation when
+    // a subclass is observed, but has_subklass() returns false.
+    if (_has_subklass == subklass_true) {
+      return true;
     }
-    return _has_subklass == subklass_true;
+    if (flags().is_final()) {
+      return false;
+    }
+    return compute_shared_has_subklass();
+  }
+
+  jint                   layout_helper_size_in_bytes()  {
+    return Klass::layout_helper_size_in_bytes(layout_helper());
   }
   jint                   size_helper()  {
     return (Klass::layout_helper_size_in_bytes(layout_helper())
@@ -191,8 +199,12 @@ public:
     return _has_nonstatic_concrete_methods;
   }
 
-  bool is_unsafe_anonymous() {
-    return _is_unsafe_anonymous;
+  bool is_hidden() const {
+    return _is_hidden;
+  }
+
+  bool is_record() const {
+    return _is_record;
   }
 
   ciInstanceKlass* get_canonical_holder(int offset);
@@ -225,9 +237,7 @@ public:
   ciInstanceKlass* unique_concrete_subklass();
   bool has_finalizable_subclass();
 
-  bool contains_field_offset(int offset) {
-    return instanceOopDesc::contains_field_offset(offset, nonstatic_field_size());
-  }
+  bool contains_field_offset(int offset);
 
   // Get the instance of java.lang.Class corresponding to
   // this klass.  This instance is used for locking of
@@ -262,6 +272,7 @@ public:
   BasicType box_klass_type() const;
   bool is_box_klass() const;
   bool is_boxed_value_offset(int offset) const;
+  bool is_box_cache_valid() const;
 
   // Is this klass in the given package?
   bool is_in_package(const char* packagename) {
@@ -279,8 +290,6 @@ public:
     }
     return NULL;
   }
-
-  ciInstanceKlass* unsafe_anonymous_host();
 
   bool can_be_instantiated() {
     assert(is_loaded(), "must be loaded");

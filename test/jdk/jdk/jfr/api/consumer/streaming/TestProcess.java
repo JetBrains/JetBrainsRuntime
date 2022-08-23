@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -34,6 +32,7 @@ import java.util.Properties;
 
 import jdk.internal.misc.Unsafe;
 import jdk.jfr.Event;
+import jdk.test.lib.jfr.StreamingUtils;
 import jdk.test.lib.process.ProcessTools;
 
 import com.sun.tools.attach.VirtualMachine;
@@ -62,7 +61,7 @@ public final class TestProcess implements AutoCloseable {
                 "-XX:StartFlightRecording:settings=none",
                 TestProcess.class.getName(), path.toString()
             };
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(false, args);
+        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(args);
         process = ProcessTools.startProcess(name, pb);
     }
 
@@ -91,22 +90,8 @@ public final class TestProcess implements AutoCloseable {
         }
     }
 
-    public Path getRepository() {
-        while (true) {
-            try {
-                VirtualMachine vm = VirtualMachine.attach(String.valueOf(process.pid()));
-                Properties p = vm.getSystemProperties();
-                vm.detach();
-                String repo = (String) p.get("jdk.jfr.repository");
-                if (repo != null) {
-                    return Paths.get(repo);
-                }
-            } catch (Exception e) {
-                System.out.println("Attach failed: " + e.getMessage());
-                System.out.println("Retrying...");
-            }
-            takeNap();
-        }
+    public Path getRepository() throws Exception {
+        return StreamingUtils.getJfrRepository(process);
     }
 
     private static void takeNap() {

@@ -36,7 +36,6 @@ SATBMarkQueue& ShenandoahSATBMarkQueueSet::satb_queue_for_thread(Thread* const t
   return ShenandoahThreadLocalData::satb_mark_queue(t);
 }
 
-template <bool RESOLVE>
 class ShenandoahSATBMarkQueueFilterFn {
   ShenandoahHeap* const _heap;
 
@@ -46,30 +45,11 @@ public:
   // Return true if entry should be filtered out (removed), false if
   // it should be retained.
   bool operator()(const void* entry) const {
-    return !_heap->requires_marking<RESOLVE>(entry);
+    return !_heap->requires_marking(entry);
   }
 };
 
-void ShenandoahSATBMarkQueueSet::filter(SATBMarkQueue* queue) {
+void ShenandoahSATBMarkQueueSet::filter(SATBMarkQueue& queue) {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
-  if (heap->has_forwarded_objects()) {
-    apply_filter(ShenandoahSATBMarkQueueFilterFn<true>(heap), queue);
-  } else {
-    apply_filter(ShenandoahSATBMarkQueueFilterFn<false>(heap), queue);
-  }
-}
-
-void ShenandoahSATBMarkQueue::handle_completed_buffer() {
-  SATBMarkQueue::handle_completed_buffer();
-  if (!is_empty()) {
-    Thread* t = Thread::current();
-    if (ShenandoahThreadLocalData::is_force_satb_flush(t)) {
-      // Non-empty buffer is compacted, and we decided not to enqueue it.
-      // We still want to know about leftover work in that buffer eventually.
-      // This avoid dealing with these leftovers during the final-mark, after
-      // the buffers are drained completely. See JDK-8205353 for more discussion.
-      ShenandoahThreadLocalData::set_force_satb_flush(t, false);
-      enqueue_completed_buffer();
-    }
-  }
+  apply_filter(ShenandoahSATBMarkQueueFilterFn(heap), queue);
 }

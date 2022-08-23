@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,12 +28,12 @@
  * @modules java.base/jdk.internal.misc
  *          java.management
  *
+ * @requires vm.opt.DeoptimizeALot != true
  * @comment the test can't be run w/ TieredStopAtLevel < 4
  * @requires vm.flavor == "server" & (vm.opt.TieredStopAtLevel == null | vm.opt.TieredStopAtLevel == 4)
  *
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox
- *                                sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run main/othervm -Xbootclasspath/a:. -XX:+UnlockDiagnosticVMOptions
  *                   -XX:+WhiteBoxAPI -XX:+TieredCompilation compiler.whitebox.OSRFailureLevel4Test
  */
@@ -43,6 +43,7 @@ package compiler.whitebox;
 import sun.hotspot.WhiteBox;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
+import jtreg.SkippedException;
 
 public class OSRFailureLevel4Test extends Thread {
     private static final WhiteBox WHITE_BOX = WhiteBox.getWhiteBox();
@@ -50,6 +51,9 @@ public class OSRFailureLevel4Test extends Thread {
     private Method method;
 
     public static void main(String[] args) throws Exception {
+        if (CompilerWhiteBoxTest.skipOnTieredCompilation(false)) {
+            throw new SkippedException("Test isn't applicable for non-tiered mode");
+        }
         OSRFailureLevel4Test test = new OSRFailureLevel4Test();
         test.test();
     }

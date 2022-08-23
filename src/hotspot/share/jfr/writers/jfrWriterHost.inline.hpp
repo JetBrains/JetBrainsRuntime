@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,15 +25,17 @@
 #ifndef SHARE_JFR_WRITERS_JFRWRITERHOST_INLINE_HPP
 #define SHARE_JFR_WRITERS_JFRWRITERHOST_INLINE_HPP
 
+#include "jfr/writers/jfrWriterHost.hpp"
+
 #include "classfile/javaClasses.hpp"
 #include "jfr/recorder/checkpoint/types/traceid/jfrTraceId.inline.hpp"
 #include "jfr/recorder/service/jfrOptionSet.hpp"
 #include "jfr/writers/jfrEncoding.hpp"
-#include "jfr/writers/jfrWriterHost.hpp"
 #include "memory/resourceArea.hpp"
 #include "oops/oop.hpp"
 #include "oops/symbol.hpp"
 #include "oops/typeArrayOop.inline.hpp"
+#include "runtime/jniHandles.hpp"
 
 inline bool compressed_integers() {
   static const bool comp_integers = JfrOptionSet::compressed_integers();
@@ -71,7 +73,8 @@ template <typename T>
 inline void WriterHost<BE, IE, WriterPolicyImpl>::write(const T* value, size_t len) {
   assert(value != NULL, "invariant");
   assert(len > 0, "invariant");
-  u1* const pos = ensure_size(sizeof(T) * len);
+  // Might need T + 1 size
+  u1* const pos = ensure_size(sizeof(T) * len + len);
   if (pos) {
     this->set_current_pos(write(value, len, pos));
   }
@@ -122,7 +125,8 @@ template <typename T>
 inline void WriterHost<BE, IE, WriterPolicyImpl>::be_write(const T* value, size_t len) {
   assert(value != NULL, "invariant");
   assert(len > 0, "invariant");
-  u1* const pos = ensure_size(sizeof(T) * len);
+  // Might need T + 1 size
+  u1* const pos = ensure_size(sizeof(T) * len + len);
   if (pos) {
     this->set_current_pos(BE::be_write(value, len, pos));
   }
@@ -135,10 +139,17 @@ inline WriterHost<BE, IE, WriterPolicyImpl>::WriterHost(StorageType* storage, Th
   _compressed_integers(compressed_integers()) {
 }
 
+// Extra size added as a safety cushion when dimensioning memory.
+// With varint encoding, the worst case is
+// associated with writing negative values.
+// For example, writing a negative s1 (-1)
+// will encode as 0xff 0x0f (2 bytes).
+static const size_t size_safety_cushion = 1;
+
 template <typename BE, typename IE, typename WriterPolicyImpl >
 template <typename StorageType>
 inline WriterHost<BE, IE, WriterPolicyImpl>::WriterHost(StorageType* storage, size_t size) :
-  WriterPolicyImpl(storage, size),
+  WriterPolicyImpl(storage, size + size_safety_cushion),
   _compressed_integers(compressed_integers()) {
 }
 
@@ -148,30 +159,19 @@ inline WriterHost<BE, IE, WriterPolicyImpl>::WriterHost(Thread* thread) :
   _compressed_integers(compressed_integers()) {
 }
 
-// Extra size added as a safety cushion when dimensioning memory.
-// With varint encoding, the worst case is
-// associated with writing negative values.
-// For example, writing a negative s1 (-1)
-// will encode as 0xff 0x0f (2 bytes).
-// In this example, the sizeof(T) == 1 and length == 1,
-// but the implementation will need to dimension
-// 2 bytes for the encoding.
-// Hopefully, negative values should be relatively rare.
-static const size_t size_safety_cushion = 1;
-
 template <typename BE, typename IE, typename WriterPolicyImpl>
-inline u1* WriterHost<BE, IE, WriterPolicyImpl>::ensure_size(size_t requested) {
+inline u1* WriterHost<BE, IE, WriterPolicyImpl>::ensure_size(size_t requested_size) {
   if (!this->is_valid()) {
     // cancelled
     return NULL;
   }
-  if (this->available_size() < requested + size_safety_cushion) {
-    if (!this->accommodate(this->used_size(), requested + size_safety_cushion)) {
+  if (this->available_size() < requested_size) {
+    if (!this->accommodate(this->used_size(), requested_size)) {
       assert(!this->is_valid(), "invariant");
       return NULL;
     }
   }
-  assert(requested + size_safety_cushion <= this->available_size(), "invariant");
+  assert(requested_size <= this->available_size(), "invariant");
   return this->current_pos();
 }
 
@@ -237,7 +237,7 @@ inline void WriterHost<BE, IE, WriterPolicyImpl>::write(jstring string) {
 template <typename Writer, typename T>
 inline void tag_write(Writer* w, const T* t) {
   assert(w != NULL, "invariant");
-  const traceid id = t == NULL ? 0 : JfrTraceId::use(t);
+  const traceid id = t == NULL ? 0 : JfrTraceId::load(t);
   w->write(id);
 }
 
@@ -274,29 +274,30 @@ void WriterHost<BE, IE, WriterPolicyImpl>::write(const Symbol* symbol) {
 
 template <typename BE, typename IE, typename WriterPolicyImpl>
 void WriterHost<BE, IE, WriterPolicyImpl>::write(const Ticks& time) {
-  write((uintptr_t)JfrTime::is_ft_enabled() ? time.ft_value() : time.value());
+  write(JfrTime::is_ft_enabled() ? time.ft_value() : time.value());
 }
 
 template <typename BE, typename IE, typename WriterPolicyImpl>
 void WriterHost<BE, IE, WriterPolicyImpl>::write(const Tickspan& time) {
-  write((uintptr_t)JfrTime::is_ft_enabled() ? time.ft_value() : time.value());
+  write(JfrTime::is_ft_enabled() ? time.ft_value() : time.value());
 }
 
 template <typename BE, typename IE, typename WriterPolicyImpl>
 void WriterHost<BE, IE, WriterPolicyImpl>::write(const JfrTicks& time) {
-  write((uintptr_t)time.value());
+  write(time.value());
 }
 
 template <typename BE, typename IE, typename WriterPolicyImpl>
 void WriterHost<BE, IE, WriterPolicyImpl>::write(const JfrTickspan& time) {
-  write((uintptr_t)time.value());
+  write(time.value());
 }
 
 template <typename BE, typename IE, typename WriterPolicyImpl>
-void WriterHost<BE, IE, WriterPolicyImpl>::bytes(const void* buf, size_t len) {
-  u1* const pos = this->ensure_size(len);
+void WriterHost<BE, IE, WriterPolicyImpl>::write_bytes(const void* buf, intptr_t len) {
+  assert(len >= 0, "invariant");
+  u1* const pos = this->ensure_size((size_t)len);
   if (pos != NULL) {
-    WriterPolicyImpl::bytes(pos, buf, len); // WriterPolicyImpl responsible for position update
+    WriterPolicyImpl::write_bytes(pos, buf, len); // WriterPolicyImpl responsible for position update
   }
 }
 

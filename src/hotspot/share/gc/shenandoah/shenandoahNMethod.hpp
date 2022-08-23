@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2019, 2020, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@
 #include "code/nmethod.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahLock.hpp"
+#include "gc/shenandoah/shenandoahPadding.hpp"
 #include "memory/allocation.hpp"
 #include "utilities/growableArray.hpp"
 
@@ -50,7 +51,7 @@ public:
 
   inline nmethod* nm() const;
   inline ShenandoahReentrantLock* lock();
-  void oops_do(OopClosure* oops, bool fix_relocations = false);
+  inline void oops_do(OopClosure* oops, bool fix_relocations = false);
   // Update oops when the nmethod is re-registered
   void update();
 
@@ -66,14 +67,14 @@ public:
   static inline ShenandoahReentrantLock* lock_for_nmethod(nmethod* nm);
 
   static void heal_nmethod(nmethod* nm);
+  static inline void heal_nmethod_metadata(ShenandoahNMethod* nmethod_data);
   static inline void disarm_nmethod(nmethod* nm);
 
   static inline ShenandoahNMethod* gc_data(nmethod* nm);
   static inline void attach_gc_data(nmethod* nm, ShenandoahNMethod* gc_data);
 
-  void assert_alive_and_correct() NOT_DEBUG_RETURN;
+  void assert_correct() NOT_DEBUG_RETURN;
   void assert_same_oops(bool allow_dead = false) NOT_DEBUG_RETURN;
-  static void assert_no_oops(nmethod* nm, bool allow_dea = false) NOT_DEBUG_RETURN;
 
 private:
   bool has_non_immed_oops() const { return _has_non_immed_oops; }
@@ -82,25 +83,50 @@ private:
 
 class ShenandoahNMethodTable;
 
+// ShenandoahNMethodList holds registered nmethod data. The list is reference counted.
+class ShenandoahNMethodList : public CHeapObj<mtGC> {
+private:
+  ShenandoahNMethod** _list;
+  const int           _size;
+  uint                _ref_count;
+
+private:
+  ~ShenandoahNMethodList();
+
+public:
+  ShenandoahNMethodList(int size);
+
+  // Reference counting with CoceCache_lock held
+  ShenandoahNMethodList* acquire();
+  void release();
+
+  // Transfer content from other list to 'this' list, up to the limit
+  void transfer(ShenandoahNMethodList* const other, int limit);
+
+  inline int size() const;
+  inline ShenandoahNMethod** list() const;
+  inline ShenandoahNMethod* at(int index) const;
+  inline void set(int index, ShenandoahNMethod* snm);
+};
+
 // An opaque snapshot of current nmethod table for iteration
 class ShenandoahNMethodTableSnapshot : public CHeapObj<mtGC> {
   friend class ShenandoahNMethodTable;
 private:
   ShenandoahHeap* const       _heap;
-  ShenandoahNMethodTable*     _table;
-  ShenandoahNMethod** const   _array;
-  const int                   _length;
+  ShenandoahNMethodList*      _list;
+  /* snapshot iteration limit */
+  int                         _limit;
 
-  DEFINE_PAD_MINUS_SIZE(0, DEFAULT_CACHE_LINE_SIZE, sizeof(volatile size_t));
+  shenandoah_padding(0);
   volatile size_t       _claimed;
-  DEFINE_PAD_MINUS_SIZE(1, DEFAULT_CACHE_LINE_SIZE, 0);
+  shenandoah_padding(1);
 
 public:
   ShenandoahNMethodTableSnapshot(ShenandoahNMethodTable* table);
+  ~ShenandoahNMethodTableSnapshot();
 
-  template<bool CSET_FILTER>
   void parallel_blobs_do(CodeBlobClosure *f);
-
   void concurrent_nmethods_do(NMethodClosure* cl);
 };
 
@@ -111,12 +137,12 @@ private:
     minSize = 1024
   };
 
-  ShenandoahHeap* const _heap;
-  ShenandoahNMethod**   _array;
-  int                   _size;
-  int                   _index;
-  ShenandoahLock        _lock;
-  bool                  _iteration_in_progress;
+  ShenandoahHeap* const  _heap;
+  ShenandoahNMethodList* _list;
+
+  int                    _index;
+  ShenandoahLock         _lock;
+  int                    _itr_cnt;
 
 public:
   ShenandoahNMethodTable();
@@ -133,14 +159,14 @@ public:
   ShenandoahNMethodTableSnapshot* snapshot_for_iteration();
   void finish_iteration(ShenandoahNMethodTableSnapshot* snapshot);
 
-  void assert_nmethods_alive_and_correct() NOT_DEBUG_RETURN;
+  void assert_nmethods_correct() NOT_DEBUG_RETURN;
 private:
   // Rebuild table and replace current one
   void rebuild(int size);
 
   bool is_full() const {
-    assert(_index <= _size, "Sanity");
-    return _index == _size;
+    assert(_index <= _list->size(), "Sanity");
+    return _index == _list->size();
   }
 
   ShenandoahNMethod* at(int index) const;

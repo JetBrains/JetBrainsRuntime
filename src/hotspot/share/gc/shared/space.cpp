@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
  */
 
 #include "precompiled.hpp"
-#include "classfile/systemDictionary.hpp"
+#include "classfile/vmClasses.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "gc/shared/blockOffsetTable.inline.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
@@ -52,7 +52,7 @@ HeapWord* DirtyCardToOopClosure::get_actual_top(HeapWord* top,
   if (top_obj != NULL) {
     if (_sp->block_is_obj(top_obj)) {
       if (_precision == CardTable::ObjHeadPreciseArray) {
-        if (oop(top_obj)->is_objArray() || oop(top_obj)->is_typeArray()) {
+        if (cast_to_oop(top_obj)->is_objArray() || cast_to_oop(top_obj)->is_typeArray()) {
           // An arrayOop is starting on the dirty card - since we do exact
           // store checks for objArrays we are done.
         } else {
@@ -63,7 +63,7 @@ HeapWord* DirtyCardToOopClosure::get_actual_top(HeapWord* top,
           // the iteration is being done.  That space (e.g. CMS) may have
           // specific requirements on object sizes which will
           // be reflected in the block_size() method.
-          top = top_obj + oop(top_obj)->size();
+          top = top_obj + cast_to_oop(top_obj)->size();
         }
       }
     } else {
@@ -94,8 +94,8 @@ void DirtyCardToOopClosure::walk_mem_region(MemRegion mr,
     // "adjust the object size" (for instance pad it up to its
     // block alignment or minimum block size restrictions. XXX
     if (_sp->block_is_obj(bottom) &&
-        !_sp->obj_allocated_since_save_marks(oop(bottom))) {
-      oop(bottom)->oop_iterate(_cl, mr);
+        !_sp->obj_allocated_since_save_marks(cast_to_oop(bottom))) {
+      cast_to_oop(bottom)->oop_iterate(_cl, mr);
     }
   }
 }
@@ -163,8 +163,7 @@ void DirtyCardToOopClosure::do_MemRegion(MemRegion mr) {
 
 DirtyCardToOopClosure* Space::new_dcto_cl(OopIterateClosure* cl,
                                           CardTable::PrecisionStyle precision,
-                                          HeapWord* boundary,
-                                          bool parallel) {
+                                          HeapWord* boundary) {
   return new DirtyCardToOopClosure(this, cl, precision, boundary);
 }
 
@@ -172,16 +171,16 @@ HeapWord* ContiguousSpaceDCTOC::get_actual_top(HeapWord* top,
                                                HeapWord* top_obj) {
   if (top_obj != NULL && top_obj < (_sp->toContiguousSpace())->top()) {
     if (_precision == CardTable::ObjHeadPreciseArray) {
-      if (oop(top_obj)->is_objArray() || oop(top_obj)->is_typeArray()) {
+      if (cast_to_oop(top_obj)->is_objArray() || cast_to_oop(top_obj)->is_typeArray()) {
         // An arrayOop is starting on the dirty card - since we do exact
         // store checks for objArrays we are done.
       } else {
         // Otherwise, it is possible that the object starting on the dirty
         // card spans the entire card, and that the store happened on a
         // later card.  Figure out where the object ends.
-        assert(_sp->block_size(top_obj) == (size_t) oop(top_obj)->size(),
+        assert(_sp->block_size(top_obj) == (size_t) cast_to_oop(top_obj)->size(),
           "Block size and object size mismatch");
-        top = top_obj + oop(top_obj)->size();
+        top = top_obj + cast_to_oop(top_obj)->size();
       }
     }
   } else {
@@ -219,18 +218,18 @@ void ContiguousSpaceDCTOC::walk_mem_region_with_cl(MemRegion mr,        \
                                                    HeapWord* bottom,    \
                                                    HeapWord* top,       \
                                                    ClosureType* cl) {   \
-  bottom += oop(bottom)->oop_iterate_size(cl, mr);                      \
+  bottom += cast_to_oop(bottom)->oop_iterate_size(cl, mr);              \
   if (bottom < top) {                                                   \
-    HeapWord* next_obj = bottom + oop(bottom)->size();                  \
+    HeapWord* next_obj = bottom + cast_to_oop(bottom)->size();          \
     while (next_obj < top) {                                            \
       /* Bottom lies entirely below top, so we can call the */          \
       /* non-memRegion version of oop_iterate below. */                 \
-      oop(bottom)->oop_iterate(cl);                                     \
+      cast_to_oop(bottom)->oop_iterate(cl);                             \
       bottom = next_obj;                                                \
-      next_obj = bottom + oop(bottom)->size();                          \
+      next_obj = bottom + cast_to_oop(bottom)->size();                  \
     }                                                                   \
     /* Last object. */                                                  \
-    oop(bottom)->oop_iterate(cl, mr);                                   \
+    cast_to_oop(bottom)->oop_iterate(cl, mr);                           \
   }                                                                     \
 }
 
@@ -243,8 +242,7 @@ ContiguousSpaceDCTOC__walk_mem_region_with_cl_DEFN(FilteringClosure)
 DirtyCardToOopClosure*
 ContiguousSpace::new_dcto_cl(OopIterateClosure* cl,
                              CardTable::PrecisionStyle precision,
-                             HeapWord* boundary,
-                             bool parallel) {
+                             HeapWord* boundary) {
   return new ContiguousSpaceDCTOC(this, cl, precision, boundary);
 }
 
@@ -266,8 +264,7 @@ void Space::clear(bool mangle_space) {
   }
 }
 
-ContiguousSpace::ContiguousSpace(): CompactibleSpace(), _top(NULL),
-    _concurrent_iteration_safe_limit(NULL) {
+ContiguousSpace::ContiguousSpace(): CompactibleSpace(), _top(NULL) {
   _mangler = new GenSpaceMangler(this);
 }
 
@@ -280,7 +277,6 @@ void ContiguousSpace::initialize(MemRegion mr,
                                  bool mangle_space)
 {
   CompactibleSpace::initialize(mr, clear_space, mangle_space);
-  set_concurrent_iteration_safe_limit(top());
 }
 
 void ContiguousSpace::clear(bool mangle_space) {
@@ -350,9 +346,8 @@ void CompactibleSpace::clear(bool mangle_space) {
   _compaction_top = bottom();
 }
 
-HeapWord* CompactibleSpace::forward(oop q, size_t size,
-                                    CompactPoint* cp, HeapWord* compact_top) {
-  // q is alive
+// (DCEVM) Calculates the compact_top that will be used for placing the next object with the giving size on the heap.
+HeapWord* CompactibleSpace::forward_compact_top(size_t size, CompactPoint* cp, HeapWord* compact_top) {
   // First check if we should switch compaction space
   assert(this == cp->space, "'this' should be current compaction space.");
   size_t compaction_max_size = pointer_delta(end(), compact_top);
@@ -372,14 +367,21 @@ HeapWord* CompactibleSpace::forward(oop q, size_t size,
     compaction_max_size = pointer_delta(cp->space->end(), compact_top);
   }
 
+  return compact_top;
+}
+
+HeapWord* CompactibleSpace::forward(oop q, size_t size,
+                                    CompactPoint* cp, HeapWord* compact_top, bool force_forward) {
+  compact_top = forward_compact_top(size, cp, compact_top);
+
   // store the forwarding pointer into the mark word
-  if ((HeapWord*)q != compact_top) {
-    q->forward_to(oop(compact_top));
+  if (force_forward || cast_from_oop<HeapWord*>(q) != compact_top || (size_t)q->size() != size) {
+    q->forward_to(cast_to_oop(compact_top));
     assert(q->is_gc_marked(), "encoding the pointer should preserve the mark");
   } else {
     // if the object isn't moving we can just set the mark to the default
     // mark and handle it specially later on.
-    q->init_mark_raw();
+    q->init_mark();
     assert(q->forwardee() == NULL, "should be forwarded to NULL");
   }
 
@@ -397,7 +399,132 @@ HeapWord* CompactibleSpace::forward(oop q, size_t size,
 #if INCLUDE_SERIALGC
 
 void ContiguousSpace::prepare_for_compaction(CompactPoint* cp) {
-  scan_and_forward(this, cp);
+  if (!Universe::is_redefining_gc_run()) {
+    scan_and_forward(this, cp, false);
+  } else {
+    // Redefinition run
+    scan_and_forward(this, cp, true);
+  }
+}
+
+
+#ifdef ASSERT
+
+int CompactibleSpace::space_index(oop obj) {
+  GenCollectedHeap* heap = GenCollectedHeap::heap();
+
+  //if (heap->is_in_permanent(obj)) {
+  //  return -1;
+  //}
+
+  int index = 0;
+  CompactibleSpace* space = heap->old_gen()->first_compaction_space();
+  while (space != NULL) {
+    if (space->is_in_reserved(obj)) {
+      return index;
+    }
+    space = space->next_compaction_space();
+    index++;
+  }
+
+  space = heap->young_gen()->first_compaction_space();
+  while (space != NULL) {
+    if (space->is_in_reserved(obj)) {
+      return index;
+    }
+    space = space->next_compaction_space();
+    index++;
+  }
+
+  tty->print_cr("could not compute space_index for " INTPTR_FORMAT, p2i(cast_from_oop<HeapWord*>(obj)));
+  index = 0;
+
+  Generation* gen = heap->old_gen();
+  tty->print_cr("  generation %s: " INTPTR_FORMAT " - " INTPTR_FORMAT, gen->name(), p2i(gen->reserved().start()), p2i(gen->reserved().end()));
+
+  space = gen->first_compaction_space();
+  while (space != NULL) {
+    tty->print_cr("    %2d space " INTPTR_FORMAT " - " INTPTR_FORMAT, index, p2i(space->bottom()), p2i(space->end()));
+    space = space->next_compaction_space();
+    index++;
+  }
+
+  gen = heap->young_gen();
+  tty->print_cr("  generation %s: " INTPTR_FORMAT " - " INTPTR_FORMAT, gen->name(), p2i(gen->reserved().start()), p2i(gen->reserved().end()));
+
+  space = gen->first_compaction_space();
+  while (space != NULL) {
+    tty->print_cr("    %2d space " INTPTR_FORMAT " - " INTPTR_FORMAT, index, p2i(space->bottom()), p2i(space->end()));
+    space = space->next_compaction_space();
+    index++;
+  }
+
+  ShouldNotReachHere();
+  return 0;
+}
+#endif
+
+bool CompactibleSpace::must_rescue(oop old_obj, oop new_obj) {
+  // Only redefined objects can have the need to be rescued.
+  if (oop(old_obj)->klass()->new_version() == NULL) return false;
+
+  //if (old_obj->is_perm()) {
+  //  // This object is in perm gen: Always rescue to satisfy invariant obj->klass() <= obj.
+  //  return true;
+  //}
+
+  int new_size = old_obj->size_given_klass(oop(old_obj)->klass()->new_version());
+  int original_size = old_obj->size();
+
+  Generation* tenured_gen = GenCollectedHeap::heap()->old_gen();
+  bool old_in_tenured = tenured_gen->is_in_reserved(old_obj);
+  bool new_in_tenured = tenured_gen->is_in_reserved(new_obj);
+  if (old_in_tenured == new_in_tenured) {
+    // Rescue if object may overlap with a higher memory address.
+    bool overlap = (cast_from_oop<HeapWord*>(old_obj) + original_size < cast_from_oop<HeapWord*>(new_obj) + new_size);
+    if (old_in_tenured) {
+      // Old and new address are in same space, so just compare the address.
+      // Must rescue if object moves towards the top of the space.
+      assert(space_index(old_obj) == space_index(new_obj), "old_obj and new_obj must be in same space");
+    } else {
+      // In the new generation, eden is located before the from space, so a
+      // simple pointer comparison is sufficient.
+      assert(GenCollectedHeap::heap()->young_gen()->is_in_reserved(old_obj), "old_obj must be in DefNewGeneration");
+      assert(GenCollectedHeap::heap()->young_gen()->is_in_reserved(new_obj), "new_obj must be in DefNewGeneration");
+      assert(overlap == (space_index(old_obj) < space_index(new_obj)), "slow and fast computation must yield same result");
+    }
+    return overlap;
+
+  } else {
+    assert(space_index(old_obj) != space_index(new_obj), "old_obj and new_obj must be in different spaces");
+    if (new_in_tenured) {
+      // Must never rescue when moving from the new into the old generation.
+      assert(GenCollectedHeap::heap()->young_gen()->is_in_reserved(old_obj), "old_obj must be in DefNewGeneration");
+      assert(space_index(old_obj) > space_index(new_obj), "must be");
+      return false;
+
+    } else /* if (tenured_gen->is_in_reserved(old_obj)) */ {
+      // Must always rescue when moving from the old into the new generation.
+      assert(GenCollectedHeap::heap()->young_gen()->is_in_reserved(new_obj), "new_obj must be in DefNewGeneration");
+      assert(space_index(old_obj) < space_index(new_obj), "must be");
+      return true;
+    }
+  }
+}
+
+HeapWord* CompactibleSpace::rescue(HeapWord* old_obj) {
+  assert(must_rescue(cast_to_oop(old_obj), cast_to_oop(old_obj)->forwardee()), "do not call otherwise");
+
+  int size = cast_to_oop(old_obj)->size();
+  HeapWord* rescued_obj = NEW_RESOURCE_ARRAY(HeapWord, size);
+  Copy::aligned_disjoint_words(old_obj, rescued_obj, size);
+
+  if (MarkSweep::_rescued_oops == NULL) {
+    MarkSweep::_rescued_oops = new GrowableArray<HeapWord*>(128);
+  }
+
+  MarkSweep::_rescued_oops->append(rescued_obj);
+  return rescued_obj;
 }
 
 void CompactibleSpace::adjust_pointers() {
@@ -410,7 +537,12 @@ void CompactibleSpace::adjust_pointers() {
 }
 
 void CompactibleSpace::compact() {
-  scan_and_compact(this);
+  if(!Universe::is_redefining_gc_run()) {
+    scan_and_compact(this, false);
+  } else {
+    // Redefinition run
+    scan_and_compact(this, true);
+  }
 }
 
 #endif // INCLUDE_SERIALGC
@@ -448,9 +580,9 @@ void ContiguousSpace::verify() const {
   HeapWord* t = top();
   HeapWord* prev_p = NULL;
   while (p < t) {
-    oopDesc::verify(oop(p));
+    oopDesc::verify(cast_to_oop(p));
     prev_p = p;
-    p += oop(p)->size();
+    p += cast_to_oop(p)->size();
   }
   guarantee(p == top(), "end of last object must match end of space");
   if (top() != end()) {
@@ -476,7 +608,7 @@ void ContiguousSpace::oop_iterate(OopIterateClosure* blk) {
   HeapWord* t = top();
   // Could call objects iterate, but this is easier.
   while (obj_addr < t) {
-    obj_addr += oop(obj_addr)->oop_iterate_size(blk);
+    obj_addr += cast_to_oop(obj_addr)->oop_iterate_size(blk);
   }
 }
 
@@ -487,8 +619,8 @@ void ContiguousSpace::object_iterate(ObjectClosure* blk) {
 
 void ContiguousSpace::object_iterate_from(HeapWord* mark, ObjectClosure* blk) {
   while (mark < top()) {
-    blk->do_object(oop(mark));
-    mark += oop(mark)->size();
+    blk->do_object(cast_to_oop(mark));
+    mark += cast_to_oop(mark)->size();
   }
 }
 
@@ -504,9 +636,9 @@ HeapWord* ContiguousSpace::block_start_const(const void* p) const {
     HeapWord* cur = last;
     while (cur <= p) {
       last = cur;
-      cur += oop(cur)->size();
+      cur += cast_to_oop(cur)->size();
     }
-    assert(oopDesc::is_oop(oop(last)), PTR_FORMAT " should be an object start", p2i(last));
+    assert(oopDesc::is_oop(cast_to_oop(last)), PTR_FORMAT " should be an object start", p2i(last));
     return last;
   }
 }
@@ -519,12 +651,12 @@ size_t ContiguousSpace::block_size(const HeapWord* p) const {
   assert(p <= current_top,
          "p > current top - p: " PTR_FORMAT ", current top: " PTR_FORMAT,
          p2i(p), p2i(current_top));
-  assert(p == current_top || oopDesc::is_oop(oop(p)),
+  assert(p == current_top || oopDesc::is_oop(cast_to_oop(p)),
          "p (" PTR_FORMAT ") is not a block start - "
          "current_top: " PTR_FORMAT ", is_oop: %s",
-         p2i(p), p2i(current_top), BOOL_TO_STR(oopDesc::is_oop(oop(p))));
+         p2i(p), p2i(current_top), BOOL_TO_STR(oopDesc::is_oop(cast_to_oop(p))));
   if (p < current_top) {
-    return oop(p)->size();
+    return cast_to_oop(p)->size();
   } else {
     assert(p == current_top, "just checking");
     return pointer_delta(end(), (HeapWord*) p);
@@ -567,27 +699,6 @@ inline HeapWord* ContiguousSpace::par_allocate_impl(size_t size) {
   } while (true);
 }
 
-HeapWord* ContiguousSpace::allocate_aligned(size_t size) {
-  assert(Heap_lock->owned_by_self() || (SafepointSynchronize::is_at_safepoint() && Thread::current()->is_VM_thread()), "not locked");
-  HeapWord* end_value = end();
-
-  HeapWord* obj = CollectedHeap::align_allocation_or_fail(top(), end_value, SurvivorAlignmentInBytes);
-  if (obj == NULL) {
-    return NULL;
-  }
-
-  if (pointer_delta(end_value, obj) >= size) {
-    HeapWord* new_top = obj + size;
-    set_top(new_top);
-    assert(::is_aligned(obj, SurvivorAlignmentInBytes) && is_aligned(new_top),
-      "checking alignment");
-    return obj;
-  } else {
-    set_top(obj);
-    return NULL;
-  }
-}
-
 // Requires locking.
 HeapWord* ContiguousSpace::allocate(size_t size) {
   return allocate_impl(size);
@@ -615,18 +726,18 @@ void ContiguousSpace::allocate_temporary_filler(int factor) {
   if (size >= align_object_size(array_header_size)) {
     size_t length = (size - array_header_size) * (HeapWordSize / sizeof(jint));
     // allocate uninitialized int array
-    typeArrayOop t = (typeArrayOop) allocate(size);
+    typeArrayOop t = (typeArrayOop) cast_to_oop(allocate(size));
     assert(t != NULL, "allocation should succeed");
-    t->set_mark_raw(markWord::prototype());
+    t->set_mark(markWord::prototype());
     t->set_klass(Universe::intArrayKlassObj());
     t->set_length((int)length);
   } else {
     assert(size == CollectedHeap::min_fill_size(),
            "size for smallest fake object doesn't match");
-    instanceOop obj = (instanceOop) allocate(size);
-    obj->set_mark_raw(markWord::prototype());
+    instanceOop obj = (instanceOop) cast_to_oop(allocate(size));
+    obj->set_mark(markWord::prototype());
     obj->set_klass_gap(0);
-    obj->set_klass(SystemDictionary::Object_klass());
+    obj->set_klass(vmClasses::Object_klass());
   }
 }
 
@@ -662,7 +773,7 @@ void OffsetTableContigSpace::verify() const {
   }
 
   while (p < top()) {
-    size_t size = oop(p)->size();
+    size_t size = cast_to_oop(p)->size();
     // For a sampling of objects in the space, find it using the
     // block offset table.
     if (blocks == BLOCK_SAMPLE_INTERVAL) {
@@ -674,7 +785,7 @@ void OffsetTableContigSpace::verify() const {
     }
 
     if (objs == OBJ_SAMPLE_INTERVAL) {
-      oopDesc::verify(oop(p));
+      oopDesc::verify(cast_to_oop(p));
       objs = 0;
     } else {
       objs++;
@@ -685,6 +796,58 @@ void OffsetTableContigSpace::verify() const {
   guarantee(p == top(), "end of last object must match end of space");
 }
 
+// Compute the forward sizes and leave out objects whose position could
+// possibly overlap other objects.
+HeapWord* CompactibleSpace::forward_with_rescue(HeapWord* q, size_t size,
+                                                CompactPoint* cp, HeapWord* compact_top, bool force_forward) {
+  size_t forward_size = size;
+
+  // (DCEVM) There is a new version of the class of q => different size
+  if (cast_to_oop(q)->klass()->new_version() != NULL) {
+
+    size_t new_size = cast_to_oop(q)->size_given_klass(cast_to_oop(q)->klass()->new_version());
+    // assert(size != new_size, "instances without changed size have to be updated prior to GC run");
+    forward_size = new_size;
+  }
+
+  compact_top = forward_compact_top(forward_size, cp, compact_top);
+
+  if (must_rescue(cast_to_oop(q), cast_to_oop(compact_top))) {
+    if (MarkSweep::_rescued_oops == NULL) {
+      MarkSweep::_rescued_oops = new GrowableArray<HeapWord*>(128);
+    }
+    MarkSweep::_rescued_oops->append(q);
+    return compact_top;
+  }
+
+  return forward(cast_to_oop(q), forward_size, cp, compact_top, force_forward);
+}
+
+// Compute the forwarding addresses for the objects that need to be rescued.
+HeapWord* CompactibleSpace::forward_rescued(CompactPoint* cp, HeapWord* compact_top) {
+  // TODO: empty the _rescued_oops after ALL spaces are compacted!
+  if (MarkSweep::_rescued_oops != NULL) {
+    for (int i=0; i<MarkSweep::_rescued_oops->length(); i++) {
+      HeapWord* q = MarkSweep::_rescued_oops->at(i);
+
+      /* size_t size = cast_to_oop(q)->size();  changing this for cms for perm gen */
+      size_t size = block_size(q);
+
+      // (DCEVM) There is a new version of the class of q => different size
+      if (cast_to_oop(q)->klass()->new_version() != NULL) {
+        size_t new_size = cast_to_oop(q)->size_given_klass(cast_to_oop(q)->klass()->new_version());
+        // assert(size != new_size, "instances without changed size have to be updated prior to GC run");
+        size = new_size;
+      }
+
+      compact_top = cp->space->forward(cast_to_oop(q), size, cp, compact_top, true);
+      assert(compact_top <= end(), "must not write over end of space!");
+    }
+    MarkSweep::_rescued_oops->clear();
+    MarkSweep::_rescued_oops = NULL;
+  }
+  return compact_top;
+}
 
 size_t TenuredSpace::allowed_dead_ratio() const {
   return MarkSweepDeadRatio;

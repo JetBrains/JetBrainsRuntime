@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,11 +41,6 @@
 
 //#define USE_ERROR
 //#define USE_TRACE
-
-/* Use THIS_FILE when it is available. */
-#ifndef THIS_FILE
-    #define THIS_FILE __FILE__
-#endif
 
 #if (USE_PLATFORM_MIDI_IN == TRUE) || (USE_PLATFORM_MIDI_OUT == TRUE)
 
@@ -260,9 +255,9 @@ INT32 MIDI_Utils_GetDeviceVersion(int direction, INT32 deviceID, char *name, UIN
 }
 
 
-static MIDIClientRef client = (MIDIClientRef) NULL;
-static MIDIPortRef inPort = (MIDIPortRef) NULL;
-static MIDIPortRef outPort = (MIDIPortRef) NULL;
+static MIDIClientRef client = (MIDIClientRef) 0;
+static MIDIPortRef inPort = (MIDIPortRef) 0;
+static MIDIPortRef outPort = (MIDIPortRef) 0;
 
 // Each MIDIPacket can contain more than one midi messages.
 // This function processes the packet and adds the messages to the specified message queue.
@@ -322,7 +317,7 @@ static void processMessagesForPacket(const MIDIPacket* packet, MacMidiDeviceHand
                             packedMsg = pendingMessageStatus | pendingData[0] << 8;
                         } else {
                             fprintf(stderr, "%s: %d->internal error: pendingMessageStatus=0x%X, pendingDataLength=%d\n",
-                                    THIS_FILE, __LINE__, pendingMessageStatus, pendingDataLength);
+                                    __FILE__, __LINE__, pendingMessageStatus, pendingDataLength);
                             byteIsInvalid = TRUE;
                         }
                         pendingDataLength = 0;
@@ -468,7 +463,7 @@ INT32 MIDI_Utils_OpenDevice(int direction, INT32 deviceID, MacMidiDeviceHandle**
     midiInit();
 
     int err = MIDI_ERROR_NONE;
-    MIDIEndpointRef endpoint = (MIDIEndpointRef) NULL;
+    MIDIEndpointRef endpoint = (MIDIEndpointRef) 0;
 
     TRACE0("MIDI_Utils_OpenDevice\n");
 

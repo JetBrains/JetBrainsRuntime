@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@
 #include "memory/allocation.hpp"
 #include "runtime/globals.hpp"
 #include "utilities/globalDefinitions.hpp"
+#include "utilities/powerOfTwo.hpp"
 
 #include <new>
 
@@ -84,15 +85,12 @@ class Chunk: CHeapObj<mtChunk> {
 
   // Start the chunk_pool cleaner task
   static void start_chunk_pool_cleaner_task();
-
-  static void clean_chunk_pool();
 };
 
 //------------------------------Arena------------------------------------------
 // Fast allocation of memory
 class Arena : public CHeapObj<mtNone> {
 protected:
-  friend class ResourceMark;
   friend class HandleMark;
   friend class NoHandleMark;
   friend class VMStructs;
@@ -173,11 +171,6 @@ protected:
   void* Amalloc_D(size_t x, AllocFailType alloc_failmode = AllocFailStrategy::EXIT_OOM) {
     assert( (x&(sizeof(char*)-1)) == 0, "misaligned size" );
     debug_only(if (UseMallocOnly) return malloc(x);)
-#if defined(SPARC) && !defined(_LP64)
-#define DALIGN_M1 7
-    size_t delta = (((size_t)_hwm + DALIGN_M1) & ~DALIGN_M1) - (size_t)_hwm;
-    x += delta;
-#endif
     if (!check_for_overflow(x, "Arena::Amalloc_D", alloc_failmode))
       return NULL;
     if (_hwm + x > _max) {
@@ -185,15 +178,15 @@ protected:
     } else {
       char *old = _hwm;
       _hwm += x;
-#if defined(SPARC) && !defined(_LP64)
-      old += delta; // align to 8-bytes
-#endif
       return old;
     }
   }
 
   // Fast delete in area.  Common case is: NOP (except for storage reclaimed)
   bool Afree(void *ptr, size_t size) {
+    if (ptr == NULL) {
+      return true; // as with free(3), freeing NULL is a noop.
+    }
 #ifdef ASSERT
     if (ZapResourceArea) memset(ptr, badResourceValue, size); // zap freed memory
     if (UseMallocOnly) return true;

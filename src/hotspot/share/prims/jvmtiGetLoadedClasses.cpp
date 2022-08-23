@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,9 +25,10 @@
 #include "precompiled.hpp"
 #include "classfile/classLoaderDataGraph.hpp"
 #include "classfile/dictionary.hpp"
-#include "classfile/systemDictionary.hpp"
+#include "classfile/javaClasses.hpp"
 #include "gc/shared/collectedHeap.hpp"
 #include "memory/universe.hpp"
+#include "oops/klass.inline.hpp"
 #include "prims/jvmtiGetLoadedClasses.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/jniHandles.inline.hpp"
@@ -70,12 +71,19 @@ public:
 
   void do_klass(Klass* k) {
     // Collect all jclasses
-    _classStack.push((jclass) _env->jni_reference(Handle(_cur_thread, k->java_mirror())));
-    if (_dictionary_walk) {
-      // Collect array classes this way when walking the dictionary (because array classes are
-      // not in the dictionary).
-      for (Klass* l = k->array_klass_or_null(); l != NULL; l = l->array_klass_or_null()) {
-        _classStack.push((jclass) _env->jni_reference(Handle(_cur_thread, l->java_mirror())));
+    // Collect all jclasses
+    // DCEVM : LoadedClassesClosure in dcevm7 iterates over classes from SystemDictionary therefore the class "k" is always
+    //         the new version (SystemDictionary stores only new versions). But the LoadedClassesClosure's functionality was
+    //         changed in java8  where jvmtiLoadedClasses collects all classes from all classloaders, therefore we
+    //         must use new versions only.
+    if (!AllowEnhancedClassRedefinition || k->new_version()==NULL) {
+      _classStack.push((jclass) _env->jni_reference(Handle(_cur_thread, k->java_mirror())));
+      if (_dictionary_walk) {
+        // Collect array classes this way when walking the dictionary (because array classes are
+        // not in the dictionary).
+        for (Klass* l = k->array_klass_or_null(); l != NULL; l = l->array_klass_or_null()) {
+          _classStack.push((jclass) _env->jni_reference(Handle(_cur_thread, l->java_mirror())));
+        }
       }
     }
   }

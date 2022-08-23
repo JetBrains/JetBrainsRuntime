@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
  * @test
  * @bug 4673940 4930794 8211842
  * @summary Unit tests for inetd feature
- * @requires (os.family == "linux" | os.family == "solaris" | os.family == "mac")
+ * @requires (os.family == "linux" | os.family == "mac")
  * @library /test/lib
  * @build jdk.test.lib.Utils
  *        jdk.test.lib.Asserts
@@ -59,12 +59,12 @@ import static java.util.Arrays.asList;
 public class InheritedChannelTest {
 
     private static final String TEST_SRC = System.getProperty("test.src");
-    private static final String TEST_CLASSES = System.getProperty("test.class.path");
+    private static final String TEST_CLASSPATH = System.getProperty("test.class.path");
+    private static final String TEST_CLASSES = System.getProperty("test.classes");
     private static final Path POLICY_PASS = Paths.get(TEST_SRC, "java.policy.pass");
     private static final Path POLICY_FAIL = Paths.get(TEST_SRC, "java.policy.fail");
 
-    private static final String OS = System.getProperty("os.name").toLowerCase();
-    private static final String OS_NAME = OS.startsWith("sunos") ? "solaris" : OS;
+    private static final String OS_NAME = System.getProperty("os.name").toLowerCase();
 
     private static final String ARCH = System.getProperty("os.arch");
     private static final String OS_ARCH = ARCH.equals("i386") ? "i586" : ARCH;
@@ -77,7 +77,7 @@ public class InheritedChannelTest {
         return new Object[][] {
             { "UnixDomainChannelTest", List.of(UnixDomainChannelTest.class.getName())},
             { "UnixSocketTest", List.of(UnixSocketTest.class.getName())},
-            { "StateTest", List.of(StateTest.class.getName()) },
+            { "StateTest", List.of(StateTest.class.getName(), "-Dtest.classes="+TEST_CLASSES)},
             { "EchoTest",  List.of(EchoTest.class.getName())  },
             { "CloseTest", List.of(CloseTest.class.getName()) },
 
@@ -88,12 +88,14 @@ public class InheritedChannelTest {
 
             { "StateTest run with " + POLICY_PASS, List.of(StateTest.class.getName(),
                                                            "-Djava.security.manager",
+                                                           "-Dtest.classes=" + TEST_CLASSES,
                                                            "-Djava.security.policy="
                                                            + POLICY_PASS)
             },
             { "StateTest run with " + POLICY_FAIL, List.of(StateTest.class.getName(),
                                                            "-expectFail",
                                                            "-Djava.security.manager",
+                                                           "-Dtest.classes=" + TEST_CLASSES,
                                                            "-Djava.security.policy="
                                                            + POLICY_FAIL)
             }
@@ -115,7 +117,7 @@ public class InheritedChannelTest {
         ProcessBuilder pb = new ProcessBuilder(args);
 
         Map<String, String> env = pb.environment();
-        env.put("CLASSPATH", TEST_CLASSES);
+        env.put("CLASSPATH", TEST_CLASSPATH);
         env.put(pathVar, libraryPath.toString());
 
         ProcessTools.executeCommand(pb).shouldHaveExitValue(0);

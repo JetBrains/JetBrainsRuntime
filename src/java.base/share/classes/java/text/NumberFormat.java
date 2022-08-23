@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -313,7 +313,7 @@ public abstract class NumberFormat extends Format  {
         return parse(source, pos);
     }
 
-   /**
+    /**
      * Specialization of format.
      *
      * @param number the double number to format
@@ -338,7 +338,7 @@ public abstract class NumberFormat extends Format  {
      */
     String fastFormat(double number) { return null; }
 
-   /**
+    /**
      * Specialization of format.
      *
      * @param number the long number to format
@@ -352,7 +352,7 @@ public abstract class NumberFormat extends Format  {
                       DontCareFieldPosition.INSTANCE).toString();
     }
 
-   /**
+    /**
      * Specialization of format.
      *
      * @param number     the double number to format
@@ -375,7 +375,7 @@ public abstract class NumberFormat extends Format  {
                                         StringBuffer toAppendTo,
                                         FieldPosition pos);
 
-   /**
+    /**
      * Specialization of format.
      *
      * @param number     the long number to format
@@ -398,7 +398,7 @@ public abstract class NumberFormat extends Format  {
                                         StringBuffer toAppendTo,
                                         FieldPosition pos);
 
-   /**
+    /**
      * Returns a Long if possible (e.g., within the range [Long.MIN_VALUE,
      * Long.MAX_VALUE] and with no decimals), otherwise a Double.
      * If IntegerOnly is set, will stop at a decimal
@@ -619,7 +619,7 @@ public abstract class NumberFormat extends Format  {
     /**
      * Returns a scientific format for the current default locale.
      */
-    /*public*/ final static NumberFormat getScientificInstance() {
+    /*public*/ static final NumberFormat getScientificInstance() {
         return getInstance(Locale.getDefault(Locale.Category.FORMAT), null, SCIENTIFICSTYLE);
     }
 
@@ -865,7 +865,7 @@ public abstract class NumberFormat extends Format  {
      * Sets the minimum number of digits allowed in the fraction portion of a
      * number. minimumFractionDigits must be &le; maximumFractionDigits.  If the
      * new value for minimumFractionDigits exceeds the current value
-     * of maximumFractionDigits, then maximumIntegerDigits will also be set to
+     * of maximumFractionDigits, then maximumFractionDigits will also be set to
      * the new value
      *
      * @param newValue the minimum number of fraction digits to be shown; if
@@ -972,25 +972,14 @@ public abstract class NumberFormat extends Format  {
                                             Locale locale, Style formatStyle,
                                             int choice) {
         NumberFormatProvider provider = adapter.getNumberFormatProvider();
-        NumberFormat numberFormat = null;
-        switch (choice) {
-        case NUMBERSTYLE:
-            numberFormat = provider.getNumberInstance(locale);
-            break;
-        case PERCENTSTYLE:
-            numberFormat = provider.getPercentInstance(locale);
-            break;
-        case CURRENCYSTYLE:
-            numberFormat = provider.getCurrencyInstance(locale);
-            break;
-        case INTEGERSTYLE:
-            numberFormat = provider.getIntegerInstance(locale);
-            break;
-        case COMPACTSTYLE:
-            numberFormat = provider.getCompactNumberInstance(locale, formatStyle);
-            break;
-        }
-        return numberFormat;
+        return switch (choice) {
+            case NUMBERSTYLE   -> provider.getNumberInstance(locale);
+            case PERCENTSTYLE  -> provider.getPercentInstance(locale);
+            case CURRENCYSTYLE -> provider.getCurrencyInstance(locale);
+            case INTEGERSTYLE  -> provider.getIntegerInstance(locale);
+            case COMPACTSTYLE  -> provider.getCompactNumberInstance(locale, formatStyle);
+            default            -> null;
+        };
     }
 
     /**

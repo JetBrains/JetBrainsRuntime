@@ -26,31 +26,37 @@
 #include "gc/g1/g1BiasedArray.hpp"
 #include "gc/g1/g1NUMA.hpp"
 #include "gc/g1/g1RegionToSpaceMapper.hpp"
-#include "logging/log.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/virtualspace.hpp"
-#include "runtime/java.hpp"
-#include "runtime/os.inline.hpp"
+#include "runtime/mutexLocker.hpp"
 #include "services/memTracker.hpp"
 #include "utilities/align.hpp"
 #include "utilities/bitMap.inline.hpp"
-#include "utilities/formatBuffer.hpp"
+#include "utilities/powerOfTwo.hpp"
 
 G1RegionToSpaceMapper::G1RegionToSpaceMapper(ReservedSpace rs,
                                              size_t used_size,
                                              size_t page_size,
                                              size_t region_granularity,
                                              size_t commit_factor,
-                                             MemoryType type) :
+                                             MEMFLAGS type) :
   _listener(NULL),
   _storage(rs, used_size, page_size),
   _region_granularity(region_granularity),
-  _commit_map(rs.size() * commit_factor / region_granularity, mtGC),
+  _region_commit_map(rs.size() * commit_factor / region_granularity, mtGC),
   _memory_type(type) {
   guarantee(is_power_of_2(page_size), "must be");
   guarantee(is_power_of_2(region_granularity), "must be");
 
   MemTracker::record_virtual_memory_type((address)rs.base(), type);
+}
+
+// Used to manually signal a mapper to handle a set of regions as committed.
+// Setting the 'zero_filled' parameter to false signals the mapper that the
+// regions have not been cleared by the OS and that they need to be clear
+// explicitly.
+void G1RegionToSpaceMapper::signal_mapping_changed(uint start_idx, size_t num_regions) {
+  fire_on_commit(start_idx, num_regions, false);
 }
 
 // G1RegionToSpaceMapper implementation where the region granularity is larger than
@@ -66,14 +72,28 @@ class G1RegionsLargerThanCommitSizeMapper : public G1RegionToSpaceMapper {
                                       size_t page_size,
                                       size_t alloc_granularity,
                                       size_t commit_factor,
-                                      MemoryType type) :
+                                      MEMFLAGS type) :
     G1RegionToSpaceMapper(rs, actual_size, page_size, alloc_granularity, commit_factor, type),
     _pages_per_region(alloc_granularity / (page_size * commit_factor)) {
 
     guarantee(alloc_granularity >= page_size, "allocation granularity smaller than commit granularity");
   }
 
+  bool is_range_committed(uint start_idx, size_t num_regions) {
+    BitMap::idx_t end = start_idx + num_regions;
+    return _region_commit_map.get_next_zero_offset(start_idx, end) == end;
+  }
+
+  bool is_range_uncommitted(uint start_idx, size_t num_regions) {
+    BitMap::idx_t end = start_idx + num_regions;
+    return _region_commit_map.get_next_one_offset(start_idx, end) == end;
+  }
+
   virtual void commit_regions(uint start_idx, size_t num_regions, WorkGang* pretouch_gang) {
+    guarantee(is_range_uncommitted(start_idx, num_regions),
+              "Range not uncommitted, start: %u, num_regions: " SIZE_FORMAT,
+              start_idx, num_regions);
+
     const size_t start_page = (size_t)start_idx * _pages_per_region;
     const size_t size_in_pages = num_regions * _pages_per_region;
     bool zero_filled = _storage.commit(start_page, size_in_pages);
@@ -87,13 +107,17 @@ class G1RegionsLargerThanCommitSizeMapper : public G1RegionToSpaceMapper {
     if (AlwaysPreTouch) {
       _storage.pretouch(start_page, size_in_pages, pretouch_gang);
     }
-    _commit_map.set_range(start_idx, start_idx + num_regions);
+    _region_commit_map.par_set_range(start_idx, start_idx + num_regions, BitMap::unknown_range);
     fire_on_commit(start_idx, num_regions, zero_filled);
   }
 
   virtual void uncommit_regions(uint start_idx, size_t num_regions) {
+    guarantee(is_range_committed(start_idx, num_regions),
+             "Range not committed, start: %u, num_regions: " SIZE_FORMAT,
+              start_idx, num_regions);
+
     _storage.uncommit((size_t)start_idx * _pages_per_region, num_regions * _pages_per_region);
-    _commit_map.clear_range(start_idx, start_idx + num_regions);
+    _region_commit_map.par_clear_range(start_idx, start_idx + num_regions, BitMap::unknown_range);
   }
 };
 
@@ -101,18 +125,37 @@ class G1RegionsLargerThanCommitSizeMapper : public G1RegionToSpaceMapper {
 // than the commit granularity.
 // Basically, the contents of one OS page span several regions.
 class G1RegionsSmallerThanCommitSizeMapper : public G1RegionToSpaceMapper {
- private:
-  class CommitRefcountArray : public G1BiasedMappedArray<uint> {
-   protected:
-     virtual uint default_value() const { return 0; }
-  };
-
   size_t _regions_per_page;
+  // Lock to prevent bitmap updates and the actual underlying
+  // commit to get out of order. This can happen in the cases
+  // where one thread is expanding the heap during a humongous
+  // allocation and at the same time the service thread is
+  // doing uncommit. These operations will not operate on the
+  // same regions, but they might operate on regions sharing
+  // an underlying OS page. So we need to make sure that both
+  // those resources are in sync:
+  // - G1RegionToSpaceMapper::_region_commit_map;
+  // - G1PageBasedVirtualSpace::_committed (_storage.commit())
+  Mutex _lock;
 
-  CommitRefcountArray _refcounts;
+  size_t region_idx_to_page_idx(uint region_idx) const {
+    return region_idx / _regions_per_page;
+  }
 
-  uintptr_t region_idx_to_page_idx(uint region) const {
-    return region / _regions_per_page;
+  bool is_page_committed(size_t page_idx) {
+    size_t region = page_idx * _regions_per_page;
+    size_t region_limit = region + _regions_per_page;
+    // Committed if there is a bit set in the range.
+    return _region_commit_map.get_next_one_offset(region, region_limit) != region_limit;
+  }
+
+  void numa_request_on_node(size_t page_idx) {
+    if (_memory_type == mtJavaHeap) {
+      uint region = (uint)(page_idx * _regions_per_page);
+      void* address = _storage.page_start(page_idx);
+      size_t size_in_bytes = _storage.page_size();
+      G1NUMA::numa()->request_memory_on_node(address, size_in_bytes, region);
+    }
   }
 
  public:
@@ -121,65 +164,90 @@ class G1RegionsSmallerThanCommitSizeMapper : public G1RegionToSpaceMapper {
                                        size_t page_size,
                                        size_t alloc_granularity,
                                        size_t commit_factor,
-                                       MemoryType type) :
+                                       MEMFLAGS type) :
     G1RegionToSpaceMapper(rs, actual_size, page_size, alloc_granularity, commit_factor, type),
-    _regions_per_page((page_size * commit_factor) / alloc_granularity), _refcounts() {
+    _regions_per_page((page_size * commit_factor) / alloc_granularity),
+    _lock(Mutex::leaf, "G1 mapper lock", true, Mutex::_safepoint_check_never) {
 
     guarantee((page_size * commit_factor) >= alloc_granularity, "allocation granularity smaller than commit granularity");
-    _refcounts.initialize((HeapWord*)rs.base(), (HeapWord*)(rs.base() + align_up(rs.size(), page_size)), page_size);
   }
 
   virtual void commit_regions(uint start_idx, size_t num_regions, WorkGang* pretouch_gang) {
+    uint region_limit = (uint)(start_idx + num_regions);
+    assert(num_regions > 0, "Must commit at least one region");
+    assert(_region_commit_map.get_next_one_offset(start_idx, region_limit) == region_limit,
+           "Should be no committed regions in the range [%u, %u)", start_idx, region_limit);
+
     size_t const NoPage = ~(size_t)0;
 
     size_t first_committed = NoPage;
     size_t num_committed = 0;
 
+    size_t start_page = region_idx_to_page_idx(start_idx);
+    size_t end_page = region_idx_to_page_idx(region_limit - 1);
+
     bool all_zero_filled = true;
-    G1NUMA* numa = G1NUMA::numa();
 
-    for (uint region_idx = start_idx; region_idx < start_idx + num_regions; region_idx++) {
-      assert(!_commit_map.at(region_idx), "Trying to commit storage at region %u that is already committed", region_idx);
-      size_t page_idx = region_idx_to_page_idx(region_idx);
-      uint old_refcount = _refcounts.get_by_index(page_idx);
-
-      bool zero_filled = false;
-      if (old_refcount == 0) {
-        if (first_committed == NoPage) {
-          first_committed = page_idx;
-          num_committed = 1;
-        } else {
+    // Concurrent operations might operate on regions sharing the same
+    // underlying OS page. See lock declaration for more details.
+    {
+      MutexLocker ml(&_lock, Mutex::_no_safepoint_check_flag);
+      for (size_t page = start_page; page <= end_page; page++) {
+        if (!is_page_committed(page)) {
+          // Page not committed.
+          if (num_committed == 0) {
+            first_committed = page;
+          }
           num_committed++;
-        }
-        zero_filled = _storage.commit(page_idx, 1);
-        if (_memory_type == mtJavaHeap) {
-          void* address = _storage.page_start(page_idx);
-          size_t size_in_bytes = _storage.page_size();
-          numa->request_memory_on_node(address, size_in_bytes, region_idx);
+
+          if (!_storage.commit(page, 1)) {
+            // Found dirty region during commit.
+            all_zero_filled = false;
+          }
+
+          // Move memory to correct NUMA node for the heap.
+          numa_request_on_node(page);
+        } else {
+          // Page already committed.
+          all_zero_filled = false;
         }
       }
-      all_zero_filled &= zero_filled;
 
-      _refcounts.set_by_index(page_idx, old_refcount + 1);
-      _commit_map.set_bit(region_idx);
+      // Update the commit map for the given range. Not using the par_set_range
+      // since updates to _region_commit_map for this mapper is protected by _lock.
+      _region_commit_map.set_range(start_idx, region_limit, BitMap::unknown_range);
     }
+
     if (AlwaysPreTouch && num_committed > 0) {
       _storage.pretouch(first_committed, num_committed, pretouch_gang);
     }
+
     fire_on_commit(start_idx, num_regions, all_zero_filled);
   }
 
   virtual void uncommit_regions(uint start_idx, size_t num_regions) {
-    for (uint i = start_idx; i < start_idx + num_regions; i++) {
-      assert(_commit_map.at(i), "Trying to uncommit storage at region %u that is not committed", i);
-      size_t idx = region_idx_to_page_idx(i);
-      uint old_refcount = _refcounts.get_by_index(idx);
-      assert(old_refcount > 0, "must be");
-      if (old_refcount == 1) {
-        _storage.uncommit(idx, 1);
+    uint region_limit = (uint)(start_idx + num_regions);
+    assert(num_regions > 0, "Must uncommit at least one region");
+    assert(_region_commit_map.get_next_zero_offset(start_idx, region_limit) == region_limit,
+           "Should only be committed regions in the range [%u, %u)", start_idx, region_limit);
+
+    size_t start_page = region_idx_to_page_idx(start_idx);
+    size_t end_page = region_idx_to_page_idx(region_limit - 1);
+
+    // Concurrent operations might operate on regions sharing the same
+    // underlying OS page. See lock declaration for more details.
+    MutexLocker ml(&_lock, Mutex::_no_safepoint_check_flag);
+    // Clear commit map for the given range. Not using the par_clear_range since
+    // updates to _region_commit_map for this mapper is protected by _lock.
+    _region_commit_map.clear_range(start_idx, region_limit, BitMap::unknown_range);
+
+    for (size_t page = start_page; page <= end_page; page++) {
+      // We know all pages were committed before clearing the map. If the
+      // the page is still marked as committed after the clear we should
+      // not uncommit it.
+      if (!is_page_committed(page)) {
+        _storage.uncommit(page, 1);
       }
-      _refcounts.set_by_index(idx, old_refcount - 1);
-      _commit_map.clear_bit(i);
     }
   }
 };
@@ -190,157 +258,15 @@ void G1RegionToSpaceMapper::fire_on_commit(uint start_idx, size_t num_regions, b
   }
 }
 
-static bool map_nvdimm_space(ReservedSpace rs) {
-  assert(AllocateOldGenAt != NULL, "");
-  int _backing_fd = os::create_file_for_heap(AllocateOldGenAt);
-  if (_backing_fd == -1) {
-    log_error(gc, init)("Could not create file for Old generation at location %s", AllocateOldGenAt);
-    return false;
-  }
-  // commit this memory in nv-dimm
-  char* ret = os::attempt_reserve_memory_at(rs.size(), rs.base(), _backing_fd);
-
-  if (ret != rs.base()) {
-    if (ret != NULL) {
-      os::unmap_memory(rs.base(), rs.size());
-    }
-    log_error(gc, init)("Error in mapping Old Gen to given AllocateOldGenAt = %s", AllocateOldGenAt);
-    os::close(_backing_fd);
-    return false;
-  }
-
-  os::close(_backing_fd);
-  return true;
-}
-
-G1RegionToHeteroSpaceMapper::G1RegionToHeteroSpaceMapper(ReservedSpace rs,
-                                                         size_t actual_size,
-                                                         size_t page_size,
-                                                         size_t alloc_granularity,
-                                                         size_t commit_factor,
-                                                         MemoryType type) :
-  G1RegionToSpaceMapper(rs, actual_size, page_size, alloc_granularity, commit_factor, type),
-  _rs(rs),
-  _dram_mapper(NULL),
-  _num_committed_dram(0),
-  _num_committed_nvdimm(0),
-  _start_index_of_dram(0),
-  _page_size(page_size),
-  _commit_factor(commit_factor),
-  _type(type) {
-  assert(actual_size == 2 * MaxHeapSize, "For 2-way heterogenuous heap, reserved space is two times MaxHeapSize");
-}
-
-bool G1RegionToHeteroSpaceMapper::initialize() {
-  // Since we need to re-map the reserved space - 'Xmx' to nv-dimm and 'Xmx' to dram, we need to release the reserved memory first.
-  // Because on some OSes (e.g. Windows) you cannot do a file mapping on memory reserved with regular mapping.
-  os::release_memory(_rs.base(), _rs.size());
-  // First half of size Xmx is for nv-dimm.
-  ReservedSpace rs_nvdimm = _rs.first_part(MaxHeapSize);
-  assert(rs_nvdimm.base() == _rs.base(), "We should get the same base address");
-
-  // Second half of reserved memory is mapped to dram.
-  ReservedSpace rs_dram = _rs.last_part(MaxHeapSize);
-
-  assert(rs_dram.size() == rs_nvdimm.size() && rs_nvdimm.size() == MaxHeapSize, "They all should be same");
-
-  // Reserve dram memory
-  char* base = os::attempt_reserve_memory_at(rs_dram.size(), rs_dram.base());
-  if (base != rs_dram.base()) {
-    if (base != NULL) {
-      os::release_memory(base, rs_dram.size());
-    }
-    log_error(gc, init)("Error in re-mapping memory on dram during G1 heterogenous memory initialization");
-    return false;
-  }
-
-  // We reserve and commit this entire space to NV-DIMM.
-  if (!map_nvdimm_space(rs_nvdimm)) {
-    log_error(gc, init)("Error in re-mapping memory to nv-dimm during G1 heterogenous memory initialization");
-    return false;
-  }
-
-  if (_region_granularity >= (_page_size * _commit_factor)) {
-    _dram_mapper = new G1RegionsLargerThanCommitSizeMapper(rs_dram, rs_dram.size(), _page_size, _region_granularity, _commit_factor, _type);
-  } else {
-    _dram_mapper = new G1RegionsSmallerThanCommitSizeMapper(rs_dram, rs_dram.size(), _page_size, _region_granularity, _commit_factor, _type);
-  }
-
-  _start_index_of_dram = (uint)(rs_nvdimm.size() / _region_granularity);
-  return true;
-}
-
-void G1RegionToHeteroSpaceMapper::commit_regions(uint start_idx, size_t num_regions, WorkGang* pretouch_gang) {
-  uint end_idx = (start_idx + (uint)num_regions - 1);
-
-  uint num_dram = end_idx >= _start_index_of_dram ? MIN2((end_idx - _start_index_of_dram + 1), (uint)num_regions) : 0;
-  uint num_nvdimm = (uint)num_regions - num_dram;
-
-  if (num_nvdimm > 0) {
-    // We do not need to commit nv-dimm regions, since they are committed in the beginning.
-    _num_committed_nvdimm += num_nvdimm;
-  }
-  if (num_dram > 0) {
-    _dram_mapper->commit_regions(start_idx > _start_index_of_dram ? (start_idx - _start_index_of_dram) : 0, num_dram, pretouch_gang);
-    _num_committed_dram += num_dram;
-  }
-}
-
-void G1RegionToHeteroSpaceMapper::uncommit_regions(uint start_idx, size_t num_regions) {
-  uint end_idx = (start_idx + (uint)num_regions - 1);
-  uint num_dram = end_idx >= _start_index_of_dram ? MIN2((end_idx - _start_index_of_dram + 1), (uint)num_regions) : 0;
-  uint num_nvdimm = (uint)num_regions - num_dram;
-
-  if (num_nvdimm > 0) {
-    // We do not uncommit memory for nv-dimm regions.
-    _num_committed_nvdimm -= num_nvdimm;
-  }
-
-  if (num_dram > 0) {
-    _dram_mapper->uncommit_regions(start_idx > _start_index_of_dram ? (start_idx - _start_index_of_dram) : 0, num_dram);
-    _num_committed_dram -= num_dram;
-  }
-}
-
-uint G1RegionToHeteroSpaceMapper::num_committed_dram() const {
-  return _num_committed_dram;
-}
-
-uint G1RegionToHeteroSpaceMapper::num_committed_nvdimm() const {
-  return _num_committed_nvdimm;
-}
-
-G1RegionToSpaceMapper* G1RegionToSpaceMapper::create_heap_mapper(ReservedSpace rs,
-                                                                 size_t actual_size,
-                                                                 size_t page_size,
-                                                                 size_t region_granularity,
-                                                                 size_t commit_factor,
-                                                                 MemoryType type) {
-  if (AllocateOldGenAt != NULL) {
-    G1RegionToHeteroSpaceMapper* mapper = new G1RegionToHeteroSpaceMapper(rs, actual_size, page_size, region_granularity, commit_factor, type);
-    if (!mapper->initialize()) {
-      delete mapper;
-      return NULL;
-    }
-    return (G1RegionToSpaceMapper*)mapper;
-  } else {
-    return create_mapper(rs, actual_size, page_size, region_granularity, commit_factor, type);
-  }
-}
-
 G1RegionToSpaceMapper* G1RegionToSpaceMapper::create_mapper(ReservedSpace rs,
                                                             size_t actual_size,
                                                             size_t page_size,
                                                             size_t region_granularity,
                                                             size_t commit_factor,
-                                                            MemoryType type) {
+                                                            MEMFLAGS type) {
   if (region_granularity >= (page_size * commit_factor)) {
     return new G1RegionsLargerThanCommitSizeMapper(rs, actual_size, page_size, region_granularity, commit_factor, type);
   } else {
     return new G1RegionsSmallerThanCommitSizeMapper(rs, actual_size, page_size, region_granularity, commit_factor, type);
   }
-}
-
-void G1RegionToSpaceMapper::commit_and_set_special() {
-  _storage.commit_and_set_special();
 }

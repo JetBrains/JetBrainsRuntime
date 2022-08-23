@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,8 +27,7 @@
  * @library /tools/javac/lib
  * @modules jdk.compiler
  * @build   JavacTestingAbstractProcessor
- * @compile --enable-preview -source ${jdk.version} TestRecordDesugar.java
- * @run main/othervm --enable-preview TestRecordDesugar
+ * @run main TestRecordDesugar
  */
 
 import java.io.*;
@@ -50,8 +49,6 @@ public class TestRecordDesugar extends JavacTestingAbstractProcessor {
         String testSrc = System.getProperty("test.src");
         String testClasspath = System.getProperty("test.class.path");
         List<String> options = List.of(
-                "--enable-preview",
-                "-source", Integer.toString(Runtime.version().feature()),
                 "-classpath", testClasspath,
                 "-processor", "TestRecordDesugar",
                 "-proc:only",
@@ -258,7 +255,7 @@ public class TestRecordDesugar extends JavacTestingAbstractProcessor {
                                    name = "modulus",
                                    type = TypeKind.DOUBLE),
 
-                      @ElementInfo(modifiers = {Modifier.PUBLIC},
+                      @ElementInfo(modifiers = {Modifier.PUBLIC, Modifier.FINAL},
                                    name = "toString",
                                    type = TypeKind.DECLARED,
                                    origin = Elements.Origin.EXPLICIT),
@@ -284,7 +281,7 @@ public class TestRecordDesugar extends JavacTestingAbstractProcessor {
                                    origin = Elements.Origin.EXPLICIT),
 
                       @ElementInfo(kind = ElementKind.CONSTRUCTOR,
-                                   modifiers = {Modifier.PUBLIC},
+                                   modifiers = {},
                                    name = "<init>",
                                    type = TypeKind.VOID,
                                    origin = Elements.Origin.MANDATED),
@@ -329,7 +326,7 @@ public class TestRecordDesugar extends JavacTestingAbstractProcessor {
                                    name = "modulus",
                                    type = TypeKind.DOUBLE),
 
-                      @ElementInfo(modifiers = {Modifier.PUBLIC},
+                      @ElementInfo(modifiers = {Modifier.PUBLIC, Modifier.FINAL},
                                    name = "toString",
                                    type = TypeKind.DECLARED,
                                    origin = Elements.Origin.EXPLICIT),

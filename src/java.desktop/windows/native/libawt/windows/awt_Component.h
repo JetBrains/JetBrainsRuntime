@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,11 +66,6 @@ const UINT MAX_ACP_STR_LEN = 7; // ANSI CP identifiers are no longer than this
 // combination of standard mouse button flags
 const int ALL_MK_BUTTONS = MK_LBUTTON|MK_MBUTTON|MK_RBUTTON;
 const int X_BUTTONS = MK_XBUTTON1|MK_XBUTTON2;
-
-// The allowable difference between coordinates of the WM_TOUCH event and the
-// corresponding WM_LBUTTONDOWN/WM_LBUTTONUP event letting to associate these
-// events, when their coordinates are slightly different.
-const int TOUCH_MOUSE_COORDS_DELTA = 10;
 
 // Whether to check for embedded frame and adjust location
 #define CHECK_EMBEDDED 0
@@ -275,6 +270,7 @@ public:
     /*
      * methods on this component
      */
+    virtual int GetScreenImOn();
     virtual void Show();
     virtual void Hide();
     virtual void Reshape(int x, int y, int w, int h);
@@ -529,9 +525,16 @@ public:
                                     int wheelRotation, BOOL isHorizontal);
     virtual MsgRouting WmNcMouseDown(WPARAM hitTest, int x, int y, int button);
     virtual MsgRouting WmNcMouseUp(WPARAM hitTest, int x, int y, int button);
+    virtual MsgRouting WmNcMouseMove(WPARAM hitTest, int x, int y);
     virtual MsgRouting WmWindowPosChanging(LPARAM windowPos);
     virtual MsgRouting WmWindowPosChanged(LPARAM windowPos);
     virtual void WmTouch(WPARAM wParam, LPARAM lParam);
+    void WmTouchHandler(const TOUCHINPUT& touchInput);
+    BOOL IsInsideTouchClickBoundaries(POINT p);
+    POINT TouchCoordsToLocal(LONG x, LONG y);
+    void SendMouseWheelEventFromTouch(POINT p, jint modifiers, jint scrollType, jint pixels);
+    void SendMouseEventFromTouch(jint id, POINT p, jint modifiers, jint clickCount, jint button);
+    void SendButtonPressEventFromTouch(POINT p, jint modifiers);
 
     // NB: 64-bit: vkey is wParam of the message, but other API's take
     // vkey parameters of type UINT, so we do the cast before dispatching.
@@ -585,7 +588,7 @@ public:
                                     LPNCCALCSIZE_PARAMS lpncsp,
                                     LRESULT &retVal);
     virtual MsgRouting WmNcPaint(HRGN hrgn);
-    virtual MsgRouting WmNcHitTest(UINT x, UINT y, LRESULT &retVal);
+    virtual MsgRouting WmNcHitTest(int x, int y, LRESULT &retVal);
     virtual MsgRouting WmSysCommand(UINT uCmdType, int xPos, int yPos);
     virtual MsgRouting WmEnterSizeMove();
     virtual MsgRouting WmExitSizeMove();
@@ -754,10 +757,16 @@ protected:
     virtual void FillBackground(HDC hMemoryDC, SIZE &size);
     virtual void FillAlpha(void *bitmapBits, SIZE &size, BYTE alpha);
 
+public:
     int ScaleUpX(int x);
+    int ScaleUpAbsX(int x);
     int ScaleUpY(int y);
+    int ScaleUpAbsY(int y);
     int ScaleDownX(int x);
+    int ScaleDownAbsX(int x);
     int ScaleDownY(int y);
+    int ScaleDownAbsY(int y);
+    void ScaleDownRect(RECT& r);
 
 private:
     /* A bitmask keeps the button's numbers as MK_LBUTTON, MK_MBUTTON, MK_RBUTTON
@@ -769,10 +778,9 @@ private:
     */
     UINT m_mouseButtonClickAllowed;
 
-    BOOL m_touchDownOccurred;
-    BOOL m_touchUpOccurred;
-    POINT m_touchDownPoint;
-    POINT m_touchUpPoint;
+    BOOL m_isTouchScroll;
+    POINT m_touchBeginPoint;
+    POINT m_lastTouchPoint;
 
     BOOL m_bSubclassed;
     BOOL m_bPauseDestroy;
@@ -923,10 +931,12 @@ public:
     void            AddDCItem(DCItem *newItem);
     DCItem          *RemoveDC(HDC hDC, HWND hWnd);
     DCItem          *RemoveAllDCs(HWND hWnd);
+    DCItem          *RemoveAllDCs();
     void            RealizePalettes(int screen);
 };
 
 void ReleaseDCList(HWND hwnd, DCList &list);
+void ReleaseDCList(DCList &list);
 void MoveDCToPassiveList(HDC hDC, HWND hWnd);
 
 #include "ObjectList.h"

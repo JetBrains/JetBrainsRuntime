@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2017, 2021, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,12 +23,12 @@
  */
 
 #include "precompiled.hpp"
-
+#include "gc/shared/tlab_globals.hpp"
 #include "gc/shenandoah/shenandoahAsserts.hpp"
-#include "gc/shenandoah/shenandoahConcurrentRoots.hpp"
 #include "gc/shenandoah/shenandoahForwarding.inline.hpp"
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
+#include "gc/shenandoah/shenandoahHeapRegion.inline.hpp"
 #include "gc/shenandoah/shenandoahRootProcessor.hpp"
 #include "gc/shenandoah/shenandoahTaskqueue.inline.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
@@ -45,6 +45,17 @@
 #ifdef verify_oop
 #undef verify_oop
 #endif
+
+static bool is_instance_ref_klass(Klass* k) {
+  return k->is_instance_klass() && InstanceKlass::cast(k)->reference_type() != REF_NONE;
+}
+
+class ShenandoahIgnoreReferenceDiscoverer : public ReferenceDiscoverer {
+public:
+  virtual bool discover_reference(oop obj, ReferenceType type) {
+    return true;
+  }
+};
 
 class ShenandoahVerifyOopClosure : public BasicOopIterateClosure {
 private:
@@ -67,7 +78,12 @@ public:
     _map(map),
     _ld(ld),
     _interior_loc(NULL),
-    _loc(NULL) { }
+    _loc(NULL) {
+    if (options._verify_marked == ShenandoahVerifier::_verify_marked_complete_except_references ||
+        options._verify_marked == ShenandoahVerifier::_verify_marked_disable) {
+      set_ref_discoverer_internal(new ShenandoahIgnoreReferenceDiscoverer());
+    }
+  }
 
 private:
   void check(ShenandoahAsserts::SafeLevel level, oop obj, bool test, const char* label) {
@@ -81,15 +97,16 @@ private:
     T o = RawAccess<>::oop_load(p);
     if (!CompressedOops::is_null(o)) {
       oop obj = CompressedOops::decode_not_null(o);
-
+      if (is_instance_ref_klass(obj->klass())) {
+        obj = ShenandoahForwarding::get_forwardee(obj);
+      }
       // Single threaded verification can use faster non-atomic stack and bitmap
       // methods.
       //
       // For performance reasons, only fully verify non-marked field values.
       // We are here when the host object for *p is already marked.
 
-      HeapWord* addr = (HeapWord*) obj;
-      if (_map->par_mark(addr)) {
+      if (_map->par_mark(obj)) {
         verify_oop_at(p, obj);
         _stack->push(ShenandoahVerifierTask(obj));
       }
@@ -117,7 +134,7 @@ private:
       check(ShenandoahAsserts::_safe_unknown, obj, Metaspace::contains(obj_klass),
              "Object klass pointer must go to metaspace");
 
-      HeapWord *obj_addr = (HeapWord *) obj;
+      HeapWord *obj_addr = cast_from_oop<HeapWord*>(obj);
       check(ShenandoahAsserts::_safe_unknown, obj, obj_addr < obj_reg->top(),
              "Object start should be within the region");
 
@@ -125,7 +142,7 @@ private:
         check(ShenandoahAsserts::_safe_unknown, obj, (obj_addr + obj->size()) <= obj_reg->top(),
                "Object end should be within the region");
       } else {
-        size_t humongous_start = obj_reg->region_number();
+        size_t humongous_start = obj_reg->index();
         size_t humongous_end = humongous_start + (obj->size() >> ShenandoahHeapRegion::region_size_words_shift());
         for (size_t idx = humongous_start + 1; idx < humongous_end; idx++) {
           check(ShenandoahAsserts::_safe_unknown, obj, _heap->get_region(idx)->is_humongous_continuation(),
@@ -143,7 +160,7 @@ private:
           // skip
           break;
         case ShenandoahVerifier::_verify_liveness_complete:
-          Atomic::add(&_ld[obj_reg->region_number()], (uint) obj->size());
+          Atomic::add(&_ld[obj_reg->index()], (uint) obj->size(), memory_order_relaxed);
           // fallthrough for fast failure for un-live regions:
         case ShenandoahVerifier::_verify_liveness_conservative:
           check(ShenandoahAsserts::_safe_oop, obj, obj_reg->has_live(),
@@ -154,7 +171,7 @@ private:
       }
     }
 
-    oop fwd = (oop) ShenandoahForwarding::get_forwardee_raw_unchecked(obj);
+    oop fwd = ShenandoahForwarding::get_forwardee_raw_unchecked(obj);
 
     ShenandoahHeapRegion* fwd_reg = NULL;
 
@@ -181,13 +198,13 @@ private:
       check(ShenandoahAsserts::_safe_oop, obj, !fwd_reg->is_humongous(),
              "Should have no humongous forwardees");
 
-      HeapWord *fwd_addr = (HeapWord *) fwd;
+      HeapWord *fwd_addr = cast_from_oop<HeapWord *>(fwd);
       check(ShenandoahAsserts::_safe_oop, obj, fwd_addr < fwd_reg->top(),
              "Forwardee start should be within the region");
       check(ShenandoahAsserts::_safe_oop, obj, (fwd_addr + fwd->size()) <= fwd_reg->top(),
              "Forwardee end should be within the region");
 
-      oop fwd2 = (oop) ShenandoahForwarding::get_forwardee_raw_unchecked(fwd);
+      oop fwd2 = ShenandoahForwarding::get_forwardee_raw_unchecked(fwd);
       check(ShenandoahAsserts::_safe_oop, obj, (fwd == fwd2),
              "Double forwarding");
     } else {
@@ -207,6 +224,10 @@ private:
       case ShenandoahVerifier::_verify_marked_complete:
         check(ShenandoahAsserts::_safe_all, obj, _heap->complete_marking_context()->is_marked(obj),
                "Must be marked in complete bitmap");
+        break;
+      case ShenandoahVerifier::_verify_marked_complete_except_references:
+        check(ShenandoahAsserts::_safe_all, obj, _heap->complete_marking_context()->is_marked(obj),
+              "Must be marked in complete bitmap, except j.l.r.Reference referents");
         break;
       default:
         assert(false, "Unhandled mark verification");
@@ -397,34 +418,12 @@ public:
 
     verify(r, r->is_cset() == _heap->collection_set()->is_in(r),
            "Transitional: region flags and collection set agree");
-
-    verify(r, r->is_empty() || r->seqnum_first_alloc() != 0,
-           "Non-empty regions should have first seqnum set");
-
-    verify(r, r->is_empty() || (r->seqnum_first_alloc_mutator() != 0 || r->seqnum_first_alloc_gc() != 0),
-           "Non-empty regions should have first seqnum set to either GC or mutator");
-
-    verify(r, r->is_empty() || r->seqnum_last_alloc() != 0,
-           "Non-empty regions should have last seqnum set");
-
-    verify(r, r->is_empty() || (r->seqnum_last_alloc_mutator() != 0 || r->seqnum_last_alloc_gc() != 0),
-           "Non-empty regions should have last seqnum set to either GC or mutator");
-
-    verify(r, r->seqnum_first_alloc() <= r->seqnum_last_alloc(),
-           "First seqnum should not be greater than last timestamp");
-
-    verify(r, r->seqnum_first_alloc_mutator() <= r->seqnum_last_alloc_mutator(),
-           "First mutator seqnum should not be greater than last seqnum");
-
-    verify(r, r->seqnum_first_alloc_gc() <= r->seqnum_last_alloc_gc(),
-           "First GC seqnum should not be greater than last seqnum");
   }
 };
 
 class ShenandoahVerifierReachableTask : public AbstractGangTask {
 private:
   const char* _label;
-  ShenandoahRootVerifier* _verifier;
   ShenandoahVerifier::VerifyOptions _options;
   ShenandoahHeap* _heap;
   ShenandoahLivenessData* _ld;
@@ -434,12 +433,10 @@ private:
 public:
   ShenandoahVerifierReachableTask(MarkBitMap* bitmap,
                                   ShenandoahLivenessData* ld,
-                                  ShenandoahRootVerifier* verifier,
                                   const char* label,
                                   ShenandoahVerifier::VerifyOptions options) :
-    AbstractGangTask("Shenandoah Parallel Verifier Reachable Task"),
+    AbstractGangTask("Shenandoah Verifier Reachable Objects"),
     _label(label),
-    _verifier(verifier),
     _options(options),
     _heap(ShenandoahHeap::heap()),
     _ld(ld),
@@ -464,9 +461,9 @@ public:
                                       ShenandoahMessageBuffer("%s, Roots", _label),
                                       _options);
         if (_heap->unload_classes()) {
-          _verifier->strong_roots_do(&cl);
+          ShenandoahRootVerifier::strong_roots_do(&cl);
         } else {
-          _verifier->roots_do(&cl);
+          ShenandoahRootVerifier::roots_do(&cl);
         }
     }
 
@@ -483,7 +480,7 @@ public:
       }
     }
 
-    Atomic::add(&_processed, processed);
+    Atomic::add(&_processed, processed, memory_order_relaxed);
   }
 };
 
@@ -502,7 +499,7 @@ public:
                                      ShenandoahLivenessData* ld,
                                      const char* label,
                                      ShenandoahVerifier::VerifyOptions options) :
-          AbstractGangTask("Shenandoah Parallel Verifier Marked Region"),
+          AbstractGangTask("Shenandoah Verifier Marked Objects"),
           _label(label),
           _options(options),
           _heap(ShenandoahHeap::heap()),
@@ -512,7 +509,7 @@ public:
           _processed(0) {};
 
   size_t processed() {
-    return _processed;
+    return Atomic::load(&_processed);
   }
 
   virtual void work(uint worker_id) {
@@ -522,7 +519,7 @@ public:
                                   _options);
 
     while (true) {
-      size_t v = Atomic::add(&_claimed, 1u) - 1;
+      size_t v = Atomic::fetch_and_add(&_claimed, 1u, memory_order_relaxed);
       if (v < _heap->num_regions()) {
         ShenandoahHeapRegion* r = _heap->get_region(v);
         if (!r->is_humongous() && !r->is_trash()) {
@@ -539,27 +536,27 @@ public:
   virtual void work_humongous(ShenandoahHeapRegion *r, ShenandoahVerifierStack& stack, ShenandoahVerifyOopClosure& cl) {
     size_t processed = 0;
     HeapWord* obj = r->bottom();
-    if (_heap->complete_marking_context()->is_marked((oop)obj)) {
+    if (_heap->complete_marking_context()->is_marked(cast_to_oop(obj))) {
       verify_and_follow(obj, stack, cl, &processed);
     }
-    Atomic::add(&_processed, processed);
+    Atomic::add(&_processed, processed, memory_order_relaxed);
   }
 
   virtual void work_regular(ShenandoahHeapRegion *r, ShenandoahVerifierStack &stack, ShenandoahVerifyOopClosure &cl) {
     size_t processed = 0;
-    MarkBitMap* mark_bit_map = _heap->complete_marking_context()->mark_bit_map();
-    HeapWord* tams = _heap->complete_marking_context()->top_at_mark_start(r);
+    ShenandoahMarkingContext* ctx = _heap->complete_marking_context();
+    HeapWord* tams = ctx->top_at_mark_start(r);
 
     // Bitmaps, before TAMS
     if (tams > r->bottom()) {
       HeapWord* start = r->bottom();
-      HeapWord* addr = mark_bit_map->get_next_marked_addr(start, tams);
+      HeapWord* addr = ctx->get_next_marked_addr(start, tams);
 
       while (addr < tams) {
         verify_and_follow(addr, stack, cl, &processed);
         addr += 1;
         if (addr < tams) {
-          addr = mark_bit_map->get_next_marked_addr(addr, tams);
+          addr = ctx->get_next_marked_addr(addr, tams);
         }
       }
     }
@@ -571,25 +568,26 @@ public:
 
       while (addr < limit) {
         verify_and_follow(addr, stack, cl, &processed);
-        addr += oop(addr)->size();
+        addr += cast_to_oop(addr)->size();
       }
     }
 
-    Atomic::add(&_processed, processed);
+    Atomic::add(&_processed, processed, memory_order_relaxed);
   }
 
   void verify_and_follow(HeapWord *addr, ShenandoahVerifierStack &stack, ShenandoahVerifyOopClosure &cl, size_t *processed) {
     if (!_bitmap->par_mark(addr)) return;
 
     // Verify the object itself:
-    oop obj = oop(addr);
+    oop obj = cast_to_oop(addr);
     cl.verify_oop_standalone(obj);
 
     // Verify everything reachable from that object too, hopefully realizing
     // everything was already marked, and never touching further:
-    cl.verify_oops_from(obj);
-    (*processed)++;
-
+    if (!is_instance_ref_klass(obj->klass())) {
+      cl.verify_oops_from(obj);
+      (*processed)++;
+    }
     while (!stack.is_empty()) {
       ShenandoahVerifierTask task = stack.pop();
       cl.verify_oops_from(task.obj());
@@ -600,11 +598,11 @@ public:
 
 class VerifyThreadGCState : public ThreadClosure {
 private:
-  const char* _label;
-  char _expected;
+  const char* const _label;
+         char const _expected;
 
 public:
-  VerifyThreadGCState(const char* label, char expected) : _expected(expected) {}
+  VerifyThreadGCState(const char* label, char expected) : _label(label), _expected(expected) {}
   void do_thread(Thread* t) {
     char actual = ShenandoahThreadLocalData::gc_state(t);
     if (actual != _expected) {
@@ -613,29 +611,11 @@ public:
   }
 };
 
-class ShenandoahGCStateResetter : public StackObj {
-private:
-  ShenandoahHeap* const _heap;
-  char _gc_state;
-
-public:
-  ShenandoahGCStateResetter() : _heap(ShenandoahHeap::heap()) {
-    _gc_state = _heap->gc_state();
-    _heap->_gc_state.clear();
-  }
-
-  ~ShenandoahGCStateResetter() {
-    _heap->_gc_state.set(_gc_state);
-    assert(_heap->gc_state() == _gc_state, "Should be restored");
-  }
-};
-
 void ShenandoahVerifier::verify_at_safepoint(const char *label,
                                              VerifyForwarded forwarded, VerifyMarked marked,
                                              VerifyCollectionSet cset,
                                              VerifyLiveness liveness, VerifyRegions regions,
-                                             VerifyGCState gcstate,
-                                             VerifyWeakRoots weak_roots) {
+                                             VerifyGCState gcstate) {
   guarantee(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "only when nothing else happens");
   guarantee(ShenandoahVerify, "only when enabled, and bitmap is initialized in ShenandoahHeap::initialize");
 
@@ -659,10 +639,22 @@ void ShenandoahVerifier::verify_at_safepoint(const char *label,
       case _verify_gcstate_evacuation:
         enabled = true;
         expected = ShenandoahHeap::HAS_FORWARDED | ShenandoahHeap::EVACUATION;
+        if (!_heap->is_stw_gc_in_progress()) {
+          // Only concurrent GC sets this.
+          expected |= ShenandoahHeap::WEAK_ROOTS;
+        }
         break;
       case _verify_gcstate_stable:
         enabled = true;
         expected = ShenandoahHeap::STABLE;
+        break;
+      case _verify_gcstate_stable_weakroots:
+        enabled = true;
+        expected = ShenandoahHeap::STABLE;
+        if (!_heap->is_stw_gc_in_progress()) {
+          // Only concurrent GC sets this.
+          expected |= ShenandoahHeap::WEAK_ROOTS;
+        }
         break;
       default:
         enabled = false;
@@ -711,7 +703,10 @@ void ShenandoahVerifier::verify_at_safepoint(const char *label,
   }
 
   OrderAccess::fence();
-  _heap->make_parsable(false);
+
+  if (UseTLAB) {
+    _heap->labs_make_parsable();
+  }
 
   // Allocate temporary bitmap for storing marking wavefront:
   _verification_bit_map->clear();
@@ -726,21 +721,7 @@ void ShenandoahVerifier::verify_at_safepoint(const char *label,
   // This verifies what application can see, since it only cares about reachable objects.
   size_t count_reachable = 0;
   if (ShenandoahVerifyLevel >= 2) {
-    ShenandoahRootVerifier verifier;
-    switch (weak_roots) {
-      case _verify_serial_weak_roots:
-        verifier.excludes(ShenandoahRootVerifier::ConcurrentWeakRoots);
-        break;
-      case _verify_concurrent_weak_roots:
-        verifier.excludes(ShenandoahRootVerifier::SerialWeakRoots);
-        break;
-      case _verify_all_weak_roots:
-        break;
-      default:
-        ShouldNotReachHere();
-    }
-
-    ShenandoahVerifierReachableTask task(_verification_bit_map, ld, &verifier, label, options);
+    ShenandoahVerifierReachableTask task(_verification_bit_map, ld, label, options);
     _heap->workers()->run_task(&task);
     count_reachable = task.processed();
   }
@@ -753,7 +734,7 @@ void ShenandoahVerifier::verify_at_safepoint(const char *label,
   // version
 
   size_t count_marked = 0;
-  if (ShenandoahVerifyLevel >= 4 && marked == _verify_marked_complete) {
+  if (ShenandoahVerifyLevel >= 4 && (marked == _verify_marked_complete || marked == _verify_marked_complete_except_references)) {
     guarantee(_heap->marking_context()->is_complete(), "Marking context should be complete");
     ShenandoahVerifierMarkedRegionTask task(_verification_bit_map, ld, label, options);
     _heap->workers()->run_task(&task);
@@ -773,12 +754,12 @@ void ShenandoahVerifier::verify_at_safepoint(const char *label,
       if (r->is_humongous()) {
         // For humongous objects, test if start region is marked live, and if so,
         // all humongous regions in that chain have live data equal to their "used".
-        juint start_live = Atomic::load_acquire(&ld[r->humongous_start_region()->region_number()]);
+        juint start_live = Atomic::load(&ld[r->humongous_start_region()->index()]);
         if (start_live > 0) {
           verf_live = (juint)(r->used() / HeapWordSize);
         }
       } else {
-        verf_live = Atomic::load_acquire(&ld[r->region_number()]);
+        verf_live = Atomic::load(&ld[r->index()]);
       }
 
       size_t reg_live = r->get_live_data_words();
@@ -806,74 +787,47 @@ void ShenandoahVerifier::verify_generic(VerifyOption vo) {
           _verify_cset_disable,        // cset may be inconsistent
           _verify_liveness_disable,    // no reliable liveness data
           _verify_regions_disable,     // no reliable region data
-          _verify_gcstate_disable,     // no data about gcstate
-          _verify_all_weak_roots
+          _verify_gcstate_disable      // no data about gcstate
   );
 }
 
 void ShenandoahVerifier::verify_before_concmark() {
-  if (_heap->has_forwarded_objects()) {
     verify_at_safepoint(
-            "Before Mark",
-            _verify_forwarded_allow,     // may have forwarded references
-            _verify_marked_disable,      // do not verify marked: lots ot time wasted checking dead allocations
-            _verify_cset_forwarded,      // allow forwarded references to cset
-            _verify_liveness_disable,    // no reliable liveness data
-            _verify_regions_notrash,     // no trash regions
-            _verify_gcstate_forwarded,   // there are forwarded objects
-            _verify_all_weak_roots
-    );
-  } else {
-    verify_at_safepoint(
-            "Before Mark",
-            _verify_forwarded_none,      // UR should have fixed up
-            _verify_marked_disable,      // do not verify marked: lots ot time wasted checking dead allocations
-            _verify_cset_none,           // UR should have fixed this
-            _verify_liveness_disable,    // no reliable liveness data
-            _verify_regions_notrash,     // no trash regions
-            _verify_gcstate_stable,      // there are no forwarded objects
-            _verify_all_weak_roots
-    );
-  }
+          "Before Mark",
+          _verify_forwarded_none,      // UR should have fixed up
+          _verify_marked_disable,      // do not verify marked: lots ot time wasted checking dead allocations
+          _verify_cset_none,           // UR should have fixed this
+          _verify_liveness_disable,    // no reliable liveness data
+          _verify_regions_notrash,     // no trash regions
+          _verify_gcstate_stable       // there are no forwarded objects
+  );
 }
 
 void ShenandoahVerifier::verify_after_concmark() {
   verify_at_safepoint(
           "After Mark",
           _verify_forwarded_none,      // no forwarded references
-          _verify_marked_complete,     // bitmaps as precise as we can get
+          _verify_marked_complete_except_references, // bitmaps as precise as we can get, except dangling j.l.r.Refs
           _verify_cset_none,           // no references to cset anymore
           _verify_liveness_complete,   // liveness data must be complete here
           _verify_regions_disable,     // trash regions not yet recycled
-          _verify_gcstate_stable,       // mark should have stabilized the heap
-          _verify_all_weak_roots
+          _verify_gcstate_stable_weakroots  // heap is still stable, weakroots are in progress
   );
 }
 
 void ShenandoahVerifier::verify_before_evacuation() {
-  // Concurrent weak roots are evacuated during concurrent phase
-  VerifyWeakRoots verify_weak_roots = ShenandoahConcurrentRoots::should_do_concurrent_class_unloading() ?
-                                      _verify_serial_weak_roots :
-                                      _verify_all_weak_roots;
-
   verify_at_safepoint(
           "Before Evacuation",
-          _verify_forwarded_none,    // no forwarded references
-          _verify_marked_complete,   // walk over marked objects too
-          _verify_cset_disable,      // non-forwarded references to cset expected
-          _verify_liveness_complete, // liveness data must be complete here
-          _verify_regions_disable,   // trash regions not yet recycled
-          _verify_gcstate_stable,    // mark should have stabilized the heap
-          verify_weak_roots
+          _verify_forwarded_none,                    // no forwarded references
+          _verify_marked_complete_except_references, // walk over marked objects too
+          _verify_cset_disable,                      // non-forwarded references to cset expected
+          _verify_liveness_complete,                 // liveness data must be complete here
+          _verify_regions_disable,                   // trash regions not yet recycled
+          _verify_gcstate_stable_weakroots           // heap is still stable, weakroots are in progress
   );
 }
 
 void ShenandoahVerifier::verify_during_evacuation() {
-  // Concurrent weak roots are evacuated during concurrent phase
-  VerifyWeakRoots verify_weak_roots = ShenandoahConcurrentRoots::should_do_concurrent_class_unloading() ?
-                                      _verify_serial_weak_roots :
-                                      _verify_all_weak_roots;
-
   verify_at_safepoint(
           "During Evacuation",
           _verify_forwarded_allow,    // some forwarded references are allowed
@@ -881,8 +835,7 @@ void ShenandoahVerifier::verify_during_evacuation() {
           _verify_cset_disable,       // some cset references are not forwarded yet
           _verify_liveness_disable,   // liveness data might be already stale after pre-evacs
           _verify_regions_disable,    // trash regions not yet recycled
-          _verify_gcstate_evacuation, // evacuation is in progress
-          verify_weak_roots
+          _verify_gcstate_evacuation  // evacuation is in progress
   );
 }
 
@@ -894,8 +847,7 @@ void ShenandoahVerifier::verify_after_evacuation() {
           _verify_cset_forwarded,      // all cset refs are fully forwarded
           _verify_liveness_disable,    // no reliable liveness data anymore
           _verify_regions_notrash,     // trash regions have been recycled already
-          _verify_gcstate_forwarded,   // evacuation produced some forwarded objects
-          _verify_all_weak_roots
+          _verify_gcstate_forwarded    // evacuation produced some forwarded objects
   );
 }
 
@@ -907,8 +859,7 @@ void ShenandoahVerifier::verify_before_updaterefs() {
           _verify_cset_forwarded,      // all cset refs are fully forwarded
           _verify_liveness_disable,    // no reliable liveness data anymore
           _verify_regions_notrash,     // trash regions have been recycled already
-          _verify_gcstate_forwarded,   // evacuation should have produced some forwarded objects
-          _verify_all_weak_roots
+          _verify_gcstate_forwarded    // evacuation should have produced some forwarded objects
   );
 }
 
@@ -920,8 +871,7 @@ void ShenandoahVerifier::verify_after_updaterefs() {
           _verify_cset_none,           // no cset references, all updated
           _verify_liveness_disable,    // no reliable liveness data anymore
           _verify_regions_nocset,      // no cset regions, trash regions have appeared
-          _verify_gcstate_stable,      // update refs had cleaned up forwarded objects
-          _verify_all_weak_roots
+          _verify_gcstate_stable       // update refs had cleaned up forwarded objects
   );
 }
 
@@ -933,34 +883,7 @@ void ShenandoahVerifier::verify_after_degenerated() {
           _verify_cset_none,           // no cset references
           _verify_liveness_disable,    // no reliable liveness data anymore
           _verify_regions_notrash_nocset, // no trash, no cset
-          _verify_gcstate_stable,       // degenerated refs had cleaned up forwarded objects
-          _verify_all_weak_roots
-  );
-}
-
-void ShenandoahVerifier::verify_before_traversal() {
-  verify_at_safepoint(
-          "Before Traversal",
-          _verify_forwarded_none,      // cannot have forwarded objects
-          _verify_marked_disable,      // bitmaps are not relevant before traversal
-          _verify_cset_none,           // no cset references before traversal
-          _verify_liveness_disable,    // no reliable liveness data anymore
-          _verify_regions_notrash_nocset, // no trash and no cset regions
-          _verify_gcstate_stable,      // nothing forwarded before traversal
-          _verify_all_weak_roots
-  );
-}
-
-void ShenandoahVerifier::verify_after_traversal() {
-  verify_at_safepoint(
-          "After Traversal",
-          _verify_forwarded_none,      // cannot have forwarded objects
-          _verify_marked_complete,     // should have complete marking after traversal
-          _verify_cset_none,           // no cset references left after traversal
-          _verify_liveness_disable,    // liveness data is not collected for new allocations
-          _verify_regions_nocset,      // no cset regions, trash regions allowed
-          _verify_gcstate_stable,      // nothing forwarded after traversal
-          _verify_all_weak_roots
+          _verify_gcstate_stable       // degenerated refs had cleaned up forwarded objects
   );
 }
 
@@ -972,8 +895,7 @@ void ShenandoahVerifier::verify_before_fullgc() {
           _verify_cset_disable,        // cset might be foobared
           _verify_liveness_disable,    // no reliable liveness data anymore
           _verify_regions_disable,     // no reliable region data here
-          _verify_gcstate_disable,     // no reliable gcstate data
-          _verify_all_weak_roots
+          _verify_gcstate_disable      // no reliable gcstate data
   );
 }
 
@@ -985,8 +907,7 @@ void ShenandoahVerifier::verify_after_fullgc() {
           _verify_cset_none,           // no cset references
           _verify_liveness_disable,    // no reliable liveness data anymore
           _verify_regions_notrash_nocset, // no trash, no cset
-          _verify_gcstate_stable,       // full gc cleaned up everything
-          _verify_all_weak_roots
+          _verify_gcstate_stable        // full gc cleaned up everything
   );
 }
 
@@ -997,7 +918,7 @@ private:
     T o = RawAccess<>::oop_load(p);
     if (!CompressedOops::is_null(o)) {
       oop obj = CompressedOops::decode_not_null(o);
-      oop fwd = (oop) ShenandoahForwarding::get_forwardee_raw_unchecked(obj);
+      oop fwd = ShenandoahForwarding::get_forwardee_raw_unchecked(obj);
       if (obj != fwd) {
         ShenandoahAsserts::print_failure(ShenandoahAsserts::_safe_all, obj, p, NULL,
                                          "Verify Roots", "Should not be forwarded", __FILE__, __LINE__);
@@ -1017,7 +938,7 @@ private:
     T o = RawAccess<>::oop_load(p);
     if (!CompressedOops::is_null(o)) {
       oop obj = CompressedOops::decode_not_null(o);
-      ShenandoahHeap* heap = ShenandoahHeap::heap_no_check();
+      ShenandoahHeap* heap = ShenandoahHeap::heap();
 
       if (!heap->marking_context()->is_marked(obj)) {
         ShenandoahAsserts::print_failure(ShenandoahAsserts::_safe_all, obj, p, NULL,
@@ -1029,7 +950,7 @@ private:
                 "Verify Roots In To-Space", "Should not be in collection set", __FILE__, __LINE__);
       }
 
-      oop fwd = (oop) ShenandoahForwarding::get_forwardee_raw_unchecked(obj);
+      oop fwd = ShenandoahForwarding::get_forwardee_raw_unchecked(obj);
       if (obj != fwd) {
         ShenandoahAsserts::print_failure(ShenandoahAsserts::_safe_all, obj, p, NULL,
                 "Verify Roots In To-Space", "Should not be forwarded", __FILE__, __LINE__);
@@ -1043,27 +964,11 @@ public:
 };
 
 void ShenandoahVerifier::verify_roots_in_to_space() {
-  ShenandoahRootVerifier verifier;
   ShenandoahVerifyInToSpaceClosure cl;
-  verifier.oops_do(&cl);
-}
-
-void ShenandoahVerifier::verify_roots_in_to_space_except(ShenandoahRootVerifier::RootTypes types) {
-  ShenandoahRootVerifier verifier;
-  verifier.excludes(types);
-  ShenandoahVerifyInToSpaceClosure cl;
-  verifier.oops_do(&cl);
+  ShenandoahRootVerifier::roots_do(&cl);
 }
 
 void ShenandoahVerifier::verify_roots_no_forwarded() {
-  ShenandoahRootVerifier verifier;
   ShenandoahVerifyNoForwared cl;
-  verifier.oops_do(&cl);
-}
-
-void ShenandoahVerifier::verify_roots_no_forwarded_except(ShenandoahRootVerifier::RootTypes types) {
-  ShenandoahRootVerifier verifier;
-  verifier.excludes(types);
-  ShenandoahVerifyNoForwared cl;
-  verifier.oops_do(&cl);
+  ShenandoahRootVerifier::roots_do(&cl);
 }

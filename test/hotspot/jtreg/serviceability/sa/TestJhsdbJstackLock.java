@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,49 +21,37 @@
  * questions.
  */
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import jdk.test.lib.apps.LingeredApp;
-import jdk.test.lib.Asserts;
 import jdk.test.lib.JDKToolLauncher;
-import jdk.test.lib.Platform;
 import jdk.test.lib.process.OutputAnalyzer;
-import jdk.test.lib.process.ProcessTools;
+import jdk.test.lib.SA.SATestUtils;
 import jdk.test.lib.Utils;
 
 /**
  * @test
- * @requires vm.hasSAandCanAttach
+ * @requires vm.hasSA
  * @library /test/lib
- * @run main/othervm TestJhsdbJstackLock
+ * @run driver TestJhsdbJstackLock
  */
 
 public class TestJhsdbJstackLock {
 
     public static void main (String... args) throws Exception {
-
+        SATestUtils.skipIfCannotAttach(); // throws SkippedException if attach not expected to work.
         LingeredApp app = null;
 
         try {
-            List<String> vmArgs = new ArrayList<String>(Utils.getVmOptions());
-
             app = new LingeredAppWithLock();
-            LingeredApp.startApp(vmArgs, app);
+            LingeredApp.startApp(app);
             System.out.println ("Started LingeredApp with pid " + app.getPid());
 
             JDKToolLauncher launcher = JDKToolLauncher.createUsingTestJDK("jhsdb");
+            launcher.addVMArgs(Utils.getFilteredTestJavaOpts("-showversion"));
             launcher.addToolArg("jstack");
             launcher.addToolArg("--pid");
             launcher.addToolArg(Long.toString(app.getPid()));
 
-            ProcessBuilder pb = new ProcessBuilder();
-            pb.command(launcher.getCommand());
+            ProcessBuilder pb = SATestUtils.createProcessBuilder(launcher);
             Process jhsdb = pb.start();
             OutputAnalyzer out = new OutputAnalyzer(jhsdb);
 
@@ -77,18 +65,7 @@ public class TestJhsdbJstackLock {
             out.shouldMatch("^\\s+- locked <0x[0-9a-f]+> \\(a java\\.lang\\.Thread\\)$");
             out.shouldMatch("^\\s+- locked <0x[0-9a-f]+> \\(a java\\.lang\\.Class for int\\)$");
 
-            // stderr should be empty except for VM warnings.
-            if (!out.getStderr().isEmpty()) {
-                List<String> lines = Arrays.asList(out.getStderr().split("(\\r\\n|\\n|\\r)"));
-                Pattern p = Pattern.compile(".*VM warning.*");
-                for (String line : lines) {
-                    Matcher m = p.matcher(line);
-                    if (!m.matches()) {
-                        throw new RuntimeException("Stderr has output other than VM warnings");
-                    }
-                }
-            }
-
+            out.stderrShouldBeEmptyIgnoreDeprecatedWarnings();
 
             System.out.println("Test Completed");
         } finally {

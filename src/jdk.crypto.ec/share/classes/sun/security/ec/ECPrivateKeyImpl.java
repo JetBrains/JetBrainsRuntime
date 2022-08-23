@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2006, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.math.BigInteger;
 import java.security.*;
 import java.security.interfaces.*;
 import java.security.spec.*;
+import java.util.Arrays;
 
 import sun.security.util.*;
 import sun.security.x509.AlgorithmId;
@@ -71,7 +72,8 @@ public final class ECPrivateKeyImpl extends PKCS8Key implements ECPrivateKey {
      * Construct a key from its encoding. Called by the ECKeyFactory.
      */
     ECPrivateKeyImpl(byte[] encoded) throws InvalidKeyException {
-        decode(encoded);
+        super(encoded);
+        parseKeyBits();
     }
 
     /**
@@ -102,9 +104,10 @@ public final class ECPrivateKeyImpl extends PKCS8Key implements ECPrivateKey {
             byte[] privBytes = s.clone();
             ArrayUtil.reverse(privBytes);
             out.putOctetString(privBytes);
-            DerValue val =
-                new DerValue(DerValue.tag_Sequence, out.toByteArray());
+            Arrays.fill(privBytes, (byte)0);
+            DerValue val = DerValue.wrap(DerValue.tag_Sequence, out);
             key = val.toByteArray();
+            val.clear();
         } catch (IOException exc) {
             // should never occur
             throw new InvalidKeyException(exc);
@@ -112,8 +115,8 @@ public final class ECPrivateKeyImpl extends PKCS8Key implements ECPrivateKey {
     }
 
     private void makeEncoding(BigInteger s) throws InvalidKeyException {
-        algid = new AlgorithmId
-        (AlgorithmId.EC_oid, ECParameters.getAlgorithmParameters(params));
+        algid = new AlgorithmId(AlgorithmId.EC_oid,
+                ECParameters.getAlgorithmParameters(params));
         try {
             byte[] sArr = s.toByteArray();
             // convert to fixed-length array
@@ -123,16 +126,17 @@ public final class ECPrivateKeyImpl extends PKCS8Key implements ECPrivateKey {
             int outPos = Math.max(sOctets.length - sArr.length, 0);
             int length = Math.min(sArr.length, sOctets.length);
             System.arraycopy(sArr, inPos, sOctets, outPos, length);
+            Arrays.fill(sArr, (byte)0);
 
             DerOutputStream out = new DerOutputStream();
             out.putInteger(1); // version 1
             out.putOctetString(sOctets);
-            DerValue val =
-                new DerValue(DerValue.tag_Sequence, out.toByteArray());
+            Arrays.fill(sOctets, (byte)0);
+            DerValue val = DerValue.wrap(DerValue.tag_Sequence, out);
             key = val.toByteArray();
+            val.clear();
         } catch (IOException exc) {
-            // should never occur
-            throw new InvalidKeyException(exc);
+            throw new AssertionError("Should not happen", exc);
         }
     }
 
@@ -147,18 +151,14 @@ public final class ECPrivateKeyImpl extends PKCS8Key implements ECPrivateKey {
             byte[] arrCopy = arrayS.clone();
             ArrayUtil.reverse(arrCopy);
             s = new BigInteger(1, arrCopy);
+            Arrays.fill(arrCopy, (byte)0);
         }
         return s;
     }
 
     public byte[] getArrayS() {
         if (arrayS == null) {
-            byte[] arr = getS().toByteArray();
-            ArrayUtil.reverse(arr);
-            int byteLength = (params.getOrder().bitLength() + 7) / 8;
-            arrayS = new byte[byteLength];
-            int length = Math.min(byteLength, arr.length);
-            System.arraycopy(arr, 0, arrayS, 0, length);
+            arrayS = ECUtil.sArray(getS(), params);
         }
         return arrayS.clone();
     }
@@ -168,10 +168,7 @@ public final class ECPrivateKeyImpl extends PKCS8Key implements ECPrivateKey {
         return params;
     }
 
-    /**
-     * Parse the key. Called by PKCS8Key.
-     */
-    protected void parseKeyBits() throws InvalidKeyException {
+    private void parseKeyBits() throws InvalidKeyException {
         try {
             DerInputStream in = new DerInputStream(key);
             DerValue derValue = in.getDerValue();

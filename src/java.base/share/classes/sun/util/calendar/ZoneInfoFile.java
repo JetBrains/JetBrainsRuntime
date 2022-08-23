@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,6 +57,7 @@ import sun.security.action.GetPropertyAction;
  * <p>
  * @since 1.8
  */
+@SuppressWarnings("removal")
 public final class ZoneInfoFile {
 
     /**
@@ -569,12 +570,16 @@ public final class ZoneInfoFile {
                     // ZoneRulesBuilder adjusts < 0 case (-1, for last, don't have
                     // "<=" case yet) to positive value if not February (it appears
                     // we don't have February cutoff in tzdata table yet)
-                    // Ideally, if JSR310 can just pass in the nagative and
+                    // Ideally, if JSR310 can just pass in the negative and
                     // we can then pass in the dom = -1, dow > 0 into ZoneInfo
                     //
                     // hacking, assume the >=24 is the result of ZRB optimization for
-                    // "last", it works for now.
-                    if (dom < 0 || dom >= 24) {
+                    // "last", it works for now. From tzdata2020d this hacking
+                    // will not work for Asia/Gaza and Asia/Hebron which follow
+                    // Palestine DST rules.
+                    if (dom < 0 || dom >= 24 &&
+                                   !(zoneId.equals("Asia/Gaza") ||
+                                     zoneId.equals("Asia/Hebron"))) {
                         params[1] = -1;
                         params[2] = toCalendarDOW[dow];
                     } else {
@@ -596,6 +601,7 @@ public final class ZoneInfoFile {
                     params[7] = 0;
                 } else {
                     // hacking: see comment above
+                    // No need of hacking for Asia/Gaza and Asia/Hebron from tz2021e
                     if (dom < 0 || dom >= 24) {
                         params[6] = -1;
                         params[7] = toCalendarDOW[dow];
@@ -883,12 +889,12 @@ public final class ZoneInfoFile {
     }
 
     // A simple/raw version of j.t.ZoneOffsetTransitionRule
+    // timeEndOfDay is included in secondOfDay as "86,400" secs.
     private static class ZoneOffsetTransitionRule {
         private final int month;
         private final byte dom;
         private final int dow;
         private final int secondOfDay;
-        private final boolean timeEndOfDay;
         private final int timeDefinition;
         private final int standardOffset;
         private final int offsetBefore;
@@ -906,7 +912,6 @@ public final class ZoneInfoFile {
             this.dom = (byte)(((data & (63 << 22)) >>> 22) - 32);
             this.dow = dowByte == 0 ? -1 : dowByte;
             this.secondOfDay = timeByte == 31 ? in.readInt() : timeByte * 3600;
-            this.timeEndOfDay = timeByte == 24;
             this.timeDefinition = (data & (3 << 12)) >>> 12;
 
             this.standardOffset = stdByte == 255 ? in.readInt() : (stdByte - 128) * 900;
@@ -926,9 +931,6 @@ public final class ZoneInfoFile {
                 if (dow != -1) {
                     epochDay = nextOrSame(epochDay, dow);
                 }
-            }
-            if (timeEndOfDay) {
-                epochDay += 1;
             }
             int difference = 0;
             switch (timeDefinition) {

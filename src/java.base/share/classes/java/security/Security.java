@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,7 +71,8 @@ public final class Security {
         // things in initialize that might require privs.
         // (the FileInputStream call and the File.exists call,
         // the securityPropFile call, etc)
-        AccessController.doPrivileged(new PrivilegedAction<>() {
+        @SuppressWarnings("removal")
+        var dummy = AccessController.doPrivileged(new PrivilegedAction<>() {
             public Void run() {
                 initialize();
                 return null;
@@ -760,6 +761,7 @@ public final class Security {
      * @see java.security.SecurityPermission
      */
     public static String getProperty(String key) {
+        @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(new SecurityPermission("getProperty."+
@@ -827,6 +829,7 @@ public final class Security {
     }
 
     private static void check(String directive) {
+        @SuppressWarnings("removal")
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
             security.checkSecurityAccess(directive);
@@ -834,6 +837,7 @@ public final class Security {
     }
 
     private static void checkInsertProvider(String name) {
+        @SuppressWarnings("removal")
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
             try {
@@ -851,9 +855,9 @@ public final class Security {
     }
 
     /*
-    * Returns all providers who satisfy the specified
-    * criterion.
-    */
+     * Returns all providers who satisfy the specified
+     * criterion.
+     */
     private static LinkedHashSet<Provider> getAllQualifyingCandidates(
                                                 String filterKey,
                                                 String filterValue,
@@ -1067,7 +1071,7 @@ public final class Security {
      * or an empty set if no provider supports the specified service.
      *
      * @since 1.4
-     **/
+     */
     public static Set<String> getAlgorithms(String serviceName) {
 
         if ((serviceName == null) || (serviceName.isEmpty()) ||

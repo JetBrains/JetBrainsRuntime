@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,10 +23,12 @@
  */
 
 #include "precompiled.hpp"
+#include "classfile/vmSymbols.hpp"
 #include "interpreter/bytecodeStream.hpp"
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
 #include "memory/allocation.inline.hpp"
+#include "memory/resourceArea.hpp"
 #include "oops/constantPool.hpp"
 #include "oops/generateOopMap.hpp"
 #include "oops/oop.inline.hpp"
@@ -114,22 +116,22 @@ class ComputeCallStack : public SignatureIterator {
   void set(CellTypeState state)         { _effect[_idx++] = state; }
   int  length()                         { return _idx; };
 
-  virtual void do_bool  ()              { set(CellTypeState::value); };
-  virtual void do_char  ()              { set(CellTypeState::value); };
-  virtual void do_float ()              { set(CellTypeState::value); };
-  virtual void do_byte  ()              { set(CellTypeState::value); };
-  virtual void do_short ()              { set(CellTypeState::value); };
-  virtual void do_int   ()              { set(CellTypeState::value); };
-  virtual void do_void  ()              { set(CellTypeState::bottom);};
-  virtual void do_object(int begin, int end)  { set(CellTypeState::ref); };
-  virtual void do_array (int begin, int end)  { set(CellTypeState::ref); };
+  friend class SignatureIterator;  // so do_parameters_on can call do_type
+  void do_type(BasicType type, bool for_return = false) {
+    if (for_return && type == T_VOID) {
+      set(CellTypeState::bottom);
+    } else if (is_reference_type(type)) {
+      set(CellTypeState::ref);
+    } else {
+      assert(is_java_primitive(type), "");
+      set(CellTypeState::value);
+      if (is_double_word_type(type)) {
+        set(CellTypeState::value);
+      }
+    }
+  }
 
-  void do_double()                      { set(CellTypeState::value);
-                                          set(CellTypeState::value); }
-  void do_long  ()                      { set(CellTypeState::value);
-                                           set(CellTypeState::value); }
-
-public:
+ public:
   ComputeCallStack(Symbol* signature) : SignatureIterator(signature) {};
 
   // Compute methods
@@ -140,7 +142,7 @@ public:
     if (!is_static)
       effect[_idx++] = CellTypeState::ref;
 
-    iterate_parameters();
+    do_parameters_on(this);
 
     return length();
   };
@@ -148,7 +150,7 @@ public:
   int compute_for_returntype(CellTypeState *effect) {
     _idx    = 0;
     _effect = effect;
-    iterate_returntype();
+    do_type(return_type(), true);
     set(CellTypeState::bottom);  // Always terminate with a bottom state, so ppush works
 
     return length();
@@ -168,22 +170,22 @@ class ComputeEntryStack : public SignatureIterator {
   void set(CellTypeState state)         { _effect[_idx++] = state; }
   int  length()                         { return _idx; };
 
-  virtual void do_bool  ()              { set(CellTypeState::value); };
-  virtual void do_char  ()              { set(CellTypeState::value); };
-  virtual void do_float ()              { set(CellTypeState::value); };
-  virtual void do_byte  ()              { set(CellTypeState::value); };
-  virtual void do_short ()              { set(CellTypeState::value); };
-  virtual void do_int   ()              { set(CellTypeState::value); };
-  virtual void do_void  ()              { set(CellTypeState::bottom);};
-  virtual void do_object(int begin, int end)  { set(CellTypeState::make_slot_ref(_idx)); }
-  virtual void do_array (int begin, int end)  { set(CellTypeState::make_slot_ref(_idx)); }
+  friend class SignatureIterator;  // so do_parameters_on can call do_type
+  void do_type(BasicType type, bool for_return = false) {
+    if (for_return && type == T_VOID) {
+      set(CellTypeState::bottom);
+    } else if (is_reference_type(type)) {
+      set(CellTypeState::make_slot_ref(_idx));
+    } else {
+      assert(is_java_primitive(type), "");
+      set(CellTypeState::value);
+      if (is_double_word_type(type)) {
+        set(CellTypeState::value);
+      }
+    }
+  }
 
-  void do_double()                      { set(CellTypeState::value);
-                                          set(CellTypeState::value); }
-  void do_long  ()                      { set(CellTypeState::value);
-                                          set(CellTypeState::value); }
-
-public:
+ public:
   ComputeEntryStack(Symbol* signature) : SignatureIterator(signature) {};
 
   // Compute methods
@@ -194,7 +196,7 @@ public:
     if (!is_static)
       effect[_idx++] = CellTypeState::make_slot_ref(0);
 
-    iterate_parameters();
+    do_parameters_on(this);
 
     return length();
   };
@@ -202,7 +204,7 @@ public:
   int compute_for_returntype(CellTypeState *effect) {
     _idx    = 0;
     _effect = effect;
-    iterate_returntype();
+    do_type(return_type(), true);
     set(CellTypeState::bottom);  // Always terminate with a bottom state, so ppush works
 
     return length();
@@ -1930,12 +1932,8 @@ void GenerateOopMap::do_field(int is_get, int is_static, int idx, int bci) {
   int signatureIdx       = cp->signature_ref_index_at(nameAndTypeIdx);
   Symbol* signature      = cp->symbol_at(signatureIdx);
 
-  // Parse signature (espcially simple for fields)
-  assert(signature->utf8_length() > 0, "field signatures cannot have zero length");
-  // The signature is UFT8 encoded, but the first char is always ASCII for signatures.
-  char sigch = (char)*(signature->base());
   CellTypeState temp[4];
-  CellTypeState *eff  = sigchar_to_effect(sigch, bci, temp);
+  CellTypeState *eff  = signature_to_effect(signature, bci, temp);
 
   CellTypeState in[4];
   CellTypeState *out;
@@ -1991,19 +1989,20 @@ void GenerateOopMap::do_method(int is_static, int is_interface, int idx, int bci
 }
 
 // This is used to parse the signature for fields, since they are very simple...
-CellTypeState *GenerateOopMap::sigchar_to_effect(char sigch, int bci, CellTypeState *out) {
+CellTypeState *GenerateOopMap::signature_to_effect(const Symbol* sig, int bci, CellTypeState *out) {
   // Object and array
-  if (sigch==JVM_SIGNATURE_CLASS || sigch==JVM_SIGNATURE_ARRAY) {
+  BasicType bt = Signature::basic_type(sig);
+  if (is_reference_type(bt)) {
     out[0] = CellTypeState::make_line_ref(bci);
     out[1] = CellTypeState::bottom;
     return out;
   }
-  if (sigch == JVM_SIGNATURE_LONG || sigch == JVM_SIGNATURE_DOUBLE) return vvCTS;  // Long and Double
-  if (sigch == JVM_SIGNATURE_VOID) return epsilonCTS; // Void
-  return vCTS;                                        // Otherwise
+  if (is_double_word_type(bt)) return vvCTS; // Long and Double
+  if (bt == T_VOID) return epsilonCTS;       // Void
+  return vCTS;                               // Otherwise
 }
 
-long GenerateOopMap::_total_byte_count = 0;
+uint64_t GenerateOopMap::_total_byte_count = 0;
 elapsedTimer GenerateOopMap::_total_oopmap_time;
 
 // This function assumes "bcs" is at a "ret" instruction and that the vars
@@ -2072,7 +2071,7 @@ GenerateOopMap::GenerateOopMap(const methodHandle& method) {
 #endif
 }
 
-void GenerateOopMap::compute_map(TRAPS) {
+bool GenerateOopMap::compute_map(Thread* current) {
 #ifndef PRODUCT
   if (TimeOopMap2) {
     method()->print_short_name(tty);
@@ -2118,7 +2117,7 @@ void GenerateOopMap::compute_map(TRAPS) {
   if (method()->code_size() == 0 || _max_locals + method()->max_stack() == 0) {
     fill_stackmap_prolog(0);
     fill_stackmap_epilog();
-    return;
+    return true;
   }
   // Step 1: Compute all jump targets and their return value
   if (!_got_error)
@@ -2136,19 +2135,14 @@ void GenerateOopMap::compute_map(TRAPS) {
   if (!_got_error && report_results())
      report_result();
 
-  if (_got_error) {
-    THROW_HANDLE(_exception);
-  }
+  return !_got_error;
 }
 
 // Error handling methods
-// These methods create an exception for the current thread which is thrown
-// at the bottom of the call stack, when it returns to compute_map().  The
-// _got_error flag controls execution.  NOT TODO: The VM exception propagation
-// mechanism using TRAPS/CHECKs could be used here instead but it would need
-// to be added as a parameter to every function and checked for every call.
-// The tons of extra code it would generate didn't seem worth the change.
 //
+// If we compute from a suitable JavaThread then we create an exception for the GenerateOopMap
+// calling code to retrieve (via exception()) and throw if desired (in most cases errors are ignored).
+// Otherwise it is considered a fatal error to hit malformed bytecode.
 void GenerateOopMap::error_work(const char *format, va_list ap) {
   _got_error = true;
   char msg_buffer[512];
@@ -2156,12 +2150,12 @@ void GenerateOopMap::error_work(const char *format, va_list ap) {
   // Append method name
   char msg_buffer2[512];
   os::snprintf(msg_buffer2, sizeof(msg_buffer2), "%s in method %s", msg_buffer, method()->name()->as_C_string());
-  if (Thread::current()->can_call_java()) {
-    _exception = Exceptions::new_exception(Thread::current(),
-                  vmSymbols::java_lang_LinkageError(), msg_buffer2);
+  Thread* current = Thread::current();
+  if (current->can_call_java()) {
+    _exception = Exceptions::new_exception(current->as_Java_thread(),
+                                           vmSymbols::java_lang_LinkageError(),
+                                           msg_buffer2);
   } else {
-    // We cannot instantiate an exception object from a compiler thread.
-    // Exit the VM with a useful error message.
     fatal("%s", msg_buffer2);
   }
 }
@@ -2264,33 +2258,10 @@ void GenerateOopMap::rewrite_refval_conflicts()
      return;
 
   // Check if rewrites are allowed in this parse.
-  if (!allow_rewrites() && !IgnoreRewrites) {
+  if (!allow_rewrites()) {
     fatal("Rewriting method not allowed at this stage");
   }
 
-
-  // This following flag is to tempoary supress rewrites. The locals that might conflict will
-  // all be set to contain values. This is UNSAFE - however, until the rewriting has been completely
-  // tested it is nice to have.
-  if (IgnoreRewrites) {
-    if (Verbose) {
-       tty->print("rewrites suppressed for local no. ");
-       for (int l = 0; l < _max_locals; l++) {
-         if (_new_var_map[l] != l) {
-           tty->print("%d ", l);
-           vars()[l] = CellTypeState::value;
-         }
-       }
-       tty->cr();
-    }
-
-    // That was that...
-    _new_var_map = NULL;
-    _nof_refval_conflicts = 0;
-    _conflict = false;
-
-    return;
-  }
 
   // Tracing flag
   _did_rewriting = true;
@@ -2333,7 +2304,7 @@ void GenerateOopMap::rewrite_refval_conflict(int from, int to) {
   bool startOver;
   do {
     // Make sure that the BytecodeStream is constructed in the loop, since
-    // during rewriting a new method oop is going to be used, and the next time
+    // during rewriting a new method is going to be used, and the next time
     // around we want to use that.
     BytecodeStream bcs(_method);
     startOver = false;
@@ -2461,7 +2432,7 @@ class RelocCallback : public RelocatorListener {
 // Returns true if expanding was succesful. Otherwise, reports an error and
 // returns false.
 void GenerateOopMap::expand_current_instr(int bci, int ilen, int newIlen, u_char inst_buffer[]) {
-  Thread *THREAD = Thread::current();  // Could really have TRAPS argument.
+  JavaThread* THREAD = JavaThread::current(); // For exception macros.
   RelocCallback rcb(this);
   Relocator rc(_method, &rcb);
   methodHandle m= rc.insert_space_at(bci, newIlen, inst_buffer, THREAD);
@@ -2470,7 +2441,7 @@ void GenerateOopMap::expand_current_instr(int bci, int ilen, int newIlen, u_char
     return;
   }
 
-  // Relocator returns a new method oop.
+  // Relocator returns a new method.
   _did_relocation = true;
   _method = m;
 }
@@ -2570,7 +2541,9 @@ int ResolveOopMapConflicts::_nof_relocations  = 0;
 #endif
 
 methodHandle ResolveOopMapConflicts::do_potential_rewrite(TRAPS) {
-  compute_map(CHECK_(methodHandle()));
+  if (!compute_map(THREAD)) {
+    THROW_HANDLE_(exception(), methodHandle());
+  }
 
 #ifndef PRODUCT
   // Tracking and statistics

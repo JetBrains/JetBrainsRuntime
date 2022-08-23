@@ -24,30 +24,22 @@
 #ifndef OS_WINDOWS_GC_Z_ZPHYSICALMEMORYBACKING_WINDOWS_HPP
 #define OS_WINDOWS_GC_Z_ZPHYSICALMEMORYBACKING_WINDOWS_HPP
 
-#include "gc/z/zGranuleMap.hpp"
+#include "utilities/globalDefinitions.hpp"
 
 #include <Windows.h>
 
+class ZPhysicalMemoryBackingImpl;
+
 class ZPhysicalMemoryBacking {
 private:
-  ZGranuleMap<HANDLE> _handles;
-  size_t              _size;
-
-  HANDLE get_handle(uintptr_t offset) const;
-  void put_handle(uintptr_t offset, HANDLE handle);
-  void clear_handle(uintptr_t offset);
-
-  size_t commit_from_paging_file(size_t offset, size_t size);
-  size_t uncommit_from_paging_file(size_t offset, size_t size);
+  ZPhysicalMemoryBackingImpl* _impl;
 
 public:
-  ZPhysicalMemoryBacking();
+  ZPhysicalMemoryBacking(size_t max_capacity);
 
   bool is_initialized() const;
 
-  void warn_commit_limits(size_t max) const;
-
-  size_t size() const;
+  void warn_commit_limits(size_t max_capacity) const;
 
   size_t commit(size_t offset, size_t length);
   size_t uncommit(size_t offset, size_t length);

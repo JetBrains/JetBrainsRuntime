@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,13 @@
 
 package java.security;
 
+import java.math.BigInteger;
 import java.util.*;
+import java.util.random.RandomGenerator;
 import java.util.regex.*;
-
 import java.security.Provider.Service;
 
+import jdk.internal.util.random.RandomSupport.RandomGeneratorProperties;
 import sun.security.jca.*;
 import sun.security.jca.GetInstance.Instance;
 import sun.security.provider.SunEntries;
@@ -147,6 +149,10 @@ import sun.security.util.Debug;
  * @since 1.1
  */
 
+@RandomGeneratorProperties(
+        name = "SecureRandom",
+        isStochastic = true
+)
 public class SecureRandom extends java.util.Random {
 
     private static final Debug pdebug =
@@ -178,8 +184,8 @@ public class SecureRandom extends java.util.Random {
      */
     private final boolean threadSafe;
 
-    /*
-     * The algorithm name of null if unknown.
+    /**
+     * The algorithm name or {@code null} if unknown.
      *
      * @serial
      * @since 1.5
@@ -259,27 +265,43 @@ public class SecureRandom extends java.util.Random {
     }
 
     private void getDefaultPRNG(boolean setSeed, byte[] seed) {
-        String prng = getPrngAlgorithm();
-        if (prng == null) {
-            // bummer, get the SUN implementation
-            prng = "SHA1PRNG";
+        Service prngService = null;
+        String prngAlgorithm = null;
+        for (Provider p : Providers.getProviderList().providers()) {
+            // SUN provider uses the SunEntries.DEF_SECURE_RANDOM_ALGO
+            // as the default SecureRandom algorithm; for other providers,
+            // Provider.getDefaultSecureRandom() will use the 1st
+            // registered SecureRandom algorithm
+            if (p.getName().equals("SUN")) {
+                prngAlgorithm = SunEntries.DEF_SECURE_RANDOM_ALGO;
+                prngService = p.getService("SecureRandom", prngAlgorithm);
+                break;
+            } else {
+                prngService = p.getDefaultSecureRandomService();
+                if (prngService != null) {
+                    prngAlgorithm = prngService.getAlgorithm();
+                    break;
+                }
+            }
+        }
+        // per javadoc, if none of the Providers support a RNG algorithm,
+        // then an implementation-specific default is returned.
+        if (prngService == null) {
+            prngAlgorithm = "SHA1PRNG";
             this.secureRandomSpi = new sun.security.provider.SecureRandom();
             this.provider = Providers.getSunProvider();
-            if (setSeed) {
-                this.secureRandomSpi.engineSetSeed(seed);
-            }
         } else {
             try {
-                SecureRandom random = SecureRandom.getInstance(prng);
-                this.secureRandomSpi = random.getSecureRandomSpi();
-                this.provider = random.getProvider();
-                if (setSeed) {
-                    this.secureRandomSpi.engineSetSeed(seed);
-                }
+                this.secureRandomSpi = (SecureRandomSpi)
+                    prngService.newInstance(null);
+                this.provider = prngService.getProvider();
             } catch (NoSuchAlgorithmException nsae) {
-                // never happens, because we made sure the algorithm exists
+                // should not happen
                 throw new RuntimeException(nsae);
             }
+        }
+        if (setSeed) {
+            this.secureRandomSpi.engineSetSeed(seed);
         }
         // JDK 1.1 based implementations subclass SecureRandom instead of
         // SecureRandomSpi. They will also go through this code path because
@@ -287,7 +309,7 @@ public class SecureRandom extends java.util.Random {
         // If we are dealing with such an implementation, do not set the
         // algorithm value as it would be inaccurate.
         if (getClass() == SecureRandom.class) {
-            this.algorithm = prng;
+            this.algorithm = prngAlgorithm;
         }
     }
 
@@ -621,13 +643,6 @@ public class SecureRandom extends java.util.Random {
     }
 
     /**
-     * Returns the {@code SecureRandomSpi} of this {@code SecureRandom} object.
-     */
-    SecureRandomSpi getSecureRandomSpi() {
-        return secureRandomSpi;
-    }
-
-    /**
      * Returns the provider of this {@code SecureRandom} object.
      *
      * @return the provider of this {@code SecureRandom} object.
@@ -721,10 +736,11 @@ public class SecureRandom extends java.util.Random {
     @Override
     public void setSeed(long seed) {
         /*
-         * Ignore call from super constructor (as well as any other calls
-         * unfortunate enough to be passing 0).  It's critical that we
-         * ignore call from superclass constructor, as digest has not
-         * yet been initialized at that point.
+         * Ignore call from super constructor as well as any other calls
+         * unfortunate enough to be passing 0. All SecureRandom
+         * constructors call `super(0)` which leads to `setSeed(0)`.
+         * We either keep the object unseeded (in `new SecureRandom()`)
+         * or we seed the object explicitly (in `new SecureRandom(byte[])`).
          */
         if (seed != 0) {
             setSeed(longToByteArray(seed));
@@ -868,30 +884,6 @@ public class SecureRandom extends java.util.Random {
         return retVal;
     }
 
-    /**
-     * Gets a default PRNG algorithm by looking through all registered
-     * providers. Returns the first PRNG algorithm of the first provider that
-     * has registered a {@code SecureRandom} implementation, or null if none of
-     * the registered providers supplies a {@code SecureRandom} implementation.
-     */
-    private static String getPrngAlgorithm() {
-        for (Provider p : Providers.getProviderList().providers()) {
-            // For SUN provider, we use SunEntries.DEFF_SECURE_RANDOM_ALGO
-            // as the default SecureRandom algorithm; for other providers,
-            // we continue to iterate through to the 1st SecureRandom
-            // service
-            if (p.getName().equals("SUN")) {
-                return SunEntries.DEF_SECURE_RANDOM_ALGO;
-            }
-            for (Service s : p.getServices()) {
-                if (s.getType().equals("SecureRandom")) {
-                    return s.getAlgorithm();
-                }
-            }
-        }
-        return null;
-    }
-
     /*
      * Lazily initialize since Pattern.compile() is heavy.
      * Effective Java (2nd Edition), Item 71.
@@ -941,6 +933,7 @@ public class SecureRandom extends java.util.Random {
     public static SecureRandom getInstanceStrong()
             throws NoSuchAlgorithmException {
 
+        @SuppressWarnings("removal")
         String property = AccessController.doPrivileged(
             new PrivilegedAction<>() {
                 @Override

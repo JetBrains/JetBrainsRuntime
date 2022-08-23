@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,73 +25,85 @@
 #define SHARE_GC_Z_ZPAGEALLOCATOR_HPP
 
 #include "gc/z/zAllocationFlags.hpp"
+#include "gc/z/zArray.hpp"
 #include "gc/z/zList.hpp"
 #include "gc/z/zLock.hpp"
 #include "gc/z/zPageCache.hpp"
 #include "gc/z/zPhysicalMemory.hpp"
 #include "gc/z/zSafeDelete.hpp"
 #include "gc/z/zVirtualMemory.hpp"
-#include "memory/allocation.hpp"
 
-class ZPageAllocRequest;
+class ThreadClosure;
+class ZPageAllocation;
+class ZPageAllocatorStats;
 class ZWorkers;
+class ZUncommitter;
+class ZUnmapper;
 
 class ZPageAllocator {
   friend class VMStructs;
+  friend class ZUnmapper;
+  friend class ZUncommitter;
 
 private:
-  ZLock                      _lock;
+  mutable ZLock              _lock;
+  ZPageCache                 _cache;
   ZVirtualMemoryManager      _virtual;
   ZPhysicalMemoryManager     _physical;
-  ZPageCache                 _cache;
   const size_t               _min_capacity;
   const size_t               _max_capacity;
-  const size_t               _max_reserve;
-  size_t                     _current_max_capacity;
-  size_t                     _capacity;
+  volatile size_t            _current_max_capacity;
+  volatile size_t            _capacity;
+  volatile size_t            _claimed;
+  volatile size_t            _used;
   size_t                     _used_high;
   size_t                     _used_low;
-  size_t                     _used;
-  size_t                     _allocated;
   ssize_t                    _reclaimed;
-  ZList<ZPageAllocRequest>   _queue;
-  ZList<ZPageAllocRequest>   _satisfied;
+  ZList<ZPageAllocation>     _stalled;
+  volatile uint64_t          _nstalled;
+  ZList<ZPageAllocation>     _satisfied;
+  ZUnmapper*                 _unmapper;
+  ZUncommitter*              _uncommitter;
   mutable ZSafeDelete<ZPage> _safe_delete;
-  bool                       _uncommit;
   bool                       _initialized;
 
-  static ZPage* const gc_marker;
+  bool prime_cache(ZWorkers* workers, size_t size);
 
-  void prime_cache(ZWorkers* workers, size_t size);
+  size_t increase_capacity(size_t size);
+  void decrease_capacity(size_t size, bool set_max_capacity);
 
   void increase_used(size_t size, bool relocation);
   void decrease_used(size_t size, bool reclaimed);
 
-  ZPage* create_page(uint8_t type, size_t size);
+  bool commit_page(ZPage* page);
+  void uncommit_page(ZPage* page);
+
+  void map_page(const ZPage* page) const;
+  void unmap_page(const ZPage* page) const;
+
   void destroy_page(ZPage* page);
 
-  size_t max_available(bool no_reserve) const;
-  bool ensure_available(size_t size, bool no_reserve);
-  void ensure_uncached_available(size_t size);
+  bool is_alloc_allowed(size_t size) const;
 
-  void check_out_of_memory_during_initialization();
+  bool alloc_page_common_inner(uint8_t type, size_t size, ZList<ZPage>* pages);
+  bool alloc_page_common(ZPageAllocation* allocation);
+  bool alloc_page_stall(ZPageAllocation* allocation);
+  bool alloc_page_or_stall(ZPageAllocation* allocation);
+  ZPage* alloc_page_create(ZPageAllocation* allocation);
+  ZPage* alloc_page_finalize(ZPageAllocation* allocation);
+  void alloc_page_failed(ZPageAllocation* allocation);
 
-  ZPage* alloc_page_common_inner(uint8_t type, size_t size, bool no_reserve);
-  ZPage* alloc_page_common(uint8_t type, size_t size, ZAllocationFlags flags);
-  ZPage* alloc_page_blocking(uint8_t type, size_t size, ZAllocationFlags flags);
-  ZPage* alloc_page_nonblocking(uint8_t type, size_t size, ZAllocationFlags flags);
+  void satisfy_stalled();
 
-  size_t flush_cache(ZPageCacheFlushClosure* cl);
-  void flush_cache_for_allocation(size_t requested);
+  void free_page_inner(ZPage* page, bool reclaimed);
 
-  void satisfy_alloc_queue();
+  size_t uncommit(uint64_t* timeout);
 
 public:
   ZPageAllocator(ZWorkers* workers,
                  size_t min_capacity,
                  size_t initial_capacity,
-                 size_t max_capacity,
-                 size_t max_reserve);
+                 size_t max_capacity);
 
   bool is_initialized() const;
 
@@ -99,33 +111,61 @@ public:
   size_t max_capacity() const;
   size_t soft_max_capacity() const;
   size_t capacity() const;
-  size_t max_reserve() const;
-  size_t used_high() const;
-  size_t used_low() const;
   size_t used() const;
   size_t unused() const;
-  size_t allocated() const;
-  size_t reclaimed() const;
+
+  ZPageAllocatorStats stats() const;
 
   void reset_statistics();
 
   ZPage* alloc_page(uint8_t type, size_t size, ZAllocationFlags flags);
   void free_page(ZPage* page, bool reclaimed);
-
-  uint64_t uncommit(uint64_t delay);
+  void free_pages(const ZArray<ZPage*>* pages, bool reclaimed);
 
   void enable_deferred_delete() const;
   void disable_deferred_delete() const;
 
-  void map_page(const ZPage* page) const;
-
   void debug_map_page(const ZPage* page) const;
   void debug_unmap_page(const ZPage* page) const;
 
-  bool is_alloc_stalled() const;
+  bool has_alloc_stalled() const;
   void check_out_of_memory();
 
   void pages_do(ZPageClosure* cl) const;
+
+  void threads_do(ThreadClosure* tc) const;
+};
+
+class ZPageAllocatorStats {
+private:
+  size_t _min_capacity;
+  size_t _max_capacity;
+  size_t _soft_max_capacity;
+  size_t _current_max_capacity;
+  size_t _capacity;
+  size_t _used;
+  size_t _used_high;
+  size_t _used_low;
+  size_t _reclaimed;
+
+public:
+  ZPageAllocatorStats(size_t min_capacity,
+                      size_t max_capacity,
+                      size_t soft_max_capacity,
+                      size_t capacity,
+                      size_t used,
+                      size_t used_high,
+                      size_t used_low,
+                      size_t reclaimed);
+
+  size_t min_capacity() const;
+  size_t max_capacity() const;
+  size_t soft_max_capacity() const;
+  size_t capacity() const;
+  size_t used() const;
+  size_t used_high() const;
+  size_t used_low() const;
+  size_t reclaimed() const;
 };
 
 #endif // SHARE_GC_Z_ZPAGEALLOCATOR_HPP

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,8 +77,6 @@ AWT_ASSERT_APPKIT_THREAD;
 
 - (void)dealloc
 {
-    [[NSUserNotificationCenter defaultUserNotificationCenter] setDelegate:nil];
-
     [fApplicationName release];
     fApplicationName = nil;
 
@@ -159,17 +157,29 @@ AWT_ASSERT_APPKIT_THREAD;
 
     [super finishLaunching];
 
-    [[NSUserNotificationCenter defaultUserNotificationCenter] setDelegate:self];
+    // fix for JBR-3127 Modal dialogs invoked from modal or floating dialogs are opened in full screen
+    [defs setBool:NO forKey:@"NSWindowAllowsImplicitFullScreen"];
 
-    // inform any interested parties that the AWT has arrived and is pumping
-    [[NSNotificationCenter defaultCenter] postNotificationName:JNFRunLoopDidStartNotification object:self];
+    // temporary possibility to load deprecated NSJavaVirtualMachine (just for testing)
+    // todo: remove when completely tested on BigSur
+    // see https://youtrack.jetbrains.com/issue/JBR-3127#focus=Comments-27-4684465.0-0
+    NSString * loadNSJVMProp = [PropertiesUtilities
+            javaSystemPropertyForKey:@"apple.awt.application.instantiate.NSJavaVirtualMachine"
+                             withEnv:env];
+    if ([@"true" isCaseInsensitiveLike:loadNSJVMProp]) {
+        if (objc_lookUpClass("NSJavaVirtualMachine") != nil) {
+            NSLog(@"objc class NSJavaVirtualMachine is already registered");
+        } else {
+            Class nsjvm =  objc_allocateClassPair([NSObject class], "NSJavaVirtualMachine", 0);
+            objc_registerClassPair(nsjvm);
+            NSLog(@"registered class NSJavaVirtualMachine: %@", nsjvm);
+
+            id nsjvmInst = [[nsjvm alloc] init];
+            NSLog(@"instantiated dummy NSJavaVirtualMachine: %@", nsjvmInst);
+        }
+    }
 }
 
-- (BOOL)userNotificationCenter:(NSUserNotificationCenter *)center
-     shouldPresentNotification:(NSUserNotification *)notification
-{
-    return YES; // We always show notifications to the user
-}
 
 - (void) registerWithProcessManager
 {
@@ -271,7 +281,7 @@ AWT_ASSERT_APPKIT_THREAD;
 // HACK BEGIN
     // The following is necessary to make the java process behave like a
     // proper foreground application...
-    [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         ProcessSerialNumber psn;
         GetCurrentProcess(&psn);
         TransformProcessType(&psn, kProcessTransformToForegroundApplication);
@@ -326,14 +336,15 @@ AWT_ASSERT_APPKIT_THREAD;
 + (void) runAWTLoopWithApp:(NSApplication*)app {
     NSAutoreleasePool *pool = [NSAutoreleasePool new];
 
-    // Make sure that when we run in AWTRunLoopMode we don't exit randomly
-    [[NSRunLoop currentRunLoop] addPort:[NSPort port] forMode:[JNFRunLoop javaRunLoopMode]];
+    // Make sure that when we run in javaRunLoopMode we don't exit randomly
+    [[NSRunLoop currentRunLoop] addPort:[NSPort port] forMode:[ThreadUtilities javaRunLoopMode]];
 
     do {
         @try {
             [app run];
         } @catch (NSException* e) {
             NSLog(@"Apple AWT Startup Exception: %@", [e description]);
+            NSLog(@"Apple AWT Startup Exception callstack: %@", [e callStackSymbols]);
             NSLog(@"Apple AWT Restarting Native Event Thread");
 
             [app stop:app];
@@ -468,6 +479,50 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
     [seenDummyEventLock release];
 
     seenDummyEventLock = nil;
+}
+
+//Provide info from unhandled ObjectiveC exceptions
++ (void)logException:(NSException *)exception forProcess:(NSProcessInfo*)processInfo {
+    @autoreleasepool {
+        NSMutableString *info = [[[NSMutableString alloc] init] autorelease];
+        [info appendString:
+                [NSString stringWithFormat:
+                        @"Exception in NSApplicationAWT:\n %@\n",
+                        exception]];
+
+        NSArray<NSString *> *stack = [exception callStackSymbols];
+
+        for (NSUInteger i = 0; i < stack.count; i++) {
+            [info appendString:stack[i]];
+            [info appendString:@"\n"];
+        }
+
+        NSLog(@"%@", info);
+
+        int processID = [processInfo processIdentifier];
+        NSDictionary *env = [[NSProcessInfo processInfo] environment];
+        NSString *homePath = env[@"HOME"];
+        if (homePath != nil) {
+            NSString *fileName =
+                    [NSString stringWithFormat:@"%@/jbr_err_pid%d.log",
+                                               homePath, processID];
+
+            if (![[NSFileManager defaultManager] fileExistsAtPath:fileName]) {
+                [info writeToFile:fileName
+                       atomically:YES
+                         encoding:NSUTF8StringEncoding
+                            error:NULL];
+            }
+        }
+    }
+}
+
+- (void)_crashOnException:(NSException *)exception {
+    NSProcessInfo *processInfo = [NSProcessInfo processInfo];
+    [NSApplicationAWT logException:exception
+                        forProcess:processInfo];
+    // Use SIGILL to generate hs_err_ file as well
+    kill([processInfo processIdentifier], SIGILL);
 }
 
 @end

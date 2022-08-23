@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@
 #include "jfr/utilities/jfrTypes.hpp"
 #include "memory/allocation.hpp"
 #include "oops/oop.hpp"
+#include "oops/weakHandle.hpp"
 #include "utilities/ticks.hpp"
 
 /*
@@ -48,7 +49,7 @@ class ObjectSample : public JfrCHeapObj {
   JfrBlobHandle _stacktrace;
   JfrBlobHandle _thread;
   JfrBlobHandle _type_set;
-  oop _object;
+  WeakHandle    _object;
   Ticks _allocation_time;
   traceid _stack_trace_id;
   traceid _thread_id;
@@ -64,12 +65,7 @@ class ObjectSample : public JfrCHeapObj {
     _type_set.~JfrBlobHandle();
   }
 
-  void reset() {
-    _object = NULL;
-    set_stack_trace_id(0);
-    set_stack_trace_hash(0);
-    release_references();
-  }
+  void reset();
 
  public:
   ObjectSample() : _next(NULL),
@@ -77,7 +73,6 @@ class ObjectSample : public JfrCHeapObj {
                    _stacktrace(),
                    _thread(),
                    _type_set(),
-                   _object(NULL),
                    _allocation_time(),
                    _stack_trace_id(0),
                    _thread_id(0),
@@ -103,16 +98,14 @@ class ObjectSample : public JfrCHeapObj {
     _previous = prev;
   }
 
-  bool is_dead() const {
-    return object() == NULL;
-  }
+  bool is_dead() const;
 
   const oop object() const;
   void set_object(oop object);
 
-  const oop* object_addr() const {
-    return &_object;
-  }
+  const oop* object_addr() const;
+
+  void release();
 
   int index() const {
     return _index;

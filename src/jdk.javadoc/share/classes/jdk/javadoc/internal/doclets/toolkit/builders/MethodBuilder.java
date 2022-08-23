@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
-import jdk.javadoc.internal.doclets.toolkit.BaseConfiguration;
+import jdk.javadoc.internal.doclets.toolkit.BaseOptions;
 import jdk.javadoc.internal.doclets.toolkit.Content;
 import jdk.javadoc.internal.doclets.toolkit.DocletException;
 import jdk.javadoc.internal.doclets.toolkit.MethodWriter;
@@ -78,7 +78,7 @@ public class MethodBuilder extends AbstractMemberBuilder {
             TypeElement typeElement,
             MethodWriter writer) {
         super(context, typeElement);
-        this.writer = writer;
+        this.writer = Objects.requireNonNull(writer);
         methods = getVisibleMembers(METHODS);
     }
 
@@ -96,17 +96,11 @@ public class MethodBuilder extends AbstractMemberBuilder {
         return new MethodBuilder(context, typeElement, writer);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public boolean hasMembersToDocument() {
         return !methods.isEmpty();
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void build(Content contentTree) throws DocletException {
         buildMethodDoc(contentTree);
@@ -115,16 +109,13 @@ public class MethodBuilder extends AbstractMemberBuilder {
     /**
      * Build the method documentation.
      *
-     * @param memberDetailsTree the content tree to which the documentation will be added
+     * @param detailsList the content tree to which the documentation will be added
      * @throws DocletException if there is a problem while building the documentation
      */
-    protected void buildMethodDoc(Content memberDetailsTree) throws DocletException {
-        if (writer == null) {
-            return;
-        }
+    protected void buildMethodDoc(Content detailsList) throws DocletException {
         if (hasMembersToDocument()) {
-            Content methodDetailsTreeHeader = writer.getMethodDetailsTreeHeader(memberDetailsTree);
-            Content methodDetailsTree = writer.getMemberTreeHeader();
+            Content methodDetailsTreeHeader = writer.getMethodDetailsTreeHeader(detailsList);
+            Content memberList = writer.getMemberList();
 
             for (Element method : methods) {
                 currentMethod = (ExecutableElement)method;
@@ -132,12 +123,14 @@ public class MethodBuilder extends AbstractMemberBuilder {
 
                 buildSignature(methodDocTree);
                 buildDeprecationInfo(methodDocTree);
+                buildPreviewInfo(methodDocTree);
                 buildMethodComments(methodDocTree);
                 buildTagInfo(methodDocTree);
 
-                methodDetailsTree.add(writer.getMethodDoc(methodDocTree));
+                memberList.add(writer.getMemberListItem(methodDocTree));
             }
-            memberDetailsTree.add(writer.getMethodDetails(methodDetailsTreeHeader, methodDetailsTree));
+            Content methodDetails = writer.getMethodDetails(methodDetailsTreeHeader, memberList);
+            detailsList.add(methodDetails);
         }
     }
 
@@ -160,13 +153,22 @@ public class MethodBuilder extends AbstractMemberBuilder {
     }
 
     /**
+     * Build the preview information.
+     *
+     * @param methodDocTree the content tree to which the documentation will be added
+     */
+    protected void buildPreviewInfo(Content methodDocTree) {
+        writer.addPreview(currentMethod, methodDocTree);
+    }
+
+    /**
      * Build the comments for the method.  Do nothing if
-     * {@link BaseConfiguration#nocomment} is set to true.
+     * {@link BaseOptions#noComment()} is set to true.
      *
      * @param methodDocTree the content tree to which the documentation will be added
      */
     protected void buildMethodComments(Content methodDocTree) {
-        if (!configuration.nocomment) {
+        if (!options.noComment()) {
             ExecutableElement method = currentMethod;
             if (utils.getFullBody(currentMethod).isEmpty()) {
                 DocFinder.Output docs = DocFinder.search(configuration,

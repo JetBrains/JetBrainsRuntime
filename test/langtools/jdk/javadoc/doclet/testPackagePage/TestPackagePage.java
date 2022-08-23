@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,20 +54,21 @@ public class TestPackagePage extends JavadocTester {
 
         // With just one package, all general pages link to the single package page.
         checkOutput("com/pkg/C.html", true,
-            "<a href=\"package-summary.html\">Package</a>");
+            """
+                <a href="package-summary.html">Package</a>""");
         checkOutput("com/pkg/package-tree.html", true,
-            "<li><a href=\"package-summary.html\">Package</a></li>");
+            """
+                <li><a href="package-summary.html">Package</a></li>""");
         checkOutput("deprecated-list.html", true,
-            "<li><a href=\"com/pkg/package-summary.html\">Package</a></li>");
+            """
+                <li><a href="com/pkg/package-summary.html">Package</a></li>""");
         checkOutput("index-all.html", true,
-            "<li><a href=\"com/pkg/package-summary.html\">Package</a></li>");
+            """
+                <li><a href="com/pkg/package-summary.html">Package</a></li>""");
         checkOutput("help-doc.html", true,
-            "<li><a href=\"com/pkg/package-summary.html\">Package</a></li>");
+            """
+                <li><a href="com/pkg/package-summary.html">Package</a></li>""");
     }
-
-    private static final String[][] TEST1 = {
-    };
-
 
     @Test
     public void testMultiplePackages() {
@@ -84,30 +85,30 @@ public class TestPackagePage extends JavadocTester {
         checkOutput("help-doc.html", true,
             "<li>Package</li>");
         checkOutput("allclasses-index.html", true,
-                "<div class=\"typeSummary\">\n<table>\n"
-                + "<caption><span>Class Summary</span><span class=\"tabEnd\">&nbsp;</span></caption>\n"
-                + "<thead>\n"
-                + "<tr>\n"
-                + "<th class=\"colFirst\" scope=\"col\">Class</th>\n"
-                + "<th class=\"colLast\" scope=\"col\">Description</th>\n"
-                + "</tr>\n"
-                + "</thead>\n");
+                """
+                    <div id="all-classes-table">
+                    <div class="caption"><span>Classes</span></div>
+                    <div class="summary-table two-column-summary">
+                    <div class="table-header col-first">Class</div>
+                    <div class="table-header col-last">Description</div>
+                    """);
         checkOutput("allpackages-index.html", true,
-                "<div class=\"packagesSummary\">\n<table>\n"
-                + "<caption><span>Package Summary</span><span class=\"tabEnd\">&nbsp;</span></caption>\n"
-                + "<thead>\n"
-                + "<tr>\n"
-                + "<th class=\"colFirst\" scope=\"col\">Package</th>\n"
-                + "<th class=\"colLast\" scope=\"col\">Description</th>\n"
-                + "</tr>\n"
-                + "</thead>\n");
+                """
+                    <div class="caption"><span>Package Summary</span></div>
+                    <div class="summary-table two-column-summary">
+                    <div class="table-header col-first">Package</div>
+                    <div class="table-header col-last">Description</div>
+                    """);
         checkOutput("type-search-index.js", true,
-                "{\"l\":\"All Classes\",\"url\":\"allclasses-index.html\"}");
+                """
+                    {"l":"All Classes and Interfaces","u":"allclasses-index.html"}""");
         checkOutput("package-search-index.js", true,
-                "{\"l\":\"All Packages\",\"url\":\"allpackages-index.html\"}");
+                """
+                    {"l":"All Packages","u":"allpackages-index.html"}""");
         checkOutput("index-all.html", true,
-                "<br><a href=\"allclasses-index.html\">All&nbsp;Classes</a>"
-                + "<span class=\"verticalSeparator\">|</span>"
-                + "<a href=\"allpackages-index.html\">All&nbsp;Packages</a>");
+                """
+                    <br><a href="allclasses-index.html">All&nbsp;Classes&nbsp;and&nbsp;Interfaces</a\
+                    ><span class="vertical-separator">|</span><a href="allpackages-index.html">All&n\
+                    bsp;Packages</a>""");
     }
 }

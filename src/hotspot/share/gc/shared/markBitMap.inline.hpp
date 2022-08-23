@@ -25,8 +25,9 @@
 #ifndef SHARE_GC_SHARED_MARKBITMAP_INLINE_HPP
 #define SHARE_GC_SHARED_MARKBITMAP_INLINE_HPP
 
-#include "gc/shared/collectedHeap.hpp"
 #include "gc/shared/markBitMap.hpp"
+
+#include "gc/shared/collectedHeap.hpp"
 #include "memory/memRegion.hpp"
 #include "utilities/align.hpp"
 #include "utilities/bitMap.inline.hpp"
@@ -46,6 +47,10 @@ inline void MarkBitMap::mark(HeapWord* addr) {
   _bm.set_bit(addr_to_offset(addr));
 }
 
+inline void MarkBitMap::mark(oop obj) {
+  return mark(cast_from_oop<HeapWord*>(obj));
+}
+
 inline void MarkBitMap::clear(HeapWord* addr) {
   check_mark(addr);
   _bm.clear_bit(addr_to_offset(addr));
@@ -57,15 +62,15 @@ inline bool MarkBitMap::par_mark(HeapWord* addr) {
 }
 
 inline bool MarkBitMap::par_mark(oop obj) {
-  return par_mark((HeapWord*) obj);
+  return par_mark(cast_from_oop<HeapWord*>(obj));
 }
 
 inline bool MarkBitMap::is_marked(oop obj) const{
-  return is_marked((HeapWord*) obj);
+  return is_marked(cast_from_oop<HeapWord*>(obj));
 }
 
 inline void MarkBitMap::clear(oop obj) {
-  clear((HeapWord*) obj);
+  clear(cast_from_oop<HeapWord*>(obj));
 }
 
 #endif // SHARE_GC_SHARED_MARKBITMAP_INLINE_HPP

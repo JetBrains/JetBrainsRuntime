@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 
 package com.sun.security.sasl.gsskerb;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.logging.Level;
 import javax.security.sasl.*;
@@ -36,56 +35,56 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import javax.security.auth.callback.CallbackHandler;
 
 // JGSS
+import sun.security.jgss.krb5.internal.TlsChannelBindingImpl;
 import org.ietf.jgss.*;
 
 /**
-  * Implements the GSSAPI SASL client mechanism for Kerberos V5.
-  * (<A HREF="http://www.ietf.org/rfc/rfc2222.txt">RFC 2222</A>,
-  * <a HREF="http://www.ietf.org/internet-drafts/draft-ietf-cat-sasl-gssapi-04.txt">draft-ietf-cat-sasl-gssapi-04.txt</a>).
-  * It uses the Java Bindings for GSSAPI
-  * (<A HREF="http://www.ietf.org/rfc/rfc2853.txt">RFC 2853</A>)
-  * for getting GSSAPI/Kerberos V5 support.
-  *
-  * The client/server interactions are:
-  * C0: bind (GSSAPI, initial response)
-  * S0: sasl-bind-in-progress, challenge 1 (output of accept_sec_context or [])
-  * C1: bind (GSSAPI, response 1 (output of init_sec_context or []))
-  * S1: sasl-bind-in-progress challenge 2 (security layer, server max recv size)
-  * C2: bind (GSSAPI, response 2 (security layer, client max recv size, authzid))
-  * S2: bind success response
-  *
-  * Expects the client's credentials to be supplied from the
-  * javax.security.sasl.credentials property or from the thread's Subject.
-  * Otherwise the underlying KRB5 mech will attempt to acquire Kerberos creds
-  * by logging into Kerberos (via default TextCallbackHandler).
-  * These creds will be used for exchange with server.
-  *
-  * Required callbacks: none.
-  *
-  * Environment properties that affect behavior of implementation:
-  *
-  * javax.security.sasl.qop
-  * - quality of protection; list of auth, auth-int, auth-conf; default is "auth"
-  * javax.security.sasl.maxbuf
-  * - max receive buffer size; default is 65536
-  * javax.security.sasl.sendmaxbuffer
-  * - max send buffer size; default is 65536; (min with server max recv size)
-  *
-  * javax.security.sasl.server.authentication
-  * - "true" means require mutual authentication; default is "false"
-  *
-  * javax.security.sasl.credentials
-  * - an {@link org.ietf.jgss.GSSCredential} used for delegated authentication.
-  *
-  * @author Rosanna Lee
-  */
+ * Implements the GSSAPI SASL client mechanism for Kerberos V5.
+ * (<A HREF="http://www.ietf.org/rfc/rfc2222.txt">RFC 2222</A>,
+ * <a HREF="http://www.ietf.org/internet-drafts/draft-ietf-cat-sasl-gssapi-04.txt">draft-ietf-cat-sasl-gssapi-04.txt</a>).
+ * It uses the Java Bindings for GSSAPI
+ * (<A HREF="http://www.ietf.org/rfc/rfc2853.txt">RFC 2853</A>)
+ * for getting GSSAPI/Kerberos V5 support.
+ *
+ * The client/server interactions are:
+ * C0: bind (GSSAPI, initial response)
+ * S0: sasl-bind-in-progress, challenge 1 (output of accept_sec_context or [])
+ * C1: bind (GSSAPI, response 1 (output of init_sec_context or []))
+ * S1: sasl-bind-in-progress challenge 2 (security layer, server max recv size)
+ * C2: bind (GSSAPI, response 2 (security layer, client max recv size, authzid))
+ * S2: bind success response
+ *
+ * Expects the client's credentials to be supplied from the
+ * javax.security.sasl.credentials property or from the thread's Subject.
+ * Otherwise the underlying KRB5 mech will attempt to acquire Kerberos creds
+ * by logging into Kerberos (via default TextCallbackHandler).
+ * These creds will be used for exchange with server.
+ *
+ * Required callbacks: none.
+ *
+ * Environment properties that affect behavior of implementation:
+ *
+ * javax.security.sasl.qop
+ * - quality of protection; list of auth, auth-int, auth-conf; default is "auth"
+ * javax.security.sasl.maxbuf
+ * - max receive buffer size; default is 65536
+ * javax.security.sasl.sendmaxbuffer
+ * - max send buffer size; default is 65536; (min with server max recv size)
+ *
+ * javax.security.sasl.server.authentication
+ * - "true" means require mutual authentication; default is "false"
+ *
+ * javax.security.sasl.credentials
+ * - an {@link org.ietf.jgss.GSSCredential} used for delegated authentication.
+ *
+ * @author Rosanna Lee
+ */
 
 final class GssKrb5Client extends GssKrb5Base implements SaslClient {
     // ---------------- Constants -----------------
     private static final String MY_CLASS_NAME = GssKrb5Client.class.getName();
 
     private boolean finalHandshake = false;
-    private boolean mutual = false;       // default false
     private byte[] authzID;
 
     /**
@@ -132,7 +131,17 @@ final class GssKrb5Client extends GssKrb5Base implements SaslClient {
                 secCtx.requestCredDeleg(true);
             }
 
-            // Parse properties  to set desired context options
+            // mutual is by default true if there is a security layer
+            boolean mutual;
+            if ((allQop & INTEGRITY_ONLY_PROTECTION) != 0
+                    || (allQop & PRIVACY_PROTECTION) != 0) {
+                mutual = true;
+                secCtx.requestSequenceDet(true);
+            } else {
+                mutual = false;
+            }
+
+            // User can override default mutual flag
             if (props != null) {
                 // Mutual authentication
                 String prop = (String)props.get(Sasl.SERVER_AUTH);
@@ -141,6 +150,16 @@ final class GssKrb5Client extends GssKrb5Base implements SaslClient {
                 }
             }
             secCtx.requestMutualAuth(mutual);
+
+            if (props != null) {
+                // TLS Channel Binding
+                // Property name is defined in the TLSChannelBinding class of
+                // the java.naming module
+                byte[] tlsCB = (byte[])props.get("jdk.internal.sasl.tlschannelbinding");
+                if (tlsCB != null) {
+                    secCtx.setChannelBinding(new TlsChannelBindingImpl(tlsCB));
+                }
+            }
 
             // Always specify potential need for integrity and confidentiality
             // Decision will be made during final handshake

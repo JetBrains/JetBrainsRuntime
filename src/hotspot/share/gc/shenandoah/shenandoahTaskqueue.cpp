@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2016, 2021, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@
 #include "gc/shenandoah/shenandoahTaskqueue.inline.hpp"
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
+#include "memory/resourceArea.hpp"
 
 void ShenandoahObjToScanQueueSet::clear() {
   uint size = GenericTaskQueueSet<ShenandoahObjToScanQueue, mtGC>::size();
@@ -48,14 +49,6 @@ bool ShenandoahObjToScanQueueSet::is_empty() {
     }
   }
   return true;
-}
-
-ShenandoahTaskTerminator::ShenandoahTaskTerminator(uint n_threads, TaskQueueSetSuper* queue_set) :
-  _terminator(new OWSTTaskTerminator(n_threads, queue_set)) { }
-
-ShenandoahTaskTerminator::~ShenandoahTaskTerminator() {
-  assert(_terminator != NULL, "Invariant");
-  delete _terminator;
 }
 
 #if TASKQUEUE_STATS
@@ -96,3 +89,7 @@ void ShenandoahObjToScanQueueSet::reset_taskqueue_stats() {
   }
 }
 #endif // TASKQUEUE_STATS
+
+bool ShenandoahTerminatorTerminator::should_exit_termination() {
+  return _heap->cancelled_gc();
+}

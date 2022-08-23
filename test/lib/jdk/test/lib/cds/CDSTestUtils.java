@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,9 +40,8 @@ public class CDSTestUtils {
         "UseSharedSpaces: Unable to allocate region, range is not within java heap.";
     public static final String MSG_RANGE_ALREADT_IN_USE =
         "Unable to allocate region, java heap range is already in use.";
-    public static final String MSG_COMPRESSION_MUST_BE_USED =
-        "Unable to use shared archive: UseCompressedOops and UseCompressedClassPointers must be on for UseSharedSpaces.";
-
+    public static final String MSG_DYNAMIC_NOT_SUPPORTED =
+        "DynamicDumpSharedSpaces is unsupported when base CDS archive is not loaded";
     public static final boolean DYNAMIC_DUMP = Boolean.getBoolean("test.dynamic.cds.archive");
 
     public interface Checker {
@@ -258,7 +257,7 @@ public class CDSTestUtils {
         for (String s : opts.suffix) cmd.add(s);
 
         String[] cmdLine = cmd.toArray(new String[cmd.size()]);
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(true, cmdLine);
+        ProcessBuilder pb = ProcessTools.createTestJvm(cmdLine);
         return executeAndLog(pb, "dump");
     }
 
@@ -273,8 +272,7 @@ public class CDSTestUtils {
         if (!DYNAMIC_DUMP) {
             output.shouldContain("Loading classes to share");
         } else {
-            output.shouldContain("Buffer-space to target-space delta")
-                  .shouldContain("Written dynamic archive 0x");
+            output.shouldContain("Written dynamic archive 0x");
         }
         output.shouldHaveExitValue(0);
 
@@ -285,6 +283,12 @@ public class CDSTestUtils {
         return output;
     }
 
+    // check result of dumping base archive
+    public static OutputAnalyzer checkBaseDump(OutputAnalyzer output) throws Exception {
+        output.shouldContain("Loading classes to share");
+        output.shouldHaveExitValue(0);
+        return output;
+    }
 
     // A commonly used convenience methods to create an archive and check the results
     // Creates an archive and checks for errors
@@ -349,17 +353,8 @@ public class CDSTestUtils {
     // could also improve usability in the field.
     public static boolean isUnableToMap(OutputAnalyzer output) {
         String outStr = output.getOutput();
-        if ((output.getExitValue() == 1) && (
-            outStr.contains("Unable to reserve shared space at required address") ||
-            outStr.contains("Unable to map ReadOnly shared space at required address") ||
-            outStr.contains("Unable to map ReadWrite shared space at required address") ||
-            outStr.contains("Unable to map MiscData shared space at required address") ||
-            outStr.contains("Unable to map MiscCode shared space at required address") ||
-            outStr.contains("Unable to map OptionalData shared space at required address") ||
-            outStr.contains("Could not allocate metaspace at a compatible address") ||
-            outStr.contains("UseSharedSpaces: Unable to allocate region, range is not within java heap") ||
-            outStr.contains("DynamicDumpSharedSpaces is unsupported when base CDS archive is not loaded") ))
-        {
+        if ((output.getExitValue() == 1) &&
+            (outStr.contains(MSG_RANGE_NOT_WITHIN_HEAP) || outStr.contains(MSG_DYNAMIC_NOT_SUPPORTED))) {
             return true;
         }
 
@@ -381,6 +376,18 @@ public class CDSTestUtils {
 
     public static Result run(CDSOptions opts) throws Exception {
         return new Result(opts, runWithArchive(opts));
+    }
+
+    // Dump a classlist using the -XX:DumpLoadedClassList option.
+    public static Result dumpClassList(String classListName, String... cli)
+        throws Exception {
+        CDSOptions opts = (new CDSOptions())
+            .setUseVersion(false)
+            .setXShareMode("auto")
+            .addPrefix("-XX:DumpLoadedClassList=" + classListName)
+            .addSuffix(cli);
+        Result res = run(opts).assertNormalExit();
+        return res;
     }
 
     // Execute JVM with CDS archive, specify command line args suffix
@@ -416,7 +423,7 @@ public class CDSTestUtils {
         for (String s : opts.suffix) cmd.add(s);
 
         String[] cmdLine = cmd.toArray(new String[cmd.size()]);
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(true, cmdLine);
+        ProcessBuilder pb = ProcessTools.createTestJvm(cmdLine);
         return executeAndLog(pb, "exec");
     }
 
@@ -478,11 +485,25 @@ public class CDSTestUtils {
         return output;
     }
 
+    private static final String outputDir;
+    private static final File outputDirAsFile;
+
+    static {
+        outputDir = System.getProperty("user.dir", ".");
+        outputDirAsFile = new File(outputDir);
+    }
+
+    public static String getOutputDir() {
+        return outputDir;
+    }
+
+    public static File getOutputDirAsFile() {
+        return outputDirAsFile;
+    }
 
     // get the file object for the test artifact
     public static File getTestArtifact(String name, boolean checkExistence) {
-        File dir = new File(System.getProperty("test.classes", "."));
-        File file = new File(dir, name);
+        File file = new File(outputDirAsFile, name);
 
         if (checkExistence && !file.exists()) {
             throw new RuntimeException("Cannot find " + file.getPath());
@@ -495,7 +516,7 @@ public class CDSTestUtils {
     // create file containing the specified class list
     public static File makeClassList(String classes[])
         throws Exception {
-        return makeClassList(getTestName() + "-", classes);
+        return makeClassList(testName + "-", classes);
     }
 
     // create file containing the specified class list
@@ -525,18 +546,7 @@ public class CDSTestUtils {
         }
     }
 
-
-    // Optimization for getting a test name.
-    // Test name does not change during execution of the test,
-    // but getTestName() uses stack walking hence it is expensive.
-    // Therefore cache it and reuse it.
-    private static String testName;
-    public static String getTestName() {
-        if (testName == null) {
-            testName = Utils.getTestName();
-        }
-        return testName;
-    }
+    private static String testName = Utils.TEST_NAME.replace('/', '.');
 
     private static final SimpleDateFormat timeStampFormat =
         new SimpleDateFormat("HH'h'mm'm'ss's'SSS");
@@ -545,7 +555,7 @@ public class CDSTestUtils {
 
     // Call this method to start new archive with new unique name
     public static void startNewArchiveName() {
-        defaultArchiveName = getTestName() +
+        defaultArchiveName = testName +
             timeStampFormat.format(new Date()) + ".jsa";
     }
 
@@ -556,14 +566,16 @@ public class CDSTestUtils {
 
     // ===================== FILE ACCESS convenience methods
     public static File getOutputFile(String name) {
-        File dir = new File(System.getProperty("test.classes", "."));
-        return new File(dir, getTestName() + "-" + name);
+        return new File(outputDirAsFile, testName + "-" + name);
+    }
+
+    public static String getOutputFileName(String name) {
+        return getOutputFile(name).getName();
     }
 
 
     public static File getOutputSourceFile(String name) {
-        File dir = new File(System.getProperty("test.classes", "."));
-        return new File(dir, name);
+        return new File(outputDirAsFile, name);
     }
 
 
@@ -577,14 +589,17 @@ public class CDSTestUtils {
     public static OutputAnalyzer executeAndLog(ProcessBuilder pb, String logName) throws Exception {
         long started = System.currentTimeMillis();
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
-        String outputFileNamePrefix =
-            getTestName() + "-" + String.format("%04d", getNextLogCounter()) + "-" + logName;
+        String logFileNameStem =
+            String.format("%04d", getNextLogCounter()) + "-" + logName;
 
-        writeFile(getOutputFile(outputFileNamePrefix + ".stdout"), output.getStdout());
-        writeFile(getOutputFile(outputFileNamePrefix + ".stderr"), output.getStderr());
+        File stdout = getOutputFile(logFileNameStem + ".stdout");
+        File stderr = getOutputFile(logFileNameStem + ".stderr");
+
+        writeFile(stdout, output.getStdout());
+        writeFile(stderr, output.getStderr());
         System.out.println("[ELAPSED: " + (System.currentTimeMillis() - started) + " ms]");
-        System.out.println("[logging stdout to " + outputFileNamePrefix + ".stdout]");
-        System.out.println("[logging stderr to " + outputFileNamePrefix + ".stderr]");
+        System.out.println("[logging stdout to " + stdout + "]");
+        System.out.println("[logging stderr to " + stderr + "]");
         System.out.println("[STDERR]\n" + output.getStderr());
 
         if (copyChildStdoutToMainStdout)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@
 #define SHARE_OOPS_CPCACHE_INLINE_HPP
 
 #include "oops/cpCache.hpp"
+
 #include "oops/oopHandle.inline.hpp"
 #include "runtime/atomic.hpp"
 
@@ -65,7 +66,12 @@ inline Klass* ConstantPoolCacheEntry::f1_as_klass() const {
   return (Klass*)f1;
 }
 
-inline bool ConstantPoolCacheEntry::is_f1_null() const { Metadata* f1 = f1_ord(); return f1 == NULL; }
+inline bool ConstantPoolCacheEntry::is_f1_null() const {
+  Metadata* f1 = f1_ord();
+  intx flags = flags_ord();
+  return f1 == NULL || (flags & (1 << is_f1_null_dcevm_shift)) != 0;
+}
+
 
 inline bool ConstantPoolCacheEntry::has_appendix() const {
   return (!is_f1_null()) && (_flags & (1 << has_appendix_shift)) != 0;
@@ -89,7 +95,7 @@ inline ConstantPoolCache::ConstantPoolCache(int length,
                                             const intStack& invokedynamic_references_map) :
                                                   _length(length),
                                                   _constant_pool(NULL) {
-  CDS_JAVA_HEAP_ONLY(_archived_references = 0;)
+  CDS_JAVA_HEAP_ONLY(_archived_references_index = -1;)
   initialize(inverse_index_map, invokedynamic_inverse_index_map,
              invokedynamic_references_map);
   for (int i = 0; i < length; i++) {

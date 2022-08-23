@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,6 +54,7 @@ import javax.swing.JMenuBar;
 import sun.awt.AWTAccessor;
 import sun.lwawt.LWWindowPeer;
 import sun.lwawt.macosx.CPlatformWindow;
+import sun.util.logging.PlatformLogger;
 
 /**
  * The {@code Application} class allows you to integrate your Java application with the native Mac OS X environment.
@@ -74,6 +75,8 @@ import sun.lwawt.macosx.CPlatformWindow;
  * @since 1.4
  */
 public class Application {
+    private static final PlatformLogger focusRequestLog = PlatformLogger.getLogger("jb.focus.requests");
+
     private static native void nativeInitializeApplicationDelegate();
 
     static Application sApplication = null;
@@ -89,6 +92,7 @@ public class Application {
     }
 
     private static void checkSecurity() {
+        @SuppressWarnings("removal")
         final SecurityManager security = System.getSecurityManager();
         if (security == null) return;
         security.checkPermission(new RuntimePermission("canProcessApplicationEvents"));
@@ -296,6 +300,9 @@ public class Application {
      * @since Java for Mac OS X 10.5 Update 6 - 1.6, 1.5
      */
     public void requestForeground(final boolean allWindows) {
+        if (focusRequestLog.isLoggable(PlatformLogger.Level.FINE)) {
+            focusRequestLog.fine("requestForeground(" + (allWindows ? "allWindows" : "") + ")", new Throwable());
+        }
         _AppMiscHandlers.requestActivation(allWindows);
     }
 
@@ -424,4 +431,19 @@ public class Application {
         ((CPlatformWindow)platformWindow).toggleFullScreen();
     }
 
+    public void requestEnterFullScreen(final Window window) {
+        final Object peer = AWTAccessor.getComponentAccessor().getPeer(window);
+        if (!(peer instanceof LWWindowPeer)) return;
+        Object platformWindow = ((LWWindowPeer) peer).getPlatformWindow();
+        if (!(platformWindow instanceof CPlatformWindow)) return;
+        ((CPlatformWindow)platformWindow).enterFullScreenMode();
+    }
+
+    public void requestLeaveFullScreen(final Window window) {
+        final Object peer = AWTAccessor.getComponentAccessor().getPeer(window);
+        if (!(peer instanceof LWWindowPeer)) return;
+        Object platformWindow = ((LWWindowPeer) peer).getPlatformWindow();
+        if (!(platformWindow instanceof CPlatformWindow)) return;
+        ((CPlatformWindow)platformWindow).exitFullScreenMode();
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,14 @@
  */
 
 /*
- * @test %W% %E%
- * @bug 6695485
+ * @test
+ * @bug 6695485 8242332
  * @summary Make sure initSign/initVerify() check RSA key lengths
  * @author Yu-Ching Valerie Peng
  * @library /test/lib ..
  * @modules jdk.crypto.cryptoki
  * @run main/othervm TestRSAKeyLength
- * @run main/othervm TestRSAKeyLength sm
+ * @run main/othervm -Djava.security.manager=allow TestRSAKeyLength sm
  */
 
 import java.security.InvalidKeyException;
@@ -50,24 +50,14 @@ public class TestRSAKeyLength extends PKCS11Test {
     @Override
     public void main(Provider p) throws Exception {
 
-        /*
-         * Use Solaris SPARC 11.2 or later to avoid an intermittent failure
-         * when running SunPKCS11-Solaris (8044554)
-         */
-        if (p.getName().equals("SunPKCS11-Solaris") &&
-            props.getProperty("os.name").equals("SunOS") &&
-            props.getProperty("os.arch").equals("sparcv9") &&
-            props.getProperty("os.version").compareTo("5.11") <= 0 &&
-            getDistro().compareTo("11.2") < 0) {
-
-            System.out.println("SunPKCS11-Solaris provider requires " +
-                "Solaris SPARC 11.2 or later, skipping");
-            return;
-        }
-
-        boolean isValidKeyLength[] = { true, true, true, false, false };
-        String algos[] = { "SHA1withRSA", "SHA224withRSA", "SHA256withRSA",
-                           "SHA384withRSA", "SHA512withRSA" };
+        boolean isValidKeyLength[] = {
+                true, true, true, false, false, true, true, false, false
+        };
+        String algos[] = {
+                "SHA1withRSA", "SHA224withRSA", "SHA256withRSA",
+                "SHA384withRSA", "SHA512withRSA", "SHA3-224withRSA",
+                "SHA3-256withRSA", "SHA3-384withRSA", "SHA3-512withRSA"
+        };
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", p);
         kpg.initialize(512);
         KeyPair kp = kpg.generateKeyPair();

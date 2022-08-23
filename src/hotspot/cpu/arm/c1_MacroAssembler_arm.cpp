@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,8 @@
 #include "precompiled.hpp"
 #include "c1/c1_MacroAssembler.hpp"
 #include "c1/c1_Runtime1.hpp"
-#include "classfile/systemDictionary.hpp"
 #include "gc/shared/collectedHeap.hpp"
+#include "gc/shared/tlab_globals.hpp"
 #include "interpreter/interpreter.hpp"
 #include "oops/arrayOop.hpp"
 #include "oops/markWord.hpp"
@@ -35,6 +35,7 @@
 #include "runtime/os.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
+#include "utilities/powerOfTwo.hpp"
 
 // Note: Rtemp usage is this file should not impact C2 and should be
 // correct as long as it is not implicitly used in lower layers (the
@@ -69,8 +70,8 @@ void C1_MacroAssembler::remove_frame(int frame_size_in_bytes) {
   raw_pop(FP, LR);
 }
 
-void C1_MacroAssembler::verified_entry() {
-  if (C1Breakpoint) {
+void C1_MacroAssembler::verified_entry(bool breakAtEntry) {
+  if (breakAtEntry) {
     breakpoint();
   }
 }
@@ -199,18 +200,22 @@ int C1_MacroAssembler::lock_object(Register hdr, Register obj,
   const int obj_offset = BasicObjectLock::obj_offset_in_bytes();
   const int mark_offset = BasicLock::displaced_header_offset_in_bytes();
 
+  str(obj, Address(disp_hdr, obj_offset));
+
+  null_check_offset = offset();
+
+  if (DiagnoseSyncOnValueBasedClasses != 0) {
+    load_klass(tmp2, obj);
+    ldr_u32(tmp2, Address(tmp2, Klass::access_flags_offset()));
+    tst(tmp2, JVM_ACC_IS_VALUE_BASED_CLASS);
+    b(slow_case, ne);
+  }
+
   if (UseBiasedLocking) {
-    // load object
-    str(obj, Address(disp_hdr, obj_offset));
-    null_check_offset = biased_locking_enter(obj, hdr/*scratched*/, tmp1, false, tmp2, done, slow_case);
+    biased_locking_enter(obj, hdr/*scratched*/, tmp1, false, tmp2, done, slow_case);
   }
 
   assert(oopDesc::mark_offset_in_bytes() == 0, "Required by atomic instructions");
-
-
-  if (!UseBiasedLocking) {
-    null_check_offset = offset();
-  }
 
   // On MP platforms the next load could return a 'stale' value if the memory location has been modified by another thread.
   // That would be acceptable as ether CAS or slow case path is taken in that case.
@@ -218,7 +223,6 @@ int C1_MacroAssembler::lock_object(Register hdr, Register obj,
   // Must be the first instruction here, because implicit null check relies on it
   ldr(hdr, Address(obj, oopDesc::mark_offset_in_bytes()));
 
-  str(obj, Address(disp_hdr, obj_offset));
   tst(hdr, markWord::unlocked_value);
   b(fast_lock, ne);
 
@@ -230,8 +234,9 @@ int C1_MacroAssembler::lock_object(Register hdr, Register obj,
   // -2- test (hdr - SP) if the low two bits are 0
   sub(tmp2, hdr, SP, eq);
   movs(tmp2, AsmOperand(tmp2, lsr, exact_log2(os::vm_page_size())), eq);
-  // If 'eq' then OK for recursive fast locking: store 0 into a lock record.
-  str(tmp2, Address(disp_hdr, mark_offset), eq);
+  // If still 'eq' then recursive locking OK
+  // set to zero if recursive lock, set to non zero otherwise (see discussion in JDK-8267042)
+  str(tmp2, Address(disp_hdr, mark_offset));
   b(fast_lock_done, eq);
   // else need slow case
   b(slow_case);

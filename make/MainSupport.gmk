@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,27 @@
 
 ifndef _MAINSUPPORT_GMK
 _MAINSUPPORT_GMK := 1
+
+# Setup make rules for creating a top-level target.
+# Parameter 1 is the name of the rule. This name is used as variable prefix.
+#
+# Remaining parameters are named arguments. These include:
+#   MAKEFILE the makefile to delegate to
+#   TARGET the makefile target
+#   ARGS arguments to the makefile
+#   DEPS the target(s) this new rule depends on
+#
+SetupTarget = $(NamedParamsMacroTemplate)
+define SetupTargetBody
+  $1:
+	+($(CD) $(TOPDIR)/make && $(MAKE) $(MAKE_ARGS) -f $$($1_MAKEFILE).gmk $$($1_TARGET) $$($1_ARGS))
+
+  ALL_TARGETS += $1
+
+  ifneq ($(DEPS), none)
+    $1: $$($1_DEPS)
+  endif
+endef
 
 define CleanDocs
 	@$(PRINTF) "Cleaning docs ..."
@@ -127,24 +148,10 @@ PHASE_MAKEDIRS := $(TOPDIR)/make
 # Param 2: Module name
 define DeclareRecipeForModuleMakefile
   $2-$$($1_TARGET_SUFFIX):
-        ifeq ($$($1_USE_WRAPPER), true)
-	  +($(CD) $(TOPDIR)/make && $(MAKE) $(MAKE_ARGS) \
-	      -f ModuleWrapper.gmk \
-	      $$(addprefix -I, $$(PHASE_MAKEDIRS) \
-	          $$(addsuffix /$$($1_MAKE_SUBDIR), $$(PHASE_MAKEDIRS)) \
-	      ) \
-	      MODULE=$2 MAKEFILE_PREFIX=$$($1_FILE_PREFIX) $$($1_EXTRA_ARGS))
-        else
-	  +($(CD) $$(dir $$(firstword $$(wildcard $$(addsuffix \
-	      /$$($1_MAKE_SUBDIR)/$$($1_FILE_PREFIX)-$2.gmk, $$(PHASE_MAKEDIRS))))) \
-	  && $(MAKE) $(MAKE_ARGS) \
-	      -f $$($1_FILE_PREFIX)-$2.gmk \
-	      $$(addprefix -I, $$(PHASE_MAKEDIRS) \
-	          $$(addsuffix /$$($1_MAKE_SUBDIR), $$(PHASE_MAKEDIRS)) \
-	      ) \
-	      MODULE=$2 $$($1_EXTRA_ARGS) \
-	  )
-        endif
+	+($(CD) $(TOPDIR)/make && $(MAKE) $(MAKE_ARGS) \
+	    -f ModuleWrapper.gmk -I $$(TOPDIR)/make/common/modules  \
+	    $$(patsubst %,-I%/modules/$2,$$(PHASE_MAKEDIRS)) \
+	    MODULE=$2 MAKEFILE_PREFIX=$$($1_FILE_PREFIX) $$($1_EXTRA_ARGS))
 
 endef
 
@@ -153,7 +160,7 @@ endef
 # Param 2: Module name
 define DeclareRecipesForPhaseAndModule
   $1_$2_MAKEFILES := $$(strip $$(wildcard \
-      $$(addsuffix /$$($1_MAKE_SUBDIR)/$$($1_FILE_PREFIX)-$2.gmk, $$(PHASE_MAKEDIRS))))
+      $$(addsuffix /modules/$2/$$($1_FILE_PREFIX).gmk, $$(PHASE_MAKEDIRS))))
 
   # Only declare recipes if there are makefiles to call
   ifneq ($$($1_$2_MAKEFILES), )
@@ -176,9 +183,7 @@ endef
 # Param 1: Name of list to add targets to
 # Named params:
 # TARGET_SUFFIX : Suffix of target to create for recipe
-# MAKE_SUBDIR : Subdir for this build phase
 # FILE_PREFIX : File prefix for this build phase
-# USE_WRAPPER : Set to true to use ModuleWrapper.gmk
 # CHECK_MODULES : List of modules to try
 # MULTIPLE_MAKEFILES : Set to true to handle makefiles for the same module and
 #                      phase in multiple repos

@@ -28,6 +28,11 @@
 #include "utilities/bitMap.inline.hpp"
 
 
+#ifdef _LP64
+void LinearScan::allocate_fpu_stack() {
+  // No FPU stack used on x86-64
+}
+#else
 //----------------------------------------------------------------------
 // Allocation of FPU stack slots (Intel x86 only)
 //----------------------------------------------------------------------
@@ -545,21 +550,6 @@ void FpuStackAllocator::handle_op1(LIR_Op1* op1) {
       break;
     }
 
-    case lir_neg: {
-      if (in->is_fpu_register() && !in->is_xmm_register()) {
-        assert(res->is_fpu_register() && !res->is_xmm_register(), "must be");
-        assert(in->is_last_use(), "old value gets destroyed");
-
-        insert_free_if_dead(res, in);
-        insert_exchange(in);
-        new_in = to_fpu_stack_top(in);
-
-        do_rename(in, res);
-        new_res = to_fpu_stack_top(res);
-      }
-      break;
-    }
-
     case lir_convert: {
       Bytecodes::Code bc = op1->as_OpConvert()->bytecode();
       switch (bc) {
@@ -688,17 +678,17 @@ void FpuStackAllocator::handle_op2(LIR_Op2* op2) {
       break;
     }
 
-    case lir_mul_strictfp:
-    case lir_div_strictfp: {
-      assert(op2->tmp1_opr()->is_fpu_register(), "strict operations need temporary fpu stack slot");
-      insert_free_if_dead(op2->tmp1_opr());
-      assert(sim()->stack_size() <= 7, "at least one stack slot must be free");
+    case lir_mul:
+    case lir_div: {
+      if (res->is_double_fpu()) {
+        assert(op2->tmp1_opr()->is_fpu_register(), "strict operations need temporary fpu stack slot");
+        insert_free_if_dead(op2->tmp1_opr());
+        assert(sim()->stack_size() <= 7, "at least one stack slot must be free");
+      }
       // fall-through: continue with the normal handling of lir_mul and lir_div
     }
     case lir_add:
-    case lir_sub:
-    case lir_mul:
-    case lir_div: {
+    case lir_sub: {
       assert(left->is_fpu_register(), "must be");
       assert(res->is_fpu_register(), "must be");
       assert(left->is_equal(res), "must be");
@@ -767,7 +757,8 @@ void FpuStackAllocator::handle_op2(LIR_Op2* op2) {
     }
 
     case lir_abs:
-    case lir_sqrt: {
+    case lir_sqrt:
+    case lir_neg: {
       // Right argument appears to be unused
       assert(right->is_illegal(), "must be");
       assert(left->is_fpu_register(), "must be");
@@ -815,12 +806,6 @@ void FpuStackAllocator::handle_opCall(LIR_OpCall* opCall) {
 #ifndef PRODUCT
 void FpuStackAllocator::check_invalid_lir_op(LIR_Op* op) {
   switch (op->code()) {
-    case lir_24bit_FPU:
-    case lir_reset_FPU:
-    case lir_ffree:
-      assert(false, "operations not allowed in lir. If one of these operations is needed, check if they have fpu operands");
-      break;
-
     case lir_fpop_raw:
     case lir_fxch:
     case lir_fld:
@@ -1139,3 +1124,4 @@ bool FpuStackAllocator::merge_fpu_stack_with_successors(BlockBegin* block) {
 
   return changed;
 }
+#endif // _LP64

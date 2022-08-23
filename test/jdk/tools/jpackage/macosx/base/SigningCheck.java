@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 import jdk.jpackage.test.TKit;
 import jdk.jpackage.test.Executor;
 
-import jdk.incubator.jpackage.internal.MacCertificate;
+import jdk.jpackage.internal.MacCertificate;
 
 public class SigningCheck {
 
@@ -47,7 +47,7 @@ public class SigningCheck {
 
     private static List<String> findCertificate(String name, String keyChain) {
         List<String> result = new Executor()
-                .setExecutable("security")
+                .setExecutable("/usr/bin/security")
                 .addArguments("find-certificate", "-c", name, "-a", keyChain)
                 .executeAndGetOutput();
 
@@ -84,16 +84,21 @@ public class SigningCheck {
     }
 
     private static void validateCertificateTrust(String name) {
-        List<String> result = new Executor()
-                .setExecutable("security")
-                .addArguments("dump-trust-settings")
-                .executeAndGetOutput();
-        result.stream().forEachOrdered(TKit::trace);
-        TKit.assertTextStream(name)
-                .predicate((line, what) -> line.trim().endsWith(what))
-                .orElseThrow(() -> TKit.throwSkippedException(
-                        "Certifcate not trusted by current user: " + name))
-                .apply(result.stream());
+        // Certificates using the default user name must be trusted by user.
+        // User supplied certs whose trust is set to "Use System Defaults"
+        // will not be listed as trusted by dump-trust-settings
+        if (SigningBase.DEV_NAME.equals("jpackage.openjdk.java.net")) {
+            List<String> result = new Executor()
+                    .setExecutable("/usr/bin/security")
+                    .addArguments("dump-trust-settings")
+                    .executeWithoutExitCodeCheckAndGetOutput();
+            result.stream().forEachOrdered(TKit::trace);
+            TKit.assertTextStream(name)
+                    .predicate((line, what) -> line.trim().endsWith(what))
+                    .orElseThrow(() -> TKit.throwSkippedException(
+                            "Certifcate not trusted by current user: " + name))
+                    .apply(result.stream());
+        }
     }
 
 }

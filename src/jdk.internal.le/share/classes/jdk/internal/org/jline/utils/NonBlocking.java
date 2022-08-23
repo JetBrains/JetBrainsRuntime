@@ -198,6 +198,50 @@ public class NonBlocking {
         }
 
         @Override
+        public int readBuffered(char[] b) throws IOException {
+            if (b == null) {
+                throw new NullPointerException();
+            } else if (b.length == 0) {
+                return 0;
+            } else {
+                if (chars.hasRemaining()) {
+                    int r = Math.min(b.length, chars.remaining());
+                    chars.get(b);
+                    return r;
+                } else {
+                    byte[] buf = new byte[b.length];
+                    int l = input.readBuffered(buf);
+                    if (l < 0) {
+                        return l;
+                    } else {
+                        ByteBuffer currentBytes;
+                        if (bytes.hasRemaining()) {
+                            int transfer = bytes.remaining();
+                            byte[] newBuf = new byte[l + transfer];
+                            bytes.get(newBuf, 0, transfer);
+                            System.arraycopy(buf, 0, newBuf, transfer, l);
+                            currentBytes = ByteBuffer.wrap(newBuf);
+                            bytes.position(0);
+                            bytes.limit(0);
+                        } else {
+                            currentBytes = ByteBuffer.wrap(buf, 0, l);
+                        }
+                        CharBuffer chars = CharBuffer.wrap(b);
+                        decoder.decode(currentBytes, chars, false);
+                        chars.flip();
+                        if (currentBytes.hasRemaining()) {
+                            int pos = bytes.position();
+                            bytes.limit(bytes.limit() + currentBytes.remaining());
+                            bytes.put(currentBytes);
+                            bytes.position(pos);
+                        }
+                        return chars.remaining();
+                    }
+                }
+            }
+        }
+
+        @Override
         public void shutdown() {
             input.shutdown();
         }

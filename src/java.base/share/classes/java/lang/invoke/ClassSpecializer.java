@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -351,7 +351,7 @@ abstract class ClassSpecializer<T,K,S extends ClassSpecializer<T,K,S>.SpeciesDat
          * You can override this to return null or throw if there are no transforms.
          * This method exists so that the transforms can be "grown" lazily.
          * This is necessary if the transform *adds* a field to an instance,
-         * which sometimtes requires the creation, on the fly, of an extended species.
+         * which sometimes requires the creation, on the fly, of an extended species.
          * This method is only called once for any particular parameter.
          * The species caches the result in a private array.
          *
@@ -475,15 +475,10 @@ abstract class ClassSpecializer<T,K,S extends ClassSpecializer<T,K,S>.SpeciesDat
             Class<?> salvage = null;
             try {
                 salvage = BootLoader.loadClassOrNull(className);
-                if (TRACE_RESOLVE && salvage != null) {
-                    // Used by jlink species pregeneration plugin, see
-                    // jdk.tools.jlink.internal.plugins.GenerateJLIClassesPlugin
-                    System.out.println("[SPECIES_RESOLVE] " + className + " (salvaged)");
-                }
             } catch (Error ex) {
-                if (TRACE_RESOLVE) {
-                    System.out.println("[SPECIES_FRESOLVE] " + className + " (Error) " + ex.getMessage());
-                }
+                // ignore
+            } finally {
+                traceSpeciesType(className, salvage);
             }
             final Class<? extends T> speciesCode;
             if (salvage != null) {
@@ -494,19 +489,11 @@ abstract class ClassSpecializer<T,K,S extends ClassSpecializer<T,K,S>.SpeciesDat
                 // Not pregenerated, generate the class
                 try {
                     speciesCode = generateConcreteSpeciesCode(className, speciesData);
-                    if (TRACE_RESOLVE) {
-                        // Used by jlink species pregeneration plugin, see
-                        // jdk.tools.jlink.internal.plugins.GenerateJLIClassesPlugin
-                        System.out.println("[SPECIES_RESOLVE] " + className + " (generated)");
-                    }
                     // This operation causes a lot of churn:
                     linkSpeciesDataToCode(speciesData, speciesCode);
                     // This operation commits the relation, but causes little churn:
                     linkCodeToSpeciesData(speciesCode, speciesData, false);
                 } catch (Error ex) {
-                    if (TRACE_RESOLVE) {
-                        System.out.println("[SPECIES_RESOLVE] " + className + " (Error #2)" );
-                    }
                     // We can get here if there is a race condition loading a class.
                     // Or maybe we are out of resources.  Back out of the CHM.get and retry.
                     throw ex;
@@ -579,6 +566,7 @@ abstract class ClassSpecializer<T,K,S extends ClassSpecializer<T,K,S>.SpeciesDat
          * @param speciesData what species we are generating
          * @return the generated concrete TopClass class
          */
+        @SuppressWarnings("removal")
         Class<? extends T> generateConcreteSpeciesCode(String className, ClassSpecializer<T,K,S>.SpeciesData speciesData) {
             byte[] classFile = generateConcreteSpeciesCodeFile(className, speciesData);
 
@@ -865,14 +853,14 @@ abstract class ClassSpecializer<T,K,S extends ClassSpecializer<T,K,S>.SpeciesDat
         }
 
         private int typeLoadOp(char t) {
-            switch (t) {
-            case 'L': return ALOAD;
-            case 'I': return ILOAD;
-            case 'J': return LLOAD;
-            case 'F': return FLOAD;
-            case 'D': return DLOAD;
-            default : throw newInternalError("unrecognized type " + t);
-            }
+            return switch (t) {
+                case 'L' -> ALOAD;
+                case 'I' -> ILOAD;
+                case 'J' -> LLOAD;
+                case 'F' -> FLOAD;
+                case 'D' -> DLOAD;
+                default -> throw newInternalError("unrecognized type " + t);
+            };
         }
 
         private void emitIntConstant(int con, MethodVisitor mv) {

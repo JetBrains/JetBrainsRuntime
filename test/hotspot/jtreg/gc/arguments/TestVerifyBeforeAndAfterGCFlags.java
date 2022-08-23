@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@ package gc.arguments;
 
 /*
  * @test TestVerifyBeforeAndAfterGCFlags
- * @key gc
  * @bug 8000831
  * @summary Runs an simple application (GarbageProducer) with various
          combinations of -XX:{+|-}Verify{After|Before}GC flags and checks that
@@ -88,10 +87,8 @@ public class TestVerifyBeforeAndAfterGCFlags {
                                        (verifyAfterGC ? "-XX:+VerifyAfterGC"
                                                       : "-XX:-VerifyAfterGC"),
                                        GarbageProducer.class.getName() });
-        ProcessBuilder procBuilder =
-            GCArguments.createJavaProcessBuilder(vmOpts.toArray(
-                                                     new String[vmOpts.size()]));
-        OutputAnalyzer analyzer = new OutputAnalyzer(procBuilder.start());
+        ProcessBuilder pb = GCArguments.createJavaProcessBuilder(vmOpts);
+        OutputAnalyzer analyzer = new OutputAnalyzer(pb.start());
 
         analyzer.shouldHaveExitValue(0);
         analyzer.shouldNotMatch(VERIFY_BEFORE_GC_CORRUPTED_PATTERN);

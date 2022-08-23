@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -31,32 +31,20 @@ $(eval $(call IncludeCustomExtension, hotspot/lib/JvmMapfile.gmk))
 ifeq ($(call And, $(call isTargetOs, windows) $(call isTargetCpu, x86_64)), false)
   # On Windows x86_64, we should not have any symbols at all, since that
   # results in duplicate warnings from the linker (JDK-8043491).
-  SYMBOLS_SRC += $(TOPDIR)/make/hotspot/symbols/symbols-shared
+  SYMBOLS_SRC += $(TOPDIR)/make/data/hotspot-symbols/symbols-shared
 endif
 
 ifeq ($(call isTargetOsType, unix), true)
-  SYMBOLS_SRC += $(TOPDIR)/make/hotspot/symbols/symbols-unix
+  SYMBOLS_SRC += $(TOPDIR)/make/data/hotspot-symbols/symbols-unix
 endif
 
-ifneq ($(wildcard $(TOPDIR)/make/hotspot/symbols/symbols-$(OPENJDK_TARGET_OS)), )
-  SYMBOLS_SRC += $(TOPDIR)/make/hotspot/symbols/symbols-$(OPENJDK_TARGET_OS)
+ifneq ($(wildcard $(TOPDIR)/make/data/hotspot-symbols/symbols-$(OPENJDK_TARGET_OS)), )
+  SYMBOLS_SRC += $(TOPDIR)/make/data/hotspot-symbols/symbols-$(OPENJDK_TARGET_OS)
 endif
 
 ifneq ($(findstring debug, $(DEBUG_LEVEL)), )
-  ifneq ($(wildcard $(TOPDIR)/make/hotspot/symbols/symbols-$(OPENJDK_TARGET_OS)-debug), )
-    SYMBOLS_SRC += $(TOPDIR)/make/hotspot/symbols/symbols-$(OPENJDK_TARGET_OS)-debug
-  endif
-endif
-
-ifeq ($(call isTargetOs, solaris), true)
-  ifeq ($(call check-jvm-feature, dtrace), true)
-    # Additional mapfiles that are only used when dtrace is enabled
-    ifeq ($(call check-jvm-feature, compiler2), true)
-      # This also covers the case of compiler1+compiler2.
-      SYMBOLS_SRC += $(TOPDIR)/make/hotspot/symbols/symbols-solaris-dtrace-compiler2
-    else ifeq ($(call check-jvm-feature, compiler1), true)
-      SYMBOLS_SRC += $(TOPDIR)/make/hotspot/symbols/symbols-solaris-dtrace-compiler1
-    endif
+  ifneq ($(wildcard $(TOPDIR)/make/data/hotspot-symbols/symbols-$(OPENJDK_TARGET_OS)-debug), )
+    SYMBOLS_SRC += $(TOPDIR)/make/data/hotspot-symbols/symbols-$(OPENJDK_TARGET_OS)-debug
   endif
 endif
 
@@ -73,20 +61,6 @@ ifeq ($(call isTargetOs, linux), true)
   FILTER_SYMBOLS_PATTERN := $(FILTER_SYMBOLS_PATTERN)|^_ZN9Arguments17SharedArchivePathE$$
   FILTER_SYMBOLS_AWK_SCRIPT := \
       '{ \
-        if ($$3 ~ /$(FILTER_SYMBOLS_PATTERN)/) print $$3; \
-      }'
-
-else ifeq ($(call isTargetOs, solaris), true)
-  DUMP_SYMBOLS_CMD := $(NM) -p *.o
-  ifneq ($(FILTER_SYMBOLS_PATTERN), )
-    FILTER_SYMBOLS_PATTERN := $(FILTER_SYMBOLS_PATTERN)|
-  endif
-  FILTER_SYMBOLS_PATTERN := $(FILTER_SYMBOLS_PATTERN)^__1c.*__vtbl_$$|^gHotSpotVM
-  FILTER_SYMBOLS_PATTERN := $(FILTER_SYMBOLS_PATTERN)|^UseSharedSpaces$$
-  FILTER_SYMBOLS_PATTERN := $(FILTER_SYMBOLS_PATTERN)|^__1cJArgumentsRSharedArchivePath_$$
-  FILTER_SYMBOLS_AWK_SCRIPT := \
-      '{ \
-        if ($$2 == "U") next; \
         if ($$3 ~ /$(FILTER_SYMBOLS_PATTERN)/) print $$3; \
       }'
 
@@ -140,7 +114,7 @@ endif
 $(JVM_OUTPUTDIR)/symbols-objects: $(BUILD_LIBJVM_ALL_OBJS)
 	$(call LogInfo, Generating symbol list from object files)
 	$(CD) $(JVM_OUTPUTDIR)/objs && \
-	  $(DUMP_SYMBOLS_CMD) | $(NAWK) $(FILTER_SYMBOLS_AWK_SCRIPT) | $(SORT) -u > $@
+	  $(DUMP_SYMBOLS_CMD) | $(AWK) $(FILTER_SYMBOLS_AWK_SCRIPT) | $(SORT) -u > $@
 
 SYMBOLS_SRC += $(JVM_OUTPUTDIR)/symbols-objects
 

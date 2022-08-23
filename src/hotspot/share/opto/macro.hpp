@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@
 class  AllocateNode;
 class  AllocateArrayNode;
 class  CallNode;
+class  SubTypeCheckNode;
 class  Node;
 class  PhaseIterGVN;
 
@@ -81,14 +82,7 @@ public:
 
 private:
   // projections extracted from a call node
-  ProjNode *_fallthroughproj;
-  ProjNode *_fallthroughcatchproj;
-  ProjNode *_ioproj_fallthrough;
-  ProjNode *_ioproj_catchall;
-  ProjNode *_catchallcatchproj;
-  ProjNode *_memproj_fallthrough;
-  ProjNode *_memproj_catchall;
-  ProjNode *_resproj;
+  CallProjections _callprojs;
 
   // Additional data collected during macro expansion
   bool _has_locks;
@@ -98,7 +92,9 @@ private:
   void expand_allocate_common(AllocateNode* alloc,
                               Node* length,
                               const TypeFunc* slow_call_type,
-                              address slow_call_address);
+                              address slow_call_address,
+                              Node* valid_length_test);
+  void yank_alloc_node(AllocateNode* alloc);
   Node *value_from_mem(Node *mem, Node *ctl, BasicType ft, const Type *ftype, const TypeOopPtr *adr_t, AllocateNode *alloc);
   Node *value_from_mem_phi(Node *mem, BasicType ft, const Type *ftype, const TypeOopPtr *adr_t, AllocateNode *alloc, Node_Stack *value_phis, int level);
 
@@ -123,6 +119,11 @@ private:
   // helper methods modeled after LibraryCallKit for array copy
   Node* generate_guard(Node** ctrl, Node* test, RegionNode* region, float true_prob);
   Node* generate_slow_guard(Node** ctrl, Node* test, RegionNode* region);
+
+  void generate_partial_inlining_block(Node** ctrl, MergeMemNode** mem, const TypePtr* adr_type,
+                                       RegionNode** exit_block, Node** result_memory, Node* length,
+                                       Node* src_start, Node* dst_start, BasicType type);
+
   void generate_negative_guard(Node** ctrl, Node* index, RegionNode* region);
   void generate_limit_guard(Node** ctrl, Node* offset, Node* subseq_length, Node* array_length, RegionNode* region);
 
@@ -171,7 +172,7 @@ private:
                                    Node* src,  Node* src_offset,
                                    Node* dest, Node* dest_offset,
                                    Node* copy_length, bool dest_uninitialized);
-  void generate_unchecked_arraycopy(Node** ctrl, MergeMemNode** mem,
+  bool generate_unchecked_arraycopy(Node** ctrl, MergeMemNode** mem,
                                     const TypePtr* adr_type,
                                     BasicType basic_elem_type,
                                     bool disjoint_bases,
@@ -181,14 +182,15 @@ private:
 
   void expand_arraycopy_node(ArrayCopyNode *ac);
 
+  void expand_subtypecheck_node(SubTypeCheckNode *check);
+
   int replace_input(Node *use, Node *oldref, Node *newref);
-  void copy_call_debug_info(CallNode *oldcall, CallNode * newcall);
+  void migrate_outs(Node *old, Node *target);
   Node* opt_bits_test(Node* ctrl, Node* region, int edge, Node* word, int mask, int bits, bool return_fast_path = false);
   void copy_predefined_input_for_runtime_call(Node * ctrl, CallNode* oldcall, CallNode* call);
   CallNode* make_slow_call(CallNode *oldcall, const TypeFunc* slow_call_type, address slow_call,
                            const char* leaf_name, Node* slow_path, Node* parm0, Node* parm1,
                            Node* parm2);
-  void extract_call_projections(CallNode *call);
 
   Node* initialize_object(AllocateNode* alloc,
                           Node* control, Node* rawmem, Node* object,
@@ -217,6 +219,8 @@ public:
                             Node*& needgc_false, Node*& contended_phi_rawmem,
                             Node* old_eden_top, Node* new_eden_top,
                             intx lines);
+  void expand_dtrace_alloc_probe(AllocateNode* alloc, Node* fast_oop, Node*&fast_oop_ctrl, Node*&fast_oop_rawmem);
+  void expand_initialize_membar(AllocateNode* alloc, InitializeNode* init, Node*&fast_oop_ctrl, Node*&fast_oop_rawmem);
 };
 
 #endif // SHARE_OPTO_MACRO_HPP

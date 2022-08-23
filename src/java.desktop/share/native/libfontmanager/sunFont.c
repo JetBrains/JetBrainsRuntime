@@ -173,9 +173,9 @@ static void initFontIDs(JNIEnv *env) {
 
      CHECK_NULL(tmpClass = (*env)->FindClass(env, "sun/font/GlyphList"));
      CHECK_NULL(sunFontIDs.glyphListX =
-         (*env)->GetFieldID(env, tmpClass, "x", "F"));
+         (*env)->GetFieldID(env, tmpClass, "gposx", "F"));
      CHECK_NULL(sunFontIDs.glyphListY =
-         (*env)->GetFieldID(env, tmpClass, "y", "F"));
+         (*env)->GetFieldID(env, tmpClass, "gposy", "F"));
      CHECK_NULL(sunFontIDs.glyphListLen =
          (*env)->GetFieldID(env, tmpClass, "len", "I"));
      CHECK_NULL(sunFontIDs.glyphImages =
@@ -188,6 +188,20 @@ static void initFontIDs(JNIEnv *env) {
          (*env)->GetFieldID(env, tmpClass, "lcdRGBOrder", "Z"));
      CHECK_NULL(sunFontIDs.lcdSubPixPos =
          (*env)->GetFieldID(env, tmpClass, "lcdSubPixPos", "Z"));
+
+    CHECK_NULL(tmpClass = (*env)->FindClass(env, "sun/font/GlyphRenderData"));
+    CHECK_NULL(sunFontIDs.glyphRenderDataOutline =
+         (*env)->GetFieldID(env, tmpClass, "outline", "Ljava/awt/geom/GeneralPath;"));
+    CHECK_NULL(sunFontIDs.glyphRenderDataColorLayers =
+         (*env)->GetFieldID(env, tmpClass, "colorLayers", "Ljava/util/List;"));
+    CHECK_NULL(sunFontIDs.glyphRenderDataSetColorLayersListMID =
+          (*env)->GetMethodID(env, tmpClass, "setColorLayersList", "(I)V"));
+    CHECK_NULL(sunFontIDs.glyphRenderDataAddColorLayerMID =
+          (*env)->GetMethodID(env, tmpClass, "addColorLayers", "(IIIILjava/awt/geom/GeneralPath;)V"));
+    CHECK_NULL(sunFontIDs.glyphRenderDataAddColorLayerFGMID =
+          (*env)->GetMethodID(env, tmpClass, "addColorLayers", "(Ljava/awt/geom/GeneralPath;)V"));
+    CHECK_NULL(sunFontIDs.glyphRenderDataAddBitmapMID =
+          (*env)->GetMethodID(env, tmpClass, "addBitmap", "(DDDDDDIIII[I)V"));
 
      initLCDGammaTables();
 
@@ -314,7 +328,7 @@ Java_sun_font_StrikeCache_getGlyphCacheDescription
     GlyphInfo *info;
     size_t baseAddr;
 
-    if ((*env)->GetArrayLength(env, results) < 13) {
+    if ((*env)->GetArrayLength(env, results) < 16) {
         return;
     }
 
@@ -341,6 +355,9 @@ Java_sun_font_StrikeCache_getGlyphCacheDescription
     nresults[10] = (jlong)(uintptr_t)info; /* invisible glyph */
     nresults[11] = (size_t)&(info->cellInfo)-baseAddr;
     nresults[12] = (size_t)&(info->managed)-baseAddr;
+    nresults[13] = (size_t)&(info->subpixelResolutionX)-baseAddr;
+    nresults[14] = (size_t)&(info->subpixelResolutionY)-baseAddr;
+    nresults[15] = (size_t)&(info->format)-baseAddr;
 
     (*env)->ReleasePrimitiveArrayCritical(env, results, nresults, 0);
 }

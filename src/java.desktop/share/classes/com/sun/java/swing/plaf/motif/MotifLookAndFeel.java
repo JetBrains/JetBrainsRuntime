@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,39 +27,27 @@ package com.sun.java.swing.plaf.motif;
 
 import java.awt.Color;
 import java.awt.Font;
-import java.awt.Insets;
 import java.awt.event.KeyEvent;
-import java.awt.event.InputEvent;
-import java.util.*;
 
-import javax.swing.*;
-import javax.swing.plaf.*;
-import javax.swing.border.*;
-import javax.swing.text.JTextComponent;
-import javax.swing.text.DefaultEditorKit;
-
-import javax.swing.plaf.basic.BasicLookAndFeel;
+import javax.swing.JTextField;
+import javax.swing.UIDefaults;
+import javax.swing.border.Border;
+import javax.swing.plaf.BorderUIResource;
+import javax.swing.plaf.ColorUIResource;
+import javax.swing.plaf.FontUIResource;
+import javax.swing.plaf.InsetsUIResource;
 import javax.swing.plaf.basic.BasicBorders;
-import javax.swing.plaf.basic.BasicComboBoxRenderer;
-import javax.swing.plaf.basic.BasicComboBoxEditor;
+import javax.swing.plaf.basic.BasicLookAndFeel;
+import javax.swing.text.DefaultEditorKit;
 
 import sun.swing.SwingAccessor;
 import sun.swing.SwingUtilities2;
-import sun.awt.OSInfo;
 
 /**
  * Implements the Motif Look and Feel.
  * UI classes not implemented specifically for Motif will
  * default to those implemented in Basic.
- * <p>
- * <strong>Warning:</strong>
- * Serialized objects of this class will not be compatible with
- * future Swing releases.  The current serialization support is appropriate
- * for short term storage or RMI between applications running the same
- * version of Swing.  A future release of Swing will provide support for
- * long term persistence.
  *
- * @author unattributed
  * @deprecated The Motif Look and Feel is deprecated with the intent to remove
  *             it in some future release. It is recommended to use
  *             {@link javax.swing.plaf.metal.MetalLookAndFeel} instead.
@@ -82,7 +70,7 @@ public class MotifLookAndFeel extends BasicLookAndFeel
 
 
     public boolean isNativeLookAndFeel() {
-        return OSInfo.getOSType() == OSInfo.OSType.SOLARIS;
+        return false;
     }
 
 
@@ -690,7 +678,7 @@ public class MotifLookAndFeel extends BasicLookAndFeel
             "PopupMenu.border", popupMenuBorder,
             "PopupMenu.foreground", table.get("menuText"),
             "PopupMenu.font", dialogPlain12,
-            "PopupMenu.consumeEventOnClose", Boolean.TRUE,
+            "PopupMenu.consumeEventOnClose", Boolean.FALSE,
 
             "Label.font", dialogPlain12,
             "Label.background", table.get("control"),

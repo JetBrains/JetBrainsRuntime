@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,7 +73,7 @@ class MemoryPool : public CHeapObj<mtInternal> {
   SensorInfo*      _usage_sensor;
   SensorInfo*      _gc_usage_sensor;
 
-  volatile instanceOop _memory_pool_obj;
+  volatile OopHandle _memory_pool_obj;
 
   void add_manager(MemoryManager* mgr);
 
@@ -95,7 +95,7 @@ class MemoryPool : public CHeapObj<mtInternal> {
   // max size could be changed
   virtual size_t max_size()    const       { return _max_size; }
 
-  bool is_pool(instanceHandle pool) { return pool() == _memory_pool_obj; }
+  bool is_pool(instanceHandle pool) const;
 
   bool available_for_allocation()   { return _available_for_allocation; }
   bool set_available_for_allocation(bool value) {
@@ -136,9 +136,6 @@ class MemoryPool : public CHeapObj<mtInternal> {
   virtual size_t      used_in_bytes() = 0;
   virtual bool        is_collected_pool()         { return false; }
   virtual MemoryUsage get_last_collection_usage() { return _after_gc_usage; }
-
-  // GC support
-  void oops_do(OopClosure* f);
 };
 
 class CollectedMemoryPool : public MemoryPool {

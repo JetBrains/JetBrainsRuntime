@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2017, 2020, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,14 @@
 
 #include "precompiled.hpp"
 #include "gc/epsilon/epsilonHeap.hpp"
+#include "gc/epsilon/epsilonInitLogger.hpp"
 #include "gc/epsilon/epsilonMemoryPool.hpp"
 #include "gc/epsilon/epsilonThreadLocalData.hpp"
 #include "gc/shared/gcArguments.hpp"
 #include "gc/shared/locationPrinter.inline.hpp"
 #include "memory/allocation.hpp"
 #include "memory/allocation.inline.hpp"
+#include "memory/metaspaceUtils.hpp"
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
 #include "runtime/atomic.hpp"
@@ -45,7 +47,6 @@ jint EpsilonHeap::initialize() {
   _virtual_space.initialize(heap_rs, init_byte_size);
 
   MemRegion committed_region((HeapWord*)_virtual_space.low(),          (HeapWord*)_virtual_space.high());
-  MemRegion  reserved_region((HeapWord*)_virtual_space.low_boundary(), (HeapWord*)_virtual_space.high_boundary());
 
   initialize_reserved_region(heap_rs);
 
@@ -67,24 +68,7 @@ jint EpsilonHeap::initialize() {
   BarrierSet::set_barrier_set(new EpsilonBarrierSet());
 
   // All done, print out the configuration
-  if (init_byte_size != max_byte_size) {
-    log_info(gc)("Resizeable heap; starting at " SIZE_FORMAT "M, max: " SIZE_FORMAT "M, step: " SIZE_FORMAT "M",
-                 init_byte_size / M, max_byte_size / M, EpsilonMinHeapExpand / M);
-  } else {
-    log_info(gc)("Non-resizeable heap; start/max: " SIZE_FORMAT "M", init_byte_size / M);
-  }
-
-  if (UseTLAB) {
-    log_info(gc)("Using TLAB allocation; max: " SIZE_FORMAT "K", _max_tlab_size * HeapWordSize / K);
-    if (EpsilonElasticTLAB) {
-      log_info(gc)("Elastic TLABs enabled; elasticity: %.2fx", EpsilonTLABElasticity);
-    }
-    if (EpsilonElasticTLABDecay) {
-      log_info(gc)("Elastic TLABs decay enabled; decay time: " SIZE_FORMAT "ms", EpsilonTLABDecayTime);
-    }
-  } else {
-    log_info(gc)("Not using TLAB allocation");
-  }
+  EpsilonInitLogger::print();
 
   return JNI_OK;
 }
@@ -117,40 +101,50 @@ size_t EpsilonHeap::unsafe_max_tlab_alloc(Thread* thr) const {
 }
 
 EpsilonHeap* EpsilonHeap::heap() {
-  CollectedHeap* heap = Universe::heap();
-  assert(heap != NULL, "Uninitialized access to EpsilonHeap::heap()");
-  assert(heap->kind() == CollectedHeap::Epsilon, "Not an Epsilon heap");
-  return (EpsilonHeap*)heap;
+  return named_heap<EpsilonHeap>(CollectedHeap::Epsilon);
 }
 
 HeapWord* EpsilonHeap::allocate_work(size_t size) {
   assert(is_object_aligned(size), "Allocation size should be aligned: " SIZE_FORMAT, size);
 
-  HeapWord* res = _space->par_allocate(size);
-
-  while (res == NULL) {
-    // Allocation failed, attempt expansion, and retry:
-    MutexLocker ml(Heap_lock);
-
-    size_t space_left = max_capacity() - capacity();
-    size_t want_space = MAX2(size, EpsilonMinHeapExpand);
-
-    if (want_space < space_left) {
-      // Enough space to expand in bulk:
-      bool expand = _virtual_space.expand_by(want_space);
-      assert(expand, "Should be able to expand");
-    } else if (size < space_left) {
-      // No space to expand in bulk, and this allocation is still possible,
-      // take all the remaining space:
-      bool expand = _virtual_space.expand_by(space_left);
-      assert(expand, "Should be able to expand");
-    } else {
-      // No space left:
-      return NULL;
+  HeapWord* res = NULL;
+  while (true) {
+    // Try to allocate, assume space is available
+    res = _space->par_allocate(size);
+    if (res != NULL) {
+      break;
     }
 
-    _space->set_end((HeapWord *) _virtual_space.high());
-    res = _space->par_allocate(size);
+    // Allocation failed, attempt expansion, and retry:
+    {
+      MutexLocker ml(Heap_lock);
+
+      // Try to allocate under the lock, assume another thread was able to expand
+      res = _space->par_allocate(size);
+      if (res != NULL) {
+        break;
+      }
+
+      // Expand and loop back if space is available
+      size_t space_left = max_capacity() - capacity();
+      size_t want_space = MAX2(size, EpsilonMinHeapExpand);
+
+      if (want_space < space_left) {
+        // Enough space to expand in bulk:
+        bool expand = _virtual_space.expand_by(want_space);
+        assert(expand, "Should be able to expand");
+      } else if (size < space_left) {
+        // No space to expand in bulk, and this allocation is still possible,
+        // take all the remaining space:
+        bool expand = _virtual_space.expand_by(space_left);
+        assert(expand, "Should be able to expand");
+      } else {
+        // No space left:
+        return NULL;
+      }
+
+      _space->set_end((HeapWord *) _virtual_space.high());
+    }
   }
 
   size_t used = _space->used();
@@ -302,8 +296,10 @@ void EpsilonHeap::print_on(outputStream *st) const {
   // Cast away constness:
   ((VirtualSpace)_virtual_space).print_on(st);
 
-  st->print_cr("Allocation space:");
-  _space->print_on(st);
+  if (_space != NULL) {
+    st->print_cr("Allocation space:");
+    _space->print_on(st);
+  }
 
   MetaspaceUtils::print_on(st);
 }
@@ -335,9 +331,10 @@ void EpsilonHeap::print_heap_info(size_t used) const {
 }
 
 void EpsilonHeap::print_metaspace_info() const {
-  size_t reserved  = MetaspaceUtils::reserved_bytes();
-  size_t committed = MetaspaceUtils::committed_bytes();
-  size_t used      = MetaspaceUtils::used_bytes();
+  MetaspaceCombinedStats stats = MetaspaceUtils::get_combined_statistics();
+  size_t reserved  = stats.reserved();
+  size_t committed = stats.committed();
+  size_t used      = stats.used();
 
   if (reserved != 0) {
     log_info(gc, metaspace)("Metaspace: " SIZE_FORMAT "%s reserved, " SIZE_FORMAT "%s (%.2f%%) committed, "

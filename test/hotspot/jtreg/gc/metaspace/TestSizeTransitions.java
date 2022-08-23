@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, Twitter, Inc.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 /* @test TestSizeTransitionsSerial
- * @key gc
  * @requires vm.gc.Serial
  * @summary Tests that the metaspace size transition logging is done correctly.
  * @library /test/lib
@@ -41,7 +40,6 @@ import java.util.List;
  */
 
 /* @test TestSizeTransitionsParallel
- * @key gc
  * @requires vm.gc.Parallel
  * @summary Tests that the metaspace size transition logging is done correctly.
  * @library /test/lib
@@ -50,7 +48,6 @@ import java.util.List;
  */
 
 /* @test TestSizeTransitionsG1
- * @key gc
  * @requires vm.gc.G1
  * @summary Tests that the metaspace size transition logging is done correctly.
  * @library /test/lib
@@ -79,13 +76,13 @@ public class TestSizeTransitions {
   private static final String SIZE_TRANSITION_REGEX = "\\d+K\\(\\d+K\\)->\\d+K\\(\\d+K\\)";
 
   // matches -coops metaspace size transitions
-  private static final String NO_COOPS_REGEX =
+  private static final String NO_COMPRESSED_KLASS_POINTERS_REGEX =
     String.format("^%s.* Metaspace: %s$",
                   LOG_TAGS_REGEX,
                   SIZE_TRANSITION_REGEX);
 
   // matches +coops metaspace size transitions
-  private static final String COOPS_REGEX =
+  private static final String COMPRESSED_KLASS_POINTERS_REGEX =
     String.format("^%s.* Metaspace: %s NonClass: %s Class: %s$",
                   LOG_TAGS_REGEX,
                   SIZE_TRANSITION_REGEX,
@@ -98,19 +95,19 @@ public class TestSizeTransitions {
       throw new RuntimeException("wrong number of args: " + args.length);
     }
 
-    final boolean hasCoops = Platform.is64bit();
-    final boolean useCoops = Boolean.parseBoolean(args[0]);
+    final boolean hasCompressedKlassPointers = Platform.is64bit();
+    final boolean useCompressedKlassPointers = Boolean.parseBoolean(args[0]);
     final String gcArg = args[1];
 
-    if (!hasCoops && useCoops) {
+    if (!hasCompressedKlassPointers && useCompressedKlassPointers) {
        // No need to run this configuration.
        System.out.println("Skipping test.");
        return;
     }
 
     List<String> jvmArgs = new ArrayList<>();
-    if (hasCoops) {
-      jvmArgs.add(useCoops ? "-XX:+UseCompressedOops" : "-XX:-UseCompressedOops");
+    if (hasCompressedKlassPointers) {
+      jvmArgs.add(useCompressedKlassPointers ? "-XX:+UseCompressedClassPointers" : "-XX:-UseCompressedClassPointers");
     }
     jvmArgs.add(gcArg);
     jvmArgs.add("-Xmx256m");
@@ -122,17 +119,17 @@ public class TestSizeTransitions {
       System.out.println("  " + a);
     }
 
-    final ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(jvmArgs.toArray(new String[0]));
+    final ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(jvmArgs);
     final OutputAnalyzer output = new OutputAnalyzer(pb.start());
     System.out.println(output.getStdout());
     output.shouldHaveExitValue(0);
 
-    if (useCoops) {
-      output.stdoutShouldMatch(COOPS_REGEX);
-      output.stdoutShouldNotMatch(NO_COOPS_REGEX);
+    if (useCompressedKlassPointers) {
+      output.stdoutShouldMatch(COMPRESSED_KLASS_POINTERS_REGEX);
+      output.stdoutShouldNotMatch(NO_COMPRESSED_KLASS_POINTERS_REGEX);
     } else {
-      output.stdoutShouldMatch(NO_COOPS_REGEX);
-      output.stdoutShouldNotMatch(COOPS_REGEX);
+      output.stdoutShouldMatch(NO_COMPRESSED_KLASS_POINTERS_REGEX);
+      output.stdoutShouldNotMatch(COMPRESSED_KLASS_POINTERS_REGEX);
     }
   }
 }

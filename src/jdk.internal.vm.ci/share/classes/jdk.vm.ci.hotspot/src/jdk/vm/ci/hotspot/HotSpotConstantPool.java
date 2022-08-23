@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -140,6 +140,8 @@ public final class HotSpotConstantPool implements ConstantPool, MetaspaceHandleO
         final JvmConstant jvmMethodType = add(new JvmConstant(c.jvmConstantMethodType, "MethodType"));
         final JvmConstant jvmMethodTypeInError = add(new JvmConstant(c.jvmConstantMethodTypeInError, "MethodTypeInError"));
         final JvmConstant jvmInvokeDynamic = add(new JvmConstant(c.jvmConstantInvokeDynamic, "InvokeDynamic"));
+        final JvmConstant jvmDynamic = add(new JvmConstant(c.jvmConstantDynamic, "Dynamic"));
+        final JvmConstant jvmDynamicInError = add(new JvmConstant(c.jvmConstantDynamicInError, "DynamicInError"));
 
         private JvmConstant add(JvmConstant constant) {
             table[indexOf(constant.tag)] = constant;
@@ -545,6 +547,8 @@ public final class HotSpotConstantPool implements ConstantPool, MetaspaceHandleO
             case "MethodHandleInError":
             case "MethodType":
             case "MethodTypeInError":
+            case "Dynamic":
+            case "DynamicInError":
                 return compilerToVM().resolvePossiblyCachedConstantInPool(this, cpi);
             default:
                 throw new JVMCIError("Unknown constant pool tag %s", tag);
@@ -618,6 +622,39 @@ public final class HotSpotConstantPool implements ConstantPool, MetaspaceHandleO
             }
             return result;
         }
+    }
+
+    @Override
+    public JavaType lookupReferencedType(int cpi, int opcode) {
+        int index;
+        switch (opcode) {
+            case Bytecodes.CHECKCAST:
+            case Bytecodes.INSTANCEOF:
+            case Bytecodes.NEW:
+            case Bytecodes.ANEWARRAY:
+            case Bytecodes.MULTIANEWARRAY:
+            case Bytecodes.LDC:
+            case Bytecodes.LDC_W:
+            case Bytecodes.LDC2_W:
+                index = cpi;
+                break;
+            case Bytecodes.GETSTATIC:
+            case Bytecodes.PUTSTATIC:
+            case Bytecodes.GETFIELD:
+            case Bytecodes.PUTFIELD:
+            case Bytecodes.INVOKEVIRTUAL:
+            case Bytecodes.INVOKESPECIAL:
+            case Bytecodes.INVOKESTATIC:
+            case Bytecodes.INVOKEINTERFACE: {
+                index = rawIndexToConstantPoolCacheIndex(cpi, opcode);
+                index = getKlassRefIndexAt(index);
+                break;
+            }
+            default:
+                throw JVMCIError.shouldNotReachHere("Unexpected opcode " + opcode);
+        }
+        final Object type = compilerToVM().lookupKlassInPool(this, index);
+        return getJavaType(type);
     }
 
     @Override
@@ -797,6 +834,14 @@ public final class HotSpotConstantPool implements ConstantPool, MetaspaceHandleO
             return op == opcode;
         }
         return false;
+    }
+
+    public String getSourceFileName() {
+        final int sourceFileNameIndex = UNSAFE.getChar(getMetaspaceConstantPool() + config().constantPoolSourceFileNameIndexOffset);
+        if (sourceFileNameIndex == 0) {
+            return null;
+        }
+        return lookupUtf8(sourceFileNameIndex);
     }
 
     @Override

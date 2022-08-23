@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright 2007, 2008, 2009, 2010 Red Hat, Inc.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -25,9 +25,7 @@
 
 // no precompiled headers
 #include "jvm.h"
-#include "assembler_zero.inline.hpp"
-#include "classfile/classLoader.hpp"
-#include "classfile/systemDictionary.hpp"
+#include "asm/assembler.inline.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "code/icBuffer.hpp"
 #include "code/vtableStubs.hpp"
@@ -38,7 +36,6 @@
 #include "prims/jniFastGetField.hpp"
 #include "prims/jvm_misc.hpp"
 #include "runtime/arguments.hpp"
-#include "runtime/extendedPC.hpp"
 #include "runtime/frame.inline.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/java.hpp"
@@ -49,13 +46,10 @@
 #include "runtime/stubRoutines.hpp"
 #include "runtime/thread.inline.hpp"
 #include "runtime/timer.hpp"
+#include "signals_posix.hpp"
 #include "utilities/align.hpp"
 #include "utilities/events.hpp"
 #include "utilities/vmError.hpp"
-
-// See stubGenerator_zero.cpp
-#include <setjmp.h>
-extern sigjmp_buf* get_jmp_buf_for_continuation();
 
 address os::current_stack_pointer() {
   // return the address of the current function
@@ -86,28 +80,22 @@ char* os::non_memory_address_word() {
   // Must never look like an address returned by reserve_memory,
   // even in its subfields (as defined by the CPU immediate fields,
   // if the CPU splits constants across multiple instructions).
-#ifdef SPARC
-  // On SPARC, 0 != %hi(any real address), because there is no
-  // allocation in the first 1Kb of the virtual address space.
-  return (char *) 0;
-#else
   // This is the value for x86; works pretty well for PPC too.
   return (char *) -1;
-#endif // SPARC
 }
 
-address os::Linux::ucontext_get_pc(const ucontext_t* uc) {
+address os::Posix::ucontext_get_pc(const ucontext_t* uc) {
   ShouldNotCallThis();
   return NULL; // silence compile warnings
 }
 
-void os::Linux::ucontext_set_pc(ucontext_t * uc, address pc) {
+void os::Posix::ucontext_set_pc(ucontext_t * uc, address pc) {
   ShouldNotCallThis();
 }
 
-ExtendedPC os::fetch_frame_from_context(const void* ucVoid,
-                                        intptr_t** ret_sp,
-                                        intptr_t** ret_fp) {
+address os::fetch_frame_from_context(const void* ucVoid,
+                                     intptr_t** ret_sp,
+                                     intptr_t** ret_fp) {
   ShouldNotCallThis();
   return NULL; // silence compile warnings
 }
@@ -117,55 +105,8 @@ frame os::fetch_frame_from_context(const void* ucVoid) {
   return frame(NULL, NULL); // silence compile warnings
 }
 
-extern "C" JNIEXPORT int
-JVM_handle_linux_signal(int sig,
-                        siginfo_t* info,
-                        void* ucVoid,
-                        int abort_if_unrecognized) {
-  ucontext_t* uc = (ucontext_t*) ucVoid;
-
-  Thread* t = Thread::current_or_null_safe();
-
-  SignalHandlerMark shm(t);
-
-  // handle SafeFetch faults
-  if (sig == SIGSEGV || sig == SIGBUS) {
-    sigjmp_buf* const pjb = get_jmp_buf_for_continuation();
-    if (pjb) {
-      siglongjmp(*pjb, 1);
-    }
-  }
-
-  // Note: it's not uncommon that JNI code uses signal/sigset to
-  // install then restore certain signal handler (e.g. to temporarily
-  // block SIGPIPE, or have a SIGILL handler when detecting CPU
-  // type). When that happens, JVM_handle_linux_signal() might be
-  // invoked with junk info/ucVoid. To avoid unnecessary crash when
-  // libjsig is not preloaded, try handle signals that do not require
-  // siginfo/ucontext first.
-
-  if (sig == SIGPIPE || sig == SIGXFSZ) {
-    // allow chained handler to go first
-    if (os::Linux::chained_handler(sig, info, ucVoid)) {
-      return true;
-    } else {
-      // Ignoring SIGPIPE/SIGXFSZ - see bugs 4229104 or 6499219
-      return true;
-    }
-  }
-
-  JavaThread* thread = NULL;
-  VMThread* vmthread = NULL;
-  if (os::Linux::signal_handlers_are_installed) {
-    if (t != NULL ){
-      if(t->is_Java_thread()) {
-        thread = (JavaThread*)t;
-      }
-      else if(t->is_VM_thread()){
-        vmthread = (VMThread *)t;
-      }
-    }
-  }
+bool PosixSignals::pd_hotspot_signal_handler(int sig, siginfo_t* info,
+                                             ucontext_t* uc, JavaThread* thread) {
 
   if (info != NULL && thread != NULL) {
     // Handle ALL stack overflow variations here
@@ -173,14 +114,15 @@ JVM_handle_linux_signal(int sig,
       address addr = (address) info->si_addr;
 
       // check if fault address is within thread stack
-      if (thread->on_local_stack(addr)) {
+      if (thread->is_in_full_stack(addr)) {
+        StackOverflow* overflow_state = thread->stack_overflow_state();
         // stack overflow
-        if (thread->in_stack_yellow_reserved_zone(addr)) {
-          thread->disable_stack_yellow_reserved_zone();
+        if (overflow_state->in_stack_yellow_reserved_zone(addr)) {
+          overflow_state->disable_stack_yellow_reserved_zone();
           ShouldNotCallThis();
         }
-        else if (thread->in_stack_red_zone(addr)) {
-          thread->disable_stack_red_zone();
+        else if (overflow_state->in_stack_red_zone(addr)) {
+          overflow_state->disable_stack_red_zone();
           ShouldNotCallThis();
         }
         else {
@@ -223,40 +165,8 @@ JVM_handle_linux_signal(int sig,
     }*/
   }
 
-  // signal-chaining
-  if (os::Linux::chained_handler(sig, info, ucVoid)) {
-     return true;
-  }
+  return false; // Fatal error
 
-  if (!abort_if_unrecognized) {
-    // caller wants another chance, so give it to him
-    return false;
-  }
-
-#ifndef PRODUCT
-  if (sig == SIGSEGV) {
-    fatal("\n#"
-          "\n#    /--------------------\\"
-          "\n#    | segmentation fault |"
-          "\n#    \\---\\ /--------------/"
-          "\n#        /"
-          "\n#    [-]        |\\_/|    "
-          "\n#    (+)=C      |o o|__  "
-          "\n#    | |        =-*-=__\\ "
-          "\n#    OOO        c_c_(___)");
-  }
-#endif // !PRODUCT
-
-  char buf[64];
-
-  sprintf(buf, "caught unhandled signal %d", sig);
-
-// Silence -Wformat-security warning for fatal()
-PRAGMA_DIAG_PUSH
-PRAGMA_FORMAT_NONLITERAL_IGNORED
-  fatal(buf);
-PRAGMA_DIAG_POP
-  return true; // silence compiler warnings
 }
 
 void os::Linux::init_thread_fpu_state(void) {
@@ -270,24 +180,6 @@ int os::Linux::get_fpu_control_word() {
 
 void os::Linux::set_fpu_control_word(int fpu) {
   ShouldNotCallThis();
-}
-
-bool os::is_allocatable(size_t bytes) {
-#ifdef _LP64
-  return true;
-#else
-  if (bytes < 2 * G) {
-    return true;
-  }
-
-  char* addr = reserve_memory(bytes, NULL);
-
-  if (addr != NULL) {
-    release_memory(addr, bytes);
-  }
-
-  return addr != NULL;
-#endif // _LP64
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -307,6 +199,20 @@ size_t os::Posix::default_stack_size(os::ThreadType thr_type) {
 }
 
 static void current_stack_region(address *bottom, size_t *size) {
+  if (os::is_primordial_thread()) {
+    // primordial thread needs special handling because pthread_getattr_np()
+    // may return bogus value.
+    address stack_bottom = os::Linux::initial_thread_stack_bottom();
+    size_t stack_bytes  = os::Linux::initial_thread_stack_size();
+
+    assert(os::current_stack_pointer() >= stack_bottom, "should do");
+    assert(os::current_stack_pointer() < stack_bottom + stack_bytes, "should do");
+
+    *bottom = stack_bottom;
+    *size = stack_bytes;
+    return;
+  }
+
   pthread_attr_t attr;
   int res = pthread_getattr_np(pthread_self(), &attr);
   if (res != 0) {
@@ -355,18 +261,6 @@ static void current_stack_region(address *bottom, size_t *size) {
 
   pthread_attr_destroy(&attr);
 
-  // The initial thread has a growable stack, and the size reported
-  // by pthread_attr_getstack is the maximum size it could possibly
-  // be given what currently mapped.  This can be huge, so we cap it.
-  if (os::is_primordial_thread()) {
-    stack_bytes = stack_top - stack_bottom;
-
-    if (stack_bytes > JavaThread::stack_size_at_create())
-      stack_bytes = JavaThread::stack_size_at_create();
-
-    stack_bottom = stack_top - stack_bytes;
-  }
-
   assert(os::current_stack_pointer() >= stack_bottom, "should do");
   assert(os::current_stack_pointer() < stack_top, "should do");
 
@@ -410,42 +304,42 @@ extern "C" {
   }
 
 
-  void _Copy_conjoint_jshorts_atomic(jshort* from, jshort* to, size_t count) {
+  void _Copy_conjoint_jshorts_atomic(const jshort* from, jshort* to, size_t count) {
     if (from > to) {
-      jshort *end = from + count;
+      const jshort *end = from + count;
       while (from < end)
         *(to++) = *(from++);
     }
     else if (from < to) {
-      jshort *end = from;
+      const jshort *end = from;
       from += count - 1;
       to   += count - 1;
       while (from >= end)
         *(to--) = *(from--);
     }
   }
-  void _Copy_conjoint_jints_atomic(jint* from, jint* to, size_t count) {
+  void _Copy_conjoint_jints_atomic(const jint* from, jint* to, size_t count) {
     if (from > to) {
-      jint *end = from + count;
+      const jint *end = from + count;
       while (from < end)
         *(to++) = *(from++);
     }
     else if (from < to) {
-      jint *end = from;
+      const jint *end = from;
       from += count - 1;
       to   += count - 1;
       while (from >= end)
         *(to--) = *(from--);
     }
   }
-  void _Copy_conjoint_jlongs_atomic(jlong* from, jlong* to, size_t count) {
+  void _Copy_conjoint_jlongs_atomic(const jlong* from, jlong* to, size_t count) {
     if (from > to) {
-      jlong *end = from + count;
+      const jlong *end = from + count;
       while (from < end)
         os::atomic_copy64(from++, to++);
     }
     else if (from < to) {
-      jlong *end = from;
+      const jlong *end = from;
       from += count - 1;
       to   += count - 1;
       while (from >= end)
@@ -453,22 +347,22 @@ extern "C" {
     }
   }
 
-  void _Copy_arrayof_conjoint_bytes(HeapWord* from,
+  void _Copy_arrayof_conjoint_bytes(const HeapWord* from,
                                     HeapWord* to,
                                     size_t    count) {
     memmove(to, from, count);
   }
-  void _Copy_arrayof_conjoint_jshorts(HeapWord* from,
+  void _Copy_arrayof_conjoint_jshorts(const HeapWord* from,
                                       HeapWord* to,
                                       size_t    count) {
     memmove(to, from, count * 2);
   }
-  void _Copy_arrayof_conjoint_jints(HeapWord* from,
+  void _Copy_arrayof_conjoint_jints(const HeapWord* from,
                                     HeapWord* to,
                                     size_t    count) {
     memmove(to, from, count * 4);
   }
-  void _Copy_arrayof_conjoint_jlongs(HeapWord* from,
+  void _Copy_arrayof_conjoint_jlongs(const HeapWord* from,
                                      HeapWord* to,
                                      size_t    count) {
     memmove(to, from, count * 8);
@@ -486,6 +380,7 @@ extern "C" {
     long long unsigned int oldval,
     long long unsigned int newval) {
     ShouldNotCallThis();
+    return 0; // silence compiler warnings
   }
 };
 #endif // !_LP64

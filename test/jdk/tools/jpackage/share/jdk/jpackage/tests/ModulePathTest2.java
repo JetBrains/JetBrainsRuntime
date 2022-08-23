@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,6 @@ package jdk.jpackage.tests;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.stream.Stream;
-import jdk.jpackage.test.Functional.ThrowingSupplier;
 import jdk.jpackage.test.HelloApp;
 import jdk.jpackage.test.JavaAppDesc;
 import jdk.jpackage.test.Annotations.Test;
@@ -40,7 +38,7 @@ import jdk.jpackage.test.TKit;
  * @summary jpackage with --module-path testing
  * @library ../../../../helpers
  * @build jdk.jpackage.test.*
- * @modules jdk.incubator.jpackage/jdk.incubator.jpackage.internal
+ * @modules jdk.jpackage/jdk.jpackage.internal
  * @compile ModulePathTest2.java
  * @run main/othervm/timeout=360 -Xmx512m jdk.jpackage.test.Main
  *  --jpt-run=jdk.jpackage.tests.ModulePathTest2

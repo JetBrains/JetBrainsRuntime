@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
  */
 
 #include "precompiled.hpp"
+#include "compiler/compilationPolicy.hpp"
 #include "compiler/compileTask.hpp"
 #include "compiler/compileLog.hpp"
 #include "compiler/compileBroker.hpp"
@@ -30,12 +31,11 @@
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
 #include "memory/resourceArea.hpp"
+#include "oops/klass.inline.hpp"
 #include "runtime/handles.inline.hpp"
+#include "runtime/jniHandles.hpp"
 
 CompileTask*  CompileTask::_task_free_list = NULL;
-#ifdef ASSERT
-int CompileTask::_num_allocated_tasks = 0;
-#endif
 
 /**
  * Allocate a CompileTask, from the free list if possible.
@@ -50,8 +50,6 @@ CompileTask* CompileTask::allocate() {
     task->set_next(NULL);
   } else {
     task = new CompileTask();
-    DEBUG_ONLY(_num_allocated_tasks++;)
-    assert (WhiteBoxAPI || JVMCI_ONLY(UseJVMCICompiler ||) _num_allocated_tasks < 10000, "Leaking compilation tasks?");
     task->set_next(NULL);
     task->set_is_free(true);
   }
@@ -105,7 +103,7 @@ void CompileTask::initialize(int compile_id,
   _osr_bci = osr_bci;
   _is_blocking = is_blocking;
   JVMCI_ONLY(_has_waiter = CompileBroker::compiler(comp_level)->is_jvmci();)
-  JVMCI_ONLY(_jvmci_compiler_thread = NULL;)
+  JVMCI_ONLY(_blocking_jvmci_compile_state = NULL;)
   _comp_level = comp_level;
   _num_inlined_bytecodes = 0;
 
@@ -242,7 +240,7 @@ void CompileTask::print_impl(outputStream* st, Method* method, int compile_id, i
                              jlong time_queued, jlong time_started) {
   if (!short_form) {
     // Print current time
-    st->print("%7d ", (int)st->time_stamp().milliseconds());
+    st->print("%7d ", (int)tty->time_stamp().milliseconds());
     if (Verbose && time_queued != 0) {
       // Print time in queue and time being processed by compiler thread
       jlong now = os::elapsed_counter();
@@ -344,7 +342,7 @@ void CompileTask::log_task(xmlStream* log) {
   if (_osr_bci != CompileBroker::standard_entry_bci) {
     log->print(" osr_bci='%d'", _osr_bci);
   }
-  if (_comp_level != CompLevel_highest_tier) {
+  if (_comp_level != CompilationPolicy::highest_compile_level()) {
     log->print(" level='%d'", _comp_level);
   }
   if (_is_blocking) {
@@ -393,7 +391,10 @@ void CompileTask::log_task_done(CompileLog* log) {
   if (!_is_success) {
     assert(_failure_reason != NULL, "missing");
     const char* reason = _failure_reason != NULL ? _failure_reason : "unknown";
-    log->elem("failure reason='%s'", reason);
+    log->begin_elem("failure reason='");
+    log->text("%s", reason);
+    log->print("'");
+    log->end_elem();
   }
 
   // <task_done ... stamp='1.234'>  </task>

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,8 +41,7 @@ size_t CardTable::compute_byte_map_size() {
   return align_up(_guard_index + 1, MAX2(_page_size, granularity));
 }
 
-CardTable::CardTable(MemRegion whole_heap, bool conc_scan) :
-  _scanned_concurrently(conc_scan),
+CardTable::CardTable(MemRegion whole_heap) :
   _whole_heap(whole_heap),
   _guard_index(0),
   _last_valid_index(0),
@@ -51,30 +50,19 @@ CardTable::CardTable(MemRegion whole_heap, bool conc_scan) :
   _byte_map(NULL),
   _byte_map_base(NULL),
   _cur_covered_regions(0),
-  _covered(NULL),
-  _committed(NULL),
+  _covered(MemRegion::create_array(_max_covered_regions, mtGC)),
+  _committed(MemRegion::create_array(_max_covered_regions, mtGC)),
   _guard_region()
 {
   assert((uintptr_t(_whole_heap.start())  & (card_size - 1))  == 0, "heap must start at card boundary");
   assert((uintptr_t(_whole_heap.end()) & (card_size - 1))  == 0, "heap must end at card boundary");
 
   assert(card_size <= 512, "card_size must be less than 512"); // why?
-
-  _covered   = new MemRegion[_max_covered_regions];
-  if (_covered == NULL) {
-    vm_exit_during_initialization("Could not allocate card table covered region set.");
-  }
 }
 
 CardTable::~CardTable() {
-  if (_covered) {
-    delete[] _covered;
-    _covered = NULL;
-  }
-  if (_committed) {
-    delete[] _committed;
-    _committed = NULL;
-  }
+  MemRegion::destroy_array(_covered, _max_covered_regions);
+  MemRegion::destroy_array(_committed, _max_covered_regions);
 }
 
 void CardTable::initialize() {
@@ -87,14 +75,10 @@ void CardTable::initialize() {
   HeapWord* high_bound = _whole_heap.end();
 
   _cur_covered_regions = 0;
-  _committed = new MemRegion[_max_covered_regions];
-  if (_committed == NULL) {
-    vm_exit_during_initialization("Could not allocate card table committed region set.");
-  }
 
   const size_t rs_align = _page_size == (size_t) os::vm_page_size() ? 0 :
     MAX2(_page_size, (size_t) os::vm_allocation_granularity());
-  ReservedSpace heap_rs(_byte_map_size, rs_align, false);
+  ReservedSpace heap_rs(_byte_map_size, rs_align, _page_size);
 
   MemTracker::record_virtual_memory_type((address)heap_rs.base(), mtGC);
 
@@ -268,19 +252,12 @@ void CardTable::resize_covered_region(MemRegion new_region) {
         committed_unique_to_self(ind, MemRegion(new_end_aligned,
                                                 cur_committed.end()));
       if (!uncommit_region.is_empty()) {
-        // It is not safe to uncommit cards if the boundary between
-        // the generations is moving.  A shrink can uncommit cards
-        // owned by generation A but being used by generation B.
-        if (!UseAdaptiveGCBoundary) {
-          if (!os::uncommit_memory((char*)uncommit_region.start(),
-                                   uncommit_region.byte_size())) {
-            assert(false, "Card table contraction failed");
-            // The call failed so don't change the end of the
-            // committed region.  This is better than taking the
-            // VM down.
-            new_end_aligned = _committed[ind].end();
-          }
-        } else {
+        if (!os::uncommit_memory((char*)uncommit_region.start(),
+                                 uncommit_region.byte_size())) {
+          assert(false, "Card table contraction failed");
+          // The call failed so don't change the end of the
+          // committed region.  This is better than taking the
+          // VM down.
           new_end_aligned = _committed[ind].end();
         }
       }

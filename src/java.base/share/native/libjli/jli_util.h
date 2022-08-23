@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -93,8 +93,6 @@ int JLI_Open(const char* name, int flags);
 JNIEXPORT void JNICALL
 JLI_CmdToArgs(char *cmdline);
 #define JLI_Lseek                       _lseeki64
-#define JLI_PutEnv                      _putenv
-#define JLI_GetPid                      _getpid
 #else  /* NIXES */
 #include <unistd.h>
 #include <strings.h>
@@ -102,11 +100,6 @@ JLI_CmdToArgs(char *cmdline);
 #define JLI_StrNCaseCmp(p1, p2, p3)     strncasecmp((p1), (p2), (p3))
 #define JLI_Snprintf                    snprintf
 #define JLI_Open                        open
-#define JLI_PutEnv                      putenv
-#define JLI_GetPid                      getpid
-#ifdef __solaris__
-#define JLI_Lseek                       llseek
-#endif
 #ifdef __linux__
 #define _LARGFILE64_SOURCE
 #define JLI_Lseek                       lseek64

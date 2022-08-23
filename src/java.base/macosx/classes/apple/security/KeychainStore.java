@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,7 +53,7 @@ public final class KeychainStore extends KeyStoreSpi {
     // If a key came from the keychain it has a SecKeyRef and one or more
     // SecCertificateRef.  When we delete the key we have to delete all of the corresponding
     // native objects.
-    class KeyEntry {
+    static class KeyEntry {
         Date date; // the creation date of this entry
         byte[] protectedPrivKey;
         char[] password;
@@ -63,11 +63,30 @@ public final class KeychainStore extends KeyStoreSpi {
     };
 
     // Trusted certificates
-    class TrustedCertEntry {
+    static class TrustedCertEntry {
         Date date; // the creation date of this entry
 
         Certificate cert;
         long certRef;  // SecCertificateRef for this key
+
+        // Each KeyStore.TrustedCertificateEntry have 2 attributes:
+        // 1. "trustSettings" -> trustSettings.toString()
+        // 2. "2.16.840.1.113894.746875.1.1" -> trustedKeyUsageValue
+        // The 1st one is mainly for debugging use. The 2nd one is similar
+        // to the attribute with the same key in a PKCS12KeyStore.
+
+        // The SecTrustSettingsCopyTrustSettings() output for this certificate
+        // inside the KeyChain in its original array of CFDictionaryRef objects
+        // structure with values dumped as strings. For each trust, an extra
+        // entry "SecPolicyOid" is added whose value is the OID for this trust.
+        // The extra entries are used to construct trustedKeyUsageValue.
+        List<Map<String, String>> trustSettings;
+
+        // One or more OIDs defined in http://oidref.com/1.2.840.113635.100.1.
+        // It can also be "2.5.29.37.0" for a self-signed certificate with
+        // an empty trust settings. This value is never empty. When there are
+        // multiple OID values, it takes the form of "[1.1.1, 1.1.2]".
+        String trustedKeyUsageValue;
     };
 
     /**
@@ -89,12 +108,13 @@ public final class KeychainStore extends KeyStoreSpi {
     private Hashtable<String, Object> entries = new Hashtable<>();
 
     /**
-     * Algorithm identifiers and corresponding OIDs for the contents of the PKCS12 bag we get from the Keychain.
+     * Algorithm identifiers and corresponding OIDs for the contents of the
+     * PKCS12 bag we get from the Keychain.
      */
-    private static final int keyBag[]  = {1, 2, 840, 113549, 1, 12, 10, 1, 2};
-    private static final int pbeWithSHAAnd3KeyTripleDESCBC[] =     {1, 2, 840, 113549, 1, 12, 1, 3};
-    private static ObjectIdentifier PKCS8ShroudedKeyBag_OID;
-    private static ObjectIdentifier pbeWithSHAAnd3KeyTripleDESCBC_OID;
+    private static ObjectIdentifier PKCS8ShroudedKeyBag_OID =
+            ObjectIdentifier.of(KnownOIDs.PKCS8ShroudedKeyBag);
+    private static ObjectIdentifier pbeWithSHAAnd3KeyTripleDESCBC_OID =
+            ObjectIdentifier.of(KnownOIDs.PBEWithSHA1AndDESede);
 
     /**
      * Constnats used in PBE decryption.
@@ -106,15 +126,10 @@ public final class KeychainStore extends KeyStoreSpi {
 
     static {
         jdk.internal.loader.BootLoader.loadLibrary("osxsecurity");
-        try {
-            PKCS8ShroudedKeyBag_OID = new ObjectIdentifier(keyBag);
-            pbeWithSHAAnd3KeyTripleDESCBC_OID = new ObjectIdentifier(pbeWithSHAAnd3KeyTripleDESCBC);
-        } catch (IOException ioe) {
-            // should not happen
-        }
     }
 
     private static void permissionCheck() {
+        @SuppressWarnings("removal")
         SecurityManager sec = System.getSecurityManager();
 
         if (sec != null) {
@@ -132,7 +147,7 @@ public final class KeychainStore extends KeyStoreSpi {
     public KeychainStore() { }
 
     /**
-        * Returns the key associated with the given alias, using the given
+     * Returns the key associated with the given alias, using the given
      * password to recover it.
      *
      * @param alias the alias name
@@ -220,6 +235,9 @@ public final class KeychainStore extends KeyStoreSpi {
 
             // Get the Algorithm ID next
             DerValue[] value = in.getSequence(2);
+            if (value.length < 1 || value.length > 2) {
+                throw new IOException("Invalid length for AlgorithmIdentifier");
+            }
             AlgorithmId algId = new AlgorithmId(value[0].getOID());
             String algName = algId.getName();
 
@@ -245,10 +263,10 @@ public final class KeychainStore extends KeyStoreSpi {
      * @param alias the alias name
      *
      * @return the certificate chain (ordered with the user's certificate first
-                                      * and the root certificate authority last), or null if the given alias
+     * and the root certificate authority last), or null if the given alias
      * does not exist or does not contain a certificate chain (i.e., the given
-                                                               * alias identifies either a <i>trusted certificate entry</i> or a
-                                                               * <i>key entry</i> without a certificate chain).
+     * alias identifies either a <i>trusted certificate entry</i> or a
+     * <i>key entry</i> without a certificate chain).
      */
     public Certificate[] engineGetCertificateChain(String alias) {
         permissionCheck();
@@ -301,8 +319,37 @@ public final class KeychainStore extends KeyStoreSpi {
         }
     }
 
+    private record LocalAttr(String name, String value)
+            implements KeyStore.Entry.Attribute {
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+    }
+
+    @Override
+    public KeyStore.Entry engineGetEntry(String alias, KeyStore.ProtectionParameter protParam)
+            throws KeyStoreException, NoSuchAlgorithmException, UnrecoverableEntryException {
+        if (engineIsCertificateEntry(alias)) {
+            Object entry = entries.get(alias.toLowerCase());
+            if (entry instanceof TrustedCertEntry tEntry) {
+                return new KeyStore.TrustedCertificateEntry(
+                        tEntry.cert, Set.of(
+                                new LocalAttr(KnownOIDs.ORACLE_TrustedKeyUsage.value(), tEntry.trustedKeyUsageValue),
+                                new LocalAttr("trustSettings", tEntry.trustSettings.toString())));
+            }
+        }
+        return super.engineGetEntry(alias, protParam);
+    }
+
     /**
-        * Returns the creation date of the entry identified by the given alias.
+     * Returns the creation date of the entry identified by the given alias.
      *
      * @param alias the alias name
      *
@@ -326,7 +373,7 @@ public final class KeychainStore extends KeyStoreSpi {
     }
 
     /**
-        * Assigns the given key to the given alias, protecting it with the given
+     * Assigns the given key to the given alias, protecting it with the given
      * password.
      *
      * <p>If the given key is of type <code>java.security.PrivateKey</code>,
@@ -335,14 +382,14 @@ public final class KeychainStore extends KeyStoreSpi {
      *
      * <p>If the given alias already exists, the keystore information
      * associated with it is overridden by the given key (and possibly
-                                                          * certificate chain).
+     * certificate chain).
      *
      * @param alias the alias name
      * @param key the key to be associated with the alias
      * @param password the password to protect the key
      * @param chain the certificate chain for the corresponding public
      * key (only required if the given key is of type
-            * <code>java.security.PrivateKey</code>).
+     * <code>java.security.PrivateKey</code>).
      *
      * @exception KeyStoreException if the given key cannot be protected, or
      * this operation fails for some other reason
@@ -396,7 +443,7 @@ public final class KeychainStore extends KeyStoreSpi {
     }
 
     /**
-        * Assigns the given key (that has already been protected) to the given
+     * Assigns the given key (that has already been protected) to the given
      * alias.
      *
      * <p>If the protected key is of type
@@ -408,13 +455,13 @@ public final class KeychainStore extends KeyStoreSpi {
      *
      * <p>If the given alias already exists, the keystore information
      * associated with it is overridden by the given key (and possibly
-                                                          * certificate chain).
+     * certificate chain).
      *
      * @param alias the alias name
      * @param key the key (in protected format) to be associated with the alias
      * @param chain the certificate chain for the corresponding public
      * key (only useful if the protected key is of type
-            * <code>java.security.PrivateKey</code>).
+     * <code>java.security.PrivateKey</code>).
      *
      * @exception KeyStoreException if this operation fails.
      */
@@ -454,59 +501,16 @@ public final class KeychainStore extends KeyStoreSpi {
     }
 
     /**
-        * Assigns the given certificate to the given alias.
-     *
-     * <p>If the given alias already exists in this keystore and identifies a
-     * <i>trusted certificate entry</i>, the certificate associated with it is
-     * overridden by the given certificate.
-     *
-     * @param alias the alias name
-     * @param cert the certificate
-     *
-     * @exception KeyStoreException if the given alias already exists and does
-     * not identify a <i>trusted certificate entry</i>, or this operation
-     * fails for some other reason.
+     * Adding trusted certificate entry is not supported.
      */
     public void engineSetCertificateEntry(String alias, Certificate cert)
-        throws KeyStoreException
-    {
-        permissionCheck();
-
-        synchronized(entries) {
-
-            Object entry = entries.get(alias.toLowerCase());
-            if ((entry != null) && (entry instanceof KeyEntry)) {
-                throw new KeyStoreException
-                ("Cannot overwrite key entry with certificate");
-            }
-
-            // This will be slow, but necessary.  Enumerate the values and then see if the cert matches the one in the trusted cert entry.
-            // Security framework doesn't support the same certificate twice in a keychain.
-            Collection<Object> allValues = entries.values();
-
-            for (Object value : allValues) {
-                if (value instanceof TrustedCertEntry) {
-                    TrustedCertEntry tce = (TrustedCertEntry)value;
-                    if (tce.cert.equals(cert)) {
-                        throw new KeyStoreException("Keychain does not support mulitple copies of same certificate.");
-                    }
-                }
-            }
-
-            TrustedCertEntry trustedCertEntry = new TrustedCertEntry();
-            trustedCertEntry.cert = cert;
-            trustedCertEntry.date = new Date();
-            String lowerAlias = alias.toLowerCase();
-            if (entries.get(lowerAlias) != null) {
-                deletedEntries.put(lowerAlias, entries.get(lowerAlias));
-            }
-            entries.put(lowerAlias, trustedCertEntry);
-            addedEntries.put(lowerAlias, trustedCertEntry);
-        }
+            throws KeyStoreException {
+        throw new KeyStoreException("Cannot set trusted certificate entry." +
+                " Use the macOS \"security add-trusted-cert\" command instead.");
     }
 
     /**
-        * Deletes the entry identified by the given alias from this keystore.
+     * Deletes the entry identified by the given alias from this keystore.
      *
      * @param alias the alias name
      *
@@ -524,7 +528,7 @@ public final class KeychainStore extends KeyStoreSpi {
     }
 
     /**
-        * Lists all the alias names of this keystore.
+     * Lists all the alias names of this keystore.
      *
      * @return enumeration of the alias names
      */
@@ -534,7 +538,7 @@ public final class KeychainStore extends KeyStoreSpi {
     }
 
     /**
-        * Checks if the given alias exists in this keystore.
+     * Checks if the given alias exists in this keystore.
      *
      * @param alias the alias name
      *
@@ -546,7 +550,7 @@ public final class KeychainStore extends KeyStoreSpi {
     }
 
     /**
-        * Retrieves the number of entries in this keystore.
+     * Retrieves the number of entries in this keystore.
      *
      * @return the number of entries in this keystore
      */
@@ -556,7 +560,7 @@ public final class KeychainStore extends KeyStoreSpi {
     }
 
     /**
-        * Returns true if the entry identified by the given alias is a
+     * Returns true if the entry identified by the given alias is a
      * <i>key entry</i>, and false otherwise.
      *
      * @return true if the entry identified by the given alias is a
@@ -573,7 +577,7 @@ public final class KeychainStore extends KeyStoreSpi {
     }
 
     /**
-        * Returns true if the entry identified by the given alias is a
+     * Returns true if the entry identified by the given alias is a
      * <i>trusted certificate entry</i>, and false otherwise.
      *
      * @return true if the entry identified by the given alias is a
@@ -590,7 +594,7 @@ public final class KeychainStore extends KeyStoreSpi {
     }
 
     /**
-        * Returns the (alias) name of the first keystore entry whose certificate
+     * Returns the (alias) name of the first keystore entry whose certificate
      * matches the given certificate.
      *
      * <p>This method attempts to match the given certificate with each
@@ -629,7 +633,7 @@ public final class KeychainStore extends KeyStoreSpi {
     }
 
     /**
-        * Stores this keystore to the given output stream, and protects its
+     * Stores this keystore to the given output stream, and protects its
      * integrity with the given password.
      *
      * @param stream Ignored. the output stream to which this keystore is written.
@@ -681,10 +685,7 @@ public final class KeychainStore extends KeyStoreSpi {
             String alias = e.nextElement();
             Object entry = addedEntries.get(alias);
             if (entry instanceof TrustedCertEntry) {
-                TrustedCertEntry tce = (TrustedCertEntry)entry;
-                Certificate certElem;
-                certElem = tce.cert;
-                tce.certRef = addCertificateToKeychain(alias, certElem);
+                // Cannot set trusted certificate entry
             } else {
                 KeyEntry keyEntry = (KeyEntry)entry;
 
@@ -723,7 +724,7 @@ public final class KeychainStore extends KeyStoreSpi {
     private native void _releaseKeychainItemRef(long keychainItemRef);
 
     /**
-      * Loads the keystore from the Keychain.
+     * Loads the keystore from the Keychain.
      *
      * @param stream Ignored - here for API compatibility.
      * @param password Ignored - if user needs to unlock keychain Security
@@ -779,9 +780,28 @@ public final class KeychainStore extends KeyStoreSpi {
     private native void _scanKeychain();
 
     /**
-     * Callback method from _scanKeychain.  If a trusted certificate is found, this method will be called.
+     * Callback method from _scanKeychain.  If a trusted certificate is found,
+     * this method will be called.
+     *
+     * inputTrust is a list of strings in groups. Each group contains key/value
+     * pairs for one trust setting and ends with a null. Thus the size of the
+     * whole list is (2 * s_1 + 1) + (2 * s_2 + 1) + ... + (2 * s_n + 1),
+     * where s_i is the size of mapping for the i'th trust setting,
+     * and n is the number of trust settings. Ex:
+     *
+     * key1 for trust1
+     * value1 for trust1
+     * ..
+     * null (end of trust1)
+     * key1 for trust2
+     * value1 for trust2
+     * ...
+     * null (end of trust2)
+     * ...
+     * null (end if trust_n)
      */
-    private void createTrustedCertEntry(String alias, long keychainItemRef, long creationDate, byte[] derStream) {
+    private void createTrustedCertEntry(String alias, List<String> inputTrust,
+            long keychainItemRef, long creationDate, byte[] derStream) {
         TrustedCertEntry tce = new TrustedCertEntry();
 
         try {
@@ -792,6 +812,69 @@ public final class KeychainStore extends KeyStoreSpi {
             tce.cert = cert;
             tce.certRef = keychainItemRef;
 
+            tce.trustSettings = new ArrayList<>();
+            Map<String,String> tmpMap = new LinkedHashMap<>();
+            for (int i = 0; i < inputTrust.size(); i++) {
+                if (inputTrust.get(i) == null) {
+                    tce.trustSettings.add(tmpMap);
+                    if (i < inputTrust.size() - 1) {
+                        // Prepare an empty map for the next trust setting.
+                        // Do not just clear(), must be a new object.
+                        // Only create if not at end of list.
+                        tmpMap = new LinkedHashMap<>();
+                    }
+                } else {
+                    tmpMap.put(inputTrust.get(i), inputTrust.get(i+1));
+                    i++;
+                }
+            }
+
+            boolean isSelfSigned;
+            try {
+                cert.verify(cert.getPublicKey());
+                isSelfSigned = true;
+            } catch (Exception e) {
+                isSelfSigned = false;
+            }
+            if (tce.trustSettings.isEmpty()) {
+                if (isSelfSigned) {
+                    // If a self-signed certificate has an empty trust settings,
+                    // trust it for all purposes
+                    tce.trustedKeyUsageValue = KnownOIDs.anyExtendedKeyUsage.value();
+                } else {
+                    // Otherwise, return immediately. The certificate is not
+                    // added into entries.
+                    return;
+                }
+            } else {
+                List<String> values = new ArrayList<>();
+                for (var oneTrust : tce.trustSettings) {
+                    var result = oneTrust.get("kSecTrustSettingsResult");
+                    // https://developer.apple.com/documentation/security/sectrustsettingsresult?language=objc
+                    // 1 = kSecTrustSettingsResultTrustRoot, 2 = kSecTrustSettingsResultTrustAsRoot
+                    // If missing, a default value of kSecTrustSettingsResultTrustRoot is assumed
+                    // for self-signed certificates (see doc for SecTrustSettingsCopyTrustSettings).
+                    // Note that the same SecPolicyOid can appear in multiple trust settings
+                    // for different kSecTrustSettingsAllowedError and/or kSecTrustSettingsPolicyString.
+                    if ((result == null && isSelfSigned)
+                            || "1".equals(result) || "2".equals(result)) {
+                        // When no kSecTrustSettingsPolicy, it means everything
+                        String oid = oneTrust.getOrDefault("SecPolicyOid",
+                                KnownOIDs.anyExtendedKeyUsage.value());
+                        if (!values.contains(oid)) {
+                            values.add(oid);
+                        }
+                    }
+                }
+                if (values.isEmpty()) {
+                    return;
+                }
+                if (values.size() == 1) {
+                    tce.trustedKeyUsageValue = values.get(0);
+                } else {
+                    tce.trustedKeyUsageValue = values.toString();
+                }
+            }
             // Make a creation date.
             if (creationDate != 0)
                 tce.date = new Date(creationDate);
@@ -817,8 +900,8 @@ public final class KeychainStore extends KeyStoreSpi {
      * Callback method from _scanKeychain.  If an identity is found, this method will be called to create Java certificate
      * and private key objects from the keychain data.
      */
-    private void createKeyEntry(String alias, long creationDate, long secKeyRef, long[] secCertificateRefs, byte[][] rawCertData)
-        throws IOException, NoSuchAlgorithmException, UnrecoverableKeyException {
+    private void createKeyEntry(String alias, long creationDate, long secKeyRef,
+                                long[] secCertificateRefs, byte[][] rawCertData) {
         KeyEntry ke = new KeyEntry();
 
         // First, store off the private key information.  This is the easy part.
@@ -885,7 +968,7 @@ public final class KeychainStore extends KeyStoreSpi {
         entries.put(alias.toLowerCase(), ke);
     }
 
-    private class CertKeychainItemPair {
+    private static class CertKeychainItemPair {
         long mCertificateRef;
         Certificate mCert;
 
@@ -923,7 +1006,7 @@ public final class KeychainStore extends KeyStoreSpi {
         }
 
         /*
-            * Read the authSafe.
+         * Read the authSafe.
          */
         byte[] authSafeData;
         ContentInfo authSafe = new ContentInfo(s);
@@ -1008,7 +1091,7 @@ public final class KeychainStore extends KeyStoreSpi {
     }
 
     /*
-        * Generate PBE Algorithm Parameters
+     * Generate PBE Algorithm Parameters
      */
     private AlgorithmParameters getAlgorithmParameters(String algorithm)
         throws IOException

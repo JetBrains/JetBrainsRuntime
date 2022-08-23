@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012, 2019 SAP SE. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@
 #include "asm/macroAssembler.inline.hpp"
 #include "compiler/disassembler.hpp"
 #include "memory/resourceArea.hpp"
+#include "runtime/globals_extension.hpp"
 #include "runtime/java.hpp"
 #include "runtime/os.hpp"
 #include "runtime/stubCodeGenerator.hpp"
@@ -36,6 +37,7 @@
 #include "utilities/align.hpp"
 #include "utilities/defaultStream.hpp"
 #include "utilities/globalDefinitions.hpp"
+#include "utilities/powerOfTwo.hpp"
 
 #include <sys/sysinfo.h>
 #if defined(_AIX)
@@ -66,7 +68,9 @@ void VM_Version::initialize() {
 
   // If PowerArchitecturePPC64 hasn't been specified explicitly determine from features.
   if (FLAG_IS_DEFAULT(PowerArchitecturePPC64)) {
-    if (VM_Version::has_darn()) {
+    if (VM_Version::has_brw()) {
+      FLAG_SET_ERGO(PowerArchitecturePPC64, 10);
+    } else if (VM_Version::has_darn()) {
       FLAG_SET_ERGO(PowerArchitecturePPC64, 9);
     } else if (VM_Version::has_lqarx()) {
       FLAG_SET_ERGO(PowerArchitecturePPC64, 8);
@@ -83,12 +87,13 @@ void VM_Version::initialize() {
 
   bool PowerArchitecturePPC64_ok = false;
   switch (PowerArchitecturePPC64) {
-    case 9: if (!VM_Version::has_darn()   ) break;
-    case 8: if (!VM_Version::has_lqarx()  ) break;
-    case 7: if (!VM_Version::has_popcntw()) break;
-    case 6: if (!VM_Version::has_cmpb()   ) break;
-    case 5: if (!VM_Version::has_popcntb()) break;
-    case 0: PowerArchitecturePPC64_ok = true; break;
+    case 10: if (!VM_Version::has_brw()    ) break;
+    case  9: if (!VM_Version::has_darn()   ) break;
+    case  8: if (!VM_Version::has_lqarx()  ) break;
+    case  7: if (!VM_Version::has_popcntw()) break;
+    case  6: if (!VM_Version::has_cmpb()   ) break;
+    case  5: if (!VM_Version::has_popcntb()) break;
+    case  0: PowerArchitecturePPC64_ok = true; break;
     default: break;
   }
   guarantee(PowerArchitecturePPC64_ok, "PowerArchitecturePPC64 cannot be set to "
@@ -101,9 +106,7 @@ void VM_Version::initialize() {
 
   if (!UseSIGTRAP) {
     MSG(TrapBasedICMissChecks);
-    MSG(TrapBasedNotEntrantChecks);
     MSG(TrapBasedNullChecks);
-    FLAG_SET_ERGO(TrapBasedNotEntrantChecks, false);
     FLAG_SET_ERGO(TrapBasedNullChecks,       false);
     FLAG_SET_ERGO(TrapBasedICMissChecks,     false);
   }
@@ -112,13 +115,6 @@ void VM_Version::initialize() {
   if (!UseSIGTRAP) {
     MSG(TrapBasedRangeChecks);
     FLAG_SET_ERGO(TrapBasedRangeChecks, false);
-  }
-
-  // On Power6 test for section size.
-  if (PowerArchitecturePPC64 == 6) {
-    determine_section_size();
-  // TODO: PPC port } else {
-  // TODO: PPC port PdScheduling::power6SectorSize = 0x20;
   }
 
   if (PowerArchitecturePPC64 >= 8) {
@@ -140,6 +136,17 @@ void VM_Version::initialize() {
     if (FLAG_IS_DEFAULT(UseCharacterCompareIntrinsics)) {
       FLAG_SET_ERGO(UseCharacterCompareIntrinsics, true);
     }
+    if (SuperwordUseVSX) {
+      if (FLAG_IS_DEFAULT(UseVectorByteReverseInstructionsPPC64)) {
+        FLAG_SET_ERGO(UseVectorByteReverseInstructionsPPC64, true);
+      }
+    } else if (UseVectorByteReverseInstructionsPPC64) {
+      warning("UseVectorByteReverseInstructionsPPC64 specified, but needs SuperwordUseVSX.");
+      FLAG_SET_DEFAULT(UseVectorByteReverseInstructionsPPC64, false);
+    }
+    if (FLAG_IS_DEFAULT(UseBASE64Intrinsics)) {
+      FLAG_SET_ERGO(UseBASE64Intrinsics, true);
+    }
   } else {
     if (UseCountTrailingZerosInstructionsPPC64) {
       warning("UseCountTrailingZerosInstructionsPPC64 specified, but needs at least Power9.");
@@ -149,13 +156,32 @@ void VM_Version::initialize() {
       warning("UseCharacterCompareIntrinsics specified, but needs at least Power9.");
       FLAG_SET_DEFAULT(UseCharacterCompareIntrinsics, false);
     }
+    if (UseVectorByteReverseInstructionsPPC64) {
+      warning("UseVectorByteReverseInstructionsPPC64 specified, but needs at least Power9.");
+      FLAG_SET_DEFAULT(UseVectorByteReverseInstructionsPPC64, false);
+    }
+    if (UseBASE64Intrinsics) {
+      warning("UseBASE64Intrinsics specified, but needs at least Power9.");
+      FLAG_SET_DEFAULT(UseBASE64Intrinsics, false);
+    }
+  }
+
+  if (PowerArchitecturePPC64 >= 10) {
+    if (FLAG_IS_DEFAULT(UseByteReverseInstructions)) {
+        FLAG_SET_ERGO(UseByteReverseInstructions, true);
+    }
+  } else {
+    if (UseByteReverseInstructions) {
+      warning("UseByteReverseInstructions specified, but needs at least Power10.");
+      FLAG_SET_DEFAULT(UseByteReverseInstructions, false);
+    }
   }
 #endif
 
   // Create and print feature-string.
   char buf[(num_features+1) * 16]; // Max 16 chars per feature.
   jio_snprintf(buf, sizeof(buf),
-               "ppc64%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+               "ppc64%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
                (has_fsqrt()   ? " fsqrt"   : ""),
                (has_isel()    ? " isel"    : ""),
                (has_lxarxeh() ? " lxarxeh" : ""),
@@ -173,7 +199,8 @@ void VM_Version::initialize() {
                (has_stdbrx()  ? " stdbrx"  : ""),
                (has_vshasig() ? " sha"     : ""),
                (has_tm()      ? " rtm"     : ""),
-               (has_darn()    ? " darn"    : "")
+               (has_darn()    ? " darn"    : ""),
+               (has_brw()     ? " brw"     : "")
                // Make sure number of %s matches num_features!
               );
   _features_string = os::strdup(buf);
@@ -191,8 +218,6 @@ void VM_Version::initialize() {
   _supports_atomic_getset8 = true;
   _supports_atomic_getadd8 = true;
 
-  UseSSE = 0; // Only on x86 and x64
-
   intx cache_line_size = L1_data_cache_line_size();
 
   if (PowerArchitecturePPC64 >= 9) {
@@ -203,15 +228,10 @@ void VM_Version::initialize() {
 
   if (FLAG_IS_DEFAULT(AllocatePrefetchStyle)) AllocatePrefetchStyle = 1;
 
-  if (AllocatePrefetchStyle == 4) {
-    AllocatePrefetchStepSize = cache_line_size; // Need exact value.
-    if (FLAG_IS_DEFAULT(AllocatePrefetchLines)) AllocatePrefetchLines = 12; // Use larger blocks by default.
-    if (AllocatePrefetchDistance < 0) AllocatePrefetchDistance = 2*cache_line_size; // Default is not defined?
-  } else {
-    if (cache_line_size > AllocatePrefetchStepSize) AllocatePrefetchStepSize = cache_line_size;
-    if (FLAG_IS_DEFAULT(AllocatePrefetchLines)) AllocatePrefetchLines = 3; // Optimistic value.
-    if (AllocatePrefetchDistance < 0) AllocatePrefetchDistance = 3*cache_line_size; // Default is not defined?
-  }
+  if (cache_line_size > AllocatePrefetchStepSize) AllocatePrefetchStepSize = cache_line_size;
+  // PPC processors have an automatic prefetch engine.
+  if (FLAG_IS_DEFAULT(AllocatePrefetchLines)) AllocatePrefetchLines = 1;
+  if (AllocatePrefetchDistance < 0) AllocatePrefetchDistance = 3 * cache_line_size;
 
   assert(AllocatePrefetchLines > 0, "invalid value");
   if (AllocatePrefetchLines < 1) { // Set valid value in product VM.
@@ -223,6 +243,10 @@ void VM_Version::initialize() {
   }
 
   assert(AllocatePrefetchStyle >= 0, "AllocatePrefetchStyle should be positive");
+
+  if (FLAG_IS_DEFAULT(ContendedPaddingWidth) && (cache_line_size > ContendedPaddingWidth)) {
+    ContendedPaddingWidth = cache_line_size;
+  }
 
   // If running on Power8 or newer hardware, the implementation uses the available vector instructions.
   // In all other cases, the implementation uses only generally available instructions.
@@ -281,6 +305,11 @@ void VM_Version::initialize() {
     FLAG_SET_DEFAULT(UseFMA, true);
   }
 
+  if (UseMD5Intrinsics) {
+    warning("MD5 intrinsics are not available on this CPU");
+    FLAG_SET_DEFAULT(UseMD5Intrinsics, false);
+  }
+
   if (has_vshasig()) {
     if (FLAG_IS_DEFAULT(UseSHA)) {
       UseSHA = true;
@@ -312,6 +341,11 @@ void VM_Version::initialize() {
   } else if (UseSHA512Intrinsics) {
     warning("Intrinsics for SHA-384 and SHA-512 crypto hash functions not available on this CPU.");
     FLAG_SET_DEFAULT(UseSHA512Intrinsics, false);
+  }
+
+  if (UseSHA3Intrinsics) {
+    warning("Intrinsics for SHA3-224, SHA3-256, SHA3-384 and SHA3-512 crypto hash functions not available on this CPU.");
+    FLAG_SET_DEFAULT(UseSHA3Intrinsics, false);
   }
 
   if (!(UseSHA1Intrinsics || UseSHA256Intrinsics || UseSHA512Intrinsics)) {
@@ -356,9 +390,7 @@ void VM_Version::initialize() {
     if (!has_tm()) {
       vm_exit_during_initialization("RTM is not supported on this OS version.");
     }
-  }
 
-  if (UseRTMLocking) {
 #if INCLUDE_RTM_OPT
     if (!FLAG_IS_CMDLINE(UseRTMLocking)) {
       // RTM locking should be used only for applications with
@@ -535,241 +567,14 @@ bool VM_Version::use_biased_locking() {
 
 void VM_Version::print_features() {
   tty->print_cr("Version: %s L1_data_cache_line_size=%d", features_string(), L1_data_cache_line_size());
-}
 
-#ifdef COMPILER2
-// Determine section size on power6: If section size is 8 instructions,
-// there should be a difference between the two testloops of ~15 %. If
-// no difference is detected the section is assumed to be 32 instructions.
-void VM_Version::determine_section_size() {
-
-  int unroll = 80;
-
-  const int code_size = (2* unroll * 32 + 100)*BytesPerInstWord;
-
-  // Allocate space for the code.
-  ResourceMark rm;
-  CodeBuffer cb("detect_section_size", code_size, 0);
-  MacroAssembler* a = new MacroAssembler(&cb);
-
-  uint32_t *code = (uint32_t *)a->pc();
-  // Emit code.
-  void (*test1)() = (void(*)())(void *)a->function_entry();
-
-  Label l1;
-
-  a->li(R4, 1);
-  a->sldi(R4, R4, 28);
-  a->b(l1);
-  a->align(CodeEntryAlignment);
-
-  a->bind(l1);
-
-  for (int i = 0; i < unroll; i++) {
-    // Schleife 1
-    // ------- sector 0 ------------
-    // ;; 0
-    a->nop();                   // 1
-    a->fpnop0();                // 2
-    a->fpnop1();                // 3
-    a->addi(R4,R4, -1); // 4
-
-    // ;;  1
-    a->nop();                   // 5
-    a->fmr(F6, F6);             // 6
-    a->fmr(F7, F7);             // 7
-    a->endgroup();              // 8
-    // ------- sector 8 ------------
-
-    // ;;  2
-    a->nop();                   // 9
-    a->nop();                   // 10
-    a->fmr(F8, F8);             // 11
-    a->fmr(F9, F9);             // 12
-
-    // ;;  3
-    a->nop();                   // 13
-    a->fmr(F10, F10);           // 14
-    a->fmr(F11, F11);           // 15
-    a->endgroup();              // 16
-    // -------- sector 16 -------------
-
-    // ;;  4
-    a->nop();                   // 17
-    a->nop();                   // 18
-    a->fmr(F15, F15);           // 19
-    a->fmr(F16, F16);           // 20
-
-    // ;;  5
-    a->nop();                   // 21
-    a->fmr(F17, F17);           // 22
-    a->fmr(F18, F18);           // 23
-    a->endgroup();              // 24
-    // ------- sector 24  ------------
-
-    // ;;  6
-    a->nop();                   // 25
-    a->nop();                   // 26
-    a->fmr(F19, F19);           // 27
-    a->fmr(F20, F20);           // 28
-
-    // ;;  7
-    a->nop();                   // 29
-    a->fmr(F21, F21);           // 30
-    a->fmr(F22, F22);           // 31
-    a->brnop0();                // 32
-
-    // ------- sector 32 ------------
-  }
-
-  // ;; 8
-  a->cmpdi(CCR0, R4, unroll);   // 33
-  a->bge(CCR0, l1);             // 34
-  a->blr();
-
-  // Emit code.
-  void (*test2)() = (void(*)())(void *)a->function_entry();
-  // uint32_t *code = (uint32_t *)a->pc();
-
-  Label l2;
-
-  a->li(R4, 1);
-  a->sldi(R4, R4, 28);
-  a->b(l2);
-  a->align(CodeEntryAlignment);
-
-  a->bind(l2);
-
-  for (int i = 0; i < unroll; i++) {
-    // Schleife 2
-    // ------- sector 0 ------------
-    // ;; 0
-    a->brnop0();                  // 1
-    a->nop();                     // 2
-    //a->cmpdi(CCR0, R4, unroll);
-    a->fpnop0();                  // 3
-    a->fpnop1();                  // 4
-    a->addi(R4,R4, -1);           // 5
-
-    // ;; 1
-
-    a->nop();                     // 6
-    a->fmr(F6, F6);               // 7
-    a->fmr(F7, F7);               // 8
-    // ------- sector 8 ---------------
-
-    // ;; 2
-    a->endgroup();                // 9
-
-    // ;; 3
-    a->nop();                     // 10
-    a->nop();                     // 11
-    a->fmr(F8, F8);               // 12
-
-    // ;; 4
-    a->fmr(F9, F9);               // 13
-    a->nop();                     // 14
-    a->fmr(F10, F10);             // 15
-
-    // ;; 5
-    a->fmr(F11, F11);             // 16
-    // -------- sector 16 -------------
-
-    // ;; 6
-    a->endgroup();                // 17
-
-    // ;; 7
-    a->nop();                     // 18
-    a->nop();                     // 19
-    a->fmr(F15, F15);             // 20
-
-    // ;; 8
-    a->fmr(F16, F16);             // 21
-    a->nop();                     // 22
-    a->fmr(F17, F17);             // 23
-
-    // ;; 9
-    a->fmr(F18, F18);             // 24
-    // -------- sector 24 -------------
-
-    // ;; 10
-    a->endgroup();                // 25
-
-    // ;; 11
-    a->nop();                     // 26
-    a->nop();                     // 27
-    a->fmr(F19, F19);             // 28
-
-    // ;; 12
-    a->fmr(F20, F20);             // 29
-    a->nop();                     // 30
-    a->fmr(F21, F21);             // 31
-
-    // ;; 13
-    a->fmr(F22, F22);             // 32
-  }
-
-  // -------- sector 32 -------------
-  // ;; 14
-  a->cmpdi(CCR0, R4, unroll); // 33
-  a->bge(CCR0, l2);           // 34
-
-  a->blr();
-  uint32_t *code_end = (uint32_t *)a->pc();
-  a->flush();
-
-  cb.insts()->set_end((u_char*)code_end);
-
-  double loop1_seconds,loop2_seconds, rel_diff;
-  uint64_t start1, stop1;
-
-  start1 = os::current_thread_cpu_time(false);
-  (*test1)();
-  stop1 = os::current_thread_cpu_time(false);
-  loop1_seconds = (stop1- start1) / (1000 *1000 *1000.0);
-
-
-  start1 = os::current_thread_cpu_time(false);
-  (*test2)();
-  stop1 = os::current_thread_cpu_time(false);
-
-  loop2_seconds = (stop1 - start1) / (1000 *1000 *1000.0);
-
-  rel_diff = (loop2_seconds - loop1_seconds) / loop1_seconds *100;
-
-  if (PrintAssembly || PrintStubCode) {
-    ttyLocker ttyl;
-    tty->print_cr("Decoding section size detection stub at " INTPTR_FORMAT " before execution:", p2i(code));
-    // Use existing decode function. This enables the [MachCode] format which is needed to DecodeErrorFile.
-    Disassembler::decode(&cb, (u_char*)code, (u_char*)code_end, tty);
-    tty->print_cr("Time loop1 :%f", loop1_seconds);
-    tty->print_cr("Time loop2 :%f", loop2_seconds);
-    tty->print_cr("(time2 - time1) / time1 = %f %%", rel_diff);
-
-    if (rel_diff > 12.0) {
-      tty->print_cr("Section Size 8 Instructions");
-    } else{
-      tty->print_cr("Section Size 32 Instructions or Power5");
+  if (Verbose) {
+    if (ContendedPaddingWidth > 0) {
+      tty->cr();
+      tty->print_cr("ContendedPaddingWidth " INTX_FORMAT, ContendedPaddingWidth);
     }
   }
-
-#if 0 // TODO: PPC port
-  // Set sector size (if not set explicitly).
-  if (FLAG_IS_DEFAULT(Power6SectorSize128PPC64)) {
-    if (rel_diff > 12.0) {
-      PdScheduling::power6SectorSize = 0x20;
-    } else {
-      PdScheduling::power6SectorSize = 0x80;
-    }
-  } else if (Power6SectorSize128PPC64) {
-    PdScheduling::power6SectorSize = 0x80;
-  } else {
-    PdScheduling::power6SectorSize = 0x20;
-  }
-#endif
-  if (UsePower6SchedulerPPC64) Unimplemented();
 }
-#endif // COMPILER2
 
 void VM_Version::determine_features() {
 #if defined(ABI_ELFv2)
@@ -820,6 +625,7 @@ void VM_Version::determine_features() {
   a->vshasigmaw(VR0, VR1, 1, 0xF);             // code[16] -> vshasig
   // rtm is determined by OS
   a->darn(R7);                                 // code[17] -> darn
+  a->brw(R5, R6);                              // code[18] -> brw
   a->blr();
 
   // Emit function to set one cache line to zero. Emit function descriptor and get pointer to it.
@@ -873,6 +679,7 @@ void VM_Version::determine_features() {
   if (code[feature_cntr++]) features |= vshasig_m;
   // feature rtm_m is determined by OS
   if (code[feature_cntr++]) features |= darn_m;
+  if (code[feature_cntr++]) features |= brw_m;
 
   // Print the detection code.
   if (PrintAssembly) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@
 #include "code/debugInfo.hpp"
 #include "code/debugInfoRec.hpp"
 #include "code/nmethod.hpp"
+#include "gc/shared/collectedHeap.hpp"
 #include "memory/universe.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/handles.inline.hpp"
@@ -97,7 +98,7 @@ ScopeValue* DebugInfoReadStream::get_cached_object() {
 enum { LOCATION_CODE = 0, CONSTANT_INT_CODE = 1,  CONSTANT_OOP_CODE = 2,
                           CONSTANT_LONG_CODE = 3, CONSTANT_DOUBLE_CODE = 4,
                           OBJECT_CODE = 5,        OBJECT_ID_CODE = 6,
-                          AUTO_BOX_OBJECT_CODE = 7 };
+                          AUTO_BOX_OBJECT_CODE = 7, MARKER_CODE = 8 };
 
 ScopeValue* ScopeValue::read_from(DebugInfoReadStream* stream) {
   ScopeValue* result = NULL;
@@ -110,6 +111,7 @@ ScopeValue* ScopeValue::read_from(DebugInfoReadStream* stream) {
    case OBJECT_CODE:          result = stream->read_object_value(false /*is_auto_box*/); break;
    case AUTO_BOX_OBJECT_CODE: result = stream->read_object_value(true /*is_auto_box*/);  break;
    case OBJECT_ID_CODE:       result = stream->get_cached_object();                      break;
+   case MARKER_CODE:          result = new MarkerValue();                                break;
    default: ShouldNotReachHere();
   }
   return result;
@@ -130,6 +132,16 @@ void LocationValue::print_on(outputStream* st) const {
   location().print_on(st);
 }
 
+// MarkerValue
+
+void MarkerValue::write_on(DebugInfoWriteStream* stream) {
+  stream->write_int(MARKER_CODE);
+}
+
+void MarkerValue::print_on(outputStream* st) const {
+    st->print("marker");
+}
+
 // ObjectValue
 
 void ObjectValue::set_value(oop value) {
@@ -147,11 +159,11 @@ void ObjectValue::read_object(DebugInfoReadStream* stream) {
 }
 
 void ObjectValue::write_on(DebugInfoWriteStream* stream) {
-  if (_visited) {
+  if (is_visited()) {
     stream->write_int(OBJECT_ID_CODE);
     stream->write_int(_id);
   } else {
-    _visited = true;
+    set_visited(true);
     stream->write_int(is_auto_box() ? AUTO_BOX_OBJECT_CODE : OBJECT_CODE);
     stream->write_int(_id);
     _klass->write_on(stream);
@@ -265,7 +277,7 @@ void ConstantOopReadValue::print_on(outputStream* st) const {
   if (value()() != NULL) {
     value()()->print_value_on(st);
   } else {
-    st->print_cr("NULL");
+    st->print("NULL");
   }
 }
 

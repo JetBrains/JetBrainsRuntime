@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,14 +23,14 @@
 
 /*
  * @test
+ * @key randomness
  * @bug 8137167
  * @summary Tests directives to be able to add and remove directives
  * @modules java.base/jdk.internal.misc
  * @library /test/lib /
  *
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox
- *                                sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run driver compiler.compilercontrol.jcmd.AddAndRemoveTest
  */
 
@@ -63,7 +63,6 @@ public class AddAndRemoveTest extends AbstractTestBase {
             MethodDescriptor md = getValidMethodDescriptor(exec);
             CompileCommand compileCommand = new JcmdCommand(Command.COMPILEONLY,
                     md, null, Scenario.Type.JCMD, Scenario.JcmdType.ADD);
-            compileCommand.print();
             builder.add(compileCommand);
         }
         // Remove half of them

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2006, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,7 @@
  * @key randomness
  * @modules jdk.crypto.cryptoki
  * @run main/othervm TestECDSA
- * @run main/othervm TestECDSA sm policy
+ * @run main/othervm -Djava.security.manager=allow TestECDSA sm policy
  */
 
 import java.security.KeyFactory;
@@ -126,7 +126,7 @@ public class TestECDSA extends PKCS11Test {
             return true;
         }
 
-        if (isBadNSSVersion(provider) || isBadSolarisSparc(provider)) {
+        if (isBadNSSVersion(provider)) {
             return true;
         }
 
@@ -156,12 +156,14 @@ public class TestECDSA extends PKCS11Test {
             return;
         }
 
-        if (getNSSECC() != ECCState.Basic) {
+        if (getSupportedECParameterSpec("secp192r1", provider).isPresent()) {
             test(provider, pub192, priv192, sig192);
+        }
+        if (getSupportedECParameterSpec("sect163r1", provider).isPresent()) {
             test(provider, pub163, priv163, sig163);
+        }
+        if (getSupportedECParameterSpec("sect571r1", provider).isPresent()) {
             test(provider, pub571, priv571, sig571);
-        } else {
-            System.out.println("ECC Basic only, skipping 192, 163 and 571.");
         }
         test(provider, pub521, priv521, sig521);
 

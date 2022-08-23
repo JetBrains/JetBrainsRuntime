@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,7 +84,7 @@ public class InheritDocTaglet extends BaseTaglet {
             !(inheritableTaglet instanceof InheritableTaglet)) {
                 String message = utils.getSimpleName(e) +
                     ((utils.isExecutableElement(e))
-                        ? utils.flatSignature((ExecutableElement)e)
+                        ? utils.flatSignature((ExecutableElement)e, writer.getCurrentPageElement())
                         : "");
                 //This tag does not support inheritance.
                 messages.warning(e, "doclet.noInheritedDoc", message);
@@ -95,15 +95,14 @@ public class InheritDocTaglet extends BaseTaglet {
         DocFinder.Output inheritedDoc = DocFinder.search(configuration, input);
         if (inheritedDoc.isValidInheritDocTag) {
             if (!inheritedDoc.inlineTags.isEmpty()) {
-                replacement = writer.commentTagsToOutput(inheritedDoc.holderTag,
-                    inheritedDoc.holder, inheritedDoc.inlineTags, isFirstSentence);
-                ch.setOverrideElement(inheritedDoc.holder);
+                replacement = writer.commentTagsToOutput(inheritedDoc.holder, inheritedDoc.holderTag,
+                    inheritedDoc.inlineTags, isFirstSentence);
             }
 
         } else {
             String message = utils.getSimpleName(e) +
                     ((utils.isExecutableElement(e))
-                        ? utils.flatSignature((ExecutableElement)e)
+                        ? utils.flatSignature((ExecutableElement)e, writer.getCurrentPageElement())
                         : "");
             messages.warning(e, "doclet.noInheritedDoc", message);
         }
@@ -111,7 +110,7 @@ public class InheritDocTaglet extends BaseTaglet {
     }
 
     @Override
-    public Content getTagletOutput(Element e, DocTree tag, TagletWriter tagletWriter) {
+    public Content getInlineTagOutput(Element e, DocTree tag, TagletWriter tagletWriter) {
         DocTree inheritTag = (tag.getKind() == DocTree.Kind.INHERIT_DOC) ? null : tag;
         return retrieveInheritedDocumentation(tagletWriter, e,
                 inheritTag, tagletWriter.isFirstSentence);

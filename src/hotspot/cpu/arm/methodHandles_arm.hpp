@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,14 +35,14 @@ public:
   static void load_klass_from_Class(MacroAssembler* _masm, Register klass_reg, Register temp1, Register temp2);
 
   static void verify_klass(MacroAssembler* _masm,
-                           Register obj, Register temp1, Register temp2, SystemDictionary::WKID klass_id,
+                           Register obj, Register temp1, Register temp2, vmClassID klass_id,
                            const char* error_message = "wrong klass") NOT_DEBUG_RETURN;
 
   static void verify_ref_kind(MacroAssembler* _masm, int ref_kind, Register member_reg, Register temp) NOT_DEBUG_RETURN;
 
   // Similar to InterpreterMacroAssembler::jump_from_interpreted.
   // Takes care of special dispatch from single stepping too.
-  // Rmethod should contain target methodOop.
+  // Rmethod should contain target Method.
   static void jump_from_method_handle(MacroAssembler* _masm, bool for_compiler_entry);
 
   static void jump_to_lambda_form(MacroAssembler* _masm,

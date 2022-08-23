@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,13 +23,14 @@
  * questions.
  */
 
+#ifdef HEADLESS
+    #error This file should not be included in headless library
+#endif
+
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xos.h>
 #include <X11/Xatom.h>
-#ifdef __linux__
-#include <execinfo.h>
-#endif
 
 #include <jvm.h>
 #include <jni.h>
@@ -73,12 +74,9 @@ struct ComponentIDs componentIDs;
 
 struct MenuComponentIDs menuComponentIDs;
 
-#ifndef HEADLESS
-
 extern Display* awt_init_Display(JNIEnv *env, jobject this);
 extern void freeNativeStringArray(char **array, jsize length);
 extern char** stringArrayToNative(JNIEnv *env, jobjectArray array, jsize * ret_length);
-#endif /* !HEADLESS */
 
 /* This function gets called from the static initializer for FileDialog.java
    to initialize the fieldIDs for fields that may be accessed from C */
@@ -122,18 +120,12 @@ JNIEXPORT jlong JNICALL Java_sun_awt_X11_XToolkit_getTrayIconDisplayTimeout
 JNIEXPORT jlong JNICALL Java_sun_awt_X11_XToolkit_getDefaultXColormap
   (JNIEnv *env, jclass clazz)
 {
+    AWT_LOCK();
     AwtGraphicsConfigDataPtr defaultConfig =
         getDefaultConfig(DefaultScreen(awt_display));
-
+    AWT_UNLOCK();
     return (jlong) defaultConfig->awt_cmap;
 }
-
-JNIEXPORT jlong JNICALL Java_sun_awt_X11_XToolkit_getDefaultScreenData
-  (JNIEnv *env, jclass clazz)
-{
-    return ptr_to_jlong(getDefaultConfig(DefaultScreen(awt_display)));
-}
-
 
 JNIEXPORT jint JNICALL
 DEF_JNI_OnLoad(JavaVM *vm, void *reserved)
@@ -154,9 +146,11 @@ DEF_JNI_OnLoad(JavaVM *vm, void *reserved)
 JNIEXPORT void JNICALL Java_sun_awt_X11_XToolkit_nativeLoadSystemColors
   (JNIEnv *env, jobject this, jintArray systemColors)
 {
+    AWT_LOCK();
     AwtGraphicsConfigDataPtr defaultConfig =
         getDefaultConfig(DefaultScreen(awt_display));
     awtJNI_CreateColorData(env, defaultConfig, 1);
+    AWT_UNLOCK();
 }
 
 JNIEXPORT void JNICALL
@@ -307,14 +301,6 @@ JNIEXPORT void JNICALL
 Java_java_awt_TextField_initIDs
   (JNIEnv *env, jclass cls)
 {
-}
-
-JNIEXPORT jboolean JNICALL AWTIsHeadless() {
-#ifdef HEADLESS
-    return JNI_TRUE;
-#else
-    return JNI_FALSE;
-#endif
 }
 
 JNIEXPORT void JNICALL Java_java_awt_Dialog_initIDs (JNIEnv *env, jclass cls)
@@ -780,26 +766,6 @@ JNIEXPORT jstring JNICALL Java_sun_awt_X11_XToolkit_getEnv
     return ret;
 }
 
-#ifdef __linux__
-void print_stack(void)
-{
-  void *array[10];
-  size_t size;
-  char **strings;
-  size_t i;
-
-  size = backtrace (array, 10);
-  strings = backtrace_symbols (array, size);
-
-  fprintf (stderr, "Obtained %zd stack frames.\n", size);
-
-  for (i = 0; i < size; i++)
-     fprintf (stderr, "%s\n", strings[i]);
-
-  free (strings);
-}
-#endif
-
 Window get_xawt_root_shell(JNIEnv *env) {
   static jclass classXRootWindow = NULL;
   static jmethodID methodGetXRootWindow = NULL;
@@ -825,121 +791,6 @@ Window get_xawt_root_shell(JNIEnv *env) {
       }
   }
   return xawt_root_shell;
-}
-
-/*
- * Old, compatibility, backdoor for DT.  This is a different
- * implementation.  It keeps the signature, but acts on
- * awt_root_shell, not the frame passed as an argument.  Note, that
- * the code that uses the old backdoor doesn't work correctly with
- * gnome session proxy that checks for WM_COMMAND when the window is
- * firts mapped, because DT code calls this old backdoor *after* the
- * frame is shown or it would get NPE with old AWT (previous
- * implementation of this backdoor) otherwise.  Old style session
- * managers (e.g. CDE) that check WM_COMMAND only during session
- * checkpoint should work fine, though.
- *
- * NB: The function name looks deceptively like a JNI native method
- * name.  It's not!  It's just a plain function.
- */
-
-JNIEXPORT void JNICALL
-Java_sun_awt_motif_XsessionWMcommand(JNIEnv *env, jobject this,
-    jobject frame, jstring jcommand)
-{
-    const char *command;
-    XTextProperty text_prop;
-    char *c[1];
-    int32_t status;
-    Window xawt_root_window;
-
-    AWT_LOCK();
-    xawt_root_window = get_xawt_root_shell(env);
-
-    if ( xawt_root_window == None ) {
-        AWT_UNLOCK();
-        JNU_ThrowNullPointerException(env, "AWT root shell is unrealized");
-        return;
-    }
-
-    command = (char *) JNU_GetStringPlatformChars(env, jcommand, NULL);
-    if (command != NULL) {
-        c[0] = (char *)command;
-        status = XmbTextListToTextProperty(awt_display, c, 1,
-                                           XStdICCTextStyle, &text_prop);
-
-        if (status == Success || status > 0) {
-            XSetTextProperty(awt_display, xawt_root_window,
-                             &text_prop, XA_WM_COMMAND);
-            if (text_prop.value != NULL)
-                XFree(text_prop.value);
-        }
-        JNU_ReleaseStringPlatformChars(env, jcommand, command);
-    }
-    AWT_UNLOCK();
-}
-
-
-/*
- * New DT backdoor to set WM_COMMAND.  New code should use this
- * backdoor and call it *before* the first frame is shown so that
- * gnome session proxy can correctly handle it.
- *
- * NB: The function name looks deceptively like a JNI native method
- * name.  It's not!  It's just a plain function.
- */
-JNIEXPORT void JNICALL
-Java_sun_awt_motif_XsessionWMcommand_New(JNIEnv *env, jobjectArray jarray)
-{
-    jsize length;
-    char ** array;
-    XTextProperty text_prop;
-    int status;
-    Window xawt_root_window;
-
-    AWT_LOCK();
-    xawt_root_window = get_xawt_root_shell(env);
-
-    if (xawt_root_window == None) {
-      AWT_UNLOCK();
-      JNU_ThrowNullPointerException(env, "AWT root shell is unrealized");
-      return;
-    }
-
-    array = stringArrayToNative(env, jarray, &length);
-
-    if (array != NULL) {
-        status = XmbTextListToTextProperty(awt_display, array, length,
-                                           XStdICCTextStyle, &text_prop);
-        if (status < 0) {
-            switch (status) {
-            case XNoMemory:
-                JNU_ThrowOutOfMemoryError(env,
-                    "XmbTextListToTextProperty: XNoMemory");
-                break;
-            case XLocaleNotSupported:
-                JNU_ThrowInternalError(env,
-                    "XmbTextListToTextProperty: XLocaleNotSupported");
-                break;
-            case XConverterNotFound:
-                JNU_ThrowNullPointerException(env,
-                    "XmbTextListToTextProperty: XConverterNotFound");
-                break;
-            default:
-                JNU_ThrowInternalError(env,
-                    "XmbTextListToTextProperty: unknown error");
-            }
-        } else {
-            XSetTextProperty(awt_display, xawt_root_window,
-                                 &text_prop, XA_WM_COMMAND);
-        }
-
-        if (text_prop.value != NULL)
-            XFree(text_prop.value);
-
-        freeNativeStringArray(array, length);
-    }
-    AWT_UNLOCK();
 }
 
 /*

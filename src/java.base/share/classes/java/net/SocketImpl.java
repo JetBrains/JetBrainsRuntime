@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1995, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1995, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,7 +60,6 @@ import sun.nio.ch.NioSocketImpl;
  * to use the old implementation. The property and old implementation will be
  * removed in a future version.
  *
- * @author  unascribed
  * @since   1.0
  */
 public abstract class SocketImpl implements SocketOptions {
@@ -68,6 +67,7 @@ public abstract class SocketImpl implements SocketOptions {
 
     private static boolean usePlainSocketImpl() {
         PrivilegedAction<String> pa = () -> NetProperties.get("jdk.net.usePlainSocketImpl");
+        @SuppressWarnings("removal")
         String s = AccessController.doPrivileged(pa);
         return (s != null) && !s.equalsIgnoreCase("false");
     }
@@ -187,7 +187,7 @@ public abstract class SocketImpl implements SocketOptions {
      * @return     a stream for reading from this socket.
      * @throws     IOException  if an I/O error occurs when creating the
      *               input stream.
-    */
+     */
     protected abstract InputStream getInputStream() throws IOException;
 
     /**

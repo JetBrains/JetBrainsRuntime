@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,19 +48,21 @@ public class TestSubTitle extends JavadocTester {
         checkExit(Exit.OK);
 
         checkOutput("pkg/package-summary.html", true,
-            "<div class=\"block\">This is the description of package pkg.</div>");
+            """
+                <div class="block">This is the description of package pkg.</div>""");
 
         checkOutput("pkg/C.html", true,
-                "<div class=\"subTitle\"><span class=\"packageLabelInType\">" +
-                "Package</span>&nbsp;<a href=\"package-summary.html\">pkg</a></div>");
+                """
+                    <div class="sub-title"><span class="package-label-in-type">Package</span>&nbsp;<\
+                    a href="package-summary.html">pkg</a></div>""");
 
         checkOutput("pkg/package-summary.html", false,
-            "<p class=\"subTitle\">\n" +
-            "<div class=\"block\">This is the " +
-            "description of package pkg.</div>\n" +
-            "</p>");
+            """
+                <p class="sub-title">
+                <div class="block">This is the description of package pkg.</div>
+                </p>""");
 
         checkOutput("pkg/C.html", false,
-            "<p class=\"subTitle\">pkg</p>");
+            "<p class=\"sub-title\">pkg</p>");
     }
 }

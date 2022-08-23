@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
 /**
  * @test
  * @bug 8225715
- * @requires vm.hasSAandCanAttach
+ * @requires vm.hasSA
  * @library /test/lib
  * @compile JShellHeapDumpTest.java
  * @run main/timeout=240 JShellHeapDumpTest
@@ -38,11 +38,13 @@ import java.util.List;
 import java.util.Arrays;
 import java.util.Map;
 
+import jdk.test.lib.Utils;
+import jdk.test.lib.hprof.parser.HprofReader;
 import jdk.test.lib.JDKToolLauncher;
 import jdk.test.lib.JDKToolFinder;
 import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.process.ProcessTools;
-import jdk.test.lib.hprof.parser.HprofReader;
+import jdk.test.lib.SA.SATestUtils;
 
 import jdk.jshell.JShell;
 
@@ -60,6 +62,7 @@ public class JShellHeapDumpTest {
 
             System.out.println("Starting " + toolArgs.get(0) + " against " + jShellPID);
             JDKToolLauncher launcher = JDKToolLauncher.createUsingTestJDK("jhsdb");
+            launcher.addVMArgs(Utils.getFilteredTestJavaOpts("-Xcomp"));
 
             for (String cmd : toolArgs) {
                 launcher.addToolArg(cmd);
@@ -67,7 +70,7 @@ public class JShellHeapDumpTest {
 
             launcher.addToolArg("--pid=" + Long.toString(jShellPID));
 
-            ProcessBuilder processBuilder = new ProcessBuilder(launcher.getCommand());
+            ProcessBuilder processBuilder = SATestUtils.createProcessBuilder(launcher);
             OutputAnalyzer output = ProcessTools.executeProcess(processBuilder);
             System.out.println("jhsdb jmap stdout:");
             System.out.println(output.getStdout());
@@ -97,7 +100,10 @@ public class JShellHeapDumpTest {
     public static void printStackTraces(String file) throws IOException {
         try {
             String output = HprofReader.getStack(file, 0);
-            if (!output.contains("JShellToolProvider")) {
+            // We only require JShellToolProvider to be in the output if we did the
+            // short sleep. If we did not, the java process may not have executed far
+            // enough along to even start the main thread.
+            if (doSleep && !output.contains("JShellToolProvider")) {
                 throw new RuntimeException("'JShellToolProvider' missing from stdout/stderr");
             }
         } catch (Exception ex) {
@@ -150,6 +156,7 @@ public class JShellHeapDumpTest {
     }
 
     public static void main(String[] args) throws Exception {
+        SATestUtils.skipIfCannotAttach(); // throws SkippedException if attach not expected to work.
         if (args.length == 1) {
             if (args[0].equals("nosleep")) {
                 doSleep = false;

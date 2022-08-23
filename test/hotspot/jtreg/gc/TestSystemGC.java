@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,40 +24,48 @@
 package gc;
 
 /*
- * @test TestSystemGCSerial
- * @key gc
+ * @test id=Serial
  * @requires vm.gc.Serial
  * @summary Runs System.gc() with different flags.
  * @run main/othervm -XX:+UseSerialGC gc.TestSystemGC
+ * @run main/othervm -XX:+UseSerialGC -XX:+UseLargePages gc.TestSystemGC
  */
 
 /*
- * @test TestSystemGCParallel
- * @key gc
+ * @test id=Parallel
  * @requires vm.gc.Parallel
  * @summary Runs System.gc() with different flags.
  * @run main/othervm -XX:+UseParallelGC gc.TestSystemGC
+ * @run main/othervm -XX:+UseParallelGC -XX:+UseLargePages gc.TestSystemGC
  */
 
 /*
- * @test TestSystemGCG1
- * @key gc
+ * @test id=G1
  * @requires vm.gc.G1
  * @summary Runs System.gc() with different flags.
  * @run main/othervm -XX:+UseG1GC gc.TestSystemGC
  * @run main/othervm -XX:+UseG1GC -XX:+ExplicitGCInvokesConcurrent gc.TestSystemGC
- * @run main/othervm -XX:+UseLargePages gc.TestSystemGC
- * @run main/othervm -XX:+UseLargePages -XX:+UseLargePagesInMetaspace gc.TestSystemGC
+ * @run main/othervm -XX:+UseG1GC -XX:+UseLargePages gc.TestSystemGC
  */
 
 /*
- * @test TestSystemGCShenandoah
- * @key gc
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @test id=Shenandoah
+ * @requires vm.gc.Shenandoah
  * @summary Runs System.gc() with different flags.
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC gc.TestSystemGC
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:+ExplicitGCInvokesConcurrent gc.TestSystemGC
+ * @run main/othervm -XX:+UseShenandoahGC gc.TestSystemGC
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+ExplicitGCInvokesConcurrent gc.TestSystemGC
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UseLargePages gc.TestSystemGC
  */
+
+/*
+ * @test id=Z
+ * @requires vm.gc.Z
+ * @comment ZGC will not start when LargePages cannot be allocated, therefore
+ *          we do not run such configuration.
+ * @summary Runs System.gc() with different flags.
+ * @run main/othervm -XX:+UseZGC gc.TestSystemGC
+ */
+
 public class TestSystemGC {
   public static void main(String args[]) throws Exception {
     System.gc();

@@ -89,6 +89,9 @@ final class XWM
     static final XAtom XA_NET_FRAME_EXTENTS = new XAtom();
     static final XAtom XA_NET_REQUEST_FRAME_EXTENTS = new XAtom();
 
+/* Root window */
+    static final XAtom XA_NET_DESKTOP_GEOMETRY = new XAtom();
+
     static final int
         UNDETERMINED_WM = 1,
         NO_WM = 2,
@@ -105,7 +108,12 @@ final class XWM
         LG3D_WM = 13,
         CWM_WM = 14,
         MUTTER_WM = 15,
-        UNITY_COMPIZ_WM = 16;
+        UNITY_COMPIZ_WM = 16,
+        XMONAD_WM = 17,
+        AWESOME_WM = 18,
+        I3_WM = 19,
+        WESTON_WM = 20;
+
     public String toString() {
         switch  (WMID) {
           case NO_WM:
@@ -138,6 +146,14 @@ final class XWM
               return "CWM";
           case MUTTER_WM:
               return "Mutter";
+          case XMONAD_WM:
+              return "XMonad";
+          case AWESOME_WM:
+              return "Awesome";
+          case XWM.I3_WM:
+              return "I3WM";
+            case XWM.WESTON_WM:
+              return "Weston";
           case UNDETERMINED_WM:
           default:
               return "Undetermined WM";
@@ -206,6 +222,7 @@ final class XWM
             { XA_MWM_HINTS,                  "_MOTIF_WM_HINTS"               },
             { XA_NET_FRAME_EXTENTS,          "_NET_FRAME_EXTENTS"            },
             { XA_NET_REQUEST_FRAME_EXTENTS,  "_NET_REQUEST_FRAME_EXTENTS"    },
+            { XA_NET_DESKTOP_GEOMETRY,       "_NET_DESKTOP_GEOMETRY"         }
         };
 
         String[] names = new String[atomInitList.length];
@@ -602,13 +619,31 @@ final class XWM
         return isNetWMName("Mutter") || isNetWMName("GNOME Shell");
     }
 
+    static boolean isXmonad() {
+        return isNetWMName("xmonad");
+    }
+
+    static boolean isAwesome() {
+        return isNetWMName("awesome");
+    }
+
+    static boolean isI3() {
+        return isNetWMName("i3");
+    }
+
+    static boolean isWeston() {
+        return isNetWMName("Weston");
+    }
+
     static int awtWMNonReparenting = -1;
     static boolean isNonReparentingWM() {
         if (awtWMNonReparenting == -1) {
             awtWMNonReparenting = (XToolkit.getEnv("_JAVA_AWT_WM_NONREPARENTING") != null) ? 1 : 0;
         }
         return (awtWMNonReparenting == 1 || XWM.getWMID() == XWM.COMPIZ_WM
-                || XWM.getWMID() == XWM.LG3D_WM || XWM.getWMID() == XWM.CWM_WM);
+                || XWM.getWMID() == XWM.LG3D_WM || XWM.getWMID() == XWM.CWM_WM  ||
+                XWM.getWMID() == XWM.XMONAD_WM
+               );
     }
 
     /*
@@ -799,6 +834,14 @@ final class XWM
                 awt_wmgr = XWM.ICE_WM;
             } else if (isUnityCompiz()) {
                 awt_wmgr = XWM.UNITY_COMPIZ_WM;
+            } else if (isXmonad()) {
+                awt_wmgr = XWM.XMONAD_WM;
+            } else if (isAwesome()) {
+                awt_wmgr = XWM.AWESOME_WM;
+            } else if (isI3()) {
+                awt_wmgr = XWM.I3_WM;
+            } else if (isWeston()) {
+                awt_wmgr = XWM.WESTON_WM;
             }
             /*
              * We don't check for legacy WM when we already know that WM
@@ -1123,6 +1166,8 @@ final class XWM
           case XWM.SAWFISH_WM:
           case XWM.ICE_WM:
           case XWM.METACITY_WM:
+          case XWM.XMONAD_WM:
+          case XWM.AWESOME_WM:
               return true;
           case XWM.OPENLOOK_WM:
           case XWM.MOTIF_WM:
@@ -1364,6 +1409,8 @@ final class XWM
                   break;
               case NO_WM:
               case LG3D_WM:
+              case XMONAD_WM:
+              case AWESOME_WM:
                   res = zeroInsets;
                   break;
               case UNITY_COMPIZ_WM:
@@ -1430,6 +1477,8 @@ final class XWM
           case XWM.ENLIGHTEN_WM:
               /* At least E16 is buggy. */
               return true;
+          case XWM.I3_WM:
+              return true;
           default:
               return false;
         }
@@ -1443,11 +1492,27 @@ final class XWM
         if (window == XConstants.None) {
             return null;
         }
-        XNETProtocol net_protocol = getWM().getNETProtocol();
-        if (net_protocol != null && net_protocol.active()) {
-            Insets insets = getInsetsFromProp(window, XA_NET_FRAME_EXTENTS);
-            if (insLog.isLoggable(PlatformLogger.Level.FINE)) {
-                insLog.fine("_NET_FRAME_EXTENTS: {0}", insets);
+        final XNETProtocol net_protocol = getWM().getNETProtocol();
+        final boolean frameExtentsSupported =
+                           net_protocol != null
+                        && net_protocol.active()
+                        && net_protocol.checkProtocol(net_protocol.XA_NET_SUPPORTED, XA_NET_FRAME_EXTENTS);
+        if (frameExtentsSupported) {
+            Insets insets = null;
+            final int MAX_RETRY_COUNT = 3;
+            for (int i = 0; i < MAX_RETRY_COUNT; i++) {
+                insets = getInsetsFromProp(window, XA_NET_FRAME_EXTENTS);
+                if (insLog.isLoggable(PlatformLogger.Level.FINE)) {
+                    insLog.fine("_NET_FRAME_EXTENTS: {0}", insets);
+                }
+                if (insets == null) {
+                    final long timeForInsetExtentToBecomeReadyMs = (i + 1)*5;
+                    insLog.fine("_NET_FRAME_EXTENTS not available (yet?), retrying in {0} ms",
+                                timeForInsetExtentToBecomeReadyMs);
+                    try {
+                        Thread.sleep(timeForInsetExtentToBecomeReadyMs);
+                    } catch (InterruptedException ignored) {}
+                }
             }
 
             if (insets != null) {
@@ -1641,7 +1706,9 @@ final class XWM
                       break;
                   }
                   case XWM.SAWFISH_WM:
-                  case XWM.OPENLOOK_WM: {
+                  case XWM.OPENLOOK_WM:
+                  case XWM.AWESOME_WM:
+                      {
                       /* single reparenting */
                       syncTopLevelPos(window, lwinAttr);
                       correctWM.top    = lwinAttr.get_y();

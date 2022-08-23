@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,10 +65,11 @@ public class TestGroupName extends JavadocTester {
         checkExit(Exit.OK);
 
         checkOutput("index.html", true,
-                "<button role=\"tab\" aria-selected=\"false\" aria-controls=\"overviewSummary_tabpanel\""
-                + " tabindex=\"-1\" onkeydown=\"switchTab(event)\" id=\"t1\" class=\"tableTab\""
-                + " onclick=\"show(1);\">abc &lt; &amp; &gt; def</button>",
-                ",\"abc < & > def\"],");
+                """
+                    <button id="all-packages-table-tab1" role="tab" aria-selected="false" aria-contr\
+                    ols="all-packages-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onc\
+                    lick="show('all-packages-table', 'all-packages-table-tab1', 2)" class="table-tab\
+                    ">abc &lt; &amp; &gt; def</button>""");
     }
 
     @Test
@@ -100,10 +101,11 @@ public class TestGroupName extends JavadocTester {
         checkExit(Exit.OK);
 
         checkOutput("index.html", true,
-                "<button role=\"tab\" aria-selected=\"false\" aria-controls=\"overviewSummary_tabpanel\""
-                + " tabindex=\"-1\" onkeydown=\"switchTab(event)\" id=\"t2\" class=\"tableTab\""
-                + " onclick=\"show(2);\">Other Modules</button>",
-                ",\"abc < & > def\"],");
+                """
+                    <button id="all-modules-table-tab2" role="tab" aria-selected="false" aria-contro\
+                    ls="all-modules-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" oncli\
+                    ck="show('all-modules-table', 'all-modules-table-tab2', 2)" class="table-tab">Ot\
+                    her Modules</button>""");
     }
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug      7132631
+ * @bug      7132631 8241693
  * @summary  Make sure that the help file is generated correctly.
  * @library  ../../lib
  * @modules jdk.javadoc/jdk.javadoc.internal.tool
@@ -34,6 +34,8 @@
 import javadoc.tester.JavadocTester;
 
 public class TestHelpFile extends JavadocTester {
+    /** A constant value to be documented. */
+    public static final int ZERO = 0;
 
     public static void main(String... args) throws Exception {
         TestHelpFile tester = new TestHelpFile();
@@ -48,6 +50,27 @@ public class TestHelpFile extends JavadocTester {
         checkExit(Exit.OK);
 
         checkOutput("help-doc.html", true,
-            "<a href=\"constant-values.html\">Constant Field Values</a>");
+            """
+                <a href="constant-values.html">Constant Field Values</a>""");
+
+        // check a representative sample of the contents
+        checkOrder("help-doc.html",
+                """
+                    <section class="help-section" id="package">
+                    <h3>Package</h3>""",
+                """
+                    <ul class="help-section-list">
+                    <li>Interfaces</li>
+                    <li>Classes</li>
+                    <li>Enum Classes</li>""",
+                """
+                    </section>
+                    <section class="help-section" id="class">
+                    <h3>Class or Interface</h3>""",
+                """
+                    <ul class="help-section-list">
+                    <li>Class Inheritance Diagram</li>
+                    <li>Direct Subclasses</li>
+                    """);
     }
 }

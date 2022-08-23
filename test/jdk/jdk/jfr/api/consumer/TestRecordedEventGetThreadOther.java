@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -47,25 +45,28 @@ import jdk.test.lib.Utils;
 public class TestRecordedEventGetThreadOther {
 
     private static final String MY_THREAD_NAME = "MY_THREAD_NAME";
-    private static long expectedThreadId;
-    private static Path dumpFilePath;
 
     static class TestEvent extends Event {
     }
 
     static class PostingThread extends Thread {
-
-        PostingThread() {
-            setName(MY_THREAD_NAME);
-            expectedThreadId = getId();
+        private final Path dumpFilePath;
+        PostingThread(Path dumpFilePath) {
+            this.dumpFilePath = dumpFilePath;
         }
 
         @Override
         public void run() {
             try {
                 System.out.println("Starting thread...");
-                dumpFilePath = postEventAndDumpToFile();
-                System.out.println("events dumped to the file " + dumpFilePath);
+                try (Recording r = new Recording()) {
+                    r.start();
+                    TestEvent t = new TestEvent();
+                    t.commit();
+                    r.stop();
+                    r.dump(dumpFilePath);
+                    System.out.println("events dumped to the file " + dumpFilePath);
+                }
             } catch (Throwable t) {
                 t.printStackTrace();
                 Asserts.fail();
@@ -73,13 +74,13 @@ public class TestRecordedEventGetThreadOther {
         }
     }
 
-    public static void main(String[] args) throws Throwable {
-        Thread.currentThread().setName("MyMainThread");
+    public static void main(String[] args) throws Exception  {
+        Path dumpFilePath = Utils.createTempFile("event-thread", ".jfr");
 
-        PostingThread thread = new PostingThread();
+        PostingThread thread = new PostingThread(dumpFilePath);
+        thread.setName(MY_THREAD_NAME);
         thread.start();
         thread.join();
-        System.out.println("testing dump in file " + dumpFilePath);
 
         List<RecordedEvent> events = RecordingFile.readAllEvents(dumpFilePath);
         Asserts.assertEquals(events.size(), 1);
@@ -89,21 +90,8 @@ public class TestRecordedEventGetThreadOther {
 
         Asserts.assertNotNull(recordedThread);
         Asserts.assertEquals(recordedThread.getJavaName(), MY_THREAD_NAME);
-        Asserts.assertEquals(recordedThread.getJavaThreadId(), expectedThreadId);
+        Asserts.assertEquals(recordedThread.getJavaThreadId(), thread.getId());
         Asserts.assertNotNull(recordedThread.getId());
         Asserts.assertEquals(recordedThread.getOSName(), MY_THREAD_NAME);
-    }
-
-    private static Path postEventAndDumpToFile() throws Throwable {
-        Recording r = new Recording();
-        r.start();
-        TestEvent t = new TestEvent();
-        t.commit();
-        r.stop();
-        Path path = Utils.createTempFile("event-thread", ".jfr");
-        System.out.println("Created path: " + path);
-        r.dump(path);
-        r.close();
-        return path;
     }
 }

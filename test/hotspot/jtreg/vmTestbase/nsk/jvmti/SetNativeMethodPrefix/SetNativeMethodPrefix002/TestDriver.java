@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,6 @@
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
  *
  * @comment duplicate SetNativeMethodPrefix001 in current directory
  * @run driver nsk.jvmti.NativeLibraryCopier
@@ -58,8 +57,7 @@ import java.util.Arrays;
 
 public class TestDriver {
     public static void main(String[] args) throws Exception {
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
-                true,
+        ProcessBuilder pb = ProcessTools.createTestJvm(
                 "-agentlib:SetNativeMethodPrefix001=trace=all",
                 "-agentlib:SetNativeMethodPrefix002-01=trace=all prefix=wa_",
                 "-agentlib:SetNativeMethodPrefix002-02=trace=all prefix=wb_",

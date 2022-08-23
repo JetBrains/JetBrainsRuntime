@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,9 +28,13 @@
  * @requires vm.cds
  * @library /test/lib /test/hotspot/jtreg/runtime/cds/appcds /test/hotspot/jtreg/runtime/cds/appcds/test-classes
  * @build Hello
- * @run driver ClassFileInstaller -jar hello.jar Hello
- * @run driver SharedArchiveFileOption
+ * @build sun.hotspot.WhiteBox
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller -jar hello.jar Hello
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI -Xbootclasspath/a:. SharedArchiveFileOption
  */
+
+import jdk.test.lib.helpers.ClassFileInstaller;
 
 import java.io.File;
 
@@ -44,8 +48,8 @@ public class SharedArchiveFileOption extends DynamicArchiveTestBase {
         String topArchiveName = getNewArchiveName("top");
         String baseArchiveName = getNewArchiveName("base");
         baseArchiveName2 = getNewArchiveName("base2");
-        dumpBaseArchive(baseArchiveName);
-        dumpBaseArchive(baseArchiveName2);
+        TestCommon.dumpBaseArchive(baseArchiveName);
+        TestCommon.dumpBaseArchive(baseArchiveName2);
         doTest(baseArchiveName, topArchiveName);
     }
 
@@ -81,8 +85,7 @@ public class SharedArchiveFileOption extends DynamicArchiveTestBase {
             "-Xlog:cds+dynamic=debug",
             "-cp", appJar, mainClass)
             .assertNormalExit(output -> {
-                    output.shouldContain("Buffer-space to target-space delta")
-                           .shouldContain("Written dynamic archive 0x");
+                    output.shouldContain("Written dynamic archive 0x");
                 });
 
         // same archive file specified for -XX:SharedArchiveFile and -XX:ArchiveClassesAtExit

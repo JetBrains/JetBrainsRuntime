@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,14 @@
 #include "gc/shared/jvmFlagConstraintsGC.hpp"
 #include "gc/shared/plab.hpp"
 #include "gc/shared/threadLocalAllocBuffer.hpp"
+#include "gc/shared/tlab_globals.hpp"
 #include "runtime/arguments.hpp"
 #include "runtime/globals.hpp"
 #include "runtime/globals_extension.hpp"
 #include "runtime/thread.inline.hpp"
 #include "utilities/align.hpp"
 #include "utilities/macros.hpp"
+#include "utilities/powerOfTwo.hpp"
 #if INCLUDE_G1GC
 #include "gc/g1/jvmFlagConstraintsG1.hpp"
 #endif
@@ -171,6 +173,7 @@ JVMFlag::Error SoftRefLRUPolicyMSPerMBConstraintFunc(intx value, bool verbose) {
 }
 
 JVMFlag::Error MarkStackSizeConstraintFunc(size_t value, bool verbose) {
+  // value == 0 is handled by the range constraint.
   if (value > MarkStackSizeMax) {
     JVMFlag::printError(verbose,
                         "MarkStackSize (" SIZE_FORMAT ") must be "
@@ -257,18 +260,6 @@ JVMFlag::Error GCPauseIntervalMillisConstraintFunc(uintx value, bool verbose) {
   }
 #endif
 
-  return JVMFlag::SUCCESS;
-}
-
-JVMFlag::Error InitialBootClassLoaderMetaspaceSizeConstraintFunc(size_t value, bool verbose) {
-  size_t aligned_max = align_down(max_uintx/2, Metaspace::reserve_alignment_words());
-  if (value > aligned_max) {
-    JVMFlag::printError(verbose,
-                        "InitialBootClassLoaderMetaspaceSize (" SIZE_FORMAT ") must be "
-                        "less than or equal to aligned maximum value (" SIZE_FORMAT ")\n",
-                        value, aligned_max);
-    return JVMFlag::VIOLATES_CONSTRAINT;
-  }
   return JVMFlag::SUCCESS;
 }
 
@@ -448,22 +439,3 @@ JVMFlag::Error MaxMetaspaceSizeConstraintFunc(size_t value, bool verbose) {
   }
 }
 
-JVMFlag::Error SurvivorAlignmentInBytesConstraintFunc(intx value, bool verbose) {
-  if (value != 0) {
-    if (!is_power_of_2(value)) {
-      JVMFlag::printError(verbose,
-                          "SurvivorAlignmentInBytes (" INTX_FORMAT ") must be "
-                          "power of 2\n",
-                          value);
-      return JVMFlag::VIOLATES_CONSTRAINT;
-    }
-    if (value < ObjectAlignmentInBytes) {
-      JVMFlag::printError(verbose,
-                          "SurvivorAlignmentInBytes (" INTX_FORMAT ") must be "
-                          "greater than or equal to ObjectAlignmentInBytes (" INTX_FORMAT ")\n",
-                          value, ObjectAlignmentInBytes);
-      return JVMFlag::VIOLATES_CONSTRAINT;
-    }
-  }
-  return JVMFlag::SUCCESS;
-}

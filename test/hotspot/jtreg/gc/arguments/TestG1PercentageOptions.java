@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@ package gc.arguments;
 
 /*
  * @test TestG1PercentageOptions
- * @key gc
  * @bug 8068942
  * @requires vm.gc.G1
  * @summary Test argument processing of various percentage options
@@ -65,8 +64,8 @@ public class TestG1PercentageOptions {
     };
 
     private static void check(String flag, boolean is_valid) throws Exception {
-        String[] flags = new String[] { "-XX:+UseG1GC", flag, "-version" };
-        ProcessBuilder pb = GCArguments.createJavaProcessBuilder(flags);
+        ProcessBuilder pb = GCArguments.createJavaProcessBuilder(
+                "-XX:+UseG1GC", flag, "-version");
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         if (is_valid) {
             output.shouldHaveExitValue(0);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -113,8 +113,7 @@ class PSScavenge: AllStatic {
   static void set_survivor_overflow(bool state) {
     _survivor_overflow = state;
   }
-  // Adaptive size policy support.  When the young generation/old generation
-  // boundary moves, _young_generation_boundary must be reset
+  // Adaptive size policy support.
   static void set_young_generation_boundary(HeapWord* v);
 
   // Called by parallelScavengeHeap to init the tenuring threshold
@@ -134,14 +133,12 @@ class PSScavenge: AllStatic {
   template <class T> static inline bool should_scavenge(T* p, MutableSpace* to_space);
   template <class T> static inline bool should_scavenge(T* p, bool check_to_space);
 
-  static void copy_and_push_safe_barrier_from_klass(PSPromotionManager* pm, oop* p);
-
   // Is an object in the young generation
   // This assumes that the 'o' is in the heap,
   // so it only checks one side of the complete predicate.
 
   inline static bool is_obj_in_young(oop o) {
-    return (HeapWord*)o >= _young_generation_boundary;
+    return cast_from_oop<HeapWord*>(o) >= _young_generation_boundary;
   }
 
   inline static bool is_obj_in_young(narrowOop o) {

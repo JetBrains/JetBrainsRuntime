@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright 2007, 2008, 2011, 2015, Red Hat, Inc.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,6 +26,7 @@
 #ifndef OS_CPU_BSD_ZERO_ATOMIC_BSD_ZERO_HPP
 #define OS_CPU_BSD_ZERO_ATOMIC_BSD_ZERO_HPP
 
+#include "orderAccess_bsd_zero.hpp"
 #include "runtime/os.hpp"
 
 // Implementation of class atomic
@@ -160,11 +161,14 @@ static inline int arm_lock_test_and_set(int newval, volatile int *ptr) {
 #endif // ARM
 
 template<size_t byte_size>
-struct Atomic::PlatformAdd
-  : Atomic::AddAndFetch<Atomic::PlatformAdd<byte_size> >
-{
+struct Atomic::PlatformAdd {
   template<typename D, typename I>
   D add_and_fetch(D volatile* dest, I add_value, atomic_memory_order order) const;
+
+  template<typename D, typename I>
+  D fetch_and_add(D volatile* dest, I add_value, atomic_memory_order order) const {
+    return add_and_fetch(dest, add_value, order) - add_value;
+  }
 };
 
 template<>
@@ -180,19 +184,23 @@ inline D Atomic::PlatformAdd<4>::add_and_fetch(D volatile* dest, I add_value,
 #ifdef M68K
   return add_using_helper<int>(m68k_add_and_fetch, dest, add_value);
 #else
-  return __sync_add_and_fetch(dest, add_value);
+  D res = __atomic_add_fetch(dest, add_value, __ATOMIC_RELEASE);
+  FULL_MEM_BARRIER;
+  return res;
 #endif // M68K
 #endif // ARM
 }
 
 template<>
-template<typename D, typename !>
+template<typename D, typename I>
 inline D Atomic::PlatformAdd<8>::add_and_fetch(D volatile* dest, I add_value,
                                                atomic_memory_order order) const {
   STATIC_ASSERT(8 == sizeof(I));
   STATIC_ASSERT(8 == sizeof(D));
 
-  return __sync_add_and_fetch(dest, add_value);
+  D res = __atomic_add_fetch(dest, add_value, __ATOMIC_RELEASE);
+  FULL_MEM_BARRIER;
+  return res;
 }
 
 template<>
@@ -215,8 +223,9 @@ inline T Atomic::PlatformXchg<4>::operator()(T volatile* dest,
   // All atomic operations are expected to be full memory barriers
   // (see atomic.hpp). However, __sync_lock_test_and_set is not
   // a full memory barrier, but an acquire barrier. Hence, this added
-  // barrier.
-  __sync_synchronize();
+  // barrier. Some platforms (notably ARM) have peculiarities with
+  // their barrier implementations, delegate it to OrderAccess.
+  OrderAccess::fence();
   return result;
 #endif // M68K
 #endif // ARM
@@ -229,7 +238,7 @@ inline T Atomic::PlatformXchg<8>::operator()(T volatile* dest,
                                              atomic_memory_order order) const {
   STATIC_ASSERT(8 == sizeof(T));
   T result = __sync_lock_test_and_set (dest, exchange_value);
-  __sync_synchronize();
+  OrderAccess::fence();
   return result;
 }
 
@@ -250,7 +259,12 @@ inline T Atomic::PlatformCmpxchg<4>::operator()(T volatile* dest,
 #ifdef M68K
   return cmpxchg_using_helper<int>(m68k_compare_and_swap, dest, compare_value, exchange_value);
 #else
-  return __sync_val_compare_and_swap(dest, compare_value, exchange_value);
+  T value = compare_value;
+  FULL_MEM_BARRIER;
+  __atomic_compare_exchange(dest, &value, &exchange_value, /*weak*/false,
+                            __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+  FULL_MEM_BARRIER;
+  return value;
 #endif // M68K
 #endif // ARM
 }
@@ -262,7 +276,13 @@ inline T Atomic::PlatformCmpxchg<8>::operator()(T volatile* dest,
                                                 T exchange_value,
                                                 atomic_memory_order order) const {
   STATIC_ASSERT(8 == sizeof(T));
-  return __sync_val_compare_and_swap(dest, compare_value, exchange_value);
+
+  T value = compare_value;
+  FULL_MEM_BARRIER;
+  __atomic_compare_exchange(dest, &value, &exchange_value, /*weak*/false,
+                            __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+  FULL_MEM_BARRIER;
+  return value;
 }
 
 template<>

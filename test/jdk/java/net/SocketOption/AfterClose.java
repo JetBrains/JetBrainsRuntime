@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@
  * @summary Ensures that IOException is thrown after the socket is closed
  * @run testng AfterClose
  * @run testng/othervm -Djdk.net.usePlainSocketImpl AfterClose
+ * @run testng/othervm -Djdk.net.usePlainDatagramSocketImpl AfterClose
  */
 
 import java.io.IOException;
@@ -48,6 +49,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import static java.lang.Boolean.*;
@@ -57,6 +59,7 @@ import static org.testng.Assert.expectThrows;
 public class AfterClose {
 
     static final Class<IOException> IOE = IOException.class;
+    static final String RO = "READ_ONLY";
 
     static Map<SocketOption<?>,List<Object>> OPTION_VALUES_MAP = optionValueMap();
 
@@ -94,9 +97,7 @@ public class AfterClose {
         // extended options
         try {
             Class<?> c = Class.forName("jdk.net.ExtendedSocketOptions");
-            Field field = c.getField("SO_FLOW_SLA");
-            map.put((SocketOption<?>)field.get(null), listOf(createSocketFlow()));
-            field = c.getField("TCP_QUICKACK");
+            Field field = c.getField("TCP_QUICKACK");
             map.put((SocketOption<?>)field.get(null), listOf(TRUE, FALSE));
             field = c.getField("TCP_KEEPIDLE");
             map.put((SocketOption<?>)field.get(null), listOf(10, 100));
@@ -104,6 +105,8 @@ public class AfterClose {
             map.put((SocketOption<?>)field.get(null), listOf(10, 100));
             field = c.getField("TCP_KEEPCOUNT");
             map.put((SocketOption<?>)field.get(null), listOf(10, 100));
+            field = c.getField("SO_INCOMING_NAPI_ID");
+            map.put((SocketOption<?>)field.get(null), listOf(RO));
         } catch (ClassNotFoundException e) {
             // ignore, jdk.net module not present
         } catch (ReflectiveOperationException e) {
@@ -156,7 +159,7 @@ public class AfterClose {
         Socket socket = createClosedSocketFromAdapter();
         for (int i=0; i<3; i++); {
             for (T value : values) {
-                expectThrows(IOE, () -> socket.setOption(option, value));
+                if (!RO.equals(value)) expectThrows(IOE, () -> socket.setOption(option, value));
                 expectThrows(IOE, () -> socket.getOption(option));
             }
         }
@@ -209,7 +212,7 @@ public class AfterClose {
         ServerSocket serverSocket = createClosedServerSocketFromAdapter();
         for (int i=0; i<3; i++); {
             for (T value : values) {
-                expectThrows(IOE, () -> serverSocket.setOption(option, value));
+                if (!RO.equals(value)) expectThrows(IOE, () -> serverSocket.setOption(option, value));
                 expectThrows(IOE, () -> serverSocket.getOption(option));
             }
         }
@@ -233,7 +236,7 @@ public class AfterClose {
         DatagramSocket datagramSocket = createClosedUnboundDatagramSocket();
         for (int i=0; i<3; i++); {
             for (T value : values) {
-                expectThrows(IOE, () -> datagramSocket.setOption(option, value));
+                if (!RO.equals(value)) expectThrows(IOE, () -> datagramSocket.setOption(option, value));
                 expectThrows(IOE, () -> datagramSocket.getOption(option));
             }
         }
@@ -246,7 +249,7 @@ public class AfterClose {
         DatagramSocket datagramSocket = createClosedBoundDatagramSocket();
         for (int i=0; i<3; i++); {
             for (T value : values) {
-                expectThrows(IOE, () -> datagramSocket.setOption(option, value));
+                if (!RO.equals(value)) expectThrows(IOE, () -> datagramSocket.setOption(option, value));
                 expectThrows(IOE, () -> datagramSocket.getOption(option));
             }
         }
@@ -259,7 +262,7 @@ public class AfterClose {
         DatagramSocket datagramSocket = createClosedBoundDatagramSocket();
         for (int i=0; i<3; i++); {
             for (T value : values) {
-                expectThrows(IOE, () -> datagramSocket.setOption(option, value));
+                if (!RO.equals(value)) expectThrows(IOE, () -> datagramSocket.setOption(option, value));
                 expectThrows(IOE, () -> datagramSocket.getOption(option));
             }
         }
@@ -283,7 +286,7 @@ public class AfterClose {
         MulticastSocket multicastSocket = createClosedUnboundMulticastSocket();
         for (int i=0; i<3; i++); {
             for (T value : values) {
-                expectThrows(IOE, () -> multicastSocket.setOption(option, value));
+                if (!RO.equals(value)) expectThrows(IOE, () -> multicastSocket.setOption(option, value));
                 expectThrows(IOE, () -> multicastSocket.getOption(option));
             }
         }
@@ -296,7 +299,7 @@ public class AfterClose {
         MulticastSocket multicastSocket = createClosedBoundMulticastSocket();
         for (int i=0; i<3; i++); {
             for (T value : values) {
-                expectThrows(IOE, () -> multicastSocket.setOption(option, value));
+                if (!RO.equals(value)) expectThrows(IOE, () -> multicastSocket.setOption(option, value));
                 expectThrows(IOE, () -> multicastSocket.getOption(option));
             }
         }
@@ -391,15 +394,5 @@ public class AfterClose {
         assert ms.isBound() == true;
         ms.close();
         return ms;
-    }
-
-    static Object createSocketFlow() {
-        try {
-            Class<?> c = Class.forName("jdk.net.SocketFlow");
-            Method method = c.getDeclaredMethod("create");
-            return method.invoke(null);
-        } catch (ReflectiveOperationException e) {
-            throw new AssertionError(e);
-        }
     }
 }

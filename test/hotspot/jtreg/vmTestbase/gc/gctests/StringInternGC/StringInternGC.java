@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +24,14 @@
 
 /*
  * @test
- * @key stress gc
+ * @key stress randomness
  *
  * @summary converted from VM Testbase gc/gctests/StringInternGC.
  * VM Testbase keywords: [gc, stress, stressopt, nonconcurrent, quick]
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
- * @run main/othervm gc.gctests.StringInternGC.StringInternGC
+ * @run main/othervm -XX:+ExplicitGCInvokesConcurrent gc.gctests.StringInternGC.StringInternGC
  */
 
 package gc.gctests.StringInternGC;
@@ -47,13 +46,19 @@ import nsk.share.gc.*;
  * String pool should not overflow.
  */
 public class StringInternGC extends ThreadedGCTest {
-        private int maxLength = 1000;
+        private int maxLength = 1000; // Maximum number of characters to add per operation.
+        private int maxTotalLength = 128 * 1024; // Total maximum length of the string until a new StringBuffer will be allocated.
+        private long lastTime = System.currentTimeMillis();
 
         private class StringGenerator implements Runnable {
                 private StringBuffer sb = new StringBuffer();
 
                 private String generateString() {
                         int length = LocalRandom.nextInt(maxLength);
+                        if (sb.length() > maxTotalLength) {
+                                sb = new StringBuffer();
+                        }
+
                         for (int i = 0; i < length; ++i)
                                 sb.append((char) LocalRandom.nextInt(Integer.MAX_VALUE));
                         return sb.toString();
@@ -61,6 +66,12 @@ public class StringInternGC extends ThreadedGCTest {
 
 
                 public void run() {
+                        long currentTime = System.currentTimeMillis();
+                        if (currentTime - lastTime > 5000) { // Cause a full gc every 5s.
+                                lastTime = currentTime;
+                                System.gc();
+                        }
+
                         generateString().intern();
                 }
         }

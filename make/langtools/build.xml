@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ Copyright (c) 2007, 2018, Oracle and/or its affiliates. All rights reserved.
+  ~ Copyright (c) 2007, 2020, Oracle and/or its affiliates. All rights reserved.
   ~ DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
   ~
   ~ This code is free software; you can redistribute it and/or modify it
@@ -73,6 +73,7 @@
     <property name="src.dir" location="src"/>
     <property name="test.dir" location="test"/>
     <property name="make.dir" location="make/langtools"/>
+    <property name="make.idea.dir" location="make/ide/idea/langtools"/>
     <property name="make.conf.dir" location="${make.dir}/conf"/>
     <property name="make.tools.dir" location="${make.dir}/tools"/>
     <property name="build.dir" location="build/langtools"/>
@@ -88,28 +89,18 @@
     <pathconvert pathsep="," property="src.module.dirs" refid="src.module.dirset"/>
 
     <pathconvert property="xpatch.rest" pathsep=" --patch-module=" refid="src.module.dirset">
-        <scriptmapper language="javascript">
-            fs = project.getProperty("file.separator");
-            path = project.getProperty("build.modules");
-            mod = source.substr(source.lastIndexOf(fs)+1);
-            self.addMappedName(mod + "=\"" + path + fs + mod + "\"");
-        </scriptmapper>
+        <regexpmapper from="^.*(/|\\)([^/\\]*)$" to='\2="${build.modules}\1\2"' />
     </pathconvert>
 
     <pathconvert property="xpatch.noquotes.rest" pathsep=" --patch-module=" refid="src.module.dirset">
-        <scriptmapper language="javascript">
-            fs = project.getProperty("file.separator");
-            path = project.getProperty("build.modules");
-            mod = source.substr(source.lastIndexOf(fs)+1);
-            self.addMappedName(mod + "=" + path + fs + mod);
-        </scriptmapper>
+        <regexpmapper from="^([^/\\]*)(/|\\).*" to="\1=${build.modules}\2\1" />
     </pathconvert>
 
     <property name="xpatch.cmd" value="--patch-module=${xpatch.rest}"/>
     <property name="xpatch.noquotes.cmd" value="--patch-module=${xpatch.noquotes.rest}"/>
 
     <!-- java.marker is set to a marker file to check for within a Java install dir.
-         The best file to check for across Solaris/Linux/Windows/MacOS is one of the
+         The best file to check for across Linux/Windows/MacOS is one of the
          executables; regrettably, that is OS-specific. -->
     <condition property="java.marker" value="bin/java">
         <os family="unix"/>
@@ -212,14 +203,7 @@
 
     <target name="build-all-classes" depends="generate-sources">
         <pathconvert property="xpatch.src.rest" pathsep=" --patch-module=" refid="src.module.dirset">
-            <scriptmapper language="javascript">
-                fs = project.getProperty("file.separator");
-                path_src = project.getProperty("src.dir");
-                path_sep = project.getProperty("path.separator");
-                path_gensrc = project.getProperty("build.gensrc");
-                mod = source.substr(source.lastIndexOf(fs)+1);
-                self.addMappedName(mod + "=" + path_src + fs + mod + path_sep + path_gensrc + fs + mod);
-            </scriptmapper>
+            <regexpmapper from="^.*(/|\\)([^/\\]*)$" to="\2=${src.dir}\1\2/share/classes${path.separator}${build.gensrc}\1\2" />
         </pathconvert>
         <property name="xpatch.src.cmd" value="--patch-module=${xpatch.src.rest}"/>
         <pathconvert pathsep="," property="gensrc.module.dirs">
@@ -269,7 +253,7 @@
     <target name="idea" depends="-check-langtools.jdk.home">
         <mkdir dir=".idea"/>
         <copy todir=".idea" >
-            <fileset dir="${make.dir}/intellij/template">
+            <fileset dir="${make.idea.dir}/template">
                <exclude name="**/src/**"/>
                <exclude name="**/utils/**"/>
             </fileset>
@@ -289,7 +273,7 @@
         <mkdir dir=".idea/classes"/>
         <javac source="${javac.build.source}"
                target="${javac.build.target}"
-               srcdir="${make.dir}/intellij/template/src"
+               srcdir="${make.idea.dir}/template/src"
                destdir=".idea/classes"/>
     </target>
 

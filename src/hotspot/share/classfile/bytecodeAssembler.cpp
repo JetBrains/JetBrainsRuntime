@@ -32,12 +32,12 @@
 #include "utilities/bytes.hpp"
 
 u2 BytecodeConstantPool::find_or_add(BytecodeCPEntry const& bcpe) {
-  u2 index;
-  u2* probe = _indices.get(bcpe);
-  if (probe == NULL) {
-    index = _entries.length();
+
+  u2 index = _entries.length();
+  bool created = false;
+  u2* probe = _indices.put_if_absent(bcpe, index, &created);
+  if (created) {
     _entries.append(bcpe);
-    _indices.put(bcpe, index);
   } else {
     index = *probe;
   }
@@ -58,9 +58,7 @@ ConstantPool* BytecodeConstantPool::create_constant_pool(TRAPS) const {
   _orig->copy_cp_to(1, _orig->length() - 1, cp_h, 1, CHECK_NULL);
 
   // Preserve dynamic constant information from the original pool
-  if (_orig->has_dynamic_constant()) {
-    cp->set_has_dynamic_constant();
-  }
+  cp->copy_fields(_orig);
 
   for (int i = 0; i < _entries.length(); ++i) {
     BytecodeCPEntry entry = _entries.at(i);

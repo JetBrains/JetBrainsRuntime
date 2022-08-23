@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -158,6 +158,9 @@ class BitMap {
 
   static void clear_range_of_words(bm_word_t* map, idx_t beg, idx_t end);
 
+  idx_t count_one_bits_within_word(idx_t beg, idx_t end) const;
+  idx_t count_one_bits_in_range_of_words(idx_t beg_full_word, idx_t end_full_word) const;
+
   // Verification.
 
   // Verify size_in_bits does not exceed max_size_in_bits().
@@ -281,14 +284,16 @@ class BitMap {
   void clear_large();
   inline void clear();
 
-  // Iteration support.  Returns "true" if the iteration completed, false
-  // if the iteration terminated early (because the closure "blk" returned
-  // false).
-  bool iterate(BitMapClosure* blk, idx_t leftIndex, idx_t rightIndex);
-  bool iterate(BitMapClosure* blk) {
-    // call the version that takes an interval
-    return iterate(blk, 0, size());
-  }
+  // Iteration support.  Applies the closure to the index for each set bit,
+  // starting from the least index in the range to the greatest, in order.
+  // The iteration terminates if the closure returns false.  Returns true if
+  // the iteration completed, false if terminated early because the closure
+  // returned false.  If the closure modifies the bitmap, modifications to
+  // bits at indices greater than the current index will affect which further
+  // indices the closure will be applied to.
+  // precondition: beg and end form a valid range.
+  bool iterate(BitMapClosure* cl, idx_t beg, idx_t end);
+  bool iterate(BitMapClosure* cl);
 
   // Looking for 1's and 0's at indices equal to or greater than "l_index",
   // stopping if none has been found before "r_index", and returning
@@ -309,6 +314,9 @@ class BitMap {
 
   // Returns the number of bits set in the bitmap.
   idx_t count_one_bits() const;
+
+  // Returns the number of bits set within  [beg, end).
+  idx_t count_one_bits(idx_t beg, idx_t end) const;
 
   // Set operations.
   void set_union(const BitMap& bits);

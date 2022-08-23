@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,7 +44,7 @@ import javax.swing.plaf.*;
  * future Swing releases. The current serialization support is
  * appropriate for short term storage or RMI between applications running
  * the same version of Swing.  As of 1.4, support for long term storage
- * of all JavaBeans&trade;
+ * of all JavaBeans
  * has been added to the <code>java.beans</code> package.
  * Please see {@link java.beans.XMLEncoder}.
  *
@@ -131,6 +131,7 @@ public class MetalSliderUI extends BasicSliderUI {
         super( null );
     }
 
+    @SuppressWarnings("removal")
     private static Icon getHorizThumbIcon() {
         if (System.getSecurityManager() != null) {
             return SAFE_HORIZ_THUMB_ICON;
@@ -139,6 +140,7 @@ public class MetalSliderUI extends BasicSliderUI {
         }
     }
 
+    @SuppressWarnings("removal")
     private static Icon getVertThumbIcon() {
         if (System.getSecurityManager() != null) {
             return SAFE_VERT_THUMB_ICON;
@@ -180,6 +182,11 @@ public class MetalSliderUI extends BasicSliderUI {
      * {@code PropertyListener} for {@code JSlider.isFilled}.
      */
     protected class MetalPropertyListener extends BasicSliderUI.PropertyChangeHandler {
+        /**
+         * Constructs a {@code MetalPropertyListener}.
+         */
+        protected MetalPropertyListener() {}
+
         public void propertyChange( PropertyChangeEvent e ) {  // listen for slider fill
             super.propertyChange( e );
 

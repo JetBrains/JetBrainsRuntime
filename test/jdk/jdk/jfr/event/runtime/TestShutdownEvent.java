@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -68,20 +66,34 @@ public class TestShutdownEvent {
 
     public static void main(String[] args) throws Throwable {
         for (int i = 0; i < subTests.length; ++i) {
-            if (subTests[i].isApplicable()) {
-                runSubtest(i);
-            } else {
+            int attempts = subTests[i].attempts();
+            if (attempts == 0) {
                 System.out.println("Skipping non-applicable test: " + i);
             }
+            for (int j = 0; j < attempts -1; j++) {
+                try {
+                    runSubtest(i);
+                    return;
+                } catch (Exception e) {
+                    System.out.println("Failed: " + e.getMessage());
+                    System.out.println();
+                    System.out.println("Retry " + i + 1);
+                } catch (OutOfMemoryError | StackOverflowError e) {
+                    System.out.println("Error");
+                    // Can happen when parsing corrupt file. Abort test.
+                    return;
+                }
+            }
+            runSubtest(i);
         }
     }
 
     private static void runSubtest(int subTestIndex) throws Exception {
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(true,
+        ProcessBuilder pb = ProcessTools.createTestJvm(
                                 "-Xlog:jfr=debug",
                                 "-XX:-CreateCoredumpOnCrash",
                                 "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED",
-                                "-XX:StartFlightRecording=filename=./dumped.jfr,dumponexit=true,settings=default",
+                                "-XX:StartFlightRecording:filename=./dumped.jfr,dumponexit=true,settings=default",
                                 "jdk.jfr.event.runtime.TestShutdownEvent$TestMain",
                                 String.valueOf(subTestIndex));
         OutputAnalyzer output = ProcessTools.executeProcess(pb);
@@ -89,7 +101,7 @@ public class TestShutdownEvent {
         int exitCode = output.getExitValue();
         System.out.println("Exit code: " + exitCode);
 
-        String recordingName = output.firstMatch("emergency jfr file: (.*.jfr)", 1);
+        String recordingName = output.firstMatch("JFR recording file will be written. Location: (.*.jfr)", 1);
         if (recordingName == null) {
             recordingName = "./dumped.jfr";
         }
@@ -115,8 +127,8 @@ public class TestShutdownEvent {
     }
 
     private interface ShutdownEventSubTest {
-        default boolean isApplicable() {
-            return true;
+        default int attempts() {
+            return 1;
         }
         void runTest();
         void verifyEvents(RecordedEvent event, int exitCode);
@@ -174,6 +186,11 @@ public class TestShutdownEvent {
             // see 8219082 for details (running the crashed VM with -Xint would solve the issue too)
             //validateStackTrace(event.getStackTrace());
         }
+
+        @Override
+        public int attempts() {
+            return 3;
+        }
     }
 
     private static class TestUnhandledException implements ShutdownEventSubTest {
@@ -207,14 +224,11 @@ public class TestShutdownEvent {
         private final String signalName;
 
         @Override
-        public boolean isApplicable() {
+        public int  attempts() {
             if (Platform.isWindows()) {
-                return false;
+                return 0;
             }
-            if (signalName.equals("HUP") && Platform.isSolaris()) {
-                return false;
-            }
-            return true;
+            return 1;
         }
 
         public TestSig(String signalName) {

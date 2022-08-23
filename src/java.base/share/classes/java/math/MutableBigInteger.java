@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -145,7 +145,6 @@ class MutableBigInteger {
      * Makes this number an {@code n}-int number all of whose bits are ones.
      * Used by Burnikel-Ziegler division.
      * @param n number of ints in the {@code value} array
-     * @return a number equal to {@code ((1<<(32*n)))-1}
      */
     private void ones(int n) {
         if (n > value.length)
@@ -160,8 +159,14 @@ class MutableBigInteger {
      * supposed to modify the returned array.
      */
     private int[] getMagnitudeArray() {
-        if (offset > 0 || value.length != intLen)
-            return Arrays.copyOfRange(value, offset, offset + intLen);
+        if (offset > 0 || value.length != intLen) {
+            // Shrink value to be the total magnitude
+            int[] tmp = Arrays.copyOfRange(value, offset, offset + intLen);
+            Arrays.fill(value, 0);
+            offset = 0;
+            intLen = tmp.length;
+            value = tmp;
+        }
         return value;
     }
 
@@ -1074,7 +1079,7 @@ class MutableBigInteger {
         z.value = zval;
     }
 
-     /**
+    /**
      * This method is used for division of an n word dividend by a one word
      * divisor. The quotient is placed into quotient. The one word divisor is
      * specified by divisor.
@@ -1167,7 +1172,7 @@ class MutableBigInteger {
      * Calculates the quotient of this div b and places the quotient in the
      * provided MutableBigInteger objects and the remainder object is returned.
      *
-     * Uses Algorithm D in Knuth section 4.3.1.
+     * Uses Algorithm D from Knuth TAOCP Vol. 2, 3rd edition, section 4.3.1.
      * Many optimizations to that algorithm have been adapted from the Colin
      * Plumb C library.
      * It special cases one word divisors for speed. The content of b is not
@@ -1981,7 +1986,7 @@ class MutableBigInteger {
      * Assumes that this and v are not zero.
      */
     private MutableBigInteger binaryGCD(MutableBigInteger v) {
-        // Algorithm B from Knuth section 4.5.2
+        // Algorithm B from Knuth TAOCP Vol. 2, 3rd edition, section 4.5.2
         MutableBigInteger u = this;
         MutableBigInteger r = new MutableBigInteger();
 
@@ -2178,8 +2183,8 @@ class MutableBigInteger {
     }
 
     /**
-     * Calculate the multiplicative inverse of this mod mod, where mod is odd.
-     * This and mod are not changed by the calculation.
+     * Calculate the multiplicative inverse of this modulo mod, where the mod
+     * argument is odd.  This and mod are not changed by the calculation.
      *
      * This method implements an algorithm due to Richard Schroeppel, that uses
      * the same intermediate representation as Montgomery Reduction
@@ -2233,8 +2238,18 @@ class MutableBigInteger {
             k += trailingZeros;
         }
 
-        while (c.sign < 0)
-           c.signedAdd(p);
+        if (c.compare(p) >= 0) { // c has a larger magnitude than p
+            MutableBigInteger remainder = c.divide(p,
+                new MutableBigInteger());
+            // The previous line ignores the sign so we copy the data back
+            // into c which will restore the sign as needed (and converts
+            // it back to a SignedMutableBigInteger)
+            c.copyValue(remainder);
+        }
+
+        if (c.sign < 0) {
+            c.signedAdd(p);
+        }
 
         return fixup(c, p, k);
     }
@@ -2272,8 +2287,8 @@ class MutableBigInteger {
         }
 
         // In theory, c may be greater than p at this point (Very rare!)
-        while (c.compare(p) >= 0)
-            c.subtract(p);
+        if (c.compare(p) >= 0)
+            c = c.divide(p, new MutableBigInteger());
 
         return c;
     }

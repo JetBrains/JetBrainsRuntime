@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,18 +30,22 @@ import java.awt.*;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.print.*;
+import java.net.URI;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.print.*;
 import javax.print.attribute.PrintRequestAttributeSet;
 import javax.print.attribute.HashPrintRequestAttributeSet;
 import javax.print.attribute.standard.Copies;
+import javax.print.attribute.standard.Destination;
 import javax.print.attribute.standard.Media;
 import javax.print.attribute.standard.MediaPrintableArea;
 import javax.print.attribute.standard.MediaSize;
 import javax.print.attribute.standard.MediaSizeName;
 import javax.print.attribute.standard.PageRanges;
+import javax.print.attribute.Attribute;
 
 import sun.java2d.*;
 import sun.print.*;
@@ -57,10 +61,13 @@ public final class CPrinterJob extends RasterPrinterJob {
     private static String sShouldNotReachHere = "Should not reach here.";
 
     private volatile SecondaryLoop printingLoop;
+    private AtomicReference<Throwable> printErrorRef = new AtomicReference<>();
 
     private boolean noDefaultPrinter = false;
 
     private static Font defaultFont;
+
+    private String tray = null;
 
     // This is the NSPrintInfo for this PrinterJob. Protect multi thread
     //  access to it. It is used by the pageDialog, jobDialog, and printLoop.
@@ -177,6 +184,11 @@ public final class CPrinterJob extends RasterPrinterJob {
         if (attributes == null) {
             return;
         }
+        Attribute attr = attributes.get(Media.class);
+        if (attr instanceof CustomMediaTray) {
+            CustomMediaTray customTray = (CustomMediaTray) attr;
+            tray = customTray.getChoiceName();
+        }
 
         PageRanges pageRangesAttr =  (PageRanges)attributes.get(PageRanges.class);
         if (isSupportedValue(pageRangesAttr, attributes)) {
@@ -251,6 +263,22 @@ public final class CPrinterJob extends RasterPrinterJob {
         isPrintToFile = printToFile;
     }
 
+    private void setDestinationFile(String dest) {
+        if (attributes != null && dest != null) {
+            try {
+               URI destURI = new URI(dest);
+               attributes.add(new Destination(destURI));
+               destinationAttr = "" + destURI.getSchemeSpecificPart();
+            } catch (Exception e) {
+            }
+        }
+    }
+
+    private String getDestinationFile() {
+        return destinationAttr;
+    }
+
+    @SuppressWarnings("removal")
     @Override
     public void print(PrintRequestAttributeSet attributes) throws PrinterException {
         // NOTE: Some of this code is copied from RasterPrinterJob.
@@ -297,6 +325,7 @@ public final class CPrinterJob extends RasterPrinterJob {
                 performingPrinting = true;
                 userCancelled = false;
             }
+            printErrorRef.set(null);
 
             //Add support for PageRange
             PageRanges pr = (attributes == null) ?  null
@@ -354,6 +383,15 @@ public final class CPrinterJob extends RasterPrinterJob {
             }
             if (printingLoop != null) {
                 printingLoop.exit();
+            }
+
+            Throwable printError = printErrorRef.getAndSet(null);
+            if (printError != null) {
+                if (printError instanceof PrinterException) {
+                    throw (PrinterException) printError;
+                }
+                throw (PrinterException)
+                    new PrinterException().initCause(printError);
             }
         }
 
@@ -614,6 +652,10 @@ public final class CPrinterJob extends RasterPrinterJob {
         return service.getName();
     }
 
+    private String getPrinterTray() {
+        return tray;
+    }
+
     private void setPrinterServiceFromNative(String printerName) {
         // This is called from the native side.
         PrintService[] services = PrintServiceLookup.lookupPrintServices(DocFlavor.SERVICE_FORMATTED.PAGEABLE, null);
@@ -756,22 +798,36 @@ public final class CPrinterJob extends RasterPrinterJob {
     private Rectangle2D printAndGetPageFormatArea(final Printable printable, final Graphics graphics, final PageFormat pageFormat, final int pageIndex) {
         final Rectangle2D[] ret = new Rectangle2D[1];
 
-        Runnable r = new Runnable() { public void run() { synchronized(ret) {
-            try {
-                int pageResult = printable.print(graphics, pageFormat, pageIndex);
-                if (pageResult != Printable.NO_SUCH_PAGE) {
-                    ret[0] = getPageFormatArea(pageFormat);
+        Runnable r = new Runnable() {
+            @Override
+            public void run() {
+                synchronized (ret) {
+                    try {
+                        int pageResult = printable.print(
+                            graphics, pageFormat, pageIndex);
+                        if (pageResult != Printable.NO_SUCH_PAGE) {
+                            ret[0] = getPageFormatArea(pageFormat);
+                        }
+                    } catch (Throwable t) {
+                        printErrorRef.compareAndSet(null, t);
+                    }
                 }
-            } catch (Exception e) {} // Original code bailed on any exception
-        }}};
+            }
+        };
 
         if (onEventThread) {
-            try { EventQueue.invokeAndWait(r); } catch (Exception e) { e.printStackTrace(); }
+            try {
+                EventQueue.invokeAndWait(r);
+            } catch (Throwable t) {
+                printErrorRef.compareAndSet(null, t);
+            }
         } else {
             r.run();
         }
 
-        synchronized(ret) { return ret[0]; }
+        synchronized (ret) {
+            return ret[0];
+        }
     }
 
     // upcall from native

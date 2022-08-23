@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -265,8 +265,8 @@ class ShortLoopOptimizer : public ValueNumberingVisitor {
   GlobalValueNumbering* _gvn;
   BlockList             _loop_blocks;
   bool                  _too_complicated_loop;
-  bool                  _has_field_store[T_ARRAY + 1];
-  bool                  _has_indexed_store[T_ARRAY + 1];
+  bool                  _has_field_store[T_VOID];
+  bool                  _has_indexed_store[T_VOID];
 
   // simplified access to methods of GlobalValueNumbering
   ValueMap* current_map()                        { return _gvn->current_map(); }
@@ -276,12 +276,12 @@ class ShortLoopOptimizer : public ValueNumberingVisitor {
   void      kill_memory()                                 { _too_complicated_loop = true; }
   void      kill_field(ciField* field, bool all_offsets)  {
     current_map()->kill_field(field, all_offsets);
-    assert(field->type()->basic_type() >= 0 && field->type()->basic_type() <= T_ARRAY, "Invalid type");
+    assert(field->type()->basic_type() >= 0 && field->type()->basic_type() < T_VOID, "Invalid type");
     _has_field_store[field->type()->basic_type()] = true;
   }
   void      kill_array(ValueType* type)                   {
     current_map()->kill_array(type);
-    BasicType basic_type = as_BasicType(type); assert(basic_type >= 0 && basic_type <= T_ARRAY, "Invalid type");
+    BasicType basic_type = as_BasicType(type); assert(basic_type >= 0 && basic_type < T_VOID, "Invalid type");
     _has_indexed_store[basic_type] = true;
   }
 
@@ -291,19 +291,19 @@ class ShortLoopOptimizer : public ValueNumberingVisitor {
     , _loop_blocks(ValueMapMaxLoopSize)
     , _too_complicated_loop(false)
   {
-    for (int i=0; i<= T_ARRAY; i++){
+    for (int i = 0; i < T_VOID; i++) {
       _has_field_store[i] = false;
       _has_indexed_store[i] = false;
     }
   }
 
   bool has_field_store(BasicType type) {
-    assert(type >= 0 && type <= T_ARRAY, "Invalid type");
+    assert(type >= 0 && type < T_VOID, "Invalid type");
     return _has_field_store[type];
   }
 
   bool has_indexed_store(BasicType type) {
-    assert(type >= 0 && type <= T_ARRAY, "Invalid type");
+    assert(type >= 0 && type < T_VOID, "Invalid type");
     return _has_indexed_store[type];
   }
 
@@ -318,7 +318,6 @@ class LoopInvariantCodeMotion : public StackObj  {
   ValueStack *          _state;
   bool                  _insert_is_pred;
 
-  void set_invariant(Value v) const    { _gvn->set_processed(v); }
   bool is_invariant(Value v) const     { return _gvn->is_processed(v); }
 
   void process_block(BlockBegin* block);
@@ -328,7 +327,7 @@ class LoopInvariantCodeMotion : public StackObj  {
 };
 
 LoopInvariantCodeMotion::LoopInvariantCodeMotion(ShortLoopOptimizer *slo, GlobalValueNumbering* gvn, BlockBegin* loop_header, BlockList* loop_blocks)
-  : _gvn(gvn), _short_loop_optimizer(slo) {
+  : _gvn(gvn), _short_loop_optimizer(slo), _insertion_point(NULL), _state(NULL), _insert_is_pred(false) {
 
   TRACE_VALUE_NUMBERING(tty->print_cr("using loop invariant code motion loop_header = %d", loop_header->block_id()));
   TRACE_VALUE_NUMBERING(tty->print_cr("** loop invariant code motion for short loop B%d", loop_header->block_id()));
@@ -367,7 +366,6 @@ void LoopInvariantCodeMotion::process_block(BlockBegin* block) {
   Instruction* cur = block->next();
 
   while (cur != NULL) {
-
     // determine if cur instruction is loop invariant
     // only selected instruction types are processed here
     bool cur_invariant = false;
@@ -388,6 +386,12 @@ void LoopInvariantCodeMotion::process_block(BlockBegin* block) {
     } else if (cur->as_LoadIndexed() != NULL) {
       LoadIndexed *li = (LoadIndexed *)cur->as_LoadIndexed();
       cur_invariant = !_short_loop_optimizer->has_indexed_store(as_BasicType(cur->type())) && is_invariant(li->array()) && is_invariant(li->index()) && _insert_is_pred;
+    } else if (cur->as_NegateOp() != NULL) {
+      NegateOp* neg = (NegateOp*)cur->as_NegateOp();
+      cur_invariant = is_invariant(neg->x());
+    } else if (cur->as_Convert() != NULL) {
+      Convert* cvt = (Convert*)cur->as_Convert();
+      cur_invariant = is_invariant(cvt->value());
     }
 
     if (cur_invariant) {
@@ -412,6 +416,7 @@ void LoopInvariantCodeMotion::process_block(BlockBegin* block) {
       cur->set_exception_handlers(NULL);
 
       TRACE_VALUE_NUMBERING(tty->print_cr("Instruction %c%d is loop invariant", cur->type()->tchar(), cur->id()));
+      TRACE_VALUE_NUMBERING(cur->print_line());
 
       if (cur->state_before() != NULL) {
         cur->set_state_before(_state->copy());
@@ -421,7 +426,6 @@ void LoopInvariantCodeMotion::process_block(BlockBegin* block) {
       }
 
       cur = prev->set_next(next);
-
     } else {
       prev = cur;
       cur = cur->next();
@@ -488,6 +492,7 @@ GlobalValueNumbering::GlobalValueNumbering(IR* ir)
   : _compilation(ir->compilation())
   , _current_map(NULL)
   , _value_maps(ir->linear_scan_order()->length(), ir->linear_scan_order()->length(), NULL)
+  , _has_substitutions(false)
 {
   TRACE_VALUE_NUMBERING(tty->print_cr("****** start of global value numbering"));
 
@@ -584,7 +589,7 @@ void GlobalValueNumbering::substitute(Instruction* instr) {
   if (subst != instr) {
     assert(!subst->has_subst(), "can't have a substitution");
 
-    TRACE_VALUE_NUMBERING(tty->print_cr("substitution for %d set to %d", instr->id(), subst->id()));
+    TRACE_VALUE_NUMBERING(tty->print_cr("substitution for %c%d set to %c%d", instr->type()->tchar(), instr->id(), subst->type()->tchar(), subst->id()));
     instr->set_subst(subst);
     _has_substitutions = true;
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,16 +40,17 @@ import jdk.jfr.EventType;
 
 public final class RequestEngine {
 
-    private final static JVM jvm = JVM.getJVM();
+    private static final JVM jvm = JVM.getJVM();
 
-    final static class RequestHook {
+    static final class RequestHook {
         private final Runnable hook;
         private final PlatformEventType type;
+        @SuppressWarnings("removal")
         private final AccessControlContext accessControllerContext;
         private long delta;
 
         // Java events
-        private RequestHook(AccessControlContext acc, PlatformEventType eventType, Runnable hook) {
+        private RequestHook(@SuppressWarnings("removal") AccessControlContext acc, PlatformEventType eventType, Runnable hook) {
             this.hook = hook;
             this.type = eventType;
             this.accessControllerContext = acc;
@@ -68,26 +69,31 @@ public final class RequestEngine {
                     } else {
                         jvm.emitEvent(type.getId(), JVM.counterTime(), 0);
                     }
-                    Logger.log(LogTag.JFR_SYSTEM_EVENT, LogLevel.DEBUG, ()-> "Executed periodic hook for " + type.getLogName());
+                    if (Logger.shouldLog(LogTag.JFR_SYSTEM, LogLevel.DEBUG)) {
+                        Logger.log(LogTag.JFR_SYSTEM, LogLevel.DEBUG, "Executed periodic hook for " + type.getLogName());
+                    }
                 } else {
                     executeSecure();
                 }
             } catch (Throwable e) {
                 // Prevent malicious user to propagate exception callback in the wrong context
-                Logger.log(LogTag.JFR_SYSTEM_EVENT, LogLevel.WARN, "Exception occured during execution of period hook for " + type.getLogName());
+                Logger.log(LogTag.JFR_SYSTEM, LogLevel.WARN, "Exception occurred during execution of period hook for " + type.getLogName());
             }
         }
 
+        @SuppressWarnings("removal")
         private void executeSecure() {
             AccessController.doPrivileged(new PrivilegedAction<Void>() {
                 @Override
                 public Void run() {
                     try {
                         hook.run();
-                        Logger.log(LogTag.JFR_EVENT, LogLevel.DEBUG, ()-> "Executed periodic hook for " + type.getLogName());
+                        if (Logger.shouldLog(LogTag.JFR_EVENT, LogLevel.DEBUG)) {
+                            Logger.log(LogTag.JFR_EVENT, LogLevel.DEBUG, "Executed periodic hook for " + type.getLogName());
+                        }
                     } catch (Throwable t) {
                         // Prevent malicious user to propagate exception callback in the wrong context
-                        Logger.log(LogTag.JFR_EVENT, LogLevel.WARN, "Exception occured during execution of period hook for " + type.getLogName());
+                        Logger.log(LogTag.JFR_EVENT, LogLevel.WARN, "Exception occurred during execution of period hook for " + type.getLogName());
                     }
                     return null;
                 }
@@ -95,17 +101,17 @@ public final class RequestEngine {
         }
     }
 
-    private final static List<RequestHook> entries = new CopyOnWriteArrayList<>();
+    private static final List<RequestHook> entries = new CopyOnWriteArrayList<>();
     private static long lastTimeMillis;
     private static long flushInterval = Long.MAX_VALUE;
     private static long streamDelta;
 
-    public static void addHook(AccessControlContext acc, PlatformEventType type, Runnable hook) {
+    public static void addHook(@SuppressWarnings("removal") AccessControlContext acc, PlatformEventType type, Runnable hook) {
         Objects.requireNonNull(acc);
         addHookInternal(acc, type, hook);
     }
 
-    private static void addHookInternal(AccessControlContext acc, PlatformEventType type, Runnable hook) {
+    private static void addHookInternal(@SuppressWarnings("removal") AccessControlContext acc, PlatformEventType type, Runnable hook) {
         RequestHook he = new RequestHook(acc, type, hook);
         for (RequestHook e : entries) {
             if (e.hook == hook) {
@@ -133,10 +139,10 @@ public final class RequestEngine {
     }
 
     private static void logHook(String action, PlatformEventType type) {
-        if (type.isJDK() || type.isJVM()) {
-            Logger.log(LogTag.JFR_SYSTEM_EVENT, LogLevel.INFO, action + " periodic hook for " + type.getLogName());
+        if (type.isSystem()) {
+            Logger.log(LogTag.JFR_SYSTEM, LogLevel.INFO, action + " periodic hook for " + type.getLogName());
         } else {
-            Logger.log(LogTag.JFR_EVENT, LogLevel.INFO, action + " periodic hook for " + type.getLogName());
+            Logger.log(LogTag.JFR, LogLevel.INFO, action + " periodic hook for " + type.getLogName());
         }
     }
 
@@ -238,7 +244,7 @@ public final class RequestEngine {
             // calculate time left
             left = (r_period - r_delta);
 
-            /**
+            /*
              * nothing outside checks that a period is >= 0, so left can end up
              * negative here. ex. (r_period =(-1)) - (r_delta = 0) if it is,
              * handle it.
@@ -281,9 +287,10 @@ public final class RequestEngine {
 
     static void setFlushInterval(long millis) {
         // Don't accept shorter interval than 1 s.
-        long interval = millis < 1000 ? 1000  : millis;
+        long interval = millis < 1000 ? 1000 : millis;
+        boolean needNotify = interval < flushInterval;
         flushInterval = interval;
-        if (interval < flushInterval) {
+        if (needNotify) {
             synchronized (JVM.FILE_DELTA_CHANGE) {
                 JVM.FILE_DELTA_CHANGE.notifyAll();
             }

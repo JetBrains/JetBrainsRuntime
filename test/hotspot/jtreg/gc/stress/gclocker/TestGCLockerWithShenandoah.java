@@ -25,10 +25,9 @@
 package gc.stress.gclocker;
 
 /*
- * @test TestGCLockerWithShenandoah
- * @key gc
+ * @test id=default
  * @library /
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  * @summary Stress Shenandoah's JNI handling by calling GetPrimitiveArrayCritical while concurrently filling up old gen.
  *
  * @run main/native/othervm/timeout=200 -Xlog:gc*=info -Xms1500m -Xmx1500m -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
@@ -39,6 +38,13 @@ package gc.stress.gclocker;
  * @run main/native/othervm/timeout=200 -Xlog:gc*=info -Xms1500m -Xmx1500m -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
  *      -XX:+UseShenandoahGC
  *      gc.stress.gclocker.TestGCLockerWithShenandoah
+ */
+
+/*
+ * @test id=aggressive
+ * @library /
+ * @requires vm.gc.Shenandoah
+ * @summary Stress Shenandoah's JNI handling by calling GetPrimitiveArrayCritical while concurrently filling up old gen.
  *
  * @run main/native/othervm/timeout=200 -Xlog:gc*=info -Xms1500m -Xmx1500m -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive
@@ -52,7 +58,7 @@ package gc.stress.gclocker;
  */
 public class TestGCLockerWithShenandoah {
     public static void main(String[] args) {
-        String[] testArgs = {"2", "Shenandoah heap"};
+        String[] testArgs = {"2", "Shenandoah", "0"};
         TestGCLocker.main(testArgs);
     }
 }

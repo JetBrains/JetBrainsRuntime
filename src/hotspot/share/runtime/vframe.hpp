@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@
 #include "code/location.hpp"
 #include "oops/oop.hpp"
 #include "runtime/frame.hpp"
+#include "runtime/handles.hpp"
+#include "runtime/registerMap.hpp"
 #include "runtime/stackValue.hpp"
 #include "runtime/stackValueCollection.hpp"
 #include "utilities/growableArray.hpp"
@@ -50,6 +52,8 @@
 
 // - BasicLock
 
+class StackFrameStream;
+
 class vframe: public ResourceObj {
  protected:
   frame        _fr;      // Raw frame behind the virtual frame.
@@ -59,8 +63,9 @@ class vframe: public ResourceObj {
   vframe(const frame* fr, const RegisterMap* reg_map, JavaThread* thread);
   vframe(const frame* fr, JavaThread* thread);
  public:
-  // Factory method for creating vframes
+  // Factory methods for creating vframes
   static vframe* new_vframe(const frame* f, const RegisterMap *reg_map, JavaThread* thread);
+  static vframe* new_vframe(StackFrameStream& fst, JavaThread* thread);
 
   // Accessors
   frame              fr()           const { return _fr;       }
@@ -241,34 +246,22 @@ class entryVFrame: public externalVFrame {
 // 2) the monitor lock
 class MonitorInfo : public ResourceObj {
  private:
-  oop        _owner; // the object owning the monitor
+  Handle     _owner; // the object owning the monitor
   BasicLock* _lock;
-  oop        _owner_klass; // klass (mirror) if owner was scalar replaced
+  Handle     _owner_klass; // klass (mirror) if owner was scalar replaced
   bool       _eliminated;
   bool       _owner_is_scalar_replaced;
  public:
   // Constructor
-  MonitorInfo(oop owner, BasicLock* lock, bool eliminated, bool owner_is_scalar_replaced) {
-    if (!owner_is_scalar_replaced) {
-      _owner = owner;
-      _owner_klass = NULL;
-    } else {
-      assert(eliminated, "monitor should be eliminated for scalar replaced object");
-      _owner = NULL;
-      _owner_klass = owner;
-    }
-    _lock  = lock;
-    _eliminated = eliminated;
-    _owner_is_scalar_replaced = owner_is_scalar_replaced;
-  }
+  MonitorInfo(oop owner, BasicLock* lock, bool eliminated, bool owner_is_scalar_replaced);
   // Accessors
-  oop        owner() const {
+  oop owner() const {
     assert(!_owner_is_scalar_replaced, "should not be called for scalar replaced object");
-    return _owner;
+    return _owner();
   }
-  oop   owner_klass() const {
+  oop owner_klass() const {
     assert(_owner_is_scalar_replaced, "should not be called for not scalar replaced object");
-    return _owner_klass;
+    return _owner_klass();
   }
   BasicLock* lock()  const { return _lock;  }
   bool eliminated()  const { return _eliminated; }
@@ -310,7 +303,7 @@ class vframeStreamCommon : StackObj {
 
  public:
   // Constructor
-  inline vframeStreamCommon(JavaThread* thread);
+  inline vframeStreamCommon(JavaThread* thread, bool process_frames);
 
   // Accessors
   Method* method() const { return _method; }
@@ -339,16 +332,12 @@ class vframeStreamCommon : StackObj {
   // Implements security traversal. Skips depth no. of frame including
   // special security frames and prefixed native methods
   void security_get_caller_frame(int depth);
-
-  // Helper routine for JVM_LatestUserDefinedLoader -- needed for 1.4
-  // reflection implementation
-  void skip_reflection_related_frames();
 };
 
 class vframeStream : public vframeStreamCommon {
  public:
   // Constructors
-  vframeStream(JavaThread* thread, bool stop_at_java_call_stub = false);
+  vframeStream(JavaThread* thread, bool stop_at_java_call_stub = false, bool process_frames = true);
 
   // top_frame may not be at safepoint, start with sender
   vframeStream(JavaThread* thread, frame top_frame, bool stop_at_java_call_stub = false);

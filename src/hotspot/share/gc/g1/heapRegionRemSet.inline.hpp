@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,9 @@
 #ifndef SHARE_VM_GC_G1_HEAPREGIONREMSET_INLINE_HPP
 #define SHARE_VM_GC_G1_HEAPREGIONREMSET_INLINE_HPP
 
-#include "gc/g1/heapRegion.inline.hpp"
 #include "gc/g1/heapRegionRemSet.hpp"
+
+#include "gc/g1/heapRegion.inline.hpp"
 #include "gc/g1/sparsePRT.hpp"
 #include "runtime/atomic.hpp"
 #include "utilities/bitMap.inline.hpp"
@@ -62,7 +63,6 @@ inline bool PerRegionTable::add_reference(OopOrNarrowOopStar from) {
 inline void PerRegionTable::init(HeapRegion* hr, bool clear_links_to_all_list) {
   if (clear_links_to_all_list) {
     set_next(NULL);
-    set_prev(NULL);
   }
   _collision_list_next = NULL;
   _occupied = 0;
@@ -74,7 +74,7 @@ inline void PerRegionTable::init(HeapRegion* hr, bool clear_links_to_all_list) {
 
 template <class Closure>
 void OtherRegionsTable::iterate(Closure& cl) {
-  if (_n_coarse_entries > 0) {
+  if (Atomic::load(&_has_coarse_entries)) {
     BitMap::idx_t cur = _coarse_map.get_next_one_offset(0);
     while (cur != _coarse_map.size()) {
       cl.next_coarse_prt((uint)cur);

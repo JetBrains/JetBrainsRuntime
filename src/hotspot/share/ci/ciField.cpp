@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,13 +25,17 @@
 #include "precompiled.hpp"
 #include "ci/ciField.hpp"
 #include "ci/ciInstanceKlass.hpp"
+#include "ci/ciSymbols.hpp"
 #include "ci/ciUtilities.inline.hpp"
-#include "classfile/systemDictionary.hpp"
+#include "classfile/javaClasses.hpp"
+#include "classfile/vmClasses.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
 #include "interpreter/linkResolver.hpp"
+#include "oops/klass.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/fieldDescriptor.inline.hpp"
 #include "runtime/handles.inline.hpp"
+#include "runtime/reflectionUtils.hpp"
 
 // ciField
 //
@@ -86,7 +90,7 @@ ciField::ciField(ciInstanceKlass* klass, int index) :
   Symbol* signature = cpool->symbol_at(sig_index);
   _signature = ciEnv::current(THREAD)->get_symbol(signature);
 
-  BasicType field_type = FieldType::basic_type(signature);
+  BasicType field_type = Signature::basic_type(signature);
 
   // If the field is a pointer type, get the klass of the
   // field.
@@ -215,30 +219,34 @@ ciField::ciField(fieldDescriptor *fd) :
 static bool trust_final_non_static_fields(ciInstanceKlass* holder) {
   if (holder == NULL)
     return false;
-  if (holder->name() == ciSymbol::java_lang_System())
+  if (holder->name() == ciSymbols::java_lang_System())
     // Never trust strangely unstable finals:  System.out, etc.
     return false;
   // Even if general trusting is disabled, trust system-built closures in these packages.
   if (holder->is_in_package("java/lang/invoke") || holder->is_in_package("sun/invoke") ||
       holder->is_in_package("jdk/internal/foreign") || holder->is_in_package("jdk/incubator/foreign") ||
+      holder->is_in_package("jdk/internal/vm/vector") || holder->is_in_package("jdk/incubator/vector") ||
       holder->is_in_package("java/lang"))
     return true;
-  // Trust VM unsafe anonymous classes. They are private API (jdk.internal.misc.Unsafe)
-  // and can't be serialized, so there is no hacking of finals going on with them.
-  if (holder->is_unsafe_anonymous())
+  // Trust hidden classes. They are created via Lookup.defineHiddenClass and
+  // can't be serialized, so there is no hacking of finals going on with them.
+  if (holder->is_hidden())
     return true;
   // Trust final fields in all boxed classes
   if (holder->is_box_klass())
     return true;
+  // Trust final fields in records
+  if (holder->is_record())
+    return true;
   // Trust final fields in String
-  if (holder->name() == ciSymbol::java_lang_String())
+  if (holder->name() == ciSymbols::java_lang_String())
     return true;
   // Trust Atomic*FieldUpdaters: they are very important for performance, and make up one
   // more reason not to use Unsafe, if their final fields are trusted. See more in JDK-8140483.
-  if (holder->name() == ciSymbol::java_util_concurrent_atomic_AtomicIntegerFieldUpdater_Impl() ||
-      holder->name() == ciSymbol::java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater() ||
-      holder->name() == ciSymbol::java_util_concurrent_atomic_AtomicLongFieldUpdater_LockedUpdater() ||
-      holder->name() == ciSymbol::java_util_concurrent_atomic_AtomicReferenceFieldUpdater_Impl()) {
+  if (holder->name() == ciSymbols::java_util_concurrent_atomic_AtomicIntegerFieldUpdater_Impl() ||
+      holder->name() == ciSymbols::java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater() ||
+      holder->name() == ciSymbols::java_util_concurrent_atomic_AtomicLongFieldUpdater_LockedUpdater() ||
+      holder->name() == ciSymbols::java_util_concurrent_atomic_AtomicReferenceFieldUpdater_Impl()) {
     return true;
   }
   return TrustFinalNonStaticFields;
@@ -261,12 +269,12 @@ void ciField::initialize_from(fieldDescriptor* fd) {
       // not be constant is when the field is a *special* static & final field
       // whose value may change.  The three examples are java.lang.System.in,
       // java.lang.System.out, and java.lang.System.err.
-      assert(SystemDictionary::System_klass() != NULL, "Check once per vm");
-      if (k == SystemDictionary::System_klass()) {
+      assert(vmClasses::System_klass() != NULL, "Check once per vm");
+      if (k == vmClasses::System_klass()) {
         // Check offsets for case 2: System.in, System.out, or System.err
-        if( _offset == java_lang_System::in_offset_in_bytes()  ||
-            _offset == java_lang_System::out_offset_in_bytes() ||
-            _offset == java_lang_System::err_offset_in_bytes() ) {
+        if (_offset == java_lang_System::in_offset()  ||
+            _offset == java_lang_System::out_offset() ||
+            _offset == java_lang_System::err_offset()) {
           _is_constant = false;
           return;
         }
@@ -280,9 +288,9 @@ void ciField::initialize_from(fieldDescriptor* fd) {
     }
   } else {
     // For CallSite objects treat the target field as a compile time constant.
-    assert(SystemDictionary::CallSite_klass() != NULL, "should be already initialized");
-    if (k == SystemDictionary::CallSite_klass() &&
-        _offset == java_lang_invoke_CallSite::target_offset_in_bytes()) {
+    assert(vmClasses::CallSite_klass() != NULL, "should be already initialized");
+    if (k == vmClasses::CallSite_klass() &&
+        _offset == java_lang_invoke_CallSite::target_offset()) {
       assert(!has_initialized_final_update(), "CallSite is not supposed to have writes to final fields outside initializers");
       _is_constant = true;
     } else {
@@ -395,7 +403,7 @@ bool ciField::will_link(ciMethod* accessing_method,
                      _name->get_symbol(), _signature->get_symbol(),
                      methodHandle(THREAD, accessing_method->get_Method()));
   fieldDescriptor result;
-  LinkResolver::resolve_field(result, link_info, bc, false, KILL_COMPILE_ON_FATAL_(false));
+  LinkResolver::resolve_field(result, link_info, bc, false, CHECK_AND_CLEAR_(false));
 
   // update the hit-cache, unless there is a problem with memory scoping:
   if (accessing_method->holder()->is_shared() || !is_shared()) {
@@ -407,6 +415,24 @@ bool ciField::will_link(ciMethod* accessing_method,
   }
 
   return true;
+}
+
+bool ciField::is_call_site_target() {
+  ciInstanceKlass* callsite_klass = CURRENT_ENV->CallSite_klass();
+  if (callsite_klass == NULL)
+    return false;
+  return (holder()->is_subclass_of(callsite_klass) && (name() == ciSymbols::target_name()));
+}
+
+bool ciField::is_autobox_cache() {
+  ciSymbol* klass_name = holder()->name();
+  return (name() == ciSymbols::cache_field_name() &&
+          holder()->uses_default_loader() &&
+          (klass_name == ciSymbols::java_lang_Character_CharacterCache() ||
+            klass_name == ciSymbols::java_lang_Byte_ByteCache() ||
+            klass_name == ciSymbols::java_lang_Short_ShortCache() ||
+            klass_name == ciSymbols::java_lang_Integer_IntegerCache() ||
+            klass_name == ciSymbols::java_lang_Long_LongCache()));
 }
 
 // ------------------------------------------------------------------

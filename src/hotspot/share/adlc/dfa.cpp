@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,14 +28,6 @@
 //---------------------------Switches for debugging output---------------------
 static bool debug_output   = false;
 static bool debug_output1  = false;    // top level chain rules
-
-//---------------------------Access to internals of class State----------------
-static const char *sLeft   = "_kids[0]";
-static const char *sRight  = "_kids[1]";
-
-//---------------------------DFA productions-----------------------------------
-static const char *dfa_production           = "DFA_PRODUCTION";
-static const char *dfa_production_set_valid = "DFA_PRODUCTION__SET_VALID";
 
 //---------------------------Production State----------------------------------
 static const char *knownInvalid = "knownInvalid";    // The result does NOT have a rule defined
@@ -80,7 +72,7 @@ private:
 
 public:
   // cmpstr does string comparisions.  hashstr computes a key.
-  ProductionState(Arena *arena) : _production(cmpstr, hashstr, arena) { initialize(); };
+  ProductionState(AdlArena *arena) : _production(cmpstr, hashstr, arena) { initialize(); };
   ~ProductionState() { };
 
   void        initialize();                // reset local and dictionary state
@@ -111,7 +103,7 @@ private:
 //---------------------------Helper Functions----------------------------------
 // cost_check template:
 // 1)      if (STATE__NOT_YET_VALID(EBXREGI) || _cost[EBXREGI] > c) {
-// 2)        DFA_PRODUCTION__SET_VALID(EBXREGI, cmovI_memu_rule, c)
+// 2)        DFA_PRODUCTION(EBXREGI, cmovI_memu_rule, c)
 // 3)      }
 //
 static void cost_check(FILE *fp, const char *spaces,
@@ -162,13 +154,13 @@ static void cost_check(FILE *fp, const char *spaces,
   }
 
   // line 2)
-  // no need to set State vector if our state is knownValid
-  const char *production = (validity_check == knownValid) ? dfa_production : dfa_production_set_valid;
-  fprintf(fp, "%s  %s(%s, %s_rule, %s)", spaces, production, arrayIdx, rule, cost->as_string() );
-  if( validity_check == knownValid ) {
-    if( cost_is_below_lower_bound ) { fprintf(fp, "\t  // overwrites higher cost rule"); }
-   }
-   fprintf(fp, "\n");
+  fprintf(fp, "%s  DFA_PRODUCTION(%s, %s_rule, %s)", spaces, arrayIdx, rule, cost->as_string() );
+  if (validity_check == knownValid) {
+    if (cost_is_below_lower_bound) {
+      fprintf(fp, "\t  // overwrites higher cost rule");
+    }
+  }
+  fprintf(fp, "\n");
 
   // line 3)
   if( cost_check || state_check ) {
@@ -276,7 +268,7 @@ void ArchDesc::gen_match(FILE *fp, MatchList &mList, ProductionState &status, Di
 
   // Check if this rule should be used to generate the chains as well.
   const char *rule = /* set rule to "Invalid" for internal operands */
-    strcmp(mList._opcode,mList._resultStr) ? mList._opcode : "Invalid";
+    strcmp(mList._opcode, mList._resultStr) ? mList._opcode : "Invalid";
 
   // If this rule produces an operand which has associated chain rules,
   // update the operands with the chain rule + this rule cost & this rule.
@@ -396,16 +388,8 @@ void ArchDesc::buildDFA(FILE* fp) {
   _attributes.output(fp);
   fprintf(fp, "\n");
   fprintf(fp, "//------------------------- Macros -----------------------------------------\n");
-  // #define DFA_PRODUCTION(result, rule, cost)\
-  //   _cost[ (result) ] = cost; _rule[ (result) ] = rule;
-  fprintf(fp, "#define %s(result, rule, cost)\\\n", dfa_production);
-  fprintf(fp, "  _cost[ (result) ] = cost; _rule[ (result) ] = rule;\n");
-  fprintf(fp, "\n");
-
-  // #define DFA_PRODUCTION__SET_VALID(result, rule, cost)\
-  //     DFA_PRODUCTION( (result), (rule), (cost) ); STATE__SET_VALID( (result) );
-  fprintf(fp, "#define %s(result, rule, cost)\\\n", dfa_production_set_valid);
-  fprintf(fp, "  %s( (result), (rule), (cost) ); STATE__SET_VALID( (result) );\n", dfa_production);
+  fprintf(fp, "#define DFA_PRODUCTION(result, rule, cost)\\\n");
+  fprintf(fp, "  assert(rule < (1 << 15), \"too many rules\"); _cost[ (result) ] = cost; _rule[ (result) ] = (rule << 1) | 0x1;\n");
   fprintf(fp, "\n");
 
   fprintf(fp, "//------------------------- DFA --------------------------------------------\n");
@@ -471,7 +455,7 @@ void ArchDesc::buildDFA(FILE* fp) {
 
 
 class dfa_shared_preds {
-  enum { count = 4 };
+  enum { count = 3 IA32_ONLY( + 1 ) };
 
   static bool        _found[count];
   static const char* _type [count];
@@ -582,15 +566,10 @@ public:
   }
 };
 // shared predicates, _var and _pred entry should be the same length
-bool         dfa_shared_preds::_found[dfa_shared_preds::count]
-  = { false, false, false, false };
-const char*  dfa_shared_preds::_type[dfa_shared_preds::count]
-  = { "int", "jlong", "intptr_t", "bool" };
-const char*  dfa_shared_preds::_var [dfa_shared_preds::count]
-  = { "_n_get_int__", "_n_get_long__", "_n_get_intptr_t__", "Compile__current____select_24_bit_instr__" };
-const char*  dfa_shared_preds::_pred[dfa_shared_preds::count]
-  = { "n->get_int()", "n->get_long()", "n->get_intptr_t()", "Compile::current()->select_24_bit_instr()" };
-
+bool         dfa_shared_preds::_found[dfa_shared_preds::count] = { false,          false,           false               IA32_ONLY(COMMA false)  };
+const char*  dfa_shared_preds::_type [dfa_shared_preds::count] = { "int",          "jlong",         "intptr_t"          IA32_ONLY(COMMA "bool") };
+const char*  dfa_shared_preds::_var  [dfa_shared_preds::count] = { "_n_get_int__", "_n_get_long__", "_n_get_intptr_t__" IA32_ONLY(COMMA "Compile__current____select_24_bit_instr__") };
+const char*  dfa_shared_preds::_pred [dfa_shared_preds::count] = { "n->get_int()", "n->get_long()", "n->get_intptr_t()" IA32_ONLY(COMMA "Compile::current()->select_24_bit_instr()") };
 
 void ArchDesc::gen_dfa_state_body(FILE* fp, Dict &minimize, ProductionState &status, Dict &operands_chained_from, int i) {
   // Start the body of each Op_XXX sub-dfa with a clean state.
@@ -838,7 +817,7 @@ bool Expr::check_buffers() {
 
 //------------------------------ExprDict---------------------------------------
 // Constructor
-ExprDict::ExprDict( CmpKey cmp, Hash hash, Arena *arena )
+ExprDict::ExprDict( CmpKey cmp, Hash hash, AdlArena *arena )
   : _expr(cmp, hash, arena), _defines()  {
 }
 ExprDict::~ExprDict() {

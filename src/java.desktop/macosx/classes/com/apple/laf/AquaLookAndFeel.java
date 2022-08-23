@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,22 +25,43 @@
 
 package com.apple.laf;
 
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.KeyboardFocusManager;
 import java.security.PrivilegedAction;
-import java.util.*;
+import java.util.Enumeration;
+import java.util.Locale;
+import java.util.ResourceBundle;
 
-import javax.swing.*;
+import javax.swing.Action;
+import javax.swing.ActionMap;
+import javax.swing.BorderFactory;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JRootPane;
+import javax.swing.PopupFactory;
+import javax.swing.SwingConstants;
+import javax.swing.UIDefaults;
+import javax.swing.UIManager;
 import javax.swing.border.Border;
-import javax.swing.plaf.*;
+import javax.swing.plaf.ActionMapUIResource;
+import javax.swing.plaf.BorderUIResource;
+import javax.swing.plaf.ColorUIResource;
+import javax.swing.plaf.DimensionUIResource;
+import javax.swing.plaf.InsetsUIResource;
 import javax.swing.plaf.basic.BasicBorders;
 import javax.swing.plaf.basic.BasicLookAndFeel;
+
+import apple.laf.JRSUIControl;
+import apple.laf.JRSUIUtils;
+import sun.swing.SwingAccessor;
+import sun.swing.SwingUtilities2;
+
 import static javax.swing.UIDefaults.LazyValue;
-import sun.swing.*;
-import apple.laf.*;
 
 @SuppressWarnings("serial") // Superclass is not serializable across versions
 public class AquaLookAndFeel extends BasicLookAndFeel {
-    static final String sOldPropertyPrefix = "com.apple.macos."; // old prefix for things like 'useScreenMenuBar'
     static final String sPropertyPrefix = "apple.laf."; // new prefix for things like 'useScreenMenuBar'
 
     // for lazy initalizers. Following the pattern from metal.
@@ -131,6 +152,7 @@ public class AquaLookAndFeel extends BasicLookAndFeel {
      * @see #uninitialize
      * @see UIManager#setLookAndFeel
      */
+    @SuppressWarnings("removal")
     public void initialize() {
         java.security.AccessController.doPrivileged(new PrivilegedAction<Void>() {
                 public Void run() {
@@ -307,6 +329,7 @@ public class AquaLookAndFeel extends BasicLookAndFeel {
         final ColorUIResource selectedTabTitlePressedColor = new ColorUIResource(240, 240, 240);
         final ColorUIResource selectedTabTitleDisabledColor = new ColorUIResource(new Color(1, 1, 1, 0.55f));
         final ColorUIResource selectedTabTitleNormalColor = white;
+        final Color selectedControlTextColor = AquaImageFactory.getSelectedControlColorUIResource();
         final ColorUIResource selectedTabTitleShadowDisabledColor = new ColorUIResource(new Color(0, 0, 0, 0.25f));
         final ColorUIResource selectedTabTitleShadowNormalColor = mediumTranslucentBlack;
         final ColorUIResource nonSelectedTabTitleNormalColor = black;
@@ -848,7 +871,7 @@ public class AquaLookAndFeel extends BasicLookAndFeel {
             "TabbedPane.tabsOverlapBorder", Boolean.TRUE,
             "TabbedPane.selectedTabTitlePressedColor", selectedTabTitlePressedColor,
             "TabbedPane.selectedTabTitleDisabledColor", selectedTabTitleDisabledColor,
-            "TabbedPane.selectedTabTitleNormalColor", selectedTabTitleNormalColor,
+            "TabbedPane.selectedTabTitleNormalColor", JRSUIUtils.isMacOSXBigSurOrAbove() ? selectedControlTextColor : selectedTabTitleNormalColor,
             "TabbedPane.selectedTabTitleShadowDisabledColor", selectedTabTitleShadowDisabledColor,
             "TabbedPane.selectedTabTitleShadowNormalColor", selectedTabTitleShadowNormalColor,
             "TabbedPane.nonSelectedTabTitleNormalColor", nonSelectedTabTitleNormalColor,

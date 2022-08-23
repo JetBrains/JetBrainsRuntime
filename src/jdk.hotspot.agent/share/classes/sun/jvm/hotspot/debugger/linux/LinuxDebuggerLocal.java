@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
 
 package sun.jvm.hotspot.debugger.linux;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -43,6 +42,7 @@ import sun.jvm.hotspot.debugger.DebuggerUtilities;
 import sun.jvm.hotspot.debugger.MachineDescription;
 import sun.jvm.hotspot.debugger.NotInHeapException;
 import sun.jvm.hotspot.debugger.OopHandle;
+import sun.jvm.hotspot.debugger.ProcessInfo;
 import sun.jvm.hotspot.debugger.ReadResult;
 import sun.jvm.hotspot.debugger.ThreadProxy;
 import sun.jvm.hotspot.debugger.UnalignedAddressException;
@@ -77,8 +77,8 @@ public class LinuxDebuggerLocal extends DebuggerBase implements LinuxDebugger {
     private LinuxCDebugger cdbg;
 
     // threadList and loadObjectList are filled by attach0 method
-    private List threadList;
-    private List loadObjectList;
+    private List<ThreadProxy> threadList;
+    private List<LoadObject> loadObjectList;
 
     // PID namespace support
     // It maps the LWPID in the host to the LWPID in the container.
@@ -90,11 +90,10 @@ public class LinuxDebuggerLocal extends DebuggerBase implements LinuxDebugger {
     }
 
     // called by native method attach0
-    private LoadObject createLoadObject(String fileName, long textsize,
+    private LoadObject createLoadObject(String fileName, long size,
                                         long base) {
-       File f = new File(fileName);
        Address baseAddr = newAddress(base);
-       return new SharedObject(this, fileName, f.length(), baseAddr);
+       return new SharedObject(this, fileName, size, baseAddr);
     }
 
     // native methods
@@ -120,6 +119,15 @@ public class LinuxDebuggerLocal extends DebuggerBase implements LinuxDebugger {
 
     @Override
     public native String demangle(String sym);
+
+    public native long findLibPtrByAddress0(long pc);
+
+    @Override
+    public Address findLibPtrByAddress(Address pc) {
+      long ptr = findLibPtrByAddress0(pc.asLongValue());
+      return (ptr == 0L) ? null
+                         : new LinuxAddress(this, ptr);
+    }
 
     // Note on Linux threads are really processes. When target process is
     // attached by a serviceability agent thread, only that thread can do
@@ -176,7 +184,7 @@ public class LinuxDebuggerLocal extends DebuggerBase implements LinuxDebugger {
                 } catch (InterruptedException x) {}
              }
              if (lastException != null) {
-                throw new DebuggerException(lastException);
+                throw new DebuggerException(lastException.getMessage(), lastException);
              } else {
                 return task;
              }
@@ -239,7 +247,7 @@ public class LinuxDebuggerLocal extends DebuggerBase implements LinuxDebugger {
     }
 
     /** From the Debugger interface via JVMDebugger */
-    public List getProcessList() throws DebuggerException {
+    public List<ProcessInfo> getProcessList() throws DebuggerException {
         throw new DebuggerException("getProcessList not implemented yet");
     }
 
@@ -308,8 +316,8 @@ public class LinuxDebuggerLocal extends DebuggerBase implements LinuxDebugger {
     /** From the Debugger interface via JVMDebugger */
     public synchronized void attach(int processID) throws DebuggerException {
         checkAttached();
-        threadList = new ArrayList();
-        loadObjectList = new ArrayList();
+        threadList = new ArrayList<>();
+        loadObjectList = new ArrayList<>();
 
         Path proc = Paths.get("/proc", Integer.toString(processID));
         int NSpid = getNamespacePID(Paths.get(proc.toString(), "status"));
@@ -340,8 +348,8 @@ public class LinuxDebuggerLocal extends DebuggerBase implements LinuxDebugger {
     /** From the Debugger interface via JVMDebugger */
     public synchronized void attach(String execName, String coreName) {
         checkAttached();
-        threadList = new ArrayList();
-        loadObjectList = new ArrayList();
+        threadList = new ArrayList<>();
+        loadObjectList = new ArrayList<>();
         attach0(execName, coreName);
         attached = true;
         isCore = true;
@@ -584,13 +592,13 @@ public class LinuxDebuggerLocal extends DebuggerBase implements LinuxDebugger {
     }
 
     /** From the LinuxCDebugger interface */
-    public List/*<ThreadProxy>*/ getThreadList() {
+    public List<ThreadProxy> getThreadList() {
       requireAttach();
       return threadList;
     }
 
     /** From the LinuxCDebugger interface */
-    public List/*<LoadObject>*/ getLoadObjectList() {
+    public List<LoadObject> getLoadObjectList() {
       requireAttach();
       return loadObjectList;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,21 +28,7 @@ package sun.security.tools.keytool;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.AlgorithmParameters;
-import java.security.CodeSigner;
-import java.security.CryptoPrimitive;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.MessageDigest;
-import java.security.Key;
-import java.security.PublicKey;
-import java.security.PrivateKey;
-import java.security.SecureRandom;
-import java.security.Signature;
-import java.security.Timestamp;
-import java.security.UnrecoverableEntryException;
-import java.security.UnrecoverableKeyException;
-import java.security.Principal;
+import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 import java.security.cert.CertStoreException;
@@ -53,7 +39,7 @@ import java.security.cert.URICertStoreParameters;
 
 
 import java.security.interfaces.ECKey;
-import java.security.spec.AlgorithmParameterSpec;
+import java.security.interfaces.EdECKey;
 import java.security.spec.ECParameterSpec;
 import java.text.Collator;
 import java.text.MessageFormat;
@@ -82,6 +68,7 @@ import sun.security.pkcs10.PKCS10;
 import sun.security.pkcs10.PKCS10Attribute;
 import sun.security.provider.X509Factory;
 import sun.security.provider.certpath.ssl.SSLServerCertStore;
+import sun.security.util.KnownOIDs;
 import sun.security.util.Password;
 import sun.security.util.SecurityProperties;
 import sun.security.util.SecurityProviderConstants;
@@ -99,7 +86,6 @@ import sun.security.util.Pem;
 import sun.security.x509.*;
 
 import static java.security.KeyStore.*;
-import java.security.Security;
 import static sun.security.tools.keytool.Main.Command.*;
 import static sun.security.tools.keytool.Main.Option.*;
 import sun.security.util.DisabledAlgorithmConstraints;
@@ -176,6 +162,8 @@ public final class Main {
     private String srcstoretype = null;
     private Set<char[]> passwords = new HashSet<>();
     private String startDate = null;
+    private String signerAlias = null;
+    private char[] signerKeyPass = null;
 
     private boolean tlsInfo = false;
 
@@ -193,6 +181,10 @@ public final class Main {
     private static final DisabledAlgorithmConstraints DISABLED_CHECK =
             new DisabledAlgorithmConstraints(
                     DisabledAlgorithmConstraints.PROPERTY_CERTPATH_DISABLED_ALGS);
+
+    private static final DisabledAlgorithmConstraints LEGACY_CHECK =
+            new DisabledAlgorithmConstraints(
+                    DisabledAlgorithmConstraints.PROPERTY_SECURITY_LEGACY_ALGS);
 
     private static final Set<CryptoPrimitive> SIG_PRIMITIVE_SET = Collections
             .unmodifiableSet(EnumSet.of(CryptoPrimitive.SIGNATURE));
@@ -218,6 +210,7 @@ public final class Main {
         GENKEYPAIR("Generates.a.key.pair",
             ALIAS, KEYALG, KEYSIZE, CURVENAME, SIGALG, DNAME,
             STARTDATE, EXT, VALIDITY, KEYPASS, KEYSTORE,
+            SIGNER, SIGNERKEYPASS,
             STOREPASS, STORETYPE, PROVIDERNAME, ADDPROVIDER,
             PROVIDERCLASS, PROVIDERPATH, V, PROTECTED),
         GENSECKEY("Generates.a.secret.key",
@@ -255,12 +248,15 @@ public final class Main {
             PROVIDERPATH, V, PROTECTED),
         PRINTCERT("Prints.the.content.of.a.certificate",
             RFC, FILEIN, SSLSERVER, JARFILE,
+            KEYSTORE, STOREPASS, STORETYPE, TRUSTCACERTS,
             PROVIDERNAME, ADDPROVIDER, PROVIDERCLASS,
-            PROVIDERPATH, V),
+            PROVIDERPATH, V, PROTECTED),
         PRINTCERTREQ("Prints.the.content.of.a.certificate.request",
             FILEIN, V),
         PRINTCRL("Prints.the.content.of.a.CRL.file",
-            FILEIN, V),
+            FILEIN, KEYSTORE, STOREPASS, STORETYPE, TRUSTCACERTS,
+            PROVIDERNAME, ADDPROVIDER, PROVIDERCLASS, PROVIDERPATH,
+            V, PROTECTED),
         STOREPASSWD("Changes.the.store.password.of.a.keystore",
             NEW, KEYSTORE, CACERTS, STOREPASS, STORETYPE, PROVIDERNAME,
             ADDPROVIDER, PROVIDERCLASS, PROVIDERPATH, V),
@@ -359,6 +355,8 @@ public final class Main {
         PROVIDERPATH("providerpath", "<list>", "provider.classpath"),
         RFC("rfc", null, "output.in.RFC.style"),
         SIGALG("sigalg", "<alg>", "signature.algorithm.name"),
+        SIGNER("signer", "<alias>", "signer.alias"),
+        SIGNERKEYPASS("signerkeypass", "<arg>", "signer.key.password"),
         SRCALIAS("srcalias", "<alias>", "source.alias"),
         SRCKEYPASS("srckeypass", "<arg>", "source.key.password"),
         SRCKEYSTORE("srckeystore", "<keystore>", "source.keystore.name"),
@@ -610,6 +608,11 @@ public final class Main {
                 keyAlgName = args[++i];
             } else if (collator.compare(flags, "-sigalg") == 0) {
                 sigAlgName = args[++i];
+            } else if (collator.compare(flags, "-signer") == 0) {
+                signerAlias = args[++i];
+            } else if (collator.compare(flags, "-signerkeypass") == 0) {
+                signerKeyPass = getPass(modifier, args[++i]);
+                passwords.add(signerKeyPass);
             } else if (collator.compare(flags, "-startdate") == 0) {
                 startDate = args[++i];
             } else if (collator.compare(flags, "-validity") == 0) {
@@ -714,7 +717,7 @@ public final class Main {
     }
 
     boolean isKeyStoreRelated(Command cmd) {
-        return cmd != PRINTCERT && cmd != PRINTCERTREQ && cmd != SHOWINFO;
+        return cmd != PRINTCERTREQ && cmd != SHOWINFO;
     }
 
     /**
@@ -899,14 +902,15 @@ public final class Main {
             } catch (FileNotFoundException e) {
                 // These commands do not need the keystore to be existing.
                 // Either it will create a new one or the keystore is
-                // optional (i.e. PRINTCRL).
+                // optional (i.e. PRINTCRL and PRINTCERT).
                 if (command != GENKEYPAIR &&
                         command != GENSECKEY &&
                         command != IDENTITYDB &&
                         command != IMPORTCERT &&
                         command != IMPORTPASS &&
                         command != IMPORTKEYSTORE &&
-                        command != PRINTCRL) {
+                        command != PRINTCRL &&
+                        command != PRINTCERT) {
                     throw new Exception(rb.getString
                             ("Keystore.file.does.not.exist.") + ksfname);
                 }
@@ -929,16 +933,27 @@ public final class Main {
             }
         }
 
-        // Create new keystore
-        // Probe for keystore type when filename is available
         if (ksfile != null && ksStream != null && providerName == null &&
-                storetype == null && !inplaceImport) {
-            keyStore = KeyStore.getInstance(ksfile, storePass);
-            storetype = keyStore.getType();
+                !inplaceImport) {
+            // existing keystore
+            if (storetype == null) {
+                // Probe for keystore type when filename is available
+                keyStore = KeyStore.getInstance(ksfile, storePass);
+                storetype = keyStore.getType();
+            } else {
+                keyStore = KeyStore.getInstance(storetype);
+                // storePass might be null here, will probably prompt later
+                keyStore.load(ksStream, storePass);
+            }
             if (storetype.equalsIgnoreCase("pkcs12")) {
-                isPasswordlessKeyStore = PKCS12KeyStore.isPasswordless(ksfile);
+                try {
+                    isPasswordlessKeyStore = PKCS12KeyStore.isPasswordless(ksfile);
+                } catch (IOException ioe) {
+                    // This must be a JKS keystore that's opened as a PKCS12
+                }
             }
         } else {
+            // Create new keystore
             if (storetype == null) {
                 storetype = KeyStore.getDefaultType();
             }
@@ -981,10 +996,8 @@ public final class Main {
                 if (inplaceImport) {
                     keyStore.load(null, storePass);
                 } else {
+                    // both ksStream and storePass could be null
                     keyStore.load(ksStream, storePass);
-                }
-                if (ksStream != null) {
-                    ksStream.close();
                 }
             }
         }
@@ -1068,7 +1081,7 @@ public final class Main {
                     }
                 } else {
                     // here we have EXPORTCERT and LIST (info valid until STOREPASSWD)
-                    if (command != PRINTCRL) {
+                    if (command != PRINTCRL && command != PRINTCERT) {
                         System.err.print(rb.getString("Enter.keystore.password."));
                         System.err.flush();
                         storePass = Password.readPassword(System.in);
@@ -1082,9 +1095,10 @@ public final class Main {
             if (nullStream) {
                 keyStore.load(null, storePass);
             } else if (ksStream != null) {
-                ksStream = new FileInputStream(ksfile);
-                keyStore.load(ksStream, storePass);
-                ksStream.close();
+                // Reload with user-provided password
+                try (FileInputStream fis = new FileInputStream(ksfile)) {
+                    keyStore.load(fis, storePass);
+                }
             }
         }
 
@@ -1103,10 +1117,10 @@ public final class Main {
             }
         }
 
-        // -trustcacerts can only be specified on -importcert.
-        // Reset it so that warnings on CA cert will remain for
-        // -printcert, etc.
-        if (command != IMPORTCERT) {
+        // -trustcacerts can be specified on -importcert, -printcert or -printcrl.
+        // Reset it so that warnings on CA cert will remain for other command.
+        if (command != IMPORTCERT && command != PRINTCERT
+                && command != PRINTCRL) {
             trustcacerts = false;
         }
 
@@ -1154,7 +1168,8 @@ public final class Main {
                 throw new Exception(rb.getString(
                         "keyalg.option.missing.error"));
             }
-            doGenKeyPair(alias, dname, keyAlgName, keysize, groupName, sigAlgName);
+            doGenKeyPair(alias, dname, keyAlgName, keysize, groupName, sigAlgName,
+                    signerAlias);
             kssave = true;
         } else if (command == GENSECKEY) {
             if (keyAlgName == null) {
@@ -1430,8 +1445,7 @@ public final class Main {
                                            X509CertInfo.DN_NAME);
 
         Date firstDate = getStartDate(startDate);
-        Date lastDate = new Date();
-        lastDate.setTime(firstDate.getTime() + validity*1000L*24L*60L*60L);
+        Date lastDate = getLastDate(firstDate, validity);
         CertificateValidity interval = new CertificateValidity(firstDate,
                                                                lastDate);
 
@@ -1440,26 +1454,17 @@ public final class Main {
         if (sigAlgName == null) {
             sigAlgName = getCompatibleSigAlgName(privateKey);
         }
-        Signature signature = Signature.getInstance(sigAlgName);
-        AlgorithmParameterSpec params = AlgorithmId
-                .getDefaultAlgorithmParameterSpec(sigAlgName, privateKey);
-
-        SignatureUtil.initSignWithParam(signature, privateKey, params, null);
-
         X509CertInfo info = new X509CertInfo();
-        AlgorithmId algID = AlgorithmId.getWithParameterSpec(sigAlgName, params);
         info.set(X509CertInfo.VALIDITY, interval);
         info.set(X509CertInfo.SERIAL_NUMBER,
                 CertificateSerialNumber.newRandom64bit(new SecureRandom()));
         info.set(X509CertInfo.VERSION,
                     new CertificateVersion(CertificateVersion.V3));
-        info.set(X509CertInfo.ALGORITHM_ID,
-                    new CertificateAlgorithmId(algID));
         info.set(X509CertInfo.ISSUER, issuer);
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(in));
         boolean canRead = false;
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         while (true) {
             String s = reader.readLine();
             if (s == null) break;
@@ -1490,15 +1495,42 @@ public final class Main {
                 reqex = (CertificateExtensions)attr.getAttributeValue();
             }
         }
+
+        PublicKey subjectPubKey = req.getSubjectPublicKeyInfo();
+        PublicKey issuerPubKey = signerCert.getPublicKey();
+
+        KeyIdentifier signerSubjectKeyId;
+        if (Arrays.equals(subjectPubKey.getEncoded(), issuerPubKey.getEncoded())) {
+            // No AKID for self-signed cert
+            signerSubjectKeyId = null;
+        } else {
+            X509CertImpl certImpl;
+            if (signerCert instanceof X509CertImpl) {
+                certImpl = (X509CertImpl) signerCert;
+            } else {
+                certImpl = new X509CertImpl(signerCert.getEncoded());
+            }
+
+            // To enforce compliance with RFC 5280 section 4.2.1.1: "Where a key
+            // identifier has been previously established, the CA SHOULD use the
+            // previously established identifier."
+            // Use issuer's SKID to establish the AKID in createV3Extensions() method.
+            signerSubjectKeyId = certImpl.getSubjectKeyId();
+
+            if (signerSubjectKeyId == null) {
+                signerSubjectKeyId = new KeyIdentifier(issuerPubKey);
+            }
+        }
+
         CertificateExtensions ext = createV3Extensions(
                 reqex,
                 null,
                 v3ext,
-                req.getSubjectPublicKeyInfo(),
-                signerCert.getPublicKey());
+                subjectPubKey,
+                signerSubjectKeyId);
         info.set(X509CertInfo.EXTENSIONS, ext);
         X509CertImpl cert = new X509CertImpl(info);
-        cert.sign(privateKey, params, sigAlgName, null);
+        cert.sign(privateKey, sigAlgName);
         dumpCert(cert, out);
         for (Certificate ca: keyStore.getCertificateChain(alias)) {
             if (ca instanceof X509Certificate) {
@@ -1527,11 +1559,9 @@ public final class Main {
                                                       X509CertInfo.DN_NAME);
 
         Date firstDate = getStartDate(startDate);
-        Date lastDate = (Date) firstDate.clone();
-        lastDate.setTime(lastDate.getTime() + validity*1000*24*60*60);
+        Date lastDate = getLastDate(firstDate, validity);
         CertificateValidity interval = new CertificateValidity(firstDate,
                                                                lastDate);
-
 
         PrivateKey privateKey =
                 (PrivateKey)recoverKey(alias, storePass, keyPass).fst;
@@ -1599,17 +1629,12 @@ public final class Main {
             sigAlgName = getCompatibleSigAlgName(privKey);
         }
 
-        Signature signature = Signature.getInstance(sigAlgName);
-        AlgorithmParameterSpec params = AlgorithmId
-                .getDefaultAlgorithmParameterSpec(sigAlgName, privKey);
-        SignatureUtil.initSignWithParam(signature, privKey, params, null);
-
         X500Name subject = dname == null?
-                new X500Name(((X509Certificate)cert).getSubjectDN().toString()):
+                new X500Name(((X509Certificate)cert).getSubjectX500Principal().getEncoded()):
                 new X500Name(dname);
 
         // Sign the request and base-64 encode it
-        request.encodeAndSign(subject, signature);
+        request.encodeAndSign(subject, privKey, sigAlgName);
         request.print(out);
 
         checkWeak(rb.getString("the.generated.certificate.request"), request);
@@ -1838,7 +1863,7 @@ public final class Main {
      */
     private static String getCompatibleSigAlgName(PrivateKey key)
             throws Exception {
-        String result = AlgorithmId.getDefaultSigAlgForKey(key);
+        String result = SignatureUtil.getDefaultSigAlgForKey(key);
         if (result != null) {
             return result;
         } else {
@@ -1851,7 +1876,8 @@ public final class Main {
      * Creates a new key pair and self-signed certificate.
      */
     private void doGenKeyPair(String alias, String dname, String keyAlgName,
-                              int keysize, String groupName, String sigAlgName)
+                              int keysize, String groupName, String sigAlgName,
+                              String signerAlias)
         throws Exception
     {
         if (groupName != null) {
@@ -1866,6 +1892,20 @@ public final class Main {
                     keysize = SecurityProviderConstants.DEF_RSA_KEY_SIZE;
                 } else if ("DSA".equalsIgnoreCase(keyAlgName)) {
                     keysize = SecurityProviderConstants.DEF_DSA_KEY_SIZE;
+                } else if ("EdDSA".equalsIgnoreCase(keyAlgName)) {
+                    keysize = SecurityProviderConstants.DEF_ED_KEY_SIZE;
+                } else if ("Ed25519".equalsIgnoreCase(keyAlgName)) {
+                    keysize = 255;
+                } else if ("Ed448".equalsIgnoreCase(keyAlgName)) {
+                    keysize = 448;
+                } else if ("XDH".equalsIgnoreCase(keyAlgName)) {
+                    keysize = SecurityProviderConstants.DEF_XEC_KEY_SIZE;
+                } else if ("X25519".equalsIgnoreCase(keyAlgName)) {
+                    keysize = 255;
+                } else if ("X448".equalsIgnoreCase(keyAlgName)) {
+                    keysize = 448;
+                } else if ("DH".equalsIgnoreCase(keyAlgName)) {
+                    keysize = SecurityProviderConstants.DEF_DH_KEY_SIZE;
                 }
             } else {
                 if ("EC".equalsIgnoreCase(keyAlgName)) {
@@ -1887,9 +1927,35 @@ public final class Main {
             throw new Exception(form.format(source));
         }
 
-        CertAndKeyGen keypair =
-                new CertAndKeyGen(keyAlgName, sigAlgName, providerName);
+        CertAndKeyGen keypair;
+        KeyIdentifier signerSubjectKeyId = null;
+        if (signerAlias != null) {
+            PrivateKey signerPrivateKey =
+                    (PrivateKey)recoverKey(signerAlias, storePass, signerKeyPass).fst;
+            Certificate signerCert = keyStore.getCertificate(signerAlias);
 
+            X509CertImpl signerCertImpl;
+            if (signerCert instanceof X509CertImpl) {
+                signerCertImpl = (X509CertImpl) signerCert;
+            } else {
+                signerCertImpl = new X509CertImpl(signerCert.getEncoded());
+            }
+
+            X509CertInfo signerCertInfo = (X509CertInfo)signerCertImpl.get(
+                    X509CertImpl.NAME + "." + X509CertImpl.INFO);
+            X500Name signerSubjectName = (X500Name)signerCertInfo.get(X509CertInfo.SUBJECT + "." +
+                    X509CertInfo.DN_NAME);
+
+            keypair = new CertAndKeyGen(keyAlgName, sigAlgName, providerName,
+                    signerPrivateKey, signerSubjectName);
+
+            signerSubjectKeyId = signerCertImpl.getSubjectKeyId();
+            if (signerSubjectKeyId == null) {
+                signerSubjectKeyId = new KeyIdentifier(signerCert.getPublicKey());
+            }
+        } else {
+            keypair = new CertAndKeyGen(keyAlgName, sigAlgName, providerName);
+        }
 
         // If DN is provided, parse it. Otherwise, prompt the user for it.
         X500Name x500Name;
@@ -1907,34 +1973,55 @@ public final class Main {
             keypair.generate(keysize);
         }
 
-        PrivateKey privKey = keypair.getPrivateKey();
-
         CertificateExtensions ext = createV3Extensions(
                 null,
                 null,
                 v3ext,
                 keypair.getPublicKeyAnyway(),
-                null);
+                signerSubjectKeyId);
 
-        X509Certificate[] chain = new X509Certificate[1];
-        chain[0] = keypair.getSelfCertificate(
+        PrivateKey privKey = keypair.getPrivateKey();
+        X509Certificate newCert = keypair.getSelfCertificate(
                 x500Name, getStartDate(startDate), validity*24L*60L*60L, ext);
 
-        MessageFormat form = new MessageFormat(rb.getString
-            ("Generating.keysize.bit.keyAlgName.key.pair.and.self.signed.certificate.sigAlgName.with.a.validity.of.validality.days.for"));
-        Object[] source = {
-                groupName == null ? keysize : KeyUtil.getKeySize(privKey),
-                fullDisplayAlgName(privKey),
-                chain[0].getSigAlgName(),
-                validity,
-                x500Name};
-        System.err.println(form.format(source));
+        if (signerAlias != null) {
+            MessageFormat form = new MessageFormat(rb.getString
+                    ("Generating.keysize.bit.keyAlgName.key.pair.and.a.certificate.sigAlgName.issued.by.signerAlias.with.a.validity.of.validality.days.for"));
+            Object[] source = {
+                    groupName == null ? keysize : KeyUtil.getKeySize(privKey),
+                    fullDisplayAlgName(privKey),
+                    newCert.getSigAlgName(),
+                    signerAlias,
+                    validity,
+                    x500Name};
+            System.err.println(form.format(source));
+        } else {
+            MessageFormat form = new MessageFormat(rb.getString
+                    ("Generating.keysize.bit.keyAlgName.key.pair.and.self.signed.certificate.sigAlgName.with.a.validity.of.validality.days.for"));
+            Object[] source = {
+                    groupName == null ? keysize : KeyUtil.getKeySize(privKey),
+                    fullDisplayAlgName(privKey),
+                    newCert.getSigAlgName(),
+                    validity,
+                    x500Name};
+            System.err.println(form.format(source));
+        }
 
         if (keyPass == null) {
             keyPass = promptForKeyPass(alias, null, storePass);
         }
-        checkWeak(rb.getString("the.generated.certificate"), chain[0]);
-        keyStore.setKeyEntry(alias, privKey, keyPass, chain);
+
+        Certificate[] finalChain;
+        if (signerAlias != null) {
+            Certificate[] signerChain = keyStore.getCertificateChain(signerAlias);
+            finalChain = new X509Certificate[signerChain.length + 1];
+            finalChain[0] = newCert;
+            System.arraycopy(signerChain, 0, finalChain, 1, signerChain.length);
+        } else {
+            finalChain = new Certificate[] { newCert };
+        }
+        checkWeak(rb.getString("the.generated.certificate"), finalChain);
+        keyStore.setKeyEntry(alias, privKey, keyPass, finalChain);
     }
 
     private String ecGroupNameForSize(int size) throws Exception {
@@ -2121,6 +2208,9 @@ public final class Main {
                 out.println(mf);
                 dumpCert(cert, out);
             } else if (debug) {
+                for (var attr : keyStore.getEntry(alias, null).getAttributes()) {
+                    System.out.println("Attribute " + attr.getName() + ": " + attr.getValue());
+                }
                 out.println(cert.toString());
             } else {
                 out.println("trustedCertEntry, ");
@@ -2339,8 +2429,15 @@ public final class Main {
             newPass = destKeyPass;
             pp = new PasswordProtection(destKeyPass);
         } else if (objs.snd != null) {
-            newPass = P12KEYSTORE.equalsIgnoreCase(storetype) ?
-                    storePass : objs.snd;
+            if (P12KEYSTORE.equalsIgnoreCase(storetype)) {
+                if (isPasswordlessKeyStore) {
+                    newPass = objs.snd;
+                } else {
+                    newPass = storePass;
+                }
+            } else {
+                newPass = objs.snd;
+            }
             pp = new PasswordProtection(newPass);
         }
 
@@ -2352,7 +2449,7 @@ public final class Main {
             keyStore.setEntry(newAlias, entry, pp);
             // Place the check so that only successful imports are blocked.
             // For example, we don't block a failed SecretEntry import.
-            if (P12KEYSTORE.equalsIgnoreCase(storetype)) {
+            if (P12KEYSTORE.equalsIgnoreCase(storetype) && !isPasswordlessKeyStore) {
                 if (newPass != null && !Arrays.equals(newPass, storePass)) {
                     throw new Exception(rb.getString(
                             "The.destination.pkcs12.keystore.has.different.storepass.and.keypass.Please.retry.with.destkeypass.specified."));
@@ -2431,27 +2528,6 @@ public final class Main {
         }
     }
 
-    private static <T> Iterable<T> e2i(final Enumeration<T> e) {
-        return new Iterable<T>() {
-            @Override
-            public Iterator<T> iterator() {
-                return new Iterator<T>() {
-                    @Override
-                    public boolean hasNext() {
-                        return e.hasMoreElements();
-                    }
-                    @Override
-                    public T next() {
-                        return e.nextElement();
-                    }
-                    public void remove() {
-                        throw new UnsupportedOperationException("Not supported yet.");
-                    }
-                };
-            }
-        };
-    }
-
     /**
      * Loads CRLs from a source. This method is also called in JarSigner.
      * @param src the source, which means System.in if null, or a URI,
@@ -2488,15 +2564,9 @@ public final class Main {
                 // otherwise, keytool -gencrl | keytool -printcrl
                 // might not work properly, since -gencrl is slow
                 // and there's no data in the pipe at the beginning.
-                ByteArrayOutputStream bout = new ByteArrayOutputStream();
-                byte[] b = new byte[4096];
-                while (true) {
-                    int len = in.read(b);
-                    if (len < 0) break;
-                    bout.write(b, 0, len);
-                }
+                byte[] bytes = in.readAllBytes();
                 return CertificateFactory.getInstance("X509").generateCRLs(
-                        new ByteArrayInputStream(bout.toByteArray()));
+                        new ByteArrayInputStream(bytes));
             } finally {
                 if (in != System.in) {
                     in.close();
@@ -2543,15 +2613,15 @@ public final class Main {
 
     private static String verifyCRL(KeyStore ks, CRL crl)
             throws Exception {
-        X509CRLImpl xcrl = (X509CRLImpl)crl;
+        X509CRL xcrl = (X509CRL)crl;
         X500Principal issuer = xcrl.getIssuerX500Principal();
-        for (String s: e2i(ks.aliases())) {
+        for (String s: Collections.list(ks.aliases())) {
             Certificate cert = ks.getCertificate(s);
             if (cert instanceof X509Certificate) {
                 X509Certificate xcert = (X509Certificate)cert;
                 if (xcert.getSubjectX500Principal().equals(issuer)) {
                     try {
-                        ((X509CRLImpl)crl).verify(cert.getPublicKey());
+                        ((X509CRL)crl).verify(cert.getPublicKey());
                         return s;
                     } catch (Exception e) {
                     }
@@ -2594,8 +2664,13 @@ public final class Main {
             if (issuer == null) {
                 out.println(rb.getString
                         ("STAR"));
-                out.println(rb.getString
-                        ("warning.not.verified.make.sure.keystore.is.correct"));
+                if (trustcacerts) {
+                    out.println(rb.getString
+                            ("warning.not.verified.make.sure.keystore.is.correct"));
+                } else {
+                    out.println(rb.getString
+                            ("warning.not.verified.make.sure.keystore.is.correct.or.specify.trustcacerts"));
+                }
                 out.println(rb.getString
                         ("STARNN"));
             }
@@ -2626,7 +2701,7 @@ public final class Main {
             throws Exception {
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         boolean started = false;
         while (true) {
             String s = reader.readLine();
@@ -2807,7 +2882,7 @@ public final class Main {
                             for (Certificate cert: certs) {
                                 X509Certificate x = (X509Certificate)cert;
                                 if (rfc) {
-                                    out.println(rb.getString("Certificate.owner.") + x.getSubjectDN() + "\n");
+                                    out.println(rb.getString("Certificate.owner.") + x.getSubjectX500Principal() + "\n");
                                     dumpCert(x, out);
                                 } else {
                                     printX509Cert(x, out);
@@ -2824,7 +2899,7 @@ public final class Main {
                                 for (Certificate cert: certs) {
                                     X509Certificate x = (X509Certificate)cert;
                                     if (rfc) {
-                                        out.println(rb.getString("Certificate.owner.") + x.getSubjectDN() + "\n");
+                                        out.println(rb.getString("Certificate.owner.") + x.getSubjectX500Principal() + "\n");
                                         dumpCert(x, out);
                                     } else {
                                         printX509Cert(x, out);
@@ -2958,8 +3033,7 @@ public final class Main {
 
         // Extend its validity
         Date firstDate = getStartDate(startDate);
-        Date lastDate = new Date();
-        lastDate.setTime(firstDate.getTime() + validity*1000L*24L*60L*60L);
+        Date lastDate = getLastDate(firstDate, validity);
         CertificateValidity interval = new CertificateValidity(firstDate,
                                                                lastDate);
         certInfo.set(X509CertInfo.VALIDITY, interval);
@@ -2984,18 +3058,6 @@ public final class Main {
         certInfo.set(X509CertInfo.ISSUER + "." +
                      X509CertInfo.DN_NAME, owner);
 
-        // The inner and outer signature algorithms have to match.
-        // The way we achieve that is really ugly, but there seems to be no
-        // other solution: We first sign the cert, then retrieve the
-        // outer sigalg and use it to set the inner sigalg
-        X509CertImpl newCert = new X509CertImpl(certInfo);
-        AlgorithmParameterSpec params = AlgorithmId
-                .getDefaultAlgorithmParameterSpec(sigAlgName, privKey);
-        newCert.sign(privKey, params, sigAlgName, null);
-        AlgorithmId sigAlgid = (AlgorithmId)newCert.get(X509CertImpl.SIG_ALG);
-        certInfo.set(CertificateAlgorithmId.NAME + "." +
-                     CertificateAlgorithmId.ALGORITHM, sigAlgid);
-
         certInfo.set(X509CertInfo.VERSION,
                         new CertificateVersion(CertificateVersion.V3));
 
@@ -3007,8 +3069,8 @@ public final class Main {
                 null);
         certInfo.set(X509CertInfo.EXTENSIONS, ext);
         // Sign the new certificate
-        newCert = new X509CertImpl(certInfo);
-        newCert.sign(privKey, params, sigAlgName, null);
+        X509CertImpl newCert = new X509CertImpl(certInfo);
+        newCert.sign(privKey, sigAlgName);
 
         // Store the new certificate as a single-element certificate chain
         keyStore.setKeyEntry(alias, privKey,
@@ -3320,9 +3382,13 @@ public final class Main {
 
     private String withWeak(String alg) {
         if (DISABLED_CHECK.permits(SIG_PRIMITIVE_SET, alg, null)) {
-            return alg;
+            if (LEGACY_CHECK.permits(SIG_PRIMITIVE_SET, alg, null)) {
+                return alg;
+            } else {
+                return String.format(rb.getString("with.weak"), alg);
+            }
         } else {
-            return String.format(rb.getString("with.weak"), alg);
+            return String.format(rb.getString("with.disabled"), alg);
         }
     }
 
@@ -3331,8 +3397,11 @@ public final class Main {
         if (key instanceof ECKey) {
             ECParameterSpec paramSpec = ((ECKey) key).getParams();
             if (paramSpec instanceof NamedCurve) {
-                result += " (" + paramSpec.toString().split(" ")[0] + ")";
+                NamedCurve nc = (NamedCurve)paramSpec;
+                result += " (" + nc.getNameAndAliases()[0] + ")";
             }
+        } else if (key instanceof EdECKey) {
+            result = ((EdECKey) key).getParams().getName();
         }
         return result;
     }
@@ -3341,13 +3410,17 @@ public final class Main {
         int kLen = KeyUtil.getKeySize(key);
         String displayAlg = fullDisplayAlgName(key);
         if (DISABLED_CHECK.permits(SIG_PRIMITIVE_SET, key)) {
-            if (kLen >= 0) {
-                return String.format(rb.getString("key.bit"), kLen, displayAlg);
+            if (LEGACY_CHECK.permits(SIG_PRIMITIVE_SET, key)) {
+                if (kLen >= 0) {
+                    return String.format(rb.getString("key.bit"), kLen, displayAlg);
+                } else {
+                    return String.format(rb.getString("unknown.size.1"), displayAlg);
+                }
             } else {
-                return String.format(rb.getString("unknown.size.1"), displayAlg);
+                return String.format(rb.getString("key.bit.weak"), kLen, displayAlg);
             }
         } else {
-            return String.format(rb.getString("key.bit.weak"), kLen, displayAlg);
+            return String.format(rb.getString("key.bit.disabled"), kLen, displayAlg);
         }
     }
 
@@ -3366,8 +3439,8 @@ public final class Main {
         if (!isTrustedCert(cert)) {
             sigName = withWeak(sigName);
         }
-        Object[] source = {cert.getSubjectDN().toString(),
-                        cert.getIssuerDN().toString(),
+        Object[] source = {cert.getSubjectX500Principal().toString(),
+                        cert.getIssuerX500Principal().toString(),
                         cert.getSerialNumber().toString(16),
                         cert.getNotBefore().toString(),
                         cert.getNotAfter().toString(),
@@ -3538,33 +3611,6 @@ public final class Main {
     }
 
     /**
-     * Converts a byte to hex digit and writes to the supplied buffer
-     */
-    private void byte2hex(byte b, StringBuffer buf) {
-        char[] hexChars = { '0', '1', '2', '3', '4', '5', '6', '7', '8',
-                            '9', 'A', 'B', 'C', 'D', 'E', 'F' };
-        int high = ((b & 0xf0) >> 4);
-        int low = (b & 0x0f);
-        buf.append(hexChars[high]);
-        buf.append(hexChars[low]);
-    }
-
-    /**
-     * Converts a byte array to hex string
-     */
-    private String toHexString(byte[] block) {
-        StringBuffer buf = new StringBuffer();
-        int len = block.length;
-        for (int i = 0; i < len; i++) {
-             byte2hex(block[i], buf);
-             if (i < len-1) {
-                 buf.append(":");
-             }
-        }
-        return buf.toString();
-    }
-
-    /**
      * Recovers (private) key associated with given alias.
      *
      * @return an array of objects, where the 1st element in the array is the
@@ -3693,7 +3739,7 @@ public final class Main {
         byte[] encCertInfo = cert.getEncoded();
         MessageDigest md = MessageDigest.getInstance(mdAlg);
         byte[] digest = md.digest(encCertInfo);
-        return toHexString(digest);
+        return HexFormat.ofDelimiter(":").withUpperCase().formatHex(digest);
     }
 
     /**
@@ -3924,7 +3970,7 @@ public final class Main {
             return true;
         }
 
-        Principal issuer = certToVerify.snd.getIssuerDN();
+        Principal issuer = certToVerify.snd.getIssuerX500Principal();
 
         // Get the issuer's certificate(s)
         Vector<Pair<String,X509Certificate>> vec = certs.get(issuer);
@@ -4002,7 +4048,7 @@ public final class Main {
             String alias = aliases.nextElement();
             Certificate cert = ks.getCertificate(alias);
             if (cert != null) {
-                Principal subjectDN = ((X509Certificate)cert).getSubjectDN();
+                Principal subjectDN = ((X509Certificate)cert).getSubjectX500Principal();
                 Pair<String,X509Certificate> pair = new Pair<>(
                         String.format(
                                 rb.getString(ks == caks ?
@@ -4112,6 +4158,23 @@ public final class Main {
      * partial, or case-insensitive.
      *
      * @param s the command provided by user
+     * @param list the legal command set represented by KnownOIDs enums.
+     * @return the position of a single match, or -1 if none matched
+     * @throws Exception if s is ambiguous
+     */
+    private static int oneOf(String s, KnownOIDs... list) throws Exception {
+        String[] convertedList = new String[list.length];
+        for (int i = 0; i < list.length; i++) {
+            convertedList[i] = list[i].stdName();
+        }
+        return oneOf(s, convertedList);
+    }
+
+    /**
+     * Match a command with a command set. The match can be exact, or
+     * partial, or case-insensitive.
+     *
+     * @param s the command provided by user
      * @param list the legal command set. If there is a null, commands after it
      *      are regarded experimental, which means they are supported but their
      *      existence should not be revealed to user.
@@ -4193,9 +4256,10 @@ public final class Main {
      * Create a GeneralName object from known types
      * @param t one of 5 known types
      * @param v value
+     * @param exttype X.509 extension type
      * @return which one
      */
-    private GeneralName createGeneralName(String t, String v)
+    private GeneralName createGeneralName(String t, String v, int exttype)
             throws Exception {
         GeneralNameInterface gn;
         int p = oneOf(t, "EMAIL", "URI", "DNS", "IP", "OID");
@@ -4206,7 +4270,14 @@ public final class Main {
         switch (p) {
             case 0: gn = new RFC822Name(v); break;
             case 1: gn = new URIName(v); break;
-            case 2: gn = new DNSName(v); break;
+            case 2:
+                if (exttype == 3) {
+                    // Allow wildcard only for SAN extension
+                    gn = new DNSName(v, true);
+                } else {
+                    gn = new DNSName(v);
+                }
+                break;
             case 3: gn = new IPAddressName(v); break;
             default: gn = new OIDName(v); break; //4
         }
@@ -4236,7 +4307,7 @@ public final class Main {
             case 5: return PKIXExtensions.SubjectInfoAccess_Id;
             case 6: return PKIXExtensions.AuthInfoAccess_Id;
             case 8: return PKIXExtensions.CRLDistributionPoints_Id;
-            default: return new ObjectIdentifier(type);
+            default: return ObjectIdentifier.of(type);
         }
     }
 
@@ -4255,7 +4326,7 @@ public final class Main {
      * @param existingEx the original extensions, can be null, used for -selfcert
      * @param extstrs -ext values, Read keytool doc
      * @param pkey the public key for the certificate
-     * @param akey the public key for the authority (issuer)
+     * @param aSubjectKeyId the subject key identifier for the authority (issuer)
      * @return the created CertificateExtensions
      */
     private CertificateExtensions createV3Extensions(
@@ -4263,7 +4334,7 @@ public final class Main {
             CertificateExtensions existingEx,
             List <String> extstrs,
             PublicKey pkey,
-            PublicKey akey) throws Exception {
+            KeyIdentifier aSubjectKeyId) throws Exception {
 
         // By design, inside a CertificateExtensions object, all known
         // extensions uses name (say, "BasicConstraints") as key and
@@ -4288,6 +4359,14 @@ public final class Main {
             }
         }
         try {
+            // always non-critical
+            setExt(result, new SubjectKeyIdentifierExtension(
+                    new KeyIdentifier(pkey).getIdentifier()));
+            if (aSubjectKeyId != null) {
+                setExt(result, new AuthorityKeyIdentifierExtension(aSubjectKeyId,
+                        null, null));
+            }
+
             // name{:critical}{=value}
             // Honoring requested extensions
             if (requestedEx != null) {
@@ -4448,30 +4527,26 @@ public final class Main {
                     case 2:     // EKU
                         if(value != null) {
                             Vector<ObjectIdentifier> v = new Vector<>();
+                            KnownOIDs[] choices = {
+                                    KnownOIDs.anyExtendedKeyUsage,
+                                    KnownOIDs.serverAuth,
+                                    KnownOIDs.clientAuth,
+                                    KnownOIDs.codeSigning,
+                                    KnownOIDs.emailProtection,
+                                    KnownOIDs.KP_TimeStamping,
+                                    KnownOIDs.OCSPSigning
+                            };
                             for (String s: value.split(",")) {
-                                int p = oneOf(s,
-                                        "anyExtendedKeyUsage",
-                                        "serverAuth",       //1
-                                        "clientAuth",       //2
-                                        "codeSigning",      //3
-                                        "emailProtection",  //4
-                                        "",                 //5
-                                        "",                 //6
-                                        "",                 //7
-                                        "timeStamping",     //8
-                                        "OCSPSigning"       //9
-                                       );
-                                if (p < 0) {
-                                    try {
-                                        v.add(new ObjectIdentifier(s));
-                                    } catch (Exception e) {
-                                        throw new Exception(rb.getString(
-                                                "Unknown.extendedkeyUsage.type.") + s);
-                                    }
-                                } else if (p == 0) {
-                                    v.add(new ObjectIdentifier("2.5.29.37.0"));
-                                } else {
-                                    v.add(new ObjectIdentifier("1.3.6.1.5.5.7.3." + p));
+                                int p = oneOf(s, choices);
+                                String o = s;
+                                if (p >= 0) {
+                                    o = choices[p].value();
+                                }
+                                try {
+                                    v.add(ObjectIdentifier.of(o));
+                                } catch (Exception e) {
+                                    throw new Exception(rb.getString(
+                                            "Unknown.extendedkeyUsage.type.") + s);
                                 }
                             }
                             setExt(result, new ExtendedKeyUsageExtension(isCritical, v));
@@ -4492,7 +4567,7 @@ public final class Main {
                                 }
                                 String t = item.substring(0, colonpos);
                                 String v = item.substring(colonpos+1);
-                                gnames.add(createGeneralName(t, v));
+                                gnames.add(createGeneralName(t, v, exttype));
                             }
                             if (exttype == 3) {
                                 setExt(result, new SubjectAlternativeNameExtension(
@@ -4526,27 +4601,26 @@ public final class Main {
                                 String m = item.substring(0, colonpos);
                                 String t = item.substring(colonpos+1, colonpos2);
                                 String v = item.substring(colonpos2+1);
-                                int p = oneOf(m,
-                                        "",
-                                        "ocsp",         //1
-                                        "caIssuers",    //2
-                                        "timeStamping", //3
-                                        "",
-                                        "caRepository"  //5
-                                        );
+                                KnownOIDs[] choices = {
+                                    KnownOIDs.OCSP,
+                                    KnownOIDs.caIssuers,
+                                    KnownOIDs.AD_TimeStamping,
+                                    KnownOIDs.caRepository
+                                };
+                                int p = oneOf(m, choices);
                                 ObjectIdentifier oid;
-                                if (p < 0) {
+                                if (p >= 0) {
+                                    oid = ObjectIdentifier.of(choices[p]);
+                                } else {
                                     try {
-                                        oid = new ObjectIdentifier(m);
+                                        oid = ObjectIdentifier.of(m);
                                     } catch (Exception e) {
                                         throw new Exception(rb.getString(
                                                 "Unknown.AccessDescription.type.") + m);
                                     }
-                                } else {
-                                    oid = new ObjectIdentifier("1.3.6.1.5.5.7.48." + p);
                                 }
                                 accessDescriptions.add(new AccessDescription(
-                                        oid, createGeneralName(t, v)));
+                                        oid, createGeneralName(t, v, exttype)));
                             }
                             if (exttype == 5) {
                                 setExt(result, new SubjectInfoAccessExtension(accessDescriptions));
@@ -4569,7 +4643,7 @@ public final class Main {
                                 }
                                 String t = item.substring(0, colonpos);
                                 String v = item.substring(colonpos+1);
-                                gnames.add(createGeneralName(t, v));
+                                gnames.add(createGeneralName(t, v, exttype));
                             }
                             setExt(result, new CRLDistributionPointsExtension(
                                     isCritical, Collections.singletonList(
@@ -4580,22 +4654,16 @@ public final class Main {
                         }
                         break;
                     case -1:
-                        ObjectIdentifier oid = new ObjectIdentifier(name);
+                        ObjectIdentifier oid = ObjectIdentifier.of(name);
                         byte[] data = null;
                         if (value != null) {
                             data = new byte[value.length() / 2 + 1];
                             int pos = 0;
                             for (char c: value.toCharArray()) {
-                                int hex;
-                                if (c >= '0' && c <= '9') {
-                                    hex = c - '0' ;
-                                } else if (c >= 'A' && c <= 'F') {
-                                    hex = c - 'A' + 10;
-                                } else if (c >= 'a' && c <= 'f') {
-                                    hex = c - 'a' + 10;
-                                } else {
+                                if (!HexFormat.isHexDigit(c)) {
                                     continue;
                                 }
+                                int hex = HexFormat.fromHexDigit(c);
                                 if (pos % 2 == 0) {
                                     data[pos/2] = (byte)(hex << 4);
                                 } else {
@@ -4620,17 +4688,25 @@ public final class Main {
                                 "Unknown.extension.type.") + extstr);
                 }
             }
-            // always non-critical
-            setExt(result, new SubjectKeyIdentifierExtension(
-                    new KeyIdentifier(pkey).getIdentifier()));
-            if (akey != null && !pkey.equals(akey)) {
-                setExt(result, new AuthorityKeyIdentifierExtension(
-                                new KeyIdentifier(akey), null, null));
-            }
         } catch(IOException e) {
             throw new RuntimeException(e);
         }
         return result;
+    }
+
+    private Date getLastDate(Date firstDate, long validity)
+            throws Exception {
+        Date lastDate = new Date();
+        lastDate.setTime(firstDate.getTime() + validity*1000L*24L*60L*60L);
+
+        Calendar c = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
+        c.setTime(lastDate);
+        if (c.get(Calendar.YEAR) > 9999) {
+            throw new Exception("Validity period ends at calendar year " +
+                    c.get(Calendar.YEAR) + " which is greater than 9999");
+        }
+
+        return lastDate;
     }
 
     private boolean isTrustedCert(Certificate cert) throws KeyStoreException {
@@ -4643,18 +4719,28 @@ public final class Main {
     }
 
     private void checkWeak(String label, String sigAlg, Key key) {
-
-        if (sigAlg != null && !DISABLED_CHECK.permits(
-                SIG_PRIMITIVE_SET, sigAlg, null)) {
-            weakWarnings.add(String.format(
-                    rb.getString("whose.sigalg.risk"), label, sigAlg));
+        if (sigAlg != null) {
+            if (!DISABLED_CHECK.permits(SIG_PRIMITIVE_SET, sigAlg, null)) {
+                weakWarnings.add(String.format(
+                    rb.getString("whose.sigalg.disabled"), label, sigAlg));
+            } else if (!LEGACY_CHECK.permits(SIG_PRIMITIVE_SET, sigAlg, null)) {
+                weakWarnings.add(String.format(
+                    rb.getString("whose.sigalg.weak"), label, sigAlg));
+            }
         }
-        if (key != null && !DISABLED_CHECK.permits(SIG_PRIMITIVE_SET, key)) {
-            weakWarnings.add(String.format(
-                    rb.getString("whose.key.risk"),
-                    label,
+
+        if (key != null) {
+            if (!DISABLED_CHECK.permits(SIG_PRIMITIVE_SET, key)) {
+                weakWarnings.add(String.format(
+                    rb.getString("whose.key.disabled"), label,
                     String.format(rb.getString("key.bit"),
-                            KeyUtil.getKeySize(key), fullDisplayAlgName(key))));
+                    KeyUtil.getKeySize(key), fullDisplayAlgName(key))));
+            } else if (!LEGACY_CHECK.permits(SIG_PRIMITIVE_SET, key)) {
+                weakWarnings.add(String.format(
+                    rb.getString("whose.key.weak"), label,
+                    String.format(rb.getString("key.bit"),
+                    KeyUtil.getKeySize(key), fullDisplayAlgName(key))));
+            }
         }
     }
 
@@ -4794,7 +4880,8 @@ public final class Main {
     }
 
     private char[] getPass(String modifier, String arg) {
-        char[] output = KeyStoreUtil.getPassWithModifier(modifier, arg, rb);
+        char[] output =
+            KeyStoreUtil.getPassWithModifier(modifier, arg, rb, collator);
         if (output != null) return output;
         tinyHelp();
         return null;    // Useless, tinyHelp() already exits.

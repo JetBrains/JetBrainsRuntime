@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -229,6 +229,10 @@ public class SSLFlowDelegate {
         return SchedulingAction.CONTINUE;
     }
 
+    protected Throwable checkForHandshake(Throwable t) {
+        return t;
+    }
+
 
     /**
      * Processing function for incoming data. Pass it thru SSLEngine.unwrap().
@@ -267,7 +271,7 @@ public class SSLFlowDelegate {
 
         Reader() {
             super();
-            scheduler = SequentialScheduler.synchronizedScheduler(
+            scheduler = SequentialScheduler.lockingScheduler(
                     new ReaderDownstreamPusher());
             this.readBuf = ByteBuffer.allocate(1024);
             readBuf.limit(0); // keep in read mode
@@ -356,6 +360,12 @@ public class SSLFlowDelegate {
             }
         }
 
+        @Override
+        protected boolean errorCommon(Throwable throwable) {
+            throwable = SSLFlowDelegate.this.checkForHandshake(throwable);
+            return super.errorCommon(throwable);
+        }
+
         void schedule() {
             scheduler.runOrSchedule(exec);
         }
@@ -365,7 +375,7 @@ public class SSLFlowDelegate {
             scheduler.stop();
         }
 
-        AtomicInteger count = new AtomicInteger(0);
+        AtomicInteger count = new AtomicInteger();
 
         // minimum number of bytes required to call unwrap.
         // Usually this is 0, unless there was a buffer underflow.
@@ -479,8 +489,9 @@ public class SSLFlowDelegate {
                             }
                         }
                     } catch (IOException ex) {
-                        errorCommon(ex);
-                        handleError(ex);
+                        Throwable cause = checkForHandshake(ex);
+                        errorCommon(cause);
+                        handleError(cause);
                         return;
                     }
                     if (handshaking && !complete) {
@@ -504,6 +515,7 @@ public class SSLFlowDelegate {
                     requestMoreDataIfNeeded();
                 }
             } catch (Throwable ex) {
+                ex = checkForHandshake(ex);
                 errorCommon(ex);
                 handleError(ex);
             }
@@ -765,10 +777,10 @@ public class SSLFlowDelegate {
             try {
                 if (debugw.on())
                     debugw.log("processData, writeList remaining:"
-                                + Utils.remaining(writeList) + ", hsTriggered:"
+                                + Utils.synchronizedRemaining(writeList) + ", hsTriggered:"
                                 + hsTriggered() + ", needWrap:" + needWrap());
 
-                while (Utils.remaining(writeList) > 0 || hsTriggered() || needWrap()) {
+                while (Utils.synchronizedRemaining(writeList) > 0 || hsTriggered() || needWrap()) {
                     ByteBuffer[] outbufs = writeList.toArray(Utils.EMPTY_BB_ARRAY);
                     EngineResult result = wrapBuffers(outbufs);
                     if (debugw.on())
@@ -811,7 +823,7 @@ public class SSLFlowDelegate {
                         }
                     }
                 }
-                if (completing && Utils.remaining(writeList) == 0) {
+                if (completing && Utils.synchronizedRemaining(writeList) == 0) {
                     if (!completed) {
                         completed = true;
                         writeList.clear();
@@ -823,6 +835,7 @@ public class SSLFlowDelegate {
                     writer.addData(HS_TRIGGER);
                 }
             } catch (Throwable ex) {
+                ex = checkForHandshake(ex);
                 errorCommon(ex);
                 handleError(ex);
             }
@@ -1008,14 +1021,10 @@ public class SSLFlowDelegate {
         StringBuilder sb = new StringBuilder();
         int x = s & ~TASK_BITS;
         switch (x) {
-            case NOT_HANDSHAKING:
-                sb.append(" NOT_HANDSHAKING ");
-                break;
-            case HANDSHAKING:
-                sb.append(" HANDSHAKING ");
-                break;
-            default:
-                throw new InternalError();
+            case NOT_HANDSHAKING    -> sb.append(" NOT_HANDSHAKING ");
+            case HANDSHAKING        -> sb.append(" HANDSHAKING ");
+
+            default -> throw new InternalError();
         }
         if ((s & DOING_TASKS) > 0)
             sb.append("|DOING_TASKS");
@@ -1127,7 +1136,7 @@ public class SSLFlowDelegate {
                 }
                 resumeActivity();
             } catch (Throwable t) {
-                handleError(t);
+                handleError(checkForHandshake(t));
             }
         });
     }

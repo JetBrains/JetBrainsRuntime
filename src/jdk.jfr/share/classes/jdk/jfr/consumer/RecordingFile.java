@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,16 +48,14 @@ import jdk.jfr.internal.consumer.RecordingInput;
  * <p>
  * The following example shows how read and print all events in a recording file.
  *
- * <pre>
- * <code>
+ * <pre>{@literal
  * try (RecordingFile recordingFile = new RecordingFile(Paths.get("recording.jfr"))) {
  *   while (recordingFile.hasMoreEvents()) {
  *     RecordedEvent event = recordingFile.readEvent();
  *     System.out.println(event);
  *   }
  * }
- * </code>
- * </pre>
+ * }</pre>
  *
  * @since 9
  */
@@ -72,6 +70,8 @@ public final class RecordingFile implements Closeable {
 
     /**
      * Creates a recording file.
+     * <p>
+     * Only recording files from trusted sources should be used.
      *
      * @param file the path of the file to open, not {@code null}
      * @throws IOException if it's not a valid recording file, or an I/O error
@@ -83,7 +83,7 @@ public final class RecordingFile implements Closeable {
      */
     public RecordingFile(Path file) throws IOException {
         this.file = file.toFile();
-        this.input = new RecordingInput(this.file, FileAccess.UNPRIVILIGED);
+        this.input = new RecordingInput(this.file, FileAccess.UNPRIVILEGED);
         findNext();
     }
 
@@ -93,7 +93,7 @@ public final class RecordingFile implements Closeable {
      * @return the next event, not {@code null}
      *
      * @throws EOFException if no more events exist in the recording file
-     * @throws IOException if an I/O error occurs.
+     * @throws IOException if an I/O error occurs
      *
      * @see #hasMoreEvents()
      */
@@ -105,6 +105,9 @@ public final class RecordingFile implements Closeable {
         isLastEventInChunk = false;
         RecordedEvent event = nextEvent;
         nextEvent = chunkParser.readEvent();
+        while (nextEvent == ChunkParser.FLUSH_MARKER) {
+            nextEvent = chunkParser.readEvent();
+        }
         if (nextEvent == null) {
             isLastEventInChunk = true;
             findNext();
@@ -136,7 +139,7 @@ public final class RecordingFile implements Closeable {
         MetadataDescriptor previous = null;
         List<EventType> types = new ArrayList<>();
         HashSet<Long> foundIds = new HashSet<>();
-        try (RecordingInput ri = new RecordingInput(file, FileAccess.UNPRIVILIGED)) {
+        try (RecordingInput ri = new RecordingInput(file, FileAccess.UNPRIVILEGED)) {
             ChunkHeader ch = new ChunkHeader(ri);
             aggregateEventTypeForChunk(ch, null, types, foundIds);
             while (!ch.isLastChunk()) {
@@ -152,7 +155,7 @@ public final class RecordingFile implements Closeable {
         MetadataDescriptor previous = null;
         List<Type> types = new ArrayList<>();
         HashSet<Long> foundIds = new HashSet<>();
-        try (RecordingInput ri = new RecordingInput(file, FileAccess.UNPRIVILIGED)) {
+        try (RecordingInput ri = new RecordingInput(file, FileAccess.UNPRIVILEGED)) {
             ChunkHeader ch = new ChunkHeader(ri);
             ch.awaitFinished();
             aggregateTypeForChunk(ch, null, types, foundIds);
@@ -192,6 +195,7 @@ public final class RecordingFile implements Closeable {
      *
      * @throws IOException if an I/O error occurred
      */
+    @Override
     public void close() throws IOException {
         if (input != null) {
             eof = true;
@@ -207,6 +211,8 @@ public final class RecordingFile implements Closeable {
      * <p>
      * This method is intended for simple cases where it's convenient to read all
      * events in a single operation. It isn't intended for reading large files.
+     * <p>
+     * Only recording files from trusted sources should be used.
      *
      * @param path the path to the file, not {@code null}
      *
@@ -253,6 +259,9 @@ public final class RecordingFile implements Closeable {
                 return;
             }
             nextEvent = chunkParser.readEvent();
+            while (nextEvent == ChunkParser.FLUSH_MARKER) {
+                nextEvent = chunkParser.readEvent();
+            }
         }
     }
 

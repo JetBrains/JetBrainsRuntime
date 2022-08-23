@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,29 +25,39 @@
 
 package jdk.javadoc.internal.doclets.toolkit.util;
 
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.SimpleElementVisitor14;
+import javax.lang.model.util.SimpleTypeVisitor14;
 import java.lang.ref.SoftReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import jdk.javadoc.internal.doclets.toolkit.BaseConfiguration;
+import jdk.javadoc.internal.doclets.toolkit.BaseOptions;
 import jdk.javadoc.internal.doclets.toolkit.PropertyUtils;
 
 /**
@@ -88,44 +98,73 @@ import jdk.javadoc.internal.doclets.toolkit.PropertyUtils;
 public class VisibleMemberTable {
 
     public enum Kind {
-        INNER_CLASSES,
+        NESTED_CLASSES,
         ENUM_CONSTANTS,
         FIELDS,
         CONSTRUCTORS,
         METHODS,
-        ANNOTATION_TYPE_FIELDS,
         ANNOTATION_TYPE_MEMBER_OPTIONAL,
         ANNOTATION_TYPE_MEMBER_REQUIRED,
         PROPERTIES;
 
-        public static final EnumSet<Kind> summarySet = EnumSet.range(INNER_CLASSES, METHODS);
-        public static final EnumSet<Kind> detailSet = EnumSet.range(ENUM_CONSTANTS, METHODS);
+        private static final EnumSet<Kind> defaultSummarySet = EnumSet.of(
+                NESTED_CLASSES, FIELDS, CONSTRUCTORS, METHODS);
+        private static final EnumSet<Kind> enumSummarySet = EnumSet.of(
+                NESTED_CLASSES, ENUM_CONSTANTS, FIELDS, METHODS);
+        private static final EnumSet<Kind> annotationSummarySet = EnumSet.of(
+                FIELDS, ANNOTATION_TYPE_MEMBER_OPTIONAL, ANNOTATION_TYPE_MEMBER_REQUIRED);
+        private static final EnumSet<Kind> defaultDetailSet = EnumSet.of(
+                FIELDS, CONSTRUCTORS, METHODS);
+        private static final EnumSet<Kind> enumDetailSet = EnumSet.of(
+                ENUM_CONSTANTS, FIELDS, METHODS);
+
+        /**
+         * {@return the set of possible member kinds for the summaries section of a type element}
+         * @param kind the kind of type element being documented
+         */
+        public static Set<Kind> forSummariesOf(ElementKind kind) {
+            return switch (kind) {
+                case ANNOTATION_TYPE -> annotationSummarySet;
+                case ENUM -> enumSummarySet;
+                default -> defaultSummarySet;
+            };
+        }
+
+        /**
+         * {@return the set of possible member kinds for the details section of a type element}
+         * @param kind the kind of type element being documented
+         */
+        public static Set<Kind> forDetailsOf(ElementKind kind) {
+            return kind == ElementKind.ENUM
+                    ? enumDetailSet
+                    : defaultDetailSet;
+        }
     }
 
     final TypeElement te;
     final TypeElement parent;
 
     final BaseConfiguration config;
+    final BaseOptions options;
     final Utils utils;
     final VisibleMemberCache mcache;
 
-    private List<VisibleMemberTable> allSuperclasses;
-    private List<VisibleMemberTable> allSuperinterfaces;
-    private List<VisibleMemberTable> parents;
+    private final List<VisibleMemberTable> allSuperclasses;
+    private final List<VisibleMemberTable> allSuperinterfaces;
+    private final List<VisibleMemberTable> parents;
 
-
-    private Map<Kind, List<Element>> extraMembers = new EnumMap<>(Kind.class);
     private Map<Kind, List<Element>> visibleMembers = null;
-    private Map<ExecutableElement, PropertyMembers> propertyMap = new HashMap<>();
+    private final Map<ExecutableElement, PropertyMembers> propertyMap = new HashMap<>();
 
     // Keeps track of method overrides
-    Map<ExecutableElement, OverridingMethodInfo> overriddenMethodTable
+    Map<ExecutableElement, OverriddenMethodInfo> overriddenMethodTable
             = new LinkedHashMap<>();
 
     protected VisibleMemberTable(TypeElement typeElement, BaseConfiguration configuration,
                                  VisibleMemberCache mcache) {
         config = configuration;
         utils = configuration.utils;
+        options = configuration.getOptions();
         te = typeElement;
         parent = utils.getSuperClass(te);
         this.mcache = mcache;
@@ -144,11 +183,6 @@ public class VisibleMemberTable {
         }
         computeParents();
         computeVisibleMembers();
-    }
-
-    List<? extends Element> getExtraMembers(Kind kind) {
-        ensureInitialized();
-        return visibleMembers.getOrDefault(kind, Collections.emptyList());
     }
 
     List<VisibleMemberTable> getAllSuperclasses() {
@@ -196,7 +230,7 @@ public class VisibleMemberTable {
 
         return visibleMembers.getOrDefault(kind, Collections.emptyList()).stream()
                 .filter(p)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
@@ -237,10 +271,10 @@ public class VisibleMemberTable {
     public ExecutableElement getOverriddenMethod(ExecutableElement e) {
         ensureInitialized();
 
-        OverridingMethodInfo found = overriddenMethodTable.get(e);
+        OverriddenMethodInfo found = overriddenMethodTable.get(e);
         if (found != null
                 && (found.simpleOverride || utils.isUndocumentedEnclosure(utils.getEnclosingTypeElement(e)))) {
-            return found.overrider;
+            return found.overridden;
         }
         return null;
     }
@@ -253,9 +287,9 @@ public class VisibleMemberTable {
     public ExecutableElement getSimplyOverriddenMethod(ExecutableElement e) {
         ensureInitialized();
 
-        OverridingMethodInfo found = overriddenMethodTable.get(e);
+        OverriddenMethodInfo found = overriddenMethodTable.get(e);
         if (found != null && found.simpleOverride) {
-            return found.overrider;
+            return found.overridden;
         }
         return null;
     }
@@ -284,14 +318,15 @@ public class VisibleMemberTable {
         // ... and finally the sorted super interfaces.
         allSuperinterfaces.stream()
                 .map(vmt -> vmt.te)
-                .sorted(utils.makeGeneralPurposeComparator())
+                .sorted(utils.comparators.makeGeneralPurposeComparator())
                 .forEach(result::add);
 
         return result;
     }
 
     /**
-     * Returns true if this table contains visible members.
+     * Returns true if this table contains visible members of
+     * any kind, including inherited members.
      *
      * @return true if visible members are present.
      */
@@ -349,6 +384,11 @@ public class VisibleMemberTable {
     }
 
     private void computeParents() {
+        // suppress parents of annotation types
+        if (utils.isAnnotationType(te)) {
+            return;
+        }
+
         for (TypeMirror intfType : te.getInterfaces()) {
             TypeElement intfc = utils.asTypeElement(intfType);
             if (intfc != null) {
@@ -376,27 +416,16 @@ public class VisibleMemberTable {
         LocalMemberTable lmt = new LocalMemberTable();
 
         for (Kind k : Kind.values()) {
-            computeLeafMembers(lmt, k);
             computeVisibleMembers(lmt, k);
         }
         // All members have been computed, compute properties.
         computeVisibleProperties(lmt);
     }
 
-    private void computeLeafMembers(LocalMemberTable lmt, Kind kind) {
-        List<Element> list = new ArrayList<>();
-        if (utils.isUndocumentedEnclosure(te)) {
-            list.addAll(lmt.getOrderedMembers(kind));
-        }
-        parents.forEach(pvmt -> {
-            list.addAll(pvmt.getExtraMembers(kind));
-        });
-        extraMembers.put(kind, Collections.unmodifiableList(list));
-    }
 
     void computeVisibleMembers(LocalMemberTable lmt, Kind kind) {
         switch (kind) {
-            case FIELDS: case INNER_CLASSES:
+            case FIELDS: case NESTED_CLASSES:
                 computeVisibleFieldsAndInnerClasses(lmt, kind);
                 return;
 
@@ -411,8 +440,8 @@ public class VisibleMemberTable {
             default:
                 List<Element> list = lmt.getOrderedMembers(kind).stream()
                         .filter(this::mustDocument)
-                        .collect(Collectors.toList());
-                visibleMembers.put(kind, Collections.unmodifiableList(list));
+                        .toList();
+                visibleMembers.put(kind, list);
                 break;
         }
     }
@@ -452,24 +481,21 @@ public class VisibleMemberTable {
     private void computeVisibleFieldsAndInnerClasses(LocalMemberTable lmt, Kind kind) {
         Set<Element> result = new LinkedHashSet<>();
         for (VisibleMemberTable pvmt : parents) {
-            result.addAll(pvmt.getExtraMembers(kind));
             result.addAll(pvmt.getAllVisibleMembers(kind));
         }
 
         // Filter out members in the inherited list that are hidden
         // by this type or should not be inherited at all.
-        List<Element> list = result.stream()
-                .filter(e -> allowInheritedMembers(e, kind, lmt)).collect(Collectors.toList());
-
-        // Prefix local results first
-        list.addAll(0, lmt.getOrderedMembers(kind));
+        Stream<Element> inheritedStream = result.stream()
+                .filter(e -> allowInheritedMembers(e, kind, lmt));
 
         // Filter out elements that should not be documented
-        list = list.stream()
-                .filter(this::mustDocument)
-                .collect(Collectors.toList());
+        // Prefix local results first
+        List<Element> list = Stream.concat(lmt.getOrderedMembers(kind).stream(), inheritedStream)
+                                   .filter(this::mustDocument)
+                                   .toList();
 
-        visibleMembers.put(kind, Collections.unmodifiableList(list));
+        visibleMembers.put(kind, list);
     }
 
     private void computeVisibleMethods(LocalMemberTable lmt) {
@@ -478,74 +504,48 @@ public class VisibleMemberTable {
         for (VisibleMemberTable pvmt : parents) {
             // Merge the lineage overrides into local table
             pvmt.overriddenMethodTable.entrySet().forEach(e -> {
-                OverridingMethodInfo p = e.getValue();
+                OverriddenMethodInfo p = e.getValue();
                 if (!p.simpleOverride) { // consider only real overrides
-                    List<ExecutableElement> list = overriddenByTable.computeIfAbsent(p.overrider,
+                    List<ExecutableElement> list = overriddenByTable.computeIfAbsent(p.overridden,
                             k -> new ArrayList<>());
                     list.add(e.getKey());
                 }
             });
             inheritedMethods.addAll(pvmt.getAllVisibleMembers(Kind.METHODS));
-
-            // Copy the extra members (if any) from the lineage.
-            if (!utils.shouldDocument(pvmt.te)) {
-                List<? extends Element> extraMethods = pvmt.getExtraMembers(Kind.METHODS);
-
-                if (lmt.getOrderedMembers(Kind.METHODS).isEmpty()) {
-                    inheritedMethods.addAll(extraMethods);
-                    continue;
-                }
-
-                // Check if an extra-method ought to percolate through.
-                for (Element extraMethod : extraMethods) {
-                    boolean found = false;
-
-                    List<Element> lmethods = lmt.getMembers(extraMethod, Kind.METHODS);
-                    for (Element lmethod : lmethods) {
-                        ExecutableElement method = (ExecutableElement)lmethod;
-                        found = utils.elementUtils.overrides(method,
-                                (ExecutableElement)extraMethod, te);
-                        if (found)
-                            break;
-                    }
-                    if (!found)
-                        inheritedMethods.add(extraMethod);
-                }
-            }
         }
 
         // Filter out inherited methods that:
-        // a. cannot override (private instance members)
+        // a. cannot be overridden (private instance members)
         // b. are overridden and should not be visible in this type
         // c. are hidden in the type being considered
-        // see allowInheritedMethods, which performs the above actions
-        List<Element> list = inheritedMethods.stream()
-                .filter(e -> allowInheritedMethods((ExecutableElement)e, overriddenByTable, lmt))
-                .collect(Collectors.toList());
+        // see allowInheritedMethod, which performs the above actions
+        // nb. This statement has side effects that can initialize
+        // members of the overridenMethodTable field, so it must be
+        // evaluated eagerly with toList().
+        List<Element> inheritedMethodsList = inheritedMethods.stream()
+                .filter(e -> allowInheritedMethod((ExecutableElement) e, overriddenByTable, lmt))
+                .toList();
 
         // Filter out the local methods, that do not override or simply
         // overrides a super method, or those methods that should not
         // be visible.
         Predicate<ExecutableElement> isVisible = m -> {
-            OverridingMethodInfo p = overriddenMethodTable.getOrDefault(m, null);
+            OverriddenMethodInfo p = overriddenMethodTable.getOrDefault(m, null);
             return p == null || !p.simpleOverride;
         };
-        List<Element> mlist = lmt.getOrderedMembers(Kind.METHODS);
-        List<Element> llist = mlist.stream()
+
+        Stream<ExecutableElement> localStream = lmt.getOrderedMembers(Kind.METHODS)
+                .stream()
                 .map(m -> (ExecutableElement)m)
-                .filter(isVisible)
-                .collect(Collectors.toList());
+                .filter(isVisible);
 
-        // Merge the above lists, making sure the local methods precede
-        // the others
-        list.addAll(0, llist);
-
+        // Merge the above list and stream, making sure the local methods precede the others
         // Final filtration of elements
-        list = list.stream()
+        List<Element> list = Stream.concat(localStream,inheritedMethodsList.stream())
                 .filter(this::mustDocument)
-                .collect(Collectors.toList());
+                .toList();
 
-        visibleMembers.put(Kind.METHODS, Collections.unmodifiableList(list));
+        visibleMembers.put(Kind.METHODS, list);
 
         // Copy over overridden tables from the lineage, and finish up.
         for (VisibleMemberTable pvmt : parents) {
@@ -559,9 +559,9 @@ public class VisibleMemberTable {
         return utils.isInterface(enclosing);
     }
 
-    boolean allowInheritedMethods(ExecutableElement inheritedMethod,
-                                  Map<ExecutableElement, List<ExecutableElement>> inheritedOverriddenTable,
-                                  LocalMemberTable lmt) {
+    boolean allowInheritedMethod(ExecutableElement inheritedMethod,
+                                 Map<ExecutableElement, List<ExecutableElement>> overriddenByTable,
+                                 LocalMemberTable lmt) {
         if (!isInherited(inheritedMethod))
             return false;
 
@@ -582,7 +582,7 @@ public class VisibleMemberTable {
         // in favor of concrete overriding methods, for instance those that have
         // API documentation and are not abstract OR default methods.
         if (inInterface) {
-            List<ExecutableElement> list = inheritedOverriddenTable.get(inheritedMethod);
+            List<ExecutableElement> list = overriddenByTable.get(inheritedMethod);
             if (list != null) {
                 boolean found = list.stream()
                         .anyMatch(this::isEnclosureInterface);
@@ -616,24 +616,107 @@ public class VisibleMemberTable {
                 TypeElement encl = utils.getEnclosingTypeElement(inheritedMethod);
                 if (utils.isUndocumentedEnclosure(encl)) {
                     overriddenMethodTable.computeIfAbsent(lMethod,
-                            l -> new OverridingMethodInfo(inheritedMethod, false));
+                            l -> new OverriddenMethodInfo(inheritedMethod, false));
                     return false;
                 }
 
-                TypeMirror inheritedMethodReturn = inheritedMethod.getReturnType();
-                TypeMirror lMethodReturn = lMethod.getReturnType();
-                boolean covariantReturn =
-                        lMethodReturn.getKind() == TypeKind.DECLARED
-                        && inheritedMethodReturn.getKind() == TypeKind.DECLARED
-                        && !utils.typeUtils.isSameType(lMethodReturn, inheritedMethodReturn)
-                        && utils.typeUtils.isSubtype(lMethodReturn, inheritedMethodReturn);
-                boolean simpleOverride = covariantReturn ? false : utils.isSimpleOverride(lMethod);
+                // Even with --override-methods=summary we want to include details of
+                // overriding method if something noteworthy has been added or changed
+                // either in the local overriding method or an in-between overriding method
+                // (as evidenced by an entry in overriddenByTable).
+                boolean simpleOverride = utils.isSimpleOverride(lMethod)
+                        && !overridingSignatureChanged(lMethod, inheritedMethod)
+                        && !overriddenByTable.containsKey(inheritedMethod);
                 overriddenMethodTable.computeIfAbsent(lMethod,
-                        l -> new OverridingMethodInfo(inheritedMethod, simpleOverride));
+                        l -> new OverriddenMethodInfo(inheritedMethod, simpleOverride));
                 return simpleOverride;
             }
         }
         return true;
+    }
+
+    // Check whether the signature of an overriding method has any changes worth
+    // being documented compared to the overridden method.
+    private boolean overridingSignatureChanged(ExecutableElement method, ExecutableElement overriddenMethod) {
+        // Covariant return type
+        TypeMirror overriddenMethodReturn = overriddenMethod.getReturnType();
+        TypeMirror methodReturn = method.getReturnType();
+        if (methodReturn.getKind() == TypeKind.DECLARED
+                && overriddenMethodReturn.getKind() == TypeKind.DECLARED
+                && !utils.typeUtils.isSameType(methodReturn, overriddenMethodReturn)
+                && utils.typeUtils.isSubtype(methodReturn, overriddenMethodReturn)) {
+            return true;
+        }
+        // Modifiers changed from protected to public, non-final to final, or change in abstractness
+        Set<Modifier> modifiers = method.getModifiers();
+        Set<Modifier> overriddenModifiers = overriddenMethod.getModifiers();
+        if ((modifiers.contains(Modifier.PUBLIC) && overriddenModifiers.contains(Modifier.PROTECTED))
+                || modifiers.contains(Modifier.FINAL)
+                || modifiers.contains(Modifier.ABSTRACT) != overriddenModifiers.contains(Modifier.ABSTRACT)) {
+            return true;
+        }
+        // Change in thrown types
+        if (!method.getThrownTypes().equals(overriddenMethod.getThrownTypes())) {
+            return true;
+        }
+        // Documented annotations added anywhere in the method signature
+        return !getDocumentedAnnotations(method).equals(getDocumentedAnnotations(overriddenMethod));
+    }
+
+    private Set<AnnotationMirror> getDocumentedAnnotations(ExecutableElement element) {
+        Set<AnnotationMirror> annotations = new HashSet<>();
+        addDocumentedAnnotations(annotations, element.getAnnotationMirrors());
+
+        new SimpleTypeVisitor14<Void, Void>() {
+            @Override
+            protected Void defaultAction(TypeMirror e, Void v) {
+                addDocumentedAnnotations(annotations, e.getAnnotationMirrors());
+                return null;
+            }
+
+            @Override
+            public Void visitArray(ArrayType t, Void unused) {
+                if (t.getComponentType() != null) {
+                    visit(t.getComponentType());
+                }
+                return super.visitArray(t, unused);
+            }
+
+            @Override
+            public Void visitDeclared(DeclaredType t, Void unused) {
+                t.getTypeArguments().forEach(this::visit);
+                return super.visitDeclared(t, unused);
+            }
+
+            @Override
+            public Void visitWildcard(WildcardType t, Void unused) {
+                if (t.getExtendsBound() != null) {
+                    visit(t.getExtendsBound());
+                }
+                if (t.getSuperBound() != null) {
+                    visit(t.getSuperBound());
+                }
+                return super.visitWildcard(t, unused);
+            }
+
+            @Override
+            public Void visitExecutable(ExecutableType t, Void unused) {
+                t.getParameterTypes().forEach(this::visit);
+                t.getTypeVariables().forEach(this::visit);
+                visit(t.getReturnType());
+                return super.visitExecutable(t, unused);
+            }
+        }.visit(element.asType());
+
+        return annotations;
+    }
+
+    private void addDocumentedAnnotations(Set<AnnotationMirror> annotations, List<? extends AnnotationMirror> annotationMirrors) {
+        annotationMirrors.forEach(annotation -> {
+            if (utils.isDocumentedAnnotation((TypeElement) annotation.getAnnotationType().asElement())) {
+                annotations.add(annotation);
+            }
+        });
     }
 
     /*
@@ -658,7 +741,7 @@ public class VisibleMemberTable {
 
             List<? extends Element> elements = te.getEnclosedElements();
             for (Element e : elements) {
-                if (config.nodeprecated && utils.isDeprecated(e)) {
+                if (options.noDeprecated() && utils.isDeprecated(e)) {
                     continue;
                 }
                 switch (e.getKind()) {
@@ -667,20 +750,20 @@ public class VisibleMemberTable {
                     case ENUM:
                     case ANNOTATION_TYPE:
                     case RECORD:
-                        addMember(e, Kind.INNER_CLASSES);
+                        addMember(e, Kind.NESTED_CLASSES);
                         break;
                     case FIELD:
                         addMember(e, Kind.FIELDS);
-                        addMember(e, Kind.ANNOTATION_TYPE_FIELDS);
                         break;
                     case METHOD:
-                        ExecutableElement ee = (ExecutableElement)e;
                         if (utils.isAnnotationType(te)) {
+                            ExecutableElement ee = (ExecutableElement) e;
                             addMember(e, ee.getDefaultValue() == null
                                     ? Kind.ANNOTATION_TYPE_MEMBER_REQUIRED
                                     : Kind.ANNOTATION_TYPE_MEMBER_OPTIONAL);
+                        } else {
+                            addMember(e, Kind.METHODS);
                         }
-                        addMember(e, Kind.METHODS);
                         break;
                     case CONSTRUCTOR:
                             addMember(e, Kind.CONSTRUCTORS);
@@ -701,7 +784,6 @@ public class VisibleMemberTable {
             }
         }
 
-        @SuppressWarnings("preview")
         String getMemberKey(Element e) {
             return new SimpleElementVisitor14<String, Void>() {
                 @Override
@@ -742,7 +824,7 @@ public class VisibleMemberTable {
         List<Element> getPropertyMethods(String methodName, int argcount) {
             return getMembers(methodName + ":" + argcount, Kind.METHODS).stream()
                     .filter(m -> (utils.isPublic(m) || utils.isProtected(m)))
-                    .collect(Collectors.toList());
+                    .toList();
         }
     }
 
@@ -800,21 +882,21 @@ public class VisibleMemberTable {
      * {@code boolean isFoo()}
      */
     private void computeVisibleProperties(LocalMemberTable lmt) {
-        if (!config.javafx)
+        if (!options.javafx())
             return;
 
         PropertyUtils pUtils = config.propertyUtils;
-        List<ExecutableElement> list = visibleMembers.getOrDefault(Kind.METHODS, Collections.emptyList())
+        List<Element> list = visibleMembers.getOrDefault(Kind.METHODS, Collections.emptyList())
                 .stream()
-                .map(m -> (ExecutableElement)m)
-                .filter(pUtils::isPropertyMethod)
-                .collect(Collectors.toList());
+                .filter(e -> pUtils.isPropertyMethod((ExecutableElement) e))
+                .toList();
 
-        visibleMembers.put(Kind.PROPERTIES, Collections.unmodifiableList(list));
+        visibleMembers.put(Kind.PROPERTIES, list);
 
         List<ExecutableElement> propertyMethods = list.stream()
+                .map(e -> (ExecutableElement) e)
                 .filter(e -> utils.getEnclosingTypeElement(e) == te)
-                .collect(Collectors.toList());
+                .toList();
 
         // Compute additional properties related sundries.
         for (ExecutableElement propertyMethod : propertyMethods) {
@@ -878,7 +960,7 @@ public class VisibleMemberTable {
         ImplementedMethods imf = getImplementedMethodsFinder(method);
         return imf.getImplementedMethods().stream()
                 .filter(m -> getSimplyOverriddenMethod(m) == null)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public TypeMirror getImplementedMethodHolder(ExecutableElement method,
@@ -891,12 +973,9 @@ public class VisibleMemberTable {
 
         private final Map<ExecutableElement, TypeMirror> interfaces = new HashMap<>();
         private final List<ExecutableElement> methlist = new ArrayList<>();
-        private final TypeElement typeElement;
-        private final ExecutableElement method;
 
         public ImplementedMethods(ExecutableElement method) {
-            this.method = method;
-            typeElement = utils.getEnclosingTypeElement(method);
+            TypeElement typeElement = utils.getEnclosingTypeElement(method);
             Set<TypeMirror> intfacs = utils.getAllInterfaces(typeElement);
             /*
              * Search for the method in the list of interfaces. If found check if it is
@@ -984,21 +1063,21 @@ public class VisibleMemberTable {
     }
 
     /**
-     * A simple container to encapsulate an overriding method
+     * A simple container to encapsulate an overridden method
      * and the type of override.
      */
-    static class OverridingMethodInfo {
-        final ExecutableElement overrider;
+    static class OverriddenMethodInfo {
+        final ExecutableElement overridden;
         final boolean simpleOverride;
 
-        public OverridingMethodInfo(ExecutableElement overrider, boolean simpleOverride) {
-            this.overrider = overrider;
+        public OverriddenMethodInfo(ExecutableElement overridden, boolean simpleOverride) {
+            this.overridden = overridden;
             this.simpleOverride = simpleOverride;
         }
 
         @Override
         public String toString() {
-            return "OverridingMethodInfo[" + overrider + ",simple:" + simpleOverride + "]";
+            return "OverriddenMethodInfo[" + overridden + ",simple:" + simpleOverride + "]";
         }
     }
 }

@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -38,7 +36,7 @@ import jdk.test.lib.jfr.Events;
  * @test
  * @key jfr
  * @requires vm.hasJFR
- * @requires vm.gc == "null"
+ * @requires vm.gc.Parallel
  * @summary Test leak profiler with Parallel GC
  * @library /test/lib /test/jdk
  * @modules jdk.jfr/jdk.jfr.internal.test
@@ -54,17 +52,21 @@ public class TestParallel {
     public static void main(String[] args) throws Exception {
         WhiteBox.setWriteAllObjectSamples(true);
 
-        try (Recording r = new Recording()) {
-            r.enable(EventNames.OldObjectSample).withStackTrace().with("cutoff", "infinity");
-            r.start();
-            allocateFindMe();
-            System.gc();
-            r.stop();
-            List<RecordedEvent> events = Events.fromRecording(r);
-            System.out.println(events);
-            if (OldObjects.countMatchingEvents(events, FindMe[].class, null, null, -1, "allocateFindMe") == 0) {
-                throw new Exception("Could not find leak with " + FindMe[].class);
+        while (true) {
+            try (Recording r = new Recording()) {
+                r.enable(EventNames.OldObjectSample).withStackTrace().with("cutoff", "infinity");
+                r.start();
+                allocateFindMe();
+                System.gc();
+                r.stop();
+                List<RecordedEvent> events = Events.fromRecording(r);
+                System.out.println(events);
+                if (OldObjects.countMatchingEvents(events, FindMe[].class, null, null, -1, "allocateFindMe") > 0) {
+                    return;
+                }
+                System.out.println("Could not find leaking object, retrying...");
             }
+            list.clear();
         }
     }
 

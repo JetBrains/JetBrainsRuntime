@@ -401,14 +401,6 @@ typedef struct _NativePrimitive {
 } NativePrimitive;
 
 /*
- * This function should be defined to return a pointer to
- * an accelerated version of a primitive function 'func_c'
- * if it exists and to return a copy of the input parameter
- * otherwise.
- */
-extern AnyFunc* MapAccelFunction(AnyFunc *func_c);
-
-/*
  * The global collection of all primitive types.  Specific NativePrimitive
  * structures can be statically initialized by pointing to these structures.
  */
@@ -492,6 +484,9 @@ extern struct _CompositeTypes {
                                                     ((ptrdiff_t)(x))*(xinc))
 #define PtrPixelsRow(p, y, scanStride)    PtrAddBytes(p, \
     ((intptr_t) (y)) * (scanStride))
+
+#define PtrPixelsBand(p, y, length, elemSize)    PtrAddBytes(p, \
+    ((intptr_t) (y)) * (length) * (elemSize))
 
 /*
  * The function to call with an array of NativePrimitive structures

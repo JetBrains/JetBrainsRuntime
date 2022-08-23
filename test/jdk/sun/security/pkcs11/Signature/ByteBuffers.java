@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,14 +23,14 @@
 
 /*
  * @test
- * @bug 4856966
+ * @bug 4856966 8242332
  * @summary Test the Signature.update(ByteBuffer) method
  * @author Andreas Sterbenz
  * @library /test/lib ..
  * @key randomness
  * @modules jdk.crypto.cryptoki
  * @run main/othervm ByteBuffers
- * @run main/othervm ByteBuffers sm
+ * @run main/othervm -Djava.security.manager=allow ByteBuffers sm
  */
 
 import java.nio.ByteBuffer;
@@ -49,31 +49,16 @@ public class ByteBuffers extends PKCS11Test {
     @Override
     public void main(Provider p) throws Exception {
 
-        /*
-         * Use Solaris SPARC 11.2 or later to avoid an intermittent failure
-         * when running SunPKCS11-Solaris provider (8044554)
-         */
-        if (p.getName().equals("SunPKCS11-Solaris") &&
-            props.getProperty("os.name").equals("SunOS") &&
-            props.getProperty("os.arch").equals("sparcv9") &&
-            props.getProperty("os.version").compareTo("5.11") <= 0 &&
-            getDistro().compareTo("11.2") < 0) {
-
-            System.out.println("SunPKCS11-Solaris provider requires " +
-                "Solaris SPARC 11.2 or later, skipping");
-            return;
-        }
-
         Random random = new Random();
         int n = 10 * 1024;
         byte[] t = new byte[n];
         random.nextBytes(t);
 
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", p);
-        kpg.initialize(512);
+        kpg.initialize(2048);
         KeyPair kp = kpg.generateKeyPair();
 
-        Signature sig = Signature.getInstance("MD5withRSA", p);
+        Signature sig = Signature.getInstance("SHA256withRSA", p);
         sig.initSign(kp.getPrivate());
         sig.update(t);
         byte[] signature = sig.sign();

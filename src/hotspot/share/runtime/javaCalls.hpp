@@ -88,7 +88,10 @@ class JavaCallArguments : public StackObj {
   int         _size;
   int         _max_size;
   bool        _start_at_zero;      // Support late setting of receiver
-  JVMCI_ONLY(nmethod*    _alternative_target;) // Nmethod that should be called instead of normal target
+#if INCLUDE_JVMCI
+  Handle      _alternative_target; // HotSpotNmethod wrapping an nmethod whose verified entry point
+                                   // should be called instead of the normal target
+#endif
 
   void initialize() {
     // Starts at first element to support set_receiver.
@@ -98,24 +101,6 @@ class JavaCallArguments : public StackObj {
     _max_size = _default_size;
     _size = 0;
     _start_at_zero = false;
-    JVMCI_ONLY(_alternative_target = NULL;)
-  }
-
-  // Helper for push_oop and the like.  The value argument is a
-  // "handle" that refers to an oop.  We record the address of the
-  // handle rather than the designated oop.  The handle is later
-  // resolved to the oop by parameters().  This delays the exposure of
-  // naked oops until it is GC-safe.
-  template<typename T>
-  inline int push_oop_impl(T handle, int size) {
-    // JNITypes::put_obj expects an oop value, so we play fast and
-    // loose with the type system.  The cast from handle type to oop
-    // *must* use a C-style cast.  In a product build it performs a
-    // reinterpret_cast. In a debug build (more accurately, in a
-    // CHECK_UNHANDLED_OOPS build) it performs a static_cast, invoking
-    // the debug-only oop class's conversion from void* constructor.
-    JNITypes::put_obj((oop)handle, _value, size); // Updates size.
-    return size;                // Return the updated size.
   }
 
  public:
@@ -138,18 +123,17 @@ class JavaCallArguments : public StackObj {
       _max_size = max_size;
       _size = 0;
       _start_at_zero = false;
-      JVMCI_ONLY(_alternative_target = NULL;)
     } else {
       initialize();
     }
   }
 
 #if INCLUDE_JVMCI
-  void set_alternative_target(nmethod* target) {
+  void set_alternative_target(Handle target) {
     _alternative_target = target;
   }
 
-  nmethod* alternative_target() {
+  Handle alternative_target() {
     return _alternative_target;
   }
 #endif
@@ -165,12 +149,12 @@ class JavaCallArguments : public StackObj {
 
   inline void push_oop(Handle h) {
     _value_state[_size] = value_state_handle;
-    _size = push_oop_impl(h.raw_value(), _size);
+    JNITypes::put_obj(h, _value, _size);
   }
 
   inline void push_jobject(jobject h) {
     _value_state[_size] = value_state_jobject;
-    _size = push_oop_impl(h, _size);
+    JNITypes::put_obj(h, _value, _size);
   }
 
   inline void push_int(int i) {
@@ -211,7 +195,9 @@ class JavaCallArguments : public StackObj {
     _value--;
     _size++;
     _value_state[0] = value_state_handle;
-    push_oop_impl(h.raw_value(), 0);
+
+    int size = 0;
+    JNITypes::put_obj(h, _value, size);
   }
 
   // Converts all Handles to oops, and returns a reference to parameter vector

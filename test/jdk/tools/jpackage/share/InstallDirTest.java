@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,10 @@
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Supplier;
 import jdk.jpackage.test.TKit;
 import jdk.jpackage.test.PackageTest;
 import jdk.jpackage.test.PackageType;
 import jdk.jpackage.test.Functional;
-import jdk.jpackage.test.JPackageCommand;
 import jdk.jpackage.test.Annotations.Parameter;
 
 /**
@@ -60,7 +58,7 @@ import jdk.jpackage.test.Annotations.Parameter;
  * @key jpackagePlatformPackage
  * @build jdk.jpackage.test.*
  * @compile InstallDirTest.java
- * @modules jdk.incubator.jpackage/jdk.incubator.jpackage.internal
+ * @modules jdk.jpackage/jdk.jpackage.internal
  * @run main/othervm/timeout=540 -Xmx512m jdk.jpackage.test.Main
  *  --jpt-run=InstallDirTest.testCommon
  */
@@ -72,11 +70,11 @@ import jdk.jpackage.test.Annotations.Parameter;
  * @key jpackagePlatformPackage
  * @build jdk.jpackage.test.*
  * @compile InstallDirTest.java
- * @modules jdk.incubator.jpackage/jdk.incubator.jpackage.internal
+ * @modules jdk.jpackage/jdk.jpackage.internal
  * @requires (os.family == "linux")
  * @requires (jpackage.test.SQETest == null)
  * @run main/othervm/timeout=360 -Xmx512m jdk.jpackage.test.Main
- *  --jpt-run=InstallDirTest.testLinuxInvalid,testLinuxUnsupported
+ *  --jpt-run=InstallDirTest.testLinuxInvalid
  */
 public class InstallDirTest {
 
@@ -90,11 +88,12 @@ public class InstallDirTest {
             reply.put(PackageType.LINUX_RPM, reply.get(PackageType.LINUX_DEB));
 
             reply.put(PackageType.MAC_PKG, Path.of("/Applications/jpackage"));
+            reply.put(PackageType.MAC_DMG, reply.get(PackageType.MAC_PKG));
 
             return reply;
         }).get();
 
-        new PackageTest().excludeTypes(PackageType.MAC_DMG).configureHelloApp()
+        new PackageTest().configureHelloApp()
         .addInitializer(cmd -> {
             cmd.addArguments("--install-dir", INSTALL_DIRS.get(
                     cmd.packageType()));
@@ -107,13 +106,6 @@ public class InstallDirTest {
     @Parameter("/opt/foo/.././.")
     public static void testLinuxInvalid(String installDir) {
         testLinuxBad(installDir, "Invalid installation directory");
-    }
-
-    @Parameter("/usr")
-    @Parameter("/usr/local")
-    @Parameter("/usr/foo")
-    public static void testLinuxUnsupported(String installDir) {
-        testLinuxBad(installDir, "currently unsupported");
     }
 
     private static void testLinuxBad(String installDir,

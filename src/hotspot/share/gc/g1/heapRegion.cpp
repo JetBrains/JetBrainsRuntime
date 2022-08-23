@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
 
 #include "precompiled.hpp"
 #include "code/nmethod.hpp"
+#include "gc/g1/g1Allocator.inline.hpp"
 #include "gc/g1/g1BlockOffsetTable.inline.hpp"
 #include "gc/g1/g1CollectedHeap.inline.hpp"
 #include "gc/g1/g1CollectionSet.hpp"
@@ -43,9 +44,10 @@
 #include "oops/access.inline.hpp"
 #include "oops/compressedOops.inline.hpp"
 #include "oops/oop.inline.hpp"
+#include "runtime/globals_extension.hpp"
+#include "utilities/powerOfTwo.hpp"
 
 int    HeapRegion::LogOfHRGrainBytes = 0;
-int    HeapRegion::LogOfHRGrainWords = 0;
 int    HeapRegion::LogCardsPerRegion = 0;
 size_t HeapRegion::GrainBytes        = 0;
 size_t HeapRegion::GrainWords        = 0;
@@ -59,51 +61,40 @@ size_t HeapRegion::min_region_size_in_words() {
   return HeapRegionBounds::min_size() >> LogHeapWordSize;
 }
 
-void HeapRegion::setup_heap_region_size(size_t initial_heap_size, size_t max_heap_size) {
+void HeapRegion::setup_heap_region_size(size_t max_heap_size) {
   size_t region_size = G1HeapRegionSize;
-  if (FLAG_IS_DEFAULT(G1HeapRegionSize)) {
-    size_t average_heap_size = (initial_heap_size + max_heap_size) / 2;
-    region_size = MAX2(average_heap_size / HeapRegionBounds::target_number(),
+  // G1HeapRegionSize = 0 means decide ergonomically.
+  if (region_size == 0) {
+    region_size = MAX2(max_heap_size / HeapRegionBounds::target_number(),
                        HeapRegionBounds::min_size());
   }
 
-  int region_size_log = log2_long((jlong) region_size);
-  // Recalculate the region size to make sure it's a power of
-  // 2. This means that region_size is the largest power of 2 that's
-  // <= what we've calculated so far.
-  region_size = ((size_t)1 << region_size_log);
+  // Make sure region size is a power of 2. Rounding up since this
+  // is beneficial in most cases.
+  region_size = round_up_power_of_2(region_size);
 
   // Now make sure that we don't go over or under our limits.
-  if (region_size < HeapRegionBounds::min_size()) {
-    region_size = HeapRegionBounds::min_size();
-  } else if (region_size > HeapRegionBounds::max_size()) {
-    region_size = HeapRegionBounds::max_size();
-  }
+  region_size = clamp(region_size, HeapRegionBounds::min_size(), HeapRegionBounds::max_size());
 
-  // And recalculate the log.
-  region_size_log = log2_long((jlong) region_size);
+  // Calculate the log for the region size.
+  int region_size_log = log2i_exact(region_size);
 
   // Now, set up the globals.
   guarantee(LogOfHRGrainBytes == 0, "we should only set it once");
   LogOfHRGrainBytes = region_size_log;
 
-  guarantee(LogOfHRGrainWords == 0, "we should only set it once");
-  LogOfHRGrainWords = LogOfHRGrainBytes - LogHeapWordSize;
-
   guarantee(GrainBytes == 0, "we should only set it once");
   // The cast to int is safe, given that we've bounded region_size by
   // MIN_REGION_SIZE and MAX_REGION_SIZE.
   GrainBytes = region_size;
-  log_info(gc, heap)("Heap region size: " SIZE_FORMAT "M", GrainBytes / M);
 
   guarantee(GrainWords == 0, "we should only set it once");
   GrainWords = GrainBytes >> LogHeapWordSize;
-  guarantee((size_t) 1 << LogOfHRGrainWords == GrainWords, "sanity");
 
   guarantee(CardsPerRegion == 0, "we should only set it once");
   CardsPerRegion = GrainBytes >> G1CardTable::card_shift;
 
-  LogCardsPerRegion = log2_long((jlong) CardsPerRegion);
+  LogCardsPerRegion = log2i(CardsPerRegion);
 
   if (G1HeapRegionSize != GrainBytes) {
     FLAG_SET_ERGO(G1HeapRegionSize, GrainBytes);
@@ -113,8 +104,8 @@ void HeapRegion::setup_heap_region_size(size_t initial_heap_size, size_t max_hea
 void HeapRegion::handle_evacuation_failure() {
   uninstall_surv_rate_group();
   clear_young_index_in_cset();
-  set_evacuation_failed(false);
   set_old();
+  _next_marked_bytes = 0;
 }
 
 void HeapRegion::unlink_from_list() {
@@ -126,8 +117,6 @@ void HeapRegion::unlink_from_list() {
 void HeapRegion::hr_clear(bool clear_space) {
   assert(_humongous_start_region == NULL,
          "we should have already filtered out humongous regions");
-  assert(!in_collection_set(),
-         "Should not clear heap region %u in the collection set", hrm_index());
 
   clear_young_index_in_cset();
   clear_index_in_opt_cset();
@@ -142,8 +131,7 @@ void HeapRegion::hr_clear(bool clear_space) {
   init_top_at_mark_start();
   if (clear_space) clear(SpaceDecorator::Mangle);
 
-  _evacuation_failed = false;
-  _gc_efficiency = 0.0;
+  _gc_efficiency = -1.0;
 }
 
 void HeapRegion::clear_cardtable() {
@@ -250,7 +238,6 @@ HeapRegion::HeapRegion(uint hrm_index,
   _hrm_index(hrm_index),
   _type(),
   _humongous_start_region(NULL),
-  _evacuation_failed(false),
   _index_in_opt_cset(InvalidCSetIndex),
   _next(NULL), _prev(NULL),
 #ifdef ASSERT
@@ -259,7 +246,7 @@ HeapRegion::HeapRegion(uint hrm_index,
   _prev_top_at_mark_start(NULL), _next_top_at_mark_start(NULL),
   _prev_marked_bytes(0), _next_marked_bytes(0),
   _young_index_in_cset(-1),
-  _surv_rate_group(NULL), _age_index(G1SurvRateGroup::InvalidAgeIndex), _gc_efficiency(0.0),
+  _surv_rate_group(NULL), _age_index(G1SurvRateGroup::InvalidAgeIndex), _gc_efficiency(-1.0),
   _node_index(G1NUMA::UnknownNodeIndex)
 {
   assert(Universe::on_page_boundary(mr.start()) && Universe::on_page_boundary(mr.end()),
@@ -291,15 +278,15 @@ void HeapRegion::report_region_type_change(G1HeapRegionTraceType::Type to) {
                                             used());
 }
 
-void HeapRegion::note_self_forwarding_removal_start(bool during_initial_mark,
+void HeapRegion::note_self_forwarding_removal_start(bool during_concurrent_start,
                                                     bool during_conc_mark) {
   // We always recreate the prev marking info and we'll explicitly
   // mark all objects we find to be self-forwarded on the prev
   // bitmap. So all objects need to be below PTAMS.
   _prev_marked_bytes = 0;
 
-  if (during_initial_mark) {
-    // During initial-mark, we'll also explicitly mark all objects
+  if (during_concurrent_start) {
+    // During concurrent start, we'll also explicitly mark all objects
     // we find to be self-forwarded on the next bitmap. So all
     // objects need to be below NTAMS.
     _next_top_at_mark_start = top();
@@ -357,7 +344,7 @@ class VerifyStrongCodeRootOopClosure: public OopClosure {
       // current region. We only look at those which are.
       if (_hr->is_in(obj)) {
         // Object is in the region. Check that its less than top
-        if (_hr->top() <= (HeapWord*)obj) {
+        if (_hr->top() <= cast_from_oop<HeapWord*>(obj)) {
           // Object is above top
           log_error(gc, verify)("Object " PTR_FORMAT " in region " HR_FORMAT " is above top ",
                                 p2i(obj), HR_FORMAT_PARAMS(_hr));
@@ -521,9 +508,6 @@ public:
     obj->print_on(out);
 #endif // PRODUCT
   }
-
-  // This closure provides its own oop verification code.
-  debug_only(virtual bool should_verify_oops() { return false; })
 };
 
 class VerifyLiveClosure : public G1VerificationClosure {
@@ -566,7 +550,7 @@ public:
                     p2i(obj), HR_FORMAT_PARAMS(to), to->rem_set()->get_state_str());
         } else {
           HeapRegion* from = _g1h->heap_region_containing((HeapWord*)p);
-          HeapRegion* to = _g1h->heap_region_containing((HeapWord*)obj);
+          HeapRegion* to = _g1h->heap_region_containing(obj);
           log.error("Field " PTR_FORMAT " of live obj " PTR_FORMAT " in region " HR_FORMAT,
                     p2i(p), p2i(_containing_obj), HR_FORMAT_PARAMS(from));
           LogStream ls(log.error());
@@ -660,9 +644,6 @@ public:
   }
   virtual inline void do_oop(oop* p) { do_oop_work(p); }
   virtual inline void do_oop(narrowOop* p) { do_oop_work(p); }
-
-  // This closure provides its own oop verification code.
-  debug_only(virtual bool should_verify_oops() { return false; })
 };
 
 void HeapRegion::verify(VerifyOption vo,
@@ -676,7 +657,7 @@ void HeapRegion::verify(VerifyOption vo,
   bool is_region_humongous = is_humongous();
   size_t object_num = 0;
   while (p < top()) {
-    oop obj = oop(p);
+    oop obj = cast_to_oop(p);
     size_t obj_size = block_size(p);
     object_num += 1;
 
@@ -731,13 +712,13 @@ void HeapRegion::verify(VerifyOption vo,
     p += obj_size;
   }
 
-  if (!is_young() && !is_empty()) {
+  if (!is_empty()) {
     _bot_part.verify();
   }
 
   if (is_region_humongous) {
-    oop obj = oop(this->humongous_start_region()->bottom());
-    if ((HeapWord*)obj > bottom() || (HeapWord*)obj + obj->size() < bottom()) {
+    oop obj = cast_to_oop(this->humongous_start_region()->bottom());
+    if (cast_from_oop<HeapWord*>(obj) > bottom() || cast_from_oop<HeapWord*>(obj) + obj->size() < bottom()) {
       log_error(gc, verify)("this humongous region is not part of its' humongous object " PTR_FORMAT, p2i(obj));
       *failures = true;
       return;
@@ -821,7 +802,7 @@ void HeapRegion::verify_rem_set(VerifyOption vo, bool* failures) const {
   HeapWord* prev_p = NULL;
   VerifyRemSetClosure vr_cl(g1h, vo);
   while (p < top()) {
-    oop obj = oop(p);
+    oop obj = cast_to_oop(p);
     size_t obj_size = block_size(p);
 
     if (!g1h->is_obj_dead_cond(obj, this, vo)) {
@@ -883,7 +864,7 @@ void HeapRegion::object_iterate(ObjectClosure* blk) {
   HeapWord* p = bottom();
   while (p < top()) {
     if (block_is_obj(p)) {
-      blk->do_object(oop(p));
+      blk->do_object(cast_to_oop(p));
     }
     p += block_size(p);
   }

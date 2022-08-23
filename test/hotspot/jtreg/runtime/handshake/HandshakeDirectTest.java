@@ -24,11 +24,12 @@
 
 /*
  * @test HandshakeDirectTest
+ * @bug 8240918
  * @summary This test tries to stress direct handshakes between threads while suspending them.
  * @library /testlibrary /test/lib
  * @build HandshakeDirectTest
- * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+SafepointALot -XX:BiasedLockingDecayTime=100000000 -XX:BiasedLockingBulkRebiasThreshold=1000000 -XX:BiasedLockingBulkRevokeThreshold=1000000 HandshakeDirectTest
- * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:GuaranteedSafepointInterval=10 -XX:+HandshakeALot -XX:+SafepointALot -XX:BiasedLockingDecayTime=100000000 -XX:BiasedLockingBulkRebiasThreshold=1000000 -XX:BiasedLockingBulkRevokeThreshold=1000000 HandshakeDirectTest
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UseBiasedLocking -XX:+SafepointALot -XX:BiasedLockingDecayTime=100000000 -XX:BiasedLockingBulkRebiasThreshold=1000000 -XX:BiasedLockingBulkRevokeThreshold=1000000 HandshakeDirectTest
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UseBiasedLocking -XX:GuaranteedSafepointInterval=10 -XX:+HandshakeALot -XX:+SafepointALot -XX:BiasedLockingDecayTime=100000000 -XX:BiasedLockingBulkRebiasThreshold=1000000 -XX:BiasedLockingBulkRevokeThreshold=1000000 HandshakeDirectTest
  */
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,7 +39,7 @@ import java.io.*;
 
 public class HandshakeDirectTest  implements Runnable {
     static final int WORKING_THREADS = 32;
-    static final int DIRECT_HANDSHAKES_MARK = 50000;
+    static final int DIRECT_HANDSHAKES_MARK = 500000;
     static Thread[] workingThreads = new Thread[WORKING_THREADS];
     static Semaphore[] handshakeSem = new Semaphore[WORKING_THREADS];
     static Object[] locks = new Object[WORKING_THREADS];
@@ -60,8 +61,9 @@ public class HandshakeDirectTest  implements Runnable {
                 }
 
                 // Handshake directly some other worker
-                int handshakee = ThreadLocalRandom.current().nextInt(0, WORKING_THREADS-1);
+                int handshakee = ThreadLocalRandom.current().nextInt(0, WORKING_THREADS - 1);
                 if (handshakee == me) {
+                    // Pick another thread instead of me.
                     handshakee = handshakee != 0 ? handshakee - 1 : handshakee + 1;
                 }
                 handshakeSem[handshakee].acquire();
@@ -108,7 +110,7 @@ public class HandshakeDirectTest  implements Runnable {
             @Override
             public void run() {
                 while (true) {
-                    int i = ThreadLocalRandom.current().nextInt(0, WORKING_THREADS-1);
+                    int i = ThreadLocalRandom.current().nextInt(0, WORKING_THREADS - 1);
                     workingThreads[i].suspend();
                     try {
                         Thread.sleep(1); // sleep for 1 ms

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@
 package sun.lwawt.macosx;
 
 import java.awt.AWTError;
+import java.awt.AWTException;
 import java.awt.CheckboxMenuItem;
 import java.awt.Color;
 import java.awt.Component;
@@ -49,7 +50,6 @@ import java.awt.MenuItem;
 import java.awt.Point;
 import java.awt.PopupMenu;
 import java.awt.RenderingHints;
-import java.awt.Robot;
 import java.awt.SystemTray;
 import java.awt.Taskbar;
 import java.awt.Toolkit;
@@ -85,30 +85,23 @@ import java.awt.peer.TaskbarPeer;
 import java.awt.peer.TrayIconPeer;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.UndeclaredThrowableException;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.MissingResourceException;
-import java.util.Objects;
-import java.util.ResourceBundle;
+import java.security.*;
+import java.util.*;
 import java.util.concurrent.Callable;
-
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.net.MalformedURLException;
 import javax.swing.UIManager;
 
 import com.apple.laf.AquaMenuBarUI;
-import sun.awt.AWTAccessor;
-import sun.awt.AppContext;
-import sun.awt.CGraphicsConfig;
-import sun.awt.CGraphicsDevice;
-import sun.awt.LightweightFrame;
-import sun.awt.PlatformGraphicsInfo;
-import sun.awt.SunToolkit;
+import sun.awt.*;
 import sun.awt.datatransfer.DataTransferer;
+import sun.awt.dnd.SunDragSourceContextPeer;
 import sun.awt.util.ThreadGroupUtils;
+import sun.java2d.metal.MTLRenderQueue;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.lwawt.LWComponentPeer;
 import sun.lwawt.LWCursorManager;
@@ -119,6 +112,8 @@ import sun.lwawt.PlatformComponent;
 import sun.lwawt.PlatformDropTarget;
 import sun.lwawt.PlatformWindow;
 import sun.lwawt.SecurityWarningWindow;
+import sun.security.action.GetBooleanAction;
+import sun.util.logging.PlatformLogger;
 
 @SuppressWarnings("serial") // JDK implementation class
 final class NamedCursor extends Cursor {
@@ -130,6 +125,7 @@ final class NamedCursor extends Cursor {
 /**
  * Mac OS X Cocoa-based AWT Toolkit.
  */
+@SuppressWarnings("removal")
 public final class LWCToolkit extends LWToolkit {
     // While it is possible to enumerate all mouse devices
     // and query them for the number of buttons, the code
@@ -140,7 +136,18 @@ public final class LWCToolkit extends LWToolkit {
 
     private static native void initIDs();
     private static native void initAppkit(ThreadGroup appKitThreadGroup, boolean headless);
+    private static native void switchKeyboardLayoutNative(String layoutName);
+
+    static native String getKeyboardLayoutNativeId();
+
     private static CInputMethodDescriptor sInputMethodDescriptor;
+
+    // Listens to EDT state in invokeAndWait() and disposes the invocation event
+    // when EDT becomes free but the invocation event is not yet dispatched (considered lost).
+    // This prevents a deadlock and makes the invocation return some default result.
+    @SuppressWarnings("removal")
+    private static final boolean DISPOSE_INVOCATION_ON_EDT_FREE =
+        AccessController.doPrivileged(new GetBooleanAction("sun.lwawt.macosx.LWCToolkit.invokeAndWait.disposeOnEDTFree"));
 
     static {
         System.err.flush();
@@ -188,6 +195,8 @@ public final class LWCToolkit extends LWToolkit {
      */
     private static final boolean inAWT;
 
+    private static final PlatformLogger log = PlatformLogger.getLogger(LWCToolkit.class.getName());
+
     public LWCToolkit() {
         final String extraButtons = "sun.awt.enableExtraMouseButtons";
         AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
@@ -204,14 +213,16 @@ public final class LWCToolkit extends LWToolkit {
     /*
      * System colors with default initial values, overwritten by toolkit if system values differ and are available.
      */
-    private static final int NUM_APPLE_COLORS = 3;
+    private static final int NUM_APPLE_COLORS = 4;
     public static final int KEYBOARD_FOCUS_COLOR = 0;
     public static final int INACTIVE_SELECTION_BACKGROUND_COLOR = 1;
     public static final int INACTIVE_SELECTION_FOREGROUND_COLOR = 2;
+    public static final int SELECTED_CONTROL_TEXT_COLOR = 3;
     private static int[] appleColors = {
         0xFF808080, // keyboardFocusColor = Color.gray;
         0xFFC0C0C0, // secondarySelectedControlColor
         0xFF303030, // controlDarkShadowColor
+        0xFFFFFFFF, // controlTextColor
     };
 
     private native void loadNativeColors(final int[] systemColors, final int[] appleColors);
@@ -464,6 +475,16 @@ public final class LWCToolkit extends LWToolkit {
 
     @Override
     protected boolean syncNativeQueue(long timeout) {
+        if (timeout <= 0) {
+            return false;
+        }
+        if (SunDragSourceContextPeer.isDragDropInProgress()
+                || EventQueue.isDispatchThread()) {
+            // The java code started the DnD, but the native drag may still not
+            // start, the last attempt to flush the native events,
+            // also do not block EDT for a long time
+            timeout = 50;
+        }
         return nativeSyncQueue(timeout);
     }
 
@@ -479,21 +500,33 @@ public final class LWCToolkit extends LWToolkit {
 
     @Override
     public Insets getScreenInsets(final GraphicsConfiguration gc) {
-        return ((CGraphicsConfig) gc).getDevice().getScreenInsets();
+        GraphicsDevice gd = gc.getDevice();
+        if (!(gd instanceof CGraphicsDevice)) {
+            return AWTThreading.executeWaitToolkit(() -> super.getScreenInsets(gc));
+        }
+        CGraphicsDevice cgd = (CGraphicsDevice) gd;
+        return cgd.getScreenInsets();
     }
 
     @Override
     public void sync() {
-        // flush the OGL pipeline (this is a no-op if OGL is not enabled)
-        OGLRenderQueue.sync();
+        // flush the rendering pipeline
+        if (CGraphicsDevice.usingMetalPipeline()) {
+            MTLRenderQueue.sync();
+        } else {
+            OGLRenderQueue.sync();
+        }
         // setNeedsDisplay() selector was sent to the appropriate CALayer so now
         // we have to flush the native selectors queue.
         flushNativeSelectors();
     }
 
     @Override
-    public RobotPeer createRobot(Robot target, GraphicsDevice screen) {
-        return new CRobot(target, (CGraphicsDevice)screen);
+    public RobotPeer createRobot(GraphicsDevice screen) throws AWTException {
+        if (screen instanceof CGraphicsDevice) {
+            return new CRobot((CGraphicsDevice) screen);
+        }
+        return super.createRobot(screen);
     }
 
     private native boolean isCapsLockOn();
@@ -649,8 +682,12 @@ public final class LWCToolkit extends LWToolkit {
 
     public static <T> T invokeAndWait(final Callable<T> callable,
                                       Component component) throws Exception {
+        return invokeAndWait(callable, component, -1);
+    }
+
+    public static <T> T invokeAndWait(final Callable<T> callable, Component component, int timeoutSeconds) throws Exception {
         final CallableWrapper<T> wrapper = new CallableWrapper<>(callable);
-        invokeAndWait(wrapper, component);
+        invokeAndWait(wrapper, component, false, timeoutSeconds);
         return wrapper.getResult();
     }
 
@@ -676,39 +713,100 @@ public final class LWCToolkit extends LWToolkit {
             if (e != null) throw e;
             return object;
         }
+
+        @Override
+        public String toString() {
+            return "CallableWrapper{" + callable + "}";
+        }
     }
 
     /**
-     * Kicks an event over to the appropriate event queue and waits for it to
+     * Kicks an event over to the appropriate eventqueue and waits for it to
      * finish To avoid deadlocking, we manually run the NSRunLoop while waiting
      * Any selector invoked using ThreadUtilities performOnMainThread will be
      * processed in doAWTRunLoop The InvocationEvent will call
      * LWCToolkit.stopAWTRunLoop() when finished, which will stop our manual
-     * run loop. Does not dispatch native events while in the loop
+     * runloop Does not dispatch native events while in the loop
      */
     public static void invokeAndWait(Runnable runnable, Component component)
-            throws InvocationTargetException {
-        Objects.requireNonNull(component, "Null component provided to invokeAndWait");
+            throws InvocationTargetException
+    {
+        invokeAndWait(runnable, component, false);
+    }
+
+    /**
+     * Submit event to the event queue as the method above
+     * @param processEvents if <code>true<code/>  always process system events
+     */
+    public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents)
+            throws InvocationTargetException
+    {
+        invokeAndWait(runnable, component, false, -1);
+    }
+
+    public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents, int timeoutSeconds)
+            throws InvocationTargetException
+    {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("invokeAndWait started: " + runnable);
+        }
+
+        if (isBlockingEventDispatchThread()) {
+            String msg = "invokeAndWait is discarded as the EventDispatch thread is currently blocked";
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine(msg, new Throwable());
+                log.fine(AWTThreading.getInstance(component).printEventDispatchThreadStackTrace().toString());
+            } else if (log.isLoggable(PlatformLogger.Level.INFO)) {
+                StackTraceElement[] stack = new Throwable().getStackTrace();
+                log.info(msg + ". Originated at " + stack[stack.length - 1]);
+                Thread dispatchThread = AWTThreading.getInstance(component).getEventDispatchThread();
+                log.info(dispatchThread.getName() + " at: " + dispatchThread.getStackTrace()[0].toString());
+            }
+            return;
+        }
+
+        AWTThreading.TrackedInvocationEvent invocationEvent =
+            AWTThreading.createAndTrackInvocationEvent(component, runnable, true);
 
         long mediator = createAWTRunLoopMediator();
-        InvocationEvent invocationEvent =
-                new InvocationEvent(component,
-                        runnable,
-                        () -> {
-                            if (mediator != 0) {
-                                stopAWTRunLoop(mediator);
-                            }
-                        },
-                        true);
+        invocationEvent.onDone(() -> stopAWTRunLoop(mediator));
 
-        AppContext appContext = SunToolkit.targetToAppContext(component);
-        SunToolkit.postEvent(appContext, invocationEvent);
-        // 3746956 - flush events from PostEventQueue to prevent them from getting stuck and causing a deadlock
-        SunToolkit.flushPendingEvents(appContext);
-        doAWTRunLoop(mediator, false);
+        if (component != null) {
+            AppContext appContext = SunToolkit.targetToAppContext(component);
+            SunToolkit.postEvent(appContext, invocationEvent);
+
+            // 3746956 - flush events from PostEventQueue to prevent them from getting stuck and causing a deadlock
+            SunToolkit.flushPendingEvents(appContext);
+        }
+        else {
+            // This should be the equivalent to EventQueue.invokeAndWait
+            ((LWCToolkit)Toolkit.getDefaultToolkit()).getSystemEventQueueForInvokeAndWait().postEvent(invocationEvent);
+        }
+
+        if (DISPOSE_INVOCATION_ON_EDT_FREE) {
+            CompletableFuture<Void> eventDispatchThreadFreeFuture =
+              AWTThreading.getInstance(component).onEventDispatchThreadFree(() -> {
+                  if (!invocationEvent.isCompleted(true)) {
+                      // EventQueue is now empty but the posted InvocationEvent is still not dispatched,
+                      // consider it lost then.
+                      invocationEvent.dispose("InvocationEvent was lost");
+                  }
+              });
+            invocationEvent.onDone(() -> eventDispatchThreadFreeFuture.cancel(false));
+        }
+
+        if (!doAWTRunLoop(mediator, false, timeoutSeconds)) {
+            invocationEvent.dispose("InvocationEvent has timed out");
+        }
+
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("invokeAndWait finished: " + runnable);
+        }
 
         checkException(invocationEvent);
     }
+
+    private static native boolean isBlockingEventDispatchThread();
 
     public static void invokeLater(Runnable event, Component component)
             throws InvocationTargetException {
@@ -722,6 +820,10 @@ public final class LWCToolkit extends LWToolkit {
         SunToolkit.flushPendingEvents(appContext);
 
         checkException(invocationEvent);
+    }
+
+    EventQueue getSystemEventQueueForInvokeAndWait() {
+        return getSystemEventQueueImpl();
     }
 
     /**
@@ -747,6 +849,11 @@ public final class LWCToolkit extends LWToolkit {
      * @param delay a delay in milliseconds
      */
     static native void performOnMainThreadAfterDelay(Runnable r, long delay);
+
+    /**
+     * Schedules a {@code Runnable} execution on the Appkit thread and waits for completion.
+     */
+    public static native void performOnMainThreadAndWait(Runnable r);
 
 // DnD support
 
@@ -903,9 +1010,16 @@ public final class LWCToolkit extends LWToolkit {
      *                      if false - all events come after exit form the nested loop
      */
     static void doAWTRunLoop(long mediator, boolean processEvents) {
-        doAWTRunLoopImpl(mediator, processEvents, inAWT);
+        doAWTRunLoop(mediator, processEvents, -1);
     }
-    private static native void doAWTRunLoopImpl(long mediator, boolean processEvents, boolean inAWT);
+
+    /**
+     * Starts run-loop with the provided timeout. Use (-1) for the infinite value.
+     */
+    static boolean doAWTRunLoop(long mediator, boolean processEvents, int timeoutSeconds) {
+        return doAWTRunLoopImpl(mediator, processEvents, inAWT, timeoutSeconds);
+    }
+    private static native boolean doAWTRunLoopImpl(long mediator, boolean processEvents, boolean inAWT, int timeoutSeconds);
     static native void stopAWTRunLoop(long mediator);
 
     private native boolean nativeSyncQueue(long timeout);
@@ -997,6 +1111,17 @@ public final class LWCToolkit extends LWToolkit {
                 !path.isEmpty() &&
                 !path.endsWith("/") &&
                 !path.endsWith(".");
+    }
+
+    public static void switchKeyboardLayout (String layoutName) {
+        if (layoutName == null || layoutName.isEmpty()) {
+            throw new RuntimeException("A valid layout ID is expected. Found:  " + layoutName);
+        }
+        switchKeyboardLayoutNative(layoutName);
+    }
+
+    public static String getKeyboardLayoutId () {
+        return getKeyboardLayoutNativeId();
     }
 
     @Override

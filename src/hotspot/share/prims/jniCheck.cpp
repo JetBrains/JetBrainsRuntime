@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@
 #include "jni.h"
 #include "jvm.h"
 #include "classfile/javaClasses.inline.hpp"
-#include "classfile/systemDictionary.hpp"
+#include "classfile/vmClasses.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "logging/log.hpp"
 #include "logging/logTag.hpp"
@@ -43,6 +43,8 @@
 #include "runtime/jfieldIDWorkaround.hpp"
 #include "runtime/jniHandles.inline.hpp"
 #include "runtime/thread.inline.hpp"
+#include "utilities/formatBuffer.hpp"
+#include "utilities/utf8.hpp"
 
 // Complain every extra number of unplanned local refs
 #define CHECK_JNI_LOCAL_REF_CAP_WARN_THRESHOLD 32
@@ -92,15 +94,17 @@ static struct JNINativeInterface_ * unchecked_jni_NativeInterface;
 #define JNI_ENTRY_CHECKED(result_type, header)                           \
 extern "C" {                                                             \
   result_type JNICALL header {                                           \
-    JavaThread* thr = (JavaThread*) Thread::current_or_null();           \
-    if (thr == NULL || !thr->is_Java_thread()) {                         \
+    Thread* cur = Thread::current_or_null();                             \
+    if (cur == NULL || !cur->is_Java_thread()) {                         \
       tty->print_cr("%s", fatal_using_jnienv_in_nonjava);                \
       os::abort(true);                                                   \
     }                                                                    \
+    JavaThread* thr = cur->as_Java_thread();                             \
     JNIEnv* xenv = thr->jni_environment();                               \
     if (env != xenv) {                                                   \
       NativeReportJNIFatalError(thr, warn_wrong_jnienv);                 \
     }                                                                    \
+    MACOS_AARCH64_ONLY(ThreadWXEnable __wx(WXWrite, thr));         \
     VM_ENTRY_BASE(result_type, header, thr)
 
 
@@ -134,6 +138,8 @@ static const char * fatal_wrong_field = "Wrong field ID passed to JNI";
 static const char * fatal_instance_field_not_found = "Instance field not found in JNI get/set field operations";
 static const char * fatal_instance_field_mismatch = "Field type (instance) mismatch in JNI get/set field operations";
 static const char * fatal_non_string = "JNI string operation received a non-string";
+static const char * fatal_non_utf8_class_name1 = "JNI class name is not a valid UTF8 string \"";
+static const char * fatal_non_utf8_class_name2 = "\"";
 
 
 // When in VM state:
@@ -395,19 +401,16 @@ static void* check_wrapped_array(JavaThread* thr, const char* fn_name,
   GuardedMemory guarded(carray);
   void* orig_result = guarded.get_tag();
   if (!guarded.verify_guards()) {
-    tty->print_cr("ReleasePrimitiveArrayCritical: release array failed bounds "
-        "check, incorrect pointer returned ? array: " PTR_FORMAT " carray: "
-        PTR_FORMAT, p2i(obj), p2i(carray));
-    guarded.print_on(tty);
-    NativeReportJNIFatalError(thr, "ReleasePrimitiveArrayCritical: "
-        "failed bounds check");
+    tty->print_cr("%s: release array failed bounds check, incorrect pointer returned ? array: "
+                  PTR_FORMAT " carray: " PTR_FORMAT, fn_name, p2i(obj), p2i(carray));
+    DEBUG_ONLY(guarded.print_on(tty);) // This may crash.
+    NativeReportJNIFatalError(thr, err_msg("%s: failed bounds check", fn_name));
   }
   if (orig_result == NULL) {
-    tty->print_cr("ReleasePrimitiveArrayCritical: unrecognized elements. array: "
-        PTR_FORMAT " carray: " PTR_FORMAT, p2i(obj), p2i(carray));
-    guarded.print_on(tty);
-    NativeReportJNIFatalError(thr, "ReleasePrimitiveArrayCritical: "
-        "unrecognized elements");
+    tty->print_cr("%s: unrecognized elements. array: " PTR_FORMAT " carray: " PTR_FORMAT,
+                  fn_name, p2i(obj), p2i(carray));
+    DEBUG_ONLY(guarded.print_on(tty);) // This may crash.
+    NativeReportJNIFatalError(thr, err_msg("%s: unrecognized elements", fn_name));
   }
   if (rsz != NULL) {
     *rsz = guarded.get_user_size();
@@ -416,24 +419,30 @@ static void* check_wrapped_array(JavaThread* thr, const char* fn_name,
 }
 
 static void* check_wrapped_array_release(JavaThread* thr, const char* fn_name,
-    void* obj, void* carray, jint mode) {
+                                         void* obj, void* carray, jint mode, jboolean is_critical) {
   size_t sz;
   void* orig_result = check_wrapped_array(thr, fn_name, obj, carray, &sz);
   switch (mode) {
-  // As we never make copies, mode 0 and JNI_COMMIT are the same.
   case 0:
+    memcpy(orig_result, carray, sz);
+    GuardedMemory::free_copy(carray);
+    break;
   case JNI_COMMIT:
     memcpy(orig_result, carray, sz);
+    if (is_critical) {
+      // For ReleasePrimitiveArrayCritical we must free the internal buffer
+      // allocated through GuardedMemory.
+      GuardedMemory::free_copy(carray);
+    }
     break;
   case JNI_ABORT:
+    GuardedMemory::free_copy(carray);
     break;
   default:
     tty->print_cr("%s: Unrecognized mode %i releasing array "
-        PTR_FORMAT " elements " PTR_FORMAT, fn_name, mode, p2i(obj), p2i(carray));
+                  PTR_FORMAT " elements " PTR_FORMAT, fn_name, mode, p2i(obj), p2i(carray));
     NativeReportJNIFatalError(thr, "Unrecognized array release mode");
   }
-  // We always need to release the copy we made with GuardedMemory
-  GuardedMemory::free_copy(carray);
   return orig_result;
 }
 
@@ -489,6 +498,13 @@ void jniCheck::validate_class_descriptor(JavaThread* thr, const char* name) {
                  warn_bad_class_descriptor1, name, warn_bad_class_descriptor2);
     ReportJNIWarning(thr, msg);
   }
+
+  // Verify that the class name given is a valid utf8 string
+  if (!UTF8::is_legal_utf8((const unsigned char*)name, (int)strlen(name), false)) {
+    char msg[JVM_MAXPATHLEN];
+    jio_snprintf(msg, JVM_MAXPATHLEN, "%s%s%s", fatal_non_utf8_class_name1, name, fatal_non_utf8_class_name2);
+    ReportJNIFatalError(thr, msg);
+  }
 }
 
 Klass* jniCheck::validate_class(JavaThread* thr, jclass clazz, bool allow_primitive) {
@@ -498,7 +514,7 @@ Klass* jniCheck::validate_class(JavaThread* thr, jclass clazz, bool allow_primit
     ReportJNIFatalError(thr, fatal_received_null_class);
   }
 
-  if (mirror->klass() != SystemDictionary::Class_klass()) {
+  if (mirror->klass() != vmClasses::Class_klass()) {
     ReportJNIFatalError(thr, fatal_class_not_a_class);
   }
 
@@ -515,7 +531,7 @@ void jniCheck::validate_throwable_klass(JavaThread* thr, Klass* klass) {
   assert(klass != NULL, "klass argument must have a value");
 
   if (!klass->is_instance_klass() ||
-      !klass->is_subclass_of(SystemDictionary::Throwable_klass())) {
+      !klass->is_subclass_of(vmClasses::Throwable_klass())) {
     ReportJNIFatalError(thr, fatal_class_not_a_throwable_class);
   }
 }
@@ -1704,7 +1720,7 @@ JNI_ENTRY_CHECKED(void,  \
       typeArrayOop a = typeArrayOop(JNIHandles::resolve_non_null(array)); \
     ) \
     ElementType* orig_result = (ElementType *) check_wrapped_array_release( \
-        thr, "checked_jni_Release"#Result"ArrayElements", array, elems, mode); \
+        thr, "checked_jni_Release"#Result"ArrayElements", array, elems, mode, JNI_FALSE); \
     UNCHECKED()->Release##Result##ArrayElements(env, array, orig_result, mode); \
     functionExit(thr); \
 JNI_END
@@ -1873,7 +1889,8 @@ JNI_ENTRY_CHECKED(void,
       check_is_primitive_array(thr, array);
     )
     // Check the element array...
-    void* orig_result = check_wrapped_array_release(thr, "ReleasePrimitiveArrayCritical", array, carray, mode);
+    void* orig_result = check_wrapped_array_release(thr, "ReleasePrimitiveArrayCritical",
+                                                    array, carray, mode, JNI_TRUE);
     UNCHECKED()->ReleasePrimitiveArrayCritical(env, array, orig_result, mode);
     functionExit(thr);
 JNI_END

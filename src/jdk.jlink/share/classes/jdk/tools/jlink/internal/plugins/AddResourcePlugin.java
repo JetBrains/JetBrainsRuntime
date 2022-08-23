@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,35 +25,25 @@
 
 package jdk.tools.jlink.internal.plugins;
 
-import java.io.*;
-import java.nio.charset.*;
-import java.util.*;
-import java.util.function.*;
-import java.util.stream.*;
-import jdk.tools.jlink.plugin.*;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.function.Function;
+
+import jdk.tools.jlink.plugin.ResourcePool;
+import jdk.tools.jlink.plugin.ResourcePoolBuilder;
+import jdk.tools.jlink.plugin.ResourcePoolEntry;
 
 /**
  * Base plugin to add a resource
  */
-abstract class AddResourcePlugin implements Plugin {
+abstract class AddResourcePlugin extends AbstractPlugin {
 
-    private final String name;
     private final String path;
     private String value;
 
-    protected AddResourcePlugin(String n, String p) {
-        name = n;
+    protected AddResourcePlugin(String name, String p) {
+        super(name);
         path = p;
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public String getDescription() {
-        return PluginsResourceBundle.getDescription(name);
     }
 
     @Override
@@ -71,14 +61,10 @@ abstract class AddResourcePlugin implements Plugin {
         return true;
     }
 
-    @Override
-    public String getArgumentsDescription() {
-       return PluginsResourceBundle.getArgument(name);
-    }
 
     @Override
     public void configure(Map<String, String> config) {
-        var v = config.get(name);
+        var v = config.get(getName());
         if (v == null)
             throw new AssertionError();
         value = v;

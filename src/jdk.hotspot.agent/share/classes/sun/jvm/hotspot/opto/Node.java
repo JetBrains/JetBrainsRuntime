@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,8 @@ import sun.jvm.hotspot.debugger.*;
 import sun.jvm.hotspot.runtime.*;
 import sun.jvm.hotspot.oops.*;
 import sun.jvm.hotspot.types.*;
+import sun.jvm.hotspot.utilities.Observable;
+import sun.jvm.hotspot.utilities.Observer;
 
 public class Node extends VMObject {
   static {
@@ -53,7 +55,7 @@ public class Node extends VMObject {
 
     nodeType = db.lookupType("Node");
 
-    virtualConstructor = new VirtualBaseConstructor(db, nodeType, "sun.jvm.hotspot.opto", Node.class);
+    virtualConstructor = new VirtualBaseConstructor<>(db, nodeType, "sun.jvm.hotspot.opto", Node.class);
   }
 
   private static CIntField outmaxField;
@@ -64,11 +66,11 @@ public class Node extends VMObject {
   private static AddressField outField;
   private static AddressField inField;
 
-  private static VirtualBaseConstructor virtualConstructor;
+  private static VirtualBaseConstructor<Node> virtualConstructor;
 
   private static Type nodeType;
 
-  static HashMap nodes = new HashMap();
+  static HashMap<Address, Node> nodes = new HashMap<>();
 
   static HashMap constructors = new HashMap();
 
@@ -78,7 +80,7 @@ public class Node extends VMObject {
 
   static public Node create(Address addr) {
     if (addr == null) return null;
-    Node result = (Node)nodes.get(addr);
+    Node result = nodes.get(addr);
     if (result == null) {
       result = (Node)virtualConstructor.instantiateWrapperFor(addr);
       nodes.put(addr, result);
@@ -133,9 +135,9 @@ public class Node extends VMObject {
     return _in[i];
   }
 
-  public ArrayList collect(int d, boolean onlyCtrl) {
+  public ArrayList<Node> collect(int d, boolean onlyCtrl) {
     int depth = Math.abs(d);
-    ArrayList nstack = new ArrayList();
+    ArrayList<Node> nstack = new ArrayList<>();
     BitSet set = new BitSet();
 
     nstack.add(this);
@@ -150,7 +152,7 @@ public class Node extends VMObject {
         for(int k = 0; k < limit; k++) {
           Node n = d > 0 ? tp.in(k) : tp.rawOut(k);
 
-          // if (NotANode(n))  continue;
+          // if (not_a_node(n))  continue;
           if (n == null) continue;
           // do not recurse through top or the root (would reach unrelated stuff)
           // if (n.isRoot() || n.isTop())  continue;
@@ -252,8 +254,8 @@ public class Node extends VMObject {
       Node u = rawOut(i);
       if (u == null) {
         out.print("_ ");
-      // } else if (NotANode(u)) {
-      //   out.print("NotANode ");
+      // } else if (not_a_node(u)) {
+      //   out.print("not_a_node ");
       } else {
         // out.print("%c%d ", Compile::current()->nodeArena()->contains(u) ? ' ' : 'o', u->_idx);
         out.print(' ');

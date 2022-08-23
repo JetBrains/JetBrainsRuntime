@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,6 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -56,7 +55,7 @@ import java.util.stream.Stream;
 import jdk.internal.loader.BuiltinClassLoader;
 import jdk.internal.loader.BootLoader;
 import jdk.internal.loader.ClassLoaders;
-import jdk.internal.module.IllegalAccessLogger;
+import jdk.internal.misc.CDS;
 import jdk.internal.module.ModuleLoaderMap;
 import jdk.internal.module.ServicesCatalog;
 import jdk.internal.module.Resources;
@@ -86,7 +85,7 @@ import sun.security.util.SecurityConstants;
  *
  * <p> The package names that are parameters or returned by methods defined in
  * this class are the fully-qualified names of the packages as defined in
- * section 6.5.3 of <cite>The Java&trade; Language Specification</cite>, for
+ * section {@jls 6.5.3} of <cite>The Java Language Specification</cite>, for
  * example, {@code "java.lang"}. </p>
  *
  * <p> Unless otherwise specified, passing a {@code null} argument to a method
@@ -94,8 +93,8 @@ import sun.security.util.SecurityConstants;
  * be thrown. </p>
  *
  * @since 9
- * @spec JPMS
  * @see Class#getModule()
+ * @jls 7.7 Module Declarations
  */
 
 public final class Module implements AnnotatedElement {
@@ -110,6 +109,8 @@ public final class Module implements AnnotatedElement {
     // the module descriptor
     private final ModuleDescriptor descriptor;
 
+    // true, if this module allows restricted native access
+    private volatile boolean enableNativeAccess;
 
     /**
      * Creates a new named Module. The resulting Module will be defined to the
@@ -132,8 +133,12 @@ public final class Module implements AnnotatedElement {
         Version version = descriptor.version().orElse(null);
         String vs = Objects.toString(version, null);
         String loc = Objects.toString(uri, null);
-        String[] packages = descriptor.packages().toArray(new String[0]);
+        Object[] packages = descriptor.packages().toArray();
         defineModule0(this, isOpen, vs, loc, packages);
+        if (loader == null || loader == ClassLoaders.platformClassLoader()) {
+            // boot/builtin modules are always native
+            implAddEnableNativeAccess();
+        }
     }
 
 
@@ -169,6 +174,7 @@ public final class Module implements AnnotatedElement {
      * @return {@code true} if this is a named module
      *
      * @see ClassLoader#getUnnamedModule()
+     * @jls 7.7.5 Unnamed Modules
      */
     public boolean isNamed() {
         return name != null;
@@ -198,6 +204,7 @@ public final class Module implements AnnotatedElement {
      *         If denied by the security manager
      */
     public ClassLoader getClassLoader() {
+        @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(SecurityConstants.GET_CLASSLOADER_PERMISSION);
@@ -244,15 +251,82 @@ public final class Module implements AnnotatedElement {
         return null;
     }
 
+    /**
+     * Update this module to allow access to restricted methods.
+     */
+    Module implAddEnableNativeAccess() {
+        enableNativeAccess = true;
+        return this;
+    }
+
+    /**
+     * Update all unnamed modules to allow access to restricted methods.
+     */
+    static void implAddEnableNativeAccessAllUnnamed() {
+        ALL_UNNAMED_MODULE.enableNativeAccess = true;
+    }
+
+    /**
+     * Returns true if module m can access restricted methods.
+     */
+    boolean implIsEnableNativeAccess() {
+        return isNamed() ?
+                enableNativeAccess :
+                ALL_UNNAMED_MODULE.enableNativeAccess;
+    }
+
     // --
 
     // special Module to mean "all unnamed modules"
-    private static final Module ALL_UNNAMED_MODULE = new Module(null);
-    private static final Set<Module> ALL_UNNAMED_MODULE_SET = Set.of(ALL_UNNAMED_MODULE);
+    private static final Module ALL_UNNAMED_MODULE;
+    private static final Set<Module> ALL_UNNAMED_MODULE_SET;
 
     // special Module to mean "everyone"
-    private static final Module EVERYONE_MODULE = new Module(null);
-    private static final Set<Module> EVERYONE_SET = Set.of(EVERYONE_MODULE);
+    private static final Module EVERYONE_MODULE;
+    private static final Set<Module> EVERYONE_SET;
+
+    private static class ArchivedData {
+        private static ArchivedData archivedData;
+        private final Module allUnnamedModule;
+        private final Set<Module> allUnnamedModules;
+        private final Module everyoneModule;
+        private final Set<Module> everyoneSet;
+
+        private ArchivedData() {
+            this.allUnnamedModule = ALL_UNNAMED_MODULE;
+            this.allUnnamedModules = ALL_UNNAMED_MODULE_SET;
+            this.everyoneModule = EVERYONE_MODULE;
+            this.everyoneSet = EVERYONE_SET;
+        }
+
+        static void archive() {
+            archivedData = new ArchivedData();
+        }
+
+        static ArchivedData get() {
+            return archivedData;
+        }
+
+        static {
+            CDS.initializeFromArchive(ArchivedData.class);
+        }
+    }
+
+    static {
+        ArchivedData archivedData = ArchivedData.get();
+        if (archivedData != null) {
+            ALL_UNNAMED_MODULE = archivedData.allUnnamedModule;
+            ALL_UNNAMED_MODULE_SET = archivedData.allUnnamedModules;
+            EVERYONE_MODULE = archivedData.everyoneModule;
+            EVERYONE_SET = archivedData.everyoneSet;
+        } else {
+            ALL_UNNAMED_MODULE = new Module(null);
+            ALL_UNNAMED_MODULE_SET = Set.of(ALL_UNNAMED_MODULE);
+            EVERYONE_MODULE = new Module(null);
+            EVERYONE_SET = Set.of(EVERYONE_MODULE);
+            ArchivedData.archive();
+        }
+    }
 
     /**
      * The holder of data structures to support readability, exports, and
@@ -673,7 +747,7 @@ public final class Module implements AnnotatedElement {
      * <p> This method has no effect if the package is already exported (or
      * <em>open</em>) to the given module. </p>
      *
-     * @apiNote As specified in section 5.4.3 of the <cite>The Java&trade;
+     * @apiNote As specified in section {@jvms 5.4.3} of the <cite>The Java
      * Virtual Machine Specification </cite>, if an attempt to resolve a
      * symbolic reference fails because of a linkage error, then subsequent
      * attempts to resolve the reference always fail with the same error that
@@ -858,27 +932,8 @@ public final class Module implements AnnotatedElement {
             return;
 
         // check if the package is already exported/open to other
-        if (implIsExportedOrOpen(pn, other, open)) {
-
-            // if the package is exported/open for illegal access then we need
-            // to record that it has also been exported/opened reflectively so
-            // that the IllegalAccessLogger doesn't emit a warning.
-            boolean needToAdd = false;
-            if (!other.isNamed()) {
-                IllegalAccessLogger l = IllegalAccessLogger.illegalAccessLogger();
-                if (l != null) {
-                    if (open) {
-                        needToAdd = l.isOpenForIllegalAccess(this, pn);
-                    } else {
-                        needToAdd = l.isExportedForIllegalAccess(this, pn);
-                    }
-                }
-            }
-            if (!needToAdd) {
-                // nothing to do
-                return;
-            }
-        }
+        if (implIsExportedOrOpen(pn, other, open))
+            return;
 
         // can only export a package in the module
         if (!descriptor.packages().contains(pn)) {
@@ -909,12 +964,12 @@ public final class Module implements AnnotatedElement {
     }
 
     /**
-     * Updates a module to open all packages returned by the given iterator to
-     * all unnamed modules.
+     * Updates a module to open all packages in the given sets to all unnamed
+     * modules.
      *
      * @apiNote Used during startup to open packages for illegal access.
      */
-    void implAddOpensToAllUnnamed(Iterator<String> iterator) {
+    void implAddOpensToAllUnnamed(Set<String> concealedPkgs, Set<String> exportedPkgs) {
         if (jdk.internal.misc.VM.isModuleSystemInited()) {
             throw new IllegalStateException("Module system already initialized");
         }
@@ -923,12 +978,17 @@ public final class Module implements AnnotatedElement {
         // the packages to all unnamed modules.
         Map<String, Set<Module>> openPackages = this.openPackages;
         if (openPackages == null) {
-            openPackages = new HashMap<>();
+            openPackages = new HashMap<>((4 * (concealedPkgs.size() + exportedPkgs.size()) / 3) + 1);
         } else {
             openPackages = new HashMap<>(openPackages);
         }
-        while (iterator.hasNext()) {
-            String pn = iterator.next();
+        implAddOpensToAllUnnamed(concealedPkgs, openPackages);
+        implAddOpensToAllUnnamed(exportedPkgs, openPackages);
+        this.openPackages = openPackages;
+    }
+
+    private void implAddOpensToAllUnnamed(Set<String> pkgs, Map<String, Set<Module>> openPackages) {
+        for (String pn : pkgs) {
             Set<Module> prev = openPackages.putIfAbsent(pn, ALL_UNNAMED_MODULE_SET);
             if (prev != null) {
                 prev.add(ALL_UNNAMED_MODULE);
@@ -937,9 +997,7 @@ public final class Module implements AnnotatedElement {
             // update VM to export the package
             addExportsToAllUnnamed0(this, pn);
         }
-        this.openPackages = openPackages;
     }
-
 
     // -- services --
 
@@ -1031,9 +1089,9 @@ public final class Module implements AnnotatedElement {
      * <p> For named modules, the returned set contains an element for each
      * package in the module. </p>
      *
-     * <p> For unnamed modules, this method is the equivalent to invoking the
-     * {@link ClassLoader#getDefinedPackages() getDefinedPackages} method of
-     * this module's class loader and returning the set of package names. </p>
+     * <p> For unnamed modules, the returned set contains an element for
+     * each package that {@link ClassLoader#getDefinedPackages() has been defined}
+     * in the unnamed module.</p>
      *
      * @return the set of the package names of the packages in this module
      */
@@ -1048,10 +1106,10 @@ public final class Module implements AnnotatedElement {
             } else {
                 packages = loader.packages();
             }
-            return packages.map(Package::getName).collect(Collectors.toSet());
+            return packages.filter(p -> p.module() == this)
+                           .map(Package::getName).collect(Collectors.toSet());
         }
     }
-
 
     // -- creating Module objects --
 
@@ -1072,35 +1130,50 @@ public final class Module implements AnnotatedElement {
     {
         boolean isBootLayer = (ModuleLayer.boot() == null);
 
-        int cap = (int)(cf.modules().size() / 0.75f + 1.0f);
+        int numModules = cf.modules().size();
+        int cap = (int)(numModules / 0.75f + 1.0f);
         Map<String, Module> nameToModule = new HashMap<>(cap);
-        Map<String, ClassLoader> nameToLoader = new HashMap<>(cap);
 
-        Set<ClassLoader> loaders = new HashSet<>();
+        // to avoid repeated lookups and reduce iteration overhead, we create
+        // arrays holding correlated information about each module.
+        ResolvedModule[] resolvedModules = new ResolvedModule[numModules];
+        Module[] modules = new Module[numModules];
+        ClassLoader[] classLoaders = new ClassLoader[numModules];
+
+        resolvedModules = cf.modules().toArray(resolvedModules);
+
+        // record that we want to bind the layer to non-boot and non-platform
+        // module loaders as a final step
+        HashSet<ClassLoader> toBindLoaders = new HashSet<>(4);
         boolean hasPlatformModules = false;
 
         // map each module to a class loader
-        for (ResolvedModule resolvedModule : cf.modules()) {
-            String name = resolvedModule.name();
+        ClassLoader pcl = ClassLoaders.platformClassLoader();
+        boolean isModuleLoaderMapper = ModuleLoaderMap.isBuiltinMapper(clf);
+
+        for (int index = 0; index < numModules; index++) {
+            String name = resolvedModules[index].name();
             ClassLoader loader = clf.apply(name);
-            nameToLoader.put(name, loader);
-            if (loader == null || loader == ClassLoaders.platformClassLoader()) {
-                if (!(clf instanceof ModuleLoaderMap.Mapper)) {
+
+            if (loader == null || loader == pcl) {
+                if (!isModuleLoaderMapper) {
                     throw new IllegalArgumentException("loader can't be 'null'"
                             + " or the platform class loader");
                 }
                 hasPlatformModules = true;
             } else {
-                loaders.add(loader);
+                toBindLoaders.add(loader);
             }
+
+            classLoaders[index] = loader;
         }
 
         // define each module in the configuration to the VM
-        for (ResolvedModule resolvedModule : cf.modules()) {
-            ModuleReference mref = resolvedModule.reference();
+        for (int index = 0; index < numModules; index++) {
+            ModuleReference mref = resolvedModules[index].reference();
             ModuleDescriptor descriptor = mref.descriptor();
             String name = descriptor.name();
-            ClassLoader loader = nameToLoader.get(name);
+            ClassLoader loader = classLoaders[index];
             Module m;
             if (loader == null && name.equals("java.base")) {
                 // java.base is already defined to the VM
@@ -1110,16 +1183,15 @@ public final class Module implements AnnotatedElement {
                 m = new Module(layer, loader, descriptor, uri);
             }
             nameToModule.put(name, m);
+            modules[index] = m;
         }
 
         // setup readability and exports/opens
-        for (ResolvedModule resolvedModule : cf.modules()) {
+        for (int index = 0; index < numModules; index++) {
+            ResolvedModule resolvedModule = resolvedModules[index];
             ModuleReference mref = resolvedModule.reference();
             ModuleDescriptor descriptor = mref.descriptor();
-
-            String mn = descriptor.name();
-            Module m = nameToModule.get(mn);
-            assert m != null;
+            Module m = modules[index];
 
             // reads
             Set<Module> reads = new HashSet<>();
@@ -1171,16 +1243,15 @@ public final class Module implements AnnotatedElement {
         // if there are modules defined to the boot or platform class loaders
         // then register the modules in the class loader's services catalog
         if (hasPlatformModules) {
-            ClassLoader pcl = ClassLoaders.platformClassLoader();
             ServicesCatalog bootCatalog = BootLoader.getServicesCatalog();
             ServicesCatalog pclCatalog = ServicesCatalog.getServicesCatalog(pcl);
-            for (ResolvedModule resolvedModule : cf.modules()) {
+            for (int index = 0; index < numModules; index++) {
+                ResolvedModule resolvedModule = resolvedModules[index];
                 ModuleReference mref = resolvedModule.reference();
                 ModuleDescriptor descriptor = mref.descriptor();
                 if (!descriptor.provides().isEmpty()) {
-                    String name = descriptor.name();
-                    Module m = nameToModule.get(name);
-                    ClassLoader loader = nameToLoader.get(name);
+                    Module m = modules[index];
+                    ClassLoader loader = classLoaders[index];
                     if (loader == null) {
                         bootCatalog.register(m);
                     } else if (loader == pcl) {
@@ -1191,7 +1262,7 @@ public final class Module implements AnnotatedElement {
         }
 
         // record that there is a layer with modules defined to the class loader
-        for (ClassLoader loader : loaders) {
+        for (ClassLoader loader : toBindLoaders) {
             layer.bindToLoader(loader);
         }
 
@@ -1365,6 +1436,9 @@ public final class Module implements AnnotatedElement {
     /**
      * {@inheritDoc}
      * This method returns {@code null} when invoked on an unnamed module.
+     *
+     * <p> Note that any annotation returned by this method is a
+     * declaration annotation.
      */
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
@@ -1374,6 +1448,9 @@ public final class Module implements AnnotatedElement {
     /**
      * {@inheritDoc}
      * This method returns an empty array when invoked on an unnamed module.
+     *
+     * <p> Note that any annotations returned by this method are
+     * declaration annotations.
      */
     @Override
     public Annotation[] getAnnotations() {
@@ -1383,6 +1460,9 @@ public final class Module implements AnnotatedElement {
     /**
      * {@inheritDoc}
      * This method returns an empty array when invoked on an unnamed module.
+     *
+     * <p> Note that any annotations returned by this method are
+     * declaration annotations.
      */
     @Override
     public Annotation[] getDeclaredAnnotations() {
@@ -1392,6 +1472,7 @@ public final class Module implements AnnotatedElement {
     // cached class file with annotations
     private volatile Class<?> moduleInfoClass;
 
+    @SuppressWarnings("removal")
     private Class<?> moduleInfoClass() {
         Class<?> clazz = this.moduleInfoClass;
         if (clazz != null)
@@ -1477,6 +1558,24 @@ public final class Module implements AnnotatedElement {
                     return super.defineClass(cn, bytes, 0, bytes.length);
                 } else {
                     throw new ClassNotFoundException(cn);
+                }
+            }
+            @Override
+            protected Class<?> loadClass(String cn, boolean resolve)
+                throws ClassNotFoundException
+            {
+                synchronized (getClassLoadingLock(cn)) {
+                    Class<?> c = findLoadedClass(cn);
+                    if (c == null) {
+                        if (cn.equals(MODULE_INFO)) {
+                            c = findClass(cn);
+                        } else {
+                            c = super.loadClass(cn, resolve);
+                        }
+                    }
+                    if (resolve)
+                        resolveClass(c);
+                    return c;
                 }
             }
         };
@@ -1620,7 +1719,7 @@ public final class Module implements AnnotatedElement {
                                              boolean isOpen,
                                              String version,
                                              String location,
-                                             String[] pns);
+                                             Object[] pns);
 
     // JVM_AddReadsModule
     private static native void addReads0(Module from, Module to);

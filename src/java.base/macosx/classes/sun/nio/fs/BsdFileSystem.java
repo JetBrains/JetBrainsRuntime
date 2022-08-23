@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,8 +28,6 @@ package sun.nio.fs;
 import java.nio.file.*;
 import java.io.IOException;
 import java.util.*;
-import java.security.AccessController;
-import sun.security.action.GetPropertyAction;
 
 /**
  * Bsd implementation of FileSystem
@@ -45,8 +43,8 @@ class BsdFileSystem extends UnixFileSystem {
     public WatchService newWatchService()
         throws IOException
     {
-        // use polling implementation until we implement a BSD/kqueue one
-        return new PollingWatchService();
+        final boolean usePollingWatchService = Boolean.getBoolean("watch.service.polling");
+        return usePollingWatchService ? new PollingWatchService() : new MacOSXWatchService();
     }
 
     // lazy initialization of the list of supported attribute views
@@ -56,6 +54,8 @@ class BsdFileSystem extends UnixFileSystem {
         private static Set<String> supportedFileAttributeViews() {
             Set<String> result = new HashSet<String>();
             result.addAll(standardFileAttributeViews());
+            // additional BSD-specific views
+            result.add("user");
             return Collections.unmodifiableSet(result);
         }
     }
@@ -67,6 +67,7 @@ class BsdFileSystem extends UnixFileSystem {
 
     @Override
     void copyNonPosixAttributes(int ofd, int nfd) {
+        UnixUserDefinedFileAttributeView.copyExtendedAttributes(ofd, nfd);
     }
 
     /**

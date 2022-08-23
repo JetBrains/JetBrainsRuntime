@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,12 @@
 /*
  * @test
  * @bug 8000968
- * @key regression
  * @summary NPG: UseCompressedClassPointers asserts with ObjectAlignmentInBytes=32
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management
  * @requires vm.bits == 64
- * @run main CompressedKlassPointerAndOops
+ * @run driver CompressedKlassPointerAndOops
  */
 
 import jdk.test.lib.Platform;

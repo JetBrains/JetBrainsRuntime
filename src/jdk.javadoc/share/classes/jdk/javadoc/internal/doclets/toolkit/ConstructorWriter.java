@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@
 package jdk.javadoc.internal.doclets.toolkit;
 
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.TypeElement;
 
 /**
  * The interface for writing constructor output.
@@ -37,7 +36,7 @@ import javax.lang.model.element.TypeElement;
  *  deletion without notice.</b>
  */
 
-public interface ConstructorWriter {
+public interface ConstructorWriter extends MemberWriter {
 
     /**
      * Get the constructor details tree header.
@@ -72,6 +71,14 @@ public interface ConstructorWriter {
     void addDeprecated(ExecutableElement constructor, Content constructorDocTree);
 
     /**
+     * Add the preview output for the given member.
+     *
+     * @param member the member being documented
+     * @param annotationDocTree content tree to which the preview information will be added
+     */
+    void addPreview(ExecutableElement member, Content contentTree);
+
+    /**
      * Add the comments for the given constructor.
      *
      * @param constructor the constructor being documented
@@ -95,14 +102,6 @@ public interface ConstructorWriter {
      * @return content tree for the constructor details
      */
     Content getConstructorDetails(Content memberDetailsTreeHeader, Content memberDetailsTree);
-
-    /**
-     * Get the constructor documentation.
-     *
-     * @param constructorDocTree the content tree representing constructor documentation
-     * @return content tree for the constructor documentation
-     */
-    Content getConstructorDoc(Content constructorDocTree);
 
     /**
      * Let the writer know whether a non public constructor was found.

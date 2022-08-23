@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@
 #include "ci/ciClassList.hpp"
 #include "ci/ciObject.hpp"
 #include "utilities/growableArray.hpp"
+#include "utilities/vmEnums.hpp"
 
 // ciObjectFactory
 //
@@ -41,18 +42,20 @@ class ciObjectFactory : public ResourceObj {
 
 private:
   static volatile bool _initialized;
+  static volatile bool _reinitialize_vm_klasses;
   static GrowableArray<ciMetadata*>* _shared_ci_metadata;
   static ciSymbol*                 _shared_ci_symbols[];
   static int                       _shared_ident_limit;
+  static Arena*                    _initial_arena;
 
-  Arena*                    _arena;
-  GrowableArray<ciMetadata*>*        _ci_metadata;
-  GrowableArray<ciMethod*>* _unloaded_methods;
-  GrowableArray<ciKlass*>* _unloaded_klasses;
-  GrowableArray<ciInstance*>* _unloaded_instances;
-  GrowableArray<ciReturnAddress*>* _return_addresses;
-  GrowableArray<ciSymbol*>* _symbols;  // keep list of symbols created
-  int                       _next_ident;
+  Arena*                           _arena;
+  GrowableArray<ciMetadata*>       _ci_metadata;
+  GrowableArray<ciMethod*>         _unloaded_methods;
+  GrowableArray<ciKlass*>          _unloaded_klasses;
+  GrowableArray<ciInstance*>       _unloaded_instances;
+  GrowableArray<ciReturnAddress*>  _return_addresses;
+  GrowableArray<ciSymbol*>         _symbols;  // keep list of symbols created
+  int                              _next_ident;
 
 public:
   struct NonPermObject : public ResourceObj {
@@ -88,10 +91,15 @@ private:
 
   ciInstance* get_unloaded_instance(ciInstanceKlass* klass);
 
+  static int compare_cimetadata(ciMetadata** a, ciMetadata** b);
+  void do_reinitialize_vm_classes();
 public:
   static bool is_initialized() { return _initialized; }
+  static bool is_reinitialize_vm_klasses() { return _reinitialize_vm_klasses; }
+  static void set_reinitialize_vm_klasses() { _reinitialize_vm_klasses = true; }
 
   static void initialize();
+  static void reinitialize_vm_classes();
   void init_shared_objects();
   void remove_symbols();
 
@@ -104,7 +112,7 @@ public:
   ciSymbol* get_symbol(Symbol* key);
 
   // Get the ciSymbol corresponding to one of the vmSymbols.
-  static ciSymbol* vm_symbol_at(int index);
+  static ciSymbol* vm_symbol_at(vmSymbolID index);
 
   // Get the ciMethod representing an unloaded/unfound method.
   ciMethod* get_unloaded_method(ciInstanceKlass* holder,
@@ -138,12 +146,14 @@ public:
 
   ciReturnAddress* get_return_address(int bci);
 
-  GrowableArray<ciMetadata*>* get_ci_metadata() const { return _ci_metadata; }
+  GrowableArray<ciMetadata*>* get_ci_metadata() { return &_ci_metadata; }
   // RedefineClasses support
   void metadata_do(MetadataClosure* f);
 
   void print_contents();
   void print();
+
+  static void resort_shared_ci_metadata();
 };
 
 #endif // SHARE_CI_CIOBJECTFACTORY_HPP

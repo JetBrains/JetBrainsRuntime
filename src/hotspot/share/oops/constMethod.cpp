@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,7 +67,7 @@ ConstMethod::ConstMethod(int byte_code_size,
   set_max_locals(0);
   set_method_idnum(0);
   set_size_of_parameters(0);
-  set_result_type(T_VOID);
+  set_result_type((BasicType)0);
 }
 
 // Accessor that copies to metadata.
@@ -405,7 +405,11 @@ void ConstMethod::copy_annotations_from(ClassLoaderData* loader_data, ConstMetho
 void ConstMethod::metaspace_pointers_do(MetaspaceClosure* it) {
   log_trace(cds)("Iter(ConstMethod): %p", this);
 
-  it->push(&_constants);
+  if (!method()->method_holder()->is_rewritten()) {
+    it->push(&_constants, MetaspaceClosure::_writable);
+  } else {
+    it->push(&_constants);
+  }
   it->push(&_stackmap_data);
   if (has_method_annotations()) {
     it->push(method_annotations_addr());
@@ -419,8 +423,6 @@ void ConstMethod::metaspace_pointers_do(MetaspaceClosure* it) {
   if (has_default_annotations()) {
       it->push(default_annotations_addr());
   }
-  ConstMethod* this_ptr = this;
-  it->push_method_entry(&this_ptr, (intptr_t*)&_adapter_trampoline);
 }
 
 // Printing

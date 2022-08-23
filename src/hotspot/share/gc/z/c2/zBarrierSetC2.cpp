@@ -36,8 +36,10 @@
 #include "opto/macro.hpp"
 #include "opto/memnode.hpp"
 #include "opto/node.hpp"
+#include "opto/output.hpp"
 #include "opto/regalloc.hpp"
 #include "opto/rootnode.hpp"
+#include "opto/runtime.hpp"
 #include "opto/type.hpp"
 #include "utilities/growableArray.hpp"
 #include "utilities/macros.hpp"
@@ -63,8 +65,7 @@ public:
     }
 
     const MachNode* const mach = node->as_Mach();
-    if (mach->barrier_data() != ZLoadBarrierStrong &&
-        mach->barrier_data() != ZLoadBarrierWeak) {
+    if (mach->barrier_data() == ZLoadBarrierElided) {
       // Don't need liveness data for nodes without barriers
       return NULL;
     }
@@ -83,21 +84,21 @@ static ZBarrierSetC2State* barrier_set_state() {
   return reinterpret_cast<ZBarrierSetC2State*>(Compile::current()->barrier_set_state());
 }
 
-ZLoadBarrierStubC2* ZLoadBarrierStubC2::create(const MachNode* node, Address ref_addr, Register ref, Register tmp, bool weak) {
-  ZLoadBarrierStubC2* const stub = new (Compile::current()->comp_arena()) ZLoadBarrierStubC2(node, ref_addr, ref, tmp, weak);
-  if (!Compile::current()->in_scratch_emit_size()) {
+ZLoadBarrierStubC2* ZLoadBarrierStubC2::create(const MachNode* node, Address ref_addr, Register ref, Register tmp, uint8_t barrier_data) {
+  ZLoadBarrierStubC2* const stub = new (Compile::current()->comp_arena()) ZLoadBarrierStubC2(node, ref_addr, ref, tmp, barrier_data);
+  if (!Compile::current()->output()->in_scratch_emit_size()) {
     barrier_set_state()->stubs()->append(stub);
   }
 
   return stub;
 }
 
-ZLoadBarrierStubC2::ZLoadBarrierStubC2(const MachNode* node, Address ref_addr, Register ref, Register tmp, bool weak) :
+ZLoadBarrierStubC2::ZLoadBarrierStubC2(const MachNode* node, Address ref_addr, Register ref, Register tmp, uint8_t barrier_data) :
     _node(node),
     _ref_addr(ref_addr),
     _ref(ref),
     _tmp(tmp),
-    _weak(weak),
+    _barrier_data(barrier_data),
     _entry(),
     _continuation() {
   assert_different_registers(ref, ref_addr.base());
@@ -117,7 +118,19 @@ Register ZLoadBarrierStubC2::tmp() const {
 }
 
 address ZLoadBarrierStubC2::slow_path() const {
-  const DecoratorSet decorators = _weak ? ON_WEAK_OOP_REF : ON_STRONG_OOP_REF;
+  DecoratorSet decorators = DECORATORS_NONE;
+  if (_barrier_data & ZLoadBarrierStrong) {
+    decorators |= ON_STRONG_OOP_REF;
+  }
+  if (_barrier_data & ZLoadBarrierWeak) {
+    decorators |= ON_WEAK_OOP_REF;
+  }
+  if (_barrier_data & ZLoadBarrierPhantom) {
+    decorators |= ON_PHANTOM_OOP_REF;
+  }
+  if (_barrier_data & ZLoadBarrierNoKeepalive) {
+    decorators |= AS_NO_KEEPALIVE;
+  }
   return ZBarrierSetRuntime::load_barrier_on_oop_field_preloaded_addr(decorators);
 }
 
@@ -130,7 +143,7 @@ Label* ZLoadBarrierStubC2::entry() {
   // However, we still need to return a label that is not bound now, but
   // will eventually be bound. Any lable will do, as it will only act as
   // a placeholder, so we return the _continuation label.
-  return Compile::current()->in_scratch_emit_size() ? &_continuation : &_entry;
+  return Compile::current()->output()->in_scratch_emit_size() ? &_continuation : &_entry;
 }
 
 Label* ZLoadBarrierStubC2::continuation() {
@@ -152,7 +165,7 @@ void ZBarrierSetC2::emit_stubs(CodeBuffer& cb) const {
 
   for (int i = 0; i < stubs->length(); i++) {
     // Make sure there is enough space in the code buffer
-    if (cb.insts()->maybe_expand_to_ensure_remaining(Compile::MAX_inst_size) && cb.blob() == NULL) {
+    if (cb.insts()->maybe_expand_to_ensure_remaining(PhaseOutput::MAX_inst_size) && cb.blob() == NULL) {
       ciEnv::current()->record_failure("CodeCache is full");
       return;
     }
@@ -165,12 +178,12 @@ void ZBarrierSetC2::emit_stubs(CodeBuffer& cb) const {
 
 int ZBarrierSetC2::estimate_stub_size() const {
   Compile* const C = Compile::current();
-  BufferBlob* const blob = C->scratch_buffer_blob();
+  BufferBlob* const blob = C->output()->scratch_buffer_blob();
   GrowableArray<ZLoadBarrierStubC2*>* const stubs = barrier_set_state()->stubs();
   int size = 0;
 
   for (int i = 0; i < stubs->length(); i++) {
-    CodeBuffer cb(blob->content_begin(), (address)C->scratch_locs_memory() - blob->content_begin());
+    CodeBuffer cb(blob->content_begin(), (address)C->output()->scratch_locs_memory() - blob->content_begin());
     MacroAssembler masm(&cb);
     ZBarrierSet::assembler()->generate_c2_load_barrier_stub(&masm, stubs->at(i));
     size += cb.insts_size();
@@ -181,11 +194,21 @@ int ZBarrierSetC2::estimate_stub_size() const {
 
 static void set_barrier_data(C2Access& access) {
   if (ZBarrierSet::barrier_needed(access.decorators(), access.type())) {
-    if (access.decorators() & ON_WEAK_OOP_REF) {
-      access.set_barrier_data(ZLoadBarrierWeak);
+    uint8_t barrier_data = 0;
+
+    if (access.decorators() & ON_PHANTOM_OOP_REF) {
+      barrier_data |= ZLoadBarrierPhantom;
+    } else if (access.decorators() & ON_WEAK_OOP_REF) {
+      barrier_data |= ZLoadBarrierWeak;
     } else {
-      access.set_barrier_data(ZLoadBarrierStrong);
+      barrier_data |= ZLoadBarrierStrong;
     }
+
+    if (access.decorators() & AS_NO_KEEPALIVE) {
+      barrier_data |= ZLoadBarrierNoKeepalive;
+    }
+
+    access.set_barrier_data(barrier_data);
   }
 }
 
@@ -212,7 +235,15 @@ Node* ZBarrierSetC2::atomic_xchg_at_resolved(C2AtomicParseAccess& access, Node* 
 }
 
 bool ZBarrierSetC2::array_copy_requires_gc_barriers(bool tightly_coupled_alloc, BasicType type,
-                                                    bool is_clone, ArrayCopyPhase phase) const {
+                                                    bool is_clone, bool is_clone_instance,
+                                                    ArrayCopyPhase phase) const {
+  if (phase == ArrayCopyPhase::Parsing) {
+    return false;
+  }
+  if (phase == ArrayCopyPhase::Optimization) {
+    return is_clone_instance;
+  }
+  // else ArrayCopyPhase::Expansion
   return type == T_OBJECT || type == T_ARRAY;
 }
 
@@ -233,50 +264,72 @@ static const TypeFunc* clone_type() {
   return TypeFunc::make(domain, range);
 }
 
-// Node n is pointing to the start of oop payload - return base pointer
-static Node* get_base_for_arracycopy_clone(PhaseMacroExpand* phase, Node* n) {
-  // This would normally be handled by optimizations, but the type system
-  // checks get confused when it thinks it already has a base pointer.
-  const int base_offset = BarrierSetC2::arraycopy_payload_base_offset(false);
-
-  if (n->is_AddP() &&
-      n->in(AddPNode::Offset)->is_Con() &&
-      n->in(AddPNode::Offset)->get_long() == base_offset) {
-    assert(n->in(AddPNode::Base) == n->in(AddPNode::Address), "Sanity check");
-    return n->in(AddPNode::Base);
-  } else {
-    return phase->basic_plus_adr(n, phase->longcon(-base_offset));
-  }
-}
+#define XTOP LP64_ONLY(COMMA phase->top())
 
 void ZBarrierSetC2::clone_at_expansion(PhaseMacroExpand* phase, ArrayCopyNode* ac) const {
   Node* const src = ac->in(ArrayCopyNode::Src);
-  if (ac->is_clone_array()) {
-    // Clone primitive array
-    BarrierSetC2::clone_at_expansion(phase, ac);
+  const TypeAryPtr* ary_ptr = src->get_ptr_type()->isa_aryptr();
+
+  if (ac->is_clone_array() && ary_ptr != NULL) {
+    BasicType bt = ary_ptr->elem()->array_element_basic_type();
+    if (is_reference_type(bt)) {
+      // Clone object array
+      bt = T_OBJECT;
+    } else {
+      // Clone primitive array
+      bt = T_LONG;
+    }
+
+    Node* ctrl = ac->in(TypeFunc::Control);
+    Node* mem = ac->in(TypeFunc::Memory);
+    Node* src = ac->in(ArrayCopyNode::Src);
+    Node* src_offset = ac->in(ArrayCopyNode::SrcPos);
+    Node* dest = ac->in(ArrayCopyNode::Dest);
+    Node* dest_offset = ac->in(ArrayCopyNode::DestPos);
+    Node* length = ac->in(ArrayCopyNode::Length);
+
+    if (bt == T_OBJECT) {
+      // BarrierSetC2::clone sets the offsets via BarrierSetC2::arraycopy_payload_base_offset
+      // which 8-byte aligns them to allow for word size copies. Make sure the offsets point
+      // to the first element in the array when cloning object arrays. Otherwise, load
+      // barriers are applied to parts of the header. Also adjust the length accordingly.
+      assert(src_offset == dest_offset, "should be equal");
+      jlong offset = src_offset->get_long();
+      if (offset != arrayOopDesc::base_offset_in_bytes(T_OBJECT)) {
+        assert(!UseCompressedClassPointers, "should only happen without compressed class pointers");
+        assert((arrayOopDesc::base_offset_in_bytes(T_OBJECT) - offset) == BytesPerLong, "unexpected offset");
+        length = phase->transform_later(new SubLNode(length, phase->longcon(1))); // Size is in longs
+        src_offset = phase->longcon(arrayOopDesc::base_offset_in_bytes(T_OBJECT));
+        dest_offset = src_offset;
+      }
+    }
+    Node* payload_src = phase->basic_plus_adr(src, src_offset);
+    Node* payload_dst = phase->basic_plus_adr(dest, dest_offset);
+
+    const char* copyfunc_name = "arraycopy";
+    address     copyfunc_addr = phase->basictype2arraycopy(bt, NULL, NULL, true, copyfunc_name, true);
+
+    const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
+    const TypeFunc* call_type = OptoRuntime::fast_arraycopy_Type();
+
+    Node* call = phase->make_leaf_call(ctrl, mem, call_type, copyfunc_addr, copyfunc_name, raw_adr_type, payload_src, payload_dst, length XTOP);
+    phase->transform_later(call);
+
+    phase->igvn().replace_node(ac, call);
     return;
   }
 
   // Clone instance
-  assert(ac->is_clone_inst(), "Sanity check");
-
   Node* const ctrl       = ac->in(TypeFunc::Control);
   Node* const mem        = ac->in(TypeFunc::Memory);
   Node* const dst        = ac->in(ArrayCopyNode::Dest);
-  Node* const src_offset = ac->in(ArrayCopyNode::SrcPos);
-  Node* const dst_offset = ac->in(ArrayCopyNode::DestPos);
   Node* const size       = ac->in(ArrayCopyNode::Length);
 
-  assert(src_offset == NULL, "Should be null");
-  assert(dst_offset == NULL, "Should be null");
   assert(size->bottom_type()->is_long(), "Should be long");
 
-  // The src and dst point to the object payload rather than the object base
-  Node* const src_base = get_base_for_arracycopy_clone(phase, src);
-  Node* const dst_base = get_base_for_arracycopy_clone(phase, dst);
-
-  // The size must also be increased to match the instance size
-  Node* const base_offset = phase->longcon(arraycopy_payload_base_offset(false) >> LogBytesPerLong);
+  // The native clone we are calling here expects the instance size in words
+  // Add header/offset size to payload size to get instance size.
+  Node* const base_offset = phase->longcon(arraycopy_payload_base_offset(ac->is_clone_array()) >> LogBytesPerLong);
   Node* const full_size = phase->transform_later(new AddLNode(size, base_offset));
 
   Node* const call = phase->make_leaf_call(ctrl,
@@ -285,13 +338,15 @@ void ZBarrierSetC2::clone_at_expansion(PhaseMacroExpand* phase, ArrayCopyNode* a
                                            ZBarrierSetRuntime::clone_addr(),
                                            "ZBarrierSetRuntime::clone",
                                            TypeRawPtr::BOTTOM,
-                                           src_base,
-                                           dst_base,
+                                           src,
+                                           dst,
                                            full_size,
                                            phase->top());
   phase->transform_later(call);
   phase->igvn().replace_node(ac, call);
 }
+
+#undef XTOP
 
 // == Dominating barrier elision ==
 
@@ -341,10 +396,18 @@ void ZBarrierSetC2::analyze_dominating_barriers() const {
       MachNode* const mach = node->as_Mach();
       switch (mach->ideal_Opcode()) {
       case Op_LoadP:
+        if ((mach->barrier_data() & ZLoadBarrierStrong) != 0) {
+          barrier_loads.push(mach);
+        }
+        if ((mach->barrier_data() & (ZLoadBarrierStrong | ZLoadBarrierNoKeepalive)) ==
+            ZLoadBarrierStrong) {
+          mem_ops.push(mach);
+        }
+        break;
       case Op_CompareAndExchangeP:
       case Op_CompareAndSwapP:
       case Op_GetAndSetP:
-        if (mach->barrier_data() == ZLoadBarrierStrong) {
+        if ((mach->barrier_data() & ZLoadBarrierStrong) != 0) {
           barrier_loads.push(mach);
         }
       case Op_StoreP:
@@ -394,7 +457,7 @@ void ZBarrierSetC2::analyze_dominating_barriers() const {
         // Dominating block? Look around for safepoints
         ResourceMark rm;
         Block_List stack;
-        VectorSet visited(Thread::current()->resource_area());
+        VectorSet visited;
         stack.push(load_block);
         bool safepoint_found = block_has_safepoint(load_block);
         while (!safepoint_found && stack.size() > 0) {

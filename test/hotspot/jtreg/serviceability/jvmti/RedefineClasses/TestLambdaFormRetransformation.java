@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,13 +25,14 @@
  * @test
  * @bug 8008678
  * @summary JSR 292: constant pool reconstitution must support pseudo strings
+ * @requires vm.jvmti
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.instrument
  *          java.management
  *          jdk.jartool/sun.tools.jar
  * @compile -XDignore.symbol.file TestLambdaFormRetransformation.java
- * @run main TestLambdaFormRetransformation
+ * @run driver TestLambdaFormRetransformation
  */
 
 import java.io.IOException;

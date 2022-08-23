@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2016, 2018 SAP SE. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,7 +75,7 @@ VtableStub* VtableStubs::create_vtable_stub(int vtable_index) {
     // Abuse Z_method as scratch register for generic emitter.
     // It is loaded further down anyway before it is first used.
     // No dynamic code size variance here, increment is 1, always.
-    __ add2mem_32(Address(Z_R1_scratch), 1, Z_method);
+    __ add2mem_64(Address(Z_R1_scratch), 1, Z_method);
   }
 #endif
 
@@ -117,14 +117,14 @@ VtableStub* VtableStubs::create_vtable_stub(int vtable_index) {
   // Set method (in case of interpreted method), and destination address.
   // Duplicate safety code from enc_class Java_Dynamic_Call_dynTOC.
   if (Displacement::is_validDisp(v_off)) {
-    __ z_lg(Z_method/*method oop*/, v_off, rcvr_klass/*class oop*/);
+    __ z_lg(Z_method/*method*/, v_off, rcvr_klass/*class*/);
     // Account for the load_const in the else path.
     slop_delta  = __ load_const_size();
   } else {
     // Worse case, offset does not fit in displacement field.
     //               worst case             actual size
     slop_delta  = __ load_const_size() - __ load_const_optimized_rtn_len(Z_method, v_off, true);
-    __ z_lg(Z_method/*method oop*/, 0, Z_method/*method offset*/, rcvr_klass/*class oop*/);
+    __ z_lg(Z_method/*method*/, 0, Z_method/*method offset*/, rcvr_klass/*class*/);
   }
   slop_bytes += slop_delta;
 
@@ -158,6 +158,7 @@ VtableStub* VtableStubs::create_itable_stub(int itable_index) {
   if (s == NULL) {
     return NULL;
   }
+
   // Count unused bytes in instruction sequences of variable size.
   // We add them to the computed buffer size in order to avoid
   // overflow in subsequently generated stubs.
@@ -179,7 +180,7 @@ VtableStub* VtableStubs::create_itable_stub(int itable_index) {
     // Abuse Z_method as scratch register for generic emitter.
     // It is loaded further down anyway before it is first used.
     // No dynamic code size variance here, increment is 1, always.
-    __ add2mem_32(Address(Z_R1_scratch), 1, Z_method);
+    __ add2mem_64(Address(Z_R1_scratch), 1, Z_method);
   }
 #endif
 

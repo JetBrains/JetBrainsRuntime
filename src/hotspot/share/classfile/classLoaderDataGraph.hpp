@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,13 +56,13 @@ class ClassLoaderDataGraph : public AllStatic {
   static volatile size_t  _num_instance_classes;
   static volatile size_t  _num_array_classes;
 
-  static ClassLoaderData* add_to_graph(Handle class_loader, bool is_unsafe_anonymous);
-  static ClassLoaderData* add(Handle class_loader, bool is_unsafe_anonymous);
+  static ClassLoaderData* add_to_graph(Handle class_loader, bool has_class_mirror_holder);
 
  public:
   static ClassLoaderData* find_or_create(Handle class_loader);
+  static ClassLoaderData* add(Handle class_loader, bool has_class_mirror_holder);
   static void clean_module_and_package_info();
-  static void purge();
+  static void purge(bool at_safepoint);
   static void clear_claimed_marks();
   static void clear_claimed_marks(int claim);
   // Iteration through CLDG inside a safepoint; GC support
@@ -76,8 +76,9 @@ class ClassLoaderDataGraph : public AllStatic {
   // Walking classes through the ClassLoaderDataGraph include array classes.  It also includes
   // classes that are allocated but not loaded, classes that have errors, and scratch classes
   // for redefinition.  These classes are removed during the next class unloading.
-  // Walking the ClassLoaderDataGraph also includes unsafe anonymous classes.
+  // Walking the ClassLoaderDataGraph also includes hidden classes.
   static void classes_do(KlassClosure* klass_closure);
+
   static void classes_do(void f(Klass* const));
   static void methods_do(void f(Method*));
   static void modules_do(void f(ModuleEntry*));
@@ -85,14 +86,15 @@ class ClassLoaderDataGraph : public AllStatic {
   static void packages_do(void f(PackageEntry*));
   static void packages_unloading_do(void f(PackageEntry*));
   static void loaded_classes_do(KlassClosure* klass_closure);
-  static void unlocked_loaded_classes_do(KlassClosure* klass_closure);
   static void classes_unloading_do(void f(Klass* const));
   static bool do_unloading();
 
-  // Expose state to avoid logging overhead in safepoint cleanup tasks.
   static inline bool should_clean_metaspaces_and_reset();
   static void set_should_clean_deallocate_lists() { _should_clean_deallocate_lists = true; }
   static void clean_deallocate_lists(bool purge_previous_versions);
+  // Called from ServiceThread
+  static void safepoint_and_clean_metaspaces();
+  // Called from VMOperation
   static void walk_metadata_and_clean_metaspaces();
 
   // dictionary do
@@ -101,6 +103,14 @@ class ClassLoaderDataGraph : public AllStatic {
   static void dictionary_classes_do(void f(InstanceKlass*));
   // Added for initialize_itable_for_klass to handle exceptions.
   static void dictionary_classes_do(void f(InstanceKlass*, TRAPS), TRAPS);
+
+  static void dictionary_classes_do(KlassClosure* klass_closure);
+
+  // (DCEVM) Enhanced class redefinition
+  static void rollback_redefinition();
+
+  // Enhanced class redefinition
+  static bool dictionary_classes_do_update_klass(Symbol* name, InstanceKlass* k, InstanceKlass* old_klass);
 
   // VM_CounterDecay iteration support
   static InstanceKlass* try_get_next_class();
@@ -161,12 +171,4 @@ class ClassLoaderDataGraphKlassIteratorAtomic : public StackObj {
   static Klass* next_klass_in_cldg(Klass* klass);
 };
 
-class ClassLoaderDataGraphMetaspaceIterator : public StackObj {
-  ClassLoaderData* _data;
- public:
-  ClassLoaderDataGraphMetaspaceIterator();
-  ~ClassLoaderDataGraphMetaspaceIterator();
-  bool repeat() { return _data != NULL; }
-  ClassLoaderMetaspace* get_next();
-};
 #endif // SHARE_CLASSFILE_CLASSLOADERDATAGRAPH_HPP

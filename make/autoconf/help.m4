@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 
 AC_DEFUN_ONCE([HELP_SETUP_DEPENDENCY_HELP],
 [
-  AC_CHECK_PROGS(PKGHANDLER, zypper apt-get yum brew port pkgutil pkgadd)
+  UTIL_LOOKUP_PROGS(PKGHANDLER, zypper apt-get yum brew port pkgutil pkgadd pacman apk)
 ])
 
 AC_DEFUN([HELP_MSG_MISSING_DEPENDENCY],
@@ -38,26 +38,28 @@ AC_DEFUN([HELP_MSG_MISSING_DEPENDENCY],
     HELP_MSG="OpenJDK distributions are available at http://jdk.java.net/."
   elif test "x$OPENJDK_BUILD_OS_ENV" = "xwindows.cygwin"; then
     cygwin_help $MISSING_DEPENDENCY
-  elif test "x$OPENJDK_BUILD_OS_ENV" = "xwindows.msys"; then
-    msys_help $MISSING_DEPENDENCY
   else
     PKGHANDLER_COMMAND=
 
     case $PKGHANDLER in
-      apt-get)
+      *apt-get)
         apt_help     $MISSING_DEPENDENCY ;;
-      yum)
+      *yum)
         yum_help     $MISSING_DEPENDENCY ;;
-      brew)
+      *brew)
         brew_help    $MISSING_DEPENDENCY ;;
-      port)
+      *port)
         port_help    $MISSING_DEPENDENCY ;;
-      pkgutil)
+      *pkgutil)
         pkgutil_help $MISSING_DEPENDENCY ;;
-      pkgadd)
+      *pkgadd)
         pkgadd_help  $MISSING_DEPENDENCY ;;
-      zypper)
+      *zypper)
         zypper_help  $MISSING_DEPENDENCY ;;
+      *pacman)
+        pacman_help  $MISSING_DEPENDENCY ;;
+      *apk)
+        apk_help     $MISSING_DEPENDENCY ;;
     esac
 
     if test "x$PKGHANDLER_COMMAND" != x; then
@@ -83,10 +85,6 @@ cygwin_help() {
   esac
 }
 
-msys_help() {
-  PKGHANDLER_COMMAND=""
-}
-
 apt_help() {
   case $1 in
     reduced)
@@ -101,6 +99,8 @@ apt_help() {
       PKGHANDLER_COMMAND="sudo apt-get install libfontconfig1-dev" ;;
     freetype)
       PKGHANDLER_COMMAND="sudo apt-get install libfreetype6-dev" ;;
+    harfbuzz)
+      PKGHANDLER_COMMAND="sudo apt-get install libharfbuzz-dev" ;;
     ffi)
       PKGHANDLER_COMMAND="sudo apt-get install libffi-dev" ;;
     x11)
@@ -124,6 +124,8 @@ zypper_help() {
       PKGHANDLER_COMMAND="sudo zypper install fontconfig-devel" ;;
     freetype)
       PKGHANDLER_COMMAND="sudo zypper install freetype-devel" ;;
+    harfbuzz)
+      PKGHANDLER_COMMAND="sudo zypper install harfbuzz-devel" ;;
     x11)
       PKGHANDLER_COMMAND="sudo zypper install libX11-devel libXext-devel libXrender-devel libXrandr-devel libXtst-devel libXt-devel libXi-devel" ;;
     ccache)
@@ -143,6 +145,8 @@ yum_help() {
       PKGHANDLER_COMMAND="sudo yum install fontconfig-devel" ;;
     freetype)
       PKGHANDLER_COMMAND="sudo yum install freetype-devel" ;;
+    harfbuzz)
+      PKGHANDLER_COMMAND="sudo yum install harfbuzz-devel" ;;
     x11)
       PKGHANDLER_COMMAND="sudo yum install libXtst-devel libXt-devel libXrender-devel libXrandr-devel libXi-devel" ;;
     ccache)
@@ -159,6 +163,17 @@ brew_help() {
   esac
 }
 
+pacman_help() {
+  case $1 in
+    unzip)
+      PKGHANDLER_COMMAND="sudo pacman -S unzip" ;;
+    zip)
+      PKGHANDLER_COMMAND="sudo pacman -S zip" ;;
+    make)
+      PKGHANDLER_COMMAND="sudo pacman -S make" ;;
+  esac
+}
+
 port_help() {
   PKGHANDLER_COMMAND=""
 }
@@ -171,6 +186,27 @@ pkgadd_help() {
   PKGHANDLER_COMMAND=""
 }
 
+apk_help() {
+  case $1 in
+    devkit)
+      PKGHANDLER_COMMAND="sudo apk add alpine-sdk linux-headers" ;;
+    alsa)
+      PKGHANDLER_COMMAND="sudo apk add alsa-lib-dev" ;;
+    cups)
+      PKGHANDLER_COMMAND="sudo apk add cups-dev" ;;
+    fontconfig)
+      PKGHANDLER_COMMAND="sudo apk add fontconfig-dev" ;;
+    freetype)
+      PKGHANDLER_COMMAND="sudo apk add freetype-dev" ;;
+    harfbuzz)
+      PKGHANDLER_COMMAND="sudo apk add harfbuzz-dev" ;;
+    x11)
+      PKGHANDLER_COMMAND="sudo apk add libxtst-dev libxt-dev libxrender-dev libxrandr-dev" ;;
+    ccache)
+      PKGHANDLER_COMMAND="sudo apk add ccache" ;;
+  esac
+}
+
 # This function will check if we're called from the "configure" wrapper while
 # printing --help. If so, we will print out additional information that can
 # only be extracted within the autoconf script, and then exit. This must be
@@ -180,21 +216,25 @@ AC_DEFUN_ONCE([HELP_PRINT_ADDITIONAL_HELP_AND_EXIT],
   if test "x$CONFIGURE_PRINT_ADDITIONAL_HELP" != x; then
 
     # Print available toolchains
-    $PRINTF "The following toolchains are available as arguments to --with-toolchain-type.\n"
-    $PRINTF "Which are valid to use depends on the build platform.\n"
+    $PRINTF "The following toolchains are valid as arguments to --with-toolchain-type.\n"
+    $PRINTF "Which are available to use depends on the build platform.\n"
     for toolchain in $VALID_TOOLCHAINS_all; do
       # Use indirect variable referencing
       toolchain_var_name=TOOLCHAIN_DESCRIPTION_$toolchain
       TOOLCHAIN_DESCRIPTION=${!toolchain_var_name}
-      $PRINTF "  %-10s  %s\n" $toolchain "$TOOLCHAIN_DESCRIPTION"
+      $PRINTF "  %-22s  %s\n" $toolchain "$TOOLCHAIN_DESCRIPTION"
     done
     $PRINTF "\n"
 
-    # Print available jvm features
-    $PRINTF "The following JVM features are available as arguments to --with-jvm-features.\n"
-    $PRINTF "Which are valid to use depends on the target platform.\n  "
-    $PRINTF "%s " $VALID_JVM_FEATURES
-    $PRINTF "\n"
+    # Print available JVM features
+    $PRINTF "The following JVM features are valid as arguments to --with-jvm-features.\n"
+    $PRINTF "Which are available to use depends on the environment and JVM variant.\n"
+    m4_foreach(FEATURE, m4_split(jvm_features_valid), [
+      # Create an m4 variable containing the description for FEATURE.
+      m4_define(FEATURE_DESCRIPTION, [jvm_feature_desc_]m4_translit(FEATURE, -, _))
+      $PRINTF "  %-22s  %s\n" FEATURE "FEATURE_DESCRIPTION"
+      m4_undefine([FEATURE_DESCRIPTION])
+    ])
 
     # And now exit directly
     exit 0
@@ -228,6 +268,7 @@ AC_DEFUN_ONCE([HELP_PRINT_SUMMARY_AND_WARNINGS],
 
   printf "\n"
   printf "Configuration summary:\n"
+  printf "* Name:           $CONF_NAME\n"
   printf "* Debug level:    $DEBUG_LEVEL\n"
   printf "* HS debug level: $HOTSPOT_DEBUG_LEVEL\n"
   printf "* JVM variants:   $JVM_VARIANTS\n"
@@ -246,12 +287,13 @@ AC_DEFUN_ONCE([HELP_PRINT_SUMMARY_AND_WARNINGS],
   printf "\n"
   printf "Tools summary:\n"
   if test "x$OPENJDK_BUILD_OS" = "xwindows"; then
-    printf "* Environment:    $WINDOWS_ENV_VENDOR version $WINDOWS_ENV_VERSION (root at $WINDOWS_ENV_ROOT_PATH)\n"
+    printf "* Environment:    %s version %s; windows version %s; prefix \"%s\"; root \"%s\"\n" \
+        "$WINENV_VENDOR" "$WINENV_VERSION" "$WINDOWS_VERSION" "$WINENV_PREFIX" "$WINENV_ROOT"
   fi
   printf "* Boot JDK:       $BOOT_JDK_VERSION (at $BOOT_JDK)\n"
   printf "* Toolchain:      $TOOLCHAIN_TYPE ($TOOLCHAIN_DESCRIPTION)\n"
-  printf "* C Compiler:     Version $CC_VERSION_NUMBER (at $CC)\n"
-  printf "* C++ Compiler:   Version $CXX_VERSION_NUMBER (at $CXX)\n"
+  printf "* C Compiler:     Version $CC_VERSION_NUMBER (at ${CC#"$FIXPATH "})\n"
+  printf "* C++ Compiler:   Version $CXX_VERSION_NUMBER (at ${CXX#"$FIXPATH "})\n"
 
   printf "\n"
   printf "Build performance summary:\n"

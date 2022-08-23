@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,12 +32,15 @@ import java.util.List;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.PackageElement;
+import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 import javax.tools.FileObject;
 import javax.tools.JavaCompiler.CompilationTask;
 
 import com.sun.source.doctree.DocCommentTree;
 import com.sun.source.doctree.DocTree;
+import com.sun.source.doctree.EntityTree;
+import com.sun.source.tree.CompilationUnitTree;
 
 /**
  * Provides access to syntax trees for doc comments.
@@ -45,6 +48,11 @@ import com.sun.source.doctree.DocTree;
  * @since 1.8
  */
 public abstract class DocTrees extends Trees {
+    /**
+     * Constructor for subclasses to call.
+     */
+    public DocTrees() {}
+
     /**
      * Returns a DocTrees object for a given CompilationTask.
      * @param task the compilation task for which to get the Trees object
@@ -153,6 +161,21 @@ public abstract class DocTrees extends Trees {
     public abstract Element getElement(DocTreePath path);
 
     /**
+     * Returns the language model type referred to by the leaf node of the given
+     * {@link DocTreePath}, or {@code null} if unknown. This method usually
+     * returns the same value as {@code getElement(path).asType()} for a
+     * {@code path} argument for which {@link #getElement(DocTreePath)} returns
+     * a non-null value, but may return a type that includes additional
+     * information, such as a parameterized generic type instead of a raw type.
+     *
+     * @param path the path for the tree node
+     * @return the referenced type, or null
+     *
+     * @since 15
+     */
+    public abstract TypeMirror getType(DocTreePath path);
+
+    /**
      * Returns the list of {@link DocTree} representing the first sentence of
      * a comment.
      *
@@ -181,19 +204,17 @@ public abstract class DocTrees extends Trees {
      * @param root the compilation unit that contains tree
      */
     public abstract void printMessage(Diagnostic.Kind kind, CharSequence msg,
-            com.sun.source.doctree.DocTree t,
-            com.sun.source.doctree.DocCommentTree c,
-            com.sun.source.tree.CompilationUnitTree root);
+            DocTree t, DocCommentTree c, CompilationUnitTree root);
 
     /**
      * Sets the break iterator to compute the first sentence of
      * documentation comments.
-     * @param breakiterator a break iterator or {@code null} to specify the default
+     * @param breakIterator a break iterator or {@code null} to specify the default
      *                      sentence breaker
      *
      * @since 9
      */
-    public abstract void setBreakIterator(BreakIterator breakiterator);
+    public abstract void setBreakIterator(BreakIterator breakIterator);
 
     /**
      * Returns a utility object for creating {@code DocTree} objects.
@@ -202,4 +223,17 @@ public abstract class DocTrees extends Trees {
      * @since 9
      */
     public abstract DocTreeFactory getDocTreeFactory();
+
+    /**
+     * Returns a string containing the characters for the entity in a given entity tree,
+     * or {@code null} if the tree does not represent a valid series of characters.
+     *
+     * <p>The interpretation of entities is based on section
+     * <a href="https://www.w3.org/TR/html52/syntax.html#character-references">8.1.4. Character references</a>
+     * in the HTML 5.2 specification.</p>
+     *
+     * @param tree the tree containing the entity
+     * @return a string containing the characters
+     */
+    public abstract String getCharacters(EntityTree tree);
 }

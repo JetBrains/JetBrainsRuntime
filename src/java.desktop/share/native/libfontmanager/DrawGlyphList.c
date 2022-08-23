@@ -35,6 +35,25 @@
 #include "sun_java2d_loops_DrawGlyphListAA.h"
 
 
+static UInt8* getSubpixelGlyphImage(GlyphInfo *glyph, float x, float y) {
+    int rx = glyph->subpixelResolutionX;
+    int ry = glyph->subpixelResolutionY;
+    if ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0) {
+        return glyph->image;
+    }
+    int xOffset;
+    int yOffset;
+    if (x >= 0 && y >= 0) {
+        xOffset = ((int) (x * (float) rx)) % rx;
+        yOffset = ((int) (y * (float) ry)) % ry;
+    } else {
+        xOffset = (int) ((x - (float) floor(x)) * (float) rx);
+        yOffset = (int) ((y - (float) floor(y)) * (float) ry);
+    }
+    return glyph->image + (glyph->rowBytes * glyph->height) *
+                          (xOffset + yOffset * rx);
+}
+
 /*
  * Need to account for the rare case when (eg) repainting damaged
  * areas results in the drawing location being negative, in which
@@ -50,7 +69,11 @@
 #define FLOOR_ASSIGN(l, r)\
  if ((r)<0) (l) = ((int)floor(r)); else (l) = ((int)(r))
 
-GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist) {
+#define ADJUST_SUBPIXEL_GLYPH_POSITION(coord, res) \
+ if ((res) > 1) (coord) += 0.5f / ((float)(res)) - 0.5f;
+
+GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist,
+                                 jint fromGlyph, jint toGlyph) {
 
     int g;
     size_t bytesNeeded;
@@ -61,7 +84,7 @@ GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist) {
 
     jfloat x = (*env)->GetFloatField(env, glyphlist, sunFontIDs.glyphListX);
     jfloat y = (*env)->GetFloatField(env, glyphlist, sunFontIDs.glyphListY);
-    jint len =  (*env)->GetIntField(env, glyphlist, sunFontIDs.glyphListLen);
+    jint len =  toGlyph - fromGlyph;
     jlongArray glyphImages = (jlongArray)
         (*env)->GetObjectField(env, glyphlist, sunFontIDs.glyphImages);
     jfloatArray glyphPositions =
@@ -84,13 +107,8 @@ GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist) {
         return (GlyphBlitVector*)NULL;
     }
 
-    /* Add 0.5 to x and y and then use floor (or an equivalent operation)
-     * to round down the glyph positions to integral pixel positions.
-     */
-    x += 0.5f;
-    y += 0.5f;
     if (glyphPositions) {
-        int n = -1;
+        int n = fromGlyph * 2 - 1;
 
         positions =
           (*env)->GetPrimitiveArrayCritical(env, glyphPositions, NULL);
@@ -105,9 +123,13 @@ GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist) {
             jfloat px = x + positions[++n];
             jfloat py = y + positions[++n];
 
-            ginfo = (GlyphInfo*)imagePtrs[g];
+            ginfo = (GlyphInfo*)((uintptr_t)imagePtrs[g + fromGlyph]);
+            ADJUST_SUBPIXEL_GLYPH_POSITION(px, ginfo->subpixelResolutionX);
+            ADJUST_SUBPIXEL_GLYPH_POSITION(py, ginfo->subpixelResolutionY);
             gbv->glyphs[g].glyphInfo = ginfo;
-            gbv->glyphs[g].pixels = ginfo->image;
+            gbv->glyphs[g].pixels = getSubpixelGlyphImage(ginfo,
+                                                          px + ginfo->topLeftX,
+                                                          py + ginfo->topLeftY);
             gbv->glyphs[g].width = ginfo->width;
             gbv->glyphs[g].rowBytes = ginfo->rowBytes;
             gbv->glyphs[g].height = ginfo->height;
@@ -118,14 +140,21 @@ GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist) {
                                               positions, JNI_ABORT);
     } else {
         for (g=0; g<len; g++) {
-            ginfo = (GlyphInfo*)imagePtrs[g];
+            jfloat px = x;
+            jfloat py = y;
+
+            ginfo = (GlyphInfo*)((uintptr_t)imagePtrs[g + fromGlyph]);
+            ADJUST_SUBPIXEL_GLYPH_POSITION(px, ginfo->subpixelResolutionX);
+            ADJUST_SUBPIXEL_GLYPH_POSITION(py, ginfo->subpixelResolutionY);
             gbv->glyphs[g].glyphInfo = ginfo;
-            gbv->glyphs[g].pixels = ginfo->image;
+            gbv->glyphs[g].pixels = getSubpixelGlyphImage(ginfo,
+                                                          px + ginfo->topLeftX,
+                                                          py + ginfo->topLeftY);
             gbv->glyphs[g].width = ginfo->width;
             gbv->glyphs[g].rowBytes = ginfo->rowBytes;
             gbv->glyphs[g].height = ginfo->height;
-            FLOOR_ASSIGN(gbv->glyphs[g].x, x + ginfo->topLeftX);
-            FLOOR_ASSIGN(gbv->glyphs[g].y, y + ginfo->topLeftY);
+            FLOOR_ASSIGN(gbv->glyphs[g].x, px + ginfo->topLeftX);
+            FLOOR_ASSIGN(gbv->glyphs[g].y, py + ginfo->topLeftY);
 
             /* copy image data into this array at x/y locations */
             x += ginfo->advanceX;
@@ -135,6 +164,12 @@ GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist) {
 
     (*env)->ReleasePrimitiveArrayCritical(env, glyphImages, imagePtrs,
                                           JNI_ABORT);
+
+    if (!glyphPositions) {
+        (*env)->SetFloatField(env, glyphlist, sunFontIDs.glyphListX, x);
+        (*env)->SetFloatField(env, glyphlist, sunFontIDs.glyphListY, y);
+    }
+
     return gbv;
 }
 
@@ -305,12 +340,13 @@ static void drawGlyphListLCD(JNIEnv *env, jobject self,
 /*
  * Class:     sun_java2d_loops_DrawGlyphList
  * Method:    DrawGlyphList
- * Signature: (Lsun/java2d/SunGraphics2D;Lsun/java2d/SurfaceData;Lsun/java2d/font/GlyphList;J)V
+ * Signature: (Lsun/java2d/SunGraphics2D;Lsun/java2d/SurfaceData;Lsun/java2d/font/GlyphList;II)V
  */
 JNIEXPORT void JNICALL
 Java_sun_java2d_loops_DrawGlyphList_DrawGlyphList
     (JNIEnv *env, jobject self,
-     jobject sg2d, jobject sData, jobject glyphlist) {
+     jobject sg2d, jobject sData, jobject glyphlist,
+     jint fromGlyph, jint toGlyph) {
 
     jint pixel, color;
     GlyphBlitVector* gbv;
@@ -320,7 +356,7 @@ Java_sun_java2d_loops_DrawGlyphList_DrawGlyphList
         return;
     }
 
-    if ((gbv = setupBlitVector(env, glyphlist)) == NULL) {
+    if ((gbv = setupBlitVector(env, glyphlist, fromGlyph, toGlyph)) == NULL) {
         return;
     }
 
@@ -335,12 +371,13 @@ Java_sun_java2d_loops_DrawGlyphList_DrawGlyphList
 /*
  * Class:     sun_java2d_loops_DrawGlyphListAA
  * Method:    DrawGlyphListAA
- * Signature: (Lsun/java2d/SunGraphics2D;Lsun/java2d/SurfaceData;Lsun/java2d/font/GlyphList;J)V
+ * Signature: (Lsun/java2d/SunGraphics2D;Lsun/java2d/SurfaceData;Lsun/java2d/font/GlyphList;II)V
  */
 JNIEXPORT void JNICALL
 Java_sun_java2d_loops_DrawGlyphListAA_DrawGlyphListAA
     (JNIEnv *env, jobject self,
-     jobject sg2d, jobject sData, jobject glyphlist) {
+     jobject sg2d, jobject sData, jobject glyphlist,
+     jint fromGlyph, jint toGlyph) {
 
     jint pixel, color;
     GlyphBlitVector* gbv;
@@ -350,7 +387,7 @@ Java_sun_java2d_loops_DrawGlyphListAA_DrawGlyphListAA
         return;
     }
 
-    if ((gbv = setupBlitVector(env, glyphlist)) == NULL) {
+    if ((gbv = setupBlitVector(env, glyphlist, fromGlyph, toGlyph)) == NULL) {
         return;
     }
     pixel = GrPrim_Sg2dGetPixel(env, sg2d);
@@ -363,12 +400,13 @@ Java_sun_java2d_loops_DrawGlyphListAA_DrawGlyphListAA
 /*
  * Class:     sun_java2d_loops_DrawGlyphListLCD
  * Method:    DrawGlyphListLCD
- * Signature: (Lsun/java2d/SunGraphics2D;Lsun/java2d/SurfaceData;Lsun/java2d/font/GlyphList;J)V
+ * Signature: (Lsun/java2d/SunGraphics2D;Lsun/java2d/SurfaceData;Lsun/java2d/font/GlyphList;II)V
  */
 JNIEXPORT void JNICALL
 Java_sun_java2d_loops_DrawGlyphListLCD_DrawGlyphListLCD
     (JNIEnv *env, jobject self,
-     jobject sg2d, jobject sData, jobject glyphlist) {
+     jobject sg2d, jobject sData, jobject glyphlist,
+     jint fromGlyph, jint toGlyph) {
 
     jint pixel, color, contrast;
     jboolean rgbOrder;
@@ -379,7 +417,8 @@ Java_sun_java2d_loops_DrawGlyphListLCD_DrawGlyphListLCD
         return;
     }
 
-    if ((gbv = setupLCDBlitVector(env, glyphlist)) == NULL) {
+    if ((gbv = setupLCDBlitVector(env, glyphlist, fromGlyph, toGlyph))
+            == NULL) {
         return;
     }
     pixel = GrPrim_Sg2dGetPixel(env, sg2d);
@@ -481,7 +520,8 @@ Java_sun_java2d_loops_DrawGlyphListLCD_DrawGlyphListLCD
  *  rendered fractional metrics, there's typically more space between the
  *  glyphs. Perhaps disabling X-axis grid-fitting will help with that.
  */
-GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist) {
+GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist,
+                                    jint fromGlyph, jint toGlyph) {
 
     int g;
     size_t bytesNeeded;
@@ -492,7 +532,7 @@ GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist) {
 
     jfloat x = (*env)->GetFloatField(env, glyphlist, sunFontIDs.glyphListX);
     jfloat y = (*env)->GetFloatField(env, glyphlist, sunFontIDs.glyphListY);
-    jint len =  (*env)->GetIntField(env, glyphlist, sunFontIDs.glyphListLen);
+    jint len =  toGlyph - fromGlyph;
     jlongArray glyphImages = (jlongArray)
         (*env)->GetObjectField(env, glyphlist, sunFontIDs.glyphImages);
     jfloatArray glyphPositions =
@@ -531,28 +571,20 @@ GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist) {
      * heterogenous
      */
     if (subPixPos && len > 0) {
-        ginfo = (GlyphInfo*)imagePtrs[0];
+        ginfo = (GlyphInfo*)((uintptr_t)imagePtrs[fromGlyph]);
         if (ginfo == NULL) {
             (*env)->ReleasePrimitiveArrayCritical(env, glyphImages,
                                                   imagePtrs, JNI_ABORT);
             free(gbv);
             return (GlyphBlitVector*)NULL;
         }
-        /* rowBytes==width tests if its a B&W or LCD glyph */
-        if (ginfo->width == ginfo->rowBytes) {
+        if (ginfo->format != sun_font_StrikeCache_PIXEL_FORMAT_LCD) {
             subPixPos = JNI_FALSE;
         }
     }
-    if (subPixPos) {
-        x += 0.1666667f;
-        y += 0.1666667f;
-    } else {
-        x += 0.5f;
-        y += 0.5f;
-    }
 
      if (glyphPositions) {
-        int n = -1;
+        int n = fromGlyph * 2 - 1;
 
         positions =
           (*env)->GetPrimitiveArrayCritical(env, glyphPositions, NULL);
@@ -566,7 +598,7 @@ GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist) {
         for (g=0; g<len; g++) {
             jfloat px, py;
 
-            ginfo = (GlyphInfo*)imagePtrs[g];
+            ginfo = (GlyphInfo*)((uintptr_t)imagePtrs[g + fromGlyph]);
             if (ginfo == NULL) {
                 (*env)->ReleasePrimitiveArrayCritical(env, glyphImages,
                                                   imagePtrs, JNI_ABORT);
@@ -608,7 +640,12 @@ GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist) {
              */
             if (subPixPos) {
                 int frac;
-                float pos = px + ginfo->topLeftX;
+                float pos;
+
+                px += 0.1666667f - 0.5f;
+                py += 0.1666667f - 0.5f;
+
+                pos = px + ginfo->topLeftX;
                 FLOOR_ASSIGN(gbv->glyphs[g].x, pos);
                 /* Calculate the fractional pixel position - ie the subpixel
                  * position within the RGB/BGR triple. We are rounding to
@@ -647,7 +684,9 @@ GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist) {
                                               positions, JNI_ABORT);
     } else {
         for (g=0; g<len; g++) {
-            ginfo = (GlyphInfo*)imagePtrs[g];
+            jfloat px = x;
+            jfloat py = y;
+            ginfo = (GlyphInfo*)((uintptr_t)imagePtrs[g + fromGlyph]);
             if (ginfo == NULL) {
                 (*env)->ReleasePrimitiveArrayCritical(env, glyphImages,
                                                   imagePtrs, JNI_ABORT);
@@ -662,7 +701,12 @@ GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist) {
 
             if (subPixPos) {
                 int frac;
-                float pos = x + ginfo->topLeftX;
+                float pos;
+
+                px += 0.1666667f - 0.5f;
+                py += 0.1666667f - 0.5f;
+
+                pos = px + ginfo->topLeftX;
                 FLOOR_ASSIGN(gbv->glyphs[g].x, pos);
                 frac = (int)((pos - gbv->glyphs[g].x)*3);
                 if (frac == 0) {
@@ -672,10 +716,11 @@ GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist) {
                     gbv->glyphs[g].x += 1;
                 }
             } else {
-                FLOOR_ASSIGN(gbv->glyphs[g].x, x + ginfo->topLeftX);
+                FLOOR_ASSIGN(gbv->glyphs[g].x, px + ginfo->topLeftX);
                 gbv->glyphs[g].rowBytesOffset = 0;
             }
-            FLOOR_ASSIGN(gbv->glyphs[g].y, y + ginfo->topLeftY);
+            FLOOR_ASSIGN(gbv->glyphs[g].y, py + ginfo->topLeftY);
+
             /* copy image data into this array at x/y locations */
             x += ginfo->advanceX;
             y += ginfo->advanceY;
@@ -684,6 +729,11 @@ GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist) {
 
     (*env)->ReleasePrimitiveArrayCritical(env, glyphImages, imagePtrs,
                                           JNI_ABORT);
+    if (!glyphPositions) {
+        (*env)->SetFloatField(env, glyphlist, sunFontIDs.glyphListX, x);
+        (*env)->SetFloatField(env, glyphlist, sunFontIDs.glyphListY, y);
+    }
+
     return gbv;
 }
 

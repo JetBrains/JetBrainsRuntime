@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Arrays;
+import java.util.List;
 
 import static jdk.test.lib.Asserts.*;
 import jdk.test.lib.Utils;
@@ -65,10 +66,15 @@ public final class JstatdTest {
     private static final String JPS_OUTPUT_REGEX = "^\\d+\\s*.*";
 
     private boolean useDefaultPort = true;
+    private boolean useDefaultRmiPort = true;
     private String port;
+    private String rmiPort;
     private String serverName;
     private Long jstatdPid;
     private boolean withExternalRegistry = false;
+    private boolean useShortCommandSyntax = false;
+
+    private volatile static boolean portInUse;
 
     public void setServerName(String serverName) {
         this.serverName = serverName;
@@ -78,26 +84,20 @@ public final class JstatdTest {
         this.useDefaultPort = useDefaultPort;
     }
 
+    public void setUseDefaultRmiPort(boolean useDefaultRmiPort) {
+        this.useDefaultRmiPort = useDefaultRmiPort;
+    }
+
     public void setWithExternalRegistry(boolean withExternalRegistry) {
         this.withExternalRegistry = withExternalRegistry;
     }
 
     private Long waitOnTool(ProcessThread thread) throws Throwable {
         long pid = thread.getPid();
-
-        Throwable t = thread.getUncaught();
-        if (t != null) {
-            if (t.getMessage().contains(
-                    "java.rmi.server.ExportException: Port already in use")) {
-                System.out.println("Port already in use. Trying to restart with a new one...");
-                Thread.sleep(100);
-                return null;
-            } else {
-                // Something unexpected has happened
-                throw new Throwable(t);
-            }
+        if (portInUse) {
+            System.out.println("Port already in use. Trying to restart with a new one...");
+            return null;
         }
-
         System.out.println(thread.getName() + " pid: " + pid);
         return pid;
     }
@@ -128,6 +128,7 @@ public final class JstatdTest {
      */
     private OutputAnalyzer runJps() throws Exception {
         JDKToolLauncher launcher = JDKToolLauncher.createUsingTestJDK("jps");
+        launcher.addVMArgs(Utils.getFilteredTestJavaOpts("-XX:+UsePerfData"));
         launcher.addVMArg("-XX:+UsePerfData");
         launcher.addToolArg(getDestination());
 
@@ -157,7 +158,7 @@ public final class JstatdTest {
         assertFalse(output.getOutput().isEmpty(), "Output should not be empty");
 
         boolean foundFirstLineWithPid = false;
-        String[] lines = output.getOutput().split(Utils.NEW_LINE);
+        List<String> lines = output.asLinesWithoutVMWarnings();
         for (String line : lines) {
             if (!foundFirstLineWithPid) {
                 foundFirstLineWithPid = line.matches(JPS_OUTPUT_REGEX);
@@ -245,35 +246,47 @@ public final class JstatdTest {
      *
      * jstatd -J-XX:+UsePerfData -J-Djava.security.policy=all.policy
      * jstatd -J-XX:+UsePerfData -J-Djava.security.policy=all.policy -p port
+     * jstatd -J-XX:+UsePerfData -J-Djava.security.policy=all.policy -p port -r rmiport
      * jstatd -J-XX:+UsePerfData -J-Djava.security.policy=all.policy -n serverName
      * jstatd -J-XX:+UsePerfData -J-Djava.security.policy=all.policy -p port -n serverName
      */
     private String[] getJstatdCmd() throws Exception {
         JDKToolLauncher launcher = JDKToolLauncher.createUsingTestJDK("jstatd");
         launcher.addVMArg("-XX:+UsePerfData");
+        launcher.addVMArg("-Djava.security.manager=allow");
         String testSrc = System.getProperty("test.src");
         File policy = new File(testSrc, "all.policy");
         assertTrue(policy.exists() && policy.isFile(),
                 "Security policy " + policy.getAbsolutePath() + " does not exist or not a file");
         launcher.addVMArg("-Djava.security.policy=" + policy.getAbsolutePath());
         if (port != null) {
-            launcher.addToolArg("-p");
-            launcher.addToolArg(port);
+            addToolArg(launcher,"-p", port);
+        }
+        if (rmiPort != null) {
+            addToolArg(launcher,"-r", rmiPort);
         }
         if (serverName != null) {
-            launcher.addToolArg("-n");
-            launcher.addToolArg(serverName);
+            addToolArg(launcher,"-n", serverName);
         }
         if (withExternalRegistry) {
             launcher.addToolArg("-nr");
         }
-
         String[] cmd = launcher.getCommand();
         log("Start jstatd", cmd);
         return cmd;
     }
 
+    private void addToolArg(JDKToolLauncher launcher, String name, String value) {
+        if (useShortCommandSyntax) {
+            launcher.addToolArg(name + value);
+        } else {
+            launcher.addToolArg(name);
+            launcher.addToolArg(value);
+        }
+    }
+
     private ProcessThread tryToSetupJstatdProcess() throws Throwable {
+        portInUse = false;
         ProcessThread jstatdThread = new ProcessThread("Jstatd-Thread",
                 JstatdTest::isJstadReady, getJstatdCmd());
         try {
@@ -296,10 +309,20 @@ public final class JstatdTest {
     }
 
     private static boolean isJstadReady(String line) {
+        if (line.contains("Port already in use")) {
+            portInUse = true;
+            return true;
+        }
         return line.startsWith("jstatd started (bound to ");
     }
 
     public void doTest() throws Throwable {
+        runTest(false);
+        runTest(true);
+    }
+
+    private void runTest(boolean useShortSyntax) throws Throwable {
+        useShortCommandSyntax = useShortSyntax;
         if (useDefaultPort) {
             verifyNoRmiRegistryOnDefaultPort();
         }
@@ -309,6 +332,10 @@ public final class JstatdTest {
             while (jstatdThread == null) {
                 if (!useDefaultPort) {
                     port = String.valueOf(Utils.getFreePort());
+                }
+
+                if (!useDefaultRmiPort) {
+                    rmiPort = String.valueOf(Utils.getFreePort());
                 }
 
                 if (withExternalRegistry) {
@@ -329,9 +356,7 @@ public final class JstatdTest {
 
         // Verify output from jstatd
         OutputAnalyzer output = jstatdThread.getOutput();
-        assertTrue(output.getOutput().isEmpty(),
-                "jstatd should get an empty output, got: "
-                + Utils.NEW_LINE + output.getOutput());
+        output.shouldBeEmptyIgnoreVMWarnings();
         assertNotEquals(output.getExitValue(), 0,
                 "jstatd process exited with unexpected exit code");
     }

@@ -26,6 +26,7 @@
 #define SHARE_GC_SHENANDOAH_SHENANDOAHPACER_HPP
 
 #include "gc/shenandoah/shenandoahNumberSeq.hpp"
+#include "gc/shenandoah/shenandoahPadding.hpp"
 #include "memory/allocation.hpp"
 
 class ShenandoahHeap;
@@ -42,27 +43,31 @@ class ShenandoahHeap;
 class ShenandoahPacer : public CHeapObj<mtGC> {
 private:
   ShenandoahHeap* _heap;
-  BinaryMagnitudeSeq _delays;
+  double _last_time;
   TruncatedSeq* _progress_history;
+  Monitor* _wait_monitor;
+  ShenandoahSharedFlag _need_notify_waiters;
 
   // Set once per phase
   volatile intptr_t _epoch;
   volatile double _tax_rate;
 
   // Heavily updated, protect from accidental false sharing
-  DEFINE_PAD_MINUS_SIZE(0, DEFAULT_CACHE_LINE_SIZE, sizeof(volatile intptr_t));
+  shenandoah_padding(0);
   volatile intptr_t _budget;
-  DEFINE_PAD_MINUS_SIZE(1, DEFAULT_CACHE_LINE_SIZE, 0);
+  shenandoah_padding(1);
 
   // Heavily updated, protect from accidental false sharing
-  DEFINE_PAD_MINUS_SIZE(2, DEFAULT_CACHE_LINE_SIZE, sizeof(volatile intptr_t));
+  shenandoah_padding(2);
   volatile intptr_t _progress;
-  DEFINE_PAD_MINUS_SIZE(3, DEFAULT_CACHE_LINE_SIZE, 0);
+  shenandoah_padding(3);
 
 public:
   ShenandoahPacer(ShenandoahHeap* heap) :
           _heap(heap),
+          _last_time(os::elapsedTime()),
           _progress_history(new TruncatedSeq(5)),
+          _wait_monitor(new Monitor(Mutex::leaf, "_wait_monitor", true, Monitor::_safepoint_check_always)),
           _epoch(0),
           _tax_rate(1),
           _budget(0),
@@ -72,7 +77,8 @@ public:
   void setup_for_mark();
   void setup_for_evac();
   void setup_for_updaterefs();
-  void setup_for_traversal();
+
+  void setup_for_reset();
 
   inline void report_mark(size_t words);
   inline void report_evac(size_t words);
@@ -84,17 +90,23 @@ public:
   void pace_for_alloc(size_t words);
   void unpace_for_alloc(intptr_t epoch, size_t words);
 
+  void notify_waiters();
+
   intptr_t epoch();
 
-  void print_on(outputStream* out) const;
+  void flush_stats_to_cycle();
+  void print_cycle_on(outputStream* out);
 
 private:
   inline void report_internal(size_t words);
   inline void report_progress_internal(size_t words);
 
+  inline void add_budget(size_t words);
   void restart_with(size_t non_taxable_bytes, double tax_rate);
 
   size_t update_and_get_progress_history();
+
+  void wait(size_t time_ms);
 };
 
 #endif // SHARE_GC_SHENANDOAH_SHENANDOAHPACER_HPP

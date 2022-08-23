@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,51 @@
 
 #include "precompiled.hpp"
 #include "classfile/resolutionErrors.hpp"
+#include "memory/allocation.hpp"
 #include "memory/resourceArea.hpp"
+#include "oops/instanceKlass.hpp"
+#include "oops/klass.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/safepoint.hpp"
 #include "utilities/hashtable.inline.hpp"
 
-// add new entry to the table
+// create new error entry
 void ResolutionErrorTable::add_entry(int index, unsigned int hash,
                                      const constantPoolHandle& pool, int cp_index,
-                                     Symbol* error, Symbol* message)
+                                     Symbol* error, Symbol* message,
+                                     Symbol* cause, Symbol* cause_msg)
 {
   assert_locked_or_safepoint(SystemDictionary_lock);
   assert(!pool.is_null() && error != NULL, "adding NULL obj");
 
-  ResolutionErrorEntry* entry = new_entry(hash, pool(), cp_index, error, message);
+  ResolutionErrorEntry* entry = (ResolutionErrorEntry*)Hashtable<ConstantPool*, mtClass>::new_entry(hash, pool());
+  entry->set_cp_index(cp_index);
+  entry->set_error(error);
+  entry->set_message(message);
+  entry->set_nest_host_error(NULL);
+  entry->set_cause(cause);
+  entry->set_cause_msg(cause_msg);
+
+  add_entry(index, entry);
+}
+
+// create new nest host error entry
+void ResolutionErrorTable::add_entry(int index, unsigned int hash,
+                                     const constantPoolHandle& pool, int cp_index,
+                                     const char* message)
+{
+  assert_locked_or_safepoint(SystemDictionary_lock);
+  assert(!pool.is_null() && message != NULL, "adding NULL obj");
+
+  ResolutionErrorEntry* entry = (ResolutionErrorEntry*)Hashtable<ConstantPool*, mtClass>::new_entry(hash, pool());
+  entry->set_cp_index(cp_index);
+  entry->set_nest_host_error(message);
+  entry->set_error(NULL);
+  entry->set_message(NULL);
+  entry->set_cause(NULL);
+  entry->set_cause_msg(NULL);
+
   add_entry(index, entry);
 }
 
@@ -59,9 +89,10 @@ ResolutionErrorEntry* ResolutionErrorTable::find_entry(int index, unsigned int h
 }
 
 void ResolutionErrorEntry::set_error(Symbol* e) {
-  assert(e != NULL, "must set a value");
   _error = e;
-  _error->increment_refcount();
+  if (_error != NULL) {
+    _error->increment_refcount();
+  }
 }
 
 void ResolutionErrorEntry::set_message(Symbol* c) {
@@ -71,27 +102,42 @@ void ResolutionErrorEntry::set_message(Symbol* c) {
   }
 }
 
-// create new error entry
-ResolutionErrorEntry* ResolutionErrorTable::new_entry(int hash, ConstantPool* pool,
-                                                      int cp_index, Symbol* error,
-                                                      Symbol* message)
-{
-  ResolutionErrorEntry* entry = (ResolutionErrorEntry*)Hashtable<ConstantPool*, mtClass>::new_entry(hash, pool);
-  entry->set_cp_index(cp_index);
-  entry->set_error(error);
-  entry->set_message(message);
+void ResolutionErrorEntry::set_cause(Symbol* c) {
+  _cause = c;
+  if (_cause != NULL) {
+    _cause->increment_refcount();
+  }
+}
 
-  return entry;
+void ResolutionErrorEntry::set_cause_msg(Symbol* c) {
+  _cause_msg = c;
+  if (_cause_msg != NULL) {
+    _cause_msg->increment_refcount();
+  }
+}
+
+void ResolutionErrorEntry::set_nest_host_error(const char* message) {
+  _nest_host_error = message;
 }
 
 void ResolutionErrorTable::free_entry(ResolutionErrorEntry *entry) {
   // decrement error refcount
-  assert(entry->error() != NULL, "error should be set");
-  entry->error()->decrement_refcount();
+  if (entry->error() != NULL) {
+    entry->error()->decrement_refcount();
+  }
   if (entry->message() != NULL) {
     entry->message()->decrement_refcount();
   }
-  Hashtable<ConstantPool*, mtClass>::free_entry(entry);
+  if (entry->cause() != NULL) {
+    entry->cause()->decrement_refcount();
+  }
+  if (entry->cause_msg() != NULL) {
+    entry->cause_msg()->decrement_refcount();
+  }
+  if (entry->nest_host_error() != NULL) {
+    FREE_C_HEAP_ARRAY(char, entry->nest_host_error());
+  }
+  BasicHashtable<mtClass>::free_entry(entry);
 }
 
 

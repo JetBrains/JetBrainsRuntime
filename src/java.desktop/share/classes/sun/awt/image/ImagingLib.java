@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2007, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,6 +51,7 @@ import java.security.PrivilegedAction;
  * (in which case our java code will be executed) or may throw
  * an exception.
  */
+@SuppressWarnings("removal")
 public class ImagingLib {
 
     static boolean useLib = true;
@@ -94,15 +95,12 @@ public class ImagingLib {
                 public Boolean run() {
                     String arch = System.getProperty("os.arch");
 
-                    if (arch == null || !arch.startsWith("sparc")) {
-                        try {
-                            System.loadLibrary("mlib_image");
-                        } catch (UnsatisfiedLinkError e) {
-                            return Boolean.FALSE;
-                        }
-
+                    try {
+                        System.loadLibrary("mlib_image");
+                    } catch (UnsatisfiedLinkError e) {
+                        return Boolean.FALSE;
                     }
-                    boolean success =  init();
+                    boolean success = init();
                     return Boolean.valueOf(success);
                 }
             };

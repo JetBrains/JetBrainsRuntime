@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug 4638136 7198273 8025633 8081854 8182765
+ * @bug 4638136 7198273 8025633 8081854 8182765 8258659 8261976
  * @summary  Add ability to skip over nav bar for accessibility
  * @library ../../lib
  * @modules jdk.javadoc/jdk.javadoc.internal.tool
@@ -50,16 +50,10 @@ public class AccessSkipNav extends JavadocTester {
         // Testing only for the presence of the <a href> and <a id>
         checkOutput("p1/C1.html", true,
                 // Top navbar <a href>
-                "<a href=\"#skip.navbar.top\" title=\"Skip navigation links\">Skip navigation links</a>",
+                """
+                    <a href="#skip-navbar-top" title="Skip navigation links">Skip navigation links</a>""",
                 // Top navbar <span id>
-                "<span class=\"skipNav\" id=\"skip.navbar.top\">\n"
-                + "<!--   -->\n"
-                + "</span>",
-                // Bottom navbar <a href>
-                "<a href=\"#skip.navbar.bottom\" title=\"Skip navigation links\">Skip navigation links</a>",
-                // Bottom navbar <span id>
-                "<span class=\"skipNav\" id=\"skip.navbar.bottom\">\n"
-                + "<!--   -->\n"
-                + "</span>");
+                """
+                    <span class="skip-nav" id="skip-navbar-top"></span>""");
     }
 }

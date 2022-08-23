@@ -31,6 +31,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <locale.h>
+
+#ifdef __APPLE__
+# include <xlocale.h>
+#endif
 
 typedef void* g_settings_schema_source_get_default();
 typedef void* g_settings_schema_source_ref(void *);
@@ -45,6 +50,7 @@ typedef void* g_variant_get_child_value(void *, unsigned long);
 typedef void  g_variant_unref(void *);
 typedef char*  g_variant_get_string(void *, unsigned long *);
 typedef int  g_variant_get_int32(void *);
+typedef unsigned g_variant_get_uint32(void *);
 typedef double  g_variant_get_double(void *);
 
 static g_settings_schema_has_key* fp_g_settings_schema_has_key;
@@ -55,6 +61,7 @@ static g_variant_n_children* fp_g_variant_n_children;
 static g_variant_get_child_value* fp_g_variant_get_child_value;
 static g_variant_get_string* fp_g_variant_get_string;
 static g_variant_get_int32* fp_g_variant_get_int32;
+static g_variant_get_uint32* fp_g_variant_get_uint32;
 static g_variant_get_double* fp_g_variant_get_double;
 static g_variant_unref* fp_g_variant_unref;
 
@@ -96,6 +103,9 @@ static void* get_schema_value(char *name, char *key) {
         CHECK_NULL_RETURN(fp_g_variant_get_int32 =
                           (g_variant_get_int32*)
                           dlsym(lib_handle, "g_variant_get_int32"), NULL);
+        CHECK_NULL_RETURN(fp_g_variant_get_uint32 =
+                          (g_variant_get_uint32*)
+                          dlsym(lib_handle, "g_variant_get_uint32"), NULL);
         CHECK_NULL_RETURN(fp_g_variant_get_double =
                           (g_variant_get_double*)
                           dlsym(lib_handle, "g_variant_get_double"), NULL);
@@ -165,6 +175,7 @@ static double getDesktopScale(char *output_name) {
             }
             fp_g_variant_unref(value);
         }
+        /* [tav]
         if (result > 0) {
             value = get_schema_value("com.canonical.Unity.Interface",
                                                            "text-scale-factor");
@@ -172,9 +183,19 @@ static double getDesktopScale(char *output_name) {
                 result *= fp_g_variant_get_double(value);
                 fp_g_variant_unref(value);
             }
+        }*/
+    }
+
+    if (result <= 0) {
+        void *value = get_schema_value("org.gnome.desktop.interface",
+                                                         "scaling-factor");
+        if (value && fp_g_variant_is_of_type(value, "u")) {
+            result = fp_g_variant_get_uint32(value);
+            fp_g_variant_unref(value);
         }
     }
 
+    /* [tav]
     if (result <= 0) {
         void *value = get_schema_value("org.gnome.desktop.interface",
                                                          "text-scaling-factor");
@@ -182,31 +203,32 @@ static double getDesktopScale(char *output_name) {
             result = fp_g_variant_get_double(value);
             fp_g_variant_unref(value);
         }
-    }
+    }*/
 
     return result;
 
 }
 
-static int getScale(const char *name) {
+double getScaleEnvVar(const char *name, double default_value) {
     char *uiScale = getenv(name);
     if (uiScale != NULL) {
-        double scale = strtod(uiScale, NULL);
-        if (scale < 1) {
-            return -1;
+        locale_t c_locale = newlocale(LC_NUMERIC_MASK, "C", NULL);
+        double scale = strtod_l(uiScale, NULL, c_locale);
+        freelocale(c_locale);
+        if (scale > 0) {
+            return scale;
         }
-        return (int) scale;
     }
-    return -1;
+    return default_value;
 }
 
-double getNativeScaleFactor(char *output_name) {
+double getNativeScaleFactor(char *output_name, double default_value) {
     static int scale = -2.0;
     double native_scale = 0;
     int gdk_scale = 0;
 
     if (scale == -2) {
-        scale = getScale("J2D_UISCALE");
+        scale = (int)getScaleEnvVar("J2D_UISCALE", -1);
     }
 
     if (scale > 0) {
@@ -216,10 +238,8 @@ double getNativeScaleFactor(char *output_name) {
     native_scale = getDesktopScale(output_name);
 
     if (native_scale <= 0) {
-        native_scale = 1;
+        native_scale = default_value;
     }
 
-    gdk_scale = getScale("GDK_SCALE");
-
-    return gdk_scale > 0 ? native_scale * gdk_scale : native_scale;
+    return native_scale;
 }

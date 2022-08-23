@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import jdk.test.lib.process.ProcessTools;
  * @modules java.base/jdk.internal.misc
  * @library /test/lib
  * @requires (vm.debug == true) & (os.family != "windows")
+ * @run driver TimeoutInErrorHandlingTest
  * @author Thomas Stuefe (SAP)
  */
 
@@ -48,13 +49,6 @@ public class TimeoutInErrorHandlingTest {
     public static final int ERROR_LOG_TIMEOUT = 16;
 
     public static void main(String[] args) throws Exception {
-
-        int error_log_timeout = ERROR_LOG_TIMEOUT;
-        if ("SunOS".equals(System.getProperty("os.name"))) {
-            // Give Solaris machines 3X as much time:
-            error_log_timeout *= 3;
-        }
-
         /* Start the VM and let it crash. Specify TestUnresponsiveErrorHandler which will
          * let five subsequent error reporting steps hang. The Timeout handling triggered
          * by the WatcherThread should kick in and interrupt those steps. In theory, the
@@ -81,7 +75,7 @@ public class TimeoutInErrorHandlingTest {
             "-Xmx100M",
             "-XX:ErrorHandlerTest=14",
             "-XX:+TestUnresponsiveErrorHandler",
-            "-XX:ErrorLogTimeout=" + error_log_timeout,
+            "-XX:ErrorLogTimeout=" + ERROR_LOG_TIMEOUT,
             "-XX:-CreateCoredumpOnCrash",
             "-version");
 

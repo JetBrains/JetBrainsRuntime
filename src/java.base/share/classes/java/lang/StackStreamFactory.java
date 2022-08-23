@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -63,7 +63,7 @@ final class StackStreamFactory {
 
     // Stack walk implementation classes to be excluded during stack walking
     // lazily add subclasses when they are loaded.
-    private final static Set<Class<?>> stackWalkImplClasses = init();
+    private static final Set<Class<?>> stackWalkImplClasses = init();
 
     private static final int SMALL_BATCH       = 8;
     private static final int BATCH_SIZE        = 32;
@@ -81,7 +81,7 @@ final class StackStreamFactory {
      * Performance work and extensive testing is needed to replace the
      * VM built-in backtrace filled in Throwable with the StackWalker.
      */
-    final static boolean isDebug =
+    static final boolean isDebug =
             "true".equals(GetPropertyAction.privilegedGetProperty("stackwalk.debug"));
 
     static <T> StackFrameTraverser<T>
@@ -237,7 +237,7 @@ final class StackStreamFactory {
         final R walk() {
             checkState(NEW);
             try {
-                // VM will need to stablize the stack before walking.  It will invoke
+                // VM will need to stabilize the stack before walking.  It will invoke
                 // the AbstractStackWalker::doStackWalk method once it fetches the first batch.
                 // the callback will be invoked within the scope of the callStackWalk frame.
                 return beginStackWalk();
@@ -620,7 +620,7 @@ final class StackStreamFactory {
             super(walker, FILL_CLASS_REFS_ONLY|GET_CALLER_CLASS);
         }
 
-        final class ClassBuffer extends FrameBuffer<Class<?>> {
+        static final class ClassBuffer extends FrameBuffer<Class<?>> {
             Class<?>[] classes;      // caller class for fast path
             ClassBuffer(int batchSize) {
                 super(batchSize);

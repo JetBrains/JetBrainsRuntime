@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,7 +77,6 @@ public class X509CRLEntryImpl extends X509CRLEntry
     private X500Principal certIssuer;
 
     private static final boolean isExplicit = false;
-    private static final long YR_2050 = 2524636800000L;
 
     /**
      * Constructs a revoked certificate entry using the given
@@ -162,7 +161,7 @@ public class X509CRLEntryImpl extends X509CRLEntry
                 // sequence { serialNumber, revocationDate, extensions }
                 serialNumber.encode(tmp);
 
-                if (revocationDate.getTime() < YR_2050) {
+                if (revocationDate.getTime() < CertificateValidity.YR_2050) {
                     tmp.putUTCTime(revocationDate);
                 } else {
                     tmp.putGeneralizedTime(revocationDate);
@@ -253,7 +252,8 @@ public class X509CRLEntryImpl extends X509CRLEntry
      */
     public static CRLReason getRevocationReason(X509CRLEntry crlEntry) {
         try {
-            byte[] ext = crlEntry.getExtensionValue("2.5.29.21");
+            byte[] ext = crlEntry.getExtensionValue
+                    (KnownOIDs.ReasonCode.value());
             if (ext == null) {
                 return null;
             }
@@ -403,11 +403,11 @@ public class X509CRLEntryImpl extends X509CRLEntry
         if (extensions == null)
             return null;
         try {
-            String extAlias = OIDMap.getName(new ObjectIdentifier(oid));
+            String extAlias = OIDMap.getName(ObjectIdentifier.of(oid));
             Extension crlExt = null;
 
             if (extAlias == null) { // may be unknown
-                ObjectIdentifier findOID = new ObjectIdentifier(oid);
+                ObjectIdentifier findOID = ObjectIdentifier.of(oid);
                 Extension ex = null;
                 ObjectIdentifier inCertOID;
                 for (Enumeration<Extension> e = extensions.getElements();

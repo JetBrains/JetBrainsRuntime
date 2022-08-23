@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,7 @@
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  * @modules jdk.management
- * @run main TestVMOptionsFile
+ * @run driver TestVMOptionsFile
  */
 
 import java.io.File;
@@ -242,12 +242,13 @@ public class TestVMOptionsFile {
     private static ProcessBuilder createProcessBuilder() throws Exception {
         ProcessBuilder pb;
         List<String> runJava = new ArrayList<>();
+        runJava.add("-XX:-IgnoreUnrecognizedVMOptions");
 
         runJava.addAll(VMParams);
         runJava.add(PrintPropertyAndOptions.class.getName());
         runJava.addAll(appParams);
 
-        pb = ProcessTools.createJavaProcessBuilder(runJava.toArray(new String[0]));
+        pb = ProcessTools.createJavaProcessBuilder(runJava);
 
         VMParams.clear();
         appParams.clear();

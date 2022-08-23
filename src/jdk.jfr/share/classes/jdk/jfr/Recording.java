@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,8 +46,7 @@ import jdk.jfr.internal.WriteableUserPath;
  * <p>
  * The following example shows how configure, start, stop and dump recording data to disk.
  *
- * <pre>
- * <code>
+ * <pre>{@literal
  *   Configuration c = Configuration.getConfiguration("default");
  *   Recording r = new Recording(c);
  *   r.start();
@@ -55,8 +54,7 @@ import jdk.jfr.internal.WriteableUserPath;
  *   Thread.sleep(5000);
  *   r.stop();
  *   r.dump(Files.createTempFile("my-recording", ".jfr"));
- * </code>
- * </pre>
+ * }</pre>
  *
  * @since 9
  */
@@ -99,6 +97,8 @@ public final class Recording implements Closeable {
      * A newly created recording is in the {@link RecordingState#NEW} state. To start
      * the recording, invoke the {@link Recording#start()} method.
      *
+     * @param settings settings as a map of name-value pairs, not {@code null}
+     *
      * @throws IllegalStateException if Flight Recorder can't be created (for
      *         example, if the Java Virtual Machine (JVM) lacks Flight Recorder
      *         support, or if the file repository can't be created or accessed)
@@ -109,9 +109,11 @@ public final class Recording implements Closeable {
      * @see jdk.jfr
      */
     public Recording(Map<String, String> settings) {
+        Objects.requireNonNull(settings);
+        Map<String, String> sanitized = Utils.sanitizeNullFreeStringMap(settings);
         PlatformRecorder r = FlightRecorder.getFlightRecorder().getInternal();
         synchronized (r) {
-            this.internal = r.newRecording(settings);
+            this.internal = r.newRecording(sanitized);
             this.internal.setRecording(this);
             if (internal.getRecording() != this) {
                 throw new InternalError("Internal recording not properly setup");
@@ -133,7 +135,7 @@ public final class Recording implements Closeable {
      *         FlightRecorderPermission "accessFlightRecorder" is not set.
      */
     public Recording() {
-        this(new HashMap<String, String>());
+        this(Map.of());
      }
 
     /**
@@ -141,11 +143,9 @@ public final class Recording implements Closeable {
      * <p>
      * The following example shows how create a recording that uses a predefined configuration.
      *
-     * <pre>
-     * <code>
+     * <pre>{@literal
      * Recording r = new Recording(Configuration.getConfiguration("default"));
-     * </code>
-     * </pre>
+     * }</pre>
      *
      * The newly created recording is in the {@link RecordingState#NEW} state. To
      * start the recording, invoke the {@link Recording#start()} method.
@@ -265,7 +265,7 @@ public final class Recording implements Closeable {
     /**
      * Returns the time when this recording was started.
      *
-     * @return the the time, or {@code null} if this recording is not started
+     * @return the time, or {@code null} if this recording is not started
      */
     public Instant getStartTime() {
         return internal.getStartTime();
@@ -307,25 +307,21 @@ public final class Recording implements Closeable {
      * <p>
      * The following example shows how to set event settings for a recording.
      *
-     * <pre>
-     * <code>
-     *     Map{@literal <}String, String{@literal >} settings = new HashMap{@literal <}{@literal >}();
+     * <pre>{@literal
+     *     Map<String, String> settings = new HashMap<>();
      *     settings.putAll(EventSettings.enabled("jdk.CPUSample").withPeriod(Duration.ofSeconds(2)).toMap());
      *     settings.putAll(EventSettings.enabled(MyEvent.class).withThreshold(Duration.ofSeconds(2)).withoutStackTrace().toMap());
      *     settings.put("jdk.ExecutionSample#period", "10 ms");
      *     recording.setSettings(settings);
-     * </code>
-     * </pre>
+     * }</pre>
      *
      * The following example shows how to merge settings.
      *
-     * <pre>
-     *     {@code
+     * <pre>{@literal
      *     Map<String, String> settings = recording.getSettings();
      *     settings.putAll(additionalSettings);
      *     recording.setSettings(settings);
-     * }
-     * </pre>
+     * }</pre>
      *
      * @param settings the settings to set, not {@code null}
      */
@@ -417,7 +413,7 @@ public final class Recording implements Closeable {
      *
      * @param maxSize the amount of data to retain, {@code 0} if infinite
      *
-     * @throws IllegalArgumentException if <code>maxSize</code> is negative
+     * @throws IllegalArgumentException if {@code maxSize} is negative
      *
      * @throws IllegalStateException if the recording is in {@code CLOSED} state
      */
@@ -440,7 +436,7 @@ public final class Recording implements Closeable {
          * @since 14
          */
         /*package private*/ void setFlushInterval(Duration interval) {
-            Objects.nonNull(interval);
+            Objects.requireNonNull(interval);
             if (interval.isNegative()) {
                 throw new IllegalArgumentException("Stream interval can't be negative");
             }
@@ -470,7 +466,7 @@ public final class Recording implements Closeable {
      *
      * @param maxAge the length of time that data is kept, or {@code null} if infinite
      *
-     * @throws IllegalArgumentException if <code>maxAge</code> is negative
+     * @throws IllegalArgumentException if {@code maxAge} is negative
      *
      * @throws IllegalStateException if the recording is in the {@code CLOSED} state
      */
@@ -581,20 +577,25 @@ public final class Recording implements Closeable {
      * Creates a data stream for a specified interval.
      * <p>
      * The stream may contain some data outside the specified range.
+     * <p>
+     * If the recording is not to disk, a stream can't be created
+     * and {@code null} is returned.
      *
-     * @param the start start time for the stream, or {@code null} to get data from
+     * @param start the start time for the stream, or {@code null} to get data from
      *        start time of the recording
      *
-     * @param the end end time for the stream, or {@code null} to get data until the
+     * @param end the end time for the stream, or {@code null} to get data until the
      *        present time.
      *
      * @return an input stream, or {@code null} if no data is available in the
-     *         interval.
+     *         interval, or the recording was not recorded to disk
      *
      * @throws IllegalArgumentException if {@code end} happens before
      *         {@code start}
      *
      * @throws IOException if a stream can't be opened
+     *
+     * @see #setToDisk(boolean)
      */
     public InputStream getStream(Instant start, Instant end) throws IOException {
         if (start != null && end != null && end.isBefore(start)) {

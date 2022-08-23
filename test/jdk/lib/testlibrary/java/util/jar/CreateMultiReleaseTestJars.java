@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.ZipFile;
+import java.io.File;
+
 import jdk.security.jarsigner.JarSigner;
+import jdk.test.lib.compiler.Compiler;
+import jdk.test.lib.util.JarBuilder;
 
 public class CreateMultiReleaseTestJars {
     final private String main =

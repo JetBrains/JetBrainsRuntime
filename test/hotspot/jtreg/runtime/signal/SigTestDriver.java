@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,7 +45,7 @@ public class SigTestDriver {
         }
 
         // At least one argument should be specified
-        if ( (args == null) || (args.length < 1) ) {
+        if ((args == null) || (args.length < 1)) {
             throw new IllegalArgumentException("At lease one argument should be specified, the signal name");
         }
 
@@ -65,7 +65,7 @@ public class SigTestDriver {
             }
         }
 
-        Path test = Paths.get(System.getProperty("test.nativepath"))
+        Path test = Paths.get(Utils.TEST_NATIVE_PATH)
                          .resolve("sigtest")
                          .toAbsolutePath();
         String envVar = Platform.sharedLibraryPathVariableName();
@@ -87,20 +87,21 @@ public class SigTestDriver {
         cmd.addAll(vmargs());
 
         // add test specific arguments w/o signame
-        cmd.addAll(Arrays.asList(args)
-                         .subList(1, args.length));
+        var argList = Arrays.asList(args)
+                            .subList(1, args.length);
+        cmd.addAll(argList);
 
         boolean passed = true;
 
-        for (String mode : new String[]{"sigset", "sigaction"}) {
+        for (String mode : new String[] {"sigset", "sigaction"}) {
             for (String scenario : new String[] {"nojvm", "prepre", "prepost", "postpre", "postpost"}) {
                 cmd.set(modeIdx, mode);
                 cmd.set(scenarioIdx, scenario);
-                System.out.printf("START TESTING: SIGNAL = %s, MODE = %s, SCENARIO=%s%n",signame, mode, scenario);
+                System.out.printf("START TESTING: SIGNAL = %s, MODE = %s, SCENARIO=%s%n", signame, mode, scenario);
                 System.out.printf("Do execute: %s%n", cmd.toString());
 
                 ProcessBuilder pb = new ProcessBuilder(cmd);
-                pb.environment().merge(envVar, jvmLibDir().toString(),
+                pb.environment().merge(envVar, Platform.jvmLibDir().toString(),
                         (x, y) -> y + File.pathSeparator + x);
                 pb.environment().put("CLASSPATH", Utils.TEST_CLASS_PATH);
 
@@ -117,7 +118,7 @@ public class SigTestDriver {
                     oa.reportDiagnosticSummary();
                     int exitCode = oa.getExitValue();
                     if (exitCode == 0) {
-                       System.out.println("PASSED with exit code 0");
+                        System.out.println("PASSED with exit code 0");
                     } else {
                         System.out.println("FAILED with exit code " + exitCode);
                         passed = false;
@@ -143,32 +144,7 @@ public class SigTestDriver {
     }
 
     private static Path libjsig() {
-        return jvmLibDir().resolve((Platform.isWindows() ? "" : "lib")
+        return Platform.jvmLibDir().resolve((Platform.isWindows() ? "" : "lib")
                 + "jsig." + Platform.sharedLibraryExt());
-    }
-
-    private static Path jvmLibDir() {
-        Path dir = Paths.get(Utils.TEST_JDK);
-        if (Platform.isWindows()) {
-            return dir.resolve("bin")
-                      .resolve(variant())
-                      .toAbsolutePath();
-        } else {
-            return dir.resolve("lib")
-                      .resolve(variant())
-                      .toAbsolutePath();
-        }
-    }
-
-    private static String variant() {
-        if (Platform.isServer()) {
-            return "server";
-        } else if (Platform.isClient()) {
-            return "client";
-        } else if (Platform.isMinimal()) {
-            return "minimal";
-        } else {
-            throw new Error("TESTBUG: unsupported vm variant");
-        }
     }
 }

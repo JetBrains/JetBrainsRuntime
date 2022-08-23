@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -94,6 +94,7 @@ final class ProviderConfig {
     // avoid if not available (pre Solaris 10) to reduce startup time
     // or if disabled via system property
     private void checkSunPKCS11Solaris() {
+        @SuppressWarnings("removal")
         Boolean o = AccessController.doPrivileged(
                                 new PrivilegedAction<Boolean>() {
             public Boolean run() {
@@ -159,72 +160,76 @@ final class ProviderConfig {
     /**
      * Get the provider object. Loads the provider if it is not already loaded.
      */
-    // com.sun.net.ssl.internal.ssl.Provider has been deprecated since JDK 9
     @SuppressWarnings("deprecation")
-    synchronized Provider getProvider() {
+    Provider getProvider() {
         // volatile variable load
         Provider p = provider;
         if (p != null) {
             return p;
         }
-        if (shouldLoad() == false) {
-            return null;
-        }
+        // DCL
+        synchronized (this) {
+            p = provider;
+            if (p != null) {
+                return p;
+            }
+            if (shouldLoad() == false) {
+                return null;
+            }
 
-        // Create providers which are in java.base directly
-        if (provName.equals("SUN") || provName.equals("sun.security.provider.Sun")) {
-            p = new sun.security.provider.Sun();
-        } else if (provName.equals("SunRsaSign") || provName.equals("sun.security.rsa.SunRsaSign")) {
-            p = new sun.security.rsa.SunRsaSign();
-        } else if (provName.equals("SunJCE") || provName.equals("com.sun.crypto.provider.SunJCE")) {
-            p = new com.sun.crypto.provider.SunJCE();
-        } else if (provName.equals("SunJSSE") ||
-                provName.equals("com.sun.net.ssl.internal.ssl.Provider")) {
-            // com.sun.net.ssl.internal.ssl.Provider is the legacy SunJSSE
-            // provider implementation. For compatibility, let's continue to
-            // support the legacy name for a while.
-            p = new sun.security.ssl.SunJSSE();
-        } else if (provName.equals("Apple") || provName.equals("apple.security.AppleProvider")) {
-            // need to use reflection since this class only exists on MacOsx
-            p = AccessController.doPrivileged(new PrivilegedAction<Provider>() {
-                public Provider run() {
-                    try {
-                        Class<?> c = Class.forName("apple.security.AppleProvider");
-                        if (Provider.class.isAssignableFrom(c)) {
-                            @SuppressWarnings("deprecation")
-                            Object tmp = c.newInstance();
-                            return (Provider) tmp;
-                        } else {
+            // Create providers which are in java.base directly
+            if (provName.equals("SUN") || provName.equals("sun.security.provider.Sun")) {
+                p = new sun.security.provider.Sun();
+            } else if (provName.equals("SunRsaSign") || provName.equals("sun.security.rsa.SunRsaSign")) {
+                p = new sun.security.rsa.SunRsaSign();
+            } else if (provName.equals("SunJCE") || provName.equals("com.sun.crypto.provider.SunJCE")) {
+                p = new com.sun.crypto.provider.SunJCE();
+            } else if (provName.equals("SunJSSE")) {
+                p = new sun.security.ssl.SunJSSE();
+            } else if (provName.equals("Apple") || provName.equals("apple.security.AppleProvider")) {
+                // need to use reflection since this class only exists on MacOsx
+                @SuppressWarnings("removal")
+                var tmp = AccessController.doPrivileged(new PrivilegedAction<Provider>() {
+                    public Provider run() {
+                        try {
+                            Class<?> c = Class.forName("apple.security.AppleProvider");
+                            if (Provider.class.isAssignableFrom(c)) {
+                                @SuppressWarnings("deprecation")
+                                Object tmp = c.newInstance();
+                                return (Provider) tmp;
+                            } else {
+                                return null;
+                            }
+                        } catch (Exception ex) {
+                            if (debug != null) {
+                                debug.println("Error loading provider Apple");
+                                ex.printStackTrace();
+                            }
                             return null;
                         }
-                    } catch (Exception ex) {
-                        if (debug != null) {
-                        debug.println("Error loading provider Apple");
-                        ex.printStackTrace();
+                    }
+                });
+                p = tmp;
+            } else {
+                if (isLoading) {
+                    // because this method is synchronized, this can only
+                    // happen if there is recursion.
+                    if (debug != null) {
+                        debug.println("Recursion loading provider: " + this);
+                        new Exception("Call trace").printStackTrace();
                     }
                     return null;
                 }
-             }
-             });
-        } else {
-            if (isLoading) {
-                // because this method is synchronized, this can only
-                // happen if there is recursion.
-                if (debug != null) {
-                    debug.println("Recursion loading provider: " + this);
-                    new Exception("Call trace").printStackTrace();
+                try {
+                    isLoading = true;
+                    tries++;
+                    p = doLoadProvider();
+                } finally {
+                    isLoading = false;
                 }
-                return null;
             }
-            try {
-                isLoading = true;
-                tries++;
-                p = doLoadProvider();
-            } finally {
-                isLoading = false;
-            }
+            provider = p;
         }
-        provider = p;
         return p;
     }
 
@@ -238,6 +243,7 @@ final class ProviderConfig {
      * @throws ProviderException if executing the Provider's constructor
      * throws a ProviderException. All other Exceptions are ignored.
      */
+    @SuppressWarnings("removal")
     private Provider doLoadProvider() {
         return AccessController.doPrivileged(new PrivilegedAction<Provider>() {
             public Provider run() {
@@ -292,6 +298,7 @@ final class ProviderConfig {
      *
      * NOTE use of doPrivileged().
      */
+    @SuppressWarnings("removal")
     private static String expand(final String value) {
         // shortcut if value does not contain any properties
         if (value.contains("${") == false) {
@@ -326,7 +333,7 @@ final class ProviderConfig {
         /**
          * Loads the provider with the specified class name.
          *
-         * @param name the name of the provider
+         * @param pn the name of the provider
          * @return the Provider, or null if it cannot be found or loaded
          * @throws ProviderException all other exceptions are ignored
          */
@@ -392,6 +399,7 @@ final class ProviderConfig {
                     return null;
                 }
 
+                @SuppressWarnings("removal")
                 Provider p = AccessController.doPrivileged
                     (new PrivilegedExceptionAction<Provider>() {
                     @SuppressWarnings("deprecation") // Class.newInstance

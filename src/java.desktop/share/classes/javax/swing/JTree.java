@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,82 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package javax.swing;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.beans.JavaBean;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.GraphicsEnvironment;
+import java.awt.HeadlessException;
+import java.awt.IllegalComponentStateException;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.event.ActionEvent;
+import java.awt.event.FocusListener;
+import java.awt.event.MouseEvent;
 import java.beans.BeanProperty;
 import java.beans.ConstructorProperties;
+import java.beans.JavaBean;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.io.*;
-import java.util.*;
-import javax.swing.event.*;
-import javax.swing.plaf.*;
-import javax.swing.tree.*;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serial;
+import java.io.Serializable;
+import java.security.PrivilegedAction;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.Hashtable;
+import java.util.Locale;
+import java.util.Set;
+import java.util.Stack;
+import java.util.Vector;
+
+import javax.accessibility.Accessible;
+import javax.accessibility.AccessibleAction;
+import javax.accessibility.AccessibleComponent;
+import javax.accessibility.AccessibleContext;
+import javax.accessibility.AccessibleRole;
+import javax.accessibility.AccessibleSelection;
+import javax.accessibility.AccessibleState;
+import javax.accessibility.AccessibleStateSet;
+import javax.accessibility.AccessibleText;
+import javax.accessibility.AccessibleValue;
+import javax.swing.event.EventListenerList;
+import javax.swing.event.TreeExpansionEvent;
+import javax.swing.event.TreeExpansionListener;
+import javax.swing.event.TreeModelEvent;
+import javax.swing.event.TreeModelListener;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
+import javax.swing.event.TreeWillExpandListener;
+import javax.swing.plaf.TreeUI;
 import javax.swing.text.Position;
-import javax.accessibility.*;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.DefaultTreeSelectionModel;
+import javax.swing.tree.ExpandVetoException;
+import javax.swing.tree.RowMapper;
+import javax.swing.tree.TreeCellEditor;
+import javax.swing.tree.TreeCellRenderer;
+import javax.swing.tree.TreeModel;
+import javax.swing.tree.TreeNode;
+import javax.swing.tree.TreePath;
+import javax.swing.tree.TreeSelectionModel;
 
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.MouseEventAccessor;
 import sun.swing.SwingUtilities2;
 import sun.swing.SwingUtilities2.Section;
-import static sun.swing.SwingUtilities2.Section.*;
+
+import static sun.swing.SwingUtilities2.Section.LEADING;
+import static sun.swing.SwingUtilities2.Section.TRAILING;
 
 /**
  * A control that displays a set of hierarchical data as an outline.
@@ -134,7 +188,7 @@ import static sun.swing.SwingUtilities2.Section.*;
  * future Swing releases. The current serialization support is
  * appropriate for short term storage or RMI between applications running
  * the same version of Swing.  As of 1.4, support for long term storage
- * of all JavaBeans&trade;
+ * of all JavaBeans
  * has been added to the <code>java.beans</code> package.
  * Please see {@link java.beans.XMLEncoder}.
  *</p>
@@ -673,7 +727,6 @@ public class JTree extends JComponent implements Scrollable, Accessible
         selectionModel = new DefaultTreeSelectionModel();
         cellRenderer = null;
         scrollsOnExpand = true;
-        setOpaque(true);
         expandsSelectedPaths = true;
         updateUI();
         setModel(newModel);
@@ -3071,6 +3124,7 @@ public class JTree extends JComponent implements Scrollable, Accessible
     }
 
     // Serialization support.
+    @Serial
     private void writeObject(ObjectOutputStream s) throws IOException {
         Vector<Object> values = new Vector<Object>();
 
@@ -3113,6 +3167,7 @@ public class JTree extends JComponent implements Scrollable, Accessible
         }
     }
 
+    @Serial
     private void readObject(ObjectInputStream s)
         throws IOException, ClassNotFoundException {
         ObjectInputStream.GetField f = s.readFields();
@@ -3312,7 +3367,7 @@ public class JTree extends JComponent implements Scrollable, Accessible
      * future Swing releases. The current serialization support is
      * appropriate for short term storage or RMI between applications running
      * the same version of Swing.  As of 1.4, support for long term storage
-     * of all JavaBeans&trade;
+     * of all JavaBeans
      * has been added to the <code>java.beans</code> package.
      * Please see {@link java.beans.XMLEncoder}.
      */
@@ -3320,6 +3375,11 @@ public class JTree extends JComponent implements Scrollable, Accessible
     protected static class EmptySelectionModel extends
               DefaultTreeSelectionModel
     {
+        /**
+         * Constructs an {@code EmptySelectionModel}.
+         */
+        protected EmptySelectionModel() {}
+
         /**
          * The single instance of {@code EmptySelectionModel}.
          */
@@ -3434,7 +3494,7 @@ public class JTree extends JComponent implements Scrollable, Accessible
      * future Swing releases. The current serialization support is
      * appropriate for short term storage or RMI between applications running
      * the same version of Swing.  As of 1.4, support for long term storage
-     * of all JavaBeans&trade;
+     * of all JavaBeans
      * has been added to the <code>java.beans</code> package.
      * Please see {@link java.beans.XMLEncoder}.
      */
@@ -3442,6 +3502,11 @@ public class JTree extends JComponent implements Scrollable, Accessible
     protected class TreeSelectionRedirector implements Serializable,
                     TreeSelectionListener
     {
+        /**
+         * Constructs a {@code TreeSelectionRedirector}.
+         */
+        protected TreeSelectionRedirector() {}
+
         /**
          * Invoked by the <code>TreeSelectionModel</code> when the
          * selection changes.
@@ -3863,6 +3928,12 @@ public class JTree extends JComponent implements Scrollable, Accessible
       * accordingly when nodes are removed, or changed.
       */
     protected class TreeModelHandler implements TreeModelListener {
+
+        /**
+         * Constructs a {@code TreeModelHandler}.
+         */
+        protected TreeModelHandler() {}
+
         public void treeNodesChanged(TreeModelEvent e) { }
 
         public void treeNodesInserted(TreeModelEvent e) { }
@@ -3954,7 +4025,7 @@ public class JTree extends JComponent implements Scrollable, Accessible
      * future Swing releases. The current serialization support is
      * appropriate for short term storage or RMI between applications running
      * the same version of Swing.  As of 1.4, support for long term storage
-     * of all JavaBeans&trade;
+     * of all JavaBeans
      * has been added to the <code>java.beans</code> package.
      * Please see {@link java.beans.XMLEncoder}.
      */
@@ -4180,6 +4251,18 @@ public class JTree extends JComponent implements Scrollable, Accessible
         return accessibleContext;
     }
 
+    private static final boolean EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODES;
+
+    static {
+        @SuppressWarnings("removal") boolean eaccn = java.security.AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
+            @Override
+            public Boolean run() {
+                return Boolean.getBoolean("javax.swing.JTree.excludeAccessibleChildrenFromClosedNodes");
+            }
+        });
+        EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODES = eaccn;
+    }
+
     /**
      * This class implements accessibility support for the
      * <code>JTree</code> class.  It provides an implementation of the
@@ -4190,7 +4273,7 @@ public class JTree extends JComponent implements Scrollable, Accessible
      * future Swing releases. The current serialization support is
      * appropriate for short term storage or RMI between applications running
      * the same version of Swing.  As of 1.4, support for long term storage
-     * of all JavaBeans&trade;
+     * of all JavaBeans
      * has been added to the <code>java.beans</code> package.
      * Please see {@link java.beans.XMLEncoder}.
      */
@@ -4198,9 +4281,6 @@ public class JTree extends JComponent implements Scrollable, Accessible
     protected class AccessibleJTree extends AccessibleJComponent
             implements AccessibleSelection, TreeSelectionListener,
                        TreeModelListener, TreeExpansionListener  {
-
-        TreePath   leadSelectionPath;
-        Accessible leadSelectionAccessible;
 
         /**
          * Constructs {@code AccessibleJTree}
@@ -4213,12 +4293,6 @@ public class JTree extends JComponent implements Scrollable, Accessible
             }
             JTree.this.addTreeExpansionListener(this);
             JTree.this.addTreeSelectionListener(this);
-            leadSelectionPath = JTree.this.getLeadSelectionPath();
-            leadSelectionAccessible = (leadSelectionPath != null)
-                    ? new AccessibleJTreeNode(JTree.this,
-                                              leadSelectionPath,
-                                              JTree.this)
-                    : null;
         }
 
         /**
@@ -4705,11 +4779,7 @@ public class JTree extends JComponent implements Scrollable, Accessible
                     return null;
                 } else {
                     Object childObj = treeModel.getChild(obj, i);
-                    Object[] objPath = path.getPath();
-                    Object[] objChildPath = new Object[objPath.length+1];
-                    java.lang.System.arraycopy(objPath, 0, objChildPath, 0, objPath.length);
-                    objChildPath[objChildPath.length-1] = childObj;
-                    return new TreePath(objChildPath);
+                    return path.pathByAddingChild(childObj);
                 }
             }
 
@@ -4900,16 +4970,12 @@ public class JTree extends JComponent implements Scrollable, Accessible
                 // someone wants to know, so we need to create our parent
                 // if we don't have one (hey, we're a talented kid!)
                 if (accessibleParent == null) {
-                    Object[] objPath = path.getPath();
-                    if (objPath.length > 1) {
-                        Object objParent = objPath[objPath.length-2];
+                    TreePath parentPath = path.getParentPath();
+                    if (parentPath != null) {
+                        Object objParent = parentPath.getLastPathComponent();
                         if (treeModel != null) {
                             index = treeModel.getIndexOfChild(objParent, obj);
                         }
-                        Object[] objParentPath = new Object[objPath.length-1];
-                        java.lang.System.arraycopy(objPath, 0, objParentPath,
-                                                   0, objPath.length-1);
-                        TreePath parentPath = new TreePath(objParentPath);
                         accessibleParent = new AccessibleJTreeNode(tree,
                                                                    parentPath,
                                                                    null);
@@ -4951,6 +5017,7 @@ public class JTree extends JComponent implements Scrollable, Accessible
              * @return the number of accessible children in the object.
              */
             public int getAccessibleChildrenCount() {
+                if (tree.isCollapsed(path) && EXCLUDE_ACCESSIBLE_CHILDREN_FROM_CLOSED_NODES) return 0; // skip children of collapsed node
                 // Tree nodes can't be so complex that they have
                 // two sets of children -> we're ignoring that case
                 return treeModel.getChildCount(obj);
@@ -4963,17 +5030,10 @@ public class JTree extends JComponent implements Scrollable, Accessible
              * @return the Accessible child of the object
              */
             public Accessible getAccessibleChild(int i) {
-                // Tree nodes can't be so complex that they have
-                // two sets of children -> we're ignoring that case
-                if (i < 0 || i >= getAccessibleChildrenCount()) {
+                TreePath childPath = getChildTreePath(i);
+                if (childPath == null) {
                     return null;
                 } else {
-                    Object childObj = treeModel.getChild(obj, i);
-                    Object[] objPath = path.getPath();
-                    Object[] objChildPath = new Object[objPath.length+1];
-                    java.lang.System.arraycopy(objPath, 0, objChildPath, 0, objPath.length);
-                    objChildPath[objChildPath.length-1] = childObj;
-                    TreePath childPath = new TreePath(objChildPath);
                     return new AccessibleJTreeNode(JTree.this, childPath, this);
                 }
             }

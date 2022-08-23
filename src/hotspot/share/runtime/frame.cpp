@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@
 #include "code/vmreg.inline.hpp"
 #include "compiler/abstractCompiler.hpp"
 #include "compiler/disassembler.hpp"
+#include "compiler/oopMap.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
 #include "interpreter/interpreter.hpp"
 #include "interpreter/oopMapCache.hpp"
@@ -53,9 +54,10 @@
 #include "utilities/decoder.hpp"
 #include "utilities/formatBuffer.hpp"
 
-RegisterMap::RegisterMap(JavaThread *thread, bool update_map) {
+RegisterMap::RegisterMap(JavaThread *thread, bool update_map, bool process_frames) {
   _thread         = thread;
   _update_map     = update_map;
+  _process_frames = process_frames;
   clear();
   debug_only(_update_for_id = NULL;)
 #ifndef PRODUCT
@@ -68,6 +70,7 @@ RegisterMap::RegisterMap(const RegisterMap* map) {
   assert(map != NULL, "RegisterMap must be present");
   _thread                = map->thread();
   _update_map            = map->update_map();
+  _process_frames        = map->process_frames();
   _include_argument_oops = map->include_argument_oops();
   debug_only(_update_for_id = map->_update_for_id;)
   pd_initialize_from(map);
@@ -155,7 +158,7 @@ void frame::set_pc(address   newpc ) {
   }
 #endif // ASSERT
 
-  // Unsafe to use the is_deoptimzed tester after changing pc
+  // Unsafe to use the is_deoptimized tester after changing pc
   _deopt_state = unknown;
   _pc = newpc;
   _cb = CodeCache::find_blob_unsafe(_pc);
@@ -231,8 +234,7 @@ JavaCallWrapper* frame::entry_frame_call_wrapper_if_safe(JavaThread* thread) con
 bool frame::is_entry_frame_valid(JavaThread* thread) const {
   // Validate the JavaCallWrapper an entry frame must have
   address jcw = (address)entry_frame_call_wrapper();
-  bool jcw_safe = (jcw < thread->stack_base()) && (jcw > (address)fp()); // less than stack base
-  if (!jcw_safe) {
+  if (!thread->is_in_stack_range_excl(jcw, (address)fp())) {
     return false;
   }
 
@@ -508,7 +510,7 @@ void frame::interpreter_frame_print_on(outputStream* st) const {
     current->obj()->print_value_on(st);
     st->print_cr("]");
     st->print(" - lock   [");
-    current->lock()->print_on(st);
+    current->lock()->print_on(st, current->obj());
     st->print_cr("]");
   }
   // monitor
@@ -539,9 +541,11 @@ void frame::print_C_frame(outputStream* st, char* buf, int buflen, address pc) {
   int offset;
   bool found;
 
+  if (buf == NULL || buflen < 1) return;
   // libname
+  buf[0] = '\0';
   found = os::dll_address_to_library_name(pc, buf, buflen, &offset);
-  if (found) {
+  if (found && buf[0] != '\0') {
     // skip directory names
     const char *p1, *p2;
     p1 = buf;
@@ -564,7 +568,6 @@ void frame::print_C_frame(outputStream* st, char* buf, int buflen, address pc) {
 //
 // First letter indicates type of the frame:
 //    J: Java frame (compiled)
-//    A: Java frame (aot compiled)
 //    j: Java frame (interpreted)
 //    V: VM frame (C/C++)
 //    v: Other frames running VM generated code (e.g. stubs, adapters, etc.)
@@ -606,9 +609,7 @@ void frame::print_on_error(outputStream* st, char* buf, int buflen, bool verbose
       CompiledMethod* cm = (CompiledMethod*)_cb;
       Method* m = cm->method();
       if (m != NULL) {
-        if (cm->is_aot()) {
-          st->print("A %d ", cm->compile_id());
-        } else if (cm->is_nmethod()) {
+        if (cm->is_nmethod()) {
           nmethod* nm = cm->as_nmethod();
           st->print("J %d%s", nm->compile_id(), (nm->is_osr_method() ? "%" : ""));
           st->print(" %s", nm->compiler_name());
@@ -673,13 +674,13 @@ void frame::print_on_error(outputStream* st, char* buf, int buflen, bool verbose
 */
 class InterpreterFrameClosure : public OffsetClosure {
  private:
-  frame* _fr;
-  OopClosure* _f;
-  int    _max_locals;
-  int    _max_stack;
+  const frame* _fr;
+  OopClosure*  _f;
+  int          _max_locals;
+  int          _max_stack;
 
  public:
-  InterpreterFrameClosure(frame* fr, int max_locals, int max_stack,
+  InterpreterFrameClosure(const frame* fr, int max_locals, int max_stack,
                           OopClosure* f) {
     _fr         = fr;
     _max_locals = max_locals;
@@ -710,21 +711,21 @@ class InterpreterFrameClosure : public OffsetClosure {
   }
 
   int max_locals()  { return _max_locals; }
-  frame* fr()       { return _fr; }
 };
 
 
-class InterpretedArgumentOopFinder: public SignatureInfo {
+class InterpretedArgumentOopFinder: public SignatureIterator {
  private:
-  OopClosure* _f;        // Closure to invoke
-  int    _offset;        // TOS-relative offset, decremented with each argument
-  bool   _has_receiver;  // true if the callee has a receiver
-  frame* _fr;
+  OopClosure*  _f;             // Closure to invoke
+  int          _offset;        // TOS-relative offset, decremented with each argument
+  bool         _has_receiver;  // true if the callee has a receiver
+  const frame* _fr;
 
-  void set(int size, BasicType type) {
-    _offset -= size;
+  friend class SignatureIterator;  // so do_parameters_on can call do_type
+  void do_type(BasicType type) {
+    _offset -= parameter_type_word_count(type);
     if (is_reference_type(type)) oop_offset_do();
-  }
+   }
 
   void oop_offset_do() {
     oop* addr;
@@ -733,7 +734,7 @@ class InterpretedArgumentOopFinder: public SignatureInfo {
   }
 
  public:
-  InterpretedArgumentOopFinder(Symbol* signature, bool has_receiver, frame* fr, OopClosure* f) : SignatureInfo(signature), _has_receiver(has_receiver) {
+  InterpretedArgumentOopFinder(Symbol* signature, bool has_receiver, const frame* fr, OopClosure* f) : SignatureIterator(signature), _has_receiver(has_receiver) {
     // compute size of arguments
     int args_size = ArgumentSizeComputer(signature).size() + (has_receiver ? 1 : 0);
     assert(!fr->is_interpreted_frame() ||
@@ -750,7 +751,7 @@ class InterpretedArgumentOopFinder: public SignatureInfo {
       --_offset;
       oop_offset_do();
     }
-    iterate_parameters();
+    do_parameters_on(this);
   }
 };
 
@@ -767,18 +768,20 @@ class InterpretedArgumentOopFinder: public SignatureInfo {
 
 
 // visits and GC's all the arguments in entry frame
-class EntryFrameOopFinder: public SignatureInfo {
+class EntryFrameOopFinder: public SignatureIterator {
  private:
-  bool   _is_static;
-  int    _offset;
-  frame* _fr;
-  OopClosure* _f;
+  bool         _is_static;
+  int          _offset;
+  const frame* _fr;
+  OopClosure*  _f;
 
-  void set(int size, BasicType type) {
+  friend class SignatureIterator;  // so do_parameters_on can call do_type
+  void do_type(BasicType type) {
+    // decrement offset before processing the type
+    _offset -= parameter_type_word_count(type);
     assert (_offset >= 0, "illegal offset");
-    if (is_reference_type(type)) oop_at_offset_do(_offset);
-    _offset -= size;
-  }
+    if (is_reference_type(type))  oop_at_offset_do(_offset);
+ }
 
   void oop_at_offset_do(int offset) {
     assert (offset >= 0, "illegal offset");
@@ -787,17 +790,17 @@ class EntryFrameOopFinder: public SignatureInfo {
   }
 
  public:
-   EntryFrameOopFinder(frame* frame, Symbol* signature, bool is_static) : SignatureInfo(signature) {
-     _f = NULL; // will be set later
-     _fr = frame;
-     _is_static = is_static;
-     _offset = ArgumentSizeComputer(signature).size() - 1; // last parameter is at index 0
-   }
+  EntryFrameOopFinder(const frame* frame, Symbol* signature, bool is_static) : SignatureIterator(signature) {
+    _f = NULL; // will be set later
+    _fr = frame;
+    _is_static = is_static;
+    _offset = ArgumentSizeComputer(signature).size();  // pre-decremented down to zero
+  }
 
   void arguments_do(OopClosure* f) {
     _f = f;
-    if (!_is_static) oop_at_offset_do(_offset+1); // do the receiver
-    iterate_parameters();
+    if (!_is_static)  oop_at_offset_do(_offset); // do the receiver
+    do_parameters_on(this);
   }
 
 };
@@ -809,7 +812,7 @@ oop* frame::interpreter_callee_receiver_addr(Symbol* signature) {
 }
 
 
-void frame::oops_interpreted_do(OopClosure* f, const RegisterMap* map, bool query_oop_map_cache) {
+void frame::oops_interpreted_do(OopClosure* f, const RegisterMap* map, bool query_oop_map_cache) const {
   assert(is_interpreted_frame(), "Not an interpreted frame");
   assert(map != NULL, "map must be set");
   Thread *thread = Thread::current();
@@ -890,15 +893,16 @@ void frame::oops_interpreted_do(OopClosure* f, const RegisterMap* map, bool quer
 }
 
 
-void frame::oops_interpreted_arguments_do(Symbol* signature, bool has_receiver, OopClosure* f) {
+void frame::oops_interpreted_arguments_do(Symbol* signature, bool has_receiver, OopClosure* f) const {
   InterpretedArgumentOopFinder finder(signature, has_receiver, this, f);
   finder.oops_do();
 }
 
-void frame::oops_code_blob_do(OopClosure* f, CodeBlobClosure* cf, const RegisterMap* reg_map) {
+void frame::oops_code_blob_do(OopClosure* f, CodeBlobClosure* cf, const RegisterMap* reg_map,
+                              DerivedPointerIterationMode derived_mode) const {
   assert(_cb != NULL, "sanity check");
   if (_cb->oop_maps() != NULL) {
-    OopMapSet::oops_do(this, reg_map, f);
+    OopMapSet::oops_do(this, reg_map, f, derived_mode);
 
     // Preserve potential arguments for a callee. We handle this by dispatching
     // on the codeblob. For c2i, we do
@@ -915,7 +919,7 @@ void frame::oops_code_blob_do(OopClosure* f, CodeBlobClosure* cf, const Register
     cf->do_code_blob(_cb);
 }
 
-class CompiledArgumentOopFinder: public SignatureInfo {
+class CompiledArgumentOopFinder: public SignatureIterator {
  protected:
   OopClosure*     _f;
   int             _offset;        // the current offset, incremented with each argument
@@ -926,22 +930,24 @@ class CompiledArgumentOopFinder: public SignatureInfo {
   int             _arg_size;
   VMRegPair*      _regs;        // VMReg list of arguments
 
-  void set(int size, BasicType type) {
-    if (is_reference_type(type)) handle_oop_offset();
-    _offset += size;
+  friend class SignatureIterator;  // so do_parameters_on can call do_type
+  void do_type(BasicType type) {
+    if (is_reference_type(type))  handle_oop_offset();
+    _offset += parameter_type_word_count(type);
   }
 
   virtual void handle_oop_offset() {
     // Extract low order register number from register array.
     // In LP64-land, the high-order bits are valid but unhelpful.
     VMReg reg = _regs[_offset].first();
-    oop *loc = _fr.oopmapreg_to_location(reg, _reg_map);
+    oop *loc = _fr.oopmapreg_to_oop_location(reg, _reg_map);
+    assert(loc != NULL, "missing register map entry");
     _f->do_oop(loc);
   }
 
  public:
-  CompiledArgumentOopFinder(Symbol* signature, bool has_receiver, bool has_appendix, OopClosure* f, frame fr,  const RegisterMap* reg_map)
-    : SignatureInfo(signature) {
+  CompiledArgumentOopFinder(Symbol* signature, bool has_receiver, bool has_appendix, OopClosure* f, frame fr, const RegisterMap* reg_map)
+    : SignatureIterator(signature) {
 
     // initialize CompiledArgumentOopFinder
     _f         = f;
@@ -962,7 +968,7 @@ class CompiledArgumentOopFinder: public SignatureInfo {
       handle_oop_offset();
       _offset++;
     }
-    iterate_parameters();
+    do_parameters_on(this);
     if (_has_appendix) {
       handle_oop_offset();
       _offset++;
@@ -971,7 +977,7 @@ class CompiledArgumentOopFinder: public SignatureInfo {
 };
 
 void frame::oops_compiled_arguments_do(Symbol* signature, bool has_receiver, bool has_appendix,
-                                       const RegisterMap* reg_map, OopClosure* f) {
+                                       const RegisterMap* reg_map, OopClosure* f) const {
   ResourceMark rm;
   CompiledArgumentOopFinder finder(signature, has_receiver, has_appendix, f, *this, reg_map);
   finder.oops_do();
@@ -989,7 +995,7 @@ oop frame::retrieve_receiver(RegisterMap* reg_map) {
 
   // First consult the ADLC on where it puts parameter 0 for this signature.
   VMReg reg = SharedRuntime::name_for_receiver();
-  oop* oop_adr = caller.oopmapreg_to_location(reg, reg_map);
+  oop* oop_adr = caller.oopmapreg_to_oop_location(reg, reg_map);
   if (oop_adr == NULL) {
     guarantee(oop_adr != NULL, "bad register save location");
     return NULL;
@@ -1020,7 +1026,7 @@ oop frame::get_native_receiver() {
   return owner;
 }
 
-void frame::oops_entry_do(OopClosure* f, const RegisterMap* map) {
+void frame::oops_entry_do(OopClosure* f, const RegisterMap* map) const {
   assert(map != NULL, "map must be set");
   if (map->include_argument_oops()) {
     // must collect argument oops, as nobody else is doing it
@@ -1033,12 +1039,24 @@ void frame::oops_entry_do(OopClosure* f, const RegisterMap* map) {
   entry_frame_call_wrapper()->oops_do(f);
 }
 
+void frame::oops_do(OopClosure* f, CodeBlobClosure* cf, const RegisterMap* map,
+                    DerivedPointerIterationMode derived_mode) const {
+  oops_do_internal(f, cf, map, true, derived_mode);
+}
 
-void frame::oops_do_internal(OopClosure* f, CodeBlobClosure* cf, RegisterMap* map, bool use_interpreter_oop_map_cache) {
-#ifndef PRODUCT
-#if defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5140
-#pragma error_messages(off, SEC_NULL_PTR_DEREF)
+void frame::oops_do(OopClosure* f, CodeBlobClosure* cf, const RegisterMap* map) const {
+#if COMPILER2_OR_JVMCI
+  oops_do_internal(f, cf, map, true, DerivedPointerTable::is_active() ?
+                                     DerivedPointerIterationMode::_with_table :
+                                     DerivedPointerIterationMode::_ignore);
+#else
+  oops_do_internal(f, cf, map, true, DerivedPointerIterationMode::_ignore);
 #endif
+}
+
+void frame::oops_do_internal(OopClosure* f, CodeBlobClosure* cf, const RegisterMap* map,
+                             bool use_interpreter_oop_map_cache, DerivedPointerIterationMode derived_mode) const {
+#ifndef PRODUCT
   // simulate GC crash here to dump java thread in error report
   if (CrashGCForDumpingJavaThread) {
     char *t = NULL;
@@ -1049,14 +1067,16 @@ void frame::oops_do_internal(OopClosure* f, CodeBlobClosure* cf, RegisterMap* ma
     oops_interpreted_do(f, map, use_interpreter_oop_map_cache);
   } else if (is_entry_frame()) {
     oops_entry_do(f, map);
+  } else if (is_optimized_entry_frame()) {
+    _cb->as_optimized_entry_blob()->oops_do(f, *this);
   } else if (CodeCache::contains(pc())) {
-    oops_code_blob_do(f, cf, map);
+    oops_code_blob_do(f, cf, map, derived_mode);
   } else {
     ShouldNotReachHere();
   }
 }
 
-void frame::nmethods_do(CodeBlobClosure* cf) {
+void frame::nmethods_do(CodeBlobClosure* cf) const {
   if (_cb != NULL && _cb->is_nmethod()) {
     cf->do_code_blob(_cb);
   }
@@ -1064,7 +1084,7 @@ void frame::nmethods_do(CodeBlobClosure* cf) {
 
 
 // Call f closure on the interpreted Method*s in the stack.
-void frame::metadata_do(MetadataClosure* f) {
+void frame::metadata_do(MetadataClosure* f) const {
   ResourceMark rm;
   if (is_interpreted_frame()) {
     Method* m = this->interpreter_frame_method();
@@ -1073,7 +1093,7 @@ void frame::metadata_do(MetadataClosure* f) {
   }
 }
 
-void frame::verify(const RegisterMap* map) {
+void frame::verify(const RegisterMap* map) const {
   // for now make sure receiver type is correct
   if (is_interpreted_frame()) {
     Method* method = interpreter_frame_method();
@@ -1087,7 +1107,9 @@ void frame::verify(const RegisterMap* map) {
 #if COMPILER2_OR_JVMCI
   assert(DerivedPointerTable::is_empty(), "must be empty before verify");
 #endif
-  oops_do_internal(&VerifyOopClosure::verify_oop, NULL, (RegisterMap*)map, false);
+  if (map->update_map()) { // The map has to be up-to-date for the current frame
+    oops_do_internal(&VerifyOopClosure::verify_oop, NULL, map, false, DerivedPointerIterationMode::_ignore);
+  }
 }
 
 
@@ -1124,6 +1146,8 @@ void frame::interpreter_frame_verify_monitor(BasicObjectLock* value) const {
 #endif
 
 #ifndef PRODUCT
+// callers need a ResourceMark because of name_and_sig_as_C_string() usage,
+// RA allocated string is returned to the caller
 void frame::describe(FrameValues& values, int frame_no) {
   // boundaries: sp and the 'real' frame pointer
   values.describe(-1, sp(), err_msg("sp for #%d", frame_no), 1);
@@ -1186,9 +1210,8 @@ void frame::describe(FrameValues& values, int frame_no) {
     // For now just label the frame
     CompiledMethod* cm = (CompiledMethod*)cb();
     values.describe(-1, info_address,
-                    FormatBuffer<1024>("#%d nmethod " INTPTR_FORMAT " for method %s%s%s", frame_no,
+                    FormatBuffer<1024>("#%d nmethod " INTPTR_FORMAT " for method J %s%s", frame_no,
                                        p2i(cm),
-                                       (cm->is_aot() ? "A ": "J "),
                                        cm->method()->name_and_sig_as_C_string(),
                                        (_deopt_state == is_deoptimized) ?
                                        " (deoptimized)" :
@@ -1215,17 +1238,6 @@ void frame::describe(FrameValues& values, int frame_no) {
 }
 
 #endif
-
-
-//-----------------------------------------------------------------------------------
-// StackFrameStream implementation
-
-StackFrameStream::StackFrameStream(JavaThread *thread, bool update) : _reg_map(thread, update) {
-  assert(thread->has_last_Java_frame(), "sanity check");
-  _fr = thread->last_frame();
-  _is_done = false;
-}
-
 
 #ifndef PRODUCT
 
@@ -1268,7 +1280,7 @@ void FrameValues::validate() {
 }
 #endif // ASSERT
 
-void FrameValues::print(JavaThread* thread) {
+void FrameValues::print_on(JavaThread* thread, outputStream* st) {
   _values.sort(compare);
 
   // Sometimes values like the fp can be invalid values if the
@@ -1280,17 +1292,17 @@ void FrameValues::print(JavaThread* thread) {
   intptr_t* v1 = _values.at(max_index).location;
 
   if (thread == Thread::current()) {
-    while (!thread->is_in_stack((address)v0)) {
+    while (!thread->is_in_live_stack((address)v0)) {
       v0 = _values.at(++min_index).location;
     }
-    while (!thread->is_in_stack((address)v1)) {
+    while (!thread->is_in_live_stack((address)v1)) {
       v1 = _values.at(--max_index).location;
     }
   } else {
-    while (!thread->on_local_stack((address)v0)) {
+    while (!thread->is_in_full_stack((address)v0)) {
       v0 = _values.at(++min_index).location;
     }
-    while (!thread->on_local_stack((address)v1)) {
+    while (!thread->is_in_full_stack((address)v1)) {
       v1 = _values.at(--max_index).location;
     }
   }
@@ -1301,14 +1313,14 @@ void FrameValues::print(JavaThread* thread) {
   for (int i = max_index; i >= min_index; i--) {
     FrameValue fv = _values.at(i);
     while (cur > fv.location) {
-      tty->print_cr(" " INTPTR_FORMAT ": " INTPTR_FORMAT, p2i(cur), *cur);
+      st->print_cr(" " INTPTR_FORMAT ": " INTPTR_FORMAT, p2i(cur), *cur);
       cur--;
     }
     if (last == fv.location) {
       const char* spacer = "          " LP64_ONLY("        ");
-      tty->print_cr(" %s  %s %s", spacer, spacer, fv.description);
+      st->print_cr(" %s  %s %s", spacer, spacer, fv.description);
     } else {
-      tty->print_cr(" " INTPTR_FORMAT ": " INTPTR_FORMAT " %s", p2i(fv.location), *fv.location, fv.description);
+      st->print_cr(" " INTPTR_FORMAT ": " INTPTR_FORMAT " %s", p2i(fv.location), *fv.location, fv.description);
       last = fv.location;
       cur--;
     }

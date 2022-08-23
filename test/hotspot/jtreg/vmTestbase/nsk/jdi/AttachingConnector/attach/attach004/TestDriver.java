@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -86,7 +86,7 @@ public class TestDriver {
         List<String> cmd = new ArrayList<>();
         Class<?> debuggeeClass = attach004t.class;
         cmd.add(JDKToolFinder.getJDKTool("java"));
-        Collections.addAll(cmd, Utils.addTestJavaOpts(
+        Collections.addAll(cmd, Utils.prependTestJavaOpts(
                 "-cp",
                 Utils.TEST_CLASS_PATH,
                 "-Xdebug",
@@ -116,7 +116,7 @@ public class TestDriver {
         List<String> cmd = new ArrayList<>();
         Class<?> debuggerClass = attach004.class;
         cmd.add(JDKToolFinder.getJDKTool("java"));
-        Collections.addAll(cmd, Utils.addTestJavaOpts(
+        Collections.addAll(cmd, Utils.prependTestJavaOpts(
                 "-cp",
                 Utils.TEST_CLASS_PATH + File.pathSeparator + System.getenv("CPAPPEND"),
                 debuggerClass.getName(),

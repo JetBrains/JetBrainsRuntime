@@ -32,8 +32,10 @@ import java.awt.event.WindowEvent;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import sun.awt.IconInfo;
+import sun.awt.PeerEvent;
 import sun.util.logging.PlatformLogger;
 
 import sun.awt.AWTAccessor;
@@ -340,7 +342,19 @@ abstract class XDecoratedPeer extends XWindowPeer {
             || ev.get_atom() == XWM.XA_NET_FRAME_EXTENTS.getAtom())
         {
             if (XWM.getWMID() != XWM.UNITY_COMPIZ_WM) {
-                getWMSetInsets(XAtom.get(ev.get_atom()));
+                if (getMWMDecorTitleProperty().isPresent()) {
+                    // Insets might have changed "in-flight" if that property
+                    // is present, so we need to get the actual values of
+                    // insets from the WM and propagate them through all the
+                    // proper channels.
+                    wm_set_insets = null;
+                    Insets in = getWMSetInsets(XAtom.get(ev.get_atom()));
+                    if (in != null && !in.equals(dimensions.getInsets())) {
+                        handleCorrectInsets(in);
+                    }
+                } else {
+                    getWMSetInsets(XAtom.get(ev.get_atom()));
+                }
             } else {
                 if (!isReparented()) {
                     return;
@@ -401,6 +415,10 @@ abstract class XDecoratedPeer extends XWindowPeer {
             insets_corrected = true;
             reshape(dimensions, SET_SIZE, false);
         } else if (xe.get_parent() == root) {
+            if (!isReparented()) {
+                // X server on Windows (e.g. Cygwin/X) does perform a no-op reparenting to the root window
+                return;
+            }
             configure_seen = false;
             insets_corrected = false;
 
@@ -767,19 +785,12 @@ abstract class XDecoratedPeer extends XWindowPeer {
             return;
         }
 
-        /*
-         * Some window managers configure before we are reparented and
-         * the send event flag is set! ugh... (Enlighetenment for one,
-         * possibly MWM as well).  If we haven't been reparented yet
-         * this is just the WM shuffling us into position.  Ignore
-         * it!!!! or we wind up in a bogus location.
-         */
         int runningWM = XWM.getWMID();
         if (insLog.isLoggable(PlatformLogger.Level.FINE)) {
             insLog.fine("reparented={0}, visible={1}, WM={2}, decorations={3}",
                         isReparented(), isVisible(), runningWM, getDecorations());
         }
-        if (!isReparented() && isVisible() && runningWM != XWM.NO_WM
+        if (ENABLE_REPARENTING_CHECK && !isReparented() && isVisible() && runningWM != XWM.NO_WM
                 &&  !XWM.isNonReparentingWM()
                 && getDecorations() != XWindowAttributesData.AWT_DECOR_NONE) {
             insLog.fine("- visible but not reparented, skipping");
@@ -1058,15 +1069,32 @@ abstract class XDecoratedPeer extends XWindowPeer {
         super.handleClientMessage(xev);
         XClientMessageEvent cl = xev.get_xclient();
         if ((wm_protocols != null) && (cl.get_message_type() == wm_protocols.getAtom())) {
+            long timestamp = getTimeStampFromClientMessage(cl);
+            // We should treat WM_TAKE_FOCUS and WM_DELETE_WINDOW messages as user interaction, as they can originate
+            // e.g. from user clicking on window title bar and window close button correspondingly
+            // (there will be no ButtonPress/ButtonRelease events in those cases).
+            // The received timestamp will be used to set _NET_WM_USER_TIME on newly opened windows to ensure their
+            // correct focusing/positioning, but we don't set it on current window to avoid race conditions (when e.g.
+            // WM_TAKE_FOCUS arrives around the time of new window opening).
+            setUserTime(timestamp, true, false);
+
             if (cl.get_data(0) == wm_delete_window.getAtom()) {
                 handleQuit();
             } else if (cl.get_data(0) == wm_take_focus.getAtom()) {
-                handleWmTakeFocus(cl);
+                handleWmTakeFocus(timestamp);
             }
         }
     }
 
-    private void handleWmTakeFocus(XClientMessageEvent cl) {
+    private static long getTimeStampFromClientMessage(XClientMessageEvent cl) {
+        long requestTimeStamp = cl.get_data(1);
+        // older versions of KDE window manager always send 0 ('CurrentTime') as timestamp,
+        // even though it seems to violate ICCCM specification
+        // (see https://bugs.kde.org/show_bug.cgi?id=347153 and https://bugs.kde.org/show_bug.cgi?id=421068)
+        return requestTimeStamp == 0 ? XToolkit.getCurrentServerTime() : requestTimeStamp;
+    }
+
+    private void handleWmTakeFocus(long requestTimeStamp) {
         if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
             focusLog.fine("WM_TAKE_FOCUS on {0}", this);
         }
@@ -1077,14 +1105,14 @@ abstract class XDecoratedPeer extends XWindowPeer {
                     .getCurrentFocusedWindow();
             Window activeWindow = XWindowPeer.getDecoratedOwner(focusedWindow);
             if (activeWindow != target) {
-                requestWindowFocus(cl.get_data(1), true);
+                requestWindowFocus(requestTimeStamp, true);
             } else {
                 WindowEvent we = new WindowEvent(focusedWindow,
                         WindowEvent.WINDOW_GAINED_FOCUS);
                 sendEvent(we);
             }
         } else {
-            requestWindowFocus(cl.get_data(1), true);
+            requestWindowFocus(requestTimeStamp, true);
         }
     }
 
@@ -1185,7 +1213,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
 
     @Override
     boolean isOverrideRedirect() {
-        return Window.Type.POPUP.equals(getWindowType());
+        return Window.Type.POPUP.equals(getWindowType()) && !XWM.isKDE2();
     }
 
     public boolean requestWindowFocus(long time, boolean timeProvided) {
@@ -1202,6 +1230,18 @@ abstract class XDecoratedPeer extends XWindowPeer {
         }
 
         XWindowPeer toFocus = this;
+
+        if (!ENABLE_MODAL_TRANSIENTS_CHAIN && modalBlocker != null) {
+            toFocus = AWTAccessor.getComponentAccessor().getPeer(modalBlocker);
+            // raising an already top-most window is a no-op, but we perform corresponding
+            // check here to avoid xmonad WM going into an infinite loop - raise request
+            // causes it to refresh internal state and re-send WM_TAKE_FOCUS message
+            if (!((Window)target).isAncestorOf(modalBlocker) && !toFocus.isTopMostWindow()) {
+                toFocus.toFront();
+                return false;
+            }
+        }
+
         while (toFocus.nextTransientFor != null) {
             toFocus = toFocus.nextTransientFor;
         }
@@ -1218,7 +1258,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
             if (target == activeWindow && target != focusedWindow) {
                 // Happens when an owned window is currently focused
                 focusLog.fine("Focus is on child window - transferring it back to the owner");
-                handleWindowFocusInSync(-1);
+                handleWindowFocusInSync(-1, () -> {});
                 return true;
             }
             Window realNativeFocusedWindow = XWindowPeer.getNativeFocusedWindow();
@@ -1276,7 +1316,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
              * WM_TAKE_FOCUS (when FocusIn is generated via XSetInputFocus call) but
              * definetely before the Frame gets FocusIn event (when this method is called).
              */
-            postEvent(new InvocationEvent(target, new Runnable() {
+            postEvent(new PeerEvent(target, new Runnable() {
                 public void run() {
                     XWindowPeer fw = null;
                     synchronized (getStateLock()) {
@@ -1288,7 +1328,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
                     }
                     fw.handleWindowFocusIn_Dispatch();
                 }
-            }));
+            }, PeerEvent.ULTIMATE_PRIORITY_EVENT));
         }
     }
 
@@ -1304,5 +1344,25 @@ abstract class XDecoratedPeer extends XWindowPeer {
             }
         }
         super.handleWindowFocusOut(oppositeWindow, serial);
+    }
+
+    public static final String MWM_DECOR_TITLE_PROPERTY_NAME = "xawt.mwm_decor_title";
+
+    public final Optional<Boolean> getMWMDecorTitleProperty() {
+        Optional<Boolean> res = Optional.empty();
+
+        if (SunToolkit.isInstanceOf(target, "javax.swing.RootPaneContainer")) {
+            javax.swing.JRootPane rootpane = ((javax.swing.RootPaneContainer) target).getRootPane();
+            Object prop = rootpane.getClientProperty(MWM_DECOR_TITLE_PROPERTY_NAME);
+            if (prop != null) {
+                res = Optional.of(Boolean.parseBoolean(prop.toString()));
+            }
+        }
+
+        return res;
+    }
+
+    public final boolean getWindowTitleVisible() {
+        return getMWMDecorTitleProperty().orElse(true);
     }
 }

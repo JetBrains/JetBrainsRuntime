@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1995, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1995, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -135,6 +135,11 @@ import sun.awt.SunToolkit;
  * @since       1.0
  */
 public abstract class Toolkit {
+
+    /**
+     * Constructs a {@code Toolkit}.
+     */
+    protected Toolkit() {}
 
     // The following method is called by the private method
     // <code>updateSystemColors</code> in <code>SystemColor</code>.
@@ -391,6 +396,7 @@ public abstract class Toolkit {
      * properties are set up properly before any classes dependent upon them
      * are initialized.
      */
+    @SuppressWarnings("removal")
     private static void initAssistiveTechnologies() {
 
         // Get accessibility properties
@@ -510,6 +516,7 @@ public abstract class Toolkit {
      * {@code null} it is ignored. All other errors are handled via an AWTError
      * exception.
      */
+    @SuppressWarnings("removal")
     private static void loadAssistiveTechnologies() {
         // Load any assistive technologies
         if (atNames != null && !atNames.isBlank()) {
@@ -1372,6 +1379,7 @@ public abstract class Toolkit {
      * directly.  -hung
      */
     private static boolean loaded = false;
+    @SuppressWarnings("removal")
     static void loadLibraries() {
         if (!loaded) {
             java.security.AccessController.doPrivileged(
@@ -1386,11 +1394,21 @@ public abstract class Toolkit {
     }
 
     static {
+        initStatic();
+    }
+
+    @SuppressWarnings("removal")
+    private static void initStatic() {
         AWTAccessor.setToolkitAccessor(
                 new AWTAccessor.ToolkitAccessor() {
                     @Override
                     public void setPlatformResources(ResourceBundle bundle) {
                         Toolkit.setPlatformResources(bundle);
+                    }
+
+                    @Override
+                    public void setDesktopProperty(Toolkit tk, String prop, Object value) {
+                        tk.setDesktopProperty(prop, value);
                     }
                 });
 
@@ -1459,6 +1477,7 @@ public abstract class Toolkit {
      * @see     java.awt.AWTPermission
     */
     public final EventQueue getSystemEventQueue() {
+        @SuppressWarnings("removal")
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
             security.checkPermission(AWTPermissions.CHECK_AWT_EVENTQUEUE_PERMISSION);
@@ -1798,6 +1817,7 @@ public abstract class Toolkit {
         if (localL == null) {
             return;
         }
+        @SuppressWarnings("removal")
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
           security.checkPermission(AWTPermissions.ALL_AWT_EVENTS_PERMISSION);
@@ -1867,6 +1887,7 @@ public abstract class Toolkit {
         if (listener == null) {
             return;
         }
+        @SuppressWarnings("removal")
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
             security.checkPermission(AWTPermissions.ALL_AWT_EVENTS_PERMISSION);
@@ -1932,6 +1953,7 @@ public abstract class Toolkit {
      * @since 1.4
      */
     public AWTEventListener[] getAWTEventListeners() {
+        @SuppressWarnings("removal")
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
             security.checkPermission(AWTPermissions.ALL_AWT_EVENTS_PERMISSION);
@@ -1984,6 +2006,7 @@ public abstract class Toolkit {
      * @since 1.4
      */
     public AWTEventListener[] getAWTEventListeners(long eventMask) {
+        @SuppressWarnings("removal")
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
             security.checkPermission(AWTPermissions.ALL_AWT_EVENTS_PERMISSION);
@@ -2206,6 +2229,9 @@ public abstract class Toolkit {
         }
     }
 
+    /**
+     * This is a utility class to support desktop properties.
+     */
     @SuppressWarnings("serial")
     private static class DesktopPropertyChangeSupport extends PropertyChangeSupport {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,6 +58,7 @@ import java.nio.file.Files;
  * Remind: This class uses solaris commands. We also need a linux
  * version
  */
+@SuppressWarnings("removal")
 public class PrintServiceLookupProvider extends PrintServiceLookup
     implements BackgroundServiceLookup, Runnable {
 
@@ -149,10 +150,6 @@ public class PrintServiceLookupProvider extends PrintServiceLookup
 
     static boolean isMac() {
         return osname.startsWith("Mac");
-    }
-
-    static boolean isSysV() {
-        return osname.equals("SunOS");
     }
 
     static boolean isLinux() {
@@ -301,7 +298,7 @@ public class PrintServiceLookupProvider extends PrintServiceLookup
                 }
             }
         } else {
-            if (isMac() || isSysV()) {
+            if (isMac()) {
                 printers = getAllPrinterNamesSysV();
             } else if (isAIX()) {
                 printers = getAllPrinterNamesAIX();
@@ -485,7 +482,7 @@ public class PrintServiceLookupProvider extends PrintServiceLookup
         }
         /* fallback if nothing not having a printer at this point */
         PrintService printer = null;
-        if (isMac() || isSysV()) {
+        if (isMac()) {
             printer = getNamedPrinterNameSysV(name);
         } else if (isAIX()) {
             printer = getNamedPrinterNameAIX(name);
@@ -653,7 +650,7 @@ public class PrintServiceLookupProvider extends PrintServiceLookup
                 psuri = printerInfo[1];
             }
         } else {
-            if (isMac() || isSysV()) {
+            if (isMac()) {
                 defaultPrinter = getDefaultPrinterNameSysV();
             } else if (isAIX()) {
                 defaultPrinter = getDefaultPrinterNameAIX();
@@ -872,7 +869,7 @@ public class PrintServiceLookupProvider extends PrintServiceLookup
         ArrayList<String> results = null;
         try {
             final String[] cmd = new String[3];
-            if (isSysV() || isAIX()) {
+            if (isAIX()) {
                 cmd[0] = "/usr/bin/sh";
                 cmd[1] = "-c";
                 cmd[2] = "env LC_ALL=C " + command;

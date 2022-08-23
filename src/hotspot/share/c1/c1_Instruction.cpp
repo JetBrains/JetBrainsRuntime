@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -323,17 +323,15 @@ void BlockBegin::state_values_do(ValueVisitor* f) {
 
 
 Invoke::Invoke(Bytecodes::Code code, ValueType* result_type, Value recv, Values* args,
-               int vtable_index, ciMethod* target, ValueStack* state_before)
+               ciMethod* target, ValueStack* state_before)
   : StateSplit(result_type, state_before)
   , _code(code)
   , _recv(recv)
   , _args(args)
-  , _vtable_index(vtable_index)
   , _target(target)
 {
   set_flag(TargetIsLoadedFlag,   target->is_loaded());
   set_flag(TargetIsFinalFlag,    target_is_loaded() && target->is_final_method());
-  set_flag(TargetIsStrictfpFlag, target_is_loaded() && target->is_strict());
 
   assert(args != NULL, "args must exist");
 #ifdef ASSERT
@@ -838,6 +836,11 @@ bool BlockBegin::try_merge(ValueStack* new_state) {
           existing_phi->make_illegal();
           existing_state->invalidate_local(index);
           TRACE_PHI(tty->print_cr("invalidating local %d because of type mismatch", index));
+        }
+
+        if (existing_value != new_state->local_at(index) && existing_value->as_Phi() == NULL) {
+          TRACE_PHI(tty->print_cr("required phi for local %d is missing, irreducible loop?", index));
+          return false; // BAILOUT in caller
         }
       }
 

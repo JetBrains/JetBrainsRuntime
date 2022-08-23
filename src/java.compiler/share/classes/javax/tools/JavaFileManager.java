@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,7 @@ import java.util.Set;
 import static javax.tools.JavaFileObject.Kind;
 
 /**
- * File manager for tools operating on Java&trade; programming language
+ * File manager for tools operating on Java programming language
  * source and class files.  In this context, <em>file</em> means an
  * abstraction of regular files and other sources of data.
  *
@@ -52,14 +52,14 @@ import static javax.tools.JavaFileObject.Kind;
  * fully qualified class and interface names.  For convenience '.'
  * and '/' are interchangeable.  The internal form is defined in
  * chapter four of
- * <cite>The Java&trade; Virtual Machine Specification</cite>.
+ * <cite>The Java Virtual Machine Specification</cite>.
 
  * <blockquote><p>
  *   <i>Discussion:</i> this means that the names
  *   "java/lang.package-info", "java/lang/package-info",
  *   "java.lang.package-info", are valid and equivalent.  Compare to
  *   binary name as defined in
- *   <cite>The Java&trade; Language Specification</cite>,
+ *   <cite>The Java Language Specification</cite>,
  *   section 13.1 "The Form of a Binary".
  * </p></blockquote>
  *
@@ -79,7 +79,7 @@ import static javax.tools.JavaFileObject.Kind;
  * section&nbsp;3.3.  Informally, this should be true:
  *
  * <!-- URI.create(relativeName).normalize().getPath().equals(relativeName) -->
- * <pre>  URI.{@linkplain java.net.URI#create create}(relativeName).{@linkplain java.net.URI#normalize normalize}().{@linkplain java.net.URI#getPath getPath}().equals(relativeName)</pre>
+ * <pre>  URI.{@linkplain java.net.URI#create create}(relativeName).{@linkplain java.net.URI#normalize() normalize}().{@linkplain java.net.URI#getPath getPath}().equals(relativeName)</pre>
  *
  * <p>All methods in this interface might throw a SecurityException.
  *
@@ -165,7 +165,6 @@ public interface JavaFileManager extends Closeable, Flushable, OptionChecker {
          *
          * @return true if this location is expected to contain modules
          * @since 9
-         * @spec JPMS
          */
         default boolean isModuleOrientedLocation() {
             return getName().matches("\\bMODULE\\b");
@@ -222,7 +221,7 @@ public interface JavaFileManager extends Closeable, Flushable, OptionChecker {
     /**
      * Infers a binary name of a file object based on a package-oriented location.
      * The binary name returned might not be a valid binary name according to
-     * <cite>The Java&trade; Language Specification</cite>.
+     * <cite>The Java Language Specification</cite>.
      *
      * @param location a location
      * @param file a file object
@@ -473,7 +472,6 @@ public interface JavaFileManager extends Closeable, Flushable, OptionChecker {
      * @throws IllegalArgumentException if the location is neither an output location nor a
      * module-oriented location
      * @since 9
-     * @spec JPMS
      */ // TODO: describe failure modes
     default Location getLocationForModule(Location location, String moduleName) throws IOException {
         throw new UnsupportedOperationException();
@@ -497,7 +495,6 @@ public interface JavaFileManager extends Closeable, Flushable, OptionChecker {
      * @throws IllegalArgumentException if the location is neither an output location nor a
      * module-oriented location
      * @since 9
-     * @spec JPMS
      */
     default Location getLocationForModule(Location location, JavaFileObject fo) throws IOException {
         throw new UnsupportedOperationException();
@@ -521,7 +518,6 @@ public interface JavaFileManager extends Closeable, Flushable, OptionChecker {
      * @throws IOException if an I/O error occurred
      * @throws UnsupportedOperationException if this operation if not supported by this file manager
      * @since 9
-     * @spec JPMS
      */ // TODO: describe failure modes
     default <S> ServiceLoader<S> getServiceLoader(Location location, Class<S> service) throws  IOException {
         throw new UnsupportedOperationException();
@@ -540,7 +536,6 @@ public interface JavaFileManager extends Closeable, Flushable, OptionChecker {
      * @throws UnsupportedOperationException if this operation if not supported by this file manager
      * @throws IllegalArgumentException if the location is not one known to this file manager
      * @since 9
-     * @spec JPMS
      */ // TODO: describe failure modes
     default String inferModuleName(Location location) throws IOException {
         throw new UnsupportedOperationException();
@@ -560,7 +555,6 @@ public interface JavaFileManager extends Closeable, Flushable, OptionChecker {
      * @throws UnsupportedOperationException if this operation if not supported by this file manager
      * @throws IllegalArgumentException if the location is not a module-oriented location
      * @since 9
-     * @spec JPMS
      */ // TODO: describe failure modes
     default Iterable<Set<Location>> listLocationsForModules(Location location) throws IOException {
         throw new UnsupportedOperationException();

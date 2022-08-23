@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
  */
 
 #include "precompiled.hpp"
-#include "aot/aotLoader.hpp"
+#include "jvm_io.h"
 #include "code/codeBlob.hpp"
 #include "code/codeCache.hpp"
 #include "code/codeHeapState.hpp"
@@ -35,6 +35,8 @@
 #include "code/pcDesc.hpp"
 #include "compiler/compilationPolicy.hpp"
 #include "compiler/compileBroker.hpp"
+#include "compiler/oopMap.hpp"
+#include "gc/shared/collectedHeap.hpp"
 #include "jfr/jfrEvents.hpp"
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
@@ -49,6 +51,7 @@
 #include "runtime/arguments.hpp"
 #include "runtime/atomic.hpp"
 #include "runtime/deoptimization.hpp"
+#include "runtime/globals_extension.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/icache.hpp"
 #include "runtime/java.hpp"
@@ -150,10 +153,10 @@ int CodeCache::_number_of_nmethods_with_dependencies = 0;
 ExceptionCache* volatile CodeCache::_exception_cache_purge_list = NULL;
 
 // Initialize arrays of CodeHeap subsets
-GrowableArray<CodeHeap*>* CodeCache::_heaps = new(ResourceObj::C_HEAP, mtCode) GrowableArray<CodeHeap*> (CodeBlobType::All, true);
-GrowableArray<CodeHeap*>* CodeCache::_compiled_heaps = new(ResourceObj::C_HEAP, mtCode) GrowableArray<CodeHeap*> (CodeBlobType::All, true);
-GrowableArray<CodeHeap*>* CodeCache::_nmethod_heaps = new(ResourceObj::C_HEAP, mtCode) GrowableArray<CodeHeap*> (CodeBlobType::All, true);
-GrowableArray<CodeHeap*>* CodeCache::_allocable_heaps = new(ResourceObj::C_HEAP, mtCode) GrowableArray<CodeHeap*> (CodeBlobType::All, true);
+GrowableArray<CodeHeap*>* CodeCache::_heaps = new(ResourceObj::C_HEAP, mtCode) GrowableArray<CodeHeap*> (CodeBlobType::All, mtCode);
+GrowableArray<CodeHeap*>* CodeCache::_compiled_heaps = new(ResourceObj::C_HEAP, mtCode) GrowableArray<CodeHeap*> (CodeBlobType::All, mtCode);
+GrowableArray<CodeHeap*>* CodeCache::_nmethod_heaps = new(ResourceObj::C_HEAP, mtCode) GrowableArray<CodeHeap*> (CodeBlobType::All, mtCode);
+GrowableArray<CodeHeap*>* CodeCache::_allocable_heaps = new(ResourceObj::C_HEAP, mtCode) GrowableArray<CodeHeap*> (CodeBlobType::All, mtCode);
 
 void CodeCache::check_heap_sizes(size_t non_nmethod_size, size_t profiled_size, size_t non_profiled_size, size_t cache_size, bool all_set) {
   size_t total_size = non_nmethod_size + profiled_size + non_profiled_size;
@@ -194,12 +197,12 @@ void CodeCache::initialize_heaps() {
   size_t code_buffers_size = 0;
 #ifdef COMPILER1
   // C1 temporary code buffers (see Compiler::init_buffer_blob())
-  const int c1_count = CompilationPolicy::policy()->compiler_count(CompLevel_simple);
+  const int c1_count = CompilationPolicy::c1_count();
   code_buffers_size += c1_count * Compiler::code_buffer_size();
 #endif
 #ifdef COMPILER2
   // C2 scratch buffers (see Compile::init_scratch_buffer_blob())
-  const int c2_count = CompilationPolicy::policy()->compiler_count(CompLevel_full_optimization);
+  const int c2_count = CompilationPolicy::c2_count();
   // Initial size of constant table (this may be increased if a compiled method needs more space)
   code_buffers_size += c2_count * C2Compiler::initial_code_buffer_size();
 #endif
@@ -333,7 +336,7 @@ ReservedCodeSpace CodeCache::reserve_heap_memory(size_t size) {
   const size_t rs_ps = page_size();
   const size_t rs_align = MAX2(rs_ps, (size_t) os::vm_allocation_granularity());
   const size_t rs_size = align_up(size, rs_align);
-  ReservedCodeSpace rs(rs_size, rs_align, rs_ps > (size_t) os::vm_page_size());
+  ReservedCodeSpace rs(rs_size, rs_align, rs_ps);
   if (!rs.is_reserved()) {
     vm_exit_during_initialization(err_msg("Could not reserve enough space for code cache (" SIZE_FORMAT "K)",
                                           rs_size/K));
@@ -353,7 +356,7 @@ bool CodeCache::heap_available(int code_blob_type) {
   } else if (Arguments::is_interpreter_only()) {
     // Interpreter only: we don't need any method code heaps
     return (code_blob_type == CodeBlobType::NonNMethod);
-  } else if (TieredCompilation && (TieredStopAtLevel > CompLevel_simple)) {
+  } else if (CompilerConfig::is_c1_profiling()) {
     // Tiered compilation: use all code heaps
     return (code_blob_type < CodeBlobType::All);
   } else {
@@ -482,9 +485,9 @@ CodeBlob* CodeCache::next_blob(CodeHeap* heap, CodeBlob* cb) {
  * run the constructor for the CodeBlob subclass he is busy
  * instantiating.
  */
-CodeBlob* CodeCache::allocate(int size, int code_blob_type, int orig_code_blob_type) {
+CodeBlob* CodeCache::allocate(int size, int code_blob_type, bool handle_alloc_failure, int orig_code_blob_type) {
   // Possibly wakes up the sweeper thread.
-  NMethodSweeper::notify(code_blob_type);
+  NMethodSweeper::report_allocation();
   assert_locked_or_safepoint(CodeCache_lock);
   assert(size > 0, "Code cache allocation request must be > 0 but is %d", size);
   if (size <= 0) {
@@ -509,7 +512,7 @@ CodeBlob* CodeCache::allocate(int size, int code_blob_type, int orig_code_blob_t
         // Fallback solution: Try to store code in another code heap.
         // NonNMethod -> MethodNonProfiled -> MethodProfiled (-> MethodNonProfiled)
         // Note that in the sweeper, we check the reverse_free_ratio of the code heap
-        // and force stack scanning if less than 10% of the code heap are free.
+        // and force stack scanning if less than 10% of the entire code cache are free.
         int type = code_blob_type;
         switch (type) {
         case CodeBlobType::NonNMethod:
@@ -530,11 +533,13 @@ CodeBlob* CodeCache::allocate(int size, int code_blob_type, int orig_code_blob_t
             tty->print_cr("Extension of %s failed. Trying to allocate in %s.",
                           heap->name(), get_code_heap(type)->name());
           }
-          return allocate(size, type, orig_code_blob_type);
+          return allocate(size, type, handle_alloc_failure, orig_code_blob_type);
         }
       }
-      MutexUnlocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
-      CompileBroker::handle_full_code_cache(orig_code_blob_type);
+      if (handle_alloc_failure) {
+        MutexUnlocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
+        CompileBroker::handle_full_code_cache(orig_code_blob_type);
+      }
       return NULL;
     }
     if (PrintCodeCacheExtension) {
@@ -558,10 +563,12 @@ void CodeCache::free(CodeBlob* cb) {
   CodeHeap* heap = get_code_heap(cb);
   print_trace("free", cb);
   if (cb->is_nmethod()) {
+    nmethod* ptr = (nmethod *)cb;
     heap->set_nmethod_count(heap->nmethod_count() - 1);
-    if (((nmethod *)cb)->has_dependencies()) {
+    if (ptr->has_dependencies()) {
       _number_of_nmethods_with_dependencies--;
     }
+    ptr->free_native_invokers();
   }
   if (cb->is_adapter_blob()) {
     heap->set_adapter_count(heap->adapter_count() - 1);
@@ -671,11 +678,10 @@ void CodeCache::nmethods_do(void f(nmethod* nm)) {
 
 void CodeCache::metadata_do(MetadataClosure* f) {
   assert_locked_or_safepoint(CodeCache_lock);
-  NMethodIterator iter(NMethodIterator::only_alive_and_not_unloading);
+  NMethodIterator iter(NMethodIterator::only_alive);
   while(iter.next()) {
     iter.method()->metadata_do(f);
   }
-  AOTLoader::metadata_do(f);
 }
 
 int CodeCache::alignment_unit() {
@@ -883,20 +889,17 @@ size_t CodeCache::max_capacity() {
   return max_cap;
 }
 
-/**
- * Returns the reverse free ratio. E.g., if 25% (1/4) of the code heap
- * is free, reverse_free_ratio() returns 4.
- */
-double CodeCache::reverse_free_ratio(int code_blob_type) {
-  CodeHeap* heap = get_code_heap(code_blob_type);
-  if (heap == NULL) {
-    return 0;
-  }
 
-  double unallocated_capacity = MAX2((double)heap->unallocated_capacity(), 1.0); // Avoid division by 0;
-  double max_capacity = (double)heap->max_capacity();
-  double result = max_capacity / unallocated_capacity;
-  assert (max_capacity >= unallocated_capacity, "Must be");
+// Returns the reverse free ratio. E.g., if 25% (1/4) of the code cache
+// is free, reverse_free_ratio() returns 4.
+// Since code heap for each type of code blobs falls forward to the next
+// type of code heap, return the reverse free ratio for the entire
+// code cache.
+double CodeCache::reverse_free_ratio() {
+  double unallocated = MAX2((double)unallocated_capacity(), 1.0); // Avoid division by 0;
+  double max = (double)max_capacity();
+  double result = max / unallocated;
+  assert (max >= unallocated, "Must be");
   assert (result >= 1.0, "reverse_free_ratio must be at least 1. It is %f", result);
   return result;
 }
@@ -962,8 +965,6 @@ void CodeCache::initialize() {
 
 void codeCache_init() {
   CodeCache::initialize();
-  // Load AOT libraries and add AOT code heaps.
-  AOTLoader::initialize();
 }
 
 //------------------------------------------------------------------------------------------------
@@ -1027,23 +1028,14 @@ CompiledMethod* CodeCache::find_compiled(void* start) {
   return (CompiledMethod*)cb;
 }
 
-bool CodeCache::is_far_target(address target) {
-#if INCLUDE_AOT
-  return NativeCall::is_far_call(_low_bound,  target) ||
-         NativeCall::is_far_call(_high_bound, target);
-#else
-  return false;
-#endif
-}
-
-#ifdef INCLUDE_JVMTI
-// RedefineClasses support for unloading nmethods that are dependent on "old" methods.
+#if INCLUDE_JVMTI
+// RedefineClasses support for saving nmethods that are dependent on "old" methods.
 // We don't really expect this table to grow very large.  If it does, it can become a hashtable.
 static GrowableArray<CompiledMethod*>* old_compiled_method_table = NULL;
 
 static void add_to_old_table(CompiledMethod* c) {
   if (old_compiled_method_table == NULL) {
-    old_compiled_method_table = new (ResourceObj::C_HEAP, mtCode) GrowableArray<CompiledMethod*>(100, true);
+    old_compiled_method_table = new (ResourceObj::C_HEAP, mtCode) GrowableArray<CompiledMethod*>(100, mtCode);
   }
   old_compiled_method_table->push(c);
 }
@@ -1073,8 +1065,8 @@ void CodeCache::old_nmethods_do(MetadataClosure* f) {
     length = old_compiled_method_table->length();
     for (int i = 0; i < length; i++) {
       CompiledMethod* cm = old_compiled_method_table->at(i);
-      // Only walk alive nmethods, the dead ones will get removed by the sweeper.
-      if (cm->is_alive()) {
+      // Only walk alive nmethods, the dead ones will get removed by the sweeper or GC.
+      if (cm->is_alive() && !cm->is_unloading()) {
         old_compiled_method_table->at(i)->metadata_do(f);
       }
     }
@@ -1085,11 +1077,6 @@ void CodeCache::old_nmethods_do(MetadataClosure* f) {
 // Just marks the methods in this class as needing deoptimization
 void CodeCache::mark_for_evol_deoptimization(InstanceKlass* dependee) {
   assert(SafepointSynchronize::is_at_safepoint(), "Can only do this at a safepoint!");
-
-  // Mark dependent AOT nmethods, which are only found via the class redefined.
-  // TODO: add dependencies to aotCompiledMethod's metadata section so this isn't
-  // needed.
-  AOTLoader::mark_evol_dependent_methods(dependee);
 }
 
 
@@ -1101,7 +1088,7 @@ int CodeCache::mark_dependents_for_evol_deoptimization() {
   reset_old_method_table();
 
   int number_of_marked_CodeBlobs = 0;
-  CompiledMethodIterator iter(CompiledMethodIterator::only_alive_and_not_unloading);
+  CompiledMethodIterator iter(CompiledMethodIterator::only_alive);
   while(iter.next()) {
     CompiledMethod* nm = iter.method();
     // Walk all alive nmethods to check for old Methods.
@@ -1121,7 +1108,7 @@ int CodeCache::mark_dependents_for_evol_deoptimization() {
 
 void CodeCache::mark_all_nmethods_for_evol_deoptimization() {
   assert(SafepointSynchronize::is_at_safepoint(), "Can only do this at a safepoint!");
-  CompiledMethodIterator iter(CompiledMethodIterator::only_alive_and_not_unloading);
+  CompiledMethodIterator iter(CompiledMethodIterator::only_alive);
   while(iter.next()) {
     CompiledMethod* nm = iter.method();
     if (!nm->method()->is_method_handle_intrinsic()) {
@@ -1194,10 +1181,18 @@ void CodeCache::flush_dependents_on(InstanceKlass* dependee) {
 
   if (number_of_nmethods_with_dependencies() == 0) return;
 
-  KlassDepChange changes(dependee);
+  int marked = 0;
+  if (dependee->is_linked()) {
+    // Class initialization state change.
+    KlassInitDepChange changes(dependee);
+    marked = mark_for_deoptimization(changes);
+  } else {
+    // New class is loaded.
+    NewKlassDepChange changes(dependee);
+    marked = mark_for_deoptimization(changes);
+  }
 
-  // Compute the dependent nmethods
-  if (mark_for_deoptimization(changes) > 0) {
+  if (marked > 0) {
     // At least one nmethod has been marked for deoptimization
     Deoptimization::deoptimize_all_marked();
   }
@@ -1557,6 +1552,34 @@ void CodeCache::log_state(outputStream* st) {
             blob_count(), nmethod_count(), adapter_count(),
             unallocated_capacity());
 }
+
+#ifdef LINUX
+void CodeCache::write_perf_map() {
+  MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
+
+  // Perf expects to find the map file at /tmp/perf-<pid>.map.
+  char fname[32];
+  jio_snprintf(fname, sizeof(fname), "/tmp/perf-%d.map", os::current_process_id());
+
+  fileStream fs(fname, "w");
+  if (!fs.is_open()) {
+    log_warning(codecache)("Failed to create %s for perf map", fname);
+    return;
+  }
+
+  AllCodeBlobsIterator iter(AllCodeBlobsIterator::only_alive_and_not_unloading);
+  while (iter.next()) {
+    CodeBlob *cb = iter.method();
+    ResourceMark rm;
+    const char* method_name =
+      cb->is_compiled() ? cb->as_compiled_method()->method()->external_name()
+                        : cb->name();
+    fs.print_cr(INTPTR_FORMAT " " INTPTR_FORMAT " %s",
+                (intptr_t)cb->code_begin(), (intptr_t)cb->code_size(),
+                method_name);
+  }
+}
+#endif // LINUX
 
 //---<  BEGIN  >--- CodeHeap State Analytics.
 

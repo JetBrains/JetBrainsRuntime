@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,11 +23,18 @@
  */
 
 #include "precompiled.hpp"
+#include "classfile/classLoaderData.hpp"
+#include "gc/shared/barrierSet.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
+#include "gc/shared/barrierSetNMethod.hpp"
 #include "gc/shared/collectedHeap.hpp"
+#include "interpreter/interp_masm.hpp"
 #include "memory/universe.hpp"
 #include "runtime/jniHandles.hpp"
+#include "runtime/sharedRuntime.hpp"
+#include "runtime/stubRoutines.hpp"
 #include "runtime/thread.hpp"
+
 
 #define __ masm->
 
@@ -112,11 +119,6 @@ void BarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet decorators
   }
 }
 
-void BarrierSetAssembler::obj_equals(MacroAssembler* masm,
-                                     Register obj1, Register obj2) {
-  __ cmp(obj1, obj2);
-}
-
 void BarrierSetAssembler::try_resolve_jobject_in_native(MacroAssembler* masm, Register jni_env,
                                                         Register obj, Register tmp, Label& slowpath) {
   // If mask changes we need to ensure that the inverse is still encodable as an immediate
@@ -173,7 +175,7 @@ void BarrierSetAssembler::eden_allocate(MacroAssembler* masm, Register obj,
     Label retry;
     __ bind(retry);
     {
-      unsigned long offset;
+      uint64_t offset;
       __ adrp(rscratch1, ExternalAddress((address) Universe::heap()->end_addr()), offset);
       __ ldr(heap_end, Address(rscratch1, offset));
     }
@@ -182,7 +184,7 @@ void BarrierSetAssembler::eden_allocate(MacroAssembler* masm, Register obj,
 
     // Get the current top of the heap
     {
-      unsigned long offset;
+      uint64_t offset;
       __ adrp(rscratch1, heap_top, offset);
       // Use add() here after ARDP, rather than lea().
       // lea() does not generate anything if its offset is zero.
@@ -229,3 +231,67 @@ void BarrierSetAssembler::incr_allocated_bytes(MacroAssembler* masm,
   }
   __ str(t1, Address(rthread, in_bytes(JavaThread::allocated_bytes_offset())));
 }
+
+void BarrierSetAssembler::nmethod_entry_barrier(MacroAssembler* masm) {
+  BarrierSetNMethod* bs_nm = BarrierSet::barrier_set()->barrier_set_nmethod();
+
+  if (bs_nm == NULL) {
+    return;
+  }
+
+  Label skip, guard;
+  Address thread_disarmed_addr(rthread, in_bytes(bs_nm->thread_disarmed_offset()));
+
+  __ ldrw(rscratch1, guard);
+
+  // Subsequent loads of oops must occur after load of guard value.
+  // BarrierSetNMethod::disarm sets guard with release semantics.
+  __ membar(__ LoadLoad);
+  __ ldrw(rscratch2, thread_disarmed_addr);
+  __ cmpw(rscratch1, rscratch2);
+  __ br(Assembler::EQ, skip);
+
+  __ movptr(rscratch1, (uintptr_t) StubRoutines::aarch64::method_entry_barrier());
+  __ blr(rscratch1);
+  __ b(skip);
+
+  __ bind(guard);
+
+  __ emit_int32(0);   // nmethod guard value. Skipped over in common case.
+
+  __ bind(skip);
+}
+
+void BarrierSetAssembler::c2i_entry_barrier(MacroAssembler* masm) {
+  BarrierSetNMethod* bs = BarrierSet::barrier_set()->barrier_set_nmethod();
+  if (bs == NULL) {
+    return;
+  }
+
+  Label bad_call;
+  __ cbz(rmethod, bad_call);
+
+  // Pointer chase to the method holder to find out if the method is concurrently unloading.
+  Label method_live;
+  __ load_method_holder_cld(rscratch1, rmethod);
+
+  // Is it a strong CLD?
+  __ ldrw(rscratch2, Address(rscratch1, ClassLoaderData::keep_alive_offset()));
+  __ cbnz(rscratch2, method_live);
+
+  // Is it a weak but alive CLD?
+  __ stp(r10, r11, Address(__ pre(sp, -2 * wordSize)));
+  __ ldr(r10, Address(rscratch1, ClassLoaderData::holder_offset()));
+
+  // Uses rscratch1 & rscratch2, so we must pass new temporaries.
+  __ resolve_weak_handle(r10, r11);
+  __ mov(rscratch1, r10);
+  __ ldp(r10, r11, Address(__ post(sp, 2 * wordSize)));
+  __ cbnz(rscratch1, method_live);
+
+  __ bind(bad_call);
+
+  __ far_jump(RuntimeAddress(SharedRuntime::get_handle_wrong_method_stub()));
+  __ bind(method_live);
+}
+

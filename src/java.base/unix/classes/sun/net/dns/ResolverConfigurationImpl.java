@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -117,6 +117,7 @@ public class ResolverConfigurationImpl
 
     // Load DNS configuration from OS
 
+    @SuppressWarnings("removal")
     private void loadConfig() {
         assert Thread.holdsLock(lock);
 
@@ -149,6 +150,7 @@ public class ResolverConfigurationImpl
 
     // obtain search list or local domain
 
+    @SuppressWarnings("removal")
     private LinkedList<String> getSearchList() {
 
         LinkedList<String> sl;
@@ -176,16 +178,6 @@ public class ResolverConfigurationImpl
         }
 
         // No search keyword so use local domain
-
-
-        // LOCALDOMAIN has absolute priority on Solaris
-
-        String localDomain = localDomain0();
-        if (localDomain != null && !localDomain.isEmpty()) {
-            sl = new LinkedList<>();
-            sl.add(localDomain);
-            return sl;
-        }
 
         // try domain keyword in /etc/resolv.conf
 
@@ -253,8 +245,6 @@ public class ResolverConfigurationImpl
 
 
     // --- Native methods --
-
-    static native String localDomain0();
 
     static native String fallbackDomain0();
 

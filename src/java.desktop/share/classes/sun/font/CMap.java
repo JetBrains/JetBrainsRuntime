@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -234,26 +234,8 @@ abstract class CMap {
                                   getConverterMap(GBKEncoding));
             }
             else if (three4 != 0) {
-                /* GB2312 TrueType fonts on Solaris have wrong encoding ID for
-                 * cmap table, these fonts have EncodingID 4 which is Big5
-                 * encoding according the TrueType spec, but actually the
-                 * fonts are using gb2312 encoding, have to use this
-                 * workaround to make Solaris zh_CN locale work.  -sherman
-                 */
-                if (FontUtilities.isSolaris && font.platName != null &&
-                    (font.platName.startsWith(
-                     "/usr/openwin/lib/locale/zh_CN.EUC/X11/fonts/TrueType") ||
-                     font.platName.startsWith(
-                     "/usr/openwin/lib/locale/zh_CN/X11/fonts/TrueType") ||
-                     font.platName.startsWith(
-                     "/usr/openwin/lib/locale/zh/X11/fonts/TrueType"))) {
-                    cmap = createCMap(cmapBuffer, three4,
-                                       getConverterMap(GBKEncoding));
-                }
-                else {
-                    cmap = createCMap(cmapBuffer, three4,
-                                      getConverterMap(Big5Encoding));
-                }
+                cmap = createCMap(cmapBuffer, three4,
+                                  getConverterMap(Big5Encoding));
             }
             else if (three5 != 0) {
                 cmap = createCMap(cmapBuffer, three5,
@@ -418,10 +400,8 @@ abstract class CMap {
         } else {
             subtableLength = buffer.getInt(offset+4) & INTMASK;
         }
-        if (offset+subtableLength > buffer.capacity()) {
-            if (FontUtilities.isLogging()) {
-                FontUtilities.getLogger().warning("Cmap subtable overflows buffer.");
-            }
+        if (FontUtilities.isLogging() && offset + subtableLength > buffer.capacity()) {
+            FontUtilities.logWarning("Cmap subtable overflows buffer.");
         }
         switch (subtableFormat) {
         case 0:  return new CMapFormat0(buffer, offset);
@@ -440,16 +420,12 @@ abstract class CMap {
         int subtableFormat = buffer.getChar(offset);
         if (subtableFormat == 14) {
             long subtableLength = buffer.getInt(offset + 2) & INTMASK;
-            if (offset + subtableLength > buffer.capacity()) {
-                if (FontUtilities.isLogging()) {
-                    FontUtilities.getLogger()
-                            .warning("Cmap UVS subtable overflows buffer.");
-                }
+            if (FontUtilities.isLogging() && offset + subtableLength > buffer.capacity()) {
+                FontUtilities.logWarning("Cmap UVS subtable overflows buffer.");
             }
             try {
                 this.uvs = new UVS(buffer, offset);
             } catch (Throwable t) {
-                t.printStackTrace();
             }
         }
         return;
@@ -1088,7 +1064,7 @@ abstract class CMap {
 
     public static final NullCMapClass theNullCmap = new NullCMapClass();
 
-    final int getControlCodeGlyph(int charCode, boolean noSurrogates) {
+    static int getControlCodeGlyph(int charCode, boolean noSurrogates) {
         if (charCode < 0x0010) {
             switch (charCode) {
             case 0x0009:
@@ -1101,7 +1077,7 @@ abstract class CMap {
         return -1;
     }
 
-    final char getFormatCharGlyph(int charCode) {
+    static char getFormatCharGlyph(int charCode) {
         if (charCode >= 0x200c) {
             if ((charCode <= 0x200f) ||
                 (charCode >= 0x2028 && charCode <= 0x202e) ||
@@ -1168,15 +1144,17 @@ abstract class CMap {
             }
         }
 
-        static final int VS_NOGLYPH = 0;
-        private int getGlyph(int charCode, int variationSelector) {
-            int targetSelector = -1;
+        private int findVariationSelectorIndex(int variationSelector) {
             for (int i = 0; i < numSelectors; i++) {
                 if (selector[i] == variationSelector) {
-                    targetSelector = i;
-                    break;
+                    return i;
                 }
             }
+            return -1;
+        }
+
+        static final int VS_NOGLYPH = 0;
+        private int getGlyph(int charCode, int targetSelector) {
             if (targetSelector == -1) {
                 return VS_NOGLYPH;
             }
@@ -1192,15 +1170,17 @@ abstract class CMap {
     }
 
     char getVariationGlyph(int charCode, int variationSelector) {
+        if (variationSelector == 0) return getGlyph(charCode);
         char glyph = 0;
-        if (uvs == null) {
-            glyph = getGlyph(charCode);
-        } else {
-            int result = uvs.getGlyph(charCode, variationSelector);
-            if (result > 0) {
-                glyph = (char)(result & 0xFFFF);
-            } else {
-                glyph = getGlyph(charCode);
+        if (uvs != null) {
+            int targetSelector = uvs.findVariationSelectorIndex(variationSelector);
+            if (targetSelector != -1) {
+                int result = uvs.getGlyph(charCode, targetSelector);
+                if (result > 0) {
+                    glyph = (char)(result & 0xFFFF);
+                } else {
+                    glyph = getGlyph(charCode);
+                }
             }
         }
         return glyph;

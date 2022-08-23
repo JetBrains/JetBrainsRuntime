@@ -49,8 +49,9 @@ ParMarkBitMap::initialize(MemRegion covered_region)
 
   const size_t rs_align = page_sz == (size_t) os::vm_page_size() ? 0 :
     MAX2(page_sz, granularity);
-  ReservedSpace rs(_reserved_byte_size, rs_align, rs_align > 0);
-  os::trace_page_sizes("Mark Bitmap", raw_bytes, raw_bytes, page_sz,
+  ReservedSpace rs(_reserved_byte_size, rs_align, page_sz);
+  const size_t used_page_sz = rs.page_size();
+  os::trace_page_sizes("Mark Bitmap", raw_bytes, raw_bytes, used_page_sz,
                        rs.base(), rs.size());
 
   MemTracker::record_virtual_memory_type((address)rs.base(), mtGC);
@@ -76,11 +77,6 @@ ParMarkBitMap::initialize(MemRegion covered_region)
   return false;
 }
 
-#ifdef ASSERT
-extern size_t mark_bitmap_count;
-extern size_t mark_bitmap_size;
-#endif  // #ifdef ASSERT
-
 bool
 ParMarkBitMap::mark_obj(HeapWord* addr, size_t size)
 {
@@ -89,8 +85,6 @@ ParMarkBitMap::mark_obj(HeapWord* addr, size_t size)
     const idx_t end_bit = addr_to_bit(addr + size - 1);
     bool end_bit_ok = _end_bits.par_set_bit(end_bit);
     assert(end_bit_ok, "concurrency problem");
-    DEBUG_ONLY(Atomic::inc(&mark_bitmap_count));
-    DEBUG_ONLY(Atomic::add(&mark_bitmap_size, size));
     return true;
   }
   return false;
@@ -111,13 +105,13 @@ ParMarkBitMap::update_live_words_in_range_cache(ParCompactionManager* cm, HeapWo
 size_t
 ParMarkBitMap::live_words_in_range_helper(HeapWord* beg_addr, oop end_obj) const
 {
-  assert(beg_addr <= (HeapWord*)end_obj, "bad range");
+  assert(beg_addr <= cast_from_oop<HeapWord*>(end_obj), "bad range");
   assert(is_marked(end_obj), "end_obj must be live");
 
   idx_t live_bits = 0;
 
   // The bitmap routines require the right boundary to be word-aligned.
-  const idx_t end_bit = addr_to_bit((HeapWord*)end_obj);
+  const idx_t end_bit = addr_to_bit(cast_from_oop<HeapWord*>(end_obj));
   const idx_t range_end = align_range_end(end_bit);
 
   idx_t beg_bit = find_obj_beg(addr_to_bit(beg_addr), range_end);
@@ -134,8 +128,8 @@ size_t
 ParMarkBitMap::live_words_in_range_use_cache(ParCompactionManager* cm, HeapWord* beg_addr, oop end_oop) const
 {
   HeapWord* last_beg = cm->last_query_begin();
-  HeapWord* last_obj = (HeapWord*)cm->last_query_object();
-  HeapWord* end_obj  = (HeapWord*)end_oop;
+  HeapWord* last_obj = cast_from_oop<HeapWord*>(cm->last_query_object());
+  HeapWord* end_obj  = cast_from_oop<HeapWord*>(end_oop);
 
   size_t last_ret = cm->last_query_return();
   if (end_obj > last_obj) {
@@ -145,14 +139,14 @@ ParMarkBitMap::live_words_in_range_use_cache(ParCompactionManager* cm, HeapWord*
     // The cached value is for an object that is to the left (lower address) of the current
     // end_obj. Calculate back from that cached value.
     if (pointer_delta(end_obj, beg_addr) > pointer_delta(last_obj, end_obj)) {
-      last_ret = last_ret - live_words_in_range_helper(end_obj, (oop)last_obj);
+      last_ret = last_ret - live_words_in_range_helper(end_obj, cast_to_oop(last_obj));
     } else {
       last_ret = live_words_in_range_helper(beg_addr, end_oop);
     }
     last_obj = end_obj;
   }
 
-  update_live_words_in_range_cache(cm, last_beg, (oop)last_obj, last_ret);
+  update_live_words_in_range_cache(cm, last_beg, cast_to_oop(last_obj), last_ret);
   return last_ret;
 }
 

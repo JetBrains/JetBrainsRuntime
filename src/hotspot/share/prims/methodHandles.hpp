@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +25,13 @@
 #ifndef SHARE_PRIMS_METHODHANDLES_HPP
 #define SHARE_PRIMS_METHODHANDLES_HPP
 
-#include "classfile/javaClasses.hpp"
+#include "classfile/vmClasses.hpp"
 #include "classfile/vmSymbols.hpp"
+#include "oops/method.hpp"
 #include "runtime/frame.hpp"
+#include "runtime/fieldDescriptor.hpp"
 #include "runtime/globals.hpp"
+#include "runtime/stubCodeGenerator.hpp"
 #include "utilities/macros.hpp"
 
 #ifdef ZERO
@@ -36,8 +39,8 @@
 # include "interpreter/interpreter.hpp"
 #endif
 
-
 class MacroAssembler;
+class MethodHandlesAdapterBlob;
 class Label;
 
 class MethodHandles: AllStatic {
@@ -61,7 +64,7 @@ class MethodHandles: AllStatic {
 
  public:
   // working with member names
-  static Handle resolve_MemberName(Handle mname, Klass* caller,
+  static Handle resolve_MemberName(Handle mname, Klass* caller, int lookup_mode,
                                    bool speculative_resolve, TRAPS); // compute vmtarget/vmindex from name/type
   static void expand_MemberName(Handle mname, int suppress, TRAPS);  // expand defc/name/type if missing
   static oop init_MemberName(Handle mname_h, Handle target_h, TRAPS); // compute vmtarget/vmindex from target
@@ -119,7 +122,7 @@ class MethodHandles: AllStatic {
   static bool has_member_arg(vmIntrinsics::ID iid) {
     assert(is_signature_polymorphic(iid), "");
     return (iid >= vmIntrinsics::_linkToVirtual &&
-            iid <= vmIntrinsics::_linkToInterface);
+            iid <= vmIntrinsics::_linkToNative);
   }
   static bool has_member_arg(Symbol* klass, Symbol* name) {
     if ((klass == vmSymbols::java_lang_invoke_MethodHandle() ||
@@ -149,13 +152,13 @@ class MethodHandles: AllStatic {
 
 public:
   static Symbol* lookup_signature(oop type_str, bool polymorphic, TRAPS);  // use TempNewSymbol
-  static Symbol* lookup_basic_type_signature(Symbol* sig, bool keep_last_arg, TRAPS);  // use TempNewSymbol
-  static Symbol* lookup_basic_type_signature(Symbol* sig, TRAPS) {
-    return lookup_basic_type_signature(sig, false, THREAD);
+  static Symbol* lookup_basic_type_signature(Symbol* sig, bool keep_last_arg);  // use TempNewSymbol
+  static Symbol* lookup_basic_type_signature(Symbol* sig) {
+    return lookup_basic_type_signature(sig, false);
   }
   static bool is_basic_type_signature(Symbol* sig);
 
-  static void print_as_basic_type_signature_on(outputStream* st, Symbol* sig, bool keep_arrays = false, bool keep_basic_names = false);
+  static void print_as_basic_type_signature_on(outputStream* st, Symbol* sig);
 
   // decoding CONSTANT_MethodHandle constants
   enum { JVM_REF_MIN = JVM_REF_getField, JVM_REF_MAX = JVM_REF_invokeInterface };
@@ -179,6 +182,9 @@ public:
   static bool ref_kind_has_receiver(int ref_kind) {
     assert(ref_kind_is_valid(ref_kind), "");
     return (ref_kind & 1) != 0;
+  }
+  static bool ref_kind_is_static(int ref_kind) {
+    return !ref_kind_has_receiver(ref_kind) && (ref_kind != JVM_REF_newInvokeSpecial);
   }
 
   static int ref_kind_to_flags(int ref_kind);

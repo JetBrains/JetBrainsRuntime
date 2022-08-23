@@ -25,13 +25,11 @@
 #ifndef SHARE_GC_SHENANDOAH_HEURISTICS_SHENANDOAHPASSIVEHEURISTICS_HPP
 #define SHARE_GC_SHENANDOAH_HEURISTICS_SHENANDOAHPASSIVEHEURISTICS_HPP
 
-#include "gc/shenandoah/shenandoahHeuristics.hpp"
+#include "gc/shenandoah/heuristics/shenandoahHeuristics.hpp"
 
 class ShenandoahPassiveHeuristics : public ShenandoahHeuristics {
 public:
-  virtual bool should_start_gc() const;
-
-  virtual bool should_process_references();
+  virtual bool should_start_gc();
 
   virtual bool should_unload_classes();
 
@@ -41,11 +39,9 @@ public:
                                                      RegionData* data, size_t data_size,
                                                      size_t free);
 
-  virtual const char* name();
-
-  virtual bool is_diagnostic();
-
-  virtual bool is_experimental();
+  virtual const char* name()     { return "Passive"; }
+  virtual bool is_diagnostic()   { return true; }
+  virtual bool is_experimental() { return false; }
 };
 
 #endif // SHARE_GC_SHENANDOAH_HEURISTICS_SHENANDOAHPASSIVEHEURISTICS_HPP

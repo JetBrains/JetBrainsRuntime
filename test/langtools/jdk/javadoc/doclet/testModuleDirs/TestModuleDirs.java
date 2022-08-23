@@ -88,7 +88,7 @@ public class TestModuleDirs extends JavadocTester {
     public void testModuleDirs(Path base) throws IOException {
         Path src = base.resolve("src");
         new ModuleBuilder(tb, "ma")
-                .classes("package pa; public class A {}")
+                .classes("package pa; @Deprecated public class A {}")
                 .exports("pa")
                 .write(src);
         new ModuleBuilder(tb, "mb")
@@ -109,12 +109,15 @@ public class TestModuleDirs extends JavadocTester {
                 "ma/module-summary.html",
                 "ma/pa/package-summary.html");
         checkOutput("ma/module-summary.html", false,
-                "<ul class=\"navList\" id=\"allclasses_navbar_top\">\n"
-                + "<li><a href=\"../allclasses-noframe.html\">All&nbsp;Classes</a></li>\n"
-                + "</ul>\n");
+                """
+                    <ul class="navList" id="allclasses_navbar_top">
+                    <li><a href="../allclasses-noframe.html">All&nbsp;Classes</a></li>
+                    </ul>
+                    """);
         checkOutput("ma/pa/package-summary.html", true,
-                "<li><a href=\"../../deprecated-list.html\">Deprecated</a></li>\n"
-                + "<li><a href=\"../../index-all.html\">Index</a></li>");
+                """
+                    <li><a href="../../deprecated-list.html">Deprecated</a></li>
+                    <li><a href="../../index-all.html">Index</a></li>""");
     }
 }
 

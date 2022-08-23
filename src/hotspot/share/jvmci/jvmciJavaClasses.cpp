@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,13 +23,17 @@
 
 #include "precompiled.hpp"
 #include "classfile/symbolTable.hpp"
+#include "classfile/systemDictionary.hpp"
+#include "classfile/vmClasses.hpp"
 #include "interpreter/linkResolver.hpp"
 #include "jvmci/jniAccessMark.inline.hpp"
 #include "jvmci/jvmciJavaClasses.hpp"
 #include "jvmci/jvmciRuntime.hpp"
 #include "memory/resourceArea.hpp"
-#include "runtime/jniHandles.inline.hpp"
+#include "oops/instanceKlass.inline.hpp"
 #include "runtime/fieldDescriptor.inline.hpp"
+#include "runtime/jniHandles.inline.hpp"
+#include "runtime/java.hpp"
 
 // ------------------------------------------------------------------
 
@@ -83,12 +87,13 @@ void HotSpotJVMCI::compute_offset(int &dest_offset, Klass* klass, const char* na
     // accessor itself does not include a class initialization check.
     ik->initialize(CHECK);
   }
+  JVMCI_event_2("   field offset for %s %s.%s = %d", signature, ik->external_name(), name, dest_offset);
 }
 
 #ifndef PRODUCT
 static void check_resolve_method(const char* call_type, Klass* resolved_klass, Symbol* method_name, Symbol* method_signature, TRAPS) {
-  Method* method;
-  LinkInfo link_info(resolved_klass, method_name, method_signature, NULL, LinkInfo::skip_access_check);
+  Method* method = NULL;
+  LinkInfo link_info(resolved_klass, method_name, method_signature, NULL, LinkInfo::AccessCheck::skip, LinkInfo::LoaderConstraintCheck::skip);
   if (strcmp(call_type, "call_static") == 0) {
     method = LinkResolver::resolve_static_call_or_null(link_info);
   } else if (strcmp(call_type, "call_virtual") == 0) {
@@ -117,7 +122,8 @@ jmethodID JNIJVMCI::_HotSpotResolvedPrimitiveType_fromMetaspace_method;
 
 #define START_CLASS(className, fullClassName)                          { \
   Klass* k = SystemDictionary::resolve_or_fail(vmSymbols::fullClassName(), true, CHECK); \
-  className::_klass = InstanceKlass::cast(k); \
+  className::_klass = InstanceKlass::cast(k);                                     \
+  JVMCI_event_2(" klass for %s = " PTR_FORMAT, k->external_name(), p2i(k));       \
   className::_klass->initialize(CHECK);
 
 #define END_CLASS }
@@ -174,7 +180,7 @@ void HotSpotJVMCI::compute_offsets(TRAPS) {
 
 #define START_CLASS(className, fullClassName)                                           \
   void HotSpotJVMCI::className::initialize(JVMCI_TRAPS) {                               \
-    Thread* THREAD = Thread::current();                                                 \
+    JavaThread* THREAD = JavaThread::current(); /* For exception macros. */             \
     className::klass()->initialize(CHECK);                                              \
   }                                                                                     \
   bool HotSpotJVMCI::className::is_instance(JVMCIEnv* env, JVMCIObject object) {        \
@@ -286,6 +292,7 @@ void JNIJVMCI::initialize_field_id(JNIEnv* env, jfieldID &fieldid, jclass clazz,
   if (env->ExceptionCheck()) {
     return;
   }
+  jfieldID current = fieldid;
   if (static_field) {
     // Class initialization barrier
     fieldid = env->GetStaticFieldID(clazz, name, signature);
@@ -293,12 +300,12 @@ void JNIJVMCI::initialize_field_id(JNIEnv* env, jfieldID &fieldid, jclass clazz,
     // Class initialization barrier
     fieldid = env->GetFieldID(clazz, name, signature);
   }
+  JVMCI_event_2("   jfieldID for %s %s.%s = " PTR_FORMAT, signature, class_name, name, p2i(fieldid));
 
   if (env->ExceptionCheck()) {
     env->ExceptionDescribe();
     env->ExceptionClear();
     ResourceMark rm;
-    Thread* THREAD = Thread::current();
     fatal("Could not find field %s.%s with signature %s", class_name, name, signature);
   }
 }
@@ -312,7 +319,9 @@ void JNIJVMCI::initialize_field_id(JNIEnv* env, jfieldID &fieldid, jclass clazz,
     jclass k = env->FindClass(current_class_name);                                          \
     JVMCI_EXCEPTION_CHECK(env, "FindClass(%s)", current_class_name);                        \
     assert(k != NULL, #fullClassName " not initialized");                                   \
-    className::_class = (jclass) env->NewGlobalRef(k);                                      \
+    k = (jclass) env->NewGlobalRef(k);                                                      \
+    JVMCI_event_2(" jclass for %s = " PTR_FORMAT, current_class_name, p2i(k));              \
+    className::_class = k;                                                                  \
   }
 
 #define END_CLASS current_class_name = NULL; }
@@ -329,14 +338,18 @@ void JNIJVMCI::initialize_field_id(JNIEnv* env, jfieldID &fieldid, jclass clazz,
 #define STATIC_BOOLEAN_FIELD(className, name) FIELD(className, name, "Z", true)
 
 #define GET_JNI_METHOD(jniGetMethod, dst, clazz, methodName, signature)                        \
-          if (JVMCILibDumpJNIConfig != NULL) {                                                       \
-            fileStream* st = JVMCIGlobals::get_jni_config_file();                                    \
-            st->print_cr("method %s %s %s", current_class_name, methodName, signature);              \
-          } else {                                                                                   \
-                  dst = env->jniGetMethod(clazz, methodName, signature);                                   \
-                  JVMCI_EXCEPTION_CHECK(env, #jniGetMethod "(%s.%s%s)", current_class_name, methodName, signature); \
-                assert(dst != NULL, "uninitialized");                                          \
-          }
+    if (JVMCILibDumpJNIConfig != NULL) {                                                       \
+      fileStream* st = JVMCIGlobals::get_jni_config_file();                                    \
+      st->print_cr("method %s %s %s", current_class_name, methodName, signature);              \
+    } else {                                                                                   \
+      jmethodID current = dst;                                                                 \
+      dst = env->jniGetMethod(clazz, methodName, signature);                                   \
+      JVMCI_EXCEPTION_CHECK(env, #jniGetMethod "(%s.%s%s)",                                    \
+                  current_class_name, methodName, signature);                                  \
+      assert(dst != NULL, "uninitialized");                                                    \
+      JVMCI_event_2("   jmethodID for %s.%s%s = " PTR_FORMAT,                                  \
+                  current_class_name, methodName, signature, p2i(dst));                        \
+    }
 
 #define GET_JNI_CONSTRUCTOR(clazz, signature) \
   GET_JNI_METHOD(GetMethodID, JNIJVMCI::clazz::_constructor, clazz::_class, "<init>", signature) \
@@ -365,7 +378,7 @@ class ThrowableInitDumper : public SymbolClosure {
  public:
   ThrowableInitDumper(fileStream* st)     { _st = st; }
   void do_symbol(Symbol** p) {
-    Thread* THREAD = Thread::current();
+    JavaThread* THREAD = JavaThread::current(); // For exception macros.
     Symbol* name = *p;
     if (name == NULL) {
       return;
@@ -373,7 +386,7 @@ class ThrowableInitDumper : public SymbolClosure {
     Klass* k = SystemDictionary::resolve_or_null(name, CHECK_EXIT);
     if (k != NULL && k->is_instance_klass()) {
       InstanceKlass* iklass = InstanceKlass::cast(k);
-      if (iklass->is_subclass_of(SystemDictionary::Throwable_klass()) && iklass->is_public() && !iklass->is_abstract()) {
+      if (iklass->is_subclass_of(vmClasses::Throwable_klass()) && iklass->is_public() && !iklass->is_abstract()) {
         const char* class_name = NULL;
         Array<Method*>* methods = iklass->methods();
         for (int i = 0; i < methods->length(); i++) {
@@ -474,7 +487,7 @@ void JNIJVMCI::initialize_ids(JNIEnv* env) {
 } while(0)
 
   if (JVMCILibDumpJNIConfig != NULL) {
-    Thread* THREAD = Thread::current();
+    JavaThread* THREAD = JavaThread::current(); // For exception macros.
     fileStream* st = JVMCIGlobals::get_jni_config_file();
 
     DUMP_ALL_NATIVE_METHODS(vmSymbols::jdk_vm_ci_hotspot_CompilerToVM());
@@ -493,30 +506,30 @@ void JNIJVMCI::initialize_ids(JNIEnv* env) {
 
 #define CC (char*)  /*cast a literal from (const char*)*/
 #define FN_PTR(f) CAST_FROM_FN_PTR(void*, &(f))
+}
 
+static void register_natives_for_class(JNIEnv* env, jclass clazz, const char* name, const JNINativeMethod *methods, jint nMethods) {
+  if (clazz == NULL) {
+    clazz = env->FindClass(name);
+    if (env->ExceptionCheck()) {
+      env->ExceptionDescribe();
+      fatal("Could not find class %s", name);
+    }
+  }
+  env->RegisterNatives(clazz, methods, nMethods);
+  if (env->ExceptionCheck()) {
+    env->ExceptionDescribe();
+    fatal("Failure registering natives for %s", name);
+  }
+}
+
+void JNIJVMCI::register_natives(JNIEnv* env) {
   if (env != JavaThread::current()->jni_environment()) {
-    jclass clazz = env->FindClass("jdk/vm/ci/hotspot/CompilerToVM");
-    if (env->ExceptionCheck()) {
-      env->ExceptionDescribe();
-      guarantee(false, "Could not find class jdk/vm/ci/hotspot/CompilerToVM");
-    }
-    JNINativeMethod CompilerToVM_native_methods[] = {
-      { CC"registerNatives",     CC"()V", FN_PTR(JVM_RegisterJVMCINatives)     },
-    };
-    env->RegisterNatives(clazz, CompilerToVM_native_methods, 1);
-    if (env->ExceptionCheck()) {
-      env->ExceptionDescribe();
-      guarantee(false, "");
-    }
+    JNINativeMethod CompilerToVM_nmethods[] = {{ CC"registerNatives", CC"()V", FN_PTR(JVM_RegisterJVMCINatives) }};
+    JNINativeMethod JVMCI_nmethods[] = {{ CC"initializeRuntime",   CC"()Ljdk/vm/ci/runtime/JVMCIRuntime;", FN_PTR(JVM_GetJVMCIRuntime) }};
 
-    JNINativeMethod JVMCI_native_methods[] = {
-      { CC"initializeRuntime",   CC"()Ljdk/vm/ci/runtime/JVMCIRuntime;", FN_PTR(JVM_GetJVMCIRuntime) },
-    };
-    env->RegisterNatives(JVMCI::clazz(), JVMCI_native_methods, 1);
-    if (env->ExceptionCheck()) {
-      env->ExceptionDescribe();
-      guarantee(false, "");
-    }
+    register_natives_for_class(env, NULL, "jdk/vm/ci/hotspot/CompilerToVM", CompilerToVM_nmethods, 1);
+    register_natives_for_class(env, JVMCI::clazz(), "jdk/vm/ci/runtime/JVMCI", JVMCI_nmethods, 1);
   }
 }
 

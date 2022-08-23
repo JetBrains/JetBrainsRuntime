@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2012, 2013 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -40,7 +40,7 @@ class JNITypes : AllStatic {
   // if they have a 'pos' formal parameter.  Note that jlong's and
   // jdouble's are written _in reverse_ of the order in which they
   // appear in the interpreter stack.  This is because call stubs (see
-  // stubGenerator_sparc.cpp) reverse the argument list constructed by
+  // stubGenerator_ppc.cpp) reverse the argument list constructed by
   // JavaCallArguments (see javaCalls.hpp).
 
  private:
@@ -72,9 +72,8 @@ class JNITypes : AllStatic {
   }
 
   // Oops are stored in native format in one JavaCallArgument slot at *to.
-  static inline void put_obj(oop  from, intptr_t *to)           { *(oop *)(to +   0  ) =  from; }
-  static inline void put_obj(oop  from, intptr_t *to, int& pos) { *(oop *)(to + pos++) =  from; }
-  static inline void put_obj(oop *from, intptr_t *to, int& pos) { *(oop *)(to + pos++) = *from; }
+  static inline void put_obj(const Handle& from_handle, intptr_t *to, int& pos) { *(to + pos++) =  (intptr_t)from_handle.raw_value(); }
+  static inline void put_obj(jobject       from_handle, intptr_t *to, int& pos) { *(to + pos++) =  (intptr_t)from_handle; }
 
   // Floats are stored in native format in one JavaCallArgument slot at *to.
   static inline void put_float(jfloat  from, intptr_t *to)           { *(jfloat *)(to +   0  ) =  from;  }

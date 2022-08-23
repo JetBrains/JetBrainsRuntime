@@ -95,7 +95,8 @@ For terms of use, see http://www.unicode.org/copyright.html
 			</timezone>
 			<timezone type="Africa/Juba">
 				<usesMetazone to="2000-01-15 10:00" mzone="Africa_Central"/>
-				<usesMetazone from="2000-01-15 10:00" mzone="Africa_Eastern"/>
+				<usesMetazone to="2021-01-31 21:00" from="2000-01-15 10:00" mzone="Africa_Eastern"/>
+				<usesMetazone from="2021-01-31 21:00" mzone="Africa_Central"/>
 			</timezone>
 			<timezone type="Africa/Kampala">
 				<usesMetazone mzone="Africa_Eastern"/>
@@ -240,7 +241,8 @@ For terms of use, see http://www.unicode.org/copyright.html
 				<usesMetazone to="2004-05-31 03:00" from="2000-03-03 03:00" mzone="Argentina"/>
 				<usesMetazone to="2004-07-25 04:00" from="2004-05-31 03:00" mzone="Argentina_Western"/>
 				<usesMetazone to="2008-01-21 02:00" from="2004-07-25 04:00" mzone="Argentina"/>
-				<usesMetazone from="2008-01-21 02:00" mzone="Argentina_Western"/>
+				<usesMetazone to="2009-10-11 04:00" from="2008-01-21 02:00" mzone="Argentina_Western"/>
+				<usesMetazone from="2009-10-11 04:00" mzone="Argentina"/>
 			</timezone>
 			<timezone type="America/Argentina/Tucuman">
 				<usesMetazone to="1991-03-03 02:00" mzone="Argentina"/>
@@ -357,7 +359,8 @@ For terms of use, see http://www.unicode.org/copyright.html
 			</timezone>
 			<timezone type="America/Dawson">
 				<usesMetazone to="1973-10-28 09:00" mzone="Yukon"/>
-				<usesMetazone from="1973-10-28 09:00" mzone="America_Pacific"/>
+				<usesMetazone to="2020-11-01 07:00" from="1973-10-28 09:00" mzone="America_Pacific"/>
+				<usesMetazone from="2020-11-01 07:00" mzone="America_Mountain"/>
 			</timezone>
 			<timezone type="America/Dawson_Creek">
 				<usesMetazone to="1972-08-30 09:00" mzone="America_Pacific"/>
@@ -402,8 +405,8 @@ For terms of use, see http://www.unicode.org/copyright.html
 				<usesMetazone from="1988-10-30 02:01" mzone="Atlantic"/>
 			</timezone>
 			<timezone type="America/Grand_Turk">
-				<usesMetazone to="2015-11-01 06:00" mzone="America_Eastern"/>
-				<usesMetazone to="2018-03-11 07:00" from="2015-11-01 06:00" mzone="Atlantic"/>
+				<usesMetazone to="2015-03-08 07:00" mzone="America_Eastern"/>
+				<usesMetazone to="2018-03-11 07:00" from="2015-03-08 07:00" mzone="Atlantic"/>
 				<usesMetazone from="2018-03-11 07:00" mzone="America_Eastern"/>
 			</timezone>
 			<timezone type="America/Grenada">
@@ -746,7 +749,8 @@ For terms of use, see http://www.unicode.org/copyright.html
 				<usesMetazone mzone="America_Pacific"/>
 			</timezone>
 			<timezone type="America/Whitehorse">
-				<usesMetazone mzone="America_Pacific"/>
+				<usesMetazone to="2020-11-01 07:00" mzone="America_Pacific"/>
+				<usesMetazone from="2020-11-01 07:00" mzone="America_Mountain"/>
 			</timezone>
 			<timezone type="America/Winnipeg">
 				<usesMetazone mzone="America_Central"/>
@@ -765,7 +769,12 @@ For terms of use, see http://www.unicode.org/copyright.html
 				<usesMetazone to="2012-02-21 17:00" from="2011-10-27 18:00" mzone="Casey"/>
 				<usesMetazone to="2016-10-21 16:00" from="2012-02-21 17:00" mzone="Australia_Western"/>
 				<usesMetazone to="2018-03-10 17:00" from="2016-10-21 16:00" mzone="Casey"/>
-				<usesMetazone from="2018-03-10 17:00" mzone="Australia_Western"/>
+				<usesMetazone to="2018-10-06 20:00" from="2018-03-10 17:00" mzone="Australia_Western"/>
+				<usesMetazone to="2019-03-16 16:00" from="2018-10-06 20:00" mzone="Casey"/>
+				<usesMetazone to="2019-10-03 19:00" from="2019-03-16 16:00" mzone="Australia_Western"/>
+				<usesMetazone to="2020-03-07 16:00" from="2019-10-03 19:00" mzone="Casey"/>
+				<usesMetazone to="2020-10-03 16:01" from="2020-03-07 16:00" mzone="Australia_Western"/>
+				<usesMetazone from="2020-10-03 16:01" mzone="Casey"/>
 			</timezone>
 			<timezone type="Antarctica/Davis">
 				<usesMetazone mzone="Davis"/>
@@ -774,8 +783,7 @@ For terms of use, see http://www.unicode.org/copyright.html
 				<usesMetazone mzone="DumontDUrville"/>
 			</timezone>
 			<timezone type="Antarctica/Macquarie">
-				<usesMetazone to="2010-04-03 16:00" mzone="Australia_Eastern"/>
-				<usesMetazone from="2010-04-03 16:00" mzone="Macquarie"/>
+				<usesMetazone mzone="Australia_Eastern"/>
 			</timezone>
 			<timezone type="Antarctica/Mawson">
 				<usesMetazone mzone="Mawson"/>
@@ -825,7 +833,7 @@ For terms of use, see http://www.unicode.org/copyright.html
 			<timezone type="Asia/Aqtobe">
 				<usesMetazone to="1991-12-15 19:00" mzone="Aktyubinsk"/>
 				<usesMetazone to="2004-10-30 21:00" from="1991-12-15 19:00" mzone="Aqtobe"/>
-				<usesMetazone from="2005-10-30 21:00" mzone="Kazakhstan_Western"/>
+				<usesMetazone from="2004-10-30 21:00" mzone="Kazakhstan_Western"/>
 			</timezone>
 			<timezone type="Asia/Ashgabat">
 				<usesMetazone to="1991-10-26 20:00" mzone="Ashkhabad"/>
@@ -872,7 +880,8 @@ For terms of use, see http://www.unicode.org/copyright.html
 			</timezone>
 			<timezone type="Asia/Choibalsan">
 				<usesMetazone to="1983-03-31 16:00" mzone="Mongolia"/>
-				<usesMetazone from="1983-03-31 16:00" mzone="Choibalsan"/>
+				<usesMetazone to="2008-03-30 15:00" from="1983-03-31 16:00" mzone="Choibalsan"/>
+				<usesMetazone from="2008-03-30 15:00" mzone="Mongolia"/>
 			</timezone>
 			<timezone type="Asia/Colombo">
 				<usesMetazone to="1996-05-24 18:30" mzone="India"/>
@@ -1382,9 +1391,7 @@ For terms of use, see http://www.unicode.org/copyright.html
 				<usesMetazone from="1999-10-31 01:00" mzone="Europe_Eastern"/>
 			</timezone>
 			<timezone type="Europe/Volgograd">
-				<usesMetazone to="1992-03-28 22:00" mzone="Volgograd"/>
-				<usesMetazone to="2018-10-27 23:00" from="1992-03-28 22:00" mzone="Moscow"/>
-				<usesMetazone from="2018-10-27 23:00" mzone="Volgograd"/>
+				<usesMetazone mzone="Volgograd"/>
 			</timezone>
 			<timezone type="Europe/Warsaw">
 				<usesMetazone mzone="Europe_Central"/>
@@ -1728,6 +1735,7 @@ For terms of use, see http://www.unicode.org/copyright.html
 			<mapZone other="Europe_Central" territory="RS" type="Europe/Belgrade"/>
 			<mapZone other="Europe_Central" territory="SE" type="Europe/Stockholm"/>
 			<mapZone other="Europe_Central" territory="SI" type="Europe/Ljubljana"/>
+			<mapZone other="Europe_Central" territory="SJ" type="Arctic/Longyearbyen"/>
 			<mapZone other="Europe_Central" territory="SK" type="Europe/Bratislava"/>
 			<mapZone other="Europe_Central" territory="SM" type="Europe/San_Marino"/>
 			<mapZone other="Europe_Central" territory="TN" type="Africa/Tunis"/>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <?xml-stylesheet type="text/xsl" href="jvmti.xsl"?>
 <!--
- Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
+ Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 
  This code is free software; you can redistribute it and/or modify it
@@ -426,8 +426,8 @@
     An agent is deployed in a platform specific manner but is typically the
     platform equivalent of a dynamic library. On the <tm>Windows</tm> operating
     system, for example, an agent library is a "Dynamic Linked Library" (DLL).
-    On the <tm>Solaris</tm> Operating Environment, an agent library is a shared
-    object (<code>.so</code> file).
+    On <tm>Linux</tm> Operating Environment, an agent library is a shared object
+    (<code>.so</code> file).
     <p/>
 
     An agent may be started at VM startup by specifying the agent library
@@ -497,8 +497,7 @@
         <code>-agentlib:foo=opt1,opt2</code> is specified, the VM will attempt to
         load the shared library <code>foo.dll</code> from the system <code>PATH</code>
         under <tm>Windows</tm> or <code>libfoo.so</code> from the
-        <code>LD_LIBRARY_PATH</code> under the <tm>Solaris</tm> operating
-        environment.
+        <code>LD_LIBRARY_PATH</code> under <tm>Linux</tm>.
         If the agent library is statically linked into the executable
         then no actual loading takes place.
     <p/>
@@ -687,9 +686,11 @@ Agent_OnUnload_L(JavaVM *vm)</example>
     The library will be unloaded (unless it is statically linked into the
     executable) and this function will be called if some platform specific
     mechanism causes the unload (an unload mechanism is not specified in this document)
-    or the library is (in effect) unloaded by the termination of the VM whether through
-    normal termination or VM failure, including start-up failure.
-    Uncontrolled shutdown is, of course, an exception to this rule.
+    or the library is (in effect) unloaded by the termination of the VM.
+    VM termination includes normal termination and VM failure, including start-up failure,
+    but not, of course, uncontrolled shutdown. An implementation may also
+    choose to not call this function if the <code>Agent_OnAttach</code>/
+    <code>Agent_OnAttach_L</code> function reported an error (returned a non-zero value).
     Note the distinction between this function and the
     <eventlink id="VMDeath">VM Death event</eventlink>: for the VM Death event
     to be sent, the VM must have run at least to the point of initialization and a valid
@@ -4962,7 +4963,9 @@ class C2 extends C1 implements I2 {
     <intro>
       <b>
         These functions and data types were introduced in the original
-        <jvmti/> version 1.0 and have been superseded by more
+        <jvmti/> version 1.0. They are deprecated and will be changed 
+        to return an error in a future release. They were superseded in
+        <jvmti/> version 1.2 (Java SE 6) by more 
       </b>
       <internallink id="Heap"><b>powerful and flexible versions</b></internallink>
       <b>
@@ -6846,10 +6849,6 @@ class C2 extends C1 implements I2 {
   </category>
 
   <category id="class" label="Class">
-
-    <intro>
-    </intro>
-
     <function id="GetLoadedClasses" jkernel="yes" num="78">
       <synopsis>Get Loaded Classes</synopsis>
       <description>
@@ -6858,9 +6857,26 @@ class C2 extends C1 implements I2 {
         <code>class_count_ptr</code>, and the array itself via
         <code>classes_ptr</code>.
         <p/>
-        Array classes of all types (including arrays of primitive types) are
-        included in the returned list. Primitive classes (for example,
-        <code>java.lang.Integer.TYPE</code>) are <i>not</i> included in this list.
+        A class or interface creation can be triggered by one of the following:
+        <ul>
+        <li>By loading and deriving a class from a <code>class</code> file representation
+            using a class loader (see <vmspec chapter="5.3"/>).</li>
+        <li>By invoking <externallink id="../api/java.base/java/lang/invoke/MethodHandles.Lookup.html#defineHiddenClass(byte[],boolean,java.lang.invoke.MethodHandles.Lookup.ClassOption...)">Lookup::defineHiddenClass</externallink>
+            that creates a hidden class or interface from a <code>class</code> file representation.</li>
+        <li>By invoking methods in certain Java SE Platform APIs such as reflection.</li>
+         </ul>
+        <p/>
+        An array class is created directly by the Java virtual machine.  The creation
+        can be triggered by using class loaders or by invoking methods in certain
+        Java SE Platform APIs such as reflection.
+        <p/>
+        The returned list includes all classes and interfaces, including
+        <externallink id="../api/java.base/java/lang/Class.html#isHidden()">
+        hidden classes or interfaces</externallink>,
+        and also array classes of all types
+        (including arrays of primitive types).
+        Primitive classes (for example, <code>java.lang.Integer.TYPE</code>) are
+        <i>not</i> included in the returned list.
       </description>
       <origin>jvmdi</origin>
       <capabilities>
@@ -6887,15 +6903,27 @@ class C2 extends C1 implements I2 {
     <function id="GetClassLoaderClasses" jkernel="yes" num="79">
       <synopsis>Get Classloader Classes</synopsis>
       <description>
-        Returns an array of those classes for which this class loader has
-        been recorded as an initiating loader. Each
-        class in the returned array was created by this class loader,
+        Returns an array of all classes which this class loader
+        can find by name via
+        <externallink id="../api/java.base/java/lang/ClassLoader.html#loadClass(java.lang.String,boolean)">ClassLoader::loadClass</externallink>,
+        <externallink id="../api/java.base/java/lang/Class.html#forName(java.lang.String,boolean,java.lang.ClassLoader)">Class::forName</externallink> and bytecode linkage.
+        That is, all classes for which <code>initiating_loader</code>
+        has been recorded as an initiating loader.
+        Each class in the returned array was created by this class loader,
         either by defining it directly or by delegation to another class loader.
         See <vmspec chapter="5.3"/>.
+        <p/>
+        The returned list does not include
+        <externallink id="../api/java.base/java/lang/Class.html#isHidden()">hidden
+        classes or interfaces</externallink> or array classes whose
+        element type is a hidden class or interface as they cannot be discovered
+        by any class loader.
         <p/>
         The number of classes in the array is returned via
         <code>class_count_ptr</code>, and the array itself via
         <code>classes_ptr</code>.
+        <p/>
+        See <externallink id="../api/java.base/java/lang/invoke/MethodHandles.Lookup.html#defineHiddenClass(byte[],boolean,java.lang.invoke.MethodHandles.Lookup.ClassOption...)">Lookup::defineHiddenClass</externallink>.
       </description>
       <origin>jvmdi</origin>
       <capabilities>
@@ -6931,15 +6959,37 @@ class C2 extends C1 implements I2 {
     <function id="GetClassSignature" phase="start" num="48">
       <synopsis>Get Class Signature</synopsis>
       <description>
-        For the class indicated by <code>klass</code>, return the
-        <externallink id="jni/types.html#type-signatures">JNI
-            type signature</externallink>
-        and the generic signature of the class.
-        For example, <code>java.util.List</code> is <code>"Ljava/util/List;"</code>
-        and <code>int[]</code> is <code>"[I"</code>
-        The returned name for primitive classes
-        is the type signature character of the corresponding primitive type.
-        For example, <code>java.lang.Integer.TYPE</code> is <code>"I"</code>.
+        Return the name and the generic signature of the class indicated by <code>klass</code>.
+        <p/>
+        If the class is a class or interface, then:
+        <ul>
+        <li>If the class or interface is not <externallink id="../api/java.base/java/lang/Class.html#isHidden()">hidden</externallink>,
+          then the returned name is the <externallink id="jni/types.html#type-signatures">
+          JNI type signature</externallink>.
+          For example, java.util.List is "Ljava/util/List;"
+        </li>
+        <li>If the class or interface is <externallink id="../api/java.base/java/lang/Class.html#isHidden()">hidden</externallink>,
+          then the returned name is a string of the form:
+          <code>"L" + N + "." +  S + ";"</code>
+          where <code>N</code> is the binary name encoded in internal form (JVMS 4.2.1)
+          indicated by the <code>class</code> file passed to
+          <externallink id="../api/java.base/java/lang/invoke/MethodHandles.Lookup.html#defineHiddenClass(byte[],boolean,java.lang.invoke.MethodHandles.Lookup.ClassOption...)">Lookup::defineHiddenClass</externallink>,
+          and <code>S</code> is an unqualified name.
+          The returned name is not a type descriptor and does not conform to JVMS 4.3.2.
+          For example, com.foo.Foo/AnySuffix is "Lcom/foo/Foo.AnySuffix;"
+        </li>
+        </ul>
+        <p/>
+        If the class indicated by <code>klass</code> represents an array class, then
+        the returned name is a string consisting of one or more "<code>[</code>" characters
+        representing the depth of the array nesting, followed by the class signature
+        of the element type.  For example the class signature of java.lang.String[] is
+        "[Ljava/lang/String;" and that of int[] is "[I".
+        <p/>
+        If the class indicated by <code>klass</code> represents primitive type or <code>void</code>,
+        then the returned name is the <externallink id="jni/types.html#type-signatures">
+        type signature character of the corresponding primitive type</externallink>.
+        For example, java.lang.Integer.TYPE is "I".
       </description>
       <origin>jvmdiClone</origin>
       <capabilities>
@@ -7634,7 +7684,8 @@ class C2 extends C1 implements I2 {
         The retransformation must not add, remove or rename fields or methods, change the
         signatures of methods, change modifiers, or change inheritance.
         The retransformation must not change the <code>NestHost</code>,
-        <code>NestMembers</code>, or <code>Record</code> attributes.
+        <code>NestMembers</code>, <code>Record</code>, or <code>PermittedSubclasses</code>
+        attributes.
         These restrictions may be lifted in future versions.
         See the error return description below for information on error codes
         returned if an unsupported retransformation is attempted.
@@ -7787,7 +7838,8 @@ class C2 extends C1 implements I2 {
         The redefinition must not add, remove or rename fields or methods, change the
         signatures of methods, change modifiers, or change inheritance.
         The redefinition must not change the <code>NestHost</code>,
-        <code>NestMembers</code>, or <code>Record</code> attributes.
+        <code>NestMembers</code>, <code>Record</code>, or <code>PermittedSubclasses</code>
+        attributes.
         These restrictions may be lifted in future versions.
         See the error return description below for information on error codes
         returned if an unsupported redefinition is attempted.
@@ -9901,9 +9953,11 @@ myInit() {
           there is a <code>jint</code> parameter, the event handler should be
           declared:
 <example>
-    void JNICALL myHandler(jvmtiEnv* jvmti_env, jint myInt, ...)
+    void JNICALL myHandler(jvmtiEnv* jvmti_env, ...)
 </example>
           Note the terminal "<code>...</code>" which indicates varargs.
+          The <code>jint</code> argument inside <code>myHandler</code> needs to be extracted using
+          the <code>va_*</code> syntax of the C programming language.
         </description>
         <parameters>
           <param id="jvmti_env">
@@ -12235,7 +12289,7 @@ myInit() {
       function are not reported.
       <p/>
       The location reported by <functionlink id="GetFrameLocation"></functionlink>
-      identifies the executable location in the returning method,
+      for the depth 0 identifies the executable location in the returning method,
       immediately prior to the return.
     </description>
     <origin>jvmdi</origin>
@@ -12286,8 +12340,7 @@ myInit() {
       programming language methods (including native methods).
       <p/>
       The location reported by <functionlink id="GetFrameLocation"></functionlink>
-      identifies the initial executable location in
-      the method.
+      for the depth 0 identifies the initial executable location in the method.
       <p/>
       Enabling method
       entry or exit events will significantly degrade performance on many platforms and is thus
@@ -12339,12 +12392,8 @@ myInit() {
       or by throwing an exception to its caller
       (see <paramlink id="was_popped_by_exception"></paramlink>).
       <p/>
-      The <code>method</code> field uniquely identifies the
-      method being entered or exited. The <code>frame</code> field provides
-      access to the stack frame for the method.
-      <p/>
       The location reported by <functionlink id="GetFrameLocation"></functionlink>
-      identifies the executable location in the returning method
+      for the depth 0 identifies the executable location in the returning method
       immediately prior to the return.
       <p/>
         Enabling method
@@ -12712,12 +12761,15 @@ myInit() {
   <event label="Class Load"
          id="ClassLoad" const="JVMTI_EVENT_CLASS_LOAD" filtered="thread" phase="start" num="55">
     <description>
-      A class load event is generated when a class is first loaded. The order
-      of class load events generated by a particular thread are guaranteed
-      to match the order of class loading within that thread.
+      A class load event is generated
+      <functionlink id="GetLoadedClasses">when a class or interface is created.</functionlink>.
+      <p/>
       Array class creation does not generate a class load event.
       The creation of a primitive class (for example, java.lang.Integer.TYPE)
       does not generate a class load event.
+      <p/>
+      The order of class load events generated by a particular thread is guaranteed
+      to match the order of class loading within that thread.
       <p/>
       This event is sent at an early stage in loading the class. As
       a result the class should be used carefully.  Note, for example,
@@ -13277,7 +13329,7 @@ myInit() {
       Sent by the VM to request the agent to dump its data.  This
       is just a hint and the agent need not react to this event.
       This is useful for processing command-line signals from users.  For
-      example, in the Java 2 SDK a CTRL-Break on Win32 and a CTRL-\ on Solaris
+      example, in the Java 2 SDK a CTRL-Break on Win32 and a CTRL-\ on Linux
       causes the VM to send this event to the agent.
     </description>
     <origin>jvmpi</origin>
@@ -14978,6 +15030,19 @@ typedef void (JNICALL *jvmtiEventVMInit)
       Minor update for new class file Record attribute:
         - Specify that RedefineClasses and RetransformClasses are not allowed
           to change the class file Record attribute.
+  </change>
+  <change date="13 May 2020" version="15.0.0">
+      Minor update for new class file PermittedSubclasses attribute:
+        - Specify that RedefineClasses and RetransformClasses are not allowed
+          to change the class file PermittedSubclasses attribute.
+  </change>
+  <change date="15 January 2021" version="17.0.0">
+      Minor clarification in the section "Agent Shutdown" that says the
+      implementation may choose to not call the Agent_OnUnload function
+      if the Agent_OnAttach/Agent_OnAttach_L function reported an error. 
+  </change>
+  <change date="8 June 2021" version="17.0.0">
+      Minor update to deprecate Heap functions 1.0.
   </change>
 </changehistory>
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -484,12 +484,6 @@ static const char* native_arch_name() {
 #ifdef LIBARCH_amd64
   res = "i386:x86-64";
 #endif
-#ifdef LIBARCH_sparc
-  res = "sparc:v8plusb";
-#endif
-#ifdef LIBARCH_sparcv9
-  res = "sparc:v9b";
-#endif
 #if  defined(LIBARCH_ppc64) || defined(LIBARCH_ppc64le)
   res = "powerpc:common64";
 #endif
@@ -568,7 +562,12 @@ static void init_disassemble_info_from_bfd(struct disassemble_info* dinfo,
   dinfo->arch = bfd_get_arch(abfd);
   dinfo->mach = bfd_get_mach(abfd);
   dinfo->disassembler_options = disassembler_options;
+#if BFD_VERSION >= 234000000
+  /* bfd_octets_per_byte() has 2 args since binutils 2.34 */
+  dinfo->octets_per_byte = bfd_octets_per_byte (abfd, NULL);
+#else
   dinfo->octets_per_byte = bfd_octets_per_byte (abfd);
+#endif
   dinfo->skip_zeroes = sizeof(void*) * 2;
   dinfo->skip_zeroes_at_end = sizeof(void*)-1;
   dinfo->disassembler_needs_relocs = FALSE;

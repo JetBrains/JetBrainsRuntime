@@ -403,9 +403,12 @@ public class BasicTreeUI extends TreeUI
     //
 
     /**
-     * Updates the componentListener, if necessary.
+     * Sets the {@code largeModel}.
      *
-     * @param largeModel the new value
+     * Called when the {@code largeModel} property is changed in the drawn tree
+     * component.
+     *
+     * @param largeModel the new value of the {@code largeModel} property
      */
     protected void setLargeModel(boolean largeModel) {
         if(getRowHeight() < 1)
@@ -432,7 +435,10 @@ public class BasicTreeUI extends TreeUI
     /**
      * Sets the row height, this is forwarded to the treeState.
      *
-     * @param rowHeight the row height
+     * Called when the {@code rowHeight} property is changed in
+     * the drawn tree component.
+     *
+     * @param rowHeight the new value of the {@code rowHeight} property
      */
     protected void setRowHeight(int rowHeight) {
         completeEditing();
@@ -444,9 +450,11 @@ public class BasicTreeUI extends TreeUI
     }
 
     /**
-     * Returns the row height.
+     * Returns the height of each row in the drawn tree component. If the
+     * returned value is less than or equal to 0 the height for each row is
+     * determined by the renderer.
      *
-     * @return the row height
+     * @return the height of each row, in pixels
      */
     protected int getRowHeight() {
         return (tree == null) ? -1 : tree.getRowHeight();
@@ -456,7 +464,10 @@ public class BasicTreeUI extends TreeUI
      * Sets the {@code TreeCellRenderer} to {@code tcr}. This invokes
      * {@code updateRenderer}.
      *
-     * @param tcr the new value
+     * Called when the {@code cellRenderer} property is changed in
+     * the drawn tree component.
+     *
+     * @param tcr the new value of the {@code cellRenderer} property
      */
     protected void setCellRenderer(TreeCellRenderer tcr) {
         completeEditing();
@@ -468,10 +479,10 @@ public class BasicTreeUI extends TreeUI
     }
 
     /**
-     * Return {@code currentCellRenderer}, which will either be the trees
-     * renderer, or {@code defaultCellRenderer}, which ever wasn't null.
+     * Returns the current instance of the {@link TreeCellRenderer} that is
+     * rendering each cell.
      *
-     * @return an instance of {@code TreeCellRenderer}
+     * @return the {@link TreeCellRenderer} instance
      */
     protected TreeCellRenderer getCellRenderer() {
         return currentCellRenderer;
@@ -510,7 +521,10 @@ public class BasicTreeUI extends TreeUI
     /**
      * Sets the root to being visible.
      *
-     * @param newValue the new value
+     * Called when the {@code rootVisible} property is changed in the drawn tree
+     * component.
+     *
+     * @param newValue the new value of the {@code rootVisible} property
      */
     protected void setRootVisible(boolean newValue) {
         completeEditing();
@@ -523,9 +537,9 @@ public class BasicTreeUI extends TreeUI
     }
 
     /**
-     * Returns {@code true} if the tree root is visible.
+     * Returns whether the root node of the drawn tree component should be displayed.
      *
-     * @return {@code true} if the tree root is visible
+     * @return {@code true} if the root node of the tree is displayed
      */
     protected boolean isRootVisible() {
         return (tree != null) ? tree.isRootVisible() : false;
@@ -534,7 +548,10 @@ public class BasicTreeUI extends TreeUI
     /**
      * Determines whether the node handles are to be displayed.
      *
-     * @param newValue the new value
+     * Called when the {@code showsRootHandles} property is changed in the drawn
+     * tree component.
+     *
+     * @param newValue the new value of the {@code showsRootHandles} property
      */
     protected void setShowsRootHandles(boolean newValue) {
         completeEditing();
@@ -557,16 +574,20 @@ public class BasicTreeUI extends TreeUI
     /**
      * Sets the cell editor.
      *
-     * @param editor the new cell editor
+     * Called when the {@code cellEditor} property is changed in the drawn tree
+     * component.
+     *
+     * @param editor the new value of the {@code cellEditor} property
      */
     protected void setCellEditor(TreeCellEditor editor) {
         updateCellEditor();
     }
 
     /**
-     * Returns an instance of {@code TreeCellEditor}.
+     * Returns the editor used to edit entries in the drawn tree component, or
+     * {@code null} if the tree cannot be edited.
      *
-     * @return an instance of {@code TreeCellEditor}
+     * @return the {@link TreeCellEditor} instance, or {@code null}
      */
     protected TreeCellEditor getCellEditor() {
         return (tree != null) ? tree.getCellEditor() : null;
@@ -575,14 +596,17 @@ public class BasicTreeUI extends TreeUI
     /**
      * Configures the receiver to allow, or not allow, editing.
      *
-     * @param newValue the new value
+     * Called when the {@code editable} property is changed in the drawn tree
+     * component.
+     *
+     * @param newValue the new value of the {@code editable} property
      */
     protected void setEditable(boolean newValue) {
         updateCellEditor();
     }
 
     /**
-     * Returns {@code true} if the tree is editable.
+     * Returns whether the drawn tree component should be enabled for editing.
      *
      * @return {@code true} if the tree is editable
      */
@@ -594,7 +618,10 @@ public class BasicTreeUI extends TreeUI
      * Resets the selection model. The appropriate listener are installed
      * on the model.
      *
-     * @param newLSM new selection model
+     * Called when the {@code selectionModel} property is changed in the drawn tree
+     * component.
+     *
+     * @param newLSM the new value of the {@code selectionModel} property
      */
     protected void setSelectionModel(TreeSelectionModel newLSM) {
         completeEditing();
@@ -623,9 +650,10 @@ public class BasicTreeUI extends TreeUI
     }
 
     /**
-     * Returns the tree selection model.
+     * Returns the current instance of the {@link TreeSelectionModel} which is
+     * the model for selections.
      *
-     * @return the tree selection model
+     * @return the {@link TreeSelectionModel} instance
      */
     protected TreeSelectionModel getSelectionModel() {
         return treeSelectionModel;
@@ -2877,6 +2905,11 @@ public class BasicTreeUI extends TreeUI
         // class calls into the Handler.
 
         /**
+         * Constructs a {@code TreeExpansionHandler}.
+         */
+        public TreeExpansionHandler() {}
+
+        /**
          * Called whenever an item in the tree has been expanded.
          */
         public void treeExpanded(TreeExpansionEvent event) {
@@ -2902,6 +2935,11 @@ public class BasicTreeUI extends TreeUI
         protected Timer                timer;
         /** ScrollBar that is being adjusted. */
         protected JScrollBar           scrollBar;
+
+        /**
+         * Constructs a {@code ComponentHandler}.
+         */
+        public ComponentHandler() {}
 
         public void componentMoved(ComponentEvent e) {
             if(timer == null) {
@@ -2980,6 +3018,11 @@ public class BasicTreeUI extends TreeUI
         // new functionality add it to the Handler, but make sure this
         // class calls into the Handler.
 
+        /**
+         * Constructs a {@code TreeModelHandler}.
+         */
+        public TreeModelHandler() {}
+
         public void treeNodesChanged(TreeModelEvent e) {
             getHandler().treeNodesChanged(e);
         }
@@ -3010,6 +3053,11 @@ public class BasicTreeUI extends TreeUI
         // class calls into the Handler.
 
         /**
+         * Constructs a {@code TreeSelectionHandler}.
+         */
+        public TreeSelectionHandler() {}
+
+        /**
          * Messaged when the selection changes in the tree we're displaying
          * for.  Stops editing, messages super and displays the changed paths.
          */
@@ -3029,6 +3077,11 @@ public class BasicTreeUI extends TreeUI
         // its functionality has been moved into Handler. If you need to add
         // new functionality add it to the Handler, but make sure this
         // class calls into the Handler.
+
+        /**
+         * Constructs a {@code CellEditorHandler}.
+         */
+        public CellEditorHandler() {}
 
         /** Messaged when editing has stopped in the tree. */
         public void editingStopped(ChangeEvent e) {
@@ -3064,6 +3117,11 @@ public class BasicTreeUI extends TreeUI
         protected boolean            isKeyDown;
 
         /**
+         * Constructs a {@code KeyHandler}.
+         */
+        public KeyHandler() {}
+
+        /**
          * Invoked when a key has been typed.
          *
          * Moves the keyboard focus to the first element
@@ -3096,6 +3154,11 @@ public class BasicTreeUI extends TreeUI
         // class calls into the Handler.
 
         /**
+         * Constructs a {@code FocusHandler}.
+         */
+        public FocusHandler() {}
+
+        /**
          * Invoked when focus is activated on the tree we're in, redraws the
          * lead row.
          */
@@ -3121,6 +3184,11 @@ public class BasicTreeUI extends TreeUI
     // This returns locations that don't include any Insets.
     public class NodeDimensionsHandler extends
                  AbstractLayoutCache.NodeDimensions {
+        /**
+         * Constructs a {@code NodeDimensionsHandler}.
+         */
+        public NodeDimensionsHandler() {}
+
         /**
          * Responsible for getting the size of a particular node.
          */
@@ -3202,6 +3270,11 @@ public class BasicTreeUI extends TreeUI
         // class calls into the Handler.
 
         /**
+         * Constructs a {@code MouseHandler}.
+         */
+        public MouseHandler() {}
+
+        /**
          * Invoked when a mouse button has been pressed on a component.
          */
         public void mousePressed(MouseEvent e) {
@@ -3239,6 +3312,11 @@ public class BasicTreeUI extends TreeUI
         // new functionality add it to the Handler, but make sure this
         // class calls into the Handler.
 
+        /**
+         * Constructs a {@code PropertyChangeHandler}.
+         */
+        public PropertyChangeHandler() {}
+
         public void propertyChange(PropertyChangeEvent event) {
             getHandler().propertyChange(event);
         }
@@ -3256,6 +3334,11 @@ public class BasicTreeUI extends TreeUI
         // its functionality has been moved into Handler. If you need to add
         // new functionality add it to the Handler, but make sure this
         // class calls into the Handler.
+
+        /**
+         * Constructs a {@code SelectionModelPropertyChangeHandler}.
+         */
+        public SelectionModelPropertyChangeHandler() {}
 
         public void propertyChange(PropertyChangeEvent event) {
             getHandler().propertyChange(event);

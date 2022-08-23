@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,7 +64,10 @@ enum X509Authentication implements SSLAuthentication {
 
     // Require EC public key
     EC          ("EC",          new X509PossessionGenerator(
-                                    new String[] {"EC"}));
+                                    new String[] {"EC"})),
+    // Edwards-Curve key
+    EDDSA       ("EdDSA",       new X509PossessionGenerator(
+                                    new String[] {"EdDSA"}));
 
     final String keyType;
     final SSLPossessionGenerator possessionGenerator;
@@ -191,9 +194,9 @@ enum X509Authentication implements SSLAuthentication {
         }
     }
 
-    private static final
-            class X509PossessionGenerator implements SSLPossessionGenerator {
-        private final String[] keyTypes;
+    static final class X509PossessionGenerator
+                implements SSLPossessionGenerator {
+        final String[] keyTypes;
 
         private X509PossessionGenerator(String[] keyTypes) {
             this.keyTypes = keyTypes;
@@ -230,12 +233,14 @@ enum X509Authentication implements SSLAuthentication {
             if (chc.conContext.transport instanceof SSLSocketImpl) {
                 clientAlias = km.chooseClientAlias(
                         new String[] { keyType },
-                        chc.peerSupportedAuthorities,
+                        chc.peerSupportedAuthorities == null ? null :
+                                chc.peerSupportedAuthorities.clone(),
                         (SSLSocket)chc.conContext.transport);
             } else if (chc.conContext.transport instanceof SSLEngineImpl) {
                 clientAlias = km.chooseEngineClientAlias(
                         new String[] { keyType },
-                        chc.peerSupportedAuthorities,
+                        chc.peerSupportedAuthorities == null ? null :
+                                chc.peerSupportedAuthorities.clone(),
                         (SSLEngine)chc.conContext.transport);
             }
 
@@ -284,10 +289,14 @@ enum X509Authentication implements SSLAuthentication {
             String serverAlias = null;
             if (shc.conContext.transport instanceof SSLSocketImpl) {
                 serverAlias = km.chooseServerAlias(keyType,
-                        null, (SSLSocket)shc.conContext.transport);
+                        shc.peerSupportedAuthorities == null ? null :
+                                shc.peerSupportedAuthorities.clone(),
+                        (SSLSocket)shc.conContext.transport);
             } else if (shc.conContext.transport instanceof SSLEngineImpl) {
                 serverAlias = km.chooseEngineServerAlias(keyType,
-                        null, (SSLEngine)shc.conContext.transport);
+                        shc.peerSupportedAuthorities == null ? null :
+                                shc.peerSupportedAuthorities.clone(),
+                        (SSLEngine)shc.conContext.transport);
             }
 
             if (serverAlias == null) {

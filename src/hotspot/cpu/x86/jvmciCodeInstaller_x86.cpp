@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,9 @@
 #include "oops/oop.inline.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/javaCalls.hpp"
+#include "runtime/jniHandles.hpp"
 #include "runtime/sharedRuntime.hpp"
+#include "jvmci/jvmci.hpp"
 #include "jvmci/jvmciEnv.hpp"
 #include "jvmci/jvmciCodeInstaller.hpp"
 #include "jvmci/jvmciJavaClasses.hpp"
@@ -67,14 +69,13 @@ jint CodeInstaller::pd_next_offset(NativeInstruction* inst, jint pc_offset, JVMC
 void CodeInstaller::pd_patch_OopConstant(int pc_offset, JVMCIObject constant, JVMCI_TRAPS) {
   address pc = _instructions->start() + pc_offset;
   Handle obj = jvmci_env()->asConstant(constant, JVMCI_CHECK);
-  Thread* THREAD = Thread::current();
   jobject value = JNIHandles::make_local(obj());
   if (jvmci_env()->get_HotSpotObjectConstantImpl_compressed(constant)) {
 #ifdef _LP64
     address operand = Assembler::locate_operand(pc, Assembler::narrow_oop_operand);
     int oop_index = _oop_recorder->find_index(value);
     _instructions->relocate(pc, oop_Relocation::spec(oop_index), Assembler::narrow_oop_operand);
-    TRACE_jvmci_3("relocating (narrow oop constant) at " PTR_FORMAT "/" PTR_FORMAT, p2i(pc), p2i(operand));
+    JVMCI_event_3("relocating (narrow oop constant) at " PTR_FORMAT "/" PTR_FORMAT, p2i(pc), p2i(operand));
 #else
     JVMCI_ERROR("compressed oop on 32bit");
 #endif
@@ -82,7 +83,7 @@ void CodeInstaller::pd_patch_OopConstant(int pc_offset, JVMCIObject constant, JV
     address operand = Assembler::locate_operand(pc, Assembler::imm_operand);
     *((jobject*) operand) = value;
     _instructions->relocate(pc, oop_Relocation::spec_for_immediate(), Assembler::imm_operand);
-    TRACE_jvmci_3("relocating (oop constant) at " PTR_FORMAT "/" PTR_FORMAT, p2i(pc), p2i(operand));
+    JVMCI_event_3("relocating (oop constant) at " PTR_FORMAT "/" PTR_FORMAT, p2i(pc), p2i(operand));
   }
 }
 
@@ -92,14 +93,14 @@ void CodeInstaller::pd_patch_MetaspaceConstant(int pc_offset, JVMCIObject consta
 #ifdef _LP64
     address operand = Assembler::locate_operand(pc, Assembler::narrow_oop_operand);
     *((narrowKlass*) operand) = record_narrow_metadata_reference(_instructions, operand, constant, JVMCI_CHECK);
-    TRACE_jvmci_3("relocating (narrow metaspace constant) at " PTR_FORMAT "/" PTR_FORMAT, p2i(pc), p2i(operand));
+    JVMCI_event_3("relocating (narrow metaspace constant) at " PTR_FORMAT "/" PTR_FORMAT, p2i(pc), p2i(operand));
 #else
     JVMCI_ERROR("compressed Klass* on 32bit");
 #endif
   } else {
     address operand = Assembler::locate_operand(pc, Assembler::imm_operand);
     *((void**) operand) = record_metadata_reference(_instructions, operand, constant, JVMCI_CHECK);
-    TRACE_jvmci_3("relocating (metaspace constant) at " PTR_FORMAT "/" PTR_FORMAT, p2i(pc), p2i(operand));
+    JVMCI_event_3("relocating (metaspace constant) at " PTR_FORMAT "/" PTR_FORMAT, p2i(pc), p2i(operand));
   }
 }
 
@@ -115,7 +116,7 @@ void CodeInstaller::pd_patch_DataSectionReference(int pc_offset, int data_offset
   *((jint*) operand) = (jint) disp;
 
   _instructions->relocate(pc, section_word_Relocation::spec((address) dest, CodeBuffer::SECT_CONSTS), Assembler::disp32_operand);
-  TRACE_jvmci_3("relocating at " PTR_FORMAT "/" PTR_FORMAT " with destination at " PTR_FORMAT " (%d)", p2i(pc), p2i(operand), p2i(dest), data_offset);
+  JVMCI_event_3("relocating at " PTR_FORMAT "/" PTR_FORMAT " with destination at " PTR_FORMAT " (%d)", p2i(pc), p2i(operand), p2i(dest), data_offset);
 }
 
 void CodeInstaller::pd_relocate_ForeignCall(NativeInstruction* inst, jlong foreign_call_destination, JVMCI_TRAPS) {
@@ -143,7 +144,7 @@ void CodeInstaller::pd_relocate_ForeignCall(NativeInstruction* inst, jlong forei
     JVMCI_ERROR("unsupported relocation for foreign call");
   }
 
-  TRACE_jvmci_3("relocating (foreign call)  at " PTR_FORMAT, p2i(inst));
+  JVMCI_event_3("relocating (foreign call)  at " PTR_FORMAT, p2i(inst));
 }
 
 void CodeInstaller::pd_relocate_JavaMethod(CodeBuffer &, JVMCIObject hotspot_method, jint pc_offset, JVMCI_TRAPS) {
@@ -154,14 +155,15 @@ void CodeInstaller::pd_relocate_JavaMethod(CodeBuffer &, JVMCIObject hotspot_met
     method = JVMCIENV->asMethod(hotspot_method);
   }
 #endif
+  NativeCall* call = NULL;
   switch (_next_call_type) {
     case INLINE_INVOKE:
-      break;
+      return;
     case INVOKEVIRTUAL:
     case INVOKEINTERFACE: {
       assert(method == NULL || !method->is_static(), "cannot call static method with invokeinterface");
 
-      NativeCall* call = nativeCall_at(_instructions->start() + pc_offset);
+      call = nativeCall_at(_instructions->start() + pc_offset);
       call->set_destination(SharedRuntime::get_resolve_virtual_call_stub());
       _instructions->relocate(call->instruction_address(),
                                              virtual_call_Relocation::spec(_invoke_mark_pc),
@@ -171,7 +173,7 @@ void CodeInstaller::pd_relocate_JavaMethod(CodeBuffer &, JVMCIObject hotspot_met
     case INVOKESTATIC: {
       assert(method == NULL || method->is_static(), "cannot call non-static method with invokestatic");
 
-      NativeCall* call = nativeCall_at(_instructions->start() + pc_offset);
+      call = nativeCall_at(_instructions->start() + pc_offset);
       call->set_destination(SharedRuntime::get_resolve_static_call_stub());
       _instructions->relocate(call->instruction_address(),
                                              relocInfo::static_call_type, Assembler::call32_operand);
@@ -179,34 +181,24 @@ void CodeInstaller::pd_relocate_JavaMethod(CodeBuffer &, JVMCIObject hotspot_met
     }
     case INVOKESPECIAL: {
       assert(method == NULL || !method->is_static(), "cannot call static method with invokespecial");
-      NativeCall* call = nativeCall_at(_instructions->start() + pc_offset);
+      call = nativeCall_at(_instructions->start() + pc_offset);
       call->set_destination(SharedRuntime::get_resolve_opt_virtual_call_stub());
       _instructions->relocate(call->instruction_address(),
                               relocInfo::opt_virtual_call_type, Assembler::call32_operand);
       break;
     }
     default:
-      JVMCI_ERROR("invalid _next_call_type value");
-      break;
+      JVMCI_ERROR("invalid _next_call_type value: %d", _next_call_type);
+      return;
+  }
+  if (!call->is_displacement_aligned()) {
+    JVMCI_ERROR("unaligned displacement for call at offset %d", pc_offset);
   }
 }
 
-static void relocate_poll_near(address pc) {
-  NativeInstruction* ni = nativeInstruction_at(pc);
-  int32_t* disp = (int32_t*) Assembler::locate_operand(pc, Assembler::disp32_operand);
-  int32_t offset = *disp; // The Java code installed the polling page offset into the disp32 operand
-  intptr_t new_disp = (intptr_t) (os::get_polling_page() + offset) - (intptr_t) ni;
-  *disp = (int32_t)new_disp;
-}
-
-
 void CodeInstaller::pd_relocate_poll(address pc, jint mark, JVMCI_TRAPS) {
   switch (mark) {
-    case POLL_NEAR: {
-      relocate_poll_near(pc);
-      _instructions->relocate(pc, relocInfo::poll_type, Assembler::disp32_operand);
-      break;
-    }
+    case POLL_NEAR:
     case POLL_FAR:
       // This is a load from a register so there is no relocatable operand.
       // We just have to ensure that the format is not disp32_operand
@@ -214,11 +206,7 @@ void CodeInstaller::pd_relocate_poll(address pc, jint mark, JVMCI_TRAPS) {
       // thing (i.e. ignores this relocation record)
       _instructions->relocate(pc, relocInfo::poll_type, Assembler::imm_operand);
       break;
-    case POLL_RETURN_NEAR: {
-      relocate_poll_near(pc);
-      _instructions->relocate(pc, relocInfo::poll_return_type, Assembler::disp32_operand);
-      break;
-    }
+    case POLL_RETURN_NEAR:
     case POLL_RETURN_FAR:
       // see comment above for POLL_FAR
       _instructions->relocate(pc, relocInfo::poll_return_type, Assembler::imm_operand);

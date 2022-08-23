@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,11 +69,6 @@ class Space: public CHeapObj<mtGC> {
   // Used in support of save_marks()
   HeapWord* _saved_mark_word;
 
-  // A sequential tasks done structure. This supports
-  // parallel GC, where we have threads dynamically
-  // claiming sub-tasks from a larger parallel task.
-  SequentialSubTasksDone _par_seq_tasks;
-
   Space():
     _bottom(NULL), _end(NULL) { }
 
@@ -91,7 +86,7 @@ class Space: public CHeapObj<mtGC> {
   // Returns true if this object has been allocated since a
   // generation's "save_marks" call.
   virtual bool obj_allocated_since_save_marks(const oop obj) const {
-    return (HeapWord*)obj >= saved_mark_word();
+    return cast_from_oop<HeapWord*>(obj) >= saved_mark_word();
   }
 
   // Returns a subregion of the space containing only the allocated objects in
@@ -178,8 +173,7 @@ class Space: public CHeapObj<mtGC> {
   // operate. ResourceArea allocated.
   virtual DirtyCardToOopClosure* new_dcto_cl(OopIterateClosure* cl,
                                              CardTable::PrecisionStyle precision,
-                                             HeapWord* boundary,
-                                             bool parallel);
+                                             HeapWord* boundary);
 
   // If "p" is in the space, returns the address of the start of the
   // "block" that contains "p".  We say "block" instead of "object" since
@@ -224,9 +218,6 @@ class Space: public CHeapObj<mtGC> {
   virtual void print_short() const;
   virtual void print_short_on(outputStream* st) const;
 
-
-  // Accessor for parallel sequential tasks.
-  SequentialSubTasksDone* par_seq_tasks() { return &_par_seq_tasks; }
 
   // IF "this" is a ContiguousSpace, return it, else return NULL.
   virtual ContiguousSpace* toContiguousSpace() {
@@ -412,6 +403,9 @@ public:
   // indicates when the next such action should be taken.
   virtual void prepare_for_compaction(CompactPoint* cp) = 0;
   // MarkSweep support phase3
+  DEBUG_ONLY(int space_index(oop obj));
+  virtual bool must_rescue(oop old_obj, oop new_obj);
+  HeapWord* rescue(HeapWord* old_obj);
   virtual void adjust_pointers();
   // MarkSweep support phase4
   virtual void compact();
@@ -441,7 +435,16 @@ public:
   // function of the then-current compaction space, and updates "cp->threshold
   // accordingly".
   virtual HeapWord* forward(oop q, size_t size, CompactPoint* cp,
-                    HeapWord* compact_top);
+                    HeapWord* compact_top, bool force_forward);
+  // (DCEVM) same as forwad, but can rescue objects. Invoked only during
+  // redefinition runs
+  HeapWord* forward_with_rescue(HeapWord* q, size_t size, CompactPoint* cp,
+                                HeapWord* compact_top, bool force_forward);
+
+  HeapWord* forward_rescued(CompactPoint* cp, HeapWord* compact_top);
+
+  // (tw) Compute new compact top without actually forwarding the object.
+  virtual HeapWord* forward_compact_top(size_t size, CompactPoint* cp, HeapWord* compact_top);
 
   // Return a size with adjustments as required of the space.
   virtual size_t adjust_object_size_v(size_t size) const { return size; }
@@ -475,12 +478,12 @@ protected:
 
   // Frequently calls obj_size().
   template <class SpaceType>
-  static inline void scan_and_compact(SpaceType* space);
+  static inline void scan_and_compact(SpaceType* space, bool redefinition_run);
 
   // Frequently calls scanned_block_is_obj() and scanned_block_size().
   // Requires the scan_limit() function.
   template <class SpaceType>
-  static inline void scan_and_forward(SpaceType* space, CompactPoint* cp);
+  static inline void scan_and_forward(SpaceType* space, CompactPoint* cp, bool redefinition_run);
 };
 
 class GenSpaceMangler;
@@ -491,7 +494,7 @@ class ContiguousSpace: public CompactibleSpace {
   friend class VMStructs;
   // Allow scan_and_forward function to call (private) overrides for auxiliary functions on this class
   template <typename SpaceType>
-  friend void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* cp);
+  friend void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* cp, bool redefinition_run);
 
  private:
   // Auxiliary functions for scan_and_forward support.
@@ -508,7 +511,6 @@ class ContiguousSpace: public CompactibleSpace {
 
  protected:
   HeapWord* _top;
-  HeapWord* _concurrent_iteration_safe_limit;
   // A helper for mangling the unused area of the space in debug builds.
   GenSpaceMangler* _mangler;
 
@@ -568,37 +570,21 @@ class ContiguousSpace: public CompactibleSpace {
   // Allocation (return NULL if full)
   virtual HeapWord* allocate(size_t word_size);
   virtual HeapWord* par_allocate(size_t word_size);
-  HeapWord* allocate_aligned(size_t word_size);
 
   // Iteration
   void oop_iterate(OopIterateClosure* cl);
   void object_iterate(ObjectClosure* blk);
 
-  HeapWord* concurrent_iteration_safe_limit() {
-    assert(_concurrent_iteration_safe_limit <= top(),
-           "_concurrent_iteration_safe_limit update missed");
-    return _concurrent_iteration_safe_limit;
-  }
-  // changes the safe limit, all objects from bottom() to the new
-  // limit should be properly initialized
-  void set_concurrent_iteration_safe_limit(HeapWord* new_limit) {
-    assert(new_limit <= top(), "uninitialized objects in the safe range");
-    _concurrent_iteration_safe_limit = new_limit;
-  }
-
   // Compaction support
   virtual void reset_after_compaction() {
     assert(compaction_top() >= bottom() && compaction_top() <= end(), "should point inside space");
     set_top(compaction_top());
-    // set new iteration safe limit
-    set_concurrent_iteration_safe_limit(compaction_top());
   }
 
   // Override.
   DirtyCardToOopClosure* new_dcto_cl(OopIterateClosure* cl,
                                      CardTable::PrecisionStyle precision,
-                                     HeapWord* boundary,
-                                     bool parallel);
+                                     HeapWord* boundary);
 
   // Apply "blk->do_oop" to the addresses of all reference fields in objects
   // starting with the _saved_mark_word, which was noted during a generation's

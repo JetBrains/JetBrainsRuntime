@@ -23,9 +23,8 @@
  */
 
 /*
- * @test TestPacing
- * @key gc
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @test
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:-ShenandoahPacing -Xmx128m TestPacing
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:+ShenandoahPacing -Xmx128m TestPacing

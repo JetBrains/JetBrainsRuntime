@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,15 +31,17 @@
 #include "gc/shared/generation.hpp"
 #include "gc/shared/generationCounters.hpp"
 #include "gc/shared/preservedMarks.hpp"
+#include "gc/shared/tlab_globals.hpp"
 #include "utilities/align.hpp"
 #include "utilities/stack.hpp"
 
 class ContiguousSpace;
-class ScanClosure;
-class STWGCTimer;
 class CSpaceCounters;
+class DefNewYoungerGenClosure;
+class DefNewScanClosure;
 class ScanWeakRefClosure;
 class SerialHeap;
+class STWGCTimer;
 
 // DefNewGeneration is a young generation containing eden, from- and
 // to-space.
@@ -181,12 +183,12 @@ protected:
 
   class FastEvacuateFollowersClosure: public VoidClosure {
     SerialHeap* _heap;
-    FastScanClosure* _scan_cur_or_nonheap;
-    FastScanClosure* _scan_older;
+    DefNewScanClosure* _scan_cur_or_nonheap;
+    DefNewYoungerGenClosure* _scan_older;
   public:
     FastEvacuateFollowersClosure(SerialHeap* heap,
-                                 FastScanClosure* cur,
-                                 FastScanClosure* older);
+                                 DefNewScanClosure* cur,
+                                 DefNewYoungerGenClosure* older);
     void do_void();
   };
 
@@ -241,8 +243,6 @@ protected:
 
   // Iteration
   void object_iterate(ObjectClosure* blk);
-
-  void younger_refs_iterate(OopsInGenClosure* cl, uint n_threads);
 
   void space_iterate(SpaceClosure* blk, bool usedOnly = false);
 

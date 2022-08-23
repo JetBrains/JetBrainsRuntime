@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,7 +54,6 @@ public:
     /* sun.awt.windows.WEmbeddedFrame fields and method IDs */
     static jfieldID handleID;
 
-    static jmethodID setExtendedStateMID;
     static jmethodID getExtendedStateMID;
 
     /* method id for WEmbeddedFrame.requestActivate() method */
@@ -88,8 +87,6 @@ public:
     INLINE BOOL isZoomed() { return m_zoomed; }
     INLINE void setZoomed(BOOL b) { m_zoomed = b; }
 
-    void SendWindowStateEvent(int oldState, int newState);
-
     void Show();
 
     INLINE void DrawMenuBar() { VERIFY(::DrawMenuBar(GetHWnd())); }
@@ -114,8 +111,12 @@ public:
     MsgRouting WmMouseMove(UINT flags, int x, int y);
     MsgRouting WmNcMouseDown(WPARAM hitTest, int x, int y, int button);
     MsgRouting WmNcMouseUp(WPARAM hitTest, int x, int y, int button);
+    MsgRouting WmNcMouseMove(WPARAM hitTest, int x, int y);
     MsgRouting WmGetIcon(WPARAM iconType, LRESULT& retVal);
     MsgRouting WmShowWindow(BOOL show, UINT status);
+    MsgRouting WmWindowPosChanging(LPARAM windowPos);
+    MsgRouting WmNcCalcSize(BOOL fCalcValidRects, LPNCCALCSIZE_PARAMS lpncsp, LRESULT& retVal);
+    MsgRouting WmNcHitTest(int x, int y, LRESULT& retVal);
 
     virtual MsgRouting WmSysCommand(UINT uCmdType, int xPos, int yPos);
 
@@ -157,6 +158,9 @@ public:
 
     INLINE HWND GetImeTargetComponent() { return m_imeTargetComponent; }
     INLINE void SetImeTargetComponent(HWND hwnd) { m_imeTargetComponent = hwnd; }
+
+    BOOL* m_pHasCustomDecoration;
+    BOOL HasCustomDecoration();
 
 protected:
     /* The frame is undecorated. */

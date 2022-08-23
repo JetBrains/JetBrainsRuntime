@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,33 +25,34 @@
  * @test
  * @bug 8204308
  * @summary Test the jhsdb jmap -clstats command with CDS enabled
- * @requires vm.hasSAandCanAttach & vm.cds
+ * @requires vm.hasSA & vm.cds
  * @library /test/lib
- * @run main/othervm/timeout=2400 CDSJMapClstats
+ * @run driver/timeout=2400 CDSJMapClstats
  */
 
-import java.util.List;
-import java.util.Arrays;
 import java.util.stream.Collectors;
+
+import jdk.test.lib.Utils;
 import jdk.test.lib.cds.CDSTestUtils;
 import jdk.test.lib.cds.CDSOptions;
 import jdk.test.lib.apps.LingeredApp;
 import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.JDKToolLauncher;
+import jdk.test.lib.SA.SATestUtils;
 
 public class CDSJMapClstats {
 
     private static void runClstats(long lingeredAppPid) throws Exception {
 
         JDKToolLauncher launcher = JDKToolLauncher.createUsingTestJDK("jhsdb");
+        launcher.addVMArgs(Utils.getTestJavaOpts());
         launcher.addToolArg("jmap");
         launcher.addToolArg("--clstats");
         launcher.addToolArg("--pid");
         launcher.addToolArg(Long.toString(lingeredAppPid));
 
-        ProcessBuilder processBuilder = new ProcessBuilder();
-        processBuilder.command(launcher.getCommand());
+        ProcessBuilder processBuilder = SATestUtils.createProcessBuilder(launcher);
         System.out.println(
             processBuilder.command().stream().collect(Collectors.joining(" ")));
 
@@ -64,6 +65,7 @@ public class CDSJMapClstats {
 
     public static void main(String[] args) throws Exception {
         System.out.println("Starting CDSJMapClstats test");
+        SATestUtils.skipIfCannotAttach(); // throws SkippedException if attach not expected to work.
         String sharedArchiveName = "ArchiveForCDSJMapClstats.jsa";
         LingeredApp theApp = null;
 
@@ -71,11 +73,10 @@ public class CDSJMapClstats {
             CDSOptions opts = (new CDSOptions()).setArchiveName(sharedArchiveName);
             CDSTestUtils.createArchiveAndCheck(opts);
 
-            List<String> vmArgs = Arrays.asList(
+            theApp = LingeredApp.startApp(
                 "-XX:+UnlockDiagnosticVMOptions",
                 "-XX:SharedArchiveFile=" + sharedArchiveName,
                 "-Xshare:auto");
-            theApp = LingeredApp.startApp(vmArgs);
             System.out.println("Started LingeredApp with pid " + theApp.getPid());
             runClstats(theApp.getPid());
         } catch (Exception ex) {

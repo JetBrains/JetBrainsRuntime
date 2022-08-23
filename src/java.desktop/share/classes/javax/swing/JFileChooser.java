@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,35 +22,49 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package javax.swing;
 
-import javax.swing.event.*;
-import javax.swing.filechooser.*;
-import javax.swing.filechooser.FileFilter;
-import javax.swing.plaf.FileChooserUI;
-
-import javax.accessibility.*;
-
-import java.io.*;
-
-import java.util.Vector;
 import java.awt.AWTEvent;
+import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
-import java.awt.BorderLayout;
-import java.awt.Window;
 import java.awt.Dialog;
+import java.awt.EventQueue;
 import java.awt.Frame;
 import java.awt.GraphicsEnvironment;
 import java.awt.HeadlessException;
-import java.awt.EventQueue;
 import java.awt.Toolkit;
-import java.awt.event.*;
-import java.beans.JavaBean;
+import java.awt.Window;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.HierarchyEvent;
+import java.awt.event.HierarchyListener;
+import java.awt.event.InputEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.beans.BeanProperty;
-import java.beans.PropertyChangeListener;
+import java.beans.JavaBean;
 import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.io.File;
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serial;
+import java.io.Serializable;
 import java.lang.ref.WeakReference;
+import java.util.Vector;
+
+import javax.accessibility.Accessible;
+import javax.accessibility.AccessibleContext;
+import javax.accessibility.AccessibleRole;
+import javax.swing.event.EventListenerList;
+import javax.swing.filechooser.FileFilter;
+import javax.swing.filechooser.FileSystemView;
+import javax.swing.filechooser.FileView;
+import javax.swing.plaf.FileChooserUI;
 
 /**
  * <code>JFileChooser</code> provides a simple mechanism for the user to
@@ -1610,20 +1624,23 @@ public class JFileChooser extends JComponent implements Accessible {
     public boolean isTraversable(File f) {
         Boolean traversable = null;
         if (f != null) {
-            if (getFileView() != null) {
-                traversable = getFileView().isTraversable(f);
+            FileView fileView = getFileView();
+            if (fileView != null) {
+                traversable = fileView.isTraversable(f);
             }
-
-            FileView uiFileView = getUI().getFileView(this);
-
-            if (traversable == null && uiFileView != null) {
-                traversable = uiFileView.isTraversable(f);
+            FileChooserUI ui = getUI();
+            if (traversable == null && ui != null) {
+                FileView uiFileView = ui.getFileView(this);
+                if (uiFileView != null) {
+                    traversable = uiFileView.isTraversable(f);
+                }
             }
-            if (traversable == null) {
-                traversable = getFileSystemView().isTraversable(f);
+            FileSystemView fileSystemView = getFileSystemView();
+            if (traversable == null && fileSystemView != null) {
+                traversable = fileSystemView.isTraversable(f);
             }
         }
-        return (traversable != null && traversable.booleanValue());
+        return traversable != null && traversable;
     }
 
     /**
@@ -1633,11 +1650,8 @@ public class JFileChooser extends JComponent implements Accessible {
      * @see FileFilter#accept
      */
     public boolean accept(File f) {
-        boolean shown = true;
-        if(f != null && fileFilter != null) {
-            shown = fileFilter.accept(f);
-        }
-        return shown;
+        FileFilter filter = fileFilter;
+        return f == null || filter == null || filter.accept(f);
     }
 
     /**
@@ -1858,6 +1872,7 @@ public class JFileChooser extends JComponent implements Accessible {
      * <code>JComponent</code> for more
      * information about serialization in Swing.
      */
+    @Serial
     private void readObject(java.io.ObjectInputStream in)
             throws IOException, ClassNotFoundException {
         ObjectInputStream.GetField f = in.readFields();
@@ -1905,6 +1920,7 @@ public class JFileChooser extends JComponent implements Accessible {
      * <code>JComponent</code> for more
      * information about serialization in Swing.
      */
+    @Serial
     private void writeObject(ObjectOutputStream s) throws IOException {
         FileSystemView fsv = null;
 
@@ -2027,6 +2043,11 @@ public class JFileChooser extends JComponent implements Accessible {
      */
     @SuppressWarnings("serial") // Superclass is not serializable across versions
     protected class AccessibleJFileChooser extends AccessibleJComponent {
+
+        /**
+         * Constructs an {@code AccessibleJFileChooser}.
+         */
+        protected AccessibleJFileChooser() {}
 
         /**
          * Gets the role of this object.

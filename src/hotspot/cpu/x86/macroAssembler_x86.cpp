@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,13 @@
 #include "jvm.h"
 #include "asm/assembler.hpp"
 #include "asm/assembler.inline.hpp"
+#include "compiler/compiler_globals.hpp"
 #include "compiler/disassembler.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
+#include "gc/shared/tlab_globals.hpp"
+#include "interpreter/bytecodeHistogram.hpp"
 #include "interpreter/interpreter.hpp"
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
@@ -40,6 +43,7 @@
 #include "runtime/biasedLocking.hpp"
 #include "runtime/flags/flagSetting.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
+#include "runtime/jniHandles.hpp"
 #include "runtime/objectMonitor.hpp"
 #include "runtime/os.hpp"
 #include "runtime/safepoint.hpp"
@@ -49,9 +53,6 @@
 #include "runtime/thread.hpp"
 #include "utilities/macros.hpp"
 #include "crc32c.h"
-#ifdef COMPILER2
-#include "opto/intrinsicnode.hpp"
-#endif
 
 #ifdef PRODUCT
 #define BLOCK_COMMENT(str) /* nothing */
@@ -115,26 +116,17 @@ void MacroAssembler::cmpklass(Address src1, Metadata* obj) {
   cmp_literal32(src1, (int32_t)obj, metadata_Relocation::spec_for_immediate());
 }
 
+
 void MacroAssembler::cmpklass(Register src1, Metadata* obj) {
   cmp_literal32(src1, (int32_t)obj, metadata_Relocation::spec_for_immediate());
 }
 
-void MacroAssembler::cmpoop_raw(Address src1, jobject obj) {
-  cmp_literal32(src1, (int32_t)obj, oop_Relocation::spec_for_immediate());
-}
-
-void MacroAssembler::cmpoop_raw(Register src1, jobject obj) {
-  cmp_literal32(src1, (int32_t)obj, oop_Relocation::spec_for_immediate());
-}
-
 void MacroAssembler::cmpoop(Address src1, jobject obj) {
-  BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
-  bs->obj_equals(this, src1, obj);
+  cmp_literal32(src1, (int32_t)obj, oop_Relocation::spec_for_immediate());
 }
 
 void MacroAssembler::cmpoop(Register src1, jobject obj) {
-  BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
-  bs->obj_equals(this, src1, obj);
+  cmp_literal32(src1, (int32_t)obj, oop_Relocation::spec_for_immediate());
 }
 
 void MacroAssembler::extend_sign(Register hi, Register lo) {
@@ -349,23 +341,12 @@ void MacroAssembler::pop_callee_saved_registers() {
   pop(rsi);
 }
 
-void MacroAssembler::pop_fTOS() {
-  fld_d(Address(rsp, 0));
-  addl(rsp, 2 * wordSize);
-}
-
 void MacroAssembler::push_callee_saved_registers() {
   push(rsi);
   push(rdi);
   push(rdx);
   push(rcx);
 }
-
-void MacroAssembler::push_fTOS() {
-  subl(rsp, 2 * wordSize);
-  fstp_d(Address(rsp, 0));
-}
-
 
 void MacroAssembler::pushoop(jobject obj) {
   push_literal32((int32_t)obj, oop_Relocation::spec_for_immediate());
@@ -381,11 +362,6 @@ void MacroAssembler::pushptr(AddressLiteral src) {
   } else {
     pushl(as_Address(src));
   }
-}
-
-void MacroAssembler::set_word_if_not_zero(Register dst) {
-  xorl(dst, dst);
-  set_byte_if_not_zero(dst);
 }
 
 static void pass_arg0(MacroAssembler* masm, Register arg) {
@@ -727,8 +703,12 @@ void MacroAssembler::movptr(Register dst, ArrayAddress src) {
 
 // src should NEVER be a real pointer. Use AddressLiteral for true pointers
 void MacroAssembler::movptr(Address dst, intptr_t src) {
-  mov64(rscratch1, src);
-  movq(dst, rscratch1);
+  if (is_simm32(src)) {
+    movptr(dst, checked_cast<int32_t>(src));
+  } else {
+    mov64(rscratch1, src);
+    movq(dst, rscratch1);
+  }
 }
 
 // These are mostly for initializing NULL
@@ -760,17 +740,7 @@ void MacroAssembler::pushptr(AddressLiteral src) {
 }
 
 void MacroAssembler::reset_last_Java_frame(bool clear_fp) {
-  // we must set sp to zero to clear frame
-  movptr(Address(r15_thread, JavaThread::last_Java_sp_offset()), NULL_WORD);
-  // must clear fp, so that compiled frames are not confused; it is
-  // possible that we need it only for debugging
-  if (clear_fp) {
-    movptr(Address(r15_thread, JavaThread::last_Java_fp_offset()), NULL_WORD);
-  }
-
-  // Always clear the pc because it could have been set by make_walkable()
-  movptr(Address(r15_thread, JavaThread::last_Java_pc_offset()), NULL_WORD);
-  vzeroupper();
+  reset_last_Java_frame(r15_thread, clear_fp);
 }
 
 void MacroAssembler::set_last_Java_frame(Register last_java_sp,
@@ -912,7 +882,8 @@ void MacroAssembler::print_state64(int64_t pc, int64_t regs[]) {
   PRINT_REG(rdi, regs[8]);
   PRINT_REG(rsi, regs[9]);
   PRINT_REG(rbp, regs[10]);
-  PRINT_REG(rsp, regs[11]);
+  // rsp is actually not stored by pusha(), compute the old rsp from regs (rsp after pusha): regs + 16 = old rsp
+  PRINT_REG(rsp, (intptr_t)(&regs[16]));
   PRINT_REG(r8 , regs[7]);
   PRINT_REG(r9 , regs[6]);
   PRINT_REG(r10, regs[5]);
@@ -922,8 +893,8 @@ void MacroAssembler::print_state64(int64_t pc, int64_t regs[]) {
   PRINT_REG(r14, regs[1]);
   PRINT_REG(r15, regs[0]);
 #undef PRINT_REG
-  // Print some words near top of staack.
-  int64_t* rsp = (int64_t*) regs[11];
+  // Print some words near the top of the stack.
+  int64_t* rsp = &regs[16];
   int64_t* dump_sp = rsp;
   for (int col1 = 0; col1 < 8; col1++) {
     tty->print("(rsp+0x%03x) 0x%016lx: ", (int)((intptr_t)dump_sp - (intptr_t)rsp), (intptr_t)dump_sp);
@@ -940,6 +911,221 @@ void MacroAssembler::print_state64(int64_t pc, int64_t regs[]) {
   Disassembler::decode((address)pc-64, (address)pc);
   tty->print_cr("--------");
   Disassembler::decode((address)pc, (address)pc+32);
+}
+
+// The java_calling_convention describes stack locations as ideal slots on
+// a frame with no abi restrictions. Since we must observe abi restrictions
+// (like the placement of the register window) the slots must be biased by
+// the following value.
+static int reg2offset_in(VMReg r) {
+  // Account for saved rbp and return address
+  // This should really be in_preserve_stack_slots
+  return (r->reg2stack() + 4) * VMRegImpl::stack_slot_size;
+}
+
+static int reg2offset_out(VMReg r) {
+  return (r->reg2stack() + SharedRuntime::out_preserve_stack_slots()) * VMRegImpl::stack_slot_size;
+}
+
+// A long move
+void MacroAssembler::long_move(VMRegPair src, VMRegPair dst) {
+
+  // The calling conventions assures us that each VMregpair is either
+  // all really one physical register or adjacent stack slots.
+
+  if (src.is_single_phys_reg() ) {
+    if (dst.is_single_phys_reg()) {
+      if (dst.first() != src.first()) {
+        mov(dst.first()->as_Register(), src.first()->as_Register());
+      }
+    } else {
+      assert(dst.is_single_reg(), "not a stack pair");
+      movq(Address(rsp, reg2offset_out(dst.first())), src.first()->as_Register());
+    }
+  } else if (dst.is_single_phys_reg()) {
+    assert(src.is_single_reg(),  "not a stack pair");
+    movq(dst.first()->as_Register(), Address(rbp, reg2offset_out(src.first())));
+  } else {
+    assert(src.is_single_reg() && dst.is_single_reg(), "not stack pairs");
+    movq(rax, Address(rbp, reg2offset_in(src.first())));
+    movq(Address(rsp, reg2offset_out(dst.first())), rax);
+  }
+}
+
+// A double move
+void MacroAssembler::double_move(VMRegPair src, VMRegPair dst) {
+
+  // The calling conventions assures us that each VMregpair is either
+  // all really one physical register or adjacent stack slots.
+
+  if (src.is_single_phys_reg() ) {
+    if (dst.is_single_phys_reg()) {
+      // In theory these overlap but the ordering is such that this is likely a nop
+      if ( src.first() != dst.first()) {
+        movdbl(dst.first()->as_XMMRegister(), src.first()->as_XMMRegister());
+      }
+    } else {
+      assert(dst.is_single_reg(), "not a stack pair");
+      movdbl(Address(rsp, reg2offset_out(dst.first())), src.first()->as_XMMRegister());
+    }
+  } else if (dst.is_single_phys_reg()) {
+    assert(src.is_single_reg(),  "not a stack pair");
+    movdbl(dst.first()->as_XMMRegister(), Address(rbp, reg2offset_out(src.first())));
+  } else {
+    assert(src.is_single_reg() && dst.is_single_reg(), "not stack pairs");
+    movq(rax, Address(rbp, reg2offset_in(src.first())));
+    movq(Address(rsp, reg2offset_out(dst.first())), rax);
+  }
+}
+
+
+// A float arg may have to do float reg int reg conversion
+void MacroAssembler::float_move(VMRegPair src, VMRegPair dst) {
+  assert(!src.second()->is_valid() && !dst.second()->is_valid(), "bad float_move");
+
+  // The calling conventions assures us that each VMregpair is either
+  // all really one physical register or adjacent stack slots.
+
+  if (src.first()->is_stack()) {
+    if (dst.first()->is_stack()) {
+      movl(rax, Address(rbp, reg2offset_in(src.first())));
+      movptr(Address(rsp, reg2offset_out(dst.first())), rax);
+    } else {
+      // stack to reg
+      assert(dst.first()->is_XMMRegister(), "only expect xmm registers as parameters");
+      movflt(dst.first()->as_XMMRegister(), Address(rbp, reg2offset_in(src.first())));
+    }
+  } else if (dst.first()->is_stack()) {
+    // reg to stack
+    assert(src.first()->is_XMMRegister(), "only expect xmm registers as parameters");
+    movflt(Address(rsp, reg2offset_out(dst.first())), src.first()->as_XMMRegister());
+  } else {
+    // reg to reg
+    // In theory these overlap but the ordering is such that this is likely a nop
+    if ( src.first() != dst.first()) {
+      movdbl(dst.first()->as_XMMRegister(),  src.first()->as_XMMRegister());
+    }
+  }
+}
+
+// On 64 bit we will store integer like items to the stack as
+// 64 bits items (x86_32/64 abi) even though java would only store
+// 32bits for a parameter. On 32bit it will simply be 32 bits
+// So this routine will do 32->32 on 32bit and 32->64 on 64bit
+void MacroAssembler::move32_64(VMRegPair src, VMRegPair dst) {
+  if (src.first()->is_stack()) {
+    if (dst.first()->is_stack()) {
+      // stack to stack
+      movslq(rax, Address(rbp, reg2offset_in(src.first())));
+      movq(Address(rsp, reg2offset_out(dst.first())), rax);
+    } else {
+      // stack to reg
+      movslq(dst.first()->as_Register(), Address(rbp, reg2offset_in(src.first())));
+    }
+  } else if (dst.first()->is_stack()) {
+    // reg to stack
+    // Do we really have to sign extend???
+    // __ movslq(src.first()->as_Register(), src.first()->as_Register());
+    movq(Address(rsp, reg2offset_out(dst.first())), src.first()->as_Register());
+  } else {
+    // Do we really have to sign extend???
+    // __ movslq(dst.first()->as_Register(), src.first()->as_Register());
+    if (dst.first() != src.first()) {
+      movq(dst.first()->as_Register(), src.first()->as_Register());
+    }
+  }
+}
+
+void MacroAssembler::move_ptr(VMRegPair src, VMRegPair dst) {
+  if (src.first()->is_stack()) {
+    if (dst.first()->is_stack()) {
+      // stack to stack
+      movq(rax, Address(rbp, reg2offset_in(src.first())));
+      movq(Address(rsp, reg2offset_out(dst.first())), rax);
+    } else {
+      // stack to reg
+      movq(dst.first()->as_Register(), Address(rbp, reg2offset_in(src.first())));
+    }
+  } else if (dst.first()->is_stack()) {
+    // reg to stack
+    movq(Address(rsp, reg2offset_out(dst.first())), src.first()->as_Register());
+  } else {
+    if (dst.first() != src.first()) {
+      movq(dst.first()->as_Register(), src.first()->as_Register());
+    }
+  }
+}
+
+// An oop arg. Must pass a handle not the oop itself
+void MacroAssembler::object_move(OopMap* map,
+                        int oop_handle_offset,
+                        int framesize_in_slots,
+                        VMRegPair src,
+                        VMRegPair dst,
+                        bool is_receiver,
+                        int* receiver_offset) {
+
+  // must pass a handle. First figure out the location we use as a handle
+
+  Register rHandle = dst.first()->is_stack() ? rax : dst.first()->as_Register();
+
+  // See if oop is NULL if it is we need no handle
+
+  if (src.first()->is_stack()) {
+
+    // Oop is already on the stack as an argument
+    int offset_in_older_frame = src.first()->reg2stack() + SharedRuntime::out_preserve_stack_slots();
+    map->set_oop(VMRegImpl::stack2reg(offset_in_older_frame + framesize_in_slots));
+    if (is_receiver) {
+      *receiver_offset = (offset_in_older_frame + framesize_in_slots) * VMRegImpl::stack_slot_size;
+    }
+
+    cmpptr(Address(rbp, reg2offset_in(src.first())), (int32_t)NULL_WORD);
+    lea(rHandle, Address(rbp, reg2offset_in(src.first())));
+    // conditionally move a NULL
+    cmovptr(Assembler::equal, rHandle, Address(rbp, reg2offset_in(src.first())));
+  } else {
+
+    // Oop is in an a register we must store it to the space we reserve
+    // on the stack for oop_handles and pass a handle if oop is non-NULL
+
+    const Register rOop = src.first()->as_Register();
+    int oop_slot;
+    if (rOop == j_rarg0)
+      oop_slot = 0;
+    else if (rOop == j_rarg1)
+      oop_slot = 1;
+    else if (rOop == j_rarg2)
+      oop_slot = 2;
+    else if (rOop == j_rarg3)
+      oop_slot = 3;
+    else if (rOop == j_rarg4)
+      oop_slot = 4;
+    else {
+      assert(rOop == j_rarg5, "wrong register");
+      oop_slot = 5;
+    }
+
+    oop_slot = oop_slot * VMRegImpl::slots_per_word + oop_handle_offset;
+    int offset = oop_slot*VMRegImpl::stack_slot_size;
+
+    map->set_oop(VMRegImpl::stack2reg(oop_slot));
+    // Store oop in handle area, may be NULL
+    movptr(Address(rsp, offset), rOop);
+    if (is_receiver) {
+      *receiver_offset = offset;
+    }
+
+    cmpptr(rOop, (int32_t)NULL_WORD);
+    lea(rHandle, Address(rsp, offset));
+    // conditionally move a NULL from the handle area where it was just stored
+    cmovptr(Assembler::equal, rHandle, Address(rsp, offset));
+  }
+
+  // If arg is on the stack then place it otherwise it is already in correct reg.
+  if (dst.first()->is_stack()) {
+    movptr(Address(rsp, reg2offset_out(dst.first())), rHandle);
+  }
 }
 
 #endif // _LP64
@@ -1071,7 +1257,7 @@ void MacroAssembler::bang_stack_size(Register size, Register tmp) {
   // was post-decremented.)  Skip this address by starting at i=1, and
   // touch a few more pages below.  N.B.  It is important to touch all
   // the way down including all pages in the shadow zone.
-  for (int i = 1; i < ((int)JavaThread::stack_shadow_zone_size() / os::vm_page_size()); i++) {
+  for (int i = 1; i < ((int)StackOverflow::stack_shadow_zone_size() / os::vm_page_size()); i++) {
     // this could be any sized move but this is can be a debugging crumb
     // so the bigger the better.
     movptr(Address(tmp, (-i*os::vm_page_size())), size );
@@ -1094,14 +1280,15 @@ void MacroAssembler::reserved_stack_check() {
     bind(no_reserved_zone_enabling);
 }
 
-int MacroAssembler::biased_locking_enter(Register lock_reg,
-                                         Register obj_reg,
-                                         Register swap_reg,
-                                         Register tmp_reg,
-                                         bool swap_reg_contains_mark,
-                                         Label& done,
-                                         Label* slow_case,
-                                         BiasedLockingCounters* counters) {
+void MacroAssembler::biased_locking_enter(Register lock_reg,
+                                          Register obj_reg,
+                                          Register swap_reg,
+                                          Register tmp_reg,
+                                          Register tmp_reg2,
+                                          bool swap_reg_contains_mark,
+                                          Label& done,
+                                          Label* slow_case,
+                                          BiasedLockingCounters* counters) {
   assert(UseBiasedLocking, "why call this otherwise?");
   assert(swap_reg == rax, "swap_reg must be rax for cmpxchgq");
   assert(tmp_reg != noreg, "tmp_reg must be supplied");
@@ -1120,9 +1307,7 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   // pointers to allow age to be placed into low bits
   // First check to see whether biasing is even enabled for this object
   Label cas_label;
-  int null_check_offset = -1;
   if (!swap_reg_contains_mark) {
-    null_check_offset = offset();
     movptr(swap_reg, mark_addr);
   }
   movptr(tmp_reg, swap_reg);
@@ -1139,10 +1324,7 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   // simpler.
   movptr(saved_mark_addr, swap_reg);
 #endif
-  if (swap_reg_contains_mark) {
-    null_check_offset = offset();
-  }
-  load_prototype_header(tmp_reg, obj_reg);
+  load_prototype_header(tmp_reg, obj_reg, tmp_reg2);
 #ifdef _LP64
   orptr(tmp_reg, r15_thread);
   xorptr(tmp_reg, swap_reg);
@@ -1173,7 +1355,7 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   // the prototype header is no longer biased and we have to revoke
   // the bias on this object.
   testptr(header_reg, markWord::biased_lock_mask_in_place);
-  jccb(Assembler::notZero, try_revoke_bias);
+  jcc(Assembler::notZero, try_revoke_bias);
 
   // Biasing is still enabled for this data type. See whether the
   // epoch of the current bias is still valid, meaning that the epoch
@@ -1228,7 +1410,7 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   //
   // FIXME: due to a lack of registers we currently blow away the age
   // bits in this situation. Should attempt to preserve them.
-  load_prototype_header(tmp_reg, obj_reg);
+  load_prototype_header(tmp_reg, obj_reg, tmp_reg2);
 #ifdef _LP64
   orptr(tmp_reg, r15_thread);
 #else
@@ -1263,7 +1445,7 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   // FIXME: due to a lack of registers we currently blow away the age
   // bits in this situation. Should attempt to preserve them.
   NOT_LP64( movptr(swap_reg, saved_mark_addr); )
-  load_prototype_header(tmp_reg, obj_reg);
+  load_prototype_header(tmp_reg, obj_reg, tmp_reg2);
   lock();
   cmpxchgptr(tmp_reg, mark_addr); // compare tmp_reg and swap_reg
   // Fall through to the normal CAS-based lock, because no matter what
@@ -1275,8 +1457,6 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   }
 
   bind(cas_label);
-
-  return null_check_offset;
 }
 
 void MacroAssembler::biased_locking_exit(Register obj_reg, Register temp_reg, Label& done) {
@@ -1293,772 +1473,6 @@ void MacroAssembler::biased_locking_exit(Register obj_reg, Register temp_reg, La
   cmpptr(temp_reg, markWord::biased_lock_pattern);
   jcc(Assembler::equal, done);
 }
-
-#ifdef COMPILER2
-
-#if INCLUDE_RTM_OPT
-
-// Update rtm_counters based on abort status
-// input: abort_status
-//        rtm_counters (RTMLockingCounters*)
-// flags are killed
-void MacroAssembler::rtm_counters_update(Register abort_status, Register rtm_counters) {
-
-  atomic_incptr(Address(rtm_counters, RTMLockingCounters::abort_count_offset()));
-  if (PrintPreciseRTMLockingStatistics) {
-    for (int i = 0; i < RTMLockingCounters::ABORT_STATUS_LIMIT; i++) {
-      Label check_abort;
-      testl(abort_status, (1<<i));
-      jccb(Assembler::equal, check_abort);
-      atomic_incptr(Address(rtm_counters, RTMLockingCounters::abortX_count_offset() + (i * sizeof(uintx))));
-      bind(check_abort);
-    }
-  }
-}
-
-// Branch if (random & (count-1) != 0), count is 2^n
-// tmp, scr and flags are killed
-void MacroAssembler::branch_on_random_using_rdtsc(Register tmp, Register scr, int count, Label& brLabel) {
-  assert(tmp == rax, "");
-  assert(scr == rdx, "");
-  rdtsc(); // modifies EDX:EAX
-  andptr(tmp, count-1);
-  jccb(Assembler::notZero, brLabel);
-}
-
-// Perform abort ratio calculation, set no_rtm bit if high ratio
-// input:  rtm_counters_Reg (RTMLockingCounters* address)
-// tmpReg, rtm_counters_Reg and flags are killed
-void MacroAssembler::rtm_abort_ratio_calculation(Register tmpReg,
-                                                 Register rtm_counters_Reg,
-                                                 RTMLockingCounters* rtm_counters,
-                                                 Metadata* method_data) {
-  Label L_done, L_check_always_rtm1, L_check_always_rtm2;
-
-  if (RTMLockingCalculationDelay > 0) {
-    // Delay calculation
-    movptr(tmpReg, ExternalAddress((address) RTMLockingCounters::rtm_calculation_flag_addr()), tmpReg);
-    testptr(tmpReg, tmpReg);
-    jccb(Assembler::equal, L_done);
-  }
-  // Abort ratio calculation only if abort_count > RTMAbortThreshold
-  //   Aborted transactions = abort_count * 100
-  //   All transactions = total_count *  RTMTotalCountIncrRate
-  //   Set no_rtm bit if (Aborted transactions >= All transactions * RTMAbortRatio)
-
-  movptr(tmpReg, Address(rtm_counters_Reg, RTMLockingCounters::abort_count_offset()));
-  cmpptr(tmpReg, RTMAbortThreshold);
-  jccb(Assembler::below, L_check_always_rtm2);
-  imulptr(tmpReg, tmpReg, 100);
-
-  Register scrReg = rtm_counters_Reg;
-  movptr(scrReg, Address(rtm_counters_Reg, RTMLockingCounters::total_count_offset()));
-  imulptr(scrReg, scrReg, RTMTotalCountIncrRate);
-  imulptr(scrReg, scrReg, RTMAbortRatio);
-  cmpptr(tmpReg, scrReg);
-  jccb(Assembler::below, L_check_always_rtm1);
-  if (method_data != NULL) {
-    // set rtm_state to "no rtm" in MDO
-    mov_metadata(tmpReg, method_data);
-    lock();
-    orl(Address(tmpReg, MethodData::rtm_state_offset_in_bytes()), NoRTM);
-  }
-  jmpb(L_done);
-  bind(L_check_always_rtm1);
-  // Reload RTMLockingCounters* address
-  lea(rtm_counters_Reg, ExternalAddress((address)rtm_counters));
-  bind(L_check_always_rtm2);
-  movptr(tmpReg, Address(rtm_counters_Reg, RTMLockingCounters::total_count_offset()));
-  cmpptr(tmpReg, RTMLockingThreshold / RTMTotalCountIncrRate);
-  jccb(Assembler::below, L_done);
-  if (method_data != NULL) {
-    // set rtm_state to "always rtm" in MDO
-    mov_metadata(tmpReg, method_data);
-    lock();
-    orl(Address(tmpReg, MethodData::rtm_state_offset_in_bytes()), UseRTM);
-  }
-  bind(L_done);
-}
-
-// Update counters and perform abort ratio calculation
-// input:  abort_status_Reg
-// rtm_counters_Reg, flags are killed
-void MacroAssembler::rtm_profiling(Register abort_status_Reg,
-                                   Register rtm_counters_Reg,
-                                   RTMLockingCounters* rtm_counters,
-                                   Metadata* method_data,
-                                   bool profile_rtm) {
-
-  assert(rtm_counters != NULL, "should not be NULL when profiling RTM");
-  // update rtm counters based on rax value at abort
-  // reads abort_status_Reg, updates flags
-  lea(rtm_counters_Reg, ExternalAddress((address)rtm_counters));
-  rtm_counters_update(abort_status_Reg, rtm_counters_Reg);
-  if (profile_rtm) {
-    // Save abort status because abort_status_Reg is used by following code.
-    if (RTMRetryCount > 0) {
-      push(abort_status_Reg);
-    }
-    assert(rtm_counters != NULL, "should not be NULL when profiling RTM");
-    rtm_abort_ratio_calculation(abort_status_Reg, rtm_counters_Reg, rtm_counters, method_data);
-    // restore abort status
-    if (RTMRetryCount > 0) {
-      pop(abort_status_Reg);
-    }
-  }
-}
-
-// Retry on abort if abort's status is 0x6: can retry (0x2) | memory conflict (0x4)
-// inputs: retry_count_Reg
-//       : abort_status_Reg
-// output: retry_count_Reg decremented by 1
-// flags are killed
-void MacroAssembler::rtm_retry_lock_on_abort(Register retry_count_Reg, Register abort_status_Reg, Label& retryLabel) {
-  Label doneRetry;
-  assert(abort_status_Reg == rax, "");
-  // The abort reason bits are in eax (see all states in rtmLocking.hpp)
-  // 0x6 = conflict on which we can retry (0x2) | memory conflict (0x4)
-  // if reason is in 0x6 and retry count != 0 then retry
-  andptr(abort_status_Reg, 0x6);
-  jccb(Assembler::zero, doneRetry);
-  testl(retry_count_Reg, retry_count_Reg);
-  jccb(Assembler::zero, doneRetry);
-  pause();
-  decrementl(retry_count_Reg);
-  jmp(retryLabel);
-  bind(doneRetry);
-}
-
-// Spin and retry if lock is busy,
-// inputs: box_Reg (monitor address)
-//       : retry_count_Reg
-// output: retry_count_Reg decremented by 1
-//       : clear z flag if retry count exceeded
-// tmp_Reg, scr_Reg, flags are killed
-void MacroAssembler::rtm_retry_lock_on_busy(Register retry_count_Reg, Register box_Reg,
-                                            Register tmp_Reg, Register scr_Reg, Label& retryLabel) {
-  Label SpinLoop, SpinExit, doneRetry;
-  int owner_offset = OM_OFFSET_NO_MONITOR_VALUE_TAG(owner);
-
-  testl(retry_count_Reg, retry_count_Reg);
-  jccb(Assembler::zero, doneRetry);
-  decrementl(retry_count_Reg);
-  movptr(scr_Reg, RTMSpinLoopCount);
-
-  bind(SpinLoop);
-  pause();
-  decrementl(scr_Reg);
-  jccb(Assembler::lessEqual, SpinExit);
-  movptr(tmp_Reg, Address(box_Reg, owner_offset));
-  testptr(tmp_Reg, tmp_Reg);
-  jccb(Assembler::notZero, SpinLoop);
-
-  bind(SpinExit);
-  jmp(retryLabel);
-  bind(doneRetry);
-  incrementl(retry_count_Reg); // clear z flag
-}
-
-// Use RTM for normal stack locks
-// Input: objReg (object to lock)
-void MacroAssembler::rtm_stack_locking(Register objReg, Register tmpReg, Register scrReg,
-                                       Register retry_on_abort_count_Reg,
-                                       RTMLockingCounters* stack_rtm_counters,
-                                       Metadata* method_data, bool profile_rtm,
-                                       Label& DONE_LABEL, Label& IsInflated) {
-  assert(UseRTMForStackLocks, "why call this otherwise?");
-  assert(!UseBiasedLocking, "Biased locking is not supported with RTM locking");
-  assert(tmpReg == rax, "");
-  assert(scrReg == rdx, "");
-  Label L_rtm_retry, L_decrement_retry, L_on_abort;
-
-  if (RTMRetryCount > 0) {
-    movl(retry_on_abort_count_Reg, RTMRetryCount); // Retry on abort
-    bind(L_rtm_retry);
-  }
-  movptr(tmpReg, Address(objReg, oopDesc::mark_offset_in_bytes()));
-  testptr(tmpReg, markWord::monitor_value);  // inflated vs stack-locked|neutral|biased
-  jcc(Assembler::notZero, IsInflated);
-
-  if (PrintPreciseRTMLockingStatistics || profile_rtm) {
-    Label L_noincrement;
-    if (RTMTotalCountIncrRate > 1) {
-      // tmpReg, scrReg and flags are killed
-      branch_on_random_using_rdtsc(tmpReg, scrReg, RTMTotalCountIncrRate, L_noincrement);
-    }
-    assert(stack_rtm_counters != NULL, "should not be NULL when profiling RTM");
-    atomic_incptr(ExternalAddress((address)stack_rtm_counters->total_count_addr()), scrReg);
-    bind(L_noincrement);
-  }
-  xbegin(L_on_abort);
-  movptr(tmpReg, Address(objReg, oopDesc::mark_offset_in_bytes()));       // fetch markword
-  andptr(tmpReg, markWord::biased_lock_mask_in_place); // look at 3 lock bits
-  cmpptr(tmpReg, markWord::unlocked_value);            // bits = 001 unlocked
-  jcc(Assembler::equal, DONE_LABEL);        // all done if unlocked
-
-  Register abort_status_Reg = tmpReg; // status of abort is stored in RAX
-  if (UseRTMXendForLockBusy) {
-    xend();
-    movptr(abort_status_Reg, 0x2);   // Set the abort status to 2 (so we can retry)
-    jmp(L_decrement_retry);
-  }
-  else {
-    xabort(0);
-  }
-  bind(L_on_abort);
-  if (PrintPreciseRTMLockingStatistics || profile_rtm) {
-    rtm_profiling(abort_status_Reg, scrReg, stack_rtm_counters, method_data, profile_rtm);
-  }
-  bind(L_decrement_retry);
-  if (RTMRetryCount > 0) {
-    // retry on lock abort if abort status is 'can retry' (0x2) or 'memory conflict' (0x4)
-    rtm_retry_lock_on_abort(retry_on_abort_count_Reg, abort_status_Reg, L_rtm_retry);
-  }
-}
-
-// Use RTM for inflating locks
-// inputs: objReg (object to lock)
-//         boxReg (on-stack box address (displaced header location) - KILLED)
-//         tmpReg (ObjectMonitor address + markWord::monitor_value)
-void MacroAssembler::rtm_inflated_locking(Register objReg, Register boxReg, Register tmpReg,
-                                          Register scrReg, Register retry_on_busy_count_Reg,
-                                          Register retry_on_abort_count_Reg,
-                                          RTMLockingCounters* rtm_counters,
-                                          Metadata* method_data, bool profile_rtm,
-                                          Label& DONE_LABEL) {
-  assert(UseRTMLocking, "why call this otherwise?");
-  assert(tmpReg == rax, "");
-  assert(scrReg == rdx, "");
-  Label L_rtm_retry, L_decrement_retry, L_on_abort;
-  int owner_offset = OM_OFFSET_NO_MONITOR_VALUE_TAG(owner);
-
-  // Without cast to int32_t this style of movptr will destroy r10 which is typically obj.
-  movptr(Address(boxReg, 0), (int32_t)intptr_t(markWord::unused_mark().value()));
-  movptr(boxReg, tmpReg); // Save ObjectMonitor address
-
-  if (RTMRetryCount > 0) {
-    movl(retry_on_busy_count_Reg, RTMRetryCount);  // Retry on lock busy
-    movl(retry_on_abort_count_Reg, RTMRetryCount); // Retry on abort
-    bind(L_rtm_retry);
-  }
-  if (PrintPreciseRTMLockingStatistics || profile_rtm) {
-    Label L_noincrement;
-    if (RTMTotalCountIncrRate > 1) {
-      // tmpReg, scrReg and flags are killed
-      branch_on_random_using_rdtsc(tmpReg, scrReg, RTMTotalCountIncrRate, L_noincrement);
-    }
-    assert(rtm_counters != NULL, "should not be NULL when profiling RTM");
-    atomic_incptr(ExternalAddress((address)rtm_counters->total_count_addr()), scrReg);
-    bind(L_noincrement);
-  }
-  xbegin(L_on_abort);
-  movptr(tmpReg, Address(objReg, oopDesc::mark_offset_in_bytes()));
-  movptr(tmpReg, Address(tmpReg, owner_offset));
-  testptr(tmpReg, tmpReg);
-  jcc(Assembler::zero, DONE_LABEL);
-  if (UseRTMXendForLockBusy) {
-    xend();
-    jmp(L_decrement_retry);
-  }
-  else {
-    xabort(0);
-  }
-  bind(L_on_abort);
-  Register abort_status_Reg = tmpReg; // status of abort is stored in RAX
-  if (PrintPreciseRTMLockingStatistics || profile_rtm) {
-    rtm_profiling(abort_status_Reg, scrReg, rtm_counters, method_data, profile_rtm);
-  }
-  if (RTMRetryCount > 0) {
-    // retry on lock abort if abort status is 'can retry' (0x2) or 'memory conflict' (0x4)
-    rtm_retry_lock_on_abort(retry_on_abort_count_Reg, abort_status_Reg, L_rtm_retry);
-  }
-
-  movptr(tmpReg, Address(boxReg, owner_offset)) ;
-  testptr(tmpReg, tmpReg) ;
-  jccb(Assembler::notZero, L_decrement_retry) ;
-
-  // Appears unlocked - try to swing _owner from null to non-null.
-  // Invariant: tmpReg == 0.  tmpReg is EAX which is the implicit cmpxchg comparand.
-#ifdef _LP64
-  Register threadReg = r15_thread;
-#else
-  get_thread(scrReg);
-  Register threadReg = scrReg;
-#endif
-  lock();
-  cmpxchgptr(threadReg, Address(boxReg, owner_offset)); // Updates tmpReg
-
-  if (RTMRetryCount > 0) {
-    // success done else retry
-    jccb(Assembler::equal, DONE_LABEL) ;
-    bind(L_decrement_retry);
-    // Spin and retry if lock is busy.
-    rtm_retry_lock_on_busy(retry_on_busy_count_Reg, boxReg, tmpReg, scrReg, L_rtm_retry);
-  }
-  else {
-    bind(L_decrement_retry);
-  }
-}
-
-#endif //  INCLUDE_RTM_OPT
-
-// fast_lock and fast_unlock used by C2
-
-// Because the transitions from emitted code to the runtime
-// monitorenter/exit helper stubs are so slow it's critical that
-// we inline both the stack-locking fast path and the inflated fast path.
-//
-// See also: cmpFastLock and cmpFastUnlock.
-//
-// What follows is a specialized inline transliteration of the code
-// in enter() and exit(). If we're concerned about I$ bloat another
-// option would be to emit TrySlowEnter and TrySlowExit methods
-// at startup-time.  These methods would accept arguments as
-// (rax,=Obj, rbx=Self, rcx=box, rdx=Scratch) and return success-failure
-// indications in the icc.ZFlag.  fast_lock and fast_unlock would simply
-// marshal the arguments and emit calls to TrySlowEnter and TrySlowExit.
-// In practice, however, the # of lock sites is bounded and is usually small.
-// Besides the call overhead, TrySlowEnter and TrySlowExit might suffer
-// if the processor uses simple bimodal branch predictors keyed by EIP
-// Since the helper routines would be called from multiple synchronization
-// sites.
-//
-// An even better approach would be write "MonitorEnter()" and "MonitorExit()"
-// in java - using j.u.c and unsafe - and just bind the lock and unlock sites
-// to those specialized methods.  That'd give us a mostly platform-independent
-// implementation that the JITs could optimize and inline at their pleasure.
-// Done correctly, the only time we'd need to cross to native could would be
-// to park() or unpark() threads.  We'd also need a few more unsafe operators
-// to (a) prevent compiler-JIT reordering of non-volatile accesses, and
-// (b) explicit barriers or fence operations.
-//
-// TODO:
-//
-// *  Arrange for C2 to pass "Self" into fast_lock and fast_unlock in one of the registers (scr).
-//    This avoids manifesting the Self pointer in the fast_lock and fast_unlock terminals.
-//    Given TLAB allocation, Self is usually manifested in a register, so passing it into
-//    the lock operators would typically be faster than reifying Self.
-//
-// *  Ideally I'd define the primitives as:
-//       fast_lock   (nax Obj, nax box, EAX tmp, nax scr) where box, tmp and scr are KILLED.
-//       fast_unlock (nax Obj, EAX box, nax tmp) where box and tmp are KILLED
-//    Unfortunately ADLC bugs prevent us from expressing the ideal form.
-//    Instead, we're stuck with a rather awkward and brittle register assignments below.
-//    Furthermore the register assignments are overconstrained, possibly resulting in
-//    sub-optimal code near the synchronization site.
-//
-// *  Eliminate the sp-proximity tests and just use "== Self" tests instead.
-//    Alternately, use a better sp-proximity test.
-//
-// *  Currently ObjectMonitor._Owner can hold either an sp value or a (THREAD *) value.
-//    Either one is sufficient to uniquely identify a thread.
-//    TODO: eliminate use of sp in _owner and use get_thread(tr) instead.
-//
-// *  Intrinsify notify() and notifyAll() for the common cases where the
-//    object is locked by the calling thread but the waitlist is empty.
-//    avoid the expensive JNI call to JVM_Notify() and JVM_NotifyAll().
-//
-// *  use jccb and jmpb instead of jcc and jmp to improve code density.
-//    But beware of excessive branch density on AMD Opterons.
-//
-// *  Both fast_lock and fast_unlock set the ICC.ZF to indicate success
-//    or failure of the fast path.  If the fast path fails then we pass
-//    control to the slow path, typically in C.  In fast_lock and
-//    fast_unlock we often branch to DONE_LABEL, just to find that C2
-//    will emit a conditional branch immediately after the node.
-//    So we have branches to branches and lots of ICC.ZF games.
-//    Instead, it might be better to have C2 pass a "FailureLabel"
-//    into fast_lock and fast_unlock.  In the case of success, control
-//    will drop through the node.  ICC.ZF is undefined at exit.
-//    In the case of failure, the node will branch directly to the
-//    FailureLabel
-
-
-// obj: object to lock
-// box: on-stack box address (displaced header location) - KILLED
-// rax,: tmp -- KILLED
-// scr: tmp -- KILLED
-void MacroAssembler::fast_lock(Register objReg, Register boxReg, Register tmpReg,
-                               Register scrReg, Register cx1Reg, Register cx2Reg,
-                               BiasedLockingCounters* counters,
-                               RTMLockingCounters* rtm_counters,
-                               RTMLockingCounters* stack_rtm_counters,
-                               Metadata* method_data,
-                               bool use_rtm, bool profile_rtm) {
-  // Ensure the register assignments are disjoint
-  assert(tmpReg == rax, "");
-
-  if (use_rtm) {
-    assert_different_registers(objReg, boxReg, tmpReg, scrReg, cx1Reg, cx2Reg);
-  } else {
-    assert(cx1Reg == noreg, "");
-    assert(cx2Reg == noreg, "");
-    assert_different_registers(objReg, boxReg, tmpReg, scrReg);
-  }
-
-  if (counters != NULL) {
-    atomic_incl(ExternalAddress((address)counters->total_entry_count_addr()), scrReg);
-  }
-
-  // Possible cases that we'll encounter in fast_lock
-  // ------------------------------------------------
-  // * Inflated
-  //    -- unlocked
-  //    -- Locked
-  //       = by self
-  //       = by other
-  // * biased
-  //    -- by Self
-  //    -- by other
-  // * neutral
-  // * stack-locked
-  //    -- by self
-  //       = sp-proximity test hits
-  //       = sp-proximity test generates false-negative
-  //    -- by other
-  //
-
-  Label IsInflated, DONE_LABEL;
-
-  // it's stack-locked, biased or neutral
-  // TODO: optimize away redundant LDs of obj->mark and improve the markword triage
-  // order to reduce the number of conditional branches in the most common cases.
-  // Beware -- there's a subtle invariant that fetch of the markword
-  // at [FETCH], below, will never observe a biased encoding (*101b).
-  // If this invariant is not held we risk exclusion (safety) failure.
-  if (UseBiasedLocking && !UseOptoBiasInlining) {
-    biased_locking_enter(boxReg, objReg, tmpReg, scrReg, false, DONE_LABEL, NULL, counters);
-  }
-
-#if INCLUDE_RTM_OPT
-  if (UseRTMForStackLocks && use_rtm) {
-    rtm_stack_locking(objReg, tmpReg, scrReg, cx2Reg,
-                      stack_rtm_counters, method_data, profile_rtm,
-                      DONE_LABEL, IsInflated);
-  }
-#endif // INCLUDE_RTM_OPT
-
-  movptr(tmpReg, Address(objReg, oopDesc::mark_offset_in_bytes()));          // [FETCH]
-  testptr(tmpReg, markWord::monitor_value); // inflated vs stack-locked|neutral|biased
-  jccb(Assembler::notZero, IsInflated);
-
-  // Attempt stack-locking ...
-  orptr (tmpReg, markWord::unlocked_value);
-  movptr(Address(boxReg, 0), tmpReg);          // Anticipate successful CAS
-  lock();
-  cmpxchgptr(boxReg, Address(objReg, oopDesc::mark_offset_in_bytes()));      // Updates tmpReg
-  if (counters != NULL) {
-    cond_inc32(Assembler::equal,
-               ExternalAddress((address)counters->fast_path_entry_count_addr()));
-  }
-  jcc(Assembler::equal, DONE_LABEL);           // Success
-
-  // Recursive locking.
-  // The object is stack-locked: markword contains stack pointer to BasicLock.
-  // Locked by current thread if difference with current SP is less than one page.
-  subptr(tmpReg, rsp);
-  // Next instruction set ZFlag == 1 (Success) if difference is less then one page.
-  andptr(tmpReg, (int32_t) (NOT_LP64(0xFFFFF003) LP64_ONLY(7 - os::vm_page_size())) );
-  movptr(Address(boxReg, 0), tmpReg);
-  if (counters != NULL) {
-    cond_inc32(Assembler::equal,
-               ExternalAddress((address)counters->fast_path_entry_count_addr()));
-  }
-  jmp(DONE_LABEL);
-
-  bind(IsInflated);
-  // The object is inflated. tmpReg contains pointer to ObjectMonitor* + markWord::monitor_value
-
-#if INCLUDE_RTM_OPT
-  // Use the same RTM locking code in 32- and 64-bit VM.
-  if (use_rtm) {
-    rtm_inflated_locking(objReg, boxReg, tmpReg, scrReg, cx1Reg, cx2Reg,
-                         rtm_counters, method_data, profile_rtm, DONE_LABEL);
-  } else {
-#endif // INCLUDE_RTM_OPT
-
-#ifndef _LP64
-  // The object is inflated.
-
-  // boxReg refers to the on-stack BasicLock in the current frame.
-  // We'd like to write:
-  //   set box->_displaced_header = markWord::unused_mark().  Any non-0 value suffices.
-  // This is convenient but results a ST-before-CAS penalty.  The following CAS suffers
-  // additional latency as we have another ST in the store buffer that must drain.
-
-  // avoid ST-before-CAS
-  // register juggle because we need tmpReg for cmpxchgptr below
-  movptr(scrReg, boxReg);
-  movptr(boxReg, tmpReg);                   // consider: LEA box, [tmp-2]
-
-  // Optimistic form: consider XORL tmpReg,tmpReg
-  movptr(tmpReg, NULL_WORD);
-
-  // Appears unlocked - try to swing _owner from null to non-null.
-  // Ideally, I'd manifest "Self" with get_thread and then attempt
-  // to CAS the register containing Self into m->Owner.
-  // But we don't have enough registers, so instead we can either try to CAS
-  // rsp or the address of the box (in scr) into &m->owner.  If the CAS succeeds
-  // we later store "Self" into m->Owner.  Transiently storing a stack address
-  // (rsp or the address of the box) into  m->owner is harmless.
-  // Invariant: tmpReg == 0.  tmpReg is EAX which is the implicit cmpxchg comparand.
-  lock();
-  cmpxchgptr(scrReg, Address(boxReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(owner)));
-  movptr(Address(scrReg, 0), 3);          // box->_displaced_header = 3
-  // If we weren't able to swing _owner from NULL to the BasicLock
-  // then take the slow path.
-  jccb  (Assembler::notZero, DONE_LABEL);
-  // update _owner from BasicLock to thread
-  get_thread (scrReg);                    // beware: clobbers ICCs
-  movptr(Address(boxReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(owner)), scrReg);
-  xorptr(boxReg, boxReg);                 // set icc.ZFlag = 1 to indicate success
-
-  // If the CAS fails we can either retry or pass control to the slow path.
-  // We use the latter tactic.
-  // Pass the CAS result in the icc.ZFlag into DONE_LABEL
-  // If the CAS was successful ...
-  //   Self has acquired the lock
-  //   Invariant: m->_recursions should already be 0, so we don't need to explicitly set it.
-  // Intentional fall-through into DONE_LABEL ...
-#else // _LP64
-  // It's inflated and we use scrReg for ObjectMonitor* in this section.
-  movq(scrReg, tmpReg);
-  xorq(tmpReg, tmpReg);
-  lock();
-  cmpxchgptr(r15_thread, Address(scrReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(owner)));
-  // Unconditionally set box->_displaced_header = markWord::unused_mark().
-  // Without cast to int32_t this style of movptr will destroy r10 which is typically obj.
-  movptr(Address(boxReg, 0), (int32_t)intptr_t(markWord::unused_mark().value()));
-  // Intentional fall-through into DONE_LABEL ...
-  // Propagate ICC.ZF from CAS above into DONE_LABEL.
-#endif // _LP64
-#if INCLUDE_RTM_OPT
-  } // use_rtm()
-#endif
-  // DONE_LABEL is a hot target - we'd really like to place it at the
-  // start of cache line by padding with NOPs.
-  // See the AMD and Intel software optimization manuals for the
-  // most efficient "long" NOP encodings.
-  // Unfortunately none of our alignment mechanisms suffice.
-  bind(DONE_LABEL);
-
-  // At DONE_LABEL the icc ZFlag is set as follows ...
-  // fast_unlock uses the same protocol.
-  // ZFlag == 1 -> Success
-  // ZFlag == 0 -> Failure - force control through the slow path
-}
-
-// obj: object to unlock
-// box: box address (displaced header location), killed.  Must be EAX.
-// tmp: killed, cannot be obj nor box.
-//
-// Some commentary on balanced locking:
-//
-// fast_lock and fast_unlock are emitted only for provably balanced lock sites.
-// Methods that don't have provably balanced locking are forced to run in the
-// interpreter - such methods won't be compiled to use fast_lock and fast_unlock.
-// The interpreter provides two properties:
-// I1:  At return-time the interpreter automatically and quietly unlocks any
-//      objects acquired the current activation (frame).  Recall that the
-//      interpreter maintains an on-stack list of locks currently held by
-//      a frame.
-// I2:  If a method attempts to unlock an object that is not held by the
-//      the frame the interpreter throws IMSX.
-//
-// Lets say A(), which has provably balanced locking, acquires O and then calls B().
-// B() doesn't have provably balanced locking so it runs in the interpreter.
-// Control returns to A() and A() unlocks O.  By I1 and I2, above, we know that O
-// is still locked by A().
-//
-// The only other source of unbalanced locking would be JNI.  The "Java Native Interface:
-// Programmer's Guide and Specification" claims that an object locked by jni_monitorenter
-// should not be unlocked by "normal" java-level locking and vice-versa.  The specification
-// doesn't specify what will occur if a program engages in such mixed-mode locking, however.
-// Arguably given that the spec legislates the JNI case as undefined our implementation
-// could reasonably *avoid* checking owner in fast_unlock().
-// In the interest of performance we elide m->Owner==Self check in unlock.
-// A perfectly viable alternative is to elide the owner check except when
-// Xcheck:jni is enabled.
-
-void MacroAssembler::fast_unlock(Register objReg, Register boxReg, Register tmpReg, bool use_rtm) {
-  assert(boxReg == rax, "");
-  assert_different_registers(objReg, boxReg, tmpReg);
-
-  Label DONE_LABEL, Stacked, CheckSucc;
-
-  // Critically, the biased locking test must have precedence over
-  // and appear before the (box->dhw == 0) recursive stack-lock test.
-  if (UseBiasedLocking && !UseOptoBiasInlining) {
-    biased_locking_exit(objReg, tmpReg, DONE_LABEL);
-  }
-
-#if INCLUDE_RTM_OPT
-  if (UseRTMForStackLocks && use_rtm) {
-    assert(!UseBiasedLocking, "Biased locking is not supported with RTM locking");
-    Label L_regular_unlock;
-    movptr(tmpReg, Address(objReg, oopDesc::mark_offset_in_bytes())); // fetch markword
-    andptr(tmpReg, markWord::biased_lock_mask_in_place);              // look at 3 lock bits
-    cmpptr(tmpReg, markWord::unlocked_value);                         // bits = 001 unlocked
-    jccb(Assembler::notEqual, L_regular_unlock);                      // if !HLE RegularLock
-    xend();                                                           // otherwise end...
-    jmp(DONE_LABEL);                                                  // ... and we're done
-    bind(L_regular_unlock);
-  }
-#endif
-
-  cmpptr(Address(boxReg, 0), (int32_t)NULL_WORD);                   // Examine the displaced header
-  jcc   (Assembler::zero, DONE_LABEL);                              // 0 indicates recursive stack-lock
-  movptr(tmpReg, Address(objReg, oopDesc::mark_offset_in_bytes())); // Examine the object's markword
-  testptr(tmpReg, markWord::monitor_value);                         // Inflated?
-  jccb  (Assembler::zero, Stacked);
-
-  // It's inflated.
-#if INCLUDE_RTM_OPT
-  if (use_rtm) {
-    Label L_regular_inflated_unlock;
-    int owner_offset = OM_OFFSET_NO_MONITOR_VALUE_TAG(owner);
-    movptr(boxReg, Address(tmpReg, owner_offset));
-    testptr(boxReg, boxReg);
-    jccb(Assembler::notZero, L_regular_inflated_unlock);
-    xend();
-    jmpb(DONE_LABEL);
-    bind(L_regular_inflated_unlock);
-  }
-#endif
-
-  // Despite our balanced locking property we still check that m->_owner == Self
-  // as java routines or native JNI code called by this thread might
-  // have released the lock.
-  // Refer to the comments in synchronizer.cpp for how we might encode extra
-  // state in _succ so we can avoid fetching EntryList|cxq.
-  //
-  // I'd like to add more cases in fast_lock() and fast_unlock() --
-  // such as recursive enter and exit -- but we have to be wary of
-  // I$ bloat, T$ effects and BP$ effects.
-  //
-  // If there's no contention try a 1-0 exit.  That is, exit without
-  // a costly MEMBAR or CAS.  See synchronizer.cpp for details on how
-  // we detect and recover from the race that the 1-0 exit admits.
-  //
-  // Conceptually fast_unlock() must execute a STST|LDST "release" barrier
-  // before it STs null into _owner, releasing the lock.  Updates
-  // to data protected by the critical section must be visible before
-  // we drop the lock (and thus before any other thread could acquire
-  // the lock and observe the fields protected by the lock).
-  // IA32's memory-model is SPO, so STs are ordered with respect to
-  // each other and there's no need for an explicit barrier (fence).
-  // See also http://gee.cs.oswego.edu/dl/jmm/cookbook.html.
-#ifndef _LP64
-  get_thread (boxReg);
-
-  // Note that we could employ various encoding schemes to reduce
-  // the number of loads below (currently 4) to just 2 or 3.
-  // Refer to the comments in synchronizer.cpp.
-  // In practice the chain of fetches doesn't seem to impact performance, however.
-  xorptr(boxReg, boxReg);
-  orptr(boxReg, Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(recursions)));
-  jccb  (Assembler::notZero, DONE_LABEL);
-  movptr(boxReg, Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(EntryList)));
-  orptr(boxReg, Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(cxq)));
-  jccb  (Assembler::notZero, CheckSucc);
-  movptr(Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(owner)), NULL_WORD);
-  jmpb  (DONE_LABEL);
-
-  bind (Stacked);
-  // It's not inflated and it's not recursively stack-locked and it's not biased.
-  // It must be stack-locked.
-  // Try to reset the header to displaced header.
-  // The "box" value on the stack is stable, so we can reload
-  // and be assured we observe the same value as above.
-  movptr(tmpReg, Address(boxReg, 0));
-  lock();
-  cmpxchgptr(tmpReg, Address(objReg, oopDesc::mark_offset_in_bytes())); // Uses RAX which is box
-  // Intention fall-thru into DONE_LABEL
-
-  // DONE_LABEL is a hot target - we'd really like to place it at the
-  // start of cache line by padding with NOPs.
-  // See the AMD and Intel software optimization manuals for the
-  // most efficient "long" NOP encodings.
-  // Unfortunately none of our alignment mechanisms suffice.
-  bind (CheckSucc);
-#else // _LP64
-  // It's inflated
-  xorptr(boxReg, boxReg);
-  orptr(boxReg, Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(recursions)));
-  jccb  (Assembler::notZero, DONE_LABEL);
-  movptr(boxReg, Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(cxq)));
-  orptr(boxReg, Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(EntryList)));
-  jccb  (Assembler::notZero, CheckSucc);
-  // Without cast to int32_t this style of movptr will destroy r10 which is typically obj.
-  movptr(Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(owner)), (int32_t)NULL_WORD);
-  jmpb  (DONE_LABEL);
-
-  // Try to avoid passing control into the slow_path ...
-  Label LSuccess, LGoSlowPath ;
-  bind  (CheckSucc);
-
-  // The following optional optimization can be elided if necessary
-  // Effectively: if (succ == null) goto slow path
-  // The code reduces the window for a race, however,
-  // and thus benefits performance.
-  cmpptr(Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(succ)), (int32_t)NULL_WORD);
-  jccb  (Assembler::zero, LGoSlowPath);
-
-  xorptr(boxReg, boxReg);
-  // Without cast to int32_t this style of movptr will destroy r10 which is typically obj.
-  movptr(Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(owner)), (int32_t)NULL_WORD);
-
-  // Memory barrier/fence
-  // Dekker pivot point -- fulcrum : ST Owner; MEMBAR; LD Succ
-  // Instead of MFENCE we use a dummy locked add of 0 to the top-of-stack.
-  // This is faster on Nehalem and AMD Shanghai/Barcelona.
-  // See https://blogs.oracle.com/dave/entry/instruction_selection_for_volatile_fences
-  // We might also restructure (ST Owner=0;barrier;LD _Succ) to
-  // (mov box,0; xchgq box, &m->Owner; LD _succ) .
-  lock(); addl(Address(rsp, 0), 0);
-
-  cmpptr(Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(succ)), (int32_t)NULL_WORD);
-  jccb  (Assembler::notZero, LSuccess);
-
-  // Rare inopportune interleaving - race.
-  // The successor vanished in the small window above.
-  // The lock is contended -- (cxq|EntryList) != null -- and there's no apparent successor.
-  // We need to ensure progress and succession.
-  // Try to reacquire the lock.
-  // If that fails then the new owner is responsible for succession and this
-  // thread needs to take no further action and can exit via the fast path (success).
-  // If the re-acquire succeeds then pass control into the slow path.
-  // As implemented, this latter mode is horrible because we generated more
-  // coherence traffic on the lock *and* artifically extended the critical section
-  // length while by virtue of passing control into the slow path.
-
-  // box is really RAX -- the following CMPXCHG depends on that binding
-  // cmpxchg R,[M] is equivalent to rax = CAS(M,rax,R)
-  lock();
-  cmpxchgptr(r15_thread, Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(owner)));
-  // There's no successor so we tried to regrab the lock.
-  // If that didn't work, then another thread grabbed the
-  // lock so we're done (and exit was a success).
-  jccb  (Assembler::notEqual, LSuccess);
-  // Intentional fall-through into slow path
-
-  bind  (LGoSlowPath);
-  orl   (boxReg, 1);                      // set ICC.ZF=0 to indicate failure
-  jmpb  (DONE_LABEL);
-
-  bind  (LSuccess);
-  testl (boxReg, 0);                      // set ICC.ZF=1 to indicate success
-  jmpb  (DONE_LABEL);
-
-  bind  (Stacked);
-  movptr(tmpReg, Address (boxReg, 0));      // re-fetch
-  lock();
-  cmpxchgptr(tmpReg, Address(objReg, oopDesc::mark_offset_in_bytes())); // Uses RAX which is box
-
-#endif
-  bind(DONE_LABEL);
-}
-#endif // COMPILER2
 
 void MacroAssembler::c2bool(Register x) {
   // implements x == 0 ? 0 : 1
@@ -2291,7 +1705,7 @@ void MacroAssembler::call_VM_base(Register oop_result,
 #ifdef ASSERT
   // TraceBytecodes does not use r12 but saves it over the call, so don't verify
   // r12 is the heapbase.
-  LP64_ONLY(if ((UseCompressedOops || UseCompressedClassPointers) && !TraceBytecodes) verify_heapbase("call_VM_base: heap base corrupted?");)
+  LP64_ONLY(if (UseCompressedOops && !TraceBytecodes) verify_heapbase("call_VM_base: heap base corrupted?");)
 #endif // ASSERT
 
   assert(java_thread != oop_result  , "cannot use the same register for java_thread & oop_result");
@@ -2458,7 +1872,7 @@ void MacroAssembler::super_call_VM_leaf(address entry_point, Register arg_0, Reg
 void MacroAssembler::get_vm_result(Register oop_result, Register java_thread) {
   movptr(oop_result, Address(java_thread, JavaThread::vm_result_offset()));
   movptr(Address(java_thread, JavaThread::vm_result_offset()), NULL_WORD);
-  verify_oop(oop_result, "broken oop in call_VM_base");
+  verify_oop_msg(oop_result, "broken oop in call_VM_base");
 }
 
 void MacroAssembler::get_vm_result_2(Register metadata_result, Register java_thread) {
@@ -2585,20 +1999,17 @@ void MacroAssembler::cmpptr(Address src1, AddressLiteral src2) {
 }
 
 void MacroAssembler::cmpoop(Register src1, Register src2) {
-  BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
-  bs->obj_equals(this, src1, src2);
+  cmpptr(src1, src2);
 }
 
 void MacroAssembler::cmpoop(Register src1, Address src2) {
-  BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
-  bs->obj_equals(this, src1, src2);
+  cmpptr(src1, src2);
 }
 
 #ifdef _LP64
 void MacroAssembler::cmpoop(Register src1, jobject src2) {
   movoop(rscratch1, src2);
-  BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
-  bs->obj_equals(this, src1, rscratch1);
+  cmpptr(src1, rscratch1);
 }
 #endif
 
@@ -2735,18 +2146,6 @@ void MacroAssembler::divss(XMMRegister dst, AddressLiteral src) {
   }
 }
 
-// !defined(COMPILER2) is because of stupid core builds
-#if !defined(_LP64) || defined(COMPILER1) || !defined(COMPILER2) || INCLUDE_JVMCI
-void MacroAssembler::empty_FPU_stack() {
-  if (VM_Version::supports_mmx()) {
-    emms();
-  } else {
-    for (int i = 8; i-- > 0; ) ffree(i);
-  }
-}
-#endif // !LP64 || C1 || !C2 || INCLUDE_JVMCI
-
-
 void MacroAssembler::enter() {
   push(rbp);
   mov(rbp, rsp);
@@ -2765,6 +2164,7 @@ void MacroAssembler::fat_nop() {
   }
 }
 
+#ifndef _LP64
 void MacroAssembler::fcmp(Register tmp) {
   fcmp(tmp, 1, true, true);
 }
@@ -2838,13 +2238,40 @@ void MacroAssembler::fld_s(AddressLiteral src) {
   fld_s(as_Address(src));
 }
 
-void MacroAssembler::fld_x(AddressLiteral src) {
-  Assembler::fld_x(as_Address(src));
-}
-
 void MacroAssembler::fldcw(AddressLiteral src) {
   Assembler::fldcw(as_Address(src));
 }
+
+void MacroAssembler::fpop() {
+  ffree();
+  fincstp();
+}
+
+void MacroAssembler::fremr(Register tmp) {
+  save_rax(tmp);
+  { Label L;
+    bind(L);
+    fprem();
+    fwait(); fnstsw_ax();
+    sahf();
+    jcc(Assembler::parity, L);
+  }
+  restore_rax(tmp);
+  // Result is in ST0.
+  // Note: fxch & fpop to get rid of ST1
+  // (otherwise FPU stack could overflow eventually)
+  fxch(1);
+  fpop();
+}
+
+void MacroAssembler::empty_FPU_stack() {
+  if (VM_Version::supports_mmx()) {
+    emms();
+  } else {
+    for (int i = 8; i-- > 0; ) ffree(i);
+  }
+}
+#endif // !LP64
 
 void MacroAssembler::mulpd(XMMRegister dst, AddressLiteral src) {
   if (reachable(src)) {
@@ -2855,82 +2282,52 @@ void MacroAssembler::mulpd(XMMRegister dst, AddressLiteral src) {
   }
 }
 
-void MacroAssembler::increase_precision() {
-  subptr(rsp, BytesPerWord);
-  fnstcw(Address(rsp, 0));
-  movl(rax, Address(rsp, 0));
-  orl(rax, 0x300);
-  push(rax);
-  fldcw(Address(rsp, 0));
-  pop(rax);
-}
-
-void MacroAssembler::restore_precision() {
-  fldcw(Address(rsp, 0));
-  addptr(rsp, BytesPerWord);
-}
-
-void MacroAssembler::fpop() {
-  ffree();
-  fincstp();
-}
-
 void MacroAssembler::load_float(Address src) {
+#ifdef _LP64
+  movflt(xmm0, src);
+#else
   if (UseSSE >= 1) {
     movflt(xmm0, src);
   } else {
-    LP64_ONLY(ShouldNotReachHere());
-    NOT_LP64(fld_s(src));
+    fld_s(src);
   }
+#endif // LP64
 }
 
 void MacroAssembler::store_float(Address dst) {
+#ifdef _LP64
+  movflt(dst, xmm0);
+#else
   if (UseSSE >= 1) {
     movflt(dst, xmm0);
   } else {
-    LP64_ONLY(ShouldNotReachHere());
-    NOT_LP64(fstp_s(dst));
+    fstp_s(dst);
   }
+#endif // LP64
 }
 
 void MacroAssembler::load_double(Address src) {
+#ifdef _LP64
+  movdbl(xmm0, src);
+#else
   if (UseSSE >= 2) {
     movdbl(xmm0, src);
   } else {
-    LP64_ONLY(ShouldNotReachHere());
-    NOT_LP64(fld_d(src));
+    fld_d(src);
   }
+#endif // LP64
 }
 
 void MacroAssembler::store_double(Address dst) {
+#ifdef _LP64
+  movdbl(dst, xmm0);
+#else
   if (UseSSE >= 2) {
     movdbl(dst, xmm0);
   } else {
-    LP64_ONLY(ShouldNotReachHere());
-    NOT_LP64(fstp_d(dst));
+    fstp_d(dst);
   }
-}
-
-void MacroAssembler::fremr(Register tmp) {
-  save_rax(tmp);
-  { Label L;
-    bind(L);
-    fprem();
-    fwait(); fnstsw_ax();
-#ifdef _LP64
-    testl(rax, 0x400);
-    jcc(Assembler::notEqual, L);
-#else
-    sahf();
-    jcc(Assembler::parity, L);
-#endif // _LP64
-  }
-  restore_rax(tmp);
-  // Result is in ST0.
-  // Note: fxch & fpop to get rid of ST1
-  // (otherwise FPU stack could overflow eventually)
-  fxch(1);
-  fpop();
+#endif // LP64
 }
 
 // dst = c = a * b + c
@@ -3046,6 +2443,10 @@ void MacroAssembler::jump_cc(Condition cc, AddressLiteral dst) {
     Assembler::jmp(rscratch1);
     bind(skip);
   }
+}
+
+void MacroAssembler::fld_x(AddressLiteral src) {
+  Assembler::fld_x(as_Address(src));
 }
 
 void MacroAssembler::ldmxcsr(AddressLiteral src) {
@@ -3235,22 +2636,6 @@ void MacroAssembler::movq(XMMRegister dst, AddressLiteral src) {
   }
 }
 
-#ifdef COMPILER2
-void MacroAssembler::setvectmask(Register dst, Register src) {
-  guarantee(PostLoopMultiversioning, "must be");
-  Assembler::movl(dst, 1);
-  Assembler::shlxl(dst, dst, src);
-  Assembler::decl(dst);
-  Assembler::kmovdl(k1, dst);
-  Assembler::movl(dst, src);
-}
-
-void MacroAssembler::restorevectmask() {
-  guarantee(PostLoopMultiversioning, "must be");
-  Assembler::knotwl(k1, k0);
-}
-#endif // COMPILER2
-
 void MacroAssembler::movdbl(XMMRegister dst, AddressLiteral src) {
   if (reachable(src)) {
     if (UseXmmLoadAndClearUpper) {
@@ -3340,6 +2725,117 @@ void MacroAssembler::vmovdqu(XMMRegister dst, AddressLiteral src, Register scrat
   else {
     lea(scratch_reg, src);
     vmovdqu(dst, Address(scratch_reg, 0));
+  }
+}
+
+void MacroAssembler::kmov(KRegister dst, Address src) {
+  if (VM_Version::supports_avx512bw()) {
+    kmovql(dst, src);
+  } else {
+    assert(VM_Version::supports_evex(), "");
+    kmovwl(dst, src);
+  }
+}
+
+void MacroAssembler::kmov(Address dst, KRegister src) {
+  if (VM_Version::supports_avx512bw()) {
+    kmovql(dst, src);
+  } else {
+    assert(VM_Version::supports_evex(), "");
+    kmovwl(dst, src);
+  }
+}
+
+void MacroAssembler::kmov(KRegister dst, KRegister src) {
+  if (VM_Version::supports_avx512bw()) {
+    kmovql(dst, src);
+  } else {
+    assert(VM_Version::supports_evex(), "");
+    kmovwl(dst, src);
+  }
+}
+
+void MacroAssembler::kmov(Register dst, KRegister src) {
+  if (VM_Version::supports_avx512bw()) {
+    kmovql(dst, src);
+  } else {
+    assert(VM_Version::supports_evex(), "");
+    kmovwl(dst, src);
+  }
+}
+
+void MacroAssembler::kmov(KRegister dst, Register src) {
+  if (VM_Version::supports_avx512bw()) {
+    kmovql(dst, src);
+  } else {
+    assert(VM_Version::supports_evex(), "");
+    kmovwl(dst, src);
+  }
+}
+
+void MacroAssembler::kmovql(KRegister dst, AddressLiteral src, Register scratch_reg) {
+  if (reachable(src)) {
+    kmovql(dst, as_Address(src));
+  } else {
+    lea(scratch_reg, src);
+    kmovql(dst, Address(scratch_reg, 0));
+  }
+}
+
+void MacroAssembler::kmovwl(KRegister dst, AddressLiteral src, Register scratch_reg) {
+  if (reachable(src)) {
+    kmovwl(dst, as_Address(src));
+  } else {
+    lea(scratch_reg, src);
+    kmovwl(dst, Address(scratch_reg, 0));
+  }
+}
+
+void MacroAssembler::evmovdqub(XMMRegister dst, KRegister mask, AddressLiteral src, bool merge,
+                               int vector_len, Register scratch_reg) {
+  if (reachable(src)) {
+    if (mask == k0) {
+      Assembler::evmovdqub(dst, as_Address(src), merge, vector_len);
+    } else {
+      Assembler::evmovdqub(dst, mask, as_Address(src), merge, vector_len);
+    }
+  } else {
+    lea(scratch_reg, src);
+    if (mask == k0) {
+      Assembler::evmovdqub(dst, Address(scratch_reg, 0), merge, vector_len);
+    } else {
+      Assembler::evmovdqub(dst, mask, Address(scratch_reg, 0), merge, vector_len);
+    }
+  }
+}
+
+void MacroAssembler::evmovdquw(XMMRegister dst, KRegister mask, AddressLiteral src, bool merge,
+                               int vector_len, Register scratch_reg) {
+  if (reachable(src)) {
+    Assembler::evmovdquw(dst, mask, as_Address(src), merge, vector_len);
+  } else {
+    lea(scratch_reg, src);
+    Assembler::evmovdquw(dst, mask, Address(scratch_reg, 0), merge, vector_len);
+  }
+}
+
+void MacroAssembler::evmovdqul(XMMRegister dst, KRegister mask, AddressLiteral src, bool merge,
+                               int vector_len, Register scratch_reg) {
+  if (reachable(src)) {
+    Assembler::evmovdqul(dst, mask, as_Address(src), merge, vector_len);
+  } else {
+    lea(scratch_reg, src);
+    Assembler::evmovdqul(dst, mask, Address(scratch_reg, 0), merge, vector_len);
+  }
+}
+
+void MacroAssembler::evmovdquq(XMMRegister dst, KRegister mask, AddressLiteral src, bool merge,
+                               int vector_len, Register scratch_reg) {
+  if (reachable(src)) {
+    Assembler::evmovdquq(dst, mask, as_Address(src), merge, vector_len);
+  } else {
+    lea(scratch_reg, src);
+    Assembler::evmovdquq(dst, mask, Address(scratch_reg, 0), merge, vector_len);
   }
 }
 
@@ -3485,13 +2981,13 @@ void MacroAssembler::reset_last_Java_frame(Register java_thread, bool clear_fp) 
   }
   // we must set sp to zero to clear frame
   movptr(Address(java_thread, JavaThread::last_Java_sp_offset()), NULL_WORD);
+  // must clear fp, so that compiled frames are not confused; it is
+  // possible that we need it only for debugging
   if (clear_fp) {
     movptr(Address(java_thread, JavaThread::last_Java_fp_offset()), NULL_WORD);
   }
-
   // Always clear the pc because it could have been set by make_walkable()
   movptr(Address(java_thread, JavaThread::last_Java_pc_offset()), NULL_WORD);
-
   vzeroupper();
 }
 
@@ -3510,23 +3006,16 @@ void MacroAssembler::save_rax(Register tmp) {
   else if (tmp != rax) mov(tmp, rax);
 }
 
-void MacroAssembler::safepoint_poll(Label& slow_path, Register thread_reg, Register temp_reg) {
-  if (SafepointMechanism::uses_thread_local_poll()) {
-#ifdef _LP64
-    assert(thread_reg == r15_thread, "should be");
-#else
-    if (thread_reg == noreg) {
-      thread_reg = temp_reg;
-      get_thread(thread_reg);
-    }
-#endif
-    testb(Address(thread_reg, Thread::polling_page_offset()), SafepointMechanism::poll_bit());
-    jcc(Assembler::notZero, slow_path); // handshake bit set implies poll
-  } else {
-    cmp32(ExternalAddress(SafepointSynchronize::address_of_state()),
-        SafepointSynchronize::_not_synchronized);
-    jcc(Assembler::notEqual, slow_path);
+void MacroAssembler::safepoint_poll(Label& slow_path, Register thread_reg, bool at_return, bool in_nmethod) {
+  if (at_return) {
+    // Note that when in_nmethod is set, the stack pointer is incremented before the poll. Therefore,
+    // we may safely use rsp instead to perform the stack watermark check.
+    cmpptr(in_nmethod ? rsp : rbp, Address(thread_reg, JavaThread::polling_word_offset()));
+    jcc(Assembler::above, slow_path);
+    return;
   }
+  testb(Address(thread_reg, JavaThread::polling_word_offset()), SafepointMechanism::poll_bit());
+  jcc(Assembler::notZero, slow_path); // handshake bit set implies poll
 }
 
 // Calls to C land
@@ -3771,6 +3260,16 @@ void MacroAssembler::vaddss(XMMRegister dst, XMMRegister nds, AddressLiteral src
   }
 }
 
+void MacroAssembler::vpaddb(XMMRegister dst, XMMRegister nds, AddressLiteral src, int vector_len, Register rscratch) {
+  assert(UseAVX > 0, "requires some form of AVX");
+  if (reachable(src)) {
+    Assembler::vpaddb(dst, nds, as_Address(src), vector_len);
+  } else {
+    lea(rscratch, src);
+    Assembler::vpaddb(dst, nds, Address(rscratch, 0), vector_len);
+  }
+}
+
 void MacroAssembler::vpaddd(XMMRegister dst, XMMRegister nds, AddressLiteral src, int vector_len, Register rscratch) {
   assert(UseAVX > 0, "requires some form of AVX");
   if (reachable(src)) {
@@ -3835,14 +3334,106 @@ void MacroAssembler::vpcmpeqw(XMMRegister dst, XMMRegister nds, XMMRegister src,
   Assembler::vpcmpeqw(dst, nds, src, vector_len);
 }
 
+void MacroAssembler::evpcmpeqd(KRegister kdst, KRegister mask, XMMRegister nds,
+                               AddressLiteral src, int vector_len, Register scratch_reg) {
+  if (reachable(src)) {
+    Assembler::evpcmpeqd(kdst, mask, nds, as_Address(src), vector_len);
+  } else {
+    lea(scratch_reg, src);
+    Assembler::evpcmpeqd(kdst, mask, nds, Address(scratch_reg, 0), vector_len);
+  }
+}
+
+void MacroAssembler::evpcmpd(KRegister kdst, KRegister mask, XMMRegister nds, AddressLiteral src,
+                             int comparison, bool is_signed, int vector_len, Register scratch_reg) {
+  if (reachable(src)) {
+    Assembler::evpcmpd(kdst, mask, nds, as_Address(src), comparison, is_signed, vector_len);
+  } else {
+    lea(scratch_reg, src);
+    Assembler::evpcmpd(kdst, mask, nds, Address(scratch_reg, 0), comparison, is_signed, vector_len);
+  }
+}
+
+void MacroAssembler::evpcmpq(KRegister kdst, KRegister mask, XMMRegister nds, AddressLiteral src,
+                             int comparison, bool is_signed, int vector_len, Register scratch_reg) {
+  if (reachable(src)) {
+    Assembler::evpcmpq(kdst, mask, nds, as_Address(src), comparison, is_signed, vector_len);
+  } else {
+    lea(scratch_reg, src);
+    Assembler::evpcmpq(kdst, mask, nds, Address(scratch_reg, 0), comparison, is_signed, vector_len);
+  }
+}
+
+void MacroAssembler::evpcmpb(KRegister kdst, KRegister mask, XMMRegister nds, AddressLiteral src,
+                             int comparison, bool is_signed, int vector_len, Register scratch_reg) {
+  if (reachable(src)) {
+    Assembler::evpcmpb(kdst, mask, nds, as_Address(src), comparison, is_signed, vector_len);
+  } else {
+    lea(scratch_reg, src);
+    Assembler::evpcmpb(kdst, mask, nds, Address(scratch_reg, 0), comparison, is_signed, vector_len);
+  }
+}
+
+void MacroAssembler::evpcmpw(KRegister kdst, KRegister mask, XMMRegister nds, AddressLiteral src,
+                             int comparison, bool is_signed, int vector_len, Register scratch_reg) {
+  if (reachable(src)) {
+    Assembler::evpcmpw(kdst, mask, nds, as_Address(src), comparison, is_signed, vector_len);
+  } else {
+    lea(scratch_reg, src);
+    Assembler::evpcmpw(kdst, mask, nds, Address(scratch_reg, 0), comparison, is_signed, vector_len);
+  }
+}
+
+void MacroAssembler::vpcmpCC(XMMRegister dst, XMMRegister nds, XMMRegister src, int cond_encoding, Width width, int vector_len) {
+  if (width == Assembler::Q) {
+    Assembler::vpcmpCCq(dst, nds, src, cond_encoding, vector_len);
+  } else {
+    Assembler::vpcmpCCbwd(dst, nds, src, cond_encoding, vector_len);
+  }
+}
+
+void MacroAssembler::vpcmpCCW(XMMRegister dst, XMMRegister nds, XMMRegister src, ComparisonPredicate cond, Width width, int vector_len, Register scratch_reg) {
+  int eq_cond_enc = 0x29;
+  int gt_cond_enc = 0x37;
+  if (width != Assembler::Q) {
+    eq_cond_enc = 0x74 + width;
+    gt_cond_enc = 0x64 + width;
+  }
+  switch (cond) {
+  case eq:
+    vpcmpCC(dst, nds, src, eq_cond_enc, width, vector_len);
+    break;
+  case neq:
+    vpcmpCC(dst, nds, src, eq_cond_enc, width, vector_len);
+    vpxor(dst, dst, ExternalAddress(StubRoutines::x86::vector_all_bits_set()), vector_len, scratch_reg);
+    break;
+  case le:
+    vpcmpCC(dst, nds, src, gt_cond_enc, width, vector_len);
+    vpxor(dst, dst, ExternalAddress(StubRoutines::x86::vector_all_bits_set()), vector_len, scratch_reg);
+    break;
+  case nlt:
+    vpcmpCC(dst, src, nds, gt_cond_enc, width, vector_len);
+    vpxor(dst, dst, ExternalAddress(StubRoutines::x86::vector_all_bits_set()), vector_len, scratch_reg);
+    break;
+  case lt:
+    vpcmpCC(dst, src, nds, gt_cond_enc, width, vector_len);
+    break;
+  case nle:
+    vpcmpCC(dst, nds, src, gt_cond_enc, width, vector_len);
+    break;
+  default:
+    assert(false, "Should not reach here");
+  }
+}
+
 void MacroAssembler::vpmovzxbw(XMMRegister dst, Address src, int vector_len) {
   assert(((dst->encoding() < 16) || VM_Version::supports_avx512vlbw()),"XMM register should be 0-15");
   Assembler::vpmovzxbw(dst, src, vector_len);
 }
 
-void MacroAssembler::vpmovmskb(Register dst, XMMRegister src) {
+void MacroAssembler::vpmovmskb(Register dst, XMMRegister src, int vector_len) {
   assert((src->encoding() < 16),"XMM register should be 0-15");
-  Assembler::vpmovmskb(dst, src);
+  Assembler::vpmovmskb(dst, src, vector_len);
 }
 
 void MacroAssembler::vpmullw(XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len) {
@@ -3853,6 +3444,16 @@ void MacroAssembler::vpmullw(XMMRegister dst, XMMRegister nds, XMMRegister src, 
 void MacroAssembler::vpmullw(XMMRegister dst, XMMRegister nds, Address src, int vector_len) {
   assert(((dst->encoding() < 16 && nds->encoding() < 16) || VM_Version::supports_avx512vlbw()),"XMM register should be 0-15");
   Assembler::vpmullw(dst, nds, src, vector_len);
+}
+
+void MacroAssembler::vpmulld(XMMRegister dst, XMMRegister nds, AddressLiteral src, int vector_len, Register scratch_reg) {
+  assert((UseAVX > 0), "AVX support is needed");
+  if (reachable(src)) {
+    Assembler::vpmulld(dst, nds, as_Address(src), vector_len);
+  } else {
+    lea(scratch_reg, src);
+    Assembler::vpmulld(dst, nds, Address(scratch_reg, 0), vector_len);
+  }
 }
 
 void MacroAssembler::vpsubb(XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len) {
@@ -3959,6 +3560,16 @@ void MacroAssembler::vandps(XMMRegister dst, XMMRegister nds, AddressLiteral src
   }
 }
 
+void MacroAssembler::evpord(XMMRegister dst, KRegister mask, XMMRegister nds, AddressLiteral src,
+                            bool merge, int vector_len, Register scratch_reg) {
+  if (reachable(src)) {
+    Assembler::evpord(dst, mask, nds, as_Address(src), merge, vector_len);
+  } else {
+    lea(scratch_reg, src);
+    Assembler::evpord(dst, mask, nds, Address(scratch_reg, 0), merge, vector_len);
+  }
+}
+
 void MacroAssembler::vdivsd(XMMRegister dst, XMMRegister nds, AddressLiteral src) {
   if (reachable(src)) {
     vdivsd(dst, nds, as_Address(src));
@@ -4055,135 +3666,14 @@ void MacroAssembler::vpxor(XMMRegister dst, XMMRegister nds, AddressLiteral src,
   }
 }
 
-//-------------------------------------------------------------------------------------------
-#ifdef COMPILER2
-// Generic instructions support for use in .ad files C2 code generation
-
-void MacroAssembler::vabsnegd(int opcode, XMMRegister dst, XMMRegister src, Register scr) {
-  if (dst != src) {
-    movdqu(dst, src);
-  }
-  if (opcode == Op_AbsVD) {
-    andpd(dst, ExternalAddress(StubRoutines::x86::vector_double_sign_mask()), scr);
+void MacroAssembler::vpermd(XMMRegister dst,  XMMRegister nds, AddressLiteral src, int vector_len, Register scratch_reg) {
+  if (reachable(src)) {
+    Assembler::vpermd(dst, nds, as_Address(src), vector_len);
   } else {
-    assert((opcode == Op_NegVD),"opcode should be Op_NegD");
-    xorpd(dst, ExternalAddress(StubRoutines::x86::vector_double_sign_flip()), scr);
+    lea(scratch_reg, src);
+    Assembler::vpermd(dst, nds, Address(scratch_reg, 0), vector_len);
   }
 }
-
-void MacroAssembler::vabsnegd(int opcode, XMMRegister dst, XMMRegister src, int vector_len, Register scr) {
-  if (opcode == Op_AbsVD) {
-    vandpd(dst, src, ExternalAddress(StubRoutines::x86::vector_double_sign_mask()), vector_len, scr);
-  } else {
-    assert((opcode == Op_NegVD),"opcode should be Op_NegD");
-    vxorpd(dst, src, ExternalAddress(StubRoutines::x86::vector_double_sign_flip()), vector_len, scr);
-  }
-}
-
-void MacroAssembler::vabsnegf(int opcode, XMMRegister dst, XMMRegister src, Register scr) {
-  if (dst != src) {
-    movdqu(dst, src);
-  }
-  if (opcode == Op_AbsVF) {
-    andps(dst, ExternalAddress(StubRoutines::x86::vector_float_sign_mask()), scr);
-  } else {
-    assert((opcode == Op_NegVF),"opcode should be Op_NegF");
-    xorps(dst, ExternalAddress(StubRoutines::x86::vector_float_sign_flip()), scr);
-  }
-}
-
-void MacroAssembler::vabsnegf(int opcode, XMMRegister dst, XMMRegister src, int vector_len, Register scr) {
-  if (opcode == Op_AbsVF) {
-    vandps(dst, src, ExternalAddress(StubRoutines::x86::vector_float_sign_mask()), vector_len, scr);
-  } else {
-    assert((opcode == Op_NegVF),"opcode should be Op_NegF");
-    vxorps(dst, src, ExternalAddress(StubRoutines::x86::vector_float_sign_flip()), vector_len, scr);
-  }
-}
-
-void MacroAssembler::vextendbw(bool sign, XMMRegister dst, XMMRegister src) {
-  if (sign) {
-    pmovsxbw(dst, src);
-  } else {
-    pmovzxbw(dst, src);
-  }
-}
-
-void MacroAssembler::vextendbw(bool sign, XMMRegister dst, XMMRegister src, int vector_len) {
-  if (sign) {
-    vpmovsxbw(dst, src, vector_len);
-  } else {
-    vpmovzxbw(dst, src, vector_len);
-  }
-}
-
-void MacroAssembler::vshiftd(int opcode, XMMRegister dst, XMMRegister src) {
-  if (opcode == Op_RShiftVI) {
-    psrad(dst, src);
-  } else if (opcode == Op_LShiftVI) {
-    pslld(dst, src);
-  } else {
-    assert((opcode == Op_URShiftVI),"opcode should be Op_URShiftVI");
-    psrld(dst, src);
-  }
-}
-
-void MacroAssembler::vshiftd(int opcode, XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len) {
-  if (opcode == Op_RShiftVI) {
-    vpsrad(dst, nds, src, vector_len);
-  } else if (opcode == Op_LShiftVI) {
-    vpslld(dst, nds, src, vector_len);
-  } else {
-    assert((opcode == Op_URShiftVI),"opcode should be Op_URShiftVI");
-    vpsrld(dst, nds, src, vector_len);
-  }
-}
-
-void MacroAssembler::vshiftw(int opcode, XMMRegister dst, XMMRegister src) {
-  if ((opcode == Op_RShiftVS) || (opcode == Op_RShiftVB)) {
-    psraw(dst, src);
-  } else if ((opcode == Op_LShiftVS) || (opcode == Op_LShiftVB)) {
-    psllw(dst, src);
-  } else {
-    assert(((opcode == Op_URShiftVS) || (opcode == Op_URShiftVB)),"opcode should be one of Op_URShiftVS or Op_URShiftVB");
-    psrlw(dst, src);
-  }
-}
-
-void MacroAssembler::vshiftw(int opcode, XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len) {
-  if ((opcode == Op_RShiftVS) || (opcode == Op_RShiftVB)) {
-    vpsraw(dst, nds, src, vector_len);
-  } else if ((opcode == Op_LShiftVS) || (opcode == Op_LShiftVB)) {
-    vpsllw(dst, nds, src, vector_len);
-  } else {
-    assert(((opcode == Op_URShiftVS) || (opcode == Op_URShiftVB)),"opcode should be one of Op_URShiftVS or Op_URShiftVB");
-    vpsrlw(dst, nds, src, vector_len);
-  }
-}
-
-void MacroAssembler::vshiftq(int opcode, XMMRegister dst, XMMRegister src) {
-  if (opcode == Op_RShiftVL) {
-    psrlq(dst, src);  // using srl to implement sra on pre-avs512 systems
-  } else if (opcode == Op_LShiftVL) {
-    psllq(dst, src);
-  } else {
-    assert((opcode == Op_URShiftVL),"opcode should be Op_URShiftVL");
-    psrlq(dst, src);
-  }
-}
-
-void MacroAssembler::vshiftq(int opcode, XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len) {
-  if (opcode == Op_RShiftVL) {
-    evpsraq(dst, nds, src, vector_len);
-  } else if (opcode == Op_LShiftVL) {
-    vpsllq(dst, nds, src, vector_len);
-  } else {
-    assert((opcode == Op_URShiftVL),"opcode should be Op_URShiftVL");
-    vpsrlq(dst, nds, src, vector_len);
-  }
-}
-#endif
-//-------------------------------------------------------------------------------------------
 
 void MacroAssembler::clear_jweak_tag(Register possibly_jweak) {
   const int32_t inverted_jweak_mask = ~static_cast<int32_t>(JNIHandles::weak_tag_mask);
@@ -4668,7 +4158,7 @@ void MacroAssembler::cmov32(Condition cc, Register dst, Register src) {
   }
 }
 
-void MacroAssembler::verify_oop(Register reg, const char* s) {
+void MacroAssembler::_verify_oop(Register reg, const char* s, const char* file, int line) {
   if (!VerifyOops) return;
 
   // Pass register number to verify_oop_subroutine
@@ -4676,7 +4166,7 @@ void MacroAssembler::verify_oop(Register reg, const char* s) {
   {
     ResourceMark rm;
     stringStream ss;
-    ss.print("verify_oop: %s: %s", reg->name(), s);
+    ss.print("verify_oop: %s: %s (%s:%d)", reg->name(), s, file, line);
     b = code_string(ss.as_string());
   }
   BLOCK_COMMENT("verify_oop {");
@@ -4697,44 +4187,14 @@ void MacroAssembler::verify_oop(Register reg, const char* s) {
   BLOCK_COMMENT("} verify_oop");
 }
 
-
-RegisterOrConstant MacroAssembler::delayed_value_impl(intptr_t* delayed_value_addr,
-                                                      Register tmp,
-                                                      int offset) {
-  intptr_t value = *delayed_value_addr;
-  if (value != 0)
-    return RegisterOrConstant(value + offset);
-
-  // load indirectly to solve generation ordering problem
-  movptr(tmp, ExternalAddress((address) delayed_value_addr));
-
-#ifdef ASSERT
-  { Label L;
-    testptr(tmp, tmp);
-    if (WizardMode) {
-      const char* buf = NULL;
-      {
-        ResourceMark rm;
-        stringStream ss;
-        ss.print("DelayedValue=" INTPTR_FORMAT, delayed_value_addr[1]);
-        buf = code_string(ss.as_string());
-      }
-      jcc(Assembler::notZero, L);
-      STOP(buf);
-    } else {
-      jccb(Assembler::notZero, L);
-      hlt();
-    }
-    bind(L);
+void MacroAssembler::vallones(XMMRegister dst, int vector_len) {
+  if (UseAVX > 2 && (vector_len == Assembler::AVX_512bit || VM_Version::supports_avx512vl())) {
+    vpternlogd(dst, 0xFF, dst, dst, vector_len);
+  } else {
+    assert(UseAVX > 0, "");
+    vpcmpeqb(dst, dst, dst, vector_len);
   }
-#endif
-
-  if (offset != 0)
-    addptr(tmp, offset);
-
-  return RegisterOrConstant(tmp);
 }
-
 
 Address MacroAssembler::argument_address(RegisterOrConstant arg_slot,
                                          int extra_slot_offset) {
@@ -4757,8 +4217,7 @@ Address MacroAssembler::argument_address(RegisterOrConstant arg_slot,
   return Address(rsp, scale_reg, scale_factor, offset);
 }
 
-
-void MacroAssembler::verify_oop_addr(Address addr, const char* s) {
+void MacroAssembler::_verify_oop_addr(Address addr, const char* s, const char* file, int line) {
   if (!VerifyOops) return;
 
   // Address adjust(addr.base(), addr.index(), addr.scale(), addr.disp() + BytesPerWord);
@@ -4767,7 +4226,7 @@ void MacroAssembler::verify_oop_addr(Address addr, const char* s) {
   {
     ResourceMark rm;
     stringStream ss;
-    ss.print("verify_oop_addr: %s", s);
+    ss.print("verify_oop_addr: %s (%s:%d)", s, file, line);
     b = code_string(ss.as_string());
   }
 #ifdef _LP64
@@ -4850,6 +4309,9 @@ class ControlWord {
       case 1: rc = "round down"; break;
       case 2: rc = "round up  "; break;
       case 3: rc = "chop      "; break;
+      default:
+        rc = NULL; // silence compiler warnings
+        fatal("Unknown rounding control: %d", rounding_control());
     };
     // precision control
     const char* pc;
@@ -4858,6 +4320,9 @@ class ControlWord {
       case 1: pc = "reserved"; break;
       case 2: pc = "53 bits "; break;
       case 3: pc = "64 bits "; break;
+      default:
+        pc = NULL; // silence compiler warnings
+        fatal("Unknown precision control: %d", precision_control());
     };
     // flags
     char f[9];
@@ -5098,6 +4563,7 @@ void MacroAssembler::print_CPU_state() {
 }
 
 
+#ifndef _LP64
 static bool _verify_FPU(int stack_depth, char* s, CPU_State* state) {
   static int counter = 0;
   FPU_State* fs = &state->_fpu_state;
@@ -5114,7 +4580,7 @@ static bool _verify_FPU(int stack_depth, char* s, CPU_State* state) {
     return true;                // All other stack states do not matter
   }
 
-  assert((fs->_control_word._value & 0xffff) == StubRoutines::_fpu_cntrl_wrd_std,
+  assert((fs->_control_word._value & 0xffff) == StubRoutines::x86::fpu_cntrl_wrd_std(),
          "bad FPU control word");
 
   // compute stack depth
@@ -5154,7 +4620,6 @@ static bool _verify_FPU(int stack_depth, char* s, CPU_State* state) {
   return true;
 }
 
-
 void MacroAssembler::verify_FPU(int stack_depth, const char* s) {
   if (!VerifyFPU) return;
   push_CPU_state();
@@ -5174,13 +4639,14 @@ void MacroAssembler::verify_FPU(int stack_depth, const char* s) {
   }
   pop_CPU_state();
 }
+#endif // _LP64
 
 void MacroAssembler::restore_cpu_control_state_after_jni() {
   // Either restore the MXCSR register after returning from the JNI Call
   // or verify that it wasn't changed (with -Xcheck:jni flag).
   if (VM_Version::supports_sse()) {
     if (RestoreMXCSROnJNICalls) {
-      ldmxcsr(ExternalAddress(StubRoutines::addr_mxcsr_std()));
+      ldmxcsr(ExternalAddress(StubRoutines::x86::addr_mxcsr_std()));
     } else if (CheckJNICalls) {
       call(RuntimeAddress(StubRoutines::x86::verify_mxcsr_entry()));
     }
@@ -5254,25 +4720,29 @@ void MacroAssembler::load_method_holder(Register holder, Register method) {
   movptr(holder, Address(holder, ConstantPool::pool_holder_offset_in_bytes())); // InstanceKlass*
 }
 
-void MacroAssembler::load_klass(Register dst, Register src) {
+void MacroAssembler::load_klass(Register dst, Register src, Register tmp) {
+  assert_different_registers(src, tmp);
+  assert_different_registers(dst, tmp);
 #ifdef _LP64
   if (UseCompressedClassPointers) {
     movl(dst, Address(src, oopDesc::klass_offset_in_bytes()));
-    decode_klass_not_null(dst);
+    decode_klass_not_null(dst, tmp);
   } else
 #endif
     movptr(dst, Address(src, oopDesc::klass_offset_in_bytes()));
 }
 
-void MacroAssembler::load_prototype_header(Register dst, Register src) {
-  load_klass(dst, src);
+void MacroAssembler::load_prototype_header(Register dst, Register src, Register tmp) {
+  load_klass(dst, src, tmp);
   movptr(dst, Address(dst, Klass::prototype_header_offset()));
 }
 
-void MacroAssembler::store_klass(Register dst, Register src) {
+void MacroAssembler::store_klass(Register dst, Register src, Register tmp) {
+  assert_different_registers(src, tmp);
+  assert_different_registers(dst, tmp);
 #ifdef _LP64
   if (UseCompressedClassPointers) {
-    encode_klass_not_null(src);
+    encode_klass_not_null(src, tmp);
     movl(Address(dst, oopDesc::klass_offset_in_bytes()), src);
   } else
 #endif
@@ -5301,15 +4771,6 @@ void MacroAssembler::access_store_at(BasicType type, DecoratorSet decorators, Ad
   } else {
     bs->store_at(this, decorators, type, dst, src, tmp1, tmp2);
   }
-}
-
-void MacroAssembler::resolve(DecoratorSet decorators, Register obj) {
-  // Use stronger ACCESS_WRITE|ACCESS_READ by default.
-  if ((decorators & (ACCESS_READ | ACCESS_WRITE)) == 0) {
-    decorators |= ACCESS_READ | ACCESS_WRITE;
-  }
-  BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
-  return bs->resolve(this, decorators, obj);
 }
 
 void MacroAssembler::load_heap_oop(Register dst, Address src, Register tmp1,
@@ -5362,7 +4823,7 @@ void MacroAssembler::encode_heap_oop(Register r) {
 #ifdef ASSERT
   verify_heapbase("MacroAssembler::encode_heap_oop: heap base corrupted?");
 #endif
-  verify_oop(r, "broken oop in encode_heap_oop");
+  verify_oop_msg(r, "broken oop in encode_heap_oop");
   if (CompressedOops::base() == NULL) {
     if (CompressedOops::shift() != 0) {
       assert (LogMinObjAlignmentInBytes == CompressedOops::shift(), "decode alg wrong");
@@ -5387,7 +4848,7 @@ void MacroAssembler::encode_heap_oop_not_null(Register r) {
     bind(ok);
   }
 #endif
-  verify_oop(r, "broken oop in encode_heap_oop_not_null");
+  verify_oop_msg(r, "broken oop in encode_heap_oop_not_null");
   if (CompressedOops::base() != NULL) {
     subq(r, r12_heapbase);
   }
@@ -5408,7 +4869,7 @@ void MacroAssembler::encode_heap_oop_not_null(Register dst, Register src) {
     bind(ok);
   }
 #endif
-  verify_oop(src, "broken oop in encode_heap_oop_not_null2");
+  verify_oop_msg(src, "broken oop in encode_heap_oop_not_null2");
   if (dst != src) {
     movq(dst, src);
   }
@@ -5437,7 +4898,7 @@ void  MacroAssembler::decode_heap_oop(Register r) {
     addq(r, r12_heapbase);
     bind(done);
   }
-  verify_oop(r, "broken oop in decode_heap_oop");
+  verify_oop_msg(r, "broken oop in decode_heap_oop");
 }
 
 void  MacroAssembler::decode_heap_oop_not_null(Register r) {
@@ -5486,61 +4947,38 @@ void  MacroAssembler::decode_heap_oop_not_null(Register dst, Register src) {
   }
 }
 
-void MacroAssembler::encode_klass_not_null(Register r) {
+void MacroAssembler::encode_klass_not_null(Register r, Register tmp) {
+  assert_different_registers(r, tmp);
   if (CompressedKlassPointers::base() != NULL) {
-    // Use r12 as a scratch register in which to temporarily load the narrow_klass_base.
-    assert(r != r12_heapbase, "Encoding a klass in r12");
-    mov64(r12_heapbase, (int64_t)CompressedKlassPointers::base());
-    subq(r, r12_heapbase);
+    mov64(tmp, (int64_t)CompressedKlassPointers::base());
+    subq(r, tmp);
   }
   if (CompressedKlassPointers::shift() != 0) {
     assert (LogKlassAlignmentInBytes == CompressedKlassPointers::shift(), "decode alg wrong");
     shrq(r, LogKlassAlignmentInBytes);
   }
-  if (CompressedKlassPointers::base() != NULL) {
-    reinit_heapbase();
-  }
 }
 
-void MacroAssembler::encode_klass_not_null(Register dst, Register src) {
-  if (dst == src) {
-    encode_klass_not_null(src);
-  } else {
-    if (CompressedKlassPointers::base() != NULL) {
-      mov64(dst, (int64_t)CompressedKlassPointers::base());
-      negq(dst);
-      addq(dst, src);
-    } else {
-      movptr(dst, src);
-    }
-    if (CompressedKlassPointers::shift() != 0) {
-      assert (LogKlassAlignmentInBytes == CompressedKlassPointers::shift(), "decode alg wrong");
-      shrq(dst, LogKlassAlignmentInBytes);
-    }
-  }
-}
-
-// Function instr_size_for_decode_klass_not_null() counts the instructions
-// generated by decode_klass_not_null(register r) and reinit_heapbase(),
-// when (Universe::heap() != NULL).  Hence, if the instructions they
-// generate change, then this method needs to be updated.
-int MacroAssembler::instr_size_for_decode_klass_not_null() {
-  assert (UseCompressedClassPointers, "only for compressed klass ptrs");
+void MacroAssembler::encode_and_move_klass_not_null(Register dst, Register src) {
+  assert_different_registers(src, dst);
   if (CompressedKlassPointers::base() != NULL) {
-    // mov64 + addq + shlq? + mov64  (for reinit_heapbase()).
-    return (CompressedKlassPointers::shift() == 0 ? 20 : 24);
+    mov64(dst, -(int64_t)CompressedKlassPointers::base());
+    addq(dst, src);
   } else {
-    // longest load decode klass function, mov64, leaq
-    return 16;
+    movptr(dst, src);
+  }
+  if (CompressedKlassPointers::shift() != 0) {
+    assert (LogKlassAlignmentInBytes == CompressedKlassPointers::shift(), "decode alg wrong");
+    shrq(dst, LogKlassAlignmentInBytes);
   }
 }
 
 // !!! If the instructions that get generated here change then function
 // instr_size_for_decode_klass_not_null() needs to get updated.
-void  MacroAssembler::decode_klass_not_null(Register r) {
+void  MacroAssembler::decode_klass_not_null(Register r, Register tmp) {
+  assert_different_registers(r, tmp);
   // Note: it will change flags
-  assert (UseCompressedClassPointers, "should only be used for compressed headers");
-  assert(r != r12_heapbase, "Decoding a klass in r12");
+  assert(UseCompressedClassPointers, "should only be used for compressed headers");
   // Cannot assert, unverified entry point counts instructions (see .ad file)
   // vtableStubs also counts instructions in pd_code_size_limit.
   // Also do not verify_oop as this is called by verify_oop.
@@ -5548,24 +4986,31 @@ void  MacroAssembler::decode_klass_not_null(Register r) {
     assert(LogKlassAlignmentInBytes == CompressedKlassPointers::shift(), "decode alg wrong");
     shlq(r, LogKlassAlignmentInBytes);
   }
-  // Use r12 as a scratch register in which to temporarily load the narrow_klass_base.
   if (CompressedKlassPointers::base() != NULL) {
-    mov64(r12_heapbase, (int64_t)CompressedKlassPointers::base());
-    addq(r, r12_heapbase);
-    reinit_heapbase();
+    mov64(tmp, (int64_t)CompressedKlassPointers::base());
+    addq(r, tmp);
   }
 }
 
-void  MacroAssembler::decode_klass_not_null(Register dst, Register src) {
+void  MacroAssembler::decode_and_move_klass_not_null(Register dst, Register src) {
+  assert_different_registers(src, dst);
   // Note: it will change flags
   assert (UseCompressedClassPointers, "should only be used for compressed headers");
-  if (dst == src) {
-    decode_klass_not_null(dst);
+  // Cannot assert, unverified entry point counts instructions (see .ad file)
+  // vtableStubs also counts instructions in pd_code_size_limit.
+  // Also do not verify_oop as this is called by verify_oop.
+
+  if (CompressedKlassPointers::base() == NULL &&
+      CompressedKlassPointers::shift() == 0) {
+    // The best case scenario is that there is no base or shift. Then it is already
+    // a pointer that needs nothing but a register rename.
+    movl(dst, src);
   } else {
-    // Cannot assert, unverified entry point counts instructions (see .ad file)
-    // vtableStubs also counts instructions in pd_code_size_limit.
-    // Also do not verify_oop as this is called by verify_oop.
-    mov64(dst, (int64_t)CompressedKlassPointers::base());
+    if (CompressedKlassPointers::base() != NULL) {
+      mov64(dst, (int64_t)CompressedKlassPointers::base());
+    } else {
+      xorq(dst, dst);
+    }
     if (CompressedKlassPointers::shift() != 0) {
       assert(LogKlassAlignmentInBytes == CompressedKlassPointers::shift(), "decode alg wrong");
       assert(LogKlassAlignmentInBytes == Address::times_8, "klass not aligned on 64bits?");
@@ -5645,7 +5090,7 @@ void  MacroAssembler::cmp_narrow_klass(Address dst, Klass* k) {
 }
 
 void MacroAssembler::reinit_heapbase() {
-  if (UseCompressedOops || UseCompressedClassPointers) {
+  if (UseCompressedOops) {
     if (Universe::heap() != NULL) {
       if (CompressedOops::base() == NULL) {
         MacroAssembler::xorptr(r12_heapbase, r12_heapbase);
@@ -5722,7 +5167,7 @@ void MacroAssembler::verified_entry(int framesize, int stack_bang_size, bool fp_
 #ifndef _LP64
   // If method sets FPU control word do it now
   if (fp_mode_24b) {
-    fldcw(ExternalAddress(StubRoutines::addr_fpu_cntrl_wrd_24()));
+    fldcw(ExternalAddress(StubRoutines::x86::addr_fpu_cntrl_wrd_24()));
   }
   if (UseSSE >= 2 && VerifyFPU) {
     verify_FPU(0, "FPU stack must be clean on entry");
@@ -5749,12 +5194,17 @@ void MacroAssembler::verified_entry(int framesize, int stack_bang_size, bool fp_
   }
 }
 
-// clear memory of size 'cnt' qwords, starting at 'base' using XMM/YMM registers
-void MacroAssembler::xmm_clear_mem(Register base, Register cnt, XMMRegister xtmp) {
+#if COMPILER2_OR_JVMCI
+
+// clear memory of size 'cnt' qwords, starting at 'base' using XMM/YMM/ZMM registers
+void MacroAssembler::xmm_clear_mem(Register base, Register cnt, Register rtmp, XMMRegister xtmp, KRegister mask) {
   // cnt - number of qwords (8-byte words).
   // base - start address, qword aligned.
   Label L_zero_64_bytes, L_loop, L_sloop, L_tail, L_end;
-  if (UseAVX >= 2) {
+  bool use64byteVector = MaxVectorSize == 64 && AVX3Threshold == 0;
+  if (use64byteVector) {
+    vpxor(xtmp, xtmp, xtmp, AVX_512bit);
+  } else if (MaxVectorSize >= 32) {
     vpxor(xtmp, xtmp, xtmp, AVX_256bit);
   } else {
     pxor(xtmp, xtmp);
@@ -5762,9 +5212,8 @@ void MacroAssembler::xmm_clear_mem(Register base, Register cnt, XMMRegister xtmp
   jmp(L_zero_64_bytes);
 
   BIND(L_loop);
-  if (UseAVX >= 2) {
-    vmovdqu(Address(base,  0), xtmp);
-    vmovdqu(Address(base, 32), xtmp);
+  if (MaxVectorSize >= 32) {
+    fill64_avx(base, 0, xtmp, use64byteVector);
   } else {
     movdqu(Address(base,  0), xtmp);
     movdqu(Address(base, 16), xtmp);
@@ -5776,14 +5225,22 @@ void MacroAssembler::xmm_clear_mem(Register base, Register cnt, XMMRegister xtmp
   BIND(L_zero_64_bytes);
   subptr(cnt, 8);
   jccb(Assembler::greaterEqual, L_loop);
-  addptr(cnt, 4);
-  jccb(Assembler::less, L_tail);
-  // Copy trailing 32 bytes
-  if (UseAVX >= 2) {
-    vmovdqu(Address(base, 0), xtmp);
+
+  // Copy trailing 64 bytes
+  if (use64byteVector) {
+    addptr(cnt, 8);
+    jccb(Assembler::equal, L_end);
+    fill64_masked_avx(3, base, 0, xtmp, mask, cnt, rtmp, true);
+    jmp(L_end);
   } else {
-    movdqu(Address(base,  0), xtmp);
-    movdqu(Address(base, 16), xtmp);
+    addptr(cnt, 4);
+    jccb(Assembler::less, L_tail);
+    if (MaxVectorSize >= 32) {
+      vmovdqu(Address(base, 0), xtmp);
+    } else {
+      movdqu(Address(base,  0), xtmp);
+      movdqu(Address(base, 16), xtmp);
+    }
   }
   addptr(base, 32);
   subptr(cnt, 4);
@@ -5791,19 +5248,95 @@ void MacroAssembler::xmm_clear_mem(Register base, Register cnt, XMMRegister xtmp
   BIND(L_tail);
   addptr(cnt, 4);
   jccb(Assembler::lessEqual, L_end);
-  decrement(cnt);
+  if (UseAVX > 2 && MaxVectorSize >= 32 && VM_Version::supports_avx512vl()) {
+    fill32_masked_avx(3, base, 0, xtmp, mask, cnt, rtmp);
+  } else {
+    decrement(cnt);
 
-  BIND(L_sloop);
-  movq(Address(base, 0), xtmp);
-  addptr(base, 8);
-  decrement(cnt);
-  jccb(Assembler::greaterEqual, L_sloop);
+    BIND(L_sloop);
+    movq(Address(base, 0), xtmp);
+    addptr(base, 8);
+    decrement(cnt);
+    jccb(Assembler::greaterEqual, L_sloop);
+  }
   BIND(L_end);
 }
 
-void MacroAssembler::clear_mem(Register base, Register cnt, Register tmp, XMMRegister xtmp, bool is_large) {
-  // cnt - number of qwords (8-byte words).
-  // base - start address, qword aligned.
+// Clearing constant sized memory using YMM/ZMM registers.
+void MacroAssembler::clear_mem(Register base, int cnt, Register rtmp, XMMRegister xtmp, KRegister mask) {
+  assert(UseAVX > 2 && VM_Version::supports_avx512vlbw(), "");
+  bool use64byteVector = MaxVectorSize > 32 && AVX3Threshold == 0;
+
+  int vector64_count = (cnt & (~0x7)) >> 3;
+  cnt = cnt & 0x7;
+
+  // 64 byte initialization loop.
+  vpxor(xtmp, xtmp, xtmp, use64byteVector ? AVX_512bit : AVX_256bit);
+  for (int i = 0; i < vector64_count; i++) {
+    fill64_avx(base, i * 64, xtmp, use64byteVector);
+  }
+
+  // Clear remaining 64 byte tail.
+  int disp = vector64_count * 64;
+  if (cnt) {
+    switch (cnt) {
+      case 1:
+        movq(Address(base, disp), xtmp);
+        break;
+      case 2:
+        evmovdqu(T_LONG, k0, Address(base, disp), xtmp, Assembler::AVX_128bit);
+        break;
+      case 3:
+        movl(rtmp, 0x7);
+        kmovwl(mask, rtmp);
+        evmovdqu(T_LONG, mask, Address(base, disp), xtmp, Assembler::AVX_256bit);
+        break;
+      case 4:
+        evmovdqu(T_LONG, k0, Address(base, disp), xtmp, Assembler::AVX_256bit);
+        break;
+      case 5:
+        if (use64byteVector) {
+          movl(rtmp, 0x1F);
+          kmovwl(mask, rtmp);
+          evmovdqu(T_LONG, mask, Address(base, disp), xtmp, Assembler::AVX_512bit);
+        } else {
+          evmovdqu(T_LONG, k0, Address(base, disp), xtmp, Assembler::AVX_256bit);
+          movq(Address(base, disp + 32), xtmp);
+        }
+        break;
+      case 6:
+        if (use64byteVector) {
+          movl(rtmp, 0x3F);
+          kmovwl(mask, rtmp);
+          evmovdqu(T_LONG, mask, Address(base, disp), xtmp, Assembler::AVX_512bit);
+        } else {
+          evmovdqu(T_LONG, k0, Address(base, disp), xtmp, Assembler::AVX_256bit);
+          evmovdqu(T_LONG, k0, Address(base, disp + 32), xtmp, Assembler::AVX_128bit);
+        }
+        break;
+      case 7:
+        if (use64byteVector) {
+          movl(rtmp, 0x7F);
+          kmovwl(mask, rtmp);
+          evmovdqu(T_LONG, mask, Address(base, disp), xtmp, Assembler::AVX_512bit);
+        } else {
+          evmovdqu(T_LONG, k0, Address(base, disp), xtmp, Assembler::AVX_256bit);
+          movl(rtmp, 0x7);
+          kmovwl(mask, rtmp);
+          evmovdqu(T_LONG, mask, Address(base, disp + 32), xtmp, Assembler::AVX_256bit);
+        }
+        break;
+      default:
+        fatal("Unexpected length : %d\n",cnt);
+        break;
+    }
+  }
+}
+
+void MacroAssembler::clear_mem(Register base, Register cnt, Register tmp, XMMRegister xtmp,
+                               bool is_large, KRegister mask) {
+  // cnt      - number of qwords (8-byte words).
+  // base     - start address, qword aligned.
   // is_large - if optimizers know cnt is larger than InitArrayShortSize
   assert(base==rdi, "base register must be edi for rep stos");
   assert(tmp==rax,   "tmp register must be eax for rep stos");
@@ -5812,7 +5345,6 @@ void MacroAssembler::clear_mem(Register base, Register cnt, Register tmp, XMMReg
     "InitArrayShortSize should be the multiple of BytesPerLong");
 
   Label DONE;
-
   if (!is_large || !UseXMMForObjInit) {
     xorptr(tmp, tmp);
   }
@@ -5842,8 +5374,7 @@ void MacroAssembler::clear_mem(Register base, Register cnt, Register tmp, XMMReg
     shlptr(cnt, 3); // convert to number of bytes
     rep_stosb();
   } else if (UseXMMForObjInit) {
-    movptr(tmp, base);
-    xmm_clear_mem(tmp, cnt, xtmp);
+    xmm_clear_mem(base, cnt, tmp, xtmp, mask);
   } else {
     NOT_LP64(shlptr(cnt, 1);) // convert to number of 32-bit words for 32-bit VM
     rep_stos();
@@ -5852,1426 +5383,8 @@ void MacroAssembler::clear_mem(Register base, Register cnt, Register tmp, XMMReg
   BIND(DONE);
 }
 
-#ifdef COMPILER2
+#endif //COMPILER2_OR_JVMCI
 
-// IndexOf for constant substrings with size >= 8 chars
-// which don't need to be loaded through stack.
-void MacroAssembler::string_indexofC8(Register str1, Register str2,
-                                      Register cnt1, Register cnt2,
-                                      int int_cnt2,  Register result,
-                                      XMMRegister vec, Register tmp,
-                                      int ae) {
-  ShortBranchVerifier sbv(this);
-  assert(UseSSE42Intrinsics, "SSE4.2 intrinsics are required");
-  assert(ae != StrIntrinsicNode::LU, "Invalid encoding");
-
-  // This method uses the pcmpestri instruction with bound registers
-  //   inputs:
-  //     xmm - substring
-  //     rax - substring length (elements count)
-  //     mem - scanned string
-  //     rdx - string length (elements count)
-  //     0xd - mode: 1100 (substring search) + 01 (unsigned shorts)
-  //     0xc - mode: 1100 (substring search) + 00 (unsigned bytes)
-  //   outputs:
-  //     rcx - matched index in string
-  assert(cnt1 == rdx && cnt2 == rax && tmp == rcx, "pcmpestri");
-  int mode   = (ae == StrIntrinsicNode::LL) ? 0x0c : 0x0d; // bytes or shorts
-  int stride = (ae == StrIntrinsicNode::LL) ? 16 : 8; //UU, UL -> 8
-  Address::ScaleFactor scale1 = (ae == StrIntrinsicNode::LL) ? Address::times_1 : Address::times_2;
-  Address::ScaleFactor scale2 = (ae == StrIntrinsicNode::UL) ? Address::times_1 : scale1;
-
-  Label RELOAD_SUBSTR, SCAN_TO_SUBSTR, SCAN_SUBSTR,
-        RET_FOUND, RET_NOT_FOUND, EXIT, FOUND_SUBSTR,
-        MATCH_SUBSTR_HEAD, RELOAD_STR, FOUND_CANDIDATE;
-
-  // Note, inline_string_indexOf() generates checks:
-  // if (substr.count > string.count) return -1;
-  // if (substr.count == 0) return 0;
-  assert(int_cnt2 >= stride, "this code is used only for cnt2 >= 8 chars");
-
-  // Load substring.
-  if (ae == StrIntrinsicNode::UL) {
-    pmovzxbw(vec, Address(str2, 0));
-  } else {
-    movdqu(vec, Address(str2, 0));
-  }
-  movl(cnt2, int_cnt2);
-  movptr(result, str1); // string addr
-
-  if (int_cnt2 > stride) {
-    jmpb(SCAN_TO_SUBSTR);
-
-    // Reload substr for rescan, this code
-    // is executed only for large substrings (> 8 chars)
-    bind(RELOAD_SUBSTR);
-    if (ae == StrIntrinsicNode::UL) {
-      pmovzxbw(vec, Address(str2, 0));
-    } else {
-      movdqu(vec, Address(str2, 0));
-    }
-    negptr(cnt2); // Jumped here with negative cnt2, convert to positive
-
-    bind(RELOAD_STR);
-    // We came here after the beginning of the substring was
-    // matched but the rest of it was not so we need to search
-    // again. Start from the next element after the previous match.
-
-    // cnt2 is number of substring reminding elements and
-    // cnt1 is number of string reminding elements when cmp failed.
-    // Restored cnt1 = cnt1 - cnt2 + int_cnt2
-    subl(cnt1, cnt2);
-    addl(cnt1, int_cnt2);
-    movl(cnt2, int_cnt2); // Now restore cnt2
-
-    decrementl(cnt1);     // Shift to next element
-    cmpl(cnt1, cnt2);
-    jcc(Assembler::negative, RET_NOT_FOUND);  // Left less then substring
-
-    addptr(result, (1<<scale1));
-
-  } // (int_cnt2 > 8)
-
-  // Scan string for start of substr in 16-byte vectors
-  bind(SCAN_TO_SUBSTR);
-  pcmpestri(vec, Address(result, 0), mode);
-  jccb(Assembler::below, FOUND_CANDIDATE);   // CF == 1
-  subl(cnt1, stride);
-  jccb(Assembler::lessEqual, RET_NOT_FOUND); // Scanned full string
-  cmpl(cnt1, cnt2);
-  jccb(Assembler::negative, RET_NOT_FOUND);  // Left less then substring
-  addptr(result, 16);
-  jmpb(SCAN_TO_SUBSTR);
-
-  // Found a potential substr
-  bind(FOUND_CANDIDATE);
-  // Matched whole vector if first element matched (tmp(rcx) == 0).
-  if (int_cnt2 == stride) {
-    jccb(Assembler::overflow, RET_FOUND);    // OF == 1
-  } else { // int_cnt2 > 8
-    jccb(Assembler::overflow, FOUND_SUBSTR);
-  }
-  // After pcmpestri tmp(rcx) contains matched element index
-  // Compute start addr of substr
-  lea(result, Address(result, tmp, scale1));
-
-  // Make sure string is still long enough
-  subl(cnt1, tmp);
-  cmpl(cnt1, cnt2);
-  if (int_cnt2 == stride) {
-    jccb(Assembler::greaterEqual, SCAN_TO_SUBSTR);
-  } else { // int_cnt2 > 8
-    jccb(Assembler::greaterEqual, MATCH_SUBSTR_HEAD);
-  }
-  // Left less then substring.
-
-  bind(RET_NOT_FOUND);
-  movl(result, -1);
-  jmp(EXIT);
-
-  if (int_cnt2 > stride) {
-    // This code is optimized for the case when whole substring
-    // is matched if its head is matched.
-    bind(MATCH_SUBSTR_HEAD);
-    pcmpestri(vec, Address(result, 0), mode);
-    // Reload only string if does not match
-    jcc(Assembler::noOverflow, RELOAD_STR); // OF == 0
-
-    Label CONT_SCAN_SUBSTR;
-    // Compare the rest of substring (> 8 chars).
-    bind(FOUND_SUBSTR);
-    // First 8 chars are already matched.
-    negptr(cnt2);
-    addptr(cnt2, stride);
-
-    bind(SCAN_SUBSTR);
-    subl(cnt1, stride);
-    cmpl(cnt2, -stride); // Do not read beyond substring
-    jccb(Assembler::lessEqual, CONT_SCAN_SUBSTR);
-    // Back-up strings to avoid reading beyond substring:
-    // cnt1 = cnt1 - cnt2 + 8
-    addl(cnt1, cnt2); // cnt2 is negative
-    addl(cnt1, stride);
-    movl(cnt2, stride); negptr(cnt2);
-    bind(CONT_SCAN_SUBSTR);
-    if (int_cnt2 < (int)G) {
-      int tail_off1 = int_cnt2<<scale1;
-      int tail_off2 = int_cnt2<<scale2;
-      if (ae == StrIntrinsicNode::UL) {
-        pmovzxbw(vec, Address(str2, cnt2, scale2, tail_off2));
-      } else {
-        movdqu(vec, Address(str2, cnt2, scale2, tail_off2));
-      }
-      pcmpestri(vec, Address(result, cnt2, scale1, tail_off1), mode);
-    } else {
-      // calculate index in register to avoid integer overflow (int_cnt2*2)
-      movl(tmp, int_cnt2);
-      addptr(tmp, cnt2);
-      if (ae == StrIntrinsicNode::UL) {
-        pmovzxbw(vec, Address(str2, tmp, scale2, 0));
-      } else {
-        movdqu(vec, Address(str2, tmp, scale2, 0));
-      }
-      pcmpestri(vec, Address(result, tmp, scale1, 0), mode);
-    }
-    // Need to reload strings pointers if not matched whole vector
-    jcc(Assembler::noOverflow, RELOAD_SUBSTR); // OF == 0
-    addptr(cnt2, stride);
-    jcc(Assembler::negative, SCAN_SUBSTR);
-    // Fall through if found full substring
-
-  } // (int_cnt2 > 8)
-
-  bind(RET_FOUND);
-  // Found result if we matched full small substring.
-  // Compute substr offset
-  subptr(result, str1);
-  if (ae == StrIntrinsicNode::UU || ae == StrIntrinsicNode::UL) {
-    shrl(result, 1); // index
-  }
-  bind(EXIT);
-
-} // string_indexofC8
-
-// Small strings are loaded through stack if they cross page boundary.
-void MacroAssembler::string_indexof(Register str1, Register str2,
-                                    Register cnt1, Register cnt2,
-                                    int int_cnt2,  Register result,
-                                    XMMRegister vec, Register tmp,
-                                    int ae) {
-  ShortBranchVerifier sbv(this);
-  assert(UseSSE42Intrinsics, "SSE4.2 intrinsics are required");
-  assert(ae != StrIntrinsicNode::LU, "Invalid encoding");
-
-  //
-  // int_cnt2 is length of small (< 8 chars) constant substring
-  // or (-1) for non constant substring in which case its length
-  // is in cnt2 register.
-  //
-  // Note, inline_string_indexOf() generates checks:
-  // if (substr.count > string.count) return -1;
-  // if (substr.count == 0) return 0;
-  //
-  int stride = (ae == StrIntrinsicNode::LL) ? 16 : 8; //UU, UL -> 8
-  assert(int_cnt2 == -1 || (0 < int_cnt2 && int_cnt2 < stride), "should be != 0");
-  // This method uses the pcmpestri instruction with bound registers
-  //   inputs:
-  //     xmm - substring
-  //     rax - substring length (elements count)
-  //     mem - scanned string
-  //     rdx - string length (elements count)
-  //     0xd - mode: 1100 (substring search) + 01 (unsigned shorts)
-  //     0xc - mode: 1100 (substring search) + 00 (unsigned bytes)
-  //   outputs:
-  //     rcx - matched index in string
-  assert(cnt1 == rdx && cnt2 == rax && tmp == rcx, "pcmpestri");
-  int mode = (ae == StrIntrinsicNode::LL) ? 0x0c : 0x0d; // bytes or shorts
-  Address::ScaleFactor scale1 = (ae == StrIntrinsicNode::LL) ? Address::times_1 : Address::times_2;
-  Address::ScaleFactor scale2 = (ae == StrIntrinsicNode::UL) ? Address::times_1 : scale1;
-
-  Label RELOAD_SUBSTR, SCAN_TO_SUBSTR, SCAN_SUBSTR, ADJUST_STR,
-        RET_FOUND, RET_NOT_FOUND, CLEANUP, FOUND_SUBSTR,
-        FOUND_CANDIDATE;
-
-  { //========================================================
-    // We don't know where these strings are located
-    // and we can't read beyond them. Load them through stack.
-    Label BIG_STRINGS, CHECK_STR, COPY_SUBSTR, COPY_STR;
-
-    movptr(tmp, rsp); // save old SP
-
-    if (int_cnt2 > 0) {     // small (< 8 chars) constant substring
-      if (int_cnt2 == (1>>scale2)) { // One byte
-        assert((ae == StrIntrinsicNode::LL || ae == StrIntrinsicNode::UL), "Only possible for latin1 encoding");
-        load_unsigned_byte(result, Address(str2, 0));
-        movdl(vec, result); // move 32 bits
-      } else if (ae == StrIntrinsicNode::LL && int_cnt2 == 3) {  // Three bytes
-        // Not enough header space in 32-bit VM: 12+3 = 15.
-        movl(result, Address(str2, -1));
-        shrl(result, 8);
-        movdl(vec, result); // move 32 bits
-      } else if (ae != StrIntrinsicNode::UL && int_cnt2 == (2>>scale2)) {  // One char
-        load_unsigned_short(result, Address(str2, 0));
-        movdl(vec, result); // move 32 bits
-      } else if (ae != StrIntrinsicNode::UL && int_cnt2 == (4>>scale2)) { // Two chars
-        movdl(vec, Address(str2, 0)); // move 32 bits
-      } else if (ae != StrIntrinsicNode::UL && int_cnt2 == (8>>scale2)) { // Four chars
-        movq(vec, Address(str2, 0));  // move 64 bits
-      } else { // cnt2 = { 3, 5, 6, 7 } || (ae == StrIntrinsicNode::UL && cnt2 ={2, ..., 7})
-        // Array header size is 12 bytes in 32-bit VM
-        // + 6 bytes for 3 chars == 18 bytes,
-        // enough space to load vec and shift.
-        assert(HeapWordSize*TypeArrayKlass::header_size() >= 12,"sanity");
-        if (ae == StrIntrinsicNode::UL) {
-          int tail_off = int_cnt2-8;
-          pmovzxbw(vec, Address(str2, tail_off));
-          psrldq(vec, -2*tail_off);
-        }
-        else {
-          int tail_off = int_cnt2*(1<<scale2);
-          movdqu(vec, Address(str2, tail_off-16));
-          psrldq(vec, 16-tail_off);
-        }
-      }
-    } else { // not constant substring
-      cmpl(cnt2, stride);
-      jccb(Assembler::aboveEqual, BIG_STRINGS); // Both strings are big enough
-
-      // We can read beyond string if srt+16 does not cross page boundary
-      // since heaps are aligned and mapped by pages.
-      assert(os::vm_page_size() < (int)G, "default page should be small");
-      movl(result, str2); // We need only low 32 bits
-      andl(result, (os::vm_page_size()-1));
-      cmpl(result, (os::vm_page_size()-16));
-      jccb(Assembler::belowEqual, CHECK_STR);
-
-      // Move small strings to stack to allow load 16 bytes into vec.
-      subptr(rsp, 16);
-      int stk_offset = wordSize-(1<<scale2);
-      push(cnt2);
-
-      bind(COPY_SUBSTR);
-      if (ae == StrIntrinsicNode::LL || ae == StrIntrinsicNode::UL) {
-        load_unsigned_byte(result, Address(str2, cnt2, scale2, -1));
-        movb(Address(rsp, cnt2, scale2, stk_offset), result);
-      } else if (ae == StrIntrinsicNode::UU) {
-        load_unsigned_short(result, Address(str2, cnt2, scale2, -2));
-        movw(Address(rsp, cnt2, scale2, stk_offset), result);
-      }
-      decrement(cnt2);
-      jccb(Assembler::notZero, COPY_SUBSTR);
-
-      pop(cnt2);
-      movptr(str2, rsp);  // New substring address
-    } // non constant
-
-    bind(CHECK_STR);
-    cmpl(cnt1, stride);
-    jccb(Assembler::aboveEqual, BIG_STRINGS);
-
-    // Check cross page boundary.
-    movl(result, str1); // We need only low 32 bits
-    andl(result, (os::vm_page_size()-1));
-    cmpl(result, (os::vm_page_size()-16));
-    jccb(Assembler::belowEqual, BIG_STRINGS);
-
-    subptr(rsp, 16);
-    int stk_offset = -(1<<scale1);
-    if (int_cnt2 < 0) { // not constant
-      push(cnt2);
-      stk_offset += wordSize;
-    }
-    movl(cnt2, cnt1);
-
-    bind(COPY_STR);
-    if (ae == StrIntrinsicNode::LL) {
-      load_unsigned_byte(result, Address(str1, cnt2, scale1, -1));
-      movb(Address(rsp, cnt2, scale1, stk_offset), result);
-    } else {
-      load_unsigned_short(result, Address(str1, cnt2, scale1, -2));
-      movw(Address(rsp, cnt2, scale1, stk_offset), result);
-    }
-    decrement(cnt2);
-    jccb(Assembler::notZero, COPY_STR);
-
-    if (int_cnt2 < 0) { // not constant
-      pop(cnt2);
-    }
-    movptr(str1, rsp);  // New string address
-
-    bind(BIG_STRINGS);
-    // Load substring.
-    if (int_cnt2 < 0) { // -1
-      if (ae == StrIntrinsicNode::UL) {
-        pmovzxbw(vec, Address(str2, 0));
-      } else {
-        movdqu(vec, Address(str2, 0));
-      }
-      push(cnt2);       // substr count
-      push(str2);       // substr addr
-      push(str1);       // string addr
-    } else {
-      // Small (< 8 chars) constant substrings are loaded already.
-      movl(cnt2, int_cnt2);
-    }
-    push(tmp);  // original SP
-
-  } // Finished loading
-
-  //========================================================
-  // Start search
-  //
-
-  movptr(result, str1); // string addr
-
-  if (int_cnt2  < 0) {  // Only for non constant substring
-    jmpb(SCAN_TO_SUBSTR);
-
-    // SP saved at sp+0
-    // String saved at sp+1*wordSize
-    // Substr saved at sp+2*wordSize
-    // Substr count saved at sp+3*wordSize
-
-    // Reload substr for rescan, this code
-    // is executed only for large substrings (> 8 chars)
-    bind(RELOAD_SUBSTR);
-    movptr(str2, Address(rsp, 2*wordSize));
-    movl(cnt2, Address(rsp, 3*wordSize));
-    if (ae == StrIntrinsicNode::UL) {
-      pmovzxbw(vec, Address(str2, 0));
-    } else {
-      movdqu(vec, Address(str2, 0));
-    }
-    // We came here after the beginning of the substring was
-    // matched but the rest of it was not so we need to search
-    // again. Start from the next element after the previous match.
-    subptr(str1, result); // Restore counter
-    if (ae == StrIntrinsicNode::UU || ae == StrIntrinsicNode::UL) {
-      shrl(str1, 1);
-    }
-    addl(cnt1, str1);
-    decrementl(cnt1);   // Shift to next element
-    cmpl(cnt1, cnt2);
-    jcc(Assembler::negative, RET_NOT_FOUND);  // Left less then substring
-
-    addptr(result, (1<<scale1));
-  } // non constant
-
-  // Scan string for start of substr in 16-byte vectors
-  bind(SCAN_TO_SUBSTR);
-  assert(cnt1 == rdx && cnt2 == rax && tmp == rcx, "pcmpestri");
-  pcmpestri(vec, Address(result, 0), mode);
-  jccb(Assembler::below, FOUND_CANDIDATE);   // CF == 1
-  subl(cnt1, stride);
-  jccb(Assembler::lessEqual, RET_NOT_FOUND); // Scanned full string
-  cmpl(cnt1, cnt2);
-  jccb(Assembler::negative, RET_NOT_FOUND);  // Left less then substring
-  addptr(result, 16);
-
-  bind(ADJUST_STR);
-  cmpl(cnt1, stride); // Do not read beyond string
-  jccb(Assembler::greaterEqual, SCAN_TO_SUBSTR);
-  // Back-up string to avoid reading beyond string.
-  lea(result, Address(result, cnt1, scale1, -16));
-  movl(cnt1, stride);
-  jmpb(SCAN_TO_SUBSTR);
-
-  // Found a potential substr
-  bind(FOUND_CANDIDATE);
-  // After pcmpestri tmp(rcx) contains matched element index
-
-  // Make sure string is still long enough
-  subl(cnt1, tmp);
-  cmpl(cnt1, cnt2);
-  jccb(Assembler::greaterEqual, FOUND_SUBSTR);
-  // Left less then substring.
-
-  bind(RET_NOT_FOUND);
-  movl(result, -1);
-  jmp(CLEANUP);
-
-  bind(FOUND_SUBSTR);
-  // Compute start addr of substr
-  lea(result, Address(result, tmp, scale1));
-  if (int_cnt2 > 0) { // Constant substring
-    // Repeat search for small substring (< 8 chars)
-    // from new point without reloading substring.
-    // Have to check that we don't read beyond string.
-    cmpl(tmp, stride-int_cnt2);
-    jccb(Assembler::greater, ADJUST_STR);
-    // Fall through if matched whole substring.
-  } else { // non constant
-    assert(int_cnt2 == -1, "should be != 0");
-
-    addl(tmp, cnt2);
-    // Found result if we matched whole substring.
-    cmpl(tmp, stride);
-    jcc(Assembler::lessEqual, RET_FOUND);
-
-    // Repeat search for small substring (<= 8 chars)
-    // from new point 'str1' without reloading substring.
-    cmpl(cnt2, stride);
-    // Have to check that we don't read beyond string.
-    jccb(Assembler::lessEqual, ADJUST_STR);
-
-    Label CHECK_NEXT, CONT_SCAN_SUBSTR, RET_FOUND_LONG;
-    // Compare the rest of substring (> 8 chars).
-    movptr(str1, result);
-
-    cmpl(tmp, cnt2);
-    // First 8 chars are already matched.
-    jccb(Assembler::equal, CHECK_NEXT);
-
-    bind(SCAN_SUBSTR);
-    pcmpestri(vec, Address(str1, 0), mode);
-    // Need to reload strings pointers if not matched whole vector
-    jcc(Assembler::noOverflow, RELOAD_SUBSTR); // OF == 0
-
-    bind(CHECK_NEXT);
-    subl(cnt2, stride);
-    jccb(Assembler::lessEqual, RET_FOUND_LONG); // Found full substring
-    addptr(str1, 16);
-    if (ae == StrIntrinsicNode::UL) {
-      addptr(str2, 8);
-    } else {
-      addptr(str2, 16);
-    }
-    subl(cnt1, stride);
-    cmpl(cnt2, stride); // Do not read beyond substring
-    jccb(Assembler::greaterEqual, CONT_SCAN_SUBSTR);
-    // Back-up strings to avoid reading beyond substring.
-
-    if (ae == StrIntrinsicNode::UL) {
-      lea(str2, Address(str2, cnt2, scale2, -8));
-      lea(str1, Address(str1, cnt2, scale1, -16));
-    } else {
-      lea(str2, Address(str2, cnt2, scale2, -16));
-      lea(str1, Address(str1, cnt2, scale1, -16));
-    }
-    subl(cnt1, cnt2);
-    movl(cnt2, stride);
-    addl(cnt1, stride);
-    bind(CONT_SCAN_SUBSTR);
-    if (ae == StrIntrinsicNode::UL) {
-      pmovzxbw(vec, Address(str2, 0));
-    } else {
-      movdqu(vec, Address(str2, 0));
-    }
-    jmp(SCAN_SUBSTR);
-
-    bind(RET_FOUND_LONG);
-    movptr(str1, Address(rsp, wordSize));
-  } // non constant
-
-  bind(RET_FOUND);
-  // Compute substr offset
-  subptr(result, str1);
-  if (ae == StrIntrinsicNode::UU || ae == StrIntrinsicNode::UL) {
-    shrl(result, 1); // index
-  }
-  bind(CLEANUP);
-  pop(rsp); // restore SP
-
-} // string_indexof
-
-void MacroAssembler::string_indexof_char(Register str1, Register cnt1, Register ch, Register result,
-                                         XMMRegister vec1, XMMRegister vec2, XMMRegister vec3, Register tmp) {
-  ShortBranchVerifier sbv(this);
-  assert(UseSSE42Intrinsics, "SSE4.2 intrinsics are required");
-
-  int stride = 8;
-
-  Label FOUND_CHAR, SCAN_TO_CHAR, SCAN_TO_CHAR_LOOP,
-        SCAN_TO_8_CHAR, SCAN_TO_8_CHAR_LOOP, SCAN_TO_16_CHAR_LOOP,
-        RET_NOT_FOUND, SCAN_TO_8_CHAR_INIT,
-        FOUND_SEQ_CHAR, DONE_LABEL;
-
-  movptr(result, str1);
-  if (UseAVX >= 2) {
-    cmpl(cnt1, stride);
-    jcc(Assembler::less, SCAN_TO_CHAR);
-    cmpl(cnt1, 2*stride);
-    jcc(Assembler::less, SCAN_TO_8_CHAR_INIT);
-    movdl(vec1, ch);
-    vpbroadcastw(vec1, vec1, Assembler::AVX_256bit);
-    vpxor(vec2, vec2);
-    movl(tmp, cnt1);
-    andl(tmp, 0xFFFFFFF0);  //vector count (in chars)
-    andl(cnt1,0x0000000F);  //tail count (in chars)
-
-    bind(SCAN_TO_16_CHAR_LOOP);
-    vmovdqu(vec3, Address(result, 0));
-    vpcmpeqw(vec3, vec3, vec1, 1);
-    vptest(vec2, vec3);
-    jcc(Assembler::carryClear, FOUND_CHAR);
-    addptr(result, 32);
-    subl(tmp, 2*stride);
-    jcc(Assembler::notZero, SCAN_TO_16_CHAR_LOOP);
-    jmp(SCAN_TO_8_CHAR);
-    bind(SCAN_TO_8_CHAR_INIT);
-    movdl(vec1, ch);
-    pshuflw(vec1, vec1, 0x00);
-    pshufd(vec1, vec1, 0);
-    pxor(vec2, vec2);
-  }
-  bind(SCAN_TO_8_CHAR);
-  cmpl(cnt1, stride);
-  jcc(Assembler::less, SCAN_TO_CHAR);
-  if (UseAVX < 2) {
-    movdl(vec1, ch);
-    pshuflw(vec1, vec1, 0x00);
-    pshufd(vec1, vec1, 0);
-    pxor(vec2, vec2);
-  }
-  movl(tmp, cnt1);
-  andl(tmp, 0xFFFFFFF8);  //vector count (in chars)
-  andl(cnt1,0x00000007);  //tail count (in chars)
-
-  bind(SCAN_TO_8_CHAR_LOOP);
-  movdqu(vec3, Address(result, 0));
-  pcmpeqw(vec3, vec1);
-  ptest(vec2, vec3);
-  jcc(Assembler::carryClear, FOUND_CHAR);
-  addptr(result, 16);
-  subl(tmp, stride);
-  jcc(Assembler::notZero, SCAN_TO_8_CHAR_LOOP);
-  bind(SCAN_TO_CHAR);
-  testl(cnt1, cnt1);
-  jcc(Assembler::zero, RET_NOT_FOUND);
-  bind(SCAN_TO_CHAR_LOOP);
-  load_unsigned_short(tmp, Address(result, 0));
-  cmpl(ch, tmp);
-  jccb(Assembler::equal, FOUND_SEQ_CHAR);
-  addptr(result, 2);
-  subl(cnt1, 1);
-  jccb(Assembler::zero, RET_NOT_FOUND);
-  jmp(SCAN_TO_CHAR_LOOP);
-
-  bind(RET_NOT_FOUND);
-  movl(result, -1);
-  jmpb(DONE_LABEL);
-
-  bind(FOUND_CHAR);
-  if (UseAVX >= 2) {
-    vpmovmskb(tmp, vec3);
-  } else {
-    pmovmskb(tmp, vec3);
-  }
-  bsfl(ch, tmp);
-  addl(result, ch);
-
-  bind(FOUND_SEQ_CHAR);
-  subptr(result, str1);
-  shrl(result, 1);
-
-  bind(DONE_LABEL);
-} // string_indexof_char
-
-// helper function for string_compare
-void MacroAssembler::load_next_elements(Register elem1, Register elem2, Register str1, Register str2,
-                                        Address::ScaleFactor scale, Address::ScaleFactor scale1,
-                                        Address::ScaleFactor scale2, Register index, int ae) {
-  if (ae == StrIntrinsicNode::LL) {
-    load_unsigned_byte(elem1, Address(str1, index, scale, 0));
-    load_unsigned_byte(elem2, Address(str2, index, scale, 0));
-  } else if (ae == StrIntrinsicNode::UU) {
-    load_unsigned_short(elem1, Address(str1, index, scale, 0));
-    load_unsigned_short(elem2, Address(str2, index, scale, 0));
-  } else {
-    load_unsigned_byte(elem1, Address(str1, index, scale1, 0));
-    load_unsigned_short(elem2, Address(str2, index, scale2, 0));
-  }
-}
-
-// Compare strings, used for char[] and byte[].
-void MacroAssembler::string_compare(Register str1, Register str2,
-                                    Register cnt1, Register cnt2, Register result,
-                                    XMMRegister vec1, int ae) {
-  ShortBranchVerifier sbv(this);
-  Label LENGTH_DIFF_LABEL, POP_LABEL, DONE_LABEL, WHILE_HEAD_LABEL;
-  Label COMPARE_WIDE_VECTORS_LOOP_FAILED;  // used only _LP64 && AVX3
-  int stride, stride2, adr_stride, adr_stride1, adr_stride2;
-  int stride2x2 = 0x40;
-  Address::ScaleFactor scale = Address::no_scale;
-  Address::ScaleFactor scale1 = Address::no_scale;
-  Address::ScaleFactor scale2 = Address::no_scale;
-
-  if (ae != StrIntrinsicNode::LL) {
-    stride2x2 = 0x20;
-  }
-
-  if (ae == StrIntrinsicNode::LU || ae == StrIntrinsicNode::UL) {
-    shrl(cnt2, 1);
-  }
-  // Compute the minimum of the string lengths and the
-  // difference of the string lengths (stack).
-  // Do the conditional move stuff
-  movl(result, cnt1);
-  subl(cnt1, cnt2);
-  push(cnt1);
-  cmov32(Assembler::lessEqual, cnt2, result);    // cnt2 = min(cnt1, cnt2)
-
-  // Is the minimum length zero?
-  testl(cnt2, cnt2);
-  jcc(Assembler::zero, LENGTH_DIFF_LABEL);
-  if (ae == StrIntrinsicNode::LL) {
-    // Load first bytes
-    load_unsigned_byte(result, Address(str1, 0));  // result = str1[0]
-    load_unsigned_byte(cnt1, Address(str2, 0));    // cnt1   = str2[0]
-  } else if (ae == StrIntrinsicNode::UU) {
-    // Load first characters
-    load_unsigned_short(result, Address(str1, 0));
-    load_unsigned_short(cnt1, Address(str2, 0));
-  } else {
-    load_unsigned_byte(result, Address(str1, 0));
-    load_unsigned_short(cnt1, Address(str2, 0));
-  }
-  subl(result, cnt1);
-  jcc(Assembler::notZero,  POP_LABEL);
-
-  if (ae == StrIntrinsicNode::UU) {
-    // Divide length by 2 to get number of chars
-    shrl(cnt2, 1);
-  }
-  cmpl(cnt2, 1);
-  jcc(Assembler::equal, LENGTH_DIFF_LABEL);
-
-  // Check if the strings start at the same location and setup scale and stride
-  if (ae == StrIntrinsicNode::LL || ae == StrIntrinsicNode::UU) {
-    cmpptr(str1, str2);
-    jcc(Assembler::equal, LENGTH_DIFF_LABEL);
-    if (ae == StrIntrinsicNode::LL) {
-      scale = Address::times_1;
-      stride = 16;
-    } else {
-      scale = Address::times_2;
-      stride = 8;
-    }
-  } else {
-    scale1 = Address::times_1;
-    scale2 = Address::times_2;
-    // scale not used
-    stride = 8;
-  }
-
-  if (UseAVX >= 2 && UseSSE42Intrinsics) {
-    Label COMPARE_WIDE_VECTORS, VECTOR_NOT_EQUAL, COMPARE_WIDE_TAIL, COMPARE_SMALL_STR;
-    Label COMPARE_WIDE_VECTORS_LOOP, COMPARE_16_CHARS, COMPARE_INDEX_CHAR;
-    Label COMPARE_WIDE_VECTORS_LOOP_AVX2;
-    Label COMPARE_TAIL_LONG;
-    Label COMPARE_WIDE_VECTORS_LOOP_AVX3;  // used only _LP64 && AVX3
-
-    int pcmpmask = 0x19;
-    if (ae == StrIntrinsicNode::LL) {
-      pcmpmask &= ~0x01;
-    }
-
-    // Setup to compare 16-chars (32-bytes) vectors,
-    // start from first character again because it has aligned address.
-    if (ae == StrIntrinsicNode::LL) {
-      stride2 = 32;
-    } else {
-      stride2 = 16;
-    }
-    if (ae == StrIntrinsicNode::LL || ae == StrIntrinsicNode::UU) {
-      adr_stride = stride << scale;
-    } else {
-      adr_stride1 = 8;  //stride << scale1;
-      adr_stride2 = 16; //stride << scale2;
-    }
-
-    assert(result == rax && cnt2 == rdx && cnt1 == rcx, "pcmpestri");
-    // rax and rdx are used by pcmpestri as elements counters
-    movl(result, cnt2);
-    andl(cnt2, ~(stride2-1));   // cnt2 holds the vector count
-    jcc(Assembler::zero, COMPARE_TAIL_LONG);
-
-    // fast path : compare first 2 8-char vectors.
-    bind(COMPARE_16_CHARS);
-    if (ae == StrIntrinsicNode::LL || ae == StrIntrinsicNode::UU) {
-      movdqu(vec1, Address(str1, 0));
-    } else {
-      pmovzxbw(vec1, Address(str1, 0));
-    }
-    pcmpestri(vec1, Address(str2, 0), pcmpmask);
-    jccb(Assembler::below, COMPARE_INDEX_CHAR);
-
-    if (ae == StrIntrinsicNode::LL || ae == StrIntrinsicNode::UU) {
-      movdqu(vec1, Address(str1, adr_stride));
-      pcmpestri(vec1, Address(str2, adr_stride), pcmpmask);
-    } else {
-      pmovzxbw(vec1, Address(str1, adr_stride1));
-      pcmpestri(vec1, Address(str2, adr_stride2), pcmpmask);
-    }
-    jccb(Assembler::aboveEqual, COMPARE_WIDE_VECTORS);
-    addl(cnt1, stride);
-
-    // Compare the characters at index in cnt1
-    bind(COMPARE_INDEX_CHAR); // cnt1 has the offset of the mismatching character
-    load_next_elements(result, cnt2, str1, str2, scale, scale1, scale2, cnt1, ae);
-    subl(result, cnt2);
-    jmp(POP_LABEL);
-
-    // Setup the registers to start vector comparison loop
-    bind(COMPARE_WIDE_VECTORS);
-    if (ae == StrIntrinsicNode::LL || ae == StrIntrinsicNode::UU) {
-      lea(str1, Address(str1, result, scale));
-      lea(str2, Address(str2, result, scale));
-    } else {
-      lea(str1, Address(str1, result, scale1));
-      lea(str2, Address(str2, result, scale2));
-    }
-    subl(result, stride2);
-    subl(cnt2, stride2);
-    jcc(Assembler::zero, COMPARE_WIDE_TAIL);
-    negptr(result);
-
-    //  In a loop, compare 16-chars (32-bytes) at once using (vpxor+vptest)
-    bind(COMPARE_WIDE_VECTORS_LOOP);
-
-#ifdef _LP64
-    if ((AVX3Threshold == 0) && VM_Version::supports_avx512vlbw()) { // trying 64 bytes fast loop
-      cmpl(cnt2, stride2x2);
-      jccb(Assembler::below, COMPARE_WIDE_VECTORS_LOOP_AVX2);
-      testl(cnt2, stride2x2-1);   // cnt2 holds the vector count
-      jccb(Assembler::notZero, COMPARE_WIDE_VECTORS_LOOP_AVX2);   // means we cannot subtract by 0x40
-
-      bind(COMPARE_WIDE_VECTORS_LOOP_AVX3); // the hottest loop
-      if (ae == StrIntrinsicNode::LL || ae == StrIntrinsicNode::UU) {
-        evmovdquq(vec1, Address(str1, result, scale), Assembler::AVX_512bit);
-        evpcmpeqb(k7, vec1, Address(str2, result, scale), Assembler::AVX_512bit); // k7 == 11..11, if operands equal, otherwise k7 has some 0
-      } else {
-        vpmovzxbw(vec1, Address(str1, result, scale1), Assembler::AVX_512bit);
-        evpcmpeqb(k7, vec1, Address(str2, result, scale2), Assembler::AVX_512bit); // k7 == 11..11, if operands equal, otherwise k7 has some 0
-      }
-      kortestql(k7, k7);
-      jcc(Assembler::aboveEqual, COMPARE_WIDE_VECTORS_LOOP_FAILED);     // miscompare
-      addptr(result, stride2x2);  // update since we already compared at this addr
-      subl(cnt2, stride2x2);      // and sub the size too
-      jccb(Assembler::notZero, COMPARE_WIDE_VECTORS_LOOP_AVX3);
-
-      vpxor(vec1, vec1);
-      jmpb(COMPARE_WIDE_TAIL);
-    }//if (VM_Version::supports_avx512vlbw())
-#endif // _LP64
-
-
-    bind(COMPARE_WIDE_VECTORS_LOOP_AVX2);
-    if (ae == StrIntrinsicNode::LL || ae == StrIntrinsicNode::UU) {
-      vmovdqu(vec1, Address(str1, result, scale));
-      vpxor(vec1, Address(str2, result, scale));
-    } else {
-      vpmovzxbw(vec1, Address(str1, result, scale1), Assembler::AVX_256bit);
-      vpxor(vec1, Address(str2, result, scale2));
-    }
-    vptest(vec1, vec1);
-    jcc(Assembler::notZero, VECTOR_NOT_EQUAL);
-    addptr(result, stride2);
-    subl(cnt2, stride2);
-    jcc(Assembler::notZero, COMPARE_WIDE_VECTORS_LOOP);
-    // clean upper bits of YMM registers
-    vpxor(vec1, vec1);
-
-    // compare wide vectors tail
-    bind(COMPARE_WIDE_TAIL);
-    testptr(result, result);
-    jcc(Assembler::zero, LENGTH_DIFF_LABEL);
-
-    movl(result, stride2);
-    movl(cnt2, result);
-    negptr(result);
-    jmp(COMPARE_WIDE_VECTORS_LOOP_AVX2);
-
-    // Identifies the mismatching (higher or lower)16-bytes in the 32-byte vectors.
-    bind(VECTOR_NOT_EQUAL);
-    // clean upper bits of YMM registers
-    vpxor(vec1, vec1);
-    if (ae == StrIntrinsicNode::LL || ae == StrIntrinsicNode::UU) {
-      lea(str1, Address(str1, result, scale));
-      lea(str2, Address(str2, result, scale));
-    } else {
-      lea(str1, Address(str1, result, scale1));
-      lea(str2, Address(str2, result, scale2));
-    }
-    jmp(COMPARE_16_CHARS);
-
-    // Compare tail chars, length between 1 to 15 chars
-    bind(COMPARE_TAIL_LONG);
-    movl(cnt2, result);
-    cmpl(cnt2, stride);
-    jcc(Assembler::less, COMPARE_SMALL_STR);
-
-    if (ae == StrIntrinsicNode::LL || ae == StrIntrinsicNode::UU) {
-      movdqu(vec1, Address(str1, 0));
-    } else {
-      pmovzxbw(vec1, Address(str1, 0));
-    }
-    pcmpestri(vec1, Address(str2, 0), pcmpmask);
-    jcc(Assembler::below, COMPARE_INDEX_CHAR);
-    subptr(cnt2, stride);
-    jcc(Assembler::zero, LENGTH_DIFF_LABEL);
-    if (ae == StrIntrinsicNode::LL || ae == StrIntrinsicNode::UU) {
-      lea(str1, Address(str1, result, scale));
-      lea(str2, Address(str2, result, scale));
-    } else {
-      lea(str1, Address(str1, result, scale1));
-      lea(str2, Address(str2, result, scale2));
-    }
-    negptr(cnt2);
-    jmpb(WHILE_HEAD_LABEL);
-
-    bind(COMPARE_SMALL_STR);
-  } else if (UseSSE42Intrinsics) {
-    Label COMPARE_WIDE_VECTORS, VECTOR_NOT_EQUAL, COMPARE_TAIL;
-    int pcmpmask = 0x19;
-    // Setup to compare 8-char (16-byte) vectors,
-    // start from first character again because it has aligned address.
-    movl(result, cnt2);
-    andl(cnt2, ~(stride - 1));   // cnt2 holds the vector count
-    if (ae == StrIntrinsicNode::LL) {
-      pcmpmask &= ~0x01;
-    }
-    jcc(Assembler::zero, COMPARE_TAIL);
-    if (ae == StrIntrinsicNode::LL || ae == StrIntrinsicNode::UU) {
-      lea(str1, Address(str1, result, scale));
-      lea(str2, Address(str2, result, scale));
-    } else {
-      lea(str1, Address(str1, result, scale1));
-      lea(str2, Address(str2, result, scale2));
-    }
-    negptr(result);
-
-    // pcmpestri
-    //   inputs:
-    //     vec1- substring
-    //     rax - negative string length (elements count)
-    //     mem - scanned string
-    //     rdx - string length (elements count)
-    //     pcmpmask - cmp mode: 11000 (string compare with negated result)
-    //               + 00 (unsigned bytes) or  + 01 (unsigned shorts)
-    //   outputs:
-    //     rcx - first mismatched element index
-    assert(result == rax && cnt2 == rdx && cnt1 == rcx, "pcmpestri");
-
-    bind(COMPARE_WIDE_VECTORS);
-    if (ae == StrIntrinsicNode::LL || ae == StrIntrinsicNode::UU) {
-      movdqu(vec1, Address(str1, result, scale));
-      pcmpestri(vec1, Address(str2, result, scale), pcmpmask);
-    } else {
-      pmovzxbw(vec1, Address(str1, result, scale1));
-      pcmpestri(vec1, Address(str2, result, scale2), pcmpmask);
-    }
-    // After pcmpestri cnt1(rcx) contains mismatched element index
-
-    jccb(Assembler::below, VECTOR_NOT_EQUAL);  // CF==1
-    addptr(result, stride);
-    subptr(cnt2, stride);
-    jccb(Assembler::notZero, COMPARE_WIDE_VECTORS);
-
-    // compare wide vectors tail
-    testptr(result, result);
-    jcc(Assembler::zero, LENGTH_DIFF_LABEL);
-
-    movl(cnt2, stride);
-    movl(result, stride);
-    negptr(result);
-    if (ae == StrIntrinsicNode::LL || ae == StrIntrinsicNode::UU) {
-      movdqu(vec1, Address(str1, result, scale));
-      pcmpestri(vec1, Address(str2, result, scale), pcmpmask);
-    } else {
-      pmovzxbw(vec1, Address(str1, result, scale1));
-      pcmpestri(vec1, Address(str2, result, scale2), pcmpmask);
-    }
-    jccb(Assembler::aboveEqual, LENGTH_DIFF_LABEL);
-
-    // Mismatched characters in the vectors
-    bind(VECTOR_NOT_EQUAL);
-    addptr(cnt1, result);
-    load_next_elements(result, cnt2, str1, str2, scale, scale1, scale2, cnt1, ae);
-    subl(result, cnt2);
-    jmpb(POP_LABEL);
-
-    bind(COMPARE_TAIL); // limit is zero
-    movl(cnt2, result);
-    // Fallthru to tail compare
-  }
-  // Shift str2 and str1 to the end of the arrays, negate min
-  if (ae == StrIntrinsicNode::LL || ae == StrIntrinsicNode::UU) {
-    lea(str1, Address(str1, cnt2, scale));
-    lea(str2, Address(str2, cnt2, scale));
-  } else {
-    lea(str1, Address(str1, cnt2, scale1));
-    lea(str2, Address(str2, cnt2, scale2));
-  }
-  decrementl(cnt2);  // first character was compared already
-  negptr(cnt2);
-
-  // Compare the rest of the elements
-  bind(WHILE_HEAD_LABEL);
-  load_next_elements(result, cnt1, str1, str2, scale, scale1, scale2, cnt2, ae);
-  subl(result, cnt1);
-  jccb(Assembler::notZero, POP_LABEL);
-  increment(cnt2);
-  jccb(Assembler::notZero, WHILE_HEAD_LABEL);
-
-  // Strings are equal up to min length.  Return the length difference.
-  bind(LENGTH_DIFF_LABEL);
-  pop(result);
-  if (ae == StrIntrinsicNode::UU) {
-    // Divide diff by 2 to get number of chars
-    sarl(result, 1);
-  }
-  jmpb(DONE_LABEL);
-
-#ifdef _LP64
-  if (VM_Version::supports_avx512vlbw()) {
-
-    bind(COMPARE_WIDE_VECTORS_LOOP_FAILED);
-
-    kmovql(cnt1, k7);
-    notq(cnt1);
-    bsfq(cnt2, cnt1);
-    if (ae != StrIntrinsicNode::LL) {
-      // Divide diff by 2 to get number of chars
-      sarl(cnt2, 1);
-    }
-    addq(result, cnt2);
-    if (ae == StrIntrinsicNode::LL) {
-      load_unsigned_byte(cnt1, Address(str2, result));
-      load_unsigned_byte(result, Address(str1, result));
-    } else if (ae == StrIntrinsicNode::UU) {
-      load_unsigned_short(cnt1, Address(str2, result, scale));
-      load_unsigned_short(result, Address(str1, result, scale));
-    } else {
-      load_unsigned_short(cnt1, Address(str2, result, scale2));
-      load_unsigned_byte(result, Address(str1, result, scale1));
-    }
-    subl(result, cnt1);
-    jmpb(POP_LABEL);
-  }//if (VM_Version::supports_avx512vlbw())
-#endif // _LP64
-
-  // Discard the stored length difference
-  bind(POP_LABEL);
-  pop(cnt1);
-
-  // That's it
-  bind(DONE_LABEL);
-  if(ae == StrIntrinsicNode::UL) {
-    negl(result);
-  }
-
-}
-
-// Search for Non-ASCII character (Negative byte value) in a byte array,
-// return true if it has any and false otherwise.
-//   ..\jdk\src\java.base\share\classes\java\lang\StringCoding.java
-//   @HotSpotIntrinsicCandidate
-//   private static boolean hasNegatives(byte[] ba, int off, int len) {
-//     for (int i = off; i < off + len; i++) {
-//       if (ba[i] < 0) {
-//         return true;
-//       }
-//     }
-//     return false;
-//   }
-void MacroAssembler::has_negatives(Register ary1, Register len,
-  Register result, Register tmp1,
-  XMMRegister vec1, XMMRegister vec2) {
-  // rsi: byte array
-  // rcx: len
-  // rax: result
-  ShortBranchVerifier sbv(this);
-  assert_different_registers(ary1, len, result, tmp1);
-  assert_different_registers(vec1, vec2);
-  Label TRUE_LABEL, FALSE_LABEL, DONE, COMPARE_CHAR, COMPARE_VECTORS, COMPARE_BYTE;
-
-  // len == 0
-  testl(len, len);
-  jcc(Assembler::zero, FALSE_LABEL);
-
-  if ((AVX3Threshold == 0) && (UseAVX > 2) && // AVX512
-    VM_Version::supports_avx512vlbw() &&
-    VM_Version::supports_bmi2()) {
-
-    Label test_64_loop, test_tail;
-    Register tmp3_aliased = len;
-
-    movl(tmp1, len);
-    vpxor(vec2, vec2, vec2, Assembler::AVX_512bit);
-
-    andl(tmp1, 64 - 1);   // tail count (in chars) 0x3F
-    andl(len, ~(64 - 1));    // vector count (in chars)
-    jccb(Assembler::zero, test_tail);
-
-    lea(ary1, Address(ary1, len, Address::times_1));
-    negptr(len);
-
-    bind(test_64_loop);
-    // Check whether our 64 elements of size byte contain negatives
-    evpcmpgtb(k2, vec2, Address(ary1, len, Address::times_1), Assembler::AVX_512bit);
-    kortestql(k2, k2);
-    jcc(Assembler::notZero, TRUE_LABEL);
-
-    addptr(len, 64);
-    jccb(Assembler::notZero, test_64_loop);
-
-
-    bind(test_tail);
-    // bail out when there is nothing to be done
-    testl(tmp1, -1);
-    jcc(Assembler::zero, FALSE_LABEL);
-
-    // ~(~0 << len) applied up to two times (for 32-bit scenario)
-#ifdef _LP64
-    mov64(tmp3_aliased, 0xFFFFFFFFFFFFFFFF);
-    shlxq(tmp3_aliased, tmp3_aliased, tmp1);
-    notq(tmp3_aliased);
-    kmovql(k3, tmp3_aliased);
-#else
-    Label k_init;
-    jmp(k_init);
-
-    // We could not read 64-bits from a general purpose register thus we move
-    // data required to compose 64 1's to the instruction stream
-    // We emit 64 byte wide series of elements from 0..63 which later on would
-    // be used as a compare targets with tail count contained in tmp1 register.
-    // Result would be a k register having tmp1 consecutive number or 1
-    // counting from least significant bit.
-    address tmp = pc();
-    emit_int64(0x0706050403020100);
-    emit_int64(0x0F0E0D0C0B0A0908);
-    emit_int64(0x1716151413121110);
-    emit_int64(0x1F1E1D1C1B1A1918);
-    emit_int64(0x2726252423222120);
-    emit_int64(0x2F2E2D2C2B2A2928);
-    emit_int64(0x3736353433323130);
-    emit_int64(0x3F3E3D3C3B3A3938);
-
-    bind(k_init);
-    lea(len, InternalAddress(tmp));
-    // create mask to test for negative byte inside a vector
-    evpbroadcastb(vec1, tmp1, Assembler::AVX_512bit);
-    evpcmpgtb(k3, vec1, Address(len, 0), Assembler::AVX_512bit);
-
-#endif
-    evpcmpgtb(k2, k3, vec2, Address(ary1, 0), Assembler::AVX_512bit);
-    ktestq(k2, k3);
-    jcc(Assembler::notZero, TRUE_LABEL);
-
-    jmp(FALSE_LABEL);
-  } else {
-    movl(result, len); // copy
-
-    if (UseAVX >= 2 && UseSSE >= 2) {
-      // With AVX2, use 32-byte vector compare
-      Label COMPARE_WIDE_VECTORS, COMPARE_TAIL;
-
-      // Compare 32-byte vectors
-      andl(result, 0x0000001f);  //   tail count (in bytes)
-      andl(len, 0xffffffe0);   // vector count (in bytes)
-      jccb(Assembler::zero, COMPARE_TAIL);
-
-      lea(ary1, Address(ary1, len, Address::times_1));
-      negptr(len);
-
-      movl(tmp1, 0x80808080);   // create mask to test for Unicode chars in vector
-      movdl(vec2, tmp1);
-      vpbroadcastd(vec2, vec2, Assembler::AVX_256bit);
-
-      bind(COMPARE_WIDE_VECTORS);
-      vmovdqu(vec1, Address(ary1, len, Address::times_1));
-      vptest(vec1, vec2);
-      jccb(Assembler::notZero, TRUE_LABEL);
-      addptr(len, 32);
-      jcc(Assembler::notZero, COMPARE_WIDE_VECTORS);
-
-      testl(result, result);
-      jccb(Assembler::zero, FALSE_LABEL);
-
-      vmovdqu(vec1, Address(ary1, result, Address::times_1, -32));
-      vptest(vec1, vec2);
-      jccb(Assembler::notZero, TRUE_LABEL);
-      jmpb(FALSE_LABEL);
-
-      bind(COMPARE_TAIL); // len is zero
-      movl(len, result);
-      // Fallthru to tail compare
-    } else if (UseSSE42Intrinsics) {
-      // With SSE4.2, use double quad vector compare
-      Label COMPARE_WIDE_VECTORS, COMPARE_TAIL;
-
-      // Compare 16-byte vectors
-      andl(result, 0x0000000f);  //   tail count (in bytes)
-      andl(len, 0xfffffff0);   // vector count (in bytes)
-      jcc(Assembler::zero, COMPARE_TAIL);
-
-      lea(ary1, Address(ary1, len, Address::times_1));
-      negptr(len);
-
-      movl(tmp1, 0x80808080);
-      movdl(vec2, tmp1);
-      pshufd(vec2, vec2, 0);
-
-      bind(COMPARE_WIDE_VECTORS);
-      movdqu(vec1, Address(ary1, len, Address::times_1));
-      ptest(vec1, vec2);
-      jcc(Assembler::notZero, TRUE_LABEL);
-      addptr(len, 16);
-      jcc(Assembler::notZero, COMPARE_WIDE_VECTORS);
-
-      testl(result, result);
-      jcc(Assembler::zero, FALSE_LABEL);
-
-      movdqu(vec1, Address(ary1, result, Address::times_1, -16));
-      ptest(vec1, vec2);
-      jccb(Assembler::notZero, TRUE_LABEL);
-      jmpb(FALSE_LABEL);
-
-      bind(COMPARE_TAIL); // len is zero
-      movl(len, result);
-      // Fallthru to tail compare
-    }
-  }
-  // Compare 4-byte vectors
-  andl(len, 0xfffffffc); // vector count (in bytes)
-  jccb(Assembler::zero, COMPARE_CHAR);
-
-  lea(ary1, Address(ary1, len, Address::times_1));
-  negptr(len);
-
-  bind(COMPARE_VECTORS);
-  movl(tmp1, Address(ary1, len, Address::times_1));
-  andl(tmp1, 0x80808080);
-  jccb(Assembler::notZero, TRUE_LABEL);
-  addptr(len, 4);
-  jcc(Assembler::notZero, COMPARE_VECTORS);
-
-  // Compare trailing char (final 2 bytes), if any
-  bind(COMPARE_CHAR);
-  testl(result, 0x2);   // tail  char
-  jccb(Assembler::zero, COMPARE_BYTE);
-  load_unsigned_short(tmp1, Address(ary1, 0));
-  andl(tmp1, 0x00008080);
-  jccb(Assembler::notZero, TRUE_LABEL);
-  subptr(result, 2);
-  lea(ary1, Address(ary1, 2));
-
-  bind(COMPARE_BYTE);
-  testl(result, 0x1);   // tail  byte
-  jccb(Assembler::zero, FALSE_LABEL);
-  load_unsigned_byte(tmp1, Address(ary1, 0));
-  andl(tmp1, 0x00000080);
-  jccb(Assembler::notEqual, TRUE_LABEL);
-  jmpb(FALSE_LABEL);
-
-  bind(TRUE_LABEL);
-  movl(result, 1);   // return true
-  jmpb(DONE);
-
-  bind(FALSE_LABEL);
-  xorl(result, result); // return false
-
-  // That's it
-  bind(DONE);
-  if (UseAVX >= 2 && UseSSE >= 2) {
-    // clean upper bits of YMM registers
-    vpxor(vec1, vec1);
-    vpxor(vec2, vec2);
-  }
-}
-// Compare char[] or byte[] arrays aligned to 4 bytes or substrings.
-void MacroAssembler::arrays_equals(bool is_array_equ, Register ary1, Register ary2,
-                                   Register limit, Register result, Register chr,
-                                   XMMRegister vec1, XMMRegister vec2, bool is_char) {
-  ShortBranchVerifier sbv(this);
-  Label TRUE_LABEL, FALSE_LABEL, DONE, COMPARE_VECTORS, COMPARE_CHAR, COMPARE_BYTE;
-
-  int length_offset  = arrayOopDesc::length_offset_in_bytes();
-  int base_offset    = arrayOopDesc::base_offset_in_bytes(is_char ? T_CHAR : T_BYTE);
-
-  if (is_array_equ) {
-    // Check the input args
-    cmpoop(ary1, ary2);
-    jcc(Assembler::equal, TRUE_LABEL);
-
-    // Need additional checks for arrays_equals.
-    testptr(ary1, ary1);
-    jcc(Assembler::zero, FALSE_LABEL);
-    testptr(ary2, ary2);
-    jcc(Assembler::zero, FALSE_LABEL);
-
-    // Check the lengths
-    movl(limit, Address(ary1, length_offset));
-    cmpl(limit, Address(ary2, length_offset));
-    jcc(Assembler::notEqual, FALSE_LABEL);
-  }
-
-  // count == 0
-  testl(limit, limit);
-  jcc(Assembler::zero, TRUE_LABEL);
-
-  if (is_array_equ) {
-    // Load array address
-    lea(ary1, Address(ary1, base_offset));
-    lea(ary2, Address(ary2, base_offset));
-  }
-
-  if (is_array_equ && is_char) {
-    // arrays_equals when used for char[].
-    shll(limit, 1);      // byte count != 0
-  }
-  movl(result, limit); // copy
-
-  if (UseAVX >= 2) {
-    // With AVX2, use 32-byte vector compare
-    Label COMPARE_WIDE_VECTORS, COMPARE_TAIL;
-
-    // Compare 32-byte vectors
-    andl(result, 0x0000001f);  //   tail count (in bytes)
-    andl(limit, 0xffffffe0);   // vector count (in bytes)
-    jcc(Assembler::zero, COMPARE_TAIL);
-
-    lea(ary1, Address(ary1, limit, Address::times_1));
-    lea(ary2, Address(ary2, limit, Address::times_1));
-    negptr(limit);
-
-#ifdef _LP64
-    if ((AVX3Threshold == 0) && VM_Version::supports_avx512vlbw()) { // trying 64 bytes fast loop
-      Label COMPARE_WIDE_VECTORS_LOOP_AVX2, COMPARE_WIDE_VECTORS_LOOP_AVX3;
-
-      cmpl(limit, -64);
-      jcc(Assembler::greater, COMPARE_WIDE_VECTORS_LOOP_AVX2);
-
-      bind(COMPARE_WIDE_VECTORS_LOOP_AVX3); // the hottest loop
-
-      evmovdquq(vec1, Address(ary1, limit, Address::times_1), Assembler::AVX_512bit);
-      evpcmpeqb(k7, vec1, Address(ary2, limit, Address::times_1), Assembler::AVX_512bit);
-      kortestql(k7, k7);
-      jcc(Assembler::aboveEqual, FALSE_LABEL);     // miscompare
-      addptr(limit, 64);  // update since we already compared at this addr
-      cmpl(limit, -64);
-      jccb(Assembler::lessEqual, COMPARE_WIDE_VECTORS_LOOP_AVX3);
-
-      // At this point we may still need to compare -limit+result bytes.
-      // We could execute the next two instruction and just continue via non-wide path:
-      //  cmpl(limit, 0);
-      //  jcc(Assembler::equal, COMPARE_TAIL);  // true
-      // But since we stopped at the points ary{1,2}+limit which are
-      // not farther than 64 bytes from the ends of arrays ary{1,2}+result
-      // (|limit| <= 32 and result < 32),
-      // we may just compare the last 64 bytes.
-      //
-      addptr(result, -64);   // it is safe, bc we just came from this area
-      evmovdquq(vec1, Address(ary1, result, Address::times_1), Assembler::AVX_512bit);
-      evpcmpeqb(k7, vec1, Address(ary2, result, Address::times_1), Assembler::AVX_512bit);
-      kortestql(k7, k7);
-      jcc(Assembler::aboveEqual, FALSE_LABEL);     // miscompare
-
-      jmp(TRUE_LABEL);
-
-      bind(COMPARE_WIDE_VECTORS_LOOP_AVX2);
-
-    }//if (VM_Version::supports_avx512vlbw())
-#endif //_LP64
-    bind(COMPARE_WIDE_VECTORS);
-    vmovdqu(vec1, Address(ary1, limit, Address::times_1));
-    vmovdqu(vec2, Address(ary2, limit, Address::times_1));
-    vpxor(vec1, vec2);
-
-    vptest(vec1, vec1);
-    jcc(Assembler::notZero, FALSE_LABEL);
-    addptr(limit, 32);
-    jcc(Assembler::notZero, COMPARE_WIDE_VECTORS);
-
-    testl(result, result);
-    jcc(Assembler::zero, TRUE_LABEL);
-
-    vmovdqu(vec1, Address(ary1, result, Address::times_1, -32));
-    vmovdqu(vec2, Address(ary2, result, Address::times_1, -32));
-    vpxor(vec1, vec2);
-
-    vptest(vec1, vec1);
-    jccb(Assembler::notZero, FALSE_LABEL);
-    jmpb(TRUE_LABEL);
-
-    bind(COMPARE_TAIL); // limit is zero
-    movl(limit, result);
-    // Fallthru to tail compare
-  } else if (UseSSE42Intrinsics) {
-    // With SSE4.2, use double quad vector compare
-    Label COMPARE_WIDE_VECTORS, COMPARE_TAIL;
-
-    // Compare 16-byte vectors
-    andl(result, 0x0000000f);  //   tail count (in bytes)
-    andl(limit, 0xfffffff0);   // vector count (in bytes)
-    jcc(Assembler::zero, COMPARE_TAIL);
-
-    lea(ary1, Address(ary1, limit, Address::times_1));
-    lea(ary2, Address(ary2, limit, Address::times_1));
-    negptr(limit);
-
-    bind(COMPARE_WIDE_VECTORS);
-    movdqu(vec1, Address(ary1, limit, Address::times_1));
-    movdqu(vec2, Address(ary2, limit, Address::times_1));
-    pxor(vec1, vec2);
-
-    ptest(vec1, vec1);
-    jcc(Assembler::notZero, FALSE_LABEL);
-    addptr(limit, 16);
-    jcc(Assembler::notZero, COMPARE_WIDE_VECTORS);
-
-    testl(result, result);
-    jcc(Assembler::zero, TRUE_LABEL);
-
-    movdqu(vec1, Address(ary1, result, Address::times_1, -16));
-    movdqu(vec2, Address(ary2, result, Address::times_1, -16));
-    pxor(vec1, vec2);
-
-    ptest(vec1, vec1);
-    jccb(Assembler::notZero, FALSE_LABEL);
-    jmpb(TRUE_LABEL);
-
-    bind(COMPARE_TAIL); // limit is zero
-    movl(limit, result);
-    // Fallthru to tail compare
-  }
-
-  // Compare 4-byte vectors
-  andl(limit, 0xfffffffc); // vector count (in bytes)
-  jccb(Assembler::zero, COMPARE_CHAR);
-
-  lea(ary1, Address(ary1, limit, Address::times_1));
-  lea(ary2, Address(ary2, limit, Address::times_1));
-  negptr(limit);
-
-  bind(COMPARE_VECTORS);
-  movl(chr, Address(ary1, limit, Address::times_1));
-  cmpl(chr, Address(ary2, limit, Address::times_1));
-  jccb(Assembler::notEqual, FALSE_LABEL);
-  addptr(limit, 4);
-  jcc(Assembler::notZero, COMPARE_VECTORS);
-
-  // Compare trailing char (final 2 bytes), if any
-  bind(COMPARE_CHAR);
-  testl(result, 0x2);   // tail  char
-  jccb(Assembler::zero, COMPARE_BYTE);
-  load_unsigned_short(chr, Address(ary1, 0));
-  load_unsigned_short(limit, Address(ary2, 0));
-  cmpl(chr, limit);
-  jccb(Assembler::notEqual, FALSE_LABEL);
-
-  if (is_array_equ && is_char) {
-    bind(COMPARE_BYTE);
-  } else {
-    lea(ary1, Address(ary1, 2));
-    lea(ary2, Address(ary2, 2));
-
-    bind(COMPARE_BYTE);
-    testl(result, 0x1);   // tail  byte
-    jccb(Assembler::zero, TRUE_LABEL);
-    load_unsigned_byte(chr, Address(ary1, 0));
-    load_unsigned_byte(limit, Address(ary2, 0));
-    cmpl(chr, limit);
-    jccb(Assembler::notEqual, FALSE_LABEL);
-  }
-  bind(TRUE_LABEL);
-  movl(result, 1);   // return true
-  jmpb(DONE);
-
-  bind(FALSE_LABEL);
-  xorl(result, result); // return false
-
-  // That's it
-  bind(DONE);
-  if (UseAVX >= 2) {
-    // clean upper bits of YMM registers
-    vpxor(vec1, vec1);
-    vpxor(vec2, vec2);
-  }
-}
-
-#endif
 
 void MacroAssembler::generate_fill(BasicType t, bool aligned,
                                    Register to, Register value, Register count,
@@ -7501,8 +5614,8 @@ void MacroAssembler::generate_fill(BasicType t, bool aligned,
   BIND(L_exit);
 }
 
-// encode char[] to byte[] in ISO_8859_1
-   //@HotSpotIntrinsicCandidate
+// encode char[] to byte[] in ISO_8859_1 or ASCII
+   //@IntrinsicCandidate
    //private static int implEncodeISOArray(byte[] sa, int sp,
    //byte[] da, int dp, int len) {
    //  int i = 0;
@@ -7514,10 +5627,23 @@ void MacroAssembler::generate_fill(BasicType t, bool aligned,
    //  }
    //  return i;
    //}
+   //
+   //@IntrinsicCandidate
+   //private static int implEncodeAsciiArray(char[] sa, int sp,
+   //    byte[] da, int dp, int len) {
+   //  int i = 0;
+   //  for (; i < len; i++) {
+   //    char c = sa[sp++];
+   //    if (c >= '\u0080')
+   //      break;
+   //    da[dp++] = (byte)c;
+   //  }
+   //  return i;
+   //}
 void MacroAssembler::encode_iso_array(Register src, Register dst, Register len,
   XMMRegister tmp1Reg, XMMRegister tmp2Reg,
   XMMRegister tmp3Reg, XMMRegister tmp4Reg,
-  Register tmp5, Register result) {
+  Register tmp5, Register result, bool ascii) {
 
   // rsi: src
   // rdi: dst
@@ -7527,6 +5653,9 @@ void MacroAssembler::encode_iso_array(Register src, Register dst, Register len,
   ShortBranchVerifier sbv(this);
   assert_different_registers(src, dst, len, tmp5, result);
   Label L_done, L_copy_1_char, L_copy_1_char_exit;
+
+  int mask = ascii ? 0xff80ff80 : 0xff00ff00;
+  int short_mask = ascii ? 0xff80 : 0xff00;
 
   // set result
   xorl(result, result);
@@ -7547,7 +5676,7 @@ void MacroAssembler::encode_iso_array(Register src, Register dst, Register len,
 
     if (UseAVX >= 2) {
       Label L_chars_32_check, L_copy_32_chars, L_copy_32_chars_exit;
-      movl(tmp5, 0xff00ff00);   // create mask to test for Unicode chars in vector
+      movl(tmp5, mask);   // create mask to test for Unicode or non-ASCII chars in vector
       movdl(tmp1Reg, tmp5);
       vpbroadcastd(tmp1Reg, tmp1Reg, Assembler::AVX_256bit);
       jmp(L_chars_32_check);
@@ -7556,7 +5685,7 @@ void MacroAssembler::encode_iso_array(Register src, Register dst, Register len,
       vmovdqu(tmp3Reg, Address(src, len, Address::times_2, -64));
       vmovdqu(tmp4Reg, Address(src, len, Address::times_2, -32));
       vpor(tmp2Reg, tmp3Reg, tmp4Reg, /* vector_len */ 1);
-      vptest(tmp2Reg, tmp1Reg);       // check for Unicode chars in  vector
+      vptest(tmp2Reg, tmp1Reg);       // check for Unicode or non-ASCII chars in vector
       jccb(Assembler::notZero, L_copy_32_chars_exit);
       vpackuswb(tmp3Reg, tmp3Reg, tmp4Reg, /* vector_len */ 1);
       vpermq(tmp4Reg, tmp3Reg, 0xD8, /* vector_len */ 1);
@@ -7571,7 +5700,7 @@ void MacroAssembler::encode_iso_array(Register src, Register dst, Register len,
       jccb(Assembler::greater, L_copy_16_chars_exit);
 
     } else if (UseSSE42Intrinsics) {
-      movl(tmp5, 0xff00ff00);   // create mask to test for Unicode chars in vector
+      movl(tmp5, mask);   // create mask to test for Unicode or non-ASCII chars in vector
       movdl(tmp1Reg, tmp5);
       pshufd(tmp1Reg, tmp1Reg, 0);
       jmpb(L_chars_16_check);
@@ -7595,7 +5724,7 @@ void MacroAssembler::encode_iso_array(Register src, Register dst, Register len,
         movdqu(tmp4Reg, Address(src, len, Address::times_2, -16));
         por(tmp2Reg, tmp4Reg);
       }
-      ptest(tmp2Reg, tmp1Reg);       // check for Unicode chars in  vector
+      ptest(tmp2Reg, tmp1Reg);       // check for Unicode or non-ASCII chars in vector
       jccb(Assembler::notZero, L_copy_16_chars_exit);
       packuswb(tmp3Reg, tmp4Reg);
     }
@@ -7633,7 +5762,7 @@ void MacroAssembler::encode_iso_array(Register src, Register dst, Register len,
 
   bind(L_copy_1_char);
   load_unsigned_short(tmp5, Address(src, len, Address::times_2, 0));
-  testl(tmp5, 0xff00);      // check if Unicode char
+  testl(tmp5, short_mask);      // check if Unicode or non-ASCII char
   jccb(Assembler::notZero, L_copy_1_char_exit);
   movb(Address(dst, len, Address::times_1, 0), tmp5);
   addptr(len, 1);
@@ -8133,7 +6262,7 @@ void MacroAssembler::vectorized_mismatch(Register obja, Register objb, Register 
 
     bind(VECTOR64_LOOP);
     // AVX512 code to compare 64 byte vectors.
-    evmovdqub(rymm0, Address(obja, result), Assembler::AVX_512bit);
+    evmovdqub(rymm0, Address(obja, result), false, Assembler::AVX_512bit);
     evpcmpeqb(k7, rymm0, Address(objb, result), Assembler::AVX_512bit);
     kortestql(k7, k7);
     jcc(Assembler::aboveEqual, VECTOR64_NOT_EQUAL);     // mismatch
@@ -8152,7 +6281,7 @@ void MacroAssembler::vectorized_mismatch(Register obja, Register objb, Register 
     notq(tmp2);
     kmovql(k3, tmp2);
 
-    evmovdqub(rymm0, k3, Address(obja, result), Assembler::AVX_512bit);
+    evmovdqub(rymm0, k3, Address(obja, result), false, Assembler::AVX_512bit);
     evpcmpeqb(k7, k3, rymm0, Address(objb, result), Assembler::AVX_512bit);
 
     ktestql(k7, k3);
@@ -8842,16 +6971,6 @@ void MacroAssembler::update_byte_crc32(Register crc, Register val, Register tabl
 }
 
 /**
-* Fold four 128-bit data chunks
-*/
-void MacroAssembler::fold_128bit_crc32_avx512(XMMRegister xcrc, XMMRegister xK, XMMRegister xtmp, Register buf, int offset) {
-  evpclmulhdq(xtmp, xK, xcrc, Assembler::AVX_512bit); // [123:64]
-  evpclmulldq(xcrc, xK, xcrc, Assembler::AVX_512bit); // [63:0]
-  evpxorq(xcrc, xcrc, Address(buf, offset), Assembler::AVX_512bit /* vector_len */);
-  evpxorq(xcrc, xcrc, xtmp, Assembler::AVX_512bit /* vector_len */);
-}
-
-/**
  * Fold 128-bit data chunk
  */
 void MacroAssembler::fold_128bit_crc32(XMMRegister xcrc, XMMRegister xK, XMMRegister xtmp, Register buf, int offset) {
@@ -9054,6 +7173,372 @@ void MacroAssembler::kernel_crc32(Register crc, Register buf, Register len, Regi
 }
 
 #ifdef _LP64
+// Helper function for AVX 512 CRC32
+// Fold 512-bit data chunks
+void MacroAssembler::fold512bit_crc32_avx512(XMMRegister xcrc, XMMRegister xK, XMMRegister xtmp, Register buf,
+                                             Register pos, int offset) {
+  evmovdquq(xmm3, Address(buf, pos, Address::times_1, offset), Assembler::AVX_512bit);
+  evpclmulqdq(xtmp, xcrc, xK, 0x10, Assembler::AVX_512bit); // [123:64]
+  evpclmulqdq(xmm2, xcrc, xK, 0x01, Assembler::AVX_512bit); // [63:0]
+  evpxorq(xcrc, xtmp, xmm2, Assembler::AVX_512bit /* vector_len */);
+  evpxorq(xcrc, xcrc, xmm3, Assembler::AVX_512bit /* vector_len */);
+}
+
+// Helper function for AVX 512 CRC32
+// Compute CRC32 for < 256B buffers
+void MacroAssembler::kernel_crc32_avx512_256B(Register crc, Register buf, Register len, Register key, Register pos,
+                                              Register tmp1, Register tmp2, Label& L_barrett, Label& L_16B_reduction_loop,
+                                              Label& L_get_last_two_xmms, Label& L_128_done, Label& L_cleanup) {
+
+  Label L_less_than_32, L_exact_16_left, L_less_than_16_left;
+  Label L_less_than_8_left, L_less_than_4_left, L_less_than_2_left, L_zero_left;
+  Label L_only_less_than_4, L_only_less_than_3, L_only_less_than_2;
+
+  // check if there is enough buffer to be able to fold 16B at a time
+  cmpl(len, 32);
+  jcc(Assembler::less, L_less_than_32);
+
+  // if there is, load the constants
+  movdqu(xmm10, Address(key, 1 * 16));    //rk1 and rk2 in xmm10
+  movdl(xmm0, crc);                        // get the initial crc value
+  movdqu(xmm7, Address(buf, pos, Address::times_1, 0 * 16)); //load the plaintext
+  pxor(xmm7, xmm0);
+
+  // update the buffer pointer
+  addl(pos, 16);
+  //update the counter.subtract 32 instead of 16 to save one instruction from the loop
+  subl(len, 32);
+  jmp(L_16B_reduction_loop);
+
+  bind(L_less_than_32);
+  //mov initial crc to the return value. this is necessary for zero - length buffers.
+  movl(rax, crc);
+  testl(len, len);
+  jcc(Assembler::equal, L_cleanup);
+
+  movdl(xmm0, crc);                        //get the initial crc value
+
+  cmpl(len, 16);
+  jcc(Assembler::equal, L_exact_16_left);
+  jcc(Assembler::less, L_less_than_16_left);
+
+  movdqu(xmm7, Address(buf, pos, Address::times_1, 0 * 16)); //load the plaintext
+  pxor(xmm7, xmm0);                       //xor the initial crc value
+  addl(pos, 16);
+  subl(len, 16);
+  movdqu(xmm10, Address(key, 1 * 16));    // rk1 and rk2 in xmm10
+  jmp(L_get_last_two_xmms);
+
+  bind(L_less_than_16_left);
+  //use stack space to load data less than 16 bytes, zero - out the 16B in memory first.
+  pxor(xmm1, xmm1);
+  movptr(tmp1, rsp);
+  movdqu(Address(tmp1, 0 * 16), xmm1);
+
+  cmpl(len, 4);
+  jcc(Assembler::less, L_only_less_than_4);
+
+  //backup the counter value
+  movl(tmp2, len);
+  cmpl(len, 8);
+  jcc(Assembler::less, L_less_than_8_left);
+
+  //load 8 Bytes
+  movq(rax, Address(buf, pos, Address::times_1, 0 * 16));
+  movq(Address(tmp1, 0 * 16), rax);
+  addptr(tmp1, 8);
+  subl(len, 8);
+  addl(pos, 8);
+
+  bind(L_less_than_8_left);
+  cmpl(len, 4);
+  jcc(Assembler::less, L_less_than_4_left);
+
+  //load 4 Bytes
+  movl(rax, Address(buf, pos, Address::times_1, 0));
+  movl(Address(tmp1, 0 * 16), rax);
+  addptr(tmp1, 4);
+  subl(len, 4);
+  addl(pos, 4);
+
+  bind(L_less_than_4_left);
+  cmpl(len, 2);
+  jcc(Assembler::less, L_less_than_2_left);
+
+  // load 2 Bytes
+  movw(rax, Address(buf, pos, Address::times_1, 0));
+  movl(Address(tmp1, 0 * 16), rax);
+  addptr(tmp1, 2);
+  subl(len, 2);
+  addl(pos, 2);
+
+  bind(L_less_than_2_left);
+  cmpl(len, 1);
+  jcc(Assembler::less, L_zero_left);
+
+  // load 1 Byte
+  movb(rax, Address(buf, pos, Address::times_1, 0));
+  movb(Address(tmp1, 0 * 16), rax);
+
+  bind(L_zero_left);
+  movdqu(xmm7, Address(rsp, 0));
+  pxor(xmm7, xmm0);                       //xor the initial crc value
+
+  lea(rax, ExternalAddress(StubRoutines::x86::shuf_table_crc32_avx512_addr()));
+  movdqu(xmm0, Address(rax, tmp2));
+  pshufb(xmm7, xmm0);
+  jmp(L_128_done);
+
+  bind(L_exact_16_left);
+  movdqu(xmm7, Address(buf, pos, Address::times_1, 0));
+  pxor(xmm7, xmm0);                       //xor the initial crc value
+  jmp(L_128_done);
+
+  bind(L_only_less_than_4);
+  cmpl(len, 3);
+  jcc(Assembler::less, L_only_less_than_3);
+
+  // load 3 Bytes
+  movb(rax, Address(buf, pos, Address::times_1, 0));
+  movb(Address(tmp1, 0), rax);
+
+  movb(rax, Address(buf, pos, Address::times_1, 1));
+  movb(Address(tmp1, 1), rax);
+
+  movb(rax, Address(buf, pos, Address::times_1, 2));
+  movb(Address(tmp1, 2), rax);
+
+  movdqu(xmm7, Address(rsp, 0));
+  pxor(xmm7, xmm0);                     //xor the initial crc value
+
+  pslldq(xmm7, 0x5);
+  jmp(L_barrett);
+  bind(L_only_less_than_3);
+  cmpl(len, 2);
+  jcc(Assembler::less, L_only_less_than_2);
+
+  // load 2 Bytes
+  movb(rax, Address(buf, pos, Address::times_1, 0));
+  movb(Address(tmp1, 0), rax);
+
+  movb(rax, Address(buf, pos, Address::times_1, 1));
+  movb(Address(tmp1, 1), rax);
+
+  movdqu(xmm7, Address(rsp, 0));
+  pxor(xmm7, xmm0);                     //xor the initial crc value
+
+  pslldq(xmm7, 0x6);
+  jmp(L_barrett);
+
+  bind(L_only_less_than_2);
+  //load 1 Byte
+  movb(rax, Address(buf, pos, Address::times_1, 0));
+  movb(Address(tmp1, 0), rax);
+
+  movdqu(xmm7, Address(rsp, 0));
+  pxor(xmm7, xmm0);                     //xor the initial crc value
+
+  pslldq(xmm7, 0x7);
+}
+
+/**
+* Compute CRC32 using AVX512 instructions
+* param crc   register containing existing CRC (32-bit)
+* param buf   register pointing to input byte buffer (byte*)
+* param len   register containing number of bytes
+* param tmp1  scratch register
+* param tmp2  scratch register
+* return rax  result register
+*/
+void MacroAssembler::kernel_crc32_avx512(Register crc, Register buf, Register len, Register key, Register tmp1, Register tmp2) {
+  assert_different_registers(crc, buf, len, key, tmp1, tmp2, rax);
+
+  Label L_tail, L_tail_restore, L_tail_loop, L_exit, L_align_loop, L_aligned;
+  Label L_fold_tail, L_fold_128b, L_fold_512b, L_fold_512b_loop, L_fold_tail_loop;
+  Label L_less_than_256, L_fold_128_B_loop, L_fold_256_B_loop;
+  Label L_fold_128_B_register, L_final_reduction_for_128, L_16B_reduction_loop;
+  Label L_128_done, L_get_last_two_xmms, L_barrett, L_cleanup;
+
+  const Register pos = r12;
+  push(r12);
+  subptr(rsp, 16 * 2 + 8);
+
+  // For EVEX with VL and BW, provide a standard mask, VL = 128 will guide the merge
+  // context for the registers used, where all instructions below are using 128-bit mode
+  // On EVEX without VL and BW, these instructions will all be AVX.
+  lea(key, ExternalAddress(StubRoutines::x86::crc_table_avx512_addr()));
+  notl(crc);
+  movl(pos, 0);
+
+  // check if smaller than 256B
+  cmpl(len, 256);
+  jcc(Assembler::less, L_less_than_256);
+
+  // load the initial crc value
+  movdl(xmm10, crc);
+
+  // receive the initial 64B data, xor the initial crc value
+  evmovdquq(xmm0, Address(buf, pos, Address::times_1, 0 * 64), Assembler::AVX_512bit);
+  evmovdquq(xmm4, Address(buf, pos, Address::times_1, 1 * 64), Assembler::AVX_512bit);
+  evpxorq(xmm0, xmm0, xmm10, Assembler::AVX_512bit);
+  evbroadcasti32x4(xmm10, Address(key, 2 * 16), Assembler::AVX_512bit); //zmm10 has rk3 and rk4
+
+  subl(len, 256);
+  cmpl(len, 256);
+  jcc(Assembler::less, L_fold_128_B_loop);
+
+  evmovdquq(xmm7, Address(buf, pos, Address::times_1, 2 * 64), Assembler::AVX_512bit);
+  evmovdquq(xmm8, Address(buf, pos, Address::times_1, 3 * 64), Assembler::AVX_512bit);
+  evbroadcasti32x4(xmm16, Address(key, 0 * 16), Assembler::AVX_512bit); //zmm16 has rk-1 and rk-2
+  subl(len, 256);
+
+  bind(L_fold_256_B_loop);
+  addl(pos, 256);
+  fold512bit_crc32_avx512(xmm0, xmm16, xmm1, buf, pos, 0 * 64);
+  fold512bit_crc32_avx512(xmm4, xmm16, xmm1, buf, pos, 1 * 64);
+  fold512bit_crc32_avx512(xmm7, xmm16, xmm1, buf, pos, 2 * 64);
+  fold512bit_crc32_avx512(xmm8, xmm16, xmm1, buf, pos, 3 * 64);
+
+  subl(len, 256);
+  jcc(Assembler::greaterEqual, L_fold_256_B_loop);
+
+  // Fold 256 into 128
+  addl(pos, 256);
+  evpclmulqdq(xmm1, xmm0, xmm10, 0x01, Assembler::AVX_512bit);
+  evpclmulqdq(xmm2, xmm0, xmm10, 0x10, Assembler::AVX_512bit);
+  vpternlogq(xmm7, 0x96, xmm1, xmm2, Assembler::AVX_512bit); // xor ABC
+
+  evpclmulqdq(xmm5, xmm4, xmm10, 0x01, Assembler::AVX_512bit);
+  evpclmulqdq(xmm6, xmm4, xmm10, 0x10, Assembler::AVX_512bit);
+  vpternlogq(xmm8, 0x96, xmm5, xmm6, Assembler::AVX_512bit); // xor ABC
+
+  evmovdquq(xmm0, xmm7, Assembler::AVX_512bit);
+  evmovdquq(xmm4, xmm8, Assembler::AVX_512bit);
+
+  addl(len, 128);
+  jmp(L_fold_128_B_register);
+
+  // at this section of the code, there is 128 * x + y(0 <= y<128) bytes of buffer.The fold_128_B_loop
+  // loop will fold 128B at a time until we have 128 + y Bytes of buffer
+
+  // fold 128B at a time.This section of the code folds 8 xmm registers in parallel
+  bind(L_fold_128_B_loop);
+  addl(pos, 128);
+  fold512bit_crc32_avx512(xmm0, xmm10, xmm1, buf, pos, 0 * 64);
+  fold512bit_crc32_avx512(xmm4, xmm10, xmm1, buf, pos, 1 * 64);
+
+  subl(len, 128);
+  jcc(Assembler::greaterEqual, L_fold_128_B_loop);
+
+  addl(pos, 128);
+
+  // at this point, the buffer pointer is pointing at the last y Bytes of the buffer, where 0 <= y < 128
+  // the 128B of folded data is in 8 of the xmm registers : xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7
+  bind(L_fold_128_B_register);
+  evmovdquq(xmm16, Address(key, 5 * 16), Assembler::AVX_512bit); // multiply by rk9-rk16
+  evmovdquq(xmm11, Address(key, 9 * 16), Assembler::AVX_512bit); // multiply by rk17-rk20, rk1,rk2, 0,0
+  evpclmulqdq(xmm1, xmm0, xmm16, 0x01, Assembler::AVX_512bit);
+  evpclmulqdq(xmm2, xmm0, xmm16, 0x10, Assembler::AVX_512bit);
+  // save last that has no multiplicand
+  vextracti64x2(xmm7, xmm4, 3);
+
+  evpclmulqdq(xmm5, xmm4, xmm11, 0x01, Assembler::AVX_512bit);
+  evpclmulqdq(xmm6, xmm4, xmm11, 0x10, Assembler::AVX_512bit);
+  // Needed later in reduction loop
+  movdqu(xmm10, Address(key, 1 * 16));
+  vpternlogq(xmm1, 0x96, xmm2, xmm5, Assembler::AVX_512bit); // xor ABC
+  vpternlogq(xmm1, 0x96, xmm6, xmm7, Assembler::AVX_512bit); // xor ABC
+
+  // Swap 1,0,3,2 - 01 00 11 10
+  evshufi64x2(xmm8, xmm1, xmm1, 0x4e, Assembler::AVX_512bit);
+  evpxorq(xmm8, xmm8, xmm1, Assembler::AVX_256bit);
+  vextracti128(xmm5, xmm8, 1);
+  evpxorq(xmm7, xmm5, xmm8, Assembler::AVX_128bit);
+
+  // instead of 128, we add 128 - 16 to the loop counter to save 1 instruction from the loop
+  // instead of a cmp instruction, we use the negative flag with the jl instruction
+  addl(len, 128 - 16);
+  jcc(Assembler::less, L_final_reduction_for_128);
+
+  bind(L_16B_reduction_loop);
+  vpclmulqdq(xmm8, xmm7, xmm10, 0x1);
+  vpclmulqdq(xmm7, xmm7, xmm10, 0x10);
+  vpxor(xmm7, xmm7, xmm8, Assembler::AVX_128bit);
+  movdqu(xmm0, Address(buf, pos, Address::times_1, 0 * 16));
+  vpxor(xmm7, xmm7, xmm0, Assembler::AVX_128bit);
+  addl(pos, 16);
+  subl(len, 16);
+  jcc(Assembler::greaterEqual, L_16B_reduction_loop);
+
+  bind(L_final_reduction_for_128);
+  addl(len, 16);
+  jcc(Assembler::equal, L_128_done);
+
+  bind(L_get_last_two_xmms);
+  movdqu(xmm2, xmm7);
+  addl(pos, len);
+  movdqu(xmm1, Address(buf, pos, Address::times_1, -16));
+  subl(pos, len);
+
+  // get rid of the extra data that was loaded before
+  // load the shift constant
+  lea(rax, ExternalAddress(StubRoutines::x86::shuf_table_crc32_avx512_addr()));
+  movdqu(xmm0, Address(rax, len));
+  addl(rax, len);
+
+  vpshufb(xmm7, xmm7, xmm0, Assembler::AVX_128bit);
+  //Change mask to 512
+  vpxor(xmm0, xmm0, ExternalAddress(StubRoutines::x86::crc_by128_masks_avx512_addr() + 2 * 16), Assembler::AVX_128bit, tmp2);
+  vpshufb(xmm2, xmm2, xmm0, Assembler::AVX_128bit);
+
+  blendvpb(xmm2, xmm2, xmm1, xmm0, Assembler::AVX_128bit);
+  vpclmulqdq(xmm8, xmm7, xmm10, 0x1);
+  vpclmulqdq(xmm7, xmm7, xmm10, 0x10);
+  vpxor(xmm7, xmm7, xmm8, Assembler::AVX_128bit);
+  vpxor(xmm7, xmm7, xmm2, Assembler::AVX_128bit);
+
+  bind(L_128_done);
+  // compute crc of a 128-bit value
+  movdqu(xmm10, Address(key, 3 * 16));
+  movdqu(xmm0, xmm7);
+
+  // 64b fold
+  vpclmulqdq(xmm7, xmm7, xmm10, 0x0);
+  vpsrldq(xmm0, xmm0, 0x8, Assembler::AVX_128bit);
+  vpxor(xmm7, xmm7, xmm0, Assembler::AVX_128bit);
+
+  // 32b fold
+  movdqu(xmm0, xmm7);
+  vpslldq(xmm7, xmm7, 0x4, Assembler::AVX_128bit);
+  vpclmulqdq(xmm7, xmm7, xmm10, 0x10);
+  vpxor(xmm7, xmm7, xmm0, Assembler::AVX_128bit);
+  jmp(L_barrett);
+
+  bind(L_less_than_256);
+  kernel_crc32_avx512_256B(crc, buf, len, key, pos, tmp1, tmp2, L_barrett, L_16B_reduction_loop, L_get_last_two_xmms, L_128_done, L_cleanup);
+
+  //barrett reduction
+  bind(L_barrett);
+  vpand(xmm7, xmm7, ExternalAddress(StubRoutines::x86::crc_by128_masks_avx512_addr() + 1 * 16), Assembler::AVX_128bit, tmp2);
+  movdqu(xmm1, xmm7);
+  movdqu(xmm2, xmm7);
+  movdqu(xmm10, Address(key, 4 * 16));
+
+  pclmulqdq(xmm7, xmm10, 0x0);
+  pxor(xmm7, xmm2);
+  vpand(xmm7, xmm7, ExternalAddress(StubRoutines::x86::crc_by128_masks_avx512_addr()), Assembler::AVX_128bit, tmp2);
+  movdqu(xmm2, xmm7);
+  pclmulqdq(xmm7, xmm10, 0x10);
+  pxor(xmm7, xmm2);
+  pxor(xmm7, xmm1);
+  pextrd(crc, xmm7, 2);
+
+  bind(L_cleanup);
+  notl(crc); // ~c
+  addptr(rsp, 16 * 2 + 8);
+  pop(r12);
+}
+
 // S. Gueron / Information Processing Letters 112 (2012) 184
 // Algorithm 4: Computing carry-less multiplication using a precomputed lookup table.
 // Input: A 32 bit value B = [byte3, byte2, byte1, byte0].
@@ -9523,7 +8008,7 @@ void MacroAssembler::crc32c_ipl_alg2_alt2(Register in_out, Register in1, Registe
 
 // Compress char[] array to byte[].
 //   ..\jdk\src\java.base\share\classes\java\lang\StringUTF16.java
-//   @HotSpotIntrinsicCandidate
+//   @IntrinsicCandidate
 //   private static int compress(char[] src, int srcOff, byte[] dst, int dstOff, int len) {
 //     for (int i = 0; i < len; i++) {
 //       int c = src[srcOff++];
@@ -9537,7 +8022,7 @@ void MacroAssembler::crc32c_ipl_alg2_alt2(Register in_out, Register in1, Registe
 void MacroAssembler::char_array_compress(Register src, Register dst, Register len,
   XMMRegister tmp1Reg, XMMRegister tmp2Reg,
   XMMRegister tmp3Reg, XMMRegister tmp4Reg,
-  Register tmp5, Register result) {
+  Register tmp5, Register result, KRegister mask1, KRegister mask2) {
   Label copy_chars_loop, return_length, return_zero, done;
 
   // rsi: src
@@ -9589,14 +8074,14 @@ void MacroAssembler::char_array_compress(Register src, Register dst, Register le
     movl(result, 0xFFFFFFFF);
     shlxl(result, result, tmp5);
     notl(result);
-    kmovdl(k3, result);
+    kmovdl(mask2, result);
 
-    evmovdquw(tmp1Reg, k3, Address(src, 0), Assembler::AVX_512bit);
-    evpcmpuw(k2, k3, tmp1Reg, tmp2Reg, Assembler::le, Assembler::AVX_512bit);
-    ktestd(k2, k3);
+    evmovdquw(tmp1Reg, mask2, Address(src, 0), /*merge*/ false, Assembler::AVX_512bit);
+    evpcmpw(mask1, mask2, tmp1Reg, tmp2Reg, Assembler::le, /*signed*/ false, Assembler::AVX_512bit);
+    ktestd(mask1, mask2);
     jcc(Assembler::carryClear, return_zero);
 
-    evpmovwb(Address(dst, 0), k3, tmp1Reg, Assembler::AVX_512bit);
+    evpmovwb(Address(dst, 0), mask2, tmp1Reg, Assembler::AVX_512bit);
 
     addptr(src, tmp5);
     addptr(src, tmp5);
@@ -9616,9 +8101,9 @@ void MacroAssembler::char_array_compress(Register src, Register dst, Register le
     negptr(len);
 
     bind(copy_32_loop);
-    evmovdquw(tmp1Reg, Address(src, len, Address::times_2), Assembler::AVX_512bit);
-    evpcmpuw(k2, tmp1Reg, tmp2Reg, Assembler::le, Assembler::AVX_512bit);
-    kortestdl(k2, k2);
+    evmovdquw(tmp1Reg, Address(src, len, Address::times_2), /*merge*/ false, Assembler::AVX_512bit);
+    evpcmpuw(mask1, tmp1Reg, tmp2Reg, Assembler::le, Assembler::AVX_512bit);
+    kortestdl(mask1, mask1);
     jcc(Assembler::carryClear, return_zero);
 
     // All elements in current processed chunk are valid candidates for
@@ -9639,14 +8124,14 @@ void MacroAssembler::char_array_compress(Register src, Register dst, Register le
     shlxl(result, result, len);
     notl(result);
 
-    kmovdl(k3, result);
+    kmovdl(mask2, result);
 
-    evmovdquw(tmp1Reg, k3, Address(src, 0), Assembler::AVX_512bit);
-    evpcmpuw(k2, k3, tmp1Reg, tmp2Reg, Assembler::le, Assembler::AVX_512bit);
-    ktestd(k2, k3);
+    evmovdquw(tmp1Reg, mask2, Address(src, 0), /*merge*/ false, Assembler::AVX_512bit);
+    evpcmpw(mask1, mask2, tmp1Reg, tmp2Reg, Assembler::le, /*signed*/ false, Assembler::AVX_512bit);
+    ktestd(mask1, mask2);
     jcc(Assembler::carryClear, return_zero);
 
-    evpmovwb(Address(dst, 0), k3, tmp1Reg, Assembler::AVX_512bit);
+    evpmovwb(Address(dst, 0), mask2, tmp1Reg, Assembler::AVX_512bit);
     jmp(return_length);
 
     bind(below_threshold);
@@ -9739,14 +8224,14 @@ void MacroAssembler::char_array_compress(Register src, Register dst, Register le
 
 // Inflate byte[] array to char[].
 //   ..\jdk\src\java.base\share\classes\java\lang\StringLatin1.java
-//   @HotSpotIntrinsicCandidate
+//   @IntrinsicCandidate
 //   private static void inflate(byte[] src, int srcOff, char[] dst, int dstOff, int len) {
 //     for (int i = 0; i < len; i++) {
 //       dst[dstOff++] = (char)(src[srcOff++] & 0xff);
 //     }
 //   }
 void MacroAssembler::byte_array_inflate(Register src, Register dst, Register len,
-  XMMRegister tmp1, Register tmp2) {
+  XMMRegister tmp1, Register tmp2, KRegister mask) {
   Label copy_chars_loop, done, below_threshold, avx3_threshold;
   // rsi: src
   // rdi: dst
@@ -9786,7 +8271,7 @@ void MacroAssembler::byte_array_inflate(Register src, Register dst, Register len
     // inflate 32 chars per iter
     bind(copy_32_loop);
     vpmovzxbw(tmp1, Address(src, len, Address::times_1), Assembler::AVX_512bit);
-    evmovdquw(Address(dst, len, Address::times_2), tmp1, Assembler::AVX_512bit);
+    evmovdquw(Address(dst, len, Address::times_2), tmp1, /*merge*/ false, Assembler::AVX_512bit);
     addptr(len, 32);
     jcc(Assembler::notZero, copy_32_loop);
 
@@ -9799,9 +8284,9 @@ void MacroAssembler::byte_array_inflate(Register src, Register dst, Register len
     movl(tmp3_aliased, -1);
     shlxl(tmp3_aliased, tmp3_aliased, tmp2);
     notl(tmp3_aliased);
-    kmovdl(k2, tmp3_aliased);
-    evpmovzxbw(tmp1, k2, Address(src, 0), Assembler::AVX_512bit);
-    evmovdquw(Address(dst, 0), k2, tmp1, Assembler::AVX_512bit);
+    kmovdl(mask, tmp3_aliased);
+    evpmovzxbw(tmp1, mask, Address(src, 0), Assembler::AVX_512bit);
+    evmovdquw(Address(dst, 0), mask, tmp1, /*merge*/ true, Assembler::AVX_512bit);
 
     jmp(done);
     bind(avx3_threshold);
@@ -9887,7 +8372,164 @@ void MacroAssembler::byte_array_inflate(Register src, Register dst, Register len
   bind(done);
 }
 
+
+void MacroAssembler::evmovdqu(BasicType type, KRegister kmask, XMMRegister dst, Address src, int vector_len) {
+  switch(type) {
+    case T_BYTE:
+    case T_BOOLEAN:
+      evmovdqub(dst, kmask, src, false, vector_len);
+      break;
+    case T_CHAR:
+    case T_SHORT:
+      evmovdquw(dst, kmask, src, false, vector_len);
+      break;
+    case T_INT:
+    case T_FLOAT:
+      evmovdqul(dst, kmask, src, false, vector_len);
+      break;
+    case T_LONG:
+    case T_DOUBLE:
+      evmovdquq(dst, kmask, src, false, vector_len);
+      break;
+    default:
+      fatal("Unexpected type argument %s", type2name(type));
+      break;
+  }
+}
+
+void MacroAssembler::evmovdqu(BasicType type, KRegister kmask, Address dst, XMMRegister src, int vector_len) {
+  switch(type) {
+    case T_BYTE:
+    case T_BOOLEAN:
+      evmovdqub(dst, kmask, src, true, vector_len);
+      break;
+    case T_CHAR:
+    case T_SHORT:
+      evmovdquw(dst, kmask, src, true, vector_len);
+      break;
+    case T_INT:
+    case T_FLOAT:
+      evmovdqul(dst, kmask, src, true, vector_len);
+      break;
+    case T_LONG:
+    case T_DOUBLE:
+      evmovdquq(dst, kmask, src, true, vector_len);
+      break;
+    default:
+      fatal("Unexpected type argument %s", type2name(type));
+      break;
+  }
+}
+
+#if COMPILER2_OR_JVMCI
+
+
+// Set memory operation for length "less than" 64 bytes.
+void MacroAssembler::fill64_masked_avx(uint shift, Register dst, int disp,
+                                       XMMRegister xmm, KRegister mask, Register length,
+                                       Register temp, bool use64byteVector) {
+  assert(MaxVectorSize >= 32, "vector length should be >= 32");
+  assert(shift != 0, "shift value should be 1 (short),2(int) or 3(long)");
+  BasicType type[] = { T_BYTE, T_SHORT,  T_INT,   T_LONG};
+  if (!use64byteVector) {
+    fill32_avx(dst, disp, xmm);
+    subptr(length, 32 >> shift);
+    fill32_masked_avx(shift, dst, disp + 32, xmm, mask, length, temp);
+  } else {
+    assert(MaxVectorSize == 64, "vector length != 64");
+    movl(temp, 1);
+    shlxl(temp, temp, length);
+    subptr(temp, 1);
+    kmovwl(mask, temp);
+    evmovdqu(type[shift], mask, Address(dst, disp), xmm, Assembler::AVX_512bit);
+  }
+}
+
+
+void MacroAssembler::fill32_masked_avx(uint shift, Register dst, int disp,
+                                       XMMRegister xmm, KRegister mask, Register length,
+                                       Register temp) {
+  assert(MaxVectorSize >= 32, "vector length should be >= 32");
+  assert(shift != 0, "shift value should be 1 (short), 2(int) or 3(long)");
+  BasicType type[] = { T_BYTE, T_SHORT,  T_INT,   T_LONG};
+  movl(temp, 1);
+  shlxl(temp, temp, length);
+  subptr(temp, 1);
+  kmovwl(mask, temp);
+  evmovdqu(type[shift], mask, Address(dst, disp), xmm, Assembler::AVX_256bit);
+}
+
+
+void MacroAssembler::fill32_avx(Register dst, int disp, XMMRegister xmm) {
+  assert(MaxVectorSize >= 32, "vector length should be >= 32");
+  vmovdqu(Address(dst, disp), xmm);
+}
+
+void MacroAssembler::fill64_avx(Register dst, int disp, XMMRegister xmm, bool use64byteVector) {
+  assert(MaxVectorSize >= 32, "vector length should be >= 32");
+  BasicType type[] = {T_BYTE,  T_SHORT,  T_INT,   T_LONG};
+  if (!use64byteVector) {
+    fill32_avx(dst, disp, xmm);
+    fill32_avx(dst, disp + 32, xmm);
+  } else {
+    evmovdquq(Address(dst, disp), xmm, Assembler::AVX_512bit);
+  }
+}
+
+#endif //COMPILER2_OR_JVMCI
+
+
 #ifdef _LP64
+void MacroAssembler::convert_f2i(Register dst, XMMRegister src) {
+  Label done;
+  cvttss2sil(dst, src);
+  // Conversion instructions do not match JLS for overflow, underflow and NaN -> fixup in stub
+  cmpl(dst, 0x80000000); // float_sign_flip
+  jccb(Assembler::notEqual, done);
+  subptr(rsp, 8);
+  movflt(Address(rsp, 0), src);
+  call(RuntimeAddress(CAST_FROM_FN_PTR(address, StubRoutines::x86::f2i_fixup())));
+  pop(dst);
+  bind(done);
+}
+
+void MacroAssembler::convert_d2i(Register dst, XMMRegister src) {
+  Label done;
+  cvttsd2sil(dst, src);
+  // Conversion instructions do not match JLS for overflow, underflow and NaN -> fixup in stub
+  cmpl(dst, 0x80000000); // float_sign_flip
+  jccb(Assembler::notEqual, done);
+  subptr(rsp, 8);
+  movdbl(Address(rsp, 0), src);
+  call(RuntimeAddress(CAST_FROM_FN_PTR(address, StubRoutines::x86::d2i_fixup())));
+  pop(dst);
+  bind(done);
+}
+
+void MacroAssembler::convert_f2l(Register dst, XMMRegister src) {
+  Label done;
+  cvttss2siq(dst, src);
+  cmp64(dst, ExternalAddress((address) StubRoutines::x86::double_sign_flip()));
+  jccb(Assembler::notEqual, done);
+  subptr(rsp, 8);
+  movflt(Address(rsp, 0), src);
+  call(RuntimeAddress(CAST_FROM_FN_PTR(address, StubRoutines::x86::f2l_fixup())));
+  pop(dst);
+  bind(done);
+}
+
+void MacroAssembler::convert_d2l(Register dst, XMMRegister src) {
+  Label done;
+  cvttsd2siq(dst, src);
+  cmp64(dst, ExternalAddress((address) StubRoutines::x86::double_sign_flip()));
+  jccb(Assembler::notEqual, done);
+  subptr(rsp, 8);
+  movdbl(Address(rsp, 0), src);
+  call(RuntimeAddress(CAST_FROM_FN_PTR(address, StubRoutines::x86::d2l_fixup())));
+  pop(dst);
+  bind(done);
+}
+
 void MacroAssembler::cache_wb(Address line)
 {
   // 64 bit cpus always support clflush
@@ -9926,6 +8568,7 @@ void MacroAssembler::cache_wbsync(bool is_pre)
     sfence();
   }
 }
+
 #endif // _LP64
 
 Assembler::Condition MacroAssembler::negate_condition(Assembler::Condition cond) {
@@ -10000,4 +8643,4 @@ void MacroAssembler::get_thread(Register thread) {
   }
 }
 
-#endif
+#endif // !WIN32 || _LP64

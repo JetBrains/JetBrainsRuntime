@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,8 @@ import sun.jvm.hotspot.memory.Dictionary;
 import sun.jvm.hotspot.runtime.*;
 import sun.jvm.hotspot.types.*;
 import sun.jvm.hotspot.utilities.*;
+import sun.jvm.hotspot.utilities.Observable;
+import sun.jvm.hotspot.utilities.Observer;
 
 // An InstanceKlass is the VM level representation of a Java class.
 
@@ -54,7 +56,6 @@ public class InstanceKlass extends Klass {
   private static int HIGH_OFFSET;
   private static int FIELD_SLOTS;
   private static short FIELDINFO_TAG_SIZE;
-  private static short FIELDINFO_TAG_MASK;
   private static short FIELDINFO_TAG_OFFSET;
 
   // ClassState constants
@@ -69,12 +70,10 @@ public class InstanceKlass extends Klass {
   private static int MISC_REWRITTEN;
   private static int MISC_HAS_NONSTATIC_FIELDS;
   private static int MISC_SHOULD_VERIFY_CLASS;
-  private static int MISC_IS_UNSAFE_ANONYMOUS;
   private static int MISC_IS_CONTENDED;
   private static int MISC_HAS_NONSTATIC_CONCRETE_METHODS;
   private static int MISC_DECLARES_NONSTATIC_CONCRETE_METHODS;
   private static int MISC_HAS_BEEN_REDEFINED;
-  private static int MISC_HAS_PASSED_FINGERPRINT_CHECK;
   private static int MISC_IS_SCRATCH_CLASS;
   private static int MISC_IS_SHARED_BOOT_CLASS;
   private static int MISC_IS_SHARED_PLATFORM_CLASS;
@@ -93,7 +92,6 @@ public class InstanceKlass extends Klass {
     constants            = new MetadataField(type.getAddressField("_constants"), 0);
     sourceDebugExtension = type.getAddressField("_source_debug_extension");
     innerClasses         = type.getAddressField("_inner_classes");
-    sourceFileNameIndex  = new CIntField(type.getCIntegerField("_source_file_name_index"), 0);
     nonstaticFieldSize   = new CIntField(type.getCIntegerField("_nonstatic_field_size"), 0);
     staticFieldSize      = new CIntField(type.getCIntegerField("_static_field_size"), 0);
     staticOopFieldCount  = new CIntField(type.getCIntegerField("_static_oop_field_count"), 0);
@@ -104,10 +102,7 @@ public class InstanceKlass extends Klass {
     if (VM.getVM().isJvmtiSupported()) {
       breakpoints        = type.getAddressField("_breakpoints");
     }
-    genericSignatureIndex = new CIntField(type.getCIntegerField("_generic_signature_index"), 0);
     miscFlags            = new CIntField(type.getCIntegerField("_misc_flags"), 0);
-    majorVersion         = new CIntField(type.getCIntegerField("_major_version"), 0);
-    minorVersion         = new CIntField(type.getCIntegerField("_minor_version"), 0);
     headerSize           = type.getSize();
 
     // read field offset constants
@@ -119,7 +114,6 @@ public class InstanceKlass extends Klass {
     HIGH_OFFSET                    = db.lookupIntConstant("FieldInfo::high_packed_offset").intValue();
     FIELD_SLOTS                    = db.lookupIntConstant("FieldInfo::field_slots").intValue();
     FIELDINFO_TAG_SIZE             = db.lookupIntConstant("FIELDINFO_TAG_SIZE").shortValue();
-    FIELDINFO_TAG_MASK             = db.lookupIntConstant("FIELDINFO_TAG_MASK").shortValue();
     FIELDINFO_TAG_OFFSET           = db.lookupIntConstant("FIELDINFO_TAG_OFFSET").shortValue();
 
     // read ClassState constants
@@ -133,12 +127,10 @@ public class InstanceKlass extends Klass {
     MISC_REWRITTEN                    = db.lookupIntConstant("InstanceKlass::_misc_rewritten").intValue();
     MISC_HAS_NONSTATIC_FIELDS         = db.lookupIntConstant("InstanceKlass::_misc_has_nonstatic_fields").intValue();
     MISC_SHOULD_VERIFY_CLASS          = db.lookupIntConstant("InstanceKlass::_misc_should_verify_class").intValue();
-    MISC_IS_UNSAFE_ANONYMOUS          = db.lookupIntConstant("InstanceKlass::_misc_is_unsafe_anonymous").intValue();
     MISC_IS_CONTENDED                 = db.lookupIntConstant("InstanceKlass::_misc_is_contended").intValue();
     MISC_HAS_NONSTATIC_CONCRETE_METHODS      = db.lookupIntConstant("InstanceKlass::_misc_has_nonstatic_concrete_methods").intValue();
     MISC_DECLARES_NONSTATIC_CONCRETE_METHODS = db.lookupIntConstant("InstanceKlass::_misc_declares_nonstatic_concrete_methods").intValue();
     MISC_HAS_BEEN_REDEFINED           = db.lookupIntConstant("InstanceKlass::_misc_has_been_redefined").intValue();
-    MISC_HAS_PASSED_FINGERPRINT_CHECK = db.lookupIntConstant("InstanceKlass::_misc_has_passed_fingerprint_check").intValue();
     MISC_IS_SCRATCH_CLASS             = db.lookupIntConstant("InstanceKlass::_misc_is_scratch_class").intValue();
     MISC_IS_SHARED_BOOT_CLASS         = db.lookupIntConstant("InstanceKlass::_misc_is_shared_boot_class").intValue();
     MISC_IS_SHARED_PLATFORM_CLASS     = db.lookupIntConstant("InstanceKlass::_misc_is_shared_platform_class").intValue();
@@ -147,6 +139,18 @@ public class InstanceKlass extends Klass {
 
   public InstanceKlass(Address addr) {
     super(addr);
+
+    // If the class hasn't yet reached the "loaded" init state, then don't go any further
+    // or we'll run into problems trying to look at fields that are not yet setup.
+    // Attempted lookups of this InstanceKlass via ClassLoaderDataGraph, ClassLoaderData,
+    // and Dictionary will all refuse to return it. The main purpose of allowing this
+    // InstanceKlass to initialize is so ClassLoaderData.getKlasses() will succeed, allowing
+    // ClassLoaderData.classesDo() to iterate over all Klasses (skipping those that are
+    // not yet fully loaded).
+    if (!isLoaded()) {
+        return;
+    }
+
     if (getJavaFieldsCount() != getAllFieldsCount()) {
       // Exercise the injected field logic
       for (int i = getJavaFieldsCount(); i < getAllFieldsCount(); i++) {
@@ -167,7 +171,6 @@ public class InstanceKlass extends Klass {
   private static MetadataField constants;
   private static AddressField  sourceDebugExtension;
   private static AddressField  innerClasses;
-  private static CIntField sourceFileNameIndex;
   private static CIntField nonstaticFieldSize;
   private static CIntField staticFieldSize;
   private static CIntField staticOopFieldCount;
@@ -176,10 +179,7 @@ public class InstanceKlass extends Klass {
   private static CIntField initState;
   private static CIntField itableLen;
   private static AddressField breakpoints;
-  private static CIntField genericSignatureIndex;
   private static CIntField miscFlags;
-  private static CIntField majorVersion;
-  private static CIntField minorVersion;
 
   // type safe enum for ClassState from instanceKlass.hpp
   public static class ClassState {
@@ -281,36 +281,11 @@ public class InstanceKlass extends Klass {
     if (isInterface()) {
       size += wordLength;
     }
-    if (isUnsafeAnonymous()) {
-      size += wordLength;
-    }
-    if (hasStoredFingerprint()) {
-      size += 8; // uint64_t
-    }
     return alignSize(size);
   }
 
   private int getMiscFlags() {
     return (int) miscFlags.getValue(this);
-  }
-
-  public boolean isUnsafeAnonymous() {
-    return (getMiscFlags() & MISC_IS_UNSAFE_ANONYMOUS) != 0;
-  }
-
-  public static boolean shouldStoreFingerprint() {
-    VM vm = VM.getVM();
-    if (vm.getCommandLineBooleanFlag("EnableJVMCI") && !vm.getCommandLineBooleanFlag("UseJVMCICompiler")) {
-      return true;
-    }
-    if (vm.getCommandLineBooleanFlag("DumpSharedSpaces")) {
-      return true;
-    }
-    return false;
-  }
-
-  public boolean hasStoredFingerprint() {
-    return shouldStoreFingerprint() || isShared();
   }
 
   public static long getHeaderSize() { return headerSize; }
@@ -386,7 +361,7 @@ public class InstanceKlass extends Klass {
     U2Array fields = getFields();
     short lo = fields.at(index * FIELD_SLOTS + LOW_OFFSET);
     short hi = fields.at(index * FIELD_SLOTS + HIGH_OFFSET);
-    if ((lo & FIELDINFO_TAG_MASK) == FIELDINFO_TAG_OFFSET) {
+    if ((lo & FIELDINFO_TAG_OFFSET) == FIELDINFO_TAG_OFFSET) {
       return VM.getVM().buildIntFromShorts(lo, hi) >> FIELDINFO_TAG_SIZE;
     }
     throw new RuntimeException("should not reach here");
@@ -425,23 +400,16 @@ public class InstanceKlass extends Klass {
     return allFieldsCount;
   }
   public ConstantPool getConstants()        { return (ConstantPool) constants.getValue(this); }
-  public Symbol    getSourceFileName()      { return                getConstants().getSymbolAt(sourceFileNameIndex.getValue(this)); }
+  public Symbol    getSourceFileName()      { return                getConstants().getSourceFileName(); }
   public String    getSourceDebugExtension(){ return                CStringUtilities.getString(sourceDebugExtension.getValue(getAddress())); }
   public long      getNonstaticFieldSize()  { return                nonstaticFieldSize.getValue(this); }
   public long      getStaticOopFieldCount() { return                staticOopFieldCount.getValue(this); }
   public long      getNonstaticOopMapSize() { return                nonstaticOopMapSize.getValue(this); }
   public boolean   getIsMarkedDependent()   { return                isMarkedDependent.getValue(this) != 0; }
   public long      getItableLen()           { return                itableLen.getValue(this); }
-  public long      majorVersion()           { return                majorVersion.getValue(this); }
-  public long      minorVersion()           { return                minorVersion.getValue(this); }
-  public Symbol    getGenericSignature()    {
-    long index = genericSignatureIndex.getValue(this);
-    if (index != 0) {
-      return getConstants().getSymbolAt(index);
-    } else {
-      return null;
-    }
-  }
+  public long      majorVersion()           { return                getConstants().majorVersion(); }
+  public long      minorVersion()           { return                getConstants().minorVersion(); }
+  public Symbol    getGenericSignature()    { return                getConstants().getGenericSignature(); }
 
   // "size helper" == instance size in words
   public long getSizeHelper() {
@@ -682,14 +650,14 @@ public class InstanceKlass extends Klass {
   public Field[] getStaticFields() {
     U2Array fields = getFields();
     int length = getJavaFieldsCount();
-    ArrayList result = new ArrayList();
+    ArrayList<Field> result = new ArrayList<>();
     for (int index = 0; index < length; index++) {
       Field f = newField(index);
       if (f.isStatic()) {
         result.add(f);
       }
     }
-    return (Field[])result.toArray(new Field[result.size()]);
+    return result.toArray(new Field[result.size()]);
   }
 
   public void iterateNonStaticFields(OopVisitor visitor, Oop obj) {
@@ -784,11 +752,11 @@ public class InstanceKlass extends Klass {
         Inherited fields are not included.
         Return an empty list if there are no fields declared in this class.
         Only designed for use in a debugging system. */
-    public List getImmediateFields() {
+    public List<Field> getImmediateFields() {
         // A list of Fields for each field declared in this class/interface,
         // not including inherited fields.
         int length = getJavaFieldsCount();
-        List immediateFields = new ArrayList(length);
+        List<Field> immediateFields = new ArrayList<>(length);
         for (int index = 0; index < length; index++) {
             immediateFields.add(getFieldByIndex(index));
         }
@@ -802,10 +770,10 @@ public class InstanceKlass extends Klass {
         the same name.
         Return an empty list if there are no fields.
         Only designed for use in a debugging system. */
-    public List getAllFields() {
+    public List<Field> getAllFields() {
         // Contains a Field for each field in this class, including immediate
         // fields and inherited fields.
-        List  allFields = getImmediateFields();
+        List<Field> allFields = getImmediateFields();
 
         // transitiveInterfaces contains all interfaces implemented
         // by this class and its superclass chain with no duplicates.
@@ -838,13 +806,13 @@ public class InstanceKlass extends Klass {
         Return an empty list if there are none, or if this isn't a class/
         interface.
     */
-    public List getImmediateMethods() {
+    public List<Method> getImmediateMethods() {
       // Contains a Method for each method declared in this class/interface
       // not including inherited methods.
 
       MethodArray methods = getMethods();
       int length = methods.length();
-      Object[] tmp = new Object[length];
+      Method[] tmp = new Method[length];
 
       IntArray methodOrdering = getMethodOrdering();
       if (methodOrdering.length() != length) {
@@ -865,13 +833,13 @@ public class InstanceKlass extends Klass {
     /** Return a List containing an SA InstanceKlass for each
         interface named in this class's 'implements' clause.
     */
-    public List getDirectImplementedInterfaces() {
+    public List<Klass> getDirectImplementedInterfaces() {
         // Contains an InstanceKlass for each interface in this classes
         // 'implements' clause.
 
         KlassArray interfaces = getLocalInterfaces();
         int length = interfaces.length();
-        List directImplementedInterfaces = new ArrayList(length);
+        List<Klass> directImplementedInterfaces = new ArrayList<>(length);
 
         for (int index = 0; index < length; index ++) {
             directImplementedInterfaces.add(interfaces.getAt(index));

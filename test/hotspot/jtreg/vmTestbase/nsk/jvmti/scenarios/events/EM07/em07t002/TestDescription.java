@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
 
 /*
  * @test
+ * @key randomness
  *
  * @summary converted from VM Testbase nsk/jvmti/scenarios/events/EM07/em07t002.
  * VM Testbase keywords: [jpda, jvmti, noras, nonconcurrent]
@@ -53,16 +54,14 @@
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
  * @build nsk.jvmti.scenarios.events.EM07.em07t002
  *
  * @comment compile loadclassXX to bin/loadclassXX
  * @run driver nsk.share.ExtraClassesBuilder
  *      loadclass
  *
- * @build ExecDriver
- * @run main/othervm/native PropertyResolvingWrapper ExecDriver --java
- *      "-agentlib:em07t002=attempts=2 -waittime=5"
+ * @run main/othervm/native
+ *      -agentlib:em07t002=attempts=2,-waittime=5
  *      -XX:-UseGCOverheadLimit
  *      nsk.jvmti.scenarios.events.EM07.em07t002
  *      ./bin/loadclass

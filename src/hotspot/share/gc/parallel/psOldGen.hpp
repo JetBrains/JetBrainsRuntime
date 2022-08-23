@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,11 +34,8 @@
 
 class PSOldGen : public CHeapObj<mtGC> {
   friend class VMStructs;
-  friend class PSPromotionManager; // Uses the cas_allocate methods
-  friend class ParallelScavengeHeap;
-  friend class AdjoiningGenerations;
 
- protected:
+ private:
   MemRegion                _reserved;          // Used for simple containment tests
   PSVirtualSpace*          _virtual_space;     // Controls mapping and unmapping of virtual mem
   ObjectStartArray         _start_array;       // Keeps track of where objects start in a 512b block
@@ -49,9 +46,11 @@ class PSOldGen : public CHeapObj<mtGC> {
   SpaceCounters*           _space_counters;
 
   // Sizing information, in bytes, set in constructor
-  const size_t _init_gen_size;
   const size_t _min_gen_size;
   const size_t _max_gen_size;
+
+  // Block size for parallel iteration
+  static const size_t IterateBlockSize = 1024 * 1024;
 
 #ifdef ASSERT
   void assert_block_in_covered_region(MemRegion new_memregion) {
@@ -70,22 +69,8 @@ class PSOldGen : public CHeapObj<mtGC> {
   }
 #endif
 
-  HeapWord* allocate_noexpand(size_t word_size) {
-    // We assume the heap lock is held here.
-    assert_locked_or_safepoint(Heap_lock);
-    HeapWord* res = object_space()->allocate(word_size);
-    if (res != NULL) {
-      DEBUG_ONLY(assert_block_in_covered_region(MemRegion(res, word_size)));
-      _start_array.allocate_block(res);
-    }
-    return res;
-  }
-
-  // Support for MT garbage collection. CAS allocation is lower overhead than grabbing
-  // and releasing the heap lock, which is held during gc's anyway. This method is not
-  // safe for use at the same time as allocate_noexpand()!
   HeapWord* cas_allocate_noexpand(size_t word_size) {
-    assert(SafepointSynchronize::is_at_safepoint(), "Must only be called at safepoint");
+    assert_locked_or_safepoint(Heap_lock);
     HeapWord* res = object_space()->cas_allocate(word_size);
     if (res != NULL) {
       DEBUG_ONLY(assert_block_in_covered_region(MemRegion(res, word_size)));
@@ -94,15 +79,8 @@ class PSOldGen : public CHeapObj<mtGC> {
     return res;
   }
 
-  // Support for MT garbage collection. See above comment.
-  HeapWord* cas_allocate(size_t word_size) {
-    HeapWord* res = cas_allocate_noexpand(word_size);
-    return (res == NULL) ? expand_and_cas_allocate(word_size) : res;
-  }
-
-  HeapWord* expand_and_allocate(size_t word_size);
-  HeapWord* expand_and_cas_allocate(size_t word_size);
-  void expand(size_t bytes);
+  bool expand_for_allocate(size_t word_size);
+  bool expand(size_t bytes);
   bool expand_by(size_t bytes);
   bool expand_to_reserved();
 
@@ -110,29 +88,20 @@ class PSOldGen : public CHeapObj<mtGC> {
 
   void post_resize();
 
+  void initialize(ReservedSpace rs, size_t initial_size, size_t alignment,
+                  const char* perf_data_name, int level);
+  void initialize_virtual_space(ReservedSpace rs, size_t initial_size, size_t alignment);
+  void initialize_work(const char* perf_data_name, int level);
+  void initialize_performance_counters(const char* perf_data_name, int level);
+
  public:
   // Initialize the generation.
-  PSOldGen(ReservedSpace rs, size_t alignment,
-           size_t initial_size, size_t min_size, size_t max_size,
-           const char* perf_data_name, int level);
+  PSOldGen(ReservedSpace rs, size_t initial_size, size_t min_size,
+           size_t max_size, const char* perf_data_name, int level);
 
-  PSOldGen(size_t initial_size, size_t min_size, size_t max_size,
-           const char* perf_data_name, int level);
-
-  virtual void initialize(ReservedSpace rs, size_t alignment,
-                  const char* perf_data_name, int level);
-  void initialize_virtual_space(ReservedSpace rs, size_t alignment);
-  virtual void initialize_work(const char* perf_data_name, int level);
-  virtual void initialize_performance_counters(const char* perf_data_name, int level);
-
-  MemRegion reserved() const                { return _reserved; }
-  virtual size_t max_gen_size()             { return _max_gen_size; }
-  size_t min_gen_size()                     { return _min_gen_size; }
-
-  // Returns limit on the maximum size of the generation.  This
-  // is the same as _max_gen_size for PSOldGen but need not be
-  // for a derived class.
-  virtual size_t gen_size_limit();
+  MemRegion reserved() const { return _reserved; }
+  size_t max_gen_size() const { return _max_gen_size; }
+  size_t min_gen_size() const { return _min_gen_size; }
 
   bool is_in(const void* p) const           {
     return _virtual_space->contains((void *)p);
@@ -158,9 +127,6 @@ class PSOldGen : public CHeapObj<mtGC> {
   size_t used_in_words() const            { return object_space()->used_in_words(); }
   size_t free_in_words() const            { return object_space()->free_in_words(); }
 
-  // Includes uncommitted memory
-  size_t contiguous_available() const;
-
   bool is_maximal_no_gc() const {
     return virtual_space()->uncommitted_size() == 0;
   }
@@ -168,35 +134,39 @@ class PSOldGen : public CHeapObj<mtGC> {
   // Calculating new sizes
   void resize(size_t desired_free_space);
 
-  // Allocation. We report all successful allocations to the size policy
-  // Note that the perm gen does not use this method, and should not!
-  HeapWord* allocate(size_t word_size);
+  HeapWord* allocate(size_t word_size) {
+    HeapWord* res;
+    do {
+      res = cas_allocate_noexpand(word_size);
+      // Retry failed allocation if expand succeeds.
+    } while ((res == nullptr) && expand_for_allocate(word_size));
+    return res;
+  }
 
   // Iteration.
   void oop_iterate(OopIterateClosure* cl) { object_space()->oop_iterate(cl); }
   void object_iterate(ObjectClosure* cl) { object_space()->object_iterate(cl); }
 
+  // Number of blocks to be iterated over in the used part of old gen.
+  size_t num_iterable_blocks() const;
+  // Iterate the objects starting in block block_index within [bottom, top) of the
+  // old gen. The object just reaching into this block is not iterated over.
+  // A block is an evenly sized non-overlapping part of the old gen of
+  // IterateBlockSize bytes.
+  void object_iterate_block(ObjectClosure* cl, size_t block_index);
+
   // Debugging - do not use for time critical operations
-  virtual void print() const;
+  void print() const;
   virtual void print_on(outputStream* st) const;
 
   void verify();
   void verify_object_start_array();
 
-  // These should not used
-  virtual void reset_after_change();
-
-  // These should not used
-  virtual size_t available_for_expansion();
-  virtual size_t available_for_contraction();
-
-  void space_invariants() PRODUCT_RETURN;
-
   // Performance Counter support
   void update_counters();
 
   // Printing support
-  virtual const char* name() const { return "ParOldGen"; }
+  const char* name() const { return "ParOldGen"; }
 
   // Debugging support
   // Save the tops of all spaces for later use during mangling.

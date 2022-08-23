@@ -760,7 +760,6 @@ public class DecimalFormatSymbols implements Cloneable, Serializable {
     /**
      * Override hashCode.
      */
-    private volatile int hashCode;
     @Override
     public int hashCode() {
         if (hashCode == 0) {
@@ -904,7 +903,7 @@ public class DecimalFormatSymbols implements Cloneable, Serializable {
      * the same as {@code decimalSeparator} and {@code exponential}
      * to be 'E'.
      * If {@code serialVersionOnStream} is less than 2,
-     * initializes {@code locale}to the root locale, and initializes
+     * initializes {@code locale} to the root locale, and initializes
      * If {@code serialVersionOnStream} is less than 3, it initializes
      * {@code exponentialSeparator} using {@code exponential}.
      * If {@code serialVersionOnStream} is less than 4, it initializes
@@ -1147,6 +1146,11 @@ public class DecimalFormatSymbols implements Cloneable, Serializable {
     // currency; only the ISO code is serialized.
     private transient Currency currency;
     private transient volatile boolean currencyInitialized;
+
+    /**
+     * Cached hash code.
+     */
+    private transient volatile int hashCode;
 
     // Proclaim JDK 1.1 FCS compatibility
     @java.io.Serial

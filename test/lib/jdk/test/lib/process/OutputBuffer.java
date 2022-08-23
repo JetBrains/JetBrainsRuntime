@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,13 +23,17 @@
 
 package jdk.test.lib.process;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.nio.charset.Charset;
 import java.time.Instant;
+import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 public interface OutputBuffer {
   public static class OutputBufferException extends RuntimeException {
@@ -46,6 +50,17 @@ public interface OutputBuffer {
    * @return stdout result
    */
   public String getStdout();
+
+  /**
+   * Returns the stdout as a list.
+   * Empty List if application produced no output.
+   */
+  default public List<String> getStdoutAsList() {
+    return new BufferedReader(new StringReader(getStdout()))
+            .lines()
+            .collect(Collectors.toList());
+  }
+
   /**
    * Returns the stderr result
    *
@@ -53,6 +68,13 @@ public interface OutputBuffer {
    */
   public String getStderr();
   public int getExitValue();
+
+  /**
+   * Returns the pid if available
+   *
+   * @return pid
+   */
+  public long pid();
 
   public static OutputBuffer of(Process p, Charset cs) {
     return new LazyOutputBuffer(p, cs);
@@ -142,6 +164,11 @@ public interface OutputBuffer {
         throw new OutputBufferException(e);
       }
     }
+
+    @Override
+    public long pid() {
+      return p.pid();
+    }
   }
 
   class EagerOutputBuffer implements OutputBuffer {
@@ -168,6 +195,11 @@ public interface OutputBuffer {
     @Override
     public int getExitValue() {
       return exitValue;
+    }
+
+    @Override
+    public long pid() {
+      throw new RuntimeException("no process");
     }
   }
 }

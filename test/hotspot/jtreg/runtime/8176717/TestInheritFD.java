@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@ import static java.util.stream.Collectors.toList;
 import static jdk.test.lib.process.ProcessTools.createJavaProcessBuilder;
 import static jdk.test.lib.Platform.isWindows;
 import jdk.test.lib.Utils;
+import jdk.test.lib.Platform;
+import jtreg.SkippedException;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -50,6 +52,7 @@ import java.util.stream.Stream;
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management
+ * @run driver TestInheritFD
  */
 
 /**
@@ -67,7 +70,7 @@ import java.util.stream.Stream;
  * The third VM communicates the success to rename the file by printing "CLOSED
  * FD". The first VM checks that the string was printed by the third VM.
  *
- * On unix like systems "lsof" or "pfiles" is used.
+ * On unix like systems "lsof" is used.
  */
 
 public class TestInheritFD {
@@ -76,6 +79,7 @@ public class TestInheritFD {
     public static final String RETAINS_FD = "VM RESULT => RETAINS FD";
     public static final String EXIT = "VM RESULT => VM EXIT";
     public static final String LOG_SUFFIX = ".strangelogsuffixthatcanbecheckedfor";
+    public static final String USER_DIR = System.getProperty("user.dir");
 
     // first VM
     public static void main(String[] args) throws Exception {
@@ -83,9 +87,7 @@ public class TestInheritFD {
         File commFile = Utils.createTempFile("communication", ".txt").toFile();
 
         if (!isWindows() && !lsofCommand().isPresent()) {
-            System.out.println("Could not find lsof like command");
-            System.out.println("Exit test case as successful though it could not verify anything");
-            return;
+            throw new SkippedException("Could not find lsof like command");
         }
 
         ProcessBuilder pb = createJavaProcessBuilder(
@@ -176,8 +178,7 @@ public class TestInheritFD {
             {"/usr/sbin/lsof", "-p"},
             {"/bin/lsof", "-p"},
             {"/sbin/lsof", "-p"},
-            {"/usr/local/bin/lsof", "-p"},
-            {"/usr/bin/pfiles", "-F"}}) // Solaris
+            {"/usr/local/bin/lsof", "-p"}})
         .filter(args -> new File(args[0]).exists())
         .findFirst();
 
@@ -187,14 +188,21 @@ public class TestInheritFD {
 
     static Collection<String> outputContainingFilenames() {
         long pid = ProcessHandle.current().pid();
-
         String[] command = lsofCommand().orElseThrow(() -> new RuntimeException("lsof like command not found"));
-        System.out.println("using command: " + command[0] + " " + command[1]);
-        return run(command[0], command[1], "" + pid).collect(toList());
+        // Only search the directory in which the VM is running (user.dir property).
+        System.out.println("using command: " + command[0] + " -a +d " + USER_DIR + " " + command[1] + " " + pid);
+        return run(command[0], "-a", "+d", USER_DIR, command[1], "" + pid).collect(toList());
     }
 
     static boolean findOpenLogFile(Collection<String> fileNames) {
+        String pid = Long.toString(ProcessHandle.current().pid());
+        String[] command = lsofCommand().orElseThrow(() ->
+                new RuntimeException("lsof like command not found"));
+        String lsof = command[0];
+        boolean isBusybox = Platform.isBusybox(lsof);
         return fileNames.stream()
+            // lsof from busybox does not support "-p" option
+            .filter(fileName -> !isBusybox || fileName.contains(pid))
             .filter(fileName -> fileName.contains(LOG_SUFFIX))
             .findAny()
             .isPresent();

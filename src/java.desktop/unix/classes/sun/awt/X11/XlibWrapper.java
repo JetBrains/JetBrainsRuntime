@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -564,6 +564,12 @@ static native String XSetLocaleModifiers(String modifier_list);
 
     static native void SetZOrder(long display, long window, long above);
 
+    static native int XIQueryVersion(long display, long major_version_iptr, long minor_version_iptr);
+    static native int XISelectEvents(long display, long window, long mask, int deviceid);
+
+    static native boolean XGetEventData(long display, long ptr);
+    static native void XFreeEventData(long display, long ptr);
+
 /* Global memory area used for X lib parameter passing */
 
     static final long lbuffer = unsafe.allocateMemory(64);  // array to hold 8 longs
@@ -592,6 +598,7 @@ static native String XSetLocaleModifiers(String modifier_list);
     static final boolean isBuildInternal;
 
     static {
+        @SuppressWarnings("removal")
         String dataModelProp = AccessController.doPrivileged(
             new GetPropertyAction("sun.arch.data.model"));
         try {
@@ -610,7 +617,7 @@ static native String XSetLocaleModifiers(String modifier_list);
     }
 
     static String hintsToString(long flags) {
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
         if ((flags & XUtilConstants.PMaxSize) != 0) {
             buf.append("PMaxSize ");
         }
@@ -645,6 +652,7 @@ static native String XSetLocaleModifiers(String modifier_list);
     }
 
     private static boolean getBuildInternal() {
+        @SuppressWarnings("removal")
         String javaVersion = AccessController.doPrivileged(
                                  new GetPropertyAction("java.version"));
         return javaVersion != null && javaVersion.contains("internal");

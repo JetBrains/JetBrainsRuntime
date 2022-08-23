@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -133,18 +133,17 @@ public interface VirtualMachine extends Mirror {
     List<ReferenceType> classesByName(String className);
 
     /**
-     * Returns all loaded types. For each loaded type in the target
-     * VM a {@link ReferenceType} will be placed in the returned list.
-     * The list will include ReferenceTypes which mirror classes,
-     * interfaces, and array types.
-     * <P>
-     * The returned list will include reference types
-     * loaded at least to the point of preparation and
-     * types (like array) for which preparation is
-     * not defined.
+     * Returns all {@linkplain ReferenceType loaded types} in the target VM.
+     * <p>
+     * The returned list includes all reference types, including
+     * {@link Class#isHidden hidden classes or interfaces}, loaded
+     * at least to the point of preparation and types (like array)
+     * for which preparation is not defined.
      *
      * @return a list of {@link ReferenceType} objects, each mirroring
      * a loaded type in the target VM.
+     * @see <a href="{@docRoot}/../specs/jvmti/jvmti.html#GetLoadedClasses">
+     * JVM TI GetLoadedClasses</a> regarding how class and interface creation can be triggered
      */
     List<ReferenceType> allClasses();
 
@@ -215,16 +214,9 @@ public interface VirtualMachine extends Mirror {
      * attempting to add a method will throw this exception.
      * <LI>If {@link #canUnrestrictedlyRedefineClasses()
      *            canUnrestrictedlyRedefineClasses()}
-     * is false, attempting any of the following will throw
-     * this exception
-     *   <UL>
-     *   <LI>changing the schema (the fields)
-     *   <LI>changing the hierarchy (superclasses, interfaces)
-     *   <LI>deleting a method
-     *   <LI>changing class modifiers
-     *   <LI>changing method modifiers
-     *   <LI>changing the {@code NestHost}, {@code NestMembers}, or {@code Record} class attributes
-     *   </UL>
+     * is false attempting any of the unsupported class file changes described
+     * in <a href="{@docRoot}/../specs/jvmti.html#RedefineClasses">
+     * JVM TI RedefineClasses</a> will throw this exception.
      * </UL>
      *
      * @throws java.lang.NoClassDefFoundError if the bytes
@@ -587,12 +579,14 @@ public interface VirtualMachine extends Mirror {
      * Determines if the target VM supports the addition
      * of methods when performing class redefinition.
      * @see #redefineClasses
+     * @deprecated A JVM TI based JDWP back-end will never set this capability to true.
      *
      * @return <code>true</code> if the feature is supported,
      * <code>false</code> otherwise.
      *
      * @since 1.4
      */
+    @Deprecated(since="15")
     boolean canAddMethod();
 
     /**
@@ -600,12 +594,14 @@ public interface VirtualMachine extends Mirror {
      * changes when performing class redefinition that are
      * otherwise restricted by {@link #redefineClasses}.
      * @see #redefineClasses
+     * @deprecated A JVM TI based JDWP back-end will never set this capability to true.
      *
      * @return <code>true</code> if the feature is supported,
      * <code>false</code> otherwise.
      *
      * @since 1.4
      */
+    @Deprecated(since="15")
     boolean canUnrestrictedlyRedefineClasses();
 
     /**

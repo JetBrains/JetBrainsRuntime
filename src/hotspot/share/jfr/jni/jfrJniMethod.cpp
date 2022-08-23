@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,20 +35,23 @@
 #include "jfr/recorder/repository/jfrRepository.hpp"
 #include "jfr/recorder/repository/jfrChunkRotation.hpp"
 #include "jfr/recorder/repository/jfrChunkWriter.hpp"
+#include "jfr/recorder/service/jfrEventThrottler.hpp"
 #include "jfr/recorder/service/jfrOptionSet.hpp"
 #include "jfr/recorder/stacktrace/jfrStackTraceRepository.hpp"
 #include "jfr/recorder/stringpool/jfrStringPool.hpp"
-#include "jfr/jni/jfrGetAllEventClasses.hpp"
 #include "jfr/jni/jfrJavaSupport.hpp"
 #include "jfr/jni/jfrJniMethodRegistration.hpp"
 #include "jfr/instrumentation/jfrEventClassTransformer.hpp"
 #include "jfr/instrumentation/jfrJvmtiAgent.hpp"
 #include "jfr/leakprofiler/leakProfiler.hpp"
+#include "jfr/support/jfrJdkJfrEvent.hpp"
+#include "jfr/support/jfrKlassUnloading.hpp"
 #include "jfr/utilities/jfrJavaLog.hpp"
 #include "jfr/utilities/jfrTimeConverter.hpp"
 #include "jfr/utilities/jfrTime.hpp"
 #include "jfr/writers/jfrJavaEventWriter.hpp"
 #include "jfrfiles/jfrPeriodic.hpp"
+#include "jfrfiles/jfrTypes.hpp"
 #include "logging/log.hpp"
 #include "memory/resourceArea.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
@@ -157,12 +160,8 @@ NO_TRANSITION(jboolean, jfr_is_available(JNIEnv* env, jclass jvm))
   return !Jfr::is_disabled() ? JNI_TRUE : JNI_FALSE;
 NO_TRANSITION_END
 
-NO_TRANSITION(jlong, jfr_get_epoch_address(JNIEnv* env, jobject jvm))
-  return JfrTraceIdEpoch::epoch_address();
-NO_TRANSITION_END
-
 NO_TRANSITION(jlong, jfr_get_unloaded_event_classes_count(JNIEnv* env, jobject jvm))
-  return JfrEventClasses::unloaded_event_classes_count();
+  return JfrKlassUnloading::event_class_count();
 NO_TRANSITION_END
 
 NO_TRANSITION(jdouble, jfr_time_conv_factor(JNIEnv* env, jobject jvm))
@@ -173,10 +172,21 @@ NO_TRANSITION(jboolean, jfr_set_cutoff(JNIEnv* env, jobject jvm, jlong event_typ
   return JfrEventSetting::set_cutoff(event_type_id, cutoff_ticks) ? JNI_TRUE : JNI_FALSE;
 NO_TRANSITION_END
 
+NO_TRANSITION(jboolean, jfr_set_throttle(JNIEnv* env, jobject jvm, jlong event_type_id, jlong event_sample_size, jlong period_ms))
+  JfrEventThrottler::configure(static_cast<JfrEventId>(event_type_id), event_sample_size, period_ms);
+  return JNI_TRUE;
+NO_TRANSITION_END
+
 NO_TRANSITION(jboolean, jfr_should_rotate_disk(JNIEnv* env, jobject jvm))
   return JfrChunkRotation::should_rotate() ? JNI_TRUE : JNI_FALSE;
 NO_TRANSITION_END
 
+NO_TRANSITION(jlong, jfr_get_type_id_from_string(JNIEnv * env, jobject jvm, jstring type))
+  const char* type_name = env->GetStringUTFChars(type, NULL);
+  jlong id = JfrType::name_to_id(type_name);
+  env->ReleaseStringUTFChars(type, type_name);
+  return id;
+NO_TRANSITION_END
 /*
  * JVM_ENTRY_NO_ENV entries
  *
@@ -233,11 +243,11 @@ JVM_ENTRY_NO_ENV(jboolean, jfr_emit_event(JNIEnv* env, jobject jvm, jlong eventT
 JVM_END
 
 JVM_ENTRY_NO_ENV(jobject, jfr_get_all_event_classes(JNIEnv* env, jobject jvm))
-  return JfrEventClasses::get_all_event_classes(thread);
+  return JdkJfrEvent::get_all_klasses(thread);
 JVM_END
 
 JVM_ENTRY_NO_ENV(jlong, jfr_class_id(JNIEnv* env, jclass jvm, jclass jc))
-  return JfrTraceId::use(jc);
+  return JfrTraceId::load(jc);
 JVM_END
 
 JVM_ENTRY_NO_ENV(jlong, jfr_stacktrace_id(JNIEnv* env, jobject jvm, jint skip))
@@ -246,6 +256,10 @@ JVM_END
 
 JVM_ENTRY_NO_ENV(void, jfr_log(JNIEnv* env, jobject jvm, jint tag_set, jint level, jstring message))
   JfrJavaLog::log(tag_set, level, message, thread);
+JVM_END
+
+JVM_ENTRY_NO_ENV(void, jfr_log_event(JNIEnv* env, jobject jvm, jint level, jobjectArray lines, jboolean system))
+  JfrJavaLog::log_event(env, level, lines, system == JNI_TRUE, thread);
 JVM_END
 
 JVM_ENTRY_NO_ENV(void, jfr_subscribe_log_level(JNIEnv* env, jobject jvm, jobject log_tag, jint id))
@@ -310,19 +324,19 @@ JVM_ENTRY_NO_ENV(void, jfr_abort(JNIEnv* env, jobject jvm, jstring errorMsg))
 JVM_END
 
 JVM_ENTRY_NO_ENV(jlong, jfr_type_id(JNIEnv* env, jobject jvm, jclass jc))
-  return JfrTraceId::get(jc);
+  return JfrTraceId::load_raw(jc);
 JVM_END
 
-JVM_ENTRY_NO_ENV(jboolean, jfr_add_string_constant(JNIEnv* env, jclass jvm, jboolean epoch, jlong id, jstring string))
-  return JfrStringPool::add(epoch == JNI_TRUE, id, string, thread) ? JNI_TRUE : JNI_FALSE;
+JVM_ENTRY_NO_ENV(jboolean, jfr_add_string_constant(JNIEnv* env, jclass jvm, jlong id, jstring string))
+  return JfrStringPool::add(id, string, thread);
 JVM_END
 
 JVM_ENTRY_NO_ENV(void, jfr_set_force_instrumentation(JNIEnv* env, jobject jvm, jboolean force_instrumentation))
   JfrEventClassTransformer::set_force_instrumentation(force_instrumentation == JNI_TRUE);
 JVM_END
 
-JVM_ENTRY_NO_ENV(void, jfr_emit_old_object_samples(JNIEnv* env, jobject jvm, jlong cutoff_ticks, jboolean emit_all))
-  LeakProfiler::emit_events(cutoff_ticks, emit_all == JNI_TRUE);
+JVM_ENTRY_NO_ENV(void, jfr_emit_old_object_samples(JNIEnv* env, jobject jvm, jlong cutoff_ticks, jboolean emit_all, jboolean skip_bfs))
+  LeakProfiler::emit_events(cutoff_ticks, emit_all == JNI_TRUE, skip_bfs == JNI_TRUE);
 JVM_END
 
 JVM_ENTRY_NO_ENV(void, jfr_exclude_thread(JNIEnv* env, jobject jvm, jobject t))
@@ -341,3 +355,10 @@ JVM_ENTRY_NO_ENV(jlong, jfr_chunk_start_nanos(JNIEnv* env, jobject jvm))
   return JfrRepository::current_chunk_start_nanos();
 JVM_END
 
+JVM_ENTRY_NO_ENV(jobject, jfr_get_handler(JNIEnv * env, jobject jvm, jobject clazz))
+  return JfrJavaSupport::get_handler(clazz, thread);
+JVM_END
+
+JVM_ENTRY_NO_ENV(jboolean, jfr_set_handler(JNIEnv * env, jobject jvm, jobject clazz, jobject handler))
+  return JfrJavaSupport::set_handler(clazz, handler, thread);
+JVM_END

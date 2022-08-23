@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,19 +59,6 @@ typedef int bool;
 #include <link.h>
 #include <machine/reg.h>
 #include <proc_service.h>
-#if defined(sparc) || defined(sparcv9)
-/*
-  If _LP64 is defined ptrace.h should be taken from /usr/include/asm-sparc64
-  otherwise it should be from /usr/include/asm-sparc
-  These two files define pt_regs structure differently
-*/
-#ifdef _LP64
-#include "asm-sparc64/ptrace.h"
-#else
-#include "asm-sparc/ptrace.h"
-#endif
-
-#endif //sparc or sparcv9
 
 // This C bool type must be int for compatibility with BSD calls and
 // it would be a mistake to equivalence it to C++ bool on many platforms
@@ -144,6 +131,9 @@ const char* get_lib_name(struct ps_prochandle* ph, int index);
 
 // get base of lib
 uintptr_t get_lib_base(struct ps_prochandle* ph, int index);
+
+// get address range of lib
+void get_lib_addr_range(struct ps_prochandle* ph, int index, uintptr_t* base, uintptr_t* memsz);
 
 // returns true if given library is found in lib list
 bool find_lib(struct ps_prochandle* ph, const char *lib_name);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1994, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1994, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -179,12 +179,13 @@ public class Vector<E>
      * @since   1.2
      */
     public Vector(Collection<? extends E> c) {
-        elementData = c.toArray();
-        elementCount = elementData.length;
-        // defend against c.toArray (incorrectly) not returning Object[]
-        // (see e.g. https://bugs.openjdk.java.net/browse/JDK-6260652)
-        if (elementData.getClass() != Object[].class)
-            elementData = Arrays.copyOf(elementData, elementCount, Object[].class);
+        Object[] a = c.toArray();
+        elementCount = a.length;
+        if (c.getClass() == ArrayList.class) {
+            elementData = a;
+        } else {
+            elementData = Arrays.copyOf(a, elementCount, Object[].class);
+        }
     }
 
     /**
@@ -1157,6 +1158,12 @@ public class Vector<E>
         ObjectInputStream.GetField gfields = in.readFields();
         int count = gfields.get("elementCount", 0);
         Object[] data = (Object[])gfields.get("elementData", null);
+        if (data == null && !gfields.defaulted("elementData") && count > 0) {
+            // If elementData is null due to 8276665 throwing this exception will not
+            // overwrite the original ClassNotFoundException exception.
+            // That exception has been recorded and will be thrown from OIS.readObject.
+            throw new ClassNotFoundException("elementData is null");
+        }
         if (count < 0 || data == null || count > data.length) {
             throw new StreamCorruptedException("Inconsistent vector internals");
         }

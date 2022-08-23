@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,10 +72,13 @@ class outputStream;
 // interactions for this protocol.  Similarly, see the allocate() function for
 // a discussion of allocation.
 
-class OopStorage : public CHeapObj<mtGC> {
+class OopStorage {
 public:
-  OopStorage(const char* name, Mutex* allocation_mutex, Mutex* active_mutex);
+  explicit OopStorage(const char* name, MEMFLAGS memflags);
   ~OopStorage();
+
+  void* operator new(size_t size, MEMFLAGS memflags);
+  void operator delete(void* obj, MEMFLAGS memflags);
 
   // These count and usage accessors are racy unless at a safepoint.
 
@@ -89,6 +92,9 @@ public:
   // bookkeeping overhead, including this storage object.
   size_t total_memory_usage() const;
 
+  // The memory type for allocations.
+  MEMFLAGS memflags() const;
+
   enum EntryStatus {
     INVALID_ENTRY,
     UNALLOCATED_ENTRY,
@@ -101,8 +107,24 @@ public:
 
   // Allocates and returns a new entry.  Returns NULL if memory allocation
   // failed.  Locks _allocation_mutex.
-  // postcondition: *result == NULL.
+  // postcondition: result == NULL or *result == NULL.
   oop* allocate();
+
+  // Maximum number of entries that can be obtained by one call to
+  // allocate(oop**, size_t).
+  static const size_t bulk_allocate_limit = BitsPerWord;
+
+  // Allocates multiple entries, returning them in the ptrs buffer. Possibly
+  // faster than making repeated calls to allocate(). Always make maximal
+  // requests for best efficiency. Returns the number of entries allocated,
+  // which may be less than requested. A result of zero indicates failure to
+  // allocate any entries.
+  // Locks _allocation_mutex.
+  // precondition: size > 0.
+  // postcondition: result <= min(size, bulk_allocate_limit).
+  // postcondition: ptrs[i] is an allocated entry for i in [0, result).
+  // postcondition: *ptrs[i] == NULL for i in [0, result).
+  size_t allocate(oop** ptrs, size_t size);
 
   // Deallocates ptr.  No locking.
   // precondition: ptr is a valid allocated entry.
@@ -151,6 +173,24 @@ public:
   // Other clients must use serial iteration.
   template<bool concurrent, bool is_const> class ParState;
 
+  // Support GC callbacks reporting dead entries.  This lets clients respond
+  // to entries being cleared.
+
+  typedef void (*NumDeadCallback)(size_t num_dead);
+
+  // Used by a client to register a callback function with the GC.
+  // precondition: No more than one registration per storage object.
+  void register_num_dead_callback(NumDeadCallback f);
+
+  // Called by the GC after an iteration that may clear dead referents.
+  // This calls the registered callback function, if any.  num_dead is the
+  // number of entries which were either already NULL or were cleared by the
+  // iteration.
+  void report_num_dead(size_t num_dead) const;
+
+  // Used by the GC to test whether a callback function has been registered.
+  bool should_report_num_dead() const;
+
   // Service thread cleanup support.
 
   // Called by the service thread to process any pending cleanups for this
@@ -167,7 +207,7 @@ public:
   // cleanups to process.
   static void trigger_cleanup_if_needed();
 
-  // Called by the service thread (while holding Service_lock) to to test
+  // Called by the service thread (while holding Service_lock) to test
   // for pending cleanup requests, and resets the request state to allow
   // recognition of new requests.  Returns true if there was a pending
   // request.
@@ -188,7 +228,8 @@ private:
   class ActiveArray;            // Array of Blocks, plus bookkeeping.
   class AllocationListEntry;    // Provides AllocationList links in a Block.
 
-  // Doubly-linked list of Blocks.
+  // Doubly-linked list of Blocks.  For all operations with a block
+  // argument, the block must be from the list's OopStorage.
   class AllocationList {
     const Block* _head;
     const Block* _tail;
@@ -213,6 +254,8 @@ private:
     void push_front(const Block& block);
     void push_back(const Block& block);
     void unlink(const Block& block);
+
+    bool contains(const Block& block) const;
   };
 
 private:
@@ -222,6 +265,7 @@ private:
   Block* volatile _deferred_updates;
   Mutex* _allocation_mutex;
   Mutex* _active_mutex;
+  NumDeadCallback _num_dead_callback;
 
   // Volatile for racy unlocked accesses.
   volatile size_t _allocation_count;
@@ -232,10 +276,15 @@ private:
   // mutable because this gets set even for const iteration.
   mutable int _concurrent_iteration_count;
 
+  // The memory type for allocations.
+  MEMFLAGS _memflags;
+
+  // Flag indicating this storage object is a candidate for empty block deletion.
   volatile bool _needs_cleanup;
 
   bool try_add_block();
   Block* block_for_allocation();
+  void  log_block_transition(Block* block, const char* new_state) const;
 
   Block* find_block_or_null(const oop* ptr) const;
   void delete_empty_block(const Block& block);

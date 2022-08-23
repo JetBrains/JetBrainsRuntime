@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -78,23 +78,15 @@ bool LeakProfiler::stop() {
   return true;
 }
 
-void LeakProfiler::emit_events(int64_t cutoff_ticks, bool emit_all) {
+void LeakProfiler::emit_events(int64_t cutoff_ticks, bool emit_all, bool skip_bfs) {
   if (!is_running()) {
     return;
   }
   // exclusive access to object sampler instance
   ObjectSampler* const sampler = ObjectSampler::acquire();
   assert(sampler != NULL, "invariant");
-  EventEmitter::emit(sampler, cutoff_ticks, emit_all);
+  EventEmitter::emit(sampler, cutoff_ticks, emit_all, skip_bfs);
   ObjectSampler::release();
-}
-
-void LeakProfiler::weak_oops_do(BoolObjectClosure* is_alive, OopClosure* f) {
-  assert(SafepointSynchronize::is_at_safepoint(),
-    "Leak Profiler::oops_do(...) may only be called during safepoint");
-  if (is_running()) {
-    ObjectSampler::weak_oops_do(is_alive, f);
-  }
 }
 
 void LeakProfiler::sample(HeapWord* object, size_t size, JavaThread* thread) {

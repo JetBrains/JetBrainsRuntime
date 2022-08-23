@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2004, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,11 @@ package java.util.logging;
 public class ErrorManager {
    private boolean reported = false;
 
+    /**
+     * Create an {@code ErrorManager}.
+     */
+    public ErrorManager() {}
+
     /*
      * We declare standard error codes for important categories of errors.
      */
@@ -47,27 +52,27 @@ public class ErrorManager {
      * GENERIC_FAILURE is used for failure that don't fit
      * into one of the other categories.
      */
-    public final static int GENERIC_FAILURE = 0;
+    public static final int GENERIC_FAILURE = 0;
     /**
      * WRITE_FAILURE is used when a write to an output stream fails.
      */
-    public final static int WRITE_FAILURE = 1;
+    public static final int WRITE_FAILURE = 1;
     /**
      * FLUSH_FAILURE is used when a flush to an output stream fails.
      */
-    public final static int FLUSH_FAILURE = 2;
+    public static final int FLUSH_FAILURE = 2;
     /**
      * CLOSE_FAILURE is used when a close of an output stream fails.
      */
-    public final static int CLOSE_FAILURE = 3;
+    public static final int CLOSE_FAILURE = 3;
     /**
      * OPEN_FAILURE is used when an open of an output stream fails.
      */
-    public final static int OPEN_FAILURE = 4;
+    public static final int OPEN_FAILURE = 4;
     /**
      * FORMAT_FAILURE is used when formatting fails for any reason.
      */
-    public final static int FORMAT_FAILURE = 5;
+    public static final int FORMAT_FAILURE = 5;
 
     /**
      * The error method is called when a Handler failure occurs.

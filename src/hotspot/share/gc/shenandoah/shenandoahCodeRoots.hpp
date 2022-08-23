@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2017, 2020, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,22 +28,25 @@
 #include "code/codeCache.hpp"
 #include "gc/shenandoah/shenandoahSharedVariables.hpp"
 #include "gc/shenandoah/shenandoahLock.hpp"
-#include "gc/shenandoah/shenandoahNMethod.hpp"
+#include "gc/shenandoah/shenandoahPadding.hpp"
 #include "memory/allocation.hpp"
 #include "memory/iterator.hpp"
 #include "utilities/globalDefinitions.hpp"
 
 class ShenandoahHeap;
 class ShenandoahHeapRegion;
+class ShenandoahNMethodTable;
+class ShenandoahNMethodTableSnapshot;
+class WorkGang;
 
 class ShenandoahParallelCodeHeapIterator {
   friend class CodeCache;
 private:
   CodeHeap*     _heap;
-  DEFINE_PAD_MINUS_SIZE(0, DEFAULT_CACHE_LINE_SIZE, sizeof(volatile int));
+  shenandoah_padding(0);
   volatile int  _claimed_idx;
   volatile bool _finished;
-  DEFINE_PAD_MINUS_SIZE(1, DEFAULT_CACHE_LINE_SIZE, 0);
+  shenandoah_padding(1);
 public:
   ShenandoahParallelCodeHeapIterator(CodeHeap* heap);
   void parallel_blobs_do(CodeBlobClosure* f);
@@ -70,27 +73,11 @@ protected:
   ShenandoahSharedFlag _seq_claimed;
   ShenandoahNMethodTableSnapshot* _table_snapshot;
 
-protected:
+public:
   ShenandoahCodeRootsIterator();
   ~ShenandoahCodeRootsIterator();
 
-  template<bool CSET_FILTER>
-  void dispatch_parallel_blobs_do(CodeBlobClosure *f);
-
-  template<bool CSET_FILTER>
-  void fast_parallel_blobs_do(CodeBlobClosure *f);
-};
-
-class ShenandoahAllCodeRootsIterator : public ShenandoahCodeRootsIterator {
-public:
-  ShenandoahAllCodeRootsIterator() : ShenandoahCodeRootsIterator() {};
   void possibly_parallel_blobs_do(CodeBlobClosure *f);
-};
-
-class ShenandoahCsetCodeRootsIterator : public ShenandoahCodeRootsIterator {
-public:
-  ShenandoahCsetCodeRootsIterator() : ShenandoahCodeRootsIterator() {};
-  void possibly_parallel_blobs_do(CodeBlobClosure* f);
 };
 
 class ShenandoahCodeRoots : public AllStatic {
@@ -111,6 +98,7 @@ public:
   static void unlink(WorkGang* workers, bool unloading_occurred);
   static void purge(WorkGang* workers);
   static void arm_nmethods();
+  static void disarm_nmethods();
   static int  disarmed_value()         { return _disarmed_value; }
   static int* disarmed_value_address() { return &_disarmed_value; }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import javax.security.auth.x500.X500Principal;
 
 import sun.security.util.Debug;
 import sun.security.util.DerInputStream;
+import sun.security.util.KnownOIDs;
 import sun.security.x509.CRLNumberExtension;
 import sun.security.x509.X500Name;
 
@@ -224,13 +225,6 @@ public class X509CRLSelector implements CRLSelector {
     }
 
     /**
-     * <strong>Denigrated</strong>, use
-     * {@linkplain #addIssuer(X500Principal)} or
-     * {@linkplain #addIssuerName(byte[])} instead. This method should not be
-     * relied on as it can fail to match some CRLs because of a loss of
-     * encoding information in the RFC 2253 String form of some distinguished
-     * names.
-     * <p>
      * Adds a name to the issuerNames criterion. The issuer distinguished
      * name in the {@code X509CRL} must match at least one of the specified
      * distinguished names.
@@ -240,9 +234,17 @@ public class X509CRLSelector implements CRLSelector {
      * any previous value for the issuerNames criterion.
      * If the specified name is a duplicate, it may be ignored.
      *
-     * @param name the name in RFC 2253 form
+     * @param name the name in
+     *     <a href="http://www.ietf.org/rfc/rfc2253.txt">RFC 2253</a> form
      * @throws IOException if a parsing error occurs
+     *
+     * @deprecated Use {@link #addIssuer(X500Principal)} or
+     * {@link #addIssuerName(byte[])} instead. This method should not be
+     * relied on as it can fail to match some CRLs because of a loss of
+     * encoding information in the RFC 2253 String form of some distinguished
+     * names.
      */
+    @Deprecated(since="16")
     public void addIssuerName(String name) throws IOException {
         addIssuerNameInternal(name, new X500Name(name).asX500Principal());
     }
@@ -480,7 +482,8 @@ public class X509CRLSelector implements CRLSelector {
      * <p>
      * If the value returned is not {@code null}, it is a
      * {@code Collection} of names. Each name is a {@code String}
-     * or a byte array representing a distinguished name (in RFC 2253 or
+     * or a byte array representing a distinguished name (in
+     * <a href="http://www.ietf.org/rfc/rfc2253.txt">RFC 2253</a> or
      * ASN.1 DER encoded form, respectively).  Note that the
      * {@code Collection} returned may contain duplicate names.
      * <p>
@@ -594,10 +597,9 @@ public class X509CRLSelector implements CRLSelector {
      *         {@code false} otherwise
      */
     public boolean match(CRL crl) {
-        if (!(crl instanceof X509CRL)) {
+        if (!(crl instanceof X509CRL xcrl)) {
             return false;
         }
-        X509CRL xcrl = (X509CRL)crl;
 
         /* match on issuer name */
         if (issuerNames != null) {
@@ -620,7 +622,7 @@ public class X509CRLSelector implements CRLSelector {
 
         if ((minCRL != null) || (maxCRL != null)) {
             /* Get CRL number extension from CRL */
-            byte[] crlNumExtVal = xcrl.getExtensionValue("2.5.29.20");
+            byte[] crlNumExtVal = xcrl.getExtensionValue(KnownOIDs.CRLNumber.value());
             if (crlNumExtVal == null) {
                 if (debug != null) {
                     debug.println("X509CRLSelector.match: no CRLNumber");

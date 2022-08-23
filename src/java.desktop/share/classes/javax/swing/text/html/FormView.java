@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -552,6 +552,11 @@ public class FormView extends ComponentView implements ActionListener {
      */
     protected class MouseEventListener extends MouseAdapter {
 
+        /**
+         * Constructs a {@code MouseEventListener}.
+         */
+        protected MouseEventListener() {}
+
         public void mouseReleased(MouseEvent evt) {
             String imageData = getImageData(evt.getPoint());
             imageSubmit(imageData);
@@ -789,7 +794,12 @@ public class FormView extends ComponentView implements ActionListener {
             for (int i = 0; i < model.getSize(); i++) {
                 if (model.isSelectedIndex(i)) {
                     Option option = model.getElementAt(i);
-                    appendBuffer(buffer, name, option.getValue());
+                    if (option != null) {
+                        String value = option.getValue();
+                        if (value != null) {
+                            appendBuffer(buffer, name, value);
+                        }
+                    }
                 }
             }
         } else if (m instanceof ComboBoxModel) {
@@ -797,7 +807,10 @@ public class FormView extends ComponentView implements ActionListener {
             ComboBoxModel<?> model = (ComboBoxModel)m;
             Option option = (Option)model.getSelectedItem();
             if (option != null) {
-                appendBuffer(buffer, name, option.getValue());
+                String value = option.getValue();
+                if (value != null) {
+                    appendBuffer(buffer, name, value);
+                }
             }
         }
     }

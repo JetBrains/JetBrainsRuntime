@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,7 +87,6 @@ class     BlockBegin;
 class     BlockEnd;
 class       Goto;
 class       If;
-class       IfInstanceOf;
 class       Switch;
 class         TableSwitch;
 class         LookupSwitch;
@@ -188,7 +187,6 @@ class InstructionVisitor: public StackObj {
   virtual void do_BlockBegin     (BlockBegin*      x) = 0;
   virtual void do_Goto           (Goto*            x) = 0;
   virtual void do_If             (If*              x) = 0;
-  virtual void do_IfInstanceOf   (IfInstanceOf*    x) = 0;
   virtual void do_TableSwitch    (TableSwitch*     x) = 0;
   virtual void do_LookupSwitch   (LookupSwitch*    x) = 0;
   virtual void do_Return         (Return*          x) = 0;
@@ -268,7 +266,7 @@ class InstructionVisitor: public StackObj {
 
 
 #define HASHING3(class_name, enabled, f1, f2, f3)     \
-  virtual intx hash() const {                          \
+  virtual intx hash() const {                         \
     return (enabled) ? HASH4(name(), f1, f2, f3) : 0; \
   }                                                   \
   virtual bool is_equal(Value v) const {              \
@@ -303,7 +301,6 @@ class Instruction: public CompilationResourceObj {
   XHandlers*   _exception_handlers;              // Flat list of exception handlers covering this instruction
 
   friend class UseCountComputer;
-  friend class BlockBegin;
 
   void update_exception_state(ValueStack* state);
 
@@ -349,7 +346,6 @@ class Instruction: public CompilationResourceObj {
   void* operator new(size_t size) throw() {
     Compilation* c = Compilation::current();
     void* res = c->arena()->Amalloc(size);
-    ((Instruction*)res)->_id = c->get_next_id();
     return res;
   }
 
@@ -362,13 +358,11 @@ class Instruction: public CompilationResourceObj {
     IsEliminatedFlag,
     IsSafepointFlag,
     IsStaticFlag,
-    IsStrictfpFlag,
     NeedsStoreCheckFlag,
     NeedsWriteBarrierFlag,
     PreservesStateFlag,
     TargetIsFinalFlag,
     TargetIsLoadedFlag,
-    TargetIsStrictfpFlag,
     UnorderedIsTrueFlag,
     NeedsPatchingFlag,
     ThrowIncompatibleClassChangeErrorFlag,
@@ -410,7 +404,7 @@ class Instruction: public CompilationResourceObj {
 
   // creation
   Instruction(ValueType* type, ValueStack* state_before = NULL, bool type_is_constant = false)
-  :
+  : _id(Compilation::current()->get_next_id()),
 #ifndef PRODUCT
   _printable_bci(-99),
 #endif
@@ -453,6 +447,8 @@ class Instruction: public CompilationResourceObj {
   bool needs_null_check() const                  { return check_flag(NeedsNullCheckFlag); }
   bool is_linked() const                         { return check_flag(IsLinkedInBlockFlag); }
   bool can_be_linked()                           { return as_Local() == NULL && as_Phi() == NULL; }
+
+  bool is_null_obj()                             { return as_Constant() != NULL && type()->as_ObjectType()->constant_value()->is_null_object(); }
 
   bool has_uses() const                          { return use_count() > 0; }
   ValueStack* state_before() const               { return _state_before; }
@@ -566,7 +562,6 @@ class Instruction: public CompilationResourceObj {
   virtual BlockEnd*         as_BlockEnd()        { return NULL; }
   virtual Goto*             as_Goto()            { return NULL; }
   virtual If*               as_If()              { return NULL; }
-  virtual IfInstanceOf*     as_IfInstanceOf()    { return NULL; }
   virtual TableSwitch*      as_TableSwitch()     { return NULL; }
   virtual LookupSwitch*     as_LookupSwitch()    { return NULL; }
   virtual Return*           as_Return()          { return NULL; }
@@ -834,8 +829,8 @@ LEAF(LoadField, AccessField)
 
   ciType* declared_type() const;
 
-  // generic
-  HASHING2(LoadField, !needs_patching() && !field()->is_volatile(), obj()->subst(), offset())  // cannot be eliminated if needs patching or if volatile
+  // generic; cannot be eliminated if needs patching or if volatile.
+  HASHING3(LoadField, !needs_patching() && !field()->is_volatile(), obj()->subst(), offset(), declared_type())
 };
 
 
@@ -964,8 +959,8 @@ LEAF(LoadIndexed, AccessIndexed)
   ciType* exact_type() const;
   ciType* declared_type() const;
 
-  // generic
-  HASHING2(LoadIndexed, true, array()->subst(), index()->subst())
+  // generic;
+  HASHING3(LoadIndexed, true, type()->tag(), array()->subst(), index()->subst())
 };
 
 
@@ -1062,15 +1057,11 @@ BASE(Op2, Instruction)
 LEAF(ArithmeticOp, Op2)
  public:
   // creation
-  ArithmeticOp(Bytecodes::Code op, Value x, Value y, bool is_strictfp, ValueStack* state_before)
+  ArithmeticOp(Bytecodes::Code op, Value x, Value y, ValueStack* state_before)
   : Op2(x->type()->meet(y->type()), op, x, y, state_before)
   {
-    set_flag(IsStrictfpFlag, is_strictfp);
     if (can_trap()) pin();
   }
-
-  // accessors
-  bool        is_strictfp() const                { return check_flag(IsStrictfpFlag); }
 
   // generic
   virtual bool is_commutative() const;
@@ -1248,13 +1239,12 @@ LEAF(Invoke, StateSplit)
   Value           _recv;
   Values*         _args;
   BasicTypeList*  _signature;
-  int             _vtable_index;
   ciMethod*       _target;
 
  public:
   // creation
   Invoke(Bytecodes::Code code, ValueType* result_type, Value recv, Values* args,
-         int vtable_index, ciMethod* target, ValueStack* state_before);
+         ciMethod* target, ValueStack* state_before);
 
   // accessors
   Bytecodes::Code code() const                   { return _code; }
@@ -1262,7 +1252,6 @@ LEAF(Invoke, StateSplit)
   bool has_receiver() const                      { return receiver() != NULL; }
   int number_of_arguments() const                { return _args->length(); }
   Value argument_at(int i) const                 { return _args->at(i); }
-  int vtable_index() const                       { return _vtable_index; }
   BasicTypeList* signature() const               { return _signature; }
   ciMethod* target() const                       { return _target; }
 
@@ -1271,8 +1260,6 @@ LEAF(Invoke, StateSplit)
   // Returns false if target is not loaded
   bool target_is_final() const                   { return check_flag(TargetIsFinalFlag); }
   bool target_is_loaded() const                  { return check_flag(TargetIsLoadedFlag); }
-  // Returns false if target is not loaded
-  bool target_is_strictfp() const                { return check_flag(TargetIsStrictfpFlag); }
 
   // JSR 292 support
   bool is_invokedynamic() const                  { return code() == Bytecodes::_invokedynamic; }
@@ -1649,8 +1636,6 @@ LEAF(BlockBegin, StateSplit)
    void* operator new(size_t size) throw() {
     Compilation* c = Compilation::current();
     void* res = c->arena()->Amalloc(size);
-    ((BlockBegin*)res)->_id = c->get_next_id();
-    ((BlockBegin*)res)->_block_id = c->get_next_block_id();
     return res;
   }
 
@@ -1662,6 +1647,7 @@ LEAF(BlockBegin, StateSplit)
   // creation
   BlockBegin(int bci)
   : StateSplit(illegalType)
+  , _block_id(Compilation::current()->get_next_block_id())
   , _bci(bci)
   , _depth_first_number(-1)
   , _linear_scan_number(-1)
@@ -2034,60 +2020,6 @@ LEAF(If, BlockEnd)
   void set_swapped(bool value)                    { _swapped = value;         }
   // generic
   virtual void input_values_do(ValueVisitor* f)   { BlockEnd::input_values_do(f); f->visit(&_x); f->visit(&_y); }
-};
-
-
-LEAF(IfInstanceOf, BlockEnd)
- private:
-  ciKlass* _klass;
-  Value    _obj;
-  bool     _test_is_instance;                    // jump if instance
-  int      _instanceof_bci;
-
- public:
-  IfInstanceOf(ciKlass* klass, Value obj, bool test_is_instance, int instanceof_bci, BlockBegin* tsux, BlockBegin* fsux)
-  : BlockEnd(illegalType, NULL, false) // temporary set to false
-  , _klass(klass)
-  , _obj(obj)
-  , _test_is_instance(test_is_instance)
-  , _instanceof_bci(instanceof_bci)
-  {
-    ASSERT_VALUES
-    assert(instanceof_bci >= 0, "illegal bci");
-    BlockList* s = new BlockList(2);
-    s->append(tsux);
-    s->append(fsux);
-    set_sux(s);
-  }
-
-  // accessors
-  //
-  // Note 1: If test_is_instance() is true, IfInstanceOf tests if obj *is* an
-  //         instance of klass; otherwise it tests if it is *not* and instance
-  //         of klass.
-  //
-  // Note 2: IfInstanceOf instructions are created by combining an InstanceOf
-  //         and an If instruction. The IfInstanceOf bci() corresponds to the
-  //         bci that the If would have had; the (this->) instanceof_bci() is
-  //         the bci of the original InstanceOf instruction.
-  ciKlass* klass() const                         { return _klass; }
-  Value obj() const                              { return _obj; }
-  int instanceof_bci() const                     { return _instanceof_bci; }
-  bool test_is_instance() const                  { return _test_is_instance; }
-  BlockBegin* sux_for(bool is_true) const        { return sux_at(is_true ? 0 : 1); }
-  BlockBegin* tsux() const                       { return sux_for(true); }
-  BlockBegin* fsux() const                       { return sux_for(false); }
-
-  // manipulation
-  void swap_sux() {
-    assert(number_of_sux() == 2, "wrong number of successors");
-    BlockList* s = sux();
-    BlockBegin* t = s->at(0); s->at_put(0, s->at(1)); s->at_put(1, t);
-    _test_is_instance = !_test_is_instance;
-  }
-
-  // generic
-  virtual void input_values_do(ValueVisitor* f)   { BlockEnd::input_values_do(f); f->visit(&_obj); }
 };
 
 

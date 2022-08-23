@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,45 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package jdk.internal.module;
 
+import java.util.function.Function;
 import java.lang.module.Configuration;
 import java.lang.module.ModuleFinder;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-
-import jdk.internal.misc.VM;
+import jdk.internal.misc.CDS;
 
 /**
- * Used by ModuleBootstrap to obtain the archived system modules and finder.
+ * Used by ModuleBootstrap for archiving the configuration for the boot layer,
+ * and the system module finder.
  */
-final class ArchivedModuleGraph {
+class ArchivedModuleGraph {
     private static ArchivedModuleGraph archivedModuleGraph;
 
-    private final String mainModule;
     private final boolean hasSplitPackages;
     private final boolean hasIncubatorModules;
     private final ModuleFinder finder;
     private final Configuration configuration;
-    private final Map<String, Set<String>> concealedPackagesToOpen;
-    private final Map<String, Set<String>> exportedPackagesToOpen;
+    private final Function<String, ClassLoader> classLoaderFunction;
 
-    private ArchivedModuleGraph(String mainModule,
-                                boolean hasSplitPackages,
+    private ArchivedModuleGraph(boolean hasSplitPackages,
                                 boolean hasIncubatorModules,
                                 ModuleFinder finder,
                                 Configuration configuration,
-                                Map<String, Set<String>> concealedPackagesToOpen,
-                                Map<String, Set<String>> exportedPackagesToOpen) {
-        this.mainModule = mainModule;
+                                Function<String, ClassLoader> classLoaderFunction) {
         this.hasSplitPackages = hasSplitPackages;
         this.hasIncubatorModules = hasIncubatorModules;
         this.finder = finder;
         this.configuration = configuration;
-        this.concealedPackagesToOpen = concealedPackagesToOpen;
-        this.exportedPackagesToOpen = exportedPackagesToOpen;
+        this.classLoaderFunction = classLoaderFunction;
     }
 
     ModuleFinder finder() {
@@ -71,12 +62,8 @@ final class ArchivedModuleGraph {
         return configuration;
     }
 
-    Map<String, Set<String>> concealedPackagesToOpen() {
-        return concealedPackagesToOpen;
-    }
-
-    Map<String, Set<String>> exportedPackagesToOpen() {
-        return exportedPackagesToOpen;
+    Function<String, ClassLoader> classLoaderFunction() {
+        return classLoaderFunction;
     }
 
     boolean hasSplitPackages() {
@@ -92,7 +79,8 @@ final class ArchivedModuleGraph {
      */
     static ArchivedModuleGraph get(String mainModule) {
         ArchivedModuleGraph graph = archivedModuleGraph;
-        if (graph != null && Objects.equals(mainModule, graph.mainModule)) {
+        // We only allow the unnamed module (default) case for now
+        if (mainModule == null) {
             return graph;
         } else {
             return null;
@@ -102,26 +90,19 @@ final class ArchivedModuleGraph {
     /**
      * Archive the module graph for the given initial module.
      */
-    static void archive(String mainModule,
-                        boolean hasSplitPackages,
+    static void archive(boolean hasSplitPackages,
                         boolean hasIncubatorModules,
                         ModuleFinder finder,
                         Configuration configuration,
-                        Map<String, Set<String>> concealedPackagesToOpen,
-                        Map<String, Set<String>> exportedPackagesToOpen) {
-        if (mainModule != null) {
-            throw new UnsupportedOperationException();
-        }
-        archivedModuleGraph = new ArchivedModuleGraph(mainModule,
-                                                      hasSplitPackages,
+                        Function<String, ClassLoader> classLoaderFunction) {
+        archivedModuleGraph = new ArchivedModuleGraph(hasSplitPackages,
                                                       hasIncubatorModules,
                                                       finder,
                                                       configuration,
-                                                      concealedPackagesToOpen,
-                                                      exportedPackagesToOpen);
+                                                      classLoaderFunction);
     }
 
     static {
-        VM.initializeFromArchive(ArchivedModuleGraph.class);
+        CDS.initializeFromArchive(ArchivedModuleGraph.class);
     }
 }

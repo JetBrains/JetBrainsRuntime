@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -28,9 +28,6 @@ AC_DEFUN_ONCE([SRCDIRS_SETUP_DIRS],
   OUTPUTDIR="$OUTPUTDIR"
   AC_SUBST(OUTPUTDIR)
   JDK_OUTPUTDIR="$OUTPUTDIR/jdk"
-
-  # Where are the sources.
-  AC_SUBST(TOPDIR)
 ])
 
 ################################################################################
@@ -46,7 +43,7 @@ AC_DEFUN_ONCE([SRCDIRS_SETUP_IMPORT_MODULES],
       && test "x$with_import_modules" != "xno"; then
     if test -d "$with_import_modules"; then
       IMPORT_MODULES_TOPDIR="$with_import_modules"
-      BASIC_FIXUP_PATH([IMPORT_MODULES_TOPDIR])
+      UTIL_FIXUP_PATH([IMPORT_MODULES_TOPDIR])
     elif test -e "$with_import_modules"; then
       IMPORT_MODULES_TOPDIR="$CONFIGURESUPPORT_OUTPUTDIR/import-modules"
       $RM -rf "$IMPORT_MODULES_TOPDIR"

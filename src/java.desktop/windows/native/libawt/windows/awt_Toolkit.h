@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -133,29 +133,24 @@ class CriticalSection {
 // Macros for using CriticalSection objects that help trace
 // lock/unlock actions
 
-/* Use THIS_FILE when it is available. */
-#ifndef THIS_FILE
-    #define THIS_FILE __FILE__
-#endif
-
 #define CRITICAL_SECTION_ENTER(cs) { \
     J2dTraceLn4(J2D_TRACE_VERBOSE2, \
                 "CS.Wait:  tid, cs, file, line = 0x%x, 0x%x, %s, %d", \
-                GetCurrentThreadId(), &(cs), THIS_FILE, __LINE__); \
+                GetCurrentThreadId(), &(cs), __FILE__, __LINE__); \
     (cs).Enter(); \
     J2dTraceLn4(J2D_TRACE_VERBOSE2, \
                 "CS.Enter: tid, cs, file, line = 0x%x, 0x%x, %s, %d", \
-                GetCurrentThreadId(), &(cs), THIS_FILE, __LINE__); \
+                GetCurrentThreadId(), &(cs), __FILE__, __LINE__); \
 }
 
 #define CRITICAL_SECTION_LEAVE(cs) { \
     J2dTraceLn4(J2D_TRACE_VERBOSE2, \
                 "CS.Leave: tid, cs, file, line = 0x%x, 0x%x, %s, %d", \
-                GetCurrentThreadId(), &(cs), THIS_FILE, __LINE__); \
+                GetCurrentThreadId(), &(cs), __FILE__, __LINE__); \
     (cs).Leave(); \
     J2dTraceLn4(J2D_TRACE_VERBOSE2, \
                 "CS.Left:  tid, cs, file, line = 0x%x, 0x%x, %s, %d", \
-                GetCurrentThreadId(), &(cs), THIS_FILE, __LINE__); \
+                GetCurrentThreadId(), &(cs), __FILE__, __LINE__); \
 }
 
 // Redefine WinAPI values related to touch input, if OS < Windows 7.
@@ -198,6 +193,14 @@ class CriticalSection {
     #define TOUCHEVENTF_NOCOALESCE      0x0020
     #define TOUCHEVENTF_PEN             0x0040
     #define TOUCHEVENTF_PALM            0x0080
+
+    #define MOUSEEVENTF_FROMTOUCH_MASK  0xFFFFFF00
+    #define MOUSEEVENTF_FROMTOUCH       0xFF515700
+    
+    /*
+    * Conversion of touch input coordinates to pixels
+    */
+    #define TOUCH_COORD_TO_PIXEL(l)         ((l) / 100)
 #endif
 
 /************************************************************************
@@ -248,6 +251,8 @@ public:
     BOOL TIGetTouchInputInfo(HTOUCHINPUT hTouchInput,
         UINT cInputs, PTOUCHINPUT pInputs, int cbSize);
     BOOL TICloseTouchInputHandle(HTOUCHINPUT hTouchInput);
+
+    LRESULT InvokeInputMethodFunction(UINT msg, WPARAM wParam=0, LPARAM lParam=0);
 
     INLINE BOOL localPump() { return m_localPump; }
     INLINE BOOL VerifyComponents() { return FALSE; } // TODO: Use new DebugHelper class to set this flag
@@ -386,7 +391,7 @@ public:
 
     /* Return the current application icon. */
     HICON GetAwtIcon();
-    HICON GetAwtIconSm();
+    HICON GetAwtIconSm(void* pAwtWindow = NULL);
 
     // Calculate a wave-like value out of the integer 'value' and
     // the specified period.
@@ -442,9 +447,16 @@ public:
     static BOOL CALLBACK CommonPeekMessageFunc(MSG& msg);
     static BOOL activateKeyboardLayout(HKL hkl);
 
+    static INLINE BOOL AdjustWindowRectExForDpi(LPRECT lpRect, DWORD dwStyle, BOOL bMenu, DWORD dwExStyle, UINT dpi)
+    {
+        return lpAdjustWindowRectExForDpi != NULL ?
+               lpAdjustWindowRectExForDpi(lpRect, dwStyle, bMenu, dwExStyle, dpi) : ::AdjustWindowRectEx(lpRect, dwStyle, bMenu, dwExStyle);
+    }
+
     HANDLE m_waitEvent;
     volatile DWORD eventNumber;
-    volatile BOOL isInDoDragDropLoop;
+    volatile BOOL isDnDSourceActive;
+    volatile BOOL isDnDTargetActive;
 private:
     HWND CreateToolkitWnd(LPCTSTR name);
 
@@ -503,6 +515,12 @@ private:
     HMODULE m_dllHandle;  /* The module handle. */
 
     CriticalSection m_Sync;
+    CriticalSection m_inputMethodLock;
+
+    HANDLE m_inputMethodWaitEvent;
+    LRESULT m_inputMethodData;
+
+    static AdjustWindowRectExForDpiFunc *lpAdjustWindowRectExForDpi;
 
 /* track display changes - used by palette-updating code.
    This is a workaround for a windows bug that prevents

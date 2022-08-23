@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import javax.imageio.stream.ImageInputStream;
 import javax.imageio.plugins.jpeg.JPEGImageReadParam;
 import javax.imageio.plugins.jpeg.JPEGQTable;
 import javax.imageio.plugins.jpeg.JPEGHuffmanTable;
+import com.sun.imageio.plugins.common.SimpleCMYKColorSpace;
 
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -86,8 +87,14 @@ public class JPEGImageReader extends ImageReader {
     private int numImages = 0;
 
     static {
+        initStatic();
+    }
+
+    @SuppressWarnings("removal")
+    private static void initStatic() {
         java.security.AccessController.doPrivileged(
             new java.security.PrivilegedAction<Void>() {
+                @Override
                 public Void run() {
                     System.loadLibrary("javajpeg");
                     return null;
@@ -157,6 +164,12 @@ public class JPEGImageReader extends ImageReader {
 
     /** If we need to post-convert in Java, convert with this op */
     private ColorConvertOp convert = null;
+
+    /** If reading CMYK as an Image, flip the bytes */
+    private boolean invertCMYK = false;
+
+    /** Whether to read as a raster */
+    private boolean readAsRaster = false;
 
     /** The image we are going to fill */
     private BufferedImage image = null;
@@ -278,6 +291,7 @@ public class JPEGImageReader extends ImageReader {
         }
     }
 
+    @Override
     public void setInput(Object input,
                          boolean seekForwardOnly,
                          boolean ignoreMetadata)
@@ -384,6 +398,7 @@ public class JPEGImageReader extends ImageReader {
         tablesOnlyChecked = true;
     }
 
+    @Override
     public int getNumImages(boolean allowSearch) throws IOException {
         setThreadLock();
         try { // locked thread
@@ -830,6 +845,7 @@ public class JPEGImageReader extends ImageReader {
         }
     }
 
+    @Override
     public int getWidth(int imageIndex) throws IOException {
         setThreadLock();
         try {
@@ -843,6 +859,7 @@ public class JPEGImageReader extends ImageReader {
         }
     }
 
+    @Override
     public int getHeight(int imageIndex) throws IOException {
         setThreadLock();
         try {
@@ -871,6 +888,7 @@ public class JPEGImageReader extends ImageReader {
         return ret;
     }
 
+    @Override
     public ImageTypeSpecifier getRawImageType(int imageIndex)
         throws IOException {
         setThreadLock();
@@ -888,6 +906,7 @@ public class JPEGImageReader extends ImageReader {
         }
     }
 
+    @Override
     public Iterator<ImageTypeSpecifier> getImageTypes(int imageIndex)
         throws IOException {
         setThreadLock();
@@ -926,6 +945,32 @@ public class JPEGImageReader extends ImageReader {
         ArrayList<ImageTypeProducer> list = new ArrayList<ImageTypeProducer>(1);
 
         switch (colorSpaceCode) {
+        case JPEG.JCS_YCCK:
+        case JPEG.JCS_CMYK:
+            // There's no standard CMYK ColorSpace in JDK so raw.getType()
+            // will return null so skip that.
+            // And we can't add RGB because the number of bands is different.
+            // So need to create our own special that is 4 channels and uses
+            // the iccCS ColorSpace based on profile data in the image, and
+            // if there is none, on the internal CMYKColorSpace class
+            if (iccCS == null) {
+                iccCS = SimpleCMYKColorSpace.getInstance();
+            }
+            if (iccCS != null) {
+                list.add(new ImageTypeProducer(colorSpaceCode) {
+                    @Override
+                    protected ImageTypeSpecifier produce() {
+                        int [] bands = {0, 1, 2, 3};
+                        return ImageTypeSpecifier.createInterleaved
+                         (iccCS,
+                          bands,
+                          DataBuffer.TYPE_BYTE,
+                          false,
+                          false);
+                    }
+                });
+            }
+            break;
         case JPEG.JCS_GRAYSCALE:
             list.add(raw);
             list.add(getImageType(JPEG.JCS_RGB));
@@ -944,6 +989,7 @@ public class JPEGImageReader extends ImageReader {
 
             if (iccCS != null) {
                 list.add(new ImageTypeProducer() {
+                    @Override
                     protected ImageTypeSpecifier produce() {
                         return ImageTypeSpecifier.createInterleaved
                          (iccCS,
@@ -1006,6 +1052,8 @@ public class JPEGImageReader extends ImageReader {
         int csType = cs.getType();
         convert = null;
         switch (outColorSpaceCode) {
+        case JPEG.JCS_CMYK:  // Its CMYK in the file
+            break;
         case JPEG.JCS_GRAYSCALE:  // Its gray in the file
             if  (csType == ColorSpace.TYPE_RGB) { // We want RGB
                 // IJG can do this for us more efficiently
@@ -1039,7 +1087,7 @@ public class JPEGImageReader extends ImageReader {
                        (!cs.isCS_sRGB()) &&
                        (cm.getNumComponents() == numComponents)) {
                 // Target isn't sRGB, so convert from sRGB to the target
-                convert = new ColorConvertOp(JPEG.JCS.sRGB, cs, null);
+                convert = new ColorConvertOp(JPEG.sRGB, cs, null);
             } else if (csType != ColorSpace.TYPE_RGB) {
                 throw new IIOException("Incompatible color conversion");
             }
@@ -1058,10 +1106,12 @@ public class JPEGImageReader extends ImageReader {
 
     /////// End of Color Conversion & Image Types
 
+    @Override
     public ImageReadParam getDefaultReadParam() {
         return new JPEGImageReadParam();
     }
 
+    @Override
     public IIOMetadata getStreamMetadata() throws IOException {
         setThreadLock();
         try {
@@ -1075,6 +1125,7 @@ public class JPEGImageReader extends ImageReader {
         }
     }
 
+    @Override
     public IIOMetadata getImageMetadata(int imageIndex)
         throws IOException {
         setThreadLock();
@@ -1101,6 +1152,7 @@ public class JPEGImageReader extends ImageReader {
         }
     }
 
+    @Override
     public BufferedImage read(int imageIndex, ImageReadParam param)
         throws IOException {
         setThreadLock();
@@ -1127,6 +1179,8 @@ public class JPEGImageReader extends ImageReader {
     private Raster readInternal(int imageIndex,
                                 ImageReadParam param,
                                 boolean wantRaster) throws IOException {
+
+        readAsRaster = wantRaster;
         readHeader(imageIndex, false);
 
         WritableRaster imRas = null;
@@ -1137,6 +1191,13 @@ public class JPEGImageReader extends ImageReader {
             Iterator<ImageTypeSpecifier> imageTypes = getImageTypes(imageIndex);
             if (imageTypes.hasNext() == false) {
                 throw new IIOException("Unsupported Image Type");
+            }
+
+            if ((long)width * height > Integer.MAX_VALUE - 2) {
+                // We are not able to properly decode image that has number
+                // of pixels greater than Integer.MAX_VALUE - 2
+                throw new IIOException("Can not read image of the size "
+                        + width + " by " + height);
             }
 
             image = getDestination(param, imageTypes, width, height);
@@ -1161,6 +1222,16 @@ public class JPEGImageReader extends ImageReader {
             setOutColorSpace(structPointer, colorSpaceCode);
             image = null;
         }
+
+         // Adobe seems to have decided that the bytes in CMYK JPEGs
+         // should be stored inverted. So we need some extra logic to
+         // flip them in that case. Don't flip for the raster case
+         // so code that is reading these as rasters today won't
+         // see a change in behaviour.
+         invertCMYK =
+             (!wantRaster &&
+              ((colorSpaceCode == JPEG.JCS_YCCK) ||
+               (colorSpaceCode == JPEG.JCS_CMYK)));
 
         // Create an intermediate 1-line Raster that will hold the decoded,
         // subsampled, clipped, band-selected image data in a single
@@ -1340,6 +1411,21 @@ public class JPEGImageReader extends ImageReader {
      * After the copy, we notify update listeners.
      */
     private void acceptPixels(int y, boolean progressive) {
+
+        /*
+         * CMYK JPEGs seems to be universally inverted at the byte level.
+         * Fix this here before storing.
+         * For "compatibility" don't do this if the target is a raster.
+         * Need to do this here in case the application is listening
+         * for line-by-line updates to the image.
+         */
+        if (invertCMYK) {
+            byte[] data = ((DataBufferByte)raster.getDataBuffer()).getData();
+            for (int i = 0, len = data.length; i < len; i++) {
+                data[i] = (byte)(0x0ff - (data[i] & 0xff));
+            }
+        }
+
         if (convert != null) {
             convert.filter(raster, raster);
         }
@@ -1493,6 +1579,7 @@ public class JPEGImageReader extends ImageReader {
      */
     private native void clearNativeReadAbortFlag(long structPointer);
 
+    @Override
     public void abort() {
         setThreadLock();
         try {
@@ -1514,10 +1601,12 @@ public class JPEGImageReader extends ImageReader {
     /** Resets library state when an exception occurred during a read. */
     private native void resetLibraryState(long structPointer);
 
+    @Override
     public boolean canReadRaster() {
         return true;
     }
 
+    @Override
     public Raster readRaster(int imageIndex, ImageReadParam param)
         throws IOException {
         setThreadLock();
@@ -1556,10 +1645,12 @@ public class JPEGImageReader extends ImageReader {
         return retval;
     }
 
+    @Override
     public boolean readerSupportsThumbnails() {
         return true;
     }
 
+    @Override
     public int getNumThumbnails(int imageIndex) throws IOException {
         setThreadLock();
         try {
@@ -1581,6 +1672,7 @@ public class JPEGImageReader extends ImageReader {
         }
     }
 
+    @Override
     public int getThumbnailWidth(int imageIndex, int thumbnailIndex)
         throws IOException {
         setThreadLock();
@@ -1601,6 +1693,7 @@ public class JPEGImageReader extends ImageReader {
         }
     }
 
+    @Override
     public int getThumbnailHeight(int imageIndex, int thumbnailIndex)
         throws IOException {
         setThreadLock();
@@ -1621,6 +1714,7 @@ public class JPEGImageReader extends ImageReader {
         }
     }
 
+    @Override
     public BufferedImage readThumbnail(int imageIndex,
                                        int thumbnailIndex)
         throws IOException {
@@ -1665,6 +1759,7 @@ public class JPEGImageReader extends ImageReader {
         initProgressData();
     }
 
+    @Override
     public void reset() {
         setThreadLock();
         try {
@@ -1677,6 +1772,7 @@ public class JPEGImageReader extends ImageReader {
 
     private native void resetReader(long structPointer);
 
+    @Override
     public void dispose() {
         setThreadLock();
         try {
@@ -1700,6 +1796,7 @@ public class JPEGImageReader extends ImageReader {
             this.pData = pData;
         }
 
+        @Override
         public synchronized void dispose() {
             if (pData != 0) {
                 disposeReader(pData);
@@ -1787,6 +1884,7 @@ class ImageTypeIterator implements Iterator<ImageTypeSpecifier> {
          this.producers = producers;
      }
 
+     @Override
      public boolean hasNext() {
          if (theNext != null) {
              return true;
@@ -1800,7 +1898,7 @@ class ImageTypeIterator implements Iterator<ImageTypeSpecifier> {
 
          return (theNext != null);
      }
-
+     @Override
      public ImageTypeSpecifier next() {
          if (theNext != null || hasNext()) {
              ImageTypeSpecifier t = theNext;
@@ -1811,6 +1909,7 @@ class ImageTypeIterator implements Iterator<ImageTypeSpecifier> {
          }
      }
 
+     @Override
      public void remove() {
          producers.remove();
      }
@@ -1873,7 +1972,7 @@ class ImageTypeProducer {
             case JPEG.JCS_YCbCr:
             //there is no YCbCr raw type so by default we assume it as RGB
             case JPEG.JCS_RGB:
-                return ImageTypeSpecifier.createInterleaved(JPEG.JCS.sRGB,
+                return ImageTypeSpecifier.createInterleaved(JPEG.sRGB,
                         JPEG.bOffsRGB,
                         DataBuffer.TYPE_BYTE,
                         false,

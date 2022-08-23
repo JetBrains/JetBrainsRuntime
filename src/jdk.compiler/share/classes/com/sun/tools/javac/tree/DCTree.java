@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -326,7 +326,7 @@ public abstract class DCTree implements DocTree {
         }
     }
 
-    public static class DCEndElement extends DCEndPosTree<DCStartElement> implements EndElementTree {
+    public static class DCEndElement extends DCEndPosTree<DCEndElement> implements EndElementTree {
         public final Name name;
 
         DCEndElement(Name name) {
@@ -647,13 +647,15 @@ public abstract class DCTree implements DocTree {
 
         // The following are not directly exposed through ReferenceTree
         // use DocTrees.getElement(DocTreePath)
+        public final JCTree.JCExpression moduleName;
         public final JCTree qualifierExpression;
         public final Name memberName;
         public final List<JCTree> paramTypes;
 
 
-        DCReference(String signature, JCTree qualExpr, Name member, List<JCTree> paramTypes) {
+        DCReference(String signature, JCTree.JCExpression moduleName, JCTree qualExpr, Name member, List<JCTree> paramTypes) {
             this.signature = signature;
+            this.moduleName = moduleName;
             qualifierExpression = qualExpr;
             memberName = member;
             this.paramTypes = paramTypes;
@@ -675,11 +677,18 @@ public abstract class DCTree implements DocTree {
         }
     }
 
-    public static class DCReturn extends DCBlockTag implements ReturnTree {
+    public static class DCReturn extends DCEndPosTree<DCReturn> implements ReturnTree {
+        public final boolean inline;
         public final List<DCTree> description;
 
-        DCReturn(List<DCTree> description) {
+        DCReturn(boolean inline, List<DCTree> description) {
+            this.inline = inline;
             this.description = description;
+        }
+
+        @Override @DefinedBy(Api.COMPILER_TREE)
+        public String getTagName() {
+            return "return";
         }
 
         @Override @DefinedBy(Api.COMPILER_TREE)
@@ -690,6 +699,11 @@ public abstract class DCTree implements DocTree {
         @Override @DefinedBy(Api.COMPILER_TREE)
         public <R, D> R accept(DocTreeVisitor<R, D> v, D d) {
             return v.visitReturn(this, d);
+        }
+
+        @Override @DefinedBy(Api.COMPILER_TREE)
+        public boolean isInline() {
+            return inline;
         }
 
         @Override @DefinedBy(Api.COMPILER_TREE)

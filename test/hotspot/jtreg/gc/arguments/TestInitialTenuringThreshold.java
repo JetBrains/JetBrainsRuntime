@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@ package gc.arguments;
 
 /*
  * @test TestInitialTenuringThreshold
- * @key gc
  * @bug 8014765
  * @requires vm.gc.Parallel
  * @summary Tests argument processing for initial tenuring threshold
@@ -33,7 +32,7 @@ package gc.arguments;
  * @library /
  * @modules java.base/jdk.internal.misc
  *          java.management
- * @run main/othervm gc.arguments.TestInitialTenuringThreshold
+ * @run driver gc.arguments.TestInitialTenuringThreshold
  * @author thomas.schatzl@oracle.com
  */
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -76,8 +76,6 @@ public abstract class FileFont extends PhysicalFont {
      * the native path, since fonts have contiguous zero-based glyph indexes,
      * and these obviously do all exist in the font.
      */
-    protected boolean checkedNatives;
-    protected boolean useNatives;
     protected NativeFont[] nativeFonts;
     protected char[] glyphToCharMap;
     /*
@@ -90,15 +88,7 @@ public abstract class FileFont extends PhysicalFont {
     }
 
     FontStrike createStrike(FontStrikeDesc desc) {
-        if (!checkedNatives) {
-           checkUseNatives();
-        }
         return new FileFontStrike(this, desc);
-    }
-
-    protected boolean checkUseNatives() {
-        checkedNatives = true;
-        return useNatives;
     }
 
     /* This method needs to be accessible to FontManager if there is
@@ -106,6 +96,10 @@ public abstract class FileFont extends PhysicalFont {
      */
     protected abstract void close();
 
+    // for Windows only
+    byte getSupportedCharset() {
+        return 1; // DEFAULT_CHARSET
+    }
 
     /*
      * This is the public interface. The subclasses need to implement
@@ -240,6 +234,16 @@ public abstract class FileFont extends PhysicalFont {
         }
     }
 
+    public GlyphRenderData getGlyphRenderData(long pScalerContext, int glyphCode,
+                                              float x, float y) {
+        try {
+            return getScaler().getGlyphRenderData(pScalerContext, glyphCode, x, y);
+        } catch (FontScalerException fe) {
+            scaler = FontScaler.getNullScaler();
+            return getGlyphRenderData(pScalerContext, glyphCode, x, y);
+        }
+    }
+
     /* T1 & TT implementation differ so this method is abstract.
        NB: null should not be returned here! */
     protected abstract FontScaler getScaler();
@@ -262,6 +266,7 @@ public abstract class FileFont extends PhysicalFont {
             this.tracker = tracker;
         }
 
+        @SuppressWarnings("removal")
         public void dispose() {
             java.security.AccessController.doPrivileged(
                  new java.security.PrivilegedAction<Object>() {
@@ -296,6 +301,7 @@ public abstract class FileFont extends PhysicalFont {
         }
     }
 
+    @SuppressWarnings("removal")
     protected String getPublicFileName() {
         SecurityManager sm = System.getSecurityManager();
         if (sm == null) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,10 +27,6 @@
 #include <string.h>
 #include <sys/ioctl.h>
 
-#if defined(__solaris__)
-#include <sys/filio.h>
-#endif
-
 #include "net_util.h"
 
 #include "java_net_PlainDatagramSocketImpl.h"
@@ -52,11 +48,10 @@
 #endif
 #endif  //  __linux__
 
-#ifdef __solaris__
-#ifndef BSD_COMP
-#define BSD_COMP
-#endif
-#endif
+#ifdef __APPLE__
+#define IPV4_SNDBUF_LIMIT 65507
+#define IPV6_SNDBUF_LIMIT 65527
+#endif  // __APPLE__
 
 #ifndef IPTOS_TOS_MASK
 #define IPTOS_TOS_MASK 0x1e
@@ -498,14 +493,6 @@ Java_java_net_PlainDatagramSocketImpl_peek(JNIEnv *env, jobject this,
     n = NET_RecvFrom(fd, buf, 1, MSG_PEEK, &rmtaddr.sa, &slen);
 
     if (n == -1) {
-
-#ifdef __solaris__
-        if (errno == ECONNREFUSED) {
-            int orig_errno = errno;
-            recv(fd, buf, 1, 0);
-            errno = orig_errno;
-        }
-#endif
         if (errno == ECONNREFUSED) {
             JNU_ThrowByName(env, JNU_JAVANETPKG "PortUnreachableException",
                             "ICMP Port Unreachable");
@@ -632,14 +619,6 @@ Java_java_net_PlainDatagramSocketImpl_peekData(JNIEnv *env, jobject this,
         n = packetBufferLen;
     }
     if (n == -1) {
-
-#ifdef __solaris__
-        if (errno == ECONNREFUSED) {
-            int orig_errno = errno;
-            (void) recv(fd, fullPacket, 1, 0);
-            errno = orig_errno;
-        }
-#endif
         (*env)->SetIntField(env, packet, dp_offsetID, 0);
         (*env)->SetIntField(env, packet, dp_lengthID, 0);
         if (errno == ECONNREFUSED) {
@@ -921,15 +900,8 @@ Java_java_net_PlainDatagramSocketImpl_datagramSocketCreate(JNIEnv *env,
     }
 
 #ifdef __APPLE__
-    arg = 65507;
+    arg = (domain == AF_INET6) ? IPV6_SNDBUF_LIMIT : IPV4_SNDBUF_LIMIT;
     if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF,
-                   (char *)&arg, sizeof(arg)) < 0) {
-        getErrorString(errno, tmpbuf, sizeof(tmpbuf));
-        JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException", tmpbuf);
-        close(fd);
-        return;
-    }
-    if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF,
                    (char *)&arg, sizeof(arg)) < 0) {
         getErrorString(errno, tmpbuf, sizeof(tmpbuf));
         JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException", tmpbuf);
@@ -1853,10 +1825,9 @@ Java_java_net_PlainDatagramSocketImpl_getTimeToLive(JNIEnv *env, jobject this) {
  * we must use the IPv4 socket options. This is because the IPv6 socket options
  * don't support IPv4-mapped addresses. This is true as per 2.2.19 and 2.4.7
  * kernel releases. In the future it's possible that IP_ADD_MEMBERSHIP
- * will be updated to return ENOPROTOOPT if uses with an IPv6 socket (Solaris
- * already does this). Thus to cater for this we first try with the IPv4
- * socket options and if they fail we use the IPv6 socket options. This
- * seems a reasonable failsafe solution.
+ * will be updated to return ENOPROTOOPT if uses with an IPv6 socket. Thus to
+ * cater for this we first try with the IPv4 socket options and if they fail we
+ * use the IPv6 socket options. This seems a reasonable failsafe solution.
  */
 static void mcast_join_leave(JNIEnv *env, jobject this,
                              jobject iaObj, jobject niObj,
@@ -1866,6 +1837,7 @@ static void mcast_join_leave(JNIEnv *env, jobject this,
     jint fd;
     jint family;
     jint ipv6_join_leave;
+    int res;
 
     if (IS_NULL(fdObj)) {
         JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
@@ -2022,9 +1994,17 @@ static void mcast_join_leave(JNIEnv *env, jobject this,
         /*
          * Join the multicast group.
          */
-        if (setsockopt(fd, IPPROTO_IP, (join ? IP_ADD_MEMBERSHIP:IP_DROP_MEMBERSHIP),
-                       (char *) &mname, mname_len) < 0) {
+        res = setsockopt(fd, IPPROTO_IP, (join ? IP_ADD_MEMBERSHIP:IP_DROP_MEMBERSHIP),
+                       (char *) &mname, mname_len);
 
+#ifdef __APPLE__
+        if (res < 0 && errno == ENOMEM) {
+            res = setsockopt(fd, IPPROTO_IP, (join ? IP_ADD_MEMBERSHIP:IP_DROP_MEMBERSHIP),
+                       (char *) &mname, mname_len);
+        }
+#endif
+
+        if (res < 0) {
             /*
              * If IP_ADD_MEMBERSHIP returns ENOPROTOOPT on Linux and we've got
              * IPv6 enabled then it's possible that the kernel has been fixed
@@ -2125,9 +2105,16 @@ static void mcast_join_leave(JNIEnv *env, jobject this,
 #endif
 
         /* Join the multicast group */
-        if (setsockopt(fd, IPPROTO_IPV6, (join ? ADD_MEMBERSHIP : DRP_MEMBERSHIP),
-                       (char *) &mname6, sizeof (mname6)) < 0) {
+        res = setsockopt(fd, IPPROTO_IPV6, (join ? ADD_MEMBERSHIP : DRP_MEMBERSHIP),
+                       (char *) &mname6, sizeof(mname6));
 
+#ifdef __APPLE__
+        if (res < 0 && errno == ENOMEM) {
+            res = setsockopt(fd, IPPROTO_IPV6, (join ? ADD_MEMBERSHIP : DRP_MEMBERSHIP),
+                       (char *) &mname6, sizeof(mname6));
+        }
+#endif
+        if (res < 0) {
             if (join) {
                 NET_ThrowCurrent(env, "setsockopt " S_ADD_MEMBERSHIP " failed");
             } else {

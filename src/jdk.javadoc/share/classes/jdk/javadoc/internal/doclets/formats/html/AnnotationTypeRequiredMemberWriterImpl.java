@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,17 +25,17 @@
 
 package jdk.javadoc.internal.doclets.formats.html;
 
+import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
+import jdk.javadoc.internal.doclets.formats.html.markup.Comment;
 import jdk.javadoc.internal.doclets.formats.html.markup.ContentBuilder;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
-import jdk.javadoc.internal.doclets.formats.html.markup.StringContent;
-import jdk.javadoc.internal.doclets.formats.html.markup.Table;
-import jdk.javadoc.internal.doclets.formats.html.markup.TableHeader;
+import jdk.javadoc.internal.doclets.formats.html.markup.Text;
 import jdk.javadoc.internal.doclets.toolkit.AnnotationTypeRequiredMemberWriter;
 import jdk.javadoc.internal.doclets.toolkit.Content;
 import jdk.javadoc.internal.doclets.toolkit.MemberSummaryWriter;
@@ -63,43 +63,36 @@ public class AnnotationTypeRequiredMemberWriterImpl extends AbstractMemberWriter
         super(writer, annotationType);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
     public Content getMemberSummaryHeader(TypeElement typeElement,
             Content memberSummaryTree) {
-        memberSummaryTree.add(
-                MarkerComments.START_OF_ANNOTATION_TYPE_REQUIRED_MEMBER_SUMMARY);
+        memberSummaryTree.add(selectComment(
+                MarkerComments.START_OF_ANNOTATION_TYPE_REQUIRED_MEMBER_SUMMARY,
+                MarkerComments.START_OF_ANNOTATION_INTERFACE_REQUIRED_MEMBER_SUMMARY));
         Content memberTree = new ContentBuilder();
         writer.addSummaryHeader(this, memberTree);
         return memberTree;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
     public Content getMemberTreeHeader() {
         return writer.getMemberTreeHeader();
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public void addMemberTree(Content memberSummaryTree, Content memberTree) {
-        writer.addMemberTree(HtmlStyle.memberSummary,
-                SectionName.ANNOTATION_TYPE_REQUIRED_ELEMENT_SUMMARY, memberSummaryTree, memberTree);
+    @Override
+    public void addSummary(Content summariesList, Content content) {
+        writer.addSummary(HtmlStyle.memberSummary,
+                HtmlIds.ANNOTATION_TYPE_REQUIRED_ELEMENT_SUMMARY, summariesList, content);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
     public void addAnnotationDetailsMarker(Content memberDetails) {
-        memberDetails.add(MarkerComments.START_OF_ANNOTATION_TYPE_DETAILS);
+        memberDetails.add(selectComment(
+                MarkerComments.START_OF_ANNOTATION_TYPE_DETAILS,
+                MarkerComments.START_OF_ANNOTATION_INTERFACE_DETAILS));
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
     public Content getAnnotationDetailsTreeHeader() {
         Content memberDetailsTree = new ContentBuilder();
         if (!writer.printedAnnotationHeading) {
@@ -111,68 +104,51 @@ public class AnnotationTypeRequiredMemberWriterImpl extends AbstractMemberWriter
         return memberDetailsTree;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public Content getAnnotationDocTreeHeader(Element member) {
-        String simpleName = name(member);
         Content annotationDocTree = new ContentBuilder();
-        Content heading = new HtmlTree(Headings.TypeDeclaration.MEMBER_HEADING,
-                new StringContent(simpleName));
+        Content heading = HtmlTree.HEADING(Headings.TypeDeclaration.MEMBER_HEADING,
+                Text.of(name(member)));
         annotationDocTree.add(heading);
         return HtmlTree.SECTION(HtmlStyle.detail, annotationDocTree)
-                .setId(simpleName + utils.signature((ExecutableElement) member));
+                .setId(htmlIds.forMember(typeElement, (ExecutableElement) member));
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
     public Content getSignature(Element member) {
-        return new MemberSignature(member)
-                .addType(getType(member))
+        return new Signatures.MemberSignature(member, this)
+                .setType(getType(member))
+                .setAnnotations(writer.getAnnotationInfo(member, true))
                 .toContent();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
     public void addDeprecated(Element member, Content annotationDocTree) {
         addDeprecatedInfo(member, annotationDocTree);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
+    public void addPreview(Element member, Content contentTree) {
+        addPreviewInfo(member, contentTree);
+    }
+
+    @Override
     public void addComments(Element member, Content annotationDocTree) {
         addComment(member, annotationDocTree);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
     public void addTags(Element member, Content annotationDocTree) {
         writer.addTagsInfo(member, annotationDocTree);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
     public Content getAnnotationDetails(Content annotationDetailsTreeHeader, Content annotationDetailsTree) {
         Content annotationDetails = new ContentBuilder(annotationDetailsTreeHeader, annotationDetailsTree);
         return getMemberTree(HtmlTree.SECTION(HtmlStyle.memberDetails, annotationDetails));
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public Content getAnnotationDoc(Content annotationDocTree) {
-        return getMemberTree(annotationDocTree);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
+    @Override
     public void addSummaryLabel(Content memberTree) {
         HtmlTree label = HtmlTree.HEADING(Headings.TypeDeclaration.SUMMARY_HEADING,
                 contents.annotateTypeRequiredMemberSummaryLabel);
@@ -188,65 +164,54 @@ public class AnnotationTypeRequiredMemberWriterImpl extends AbstractMemberWriter
         return contents.getContent("doclet.Annotation_Type_Required_Members");
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public TableHeader getSummaryTableHeader(Element member) {
         return new TableHeader(contents.modifierAndTypeLabel,
                 contents.annotationTypeRequiredMemberLabel, contents.descriptionLabel);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     protected Table createSummaryTable() {
-        return new Table(HtmlStyle.memberSummary)
+        return new Table(HtmlStyle.summaryTable)
                 .setCaption(getCaption())
                 .setHeader(getSummaryTableHeader(typeElement))
-                .setRowScopeColumn(1)
                 .setColumnStyles(HtmlStyle.colFirst, HtmlStyle.colSecond, HtmlStyle.colLast);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
     public void addInheritedSummaryLabel(TypeElement typeElement, Content inheritedTree) {
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    protected void addSummaryLink(LinkInfoImpl.Kind context, TypeElement typeElement, Element member,
-            Content tdSummary) {
-        Content memberLink = HtmlTree.SPAN(HtmlStyle.memberNameLink,
-                writer.getDocLink(context, member, name(member), false));
+    @Override
+    protected void addSummaryLink(HtmlLinkInfo.Kind context, TypeElement typeElement, Element member,
+                                  Content tdSummary) {
+        Content memberLink = writer.getDocLink(context, utils.getEnclosingTypeElement(member), member,
+                name(member), HtmlStyle.memberNameLink);
         Content code = HtmlTree.CODE(memberLink);
         tdSummary.add(code);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
     protected void addInheritedSummaryLink(TypeElement typeElement,
             Element member, Content linksTree) {
         //Not applicable.
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
     protected void addSummaryType(Element member, Content tdSummaryType) {
         addModifierAndType(member, getType(member), tdSummaryType);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    protected Content getDeprecatedLink(Element member) {
+    @Override
+    protected Content getSummaryLink(Element member) {
         String name = utils.getFullyQualifiedName(member) + "." + member.getSimpleName();
-        return writer.getDocLink(LinkInfoImpl.Kind.MEMBER, member, name);
+        return writer.getDocLink(HtmlLinkInfo.Kind.MEMBER_DEPRECATED_PREVIEW, member, name);
+    }
+
+    protected Comment selectComment(Comment c1, Comment c2) {
+        HtmlConfiguration configuration = writer.configuration;
+        SourceVersion sv = configuration.docEnv.getSourceVersion();
+        return sv.compareTo(SourceVersion.RELEASE_16) < 0 ? c1 : c2;
     }
 
     private TypeMirror getType(Element member) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,27 +34,21 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.CertPath;
 import java.security.cert.X509Certificate;
 import java.security.*;
+import java.security.spec.PSSParameterSpec;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.EnumSet;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
+import sun.security.provider.SHAKE256;
 import sun.security.timestamp.TimestampToken;
-import sun.security.util.ConstraintsParameters;
-import sun.security.util.Debug;
-import sun.security.util.DerEncoder;
-import sun.security.util.DerInputStream;
-import sun.security.util.DerOutputStream;
-import sun.security.util.DerValue;
-import sun.security.util.DisabledAlgorithmConstraints;
-import sun.security.util.HexDumpEncoder;
-import sun.security.util.KeyUtil;
-import sun.security.util.ObjectIdentifier;
+import sun.security.util.*;
 import sun.security.x509.AlgorithmId;
 import sun.security.x509.X500Name;
 import sun.security.x509.KeyUsageExtension;
-import sun.security.util.SignatureUtil;
 
 /**
  * A SignerInfo, as defined in PKCS#7's signedData type.
@@ -63,16 +57,8 @@ import sun.security.util.SignatureUtil;
  */
 public class SignerInfo implements DerEncoder {
 
-    // Digest and Signature restrictions
-    private static final Set<CryptoPrimitive> DIGEST_PRIMITIVE_SET =
-            Collections.unmodifiableSet(EnumSet.of(CryptoPrimitive.MESSAGE_DIGEST));
-
-    private static final Set<CryptoPrimitive> SIG_PRIMITIVE_SET =
-            Collections.unmodifiableSet(EnumSet.of(CryptoPrimitive.SIGNATURE));
-
     private static final DisabledAlgorithmConstraints JAR_DISABLED_CHECK =
-            new DisabledAlgorithmConstraints(
-                    DisabledAlgorithmConstraints.PROPERTY_JAR_DISABLED_ALGS);
+            DisabledAlgorithmConstraints.jarConstraints();
 
     BigInteger version;
     X500Name issuerName;
@@ -87,17 +73,21 @@ public class SignerInfo implements DerEncoder {
     PKCS9Attributes authenticatedAttributes;
     PKCS9Attributes unauthenticatedAttributes;
 
+    /**
+     * A map containing the algorithms in this SignerInfo. This is used to
+     * avoid checking algorithms to see if they are disabled more than once.
+     * The key is the AlgorithmId of the algorithm, and the value is the name of
+     * the field or attribute.
+     */
+    private Map<AlgorithmId, String> algorithms = new HashMap<>();
+
     public SignerInfo(X500Name  issuerName,
                       BigInteger serial,
                       AlgorithmId digestAlgorithmId,
                       AlgorithmId digestEncryptionAlgorithmId,
                       byte[] encryptedDigest) {
-        this.version = BigInteger.ONE;
-        this.issuerName = issuerName;
-        this.certificateSerialNumber = serial;
-        this.digestAlgorithmId = digestAlgorithmId;
-        this.digestEncryptionAlgorithmId = digestEncryptionAlgorithmId;
-        this.encryptedDigest = encryptedDigest;
+        this(issuerName, serial, digestAlgorithmId, null,
+                digestEncryptionAlgorithmId, encryptedDigest, null);
     }
 
     public SignerInfo(X500Name  issuerName,
@@ -144,6 +134,9 @@ public class SignerInfo implements DerEncoder {
 
         // issuerAndSerialNumber
         DerValue[] issuerAndSerialNumber = derin.getSequence(2);
+        if (issuerAndSerialNumber.length != 2) {
+            throw new ParsingException("Invalid length for IssuerAndSerialNumber");
+        }
         byte[] issuerBytes = issuerAndSerialNumber[0].toByteArray();
         issuerName = new X500Name(new DerValue(DerValue.tag_Sequence,
                                                issuerBytes));
@@ -195,6 +188,36 @@ public class SignerInfo implements DerEncoder {
         if (derin.available() != 0) {
             throw new ParsingException("extra data at the end");
         }
+
+        // verify CMSAlgorithmProtection
+        checkCMSAlgorithmProtection();
+    }
+
+    // CMSAlgorithmProtection verification as described in RFC 6211
+    private void checkCMSAlgorithmProtection() throws IOException {
+        if (authenticatedAttributes == null) {
+            return;
+        }
+        PKCS9Attribute ap = authenticatedAttributes.getAttribute(
+                PKCS9Attribute.CMS_ALGORITHM_PROTECTION_OID);
+        if (ap == null) {
+            return;
+        }
+        DerValue dv = new DerValue((byte[])ap.getValue());
+        DerInputStream data = dv.data();
+        AlgorithmId d = AlgorithmId.parse(data.getDerValue());
+        DerValue ds = data.getDerValue();
+        if (data.available() > 0) {
+            throw new IOException("Unknown field in CMSAlgorithmProtection");
+        }
+        if (!ds.isContextSpecific((byte)1)) {
+            throw new IOException("No signature algorithm in CMSAlgorithmProtection");
+        }
+        AlgorithmId s = AlgorithmId.parse(ds.withTag(DerValue.tag_Sequence));
+        if (!s.equals(digestEncryptionAlgorithmId)
+                || !d.equals(digestAlgorithmId)) {
+            throw new IOException("CMSAlgorithmProtection check failed");
+        }
     }
 
     public void encode(DerOutputStream out) throws IOException {
@@ -239,8 +262,6 @@ public class SignerInfo implements DerEncoder {
         out.write(tmp.toByteArray());
     }
 
-
-
     /*
      * Returns the (user) certificate pertaining to this SignerInfo.
      */
@@ -266,26 +287,26 @@ public class SignerInfo implements DerEncoder {
 
         X509Certificate[] pkcsCerts = block.getCertificates();
         if (pkcsCerts == null
-            || userCert.getSubjectDN().equals(userCert.getIssuerDN())) {
+            || userCert.getSubjectX500Principal().equals(userCert.getIssuerX500Principal())) {
             return certList;
         }
 
-        Principal issuer = userCert.getIssuerDN();
+        Principal issuer = userCert.getIssuerX500Principal();
         int start = 0;
         while (true) {
             boolean match = false;
             int i = start;
             while (i < pkcsCerts.length) {
-                if (issuer.equals(pkcsCerts[i].getSubjectDN())) {
+                if (issuer.equals(pkcsCerts[i].getSubjectX500Principal())) {
                     // next cert in chain found
                     certList.add(pkcsCerts[i]);
                     // if selected cert is self-signed, we're done
                     // constructing the chain
-                    if (pkcsCerts[i].getSubjectDN().equals(
-                                            pkcsCerts[i].getIssuerDN())) {
+                    if (pkcsCerts[i].getSubjectX500Principal().equals(
+                                            pkcsCerts[i].getIssuerX500Principal())) {
                         start = pkcsCerts.length;
                     } else {
-                        issuer = pkcsCerts[i].getIssuerDN();
+                        issuer = pkcsCerts[i].getIssuerX500Principal();
                         X509Certificate tmpCert = pkcsCerts[start];
                         pkcsCerts[start] = pkcsCerts[i];
                         pkcsCerts[i] = tmpCert;
@@ -310,21 +331,26 @@ public class SignerInfo implements DerEncoder {
     throws NoSuchAlgorithmException, SignatureException {
 
         try {
+            Timestamp timestamp = null;
+            try {
+                timestamp = getTimestamp();
+            } catch (Exception e) {
+                // Log exception and continue. This allows for the case
+                // where, if there are no other errors, the code is
+                // signed but w/o a timestamp.
+                if (debug != null) {
+                    debug.println("Unexpected exception while getting" +
+                                  " timestamp: " + e);
+                }
+            }
 
             ContentInfo content = block.getContentInfo();
             if (data == null) {
                 data = content.getContentBytes();
             }
 
-            Timestamp timestamp = null;
-            try {
-                timestamp = getTimestamp();
-            } catch (Exception ignore) {
-            }
-
-            ConstraintsParameters cparams =
-                    new ConstraintsParameters(timestamp);
-            String digestAlgname = getDigestAlgorithmId().getName();
+            String digestAlgName = digestAlgorithmId.getName();
+            algorithms.put(digestAlgorithmId, "SignerInfo digestAlgorithm field");
 
             byte[] dataSigned;
 
@@ -350,21 +376,34 @@ public class SignerInfo implements DerEncoder {
                 if (messageDigest == null) // fail if there is no message digest
                     return null;
 
-                // check that digest algorithm is not restricted
-                try {
-                    JAR_DISABLED_CHECK.permits(digestAlgname, cparams);
-                } catch (CertPathValidatorException e) {
-                    throw new SignatureException(e.getMessage(), e);
+                byte[] computedMessageDigest;
+                if (digestAlgName.equals("SHAKE256")
+                        || digestAlgName.equals("SHAKE256-LEN")) {
+                    if (digestAlgName.equals("SHAKE256-LEN")) {
+                        // RFC8419: for EdDSA in CMS, the id-shake256-len
+                        // algorithm id must contain parameter value 512
+                        // encoded as a positive integer value
+                        byte[] params = digestAlgorithmId.getEncodedParams();
+                        if (params == null) {
+                            throw new SignatureException(
+                                    "id-shake256-len oid missing length");
+                        }
+                        int v = new DerValue(params).getInteger();
+                        if (v != 512) {
+                            throw new SignatureException(
+                                    "Unsupported id-shake256-" + v);
+                        }
+                    }
+                    var md = new SHAKE256(64);
+                    md.update(data, 0, data.length);
+                    computedMessageDigest = md.digest();
+                } else {
+                    MessageDigest md = MessageDigest.getInstance(digestAlgName);
+                    computedMessageDigest = md.digest(data);
                 }
 
-                MessageDigest md = MessageDigest.getInstance(digestAlgname);
-                byte[] computedMessageDigest = md.digest(data);
-
-                if (messageDigest.length != computedMessageDigest.length)
+                if (!MessageDigest.isEqual(messageDigest, computedMessageDigest)) {
                     return null;
-                for (int i = 0; i < messageDigest.length; i++) {
-                    if (messageDigest[i] != computedMessageDigest[i])
-                        return null;
                 }
 
                 // message digest attribute matched
@@ -377,22 +416,19 @@ public class SignerInfo implements DerEncoder {
             }
 
             // put together digest algorithm and encryption algorithm
-            // to form signing algorithm
-            String encryptionAlgname =
-                getDigestEncryptionAlgorithmId().getName();
+            // to form signing algorithm. See makeSigAlg for details.
+            String sigAlgName = makeSigAlg(
+                    digestAlgorithmId,
+                    digestEncryptionAlgorithmId,
+                    authenticatedAttributes == null);
 
-            // Workaround: sometimes the encryptionAlgname is actually
-            // a signature name
-            String tmp = AlgorithmId.getEncAlgFromSigAlg(encryptionAlgname);
-            if (tmp != null) encryptionAlgname = tmp;
-            String algname = AlgorithmId.makeSigAlg(
-                    digestAlgname, encryptionAlgname);
-
-            // check that jar signature algorithm is not restricted
-            try {
-                JAR_DISABLED_CHECK.permits(algname, cparams);
-            } catch (CertPathValidatorException e) {
-                throw new SignatureException(e.getMessage(), e);
+            KnownOIDs oid = KnownOIDs.findMatch(sigAlgName);
+            if (oid != null) {
+                AlgorithmId sigAlgId =
+                    new AlgorithmId(ObjectIdentifier.of(oid),
+                            digestEncryptionAlgorithmId.getParameters());
+                algorithms.put(sigAlgId,
+                    "SignerInfo digestEncryptionAlgorithm field");
             }
 
             X509Certificate cert = getCertificate(block);
@@ -400,14 +436,6 @@ public class SignerInfo implements DerEncoder {
                 return null;
             }
             PublicKey key = cert.getPublicKey();
-
-            // check if the public key is restricted
-            if (!JAR_DISABLED_CHECK.permits(SIG_PRIMITIVE_SET, key)) {
-                throw new SignatureException("Public key check failed. " +
-                        "Disabled key used: " +
-                        KeyUtil.getKeySize(key) + " bit " +
-                        key.getAlgorithm());
-            }
 
             if (cert.hasUnsupportedCriticalExtension()) {
                 throw new SignatureException("Certificate has unsupported "
@@ -432,11 +460,11 @@ public class SignerInfo implements DerEncoder {
                                                  + "extension");
                 }
 
-                boolean digSigAllowed = keyUsage.get(
-                        KeyUsageExtension.DIGITAL_SIGNATURE).booleanValue();
+                boolean digSigAllowed
+                        = keyUsage.get(KeyUsageExtension.DIGITAL_SIGNATURE);
 
-                boolean nonRepuAllowed = keyUsage.get(
-                        KeyUsageExtension.NON_REPUDIATION).booleanValue();
+                boolean nonRepuAllowed
+                        = keyUsage.get(KeyUsageExtension.NON_REPUDIATION);
 
                 if (!digSigAllowed && !nonRepuAllowed) {
                     throw new SignatureException("Key usage restricted: "
@@ -445,13 +473,13 @@ public class SignerInfo implements DerEncoder {
                 }
             }
 
-            Signature sig = Signature.getInstance(algname);
+            Signature sig = Signature.getInstance(sigAlgName);
 
             AlgorithmParameters ap =
                 digestEncryptionAlgorithmId.getParameters();
             try {
                 SignatureUtil.initVerifyWithParam(sig, key,
-                    SignatureUtil.getParamSpec(algname, ap));
+                    SignatureUtil.getParamSpec(sigAlgName, ap));
             } catch (ProviderException | InvalidAlgorithmParameterException |
                      InvalidKeyException e) {
                 throw new SignatureException(e.getMessage(), e);
@@ -462,10 +490,80 @@ public class SignerInfo implements DerEncoder {
                 return this;
             }
         } catch (IOException e) {
-            throw new SignatureException("IO error verifying signature:\n" +
-                                         e.getMessage());
+            throw new SignatureException("Error verifying signature", e);
         }
         return null;
+    }
+
+    /**
+     * Derives the signature algorithm name from the digest algorithm
+     * and the encryption algorithm inside a PKCS7 SignerInfo.
+     *
+     * The digest algorithm is in the form "DIG", and the encryption
+     * algorithm can be in any of the 3 forms:
+     *
+     * 1. Old style key algorithm like RSA, DSA, EC, this method returns
+     *    DIGwithKEY.
+     * 2. New style signature algorithm in the form of HASHwithKEY, this
+     *    method returns DIGwithKEY. Please note this is not HASHwithKEY.
+     * 3. Modern signature algorithm like RSASSA-PSS and EdDSA, this method
+     *    returns the signature algorithm itself but ensures digAlgId is
+     *    compatible with the algorithm as described in RFC 4056 and 8419.
+     *
+     * @param digAlgId the digest algorithm
+     * @param encAlgId the encryption algorithm
+     * @param directSign whether the signature is calculated on the content
+     *                   directly. This makes difference for Ed448.
+     */
+    public static String makeSigAlg(AlgorithmId digAlgId, AlgorithmId encAlgId,
+            boolean directSign) throws NoSuchAlgorithmException {
+        String encAlg = encAlgId.getName();
+        switch (encAlg) {
+            case "RSASSA-PSS":
+                PSSParameterSpec spec = (PSSParameterSpec)
+                        SignatureUtil.getParamSpec(encAlg, encAlgId.getParameters());
+                /*
+                 * RFC 4056 section 3 for Signed-data:
+                 * signatureAlgorithm MUST contain id-RSASSA-PSS. The algorithm
+                 * parameters field MUST contain RSASSA-PSS-params.
+                 */
+                if (spec == null) {
+                    throw new NoSuchAlgorithmException("Missing PSSParameterSpec for RSASSA-PSS algorithm");
+                }
+
+                if (!AlgorithmId.get(spec.getDigestAlgorithm()).equals(digAlgId)) {
+                    throw new NoSuchAlgorithmException("Incompatible digest algorithm");
+                }
+                return encAlg;
+            case "Ed25519":
+                if (!digAlgId.equals(SignatureUtil.EdDSADigestAlgHolder.sha512)) {
+                    throw new NoSuchAlgorithmException("Incompatible digest algorithm");
+                }
+                return encAlg;
+            case "Ed448":
+                if (directSign) {
+                    if (!digAlgId.equals(SignatureUtil.EdDSADigestAlgHolder.shake256)) {
+                        throw new NoSuchAlgorithmException("Incompatible digest algorithm");
+                    }
+                } else {
+                    if (!digAlgId.equals(SignatureUtil.EdDSADigestAlgHolder.shake256$512)) {
+                        throw new NoSuchAlgorithmException("Incompatible digest algorithm");
+                    }
+                }
+                return encAlg;
+            default:
+                String digAlg = digAlgId.getName();
+                String keyAlg = SignatureUtil.extractKeyAlgFromDwithE(encAlg);
+                if (keyAlg == null) {
+                    // The encAlg used to be only the key alg
+                    keyAlg = encAlg;
+                }
+                if (digAlg.startsWith("SHA-")) {
+                    digAlg = "SHA" + digAlg.substring(4);
+                }
+                if (keyAlg.equals("EC")) keyAlg = "ECDSA";
+                return digAlg + "with" + keyAlg;
+        }
     }
 
     /* Verify the content of the pkcs7 block. */
@@ -561,6 +659,9 @@ public class SignerInfo implements DerEncoder {
         // Extract the signer (the Timestamping Authority)
         // while verifying the content
         SignerInfo[] tsa = tsToken.verify(encTsTokenInfo);
+        if (tsa == null || tsa.length == 0) {
+            throw new SignatureException("Unable to verify timestamp");
+        }
         // Expect only one signer
         ArrayList<X509Certificate> chain = tsa[0].getCertificateChain(tsToken);
         CertificateFactory cf = CertificateFactory.getInstance("X.509");
@@ -569,6 +670,7 @@ public class SignerInfo implements DerEncoder {
         TimestampToken tsTokenInfo = new TimestampToken(encTsTokenInfo);
         // Check that the signature timestamp applies to this signature
         verifyTimestamp(tsTokenInfo);
+        algorithms.putAll(tsa[0].algorithms);
         // Create a timestamp object
         timestamp = new Timestamp(tsTokenInfo.getDate(), tsaChain);
         return timestamp;
@@ -581,18 +683,13 @@ public class SignerInfo implements DerEncoder {
      */
     private void verifyTimestamp(TimestampToken token)
         throws NoSuchAlgorithmException, SignatureException {
-        String digestAlgname = token.getHashAlgorithm().getName();
-        // check that algorithm is not restricted
-        if (!JAR_DISABLED_CHECK.permits(DIGEST_PRIMITIVE_SET, digestAlgname,
-                null)) {
-            throw new SignatureException("Timestamp token digest check failed. " +
-                    "Disabled algorithm used: " + digestAlgname);
-        }
 
-        MessageDigest md =
-            MessageDigest.getInstance(digestAlgname);
+        AlgorithmId digestAlgId = token.getHashAlgorithm();
+        algorithms.put(digestAlgId, "TimestampToken digestAlgorithm field");
 
-        if (!Arrays.equals(token.getHashedMessage(),
+        MessageDigest md = MessageDigest.getInstance(digestAlgId.getName());
+
+        if (!MessageDigest.isEqual(token.getHashedMessage(),
             md.digest(encryptedDigest))) {
 
             throw new SignatureException("Signature timestamp (#" +
@@ -632,5 +729,36 @@ public class SignerInfo implements DerEncoder {
                    unauthenticatedAttributes + "\n";
         }
         return out;
+    }
+
+    /**
+     * Verify all of the algorithms in the array of SignerInfos against the
+     * constraints in the jdk.jar.disabledAlgorithms security property.
+     *
+     * @param infos array of SignerInfos
+     * @param params constraint parameters
+     * @param name the name of the signer's PKCS7 file
+     * @return a set of algorithms that passed the checks and are not disabled
+     */
+    public static Set<String> verifyAlgorithms(SignerInfo[] infos,
+        JarConstraintsParameters params, String name) throws SignatureException {
+        Map<AlgorithmId, String> algorithms = new HashMap<>();
+        for (SignerInfo info : infos) {
+            algorithms.putAll(info.algorithms);
+        }
+
+        Set<String> enabledAlgorithms = new HashSet<>();
+        try {
+            for (Map.Entry<AlgorithmId, String> algorithm : algorithms.entrySet()) {
+                params.setExtendedExceptionMsg(name, algorithm.getValue());
+                AlgorithmId algId = algorithm.getKey();
+                JAR_DISABLED_CHECK.permits(algId.getName(),
+                    algId.getParameters(), params);
+                enabledAlgorithms.add(algId.getName());
+            }
+        } catch (CertPathValidatorException e) {
+            throw new SignatureException(e);
+        }
+        return enabledAlgorithms;
     }
 }

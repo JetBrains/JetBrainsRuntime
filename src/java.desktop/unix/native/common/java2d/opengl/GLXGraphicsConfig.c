@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,6 +47,64 @@ extern Bool usingXinerama;
  */
 static GLXContext sharedContext = 0;
 
+static jboolean
+isSoftwareRenderer(void)
+{
+    jboolean isLLVMPipeline = JNI_TRUE; // Assume the worst
+    const int attributes[] = {
+      GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+      GLX_RENDER_TYPE,   GLX_RGBA_BIT,
+      GLX_RED_SIZE,      1,   /* Request a single buffered color buffer */
+      GLX_GREEN_SIZE,    1,   /* with the maximum number of color bits  */
+      GLX_BLUE_SIZE,     1,   /* for each component                     */
+      None
+    };
+    const int scrnum = DefaultScreen(awt_display);
+    int nconfs;
+    GLXFBConfig *fbConfigs = j2d_glXChooseFBConfig(awt_display, scrnum,
+                                                   attributes, &nconfs);
+    if ((fbConfigs == NULL) || (nconfs <= 0)) {
+        return isLLVMPipeline;
+    }
+
+    XVisualInfo *visinfo = j2d_glXGetVisualFromFBConfig(awt_display, fbConfigs[0]);
+    if (visinfo == NULL) {
+        XFree(fbConfigs);
+        return isLLVMPipeline;
+    }
+
+    GLXContext ctx = j2d_glXCreateNewContext(awt_display, fbConfigs[0],
+                                             GLX_RGBA_TYPE, 0, GL_TRUE);
+    if (ctx == 0) {
+        XFree(visinfo);
+        XFree(fbConfigs);
+        return isLLVMPipeline;
+    }
+
+    const Window root = RootWindow(awt_display, scrnum);
+    XSetWindowAttributes attr;
+    attr.background_pixel = 0;
+    attr.border_pixel = 0;
+    attr.colormap = XCreateColormap(awt_display, root, visinfo->visual, AllocNone);
+    attr.event_mask = StructureNotifyMask | ExposureMask;
+    const unsigned long mask = CWBackPixel | CWBorderPixel | CWColormap | CWEventMask;
+    const Window win = XCreateWindow(awt_display, root, 0, 0, 1, 1,
+                                     0, visinfo->depth, InputOutput,
+                                     visinfo->visual, mask, &attr);
+
+    if (j2d_glXMakeContextCurrent(awt_display, win, win, ctx)) {
+        const char * renderer = j2d_glXQueryCurrentRendererStringMESA(GLX_RENDERER_DEVICE_ID_MESA);
+        isLLVMPipeline = (strstr(renderer, "llvmpipe") != NULL);
+    }
+
+    XDestroyWindow(awt_display, win);
+    j2d_glXDestroyContext(awt_display, ctx);
+    XFree(visinfo);
+    XFree(fbConfigs);
+
+    return isLLVMPipeline;
+}
+
 /**
  * Attempts to initialize GLX and the core OpenGL library.  For this method
  * to return JNI_TRUE, the following must be true:
@@ -59,7 +117,7 @@ static GLXContext sharedContext = 0;
  * GraphicsConfig in the environment.
  */
 static jboolean
-GLXGC_InitGLX()
+GLXGC_InitGLX(jboolean glxRecommended)
 {
     int errorbase, eventbase;
     const char *version;
@@ -105,6 +163,14 @@ GLXGC_InitGLX()
         return JNI_FALSE;
     }
 
+    if (glxRecommended) {
+        if (isSoftwareRenderer()) {
+          // There are severe glitches when using software renderer, so
+          // if the OpenGL pipeline is merely recommended and not forced,
+          // report that it is not useable.
+          return JNI_FALSE;
+        }
+    }
     return JNI_TRUE;
 }
 
@@ -115,7 +181,7 @@ GLXGC_InitGLX()
  * calling this method.
  */
 jboolean
-GLXGC_IsGLXAvailable()
+GLXGC_IsGLXAvailable(jboolean glxRecommended)
 {
     static jboolean glxAvailable = JNI_FALSE;
     static jboolean firstTime = JNI_TRUE;
@@ -123,7 +189,7 @@ GLXGC_IsGLXAvailable()
     J2dTraceLn(J2D_TRACE_INFO, "GLXGC_IsGLXAvailable");
 
     if (firstTime) {
-        glxAvailable = GLXGC_InitGLX();
+        glxAvailable = GLXGC_InitGLX(glxRecommended);
         firstTime = JNI_FALSE;
     }
 
@@ -279,28 +345,6 @@ GLXGC_InitFBConfig(JNIEnv *env, jint screennum, VisualID visualid)
                 "[V]     id=0x%x db=%d alpha=%d depth=%d stencil=%d valid=",
                          fbvisualid, db, alpha, depth, stencil);
 
-#ifdef __sparc
-            /*
-             * Sun's OpenGL implementation will always
-             * return at least two GLXFBConfigs (visuals) from
-             * glXChooseFBConfig().  The first will be a linear (gamma
-             * corrected) visual; the second will have the same capabilities
-             * as the first, except it will be a non-linear (non-gamma
-             * corrected) visual, which is the one we want, otherwise
-             * everything will look "washed out".  So we will reject any
-             * visuals that have gamma values other than 1.0 (the value
-             * returned by glXGetFBConfigAttrib() will be scaled
-             * by 100, so 100 corresponds to a gamma value of 1.0, 220
-             * corresponds to 2.2, and so on).
-             */
-            j2d_glXGetFBConfigAttrib(awt_display, fbc,
-                                     GLX_GAMMA_VALUE_SUN, &gamma);
-            if (gamma != 100) {
-                J2dRlsTrace(J2D_TRACE_VERBOSE, "false (linear visual)\n");
-                continue;
-            }
-#endif /* __sparc */
-
             if ((dtype & GLX_WINDOW_BIT) &&
                 (dtype & GLX_PBUFFER_BIT) &&
                 (rtype & GLX_RGBA_BIT) &&
@@ -361,7 +405,7 @@ GLXGC_FindBestVisual(JNIEnv *env, jint screen)
 
     J2dRlsTraceLn1(J2D_TRACE_INFO, "GLXGC_FindBestVisual: scn=%d", screen);
 
-    if (!GLXGC_IsGLXAvailable()) {
+    if (!GLXGC_IsGLXAvailable(JNI_FALSE)) {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
             "GLXGC_FindBestVisual: could not initialize GLX");
         return 0;
@@ -525,40 +569,6 @@ Java_sun_java2d_opengl_GLXGraphicsConfig_getGLXConfigInfo(JNIEnv *env,
     // the context must be made current before we can query the
     // version and extension strings
     j2d_glXMakeContextCurrent(awt_display, scratch, scratch, context);
-
-#ifdef __sparc
-    /*
-     * 6438225: The software rasterizer used by Sun's OpenGL libraries
-     * for certain boards has quality issues, and besides, performance
-     * of these boards is not high enough to justify the use of the
-     * OpenGL-based Java 2D pipeline.  If we detect one of the following
-     * boards via the GL_RENDERER string, just give up:
-     *   - FFB[2[+]] ("Creator[3D]")
-     *   - PGX-series ("m64")
-     *   - AFB ("Elite3D")
-     */
-    {
-        const char *renderer = (const char *)j2d_glGetString(GL_RENDERER);
-
-        J2dRlsTraceLn1(J2D_TRACE_VERBOSE,
-            "GLXGraphicsConfig_getGLXConfigInfo: detected renderer (%s)",
-            (renderer == NULL) ? "null" : renderer);
-
-        if (renderer == NULL ||
-            strncmp(renderer, "Creator", 7) == 0 ||
-            strncmp(renderer, "SUNWm64", 7) == 0 ||
-            strncmp(renderer, "Elite", 5) == 0)
-        {
-            J2dRlsTraceLn1(J2D_TRACE_ERROR,
-                "GLXGraphicsConfig_getGLXConfigInfo: unsupported board (%s)",
-                (renderer == NULL) ? "null" : renderer);
-            j2d_glXMakeContextCurrent(awt_display, None, None, NULL);
-            j2d_glXDestroyPbuffer(awt_display, scratch);
-            j2d_glXDestroyContext(awt_display, context);
-            return 0L;
-        }
-    }
-#endif /* __sparc */
 
     versionstr = j2d_glGetString(GL_VERSION);
     OGLContext_GetExtensionInfo(env, &caps);

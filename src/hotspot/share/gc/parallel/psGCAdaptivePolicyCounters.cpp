@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,9 +25,6 @@
 #include "precompiled.hpp"
 #include "gc/parallel/psGCAdaptivePolicyCounters.hpp"
 #include "memory/resourceArea.hpp"
-#include "runtime/arguments.hpp"
-
-
 
 PSGCAdaptivePolicyCounters::PSGCAdaptivePolicyCounters(const char* name_arg,
                                       int collectors,
@@ -54,10 +51,6 @@ PSGCAdaptivePolicyCounters::PSGCAdaptivePolicyCounters(const char* name_arg,
     cname = PerfDataManager::counter_name(name_space(), "oldCapacity");
     _old_capacity = PerfDataManager::create_variable(SUN_GC, cname,
       PerfData::U_Bytes, (jlong) InitialHeapSize, CHECK);
-
-    cname = PerfDataManager::counter_name(name_space(), "boundaryMoved");
-    _boundary_moved = PerfDataManager::create_variable(SUN_GC, cname,
-      PerfData::U_Bytes, (jlong) 0, CHECK);
 
     cname = PerfDataManager::counter_name(name_space(), "avgPromotedAvg");
     _avg_promoted_avg_counter =

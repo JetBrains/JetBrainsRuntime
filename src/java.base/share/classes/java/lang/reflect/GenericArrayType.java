@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2004, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,8 @@ package java.lang.reflect;
 /**
  * {@code GenericArrayType} represents an array type whose component
  * type is either a parameterized type or a type variable.
+ *
+ * @jls 10.1 Array Types
  * @since 1.5
  */
 public interface GenericArrayType extends Type {
@@ -42,8 +44,8 @@ public interface GenericArrayType extends Type {
      *
      * @return  a {@code Type} object representing the component type
      *     of this array
-     * @throws TypeNotPresentException if the underlying array type's
-     *     component type refers to a non-existent type declaration
+     * @throws TypeNotPresentException if the underlying array type's component
+     *     type refers to a non-existent class or interface declaration
      * @throws MalformedParameterizedTypeException if  the
      *     underlying array type's component type refers to a
      *     parameterized type that cannot be instantiated for any reason

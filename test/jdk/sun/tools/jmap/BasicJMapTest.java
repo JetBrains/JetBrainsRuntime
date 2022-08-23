@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,85 @@
  */
 
 import static jdk.test.lib.Asserts.assertTrue;
+import static jdk.test.lib.Asserts.assertFalse;
 import static jdk.test.lib.Asserts.fail;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.List;
 
 import jdk.test.lib.JDKToolLauncher;
+import jdk.test.lib.Utils;
 import jdk.test.lib.hprof.HprofParser;
 import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.process.ProcessTools;
 
 /*
- * @test
- * @summary Unit test for jmap utility
+ * @test id=Serial
+ * @requires vm.gc.Serial
+ * @summary Unit test for jmap utility (Serial GC)
  * @key intermittent
  * @library /test/lib
  * @build jdk.test.lib.hprof.*
  * @build jdk.test.lib.hprof.model.*
  * @build jdk.test.lib.hprof.parser.*
  * @build jdk.test.lib.hprof.util.*
- * @run main/timeout=240 BasicJMapTest
+ * @run main/othervm/timeout=240 -XX:+UseSerialGC BasicJMapTest
  */
+
+/*
+ * @test id=Parallel
+ * @requires vm.gc.Parallel
+ * @summary Unit test for jmap utility (Parallel GC)
+ * @key intermittent
+ * @library /test/lib
+ * @build jdk.test.lib.hprof.*
+ * @build jdk.test.lib.hprof.model.*
+ * @build jdk.test.lib.hprof.parser.*
+ * @build jdk.test.lib.hprof.util.*
+ * @run main/othervm/timeout=240 -XX:+UseParallelGC BasicJMapTest
+ */
+
+/*
+ * @test id=G1
+ * @requires vm.gc.G1
+ * @summary Unit test for jmap utility (G1 GC)
+ * @key intermittent
+ * @library /test/lib
+ * @build jdk.test.lib.hprof.*
+ * @build jdk.test.lib.hprof.model.*
+ * @build jdk.test.lib.hprof.parser.*
+ * @build jdk.test.lib.hprof.util.*
+ * @run main/othervm/timeout=240 -XX:+UseG1GC BasicJMapTest
+ */
+
+/*
+ * @test id=Shenandoah
+ * @requires vm.gc.Shenandoah
+ * @summary Unit test for jmap utility (Shenandoah GC)
+ * @key intermittent
+ * @library /test/lib
+ * @build jdk.test.lib.hprof.*
+ * @build jdk.test.lib.hprof.model.*
+ * @build jdk.test.lib.hprof.parser.*
+ * @build jdk.test.lib.hprof.util.*
+ * @run main/othervm/timeout=240 -XX:+UseShenandoahGC BasicJMapTest
+ */
+
+/*
+ * @test id=Z
+ * @requires vm.gc.Z
+ * @summary Unit test for jmap utility (Z GC)
+ * @key intermittent
+ * @library /test/lib
+ * @build jdk.test.lib.hprof.*
+ * @build jdk.test.lib.hprof.model.*
+ * @build jdk.test.lib.hprof.parser.*
+ * @build jdk.test.lib.hprof.util.*
+ * @run main/othervm/timeout=240 -XX:+UseZGC BasicJMapTest
+ */
+
 public class BasicJMapTest {
 
     private static ProcessBuilder processBuilder = new ProcessBuilder();
@@ -51,6 +109,9 @@ public class BasicJMapTest {
         testHisto();
         testHistoLive();
         testHistoAll();
+        testHistoParallelZero();
+        testHistoParallel();
+        testHistoNonParallel();
         testHistoToFile();
         testHistoLiveToFile();
         testHistoAllToFile();
@@ -59,6 +120,8 @@ public class BasicJMapTest {
         testDump();
         testDumpLive();
         testDumpAll();
+        testDumpCompressed();
+        testDumpIllegalCompressedArgs();
     }
 
     private static void testHisto() throws Exception {
@@ -78,40 +141,68 @@ public class BasicJMapTest {
         output.shouldHaveExitValue(0);
     }
 
+    private static void testHistoParallelZero() throws Exception {
+        OutputAnalyzer output = jmap("-histo:parallel=0");
+        output.shouldHaveExitValue(0);
+    }
+
+    private static void testHistoParallel() throws Exception {
+        OutputAnalyzer output = jmap("-histo:parallel=2");
+        output.shouldHaveExitValue(0);
+    }
+
+    private static void testHistoNonParallel() throws Exception {
+        OutputAnalyzer output = jmap("-histo:parallel=1");
+        output.shouldHaveExitValue(0);
+    }
+
     private static void testHistoToFile() throws Exception {
-        histoToFile(false);
+        histoToFile(false, false, 1);
     }
 
     private static void testHistoLiveToFile() throws Exception {
-        histoToFile(true);
+        histoToFile(true, false, 1);
     }
 
     private static void testHistoAllToFile() throws Exception {
-        boolean explicitAll = true;
-        histoToFile(false, explicitAll);
+        histoToFile(false, true, 1);
     }
 
-    private static void histoToFile(boolean live) throws Exception {
-        boolean explicitAll = false;
-        histoToFile(live, explicitAll);
+    private static void testHistoFileParallelZero() throws Exception {
+        histoToFile(false, false, 0);
     }
 
-    private static void histoToFile(boolean live, boolean explicitAll) throws Exception {
-        if (live == true && explicitAll == true) {
+    private static void testHistoFileParallel() throws Exception {
+        histoToFile(false, false, 2);
+    }
+
+    private static void histoToFile(boolean live,
+                                    boolean explicitAll,
+                                    int parallelThreadNum) throws Exception {
+        String liveArg = "";
+        String fileArg = "";
+        String parArg = "parallel=" + parallelThreadNum;
+        String allArgs = "-histo:";
+
+        if (live && explicitAll) {
             fail("Illegal argument setting for jmap -histo");
         }
+        if (live) {
+            liveArg = "live,";
+        }
+        if (explicitAll) {
+            liveArg = "all,";
+        }
+
         File file = new File("jmap.histo.file" + System.currentTimeMillis() + ".histo");
         if (file.exists()) {
             file.delete();
         }
+        fileArg = "file=" + file.getName();
+
         OutputAnalyzer output;
-        if (live) {
-            output = jmap("-histo:live,file=" + file.getName());
-        } else if (explicitAll == true) {
-            output = jmap("-histo:all,file=" + file.getName());
-        } else {
-            output = jmap("-histo:file=" + file.getName());
-        }
+        allArgs = allArgs + liveArg + fileArg + ',' + parArg;
+        output = jmap(allArgs);
         output.shouldHaveExitValue(0);
         output.shouldContain("Heap inspection file created");
         file.delete();
@@ -128,49 +219,91 @@ public class BasicJMapTest {
     }
 
     private static void testDump() throws Exception {
-        dump(false);
+        dump(false, false, false);
     }
 
     private static void testDumpLive() throws Exception {
-        dump(true);
+        dump(true, false, false);
     }
 
     private static void testDumpAll() throws Exception {
-        boolean explicitAll = true;
-        dump(false, explicitAll);
+        dump(false, true, false);
     }
 
-    private static void dump(boolean live) throws Exception {
-        boolean explicitAll = false;
-        dump(live, explicitAll);
+    private static void testDumpCompressed() throws Exception {
+        dump(true, false, true);
     }
 
-    private static void dump(boolean live, boolean explicitAll) throws Exception {
-        if (live == true && explicitAll == true) {
-          fail("Illegal argument setting for jmap -dump");
+    private static void testDumpIllegalCompressedArgs() throws Exception{
+        dump(true, false, true, "0", 1, "Compression level out of range");
+        dump(true, false, true, "100", 1, "Compression level out of range");
+        dump(true, false, true, "abc", 1, "Invalid compress level");
+        dump(true, false, true, "", 1, "Fail: no number provided in option:");
+    }
+
+    private static void dump(boolean live, boolean explicitAll, boolean compressed) throws Exception {
+        dump(live, explicitAll, compressed, "1", 0, "Heap dump file created");
+    }
+
+    private static void dump(boolean live,
+                             boolean explicitAll,
+                             boolean compressed,
+                             String compressLevel,
+                             int expExitValue,
+                             String expOutput) throws Exception {
+        String liveArg = "";
+        String fileArg = "";
+        String compressArg = "";
+        String allArgs = "-dump:";
+
+        if (live && explicitAll) {
+            fail("Illegal argument setting for jmap -dump");
         }
-        File dump = new File("jmap.dump." + System.currentTimeMillis() + ".hprof");
-        if (dump.exists()) {
-            dump.delete();
-        }
-        OutputAnalyzer output;
         if (live) {
-            output = jmap("-dump:live,format=b,file=" + dump.getName());
-        } else if (explicitAll == true) {
-            output = jmap("-dump:all,format=b,file=" + dump.getName());
-        } else {
-            output = jmap("-dump:format=b,file=" + dump.getName());
+            liveArg = "live,";
         }
-        output.shouldHaveExitValue(0);
-        output.shouldContain("Heap dump file created");
-        verifyDumpFile(dump);
-        dump.delete();
+        if (explicitAll) {
+            liveArg = "all,";
+        }
+
+        String filePath = "jmap.dump" + System.currentTimeMillis() + ".hprof";
+        if (compressed) {
+            compressArg = "gz=" + compressLevel;
+            filePath = filePath + ".gz";
+        }
+
+        File file = new File(filePath);
+        if (file.exists()) {
+            file.delete();
+        }
+        fileArg = "file=" + file.getName() + ",";
+
+        OutputAnalyzer output;
+        allArgs = allArgs + liveArg + "format=b," + fileArg + compressArg;
+        output = jmap(allArgs);
+        output.shouldHaveExitValue(expExitValue);
+        output.shouldContain(expOutput);
+        if (expExitValue == 0) {
+            verifyDumpFile(file);
+        }
+        file.delete();
     }
 
     private static void verifyDumpFile(File dump) {
         assertTrue(dump.exists() && dump.isFile(), "Could not create dump file " + dump.getAbsolutePath());
         try {
-            HprofParser.parse(dump);
+            File out = HprofParser.parse(dump);
+
+            assertTrue(out != null && out.exists() && out.isFile(),
+                       "Could not find hprof parser output file");
+            List<String> lines = Files.readAllLines(out.toPath());
+            assertTrue(lines.size() > 0, "hprof parser output file is empty");
+            for (String line : lines) {
+                assertFalse(line.matches(".*WARNING(?!.*Failed to resolve " +
+                                         "object.*constantPoolOop.*).*"));
+            }
+
+            out.delete();
         } catch (Exception e) {
             e.printStackTrace();
             fail("Could not parse dump file " + dump.getAbsolutePath());
@@ -179,6 +312,7 @@ public class BasicJMapTest {
 
     private static OutputAnalyzer jmap(String... toolArgs) throws Exception {
         JDKToolLauncher launcher = JDKToolLauncher.createUsingTestJDK("jmap");
+        launcher.addVMArgs(Utils.getTestJavaOpts());
         if (toolArgs != null) {
             for (String toolArg : toolArgs) {
                 launcher.addToolArg(toolArg);
@@ -193,5 +327,4 @@ public class BasicJMapTest {
 
         return output;
     }
-
 }

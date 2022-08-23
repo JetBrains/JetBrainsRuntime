@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
 /**
  * @test
  * @key headful
- * @bug 8204931 8227392 8224825 8233910
+ * @bug 8204931 8227392 8224825 8233910 8275843
  * @summary test alpha colors are blended with background.
  */
 
@@ -84,8 +84,8 @@ public class AlphaColorTest extends Component {
         Color color = new Color(255, 255, 255, 127);
         frame.add("Center", new AlphaColorTest(color));
         frame.setUndecorated(true);
-        frame.setLocationRelativeTo(null);
         frame.pack();
+        frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
 }

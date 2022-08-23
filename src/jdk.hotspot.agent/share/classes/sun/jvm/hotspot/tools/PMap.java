@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,11 @@ package sun.jvm.hotspot.tools;
 
 import java.io.*;
 import java.util.*;
+import sun.jvm.hotspot.*;
 import sun.jvm.hotspot.debugger.*;
 import sun.jvm.hotspot.debugger.cdbg.*;
+import sun.jvm.hotspot.debugger.remote.*;
+import sun.jvm.hotspot.utilities.PlatformInfo;
 
 public class PMap extends Tool {
 
@@ -37,6 +40,10 @@ public class PMap extends Tool {
 
    public PMap(JVMDebugger d) {
        super(d);
+   }
+
+   public PMap(HotSpotAgent agent) {
+       super(agent);
    }
 
    @Override
@@ -55,16 +62,23 @@ public class PMap extends Tool {
    public void run(PrintStream out, Debugger dbg) {
       CDebugger cdbg = dbg.getCDebugger();
       if (cdbg != null) {
-         List l = cdbg.getLoadObjectList();
-         for (Iterator itr = l.iterator() ; itr.hasNext();) {
-            LoadObject lo = (LoadObject) itr.next();
+         List<LoadObject> l = cdbg.getLoadObjectList();
+         Iterator<LoadObject> itr = l.iterator();
+         if (!itr.hasNext() && PlatformInfo.getOS().equals("darwin")) {
+             // If the list is empty, we assume we attached to a process, and on OSX we can only
+             // get LoadObjects for a core file.
+             out.println("Not available for Mac OS X processes");
+             return;
+         }
+         while (itr.hasNext()) {
+            LoadObject lo = itr.next();
             out.print(lo.getBase() + "\t");
             out.print(lo.getSize()/1024 + "K\t");
             out.println(lo.getName());
          }
       } else {
           if (getDebugeeType() == DEBUGEE_REMOTE) {
-              out.println("remote configuration is not yet implemented");
+              out.print(((RemoteDebuggerClient)dbg).execCommandOnServer("pmap", null));
           } else {
               out.println("not yet implemented (debugger does not support CDebugger)!");
           }

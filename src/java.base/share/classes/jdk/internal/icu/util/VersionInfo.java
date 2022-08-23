@@ -54,7 +54,7 @@ public final class VersionInfo
      * @deprecated This API is ICU internal only.
      */
     @Deprecated
-    public static final String ICU_DATA_VERSION_PATH = "64b";
+    public static final String ICU_DATA_VERSION_PATH = "67b";
 
     // public methods ------------------------------------------------------
 
@@ -139,7 +139,7 @@ public final class VersionInfo
      * Compares other with this VersionInfo.
      * @param other VersionInfo to be compared
      * @return 0 if the argument is a VersionInfo object that has version
-     *           information equals to this object.
+     *           information equal to this object.
      *           Less than 0 if the argument is a VersionInfo object that has
      *           version information greater than this object.
      *           Greater than 0 if the argument is a VersionInfo object that

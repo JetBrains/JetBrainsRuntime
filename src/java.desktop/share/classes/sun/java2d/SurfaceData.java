@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import java.awt.image.ColorModel;
 import java.awt.image.IndexColorModel;
 import java.awt.image.Raster;
 
+import sun.font.FontUtilities;
 import sun.java2d.loops.RenderCache;
 import sun.java2d.loops.RenderLoops;
 import sun.java2d.loops.CompositeType;
@@ -52,6 +53,7 @@ import sun.java2d.loops.FontInfo;
 import sun.java2d.loops.DrawGlyphList;
 import sun.java2d.loops.DrawGlyphListAA;
 import sun.java2d.loops.DrawGlyphListLCD;
+import sun.java2d.loops.DrawGlyphListColor;
 import sun.java2d.pipe.LoopPipe;
 import sun.java2d.pipe.ShapeDrawPipe;
 import sun.java2d.pipe.ParallelogramPipe;
@@ -450,7 +452,11 @@ public abstract class SurfaceData
         outlineTextRenderer = new OutlineTextRenderer();
         solidTextRenderer = new SolidTextRenderer();
         aaTextRenderer = new AATextRenderer();
-        lcdTextRenderer = new LCDTextRenderer();
+        if (FontUtilities.isMacOSX14) {
+            lcdTextRenderer = aaTextRenderer;
+        } else {
+            lcdTextRenderer = new LCDTextRenderer();
+        }
 
         colorPipe = new AlphaColorPipe();
         // colorShape = colorPrimitives;
@@ -887,6 +893,8 @@ public abstract class SurfaceData
         loops.drawGlyphListLoop = DrawGlyphList.locate(src, comp, dst);
         loops.drawGlyphListAALoop = DrawGlyphListAA.locate(src, comp, dst);
         loops.drawGlyphListLCDLoop = DrawGlyphListLCD.locate(src, comp, dst);
+        loops.drawGlyphListColorLoop =
+                DrawGlyphListColor.locate(src, comp, dst);
         /*
         System.out.println("drawLine: "+loops.drawLineLoop);
         System.out.println("fillRect: "+loops.fillRectLoop);
@@ -1007,6 +1015,7 @@ public abstract class SurfaceData
      * of this surface.
      */
     protected void checkCustomComposite() {
+        @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             if (compPermission == null) {

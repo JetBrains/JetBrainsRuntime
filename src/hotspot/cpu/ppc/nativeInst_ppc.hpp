@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012, 2018 SAP SE. All rights reserved.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,9 @@
 #include "runtime/icache.hpp"
 #include "runtime/os.hpp"
 #include "runtime/safepointMechanism.hpp"
+#ifdef COMPILER2
+#include "opto/c2_globals.hpp"
+#endif
 
 // We have interfaces for the following instructions:
 //
@@ -60,17 +63,12 @@ class NativeInstruction {
     return MacroAssembler::is_trap_null_check(long_at(0));
   }
 
-  // We use a special trap for marking a method as not_entrant or zombie
-  // iff UseSIGTRAP.
-  bool is_sigtrap_zombie_not_entrant() {
-    assert(UseSIGTRAP, "precondition");
-    return MacroAssembler::is_trap_zombie_not_entrant(long_at(0));
+  int get_stop_type() {
+    return MacroAssembler::tdi_get_si16(long_at(0), Assembler::traptoUnconditional, 0);
   }
 
-  // We use an illtrap for marking a method as not_entrant or zombie
-  // iff !UseSIGTRAP.
+  // We use an illtrap for marking a method as not_entrant or zombie.
   bool is_sigill_zombie_not_entrant() {
-    assert(!UseSIGTRAP, "precondition");
     // Work around a C++ compiler bug which changes 'this'.
     return NativeInstruction::is_sigill_zombie_not_entrant_at(addr_at(0));
   }
@@ -84,20 +82,20 @@ class NativeInstruction {
   }
 #endif
 
-  // 'should not reach here'.
-  bool is_sigtrap_should_not_reach_here() {
-    return MacroAssembler::is_trap_should_not_reach_here(long_at(0));
-  }
-
   bool is_safepoint_poll() {
-    // Is the current instruction a POTENTIAL read access to the polling page?
     // The current arguments of the instruction are not checked!
-    if (SafepointMechanism::uses_thread_local_poll() && USE_POLL_BIT_ONLY) {
+    if (USE_POLL_BIT_ONLY) {
       int encoding = SafepointMechanism::poll_bit();
       return MacroAssembler::is_tdi(long_at(0), Assembler::traptoGreaterThanUnsigned | Assembler::traptoEqual,
                                     -1, encoding);
     }
     return MacroAssembler::is_load_from_polling_page(long_at(0), NULL);
+  }
+
+  bool is_safepoint_poll_return() {
+    // Safepoint poll at nmethod return with watermark check.
+    return MacroAssembler::is_td(long_at(0), Assembler::traptoGreaterThanUnsigned,
+                                 /* R1_SP */ 1, /* any reg */ -1);
   }
 
   address get_stack_bang_address(void *ucontext) {

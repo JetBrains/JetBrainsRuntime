@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2016, 2019, SAP SE. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@
 #include "runtime/stubCodeGenerator.hpp"
 #include "runtime/stubRoutines.hpp"
 #include "runtime/thread.inline.hpp"
+#include "utilities/powerOfTwo.hpp"
 
 // Declaration and definition of StubGenerator (no .hpp file).
 // For a more detailed description of the stub routine structure
@@ -651,7 +652,7 @@ class StubGenerator: public StubCodeGenerator {
       assert(Universe::heap() != NULL, "java heap must be initialized to generate partial_subtype_check stub");
     }
 
-    // Always take the slow path (see SPARC).
+    // Always take the slow path.
     __ check_klass_subtype_slow_path(Rsubklass, Rsuperklass,
                                      Rarray_ptr, Rlength, NULL, &miss);
 
@@ -2336,6 +2337,10 @@ class StubGenerator: public StubCodeGenerator {
 
     // Comapct string intrinsics: Translate table for string inflate intrinsic. Used by trot instruction.
     StubRoutines::zarch::_trot_table_addr = (address)StubRoutines::zarch::_trot_table;
+
+    // safefetch stubs
+    generate_safefetch("SafeFetch32", sizeof(int),      &StubRoutines::_safefetch32_entry, &StubRoutines::_safefetch32_fault_pc, &StubRoutines::_safefetch32_continuation_pc);
+    generate_safefetch("SafeFetchN",  sizeof(intptr_t), &StubRoutines::_safefetchN_entry,  &StubRoutines::_safefetchN_fault_pc,  &StubRoutines::_safefetchN_continuation_pc);
   }
 
 
@@ -2354,10 +2359,6 @@ class StubGenerator: public StubCodeGenerator {
 
     // Arraycopy stubs used by compilers.
     generate_arraycopy_stubs();
-
-    // safefetch stubs
-    generate_safefetch("SafeFetch32", sizeof(int),      &StubRoutines::_safefetch32_entry, &StubRoutines::_safefetch32_fault_pc, &StubRoutines::_safefetch32_continuation_pc);
-    generate_safefetch("SafeFetchN",  sizeof(intptr_t), &StubRoutines::_safefetchN_entry,  &StubRoutines::_safefetchN_fault_pc,  &StubRoutines::_safefetchN_continuation_pc);
 
     // Generate AES intrinsics code.
     if (UseAESIntrinsics) {
@@ -2403,9 +2404,6 @@ class StubGenerator: public StubCodeGenerator {
 
  public:
   StubGenerator(CodeBuffer* code, bool all) : StubCodeGenerator(code) {
-    // Replace the standard masm with a special one:
-    _masm = new MacroAssembler(code);
-
     _stub_count = !all ? 0x100 : 0x200;
     if (all) {
       generate_all();

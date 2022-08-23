@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@
 #include "memory/universe.hpp"
 #include "oops/compressedOops.hpp"
 #include "opto/machnode.hpp"
+#include "opto/output.hpp"
 #include "opto/regalloc.hpp"
 #include "utilities/vmError.hpp"
 
@@ -154,7 +155,7 @@ uint MachNode::size(PhaseRegAlloc *ra_) const {
 uint MachNode::emit_size(PhaseRegAlloc *ra_) const {
   // Emit into a trash buffer and count bytes emitted.
   assert(ra_ == ra_->C->regalloc(), "sanity");
-  return ra_->C->scratch_emit_size(this);
+  return ra_->C->output()->scratch_emit_size(this);
 }
 
 
@@ -294,7 +295,7 @@ const Node* MachNode::get_base_and_disp(intptr_t &offset, const TypePtr* &adr_ty
     }
     offset = disp;
 
-    // In i486.ad, indOffset32X uses base==RegI and disp==RegP,
+    // In x86_32.ad, indOffset32X uses base==RegI and disp==RegP,
     // this will prevent alias analysis without the following support:
     // Lookup the TypePtr used by indOffset32X, a compile-time constant oop,
     // Add the offset determined by the "base", or use Type::OffsetBot.
@@ -541,13 +542,13 @@ void MachTypeNode::dump_spec(outputStream *st) const {
 int MachConstantNode::constant_offset() {
   // Bind the offset lazily.
   if (_constant.offset() == -1) {
-    Compile::ConstantTable& constant_table = Compile::current()->constant_table();
+    ConstantTable& constant_table = Compile::current()->output()->constant_table();
     int offset = constant_table.find_offset(_constant);
     // If called from Compile::scratch_emit_size return the
     // pre-calculated offset.
     // NOTE: If the AD file does some table base offset optimizations
     // later the AD file needs to take care of this fact.
-    if (Compile::current()->in_scratch_emit_size()) {
+    if (Compile::current()->output()->in_scratch_emit_size()) {
       return constant_table.calculate_table_base_offset() + offset;
     }
     _constant.set_offset(constant_table.table_base_offset() + offset);
@@ -653,8 +654,7 @@ const RegMask &MachSafePointNode::in_RegMask( uint idx ) const {
   // _in_rms array of RegMasks.
   if( idx < TypeFunc::Parms ) return _in_rms[idx];
 
-  if (SafePointNode::needs_polling_address_input() &&
-      idx == TypeFunc::Parms &&
+  if (idx == TypeFunc::Parms &&
       ideal_Opcode() == Op_SafePoint) {
     return MachNode::in_RegMask(idx);
   }
@@ -814,6 +814,23 @@ bool MachCallRuntimeNode::cmp( const Node &n ) const {
 #ifndef PRODUCT
 void MachCallRuntimeNode::dump_spec(outputStream *st) const {
   st->print("%s ",_name);
+  MachCallNode::dump_spec(st);
+}
+#endif
+//=============================================================================
+uint MachCallNativeNode::size_of() const { return sizeof(*this); }
+bool MachCallNativeNode::cmp( const Node &n ) const {
+  MachCallNativeNode &call = (MachCallNativeNode&)n;
+  return MachCallNode::cmp(call) && !strcmp(_name,call._name)
+    && _arg_regs == call._arg_regs && _ret_regs == call._ret_regs;
+}
+#ifndef PRODUCT
+void MachCallNativeNode::dump_spec(outputStream *st) const {
+  st->print("%s ",_name);
+  st->print("_arg_regs: ");
+  CallNativeNode::print_regs(_arg_regs, st);
+  st->print("_ret_regs: ");
+  CallNativeNode::print_regs(_ret_regs, st);
   MachCallNode::dump_spec(st);
 }
 #endif

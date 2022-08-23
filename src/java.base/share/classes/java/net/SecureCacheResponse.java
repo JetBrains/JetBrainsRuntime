@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,11 @@ import java.util.Optional;
  * @since 1.5
  */
 public abstract class SecureCacheResponse extends CacheResponse {
+    /**
+     * Constructor for subclasses to call.
+     */
+    public SecureCacheResponse() {}
+
     /**
      * Returns the cipher suite in use on the original connection that
      * retrieved the network resource.
@@ -93,7 +98,7 @@ public abstract class SecureCacheResponse extends CacheResponse {
      public abstract Principal getPeerPrincipal()
              throws SSLPeerUnverifiedException;
 
-    /**
+     /**
       * Returns the principal that was sent to the server during
       * handshaking in the original connection that retrieved the
       * network resource.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +25,12 @@
 #include "gc/z/zAddressSpaceLimit.hpp"
 #include "gc/z/zArguments.hpp"
 #include "gc/z/zCollectedHeap.hpp"
+#include "gc/z/zGlobals.hpp"
 #include "gc/z/zHeuristics.hpp"
 #include "gc/shared/gcArguments.hpp"
 #include "runtime/globals.hpp"
 #include "runtime/globals_extension.hpp"
+#include "runtime/java.hpp"
 
 void ZArguments::initialize_alignments() {
   SpaceAlignment = ZGranuleSize;
@@ -52,11 +54,6 @@ void ZArguments::initialize() {
     FLAG_SET_DEFAULT(UseNUMA, true);
   }
 
-  // Disable biased locking by default
-  if (FLAG_IS_DEFAULT(UseBiasedLocking)) {
-    FLAG_SET_DEFAULT(UseBiasedLocking, false);
-  }
-
   // Select number of parallel threads
   if (FLAG_IS_DEFAULT(ParallelGCThreads)) {
     FLAG_SET_DEFAULT(ParallelGCThreads, ZHeuristics::nparallel_workers());
@@ -75,6 +72,12 @@ void ZArguments::initialize() {
     vm_exit_during_initialization("The flag -XX:+UseZGC can not be combined with -XX:ConcGCThreads=0");
   }
 
+  // The heuristics used when UseDynamicNumberOfGCThreads is
+  // enabled defaults to using a ZAllocationSpikeTolerance of 1.
+  if (UseDynamicNumberOfGCThreads && FLAG_IS_DEFAULT(ZAllocationSpikeTolerance)) {
+    FLAG_SET_DEFAULT(ZAllocationSpikeTolerance, 1);
+  }
+
 #ifdef COMPILER2
   // Enable loop strip mining by default
   if (FLAG_IS_DEFAULT(UseCountedLoopSafepoints)) {
@@ -85,29 +88,21 @@ void ZArguments::initialize() {
   }
 #endif
 
-  // CompressedOops/UseCompressedClassPointers not supported
+  // CompressedOops not supported
   FLAG_SET_DEFAULT(UseCompressedOops, false);
-  FLAG_SET_DEFAULT(UseCompressedClassPointers, false);
 
   // Verification before startup and after exit not (yet) supported
   FLAG_SET_DEFAULT(VerifyDuringStartup, false);
   FLAG_SET_DEFAULT(VerifyBeforeExit, false);
 
-  // Verification before heap iteration not (yet) supported, for the
-  // same reason we need fixup_partial_loads
-  FLAG_SET_DEFAULT(VerifyBeforeIteration, false);
-
   if (VerifyBeforeGC || VerifyDuringGC || VerifyAfterGC) {
     FLAG_SET_DEFAULT(ZVerifyRoots, true);
     FLAG_SET_DEFAULT(ZVerifyObjects, true);
   }
+}
 
-  // Verification of stacks not (yet) supported, for the same reason
-  // we need fixup_partial_loads
-  DEBUG_ONLY(FLAG_SET_DEFAULT(VerifyStack, false));
-
-  // Initialize platform specific arguments
-  initialize_platform();
+size_t ZArguments::heap_virtual_to_physical_ratio() {
+  return ZHeapViews * ZVirtualToPhysicalRatio;
 }
 
 size_t ZArguments::conservative_max_heap_alignment() {

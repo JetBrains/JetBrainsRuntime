@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,8 @@ import sun.jvm.hotspot.oops.*;
 import sun.jvm.hotspot.runtime.*;
 import sun.jvm.hotspot.types.*;
 import sun.jvm.hotspot.utilities.*;
+import sun.jvm.hotspot.utilities.Observable;
+import sun.jvm.hotspot.utilities.Observer;
 
 
 public class vmSymbols {
@@ -48,8 +50,9 @@ public class vmSymbols {
   private static int SID_LIMIT;
 
   private static synchronized void initialize(TypeDataBase db) throws WrongTypeException {
-    Type type            = db.lookupType("vmSymbols");
-    symbolsAddress       = type.getAddressField("_symbols[0]").getStaticFieldAddress();
+    // All VM symbols are now stored in: Symbol* Symbol::_vm_symbols[];
+    Type type            = db.lookupType("Symbol");
+    symbolsAddress       = type.getAddressField("_vm_symbols[0]").getStaticFieldAddress();
     FIRST_SID            = db.lookupIntConstant("vmSymbols::FIRST_SID");
     SID_LIMIT            = db.lookupIntConstant("vmSymbols::SID_LIMIT");
   }

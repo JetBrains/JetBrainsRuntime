@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 
 /*
  * @test
- * @key stress gc
+ * @key stress randomness
  *
  * @summary converted from VM Testbase gc/hashcode/ExternalHashingTest.
  * VM Testbase keywords: [gc, stress, stressopt, nonconcurrent, jrockit]
@@ -47,7 +47,6 @@
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm -XX:-UseGCOverheadLimit gc.hashcode.ExternalHashingTest.ExternalHashingTest
  */
 
@@ -57,6 +56,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Random;
 import java.util.Vector;
+
+import jdk.test.lib.Utils;
 
 /**
  * Test the possible interaction of external hashing and locking on object
@@ -77,7 +78,7 @@ import java.util.Vector;
 public final class ExternalHashingTest {
 
     /** Random number generator. */
-    static Random rand = new Random();
+    static Random rand = Utils.getRandomInstance();
 
     /** Goes to true when the threads should start working. */
     public static volatile boolean startingGun;
@@ -238,7 +239,7 @@ public final class ExternalHashingTest {
         for (int i = 0; i < BATCH_SIZE; i++) {
             /* Add all of the results of this pass to the global list. */
             allObjects.add(hashedList[i]);
-            allHashes.add(new Integer(foundHashes[i]));
+            allHashes.add(Integer.valueOf(foundHashes[i]));
 
             /* Create even more garbage for the GC to find */
             garbageMonger[i] = new Object();

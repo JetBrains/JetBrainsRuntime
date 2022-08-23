@@ -56,6 +56,11 @@ biz                     biz             null
 site.biz                biz             site.biz
 w.site.biz              biz             site.biz
 
+# br
+br                      br              null
+dev.br                  dev.br          null
+x.dev.br                dev.br          x.dev.br
+
 # cn (unicode)
 #
 foo.mil.cn              mil.cn          foo.mil.cn
@@ -70,6 +75,10 @@ com                     com             null
 ar.com                  ar.com          null
 site.ar.com             ar.com          site.ar.com
 w.site.ar.com           ar.com          site.ar.com
+
+# fj (no longer *.fj)
+foo.gov.fj              gov.fj          foo.gov.fj
+foo.fj                  fj              foo.fj
 
 # ie
 www.foo.ie              ie              foo.ie

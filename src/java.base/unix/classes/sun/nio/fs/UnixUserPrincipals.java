@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,7 @@ import static sun.nio.fs.UnixNativeDispatcher.*;
  * Unix implementation of java.nio.file.attribute.UserPrincipal
  */
 
-class UnixUserPrincipals {
+public class UnixUserPrincipals {
     private static User createSpecial(String name) { return new User(-1, name); }
 
     static final User SPECIAL_OWNER = createSpecial("OWNER@");
@@ -65,10 +65,6 @@ class UnixUserPrincipals {
             if (isGroup)
                 return id;
             throw new AssertionError();
-        }
-
-        boolean isSpecial() {
-            return id == -1;
         }
 
         @Override
@@ -112,8 +108,8 @@ class UnixUserPrincipals {
     }
 
     // return UserPrincipal representing given uid
-    static User fromUid(int uid) {
-        String name = null;
+    public static User fromUid(int uid) {
+        String name;
         try {
             name = Util.toString(getpwuid(uid));
         } catch (UnixException x) {
@@ -123,8 +119,8 @@ class UnixUserPrincipals {
     }
 
     // return GroupPrincipal representing given gid
-    static Group fromGid(int gid) {
-        String name = null;
+    public static Group fromGid(int gid) {
+        String name;
         try {
             name = Util.toString(getgrgid(gid));
         } catch (UnixException x) {
@@ -137,11 +133,12 @@ class UnixUserPrincipals {
     private static int lookupName(String name, boolean isGroup)
         throws IOException
     {
+        @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(new RuntimePermission("lookupUserInformation"));
         }
-        int id = -1;
+        int id;
         try {
             id = (isGroup) ? getgrnam(name) : getpwnam(name);
         } catch (UnixException x) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,27 +64,8 @@ Java_java_net_Inet4AddressImpl_getLocalHostName(JNIEnv *env, jobject this) {
     if (gethostname(hostname, sizeof(hostname)) != 0) {
         strcpy(hostname, "localhost");
     } else {
-#if defined(__solaris__)
-        // try to resolve hostname via nameservice
-        // if it is known but getnameinfo fails, hostname will still be the
-        // value from gethostname
-        struct addrinfo hints, *res;
-
         // make sure string is null-terminated
         hostname[NI_MAXHOST] = '\0';
-        memset(&hints, 0, sizeof(hints));
-        hints.ai_flags = AI_CANONNAME;
-        hints.ai_family = AF_INET;
-
-        if (getaddrinfo(hostname, NULL, &hints, &res) == 0) {
-            getnameinfo(res->ai_addr, res->ai_addrlen, hostname, sizeof(hostname),
-                        NULL, 0, NI_NAMEREQD);
-            freeaddrinfo(res);
-        }
-#else
-        // make sure string is null-terminated
-        hostname[NI_MAXHOST] = '\0';
-#endif
     }
     return (*env)->NewStringUTF(env, hostname);
 }
@@ -218,7 +199,7 @@ cleanupAndReturn:
 /*
  * Class:     java_net_Inet4AddressImpl
  * Method:    getHostByAddr
- * Signature: (I)Ljava/lang/String;
+ * Signature: ([B)Ljava/lang/String;
  *
  * Theoretically the UnknownHostException could be enriched with gai error
  * information. But as it is silently ignored anyway, there's no need for this.

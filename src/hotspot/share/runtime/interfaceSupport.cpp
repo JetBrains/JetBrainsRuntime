@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,10 +33,12 @@
 #include "runtime/handles.inline.hpp"
 #include "runtime/init.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
-#include "runtime/os.inline.hpp"
+#include "runtime/os.hpp"
 #include "runtime/thread.inline.hpp"
 #include "runtime/safepointVerifiers.hpp"
+#include "runtime/stackFrameStream.inline.hpp"
 #include "runtime/vframe.hpp"
+#include "runtime/vmOperations.hpp"
 #include "runtime/vmThread.hpp"
 #include "utilities/preserveException.hpp"
 
@@ -74,41 +76,15 @@ VMNativeEntryWrapper::~VMNativeEntryWrapper() {
   if (GCALotAtAllSafepoints) InterfaceSupport::check_gc_alot();
 }
 
-long InterfaceSupport::_number_of_calls       = 0;
-long InterfaceSupport::_scavenge_alot_counter = 1;
-long InterfaceSupport::_fullgc_alot_counter   = 1;
-long InterfaceSupport::_fullgc_alot_invocation = 0;
-
-Histogram* RuntimeHistogram;
-
-RuntimeHistogramElement::RuntimeHistogramElement(const char* elementName) {
-  static volatile int RuntimeHistogram_lock = 0;
-  _name = elementName;
-  uintx count = 0;
-
-  while (Atomic::cmpxchg(&RuntimeHistogram_lock, 0, 1) != 0) {
-    while (Atomic::load_acquire(&RuntimeHistogram_lock) != 0) {
-      count +=1;
-      if ( (WarnOnStalledSpinLock > 0)
-        && (count % WarnOnStalledSpinLock == 0)) {
-        warning("RuntimeHistogram_lock seems to be stalled");
-      }
-    }
-  }
-
-  if (RuntimeHistogram == NULL) {
-    RuntimeHistogram = new Histogram("VM Runtime Call Counts",200);
-  }
-
-  RuntimeHistogram->add_element(this);
-  Atomic::dec(&RuntimeHistogram_lock);
-}
+unsigned int InterfaceSupport::_scavenge_alot_counter = 1;
+unsigned int InterfaceSupport::_fullgc_alot_counter   = 1;
+int InterfaceSupport::_fullgc_alot_invocation = 0;
 
 void InterfaceSupport::gc_alot() {
   Thread *thread = Thread::current();
   if (!thread->is_Java_thread()) return; // Avoid concurrent calls
   // Check for new, not quite initialized thread. A thread in new mode cannot initiate a GC.
-  JavaThread *current_thread = (JavaThread *)thread;
+  JavaThread *current_thread = thread->as_Java_thread();
   if (current_thread->active_handles() == NULL) return;
 
   // Short-circuit any possible re-entrant gc-a-lot attempt
@@ -135,8 +111,8 @@ void InterfaceSupport::gc_alot() {
       unsigned int invocations = Universe::heap()->total_full_collections();
       // Compute new interval
       if (FullGCALotInterval > 1) {
-        _fullgc_alot_counter = 1+(long)((double)FullGCALotInterval*os::random()/(max_jint+1.0));
-        log_trace(gc)("Full gc no: %u\tInterval: %ld", invocations, _fullgc_alot_counter);
+        _fullgc_alot_counter = 1+(unsigned int)((double)FullGCALotInterval*os::random()/(max_jint+1.0));
+        log_trace(gc)("Full gc no: %u\tInterval: %u", invocations, _fullgc_alot_counter);
       } else {
         _fullgc_alot_counter = 1;
       }
@@ -153,8 +129,8 @@ void InterfaceSupport::gc_alot() {
         unsigned int invocations = Universe::heap()->total_collections() - Universe::heap()->total_full_collections();
         // Compute new interval
         if (ScavengeALotInterval > 1) {
-          _scavenge_alot_counter = 1+(long)((double)ScavengeALotInterval*os::random()/(max_jint+1.0));
-          log_trace(gc)("Scavenge no: %u\tInterval: %ld", invocations, _scavenge_alot_counter);
+          _scavenge_alot_counter = 1+(unsigned int)((double)ScavengeALotInterval*os::random()/(max_jint+1.0));
+          log_trace(gc)("Scavenge no: %u\tInterval: %u", invocations, _scavenge_alot_counter);
         } else {
           _scavenge_alot_counter = 1;
         }
@@ -235,7 +211,7 @@ void InterfaceSupport::verify_stack() {
 
   if (!thread->has_pending_exception()) {
     // verification does not work if there are pending exceptions
-    StackFrameStream sfs(thread);
+    StackFrameStream sfs(thread, true /* update */, true /* process_frames */);
     CodeBlob* cb = sfs.current()->cb();
       // In case of exceptions we might not have a runtime_stub on
       // top of stack, hence, all callee-saved registers are not going

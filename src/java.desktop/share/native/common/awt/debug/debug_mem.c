@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,11 +26,6 @@
 #if defined(DEBUG)
 
 #include "debug_util.h"
-
-/* Use THIS_FILE when it is available. */
-#ifndef THIS_FILE
-    #define THIS_FILE __FILE__
-#endif
 
 #define DMEM_MIN(a,b)   (a) < (b) ? (a) : (b)
 #define DMEM_MAX(a,b)   (a) > (b) ? (a) : (b)
@@ -223,6 +218,7 @@ void * DMem_AllocateBlock(size_t size, const char * filename, int linenumber) {
     /* add block to list of allocated memory */
     header->listEnter = DMem_TrackBlock(header);
     if ( header->listEnter == NULL ) {
+        DMem_ClientFree(header);
         goto Exit;
     }
 
@@ -296,7 +292,7 @@ void DMem_ReportLeaks() {
     DMutex_Enter(DMemMutex);
 
     /* Force memory leaks to be output regardless of trace settings */
-    DTrace_EnableFile(THIS_FILE, TRUE);
+    DTrace_EnableFile(__FILE__, TRUE);
     DTRACE_PRINTLN("--------------------------");
     DTRACE_PRINTLN("Debug Memory Manager Leaks");
     DTRACE_PRINTLN("--------------------------");

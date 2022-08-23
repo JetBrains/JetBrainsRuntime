@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,6 +88,11 @@ abstract class FileSystem {
     public abstract boolean isAbsolute(File f);
 
     /**
+     * Tell whether the given abstract pathname is invalid.
+     */
+    public abstract boolean isInvalid(File f);
+
+    /**
      * Resolve the given abstract pathname into absolute form.  Invoked by the
      * getAbsolutePath and getCanonicalPath methods in the File class.
      */
@@ -110,6 +115,15 @@ abstract class FileSystem {
      * other I/O error occurs.
      */
     public abstract int getBooleanAttributes(File f);
+
+    /**
+     * Checks if all the given boolean attributes are true for the file or
+     * directory denoted by the given abstract pathname. False if it does not
+     * exist or some other I/O error occurs.
+     */
+    public boolean hasBooleanAttributes(File f, int attributes) {
+        return (getBooleanAttributes(f) & attributes) == attributes;
+    }
 
     @Native public static final int ACCESS_READ    = 0x04;
     @Native public static final int ACCESS_WRITE   = 0x02;

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE ldml SYSTEM "../../common/dtd/ldml.dtd">
-<!-- Copyright © 1991-2019 Unicode, Inc.
+<!-- Copyright © 1991-2021 Unicode, Inc.
 For terms of use, see http://www.unicode.org/copyright.html
 Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
 CLDR data files are interpreted according to the LDML specification (http://unicode.org/reports/tr35/)
@@ -348,7 +348,6 @@ CLDR data files are interpreted according to the LDML specification (http://unic
 			<language type="ro">Rumänisch</language>
 			<language type="ro_MD">Moldawisch</language>
 			<language type="rom">Zigüünerschpraach</language>
-			<language type="root">Root</language>
 			<language type="ru">Russisch</language>
 			<language type="rup">Aromunisch</language>
 			<language type="rw">Ruandisch</language>
@@ -464,7 +463,6 @@ CLDR data files are interpreted according to the LDML specification (http://unic
 		</languages>
 		<scripts>
 			<script type="Arab">Arabisch</script>
-			<script type="Armi">Armi</script>
 			<script type="Armn">Armenisch</script>
 			<script type="Avst">Aveschtisch</script>
 			<script type="Bali">Balinesisch</script>
@@ -478,7 +476,6 @@ CLDR data files are interpreted according to the LDML specification (http://unic
 			<script type="Buhd">Buhid</script>
 			<script type="Cans">UCAS</script>
 			<script type="Cari">Karisch</script>
-			<script type="Cham">Cham</script>
 			<script type="Cher">Cherokee</script>
 			<script type="Cirt">Cirth</script>
 			<script type="Copt">Koptisch</script>
@@ -3570,7 +3567,7 @@ CLDR data files are interpreted according to the LDML specification (http://unic
 				<unitPattern count="one" draft="unconfirmed">{0} Pferdestärke</unitPattern>
 				<unitPattern count="other" draft="unconfirmed">{0} Pferdestärke</unitPattern>
 			</unit>
-			<unit type="pressure-inch-hg">
+			<unit type="pressure-inch-ofhg">
 				<displayName draft="provisional">Zoll Quecksilbersüüle</displayName>
 				<unitPattern count="one" draft="unconfirmed">{0} Zoll Quecksilbersüüle</unitPattern>
 				<unitPattern count="other" draft="unconfirmed">{0} Zoll Quecksilbersüüle</unitPattern>
@@ -3799,7 +3796,7 @@ CLDR data files are interpreted according to the LDML specification (http://unic
 				<unitPattern count="one" draft="unconfirmed">{0} PS</unitPattern>
 				<unitPattern count="other" draft="unconfirmed">{0} PS</unitPattern>
 			</unit>
-			<unit type="pressure-inch-hg">
+			<unit type="pressure-inch-ofhg">
 				<displayName draft="provisional">Zoll Quecksilbersüüle</displayName>
 				<unitPattern count="one">{0} inHg</unitPattern>
 				<unitPattern count="other">{0} inHg</unitPattern>
@@ -3987,7 +3984,7 @@ CLDR data files are interpreted according to the LDML specification (http://unic
 				<unitPattern count="one" draft="unconfirmed">{0} PS</unitPattern>
 				<unitPattern count="other" draft="unconfirmed">{0} PS</unitPattern>
 			</unit>
-			<unit type="pressure-inch-hg">
+			<unit type="pressure-inch-ofhg">
 				<unitPattern count="one">{0} inHg</unitPattern>
 				<unitPattern count="other">{0} inHg</unitPattern>
 			</unit>

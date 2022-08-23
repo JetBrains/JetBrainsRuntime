@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,9 +27,15 @@ package jdk.internal.misc;
 
 import static java.lang.Thread.State.*;
 
+import java.text.NumberFormat;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
-import java.util.Properties;
+
+import jdk.internal.access.SharedSecrets;
+
+import sun.nio.ch.FileChannelImpl;
 
 public class VM {
 
@@ -39,7 +45,6 @@ public class VM {
     private static final int SYSTEM_LOADER_INITIALIZING  = 3;
     private static final int SYSTEM_BOOTED               = 4;
     private static final int SYSTEM_SHUTDOWN             = 5;
-
 
     // 0, 1, 2, ...
     private static volatile int initLevel;
@@ -142,6 +147,45 @@ public class VM {
         return pageAlignDirectMemory;
     }
 
+    private static int classFileMajorVersion;
+    private static int classFileMinorVersion;
+    private static final int PREVIEW_MINOR_VERSION = 65535;
+
+    /**
+     * Tests if the given version is a supported {@code class}
+     * file version.
+     *
+     * A {@code class} file depends on the preview features of Java SE {@code N}
+     * if the major version is {@code N} and the minor version is 65535.
+     * This method returns {@code true} if the given version is a supported
+     * {@code class} file version regardless of whether the preview features
+     * are enabled or not.
+     *
+     * @jvms 4.1 Table 4.1-A. class file format major versions
+     */
+    public static boolean isSupportedClassFileVersion(int major, int minor) {
+        if (major < 45 || major > classFileMajorVersion) return false;
+        // for major version is between 45 and 55 inclusive, the minor version may be any value
+        if (major < 56) return true;
+        // otherwise, the minor version must be 0 or 65535
+        return minor == 0 || minor == PREVIEW_MINOR_VERSION;
+    }
+
+    /**
+     * Tests if the given version is a supported {@code class}
+     * file version for module descriptor.
+     *
+     * major.minor version >= 53.0
+     */
+    public static boolean isSupportedModuleDescriptorVersion(int major, int minor) {
+        if (major < 53 || major > classFileMajorVersion) return false;
+        // for major version is between 45 and 55 inclusive, the minor version may be any value
+        if (major < 56) return true;
+        // otherwise, the minor version must be 0 or 65535
+        // preview features do not apply to module-info.class but JVMS allows it
+        return minor == 0 || minor == PREVIEW_MINOR_VERSION;
+    }
+
     /**
      * Returns true if the given class loader is the bootstrap class loader
      * or the platform class loader.
@@ -216,6 +260,15 @@ public class VM {
         s = props.get("sun.nio.PageAlignDirectMemory");
         if ("true".equals(s))
             pageAlignDirectMemory = true;
+
+        s = props.get("java.class.version");
+        int index = s.indexOf('.');
+        try {
+            classFileMajorVersion = Integer.valueOf(s.substring(0, index));
+            classFileMinorVersion = Integer.valueOf(s.substring(index+1, s.length()));
+        } catch (NumberFormatException e) {
+            throw new InternalError(e);
+        }
     }
 
     // Initialize any miscellaneous operating system settings that need to be
@@ -405,13 +458,32 @@ public class VM {
     private static native void initialize();
 
     /**
-     * Initialize archived static fields in the given Class using archived
-     * values from CDS dump time. Also initialize the classes of objects in
-     * the archived graph referenced by those fields.
-     *
-     * Those static fields remain as uninitialized if there is no mapped CDS
-     * java heap data or there is any error during initialization of the
-     * object class in the archived graph.
+     * Provides access to information on buffer usage.
      */
-    public static native void initializeFromArchive(Class<?> c);
+    public interface BufferPool {
+        String getName();
+        long getCount();
+        long getTotalCapacity();
+        long getMemoryUsed();
+    }
+
+    private static class BufferPoolsHolder {
+        static final List<BufferPool> BUFFER_POOLS;
+
+        static {
+            ArrayList<BufferPool> bufferPools = new ArrayList<>(3);
+            bufferPools.add(SharedSecrets.getJavaNioAccess().getDirectBufferPool());
+            bufferPools.add(FileChannelImpl.getMappedBufferPool());
+            bufferPools.add(FileChannelImpl.getSyncMappedBufferPool());
+
+            BUFFER_POOLS = Collections.unmodifiableList(bufferPools);
+        }
+    }
+
+    /**
+     * @return the list of buffer pools.
+     */
+    public static List<BufferPool> getBufferPools() {
+        return BufferPoolsHolder.BUFFER_POOLS;
+    }
 }

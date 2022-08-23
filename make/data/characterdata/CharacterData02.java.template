@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,16 +77,6 @@ class CharacterData02 extends CharacterData {
         return props;
     }
 
-    boolean isOtherLowercase(int ch) {
-        int props = getPropertiesEx(ch);
-        return (props & $$maskOtherLowercase) != 0;
-    }
-
-    boolean isOtherUppercase(int ch) {
-        int props = getPropertiesEx(ch);
-        return (props & $$maskOtherUppercase) != 0;
-    }
-
     boolean isOtherAlphabetic(int ch) {
         int props = getPropertiesEx(ch);
         return (props & $$maskOtherAlphabetic) != 0;
@@ -113,14 +103,12 @@ class CharacterData02 extends CharacterData {
     }
 
     boolean isUnicodeIdentifierStart(int ch) {
-        return (getPropertiesEx(ch) & $$maskIDStart) != 0 ||
-               ch == 0x2E2F;
+        return (getPropertiesEx(ch) & $$maskIDStart) != 0;
     }
 
     boolean isUnicodeIdentifierPart(int ch) {
         return (getPropertiesEx(ch) & $$maskIDContinue) != 0 ||
-               isIdentifierIgnorable(ch) ||
-               ch == 0x2E2F;
+               isIdentifierIgnorable(ch);
     }
 
     boolean isIdentifierIgnorable(int ch) {
@@ -224,13 +212,11 @@ class CharacterData02 extends CharacterData {
     }
 
     boolean isLowerCase(int ch) {
-        int props = getProperties(ch);
-        return (props & $$maskType) == Character.LOWERCASE_LETTER;
+        return (getPropertiesEx(ch) & $$maskOtherLowercase) != 0;
     }
 
     boolean isUpperCase(int ch) {
-        int props = getProperties(ch);
-        return (props & $$maskType) == Character.UPPERCASE_LETTER;
+        return (getPropertiesEx(ch) & $$maskOtherUppercase) != 0;
     }
 
     boolean isWhitespace(int ch) {

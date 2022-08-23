@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -124,6 +124,7 @@ final class ChannelImpl extends CardChannel {
         getBooleanProperty("sun.security.smartcardio.t1StripLe", false);
 
     private static boolean getBooleanProperty(String name, boolean def) {
+        @SuppressWarnings("removal")
         String val = AccessController.doPrivileged(
             (PrivilegedAction<String>) () -> System.getProperty(name));
         if (val == null) {
@@ -150,6 +151,7 @@ final class ChannelImpl extends CardChannel {
         return res;
     }
 
+    private final static int RESPONSE_ITERATIONS = 256;
     private final static byte[] B0 = new byte[0];
 
     private byte[] doTransmit(byte[] command) throws CardException {
@@ -182,8 +184,9 @@ final class ChannelImpl extends CardChannel {
             int k = 0;
             byte[] result = B0;
             while (true) {
-                if (++k >= 32) {
-                    throw new CardException("Could not obtain response");
+                if (++k > RESPONSE_ITERATIONS) {
+                    throw new CardException("Number of response iterations" +
+                            " exceeded maximum " + RESPONSE_ITERATIONS);
                 }
                 byte[] response = SCardTransmit
                     (card.cardId, card.protocol, command, 0, n);

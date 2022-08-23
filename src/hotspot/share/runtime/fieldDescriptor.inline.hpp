@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,10 @@
 #ifndef SHARE_RUNTIME_FIELDDESCRIPTOR_INLINE_HPP
 #define SHARE_RUNTIME_FIELDDESCRIPTOR_INLINE_HPP
 
+#include "runtime/fieldDescriptor.hpp"
+
 #include "runtime/handles.inline.hpp"
+#include "runtime/signature.hpp"
 
 // All fieldDescriptor inline functions that (directly or indirectly) use "_cp()" or "_cp->"
 // must be put in this file, as they require runtime/handles.inline.hpp.
@@ -76,7 +79,7 @@ inline void fieldDescriptor::set_has_initialized_final_update(const bool value) 
 }
 
 inline BasicType fieldDescriptor::field_type() const {
-  return FieldType::basic_type(signature());
+  return Signature::basic_type(signature());
 }
 
 #endif // SHARE_RUNTIME_FIELDDESCRIPTOR_INLINE_HPP

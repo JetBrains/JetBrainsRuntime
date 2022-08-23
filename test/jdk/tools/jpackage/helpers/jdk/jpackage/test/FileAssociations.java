@@ -25,21 +25,24 @@ package jdk.jpackage.test;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import jdk.jpackage.internal.IOUtils;
 
 
 final public class FileAssociations {
     public FileAssociations(String faSuffixName) {
         suffixName = faSuffixName;
         setFilename("fa");
-        setDescription("jpackage test extention");
+        setDescription("jpackage test extension");
     }
 
     private void createFile() {
         Map<String, String> entries = new HashMap<>(Map.of(
             "extension", suffixName,
-            "mime-type", getMime(),
-            "description", description
+            "mime-type", getMime()
         ));
+        if (description != null) {
+            entries.put("description", description);
+        }
         if (icon != null) {
             if (TKit.isWindows()) {
                 entries.put("icon", icon.toString().replace("\\", "/"));
@@ -63,6 +66,13 @@ final public class FileAssociations {
     public FileAssociations setIcon(Path v) {
         icon = v;
         return this;
+    }
+
+    Path getLinuxIconFileName() {
+        if (icon == null) {
+            return null;
+        }
+        return Path.of(getMime().replace('/', '-') + IOUtils.getSuffix(icon));
     }
 
     Path getPropertiesFile() {

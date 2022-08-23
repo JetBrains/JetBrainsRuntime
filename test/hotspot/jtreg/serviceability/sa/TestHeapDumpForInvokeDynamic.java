@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,27 +21,20 @@
  * questions.
  */
 
-import java.util.ArrayList;
-import java.util.List;
 import java.io.File;
-import java.nio.file.Files;
 import java.io.IOException;
 import java.io.BufferedInputStream;
 import java.util.stream.Collectors;
 import java.io.FileInputStream;
 
-import sun.jvm.hotspot.HotSpotAgent;
-import sun.jvm.hotspot.debugger.*;
 
 import jdk.test.lib.apps.LingeredApp;
+import jdk.test.lib.Asserts;
 import jdk.test.lib.JDKToolLauncher;
-import jdk.test.lib.JDKToolFinder;
-import jdk.test.lib.Platform;
 import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.process.OutputAnalyzer;
+import jdk.test.lib.SA.SATestUtils;
 import jdk.test.lib.Utils;
-import jdk.test.lib.Asserts;
-import jdk.test.lib.hprof.HprofParser;
 import jdk.test.lib.hprof.parser.HprofReader;
 import jdk.test.lib.hprof.parser.PositionDataInputStream;
 import jdk.test.lib.hprof.model.Snapshot;
@@ -49,13 +42,13 @@ import jdk.test.lib.hprof.model.Snapshot;
 /**
  * @test
  * @library /test/lib
- * @requires vm.hasSAandCanAttach & os.family != "mac"
+ * @requires vm.hasSA
  * @modules java.base/jdk.internal.misc
  *          jdk.hotspot.agent/sun.jvm.hotspot
  *          jdk.hotspot.agent/sun.jvm.hotspot.utilities
  *          jdk.hotspot.agent/sun.jvm.hotspot.oops
  *          jdk.hotspot.agent/sun.jvm.hotspot.debugger
- * @run main/othervm TestHeapDumpForInvokeDynamic
+ * @run driver TestHeapDumpForInvokeDynamic
  */
 
 public class TestHeapDumpForInvokeDynamic {
@@ -90,6 +83,7 @@ public class TestHeapDumpForInvokeDynamic {
                                             long lingeredAppPid) throws Exception {
 
         JDKToolLauncher launcher = JDKToolLauncher.createUsingTestJDK("jhsdb");
+        launcher.addVMArgs(Utils.getTestJavaOpts());
         launcher.addToolArg("jmap");
         launcher.addToolArg("--binaryheap");
         launcher.addToolArg("--dumpfile");
@@ -97,8 +91,7 @@ public class TestHeapDumpForInvokeDynamic {
         launcher.addToolArg("--pid");
         launcher.addToolArg(Long.toString(lingeredAppPid));
 
-        ProcessBuilder processBuilder = new ProcessBuilder();
-        processBuilder.command(launcher.getCommand());
+        ProcessBuilder processBuilder = SATestUtils.createProcessBuilder(launcher);
         System.out.println(
             processBuilder.command().stream().collect(Collectors.joining(" ")));
 
@@ -112,7 +105,7 @@ public class TestHeapDumpForInvokeDynamic {
     }
 
     public static void main (String... args) throws Exception {
-
+        SATestUtils.skipIfCannotAttach(); // throws SkippedException if attach not expected to work.
         String heapDumpFileName = "lambdaHeapDump.bin";
 
         File heapDumpFile = new File(heapDumpFileName);
@@ -121,13 +114,8 @@ public class TestHeapDumpForInvokeDynamic {
         }
 
         try {
-            List<String> vmArgs = new ArrayList<String>();
-            vmArgs.add("-XX:+UsePerfData");
-            vmArgs.add("-Xmx512m");
-            vmArgs.addAll(Utils.getVmOptions());
-
             theApp = new LingeredAppWithInvokeDynamic();
-            LingeredApp.startApp(vmArgs, theApp);
+            LingeredApp.startApp(theApp, "-XX:+UsePerfData", "-Xmx512m");
             attachDumpAndVerify(heapDumpFileName, theApp.getPid());
         } finally {
             LingeredApp.stopApp(theApp);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
  */
 
 #include "precompiled.hpp"
-#include "classfile/symbolTable.hpp"
+#include "classfile/classLoaderDataGraph.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "code/codeCache.hpp"
 #include "compiler/compileBroker.hpp"
@@ -33,6 +33,7 @@
 #include "logging/logStream.hpp"
 #include "logging/logConfiguration.hpp"
 #include "memory/heapInspection.hpp"
+#include "memory/metaspace/metaspaceReporter.hpp"
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
 #include "oops/symbol.hpp"
@@ -40,7 +41,9 @@
 #include "runtime/deoptimization.hpp"
 #include "runtime/frame.inline.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
-#include "runtime/sweeper.hpp"
+#include "runtime/jniHandles.hpp"
+#include "runtime/stackFrameStream.inline.hpp"
+#include "runtime/synchronizer.hpp"
 #include "runtime/thread.inline.hpp"
 #include "runtime/threadSMR.inline.hpp"
 #include "runtime/vmOperations.hpp"
@@ -93,8 +96,8 @@ void VM_ClearICs::doit() {
   }
 }
 
-void VM_MarkActiveNMethods::doit() {
-  NMethodSweeper::mark_active_nmethods();
+void VM_CleanClassLoaderDataMetaspaces::doit() {
+  ClassLoaderDataGraph::walk_metadata_and_clean_metaspaces();
 }
 
 VM_DeoptimizeFrame::VM_DeoptimizeFrame(JavaThread* thread, intptr_t* id, int reason) {
@@ -134,12 +137,11 @@ void VM_DeoptimizeAll::doit() {
         tcount = 0;
           int fcount = 0;
           // Deoptimize some selected frames.
-          // Biased llocking wants a updated register map
-          for(StackFrameStream fst(thread, UseBiasedLocking); !fst.is_done(); fst.next()) {
+          for(StackFrameStream fst(thread, false /* update */, true /* process_frames */); !fst.is_done(); fst.next()) {
             if (fst.current()->can_be_deoptimized()) {
               if (fcount++ == fnum) {
                 fcount = 0;
-                Deoptimization::deoptimize(thread, *fst.current(), fst.register_map());
+                Deoptimization::deoptimize(thread, *fst.current());
               }
             }
           }
@@ -151,17 +153,10 @@ void VM_DeoptimizeAll::doit() {
 
 
 void VM_ZombieAll::doit() {
-  JavaThread *thread = (JavaThread *)calling_thread();
-  assert(thread->is_Java_thread(), "must be a Java thread");
-  thread->make_zombies();
+  calling_thread()->as_Java_thread()->make_zombies();
 }
 
 #endif // !PRODUCT
-
-void VM_Verify::doit() {
-  Universe::heap()->prepare_for_verify();
-  Universe::verify();
-}
 
 bool VM_PrintThreads::doit_prologue() {
   // Get Heap_lock if concurrent locks will be dumped
@@ -187,7 +182,7 @@ void VM_PrintJNI::doit() {
 }
 
 void VM_PrintMetadata::doit() {
-  MetaspaceUtils::print_report(_out, _scale, _flags);
+  metaspace::MetaspaceReporter::print_report(_out, _scale, _flags);
 }
 
 VM_FindDeadlocks::~VM_FindDeadlocks() {
@@ -455,6 +450,10 @@ void VM_Exit::doit() {
   wait_for_threads_in_native_to_block();
 
   set_vm_exited();
+
+  // The ObjectMonitor subsystem uses perf counters so do this before
+  // we call exit_globals() so we don't run afoul of perfMemory_exit().
+  ObjectSynchronizer::do_final_audit_and_print_stats();
 
   // We'd like to call IdealGraphPrinter::clean_up() to finalize the
   // XML logging, but we can't safely do that here. The logic to make

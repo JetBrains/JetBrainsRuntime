@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,7 @@ package gc.g1;
  * @library /test/lib /
  * @modules java.base/jdk.internal.misc
  * @modules java.management/sun.management
- * @run main gc.g1.TestPeriodicLogMessages
+ * @run driver gc.g1.TestPeriodicLogMessages
  */
 
 import jdk.test.lib.process.OutputAnalyzer;
@@ -42,23 +42,24 @@ public class TestPeriodicLogMessages {
     public static void main(String[] args) throws Exception {
         ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseG1GC",
                                                                   "-XX:G1PeriodicGCInterval=0",
-                                                                  "-Xlog:gc,gc+periodic=debug",
+                                                                  "-Xlog:gc+init,gc+periodic=debug",
                                                                   "-Xmx10M",
                                                                   GCTest.class.getName());
 
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
-        output.shouldContain("Periodic GC disabled");
+        output.shouldContain("Periodic GC: Disabled");
         output.shouldNotContain("Checking for periodic GC");
         output.shouldHaveExitValue(0);
 
         pb = ProcessTools.createJavaProcessBuilder("-XX:+UseG1GC",
                                                    "-XX:G1PeriodicGCInterval=100",
-                                                   "-Xlog:gc,gc+periodic=debug",
+                                                   "-Xlog:gc+init,gc+periodic=debug",
                                                    "-Xmx10M",
                                                    GCTest.class.getName());
 
         output = new OutputAnalyzer(pb.start());
-        output.shouldContain("Periodic GC enabled with interval 100ms");
+        output.shouldContain("Periodic GC: Enabled");
+        output.shouldContain("Periodic GC Interval: 100ms");
         output.shouldContain("Checking for periodic GC");
         output.shouldHaveExitValue(0);
     }

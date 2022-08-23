@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package jdk.javadoc.internal.doclets.formats.html;
 
+import com.sun.source.doctree.DocTree;
+import jdk.javadoc.internal.doclets.formats.html.markup.BodyContents;
 import jdk.javadoc.internal.doclets.formats.html.markup.ContentBuilder;
+import jdk.javadoc.internal.doclets.formats.html.markup.Text;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
-import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
-import jdk.javadoc.internal.doclets.formats.html.markup.Navigation;
-import jdk.javadoc.internal.doclets.formats.html.markup.Navigation.PageMode;
-import jdk.javadoc.internal.doclets.formats.html.markup.StringContent;
-import jdk.javadoc.internal.doclets.formats.html.markup.Table;
-import jdk.javadoc.internal.doclets.formats.html.markup.TableHeader;
+import jdk.javadoc.internal.doclets.formats.html.Navigation.PageMode;
+import jdk.javadoc.internal.doclets.formats.html.markup.TextBuilder;
 import jdk.javadoc.internal.doclets.toolkit.Content;
+import jdk.javadoc.internal.doclets.toolkit.DocletElement;
+import jdk.javadoc.internal.doclets.toolkit.OverviewElement;
 import jdk.javadoc.internal.doclets.toolkit.util.DocFileIOException;
 import jdk.javadoc.internal.doclets.toolkit.util.DocPath;
 import jdk.javadoc.internal.doclets.toolkit.util.DocPaths;
+import jdk.javadoc.internal.doclets.toolkit.util.IndexItem;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import javax.lang.model.element.Element;
+import java.nio.file.Path;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.TreeMap;
+
+import static java.util.stream.Collectors.groupingBy;
+import java.util.stream.Collectors;
+import java.util.ArrayList;
 
 /**
  * Generates the file with the summary of all the system properties.
@@ -55,11 +61,9 @@ import java.util.TreeMap;
 public class SystemPropertiesWriter extends HtmlDocletWriter {
 
     /**
-     * The HTML tree for main tag.
+     * Cached contents of {@code <title>...</title>} tags of the HTML pages.
      */
-    private final HtmlTree mainTree = HtmlTree.MAIN();
-
-    private final Navigation navBar;
+    final Map<Element, String> titles = new WeakHashMap<>();
 
     /**
      * Constructs SystemPropertiesWriter object.
@@ -69,104 +73,108 @@ public class SystemPropertiesWriter extends HtmlDocletWriter {
      */
     public SystemPropertiesWriter(HtmlConfiguration configuration, DocPath filename) {
         super(configuration, filename);
-        this.navBar = new Navigation(null, configuration, PageMode.SYSTEMPROPERTIES, path);
     }
 
-    /**
-     * Creates SystemPropertiesWriter object.
-     *
-     * @param configuration The current configuration
-     * @throws DocFileIOException
-     */
     public static void generate(HtmlConfiguration configuration) throws DocFileIOException {
         generate(configuration, DocPaths.SYSTEM_PROPERTIES);
     }
 
     private static void generate(HtmlConfiguration configuration, DocPath fileName) throws DocFileIOException {
+        boolean hasSystemProperties = configuration.mainIndex != null
+                && !configuration.mainIndex.getItems(DocTree.Kind.SYSTEM_PROPERTY).isEmpty();
+        if (!hasSystemProperties) {
+            // Cannot defer this check any further, because of the super() call
+            // that prints out notices on creating files, etc.
+            //
+            // There is probably a better place for this kind of checks (see how
+            // this is achieved in other "optional" pages, like Constant Values
+            // and Serialized Form).
+            return;
+        }
         SystemPropertiesWriter systemPropertiesGen = new SystemPropertiesWriter(configuration, fileName);
         systemPropertiesGen.buildSystemPropertiesPage();
+        configuration.conditionalPages.add(HtmlConfiguration.ConditionalPage.SYSTEM_PROPERTIES);
     }
 
     /**
      * Prints all the system properties to the file.
      */
     protected void buildSystemPropertiesPage() throws DocFileIOException {
-        String label = resources.getText("doclet.systemProperties");
-        HtmlTree bodyTree = getBody(getWindowTitle(label));
-        HtmlTree header = HtmlTree.HEADER();
-        addTop(header);
-        navBar.setUserHeader(getUserHeaderFooter(true));
-        header.add(navBar.getContent(true));
-        bodyTree.add(header);
-        HtmlTree div = new HtmlTree(HtmlTag.DIV);
-        div.setStyle(HtmlStyle.systemPropertiesContainer);
-        addSystemProperties(div);
-        Content titleContent = new StringContent(resources.getText("doclet.systemProperties"));
-        Content pHeading = HtmlTree.HEADING(Headings.PAGE_TITLE_HEADING, true,
-                HtmlStyle.title, titleContent);
-        Content headerDiv = HtmlTree.DIV(HtmlStyle.header, pHeading);
-        mainTree.add(headerDiv);
-        mainTree.add(div);
-        bodyTree.add(mainTree);
-        Content footer = HtmlTree.FOOTER();
-        navBar.setUserFooter(getUserHeaderFooter(false));
-        footer.add(navBar.getContent(false));
-        addBottom(footer);
-        bodyTree.add(footer);
-        printHtmlDocument(null, "system properties", bodyTree);
+        String title = resources.getText("doclet.systemProperties");
+        HtmlTree body = getBody(getWindowTitle(title));
+        Content mainContent = new ContentBuilder();
+        addSystemProperties(mainContent);
+        body.add(new BodyContents()
+                .setHeader(getHeader(PageMode.SYSTEM_PROPERTIES))
+                .addMainContent(HtmlTree.DIV(HtmlStyle.header,
+                        HtmlTree.HEADING(Headings.PAGE_TITLE_HEADING,
+                                contents.getContent("doclet.systemProperties"))))
+                .addMainContent(mainContent)
+                .setFooter(getFooter()));
+        printHtmlDocument(null, "system properties", body);
+
+        if (configuration.mainIndex != null) {
+            configuration.mainIndex.add(IndexItem.of(IndexItem.Category.TAGS, title, path));
+        }
     }
 
     /**
-     * Add all the system properties to the content tree.
+     * Adds all the system properties to the content tree.
      *
      * @param content HtmlTree content to which the links will be added
      */
     protected void addSystemProperties(Content content) {
-        Map<String, List<SearchIndexItem>> searchIndexMap = groupSystemProperties();
-        Content separator = new StringContent(", ");
-        Table table = new Table(HtmlStyle.systemPropertiesSummary)
-                .setCaption(getTableCaption(contents.systemPropertiesSummaryLabel))
+        Map<String, List<IndexItem>> searchIndexMap = groupSystemProperties();
+        Content separator = Text.of(", ");
+        Table table = new Table(HtmlStyle.summaryTable)
+                .setCaption(contents.systemPropertiesSummaryLabel)
                 .setHeader(new TableHeader(contents.propertyLabel, contents.referencedIn))
                 .setColumnStyles(HtmlStyle.colFirst, HtmlStyle.colLast);
-        for (Entry<String, List<SearchIndexItem>> entry : searchIndexMap.entrySet()) {
-            Content propertyName = new StringContent(entry.getKey());
-            List<SearchIndexItem> searchIndexItems = entry.getValue();
+        for (Entry<String, List<IndexItem>> entry : searchIndexMap.entrySet()) {
+            Content propertyName = Text.of(entry.getKey());
+            List<IndexItem> searchIndexItems = entry.getValue();
             Content separatedReferenceLinks = new ContentBuilder();
-            separatedReferenceLinks.add(links.createLink(
-                    pathToRoot.resolve(searchIndexItems.get(0).getUrl()),
-                    getLinkLabel(searchIndexItems.get(0))));
+            separatedReferenceLinks.add(createLink(searchIndexItems.get(0)));
             for (int i = 1; i < searchIndexItems.size(); i++) {
                 separatedReferenceLinks.add(separator);
-                separatedReferenceLinks.add(links.createLink(
-                        pathToRoot.resolve(searchIndexItems.get(i).getUrl()),
-                        getLinkLabel(searchIndexItems.get(i))));
+                separatedReferenceLinks.add(createLink(searchIndexItems.get(i)));
             }
-            table.addRow(propertyName, separatedReferenceLinks);
+            table.addRow(propertyName, HtmlTree.DIV(HtmlStyle.block, separatedReferenceLinks));
         }
-        content.add(table.toContent());
+        content.add(table);
     }
 
-    private Map<String, List<SearchIndexItem>> groupSystemProperties() {
-        Map<String, List<SearchIndexItem>> searchIndexMap = new TreeMap<>();
-        for (SearchIndexItem searchIndex : configuration.tagSearchIndex) {
-            if (searchIndex.isSystemProperty()) {
-                List<SearchIndexItem> list = searchIndexMap
-                        .computeIfAbsent(searchIndex.getLabel(), k -> new ArrayList<>());
-                list.add(searchIndex);
-            }
-        }
-        return searchIndexMap;
+    private Map<String, List<IndexItem>> groupSystemProperties() {
+        return configuration.mainIndex.getItems(DocTree.Kind.SYSTEM_PROPERTY).stream()
+                .collect(groupingBy(IndexItem::getLabel, TreeMap::new, Collectors.toCollection(ArrayList::new)));
     }
 
-    private String getLinkLabel(SearchIndexItem searchIndexItem) {
-        String holder = searchIndexItem.getHolder();
-        String url = searchIndexItem.getUrl();
-        final String docFiles = "/doc-files/";
-        if (url.contains(docFiles)) {
-            final int idx = url.indexOf(docFiles);
-            final int len = docFiles.length();
-            return url.substring(idx + len, url.indexOf("#", idx));
+    private Content createLink(IndexItem i) {
+        assert i.getDocTree().getKind() == DocTree.Kind.SYSTEM_PROPERTY : i;
+        Element element = i.getElement();
+        if (element instanceof OverviewElement) {
+            return links.createLink(pathToRoot.resolve(i.getUrl()),
+                    resources.getText("doclet.Overview"));
+        } else if (element instanceof DocletElement e) {
+            // Implementations of DocletElement do not override equals and
+            // hashCode; putting instances of DocletElement in a map is not
+            // incorrect, but might well be inefficient
+            String t = titles.computeIfAbsent(element, utils::getHTMLTitle);
+            if (t.isBlank()) {
+                // The user should probably be notified (a warning?) that this
+                // file does not have a title
+                Path p = Path.of(e.getFileObject().toUri());
+                t = p.getFileName().toString();
+            }
+            ContentBuilder b = new ContentBuilder();
+            b.add(HtmlTree.CODE(Text.of(i.getHolder() + ": ")));
+            // non-program elements should be displayed using a normal font
+            b.add(t);
+            return links.createLink(pathToRoot.resolve(i.getUrl()), b);
+        } else {
+            // program elements should be displayed using a code font
+            Content link = links.createLink(pathToRoot.resolve(i.getUrl()), i.getHolder());
+            return HtmlTree.CODE(link);
         }
-        return holder;
     }
 }

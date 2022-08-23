@@ -35,6 +35,7 @@
 #include "prims/jvmtiThreadState.inline.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/safepointVerifiers.hpp"
+#include "runtime/stubCodeGenerator.hpp"
 #include "runtime/vmThread.hpp"
 
 // Support class to collect a list of the non-nmethod CodeBlobs in
@@ -172,7 +173,7 @@ void CodeBlobCollector::collect() {
   assert(_global_code_blobs == NULL, "checking");
 
   // create the global list
-  _global_code_blobs = new (ResourceObj::C_HEAP, mtInternal) GrowableArray<JvmtiCodeBlobDesc*>(50,true);
+  _global_code_blobs = new (ResourceObj::C_HEAP, mtServiceability) GrowableArray<JvmtiCodeBlobDesc*>(50, mtServiceability);
 
   // iterate over the stub code descriptors and put them in the list first.
   for (StubCodeDesc* desc = StubCodeDesc::first(); desc != NULL; desc = StubCodeDesc::next(desc)) {
@@ -226,8 +227,10 @@ jvmtiError JvmtiCodeBlobEvents::generate_compiled_method_load_events(JvmtiEnv* e
   {
     NoSafepointVerifier nsv;  // safepoints are not safe while collecting methods to post.
     {
-      // Walk the CodeCache notifying for live nmethods, don't release the CodeCache_lock
-      // because the sweeper may be running concurrently.
+      // Walk the CodeCache notifying for live nmethods. We hold the CodeCache_lock
+      // to ensure the iteration is safe and nmethods are not concurrently freed.
+      // However, they may still change states and become !is_alive(). Filtering
+      // those out is done inside of nmethod::post_compiled_method_load_event().
       // Save events to the queue for posting outside the CodeCache_lock.
       MutexLocker mu(java_thread, CodeCache_lock, Mutex::_no_safepoint_check_flag);
       // Iterate over non-profiled and profiled nmethods
@@ -275,7 +278,7 @@ void JvmtiCodeBlobEvents::build_jvmti_addr_location_map(nmethod *nm,
 
     address scopes_data = nm->scopes_data_begin();
     for( pcd = nm->scopes_pcs_begin(); pcd < nm->scopes_pcs_end(); ++pcd ) {
-      ScopeDesc sc0(nm, pcd->scope_decode_offset(), pcd->should_reexecute(), pcd->rethrow_exception(), pcd->return_oop());
+      ScopeDesc sc0(nm, pcd, true);
       ScopeDesc *sd  = &sc0;
       while( !sd->is_top() ) { sd = sd->sender(); }
       int bci = sd->bci();

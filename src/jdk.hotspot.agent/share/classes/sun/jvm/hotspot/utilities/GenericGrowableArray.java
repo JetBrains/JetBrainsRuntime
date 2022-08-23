@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,8 @@ import sun.jvm.hotspot.debugger.*;
 import sun.jvm.hotspot.runtime.*;
 import sun.jvm.hotspot.oops.*;
 import sun.jvm.hotspot.types.*;
+import sun.jvm.hotspot.utilities.Observable;
+import sun.jvm.hotspot.utilities.Observer;
 
 public class GenericGrowableArray extends VMObject {
   static {
@@ -40,13 +42,11 @@ public class GenericGrowableArray extends VMObject {
   }
 
   private static synchronized void initialize(TypeDataBase db) throws WrongTypeException {
-    Type type      = db.lookupType("GenericGrowableArray");
-    _arena_field = type.getAddressField("_arena");
+    Type type      = db.lookupType("GrowableArrayBase");
     _max_field = new CIntField(type.getCIntegerField("_max"), 0);
     _len_field = new CIntField(type.getCIntegerField("_len"), 0);
   }
 
-  private static AddressField _arena_field;
   private static CIntField _max_field;
   private static CIntField _len_field;
 

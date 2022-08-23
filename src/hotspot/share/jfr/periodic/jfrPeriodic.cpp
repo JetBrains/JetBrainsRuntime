@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,11 +54,13 @@
 #include "runtime/arguments.hpp"
 #include "runtime/flags/jvmFlag.hpp"
 #include "runtime/globals.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/os.hpp"
 #include "runtime/os_perf.hpp"
 #include "runtime/thread.inline.hpp"
 #include "runtime/sweeper.hpp"
 #include "runtime/vmThread.hpp"
+#include "runtime/vm_version.hpp"
 #include "services/classLoadingService.hpp"
 #include "services/management.hpp"
 #include "services/threadService.hpp"
@@ -174,7 +176,13 @@ TRACE_REQUEST_FUNC(CPULoad) {
   double u = 0; // user time
   double s = 0; // kernel time
   double t = 0; // total time
-  int ret_val = JfrOSInterface::cpu_loads_process(&u, &s, &t);
+  int ret_val = OS_ERR;
+  {
+    // Can take some time on certain platforms, especially under heavy load.
+    // Transition to native to avoid unnecessary stalls for pending safepoint synchronizations.
+    ThreadToNativeFromVM transition(JavaThread::current());
+    ret_val = JfrOSInterface::cpu_loads_process(&u, &s, &t);
+  }
   if (ret_val == OS_ERR) {
     log_debug(jfr, system)( "Unable to generate requestable event CPULoad");
     return;
@@ -248,7 +256,13 @@ TRACE_REQUEST_FUNC(SystemProcess) {
 
 TRACE_REQUEST_FUNC(ThreadContextSwitchRate) {
   double rate = 0.0;
-  int ret_val = JfrOSInterface::context_switch_rate(&rate);
+  int ret_val = OS_ERR;
+  {
+    // Can take some time on certain platforms, especially under heavy load.
+    // Transition to native to avoid unnecessary stalls for pending safepoint synchronizations.
+    ThreadToNativeFromVM transition(JavaThread::current());
+    ret_val = JfrOSInterface::context_switch_rate(&rate);
+  }
   if (ret_val == OS_ERR) {
     log_debug(jfr, system)( "Unable to generate requestable event ThreadContextSwitchRate");
     return;
@@ -266,13 +280,13 @@ TRACE_REQUEST_FUNC(ThreadContextSwitchRate) {
 #define SEND_FLAGS_OF_TYPE(eventType, flagType)                   \
   do {                                                            \
     JVMFlag *flag = JVMFlag::flags;                               \
-    while (flag->_name != NULL) {                                 \
+    while (flag->name() != NULL) {                                \
       if (flag->is_ ## flagType()) {                              \
         if (flag->is_unlocked()) {                                \
           Event ## eventType event;                               \
-          event.set_name(flag->_name);                            \
+          event.set_name(flag->name());                           \
           event.set_value(flag->get_ ## flagType());              \
-          event.set_origin(flag->get_origin());                   \
+          event.set_origin(static_cast<u8>(flag->get_origin()));  \
           event.commit();                                         \
         }                                                         \
       }                                                           \
@@ -468,21 +482,21 @@ class JfrClassLoaderStatsClosure : public ClassLoaderStatsClosure {
 public:
   JfrClassLoaderStatsClosure() : ClassLoaderStatsClosure(NULL) {}
 
-  bool do_entry(oop const& key, ClassLoaderStats* const& cls) {
-    const ClassLoaderData* this_cld = cls->_class_loader != NULL ?
-      java_lang_ClassLoader::loader_data_acquire(cls->_class_loader) : NULL;
-    const ClassLoaderData* parent_cld = cls->_parent != NULL ?
-      java_lang_ClassLoader::loader_data_acquire(cls->_parent) : NULL;
+  bool do_entry(oop const& key, ClassLoaderStats const& cls) {
+    const ClassLoaderData* this_cld = cls._class_loader != NULL ?
+      java_lang_ClassLoader::loader_data_acquire(cls._class_loader) : NULL;
+    const ClassLoaderData* parent_cld = cls._parent != NULL ?
+      java_lang_ClassLoader::loader_data_acquire(cls._parent) : NULL;
     EventClassLoaderStatistics event;
     event.set_classLoader(this_cld);
     event.set_parentClassLoader(parent_cld);
-    event.set_classLoaderData((intptr_t)cls->_cld);
-    event.set_classCount(cls->_classes_count);
-    event.set_chunkSize(cls->_chunk_sz);
-    event.set_blockSize(cls->_block_sz);
-    event.set_unsafeAnonymousClassCount(cls->_anon_classes_count);
-    event.set_unsafeAnonymousChunkSize(cls->_anon_chunk_sz);
-    event.set_unsafeAnonymousBlockSize(cls->_anon_block_sz);
+    event.set_classLoaderData((intptr_t)cls._cld);
+    event.set_classCount(cls._classes_count);
+    event.set_chunkSize(cls._chunk_sz);
+    event.set_blockSize(cls._block_sz);
+    event.set_hiddenClassCount(cls._hidden_classes_count);
+    event.set_hiddenChunkSize(cls._hidden_chunk_sz);
+    event.set_hiddenBlockSize(cls._hidden_block_sz);
     event.commit();
     return true;
   }
@@ -617,6 +631,7 @@ TRACE_REQUEST_FUNC(CodeSweeperConfiguration) {
   EventCodeSweeperConfiguration event;
   event.set_sweeperEnabled(MethodFlushing);
   event.set_flushingEnabled(UseCodeCacheFlushing);
+  event.set_sweepThreshold(NMethodSweeper::sweep_threshold_bytes());
   event.commit();
 }
 
@@ -629,4 +644,3 @@ TRACE_REQUEST_FUNC(ShenandoahHeapRegionInformation) {
   }
 #endif
 }
-

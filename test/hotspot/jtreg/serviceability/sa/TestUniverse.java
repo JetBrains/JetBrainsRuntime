@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,12 +34,12 @@ import sun.hotspot.gc.GC;
 /**
  * @test
  * @summary Test the 'universe' command of jhsdb clhsdb.
- * @requires vm.hasSAandCanAttach
+ * @requires vm.hasSA
  * @bug 8190307
  * @library /test/lib
  * @build jdk.test.lib.apps.*
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI -Xbootclasspath/a:. TestUniverse
  */
 
@@ -93,7 +93,7 @@ public class TestUniverse {
     private static void test(GC gc) throws Exception {
         LingeredApp app = null;
         try {
-            app = LingeredApp.startApp(List.of("-XX:+UnlockExperimentalVMOptions", "-XX:+Use" + gc + "GC"));
+            app = LingeredApp.startApp("-XX:+UnlockExperimentalVMOptions", "-XX:+Use" + gc + "GC");
             System.out.println ("Started LingeredApp with " + gc + "GC and pid " + app.getPid());
             testClhsdbForUniverse(app.getPid(), gc);
         } finally {

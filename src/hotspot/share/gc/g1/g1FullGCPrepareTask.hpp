@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,11 +29,11 @@
 #include "gc/g1/g1FullGCScope.hpp"
 #include "gc/g1/g1FullGCTask.hpp"
 #include "gc/g1/g1RootProcessor.hpp"
-#include "gc/g1/g1StringDedup.hpp"
 #include "gc/g1/heapRegionManager.hpp"
 #include "gc/shared/referenceProcessor.hpp"
 
 class G1CMBitMap;
+class G1FullCollector;
 
 class G1FullGCPrepareTask : public G1FullGCTask {
 protected:
@@ -46,26 +46,32 @@ public:
   G1FullGCPrepareTask(G1FullCollector* collector);
   void work(uint worker_id);
   void prepare_serial_compaction();
+  void prepare_serial_compaction_dcevm();
   bool has_freed_regions();
 
 protected:
   class G1CalculatePointersClosure : public HeapRegionClosure {
+  private:
+    template<bool is_humongous>
+    void free_pinned_region(HeapRegion* hr);
   protected:
     G1CollectedHeap* _g1h;
+    G1FullCollector* _collector;
     G1CMBitMap* _bitmap;
     G1FullGCCompactionPoint* _cp;
-    uint _humongous_regions_removed;
+    bool _regions_freed;
+    uint _region_processing_order;
 
-    virtual void prepare_for_compaction(HeapRegion* hr);
+    bool should_compact(HeapRegion* hr);
+    void prepare_for_compaction(HeapRegion* hr);
     void prepare_for_compaction_work(G1FullGCCompactionPoint* cp, HeapRegion* hr);
-    void free_humongous_region(HeapRegion* hr);
+
     void reset_region_metadata(HeapRegion* hr);
 
   public:
-    G1CalculatePointersClosure(G1CMBitMap* bitmap,
+    G1CalculatePointersClosure(G1FullCollector* collector,
                                G1FullGCCompactionPoint* cp);
 
-    void update_sets();
     bool do_heap_region(HeapRegion* hr);
     bool freed_regions();
   };
@@ -75,6 +81,16 @@ protected:
 
   public:
     G1PrepareCompactLiveClosure(G1FullGCCompactionPoint* cp);
+    size_t apply(oop object);
+  };
+
+  class G1PrepareCompactLiveClosureDcevm : public StackObj {
+    G1FullGCCompactionPoint* _cp;
+    uint _region_processing_order;
+
+    bool must_rescue(oop old_obj, oop new_obj);
+  public:
+    G1PrepareCompactLiveClosureDcevm(G1FullGCCompactionPoint* cp, uint region_processing_order);
     size_t apply(oop object);
   };
 
@@ -90,6 +106,7 @@ protected:
 
     size_t apply(oop object);
   };
+
 };
 
 #endif // SHARE_GC_G1_G1FULLGCPREPARETASK_HPP

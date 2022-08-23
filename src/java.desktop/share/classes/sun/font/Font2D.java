@@ -57,15 +57,16 @@ public abstract class Font2D {
     public static final int DEFAULT_RANK = 4;
 
     private static final String[] boldNames = {
-        "bold", "demibold", "demi-bold", "demi bold", "negreta", "demi", };
+        "bold", "demibold", "demi-bold", "demi bold", "negreta", "demi", "black", "coder-b"};
 
     private static final String[] italicNames = {
-        "italic", "cursiva", "oblique", "inclined", };
+        "italic", "cursiva", "oblique", "inclined", "-it", "-lightit", "coder-i"};
 
     private static final String[] boldItalicNames = {
           "bolditalic", "bold-italic", "bold italic",
           "boldoblique", "bold-oblique", "bold oblique",
-          "demibold italic", "negreta cursiva","demi oblique", };
+          "demibold italic", "negreta cursiva","demi oblique",
+          "-boldit", "-blackit", "coder-bi"};
 
     private static final FontRenderContext DEFAULT_FRC =
         new FontRenderContext(null, false, false);
@@ -334,7 +335,7 @@ public abstract class Font2D {
         return getStrike(desc, true);
     }
 
-    private FontStrike getStrike(FontStrikeDesc desc, boolean copy) {
+    FontStrike getStrike(FontStrikeDesc desc, boolean copy) {
         /* Before looking in the map, see if the descriptor matches the
          * last strike returned from this Font2D. This should often be a win
          * since its common for the same font, in the same size to be
@@ -521,6 +522,28 @@ public abstract class Font2D {
 
     public String getFamilyName(Locale l) {
         return familyName;
+    }
+
+    /*
+     * As defined in OpenType specification
+     *(https://docs.microsoft.com/en-us/typography/opentype/spec/name#name-ids, nameID=16)
+     */
+    public String getTypographicFamilyName() {
+        return familyName;
+    }
+
+    /*
+     * As defined in OpenType specification
+     *(https://docs.microsoft.com/en-us/typography/opentype/spec/name#name-ids, nameID=17)
+     */
+    public String getTypographicSubfamilyName() {
+        int style = getStyle();
+        switch (style) {
+            case Font.BOLD: return "Bold";
+            case Font.ITALIC: return "Italic";
+            case Font.BOLD | Font.ITALIC: return "Bold Italic";
+            default: return "Regular";
+        }
     }
 
     public int getNumGlyphs() {

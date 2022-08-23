@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
 
 /*
  * @test
- * @key regression
+ * @bug 6318850
  *
  * @summary converted from VM Testbase nsk/jvmti/RedefineClasses/redefclass031.
  * VM Testbase keywords: [quick, jpda, jvmti, regression, noras, redefine]
@@ -43,7 +43,6 @@
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
  * @build nsk.jvmti.RedefineClasses.redefclass031r
  * @run main/othervm/native -agentlib:redefclass031 nsk.jvmti.RedefineClasses.redefclass031
  */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,7 @@ public class TestOverriddenDeprecatedMethods extends JavadocTester {
     public void test() {
         javadoc("-d", "out-deprecated",
                 "-sourcepath", testSrc,
+                "--no-platform-links",
                 "--override-methods","summary",
                 "pkg1");
 
@@ -51,18 +52,26 @@ public class TestOverriddenDeprecatedMethods extends JavadocTester {
 
         checkOrder("pkg1/SubClass.html",
                 "Method Summary",
-                "Methods declared in class&nbsp;pkg1.<a href=\"BaseClass.html\" title=\"class in pkg1\">"
-                + "BaseClass</a>",
-                "<a href=\"BaseClass.html#func3()\">func3</a>");
+                """
+                    Methods declared in class&nbsp;pkg1.<a href="BaseClass.html" title="class in pkg1">BaseClass</a>""",
+                """
+                    <a href="BaseClass.html#func3()">func3</a>""");
 
         checkOrder("pkg1/SubClass.html",
                 "Method Detail",
-                "<span class=\"annotations\">@Deprecated\n</span><span class=\"modifiers\">public</span>&nbsp;"
-                + "<span class=\"returnType\">void</span>&nbsp;<span class=\"memberName\">func1</span>()",
-                "<div class=\"deprecationBlock\"><span class=\"deprecatedLabel\">Deprecated.</span></div>",
-                "<span class=\"annotations\">@Deprecated\n</span><span class=\"modifiers\">public</span>&nbsp;"
-                + "<span class=\"returnType\">void</span>&nbsp;<span class=\"memberName\">func2</span>()",
-                "<div class=\"deprecationBlock\"><span class=\"deprecatedLabel\">Deprecated.</span></div>",
-                "<div class=\"block\">deprecated with comments</div>");
+                """
+                    <span class="annotations">@Deprecated
+                    </span><span class="modifiers">public</span>&nbsp;<span class="return-type">void\
+                    </span>&nbsp;<span class="element-name">func1</span>()""",
+                """
+                    <div class="deprecation-block"><span class="deprecated-label">Deprecated.</span></div>""",
+                """
+                    <span class="annotations">@Deprecated
+                    </span><span class="modifiers">public</span>&nbsp;<span class="return-type">void\
+                    </span>&nbsp;<span class="element-name">func2</span>()""",
+                """
+                    <div class="deprecation-block"><span class="deprecated-label">Deprecated.</span></div>""",
+                """
+                    <div class="block">deprecated with comments</div>""");
     }
 }

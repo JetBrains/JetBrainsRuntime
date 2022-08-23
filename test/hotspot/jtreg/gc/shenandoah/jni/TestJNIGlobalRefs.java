@@ -22,10 +22,9 @@
  *
  */
 
-/* @test TestJNIGlobalRefs
+/* @test id=aggressive-verify
  * @summary Test JNI Global Refs with Shenandoah
- * @key gc
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm/native -Xmx1g -Xlog:gc -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive
@@ -33,10 +32,9 @@
  *      TestJNIGlobalRefs
  */
 
-/* @test TestJNIGlobalRefs
+/* @test id=aggressive
  * @summary Test JNI Global Refs with Shenandoah
- * @key gc
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm/native -Xmx1g -Xlog:gc -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive

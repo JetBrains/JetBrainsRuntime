@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,8 +41,8 @@ import static java.util.stream.Collectors.joining;
  * A <a href="package-summary.html#nominal">nominal descriptor</a> for an
  * {@code invokedynamic} call site.
  *
- * <p>Concrete subtypes of {@linkplain DynamicCallSiteDesc} must be
- * <a href="../doc-files/ValueBased.html">value-based</a>.
+ * <p>Concrete subtypes of {@linkplain DynamicCallSiteDesc} should be immutable
+ * and their behavior should not rely on object identity.
  *
  * @since 12
  */
@@ -66,7 +66,7 @@ public class DynamicCallSiteDesc {
      * @param bootstrapArgs {@link ConstantDesc}s describing the static arguments
      *                      to the bootstrap, that would appear in the
      *                      {@code BootstrapMethods} attribute
-     * @throws NullPointerException if any parameter is null
+     * @throws NullPointerException if any parameter or its contents are {@code null}
      * @throws IllegalArgumentException if the invocation name has the incorrect
      * format
      * @jvms 4.2.2 Unqualified Names
@@ -79,6 +79,9 @@ public class DynamicCallSiteDesc {
         this.invocationType = requireNonNull(invocationType);
         this.bootstrapMethod = requireNonNull(bootstrapMethod);
         this.bootstrapArgs = requireNonNull(bootstrapArgs.clone());
+        for (int i = 0; i < this.bootstrapArgs.length; i++) {
+            requireNonNull(this.bootstrapArgs[i]);
+        }
         if (invocationName.length() == 0)
             throw new IllegalArgumentException("Illegal invocation name: " + invocationName);
     }
@@ -97,7 +100,7 @@ public class DynamicCallSiteDesc {
      *                      to the bootstrap, that would appear in the
      *                      {@code BootstrapMethods} attribute
      * @return the nominal descriptor
-     * @throws NullPointerException if any parameter is null
+     * @throws NullPointerException if any parameter or its contents are {@code null}
      * @throws IllegalArgumentException if the invocation name has the incorrect
      * format
      * @jvms 4.2.2 Unqualified Names
@@ -156,7 +159,7 @@ public class DynamicCallSiteDesc {
      *                      to the bootstrap, that would appear in the
      *                      {@code BootstrapMethods} attribute
      * @return the nominal descriptor
-     * @throws NullPointerException if any parameter is null
+     * @throws NullPointerException if the argument or its contents are {@code null}
      */
     public DynamicCallSiteDesc withArgs(ConstantDesc... bootstrapArgs) {
         return new DynamicCallSiteDesc(bootstrapMethod, invocationName, invocationType, bootstrapArgs);
@@ -249,8 +252,8 @@ public class DynamicCallSiteDesc {
      *
      * @param o the {@code DynamicCallSiteDesc} to compare to this
      *       {@code DynamicCallSiteDesc}
-     * @return {@code true} if the specified {@code DynamicCallSiteDesc} is
-     *      equals to this {@code DynamicCallSiteDesc}.
+     * @return {@code true} if the specified {@code DynamicCallSiteDesc}
+     *      is equal to this {@code DynamicCallSiteDesc}.
      */
     @Override
     public final boolean equals(Object o) {

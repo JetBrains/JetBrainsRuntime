@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,9 +53,6 @@ CardGeneration::CardGeneration(ReservedSpace rs,
                                     heap_word_size(initial_byte_size));
   MemRegion committed_mr(start, heap_word_size(initial_byte_size));
   _rs->resize_covered_region(committed_mr);
-  if (_bts == NULL) {
-    vm_exit_during_initialization("Could not allocate a BlockOffsetArray");
-  }
 
   // Verify that the start and end of this generation is the start of a card.
   // If this wasn't true, a single card could span more than on generation,
@@ -310,8 +307,13 @@ void CardGeneration::space_iterate(SpaceClosure* blk,
   blk->do_space(space());
 }
 
-void CardGeneration::younger_refs_iterate(OopsInGenClosure* blk, uint n_threads) {
-  blk->set_generation(this);
-  younger_refs_in_space_iterate(space(), blk, n_threads);
-  blk->reset_generation();
+void CardGeneration::younger_refs_iterate(OopIterateClosure* blk) {
+  // Apply "cl->do_oop" to (the address of) (exactly) all the ref fields in
+  // "sp" that point into the young generation.
+  // The iteration is only over objects allocated at the start of the
+  // iterations; objects allocated as a result of applying the closure are
+  // not included.
+
+  HeapWord* gen_boundary = reserved().start();
+  _rs->younger_refs_in_space_iterate(space(), gen_boundary, blk);
 }

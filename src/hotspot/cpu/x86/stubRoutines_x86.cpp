@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,12 +44,22 @@ address StubRoutines::x86::_upper_word_mask_addr = NULL;
 address StubRoutines::x86::_shuffle_byte_flip_mask_addr = NULL;
 address StubRoutines::x86::_k256_adr = NULL;
 address StubRoutines::x86::_vector_short_to_byte_mask = NULL;
+address StubRoutines::x86::_vector_int_to_byte_mask = NULL;
+address StubRoutines::x86::_vector_int_to_short_mask = NULL;
+address StubRoutines::x86::_vector_all_bits_set = NULL;
+address StubRoutines::x86::_vector_byte_shuffle_mask = NULL;
+address StubRoutines::x86::_vector_short_shuffle_mask = NULL;
+address StubRoutines::x86::_vector_int_shuffle_mask = NULL;
+address StubRoutines::x86::_vector_long_shuffle_mask = NULL;
 address StubRoutines::x86::_vector_float_sign_mask = NULL;
 address StubRoutines::x86::_vector_float_sign_flip = NULL;
 address StubRoutines::x86::_vector_double_sign_mask = NULL;
 address StubRoutines::x86::_vector_double_sign_flip = NULL;
 address StubRoutines::x86::_vector_byte_perm_mask = NULL;
 address StubRoutines::x86::_vector_long_sign_mask = NULL;
+address StubRoutines::x86::_vector_iota_indices = NULL;
+address StubRoutines::x86::_vector_32_bit_mask = NULL;
+address StubRoutines::x86::_vector_64_bit_mask = NULL;
 #ifdef _LP64
 address StubRoutines::x86::_k256_W_adr = NULL;
 address StubRoutines::x86::_k512_W_addr = NULL;
@@ -183,6 +193,57 @@ juint StubRoutines::x86::_crc_table[] =
     0x5d681b02UL, 0x2a6f2b94UL, 0xb40bbe37UL, 0xc30c8ea1UL, 0x5a05df1bUL,
     0x2d02ef8dUL
 };
+
+#ifdef _LP64
+juint StubRoutines::x86::_crc_table_avx512[] =
+{
+    0xe95c1271UL, 0x00000000UL, 0xce3371cbUL, 0x00000000UL,
+    0xccaa009eUL, 0x00000000UL, 0x751997d0UL, 0x00000001UL,
+    0x4a7fe880UL, 0x00000001UL, 0xe88ef372UL, 0x00000001UL,
+    0xccaa009eUL, 0x00000000UL, 0x63cd6124UL, 0x00000001UL,
+    0xf7011640UL, 0x00000001UL, 0xdb710640UL, 0x00000001UL,
+    0xd7cfc6acUL, 0x00000001UL, 0xea89367eUL, 0x00000001UL,
+    0x8cb44e58UL, 0x00000001UL, 0xdf068dc2UL, 0x00000000UL,
+    0xae0b5394UL, 0x00000000UL, 0xc7569e54UL, 0x00000001UL,
+    0xc6e41596UL, 0x00000001UL, 0x54442bd4UL, 0x00000001UL,
+    0x74359406UL, 0x00000001UL, 0x3db1ecdcUL, 0x00000000UL,
+    0x5a546366UL, 0x00000001UL, 0xf1da05aaUL, 0x00000000UL,
+    0xccaa009eUL, 0x00000000UL, 0x751997d0UL, 0x00000001UL,
+    0x00000000UL, 0x00000000UL, 0x00000000UL, 0x00000000UL
+};
+
+juint StubRoutines::x86::_crc_by128_masks_avx512[] =
+{
+    0xffffffffUL, 0xffffffffUL, 0x00000000UL, 0x00000000UL,
+    0x00000000UL, 0xffffffffUL, 0xffffffffUL, 0xffffffffUL,
+    0x80808080UL, 0x80808080UL, 0x80808080UL, 0x80808080UL
+};
+
+juint StubRoutines::x86::_shuf_table_crc32_avx512[] =
+{
+    0x83828100UL, 0x87868584UL, 0x8b8a8988UL, 0x8f8e8d8cUL,
+    0x03020100UL, 0x07060504UL, 0x0b0a0908UL, 0x000e0d0cUL
+};
+
+juint StubRoutines::x86::_adler32_ascale_table[] =
+{
+    0x00000000UL, 0x00000001UL, 0x00000002UL, 0x00000003UL,
+    0x00000004UL, 0x00000005UL, 0x00000006UL, 0x00000007UL
+};
+
+juint StubRoutines::x86::_adler32_shuf0_table[] =
+{
+    0xFFFFFF00UL, 0xFFFFFF01UL, 0xFFFFFF02UL, 0xFFFFFF03UL,
+    0xFFFFFF04UL, 0xFFFFFF05UL, 0xFFFFFF06UL, 0xFFFFFF07UL
+};
+
+juint StubRoutines::x86::_adler32_shuf1_table[] =
+{
+    0xFFFFFF08UL, 0xFFFFFF09, 0xFFFFFF0AUL, 0xFFFFFF0BUL,
+    0xFFFFFF0CUL, 0xFFFFFF0D, 0xFFFFFF0EUL, 0xFFFFFF0FUL
+};
+
+#endif // _LP64
 
 #define D 32
 #define P 0x82F63B78 // Reflection of Castagnoli (0x11EDC6F41)

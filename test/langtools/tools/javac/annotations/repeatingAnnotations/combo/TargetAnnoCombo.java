@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug      7151010 8006547 8007766 8029017
+ * @bug      7151010 8006547 8007766 8029017 8246774
  * @summary  Default test cases for running combinations for Target values
  * @modules jdk.compiler
  * @build    Helper
@@ -66,7 +66,7 @@ public class TargetAnnoCombo {
     final static Set<ElementType> empty = EnumSet.noneOf(ElementType.class);
 
     // [TYPE, FIELD, METHOD, PARAMETER, CONSTRUCTOR, LOCAL_VARIABLE, ANNOTATION_TYPE,
-    // PACKAGE, TYPE_PARAMETER, TYPE_USE]
+    // PACKAGE, TYPE_PARAMETER, TYPE_USE, RECORD_COMPONENT]
     final static Set<ElementType> allTargets = EnumSet.allOf(ElementType.class);
 
     // [TYPE, FIELD, METHOD, PARAMETER, CONSTRUCTOR, LOCAL_VARIABLE, ANNOTATION_TYPE,
@@ -93,16 +93,22 @@ public class TargetAnnoCombo {
         private Set<ElementType> baseAnnotations;
         private Set<ElementType> containerAnnotations;
         private IgnoreKind ignore;
+        java.util.List<String> options;
 
         public TestCase(Set<ElementType> baseAnnotations, Set<ElementType> containerAnnotations) {
-            this(baseAnnotations, containerAnnotations, IgnoreKind.RUN);
+            this(baseAnnotations, containerAnnotations, IgnoreKind.RUN, null);
+        }
+
+        public TestCase(Set<ElementType> baseAnnotations, Set<ElementType> containerAnnotations, List<String> options) {
+            this(baseAnnotations, containerAnnotations, IgnoreKind.RUN, options);
         }
 
         public TestCase(Set<ElementType> baseAnnotations, Set<ElementType> containerAnnotations,
-                        IgnoreKind ignoreKind) {
+                        IgnoreKind ignoreKind, java.util.List<String> options) {
             this.baseAnnotations = baseAnnotations;
             this.containerAnnotations = containerAnnotations;
             this.ignore = ignoreKind;
+            this.options = options;
         }
 
         public Set getBaseAnnotations() {
@@ -198,19 +204,22 @@ public class TargetAnnoCombo {
         }
     }
 
+    // options to be passed if target RECORD_COMPONENT can't be considered
+    List<String> source8 = List.of("-source", "8");
+
     private void generate() {
         // Adding test cases to run.
         testCases.addAll(Arrays.asList(
                 // No base target against no container target.
-                new TestCase(noSet, noSet),
+    /*  0*/     new TestCase(noSet, noSet),
                 // No base target against empty container target.
-                new TestCase(noSet, empty),
+    /*  1*/     new TestCase(noSet, empty),
                 // No base target against TYPE_USE only container target.
-                new TestCase(noSet, less(jdk8, TYPE_PARAMETER)),
+                new TestCase(noSet, less(jdk8, TYPE_PARAMETER), source8),
                 // No base target against TYPE_PARAMETER only container target.
-                new TestCase(noSet, less(jdk8, TYPE_USE)),
+                new TestCase(noSet, less(jdk8, TYPE_USE), source8),
                 // No base target against TYPE_USE + TYPE_PARAMETER only container target.
-                new TestCase(noSet, jdk8),
+                new TestCase(noSet, jdk8, source8),
                 // No base target against TYPE_USE + some selection of jdk7 targets.
                 new TestCase(noSet,
                 plus(EnumSet.range(TYPE, LOCAL_VARIABLE), TYPE_USE)),
@@ -221,7 +230,7 @@ public class TargetAnnoCombo {
                 new TestCase(noSet, plus(empty, TYPE)),
                 new TestCase(noSet, plus(empty, PARAMETER)),
                 new TestCase(noSet, plus(empty, PACKAGE)),
-                new TestCase(noSet, plus(empty, METHOD)),
+    /*  10*/    new TestCase(noSet, plus(empty, METHOD)),
                 new TestCase(noSet, plus(empty, LOCAL_VARIABLE)),
                 new TestCase(noSet, plus(empty, FIELD)),
                 new TestCase(noSet, plus(empty, CONSTRUCTOR)),
@@ -234,32 +243,32 @@ public class TargetAnnoCombo {
                 new TestCase(empty, plus(empty, TYPE)),
                 new TestCase(empty, plus(empty, PARAMETER)),
                 new TestCase(empty, plus(empty, PACKAGE)),
-                new TestCase(empty, plus(empty, METHOD)),
+    /*  20*/    new TestCase(empty, plus(empty, METHOD)),
                 new TestCase(empty, plus(empty, LOCAL_VARIABLE)),
                 new TestCase(empty, plus(empty, FIELD)),
                 new TestCase(empty, plus(empty, CONSTRUCTOR)),
                 new TestCase(empty, plus(empty, ANNOTATION_TYPE)),
-                new TestCase(empty, less(jdk8, TYPE_USE)),
-                new TestCase(empty, less(jdk8, TYPE_PARAMETER)),
+                new TestCase(empty, less(jdk8, TYPE_USE), source8),
+                new TestCase(empty, less(jdk8, TYPE_PARAMETER), source8),
                 // No container target against all all-but one jdk7 targets.
-                new TestCase(less(jdk7, TYPE), noSet),
-                new TestCase(less(jdk7, PARAMETER), noSet),
-                new TestCase(less(jdk7, PACKAGE), noSet),
-                new TestCase(less(jdk7, METHOD), noSet),
-                new TestCase(less(jdk7, LOCAL_VARIABLE), noSet),
-                new TestCase(less(jdk7, FIELD), noSet),
-                new TestCase(less(jdk7, CONSTRUCTOR), noSet),
-                new TestCase(less(jdk7, ANNOTATION_TYPE), noSet),
+                new TestCase(less(jdk7, TYPE), noSet, source8),
+                new TestCase(less(jdk7, PARAMETER), noSet, source8),
+                new TestCase(less(jdk7, PACKAGE), noSet, source8),
+    /*  30*/    new TestCase(less(jdk7, METHOD), noSet, source8),
+                new TestCase(less(jdk7, LOCAL_VARIABLE), noSet, source8),
+                new TestCase(less(jdk7, FIELD), noSet, source8),
+                new TestCase(less(jdk7, CONSTRUCTOR), noSet, source8),
+                new TestCase(less(jdk7, ANNOTATION_TYPE), noSet, source8),
                 // No container against all but TYPE and ANNOTATION_TYPE
                 new TestCase(less(jdk7, TYPE, ANNOTATION_TYPE), noSet),
                 // No container against jdk7 targets.
-                new TestCase(jdk7, noSet),
+                new TestCase(jdk7, noSet, source8),
                 // No container against jdk7 targets plus one or both of TYPE_USE, TYPE_PARAMETER
-                new TestCase(plus(jdk7, TYPE_USE), noSet),
-                new TestCase(plus(jdk7, TYPE_PARAMETER), noSet),
-                new TestCase(allTargets, noSet),
+                new TestCase(plus(jdk7, TYPE_USE), noSet, source8),
+                new TestCase(plus(jdk7, TYPE_PARAMETER), noSet, source8),
+                new TestCase(allTargets, noSet, null),
                 // Empty container target against any lone target.
-                new TestCase(plus(empty, TYPE), empty),
+    /*  40*/    new TestCase(plus(empty, TYPE), empty),
                 new TestCase(plus(empty, PARAMETER), empty),
                 new TestCase(plus(empty, PACKAGE), empty),
                 new TestCase(plus(empty, METHOD), empty),
@@ -270,7 +279,7 @@ public class TargetAnnoCombo {
                 new TestCase(plus(empty, TYPE_USE), empty),
                 new TestCase(plus(empty, TYPE_PARAMETER), empty),
                 // All base targets against all container targets.
-                new TestCase(allTargets, allTargets),
+    /*  50*/    new TestCase(allTargets, allTargets),
                 // All base targets against all but one container targets.
                 new TestCase(allTargets, less(allTargets, TYPE)),
                 new TestCase(allTargets, less(allTargets, PARAMETER)),
@@ -281,7 +290,7 @@ public class TargetAnnoCombo {
                 new TestCase(allTargets, less(allTargets, CONSTRUCTOR)),
                 new TestCase(allTargets, less(allTargets, ANNOTATION_TYPE)),
                 new TestCase(allTargets, less(allTargets, TYPE_USE)),
-                new TestCase(allTargets, less(allTargets, TYPE_PARAMETER)),
+    /*  60*/    new TestCase(allTargets, less(allTargets, TYPE_PARAMETER)),
                 // All container targets against all but one base targets.
                 new TestCase(less(allTargets, TYPE), allTargets),
                 new TestCase(less(allTargets, PARAMETER), allTargets),
@@ -292,7 +301,7 @@ public class TargetAnnoCombo {
                 new TestCase(less(allTargets, CONSTRUCTOR), allTargets),
                 new TestCase(less(allTargets, ANNOTATION_TYPE), allTargets),
                 new TestCase(less(allTargets, TYPE_USE), allTargets),
-                new TestCase(less(allTargets, TYPE_PARAMETER), allTargets)));
+    /*  70*/    new TestCase(less(allTargets, TYPE_PARAMETER), allTargets)));
         // Generates 100 test cases for any lone base target contained in Set
         // allTargets against any lone container target.
         for (ElementType b : allTargets) {
@@ -325,7 +334,7 @@ public class TargetAnnoCombo {
         boolean shouldCompile = testCase.isValidSubSet();
         Iterable<? extends JavaFileObject> files = getFileList(className, testCase, shouldCompile);
         // Get result of compiling test src file(s).
-        boolean result = getCompileResult(className, shouldCompile, files);
+        boolean result = getCompileResult(className, shouldCompile, files, testCase.options);
         // List test src code if test fails.
         if (!result) {
             System.out.println("FAIL: Test " + index);
@@ -420,11 +429,11 @@ public class TargetAnnoCombo {
 
     // Compile the test source file(s) and return test result.
     private boolean getCompileResult(String className, boolean shouldCompile,
-            Iterable<? extends JavaFileObject> files) {
+            Iterable<? extends JavaFileObject> files, Iterable<String> options) {
 
         DiagnosticCollector<JavaFileObject> diagnostics =
                 new DiagnosticCollector<JavaFileObject>();
-        Helper.compileCode(diagnostics, files);
+        Helper.compileCode(diagnostics, files, options);
         // Test case pass or fail.
         boolean ok = false;
         String errMesg = "";
@@ -440,8 +449,13 @@ public class TargetAnnoCombo {
         } else {
             if (shouldCompile) {
                 // did not compile.
-                errMesg = "Test failed, did not compile.";
-                ok = false;
+                List<Diagnostic<? extends JavaFileObject>> allDiagnostics = diagnostics.getDiagnostics();
+                if (allDiagnostics.stream().noneMatch(d -> d.getKind() == javax.tools.Diagnostic.Kind.ERROR)) {
+                    ok = true;
+                } else {
+                    errMesg = "Test failed, should have compiled successfully.";
+                    ok = false;
+                }
             } else {
                 // Error in compilation as expected.
                 String expectedErrKey = "compiler.err.invalid.repeatable."

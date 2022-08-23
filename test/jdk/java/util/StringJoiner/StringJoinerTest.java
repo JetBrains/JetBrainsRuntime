@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,20 @@
  */
 /**
  * @test
- * @bug 5015163 7172553
+ * @bug 5015163 7172553 8249258
  * @summary tests StringJoinerTest
- * @run testng StringJoinerTest
+ * @modules java.base/jdk.internal.util
+ * @requires vm.bits == "64" & os.maxMemory > 4G
+ * @run testng/othervm -Xmx4g -XX:+CompactStrings StringJoinerTest
  * @author Jim Gish
  */
 import java.util.ArrayList;
 import java.util.StringJoiner;
 import org.testng.annotations.Test;
+import static jdk.internal.util.ArraysSupport.SOFT_MAX_ARRAY_LENGTH;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.fail;
+
 
 @Test(groups = {"unit","string","util","libs"})
 public class StringJoinerTest {
@@ -44,6 +49,7 @@ public class StringJoinerTest {
     private static final String FOUR = "Four";
     private static final String FIVE = "Five";
     private static final String DASH = "-";
+    private static final String MAX_STRING = "*".repeat(SOFT_MAX_ARRAY_LENGTH);
 
     public void addAddAll() {
         StringJoiner sj = new StringJoiner(DASH, "{", "}");
@@ -319,6 +325,42 @@ public class StringJoinerTest {
         testCombos(",", "<", "");
         testCombos(",", "", ">");
         testCombos(",", "<", ">");
+    }
+
+    public void OOM1() {
+        try {
+            new StringJoiner(MAX_STRING, MAX_STRING, MAX_STRING).toString();
+            fail("Should have thrown OutOfMemoryError");
+        } catch (OutOfMemoryError ex) {
+            // okay
+        }
+    }
+
+    public void OOM2() {
+        try {
+            new StringJoiner(MAX_STRING, MAX_STRING, "").toString();
+            fail("Should have thrown OutOfMemoryError");
+        } catch (OutOfMemoryError ex) {
+            // okay
+        }
+    }
+
+    public void OOM3() {
+        try {
+            new StringJoiner(MAX_STRING, "", MAX_STRING).toString();
+            fail("Should have thrown OutOfMemoryError");
+        } catch (OutOfMemoryError ex) {
+            // okay
+        }
+    }
+
+    public void OOM4() {
+        try {
+            new StringJoiner("", MAX_STRING, MAX_STRING).toString();
+            fail("Should have thrown OutOfMemoryError");
+        } catch (OutOfMemoryError ex) {
+            // okay
+        }
     }
 }
 

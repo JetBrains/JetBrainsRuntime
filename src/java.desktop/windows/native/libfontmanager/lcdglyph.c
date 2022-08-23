@@ -125,15 +125,6 @@ static unsigned char* getIGTable(int gamma) {
 JNIEXPORT jboolean JNICALL
     Java_sun_font_FileFontStrike_initNative(JNIEnv *env, jclass unused) {
 
-    DWORD osVersion = GetVersion();
-    DWORD majorVersion = (DWORD)(LOBYTE(LOWORD(osVersion)));
-    DWORD minorVersion = (DWORD)(HIBYTE(LOWORD(osVersion)));
-
-    /* Need at least XP which is 5.1 */
-    if (majorVersion < 5 || (majorVersion == 5 && minorVersion < 1)) {
-        return JNI_FALSE;
-    }
-
     memset(igLUTable, 0,  LCDLUTCOUNT);
 
     return JNI_TRUE;
@@ -172,7 +163,8 @@ JNIEXPORT jboolean JNICALL
 JNIEXPORT jlong JNICALL
 Java_sun_font_FileFontStrike__1getGlyphImageFromWindows
 (JNIEnv *env, jobject unused,
- jstring fontFamily, jint style, jint size, jint glyphCode, jboolean fm) {
+ jstring fontFamily, jint style, jint size, jint glyphCode, jboolean fm,
+ jint rotation, jbyte charset, jint fontDataSize) {
 
     GLYPHMETRICS glyphMetrics;
     LOGFONTW lf;
@@ -188,6 +180,7 @@ Java_sun_font_FileFontStrike__1getGlyphImageFromWindows
     LPWSTR name;
     HFONT oldFont, hFont;
     MAT2 mat2;
+    DWORD actualFontDataSize;
 
     unsigned short width;
     unsigned short height;
@@ -228,11 +221,12 @@ Java_sun_font_FileFontStrike__1getGlyphImageFromWindows
     lf.lfHeight = -size;
     lf.lfWeight = (style & 1) ? FW_BOLD : FW_NORMAL;
     lf.lfItalic = (style & 2) ? 0xff : 0;
-    lf.lfCharSet = DEFAULT_CHARSET;
+    lf.lfCharSet = (BYTE) charset;
     lf.lfQuality = CLEARTYPE_QUALITY;
     lf.lfOutPrecision = OUT_TT_PRECIS;
     lf.lfClipPrecision = CLIP_DEFAULT_PRECIS;
     lf.lfPitchAndFamily = DEFAULT_PITCH;
+    lf.lfEscapement = lf.lfOrientation = 900 * rotation;
 
     nameLen = (*env)->GetStringLength(env, fontFamily);
     name = (LPWSTR)alloca((nameLen+1)*2);
@@ -253,6 +247,17 @@ Java_sun_font_FileFontStrike__1getGlyphImageFromWindows
         FREE_AND_RETURN;
     }
     oldFont = SelectObject(hMemoryDC, hFont);
+
+    if (fontDataSize > 0) {
+        // GDI doesn't allow to select a specific font file for drawing, we can
+        // only check that it picks the file we need by validating font size.
+        // If it doesn't match, we cannot proceed, as the same glyph code can
+        // correspond to a completely different glyph in the selected font.
+        actualFontDataSize = GetFontData(hMemoryDC, 0, 0, NULL, 0);
+        if (actualFontDataSize != fontDataSize) {
+            FREE_AND_RETURN;
+        }
+    }
 
     tmpBitmap = CreateCompatibleBitmap(hDesktopDC, 1, 1);
     if (tmpBitmap == NULL) {
@@ -362,7 +367,17 @@ Java_sun_font_FileFontStrike__1getGlyphImageFromWindows
     if (fm) {
         x += 1;
     }
-    y = topLeftY - textMetric.tmAscent;
+    if (rotation == 1) {
+        x -= textMetric.tmAscent;
+    } else if (rotation == 3) {
+        x += textMetric.tmAscent;
+    }
+    y = topLeftY;
+    if (rotation == 0) {
+        y -= textMetric.tmAscent;
+    } else if (rotation == 2) {
+        y += textMetric.tmAscent;
+    }
     err = ExtTextOutW(hMemoryDC, x, y, ETO_GLYPH_INDEX|ETO_OPAQUE,
                 (LPRECT)&rect, (LPCWSTR)&glyphCode, 1, NULL);
     if (err == 0) {
@@ -431,6 +446,9 @@ Java_sun_font_FileFontStrike__1getGlyphImageFromWindows
         glyphInfo->width -= 1; // must subtract 1
     }
     glyphInfo->height = height;
+    glyphInfo->subpixelResolutionX = 1;
+    glyphInfo->subpixelResolutionY = 1;
+    glyphInfo->format = sun_font_StrikeCache_PIXEL_FORMAT_LCD;
     glyphInfo->advanceX = advanceX;
     glyphInfo->advanceY = advanceY;
     glyphInfo->topLeftX = (float)(topLeftX-1);

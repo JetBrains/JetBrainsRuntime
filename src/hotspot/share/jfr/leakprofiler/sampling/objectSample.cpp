@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,12 +23,36 @@
  */
 #include "precompiled.hpp"
 #include "jfr/leakprofiler/sampling/objectSample.hpp"
-#include "oops/access.inline.hpp"
+#include "jfr/leakprofiler/sampling/objectSampler.hpp"
+#include "oops/weakHandle.inline.hpp"
+#include "runtime/handles.inline.hpp"
+
+void ObjectSample::reset() {
+  release();
+  set_stack_trace_id(0);
+  set_stack_trace_hash(0);
+  release_references();
+}
 
 const oop ObjectSample::object() const {
-  return NativeAccess<ON_PHANTOM_OOP_REF | AS_NO_KEEPALIVE>::oop_load(&_object);
+  return _object.resolve();
+}
+
+bool ObjectSample::is_dead() const {
+  return _object.peek() == NULL;
+}
+
+const oop* ObjectSample::object_addr() const {
+  return _object.ptr_raw();
 }
 
 void ObjectSample::set_object(oop object) {
-  NativeAccess<ON_PHANTOM_OOP_REF>::oop_store(&_object, object);
+  assert(_object.is_empty(), "should be empty");
+  Handle h(Thread::current(), object);
+  _object = WeakHandle(ObjectSampler::oop_storage(), h);
+}
+
+void ObjectSample::release() {
+  _object.release(ObjectSampler::oop_storage());
+  _object = WeakHandle();
 }

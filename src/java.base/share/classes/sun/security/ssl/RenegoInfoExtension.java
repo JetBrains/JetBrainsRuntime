@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package sun.security.ssl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.security.MessageDigest;
 import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.Locale;
@@ -37,6 +38,7 @@ import sun.security.ssl.SSLExtension.ExtensionConsumer;
 import static sun.security.ssl.SSLExtension.SH_RENEGOTIATION_INFO;
 import sun.security.ssl.SSLExtension.SSLExtensionSpec;
 import sun.security.ssl.SSLHandshake.HandshakeMessage;
+import sun.security.util.ByteArrays;
 
 /**
  * Pack of the "renegotiation_info" extensions [RFC 5746].
@@ -74,12 +76,14 @@ final class RenegoInfoExtension {
                     renegotiatedConnection, renegotiatedConnection.length);
         }
 
-        private RenegotiationInfoSpec(ByteBuffer m) throws IOException {
+        private RenegotiationInfoSpec(HandshakeContext hc,
+                ByteBuffer m) throws IOException {
             // Parse the extension.
             if (!m.hasRemaining() || m.remaining() < 1) {
-                throw new SSLProtocolException(
+                throw hc.conContext.fatal(Alert.DECODE_ERROR,
+                        new SSLProtocolException(
                     "Invalid renegotiation_info extension data: " +
-                    "insufficient data");
+                    "insufficient data"));
             }
             this.renegotiatedConnection = Record.getBytes8(m);
         }
@@ -105,9 +109,9 @@ final class RenegoInfoExtension {
     private static final
             class RenegotiationInfoStringizer implements SSLStringizer {
         @Override
-        public String toString(ByteBuffer buffer) {
+        public String toString(HandshakeContext hc, ByteBuffer buffer) {
             try {
-                return (new RenegotiationInfoSpec(buffer)).toString();
+                return (new RenegotiationInfoSpec(hc, buffer)).toString();
             } catch (IOException ioe) {
                 // For debug logging only, so please swallow exceptions.
                 return ioe.getMessage();
@@ -220,13 +224,7 @@ final class RenegoInfoExtension {
             }
 
             // Parse the extension.
-            RenegotiationInfoSpec spec;
-            try {
-                spec = new RenegotiationInfoSpec(buffer);
-            } catch (IOException ioe) {
-                throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
-            }
-
+            RenegotiationInfoSpec spec = new RenegotiationInfoSpec(shc, buffer);
             if (!shc.conContext.isNegotiated) {
                 // initial handshaking.
                 if (spec.renegotiatedConnection.length != 0) {
@@ -243,7 +241,7 @@ final class RenegoInfoExtension {
                             "renegotiation");
                 } else {
                     // verify the client_verify_data value
-                    if (!Arrays.equals(shc.conContext.clientVerifyData,
+                    if (!MessageDigest.isEqual(shc.conContext.clientVerifyData,
                             spec.renegotiatedConnection)) {
                         throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                             "Invalid renegotiation_info extension data: " +
@@ -284,7 +282,7 @@ final class RenegoInfoExtension {
                             CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV.id) {
                         if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                             SSLLogger.finest(
-                                "Safe renegotiation, using the SCSV signgling");
+                                "Safe renegotiation, using the SCSV signaling");
                         }
                         shc.conContext.secureRenegotiation = true;
                         return;
@@ -345,7 +343,7 @@ final class RenegoInfoExtension {
             RenegotiationInfoSpec requestedSpec = (RenegotiationInfoSpec)
                     shc.handshakeExtensions.get(CH_RENEGOTIATION_INFO);
             if (requestedSpec == null && !shc.conContext.secureRenegotiation) {
-                // Ignore, no renegotiation_info extension or SCSV signgling
+                // Ignore, no renegotiation_info extension or SCSV signaling
                 // requested.
                 if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                     SSLLogger.finest(
@@ -433,14 +431,7 @@ final class RenegoInfoExtension {
             }
 
             // Parse the extension.
-            RenegotiationInfoSpec spec;
-            try {
-                spec = new RenegotiationInfoSpec(buffer);
-            } catch (IOException ioe) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
-            }
-
-
+            RenegotiationInfoSpec spec = new RenegotiationInfoSpec(chc, buffer);
             if (!chc.conContext.isNegotiated) {     // initial handshake
                 // If the extension is present, set the secure_renegotiation
                 // flag to TRUE.  The client MUST then verify that the
@@ -470,14 +461,14 @@ final class RenegoInfoExtension {
                 }
 
                 byte[] cvd = chc.conContext.clientVerifyData;
-                if (!Arrays.equals(spec.renegotiatedConnection,
+                if (!ByteArrays.isEqual(spec.renegotiatedConnection,
                         0, cvd.length, cvd, 0, cvd.length)) {
                     throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Invalid renegotiation_info in ServerHello: " +
                         "unmatched client_verify_data value");
                 }
                 byte[] svd = chc.conContext.serverVerifyData;
-                if (!Arrays.equals(spec.renegotiatedConnection,
+                if (!ByteArrays.isEqual(spec.renegotiatedConnection,
                         cvd.length, infoLen, svd, 0, svd.length)) {
                     throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Invalid renegotiation_info in ServerHello: " +

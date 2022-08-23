@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -105,13 +105,6 @@ class LIR_Assembler: public CompilationResourceObj {
   ImplicitNullCheckStub* add_debug_info_for_null_check(int pc_offset, CodeEmitInfo* cinfo);
   ImplicitNullCheckStub* add_debug_info_for_null_check_here(CodeEmitInfo* info);
 
-  void set_24bit_FPU();
-  void reset_FPU();
-  void fpop();
-  void fxch(int i);
-  void fld(int i);
-  void ffree(int i);
-
   void breakpoint();
   void push(LIR_Opr opr);
   void pop(LIR_Opr opr);
@@ -164,7 +157,7 @@ class LIR_Assembler: public CompilationResourceObj {
   // particular sparc uses this for delay slot filling.
   void peephole(LIR_List* list);
 
-  void return_op(LIR_Opr result);
+  void return_op(LIR_Opr result, C1SafepointPollStub* code_stub);
 
   // returns offset of poll instruction
   int safepoint_poll(LIR_Opr result, CodeEmitInfo* info);
@@ -266,11 +259,7 @@ class LIR_Assembler: public CompilationResourceObj {
  public:
 
   static int call_stub_size() {
-    if (UseAOT) {
-      return _call_stub_size + _call_aot_stub_size;
-    } else {
-      return _call_stub_size;
-    }
+    return _call_stub_size;
   }
 
   static int exception_handler_size() {

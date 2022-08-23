@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,7 @@
 #import <Cocoa/Cocoa.h>
 #import <Security/AuthSession.h>
 
-#include "jni_util.h"
+#import "JNIUtilities.h"
 #import "LWCToolkit.h"
 #import "ThreadUtilities.h"
 #import "CSystemColors.h"
@@ -52,6 +52,8 @@
 
 int gNumberOfButtons;
 jint* gButtonDownMasks;
+int lcdSubPixelPosSupported;
+int useFontSmoothing;
 
 // Indicates that the app has been started with -XstartOnFirstThread
 // (directly or via WebStart settings), and AWT should not run its
@@ -67,16 +69,35 @@ static BOOL sAppKitStarted = NO;
 static pthread_mutex_t sAppKitStarted_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t sAppKitStarted_cv = PTHREAD_COND_INITIALIZER;
 
+static time_t YEAR_SECONDS = 60 * 60 * 24 * 365;
+
 @implementation AWTToolkit
 
 static long eventCount;
+static BOOL inDoDragDropLoop;
+
++ (BOOL) inDoDragDropLoop {
+  @synchronized(self) {
+    return inDoDragDropLoop;
+  }
+}
+
++ (void) setInDoDragDropLoop:(BOOL)val {
+  @synchronized(self) {
+    inDoDragDropLoop = val;
+  }
+}
 
 + (long) getEventCount{
+  @synchronized(self) {
     return eventCount;
+  }
 }
 
 + (void) eventCountPlusPlus{
+  @synchronized(self) {
     eventCount++;
+  }
 }
 
 + (jint) scrollStateWithEvent: (NSEvent*) event {
@@ -167,9 +188,10 @@ static long eventCount;
 
 - (void)perform {
     JNIEnv* env = [ThreadUtilities getJNIEnvUncached];
-    static JNF_CLASS_CACHE(sjc_Runnable, "java/lang/Runnable");
-    static JNF_MEMBER_CACHE(jm_Runnable_run, sjc_Runnable, "run", "()V");
-    JNFCallVoidMethod(env, self.runnable, jm_Runnable_run);
+    DECLARE_CLASS(sjc_Runnable, "java/lang/Runnable");
+    DECLARE_METHOD(jm_Runnable_run, sjc_Runnable, "run", "()V");
+    (*env)->CallVoidMethod(env, self.runnable, jm_Runnable_run);
+    CHECK_EXCEPTION();
     [self release];
 }
 @end
@@ -178,15 +200,16 @@ void setBusy(BOOL busy) {
     AWT_ASSERT_APPKIT_THREAD;
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    static JNF_CLASS_CACHE(jc_AWTAutoShutdown, "sun/awt/AWTAutoShutdown");
+    DECLARE_CLASS(jc_AWTAutoShutdown, "sun/awt/AWTAutoShutdown");
 
     if (busy) {
-        static JNF_STATIC_MEMBER_CACHE(jm_notifyBusyMethod, jc_AWTAutoShutdown, "notifyToolkitThreadBusy", "()V");
-        JNFCallStaticVoidMethod(env, jm_notifyBusyMethod);
+        DECLARE_STATIC_METHOD(jm_notifyBusyMethod, jc_AWTAutoShutdown, "notifyToolkitThreadBusy", "()V");
+        (*env)->CallStaticVoidMethod(env, jc_AWTAutoShutdown, jm_notifyBusyMethod);
     } else {
-        static JNF_STATIC_MEMBER_CACHE(jm_notifyFreeMethod, jc_AWTAutoShutdown, "notifyToolkitThreadFree", "()V");
-        JNFCallStaticVoidMethod(env, jm_notifyFreeMethod);
+        DECLARE_STATIC_METHOD(jm_notifyFreeMethod, jc_AWTAutoShutdown, "notifyToolkitThreadFree", "()V");
+        (*env)->CallStaticVoidMethod(env, jc_AWTAutoShutdown, jm_notifyFreeMethod);
     }
+     CHECK_EXCEPTION();
 }
 
 static void setUpAWTAppKit(BOOL installObservers)
@@ -226,9 +249,11 @@ static void setUpAWTAppKit(BOOL installObservers)
     }
 
     JNIEnv* env = [ThreadUtilities getJNIEnv];
-    static JNF_CLASS_CACHE(jc_LWCToolkit, "sun/lwawt/macosx/LWCToolkit");
-    static JNF_STATIC_MEMBER_CACHE(jsm_installToolkitThreadInJava, jc_LWCToolkit, "installToolkitThreadInJava", "()V");
-    JNFCallStaticVoidMethod(env, jsm_installToolkitThreadInJava);
+    DECLARE_CLASS(jc_LWCToolkit, "sun/lwawt/macosx/LWCToolkit");
+    DECLARE_STATIC_METHOD(jsm_installToolkitThreadInJava, jc_LWCToolkit, "installToolkitThreadInJava", "()V");
+    (*env)->CallStaticVoidMethod(env, jc_LWCToolkit, jsm_installToolkitThreadInJava);
+    CHECK_EXCEPTION();
+
 }
 
 BOOL isSWTInWebStart(JNIEnv* env) {
@@ -238,6 +263,7 @@ BOOL isSWTInWebStart(JNIEnv* env) {
 
 static void AWT_NSUncaughtExceptionHandler(NSException *exception) {
     NSLog(@"Apple AWT Internal Exception: %@", [exception description]);
+    NSLog(@"trace: %@", [exception callStackSymbols]);
 }
 
 @interface AWTStarter : NSObject
@@ -420,16 +446,22 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_nativeSyncQueue
         // immediately after this we will post the second event via
         // [NSApp postEvent] then sometimes the second event will be handled
         // first. The opposite isn't proved, but we use both here to be safer.
-        [theApp postDummyEvent:false];
-        [theApp waitForDummyEvent:timeout / 2.0];
-        [theApp postDummyEvent:true];
-        [theApp waitForDummyEvent:timeout / 2.0];
+
+        // If the native drag is in progress, skip native sync.
+        if (!AWTToolkit.inDoDragDropLoop) {
+            [theApp postDummyEvent:false];
+            [theApp waitForDummyEvent:timeout / 2.0];
+        }
+        if (!AWTToolkit.inDoDragDropLoop) {
+            [theApp postDummyEvent:true];
+            [theApp waitForDummyEvent:timeout / 2.0];
+        }
 
     } else {
         // could happen if we are embedded inside SWT application,
         // in this case just spin a single empty block through
         // the event loop to give it a chance to process pending events
-        [JNFRunLoop performOnMainThreadWaiting:YES withBlock:^(){}];
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^(){}];
     }
 
     if (([AWTToolkit getEventCount] - currentEventNum) != 0) {
@@ -447,9 +479,9 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_nativeSyncQueue
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_LWCToolkit_flushNativeSelectors
 (JNIEnv *env, jclass clz)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
         [ThreadUtilities performOnMainThreadWaiting:YES block:^(){}];
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -490,7 +522,7 @@ BOOL doLoadNativeColors(JNIEnv *env, jintArray jColors, BOOL useAppleColors) {
     UInt32 colorsArray[len];
     UInt32 *colors = colorsArray;
 
-    [JNFRunLoop performOnMainThreadWaiting:YES withBlock:^(){
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
         NSUInteger i;
         for (i = 0; i < len; i++) {
             colors[i] = RGB([CSystemColors getColor:i useAppleColor:useAppleColors]);
@@ -514,11 +546,11 @@ BOOL doLoadNativeColors(JNIEnv *env, jintArray jColors, BOOL useAppleColors) {
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_LWCToolkit_loadNativeColors
 (JNIEnv *env, jobject peer, jintArray jSystemColors, jintArray jAppleColors)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
     if (doLoadNativeColors(env, jSystemColors, NO)) {
         doLoadNativeColors(env, jAppleColors, YES);
     }
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -533,11 +565,11 @@ AWT_ASSERT_APPKIT_THREAD;
 
     jlong result;
 
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
     // We double retain because this object is owned by both main thread and "other" thread
     // We release in both doAWTRunLoop and stopAWTRunLoop
     result = ptr_to_jlong([[[AWTRunLoopObject alloc] init] retain]);
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 
     return result;
 }
@@ -545,23 +577,30 @@ JNF_COCOA_EXIT(env);
 /*
  * Class:     sun_lwawt_macosx_LWCToolkit
  * Method:    doAWTRunLoopImpl
- * Signature: (JZZ)V
+ * Signature: (JZZI)Z
  */
-JNIEXPORT void JNICALL Java_sun_lwawt_macosx_LWCToolkit_doAWTRunLoopImpl
-(JNIEnv *env, jclass clz, jlong mediator, jboolean processEvents, jboolean inAWT)
+JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_doAWTRunLoopImpl
+(JNIEnv *env, jclass clz, jlong mediator, jboolean processEvents, jboolean inAWT, jint timeoutSeconds/*(-1) for infinite*/)
 {
 AWT_ASSERT_APPKIT_THREAD;
-JNF_COCOA_ENTER(env);
+    jboolean result = JNI_TRUE;
 
+JNI_COCOA_ENTER(env);
     AWTRunLoopObject* mediatorObject = (AWTRunLoopObject*)jlong_to_ptr(mediator);
 
-    if (mediatorObject == nil) return;
+    if (mediatorObject == nil) return JNI_TRUE;
+
+    time_t timeThreshold = timeoutSeconds < 0 ? time(NULL) + YEAR_SECONDS : time(NULL) + timeoutSeconds;
 
     // Don't use acceptInputForMode because that doesn't setup autorelease pools properly
     BOOL isRunning = true;
     while (![mediatorObject shouldEndRunLoop] && isRunning) {
-        isRunning = [[NSRunLoop currentRunLoop] runMode:(inAWT ? [JNFRunLoop javaRunLoopMode] : NSDefaultRunLoopMode)
+        isRunning = [[NSRunLoop currentRunLoop] runMode:(inAWT ? [ThreadUtilities javaRunLoopMode] : NSDefaultRunLoopMode)
                                              beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.010]];
+        if (difftime(timeThreshold, time(NULL)) < 0) {
+            result = JNI_FALSE;
+            break;
+        }
         if (processEvents) {
             //We do not spin a runloop here as date is nil, so does not matter which mode to use
             // Processing all events excluding NSApplicationDefined which need to be processed
@@ -577,7 +616,19 @@ JNF_COCOA_ENTER(env);
         }
     }
     [mediatorObject release];
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
+    return result;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    isBlockingEventDispatchThread
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isBlockingEventDispatchThread
+        (JNIEnv *env, jclass clz)
+{
+    return ThreadUtilities.blockingEventDispatchThread;
 }
 
 /*
@@ -588,15 +639,17 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_LWCToolkit_stopAWTRunLoop
 (JNIEnv *env, jclass clz, jlong mediator)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     AWTRunLoopObject* mediatorObject = (AWTRunLoopObject*)jlong_to_ptr(mediator);
+
+    if (mediatorObject == nil) return;
 
     [ThreadUtilities performOnMainThread:@selector(endRunLoop) on:mediatorObject withObject:nil waitUntilDone:NO];
 
     [mediatorObject release];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -607,16 +660,33 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_LWCToolkit_performOnMainThreadAfterDelay
 (JNIEnv *env, jclass clz, jobject runnable, jlong delay)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
     jobject gRunnable = (*env)->NewGlobalRef(env, runnable);
     CHECK_NULL(gRunnable);
     [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
         JavaRunnable* performer = [[JavaRunnable alloc] initWithRunnable:gRunnable];
         [performer performSelector:@selector(perform) withObject:nil afterDelay:(delay/1000.0)];
     }];
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    performOnMainThreadAndWait
+ * Signature: (Ljava/lang/Runnable)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_LWCToolkit_performOnMainThreadAndWait
+(JNIEnv *env, jclass clz, jobject runnable)
+{
+JNI_COCOA_ENTER(env);
+    jobject gRunnable = (*env)->NewGlobalRef(env, runnable);
+    CHECK_NULL(gRunnable);
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
+        JavaRunnable* performer = [[JavaRunnable alloc] initWithRunnable:gRunnable];
+        [performer perform];
+    }];
+JNI_COCOA_EXIT(env);
+}
 
 /*
  * Class:     sun_lwawt_macosx_LWCToolkit
@@ -627,7 +697,7 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isCapsLockOn
 (JNIEnv *env, jobject self)
 {
     __block jboolean isOn = JNI_FALSE;
-    [JNFRunLoop performOnMainThreadWaiting:YES withBlock:^(){
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
         NSUInteger modifiers = [NSEvent modifierFlags];
         isOn = (modifiers & NSAlphaShiftKeyMask) != 0;
     }];
@@ -645,13 +715,13 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isApplicationActive
 {
     __block jboolean active = JNI_FALSE;
 
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
         active = (jboolean)[NSRunningApplication currentApplication].active;
     }];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 
     return active;
 }
@@ -664,13 +734,13 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_LWCToolkit_activateApplicationIgnoringOtherApps
 (JNIEnv *env, jclass clazz)
 {
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         if(![NSApp isActive]){
             [NSApp activateIgnoringOtherApps:YES];
         }
     }];
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 }
 
 
@@ -700,7 +770,7 @@ JNIEXPORT jstring JNICALL
 Java_sun_font_FontManager_getFontPath
 (JNIEnv *env, jclass obj, jboolean noType1)
 {
-    return JNFNSToJavaString(env, @"/Library/Fonts");
+    return NSStringToJavaString(env, @"/Library/Fonts");
 }
 
 // This isn't yet used on unix, the implementation is added since shared
@@ -721,7 +791,7 @@ JNIEXPORT void JNICALL
 Java_sun_lwawt_macosx_LWCToolkit_initIDs
 (JNIEnv *env, jclass klass) {
 
-    JNF_COCOA_ENTER(env)
+    JNI_COCOA_ENTER(env);
 
     gNumberOfButtons = sun_lwawt_macosx_LWCToolkit_BUTTONS;
 
@@ -730,6 +800,7 @@ Java_sun_lwawt_macosx_LWCToolkit_initIDs
     jmethodID getButtonDownMasksID = (*env)->GetStaticMethodID(env, inputEventClazz, "getButtonDownMasks", "()[I");
     CHECK_NULL(getButtonDownMasksID);
     jintArray obj = (jintArray)(*env)->CallStaticObjectMethod(env, inputEventClazz, getButtonDownMasksID);
+    CHECK_EXCEPTION();
     jint * tmp = (*env)->GetIntArrayElements(env, obj, JNI_FALSE);
     CHECK_NULL(tmp);
 
@@ -749,7 +820,7 @@ Java_sun_lwawt_macosx_LWCToolkit_initIDs
     (*env)->ReleaseIntArrayElements(env, obj, tmp, 0);
     (*env)->DeleteLocalRef(env, obj);
 
-    JNF_COCOA_EXIT(env)
+    JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -760,7 +831,7 @@ Java_sun_lwawt_macosx_LWCToolkit_initIDs
 JNIEXPORT void JNICALL
 Java_sun_lwawt_macosx_LWCToolkit_initAppkit
 (JNIEnv *env, jclass klass, jobject appkitThreadGroup, jboolean headless) {
-    JNF_COCOA_ENTER(env)
+    JNI_COCOA_ENTER(env);
 
     [ThreadUtilities setAppkitThreadGroup:(*env)->NewGlobalRef(env, appkitThreadGroup)];
 
@@ -778,7 +849,7 @@ Java_sun_lwawt_macosx_LWCToolkit_initAppkit
 
     [AWTStarter start:headless ? YES : NO];
 
-    JNF_COCOA_EXIT(env)
+    JNI_COCOA_EXIT(env);
 }
 
 JNIEXPORT jint JNICALL DEF_JNI_OnLoad(JavaVM *vm, void *reserved) {
@@ -802,6 +873,46 @@ JNIEXPORT jboolean JNICALL
 Java_sun_lwawt_macosx_LWCToolkit_isEmbedded
 (JNIEnv *env, jclass klass) {
     return isEmbedded ? JNI_TRUE : JNI_FALSE;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    getKeyboardLayoutNativeId
+ * Signature: ()Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL
+JNICALL Java_sun_lwawt_macosx_LWCToolkit_getKeyboardLayoutNativeId(JNIEnv *env, jclass cls)
+{
+    __block NSString * layoutId = NULL;
+    JNI_COCOA_ENTER(env);
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+        TISInputSourceRef source = TISCopyCurrentKeyboardInputSource();
+        layoutId = TISGetInputSourceProperty(source, kTISPropertyInputSourceID);
+    }];
+    JNI_COCOA_EXIT(env);
+    return NSStringToJavaString(env, layoutId);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    switchKeyboardLayoutNative
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL
+JNICALL Java_sun_lwawt_macosx_LWCToolkit_switchKeyboardLayoutNative(JNIEnv *env, jclass cls, jstring jLayoutId)
+{
+    JNI_COCOA_ENTER(env);
+    __block NSString* layoutId = [JavaStringToNSString(env, jLayoutId) retain];
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+        NSArray* sources = CFBridgingRelease(TISCreateInputSourceList((__bridge CFDictionaryRef)@{ (__bridge NSString*)kTISPropertyInputSourceID : layoutId }, FALSE));
+        TISInputSourceRef source = (__bridge TISInputSourceRef)sources[0];
+        OSStatus status = TISSelectInputSource(source);
+        if (status != noErr) {
+            NSLog(@"error during keyboard layout switch");
+        }
+        [layoutId release];
+    }];
+    JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -840,10 +951,10 @@ Java_sun_awt_PlatformGraphicsInfo_isInAquaSession
 JNIEXPORT jint JNICALL
 Java_sun_lwawt_macosx_LWCToolkit_getMultiClickTime(JNIEnv *env, jclass klass) {
     __block jint multiClickTime = 0;
-    JNF_COCOA_ENTER(env);
-    [JNFRunLoop performOnMainThreadWaiting:YES withBlock:^(){
+    JNI_COCOA_ENTER(env);
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
         multiClickTime = (jint)([NSEvent doubleClickInterval] * 1000);
     }];
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
     return multiClickTime;
 }

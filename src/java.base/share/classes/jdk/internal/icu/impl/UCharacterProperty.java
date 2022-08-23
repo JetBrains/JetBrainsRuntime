@@ -67,18 +67,18 @@ public final class UCharacterProperty
     public static final UCharacterProperty INSTANCE;
 
     /**
-    * Trie data
-    */
+     * Trie data
+     */
     public Trie2_16 m_trie_;
 
     /**
-    * Unicode version
-    */
+     * Unicode version
+     */
     public VersionInfo m_unicodeVersion_;
 
     /**
-    * Character type mask
-    */
+     * Character type mask
+     */
     public static final int TYPE_MASK = 0x1F;
 
     // uprops.h enum UPropertySource --------------------------------------- ***
@@ -97,10 +97,10 @@ public final class UCharacterProperty
     // public methods ----------------------------------------------------
 
     /**
-    * Gets the main property value for code point ch.
-    * @param ch code point whose property value is to be retrieved
-    * @return property value of code point
-    */
+     * Gets the main property value for code point ch.
+     * @param ch code point whose property value is to be retrieved
+     * @return property value of code point
+     */
     public final int getProperty(int ch)
     {
         return m_trie_.get(ch);
@@ -228,13 +228,13 @@ public final class UCharacterProperty
     }
 
     /**
-    * Forms a supplementary code point from the argument character<br>
-    * Note this is for internal use hence no checks for the validity of the
-    * surrogate characters are done
-    * @param lead lead surrogate character
-    * @param trail trailing surrogate character
-    * @return code point of the supplementary character
-    */
+     * Forms a supplementary code point from the argument character<br>
+     * Note this is for internal use hence no checks for the validity of the
+     * surrogate characters are done
+     * @param lead lead surrogate character
+     * @param trail trailing surrogate character
+     * @return code point of the supplementary character
+     */
     public static int getRawSupplementary(char lead, char trail)
     {
         return (lead << LEAD_SURROGATE_SHIFT_) + trail + SURROGATE_OFFSET_;
@@ -318,8 +318,8 @@ public final class UCharacterProperty
     // private variables -------------------------------------------------
 
     /**
-    * Default name of the datafile
-    */
+     * Default name of the datafile
+     */
     @SuppressWarnings("deprecation")
     private static final String DATA_FILE_NAME_ =
             "/jdk/internal/icu/impl/data/icudt" +
@@ -327,12 +327,12 @@ public final class UCharacterProperty
             "/uprops.icu";
 
     /**
-    * Shift value for lead surrogate to form a supplementary character.
-    */
+     * Shift value for lead surrogate to form a supplementary character.
+     */
     private static final int LEAD_SURROGATE_SHIFT_ = 10;
     /**
-    * Offset to add to combined surrogate pair to avoid masking.
-    */
+     * Offset to add to combined surrogate pair to avoid masking.
+     */
     private static final int SURROGATE_OFFSET_ =
                            UTF16.SUPPLEMENTARY_MIN_VALUE -
                            (UTF16.SURROGATE_MIN_VALUE <<
@@ -372,21 +372,30 @@ public final class UCharacterProperty
      * Properties in vector word 0
      * Bits
      * 31..24   DerivedAge version major/minor one nibble each
-     * 23..22   3..1: Bits 7..0 = Script_Extensions index
+     * 23..22   3..1: Bits 21..20 & 7..0 = Script_Extensions index
      *             3: Script value from Script_Extensions
      *             2: Script=Inherited
      *             1: Script=Common
-     *             0: Script=bits 7..0
-     * 21..20   reserved
+     *             0: Script=bits 21..20 & 7..0
+     * 21..20   Bits 9..8 of the UScriptCode, or index to Script_Extensions
      * 19..17   East Asian Width
      * 16.. 8   UBlockCode
-     *  7.. 0   UScriptCode
+     *  7.. 0   UScriptCode, or index to Script_Extensions
      */
+
     /**
      * Script_Extensions: mask includes Script
      */
-    public static final int SCRIPT_X_MASK = 0x00c000ff;
+    public static final int SCRIPT_X_MASK = 0x00f000ff;
     //private static final int SCRIPT_X_SHIFT = 22;
+
+    // The UScriptCode or Script_Extensions index is split across two bit fields.
+    // (Starting with Unicode 13/ICU 66/2019 due to more varied Script_Extensions.)
+    // Shift the high bits right by 12 to assemble the full value.
+    public static final int SCRIPT_HIGH_MASK = 0x00300000;
+    public static final int SCRIPT_HIGH_SHIFT = 12;
+    public static final int MAX_SCRIPT = 0x3ff;
+
     /**
      * Integer properties mask and shift values for East Asian cell width.
      * Equivalent to icu4c UPROPS_EA_MASK
@@ -409,9 +418,15 @@ public final class UCharacterProperty
     private static final int BLOCK_SHIFT_ = 8;
     /**
      * Integer properties mask and shift values for scripts.
-     * Equivalent to icu4c UPROPS_SHIFT_MASK
+     * Equivalent to icu4c UPROPS_SHIFT_LOW_MASK.
      */
-    public static final int SCRIPT_MASK_ = 0x000000ff;
+    public static final int SCRIPT_LOW_MASK = 0x000000ff;
+
+    public static final int mergeScriptCodeOrIndex(int scriptX) {
+        return
+            ((scriptX & SCRIPT_HIGH_MASK) >> SCRIPT_HIGH_SHIFT) |
+            (scriptX & SCRIPT_LOW_MASK);
+    }
 
     /**
      * Additional properties used in internal trie data

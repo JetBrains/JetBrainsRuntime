@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,8 @@
  */
 
 import sun.security.ec.*;
+
+import java.security.spec.NamedParameterSpec;
 import java.util.*;
 import jdk.test.lib.Convert;
 
@@ -86,14 +88,16 @@ public class TestXECOps {
     private void runDiffieHellmanTest(String opName, String a_str,
         String b_str, String result_str) {
 
-        XECParameters settings = XECParameters.getByName(opName).get();
+        NamedParameterSpec paramSpec = new NamedParameterSpec(opName);
+        XECParameters settings =
+            XECParameters.get(RuntimeException::new, paramSpec);
         XECOperations ops = new XECOperations(settings);
 
         byte[] basePoint = Convert.byteToByteArray(settings.getBasePoint(),
             settings.getBytes());
-        byte[] a = Convert.hexStringToByteArray(a_str);
-        byte[] b = Convert.hexStringToByteArray(b_str);
-        byte[] expectedResult = Convert.hexStringToByteArray(result_str);
+        byte[] a = HexFormat.of().parseHex(a_str);
+        byte[] b = HexFormat.of().parseHex(b_str);
+        byte[] expectedResult = HexFormat.of().parseHex(result_str);
 
         byte[] a_copy = Arrays.copyOf(a, a.length);
         byte[] b_copy = Arrays.copyOf(b, b.length);
@@ -114,11 +118,13 @@ public class TestXECOps {
     private void runTest(String opName, String k_in_str,
         String u_in_str, String u_out_str) {
 
-        byte[] k_in = Convert.hexStringToByteArray(k_in_str);
-        byte[] u_in = Convert.hexStringToByteArray(u_in_str);
-        byte[] u_out_expected = Convert.hexStringToByteArray(u_out_str);
+        byte[] k_in = HexFormat.of().parseHex(k_in_str);
+        byte[] u_in = HexFormat.of().parseHex(u_in_str);
+        byte[] u_out_expected = HexFormat.of().parseHex(u_out_str);
 
-        XECParameters settings = XECParameters.getByName(opName).get();
+        NamedParameterSpec paramSpec = new NamedParameterSpec(opName);
+        XECParameters settings =
+            XECParameters.get(RuntimeException::new, paramSpec);
         XECOperations ops = new XECOperations(settings);
         byte[] u_out = ops.encodedPointMultiply(k_in, u_in);
 

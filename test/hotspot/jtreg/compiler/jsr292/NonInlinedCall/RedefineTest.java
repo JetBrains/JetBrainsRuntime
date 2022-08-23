@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,7 @@
  *          java.base/jdk.internal.misc
  *          java.base/jdk.internal.vm.annotation
  * @library /test/lib / ../patches
- * @requires vm.flavor != "minimal"
+ * @requires vm.jvmti
  *
  * @build sun.hotspot.WhiteBox
  *        java.base/java.lang.invoke.MethodHandleHelper
@@ -36,8 +36,7 @@
  * @run driver compiler.jsr292.NonInlinedCall.Agent
  *             agent.jar
  *             compiler.jsr292.NonInlinedCall.RedefineTest
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox
- *                                sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  *                                compiler.jsr292.NonInlinedCall.RedefineTest
  * @run main/bootclasspath/othervm -javaagent:agent.jar
  *                                 -XX:+IgnoreUnrecognizedVMOptions

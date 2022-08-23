@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,13 +23,13 @@
 
 /*
  * @test
- * @bug 4917233 6461727 6490213 6720456
+ * @bug 4917233 6461727 6490213 6720456 8242332
  * @summary test the KeyGenerator
  * @author Andreas Sterbenz
  * @library /test/lib ..
  * @modules jdk.crypto.cryptoki
  * @run main/othervm TestKeyGenerator
- * @run main/othervm TestKeyGenerator sm
+ * @run main/othervm -Djava.security.manager=allow TestKeyGenerator sm
  */
 
 import java.security.InvalidParameterException;
@@ -109,7 +109,6 @@ public class TestKeyGenerator extends PKCS11Test {
         // Different PKCS11 impls have different ranges
         // of supported key sizes for variable-key-length
         // algorithms.
-        // Solaris> Blowfish: 32-128 or even 448 bits, RC4: 8-128 bits or as much as 2048 bits
         // NSS>     Blowfish: n/a,         RC4: 8-2048 bits
         // However, we explicitly disallowed key sizes less
         // than 40-bits.
@@ -128,9 +127,19 @@ public class TestKeyGenerator extends PKCS11Test {
         test("ARCFOUR", 40, p, TestResult.PASS);
         test("ARCFOUR", 128, p, TestResult.PASS);
 
-        if (p.getName().equals("SunPKCS11-Solaris")) {
-            test("ARCFOUR", 1024, p, TestResult.TBD);
-        } else if (p.getName().equals("SunPKCS11-NSS")) {
+        String[] HMAC_ALGS = {
+            "HmacSHA1", "HmacSHA224", "HmacSHA256", "HmacSHA384", "HmacSHA512",
+            "HmacSHA512/224", "HmacSHA512/256", "HmacSHA3-224", "HmacSHA3-256",
+            "HmacSHA3-384", "HmacSHA3-512",
+        };
+
+        for (String hmacAlg : HMAC_ALGS) {
+            test(hmacAlg, 0, p, TestResult.FAIL);
+            test(hmacAlg, 128, p, TestResult.PASS);
+            test(hmacAlg, 224, p, TestResult.PASS);
+        }
+
+        if (p.getName().equals("SunPKCS11-NSS")) {
             test("ARCFOUR", 1024, p, TestResult.PASS);
             test("ARCFOUR", 2048, p, TestResult.PASS);
             test("ARCFOUR", 2056, p, TestResult.FAIL);

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,7 @@ VS_VERSION_NUM_NODOT="160"
 VS_DLL_VERSION="140"
 SDK_VERSION="10"
 SDK_FULL_VERSION="10.0.17763.0"
-MSVC_DIR="Microsoft.VC141.CRT"
+MSVC_DIR="Microsoft.VC142.CRT"
 MSVC_FULL_VERSION="14.12.27508"
 REDIST_FULL_VERSION="14.20.27508"
 
@@ -102,6 +102,7 @@ DEVKIT_BUNDLE="${DEVKIT_ROOT}.tar.gz"
 echo "Creating devkit in $DEVKIT_ROOT"
 
 MSVCR_DLL=${MSVC_DIR}/vcruntime${VS_DLL_VERSION}.dll
+VCRUNTIME_1_DLL=${MSVC_DIR}/vcruntime${VS_DLL_VERSION}_1.dll
 MSVCP_DLL=${MSVC_DIR}/msvcp${VS_DLL_VERSION}.dll
 
 ################################################################################
@@ -116,19 +117,23 @@ REDIST_SUBDIR="VC/Redist/MSVC/$REDIST_VERSION"
 echo "Copying VC..."
 rm -rf $DEVKIT_ROOT/VC
 mkdir -p $DEVKIT_ROOT/VC/bin
+cp -r "$VS_INSTALL_DIR/${VC_SUBDIR}/bin/Hostx64/arm64" $DEVKIT_ROOT/VC/bin/
 cp -r "$VS_INSTALL_DIR/${VC_SUBDIR}/bin/Hostx64/x64" $DEVKIT_ROOT/VC/bin/
 cp -r "$VS_INSTALL_DIR/${VC_SUBDIR}/bin/Hostx86/x86" $DEVKIT_ROOT/VC/bin/
 mkdir -p $DEVKIT_ROOT/VC/lib
+cp -r "$VS_INSTALL_DIR/${VC_SUBDIR}/lib/arm64" $DEVKIT_ROOT/VC/lib/
 cp -r "$VS_INSTALL_DIR/${VC_SUBDIR}/lib/x64" $DEVKIT_ROOT/VC/lib/
 cp -r "$VS_INSTALL_DIR/${VC_SUBDIR}/lib/x86" $DEVKIT_ROOT/VC/lib/
 cp -r "$VS_INSTALL_DIR/${VC_SUBDIR}/include" $DEVKIT_ROOT/VC/
 mkdir -p $DEVKIT_ROOT/VC/atlmfc/lib
+cp -r "$VS_INSTALL_DIR/${VC_SUBDIR}/atlmfc/lib/arm64" $DEVKIT_ROOT/VC/atlmfc/lib/
 cp -r "$VS_INSTALL_DIR/${VC_SUBDIR}/atlmfc/lib/x64" $DEVKIT_ROOT/VC/atlmfc/lib/
 cp -r "$VS_INSTALL_DIR/${VC_SUBDIR}/atlmfc/lib/x86" $DEVKIT_ROOT/VC/atlmfc/lib/
 cp -r "$VS_INSTALL_DIR/${VC_SUBDIR}/atlmfc/include" $DEVKIT_ROOT/VC/atlmfc/
 mkdir -p $DEVKIT_ROOT/VC/Auxiliary
 cp -r "$VS_INSTALL_DIR/VC/Auxiliary/Build" $DEVKIT_ROOT/VC/Auxiliary/
 mkdir -p $DEVKIT_ROOT/VC/redist
+cp -r "$VS_INSTALL_DIR/$REDIST_SUBDIR/arm64" $DEVKIT_ROOT/VC/redist/
 cp -r "$VS_INSTALL_DIR/$REDIST_SUBDIR/x64" $DEVKIT_ROOT/VC/redist/
 cp -r "$VS_INSTALL_DIR/$REDIST_SUBDIR/x86" $DEVKIT_ROOT/VC/redist/
 
@@ -138,6 +143,8 @@ cp $DEVKIT_ROOT/VC/redist/x86/$MSVCR_DLL $DEVKIT_ROOT/VC/bin/x86
 cp $DEVKIT_ROOT/VC/redist/x86/$MSVCP_DLL $DEVKIT_ROOT/VC/bin/x86
 cp $DEVKIT_ROOT/VC/redist/x64/$MSVCR_DLL $DEVKIT_ROOT/VC/bin/x64
 cp $DEVKIT_ROOT/VC/redist/x64/$MSVCP_DLL $DEVKIT_ROOT/VC/bin/x64
+cp $DEVKIT_ROOT/VC/redist/arm64/$MSVCR_DLL $DEVKIT_ROOT/VC/bin/arm64
+cp $DEVKIT_ROOT/VC/redist/arm64/$MSVCP_DLL $DEVKIT_ROOT/VC/bin/arm64
 
 ################################################################################
 # Copy SDK files
@@ -155,8 +162,10 @@ mkdir -p $DEVKIT_ROOT/$SDK_VERSION/bin
 cp -r "$SDK_INSTALL_DIR/bin/$SDK_FULL_VERSION/x64" $DEVKIT_ROOT/$SDK_VERSION/bin/
 cp -r "$SDK_INSTALL_DIR/bin/$SDK_FULL_VERSION/x86" $DEVKIT_ROOT/$SDK_VERSION/bin/
 mkdir -p $DEVKIT_ROOT/$SDK_VERSION/lib
+cp -r "$SDK_INSTALL_DIR/lib/$SDK_FULL_VERSION/um/arm64" $DEVKIT_ROOT/$SDK_VERSION/lib/
 cp -r "$SDK_INSTALL_DIR/lib/$SDK_FULL_VERSION/um/x64" $DEVKIT_ROOT/$SDK_VERSION/lib/
 cp -r "$SDK_INSTALL_DIR/lib/$SDK_FULL_VERSION/um/x86" $DEVKIT_ROOT/$SDK_VERSION/lib/
+cp -r "$SDK_INSTALL_DIR/lib/$SDK_FULL_VERSION/ucrt/arm64" $DEVKIT_ROOT/$SDK_VERSION/lib/
 cp -r "$SDK_INSTALL_DIR/lib/$SDK_FULL_VERSION/ucrt/x64" $DEVKIT_ROOT/$SDK_VERSION/lib/
 cp -r "$SDK_INSTALL_DIR/lib/$SDK_FULL_VERSION/ucrt/x86" $DEVKIT_ROOT/$SDK_VERSION/lib/
 mkdir -p $DEVKIT_ROOT/$SDK_VERSION/Redist
@@ -188,8 +197,17 @@ echo-info "DEVKIT_TOOLCHAIN_PATH_x86_64=\"\$DEVKIT_ROOT/VC/bin/x64:\$DEVKIT_ROOT
 echo-info "DEVKIT_VS_INCLUDE_x86_64=\"\$DEVKIT_ROOT/VC/include;\$DEVKIT_ROOT/VC/atlmfc/include;\$DEVKIT_ROOT/$SDK_VERSION/include/shared;\$DEVKIT_ROOT/$SDK_VERSION/include/ucrt;\$DEVKIT_ROOT/$SDK_VERSION/include/um;\$DEVKIT_ROOT/$SDK_VERSION/include/winrt\""
 echo-info "DEVKIT_VS_LIB_x86_64=\"\$DEVKIT_ROOT/VC/lib/x64;\$DEVKIT_ROOT/VC/atlmfc/lib/x64;\$DEVKIT_ROOT/$SDK_VERSION/lib/x64\""
 echo-info "DEVKIT_MSVCR_DLL_x86_64=\"\$DEVKIT_ROOT/VC/redist/x64/$MSVCR_DLL\""
+echo-info "DEVKIT_VCRUNTIME_1_DLL_x86_64=\"\$DEVKIT_ROOT/VC/redist/x64/$VCRUNTIME_1_DLL\""
 echo-info "DEVKIT_MSVCP_DLL_x86_64=\"\$DEVKIT_ROOT/VC/redist/x64/$MSVCP_DLL\""
 echo-info "DEVKIT_UCRT_DLL_DIR_x86_64=\"\$DEVKIT_ROOT/10/Redist/ucrt/DLLs/x64\""
+echo-info ""
+echo-info "DEVKIT_TOOLCHAIN_PATH_aarch64=\"\$DEVKIT_ROOT/VC/bin/arm64:\$DEVKIT_ROOT/$SDK_VERSION/bin/x64:\$DEVKIT_ROOT/$SDK_VERSION/bin/x86\""
+echo-info "DEVKIT_VS_INCLUDE_aarch64=\"\$DEVKIT_ROOT/VC/include;\$DEVKIT_ROOT/VC/atlmfc/include;\$DEVKIT_ROOT/$SDK_VERSION/include/shared;\$DEVKIT_ROOT/$SDK_VERSION/include/ucrt;\$DEVKIT_ROOT/$SDK_VERSION/include/um;\$DEVKIT_ROOT/$SDK_VERSION/include/winrt\""
+echo-info "DEVKIT_VS_LIB_aarch64=\"\$DEVKIT_ROOT/VC/lib/arm64;\$DEVKIT_ROOT/VC/atlmfc/lib/arm64;\$DEVKIT_ROOT/$SDK_VERSION/lib/arm64\""
+echo-info "DEVKIT_MSVCR_DLL_aarch64=\"\$DEVKIT_ROOT/VC/redist/arm64/$MSVCR_DLL\""
+echo-info "DEVKIT_VCRUNTIME_1_DLL_aarch64=\"\$DEVKIT_ROOT/VC/redist/arm64/$VCRUNTIME_1_DLL\""
+echo-info "DEVKIT_MSVCP_DLL_aarch64=\"\$DEVKIT_ROOT/VC/redist/arm64/$MSVCP_DLL\""
+echo-info "DEVKIT_UCRT_DLL_DIR_aarch64=\"\$DEVKIT_ROOT/10/Redist/ucrt/DLLs/arm64\""
 echo-info ""
 echo-info "DEVKIT_TOOLS_VERSION=\"$TOOLS_VERSION\""
 echo-info "DEVKIT_REDIST_VERSION=\"$REDIST_VERSION\""

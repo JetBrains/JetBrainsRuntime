@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,7 @@ public class TestProperty extends JavadocTester {
     @Test
     public void testArrays() {
         javadoc("-d", "out",
+                "--no-platform-links",
                 "-javafx",
                 "--disable-javafx-strict-checks",
                 "-sourcepath", testSrc,
@@ -50,64 +51,75 @@ public class TestProperty extends JavadocTester {
         checkExit(Exit.OK);
 
         checkOutput("pkg/MyClass.html", true,
-                "<div class=\"memberSignature\"><span class=\"modifiers\">public final</span>&nbsp;"
-                + "<span class=\"returnType\"><a href=\"ObjectProperty.html\" title=\"class in pkg\">"
-                + "ObjectProperty</a>&lt;<a href=\"MyObj.html\" title=\"class in pkg\">MyObj</a>&gt;</span>"
-                + "&nbsp;<span class=\"memberName\">goodProperty</span></div>\n"
-                + "<div class=\"block\">This is an Object property where the "
-                + "Object is a single Object.</div>\n"
-                + "<dl>\n"
-                + "<dt><span class=\"seeLabel\">See Also:</span></dt>\n"
-                + "<dd><a href=\"#getGood()\"><code>getGood()</code></a>, \n"
-                + "<a href=\"#setGood(pkg.MyObj)\">"
-                + "<code>setGood(MyObj)</code></a></dd>\n"
-                + "</dl>",
+                """
+                    <div class="member-signature"><span class="modifiers">public final</span>&nbsp;<\
+                    span class="return-type"><a href="ObjectProperty.html" title="class in pkg">Obje\
+                    ctProperty</a>&lt;<a href="MyObj.html" title="class in pkg">MyObj</a>&gt;</span>\
+                    &nbsp;<span class="element-name">goodProperty</span></div>
+                    <div class="block">This is an Object property where the Object is a single Object.</div>
+                    <dl class="notes">
+                    <dt>See Also:</dt>
+                    <dd>
+                    <ul class="see-list">
+                    <li><a href="#getGood()"><code>getGood()</code></a></li>
+                    <li><a href="#setGood(pkg.MyObj)"><code>setGood(MyObj)</code></a></li>
+                    </ul>
+                    </dd>
+                    </dl>""",
 
-                "<div class=\"memberSignature\"><span class=\"modifiers\">public final</span>&nbsp;"
-                + "<span class=\"returnType\"><a href=\"ObjectProperty.html\" title=\"class in pkg\">"
-                + "ObjectProperty</a>&lt;<a href=\"MyObj.html\" title=\"class in pkg\">MyObj</a>[]&gt;</span>"
-                + "&nbsp;<span class=\"memberName\">badProperty</span></div>\n"
-                + "<div class=\"block\">This is an Object property where the "
-                + "Object is an array.</div>\n"
-                + "<dl>\n"
-                + "<dt><span class=\"seeLabel\">See Also:</span></dt>\n"
-                + "<dd><a href=\"#getBad()\"><code>getBad()</code></a>, \n"
-                + "<a href=\"#setBad(pkg.MyObj%5B%5D)\">"
-                + "<code>setBad(MyObj[])</code></a></dd>\n"
-                + "</dl>",
+                """
+                    <div class="member-signature"><span class="modifiers">public final</span>&nbsp;<\
+                    span class="return-type"><a href="ObjectProperty.html" title="class in pkg">Obje\
+                    ctProperty</a>&lt;<a href="MyObj.html" title="class in pkg">MyObj</a>[]&gt;</spa\
+                    n>&nbsp;<span class="element-name">badProperty</span></div>
+                    <div class="block">This is an Object property where the Object is an array.</div>
+                    <dl class="notes">
+                    <dt>See Also:</dt>
+                    <dd>
+                    <ul class="see-list">
+                    <li><a href="#getBad()"><code>getBad()</code></a></li>
+                    <li><a href="#setBad(pkg.MyObj%5B%5D)"><code>setBad(MyObj[])</code></a></li>
+                    </ul>
+                    </dd>
+                    </dl>""",
 
-                // id should not be used in the property table
-                "<tr class=\"altColor\">\n"
-                + "<td class=\"colFirst\"><code><a href=\"ObjectProperty.html\" "
-                + "title=\"class in pkg\">ObjectProperty</a>&lt;<a href=\"MyObj.html\" "
-                + "title=\"class in pkg\">MyObj</a>[]&gt;</code></td>\n"
-                + "<th class=\"colSecond\" scope=\"row\"><code><span class=\"memberNameLink\">"
-                + "<a href=\"#badProperty\">bad</a></span></code></th>",
+                // no tab classes should be used in the property table
+                """
+                    <div class="col-first even-row-color"><code>final <a href="ObjectProperty.html" \
+                    title="class in pkg">ObjectProperty</a>&lt;<a href="MyObj.html" title="class in \
+                    pkg">MyObj</a>[]&gt;</code></div>
+                    <div class="col-second even-row-color"><code><a href="#badProperty" class="membe\
+                    r-name-link">bad</a></code></div>
+                    <div class="col-last even-row-color">""",
 
-                // id should be used in the method table
-                "<tr class=\"altColor\" id=\"i0\">\n"
-                + "<td class=\"colFirst\"><code><a href=\"ObjectProperty.html\" "
-                + "title=\"class in pkg\">ObjectProperty</a>&lt;<a href=\"MyObj.html\" "
-                + "title=\"class in pkg\">MyObj</a>[]&gt;</code></td>\n"
-                + "<th class=\"colSecond\" scope=\"row\"><code><span class=\"memberNameLink\">"
-                + "<a href=\"#badProperty()\">badProperty</a></span>()</code></th>"
+                // tab classes should be used in the method table
+                """
+                    <div class="col-first even-row-color method-summary-table method-summary-table-t\
+                    ab2 method-summary-table-tab4"><code>final <a href="ObjectProperty.html" title="\
+                    class in pkg">ObjectProperty</a>&lt;<a href="MyObj.html" title="class in pkg">My\
+                    Obj</a>[]&gt;</code></div>
+                    <div class="col-second even-row-color method-summary-table method-summary-table-\
+                    tab2 method-summary-table-tab4"><code><a href="#badProperty()" class="member-nam\
+                    e-link">badProperty</a>()</code></div>"""
         );
 
         checkOutput("pkg/MyClassT.html", true,
-                "<div class=\"memberSignature\"><span class=\"modifiers\">public final</span>&nbsp;"
-                + "<span class=\"returnType\"><a href=\"ObjectProperty.html\" title=\"class in pkg\">"
-                + "ObjectProperty</a>&lt;java.util.List&lt;<a href=\"MyClassT.html\" "
-                + "title=\"type parameter in MyClassT\">T</a>&gt;&gt;</span>&nbsp;"
-                + "<span class=\"memberName\">listProperty</span></div>\n"
-                + "<div class=\"block\">This is an Object property where the "
-                + "Object is a single <code>List&lt;T&gt;</code>.</div>\n"
-                + "<dl>\n"
-                + "<dt><span class=\"seeLabel\">See Also:</span></dt>\n"
-                + "<dd><a href=\"#getList()\">"
-                + "<code>getList()</code></a>, \n"
-                + "<a href=\"#setList(java.util.List)\">"
-                + "<code>setList(List)</code></a></dd>\n"
-                + "</dl>"
+                """
+                    <div class="member-signature"><span class="modifiers">public final</span>&nbsp;<\
+                    span class="return-type"><a href="ObjectProperty.html" title="class in pkg">Obje\
+                    ctProperty</a>&lt;java.util.List&lt;<a href="MyClassT.html" title="type paramete\
+                    r in MyClassT">T</a>&gt;&gt;</span>&nbsp;<span class="element-name">listProperty</span><\
+                    /div>
+                    <div class="block">This is an Object property where the Object is a single <code>List&lt;T&gt;</code>.</div>
+                    <dl class="notes">
+                    <dt>See Also:</dt>
+                    <dd>
+                    <ul class="see-list">
+                    <li><a href="#getList()"><code>getList()</code></a></li>
+                    <li><a href="#setList(java.util.List)"><code>setList(List)</code></a></li>
+                    </ul>
+                    </dd>
+                    </dl>"""
         );
     }
 }

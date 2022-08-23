@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2006, 2021, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -20,6 +20,7 @@
 
 package com.sun.org.apache.xml.internal.serializer;
 
+import com.sun.org.apache.xml.internal.serializer.dom3.DOMConstants;
 import com.sun.org.apache.xml.internal.serializer.utils.MsgKey;
 import com.sun.org.apache.xml.internal.serializer.utils.Utils;
 import com.sun.org.apache.xml.internal.serializer.utils.WrappedRuntimeException;
@@ -41,6 +42,8 @@ import javax.xml.transform.ErrorListener;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
+import jdk.xml.internal.JdkConstants;
+import jdk.xml.internal.JdkXmlUtils;
 import org.w3c.dom.Node;
 import org.xml.sax.Attributes;
 import org.xml.sax.ContentHandler;
@@ -51,7 +54,7 @@ import org.xml.sax.SAXException;
  * serializers (xml, html, text ...) that write output to a stream.
  *
  * @xsl.usage internal
- * @LastModified: Aug 2019
+ * @LastModified: July 2021
  */
 abstract public class ToStream extends SerializerBase {
 
@@ -492,10 +495,11 @@ abstract public class ToStream extends SerializerBase {
                 if (OutputPropertiesFactory.S_KEY_INDENT_AMOUNT.equals(name)) {
                     setIndentAmount(Integer.parseInt(val));
                 } else if (OutputKeys.INDENT.equals(name)) {
-                    boolean b = val.endsWith("yes") ? true : false;
-                    m_doIndent = b;
+                    m_doIndent = val.endsWith("yes");
+                } else if ((DOMConstants.S_JDK_PROPERTIES_NS + JdkConstants.S_IS_STANDALONE)
+                        .equals(name)) {
+                    m_isStandalone = val.endsWith("yes");
                 }
-
                 break;
             case 'l':
                 if (OutputPropertiesFactory.S_KEY_LINE_SEPARATOR.equals(name)) {
@@ -891,16 +895,8 @@ abstract public class ToStream extends SerializerBase {
 
             m_writer.write("<!ENTITY ");
             m_writer.write(name);
-            if (publicId != null) {
-                m_writer.write(" PUBLIC \"");
-                m_writer.write(publicId);
-
-            }
-            else {
-                m_writer.write(" SYSTEM \"");
-                m_writer.write(systemId);
-            }
-            m_writer.write("\" >");
+            m_writer.write(JdkXmlUtils.getDTDExternalDecl(publicId, systemId));
+            m_writer.write(">");
             m_writer.write(m_lineSep, 0, m_lineSepLen);
         } catch (IOException e) {
             // TODO Auto-generated catch block
@@ -1354,7 +1350,7 @@ abstract public class ToStream extends SerializerBase {
         // characters to read from array is 0.
         // Section 7.6.1 of XSLT 1.0 (http://www.w3.org/TR/xslt#value-of) suggest no text node
         // is created if string is empty.
-        if (length == 0 || (isInEntityRef()))
+        if (length == 0 || (isInEntityRef() && !m_expandDTDEntities))
             return;
 
         final boolean shouldNotFormat = !shouldFormatOutput();
@@ -1668,7 +1664,7 @@ abstract public class ToStream extends SerializerBase {
      */
     public void characters(String s) throws org.xml.sax.SAXException
     {
-        if (isInEntityRef())
+        if (isInEntityRef() && !m_expandDTDEntities)
             return;
         final int length = s.length();
         if (length > m_charsBuff.length)
@@ -1890,10 +1886,6 @@ abstract public class ToStream extends SerializerBase {
             throw new SAXException(e);
         }
 
-        // process the attributes now, because after this SAX call they might be gone
-        if (atts != null)
-            addAttributes(atts);
-
         if (m_doIndent) {
             m_ispreserveSpace = m_preserveSpaces.peekOrFalse();
             m_preserveSpaces.push(m_ispreserveSpace);
@@ -1901,6 +1893,10 @@ abstract public class ToStream extends SerializerBase {
             m_childNodeNumStack.add(m_childNodeNum);
             m_childNodeNum = 0;
         }
+
+        // process the attributes now, because after this SAX call they might be gone
+        if (atts != null)
+            addAttributes(atts);
 
         m_elemContext = m_elemContext.push(namespaceURI,localName,name);
         m_isprevtext = false;
@@ -1963,43 +1959,16 @@ abstract public class ToStream extends SerializerBase {
             final Writer writer = m_writer;
             writer.write("<!DOCTYPE ");
             writer.write(name);
+            String systemId = getDoctypeSystem();
+            writer.write(JdkXmlUtils.getDTDExternalDecl(getDoctypePublic(), systemId));
 
-            String doctypePublic = getDoctypePublic();
-            if (null != doctypePublic)
+            if (null != systemId)
             {
-                writer.write(" PUBLIC \"");
-                writer.write(doctypePublic);
-                writer.write('\"');
-            }
-
-            String doctypeSystem = getDoctypeSystem();
-            if (null != doctypeSystem)
-            {
-                if (null == doctypePublic)
-                    writer.write(" SYSTEM \"");
-                else
-                    writer.write(" \"");
-
-                writer.write(doctypeSystem);
-
                 if (closeDecl)
                 {
-                    writer.write("\">");
+                    writer.write(">");
                     writer.write(m_lineSep, 0, m_lineSepLen);
                     closeDecl = false; // done closing
-                }
-                else
-                    writer.write('\"');
-            }
-            boolean dothis = false;
-            if (dothis)
-            {
-                // at one point this code seemed right,
-                // but not anymore - Brian M.
-                if (closeDecl)
-                {
-                    writer.write('>');
-                    writer.write(m_lineSep, 0, m_lineSepLen);
                 }
             }
         }
@@ -2514,7 +2483,7 @@ abstract public class ToStream extends SerializerBase {
             m_inExternalDTD = true;
 
         // if this is not the magic [dtd] name
-        if (!m_inExternalDTD) {
+        if (!m_expandDTDEntities && !m_inExternalDTD) {
             // if it's not in nested entity reference
             if (!isInEntityRef()) {
                 if (shouldFormatOutput()) {
@@ -3566,16 +3535,8 @@ abstract public class ToStream extends SerializerBase {
 
             m_writer.write("<!NOTATION ");
             m_writer.write(name);
-            if (pubID != null) {
-                m_writer.write(" PUBLIC \"");
-                m_writer.write(pubID);
-
-            }
-            else {
-                m_writer.write(" SYSTEM \"");
-                m_writer.write(sysID);
-            }
-            m_writer.write("\" >");
+            m_writer.write(JdkXmlUtils.getDTDExternalDecl(pubID, sysID));
+            m_writer.write(">");
             m_writer.write(m_lineSep, 0, m_lineSepLen);
         } catch (IOException e) {
             // TODO Auto-generated catch block
@@ -3596,16 +3557,8 @@ abstract public class ToStream extends SerializerBase {
 
             m_writer.write("<!ENTITY ");
             m_writer.write(name);
-            if (pubID != null) {
-                m_writer.write(" PUBLIC \"");
-                m_writer.write(pubID);
-
-            }
-            else {
-                m_writer.write(" SYSTEM \"");
-                m_writer.write(sysID);
-            }
-            m_writer.write("\" NDATA ");
+            m_writer.write(JdkXmlUtils.getDTDExternalDecl(pubID, sysID));
+            m_writer.write(" NDATA ");
             m_writer.write(notationName);
             m_writer.write(" >");
             m_writer.write(m_lineSep, 0, m_lineSepLen);

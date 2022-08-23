@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -215,8 +215,6 @@ public class Modules extends JCTree.Visitor {
         limitModsOpt = options.get(Option.LIMIT_MODULES);
         moduleVersionOpt = options.get(Option.MODULE_VERSION);
     }
-    //where
-        private static final String XMODULES_PREFIX = "-Xmodule:";
 
     int depth = -1;
 
@@ -632,15 +630,19 @@ public class Modules extends JCTree.Visitor {
 
             if (msym.kind == ERR) {
                 //make sure the module is initialized:
-                msym.directives = List.nil();
-                msym.exports = List.nil();
-                msym.provides = List.nil();
-                msym.requires = List.nil();
-                msym.uses = List.nil();
+                initErrModule(msym);
             } else if ((msym.flags_field & Flags.AUTOMATIC_MODULE) != 0) {
                 setupAutomaticModule(msym);
             } else {
-                msym.module_info.complete();
+                try {
+                    msym.module_info.complete();
+                } catch (CompletionFailure cf) {
+                    msym.kind = ERR;
+                    //make sure the module is initialized:
+                    initErrModule(msym);
+                    completeModule(msym);
+                    throw cf;
+                }
             }
 
             // If module-info comes from a .java file, the underlying
@@ -653,6 +655,14 @@ public class Modules extends JCTree.Visitor {
             if (msym.module_info.classfile == null || msym.module_info.classfile.getKind() == Kind.CLASS) {
                 completeModule(msym);
             }
+        }
+
+        private void initErrModule(ModuleSymbol msym) {
+            msym.directives = List.nil();
+            msym.exports = List.nil();
+            msym.provides = List.nil();
+            msym.requires = List.nil();
+            msym.uses = List.nil();
         }
 
         @Override
@@ -1128,6 +1138,7 @@ public class Modules extends JCTree.Visitor {
         public void visitRequires(JCRequires tree) {
             if (tree.directive != null && allModules().contains(tree.directive.module)) {
                 chk.checkDeprecated(tree.moduleName.pos(), msym, tree.directive.module);
+                chk.checkPreview(tree.moduleName.pos(), msym, tree.directive.module);
                 chk.checkModuleRequires(tree.moduleName.pos(), tree.directive);
                 msym.directives = msym.directives.prepend(tree.directive);
             }

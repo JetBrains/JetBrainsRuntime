@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,7 @@ import java.util.Base64;
 
 /*
  * @test
- * @bug 8048621 8133090 8167371
+ * @bug 8048621 8133090 8167371 8236671
  * @summary Test basic operations with keystores (jks, jceks, pkcs12)
  * @author Yu-Ching Valerie PENG
  */
@@ -112,7 +112,7 @@ public class TestKeyStoreBasic {
             "jks", "jceks", "pkcs12", "PKCS11KeyStore"
     };
     private static final String[] PROVIDERS = {
-            "SUN", "SunJCE", "SunJSSE", "SunPKCS11-Solaris"
+            "SUN", "SunJCE", "SunJSSE"
     };
     private static final String ALIAS_HEAD = "test";
 
@@ -125,26 +125,8 @@ public class TestKeyStoreBasic {
 
     public void run() throws Exception {
         for (String provider : PROVIDERS) {
-            try {
-                runTest(provider);
-                System.out.println("Test with provider " + provider + " passed");
-            } catch (java.security.KeyStoreException e) {
-                if (provider.equals("SunPKCS11-Solaris")) {
-                    System.out.println("KeyStoreException is expected: "
-                            + "PKCS11KeyStore is invalid keystore type: " + e);
-                } else {
-                    throw e;
-                }
-            } catch (NoSuchProviderException e) {
-                String osName = System.getProperty("os.name");
-                if (provider.equals("SunPKCS11-Solaris")
-                        && !osName.equals("SunOS")) {
-                    System.out.println("Skip SunPKCS11-Solaris provider on "
-                            + osName);
-                } else {
-                    throw e;
-                }
-            }
+            runTest(provider);
+            System.out.println("Test with provider " + provider + " passed");
         }
     }
 
@@ -180,6 +162,17 @@ public class TestKeyStoreBasic {
 
         // create an empty key store
         ks.load(null, null);
+
+        // unit test - test with null password
+        try {
+            ks.setKeyEntry(ALIAS_HEAD, privateKey, null,
+                new Certificate[] { cert });
+        } catch (KeyStoreException e) {
+            if (!e.getMessage().contains("password can\'t be null")) {
+                throw new RuntimeException("Unexpected message:" + e.getMessage());
+            }
+            // expected
+        }
 
         // store the secret keys
         for (int j = 0; j < numEntries; j++) {

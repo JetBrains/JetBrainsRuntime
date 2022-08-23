@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
  * @test
  * @summary Redefine a class with an UnresolvedClass reference in the constant pool.
  * @bug 8035150
+ * @requires vm.jvmti
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.compiler
@@ -33,7 +34,7 @@
  *          jdk.jartool/sun.tools.jar
  *          jdk.internal.jvmstat/sun.jvmstat.monitor
  * @build UnresolvedClassAgent
- * @run main TestRedefineWithUnresolvedClass
+ * @run driver TestRedefineWithUnresolvedClass
  */
 
 import java.io.File;
@@ -78,11 +79,10 @@ public class TestRedefineWithUnresolvedClass {
     }
 
     private static void launchTest() throws Throwable {
-        String[] args = {
+        OutputAnalyzer output = ProcessTools.executeTestJvm(
             "-javaagent:" + testClasses + "UnresolvedClassAgent.jar",
             "-Dtest.classes=" + testClasses,
-            "UnresolvedClassAgent" };
-        OutputAnalyzer output = ProcessTools.executeTestJvm(args);
+            "UnresolvedClassAgent");
         output.shouldHaveExitValue(0);
     }
 }

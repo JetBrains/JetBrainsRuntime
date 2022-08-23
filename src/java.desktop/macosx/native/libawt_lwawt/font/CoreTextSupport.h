@@ -35,6 +35,10 @@
 #define HI_SURROGATE_END   0xDBFF
 #define LO_SURROGATE_START 0xDC00
 #define LO_SURROGATE_END   0xDFFF
+#define VS_START  0xFE00
+#define VS_END    0xFE0F
+#define VSS_START 0xE0100
+#define VSS_END   0xE01FF
 
 /*
  *    Transform Unicode characters into glyphs.
@@ -54,8 +58,16 @@ CTFontRef CTS_CopyCTFallbackFontAndGlyphForJavaGlyphCode(const AWTFont *font, co
 // Returns the substituted font, and places the appropriate glyph into "glyphRef"
 CTFontRef CTS_CopyCTFallbackFontAndGlyphForUnicode(const AWTFont *font, const UTF16Char *charRef, CGGlyph *glyphRef, int count);
 
+// Transform a single Unicode character code into glyph code.
+// Names of the relevant font are also returned, if the substitution is used.
+// Non-null components of fontNames array should always be released by the calling code, regardless of the returned value.
+CGGlyph CTS_CopyGlyphAndFontNamesForCodePoint(const AWTFont *font, const UnicodeScalarValue codePoint, const UnicodeScalarValue variationSelector, CFStringRef fontNames[]);
+
 // Breakup a 32 bit unicode value into the component surrogate pairs
 void CTS_BreakupUnicodeIntoSurrogatePairs(int uniChar, UTF16Char charRef[]);
+
+// Get number of UTF16 values from 32 bit unicode value (2 for surrogate pair and 1 otherwise)
+int CTS_GetUnicodeSize(const UnicodeScalarValue unicode);
 
 
 // Basic struct that holds everything CoreText is interested in

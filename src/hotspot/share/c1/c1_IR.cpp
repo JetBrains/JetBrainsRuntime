@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@
 #include "c1/c1_IR.hpp"
 #include "c1/c1_InstructionPrinter.hpp"
 #include "c1/c1_Optimizer.hpp"
+#include "compiler/oopMap.hpp"
 #include "memory/resourceArea.hpp"
 #include "utilities/bitMap.inline.hpp"
 
@@ -190,7 +191,8 @@ CodeEmitInfo::CodeEmitInfo(ValueStack* stack, XHandlers* exception_handlers, boo
   , _oop_map(NULL)
   , _stack(stack)
   , _is_method_handle_invoke(false)
-  , _deoptimize_on_exception(deoptimize_on_exception) {
+  , _deoptimize_on_exception(deoptimize_on_exception)
+  , _force_reexecute(false) {
   assert(_stack != NULL, "must be non null");
 }
 
@@ -202,7 +204,8 @@ CodeEmitInfo::CodeEmitInfo(CodeEmitInfo* info, ValueStack* stack)
   , _oop_map(NULL)
   , _stack(stack == NULL ? info->_stack : stack)
   , _is_method_handle_invoke(info->_is_method_handle_invoke)
-  , _deoptimize_on_exception(info->_deoptimize_on_exception) {
+  , _deoptimize_on_exception(info->_deoptimize_on_exception)
+  , _force_reexecute(info->_force_reexecute) {
 
   // deep copy of exception handlers
   if (info->_exception_handlers != NULL) {
@@ -214,7 +217,8 @@ CodeEmitInfo::CodeEmitInfo(CodeEmitInfo* info, ValueStack* stack)
 void CodeEmitInfo::record_debug_info(DebugInformationRecorder* recorder, int pc_offset) {
   // record the safepoint before recording the debug info for enclosing scopes
   recorder->add_safepoint(pc_offset, _oop_map->deep_copy());
-  _scope_debug_info->record_debug_info(recorder, pc_offset, true/*topmost*/, _is_method_handle_invoke);
+  bool reexecute = _force_reexecute || _scope_debug_info->should_reexecute();
+  _scope_debug_info->record_debug_info(recorder, pc_offset, reexecute, _is_method_handle_invoke);
   recorder->end_safepoint(pc_offset);
 }
 
@@ -440,7 +444,7 @@ class UseCountComputer: public ValueVisitor, BlockClosure {
 
 
 // helper macro for short definition of trace-output inside code
-#ifndef PRODUCT
+#ifdef ASSERT
   #define TRACE_LINEAR_SCAN(level, code)       \
     if (TraceLinearScanLevel >= level) {       \
       code;                                    \
@@ -509,7 +513,7 @@ class ComputeLinearScanOrder : public StackObj {
   void compute_dominators();
 
   // debug functions
-  NOT_PRODUCT(void print_blocks();)
+  DEBUG_ONLY(void print_blocks();)
   DEBUG_ONLY(void verify();)
 
   Compilation* compilation() const { return _compilation; }
@@ -559,7 +563,7 @@ ComputeLinearScanOrder::ComputeLinearScanOrder(Compilation* c, BlockBegin* start
   compute_order(start_block);
   compute_dominators();
 
-  NOT_PRODUCT(print_blocks());
+  DEBUG_ONLY(print_blocks());
   DEBUG_ONLY(verify());
 }
 
@@ -1047,7 +1051,7 @@ void ComputeLinearScanOrder::compute_dominators() {
 }
 
 
-#ifndef PRODUCT
+#ifdef ASSERT
 void ComputeLinearScanOrder::print_blocks() {
   if (TraceLinearScanLevel >= 2) {
     tty->print_cr("----- loop information:");
@@ -1104,9 +1108,7 @@ void ComputeLinearScanOrder::print_blocks() {
     }
   }
 }
-#endif
 
-#ifdef ASSERT
 void ComputeLinearScanOrder::verify() {
   assert(_linear_scan_order->length() == _num_blocks, "wrong number of blocks in list");
 
@@ -1182,7 +1184,7 @@ void ComputeLinearScanOrder::verify() {
     }
   }
 }
-#endif
+#endif // ASSERT
 
 
 void IR::compute_code() {

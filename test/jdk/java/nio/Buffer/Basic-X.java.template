@@ -39,6 +39,7 @@ import java.nio.*;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Random;
 #end[byte]
 
 
@@ -491,6 +492,38 @@ public class Basic$Type$
             }
         } catch (IOException e) {
             throw new UncheckedIOException(e);
+        }
+
+        // alignment identities
+        final int maxPow2 = 12;
+        ByteBuffer bb = ByteBuffer.allocateDirect(1 << maxPow2); // cap 4096
+
+        Random rnd = new Random();
+        long seed = rnd.nextLong();
+        rnd = new Random(seed);
+
+        for (int i = 0; i < 100; i++) {
+            // 1 == 2^0 <= unitSize == 2^k <= bb.capacity()/2
+            int unitSize = 1 << rnd.nextInt(maxPow2);
+            // 0 <= index < 2*unitSize
+            int index = rnd.nextInt(unitSize << 1);
+            int value = bb.alignmentOffset(index, unitSize);
+            try {
+                if (value < 0 || value >= unitSize) {
+                    throw new RuntimeException(value + " < 0 || " +
+                        value + " >= " + unitSize);
+                }
+                if (value <= index &&
+                    bb.alignmentOffset(index - value, unitSize) != 0)
+                    throw new RuntimeException("Identity 1");
+                if (bb.alignmentOffset(index + (unitSize - value),
+                    unitSize) != 0)
+                    throw new RuntimeException("Identity 2");
+            } catch (RuntimeException re) {
+                System.err.format("seed %d, index %d, unitSize %d, value %d%n",
+                    seed, index, unitSize, value);
+                throw re;
+            }
         }
     }
 
@@ -1101,6 +1134,26 @@ public class Basic$Type$
 #end[byte]
     }
 
+    public static void testToString() {
+        final int cap = 10;
+
+#if[byte]
+        $Type$Buffer direct1 = $Type$Buffer.allocateDirect(cap);
+        if (!direct1.toString().equals(Basic.toString(direct1))) {
+           fail("Direct buffer toString is incorrect: "
+                  + direct1.toString() + " vs " + Basic.toString(direct1));
+        }
+#end[byte]
+
+#if[!char]
+        $Type$Buffer nondirect1 = $Type$Buffer.allocate(cap);
+        if (!nondirect1.toString().equals(Basic.toString(nondirect1))) {
+           fail("Heap buffer toString is incorrect: "
+                  + nondirect1.toString() + " vs " + Basic.toString(nondirect1));
+        }
+#end[!char]
+    }
+
     public static void test() {
         testAllocate();
         test(0, $Type$Buffer.allocate(7 * 1024), false);
@@ -1122,6 +1175,8 @@ public class Basic$Type$
 #else[byte]
         putBuffer();
 #end[byte]
+
+        testToString();
     }
 
 }

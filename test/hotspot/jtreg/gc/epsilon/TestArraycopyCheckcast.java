@@ -25,17 +25,29 @@ package gc.epsilon;
 
 /**
  * @test TestArraycopyCheckcast
- * @key gc
- * @requires vm.gc.Epsilon & !vm.graal.enabled
+ * @requires vm.gc.Epsilon
  * @summary Epsilon is able to handle checkcasted array copies
  * @library /test/lib
  * @bug 8215724
  *
- * @run main/othervm -Xmx1g                                        -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC gc.epsilon.TestArraycopyCheckcast
- * @run main/othervm -Xmx1g -Xint                                  -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC gc.epsilon.TestArraycopyCheckcast
- * @run main/othervm -Xmx1g -Xbatch -Xcomp                         -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC gc.epsilon.TestArraycopyCheckcast
- * @run main/othervm -Xmx1g -Xbatch -Xcomp -XX:TieredStopAtLevel=1 -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC gc.epsilon.TestArraycopyCheckcast
- * @run main/othervm -Xmx1g -Xbatch -Xcomp -XX:-TieredCompilation  -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC gc.epsilon.TestArraycopyCheckcast
+ * @run main/othervm -Xmx256m
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
+ *                   gc.epsilon.TestArraycopyCheckcast
+ *
+ * @run main/othervm -Xmx256m
+ *                   -Xint
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
+ *                   gc.epsilon.TestArraycopyCheckcast
+ *
+ * @run main/othervm -Xmx256m
+ *                   -Xbatch -Xcomp -XX:TieredStopAtLevel=1
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
+ *                   gc.epsilon.TestArraycopyCheckcast
+ *
+ * @run main/othervm -Xmx256m
+ *                   -Xbatch -Xcomp -XX:-TieredCompilation
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
+ *                   gc.epsilon.TestArraycopyCheckcast
  */
 
 public class TestArraycopyCheckcast {

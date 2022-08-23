@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -79,16 +77,16 @@ public class TestRecordedFullStackTrace {
     private static void assertStackTraces(RecurseThread[] threads) throws Throwable {
         Path path = null;
         do {
-            Recording recording = new Recording();
-            recording.enable(EVENT_NAME).withPeriod(Duration.ofMillis(50));
-            recording.start();
-            Thread.sleep(500);
-            recording.stop();
-            // Dump the recording to a file
-            path = Utils.createTempFile("execution-stack-trace", ".jfr");
-            System.out.println("Dumping to " + path);
-            recording.dump(path);
-            recording.close();
+            try (Recording recording = new Recording()) {
+                recording.enable(EVENT_NAME).withPeriod(Duration.ofMillis(1));
+                recording.start();
+                Thread.sleep(50);
+                recording.stop();
+                // Dump the recording to a file
+                path = Utils.createTempFile("execution-stack-trace", ".jfr");
+                System.out.println("Dumping to " + path);
+                recording.dump(path);
+            }
         } while (!hasValidStackTraces(path, threads));
     }
 
@@ -103,8 +101,7 @@ public class TestRecordedFullStackTrace {
             for (int threadIndex = 0; threadIndex < threads.length; ++threadIndex) {
                 RecurseThread currThread = threads[threadIndex];
                 if (threadId == currThread.getId()) {
-                    System.out.println("ThreadName=" + currThread.getName() + ", depth=" + currThread.totalDepth);
-                    Asserts.assertEquals(threadName, currThread.getName(), "Wrong thread name");
+                    Asserts.assertEquals(threadName, currThread.getName(), "Wrong thread name, deptth=" + currThread.totalDepth);
                     if ("recurseEnd".equals(getTopMethodName(event))) {
                         isEventFound[threadIndex] = true;
                         checkEvent(event, currThread.totalDepth);
@@ -147,8 +144,7 @@ public class TestRecordedFullStackTrace {
             for (int i = 0; i < frames.size(); ++i) {
                 String name = frames.get(i).getMethod().getName();
                 String expectedName = expectedMethods.get(i);
-                System.out.printf("method[%d]=%s, expected=%s%n", i, name, expectedName);
-                Asserts.assertEquals(name, expectedName, "Wrong method name");
+                Asserts.assertEquals(name, expectedName, "Wrong method name at index " + i);
             }
 
             boolean isTruncated = stacktrace.isTruncated();

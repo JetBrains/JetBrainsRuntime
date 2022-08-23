@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -194,11 +194,11 @@ public class ByteArrayChannel implements SeekableByteChannel {
             throw new ClosedChannelException();
     }
 
-    private final void beginWrite() {
+    final void beginWrite() {
         rwlock.writeLock().lock();
     }
 
-    private final void endWrite() {
+    final void endWrite() {
         rwlock.writeLock().unlock();
     }
 
@@ -244,7 +244,7 @@ public class ByteArrayChannel implements SeekableByteChannel {
 
     private static int hugeCapacity(int minCapacity) {
         if (minCapacity < 0) // overflow
-            throw new OutOfMemoryError();
+            throw new OutOfMemoryError("Required length exceeds implementation limit");
         return (minCapacity > MAX_ARRAY_SIZE) ?
             Integer.MAX_VALUE :
             MAX_ARRAY_SIZE;

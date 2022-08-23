@@ -32,6 +32,7 @@
 @public
     NSFont    *fFont;
     CGFontRef  fNativeCGFont;
+    NSFont    *fFallbackBase; // used for system fonts
     BOOL       fIsFakeItalic;
 }
 
@@ -41,3 +42,5 @@
 + (NSFont *) nsFontForJavaFont:(jobject)javaFont env:(JNIEnv *)env;
 
 @end
+
+bool IsEmojiFont(CTFontRef font);

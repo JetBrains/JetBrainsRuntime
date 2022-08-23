@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright 2007, 2008, 2010, 2018, Red Hat, Inc.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -28,11 +28,22 @@
 
   static void setup_fpu() {}
 
-  static bool is_allocatable(size_t bytes);
-
   // Used to register dynamic code cache area with the OS
   // Note: Currently only used in 64 bit Windows implementations
   static bool register_code_area(char *low, char *high) { return true; }
+
+  /*
+   * Work-around for broken NX emulation using CS limit, Red Hat patch "Exec-Shield"
+   * (IA32 only).
+   *
+   * Map and execute at a high VA to prevent CS lazy updates race with SMP MM
+   * invalidation.Further code generation by the JVM will no longer cause CS limit
+   * updates.
+   *
+   * Affects IA32: RHEL 5 & 6, Ubuntu 10.04 (LTS), 10.10, 11.04, 11.10, 12.04.
+   * @see JDK-8023956
+   */
+  static void workaround_expand_exec_shield_cs_limit();
 
   // Atomically copy 64 bits of data
   static void atomic_copy64(const volatile void *src, volatile void *dst) {
@@ -55,15 +66,23 @@
                   : "=&f"(tmp), "=Q"(*(volatile double*)dst)
                   : "Q"(*(volatile double*)src));
 #elif defined(__ARM_ARCH_7A__)
-    // Note that a ldrexd + clrex combination is only needed for
-    // correctness on the OS level (context-switches). In this
-    // case, clrex *may* be beneficial for performance. For now
-    // don't bother with clrex as this is Zero.
-    jlong tmp;
-    asm volatile ("ldrexd  %0, [%1]\n"
-                  : "=r"(tmp)
-                  : "r"(src), "m"(src));
-    *(jlong *) dst = tmp;
+    // The only way to perform the atomic 64-bit load/store
+    // is to use ldrexd/strexd for both reads and writes.
+    // For store, we need to have the matching (fake) load first.
+    // Put clrex between exclusive ops on src and dst for clarity.
+    uint64_t tmp_r, tmp_w;
+    uint32_t flag_w;
+    asm volatile ("ldrexd %[tmp_r], [%[src]]\n"
+                  "clrex\n"
+                  "1:\n"
+                  "ldrexd %[tmp_w], [%[dst]]\n"
+                  "strexd %[flag_w], %[tmp_r], [%[dst]]\n"
+                  "cmp    %[flag_w], 0\n"
+                  "bne    1b\n"
+                  : [tmp_r] "=&r" (tmp_r), [tmp_w] "=&r" (tmp_w),
+                    [flag_w] "=&r" (flag_w)
+                  : [src] "r" (src), [dst] "r" (dst)
+                  : "cc", "memory");
 #else
     *(jlong *) dst = *(const jlong *) src;
 #endif

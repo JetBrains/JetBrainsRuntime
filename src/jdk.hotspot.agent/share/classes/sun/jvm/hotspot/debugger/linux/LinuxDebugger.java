@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2008, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,11 +51,11 @@ public interface LinuxDebugger extends JVMDebugger {
   public LinuxOopHandle readCompOopHandle(long address) throws DebuggerException;
   public long[]       getThreadIntegerRegisterSet(int lwp_id) throws DebuggerException;
   public long         getAddressValue(Address addr) throws DebuggerException;
-  public Address      newAddress(long value) throws DebuggerException;
+  public Address      findLibPtrByAddress(Address pc);
 
   // For LinuxCDebugger
-  public List         getThreadList();
-  public List         getLoadObjectList();
+  public List<ThreadProxy> getThreadList();
+  public List<LoadObject> getLoadObjectList();
   public ClosestSymbol lookup(long address);
   public String demangle(String sym);
 

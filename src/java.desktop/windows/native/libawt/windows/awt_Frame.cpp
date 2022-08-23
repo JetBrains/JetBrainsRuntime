@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,10 +30,14 @@
 #include "awt_IconCursor.h"
 #include "awt_Win32GraphicsDevice.h"
 #include "ComCtl32Util.h"
+#include "shellapi.h"
 
 #include <windowsx.h>
+#include <uxtheme.h>
+#include <dwmapi.h>
 
 #include <java_lang_Integer.h>
+#include <java_awt_Window_CustomWindowDecoration.h>
 #include <sun_awt_windows_WEmbeddedFrame.h>
 #include <sun_awt_windows_WEmbeddedFramePeer.h>
 
@@ -99,7 +103,6 @@ jfieldID AwtFrame::handleID;
 
 jfieldID AwtFrame::undecoratedID;
 jmethodID AwtFrame::getExtendedStateMID;
-jmethodID AwtFrame::setExtendedStateMID;
 
 jmethodID AwtFrame::activateEmbeddingTopLevelMID;
 jfieldID AwtFrame::isEmbeddedInIEID;
@@ -126,6 +129,7 @@ AwtFrame::AwtFrame() {
     m_zoomed = FALSE;
     m_maxBoundsSet = FALSE;
     m_forceResetZoomed = FALSE;
+    m_pHasCustomDecoration = NULL;
 
     isInManualMoveOrSize = FALSE;
     grabbedHitTest = 0;
@@ -329,17 +333,13 @@ AwtFrame* AwtFrame::Create(jobject self, jobject parent)
                 frame->CreateHWnd(env, L"",
                                   style,
                                   exStyle,
-                                  0, 0, 0, 0,
+                                  x, y, width, height,
                                   hwndParent,
                                   NULL,
                                   ::GetSysColor(COLOR_WINDOWTEXT),
                                   ::GetSysColor(COLOR_WINDOWFRAME),
                                   self);
-                /*
-                 * Reshape here instead of during create, so that a
-                 * WM_NCCALCSIZE is sent.
-                 */
-                frame->Reshape(x, y, width, height);
+                frame->RecalcNonClient();
             }
         }
     } catch (...) {
@@ -515,7 +515,15 @@ MsgRouting AwtFrame::WmMouseMove(UINT flags, int x, int y) {
      * If this Frame is non-focusable then we should implement move and size operation for it by
      * ourselfves because we don't dispatch appropriate mouse messages to default window procedure.
      */
-    if (!IsFocusableWindow() && isInManualMoveOrSize) {
+    if (isInManualMoveOrSize) {
+        if (grabbedHitTest == HTCAPTION) {
+            WINDOWPLACEMENT placement;
+            ::GetWindowPlacement(GetHWnd(), &placement);
+            if (placement.showCmd == SW_SHOWMAXIMIZED) {
+                placement.showCmd = SW_SHOWNORMAL;
+                ::SetWindowPlacement(GetHWnd(), &placement);
+            }
+        }
         DWORD curPos = ::GetMessagePos();
         x = GET_X_LPARAM(curPos);
         y = GET_Y_LPARAM(curPos);
@@ -623,6 +631,44 @@ MsgRouting AwtFrame::WmNcMouseDown(WPARAM hitTest, int x, int y, int button) {
     if (m_grabbedWindow != NULL/* && !m_grabbedWindow->IsOneOfOwnersOf(this)*/) {
         m_grabbedWindow->Ungrab();
     }
+    // For windows with custom decorations, handle caption-related mouse events
+    // Do not handle events from caption itself to preserve native drag behavior
+    if (HasCustomDecoration()) {
+        switch (hitTest) {
+            case HTCAPTION:
+            case HTMINBUTTON:
+            case HTMAXBUTTON:
+            case HTCLOSE:
+            case HTMENU:
+                RECT rcWindow;
+                GetWindowRect(GetHWnd(), &rcWindow);
+                if (hitTest == HTCAPTION) {
+                    JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
+                    jint customSpot = JNU_CallMethodByName(env, NULL, GetTarget(env),
+                                                           "hitTestCustomDecoration", "(II)I",
+                                                           ScaleDownX(x - rcWindow.left),
+                                                           ScaleDownY(y - rcWindow.top)).i;
+                    if (customSpot == java_awt_Window_CustomWindowDecoration_DRAGGABLE_AREA) {
+                        if (button & LEFT_BUTTON) {
+                            savedMousePos.x = x;
+                            savedMousePos.y = y;
+                            ::SetCapture(GetHWnd());
+                            isInManualMoveOrSize = TRUE;
+                            grabbedHitTest = hitTest;
+                        }
+                    } else break;
+                }
+                POINT myPos;
+                myPos.x = x;
+                myPos.y = y;
+                ::ScreenToClient(GetHWnd(), &myPos);
+                WmMouseDown(GetButtonMK(button),
+                            myPos.x,
+                            myPos.y,
+                            button);
+                return mrConsume;
+        }
+    }
     if (!IsFocusableWindow() && (button & LEFT_BUTTON)) {
         switch (hitTest) {
         case HTTOP:
@@ -654,33 +700,60 @@ MsgRouting AwtFrame::WmNcMouseDown(WPARAM hitTest, int x, int y, int button) {
     return AwtWindow::WmNcMouseDown(hitTest, x, y, button);
 }
 
+MsgRouting AwtFrame::WmNcMouseMove(WPARAM hitTest, int x, int y) {
+    // For windows with custom decorations, handle caption-related mouse events
+    if (HasCustomDecoration()) {
+        switch (hitTest) {
+            case HTMINBUTTON:
+            case HTMAXBUTTON:
+            case HTCLOSE:
+            case HTMENU:
+            case HTCAPTION:
+                POINT myPos;
+                myPos.x = x;
+                myPos.y = y;
+                ::ScreenToClient(GetHWnd(), &myPos);
+                WmMouseMove(0, myPos.x, myPos.y);
+                if (hitTest != HTCAPTION) return mrConsume; // Preserve default window drag for HTCAPTION
+        }
+    }
+    return AwtWindow::WmNcMouseMove(hitTest, x, y);
+}
+
 // Override AwtWindow::Reshape() to handle minimized/maximized
 // frames (see 6525850, 4065534)
-void AwtFrame::Reshape(int x, int y, int width, int height)
+void AwtFrame::Reshape(int x, int y, int w, int h)
 {
     if (isIconic()) {
     // normal AwtComponent::Reshape will not work for iconified windows so...
+        POINT pt = {x + w / 2, y + h / 2};
+        Devices::InstanceAccess devices;
+        HMONITOR monitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+        int screen = AwtWin32GraphicsDevice::GetScreenFromHMONITOR(monitor);
+        AwtWin32GraphicsDevice *device = devices->GetDevice(screen);
+        // Try to set the correct size and jump to the correct location, even if
+        // it is on the different monitor. Note that for the "size" we use the
+        // current monitor, so the WM_DPICHANGED will adjust it for the "target"
+        // monitor.
+        MONITORINFO *miInfo = AwtWin32GraphicsDevice::GetMonitorInfo(screen);
+        x = device == NULL ? x : device->ScaleUpAbsX(x);
+        y = device == NULL ? y : device->ScaleUpAbsY(y);
+        w = ScaleUpX(w);
+        h = ScaleUpY(h);
+        // SetWindowPlacement takes workspace coordinates, but if taskbar is at
+        // top/left of screen, workspace coords != screen coords, so offset by
+        // workspace origin
+        x = x - (miInfo->rcWork.left - miInfo->rcMonitor.left);
+        y = y - (miInfo->rcWork.top - miInfo->rcMonitor.top);
         WINDOWPLACEMENT wp;
-        POINT       ptMinPosition = {x,y};
-        POINT       ptMaxPosition = {0,0};
-        RECT        rcNormalPosition = {x,y,x+width,y+height};
-        RECT        rcWorkspace;
-        HWND        hWndDesktop = GetDesktopWindow();
-        HWND        hWndSelf = GetHWnd();
-
-        // SetWindowPlacement takes workspace coordinates, but
-        // if taskbar is at top of screen, workspace coords !=
-        // screen coords, so offset by workspace origin
-        VERIFY(::SystemParametersInfo(SPI_GETWORKAREA, 0, (PVOID)&rcWorkspace, 0));
-        ::OffsetRect(&rcNormalPosition, -rcWorkspace.left, -rcWorkspace.top);
-
+        ::ZeroMemory(&wp, sizeof(WINDOWPLACEMENT));
         // set the window size for when it is not-iconified
         wp.length = sizeof(wp);
         wp.flags = WPF_SETMINPOSITION;
         wp.showCmd = IsVisible() ? SW_SHOWMINIMIZED : SW_HIDE;
-        wp.ptMinPosition = ptMinPosition;
-        wp.ptMaxPosition = ptMaxPosition;
-        wp.rcNormalPosition = rcNormalPosition;
+        wp.ptMinPosition = {x, y};
+        wp.ptMaxPosition = {0, 0};
+        wp.rcNormalPosition = {x, y, x + w, y + h};
 
         // If the call is not guarded with ignoreWmSize,
         // a regression for bug 4851435 appears.
@@ -688,7 +761,7 @@ void AwtFrame::Reshape(int x, int y, int width, int height)
         // changing the iconified state of the frame
         // while calling the Frame.setBounds() method.
         m_ignoreWmSize = TRUE;
-        ::SetWindowPlacement(hWndSelf, &wp);
+        ::SetWindowPlacement(GetHWnd(), &wp);
         m_ignoreWmSize = FALSE;
 
         return;
@@ -708,7 +781,7 @@ void AwtFrame::Reshape(int x, int y, int width, int height)
         }
     }
 
-    AwtWindow::Reshape(x, y, width, height);
+    AwtWindow::Reshape(x, y, w, h);
 }
 
 
@@ -814,13 +887,6 @@ AwtFrame::Show()
 }
 
 void
-AwtFrame::SendWindowStateEvent(int oldState, int newState)
-{
-    SendWindowEvent(java_awt_event_WindowEvent_WINDOW_STATE_CHANGED,
-                    NULL, oldState, newState);
-}
-
-void
 AwtFrame::ClearMaximizedBounds()
 {
     m_maxBoundsSet = FALSE;
@@ -897,6 +963,21 @@ MsgRouting AwtFrame::WmGetMinMaxInfo(LPMINMAXINFO lpmmi)
     return mrConsume;
 }
 
+MsgRouting AwtFrame::WmWindowPosChanging(LPARAM windowPos) {
+    if (::IsZoomed(GetHWnd()) && m_maxBoundsSet) {
+        // Limits the size of the maximized window, effectively cuts the
+        // adjustments added by the window manager
+        WINDOWPOS *wp = (WINDOWPOS *) windowPos;
+        if (m_maxSize.x < java_lang_Integer_MAX_VALUE && wp->cx > m_maxSize.x) {
+            wp->cx = m_maxSize.x;
+        }
+        if (m_maxSize.y < java_lang_Integer_MAX_VALUE && wp->cy > m_maxSize.y) {
+            wp->cy = m_maxSize.y;
+        }
+    }
+    return AwtWindow::WmWindowPosChanging(windowPos);
+}
+
 MsgRouting AwtFrame::WmSize(UINT type, int w, int h)
 {
     currentWmSizeState = type;
@@ -958,24 +1039,7 @@ MsgRouting AwtFrame::WmSize(UINT type, int w, int h)
 
     jint changed = oldState ^ newState;
     if (changed != 0) {
-        DTRACE_PRINTLN2("AwtFrame::WmSize: reporting state change %x -> %x",
-                oldState, newState);
-
-        // sync target with peer
-        JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
-        env->CallVoidMethod(GetPeer(env), AwtFrame::setExtendedStateMID, newState);
-
-        // report (de)iconification to old clients
-        if (changed & java_awt_Frame_ICONIFIED) {
-            if (newState & java_awt_Frame_ICONIFIED) {
-                SendWindowEvent(java_awt_event_WindowEvent_WINDOW_ICONIFIED);
-            } else {
-                SendWindowEvent(java_awt_event_WindowEvent_WINDOW_DEICONIFIED);
-            }
-        }
-
-        // New (since 1.4) state change event
-        SendWindowStateEvent(oldState, newState);
+        NotifyWindowStateChanged(oldState, newState);
     }
 
     // If window is in iconic state, do not send COMPONENT_RESIZED event
@@ -1192,6 +1256,19 @@ MsgRouting AwtFrame::WmGetIcon(WPARAM iconType, LRESULT& retVal)
     }
 }
 
+void _UpdateIcon(void* p) {
+    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+
+    jobject self = reinterpret_cast<jobject>(p);
+    PDATA pData;
+    JNI_CHECK_PEER_GOTO(self, ret);
+
+    AwtFrame* frame = (AwtFrame*)pData;
+    frame->DoUpdateIcon();
+ret:
+    env->DeleteGlobalRef(self);
+}
+
 void AwtFrame::DoUpdateIcon()
 {
     //Workaround windows bug:
@@ -1208,7 +1285,7 @@ HICON AwtFrame::GetEffectiveIcon(int iconType)
     BOOL smallIcon = ((iconType == ICON_SMALL) || (iconType == 2/*ICON_SMALL2*/));
     HICON hIcon = (smallIcon) ? GetHIconSm() : GetHIcon();
     if (hIcon == NULL) {
-        hIcon = (smallIcon) ? AwtToolkit::GetInstance().GetAwtIconSm() :
+        hIcon = (smallIcon) ? AwtToolkit::GetInstance().GetAwtIconSm(reinterpret_cast<void*>(this)) :
             AwtToolkit::GetInstance().GetAwtIcon();
     }
     return hIcon;
@@ -1469,6 +1546,10 @@ void AwtFrame::_SetMaximizedBounds(void *param)
     if (::IsWindow(f->GetHWnd()))
     {
         DASSERT(!::IsBadReadPtr(f, sizeof(AwtFrame)));
+        x = f->ScaleUpAbsX(x);
+        y = f->ScaleUpAbsY(y);
+        width = f->ScaleUpX(width);
+        height = f->ScaleUpY(height);
         f->SetMaximizedBounds(x, y, width, height);
     }
 ret:
@@ -1649,6 +1730,197 @@ ret:
     delete nmbs;
 }
 
+// {start} Custom Decoration Support
+
+BOOL AwtFrame::HasCustomDecoration()
+{
+    if (!m_pHasCustomDecoration) {
+        m_pHasCustomDecoration = new BOOL;
+        JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
+        *m_pHasCustomDecoration = JNU_GetFieldByName(env, NULL, GetTarget(env), "hasCustomDecoration", "Z").z;
+    }
+    return *m_pHasCustomDecoration;
+}
+
+void _UpdateCustomDecoration(void* p) {
+    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+
+    jobject self = reinterpret_cast<jobject>(p);
+    PDATA pData;
+    JNI_CHECK_PEER_GOTO(self, ret);
+
+    AwtFrame* frame = (AwtFrame*)pData;
+    if (!frame->m_pHasCustomDecoration) frame->m_pHasCustomDecoration = new BOOL;
+    *frame->m_pHasCustomDecoration = JNU_GetFieldByName(env, NULL, frame->GetTarget(env), "hasCustomDecoration", "Z").z;
+    frame->RedrawNonClient();
+ret:
+    env->DeleteGlobalRef(self);
+}
+
+void GetSysInsets(RECT* insets, AwtFrame* pFrame) {
+    if (pFrame->IsUndecorated()) {
+        ::SetRectEmpty(insets);
+        return;
+    }
+    Devices::InstanceAccess devices;
+    HMONITOR hmon;
+    if (::IsZoomed(pFrame->GetHWnd())) {
+        WINDOWPLACEMENT wp;
+        ::GetWindowPlacement(pFrame->GetHWnd(), &wp);
+        hmon = ::MonitorFromRect(&wp.rcNormalPosition, MONITOR_DEFAULTTONEAREST);
+    } else {
+        // this method can return wrong monitor in a zoomed state in multi-dpi env
+        hmon = ::MonitorFromWindow(pFrame->GetHWnd(), MONITOR_DEFAULTTONEAREST);
+    }
+    AwtWin32GraphicsDevice* device = devices->GetDevice(AwtWin32GraphicsDevice::GetScreenFromHMONITOR(hmon));
+    int dpi = device ? device->GetScaleX() * 96 : 96;
+
+    // GetSystemMetricsForDpi gives incorrect values, use AdjustWindowRectExForDpi for border metrics instead
+    RECT rect = {};
+    DWORD style = pFrame->IsResizable() ? WS_OVERLAPPEDWINDOW : WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME;
+    AwtToolkit::AdjustWindowRectExForDpi(&rect, style, FALSE, NULL, dpi);
+    ::SetRect(insets, -rect.left, -rect.top, rect.right, rect.bottom);
+}
+
+LRESULT HitTestNCA(AwtFrame* frame, int x, int y) {
+    RECT rcWindow;
+    RECT insets;
+
+    GetSysInsets(&insets, frame);
+    GetWindowRect(frame->GetHWnd(), &rcWindow);
+
+    // Get the frame rectangle, adjusted for the style without a caption.
+    RECT rcFrame = {};
+    AdjustWindowRectEx(&rcFrame, WS_OVERLAPPEDWINDOW & ~WS_CAPTION, FALSE, NULL);
+
+    JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
+    int titleHeight = (int)JNU_GetFieldByName(env, NULL, frame->GetTarget(env),
+                                              "customDecorTitleBarHeight", "I").i;
+    if (titleHeight >= 0) {
+        titleHeight = frame->ScaleUpY(titleHeight);
+        insets.top = titleHeight; // otherwise leave default
+    }
+
+    USHORT uRow = 1;
+    USHORT uCol = 1;
+    BOOL fOnResizeBorder = FALSE;
+
+    if (y >= rcWindow.top &&
+        y < rcWindow.top + insets.top)
+    {
+        jint customSpot = JNU_CallMethodByName(env, NULL, frame->GetTarget(env),
+                                               "hitTestCustomDecoration", "(II)I",
+                                               frame->ScaleDownX(x - rcWindow.left),
+                                               frame->ScaleDownY(y - rcWindow.top)).i;
+        switch (customSpot) {
+            case java_awt_Window_CustomWindowDecoration_NO_HIT_SPOT:
+            case java_awt_Window_CustomWindowDecoration_DRAGGABLE_AREA:
+                break; // Nothing
+            case java_awt_Window_CustomWindowDecoration_MINIMIZE_BUTTON:
+                return HTMINBUTTON;
+            case java_awt_Window_CustomWindowDecoration_MAXIMIZE_BUTTON:
+                return HTMAXBUTTON;
+            case java_awt_Window_CustomWindowDecoration_CLOSE_BUTTON:
+                return HTCLOSE;
+            case java_awt_Window_CustomWindowDecoration_MENU_BAR:
+                return HTMENU;
+            default:
+                return HTNOWHERE;
+        }
+        fOnResizeBorder = (y < (rcWindow.top - rcFrame.top));
+        uRow = 0;
+    } else if (y < rcWindow.bottom &&
+               y >= rcWindow.bottom - insets.bottom) {
+        uRow = 2;
+    }
+
+    if (x >= rcWindow.left &&
+        x < rcWindow.left + insets.left)
+    {
+        uCol = 0;
+    } else if (x < rcWindow.right &&
+               x >= rcWindow.right - insets.right)
+    {
+        uCol = 2;
+    }
+
+    LRESULT hitTests[3][3] = {
+            {HTTOPLEFT, fOnResizeBorder ? HTTOP : HTCAPTION, HTTOPRIGHT},
+            {HTLEFT, HTNOWHERE, HTRIGHT},
+            {HTBOTTOMLEFT, HTBOTTOM, HTBOTTOMRIGHT},
+    };
+
+    return hitTests[uRow][uCol];
+}
+
+MsgRouting AwtFrame::WmNcCalcSize(BOOL wParam, LPNCCALCSIZE_PARAMS lpncsp, LRESULT& retVal)
+{
+    if (!wParam || !HasCustomDecoration()) {
+        return AwtWindow::WmNcCalcSize(wParam, lpncsp, retVal);
+    }
+    RECT insets;
+    GetSysInsets(&insets, this);
+    RECT* rect = &lpncsp->rgrc[0];
+
+    rect->left += insets.left;
+    rect->right -= insets.right;
+    rect->bottom -= insets.bottom;
+
+    if (::IsZoomed(GetHWnd())) {
+        rect->top += insets.bottom;
+        // [moklev] Workaround for RIDER-27069, IDEA-211327
+        if (!this->IsUndecorated()) {
+            APPBARDATA abData;
+            abData.uEdge = 0;
+            abData.cbSize = sizeof(abData);
+            if (::SHAppBarMessage(ABM_GETSTATE, &abData) == ABS_AUTOHIDE &&
+                ::SHAppBarMessage(ABM_GETTASKBARPOS, &abData))
+            {
+                // [tav] leave one pixel for autohide taskbar
+                switch (abData.uEdge) {
+                    case ABE_TOP:
+                        rect->top += 1;
+                        break;
+                    case ABE_LEFT:
+                        rect->left += 1;
+                        break;
+                    case ABE_BOTTOM:
+                        rect->bottom -= 1;
+                        break;
+                    case ABE_RIGHT:
+                        rect->right -= 1;
+                        break;
+                }
+            }
+            if (abData.uEdge != ABE_RIGHT) {
+                rect->right += this->ScaleUpX(1);
+            }
+        }
+    }
+    else {
+        // this makes the native caption go uncovered
+        // int yBorder = ::GetSystemMetrics(SM_CYBORDER);
+        // rect->top += yBorder;
+    }
+    retVal = 0L;
+    return mrConsume;
+}
+
+MsgRouting AwtFrame::WmNcHitTest(int x, int y, LRESULT& retVal)
+{
+    if (!HasCustomDecoration()) {
+        return AwtWindow::WmNcHitTest(x, y, retVal);
+    }
+    if (::IsWindow(GetModalBlocker(GetHWnd()))) {
+        retVal = HTCLIENT;
+        return mrConsume;
+    }
+    retVal = HitTestNCA(this, x, y);
+    return retVal == HTNOWHERE ? mrDoDefault : mrConsume;
+}
+
+// {end} Custom Decoration Support
+
 /************************************************************************
  * WFramePeer native methods
  */
@@ -1680,10 +1952,6 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFramePeer_initIDs(JNIEnv *env, jclass cls)
 {
     TRY;
-
-    AwtFrame::setExtendedStateMID = env->GetMethodID(cls, "setExtendedState", "(I)V");
-    DASSERT(AwtFrame::setExtendedStateMID);
-    CHECK_NULL(AwtFrame::setExtendedStateMID);
 
     AwtFrame::getExtendedStateMID = env->GetMethodID(cls, "getExtendedState", "()I");
     DASSERT(AwtFrame::getExtendedStateMID);
@@ -1969,6 +2237,28 @@ Java_sun_awt_windows_WFramePeer_synthesizeWmActivate(JNIEnv *env, jobject self, 
      */
     AwtToolkit::GetInstance().InvokeFunction(AwtFrame::_SynthesizeWmActivate, sas);
     // global ref and sas are deleted in _SynthesizeWmActivate()
+
+    CATCH_BAD_ALLOC;
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_windows_WFramePeer_updateIcon(JNIEnv *env, jobject self)
+{
+    TRY;
+
+    AwtToolkit::GetInstance().InvokeFunction(_UpdateIcon, env->NewGlobalRef(self));
+    // global ref is deleted in _UpdateIcon()
+
+    CATCH_BAD_ALLOC;
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_windows_WFramePeer_updateCustomDecoration(JNIEnv *env, jobject self)
+{
+    TRY;
+
+    AwtToolkit::GetInstance().InvokeFunction(_UpdateCustomDecoration, env->NewGlobalRef(self));
+    // global ref is deleted in _UpdateCustomDecoration()
 
     CATCH_BAD_ALLOC;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,15 @@
 
 #include "precompiled.hpp"
 #include "classfile/symbolTable.hpp"
+#include "classfile/systemDictionary.hpp"
 #include "classfile/systemDictionaryShared.hpp"
 #include "classfile/verificationType.hpp"
 #include "classfile/verifier.hpp"
+#include "classfile/vmClasses.hpp"
+#include "classfile/vmSymbols.hpp"
 #include "logging/log.hpp"
 #include "oops/klass.inline.hpp"
+#include "runtime/arguments.hpp"
 #include "runtime/handles.inline.hpp"
 
 VerificationType VerificationType::from_tag(u1 tag) {
@@ -48,11 +52,16 @@ VerificationType VerificationType::from_tag(u1 tag) {
 bool VerificationType::resolve_and_check_assignability(InstanceKlass* klass, Symbol* name,
          Symbol* from_name, bool from_field_is_protected, bool from_is_array, bool from_is_object, TRAPS) {
   HandleMark hm(THREAD);
-  Klass* this_class = SystemDictionary::resolve_or_fail(
+  Klass* this_class;
+  if (klass->is_hidden() && klass->name() == name) {
+    this_class = klass;
+  } else {
+    this_class = SystemDictionary::resolve_or_fail(
       name, Handle(THREAD, klass->class_loader()),
       Handle(THREAD, klass->protection_domain()), true, CHECK_false);
-  if (log_is_enabled(Debug, class, resolve)) {
-    Verifier::trace_class_resolution(this_class, klass);
+    if (log_is_enabled(Debug, class, resolve)) {
+      Verifier::trace_class_resolution(this_class, klass);
+    }
   }
 
   if (this_class->is_interface() && (!from_field_is_protected ||
@@ -62,14 +71,19 @@ bool VerificationType::resolve_and_check_assignability(InstanceKlass* klass, Sym
     // to interfaces java.lang.Cloneable and java.io.Serializable.
     // Otherwise, we treat interfaces as java.lang.Object.
     return !from_is_array ||
-      this_class == SystemDictionary::Cloneable_klass() ||
-      this_class == SystemDictionary::Serializable_klass();
+      this_class == vmClasses::Cloneable_klass() ||
+      this_class == vmClasses::Serializable_klass();
   } else if (from_is_object) {
-    Klass* from_class = SystemDictionary::resolve_or_fail(
+    Klass* from_class;
+    if (klass->is_hidden() && klass->name() == from_name) {
+      from_class = klass;
+    } else {
+      from_class = SystemDictionary::resolve_or_fail(
         from_name, Handle(THREAD, klass->class_loader()),
         Handle(THREAD, klass->protection_domain()), true, CHECK_false);
-    if (log_is_enabled(Debug, class, resolve)) {
-      Verifier::trace_class_resolution(from_class, klass);
+      if (log_is_enabled(Debug, class, resolve)) {
+        Verifier::trace_class_resolution(from_class, klass);
+      }
     }
     return from_class->is_subclass_of(this_class);
   }
@@ -108,8 +122,8 @@ bool VerificationType::is_reference_assignable_from(
     return resolve_and_check_assignability(klass, name(), from.name(),
           from_field_is_protected, from.is_array(), from.is_object(), THREAD);
   } else if (is_array() && from.is_array()) {
-    VerificationType comp_this = get_component(context, CHECK_false);
-    VerificationType comp_from = from.get_component(context, CHECK_false);
+    VerificationType comp_this = get_component(context);
+    VerificationType comp_from = from.get_component(context);
     if (!comp_this.is_bogus() && !comp_from.is_bogus()) {
       return comp_this.is_component_assignable_from(comp_from, context,
                                                     from_field_is_protected, THREAD);
@@ -118,29 +132,31 @@ bool VerificationType::is_reference_assignable_from(
   return false;
 }
 
-VerificationType VerificationType::get_component(ClassVerifier *context, TRAPS) const {
+VerificationType VerificationType::get_component(ClassVerifier *context) const {
   assert(is_array() && name()->utf8_length() >= 2, "Must be a valid array");
-  Symbol* component;
-  switch (name()->char_at(1)) {
-    case JVM_SIGNATURE_BOOLEAN: return VerificationType(Boolean);
-    case JVM_SIGNATURE_BYTE:    return VerificationType(Byte);
-    case JVM_SIGNATURE_CHAR:    return VerificationType(Char);
-    case JVM_SIGNATURE_SHORT:   return VerificationType(Short);
-    case JVM_SIGNATURE_INT:     return VerificationType(Integer);
-    case JVM_SIGNATURE_LONG:    return VerificationType(Long);
-    case JVM_SIGNATURE_FLOAT:   return VerificationType(Float);
-    case JVM_SIGNATURE_DOUBLE:  return VerificationType(Double);
-    case JVM_SIGNATURE_ARRAY:
-      component = context->create_temporary_symbol(
-        name(), 1, name()->utf8_length());
-      return VerificationType::reference_type(component);
-    case JVM_SIGNATURE_CLASS:
-      component = context->create_temporary_symbol(
-        name(), 2, name()->utf8_length() - 1);
-      return VerificationType::reference_type(component);
-    default:
-      // Met an invalid type signature, e.g. [X
-      return VerificationType::bogus_type();
+  SignatureStream ss(name(), false);
+  ss.skip_array_prefix(1);
+  switch (ss.type()) {
+    case T_BOOLEAN: return VerificationType(Boolean);
+    case T_BYTE:    return VerificationType(Byte);
+    case T_CHAR:    return VerificationType(Char);
+    case T_SHORT:   return VerificationType(Short);
+    case T_INT:     return VerificationType(Integer);
+    case T_LONG:    return VerificationType(Long);
+    case T_FLOAT:   return VerificationType(Float);
+    case T_DOUBLE:  return VerificationType(Double);
+    case T_ARRAY:
+    case T_OBJECT: {
+      guarantee(ss.is_reference(), "unchecked verifier input?");
+      Symbol* component = ss.as_symbol();
+      // Create another symbol to save as signature stream unreferences this symbol.
+      Symbol* component_copy = context->create_temporary_symbol(component);
+      assert(component_copy == component, "symbols don't match");
+      return VerificationType::reference_type(component_copy);
+   }
+   default:
+     // Met an invalid type signature, e.g. [X
+     return VerificationType::bogus_type();
   }
 }
 

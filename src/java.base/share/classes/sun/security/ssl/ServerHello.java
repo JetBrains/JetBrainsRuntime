@@ -33,6 +33,7 @@ import java.security.GeneralSecurityException;
 import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.HexFormat;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -48,8 +49,6 @@ import sun.security.ssl.SSLCipher.SSLReadCipher;
 import sun.security.ssl.SSLCipher.SSLWriteCipher;
 import sun.security.ssl.SSLHandshake.HandshakeMessage;
 import sun.security.ssl.SupportedVersionsExtension.SHSupportedVersionsSpec;
-
-import static sun.security.ssl.SSLExtension.SH_SESSION_TICKET;
 
 /**
  * Pack of the ServerHello/HelloRetryRequest handshake message.
@@ -239,9 +238,8 @@ final class ServerHello {
                 serverVersion.name,
                 Utilities.toHexString(serverRandom.randomBytes),
                 sessionId.toString(),
-                cipherSuite.name + "(" +
-                        Utilities.byte16HexString(cipherSuite.id) + ")",
-                Utilities.toHexString(compressionMethod),
+                cipherSuite.name + "(" + Utilities.byte16HexString(cipherSuite.id) + ")",
+                HexFormat.of().toHexDigits(compressionMethod),
                 Utilities.indent(extensions.toString(), "    ")
             };
 
@@ -279,6 +277,7 @@ final class ServerHello {
                 if (shc.localSupportedSignAlgs == null) {
                     shc.localSupportedSignAlgs =
                         SignatureScheme.getSupportedAlgorithms(
+                                shc.sslConfig,
                                 shc.algorithmConstraints, shc.activeProtocols);
                 }
 
@@ -519,6 +518,7 @@ final class ServerHello {
                 if (shc.localSupportedSignAlgs == null) {
                     shc.localSupportedSignAlgs =
                         SignatureScheme.getSupportedAlgorithms(
+                                shc.sslConfig,
                                 shc.algorithmConstraints, shc.activeProtocols);
                 }
 
@@ -560,9 +560,6 @@ final class ServerHello {
 
                 setUpPskKD(shc,
                         shc.resumingSession.consumePreSharedKey());
-
-                // The session can't be resumed again---remove it from cache
-                sessionCache.remove(shc.resumingSession.getSessionId());
             }
 
             // update the responders

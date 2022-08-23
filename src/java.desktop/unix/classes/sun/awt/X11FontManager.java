@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -224,15 +224,13 @@ public final class X11FontManager extends FcFontManager {
             if (fontPath == null &&
                 (fileName == null || !fileName.startsWith("/"))) {
                 if (FontUtilities.debugFonts()) {
-                    FontUtilities.getLogger()
-                          .warning("** Registering all font paths because " +
-                                   "can't find file for " + platName);
+                    FontUtilities.logWarning("** Registering all font paths because " +
+                                             "can't find file for " + platName);
                 }
                 fontPath = getPlatformFontPath(noType1Font);
                 registerFontDirs(fontPath);
                 if (FontUtilities.debugFonts()) {
-                    FontUtilities.getLogger()
-                            .warning("** Finished registering all font paths");
+                    FontUtilities.logWarning("** Finished registering all font paths");
                 }
                 fileName = fontNameMap.get(fontID);
             }
@@ -289,7 +287,7 @@ public final class X11FontManager extends FcFontManager {
          * ...
          */
         if (FontUtilities.debugFonts()) {
-            FontUtilities.getLogger().info("ParseFontDir " + path);
+            FontUtilities.logInfo("ParseFontDir " + path);
         }
         File fontsDotDir = new File(path + File.separator + "fonts.dir");
         FileReader fr = null;
@@ -368,10 +366,9 @@ public final class X11FontManager extends FcFontManager {
                             String sVal = fontNameMap.get(fontID);
 
                             if (FontUtilities.debugFonts()) {
-                                PlatformLogger logger = FontUtilities.getLogger();
-                                logger.info("file=" + fileName +
+                                FontUtilities.logInfo("file=" + fileName +
                                             " xlfd=" + fontPart);
-                                logger.info("fontID=" + fontID +
+                                FontUtilities.logInfo("fontID=" + fontID +
                                             " sVal=" + sVal);
                             }
                             String fullPath = null;
@@ -394,16 +391,14 @@ public final class X11FontManager extends FcFontManager {
                             }
                             Vector<String> xVal = xlfdMap.get(fullPath);
                             if (FontUtilities.debugFonts()) {
-                                FontUtilities.getLogger()
-                                      .info("fullPath=" + fullPath +
-                                            " xVal=" + xVal);
+                                FontUtilities.logInfo("fullPath=" + fullPath +
+                                                      " xVal=" + xVal);
                             }
                             if ((xVal == null || !xVal.contains(fontPart)) &&
                                 (sVal == null) || !sVal.startsWith("/")) {
                                 if (FontUtilities.debugFonts()) {
-                                    FontUtilities.getLogger()
-                                          .info("Map fontID:"+fontID +
-                                                "to file:" + fullPath);
+                                    FontUtilities.logInfo("Map fontID:"+fontID +
+                                                          "to file:" + fullPath);
                                 }
                                 fontNameMap.put(fontID, fullPath);
                                 if (xVal == null) {
@@ -481,17 +476,14 @@ public final class X11FontManager extends FcFontManager {
 
         if (hyphenCnt != 14) {
             if (FontUtilities.debugFonts()) {
-                FontUtilities.getLogger()
-                    .severe("Font Configuration Font ID is malformed:" + name);
+                FontUtilities.logSevere("Font Configuration Font ID is malformed:" + name);
             }
             return name; // what else can we do?
         }
 
-        StringBuffer sb =
-            new StringBuffer(name.substring(hPos[FAMILY_NAME_FIELD-1],
-                                            hPos[SETWIDTH_NAME_FIELD]));
-        sb.append(name.substring(hPos[CHARSET_REGISTRY_FIELD-1]));
-        String retval = sb.toString().toLowerCase (Locale.ENGLISH);
+        String sb = name.substring(hPos[FAMILY_NAME_FIELD-1], hPos[SETWIDTH_NAME_FIELD])
+                + name.substring(hPos[CHARSET_REGISTRY_FIELD-1]);
+        String retval = sb.toLowerCase(Locale.ENGLISH);
         return retval;
     }
 
@@ -511,8 +503,7 @@ public final class X11FontManager extends FcFontManager {
 
         if (hyphenCnt != 14) {
             if (FontUtilities.debugFonts()) {
-                FontUtilities.getLogger()
-                    .severe("Font Configuration Font ID is malformed:" + name);
+                FontUtilities.logSevere("Font Configuration Font ID is malformed:" + name);
             }
             return name; // what else can we do?
         }
@@ -536,15 +527,12 @@ public final class X11FontManager extends FcFontManager {
             && encoding.equals("fontspecific")){
             registry = "adobe";
         }
-        StringBuffer sb =
-            new StringBuffer(name.substring(hPos[FAMILY_NAME_FIELD-1],
-                                            hPos[SLANT_FIELD-1]+1));
-        sb.append(slant);
-        sb.append(name.substring(hPos[SLANT_FIELD],
-                                 hPos[SETWIDTH_NAME_FIELD]+1));
-        sb.append(registry);
-        sb.append(name.substring(hPos[CHARSET_ENCODING_FIELD-1]));
-        String retval = sb.toString().toLowerCase (Locale.ENGLISH);
+        String sb = name.substring(hPos[FAMILY_NAME_FIELD-1], hPos[SLANT_FIELD-1]+1)
+                + slant
+                + name.substring(hPos[SLANT_FIELD], hPos[SETWIDTH_NAME_FIELD]+1)
+                + registry
+                + name.substring(hPos[CHARSET_ENCODING_FIELD-1]);
+        String retval = sb.toLowerCase(Locale.ENGLISH);
         return retval;
     }
 
@@ -675,7 +663,7 @@ public final class X11FontManager extends FcFontManager {
             if (FontUtilities.debugFonts() && fontConfigDirs != null) {
                 String[] names = fontConfigDirs.toArray(new String[0]);
                 for (int i=0;i<names.length;i++) {
-                    FontUtilities.getLogger().info("awtfontpath : " + names[i]);
+                    FontUtilities.logInfo("awtfontpath : " + names[i]);
                 }
             }
         }
@@ -708,8 +696,7 @@ public final class X11FontManager extends FcFontManager {
          * and do the best we can.
          */
         FontConfiguration mFontConfig = new MFontConfiguration(this);
-        if ((FontUtilities.isLinux && !mFontConfig.foundOsSpecificFile()) ||
-            (FontUtilities.isSolaris && !mFontConfig.fontFilesArePresent())) {
+        if ((FontUtilities.isLinux && !mFontConfig.foundOsSpecificFile())) {
             FcFontConfiguration fcFontConfig =
                 new FcFontConfiguration(this);
             if (fcFontConfig.init()) {
@@ -745,14 +732,13 @@ public final class X11FontManager extends FcFontManager {
         /* The name of the font will be that of the physical font in slot,
          * but by setting the handle to that of the CompositeFont it
          * renders as that CompositeFont.
-         * It also needs to be marked as a created font which is the
-         * current mechanism to signal that deriveFont etc must copy
-         * the handle from the original font.
+         * Font is marked as having fallback components to signal that
+         * deriveFont etc must copy the handle from the original font.
          */
         FontUIResource fuir =
             new FontUIResource(font2D.getFamilyName(null), style, size);
         FontAccess.getFontAccess().setFont2D(fuir, font2D.handle);
-        FontAccess.getFontAccess().setCreatedFont(fuir);
+        FontAccess.getFontAccess().setWithFallback(fuir);
         return fuir;
     }
 }

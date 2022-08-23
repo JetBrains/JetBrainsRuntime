@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -80,7 +80,9 @@ class Handle {
   oop     operator -> () const                   { return non_null_obj(); }
 
   bool operator == (oop o) const                 { return obj() == o; }
+  bool operator != (oop o) const                 { return obj() != o; }
   bool operator == (const Handle& h) const       { return obj() == h.obj(); }
+  bool operator != (const Handle& h) const       { return obj() != h.obj(); }
 
   // Null checks
   bool    is_null() const                        { return _handle == NULL; }
@@ -96,7 +98,7 @@ class Handle {
 
   // Raw handle access. Allows easy duplication of Handles. This can be very unsafe
   // since duplicates is only valid as long as original handle is alive.
-  oop* raw_value()                               { return _handle; }
+  oop* raw_value() const                         { return _handle; }
   static oop raw_resolve(oop *handle)            { return handle == NULL ? (oop)NULL : *handle; }
 };
 
@@ -226,7 +228,7 @@ class HandleArea: public Arena {
 //
 //   Handle h;
 //   {
-//     HandleMark hm;
+//     HandleMark hm(THREAD);
 //     h = Handle(THREAD, obj);
 //   }
 //   h()->print();       // WRONG, h destroyed by HandleMark destructor.
@@ -255,7 +257,6 @@ class HandleMark {
   // remove all chunks beginning with the next
   void chop_later_chunks();
  public:
-  HandleMark();                            // see handles_inline.hpp
   HandleMark(Thread* thread)                      { initialize(thread); }
   ~HandleMark();
 
@@ -287,6 +288,9 @@ class NoHandleMark: public StackObj {
 };
 
 
+// ResetNoHandleMark is called in a context where there is an enclosing
+// NoHandleMark. A thread in _thread_in_native must not create handles so
+// this is used when transitioning via ThreadInVMfromNative.
 class ResetNoHandleMark: public StackObj {
   int _no_handle_mark_nesting;
  public:

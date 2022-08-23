@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2019, the original author or authors.
+ * Copyright (c) 2002-2020, the original author or authors.
  *
  * This software is distributable under the BSD license. See the terms of the
  * BSD license in the documentation provided with this software.
@@ -8,16 +8,19 @@
  */
 package jdk.internal.org.jline.reader.impl;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.Flushable;
 import java.io.IOError;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
+import java.lang.reflect.Constructor;
 import java.time.Instant;
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.*;
 import java.util.regex.Matcher;
@@ -42,9 +45,9 @@ import jdk.internal.org.jline.utils.AttributedStyle;
 import jdk.internal.org.jline.utils.Curses;
 import jdk.internal.org.jline.utils.Display;
 import jdk.internal.org.jline.utils.InfoCmp.Capability;
-import jdk.internal.org.jline.utils.Levenshtein;
 import jdk.internal.org.jline.utils.Log;
 import jdk.internal.org.jline.utils.Status;
+import jdk.internal.org.jline.utils.StyleResolver;
 import jdk.internal.org.jline.utils.WCWidth;
 
 import static jdk.internal.org.jline.keymap.KeyMap.alt;
@@ -76,16 +79,26 @@ public class LineReaderImpl implements LineReader, Flushable
     public static final String DEFAULT_SEARCH_TERMINATORS = "\033\012";
     public static final String DEFAULT_BELL_STYLE = "";
     public static final int    DEFAULT_LIST_MAX = 100;
+    public static final int    DEFAULT_MENU_LIST_MAX = Integer.MAX_VALUE;
     public static final int    DEFAULT_ERRORS = 2;
     public static final long   DEFAULT_BLINK_MATCHING_PAREN = 500L;
     public static final long   DEFAULT_AMBIGUOUS_BINDING = 1000L;
     public static final String DEFAULT_SECONDARY_PROMPT_PATTERN = "%M> ";
     public static final String DEFAULT_OTHERS_GROUP_NAME = "others";
     public static final String DEFAULT_ORIGINAL_GROUP_NAME = "original";
-    public static final String DEFAULT_COMPLETION_STYLE_STARTING = "36";    // cyan
-    public static final String DEFAULT_COMPLETION_STYLE_DESCRIPTION = "90"; // dark gray
-    public static final String DEFAULT_COMPLETION_STYLE_GROUP = "35;1";     // magenta
-    public static final String DEFAULT_COMPLETION_STYLE_SELECTION = "7";    // inverted
+    public static final String DEFAULT_COMPLETION_STYLE_STARTING = "fg:cyan";
+    public static final String DEFAULT_COMPLETION_STYLE_DESCRIPTION = "fg:bright-black";
+    public static final String DEFAULT_COMPLETION_STYLE_GROUP = "fg:bright-magenta,bold";
+    public static final String DEFAULT_COMPLETION_STYLE_SELECTION = "inverse";
+    public static final String DEFAULT_COMPLETION_STYLE_BACKGROUND = "bg:default";
+    public static final String DEFAULT_COMPLETION_STYLE_LIST_STARTING = DEFAULT_COMPLETION_STYLE_STARTING;
+    public static final String DEFAULT_COMPLETION_STYLE_LIST_DESCRIPTION = DEFAULT_COMPLETION_STYLE_DESCRIPTION;
+    public static final String DEFAULT_COMPLETION_STYLE_LIST_GROUP = "fg:black,bold";
+    public static final String DEFAULT_COMPLETION_STYLE_LIST_SELECTION = DEFAULT_COMPLETION_STYLE_SELECTION;
+    public static final String DEFAULT_COMPLETION_STYLE_LIST_BACKGROUND = "bg:bright-magenta";
+    public static final int    DEFAULT_INDENTATION = 0;
+    public static final int    DEFAULT_FEATURES_MAX_BUFFER_SIZE = 1000;
+    public static final int    DEFAULT_SUGGESTIONS_MIN_BUFFER_SIZE = 1;
 
     private static final int MIN_ROWS = 3;
 
@@ -109,6 +122,10 @@ public class LineReaderImpl implements LineReader, Flushable
          * readLine should exit and return the buffer content
          */
         DONE,
+        /**
+         * readLine should exit and return empty String
+         */
+        IGNORE,
         /**
          * readLine should exit and throw an EOFException
          */
@@ -152,6 +169,7 @@ public class LineReaderImpl implements LineReader, Flushable
     protected Highlighter highlighter = new DefaultHighlighter();
     protected Parser parser = new DefaultParser();
     protected Expander expander = new DefaultExpander();
+    protected CompletionMatcher completionMatcher = new CompletionMatcherImpl();
 
     //
     // State variables
@@ -160,6 +178,8 @@ public class LineReaderImpl implements LineReader, Flushable
     protected final Map<Option, Boolean> options = new HashMap<>();
 
     protected final Buffer buf = new BufferImpl();
+    protected String tailTip = "";
+    protected SuggestionType autosuggestion = SuggestionType.NONE;
 
     protected final Size size = new Size();
 
@@ -175,6 +195,7 @@ public class LineReaderImpl implements LineReader, Flushable
     protected boolean searchFailing;
     protected boolean searchBackward;
     protected int searchIndex = -1;
+    protected boolean doAutosuggestion;
 
 
     // Reading buffers
@@ -246,13 +267,18 @@ public class LineReaderImpl implements LineReader, Flushable
     protected String keyMap;
 
     protected int smallTerminalOffset = 0;
-
     /*
      * accept-and-infer-next-history, accept-and-hold & accept-line-and-down-history
      */
     protected boolean nextCommandFromHistory = false;
     protected int nextHistoryId = -1;
 
+    /*
+     * execute commands from commandsBuffer
+     */
+    protected List<String> commandsBuffer = new ArrayList<>();
+
+    int candidateStartPosition = 0;
 
     public LineReaderImpl(Terminal terminal) throws IOException {
         this(terminal, null, null);
@@ -311,6 +337,26 @@ public class LineReaderImpl implements LineReader, Flushable
     @Override
     public Buffer getBuffer() {
         return buf;
+    }
+
+    @Override
+    public void setAutosuggestion(SuggestionType type) {
+        this.autosuggestion = type;
+    }
+
+    @Override
+    public SuggestionType getAutosuggestion() {
+        return autosuggestion;
+    }
+
+    @Override
+    public String getTailTip() {
+        return tailTip;
+    }
+
+    @Override
+    public void setTailTip(String tailTip) {
+        this.tailTip = tailTip;
     }
 
     @Override
@@ -381,6 +427,10 @@ public class LineReaderImpl implements LineReader, Flushable
 
     public void setExpander(Expander expander) {
         this.expander = expander;
+    }
+
+    public void setCompletionMatcher(CompletionMatcher completionMatcher) {
+        this.completionMatcher = completionMatcher;
     }
 
     //
@@ -471,6 +521,32 @@ public class LineReaderImpl implements LineReader, Flushable
         // prompt may be null
         // maskingCallback may be null
         // buffer may be null
+        if (!commandsBuffer.isEmpty()) {
+            String cmd = commandsBuffer.remove(0);
+            boolean done = false;
+            do {
+                try {
+                    parser.parse(cmd, cmd.length() + 1, ParseContext.ACCEPT_LINE);
+                    done = true;
+                } catch (EOFError e) {
+                    if (commandsBuffer.isEmpty()) {
+                        throw new IllegalArgumentException("Incompleted command: \n" + cmd);
+                    }
+                    cmd += "\n";
+                    cmd += commandsBuffer.remove(0);
+                } catch (SyntaxError e) {
+                    done = true;
+                } catch (Exception e) {
+                    commandsBuffer.clear();
+                    throw new IllegalArgumentException(e.getMessage());
+                }
+            } while (!done);
+            AttributedStringBuilder sb = new AttributedStringBuilder();
+            sb.styled(AttributedStyle::bold, cmd);
+            sb.toAttributedString().println(terminal);
+            terminal.flush();
+            return finish(cmd);
+        }
 
         if (!startedReading.compareAndSet(false, true)) {
             throw new IllegalStateException();
@@ -574,7 +650,7 @@ public class LineReaderImpl implements LineReader, Flushable
                 }
                 Binding o = readBinding(getKeys(), local);
                 if (o == null) {
-                    throw new EndOfFileException();
+                    throw new EndOfFileException().partialLine(buf.length() > 0 ? buf.toString() : null);
                 }
                 Log.trace("Binding: ", o);
                 if (buf.length() == 0 && getLastBinding().charAt(0) == originalAttributes.getControlChar(ControlChar.VEOF)) {
@@ -598,18 +674,21 @@ public class LineReaderImpl implements LineReader, Flushable
                 try {
                     lock.lock();
                     // Get executable widget
-                    Buffer copy = buf.copy();
+                    Buffer copy = buf.length() <= getInt(FEATURES_MAX_BUFFER_SIZE, DEFAULT_FEATURES_MAX_BUFFER_SIZE) ? buf.copy() : null;
                     Widget w = getWidget(o);
                     if (!w.apply()) {
                         beep();
                     }
-                    if (!isUndo && !copy.toString().equals(buf.toString())) {
+                    if (!isUndo && copy != null && buf.length() <= getInt(FEATURES_MAX_BUFFER_SIZE, DEFAULT_FEATURES_MAX_BUFFER_SIZE)
+                            && !copy.toString().equals(buf.toString())) {
                         undo.newState(buf.copy());
                     }
 
                     switch (state) {
                         case DONE:
                             return finishBuffer();
+                        case IGNORE:
+                            return "";
                         case EOF:
                             throw new EndOfFileException();
                         case INTERRUPT:
@@ -665,22 +744,18 @@ public class LineReaderImpl implements LineReader, Flushable
         }
     }
 
-    private boolean isTerminalDumb(){
+    private boolean isTerminalDumb() {
         return Terminal.TYPE_DUMB.equals(terminal.getType())
                 || Terminal.TYPE_DUMB_COLOR.equals(terminal.getType());
     }
 
-    private void doDisplay(){
+    private void doDisplay() {
         // Cache terminal size for the duration of the call to readLine()
         // It will eventually be updated with WINCH signals
         size.copy(terminal.getBufferSize());
 
         display = new Display(terminal, false);
-        if (size.getRows() == 0 || size.getColumns() == 0) {
-            display.resize(1, Integer.MAX_VALUE);
-        } else {
-            display.resize(size.getRows(), size.getColumns());
-        }
+        display.resize(size.getRows(), size.getColumns());
         if (isSet(Option.DELAY_LINE_WRAP))
             display.setDelayLineWrap(true);
     }
@@ -849,6 +924,19 @@ public class LineReaderImpl implements LineReader, Flushable
         }
     }
 
+    protected String doReadStringUntil(String sequence) {
+        if (lock.isHeldByCurrentThread()) {
+            try {
+                lock.unlock();
+                return bindingReader.readStringUntil(sequence);
+            } finally {
+                lock.lock();
+            }
+        } else {
+            return bindingReader.readStringUntil(sequence);
+        }
+    }
+
     /**
      * Read from the input stream and decode an operation from the key map.
      *
@@ -889,10 +977,12 @@ public class LineReaderImpl implements LineReader, Flushable
         return parsedLine;
     }
 
+    @Override
     public String getLastBinding() {
         return bindingReader.getLastBinding();
     }
 
+    @Override
     public String getSearchTerm() {
         return searchTerm != null ? searchTerm.toString() : null;
     }
@@ -969,8 +1059,7 @@ public class LineReaderImpl implements LineReader, Flushable
 
     @Override
     public boolean isSet(Option option) {
-        Boolean b = options.get(option);
-        return b != null ? b : option.isDef();
+        return option.isSet(options);
     }
 
     @Override
@@ -983,7 +1072,29 @@ public class LineReaderImpl implements LineReader, Flushable
         options.put(option, Boolean.FALSE);
     }
 
+    @Override
+    public void addCommandsInBuffer(Collection<String> commands) {
+        commandsBuffer.addAll(commands);
+    }
 
+    @Override
+    public void editAndAddInBuffer(File file) throws Exception {
+        if (isSet(Option.BRACKETED_PASTE)) {
+            terminal.writer().write(BRACKETED_PASTE_OFF);
+        }
+        Constructor<?> ctor = Class.forName("org.jline.builtins.Nano").getConstructor(Terminal.class, File.class);
+        Editor editor = (Editor) ctor.newInstance(terminal, new File(file.getParent()));
+        editor.setRestricted(true);
+        editor.open(Collections.singletonList(file.getName()));
+        editor.run();
+        BufferedReader br = new BufferedReader(new FileReader(file));
+        String line;
+        commandsBuffer.clear();
+        while ((line = br.readLine()) != null) {
+            commandsBuffer.add(line);
+        }
+        br.close();
+    }
 
     //
     // Widget implementation
@@ -995,7 +1106,10 @@ public class LineReaderImpl implements LineReader, Flushable
      * @return the former contents of the buffer.
      */
     protected String finishBuffer() {
-        String str = buf.toString();
+        return finish(buf.toString());
+    }
+
+    protected String finish(String str) {
         String historyLine = str;
 
         if (!isSet(Option.DISABLE_EVENT_EXPANSION)) {
@@ -1029,6 +1143,7 @@ public class LineReaderImpl implements LineReader, Flushable
     }
 
     protected void handleSignal(Signal signal) {
+        doAutosuggestion = false;
         if (signal == Signal.WINCH) {
             Status status = Status.getStatus(terminal, false);
             if (status != null) {
@@ -1036,7 +1151,8 @@ public class LineReaderImpl implements LineReader, Flushable
             }
             size.copy(terminal.getBufferSize());
             display.resize(size.getRows(), size.getColumns());
-            redrawLine();
+            // restores prompt but also prevents scrolling in consoleZ, see #492
+            // redrawLine();
             redisplay();
         }
         else if (signal == Signal.CONT) {
@@ -1240,7 +1356,7 @@ public class LineReaderImpl implements LineReader, Flushable
 
     protected boolean viForwardWord() {
         if (count < 0) {
-            return callNeg(this::backwardWord);
+            return callNeg(this::viBackwardWord);
         }
         while (count-- > 0) {
             if (isViAlphaNum(buf.currChar())) {
@@ -1291,21 +1407,7 @@ public class LineReaderImpl implements LineReader, Flushable
     }
 
     protected boolean emacsForwardWord() {
-        if (count < 0) {
-            return callNeg(this::emacsBackwardWord);
-        }
-        while (count-- > 0) {
-            while (buf.cursor() < buf.length() && !isWord(buf.currChar())) {
-                buf.move(1);
-            }
-            if (isInViChangeOperation() && count == 0) {
-                return true;
-            }
-            while (buf.cursor() < buf.length() && isWord(buf.currChar())) {
-                buf.move(1);
-            }
-        }
-        return true;
+        return forwardWord();
     }
 
     protected boolean viForwardBlankWordEnd() {
@@ -1377,7 +1479,7 @@ public class LineReaderImpl implements LineReader, Flushable
 
     protected boolean viBackwardWord() {
         if (count < 0) {
-            return callNeg(this::backwardWord);
+            return callNeg(this::viForwardWord);
         }
         while (count-- > 0) {
             int nl = 0;
@@ -1480,24 +1582,7 @@ public class LineReaderImpl implements LineReader, Flushable
     }
 
     protected boolean emacsBackwardWord() {
-        if (count < 0) {
-            return callNeg(this::emacsForwardWord);
-        }
-        while (count-- > 0) {
-            while (buf.cursor() > 0) {
-                buf.move(-1);
-                if (isWord(buf.currChar())) {
-                    break;
-                }
-            }
-            while (buf.cursor() > 0) {
-                buf.move(-1);
-                if (!isWord(buf.currChar())) {
-                    break;
-                }
-            }
-        }
-        return true;
+        return backwardWord();
     }
 
     protected boolean backwardDeleteWord() {
@@ -2072,6 +2157,7 @@ public class LineReaderImpl implements LineReader, Flushable
 
         long blink = getLong(BLINK_MATCHING_PAREN, DEFAULT_BLINK_MATCHING_PAREN);
         if (blink <= 0) {
+            removeIndentation();
             return true;
         }
 
@@ -2082,9 +2168,30 @@ public class LineReaderImpl implements LineReader, Flushable
         redisplay();
 
         peekCharacter(blink);
-
+        int blinkPosition = buf.cursor();
         buf.cursor(closePosition);
+
+        if (blinkPosition != closePosition - 1) {
+            removeIndentation();
+        }
         return true;
+    }
+
+    private void removeIndentation() {
+        int indent = getInt(INDENTATION, DEFAULT_INDENTATION);
+        if (indent > 0) {
+            buf.move(-1);
+            for (int i = 0; i < indent; i++) {
+                buf.move(-1);
+                if (buf.currChar() == ' ') {
+                    buf.delete();
+                } else {
+                    buf.move(1);
+                    break;
+                }
+            }
+            buf.move(1);
+        }
     }
 
     protected boolean viMatchBracket() {
@@ -2424,13 +2531,14 @@ public class LineReaderImpl implements LineReader, Flushable
         buf.cursor(buf.length());
         post = null;
         if (size.getColumns() > 0 || size.getRows() > 0) {
+            doAutosuggestion = false;
             redisplay(false);
             if (nl) {
                 println();
             }
             terminal.puts(Capability.keypad_local);
             terminal.trackMouse(Terminal.MouseTracking.Off);
-            if (isSet(Option.BRACKETED_PASTE))
+            if (isSet(Option.BRACKETED_PASTE) && !isTerminalDumb())
                 terminal.writer().write(BRACKETED_PASTE_OFF);
             flush();
         }
@@ -2593,7 +2701,7 @@ public class LineReaderImpl implements LineReader, Flushable
             starts.add(new Pair<>(index, m.start()));
         }
         return starts;
-   }
+    }
 
     private String doGetSearchPattern() {
         StringBuilder sb = new StringBuilder();
@@ -2835,6 +2943,7 @@ public class LineReaderImpl implements LineReader, Flushable
 
     protected boolean acceptLine() {
         parsedLine = null;
+        int curPos = 0;
         if (!isSet(Option.DISABLE_EVENT_EXPANSION)) {
             try {
                 String str = buf.toString();
@@ -2851,9 +2960,19 @@ public class LineReaderImpl implements LineReader, Flushable
             }
         }
         try {
+            curPos = buf.cursor();
             parsedLine = parser.parse(buf.toString(), buf.cursor(), ParseContext.ACCEPT_LINE);
         } catch (EOFError e) {
-            buf.write("\n");
+            StringBuilder sb = new StringBuilder("\n");
+            indention(e.getOpenBrackets(), sb);
+            int curMove = sb.length();
+            if (isSet(Option.INSERT_BRACKET) && e.getOpenBrackets() > 1 && e.getNextClosingBracket() != null) {
+                sb.append('\n');
+                indention(e.getOpenBrackets() - 1, sb);
+                sb.append(e.getNextClosingBracket());
+            }
+            buf.write(sb.toString());
+            buf.cursor(curPos + curMove);
             return true;
         } catch (SyntaxError e) {
             // do nothing
@@ -2861,6 +2980,13 @@ public class LineReaderImpl implements LineReader, Flushable
         callWidget(CALLBACK_FINISH);
         state = State.DONE;
         return true;
+    }
+
+    void indention(int nb, StringBuilder sb) {
+        int indent = getInt(INDENTATION, DEFAULT_INDENTATION)*nb;
+        for (int i = 0; i < indent; i++) {
+            sb.append(' ');
+        }
     }
 
     protected boolean selfInsert() {
@@ -3464,6 +3590,27 @@ public class LineReaderImpl implements LineReader, Flushable
         return true;
     }
 
+    protected boolean editAndExecute() {
+        boolean out = true;
+        File file = null;
+        try {
+            file = File.createTempFile("jline-execute-", null);
+            FileWriter writer = new FileWriter(file);
+            writer.write(buf.toString());
+            writer.close();
+            editAndAddInBuffer(file);
+        } catch (Exception e) {
+            e.printStackTrace(terminal.writer());
+            out = false;
+        } finally {
+            state = State.IGNORE;
+            if (file != null && file.exists()) {
+                file.delete();
+            }
+        }
+        return out;
+    }
+
     protected Map<String, Widget> builtinWidgets() {
         Map<String, Widget> widgets = new HashMap<>();
         addBuiltinWidget(widgets, ACCEPT_AND_INFER_NEXT_HISTORY, this::acceptAndInferNextHistory);
@@ -3499,6 +3646,7 @@ public class LineReaderImpl implements LineReader, Flushable
         addBuiltinWidget(widgets, DOWN_LINE_OR_HISTORY, this::downLineOrHistory);
         addBuiltinWidget(widgets, DOWN_LINE_OR_SEARCH, this::downLineOrSearch);
         addBuiltinWidget(widgets, DOWN_HISTORY, this::downHistory);
+        addBuiltinWidget(widgets, EDIT_AND_EXECUTE_COMMAND, this::editAndExecute);
         addBuiltinWidget(widgets, EMACS_EDITING_MODE, this::emacsEditingMode);
         addBuiltinWidget(widgets, EMACS_BACKWARD_WORD, this::emacsBackwardWord);
         addBuiltinWidget(widgets, EMACS_FORWARD_WORD, this::emacsForwardWord);
@@ -3616,7 +3764,7 @@ public class LineReaderImpl implements LineReader, Flushable
     }
 
     private void addBuiltinWidget(Map<String, Widget> widgets, String name, Widget widget) {
-        widgets.put(name, namedWidget(name, widget));
+        widgets.put(name, namedWidget("." + name, widget));
     }
 
     private Widget namedWidget(String name, Widget widget) {
@@ -3741,7 +3889,7 @@ public class LineReaderImpl implements LineReader, Flushable
             }
 
             List<AttributedString> newLinesToDisplay = new ArrayList<>();
-            int displaySize = size.getRows() - (status != null ? status.size() : 0);
+            int displaySize = displayRows(status);
             if (newLines.size() > displaySize && !isTerminalDumb()) {
                 StringBuilder sb = new StringBuilder(">....");
                 // blanks are needed when displaying command completion candidate list
@@ -3791,6 +3939,37 @@ public class LineReaderImpl implements LineReader, Flushable
         sb.append(lines.get(lines.size() - 1));
     }
 
+    private String matchPreviousCommand(String buffer) {
+        if (buffer.length() == 0) {
+            return "";
+        }
+        History history = getHistory();
+        StringBuilder sb = new StringBuilder();
+        for (char c: buffer.replace("\\", "\\\\").toCharArray()) {
+            if (c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' || c == '^' || c == '*'
+                     || c == '$' || c == '.' || c == '?' || c == '+') {
+                sb.append('\\');
+            }
+            sb.append(c);
+        }
+        Pattern pattern = Pattern.compile(sb.toString() + ".*", Pattern.DOTALL);
+        Iterator<History.Entry> iter = history.reverseIterator(history.last());
+        String suggestion = "";
+        int tot = 0;
+        while (iter.hasNext()) {
+            History.Entry entry = iter.next();
+            Matcher matcher = pattern.matcher(entry.line());
+            if (matcher.matches()) {
+                suggestion = entry.line().substring(buffer.length());
+                break;
+            } else if (tot > 200) {
+                break;
+            }
+            tot++;
+        }
+        return suggestion;
+    }
+
     /**
      * Compute the full string to be displayed with the left, right and secondary prompts
      * @param secondaryPrompts a list to store the secondary prompts
@@ -3803,10 +3982,52 @@ public class LineReaderImpl implements LineReader, Flushable
         AttributedStringBuilder full = new AttributedStringBuilder().tabs(TAB_WIDTH);
         full.append(prompt);
         full.append(tNewBuf);
+        if (doAutosuggestion && !isTerminalDumb()) {
+            String lastBinding = getLastBinding() != null ? getLastBinding() : "";
+            if (autosuggestion == SuggestionType.HISTORY) {
+                AttributedStringBuilder sb = new AttributedStringBuilder();
+                tailTip = matchPreviousCommand(buf.toString());
+                sb.styled(AttributedStyle::faint, tailTip);
+                full.append(sb.toAttributedString());
+            } else if (autosuggestion == SuggestionType.COMPLETER) {
+                if (buf.length() >= getInt(SUGGESTIONS_MIN_BUFFER_SIZE, DEFAULT_SUGGESTIONS_MIN_BUFFER_SIZE)
+                        && buf.length() == buf.cursor()
+                        && (!lastBinding.equals("\t") || buf.prevChar() == ' ' || buf.prevChar() == '=')) {
+                    clearChoices();
+                    listChoices(true);
+                } else if (!lastBinding.equals("\t")) {
+                    clearChoices();
+                }
+            } else if (autosuggestion == SuggestionType.TAIL_TIP) {
+                if (buf.length() == buf.cursor()) {
+                    if (!lastBinding.equals("\t") || buf.prevChar() == ' ') {
+                        clearChoices();
+                    }
+                    AttributedStringBuilder sb = new AttributedStringBuilder();
+                    if (buf.prevChar() != ' ') {
+                        if (!tailTip.startsWith("[")) {
+                            int idx = tailTip.indexOf(' ');
+                            int idb = buf.toString().lastIndexOf(' ');
+                            int idd = buf.toString().lastIndexOf('-');
+                            if (idx > 0 && ((idb == -1 && idb == idd) || (idb >= 0 && idb > idd))) {
+                                tailTip = tailTip.substring(idx);
+                            } else if (idb >= 0 && idb < idd) {
+                                sb.append(" ");
+                            }
+                        } else {
+                            sb.append(" ");
+                        }
+                    }
+                    sb.styled(AttributedStyle::faint, tailTip);
+                    full.append(sb.toAttributedString());
+                }
+            }
+        }
         if (post != null) {
             full.append("\n");
             full.append(post.get());
         }
+        doAutosuggestion = true;
         return full.toAttributedString();
     }
 
@@ -3814,7 +4035,8 @@ public class LineReaderImpl implements LineReader, Flushable
         if (maskingCallback != null) {
             buffer = maskingCallback.display(buffer);
         }
-        if (highlighter != null && !isSet(Option.DISABLE_HIGHLIGHTER)) {
+        if (highlighter != null && !isSet(Option.DISABLE_HIGHLIGHTER)
+                && buffer.length() < getInt(FEATURES_MAX_BUFFER_SIZE, DEFAULT_FEATURES_MAX_BUFFER_SIZE)) {
             return highlighter.highlight(this, buffer);
         }
         return new AttributedString(buffer);
@@ -3916,7 +4138,7 @@ public class LineReaderImpl implements LineReader, Flushable
             } else
                 sb.append(ch);
         }
-        if (padToWidth > cols) {
+        if (padToWidth > cols && padToWidth > 0) {
             int padCharCols = WCWidth.wcwidth(padChar);
             int padCount = (padToWidth - cols) / padCharCols;
             sb = padPartString;
@@ -3936,12 +4158,16 @@ public class LineReaderImpl implements LineReader, Flushable
         List<AttributedString> lines = strAtt.columnSplitLength(Integer.MAX_VALUE);
         AttributedStringBuilder sb = new AttributedStringBuilder();
         String secondaryPromptPattern = getString(SECONDARY_PROMPT_PATTERN, DEFAULT_SECONDARY_PROMPT_PATTERN);
-        boolean needsMessage = secondaryPromptPattern.contains("%M");
+        boolean needsMessage = secondaryPromptPattern.contains("%M")
+                && strAtt.length() < getInt(FEATURES_MAX_BUFFER_SIZE, DEFAULT_FEATURES_MAX_BUFFER_SIZE);
         AttributedStringBuilder buf = new AttributedStringBuilder();
         int width = 0;
         List<String> missings = new ArrayList<>();
         if (computePrompts && secondaryPromptPattern.contains("%P")) {
             width = prompt.columnLength();
+            if (width > size.getColumns() || prompt.contains('\n')) {
+                width = new TerminalLine(prompt.toString(), 0, size.getColumns()).getEndLine().length();
+            }
             for (int line = 0; line < lines.size() - 1; line++) {
                 AttributedString prompt;
                 buf.append(lines.get(line)).append("\n");
@@ -4102,7 +4328,11 @@ public class LineReaderImpl implements LineReader, Flushable
     }
 
     protected boolean listChoices() {
-        return doComplete(CompletionType.List, isSet(Option.MENU_COMPLETE), false);
+        return listChoices(false);
+    }
+
+    private boolean listChoices(boolean forSuggestion) {
+        return doComplete(CompletionType.List, isSet(Option.MENU_COMPLETE), false, forSuggestion);
     }
 
     protected boolean deleteCharOrList() {
@@ -4114,6 +4344,10 @@ public class LineReaderImpl implements LineReader, Flushable
     }
 
     protected boolean doComplete(CompletionType lst, boolean useMenu, boolean prefix) {
+        return doComplete(lst, useMenu, prefix, false);
+    }
+
+    protected boolean doComplete(CompletionType lst, boolean useMenu, boolean prefix, boolean forSuggestion) {
         // If completion is disabled, just bail out
         if (getBoolean(DISABLE_COMPLETION, false)) {
             return true;
@@ -4148,6 +4382,9 @@ public class LineReaderImpl implements LineReader, Flushable
             }
         } catch (Exception e) {
             Log.info("Error while finding completion candidates", e);
+            if (Log.isDebugEnabled()) {
+                e.printStackTrace();
+            }
             return false;
         }
 
@@ -4173,90 +4410,30 @@ public class LineReaderImpl implements LineReader, Flushable
         boolean caseInsensitive = isSet(Option.CASE_INSENSITIVE);
         int errors = getInt(ERRORS, DEFAULT_ERRORS);
 
-        // Build a list of sorted candidates
-        Map<String, List<Candidate>> sortedCandidates = new HashMap<>();
-        for (Candidate cand : candidates) {
-            sortedCandidates
-                    .computeIfAbsent(AttributedString.fromAnsi(cand.value()).toString(), s -> new ArrayList<>())
-                    .add(cand);
-        }
-
-        // Find matchers
-        // TODO: glob completion
-        List<Function<Map<String, List<Candidate>>,
-                      Map<String, List<Candidate>>>> matchers;
-        Predicate<String> exact;
-        if (prefix) {
-            String wd = line.word();
-            String wdi = caseInsensitive ? wd.toLowerCase() : wd;
-            String wp = wdi.substring(0, line.wordCursor());
-            matchers = Arrays.asList(
-                    simpleMatcher(s -> (caseInsensitive ? s.toLowerCase() : s).startsWith(wp)),
-                    simpleMatcher(s -> (caseInsensitive ? s.toLowerCase() : s).contains(wp)),
-                    typoMatcher(wp, errors, caseInsensitive)
-            );
-            exact = s -> caseInsensitive ? s.equalsIgnoreCase(wp) : s.equals(wp);
-        } else if (isSet(Option.COMPLETE_IN_WORD)) {
-            String wd = line.word();
-            String wdi = caseInsensitive ? wd.toLowerCase() : wd;
-            String wp = wdi.substring(0, line.wordCursor());
-            String ws = wdi.substring(line.wordCursor());
-            Pattern p1 = Pattern.compile(Pattern.quote(wp) + ".*" + Pattern.quote(ws) + ".*");
-            Pattern p2 = Pattern.compile(".*" + Pattern.quote(wp) + ".*" + Pattern.quote(ws) + ".*");
-            matchers = Arrays.asList(
-                    simpleMatcher(s -> p1.matcher(caseInsensitive ? s.toLowerCase() : s).matches()),
-                    simpleMatcher(s -> p2.matcher(caseInsensitive ? s.toLowerCase() : s).matches()),
-                    typoMatcher(wdi, errors, caseInsensitive)
-            );
-            exact = s -> caseInsensitive ? s.equalsIgnoreCase(wd) : s.equals(wd);
-        } else {
-            String wd = line.word();
-            String wdi = caseInsensitive ? wd.toLowerCase() : wd;
-            matchers = Arrays.asList(
-                    simpleMatcher(s -> (caseInsensitive ? s.toLowerCase() : s).startsWith(wdi)),
-                    simpleMatcher(s -> (caseInsensitive ? s.toLowerCase() : s).contains(wdi)),
-                    typoMatcher(wdi, errors, caseInsensitive)
-            );
-            exact = s -> caseInsensitive ? s.equalsIgnoreCase(wd) : s.equals(wd);
-        }
+        completionMatcher.compile(options, prefix, line, caseInsensitive, errors, getOriginalGroupName());
         // Find matching candidates
-        Map<String, List<Candidate>> matching = Collections.emptyMap();
-        for (Function<Map<String, List<Candidate>>,
-                      Map<String, List<Candidate>>> matcher : matchers) {
-            matching = matcher.apply(sortedCandidates);
-            if (!matching.isEmpty()) {
-                break;
-            }
-        }
-
+        List<Candidate> possible = completionMatcher.matches(candidates);
         // If we have no matches, bail out
-        if (matching.isEmpty()) {
+        if (possible.isEmpty()) {
             return false;
         }
         size.copy(terminal.getSize());
         try {
             // If we only need to display the list, do it now
             if (lst == CompletionType.List) {
-                List<Candidate> possible = matching.entrySet().stream()
-                        .flatMap(e -> e.getValue().stream())
-                        .collect(Collectors.toList());
-                doList(possible, line.word(), false, line::escape);
+                doList(possible, line.word(), false, line::escape, forSuggestion);
                 return !possible.isEmpty();
             }
 
             // Check if there's a single possible match
             Candidate completion = null;
             // If there's a single possible completion
-            if (matching.size() == 1) {
-                completion = matching.values().stream().flatMap(Collection::stream)
-                        .findFirst().orElse(null);
+            if (possible.size() == 1) {
+                completion = possible.get(0);
             }
             // Or if RECOGNIZE_EXACT is set, try to find an exact match
             else if (isSet(Option.RECOGNIZE_EXACT)) {
-                completion = matching.values().stream().flatMap(Collection::stream)
-                        .filter(Candidate::complete)
-                        .filter(c -> exact.test(c.value()))
-                        .findFirst().orElse(null);
+                completion = completionMatcher.exactMatch();
             }
             // Complete and exit
             if (completion != null && !completion.value().isEmpty()) {
@@ -4275,6 +4452,9 @@ public class LineReaderImpl implements LineReader, Flushable
                     }
                 }
                 if (completion.suffix() != null) {
+                    if (autosuggestion == SuggestionType.COMPLETER) {
+                        listChoices(true);
+                    }
                     redisplay();
                     Binding op = readBinding(getKeys());
                     if (op != null) {
@@ -4293,10 +4473,6 @@ public class LineReaderImpl implements LineReader, Flushable
                 return true;
             }
 
-            List<Candidate> possible = matching.entrySet().stream()
-                    .flatMap(e -> e.getValue().stream())
-                    .collect(Collectors.toList());
-
             if (useMenu) {
                 buf.move(line.word().length() - line.wordCursor());
                 buf.backspace(line.word().length());
@@ -4314,15 +4490,13 @@ public class LineReaderImpl implements LineReader, Flushable
             }
             // Now, we need to find the unambiguous completion
             // TODO: need to find common suffix
-            String commonPrefix = null;
-            for (String key : matching.keySet()) {
-                commonPrefix = commonPrefix == null ? key : getCommonStart(commonPrefix, key, caseInsensitive);
-            }
+            String commonPrefix = completionMatcher.getCommonPrefix();
             boolean hasUnambiguous = commonPrefix.startsWith(current) && !commonPrefix.equals(current);
 
             if (hasUnambiguous) {
                 buf.backspace(line.rawWordLength());
                 buf.write(line.escape(commonPrefix, false));
+                callWidget(REDISPLAY);
                 current = commonPrefix;
                 if ((!isSet(Option.AUTO_LIST) && isSet(Option.AUTO_MENU))
                         || (isSet(Option.AUTO_LIST) && isSet(Option.LIST_AMBIGUOUS))) {
@@ -4384,10 +4558,9 @@ public class LineReaderImpl implements LineReader, Flushable
 
     protected Comparator<Candidate> getCandidateComparator(boolean caseInsensitive, String word) {
         String wdi = caseInsensitive ? word.toLowerCase() : word;
-        ToIntFunction<String> wordDistance = w -> distance(wdi, caseInsensitive ? w.toLowerCase() : w);
+        ToIntFunction<String> wordDistance = w -> ReaderUtils.distance(wdi, caseInsensitive ? w.toLowerCase() : w);
         return Comparator
                 .comparing(Candidate::value, Comparator.comparingInt(wordDistance))
-                .thenComparing(Candidate::value, Comparator.comparingInt(String::length))
                 .thenComparing(Comparator.naturalOrder());
     }
 
@@ -4432,37 +4605,6 @@ public class LineReaderImpl implements LineReader, Flushable
         }
     }
 
-    private Function<Map<String, List<Candidate>>,
-                     Map<String, List<Candidate>>> simpleMatcher(Predicate<String> pred) {
-        return m -> m.entrySet().stream()
-                .filter(e -> pred.test(e.getKey()))
-                .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
-    }
-
-    private Function<Map<String, List<Candidate>>,
-                     Map<String, List<Candidate>>> typoMatcher(String word, int errors, boolean caseInsensitive) {
-        return m -> {
-            Map<String, List<Candidate>> map = m.entrySet().stream()
-                    .filter(e -> distance(word, caseInsensitive ? e.getKey() : e.getKey().toLowerCase()) < errors)
-                    .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
-            if (map.size() > 1) {
-                map.computeIfAbsent(word, w -> new ArrayList<>())
-                        .add(new Candidate(word, word, getOriginalGroupName(), null, null, null, false));
-            }
-            return map;
-        };
-    }
-
-    private int distance(String word, String cand) {
-        if (word.length() < cand.length()) {
-            int d1 = Levenshtein.distance(word, cand.substring(0, Math.min(cand.length(), word.length())));
-            int d2 = Levenshtein.distance(word, cand);
-            return Math.min(d1, d2);
-        } else {
-            return Levenshtein.distance(word, cand);
-        }
-    }
-
     protected boolean nextBindingIsComplete() {
         redisplay();
         KeyMap<Binding> keyMap = keyMaps.get(MENU);
@@ -4473,6 +4615,19 @@ public class LineReaderImpl implements LineReader, Flushable
             pushBackBinding();
             return false;
         }
+    }
+
+    private int displayRows() {
+        return displayRows(Status.getStatus(terminal, false));
+    }
+
+    private int displayRows(Status status) {
+        return size.getRows() - (status != null ? status.size() : 0);
+    }
+
+    private int promptLines() {
+        AttributedString text = insertSecondaryPrompts(AttributedStringBuilder.append(prompt, buf.toString()), new ArrayList<>());
+        return text.columnSplitLength(size.getColumns(), false, display.delayLineWrap()).size();
     }
 
     private class MenuSupport implements Supplier<AttributedString> {
@@ -4594,10 +4749,9 @@ public class LineReaderImpl implements LineReader, Flushable
 
             // Compute displayed prompt
             PostResult pr = computePost(possible, completion(), null, completed);
-            AttributedString text = insertSecondaryPrompts(AttributedStringBuilder.append(prompt, buf.toString()), new ArrayList<>());
-            int promptLines = text.columnSplitLength(size.getColumns(), false, display.delayLineWrap()).size();
-            if (pr.lines > size.getRows() - promptLines) {
-                int displayed = size.getRows() - promptLines - 1;
+            int displaySize = displayRows() - promptLines();
+            if (pr.lines > displaySize) {
+                int displayed = displaySize - 1;
                 if (pr.selectedLine >= 0) {
                     if (pr.selectedLine < topLine) {
                         topLine = pr.selectedLine;
@@ -4644,11 +4798,17 @@ public class LineReaderImpl implements LineReader, Flushable
         original.sort(getCandidateComparator(caseInsensitive, completed));
         mergeCandidates(original);
         computePost(original, null, possible, completed);
-
+        // candidate grouping is not supported by MenuSupport
+        boolean defaultAutoGroup = isSet(Option.AUTO_GROUP);
+        boolean defaultGroup = isSet(Option.GROUP);
+        if (!isSet(Option.GROUP_PERSIST)) {
+            option(Option.AUTO_GROUP, false);
+            option(Option.GROUP, false);
+        }
         // Build menu support
         MenuSupport menuSupport = new MenuSupport(original, completed, escaper);
         post = menuSupport;
-        redisplay();
+        callWidget(REDISPLAY);
 
         // Loop
         KeyMap<Binding> keyMap = keyMaps.get(MENU);
@@ -4701,15 +4861,31 @@ public class LineReaderImpl implements LineReader, Flushable
                         pushBackBinding(true);
                     }
                     post = null;
+                    option(Option.AUTO_GROUP, defaultAutoGroup);
+                    option(Option.GROUP, defaultGroup);
                     return true;
                 }
             }
-            redisplay();
+            doAutosuggestion = false;
+            callWidget(REDISPLAY);
         }
+        option(Option.AUTO_GROUP, defaultAutoGroup);
+        option(Option.GROUP, defaultGroup);
         return false;
     }
 
-    protected boolean doList(List<Candidate> possible, String completed, boolean runLoop, BiFunction<CharSequence, Boolean, CharSequence> escaper) {
+    protected boolean clearChoices() {
+        return doList(new ArrayList<>(), "", false, null, false);
+    }
+
+    protected boolean doList(List<Candidate> possible
+                           , String completed, boolean runLoop, BiFunction<CharSequence, Boolean, CharSequence> escaper) {
+        return doList(possible, completed, runLoop, escaper, false);
+    }
+
+    protected boolean doList(List<Candidate> possible
+                           , String completed
+                           , boolean runLoop, BiFunction<CharSequence, Boolean, CharSequence> escaper, boolean forSuggestion) {
         // If we list only and if there's a big
         // number of items, we should ask the user
         // for confirmation, display the list
@@ -4722,33 +4898,40 @@ public class LineReaderImpl implements LineReader, Flushable
         int listMax = getInt(LIST_MAX, DEFAULT_LIST_MAX);
         if (listMax > 0 && possible.size() >= listMax
                 || lines >= size.getRows() - promptLines) {
-            // prompt
-            post = () -> new AttributedString(getAppName() + ": do you wish to see all " + possible.size()
-                    + " possibilities (" + lines + " lines)?");
-            redisplay(true);
-            int c = readCharacter();
-            if (c != 'y' && c != 'Y' && c != '\t') {
-                post = null;
+            if (!forSuggestion) {
+                // prompt
+                post = () -> new AttributedString(getAppName() + ": do you wish to see all " + possible.size()
+                        + " possibilities (" + lines + " lines)?");
+                redisplay(true);
+                int c = readCharacter();
+                if (c != 'y' && c != 'Y' && c != '\t') {
+                    post = null;
+                    return false;
+                }
+            } else {
                 return false;
             }
         }
 
         boolean caseInsensitive = isSet(Option.CASE_INSENSITIVE);
         StringBuilder sb = new StringBuilder();
+        candidateStartPosition = 0;
         while (true) {
             String current = completed + sb.toString();
             List<Candidate> cands;
             if (sb.length() > 0) {
-                cands = possible.stream()
-                        .filter(c -> caseInsensitive
-                                    ? c.value().toLowerCase().startsWith(current.toLowerCase())
-                                    : c.value().startsWith(current))
+                completionMatcher.compile(options, false, new CompletingWord(current), caseInsensitive, 0
+                        , null);
+                cands = completionMatcher.matches(possible).stream()
                         .sorted(getCandidateComparator(caseInsensitive, current))
                         .collect(Collectors.toList());
             } else {
                 cands = possible.stream()
                         .sorted(getCandidateComparator(caseInsensitive, current))
                         .collect(Collectors.toList());
+            }
+            if (isSet(Option.AUTO_MENU_LIST) && candidateStartPosition == 0) {
+                candidateStartPosition = candidateStartPosition(cands);
             }
             post = () -> {
                 AttributedString t = insertSecondaryPrompts(AttributedStringBuilder.append(prompt, buf.toString()), new ArrayList<>());
@@ -4761,10 +4944,11 @@ public class LineReaderImpl implements LineReader, Flushable
                     redisplay(false);
                     buf.cursor(oldCursor);
                     println();
-                    List<AttributedString> ls = postResult.post.columnSplitLength(size.getColumns(), false, display.delayLineWrap());
+                    List<AttributedString> ls = pr.post.columnSplitLength(size.getColumns(), false, display.delayLineWrap());
                     Display d = new Display(terminal, false);
                     d.resize(size.getRows(), size.getColumns());
                     d.update(ls, -1);
+                    println();
                     redrawLine();
                     return new AttributedString("");
                 }
@@ -4789,7 +4973,7 @@ public class LineReaderImpl implements LineReader, Flushable
                     }
                 } else if (SELF_INSERT.equals(name)) {
                     sb.append(getLastBinding());
-                    buf.write(getLastBinding());
+                    callWidget(name);
                     if (cands.isEmpty()) {
                         post = null;
                         return false;
@@ -4812,6 +4996,59 @@ public class LineReaderImpl implements LineReader, Flushable
                 post = null;
                 return false;
             }
+        }
+    }
+
+    private static class CompletingWord implements CompletingParsedLine {
+        private final String word;
+
+        public CompletingWord(String word) {
+            this.word = word;
+        }
+
+        @Override
+        public CharSequence escape(CharSequence candidate, boolean complete) {
+            return null;
+        }
+
+        @Override
+        public int rawWordCursor() {
+            return word.length();
+        }
+
+        @Override
+        public int rawWordLength() {
+            return word.length();
+        }
+
+        @Override
+        public String word() {
+            return word;
+        }
+
+        @Override
+        public int wordCursor() {
+            return word.length();
+        }
+
+        @Override
+        public int wordIndex() {
+            return 0;
+        }
+
+        @Override
+        public List<String> words() {
+            return null;
+        }
+
+        @Override
+        public String line() {
+            return word;
+        }
+
+        @Override
+        public int cursor() {
+            return word.length();
         }
     }
 
@@ -4882,6 +5119,63 @@ public class LineReaderImpl implements LineReader, Flushable
     private static final String DESC_SUFFIX = ")";
     private static final int MARGIN_BETWEEN_DISPLAY_AND_DESC = 1;
     private static final int MARGIN_BETWEEN_COLUMNS = 3;
+    private static final int MENU_LIST_WIDTH = 25;
+
+    private static class TerminalLine {
+        private String endLine;
+        private int startPos;
+
+        public TerminalLine(String line, int startPos, int width) {
+            this.startPos = startPos;
+            endLine = line.substring(line.lastIndexOf('\n') + 1);
+            boolean first = true;
+            while (endLine.length() + (first ? startPos : 0) > width) {
+                if (first) {
+                    endLine = endLine.substring(width - startPos);
+                } else {
+                    endLine = endLine.substring(width);
+                }
+                first = false;
+            }
+            if (!first) {
+                this.startPos = 0;
+            }
+        }
+
+        public int getStartPos() {
+            return startPos;
+        }
+
+        public String getEndLine() {
+            return endLine;
+        }
+    }
+
+    private int candidateStartPosition(List<Candidate> cands) {
+        List<String> values = cands.stream().map(c -> AttributedString.stripAnsi(c.displ()))
+                .filter(c -> !c.matches("\\w+") && c.length() > 1).collect(Collectors.toList());
+        Set<String> notDelimiters = new HashSet<>();
+        values.forEach(v -> v.substring(0, v.length() - 1).chars()
+                .filter(c -> !Character.isDigit(c) && !Character.isAlphabetic(c))
+                .forEach(c -> notDelimiters.add(Character.toString((char)c))));
+        int width = size.getColumns();
+        int promptLength = prompt != null ? prompt.length() : 0;
+        if (promptLength > 0) {
+            TerminalLine tp = new TerminalLine(prompt.toString(), 0, width);
+            promptLength = tp.getEndLine().length();
+        }
+        TerminalLine tl = new TerminalLine(buf.substring(0, buf.cursor()), promptLength, width);
+        int out = tl.getStartPos();
+        String buffer = tl.getEndLine();
+        for (int i = buffer.length(); i > 0; i--) {
+            if (buffer.substring(0, i).matches(".*\\W")
+                    && !notDelimiters.contains(buffer.substring(i - 1, i))) {
+                out += i;
+                break;
+            }
+        }
+        return out;
+    }
 
     @SuppressWarnings("unchecked")
     protected PostResult toColumns(List<Object> items, Candidate selection, String completed, Function<String, Integer> wcwidth, int width, boolean rowsFirst) {
@@ -4889,6 +5183,7 @@ public class LineReaderImpl implements LineReader, Flushable
         // TODO: support Option.LIST_PACKED
         // Compute column width
         int maxWidth = 0;
+        int listSize = 0;
         for (Object item : items) {
             if (item instanceof String) {
                 int len = wcwidth.apply((String) item);
@@ -4896,6 +5191,7 @@ public class LineReaderImpl implements LineReader, Flushable
             }
             else if (item instanceof List) {
                 for (Candidate cand : (List<Candidate>) item) {
+                    listSize++;
                     int len = wcwidth.apply(cand.displ());
                     if (cand.descr() != null) {
                         len += MARGIN_BETWEEN_DISPLAY_AND_DESC;
@@ -4909,8 +5205,33 @@ public class LineReaderImpl implements LineReader, Flushable
         }
         // Build columns
         AttributedStringBuilder sb = new AttributedStringBuilder();
-        for (Object list : items) {
-            toColumns(list, width, maxWidth, sb, selection, completed, rowsFirst, out);
+        if (listSize > 0) {
+            if (isSet(Option.AUTO_MENU_LIST)
+                    && listSize < Math.min(getInt(MENU_LIST_MAX, DEFAULT_MENU_LIST_MAX), displayRows() - promptLines())) {
+                maxWidth = Math.max(maxWidth, MENU_LIST_WIDTH);
+                sb.tabs(Math.max(Math.min(candidateStartPosition, width - maxWidth - 1), 1));
+                width = maxWidth + 2;
+                if (!isSet(Option.GROUP_PERSIST)) {
+                    List<Candidate> list = new ArrayList<>();
+                    for (Object o : items) {
+                        if (o instanceof Collection) {
+                            list.addAll((Collection<Candidate>) o);
+                        }
+                    }
+                    list = list.stream()
+                            .sorted(getCandidateComparator(isSet(Option.CASE_INSENSITIVE), ""))
+                            .collect(Collectors.toList());
+                    toColumns(list, width, maxWidth, sb, selection, completed, rowsFirst, true, out);
+                } else {
+                    for (Object list : items) {
+                        toColumns(list, width, maxWidth, sb, selection, completed, rowsFirst, true, out);
+                    }
+                }
+            } else {
+                for (Object list : items) {
+                    toColumns(list, width, maxWidth, sb, selection, completed, rowsFirst, false, out);
+                }
+            }
         }
         if (sb.length() > 0 && sb.charAt(sb.length() - 1) == '\n') {
             sb.setLength(sb.length() - 1);
@@ -4919,16 +5240,29 @@ public class LineReaderImpl implements LineReader, Flushable
     }
 
     @SuppressWarnings("unchecked")
-    protected void toColumns(Object items, int width, int maxWidth, AttributedStringBuilder sb, Candidate selection, String completed, boolean rowsFirst, int[] out) {
+    protected void toColumns(Object items, int width, int maxWidth, AttributedStringBuilder sb, Candidate selection, String completed
+                           , boolean rowsFirst, boolean doMenuList, int[] out) {
         if (maxWidth <= 0 || width <= 0) {
             return;
         }
         // This is a group
         if (items instanceof String) {
-            sb.style(getCompletionStyleGroup())
+            if (doMenuList) {
+                sb.style(AttributedStyle.DEFAULT);
+                sb.append('\t');
+            }
+            AttributedStringBuilder asb = new AttributedStringBuilder();
+            asb.style(getCompletionStyleGroup(doMenuList))
                     .append((String) items)
-                    .style(AttributedStyle.DEFAULT)
-                    .append("\n");
+                    .style(AttributedStyle.DEFAULT);
+            if (doMenuList) {
+                for (int k = ((String) items).length(); k < maxWidth + 1; k++) {
+                    asb.append(' ');
+                }
+            }
+            sb.style(getCompletionStyleBackground(doMenuList));
+            sb.append(asb);
+            sb.append("\n");
             out[0]++;
         }
         // This is a Candidate list
@@ -4950,6 +5284,11 @@ public class LineReaderImpl implements LineReader, Flushable
                 index = (i, j) -> j * lines + i;
             }
             for (int i = 0; i < lines; i++) {
+                if (doMenuList) {
+                    sb.style(AttributedStyle.DEFAULT);
+                    sb.append('\t');
+                }
+                AttributedStringBuilder asb = new AttributedStringBuilder();
                 for (int j = 0; j < columns; j++) {
                     int idx = index.applyAsInt(i, j);
                     if (idx < candidates.size()) {
@@ -4974,56 +5313,85 @@ public class LineReaderImpl implements LineReader, Flushable
                         }
                         if (cand == selection) {
                             out[1] = i;
-                            sb.style(getCompletionStyleSelection());
+                            asb.style(getCompletionStyleSelection(doMenuList));
                             if (left.toString().regionMatches(
                                     isSet(Option.CASE_INSENSITIVE), 0, completed, 0, completed.length())) {
-                                sb.append(left.toString(), 0, completed.length());
-                                sb.append(left.toString(), completed.length(), left.length());
+                                asb.append(left.toString(), 0, completed.length());
+                                asb.append(left.toString(), completed.length(), left.length());
                             } else {
-                                sb.append(left.toString());
+                                asb.append(left.toString());
                             }
                             for (int k = 0; k < maxWidth - lw - rw; k++) {
-                                sb.append(' ');
+                                asb.append(' ');
                             }
                             if (right != null) {
-                                sb.append(right);
+                                asb.append(right);
                             }
-                            sb.style(AttributedStyle.DEFAULT);
+                            asb.style(AttributedStyle.DEFAULT);
                         } else {
                             if (left.toString().regionMatches(
                                     isSet(Option.CASE_INSENSITIVE), 0, completed, 0, completed.length())) {
-                                sb.style(getCompletionStyleStarting());
-                                sb.append(left, 0, completed.length());
-                                sb.style(AttributedStyle.DEFAULT);
-                                sb.append(left, completed.length(), left.length());
+                                asb.style(getCompletionStyleStarting(doMenuList));
+                                asb.append(left, 0, completed.length());
+                                asb.style(AttributedStyle.DEFAULT);
+                                asb.append(left, completed.length(), left.length());
                             } else {
-                                sb.append(left);
+                                asb.append(left);
                             }
                             if (right != null || hasRightItem) {
                                 for (int k = 0; k < maxWidth - lw - rw; k++) {
-                                    sb.append(' ');
+                                    asb.append(' ');
                                 }
                             }
                             if (right != null) {
-                                sb.style(getCompletionStyleDescription());
-                                sb.append(right);
-                                sb.style(AttributedStyle.DEFAULT);
+                                asb.style(getCompletionStyleDescription(doMenuList));
+                                asb.append(right);
+                                asb.style(AttributedStyle.DEFAULT);
+                            } else if (doMenuList) {
+                                for (int k = lw; k < maxWidth; k++) {
+                                    asb.append(' ');
+                                }
                             }
                         }
                         if (hasRightItem) {
                             for (int k = 0; k < MARGIN_BETWEEN_COLUMNS; k++) {
-                                sb.append(' ');
+                                asb.append(' ');
                             }
+                        }
+                        if (doMenuList) {
+                            asb.append(' ');
                         }
                     }
                 }
+                sb.style(getCompletionStyleBackground(doMenuList));
+                sb.append(asb);
                 sb.append('\n');
             }
             out[0] += lines;
         }
     }
 
-    private AttributedStyle getCompletionStyleStarting() {
+    protected AttributedStyle getCompletionStyleStarting(boolean menuList) {
+        return menuList ? getCompletionStyleListStarting() : getCompletionStyleStarting();
+    }
+
+    protected AttributedStyle getCompletionStyleDescription(boolean menuList) {
+        return menuList ? getCompletionStyleListDescription() : getCompletionStyleDescription();
+    }
+
+    protected AttributedStyle getCompletionStyleGroup(boolean menuList) {
+        return menuList ? getCompletionStyleListGroup() : getCompletionStyleGroup();
+    }
+
+    protected AttributedStyle getCompletionStyleSelection(boolean menuList) {
+        return menuList ? getCompletionStyleListSelection() : getCompletionStyleSelection();
+    }
+
+    protected AttributedStyle getCompletionStyleBackground(boolean menuList) {
+        return menuList ? getCompletionStyleListBackground() : getCompletionStyleBackground();
+    }
+
+    protected AttributedStyle getCompletionStyleStarting() {
         return getCompletionStyle(COMPLETION_STYLE_STARTING, DEFAULT_COMPLETION_STYLE_STARTING);
     }
 
@@ -5039,35 +5407,36 @@ public class LineReaderImpl implements LineReader, Flushable
         return getCompletionStyle(COMPLETION_STYLE_SELECTION, DEFAULT_COMPLETION_STYLE_SELECTION);
     }
 
+    protected AttributedStyle getCompletionStyleBackground() {
+        return getCompletionStyle(COMPLETION_STYLE_BACKGROUND, DEFAULT_COMPLETION_STYLE_BACKGROUND);
+    }
+
+    protected AttributedStyle getCompletionStyleListStarting() {
+        return getCompletionStyle(COMPLETION_STYLE_LIST_STARTING, DEFAULT_COMPLETION_STYLE_LIST_STARTING);
+    }
+
+    protected AttributedStyle getCompletionStyleListDescription() {
+        return getCompletionStyle(COMPLETION_STYLE_LIST_DESCRIPTION, DEFAULT_COMPLETION_STYLE_LIST_DESCRIPTION);
+    }
+
+    protected AttributedStyle getCompletionStyleListGroup() {
+        return getCompletionStyle(COMPLETION_STYLE_LIST_GROUP, DEFAULT_COMPLETION_STYLE_LIST_GROUP);
+    }
+
+    protected AttributedStyle getCompletionStyleListSelection() {
+        return getCompletionStyle(COMPLETION_STYLE_LIST_SELECTION, DEFAULT_COMPLETION_STYLE_LIST_SELECTION);
+    }
+
+    protected AttributedStyle getCompletionStyleListBackground() {
+        return getCompletionStyle(COMPLETION_STYLE_LIST_BACKGROUND, DEFAULT_COMPLETION_STYLE_LIST_BACKGROUND);
+    }
+
     protected AttributedStyle getCompletionStyle(String name, String value) {
-        return buildStyle(getString(name, value));
+        return new StyleResolver(s -> getString(s, null)).resolve("." + name, value);
     }
 
     protected AttributedStyle buildStyle(String str) {
         return AttributedString.fromAnsi("\u001b[" + str + "m ").styleAt(0);
-    }
-
-    private String getCommonStart(String str1, String str2, boolean caseInsensitive) {
-        int[] s1 = str1.codePoints().toArray();
-        int[] s2 = str2.codePoints().toArray();
-        int len = 0;
-        while (len < Math.min(s1.length, s2.length)) {
-            int ch1 = s1[len];
-            int ch2 = s2[len];
-            if (ch1 != ch2 && caseInsensitive) {
-                ch1 = Character.toUpperCase(ch1);
-                ch2 = Character.toUpperCase(ch2);
-                if (ch1 != ch2) {
-                    ch1 = Character.toLowerCase(ch1);
-                    ch2 = Character.toLowerCase(ch2);
-                }
-            }
-            if (ch1 != ch2) {
-                break;
-            }
-            len++;
-        }
-        return new String(s1, 0, len);
     }
 
     /**
@@ -5370,28 +5739,10 @@ public class LineReaderImpl implements LineReader, Flushable
     }
 
     public boolean beginPaste() {
-        final Object SELF_INSERT = new Object();
-        final Object END_PASTE = new Object();
-        KeyMap<Object> keyMap = new KeyMap<>();
-        keyMap.setUnicode(SELF_INSERT);
-        keyMap.setNomatch(SELF_INSERT);
-        keyMap.setAmbiguousTimeout(0);
-        keyMap.bind(END_PASTE, BRACKETED_PASTE_END);
-        StringBuilder sb = new StringBuilder();
-        while (true) {
-            Object b = doReadBinding(keyMap, null);
-            if (b == END_PASTE) {
-                break;
-            }
-            String s = getLastBinding();
-            if ("\r".equals(s)) {
-                s = "\n";
-            }
-            sb.append(s);
-        }
+        String str = doReadStringUntil(BRACKETED_PASTE_END);
         regionActive = RegionType.PASTE;
         regionMark = getBuffer().cursor();
-        getBuffer().write(sb);
+        getBuffer().write(str.replace('\r', '\n'));
         return true;
     }
 
@@ -5587,6 +5938,7 @@ public class LineReaderImpl implements LineReader, Flushable
         bind(emacs, BACKWARD_DELETE_CHAR,                   del());
         bind(emacs, VI_MATCH_BRACKET,                       translate("^X^B"));
         bind(emacs, SEND_BREAK,                             translate("^X^G"));
+        bind(emacs, EDIT_AND_EXECUTE_COMMAND,               translate("^X^E"));
         bind(emacs, VI_FIND_NEXT_CHAR,                      translate("^X^F"));
         bind(emacs, VI_JOIN,                                translate("^X^J"));
         bind(emacs, KILL_BUFFER,                            translate("^X^K"));
@@ -5886,6 +6238,5 @@ public class LineReaderImpl implements LineReader, Flushable
             keyMap.bind(ref, Character.toString(newBinding));
         }
     }
-
 
 }

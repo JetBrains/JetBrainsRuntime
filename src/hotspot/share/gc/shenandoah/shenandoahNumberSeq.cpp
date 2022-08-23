@@ -122,20 +122,24 @@ double HdrSeq::percentile(double level) const {
 
 BinaryMagnitudeSeq::BinaryMagnitudeSeq() {
   _mags = NEW_C_HEAP_ARRAY(size_t, BitsPerSize_t, mtInternal);
-  for (int c = 0; c < BitsPerSize_t; c++) {
-    _mags[c] = 0;
-  }
-  _sum = 0;
+  clear();
 }
 
 BinaryMagnitudeSeq::~BinaryMagnitudeSeq() {
   FREE_C_HEAP_ARRAY(size_t, _mags);
 }
 
+void BinaryMagnitudeSeq::clear() {
+  for (int c = 0; c < BitsPerSize_t; c++) {
+    _mags[c] = 0;
+  }
+  _sum = 0;
+}
+
 void BinaryMagnitudeSeq::add(size_t val) {
   Atomic::add(&_sum, val);
 
-  int mag = log2_intptr(val) + 1;
+  int mag = log2i_graceful(val) + 1;
 
   // Defensively saturate for product bits:
   if (mag < 0) {

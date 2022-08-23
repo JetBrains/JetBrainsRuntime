@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,7 +52,7 @@ public abstract class EventHandler {
         platformEventType.setRegistered(registered);
     }
 
-    final protected StringPool createStringFieldWriter() {
+    protected final StringPool createStringFieldWriter() {
         return new StringPool();
     }
 
@@ -64,7 +64,7 @@ public abstract class EventHandler {
     // Accessed by generated code in event class
     // Accessed by generated sub class
     public final boolean isEnabled() {
-        return platformEventType.isCommitable();
+        return platformEventType.isCommittable();
     }
 
     public final EventType getEventType() {
@@ -113,5 +113,33 @@ public abstract class EventHandler {
 
     public boolean setRegistered(boolean registered) {
        return platformEventType.setRegistered(registered);
+    }
+
+    public void write(long start, long duration, String host, String address, int port, long timeout, long bytesRead, boolean endOfSTream) {
+        throwError("SocketReadEvent");
+    }
+
+    public void write(long start, long duration, String host, String address, int port, long bytesWritten) {
+        throwError("SocketWriteEvent");
+    }
+
+    public void write(long start, long duration, String path, boolean metadata) {
+        throwError("FileForceEvent");
+    }
+
+    public void write(long start, long duration, String path, long bytesRead, boolean endOfFile) {
+        throwError("FileReadEvent");
+    }
+
+    public void write(long start, long duration, String path, long bytesWritten) {
+        throwError("FileWriteEvent");
+    }
+
+    public void write(long start, long duration, String path, Class<?> exceptionClass)  {
+        throwError("ExceptionThrownEvent or ErrorThrownEvent");
+    }
+
+    private void throwError(String classes) {
+        throw new InternalError("Method parameters don't match fields in class " + classes);
     }
 }

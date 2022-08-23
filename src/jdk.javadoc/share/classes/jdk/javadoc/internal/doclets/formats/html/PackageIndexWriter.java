@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,16 +25,13 @@
 
 package jdk.javadoc.internal.doclets.formats.html;
 
-import jdk.javadoc.internal.doclets.formats.html.markup.Table;
-
 import java.util.*;
 
 import javax.lang.model.element.PackageElement;
 
 import jdk.javadoc.internal.doclets.formats.html.markup.ContentBuilder;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
-import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
-import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
+import jdk.javadoc.internal.doclets.formats.html.markup.Text;
 import jdk.javadoc.internal.doclets.toolkit.Content;
 import jdk.javadoc.internal.doclets.toolkit.util.DocFileIOException;
 import jdk.javadoc.internal.doclets.toolkit.util.DocPath;
@@ -93,25 +90,24 @@ public class PackageIndexWriter extends AbstractOverviewIndexWriter {
                 = configuration.group.groupPackages(packages);
 
         if (!groupPackageMap.keySet().isEmpty()) {
-            Table table =  new Table(HtmlStyle.overviewSummary)
+            Table table =  new Table(HtmlStyle.summaryTable)
                     .setHeader(getPackageTableHeader())
                     .setColumnStyles(HtmlStyle.colFirst, HtmlStyle.colLast)
-                    .setDefaultTab(resources.getText("doclet.All_Packages"))
-                    .setTabScript(i -> "show(" + i + ");")
-                    .setTabId(i -> (i == 0) ? "t0" : ("t" + (1 << (i - 1))));
+                    .setId(HtmlIds.ALL_PACKAGES_TABLE)
+                    .setDefaultTab(contents.getContent("doclet.All_Packages"));
 
             // add the tabs in command-line order
             for (String groupName : configuration.group.getGroupList()) {
                 Set<PackageElement> groupPackages = groupPackageMap.get(groupName);
                 if (groupPackages != null) {
-                    table.addTab(groupName, groupPackages::contains);
+                    table.addTab(Text.of(groupName), groupPackages::contains);
                 }
             }
 
             for (PackageElement pkg : configuration.packages) {
                 if (!pkg.isUnnamed()) {
-                    if (!(configuration.nodeprecated && utils.isDeprecated(pkg))) {
-                        Content packageLinkContent = getPackageLink(pkg, getPackageName(pkg));
+                    if (!(options.noDeprecated() && utils.isDeprecated(pkg))) {
+                        Content packageLinkContent = getPackageLink(pkg, getLocalizedPackageName(pkg));
                         Content summaryContent = new ContentBuilder();
                         addSummaryComment(pkg, summaryContent);
                         table.addRow(pkg, packageLinkContent, summaryContent);
@@ -119,8 +115,7 @@ public class PackageIndexWriter extends AbstractOverviewIndexWriter {
                 }
             }
 
-            Content div = HtmlTree.DIV(HtmlStyle.contentContainer, table.toContent());
-            main.add(div);
+            main.add(table);
 
             if (table.needsScript()) {
                 getMainBodyScript().append(table.getScript());

@@ -25,11 +25,10 @@
 package gc.stress.systemgc;
 
 /*
- * @test TestSystemGCWithShenandoah
- * @key gc
+ * @test id=default
  * @key stress
  * @library /
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  * @summary Stress the Shenandoah GC full GC by allocating objects of different lifetimes concurrently with System.gc().
  *
  * @run main/othervm/timeout=300 -Xlog:gc*=info -Xmx512m -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
@@ -43,15 +42,14 @@ package gc.stress.systemgc;
  */
 
 /*
- * @test TestSystemGCWithShenandoah
- * @key gc
+ * @test id=iu
  * @key stress
  * @library /
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  * @summary Stress the Shenandoah GC full GC by allocating objects of different lifetimes concurrently with System.gc().
  *
  * @run main/othervm/timeout=300 -Xlog:gc*=info -Xmx512m -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
- *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=traversal
+ *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=iu
  *      -XX:+ShenandoahVerify
  *      gc.stress.systemgc.TestSystemGCWithShenandoah 270
  *

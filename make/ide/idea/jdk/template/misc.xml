@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="EntryPointsManager">
+    <entry_points version="2.0" />
+  </component>
+  <component name="JTRegService">
+    <path>###JTREG_HOME###</path>
+    <workDir>###BUILD_DIR###</workDir>
+    <jre alt="true" value="###BUILD_DIR###/images/jdk" />
+    <options></options>
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_16" assert-keyword="true" jdk-15="true">
+    <output url="file://###BUILD_DIR###/idea" />
+  </component>
+</project>

@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+* Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
 * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 *
 * This code is free software; you can redistribute it and/or modify it
@@ -30,11 +30,8 @@
 
 class ClassFileStream;
 class ClassLoaderData;
-template <typename>
-class GrowableArray;
-class Klass;
+class ClassLoadInfo;
 class Symbol;
-class TempNewSymbol;
 
 /*
  * KlassFactory is an interface to implementations of the following mapping/function:
@@ -62,20 +59,13 @@ class TempNewSymbol;
 
 class KlassFactory : AllStatic {
 
-  // approved clients
-  friend class ClassLoader;
-  friend class ClassLoaderExt;
-  friend class SystemDictionary;
-
- private:
+ public:
   static InstanceKlass* create_from_stream(ClassFileStream* stream,
                                            Symbol* name,
                                            ClassLoaderData* loader_data,
-                                           Handle protection_domain,
-                                           const InstanceKlass* unsafe_anonymous_host,
-                                           GrowableArray<Handle>* cp_patches,
+                                           const ClassLoadInfo& cl_info,
+                                           const bool pick_newest,
                                            TRAPS);
- public:
   static InstanceKlass* check_shared_class_file_load_hook(
                                           InstanceKlass* ik,
                                           Symbol* class_name,

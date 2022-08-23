@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,9 @@ import sun.awt.ComponentFactory;
 import sun.awt.SunToolkit;
 import sun.awt.image.SunWritableRaster;
 import sun.java2d.SunGraphicsEnvironment;
+
+import static sun.java2d.SunGraphicsEnvironment.toDeviceSpace;
+import static sun.java2d.SunGraphicsEnvironment.toDeviceSpaceAbs;
 
 /**
  * This class is used to generate native system input events
@@ -90,9 +93,7 @@ public class Robot {
      * @see     AWTPermission
      */
     public Robot() throws AWTException {
-        if (GraphicsEnvironment.isHeadless()) {
-            throw new AWTException("headless environment");
-        }
+        checkHeadless();
         init(GraphicsEnvironment.getLocalGraphicsEnvironment()
             .getDefaultScreenDevice());
     }
@@ -125,6 +126,7 @@ public class Robot {
      * @see     AWTPermission
      */
     public Robot(GraphicsDevice screen) throws AWTException {
+        checkHeadless();
         checkIsScreenDevice(screen);
         init(screen);
     }
@@ -133,7 +135,7 @@ public class Robot {
         checkRobotAllowed();
         Toolkit toolkit = Toolkit.getDefaultToolkit();
         if (toolkit instanceof ComponentFactory) {
-            peer = ((ComponentFactory)toolkit).createRobot(this, screen);
+            peer = ((ComponentFactory)toolkit).createRobot(screen);
         }
         initLegalButtonMask();
     }
@@ -161,15 +163,25 @@ public class Robot {
     }
 
     /* determine if the security policy allows Robot's to be created */
-    private void checkRobotAllowed() {
+    private static void checkRobotAllowed() {
+        @SuppressWarnings("removal")
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
             security.checkPermission(AWTPermissions.CREATE_ROBOT_PERMISSION);
         }
     }
 
+    /**
+     * Check for headless state and throw {@code AWTException} if headless.
+     */
+    private static void checkHeadless() throws AWTException {
+        if (GraphicsEnvironment.isHeadless()) {
+            throw new AWTException("headless environment");
+        }
+    }
+
     /* check if the given device is a screen device */
-    private void checkIsScreenDevice(GraphicsDevice device) {
+    private static void checkIsScreenDevice(GraphicsDevice device) {
         if (device == null || device.getType() != GraphicsDevice.TYPE_RASTER_SCREEN) {
             throw new IllegalArgumentException("not a valid screen device");
         }
@@ -300,7 +312,7 @@ public class Robot {
         afterEvent();
     }
 
-    private void checkButtonsArgument(int buttons) {
+    private static void checkButtonsArgument(int buttons) {
         if ( (buttons|LEGAL_BUTTON_MASK) != LEGAL_BUTTON_MASK ) {
             throw new IllegalArgumentException("Invalid combination of button flags");
         }
@@ -359,7 +371,7 @@ public class Robot {
         afterEvent();
     }
 
-    private void checkKeycodeArgument(int keycode) {
+    private static void checkKeycodeArgument(int keycode) {
         // rather than build a big table or switch statement here, we'll
         // just check that the key isn't VK_UNDEFINED and assume that the
         // peer implementations will throw an exception for other bogus
@@ -377,13 +389,9 @@ public class Robot {
      */
     public synchronized Color getPixelColor(int x, int y) {
         checkScreenCaptureAllowed();
-        AffineTransform tx = GraphicsEnvironment.
-                getLocalGraphicsEnvironment().getDefaultScreenDevice().
-                getDefaultConfiguration().getDefaultTransform();
-        x = (int) (x * tx.getScaleX());
-        y = (int) (y * tx.getScaleY());
-        Color color = new Color(peer.getRGBPixel(x, y));
-        return color;
+        Point point = peer.useAbsoluteCoordinates() ? toDeviceSpaceAbs(x, y)
+                                                    : toDeviceSpace(x, y);
+        return new Color(peer.getRGBPixel(point.x, point.y));
     }
 
     /**
@@ -515,17 +523,16 @@ public class Robot {
             imageArray[0] = highResolutionImage;
 
         } else {
-
-            int sX = (int) Math.floor(screenRect.x * uiScaleX);
-            int sY = (int) Math.floor(screenRect.y * uiScaleY);
-            int sWidth = (int) Math.ceil(screenRect.width * uiScaleX);
-            int sHeight = (int) Math.ceil(screenRect.height * uiScaleY);
-            int[] temppixels;
-            Rectangle scaledRect = new Rectangle(sX, sY, sWidth, sHeight);
-            temppixels = peer.getRGBPixels(scaledRect);
-
+            Rectangle scaledRect;
+            if (peer.useAbsoluteCoordinates()) {
+                scaledRect = toDeviceSpaceAbs(gc, screenRect.x,
+                        screenRect.y, screenRect.width, screenRect.height);
+            } else {
+                scaledRect = toDeviceSpace(gc, screenRect.x,
+                        screenRect.y, screenRect.width, screenRect.height);
+            }
             // HighResolutionImage
-            pixels = temppixels;
+            pixels = peer.getRGBPixels(scaledRect);
             buffer = new DataBufferInt(pixels, pixels.length);
             raster = Raster.createPackedRaster(buffer, scaledRect.width,
                     scaledRect.height, scaledRect.width, bandmasks, null);
@@ -571,6 +578,7 @@ public class Robot {
     }
 
     private static void checkScreenCaptureAllowed() {
+        @SuppressWarnings("removal")
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
             security.checkPermission(AWTPermissions.READ_DISPLAY_PIXELS_PERMISSION);
@@ -664,7 +672,7 @@ public class Robot {
         }
     }
 
-    private void checkDelayArgument(int ms) {
+    private static void checkDelayArgument(int ms) {
         if (ms < 0 || ms > MAX_DELAY) {
             throw new IllegalArgumentException("Delay must be to 0 to 60,000ms");
         }
@@ -680,7 +688,7 @@ public class Robot {
         ((SunToolkit) Toolkit.getDefaultToolkit()).realSync();
     }
 
-    private void checkNotDispatchThread() {
+    private static void checkNotDispatchThread() {
         if (EventQueue.isDispatchThread()) {
             throw new IllegalThreadStateException("Cannot call method from the event dispatcher thread");
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -326,6 +326,20 @@ public class JavapTask implements DisassemblerTool.DisassemblerTask, Messages {
             void process(JavapTask task, String opt, String arg) throws BadArgs {
                 task.options.moduleName = arg;
             }
+        },
+
+        // this option is processed by the launcher, and cannot be used when invoked via
+        // an API like ToolProvider. It exists here to be documented in the command-line help.
+        new Option(false, "-J") {
+            @Override
+            boolean matches(String opt) {
+                return opt.startsWith("-J");
+            }
+
+            @Override
+            void process(JavapTask task, String opt, String arg) throws BadArgs {
+                throw task.new BadArgs("err.only.for.launcher");
+            }
         }
 
     };
@@ -617,6 +631,13 @@ public class JavapTask implements DisassemblerTool.DisassemblerTask, Messages {
                 result = EXIT_ERROR;
             } catch (OutOfMemoryError e) {
                 reportError("err.nomem");
+                result = EXIT_ERROR;
+            } catch (FatalError e) {
+                Object msg = e.getLocalizedMessage();
+                if (msg == null) {
+                    msg = e;
+                }
+                reportError("err.fatal.err", msg);
                 result = EXIT_ERROR;
             } catch (Throwable t) {
                 StringWriter sw = new StringWriter();
@@ -936,7 +957,7 @@ public class JavapTask implements DisassemblerTool.DisassemblerTask, Messages {
         printLines(getMessage("main.usage", progname));
         for (Option o: recognizedOptions) {
             String name = o.aliases[0].replaceAll("^-+", "").replaceAll("-+", "_"); // there must always be at least one name
-            if (name.startsWith("X") || name.equals("fullversion") || name.equals("h") || name.equals("verify"))
+            if (name.startsWith("X") || name.equals("fullversion"))
                 continue;
             printLines(getMessage("main.opt." + name));
         }
@@ -1003,7 +1024,7 @@ public class JavapTask implements DisassemblerTool.DisassemblerTask, Messages {
 
     private Diagnostic<JavaFileObject> createDiagnostic(
             final Diagnostic.Kind kind, final String key, final Object... args) {
-        return new Diagnostic<JavaFileObject>() {
+        return new Diagnostic<>() {
             public Kind getKind() {
                 return kind;
             }

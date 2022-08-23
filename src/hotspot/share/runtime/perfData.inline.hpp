@@ -26,6 +26,7 @@
 #define SHARE_RUNTIME_PERFDATA_INLINE_HPP
 
 #include "runtime/perfData.hpp"
+
 #include "utilities/globalDefinitions.hpp"
 #include "utilities/growableArray.hpp"
 
@@ -47,14 +48,6 @@ inline PerfData* PerfDataList::at(int index) {
 
 inline int PerfDataManager::count() {
   return _all->length();
-}
-
-inline int PerfDataManager::sampled_count() {
-  return _sampled->length();
-}
-
-inline int PerfDataManager::constants_count() {
-  return _constants->length();
 }
 
 inline bool PerfDataManager::exists(const char* name) {

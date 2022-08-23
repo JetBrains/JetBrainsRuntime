@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -93,7 +93,7 @@ public class GSSNameImpl implements GSSName {
      * its internal name type and getStringNameType() output are
      * always the new value.
      */
-    final static Oid oldHostbasedServiceName;
+    static final Oid oldHostbasedServiceName;
 
     static {
         Oid tmp = null;
@@ -403,7 +403,7 @@ public class GSSNameImpl implements GSSName {
         ObjectIdentifier oid = null;
 
         try {
-            oid = new ObjectIdentifier
+            oid = ObjectIdentifier.of
                 (mechElement.getMechanism().toString());
         } catch (IOException e) {
             throw new GSSExceptionImpl(GSSException.FAILURE,

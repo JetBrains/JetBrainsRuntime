@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,7 @@ package java.lang;
 
 import java.util.Random;
 import jdk.internal.math.DoubleConsts;
-import jdk.internal.HotSpotIntrinsicCandidate;
+import jdk.internal.vm.annotation.IntrinsicCandidate;
 
 /**
  * The class {@code StrictMath} contains methods for performing basic
@@ -74,11 +74,18 @@ import jdk.internal.HotSpotIntrinsicCandidate;
  * occurs only with a specific minimum or maximum value and
  * should be checked against the minimum or maximum as appropriate.
  *
- * @author  unascribed
+ * <h2><a id=Ieee754RecommendedOps>IEEE 754 Recommended
+ * Operations</a></h2>
+ *
+ * The {@link java.lang.Math Math} class discusses how the shared
+ * quality of implementation criteria for selected {@code Math} and
+ * {@code StrictMath} methods <a
+ * href="Math.html#Ieee754RecommendedOps">relate to the IEEE 754
+ * recommended operations</a>.
+ *
  * @author  Joseph D. Darcy
  * @since   1.3
  */
-
 public final class StrictMath {
 
     /**
@@ -127,7 +134,9 @@ public final class StrictMath {
     /**
      * Returns the trigonometric cosine of an angle. Special cases:
      * <ul><li>If the argument is NaN or an infinity, then the
-     * result is NaN.</ul>
+     * result is NaN.
+     * <li>If the argument is zero, then the result is {@code 1.0}.
+     * </ul>
      *
      * @param   a   an angle, in radians.
      * @return  the cosine of the argument.
@@ -163,7 +172,9 @@ public final class StrictMath {
      * Returns the arc cosine of a value; the returned angle is in the
      * range 0.0 through <i>pi</i>.  Special case:
      * <ul><li>If the argument is NaN or its absolute value is greater
-     * than 1, then the result is NaN.</ul>
+     * than 1, then the result is NaN.
+     * <li>If the argument is {@code 1.0}, the result is positive zero.
+     * </ul>
      *
      * @param   a   the value whose arc cosine is to be returned.
      * @return  the arc cosine of the argument.
@@ -175,7 +186,11 @@ public final class StrictMath {
      * range -<i>pi</i>/2 through <i>pi</i>/2.  Special cases:
      * <ul><li>If the argument is NaN, then the result is NaN.
      * <li>If the argument is zero, then the result is a zero with the
-     * same sign as the argument.</ul>
+     * same sign as the argument.
+     * <li>If the argument is {@linkplain Double#isInfinite infinite},
+     * then the result is the closest value to <i>pi</i>/2 with the
+     * same sign as the input.
+     * </ul>
      *
      * @param   a   the value whose arc tangent is to be returned.
      * @return  the arc tangent of the argument.
@@ -191,10 +206,8 @@ public final class StrictMath {
      * @return  the measurement of the angle {@code angdeg}
      *          in radians.
      */
-    public static strictfp double toRadians(double angdeg) {
-        // Do not delegate to Math.toRadians(angdeg) because
-        // this method has the strictfp modifier.
-        return angdeg * DEGREES_TO_RADIANS;
+    public static double toRadians(double angdeg) {
+        return Math.toRadians(angdeg);
     }
 
     /**
@@ -208,10 +221,8 @@ public final class StrictMath {
      * @return  the measurement of the angle {@code angrad}
      *          in degrees.
      */
-    public static strictfp double toDegrees(double angrad) {
-        // Do not delegate to Math.toDegrees(angrad) because
-        // this method has the strictfp modifier.
-        return angrad * RADIANS_TO_DEGREES;
+    public static double toDegrees(double angrad) {
+        return Math.toDegrees(angrad);
     }
 
     /**
@@ -221,7 +232,9 @@ public final class StrictMath {
      * <li>If the argument is positive infinity, then the result is
      * positive infinity.
      * <li>If the argument is negative infinity, then the result is
-     * positive zero.</ul>
+     * positive zero.
+     * <li>If the argument is zero, then the result is {@code 1.0}.
+     * </ul>
      *
      * @param   a   the exponent to raise <i>e</i> to.
      * @return  the value <i>e</i><sup>{@code a}</sup>,
@@ -239,7 +252,10 @@ public final class StrictMath {
      * <li>If the argument is positive infinity, then the result is
      * positive infinity.
      * <li>If the argument is positive zero or negative zero, then the
-     * result is negative infinity.</ul>
+     * result is negative infinity.
+     * <li>If the argument is {@code 1.0}, then the result is positive
+     * zero.
+     * </ul>
      *
      * @param   a   a value
      * @return  the value ln&nbsp;{@code a}, the natural logarithm of
@@ -257,8 +273,10 @@ public final class StrictMath {
      * positive infinity.
      * <li>If the argument is positive zero or negative zero, then the
      * result is negative infinity.
-     * <li> If the argument is equal to 10<sup><i>n</i></sup> for
-     * integer <i>n</i>, then the result is <i>n</i>.
+     * <li>If the argument is equal to 10<sup><i>n</i></sup> for
+     * integer <i>n</i>, then the result is <i>n</i>. In particular,
+     * if the argument is {@code 1.0} (10<sup>0</sup>), then the
+     * result is positive zero.
      * </ul>
      *
      * @param   a   a value
@@ -283,7 +301,7 @@ public final class StrictMath {
      * @param   a   a value.
      * @return  the positive square root of {@code a}.
      */
-    @HotSpotIntrinsicCandidate
+    @IntrinsicCandidate
     public static native double sqrt(double a);
 
     /**
@@ -451,19 +469,6 @@ public final class StrictMath {
          * away any fractional portion of a since ulp(twoToThe52) ==
          * 1.0; subtracting out twoToThe52 from this sum will then be
          * exact and leave the rounded integer portion of a.
-         *
-         * This method does *not* need to be declared strictfp to get
-         * fully reproducible results.  Whether or not a method is
-         * declared strictfp can only make a difference in the
-         * returned result if some operation would overflow or
-         * underflow with strictfp semantics.  The operation
-         * (twoToThe52 + a ) cannot overflow since large values of a
-         * are screened out; the add cannot underflow since twoToThe52
-         * is too large.  The subtraction ((twoToThe52 + a ) -
-         * twoToThe52) will be exact as discussed above and thus
-         * cannot overflow or meaningfully underflow.  Finally, the
-         * last multiply in the return statement is by plus or minus
-         * 1.0, which is exact too.
          */
         double twoToThe52 = (double)(1L << 52); // 2^52
         double sign = Math.copySign(1.0, a); // preserve sign info
@@ -517,6 +522,15 @@ public final class StrictMath {
      * closest to -<i>pi</i>/4.
      * <li>If both arguments are negative infinity, then the result is the
      * {@code double} value closest to -3*<i>pi</i>/4.</ul>
+     *
+     * @apiNote
+     * For <i>y</i> with a positive sign and finite nonzero
+     * <i>x</i>, the exact mathematical value of {@code atan2} is
+     * equal to:
+     * <ul>
+     * <li>If <i>x</i> {@literal >} 0, atan(abs(<i>y</i>/<i>x</i>))
+     * <li>If <i>x</i> {@literal <} 0, &pi; - atan(abs(<i>y</i>/<i>x</i>))
+     * </ul>
      *
      * @param   y   the ordinate coordinate
      * @param   x   the abscissa coordinate
@@ -642,6 +656,16 @@ public final class StrictMath {
      * floor}. A value is a fixed point of a one-argument
      * method if and only if the result of applying the method to the
      * value is equal to the value.)
+     *
+     * @apiNote
+     * The special cases definitions of this method differ from the
+     * special case definitions of the IEEE 754 recommended {@code
+     * pow} operation for &plusmn;{@code 1.0} raised to an infinite
+     * power. This method treats such cases as indeterminate and
+     * specifies a NaN is returned. The IEEE 754 specification treats
+     * the infinite power as a large integer (large-magnitude
+     * floating-point numbers are numerically integers, specifically
+     * even integers) and therefore specifies {@code 1.0} be returned.
      *
      * @param   a   base.
      * @param   b   the exponent.
@@ -1124,16 +1148,41 @@ public final class StrictMath {
      * If the argument is not negative, the argument is returned.
      * If the argument is negative, the negation of the argument is returned.
      *
-     * <p>Note that if the argument is equal to the value of
-     * {@link Integer#MIN_VALUE}, the most negative representable
-     * {@code int} value, the result is that same value, which is
-     * negative.
+     * <p>Note that if the argument is equal to the value of {@link
+     * Integer#MIN_VALUE}, the most negative representable {@code int}
+     * value, the result is that same value, which is negative. In
+     * contrast, the {@link StrictMath#absExact(int)} method throws an
+     * {@code ArithmeticException} for this value.
      *
      * @param   a   the  argument whose absolute value is to be determined.
      * @return  the absolute value of the argument.
+     * @see Math#absExact(int)
      */
     public static int abs(int a) {
         return Math.abs(a);
+    }
+
+    /**
+     * Returns the mathematical absolute value of an {@code int} value
+     * if it is exactly representable as an {@code int}, throwing
+     * {@code ArithmeticException} if the result overflows the
+     * positive {@code int} range.
+     *
+     * <p>Since the range of two's complement integers is asymmetric
+     * with one additional negative value (JLS {@jls 4.2.1}), the
+     * mathematical absolute value of {@link Integer#MIN_VALUE}
+     * overflows the positive {@code int} range, so an exception is
+     * thrown for that argument.
+     *
+     * @param  a  the argument whose absolute value is to be determined
+     * @return the absolute value of the argument, unless overflow occurs
+     * @throws ArithmeticException if the argument is {@link Integer#MIN_VALUE}
+     * @see Math#abs(int)
+     * @see Math#absExact(int)
+     * @since 15
+     */
+    public static int absExact(int a) {
+        return Math.absExact(a);
     }
 
     /**
@@ -1141,16 +1190,41 @@ public final class StrictMath {
      * If the argument is not negative, the argument is returned.
      * If the argument is negative, the negation of the argument is returned.
      *
-     * <p>Note that if the argument is equal to the value of
-     * {@link Long#MIN_VALUE}, the most negative representable
-     * {@code long} value, the result is that same value, which
-     * is negative.
+     * <p>Note that if the argument is equal to the value of {@link
+     * Long#MIN_VALUE}, the most negative representable {@code long}
+     * value, the result is that same value, which is negative. In
+     * contrast, the {@link StrictMath#absExact(long)} method throws
+     * an {@code ArithmeticException} for this value.
      *
      * @param   a   the  argument whose absolute value is to be determined.
      * @return  the absolute value of the argument.
+     * @see Math#absExact(long)
      */
     public static long abs(long a) {
         return Math.abs(a);
+    }
+
+    /**
+     * Returns the mathematical absolute value of an {@code long} value
+     * if it is exactly representable as an {@code long}, throwing
+     * {@code ArithmeticException} if the result overflows the
+     * positive {@code long} range.
+     *
+     * <p>Since the range of two's complement integers is asymmetric
+     * with one additional negative value (JLS {@jls 4.2.1}), the
+     * mathematical absolute value of {@link Long#MIN_VALUE} overflows
+     * the positive {@code long} range, so an exception is thrown for
+     * that argument.
+     *
+     * @param  a  the argument whose absolute value is to be determined
+     * @return the absolute value of the argument, unless overflow occurs
+     * @throws ArithmeticException if the argument is {@link Long#MIN_VALUE}
+     * @see Math#abs(long)
+     * @see Math#absExact(long)
+     * @since 15
+     */
+    public static long absExact(long a) {
+        return Math.absExact(a);
     }
 
     /**
@@ -1211,7 +1285,7 @@ public final class StrictMath {
      * @param   b   another argument.
      * @return  the larger of {@code a} and {@code b}.
      */
-    @HotSpotIntrinsicCandidate
+    @IntrinsicCandidate
     public static int max(int a, int b) {
         return Math.max(a, b);
     }
@@ -1225,7 +1299,7 @@ public final class StrictMath {
      * @param   a   an argument.
      * @param   b   another argument.
      * @return  the larger of {@code a} and {@code b}.
-        */
+     */
     public static long max(long a, long b) {
         return Math.max(a, b);
     }
@@ -1244,7 +1318,7 @@ public final class StrictMath {
      * @param   b   another argument.
      * @return  the larger of {@code a} and {@code b}.
      */
-    @HotSpotIntrinsicCandidate
+    @IntrinsicCandidate
     public static float max(float a, float b) {
         return Math.max(a, b);
     }
@@ -1263,7 +1337,7 @@ public final class StrictMath {
      * @param   b   another argument.
      * @return  the larger of {@code a} and {@code b}.
      */
-    @HotSpotIntrinsicCandidate
+    @IntrinsicCandidate
     public static double max(double a, double b) {
         return Math.max(a, b);
     }
@@ -1278,7 +1352,7 @@ public final class StrictMath {
      * @param   b   another argument.
      * @return  the smaller of {@code a} and {@code b}.
      */
-    @HotSpotIntrinsicCandidate
+    @IntrinsicCandidate
     public static int min(int a, int b) {
         return Math.min(a, b);
     }
@@ -1311,7 +1385,7 @@ public final class StrictMath {
      * @param   b   another argument.
      * @return  the smaller of {@code a} and {@code b.}
      */
-    @HotSpotIntrinsicCandidate
+    @IntrinsicCandidate
     public static float min(float a, float b) {
         return Math.min(a, b);
     }
@@ -1330,7 +1404,7 @@ public final class StrictMath {
      * @param   b   another argument.
      * @return  the smaller of {@code a} and {@code b}.
      */
-    @HotSpotIntrinsicCandidate
+    @IntrinsicCandidate
     public static double min(double a, double b) {
         return Math.min(a, b);
     }
@@ -1632,6 +1706,7 @@ public final class StrictMath {
      * <li> If either argument is NaN and neither argument is infinite,
      * then the result is NaN.
      *
+     * <li> If both arguments are zero, the result is positive zero.
      * </ul>
      *
      * @param x a value
@@ -1972,20 +2047,17 @@ public final class StrictMath {
     }
 
     /**
-     * Returns {@code d} &times;
-     * 2<sup>{@code scaleFactor}</sup> rounded as if performed
-     * by a single correctly rounded floating-point multiply to a
-     * member of the double value set.  See the Java
-     * Language Specification for a discussion of floating-point
-     * value sets.  If the exponent of the result is between {@link
-     * Double#MIN_EXPONENT} and {@link Double#MAX_EXPONENT}, the
-     * answer is calculated exactly.  If the exponent of the result
-     * would be larger than {@code Double.MAX_EXPONENT}, an
-     * infinity is returned.  Note that if the result is subnormal,
-     * precision may be lost; that is, when {@code scalb(x, n)}
-     * is subnormal, {@code scalb(scalb(x, n), -n)} may not equal
-     * <i>x</i>.  When the result is non-NaN, the result has the same
-     * sign as {@code d}.
+     * Returns {@code d} &times; 2<sup>{@code scaleFactor}</sup>
+     * rounded as if performed by a single correctly rounded
+     * floating-point multiply.  If the exponent of the result is
+     * between {@link Double#MIN_EXPONENT} and {@link
+     * Double#MAX_EXPONENT}, the answer is calculated exactly.  If the
+     * exponent of the result would be larger than {@code
+     * Double.MAX_EXPONENT}, an infinity is returned.  Note that if
+     * the result is subnormal, precision may be lost; that is, when
+     * {@code scalb(x, n)} is subnormal, {@code scalb(scalb(x, n),
+     * -n)} may not equal <i>x</i>.  When the result is non-NaN, the
+     * result has the same sign as {@code d}.
      *
      * <p>Special cases:
      * <ul>
@@ -2006,20 +2078,17 @@ public final class StrictMath {
     }
 
     /**
-     * Returns {@code f} &times;
-     * 2<sup>{@code scaleFactor}</sup> rounded as if performed
-     * by a single correctly rounded floating-point multiply to a
-     * member of the float value set.  See the Java
-     * Language Specification for a discussion of floating-point
-     * value sets.  If the exponent of the result is between {@link
-     * Float#MIN_EXPONENT} and {@link Float#MAX_EXPONENT}, the
-     * answer is calculated exactly.  If the exponent of the result
-     * would be larger than {@code Float.MAX_EXPONENT}, an
-     * infinity is returned.  Note that if the result is subnormal,
-     * precision may be lost; that is, when {@code scalb(x, n)}
-     * is subnormal, {@code scalb(scalb(x, n), -n)} may not equal
-     * <i>x</i>.  When the result is non-NaN, the result has the same
-     * sign as {@code f}.
+     * Returns {@code f} &times; 2<sup>{@code scaleFactor}</sup>
+     * rounded as if performed by a single correctly rounded
+     * floating-point multiply.  If the exponent of the result is
+     * between {@link Float#MIN_EXPONENT} and {@link
+     * Float#MAX_EXPONENT}, the answer is calculated exactly.  If the
+     * exponent of the result would be larger than {@code
+     * Float.MAX_EXPONENT}, an infinity is returned.  Note that if the
+     * result is subnormal, precision may be lost; that is, when
+     * {@code scalb(x, n)} is subnormal, {@code scalb(scalb(x, n),
+     * -n)} may not equal <i>x</i>.  When the result is non-NaN, the
+     * result has the same sign as {@code f}.
      *
      * <p>Special cases:
      * <ul>

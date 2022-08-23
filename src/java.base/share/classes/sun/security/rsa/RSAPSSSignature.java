@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,8 +45,8 @@ import sun.security.jca.JCAUtil;
  * PKCS#1 v2.2 RSASSA-PSS signatures with various message digest algorithms.
  * RSASSA-PSS implementation takes the message digest algorithm, MGF algorithm,
  * and salt length values through the required signature PSS parameters.
- * We support SHA-1, SHA-224, SHA-256, SHA-384, SHA-512, SHA-512/224, and
- * SHA-512/256 message digest algorithms and MGF1 mask generation function.
+ * We support SHA-1, SHA-2 family and SHA3 family of message digest algorithms,
+ * and MGF1 mask generation function.
  *
  * @since   11
  */
@@ -81,24 +81,20 @@ public class RSAPSSSignature extends SignatureSpi {
 
     private static final byte[] EIGHT_BYTES_OF_ZEROS = new byte[8];
 
-    private static final Hashtable<String, Integer> DIGEST_LENGTHS =
-        new Hashtable<String, Integer>();
+    private static final Hashtable<KnownOIDs, Integer> DIGEST_LENGTHS =
+        new Hashtable<KnownOIDs, Integer>();
     static {
-        DIGEST_LENGTHS.put("SHA-1", 20);
-        DIGEST_LENGTHS.put("SHA", 20);
-        DIGEST_LENGTHS.put("SHA1", 20);
-        DIGEST_LENGTHS.put("SHA-224", 28);
-        DIGEST_LENGTHS.put("SHA224", 28);
-        DIGEST_LENGTHS.put("SHA-256", 32);
-        DIGEST_LENGTHS.put("SHA256", 32);
-        DIGEST_LENGTHS.put("SHA-384", 48);
-        DIGEST_LENGTHS.put("SHA384", 48);
-        DIGEST_LENGTHS.put("SHA-512", 64);
-        DIGEST_LENGTHS.put("SHA512", 64);
-        DIGEST_LENGTHS.put("SHA-512/224", 28);
-        DIGEST_LENGTHS.put("SHA512/224", 28);
-        DIGEST_LENGTHS.put("SHA-512/256", 32);
-        DIGEST_LENGTHS.put("SHA512/256", 32);
+        DIGEST_LENGTHS.put(KnownOIDs.SHA_1, 20);
+        DIGEST_LENGTHS.put(KnownOIDs.SHA_224, 28);
+        DIGEST_LENGTHS.put(KnownOIDs.SHA_256, 32);
+        DIGEST_LENGTHS.put(KnownOIDs.SHA_384, 48);
+        DIGEST_LENGTHS.put(KnownOIDs.SHA_512, 64);
+        DIGEST_LENGTHS.put(KnownOIDs.SHA_512$224, 28);
+        DIGEST_LENGTHS.put(KnownOIDs.SHA_512$256, 32);
+        DIGEST_LENGTHS.put(KnownOIDs.SHA3_224, 28);
+        DIGEST_LENGTHS.put(KnownOIDs.SHA3_256, 32);
+        DIGEST_LENGTHS.put(KnownOIDs.SHA3_384, 48);
+        DIGEST_LENGTHS.put(KnownOIDs.SHA3_512, 64);
     }
 
     // message digest implementation we use for hashing the data
@@ -127,12 +123,14 @@ public class RSAPSSSignature extends SignatureSpi {
     @Override
     protected void engineInitVerify(PublicKey publicKey)
             throws InvalidKeyException {
-        if (!(publicKey instanceof RSAPublicKey)) {
+        if (publicKey instanceof RSAPublicKey rsaPubKey) {
+            isPublicKeyValid(rsaPubKey);
+            this.pubKey = rsaPubKey;
+            this.privKey = null;
+            resetDigest();
+        } else {
             throw new InvalidKeyException("key must be RSAPublicKey");
         }
-        this.pubKey = (RSAPublicKey) isValid((RSAKey)publicKey);
-        this.privKey = null;
-        resetDigest();
     }
 
     // initialize for signing. See JCA doc
@@ -146,14 +144,16 @@ public class RSAPSSSignature extends SignatureSpi {
     @Override
     protected void engineInitSign(PrivateKey privateKey, SecureRandom random)
             throws InvalidKeyException {
-        if (!(privateKey instanceof RSAPrivateKey)) {
+        if (privateKey instanceof RSAPrivateKey rsaPrivateKey) {
+            isPrivateKeyValid(rsaPrivateKey);
+            this.privKey = rsaPrivateKey;
+            this.pubKey = null;
+            this.random =
+                    (random == null ? JCAUtil.getSecureRandom() : random);
+            resetDigest();
+        } else {
             throw new InvalidKeyException("key must be RSAPrivateKey");
         }
-        this.privKey = (RSAPrivateKey) isValid((RSAKey)privateKey);
-        this.pubKey = null;
-        this.random =
-            (random == null? JCAUtil.getSecureRandom() : random);
-        resetDigest();
     }
 
     /**
@@ -206,30 +206,80 @@ public class RSAPSSSignature extends SignatureSpi {
     }
 
     /**
+     * Validate the specified RSAPrivateKey
+     */
+    private void isPrivateKeyValid(RSAPrivateKey prKey)  throws InvalidKeyException {
+        try {
+            if (prKey instanceof RSAPrivateCrtKey crtKey) {
+                if (RSAPrivateCrtKeyImpl.checkComponents(crtKey)) {
+                    RSAKeyFactory.checkRSAProviderKeyLengths(
+                            crtKey.getModulus().bitLength(),
+                            crtKey.getPublicExponent());
+                } else {
+                    throw new InvalidKeyException(
+                            "Some of the CRT-specific components are not available");
+                }
+            } else {
+                RSAKeyFactory.checkRSAProviderKeyLengths(
+                        prKey.getModulus().bitLength(),
+                        null);
+            }
+        } catch (InvalidKeyException ikEx) {
+            throw ikEx;
+        } catch (Exception e) {
+            throw new InvalidKeyException(
+                    "Can not access private key components", e);
+        }
+        isValid(prKey);
+    }
+
+    /**
+     * Validate the specified RSAPublicKey
+     */
+    private void isPublicKeyValid(RSAPublicKey pKey)  throws InvalidKeyException {
+        try {
+            RSAKeyFactory.checkRSAProviderKeyLengths(
+                    pKey.getModulus().bitLength(),
+                    pKey.getPublicExponent());
+        } catch (InvalidKeyException ikEx) {
+            throw ikEx;
+        } catch (Exception e) {
+            throw new InvalidKeyException(
+                    "Can not access public key components", e);
+        }
+        isValid(pKey);
+    }
+
+    /**
      * Validate the specified RSAKey and its associated parameters against
      * internal signature parameters.
      */
-    private RSAKey isValid(RSAKey rsaKey) throws InvalidKeyException {
-        try {
-            AlgorithmParameterSpec keyParams = rsaKey.getParams();
-            // validate key parameters
-            if (!isCompatible(rsaKey.getParams(), this.sigParams)) {
-                throw new InvalidKeyException
-                    ("Key contains incompatible PSS parameter values");
-            }
-            // validate key length
-            if (this.sigParams != null) {
-                Integer hLen =
-                    DIGEST_LENGTHS.get(this.sigParams.getDigestAlgorithm());
-                if (hLen == null) {
-                    throw new ProviderException("Unsupported digest algo: " +
-                        this.sigParams.getDigestAlgorithm());
+    private void isValid(RSAKey rsaKey) throws InvalidKeyException {
+        AlgorithmParameterSpec keyParams = rsaKey.getParams();
+        // validate key parameters
+        if (!isCompatible(rsaKey.getParams(), this.sigParams)) {
+            throw new InvalidKeyException
+                ("Key contains incompatible PSS parameter values");
+        }
+        // validate key length
+        if (this.sigParams != null) {
+            String digestAlgo = this.sigParams.getDigestAlgorithm();
+            KnownOIDs ko = KnownOIDs.findMatch(digestAlgo);
+            if (ko != null) {
+                Integer hLen = DIGEST_LENGTHS.get(ko);
+                if (hLen != null) {
+                    checkKeyLength(rsaKey, hLen,
+                            this.sigParams.getSaltLength());
+                } else {
+                    // should never happen; checked in validateSigParams()
+                    throw new ProviderException
+                            ("Unsupported digest algo: " + digestAlgo);
                 }
-                checkKeyLength(rsaKey, hLen, this.sigParams.getSaltLength());
+            } else {
+                // should never happen; checked in validateSigParams()
+                throw new ProviderException
+                        ("Unrecognized digest algo: " + digestAlgo);
             }
-            return rsaKey;
-        } catch (SignatureException e) {
-            throw new InvalidKeyException(e);
         }
     }
 
@@ -268,14 +318,26 @@ public class RSAPSSSignature extends SignatureSpi {
                 ("Only supports TrailerFieldBC(1)");
 
         }
-        String digestAlgo = params.getDigestAlgorithm();
+
         // check key length again
         if (key != null) {
-            try {
-                int hLen = DIGEST_LENGTHS.get(digestAlgo);
-                checkKeyLength(key, hLen, params.getSaltLength());
-            } catch (SignatureException e) {
-                throw new InvalidAlgorithmParameterException(e);
+            String digestAlgo = params.getDigestAlgorithm();
+            KnownOIDs ko = KnownOIDs.findMatch(digestAlgo);
+            if (ko != null) {
+                Integer hLen = DIGEST_LENGTHS.get(ko);
+                if (hLen != null) {
+                    try {
+                        checkKeyLength(key, hLen, params.getSaltLength());
+                    } catch (InvalidKeyException e) {
+                        throw new InvalidAlgorithmParameterException(e);
+                    }
+                } else {
+                    throw new InvalidAlgorithmParameterException
+                            ("Unsupported digest algo: " + digestAlgo);
+                }
+            } else {
+                throw new InvalidAlgorithmParameterException
+                        ("Unrecognized digest algo: " + digestAlgo);
             }
         }
         return params;
@@ -302,13 +364,13 @@ public class RSAPSSSignature extends SignatureSpi {
      * salt length
      */
     private static void checkKeyLength(RSAKey key, int digestLen,
-            int saltLen) throws SignatureException {
+            int saltLen) throws InvalidKeyException {
         if (key != null) {
-            int keyLength = getKeyLengthInBits(key) >> 3;
+            int keyLength = (getKeyLengthInBits(key) + 7) >> 3;
             int minLength = Math.addExact(Math.addExact(digestLen, saltLen), 2);
             if (keyLength < minLength) {
-                throw new SignatureException
-                    ("Key is too short, need min " + minLength);
+                throw new InvalidKeyException
+                    ("Key is too short, need min " + minLength + " bytes");
             }
         }
     }
@@ -354,7 +416,7 @@ public class RSAPSSSignature extends SignatureSpi {
         try {
             ensureInit();
         } catch (SignatureException se) {
-            // hack for working around API bug
+            // workaround for API bug
             throw new RuntimeException(se.getMessage());
         }
         this.md.update(b);
@@ -429,7 +491,7 @@ public class RSAPSSSignature extends SignatureSpi {
         }
         try {
             int emBits = getKeyLengthInBits(this.privKey) - 1;
-            int emLen =(emBits + 7) >> 3;
+            int emLen = (emBits + 7) >> 3;
             int hLen = this.md.getDigestLength();
             int dbLen = emLen - hLen - 1;
             int sLen = this.sigParams.getSaltLength();
@@ -472,6 +534,7 @@ public class RSAPSSSignature extends SignatureSpi {
             // step11: set the leftmost (8emLen - emBits) bits of the leftmost
             // octet to 0
             int numZeroBits = (emLen << 3) - emBits;
+
             if (numZeroBits != 0) {
                 byte MASK = (byte) (0xff >>> numZeroBits);
                 em[0] = (byte) (em[0] & MASK);
@@ -485,15 +548,22 @@ public class RSAPSSSignature extends SignatureSpi {
     }
 
     /**
-     * Decode the signature data. Verify that the object identifier matches
-     * and return the message digest.
+     * Decode the signature data as under RFC8017 sec9.1.2 EMSA-PSS-VERIFY
      */
     private boolean decodeSignature(byte[] mHash, byte[] em)
             throws IOException {
         int hLen = mHash.length;
         int sLen = this.sigParams.getSaltLength();
-        int emLen = em.length;
         int emBits = getKeyLengthInBits(this.pubKey) - 1;
+        int emLen = (emBits + 7) >> 3;
+
+        // When key length is 8N+1 bits (N+1 bytes), emBits = 8N,
+        // emLen = N which is one byte shorter than em.length.
+        // Otherwise, emLen should be same as em.length
+        int emOfs = em.length - emLen;
+        if ((emOfs == 1) && (em[0] != 0)) {
+            return false;
+        }
 
         // step3
         if (emLen < (hLen + sLen + 2)) {
@@ -501,16 +571,17 @@ public class RSAPSSSignature extends SignatureSpi {
         }
 
         // step4
-        if (em[emLen - 1] != (byte) 0xBC) {
+        if (em[emOfs + emLen - 1] != (byte) 0xBC) {
             return false;
         }
 
         // step6: check if the leftmost (8emLen - emBits) bits of the leftmost
         // octet are 0
         int numZeroBits = (emLen << 3) - emBits;
+
         if (numZeroBits != 0) {
             byte MASK = (byte) (0xff << (8 - numZeroBits));
-            if ((em[0] & MASK) != 0) {
+            if ((em[emOfs] & MASK) != 0) {
                 return false;
             }
         }
@@ -526,7 +597,8 @@ public class RSAPSSSignature extends SignatureSpi {
         int dbLen = emLen - hLen - 1;
         try {
             MGF1 mgf1 = new MGF1(mgfDigestAlgo);
-            mgf1.generateAndXor(em, dbLen, hLen, dbLen, em, 0);
+            mgf1.generateAndXor(em, emOfs + dbLen, hLen, dbLen,
+                    em, emOfs);
         } catch (NoSuchAlgorithmException nsae) {
             throw new IOException(nsae.toString());
         }
@@ -535,12 +607,12 @@ public class RSAPSSSignature extends SignatureSpi {
         //  octet to 0
         if (numZeroBits != 0) {
             byte MASK = (byte) (0xff >>> numZeroBits);
-            em[0] = (byte) (em[0] & MASK);
+            em[emOfs] = (byte) (em[emOfs] & MASK);
         }
 
         // step10
-        int i = 0;
-        for (; i < dbLen - sLen - 1; i++) {
+        int i = emOfs;
+        for (; i < emOfs + (dbLen - sLen - 1); i++) {
             if (em[i] != 0) {
                 return false;
             }
@@ -553,13 +625,14 @@ public class RSAPSSSignature extends SignatureSpi {
         digestReset = false;
         this.md.update(mHash);
         if (sLen > 0) {
-            this.md.update(em, (dbLen - sLen), sLen);
+            this.md.update(em, emOfs + (dbLen - sLen), sLen);
         }
         byte[] digest2 = this.md.digest();
         digestReset = true;
 
         // step14
-        byte[] digestInEM = Arrays.copyOfRange(em, dbLen, emLen - 1);
+        byte[] digestInEM = Arrays.copyOfRange(em, emOfs + dbLen,
+                emOfs + emLen - 1);
         return MessageDigest.isEqual(digest2, digestInEM);
     }
 

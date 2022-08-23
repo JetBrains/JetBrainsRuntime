@@ -55,7 +55,9 @@ public class XBaseWindow {
         VISIBLE = "visible", // whether it is visible by default
         SAVE_UNDER = "save under", // save content under this window
         BACKING_STORE = "backing store", // enables double buffering
-        BIT_GRAVITY = "bit gravity"; // copy old content on geometry change
+        BIT_GRAVITY = "bit gravity", // copy old content on geometry change
+        XI_EVENT_MASK = "xi event mask", // xi event mask, Long
+        XI_DEVICE_ID = "xi device id"; // xi device id, Integer
     private XCreateWindowParams delayedParams;
 
     Set<Long> children = new HashSet<Long>();
@@ -76,6 +78,8 @@ public class XBaseWindow {
     static final int DEF_LOCATION = 1;
 
     private static XAtom wm_client_leader;
+
+    private static long globalUserTime;
 
     static enum InitialiseState {
         INITIALISING,
@@ -394,6 +398,19 @@ public class XBaseWindow {
                     throw new IllegalStateException("Couldn't create window because of wrong parameters. Run with NOISY_AWT to see details");
                 }
                 XToolkit.addToWinMap(window, this);
+
+                Long xiEventMask = (Long) params.get(XI_EVENT_MASK);
+                if (xiEventMask != null && XToolkit.isXInputEnabled()) {
+                    Integer xiDeviceId = (Integer) params.get(XI_DEVICE_ID);
+                    if (xiDeviceId == null) {
+                        xiDeviceId = XConstants.XIAllDevices;
+                    }
+
+                    int status = XToolkit.XISelectEvents(XToolkit.getDisplay(), window, xiEventMask, xiDeviceId);
+                    if (status != XConstants.Success) {
+                        throw new IllegalStateException("Couldn't select XI events. Status: " + status);
+                    }
+                }
             } finally {
                 xattr.dispose();
             }
@@ -625,9 +642,10 @@ public class XBaseWindow {
         XToolkit.awtLock();
         try {
             if (focusLog.isLoggable(PlatformLogger.Level.FINER)) {
-                focusLog.finer("XSetInputFocus on " + Long.toHexString(getWindow()));
+                focusLog.finer("XSetInputFocus on " + Long.toHexString(getWindow())
+                        + " with global time " + globalUserTime);
             }
-             XlibWrapper.XSetInputFocus(XToolkit.getDisplay(), getWindow());
+             XlibWrapper.XSetInputFocus2(XToolkit.getDisplay(), getWindow(), globalUserTime);
         } finally {
             XToolkit.awtUnlock();
         }
@@ -650,6 +668,7 @@ public class XBaseWindow {
         try {
             this.visible = visible;
             if (visible) {
+                setUserTimeBeforeShowing();
                 XlibWrapper.XMapWindow(XToolkit.getDisplay(), getWindow());
             }
             else {
@@ -1009,6 +1028,7 @@ public class XBaseWindow {
     public void handleVisibilityEvent(XEvent xev) {
     }
     public void handleKeyPress(XEvent xev) {
+        setUserTime(xev.get_xkey().get_time(), true);
     }
     public void handleKeyRelease(XEvent xev) {
     }
@@ -1033,12 +1053,15 @@ public class XBaseWindow {
         buttonState = xbe.get_state() & XConstants.ALL_BUTTONS_MASK;
 
         boolean isWheel = (theButton == XConstants.MouseWheelUp ||
-                           theButton == XConstants.MouseWheelDown);
+                           theButton == XConstants.MouseWheelDown ||
+                           theButton == XConstants.ScrollLeft ||
+                           theButton == XConstants.ScrollRight);
 
         // don't give focus if it's just the mouse wheel turning
         if (!isWheel) {
             switch (xev.get_type()) {
                 case XConstants.ButtonPress:
+                    setUserTime(xbe.get_time(), true);
                     if (buttonState == 0) {
                         XWindowPeer parent = getToplevelXWindow();
                         // See 6385277, 6981400.
@@ -1073,6 +1096,10 @@ public class XBaseWindow {
         width = scaleDown(xe.get_width());
         height = scaleDown(xe.get_height());
     }
+
+    public void handleTouchEvent(XEvent xev) {
+    }
+
     /**
      * Checks ButtonRelease released all Mouse buttons
      */
@@ -1112,6 +1139,12 @@ public class XBaseWindow {
         if (target == null || !isGrabbedEvent(ev, target)) {
             target = XToolkit.windowToXWindow(ev.get_xany().get_window());
         }
+
+        if (target == null && ev.get_type() == XConstants.GenericEvent &&
+                XlibWrapper.XGetEventData(ev.get_xgeneric().get_display(), ev.pData)) {
+            target = XToolkit.windowToXWindow(XToolkit.GetXIDeviceEvent(ev.get_xcookie()).get_event());
+        }
+
         if (target != null && target.checkInitialised()) {
             target.dispatchEvent(ev);
         }
@@ -1177,6 +1210,17 @@ public class XBaseWindow {
               break;
           case XConstants.CreateNotify:
               handleCreateNotify(xev);
+              break;
+          case XConstants.GenericEvent:
+              switch (xev.get_xgeneric().get_evtype()) {
+                  case XConstants.XI_TouchBegin:
+                  case XConstants.XI_TouchUpdate:
+                  case XConstants.XI_TouchEnd:
+                      handleTouchEvent(xev);
+                      break;
+                  default:
+                      break;
+              }
               break;
         }
     }
@@ -1256,4 +1300,46 @@ public class XBaseWindow {
         return x >= getAbsoluteX() && y >= getAbsoluteY() && x < (getAbsoluteX()+getWidth()) && y < (getAbsoluteY()+getHeight());
     }
 
+    void setUserTimeBeforeShowing() {
+        if (globalUserTime != 0) setUserTime(globalUserTime, false);
+    }
+
+    protected void setUserTime(long time, boolean updateGlobalTime) {
+        setUserTime(time, updateGlobalTime, true);
+    }
+
+    protected void setUserTime(long time, boolean updateGlobalTime, boolean updateWindowProperty) {
+        if (updateGlobalTime && (int)time - (int)globalUserTime > 0 /* accounting for wrap-around */) {
+            globalUserTime = time;
+        }
+        if (updateWindowProperty) {
+            XNETProtocol netProtocol = XWM.getWM().getNETProtocol();
+            if (netProtocol != null) {
+                netProtocol.setUserTime(this, time);
+            }
+        }
+    }
+
+    static {
+        String desktopStartupId = XToolkit.getDesktopStartupId();
+        if (desktopStartupId != null) {
+            int timePos = desktopStartupId.indexOf("_TIME");
+            if (timePos < 0) {
+                log.fine("Couldn't find startup time in DESKTOP_STARTUP_ID: " + desktopStartupId);
+            } else {
+                try {
+                    globalUserTime = Long.parseLong(desktopStartupId.substring(timePos + 5));
+                    if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                        log.fine("Extracted startup time from DESKTOP_STARTUP_ID: " + globalUserTime);
+                    }
+                }
+                catch (NumberFormatException e) {
+                    log.fine("Couldn't parse startup time in DESKTOP_STARTUP_ID: " + desktopStartupId);
+                }
+            }
+        }
+        else {
+            log.fine("No DESKTOP_STARTUP_ID");
+        }
+    }
 }

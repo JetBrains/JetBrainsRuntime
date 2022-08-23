@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package sun.jvm.hotspot;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -74,11 +75,14 @@ import sun.jvm.hotspot.runtime.JavaVFrame;
 import sun.jvm.hotspot.runtime.Threads;
 import sun.jvm.hotspot.runtime.VM;
 import sun.jvm.hotspot.tools.ObjectHistogram;
+import sun.jvm.hotspot.tools.JMap;
 import sun.jvm.hotspot.tools.PMap;
 import sun.jvm.hotspot.tools.PStack;
 import sun.jvm.hotspot.tools.StackTrace;
+import sun.jvm.hotspot.tools.SysPropsDumper;
 import sun.jvm.hotspot.tools.jcore.ClassDump;
 import sun.jvm.hotspot.tools.jcore.ClassFilter;
+import sun.jvm.hotspot.tools.jcore.ClassWriter;
 import sun.jvm.hotspot.types.CIntegerType;
 import sun.jvm.hotspot.types.Field;
 import sun.jvm.hotspot.types.Type;
@@ -100,9 +104,6 @@ import sun.jvm.hotspot.utilities.ReversePtrs;
 import sun.jvm.hotspot.utilities.ReversePtrsAnalysis;
 import sun.jvm.hotspot.utilities.RobustOopDeterminator;
 import sun.jvm.hotspot.utilities.SystemDictionaryHelper;
-import sun.jvm.hotspot.utilities.soql.JSJavaFactory;
-import sun.jvm.hotspot.utilities.soql.JSJavaFactoryImpl;
-import sun.jvm.hotspot.utilities.soql.JSJavaScriptEngine;
 
 public class CommandProcessor {
 
@@ -111,8 +112,9 @@ public class CommandProcessor {
     public abstract static class DebuggerInterface {
         public abstract HotSpotAgent getAgent();
         public abstract boolean isAttached();
-        public abstract void attach(String pid);
+        public abstract void attach(int pid);
         public abstract void attach(String java, String core);
+        public abstract void attach(String debugServerName);
         public abstract void detach();
         public abstract void reattach();
     }
@@ -124,7 +126,7 @@ public class CommandProcessor {
     }
 
     public static class NonBootFilter implements ClassFilter {
-        private HashMap emitted = new HashMap();
+        private HashMap<Symbol, InstanceKlass> emitted = new HashMap<>();
         public boolean canInclude(InstanceKlass kls) {
             if (kls.getClassLoader() == null) return false;
             if (emitted.get(kls.getName()) != null) {
@@ -152,7 +154,7 @@ public class CommandProcessor {
             return t;
         }
 
-        void add(String s, ArrayList t) {
+        void add(String s, ArrayList<String> t) {
             if (s.length() > 0) {
                 t.add(s);
             }
@@ -160,10 +162,9 @@ public class CommandProcessor {
 
         Tokens(String cmd) {
             input = cmd;
-
             // check for quoting
             int quote = cmd.indexOf('"');
-            ArrayList t = new ArrayList();
+            ArrayList<String> t = new ArrayList<>();
             if (quote != -1) {
                 while (cmd.length() > 0) {
                     if (quote != -1) {
@@ -224,7 +225,7 @@ public class CommandProcessor {
             }
         }
         String join(String sep) {
-            StringBuffer result = new StringBuffer();
+            StringBuilder result = new StringBuilder();
             for (int w = i; w < length; w++) {
                 result.append(tokens[w]);
                 if (w + 1 < length) {
@@ -264,34 +265,12 @@ public class CommandProcessor {
             out.println("Usage: " + usage);
         }
 
-        void printOopValue(Oop oop) {
-            if (oop != null) {
-                Klass k = oop.getKlass();
-                Symbol s = k.getName();
-                if (s != null) {
-                    out.print("Oop for " + s.asString() + " @ ");
-                } else {
-                    out.print("Oop @ ");
-                }
-                Oop.printOopAddressOn(oop, out);
-            } else {
-                out.print("null");
-            }
-        }
-
         void printNode(SimpleTreeNode node) {
             int count = node.getChildCount();
             for (int i = 0; i < count; i++) {
                 try {
                     SimpleTreeNode field = node.getChild(i);
-                    if (field instanceof OopTreeNodeAdapter) {
-                        out.print(field);
-                        out.print(" ");
-                        printOopValue(((OopTreeNodeAdapter)field).getOop());
-                        out.println();
-                    } else {
-                        out.println(field);
-                    }
+                    out.println(field);
                 } catch (Exception e) {
                     out.println();
                     out.println("Error: " + e);
@@ -369,7 +348,7 @@ public class CommandProcessor {
     Address lookup(String symbol) {
         if (symbol.indexOf("::") != -1) {
             String[] parts = symbol.split("::");
-            StringBuffer mangled = new StringBuffer("__1c");
+            StringBuilder mangled = new StringBuilder("__1c");
             for (int i = 0; i < parts.length; i++) {
                 int len = parts[i].length();
                 if (len >= 26) {
@@ -402,12 +381,19 @@ public class CommandProcessor {
                 postAttach();
             }
         },
-        new Command("attach", "attach pid | exec core", true) {
+        new Command("attach", "attach pid | exec core | remote_server", true) {
             public void doit(Tokens t) {
                 int tokens = t.countTokens();
                 if (tokens == 1) {
                     preAttach();
-                    debugger.attach(t.nextToken());
+                    String arg = t.nextToken();
+                    try {
+                        // Attempt to attach as a PID
+                        debugger.attach(Integer.parseInt(arg));
+                    } catch (NumberFormatException e) {
+                        // Attempt to connect to remote debug server
+                        debugger.attach(arg);
+                    }
                     postAttach();
                 } else if (tokens == 2) {
                     preAttach();
@@ -606,6 +592,16 @@ public class CommandProcessor {
                 }
             }
         },
+        new Command("findsym", "findsym name", false) {
+            public void doit(Tokens t) {
+                if (t.countTokens() != 1) {
+                    usage();
+                } else {
+                    String result = VM.getVM().getDebugger().findSymbol(t.nextToken());
+                    out.println(result == null ? "Symbol not found" : result);
+                }
+            }
+        },
         new Command("findpc", "findpc address", false) {
             public void doit(Tokens t) {
                 if (t.countTokens() != 1) {
@@ -678,7 +674,7 @@ public class CommandProcessor {
                 } else if (tokens == 0) {
                     out.println("Available commands:");
                     Object[] keys = commands.keySet().toArray();
-                    Arrays.sort(keys, new Comparator() {
+                    Arrays.sort(keys, new Comparator<>() {
                              public int compare(Object o1, Object o2) {
                                  return o1.toString().compareTo(o2.toString());
                              }
@@ -891,7 +887,7 @@ public class CommandProcessor {
             }
         },
         new Command("dumpideal", "dumpideal { -a | id }", false) {
-            // Do a full dump of the nodes reachabile from root in each compiler thread.
+            // Do a full dump of the nodes reachable from root in each compiler thread.
             public void doit(Tokens t) {
                 if (t.countTokens() != 1) {
                     usage();
@@ -989,8 +985,8 @@ public class CommandProcessor {
                 // be read back.
                 Iterator i = agent.getTypeDataBase().getTypes();
                 // Make sure the types are emitted in an order than can be read back in
-                HashSet emitted = new HashSet();
-                Stack pending = new Stack();
+                HashSet<String> emitted = new HashSet<>();
+                Stack<Type> pending = new Stack<>();
                 while (i.hasNext()) {
                     Type n = (Type)i.next();
                     if (emitted.contains(n.getName())) {
@@ -1026,7 +1022,7 @@ public class CommandProcessor {
                         Oop oop = VM.getVM().getObjectHeap().newOop(handle);
                         node = new OopTreeNodeAdapter(oop, null);
 
-                        out.println("instance of " + node.getValue() + " @ " + a +
+                        out.println("instance of " + node.getValue() +
                                     " (size = " + oop.getObjectSize() + ")");
                     } else if (VM.getVM().getCodeCache().contains(a)) {
                         CodeBlob blob = VM.getVM().getCodeCache().findBlobUnsafe(a);
@@ -1114,7 +1110,7 @@ public class CommandProcessor {
         },
         new Command("pmap", "pmap", false) {
             public void doit(Tokens t) {
-                PMap pmap = new PMap();
+                PMap pmap = new PMap(debugger.getAgent());
                 pmap.run(out, debugger.getAgent().getDebugger());
             }
         },
@@ -1124,7 +1120,7 @@ public class CommandProcessor {
                 if (t.countTokens() > 0 && t.nextToken().equals("-v")) {
                     verbose = true;
                 }
-                PStack pstack = new PStack(verbose, true);
+                PStack pstack = new PStack(verbose, true, debugger.getAgent());
                 pstack.run(out, debugger.getAgent().getDebugger());
             }
         },
@@ -1156,7 +1152,7 @@ public class CommandProcessor {
                                 (System.getProperty("sun.jvm.hotspot.runtime.VM.disableVersionCheck") == null));
                 } else if (t.countTokens() == 1) {
                     if (Boolean.valueOf(t.nextToken()).booleanValue()) {
-                        System.setProperty("sun.jvm.hotspot.runtime.VM.disableVersionCheck", null);
+                        System.clearProperty("sun.jvm.hotspot.runtime.VM.disableVersionCheck");
                     } else {
                         System.setProperty("sun.jvm.hotspot.runtime.VM.disableVersionCheck", "true");
                     }
@@ -1201,7 +1197,7 @@ public class CommandProcessor {
                 }
             }
         },
-        new Command("intConstant", "intConstant [ name [ value ] ]", true) {
+        new Command("intConstant", "intConstant [ name [ value ] ]", false) {
             public void doit(Tokens t) {
                 if (t.countTokens() != 1 && t.countTokens() != 0 && t.countTokens() != 2) {
                     usage();
@@ -1224,7 +1220,7 @@ public class CommandProcessor {
                 }
             }
         },
-        new Command("longConstant", "longConstant [ name [ value ] ]", true) {
+        new Command("longConstant", "longConstant [ name [ value ] ]", false) {
             public void doit(Tokens t) {
                 if (t.countTokens() != 1 && t.countTokens() != 0 && t.countTokens() != 2) {
                     usage();
@@ -1247,7 +1243,7 @@ public class CommandProcessor {
                 }
             }
         },
-        new Command("field", "field [ type [ name fieldtype isStatic offset address ] ]", true) {
+        new Command("field", "field [ type [ name fieldtype isStatic offset address ] ]", false) {
             public void doit(Tokens t) {
                 if (t.countTokens() != 1 && t.countTokens() != 0 && t.countTokens() != 6) {
                     usage();
@@ -1319,7 +1315,7 @@ public class CommandProcessor {
                 }
             }
         },
-        new Command("type", "type [ type [ name super isOop isInteger isUnsigned size ] ]", true) {
+        new Command("type", "type [ type [ name super isOop isInteger isUnsigned size ] ]", false) {
             public void doit(Tokens t) {
                 if (t.countTokens() != 1 && t.countTokens() != 0 && t.countTokens() != 6) {
                     usage();
@@ -1385,8 +1381,8 @@ public class CommandProcessor {
                 } else {
                     Iterator i = agent.getTypeDataBase().getTypes();
                     // Make sure the types are emitted in an order than can be read back in
-                    HashSet emitted = new HashSet();
-                    Stack pending = new Stack();
+                    HashSet<String> emitted = new HashSet<>();
+                    Stack<Type> pending = new Stack<>();
                     while (i.hasNext()) {
                         Type n = (Type)i.next();
                         if (emitted.contains(n.getName())) {
@@ -1636,7 +1632,7 @@ public class CommandProcessor {
                 if (t.countTokens() != 0) {
                     usage();
                 } else {
-                    ArrayList nmethods = new ArrayList();
+                    ArrayList<NMethod> nmethods = new ArrayList<>();
                     Threads threads = VM.getVM().getThreads();
                     HTMLGenerator gen = new HTMLGenerator(false);
                     for (int i = 0; i < threads.getNumberOfThreads(); i++) {
@@ -1702,11 +1698,169 @@ public class CommandProcessor {
                 }
             }
         },
+        new Command("dumpclass", "dumpclass {address | name} [directory]", false) {
+            public void doit(Tokens t) {
+                int tokenCount = t.countTokens();
+                if (tokenCount != 1 && tokenCount != 2) {
+                    usage();
+                    return;
+                }
+
+                /* Find the InstanceKlass for specified class name or class address. */
+                InstanceKlass ik = null;
+                String classname = t.nextToken();
+                if (classname.startsWith("0x")) {
+                    // treat it as address
+                    VM vm = VM.getVM();
+                    Address addr = vm.getDebugger().parseAddress(classname);
+                    Metadata metadata = Metadata.instantiateWrapperFor(addr.addOffsetTo(0));
+                    if (metadata instanceof InstanceKlass) {
+                        ik = (InstanceKlass) metadata;
+                    } else {
+                        out.println("Specified address is not an InstanceKlass");
+                        return;
+                    }
+                } else {
+                    ik = SystemDictionaryHelper.findInstanceKlass(classname);
+                    if (ik == null) {
+                        out.println("class not found: " + classname);
+                        return;
+                    }
+                }
+
+                /* Compute filename for class. */
+                StringBuilder buf = new StringBuilder();
+                if (tokenCount > 1) {
+                    buf.append(t.nextToken());
+                } else {
+                    buf.append('.');
+                }
+                buf.append(File.separatorChar);
+                buf.append(ik.getName().asString().replace('/', File.separatorChar));
+                buf.append(".class");
+                String fileName = buf.toString();
+                File file = new File(fileName);
+
+                /* Dump the class file. */
+                try {
+                    int index = fileName.lastIndexOf(File.separatorChar);
+                    File dir = new File(fileName.substring(0, index));
+                    dir.mkdirs();
+                    try (FileOutputStream fos = new FileOutputStream(file)) {
+                        ClassWriter cw = new ClassWriter(ik, fos);
+                        cw.write();
+                    }
+                } catch (Exception e) {
+                    err.println("Error: " + e);
+                    if (verboseExceptions) {
+                        e.printStackTrace(err);
+                    }
+                }
+            }
+        },
+        new Command("sysprops", "sysprops", false) {
+            public void doit(Tokens t) {
+                if (t.countTokens() != 0) {
+                    usage();
+                    return;
+                }
+                SysPropsDumper sysProps = new SysPropsDumper();
+                sysProps.run();
+            }
+        },
+        new Command("dumpheap", "dumpheap [gz=<1-9>] [filename]", false) {
+            public void doit(Tokens t) {
+                int cntTokens = t.countTokens();
+                if (cntTokens > 2) {
+                    err.println("More than 2 options specified: " + cntTokens);
+                    usage();
+                    return;
+                }
+                JMap jmap = new JMap();
+                String filename = "heap.bin";
+                int gzlevel = 0;
+                /*
+                 * Possible command:
+                 *     dumpheap gz=1 file;
+                 *     dumpheap gz=1;
+                 *     dumpheap file;
+                 *     dumpheap
+                 *
+                 * Use default filename if cntTokens == 0.
+                 * Handle cases with cntTokens == 1 or 2.
+                 */
+                if (cntTokens == 1) { // first argument could be filename or "gz="
+                    String option = t.nextToken();
+                    if (!option.startsWith("gz=")) {
+                        filename = option;
+                    } else {
+                        gzlevel = parseHeapDumpCompressionLevel(option);
+                        if (gzlevel == 0) {
+                            usage();
+                            return;
+                        }
+                        filename = "heap.bin.gz";
+                    }
+                }
+                if (cntTokens == 2) { // first argument is "gz=" followed by filename
+                    String option = t.nextToken();
+                    gzlevel = parseHeapDumpCompressionLevel(option);
+                    if (gzlevel == 0) {
+                        usage();
+                        return;
+                    }
+                    filename = t.nextToken();
+                    if (filename.startsWith("gz=")) {
+                        err.println("Filename should not start with \"gz=\": " + filename);
+                        usage();
+                        return;
+                    }
+                }
+                try {
+                    jmap.writeHeapHprofBin(filename, gzlevel);
+                } catch (Exception e) {
+                    err.println("Error: " + e);
+                    if (verboseExceptions) {
+                        e.printStackTrace(err);
+                    }
+                }
+            }
+        },
+        new Command("class", "class name", false) {
+            public void doit(Tokens t) {
+                if (t.countTokens() != 1) {
+                    usage();
+                    return;
+                }
+                String classname = t.nextToken();
+                InstanceKlass ik = SystemDictionaryHelper.findInstanceKlass(classname);
+                if (ik == null) {
+                    out.println("class not found: " + classname);
+                } else {
+                    out.println(ik.getName().asString() + " @" + ik.getAddress());
+                }
+            }
+        },
+        new Command("classes", "classes", false) {
+            public void doit(Tokens t) {
+                if (t.countTokens() != 0) {
+                    usage();
+                    return;
+                }
+                ClassLoaderDataGraph cldg = VM.getVM().getClassLoaderDataGraph();
+                cldg.classesDo(new ClassLoaderDataGraph.ClassVisitor() {
+                        public void visit(Klass k) {
+                            out.println(k.getName().asString() + " @" + k.getAddress());
+                        }
+                    }
+                );
+            }
+        },
     };
 
     private boolean verboseExceptions = false;
-    private ArrayList history = new ArrayList();
-    private HashMap commands = new HashMap();
+    private ArrayList<String> history = new ArrayList<>();
+    private HashMap<String, Command> commands = new HashMap<>();
     private boolean doEcho = false;
 
     private Command findCommand(String key) {
@@ -1719,7 +1873,6 @@ public class CommandProcessor {
 
     private DebuggerInterface debugger;
     private HotSpotAgent agent;
-    private JSJavaScriptEngine jsengine;
     private BufferedReader in;
     private PrintStream out;
     private PrintStream err;
@@ -1731,65 +1884,7 @@ public class CommandProcessor {
 
     // called after debuggee attach
     private void postAttach() {
-        /*
-         * JavaScript engine no longer works. For now disable it. Eventually we will remove it.
-        // create JavaScript engine and start it
-        try {
-            jsengine = new JSJavaScriptEngine() {
-                        private ObjectReader reader = new ObjectReader();
-                        private JSJavaFactory factory = new JSJavaFactoryImpl();
-                        public ObjectReader getObjectReader() {
-                            return reader;
-                        }
-                        public JSJavaFactory getJSJavaFactory() {
-                            return factory;
-                        }
-                        protected void quit() {
-                            debugger.detach();
-                            quit = true;
-                        }
-                        protected BufferedReader getInputReader() {
-                            return in;
-                        }
-                        protected PrintStream getOutputStream() {
-                            return out;
-                        }
-                        protected PrintStream getErrorStream() {
-                            return err;
-                        }
-                   };
-            try {
-                jsengine.defineFunction(this,
-                     this.getClass().getMethod("registerCommand",
-                                new Class[] {
-                                     String.class, String.class, String.class
-                                }));
-            } catch (NoSuchMethodException exp) {
-                  // should not happen, see below...!!
-                  exp.printStackTrace();
-            }
-            jsengine.start();
-        }
-        catch (Exception ex) {
-            System.out.println("Warning! JS Engine can't start, some commands will not be available.");
-            if (verboseExceptions) {
-                ex.printStackTrace(out);
-            }
-        }
-        */
-    }
-
-    public void registerCommand(String cmd, String usage, final String func) {
-        commands.put(cmd, new Command(cmd, usage, false) {
-                              public void doit(Tokens t) {
-                                  final int len = t.countTokens();
-                                  Object[] args = new Object[len];
-                                  for (int i = 0; i < len; i++) {
-                                      args[i] = t.nextToken();
-                                  }
-                                  jsengine.call(func, args);
-                              }
-                          });
+        // nothing for now..
     }
 
     public void setOutput(PrintStream o) {
@@ -1837,7 +1932,7 @@ public class CommandProcessor {
         }
     }
 
-    static Pattern historyPattern = Pattern.compile("((!\\*)|(!\\$)|(!!-?)|(!-?[0-9][0-9]*)|(![a-zA-Z][^ ]*))");
+    static Pattern historyPattern = Pattern.compile("([\\\\]?)((!\\*)|(!\\$)|(!!-?)|(!-?[0-9][0-9]*)|(![a-zA-Z][^ ]*))");
 
     public void executeCommand(String ln, boolean putInHistory) {
         if (ln.indexOf('!') != -1) {
@@ -1846,16 +1941,24 @@ public class CommandProcessor {
                 ln = "";
                 err.println("History is empty");
             } else {
-                StringBuffer result = new StringBuffer();
+                StringBuilder result = new StringBuilder();
                 Matcher m = historyPattern.matcher(ln);
                 int start = 0;
                 while (m.find()) {
+                    // Capture the text preceding the matched text.
                     if (m.start() > start) {
-                        result.append(ln.substring(start, m.start() - start));
+                        result.append(ln.substring(start, m.start()));
                     }
                     start = m.end();
 
-                    String cmd = m.group();
+                    if (m.group(1).length() != 0) {
+                        // This means we matched a `\` before the '!'. Don't do any history
+                        // expansion in this case. Just capture what matched after the `\`.
+                        result.append(m.group(2));
+                        continue;
+                    }
+
+                    String cmd = m.group(2);
                     if (cmd.equals("!!")) {
                         result.append((String)history.get(history.size() - 1));
                     } else if (cmd.equals("!!-")) {
@@ -1899,6 +2002,7 @@ public class CommandProcessor {
                                 String s = (String)history.get(i);
                                 if (s.startsWith(tail)) {
                                     result.append(s);
+                                    break; // only capture the most recent match in the history
                                 }
                             }
                         }
@@ -1991,5 +2095,35 @@ public class CommandProcessor {
                 }
             }
         }
+    }
+
+    /* Parse compression level
+     * @return   1-9    compression level
+     *           0      compression level is illegal
+     */
+    private int parseHeapDumpCompressionLevel(String option) {
+
+        String[] keyValue = option.split("=");
+        if (!keyValue[0].equals("gz")) {
+            err.println("Expected option is \"gz=\"");
+            return 0;
+        }
+        if (keyValue.length != 2) {
+            err.println("Exactly one argument is expected for option \"gz\"");
+            return 0;
+        }
+        int gzl = 0;
+        String level = keyValue[1];
+        try {
+            gzl = Integer.parseInt(level);
+        } catch (NumberFormatException e) {
+            err.println("gz option value not an integer ("+level+")");
+            return 0;
+        }
+        if (gzl < 1 || gzl > 9) {
+            err.println("Compression level out of range (1-9): " + level);
+            return 0;
+        }
+        return gzl;
     }
 }

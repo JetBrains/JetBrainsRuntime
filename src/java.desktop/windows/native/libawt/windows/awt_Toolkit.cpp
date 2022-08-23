@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,6 +54,8 @@
 #include "debug_trace.h"
 #include "debug_mem.h"
 
+#include "java_rc.h"
+
 #include "ComCtl32Util.h"
 #include "DllUtil.h"
 
@@ -69,7 +71,6 @@ extern void initScreens(JNIEnv *env);
 extern "C" void awt_dnd_initialize();
 extern "C" void awt_dnd_uninitialize();
 extern "C" void awt_clipboard_uninitialize(JNIEnv *env);
-extern "C" BOOL g_bUserHasChangedInputLang;
 
 extern CriticalSection windowMoveLock;
 extern BOOL windowMoveLockHeld;
@@ -138,6 +139,8 @@ extern "C" JNIEXPORT jboolean JNICALL AWTIsHeadless() {
 }
 
 #define IDT_AWT_MOUSECHECK 0x101
+
+AdjustWindowRectExForDpiFunc* AwtToolkit::lpAdjustWindowRectExForDpi = NULL;
 
 static LPCTSTR szAwtToolkitClassName = TEXT("SunAwtToolkit");
 
@@ -343,7 +346,9 @@ AwtToolkit::AwtToolkit() {
     ::GetKeyboardState(m_lastKeyboardState);
 
     m_waitEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
-    isInDoDragDropLoop = FALSE;
+    m_inputMethodWaitEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
+    isDnDSourceActive = FALSE;
+    isDnDTargetActive = FALSE;
     eventNumber = 0;
 }
 
@@ -668,6 +673,12 @@ BOOL AwtToolkit::Initialize(BOOL localPump) {
 
     awt_dnd_initialize();
 
+    HMODULE hLibUser32Dll = JDK_LoadSystemLibrary("User32.dll");
+    if (hLibUser32Dll != NULL) {
+        lpAdjustWindowRectExForDpi = (AdjustWindowRectExForDpiFunc*)GetProcAddress(hLibUser32Dll, "AdjustWindowRectExForDpi");
+        ::FreeLibrary(hLibUser32Dll);
+    }
+
     /*
      * Initialization of the touch keyboard related variables.
      */
@@ -777,6 +788,7 @@ BOOL AwtToolkit::Dispose() {
     delete tk.m_cmdIDs;
 
     ::CloseHandle(m_waitEvent);
+    ::CloseHandle(m_inputMethodWaitEvent);
 
     tk.m_isDisposed = TRUE;
 
@@ -1002,6 +1014,14 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
       }
 // Remove this define when we move to newer (XP) version of SDK.
 #define WM_THEMECHANGED                 0x031A
+
+#ifndef WM_DWMCOMPOSITIONCHANGED
+#define WM_DWMCOMPOSITIONCHANGED        0x031E
+#define WM_DWMNCRENDERINGCHANGED        0x031F
+#define WM_DWMCOLORIZATIONCOLORCHANGED  0x0320
+#define WM_DWMWINDOWMAXIMIZEDCHANGED    0x0321
+#endif // WM_DWMCOMPOSITIONCHANGED
+      case WM_DWMCOLORIZATIONCOLORCHANGED:
       case WM_THEMECHANGED: {
           /* Upcall to WToolkit when user changes configuration.
            *
@@ -1017,12 +1037,7 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
           }
           return 0;
       }
-#ifndef WM_DWMCOMPOSITIONCHANGED
-#define WM_DWMCOMPOSITIONCHANGED        0x031E
-#define WM_DWMNCRENDERINGCHANGED        0x031F
-#define WM_DWMCOLORIZATIONCOLORCHANGED  0x0320
-#define WM_DWMWINDOWMAXIMIZEDCHANGED    0x0321
-#endif // WM_DWMCOMPOSITIONCHANGED
+
       case WM_DWMCOMPOSITIONCHANGED: {
           DWMResetCompositionEnabled();
           return 0;
@@ -1065,12 +1080,8 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
               AwtClipboard::LostOwnership((JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2));
           return 0;
       }
-      case WM_CHANGECBCHAIN: {
-          AwtClipboard::WmChangeCbChain(wParam, lParam);
-          return 0;
-      }
-      case WM_DRAWCLIPBOARD: {
-          AwtClipboard::WmDrawClipboard((JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2), wParam, lParam);
+      case WM_CLIPBOARDUPDATE: {
+          AwtClipboard::WmClipboardUpdate((JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2));
           return 0;
       }
       case WM_AWT_LIST_SETMULTISELECT: {
@@ -1087,11 +1098,17 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
       // it returs with no error. (This restriction is not documented)
       // So we must use thse messages to call these APIs in main thread.
       case WM_AWT_CREATECONTEXT: {
-        return reinterpret_cast<LRESULT>(
+          AwtToolkit& tk = AwtToolkit::GetInstance();
+          tk.m_inputMethodData = reinterpret_cast<LRESULT>(
             reinterpret_cast<void*>(ImmCreateContext()));
+          ::SetEvent(tk.m_inputMethodWaitEvent);
+          return tk.m_inputMethodData;
       }
       case WM_AWT_DESTROYCONTEXT: {
           ImmDestroyContext((HIMC)wParam);
+          AwtToolkit& tk = AwtToolkit::GetInstance();
+          tk.m_inputMethodData = 0;
+          ::SetEvent(tk.m_inputMethodWaitEvent);
           return 0;
       }
       case WM_AWT_ASSOCIATECONTEXT: {
@@ -1117,17 +1134,21 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
           }
 
           delete data;
+          AwtToolkit& tk = AwtToolkit::GetInstance();
+          tk.m_inputMethodData = 0;
+          ::SetEvent(tk.m_inputMethodWaitEvent);
           return 0;
       }
       case WM_AWT_GET_DEFAULT_IME_HANDLER: {
           LRESULT ret = (LRESULT)FALSE;
           jobject peer = (jobject)wParam;
+          AwtToolkit& tk = AwtToolkit::GetInstance();
 
           AwtComponent* comp = (AwtComponent*)JNI_GET_PDATA(peer);
           if (comp != NULL) {
               HWND defaultIMEHandler = ImmGetDefaultIMEWnd(comp->GetHWnd());
               if (defaultIMEHandler != NULL) {
-                  AwtToolkit::GetInstance().SetInputMethodWindow(defaultIMEHandler);
+                  tk.SetInputMethodWindow(defaultIMEHandler);
                   ret = (LRESULT)TRUE;
               }
           }
@@ -1135,6 +1156,8 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
           if (peer != NULL) {
               env->DeleteGlobalRef(peer);
           }
+          tk.m_inputMethodData = ret;
+          ::SetEvent(tk.m_inputMethodWaitEvent);
           return ret;
       }
       case WM_AWT_HANDLE_NATIVE_IME_EVENT: {
@@ -1170,6 +1193,9 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
           Changed to commit it according to the flag 10/29/98*/
           ImmNotifyIME((HIMC)wParam, NI_COMPOSITIONSTR,
                        (lParam ? CPS_COMPLETE : CPS_CANCEL), 0);
+          AwtToolkit& tk = AwtToolkit::GetInstance();
+          tk.m_inputMethodData = 0;
+          ::SetEvent(tk.m_inputMethodWaitEvent);
           return 0;
       }
       case WM_AWT_SETCONVERSIONSTATUS: {
@@ -1177,23 +1203,21 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
           DWORD smode;
           ImmGetConversionStatus((HIMC)wParam, (LPDWORD)&cmode, (LPDWORD)&smode);
           ImmSetConversionStatus((HIMC)wParam, (DWORD)LOWORD(lParam), smode);
+          AwtToolkit& tk = AwtToolkit::GetInstance();
+          tk.m_inputMethodData = 0;
+          ::SetEvent(tk.m_inputMethodWaitEvent);
           return 0;
       }
       case WM_AWT_GETCONVERSIONSTATUS: {
           DWORD cmode;
           DWORD smode;
           ImmGetConversionStatus((HIMC)wParam, (LPDWORD)&cmode, (LPDWORD)&smode);
+          AwtToolkit& tk = AwtToolkit::GetInstance();
+          tk.m_inputMethodData = cmode;
+          ::SetEvent(tk.m_inputMethodWaitEvent);
           return cmode;
       }
       case WM_AWT_ACTIVATEKEYBOARDLAYOUT: {
-          if (wParam && g_bUserHasChangedInputLang) {
-              // Input language has been changed since the last WInputMethod.getNativeLocale()
-              // call.  So let's honor the user's selection.
-              // Note: we need to check this flag inside the toolkit thread to synchronize access
-              // to the flag.
-              return FALSE;
-          }
-
           if (lParam == (LPARAM)::GetKeyboardLayout(0)) {
               // already active
               return FALSE;
@@ -1217,6 +1241,9 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
           // instead of LOWORD and HIWORD
           p->OpenCandidateWindow(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
           env->DeleteGlobalRef(peerObject);
+          AwtToolkit& tk = AwtToolkit::GetInstance();
+          tk.m_inputMethodData = 0;
+          ::SetEvent(tk.m_inputMethodWaitEvent);
           return 0;
       }
 
@@ -1238,10 +1265,16 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
 
       case WM_AWT_SETOPENSTATUS: {
           ImmSetOpenStatus((HIMC)wParam, (BOOL)lParam);
+          AwtToolkit& tk = AwtToolkit::GetInstance();
+          tk.m_inputMethodData = 0;
+          ::SetEvent(tk.m_inputMethodWaitEvent);
           return 0;
       }
       case WM_AWT_GETOPENSTATUS: {
-          return (DWORD)ImmGetOpenStatus((HIMC)wParam);
+          AwtToolkit& tk = AwtToolkit::GetInstance();
+          tk.m_inputMethodData = (DWORD)ImmGetOpenStatus((HIMC)wParam);
+          ::SetEvent(tk.m_inputMethodWaitEvent);
+          return tk.m_inputMethodData;
       }
       case WM_DISPLAYCHANGE: {
           // Reinitialize screens
@@ -1890,10 +1923,12 @@ AwtObject* AwtToolkit::LookupCmdID(UINT id)
 
 HICON AwtToolkit::GetAwtIcon()
 {
-    return ::LoadIcon(GetModuleHandle(), TEXT("AWT_ICON"));
+    HICON hIcon = ::LoadIcon(::GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON));
+    if (!hIcon) hIcon = ::LoadIcon(GetModuleHandle(), TEXT("AWT_ICON"));
+    return hIcon;
 }
 
-HICON AwtToolkit::GetAwtIconSm()
+HICON AwtToolkit::GetAwtIconSm(void* pAwtWindow)
 {
     static HICON defaultIconSm = NULL;
     static int prevSmx = 0;
@@ -1902,9 +1937,22 @@ HICON AwtToolkit::GetAwtIconSm()
     int smx = GetSystemMetrics(SM_CXSMICON);
     int smy = GetSystemMetrics(SM_CYSMICON);
 
+    if (AwtWin32GraphicsDevice::IsUiScaleEnabled() && pAwtWindow != NULL) {
+        AwtWindow *wnd = reinterpret_cast<AwtWindow*>(pAwtWindow);
+        Devices::InstanceAccess devices;
+        AwtWin32GraphicsDevice* device = devices->GetDevice(AwtWin32GraphicsDevice::DeviceIndexForWindow(wnd->GetHWnd()));
+        if (device) {
+            smx = 16 * device->GetScaleX();
+            smy = 16 * device->GetScaleY();
+        }
+    }
+
     // Fixed 6364216: LoadImage() may leak memory
     if (defaultIconSm == NULL || smx != prevSmx || smy != prevSmy) {
-        defaultIconSm = (HICON)LoadImage(GetModuleHandle(), TEXT("AWT_ICON"), IMAGE_ICON, smx, smy, 0);
+        defaultIconSm = ::LoadIcon(::GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON));
+        if (!defaultIconSm) {
+            defaultIconSm = (HICON)LoadImage(GetModuleHandle(), TEXT("AWT_ICON"), IMAGE_ICON, smx, smy, 0);
+        }
         prevSmx = smx;
         prevSmy = smy;
     }
@@ -2465,17 +2513,6 @@ Java_sun_awt_windows_WToolkit_initIDs(JNIEnv *env, jclass cls)
     CATCH_BAD_ALLOC;
 }
 
-
-/*
- * Class:     sun_awt_windows_Toolkit
- * Method:    disableCustomPalette
- * Signature: ()V
- */
-JNIEXPORT void JNICALL
-Java_sun_awt_windows_WToolkit_disableCustomPalette(JNIEnv *env, jclass cls) {
-    AwtPalette::DisableCustomPalette();
-}
-
 /*
  * Class:     sun_awt_windows_WToolkit
  * Method:    embeddedInit
@@ -2693,13 +2730,14 @@ Java_sun_awt_windows_WToolkit_getScreenInsets(JNIEnv *env,
         jclass insetsClass = env->FindClass("java/awt/Insets");
         DASSERT(insetsClass != NULL);
         CHECK_NULL_RETURN(insetsClass, NULL);
-
+        Devices::InstanceAccess devices;
+        AwtWin32GraphicsDevice *device = devices->GetDevice(screen);
         insets = env->NewObject(insetsClass,
                 AwtToolkit::insetsMID,
-                rect.top,
-                rect.left,
-                rect.bottom,
-                rect.right);
+                device == NULL ? rect.top : device->ScaleDownY(rect.top),
+                device == NULL ? rect.left : device->ScaleDownX(rect.left),
+                device == NULL ? rect.bottom : device->ScaleDownY(rect.bottom),
+                device == NULL ? rect.right : device->ScaleDownX(rect.right));
     }
 
     if (safe_ExceptionOccurred(env)) {
@@ -2986,12 +3024,15 @@ Java_sun_awt_windows_WToolkit_hideTouchKeyboard(JNIEnv *env, jobject self)
 JNIEXPORT jboolean JNICALL
 Java_sun_awt_windows_WToolkit_syncNativeQueue(JNIEnv *env, jobject self, jlong timeout)
 {
+    if (timeout <= 0) {
+        return JNI_FALSE;
+    }
     AwtToolkit & tk = AwtToolkit::GetInstance();
     DWORD eventNumber = tk.eventNumber;
     tk.PostMessage(WM_SYNC_WAIT, 0, 0);
     for(long t = 2; t < timeout &&
                WAIT_TIMEOUT == ::WaitForSingleObject(tk.m_waitEvent, 2); t+=2) {
-        if (tk.isInDoDragDropLoop) {
+        if (tk.isDnDSourceActive || tk.isDnDTargetActive) {
             break;
         }
     }
@@ -3176,3 +3217,35 @@ BOOL AwtToolkit::TICloseTouchInputHandle(HTOUCHINPUT hTouchInput) {
     }
     return m_pCloseTouchInputHandle(hTouchInput);
 }
+
+/*
+ * The fuction intended for access to an IME API. It posts IME message to the queue and
+ * waits untill the message processing is completed.
+ *
+ * On Windows 10 the IME may process the messages send via SenMessage() from other threads
+ * when the IME is called by TranslateMessage(). This may cause an reentrancy issue when
+ * the windows procedure processing the sent message call an IME function and leaves
+ * the IME functionality in an unexpected state.
+ * This function avoids reentrancy issue and must be used for sending of all IME messages
+ * instead of SendMessage().
+ */
+LRESULT AwtToolkit::InvokeInputMethodFunction(UINT msg, WPARAM wParam, LPARAM lParam) {
+    /*
+     * DND runs on the main thread. So it is  necessary to use SendMessage() to call an IME
+     * function once the DND is active; otherwise a hang is possible since DND may wait for
+     * the IME completion.
+     */
+    CriticalSection::Lock lock(m_inputMethodLock);
+    if (isDnDSourceActive || isDnDTargetActive) {
+        SendMessage(msg, wParam, lParam);
+        ::ResetEvent(m_inputMethodWaitEvent);
+        return m_inputMethodData;
+    } else {
+        if (PostMessage(msg, wParam, lParam)) {
+            ::WaitForSingleObject(m_inputMethodWaitEvent, INFINITE);
+            return m_inputMethodData;
+        }
+        return 0;
+    }
+}
+

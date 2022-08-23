@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,8 +31,7 @@
  * @modules java.base/jdk.internal.misc
  * @modules java.management
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox
- *                              sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run main gc.g1.plab.TestPLABResize
  */
 package gc.g1.plab;
@@ -88,7 +87,7 @@ public class TestPLABResize {
             testCase.print(System.out);
             List<String> options = PLABUtils.prepareOptions(testCase.toOptions());
             options.add(AppPLABResize.class.getName());
-            OutputAnalyzer out = ProcessTools.executeTestJvm(options.toArray(new String[options.size()]));
+            OutputAnalyzer out = ProcessTools.executeTestJvm(options);
             PLABUtils.commonCheck(out);
             checkResults(out.getOutput(), testCase);
         }

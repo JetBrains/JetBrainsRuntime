@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@
 #include "oops/constantPool.hpp"
 #include "oops/cpCache.inline.hpp"
 #include "oops/oop.inline.hpp"
-#include "runtime/fieldType.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/safepoint.hpp"
 #include "runtime/signature.hpp"
@@ -156,15 +155,6 @@ Method* Bytecode_invoke::static_target(TRAPS) {
 
   Bytecodes::Code bc = invoke_code();
   return LinkResolver::resolve_method_statically(bc, constants, index(), THREAD);
-}
-
-Handle Bytecode_invoke::appendix(TRAPS) {
-  ConstantPoolCacheEntry* cpce = cpcache_entry();
-  if (cpce->has_appendix()) {
-    constantPoolHandle cp(THREAD, constants());
-    return Handle(THREAD, cpce->appendix_if_resolved(cp));
-  }
-  return Handle();  // usual case
 }
 
 int Bytecode_member_ref::index() const {

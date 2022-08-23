@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,9 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
-import sun.security.util.DerValue;
-import sun.security.util.DerOutputStream;
-import sun.security.util.ObjectIdentifier;
+import sun.security.util.*;
 
 /**
  * This class defines the Extended Key Usage Extension, which
@@ -69,7 +67,7 @@ import sun.security.util.ObjectIdentifier;
  * the purpose indicated. Certificate using applications may
  * nevertheless require that a particular purpose be indicated in
  * order for the certificate to be acceptable to that application.<p>
-
+ *
  * If a certificate contains both a critical key usage field and a
  * critical extended key usage field, then both fields MUST be
  * processed independently and the certificate MUST only be used for a
@@ -93,35 +91,6 @@ implements CertAttrSet<String> {
      */
     public static final String NAME = "ExtendedKeyUsage";
     public static final String USAGES = "usages";
-
-    // OID defined in RFC 5280 Sections 4.2.1.12
-    // more from http://www.alvestrand.no/objectid/1.3.6.1.5.5.7.3.html
-    private static final Map <ObjectIdentifier, String> map =
-            new HashMap <ObjectIdentifier, String> ();
-
-    private static final int[] anyExtendedKeyUsageOidData = {2, 5, 29, 37, 0};
-    private static final int[] serverAuthOidData = {1, 3, 6, 1, 5, 5, 7, 3, 1};
-    private static final int[] clientAuthOidData = {1, 3, 6, 1, 5, 5, 7, 3, 2};
-    private static final int[] codeSigningOidData = {1, 3, 6, 1, 5, 5, 7, 3, 3};
-    private static final int[] emailProtectionOidData = {1, 3, 6, 1, 5, 5, 7, 3, 4};
-    private static final int[] ipsecEndSystemOidData = {1, 3, 6, 1, 5, 5, 7, 3, 5};
-    private static final int[] ipsecTunnelOidData = {1, 3, 6, 1, 5, 5, 7, 3, 6};
-    private static final int[] ipsecUserOidData = {1, 3, 6, 1, 5, 5, 7, 3, 7};
-    private static final int[] timeStampingOidData = {1, 3, 6, 1, 5, 5, 7, 3, 8};
-    private static final int[] OCSPSigningOidData = {1, 3, 6, 1, 5, 5, 7, 3, 9};
-
-    static {
-        map.put(ObjectIdentifier.newInternal(anyExtendedKeyUsageOidData), "anyExtendedKeyUsage");
-        map.put(ObjectIdentifier.newInternal(serverAuthOidData), "serverAuth");
-        map.put(ObjectIdentifier.newInternal(clientAuthOidData), "clientAuth");
-        map.put(ObjectIdentifier.newInternal(codeSigningOidData), "codeSigning");
-        map.put(ObjectIdentifier.newInternal(emailProtectionOidData), "emailProtection");
-        map.put(ObjectIdentifier.newInternal(ipsecEndSystemOidData), "ipsecEndSystem");
-        map.put(ObjectIdentifier.newInternal(ipsecTunnelOidData), "ipsecTunnel");
-        map.put(ObjectIdentifier.newInternal(ipsecUserOidData), "ipsecUser");
-        map.put(ObjectIdentifier.newInternal(timeStampingOidData), "timeStamping");
-        map.put(ObjectIdentifier.newInternal(OCSPSigningOidData), "OCSPSigning");
-    };
 
     /**
      * Vector of KeyUsages for this object.
@@ -209,11 +178,12 @@ implements CertAttrSet<String> {
                 usage += "\n  ";
             }
 
-            String result = map.get(oid);
-            if (result != null) {
-                usage += result;
+            String res = oid.toString();
+            KnownOIDs os = KnownOIDs.findMatch(res);
+            if (os != null) {
+                usage += os.stdName();
             } else {
-                usage += oid.toString();
+                usage += res;
             }
             first = false;
         }

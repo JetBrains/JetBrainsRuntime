@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -135,7 +135,7 @@ public final class OCSPResponse {
     private static final Debug debug = Debug.getInstance("certpath");
     private static final boolean dump = debug != null && Debug.isOn("ocsp");
     private static final ObjectIdentifier OCSP_BASIC_RESPONSE_OID =
-        ObjectIdentifier.newInternal(new int[] { 1, 3, 6, 1, 5, 5, 7, 48, 1, 1});
+        ObjectIdentifier.of(KnownOIDs.OCSPBasicResponse);
     private static final int CERT_STATUS_GOOD = 0;
     private static final int CERT_STATUS_REVOKED = 1;
     private static final int CERT_STATUS_UNKNOWN = 2;
@@ -143,9 +143,6 @@ public final class OCSPResponse {
     // ResponderID CHOICE tags
     private static final int NAME_TAG = 1;
     private static final int KEY_TAG = 2;
-
-    // Object identifier for the OCSPSigning key purpose
-    private static final String KP_OCSP_SIGNING_OID = "1.3.6.1.5.5.7.3.9";
 
     // Default maximum clock skew in milliseconds (15 minutes)
     // allowed when checking validity of OCSP responses
@@ -163,6 +160,7 @@ public final class OCSPResponse {
      * value is negative, set the skew to the default.
      */
     private static int initializeClockSkew() {
+        @SuppressWarnings("removal")
         Integer tmp = java.security.AccessController.doPrivileged(
                 new GetIntegerAction("com.sun.security.ocsp.clockSkew"));
         if (tmp == null || tmp < 0) {
@@ -261,7 +259,7 @@ public final class OCSPResponse {
         DerInputStream basicOCSPResponse =
             new DerInputStream(derIn.getOctetString());
 
-        DerValue[] seqTmp = basicOCSPResponse.getSequence(2);
+        DerValue[] seqTmp = basicOCSPResponse.getSequence(3);
         if (seqTmp.length < 3) {
             throw new IOException("Unexpected BasicOCSPResponse value");
         }
@@ -465,6 +463,7 @@ public final class OCSPResponse {
         }
 
         // Check whether the signer cert returned by the responder is trusted
+        boolean signedByTrustedResponder = false;
         if (signerCert != null) {
             // Check if the response is signed by the issuing CA
             if (signerCert.getSubjectX500Principal().equals(
@@ -479,6 +478,7 @@ public final class OCSPResponse {
 
             // Check if the response is signed by a trusted responder
             } else if (signerCert.equals(responderCert)) {
+                signedByTrustedResponder = true;
                 if (debug != null) {
                     debug.println("OCSP response is signed by a Trusted " +
                         "Responder");
@@ -493,7 +493,7 @@ public final class OCSPResponse {
                 try {
                     List<String> keyPurposes = signerCert.getExtendedKeyUsage();
                     if (keyPurposes == null ||
-                        !keyPurposes.contains(KP_OCSP_SIGNING_OID)) {
+                        !keyPurposes.contains(KnownOIDs.OCSPSigning.value())) {
                         throw new CertPathValidatorException(
                             "Responder's certificate not valid for signing " +
                             "OCSP responses");
@@ -569,7 +569,10 @@ public final class OCSPResponse {
         if (signerCert != null) {
             // Check algorithm constraints specified in security property
             // "jdk.certpath.disabledAlgorithms".
-            AlgorithmChecker.check(signerCert.getPublicKey(), sigAlgId, variant);
+            AlgorithmChecker.check(signerCert.getPublicKey(), sigAlgId, variant,
+                    signedByTrustedResponder
+                        ? new TrustAnchor(responderCert, null)
+                        : issuerInfo.getAnchor());
 
             if (!verifySignature(signerCert)) {
                 throw new CertPathValidatorException(
@@ -599,8 +602,9 @@ public final class OCSPResponse {
                 }
                 debug.println("OCSP response validity interval is from " +
                         sr.thisUpdate + until);
-                debug.println("Checking validity of OCSP response on: " +
-                        new Date(now));
+                debug.println("Checking validity of OCSP response on " +
+                        new Date(now) + " with allowed interval between " +
+                        nowMinusSkew + " and " + nowPlusSkew);
             }
 
             // Check that the test date is within the validity interval:
@@ -634,7 +638,10 @@ public final class OCSPResponse {
 
         try {
             Signature respSignature = Signature.getInstance(sigAlgId.getName());
-            respSignature.initVerify(cert.getPublicKey());
+            SignatureUtil.initVerifyWithParam(respSignature,
+                    cert.getPublicKey(),
+                    SignatureUtil.getParamSpec(sigAlgId.getName(),
+                            sigAlgId.getEncodedParams()));
             respSignature.update(tbsResponseData);
 
             if (respSignature.verify(signature)) {
@@ -650,8 +657,8 @@ public final class OCSPResponse {
                 }
                 return false;
             }
-        } catch (InvalidKeyException | NoSuchAlgorithmException |
-                 SignatureException e)
+        } catch (InvalidAlgorithmParameterException | InvalidKeyException
+                | NoSuchAlgorithmException | SignatureException e)
         {
             throw new CertPathValidatorException(e);
         }

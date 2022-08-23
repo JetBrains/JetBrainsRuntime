@@ -27,6 +27,7 @@
 #include "mmsystem.h"
 #include "jlong.h"
 #include "awt_DesktopProperties.h"
+#include "awt_Win32GraphicsDevice.h"
 #include "awt_Toolkit.h"
 #include "sun_awt_windows_WDesktopProperties.h"
 #include "java_awt_Font.h"
@@ -36,6 +37,7 @@
 #include <shlobj.h>
 
 #include "math.h"
+#include <dwmapi.h>
 
 #if defined(_MSC_VER) && _MSC_VER >= 1800
 #  define ROUND_TO_INT(num)    ((int) round(num))
@@ -88,6 +90,11 @@ void AwtDesktopProperties::GetWindowsParameters() {
 }
 
 void getInvScale(float &invScaleX, float &invScaleY) {
+    if (!AwtWin32GraphicsDevice::IsUiScaleEnabled()) {
+        invScaleX = 1.0f;
+        invScaleY = 1.0f;
+        return;
+    }
     static int dpiX = -1;
     static int dpiY = -1;
     if (dpiX == -1 || dpiY == -1) {
@@ -492,6 +499,42 @@ void CheckFontSmoothingSettings(HWND hWnd) {
     }
 }
 
+BOOL GetDwmColorizationColorFromRegistry(DWORD& colorizationColor, DWORD& colorizationColorBalance) {
+    // DwmGetColorizationColor is unreliable: it doesn't extract the actual accent color value set by user. To get the
+    // actual value (usable e.g. to calculate the border colors), we have to use the registry.
+    DWORD colorizationColorBgr = 0;
+    DWORD dwordSize(sizeof(DWORD));
+
+    HKEY hKey = NULL;
+    if (::RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\DWM", 0, KEY_READ, &hKey) != ERROR_SUCCESS) return FALSE;
+    if (::RegQueryValueEx(hKey, L"ColorizationColor", NULL, NULL, reinterpret_cast<LPBYTE>(&colorizationColorBgr), &dwordSize) != ERROR_SUCCESS) {
+        RegCloseKey(hKey);
+        return FALSE;
+    }
+
+    int b = colorizationColorBgr & 0xFF;
+    int g = (colorizationColorBgr & 0xFF00) >> 8;
+    int r = (colorizationColorBgr & 0xFF0000) >> 16;
+    colorizationColor = RGB(r, g, b);
+
+    if (::RegQueryValueEx(hKey, L"ColorizationColorBalance", NULL, NULL, reinterpret_cast<LPBYTE>(&colorizationColorBalance), &dwordSize) != ERROR_SUCCESS) {
+        colorizationColorBalance = -1;
+    }
+    RegCloseKey(hKey);
+
+    return TRUE;
+}
+
+BOOL ColorizationColorAffectsBorders() {
+    DWORD result = 0;
+    DWORD bufSize(sizeof(DWORD));
+    HKEY hKey = NULL;
+    if (::RegOpenKeyEx(HKEY_CURRENT_USER, _T("Software\\Microsoft\\Windows\\DWM"), 0, KEY_READ, &hKey) != ERROR_SUCCESS) return TRUE;
+    if (::RegQueryValueEx(hKey, _T("ColorPrevalence"), NULL, NULL, reinterpret_cast<LPBYTE>(&result), &bufSize) != ERROR_SUCCESS) result = 1;
+    RegCloseKey(hKey);
+    return result == 0 ? FALSE : TRUE;
+}
+
 void AwtDesktopProperties::GetColorParameters() {
 
     SetColorProperty(TEXT("win.frame.activeCaptionGradientColor"),
@@ -509,6 +552,20 @@ void AwtDesktopProperties::GetColorParameters() {
     SetColorProperty(TEXT("win.desktop.backgroundColor"), GetSysColor(COLOR_DESKTOP));
     SetColorProperty(TEXT("win.frame.activeCaptionColor"), GetSysColor(COLOR_ACTIVECAPTION));
     SetColorProperty(TEXT("win.frame.activeBorderColor"), GetSysColor(COLOR_ACTIVEBORDER));
+
+    BOOL enabled;
+    DwmIsCompositionEnabled(&enabled);
+    if (enabled) {
+        DWORD color = 0;
+        DWORD balance = 0;
+
+        if (GetDwmColorizationColorFromRegistry(color, balance)) {
+            SetColorProperty(TEXT("win.dwm.colorizationColor"), color);
+            SetIntegerProperty(TEXT("win.dwm.colorizationColorBalance"), balance);
+        }
+
+        SetBooleanProperty(TEXT("win.dwm.colorizationColor.affects.borders"), ColorizationColorAffectsBorders());
+    }
 
     // ?? ?? ??
     SetColorProperty(TEXT("win.frame.color"), GetSysColor(COLOR_WINDOWFRAME)); // ?? WHAT THE HECK DOES THIS MEAN ??
@@ -643,6 +700,20 @@ void AwtDesktopProperties::GetOtherParameters() {
             }
             free(value);
         }
+
+        // Add property for light/dark theme detection
+        value = getWindowsPropFromReg(TEXT("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"),
+                                      TEXT("AppsUseLightTheme"), &valueType);
+        if (value != NULL) {
+            if (valueType == REG_DWORD) {
+                SetBooleanProperty(TEXT("win.lightTheme.on"), (BOOL)((int)*value == 1));
+            }
+            free(value);
+        }
+        else {
+            SetBooleanProperty(TEXT("win.lightTheme.on"), TRUE);
+        }
+
     }
     catch (std::bad_alloc&) {
         if (value != NULL) {
@@ -752,6 +823,7 @@ void AwtDesktopProperties::SetStringProperty(LPCTSTR propName, LPTSTR value) {
                              key, jValue);
     GetEnv()->DeleteLocalRef(jValue);
     GetEnv()->DeleteLocalRef(key);
+    (void)safe_ExceptionOccurred(GetEnv());
 }
 
 void AwtDesktopProperties::SetIntegerProperty(LPCTSTR propName, int value) {
@@ -764,6 +836,7 @@ void AwtDesktopProperties::SetIntegerProperty(LPCTSTR propName, int value) {
                              AwtDesktopProperties::setIntegerPropertyID,
                              key, (jint)value);
     GetEnv()->DeleteLocalRef(key);
+    (void)safe_ExceptionOccurred(GetEnv());
 }
 
 void AwtDesktopProperties::SetBooleanProperty(LPCTSTR propName, BOOL value) {
@@ -775,6 +848,7 @@ void AwtDesktopProperties::SetBooleanProperty(LPCTSTR propName, BOOL value) {
                              AwtDesktopProperties::setBooleanPropertyID,
                              key, value ? JNI_TRUE : JNI_FALSE);
     GetEnv()->DeleteLocalRef(key);
+    (void)safe_ExceptionOccurred(GetEnv());
 }
 
 void AwtDesktopProperties::SetColorProperty(LPCTSTR propName, DWORD value) {
@@ -787,6 +861,7 @@ void AwtDesktopProperties::SetColorProperty(LPCTSTR propName, DWORD value) {
                              key, GetRValue(value), GetGValue(value),
                              GetBValue(value));
     GetEnv()->DeleteLocalRef(key);
+    (void)safe_ExceptionOccurred(GetEnv());
 }
 
 void AwtDesktopProperties::SetFontProperty(HDC dc, int fontID,
@@ -849,6 +924,7 @@ void AwtDesktopProperties::SetFontProperty(HDC dc, int fontID,
                               key, fontName, style, pointSize);
                     GetEnv()->DeleteLocalRef(key);
                     GetEnv()->DeleteLocalRef(fontName);
+                    (void)safe_ExceptionOccurred(GetEnv());
                 }
             }
             delete[] face;
@@ -896,6 +972,7 @@ void AwtDesktopProperties::SetFontProperty(LPCTSTR propName, const LOGFONT & fon
                              key, fontName, style, pointSize);
     GetEnv()->DeleteLocalRef(key);
     GetEnv()->DeleteLocalRef(fontName);
+    (void)safe_ExceptionOccurred(GetEnv());
 }
 
 void AwtDesktopProperties::SetSoundProperty(LPCTSTR propName, LPCTSTR winEventName) {
@@ -913,6 +990,7 @@ void AwtDesktopProperties::SetSoundProperty(LPCTSTR propName, LPCTSTR winEventNa
                              key, event);
     GetEnv()->DeleteLocalRef(event);
     GetEnv()->DeleteLocalRef(key);
+    (void)safe_ExceptionOccurred(GetEnv());
 }
 
 void AwtDesktopProperties::PlayWindowsSound(LPCTSTR event) {

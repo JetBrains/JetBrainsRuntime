@@ -24,16 +24,20 @@
 
 /*
  * @test
- * @run testng TestSharedAccess
+ * @run testng/othervm --enable-native-access=ALL-UNNAMED TestSharedAccess
  */
 
-import jdk.incubator.foreign.MemorySegment;
-import jdk.incubator.foreign.MemoryLayouts;
+import jdk.incubator.foreign.*;
 import org.testng.annotations.*;
 
 import java.lang.invoke.VarHandle;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Spliterator;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.testng.Assert.*;
 
@@ -43,15 +47,61 @@ public class TestSharedAccess {
 
     @Test
     public void testShared() throws Throwable {
-        try (MemorySegment s = MemorySegment.allocateNative(4)) {
+        SequenceLayout layout = MemoryLayout.sequenceLayout(1024, MemoryLayouts.JAVA_INT);
+        try (ResourceScope scope = ResourceScope.newSharedScope()) {
+            MemorySegment s = MemorySegment.allocateNative(layout, scope);
+            for (int i = 0 ; i < layout.elementCount().getAsLong() ; i++) {
+                setInt(s.asSlice(i * 4), 42);
+            }
+            List<Thread> threads = new ArrayList<>();
+            List<Spliterator<MemorySegment>> spliterators = new ArrayList<>();
+            spliterators.add(s.spliterator(layout.elementLayout()));
+            while (true) {
+                boolean progress = false;
+                List<Spliterator<MemorySegment>> newSpliterators = new ArrayList<>();
+                for (Spliterator<MemorySegment> spliterator : spliterators) {
+                    Spliterator<MemorySegment> sub = spliterator.trySplit();
+                    if (sub != null) {
+                        progress = true;
+                        newSpliterators.add(sub);
+                    }
+                }
+                spliterators.addAll(newSpliterators);
+                if (!progress) break;
+            }
+
+            AtomicInteger accessCount = new AtomicInteger();
+            for (Spliterator<MemorySegment> spliterator : spliterators) {
+                threads.add(new Thread(() -> {
+                    spliterator.tryAdvance(local -> {
+                        assertEquals(getInt(local), 42);
+                        accessCount.incrementAndGet();
+                    });
+                }));
+            }
+            threads.forEach(Thread::start);
+            threads.forEach(t -> {
+                try {
+                    t.join();
+                } catch (Throwable e) {
+                    throw new IllegalStateException(e);
+                }
+            });
+            assertEquals(accessCount.get(), 1024);
+        }
+    }
+
+    @Test
+    public void testSharedUnsafe() throws Throwable {
+        try (ResourceScope scope = ResourceScope.newSharedScope()) {
+            MemorySegment s = MemorySegment.allocateNative(4, 1, scope);
             setInt(s, 42);
             assertEquals(getInt(s), 42);
             List<Thread> threads = new ArrayList<>();
+            MemorySegment sharedSegment = s.address().asSegment(s.byteSize(), scope);
             for (int i = 0 ; i < 1000 ; i++) {
                 threads.add(new Thread(() -> {
-                    try (MemorySegment local = s.acquire()) {
-                        assertEquals(getInt(local), 42);
-                    }
+                    assertEquals(getInt(sharedSegment), 42);
                 }));
             }
             threads.forEach(Thread::start);
@@ -65,18 +115,45 @@ public class TestSharedAccess {
         }
     }
 
-    @Test(expectedExceptions=IllegalStateException.class)
-    public void testBadCloseWithPendingAcquire() {
-        try (MemorySegment segment = MemorySegment.allocateNative(8)) {
-            segment.acquire();
-        } //should fail here!
+    @Test
+    public void testOutsideConfinementThread() throws Throwable {
+        CountDownLatch a = new CountDownLatch(1);
+        CountDownLatch b = new CountDownLatch(1);
+        CompletableFuture<?> r;
+        try (ResourceScope scope = ResourceScope.newConfinedScope()) {
+            MemorySegment s1 = MemorySegment.allocateNative(MemoryLayout.sequenceLayout(2, MemoryLayouts.JAVA_INT), scope);
+            r = CompletableFuture.runAsync(() -> {
+                try {
+                    ByteBuffer bb = s1.asByteBuffer();
+
+                    MemorySegment s2 = MemorySegment.ofByteBuffer(bb);
+                    a.countDown();
+
+                    try {
+                        b.await();
+                    } catch (InterruptedException e) {
+                    }
+
+                    setInt(s2.asSlice(4), -42);
+                    fail();
+                } catch (IllegalStateException ex) {
+                    assertTrue(ex.getMessage().contains("owning thread"));
+                }
+            });
+
+            a.await();
+            setInt(s1.asSlice(4), 42);
+        }
+
+        b.countDown();
+        r.get();
     }
 
-    static int getInt(MemorySegment handle) {
-        return (int)intHandle.getVolatile(handle.baseAddress());
+    static int getInt(MemorySegment base) {
+        return (int)intHandle.getVolatile(base);
     }
 
-    static void setInt(MemorySegment handle, int value) {
-        intHandle.setVolatile(handle.baseAddress(), value);
+    static void setInt(MemorySegment base, int value) {
+        intHandle.setVolatile(base, value);
     }
 }

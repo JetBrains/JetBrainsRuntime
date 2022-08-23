@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,19 +25,42 @@
 
 package sun.lwawt.macosx;
 
-import java.awt.*;
-import java.awt.event.FocusEvent.Cause;
-import java.awt.peer.*;
+import java.awt.AWTEvent;
+import java.awt.AWTException;
+import java.awt.BufferCapabilities;
 import java.awt.BufferCapabilities.FlipContents;
-import java.awt.event.*;
-import java.awt.image.*;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dialog;
+import java.awt.Dimension;
+import java.awt.FileDialog;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.GraphicsConfiguration;
+import java.awt.Image;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Window;
+import java.awt.event.FocusEvent.Cause;
+import java.awt.event.PaintEvent;
+import java.awt.image.ColorModel;
+import java.awt.image.VolatileImage;
+import java.awt.peer.ComponentPeer;
+import java.awt.peer.ContainerPeer;
+import java.awt.peer.FileDialogPeer;
+import java.io.File;
+import java.io.FilenameFilter;
 import java.security.AccessController;
 import java.util.List;
-import java.io.*;
 
+import com.jetbrains.desktop.JBRFileDialog;
 import sun.awt.AWTAccessor;
 import sun.java2d.pipe.Region;
+import sun.lwawt.LWWindowPeer;
 import sun.security.action.GetBooleanAction;
+
+import static com.jetbrains.desktop.JBRFileDialog.*;
 
 class CFileDialog implements FileDialogPeer {
 
@@ -46,10 +69,21 @@ class CFileDialog implements FileDialogPeer {
         @Override
         public void run() {
             try {
+                @SuppressWarnings("removal")
                 boolean navigateApps = !AccessController.doPrivileged(
                         new GetBooleanAction("apple.awt.use-file-dialog-packages"));
-                boolean chooseDirectories = AccessController.doPrivileged(
-                        new GetBooleanAction("apple.awt.fileDialogForDirectories"));
+
+                JBRFileDialog jbrDialog = JBRFileDialog.get(target);
+                boolean createDirectories = (jbrDialog.getHints() & CREATE_DIRECTORIES_HINT) != 0;
+                boolean chooseDirectories = (jbrDialog.getHints() & SELECT_DIRECTORIES_HINT) != 0;
+                boolean chooseFiles = (jbrDialog.getHints() & SELECT_FILES_HINT) != 0;
+                if (!chooseDirectories && !chooseFiles) { // Fallback to default
+                    @SuppressWarnings("removal")
+                    boolean dir = AccessController.doPrivileged(
+                            new GetBooleanAction("apple.awt.fileDialogForDirectories"));
+                    chooseFiles = !dir;
+                    chooseDirectories = dir;
+                }
 
                 int dialogMode = target.getMode();
                 String title = target.getTitle();
@@ -57,11 +91,22 @@ class CFileDialog implements FileDialogPeer {
                     title = " ";
                 }
 
-                String[] userFileNames = nativeRunFileDialog(title,
+                Window owner = target.getOwner();
+
+                long ownerPtr = owner == null ?
+                        0L :
+                        ((CPlatformWindow) ((LWWindowPeer) AWTAccessor.getComponentAccessor().getPeer(owner))
+                                .getPlatformWindow()).executeGet(ptr -> ptr);
+
+                String[] userFileNames = nativeRunFileDialog(
+                        ownerPtr,
+                        title,
                         dialogMode,
                         target.isMultipleMode(),
                         navigateApps,
                         chooseDirectories,
+                        chooseFiles,
+                        createDirectories,
                         target.getFilenameFilter() != null,
                         target.getDirectory(),
                         target.getFile());
@@ -70,7 +115,7 @@ class CFileDialog implements FileDialogPeer {
                 String file = null;
                 File[] files = null;
 
-                if (userFileNames != null) {
+                if (userFileNames != null && userFileNames.length > 0) {
                     // the dialog wasn't cancelled
                     int filesNumber = userFileNames.length;
                     files = new File[filesNumber];
@@ -145,9 +190,10 @@ class CFileDialog implements FileDialogPeer {
         return ret;
     }
 
-    private native String[] nativeRunFileDialog(String title, int mode,
+    private native String[] nativeRunFileDialog(long ownerPtr, String title, int mode,
             boolean multipleMode, boolean shouldNavigateApps,
-            boolean canChooseDirectories, boolean hasFilenameFilter,
+            boolean canChooseDirectories, boolean canChooseFiles,
+            boolean canCreateDirectories, boolean hasFilenameFilter,
             String directory, String file);
 
     @Override
@@ -249,22 +295,12 @@ class CFileDialog implements FileDialogPeer {
     }
 
     @Override
-    public int checkImage(Image img, int w, int h, ImageObserver o) {
-        return 0;
-    }
-
-    @Override
     public void coalescePaintEvent(PaintEvent e) {
     }
 
     @Override
     public void createBuffers(int numBuffers, BufferCapabilities caps)
             throws AWTException {
-    }
-
-    @Override
-    public Image createImage(ImageProducer producer) {
-        return null;
     }
 
     @Override
@@ -355,11 +391,6 @@ class CFileDialog implements FileDialogPeer {
 
     @Override
     public void paint(Graphics g) {
-    }
-
-    @Override
-    public boolean prepareImage(Image img, int w, int h, ImageObserver o) {
-        return false;
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright 2009, 2010, 2011 Red Hat, Inc.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -24,19 +24,23 @@
  */
 
 #include "precompiled.hpp"
-#include "interpreter/cppInterpreterGenerator.hpp"
+#include "classfile/javaClasses.inline.hpp"
 #include "interpreter/interpreter.hpp"
 #include "interpreter/interpreterRuntime.hpp"
+#include "interpreter/zero/zeroInterpreterGenerator.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
+#include "oops/instanceKlass.inline.hpp"
+#include "oops/klass.inline.hpp"
 #include "oops/method.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/frame.inline.hpp"
 #include "prims/methodHandles.hpp"
 
+
 void MethodHandles::invoke_target(Method* method, TRAPS) {
 
-  JavaThread *thread = (JavaThread *) THREAD;
+  JavaThread *thread = THREAD;
   ZeroStack *stack = thread->zero_stack();
   InterpreterFrame *frame = thread->top_zero_frame()->as_interpreter_frame();
   interpreterState istate = frame->interpreter_state();
@@ -53,7 +57,7 @@ void MethodHandles::invoke_target(Method* method, TRAPS) {
 
 oop MethodHandles::popFromStack(TRAPS) {
 
-  JavaThread *thread = (JavaThread *) THREAD;
+  JavaThread *thread = THREAD;
   InterpreterFrame *frame = thread->top_zero_frame()->as_interpreter_frame();
   interpreterState istate = frame->interpreter_state();
   intptr_t* topOfStack = istate->stack();
@@ -66,47 +70,69 @@ oop MethodHandles::popFromStack(TRAPS) {
 
 }
 
-void MethodHandles::throw_AME(Klass* rcvr, Method* interface_method, TRAPS) {
+void MethodHandles::setup_frame_anchor(JavaThread* thread) {
+  assert(!thread->has_last_Java_frame(), "Do not need to call this otherwise");
 
-  JavaThread *thread = (JavaThread *) THREAD;
-  // Set up the frame anchor if it isn't already
+  intptr_t *sp = thread->zero_stack()->sp();
+  ZeroFrame *frame = thread->top_zero_frame();
+  while (frame) {
+    if (frame->is_interpreter_frame()) {
+      interpreterState istate = frame->as_interpreter_frame()->interpreter_state();
+      if (istate->self_link() == istate) break;
+    }
+    sp = ((intptr_t *) frame) + 1;
+    frame = frame->next();
+  }
+
+  assert(frame != NULL, "must be");
+  thread->set_last_Java_frame(frame, sp);
+}
+
+void MethodHandles::teardown_frame_anchor(JavaThread* thread) {
+  thread->reset_last_Java_frame();
+}
+
+void MethodHandles::throw_AME(Klass* rcvr, Method* interface_method, TRAPS) {
+  JavaThread* thread = THREAD;
   bool has_last_Java_frame = thread->has_last_Java_frame();
   if (!has_last_Java_frame) {
-    intptr_t *sp = thread->zero_stack()->sp();
-    ZeroFrame *frame = thread->top_zero_frame();
-    while (frame) {
-      if (frame->is_interpreter_frame()) {
-        interpreterState istate =
-          frame->as_interpreter_frame()->interpreter_state();
-        if (istate->self_link() == istate)
-          break;
-      }
-
-      sp = ((intptr_t *) frame) + 1;
-      frame = frame->next();
-    }
-
-    assert(frame != NULL, "must be");
-    thread->set_last_Java_frame(frame, sp);
+    setup_frame_anchor(thread);
   }
   InterpreterRuntime::throw_AbstractMethodErrorVerbose(thread, rcvr, interface_method);
-  // Reset the frame anchor if necessary
   if (!has_last_Java_frame) {
-    thread->reset_last_Java_frame();
+    teardown_frame_anchor(thread);
   }
+}
 
+void MethodHandles::throw_NPE(TRAPS) {
+  JavaThread* thread = THREAD;
+  bool has_last_Java_frame = thread->has_last_Java_frame();
+  if (!has_last_Java_frame) {
+    setup_frame_anchor(thread);
+  }
+  InterpreterRuntime::throw_NullPointerException(thread);
+  if (!has_last_Java_frame) {
+    teardown_frame_anchor(thread);
+  }
 }
 
 int MethodHandles::method_handle_entry_invokeBasic(Method* method, intptr_t UNUSED, TRAPS) {
 
-  JavaThread *thread = (JavaThread *) THREAD;
+  JavaThread *thread = THREAD;
   InterpreterFrame *frame = thread->top_zero_frame()->as_interpreter_frame();
   interpreterState istate = frame->interpreter_state();
   intptr_t* topOfStack = istate->stack();
 
   // 'this' is a MethodHandle. We resolve the target method by accessing this.form.vmentry.vmtarget.
   int numArgs = method->size_of_parameters();
-  oop lform1 = java_lang_invoke_MethodHandle::form(STACK_OBJECT(-numArgs)); // this.form
+
+  oop recv = STACK_OBJECT(-numArgs);
+  if (recv == NULL) {
+    throw_NPE(THREAD);
+    return 0;
+  }
+
+  oop lform1 = java_lang_invoke_MethodHandle::form(recv); // this.form
   oop vmEntry1 = java_lang_invoke_LambdaForm::vmentry(lform1);
   Method* vmtarget = (Method*) java_lang_invoke_MemberName::vmtarget(vmEntry1);
 
@@ -130,7 +156,7 @@ int MethodHandles::method_handle_entry_linkToStaticOrSpecial(Method* method, int
 }
 
 int MethodHandles::method_handle_entry_linkToInterface(Method* method, intptr_t UNUSED, TRAPS) {
-  JavaThread *thread = (JavaThread *) THREAD;
+  JavaThread *thread = THREAD;
   InterpreterFrame *frame = thread->top_zero_frame()->as_interpreter_frame();
   interpreterState istate = frame->interpreter_state();
 
@@ -146,6 +172,10 @@ int MethodHandles::method_handle_entry_linkToInterface(Method* method, intptr_t 
 
   int numArgs = target->size_of_parameters();
   oop recv = STACK_OBJECT(-numArgs);
+  if (recv == NULL) {
+    throw_NPE(THREAD);
+    return 0;
+  }
 
   InstanceKlass* klass_part = InstanceKlass::cast(recv->klass());
   itableOffsetEntry* ki = (itableOffsetEntry*) klass_part->start_of_itable();
@@ -170,7 +200,7 @@ int MethodHandles::method_handle_entry_linkToInterface(Method* method, intptr_t 
 }
 
 int MethodHandles::method_handle_entry_linkToVirtual(Method* method, intptr_t UNUSED, TRAPS) {
-  JavaThread *thread = (JavaThread *) THREAD;
+  JavaThread *thread = THREAD;
 
   InterpreterFrame *frame = thread->top_zero_frame()->as_interpreter_frame();
   interpreterState istate = frame->interpreter_state();
@@ -183,8 +213,14 @@ int MethodHandles::method_handle_entry_linkToVirtual(Method* method, intptr_t UN
   // Resolve target method by looking up in the receiver object's vtable.
   intptr_t vmindex = java_lang_invoke_MemberName::vmindex(vmentry);
   Method* target = (Method*) java_lang_invoke_MemberName::vmtarget(vmentry);
+
   int numArgs = target->size_of_parameters();
   oop recv = STACK_OBJECT(-numArgs);
+  if (recv == NULL) {
+    throw_NPE(THREAD);
+    return 0;
+  }
+
   Klass* clazz = recv->klass();
   Klass* klass_part = InstanceKlass::cast(clazz);
   ResourceMark rm(THREAD);
@@ -206,19 +242,20 @@ address MethodHandles::generate_method_handle_interpreter_entry(MacroAssembler* 
   switch (iid) {
   case vmIntrinsics::_invokeGeneric:
   case vmIntrinsics::_compiledLambdaForm:
+  case vmIntrinsics::_linkToNative:
     // Perhaps surprisingly, the symbolic references visible to Java are not directly used.
     // They are linked to Java-generated adapters via MethodHandleNatives.linkMethod.
     // They all allow an appendix argument.
-    return CppInterpreterGenerator::generate_entry_impl(masm, (address) MethodHandles::method_handle_entry_invalid);
+    return ZeroInterpreterGenerator::generate_entry_impl(masm, (address) MethodHandles::method_handle_entry_invalid);
   case vmIntrinsics::_invokeBasic:
-    return CppInterpreterGenerator::generate_entry_impl(masm, (address) MethodHandles::method_handle_entry_invokeBasic);
+    return ZeroInterpreterGenerator::generate_entry_impl(masm, (address) MethodHandles::method_handle_entry_invokeBasic);
   case vmIntrinsics::_linkToStatic:
   case vmIntrinsics::_linkToSpecial:
-    return CppInterpreterGenerator::generate_entry_impl(masm, (address) MethodHandles::method_handle_entry_linkToStaticOrSpecial);
+    return ZeroInterpreterGenerator::generate_entry_impl(masm, (address) MethodHandles::method_handle_entry_linkToStaticOrSpecial);
   case vmIntrinsics::_linkToInterface:
-    return CppInterpreterGenerator::generate_entry_impl(masm, (address) MethodHandles::method_handle_entry_linkToInterface);
+    return ZeroInterpreterGenerator::generate_entry_impl(masm, (address) MethodHandles::method_handle_entry_linkToInterface);
   case vmIntrinsics::_linkToVirtual:
-    return CppInterpreterGenerator::generate_entry_impl(masm, (address) MethodHandles::method_handle_entry_linkToVirtual);
+    return ZeroInterpreterGenerator::generate_entry_impl(masm, (address) MethodHandles::method_handle_entry_linkToVirtual);
   default:
     ShouldNotReachHere();
     return NULL;

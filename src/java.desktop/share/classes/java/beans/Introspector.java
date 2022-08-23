@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,7 +87,7 @@ import sun.reflect.misc.ReflectUtil;
  * <p>
  * For more information about introspection and design patterns, please
  * consult the
- *  <a href="http://www.oracle.com/technetwork/java/javase/documentation/spec-136004.html">JavaBeans&trade; specification</a>.
+ *  <a href="http://www.oracle.com/technetwork/java/javase/documentation/spec-136004.html">JavaBeans specification</a>.
  *
  * @since 1.1
  */
@@ -346,6 +346,7 @@ public class Introspector {
      */
 
     public static void setBeanInfoSearchPath(String[] path) {
+        @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPropertiesAccess();
@@ -364,6 +365,7 @@ public class Introspector {
      */
     public static void flushCaches() {
         ThreadGroupContext.getContext().clearBeanInfoCache();
+        ClassInfo.clear();
     }
 
     /**
@@ -387,6 +389,7 @@ public class Introspector {
             throw new NullPointerException();
         }
         ThreadGroupContext.getContext().removeBeanInfo(clz);
+        ClassInfo.remove(clz);
     }
 
     //======================================================================
@@ -592,12 +595,11 @@ public class Introspector {
         PropertyDescriptor pd, gpd, spd;
         IndexedPropertyDescriptor ipd, igpd, ispd;
 
-        Iterator<List<PropertyDescriptor>> it = pdStore.values().iterator();
-        while (it.hasNext()) {
+        for (List<PropertyDescriptor> propertyDescriptors : pdStore.values()) {
             pd = null; gpd = null; spd = null;
             ipd = null; igpd = null; ispd = null;
 
-            list = it.next();
+            list = propertyDescriptors;
 
             // First pass. Find the latest getter method. Merge properties
             // of previous getter methods.
@@ -1122,7 +1124,7 @@ public class Introspector {
         try {
             type = ClassFinder.findClass(name, type.getClassLoader());
             // Each customizer should inherit java.awt.Component and implement java.beans.Customizer
-            // according to the section 9.3 of JavaBeans&trade; specification
+            // according to the section 9.3 of JavaBeans specification
             if (Component.class.isAssignableFrom(type) && Customizer.class.isAssignableFrom(type)) {
                 return type;
             }

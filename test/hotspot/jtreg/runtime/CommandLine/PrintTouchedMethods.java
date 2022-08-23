@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,12 +23,12 @@
 
 /*
  * @test
- * @bug 8025692
+ * @bug 8025692 8273333
+ * @requires vm.flavor != "zero"
  * @modules java.base/jdk.internal.misc
  *          java.management
  * @library /test/lib
- * @compile TestLogTouchedMethods.java PrintTouchedMethods.java
- * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+LogTouchedMethods PrintTouchedMethods
+ * @run driver PrintTouchedMethods
  */
 
 import java.io.File;
@@ -40,16 +40,23 @@ import jdk.test.lib.JDKToolFinder;
 public class PrintTouchedMethods {
 
     public static void main(String args[]) throws Exception {
-      String[] javaArgs1 = {"-XX:-UnlockDiagnosticVMOptions", "-XX:+LogTouchedMethods", "-XX:+PrintTouchedMethodsAtExit", "TestLogTouchedMethods"};
-      ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(javaArgs1);
+      ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
+          "-XX:-UnlockDiagnosticVMOptions",
+          "-XX:+LogTouchedMethods",
+          "-XX:+PrintTouchedMethodsAtExit",
+          TestLogTouchedMethods.class.getName());
 
       // UnlockDiagnostic turned off, should fail
       OutputAnalyzer output = new OutputAnalyzer(pb.start());
+      output.shouldNotHaveExitValue(0);
       output.shouldContain("Error: VM option 'LogTouchedMethods' is diagnostic and must be enabled via -XX:+UnlockDiagnosticVMOptions.");
       output.shouldContain("Error: Could not create the Java Virtual Machine.");
 
-      String[] javaArgs2 = {"-XX:+UnlockDiagnosticVMOptions", "-XX:+LogTouchedMethods", "-XX:+PrintTouchedMethodsAtExit", "TestLogTouchedMethods"};
-      pb = ProcessTools.createJavaProcessBuilder(javaArgs2);
+      pb = ProcessTools.createJavaProcessBuilder(
+          "-XX:+UnlockDiagnosticVMOptions",
+          "-XX:+LogTouchedMethods",
+          "-XX:+PrintTouchedMethodsAtExit",
+          TestLogTouchedMethods.class.getName());
       output = new OutputAnalyzer(pb.start());
       // check order:
       // 1 "# Method::print_touched_methods version 1" is the first in first line
@@ -71,8 +78,12 @@ public class PrintTouchedMethods {
       output.shouldNotContain("TestLogTouchedMethods.methodB:()V");
       output.shouldHaveExitValue(0);
 
-      String[] javaArgs3 = {"-XX:+UnlockDiagnosticVMOptions", "-Xint", "-XX:+LogTouchedMethods", "-XX:+PrintTouchedMethodsAtExit", "TestLogTouchedMethods"};
-      pb = ProcessTools.createJavaProcessBuilder(javaArgs3);
+      pb = ProcessTools.createJavaProcessBuilder(
+          "-XX:+UnlockDiagnosticVMOptions",
+          "-Xint",
+          "-XX:+LogTouchedMethods",
+          "-XX:+PrintTouchedMethodsAtExit",
+          TestLogTouchedMethods.class.getName());
       output = new OutputAnalyzer(pb.start());
       lines = output.asLines();
 
@@ -89,8 +100,13 @@ public class PrintTouchedMethods {
       output.shouldNotContain("TestLogTouchedMethods.methodB:()V");
       output.shouldHaveExitValue(0);
 
-      String[] javaArgs4 = {"-XX:+UnlockDiagnosticVMOptions", "-Xint", "-XX:+LogTouchedMethods", "-XX:+PrintTouchedMethodsAtExit", "-XX:-TieredCompilation", "TestLogTouchedMethods"};
-      pb = ProcessTools.createJavaProcessBuilder(javaArgs4);
+      pb = ProcessTools.createJavaProcessBuilder(
+          "-XX:+UnlockDiagnosticVMOptions",
+          "-Xint",
+          "-XX:+LogTouchedMethods",
+          "-XX:+PrintTouchedMethodsAtExit",
+          "-XX:-TieredCompilation",
+          TestLogTouchedMethods.class.getName());
       output = new OutputAnalyzer(pb.start());
       lines = output.asLines();
 
@@ -106,16 +122,5 @@ public class PrintTouchedMethods {
       output.shouldContain("TestLogTouchedMethods.methodA:()V");
       output.shouldNotContain("TestLogTouchedMethods.methodB:()V");
       output.shouldHaveExitValue(0);
-
-      // Test jcmd PrintTouchedMethods VM.print_touched_methods
-      String pid = Long.toString(ProcessTools.getProcessId());
-      pb = new ProcessBuilder();
-      pb.command(new String[] {JDKToolFinder.getJDKTool("jcmd"), pid, "VM.print_touched_methods"});
-      output = new OutputAnalyzer(pb.start());
-      try {
-        output.shouldContain("PrintTouchedMethods.main:([Ljava/lang/String;)V");
-      } catch (RuntimeException e) {
-        output.shouldContain("Unknown diagnostic command");
-      }
-  }
+    }
 }

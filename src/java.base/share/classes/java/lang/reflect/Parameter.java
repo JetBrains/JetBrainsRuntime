@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,13 +75,11 @@ public final class Parameter implements AnnotatedElement {
      * @param obj The object to compare.
      * @return Whether or not this is equal to the argument.
      */
+    @Override
     public boolean equals(Object obj) {
-        if(obj instanceof Parameter) {
-            Parameter other = (Parameter)obj;
-            return (other.executable.equals(executable) &&
-                    other.index == index);
-        }
-        return false;
+        return (obj instanceof Parameter other)
+                && other.executable.equals(executable)
+                && other.index == index;
     }
 
     /**
@@ -90,6 +88,7 @@ public final class Parameter implements AnnotatedElement {
      *
      * @return A hash code based on the executable's hash code.
      */
+    @Override
     public int hashCode() {
         return executable.hashCode() ^ index;
     }
@@ -110,8 +109,8 @@ public final class Parameter implements AnnotatedElement {
     /**
      * Returns a string describing this parameter.  The format is the
      * modifiers for the parameter, if any, in canonical order as
-     * recommended by <cite>The Java&trade; Language
-     * Specification</cite>, followed by the fully- qualified type of
+     * recommended by <cite>The Java Language
+     * Specification</cite>, followed by the fully-qualified type of
      * the parameter (excluding the last [] if the parameter is
      * variable arity), followed by "..." if the parameter is variable
      * arity, followed by a space, followed by the name of the
@@ -120,6 +119,7 @@ public final class Parameter implements AnnotatedElement {
      * @return A string representation of the parameter and associated
      * information.
      */
+    @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder();
         final Type type = getParameterizedType();
@@ -142,19 +142,20 @@ public final class Parameter implements AnnotatedElement {
     }
 
     /**
-     * Return the {@code Executable} which declares this parameter.
-     *
-     * @return The {@code Executable} declaring this parameter.
+     * {@return the {@code Executable} declaring this parameter}
      */
     public Executable getDeclaringExecutable() {
         return executable;
     }
 
     /**
-     * Get the modifier flags for this the parameter represented by
-     * this {@code Parameter} object.
+     * {@return the Java language {@linkplain Modifier modifiers} for
+     * the parameter represented by this object}
      *
-     * @return The modifier flags for this parameter.
+     * @jls 8.4.1 Formal Parameters
+     * @see <a
+     * href="{@docRoot}/java.base/java/lang/reflect/package-summary.html#LanguageJvmModel">Java
+     * programming language and JVM modeling in core reflection</a>
      */
     public int getModifiers() {
         return modifiers;
@@ -244,7 +245,7 @@ public final class Parameter implements AnnotatedElement {
      * in source code; returns {@code false} otherwise.
      *
      * @return true if and only if this parameter is implicitly
-     * declared as defined by <cite>The Java&trade; Language
+     * declared as defined by <cite>The Java Language
      * Specification</cite>.
      */
     public boolean isImplicit() {
@@ -256,10 +257,13 @@ public final class Parameter implements AnnotatedElement {
      * nor explicitly declared in source code; returns {@code false}
      * otherwise.
      *
-     * @jls 13.1 The Form of a Binary
      * @return true if and only if this parameter is a synthetic
      * construct as defined by
-     * <cite>The Java&trade; Language Specification</cite>.
+     * <cite>The Java Language Specification</cite>.
+     * @jls 13.1 The Form of a Binary
+     * @see <a
+     * href="{@docRoot}/java.base/java/lang/reflect/package-summary.html#LanguageJvmModel">Java
+     * programming language and JVM modeling in core reflection</a>
      */
     public boolean isSynthetic() {
         return Modifier.isSynthetic(getModifiers());
@@ -280,8 +284,11 @@ public final class Parameter implements AnnotatedElement {
 
     /**
      * {@inheritDoc}
+     * <p>Note that any annotation returned by this method is a
+     * declaration annotation.
      * @throws NullPointerException {@inheritDoc}
      */
+    @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
         Objects.requireNonNull(annotationClass);
         return annotationClass.cast(declaredAnnotations().get(annotationClass));
@@ -289,6 +296,9 @@ public final class Parameter implements AnnotatedElement {
 
     /**
      * {@inheritDoc}
+     * <p>Note that any annotations returned by this method are
+     * declaration annotations.
+     *
      * @throws NullPointerException {@inheritDoc}
      */
     @Override
@@ -300,14 +310,22 @@ public final class Parameter implements AnnotatedElement {
 
     /**
      * {@inheritDoc}
+     * <p>Note that any annotations returned by this method are
+     * declaration annotations.
      */
+    @Override
     public Annotation[] getDeclaredAnnotations() {
         return executable.getParameterAnnotations()[index];
     }
 
     /**
+     * {@inheritDoc}
+     * <p>Note that any annotation returned by this method is a
+     * declaration annotation.
+     *
      * @throws NullPointerException {@inheritDoc}
      */
+    @Override
     public <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
         // Only annotations on classes are inherited, for all other
         // objects getDeclaredAnnotation is the same as
@@ -316,6 +334,10 @@ public final class Parameter implements AnnotatedElement {
     }
 
     /**
+     * {@inheritDoc}
+     * <p>Note that any annotations returned by this method are
+     * declaration annotations.
+     *
      * @throws NullPointerException {@inheritDoc}
      */
     @Override
@@ -328,7 +350,10 @@ public final class Parameter implements AnnotatedElement {
 
     /**
      * {@inheritDoc}
+     * <p>Note that any annotations returned by this method are
+     * declaration annotations.
      */
+    @Override
     public Annotation[] getAnnotations() {
         return getDeclaredAnnotations();
     }

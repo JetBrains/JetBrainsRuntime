@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import jdk.test.lib.containers.docker.DockerTestUtils;
 
 /*
  * @test
+ * @key cgroups
  * @summary Test JDK Metrics class when running inside docker container
  * @requires docker.support
  * @library /test/lib
@@ -53,7 +54,7 @@ public class TestDockerCpuMetrics {
         // container include the Java test class to be run along with the
         // resource to be examined and expected result.
 
-        DockerTestUtils.buildJdkDockerImage(imageName, "Dockerfile-BasicTest", "jdk-docker");
+        DockerTestUtils.buildJdkContainerImage(imageName);
 
         try {
             int numCpus = CPUSetsReader.getNumCpus();
@@ -78,10 +79,10 @@ public class TestDockerCpuMetrics {
 
             int[] cpuSetMems = Metrics.systemMetrics().getCpuSetMems();
             String memNodes = null;
-            if (cpuSetMems.length > 1) {
+            if (cpuSetMems != null && cpuSetMems.length > 1) {
                 int endNode = (cpuSetMems[cpuSetMems.length - 1] - cpuSetMems[0]) / 2 + cpuSetMems[0];
                 memNodes = cpuSetMems[0] + "-" + endNode;
-            } else if (cpuSetMems.length == 1) {
+            } else if (cpuSetMems != null && cpuSetMems.length == 1) {
                 memNodes = cpuSetMems[0] + "";
             }
 

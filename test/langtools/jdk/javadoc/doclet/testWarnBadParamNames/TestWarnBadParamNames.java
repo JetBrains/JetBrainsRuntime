@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,8 +49,11 @@ public class TestWarnBadParamNames extends JavadocTester {
         checkExit(Exit.OK);
 
         checkOutput(Output.OUT, true,
-                "warning - @param argument \"int\" is not a parameter name.",
-                "warning - @param argument \"IDontExist\" is not a parameter name.",
-                "warning - Parameter \"arg\" is documented more than once.");
+                """
+                    warning: @param argument "int" is not a parameter name.""",
+                """
+                    warning: @param argument "IDontExist" is not a parameter name.""",
+                """
+                    warning: Parameter "arg" is documented more than once.""");
     }
 }

@@ -93,15 +93,30 @@
 # Australian Antarctica Division informed us that Casey changed time
 # zone to UTC+11 in "the morning of 22nd October 2016".
 
+# From Steffen Thorsen (2020-10-02, as corrected):
+# Based on information we have received from the Australian Antarctic
+# Division, Casey station and Macquarie Island station will move to Tasmanian
+# daylight savings time on Sunday 4 October. This will take effect from 0001
+# hrs on Sunday 4 October 2020 and will mean Casey and Macquarie Island will
+# be on the same time zone as Hobart.  Some past dates too for this 3 hour
+# time change back and forth between UTC+8 and UTC+11 for Casey:
+# - 2018 Oct  7 4:00 - 2019 Mar 17 3:00 - 2019 Oct  4 3:00 - 2020 Mar  8 3:00
+# and now - 2020 Oct  4 0:01
+
 # Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
-Zone Antarctica/Casey	0	-	-00	1969
-			8:00	-	+08	2009 Oct 18  2:00
+Zone Antarctica/Casey	 0	-	-00	1969
+			 8:00	-	+08	2009 Oct 18  2:00
 			11:00	-	+11	2010 Mar  5  2:00
-			8:00	-	+08	2011 Oct 28  2:00
+			 8:00	-	+08	2011 Oct 28  2:00
 			11:00	-	+11	2012 Feb 21 17:00u
-			8:00	-	+08	2016 Oct 22
+			 8:00	-	+08	2016 Oct 22
 			11:00	-	+11	2018 Mar 11  4:00
-			8:00	-	+08
+			 8:00	-	+08	2018 Oct  7  4:00
+			11:00	-	+11	2019 Mar 17  3:00
+			 8:00	-	+08	2019 Oct  4  3:00
+			11:00	-	+11	2020 Mar  8  3:00
+			 8:00	-	+08	2020 Oct  4  0:01
+			11:00	-	+11
 Zone Antarctica/Davis	0	-	-00	1957 Jan 13
 			7:00	-	+07	1964 Nov
 			0	-	-00	1969 Feb
@@ -156,7 +171,7 @@ Zone Antarctica/Mawson	0	-	-00	1954 Feb 13
 #
 # Alfred Faure, Possession Island, Crozet Islands, -462551+0515152, since 1964;
 #	sealing & whaling stations operated variously 1802/1911+;
-#	see Indian/Reunion.
+#	see Asia/Dubai.
 #
 # Martin-de-Viviès, Amsterdam Island, -374105+0773155, since 1950
 # Port-aux-Français, Kerguelen Islands, -492110+0701303, since 1951;
@@ -170,17 +185,7 @@ Zone Indian/Kerguelen	0	-	-00	1950 # Port-aux-Français
 			5:00	-	+05
 #
 # year-round base in the main continent
-# Dumont d'Urville, Île des Pétrels, -6640+14001, since 1956-11
-# <https://en.wikipedia.org/wiki/Dumont_d'Urville_Station> (2005-12-05)
-#
-# Another base at Port-Martin, 50km east, began operation in 1947.
-# It was destroyed by fire on 1952-01-14.
-#
-# Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
-Zone Antarctica/DumontDUrville 0 -	-00	1947
-			10:00	-	+10	1952 Jan 14
-			0	-	-00	1956 Nov
-			10:00	-	+10
+# Dumont d'Urville - see Pacific/Port_Moresby.
 
 # France & Italy - year-round base
 # Concordia, -750600+1232000, since 2005
@@ -196,20 +201,7 @@ Zone Antarctica/DumontDUrville 0 -	-00	1947
 # Zuchelli, Terra Nova Bay, -744140+1640647, since 1986
 
 # Japan - year-round bases
-# Syowa (also known as Showa), -690022+0393524, since 1957
-#
-# From Hideyuki Suzuki (1999-02-06):
-# In all Japanese stations, +0300 is used as the standard time.
-#
-# Syowa station, which is the first antarctic station of Japan,
-# was established on 1957-01-29.  Since Syowa station is still the main
-# station of Japan, it's appropriate for the principal location.
-# Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
-Zone Antarctica/Syowa	0	-	-00	1957 Jan 29
-			3:00	-	+03
-# See:
-# NIPR Antarctic Research Activities (1999-08-17)
-# http://www.nipr.ac.jp/english/ara01.html
+# See Asia/Riyadh.
 
 # S Korea - year-round base
 # Jang Bogo, Terra Nova Bay, -743700+1641205 since 2014
@@ -247,7 +239,7 @@ Zone Antarctica/Syowa	0	-	-00	1957 Jan 29
 # suggested by Bengt-Inge Larsson comment them out for now, and approximate
 # with only UTC and CEST.  Uncomment them when 2014b is more prevalent.
 #
-# Rule	NAME	FROM	TO	TYPE	IN	ON	AT	SAVE	LETTER/S
+# Rule	NAME	FROM	TO	-	IN	ON	AT	SAVE	LETTER/S
 #Rule	Troll	2005	max	-	Mar	 1	1:00u	1:00	+01
 Rule	Troll	2005	max	-	Mar	lastSun	1:00u	2:00	+02
 #Rule	Troll	2005	max	-	Oct	lastSun	1:00u	1:00	+01

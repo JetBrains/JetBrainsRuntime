@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,6 +64,16 @@ import java.util.StringTokenizer;
  *   information in the HTTP headers (such as cookies) that it might not
  *   otherwise have access to.</td>
  *   </tr>
+ *
+ * <tr>
+ *   <th scope="row">accessUnixDomainSocket</th>
+ *   <td>The ability to accept, bind, connect or get the local address
+ *   of a <i>Unix Domain</i> socket.
+ *   </td>
+ *   <td>Malicious code could connect to local processes using Unix domain sockets
+ *    or impersonate local processes, by binding to the same pathnames (assuming they
+ *    have the required Operating System permissions.</td>
+ * </tr>
  *
  * <tr>
  *   <th scope="row">getCookieHandler</th>
@@ -164,7 +174,7 @@ import java.util.StringTokenizer;
  *   creating a ProtectionDomain/CodeSource for a class even though
  *   that class really didn't come from that location.</td>
  * </tr>
-   </tbody>
+ * </tbody>
  * </table>
  *
  * @implNote

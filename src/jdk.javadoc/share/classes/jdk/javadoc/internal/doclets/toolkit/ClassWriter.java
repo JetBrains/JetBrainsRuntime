@@ -145,10 +145,9 @@ public interface ClassWriter {
     /**
      * Add the signature of the current class content tree.
      *
-     * @param modifiers the modifiers for the signature
      * @param classInfoTree the class content tree to which the signature will be added
      */
-    void addClassSignature(String modifiers, Content classInfoTree);
+    void addClassSignature(Content classInfoTree);
 
     /**
      * Build the class description.
@@ -170,6 +169,36 @@ public interface ClassWriter {
      * @return a content tree for the member tree header
      */
     Content getMemberTreeHeader();
+
+    /**
+     * Returns a list to be used for the list of summaries for members of a given kind.
+     *
+     * @return a list to be used for the list of summaries for members of a given kind
+     */
+    Content getSummariesList();
+
+    /**
+     * Returns an item for the list of summaries for members of a given kind.
+     *
+     * @param content content for the item
+     * @return an item for the list of summaries for members of a given kind
+     */
+    Content getSummariesListItem(Content content);
+
+    /**
+     * Returns a list to be used for the list of details for members of a given kind.
+     *
+     * @return a list to be used for the list of details for members of a given kind
+     */
+    Content getDetailsList();
+
+    /**
+     * Returns an item for the list of details for members of a given kind.
+     *
+     * @param content content for the item
+     * @return an item for the list of details for members of a given kind
+     */
+    Content getDetailsListItem(Content content);
 
     /**
      * Add the class content tree.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,6 +46,7 @@ import jdk.internal.access.SharedSecrets;
 import sun.security.util.Debug;
 import sun.security.jca.*;
 import sun.security.jca.GetInstance.Instance;
+import sun.security.util.KnownOIDs;
 
 /**
  * The Signature class is used to provide applications the functionality
@@ -271,7 +272,7 @@ public abstract class Signature extends SignatureSpi {
         NoSuchAlgorithmException failure;
         do {
             Service s = t.next();
-            if (isSpi(s)) {
+            if (isSpi(s)) { // delayed provider selection
                 return new Delegate(s, t, algorithm);
             } else {
                 // must be a subclass of Signature, disable dynamic selection
@@ -294,7 +295,7 @@ public abstract class Signature extends SignatureSpi {
             sig.algorithm = algorithm;
         } else {
             SignatureSpi spi = (SignatureSpi)instance.impl;
-            sig = new Delegate(spi, algorithm);
+            sig = Delegate.of(spi, algorithm);
         }
         sig.provider = instance.provider;
         return sig;
@@ -332,7 +333,7 @@ public abstract class Signature extends SignatureSpi {
                 // so it is a "real" Spi if it is an
                 // instance of SignatureSpi but not Signature
                 boolean r = (instance instanceof SignatureSpi)
-                                && (instance instanceof Signature == false);
+                                && (!(instance instanceof Signature));
                 if ((debug != null) && (r == false)) {
                     debug.println("Not a SignatureSpi " + className);
                     debug.println("Delayed provider selection may not be "
@@ -463,7 +464,7 @@ public abstract class Signature extends SignatureSpi {
         // check Cipher
         try {
             Cipher c = Cipher.getInstance(RSA_CIPHER, p);
-            return new Delegate(new CipherAdapter(c), RSA_SIGNATURE);
+            return Delegate.of(new CipherAdapter(c), RSA_SIGNATURE);
         } catch (GeneralSecurityException e) {
             // throw Signature style exception message to avoid confusion,
             // but append Cipher exception as cause
@@ -540,16 +541,15 @@ public abstract class Signature extends SignatureSpi {
         // we should check whether it has a Key Usage
         // extension marked as critical.
         //if (cert instanceof java.security.cert.X509Certificate) {
-        if (cert instanceof X509Certificate) {
+        if (cert instanceof X509Certificate xcert) {
             // Check whether the cert has a key usage extension
             // marked as a critical extension.
             // The OID for KeyUsage extension is 2.5.29.15.
-            X509Certificate c = (X509Certificate)cert;
-            Set<String> critSet = c.getCriticalExtensionOIDs();
+            Set<String> critSet = xcert.getCriticalExtensionOIDs();
 
             if (critSet != null && !critSet.isEmpty()
-                && critSet.contains("2.5.29.15")) {
-                boolean[] keyUsageInfo = c.getKeyUsage();
+                && critSet.contains(KnownOIDs.KeyUsage.value())) {
+                boolean[] keyUsageInfo = xcert.getKeyUsage();
                 // keyUsageInfo[0] is for digitalSignature.
                 if ((keyUsageInfo != null) && (keyUsageInfo[0] == false))
                     throw new InvalidKeyException("Wrong key usage");
@@ -1011,13 +1011,15 @@ public abstract class Signature extends SignatureSpi {
     /**
      * Returns the parameters used with this signature object.
      *
-     * <p> If this signature has been previously initialized with parameters
-     * (by calling the {@code setParameter} method), this method returns
-     * the same parameters. If this signature has not been initialized with
-     * parameters, this method may return a combination of default and
-     * randomly generated parameter values if the underlying
-     * signature implementation supports it and can successfully generate
-     * them. Otherwise, {@code null} is returned.
+     * <p> If this signature has been initialized with parameters
+     * (by calling {@link #setParameter(AlgorithmParameterSpec)} or
+     * {@link #setParameter(String, Object)}) and the underlying signature
+     * implementation supports returning the parameters as
+     * {@code AlgorithmParameters}, this method returns the same parameters.
+     * If the parameters were not set, this method may return a combination
+     * of default and randomly generated parameter values if the
+     * underlying signature implementation supports it and can successfully
+     * generate them. Otherwise, {@code null} is returned.
      *
      * @return the parameters used with this signature, or {@code null}
      *
@@ -1089,6 +1091,14 @@ public abstract class Signature extends SignatureSpi {
 
     @SuppressWarnings("deprecation")
     private static class Delegate extends Signature {
+        // use this class for spi objects which implements Cloneable
+        private static final class CloneableDelegate extends Delegate
+                implements Cloneable {
+            private CloneableDelegate(SignatureSpi digestSpi,
+                    String algorithm) {
+                super(digestSpi, algorithm);
+            }
+        }
 
         // The provider implementation (delegate)
         // filled in once the provider is selected
@@ -1105,15 +1115,24 @@ public abstract class Signature extends SignatureSpi {
         // null once provider is selected
         private Iterator<Service> serviceIterator;
 
-        // constructor
-        Delegate(SignatureSpi sigSpi, String algorithm) {
+        // factory method used by Signature class to create Delegate objs
+        static Delegate of(SignatureSpi sigSpi, String algorithm) {
+            if (sigSpi instanceof Cloneable) {
+                return new CloneableDelegate(sigSpi, algorithm);
+            } else {
+                return new Delegate(sigSpi, algorithm);
+            }
+        }
+
+        // private constructor
+        private Delegate(SignatureSpi sigSpi, String algorithm) {
             super(algorithm);
             this.sigSpi = sigSpi;
             this.lock = null; // no lock needed
         }
 
-        // used with delayed provider selection
-        Delegate(Service service,
+        // constructor used with delayed provider selection
+        private Delegate(Service service,
                         Iterator<Service> iterator, String algorithm) {
             super(algorithm);
             this.firstService = service;
@@ -1129,15 +1148,16 @@ public abstract class Signature extends SignatureSpi {
          * @throws    CloneNotSupportedException if this is called on a
          * delegate that does not support {@code Cloneable}.
          */
+        @Override
         public Object clone() throws CloneNotSupportedException {
             chooseFirstProvider();
             if (sigSpi instanceof Cloneable) {
-                SignatureSpi sigSpiClone = (SignatureSpi)sigSpi.clone();
                 // Because 'algorithm' and 'provider' are private
                 // members of our supertype, we must perform a cast to
                 // access them.
-                Signature that =
-                    new Delegate(sigSpiClone, ((Signature)this).algorithm);
+                Signature that = new CloneableDelegate(
+                   (SignatureSpi)sigSpi.clone(),
+                   ((Signature)this).algorithm);
                 that.provider = ((Signature)this).provider;
                 return that;
             } else {
@@ -1157,7 +1177,7 @@ public abstract class Signature extends SignatureSpi {
                 }
             } else {
                 Object o = s.newInstance(null);
-                if (o instanceof SignatureSpi == false) {
+                if (!(o instanceof SignatureSpi)) {
                     throw new NoSuchAlgorithmException
                         ("Not a SignatureSpi: " + o.getClass().getName());
                 }

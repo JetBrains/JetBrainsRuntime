@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -428,7 +428,7 @@ public final class Scanner implements Iterator<String>, Closeable {
         // here but what can we do? The final authority will be
         // whatever parse method is invoked, so ultimately the
         // Scanner will do the right thing
-        String digit = "((?i)["+radixDigits+"]|\\p{javaDigit})";
+        String digit = "((?i)["+radixDigits+"\\p{javaDigit}])";
         String groupedNumeral = "("+non0Digit+digit+"?"+digit+"?("+
                                 groupSeparator+digit+digit+digit+")+)";
         // digit++ is the possessive form which is necessary for reducing
@@ -478,7 +478,7 @@ public final class Scanner implements Iterator<String>, Closeable {
     private Pattern decimalPattern;
     private void buildFloatAndDecimalPattern() {
         // \\p{javaDigit} may not be perfect, see above
-        String digit = "([0-9]|(\\p{javaDigit}))";
+        String digit = "(([0-9\\p{javaDigit}]))";
         String exponent = "([eE][+-]?"+digit+"+)?";
         String groupedNumeral = "("+non0Digit+digit+"?"+digit+"?("+
                                 groupSeparator+digit+digit+digit+")+)";
@@ -614,7 +614,7 @@ public final class Scanner implements Iterator<String>, Closeable {
     /*
      * This method is added so that null-check on charset can be performed before
      * creating InputStream as an existing test required it.
-    */
+     */
     private static Readable makeReadable(Path source, Charset charset)
             throws IOException {
         Objects.requireNonNull(charset, "charset");
@@ -1289,25 +1289,25 @@ public final class Scanner implements Iterator<String>, Closeable {
 
         // These must be literalized to avoid collision with regex
         // metacharacters such as dot or parenthesis
-        groupSeparator =   "\\" + dfs.getGroupingSeparator();
-        decimalSeparator = "\\" + dfs.getDecimalSeparator();
+        groupSeparator =   "\\x{" + Integer.toHexString(dfs.getGroupingSeparator()) + "}";
+        decimalSeparator = "\\x{" + Integer.toHexString(dfs.getDecimalSeparator()) + "}";
 
         // Quoting the nonzero length locale-specific things
         // to avoid potential conflict with metacharacters
-        nanString = "\\Q" + dfs.getNaN() + "\\E";
-        infinityString = "\\Q" + dfs.getInfinity() + "\\E";
+        nanString = Pattern.quote(dfs.getNaN());
+        infinityString = Pattern.quote(dfs.getInfinity());
         positivePrefix = df.getPositivePrefix();
         if (!positivePrefix.isEmpty())
-            positivePrefix = "\\Q" + positivePrefix + "\\E";
+            positivePrefix = Pattern.quote(positivePrefix);
         negativePrefix = df.getNegativePrefix();
         if (!negativePrefix.isEmpty())
-            negativePrefix = "\\Q" + negativePrefix + "\\E";
+            negativePrefix = Pattern.quote(negativePrefix);
         positiveSuffix = df.getPositiveSuffix();
         if (!positiveSuffix.isEmpty())
-            positiveSuffix = "\\Q" + positiveSuffix + "\\E";
+            positiveSuffix = Pattern.quote(positiveSuffix);
         negativeSuffix = df.getNegativeSuffix();
         if (!negativeSuffix.isEmpty())
-            negativeSuffix = "\\Q" + negativeSuffix + "\\E";
+            negativeSuffix = Pattern.quote(negativeSuffix);
 
         // Force rebuilding and recompilation of locale dependent
         // primitive patterns
@@ -2664,9 +2664,8 @@ public final class Scanner implements Iterator<String>, Closeable {
      */
     public BigInteger nextBigInteger(int radix) {
         // Check cached result
-        if ((typeCache != null) && (typeCache instanceof BigInteger)
+        if ((typeCache != null) && (typeCache instanceof BigInteger val)
             && this.radix == radix) {
-            BigInteger val = (BigInteger)typeCache;
             useTypeCache();
             return val;
         }
@@ -2730,8 +2729,7 @@ public final class Scanner implements Iterator<String>, Closeable {
      */
     public BigDecimal nextBigDecimal() {
         // Check cached result
-        if ((typeCache != null) && (typeCache instanceof BigDecimal)) {
-            BigDecimal val = (BigDecimal)typeCache;
+        if ((typeCache != null) && (typeCache instanceof BigDecimal val)) {
             useTypeCache();
             return val;
         }

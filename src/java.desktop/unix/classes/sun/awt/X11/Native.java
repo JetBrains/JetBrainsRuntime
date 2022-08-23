@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2005, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,7 @@ class Native {
 
     static int dataModel;
     static {
+        @SuppressWarnings("removal")
         String dataModelProp = AccessController.doPrivileged(
             new PrivilegedAction<String>() {
                 public String run() {
@@ -372,6 +373,20 @@ class Native {
             putLong(res, i, longs[i]);
         }
         return res;
+    }
+
+    /**
+     * Access to C double data(eight bytes)
+     */
+    static final int DOUBLE_SIZE = 8;
+    static double getDouble(long ptr) { return unsafe.getDouble(ptr); }
+    static double getDouble(long ptr, int index) { return getDouble(ptr + DOUBLE_SIZE * index); }
+    /**
+     * Stores to C double data(eight bytes)
+     */
+    static void putDouble(long ptr, double data) { unsafe.putDouble(ptr, data); }
+    static void putDouble(long ptr, int index, double data) {
+        putDouble(ptr + index * DOUBLE_SIZE, data);
     }
 
 

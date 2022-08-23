@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018, Google LLC. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -103,12 +104,6 @@ public class TreeHasher extends TreeScanner {
     public void visitSelect(JCFieldAccess tree) {
         hash(tree.sym);
         super.visitSelect(tree);
-    }
-
-    @Override
-    public void visitBindingPattern(JCTree.JCBindingPattern tree) {
-        symbolHashes.computeIfAbsent(tree.symbol, k -> symbolHashes.size());
-        super.visitBindingPattern(tree);
     }
 
     @Override

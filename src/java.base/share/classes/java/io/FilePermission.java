@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -308,6 +308,7 @@ public final class FilePermission extends Permission implements Serializable {
      * @param mask the actions mask to use.
      *
      */
+    @SuppressWarnings("removal")
     private void init(int mask) {
         if ((mask & ALL) != mask)
                 throw new IllegalArgumentException("invalid actions mask");
@@ -540,7 +541,7 @@ public final class FilePermission extends Permission implements Serializable {
      * If {@code jdk.io.permissionsUseCanonicalPath} is {@code true}, a
      * simple {@code cpath} is inside a wildcard {@code cpath} if and only if
      * after removing the base name (the last name in the pathname's name
-     * sequence) from the former the remaining part equals to the latter,
+     * sequence) from the former the remaining part is equal to the latter,
      * a simple {@code cpath} is recursively inside a wildcard {@code cpath}
      * if and only if the former starts with the latter.
      * <p>
@@ -566,10 +567,8 @@ public final class FilePermission extends Permission implements Serializable {
      */
     @Override
     public boolean implies(Permission p) {
-        if (!(p instanceof FilePermission))
+        if (!(p instanceof FilePermission that))
             return false;
-
-        FilePermission that = (FilePermission) p;
 
         // we get the effective mask. i.e., the "and" of this and that.
         // They must be equal to that.mask for implies to return true.
@@ -791,10 +790,8 @@ public final class FilePermission extends Permission implements Serializable {
         if (obj == this)
             return true;
 
-        if (! (obj instanceof FilePermission))
+        if (! (obj instanceof FilePermission that))
             return false;
-
-        FilePermission that = (FilePermission) obj;
 
         if (this.invalid || that.invalid) {
             return false;
@@ -1150,14 +1147,12 @@ final class FilePermissionCollection extends PermissionCollection
      */
     @Override
     public void add(Permission permission) {
-        if (! (permission instanceof FilePermission))
+        if (! (permission instanceof FilePermission fp))
             throw new IllegalArgumentException("invalid permission: "+
                                                permission);
         if (isReadOnly())
             throw new SecurityException(
                 "attempt to add a Permission to a readonly PermissionCollection");
-
-        FilePermission fp = (FilePermission)permission;
 
         // Add permission to map if it is absent, or replace with new
         // permission if applicable.
@@ -1195,10 +1190,8 @@ final class FilePermissionCollection extends PermissionCollection
      */
     @Override
     public boolean implies(Permission permission) {
-        if (! (permission instanceof FilePermission))
+        if (! (permission instanceof FilePermission fperm))
             return false;
-
-        FilePermission fperm = (FilePermission) permission;
 
         int desired = fperm.getMask();
         int effective = 0;
@@ -1247,9 +1240,12 @@ final class FilePermissionCollection extends PermissionCollection
     /**
      * @serialData "permissions" field (a Vector containing the FilePermissions).
      */
-    /*
+    /**
      * Writes the contents of the perms field out as a Vector for
      * serialization compatibility with earlier releases.
+     *
+     * @param  out the {@code ObjectOutputStream} to which data is written
+     * @throws IOException if an I/O error occurs
      */
     @java.io.Serial
     private void writeObject(ObjectOutputStream out) throws IOException {
@@ -1263,8 +1259,12 @@ final class FilePermissionCollection extends PermissionCollection
         out.writeFields();
     }
 
-    /*
+    /**
      * Reads in a Vector of FilePermissions and saves them in the perms field.
+     *
+     * @param  in the {@code ObjectInputStream} from which data is read
+     * @throws IOException if an I/O error occurs
+     * @throws ClassNotFoundException if a serialized class cannot be loaded
      */
     @java.io.Serial
     private void readObject(ObjectInputStream in)

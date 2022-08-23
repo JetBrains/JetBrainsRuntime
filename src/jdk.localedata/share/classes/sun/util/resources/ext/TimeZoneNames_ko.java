@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -252,6 +252,9 @@ public final class TimeZoneNames_ko extends TimeZoneNamesBundle {
         String WET[] = new String[] {"\uc11c\uc720\ub7fd \uc2dc\uac04", "WET",
                                      "\uc11c\uc720\ub7fd \uc77c\uad11\uc808\uc57d\uc2dc\uac04", "WEST",
                                      "\uC11C\uBD80 \uC720\uB7FD \uD45C\uC900\uC2DC", "WET"};
+        String WGT[] = new String[] {"\uc11c\ubd80 \uadf8\ub9b0\ub79c\ub4dc \uc2dc\uac04", "WGT",
+                                     "\uc11c\ubd80 \uadf8\ub9b0\ub79c\ub4dc \uc77c\uad11\uc808\uc57d\uc2dc\uac04", "WGST",
+                                     "\uC11C\uBD80 \uADF8\uB9B0\uB780\uB4DC \uD45C\uC900\uC2DC", "WGT"};
         String WIT[] = new String[] {"\uc11c\uc778\ub3c4\ub124\uc2dc\uc544 \uc2dc\uac04", "WIB",
                                      "\uc11c\uc778\ub3c4\ub124\uc2dc\uc544 \uc77c\uad11\uc808\uc57d\uc2dc\uac04", "WIST",
                                      "\uC11C\uBD80 \uC778\uB3C4\uB124\uC2DC\uC544 \uD45C\uC900\uC2DC", "WIB"};
@@ -348,7 +351,7 @@ public final class TimeZoneNames_ko extends TimeZoneNamesBundle {
             {"Africa/Gaborone", CAT},
             {"Africa/Harare", CAT},
             {"Africa/Johannesburg", SAST},
-            {"Africa/Juba", EAT},
+            {"Africa/Juba", CAT},
             {"Africa/Kampala", EAT},
             {"Africa/Khartoum", CAT},
             {"Africa/Kigali", CAT},
@@ -375,7 +378,9 @@ public final class TimeZoneNames_ko extends TimeZoneNamesBundle {
             {"Africa/Timbuktu", GMT},
             {"Africa/Tripoli", EET},
             {"Africa/Tunis", CET},
-            {"Africa/Windhoek", CAT},
+            {"Africa/Windhoek", new String[] {"Central African Time", "CAT",
+                                              "Western African Time", "WAT",
+                                              "Central African Time", "CAT"}},
             {"America/Adak", HST},
             {"America/Anguilla", AST},
             {"America/Antigua", AST},
@@ -430,7 +435,7 @@ public final class TimeZoneNames_ko extends TimeZoneNamesBundle {
             {"America/Cuiaba", AMT},
             {"America/Curacao", AST},
             {"America/Danmarkshavn", GMT},
-            {"America/Dawson", PST},
+            {"America/Dawson", MST},
             {"America/Dawson_Creek", MST},
             {"America/Detroit", EST},
             {"America/Dominica", AST},
@@ -442,9 +447,7 @@ public final class TimeZoneNames_ko extends TimeZoneNamesBundle {
             {"America/Fort_Wayne", EST},
             {"America/Fortaleza", BRT},
             {"America/Glace_Bay", AST},
-            {"America/Godthab", new String[] {"\uc11c\ubd80 \uadf8\ub9b0\ub79c\ub4dc \uc2dc\uac04", "WGT",
-                                              "\uc11c\ubd80 \uadf8\ub9b0\ub79c\ub4dc \uc77c\uad11\uc808\uc57d\uc2dc\uac04", "WGST",
-                                              "\uC11C\uBD80 \uADF8\uB9B0\uB780\uB4DC \uD45C\uC900\uC2DC", "WGT"}},
+            {"America/Godthab", WGT},
             {"America/Goose_Bay", AST},
             {"America/Grand_Turk", EST},
             {"America/Grenada", AST},
@@ -512,6 +515,7 @@ public final class TimeZoneNames_ko extends TimeZoneNamesBundle {
             {"America/North_Dakota/Beulah", CST},
             {"America/North_Dakota/Center", CST},
             {"America/North_Dakota/New_Salem", CST},
+            {"America/Nuuk", WGT},
             {"America/Ojinaga", MST},
             {"America/Panama", EST},
             {"America/Pangnirtung", EST},
@@ -551,7 +555,7 @@ public final class TimeZoneNames_ko extends TimeZoneNamesBundle {
             {"America/Tortola", AST},
             {"America/Vancouver", PST},
             {"America/Virgin", AST},
-            {"America/Whitehorse", PST},
+            {"America/Whitehorse", MST},
             {"America/Winnipeg", CST},
             {"America/Yakutat", AKST},
             {"America/Yellowknife", MST},
@@ -562,9 +566,9 @@ public final class TimeZoneNames_ko extends TimeZoneNamesBundle {
             {"Antarctica/DumontDUrville", new String[] {"\ub4a4\ubabd \ub4a4\ub974\ube4c \uc2dc\uac04", "DDUT",
                                                         "\ub4a4\ubabd \ub4a4\ub974\ube4c \uc77c\uad11\uc808\uc57d\uc2dc\uac04", "DDUST",
                                                         "\uB450\uBAAC\uD2B8\uC6B0\uB974\uBE4C \uD45C\uC900\uC2DC", "DDUT"}},
-            {"Antarctica/Macquarie", new String[] {"\uB9E4\uCF70\uB9AC \uC12C \uD45C\uC900\uC2DC", "MIST",
-                                                   "\uB9E4\uCF70\uB9AC \uC12C \uC77C\uAD11 \uC808\uC57D \uC2DC\uAC04", "MIST",
-                                                   "\uB9E4\uCF70\uB9AC \uC12C \uD45C\uC900\uC2DC", "MIST"}},
+            {"Antarctica/Macquarie", new String[] {"Australian Eastern Standard Time (Macquarie)", "AEST",
+                                                   "Australian Eastern Daylight Time (Macquarie)", "AEDT",
+                                                   "Australian Eastern Time (Macquarie)", "AET"}},
             {"Antarctica/Mawson", new String[] {"\ubaa8\uc2a8 \uc2dc\uac04", "MAWT",
                                                 "\ubaa8\uc2a8 \uc77c\uad11\uc808\uc57d\uc2dc\uac04", "MAWST",
                                                 "\uB9C8\uC2A8 \uD45C\uC900\uC2DC", "MAWT"}},
@@ -782,7 +786,7 @@ public final class TimeZoneNames_ko extends TimeZoneNamesBundle {
             {"Canada/Mountain", MST},
             {"Canada/Newfoundland", NST},
             {"Canada/Pacific", PST},
-            {"Canada/Yukon", PST},
+            {"Canada/Yukon", MST},
             {"Canada/Saskatchewan", CST},
             {"CAT", CAT},
             {"CET", CET},
@@ -1033,7 +1037,6 @@ public final class TimeZoneNames_ko extends TimeZoneNamesBundle {
             {"US/Michigan", EST},
             {"US/Mountain", MST},
             {"US/Pacific", PST},
-            {"US/Pacific-New", PST},
             {"US/Samoa", SAMOA},
             {"VST", ICT},
             {"W-SU", MSK},

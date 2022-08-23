@@ -25,11 +25,14 @@
 
 package sun.font;
 
+import sun.lwawt.macosx.concurrent.Dispatch;
+
 import java.awt.Rectangle;
 import java.awt.geom.*;
-import java.util.*;
-
-import sun.awt.SunHints;
+import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import sun.lwawt.macosx.CThreading;
+import static sun.awt.SunHints.*;
 
 public final class CStrike extends PhysicalStrike {
 
@@ -38,7 +41,9 @@ public final class CStrike extends PhysicalStrike {
                                                      double[] glyphTx,
                                                      double[] invDevTxMatrix,
                                                      int aaHint,
-                                                     int fmHint);
+                                                     int fmHint,
+                                                     int subpixelResolutionX,
+                                                     int subpixelResolutionY);
 
     // Disposes the native strike
     private static native void disposeNativeStrikePtr(long nativeStrikePtr);
@@ -61,6 +66,16 @@ public final class CStrike extends PhysicalStrike {
                                                             int glyphCode,
                                                             double x,
                                                             double y);
+
+    private static native void getNativeGlyphRenderData(long nativeStrikePtr,
+                                                        int glyphCode,
+                                                        double x,
+                                                        double y,
+                                                        GlyphRenderData result);
+
+    private static native void getNativeGlyphOutlineBounds(long nativeStrikePtr,
+                                                           int glyphCode,
+                                                           float [] rectData);
 
     // returns the bounding rect for a glyph
     private static native void getNativeGlyphImageBounds(long nativeStrikePtr,
@@ -121,7 +136,9 @@ public final class CStrike extends PhysicalStrike {
             }
             nativeStrikePtr =
                 createNativeStrikePtr(nativeFont.getNativeFontPtr(),
-                                      glyphTx, invDevTxMatrix, aaHint, fmHint);
+                                      glyphTx, invDevTxMatrix, aaHint, fmHint,
+                                      FontUtilities.subpixelResolution.width,
+                                      FontUtilities.subpixelResolution.height);
         }
 
         return nativeStrikePtr;
@@ -175,19 +192,9 @@ public final class CStrike extends PhysicalStrike {
     }
 
     Rectangle2D.Float getGlyphOutlineBounds(int glyphCode) {
-        GeneralPath gp = getGlyphOutline(glyphCode, 0f, 0f);
-        Rectangle2D r2d = gp.getBounds2D();
-        Rectangle2D.Float r2df;
-        if (r2d instanceof Rectangle2D.Float) {
-            r2df = (Rectangle2D.Float)r2d;
-        } else {
-            float x = (float)r2d.getX();
-            float y = (float)r2d.getY();
-            float w = (float)r2d.getWidth();
-            float h = (float)r2d.getHeight();
-            r2df = new Rectangle2D.Float(x, y, w, h);
-        }
-        return r2df;
+        final float [] rectData = new float[4];
+        getNativeGlyphOutlineBounds(getNativeStrikePtr(), glyphCode, rectData);
+        return new Rectangle2D.Float(rectData[0], rectData[1], rectData[2], rectData[3]);
     }
 
     // pt, result in device space
@@ -205,7 +212,15 @@ public final class CStrike extends PhysicalStrike {
             return;
         }
 
-        result.setRect(floatRect.x + pt.x, floatRect.y + pt.y, floatRect.width, floatRect.height);
+        boolean subpixel = desc.aaHint == INTVAL_TEXT_ANTIALIAS_ON &&
+                desc.fmHint == INTVAL_FRACTIONALMETRICS_ON;
+        float subpixelResolutionX = subpixel ? FontUtilities.subpixelResolution.width : 1;
+        float subpixelResolutionY = subpixel ? FontUtilities.subpixelResolution.height : 1;
+        // Before rendering, glyph positions are offset by 0.5 pixels, take into consideration
+        float x = ((int) (pt.x * subpixelResolutionX + 0.5f)) / subpixelResolutionX;
+        float y = ((int) (pt.y * subpixelResolutionY + 0.5f)) / subpixelResolutionY;
+
+        result.setRect(floatRect.x + x, floatRect.y + y, floatRect.width, floatRect.height);
     }
 
     private void getGlyphImageBounds(int glyphCode, float x, float y, Rectangle2D.Float floatRect) {
@@ -219,6 +234,12 @@ public final class CStrike extends PhysicalStrike {
     // should implement, however not called though any path that is publicly exposed
     GeneralPath getGlyphVectorOutline(int[] glyphs, float x, float y) {
         throw new Error("not implemented yet");
+    }
+
+    GlyphRenderData getGlyphRenderData(int glyphCode, float x, float y) {
+        GlyphRenderData result = new GlyphRenderData();
+        getNativeGlyphRenderData(getNativeStrikePtr(), glyphCode, x, y, result);
+        return result;
     }
 
     // called from the Sun2D renderer
@@ -357,7 +378,7 @@ public final class CStrike extends PhysicalStrike {
         private static final int SECOND_LAYER_SIZE = 16384; // 16384 = 128x128
 
         // rdar://problem/5204197
-        private boolean disposed = false;
+        private final AtomicBoolean disposed = new AtomicBoolean(false);
 
         private final long[] firstLayerCache;
         private SparseBitShiftingTwoLayerArray secondLayerCache;
@@ -420,43 +441,51 @@ public final class CStrike extends PhysicalStrike {
         }
 
         public synchronized void dispose() {
-            // rdar://problem/5204197
-            // Note that sun.font.Font2D.getStrike() actively disposes
-            // cleared strikeRef.  We need to check the disposed flag to
-            // prevent double frees of native resources.
-            if (disposed) {
-                return;
-            }
+            final Runnable command = () -> {
+                // rdar://problem/5204197
+                // Note that sun.font.Font2D.getStrike() actively disposes
+                // cleared strikeRef.  We need to check the disposed flag to
+                // prevent double frees of native resources.
+                if (disposed.compareAndSet(false, true)) {
 
-            super.dispose();
+                    super.dispose();
 
-            // clean out the first array
-            disposeLongArray(firstLayerCache);
+                    // clean out the first array
+                    disposeLongArray(firstLayerCache);
 
-            // clean out the two layer arrays
-            if (secondLayerCache != null) {
-                final long[][] secondLayerLongArrayArray = secondLayerCache.cache;
-                for (int i = 0; i < secondLayerLongArrayArray.length; i++) {
-                    final long[] longArray = secondLayerLongArrayArray[i];
-                    if (longArray != null) disposeLongArray(longArray);
-                }
-            }
+                    // clean out the two layer arrays
+                    if (secondLayerCache != null) {
+                        final long[][] secondLayerLongArrayArray = secondLayerCache.cache;
+                        for (final long[] longArray : secondLayerLongArrayArray) {
+                            if (longArray != null) disposeLongArray(longArray);
+                        }
+                    }
 
-            // clean up everyone else
-            if (generalCache != null) {
-                final Iterator<Long> i = generalCache.values().iterator();
-                while (i.hasNext()) {
-                    final long longValue = i.next().longValue();
-                    if (longValue != -1 && longValue != 0) {
-                        removeGlyphInfoFromCache(longValue);
-                        StrikeCache.freeLongPointer(longValue);
+                    // clean up everyone else
+                    if (generalCache != null) {
+                        for (Long aLong : generalCache.values()) {
+                            final long longValue = aLong;
+                            if (longValue != -1 && longValue != 0) {
+                                removeGlyphInfoFromCache(longValue);
+                                StrikeCache.freeLongPointer(longValue);
+                            }
+                        }
                     }
                 }
-            }
+            };
 
-            // rdar://problem/5204197
-            // Finally, set the flag.
-            disposed = true;
+            // Move disposal code to AppKit thread in order to avoid the
+            // following deadlock:
+            // 1) CGLGraphicsConfig.getCGLConfigInfo (called from Java2D
+            //    disposal thread) takes RenderQueue.lock
+            // 2) CGLLayer.drawInCGLContext is invoked on AppKit thread and
+            //    blocked on RenderQueue.lock
+            // 1) invokes native block on AppKit and wait
+            //
+            // If dispatch instance is not available, run the code on
+            // disposal thread as before
+
+            CThreading.executeOnAppKit(command);
         }
 
         private static void disposeLongArray(final long[] longArray) {

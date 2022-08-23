@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
  */
 
 #include "precompiled.hpp"
+#include "gc/shared/tlab_globals.hpp"
 #include "gc/shared/c2/barrierSetC2.hpp"
 #include "opto/arraycopynode.hpp"
 #include "opto/convertnode.hpp"
@@ -141,6 +142,7 @@ Node* BarrierSetC2::load_at_resolved(C2Access& access, const Type* val_type) con
   bool control_dependent = (decorators & C2_CONTROL_DEPENDENT_LOAD) != 0;
   bool unknown_control = (decorators & C2_UNKNOWN_CONTROL_LOAD) != 0;
   bool unsafe = (decorators & C2_UNSAFE_ACCESS) != 0;
+  bool immutable = (decorators & C2_IMMUTABLE_MEMORY) != 0;
 
   bool in_native = (decorators & IN_NATIVE) != 0;
 
@@ -153,10 +155,14 @@ Node* BarrierSetC2::load_at_resolved(C2Access& access, const Type* val_type) con
     GraphKit* kit = parse_access.kit();
     Node* control = control_dependent ? kit->control() : NULL;
 
-    if (in_native) {
-      load = kit->make_load(control, adr, val_type, access.type(), mo, dep,
-                            requires_atomic_access, unaligned,
+    if (immutable) {
+      assert(!requires_atomic_access, "can't ensure atomicity");
+      Compile* C = Compile::current();
+      Node* mem = kit->immutable_memory();
+      load = LoadNode::make(kit->gvn(), control, mem, adr,
+                            adr_type, val_type, access.type(), mo, dep, unaligned,
                             mismatched, unsafe, access.barrier_data());
+      load = kit->gvn().transform(load);
     } else {
       load = kit->make_load(control, adr, val_type, access.type(), adr_type, mo,
                             dep, requires_atomic_access, unaligned, mismatched, unsafe,
@@ -653,7 +659,7 @@ int BarrierSetC2::arraycopy_payload_base_offset(bool is_array) {
   // Exclude the header but include array length to copy by 8 bytes words.
   // Can't use base_offset_in_bytes(bt) since basic type is unknown.
   int base_off = is_array ? arrayOopDesc::length_offset_in_bytes() :
-                 instanceOopDesc::base_offset_in_bytes();
+                            instanceOopDesc::base_offset_in_bytes();
   // base_off:
   // 8  - 32-bit VM
   // 12 - 64-bit VM, compressed klass
@@ -674,17 +680,11 @@ int BarrierSetC2::arraycopy_payload_base_offset(bool is_array) {
 
 void BarrierSetC2::clone(GraphKit* kit, Node* src_base, Node* dst_base, Node* size, bool is_array) const {
   int base_off = arraycopy_payload_base_offset(is_array);
-  Node* payload_src = kit->basic_plus_adr(src_base,  base_off);
-  Node* payload_dst = kit->basic_plus_adr(dst_base, base_off);
-
-  // Compute the length also, if needed:
   Node* payload_size = size;
-  payload_size = kit->gvn().transform(new SubXNode(payload_size, kit->MakeConX(base_off)));
-  payload_size = kit->gvn().transform(new URShiftXNode(payload_size, kit->intcon(LogBytesPerLong) ));
-
-  const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
-
-  ArrayCopyNode* ac = ArrayCopyNode::make(kit, false, payload_src, NULL, payload_dst, NULL, payload_size, true, false);
+  Node* offset = kit->MakeConX(base_off);
+  payload_size = kit->gvn().transform(new SubXNode(payload_size, offset));
+  payload_size = kit->gvn().transform(new URShiftXNode(payload_size, kit->intcon(LogBytesPerLong)));
+  ArrayCopyNode* ac = ArrayCopyNode::make(kit, false, src_base, offset,  dst_base, offset, payload_size, true, false);
   if (is_array) {
     ac->set_clone_array();
   } else {
@@ -692,14 +692,15 @@ void BarrierSetC2::clone(GraphKit* kit, Node* src_base, Node* dst_base, Node* si
   }
   Node* n = kit->gvn().transform(ac);
   if (n == ac) {
-    ac->_adr_type = TypeRawPtr::BOTTOM;
+    const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
+    ac->set_adr_type(TypeRawPtr::BOTTOM);
     kit->set_predefined_output_for_runtime_call(ac, ac->in(TypeFunc::Memory), raw_adr_type);
   } else {
     kit->set_all_memory(n);
   }
 }
 
-Node* BarrierSetC2::obj_allocate(PhaseMacroExpand* macro, Node* ctrl, Node* mem, Node* toobig_false, Node* size_in_bytes,
+Node* BarrierSetC2::obj_allocate(PhaseMacroExpand* macro, Node* mem, Node* toobig_false, Node* size_in_bytes,
                                  Node*& i_o, Node*& needgc_ctrl,
                                  Node*& fast_oop_ctrl, Node*& fast_oop_rawmem,
                                  intx prefetch_lines) const {
@@ -719,7 +720,7 @@ Node* BarrierSetC2::obj_allocate(PhaseMacroExpand* macro, Node* ctrl, Node* mem,
   //       this will require extensive changes to the loop optimization in order to
   //       prevent a degradation of the optimization.
   //       See comment in memnode.hpp, around line 227 in class LoadPNode.
-  Node *eden_end = macro->make_load(ctrl, mem, eden_end_adr, 0, TypeRawPtr::BOTTOM, T_ADDRESS);
+  Node *eden_end = macro->make_load(toobig_false, mem, eden_end_adr, 0, TypeRawPtr::BOTTOM, T_ADDRESS);
 
   // We need a Region for the loop-back contended case.
   enum { fall_in_path = 1, contended_loopback_path = 2 };
@@ -742,7 +743,7 @@ Node* BarrierSetC2::obj_allocate(PhaseMacroExpand* macro, Node* ctrl, Node* mem,
   // Load(-locked) the heap top.
   // See note above concerning the control input when using a TLAB
   Node *old_eden_top = UseTLAB
-    ? new LoadPNode      (ctrl, contended_phi_rawmem, eden_top_adr, TypeRawPtr::BOTTOM, TypeRawPtr::BOTTOM, MemNode::unordered)
+    ? new LoadPNode      (toobig_false, contended_phi_rawmem, eden_top_adr, TypeRawPtr::BOTTOM, TypeRawPtr::BOTTOM, MemNode::unordered)
     : new LoadPLockedNode(contended_region, contended_phi_rawmem, eden_top_adr, MemNode::acquire);
 
   macro->transform_later(old_eden_top);
@@ -837,19 +838,19 @@ void BarrierSetC2::clone_at_expansion(PhaseMacroExpand* phase, ArrayCopyNode* ac
   Node* dest_offset = ac->in(ArrayCopyNode::DestPos);
   Node* length = ac->in(ArrayCopyNode::Length);
 
-  assert (src_offset == NULL,  "for clone offsets should be null");
-  assert (dest_offset == NULL, "for clone offsets should be null");
+  Node* payload_src = phase->basic_plus_adr(src, src_offset);
+  Node* payload_dst = phase->basic_plus_adr(dest, dest_offset);
 
   const char* copyfunc_name = "arraycopy";
-  address     copyfunc_addr =
-          phase->basictype2arraycopy(T_LONG, NULL, NULL,
-                              true, copyfunc_name, true);
+  address     copyfunc_addr = phase->basictype2arraycopy(T_LONG, NULL, NULL, true, copyfunc_name, true);
 
   const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
   const TypeFunc* call_type = OptoRuntime::fast_arraycopy_Type();
 
-  Node* call = phase->make_leaf_call(ctrl, mem, call_type, copyfunc_addr, copyfunc_name, raw_adr_type, src, dest, length XTOP);
+  Node* call = phase->make_leaf_call(ctrl, mem, call_type, copyfunc_addr, copyfunc_name, raw_adr_type, payload_src, payload_dst, length XTOP);
   phase->transform_later(call);
 
   phase->igvn().replace_node(ac, call);
 }
+
+#undef XTOP

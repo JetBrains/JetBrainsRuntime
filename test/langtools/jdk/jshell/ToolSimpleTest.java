@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,14 +23,14 @@
 
 /*
  * @test
- * @bug 8153716 8143955 8151754 8150382 8153920 8156910 8131024 8160089 8153897 8167128 8154513 8170015 8170368 8172102 8172103  8165405 8173073 8173848 8174041 8173916 8174028 8174262 8174797 8177079 8180508 8177466 8172154 8192979 8191842 8198573 8198801 8210596 8210959 8215099 8199623 8236715
+ * @bug 8153716 8143955 8151754 8150382 8153920 8156910 8131024 8160089 8153897 8167128 8154513 8170015 8170368 8172102 8172103  8165405 8173073 8173848 8174041 8173916 8174028 8174262 8174797 8177079 8180508 8177466 8172154 8192979 8191842 8198573 8198801 8210596 8210959 8215099 8199623 8236715 8239536 8247456 8246774 8238173
  * @summary Simple jshell tool tests
  * @modules jdk.compiler/com.sun.tools.javac.api
  *          jdk.compiler/com.sun.tools.javac.main
  *          jdk.jdeps/com.sun.tools.javap
  *          jdk.jshell/jdk.internal.jshell.tool
  * @build KullaTesting TestingInputStream
- * @run testng/othervm ToolSimpleTest
+ * @run testng ToolSimpleTest
  */
 
 import java.util.ArrayList;
@@ -77,7 +77,7 @@ public class ToolSimpleTest extends ReplToolTesting {
 
     @Test
     public void testSwitchExpression() {
-        test(false, new String[]{"--enable-preview", "--no-startup"},
+        test(false, new String[]{"--no-startup"},
                 (a) -> assertCommand(a, "enum Day {MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY }", "|  created enum Day"),
                 (a) -> assertCommand(a, "Day day = Day.FRIDAY;", "day ==> FRIDAY"),
                 (a) -> assertCommand(a, "switch (day) {", ""),
@@ -91,7 +91,7 @@ public class ToolSimpleTest extends ReplToolTesting {
 
     @Test
     public void testSwitchExpressionCompletion() {
-        test(false, new String[]{"--enable-preview", "--no-startup"},
+        test(false, new String[]{"--no-startup"},
                 (a) -> assertCommand(a, "enum Day {MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY }", "|  created enum Day"),
                 (a) -> assertCommand(a, "Day day = Day.FRIDAY;", "day ==> FRIDAY"),
                 (a) -> assertCommand(a, "switch (day) {", ""),
@@ -132,7 +132,7 @@ public class ToolSimpleTest extends ReplToolTesting {
                         + "|  Caused by: java.io.IOException: bar\n"
                         + "|        at n (#2:1)\n"
                         + "|        ...\n"
-                        + "|  Caused by: java.lang.NullPointerException\n"
+                        + "|  Caused by: java.lang.NullPointerException: Cannot invoke \"String.toString()\" because \"null\" is null\n"
                         + "|        at p (#1:1)\n"
                         + "|        ..."),
                 (a) -> assertCommand(a, "/drop p",
@@ -267,6 +267,18 @@ public class ToolSimpleTest extends ReplToolTesting {
                 (a) -> assertCommandOutputStartsWith(a, "int g() { return x; }",
                         "|  created method g(), however, it cannot be invoked until variable x is declared"),
                 (a) -> assertCommand(a, "g()", "|  attempted to call method g() which cannot be invoked until variable x is declared")
+        );
+    }
+
+    @Test
+    public void testAbstractMethod() {
+        test(
+                (a) -> assertCommand(a, "abstract int f(int x);",
+                        "|  created method f(int), however, it cannot be invoked until method f(int) is declared"),
+                (a) -> assertCommand(a, "f(13)",
+                        "|  attempted to call method f(int) which cannot be invoked until method f(int) is declared"),
+                (a) -> assertCommand(a, " abstract void m(Blah b);",
+                        "|  created method m(Blah), however, it cannot be referenced until class Blah, and method m(Blah) are declared")
         );
     }
 
@@ -732,7 +744,8 @@ public class ToolSimpleTest extends ReplToolTesting {
 
     @Test
     public void testCompoundStart() {
-        test(new String[]{"--startup", "DEFAULT", "--startup", "PRINTING"},
+        test(new String[]{"-R", "-Duser.language=en", "-R", "-Duser.country=US",
+                          "--startup", "DEFAULT", "--startup", "PRINTING"},
                 (a) -> assertCommand(a, "printf(\"%4.2f\", Math.PI)",
                         "", "", null, "3.14", "")
         );
@@ -905,11 +918,43 @@ public class ToolSimpleTest extends ReplToolTesting {
 
     @Test
     public void testRecords() {
-        test(new String[] {"--enable-preview"},
+        test(new String[] {},
                 (a) -> assertCommandOutputContains(a, "record R(int i) { public int g() { return j; } }",
                         "|  created record R, however, it cannot be instantiated or its methods invoked until variable j is declared"),
                 (a) -> assertCommandOutputContains(a, "new R(0)",
                         "|  attempted to use record R which cannot be instantiated or its methods invoked until variable j is declared")
         );
+    }
+
+    @Test
+    public void testImportChange() {
+        for (String feedback : new String[] {"verbose", "normal"}) {
+            test(
+                    (a) -> assertCommandOutputContains(a, "/set feedback " + feedback, "|  Feedback mode: " + feedback),
+                    (a) -> assertCommand(a, "import java.util.*", ""),
+                    (a) -> assertCommandOutputContains(a, "var v1 = List.of(1);", "v1 ==> [1]"),
+                    (a) -> assertCommandOutputContains(a, "import java.awt.List;",
+                            "|    update replaced variable v1 which cannot be referenced until this error is corrected:"),
+                    (a) -> assertCommandOutputContains(a, "var b = java.util.List.of(\"bb\")",
+                            "b ==> [bb]"),
+                    (a) -> assertCommandOutputContains(a, "b", "b ==> [bb]")
+            );
+        }
+    }
+
+    @Test
+    public void testSwitchStatementExpressionDisambiguation() {
+        test(false, new String[]{"--no-startup"},
+                (a) -> assertCommand(a, "switch (0) { default -> 0; }", "$1 ==> 0"),
+                (a) -> assertCommand(a, "int i;", "i ==> 0"),
+                (a) -> assertCommand(a, "switch (0) { case 0 -> i = 1; }", ""),
+                (a) -> assertCommand(a, "i", "i ==> 1"),
+                (a) -> assertCommandOutputStartsWith(a, "switch (0) { default -> throw new IllegalStateException(); }", "|  Exception java.lang.IllegalStateException")
+                );
+        test(false, new String[]{"--no-startup", "-C-source", "-C8"},
+                (a) -> assertCommand(a, "int i;", "i ==> 0"),
+                (a) -> assertCommand(a, "switch (0) { default: i = 1; }", ""),
+                (a) -> assertCommand(a, "i", "i ==> 1")
+                );
     }
 }

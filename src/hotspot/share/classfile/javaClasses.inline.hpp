@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,28 +26,26 @@
 #define SHARE_CLASSFILE_JAVACLASSES_INLINE_HPP
 
 #include "classfile/javaClasses.hpp"
+
 #include "oops/access.inline.hpp"
+#include "oops/method.hpp"
 #include "oops/oop.inline.hpp"
 #include "oops/oopsHierarchy.hpp"
 
 void java_lang_String::set_coder(oop string, jbyte coder) {
-  assert(initialized && (coder_offset > 0), "Must be initialized");
-  string->byte_field_put(coder_offset, coder);
+  string->byte_field_put(_coder_offset, coder);
 }
 
 void java_lang_String::set_value_raw(oop string, typeArrayOop buffer) {
-  assert(initialized, "Must be initialized");
-  string->obj_field_put_raw(value_offset, buffer);
+  string->obj_field_put_raw(_value_offset, buffer);
 }
 
 void java_lang_String::set_value(oop string, typeArrayOop buffer) {
-  assert(initialized && (value_offset > 0), "Must be initialized");
-  string->obj_field_put(value_offset, (oop)buffer);
+  string->obj_field_put(_value_offset, buffer);
 }
 
 bool java_lang_String::hash_is_set(oop java_string) {
-  assert(initialized && (hash_offset > 0) && (hashIsZero_offset > 0), "Must be initialized");
-  return java_string->int_field(hash_offset) != 0 || java_string->bool_field(hashIsZero_offset) != 0;
+  return java_string->int_field(_hash_offset) != 0 || java_string->bool_field(_hashIsZero_offset) != 0;
 }
 
 // Accessors
@@ -60,27 +58,50 @@ bool java_lang_String::value_equals(typeArrayOop str_value1, typeArrayOop str_va
 }
 
 typeArrayOop java_lang_String::value(oop java_string) {
-  assert(initialized && (value_offset > 0), "Must be initialized");
   assert(is_instance(java_string), "must be java_string");
-  return (typeArrayOop) java_string->obj_field(value_offset);
+  return (typeArrayOop) java_string->obj_field(_value_offset);
 }
 
 typeArrayOop java_lang_String::value_no_keepalive(oop java_string) {
-  assert(initialized && (value_offset > 0), "Must be initialized");
   assert(is_instance(java_string), "must be java_string");
-  return (typeArrayOop) java_string->obj_field_access<AS_NO_KEEPALIVE>(value_offset);
+  return (typeArrayOop) java_string->obj_field_access<AS_NO_KEEPALIVE>(_value_offset);
 }
 
 bool java_lang_String::is_latin1(oop java_string) {
-  assert(initialized && (coder_offset > 0), "Must be initialized");
   assert(is_instance(java_string), "must be java_string");
-  jbyte coder = java_string->byte_field(coder_offset);
+  jbyte coder = java_string->byte_field(_coder_offset);
   assert(CompactStrings || coder == CODER_UTF16, "Must be UTF16 without CompactStrings");
   return coder == CODER_LATIN1;
 }
 
+uint8_t* java_lang_String::flags_addr(oop java_string) {
+  assert(_initialized, "Must be initialized");
+  assert(is_instance(java_string), "Must be java string");
+  return java_string->obj_field_addr<uint8_t>(_flags_offset);
+}
+
+bool java_lang_String::is_flag_set(oop java_string, uint8_t flag_mask) {
+  return (Atomic::load(flags_addr(java_string)) & flag_mask) != 0;
+}
+
+bool java_lang_String::deduplication_forbidden(oop java_string) {
+  return is_flag_set(java_string, _deduplication_forbidden_mask);
+}
+
+bool java_lang_String::deduplication_requested(oop java_string) {
+  return is_flag_set(java_string, _deduplication_requested_mask);
+}
+
+void java_lang_String::set_deduplication_forbidden(oop java_string) {
+  test_and_set_flag(java_string, _deduplication_forbidden_mask);
+}
+
+bool java_lang_String::test_and_set_deduplication_requested(oop java_string) {
+  return test_and_set_flag(java_string, _deduplication_requested_mask);
+}
+
 int java_lang_String::length(oop java_string, typeArrayOop value) {
-  assert(initialized, "Must be initialized");
+  assert(_initialized, "Must be initialized");
   assert(is_instance(java_string), "must be java_string");
   assert(value_equals(value, java_lang_String::value(java_string)),
          "value must be equal to java_lang_String::value(java_string)");
@@ -96,63 +117,68 @@ int java_lang_String::length(oop java_string, typeArrayOop value) {
 }
 
 int java_lang_String::length(oop java_string) {
-  assert(initialized, "Must be initialized");
+  assert(_initialized, "Must be initialized");
   assert(is_instance(java_string), "must be java_string");
   typeArrayOop value = java_lang_String::value_no_keepalive(java_string);
   return length(java_string, value);
 }
 
 bool java_lang_String::is_instance_inlined(oop obj) {
-  return obj != NULL && obj->klass() == SystemDictionary::String_klass();
+  return obj != NULL && obj->klass() == vmClasses::String_klass();
 }
 
 // Accessors
-oop java_lang_ref_Reference::referent(oop ref) {
-  return ref->obj_field(referent_offset);
+
+oop java_lang_ref_Reference::weak_referent_no_keepalive(oop ref) {
+  return ref->obj_field_access<ON_WEAK_OOP_REF | AS_NO_KEEPALIVE>(_referent_offset);
 }
 
-void java_lang_ref_Reference::set_referent(oop ref, oop value) {
-  ref->obj_field_put(referent_offset, value);
+oop java_lang_ref_Reference::phantom_referent_no_keepalive(oop ref) {
+  return ref->obj_field_access<ON_PHANTOM_OOP_REF | AS_NO_KEEPALIVE>(_referent_offset);
 }
 
-void java_lang_ref_Reference::set_referent_raw(oop ref, oop value) {
-  ref->obj_field_put_raw(referent_offset, value);
+oop java_lang_ref_Reference::unknown_referent_no_keepalive(oop ref) {
+  return ref->obj_field_access<ON_UNKNOWN_OOP_REF | AS_NO_KEEPALIVE>(_referent_offset);
+}
+
+void java_lang_ref_Reference::clear_referent(oop ref) {
+  ref->obj_field_put_raw(_referent_offset, nullptr);
 }
 
 HeapWord* java_lang_ref_Reference::referent_addr_raw(oop ref) {
-  return ref->obj_field_addr_raw<HeapWord>(referent_offset);
+  return ref->obj_field_addr<HeapWord>(_referent_offset);
 }
 
 oop java_lang_ref_Reference::next(oop ref) {
-  return ref->obj_field(next_offset);
+  return ref->obj_field(_next_offset);
 }
 
 void java_lang_ref_Reference::set_next(oop ref, oop value) {
-  ref->obj_field_put(next_offset, value);
+  ref->obj_field_put(_next_offset, value);
 }
 
 void java_lang_ref_Reference::set_next_raw(oop ref, oop value) {
-  ref->obj_field_put_raw(next_offset, value);
+  ref->obj_field_put_raw(_next_offset, value);
 }
 
 HeapWord* java_lang_ref_Reference::next_addr_raw(oop ref) {
-  return ref->obj_field_addr_raw<HeapWord>(next_offset);
+  return ref->obj_field_addr<HeapWord>(_next_offset);
 }
 
 oop java_lang_ref_Reference::discovered(oop ref) {
-  return ref->obj_field(discovered_offset);
+  return ref->obj_field(_discovered_offset);
 }
 
 void java_lang_ref_Reference::set_discovered(oop ref, oop value) {
-  ref->obj_field_put(discovered_offset, value);
+  ref->obj_field_put(_discovered_offset, value);
 }
 
 void java_lang_ref_Reference::set_discovered_raw(oop ref, oop value) {
-  ref->obj_field_put_raw(discovered_offset, value);
+  ref->obj_field_put_raw(_discovered_offset, value);
 }
 
 HeapWord* java_lang_ref_Reference::discovered_addr_raw(oop ref) {
-  return ref->obj_field_addr_raw<HeapWord>(discovered_offset);
+  return ref->obj_field_addr<HeapWord>(_discovered_offset);
 }
 
 bool java_lang_ref_Reference::is_final(oop ref) {
@@ -192,15 +218,15 @@ inline bool java_lang_invoke_MethodHandleNatives_CallSiteContext::is_instance(oo
 }
 
 inline bool java_lang_invoke_MemberName::is_instance(oop obj) {
-  return obj != NULL && obj->klass() == SystemDictionary::MemberName_klass();
+  return obj != NULL && obj->klass() == vmClasses::MemberName_klass();
 }
 
 inline bool java_lang_invoke_ResolvedMethodName::is_instance(oop obj) {
-  return obj != NULL && obj->klass() == SystemDictionary::ResolvedMethodName_klass();
+  return obj != NULL && obj->klass() == vmClasses::ResolvedMethodName_klass();
 }
 
 inline bool java_lang_invoke_MethodType::is_instance(oop obj) {
-  return obj != NULL && obj->klass() == SystemDictionary::MethodType_klass();
+  return obj != NULL && obj->klass() == vmClasses::MethodType_klass();
 }
 
 inline bool java_lang_invoke_MethodHandle::is_instance(oop obj) {
@@ -208,7 +234,15 @@ inline bool java_lang_invoke_MethodHandle::is_instance(oop obj) {
 }
 
 inline bool java_lang_Class::is_instance(oop obj) {
-  return obj != NULL && obj->klass() == SystemDictionary::Class_klass();
+  return obj != NULL && obj->klass() == vmClasses::Class_klass();
+}
+
+inline Klass* java_lang_Class::as_Klass(oop java_class) {
+  //%note memory_2
+  assert(java_lang_Class::is_instance(java_class), "must be a Class object");
+  Klass* k = ((Klass*)java_class->metadata_field(_klass_offset));
+  assert(k == NULL || k->is_klass(), "type check");
+  return k;
 }
 
 inline bool java_lang_Class::is_primitive(oop java_class) {
@@ -238,8 +272,16 @@ inline bool java_lang_invoke_DirectMethodHandle::is_instance(oop obj) {
   return obj != NULL && is_subclass(obj->klass());
 }
 
+inline bool java_lang_invoke_DirectMethodHandle_StaticAccessor::is_instance(oop obj) {
+  return obj != NULL && is_subclass(obj->klass());
+}
+
+inline bool java_lang_invoke_DirectMethodHandle_Accessor::is_instance(oop obj) {
+  return obj != NULL && is_subclass(obj->klass());
+}
+
 inline bool java_lang_Module::is_instance(oop obj) {
-  return obj != NULL && obj->klass() == SystemDictionary::Module_klass();
+  return obj != NULL && obj->klass() == vmClasses::Module_klass();
 }
 
 inline int Backtrace::merge_bci_and_version(int bci, int version) {

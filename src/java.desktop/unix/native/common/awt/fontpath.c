@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,9 +34,6 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
-#ifdef __solaris__
-#include <sys/systeminfo.h>
-#endif
 
 #include <jni.h>
 #include <jni_util.h>
@@ -64,57 +61,7 @@ extern Display *awt_display;
 
 #define MAXFDIRS 512    /* Max number of directories that contain fonts */
 
-#if defined(__solaris__)
-/*
- * This can be set in the makefile to "/usr/X11" if so desired.
- */
-#ifndef OPENWINHOMELIB
-#define OPENWINHOMELIB "/usr/openwin/lib/"
-#endif
-
-/* This is all known Solaris X11 directories on Solaris 8, 9 and 10.
- * It is ordered to give precedence to TrueType directories.
- * It is needed if fontconfig is not installed or configured properly.
- */
-static char *fullSolarisFontPath[] = {
-    OPENWINHOMELIB "X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/euro_fonts/X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/iso_8859_2/X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/iso_8859_5/X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/iso_8859_7/X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/iso_8859_8/X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/iso_8859_9/X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/iso_8859_13/X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/iso_8859_15/X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/ar/X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/hi_IN.UTF-8/X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/ja/X11/fonts/TT",
-    OPENWINHOMELIB "locale/ko/X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/ko.UTF-8/X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/KOI8-R/X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/ru.ansi-1251/X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/th_TH/X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/zh_TW/X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/zh_TW.BIG5/X11/fonts/TT",
-    OPENWINHOMELIB "locale/zh_HK.BIG5HK/X11/fonts/TT",
-    OPENWINHOMELIB "locale/zh_CN.GB18030/X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/zh/X11/fonts/TrueType",
-    OPENWINHOMELIB "locale/zh.GBK/X11/fonts/TrueType",
-    OPENWINHOMELIB "X11/fonts/Type1",
-    OPENWINHOMELIB "X11/fonts/Type1/sun",
-    OPENWINHOMELIB "X11/fonts/Type1/sun/outline",
-    OPENWINHOMELIB "locale/iso_8859_2/X11/fonts/Type1",
-    OPENWINHOMELIB "locale/iso_8859_4/X11/fonts/Type1",
-    OPENWINHOMELIB "locale/iso_8859_5/X11/fonts/Type1",
-    OPENWINHOMELIB "locale/iso_8859_7/X11/fonts/Type1",
-    OPENWINHOMELIB "locale/iso_8859_8/X11/fonts/Type1",
-    OPENWINHOMELIB "locale/iso_8859_9/X11/fonts/Type1",
-    OPENWINHOMELIB "locale/iso_8859_13/X11/fonts/Type1",
-    OPENWINHOMELIB "locale/ar/X11/fonts/Type1",
-    NULL, /* terminates the list */
-};
-
-#elif defined( __linux__)
+#if defined( __linux__)
 /* All the known interesting locations we have discovered on
  * various flavors of Linux
  */
@@ -188,140 +135,6 @@ jboolean isDisplayLocal(JNIEnv *env) {
     return isLocal;
 }
 
-static void AddFontsToX11FontPath ( fDirRecord *fDirP )
-{
-    char *onePath;
-    int index, nPaths;
-    int origNumPaths, length;
-    int origIndex;
-    int totalDirCount;
-    char  **origFontPath;
-    char  **tempFontPath;
-    int doNotAppend;
-    int *appendDirList;
-    char **newFontPath;
-    int err, compareLength;
-    char fontDirPath[512];
-    int dirFile;
-
-    doNotAppend = 0;
-
-    if ( fDirP->num == 0 ) return;
-
-    appendDirList = SAFE_SIZE_ARRAY_ALLOC(malloc, fDirP->num, sizeof ( int ));
-    if ( appendDirList == NULL ) {
-      return;  /* if it fails we cannot do much */
-    }
-
-    origFontPath = XGetFontPath ( awt_display, &nPaths );
-
-    totalDirCount = nPaths;
-    origNumPaths = nPaths;
-    tempFontPath = origFontPath;
-
-
-    for (index = 0; index < fDirP->num; index++ ) {
-
-        doNotAppend = 0;
-
-        tempFontPath = origFontPath;
-        for ( origIndex = 0; origIndex < nPaths; origIndex++ ) {
-
-            onePath = *tempFontPath;
-
-            compareLength = strlen ( onePath );
-            if ( onePath[compareLength -1] == '/' )
-              compareLength--;
-
-            /* there is a slash at the end of every solaris X11 font path name */
-            if ( strncmp ( onePath, fDirP->name[index], compareLength ) == 0 ) {
-              doNotAppend = 1;
-              break;
-            }
-            tempFontPath++;
-        }
-
-        appendDirList[index] = 0;
-        if ( doNotAppend == 0 ) {
-            snprintf(fontDirPath, sizeof(fontDirPath), "%s/fonts.dir", fDirP->name[index]);
-            fontDirPath[sizeof(fontDirPath) - 1] = '\0';
-            dirFile = open ( fontDirPath, O_RDONLY, 0 );
-            if ( dirFile == -1 ) {
-                doNotAppend = 1;
-            } else {
-               close ( dirFile );
-               totalDirCount++;
-               appendDirList[index] = 1;
-            }
-        }
-
-    }
-
-    /* if no changes are required do not bother to do a setfontpath */
-    if ( totalDirCount == nPaths ) {
-      free ( ( void *) appendDirList );
-      XFreeFontPath ( origFontPath );
-      return;
-    }
-
-
-    newFontPath = SAFE_SIZE_ARRAY_ALLOC(malloc, totalDirCount, sizeof(char *));
-    /* if it fails free things and get out */
-    if ( newFontPath == NULL ) {
-      free ( ( void *) appendDirList );
-      XFreeFontPath ( origFontPath );
-      return;
-    }
-
-    for ( origIndex = 0; origIndex < nPaths; origIndex++ ) {
-      onePath = origFontPath[origIndex];
-      newFontPath[origIndex] = onePath;
-    }
-
-    /* now add the other font paths */
-
-    for (index = 0; index < fDirP->num; index++ ) {
-
-      if ( appendDirList[index] == 1 ) {
-
-        /* printf ( "Appending %s\n", fDirP->name[index] ); */
-
-        onePath = SAFE_SIZE_ARRAY_ALLOC(malloc, strlen (fDirP->name[index]) + 2, sizeof( char ) );
-        if (onePath == NULL) {
-            free ( ( void *) appendDirList );
-
-            for ( index = origIndex; index < nPaths; index++ ) {
-                free( newFontPath[index] );
-            }
-
-            free( ( void *) newFontPath);
-            XFreeFontPath ( origFontPath );
-            return;
-        }
-        strcpy ( onePath, fDirP->name[index] );
-        strcat ( onePath, "/" );
-        newFontPath[nPaths++] = onePath;
-        /* printf ( "The path to be appended is %s\n", onePath ); */
-      }
-    }
-
-    /*   printf ( "The dir count = %d\n", totalDirCount ); */
-    free ( ( void *) appendDirList );
-
-    XSetFontPath ( awt_display, newFontPath, totalDirCount );
-
-        for ( index = origNumPaths; index < totalDirCount; index++ ) {
-                free( newFontPath[index] );
-    }
-
-        free ( (void *) newFontPath );
-    XFreeFontPath ( origFontPath );
-    return;
-}
-#endif /* !HEADLESS */
-
-
-#ifndef HEADLESS
 static char **getX11FontPath ()
 {
     char **x11Path, **fontdirs;
@@ -364,14 +177,6 @@ static char **getX11FontPath ()
         if (strstr(x11Path[i], ".gnome") != NULL) {
             continue;
         }
-#ifdef __solaris__
-        if (strstr(x11Path[i], "/F3/") != NULL) {
-            continue;
-        }
-        if (strstr(x11Path[i], "bitmap") != NULL) {
-            continue;
-        }
-#endif
         fontdirs[pos] = strdup(x11Path[i]);
         slen = strlen(fontdirs[pos]);
         if (slen > 0 && fontdirs[pos][slen-1] == '/') {
@@ -521,8 +326,6 @@ static char *getPlatformFontPathChars(JNIEnv *env, jboolean noType1, jboolean is
 
 #if defined(__linux__)
     knowndirs = fullLinuxFontPath;
-#elif defined(__solaris__)
-    knowndirs = fullSolarisFontPath;
 #elif defined(_AIX)
     knowndirs = fullAixFontPath;
 #endif
@@ -592,10 +395,6 @@ static void* openFontConfig() {
     char *homeEnv;
     static char *homeEnvStr = "HOME="; /* must be static */
     void* libfontconfig = NULL;
-#ifdef __solaris__
-#define SYSINFOBUFSZ 8
-    char sysinfobuf[SYSINFOBUFSZ];
-#endif
 
     /* Private workaround to not use fontconfig library.
      * May be useful during testing/debugging
@@ -604,21 +403,6 @@ static void* openFontConfig() {
     if (useFC != NULL && !strcmp(useFC, "no")) {
         return NULL;
     }
-
-#ifdef __solaris__
-    /* fontconfig is likely not properly configured on S8/S9 - skip it,
-     * although allow user to override this behaviour with an env. variable
-     * ie if USE_J2D_FONTCONFIG=yes then we skip this test.
-     * NB "4" is the length of a string which matches our patterns.
-     */
-    if (useFC == NULL || strcmp(useFC, "yes")) {
-        if (sysinfo(SI_RELEASE, sysinfobuf, SYSINFOBUFSZ) == 4) {
-            if ((!strcmp(sysinfobuf, "5.8") || !strcmp(sysinfobuf, "5.9"))) {
-                return NULL;
-            }
-        }
-    }
-#endif
 
 #if defined(_AIX)
     /* On AIX, fontconfig is not a standard package supported by IBM.
@@ -712,6 +496,7 @@ typedef FcResult (*FcPatternGetStringFuncType)(const FcPattern *p,
                                                FcChar8 ** s);
 typedef FcChar8* (*FcStrDirnameFuncType)(const FcChar8 *file);
 typedef void (*FcPatternDestroyFuncType)(FcPattern *p);
+typedef void (*FcObjectSetDestroyFuncType)(FcObjectSet *os);
 typedef void (*FcFontSetDestroyFuncType)(FcFontSet *s);
 typedef FcPattern* (*FcNameParseFuncType)(const FcChar8 *name);
 typedef FcBool (*FcPatternAddStringFuncType)(FcPattern *p,
@@ -738,6 +523,7 @@ typedef FcFontSet* (*FcFontSortFuncType)(FcConfig *config,
                                          FcResult *result);
 typedef FcCharSet* (*FcCharSetUnionFuncType)(const FcCharSet *a,
                                              const FcCharSet *b);
+typedef FcCharSet* (*FcCharSetDestroyFuncType)(FcCharSet *fcs);
 typedef FcChar32 (*FcCharSetSubtractCountFuncType)(const FcCharSet *a,
                                                    const FcCharSet *b);
 
@@ -758,6 +544,7 @@ static char **getFontConfigLocations() {
     FcPatternGetStringFuncType FcPatternGetString;
     FcStrDirnameFuncType FcStrDirname;
     FcPatternDestroyFuncType FcPatternDestroy;
+    FcObjectSetDestroyFuncType FcObjectSetDestroy;
     FcFontSetDestroyFuncType FcFontSetDestroy;
 
     FcConfig *fontconfig;
@@ -787,6 +574,8 @@ static char **getFontConfigLocations() {
         (FcStrDirnameFuncType)dlsym(libfontconfig, "FcStrDirname");
     FcPatternDestroy   =
         (FcPatternDestroyFuncType)dlsym(libfontconfig, "FcPatternDestroy");
+    FcObjectSetDestroy =
+        (FcObjectSetDestroyFuncType)dlsym(libfontconfig, "FcObjectSetDestroy");
     FcFontSetDestroy   =
         (FcFontSetDestroyFuncType)dlsym(libfontconfig, "FcFontSetDestroy");
 
@@ -796,6 +585,7 @@ static char **getFontConfigLocations() {
         FcFontList         == NULL ||
         FcStrDirname       == NULL ||
         FcPatternDestroy   == NULL ||
+        FcObjectSetDestroy == NULL ||
         FcFontSetDestroy   == NULL) { /* problem with the library: return. */
         closeFontConfig(libfontconfig, JNI_FALSE);
         return NULL;
@@ -852,6 +642,7 @@ static char **getFontConfigLocations() {
 
 cleanup:
     /* Free memory and close the ".so" */
+    (*FcObjectSetDestroy)(objset);
     (*FcPatternDestroy)(pattern);
     closeFontConfig(libfontconfig, JNI_TRUE);
     return fontdirs;
@@ -1018,6 +809,7 @@ Java_sun_font_FontConfigManager_getFontConfig
     FcFontSortFuncType FcFontSort;
     FcFontSetDestroyFuncType FcFontSetDestroy;
     FcCharSetUnionFuncType FcCharSetUnion;
+    FcCharSetDestroyFuncType FcCharSetDestroy;
     FcCharSetSubtractCountFuncType FcCharSetSubtractCount;
     FcGetVersionFuncType FcGetVersion;
     FcConfigGetCacheDirsFuncType FcConfigGetCacheDirs;
@@ -1097,6 +889,8 @@ Java_sun_font_FontConfigManager_getFontConfig
         (FcFontSetDestroyFuncType)dlsym(libfontconfig, "FcFontSetDestroy");
     FcCharSetUnion =
         (FcCharSetUnionFuncType)dlsym(libfontconfig, "FcCharSetUnion");
+    FcCharSetDestroy =
+        (FcCharSetDestroyFuncType)dlsym(libfontconfig, "FcCharSetDestroy");
     FcCharSetSubtractCount =
         (FcCharSetSubtractCountFuncType)dlsym(libfontconfig,
                                               "FcCharSetSubtractCount");
@@ -1112,6 +906,7 @@ Java_sun_font_FontConfigManager_getFontConfig
         FcPatternGetCharSet  == NULL ||
         FcFontSetDestroy     == NULL ||
         FcCharSetUnion       == NULL ||
+        FcCharSetDestroy     == NULL ||
         FcGetVersion         == NULL ||
         FcCharSetSubtractCount == NULL) {/* problem with the library: return.*/
         closeFontConfig(libfontconfig, JNI_FALSE);
@@ -1151,8 +946,10 @@ Java_sun_font_FontConfigManager_getFontConfig
         if (cacheDirs != NULL) {
             while ((cnt < max) && (cacheDir = (*FcStrListNext)(cacheDirs))) {
                 jstr = (*env)->NewStringUTF(env, (const char*)cacheDir);
-                JNU_CHECK_EXCEPTION(env);
-
+                if (IS_NULL(jstr)) {
+                    (*FcStrListDone)(cacheDirs);
+                    return;
+                }
                 (*env)->SetObjectArrayElement(env, cacheDirArray, cnt++, jstr);
                 (*env)->DeleteLocalRef(env, jstr);
             }
@@ -1175,6 +972,7 @@ Java_sun_font_FontConfigManager_getFontConfig
         FcChar8 **family, **styleStr, **fullname, **file;
         jarray fcFontArr = NULL;
         FcCharSet *unionCharset = NULL;
+        FcCharSet *prevUnionCharset = NULL;
 
         fcCompFontObj = (*env)->GetObjectArrayElement(env, fcCompFontArray, i);
         fcNameStr =
@@ -1288,6 +1086,9 @@ Java_sun_font_FontConfigManager_getFontConfig
                 free(file);
                 (*FcPatternDestroy)(pattern);
                 (*FcFontSetDestroy)(fontset);
+                if (prevUnionCharset != NULL) {
+                    (*FcCharSetDestroy)(prevUnionCharset);
+                }
                 closeFontConfig(libfontconfig, JNI_FALSE);
                 if (locale) {
                     (*env)->ReleaseStringUTFChars(env, localeStr, (const char*)locale);
@@ -1309,6 +1110,10 @@ Java_sun_font_FontConfigManager_getFontConfig
                 if ((*FcCharSetSubtractCount)(charset, unionCharset)
                     > minGlyphs) {
                     unionCharset = (* FcCharSetUnion)(unionCharset, charset);
+                    if (prevUnionCharset != NULL) {
+                      (*FcCharSetDestroy)(prevUnionCharset);
+                    }
+                    prevUnionCharset = unionCharset;
                 } else {
                     continue;
                 }
@@ -1325,6 +1130,11 @@ Java_sun_font_FontConfigManager_getFontConfig
             if (fontCount == 254) {
                 break; // CompositeFont will only use up to 254 slots from here.
             }
+        }
+
+        // Release last instance of CharSet union
+        if (prevUnionCharset != NULL) {
+          (*FcCharSetDestroy)(prevUnionCharset);
         }
 
         /* Once we get here 'fontCount' is the number of returned fonts

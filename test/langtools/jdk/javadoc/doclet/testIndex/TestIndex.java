@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,29 +51,31 @@ public class TestIndex extends JavadocTester {
 
         //Test index-all.html
         checkOutput("index-all.html", true,
-                "<a href=\"pkg/C.html\" title=\"class in pkg\"><span class=\"typeNameLink\">C</span></a>"
-                + " - Class in <a href=\"pkg/package-summary.html\">pkg</a>",
-                "<a href=\"pkg/Interface.html\" title=\"interface in pkg\">"
-                + "<span class=\"typeNameLink\">Interface</span></a> - Interface in "
-                + "<a href=\"pkg/package-summary.html\">pkg</a>",
-                "<a href=\"pkg/AnnotationType.html\" title=\"annotation in pkg\">"
-                + "<span class=\"typeNameLink\">AnnotationType</span></a> - Annotation Type in "
-                + "<a href=\"pkg/package-summary.html\">pkg</a>",
-                "<a href=\"pkg/Coin.html\" title=\"enum in pkg\">"
-                + "<span class=\"typeNameLink\">Coin</span></a> - Enum in "
-                + "<a href=\"pkg/package-summary.html\">pkg</a>",
-                "Class in <a href=\"package-summary.html\">&lt;Unnamed&gt;</a>",
-                "<dl>\n"
-                + "<dt><span class=\"memberNameLink\"><a href=\"pkg/C.html#Java\">"
-                + "Java</a></span> - Static variable in class pkg.<a href=\"pkg/C.html\" "
-                + "title=\"class in pkg\">C</a></dt>\n"
-                + "<dd>&nbsp;</dd>\n"
-                + "<dt><span class=\"memberNameLink\"><a href=\"pkg/C.html#JDK\">JDK</a></span> "
-                + "- Static variable in class pkg.<a href=\"pkg/C.html\" title=\"class in pkg\">"
-                + "C</a></dt>\n"
-                + "<dd>&nbsp;</dd>\n"
-                + "</dl>",
-                "<dt><span class=\"searchTagLink\"><a href=\"pkg/Coin.html#Enum\">Enum</a>"
-                + "</span> - Search tag in enum pkg.Coin</dt>");
+                """
+                    <a href="pkg/C.html" class="type-name-link" title="class in pkg">C</a> - Class i\
+                    n <a href="pkg/package-summary.html">pkg</a>""",
+                """
+                    <a href="pkg/Interface.html" class="type-name-link" title="interface in pkg">Int\
+                    erface</a> - Interface in <a href="pkg/package-summary.html">pkg</a>""",
+                """
+                    <a href="pkg/AnnotationType.html" class="type-name-link" title="annotation inter\
+                    face in pkg">AnnotationType</a> - Annotation Interface in <a href="pkg/package-s\
+                    ummary.html">pkg</a>""",
+                """
+                    <a href="pkg/Coin.html" class="type-name-link" title="enum class in pkg">Coin</a\
+                    > - Enum Class in <a href="pkg/package-summary.html">pkg</a>""",
+                """
+                    Class in <a href="package-summary.html">Unnamed Package</a>""",
+                """
+                    <dl class="index">
+                    <dt><a href="pkg/C.html#Java" class="member-name-link">Java</a> - Static variabl\
+                    e in class pkg.<a href="pkg/C.html" title="class in pkg">C</a></dt>
+                    <dd>&nbsp;</dd>
+                    <dt><a href="pkg/C.html#JDK" class="member-name-link">JDK</a> - Static variable \
+                    in class pkg.<a href="pkg/C.html" title="class in pkg">C</a></dt>
+                    <dd>&nbsp;</dd>
+                    </dl>""",
+                """
+                    <dt><a href="pkg/Coin.html#Enum" class="search-tag-link">Enum</a> - Search tag in enum class pkg.Coin</dt>""");
     }
 }

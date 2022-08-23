@@ -589,7 +589,6 @@ class ZoneName {
         "US/Michigan", "America_Eastern", "America/New_York",
         "US/Mountain", "America_Mountain", "America/Denver",
         "US/Pacific", "America_Pacific", "America/Los_Angeles",
-        "US/Pacific-New", "America_Pacific", "America/Los_Angeles",
         "US/Samoa", "Samoa", "Pacific/Pago_Pago",
         "W-SU", "Moscow", "Europe/Moscow",
 
@@ -817,6 +816,7 @@ class ZoneName {
         "America/Dominica", "America/Port_of_Spain",
         "America/Ensenada", "America/Tijuana",
         "America/Fort_Wayne", "America/Indiana/Indianapolis",
+        "America/Godthab", "America/Nuuk",
         "America/Grenada", "America/Port_of_Spain",
         "America/Guadeloupe", "America/Port_of_Spain",
         "America/Indianapolis", "America/Indiana/Indianapolis",
@@ -972,7 +972,6 @@ class ZoneName {
         "US/Michigan", "America/Detroit",
         "US/Mountain", "America/Denver",
         "US/Pacific", "America/Los_Angeles",
-        "US/Pacific-New", "America/Los_Angeles",
         "US/Samoa", "Pacific/Pago_Pago",
         "UTC", "Etc/UTC",
         "Universal", "Etc/UTC",

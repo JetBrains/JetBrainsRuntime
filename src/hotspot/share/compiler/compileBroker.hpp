@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,8 +29,9 @@
 #include "compiler/abstractCompiler.hpp"
 #include "compiler/compileTask.hpp"
 #include "compiler/compilerDirectives.hpp"
+#include "compiler/compilerThread.hpp"
 #include "runtime/atomic.hpp"
-#include "runtime/perfData.hpp"
+#include "runtime/perfDataTypes.hpp"
 #include "utilities/stack.hpp"
 #if INCLUDE_JVMCI
 #include "jvmci/jvmciCompiler.hpp"
@@ -174,6 +175,9 @@ class CompileBroker: AllStatic {
   static volatile jint _compilation_id;
   static volatile jint _osr_compilation_id;
 
+  static volatile bool _compilation_stopped;
+  static volatile int _active_compilations;
+
   static CompileQueue* _c2_compile_queue;
   static CompileQueue* _c1_compile_queue;
 
@@ -224,12 +228,20 @@ class CompileBroker: AllStatic {
   static int _sum_nmethod_code_size;
   static long _peak_compilation_time;
 
+  static CompilerStatistics _stats_per_level[];
+
   static volatile int _print_compilation_warning;
 
+  enum ThreadType {
+    compiler_t,
+    sweeper_t,
+    deoptimizer_t
+  };
+
   static Handle create_thread_oop(const char* name, TRAPS);
-  static JavaThread* make_thread(jobject thread_oop, CompileQueue* queue, AbstractCompiler* comp, Thread* THREAD);
+  static JavaThread* make_thread(ThreadType type, jobject thread_oop, CompileQueue* queue, AbstractCompiler* comp, JavaThread* THREAD);
   static void init_compiler_sweeper_threads();
-  static void possibly_add_compiler_threads(Thread* THREAD);
+  static void possibly_add_compiler_threads(JavaThread* THREAD);
   static bool compilation_is_prohibited(const methodHandle& method, int osr_bci, int comp_level, bool excluded);
 
   static CompileTask* create_compile_task(CompileQueue*       queue,
@@ -269,10 +281,6 @@ class CompileBroker: AllStatic {
   static void shutdown_compiler_runtime(AbstractCompiler* comp, CompilerThread* thread);
 
 public:
-
-  static DirectivesStack* dirstack();
-  static void set_dirstack(DirectivesStack* stack);
-
   enum {
     // The entry bci used for non-OSR compilations.
     standard_entry_bci = InvocationEntryBci
@@ -287,12 +295,11 @@ public:
   static bool compilation_is_complete(const methodHandle& method, int osr_bci, int comp_level);
   static bool compilation_is_in_queue(const methodHandle& method);
   static void print_compile_queues(outputStream* st);
-  static void print_directives(outputStream* st);
   static int queue_size(int comp_level) {
     CompileQueue *q = compile_queue(comp_level);
     return q != NULL ? q->size() : 0;
   }
-  static void compilation_init_phase1(Thread* THREAD);
+  static void compilation_init_phase1(JavaThread* THREAD);
   static void compilation_init_phase2();
   static void init_compiler_thread_log();
   static nmethod* compile_method(const methodHandle& method,
@@ -301,7 +308,7 @@ public:
                                  const methodHandle& hot_method,
                                  int hot_count,
                                  CompileTask::CompileReason compile_reason,
-                                 Thread* thread);
+                                 TRAPS);
 
   static nmethod* compile_method(const methodHandle& method,
                                    int osr_bci,
@@ -310,7 +317,7 @@ public:
                                    int hot_count,
                                    CompileTask::CompileReason compile_reason,
                                    DirectiveSet* directive,
-                                   Thread* thread);
+                                   TRAPS);
 
   // Acquire any needed locks and assign a compile id
   static uint assign_compile_id_unlocked(Thread* thread, const methodHandle& method, int osr_bci);
@@ -364,17 +371,13 @@ public:
     return old == 0;
   }
   // Return total compilation ticks
-  static jlong total_compilation_ticks() {
-    return _perf_total_compilation != NULL ? _perf_total_compilation->get_value() : 0;
-  }
+  static jlong total_compilation_ticks();
 
   // Redefine Classes support
   static void mark_on_stack();
 
-#if INCLUDE_JVMCI
   // Print curent compilation time stats for a given compiler
-  static void print_times(AbstractCompiler* comp);
-#endif
+  static void print_times(const char* name, CompilerStatistics* stats);
 
   // Print a detailed accounting of compilation time
   static void print_times(bool per_compiler = true, bool aggregate = true);
@@ -394,6 +397,9 @@ public:
     assert(idx < _c2_count, "oob");
     return _compiler2_objects[idx];
   }
+
+  static AbstractCompiler* compiler1() { return _compilers[0]; }
+  static AbstractCompiler* compiler2() { return _compilers[1]; }
 
   static bool can_remove(CompilerThread *ct, bool do_it);
 
@@ -420,6 +426,9 @@ public:
   // CodeHeap State Analytics.
   static void print_info(outputStream *out);
   static void print_heapinfo(outputStream *out, const char* function, size_t granularity);
+
+  static void stopCompilationBeforeEnhancedRedefinition();
+  static void releaseCompilationAfterEnhancedRedefinition();
 };
 
 #endif // SHARE_COMPILER_COMPILEBROKER_HPP

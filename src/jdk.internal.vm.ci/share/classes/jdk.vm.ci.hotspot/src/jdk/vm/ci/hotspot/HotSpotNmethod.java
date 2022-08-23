@@ -68,8 +68,8 @@ public class HotSpotNmethod extends HotSpotInstalledCode {
 
     /**
      * If this field is 0, this object is in the oops table of the nmethod. Otherwise, the value of
-     * the field records the nmethod's compile identifier. This value is used to confirm an entry in
-     * the code cache retrieved by {@link #address} is indeed the nmethod represented by this
+     * the field records the nmethod's compile identifier. This value is used to confirm if an entry
+     * in the code cache retrieved by {@link #address} is indeed the nmethod represented by this
      * object.
      *
      * @see #inOopsTable
@@ -84,6 +84,23 @@ public class HotSpotNmethod extends HotSpotInstalledCode {
         this.compileIdSnapshot = inOopsTable ? 0L : compileId;
         assert inOopsTable || compileId != 0L : this;
     }
+
+    /**
+     * Attaches {@code log} to this object. If {@code log.managesFailedSpeculations() == true}, this
+     * ensures the failed speculation list lives at least as long as this object.
+     */
+    public void setSpeculationLog(HotSpotSpeculationLog log) {
+        this.speculationLog = log;
+    }
+
+    /**
+     * The speculation log containing speculations embedded in the nmethod.
+     *
+     * If {@code speculationLog.managesFailedSpeculations() == true}, this field ensures the failed
+     * speculation list lives at least as long as this object. This prevents deoptimization from
+     * appending to an already freed list.
+     */
+    @SuppressWarnings("unused") private HotSpotSpeculationLog speculationLog;
 
     /**
      * Determines if the nmethod associated with this object is the compiled entry point for
@@ -146,6 +163,18 @@ public class HotSpotNmethod extends HotSpotInstalledCode {
         return true;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * It's possible for the HotSpot runtime to sweep nmethods at any point in time. As a result,
+     * there is no guarantee that calling this method will execute the wrapped nmethod. Instead, it
+     * may end up executing the bytecode of the associated {@link #getMethod() Java method}. Only if
+     * {@link #isValid()} is {@code true} after returning can the caller be sure that the nmethod
+     * was executed. If {@link #isValid()} is {@code false}, then the only way to determine if the
+     * nmethod was executed is to test for some side-effect specific to the nmethod (e.g., update to
+     * a field) that is not performed by the bytecode of the associated {@link #getMethod() Java
+     * method}.
+     */
     @Override
     public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
         if (IS_IN_NATIVE_IMAGE) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,7 +44,10 @@ public final class KeyPair implements java.io.Serializable {
     @java.io.Serial
     private static final long serialVersionUID = -7565189502268009837L;
 
+    /** The private key. */
     private PrivateKey privateKey;
+
+    /** The public key. */
     private PublicKey publicKey;
 
     /**
@@ -72,12 +75,12 @@ public final class KeyPair implements java.io.Serializable {
         return publicKey;
     }
 
-     /**
+    /**
      * Returns a reference to the private key component of this key pair.
      *
      * @return a reference to the private key.
      */
-   public PrivateKey getPrivate() {
+    public PrivateKey getPrivate() {
         return privateKey;
     }
 }

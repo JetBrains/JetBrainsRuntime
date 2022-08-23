@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,9 +33,7 @@ import javax.lang.model.element.VariableElement;
 import jdk.javadoc.internal.doclets.formats.html.markup.ContentBuilder;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
-import jdk.javadoc.internal.doclets.formats.html.markup.StringContent;
-import jdk.javadoc.internal.doclets.formats.html.markup.Table;
-import jdk.javadoc.internal.doclets.formats.html.markup.TableHeader;
+import jdk.javadoc.internal.doclets.formats.html.markup.Text;
 import jdk.javadoc.internal.doclets.toolkit.Content;
 import jdk.javadoc.internal.doclets.toolkit.EnumConstantWriter;
 import jdk.javadoc.internal.doclets.toolkit.MemberSummaryWriter;
@@ -59,9 +57,6 @@ public class EnumConstantWriterImpl extends AbstractMemberWriter
         super(writer);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public Content getMemberSummaryHeader(TypeElement typeElement,
             Content memberSummaryTree) {
@@ -71,18 +66,12 @@ public class EnumConstantWriterImpl extends AbstractMemberWriter
         return memberTree;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public void addMemberTree(Content memberSummaryTree, Content memberTree) {
-        writer.addMemberTree(HtmlStyle.constantsSummary,
-                SectionName.ENUM_CONSTANT_SUMMARY, memberSummaryTree, memberTree);
+    public void addSummary(Content summariesList, Content content) {
+        writer.addSummary(HtmlStyle.constantsSummary,
+                HtmlIds.ENUM_CONSTANT_SUMMARY, summariesList, content);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public Content getEnumConstantsDetailsTreeHeader(TypeElement typeElement,
             Content memberDetailsTree) {
@@ -94,77 +83,55 @@ public class EnumConstantWriterImpl extends AbstractMemberWriter
         return enumConstantsDetailsTree;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public Content getEnumConstantsTreeHeader(VariableElement enumConstant,
             Content enumConstantsDetailsTree) {
         Content enumConstantsTree = new ContentBuilder();
-        HtmlTree heading = new HtmlTree(Headings.TypeDeclaration.MEMBER_HEADING,
-                new StringContent(name(enumConstant)));
+        HtmlTree heading = HtmlTree.HEADING(Headings.TypeDeclaration.MEMBER_HEADING,
+                Text.of(name(enumConstant)));
         enumConstantsTree.add(heading);
         return HtmlTree.SECTION(HtmlStyle.detail, enumConstantsTree)
-                .setId(name(enumConstant));
+                .setId(htmlIds.forMember(enumConstant));
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public Content getSignature(VariableElement enumConstant) {
-        return new MemberSignature(enumConstant)
-                .addType(enumConstant.asType())
+        return new Signatures.MemberSignature(enumConstant, this)
+                .setType(enumConstant.asType())
+                .setAnnotations(writer.getAnnotationInfo(enumConstant, true))
                 .toContent();
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void addDeprecated(VariableElement enumConstant, Content enumConstantsTree) {
         addDeprecatedInfo(enumConstant, enumConstantsTree);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
+    public void addPreview(VariableElement enumConstant, Content enumConstantsTree) {
+        addPreviewInfo(enumConstant, enumConstantsTree);
+    }
+
     @Override
     public void addComments(VariableElement enumConstant, Content enumConstantsTree) {
         addComment(enumConstant, enumConstantsTree);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void addTags(VariableElement enumConstant, Content enumConstantsTree) {
         writer.addTagsInfo(enumConstant, enumConstantsTree);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public Content getEnumConstantsDetails(Content enumConstantsDetailsTreeHeader,
             Content enumConstantsDetailsTree) {
-        Content enumConstantsDetails =
-                new ContentBuilder(enumConstantsDetailsTreeHeader, enumConstantsDetailsTree);
-        return getMemberTree(HtmlTree.SECTION(HtmlStyle.constantDetails, enumConstantsDetails)
-                .setId(SectionName.ENUM_CONSTANT_DETAIL.getName()));
+        return writer.getDetailsListItem(
+                HtmlTree.SECTION(HtmlStyle.constantDetails)
+                        .setId(HtmlIds.ENUM_CONSTANT_DETAIL)
+                        .add(enumConstantsDetailsTreeHeader)
+                        .add(enumConstantsDetailsTree));
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Content getEnumConstants(Content enumConstantsTree) {
-        return getMemberTree(enumConstantsTree);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void addSummaryLabel(Content memberTree) {
         Content label = HtmlTree.HEADING(Headings.TypeDeclaration.SUMMARY_HEADING,
@@ -172,66 +139,45 @@ public class EnumConstantWriterImpl extends AbstractMemberWriter
         memberTree.add(label);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public TableHeader getSummaryTableHeader(Element member) {
         return new TableHeader(contents.enumConstantLabel, contents.descriptionLabel);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     protected Table createSummaryTable() {
-        return new Table(HtmlStyle.memberSummary)
+        return new Table(HtmlStyle.summaryTable)
                 .setCaption(contents.getContent("doclet.Enum_Constants"))
                 .setHeader(getSummaryTableHeader(typeElement))
                 .setColumnStyles(HtmlStyle.colFirst, HtmlStyle.colLast);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void addInheritedSummaryLabel(TypeElement typeElement, Content inheritedTree) {
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    protected void addSummaryLink(LinkInfoImpl.Kind context, TypeElement typeElement, Element member,
-            Content tdSummary) {
-        Content memberLink = HtmlTree.SPAN(HtmlStyle.memberNameLink,
-                writer.getDocLink(context, member, name(member), false));
+    protected void addSummaryLink(HtmlLinkInfo.Kind context, TypeElement typeElement, Element member,
+                                  Content tdSummary) {
+        Content memberLink = writer.getDocLink(context, utils.getEnclosingTypeElement(member), member,
+                name(member), HtmlStyle.memberNameLink);
         Content code = HtmlTree.CODE(memberLink);
         tdSummary.add(code);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     protected void addInheritedSummaryLink(TypeElement typeElement, Element member, Content linksTree) {
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     protected void addSummaryType(Element member, Content tdSummaryType) {
         //Not applicable.
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    protected Content getDeprecatedLink(Element member) {
+    protected Content getSummaryLink(Element member) {
         String name = utils.getFullyQualifiedName(member) + "." + member.getSimpleName();
-        return writer.getDocLink(LinkInfoImpl.Kind.MEMBER, member, name);
+        return writer.getDocLink(HtmlLinkInfo.Kind.MEMBER_DEPRECATED_PREVIEW, member, name);
     }
 
     @Override

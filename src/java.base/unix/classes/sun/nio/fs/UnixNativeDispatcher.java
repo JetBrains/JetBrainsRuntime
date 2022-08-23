@@ -98,27 +98,6 @@ class UnixNativeDispatcher {
     private static native void close0(int fd);
 
     /**
-     * FILE* fopen(const char *filename, const char* mode);
-     */
-    static long fopen(UnixPath filename, String mode) throws UnixException {
-        NativeBuffer pathBuffer = copyToNativeBuffer(filename);
-        NativeBuffer modeBuffer = NativeBuffers.asNativeBuffer(Util.toBytes(mode));
-        try {
-            return fopen0(pathBuffer.address(), modeBuffer.address());
-        } finally {
-            modeBuffer.release();
-            pathBuffer.release();
-        }
-    }
-    private static native long fopen0(long pathAddress, long modeAddress)
-        throws UnixException;
-
-    /**
-     * fclose(FILE* stream)
-     */
-    static native void fclose(long stream) throws UnixException;
-
-    /**
      * void rewind(FILE* stream);
      */
     static native void rewind(long stream) throws UnixException;
@@ -580,36 +559,64 @@ class UnixNativeDispatcher {
         throws UnixException;
 
     /**
-     * long int pathconf(const char *path, int name);
-     */
-    static long pathconf(UnixPath path, int name) throws UnixException {
-        NativeBuffer buffer = copyToNativeBuffer(path);
-        try {
-            return pathconf0(buffer.address(), name);
-        } finally {
-            buffer.release();
-        }
-    }
-    private static native long pathconf0(long pathAddress, int name)
-        throws UnixException;
-
-    /**
-     * long fpathconf(int fildes, int name);
-     */
-    static native long fpathconf(int filedes, int name) throws UnixException;
-
-    /**
      * char* strerror(int errnum)
      */
     static native byte[] strerror(int errnum);
+
+    /**
+     * ssize_t fgetxattr(int filedes, const char *name, void *value, size_t size);
+     */
+    static int fgetxattr(int filedes, byte[] name, long valueAddress,
+                         int valueLen) throws UnixException
+    {
+        try (NativeBuffer buffer = NativeBuffers.asNativeBuffer(name)) {
+            return fgetxattr0(filedes, buffer.address(), valueAddress, valueLen);
+        }
+    }
+
+    private static native int fgetxattr0(int filedes, long nameAddress,
+        long valueAddress, int valueLen) throws UnixException;
+
+    /**
+     *  fsetxattr(int filedes, const char *name, const void *value, size_t size, int flags);
+     */
+    static void fsetxattr(int filedes, byte[] name, long valueAddress,
+                          int valueLen) throws UnixException
+    {
+        try (NativeBuffer buffer = NativeBuffers.asNativeBuffer(name)) {
+            fsetxattr0(filedes, buffer.address(), valueAddress, valueLen);
+        }
+    }
+
+    private static native void fsetxattr0(int filedes, long nameAddress,
+        long valueAddress, int valueLen) throws UnixException;
+
+    /**
+     * fremovexattr(int filedes, const char *name);
+     */
+    static void fremovexattr(int filedes, byte[] name) throws UnixException {
+        try (NativeBuffer buffer = NativeBuffers.asNativeBuffer(name)) {
+            fremovexattr0(filedes, buffer.address());
+        }
+    }
+
+    private static native void fremovexattr0(int filedes, long nameAddress)
+        throws UnixException;
+
+    /**
+     * size_t flistxattr(int filedes, const char *list, size_t size)
+     */
+    static native int flistxattr(int filedes, long listAddress, int size)
+        throws UnixException;
 
     /**
      * Capabilities
      */
     private static final int SUPPORTS_OPENAT        = 1 << 1;  // syscalls
     private static final int SUPPORTS_FUTIMES       = 1 << 2;
-    private static final int SUPPORTS_FUTIMENS      = 1 << 4;
-    private static final int SUPPORTS_LUTIMES       = 1 << 8;
+    private static final int SUPPORTS_FUTIMENS      = 1 << 3;
+    private static final int SUPPORTS_LUTIMES       = 1 << 4;
+    private static final int SUPPORTS_XATTR         = 1 << 5;
     private static final int SUPPORTS_BIRTHTIME     = 1 << 16; // other features
     private static final int capabilities;
 
@@ -646,6 +653,13 @@ class UnixNativeDispatcher {
      */
     static boolean birthtimeSupported() {
         return (capabilities & SUPPORTS_BIRTHTIME) != 0;
+    }
+
+    /**
+     * Supports extended attributes
+     */
+    static boolean xattrSupported() {
+        return (capabilities & SUPPORTS_XATTR) != 0;
     }
 
     private static native int init();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,15 +23,18 @@
 
 /*
  * @test
+ * @bug 8273277
  *
  * @summary converted from VM Testbase jit/t/t105.
  * VM Testbase keywords: [jit, quick]
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
- * @build jit.t.t105.t105
- * @run driver ExecDriver --java jit.t.t105.t105
+ * @run main/othervm -XX:-OmitStackTraceInFastThrow jit.t.t105.t105
+ * @run main/othervm -XX:-OmitStackTraceInFastThrow -Xbatch -XX:Tier0BackedgeNotifyFreqLog=0 -XX:Tier2BackedgeNotifyFreqLog=0 -XX:Tier3BackedgeNotifyFreqLog=0 -XX:Tier2BackEdgeThreshold=1 -XX:Tier3BackEdgeThreshold=1 -XX:Tier4BackEdgeThreshold=1 jit.t.t105.t105
+ *
+ * This test must be run with OmitStackTraceInFastThrow disabled to avoid preallocated
+ * exceptions. They don't have the detailed message that this test relies on.
  */
 
 package jit.t.t105;
@@ -39,7 +42,7 @@ package jit.t.t105;
 import nsk.share.TestFailure;
 import nsk.share.GoldChecker;
 
-class t105
+public class t105
 {
     public static final GoldChecker goldChecker = new GoldChecker( "t105" );
 

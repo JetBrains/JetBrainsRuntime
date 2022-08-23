@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,15 +28,13 @@ package jdk.javadoc.internal.doclets.formats.html;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 
-import jdk.javadoc.internal.doclets.formats.html.markup.ContentBuilder;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
-import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
+import jdk.javadoc.internal.doclets.formats.html.markup.TagName;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
-import jdk.javadoc.internal.doclets.formats.html.markup.StringContent;
+import jdk.javadoc.internal.doclets.formats.html.markup.Text;
 import jdk.javadoc.internal.doclets.toolkit.Content;
 import jdk.javadoc.internal.doclets.toolkit.SerializedFormWriter;
 import jdk.javadoc.internal.doclets.toolkit.taglets.TagletManager;
-import jdk.javadoc.internal.doclets.toolkit.taglets.TagletWriter;
 
 
 /**
@@ -49,7 +47,7 @@ import jdk.javadoc.internal.doclets.toolkit.taglets.TagletWriter;
  *  deletion without notice.</b>
  */
 public class HtmlSerialMethodWriter extends MethodWriterImpl implements
-        SerializedFormWriter.SerialMethodWriter{
+        SerializedFormWriter.SerialMethodWriter {
 
     public HtmlSerialMethodWriter(SubWriterHolderWriter writer, TypeElement  typeElement) {
         super(writer, typeElement);
@@ -60,8 +58,9 @@ public class HtmlSerialMethodWriter extends MethodWriterImpl implements
      *
      * @return a content tree for the header
      */
+    @Override
     public Content getSerializableMethodsHeader() {
-        HtmlTree ul = new HtmlTree(HtmlTag.UL);
+        HtmlTree ul = new HtmlTree(TagName.UL);
         ul.setStyle(HtmlStyle.blockList);
         return ul;
     }
@@ -72,8 +71,9 @@ public class HtmlSerialMethodWriter extends MethodWriterImpl implements
      * @param isLastContent true if the content being documented is the last content.
      * @return a content tree for the header
      */
+    @Override
     public Content getMethodsContentHeader(boolean isLastContent) {
-        HtmlTree li = new HtmlTree(HtmlTag.LI);
+        HtmlTree li = new HtmlTree(TagName.LI);
         li.setStyle(HtmlStyle.blockList);
         return li;
     }
@@ -86,12 +86,13 @@ public class HtmlSerialMethodWriter extends MethodWriterImpl implements
      *        content tree
      * @return a content tree for the serializable methods content
      */
+    @Override
     public Content getSerializableMethods(String heading, Content serializableMethodContent) {
-        Content headingContent = new StringContent(heading);
+        Content headingContent = Text.of(heading);
         Content serialHeading = HtmlTree.HEADING(Headings.SerializedForm.CLASS_SUBHEADING, headingContent);
         Content section = HtmlTree.SECTION(HtmlStyle.detail, serialHeading);
         section.add(serializableMethodContent);
-        return HtmlTree.LI(HtmlStyle.blockList, section);
+        return HtmlTree.LI(section);
     }
 
     /**
@@ -100,9 +101,9 @@ public class HtmlSerialMethodWriter extends MethodWriterImpl implements
      * @param msg the message to be displayed
      * @return no customization message content
      */
+    @Override
     public Content getNoCustomizationMsg(String msg) {
-        Content noCustomizationMsg = new StringContent(msg);
-        return noCustomizationMsg;
+        return Text.of(msg);
     }
 
     /**
@@ -111,8 +112,9 @@ public class HtmlSerialMethodWriter extends MethodWriterImpl implements
      * @param member the method document to be listed
      * @param methodsContentTree the content tree to which the member header will be added
      */
+    @Override
     public void addMemberHeader(ExecutableElement member, Content methodsContentTree) {
-        Content memberContent = new StringContent(name(member));
+        Content memberContent = Text.of(name(member));
         Content heading = HtmlTree.HEADING(Headings.SerializedForm.MEMBER_HEADING, memberContent);
         methodsContentTree.add(heading);
         methodsContentTree.add(getSignature(member));
@@ -124,6 +126,7 @@ public class HtmlSerialMethodWriter extends MethodWriterImpl implements
      * @param member the method to document.
      * @param methodsContentTree the tree to which the deprecated info will be added
      */
+    @Override
     public void addDeprecatedMemberInfo(ExecutableElement member, Content methodsContentTree) {
         addDeprecatedInfo(member, methodsContentTree);
     }
@@ -134,6 +137,7 @@ public class HtmlSerialMethodWriter extends MethodWriterImpl implements
      * @param member the method to document.
      * @param methodsContentTree the tree to which the deprecated info will be added
      */
+    @Override
     public void addMemberDescription(ExecutableElement member, Content methodsContentTree) {
         addComment(member, methodsContentTree);
     }
@@ -144,17 +148,14 @@ public class HtmlSerialMethodWriter extends MethodWriterImpl implements
      * @param member the method to document.
      * @param methodsContentTree the tree to which the member tags info will be added
      */
+    @Override
     public void addMemberTags(ExecutableElement member, Content methodsContentTree) {
-        Content tagContent = new ContentBuilder();
-        TagletManager tagletManager =
-            configuration.tagletManager;
-        TagletWriter.genTagOutput(tagletManager, member,
-            tagletManager.getSerializedFormTaglets(),
-            writer.getTagletWriterInstance(false), tagContent);
-        Content dlTags = new HtmlTree(HtmlTag.DL);
-        dlTags.add(tagContent);
-        methodsContentTree.add(dlTags);
-        if (name(member).compareTo("writeExternal") == 0
+        TagletManager tagletManager = configuration.tagletManager;
+        Content tagContent = writer.getBlockTagOutput(member, tagletManager.getSerializedFormTaglets());
+        HtmlTree dl = HtmlTree.DL(HtmlStyle.notes);
+        dl.add(tagContent);
+        methodsContentTree.add(dl);
+        if (name(member).equals("writeExternal")
                 && utils.getSerialDataTrees(member).isEmpty()) {
             serialWarning(member, "doclet.MissingSerialDataTag",
                 utils.getFullyQualifiedName(member.getEnclosingElement()), name(member));

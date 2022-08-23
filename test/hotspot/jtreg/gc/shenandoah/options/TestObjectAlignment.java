@@ -23,9 +23,8 @@
  */
 
 /*
- * @test TestObjectAlignment
- * @key gc
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @test id=default
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC          TestObjectAlignment
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx16m  TestObjectAlignment
@@ -38,9 +37,9 @@
  */
 
 /*
- * @test TestObjectAlignment
- * @key gc
- * @requires vm.gc.Shenandoah & !vm.graal.enabled & (vm.bits == "64")
+ * @test id=16b
+ * @requires vm.gc.Shenandoah
+ * @requires vm.bits == "64"
  *
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ObjectAlignmentInBytes=16          TestObjectAlignment
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ObjectAlignmentInBytes=16 -Xmx16m  TestObjectAlignment

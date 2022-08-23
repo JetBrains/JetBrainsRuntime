@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,18 @@
 
 package javax.swing;
 
-import sun.awt.EmbeddedFrame;
-import sun.awt.OSInfo;
-import sun.swing.SwingAccessor;
-
 import java.applet.Applet;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsEnvironment;
+import java.awt.Insets;
+import java.awt.Panel;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.security.AccessController;
@@ -38,6 +44,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import sun.awt.EmbeddedFrame;
+import sun.awt.OSInfo;
+import sun.awt.SunToolkit;
+import sun.swing.SwingAccessor;
+
 import static javax.swing.ClientPropertyKey.PopupFactory_FORCE_HEAVYWEIGHT_POPUP;
 
 /**
@@ -104,6 +116,10 @@ public class PopupFactory {
      */
     private int popupType = LIGHT_WEIGHT_POPUP;
 
+    /**
+     * Constructs a {@code PopupFactory}.
+     */
+    public PopupFactory() {}
 
     /**
      * Sets the <code>PopupFactory</code> that will be used to obtain
@@ -260,7 +276,7 @@ public class PopupFactory {
      * Obtains the appropriate <code>Popup</code> based on
      * <code>popupType</code>.
      */
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("removal")
     private Popup getPopup(Component owner, Component contents,
                            int ownerX, int ownerY, int popupType) {
         if (GraphicsEnvironment.isHeadless()) {
@@ -378,9 +394,13 @@ public class PopupFactory {
                 }
             }
 
+            Toolkit toolkit = Toolkit.getDefaultToolkit();
             if (popup == null ||
                 ((JWindow) popup.getComponent())
-                 .getFocusableWindowState() != focusPopup) {
+                 .getFocusableWindowState() != focusPopup ||
+                (toolkit instanceof SunToolkit) &&
+                        (((SunToolkit) toolkit).popupMenusAreSpecial()) &&
+                        popup.isPopupMenu() != (contents instanceof JPopupMenu)) {
 
                 if(popup != null) {
                     // The recycled popup can't serve us well
@@ -402,6 +422,11 @@ public class PopupFactory {
             }
 
             return popup;
+        }
+
+        private boolean isPopupMenu() {
+            Component[] components = ((JWindow) getComponent()).getContentPane().getComponents();
+            return components.length == 1 && components[0] instanceof JPopupMenu;
         }
 
         /**
@@ -615,7 +640,7 @@ public class PopupFactory {
          * Returns true if popup can fit the screen and the owner's top parent.
          * It determines can popup be lightweight or mediumweight.
          */
-        @SuppressWarnings("deprecation")
+        @SuppressWarnings("removal")
         boolean fitsOnScreen() {
             boolean result = false;
             Component component = getComponent();
@@ -786,7 +811,7 @@ public class PopupFactory {
             recycleLightWeightPopup(this);
         }
 
-        @SuppressWarnings("deprecation")
+        @SuppressWarnings("removal")
         public void show() {
             Container parent = null;
 
@@ -826,13 +851,12 @@ public class PopupFactory {
             } else {
                 parent.add(component);
             }
+            pack();
+            component.setVisible(true);
         }
 
         Component createComponent(Component owner) {
-            JComponent component = new JPanel(new BorderLayout(), true);
-
-            component.setOpaque(true);
-            return component;
+            return new JPanel(new BorderLayout(), true);
         }
 
         //
@@ -847,11 +871,10 @@ public class PopupFactory {
             super.reset(owner, contents, ownerX, ownerY);
 
             JComponent component = (JComponent)getComponent();
-
-            component.setOpaque(contents.isOpaque());
+            component.setVisible(false);
             component.setLocation(ownerX, ownerY);
+            component.setOpaque(contents.isOpaque());
             component.add(contents, BorderLayout.CENTER);
-            contents.invalidate();
             pack();
         }
     }
@@ -943,7 +966,7 @@ public class PopupFactory {
             recycleMediumWeightPopup(this);
         }
 
-        @SuppressWarnings("deprecation")
+        @SuppressWarnings("removal")
         public void show() {
             Component component = getComponent();
             Container parent = null;
@@ -960,27 +983,22 @@ public class PopupFactory {
                    (parent!=null)) {
                 parent = parent.getParent();
             }
-            // Set the visibility to false before adding to workaround a
-            // bug in Solaris in which the Popup gets added at the wrong
-            // location, which will result in a mouseExit, which will then
-            // result in the ToolTip being removed.
-            if (parent instanceof RootPaneContainer) {
-                parent = ((RootPaneContainer)parent).getLayeredPane();
-                Point p = SwingUtilities.convertScreenLocationToParent(parent,
-                                                                       x, y);
-                component.setVisible(false);
-                component.setLocation(p.x, p.y);
-                parent.add(component, JLayeredPane.POPUP_LAYER,
-                                           0);
-            } else {
-                Point p = SwingUtilities.convertScreenLocationToParent(parent,
-                                                                       x, y);
 
-                component.setLocation(p.x, p.y);
-                component.setVisible(false);
+            if (parent instanceof RootPaneContainer) {
+                parent = ((RootPaneContainer) parent).getLayeredPane();
+            }
+
+            Point p = SwingUtilities.convertScreenLocationToParent(parent,
+                                                                   x, y);
+            component.setLocation(p.x, p.y);
+            if (parent instanceof JLayeredPane) {
+                parent.add(component, JLayeredPane.POPUP_LAYER, 0);
+            } else {
                 parent.add(component);
             }
+            pack();
             component.setVisible(true);
+            component.revalidate();
         }
 
         Component createComponent(Component owner) {
@@ -1004,11 +1022,9 @@ public class PopupFactory {
             super.reset(owner, contents, ownerX, ownerY);
 
             Component component = getComponent();
-
+            component.setVisible(false);
             component.setLocation(ownerX, ownerY);
             rootPane.getContentPane().add(contents, BorderLayout.CENTER);
-            contents.invalidate();
-            component.validate();
             pack();
         }
 

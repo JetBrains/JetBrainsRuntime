@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -800,6 +800,7 @@ public class BufferedImage extends java.awt.Image
         }   // else if ((raster instanceof ByteComponentRaster) &&
     }
 
+    @SuppressWarnings("removal")
     private static boolean isStandard(ColorModel cm, WritableRaster wr) {
         final Class<? extends ColorModel> cmClass = cm.getClass();
         final Class<? extends WritableRaster> wrClass = wr.getClass();
@@ -1367,7 +1368,7 @@ public class BufferedImage extends java.awt.Image
      * @return the x offset of the tile grid.
      */
     public int getTileGridXOffset() {
-        return raster.getSampleModelTranslateX();
+        return raster.getMinX();
     }
 
     /**
@@ -1377,7 +1378,7 @@ public class BufferedImage extends java.awt.Image
      * @return the y offset of the tile grid.
      */
     public int getTileGridYOffset() {
-        return raster.getSampleModelTranslateY();
+        return raster.getMinY();
     }
 
     /**

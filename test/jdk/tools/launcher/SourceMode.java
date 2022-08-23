@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -200,6 +200,10 @@ public class SourceMode extends TestHelper {
     // java --add-exports=... Export.java --help
     @Test
     void testAddExports() throws IOException {
+        if (!isEnglishLocale()) {
+            return;
+        }
+
         starting("testAddExports");
         Path exportJava = Paths.get("Export.java");
         createFile(exportJava, List.of(
@@ -254,6 +258,10 @@ public class SourceMode extends TestHelper {
     // java --source N -cp ... HelloWorld
     @Test
     void testSourceClasspath() throws IOException {
+        if (!isEnglishLocale()) {
+            return;
+        }
+
         starting("testSourceClasspath");
         Path base = Files.createDirectories(Paths.get("testSourceClasspath"));
         Path src = Files.createDirectories(base.resolve("src"));
@@ -323,7 +331,7 @@ public class SourceMode extends TestHelper {
     @Test
     void testTerminalOptionInShebang() throws IOException {
         starting("testTerminalOptionInShebang");
-        if (skipShebangTest || isAIX || isMacOSX || isSolaris) {
+        if (skipShebangTest || isAIX || isMacOSX) {
             // On MacOSX, we cannot distinguish between terminal options on the
             // shebang line and those on the command line.
             // On Solaris, all options after the first on the shebang line are
@@ -347,7 +355,7 @@ public class SourceMode extends TestHelper {
     @Test
     void testTerminalOptionInShebangAtFile() throws IOException {
         starting("testTerminalOptionInShebangAtFile");
-        if (skipShebangTest || isAIX || isMacOSX || isSolaris) {
+        if (skipShebangTest || isAIX || isMacOSX) {
             // On MacOSX, we cannot distinguish between terminal options in a
             // shebang @-file and those on the command line.
             // On Solaris, all options after the first on the shebang line are
@@ -374,7 +382,7 @@ public class SourceMode extends TestHelper {
     @Test
     void testMainClassInShebang() throws IOException {
         starting("testMainClassInShebang");
-        if (skipShebangTest || isAIX || isMacOSX || isSolaris) {
+        if (skipShebangTest || isAIX || isMacOSX) {
             // On MacOSX, we cannot distinguish between a main class on the
             // shebang line and one on the command line.
             // On Solaris, all options after the first on the shebang line are

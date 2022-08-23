@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,7 @@
 #include "gc/g1/g1RootProcessor.hpp"
 #include "gc/g1/heapRegion.inline.hpp"
 #include "gc/g1/heapRegionRemSet.hpp"
-#include "gc/g1/g1StringDedup.hpp"
+#include "gc/shared/tlab_globals.hpp"
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
 #include "memory/iterator.inline.hpp"
@@ -68,7 +68,8 @@ public:
       oop obj = CompressedOops::decode_not_null(heap_oop);
       if (_g1h->is_obj_dead_cond(obj, _vo)) {
         Log(gc, verify) log;
-        log.error("Root location " PTR_FORMAT " points to dead obj " PTR_FORMAT, p2i(p), p2i(obj));
+        log.error("Root location " PTR_FORMAT " points to dead obj " PTR_FORMAT " in region " HR_FORMAT,
+                  p2i(p), p2i(obj), HR_FORMAT_PARAMS(_g1h->heap_region_containing(obj)));
         ResourceMark rm;
         LogStream ls(log.error());
         obj->print_on(&ls);
@@ -239,8 +240,7 @@ public:
 class VerifyArchiveOopClosure: public BasicOopIterateClosure {
   HeapRegion* _hr;
 public:
-  VerifyArchiveOopClosure(HeapRegion *hr)
-    : _hr(hr) { }
+  VerifyArchiveOopClosure(HeapRegion *hr) : _hr(hr) { }
   void do_oop(narrowOop *p) { do_oop_work(p); }
   void do_oop(      oop *p) { do_oop_work(p); }
 
@@ -248,12 +248,12 @@ public:
     oop obj = RawAccess<>::oop_load(p);
 
     if (_hr->is_open_archive()) {
-      guarantee(obj == NULL || G1ArchiveAllocator::is_archived_object(obj),
+      guarantee(obj == NULL || G1CollectedHeap::heap()->heap_region_containing(obj)->is_archive(),
                 "Archive object at " PTR_FORMAT " references a non-archive object at " PTR_FORMAT,
                 p2i(p), p2i(obj));
     } else {
       assert(_hr->is_closed_archive(), "should be closed archive region");
-      guarantee(obj == NULL || G1ArchiveAllocator::is_closed_archive_object(obj),
+      guarantee(obj == NULL || G1CollectedHeap::heap()->heap_region_containing(obj)->is_closed_archive(),
                 "Archive object at " PTR_FORMAT " references a non-archive object at " PTR_FORMAT,
                 p2i(p), p2i(obj));
     }
@@ -326,7 +326,7 @@ void G1HeapVerifier::verify_ready_for_archiving() {
   if (cl.has_holes()) {
     log_warning(gc, verify)("All free regions should be at the top end of the heap, but"
                             " we found holes. This is probably caused by (unmovable) humongous"
-                            " allocations, and may lead to fragmentation while"
+                            " allocations or active GCLocker, and may lead to fragmentation while"
                             " writing archive heap memory regions.");
   }
   if (cl.has_humongous()) {
@@ -334,7 +334,6 @@ void G1HeapVerifier::verify_ready_for_archiving() {
                             " may lead to fragmentation while"
                             " writing archive heap memory regions.");
   }
-  assert(!cl.has_unexpected_holes(), "all holes should have been caused by humongous regions");
 }
 
 class VerifyArchivePointerRegionClosure: public HeapRegionClosure {
@@ -450,7 +449,6 @@ public:
   }
 
   void work(uint worker_id) {
-    HandleMark hm;
     VerifyRegionClosure blk(true, _vo);
     _g1h->heap_region_par_iterate_from_worker_offset(&blk, &_hrclaimer, worker_id);
     if (blk.failures()) {
@@ -473,12 +471,8 @@ bool G1HeapVerifier::should_verify(G1VerifyType type) {
 }
 
 void G1HeapVerifier::verify(VerifyOption vo) {
-  if (!SafepointSynchronize::is_at_safepoint()) {
-    log_info(gc, verify)("Skipping verification. Not at safepoint.");
-  }
-
-  assert(Thread::current()->is_VM_thread(),
-         "Expected to be executed serially by the VM thread at this point");
+  assert_at_safepoint_on_vm_thread();
+  assert(Heap_lock->is_locked(), "heap must be locked");
 
   log_debug(gc, verify)("Roots");
   VerifyRootsClosure rootsCl(vo);
@@ -521,11 +515,6 @@ void G1HeapVerifier::verify(VerifyOption vo) {
     if (blk.failures()) {
       failures = true;
     }
-  }
-
-  if (G1StringDedup::is_enabled()) {
-    log_debug(gc, verify)("StrDedup");
-    G1StringDedup::verify();
   }
 
   if (failures) {
@@ -599,14 +588,14 @@ void G1HeapVerifier::verify_region_sets() {
   assert_heap_locked_or_at_safepoint(true /* should_be_vm_thread */);
 
   // First, check the explicit lists.
-  _g1h->_hrm->verify();
+  _g1h->_hrm.verify();
 
   // Finally, make sure that the region accounting in the lists is
   // consistent with what we see in the heap.
 
-  VerifyRegionListsClosure cl(&_g1h->_old_set, &_g1h->_archive_set, &_g1h->_humongous_set, _g1h->_hrm);
+  VerifyRegionListsClosure cl(&_g1h->_old_set, &_g1h->_archive_set, &_g1h->_humongous_set, &_g1h->_hrm);
   _g1h->heap_region_iterate(&cl);
-  cl.verify_counts(&_g1h->_old_set, &_g1h->_archive_set, &_g1h->_humongous_set, _g1h->_hrm);
+  cl.verify_counts(&_g1h->_old_set, &_g1h->_archive_set, &_g1h->_humongous_set, &_g1h->_hrm);
 }
 
 void G1HeapVerifier::prepare_for_verify() {
@@ -620,7 +609,6 @@ double G1HeapVerifier::verify(G1VerifyType type, VerifyOption vo, const char* ms
 
   if (should_verify(type) && _g1h->total_collections() >= VerifyGCStartAt) {
     double verify_start = os::elapsedTime();
-    HandleMark hm;  // Discard invalid handles created during verification
     prepare_for_verify();
     Universe::verify(vo, msg);
     verify_time_ms = (os::elapsedTime() - verify_start) * 1000;
@@ -848,7 +836,7 @@ public:
 
 bool G1HeapVerifier::check_region_attr_table() {
   G1CheckRegionAttrTableClosure cl;
-  _g1h->_hrm->iterate(&cl);
+  _g1h->_hrm.iterate(&cl);
   return !cl.failures();
 }
 #endif // PRODUCT

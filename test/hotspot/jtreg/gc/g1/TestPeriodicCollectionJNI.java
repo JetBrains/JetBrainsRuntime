@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,22 +27,20 @@ package gc.g1;
  * @bug 8218880
  * @summary Test that issuing a periodic collection while the GC locker is
  * held does not crash the VM.
- * @key gc
  * @requires vm.gc.G1
- * @modules java.base
  * @run main/othervm/native
  *    -Xbootclasspath/a:.
  *    -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
  *    -XX:+UseG1GC -XX:G1PeriodicGCInterval=100
  *    -XX:+G1PeriodicGCInvokesConcurrent
- *    -Xlog:gc,gc+periodic=debug
+ *    -Xlog:gc*,gc+periodic=debug
  *    gc.g1.TestPeriodicCollectionJNI
  * @run main/othervm/native
  *    -Xbootclasspath/a:.
  *    -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
  *    -XX:+UseG1GC -XX:G1PeriodicGCInterval=100
  *    -XX:-G1PeriodicGCInvokesConcurrent
- *    -Xlog:gc,gc+periodic=debug
+ *    -Xlog:gc*,gc+periodic=debug
  *    gc.g1.TestPeriodicCollectionJNI
  */
 

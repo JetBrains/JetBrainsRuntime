@@ -29,10 +29,10 @@
 # List items are testnames followed by labels, all MUST BE commented
 #   as to why they are here and use a label:
 #     generic-all   Problems on all platforms
-#     generic-ARCH  Where ARCH is one of: sparc, sparcv9, x64, i586, etc.
-#     OSNAME-all    Where OSNAME is one of: solaris, linux, windows, macosx, aix
-#     OSNAME-ARCH   Specific on to one OSNAME and ARCH, e.g. solaris-amd64
-#     OSNAME-REV    Specific on to one OSNAME and REV, e.g. solaris-5.8
+#     generic-ARCH  Where ARCH is one of: x64, i586, ppc64, ppc64le, s390x etc.
+#     OSNAME-all    Where OSNAME is one of: linux, windows, macosx, aix
+#     OSNAME-ARCH   Specific on to one OSNAME and ARCH, e.g. macosx-x64
+#     OSNAME-REV    Specific on to one OSNAME and REV, e.g. macosx-10.7.4
 #
 # More than one label is allowed but must be on the same line.
 #
@@ -61,3 +61,92 @@ vmTestbase/nsk/jdi/PlugConnectors/TransportService/transportService002/transport
 vmTestbase/nsk/jdi/ObjectReference/referringObjects/referringObjects002/referringObjects002.java
 
 #############################################################################
+
+vmTestbase/nsk/monitoring/MemoryPoolMBean/isCollectionUsageThresholdExceeded/isexceeded003/TestDescription.java 8153598 generic-all
+vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded001/TestDescription.java 8198668 generic-all
+vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded002/TestDescription.java 8153598 generic-all
+vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded003/TestDescription.java 8198668 generic-all
+vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded004/TestDescription.java 8153598 generic-all
+vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded005/TestDescription.java 8153598 generic-all
+vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Deadlock/JavaDeadlock001/TestDescription.java 8060733 generic-all
+
+vmTestbase/nsk/jdi/ThreadReference/stop/stop001/TestDescription.java 7034630 generic-all
+
+vmTestbase/metaspace/gc/firstGC_10m/TestDescription.java 8208250 generic-all
+vmTestbase/metaspace/gc/firstGC_50m/TestDescription.java 8208250 generic-all
+vmTestbase/metaspace/gc/firstGC_99m/TestDescription.java 8208250 generic-all
+vmTestbase/metaspace/gc/firstGC_default/TestDescription.java 8208250 generic-all
+
+vmTestbase/nsk/jvmti/AttachOnDemand/attach045/TestDescription.java 8202971 generic-all
+vmTestbase/nsk/jvmti/scenarios/jni_interception/JI05/ji05t001/TestDescription.java 8219652 aix-ppc64
+vmTestbase/nsk/jvmti/scenarios/jni_interception/JI06/ji06t001/TestDescription.java 8219652 aix-ppc64
+vmTestbase/nsk/jvmti/SetJNIFunctionTable/setjniftab001/TestDescription.java 8219652 aix-ppc64
+
+vmTestbase/gc/lock/jni/jnilock002/TestDescription.java 8192647 generic-all
+
+vmTestbase/jit/escape/LockCoarsening/LockCoarsening001.java 8148743 generic-all
+vmTestbase/jit/escape/LockCoarsening/LockCoarsening002.java 8208259 generic-all
+
+vmTestbase/vm/mlvm/indy/func/jvmti/redefineClassInBootstrap/TestDescription.java 8013267 generic-all
+vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2none_a/TestDescription.java 8013267 generic-all
+vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manyDiff_b/TestDescription.java 8013267 generic-all
+vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manySame_b/TestDescription.java 8013267 generic-all
+
+
+vmTestbase/nsk/jdwp/ThreadReference/ForceEarlyReturn/forceEarlyReturn001/forceEarlyReturn001.java 7199837 generic-all
+
+#############################################################################
+
+vmTestbase/vm/jit/LongTransitions/nativeFnc1/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc10/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc11/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc12/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc13/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc14/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc15/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc16/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc17/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc18/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc19/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc2/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc20/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc21/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc22/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc23/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc24/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc25/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc26/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc27/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc28/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc29/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc3/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc30/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc31/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc32/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc33/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc34/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc35/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc36/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc37/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc38/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc39/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc4/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc40/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc41/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc42/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc43/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc44/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc45/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc46/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc47/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc48/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc49/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc5/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc50/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc51/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc52/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc6/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc7/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc8/TestDescription.java 8271615 macosx-all
+vmTestbase/vm/jit/LongTransitions/nativeFnc9/TestDescription.java 8271615 macosx-all
+>>>>>>> origin/jbr17

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,15 +23,14 @@
 
 /*
  * @test
+ * @key randomness
  *
  * @summary converted from VM Testbase jit/FloatingPoint/gen_math/Loops02.
  * VM Testbase keywords: [jit, quick]
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
- * @build jit.FloatingPoint.gen_math.Loops02.Loops02
- * @run driver ExecDriver --java jit.FloatingPoint.gen_math.Loops02.Loops02
+ * @run main/othervm jit.FloatingPoint.gen_math.Loops02.Loops02
  */
 
 package jit.FloatingPoint.gen_math.Loops02;
@@ -39,7 +38,7 @@ package jit.FloatingPoint.gen_math.Loops02;
 // Test working with  loops and random functions.
 import nsk.share.TestFailure;
 
-class Loops02
+public class Loops02
 {
 
    static final int N = 300;

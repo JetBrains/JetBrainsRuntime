@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,14 +23,13 @@
 
 /*
  * @test
- * @key stress gc
+ * @key stress
  *
  * @summary converted from VM Testbase gc/gctests/fileTest.
  * VM Testbase keywords: [gc, stress, stressopt, nonconcurrent]
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm gc.gctests.fileTest.fileTest -Filename fileTest.java -iterations 500
  */
 
@@ -38,6 +37,7 @@ package gc.gctests.fileTest;
 
 import java.io.*;
 import java.util.*;
+import jdk.test.lib.Utils;
 import nsk.share.test.*;
 import nsk.share.gc.*;
 import nsk.share.TestBug;
@@ -60,9 +60,9 @@ public class fileTest extends GCTestBase {
 
         public void runIteration() throws IOException {
                 for (int i = 0; i < fileNumber; ++i)
-                        fileArray[i] = new File(fileName);
+                        fileArray[i] = new File(Utils.TEST_SRC, fileName);
                 for (int i = 0; i < inputStreamNumber; ++i)
-                        fileInputArray[i] = new FileInputStream(fileName);
+                        fileInputArray[i] = new FileInputStream(Utils.TEST_SRC + File.separator + fileName);
                 for (int i = 0; i < inputStreamNumber; ++i)
                         fileInputArray[i].close();
         }

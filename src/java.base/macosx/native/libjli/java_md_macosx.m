@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -209,6 +209,8 @@ static InvocationFunctions *GetExportedJNIFunctions() {
 #if defined(__i386__)
         preferredJVM = "client";
 #elif defined(__x86_64__)
+        preferredJVM = "server";
+#elif defined(__aarch64__)
         preferredJVM = "server";
 #else
 #error "Unknown architecture - needs definition"
@@ -515,9 +517,25 @@ GetJREPath(char *path, jint pathsize, jboolean speculative)
     }
 
     size_t indexOfLastPathComponent = pathLen - sizeOfLastPathComponent;
-    if (0 == strncmp(realPathToSelf + indexOfLastPathComponent, lastPathComponent, sizeOfLastPathComponent - 1)) {
+    if (0 == strncmp(realPathToSelf + indexOfLastPathComponent, lastPathComponent, sizeOfLastPathComponent)) {
         realPathToSelf[indexOfLastPathComponent + 1] = '\0';
         return JNI_TRUE;
+    }
+
+    // If libjli.dylib is loaded from a macos bundle MacOS dir, find the JRE dir
+    // in ../Home.
+    const char altLastPathComponent[] = "/MacOS/libjli.dylib";
+    size_t sizeOfAltLastPathComponent = sizeof(altLastPathComponent) - 1;
+    if (pathLen < sizeOfLastPathComponent) {
+        return JNI_FALSE;
+    }
+
+    size_t indexOfAltLastPathComponent = pathLen - sizeOfAltLastPathComponent;
+    if (0 == strncmp(realPathToSelf + indexOfAltLastPathComponent, altLastPathComponent, sizeOfAltLastPathComponent)) {
+        JLI_Snprintf(realPathToSelf + indexOfAltLastPathComponent, sizeOfAltLastPathComponent, "%s", "/Home");
+        if (access(realPathToSelf, F_OK) == 0) {
+            return JNI_TRUE;
+        }
     }
 
     if (!speculative)
@@ -616,18 +634,6 @@ SetExecname(char **argv)
     execname = exec_path;
     return exec_path;
 }
-
-/*
- * BSD's implementation of CounterGet()
- */
-int64_t
-CounterGet()
-{
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (tv.tv_sec * 1000) + tv.tv_usec;
-}
-
 
 /* --- Splash Screen shared library support --- */
 
@@ -823,7 +829,7 @@ SetMainClassForAWT(JNIEnv *env, jclass mainClass) {
     NULL_CHECK(getCanonicalNameMID = (*env)->GetMethodID(env, classClass, "getCanonicalName", "()Ljava/lang/String;"));
 
     jstring mainClassString = (*env)->CallObjectMethod(env, mainClass, getCanonicalNameMID);
-    if ((*env)->ExceptionCheck(env)) {
+    if ((*env)->ExceptionCheck(env) || NULL == mainClassString) {
         /*
          * Clears all errors caused by getCanonicalName() on the mainclass and
          * leaves the JAVA_MAIN_CLASS__<pid> empty.

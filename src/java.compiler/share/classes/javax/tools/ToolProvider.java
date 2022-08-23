@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,7 @@ package javax.tools;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Iterator;
+import java.util.Objects;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
@@ -44,14 +44,10 @@ public class ToolProvider {
     private static final String systemJavaCompilerModule = "jdk.compiler";
     private static final String systemJavaCompilerName   = "com.sun.tools.javac.api.JavacTool";
 
-    /**
-     * Do not call.
-     */
-    @Deprecated(forRemoval=true, since="14")
-    public ToolProvider() {}
+    private ToolProvider() {}
 
     /**
-     * Returns the Java&trade; programming language compiler provided
+     * Returns the Java programming language compiler provided
      * with this platform.
      * <p>The file manager returned by calling
      * {@link JavaCompiler#getStandardFileManager getStandardFileManager}
@@ -72,7 +68,7 @@ public class ToolProvider {
     private static final String systemDocumentationToolName = "jdk.javadoc.internal.api.JavadocTool";
 
     /**
-     * Returns the Java&trade; programming language documentation tool provided
+     * Returns the Java programming language documentation tool provided
      * with this platform.
      * <p>The file manager returned by calling
      * {@link DocumentationTool#getStandardFileManager getStandardFileManager}
@@ -122,8 +118,7 @@ public class ToolProvider {
 
         try {
             ServiceLoader<T> sl = ServiceLoader.load(clazz, ClassLoader.getSystemClassLoader());
-            for (Iterator<T> iter = sl.iterator(); iter.hasNext(); ) {
-                T tool = iter.next();
+            for (T tool : sl) {
                 if (matches(tool, moduleName))
                     return tool;
             }
@@ -140,11 +135,12 @@ public class ToolProvider {
      * @param moduleName        the name of the module containing the desired implementation
      * @return true if and only if the tool matches the specified criteria
      */
+    @SuppressWarnings("removal")
     private static <T> boolean matches(T tool, String moduleName) {
         PrivilegedAction<Boolean> pa = () -> {
             Module toolModule = tool.getClass().getModule();
             String toolModuleName = toolModule.getName();
-            return toolModuleName.equals(moduleName);
+            return Objects.equals(toolModuleName, moduleName);
         };
         return AccessController.doPrivileged(pa);
     }

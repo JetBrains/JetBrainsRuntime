@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,12 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+#ifdef LINUX
+// Note. On Alpine Linux pthread.h includes calloc/malloc functions declaration.
+// We need to include pthread.h before the following stdlib names poisoning.
+#include <pthread.h>
+#endif
+
 #ifdef DEBUG
     /* Just to make sure these interfaces are not used here. */
     #undef free
@@ -59,7 +65,7 @@ typedef struct RefNode {
     jobject      ref;           /* could be strong or weak */
     struct RefNode *next;       /* next RefNode* in bucket chain */
     jint         count;         /* count of references */
-    unsigned     isStrong : 1;  /* 1 means this is a string reference */
+    unsigned     strongCount;   /* count of strong reference */
 } RefNode;
 
 /* Value of a NULL ID */
@@ -122,9 +128,13 @@ typedef struct {
     /* Common References static data */
     jrawMonitorID refLock;
     jlong         nextSeqNum;
+    unsigned      pinAllCount;
     RefNode     **objectsByID;
     int           objectsByIDsize;
     int           objectsByIDcount;
+
+    /* true if enhanced class redefinition is enabled */
+    jboolean isEnhancedClassRedefinitionEnabled;
 
      /* Indication that the agent has been loaded */
      jboolean isLoaded;
@@ -252,13 +262,6 @@ typedef struct ObjectBatch {
 } ObjectBatch;
 
 /*
- * JNI signature constants, beyond those defined in JDWP_TAG(*)
- */
-#define SIGNATURE_BEGIN_ARGS    '('
-#define SIGNATURE_END_ARGS      ')'
-#define SIGNATURE_END_CLASS     ';'
-
-/*
  * Modifier flags for classes, fields, methods
  */
 #define MOD_PUBLIC       0x0001     /* visible to everyone */
@@ -291,7 +294,6 @@ jbyte referenceTypeTag(jclass clazz);
 jbyte specificTypeKey(JNIEnv *env, jobject object);
 jboolean isObjectTag(jbyte tag);
 jvmtiError spawnNewThread(jvmtiStartFunction func, void *arg, char *name);
-void convertSignatureToClassname(char *convert);
 void writeCodeLocation(struct PacketOutputStream *out, jclass clazz,
                        jmethodID method, jlocation location);
 
@@ -339,7 +341,6 @@ jint jvmtiMajorVersion(void);
 jint jvmtiMinorVersion(void);
 jint jvmtiMicroVersion(void);
 jvmtiError getSourceDebugExtension(jclass clazz, char **extensionPtr);
-jboolean canSuspendResumeThreadLists(void);
 
 jrawMonitorID debugMonitorCreate(char *name);
 void debugMonitorEnter(jrawMonitorID theLock);
@@ -381,6 +382,9 @@ void *jvmtiAllocate(jint numBytes);
 void jvmtiDeallocate(void *buffer);
 
 void             eventIndexInit(void);
+#ifdef DEBUG
+char*            eventIndex2EventName(EventIndex ei);
+#endif
 jdwpEvent        eventIndex2jdwp(EventIndex i);
 jvmtiEvent       eventIndex2jvmti(EventIndex i);
 EventIndex       jdwp2EventIndex(jdwpEvent eventType);
@@ -413,5 +417,7 @@ void createLocalRefSpace(JNIEnv *env, jint capacity);
 
 void saveGlobalRef(JNIEnv *env, jobject obj, jobject *pobj);
 void tossGlobalRef(JNIEnv *env, jobject *pobj);
+
+jvmtiEnv* getSpecialJvmti(void);
 
 #endif

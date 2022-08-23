@@ -29,13 +29,7 @@
                           develop_pd,                                       \
                           product,                                          \
                           product_pd,                                       \
-                          diagnostic,                                       \
-                          diagnostic_pd,                                    \
-                          experimental,                                     \
                           notproduct,                                       \
-                          manageable,                                       \
-                          product_rw,                                       \
-                          lp64_product,                                     \
                           range,                                            \
                           constraint)                                       \
   product(uintx, HeapMaximumCompactionInterval, 20,                         \
@@ -51,26 +45,22 @@
           "Use maximum compaction in the Parallel Old garbage collector "   \
           "for a system GC")                                                \
                                                                             \
-  product(size_t, ParallelOldDeadWoodLimiterMean, 50,                        \
+  product(size_t, ParallelOldDeadWoodLimiterMean, 50,                       \
           "The mean used by the parallel compact dead wood "                \
           "limiter (a number between 0-100)")                               \
           range(0, 100)                                                     \
                                                                             \
-  product(size_t, ParallelOldDeadWoodLimiterStdDev, 80,                      \
+  product(size_t, ParallelOldDeadWoodLimiterStdDev, 80,                     \
           "The standard deviation used by the parallel compact dead wood "  \
           "limiter (a number between 0-100)")                               \
           range(0, 100)                                                     \
-                                                                            \
-  develop(bool, TraceParallelOldGCMarkingPhase, false,                      \
-          "Trace marking phase in ParallelOldGC")                           \
-                                                                            \
-  develop(bool, TraceParallelOldGCDensePrefix, false,                       \
-          "Trace dense prefix computation for ParallelOldGC")               \
                                                                             \
   develop(uintx, GCWorkerDelayMillis, 0,                                    \
           "Delay in scheduling GC workers (in milliseconds)")               \
                                                                             \
   product(bool, PSChunkLargeArrays, true,                                   \
           "Process large arrays in chunks")
+
+// end of GC_PARALLEL_FLAGS
 
 #endif // SHARE_GC_PARALLEL_PARALLEL_GLOBALS_HPP

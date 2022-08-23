@@ -24,7 +24,6 @@
 
 #include "precompiled.hpp"
 #include "gc/g1/g1Arguments.hpp"
-#include "gc/g1/g1HeterogeneousHeapYoungGenSizer.hpp"
 #include "gc/g1/g1YoungGenSizer.hpp"
 #include "gc/g1/heapRegion.hpp"
 #include "logging/log.hpp"
@@ -102,7 +101,7 @@ void G1YoungGenSizer::recalculate_min_max_young_length(uint number_of_heap_regio
       // Do nothing. Values set on the command line, don't update them at runtime.
       break;
     case SizerNewRatio:
-      *min_young_length = number_of_heap_regions / (NewRatio + 1);
+      *min_young_length = MAX2((uint)(number_of_heap_regions / (NewRatio + 1)), 1u);
       *max_young_length = *min_young_length;
       break;
     default:
@@ -129,12 +128,4 @@ void G1YoungGenSizer::adjust_max_new_size(uint number_of_heap_regions) {
 void G1YoungGenSizer::heap_size_changed(uint new_number_of_heap_regions) {
   recalculate_min_max_young_length(new_number_of_heap_regions, &_min_desired_young_length,
           &_max_desired_young_length);
-}
-
-G1YoungGenSizer* G1YoungGenSizer::create_gen_sizer() {
-  if (G1Arguments::is_heterogeneous_heap()) {
-    return new G1HeterogeneousHeapYoungGenSizer();
-  } else {
-    return new G1YoungGenSizer();
-  }
 }

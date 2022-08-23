@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 #ifndef SHARE_OOPS_KLASS_HPP
 #define SHARE_OOPS_KLASS_HPP
 
-#include "classfile/classLoaderData.hpp"
 #include "memory/iterator.hpp"
 #include "memory/memRegion.hpp"
 #include "oops/markWord.hpp"
@@ -67,6 +66,7 @@ const uint KLASS_ID_COUNT = 6;
 // Forward declarations.
 template <class T> class Array;
 template <class T> class GrowableArray;
+class ClassLoaderData;
 class fieldDescriptor;
 class klassVtable;
 class ModuleEntry;
@@ -117,6 +117,9 @@ class Klass : public Metadata {
   // Klass identifier used to implement devirtualized oop closure dispatching.
   const KlassID _id;
 
+  // Processed access flags, for use by Class.getModifiers.
+  jint        _modifier_flags;
+
   // The fields _super_check_offset, _secondary_super_cache, _secondary_supers
   // and _primary_supers all help make fast subtype checks.  See big discussion
   // in doc/server_compiler/checktype.txt
@@ -136,7 +139,7 @@ class Klass : public Metadata {
   // Ordered list of all primary supertypes
   Klass*      _primary_supers[_primary_super_limit];
   // java/lang/Class instance mirroring this class
-  OopHandle _java_mirror;
+  OopHandle   _java_mirror;
   // Superclass
   Klass*      _super;
   // First subclass (NULL if none); _subklass->next_sibling() is next one
@@ -151,7 +154,10 @@ class Klass : public Metadata {
   // Provide access the corresponding instance java.lang.ClassLoader.
   ClassLoaderData* _class_loader_data;
 
-  jint        _modifier_flags;  // Processed access flags, for use by Class.getModifiers.
+  int _vtable_len;              // vtable length. This field may be read very often when we
+                                // have lots of itable dispatches (e.g., lambdas and streams).
+                                // Keep it away from the beginning of a Klass to avoid cacheline
+                                // contention that may happen when a nearby object is modified.
   AccessFlags _access_flags;    // Access flags. The class/interface distinction is stored here.
 
   JFR_ONLY(DEFINE_TRACE_ID_FIELD;)
@@ -162,8 +168,17 @@ class Klass : public Metadata {
   markWord _prototype_header;   // Used when biased locking is both enabled and disabled for this type
   jint     _biased_lock_revocation_count;
 
-  // vtable length
-  int _vtable_len;
+  // Advanced class redefinition
+
+  // Old version (used in advanced class redefinition)
+  Klass*      _old_version;
+  // New version (used in advanced class redefinition)
+  Klass*      _new_version;
+
+  int         _redefinition_flags;     // Level of class redefinition
+  bool        _is_redefining;
+  int*        _update_information;
+  bool        _is_copying_backwards;   // Does the class need to copy fields backwards? => possibly overwrite itself?
 
 private:
   // This is an index into FileMapHeader::_shared_path_table[], to
@@ -176,12 +191,13 @@ private:
   // Flags of the current shared class.
   u2     _shared_class_flags;
   enum {
-    _has_raw_archived_mirror = 1
+    _archived_lambda_proxy_is_available = 2,
+    _has_value_based_class_annotation = 4,
+    _verified_at_dump_time = 8
   };
 #endif
-  // The _archived_mirror is set at CDS dump time pointing to the cached mirror
-  // in the open archive heap region when archiving java object is supported.
-  CDS_JAVA_HEAP_ONLY(narrowOop _archived_mirror;)
+
+  CDS_JAVA_HEAP_ONLY(int _archived_mirror_index;)
 
 protected:
 
@@ -194,12 +210,12 @@ protected:
  public:
   int id() { return _id; }
 
-  enum DefaultsLookupMode { find_defaults, skip_defaults };
-  enum OverpassLookupMode { find_overpass, skip_overpass };
-  enum StaticLookupMode   { find_static,   skip_static };
-  enum PrivateLookupMode  { find_private,  skip_private };
+  enum class DefaultsLookupMode { find, skip };
+  enum class OverpassLookupMode { find, skip };
+  enum class StaticLookupMode   { find, skip };
+  enum class PrivateLookupMode  { find, skip };
 
-  bool is_klass() const volatile { return true; }
+  virtual bool is_klass() const { return true; }
 
   // super() cannot be InstanceKlass* -- Java arrays are covariant, and _super is used
   // to implement that. NB: the _super of "[Ljava/lang/Integer;" is "[Ljava/lang/Number;"
@@ -260,17 +276,15 @@ protected:
   oop java_mirror_no_keepalive() const;
   void set_java_mirror(Handle m);
 
-  oop archived_java_mirror_raw() NOT_CDS_JAVA_HEAP_RETURN_(NULL); // no GC barrier
-  narrowOop archived_java_mirror_raw_narrow() NOT_CDS_JAVA_HEAP_RETURN_(0); // no GC barrier
-  void set_archived_java_mirror_raw(oop m) NOT_CDS_JAVA_HEAP_RETURN; // no GC barrier
+  oop archived_java_mirror() NOT_CDS_JAVA_HEAP_RETURN_(NULL);
+  void set_archived_java_mirror(oop m) NOT_CDS_JAVA_HEAP_RETURN;
 
   // Temporary mirror switch used by RedefineClasses
-  // Both mirrors are on the ClassLoaderData::_handles list already so no
-  // barriers are needed.
-  void set_java_mirror_handle(OopHandle mirror) { _java_mirror = mirror; }
-  OopHandle java_mirror_handle() const          {
-    return _java_mirror;
-  }
+  void replace_java_mirror(oop mirror);
+
+  // Set java mirror OopHandle to NULL for CDS
+  // This leaves the OopHandle in the CLD, but that's ok, you can't release them.
+  void clear_java_mirror_handle() { _java_mirror = OopHandle(); }
 
   // modifier flags
   jint modifier_flags() const          { return _modifier_flags; }
@@ -289,9 +303,11 @@ protected:
 
   InstanceKlass* superklass() const;
   void append_to_sibling_list();           // add newly created receiver to superklass' subklass list
+  void remove_from_sibling_list();         // enhanced class redefinition
 
   void set_next_link(Klass* k) { _next_link = k; }
   Klass* next_link() const { return _next_link; }   // The next klass defined by the class loader.
+  Klass** next_link_addr() { return &_next_link; }
 
   // class loader data
   ClassLoaderData* class_loader_data() const               { return _class_loader_data; }
@@ -305,26 +321,87 @@ protected:
     _shared_class_path_index = index;
   };
 
-  void set_has_raw_archived_mirror() {
-    CDS_ONLY(_shared_class_flags |= _has_raw_archived_mirror;)
+  bool has_archived_mirror_index() const {
+    CDS_JAVA_HEAP_ONLY(return _archived_mirror_index >= 0;)
+    NOT_CDS_JAVA_HEAP(return false);
   }
-  void clear_has_raw_archived_mirror() {
-    CDS_ONLY(_shared_class_flags &= ~_has_raw_archived_mirror;)
+
+  void clear_archived_mirror_index() NOT_CDS_JAVA_HEAP_RETURN;
+
+  void set_lambda_proxy_is_available() {
+    CDS_ONLY(_shared_class_flags |= _archived_lambda_proxy_is_available;)
   }
-  bool has_raw_archived_mirror() const {
-    CDS_ONLY(return (_shared_class_flags & _has_raw_archived_mirror) != 0;)
+  void clear_lambda_proxy_is_available() {
+    CDS_ONLY(_shared_class_flags &= ~_archived_lambda_proxy_is_available;)
+  }
+  bool lambda_proxy_is_available() const {
+    CDS_ONLY(return (_shared_class_flags & _archived_lambda_proxy_is_available) != 0;)
     NOT_CDS(return false;)
   }
+
+  void set_has_value_based_class_annotation() {
+    CDS_ONLY(_shared_class_flags |= _has_value_based_class_annotation;)
+  }
+  void clear_has_value_based_class_annotation() {
+    CDS_ONLY(_shared_class_flags &= ~_has_value_based_class_annotation;)
+  }
+  bool has_value_based_class_annotation() const {
+    CDS_ONLY(return (_shared_class_flags & _has_value_based_class_annotation) != 0;)
+    NOT_CDS(return false;)
+  }
+
+  void set_verified_at_dump_time() {
+    CDS_ONLY(_shared_class_flags |= _verified_at_dump_time;)
+  }
+  bool verified_at_dump_time() const {
+    CDS_ONLY(return (_shared_class_flags & _verified_at_dump_time) != 0;)
+    NOT_CDS(return false;)
+  }
+
 
   // Obtain the module or package for this class
   virtual ModuleEntry* module() const = 0;
   virtual PackageEntry* package() const = 0;
+
+  // Advanced class redefinition
+  Klass* old_version() const             { return _old_version; }
+  void set_old_version(Klass* klass)     { assert(_old_version == NULL || klass == NULL, "Old version can only be set once!"); _old_version = klass; }
+  Klass* new_version() const             { return _new_version; }
+  void set_new_version(Klass* klass)     { assert(_new_version == NULL || klass == NULL, "New version can only be set once!"); _new_version = klass; }
+  bool is_redefining() const             { return _is_redefining; }
+  void set_redefining(bool b)            { _is_redefining = b; }
+  int redefinition_flags() const         { return _redefinition_flags; }
+  bool check_redefinition_flag(int flags) const { return (_redefinition_flags & flags) != 0; }
+  void clear_redefinition_flag(int flag) { _redefinition_flags &= ~flag; }
+  void set_redefinition_flag(int flag)   { _redefinition_flags |= flag; }
+  void set_redefinition_flags(int flags) { _redefinition_flags = flags; }
+
+  const Klass* newest_version() const    { return _new_version == NULL ? this : _new_version->newest_version(); }
+        Klass* newest_version()          { return _new_version == NULL ? this : _new_version->newest_version(); }
+
+  const Klass* active_version() const   { return _new_version == NULL || _new_version->is_redefining() ? this : _new_version->active_version(); }
+        Klass* active_version()         { return _new_version == NULL || _new_version->is_redefining() ? this : _new_version->active_version(); }
+
+  // update information
+  int *update_information() const        { return _update_information; }
+  void set_update_information(int *info) { _update_information = info; }
+  bool is_copying_backwards() const      { return _is_copying_backwards; }
+  void set_copying_backwards(bool b)     { _is_copying_backwards = b; }
 
  protected:                                // internal accessors
   void     set_subklass(Klass* s);
   void     set_next_sibling(Klass* s);
 
  public:
+   enum RedefinitionFlags {
+     NoRedefinition,                             // This class is not redefined at all!
+     ModifyClass = 1,                            // There are changes to the class meta data.
+     ModifyClassSize = ModifyClass << 1,         // The size of the class meta data changes.
+     ModifyInstances = ModifyClassSize << 1,     // There are change to the instance format.
+     ModifyInstanceSize = ModifyInstances << 1,  // The size of instances changes.
+     RemoveSuperType = ModifyInstanceSize << 1,  // A super type of this class is removed.
+     MarkedAsAffected = RemoveSuperType << 1     // This class has been marked as an affected class.
+   };
 
   // Compiler support
   static ByteSize super_offset()                 { return in_ByteSize(offset_of(Klass, _super)); }
@@ -469,36 +546,29 @@ protected:
   virtual Klass* find_field(Symbol* name, Symbol* signature, fieldDescriptor* fd) const;
   virtual Method* uncached_lookup_method(const Symbol* name, const Symbol* signature,
                                          OverpassLookupMode overpass_mode,
-                                         PrivateLookupMode = find_private) const;
+                                         PrivateLookupMode = PrivateLookupMode::find) const;
  public:
   Method* lookup_method(const Symbol* name, const Symbol* signature) const {
-    return uncached_lookup_method(name, signature, find_overpass);
+    return uncached_lookup_method(name, signature, OverpassLookupMode::find);
   }
 
   // array class with specific rank
-  Klass* array_klass(int rank, TRAPS)         {  return array_klass_impl(false, rank, THREAD); }
+  virtual Klass* array_klass(int rank, TRAPS) = 0;
 
   // array class with this klass as element type
-  Klass* array_klass(TRAPS)                   {  return array_klass_impl(false, THREAD); }
+  virtual Klass* array_klass(TRAPS) = 0;
 
   // These will return NULL instead of allocating on the heap:
-  // NB: these can block for a mutex, like other functions with TRAPS arg.
-  Klass* array_klass_or_null(int rank);
-  Klass* array_klass_or_null();
+  virtual Klass* array_klass_or_null(int rank) = 0;
+  virtual Klass* array_klass_or_null() = 0;
 
   virtual oop protection_domain() const = 0;
 
   oop class_loader() const;
 
-  // This loads the klass's holder as a phantom. This is useful when a weak Klass
-  // pointer has been "peeked" and then must be kept alive before it may
-  // be used safely.  All uses of klass_holder need to apply the appropriate barriers,
-  // except during GC.
-  oop klass_holder() const { return class_loader_data()->holder_phantom(); }
+  inline oop klass_holder() const;
 
  protected:
-  virtual Klass* array_klass_impl(bool or_null, int rank, TRAPS);
-  virtual Klass* array_klass_impl(bool or_null, TRAPS);
 
   // Error handling when length > max_length or length < 0
   static void check_array_allocation_length(int length, int max_length, TRAPS);
@@ -506,6 +576,7 @@ protected:
   void set_vtable_length(int len) { _vtable_len= len; }
 
   vtableEntry* start_of_vtable() const;
+  void restore_unshareable_info(ClassLoaderData* loader_data, Handle protection_domain, TRAPS);
  public:
   Method* method_at_vtable(int index);
 
@@ -517,11 +588,10 @@ protected:
   // CDS support - remove and restore oops from metadata. Oops are not shared.
   virtual void remove_unshareable_info();
   virtual void remove_java_mirror();
-  virtual void restore_unshareable_info(ClassLoaderData* loader_data, Handle protection_domain, TRAPS);
 
   bool is_unshareable_info_restored() const {
     assert(is_shared(), "use this for shared classes only");
-    if (has_raw_archived_mirror()) {
+    if (has_archived_mirror_index()) {
       // _java_mirror is not a valid OopHandle but rather an encoded reference in the shared heap
       return false;
     } else if (_java_mirror.ptr_raw() == NULL) {
@@ -615,6 +685,12 @@ protected:
   void set_has_miranda_methods()        { _access_flags.set_has_miranda_methods(); }
   bool is_shared() const                { return access_flags().is_shared_class(); } // shadows MetaspaceObj::is_shared)()
   void set_is_shared()                  { _access_flags.set_is_shared_class(); }
+  bool is_hidden() const                { return access_flags().is_hidden_class(); }
+  void set_is_hidden()                  { _access_flags.set_is_hidden_class(); }
+  bool is_value_based()                 { return _access_flags.is_value_based_class(); }
+  void set_is_value_based()             { _access_flags.set_is_value_based_class(); }
+
+  inline bool is_non_strong_hidden() const;
 
   bool is_cloneable() const;
   void set_is_cloneable();
@@ -624,6 +700,7 @@ protected:
   // prototype markWord. If biased locking is enabled it may further be
   // biasable and have an epoch.
   markWord prototype_header() const      { return _prototype_header; }
+
   // NOTE: once instances of this klass are floating around in the
   // system, this header must only be updated at a safepoint.
   // NOTE 2: currently we only ever set the prototype header to the
@@ -647,10 +724,7 @@ protected:
   virtual void metaspace_pointers_do(MetaspaceClosure* iter);
   virtual MetaspaceObj::Type type() const { return ClassType; }
 
-  // Iff the class loader (or mirror for unsafe anonymous classes) is alive the
-  // Klass is considered alive. This is safe to call before the CLD is marked as
-  // unloading, and hence during concurrent class unloading.
-  bool is_loader_alive() const { return class_loader_data()->is_alive(); }
+  inline bool is_loader_alive() const;
 
   void clean_subklass();
 
@@ -669,9 +743,10 @@ protected:
   Symbol* name() const                   { return _name; }
   void set_name(Symbol* n);
 
+  virtual void release_C_heap_structures(bool release_constant_pool = true);
+
  public:
-  // jvm support
-  virtual jint compute_modifier_flags(TRAPS) const;
+  virtual jint compute_modifier_flags() const = 0;
 
   // JVMTI support
   virtual jint jvmti_class_status() const;

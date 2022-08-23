@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,6 +61,11 @@ import sun.security.util.SecurityConstants;
 public abstract class ResponseCache {
 
     /**
+     * Constructor for subclasses to call.
+     */
+    public ResponseCache() {}
+
+    /**
      * The system wide cache that provides access to a url
      * caching mechanism.
      *
@@ -81,6 +86,7 @@ public abstract class ResponseCache {
      * @since 1.5
      */
     public static synchronized ResponseCache getDefault() {
+        @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(SecurityConstants.GET_RESPONSECACHE_PERMISSION);
@@ -104,6 +110,7 @@ public abstract class ResponseCache {
      * @since 1.5
      */
     public static synchronized void setDefault(ResponseCache responseCache) {
+        @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(SecurityConstants.SET_RESPONSECACHE_PERMISSION);

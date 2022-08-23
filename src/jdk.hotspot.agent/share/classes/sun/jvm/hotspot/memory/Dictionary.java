@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,8 @@ import sun.jvm.hotspot.oops.*;
 import sun.jvm.hotspot.types.*;
 import sun.jvm.hotspot.runtime.*;
 import sun.jvm.hotspot.utilities.*;
+import sun.jvm.hotspot.utilities.Observable;
+import sun.jvm.hotspot.utilities.Observer;
 
 public class Dictionary extends sun.jvm.hotspot.utilities.Hashtable {
   static {
@@ -52,7 +54,7 @@ public class Dictionary extends sun.jvm.hotspot.utilities.Hashtable {
 
   // this is overriden here so that Hashtable.bucket will return
   // object of DictionaryEntry.class
-  protected Class getHashtableEntryClass() {
+  protected Class<? extends HashtableEntry> getHashtableEntryClass() {
     return DictionaryEntry.class;
   }
 
@@ -63,6 +65,11 @@ public class Dictionary extends sun.jvm.hotspot.utilities.Hashtable {
       for (DictionaryEntry probe = (DictionaryEntry) bucket(index); probe != null;
                                               probe = (DictionaryEntry) probe.next()) {
         Klass k = probe.klass();
+        // Only visit InstanceKlasses that are at least in the "loaded" init_state. Otherwise
+        // the InstanceKlass won't have some required fields initialized, which can cause problems.
+        if (k instanceof InstanceKlass && !((InstanceKlass)k).isLoaded()) {
+            continue;
+        }
         v.visit(k, loader);
       }
     }

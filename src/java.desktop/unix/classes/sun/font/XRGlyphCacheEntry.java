@@ -34,7 +34,7 @@ import java.io.*;
  */
 
 public class XRGlyphCacheEntry {
-    long glyphInfoPtr;
+    long glyphInfoPtr, bgraGlyphInfoPtr;
 
     int lastUsed;
     boolean pinned;
@@ -47,9 +47,17 @@ public class XRGlyphCacheEntry {
     public XRGlyphCacheEntry(long glyphInfoPtr, GlyphList gl) {
         this.glyphInfoPtr = glyphInfoPtr;
 
-        /* TODO: Does it make sence to cache results? */
+        /* TODO: Does it make sense to cache results? */
         xOff = Math.round(getXAdvance());
         yOff = Math.round(getYAdvance());
+    }
+
+    public long getBgraGlyphInfoPtr() {
+        return bgraGlyphInfoPtr;
+    }
+
+    public void setBgraGlyphInfoPtr(long bgraGlyphInfoPtr) {
+        this.bgraGlyphInfoPtr = bgraGlyphInfoPtr;
     }
 
     public int getXOff() {
@@ -132,18 +140,22 @@ public class XRGlyphCacheEntry {
         int width = getWidth();
         int height = getHeight();
         int rowBytes = getSourceRowBytes();
-        int paddedWidth = getPaddedWidth(uploadAsLCD);
+        int paddedWidth = getPaddedWidth();
 
-        if (!uploadAsLCD) {
-            for (int line = 0; line < height; line++) {
-                for(int x = 0; x < paddedWidth; x++) {
-                    if(x < width) {
-                        os.write(StrikeCache.unsafe.getByte(pixelDataAddress + (line * rowBytes + x)));
-                    }else {
-                         /*pad to multiple of 4 bytes per line*/
-                         os.write(0);
+        if (getType() == Type.GRAYSCALE) {
+            int subglyphs = getSubpixelResolutionX() * getSubpixelResolutionY();
+            for (int subglyph = 0; subglyph < subglyphs; subglyph++) {
+                for (int line = 0; line < height; line++) {
+                    for(int x = 0; x < paddedWidth; x++) {
+                        if(x < width) {
+                            os.write(StrikeCache.unsafe.getByte(pixelDataAddress + (line * rowBytes + x)));
+                        }else {
+                            /*pad to multiple of 4 bytes per line*/
+                            os.write(0);
+                        }
                     }
                 }
+                pixelDataAddress += height * rowBytes;
             }
         } else {
             for (int line = 0; line < height; line++) {
@@ -172,26 +184,39 @@ public class XRGlyphCacheEntry {
         return StrikeCache.unsafe.getFloat(glyphInfoPtr + StrikeCache.topLeftYOffset);
     }
 
+    public byte getSubpixelResolutionX() {
+        byte rx = StrikeCache.unsafe.getByte(glyphInfoPtr + StrikeCache.subpixelResolutionXOffset);
+        return rx < 1 ? 1 : rx;
+    }
+
+    public byte getSubpixelResolutionY() {
+        byte ry = StrikeCache.unsafe.getByte(glyphInfoPtr + StrikeCache.subpixelResolutionYOffset);
+        return ry < 1 ? 1 : ry;
+    }
+
     public long getGlyphInfoPtr() {
         return glyphInfoPtr;
     }
 
-    public boolean isGrayscale(boolean listContainsLCDGlyphs) {
-        return getSourceRowBytes() == getWidth() && !(getWidth() == 0 && getHeight() == 0 && listContainsLCDGlyphs);
+    public Type getType() {
+        byte format = StrikeCache.unsafe.getByte(glyphInfoPtr + StrikeCache.formatOffset);
+        if (format == StrikeCache.PIXEL_FORMAT_GREYSCALE) return Type.GRAYSCALE;
+        else if (format == StrikeCache.PIXEL_FORMAT_LCD) return Type.LCD;
+        else if (format == StrikeCache.PIXEL_FORMAT_BGRA) return Type.BGRA;
+        else throw new IllegalStateException("Unknown glyph format: " + format);
     }
 
-    public int getPaddedWidth(boolean listContainsLCDGlyphs) {
-        int width = getWidth();
-        return isGrayscale(listContainsLCDGlyphs) ? (int) Math.ceil(width / 4.0) * 4 : width;
+    public int getPaddedWidth() {
+        return getType() == Type.GRAYSCALE ?
+                (int) Math.ceil(getWidth() / 4.0) * 4 : getWidth();
     }
 
-    public int getDestinationRowBytes(boolean listContainsLCDGlyphs) {
-        boolean grayscale = isGrayscale(listContainsLCDGlyphs);
-        return grayscale ? getPaddedWidth(grayscale) : getWidth() * 4;
+    public int getDestinationRowBytes() {
+        return getType() == Type.GRAYSCALE ? getPaddedWidth() : getWidth() * 4;
     }
 
-    public int getGlyphDataLenth(boolean listContainsLCDGlyphs) {
-        return getDestinationRowBytes(listContainsLCDGlyphs) * getHeight();
+    public int getGlyphDataLenth() {
+        return getDestinationRowBytes() * getHeight();
     }
 
     public void setPinned() {
@@ -211,10 +236,19 @@ public class XRGlyphCacheEntry {
     }
 
     public int getPixelCnt() {
-        return getWidth() * getHeight();
+        return getWidth() * getHeight() * getSubpixelResolutionX() * getSubpixelResolutionY();
     }
 
     public boolean isPinned() {
         return pinned;
     }
+
+
+    public enum Type {
+        GRAYSCALE,
+        LCD,
+        BGRA
+    }
+
+
 }

@@ -23,10 +23,9 @@
  */
 
 /*
- * @test TestPeriodicGC
+ * @test
  * @summary Test that periodic GC is working
- * @key gc
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  * @run driver TestPeriodicGC
  */
@@ -99,33 +98,33 @@ public class TestPeriodicGC {
             );
         }
 
-        testWith("Zero interval with traversal mode",
+        testWith("Zero interval with iu mode",
                  false,
                  "-Xlog:gc",
                  "-XX:+UnlockDiagnosticVMOptions",
                  "-XX:+UnlockExperimentalVMOptions",
                  "-XX:+UseShenandoahGC",
-                 "-XX:ShenandoahGCMode=traversal",
+                 "-XX:ShenandoahGCMode=iu",
                  "-XX:ShenandoahGuaranteedGCInterval=0"
         );
 
-        testWith("Short interval with traversal mode",
+        testWith("Short interval with iu mode",
                  true,
                  "-Xlog:gc",
                  "-XX:+UnlockDiagnosticVMOptions",
                  "-XX:+UnlockExperimentalVMOptions",
                  "-XX:+UseShenandoahGC",
-                 "-XX:ShenandoahGCMode=traversal",
+                 "-XX:ShenandoahGCMode=iu",
                  "-XX:ShenandoahGuaranteedGCInterval=1000"
         );
 
-        testWith("Long interval with traversal mode",
+        testWith("Long interval with iu mode",
                  false,
                  "-Xlog:gc",
                  "-XX:+UnlockDiagnosticVMOptions",
                  "-XX:+UnlockExperimentalVMOptions",
                  "-XX:+UseShenandoahGC",
-                 "-XX:ShenandoahGCMode=traversal",
+                 "-XX:ShenandoahGCMode=iu",
                  "-XX:ShenandoahGuaranteedGCInterval=100000" // deliberately too long
         );
 

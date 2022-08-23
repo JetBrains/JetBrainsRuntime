@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2006, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,7 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * File manager based on {@linkplain File java.io.File} and {@linkplain Path java.nio.file.Path}.
+ * File manager based on {@link File java.io.File} and {@link Path java.nio.file.Path}.
  *
  * A common way to obtain an instance of this class is using
  * {@linkplain JavaCompiler#getStandardFileManager getStandardFileManager}, for example:
@@ -190,16 +190,16 @@ public interface StandardJavaFileManager extends JavaFileManager {
      * Returns file objects representing the given paths.
      *
      * @implSpec
-     * The default implementation converts each path to a file and calls
-     * {@link #getJavaFileObjectsFromFiles getJavaObjectsFromFiles}.
-     * IllegalArgumentException will be thrown if any of the paths
-     * cannot be converted to a file.
+     * The default implementation lazily converts each path to a file and calls
+     * {@link #getJavaFileObjectsFromFiles(Iterable) getJavaFileObjectsFromFiles}.
+     * {@code IllegalArgumentException} will be thrown
+     * if any of the paths cannot be converted to a file at the point the conversion happens.
      *
      * @param paths a list of paths
      * @return a list of file objects
      * @throws IllegalArgumentException if the list of paths includes
      * a directory or if this file manager does not support any of the
-     * given paths.
+     * given paths
      *
      * @since 13
      */
@@ -212,10 +212,10 @@ public interface StandardJavaFileManager extends JavaFileManager {
      * Returns file objects representing the given paths.
      *
      * @implSpec
-     * The default implementation converts each path to a file and calls
-     * {@link #getJavaFileObjectsFromFiles getJavaObjectsFromFiles}.
-     * IllegalArgumentException will be thrown if any of the paths
-     * cannot be converted to a file.
+     * The default implementation lazily converts each path to a file and calls
+     * {@link #getJavaFileObjectsFromPaths(Collection) getJavaFileObjectsFromPaths}.
+     * {@code IllegalArgumentException} will be thrown
+     * if any of the paths cannot be converted to a file at the point the conversion happens.
      *
      * @param paths a list of paths
      * @return a list of file objects
@@ -248,7 +248,8 @@ public interface StandardJavaFileManager extends JavaFileManager {
      * @param files an array of files
      * @return a list of file objects
      * @throws IllegalArgumentException if the array of files includes
-     * a directory
+     * a directory or if this file manager does not support any of the
+     * given paths
      * @throws NullPointerException if the given array contains null
      * elements
      */
@@ -262,10 +263,15 @@ public interface StandardJavaFileManager extends JavaFileManager {
      *     getJavaFileObjectsFromPaths({@linkplain java.util.Arrays#asList Arrays.asList}(paths))
      * </pre>
      *
+     * @implSpec
+     * The default implementation will only throw {@code NullPointerException}
+     * if {@linkplain #getJavaFileObjectsFromPaths(Collection)} throws it.
+     *
      * @param paths an array of paths
      * @return a list of file objects
      * @throws IllegalArgumentException if the array of files includes
-     * a directory
+     * a directory or if this file manager does not support any of the
+     * given paths
      * @throws NullPointerException if the given array contains null
      * elements
      *
@@ -332,10 +338,10 @@ public interface StandardJavaFileManager extends JavaFileManager {
      * will be cancelled.
      *
      * @implSpec
-     * The default implementation converts each path to a file and calls
-     * {@link #getJavaFileObjectsFromFiles getJavaObjectsFromFiles}.
-     * {@linkplain IllegalArgumentException IllegalArgumentException}
-     * will be thrown if any of the paths cannot be converted to a file.
+     * The default implementation lazily converts each path to a file and calls
+     * {@link #setLocation setLocation}.
+     * {@code IllegalArgumentException} will be thrown if any of the paths cannot
+     * be converted to a file at the point the conversion happens.
      *
      * @param location a location
      * @param paths a list of paths, if {@code null} use the default
@@ -363,7 +369,7 @@ public interface StandardJavaFileManager extends JavaFileManager {
      *
      * All such module-specific associations will be cancelled if a
      * new search path is associated with the location by calling
-     * {@linkplain #setLocation setLocation } or
+     * {@linkplain #setLocation setLocation} or
      * {@linkplain #setLocationFromPaths setLocationFromPaths}.
      *
      * @throws IllegalStateException if the location is not a module-oriented
@@ -377,8 +383,8 @@ public interface StandardJavaFileManager extends JavaFileManager {
      * @param moduleName the name of the module
      * @param paths the search path to associate with the location and module.
      *
-     * @see setLocation
-     * @see setLocationFromPaths
+     * @see #setLocation
+     * @see #setLocationFromPaths
      *
      * @since 9
      */
@@ -480,8 +486,8 @@ public interface StandardJavaFileManager extends JavaFileManager {
 
 
     private static Iterable<Path> asPaths(final Iterable<? extends File> files) {
-        return () -> new Iterator<Path>() {
-            Iterator<? extends File> iter = files.iterator();
+        return () -> new Iterator<>() {
+            final Iterator<? extends File> iter = files.iterator();
 
             @Override
             public boolean hasNext() {
@@ -496,8 +502,8 @@ public interface StandardJavaFileManager extends JavaFileManager {
     }
 
     private static Iterable<File> asFiles(final Iterable<? extends Path> paths) {
-        return () -> new Iterator<File>() {
-            Iterator<? extends Path> iter = paths.iterator();
+        return () -> new Iterator<>() {
+            final Iterator<? extends Path> iter = paths.iterator();
 
             @Override
             public boolean hasNext() {

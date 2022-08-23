@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -883,10 +883,7 @@ public class HTMLGenerator implements /* imports */ ClassConstants {
    }
 
    protected String genMultPCHref(String pcs) {
-      StringBuffer buf = new StringBuffer(genBaseHref());
-      buf.append("pc_multiple=");
-      buf.append(pcs);
-      return buf.toString();
+      return genBaseHref() + "pc_multiple=" + pcs;
    }
 
    protected String genPCHref(Address addr) {
@@ -1067,21 +1064,21 @@ public class HTMLGenerator implements /* imports */ ClassConstants {
             buf.append(Integer.toString(line));
         }
 
-        List locals = sd.getLocals();
+        List<ScopeValue> locals = sd.getLocals();
         if (locals != null) {
             buf.br();
             buf.append(tabs);
             buf.append(genHTMLForLocals(sd, locals));
         }
 
-        List expressions = sd.getExpressions();
+        List<ScopeValue> expressions = sd.getExpressions();
         if (expressions != null) {
             buf.br();
             buf.append(tabs);
             buf.append(genHTMLForExpressions(sd, expressions));
         }
 
-        List monitors = sd.getMonitors();
+        List<MonitorValue> monitors = sd.getMonitors();
         if (monitors != null) {
             buf.br();
             buf.append(tabs);
@@ -1097,14 +1094,14 @@ public class HTMLGenerator implements /* imports */ ClassConstants {
             return;
         }
 
-        List objects = sd.getObjects();
+        List<ObjectValue> objects = sd.getObjects();
         if (objects == null) {
             return;
         }
         int length = objects.size();
         for (int i = 0; i < length; i++) {
             buf.append(tabs);
-            ObjectValue ov = (ObjectValue)objects.get(i);
+            ObjectValue ov = objects.get(i);
             buf.append("ScObj" + i);
             ScopeValue sv = ov.getKlass();
             if (Assert.ASSERTS_ENABLED) {
@@ -1183,7 +1180,8 @@ public class HTMLGenerator implements /* imports */ ClassConstants {
       Formatter buf = new Formatter(genHTML);
 
       final class OopMapValueIterator {
-         final Formatter iterate(OopMapStream oms, String type, boolean printContentReg) {
+         final Formatter iterate(OopMapStream oms, String type, boolean printContentReg,
+                                 OopMapValue.OopTypes filter) {
             Formatter tmpBuf = new Formatter(genHTML);
             boolean found = false;
             tmpBuf.beginTag("tr");
@@ -1191,7 +1189,7 @@ public class HTMLGenerator implements /* imports */ ClassConstants {
             tmpBuf.append(type);
             for (; ! oms.isDone(); oms.next()) {
                OopMapValue omv = oms.getCurrent();
-               if (omv == null) {
+               if (omv == null || omv.getType() != filter) {
                   continue;
                }
                found = true;
@@ -1227,17 +1225,21 @@ public class HTMLGenerator implements /* imports */ ClassConstants {
       buf.beginTable(0);
 
       OopMapValueIterator omvIterator = new OopMapValueIterator();
-      OopMapStream oms = new OopMapStream(map, OopMapValue.OopTypes.OOP_VALUE);
-      buf.append(omvIterator.iterate(oms, "Oops:", false));
+      OopMapStream oms = new OopMapStream(map);
+      buf.append(omvIterator.iterate(oms, "Oops:", false,
+                                     OopMapValue.OopTypes.OOP_VALUE));
 
-      oms = new OopMapStream(map, OopMapValue.OopTypes.NARROWOOP_VALUE);
-      buf.append(omvIterator.iterate(oms, "NarrowOops:", false));
+      oms = new OopMapStream(map);
+      buf.append(omvIterator.iterate(oms, "NarrowOops:", false,
+                                     OopMapValue.OopTypes.NARROWOOP_VALUE));
 
-      oms = new OopMapStream(map, OopMapValue.OopTypes.CALLEE_SAVED_VALUE);
-      buf.append(omvIterator.iterate(oms, "Callee saved:",  true));
+      oms = new OopMapStream(map);
+      buf.append(omvIterator.iterate(oms, "Callee saved:", true,
+                                     OopMapValue.OopTypes.CALLEE_SAVED_VALUE));
 
-      oms = new OopMapStream(map, OopMapValue.OopTypes.DERIVED_OOP_VALUE);
-      buf.append(omvIterator.iterate(oms, "Derived oops:", true));
+      oms = new OopMapStream(map);
+      buf.append(omvIterator.iterate(oms, "Derived oops:", true,
+                                     OopMapValue.OopTypes.DERIVED_OOP_VALUE));
 
       buf.endTag("table");
       return buf.toString();
@@ -1352,12 +1354,12 @@ public class HTMLGenerator implements /* imports */ ClassConstants {
       return buf.toString();
    }
 
-   protected String genHTMLForScopeValues(ScopeDesc sd, boolean locals, List values) {
+   protected String genHTMLForScopeValues(ScopeDesc sd, boolean locals, List<ScopeValue> values) {
       int length = values.size();
       Formatter buf = new Formatter(genHTML);
       buf.append(locals? "locals " : "expressions ");
       for (int i = 0; i < length; i++) {
-         ScopeValue sv = (ScopeValue) values.get(i);
+         ScopeValue sv = values.get(i);
          if (sv == null) {
             continue;
          }
@@ -1387,20 +1389,20 @@ public class HTMLGenerator implements /* imports */ ClassConstants {
       return buf.toString();
    }
 
-   protected String genHTMLForLocals(ScopeDesc sd, List locals) {
+   protected String genHTMLForLocals(ScopeDesc sd, List<ScopeValue> locals) {
       return genHTMLForScopeValues(sd, true, locals);
    }
 
-   protected String genHTMLForExpressions(ScopeDesc sd, List expressions) {
+   protected String genHTMLForExpressions(ScopeDesc sd, List<ScopeValue> expressions) {
       return genHTMLForScopeValues(sd, false, expressions);
    }
 
-   protected String genHTMLForMonitors(ScopeDesc sd, List monitors) {
+   protected String genHTMLForMonitors(ScopeDesc sd, List<MonitorValue> monitors) {
       int length = monitors.size();
       Formatter buf = new Formatter(genHTML);
       buf.append("monitors ");
       for (int i = 0; i < length; i++) {
-         MonitorValue mv = (MonitorValue) monitors.get(i);
+         MonitorValue mv = monitors.get(i);
          if (mv == null) {
             continue;
          }
@@ -1542,7 +1544,7 @@ public class HTMLGenerator implements /* imports */ ClassConstants {
    }
 
    protected String genDumpKlassesHref(InstanceKlass[] klasses) {
-      StringBuffer buf = new StringBuffer(genBaseHref());
+      StringBuilder buf = new StringBuilder(genBaseHref());
       buf.append("jcore_multiple=");
       for (int k = 0; k < klasses.length; k++) {
          buf.append(klasses[k].getAddress().toString());

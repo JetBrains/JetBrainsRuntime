@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
 
 package sun.jvm.hotspot.debugger.bsd;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +34,7 @@ import sun.jvm.hotspot.debugger.DebuggerUtilities;
 import sun.jvm.hotspot.debugger.MachineDescription;
 import sun.jvm.hotspot.debugger.NotInHeapException;
 import sun.jvm.hotspot.debugger.OopHandle;
+import sun.jvm.hotspot.debugger.ProcessInfo;
 import sun.jvm.hotspot.debugger.ReadResult;
 import sun.jvm.hotspot.debugger.ThreadProxy;
 import sun.jvm.hotspot.debugger.UnalignedAddressException;
@@ -75,8 +75,8 @@ public class BsdDebuggerLocal extends DebuggerBase implements BsdDebugger {
     private BsdCDebugger cdbg;
 
     // threadList and loadObjectList are filled by attach0 method
-    private List threadList;
-    private List loadObjectList;
+    private List<ThreadProxy> threadList;
+    private List<LoadObject> loadObjectList;
 
     // called by native method lookupByAddress0
     private ClosestSymbol createClosestSymbol(String name, long offset) {
@@ -84,11 +84,10 @@ public class BsdDebuggerLocal extends DebuggerBase implements BsdDebugger {
     }
 
     // called by native method attach0
-    private LoadObject createLoadObject(String fileName, long textsize,
+    private LoadObject createLoadObject(String fileName, long size,
                                         long base) {
-       File f = new File(fileName);
        Address baseAddr = newAddress(base);
-       return new SharedObject(this, fileName, f.length(), baseAddr);
+       return new SharedObject(this, fileName, size, baseAddr);
     }
 
     // native methods
@@ -166,7 +165,7 @@ public class BsdDebuggerLocal extends DebuggerBase implements BsdDebugger {
                 } catch (InterruptedException x) {}
              }
              if (lastException != null) {
-                throw new DebuggerException(lastException);
+                throw new DebuggerException(lastException.getMessage(), lastException);
              } else {
                 return task;
              }
@@ -230,7 +229,7 @@ public class BsdDebuggerLocal extends DebuggerBase implements BsdDebugger {
     }
 
     /** From the Debugger interface via JVMDebugger */
-    public List getProcessList() throws DebuggerException {
+    public List<ProcessInfo> getProcessList() throws DebuggerException {
         throw new DebuggerException("getProcessList not implemented yet");
     }
 
@@ -266,8 +265,8 @@ public class BsdDebuggerLocal extends DebuggerBase implements BsdDebugger {
     /** From the Debugger interface via JVMDebugger */
     public synchronized void attach(int processID) throws DebuggerException {
         checkAttached();
-        threadList = new ArrayList();
-        loadObjectList = new ArrayList();
+        threadList = new ArrayList<>();
+        loadObjectList = new ArrayList<>();
         class AttachTask implements WorkerThreadTask {
            int pid;
            public void doit(BsdDebuggerLocal debugger) {
@@ -286,8 +285,8 @@ public class BsdDebuggerLocal extends DebuggerBase implements BsdDebugger {
     /** From the Debugger interface via JVMDebugger */
     public synchronized void attach(String execName, String coreName) {
         checkAttached();
-        threadList = new ArrayList();
-        loadObjectList = new ArrayList();
+        threadList = new ArrayList<>();
+        loadObjectList = new ArrayList<>();
         attach0(execName, coreName);
         attached = true;
         isCore = true;
@@ -536,13 +535,13 @@ public class BsdDebuggerLocal extends DebuggerBase implements BsdDebugger {
     }
 
     /** From the BsdCDebugger interface */
-    public List/*<ThreadProxy>*/ getThreadList() {
+    public List<ThreadProxy> getThreadList() {
       requireAttach();
       return threadList;
     }
 
     /** From the BsdCDebugger interface */
-    public List/*<LoadObject>*/ getLoadObjectList() {
+    public List<LoadObject> getLoadObjectList() {
       requireAttach();
       return loadObjectList;
     }

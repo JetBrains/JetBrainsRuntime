@@ -32,6 +32,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.spi.ToolProvider;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import jdk.tools.jlink.plugin.Plugin;
@@ -45,6 +47,7 @@ import tests.JImageGenerator;
  * @bug 8189777
  * @bug 8194922
  * @bug 8206962
+ * @bug 8240349
  * @author Jean-Francois Denise
  * @requires (vm.compMode != "Xcomp" & os.maxMemory >= 2g)
  * @library ../lib
@@ -110,25 +113,25 @@ public class JLinkTest {
         }
 
         {
-            // No --module-path specified. $JAVA_HOME/jmods should be assumed.
-            // The following should succeed as it uses only system modules.
-            String imageDir = "bug818977-no-modulepath";
-            JImageGenerator.getJLinkTask()
-                    .output(helper.createNewImageDir(imageDir))
-                    .addMods("jdk.scripting.nashorn")
-                    .call().assertSuccess();
+             // No --module-path specified. $JAVA_HOME/jmods should be assumed.
+             // The following should succeed as it uses only system modules.
+             String imageDir = "bug818977-no-modulepath";
+             JImageGenerator.getJLinkTask()
+                     .output(helper.createNewImageDir(imageDir))
+                     .addMods("jdk.jshell")
+                     .call().assertSuccess();
         }
 
         {
-            // invalid --module-path specified. java.base not found it it.
-            // $JAVA_HOME/jmods should be added automatically.
-            // The following should succeed as it uses only system modules.
-            String imageDir = "bug8189777-invalid-modulepath";
-            JImageGenerator.getJLinkTask()
-                    .modulePath("does_not_exist_path")
-                    .output(helper.createNewImageDir(imageDir))
-                    .addMods("jdk.scripting.nashorn")
-                    .call().assertSuccess();
+             // invalid --module-path specified. java.base not found it it.
+             // $JAVA_HOME/jmods should be added automatically.
+             // The following should succeed as it uses only system modules.
+             String imageDir = "bug8189777-invalid-modulepath";
+             JImageGenerator.getJLinkTask()
+                     .modulePath("does_not_exist_path")
+                     .output(helper.createNewImageDir(imageDir))
+                     .addMods("jdk.jshell")
+                     .call().assertSuccess();
         }
 
         {
@@ -243,13 +246,22 @@ public class JLinkTest {
 
             JLINK_TOOL.run(pw, pw, "--list-plugins");
             String output = writer.toString();
-            long number = Stream.of(output.split("\\R"))
-                    .filter((s) -> s.matches("Plugin Name:.*"))
-                    .count();
+            List<String> commands = Stream.of(output.split("\\R"))
+                    .filter((s) -> s.matches("  --.*"))
+                    .collect(Collectors.toList());
+            int number = commands.size();
             if (number != totalPlugins) {
                 System.err.println(output);
                 throw new AssertionError("Found: " + number + " expected " + totalPlugins);
             }
+
+            boolean isSorted = IntStream.range(1, number)
+                    .allMatch((int index) -> commands.get(index).compareTo(commands.get(index - 1)) >= 0);
+
+            if(!isSorted) {
+                throw new AssertionError("--list-plugins not presented in alphabetical order");
+            }
+
         }
 
         // filter out files and resources + Skip debug + compress
@@ -354,6 +366,19 @@ public class JLinkTest {
                     .addMods("java.base")
                     .option("--release-info=del")
                     .call().assertFailure("Error: No key specified for delete");
+        }
+        {
+            String imageDir = "bug8240349";
+            Path imagePath = helper.createNewImageDir(imageDir);
+            JImageGenerator.getJLinkTask()
+                    .modulePath(helper.defaultModulePath())
+                    .output(imagePath)
+                    .addMods("java.base")
+                    .option("--vm=client")
+                    .call().assertFailure("Error: Selected VM client doesn't exist");
+            if (!Files.notExists(imagePath)) {
+                throw new RuntimeException("bug8240349 directory not deleted");
+            }
         }
     }
 

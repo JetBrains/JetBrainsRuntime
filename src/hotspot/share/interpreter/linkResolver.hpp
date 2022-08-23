@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,7 +49,6 @@ class CallInfo : public StackObj {
   };
  private:
   Klass*       _resolved_klass;         // static receiver klass, resolved from a symbolic reference
-  Klass*       _selected_klass;         // dynamic receiver class (same as static, or subklass)
   methodHandle _resolved_method;        // static target method
   methodHandle _selected_method;        // dynamic (actual) target method
   CallKind     _call_kind;              // kind of call (static(=bytecode static/special +
@@ -59,20 +58,18 @@ class CallInfo : public StackObj {
   Handle       _resolved_method_name;   // Object holding the ResolvedMethodName
 
   void set_static(Klass* resolved_klass, const methodHandle& resolved_method, TRAPS);
-  void set_interface(Klass* resolved_klass, Klass* selected_klass,
+  void set_interface(Klass* resolved_klass,
                      const methodHandle& resolved_method,
                      const methodHandle& selected_method,
                      int itable_index, TRAPS);
-  void set_virtual(Klass* resolved_klass, Klass* selected_klass,
+  void set_virtual(Klass* resolved_klass,
                    const methodHandle& resolved_method,
                    const methodHandle& selected_method,
                    int vtable_index, TRAPS);
-  void set_handle(const methodHandle& resolved_method,
-                  Handle resolved_appendix, TRAPS);
   void set_handle(Klass* resolved_klass,
                   const methodHandle& resolved_method,
                   Handle resolved_appendix, TRAPS);
-  void set_common(Klass* resolved_klass, Klass* selected_klass,
+  void set_common(Klass* resolved_klass,
                   const methodHandle& resolved_method,
                   const methodHandle& selected_method,
                   CallKind kind,
@@ -92,20 +89,19 @@ class CallInfo : public StackObj {
   // utility to extract an effective CallInfo from a method and an optional receiver limit
   // does not queue the method for compilation.  This also creates a ResolvedMethodName
   // object for the resolved_method.
-  CallInfo(Method* resolved_method, Klass* resolved_klass, TRAPS);
+  CallInfo(Method* resolved_method, Klass* resolved_klass, Thread* thread);
 
   Klass*  resolved_klass() const                 { return _resolved_klass; }
-  Klass*  selected_klass() const                 { return _selected_klass; }
   Method* resolved_method() const                { return _resolved_method(); }
   Method* selected_method() const                { return _selected_method(); }
   Handle       resolved_appendix() const         { return _resolved_appendix; }
   Handle       resolved_method_name() const      { return _resolved_method_name; }
   // Materialize a java.lang.invoke.ResolvedMethodName for this resolved_method
   void     set_resolved_method_name(TRAPS);
+  void     set_resolved_method_name_dcevm(oop rmethod_name, Thread* thread);
 
   BasicType    result_type() const               { return selected_method()->result_type(); }
   CallKind     call_kind() const                 { return _call_kind; }
-  int          call_index() const                { return _call_index; }
   int          vtable_index() const {
     // Even for interface calls the vtable index could be non-negative.
     // See CallInfo::set_interface.
@@ -144,47 +140,51 @@ class LinkInfo : public StackObj {
   Klass*      _current_klass;   // class that owns the constant pool
   methodHandle _current_method;  // sending method
   bool        _check_access;
+  bool        _check_loader_constraints;
   constantTag _tag;
 
  public:
-  enum AccessCheck {
-    needs_access_check,
-    skip_access_check
-  };
+  enum class AccessCheck { required, skip };
+  enum class LoaderConstraintCheck { required, skip };
 
   LinkInfo(const constantPoolHandle& pool, int index, const methodHandle& current_method, TRAPS);
   LinkInfo(const constantPoolHandle& pool, int index, TRAPS);
 
   // Condensed information from other call sites within the vm.
   LinkInfo(Klass* resolved_klass, Symbol* name, Symbol* signature, Klass* current_klass,
-           AccessCheck check_access = needs_access_check,
+           AccessCheck check_access = AccessCheck::required,
+           LoaderConstraintCheck check_loader_constraints = LoaderConstraintCheck::required,
            constantTag tag = JVM_CONSTANT_Invalid) :
     _name(name),
     _signature(signature), _resolved_klass(resolved_klass), _current_klass(current_klass), _current_method(methodHandle()),
-    _check_access(check_access == needs_access_check), _tag(tag) {}
+    _check_access(check_access == AccessCheck::required),
+    _check_loader_constraints(check_loader_constraints == LoaderConstraintCheck::required), _tag(tag) {}
 
   LinkInfo(Klass* resolved_klass, Symbol* name, Symbol* signature, const methodHandle& current_method,
-           AccessCheck check_access = needs_access_check,
+           AccessCheck check_access = AccessCheck::required,
+           LoaderConstraintCheck check_loader_constraints = LoaderConstraintCheck::required,
            constantTag tag = JVM_CONSTANT_Invalid) :
     _name(name),
     _signature(signature), _resolved_klass(resolved_klass), _current_klass(current_method->method_holder()), _current_method(current_method),
-    _check_access(check_access == needs_access_check), _tag(tag) {}
+    _check_access(check_access == AccessCheck::required),
+    _check_loader_constraints(check_loader_constraints == LoaderConstraintCheck::required), _tag(tag) {}
+
 
   // Case where we just find the method and don't check access against the current class
   LinkInfo(Klass* resolved_klass, Symbol*name, Symbol* signature) :
     _name(name),
     _signature(signature), _resolved_klass(resolved_klass), _current_klass(NULL), _current_method(methodHandle()),
-    _check_access(false), _tag(JVM_CONSTANT_Invalid) {}
+    _check_access(false), _check_loader_constraints(false), _tag(JVM_CONSTANT_Invalid) {}
 
   // accessors
-  Symbol* name() const               { return _name; }
-  Symbol* signature() const          { return _signature; }
-  Klass* resolved_klass() const      { return _resolved_klass; }
-  Klass* current_klass() const       { return _current_klass; }
-  Method* current_method() const     { return _current_method(); }
-  constantTag tag() const            { return _tag; }
-  bool check_access() const          { return _check_access; }
-
+  Symbol* name() const                  { return _name; }
+  Symbol* signature() const             { return _signature; }
+  Klass* resolved_klass() const         { return _resolved_klass; }
+  Klass* current_klass() const          { return _current_klass; }
+  Method* current_method() const        { return _current_method(); }
+  constantTag tag() const               { return _tag; }
+  bool check_access() const             { return _check_access; }
+  bool check_loader_constraints() const { return _check_loader_constraints; }
   void         print()  PRODUCT_RETURN;
 };
 
@@ -210,7 +210,7 @@ class LinkResolver: AllStatic {
  JVMCI_ONLY(public:) // Needed for CompilerToVM.resolveMethod()
   // Not Linktime so doesn't take LinkInfo
   static Method* lookup_instance_method_in_klasses (Klass* klass, Symbol* name, Symbol* signature,
-                                                    Klass::PrivateLookupMode private_mode, TRAPS);
+                                                    Klass::PrivateLookupMode private_mode);
  JVMCI_ONLY(private:)
 
   // Similar loader constraint checking functions that throw
@@ -248,6 +248,11 @@ class LinkResolver: AllStatic {
                                                  Klass* recv_klass,
                                                  bool check_null_and_abstract, TRAPS);
 
+  static bool resolve_previously_linked_invokehandle(CallInfo& result,
+                                                     const LinkInfo& link_info,
+                                                     const constantPoolHandle& pool,
+                                                     int index, TRAPS);
+
   static void check_field_accessability(Klass* ref_klass,
                                         Klass* resolved_klass,
                                         Klass* sel_klass,
@@ -272,16 +277,7 @@ class LinkResolver: AllStatic {
                                       const constantPoolHandle& pool, int index, TRAPS);
  public:
   // constant pool resolving
-  static void check_klass_accessability(Klass* ref_klass, Klass* sel_klass,
-                                        bool fold_type_to_class, TRAPS);
-  // The optional 'fold_type_to_class' means that a derived type (array)
-  // is first converted to the class it is derived from (element type).
-  // If this element type is not a class, then the check passes quietly.
-  // This is usually what is needed, but a few existing uses might break
-  // if this flag were always turned on.  FIXME: See if it can be, always.
-  static void check_klass_accessability(Klass* ref_klass, Klass* sel_klass, TRAPS) {
-    return check_klass_accessability(ref_klass, sel_klass, false, THREAD);
-  }
+  static void check_klass_accessibility(Klass* ref_klass, Klass* sel_klass, TRAPS);
 
   // static resolving calls (will not run any Java code);
   // used only from Bytecode_invoke::static_target
@@ -345,7 +341,6 @@ class LinkResolver: AllStatic {
                              const methodHandle& attached_method,
                              Bytecodes::Code byte, TRAPS);
 
- public:
   // Only resolved method known.
   static void throw_abstract_method_error(const methodHandle& resolved_method, TRAPS) {
     throw_abstract_method_error(resolved_method, methodHandle(), NULL, CHECK);

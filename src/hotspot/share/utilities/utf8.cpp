@@ -306,16 +306,6 @@ const char* UTF8::from_quoted_ascii(const char* quoted_ascii_str) {
 }
 #endif // !PRODUCT
 
-// Returns NULL if 'c' it not found. This only works as long
-// as 'c' is an ASCII character
-const jbyte* UTF8::strrchr(const jbyte* base, int length, jbyte c) {
-  assert(length >= 0, "sanity check");
-  assert(c >= 0, "does not work for non-ASCII characters");
-  // Skip backwards in string until 'c' is found or end is reached
-  while(--length >= 0 && base[length] != c);
-  return (length < 0) ? NULL : &base[length];
-}
-
 bool UTF8::equal(const jbyte* base1, int length1, const jbyte* base2, int length2) {
   // Length must be the same
   if (length1 != length2) return false;
@@ -457,6 +447,7 @@ char* UNICODE::as_utf8(const T* base, int& length) {
 }
 
 char* UNICODE::as_utf8(const jchar* base, int length, char* buf, int buflen) {
+  assert(buflen > 0, "zero length output buffer");
   u_char* p = (u_char*)buf;
   for (int index = 0; index < length; index++) {
     jchar c = base[index];
@@ -469,6 +460,7 @@ char* UNICODE::as_utf8(const jchar* base, int length, char* buf, int buflen) {
 }
 
 char* UNICODE::as_utf8(const jbyte* base, int length, char* buf, int buflen) {
+  assert(buflen > 0, "zero length output buffer");
   u_char* p = (u_char*)buf;
   for (int index = 0; index < length; index++) {
     jbyte c = base[index];

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,10 +27,14 @@
 #include "ci/ciInstance.hpp"
 #include "ci/ciInstanceKlass.hpp"
 #include "ci/ciUtilities.inline.hpp"
+#include "classfile/javaClasses.hpp"
 #include "classfile/systemDictionary.hpp"
+#include "classfile/vmClasses.hpp"
 #include "memory/allocation.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
+#include "oops/instanceKlass.inline.hpp"
+#include "oops/klass.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "oops/fieldStreams.inline.hpp"
 #include "runtime/fieldDescriptor.inline.hpp"
@@ -62,7 +66,8 @@ ciInstanceKlass::ciInstanceKlass(Klass* k) :
   _nonstatic_field_size = ik->nonstatic_field_size();
   _has_nonstatic_fields = ik->has_nonstatic_fields();
   _has_nonstatic_concrete_methods = ik->has_nonstatic_concrete_methods();
-  _is_unsafe_anonymous = ik->is_unsafe_anonymous();
+  _is_hidden = ik->is_hidden();
+  _is_record = ik->is_record();
   _nonstatic_fields = NULL; // initialized lazily by compute_nonstatic_fields:
   _has_injected_fields = -1;
   _implementor = NULL; // we will fill these lazily
@@ -73,13 +78,13 @@ ciInstanceKlass::ciInstanceKlass(Klass* k) :
   // InstanceKlass are created for both weak and strong metadata.  Ensuring this metadata
   // alive covers the cases where there are weak roots without performance cost.
   oop holder = ik->klass_holder();
-  if (ik->is_unsafe_anonymous()) {
+  if (ik->class_loader_data()->has_class_mirror_holder()) {
     // Though ciInstanceKlass records class loader oop, it's not enough to keep
-    // VM unsafe anonymous classes alive (loader == NULL). Klass holder should
+    // non-strong hidden classes alive (loader == NULL). Klass holder should
     // be used instead. It is enough to record a ciObject, since cached elements are never removed
     // during ciObjectFactory lifetime. ciObjectFactory itself is created for
     // every compilation and lives for the whole duration of the compilation.
-    assert(holder != NULL, "holder of unsafe anonymous class is the mirror which is never null");
+    assert(holder != NULL, "holder of hidden class is the mirror which is never null");
     (void)CURRENT_ENV->get_object(holder);
   }
 
@@ -102,7 +107,7 @@ ciInstanceKlass::ciInstanceKlass(Klass* k) :
   _java_mirror = NULL;
 
   if (is_shared()) {
-    if (k != SystemDictionary::Object_klass()) {
+    if (k != vmClasses::Object_klass()) {
       super();
     }
     //compute_nonstatic_fields();  // done outside of constructor
@@ -122,7 +127,8 @@ ciInstanceKlass::ciInstanceKlass(ciSymbol* name,
   _has_nonstatic_fields = false;
   _nonstatic_fields = NULL;
   _has_injected_fields = -1;
-  _is_unsafe_anonymous = false;
+  _is_hidden = false;
+  _is_record = false;
   _loader = loader;
   _protection_domain = protection_domain;
   _is_shared = false;
@@ -199,12 +205,12 @@ ciConstantPoolCache* ciInstanceKlass::field_cache() {
 //
 ciInstanceKlass* ciInstanceKlass::get_canonical_holder(int offset) {
   #ifdef ASSERT
-  if (!(offset >= 0 && offset < layout_helper())) {
+  if (!(offset >= 0 && offset < layout_helper_size_in_bytes())) {
     tty->print("*** get_canonical_holder(%d) on ", offset);
     this->print();
     tty->print_cr(" ***");
   };
-  assert(offset >= 0 && offset < layout_helper(), "offset must be tame");
+  assert(offset >= 0 && offset < layout_helper_size_in_bytes(), "offset must be tame");
   #endif
 
   if (offset < instanceOopDesc::base_offset_in_bytes()) {
@@ -213,14 +219,21 @@ ciInstanceKlass* ciInstanceKlass::get_canonical_holder(int offset) {
   }
 
   ciInstanceKlass* self = this;
-  for (;;) {
-    assert(self->is_loaded(), "must be loaded to have size");
-    ciInstanceKlass* super = self->super();
-    if (super == NULL || super->nof_nonstatic_fields() == 0 ||
-        !super->contains_field_offset(offset)) {
-      return self;
-    } else {
-      self = super;  // return super->get_canonical_holder(offset)
+  assert(self->is_loaded(), "must be loaded to access field info");
+  ciField* field = self->get_field_by_offset(offset, false);
+  if (field != NULL) {
+    return field->holder();
+  } else {
+    for (;;) {
+      assert(self->is_loaded(), "must be loaded to have size");
+      ciInstanceKlass* super = self->super();
+      if (super == NULL ||
+          super->nof_nonstatic_fields() == 0 ||
+          super->layout_helper_size_in_bytes() <= offset) {
+        return self;
+      } else {
+        self = super;  // return super->get_canonical_holder(offset)
+      }
     }
   }
 }
@@ -248,7 +261,7 @@ bool ciInstanceKlass::uses_default_loader() const {
  */
 BasicType ciInstanceKlass::box_klass_type() const {
   if (uses_default_loader() && is_loaded()) {
-    return SystemDictionary::box_klass_type(get_Klass());
+    return vmClasses::box_klass_type(get_Klass());
   } else {
     return T_OBJECT;
   }
@@ -267,7 +280,32 @@ bool ciInstanceKlass::is_box_klass() const {
 bool ciInstanceKlass::is_boxed_value_offset(int offset) const {
   BasicType bt = box_klass_type();
   return is_java_primitive(bt) &&
-         (offset == java_lang_boxing_object::value_offset_in_bytes(bt));
+         (offset == java_lang_boxing_object::value_offset(bt));
+}
+
+static bool is_klass_initialized(Symbol* klass_name) {
+  VM_ENTRY_MARK;
+  InstanceKlass* ik = SystemDictionary::find_instance_klass(klass_name, Handle(), Handle());
+  return ik != nullptr && ik->is_initialized();
+}
+
+bool ciInstanceKlass::is_box_cache_valid() const {
+  BasicType box_type = box_klass_type();
+
+  if (box_type != T_OBJECT) {
+    switch(box_type) {
+      case T_INT:     return is_klass_initialized(java_lang_Integer_IntegerCache::symbol());
+      case T_CHAR:    return is_klass_initialized(java_lang_Character_CharacterCache::symbol());
+      case T_SHORT:   return is_klass_initialized(java_lang_Short_ShortCache::symbol());
+      case T_BYTE:    return is_klass_initialized(java_lang_Byte_ByteCache::symbol());
+      case T_LONG:    return is_klass_initialized(java_lang_Long_LongCache::symbol());
+      case T_BOOLEAN:
+      case T_FLOAT:
+      case T_DOUBLE:  return true;
+      default:;
+    }
+  }
+  return false;
 }
 
 // ------------------------------------------------------------------
@@ -315,7 +353,7 @@ bool ciInstanceKlass::is_in_package_impl(const char* packagename, int len) {
 // Implementation of the print method.
 void ciInstanceKlass::print_impl(outputStream* st) {
   ciKlass::print_impl(st);
-  GUARDED_VM_ENTRY(st->print(" loader=" INTPTR_FORMAT, p2i((address)loader()));)
+  GUARDED_VM_ENTRY(st->print(" loader=" INTPTR_FORMAT, p2i(loader()));)
   if (is_loaded()) {
     st->print(" loaded=true initialized=%s finalized=%s subklass=%s size=%d flags=",
               bool_to_str(is_initialized()),
@@ -392,6 +430,13 @@ bool ciInstanceKlass::has_finalizable_subclass() {
 }
 
 // ------------------------------------------------------------------
+// ciInstanceKlass::contains_field_offset
+bool ciInstanceKlass::contains_field_offset(int offset) {
+  VM_ENTRY_MARK;
+  return get_instanceKlass()->contains_field_offset(offset);
+}
+
+// ------------------------------------------------------------------
 // ciInstanceKlass::get_field_by_offset
 ciField* ciInstanceKlass::get_field_by_offset(int field_offset, bool is_static) {
   if (!is_static) {
@@ -457,15 +502,9 @@ int ciInstanceKlass::compute_nonstatic_fields() {
   ciInstanceKlass* super = this->super();
   GrowableArray<ciField*>* super_fields = NULL;
   if (super != NULL && super->has_nonstatic_fields()) {
-    int super_fsize  = super->nonstatic_field_size() * heapOopSize;
     int super_flen   = super->nof_nonstatic_fields();
     super_fields = super->_nonstatic_fields;
     assert(super_flen == 0 || super_fields != NULL, "first get nof_fields");
-    // See if I am no larger than my super; if so, I can use his fields.
-    if (fsize == super_fsize) {
-      _nonstatic_fields = super_fields;
-      return super_fields->length();
-    }
   }
 
   GrowableArray<ciField*>* fields = NULL;
@@ -621,16 +660,6 @@ ciInstanceKlass* ciInstanceKlass::implementor() {
   return impl;
 }
 
-ciInstanceKlass* ciInstanceKlass::unsafe_anonymous_host() {
-  assert(is_loaded(), "must be loaded");
-  if (is_unsafe_anonymous()) {
-    VM_ENTRY_MARK
-    Klass* unsafe_anonymous_host = get_instanceKlass()->unsafe_anonymous_host();
-    return CURRENT_ENV->get_instance_klass(unsafe_anonymous_host);
-  }
-  return NULL;
-}
-
 // Utility class for printing of the contents of the static fields for
 // use by compilation replay.  It only prints out the information that
 // could be consumed by the compiler, so for primitive types it prints
@@ -676,7 +705,7 @@ class StaticFinalFieldPrinter : public FieldClosure {
             _out->print_cr("null");
           } else if (value->is_instance()) {
             assert(fd->field_type() == T_OBJECT, "");
-            if (value->is_a(SystemDictionary::String_klass())) {
+            if (value->is_a(vmClasses::String_klass())) {
               const char* ascii_value = java_lang_String::as_quoted_ascii(value);
               _out->print("\"%s\"", (ascii_value != NULL) ? ascii_value : "");
             } else {
@@ -714,7 +743,7 @@ void ciInstanceKlass::dump_replay_data(outputStream* out) {
   // Try to record related loaded classes
   Klass* sub = ik->subklass();
   while (sub != NULL) {
-    if (sub->is_instance_klass()) {
+    if (sub->is_instance_klass() && !sub->is_hidden()) {
       out->print_cr("instanceKlass %s", sub->name()->as_quoted_ascii());
     }
     sub = sub->next_sibling();

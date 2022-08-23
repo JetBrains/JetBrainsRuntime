@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @key stress gc
+ * @key stress randomness
  *
  * @summary converted from VM Testbase gc/gctests/JumbleGC002.
  * VM Testbase keywords: [gc, stress, stressopt, nonconcurrent, quarantine]
@@ -50,7 +50,6 @@
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm -XX:-UseGCOverheadLimit gc.gctests.JumbleGC002.JumbleGC002
  */
 
@@ -58,10 +57,10 @@ package gc.gctests.JumbleGC002;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
 
 import nsk.share.*;
 import nsk.share.gc.*;
+import nsk.share.test.LocalRandom;
 
 /**
  * This test simply does Algorithms.eatMemory() in a loop
@@ -89,7 +88,6 @@ public class JumbleGC002 extends ThreadedGCTest {
         int numberOfQuarters;
         int id;
         int nodes;
-        ThreadLocalRandom random = ThreadLocalRandom.current();
 
         public Eater(int id, int numberOfQuarters, int nodes) {
             this.numberOfQuarters = numberOfQuarters;
@@ -123,7 +121,7 @@ public class JumbleGC002 extends ThreadedGCTest {
             for (int i = 0; i < numberOfQuarters; i++) {
 
                 // Append initialized long[]
-                int length = random.nextInt(ARRAY_MAX_LENGTH);
+                int length = LocalRandom.nextInt(ARRAY_MAX_LENGTH);
                 long[] l = new long[length];
                 for (int j = 0; j < length; j++) {
                     l[j] = (long) j;
@@ -133,14 +131,14 @@ public class JumbleGC002 extends ThreadedGCTest {
                 }
 
                 // Append not initialized double[]
-                length = random.nextInt(ARRAY_MAX_LENGTH);
+                length = LocalRandom.nextInt(ARRAY_MAX_LENGTH);
                 double[] d = new double[length];
                 if (vector.elementAt(4 * i + 1) == null) {
                     vector.setElementAt(d, 4 * i + 1);
                 }
 
                 // Append initialized int[]
-                length = random.nextInt(ARRAY_MAX_LENGTH);
+                length = LocalRandom.nextInt(ARRAY_MAX_LENGTH);
                 int[] n = new int[length];
                 for (int j = 0; j < length; j++) {
                     n[j] = j;
@@ -162,7 +160,7 @@ public class JumbleGC002 extends ThreadedGCTest {
 
         // Drop references to half of the elements of the vector
         private void cleanVector() {
-            int index = random.nextInt(numberOfElements / 2);
+            int index = LocalRandom.nextInt(numberOfElements / 2);
             for (int i = index; i < index + numberOfElements / 2; i++) {
                 vector.setElementAt(null, i);
             }

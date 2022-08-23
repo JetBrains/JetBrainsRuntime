@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,14 +23,15 @@
 
 package jdk.test.lib;
 
-import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.util.regex.Pattern;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 public class Platform {
     public  static final String vmName      = privilegedGetProperty("java.vm.name");
@@ -45,7 +46,9 @@ public class Platform {
     private static final String osArch      = privilegedGetProperty("os.arch");
     private static final String userName    = privilegedGetProperty("user.name");
     private static final String compiler    = privilegedGetProperty("sun.management.compiler");
+    private static final String testJdk     = privilegedGetProperty("test.jdk");
 
+    @SuppressWarnings("removal")
     private static String privilegedGetProperty(String key) {
         return AccessController.doPrivileged((
                 PrivilegedAction<String>) () -> System.getProperty(key));
@@ -76,7 +79,7 @@ public class Platform {
     }
 
     public static boolean isTieredSupported() {
-        return compiler.contains("Tiered Compilers");
+        return (compiler != null) && compiler.contains("Tiered Compilers");
     }
 
     public static boolean isInt() {
@@ -107,12 +110,20 @@ public class Platform {
         return isOs("linux");
     }
 
-    public static boolean isOSX() {
-        return isOs("mac");
+    public static boolean isBusybox(String tool) {
+        try {
+            Path toolpath = Paths.get(tool);
+            return !isWindows()
+                    && Files.isSymbolicLink(toolpath)
+                    && Paths.get("/bin/busybox")
+                        .equals(Files.readSymbolicLink(toolpath));
+        } catch (IOException ignore) {
+            return false;
+        }
     }
 
-    public static boolean isSolaris() {
-        return isOs("sunos");
+    public static boolean isOSX() {
+        return isOs("mac");
     }
 
     public static boolean isWindows() {
@@ -147,14 +158,14 @@ public class Platform {
     }
 
     // Returns major version number from os.version system property.
-    // E.g. 5 on Solaris 10 and 3 on SLES 11.3 (for the linux kernel version).
+    // E.g. 3 on SLES 11.3 (for the linux kernel version).
     public static int getOsVersionMajor() {
         if (osVersionMajor == -1) init_version();
         return osVersionMajor;
     }
 
     // Returns minor version number from os.version system property.
-    // E.g. 10 on Solaris 10 and 0 on SLES 11.3 (for the linux kernel version).
+    // E.g. 0 on SLES 11.3 (for the linux kernel version).
     public static int getOsVersionMinor() {
         if (osVersionMinor == -1) init_version();
         return osVersionMinor;
@@ -193,13 +204,8 @@ public class Platform {
         return isArch("s390.*") || isArch("s/390.*") || isArch("zArch_64");
     }
 
-    // Returns true for sparc and sparcv9.
-    public static boolean isSparc() {
-        return isArch("sparc.*");
-    }
-
     public static boolean isX64() {
-        // On OSX it's 'x86_64' and on other (Linux, Windows and Solaris) platforms it's 'amd64'
+        // On OSX it's 'x86_64' and on other (Linux and Windows) platforms it's 'amd64'
         return isArch("(amd64)|(x86_64)");
     }
 
@@ -212,11 +218,18 @@ public class Platform {
         return osArch;
     }
 
+    public static boolean isRoot() {
+        return userName.equals("root");
+    }
+
     /**
      * Return a boolean for whether SA and jhsdb are ported/available
      * on this platform.
      */
     public static boolean hasSA() {
+        if (isZero()) {
+            return false; // SA is not enabled.
+        }
         if (isAix()) {
             return false; // SA not implemented.
         } else if (isLinux()) {
@@ -229,74 +242,56 @@ public class Platform {
     }
 
     /**
-     * Return a boolean for whether we expect to be able to attach
-     * the SA to our own processes on this system.  This requires
-     * that SA is ported/available on this platform.
+     * Return true if the test JDK is signed, otherwise false. Only valid on OSX.
      */
-    public static boolean shouldSAAttach() throws IOException {
-        if (!hasSA()) return false;
-        if (isLinux()) {
-            return canPtraceAttachLinux();
-        } else if (isOSX()) {
-            return canAttachOSX();
+    public static boolean isSignedOSX() throws IOException {
+        // We only care about signed binaries for 10.14 and later (actually 10.14.5, but
+        // for simplicity we'll also include earlier 10.14 versions).
+        if (getOsVersionMajor() == 10 && getOsVersionMinor() < 14) {
+            return false; // assume not signed
+        }
+
+        // Find the path to the java binary.
+        String jdkPath = System.getProperty("java.home");
+        Path javaPath = Paths.get(jdkPath + "/bin/java");
+        String javaFileName = javaPath.toAbsolutePath().toString();
+        if (Files.notExists(javaPath)) {
+            throw new FileNotFoundException("Could not find file " + javaFileName);
+        }
+
+        // Run codesign on the java binary.
+        ProcessBuilder pb = new ProcessBuilder("codesign", "-d", "-v", javaFileName);
+        pb.redirectError(ProcessBuilder.Redirect.DISCARD);
+        pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+        Process codesignProcess = pb.start();
+        try {
+            if (codesignProcess.waitFor(10, TimeUnit.SECONDS) == false) {
+                System.err.println("Timed out waiting for the codesign process to complete. Assuming not signed.");
+                codesignProcess.destroyForcibly();
+                return false; // assume not signed
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        // Check codesign result to see if java binary is signed. Here are the
+        // exit code meanings:
+        //    0: signed
+        //    1: not signed
+        //    2: invalid arguments
+        //    3: only has meaning with the -R argument.
+        // So we should always get 0 or 1 as an exit value.
+        if (codesignProcess.exitValue() == 0) {
+            System.out.println("Target JDK is signed. Some tests may be skipped.");
+            return true; // signed
+        } else if (codesignProcess.exitValue() == 1) {
+            System.out.println("Target JDK is not signed.");
+            return false; // not signed
         } else {
-            // Other platforms expected to work:
-            return true;
+            System.err.println("Executing codesign failed. Assuming unsigned: " +
+                               codesignProcess.exitValue());
+            return false; // not signed
         }
-    }
-
-    /**
-     * On Linux, first check the SELinux boolean "deny_ptrace" and return false
-     * as we expect to be denied if that is "1".  Then expect permission to attach
-     * if we are root, so return true.  Then return false for an expected denial
-     * if "ptrace_scope" is 1, and true otherwise.
-     */
-    private static boolean canPtraceAttachLinux() throws IOException {
-        // SELinux deny_ptrace:
-        File deny_ptrace = new File("/sys/fs/selinux/booleans/deny_ptrace");
-        if (deny_ptrace.exists()) {
-            try (RandomAccessFile file = AccessController.doPrivileged(
-                    (PrivilegedExceptionAction<RandomAccessFile>) () -> new RandomAccessFile(deny_ptrace, "r"))) {
-                if (file.readByte() != '0') {
-                    return false;
-                }
-            } catch (PrivilegedActionException e) {
-                IOException t = (IOException) e.getException();
-                throw t;
-            }
-        }
-
-        // YAMA enhanced security ptrace_scope:
-        // 0 - a process can PTRACE_ATTACH to any other process running under the same uid
-        // 1 - restricted ptrace: a process must be a children of the inferior or user is root
-        // 2 - only processes with CAP_SYS_PTRACE may use ptrace or user is root
-        // 3 - no attach: no processes may use ptrace with PTRACE_ATTACH
-        File ptrace_scope = new File("/proc/sys/kernel/yama/ptrace_scope");
-        if (ptrace_scope.exists()) {
-            try (RandomAccessFile file = AccessController.doPrivileged(
-                    (PrivilegedExceptionAction<RandomAccessFile>) () -> new RandomAccessFile(ptrace_scope, "r"))) {
-                byte yama_scope = file.readByte();
-                if (yama_scope == '3') {
-                    return false;
-                }
-
-                if (!userName.equals("root") && yama_scope != '0') {
-                    return false;
-                }
-            } catch (PrivilegedActionException e) {
-                IOException t = (IOException) e.getException();
-                throw t;
-            }
-        }
-        // Otherwise expect to be permitted:
-        return true;
-    }
-
-    /**
-     * On OSX, expect permission to attach only if we are root.
-     */
-    private static boolean canAttachOSX() {
-        return userName.equals("root");
     }
 
     private static boolean isArch(String archnameRE) {
@@ -334,16 +329,60 @@ public class Platform {
         }
     }
 
+    /**
+     * Returns absolute path to directory containing shared libraries in the tested JDK.
+     */
+    public static Path libDir() {
+        return libDir(Paths.get(testJdk)).toAbsolutePath();
+    }
+
+    /**
+     * Resolves a given path, to a JDK image, to the directory containing shared libraries.
+     *
+     * @param image the path to a JDK image
+     * @return the resolved path to the directory containing shared libraries
+     */
+    public static Path libDir(Path image) {
+        if (Platform.isWindows()) {
+            return image.resolve("bin");
+        } else {
+            return image.resolve("lib");
+        }
+    }
+
+    /**
+     * Returns absolute path to directory containing JVM shared library.
+     */
+    public static Path jvmLibDir() {
+        return libDir().resolve(variant());
+    }
+
+    private static String variant() {
+        if (Platform.isServer()) {
+            return "server";
+        } else if (Platform.isClient()) {
+            return "client";
+        } else if (Platform.isMinimal()) {
+            return "minimal";
+        } else if (Platform.isZero()) {
+            // This name is used to search for libjvm.so. Weirdly, current
+            // build system puts libjvm.so into default location, which is
+            // "server". See JDK-8273494.
+            return "server";
+        } else {
+            throw new Error("TESTBUG: unsupported vm variant");
+        }
+    }
+
+
     public static boolean isDefaultCDSArchiveSupported() {
         return (is64bit()  &&
                 isServer() &&
                 (isLinux()   ||
                  isOSX()     ||
-                 isSolaris() ||
                  isWindows()) &&
                 !isZero()    &&
                 !isMinimal() &&
-                !isAArch64() &&
                 !isARM());
     }
 
@@ -351,6 +390,6 @@ public class Platform {
      * This should match the #if condition in ClassListParser::load_class_from_source().
      */
     public static boolean areCustomLoadersSupportedForCDS() {
-        return (is64bit() && (isLinux() || isSolaris() || isOSX()));
+        return (is64bit() && (isLinux() || isOSX()));
     }
 }

@@ -29,6 +29,7 @@
 #import <assert.h>
 
 #import <Cocoa/Cocoa.h>
+#import <Carbon/Carbon.h>
 
 //#define DEBUG 1
 
@@ -38,7 +39,13 @@ extern int gNumberOfButtons;
 // InputEvent mask array
 extern jint* gButtonDownMasks;
 
+extern int lcdSubPixelPosSupported;
+
+extern int useFontSmoothing;
+
 @interface AWTToolkit : NSObject { }
++ (BOOL) inDoDragDropLoop;
++ (void) setInDoDragDropLoop:(BOOL)val;
 + (long) getEventCount;
 + (void) eventCountPlusPlus;
 + (jint) scrollStateWithEvent: (NSEvent*) event;
@@ -51,3 +58,22 @@ extern jint* gButtonDownMasks;
 
 /** Macro to cast a jlong to an Objective-C object (id). Casts to long on 32-bit systems to quiesce the compiler. */
 #define OBJC(jl) ((id)jlong_to_ptr(jl))
+
+#ifndef kCFCoreFoundationVersionNumber10_13_Max
+#define kCFCoreFoundationVersionNumber10_13_Max 1499
+#endif
+
+#ifndef kCFCoreFoundationVersionNumber10_14_Max
+#define kCFCoreFoundationVersionNumber10_14_Max 1599
+#endif
+
+#ifndef IS_OSX_GT10_13
+#define IS_OSX_GT10_13 (floor(kCFCoreFoundationVersionNumber) > \
+    kCFCoreFoundationVersionNumber10_13_Max)
+#endif
+
+#ifndef IS_OSX_GT10_14
+#define IS_OSX_GT10_14 (floor(kCFCoreFoundationVersionNumber) > \
+kCFCoreFoundationVersionNumber10_14_Max)
+#endif
+

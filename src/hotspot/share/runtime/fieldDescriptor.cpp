@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,12 +23,12 @@
  */
 
 #include "precompiled.hpp"
-#include "classfile/systemDictionary.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "memory/resourceArea.hpp"
 #include "oops/annotations.hpp"
 #include "oops/constantPool.hpp"
 #include "oops/instanceKlass.hpp"
+#include "oops/klass.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "oops/fieldStreams.inline.hpp"
 #include "runtime/fieldDescriptor.inline.hpp"
@@ -55,7 +55,12 @@ Symbol* fieldDescriptor::generic_signature() const {
     }
   }
   assert(false, "should never happen");
-  return NULL;
+  return vmSymbols::void_signature(); // return a default value (for code analyzers)
+}
+
+bool fieldDescriptor::is_trusted_final() const {
+  InstanceKlass* ik = field_holder();
+  return is_final() && (is_static() || ik->is_hidden() || ik->is_record());
 }
 
 AnnotationArray* fieldDescriptor::annotations() const {
@@ -123,6 +128,8 @@ void fieldDescriptor::verify() const {
     assert(_index < field_holder()->java_fields_count(), "oob");
   }
 }
+
+#endif /* PRODUCT */
 
 void fieldDescriptor::print_on(outputStream* st) const {
   access_flags().print_on(st);
@@ -193,7 +200,7 @@ void fieldDescriptor::print_on_for(outputStream* st, oop obj) {
       if (obj->obj_field(offset()) != NULL) {
         obj->obj_field(offset())->print_value_on(st);
       } else {
-        st->print_cr("NULL");
+        st->print("NULL");
       }
       break;
     case T_OBJECT:
@@ -202,7 +209,7 @@ void fieldDescriptor::print_on_for(outputStream* st, oop obj) {
       if (obj->obj_field(offset()) != NULL) {
         obj->obj_field(offset())->print_value_on(st);
       } else {
-        st->print_cr("NULL");
+        st->print("NULL");
       }
       break;
     default:
@@ -224,4 +231,3 @@ void fieldDescriptor::print_on_for(outputStream* st, oop obj) {
   }
 }
 
-#endif /* PRODUCT */

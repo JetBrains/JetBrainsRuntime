@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -91,13 +91,44 @@ import static java.lang.invoke.MethodType.fromDescriptor;
  * A method type may be loaded by an {@code ldc} instruction which refers
  * to a suitable {@code CONSTANT_MethodType} constant pool entry.
  * The entry refers to a {@code CONSTANT_Utf8} spelling for the descriptor string.
- * (For full details on method type constants,
- * see sections 4.4.8 and 5.4.3.5 of the Java Virtual Machine Specification.)
+ * (For full details on method type constants, see sections {@jvms
+ * 4.4.8} and {@jvms 5.4.3.5} of the Java Virtual Machine
+ * Specification.)
  * <p>
  * When the JVM materializes a {@code MethodType} from a descriptor string,
  * all classes named in the descriptor must be accessible, and will be loaded.
  * (But the classes need not be initialized, as is the case with a {@code CONSTANT_Class}.)
  * This loading may occur at any time before the {@code MethodType} object is first derived.
+ * <p>
+ * <b><a id="descriptor">Nominal Descriptors</a></b>
+ * <p>
+ * A {@code MethodType} can be described in {@linkplain MethodTypeDesc nominal form}
+ * if and only if all of the parameter types and return type can be described
+ * with a {@link Class#describeConstable() nominal descriptor} represented by
+ * {@link ClassDesc}.  If a method type can be described nominally, then:
+ * <ul>
+ * <li>The method type has a {@link MethodTypeDesc nominal descriptor}
+ *     returned by {@link #describeConstable() MethodType::describeConstable}.</li>
+ * <li>The descriptor string returned by
+ *     {@link #descriptorString() MethodType::descriptorString} or
+ *     {@link #toMethodDescriptorString() MethodType::toMethodDescriptorString}
+ *     for the method type is a method descriptor (JVMS {@jvms 4.3.3}).</li>
+ * </ul>
+ * <p>
+ * If any of the parameter types or return type cannot be described
+ * nominally, i.e. {@link Class#describeConstable() Class::describeConstable}
+ * returns an empty optional for that type,
+ * then the method type cannot be described nominally:
+ * <ul>
+ * <li>The method type has no {@link MethodTypeDesc nominal descriptor} and
+ *     {@link #describeConstable() MethodType::describeConstable} returns
+ *     an empty optional.</li>
+ * <li>The descriptor string returned by
+ *     {@link #descriptorString() MethodType::descriptorString} or
+ *     {@link #toMethodDescriptorString() MethodType::toMethodDescriptorString}
+ *     for the method type is not a type descriptor.</li>
+ * </ul>
+ *
  * @author John Rose, JSR 292 EG
  * @since 1.7
  */
@@ -115,7 +146,8 @@ class MethodType
 
     // The remaining fields are caches of various sorts:
     private @Stable MethodTypeForm form; // erased form, plus cached data about primitives
-    private @Stable MethodType wrapAlt;  // alternative wrapped/unwrapped version
+    private @Stable Object wrapAlt;  // alternative wrapped/unwrapped version and
+                                     // private communication for readObject and readResolve
     private @Stable Invokers invokers;   // cache of handy higher-order adapters
     private @Stable String methodDescriptor;  // cache for toMethodDescriptorString
 
@@ -167,19 +199,13 @@ class MethodType
     /*non-public*/
     static final int MAX_MH_INVOKER_ARITY = MAX_MH_ARITY-1;  // deduct one more for invoker
 
-    private static void checkRtype(Class<?> rtype) {
-        Objects.requireNonNull(rtype);
-    }
-    private static void checkPtype(Class<?> ptype) {
-        Objects.requireNonNull(ptype);
-        if (ptype == void.class)
-            throw newIllegalArgumentException("parameter type cannot be void");
-    }
     /** Return number of extra slots (count of long/double args). */
     private static int checkPtypes(Class<?>[] ptypes) {
         int slots = 0;
         for (Class<?> ptype : ptypes) {
-            checkPtype(ptype);
+            Objects.requireNonNull(ptype);
+            if (ptype == void.class)
+                throw newIllegalArgumentException("parameter type cannot be void");
             if (ptype == double.class || ptype == long.class) {
                 slots++;
             }
@@ -296,10 +322,14 @@ class MethodType
     }
 
     /**
-     * Sole factory method to find or create an interned method type.
+     * Sole factory method to find or create an interned method type. Will perform
+     * input validation on behalf of factory methods
+     *
      * @param rtype desired return type
      * @param ptypes desired parameter types
      * @param trusted whether the ptypes can be used without cloning
+     * @throws NullPointerException if {@code rtype} or {@code ptypes} or any element of {@code ptypes} is null
+     * @throws IllegalArgumentException if any element of {@code ptypes} is {@code void.class}
      * @return the unique method type of the desired structure
      */
     /*trusted*/
@@ -313,7 +343,7 @@ class MethodType
             return mt;
 
         // promote the object to the Real Thing, and reprobe
-        MethodType.checkRtype(rtype);
+        Objects.requireNonNull(rtype);
         if (trusted) {
             MethodType.checkPtypes(ptypes);
             mt = primordialMT;
@@ -383,7 +413,6 @@ class MethodType
      */
     public MethodType changeParameterType(int num, Class<?> nptype) {
         if (parameterType(num) == nptype)  return this;
-        checkPtype(nptype);
         Class<?>[] nptypes = ptypes.clone();
         nptypes[num] = nptype;
         return makeImpl(rtype, nptypes, true);
@@ -460,7 +489,7 @@ class MethodType
         return insertParameterTypes(parameterCount(), ptypesToInsert);
     }
 
-     /**
+    /**
      * Finds or creates a method type with modified parameter types.
      * Convenience method for {@link #methodType(java.lang.Class, java.lang.Class[]) methodType}.
      * @param start  the position (zero-based) of the first replaced parameter type(s)
@@ -710,10 +739,10 @@ class MethodType
 
     private static MethodType wrapWithPrims(MethodType pt) {
         assert(pt.hasPrimitives());
-        MethodType wt = pt.wrapAlt;
+        MethodType wt = (MethodType)pt.wrapAlt;
         if (wt == null) {
             // fill in lazily
-            wt = MethodTypeForm.canonicalize(pt, MethodTypeForm.WRAP, MethodTypeForm.WRAP);
+            wt = MethodTypeForm.canonicalize(pt, MethodTypeForm.WRAP);
             assert(wt != null);
             pt.wrapAlt = wt;
         }
@@ -722,10 +751,10 @@ class MethodType
 
     private static MethodType unwrapWithNoPrims(MethodType wt) {
         assert(!wt.hasPrimitives());
-        MethodType uwt = wt.wrapAlt;
+        MethodType uwt = (MethodType)wt.wrapAlt;
         if (uwt == null) {
             // fill in lazily
-            uwt = MethodTypeForm.canonicalize(wt, MethodTypeForm.UNWRAP, MethodTypeForm.UNWRAP);
+            uwt = MethodTypeForm.canonicalize(wt, MethodTypeForm.UNWRAP);
             if (uwt == null)
                 uwt = wt;    // type has no wrappers or prims at all
             wt.wrapAlt = uwt;
@@ -1105,6 +1134,7 @@ class MethodType
         throws IllegalArgumentException, TypeNotPresentException
     {
         if (loader == null) {
+            @SuppressWarnings("removal")
             SecurityManager sm = System.getSecurityManager();
             if (sm != null) {
                 sm.checkPermission(SecurityConstants.GET_CLASSLOADER_PERMISSION);
@@ -1138,7 +1168,9 @@ class MethodType
     }
 
     /**
-     * Produces a bytecode descriptor representation of the method type.
+     * Returns a descriptor string for the method type.  This method
+     * is equivalent to calling {@link #descriptorString() MethodType::descriptorString}.
+     *
      * <p>
      * Note that this is not a strict inverse of {@link #fromMethodDescriptorString fromMethodDescriptorString}.
      * Two distinct classes which share a common name but have different class loaders
@@ -1148,7 +1180,9 @@ class MethodType
      * generate bytecodes that process method handles and {@code invokedynamic}.
      * {@link #fromMethodDescriptorString(java.lang.String, java.lang.ClassLoader) fromMethodDescriptorString},
      * because the latter requires a suitable class loader argument.
-     * @return the bytecode type descriptor representation
+     * @return the descriptor string for this method type
+     * @jvms 4.3.3 Method Descriptors
+     * @see <a href="#descriptor">Nominal Descriptor for {@code MethodType}</a>
      */
     public String toMethodDescriptorString() {
         String desc = methodDescriptor;
@@ -1160,11 +1194,28 @@ class MethodType
     }
 
     /**
-     * Return a field type descriptor string for this type
+     * Returns a descriptor string for this method type.
      *
-     * @return the descriptor string
-     * @jvms 4.3.2 Field Descriptors
+     * <p>
+     * If this method type can be <a href="#descriptor">described nominally</a>,
+     * then the result is a method type descriptor (JVMS {@jvms 4.3.3}).
+     * {@link MethodTypeDesc MethodTypeDesc} for this method type
+     * can be produced by calling {@link MethodTypeDesc#ofDescriptor(String)
+     * MethodTypeDesc::ofDescriptor} with the result descriptor string.
+     * <p>
+     * If this method type cannot be <a href="#descriptor">described nominally</a>
+     * and the result is a string of the form:
+     * <blockquote>{@code "(<parameter-descriptors>)<return-descriptor>"}</blockquote>
+     * where {@code <parameter-descriptors>} is the concatenation of the
+     * {@linkplain Class#descriptorString() descriptor string} of all
+     * of the parameter types and the {@linkplain Class#descriptorString() descriptor string}
+     * of the return type. No {@link java.lang.constant.MethodTypeDesc MethodTypeDesc}
+     * can be produced from the result string.
+     *
+     * @return the descriptor string for this method type
      * @since 12
+     * @jvms 4.3.3 Method Descriptors
+     * @see <a href="#descriptor">Nominal Descriptor for {@code MethodType}</a>
      */
     @Override
     public String descriptorString() {
@@ -1177,12 +1228,13 @@ class MethodType
     }
 
     /**
-     * Return a nominal descriptor for this instance, if one can be
+     * Returns a nominal descriptor for this instance, if one can be
      * constructed, or an empty {@link Optional} if one cannot be.
      *
      * @return An {@link Optional} containing the resulting nominal descriptor,
      * or an empty {@link Optional} if one cannot be constructed.
      * @since 12
+     * @see <a href="#descriptor">Nominal Descriptor for {@code MethodType}</a>
      */
     @Override
     public Optional<MethodTypeDesc> describeConstable() {
@@ -1247,27 +1299,18 @@ s.writeObject(this.parameterArray());
      */
     @java.io.Serial
     private void readObject(java.io.ObjectInputStream s) throws java.io.IOException, ClassNotFoundException {
-        // Assign temporary defaults in case this object escapes
-        MethodType_init(void.class, NO_PTYPES);
+        // Assign defaults in case this object escapes
+        UNSAFE.putReference(this, OffsetHolder.rtypeOffset, void.class);
+        UNSAFE.putReference(this, OffsetHolder.ptypesOffset, NO_PTYPES);
 
         s.defaultReadObject();  // requires serialPersistentFields to be an empty array
 
         Class<?>   returnType     = (Class<?>)   s.readObject();
         Class<?>[] parameterArray = (Class<?>[]) s.readObject();
-        parameterArray = parameterArray.clone();  // make sure it is unshared
 
-        // Assign deserialized values
-        MethodType_init(returnType, parameterArray);
-    }
-
-    // Initialization of state for deserialization only
-    private void MethodType_init(Class<?> rtype, Class<?>[] ptypes) {
-        // In order to communicate these values to readResolve, we must
-        // store them into the implementation-specific final fields.
-        checkRtype(rtype);
-        checkPtypes(ptypes);
-        UNSAFE.putReference(this, OffsetHolder.rtypeOffset, rtype);
-        UNSAFE.putReference(this, OffsetHolder.ptypesOffset, ptypes);
+        // Verify all operands, and make sure ptypes is unshared
+        // Cache the new MethodType for readResolve
+        wrapAlt = new MethodType[]{MethodType.methodType(returnType, parameterArray)};
     }
 
     // Support for resetting final fields while deserializing. Implement Holder
@@ -1290,12 +1333,10 @@ s.writeObject(this.parameterArray());
         // Do not use a trusted path for deserialization:
         //    return makeImpl(rtype, ptypes, true);
         // Verify all operands, and make sure ptypes is unshared:
-        try {
-            return methodType(rtype, ptypes);
-        } finally {
-            // Re-assign defaults in case this object escapes
-            MethodType_init(void.class, NO_PTYPES);
-        }
+        // Return a new validated MethodType for the rtype and ptypes passed from readObject.
+        MethodType mt = ((MethodType[])wrapAlt)[0];
+        wrapAlt = null;
+        return mt;
     }
 
     /**
@@ -1378,12 +1419,12 @@ s.writeObject(this.parameterArray());
 
             /**
              * This implementation returns {@code true} if {@code obj} is another
-             * {@code WeakEntry} whose referent is equals to this referent, or
-             * if {@code obj} is equals to the referent of this. This allows
+             * {@code WeakEntry} whose referent is equal to this referent, or
+             * if {@code obj} is equal to the referent of this. This allows
              * lookups to be made without wrapping in a {@code WeakEntry}.
              *
              * @param obj the object to compare
-             * @return true if {@code obj} is equals to this or the referent of this
+             * @return true if {@code obj} is equal to this or the referent of this
              * @see MethodType#equals(Object)
              * @see Object#equals(Object)
              */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,9 @@
 package jdk.internal.access;
 
 import java.lang.annotation.Annotation;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.module.ModuleDescriptor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
@@ -34,9 +37,9 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.security.AccessControlContext;
 import java.security.ProtectionDomain;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
@@ -129,7 +132,7 @@ public interface JavaLangAccess {
      * Returns a new Thread with the given Runnable and an
      * inherited AccessControlContext.
      */
-    Thread newThreadWithAcc(Runnable target, AccessControlContext acc);
+    Thread newThreadWithAcc(Runnable target, @SuppressWarnings("removal") AccessControlContext acc);
 
     /**
      * Invokes the finalize method of the given object.
@@ -148,9 +151,17 @@ public interface JavaLangAccess {
     Class<?> defineClass(ClassLoader cl, String name, byte[] b, ProtectionDomain pd, String source);
 
     /**
+     * Defines a class with the given name to a class loader with
+     * the given flags and class data.
+     *
+     * @see java.lang.invoke.MethodHandles.Lookup#defineClass
+     */
+    Class<?> defineClass(ClassLoader cl, Class<?> lookup, String name, byte[] b, ProtectionDomain pd, boolean initialize, int flags, Object classData);
+
+    /**
      * Returns a class loaded by the bootstrap class loader.
      */
-    Class<?> findBootstrapClassOrNull(ClassLoader cl, String name);
+    Class<?> findBootstrapClassOrNull(String name);
 
     /**
      * Define a Package of the given name and module by the given class loader.
@@ -199,6 +210,11 @@ public interface JavaLangAccess {
     void addReadsAllUnnamed(Module m);
 
     /**
+     * Updates module m1 to export a package unconditionally.
+     */
+    void addExports(Module m1, String pkg);
+
+    /**
      * Updates module m1 to export a package to module m2. The export does
      * not result in a strong reference to m2 (m2 can be GC'ed).
      */
@@ -221,9 +237,9 @@ public interface JavaLangAccess {
     void addOpensToAllUnnamed(Module m, String pkg);
 
     /**
-     * Updates module m to open all packages returned by the given iterator.
+     * Updates module m to open all packages in the given sets.
      */
-    void addOpensToAllUnnamed(Module m, Iterator<String> packages);
+    void addOpensToAllUnnamed(Module m, Set<String> concealedPkgs, Set<String> exportedPkgs);
 
     /**
      * Updates module m to use a service.
@@ -241,9 +257,30 @@ public interface JavaLangAccess {
     boolean isReflectivelyOpened(Module module, String pn, Module other);
 
     /**
+     * Updates module m to allow access to restricted methods.
+     */
+    Module addEnableNativeAccess(Module m);
+
+    /**
+     * Updates all unnamed modules to allow access to restricted methods.
+     */
+    void addEnableNativeAccessAllUnnamed();
+
+    /**
+     * Returns true if module m can access restricted methods.
+     */
+    boolean isEnableNativeAccess(Module m);
+
+    /**
      * Returns the ServicesCatalog for the given Layer.
      */
     ServicesCatalog getServicesCatalog(ModuleLayer layer);
+
+    /**
+     * Record that this layer has at least one module defined to the given
+     * class loader.
+     */
+    void bindToLoader(ModuleLayer layer, ClassLoader loader);
 
     /**
      * Returns an ordered stream of layers. The first element is the
@@ -307,16 +344,70 @@ public interface JavaLangAccess {
     byte[] getBytesUTF8NoRepl(String s);
 
     /**
+     * Inflated copy from byte[] to char[], as defined by StringLatin1.inflate
+     */
+    void inflateBytesToChars(byte[] src, int srcOff, char[] dst, int dstOff, int len);
+
+    /**
+     * Decodes ASCII from the source byte array into the destination
+     * char array.
+     *
+     * @return the number of bytes successfully decoded, at most len
+     */
+    int decodeASCII(byte[] src, int srcOff, char[] dst, int dstOff, int len);
+
+    /**
+     * Encodes ASCII codepoints as possible from the source array into
+     * the destination byte array, assuming that the encoding is ASCII
+     * compatible
+     *
+     * @return the number of bytes successfully encoded, or 0 if none
+     */
+    int encodeASCII(char[] src, int srcOff, byte[] dst, int dstOff, int len);
+
+    /**
      * Set the cause of Throwable
      * @param cause set t's cause to new value
      */
     void setCause(Throwable t, Throwable cause);
 
     /**
-     * Privileged System.loadLibrary
-     *
-     * @param caller on behalf of which the library is being loaded
-     * @param library name of the library to load
+     * Get protection domain of the given Class
      */
-    void loadLibrary(Class<?> caller, String library);
+    ProtectionDomain protectionDomain(Class<?> c);
+
+    /**
+     * Get a method handle of string concat helper method
+     */
+    MethodHandle stringConcatHelper(String name, MethodType methodType);
+
+    /**
+     * Get the string concat initial coder
+     */
+    long stringConcatInitialCoder();
+
+    /**
+     * Update lengthCoder for constant
+     */
+    long stringConcatMix(long lengthCoder, String constant);
+
+    /**
+     * Join strings
+     */
+    String join(String prefix, String suffix, String delimiter, String[] elements, int size);
+
+    /*
+     * Get the class data associated with the given class.
+     * @param c the class
+     * @see java.lang.invoke.MethodHandles.Lookup#defineHiddenClass(byte[], boolean, MethodHandles.Lookup.ClassOption...)
+     */
+    Object classData(Class<?> c);
+
+    long findNative(ClassLoader loader, String entry);
+
+    /**
+     * Direct access to Shutdown.exit to avoid security manager checks
+     * @param statusCode the status code
+     */
+    void exit(int statusCode);
 }

@@ -80,7 +80,7 @@ abstract class Wrap implements GeneralWrap {
      * @param source the snippet's masked source code
      * @param wtype variable's denotable type suitable for field declaration
      * @param brackets any [] that should be appended to the type
-     * @param rname range in source that denotes the name of the
+     * @param wname a wrap of the source that denotes the name of the variable
      * @param winit Initializer or null
      * @param enhanced if the real inferred type of the variable is potentially
      *                 non-denotable, this must be true
@@ -88,9 +88,8 @@ abstract class Wrap implements GeneralWrap {
      *         an initialization method
      */
     public static Wrap varWrap(String source, Wrap wtype, String brackets,
-                               Range rname, Wrap winit, boolean enhanced,
+                               Wrap wname, Wrap winit, boolean enhanced,
                                Wrap anonDeclareWrap) {
-        RangeWrap wname = new RangeWrap(source, rname);
         List<Object> components = new ArrayList<>();
         components.add(new VarDeclareWrap(wtype, brackets, wname));
         Wrap wmeth;
@@ -108,11 +107,16 @@ abstract class Wrap implements GeneralWrap {
                 // }
                 // in do_it method:
                 //return do_itAux();
+                //find an unused name:
+                String scratchName = "$";
+                while (winit.wrapped().contains(scratchName)) {
+                    scratchName += "$";
+                }
                 Wrap waux = new CompoundWrap(
-                        "    private static <Z> Z ", DOIT_METHOD_NAME + "Aux", "() throws Throwable {\n",
-                        wtype, brackets + " ", wname, "_ =\n        ", winit, semi(winit),
-                        "        @SuppressWarnings(\"unchecked\") Z ", wname, "__ = (Z)", wname, "_;\n",
-                        "        return ", wname, "__;\n",
+                        "    private static <" + scratchName + "> " + scratchName +" ", DOIT_METHOD_NAME + "Aux", "() throws Throwable {\n",
+                        wtype, brackets + " ", scratchName, "_ =\n        ", winit, semi(winit),
+                        "        @SuppressWarnings(\"unchecked\") ", scratchName, " ", scratchName, "__ = (", scratchName, ")", scratchName, "_;\n",
+                        "        return ", scratchName, "__;\n",
                         "}"
                 );
                 components.add(waux);

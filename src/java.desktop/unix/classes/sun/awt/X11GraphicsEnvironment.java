@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,17 +27,25 @@ package sun.awt;
 
 import java.awt.AWTError;
 import java.awt.GraphicsDevice;
+import java.lang.ref.WeakReference;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.security.AccessController;
+import sun.security.action.GetPropertyAction;
 
+import sun.awt.X11.XToolkit;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceManagerFactory;
 import sun.java2d.UnixSurfaceManagerFactory;
 import sun.java2d.xr.XRSurfaceData;
-import sun.util.logging.PlatformLogger;
 
 /**
  * This is an implementation of a GraphicsEnvironment object for the
@@ -47,12 +55,8 @@ import sun.util.logging.PlatformLogger;
  * @see GraphicsDevice
  * @see java.awt.GraphicsConfiguration
  */
+@SuppressWarnings("removal")
 public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
-
-    private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.X11GraphicsEnvironment");
-    private static final PlatformLogger screenLog = PlatformLogger.getLogger("sun.awt.screen.X11GraphicsEnvironment");
-
-    private static Boolean xinerState;
 
     static {
         java.security.AccessController.doPrivileged(
@@ -68,6 +72,7 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
                 if (!isHeadless()) {
                     // first check the OGL system property
                     boolean glxRequested = false;
+                    boolean glxRecommended = false;
                     String prop = System.getProperty("sun.java2d.opengl");
                     if (prop != null) {
                         if (prop.equals("true") || prop.equals("t")) {
@@ -76,6 +81,9 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
                             glxRequested = true;
                             glxVerbose = true;
                         }
+                    } else if (openGLRecommended()) {
+                        glxRequested = true;
+                        glxRecommended = true;
                     }
 
                     // Now check for XRender system property
@@ -100,7 +108,7 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
 
                     // only attempt to initialize GLX if it was requested
                     if (glxRequested) {
-                        glxAvailable = initGLX();
+                        glxAvailable = initGLX(glxRecommended);
                         if (glxVerbose && !glxAvailable) {
                             System.out.println(
                                 "Could not enable OpenGL " +
@@ -131,11 +139,21 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
 
     }
 
+    private static boolean isVMWare() {
+        final String virtName = System.getProperty("jbr.virtualization.information");
+        return virtName != null && virtName.equals("VMWare virtualization");
+    }
+
+    private static boolean openGLRecommended() {
+        final String sessionType = System.getenv("XDG_SESSION_TYPE");
+        return (sessionType != null && sessionType.equals("wayland") && isVMWare());
+    }
+
 
     private static boolean glxAvailable;
     private static boolean glxVerbose;
 
-    private static native boolean initGLX();
+    private static native boolean initGLX(boolean glxRecommended);
 
     public static boolean isGLXAvailable() {
         return glxAvailable;
@@ -169,32 +187,115 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
     private static  native String getDisplayString();
     private Boolean isDisplayLocal;
 
+    /** Available X11 screens. */
+    private final Map<Integer, X11GraphicsDevice> devices = new HashMap<>(5);
+
+    /**
+     * The key in the {@link #devices} for the main screen.
+     */
+    private int mainScreen;
+
+    // list of invalidated graphics devices (those which were removed)
+    private List<WeakReference<X11GraphicsDevice>> oldDevices = new ArrayList<>();
+
     /**
      * This should only be called from the static initializer, so no need for
      * the synchronized keyword.
      */
     private static native void initDisplay(boolean glxRequested);
 
-    public X11GraphicsEnvironment() {
-    }
-
     protected native int getNumScreens();
 
-    protected GraphicsDevice makeScreenDevice(int screennum) {
-        return new X11GraphicsDevice(screennum);
+    private native int getDefaultScreenNum();
+
+    public X11GraphicsEnvironment() {
+        if (isHeadless()) {
+            return;
+        }
+
+        /* Populate the device table */
+        rebuildDevices();
     }
 
-    private native int getDefaultScreenNum();
     /**
-     * Returns the default screen graphics device.
+     * Initialize the native list of devices.
      */
-    public GraphicsDevice getDefaultScreenDevice() {
-        GraphicsDevice[] screens = getScreenDevices();
-        if (screens.length == 0) {
+    private static native void initNativeData();
+
+    /**
+     * Updates the list of devices and notify listeners.
+     */
+    public void rebuildDevices() {
+        XToolkit.awtLock();
+        try {
+            initNativeData();
+            initDevices();
+        } finally {
+            XToolkit.awtUnlock();
+        }
+        displayChanged();
+    }
+
+    /**
+     * (Re)create all X11GraphicsDevices, reuses a devices if it is possible.
+     */
+    private synchronized void initDevices() {
+        Map<Integer, X11GraphicsDevice> old = new HashMap<>(devices);
+        devices.clear();
+
+        int numScreens = getNumScreens();
+        if (numScreens == 0) {
             throw new AWTError("no screen devices");
         }
         int index = getDefaultScreenNum();
-        return screens[0 < index && index < screens.length ? index : 0];
+        mainScreen = 0 < index && index < screens.length ? index : 0;
+
+        for (int id = 0; id < numScreens; ++id) {
+            devices.put(id, old.containsKey(id) ? old.remove(id) :
+                                                  new X11GraphicsDevice(id));
+        }
+        // if a device was not reused it should be invalidated
+        for (X11GraphicsDevice gd : old.values()) {
+            oldDevices.add(new WeakReference<>(gd));
+        }
+        // Need to notify old devices, in case the user hold the reference to it
+        for (ListIterator<WeakReference<X11GraphicsDevice>> it =
+             oldDevices.listIterator(); it.hasNext(); ) {
+            X11GraphicsDevice gd = it.next().get();
+            if (gd != null) {
+                gd.invalidate(devices.get(mainScreen));
+                gd.displayChanged();
+            } else {
+                // no more references to this device, remove it
+                it.remove();
+            }
+        }
+
+        if (useBoundsCache()) {
+            for (final X11GraphicsDevice gd : devices.values()) {
+                gd.resetBoundsCache();
+            }
+        }
+    }
+
+    @Override
+    public synchronized GraphicsDevice getDefaultScreenDevice() {
+        return devices.get(mainScreen);
+    }
+
+    @Override
+    public synchronized GraphicsDevice[] getScreenDevices() {
+        return devices.values().toArray(new X11GraphicsDevice[0]);
+    }
+
+    public synchronized GraphicsDevice getScreenDevice(int screen) {
+        return devices.get(screen);
+    }
+
+    @Override
+    protected GraphicsDevice makeScreenDevice(int screennum) {
+        throw new UnsupportedOperationException("This method is unused and" +
+                "should not be called in this implementation");
     }
 
     public boolean isDisplayLocal() {
@@ -289,15 +390,7 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
     private static native boolean pRunningXinerama();
 
     public boolean runningXinerama() {
-        if (xinerState == null) {
-            // pRunningXinerama() simply returns a global boolean variable,
-            // so there is no need to synchronize here
-            xinerState = Boolean.valueOf(pRunningXinerama());
-            if (screenLog.isLoggable(PlatformLogger.Level.FINER)) {
-                screenLog.finer("Running Xinerama: " + xinerState);
-            }
-        }
-        return xinerState.booleanValue();
+        return pRunningXinerama();
     }
 
     /**
@@ -306,5 +399,13 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
      */
     @Override
     public void paletteChanged() {
+    }
+
+    @SuppressWarnings("removal")
+    private static final boolean cacheScreenBoundsValue = Boolean.parseBoolean(AccessController.doPrivileged(
+            new GetPropertyAction("x11.cache.screen.bounds", "true")));
+
+    public static boolean useBoundsCache() {
+        return cacheScreenBoundsValue;
     }
 }

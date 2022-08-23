@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -131,14 +131,8 @@ class ZipUtils {
     /**
      * Converts Java time to DOS time.
      */
-    private static long javaToDosTime(long time) {
-        Instant instant = Instant.ofEpochMilli(time);
-        LocalDateTime ldt = LocalDateTime.ofInstant(
-                instant, ZoneId.systemDefault());
+    private static long javaToDosTime(LocalDateTime ldt) {
         int year = ldt.getYear() - 1980;
-        if (year < 0) {
-            return (1 << 21) | (1 << 16);
-        }
         return (year << 25 |
             ldt.getMonthValue() << 21 |
             ldt.getDayOfMonth() << 16 |
@@ -154,14 +148,17 @@ class ZipUtils {
      * @param time milliseconds since epoch
      * @return DOS time with 2s remainder encoded into upper half
      */
-    public static long javaToExtendedDosTime(long time) {
-        if (time < 0) {
-            return ZipEntry.DOSTIME_BEFORE_1980;
+    static long javaToExtendedDosTime(long time) {
+        LocalDateTime ldt = javaEpochToLocalDateTime(time);
+        if (ldt.getYear() >= 1980) {
+            return javaToDosTime(ldt) + ((time % 2000) << 32);
         }
-        long dostime = javaToDosTime(time);
-        return (dostime != ZipEntry.DOSTIME_BEFORE_1980)
-                ? dostime + ((time % 2000) << 32)
-                : ZipEntry.DOSTIME_BEFORE_1980;
+        return ZipEntry.DOSTIME_BEFORE_1980;
+    }
+
+    static LocalDateTime javaEpochToLocalDateTime(long time) {
+        Instant instant = Instant.ofEpochMilli(time);
+        return LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
     }
 
     /**
@@ -218,6 +215,17 @@ class ZipUtils {
         return LG(b, 0);
     }
 
+    /*
+     * File attribute compatibility types of CEN field "version made by"
+     */
+    static final int FILE_ATTRIBUTES_UNIX = 3; // Unix
+
+    /*
+     * Base values for CEN field "version made by"
+     */
+    static final int VERSION_MADE_BY_BASE_UNIX = FILE_ATTRIBUTES_UNIX << 8; // Unix
+
+
     // local file (LOC) header fields
     static final long LOCSIG(byte[] b) { return LG(b, 0); } // signature
     static final int  LOCVER(byte[] b) { return SH(b, 4); } // version needed to extract
@@ -253,6 +261,7 @@ class ZipUtils {
     // central directory header (CEN) fields
     static final long CENSIG(byte[] b, int pos) { return LG(b, pos + 0); }
     static final int  CENVEM(byte[] b, int pos) { return SH(b, pos + 4); }
+    static final int  CENVEM_FA(byte[] b, int pos) { return CH(b, pos + 5); } // file attribute compatibility
     static final int  CENVER(byte[] b, int pos) { return SH(b, pos + 6); }
     static final int  CENFLG(byte[] b, int pos) { return SH(b, pos + 8); }
     static final int  CENHOW(byte[] b, int pos) { return SH(b, pos + 10);}
@@ -266,6 +275,7 @@ class ZipUtils {
     static final int  CENDSK(byte[] b, int pos) { return SH(b, pos + 34);}
     static final int  CENATT(byte[] b, int pos) { return SH(b, pos + 36);}
     static final long CENATX(byte[] b, int pos) { return LG(b, pos + 38);}
+    static final int  CENATX_PERMS(byte[] b, int pos) { return SH(b, pos + 40);} // posix permission data
     static final long CENOFF(byte[] b, int pos) { return LG(b, pos + 42);}
 
     // The END header is followed by a variable length comment of size < 64k.

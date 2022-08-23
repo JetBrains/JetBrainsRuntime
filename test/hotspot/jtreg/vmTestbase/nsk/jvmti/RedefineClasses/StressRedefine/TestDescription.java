@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,12 @@
 /*
  * @test
  *
+ * @key randomness
  * @summary converted from VM Testbase nsk/jvmti/RedefineClasses/StressRedefine.
  * VM Testbase keywords: [quick, jpda, jvmti, noras, redefine, javac, jdk]
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
  * @build nsk.jvmti.RedefineClasses.StressRedefine
  * @run main/othervm/native ExecDriver --java
  *      -agentlib:stressRedefine

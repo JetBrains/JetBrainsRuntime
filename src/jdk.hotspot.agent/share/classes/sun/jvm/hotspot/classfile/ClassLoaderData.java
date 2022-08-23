@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,11 +29,13 @@ import sun.jvm.hotspot.memory.*;
 import sun.jvm.hotspot.runtime.*;
 import sun.jvm.hotspot.oops.*;
 import sun.jvm.hotspot.types.*;
+import sun.jvm.hotspot.utilities.Observable;
+import sun.jvm.hotspot.utilities.Observer;
 
 public class ClassLoaderData extends VMObject {
   static {
-    VM.registerVMInitializedObserver(new java.util.Observer() {
-        public void update(java.util.Observable o, Object data) {
+    VM.registerVMInitializedObserver(new Observer() {
+        public void update(Observable o, Object data) {
           initialize(VM.getVM().getTypeDataBase());
         }
       });
@@ -44,14 +46,14 @@ public class ClassLoaderData extends VMObject {
     classLoaderFieldOffset = type.getAddressField("_class_loader").getOffset();
     nextField = type.getAddressField("_next");
     klassesField = new MetadataField(type.getAddressField("_klasses"), 0);
-    isUnsafeAnonymousField = new CIntField(type.getCIntegerField("_is_unsafe_anonymous"), 0);
+    hasClassMirrorHolderField = new CIntField(type.getCIntegerField("_has_class_mirror_holder"), 0);
     dictionaryField = type.getAddressField("_dictionary");
   }
 
   private static long classLoaderFieldOffset;
   private static AddressField nextField;
   private static MetadataField  klassesField;
-  private static CIntField isUnsafeAnonymousField;
+  private static CIntField hasClassMirrorHolderField;
   private static AddressField dictionaryField;
 
   public ClassLoaderData(Address addr) {
@@ -76,8 +78,8 @@ public class ClassLoaderData extends VMObject {
     return vmOopHandle.resolve();
   }
 
-  public boolean getisUnsafeAnonymous() {
-    return isUnsafeAnonymousField.getValue(this) != 0;
+  public boolean gethasClassMirrorHolder() {
+    return hasClassMirrorHolderField.getValue(this) != 0;
   }
 
   public ClassLoaderData next() {
@@ -90,7 +92,11 @@ public class ClassLoaderData extends VMObject {
   public Klass find(String className) {
     for (Klass l = getKlasses(); l != null; l = l.getNextLinkKlass()) {
         if (l.getName().equals(className)) {
-            return l;
+            if (l instanceof InstanceKlass && !((InstanceKlass)l).isLoaded()) {
+                return null; // don't return partially loaded classes
+            } else {
+                return l;
+            }
         }
     }
     return null;
@@ -100,14 +106,17 @@ public class ClassLoaderData extends VMObject {
       array klasses */
   public void classesDo(ClassLoaderDataGraph.ClassVisitor v) {
       for (Klass l = getKlasses(); l != null; l = l.getNextLinkKlass()) {
+          // Only visit InstanceKlasses that are at least in the "loaded" init_state. Otherwise
+          // the InstanceKlass won't have some required fields initialized, which can cause problems.
+          if (l instanceof InstanceKlass && !((InstanceKlass)l).isLoaded()) {
+              continue;
+          }
           v.visit(l);
       }
   }
 
   /** Iterate over all klasses in the dictionary, including initiating loader. */
   public void allEntriesDo(ClassLoaderDataGraph.ClassAndLoaderVisitor v) {
-      for (Klass l = getKlasses(); l != null; l = l.getNextLinkKlass()) {
-          dictionary().allEntriesDo(v, getClassLoader());
-      }
+      dictionary().allEntriesDo(v, getClassLoader());
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,10 +23,12 @@
  */
 
 #include "precompiled.hpp"
-#include "classfile/systemDictionary.hpp"
+#include "classfile/vmClasses.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "memory/resourceArea.hpp"
+#include "memory/universe.hpp"
 #include "oops/oop.inline.hpp"
+#include "oops/oopHandle.inline.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/java.hpp"
@@ -37,7 +39,6 @@
 #include "services/management.hpp"
 
 volatile bool LowMemoryDetector::_enabled_for_collected_pools = false;
-volatile jint LowMemoryDetector::_disabled_count = 0;
 
 bool LowMemoryDetector::has_pending_requests() {
   assert(Notification_lock->owned_by_self(), "Must own Notification_lock");
@@ -162,12 +163,17 @@ void LowMemoryDetector::recompute_enabled_for_collected_pools() {
 }
 
 SensorInfo::SensorInfo() {
-  _sensor_obj = NULL;
   _sensor_on = false;
   _sensor_count = 0;
   _pending_trigger_count = 0;
   _pending_clear_count = 0;
 }
+
+void SensorInfo::set_sensor(instanceOop sensor) {
+  assert(_sensor_obj.peek() == NULL, "Should be set only once");
+  _sensor_obj = OopHandle(Universe::vm_global(), sensor);
+}
+
 
 // When this method is used, the memory usage is monitored
 // as a gauge attribute.  Sensor notifications (trigger or
@@ -277,10 +283,6 @@ void SensorInfo::set_counter_sensor_level(MemoryUsage usage, ThresholdSupport* c
   }
 }
 
-void SensorInfo::oops_do(OopClosure* f) {
-  f->do_oop((oop*) &_sensor_obj);
-}
-
 void SensorInfo::process_pending_requests(TRAPS) {
   int pending_count = pending_trigger_count();
   if (pending_clear_count() > 0) {
@@ -293,10 +295,9 @@ void SensorInfo::process_pending_requests(TRAPS) {
 
 void SensorInfo::trigger(int count, TRAPS) {
   assert(count <= _pending_trigger_count, "just checking");
-  if (_sensor_obj != NULL) {
+  Handle sensor_h(THREAD, _sensor_obj.resolve());
+  if (sensor_h() != NULL) {
     InstanceKlass* sensorKlass = Management::sun_management_Sensor_klass(CHECK);
-    Handle sensor_h(THREAD, _sensor_obj);
-
     Symbol* trigger_method_signature;
 
     JavaValue result(T_VOID);
@@ -309,7 +310,7 @@ void SensorInfo::trigger(int count, TRAPS) {
     // Sensor::trigger(int) instead.  The pending request will be processed
     // but no notification will be sent.
     if (HAS_PENDING_EXCEPTION) {
-       assert((PENDING_EXCEPTION->is_a(SystemDictionary::OutOfMemoryError_klass())), "we expect only an OOME here");
+       assert((PENDING_EXCEPTION->is_a(vmClasses::OutOfMemoryError_klass())), "we expect only an OOME here");
        CLEAR_PENDING_EXCEPTION;
        trigger_method_signature = vmSymbols::int_void_signature();
     } else {
@@ -328,7 +329,7 @@ void SensorInfo::trigger(int count, TRAPS) {
        // We just clear the OOM pending exception that we might have encountered
        // in Java's tiggerAction(), and continue with updating the counters since
        // the Java counters have been updated too.
-       assert((PENDING_EXCEPTION->is_a(SystemDictionary::OutOfMemoryError_klass())), "we expect only an OOME here");
+       assert((PENDING_EXCEPTION->is_a(vmClasses::OutOfMemoryError_klass())), "we expect only an OOME here");
        CLEAR_PENDING_EXCEPTION;
      }
   }
@@ -358,10 +359,9 @@ void SensorInfo::clear(int count, TRAPS) {
     _pending_trigger_count = _pending_trigger_count - count;
   }
 
-  if (_sensor_obj != NULL) {
+  Handle sensor(THREAD, _sensor_obj.resolve());
+  if (sensor() != NULL) {
     InstanceKlass* sensorKlass = Management::sun_management_Sensor_klass(CHECK);
-    Handle sensor(THREAD, _sensor_obj);
-
     JavaValue result(T_VOID);
     JavaCallArguments args(sensor);
     args.push_int((int) count);

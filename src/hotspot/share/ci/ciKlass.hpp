@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,7 @@ class ciKlass : public ciType {
   friend class ciMethod;
   friend class ciMethodData;
   friend class ciObjArrayKlass;
+  friend class ciSignature;
   friend class ciReceiverTypeData;
 
 private:
@@ -85,7 +86,6 @@ public:
   juint super_depth();
   juint super_check_offset();
   ciKlass* super_of_depth(juint i);
-  bool can_be_primary_super();
   static juint primary_super_limit() { return Klass::primary_super_limit(); }
 
   // Is this ciObject the ciInstanceKlass representing java.lang.Object()?
@@ -129,6 +129,7 @@ public:
   void print_name_on(outputStream* st);
 
   const char* external_name() const;
+  Klass* new_version() { return get_Klass()->new_version(); }
 };
 
 #endif // SHARE_CI_CIKLASS_HPP

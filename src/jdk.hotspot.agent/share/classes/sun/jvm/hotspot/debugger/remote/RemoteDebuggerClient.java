@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,6 @@ import java.lang.reflect.*;
 
 import sun.jvm.hotspot.debugger.*;
 import sun.jvm.hotspot.debugger.cdbg.*;
-import sun.jvm.hotspot.debugger.remote.sparc.*;
 import sun.jvm.hotspot.debugger.remote.x86.*;
 import sun.jvm.hotspot.debugger.remote.amd64.*;
 import sun.jvm.hotspot.debugger.remote.ppc64.*;
@@ -57,11 +56,7 @@ public class RemoteDebuggerClient extends DebuggerBase implements JVMDebugger {
       int cachePageSize;
       String cpu = remoteDebugger.getCPU();
       // page size. (FIXME: should pick this up from the remoteDebugger.)
-      if (cpu.equals("sparc")) {
-        threadFactory = new RemoteSPARCThreadFactory(this);
-        cachePageSize = 8192;
-        cacheNumPages = parseCacheNumPagesProperty(cacheSize / cachePageSize);
-      } else if (cpu.equals("x86")) {
+      if (cpu.equals("x86")) {
         threadFactory = new RemoteX86ThreadFactory(this);
         cachePageSize = 4096;
         cacheNumPages = parseCacheNumPagesProperty(cacheSize / cachePageSize);
@@ -139,7 +134,7 @@ public class RemoteDebuggerClient extends DebuggerBase implements JVMDebugger {
   }
 
   /** Unimplemented in this class (remote remoteDebugger should already be attached) */
-  public List getProcessList() throws DebuggerException {
+  public List<ProcessInfo> getProcessList() throws DebuggerException {
     throw new DebuggerException("Should not be called on RemoteDebuggerClient");
   }
 
@@ -392,7 +387,7 @@ public class RemoteDebuggerClient extends DebuggerBase implements JVMDebugger {
        return remoteDebugger.getThreadHashCode(id, false);
     } catch (RemoteException e) {
     }
-    return (int) id;
+    return Long.hashCode(id);
   }
 
   public ThreadProxy getThreadForIdentifierAddress(Address addr) {
@@ -419,5 +414,18 @@ public class RemoteDebuggerClient extends DebuggerBase implements JVMDebugger {
 
   public void writeBytesToProcess(long a, long b, byte[] c) {
      throw new DebuggerException("Unimplemented!");
+  }
+
+  public String execCommandOnServer(String command, Map<String, Object> options) {
+    try {
+      return remoteDebugger.execCommandOnServer(command, options);
+    } catch (RemoteException e) {
+      throw new DebuggerException(e);
+    }
+  }
+
+  @Override
+  public String findSymbol(String symbol) {
+    return execCommandOnServer("findsym", Map.of("symbol", symbol));
   }
 }

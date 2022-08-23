@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2003, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Azul Systems, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,17 +31,29 @@
 #include "libproc.h"
 #include "symtab.h"
 
+#define UNSUPPORTED_ARCH "Unsupported architecture!"
+
+#if defined(__x86_64__) && !defined(amd64)
+#define amd64 1
+#endif
+
+#if defined(__arm64__) && !defined(aarch64)
+#define aarch64 1
+#endif
+
 #ifdef __APPLE__
 #include <inttypes.h>     // for PRIx64, 32, ...
 #include <pthread.h>
 #include <mach-o/loader.h>
 #include <mach-o/nlist.h>
 #include <mach-o/fat.h>
+#include <mach-o/stab.h>
 
 #ifndef register_t
 #define register_t uint64_t
 #endif
 
+#if defined(amd64)
 /*** registers copied from bsd/amd64 */
 typedef struct reg {
   register_t      r_r15;
@@ -71,6 +84,48 @@ typedef struct reg {
   register_t      r_ss;          // not used
 } reg;
 
+#elif defined(aarch64)
+/*** registers copied from bsd/arm64 */
+typedef struct reg {
+  register_t      r_r0;
+  register_t      r_r1;
+  register_t      r_r2;
+  register_t      r_r3;
+  register_t      r_r4;
+  register_t      r_r5;
+  register_t      r_r6;
+  register_t      r_r7;
+  register_t      r_r8;
+  register_t      r_r9;
+  register_t      r_r10;
+  register_t      r_r11;
+  register_t      r_r12;
+  register_t      r_r13;
+  register_t      r_r14;
+  register_t      r_r15;
+  register_t      r_r16;
+  register_t      r_r17;
+  register_t      r_r18;
+  register_t      r_r19;
+  register_t      r_r20;
+  register_t      r_r21;
+  register_t      r_r22;
+  register_t      r_r23;
+  register_t      r_r24;
+  register_t      r_r25;
+  register_t      r_r26;
+  register_t      r_r27;
+  register_t      r_r28;
+  register_t      r_fp;
+  register_t      r_lr;
+  register_t      r_sp;
+  register_t      r_pc;
+} reg;
+
+#else
+#error UNSUPPORTED_ARCH
+#endif
+
 // convenient defs
 typedef struct mach_header_64 mach_header_64;
 typedef struct load_command load_command;
@@ -95,6 +150,7 @@ typedef struct lib_info {
   struct symtab*   symtab;
   int              fd;        // file descriptor for lib
   struct lib_info* next;
+  size_t           memsz;
 } lib_info;
 
 // list of threads
@@ -108,9 +164,10 @@ typedef struct sa_thread_info {
 // list of virtual memory maps
 typedef struct map_info {
    int              fd;       // file descriptor
-   off_t            offset;   // file offset of this mapping
-   uintptr_t        vaddr;    // starting virtual address
+   uint64_t         offset;   // file offset of this mapping
+   uint64_t         vaddr;    // starting virtual address
    size_t           memsz;    // size of the mapping
+   uint32_t         flags;    // access flags
    struct map_info* next;
 } map_info;
 
@@ -173,8 +230,7 @@ bool read_thread_info(struct ps_prochandle* ph, thread_info_callback cb);
 lib_info* add_lib_info(struct ps_prochandle* ph, const char* libname, uintptr_t base);
 
 // adds a new shared object to lib list, supply open lib file descriptor as well
-lib_info* add_lib_info_fd(struct ps_prochandle* ph, const char* libname, int fd,
-                          uintptr_t base);
+lib_info* add_lib_info_fd(struct ps_prochandle* ph, const char* libname, int fd, uintptr_t base);
 
 sa_thread_info* add_thread_info(struct ps_prochandle* ph, pthread_t pthread_id, lwpid_t lwp_id);
 // a test for ELF signature without using libelf

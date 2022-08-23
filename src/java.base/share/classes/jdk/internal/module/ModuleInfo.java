@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ import java.util.function.Supplier;
 
 import jdk.internal.access.JavaLangModuleAccess;
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.misc.VM;
 
 import static jdk.internal.module.ClassFileConstants.*;
 
@@ -61,9 +62,6 @@ import static jdk.internal.module.ClassFileConstants.*;
  */
 
 public final class ModuleInfo {
-
-    private final int JAVA_MIN_SUPPORTED_VERSION = 53;
-    private final int JAVA_MAX_SUPPORTED_VERSION = 59;
 
     private static final JavaLangModuleAccess JLMA
         = SharedSecrets.getJavaLangModuleAccess();
@@ -182,7 +180,8 @@ public final class ModuleInfo {
      *         because an identifier is not a legal Java identifier, duplicate
      *         exports, and many other reasons
      */
-    private Attributes doRead(DataInput in) throws IOException {
+    private Attributes doRead(DataInput input) throws IOException {
+        var in = new CountingDataInput(input);
 
         int magic = in.readInt();
         if (magic != 0xCAFEBABE)
@@ -190,8 +189,7 @@ public final class ModuleInfo {
 
         int minor_version = in.readUnsignedShort();
         int major_version = in.readUnsignedShort();
-        if (major_version < JAVA_MIN_SUPPORTED_VERSION ||
-                major_version > JAVA_MAX_SUPPORTED_VERSION) {
+        if (!VM.isSupportedModuleDescriptorVersion(major_version, minor_version)) {
             throw invalidModuleDescriptor("Unsupported major.minor version "
                                           + major_version + "." + minor_version);
         }
@@ -246,8 +244,9 @@ public final class ModuleInfo {
                                               + attribute_name + " attribute");
             }
 
-            switch (attribute_name) {
+            long initialPosition = in.count();
 
+            switch (attribute_name) {
                 case MODULE :
                     builder = readModuleAttribute(in, cpool, major_version);
                     break;
@@ -283,8 +282,15 @@ public final class ModuleInfo {
                     } else {
                         in.skipBytes(length);
                     }
-
             }
+
+            long newPosition = in.count();
+            if ((newPosition - initialPosition) != length) {
+                // attribute length does not match actual attribute size
+                throw invalidModuleDescriptor("Attribute " + attribute_name
+                        + " does not match its expected length");
+            }
+
         }
 
         // the Module attribute is required
@@ -1083,11 +1089,126 @@ public final class ModuleInfo {
     }
 
     /**
+     * A DataInput implementation that reads from another DataInput and counts
+     * the number of bytes read.
+     */
+    private static class CountingDataInput implements DataInput {
+        private final DataInput delegate;
+        private long count;
+
+        CountingDataInput(DataInput delegate) {
+            this.delegate = delegate;
+        }
+
+        long count() {
+            return count;
+        }
+
+        @Override
+        public void readFully(byte b[]) throws IOException {
+            delegate.readFully(b, 0, b.length);
+            count += b.length;
+        }
+
+        @Override
+        public void readFully(byte b[], int off, int len) throws IOException {
+            delegate.readFully(b, off, len);
+            count += len;
+        }
+
+        @Override
+        public int skipBytes(int n) throws IOException {
+            int skip = delegate.skipBytes(n);
+            count += skip;
+            return skip;
+        }
+
+        @Override
+        public boolean readBoolean() throws IOException {
+            boolean b = delegate.readBoolean();
+            count++;
+            return b;
+        }
+
+        @Override
+        public byte readByte() throws IOException {
+            byte b = delegate.readByte();
+            count++;
+            return b;
+        }
+
+        @Override
+        public int readUnsignedByte() throws IOException {
+            int i = delegate.readUnsignedByte();
+            count++;
+            return i;
+        }
+
+        @Override
+        public short readShort() throws IOException {
+            short s = delegate.readShort();
+            count += 2;
+            return s;
+        }
+
+        @Override
+        public int readUnsignedShort() throws IOException {
+            int s = delegate.readUnsignedShort();
+            count += 2;
+            return s;
+        }
+
+        @Override
+        public char readChar() throws IOException {
+            char c = delegate.readChar();
+            count += 2;
+            return c;
+        }
+
+        @Override
+        public int readInt() throws IOException {
+            int i = delegate.readInt();
+            count += 4;
+            return i;
+        }
+
+        @Override
+        public long readLong() throws IOException {
+            long l = delegate.readLong();
+            count += 8;
+            return l;
+        }
+
+        @Override
+        public float readFloat() throws IOException {
+            float f = delegate.readFloat();
+            count += 4;
+            return f;
+        }
+
+        @Override
+        public double readDouble() throws IOException {
+            double d = delegate.readDouble();
+            count += 8;
+            return d;
+        }
+
+        @Override
+        public String readLine() {
+            throw new RuntimeException("not implemented");
+        }
+
+        @Override
+        public String readUTF() throws IOException {
+            return DataInputStream.readUTF(this);
+        }
+    }
+
+    /**
      * Returns an InvalidModuleDescriptorException with the given detail
      * message
      */
-    private static InvalidModuleDescriptorException
-    invalidModuleDescriptor(String msg) {
+    private static InvalidModuleDescriptorException invalidModuleDescriptor(String msg) {
         return new InvalidModuleDescriptorException(msg);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -373,23 +373,21 @@ Java_sun_awt_windows_WCustomCursor_createCursorIndirect(
 
     int *cols = SAFE_SIZE_NEW_ARRAY2(int, nW, nH);
 
-    jint *intRasterDataPtr = NULL;
+    /* Copy the raster data because GDI may fail on some Java heap
+     * allocated memory.
+     */
+    length = env->GetArrayLength(intRasterData);
+    jint *intRasterDataPtr = new jint[length];
     HBITMAP hColor = NULL;
     try {
-        intRasterDataPtr =
-            (jint *)env->GetPrimitiveArrayCritical(intRasterData, 0);
+        env->GetIntArrayRegion(intRasterData, 0, length, intRasterDataPtr);
         hColor = create_BMP(NULL, (int *)intRasterDataPtr, nSS, nW, nH);
         memcpy(cols, intRasterDataPtr, nW*nH*sizeof(int));
     } catch (...) {
-        if (intRasterDataPtr != NULL) {
-            env->ReleasePrimitiveArrayCritical(intRasterData,
-                                               intRasterDataPtr, 0);
-        }
+        delete[] intRasterDataPtr;
         throw;
     }
-
-    env->ReleasePrimitiveArrayCritical(intRasterData, intRasterDataPtr, 0);
-    intRasterDataPtr = NULL;
+    delete[] intRasterDataPtr;
 
     HCURSOR hCursor = NULL;
 
@@ -477,8 +475,8 @@ Java_sun_awt_windows_WGlobalCursorManager_getCursorPos(JNIEnv *env,
     int screen = AwtWin32GraphicsDevice::GetScreenFromHMONITOR(monitor);
     Devices::InstanceAccess devices;
     AwtWin32GraphicsDevice *device = devices->GetDevice(screen);
-    int x = (device == NULL) ? p.x : device->ScaleDownX(p.x);
-    int y = (device == NULL) ? p.y : device->ScaleDownY(p.y);
+    int x = (device == NULL) ? p.x : device->ScaleDownAbsX(p.x);
+    int y = (device == NULL) ? p.y : device->ScaleDownAbsY(p.y);
     env->SetIntField(point, AwtCursor::pointXID, x);
     env->SetIntField(point, AwtCursor::pointYID, y);
 

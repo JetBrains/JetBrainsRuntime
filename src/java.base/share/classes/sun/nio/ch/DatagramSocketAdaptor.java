@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@
 package sun.nio.ch;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
@@ -73,7 +74,7 @@ public class DatagramSocketAdaptor
     private volatile int timeout;
 
     private DatagramSocketAdaptor(DatagramChannelImpl dc) throws IOException {
-        super(/*SocketAddress*/null);
+        super(/*SocketAddress*/ DatagramSockets.NO_DELEGATE);
         this.dc = dc;
     }
 
@@ -116,7 +117,7 @@ public class DatagramSocketAdaptor
         try {
             connectInternal(new InetSocketAddress(address, port));
         } catch (SocketException x) {
-            throw new Error(x);
+            throw new UncheckedIOException(x);
         }
     }
 
@@ -132,7 +133,7 @@ public class DatagramSocketAdaptor
         try {
             dc.disconnect();
         } catch (IOException x) {
-            throw new Error(x);
+            throw new UncheckedIOException(x);
         }
     }
 
@@ -165,13 +166,24 @@ public class DatagramSocketAdaptor
 
     @Override
     public SocketAddress getLocalSocketAddress() {
-        try {
-            return dc.getLocalAddress();
-        } catch (ClosedChannelException e) {
+        InetSocketAddress local = dc.localAddress();
+        if (local == null || isClosed())
             return null;
-        } catch (Exception x) {
-            throw new Error(x);
+
+        InetAddress addr = local.getAddress();
+        if (addr.isAnyLocalAddress())
+            return local;
+
+        @SuppressWarnings("removal")
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            try {
+                sm.checkConnect(addr.getHostAddress(), -1);
+            } catch (SecurityException x) {
+                return new InetSocketAddress(local.getPort());
+            }
         }
+        return local;
     }
 
     @Override
@@ -198,7 +210,6 @@ public class DatagramSocketAdaptor
                     p.setPort(remote.getPort());
                     target = remote;
                 } else {
-                    // throws IllegalArgumentException if port not set
                     target = (InetSocketAddress) p.getSocketAddress();
                 }
             }
@@ -254,6 +265,7 @@ public class DatagramSocketAdaptor
         if (local == null)
             local = new InetSocketAddress(0);
         InetAddress result = local.getAddress();
+        @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             try {
@@ -494,9 +506,9 @@ public class DatagramSocketAdaptor
      * @throws SocketException if group is not a multicast address
      */
     private static InetAddress checkGroup(SocketAddress mcastaddr) throws SocketException {
-        if (mcastaddr == null || !(mcastaddr instanceof InetSocketAddress))
+        if (!(mcastaddr instanceof InetSocketAddress addr))
             throw new IllegalArgumentException("Unsupported address type");
-        InetAddress group = ((InetSocketAddress) mcastaddr).getAddress();
+        InetAddress group = addr.getAddress();
         if (group == null)
             throw new IllegalArgumentException("Unresolved address");
         if (!group.isMulticastAddress())
@@ -514,6 +526,7 @@ public class DatagramSocketAdaptor
             MembershipKey key = dc.findMembership(group, ni);
             if (key != null) {
                 // already a member but need to check permission anyway
+                @SuppressWarnings("removal")
                 SecurityManager sm = System.getSecurityManager();
                 if (sm != null)
                     sm.checkMulticast(group);
@@ -529,6 +542,7 @@ public class DatagramSocketAdaptor
         NetworkInterface ni = (netIf != null) ? netIf : defaultNetworkInterface();
         if (isClosed())
             throw new SocketException("Socket is closed");
+        @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
         if (sm != null)
             sm.checkMulticast(group);
@@ -570,6 +584,7 @@ public class DatagramSocketAdaptor
                     // network interface has changed so update cached values
                     PrivilegedAction<InetAddress> pa;
                     pa = () -> ni.inetAddresses().findFirst().orElse(null);
+                    @SuppressWarnings("removal")
                     InetAddress ia = AccessController.doPrivileged(pa);
                     if (ia == null)
                         throw new SocketException("Network interface has no IP address");
@@ -689,6 +704,7 @@ public class DatagramSocketAdaptor
             try {
                 PrivilegedExceptionAction<Lookup> pa = () ->
                     MethodHandles.privateLookupIn(DatagramPacket.class, MethodHandles.lookup());
+                @SuppressWarnings("removal")
                 MethodHandles.Lookup l = AccessController.doPrivileged(pa);
                 LENGTH = l.findVarHandle(DatagramPacket.class, "length", int.class);
                 BUF_LENGTH = l.findVarHandle(DatagramPacket.class, "bufLength", int.class);
@@ -727,6 +743,7 @@ public class DatagramSocketAdaptor
             try {
                 PrivilegedExceptionAction<Lookup> pa = () ->
                     MethodHandles.privateLookupIn(NetworkInterface.class, MethodHandles.lookup());
+                @SuppressWarnings("removal")
                 MethodHandles.Lookup l = AccessController.doPrivileged(pa);
                 MethodType methodType = MethodType.methodType(NetworkInterface.class);
                 GET_DEFAULT = l.findStatic(NetworkInterface.class, "getDefault", methodType);
@@ -756,6 +773,27 @@ public class DatagramSocketAdaptor
                 return (NetworkInterface) CONSTRUCTOR.invoke(name, index, addrs);
             } catch (Throwable e) {
                 throw new InternalError(e);
+            }
+        }
+    }
+
+    /**
+     * Provides access to the value of the private static DatagramSocket.NO_DELEGATE
+     */
+    private static class DatagramSockets {
+        private static final SocketAddress NO_DELEGATE;
+
+        static {
+            try {
+                PrivilegedExceptionAction<Lookup> pa = () ->
+                        MethodHandles.privateLookupIn(DatagramSocket.class, MethodHandles.lookup());
+                @SuppressWarnings("removal")
+                MethodHandles.Lookup l = AccessController.doPrivileged(pa);
+                NO_DELEGATE = (SocketAddress)
+                        l.findStaticVarHandle(DatagramSocket.class, "NO_DELEGATE",
+                                SocketAddress.class).get();
+            } catch (Exception e) {
+                throw new ExceptionInInitializerError(e);
             }
         }
     }

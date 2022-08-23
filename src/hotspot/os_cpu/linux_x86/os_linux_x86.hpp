@@ -27,10 +27,9 @@
 
   static void setup_fpu();
   static bool supports_sse();
+  static juint cpu_microcode_revision();
 
   static jlong rdtsc();
-
-  static bool is_allocatable(size_t bytes);
 
   // Used to register dynamic code cache area with the OS
   // Note: Currently only used in 64 bit Windows implementations

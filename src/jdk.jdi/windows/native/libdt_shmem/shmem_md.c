@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,11 +30,6 @@
 #include "sysShmem.h"
 #include "shmemBase.h"  /* for exitTransportWithError */
 
-/* Use THIS_FILE when it is available. */
-#ifndef THIS_FILE
-    #define THIS_FILE __FILE__
-#endif
-
 /*
  * These functions are not completely universal. For now, they are used
  * exclusively for Jbug's shared memory transport mechanism. They have
@@ -44,12 +39,16 @@
 
 static HANDLE memHandle = NULL;
 
+#ifndef SHMEM_BUILD_TIME
+#define SHMEM_BUILD_TIME __DATE__
+#endif
+
 #ifdef DEBUG
 #define sysAssert(expression) {         \
     if (!(expression)) {                \
             exitTransportWithError \
             ("\"%s\", line %d: assertion failure\n", \
-             THIS_FILE, __DATE__, __LINE__); \
+             __FILE__, SHMEM_BUILD_TIME, __LINE__); \
     }                                   \
 }
 #else

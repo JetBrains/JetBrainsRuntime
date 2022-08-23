@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,46 +32,25 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
+import java.util.Arrays;
 
 import sun.nio.cs.UTF_8;
 
 /**
  * Utility class for zipfile name and comment decoding and encoding
  */
-
 class ZipCoder {
 
     private static final jdk.internal.access.JavaLangAccess JLA =
         jdk.internal.access.SharedSecrets.getJavaLangAccess();
 
-    static final class UTF8 extends ZipCoder {
-
-        UTF8(Charset utf8) {
-            super(utf8);
-        }
-
-        @Override
-        boolean isUTF8() {
-            return true;
-        }
-
-        @Override
-        String toString(byte[] ba, int off, int length) {
-            return JLA.newStringUTF8NoRepl(ba, off, length);
-        }
-
-        @Override
-        byte[] getBytes(String s) {
-            return JLA.getBytesUTF8NoRepl(s);
-        }
-    }
-
-    // UTF_8.ArrayEn/Decoder is stateless, so make it singleton.
-    private static ZipCoder utf8 = new UTF8(UTF_8.INSTANCE);
+    // Encoding/decoding is stateless, so make it singleton.
+    static final UTF8ZipCoder UTF8 = new UTF8ZipCoder(UTF_8.INSTANCE);
 
     public static ZipCoder get(Charset charset) {
-        if (charset == UTF_8.INSTANCE)
-            return utf8;
+        if (charset == UTF_8.INSTANCE) {
+            return UTF8;
+        }
         return new ZipCoder(charset);
     }
 
@@ -107,25 +86,62 @@ class ZipCoder {
         }
     }
 
-    // assume invoked only if "this" is not utf8
-    byte[] getBytesUTF8(String s) {
-        return utf8.getBytes(s);
-    }
-
-    String toStringUTF8(byte[] ba, int len) {
-        return utf8.toString(ba, 0, len);
-    }
-
-    String toStringUTF8(byte[] ba, int off, int len) {
-        return utf8.toString(ba, off, len);
+    static String toStringUTF8(byte[] ba, int len) {
+        return UTF8.toString(ba, 0, len);
     }
 
     boolean isUTF8() {
         return false;
     }
 
-    private Charset cs;
-    private CharsetDecoder dec;
+    // Hash code functions for ZipFile entry names. We generate the hash as-if
+    // we first decoded the byte sequence to a String, then appended '/' if no
+    // trailing slash was found, then called String.hashCode(). This
+    // normalization ensures we can simplify and speed up lookups.
+    //
+    // Does encoding error checking and hashing in a single pass for efficiency.
+    // On an error, this function will throw CharacterCodingException while the
+    // UTF8ZipCoder override will throw IllegalArgumentException, so we declare
+    // throws Exception to keep things simple.
+    int checkedHash(byte[] a, int off, int len) throws Exception {
+        if (len == 0) {
+            return 0;
+        }
+
+        int h = 0;
+        // cb will be a newly allocated CharBuffer with pos == 0,
+        // arrayOffset == 0, backed by an array.
+        CharBuffer cb = decoder().decode(ByteBuffer.wrap(a, off, len));
+        int limit = cb.limit();
+        char[] decoded = cb.array();
+        for (int i = 0; i < limit; i++) {
+            h = 31 * h + decoded[i];
+        }
+        if (limit > 0 && decoded[limit - 1] != '/') {
+            h = 31 * h + '/';
+        }
+        return h;
+    }
+
+    // Hash function equivalent of checkedHash for String inputs
+    static int hash(String name) {
+        int hsh = name.hashCode();
+        int len = name.length();
+        if (len > 0 && name.charAt(len - 1) != '/') {
+            hsh = hsh * 31 + '/';
+        }
+        return hsh;
+    }
+
+    boolean hasTrailingSlash(byte[] a, int end) {
+        byte[] slashBytes = slashBytes();
+        return end >= slashBytes.length &&
+            Arrays.mismatch(a, end - slashBytes.length, end, slashBytes, 0, slashBytes.length) == -1;
+    }
+
+    private byte[] slashBytes;
+    private final Charset cs;
+    protected CharsetDecoder dec;
     private CharsetEncoder enc;
 
     private ZipCoder(Charset cs) {
@@ -141,12 +157,86 @@ class ZipCoder {
         return dec;
     }
 
-    protected CharsetEncoder encoder() {
+    private CharsetEncoder encoder() {
         if (enc == null) {
             enc = cs.newEncoder()
               .onMalformedInput(CodingErrorAction.REPORT)
               .onUnmappableCharacter(CodingErrorAction.REPORT);
         }
         return enc;
+    }
+
+    // This method produces an array with the bytes that will correspond to a
+    // trailing '/' in the chosen character encoding.
+    //
+    // While in most charsets a trailing slash will be encoded as the byte
+    // value of '/', this does not hold in the general case. E.g., in charsets
+    // such as UTF-16 and UTF-32 it will be represented by a sequence of 2 or 4
+    // bytes, respectively.
+    private byte[] slashBytes() {
+        if (slashBytes == null) {
+            // Take into account charsets that produce a BOM, e.g., UTF-16
+            byte[] slash = "/".getBytes(cs);
+            byte[] doubleSlash = "//".getBytes(cs);
+            slashBytes = Arrays.copyOfRange(doubleSlash, slash.length, doubleSlash.length);
+        }
+        return slashBytes;
+    }
+
+    static final class UTF8ZipCoder extends ZipCoder {
+
+        private UTF8ZipCoder(Charset utf8) {
+            super(utf8);
+        }
+
+        @Override
+        boolean isUTF8() {
+            return true;
+        }
+
+        @Override
+        String toString(byte[] ba, int off, int length) {
+            return JLA.newStringUTF8NoRepl(ba, off, length);
+        }
+
+        @Override
+        byte[] getBytes(String s) {
+            return JLA.getBytesUTF8NoRepl(s);
+        }
+
+        @Override
+        int checkedHash(byte[] a, int off, int len) throws Exception {
+            if (len == 0) {
+                return 0;
+            }
+
+            int end = off + len;
+            int h = 0;
+            while (off < end) {
+                byte b = a[off];
+                if (b >= 0) {
+                    // ASCII, keep going
+                    h = 31 * h + b;
+                    off++;
+                } else {
+                    // Non-ASCII, fall back to decoding a String
+                    // We avoid using decoder() here since the UTF8ZipCoder is
+                    // shared and that decoder is not thread safe.
+                    // We use the JLA.newStringUTF8NoRepl variant to throw
+                    // exceptions eagerly when opening ZipFiles
+                    return hash(JLA.newStringUTF8NoRepl(a, end - len, len));
+                }
+            }
+
+            if (a[end - 1] != '/') {
+                h = 31 * h + '/';
+            }
+            return h;
+        }
+
+        @Override
+        boolean hasTrailingSlash(byte[] a, int end) {
+            return end > 0 && a[end - 1] == '/';
+        }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -226,11 +226,23 @@ Java_sun_nio_ch_Net_connect0(JNIEnv *env, jclass clazz, jboolean preferIPv6, job
 {
     SOCKETADDRESS sa;
     int rv;
+    int so_rv;
     int sa_len = 0;
     SOCKET s = (SOCKET)fdval(env, fdo);
+    int type = 0, optlen = sizeof(type);
 
     if (NET_InetAddressToSockaddr(env, iao, port, &sa, &sa_len, preferIPv6) != 0) {
         return IOS_THROWN;
+    }
+
+    so_rv = getsockopt(s, SOL_SOCKET, SO_TYPE, (char*)&type, &optlen);
+
+    /**
+     * Windows has a very long socket connect timeout of 2 seconds.
+     * If it's the loopback adapter we can shorten the wait interval.
+     */
+    if (so_rv == 0 && type == SOCK_STREAM && IS_LOOPBACK_ADDRESS(&sa)) {
+        NET_EnableFastTcpLoopbackConnect((jint)s);
     }
 
     rv = connect(s, &sa.sa, sa_len);
@@ -243,9 +255,7 @@ Java_sun_nio_ch_Net_connect0(JNIEnv *env, jclass clazz, jboolean preferIPv6, job
         return IOS_THROWN;
     } else {
         /* Enable WSAECONNRESET errors when a UDP socket is connected */
-        int type = 0, optlen = sizeof(type);
-        rv = getsockopt(s, SOL_SOCKET, SO_TYPE, (char*)&type, &optlen);
-        if (rv == 0 && type == SOCK_DGRAM) {
+        if (so_rv == 0 && type == SOCK_DGRAM) {
             setConnectionReset(s, TRUE);
         }
     }
@@ -644,8 +654,7 @@ Java_sun_nio_ch_Net_poll(JNIEnv* env, jclass this, jobject fdo, jint events, jlo
     if (events & POLLIN) {
         FD_SET(fd, &rd);
     }
-    if (events & POLLOUT ||
-        events & POLLCONN) {
+    if (events & POLLOUT) {
         FD_SET(fd, &wr);
     }
     FD_SET(fd, &ex);
@@ -758,7 +767,7 @@ Java_sun_nio_ch_Net_pollnvalValue(JNIEnv *env, jclass this)
 JNIEXPORT jshort JNICALL
 Java_sun_nio_ch_Net_pollconnValue(JNIEnv *env, jclass this)
 {
-    return (jshort)POLLCONN;
+    return (jshort)POLLOUT;
 }
 
 JNIEXPORT jint JNICALL
@@ -774,5 +783,26 @@ Java_sun_nio_ch_Net_sendOOB(JNIEnv* env, jclass this, jobject fdo, jbyte b)
         }
     } else {
         return n;
+    }
+}
+
+JNIEXPORT jboolean JNICALL
+Java_sun_nio_ch_Net_discardOOB(JNIEnv* env, jclass clazz, jobject fdo)
+{
+    char buf[8];
+    jboolean discarded = JNI_FALSE;
+    for (;;) {
+        int n = recv(fdval(env, fdo), (char*)&buf, sizeof(buf), MSG_OOB);
+        if (n == SOCKET_ERROR) {
+            if (WSAGetLastError() != WSAEWOULDBLOCK) {
+                JNU_ThrowIOExceptionWithLastError(env, "recv failed");
+            }
+            return discarded;
+        }
+        if (n <= 0)
+            return discarded;
+        if (n < (int)sizeof(buf))
+            return JNI_TRUE;
+        discarded = JNI_TRUE;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,13 +27,12 @@ package gc.g1;
  * @test TestLargePageUseForHeap.java
  * @summary Test that Java heap is allocated using large pages of the appropriate size if available.
  * @bug 8221517
- * @key gc
  * @modules java.base/jdk.internal.misc
  * @library /test/lib
  * @requires vm.gc.G1
- * @requires os.family != "solaris"
+ * @requires vm.opt.LargePageSizeInBytes == null
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run main/othervm -Xbootclasspath/a:. -XX:+UseG1GC -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
         -XX:+IgnoreUnrecognizedVMOptions -XX:+UseLargePages gc.g1.TestLargePageUseForHeap
  */
@@ -63,6 +62,11 @@ public class TestLargePageUseForHeap {
     }
 
     static boolean checkLargePageEnabled(OutputAnalyzer output) {
+        String lp = output.firstMatch("Large Page Support: (\\w*)", 1);
+        // Make sure large pages really are enabled.
+        if (lp == null || lp.equals("Disabled")) {
+            return false;
+        }
         // This message is printed when tried to reserve a memory with large page but it failed.
         String errorStr = "Reserve regular memory without large pages";
         String heapPattern = ".*Heap: ";
@@ -86,7 +90,7 @@ public class TestLargePageUseForHeap {
         pb = ProcessTools.createJavaProcessBuilder("-XX:+UseG1GC",
                                                    "-XX:G1HeapRegionSize=" + regionSize,
                                                    "-Xmx128m",
-                                                   "-Xlog:pagesize,gc+heap+coops=debug",
+                                                   "-Xlog:gc+init,pagesize,gc+heap+coops=debug",
                                                    "-XX:+UseLargePages",
                                                    "-version");
 
@@ -99,7 +103,7 @@ public class TestLargePageUseForHeap {
         pb = ProcessTools.createJavaProcessBuilder("-XX:+UseG1GC",
                                                    "-XX:G1HeapRegionSize=" + regionSize,
                                                    "-Xmx128m",
-                                                   "-Xlog:pagesize,gc+heap+coops=debug",
+                                                   "-Xlog:gc+init,pagesize,gc+heap+coops=debug",
                                                    "-XX:-UseLargePages",
                                                    "-version");
 

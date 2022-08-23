@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,6 +51,7 @@
 #include <Region.h>
 
 #include <jawt.h>
+#include <math.h>
 
 #include <java_awt_Toolkit.h>
 #include <java_awt_FontMetrics.h>
@@ -62,6 +63,7 @@
 #include <java_awt_event_InputEvent.h>
 #include <java_awt_event_ActionEvent.h>
 #include <java_awt_event_InputMethodEvent.h>
+#include <sun_awt_event_TouchEvent.h>
 #include <sun_awt_windows_WInputMethod.h>
 #include <java_awt_event_MouseEvent.h>
 #include <java_awt_event_MouseWheelEvent.h>
@@ -84,15 +86,6 @@ static DCList activeDCList;
 static DCList passiveDCList;
 
 extern void CheckFontSmoothingSettings(HWND);
-
-extern "C" {
-    // Remember the input language has changed by some user's action
-    // (Alt+Shift or through the language icon on the Taskbar) to control the
-    // race condition between the toolkit thread and the AWT event thread.
-    // This flag remains TRUE until the next WInputMethod.getNativeLocale() is
-    // issued.
-    BOOL g_bUserHasChangedInputLang = FALSE;
-}
 
 BOOL AwtComponent::sm_suppressFocusAndActivation = FALSE;
 BOOL AwtComponent::sm_restoreFocusAndActivation = FALSE;
@@ -222,10 +215,11 @@ BOOL windowMoveLockHeld = FALSE;
 AwtComponent::AwtComponent()
 {
     m_mouseButtonClickAllowed = 0;
-    m_touchDownOccurred = FALSE;
-    m_touchUpOccurred = FALSE;
-    m_touchDownPoint.x = m_touchDownPoint.y = 0;
-    m_touchUpPoint.x = m_touchUpPoint.y = 0;
+
+    m_isTouchScroll = FALSE;
+    m_touchBeginPoint = {0, 0};
+    m_lastTouchPoint = {0, 0};
+
     m_callbacksEnabled = FALSE;
     m_hwnd = NULL;
 
@@ -603,7 +597,7 @@ AwtComponent::CreateHWnd(JNIEnv *env, LPCWSTR title,
     /*
       * Fix for 4046446.
       */
-    SetWindowPos(GetHWnd(), 0, x, y, w, h, SWP_NOZORDER | SWP_NOCOPYBITS | SWP_NOACTIVATE);
+    Reshape(x, y, w, h);
 
     /* Set default colors. */
     m_colorForeground = colorForeground;
@@ -1087,6 +1081,7 @@ void SpyWinMessage(HWND hwnd, UINT message, LPCTSTR szComment) {
         WIN_MSG(WM_DESTROY)
         WIN_MSG(WM_MOVE)
         WIN_MSG(WM_SIZE)
+        WIN_MSG(WM_DPICHANGED)
         WIN_MSG(WM_ACTIVATE)
         WIN_MSG(WM_SETFOCUS)
         WIN_MSG(WM_KILLFOCUS)
@@ -1288,6 +1283,7 @@ void SpyWinMessage(HWND hwnd, UINT message, LPCTSTR szComment) {
         WIN_MSG(WM_AWT_COMPONENT_HIDE)
         WIN_MSG(WM_AWT_COMPONENT_SETFOCUS)
         WIN_MSG(WM_AWT_WINDOW_SETACTIVE)
+        WIN_MSG(WM_AWT_WINDOW_TOFRONT)
         WIN_MSG(WM_AWT_LIST_SETMULTISELECT)
         WIN_MSG(WM_AWT_HANDLE_EVENT)
         WIN_MSG(WM_AWT_PRINT_COMPONENT)
@@ -1341,6 +1337,23 @@ void SpyWinMessage(HWND hwnd, UINT message, LPCTSTR szComment) {
 
 #endif /* SPY_MESSAGES */
 
+static BOOL IsMouseEventFromTouch()
+{
+    return (::GetMessageExtraInfo() & MOUSEEVENTF_FROMTOUCH_MASK) == MOUSEEVENTF_FROMTOUCH;
+}
+
+// consider making general function
+// T getClassStaticField(cls, field, default_val)
+static BOOL IsDefaultTouch()
+{
+    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+    jclass cls = env->FindClass("sun/awt/event/TouchEvent");
+    CHECK_NULL_RETURN(cls, FALSE);
+    jfieldID fieldID = env->GetStaticFieldID(cls, "defaultTouchHandling", "Z");
+    CHECK_NULL_RETURN(fieldID, FALSE);
+    return static_cast<BOOL>(env->GetStaticBooleanField(cls, fieldID));
+}
+
 /*
  * Dispatch messages for this window class--general component
  */
@@ -1366,6 +1379,8 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
         return (LRESULT)TRUE;
     }
 
+    static const BOOL PROCESS_TOUCH_EVENTS = !IsDefaultTouch();
+
     DWORD curPos = 0;
 
     UINT switchMessage = message;
@@ -1374,7 +1389,7 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
       {
             HDC hDC;
             // First, release the DCs scheduled for deletion
-            ReleaseDCList(GetHWnd(), passiveDCList);
+            ReleaseDCList(passiveDCList);
 
             GetDCReturnStruct *returnStruct = new GetDCReturnStruct;
             returnStruct->gdiLimitReached = FALSE;
@@ -1402,7 +1417,7 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
       {
             HDC hDC = (HDC)wParam;
             MoveDCToPassiveList(hDC, GetHWnd());
-            ReleaseDCList(GetHWnd(), passiveDCList);
+            ReleaseDCList(passiveDCList);
             mr = mrConsume;
             break;
       }
@@ -1411,7 +1426,7 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
             // Called during Component destruction.  Gets current list of
             // DC's associated with Component and releases each DC.
             ReleaseDCList(GetHWnd(), activeDCList);
-            ReleaseDCList(GetHWnd(), passiveDCList);
+            ReleaseDCList(passiveDCList);
             mr = mrConsume;
             break;
       }
@@ -1505,9 +1520,9 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
       case WM_SIZE:
       {
           RECT r;
-          // fix 4128317 : use GetClientRect for full 32-bit int precision and
+          // fix 4128317 : use GetWindowRect for full 32-bit int precision and
           // to avoid negative client area dimensions overflowing 16-bit params - robi
-          ::GetClientRect( GetHWnd(), &r );
+          ::GetWindowRect(GetHWnd(), &r);
           mr = WmSize(static_cast<UINT>(wParam), r.right - r.left, r.bottom - r.top);
           //mr = WmSize(wParam, LOWORD(lParam), HIWORD(lParam));
           SetCompositionWindow(r);
@@ -1631,6 +1646,9 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
       case WM_NCRBUTTONDOWN:
            mr = WmNcMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), RIGHT_BUTTON);
            break;
+        case WM_NCMOUSEMOVE:
+            mr = WmNcMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            break;
       case WM_LBUTTONUP:
           if (ignoreNextLBTNUP) {
               ignoreNextLBTNUP = FALSE;
@@ -1655,6 +1673,9 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
       case WM_MOUSEHWHEEL:
       case WM_AWT_MOUSEENTER:
       case WM_AWT_MOUSEEXIT:
+          if (IsMouseEventFromTouch() && PROCESS_TOUCH_EVENTS) {
+              break;
+          }
           curPos = ::GetMessagePos();
           POINT myPos;
           myPos.x = GET_X_LPARAM(curPos);
@@ -1732,8 +1753,10 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           }
           break;
       case WM_TOUCH:
-          WmTouch(wParam, lParam);
-          break;
+          if (PROCESS_TOUCH_EVENTS) {
+              WmTouch(wParam, lParam);
+              break;
+          }
       case WM_SETCURSOR:
           mr = mrDoDefault;
           if (LOWORD(lParam) == HTCLIENT) {
@@ -1817,9 +1840,6 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           ::ToAsciiEx(VK_SPACE, ::MapVirtualKey(VK_SPACE, 0),
                       keyboardState, &ignored, 0, GetKeyboardLayout());
 
-          // Set this flag to block ActivateKeyboardLayout from
-          // WInputMethod.activate()
-          g_bUserHasChangedInputLang = TRUE;
           CallProxyDefWindowProc(message, wParam, lParam, retValue, mr);
           break;
       }
@@ -1828,7 +1848,6 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
                           "new = 0x%08X",
                           GetHWnd(), GetClassName(), (UINT)lParam);
           mr = WmInputLangChange(static_cast<UINT>(wParam), reinterpret_cast<HKL>(lParam));
-          g_bUserHasChangedInputLang = TRUE;
           CallProxyDefWindowProc(message, wParam, lParam, retValue, mr);
           // should return non-zero if we process this message
           retValue = 1;
@@ -1888,7 +1907,7 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           mr = WmNcPaint((HRGN)wParam);
           break;
       case WM_NCHITTEST:
-          mr = WmNcHitTest(LOWORD(lParam), HIWORD(lParam), retValue);
+          mr = WmNcHitTest(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), retValue);
           break;
 
       case WM_AWT_RESHAPE_COMPONENT: {
@@ -1971,6 +1990,10 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           break;
       case WM_AWT_WINDOW_SETACTIVE:
           retValue = (LRESULT)((AwtWindow*)this)->AwtSetActiveWindow((BOOL)wParam);
+          mr = mrConsume;
+          break;
+      case WM_AWT_WINDOW_TOFRONT:
+          ((AwtWindow*)this)->ToFront();
           mr = mrConsume;
           break;
 
@@ -2233,8 +2256,8 @@ void AwtComponent::PaintUpdateRgn(const RECT *insets)
          */
         RECT* r = (RECT*)(buffer + rgndata->rdh.dwSize);
         RECT* un[2] = {0, 0};
-    DWORD i;
-    for (i = 0; i < rgndata->rdh.nCount; i++, r++) {
+        DWORD i;
+        for (i = 0; i < rgndata->rdh.nCount; i++, r++) {
             int width = r->right-r->left;
             int height = r->bottom-r->top;
             if (width > 0 && height > 0) {
@@ -2248,11 +2271,12 @@ void AwtComponent::PaintUpdateRgn(const RECT *insets)
         }
         for(i = 0; i < 2; i++) {
             if (un[i] != 0) {
+                ScaleDownRect(*un[i]);
                 DoCallback("handleExpose", "(IIII)V",
-                           ScaleDownX(un[i]->left),
-                           ScaleDownY(un[i]->top),
-                           ScaleDownX(un[i]->right - un[i]->left),
-                           ScaleDownY(un[i]->bottom - un[i]->top));
+                           un[i]->left,
+                           un[i]->top,
+                           un[i]->right - un[i]->left,
+                           un[i]->bottom - un[i]->top);
             }
         }
         delete [] buffer;
@@ -2309,6 +2333,9 @@ MsgRouting AwtComponent::WmNcMouseDown(WPARAM hitTest, int x, int y, int button)
 MsgRouting AwtComponent::WmNcMouseUp(WPARAM hitTest, int x, int y, int button) {
     return mrDoDefault;
 }
+MsgRouting AwtComponent::WmNcMouseMove(WPARAM hitTest, int x, int y) {
+    return mrDoDefault;
+}
 
 MsgRouting AwtComponent::WmWindowPosChanging(LPARAM windowPos) {
     return mrDoDefault;
@@ -2319,34 +2346,97 @@ MsgRouting AwtComponent::WmWindowPosChanged(LPARAM windowPos) {
 
 void AwtComponent::WmTouch(WPARAM wParam, LPARAM lParam) {
     AwtToolkit& tk = AwtToolkit::GetInstance();
-    if (!tk.IsWin8OrLater() || !tk.IsTouchKeyboardAutoShowEnabled()) {
+    if (!tk.IsWin8OrLater()) {
         return;
     }
 
     UINT inputsCount = LOWORD(wParam);
     TOUCHINPUT* pInputs = new TOUCHINPUT[inputsCount];
-    if (pInputs != NULL) {
-        if (tk.TIGetTouchInputInfo((HTOUCHINPUT)lParam, inputsCount, pInputs,
-                sizeof(TOUCHINPUT)) != 0) {
-            for (UINT i = 0; i < inputsCount; i++) {
-                TOUCHINPUT ti = pInputs[i];
-                if (ti.dwFlags & TOUCHEVENTF_PRIMARY) {
-                    if (ti.dwFlags & TOUCHEVENTF_DOWN) {
-                        m_touchDownPoint.x = ti.x / 100;
-                        m_touchDownPoint.y = ti.y / 100;
-                        ::ScreenToClient(GetHWnd(), &m_touchDownPoint);
-                        m_touchDownOccurred = TRUE;
-                    } else if (ti.dwFlags & TOUCHEVENTF_UP) {
-                        m_touchUpPoint.x = ti.x / 100;
-                        m_touchUpPoint.y = ti.y / 100;
-                        ::ScreenToClient(GetHWnd(), &m_touchUpPoint);
-                        m_touchUpOccurred = TRUE;
-                    }
-                }
-            }
+    if (tk.TIGetTouchInputInfo((HTOUCHINPUT)lParam, inputsCount, pInputs,
+                               sizeof(TOUCHINPUT)) != 0) {
+        for (UINT i = 0; i < inputsCount; i++) {
+            WmTouchHandler(pInputs[i]);
         }
-        delete[] pInputs;
     }
+    delete[] pInputs;
+}
+
+BOOL AwtComponent::IsInsideTouchClickBoundaries(POINT p)
+{
+    return abs(p.x - m_touchBeginPoint.x) <= sun_awt_event_TouchEvent_CLICK_RADIUS &&
+           abs(p.y - m_touchBeginPoint.y) <= sun_awt_event_TouchEvent_CLICK_RADIUS;
+}
+
+POINT AwtComponent::TouchCoordsToLocal(LONG x, LONG y)
+{
+    POINT p{TOUCH_COORD_TO_PIXEL(x), TOUCH_COORD_TO_PIXEL(y)};
+    ::ScreenToClient(GetHWnd(), &p);
+    return p;
+}
+
+void AwtComponent::SendMouseWheelEventFromTouch(POINT p, jint modifiers, jint scrollType, jint pixels)
+{
+    SendMouseWheelEvent(java_awt_event_MouseEvent_MOUSE_WHEEL, ::JVM_CurrentTimeMillis(NULL, 0),
+                        p.x, p.y, modifiers, /*clickCount*/ 0, /*popupTrigger*/ JNI_FALSE,
+                         scrollType, /*scrollAmount*/ 1, pixels,
+                        static_cast<double>(pixels), /*msg*/ nullptr);
+}
+
+void AwtComponent::SendMouseEventFromTouch(jint id, POINT p, jint modifiers, jint clickCount, jint button)
+{
+    SendMouseEvent(id, ::JVM_CurrentTimeMillis(NULL, 0), p.x, p.y,
+                   modifiers, clickCount, /*popupTrigger*/ JNI_FALSE,
+                   button, /*msg*/ nullptr, /*causedByTouchEvent*/ TRUE);
+}
+
+void AwtComponent::SendButtonPressEventFromTouch(POINT p, jint modifiers)
+{
+    SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_MOVED, p, modifiers, 0, java_awt_event_MouseEvent_NOBUTTON);
+    SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_PRESSED, p, modifiers, 1, java_awt_event_MouseEvent_BUTTON1);
+    SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_RELEASED, p, modifiers, 1, java_awt_event_MouseEvent_BUTTON1);
+    SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_CLICKED, p, modifiers, 1, java_awt_event_MouseEvent_BUTTON1);
+}
+
+void AwtComponent::WmTouchHandler(const TOUCHINPUT& touchInput)
+{
+    // skip multitouch, remove after gesture support
+    if (!(touchInput.dwFlags & TOUCHEVENTF_PRIMARY)) {
+        return;
+    }
+
+    const jint modifiers = GetJavaModifiers();
+    const POINT p = TouchCoordsToLocal(touchInput.x, touchInput.y);
+
+    if (touchInput.dwFlags & TOUCHEVENTF_DOWN) {
+        m_touchBeginPoint = p;
+        m_isTouchScroll = FALSE;
+        SendMouseWheelEventFromTouch(p, modifiers, sun_awt_event_TouchEvent_TOUCH_BEGIN, 1);
+    } else if (touchInput.dwFlags & TOUCHEVENTF_MOVE) {
+        if (!m_isTouchScroll && IsInsideTouchClickBoundaries(p)) {
+            return;
+        }
+        m_isTouchScroll = TRUE;
+
+        const jint deltaY = ScaleDownY(static_cast<int>(m_lastTouchPoint.y - p.y));
+        if (deltaY != 0) {
+            const jint scrollModifiers = modifiers & ~java_awt_event_InputEvent_SHIFT_DOWN_MASK;
+            SendMouseWheelEventFromTouch(p, scrollModifiers, sun_awt_event_TouchEvent_TOUCH_UPDATE, deltaY);
+        }
+        
+        const jint deltaX = ScaleDownX(static_cast<int>(m_lastTouchPoint.x - p.x));
+        if (deltaX != 0) {
+            const jint scrollModifiers = modifiers | java_awt_event_InputEvent_SHIFT_DOWN_MASK;
+            SendMouseWheelEventFromTouch(p, scrollModifiers, sun_awt_event_TouchEvent_TOUCH_UPDATE, deltaX);
+        }
+    } else if (touchInput.dwFlags & TOUCHEVENTF_UP) {
+        SendMouseWheelEventFromTouch(p, modifiers, sun_awt_event_TouchEvent_TOUCH_END, 1);
+
+        if (!m_isTouchScroll) {
+            SendButtonPressEventFromTouch(p, modifiers);
+        }
+    }
+
+    m_lastTouchPoint = p;
 }
 
 /* Double-click variables. */
@@ -2391,14 +2481,6 @@ MsgRouting AwtComponent::WmMouseDown(UINT flags, int x, int y, int button)
     m_mouseButtonClickAllowed |= GetButtonMK(button);
     lastTime = now;
 
-    BOOL causedByTouchEvent = FALSE;
-    if (m_touchDownOccurred &&
-        (abs(m_touchDownPoint.x - x) <= TOUCH_MOUSE_COORDS_DELTA) &&
-        (abs(m_touchDownPoint.y - y) <= TOUCH_MOUSE_COORDS_DELTA)) {
-        causedByTouchEvent = TRUE;
-        m_touchDownOccurred = FALSE;
-    }
-
     MSG msg;
     InitMessage(&msg, lastMessage, flags, MAKELPARAM(x, y), x, y);
 
@@ -2417,7 +2499,7 @@ MsgRouting AwtComponent::WmMouseDown(UINT flags, int x, int y, int button)
 
     SendMouseEvent(java_awt_event_MouseEvent_MOUSE_PRESSED, now, x, y,
                    GetJavaModifiers(), clickCount, JNI_FALSE,
-                   GetButton(button), &msg, causedByTouchEvent);
+                   GetButton(button), &msg, /*causedByTouchEvent*/ FALSE);
     /*
      * NOTE: this call is intentionally placed after all other code,
      * since AwtComponent::WmMouseDown() assumes that the cached id of the
@@ -2439,21 +2521,13 @@ MsgRouting AwtComponent::WmMouseDown(UINT flags, int x, int y, int button)
 
 MsgRouting AwtComponent::WmMouseUp(UINT flags, int x, int y, int button)
 {
-    BOOL causedByTouchEvent = FALSE;
-    if (m_touchUpOccurred &&
-        (abs(m_touchUpPoint.x - x) <= TOUCH_MOUSE_COORDS_DELTA) &&
-        (abs(m_touchUpPoint.y - y) <= TOUCH_MOUSE_COORDS_DELTA)) {
-        causedByTouchEvent = TRUE;
-        m_touchUpOccurred = FALSE;
-    }
-
     MSG msg;
     InitMessage(&msg, lastMessage, flags, MAKELPARAM(x, y), x, y);
 
     SendMouseEvent(java_awt_event_MouseEvent_MOUSE_RELEASED, ::JVM_CurrentTimeMillis(NULL, 0),
                    x, y, GetJavaModifiers(), clickCount,
                    (GetButton(button) == java_awt_event_MouseEvent_BUTTON3 ?
-                    TRUE : FALSE), GetButton(button), &msg, causedByTouchEvent);
+                    TRUE : FALSE), GetButton(button), &msg, /*causedByTouchEvent*/ FALSE);
     /*
      * If no movement, then report a click following the button release.
      * When WM_MOUSEUP comes to a window without previous WM_MOUSEDOWN,
@@ -2716,9 +2790,12 @@ AwtComponent::GetJavaModifiers()
     if (HIBYTE(::GetKeyState(VK_MENU)) != 0) {
         modifiers |= java_awt_event_InputEvent_ALT_DOWN_MASK;
     }
-    if (HIBYTE(::GetKeyState(VK_RMENU)) != 0) {
-        modifiers |= java_awt_event_InputEvent_ALT_GRAPH_DOWN_MASK;
-    }
+// Reverted fix of JDK-8041928: MouseEvent.getModifiersEx gives wrong result
+// Because it breaks AltGr shortcuts.
+// See IDEA-287559, JBR-4207 for more info.
+//    if (HIBYTE(::GetKeyState(VK_RMENU)) != 0) {
+//        modifiers |= java_awt_event_InputEvent_ALT_GRAPH_DOWN_MASK;
+//    }
     if (HIBYTE(::GetKeyState(VK_MBUTTON)) != 0) {
        modifiers |= java_awt_event_InputEvent_BUTTON2_DOWN_MASK;
     }
@@ -2971,6 +3048,22 @@ static DynamicKeyMapEntry dynamicKeyMapTable[] = {
     {0, 0}
 };
 
+static DynamicKeyMapEntry latinNonAlphaNumKeyMapTable[] = {
+    {0x00BA,  java_awt_event_KeyEvent_VK_SEMICOLON}, // VK_OEM_1
+    {0x00BB,  java_awt_event_KeyEvent_VK_EQUALS}, // VK_OEM_PLUS
+    {0x00BC,  java_awt_event_KeyEvent_VK_COMMA}, // VK_OEM_COMMA
+    {0x00BD,  java_awt_event_KeyEvent_VK_MINUS}, // VK_OEM_MINUS
+    {0x00BE,  java_awt_event_KeyEvent_VK_PERIOD}, // VK_OEM_PERIOD
+    {0x00BF,  java_awt_event_KeyEvent_VK_SLASH}, // VK_OEM_2
+    {0x00C0,  java_awt_event_KeyEvent_VK_DEAD_GRAVE}, // VK_OEM_3
+    {0x00DB,  java_awt_event_KeyEvent_VK_OPEN_BRACKET}, // VK_OEM_4
+    {0x00DC,  java_awt_event_KeyEvent_VK_BACK_SLASH}, // VK_OEM_5
+    {0x00DD,  java_awt_event_KeyEvent_VK_CLOSE_BRACKET}, // VK_OEM_6
+    {0x00DE,  java_awt_event_KeyEvent_VK_QUOTE}, // VK_OEM_7
+    {0x00DF,  java_awt_event_KeyEvent_VK_UNDEFINED}, // VK_OEM_8
+    {0x00E2,  java_awt_event_KeyEvent_VK_UNDEFINED}, // VK_OEM_102
+    {0, 0}
+};
 
 
 // Auxiliary tables used to fill the above dynamic table.  We first
@@ -3257,6 +3350,16 @@ void AwtComponent::JavaKeyToWindowsKey(UINT javaKey,
     return;
 }
 
+static BOOL UseLatinNonAlphaNumKeycodes()
+{
+    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+    jclass cls = env->FindClass("sun/awt/event/KeyEventProcessing");
+    CHECK_NULL_RETURN(cls, TRUE);
+    jfieldID fieldID = env->GetStaticFieldID(cls, "useLatinNonAlphaNumKeycodes", "Z");
+    CHECK_NULL_RETURN(fieldID, TRUE);
+    return static_cast<BOOL>(env->GetStaticBooleanField(cls, fieldID));
+}
+
 UINT AwtComponent::WindowsKeyToJavaKey(UINT windowsKey, UINT modifiers, UINT character, BOOL isDeadKey)
 
 {
@@ -3298,6 +3401,16 @@ UINT AwtComponent::WindowsKeyToJavaKey(UINT windowsKey, UINT modifiers, UINT cha
     for (int i = 0; keyMapTable[i].windowsKey != 0; i++) {
         if (keyMapTable[i].windowsKey == windowsKey) {
             return keyMapTable[i].javaKey;
+        }
+    }
+
+    static const BOOL USE_LATIN_NON_ALPHA_NUM_KEYCODES = UseLatinNonAlphaNumKeycodes();
+    if (USE_LATIN_NON_ALPHA_NUM_KEYCODES) {
+        for (int i = 0; latinNonAlphaNumKeyMapTable[i].windowsKey != 0; i++) {
+            if (latinNonAlphaNumKeyMapTable[i].windowsKey == windowsKey &&
+                latinNonAlphaNumKeyMapTable[i].javaKey != java_awt_event_KeyEvent_VK_UNDEFINED) {
+                return latinNonAlphaNumKeyMapTable[i].javaKey;
+            }
         }
     }
 
@@ -3888,8 +4001,8 @@ void AwtComponent::OpenCandidateWindow(int x, int y)
     }
     HWND hTop = GetTopLevelParentForWindow(hWnd);
     ::ClientToScreen(hTop, &p);
-    int sx = ScaleUpX(x) - p.x;
-    int sy = ScaleUpY(y) - p.y;
+    int sx = ScaleUpAbsX(x) - p.x;
+    int sy = ScaleUpAbsY(y) - p.y;
     if (!m_bitsCandType) {
         SetCandidateWindow(m_bitsCandType, sx, sy);
         return;
@@ -3906,11 +4019,11 @@ void AwtComponent::SetCandidateWindow(int iCandType, int x, int y)
     HIMC hIMC = ImmGetContext(hwnd);
     if (hIMC) {
         CANDIDATEFORM cf;
-        cf.dwStyle = CFS_POINT;
+        cf.dwStyle = CFS_CANDIDATEPOS;
         ImmGetCandidateWindow(hIMC, 0, &cf);
         if (x != cf.ptCurrentPos.x || y != cf.ptCurrentPos.y) {
             cf.dwIndex = iCandType;
-            cf.dwStyle = CFS_POINT;
+            cf.dwStyle = CFS_CANDIDATEPOS;
             cf.ptCurrentPos = {x, y};
             cf.rcArea = {0, 0, 0, 0};
             ImmSetCandidateWindow(hIMC, &cf);
@@ -4626,8 +4739,16 @@ MsgRouting AwtComponent::WmNcPaint(HRGN hrgn)
     return mrDoDefault;
 }
 
-MsgRouting AwtComponent::WmNcHitTest(UINT x, UINT y, LRESULT &retVal)
+MsgRouting AwtComponent::WmNcHitTest(int x, int y, LRESULT &retVal)
 {
+    AwtWindow* window = GetContainer();
+    if (window == NULL || window->IsSimpleWindow()) return mrDoDefault;
+    AwtFrame* frame = (AwtFrame*)window;
+    if (frame->HasCustomDecoration() &&
+        frame->WmNcHitTest(x, y, retVal) == mrConsume) {
+        retVal = HTTRANSPARENT;
+        return mrConsume;
+    }
     return mrDoDefault;
 }
 
@@ -4767,32 +4888,79 @@ void AwtComponent::FillAlpha(void *bitmapBits, SIZE &size, BYTE alpha)
     }
 }
 
+int AwtComponent::GetScreenImOn() {
+    HWND hWindow = GetAncestor(GetHWnd(), GA_ROOT);
+    AwtComponent *comp = AwtComponent::GetComponent(hWindow);
+    if (comp && comp->IsTopLevel()) {
+        return comp->GetScreenImOn();
+    }
+    return AwtWin32GraphicsDevice::DeviceIndexForWindow(hWindow);
+}
+
 int AwtComponent::ScaleUpX(int x) {
-    int screen = AwtWin32GraphicsDevice::DeviceIndexForWindow(GetHWnd());
+    int screen = GetScreenImOn();
     Devices::InstanceAccess devices;
     AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
     return device == NULL ? x : device->ScaleUpX(x);
 }
 
+int AwtComponent::ScaleUpAbsX(int x) {
+    int screen = GetScreenImOn();
+    Devices::InstanceAccess devices;
+    AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
+    return device == NULL ? x : device->ScaleUpAbsX(x);
+}
+
 int AwtComponent::ScaleUpY(int y) {
-    int screen = AwtWin32GraphicsDevice::DeviceIndexForWindow(GetHWnd());
+    int screen = GetScreenImOn();
     Devices::InstanceAccess devices;
     AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
     return device == NULL ? y : device->ScaleUpY(y);
 }
 
+int AwtComponent::ScaleUpAbsY(int y) {
+    int screen = GetScreenImOn();
+    Devices::InstanceAccess devices;
+    AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
+    return device == NULL ? y : device->ScaleUpAbsY(y);
+}
+
 int AwtComponent::ScaleDownX(int x) {
-    int screen = AwtWin32GraphicsDevice::DeviceIndexForWindow(GetHWnd());
+    int screen = GetScreenImOn();
     Devices::InstanceAccess devices;
     AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
     return device == NULL ? x : device->ScaleDownX(x);
 }
 
+int AwtComponent::ScaleDownAbsX(int x) {
+    int screen = GetScreenImOn();
+    Devices::InstanceAccess devices;
+    AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
+    return device == NULL ? x : device->ScaleDownAbsX(x);
+}
+
 int AwtComponent::ScaleDownY(int y) {
-    int screen = AwtWin32GraphicsDevice::DeviceIndexForWindow(GetHWnd());
+    int screen = GetScreenImOn();
     Devices::InstanceAccess devices;
     AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
     return device == NULL ? y : device->ScaleDownY(y);
+}
+
+int AwtComponent::ScaleDownAbsY(int y) {
+    int screen = GetScreenImOn();
+    Devices::InstanceAccess devices;
+    AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
+    return device == NULL ? y : device->ScaleDownAbsY(y);
+}
+
+void AwtComponent::ScaleDownRect(RECT& r) {
+    int screen = GetScreenImOn();
+    Devices::InstanceAccess devices;
+    AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
+    if (device == NULL) return;
+    float sx = device->GetScaleX();
+    float sy = device->GetScaleY();
+    ::SetRect(&r, floor(r.left / sx), floor(r.top / sy), ceil(r.right / sx), ceil(r.bottom / sy));
 }
 
 jintArray AwtComponent::CreatePrintedPixels(SIZE &loc, SIZE &size, int alpha) {
@@ -5090,7 +5258,7 @@ void AwtComponent::SendMouseEvent(jint id, jlong when, jint x, jint y,
                                         id, when, modifiers,
                                         ScaleDownX(x + insets.left),
                                         ScaleDownY(y + insets.top),
-                                        ScaleDownX(xAbs), ScaleDownY(yAbs),
+                                        ScaleDownAbsX(xAbs), ScaleDownAbsY(yAbs),
                                         clickCount, popupTrigger, button);
 
     if (safe_ExceptionOccurred(env)) {
@@ -5163,8 +5331,8 @@ AwtComponent::SendMouseWheelEvent(jint id, jlong when, jint x, jint y,
                                              id, when, modifiers,
                                              ScaleDownX(x + insets.left),
                                              ScaleDownY(y + insets.top),
-                                             ScaleDownX(xAbs),
-                                             ScaleDownY(yAbs),
+                                             ScaleDownAbsX(xAbs),
+                                             ScaleDownAbsY(yAbs),
                                              clickCount, popupTrigger,
                                              scrollType, scrollAmount,
                                              roundedWheelRotation, preciseWheelRotation);
@@ -5674,8 +5842,8 @@ jobject AwtComponent::_GetLocationOnScreen(void *param)
         RECT rect;
         VERIFY(::GetWindowRect(p->GetHWnd(),&rect));
         result = JNU_NewObjectByName(env, "java/awt/Point", "(II)V",
-                                     p->ScaleDownX(rect.left),
-                                     p->ScaleDownY(rect.top));
+                                     p->ScaleDownAbsX(rect.left),
+                                     p->ScaleDownAbsY(rect.top));
     }
 ret:
     env->DeleteGlobalRef(self);
@@ -6531,11 +6699,11 @@ JNIEXPORT void JNICALL
 Java_java_awt_Component_initIDs(JNIEnv *env, jclass cls)
 {
     TRY;
-    jclass inputEventClazz = env->FindClass("java/awt/event/InputEvent");
-    CHECK_NULL(inputEventClazz);
-    jmethodID getButtonDownMasksID = env->GetStaticMethodID(inputEventClazz, "getButtonDownMasks", "()[I");
-    CHECK_NULL(getButtonDownMasksID);
-    jintArray obj = (jintArray)env->CallStaticObjectMethod(inputEventClazz, getButtonDownMasksID);
+    jboolean ignoreException;
+    jintArray obj = (jintArray)JNU_CallStaticMethodByName(env, &ignoreException,
+                                                          "java/awt/event/InputEvent",
+                                                          "getButtonDownMasks", "()[I").l;
+    CHECK_NULL(obj);
     jint * tmp = env->GetIntArrayElements(obj, JNI_FALSE);
     CHECK_NULL(tmp);
     jsize len = env->GetArrayLength(obj);
@@ -7436,6 +7604,19 @@ DCItem *DCList::RemoveAllDCs(HWND hWnd)
     return newListPtr;
 }
 
+/**
+ * Remove all DCs from the DC list.  Return the list of those
+ * DC's to the caller (which will then probably want to
+ * call ReleaseDC() for the returned DCs).
+ */
+DCItem *DCList::RemoveAllDCs()
+{
+    listLock.Enter();
+    DCItem *newListPtr = head;
+    head = NULL;
+    listLock.Leave();
+    return newListPtr;
+}
 
 /**
  * Realize palettes of all existing HDC objects
@@ -7458,8 +7639,7 @@ void MoveDCToPassiveList(HDC hDC, HWND hWnd) {
     }
 }
 
-void ReleaseDCList(HWND hwnd, DCList &list) {
-    DCItem *removedDCs = list.RemoveAllDCs(hwnd);
+static void ReleaseDCList(DCItem *removedDCs) {
     while (removedDCs) {
         DCItem *tmpDCList = removedDCs;
         DASSERT(::GetObjectType(tmpDCList->hDC) == OBJ_DC);
@@ -7472,4 +7652,12 @@ void ReleaseDCList(HWND hwnd, DCList &list) {
         removedDCs = removedDCs->next;
         delete tmpDCList;
     }
+}
+
+void ReleaseDCList(HWND hwnd, DCList &list) {
+    ReleaseDCList(list.RemoveAllDCs(hwnd));
+}
+
+void ReleaseDCList(DCList &list) {
+    ReleaseDCList(list.RemoveAllDCs());
 }

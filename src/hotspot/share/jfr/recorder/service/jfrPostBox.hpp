@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,8 @@
 
 #include "jfr/utilities/jfrAllocation.hpp"
 
+class JavaThread;
+
 #define MSGBIT(e) (1<<(e))
 
 enum JFR_Msg {
@@ -40,7 +42,6 @@ enum JFR_Msg {
   MSG_WAKEUP,
   MSG_SHUTDOWN,
   MSG_VM_ERROR,
-  MSG_DEADBUFFER,
   MSG_FLUSHPOINT,
   MSG_NO_OF_MSGS
 };
@@ -55,7 +56,7 @@ enum JFR_Msg {
  *  MSG_STOP (2)            ; MSGBIT(MSG_STOP) == (1 << 0x2) == 0x4
  *  MSG_ROTATE (3)          ; MSGBIT(MSG_ROTATE) == (1 << 0x3) == 0x8
  *  MSG_VM_ERROR (8)        ; MSGBIT(MSG_VM_ERROR) == (1 << 0x8) == 0x100
- *  MSG_FLUSHPOINT (10)     ; MSGBIT(MSG_FLUSHPOINT) == (1 << 0xa) == 0x400
+ *  MSG_FLUSHPOINT (9)     ; MSGBIT(MSG_FLUSHPOINT) == (1 << 0x9) == 0x200
  *
  *  Asynchronous messages (posting thread returns immediately upon deposit):
  *
@@ -63,7 +64,6 @@ enum JFR_Msg {
  *  MSG_CHECKPOINT (5)      ; MSGBIT(CHECKPOINT) == (1 << 0x5) == 0x20
  *  MSG_WAKEUP (6)          ; MSGBIT(WAKEUP) == (1 << 0x6) == 0x40
  *  MSG_SHUTDOWN (7)        ; MSGBIT(MSG_SHUTDOWN) == (1 << 0x7) == 0x80
- *  MSG_DEADBUFFER (9)      ; MSGBIT(MSG_DEADBUFFER) == (1 << 0x9) == 0x200
  */
 
 class JfrPostBox : public JfrCHeapObj {
@@ -87,7 +87,7 @@ class JfrPostBox : public JfrCHeapObj {
   void deposit(int new_messages);
   bool is_message_processed(uintptr_t serial_id) const;
 
-  friend void recorderthread_entry(JavaThread*, Thread*);
+  friend void recorderthread_entry(JavaThread*, JavaThread*);
   // for the friend declaration above
   bool is_empty() const;
   int collect();

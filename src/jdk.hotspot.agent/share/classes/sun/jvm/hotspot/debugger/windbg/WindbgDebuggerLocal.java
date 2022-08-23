@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,8 +28,10 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import sun.jvm.hotspot.debugger.*;
+import sun.jvm.hotspot.debugger.aarch64.*;
 import sun.jvm.hotspot.debugger.amd64.*;
 import sun.jvm.hotspot.debugger.x86.*;
+import sun.jvm.hotspot.debugger.windbg.aarch64.*;
 import sun.jvm.hotspot.debugger.windbg.amd64.*;
 import sun.jvm.hotspot.debugger.windbg.x86.*;
 import sun.jvm.hotspot.debugger.win32.coff.*;
@@ -59,15 +61,15 @@ public class WindbgDebuggerLocal extends DebuggerBase implements WindbgDebugger 
 
   // Symbol lookup support
   // This is a map of library names to DLLs
-  private Map nameToDllMap;
+  private Map<String, DLL> nameToDllMap;
 
   // C/C++ debugging support
-  private List/*<LoadObject>*/ loadObjects;
+  private List<LoadObject> loadObjects;
   private CDebugger cdbg;
 
   // thread access
-  private Map threadIntegerRegisterSet;
-  private List threadList;
+  private Map<Long, long[]> threadIntegerRegisterSet;
+  private List<ThreadProxy> threadList;
 
   // windbg native interface pointers
 
@@ -113,6 +115,8 @@ public class WindbgDebuggerLocal extends DebuggerBase implements WindbgDebugger 
        threadFactory = new WindbgX86ThreadFactory(this);
     } else if (cpu.equals("amd64")) {
        threadFactory = new WindbgAMD64ThreadFactory(this);
+    } else if (cpu.equals("aarch64")) {
+      threadFactory = new WindbgAARCH64ThreadFactory(this);
     }
 
     if (useCache) {
@@ -137,7 +141,7 @@ public class WindbgDebuggerLocal extends DebuggerBase implements WindbgDebugger 
   }
 
   /** From the Debugger interface via JVMDebugger */
-  public List getProcessList() throws DebuggerException {
+  public List<ProcessInfo> getProcessList() throws DebuggerException {
     return null;
   }
 
@@ -158,7 +162,7 @@ public class WindbgDebuggerLocal extends DebuggerBase implements WindbgDebugger 
     isCore = true;
   }
 
-  public List getLoadObjectList() {
+  public List<LoadObject> getLoadObjectList() {
     requireAttach();
     return loadObjects;
   }
@@ -341,7 +345,7 @@ public class WindbgDebuggerLocal extends DebuggerBase implements WindbgDebugger 
 
   private synchronized void setThreadIntegerRegisterSet(long threadId,
                                                long[] regs) {
-    threadIntegerRegisterSet.put(new Long(threadId), regs);
+    threadIntegerRegisterSet.put(threadId, regs);
   }
 
   private synchronized void addThread(long sysId) {
@@ -351,10 +355,10 @@ public class WindbgDebuggerLocal extends DebuggerBase implements WindbgDebugger 
   public synchronized long[] getThreadIntegerRegisterSet(long threadId)
     throws DebuggerException {
     requireAttach();
-    return (long[]) threadIntegerRegisterSet.get(new Long(threadId));
+    return (long[]) threadIntegerRegisterSet.get(threadId);
   }
 
-  public synchronized List getThreadList() throws DebuggerException {
+  public synchronized List<ThreadProxy> getThreadList() throws DebuggerException {
     requireAttach();
     return threadList;
   }
@@ -438,10 +442,10 @@ public class WindbgDebuggerLocal extends DebuggerBase implements WindbgDebugger 
 
   private void attachInit() {
     checkAttached();
-    loadObjects = new ArrayList();
-    nameToDllMap = new HashMap();
-    threadIntegerRegisterSet = new HashMap();
-    threadList = new ArrayList();
+    loadObjects = new ArrayList<>();
+    nameToDllMap = new HashMap<>();
+    threadIntegerRegisterSet = new HashMap<>();
+    threadList = new ArrayList<>();
   }
 
   private void resetNativePointers() {
@@ -539,7 +543,7 @@ public class WindbgDebuggerLocal extends DebuggerBase implements WindbgDebugger 
     String dbgengPath   = null;
     String dbghelpPath  = null;
     String saprocPath = null;
-    List   searchList   = new ArrayList();
+    List<String> searchList = new ArrayList<>();
 
     boolean loadLibraryDEBUG =
         System.getProperty("sun.jvm.hotspot.loadLibrary.DEBUG") != null;

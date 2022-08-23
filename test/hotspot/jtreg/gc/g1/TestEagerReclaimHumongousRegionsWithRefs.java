@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,12 +31,11 @@ package gc.g1;
  * up the heap with humongous objects and create a remembered set entry from an object by
  * referencing that we know is in the old gen. After changing this reference, the object
  * should still be eagerly reclaimable to avoid Full GC.
- * @key gc
  * @requires vm.gc.G1
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management
- * @run main gc.g1.TestEagerReclaimHumongousRegionsWithRefs
+ * @run driver gc.g1.TestEagerReclaimHumongousRegionsWithRefs
  */
 
 import java.util.regex.Pattern;

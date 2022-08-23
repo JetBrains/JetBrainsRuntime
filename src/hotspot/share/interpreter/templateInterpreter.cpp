@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,20 +31,27 @@
 #include "interpreter/templateTable.hpp"
 #include "logging/log.hpp"
 #include "memory/resourceArea.hpp"
+#include "prims/jvmtiExport.hpp"
 #include "runtime/safepoint.hpp"
 #include "runtime/timerTrace.hpp"
 #include "utilities/copy.hpp"
 
-#ifndef CC_INTERP
-
 # define __ _masm->
 
-void TemplateInterpreter::initialize() {
-  if (_code != NULL) return;
+void TemplateInterpreter::initialize_stub() {
   // assertions
+  assert(_code == NULL, "must only initialize once");
   assert((int)Bytecodes::number_of_codes <= (int)DispatchTable::length,
          "dispatch table too small");
 
+  // allocate interpreter
+  int code_size = InterpreterCodeSize;
+  NOT_PRODUCT(code_size *= 4;)  // debug uses extra interpreter code space
+  _code = new StubQueue(new InterpreterCodeletInterface, code_size, NULL,
+                        "Interpreter");
+}
+
+void TemplateInterpreter::initialize_code() {
   AbstractInterpreter::initialize();
 
   TemplateTable::initialize();
@@ -52,10 +59,6 @@ void TemplateInterpreter::initialize() {
   // generate interpreter
   { ResourceMark rm;
     TraceTime timer("Interpreter generation", TRACETIME_LOG(Info, startuptime));
-    int code_size = InterpreterCodeSize;
-    NOT_PRODUCT(code_size *= 4;)  // debug uses extra interpreter code space
-    _code = new StubQueue(new InterpreterCodeletInterface, code_size, NULL,
-                          "Interpreter");
     TemplateInterpreterGenerator g(_code);
     // Free the unused memory not occupied by the interpreter and the stubs
     _code->deallocate_unused_tail();
@@ -102,6 +105,19 @@ EntryPoint::EntryPoint(address bentry, address zentry, address centry, address s
   _entry[vtos] = ventry;
 }
 
+EntryPoint::EntryPoint(address aentry, address ientry, address lentry, address fentry, address dentry, address ventry) {
+  assert(number_of_states == 10, "check the code below");
+  _entry[btos] = ientry;
+  _entry[ztos] = ientry;
+  _entry[ctos] = ientry;
+  _entry[stos] = ientry;
+  _entry[atos] = aentry;
+  _entry[itos] = ientry;
+  _entry[ltos] = lentry;
+  _entry[ftos] = fentry;
+  _entry[dtos] = dentry;
+  _entry[vtos] = ventry;
+}
 
 void EntryPoint::set_entry(TosState state, address entry) {
   assert(0 <= state && state < number_of_states, "state out of bounds");
@@ -365,5 +381,3 @@ bool TemplateInterpreter::bytecode_should_reexecute(Bytecodes::Code code) {
 InterpreterCodelet* TemplateInterpreter::codelet_containing(address pc) {
   return (InterpreterCodelet*)_code->stub_containing(pc);
 }
-
-#endif // !CC_INTERP

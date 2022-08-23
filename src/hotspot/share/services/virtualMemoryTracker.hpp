@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,8 @@
 #if INCLUDE_NMT
 
 #include "memory/allocation.hpp"
-#include "memory/metaspace.hpp"
+#include "memory/metaspace.hpp" // For MetadataType
+#include "memory/metaspaceStats.hpp"
 #include "services/allocationSite.hpp"
 #include "services/nmtCommon.hpp"
 #include "utilities/linkedlist.hpp"
@@ -68,17 +69,18 @@ class VirtualMemory {
 };
 
 // Virtual memory allocation site, keeps track where the virtual memory is reserved.
-class VirtualMemoryAllocationSite : public AllocationSite<VirtualMemory> {
+class VirtualMemoryAllocationSite : public AllocationSite {
+  VirtualMemory _c;
  public:
   VirtualMemoryAllocationSite(const NativeCallStack& stack, MEMFLAGS flag) :
-    AllocationSite<VirtualMemory>(stack, flag) { }
+    AllocationSite(stack, flag) { }
 
-  inline void reserve_memory(size_t sz)  { data()->reserve_memory(sz);  }
-  inline void commit_memory (size_t sz)  { data()->commit_memory(sz);   }
-  inline void uncommit_memory(size_t sz) { data()->uncommit_memory(sz); }
-  inline void release_memory(size_t sz)  { data()->release_memory(sz);  }
-  inline size_t reserved() const  { return peek()->reserved(); }
-  inline size_t committed() const { return peek()->committed(); }
+  inline void reserve_memory(size_t sz)  { _c.reserve_memory(sz);  }
+  inline void commit_memory (size_t sz)  { _c.commit_memory(sz);   }
+  inline void uncommit_memory(size_t sz) { _c.uncommit_memory(sz); }
+  inline void release_memory(size_t sz)  { _c.release_memory(sz);  }
+  inline size_t reserved() const  { return _c.reserved(); }
+  inline size_t committed() const { return _c.committed(); }
 };
 
 class VirtualMemorySummary;
@@ -94,12 +96,6 @@ class VirtualMemorySnapshot : public ResourceObj {
  public:
   inline VirtualMemory* by_type(MEMFLAGS flag) {
     int index = NMTUtil::flag_to_index(flag);
-    return &_virtual_memory[index];
-  }
-
-  inline VirtualMemory* by_index(int index) {
-    assert(index >= 0, "Index out of bound");
-    assert(index < mt_number_of_types, "Index out of bound");
     return &_virtual_memory[index];
   }
 
@@ -210,11 +206,7 @@ class VirtualMemoryRegion {
   inline bool overlap_region(address addr, size_t sz) const {
     assert(sz > 0, "Invalid size");
     assert(size() > 0, "Invalid size");
-    VirtualMemoryRegion rgn(addr, sz);
-    return contain_address(addr) ||
-           contain_address(addr + sz - 1) ||
-           rgn.contain_address(base()) ||
-           rgn.contain_address(end() - 1);
+    return MAX2(addr, base()) < MIN2(addr + sz, end());
   }
 
   inline bool adjacent_to(address addr, size_t sz) const {
@@ -240,6 +232,24 @@ class VirtualMemoryRegion {
     set_size(size() + sz);
   }
 
+  // Returns 0 if regions overlap; 1 if this region follows rgn;
+  //  -1 if this region precedes rgn.
+  inline int compare(const VirtualMemoryRegion& rgn) const {
+    if (overlap_region(rgn.base(), rgn.size())) {
+      return 0;
+    } else if (base() >= rgn.end()) {
+      return 1;
+    } else {
+      assert(rgn.base() >= end(), "Sanity");
+      return -1;
+    }
+  }
+
+  // Returns true if regions overlap, false otherwise.
+  inline bool equals(const VirtualMemoryRegion& rgn) const {
+    return compare(rgn) == 0;
+  }
+
  protected:
   void set_base(address base) {
     assert(base != NULL, "Sanity check");
@@ -260,24 +270,6 @@ class CommittedMemoryRegion : public VirtualMemoryRegion {
  public:
   CommittedMemoryRegion(address addr, size_t size, const NativeCallStack& stack) :
     VirtualMemoryRegion(addr, size), _stack(stack) { }
-
-  inline int compare(const CommittedMemoryRegion& rgn) const {
-    if (overlap_region(rgn.base(), rgn.size())) {
-      return 0;
-    } else {
-      if (base() == rgn.base()) {
-        return 0;
-      } else if (base() > rgn.base()) {
-        return 1;
-      } else {
-        return -1;
-      }
-    }
-  }
-
-  inline bool equals(const CommittedMemoryRegion& rgn) const {
-    return compare(rgn) == 0;
-  }
 
   inline void set_call_stack(const NativeCallStack& stack) { _stack = stack; }
   inline const NativeCallStack* call_stack() const         { return &_stack; }
@@ -316,24 +308,6 @@ class ReservedMemoryRegion : public VirtualMemoryRegion {
   void  set_flag(MEMFLAGS flag);
   inline MEMFLAGS flag() const            { return _flag;  }
 
-  inline int compare(const ReservedMemoryRegion& rgn) const {
-    if (overlap_region(rgn.base(), rgn.size())) {
-      return 0;
-    } else {
-      if (base() == rgn.base()) {
-        return 0;
-      } else if (base() > rgn.base()) {
-        return 1;
-      } else {
-        return -1;
-      }
-    }
-  }
-
-  inline bool equals(const ReservedMemoryRegion& rgn) const {
-    return compare(rgn) == 0;
-  }
-
   // uncommitted thread stack bottom, above guard pages if there is any.
   address thread_stack_uncommitted_bottom() const;
 
@@ -367,6 +341,8 @@ class ReservedMemoryRegion : public VirtualMemoryRegion {
     return *this;
   }
 
+  const char* flag_name() { return NMTUtil::flag_to_name(_flag); }
+
  private:
   // The committed region contains the uncommitted region, subtract the uncommitted
   // region from this committed region
@@ -395,15 +371,18 @@ class VirtualMemoryTracker : AllStatic {
  public:
   static bool initialize(NMT_TrackingLevel level);
 
-  // Late phase initialization
-  static bool late_initialize(NMT_TrackingLevel level);
-
   static bool add_reserved_region (address base_addr, size_t size, const NativeCallStack& stack, MEMFLAGS flag = mtNone);
 
   static bool add_committed_region      (address base_addr, size_t size, const NativeCallStack& stack);
   static bool remove_uncommitted_region (address base_addr, size_t size);
   static bool remove_released_region    (address base_addr, size_t size);
+  static bool remove_released_region    (ReservedMemoryRegion* rgn);
   static void set_reserved_region_type  (address addr, MEMFLAGS flag);
+
+  // Given an existing memory mapping registered with NMT, split the mapping in
+  //  two. The newly created two mappings will be registered under the call
+  //  stack and the memory flags of the original section.
+  static bool split_reserved_region(address addr, size_t size, size_t split);
 
   // Walk virtual memory data structure for creating baseline, etc.
   static bool walk_virtual_memory(VirtualMemoryWalker* walker);
@@ -415,32 +394,6 @@ class VirtualMemoryTracker : AllStatic {
 
  private:
   static SortedLinkedList<ReservedMemoryRegion, compare_reserved_region_base>* _reserved_regions;
-};
-
-
-class MetaspaceSnapshot : public ResourceObj {
-private:
-  size_t  _reserved_in_bytes[Metaspace::MetadataTypeCount];
-  size_t  _committed_in_bytes[Metaspace::MetadataTypeCount];
-  size_t  _used_in_bytes[Metaspace::MetadataTypeCount];
-  size_t  _free_in_bytes[Metaspace::MetadataTypeCount];
-
-public:
-  MetaspaceSnapshot();
-  size_t reserved_in_bytes(Metaspace::MetadataType type)   const { assert_valid_metadata_type(type); return _reserved_in_bytes[type]; }
-  size_t committed_in_bytes(Metaspace::MetadataType type)  const { assert_valid_metadata_type(type); return _committed_in_bytes[type]; }
-  size_t used_in_bytes(Metaspace::MetadataType type)       const { assert_valid_metadata_type(type); return _used_in_bytes[type]; }
-  size_t free_in_bytes(Metaspace::MetadataType type)       const { assert_valid_metadata_type(type); return _free_in_bytes[type]; }
-
-  static void snapshot(MetaspaceSnapshot& s);
-
-private:
-  static void snapshot(Metaspace::MetadataType type, MetaspaceSnapshot& s);
-
-  static void assert_valid_metadata_type(Metaspace::MetadataType type) {
-    assert(type == Metaspace::ClassType || type == Metaspace::NonClassType,
-      "Invalid metadata type");
-  }
 };
 
 #endif // INCLUDE_NMT

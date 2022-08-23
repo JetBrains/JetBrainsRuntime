@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,16 +30,7 @@
 #include "utilities/debug.hpp"
 
 ZPage::ZPage(const ZVirtualMemory& vmem, const ZPhysicalMemory& pmem) :
-    _type(type_from_size(vmem.size())),
-    _numa_id((uint8_t)-1),
-    _seqnum(0),
-    _virtual(vmem),
-    _top(start()),
-    _livemap(object_max_count()),
-    _last_used(0),
-    _physical(pmem) {
-  assert_initialized();
-}
+    ZPage(type_from_size(vmem.size()), vmem, pmem) {}
 
 ZPage::ZPage(uint8_t type, const ZVirtualMemory& vmem, const ZPhysicalMemory& pmem) :
     _type(type),
@@ -49,7 +40,8 @@ ZPage::ZPage(uint8_t type, const ZVirtualMemory& vmem, const ZPhysicalMemory& pm
     _top(start()),
     _livemap(object_max_count()),
     _last_used(0),
-    _physical(pmem) {
+    _physical(pmem),
+    _node() {
   assert_initialized();
 }
 
@@ -58,6 +50,7 @@ ZPage::~ZPage() {}
 void ZPage::assert_initialized() const {
   assert(!_virtual.is_null(), "Should not be null");
   assert(!_physical.is_null(), "Should not be null");
+  assert(_virtual.size() == _physical.size(), "Virtual/Physical size mismatch");
   assert((_type == ZPageTypeSmall && size() == ZPageSizeSmall) ||
          (_type == ZPageTypeMedium && size() == ZPageSizeMedium) ||
          (_type == ZPageTypeLarge && is_aligned(size(), ZGranuleSize)),
@@ -69,6 +62,11 @@ void ZPage::reset() {
   _top = start();
   _livemap.reset();
   _last_used = 0;
+}
+
+void ZPage::reset_for_in_place_relocation() {
+  _seqnum = ZGlobalSeqNum;
+  _top = start();
 }
 
 ZPage* ZPage::retype(uint8_t type) {
@@ -99,6 +97,27 @@ ZPage* ZPage::split(uint8_t type, size_t size) {
   return page;
 }
 
+ZPage* ZPage::split_committed() {
+  // Split any committed part of this page into a separate page,
+  // leaving this page with only uncommitted physical memory.
+  const ZPhysicalMemory pmem = _physical.split_committed();
+  if (pmem.is_null()) {
+    // Nothing committed
+    return NULL;
+  }
+
+  assert(!_physical.is_null(), "Should not be null");
+
+  // Resize this page
+  const ZVirtualMemory vmem = _virtual.split(pmem.size());
+  _type = type_from_size(_virtual.size());
+  _top = start();
+  _livemap.resize(object_max_count());
+
+  // Create new page
+  return new ZPage(vmem, pmem);
+}
+
 void ZPage::print_on(outputStream* out) const {
   out->print_cr(" %-6s  " PTR_FORMAT " " PTR_FORMAT " " PTR_FORMAT " %s%s",
                 type_to_string(), start(), top(), end(),
@@ -108,4 +127,9 @@ void ZPage::print_on(outputStream* out) const {
 
 void ZPage::print() const {
   print_on(tty);
+}
+
+void ZPage::verify_live(uint32_t live_objects, size_t live_bytes) const {
+  guarantee(live_objects == _livemap.live_objects(), "Invalid number of live objects");
+  guarantee(live_bytes == _livemap.live_bytes(), "Invalid number of live bytes");
 }

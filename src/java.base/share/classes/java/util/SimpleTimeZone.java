@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -575,7 +575,7 @@ public class SimpleTimeZone extends TimeZone {
         return offset;
     }
 
-   /**
+    /**
      * Returns the difference in milliseconds between local time and
      * UTC, taking into account both the raw offset and the effect of
      * daylight saving, for the specified date and time.  This method
@@ -738,27 +738,22 @@ public class SimpleTimeZone extends TimeZone {
         cdate.setNormalizedYear(year);
         cdate.setMonth(month + 1);
         switch (mode) {
-        case DOM_MODE:
-            cdate.setDayOfMonth(dayOfMonth);
-            break;
-
-        case DOW_IN_MONTH_MODE:
-            cdate.setDayOfMonth(1);
-            if (dayOfMonth < 0) {
-                cdate.setDayOfMonth(cal.getMonthLength(cdate));
+            case DOM_MODE -> cdate.setDayOfMonth(dayOfMonth);
+            case DOW_IN_MONTH_MODE -> {
+                cdate.setDayOfMonth(1);
+                if (dayOfMonth < 0) {
+                    cdate.setDayOfMonth(cal.getMonthLength(cdate));
+                }
+                cdate = (BaseCalendar.Date) cal.getNthDayOfWeek(dayOfMonth, dayOfWeek, cdate);
             }
-            cdate = (BaseCalendar.Date) cal.getNthDayOfWeek(dayOfMonth, dayOfWeek, cdate);
-            break;
-
-        case DOW_GE_DOM_MODE:
-            cdate.setDayOfMonth(dayOfMonth);
-            cdate = (BaseCalendar.Date) cal.getNthDayOfWeek(1, dayOfWeek, cdate);
-            break;
-
-        case DOW_LE_DOM_MODE:
-            cdate.setDayOfMonth(dayOfMonth);
-            cdate = (BaseCalendar.Date) cal.getNthDayOfWeek(-1, dayOfWeek, cdate);
-            break;
+            case DOW_GE_DOM_MODE -> {
+                cdate.setDayOfMonth(dayOfMonth);
+                cdate = (BaseCalendar.Date) cal.getNthDayOfWeek(1, dayOfWeek, cdate);
+            }
+            case DOW_LE_DOM_MODE -> {
+                cdate.setDayOfMonth(dayOfMonth);
+                cdate = (BaseCalendar.Date) cal.getNthDayOfWeek(-1, dayOfWeek, cdate);
+            }
         }
         return cal.getTime(cdate) + timeOfDay;
     }
@@ -878,19 +873,14 @@ public class SimpleTimeZone extends TimeZone {
      * @return     True if the given {@code obj} is the same as this
      *             {@code SimpleTimeZone} object; false otherwise.
      */
-    public boolean equals(Object obj)
-    {
+    public boolean equals(Object obj) {
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof SimpleTimeZone)) {
-            return false;
-        }
 
-        SimpleTimeZone that = (SimpleTimeZone) obj;
-
-        return getID().equals(that.getID()) &&
-            hasSameRules(that);
+        return obj instanceof SimpleTimeZone that
+                && getID().equals(that.getID())
+                && hasSameRules(that);
     }
 
     /**
@@ -904,28 +894,26 @@ public class SimpleTimeZone extends TimeZone {
         if (this == other) {
             return true;
         }
-        if (!(other instanceof SimpleTimeZone)) {
-            return false;
-        }
-        SimpleTimeZone that = (SimpleTimeZone) other;
-        return rawOffset == that.rawOffset &&
-            useDaylight == that.useDaylight &&
-            (!useDaylight
-             // Only check rules if using DST
-             || (dstSavings == that.dstSavings &&
-                 startMode == that.startMode &&
-                 startMonth == that.startMonth &&
-                 startDay == that.startDay &&
-                 startDayOfWeek == that.startDayOfWeek &&
-                 startTime == that.startTime &&
-                 startTimeMode == that.startTimeMode &&
-                 endMode == that.endMode &&
-                 endMonth == that.endMonth &&
-                 endDay == that.endDay &&
-                 endDayOfWeek == that.endDayOfWeek &&
-                 endTime == that.endTime &&
-                 endTimeMode == that.endTimeMode &&
-                 startYear == that.startYear));
+        return other instanceof SimpleTimeZone that
+                && rawOffset == that.rawOffset
+                && useDaylight == that.useDaylight
+                && (!useDaylight ||
+                        // Only check rules if using DST
+                        (dstSavings == that.dstSavings
+                        && startMode == that.startMode
+                        && startMonth == that.startMonth
+                        && startDay == that.startDay
+                        && startDayOfWeek == that.startDayOfWeek
+                        && startTime == that.startTime
+                        && startTimeMode == that.startTimeMode
+                        && endMode == that.endMode
+                        && endMonth == that.endMonth
+                        && endDay == that.endDay
+                        && endDayOfWeek == that.endDayOfWeek
+                        && endTime == that.endTime
+                        && endTimeMode == that.endTimeMode
+                        && startYear == that.startYear)
+                    );
     }
 
     /**
@@ -1534,9 +1522,7 @@ public class SimpleTimeZone extends TimeZone {
          * rules anyway.
          */
         switch (startTimeMode) {
-        case UTC_TIME:
-            startTime += rawOffset;
-            break;
+            case UTC_TIME -> startTime += rawOffset;
         }
         while (startTime < 0) {
             startTime += millisPerDay;
@@ -1548,11 +1534,8 @@ public class SimpleTimeZone extends TimeZone {
         }
 
         switch (endTimeMode) {
-        case UTC_TIME:
-            endTime += rawOffset + dstSavings;
-            break;
-        case STANDARD_TIME:
-            endTime += dstSavings;
+            case UTC_TIME -> endTime += rawOffset + dstSavings;
+            case STANDARD_TIME -> endTime += dstSavings;
         }
         while (endTime < 0) {
             endTime += millisPerDay;

@@ -30,7 +30,7 @@
 //---------------------------------------------------------------------------------
 //
 //  Little Color Management System
-//  Copyright (c) 1998-2017 Marti Maria Saguer
+//  Copyright (c) 1998-2020 Marti Maria Saguer
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the "Software"),
@@ -62,7 +62,7 @@
 
 //      Little-Endian to Big-Endian
 
-// Adjust a word value after being readed/ before being written from/to an ICC profile
+// Adjust a word value after being read/ before being written from/to an ICC profile
 cmsUInt16Number CMSEXPORT  _cmsAdjustEndianess16(cmsUInt16Number Word)
 {
 #ifndef CMS_USE_BIG_ENDIAN
@@ -128,8 +128,8 @@ void CMSEXPORT  _cmsAdjustEndianess64(cmsUInt64Number* Result, cmsUInt64Number* 
     _cmsAssert(Result != NULL);
 
 #  ifdef CMS_DONT_USE_INT64
-    (*Result)[0] = QWord[0];
-    (*Result)[1] = QWord[1];
+    (*Result)[0] = (*QWord)[0];
+    (*Result)[1] = (*QWord)[1];
 #  else
     *Result = *QWord;
 #  endif
@@ -215,6 +215,8 @@ cmsBool CMSEXPORT  _cmsReadFloat32Number(cmsIOHANDLER* io, cmsFloat32Number* n)
         #if defined(_MSC_VER) && _MSC_VER < 1800
            return TRUE;
         #elif defined (__BORLANDC__)
+           return TRUE;
+        #elif !defined(_MSC_VER) && (defined(__STDC_VERSION__) && __STDC_VERSION__ < 199901L)
            return TRUE;
         #else
 
@@ -525,6 +527,7 @@ cmsBool CMSEXPORT _cmsIOPrintf(cmsIOHANDLER* io, const char* frm, ...)
     int len;
     cmsUInt8Number Buffer[2048];
     cmsBool rc;
+    cmsUInt8Number* ptr;
 
     _cmsAssert(io != NULL);
     _cmsAssert(frm != NULL);
@@ -535,6 +538,13 @@ cmsBool CMSEXPORT _cmsIOPrintf(cmsIOHANDLER* io, const char* frm, ...)
     if (len < 0) {
         va_end(args);
         return FALSE;   // Truncated, which is a fatal error for us
+    }
+
+    // setlocale may be active, no commas are needed in PS generator
+    // and PS generator is our only client
+    for (ptr = Buffer; *ptr; ptr++)
+    {
+        if (*ptr == ',') *ptr = '.';
     }
 
     rc = io ->Write(io, (cmsUInt32Number) len, Buffer);
@@ -702,15 +712,21 @@ struct _cmsContext_struct* _cmsGetContext(cmsContext ContextID)
         return &globalContext;
 
     // Search
+    _cmsEnterCriticalSectionPrimitive(&_cmsContextPoolHeadMutex);
+
     for (ctx = _cmsContextPoolHead;
          ctx != NULL;
          ctx = ctx ->Next) {
 
             // Found it?
-            if (id == ctx)
-                return ctx; // New-style context,
+        if (id == ctx)
+        {
+            _cmsLeaveCriticalSectionPrimitive(&_cmsContextPoolHeadMutex);
+            return ctx; // New-style context
+        }
     }
 
+    _cmsLeaveCriticalSectionPrimitive(&_cmsContextPoolHeadMutex);
     return &globalContext;
 }
 
@@ -799,6 +815,7 @@ cmsContext CMSEXPORT cmsCreateContext(void* Plugin, void* UserData)
 
     // See the comments regarding locking in lcms2_internal.h
     // for an explanation of why we need the following code.
+#ifndef CMS_NO_PTHREADS
 #ifdef CMS_IS_WINDOWS_
 #ifndef CMS_RELY_ON_WINDOWS_STATIC_MUTEX_INIT
     {
@@ -818,6 +835,7 @@ cmsContext CMSEXPORT cmsCreateContext(void* Plugin, void* UserData)
         if (*mutex == NULL || !ReleaseMutex(*mutex))
             return NULL;
     }
+#endif
 #endif
 #endif
 
@@ -942,25 +960,6 @@ cmsContext CMSEXPORT cmsDupContext(cmsContext ContextID, void* NewUserData)
     return (cmsContext) ctx;
 }
 
-
-/*
-static
-struct _cmsContext_struct* FindPrev(struct _cmsContext_struct* id)
-{
-    struct _cmsContext_struct* prev;
-
-    // Search for previous
-    for (prev = _cmsContextPoolHead;
-             prev != NULL;
-             prev = prev ->Next)
-    {
-        if (prev ->Next == id)
-            return prev;
-    }
-
-    return NULL;  // List is empty or only one element!
-}
-*/
 
 // Frees any resources associated with the given context,
 // and destroys the context placeholder.

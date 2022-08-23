@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,7 @@ ifeq ($(HAS_SPEC),)
 
   # Here are "global" targets, i.e. targets that can be executed without having
   # a configuration. This will define ALL_GLOBAL_TARGETS.
-  include $(topdir)/make/Help.gmk
+  include $(topdir)/make/Global.gmk
 
   # Targets provided by Init.gmk.
   ALL_INIT_TARGETS := print-modules print-targets print-configuration \
@@ -197,10 +197,10 @@ ifeq ($(HAS_SPEC),)
 	            COMPARE_BUILD="$(COMPARE_BUILD)" pre-compare-build && \
 	        $(MAKE) $(MFLAGS) $(MAKE_LOG_FLAGS) -r -R -j 1 -f $(topdir)/make/Init.gmk \
 	            SPEC=$(spec) HAS_SPEC=true $(MAKE_INIT_WITH_SPEC_ARGUMENTS) \
-	            COMPARE_BUILD="$(COMPARE_BUILD)" main && \
+	            COMPARE_BUILD="$(COMPARE_BUILD):NODRYRUN=true" main && \
 	        $(MAKE) $(MFLAGS) $(MAKE_LOG_FLAGS) -r -R -f $(topdir)/make/Init.gmk \
 	            SPEC=$(spec) HAS_SPEC=true ACTUAL_TOPDIR=$(topdir) \
-	            COMPARE_BUILD="$(COMPARE_BUILD)" post-compare-build && \
+	            COMPARE_BUILD="$(COMPARE_BUILD):NODRYRUN=true" post-compare-build && \
 	    ) \
 	  ) true ) \
 	  $(eval TARGET_DONE=true) \
@@ -225,6 +225,9 @@ else # HAS_SPEC=true
 
   # Parse COMPARE_BUILD (for makefile development)
   $(eval $(call ParseCompareBuild))
+
+  # Setup reproducible build environment
+  $(eval $(call SetupReproducibleBuild))
 
   # If no LOG= was given on command line, but we have a non-standard default
   # value, use that instead and re-parse log level.

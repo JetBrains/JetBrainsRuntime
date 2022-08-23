@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -159,19 +159,14 @@ class WindowsPathParser {
     /**
      * Remove redundant slashes from the rest of the path, forcing all slashes
      * into the preferred slash.
-    */
+     */
     private static String normalize(StringBuilder sb, String path, int off) {
         int len = path.length();
         off = nextNonSlash(path, off, len);
         int start = off;
-        char lastC = 0;
         while (off < len) {
             char c = path.charAt(off);
             if (isSlash(c)) {
-                if (lastC == ' ')
-                    throw new InvalidPathException(path,
-                                                   "Trailing char <" + lastC + ">",
-                                                   off - 1);
                 sb.append(path, start, off);
                 off = nextNonSlash(path, off, len);
                 if (off != len)   //no slash at the end of normalized path
@@ -182,15 +177,10 @@ class WindowsPathParser {
                     throw new InvalidPathException(path,
                                                    "Illegal char <" + c + ">",
                                                    off);
-                lastC = c;
                 off++;
             }
         }
         if (start != off) {
-            if (lastC == ' ')
-                throw new InvalidPathException(path,
-                                               "Trailing char <" + lastC + ">",
-                                               off - 1);
             sb.append(path, start, off);
         }
         return sb.toString();

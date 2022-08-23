@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+* Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
 * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 *
 * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,9 @@
   static size_t trace_id_size() { return sizeof(traceid); }
 
 #define INIT_ID(data) JfrTraceId::assign(data)
+#define ASSIGN_PRIMITIVE_CLASS_ID(data) JfrTraceId::assign_primitive_klass_id()
 #define REMOVE_ID(k) JfrTraceId::remove(k);
+#define REMOVE_METHOD_ID(method) JfrTraceId::remove(method);
 #define RESTORE_ID(k) JfrTraceId::restore(k);
 
 class JfrTraceFlag {

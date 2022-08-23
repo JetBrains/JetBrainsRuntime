@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
  */
 
 #include "precompiled.hpp"
+#include "jvm_io.h"
 #include "compiler/compilerDefinitions.hpp"
 #include "runtime/arguments.hpp"
 #include "runtime/vm_version.hpp"
@@ -90,16 +91,16 @@ int Abstract_VM_Version::_vm_build_number = VERSION_BUILD;
 #endif
 
 #ifndef VMTYPE
-  #ifdef TIERED
+  #if COMPILER1_AND_COMPILER2
     #define VMTYPE "Server"
-  #else // TIERED
+  #else // COMPILER1_AND_COMPILER2
   #ifdef ZERO
     #define VMTYPE "Zero"
   #else // ZERO
      #define VMTYPE COMPILER1_PRESENT("Client")   \
                     COMPILER2_PRESENT("Server")
   #endif // ZERO
-  #endif // TIERED
+  #endif // COMPILER1_AND_COMPILER2
 #endif
 
 #ifndef HOTSPOT_VM_DISTRO
@@ -116,7 +117,7 @@ const char* Abstract_VM_Version::vm_vendor() {
 #ifdef VENDOR
   return VENDOR;
 #else
-  return "Oracle Corporation";
+  return "JetBrains s.r.o.";
 #endif
 }
 
@@ -127,34 +128,24 @@ const char* Abstract_VM_Version::vm_info_string() {
       return UseSharedSpaces ? "interpreted mode, sharing" : "interpreted mode";
     case Arguments::_mixed:
       if (UseSharedSpaces) {
-        if (UseAOT) {
-          return "mixed mode, aot, sharing";
-#ifdef TIERED
-        } else if(is_client_compilation_mode_vm()) {
+        if (CompilationModeFlag::quick_only()) {
           return "mixed mode, emulated-client, sharing";
-#endif
         } else {
           return "mixed mode, sharing";
          }
       } else {
-        if (UseAOT) {
-          return "mixed mode, aot";
-#ifdef TIERED
-        } else if(is_client_compilation_mode_vm()) {
+        if (CompilationModeFlag::quick_only()) {
           return "mixed mode, emulated-client";
-#endif
         } else {
           return "mixed mode";
         }
       }
     case Arguments::_comp:
-#ifdef TIERED
-      if (is_client_compilation_mode_vm()) {
+      if (CompilationModeFlag::quick_only()) {
          return UseSharedSpaces ? "compiled mode, emulated-client, sharing" : "compiled mode, emulated-client";
       }
-#endif
-      return UseSharedSpaces ? "compiled mode, sharing"    : "compiled mode";
-  };
+      return UseSharedSpaces ? "compiled mode, sharing" : "compiled mode";
+  }
   ShouldNotReachHere();
   return "";
 }
@@ -175,7 +166,6 @@ const char* Abstract_VM_Version::jre_release_version() {
 
 #define OS       LINUX_ONLY("linux")             \
                  WINDOWS_ONLY("windows")         \
-                 SOLARIS_ONLY("solaris")         \
                  AIX_ONLY("aix")                 \
                  BSD_ONLY("bsd")
 
@@ -193,8 +183,7 @@ const char* Abstract_VM_Version::jre_release_version() {
                  AMD64_ONLY("amd64")             \
                  IA32_ONLY("x86")                \
                  IA64_ONLY("ia64")               \
-                 S390_ONLY("s390")               \
-                 SPARC_ONLY("sparc")
+                 S390_ONLY("s390")
 #endif // !ZERO
 #endif // !CPU
 
@@ -209,11 +198,7 @@ const char* Abstract_VM_Version::internal_vm_info_string() {
 
   #ifndef HOTSPOT_BUILD_COMPILER
     #ifdef _MSC_VER
-      #if _MSC_VER == 1600
-        #define HOTSPOT_BUILD_COMPILER "MS VC++ 10.0 (VS2010)"
-      #elif _MSC_VER == 1700
-        #define HOTSPOT_BUILD_COMPILER "MS VC++ 11.0 (VS2012)"
-      #elif _MSC_VER == 1800
+      #if _MSC_VER == 1800
         #define HOTSPOT_BUILD_COMPILER "MS VC++ 12.0 (VS2013)"
       #elif _MSC_VER == 1900
         #define HOTSPOT_BUILD_COMPILER "MS VC++ 14.0 (VS2015)"
@@ -237,22 +222,24 @@ const char* Abstract_VM_Version::internal_vm_info_string() {
         #define HOTSPOT_BUILD_COMPILER "MS VC++ 16.2 (VS2019)"
       #elif _MSC_VER == 1923
         #define HOTSPOT_BUILD_COMPILER "MS VC++ 16.3 (VS2019)"
+      #elif _MSC_VER == 1924
+        #define HOTSPOT_BUILD_COMPILER "MS VC++ 16.4 (VS2019)"
+      #elif _MSC_VER == 1925
+        #define HOTSPOT_BUILD_COMPILER "MS VC++ 16.5 (VS2019)"
+      #elif _MSC_VER == 1926
+        #define HOTSPOT_BUILD_COMPILER "MS VC++ 16.6 (VS2019)"
+      #elif _MSC_VER == 1927
+        #define HOTSPOT_BUILD_COMPILER "MS VC++ 16.7 (VS2019)"
+      #elif _MSC_VER == 1928
+        #define HOTSPOT_BUILD_COMPILER "MS VC++ 16.8 / 16.9 (VS2019)"
+      #elif _MSC_VER == 1929
+        #define HOTSPOT_BUILD_COMPILER "MS VC++ 16.10 / 16.11 (VS2019)"
+      #elif _MSC_VER == 1930
+        #define HOTSPOT_BUILD_COMPILER "MS VC++ 17.0 (VS2022)"
+      #elif _MSC_VER == 1931
+        #define HOTSPOT_BUILD_COMPILER "MS VC++ 17.1 (VS2022)"
       #else
         #define HOTSPOT_BUILD_COMPILER "unknown MS VC++:" XSTR(_MSC_VER)
-      #endif
-    #elif defined(__SUNPRO_CC)
-      #if __SUNPRO_CC == 0x580
-        #define HOTSPOT_BUILD_COMPILER "Workshop 5.8"
-      #elif __SUNPRO_CC == 0x590
-        #define HOTSPOT_BUILD_COMPILER "Workshop 5.9"
-      #elif __SUNPRO_CC == 0x5100
-        #define HOTSPOT_BUILD_COMPILER "Sun Studio 12u1"
-      #elif __SUNPRO_CC == 0x5120
-        #define HOTSPOT_BUILD_COMPILER "Sun Studio 12u3"
-      #elif __SUNPRO_CC == 0x5130
-        #define HOTSPOT_BUILD_COMPILER "Sun Studio 12u4"
-      #else
-        #define HOTSPOT_BUILD_COMPILER "unknown Workshop:" XSTR(__SUNPRO_CC)
       #endif
     #elif defined(__clang_version__)
         #define HOTSPOT_BUILD_COMPILER "clang " __VERSION__
@@ -273,9 +260,19 @@ const char* Abstract_VM_Version::internal_vm_info_string() {
     #define FLOAT_ARCH_STR XSTR(FLOAT_ARCH)
   #endif
 
+  #ifdef MUSL_LIBC
+    #define LIBC_STR "-" XSTR(LIBC)
+  #else
+    #define LIBC_STR ""
+  #endif
+
+  #ifndef HOTSPOT_BUILD_TIME
+    #define HOTSPOT_BUILD_TIME __DATE__ " " __TIME__
+  #endif
+
   #define INTERNAL_VERSION_SUFFIX VM_RELEASE ")" \
-         " for " OS "-" CPU FLOAT_ARCH_STR \
-         " JRE (" VERSION_STRING "), built on " __DATE__ " " __TIME__ \
+         " for " OS "-" CPU FLOAT_ARCH_STR LIBC_STR \
+         " JRE (" VERSION_STRING "), built on " HOTSPOT_BUILD_TIME \
          " by " XSTR(HOTSPOT_BUILD_USER) " with " HOTSPOT_BUILD_COMPILER
 
   return strcmp(DEBUG_LEVEL, "release") == 0
@@ -301,6 +298,22 @@ unsigned int Abstract_VM_Version::jvm_version() {
          ((Abstract_VM_Version::vm_minor_version() & 0xFF) << 16) |
          ((Abstract_VM_Version::vm_security_version() & 0xFF) << 8) |
          (Abstract_VM_Version::vm_build_number() & 0xFF);
+}
+
+void Abstract_VM_Version::insert_features_names(char* buf, size_t buflen, const char* features_names[]) {
+  uint64_t features = _features;
+  uint features_names_index = 0;
+
+  while (features != 0) {
+    if (features & 1) {
+      int res = jio_snprintf(buf, buflen, ", %s", features_names[features_names_index]);
+      assert(res > 0, "not enough temporary space allocated");
+      buf += res;
+      buflen -= res;
+    }
+    features >>= 1;
+    ++features_names_index;
+  }
 }
 
 bool Abstract_VM_Version::print_matching_lines_from_file(const char* filename, outputStream* st, const char* keywords_to_match[]) {

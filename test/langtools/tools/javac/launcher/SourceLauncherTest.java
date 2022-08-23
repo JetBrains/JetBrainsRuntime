@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug 8192920 8204588
+ * @bug 8192920 8204588 8246774
  * @summary Test source launcher
  * @library /tools/lib
  * @modules jdk.compiler/com.sun.tools.javac.api
@@ -48,6 +48,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import com.sun.tools.javac.launcher.Main;
 
@@ -298,7 +299,7 @@ public class SourceLauncherTest extends TestRunner {
             file + ":1: error: illegal character: '#'\n" +
             "#!/usr/bin/java --source " + thisVersion + "\n" +
             "^\n" +
-            file + ":1: error: class, interface, or enum expected\n" +
+            file + ":1: error: class, interface, enum, or record expected\n" +
             "#!/usr/bin/java --source " + thisVersion + "\n" +
             "  ^\n" +
             "2 errors\n",
@@ -422,9 +423,9 @@ public class SourceLauncherTest extends TestRunner {
 
     @Test
     public void testNoSourceOnClassPath(Path base) throws IOException {
-        Path auxSrc = base.resolve("auxSrc");
-        tb.writeJavaFiles(auxSrc,
-            "public class Aux {\n" +
+        Path extraSrc = base.resolve("extraSrc");
+        tb.writeJavaFiles(extraSrc,
+            "public class Extra {\n" +
             "    static final String MESSAGE = \"Hello World\";\n" +
             "}\n");
 
@@ -433,18 +434,18 @@ public class SourceLauncherTest extends TestRunner {
             "import java.util.Arrays;\n" +
             "class HelloWorld {\n" +
             "    public static void main(String... args) {\n" +
-            "        System.out.println(Aux.MESSAGE + Arrays.toString(args));\n" +
+            "        System.out.println(Extra.MESSAGE + Arrays.toString(args));\n" +
             "    }\n" +
             "}");
 
-        List<String> javacArgs = List.of("-classpath", auxSrc.toString());
+        List<String> javacArgs = List.of("-classpath", extraSrc.toString());
         List<String> classArgs = List.of("1", "2", "3");
         String FS = File.separator;
         String expectStdErr =
             "testNoSourceOnClassPath" + FS + "mainSrc" + FS + "HelloWorld.java:4: error: cannot find symbol\n" +
-            "        System.out.println(Aux.MESSAGE + Arrays.toString(args));\n" +
+            "        System.out.println(Extra.MESSAGE + Arrays.toString(args));\n" +
             "                           ^\n" +
-            "  symbol:   variable Aux\n" +
+            "  symbol:   variable Extra\n" +
             "  location: class HelloWorld\n" +
             "1 error\n";
         Result r = run(mainSrc.resolve("HelloWorld.java"), javacArgs, classArgs);
@@ -504,7 +505,7 @@ public class SourceLauncherTest extends TestRunner {
             file + ":1: error: illegal character: '#'\n" +
             "#/usr/bin/java --source " + thisVersion + "\n" +
             "^\n" +
-            file + ":1: error: class, interface, or enum expected\n" +
+            file + ":1: error: class, interface, enum, or record expected\n" +
             "#/usr/bin/java --source " + thisVersion + "\n" +
             "  ^\n" +
             "2 errors\n",
@@ -537,13 +538,13 @@ public class SourceLauncherTest extends TestRunner {
             "    }\n" +
             "}");
 
-        String log = new JavaTask(tb)
+        List<String> log = new JavaTask(tb)
                 .vmOptions("--enable-preview")
                 .className(base.resolve("HelloWorld.java").toString())
                 .run(Task.Expect.FAIL)
-                .getOutput(Task.OutputKind.STDERR);
-        checkEqual("stderr", log.trim(),
-                "error: --enable-preview must be used with --source");
+                .getOutputLines(Task.OutputKind.STDERR);
+        log = log.stream().filter(s->!s.matches("^Picked up .*JAVA.*OPTIONS:.*")).collect(Collectors.toList());
+        checkEqual("stderr", log, List.of("error: --enable-preview must be used with --source"));
     }
 
     @Test
@@ -661,6 +662,11 @@ public class SourceLauncherTest extends TestRunner {
         if (!expect.equals(found)) {
             error("Unexpected output; expected: " + expect);
         }
+    }
+
+    void checkEqual(String name, List<String> found, List<String> expect) {
+        out.println(name + ": " + found);
+        tb.checkEqual(expect, found);
     }
 
     void checkMatch(String name, String found, Pattern expect) {

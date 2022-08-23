@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,25 +47,18 @@
  *     Test was fixed according to test bug:
  *     4778296 TEST_BUG: debuggee VM intemittently hangs after resuming
  *     - debuggee wrapper is used to handle VMStartEvent
- * ================================================
- * WARNING:
- *         Temporarily the test is prepared only for
- *         Sparc.Solaris.dt_socket-transport of RawCommandLineLaunch
- *         connector
- * ================================================
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
  * @build nsk.jdi.Argument.value.value004
  *        nsk.jdi.Argument.value.value004a
- * @run main/othervm PropertyResolvingWrapper
+ * @run main/othervm
  *      nsk.jdi.Argument.value.value004
  *      -verbose
  *      -arch=${os.family}-${os.simpleArch}
  *      -waittime=5
  *      -debugee.vmkind=java
  *      -transport.address=dynamic
- *      "-debugee.vmkeys=${test.vm.opts} ${test.java.opts}"
+ *      -debugee.vmkeys="${test.vm.opts} ${test.java.opts}"
  */
 

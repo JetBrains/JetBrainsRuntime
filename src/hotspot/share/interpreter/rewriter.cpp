@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,8 @@
  */
 
 #include "precompiled.hpp"
+#include "cds/metaspaceShared.hpp"
+#include "classfile/vmClasses.hpp"
 #include "interpreter/bytecodes.hpp"
 #include "interpreter/interpreter.hpp"
 #include "interpreter/rewriter.hpp"
@@ -219,13 +221,13 @@ void Rewriter::maybe_rewrite_invokehandle(address opc, int cp_index, int cache_i
       assert(status >= -1 && status <= 1, "oob tri-state");
       if (status == 0) {
         if (_pool->klass_ref_at_noresolve(cp_index) == vmSymbols::java_lang_invoke_MethodHandle() &&
-            MethodHandles::is_signature_polymorphic_name(SystemDictionary::MethodHandle_klass(),
+            MethodHandles::is_signature_polymorphic_name(vmClasses::MethodHandle_klass(),
                                                          _pool->name_ref_at(cp_index))) {
           // we may need a resolved_refs entry for the appendix
           add_invokedynamic_resolved_references_entry(cp_index, cache_index);
           status = +1;
         } else if (_pool->klass_ref_at_noresolve(cp_index) == vmSymbols::java_lang_invoke_VarHandle() &&
-                   MethodHandles::is_signature_polymorphic_name(SystemDictionary::VarHandle_klass(),
+                   MethodHandles::is_signature_polymorphic_name(vmClasses::VarHandle_klass(),
                                                                 _pool->name_ref_at(cp_index))) {
           // we may need a resolved_refs entry for the appendix
           add_invokedynamic_resolved_references_entry(cp_index, cache_index);
@@ -330,7 +332,7 @@ void Rewriter::maybe_rewrite_ldc(address bcp, int offset, bool is_wide,
         tag.is_string() ||
         (tag.is_dynamic_constant() &&
          // keep regular ldc interpreter logic for condy primitives
-         is_reference_type(FieldType::basic_type(_pool->uncached_signature_ref_at(cp_index))))
+         is_reference_type(Signature::basic_type(_pool->uncached_signature_ref_at(cp_index))))
         ) {
       int ref_index = cp_entry_to_resolved_references(cp_index);
       if (is_wide) {
@@ -404,7 +406,7 @@ void Rewriter::scan_method(Thread* thread, Method* method, bool reverse, bool* i
 
     switch (c) {
       case Bytecodes::_lookupswitch   : {
-#ifndef CC_INTERP
+#ifndef ZERO
         Bytecode_lookupswitch bc(method, bcp);
         (*bcp) = (
           bc.number_of_pairs() < BinarySwitchThreshold
@@ -416,7 +418,7 @@ void Rewriter::scan_method(Thread* thread, Method* method, bool reverse, bool* i
       }
       case Bytecodes::_fast_linearswitch:
       case Bytecodes::_fast_binaryswitch: {
-#ifndef CC_INTERP
+#ifndef ZERO
         (*bcp) = Bytecodes::_lookupswitch;
 #endif
         break;
@@ -566,9 +568,12 @@ void Rewriter::rewrite_bytecodes(TRAPS) {
 }
 
 void Rewriter::rewrite(InstanceKlass* klass, TRAPS) {
-  if (!DumpSharedSpaces) {
-    assert(!klass->is_shared(), "archive methods must not be rewritten at run time");
+#if INCLUDE_CDS
+  if (klass->is_shared()) {
+    assert(!klass->is_rewritten(), "rewritten shared classes cannot be rewritten again");
+    assert(!klass->can_be_verified_at_dumptime(), "only shared old classes aren't rewritten");
   }
+#endif // INCLUDE_CDS
   ResourceMark rm(THREAD);
   constantPoolHandle cpool(THREAD, klass->constants());
   Rewriter     rw(klass, cpool, klass->methods(), CHECK);

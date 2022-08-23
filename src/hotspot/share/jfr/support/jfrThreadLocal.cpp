@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,9 +27,9 @@
 #include "jfr/jni/jfrJavaSupport.hpp"
 #include "jfr/leakprofiler/checkpoint/objectSampleCheckpoint.hpp"
 #include "jfr/periodic/jfrThreadCPULoadEvent.hpp"
-#include "jfr/recorder/jfrRecorder.hpp"
 #include "jfr/recorder/checkpoint/jfrCheckpointManager.hpp"
-#include "jfr/recorder/checkpoint/types/traceid/jfrTraceId.inline.hpp"
+#include "jfr/recorder/checkpoint/types/traceid/jfrTraceIdEpoch.hpp"
+#include "jfr/recorder/jfrRecorder.hpp"
 #include "jfr/recorder/service/jfrOptionSet.hpp"
 #include "jfr/recorder/storage/jfrStorage.hpp"
 #include "jfr/support/jfrThreadLocal.hpp"
@@ -38,12 +38,13 @@
 #include "runtime/thread.inline.hpp"
 #include "utilities/sizes.hpp"
 
-/* This data structure is per thread and only accessed by the thread itself, no locking required */
 JfrThreadLocal::JfrThreadLocal() :
   _java_event_writer(NULL),
   _java_buffer(NULL),
   _native_buffer(NULL),
   _shelved_buffer(NULL),
+  _load_barrier_buffer_epoch_0(NULL),
+  _load_barrier_buffer_epoch_1(NULL),
   _stackframes(NULL),
   _trace_id(JfrTraceId::assign_thread_id()),
   _thread(),
@@ -56,7 +57,10 @@ JfrThreadLocal::JfrThreadLocal() :
   _stackdepth(0),
   _entering_suspend_flag(0),
   _excluded(false),
-  _dead(false) {}
+  _dead(false) {
+  Thread* thread = Thread::current_or_null();
+  _parent_trace_id = thread != NULL ? thread->jfr_thread_local()->trace_id() : (traceid)0;
+}
 
 u8 JfrThreadLocal::add_data_lost(u8 value) {
   _data_lost += value;
@@ -79,6 +83,7 @@ const JfrBlobHandle& JfrThreadLocal::thread_blob() const {
 static void send_java_thread_start_event(JavaThread* jt) {
   EventThreadStart event;
   event.set_thread(jt->jfr_thread_local()->thread_id());
+  event.set_parentThread(jt->jfr_thread_local()->parent_thread_id());
   event.commit();
 }
 
@@ -87,12 +92,15 @@ void JfrThreadLocal::on_start(Thread* t) {
   assert(Thread::current() == t, "invariant");
   JfrJavaSupport::on_thread_start(t);
   if (JfrRecorder::is_recording()) {
+    JfrCheckpointManager::write_thread_checkpoint(t);
     if (!t->jfr_thread_local()->is_excluded()) {
-      JfrCheckpointManager::write_thread_checkpoint(t);
       if (t->is_Java_thread()) {
-        send_java_thread_start_event((JavaThread*)t);
+        send_java_thread_start_event(t->as_Java_thread());
       }
     }
+  }
+  if (t->jfr_thread_local()->has_cached_stack_trace()) {
+    t->jfr_thread_local()->clear_cached_stack_trace();
   }
 }
 
@@ -126,6 +134,14 @@ void JfrThreadLocal::release(Thread* t) {
     FREE_C_HEAP_ARRAY(JfrStackFrame, _stackframes);
     _stackframes = NULL;
   }
+  if (_load_barrier_buffer_epoch_0 != NULL) {
+    _load_barrier_buffer_epoch_0->set_retired();
+    _load_barrier_buffer_epoch_0 = NULL;
+  }
+  if (_load_barrier_buffer_epoch_1 != NULL) {
+    _load_barrier_buffer_epoch_1->set_retired();
+    _load_barrier_buffer_epoch_1 = NULL;
+  }
 }
 
 void JfrThreadLocal::release(JfrThreadLocal* tl, Thread* t) {
@@ -144,7 +160,7 @@ void JfrThreadLocal::on_exit(Thread* t) {
   assert(!tl->is_dead(), "invariant");
   if (JfrRecorder::is_recording()) {
     if (t->is_Java_thread()) {
-      JavaThread* const jt = (JavaThread*)t;
+      JavaThread* const jt = t->as_Java_thread();
       ObjectSampleCheckpoint::on_thread_exit(jt);
       send_java_thread_end_events(tl->thread_id(), jt);
     }

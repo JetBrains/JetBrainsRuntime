@@ -26,11 +26,9 @@
  * @bug 8003280
  * @summary Add lambda tests
  *   Test bridge methods for certain SAM conversions
- *   Tests that jdk.internal.lambda.disableEagerInitialization=true creates a
- *   get$Lambda method for non-capturing lambdas
+ *   Test the set of generated methods
  * @compile LambdaTest6.java
  * @run main LambdaTest6
- * @run main/othervm -Djdk.internal.lambda.disableEagerInitialization=true LambdaTest6
  */
 
 import java.lang.reflect.Method;
@@ -66,9 +64,6 @@ public class LambdaTest6<T> {
     private static Set<String> allowedMethods() {
         Set<String> s = new HashSet<>();
         s.add("m");
-        if (Boolean.getBoolean("jdk.internal.lambda.disableEagerInitialization")) {
-            s.add("get$Lambda");
-        }
         return s;
     }
 

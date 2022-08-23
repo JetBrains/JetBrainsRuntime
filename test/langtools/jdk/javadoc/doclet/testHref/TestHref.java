@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,25 +52,34 @@ public class TestHref extends JavadocTester {
 
         checkOutput("pkg/C1.html", true,
                 //External link.
-                "href=\"http://java.sun.com/j2se/1.4/docs/api/java/lang/Object.html?is-external=true#wait(long,int)\"",
+                """
+                    href="http://java.sun.com/j2se/1.4/docs/api/java/lang/Object.html#wait(long,int)\"""",
                 //Member summary table link.
-                "href=\"#method(int,int,java.util.ArrayList)\"",
+                """
+                    href="#method(int,int,java.util.ArrayList)\"""",
                 //Anchor test.
-                "<section class=\"detail\" id=\"method(int,int,java.util.ArrayList)\">");
+                """
+                    <section class="detail" id="method(int,int,java.util.ArrayList)">""");
 
         checkOutput("pkg/C2.html", true,
                 //{@link} test.
-                "Link: <a href=\"C1.html#method(int,int,java.util.ArrayList)\">",
+                """
+                    Link: <a href="C1.html#method(int,int,java.util.ArrayList)">""",
                 //@see test.
-                "See Also:</span></dt>\n"
-                + "<dd><a href=\"C1.html#method(int,int,java.util.ArrayList)\">"
+                """
+                    See Also:</dt>
+                    <dd>
+                    <ul class="see-list-long">
+                    <li><a href="C1.html#method(int,int,java.util.ArrayList)">"""
         );
 
         checkOutput("pkg/C4.html", true,
                 //Header does not link to the page itself.
                 "Class C4&lt;E extends C4&lt;E&gt;&gt;</h1>",
                 //Signature does not link to the page itself.
-                "public abstract class <span class=\"typeNameLabel\">C4&lt;E extends C4&lt;E&gt;&gt;</span>"
+                """
+                    <span class="modifiers">public abstract class </span><span class="element-name type-name\
+                    -label">C4&lt;E extends C4&lt;E&gt;&gt;</span>"""
         );
 
         checkOutput(Output.OUT, false,

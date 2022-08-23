@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dialog;
 import java.awt.Dimension;
+import java.awt.Frame;
 import java.awt.Graphics;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
@@ -47,23 +48,34 @@ import java.awt.event.FocusEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.DataBufferInt;
 import java.awt.peer.WindowPeer;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import sun.awt.AWTAccessor;
 import sun.awt.AppContext;
 import sun.awt.DisplayChangedListener;
 import sun.awt.SunToolkit;
+import sun.awt.TimedWindowEvent;
 import sun.awt.Win32GraphicsConfig;
 import sun.awt.Win32GraphicsDevice;
 import sun.awt.Win32GraphicsEnvironment;
-import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.pipe.Region;
+
+import sun.java2d.SunGraphics2D;
 import sun.util.logging.PlatformLogger;
+
+import static sun.java2d.SunGraphicsEnvironment.toUserSpace;
 
 public class WWindowPeer extends WPanelPeer implements WindowPeer,
        DisplayChangedListener
@@ -106,8 +118,8 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
      * WindowStateEvent is posted to the EventQueue.
      */
     private WindowListener windowListener;
-    private float scaleX;
-    private float scaleY;
+
+    private Insets sysInsets; // set from native updateInsets
 
     /**
      * Initialize JNI field IDs
@@ -203,6 +215,7 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
     void initialize() {
         super.initialize();
 
+        sysInsets = (Insets)insets_.clone();
         updateInsets(insets_);
 
         if (!((Window) target).isFontSet()) {
@@ -220,8 +233,6 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
         GraphicsConfiguration gc = getGraphicsConfiguration();
         Win32GraphicsDevice gd = (Win32GraphicsDevice) gc.getDevice();
         gd.addDisplayChangedListener(this);
-        scaleX = gd.getDefaultScaleX();
-        scaleY = gd.getDefaultScaleY();
 
         initActiveWindowsTracking((Window)target);
 
@@ -308,9 +319,20 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
         }
     }
 
+    @Override
+    final void syncBounds() {
+        // Windows will take care of the top-level window/frame/dialog, and
+        // update the location/size when DPI changes.
+    }
+
     // Synchronize the insets members (here & in helper) with actual window
     // state.
     native void updateInsets(Insets i);
+
+    @Override
+    public Insets getSysInsets() {
+        return (Insets)sysInsets.clone();
+    }
 
     static native int getSysMinWidth();
     static native int getSysMinHeight();
@@ -387,6 +409,40 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
         }
     }
 
+    private void notifyWindowStateChanged(int oldState, int newState) {
+        int changed = oldState ^ newState;
+        if (changed == 0) {
+            return;
+        }
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Reporting state change %x -> %x", oldState, newState);
+        }
+
+        if (target instanceof Frame) {
+            // Sync target with peer.
+            AWTAccessor.getFrameAccessor().setExtendedState((Frame) target,
+                newState);
+        }
+
+        // Report (de)iconification to old clients.
+        if ((changed & Frame.ICONIFIED) > 0) {
+            if ((newState & Frame.ICONIFIED) > 0) {
+                postEvent(new TimedWindowEvent((Window) target,
+                        WindowEvent.WINDOW_ICONIFIED, null, 0, 0,
+                        System.currentTimeMillis()));
+            } else {
+                postEvent(new TimedWindowEvent((Window) target,
+                        WindowEvent.WINDOW_DEICONIFIED, null, 0, 0,
+                        System.currentTimeMillis()));
+            }
+        }
+
+        // New (since 1.4) state change event.
+        postEvent(new TimedWindowEvent((Window) target,
+                WindowEvent.WINDOW_STATE_CHANGED, null, oldState, newState,
+                System.currentTimeMillis()));
+    }
+
     synchronized void addWindowListener(WindowListener l) {
         windowListener = AWTEventMulticaster.add(windowListener, l);
     }
@@ -402,11 +458,10 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
             minimumSize = ((Component)target).getMinimumSize();
         }
         if (minimumSize != null) {
-            int msw = getSysMinWidth();
-            int msh = getSysMinHeight();
-            int w = (minimumSize.width >= msw) ? minimumSize.width : msw;
-            int h = (minimumSize.height >= msh) ? minimumSize.height : msh;
-            setMinSize(w, h);
+            Dimension sysMin = toUserSpace(getGraphicsConfiguration(),
+                                           getSysMinWidth(), getSysMinHeight());
+            setMinSize(Math.max(minimumSize.width, sysMin.width),
+                       Math.max(minimumSize.height, sysMin.height));
         } else {
             setMinSize(0, 0);
         }
@@ -564,21 +619,6 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
 
         AWTAccessor.getComponentAccessor().
             setGraphicsConfiguration((Component)target, winGraphicsConfig);
-
-        checkDPIChange(oldDev, newDev);
-    }
-
-    private void checkDPIChange(Win32GraphicsDevice oldDev,
-                                Win32GraphicsDevice newDev) {
-        float newScaleX = newDev.getDefaultScaleX();
-        float newScaleY = newDev.getDefaultScaleY();
-
-        if (scaleX != newScaleX || scaleY != newScaleY) {
-            windowDPIChange(oldDev.getScreen(), scaleX, scaleY,
-                            newDev.getScreen(), newScaleX, newScaleY);
-            scaleX = newScaleX;
-            scaleY = newScaleY;
-        }
     }
 
     /**
@@ -632,60 +672,8 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
          return true;
      }
 
-     // These are the peer bounds. They get updated at:
-     //    1. the WWindowPeer.setBounds() method.
-     //    2. the native code (on WM_SIZE/WM_MOVE)
-     private volatile int sysX = 0;
-     private volatile int sysY = 0;
-     private volatile int sysW = 0;
-     private volatile int sysH = 0;
-
      @Override
      public native void repositionSecurityWarning();
-
-     @Override
-     public void setBounds(int x, int y, int width, int height, int op) {
-         sysX = x;
-         sysY = y;
-         sysW = width;
-         sysH = height;
-
-         int cx = x + width / 2;
-         int cy = y + height / 2;
-         GraphicsConfiguration current = getGraphicsConfiguration();
-         GraphicsConfiguration other = SunGraphicsEnvironment
-                 .getGraphicsConfigurationAtPoint(current, cx, cy);
-         if (!current.equals(other)) {
-             AffineTransform tx = other.getDefaultTransform();
-             double otherScaleX = tx.getScaleX();
-             double otherScaleY = tx.getScaleY();
-             initScales();
-             if (scaleX != otherScaleX || scaleY != otherScaleY) {
-                 x = (int) Math.floor(x * otherScaleX / scaleX);
-                 y = (int) Math.floor(y * otherScaleY / scaleY);
-             }
-         }
-
-         super.setBounds(x, y, width, height, op);
-     }
-
-    private void initScales() {
-
-        if (scaleX >= 1 && scaleY >= 1) {
-            return;
-        }
-
-        GraphicsConfiguration gc = getGraphicsConfiguration();
-        if (gc instanceof Win32GraphicsConfig) {
-            Win32GraphicsDevice gd = ((Win32GraphicsConfig) gc).getDevice();
-            scaleX = gd.getDefaultScaleX();
-            scaleY = gd.getDefaultScaleY();
-        } else {
-            AffineTransform tx = gc.getDefaultTransform();
-            scaleX = (float) tx.getScaleX();
-            scaleY = (float) tx.getScaleY();
-        }
-    }
 
     @Override
     public void print(Graphics g) {
@@ -855,9 +843,6 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
         }
     }
 
-    native void windowDPIChange(int prevScreen, float prevScaleX, float prevScaleY,
-                                int newScreen, float newScaleX, float newScaleY);
-
     /*
      * The method maps the list of the active windows to the window's AppContext,
      * then the method registers ActiveWindowListener, GuiDisposedListener listeners;
@@ -927,6 +912,111 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
                     l.add(wp);
                 }
             }
+        }
+    }
+
+    @Override
+    public Graphics getGraphics() {
+        Graphics g = super.getGraphics();
+        if (!(g instanceof SunGraphics2D)) return g;
+        SunGraphics2D sg = (SunGraphics2D)g;
+
+        // [tav] For the scaling graphics we need to compensate the toplevel insets rounding error
+        // to place [0, 0] of the client area in its correct device pixel.
+        if (sg.transformState == SunGraphics2D.TRANSFORM_TRANSLATESCALE) {
+            Point2D err = getInsetsRoundingError(sg);
+            double errX = err.getX();
+            double errY = err.getY();
+            if (errX != 0 || errY != 0) {
+                // save the current tx
+                AffineTransform tx = sg.transform;
+
+                // translate the constrain
+                Region constrainClip = sg.constrainClip;
+                Shape usrClip = sg.usrClip;
+                if (constrainClip != null) {
+                    // SunGraphics2D.constrain(..) rounds down x/y, so to compensate we need to round up
+                    int _errX = (int) Math.ceil(errX);
+                    int _errY = (int) Math.ceil(errY);
+                    if ((_errX | _errY) != 0) {
+                        // drop everything to default
+                        sg.constrainClip = null;
+                        sg.usrClip = null;
+                        sg.clipState = SunGraphics2D.CLIP_DEVICE;
+                        sg.transform = new AffineTransform();
+                        sg.setDevClip(sg.getSurfaceData().getBounds());
+
+                        Region r = constrainClip.getTranslatedRegion(_errX, _errY);
+                        sg.constrain(r.getLoX(), r.getLoY(), r.getWidth(), r.getHeight());
+                    }
+                }
+
+                // translate usrClip
+                if (usrClip != null) {
+                    if (usrClip instanceof Rectangle2D) {
+                        Rectangle2D u = (Rectangle2D) usrClip;
+                        u.setRect(u.getX() + errX, u.getY() + errY, u.getWidth(), u.getHeight());
+                    } else {
+                        usrClip = AffineTransform.getTranslateInstance(errX, errY).createTransformedShape(usrClip);
+                    }
+                    sg.transform = new AffineTransform();
+                    sg.setClip(usrClip); // constrain clip is already valid
+                }
+
+                // finally translate the tx (in the device space, so via concatenate)
+                AffineTransform newTx = AffineTransform.getTranslateInstance(errX - sg.constrainX, errY - sg.constrainY);
+                newTx.concatenate(tx);
+                sg.setTransform(newTx);
+            }
+        }
+        return sg;
+    }
+
+    /**
+     * For the scaling graphics and a decorated toplevel as the destination,
+     * calculates the rounding error of the toplevel insets.
+     *
+     * @return the left/top insets rounding error, in device space
+     */
+    private Point2D getInsetsRoundingError(SunGraphics2D g) {
+        Point2D.Double err = new Point2D.Double(0, 0);
+        if (g.transformState >= SunGraphics2D.TRANSFORM_TRANSLATESCALE && !isTargetUndecorated()) {
+            Insets sysInsets = getSysInsets();
+            if (sysInsets != null) {
+                Insets insets = ((Window)target).getInsets();
+                // insets.left/top is a scaled down rounded value
+                // insets.left/top * tx.scale is a scaled up value (which contributes to graphics translate)
+                // sysInsets.left/top is the precise system value
+                err.x = sysInsets.left - insets.left * g.transform.getScaleX();
+                err.y = sysInsets.top - insets.top * g.transform.getScaleY();
+            }
+        }
+        return err;
+    }
+
+    // called from client via reflection
+    @Deprecated
+    private void setCustomDecorationHitTestSpots(List<Rectangle> hitTestSpots) {
+        List<Map.Entry<Shape, Integer>> spots = new ArrayList<>();
+        for (Rectangle spot : hitTestSpots) spots.add(Map.entry(spot, 1));
+        try {
+            Field f = Window.class.getDeclaredField("customDecorHitTestSpots");
+            f.setAccessible(true);
+            f.set(target, spots);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new Error(e);
+        }
+    }
+
+    // called from client via reflection
+    @Deprecated
+    private void setCustomDecorationTitleBarHeight(int height) {
+        try {
+            Field f = Window.class.getDeclaredField("customDecorTitleBarHeight");
+            f.setAccessible(true);
+            f.set(target, height);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new Error(e);
         }
     }
 }

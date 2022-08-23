@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -30,93 +30,27 @@ include $(SPEC)
 include MakeBase.gmk
 
 include JavaCompilation.gmk
-include SetupJavaCompilers.gmk
 
 TARGETS :=
 
 # Hook to include the corresponding custom file, if present.
 $(eval $(call IncludeCustomExtension, hotspot/CompileTools.gmk))
 
-ifeq ($(INCLUDE_GRAAL), true)
-  VM_CI_SRC_DIR := $(TOPDIR)/src/jdk.internal.vm.ci/share/classes
+################################################################################
+# Build tools needed for the JFR source code generation
 
-  SRC_DIR := $(TOPDIR)/src/jdk.internal.vm.compiler/share/classes
+HOTSPOT_TOOLS_SRCDIR := $(TOPDIR)/make/src/classes
 
-  ##############################################################################
-  # Compile the annotation processors
-  $(eval $(call SetupJavaCompilation, BUILD_VM_COMPILER_MATCH_PROCESSOR, \
-      SETUP := GENERATE_OLDBYTECODE, \
-      SRC := \
-          $(SRC_DIR)/org.graalvm.compiler.processor/src \
-          $(SRC_DIR)/org.graalvm.compiler.core.match.processor/src \
-          , \
-      EXCLUDE_FILES := $(EXCLUDE_FILES), \
-      BIN := $(BUILDTOOLS_OUTPUTDIR)/jdk.vm.compiler.match.processor, \
-      JAR := $(BUILDTOOLS_OUTPUTDIR)/jdk.vm.compiler.match.processor.jar, \
-  ))
+HOTSPOT_TOOLS_OUTPUTDIR := $(BUILDTOOLS_OUTPUTDIR)/buildtools/hotspot_tools_classes
 
-  TARGETS += $(BUILD_VM_COMPILER_MATCH_PROCESSOR)
+$(eval $(call SetupJavaCompilation, BUILD_TOOLS_HOTSPOT, \
+    COMPILER := bootjdk, \
+    SRC := $(HOTSPOT_TOOLS_SRCDIR), \
+    BIN := $(HOTSPOT_TOOLS_OUTPUTDIR), \
+))
 
-  ##############################################################################
+TARGETS += $(BUILD_TOOLS_HOTSPOT)
 
-  $(eval $(call SetupJavaCompilation, BUILD_VM_COMPILER_NODEINFO_PROCESSOR, \
-      SETUP := GENERATE_OLDBYTECODE, \
-      SRC := \
-          $(SRC_DIR)/org.graalvm.compiler.processor/src \
-          $(SRC_DIR)/org.graalvm.compiler.nodeinfo.processor/src \
-          , \
-      BIN := $(BUILDTOOLS_OUTPUTDIR)/jdk.vm.compiler.nodeinfo.processor, \
-      JAR := $(BUILDTOOLS_OUTPUTDIR)/jdk.vm.compiler.nodeinfo.processor.jar, \
-  ))
-
-  TARGETS += $(BUILD_VM_COMPILER_NODEINFO_PROCESSOR)
-
-  ##############################################################################
-
-  $(eval $(call SetupJavaCompilation, BUILD_VM_COMPILER_OPTIONS_PROCESSOR, \
-      SETUP := GENERATE_OLDBYTECODE, \
-      SRC := \
-          $(SRC_DIR)/org.graalvm.compiler.processor/src \
-          $(SRC_DIR)/org.graalvm.compiler.options.processor/src \
-          , \
-      BIN := $(BUILDTOOLS_OUTPUTDIR)/jdk.vm.compiler.options.processor, \
-      JAR := $(BUILDTOOLS_OUTPUTDIR)/jdk.vm.compiler.options.processor.jar, \
-  ))
-
-  TARGETS += $(BUILD_VM_COMPILER_OPTIONS_PROCESSOR)
-
-  ##############################################################################
-
-  $(eval $(call SetupJavaCompilation, BUILD_VM_COMPILER_REPLACEMENTS_PROCESSOR, \
-      SETUP := GENERATE_OLDBYTECODE, \
-      SRC := \
-          $(SRC_DIR)/org.graalvm.compiler.processor/src \
-          $(SRC_DIR)/org.graalvm.compiler.replacements.processor/src \
-          , \
-      EXCLUDE_FILES := $(EXCLUDE_FILES), \
-      BIN := $(BUILDTOOLS_OUTPUTDIR)/jdk.vm.compiler.replacements.verifier, \
-      JAR := $(BUILDTOOLS_OUTPUTDIR)/jdk.vm.compiler.replacements.verifier.jar, \
-  ))
-
-  TARGETS += $(BUILD_VM_COMPILER_REPLACEMENTS_PROCESSOR)
-
-  ##############################################################################
-
-  $(eval $(call SetupJavaCompilation, BUILD_VM_COMPILER_SERVICEPROVIDER_PROCESSOR, \
-      SETUP := GENERATE_OLDBYTECODE, \
-      SRC := \
-          $(SRC_DIR)/org.graalvm.compiler.processor/src \
-          $(SRC_DIR)/org.graalvm.compiler.serviceprovider.processor/src \
-          , \
-      EXCLUDE_FILES := $(EXCLUDE_FILES), \
-      BIN := $(BUILDTOOLS_OUTPUTDIR)/jdk.vm.compiler.serviceprovider.processor, \
-      JAR := $(BUILDTOOLS_OUTPUTDIR)/jdk.vm.compiler.serviceprovider.processor.jar, \
-  ))
-
-  TARGETS += $(BUILD_VM_COMPILER_SERVICEPROVIDER_PROCESSOR)
-
-  ##############################################################################
-endif
 
 all: $(TARGETS)
 

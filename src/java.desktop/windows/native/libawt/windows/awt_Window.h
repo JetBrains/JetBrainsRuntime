@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,17 +57,16 @@ public:
     static jfieldID securityWarningWidthID;
     static jfieldID securityWarningHeightID;
 
-    // The coordinates at the peer.
-    static jfieldID sysXID;
-    static jfieldID sysYID;
-    static jfieldID sysWID;
-    static jfieldID sysHID;
-
+    /* sun.awt.windows.WWindowPeer field and method IDs */
     static jfieldID windowTypeID;
+    static jmethodID notifyWindowStateChangedMID;
 
+    /* java.awt.Window method IDs */
     static jmethodID getWarningStringMID;
     static jmethodID calculateSecurityWarningPositionMID;
     static jmethodID windowTypeNameMID;
+
+    static jfieldID sysInsetsID;
 
     AwtWindow();
     virtual ~AwtWindow();
@@ -126,6 +125,7 @@ public:
         return FALSE;
     }
 
+    virtual void Reshape(int x, int y, int w, int h);
     virtual void Invalidate(RECT* r);
     virtual void Show();
     virtual void SetResizable(BOOL isResizable);
@@ -133,7 +133,7 @@ public:
     virtual void RecalcNonClient();
     virtual void RedrawNonClient();
     virtual int  GetScreenImOn();
-    virtual void CheckIfOnNewScreen();
+    virtual BOOL CheckIfOnNewScreen(BOOL force);
     virtual void Grab();
     virtual void Ungrab();
     virtual void Ungrab(BOOL doPost);
@@ -149,6 +149,7 @@ public:
     void SendComponentEvent(jint eventId);
     void SendWindowEvent(jint id, HWND opposite = NULL,
                          jint oldState = 0, jint newState = 0);
+    void NotifyWindowStateChanged(jint oldState, jint newState);
 
     BOOL IsFocusableWindow();
 
@@ -169,6 +170,7 @@ public:
     virtual MsgRouting WmClose();
     virtual MsgRouting WmDestroy();
     virtual MsgRouting WmShowWindow(BOOL show, UINT status);
+    virtual MsgRouting WmEraseBkgnd(HDC hDC, BOOL& didErase);
     virtual MsgRouting WmGetMinMaxInfo(LPMINMAXINFO lpmmi);
     virtual MsgRouting WmMove(int x, int y);
     virtual MsgRouting WmSize(UINT type, int w, int h);
@@ -179,7 +181,7 @@ public:
     virtual MsgRouting WmSettingChange(UINT wFlag, LPCTSTR pszSection);
     virtual MsgRouting WmNcCalcSize(BOOL fCalcValidRects,
                                     LPNCCALCSIZE_PARAMS lpncsp, LRESULT& retVal);
-    virtual MsgRouting WmNcHitTest(UINT x, UINT y, LRESULT& retVal);
+    virtual MsgRouting WmNcHitTest(int x, int y, LRESULT& retVal);
     virtual MsgRouting WmNcMouseDown(WPARAM hitTest, int x, int y, int button);
     virtual MsgRouting WmGetIcon(WPARAM iconType, LRESULT& retVal);
     virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
@@ -216,13 +218,15 @@ public:
     void UpdateWindow(JNIEnv* env, jintArray data, int width, int height,
                       HBITMAP hNewBitmap = NULL);
 
+    void ToFront();
+
     INLINE virtual BOOL IsTopLevel() { return TRUE; }
     static AwtWindow * GetGrabbedWindow() { return m_grabbedWindow; }
 
     static void FlashWindowEx(HWND hWnd, UINT count, DWORD timeout, DWORD flags);
 
     // some methods invoked on Toolkit thread
-    static void _ToFront(void *param);
+    static void _ToFront(void *param, BOOL wait);
     static void _ToBack(void *param);
     static void _Grab(void *param);
     static void _Ungrab(void *param);
@@ -244,7 +248,6 @@ public:
     static void _RepositionSecurityWarning(void* param);
     static void _SetFullScreenExclusiveModeState(void* param);
     static void _GetNativeWindowSize(void* param);
-    static void _WindowDPIChange(void* param);
     static void _OverrideHandle(void *param);
 
     inline static BOOL IsResizing() {
@@ -264,6 +267,8 @@ public:
     inline HWND GetOverriddenHWnd() { return m_overriddenHwnd; }
     inline void OverrideHWnd(HWND hwnd) { m_overriddenHwnd = hwnd; }
 
+    virtual BOOL HasCustomDecoration() { return FALSE; }
+
 private:
     static int ms_instanceCounter;
     static HHOOK ms_hCBTFilter;
@@ -281,6 +286,7 @@ private:
     BOOL m_isRetainingHierarchyZOrder; // Is this a window that shouldn't change z-order of any window
                                        // from its hierarchy when shown. Currently applied to instances of
                                        // javax/swing/Popup$HeavyWeightWindow class.
+    BOOL m_isIgnoringMouseEvents; // Make window transparent for mouse events (used for JCEF)
 
     // SetTranslucency() is the setter for the following two fields
     BYTE m_opacity;         // The opacity level. == 0xff by default (when opacity mode is disabled)
@@ -405,8 +411,7 @@ private:
 
     void InitOwner(AwtWindow *owner);
     void CheckWindowDPIChange();
-    void WindowDPIChange(int prevScreen, float prevScaleX, float prevScaleY,
-                         int newScreen, float scaleX, float scaleY);
+    void WmDPIChanged(const LPARAM &lParam);
 
     Type m_windowType;
     void InitType(JNIEnv *env, jobject peer);

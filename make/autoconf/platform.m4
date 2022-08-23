@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -72,6 +72,12 @@ AC_DEFUN([PLATFORM_EXTRACT_VARS_FROM_CPU],
       VAR_CPU_BITS=64
       VAR_CPU_ENDIAN=little
       ;;
+    loongarch64)
+      VAR_CPU=loongarch64
+      VAR_CPU_ARCH=loongarch
+      VAR_CPU_BITS=64
+      VAR_CPU_ENDIAN=little
+      ;;
     m68k)
       VAR_CPU=m68k
       VAR_CPU_ARCH=m68k
@@ -120,6 +126,12 @@ AC_DEFUN([PLATFORM_EXTRACT_VARS_FROM_CPU],
       VAR_CPU_BITS=64
       VAR_CPU_ENDIAN=little
       ;;
+    riscv64)
+      VAR_CPU=riscv64
+      VAR_CPU_ARCH=riscv
+      VAR_CPU_BITS=64
+      VAR_CPU_ENDIAN=little
+      ;;
     s390)
       VAR_CPU=s390
       VAR_CPU_ARCH=s390
@@ -156,6 +168,18 @@ AC_DEFUN([PLATFORM_EXTRACT_VARS_FROM_CPU],
       VAR_CPU_BITS=64
       VAR_CPU_ENDIAN=big
       ;;
+    sparc)
+      VAR_CPU=sparc
+      VAR_CPU_ARCH=sparc
+      VAR_CPU_BITS=32
+      VAR_CPU_ENDIAN=big
+      ;;
+    sparcv9|sparc64)
+      VAR_CPU=sparcv9
+      VAR_CPU_ARCH=sparc
+      VAR_CPU_BITS=64
+      VAR_CPU_ENDIAN=big
+      ;;
     *)
       AC_MSG_ERROR([unsupported cpu $1])
       ;;
@@ -170,10 +194,6 @@ AC_DEFUN([PLATFORM_EXTRACT_VARS_FROM_OS],
   case "$1" in
     *linux*)
       VAR_OS=linux
-      VAR_OS_TYPE=unix
-      ;;
-    *solaris*)
-      VAR_OS=solaris
       VAR_OS_TYPE=unix
       ;;
     *darwin*)
@@ -192,9 +212,9 @@ AC_DEFUN([PLATFORM_EXTRACT_VARS_FROM_OS],
       VAR_OS=windows
       VAR_OS_ENV=windows.wsl
       ;;
-    *mingw*)
+    *msys*)
       VAR_OS=windows
-      VAR_OS_ENV=windows.msys
+      VAR_OS_ENV=windows.msys2
       ;;
     *aix*)
       VAR_OS=aix
@@ -202,6 +222,51 @@ AC_DEFUN([PLATFORM_EXTRACT_VARS_FROM_OS],
       ;;
     *)
       AC_MSG_ERROR([unsupported operating system $1])
+      ;;
+  esac
+])
+
+# Support macro for PLATFORM_EXTRACT_TARGET_AND_BUILD.
+# Converts autoconf style OS name to OpenJDK style, into
+# VAR_LIBC.
+AC_DEFUN([PLATFORM_EXTRACT_VARS_FROM_LIBC],
+[
+  case "$1" in
+    *linux*-musl)
+      VAR_LIBC=musl
+      ;;
+    *linux*-gnu)
+      VAR_LIBC=gnu
+      ;;
+    *)
+      VAR_LIBC=default
+      ;;
+  esac
+])
+
+# Support macro for PLATFORM_EXTRACT_TARGET_AND_BUILD.
+# Converts autoconf style OS name to OpenJDK style, into
+# VAR_ABI.
+AC_DEFUN([PLATFORM_EXTRACT_VARS_FROM_ABI],
+[
+  case "$1" in
+    *linux*-musl)
+      VAR_ABI=musl
+      ;;
+    *linux*-gnu)
+      VAR_ABI=gnu
+      ;;
+    *linux*-gnueabi)
+      VAR_ABI=gnueabi
+      ;;
+    *linux*-gnueabihf)
+      VAR_ABI=gnueabihf
+      ;;
+    *linux*-gnuabi64)
+      VAR_ABI=gnuabi64
+      ;;
+    *)
+      VAR_ABI=default
       ;;
   esac
 ])
@@ -223,9 +288,11 @@ AC_DEFUN([PLATFORM_EXTRACT_TARGET_AND_BUILD],
   AC_SUBST(OPENJDK_TARGET_AUTOCONF_NAME)
   AC_SUBST(OPENJDK_BUILD_AUTOCONF_NAME)
 
-  # Convert the autoconf OS/CPU value to our own data, into the VAR_OS/CPU variables.
+  # Convert the autoconf OS/CPU value to our own data, into the VAR_OS/CPU/LIBC variables.
   PLATFORM_EXTRACT_VARS_FROM_OS($build_os)
   PLATFORM_EXTRACT_VARS_FROM_CPU($build_cpu)
+  PLATFORM_EXTRACT_VARS_FROM_LIBC($build_os)
+  PLATFORM_EXTRACT_VARS_FROM_ABI($build_os)
   # ..and setup our own variables. (Do this explicitly to facilitate searching)
   OPENJDK_BUILD_OS="$VAR_OS"
   if test "x$VAR_OS_TYPE" != x; then
@@ -242,6 +309,9 @@ AC_DEFUN([PLATFORM_EXTRACT_TARGET_AND_BUILD],
   OPENJDK_BUILD_CPU_ARCH="$VAR_CPU_ARCH"
   OPENJDK_BUILD_CPU_BITS="$VAR_CPU_BITS"
   OPENJDK_BUILD_CPU_ENDIAN="$VAR_CPU_ENDIAN"
+  OPENJDK_BUILD_CPU_AUTOCONF="$build_cpu"
+  OPENJDK_BUILD_LIBC="$VAR_LIBC"
+  OPENJDK_BUILD_ABI="$VAR_ABI"
   AC_SUBST(OPENJDK_BUILD_OS)
   AC_SUBST(OPENJDK_BUILD_OS_TYPE)
   AC_SUBST(OPENJDK_BUILD_OS_ENV)
@@ -249,13 +319,23 @@ AC_DEFUN([PLATFORM_EXTRACT_TARGET_AND_BUILD],
   AC_SUBST(OPENJDK_BUILD_CPU_ARCH)
   AC_SUBST(OPENJDK_BUILD_CPU_BITS)
   AC_SUBST(OPENJDK_BUILD_CPU_ENDIAN)
+  AC_SUBST(OPENJDK_BUILD_CPU_AUTOCONF)
+  AC_SUBST(OPENJDK_BUILD_LIBC)
+  AC_SUBST(OPENJDK_BUILD_ABI)
 
   AC_MSG_CHECKING([openjdk-build os-cpu])
   AC_MSG_RESULT([$OPENJDK_BUILD_OS-$OPENJDK_BUILD_CPU])
 
-  # Convert the autoconf OS/CPU value to our own data, into the VAR_OS/CPU variables.
+  if test "x$OPENJDK_BUILD_OS" = "xlinux"; then
+    AC_MSG_CHECKING([openjdk-build C library])
+    AC_MSG_RESULT([$OPENJDK_BUILD_LIBC])
+  fi
+
+  # Convert the autoconf OS/CPU value to our own data, into the VAR_OS/CPU/LIBC variables.
   PLATFORM_EXTRACT_VARS_FROM_OS($host_os)
   PLATFORM_EXTRACT_VARS_FROM_CPU($host_cpu)
+  PLATFORM_EXTRACT_VARS_FROM_LIBC($host_os)
+  PLATFORM_EXTRACT_VARS_FROM_ABI($host_os)
   # ... and setup our own variables. (Do this explicitly to facilitate searching)
   OPENJDK_TARGET_OS="$VAR_OS"
   if test "x$VAR_OS_TYPE" != x; then
@@ -272,7 +352,10 @@ AC_DEFUN([PLATFORM_EXTRACT_TARGET_AND_BUILD],
   OPENJDK_TARGET_CPU_ARCH="$VAR_CPU_ARCH"
   OPENJDK_TARGET_CPU_BITS="$VAR_CPU_BITS"
   OPENJDK_TARGET_CPU_ENDIAN="$VAR_CPU_ENDIAN"
+  OPENJDK_TARGET_CPU_AUTOCONF="$host_cpu"
   OPENJDK_TARGET_OS_UPPERCASE=`$ECHO $OPENJDK_TARGET_OS | $TR 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'`
+  OPENJDK_TARGET_LIBC="$VAR_LIBC"
+  OPENJDK_TARGET_ABI="$VAR_ABI"
 
   AC_SUBST(OPENJDK_TARGET_OS)
   AC_SUBST(OPENJDK_TARGET_OS_TYPE)
@@ -282,9 +365,17 @@ AC_DEFUN([PLATFORM_EXTRACT_TARGET_AND_BUILD],
   AC_SUBST(OPENJDK_TARGET_CPU_ARCH)
   AC_SUBST(OPENJDK_TARGET_CPU_BITS)
   AC_SUBST(OPENJDK_TARGET_CPU_ENDIAN)
+  AC_SUBST(OPENJDK_TARGET_CPU_AUTOCONF)
+  AC_SUBST(OPENJDK_TARGET_LIBC)
+  AC_SUBST(OPENJDK_TARGET_ABI)
 
   AC_MSG_CHECKING([openjdk-target os-cpu])
   AC_MSG_RESULT([$OPENJDK_TARGET_OS-$OPENJDK_TARGET_CPU])
+
+  if test "x$OPENJDK_TARGET_OS" = "xlinux"; then
+    AC_MSG_CHECKING([openjdk-target C library])
+    AC_MSG_RESULT([$OPENJDK_TARGET_LIBC])
+  fi
 ])
 
 # Check if a reduced build (32-bit on 64-bit platforms) is requested, and modify behaviour
@@ -375,19 +466,6 @@ AC_DEFUN([PLATFORM_SETUP_LEGACY_VARS_HELPER],
   fi
   AC_SUBST(OPENJDK_$1_CPU_LEGACY_LIB)
 
-  # OPENJDK_$1_CPU_ISADIR is normally empty. On 64-bit Solaris systems, it is set to
-  # /amd64 or /sparcv9. This string is appended to some library paths, like this:
-  # /usr/lib${OPENJDK_$1_CPU_ISADIR}/libexample.so
-  OPENJDK_$1_CPU_ISADIR=""
-  if test "x$OPENJDK_$1_OS" = xsolaris; then
-    if test "x$OPENJDK_$1_CPU" = xx86_64; then
-      OPENJDK_$1_CPU_ISADIR="/amd64"
-    elif test "x$OPENJDK_$1_CPU" = xsparcv9; then
-      OPENJDK_$1_CPU_ISADIR="/sparcv9"
-    fi
-  fi
-  AC_SUBST(OPENJDK_$1_CPU_ISADIR)
-
   # Setup OPENJDK_$1_CPU_OSARCH, which is used to set the os.arch Java system property
   OPENJDK_$1_CPU_OSARCH="$OPENJDK_$1_CPU"
   if test "x$OPENJDK_$1_OS" = xlinux && test "x$OPENJDK_$1_CPU" = xx86; then
@@ -408,9 +486,11 @@ AC_DEFUN([PLATFORM_SETUP_LEGACY_VARS_HELPER],
   fi
 
   # The new version string in JDK 9 also defined new naming of OS and ARCH for bundles
-  # Macosx is osx and x86_64 is x64
+  # The macOS bundle name was revised in JDK 17
+  #
+  # macosx is macos and x86_64 is x64
   if test "x$OPENJDK_$1_OS" = xmacosx; then
-    OPENJDK_$1_OS_BUNDLE="osx"
+    OPENJDK_$1_OS_BUNDLE="macos"
   else
     OPENJDK_$1_OS_BUNDLE="$OPENJDK_TARGET_OS"
   fi
@@ -419,7 +499,13 @@ AC_DEFUN([PLATFORM_SETUP_LEGACY_VARS_HELPER],
   else
     OPENJDK_$1_CPU_BUNDLE="$OPENJDK_$1_CPU"
   fi
-  OPENJDK_$1_BUNDLE_PLATFORM="${OPENJDK_$1_OS_BUNDLE}-${OPENJDK_$1_CPU_BUNDLE}"
+
+  OPENJDK_$1_LIBC_BUNDLE=""
+  if test "x$OPENJDK_$1_LIBC" = "xmusl"; then
+    OPENJDK_$1_LIBC_BUNDLE="-$OPENJDK_$1_LIBC"
+  fi
+
+  OPENJDK_$1_BUNDLE_PLATFORM="${OPENJDK_$1_OS_BUNDLE}-${OPENJDK_$1_CPU_BUNDLE}${OPENJDK_$1_LIBC_BUNDLE}"
   AC_SUBST(OPENJDK_$1_BUNDLE_PLATFORM)
 
   if test "x$COMPILE_TYPE" = "xcross"; then
@@ -485,10 +571,15 @@ AC_DEFUN([PLATFORM_SETUP_LEGACY_VARS_HELPER],
     HOTSPOT_$1_CPU_DEFINE=S390
   elif test "x$OPENJDK_$1_CPU" = xs390x; then
     HOTSPOT_$1_CPU_DEFINE=S390
+  elif test "x$OPENJDK_$1_CPU" = xriscv64; then
+    HOTSPOT_$1_CPU_DEFINE=RISCV
   elif test "x$OPENJDK_$1_CPU" != x; then
     HOTSPOT_$1_CPU_DEFINE=$(echo $OPENJDK_$1_CPU | tr a-z A-Z)
   fi
   AC_SUBST(HOTSPOT_$1_CPU_DEFINE)
+
+  HOTSPOT_$1_LIBC=$OPENJDK_$1_LIBC
+  AC_SUBST(HOTSPOT_$1_LIBC)
 
   # For historical reasons, the OS include directories have odd names.
   OPENJDK_$1_OS_INCLUDE_SUBDIR="$OPENJDK_TARGET_OS"
@@ -502,9 +593,6 @@ AC_DEFUN([PLATFORM_SETUP_LEGACY_VARS_HELPER],
 
 AC_DEFUN([PLATFORM_SET_RELEASE_FILE_OS_VALUES],
 [
-  if test "x$OPENJDK_TARGET_OS" = "xsolaris"; then
-    RELEASE_FILE_OS_NAME=SunOS
-  fi
   if test "x$OPENJDK_TARGET_OS" = "xlinux"; then
     RELEASE_FILE_OS_NAME=Linux
   fi
@@ -518,9 +606,11 @@ AC_DEFUN([PLATFORM_SET_RELEASE_FILE_OS_VALUES],
     RELEASE_FILE_OS_NAME="AIX"
   fi
   RELEASE_FILE_OS_ARCH=${OPENJDK_TARGET_CPU}
+  RELEASE_FILE_LIBC=${OPENJDK_TARGET_LIBC}
 
   AC_SUBST(RELEASE_FILE_OS_NAME)
   AC_SUBST(RELEASE_FILE_OS_ARCH)
+  AC_SUBST(RELEASE_FILE_LIBC)
 ])
 
 AC_DEFUN([PLATFORM_SET_MODULE_TARGET_OS_VALUES],
@@ -558,22 +648,9 @@ AC_DEFUN_ONCE([PLATFORM_SETUP_OPENJDK_BUILD_AND_TARGET],
   PLATFORM_SET_MODULE_TARGET_OS_VALUES
   PLATFORM_SET_RELEASE_FILE_OS_VALUES
   PLATFORM_SETUP_LEGACY_VARS
-  PLATFORM_CHECK_DEPRECATION
-])
 
-AC_DEFUN([PLATFORM_CHECK_DEPRECATION],
-[
-  AC_ARG_ENABLE(deprecated-ports, [AS_HELP_STRING([--enable-deprecated-ports@<:@=yes/no@:>@],
-       [Suppress the error when configuring for a deprecated port @<:@no@:>@])])
-
-  if test "x$OPENJDK_TARGET_OS" = xsolaris || (test "x$OPENJDK_TARGET_CPU_ARCH" = xsparc && test "x$with_jvm_variants" != xzero); then
-    if test "x$enable_deprecated_ports" = "xyes"; then
-      AC_MSG_WARN([The Solaris and SPARC ports are deprecated and may be removed in a future release.])
-    else
-      AC_MSG_ERROR(m4_normalize([The Solaris and SPARC ports are deprecated and may be removed in a
-        future release. Use --enable-deprecated-ports=yes to suppress this error.]))
-    fi
-  fi
+  # Deprecated in JDK 15
+  UTIL_DEPRECATED_ARG_ENABLE(deprecated-ports)
 ])
 
 AC_DEFUN_ONCE([PLATFORM_SETUP_OPENJDK_BUILD_OS_VERSION],

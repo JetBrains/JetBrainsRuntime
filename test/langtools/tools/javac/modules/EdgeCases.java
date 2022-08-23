@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug 8154283 8167320 8171098 8172809 8173068 8173117 8176045 8177311
+ * @bug 8154283 8167320 8171098 8172809 8173068 8173117 8176045 8177311 8241519
  * @summary tests for multi-module mode compilation
  * @library /tools/lib
  * @modules
@@ -302,13 +302,17 @@ public class EdgeCases extends ModuleTestBase {
         Path src_m1 = src.resolve("m1x");
         tb.writeJavaFiles(src_m1,
                           "module m1x { exports test.m1x; }",
-                          "package test.m1x;\n" +
-                          "public class Test {}\n");
+                          """
+                              package test.m1x;
+                              public class Test {}
+                              """);
         Path src_m2 = src.resolve("m2x");
         tb.writeJavaFiles(src_m2,
                           "module m2x { requires m1x; }",
-                          "package test;\n" +
-                          "public class m1x {}\n");
+                          """
+                              package test;
+                              public class m1x {}
+                              """);
         Path classes = base.resolve("classes");
         tb.createDirectories(classes);
 
@@ -515,15 +519,21 @@ public class EdgeCases extends ModuleTestBase {
         Path src_m1 = src.resolve("m1x");
         tb.writeJavaFiles(src_m1,
                           "module m1x { }",
-                          "package m1x;\n" +
-                          "import m1x.a.*; public class Test { A a; }\n",
-                          "package m1x.a;\n" +
-                          "public class A { }\n");
+                          """
+                              package m1x;
+                              import m1x.a.*; public class Test { A a; }
+                              """,
+                          """
+                              package m1x.a;
+                              public class A { }
+                              """);
         Path src_m2 = src.resolve("m2x");
         tb.writeJavaFiles(src_m2,
                           "module m2x { }",
-                          "package m1x;\n" +
-                          "public class a { public static class A { } }\n");
+                          """
+                              package m1x;
+                              public class a { public static class A { } }
+                              """);
         Path classes = base.resolve("classes");
         tb.createDirectories(classes);
 
@@ -994,6 +1004,47 @@ public class EdgeCases extends ModuleTestBase {
             .files(findJavaFiles(src))
             .run()
             .writeAll();
+    }
+
+    @Test
+    public void testMisnamedModuleInfoClass(Path base) throws Exception {
+        Path src = base.resolve("src");
+        Path a = src.resolve("a");
+        tb.writeJavaFiles(a,
+                          "module a {}");
+        Path b = src.resolve("b");
+        tb.writeJavaFiles(b,
+                          "module b { uses com.example.c; }");
+        Path classes = base.resolve("classes");
+        tb.createDirectories(classes);
+        Path aClasses = classes.resolve("x");
+        tb.createDirectories(aClasses);
+
+        new JavacTask(tb)
+                .outdir(aClasses)
+                .files(findJavaFiles(a))
+                .run()
+                .writeAll();
+
+        Path bClasses = classes.resolve("b");
+        tb.createDirectories(bClasses);
+
+        List<String> log;
+
+        log = new JavacTask(tb)
+                .outdir(bClasses)
+                .options("-p", classes.toString(),
+                         "-XDrawDiagnostics")
+                .files(findJavaFiles(b))
+                .run(Task.Expect.FAIL)
+                .writeAll()
+                .getOutputLines(Task.OutputKind.DIRECT);
+
+        List<String> expected = List.of("module-info.java:1:28: compiler.err.doesnt.exist: com.example",
+                                        "1 error");
+
+        if (!expected.equals(log))
+            throw new Exception("expected output not found: " + log);
     }
 
 }

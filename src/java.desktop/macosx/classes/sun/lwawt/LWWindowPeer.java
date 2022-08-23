@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,6 +59,7 @@ import java.awt.peer.KeyboardFocusManagerPeer;
 import java.awt.peer.WindowPeer;
 import java.util.List;
 
+import java.util.Objects;
 import javax.swing.JComponent;
 
 import sun.awt.AWTAccessor;
@@ -78,6 +79,7 @@ import sun.java2d.SurfaceData;
 import sun.java2d.loops.Blit;
 import sun.java2d.loops.CompositeType;
 import sun.java2d.pipe.Region;
+import sun.lwawt.macosx.CPlatformWindow;
 import sun.util.logging.PlatformLogger;
 
 public class LWWindowPeer
@@ -283,6 +285,16 @@ public class LWWindowPeer
     }
 
     @Override
+    public void setBackground(final Color c) {
+        Color oldBg = getBackground();
+        if (Objects.equals(oldBg, c)) {
+            return;
+        }
+        super.setBackground(c);
+        updateOpaque();
+    }
+
+    @Override
     protected void setVisibleImpl(final boolean visible) {
         if (!visible && warningWindow != null) {
             warningWindow.setVisible(false, false);
@@ -291,23 +303,6 @@ public class LWWindowPeer
         super.setVisibleImpl(visible);
         // TODO: update graphicsConfig, see 4868278
         platformWindow.setVisible(visible);
-        if (isSimpleWindow()) {
-            KeyboardFocusManagerPeer kfmPeer = LWKeyboardFocusManagerPeer.getInstance();
-            if (visible) {
-                if (!getTarget().isAutoRequestFocus()) {
-                    return;
-                } else {
-                    requestWindowFocus(FocusEvent.Cause.ACTIVATION);
-                }
-            // Focus the owner in case this window is focused.
-            } else if (kfmPeer.getCurrentFocusedWindow() == getTarget()) {
-                // Transfer focus to the owner.
-                LWWindowPeer owner = getOwnerFrameDialog(LWWindowPeer.this);
-                if (owner != null) {
-                    owner.requestWindowFocus(FocusEvent.Cause.ACTIVATION);
-                }
-            }
-        }
     }
 
     @Override
@@ -489,12 +484,6 @@ public class LWWindowPeer
     @Override
     public void updateIconImages() {
         getPlatformWindow().updateIconImages();
-    }
-
-    @Override
-    public void setBackground(final Color c) {
-        super.setBackground(c);
-        updateOpaque();
     }
 
     @Override
@@ -732,7 +721,7 @@ public class LWWindowPeer
             setPlatformMaximizedBounds(getDefaultMaximizedBounds());
         }
 
-        if (pResized || isNewDevice) {
+        if (pResized || isNewDevice || invalid) {
             replaceSurfaceData();
             updateMinimumSize();
         }
@@ -1264,53 +1253,6 @@ public class LWWindowPeer
             return false;
         }
 
-        AppContext targetAppContext = AWTAccessor.getComponentAccessor().getAppContext(getTarget());
-        KeyboardFocusManager kfm = AWTAccessor.getKeyboardFocusManagerAccessor()
-                .getCurrentKeyboardFocusManager(targetAppContext);
-        Window currentActive = kfm.getActiveWindow();
-
-
-        Window opposite = LWKeyboardFocusManagerPeer.getInstance().
-            getCurrentFocusedWindow();
-
-        // Make the owner active window.
-        if (isSimpleWindow()) {
-            LWWindowPeer owner = getOwnerFrameDialog(this);
-
-            // If owner is not natively active, request native
-            // activation on it w/o sending events up to java.
-            if (owner != null && !owner.platformWindow.isActive()) {
-                if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
-                    focusLog.fine("requesting native focus to the owner " + owner);
-                }
-                LWWindowPeer currentActivePeer = currentActive == null ? null :
-                (LWWindowPeer) AWTAccessor.getComponentAccessor().getPeer(
-                        currentActive);
-
-                // Ensure the opposite is natively active and suppress sending events.
-                if (currentActivePeer != null && currentActivePeer.platformWindow.isActive()) {
-                    if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
-                        focusLog.fine("the opposite is " + currentActivePeer);
-                    }
-                    currentActivePeer.skipNextFocusChange = true;
-                }
-                owner.skipNextFocusChange = true;
-
-                owner.platformWindow.requestWindowFocus();
-            }
-
-            // DKFM will synthesize all the focus/activation events correctly.
-            changeFocusedWindow(true, opposite);
-            return true;
-
-        // In case the toplevel is active but not focused, change focus directly,
-        // as requesting native focus on it will not have effect.
-        } else if (getTarget() == currentActive && !getTarget().hasFocus()) {
-
-            changeFocusedWindow(true, opposite);
-            return true;
-        }
-
         return platformWindow.requestWindowFocus();
     }
 
@@ -1386,7 +1328,8 @@ public class LWWindowPeer
         // - when the opposite (gaining focus) window is an owned/owner window.
         // - for a simple window in any case.
         if (!becomesFocused &&
-            (isGrabbing() || this.isOneOfOwnersOf(grabbingWindow)))
+            (isGrabbing() || this.isOneOfOwnersOf(grabbingWindow)) &&
+            (opposite == null || getOwnerFrameDialog(AWTAccessor.getComponentAccessor().getPeer(opposite)) != this))
         {
             if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
                 focusLog.fine("ungrabbing on " + grabbingWindow);
@@ -1408,7 +1351,7 @@ public class LWWindowPeer
         WindowEvent windowEvent = new TimedWindowEvent(getTarget(), eventID, opposite, System.currentTimeMillis());
 
         // TODO: wrap in SequencedEvent
-        postEvent(windowEvent);
+        SunToolkit.postPriorityEvent(windowEvent);
     }
 
     /*
@@ -1515,5 +1458,18 @@ public class LWWindowPeer
     @Override
     public String toString() {
         return super.toString() + " [target is " + getTarget() + "]";
+    }
+
+    /**
+     * [tav] Used externally.
+     */
+    @Override
+    public long getWindowHandle() {
+        final long[] handle = new long[1];
+        PlatformWindow window = getPlatformWindow();
+        if (window instanceof CPlatformWindow) {
+            ((CPlatformWindow)window).execute(ptr -> handle[0] = ptr);
+        }
+        return handle[0];
     }
 }

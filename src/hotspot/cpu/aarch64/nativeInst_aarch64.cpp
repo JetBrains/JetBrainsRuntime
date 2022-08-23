@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 1997, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2014, 2018, Red Hat Inc. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,9 @@
 
 #include "precompiled.hpp"
 #include "asm/macroAssembler.hpp"
+#include "code/codeCache.hpp"
 #include "code/compiledIC.hpp"
+#include "gc/shared/collectedHeap.hpp"
 #include "memory/resourceArea.hpp"
 #include "nativeInst_aarch64.hpp"
 #include "oops/oop.inline.hpp"
@@ -304,7 +306,7 @@ void NativeMovRegMem::set_offset(int x) {
   unsigned insn = *(unsigned*)pc;
   if (maybe_cpool_ref(pc)) {
     address addr = MacroAssembler::target_addr_for_insn(pc);
-    *(long*)addr = x;
+    *(int64_t*)addr = x;
   } else {
     MacroAssembler::pd_patch_instruction(pc, (address)intptr_t(x));
     ICache::invalidate_range(instruction_address(), instruction_size);
@@ -462,6 +464,10 @@ void NativeIllegalInstruction::insert(address code_pos) {
   *(juint*)code_pos = 0xd4bbd5a1; // dcps1 #0xdead
 }
 
+bool NativeInstruction::is_stop() {
+  return uint_at(0) == 0xd4bbd5c1; // dcps1 #0xdeae
+}
+
 //-------------------------------------------------------------------
 
 // MT-safe inserting of a jump over a jump or a nop (used by
@@ -470,16 +476,9 @@ void NativeIllegalInstruction::insert(address code_pos) {
 void NativeJump::patch_verified_entry(address entry, address verified_entry, address dest) {
 
   assert(dest == SharedRuntime::get_handle_wrong_method_stub(), "expected fixed destination of patch");
-
-#ifdef ASSERT
-  // This may be the temporary nmethod generated while we're AOT
-  // compiling.  Such an nmethod doesn't begin with a NOP but with an ADRP.
-  if (! (CalculateClassFingerprint && UseAOT && is_adrp_at(verified_entry))) {
-    assert(nativeInstruction_at(verified_entry)->is_jump_or_nop()
-           || nativeInstruction_at(verified_entry)->is_sigill_zombie_not_entrant(),
-           "Aarch64 cannot replace non-jump with jump");
-  }
-#endif
+  assert(nativeInstruction_at(verified_entry)->is_jump_or_nop()
+         || nativeInstruction_at(verified_entry)->is_sigill_zombie_not_entrant(),
+         "Aarch64 cannot replace non-jump with jump");
 
   // Patch this nmethod atomically.
   if (Assembler::reachable_from_branch_at(verified_entry, dest)) {

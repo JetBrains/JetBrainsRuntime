@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,7 +58,6 @@ import java.awt.geom.Rectangle2D;
 import java.awt.print.PrinterGraphics;
 import java.beans.PropertyChangeEvent;
 import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Modifier;
@@ -68,11 +67,13 @@ import java.text.AttributedCharacterIterator;
 import java.text.AttributedString;
 import java.text.BreakIterator;
 import java.text.CharacterIterator;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 
@@ -103,9 +104,11 @@ import sun.font.FontUtilities;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.print.ProxyPrintGraphics;
 
+import static java.awt.RenderingHints.KEY_FRACTIONALMETRICS;
 import static java.awt.RenderingHints.KEY_TEXT_ANTIALIASING;
 import static java.awt.RenderingHints.KEY_TEXT_LCD_CONTRAST;
 import static java.awt.RenderingHints.VALUE_FRACTIONALMETRICS_DEFAULT;
+import static java.awt.RenderingHints.VALUE_FRACTIONALMETRICS_OFF;
 import static java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_DEFAULT;
 import static java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HBGR;
 import static java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB;
@@ -179,8 +182,8 @@ public class SwingUtilities2 {
             Map<Object, Object> hints = (Map<Object, Object>) desktopHints;
             Object aaHint = hints.get(KEY_TEXT_ANTIALIASING);
             if (aaHint == null
-                    || aaHint == VALUE_TEXT_ANTIALIAS_OFF
-                    || aaHint == VALUE_TEXT_ANTIALIAS_DEFAULT) {
+                    /*|| aaHint == VALUE_TEXT_ANTIALIAS_OFF
+                    || aaHint == VALUE_TEXT_ANTIALIAS_DEFAULT*/) {
                 return;
             }
             map.put(KEY_TEXT_ANTIALIASING, aaHint);
@@ -566,25 +569,9 @@ public class SwingUtilities2 {
                                 ? null
                                 : c.getClientProperty(KEY_TEXT_ANTIALIASING);
             if (aaHint != null) {
-                Object oldContrast = null;
-                Object oldAAValue = g2.getRenderingHint(KEY_TEXT_ANTIALIASING);
-                if (aaHint != oldAAValue) {
-                    g2.setRenderingHint(KEY_TEXT_ANTIALIASING, aaHint);
-                } else {
-                    oldAAValue = null;
-                }
-
-                Object lcdContrastHint = c.getClientProperty(
-                        KEY_TEXT_LCD_CONTRAST);
-                if (lcdContrastHint != null) {
-                    oldContrast = g2.getRenderingHint(KEY_TEXT_LCD_CONTRAST);
-                    if (lcdContrastHint.equals(oldContrast)) {
-                        oldContrast = null;
-                    } else {
-                        g2.setRenderingHint(KEY_TEXT_LCD_CONTRAST,
-                                            lcdContrastHint);
-                    }
-                }
+                Object oldAAValue = configureHint(KEY_TEXT_ANTIALIASING, g2, aaHint);
+                Object oldFMValue = configureHint(KEY_FRACTIONALMETRICS, g2, c);
+                Object oldContrast = configureHint(KEY_TEXT_LCD_CONTRAST, g2, c);
 
                 if (needsTextLayout) {
                     TextLayout layout = createTextLayout(c, text, g2.getFont(),
@@ -594,12 +581,9 @@ public class SwingUtilities2 {
                     g2.drawString(text, x, y);
                 }
 
-                if (oldAAValue != null) {
-                    g2.setRenderingHint(KEY_TEXT_ANTIALIASING, oldAAValue);
-                }
-                if (oldContrast != null) {
-                    g2.setRenderingHint(KEY_TEXT_LCD_CONTRAST, oldContrast);
-                }
+                restoreHint(KEY_TEXT_ANTIALIASING, g2, oldAAValue);
+                restoreHint(KEY_FRACTIONALMETRICS, g2, oldFMValue);
+                restoreHint(KEY_TEXT_LCD_CONTRAST, g2, oldContrast);
 
                 return;
             }
@@ -905,34 +889,15 @@ public class SwingUtilities2 {
 
         Graphics2D g2 = (Graphics2D) g;
         if (aaHint != null) {
-
-            Object oldContrast = null;
-            Object oldAAValue = g2.getRenderingHint(KEY_TEXT_ANTIALIASING);
-            if (aaHint != null && aaHint != oldAAValue) {
-                g2.setRenderingHint(KEY_TEXT_ANTIALIASING, aaHint);
-            } else {
-                oldAAValue = null;
-            }
-
-            Object lcdContrastHint = c.getClientProperty(KEY_TEXT_LCD_CONTRAST);
-            if (lcdContrastHint != null) {
-                oldContrast = g2.getRenderingHint(KEY_TEXT_LCD_CONTRAST);
-                if (lcdContrastHint.equals(oldContrast)) {
-                    oldContrast = null;
-                } else {
-                    g2.setRenderingHint(KEY_TEXT_LCD_CONTRAST,
-                                        lcdContrastHint);
-                }
-            }
+            Object oldAAValue = configureHint(KEY_TEXT_ANTIALIASING, g2, aaHint);
+            Object oldFMValue = configureHint(KEY_FRACTIONALMETRICS, g2, c);
+            Object oldContrast = configureHint(KEY_TEXT_LCD_CONTRAST, g2, c);
 
             g2.drawString(new String(data, offset, length), x, y);
 
-            if (oldAAValue != null) {
-                g2.setRenderingHint(KEY_TEXT_ANTIALIASING, oldAAValue);
-            }
-            if (oldContrast != null) {
-                g2.setRenderingHint(KEY_TEXT_LCD_CONTRAST, oldContrast);
-            }
+            restoreHint(KEY_TEXT_ANTIALIASING, g2, oldAAValue);
+            restoreHint(KEY_FRACTIONALMETRICS, g2, oldFMValue);
+            restoreHint(KEY_TEXT_LCD_CONTRAST, g2, oldContrast);
         }
         else {
             g2.drawString(new String(data, offset, length), x, y);
@@ -1249,20 +1214,33 @@ public class SwingUtilities2 {
      */
     private static FontRenderContext getFRCProperty(JComponent c) {
         if (c != null) {
-
             GraphicsConfiguration gc = c.getGraphicsConfiguration();
             AffineTransform tx = (gc == null) ? null : gc.getDefaultTransform();
+            // [tav] workaround deadlock on MacOSX until fixed, JRE-226
+            if (!FontUtilities.isMacOSX && tx == null && !GraphicsEnvironment.isHeadless()) {
+                tx =  GraphicsEnvironment
+                        .getLocalGraphicsEnvironment()
+                        .getDefaultScreenDevice()
+                        .getDefaultConfiguration()
+                        .getDefaultTransform();
+            }
             Object aaHint = c.getClientProperty(KEY_TEXT_ANTIALIASING);
-            return getFRCFromCache(tx, aaHint);
+            if (aaHint == null) aaHint = VALUE_TEXT_ANTIALIAS_DEFAULT;
+
+            Object fmHint = c.getClientProperty(KEY_FRACTIONALMETRICS);
+            if (fmHint == null) fmHint = VALUE_FRACTIONALMETRICS_DEFAULT;
+
+            return getFRCFromCache(tx, aaHint, fmHint);
         }
         return null;
     }
 
     private static final Object APP_CONTEXT_FRC_CACHE_KEY = new Object();
 
-    private static FontRenderContext getFRCFromCache(AffineTransform tx,
-                                                     Object aaHint) {
-        if (tx == null && aaHint == null) {
+    private static FontRenderContext getFRCFromCache(AffineTransform tx, Object aaHint, Object fmHint) {
+        if ((tx == null || tx.isIdentity())
+                && (aaHint == VALUE_TEXT_ANTIALIAS_OFF || aaHint == VALUE_TEXT_ANTIALIAS_DEFAULT)
+                && (fmHint == VALUE_FRACTIONALMETRICS_OFF || fmHint == VALUE_FRACTIONALMETRICS_DEFAULT)) {
             return null;
         }
 
@@ -1271,46 +1249,36 @@ public class SwingUtilities2 {
                 AppContext.getAppContext().get(APP_CONTEXT_FRC_CACHE_KEY);
 
         if (cache == null) {
-            cache = new HashMap<>();
+            cache = new ConcurrentHashMap<>();
             AppContext.getAppContext().put(APP_CONTEXT_FRC_CACHE_KEY, cache);
         }
 
         Object key = (tx == null)
-                ? aaHint
-                : (aaHint == null ? tx : new KeyPair(tx, aaHint));
+                ? new KeyArray(aaHint, fmHint)
+                : new KeyArray(tx, aaHint, fmHint);
 
-        FontRenderContext frc = cache.get(key);
-        if (frc == null) {
-            aaHint = (aaHint == null) ? VALUE_TEXT_ANTIALIAS_OFF : aaHint;
-            frc = new FontRenderContext(tx, aaHint,
-                                        VALUE_FRACTIONALMETRICS_DEFAULT);
-            cache.put(key, frc);
-        }
-        return frc;
+        return cache.computeIfAbsent(key, k -> new FontRenderContext(tx, aaHint, fmHint));
     }
 
-    private static class KeyPair {
+    private static class KeyArray {
+        private final Object[] array;
 
-        private final Object key1;
-        private final Object key2;
-
-        public KeyPair(Object key1, Object key2) {
-            this.key1 = key1;
-            this.key2 = key2;
+        KeyArray(Object... array) {
+            this.array = array;
         }
 
         @Override
-        public boolean equals(Object obj) {
-            if (!(obj instanceof KeyPair)) {
+        public boolean equals(Object object) {
+            if (!(object instanceof KeyArray)) {
                 return false;
             }
-            KeyPair that = (KeyPair) obj;
-            return this.key1.equals(that.key1) && this.key2.equals(that.key2);
+            KeyArray that = (KeyArray) object;
+            return Arrays.equals(that.array, array);
         }
 
         @Override
         public int hashCode() {
-            return key1.hashCode() + 37 * key2.hashCode();
+            return Arrays.hashCode(array);
         }
     }
 
@@ -1487,6 +1455,7 @@ public class SwingUtilities2 {
    public static boolean canAccessSystemClipboard() {
        boolean canAccess = false;
        if (!GraphicsEnvironment.isHeadless()) {
+           @SuppressWarnings("removal")
            SecurityManager sm = System.getSecurityManager();
            if (sm == null) {
                canAccess = true;
@@ -1592,6 +1561,7 @@ public class SwingUtilities2 {
      *
      * @param modifiers a set of modifiers
      */
+    @SuppressWarnings("removal")
     public static void checkAccess(int modifiers) {
         if (System.getSecurityManager() != null
                 && !Modifier.isPublic(modifiers)) {
@@ -1617,6 +1587,7 @@ public class SwingUtilities2 {
      * details
      *
      */
+    @SuppressWarnings("removal")
     private static boolean isTrustedContext() {
         return (System.getSecurityManager() == null)
             || (AppContext.getAppContext().
@@ -1712,6 +1683,7 @@ public class SwingUtilities2 {
                                   final String imageFile,
                                   final boolean enablePrivileges) {
         return (UIDefaults.LazyValue) (table) -> {
+            @SuppressWarnings("removal")
             byte[] buffer = enablePrivileges ? AccessController.doPrivileged(
                     (PrivilegedAction<byte[]>) ()
                     -> getIconBytes(baseClass, rootClass, imageFile))
@@ -1754,18 +1726,9 @@ public class SwingUtilities2 {
                     continue;
                             }
 
-                try (BufferedInputStream in
-                        = new BufferedInputStream(resource);
-                        ByteArrayOutputStream out
-                        = new ByteArrayOutputStream(1024)) {
-                            byte[] buffer = new byte[1024];
-                            int n;
-                            while ((n = in.read(buffer)) > 0) {
-                                out.write(buffer, 0, n);
+                            try (BufferedInputStream in = new BufferedInputStream(resource)) {
+                                return in.readAllBytes();
                             }
-                            out.flush();
-                            return out.toByteArray();
-                }
                         } catch (IOException ioe) {
                             System.err.println(ioe.toString());
                         }
@@ -2350,5 +2313,46 @@ public class SwingUtilities2 {
         var newTx = newGC != null ? newGC.getDefaultTransform() : null;
         var oldTx = oldGC != null ? oldGC.getDefaultTransform() : null;
         return !Objects.equals(newTx, oldTx);
+    }
+
+    /**
+     * @param key the key of the hint to be set
+     * @param g   the graphics to configure
+     * @param c   the component that provides a hint value
+     * @return a value previously set in the given graphics,
+     * or {@code null} if a hint value is not set
+     */
+    private static Object configureHint(RenderingHints.Key key, Graphics2D g, JComponent c) {
+        if (c == null) return null; // component is not specified
+
+        return configureHint(key, g, c.getClientProperty(key));
+    }
+
+    /**
+     * @param key      the key of the hint to be set
+     * @param g        the graphics to configure
+     * @param newValue the new value to set
+     * @return a value previously set in the given graphics,
+     * or {@code null} if a hint value is not set
+     */
+    private static Object configureHint(RenderingHints.Key key, Graphics2D g, Object newValue) {
+        if (newValue == null) return null; // new value is not provided
+
+        Object oldValue = g.getRenderingHint(key);
+        if (newValue.equals(oldValue)) return null; // value is not changed
+
+        g.setRenderingHint(key, newValue);
+        return oldValue;
+    }
+
+    /**
+     * @param key      the key of the hint to be set
+     * @param g        the graphics to configure
+     * @param oldValue the stored value to set
+     */
+    private static void restoreHint(RenderingHints.Key key, Graphics2D g, Object oldValue) {
+        if (oldValue == null) return; // nothing to restore
+
+        g.setRenderingHint(key, oldValue);
     }
 }

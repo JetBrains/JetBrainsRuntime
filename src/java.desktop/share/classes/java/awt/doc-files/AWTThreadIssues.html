@@ -5,7 +5,7 @@
   <title>AWT Threading Issues</title>
 </head>
 <!--
- Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
+ Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 
  This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@
 
 <body>
 <main role="main">
-<div class="contentContainer">
 <h1>AWT Threading Issues</h1>
 
 <a id="ListenersThreads"></a>
@@ -47,7 +46,7 @@ newly added listener is only notified on subsequent key events.
 <h2>Auto-shutdown</h2>
 
 According to
-<cite>The Java&trade; Virtual Machine Specification</cite>,
+<cite>The Java Virtual Machine Specification</cite>,
 sections 2.17.9 and 2.19,
 the Java virtual machine (JVM) initially starts up with a single non-daemon
 thread, which typically calls the <code>main</code> method of some class.
@@ -190,10 +189,9 @@ non-daemon thread that blocks forever.
         &lt;...&gt;
 </pre>
 
-<cite>The Java&trade; Virtual Machine Specification</cite>
+<cite>The Java Virtual Machine Specification</cite>
  guarantees
 that the JVM doesn't exit until this thread terminates.
-</div>
 </main>
 </body>
 </html>

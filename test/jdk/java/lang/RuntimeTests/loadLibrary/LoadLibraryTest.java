@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Amazon and/or its affiliates. All rights reserved.
+ * Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
  * Copyright (c) 2019, Azul Systems, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -58,7 +58,6 @@ public class LoadLibraryTest {
             // jdk/jdk: loads directly from Bootstrap Classloader (doesn't take lock on Runtime)
             java.net.NetworkInterface.getNetworkInterfaces();
 
-            System.out.println(jdk.net.ExtendedSocketOptions.SO_FLOW_SLA);
 */
             Class c = Class.forName("Target2", true, loader);
         } catch (Exception e) {

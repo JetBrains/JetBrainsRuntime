@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,6 +72,7 @@ class Field extends AccessibleObject implements Member {
     private String              name;
     private Class<?>            type;
     private int                 modifiers;
+    private boolean             trustedFinal;
     // Generics and annotations support
     private transient String    signature;
     // generic info repository; lazily initialized
@@ -115,10 +116,12 @@ class Field extends AccessibleObject implements Member {
     /**
      * Package-private constructor
      */
+    @SuppressWarnings("deprecation")
     Field(Class<?> declaringClass,
           String name,
           Class<?> type,
           int modifiers,
+          boolean trustedFinal,
           int slot,
           String signature,
           byte[] annotations)
@@ -127,6 +130,7 @@ class Field extends AccessibleObject implements Member {
         this.name = name;
         this.type = type;
         this.modifiers = modifiers;
+        this.trustedFinal = trustedFinal;
         this.slot = slot;
         this.signature = signature;
         this.annotations = annotations;
@@ -148,7 +152,7 @@ class Field extends AccessibleObject implements Member {
         if (this.root != null)
             throw new IllegalArgumentException("Can not copy a non-root Field");
 
-        Field res = new Field(clazz, name, type, modifiers, slot, signature, annotations);
+        Field res = new Field(clazz, name, type, modifiers, trustedFinal, slot, signature, annotations);
         res.root = this;
         // Might as well eagerly propagate this if already present
         res.fieldAccessor = fieldAccessor;
@@ -196,6 +200,8 @@ class Field extends AccessibleObject implements Member {
      * be used to decode the modifiers.
      *
      * @see Modifier
+     * @jls 8.3 Field Declarations
+     * @jls 9.3 Field (Constant) Declarations
      */
     public int getModifiers() {
         return modifiers;
@@ -203,11 +209,12 @@ class Field extends AccessibleObject implements Member {
 
     /**
      * Returns {@code true} if this field represents an element of
-     * an enumerated type; returns {@code false} otherwise.
+     * an enumerated class; returns {@code false} otherwise.
      *
      * @return {@code true} if and only if this field represents an element of
-     * an enumerated type.
+     * an enumerated class.
      * @since 1.5
+     * @jls 8.9.1 Enum Constants
      */
     public boolean isEnumConstant() {
         return (getModifiers() & Modifier.ENUM) != 0;
@@ -220,6 +227,9 @@ class Field extends AccessibleObject implements Member {
      * @return true if and only if this field is a synthetic
      * field as defined by the Java Language Specification.
      * @since 1.5
+     * @see <a
+     * href="{@docRoot}/java.base/java/lang/reflect/package-summary.html#LanguageJvmModel">Java
+     * programming language and JVM modeling in core reflection</a>
      */
     public boolean isSynthetic() {
         return Modifier.isSynthetic(getModifiers());
@@ -252,10 +262,10 @@ class Field extends AccessibleObject implements Member {
      *     the field represented by this {@code Field} object
      * @throws GenericSignatureFormatError if the generic field
      *     signature does not conform to the format specified in
-     *     <cite>The Java&trade; Virtual Machine Specification</cite>
+     *     <cite>The Java Virtual Machine Specification</cite>
      * @throws TypeNotPresentException if the generic type
      *     signature of the underlying field refers to a non-existent
-     *     type declaration
+     *     class or interface declaration
      * @throws MalformedParameterizedTypeException if the generic
      *     signature of the underlying field refers to a parameterized type
      *     that cannot be instantiated for any reason
@@ -276,8 +286,7 @@ class Field extends AccessibleObject implements Member {
      * and type.
      */
     public boolean equals(Object obj) {
-        if (obj != null && obj instanceof Field) {
-            Field other = (Field)obj;
+        if (obj instanceof Field other) {
             return (getDeclaringClass() == other.getDeclaringClass())
                 && (getName() == other.getName())
                 && (getType() == other.getType());
@@ -721,10 +730,21 @@ class Field extends AccessibleObject implements Member {
      * the underlying field is inaccessible, the method throws an
      * {@code IllegalAccessException}.
      *
-     * <p>If the underlying field is final, the method throws an
-     * {@code IllegalAccessException} unless {@code setAccessible(true)}
-     * has succeeded for this {@code Field} object
-     * and the field is non-static. Setting a final field in this way
+     * <p>If the underlying field is final, this {@code Field} object has
+     * <em>write</em> access if and only if the following conditions are met:
+     * <ul>
+     * <li>{@link #setAccessible(boolean) setAccessible(true)} has succeeded for
+     *     this {@code Field} object;</li>
+     * <li>the field is non-static; and</li>
+     * <li>the field's declaring class is not a {@linkplain Class#isHidden()
+     *     hidden class}; and</li>
+     * <li>the field's declaring class is not a {@linkplain Class#isRecord()
+     *     record class}.</li>
+     * </ul>
+     * If any of the above checks is not met, this method throws an
+     * {@code IllegalAccessException}.
+     *
+     * <p> Setting a final field in this way
      * is meaningful only during deserialization or reconstruction of
      * instances of classes with blank final fields, before they are
      * made available for access by other parts of a program. Use in
@@ -756,7 +776,8 @@ class Field extends AccessibleObject implements Member {
      *
      * @throws    IllegalAccessException    if this {@code Field} object
      *              is enforcing Java language access control and the underlying
-     *              field is either inaccessible or final.
+     *              field is inaccessible or final;
+     *              or if this {@code Field} object has no write access.
      * @throws    IllegalArgumentException  if the specified object is not an
      *              instance of the class or interface declaring the underlying
      *              field (or a subclass or implementor thereof),
@@ -791,7 +812,8 @@ class Field extends AccessibleObject implements Member {
      *
      * @throws    IllegalAccessException    if this {@code Field} object
      *              is enforcing Java language access control and the underlying
-     *              field is either inaccessible or final.
+     *              field is either inaccessible or final;
+     *              or if this {@code Field} object has no write access.
      * @throws    IllegalArgumentException  if the specified object is not an
      *              instance of the class or interface declaring the underlying
      *              field (or a subclass or implementor thereof),
@@ -827,7 +849,8 @@ class Field extends AccessibleObject implements Member {
      *
      * @throws    IllegalAccessException    if this {@code Field} object
      *              is enforcing Java language access control and the underlying
-     *              field is either inaccessible or final.
+     *              field is either inaccessible or final;
+     *              or if this {@code Field} object has no write access.
      * @throws    IllegalArgumentException  if the specified object is not an
      *              instance of the class or interface declaring the underlying
      *              field (or a subclass or implementor thereof),
@@ -863,7 +886,8 @@ class Field extends AccessibleObject implements Member {
      *
      * @throws    IllegalAccessException    if this {@code Field} object
      *              is enforcing Java language access control and the underlying
-     *              field is either inaccessible or final.
+     *              field is either inaccessible or final;
+     *              or if this {@code Field} object has no write access.
      * @throws    IllegalArgumentException  if the specified object is not an
      *              instance of the class or interface declaring the underlying
      *              field (or a subclass or implementor thereof),
@@ -899,7 +923,8 @@ class Field extends AccessibleObject implements Member {
      *
      * @throws    IllegalAccessException    if this {@code Field} object
      *              is enforcing Java language access control and the underlying
-     *              field is either inaccessible or final.
+     *              field is either inaccessible or final;
+     *              or if this {@code Field} object has no write access.
      * @throws    IllegalArgumentException  if the specified object is not an
      *              instance of the class or interface declaring the underlying
      *              field (or a subclass or implementor thereof),
@@ -935,7 +960,8 @@ class Field extends AccessibleObject implements Member {
      *
      * @throws    IllegalAccessException    if this {@code Field} object
      *              is enforcing Java language access control and the underlying
-     *              field is either inaccessible or final.
+     *              field is either inaccessible or final;
+     *              or if this {@code Field} object has no write access.
      * @throws    IllegalArgumentException  if the specified object is not an
      *              instance of the class or interface declaring the underlying
      *              field (or a subclass or implementor thereof),
@@ -971,7 +997,8 @@ class Field extends AccessibleObject implements Member {
      *
      * @throws    IllegalAccessException    if this {@code Field} object
      *              is enforcing Java language access control and the underlying
-     *              field is either inaccessible or final.
+     *              field is either inaccessible or final;
+     *              or if this {@code Field} object has no write access.
      * @throws    IllegalArgumentException  if the specified object is not an
      *              instance of the class or interface declaring the underlying
      *              field (or a subclass or implementor thereof),
@@ -1007,7 +1034,8 @@ class Field extends AccessibleObject implements Member {
      *
      * @throws    IllegalAccessException    if this {@code Field} object
      *              is enforcing Java language access control and the underlying
-     *              field is either inaccessible or final.
+     *              field is either inaccessible or final;
+     *              or if this {@code Field} object has no write access.
      * @throws    IllegalArgumentException  if the specified object is not an
      *              instance of the class or interface declaring the underlying
      *              field (or a subclass or implementor thereof),
@@ -1043,7 +1071,8 @@ class Field extends AccessibleObject implements Member {
      *
      * @throws    IllegalAccessException    if this {@code Field} object
      *              is enforcing Java language access control and the underlying
-     *              field is either inaccessible or final.
+     *              field is either inaccessible or final;
+     *              or if this {@code Field} object has no write access.
      * @throws    IllegalArgumentException  if the specified object is not an
      *              instance of the class or interface declaring the underlying
      *              field (or a subclass or implementor thereof),
@@ -1127,14 +1156,21 @@ class Field extends AccessibleObject implements Member {
     }
 
     @Override
-    Field getRoot() {
+    /* package-private */ Field getRoot() {
         return root;
     }
 
+    /* package-private */ boolean isTrustedFinal() {
+        return trustedFinal;
+    }
+
     /**
+     * {@inheritDoc}
+     *
      * @throws NullPointerException {@inheritDoc}
      * @since 1.5
      */
+    @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
         Objects.requireNonNull(annotationClass);
         return annotationClass.cast(declaredAnnotations().get(annotationClass));
@@ -1142,6 +1178,7 @@ class Field extends AccessibleObject implements Member {
 
     /**
      * {@inheritDoc}
+     *
      * @throws NullPointerException {@inheritDoc}
      * @since 1.8
      */
@@ -1155,6 +1192,7 @@ class Field extends AccessibleObject implements Member {
     /**
      * {@inheritDoc}
      */
+    @Override
     public Annotation[] getDeclaredAnnotations()  {
         return AnnotationParser.toArray(declaredAnnotations());
     }

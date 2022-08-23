@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,6 +73,7 @@ class PNGImageDataEnumeration implements Enumeration<InputStream> {
         int type = stream.readInt(); // skip chunk type
     }
 
+    @Override
     public InputStream nextElement() {
         try {
             firstTime = false;
@@ -83,6 +84,7 @@ class PNGImageDataEnumeration implements Enumeration<InputStream> {
         }
     }
 
+    @Override
     public boolean hasMoreElements() {
         if (firstTime) {
             return true;
@@ -198,6 +200,7 @@ public class PNGImageReader extends ImageReader {
         super(originatingProvider);
     }
 
+    @Override
     public void setInput(Object input,
                          boolean seekForwardOnly,
                          boolean ignoreMetadata) {
@@ -210,11 +213,14 @@ public class PNGImageReader extends ImageReader {
 
     private String readNullTerminatedString(String charset, int maxLen) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        int b;
+        int b = 0;
         int count = 0;
         while ((maxLen > count++) && ((b = stream.read()) != 0)) {
             if (b == -1) throw new EOFException();
             baos.write(b);
+        }
+        if (b != 0) {
+            throw new IIOException("Found non null terminated string");
         }
         return new String(baos.toByteArray(), charset);
     }
@@ -456,13 +462,18 @@ public class PNGImageReader extends ImageReader {
         int compressionMethod = stream.readUnsignedByte();
         metadata.iTXt_compressionMethod.add(Integer.valueOf(compressionMethod));
 
-        String languageTag = readNullTerminatedString("UTF8", 80);
+        long pos = stream.getStreamPosition();
+        int remainingLen = (int)(chunkStart + chunkLength - pos);
+        String languageTag = readNullTerminatedString("UTF8", remainingLen);
         metadata.iTXt_languageTag.add(languageTag);
 
-        long pos = stream.getStreamPosition();
-        int maxLen = (int)(chunkStart + chunkLength - pos);
+        pos = stream.getStreamPosition();
+        remainingLen = (int)(chunkStart + chunkLength - pos);
+        if (remainingLen < 0) {
+            throw new IIOException("iTXt chunk length is not proper");
+        }
         String translatedKeyword =
-            readNullTerminatedString("UTF8", maxLen);
+            readNullTerminatedString("UTF8", remainingLen);
         metadata.iTXt_translatedKeyword.add(translatedKeyword);
 
         String text;
@@ -1407,6 +1418,13 @@ public class PNGImageReader extends ImageReader {
         int width = metadata.IHDR_width;
         int height = metadata.IHDR_height;
 
+        if ((long)width * height > Integer.MAX_VALUE - 2) {
+            // We are not able to properly decode image that has number
+            // of pixels greater than Integer.MAX_VALUE - 2
+            throw new IIOException("Can not read image of the size "
+                    + width + " by " + height);
+        }
+
         // Init default values
         sourceXSubsampling = 1;
         sourceYSubsampling = 1;
@@ -1517,6 +1535,7 @@ public class PNGImageReader extends ImageReader {
         }
     }
 
+    @Override
     public int getNumImages(boolean allowSearch) throws IIOException {
         if (stream == null) {
             throw new IllegalStateException("No input source set!");
@@ -1528,6 +1547,7 @@ public class PNGImageReader extends ImageReader {
         return 1;
     }
 
+    @Override
     public int getWidth(int imageIndex) throws IIOException {
         if (imageIndex != 0) {
             throw new IndexOutOfBoundsException("imageIndex != 0!");
@@ -1538,6 +1558,7 @@ public class PNGImageReader extends ImageReader {
         return metadata.IHDR_width;
     }
 
+    @Override
     public int getHeight(int imageIndex) throws IIOException {
         if (imageIndex != 0) {
             throw new IndexOutOfBoundsException("imageIndex != 0!");
@@ -1548,6 +1569,7 @@ public class PNGImageReader extends ImageReader {
         return metadata.IHDR_height;
     }
 
+    @Override
     public Iterator<ImageTypeSpecifier> getImageTypes(int imageIndex)
       throws IIOException
     {
@@ -1782,6 +1804,7 @@ public class PNGImageReader extends ImageReader {
      * After this changes we should override getRawImageType()
      * to return last element of image types list.
      */
+    @Override
     public ImageTypeSpecifier getRawImageType(int imageIndex)
       throws IOException {
 
@@ -1793,15 +1816,18 @@ public class PNGImageReader extends ImageReader {
         return raw;
     }
 
+    @Override
     public ImageReadParam getDefaultReadParam() {
         return new ImageReadParam();
     }
 
+    @Override
     public IIOMetadata getStreamMetadata()
         throws IIOException {
         return null;
     }
 
+    @Override
     public IIOMetadata getImageMetadata(int imageIndex) throws IIOException {
         if (imageIndex != 0) {
             throw new IndexOutOfBoundsException("imageIndex != 0!");
@@ -1810,6 +1836,7 @@ public class PNGImageReader extends ImageReader {
         return metadata;
     }
 
+    @Override
     public BufferedImage read(int imageIndex, ImageReadParam param)
         throws IIOException {
         if (imageIndex != 0) {
@@ -1829,6 +1856,7 @@ public class PNGImageReader extends ImageReader {
         return theImage;
     }
 
+    @Override
     public void reset() {
         super.reset();
         resetStreamSettings();

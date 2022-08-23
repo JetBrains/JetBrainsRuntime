@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,13 @@
  */
 
 import jdk.test.lib.process.OutputAnalyzer;
+import jdk.test.lib.security.KeyStoreUtils;
+import jdk.test.lib.security.timestamp.TsaHandler;
+import jdk.test.lib.security.timestamp.TsaServer;
 import jdk.test.lib.util.JarUtils;
+
+import java.io.File;
+import java.security.KeyStore;
 
 /**
  * @test
@@ -110,8 +116,7 @@ public class TsacertOptionTest extends Test {
                 "-file", "cert").shouldHaveExitValue(0);
 
 
-        try (TimestampCheck.Handler tsa = TimestampCheck.Handler.init(0,
-                KEYSTORE)) {
+        try (TsaServer tsa = new TsaServer(0)) {
 
             // look for free network port for TSA service
             int port = tsa.getPort();
@@ -134,12 +139,15 @@ public class TsacertOptionTest extends Test {
                     "-ext", "SubjectInfoAccess=timeStamping:URI:" + tsaUrl,
                     "-validity", Integer.toString(VALIDITY)).shouldHaveExitValue(0);
 
+            tsa.setHandler(new TsaHandler(
+                    KeyStoreUtils.loadKeyStore(KEYSTORE, PASSWORD), PASSWORD));
+
             // start TSA
             tsa.start();
 
             // sign jar file
             // specify -tsadigestalg option because
-            // TSA server uses SHA-1 digest algorithm
+            // TSA server uses SHA-512 digest algorithm
              OutputAnalyzer analyzer = jarsigner(
                     "-J-Dhttp.proxyHost=",
                     "-J-Dhttp.proxyPort=",
@@ -150,7 +158,7 @@ public class TsacertOptionTest extends Test {
                     "-keypass", PASSWORD,
                     "-signedjar", SIGNED_JARFILE,
                     "-tsacert", TSA_KEY_ALIAS,
-                    "-tsadigestalg", "SHA-1",
+                    "-tsadigestalg", "SHA-512",
                     UNSIGNED_JARFILE,
                     SIGNING_KEY_ALIAS);
 

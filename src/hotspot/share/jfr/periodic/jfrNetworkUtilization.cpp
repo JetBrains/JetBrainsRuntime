@@ -77,7 +77,7 @@ static InterfaceEntry& new_entry(const NetworkInterface* iface, GrowableArray<In
 
 static GrowableArray<InterfaceEntry>* get_interfaces() {
   if (_interfaces == NULL) {
-    _interfaces = new(ResourceObj::C_HEAP, mtTracing) GrowableArray<InterfaceEntry>(10, true, mtTracing);
+    _interfaces = new(ResourceObj::C_HEAP, mtTracing) GrowableArray<InterfaceEntry>(10, mtTracing);
   }
   return _interfaces;
 }
@@ -113,10 +113,12 @@ class JfrNetworkInterfaceName : public JfrSerializer {
    void serialize(JfrCheckpointWriter& writer) {} // we write each constant lazily
 
    void on_rotation() {
-     for (int i = 0; i < _interfaces->length(); ++i) {
-       const InterfaceEntry& entry = _interfaces->at(i);
-       if (entry.written) {
-         entry.written = false;
+     if (_interfaces != NULL) {
+       for (int i = 0; i < _interfaces->length(); ++i) {
+         const InterfaceEntry &entry = _interfaces->at(i);
+         if (entry.written) {
+           entry.written = false;
+         }
        }
      }
    }
@@ -156,14 +158,12 @@ void JfrNetworkUtilization::send_events() {
   if (!get_interfaces(&network_interfaces)) {
     return;
   }
-  log_trace(jfr, event)("Reporting network utilization");
   static JfrTicks last_sample_instant;
   const JfrTicks cur_time = JfrTicks::now();
-  const JfrTickspan interval = last_sample_instant == 0 ? cur_time - cur_time : cur_time - last_sample_instant;
-  last_sample_instant = cur_time;
-  for (NetworkInterface *cur = network_interfaces; cur != NULL; cur = cur->next()) {
-    InterfaceEntry& entry = get_entry(cur);
-    if (interval.value() > 0) {
+  if (cur_time > last_sample_instant) {
+    const JfrTickspan interval = cur_time - last_sample_instant;
+    for (NetworkInterface *cur = network_interfaces; cur != NULL; cur = cur->next()) {
+      InterfaceEntry& entry = get_entry(cur);
       const uint64_t current_bytes_in = cur->get_bytes_in();
       const uint64_t current_bytes_out = cur->get_bytes_out();
       const uint64_t read_rate = rate_per_second(current_bytes_in, entry.bytes_in, interval);
@@ -183,6 +183,7 @@ void JfrNetworkUtilization::send_events() {
       entry.bytes_out = current_bytes_out;
     }
   }
+  last_sample_instant = cur_time;
 
   static bool is_serializer_registered = false;
   if (!is_serializer_registered) {

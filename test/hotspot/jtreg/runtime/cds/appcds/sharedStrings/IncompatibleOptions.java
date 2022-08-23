@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,7 @@
  * @requires (vm.gc=="null")
  * @library /test/lib /test/hotspot/jtreg/runtime/cds/appcds
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @build HelloString
  * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI -Xbootclasspath/a:. IncompatibleOptions 0
  */
@@ -50,7 +50,7 @@
  * @requires (vm.gc=="null")
  * @library /test/lib /test/hotspot/jtreg/runtime/cds/appcds
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @build HelloString
  * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI -Xbootclasspath/a:. IncompatibleOptions 1
  */
@@ -61,7 +61,7 @@
  * @requires (vm.gc=="null")
  * @library /test/lib /test/hotspot/jtreg/runtime/cds/appcds
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @build HelloString
  * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI -Xbootclasspath/a:. IncompatibleOptions 2
  */
@@ -77,15 +77,14 @@ import sun.hotspot.gc.GC;
 public class IncompatibleOptions {
     static final String COOPS_DUMP_WARNING =
         "Cannot dump shared archive when UseCompressedOops or UseCompressedClassPointers is off";
-    static final String COOPS_EXEC_WARNING =
-        "UseCompressedOops and UseCompressedClassPointers must be on for UseSharedSpaces";
     static final String GC_WARNING =
         "Archived java heap is not supported";
     static final String OBJ_ALIGNMENT_MISMATCH =
         "The shared archive file's ObjectAlignmentInBytes of .* does not equal the current ObjectAlignmentInBytes of";
     static final String COMPACT_STRING_MISMATCH =
         "The shared archive file's CompactStrings setting .* does not equal the current CompactStrings setting";
-
+    static final String COMPRESSED_OOPS_NOT_CONSISTENT =
+        "The saved state of UseCompressedOops and UseCompressedClassPointers is different from runtime, CDS will be disabled.";
     static String appJar;
     static String[] vmOptionsPrefix = {};
 
@@ -101,19 +100,19 @@ public class IncompatibleOptions {
         appJar = JarBuilder.build("IncompatibleOptions", "HelloString");
 
         // Uncompressed OOPs
-        testDump(1, "-XX:+UseG1GC", "-XX:-UseCompressedOops", COOPS_DUMP_WARNING, true);
-        if (GC.Z.isSupported()) { // ZGC is included in build.
-            testDump(1, "-XX:+UnlockExperimentalVMOptions", "-XX:+UseZGC", COOPS_DUMP_WARNING, true);
+        testDump(1, "-XX:+UseG1GC", "-XX:-UseCompressedOops", null, false);
+        if (GC.Z.isSupported()) {
+            testDump(1, "-XX:+UseZGC", "-XX:-UseCompressedOops", null, false);
         }
 
         // incompatible GCs
         testDump(2, "-XX:+UseParallelGC", "", GC_WARNING, false);
         testDump(3, "-XX:+UseSerialGC", "", GC_WARNING, false);
 
-        // ======= archive with compressed oops, run w/o
+        // Explicitly archive with compressed oops, run without.
         testDump(5, "-XX:+UseG1GC", "-XX:+UseCompressedOops", null, false);
         testExec(5, "-XX:+UseG1GC", "-XX:-UseCompressedOops",
-                 COOPS_EXEC_WARNING, true);
+                 COMPRESSED_OOPS_NOT_CONSISTENT, true);
 
         // NOTE: No warning is displayed, by design
         // Still run, to ensure no crash or exception
@@ -125,20 +124,25 @@ public class IncompatibleOptions {
         testExec(9, "-XX:+UseG1GC", "-XX:ObjectAlignmentInBytes=16",
                  OBJ_ALIGNMENT_MISMATCH, true);
 
-        // See JDK-8081416 - Oops encoding mismatch with shared strings
-        // produces unclear or incorrect warning
-        // Correct the test case once the above is fixed
-        // @ignore JDK-8081416 - for tracking purposes
-        // for now, run test as is until the proper behavior is determined
+        // Implicitly archive with compressed oops, run without.
+        // Max heap size for compressed oops is around 31G.
+        // UseCompressedOops is turned on by default when heap
+        // size is under 31G, but will be turned off when heap
+        // size is greater than that.
         testDump(10, "-XX:+UseG1GC", "-Xmx1g", null, false);
         testExec(10, "-XX:+UseG1GC", "-Xmx32g", null, true);
-
+        // Explicitly archive without compressed oops and run with.
+        testDump(11, "-XX:+UseG1GC", "-XX:-UseCompressedOops", null, false);
+        testExec(11, "-XX:+UseG1GC", "-XX:+UseCompressedOops", null, true);
+        // Implicitly archive without compressed oops and run with.
+        testDump(12, "-XX:+UseG1GC", "-Xmx32G", null, false);
+        testExec(12, "-XX:+UseG1GC", "-Xmx1G", null, true);
         // CompactStrings must match between dump time and run time
-        testDump(11, "-XX:+UseG1GC", "-XX:-CompactStrings", null, false);
-        testExec(11, "-XX:+UseG1GC", "-XX:+CompactStrings",
+        testDump(13, "-XX:+UseG1GC", "-XX:-CompactStrings", null, false);
+        testExec(13, "-XX:+UseG1GC", "-XX:+CompactStrings",
                  COMPACT_STRING_MISMATCH, true);
-        testDump(12, "-XX:+UseG1GC", "-XX:+CompactStrings", null, false);
-        testExec(12, "-XX:+UseG1GC", "-XX:-CompactStrings",
+        testDump(14, "-XX:+UseG1GC", "-XX:+CompactStrings", null, false);
+        testExec(14, "-XX:+UseG1GC", "-XX:-CompactStrings",
                  COMPACT_STRING_MISMATCH, true);
     }
 

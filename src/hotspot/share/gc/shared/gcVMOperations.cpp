@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,19 +23,23 @@
  */
 
 #include "precompiled.hpp"
-#include "classfile/classLoader.hpp"
+#include "classfile/classLoaderData.hpp"
 #include "classfile/javaClasses.hpp"
 #include "gc/shared/allocTracer.hpp"
 #include "gc/shared/gcId.hpp"
 #include "gc/shared/gcLocker.hpp"
 #include "gc/shared/gcVMOperations.hpp"
+#include "gc/shared/gc_globals.hpp"
 #include "gc/shared/genCollectedHeap.hpp"
 #include "interpreter/oopMapCache.hpp"
 #include "logging/log.hpp"
+#include "memory/classLoaderMetaspace.hpp"
+#include "memory/heapInspection.hpp"
 #include "memory/oopFactory.hpp"
 #include "memory/universe.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/init.hpp"
+#include "runtime/java.hpp"
 #include "utilities/dtrace.hpp"
 #include "utilities/macros.hpp"
 #include "utilities/preserveException.hpp"
@@ -43,6 +47,20 @@
 #include "gc/g1/g1CollectedHeap.inline.hpp"
 #include "gc/g1/g1Policy.hpp"
 #endif // INCLUDE_G1GC
+
+bool VM_GC_Sync_Operation::doit_prologue() {
+  Heap_lock->lock();
+  return true;
+}
+
+void VM_GC_Sync_Operation::doit_epilogue() {
+  Heap_lock->unlock();
+}
+
+void VM_Verify::doit() {
+  Universe::heap()->prepare_for_verify();
+  Universe::verify();
+}
 
 VM_GC_Operation::~VM_GC_Operation() {
   CollectedHeap* ch = Universe::heap();
@@ -55,12 +73,10 @@ VM_GC_Operation::~VM_GC_Operation() {
 void VM_GC_Operation::notify_gc_begin(bool full) {
   HOTSPOT_GC_BEGIN(
                    full);
-  HS_DTRACE_WORKAROUND_TAIL_CALL_BUG();
 }
 
 void VM_GC_Operation::notify_gc_end() {
   HOTSPOT_GC_END();
-  HS_DTRACE_WORKAROUND_TAIL_CALL_BUG();
 }
 
 // Allocations may fail in several threads at about the same time,
@@ -94,8 +110,7 @@ bool VM_GC_Operation::doit_prologue() {
               proper_unit_for_byte_size(NewSize)));
   }
 
-  // If the GC count has changed someone beat us to the collection
-  Heap_lock->lock();
+  VM_GC_Sync_Operation::doit_prologue();
 
   // Check invocations
   if (skip_operation()) {
@@ -116,7 +131,7 @@ void VM_GC_Operation::doit_epilogue() {
   if (Universe::has_reference_pending_list()) {
     Heap_lock->notify_all();
   }
-  Heap_lock->unlock();
+  VM_GC_Sync_Operation::doit_epilogue();
 }
 
 bool VM_GC_HeapInspection::skip_operation() const {
@@ -132,7 +147,6 @@ bool VM_GC_HeapInspection::collect() {
 }
 
 void VM_GC_HeapInspection::doit() {
-  HandleMark hm;
   Universe::heap()->ensure_parsability(false); // must happen, even if collection does
                                                // not happen (e.g. due to GCLocker)
                                                // or _full_gc being false
@@ -152,7 +166,7 @@ void VM_GC_HeapInspection::doit() {
     }
   }
   HeapInspection inspect;
-  inspect.heap_inspection(_out);
+  inspect.heap_inspection(_out, _parallel_thread_num);
 }
 
 
@@ -200,7 +214,7 @@ bool VM_CollectForMetadataAllocation::initiate_concurrent_GC() {
 
     // At this point we are supposed to start a concurrent cycle. We
     // will do so if one is not already in progress.
-    bool should_start = g1h->policy()->force_initial_mark_if_outside_cycle(_gc_cause);
+    bool should_start = g1h->policy()->force_concurrent_start_if_outside_cycle(_gc_cause);
 
     if (should_start) {
       double pause_target = g1h->policy()->max_pause_time_ms();

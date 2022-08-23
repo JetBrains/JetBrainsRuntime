@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -53,9 +53,11 @@ BUILD_JDK_JTREG_EXECUTABLES_CFLAGS_exeJliLaunchTest := \
     -I$(TOPDIR)/src/java.base/$(OPENJDK_TARGET_OS_TYPE)/native/libjli \
     -I$(TOPDIR)/src/java.base/$(OPENJDK_TARGET_OS)/native/libjli
 
+BUILD_JDK_JTREG_LIBRARIES_LDFLAGS_libAsyncStackWalk := $(LIBCXX)
+
 # Platform specific setup
 ifeq ($(call isTargetOs, windows), true)
-  BUILD_JDK_JTREG_EXCLUDE += libDirectIO.c libInheritedChannel.c
+  BUILD_JDK_JTREG_EXCLUDE += libDirectIO.c libInheritedChannel.c exelauncher.c
 
   WIN_LIB_JAVA := $(SUPPORT_OUTPUTDIR)/native/java.base/libjava/java.lib
   BUILD_JDK_JTREG_LIBRARIES_LIBS_libstringPlatformChars := $(WIN_LIB_JAVA)
@@ -63,27 +65,42 @@ ifeq ($(call isTargetOs, windows), true)
   BUILD_JDK_JTREG_EXECUTABLES_LIBS_exeJliLaunchTest := $(WIN_LIB_JLI)
   BUILD_JDK_JTREG_EXECUTABLES_LIBS_exeCallerAccessTest := jvm.lib
   BUILD_JDK_JTREG_EXECUTABLES_LIBS_exerevokeall := advapi32.lib
+  BUILD_JDK_JTREG_LIBRARIES_CFLAGS_libAsyncStackWalk := /EHsc
 else
   BUILD_JDK_JTREG_LIBRARIES_LIBS_libstringPlatformChars := -ljava
   BUILD_JDK_JTREG_LIBRARIES_LIBS_libDirectIO := -ljava
   BUILD_JDK_JTREG_EXCLUDE += exerevokeall.c
   ifeq ($(call isTargetOs, linux), true)
     BUILD_JDK_JTREG_LIBRARIES_LIBS_libInheritedChannel := -ljava
-  else ifeq ($(call isTargetOs, solaris), true)
-    BUILD_JDK_JTREG_LIBRARIES_LIBS_libInheritedChannel := -ljava -lsocket -lnsl
+    BUILD_JDK_JTREG_EXECUTABLES_LIBS_exelauncher := -ldl
   endif
   BUILD_JDK_JTREG_EXECUTABLES_LIBS_exeJliLaunchTest := -ljli
   BUILD_JDK_JTREG_EXECUTABLES_LIBS_exeCallerAccessTest := -ljvm
 endif
 
 ifeq ($(call isTargetOs, macosx), true)
-  BUILD_JDK_JTREG_LIBRARIES_CFLAGS_libTestMainKeyWindow := -ObjC
-  BUILD_JDK_JTREG_LIBRARIES_LIBS_libTestMainKeyWindow := -framework JavaVM \
-      -framework Cocoa -framework JavaNativeFoundation
+  BUILD_JDK_JTREG_EXCLUDE += exelauncher.c
+  BUILD_JDK_JTREG_LIBRARIES_LIBS_libTestMainKeyWindow := \
+      -framework Cocoa
   BUILD_JDK_JTREG_EXECUTABLES_LIBS_exeJniInvocationTest := -ljli
+  BUILD_JDK_JTREG_LIBRARIES_LIBS_libTestDynamicStore := \
+      -framework Cocoa -framework SystemConfiguration
 else
-  BUILD_JDK_JTREG_EXCLUDE += libTestMainKeyWindow.c
+  BUILD_JDK_JTREG_EXCLUDE += libTestMainKeyWindow.m
+  BUILD_JDK_JTREG_EXCLUDE += libTestDynamicStore.m
   BUILD_JDK_JTREG_EXCLUDE += exeJniInvocationTest.c
+  BUILD_JDK_JTREG_EXCLUDE += exeLibraryCache.c
+endif
+
+ifeq ($(OPENJDK_TARGET_OS), windows)
+  BUILD_JDK_JTREG_LIBRARIES_LIBS_libwindows_touch_robot := user32.lib
+  BUILD_JDK_JTREG_EXCLUDE += libtouchscreen_device.c
+else
+  ifeq ($(OPENJDK_TARGET_OS), linux)
+    BUILD_JDK_JTREG_EXCLUDE += libwindows_touch_robot.c
+  else
+    BUILD_JDK_JTREG_EXCLUDE += libtouchscreen_device.c libwindows_touch_robot.c
+  endif
 endif
 
 ifeq ($(call isTargetOs, linux), true)

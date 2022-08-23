@@ -25,11 +25,10 @@ package gc.epsilon;
 
 /**
  * @test TestDieWithHeapDump
- * @key gc
- * @requires vm.gc.Epsilon & !vm.graal.enabled
+ * @requires vm.gc.Epsilon
  * @summary Epsilon GC should die on heap exhaustion with error handler attached
  * @library /test/lib
- * @run main gc.epsilon.TestDieWithHeapDump
+ * @run driver gc.epsilon.TestDieWithHeapDump
  */
 
 import java.io.*;
@@ -60,35 +59,27 @@ public class TestDieWithHeapDump {
   }
 
   public static void main(String[] args) throws Exception {
-    passWith("-Xmx128m",
+    passWith("-Xmx64m",
              "-XX:+UnlockExperimentalVMOptions",
              "-XX:+UseEpsilonGC",
              "-Dcount=1",
              "-XX:+HeapDumpOnOutOfMemoryError",
              TestDieWithHeapDump.Workload.class.getName());
 
-    failWith("-Xmx128m",
+    failWith("-Xmx64m",
              "-XX:+UnlockExperimentalVMOptions",
              "-XX:+UseEpsilonGC",
              "-XX:+HeapDumpOnOutOfMemoryError",
              TestDieWithHeapDump.Workload.class.getName());
 
-    failWith("-Xmx128m",
+    failWith("-Xmx64m",
              "-Xint",
              "-XX:+UnlockExperimentalVMOptions",
              "-XX:+UseEpsilonGC",
              "-XX:+HeapDumpOnOutOfMemoryError",
              TestDieWithHeapDump.Workload.class.getName());
 
-    failWith("-Xmx128m",
-             "-Xbatch",
-             "-Xcomp",
-             "-XX:+UnlockExperimentalVMOptions",
-             "-XX:+UseEpsilonGC",
-             "-XX:+HeapDumpOnOutOfMemoryError",
-             TestDieWithHeapDump.Workload.class.getName());
-
-    failWith("-Xmx128m",
+    failWith("-Xmx64m",
              "-Xbatch",
              "-Xcomp",
              "-XX:TieredStopAtLevel=1",
@@ -97,7 +88,7 @@ public class TestDieWithHeapDump {
              "-XX:+HeapDumpOnOutOfMemoryError",
              TestDieWithHeapDump.Workload.class.getName());
 
-    failWith("-Xmx128m",
+    failWith("-Xmx64m",
              "-Xbatch",
              "-Xcomp",
              "-XX:-TieredCompilation",

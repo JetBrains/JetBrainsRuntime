@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,9 @@
 #include "classfile/vmSymbols.hpp"
 #include "code/codeCache.hpp"
 #include "code/icBuffer.hpp"
+#include "compiler/oopMap.hpp"
 #include "gc/serial/genMarkSweep.hpp"
+#include "gc/serial/serialGcRefProcProxyTask.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
 #include "gc/shared/gcHeapSummary.hpp"
 #include "gc/shared/gcTimer.hpp"
@@ -135,15 +137,10 @@ void GenMarkSweep::invoke_at_safepoint(ReferenceProcessor* rp, bool clear_all_so
 
   // Update heap occupancy information which is used as
   // input to soft ref clearing policy at the next gc.
-  Universe::update_heap_info_at_gc();
+  Universe::heap()->update_capacity_and_used_at_gc();
 
-  // Update time of last gc for all generations we collected
-  // (which currently is all the generations in the heap).
-  // We need to use a monotonically non-decreasing time in ms
-  // or we will see time-warp warnings and os::javaTimeMillis()
-  // does not guarantee monotonicity.
-  jlong now = os::javaTimeNanos() / NANOSECS_PER_MILLISEC;
-  gch->update_time_of_last_gc(now);
+  // Signal that we have completed a visit to all live objects.
+  Universe::heap()->record_whole_heap_examined_timestamp();
 
   gch->trace_heap_after_gc(_gc_tracer);
 }
@@ -183,20 +180,13 @@ void GenMarkSweep::mark_sweep_phase1(bool clear_all_softrefs) {
 
   GenCollectedHeap* gch = GenCollectedHeap::heap();
 
-  // Because follow_root_closure is created statically, cannot
-  // use OopsInGenClosure constructor which takes a generation,
-  // as the Universe has not been created when the static constructors
-  // are run.
-  follow_root_closure.set_orig_generation(gch->old_gen());
-
   // Need new claim bits before marking starts.
   ClassLoaderDataGraph::clear_claimed_marks();
 
   {
-    StrongRootsScope srs(1);
+    StrongRootsScope srs(0);
 
-    gch->full_process_roots(&srs,
-                            false, // not the adjust phase
+    gch->full_process_roots(false, // not the adjust phase
                             GenCollectedHeap::SO_None,
                             ClassUnloading, // only strong roots if ClassUnloading
                                             // is enabled
@@ -210,9 +200,8 @@ void GenMarkSweep::mark_sweep_phase1(bool clear_all_softrefs) {
 
     ref_processor()->setup_policy(clear_all_softrefs);
     ReferenceProcessorPhaseTimes pt(_gc_timer, ref_processor()->max_num_queues());
-    const ReferenceProcessorStats& stats =
-      ref_processor()->process_discovered_references(
-        &is_alive, &keep_alive, &follow_stack_closure, NULL, &pt);
+    SerialGCRefProcProxyTask task(is_alive, keep_alive, follow_stack_closure);
+    const ReferenceProcessorStats& stats = ref_processor()->process_discovered_references(task, pt);
     pt.print_all_references();
     gc_tracer()->report_gc_reference_stats(stats);
   }
@@ -282,17 +271,10 @@ void GenMarkSweep::mark_sweep_phase3() {
   // Need new claim bits for the pointer adjustment tracing.
   ClassLoaderDataGraph::clear_claimed_marks();
 
-  // Because the closure below is created statically, we cannot
-  // use OopsInGenClosure constructor which takes a generation,
-  // as the Universe has not been created when the static constructors
-  // are run.
-  adjust_pointer_closure.set_orig_generation(gch->old_gen());
-
   {
-    StrongRootsScope srs(1);
+    StrongRootsScope srs(0);
 
-    gch->full_process_roots(&srs,
-                            true,  // this is the adjust phase
+    gch->full_process_roots(true,  // this is the adjust phase
                             GenCollectedHeap::SO_AllCodeCache,
                             false, // all roots
                             &adjust_pointer_closure,
@@ -325,10 +307,18 @@ void GenMarkSweep::mark_sweep_phase4() {
   // in the same order in phase2, phase3 and phase4. We don't quite do that
   // here (perm_gen first rather than last), so we tell the validate code
   // to use a higher index (saved from phase2) when verifying perm_gen.
+  assert(_rescued_oops == NULL, "must be empty before processing");
   GenCollectedHeap* gch = GenCollectedHeap::heap();
 
   GCTraceTime(Info, gc, phases) tm("Phase 4: Move objects", _gc_timer);
 
+//  MarkSweep::copy_rescued_objects_back();
+
   GenCompactClosure blk;
   gch->generation_iterate(&blk, true);
+  if (AllowEnhancedClassRedefinition) {
+    DcevmSharedGC::copy_rescued_objects_back(MarkSweep::_rescued_oops, true);
+    DcevmSharedGC::clear_rescued_objects_resource(MarkSweep::_rescued_oops);
+    MarkSweep::_rescued_oops = NULL;
+  }
 }

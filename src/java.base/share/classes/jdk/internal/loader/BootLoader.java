@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,21 +55,26 @@ import jdk.internal.util.StaticProperty;
 public class BootLoader {
     private BootLoader() { }
 
+    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+
     // The unnamed module for the boot loader
     private static final Module UNNAMED_MODULE;
     private static final String JAVA_HOME = StaticProperty.javaHome();
 
     static {
-        UNNAMED_MODULE = SharedSecrets.getJavaLangAccess().defineUnnamedModule(null);
+        JavaLangAccess jla = SharedSecrets.getJavaLangAccess();
+        UNNAMED_MODULE = jla.defineUnnamedModule(null);
+        jla.addEnableNativeAccess(UNNAMED_MODULE);
         setBootLoaderUnnamedModule0(UNNAMED_MODULE);
     }
-
-    // ServiceCatalog for the boot class loader
-    private static final ServicesCatalog SERVICES_CATALOG = ServicesCatalog.create();
 
     // ClassLoaderValue map for the boot class loader
     private static final ConcurrentHashMap<?, ?> CLASS_LOADER_VALUE_MAP
         = new ConcurrentHashMap<>();
+
+    // native libraries loaded by the boot class loader
+    private static final NativeLibraries NATIVE_LIBS
+        = NativeLibraries.jniNativeLibraries(null);
 
     /**
      * Returns the unnamed module for the boot loader.
@@ -82,7 +87,7 @@ public class BootLoader {
      * Returns the ServiceCatalog for modules defined to the boot class loader.
      */
     public static ServicesCatalog getServicesCatalog() {
-        return SERVICES_CATALOG;
+        return ServicesCatalog.getServicesCatalog(ClassLoaders.bootLoader());
     }
 
     /**
@@ -90,6 +95,13 @@ public class BootLoader {
      */
     public static ConcurrentHashMap<?, ?> getClassLoaderValueMap() {
         return CLASS_LOADER_VALUE_MAP;
+    }
+
+    /**
+     * Returns NativeLibraries for the boot class loader.
+     */
+    public static NativeLibraries getNativeLibraries() {
+        return NATIVE_LIBS;
     }
 
     /**
@@ -112,7 +124,7 @@ public class BootLoader {
      * Loads the Class object with the given name defined to the boot loader.
      */
     public static Class<?> loadClassOrNull(String name) {
-        return ClassLoaders.bootLoader().loadClassOrNull(name);
+        return JLA.findBootstrapClassOrNull(name);
     }
 
     /**
@@ -129,19 +141,19 @@ public class BootLoader {
     }
 
     /**
-     * Loads a library from the system path.
+     * Loads a native library from the system library path.
      */
-    public static void loadLibrary(String library) {
+    @SuppressWarnings("removal")
+    public static void loadLibrary(String name) {
         if (System.getSecurityManager() == null) {
-            SharedSecrets.getJavaLangAccess().loadLibrary(BootLoader.class, library);
+            BootLoader.getNativeLibraries().loadLibrary(name);
         } else {
-            AccessController.doPrivileged(
-                new java.security.PrivilegedAction<>() {
-                    public Void run() {
-                        SharedSecrets.getJavaLangAccess().loadLibrary(BootLoader.class, library);
-                        return null;
-                    }
-                });
+            AccessController.doPrivileged(new java.security.PrivilegedAction<>() {
+                public Void run() {
+                    BootLoader.getNativeLibraries().loadLibrary(name);
+                    return null;
+                }
+            });
         }
     }
 
@@ -282,6 +294,7 @@ public class BootLoader {
         /**
          * Returns URL if the given location is a regular file path.
          */
+        @SuppressWarnings("removal")
         private static URL toFileURL(String location) {
             return AccessController.doPrivileged(new PrivilegedAction<>() {
                 public URL run() {
@@ -300,6 +313,7 @@ public class BootLoader {
          * Returns the Manifest if the given location is a JAR file
          * containing a manifest.
          */
+        @SuppressWarnings("removal")
         private static Manifest getManifest(String location) {
             return AccessController.doPrivileged(new PrivilegedAction<>() {
                 public Manifest run() {

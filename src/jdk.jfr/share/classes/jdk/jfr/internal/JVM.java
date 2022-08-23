@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,11 @@
 
 package jdk.jfr.internal;
 
-import java.io.IOException;
 import java.util.List;
 
-import jdk.internal.HotSpotIntrinsicCandidate;
+import jdk.internal.vm.annotation.IntrinsicCandidate;
 import jdk.jfr.Event;
+import jdk.jfr.internal.handlers.EventHandler;
 
 /**
  * Interface against the JVM.
@@ -38,10 +38,10 @@ import jdk.jfr.Event;
 public final class JVM {
     private static final JVM jvm = new JVM();
 
-    // JVM signals file changes by doing Object#notifu on this object
+    // JVM signals file changes by doing Object#notify on this object
     static final Object FILE_DELTA_CHANGE = new Object();
 
-    static final long RESERVED_CLASS_ID_LIMIT = 400;
+    static final long RESERVED_CLASS_ID_LIMIT = 500;
 
     private volatile boolean nativeOK;
 
@@ -102,9 +102,8 @@ public final class JVM {
      * @return the time, in ticks
      *
      */
-    @HotSpotIntrinsicCandidate
+    @IntrinsicCandidate
     public static native long counterTime();
-
 
     /**
      * Emits native periodic event.
@@ -117,8 +116,6 @@ public final class JVM {
      * @return true if the event was committed
      */
     public native boolean emitEvent(long eventTypeId, long timestamp, long when);
-
-
 
     /**
      * Return a list of all classes deriving from {@link jdk.internal.event.Event}
@@ -142,11 +139,8 @@ public final class JVM {
      *
      * @return a unique class identifier
      */
-   @HotSpotIntrinsicCandidate
+    @IntrinsicCandidate
     public static native long getClassId(Class<?> clazz);
-
-    // temporary workaround until we solve intrinsics supporting epoch shift tagging
-    public static native long getClassIdNonIntrinsic(Class<?> clazz);
 
     /**
      * Return process identifier.
@@ -190,6 +184,17 @@ public final class JVM {
      *
      */
     public static native void log(int tagSetId, int level, String message);
+
+    /**
+     * Log an event to jfr+event or jfr+event+system.
+     * <p>
+     * Caller should ensure that message is not null or too large to handle.
+     *
+     * @param level log level
+     * @param lines lines to log
+     * @param system if lines should be written to jfr+event+system
+     */
+    public static native void logEvent(int level, String[] lines, boolean system);
 
     /**
      * Subscribe to LogLevel updates for LogTag
@@ -255,8 +260,6 @@ public final class JVM {
     public native void setMemorySize(long size) throws IllegalArgumentException;
 
     /**
-
-    /**
      * Set interval for method samples, in milliseconds.
      *
      * Setting interval to 0 turns off the method sampler.
@@ -265,7 +268,7 @@ public final class JVM {
      */
     public native void setMethodSamplingInterval(long type, long intervalMillis);
 
-      /**
+    /**
      * Sets the file where data should be written.
      *
      * Requires that JFR has been started with {@link #createNativeJFR()}
@@ -287,7 +290,6 @@ public final class JVM {
      *
      * @param file the file where data should be written, or null if it should
      *        not be copied out (in memory).
-     * @throws IOException
      */
     public native void setOutput(String file);
 
@@ -366,8 +368,6 @@ public final class JVM {
      * Requires that JFR has been started with {@link #createNativeJFR()}
      *
      * @param bytes binary representation of metadata descriptor
-     *
-     * @param binary representation of descriptor
      */
     public native void storeMetadataDescriptor(byte[] bytes);
 
@@ -432,8 +432,8 @@ public final class JVM {
     public native double getTimeConversionFactor();
 
     /**
-     * Return a unique identifier for a class. Compared to {@link #getClassId()}
-     * , this method does not tag the class as being "in-use".
+     * Return a unique identifier for a class. Compared to {@link #getClassId(Class)},
+     * this method does not tag the class as being "in-use".
      *
      * @param clazz class
      *
@@ -446,7 +446,7 @@ public final class JVM {
      *
      * @return thread local EventWriter
      */
-    @HotSpotIntrinsicCandidate
+    @IntrinsicCandidate
     public static native Object getEventWriter();
 
     /**
@@ -471,6 +471,7 @@ public final class JVM {
      *
      */
     public native void flush();
+
     /**
      * Sets the location of the disk repository, to be used at an emergency
      * dump.
@@ -479,10 +480,10 @@ public final class JVM {
      */
     public native void setRepositoryLocation(String dirText);
 
-    /**
+   /**
     * Access to VM termination support.
     *
-    *@param errorMsg descriptive message to be include in VM termination sequence
+    * @param errorMsg descriptive message to be include in VM termination sequence
     */
     public native void abort(String errorMsg);
 
@@ -495,19 +496,12 @@ public final class JVM {
      *
      * @param s string constant to be added, not null
      *
-     * @return the current epoch of this insertion attempt
+     * @return true, if the string was successfully added.
      */
-    public static native boolean addStringConstant(boolean epoch, long id, String s);
-    /**
-     * Gets the address of the jboolean epoch.
-     *
-     * The epoch alternates every checkpoint.
-     *
-     * @return The address of the jboolean.
-     */
-    public native long getEpochAddress();
+    public static native boolean addStringConstant(long id, String s);
 
     public native void uncaughtException(Thread thread, Throwable t);
+
     /**
      * Sets cutoff for event.
      *
@@ -522,12 +516,25 @@ public final class JVM {
     public native boolean setCutoff(long eventTypeId, long cutoffTicks);
 
     /**
+     * Sets the event emission rate in event sample size per time unit.
+     *
+     * Determines how events are throttled.
+     *
+     * @param eventTypeId the id of the event type
+     * @param eventSampleSize event sample size
+     * @param period_ms time period in milliseconds
+     * @return true, if it could be set
+     */
+    public native boolean setThrottle(long eventTypeId, long eventSampleSize, long period_ms);
+
+    /**
      * Emit old object sample events.
      *
      * @param cutoff the cutoff in ticks
      * @param emitAll emit all samples in old object queue
+     * @param skipBFS don't use BFS when searching for path to GC root
      */
-    public native void emitOldObjectSamples(long cutoff, boolean emitAll);
+    public native void emitOldObjectSamples(long cutoff, boolean emitAll, boolean skipBFS);
 
     /**
      * Test if a chunk rotation is warranted.
@@ -558,8 +565,36 @@ public final class JVM {
     /**
      * Get the start time in nanos from the header of the current chunk
      *
-     *@return start time of the recording in nanos, -1 in case of in-memory
+     * @return start time of the recording in nanos, -1 in case of in-memory
      */
     public native long getChunkStartNanos();
 
+    /**
+     * Stores an EventHandler to the eventHandler field of an event class.
+     *
+     * @param eventClass the class, not {@code null}
+     *
+     * @param handler the handler, may be {@code null}
+     *
+     * @return if the field could be set
+     */
+    public native boolean setHandler(Class<? extends jdk.internal.event.Event> eventClass, EventHandler handler);
+
+    /**
+     * Retrieves the EventHandler for an event class.
+     *
+     * @param eventClass the class, not {@code null}
+     *
+     * @return the handler, may be {@code null}
+     */
+    public native Object getHandler(Class<? extends jdk.internal.event.Event> eventClass);
+
+    /**
+     * Returns the id for the Java types defined in metadata.xml.
+     *
+     * @param name the name of the type
+     *
+     * @return the id, or a negative value if it does not exists.
+     */
+    public native long getTypeId(String name);
 }

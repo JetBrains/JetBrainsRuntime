@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@
 #include "memory/referenceType.hpp"
 #include "oops/annotations.hpp"
 #include "oops/constantPool.hpp"
+#include "oops/instanceKlass.hpp"
 #include "oops/typeArrayOop.hpp"
 #include "utilities/accessFlags.hpp"
 
@@ -36,6 +37,8 @@ template <typename T>
 class Array;
 class ClassFileStream;
 class ClassLoaderData;
+class ClassLoadInfo;
+class ClassInstanceInfo;
 class CompressedLineNumberWriteStream;
 class ConstMethod;
 class FieldInfo;
@@ -45,17 +48,46 @@ class InstanceKlass;
 class RecordComponent;
 class Symbol;
 class TempNewSymbol;
+class FieldLayoutBuilder;
+
+// Utility to collect and compact oop maps during layout
+class OopMapBlocksBuilder : public ResourceObj {
+ public:
+  OopMapBlock* _nonstatic_oop_maps;
+  unsigned int _nonstatic_oop_map_count;
+  unsigned int _max_nonstatic_oop_maps;
+
+  OopMapBlocksBuilder(unsigned int  max_blocks);
+  OopMapBlock* last_oop_map() const;
+  void initialize_inherited_blocks(OopMapBlock* blocks, unsigned int nof_blocks);
+  void add(int offset, int count);
+  void copy(OopMapBlock* dst);
+  void compact();
+  void print_on(outputStream* st) const;
+  void print_value_on(outputStream* st) const;
+};
+
+// Values needed for oopmap and InstanceKlass creation
+class FieldLayoutInfo : public ResourceObj {
+ public:
+  OopMapBlocksBuilder* oop_map_blocks;
+  int _instance_size;
+  int _nonstatic_field_size;
+  int _static_field_size;
+  bool  _has_nonstatic_fields;
+};
 
 // Parser for for .class files
 //
 // The bytes describing the class file structure is read from a Stream object
 
 class ClassFileParser {
+  friend class FieldLayoutBuilder;
+  friend class FieldLayout;
 
- class ClassAnnotationCollector;
- class FieldAllocationCount;
- class FieldAnnotationCollector;
- class FieldLayoutInfo;
+  class ClassAnnotationCollector;
+  class FieldAllocationCount;
+  class FieldAnnotationCollector;
 
  public:
   // The ClassFileParser has an associated "publicity" level
@@ -79,15 +111,11 @@ class ClassFileParser {
   typedef void unsafe_u2;
 
   const ClassFileStream* _stream; // Actual input stream
-  const Symbol* _requested_name;
   Symbol* _class_name;
   mutable ClassLoaderData* _loader_data;
-  const InstanceKlass* _unsafe_anonymous_host;
-  GrowableArray<Handle>* _cp_patches; // overrides for CP entries
-  int _num_patched_klasses;
-  int _max_num_patched_klasses;
+  const bool _is_hidden;
+  const bool _can_access_vm_annotations;
   int _orig_cp_size;
-  int _first_patched_klass_resolved_index;
 
   // Metadata created before the instance klass is created.  Must be deallocated
   // if not transferred to the InstanceKlass upon successful class loading
@@ -99,6 +127,7 @@ class ClassFileParser {
   Array<u2>* _inner_classes;
   Array<u2>* _nest_members;
   u2 _nest_host;
+  Array<u2>* _permitted_subclasses;
   Array<RecordComponent*>* _record_components;
   Array<InstanceKlass*>* _local_interfaces;
   Array<InstanceKlass*>* _transitive_interfaces;
@@ -161,6 +190,7 @@ class ClassFileParser {
   bool _has_nonstatic_concrete_methods;
   bool _declares_nonstatic_concrete_methods;
   bool _has_final_method;
+  bool _has_contended_fields;
 
   // precomputed flags
   bool _has_finalizer;
@@ -168,16 +198,20 @@ class ClassFileParser {
   bool _has_vanilla_constructor;
   int _max_bootstrap_specifier_index;  // detects BSS values
 
+  // (DCEVM) Enhanced class redefinition
+  const bool _pick_newest;
+
   void parse_stream(const ClassFileStream* const stream, TRAPS);
+
+  void mangle_hidden_class_name(InstanceKlass* const ik);
 
   void post_process_parsed_stream(const ClassFileStream* const stream,
                                   ConstantPool* cp,
                                   TRAPS);
 
-  void prepend_host_package_name(const InstanceKlass* unsafe_anonymous_host, TRAPS);
-  void fix_unsafe_anonymous_class_name(TRAPS);
+  void fill_instance_klass(InstanceKlass* ik, bool cf_changed_in_CFLH,
+                           const ClassInstanceInfo& cl_inst_info, TRAPS);
 
-  void fill_instance_klass(InstanceKlass* ik, bool cf_changed_in_CFLH, TRAPS);
   void set_klass(InstanceKlass* instance);
 
   void set_class_bad_constant_seen(short bad_constant);
@@ -189,7 +223,7 @@ class ClassFileParser {
 
   void create_combined_annotations(TRAPS);
   void apply_parsed_class_attributes(InstanceKlass* k);  // update k
-  void apply_parsed_class_metadata(InstanceKlass* k, int fields_count, TRAPS);
+  void apply_parsed_class_metadata(InstanceKlass* k, int fields_count);
   void clear_class_metadata();
 
   // Constant pool parsing
@@ -278,7 +312,11 @@ class ClassFileParser {
                                                         int length,
                                                         TRAPS);
 
+  // Check for circularity in InnerClasses attribute.
+  bool check_inner_classes_circularity(const ConstantPool* cp, int length, TRAPS);
+
   u2   parse_classfile_inner_classes_attribute(const ClassFileStream* const cfs,
+                                               const ConstantPool* cp,
                                                const u1* const inner_classes_attribute_start,
                                                bool parsed_enclosingmethod_attribute,
                                                u2 enclosing_method_class_index,
@@ -289,19 +327,21 @@ class ClassFileParser {
                                             const u1* const nest_members_attribute_start,
                                             TRAPS);
 
+  u2 parse_classfile_permitted_subclasses_attribute(const ClassFileStream* const cfs,
+                                                    const u1* const permitted_subclasses_attribute_start,
+                                                    TRAPS);
+
   u2 parse_classfile_record_attribute(const ClassFileStream* const cfs,
                                       const ConstantPool* cp,
                                       const u1* const record_attribute_start,
                                       TRAPS);
-
-  bool supports_records();
 
   void parse_classfile_attributes(const ClassFileStream* const cfs,
                                   ConstantPool* cp,
                                   ClassAnnotationCollector* parsed_annotations,
                                   TRAPS);
 
-  void parse_classfile_synthetic_attribute(TRAPS);
+  void parse_classfile_synthetic_attribute();
   void parse_classfile_signature_attribute(const ClassFileStream* const cfs, TRAPS);
   void parse_classfile_bootstrap_methods_attribute(const ClassFileStream* const cfs,
                                                    ConstantPool* cp,
@@ -330,8 +370,18 @@ class ClassFileParser {
                              const char* signature,
                              TRAPS) const;
 
+  void classfile_icce_error(const char* msg,
+                            const Klass* k,
+                            TRAPS) const;
+
+  void classfile_ucve_error(const char* msg,
+                            const Symbol* class_name,
+                            u2 major,
+                            u2 minor,
+                            TRAPS) const;
+
   inline void guarantee_property(bool b, const char* msg, TRAPS) const {
-    if (!b) { classfile_parse_error(msg, CHECK); }
+    if (!b) { classfile_parse_error(msg, THREAD); return; }
   }
 
   void report_assert_property_failure(const char* msg, TRAPS) const PRODUCT_RETURN;
@@ -376,14 +426,14 @@ class ClassFileParser {
                                  const char* msg,
                                  int index,
                                  TRAPS) const {
-    if (!b) { classfile_parse_error(msg, index, CHECK); }
+    if (!b) { classfile_parse_error(msg, index, THREAD); return; }
   }
 
   inline void guarantee_property(bool b,
                                  const char* msg,
                                  const char *name,
                                  TRAPS) const {
-    if (!b) { classfile_parse_error(msg, name, CHECK); }
+    if (!b) { classfile_parse_error(msg, name, THREAD); return; }
   }
 
   inline void guarantee_property(bool b,
@@ -391,7 +441,7 @@ class ClassFileParser {
                                  int index,
                                  const char *name,
                                  TRAPS) const {
-    if (!b) { classfile_parse_error(msg, index, name, CHECK); }
+    if (!b) { classfile_parse_error(msg, index, name, THREAD); return; }
   }
 
   void throwIllegalSignature(const char* type,
@@ -416,6 +466,8 @@ class ClassFileParser {
                                      const Symbol* signature,
                                      TRAPS) const;
 
+  void verify_class_version(u2 major, u2 minor, Symbol* class_name, TRAPS);
+
   void verify_legal_class_modifiers(jint flags, TRAPS) const;
   void verify_legal_field_modifiers(jint flags, bool is_interface, TRAPS) const;
   void verify_legal_method_modifiers(jint flags,
@@ -423,30 +475,16 @@ class ClassFileParser {
                                      const Symbol* name,
                                      TRAPS) const;
 
+  void check_super_class_access(const InstanceKlass* this_klass,
+                                TRAPS);
+
+  void check_super_interface_access(const InstanceKlass* this_klass,
+                                    TRAPS);
+
   const char* skip_over_field_signature(const char* signature,
                                         bool void_ok,
                                         unsigned int length,
                                         TRAPS) const;
-
-  bool has_cp_patch_at(int index) const {
-    assert(index >= 0, "oob");
-    return (_cp_patches != NULL
-            && index < _cp_patches->length()
-            && _cp_patches->adr_at(index)->not_null());
-  }
-
-  Handle cp_patch_at(int index) const {
-    assert(has_cp_patch_at(index), "oob");
-    return _cp_patches->at(index);
-  }
-
-  Handle clear_cp_patch_at(int index);
-
-  void patch_class(ConstantPool* cp, int class_index, Klass* k, Symbol* name);
-  void patch_constant_pool(ConstantPool* cp,
-                           int index,
-                           Handle patch,
-                           TRAPS);
 
   // Wrapper for constantTag.is_klass_[or_]reference.
   // In older versions of the VM, Klass*s cannot sneak into early phases of
@@ -489,28 +527,22 @@ class ClassFileParser {
                                int annotation_default_length,
                                TRAPS);
 
-  // lays out fields in class and returns the total oopmap count
-  void layout_fields(ConstantPool* cp,
-                     const FieldAllocationCount* fac,
-                     const ClassAnnotationCollector* parsed_annotations,
-                     FieldLayoutInfo* info,
-                     TRAPS);
-
-   void update_class_name(Symbol* new_name);
+  void update_class_name(Symbol* new_name);
+  // (DCEVM) Enhanced class redefinition
+  inline const Klass* maybe_newest(const Klass* klass) const { return klass != NULL && _pick_newest ? klass->newest_version() : klass; }
 
  public:
   ClassFileParser(ClassFileStream* stream,
                   Symbol* name,
                   ClassLoaderData* loader_data,
-                  Handle protection_domain,
-                  const InstanceKlass* unsafe_anonymous_host,
-                  GrowableArray<Handle>* cp_patches,
+                  const ClassLoadInfo* cl_info,
                   Publicity pub_level,
+                  const bool pick_newest,
                   TRAPS);
 
   ~ClassFileParser();
 
-  InstanceKlass* create_instance_klass(bool cf_changed_in_CFLH, TRAPS);
+  InstanceKlass* create_instance_klass(bool cf_changed_in_CFLH, const ClassInstanceInfo& cl_inst_info, TRAPS);
 
   const ClassFileStream* clone_stream() const;
 
@@ -525,14 +557,13 @@ class ClassFileParser {
 
   u2 this_class_index() const { return _this_class_index; }
 
-  bool is_unsafe_anonymous() const { return _unsafe_anonymous_host != NULL; }
+  bool is_hidden() const { return _is_hidden; }
   bool is_interface() const { return _access_flags.is_interface(); }
 
-  const InstanceKlass* unsafe_anonymous_host() const { return _unsafe_anonymous_host; }
-  const GrowableArray<Handle>* cp_patches() const { return _cp_patches; }
   ClassLoaderData* loader_data() const { return _loader_data; }
   const Symbol* class_name() const { return _class_name; }
   const InstanceKlass* super_klass() const { return _super_klass; }
+  Array<InstanceKlass*>* local_interfaces() const { return _local_interfaces; }
 
   ReferenceType reference_type() const { return _rt; }
   AccessFlags access_flags() const { return _access_flags; }

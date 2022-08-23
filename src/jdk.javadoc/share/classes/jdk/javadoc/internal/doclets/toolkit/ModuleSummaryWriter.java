@@ -58,7 +58,7 @@ public interface ModuleSummaryWriter {
      *
      * @return a content tree with the summary header
      */
-    Content getSummaryHeader();
+    Content getSummariesList();
 
     /**
      * Get the header for the summary tree.
@@ -77,34 +77,33 @@ public interface ModuleSummaryWriter {
     void addModuleDescription(Content moduleContentTree);
 
     /**
-     * Adds the tag information from the "module-info.java" file to the documentation
-     * tree.
+     * Adds the module signature.
      *
-     * @param moduleContentTree the content tree to which the module tags will
-     *                           be added
+     * @param moduleContentTree the content tree to which the module signature
+     *                           will be added
      */
-    void addModuleTags(Content moduleContentTree);
+    void addModuleSignature(Content moduleContentTree);
 
     /**
-     * Adds the modules summary to the documentation tree.
+     * Adds the summary of modules to the list of summaries.
      *
-     * @param summaryContentTree the content tree to which the summary will be added
+     * @param summariesList the list of summaries
      */
-    void addModulesSummary(Content summaryContentTree);
+    void addModulesSummary(Content summariesList);
 
     /**
-     * Adds the packages summary to the documentation tree.
+     * Adds the summary of packages to the list of summaries.
      *
-     * @param summaryContentTree the content tree to which the summary will be added
+     * @param summariesList the list of summaries
      */
-    void addPackagesSummary(Content summaryContentTree);
+    void addPackagesSummary(Content summariesList);
 
     /**
-     * Adds the services summary to the documentation tree.
+     * Adds the summary of services to the list of summaries.
      *
-     * @param summaryContentTree the content tree to which the summary will be added
+     * @param summariesList the list of summaries
      */
-    void addServicesSummary(Content summaryContentTree);
+    void addServicesSummary(Content summariesList);
 
     /**
      * Adds the module content tree to the documentation tree.

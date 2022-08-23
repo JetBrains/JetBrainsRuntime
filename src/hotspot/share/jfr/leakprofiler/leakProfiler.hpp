@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,8 +27,6 @@
 
 #include "memory/allocation.hpp"
 
-class BoolObjectClosure;
-class OopClosure;
 class JavaThread;
 
 class LeakProfiler : public AllStatic {
@@ -37,11 +35,8 @@ class LeakProfiler : public AllStatic {
   static bool stop();
   static bool is_running();
 
-  static void emit_events(int64_t cutoff_ticks, bool emit_all);
+  static void emit_events(int64_t cutoff_ticks, bool emit_all, bool skip_bfs);
   static void sample(HeapWord* object, size_t size, JavaThread* thread);
-
-  // Called by GC
-  static void weak_oops_do(BoolObjectClosure* is_alive, OopClosure* f);
 };
 
 #endif // SHARE_JFR_LEAKPROFILER_LEAKPROFILER_HPP

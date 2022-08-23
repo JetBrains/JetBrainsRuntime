@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,12 +34,11 @@ import javax.lang.model.element.TypeElement;
 
 import jdk.javadoc.internal.doclets.formats.html.markup.ContentBuilder;
 import jdk.javadoc.internal.doclets.formats.html.markup.Entity;
+import jdk.javadoc.internal.doclets.formats.html.markup.HtmlId;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
-import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
+import jdk.javadoc.internal.doclets.formats.html.markup.TagName;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
-import jdk.javadoc.internal.doclets.formats.html.markup.StringContent;
-import jdk.javadoc.internal.doclets.formats.html.markup.Table;
-import jdk.javadoc.internal.doclets.formats.html.markup.TableHeader;
+import jdk.javadoc.internal.doclets.formats.html.markup.Text;
 import jdk.javadoc.internal.doclets.toolkit.ConstructorWriter;
 import jdk.javadoc.internal.doclets.toolkit.Content;
 import jdk.javadoc.internal.doclets.toolkit.MemberSummaryWriter;
@@ -89,9 +88,6 @@ public class ConstructorWriterImpl extends AbstractExecutableMemberWriter
         super(writer);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public Content getMemberSummaryHeader(TypeElement typeElement,
             Content memberSummaryTree) {
@@ -101,18 +97,12 @@ public class ConstructorWriterImpl extends AbstractExecutableMemberWriter
         return memberTree;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public void addMemberTree(Content memberSummaryTree, Content memberTree) {
-        writer.addMemberTree(HtmlStyle.constructorSummary,
-                SectionName.CONSTRUCTOR_SUMMARY, memberSummaryTree, memberTree);
+    public void addSummary(Content summariesList, Content content) {
+        writer.addSummary(HtmlStyle.constructorSummary,
+                HtmlIds.CONSTRUCTOR_SUMMARY, summariesList, content);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public Content getConstructorDetailsTreeHeader(Content memberDetailsTree) {
         memberDetailsTree.add(MarkerComments.START_OF_CONSTRUCTOR_DETAILS);
@@ -123,89 +113,63 @@ public class ConstructorWriterImpl extends AbstractExecutableMemberWriter
         return constructorDetailsTree;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public Content getConstructorDocTreeHeader(ExecutableElement constructor) {
-        String erasureAnchor;
         Content constructorDocTree = new ContentBuilder();
-        HtmlTree heading = new HtmlTree(Headings.TypeDeclaration.MEMBER_HEADING,
-                new StringContent(name(constructor)));
-        if ((erasureAnchor = getErasureAnchor(constructor)) != null) {
+        HtmlTree heading = HtmlTree.HEADING(Headings.TypeDeclaration.MEMBER_HEADING,
+                Text.of(name(constructor)));
+        HtmlId erasureAnchor = htmlIds.forErasure(constructor);
+        if (erasureAnchor != null) {
             heading.setId(erasureAnchor);
         }
         constructorDocTree.add(heading);
         return HtmlTree.SECTION(HtmlStyle.detail, constructorDocTree)
-                .setId(links.getName(writer.getAnchor(constructor)));
+                .setId(htmlIds.forMember(constructor));
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public Content getSignature(ExecutableElement constructor) {
-        return new MemberSignature(constructor)
-                .addParameters(getParameters(constructor, true))
-                .addExceptions(getExceptions(constructor))
+        return new Signatures.MemberSignature(constructor, this)
+                .setParameters(getParameters(constructor, true))
+                .setExceptions(getExceptions(constructor))
+                .setAnnotations(writer.getAnnotationInfo(constructor, true))
                 .toContent();
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void addDeprecated(ExecutableElement constructor, Content constructorDocTree) {
         addDeprecatedInfo(constructor, constructorDocTree);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
+    public void addPreview(ExecutableElement constructor, Content constructorDocTree) {
+        addPreviewInfo(constructor, constructorDocTree);
+    }
+
     @Override
     public void addComments(ExecutableElement constructor, Content constructorDocTree) {
         addComment(constructor, constructorDocTree);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void addTags(ExecutableElement constructor, Content constructorDocTree) {
         writer.addTagsInfo(constructor, constructorDocTree);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public Content getConstructorDetails(Content constructorDetailsTreeHeader, Content constructorDetailsTree) {
-        Content constructorDetails = new ContentBuilder(constructorDetailsTreeHeader, constructorDetailsTree);
-        return getMemberTree(HtmlTree.SECTION(HtmlStyle.constructorDetails, constructorDetails)
-                .setId(SectionName.CONSTRUCTOR_DETAIL.getName()));
+        return writer.getDetailsListItem(
+                HtmlTree.SECTION(HtmlStyle.constructorDetails)
+                        .setId(HtmlIds.CONSTRUCTOR_DETAIL)
+                        .add(constructorDetailsTreeHeader)
+                        .add(constructorDetailsTree));
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Content getConstructorDoc(Content constructorDocTree) {
-        return getMemberTree(constructorDocTree);
-    }
-
-    /**
-     * Let the writer know whether a non public constructor was found.
-     *
-     * @param foundNonPubConstructor true if we found a non public constructor.
-     */
     @Override
     public void setFoundNonPubConstructor(boolean foundNonPubConstructor) {
         this.foundNonPubConstructor = foundNonPubConstructor;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void addSummaryLabel(Content memberTree) {
         Content label = HtmlTree.HEADING(Headings.TypeDeclaration.SUMMARY_HEADING,
@@ -213,9 +177,6 @@ public class ConstructorWriterImpl extends AbstractExecutableMemberWriter
         memberTree.add(label);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public TableHeader getSummaryTableHeader(Element member) {
         if (foundNonPubConstructor) {
@@ -229,38 +190,29 @@ public class ConstructorWriterImpl extends AbstractExecutableMemberWriter
     @Override
     protected Table createSummaryTable() {
         List<HtmlStyle> bodyRowStyles;
-        int rowScopeColumn;
 
         if (foundNonPubConstructor) {
             bodyRowStyles = Arrays.asList(HtmlStyle.colFirst, HtmlStyle.colConstructorName,
                     HtmlStyle.colLast);
-            rowScopeColumn = 1;
         } else {
             bodyRowStyles = Arrays.asList(HtmlStyle.colConstructorName, HtmlStyle.colLast);
-            rowScopeColumn = 0;
         }
 
-        return new Table(HtmlStyle.memberSummary)
+        return new Table(
+                HtmlStyle.summaryTable)
                 .setCaption(contents.constructors)
                 .setHeader(getSummaryTableHeader(typeElement))
-                .setRowScopeColumn(rowScopeColumn)
                 .setColumnStyles(bodyRowStyles);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void addInheritedSummaryLabel(TypeElement typeElement, Content inheritedTree) {
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     protected void addSummaryType(Element member, Content tdSummaryType) {
         if (foundNonPubConstructor) {
-            Content code = new HtmlTree(HtmlTag.CODE);
+            Content code = new HtmlTree(TagName.CODE);
             if (utils.isProtected(member)) {
                 code.add("protected ");
             } else if (utils.isPrivate(member)) {

@@ -24,10 +24,10 @@
  */
 
 #import "CDataTransferer.h"
+#include "sun_lwawt_macosx_CDataTransferer.h"
 #import "ThreadUtilities.h"
-#import "jni_util.h" 
+#import "JNIUtilities.h"
 #import <Cocoa/Cocoa.h>
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
 
 @interface CClipboard : NSObject { }
 @property NSInteger changeCount;
@@ -66,9 +66,9 @@
     @synchronized(self) {
         if (owner != NULL) {
             if (self.clipboardOwner != NULL) {
-                JNFDeleteGlobalRef(env, self.clipboardOwner);
+                (*env)->DeleteGlobalRef(env, self.clipboardOwner);
             }
-            self.clipboardOwner = JNFNewGlobalRef(env, owner);
+            self.clipboardOwner = (*env)->NewGlobalRef(env, owner);
         }
     }
     [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
@@ -79,28 +79,29 @@
 - (void)checkPasteboard:(id)sender {
 
     // This is called via NSApplicationDidBecomeActiveNotification.
-    
+
     // If the change count on the general pasteboard is different than when we set it
     // someone else put data on the clipboard.  That means the current owner lost ownership.
-    
+
     NSInteger newChangeCount = [[NSPasteboard generalPasteboard] changeCount];
 
     if (self.changeCount != newChangeCount) {
         self.changeCount = newChangeCount;
 
-        // Notify that the content might be changed
-        static JNF_CLASS_CACHE(jc_CClipboard, "sun/lwawt/macosx/CClipboard");
-        static JNF_STATIC_MEMBER_CACHE(jm_contentChanged, jc_CClipboard, "notifyChanged", "()V");
         JNIEnv *env = [ThreadUtilities getJNIEnv];
-        JNFCallStaticVoidMethod(env, jm_contentChanged);
+        // Notify that the content might be changed
+        DECLARE_CLASS(jc_CClipboard, "sun/lwawt/macosx/CClipboard");
+        DECLARE_STATIC_METHOD(jm_contentChanged, jc_CClipboard, "notifyChanged", "()V");
+        (*env)->CallStaticVoidMethod(env, jc_CClipboard, jm_contentChanged);
+        CHECK_EXCEPTION();
 
         // If we have a Java pasteboard owner, tell it that it doesn't own the pasteboard anymore.
-        static JNF_MEMBER_CACHE(jm_lostOwnership, jc_CClipboard, "notifyLostOwnership", "()V");
+        DECLARE_METHOD(jm_lostOwnership, jc_CClipboard, "notifyLostOwnership", "()V");
         @synchronized(self) {
             if (self.clipboardOwner) {
-                JNIEnv *env = [ThreadUtilities getJNIEnv];
-                JNFCallVoidMethod(env, self.clipboardOwner, jm_lostOwnership); // AWT_THREADING Safe (event)
-                JNFDeleteGlobalRef(env, self.clipboardOwner);
+                (*env)->CallVoidMethod(env, self.clipboardOwner, jm_lostOwnership);
+                CHECK_EXCEPTION();
+                (*env)->DeleteGlobalRef(env, self.clipboardOwner);
                 self.clipboardOwner = NULL;
             }
         }
@@ -109,11 +110,11 @@
 
 - (BOOL) checkPasteboardWithoutNotification:(id)application {
     AWT_ASSERT_APPKIT_THREAD;
-    
+
     NSInteger newChangeCount = [[NSPasteboard generalPasteboard] changeCount];
-    
+
     if (self.changeCount != newChangeCount) {
-        self.changeCount = newChangeCount;    
+        self.changeCount = newChangeCount;
         return YES;
     } else {
         return NO;
@@ -130,7 +131,7 @@
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CClipboard_declareTypes
 (JNIEnv *env, jobject inObject, jlongArray inTypes, jobject inJavaClip)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     jint i;
     jint nElements = (*env)->GetArrayLength(env, inTypes);
@@ -145,7 +146,7 @@ JNF_COCOA_ENTER(env);
 
     (*env)->ReleasePrimitiveArrayCritical(env, inTypes, elements, JNI_ABORT);
     [[CClipboard sharedClipboard] declareTypes:formatArray withOwner:inJavaClip jniEnv:env];
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -160,7 +161,7 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CClipboard_setData
         return;
     }
 
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
     jint nBytes = (*env)->GetArrayLength(env, inBytes);
     jbyte *rawBytes = (*env)->GetPrimitiveArrayCritical(env, inBytes, NULL);
     CHECK_NULL(rawBytes);
@@ -170,8 +171,50 @@ JNF_COCOA_ENTER(env);
     [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
         [[NSPasteboard generalPasteboard] setData:bytesAsData forType:format];
     }];
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
+
+/*
+ * Class:     sun_lwawt_macosx_CClipboard
+ * Method:    writeObjects
+ * Signature: ([BJ)V
+*/
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CClipboard_writeObjects
+(JNIEnv *env, jobject inObject, jbyteArray inBytes, jlong inFormat)
+{
+    if (inBytes == NULL) {
+        return;
+    }
+    
+
+JNI_COCOA_ENTER(env);
+    jint nBytes = (*env)->GetArrayLength(env, inBytes);
+    jbyte *rawBytes = (*env)->GetPrimitiveArrayCritical(env, inBytes, NULL);
+    CHECK_NULL(rawBytes);
+    NSData *bytesAsData = [NSData dataWithBytes:rawBytes length:nBytes];
+    (*env)->ReleasePrimitiveArrayCritical(env, inBytes, rawBytes, JNI_ABORT);
+    NSString *format = formatForIndex(inFormat);
+    NSMutableArray *formatArray = [NSMutableArray arrayWithCapacity:2];
+    const char *bytes = [bytesAsData bytes];
+    BOOL isStart=YES;
+    for (int i = 0; i < [bytesAsData length]; i++) {
+        if ((unsigned char)bytes[i] == 0) {
+            isStart = YES;
+        } else {
+            if (isStart) {
+                isStart = NO;
+                NSString *path = [NSString stringWithUTF8String:(const char *)&bytes[i]];
+                NSURL *fileURL = [NSURL fileURLWithPath:path relativeToURL:nil];
+                [formatArray addObject:fileURL];
+            }
+        }
+    }
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
+        [[NSPasteboard generalPasteboard] writeObjects:formatArray];
+    }];
+JNI_COCOA_EXIT(env);
+}
+
 
 /*
  * Class:     sun_lwawt_macosx_CClipboard
@@ -182,14 +225,14 @@ JNIEXPORT jlongArray JNICALL Java_sun_lwawt_macosx_CClipboard_getClipboardFormat
 (JNIEnv *env, jobject inObject)
 {
     jlongArray returnValue = NULL;
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     __block NSArray* dataTypes;
     [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
         dataTypes = [[[NSPasteboard generalPasteboard] types] retain];
     }];
     [dataTypes autorelease];
-    
+
     NSUInteger nFormats = [dataTypes count];
     NSUInteger knownFormats = 0;
     NSUInteger i;
@@ -227,7 +270,7 @@ JNF_COCOA_ENTER(env);
     }
 
     (*env)->ReleaseLongArrayElements(env, returnValue, saveFormats, JNI_COMMIT);
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
     return returnValue;
 }
 
@@ -243,50 +286,59 @@ JNIEXPORT jbyteArray JNICALL Java_sun_lwawt_macosx_CClipboard_getClipboardData
 
     // Note that this routine makes no attempt to interpret the data, since we're returning
     // a byte array back to Java.  CDataTransferer will do that if necessary.
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     NSString *formatAsString = formatForIndex(format);
     __block NSData* clipData;
     [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
         clipData = [[[NSPasteboard generalPasteboard] dataForType:formatAsString] retain];
     }];
-    
+
     if (clipData == NULL) {
-        [JNFException raise:env as:"java/io/IOException" reason:"Font transform has NaN position"];
+        JNU_ThrowIOException(env, "Font transform has NaN position");
         return NULL;
     } else {
         [clipData autorelease];
     }
 
     NSUInteger dataSize = [clipData length];
+    const void *dataBuffer = [clipData bytes];
+    if (format == sun_lwawt_macosx_CDataTransferer_CF_STRING && dataSize >= 3) {
+        const unsigned char *bytesPtr = (const unsigned char *)dataBuffer;
+        if (bytesPtr[0] == 0xEF && bytesPtr[1] == 0xBB && bytesPtr[2] == 0xBF) {
+            // strip BOM from string content, like native applications do
+            dataSize -= 3;
+            dataBuffer = (const void *)(bytesPtr + 3);
+        }
+    }
+
     returnValue = (*env)->NewByteArray(env, dataSize);
     if (returnValue == NULL) {
         return NULL;
     }
 
     if (dataSize != 0) {
-        const void *dataBuffer = [clipData bytes];
         (*env)->SetByteArrayRegion(env, returnValue, 0, dataSize, (jbyte *)dataBuffer);
     }
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
     return returnValue;
 }
 
-/*                                                                                            
- * Class:     sun_lwawt_macosx_CClipboard                                                     
- * Method:    checkPasteboard                                                                 
- * Signature: ()V                                                                             
- */                                                                                           
+/*
+ * Class:     sun_lwawt_macosx_CClipboard
+ * Method:    checkPasteboard
+ * Signature: ()V
+ */
 JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_CClipboard_checkPasteboardWithoutNotification
-(JNIEnv *env, jobject inObject)                                                               
-{                                                                                             
-    __block BOOL ret = NO;                                                                    
-    JNF_COCOA_ENTER(env);                                                                     
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){                                
-        ret = [[CClipboard sharedClipboard] checkPasteboardWithoutNotification:nil];          
-    }];                                                                                       
-                                                                                              
-    JNF_COCOA_EXIT(env);                                                                      
-    return ret;                                                                               
-}                                                                                             
+(JNIEnv *env, jobject inObject)
+{
+    __block BOOL ret = NO;
+    JNI_COCOA_ENTER(env);
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+        ret = [[CClipboard sharedClipboard] checkPasteboardWithoutNotification:nil];
+    }];
+
+    JNI_COCOA_EXIT(env);
+    return ret;
+}

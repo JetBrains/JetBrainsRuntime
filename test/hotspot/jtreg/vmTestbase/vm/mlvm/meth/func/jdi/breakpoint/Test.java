@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,9 +21,9 @@
  * questions.
  */
 
-
 /*
  * @test
+ * @key randomness
  *
  * @summary converted from VM Testbase vm/mlvm/meth/func/jdi/breakpoint.
  * VM Testbase keywords: [feature_mlvm, nonconcurrent]
@@ -34,7 +34,6 @@
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
  *
  * @comment build debuggee class
  * @build vm.mlvm.share.jdi.MHDebuggee
@@ -43,7 +42,7 @@
  * @build vm.mlvm.meth.func.jdi.breakpoint.Test
  * @run driver vm.mlvm.share.IndifiedClassesBuilder
  *
- * @run main/othervm PropertyResolvingWrapper
+ * @run main/othervm
  *      vm.mlvm.meth.func.jdi.breakpoint.Test
  *      -verbose
  *      -arch=${os.family}-${os.simpleArch}
@@ -58,7 +57,6 @@ package vm.mlvm.meth.func.jdi.breakpoint;
 import vm.mlvm.share.jdi.ArgumentHandler;
 import vm.mlvm.share.jdi.BreakpointInfo;
 import vm.mlvm.share.jdi.JDIBreakpointTest;
-import vm.mlvm.share.jpda.StratumInfo;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -84,7 +82,6 @@ public class Test extends JDIBreakpointTest {
 
         return result;
     }
-
 
     public static void main(String[] args) {
         launch(new ArgumentHandler(args));

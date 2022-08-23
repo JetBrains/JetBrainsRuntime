@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,8 +35,6 @@ import jdk.jfr.internal.LongMap;
 import jdk.jfr.internal.MetadataDescriptor;
 import jdk.jfr.internal.PrivateAccess;
 import jdk.jfr.internal.Type;
-import jdk.jfr.internal.consumer.Parser;
-import jdk.jfr.internal.consumer.RecordingInput;
 
 /**
  * Class that create parsers suitable for reading events and constant pools
@@ -288,7 +286,7 @@ final class ParserFactory {
         }
     }
 
-    private final static class ArrayParser extends Parser {
+    private static final class ArrayParser extends Parser {
         private final Parser elementParser;
 
         public ArrayParser(Parser elementParser) {
@@ -298,6 +296,7 @@ final class ParserFactory {
         @Override
         public Object parse(RecordingInput input) throws IOException {
             final int size = input.readInt();
+            input.require(size, "Array size %d exceeds available data" );
             final Object[] array = new Object[size];
             for (int i = 0; i < size; i++) {
                 array[i] = elementParser.parse(input);
@@ -314,7 +313,7 @@ final class ParserFactory {
         }
     }
 
-    private final static class CompositeParser extends Parser {
+    private static final class CompositeParser extends Parser {
         private final Parser[] parsers;
 
         public CompositeParser(Parser[] valueParsers) {

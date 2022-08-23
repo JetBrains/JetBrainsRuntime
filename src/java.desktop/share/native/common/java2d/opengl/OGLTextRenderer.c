@@ -63,9 +63,17 @@ typedef enum {
     MODE_USE_CACHE_GRAY,
     MODE_USE_CACHE_LCD,
     MODE_NO_CACHE_GRAY,
-    MODE_NO_CACHE_LCD
+    MODE_NO_CACHE_LCD,
+    MODE_NO_CACHE_COLOR
 } GlyphMode;
 static GlyphMode glyphMode = MODE_NOT_INITED;
+
+/**
+ * Current blending modes saved in OGLTR_EnableGrayGlyphModeState and restored in
+ * OGLTR_DisableGlyphModeState
+ */
+static GLint currentBlendSrc;
+static GLint currentBlendDst;
 
 /**
  * There are two separate glyph caches: for AA and for LCD.
@@ -84,6 +92,11 @@ static GlyphCacheInfo *glyphCacheAA = NULL;
  * The handle to the LCD text fragment program object.
  */
 static GLhandleARB lcdTextProgram = 0;
+
+/**
+ * The handle to the Gray text fragment program object.
+ */
+static GLhandleARB grayTextProgram = 0;
 
 /**
  * This value tracks the previous LCD contrast setting, so if the contrast
@@ -217,7 +230,7 @@ OGLTR_InitGlyphCache(jboolean lcdCache)
  * associated with the given OGLContext.
  */
 static void
-OGLTR_AddToGlyphCache(GlyphInfo *glyph, GLenum pixelFormat)
+OGLTR_AddToGlyphCache(GlyphInfo *glyph, GLenum pixelFormat, jint subimage)
 {
     CacheCellInfo *ccinfo;
     GlyphCacheInfo *gcinfo;
@@ -234,15 +247,16 @@ OGLTR_AddToGlyphCache(GlyphInfo *glyph, GLenum pixelFormat)
         return;
     }
 
-    AccelGlyphCache_AddGlyph(gcinfo, glyph);
-    ccinfo = (CacheCellInfo *) glyph->cellInfo;
+    ccinfo = AccelGlyphCache_AddGlyph(gcinfo, glyph);
 
     if (ccinfo != NULL) {
+        ccinfo->glyphSubimage = subimage;
         // store glyph image in texture cell
         j2d_glTexSubImage2D(GL_TEXTURE_2D, 0,
                             ccinfo->x, ccinfo->y,
                             glyph->width, glyph->height,
-                            pixelFormat, GL_UNSIGNED_BYTE, glyph->image);
+                            pixelFormat, GL_UNSIGNED_BYTE, glyph->image +
+                            (glyph->rowBytes * glyph->height) * subimage);
     }
 }
 
@@ -298,6 +312,38 @@ static const char *lcdTextShaderSource =
     "    gl_FragColor = vec4(pow(result.rgb, invgamma), 1.0);"
     "}";
 
+static const char *grayGammaTextShaderSource =
+    "uniform vec4 src_adj;"
+    "uniform sampler2D glyph_tex;"
+    "uniform float inv_light_gamma;"
+    "uniform float inv_dark_gamma;"
+    "uniform float inv_light_exp;"
+    "uniform float inv_dark_exp;"
+    "void main(void)"
+    "{"
+        "float a = src_adj.a;"
+        "vec3 col = src_adj.rgb;"
+        // Convert from ARGB_PRE
+        "if (a > 0.0) {"
+           "col = col/a;"
+        "}"
+        // calculate brightness of the fragment
+        "float b = dot(col, vec3(1.0/3.0, 1.0/3.0, 1.0/3.0))*a;"
+
+        // adjust fragment coverage
+        "float frag_cov = float(texture2D(glyph_tex, gl_TexCoord[0].st));"
+        "float exp = mix(inv_dark_exp, inv_light_exp, b);"
+        "frag_cov = pow(frag_cov, exp);"
+
+        // adjust fragment color and alpha for alpha < 1.0
+        "if (a < 1.0) {"
+           "float g = mix(inv_dark_gamma, inv_light_gamma,b);"
+           "col = pow(col, vec3(g));"
+           "a = pow(a, exp);"
+        "}"
+        "gl_FragColor = vec4(col, a*frag_cov);"
+    "}";
+
 /**
  * Compiles and links the LCD text shader program.  If successful, this
  * function returns a handle to the newly created shader program; otherwise
@@ -331,6 +377,52 @@ OGLTR_CreateLCDTextProgram()
     j2d_glUseProgramObjectARB(0);
 
     return lcdTextProgram;
+}
+
+/**
+ * Compiles and links the LCD text shader program.  If successful, this
+ * function returns a handle to the newly created shader program; otherwise
+ * returns 0.
+ */
+static GLhandleARB
+OGLTR_CreateGrayTextProgram(OGLContext *oglc, jboolean useFontSmoothing)
+{
+    GLhandleARB grayTextProgram;
+    GLint loc;
+
+    J2dTraceLn(J2D_TRACE_INFO, "OGLTR_CreateGrayTextProgram");
+
+    grayTextProgram = OGLContext_CreateFragmentProgram(grayGammaTextShaderSource);
+
+    if (grayTextProgram == 0) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR,
+                      "OGLTR_CreateGrayTextProgram: error creating program");
+        return 0;
+    }
+
+    // "use" the program object temporarily so that we can set the uniforms
+    j2d_glUseProgramObjectARB(grayTextProgram);
+
+    GrayRenderHints *hints = &(oglc->grayRenderHints[useFontSmoothing]);
+    J2dTraceLn5(J2D_TRACE_INFO,
+                "OGLTR_CreateGrayTextProgram: useFontSmoothing=%d "
+                "light_gamma=%f dark_gamma=%f light_exp=%f dark_exp=%f",
+                useFontSmoothing, hints->light_gamma, hints->dark_gamma,
+                hints->light_exp, hints->dark_exp);
+
+    loc = j2d_glGetUniformLocationARB(grayTextProgram, "inv_light_gamma");
+    j2d_glUniform1fARB(loc, hints->light_gamma);
+    loc = j2d_glGetUniformLocationARB(grayTextProgram, "inv_dark_gamma");
+    j2d_glUniform1fARB(loc, hints->dark_gamma);
+    loc = j2d_glGetUniformLocationARB(grayTextProgram, "inv_light_exp");
+    j2d_glUniform1fARB(loc, hints->light_exp);
+    loc = j2d_glGetUniformLocationARB(grayTextProgram, "inv_dark_exp");
+    j2d_glUniform1fARB(loc, hints->dark_exp);
+
+    // "unuse" the program object; it will be re-bound later as needed
+    j2d_glUseProgramObjectARB(0);
+
+    return grayTextProgram;
 }
 
 /**
@@ -403,6 +495,41 @@ OGLTR_UpdateLCDTextColor(jint contrast)
 }
 
 /**
+ * Updates the current source color ("src_adj") of the Gray text shader
+ * program.
+ */
+static jboolean
+OGLTR_UpdateGrayTextColor()
+{
+    GLfloat radj, gadj, badj, aadj;
+    GLfloat clr[4];
+    GLint loc;
+
+    /*
+     * Note: Ideally we would update the "src_adj" uniform parameter only
+     * when there is a change in the source color.  Fortunately, the cost
+     * of querying the current OpenGL color state and updating the uniform
+     * value is quite small, and in the common case we only need to do this
+     * once per GlyphList, so we gain little from trying to optimize too
+     * eagerly here.
+     */
+
+    // get the current OpenGL primary color state
+    j2d_glGetFloatv(GL_CURRENT_COLOR, clr);
+
+    radj = (GLfloat)clr[0];
+    gadj = (GLfloat)clr[1];
+    badj = (GLfloat)clr[2];
+    aadj = (GLfloat)clr[3];
+
+    // update the "src_adj" parameter of the shader program with this value
+    loc = j2d_glGetUniformLocationARB(grayTextProgram, "src_adj");
+    j2d_glUniform4fARB(loc, radj, gadj, badj, aadj);
+
+    return JNI_TRUE;
+}
+
+/**
  * Enables the LCD text shader and updates any related state, such as the
  * gamma lookup table textures.
  */
@@ -463,6 +590,39 @@ OGLTR_EnableLCDGlyphModeState(GLuint glyphTextureID,
 
     return JNI_TRUE;
 }
+/**
+ * Enables the GrayScale text shader and updates any related states
+ */
+static jboolean
+OGLTR_EnableGrayGlyphModeState(OGLContext *oglc, GLuint glyphTextureID, jboolean useFontSmoothing)
+{
+    // bind the texture containing glyph data to texture unit 0
+    j2d_glActiveTextureARB(GL_TEXTURE0_ARB);
+    j2d_glBindTexture(GL_TEXTURE_2D, glyphTextureID);
+    j2d_glEnable(GL_TEXTURE_2D);
+    j2d_glEnable(GL_BLEND);
+    j2d_glGetIntegerv(GL_BLEND_SRC_ALPHA, &currentBlendSrc);
+    j2d_glGetIntegerv(GL_BLEND_DST_ALPHA, &currentBlendDst);
+
+    j2d_glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // create the Gray text shader, if necessary
+    if (grayTextProgram == 0) {
+        grayTextProgram = OGLTR_CreateGrayTextProgram(oglc, useFontSmoothing);
+        if (grayTextProgram == 0) {
+            return JNI_FALSE;
+        }
+    }
+
+    // enable the Gray text shader
+    j2d_glUseProgramObjectARB(grayTextProgram);
+
+    // update the current color settings
+    if (!OGLTR_UpdateGrayTextColor()) {
+        return JNI_FALSE;
+    }
+    return JNI_TRUE;
+}
 
 void
 OGLTR_EnableGlyphVertexCache(OGLContext *oglc)
@@ -486,7 +646,7 @@ OGLTR_EnableGlyphVertexCache(OGLContext *oglc)
     // for grayscale/monochrome text, the current OpenGL source color
     // is modulated with the glyph image as part of the texture
     // application stage, so we use GL_MODULATE here
-    OGLC_UPDATE_TEXTURE_FUNCTION(oglc, GL_MODULATE);
+    //OGLC_UPDATE_TEXTURE_FUNCTION(oglc, GL_MODULATE);
 }
 
 void
@@ -526,8 +686,18 @@ OGLTR_DisableGlyphModeState()
         j2d_glDisable(GL_TEXTURE_2D);
         break;
 
-    case MODE_NO_CACHE_GRAY:
     case MODE_USE_CACHE_GRAY:
+        OGLVertexCache_FlushVertexCache();
+        j2d_glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        j2d_glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        j2d_glUseProgramObjectARB(0);
+        j2d_glActiveTextureARB(GL_TEXTURE0_ARB);
+        j2d_glDisable(GL_TEXTURE_2D);
+        j2d_glBlendFunc(currentBlendSrc, currentBlendDst);
+        break;
+    case MODE_NO_CACHE_COLOR:
+    case MODE_NO_CACHE_GRAY:
+        /* FALLTHROUGH */
     case MODE_NOT_INITED:
     default:
         break;
@@ -535,8 +705,8 @@ OGLTR_DisableGlyphModeState()
 }
 
 static jboolean
-OGLTR_DrawGrayscaleGlyphViaCache(OGLContext *oglc,
-                                 GlyphInfo *ginfo, jint x, jint y)
+OGLTR_DrawGrayscaleGlyphViaCache(OGLContext *oglc, GlyphInfo *ginfo,
+                                 jint x, jint y, jboolean useFontSmoothing, jint subimage)
 {
     CacheCellInfo *cell;
     jfloat x1, y1, x2, y2;
@@ -544,20 +714,54 @@ OGLTR_DrawGrayscaleGlyphViaCache(OGLContext *oglc,
     if (glyphMode != MODE_USE_CACHE_GRAY) {
         OGLTR_DisableGlyphModeState();
         CHECK_PREVIOUS_OP(OGL_STATE_GLYPH_OP);
+        j2d_glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        if (glyphCacheAA == NULL) {
+            if (!OGLTR_InitGlyphCache(JNI_FALSE)) {
+                return JNI_FALSE;
+            }
+        }
+
+        if (!OGLTR_EnableGrayGlyphModeState(oglc, glyphCacheAA->cacheID, useFontSmoothing))
+        {
+            return JNI_FALSE;
+        }
+
         glyphMode = MODE_USE_CACHE_GRAY;
     }
 
-    if (ginfo->cellInfo == NULL) {
-        // attempt to add glyph to accelerated glyph cache
-        OGLTR_AddToGlyphCache(ginfo, GL_LUMINANCE);
+    int rx = ginfo->subpixelResolutionX;
+    int ry = ginfo->subpixelResolutionY;
+    if (subimage == 0 && ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0)) {
+        // Subpixel rendering disabled, there must be only one cell info
+        cell = (CacheCellInfo *) (ginfo->cellInfo);
+    } else {
+        // Subpixel rendering enabled, find subimage in cell list
+        cell = NULL;
+        CacheCellInfo *c = (CacheCellInfo *) (ginfo->cellInfo);
+        while (c != NULL) {
+            if (c->glyphSubimage == subimage) {
+                cell = c;
+                break;
+            }
+            c = c->nextGCI;
+        }
+    }
 
-        if (ginfo->cellInfo == NULL) {
+    if (cell == NULL) {
+        // attempt to add glyph to accelerated glyph cache
+        OGLTR_AddToGlyphCache(ginfo, GL_LUMINANCE, subimage);
+        // Our image, added to cache will be the first, so we take it.
+        // If for whatever reason we failed to add it to our cache,
+        // take first cell anyway, it's still better to render glyph
+        // image with wrong subpixel offset than render nothing.
+        cell = (CacheCellInfo *) (ginfo->cellInfo);
+
+        if (cell == NULL) {
             // we'll just no-op in the rare case that the cell is NULL
             return JNI_TRUE;
         }
     }
 
-    cell = (CacheCellInfo *) (ginfo->cellInfo);
     cell->timesRendered++;
 
     x1 = (jfloat)x;
@@ -755,7 +959,7 @@ OGLTR_DrawLCDGlyphViaCache(OGLContext *oglc, OGLSDOps *dstOps,
         j2d_glActiveTextureARB(GL_TEXTURE0_ARB);
 
         // attempt to add glyph to accelerated glyph cache
-        OGLTR_AddToGlyphCache(ginfo, rgbOrder ? GL_RGB : GL_BGR);
+        OGLTR_AddToGlyphCache(ginfo, rgbOrder ? GL_RGB : GL_BGR, 0);
 
         if (ginfo->cellInfo == NULL) {
             // we'll just no-op in the rare case that the cell is NULL
@@ -822,7 +1026,8 @@ OGLTR_DrawLCDGlyphViaCache(OGLContext *oglc, OGLSDOps *dstOps,
 
 static jboolean
 OGLTR_DrawGrayscaleGlyphNoCache(OGLContext *oglc,
-                                GlyphInfo *ginfo, jint x, jint y)
+                                GlyphInfo *ginfo, jint x, jint y,
+                                jint subimage)
 {
     jint tw, th;
     jint sx, sy, sw, sh;
@@ -849,7 +1054,8 @@ OGLTR_DrawGrayscaleGlyphNoCache(OGLContext *oglc,
 
             OGLVertexCache_AddMaskQuad(oglc,
                                        sx, sy, x, y, sw, sh,
-                                       w, ginfo->image);
+                                       w, ginfo->image +
+                                       (ginfo->rowBytes * ginfo->height) * subimage);
         }
     }
 
@@ -978,9 +1184,44 @@ OGLTR_DrawLCDGlyphNoCache(OGLContext *oglc, OGLSDOps *dstOps,
     return JNI_TRUE;
 }
 
+static jboolean
+OGLTR_DrawColorGlyphNoCache(OGLContext *oglc, GlyphInfo *ginfo, jint x, jint y)
+{
+    if (glyphMode != MODE_NO_CACHE_COLOR) {
+        OGLTR_DisableGlyphModeState();
+        RESET_PREVIOUS_OP();
+        glyphMode = MODE_NO_CACHE_COLOR;
+    }
+
+    // see OGLBlitSwToSurface() in OGLBlitLoops.c
+    // for more info on the following two lines
+    j2d_glRasterPos2i(0, 0);
+    j2d_glBitmap(0, 0, 0, 0, (GLfloat) x, (GLfloat) (-y), NULL);
+
+    // in OpenGL image data is assumed to contain lines from bottom to top
+    j2d_glPixelZoom(1, -1);
+
+    j2d_glDrawPixels(ginfo->width, ginfo->height, GL_BGRA, GL_UNSIGNED_BYTE,
+                     ginfo->image);
+
+    // restoring state
+    j2d_glPixelZoom(1, 1);
+
+    return JNI_TRUE;
+}
+
+// Control subpixel positioning for macOS 13+ grayscale glyphs
+#ifdef MACOSX
+extern int lcdSubPixelPosSupported;
+extern int useFontSmoothing;
+#endif
+
 // see DrawGlyphList.c for more on this macro...
 #define FLOOR_ASSIGN(l, r) \
     if ((r)<0) (l) = ((int)floor(r)); else (l) = ((int)(r))
+
+#define ADJUST_SUBPIXEL_GLYPH_POSITION(coord, res) \
+    if ((res) > 1) (coord) += 0.5f / ((float)(res)) - 0.5f
 
 void
 OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
@@ -991,6 +1232,7 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
 {
     int glyphCounter;
     GLuint dstTextureID = 0;
+    jboolean fontSmoothing = JNI_FALSE;
 
     J2dTraceLn(J2D_TRACE_INFO, "OGLTR_DrawGlyphList");
 
@@ -1019,37 +1261,44 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
     //  * Means to prevent read-after-write problem.
     //    At the moment, a GL_NV_texture_barrier extension is used
     //    to achieve this.
+#ifdef MACOSX
     if (OGLC_IS_CAP_PRESENT(oglc, CAPS_EXT_TEXBARRIER) &&
         dstOps->textureTarget == GL_TEXTURE_2D)
     {
         dstTextureID = dstOps->textureID;
     }
 
+    subPixPos = lcdSubPixelPosSupported ? subPixPos : 0;
+    fontSmoothing = useFontSmoothing;
+#endif
+
     for (glyphCounter = 0; glyphCounter < totalGlyphs; glyphCounter++) {
         jint x, y;
         jfloat glyphx, glyphy;
-        jboolean grayscale, ok;
+        jboolean ok;
         GlyphInfo *ginfo = (GlyphInfo *)jlong_to_ptr(NEXT_LONG(images));
 
-        if (ginfo == NULL) {
+        if (ginfo == NULL || ginfo == (void*) -1) {
             // this shouldn't happen, but if it does we'll just break out...
-            J2dRlsTraceLn(J2D_TRACE_ERROR,
-                          "OGLTR_DrawGlyphList: glyph info is null");
+            J2dRlsTraceLn1(J2D_TRACE_ERROR,
+                           "OGLTR_DrawGlyphList: glyph info is %d", ginfo);
             break;
         }
-
-        grayscale = (ginfo->rowBytes == ginfo->width);
 
         if (usePositions) {
             jfloat posx = NEXT_FLOAT(positions);
             jfloat posy = NEXT_FLOAT(positions);
             glyphx = glyphListOrigX + posx + ginfo->topLeftX;
             glyphy = glyphListOrigY + posy + ginfo->topLeftY;
+            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphx, ginfo->subpixelResolutionX);
+            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphy, ginfo->subpixelResolutionY);
             FLOOR_ASSIGN(x, glyphx);
             FLOOR_ASSIGN(y, glyphy);
         } else {
             glyphx = glyphListOrigX + ginfo->topLeftX;
             glyphy = glyphListOrigY + ginfo->topLeftY;
+            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphx, ginfo->subpixelResolutionX);
+            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphy, ginfo->subpixelResolutionY);
             FLOOR_ASSIGN(x, glyphx);
             FLOOR_ASSIGN(y, glyphy);
             glyphListOrigX += ginfo->advanceX;
@@ -1060,15 +1309,29 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
             continue;
         }
 
-        if (grayscale) {
+        if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE) {
+            if (oglc->grayRenderHints == NULL) {
+                OGLContext_InitGrayRenderHints(env, oglc);
+            }
             // grayscale or monochrome glyph data
+            int rx = ginfo->subpixelResolutionX;
+            int ry = ginfo->subpixelResolutionY;
+            int subimage;
+            if ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0) {
+                subimage = 0;
+            } else {
+                subimage = (jint)((glyphx - x) * rx) + (jint)((glyphy - y) * ry) * rx;
+            }
             if (ginfo->width <= OGLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= OGLTR_CACHE_CELL_HEIGHT)
             {
-                ok = OGLTR_DrawGrayscaleGlyphViaCache(oglc, ginfo, x, y);
+                ok = OGLTR_DrawGrayscaleGlyphViaCache(oglc, ginfo, x, y, fontSmoothing, subimage);
             } else {
-                ok = OGLTR_DrawGrayscaleGlyphNoCache(oglc, ginfo, x, y);
+                ok = OGLTR_DrawGrayscaleGlyphNoCache(oglc, ginfo, x, y, subimage);
             }
+        } else if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_BGRA) {
+            // color glyph data
+            ok = OGLTR_DrawColorGlyphNoCache(oglc, ginfo, x, y);
         } else {
             // LCD-optimized glyph data
             jint rowBytesOffset = 0;
@@ -1103,7 +1366,7 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
             break;
         }
     }
-
+    OGLVertexCache_FlushVertexCache();
     OGLTR_DisableGlyphModeState();
 }
 

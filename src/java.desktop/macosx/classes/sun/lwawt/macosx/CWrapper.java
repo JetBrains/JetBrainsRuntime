@@ -25,6 +25,8 @@
 
 package sun.lwawt.macosx;
 
+import sun.awt.AWTThreading;
+
 final class CWrapper {
     private CWrapper() { }
 
@@ -45,22 +47,34 @@ final class CWrapper {
         // 'level' is one of the keys defined above
         static native void setLevel(long window, int level);
 
-        static native void makeKeyAndOrderFront(long window);
-        static native void makeKeyWindow(long window);
+        static void makeKeyAndOrderFront(long window) {
+            AWTThreading.executeWaitToolkit(wait -> nativeMakeKeyAndOrderFront(window, wait));
+        }
+        static void makeKeyWindow(long window) {
+            AWTThreading.executeWaitToolkit(wait -> nativeMakeKeyWindow(window, wait));
+        }
         static native void makeMainWindow(long window);
         static native boolean canBecomeMainWindow(long window);
         static native boolean isKeyWindow(long window);
 
         static native void orderFront(long window);
+        static native void orderFrontIfOnActiveSpace(long window);
         static native void orderFrontRegardless(long window);
         static native void orderWindow(long window, int ordered, long relativeTo);
+        static native void orderWindowIfOnActiveSpace(long window, int ordered, long relativeTo);
 
         /**
          * Removes the window from the screen.
          *
          * @param window the pointer of the NSWindow
          */
-        static native void orderOut(long window);
+        static void orderOut(long window) {
+            AWTThreading.executeWaitToolkit(wait -> nativeOrderOut(window, wait));
+        }
+
+        private static native void nativeOrderOut(long window, boolean wait);
+        private static native void nativeMakeKeyWindow(long window, boolean wait);
+        private static native void nativeMakeKeyAndOrderFront(long window, boolean wait);
 
         /**
          * Removes the window from the screen and releases it. According to
@@ -94,6 +108,8 @@ final class CWrapper {
         static native void zoom(long window);
 
         static native void makeFirstResponder(long window, long responder);
+        
+        static native boolean isTabbedWindow(long window);
     }
 
     static final class NSView {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,41 +21,36 @@
  * questions.
  */
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import jdk.test.lib.apps.LingeredApp;
 import jdk.test.lib.JDKToolLauncher;
-import jdk.test.lib.Platform;
 import jdk.test.lib.process.OutputAnalyzer;
+import jdk.test.lib.SA.SATestUtils;
 import jdk.test.lib.Utils;
 
 /**
  * @test
- * @requires vm.hasSAandCanAttach
+ * @requires vm.hasSA
  * @library /test/lib
- * @run main JhsdbThreadInfoTest
+ * @run driver JhsdbThreadInfoTest
  */
 public class JhsdbThreadInfoTest {
 
     public static void main(String[] args) throws Exception {
-
+        SATestUtils.skipIfCannotAttach(); // throws SkippedException if attach not expected to work.
         LingeredApp app = null;
 
         try {
-            app = LingeredApp.startApp(Utils.getVmOptions());
+            app = LingeredApp.startApp();
             System.out.println("Started LingeredApp with pid " + app.getPid());
 
             JDKToolLauncher jhsdbLauncher = JDKToolLauncher.createUsingTestJDK("jhsdb");
+            jhsdbLauncher.addVMArgs(Utils.getFilteredTestJavaOpts("-showversion"));
 
             jhsdbLauncher.addToolArg("jstack");
             jhsdbLauncher.addToolArg("--pid");
             jhsdbLauncher.addToolArg(Long.toString(app.getPid()));
 
-            ProcessBuilder pb = new ProcessBuilder();
-            pb.command(jhsdbLauncher.getCommand());
+            ProcessBuilder pb = SATestUtils.createProcessBuilder(jhsdbLauncher);
             Process jhsdb = pb.start();
 
             OutputAnalyzer out = new OutputAnalyzer(jhsdb);
@@ -70,25 +65,14 @@ public class JhsdbThreadInfoTest {
             out.shouldMatch("   java.lang.Thread.State: .+");
             out.shouldMatch("   JavaThread state: _thread_.+");
 
+            out.shouldNotContain(" prio=0 ");
             out.shouldNotContain("   java.lang.Thread.State: UNKNOWN");
 
-            // stderr should be empty except for VM warnings.
-            if (!out.getStderr().isEmpty()) {
-                List<String> lines = Arrays.asList(out.getStderr().split("(\\r\\n|\\n|\\r)"));
-                Pattern p = Pattern.compile(".*VM warning.*");
-                for (String line : lines) {
-                    Matcher m = p.matcher(line);
-                    if (!m.matches()) {
-                        throw new RuntimeException("Stderr has output other than VM warnings");
-                    }
-                }
-            }
+            out.stderrShouldBeEmptyIgnoreDeprecatedWarnings();
 
             System.out.println("Test Completed");
-        } catch (InterruptedException ie) {
-            throw new Error("Problem awaiting the child process: " + ie, ie);
-        } catch (Exception attachE) {
-            throw new Error("Couldn't start jhsdb, attach to LingeredApp or match ThreadName: " + attachE);
+        } catch (Exception ex) {
+            throw new RuntimeException("Test ERROR " + ex, ex);
         } finally {
             LingeredApp.stopApp(app);
         }

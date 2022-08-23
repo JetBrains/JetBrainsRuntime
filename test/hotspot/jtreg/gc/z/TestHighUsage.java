@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@ package gc.z;
 
 /*
  * @test TestHighUsage
- * @requires vm.gc.Z & !vm.graal.enabled
+ * @requires vm.gc.Z
  * @summary Test ZGC "High Usage" rule
  * @library /test/lib
  * @run main/othervm gc.z.TestHighUsage
@@ -85,16 +85,14 @@ public class TestHighUsage {
     }
 
     public static void main(String[] args) throws Exception {
-        ProcessTools.executeTestJvm(new String[]{ "-XX:+UnlockExperimentalVMOptions",
-                                                  "-XX:+UseZGC",
-                                                  "-XX:+UnlockDiagnosticVMOptions",
-                                                  "-XX:-ZProactive",
-                                                  "-Xms128M",
-                                                  "-Xmx128M",
-                                                  "-XX:ParallelGCThreads=1",
-                                                  "-XX:ConcGCThreads=1",
-                                                  "-Xlog:gc,gc+start",
-                                                  Test.class.getName() })
+        ProcessTools.executeTestJvm("-XX:+UseZGC",
+                                    "-XX:-ZProactive",
+                                    "-Xms128M",
+                                    "-Xmx128M",
+                                    "-XX:ParallelGCThreads=1",
+                                    "-XX:ConcGCThreads=1",
+                                    "-Xlog:gc,gc+start",
+                                    Test.class.getName())
                     .shouldNotContain("Allocation Stall")
                     .shouldContain("High Usage")
                     .shouldHaveExitValue(0);

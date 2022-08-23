@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,31 +46,28 @@ import jdk.jfr.internal.Utils;
  * <p>
  * The following example shows how {@code AnnotationElement} can be used to dynamically define events.
  *
- * <pre>
- * <code>
- *   List{@literal <}AnnotationElement{@literal >} typeAnnotations = new ArrayList{@literal <}{@literal >}();
- *   typeannotations.add(new AnnotationElement(Name.class, "com.example.HelloWorld");
+ * <pre>{@literal
+ *   List<AnnotationElement> typeAnnotations = new ArrayList<>();
+ *   typeAnnotations.add(new AnnotationElement(Name.class, "com.example.HelloWorld"));
  *   typeAnnotations.add(new AnnotationElement(Label.class, "Hello World"));
  *   typeAnnotations.add(new AnnotationElement(Description.class, "Helps programmer getting started"));
  *
- *   List{@literal <}AnnotationElement{@literal >} fieldAnnotations = new ArrayList{@literal <}{@literal >}();
+ *   List<AnnotationElement> fieldAnnotations = new ArrayList<>();
  *   fieldAnnotations.add(new AnnotationElement(Label.class, "Message"));
  *
- *   List{@literal <}ValueDescriptor{@literal >} fields = new ArrayList{@literal <}{@literal >}();
+ *   List<ValueDescriptor> fields = new ArrayList<>();
  *   fields.add(new ValueDescriptor(String.class, "message", fieldAnnotations));
  *
  *   EventFactory f = EventFactory.create(typeAnnotations, fields);
  *   Event event = f.newEvent();
  *   event.commit();
- * </code>
- * </pre>
+ * }</pre>
  *
  * @since 9
  */
 public final class AnnotationElement {
     private final Type type;
     private final List<Object> annotationValues;
-    private final List<String> annotationNames;
     private final boolean inBootClassLoader;
 
     // package private
@@ -78,7 +75,9 @@ public final class AnnotationElement {
         Objects.requireNonNull(type);
         Objects.requireNonNull(objects);
         this.type = type;
-        if (objects.size() != type.getFields().size()) {
+        List<ValueDescriptor> fields = type.getFields();
+        int fieldCount = fields.size();
+        if (objects.size() != fieldCount) {
             StringJoiner descriptors = new StringJoiner(",", "[", "]");
             for (ValueDescriptor v : type.getFields()) {
                 descriptors.add(v.getName());
@@ -90,25 +89,18 @@ public final class AnnotationElement {
             throw new IllegalArgumentException("Annotation " + descriptors + " for " + type.getName() + " doesn't match number of values " + values);
         }
 
-        List<String> n = new ArrayList<>();
-        List<Object> v = new ArrayList<>();
-        int index = 0;
-        for (ValueDescriptor valueDescriptor : type.getFields()) {
+        for (int index = 0; index < fieldCount; index++) {
             Object object = objects.get(index);
             if (object == null) {
                 throw new IllegalArgumentException("Annotation value can't be null");
             }
             Class<?> valueType = object.getClass();
-            if (valueDescriptor.isArray()) {
+            if (fields.get(index).isArray()) {
                 valueType = valueType.getComponentType();
             }
             checkType(Utils.unboxType(valueType));
-            n.add(valueDescriptor.getName());
-            v.add(object);
-            index++;
         }
-        this.annotationValues = Utils.smallUnmodifiable(v);
-        this.annotationNames = Utils.smallUnmodifiable(n);
+        this.annotationValues = List.copyOf(objects);
         this.inBootClassLoader = boot;
     }
 
@@ -164,9 +156,8 @@ public final class AnnotationElement {
         if (methods.length != map.size()) {
             throw new IllegalArgumentException("Number of declared methods must match size of value map");
         }
-        List<String> n = new ArrayList<>();
-        List<Object> v = new ArrayList<>();
-        Set<String> nameSet = new HashSet<>();
+        List<Object> v = new ArrayList<>(methods.length);
+        Set<String> nameSet = methods.length > 1 ? new HashSet<String>() : null;
         for (Method method : methods) {
             String fieldName = method.getName();
             Object object = map.get(fieldName);
@@ -200,18 +191,19 @@ public final class AnnotationElement {
                 fieldType = Utils.unboxType(object.getClass());
                 checkType(fieldType);
             }
-            if (nameSet.contains(fieldName)) {
-                throw new IllegalArgumentException("Value with name '" + fieldName + "' already exists");
+            if (nameSet!= null) {
+                if (nameSet.contains(fieldName)) {
+                    throw new IllegalArgumentException("Value with name '" + fieldName + "' already exists");
+                }
+                nameSet.add(fieldName);
             }
             if (isKnownJFRAnnotation(annotationType)) {
                 ValueDescriptor vd = new ValueDescriptor(fieldType, fieldName, Collections.emptyList(), true);
                 type.add(vd);
             }
-            n.add(fieldName);
             v.add(object);
         }
-        this.annotationValues = Utils.smallUnmodifiable(v);
-        this.annotationNames = Utils.smallUnmodifiable(n);
+        this.annotationValues = List.copyOf(v);
         this.inBootClassLoader = annotationType.getClassLoader() == null;
     }
 
@@ -316,12 +308,9 @@ public final class AnnotationElement {
      */
     public Object getValue(String name) {
         Objects.requireNonNull(name);
-        int index = 0;
-        for (String n : annotationNames) {
-            if (name.equals(n)) {
-                return annotationValues.get(index);
-            }
-            index++;
+        int index = type.indexOf(name);
+        if (index != -1) {
+            return annotationValues.get(index);
         }
         StringJoiner valueNames = new StringJoiner(",", "[", "]");
         for (ValueDescriptor v : type.getFields()) {
@@ -341,12 +330,7 @@ public final class AnnotationElement {
      */
     public boolean hasValue(String name) {
         Objects.requireNonNull(name);
-        for (String n : annotationNames) {
-            if (name.equals(n)) {
-                return true;
-            }
-        }
-        return false;
+        return type.indexOf(name) != -1;
     }
 
     /**
@@ -357,7 +341,7 @@ public final class AnnotationElement {
      * @param annotationType the {@code Class object} corresponding to the annotation type,
      *        not {@code null}
      * @return this element's annotation for the specified annotation type if
-     *         it it exists, else {@code null}
+     *         it exists, else {@code null}
      */
     public final <A> A getAnnotation(Class<? extends Annotation> annotationType) {
         Objects.requireNonNull(annotationType);
@@ -391,7 +375,7 @@ public final class AnnotationElement {
         throw new IllegalArgumentException("Only primitives types or java.lang.String are allowed");
     }
 
-    // Whitelist of annotation classes that are allowed, even though
+    // List of annotation classes that are allowed, even though
     // they don't have @MetadataDefinition.
     private static boolean isKnownJFRAnnotation(Class<? extends Annotation> annotationType) {
         if (annotationType == Registered.class) {

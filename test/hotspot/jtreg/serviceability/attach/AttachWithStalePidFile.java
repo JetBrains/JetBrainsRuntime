@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,14 @@
 /*
  * @test
  * @bug 7162400
- * @key regression
  * @summary Regression test for attach issue where stale pid files in /tmp lead to connection issues
+ * @requires os.family != "windows"
+ * @requires vm.flagless
  * @modules java.base/jdk.internal.misc:open
  * @modules java.base/java.lang:open
  * @modules jdk.attach/sun.tools.attach
  * @library /test/lib
- * @run main AttachWithStalePidFile
+ * @run driver AttachWithStalePidFile
  */
 
 import jdk.test.lib.Platform;
@@ -44,12 +45,6 @@ import java.io.*;
 
 public class AttachWithStalePidFile {
   public static void main(String... args) throws Exception {
-
-    // this test is only valid on non-Windows platforms
-    if(Platform.isWindows()) {
-      System.out.println("This test is only valid on non-Windows platforms.");
-      return;
-    }
 
     // Since there might be stale pid-files owned by different
     // users on the system we may need to retry the test in case we

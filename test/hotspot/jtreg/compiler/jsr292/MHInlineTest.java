@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,16 +25,19 @@
  * @test
  * @bug 8062280
  * @summary C2: inlining failure due to access checks being too strict
+ *
+ * @requires vm.flagless
  * @modules java.base/jdk.internal.misc
  * @library /test/lib /
  *
- * @run main/othervm compiler.jsr292.MHInlineTest
+ * @run driver compiler.jsr292.MHInlineTest
  */
 
 package compiler.jsr292;
 
 import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.process.ProcessTools;
+import jtreg.SkippedException;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -49,7 +52,7 @@ public class MHInlineTest {
                 "-XX:-TieredCompilation", "-Xbatch",
                 "-XX:+PrintCompilation", "-XX:+UnlockDiagnosticVMOptions", "-XX:+PrintInlining",
                 "-XX:CompileCommand=dontinline,compiler.jsr292.MHInlineTest::test*",
-                    Launcher.class.getName());
+                 Launcher.class.getName());
 
         OutputAnalyzer analyzer = new OutputAnalyzer(pb.start());
 
@@ -64,6 +67,8 @@ public class MHInlineTest {
             analyzer.shouldContain("compiler.jsr292.MHInlineTest$B::private_x (3 bytes)   inline (hot)");
             analyzer.shouldContain("compiler.jsr292.MHInlineTest$B::private_static_x (3 bytes)   inline (hot)");
             analyzer.shouldContain("compiler.jsr292.MHInlineTest$A::package_static_x (3 bytes)   inline (hot)");
+        } else {
+            throw new SkippedException("The test is applicable only to C2 (present in Server VM)");
         }
     }
 

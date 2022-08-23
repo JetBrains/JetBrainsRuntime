@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,6 +47,8 @@ import jdk.internal.net.http.hpack.DecodingCallback;
 import jdk.internal.net.http.hpack.Encoder;
 import sun.net.www.http.ChunkedInputStream;
 import sun.net.www.http.HttpClient;
+import static java.nio.charset.StandardCharsets.ISO_8859_1;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static jdk.internal.net.http.frame.SettingsFrame.HEADER_TABLE_SIZE;
 
 /**
@@ -123,10 +125,15 @@ public class Http2TestServerConnection {
                               Properties properties)
         throws IOException
     {
-        if (socket instanceof SSLSocket) {
-            handshake(server.serverName(), (SSLSocket)socket);
-        }
         System.err.println("TestServer: New connection from " + socket);
+
+        if (socket instanceof SSLSocket) {
+            SSLSocket sslSocket = (SSLSocket)socket;
+            handshake(server.serverName(), sslSocket);
+            if (!server.supportsHTTP11 && !"h2".equals(sslSocket.getApplicationProtocol())) {
+                throw new IOException("Unexpected ALPN: [" + sslSocket.getApplicationProtocol() + "]");
+            }
+        }
         this.server = server;
         this.exchangeSupplier = exchangeSupplier;
         this.streams = Collections.synchronizedMap(new HashMap<>());
@@ -248,7 +255,7 @@ public class Http2TestServerConnection {
 
     private static void handshake(String name, SSLSocket sock) throws IOException {
         if (name == null) {
-            // no name set. No need to check
+            sock.getSession(); // awaits handshake completion
             return;
         } else if (name.equals("localhost")) {
             name = "localhost";
@@ -298,14 +305,15 @@ public class Http2TestServerConnection {
     private void readPreface() throws IOException {
         int len = clientPreface.length;
         byte[] bytes = new byte[len];
-        is.readNBytes(bytes, 0, len);
+        int n = is.readNBytes(bytes, 0, len);
         if (Arrays.compare(clientPreface, bytes) != 0) {
-            throw new IOException("Invalid preface: " + new String(bytes, 0, len));
+            System.err.printf("Invalid preface: read %d/%d bytes%n", n, len);
+            throw new IOException("Invalid preface: " +
+                    new String(bytes, 0, len, ISO_8859_1));
         }
     }
 
-    Http1InitialRequest doUpgrade() throws IOException {
-        Http1InitialRequest upgrade = readHttp1Request();
+    Http1InitialRequest doUpgrade(Http1InitialRequest upgrade) throws IOException {
         String h2c = getHeader(upgrade.headers, "Upgrade");
         if (h2c == null || !h2c.equals("h2c")) {
             System.err.println("Server:HEADERS: " + upgrade);
@@ -351,19 +359,58 @@ public class Http2TestServerConnection {
         return clientSettings.getParameter(SettingsFrame.MAX_FRAME_SIZE);
     }
 
+    /** Sends a pre-canned HTTP/1.1 response. */
+    private void standardHTTP11Response(Http1InitialRequest request)
+        throws IOException
+    {
+        String upgradeHeader = getHeader(request.headers, "Upgrade");
+        if (upgradeHeader != null) {
+            throw new IOException("Unexpected Upgrade header:" + upgradeHeader);
+        }
+
+        sendHttp1Response(200, "OK",
+                          "Connection", "close",
+                          "Content-Length", "0",
+                          "X-Magic", "HTTP/1.1 request received by HTTP/2 server",
+                          "X-Received-Body", new String(request.body, UTF_8));
+    }
+
     void run() throws Exception {
         Http1InitialRequest upgrade = null;
         if (!secure) {
-            upgrade = doUpgrade();
-        } else {
-            readPreface();
-            sendSettingsFrame(true);
-            clientSettings = (SettingsFrame) readFrame();
-            if (clientSettings.getFlag(SettingsFrame.ACK)) {
-                // we received the ack to our frame first
-                clientSettings = (SettingsFrame) readFrame();
+            Http1InitialRequest request = readHttp1Request();
+            String h2c = getHeader(request.headers, "Upgrade");
+            if (h2c == null || !h2c.equals("h2c")) {
+                if (server.supportsHTTP11) {
+                    standardHTTP11Response(request);
+                    socket.close();
+                    return;
+                } else {
+                    System.err.println("Server:HEADERS: " + upgrade);
+                    throw new IOException("Bad upgrade 1 " + h2c);
+                }
             }
-            nextstream = 1;
+            upgrade = doUpgrade(request);
+        } else { // secure
+            SSLSocket sslSocket = (SSLSocket)socket;
+            if (sslSocket.getApplicationProtocol().equals("h2")) {
+                readPreface();
+                sendSettingsFrame(true);
+                clientSettings = (SettingsFrame) readFrame();
+                if (clientSettings.getFlag(SettingsFrame.ACK)) {
+                    // we received the ack to our frame first
+                    clientSettings = (SettingsFrame) readFrame();
+                }
+                nextstream = 1;
+            } else if (sslSocket.getApplicationProtocol().equals("http/1.1") ||
+                       sslSocket.getApplicationProtocol().equals("")) {
+                standardHTTP11Response(readHttp1Request());
+                socket.shutdownOutput();
+                socket.close();
+                return;
+            } else {
+                throw new IOException("Unexpected ALPN:" + sslSocket.getApplicationProtocol());
+            }
         }
 
         // Uncomment if needed, but very noisy
@@ -679,6 +726,8 @@ public class Http2TestServerConnection {
                 }
                 //System.err.printf("TestServer: received frame %s\n", frame);
                 int stream = frame.streamid();
+                int next = nextstream;
+                int nextPush = nextPushStreamId;
                 if (stream == 0) {
                     if (frame.type() == WindowUpdateFrame.TYPE) {
                         WindowUpdateFrame wup = (WindowUpdateFrame) frame;
@@ -726,6 +775,16 @@ public class Http2TestServerConnection {
                                 // but the continuation, even after a reset
                                 // should be handle gracefully by the client
                                 // anyway.
+                            } else if (isClientStreamId(stream) && stream < next) {
+                                // We may receive a reset on a client stream that has already
+                                // been closed. Just ignore it.
+                                System.err.println("TestServer: received ResetFrame on closed stream: " + stream);
+                                System.err.println(frame);
+                            } else if (isServerStreamId(stream) && stream < nextPush) {
+                                // We may receive a reset on a push stream that has already
+                                // been closed. Just ignore it.
+                                System.err.println("TestServer: received ResetFrame on closed push stream: " + stream);
+                                System.err.println(frame);
                             } else {
                                 System.err.println("TestServer: Unexpected frame on: " + stream);
                                 System.err.println(frame);
@@ -744,6 +803,14 @@ public class Http2TestServerConnection {
             }
             close(ErrorFrame.PROTOCOL_ERROR);
         }
+    }
+
+    static boolean isClientStreamId(int streamid) {
+        return (streamid & 0x01) == 0x01;
+    }
+
+    static boolean isServerStreamId(int streamid) {
+        return (streamid & 0x01) == 0x00;
     }
 
     /** Encodes an group of headers, without any ordering guarantees. */

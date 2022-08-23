@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,6 @@
 
 /*
  * @test
- * @key nmt jcmd
  * @summary Test the NMT scale parameter
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
@@ -42,6 +41,14 @@ public class JcmdScale {
     OutputAnalyzer output;
     // Grab my own PID
     String pid = Long.toString(ProcessTools.getProcessId());
+
+    pb.command(new String[] { JDKToolFinder.getJDKTool("jcmd"), pid, "VM.native_memory", "scale=1"});
+    output = new OutputAnalyzer(pb.start());
+    output.shouldContain(", committed=");
+
+    pb.command(new String[] { JDKToolFinder.getJDKTool("jcmd"), pid, "VM.native_memory", "scale=b"});
+    output = new OutputAnalyzer(pb.start());
+    output.shouldContain(", committed=");
 
     pb.command(new String[] { JDKToolFinder.getJDKTool("jcmd"), pid, "VM.native_memory", "scale=KB"});
     output = new OutputAnalyzer(pb.start());

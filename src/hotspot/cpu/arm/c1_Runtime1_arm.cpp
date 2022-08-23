@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,8 +29,11 @@
 #include "c1/c1_MacroAssembler.hpp"
 #include "c1/c1_Runtime1.hpp"
 #include "ci/ciUtilities.hpp"
+#include "compiler/oopMap.hpp"
 #include "gc/shared/cardTable.hpp"
 #include "gc/shared/cardTableBarrierSet.hpp"
+#include "gc/shared/collectedHeap.hpp"
+#include "gc/shared/tlab_globals.hpp"
 #include "interpreter/interpreter.hpp"
 #include "memory/universe.hpp"
 #include "nativeInst_arm.hpp"
@@ -189,7 +192,7 @@ static OopMap* save_live_registers(StubAssembler* sasm, bool save_fpu_registers 
   __ push(RegisterSet(FP) | RegisterSet(LR));
   __ push(RegisterSet(R0, R6) | RegisterSet(R8, R10) | R12 | altFP_7_11);
   if (save_fpu_registers) {
-    __ fstmdbd(SP, FloatRegisterSet(D0, fpu_save_size / 2), writeback);
+    __ fpush(FloatRegisterSet(D0, fpu_save_size / 2));
   } else {
     __ sub(SP, SP, fpu_save_size * wordSize);
   }
@@ -206,7 +209,7 @@ static void restore_live_registers(StubAssembler* sasm,
   __ block_comment("restore_live_registers");
 
   if (restore_fpu_registers) {
-    __ fldmiad(SP, FloatRegisterSet(D0, fpu_save_size / 2), writeback);
+    __ fpop(FloatRegisterSet(D0, fpu_save_size / 2));
     if (!restore_R0) {
       __ add(SP, SP, (R1_offset - fpu_save_size) * wordSize);
     }

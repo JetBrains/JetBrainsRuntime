@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright 2007, 2008, 2009, 2010 Red Hat, Inc.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -82,7 +82,6 @@ inline intptr_t* frame::link() const {
   return NULL;
 }
 
-#ifdef CC_INTERP
 inline interpreterState frame::get_interpreterState() const {
   return zero_interpreterframe()->interpreter_state();
 }
@@ -108,7 +107,8 @@ inline oop* frame::interpreter_frame_mirror_addr() const {
 }
 
 inline intptr_t* frame::interpreter_frame_mdp_addr() const {
-  return (intptr_t*) &(get_interpreterState()->_mdx);
+  fatal("Should not call this: Zero never profiles");
+  return NULL; // silence compiler warnings
 }
 
 inline intptr_t* frame::interpreter_frame_tos_address() const {
@@ -119,7 +119,6 @@ inline oop* frame::interpreter_frame_temp_oop_addr() const {
   interpreterState istate = get_interpreterState();
   return (oop *)&istate->_oop_temp;
 }
-#endif // CC_INTERP
 
 inline int frame::interpreter_frame_monitor_size() {
   return BasicObjectLock::size();

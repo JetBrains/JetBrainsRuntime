@@ -229,12 +229,22 @@ public class XRBackendNative implements XRBackend {
         return glyphInfoPtrs;
     }
 
+    private static int countTotalSubglyphs(List<XRGlyphCacheEntry> cacheEntries) {
+        int totalSubglyphs = 0;
+        for (int i = 0; i < cacheEntries.size(); i++) {
+            XRGlyphCacheEntry entry = cacheEntries.get(i);
+            totalSubglyphs += entry.getSubpixelResolutionX() *
+                              entry.getSubpixelResolutionY();
+        }
+        return totalSubglyphs;
+    }
+
     public void XRenderAddGlyphs(int glyphSet, GlyphList gl,
                                  List<XRGlyphCacheEntry> cacheEntries,
                                  byte[] pixelData) {
         long[] glyphInfoPtrs = getGlyphInfoPtrs(cacheEntries);
-        XRAddGlyphsNative(glyphSet, glyphInfoPtrs,
-                          glyphInfoPtrs.length, pixelData, pixelData.length);
+        XRAddGlyphsNative(glyphSet, glyphInfoPtrs, glyphInfoPtrs.length,
+                pixelData, pixelData.length, countTotalSubglyphs(cacheEntries));
     }
 
     public void XRenderFreeGlyphs(int glyphSet, int[] gids) {
@@ -245,10 +255,31 @@ public class XRBackendNative implements XRBackend {
                                                  long[] glyphInfoPtrs,
                                                  int glyphCnt,
                                                  byte[] pixelData,
-                                                 int pixelDataLength);
+                                                 int pixelDataLength,
+                                                 int totalSubglyphs);
 
     private static native void XRFreeGlyphsNative(int glyphSet,
                                                   int[] gids, int idCnt);
+
+    public void addBGRAGlyphImages(int drawable,
+                                   List<XRGlyphCacheEntry> cacheEntries) {
+        long[] glyphInfoPtrs = getGlyphInfoPtrs(cacheEntries);
+        addBGRAGlyphImagesNative(drawable, glyphInfoPtrs,
+                                 glyphInfoPtrs.length, FMTPTR_ARGB32);
+        /* addBGRAGlyphImagesNative replaced values in
+         * glyphInfoPtrs with pointers to BGRAGlyphInfo structs, save them */
+        int i = 0;
+        for (XRGlyphCacheEntry cacheEntry : cacheEntries) {
+            cacheEntry.setBgraGlyphInfoPtr(glyphInfoPtrs[i++]);
+        }
+    }
+
+    private native void addBGRAGlyphImagesNative(int drawable,
+                                                 long[] glyphInfoPtrs,
+                                                 int glyphCnt, long format32);
+
+    public native void freeBGRAGlyphImages(long[] glyphInfoPointers,
+                                           int glyphCount);
 
     private static native void
         XRenderCompositeTextNative(int op, int src, int dst,

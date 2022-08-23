@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,16 +27,18 @@ package jdk.javadoc.internal.doclets.formats.html;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
@@ -57,6 +59,7 @@ import javax.lang.model.util.SimpleTypeVisitor9;
 import com.sun.source.doctree.AttributeTree;
 import com.sun.source.doctree.AttributeTree.ValueKind;
 import com.sun.source.doctree.CommentTree;
+import com.sun.source.doctree.DeprecatedTree;
 import com.sun.source.doctree.DocRootTree;
 import com.sun.source.doctree.DocTree;
 import com.sun.source.doctree.DocTree.Kind;
@@ -72,30 +75,31 @@ import com.sun.source.doctree.StartElementTree;
 import com.sun.source.doctree.SummaryTree;
 import com.sun.source.doctree.SystemPropertyTree;
 import com.sun.source.doctree.TextTree;
+import com.sun.source.util.DocTreePath;
 import com.sun.source.util.SimpleDocTreeVisitor;
+
 import jdk.javadoc.internal.doclets.formats.html.markup.ContentBuilder;
 import jdk.javadoc.internal.doclets.formats.html.markup.Entity;
-import jdk.javadoc.internal.doclets.formats.html.markup.FixedStringContent;
 import jdk.javadoc.internal.doclets.formats.html.markup.Head;
-import jdk.javadoc.internal.doclets.formats.html.markup.HtmlAttr;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlDocument;
+import jdk.javadoc.internal.doclets.formats.html.markup.HtmlId;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
-import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
 import jdk.javadoc.internal.doclets.formats.html.markup.Links;
 import jdk.javadoc.internal.doclets.formats.html.markup.RawHtml;
 import jdk.javadoc.internal.doclets.formats.html.markup.Script;
-import jdk.javadoc.internal.doclets.formats.html.markup.StringContent;
-import jdk.javadoc.internal.doclets.formats.html.markup.TableHeader;
-import jdk.javadoc.internal.doclets.toolkit.AnnotationTypeWriter;
+import jdk.javadoc.internal.doclets.formats.html.markup.TagName;
+import jdk.javadoc.internal.doclets.formats.html.markup.Text;
 import jdk.javadoc.internal.doclets.toolkit.ClassWriter;
 import jdk.javadoc.internal.doclets.toolkit.Content;
 import jdk.javadoc.internal.doclets.toolkit.Messages;
 import jdk.javadoc.internal.doclets.toolkit.PackageSummaryWriter;
 import jdk.javadoc.internal.doclets.toolkit.Resources;
 import jdk.javadoc.internal.doclets.toolkit.taglets.DocRootTaglet;
+import jdk.javadoc.internal.doclets.toolkit.taglets.Taglet;
 import jdk.javadoc.internal.doclets.toolkit.taglets.TagletWriter;
 import jdk.javadoc.internal.doclets.toolkit.util.CommentHelper;
+import jdk.javadoc.internal.doclets.toolkit.util.Comparators;
 import jdk.javadoc.internal.doclets.toolkit.util.DocFile;
 import jdk.javadoc.internal.doclets.toolkit.util.DocFileIOException;
 import jdk.javadoc.internal.doclets.toolkit.util.DocLink;
@@ -103,7 +107,11 @@ import jdk.javadoc.internal.doclets.toolkit.util.DocPath;
 import jdk.javadoc.internal.doclets.toolkit.util.DocPaths;
 import jdk.javadoc.internal.doclets.toolkit.util.DocletConstants;
 import jdk.javadoc.internal.doclets.toolkit.util.Utils;
+import jdk.javadoc.internal.doclets.toolkit.util.Utils.DeclarationPreviewLanguageFeatures;
+import jdk.javadoc.internal.doclets.toolkit.util.Utils.ElementFlag;
+import jdk.javadoc.internal.doclets.toolkit.util.Utils.PreviewSummary;
 import jdk.javadoc.internal.doclets.toolkit.util.VisibleMemberTable;
+import jdk.javadoc.internal.doclint.HtmlTag;
 
 import static com.sun.source.doctree.DocTree.Kind.CODE;
 import static com.sun.source.doctree.DocTree.Kind.COMMENT;
@@ -153,6 +161,8 @@ public class HtmlDocletWriter {
      */
     public final HtmlConfiguration configuration;
 
+    protected final HtmlOptions options;
+
     protected final Utils utils;
 
     protected final Contents contents;
@@ -165,15 +175,14 @@ public class HtmlDocletWriter {
 
     protected final DocPaths docPaths;
 
+    protected final Comparators comparators;
+
+    protected final HtmlIds htmlIds;
+
     /**
      * To check whether annotation heading is printed or not.
      */
     protected boolean printedAnnotationHeading = false;
-
-    /**
-     * To check whether annotation field heading is printed or not.
-     */
-    protected boolean printedAnnotationFieldHeading = false;
 
     /**
      * To check whether the repeated annotations is documented or not.
@@ -201,18 +210,21 @@ public class HtmlDocletWriter {
     Map<String, Integer> indexAnchorTable = new HashMap<>();
 
     /**
-     * Constructor to construct the HtmlStandardWriter object.
+     * Creates an {@code HtmlDocletWriter}.
      *
      * @param configuration the configuration for this doclet
      * @param path the file to be generated.
      */
     public HtmlDocletWriter(HtmlConfiguration configuration, DocPath path) {
         this.configuration = configuration;
-        this.contents = configuration.contents;
+        this.options = configuration.getOptions();
+        this.contents = configuration.getContents();
         this.messages = configuration.messages;
-        this.resources = configuration.resources;
+        this.resources = configuration.docResources;
         this.links = new Links(path);
         this.utils = configuration.utils;
+        this.comparators = utils.comparators;
+        this.htmlIds = configuration.htmlIds;
         this.path = path;
         this.pathToRoot = path.parent().invert();
         this.filename = path.basename();
@@ -259,9 +271,9 @@ public class HtmlDocletWriter {
             // append htmlstr up to start of next {@docroot}
             buf.append(htmlstr.substring(prevEnd, match));
             prevEnd = docrootMatcher.end();
-            if (configuration.docrootparent.length() > 0 && htmlstr.startsWith("/..", prevEnd)) {
+            if (options.docrootParent().length() > 0 && htmlstr.startsWith("/..", prevEnd)) {
                 // Insert the absolute link if {@docRoot} is followed by "/..".
-                buf.append(configuration.docrootparent);
+                buf.append(options.docrootParent());
                 prevEnd += 3;
             } else {
                 // Insert relative path where {@docRoot} was located
@@ -276,34 +288,10 @@ public class HtmlDocletWriter {
         return buf.toString();
     }
     //where:
-        // Note: {@docRoot} is not case sensitive when passed in w/command line option:
+        // Note: {@docRoot} is not case sensitive when passed in with a command-line option:
         private static final Pattern docrootPattern =
                 Pattern.compile(Pattern.quote("{@docroot}"), Pattern.CASE_INSENSITIVE);
 
-    /**
-     * Get the script to show or hide the All classes link.
-     *
-     * @param id id of the element to show or hide
-     * @return a content tree for the script
-     */
-    public Content getAllClassesLinkScript(String id) {
-        Script script = new Script("<!--\n" +
-                "  allClassesLink = document.getElementById(")
-                .appendStringLiteral(id)
-                .append(");\n" +
-                "  if(window==top) {\n" +
-                "    allClassesLink.style.display = \"block\";\n" +
-                "  }\n" +
-                "  else {\n" +
-                "    allClassesLink.style.display = \"none\";\n" +
-                "  }\n" +
-                "  //-->\n");
-        Content div = HtmlTree.DIV(script.asContent());
-        Content div_noscript = HtmlTree.DIV(contents.noScriptMessage);
-        Content noScript = HtmlTree.NOSCRIPT(div_noscript);
-        div.add(noScript);
-        return div;
-    }
 
     /**
      * Add method information.
@@ -320,7 +308,7 @@ public class HtmlDocletWriter {
         // printed. If no overridden or implementation info needs to be
         // printed, do not print this section.
         if ((!intfacs.isEmpty()
-                && vmt.getImplementedMethods(method).isEmpty() == false)
+                && !vmt.getImplementedMethods(method).isEmpty())
                 || overriddenMethod != null) {
             MethodWriterImpl.addImplementsInfo(this, method, dl);
             if (overriddenMethod != null) {
@@ -336,37 +324,62 @@ public class HtmlDocletWriter {
      * Adds the tags information.
      *
      * @param e the Element for which the tags will be generated
-     * @param htmltree the documentation tree to which the tags will be added
+     * @param htmlTree the documentation tree to which the tags will be added
      */
-    protected void addTagsInfo(Element e, Content htmltree) {
-        if (configuration.nocomment) {
+    protected void addTagsInfo(Element e, Content htmlTree) {
+        if (options.noComment()) {
             return;
         }
-        Content dl = new HtmlTree(HtmlTag.DL);
+        HtmlTree dl = HtmlTree.DL(HtmlStyle.notes);
         if (utils.isExecutableElement(e) && !utils.isConstructor(e)) {
             addMethodInfo((ExecutableElement)e, dl);
         }
-        Content output = new ContentBuilder();
-        TagletWriter.genTagOutput(configuration.tagletManager, e,
-            configuration.tagletManager.getBlockTaglets(e),
-                getTagletWriterInstance(false), output);
+        Content output = getBlockTagOutput(e);
         dl.add(output);
-        htmltree.add(dl);
+        htmlTree.add(dl);
     }
 
     /**
-     * Check whether there are any tags for Serialization Overview
-     * section to be printed.
+     * Returns the content generated from the default supported set of block tags
+     * for this element.
      *
-     * @param field the VariableElement object to check for tags.
-     * @return true if there are tags to be printed else return false.
+     * @param element the element
+     *
+     * @return the content
+     */
+    protected Content getBlockTagOutput(Element element) {
+        return getBlockTagOutput(element, configuration.tagletManager.getBlockTaglets(element));
+    }
+
+    /**
+     * Returns the content generated from a specified set of block tags
+     * for this element.
+     *
+     * @param element the element
+     * @param taglets the taglets to handle the required set of tags
+     *
+     * @return the content
+     */
+    protected Content getBlockTagOutput(Element element, List<Taglet> taglets) {
+        return getTagletWriterInstance(false)
+                .getBlockTagOutput(configuration.tagletManager, element, taglets);
+    }
+
+    /**
+     * Returns whether there are any tags in a field for the Serialization Overview
+     * section to be generated.
+     *
+     * @param field the field to check
+     * @return {@code true} if and only if there are tags to be included
      */
     protected boolean hasSerializationOverviewTags(VariableElement field) {
-        Content output = new ContentBuilder();
-        TagletWriter.genTagOutput(configuration.tagletManager, field,
-                configuration.tagletManager.getBlockTaglets(field),
-                getTagletWriterInstance(false), output);
+        Content output = getBlockTagOutput(field);
         return !output.isEmpty();
+    }
+
+    private Content getInlineTagOutput(Element element, DocTree holder, DocTree tree, TagletWriterImpl.Context context) {
+        return getTagletWriterInstance(context)
+                .getInlineTagOutput(element, configuration.tagletManager, holder, tree);
     }
 
     /**
@@ -382,12 +395,11 @@ public class HtmlDocletWriter {
     /**
      * Returns a TagletWriter that knows how to write HTML.
      *
-     * @param isFirstSentence  true if we want to write the first sentence
-     * @param inSummary  true if tags are to be added in a summary section
+     * @param context  the enclosing context for the trees
      * @return a TagletWriter
      */
-    public TagletWriter getTagletWriterInstance(boolean isFirstSentence, boolean inSummary) {
-        return new TagletWriterImpl(this, isFirstSentence, inSummary);
+    public TagletWriter getTagletWriterInstance(TagletWriterImpl.Context context) {
+        return new TagletWriterImpl(this, context);
     }
 
     /**
@@ -444,22 +456,21 @@ public class HtmlDocletWriter {
                                   List<DocPath> localStylesheets,
                                   Content body)
             throws DocFileIOException {
-        Content htmlComment = contents.newPage;
         List<DocPath> additionalStylesheets = configuration.getAdditionalStylesheets();
         additionalStylesheets.addAll(localStylesheets);
-        Head head = new Head(path, configuration.docletVersion, configuration.startTime)
-                .setTimestamp(!configuration.notimestamp)
+        Head head = new Head(path, configuration.getDocletVersion(), configuration.startTime)
+                .setTimestamp(!options.noTimestamp())
                 .setDescription(description)
                 .setGenerator(getGenerator(getClass()))
                 .setTitle(winTitle)
-                .setCharset(configuration.charset)
+                .setCharset(options.charset())
                 .addKeywords(metakeywords)
                 .setStylesheets(configuration.getMainStylesheet(), additionalStylesheets)
-                .setIndex(configuration.createindex, mainBodyScript)
+                .setIndex(options.createIndex(), mainBodyScript)
                 .addContent(extraHeadContent);
 
-        Content htmlTree = HtmlTree.HTML(configuration.getLocale().getLanguage(), head.toContent(), body);
-        HtmlDocument htmlDocument = new HtmlDocument(htmlComment, htmlTree);
+        HtmlDocument htmlDocument = new HtmlDocument(
+                HtmlTree.HTML(configuration.getLocale().getLanguage(), head, body));
         htmlDocument.write(DocFile.createFileForOutput(configuration, path));
     }
 
@@ -470,53 +481,68 @@ public class HtmlDocletWriter {
      * @return the window title string
      */
     public String getWindowTitle(String title) {
-        if (configuration.windowtitle.length() > 0) {
-            title += " (" + configuration.windowtitle  + ")";
+        if (options.windowTitle().length() > 0) {
+            title += " (" + options.windowTitle() + ")";
         }
         return title;
     }
 
     /**
-     * Get user specified header and the footer.
+     * Returns a {@code <header>} element, containing the user "top" text, if any,
+     * amd the main navigation bar.
      *
-     * @param header if true print the user provided header else print the
-     * user provided footer.
+     * @param pageMode the pageMode used to configure the navigation bar
+     *
+     * @return the {@code <header>} element
      */
-    public Content getUserHeaderFooter(boolean header) {
-        String content;
-        if (header) {
-            content = replaceDocRootDir(configuration.header);
-        } else {
-            if (configuration.footer.length() != 0) {
-                content = replaceDocRootDir(configuration.footer);
-            } else {
-                content = replaceDocRootDir(configuration.header);
-            }
-        }
-        Content rawContent = new RawHtml(content);
-        return rawContent;
+    protected HtmlTree getHeader(Navigation.PageMode pageMode) {
+        return getHeader(pageMode, null);
     }
 
     /**
-     * Adds the user specified top.
+     * Returns a {@code <header>} element, containing the user "top" text, if any,
+     * amd the main navigation bar.
      *
-     * @param htmlTree the content tree to which user specified top will be added
+     * @param pageMode the page mode used to configure the navigation bar
+     * @param element  the element used to configure the navigation bar
+     *
+     * @return the {@code <header>} element
      */
-    public void addTop(Content htmlTree) {
-        Content top = new RawHtml(replaceDocRootDir(configuration.top));
-        htmlTree.add(top);
+    protected HtmlTree getHeader(Navigation.PageMode pageMode, Element element) {
+        return HtmlTree.HEADER()
+                .add(new RawHtml(replaceDocRootDir(options.top())))
+                .add(getNavBar(pageMode, element).getContent());
     }
 
     /**
-     * Adds the user specified bottom.
+     * Returns a basic navigation bar for a kind of page and element.
      *
-     * @param htmlTree the content tree to which user specified bottom will be added
+     * @apiNote the result may be further configured by overriding this method
+     *
+     * @param pageMode the page mode
+     * @param element  the defining element for the navigation bar, or {@code null} if none
+     * @return the basic navigation bar
      */
-    public void addBottom(Content htmlTree) {
-        Content bottom = new RawHtml(replaceDocRootDir(configuration.bottom));
-        Content small = HtmlTree.SMALL(bottom);
-        Content p = HtmlTree.P(HtmlStyle.legalCopy, small);
-        htmlTree.add(p);
+    protected Navigation getNavBar(Navigation.PageMode pageMode, Element element) {
+        return new Navigation(element, configuration, pageMode, path)
+                .setUserHeader(new RawHtml(replaceDocRootDir(options.header())));
+    }
+
+    /**
+     * Returns a {@code <footer>} element containing the user's "bottom" text,
+     * or {@code null} if there is no such text.
+     *
+     * @return the {@code <footer>} element or {@code null}.
+     */
+    public HtmlTree getFooter() {
+        String bottom = options.bottom();
+        return (bottom == null || bottom.isEmpty())
+                ? null
+                : HtmlTree.FOOTER()
+                    .add(new HtmlTree(TagName.HR))
+                    .add(HtmlTree.P(HtmlStyle.legalCopy,
+                            HtmlTree.SMALL(
+                                    new RawHtml(replaceDocRootDir(bottom)))));
     }
 
     /**
@@ -527,33 +553,20 @@ public class HtmlDocletWriter {
      */
     protected Content getNavLinkMainTree(String label) {
         Content mainTreeContent = links.createLink(pathToRoot.resolve(DocPaths.OVERVIEW_TREE),
-                new StringContent(label));
+                Text.of(label));
         Content li = HtmlTree.LI(mainTreeContent);
         return li;
     }
 
     /**
-     * Get table caption.
-     *
-     * @param title the content for the caption
-     * @return a content tree for the caption
-     */
-    public Content getTableCaption(Content title) {
-        Content captionSpan = HtmlTree.SPAN(title);
-        Content space = Entity.NO_BREAK_SPACE;
-        Content tabSpan = HtmlTree.SPAN(HtmlStyle.tabEnd, space);
-        Content caption = HtmlTree.CAPTION(captionSpan);
-        caption.add(tabSpan);
-        return caption;
-    }
-
-    /**
-     * Returns a packagename content.
+     * Returns a content object containing the package name. A localized content object is
+     * returned for an unnamed package. Use {@link Utils#getPackageName(PackageElement)} to
+     * get a static string for the unnamed package instead.
      *
      * @param packageElement the package to check
      * @return package name content
      */
-    public Content getPackageName(PackageElement packageElement) {
+    public Content getLocalizedPackageName(PackageElement packageElement) {
         return packageElement == null || packageElement.isUnnamed()
                 ? contents.defaultPackageLabel
                 : getPackageLabel(packageElement.getQualifiedName());
@@ -566,7 +579,7 @@ public class HtmlDocletWriter {
      * @return the package name content
      */
     public Content getPackageLabel(CharSequence packageName) {
-        return new StringContent(packageName);
+        return Text.of(packageName);
     }
 
     /**
@@ -593,35 +606,6 @@ public class HtmlDocletWriter {
     }
 
     /**
-     * Given a package, return the name to be used in HTML anchor tag.
-     * @param packageElement the package.
-     * @return the name to be used in HTML anchor tag.
-     */
-    public String getPackageAnchorName(PackageElement packageElement) {
-        return packageElement == null || packageElement.isUnnamed()
-                ? SectionName.UNNAMED_PACKAGE_ANCHOR.getName()
-                : utils.getPackageName(packageElement);
-    }
-
-    /**
-     * Return the link to the given package.
-     *
-     * @param packageElement the package to link to.
-     * @param label the label for the link.
-     * @return a content tree for the package link.
-     */
-    public Content getPackageLink(PackageElement packageElement, CharSequence label) {
-        return getPackageLink(packageElement, new StringContent(label));
-    }
-
-    public Content getPackageLink(PackageElement packageElement) {
-        StringContent content =  packageElement.isUnnamed()
-                ? new StringContent()
-                : new StringContent(utils.getPackageName(packageElement));
-        return getPackageLink(packageElement, content);
-    }
-
-    /**
      * Return the link to the given package.
      *
      * @param packageElement the package to link to.
@@ -638,16 +622,35 @@ public class HtmlDocletWriter {
                 }
             }
         }
-        if (included || packageElement == null) {
-            return links.createLink(pathString(packageElement, DocPaths.PACKAGE_SUMMARY),
-                    label);
+        Set<ElementFlag> flags;
+        if (packageElement != null) {
+            flags = utils.elementFlags(packageElement);
         } else {
-            DocLink crossPkgLink = getCrossPackageLink(packageElement);
-            if (crossPkgLink != null) {
-                return links.createLink(crossPkgLink, label);
-            } else {
-                return label;
+            flags = EnumSet.noneOf(ElementFlag.class);
+        }
+        DocLink targetLink = null;
+        if (included || packageElement == null) {
+            targetLink = new DocLink(pathString(packageElement, DocPaths.PACKAGE_SUMMARY));
+        } else {
+            targetLink = getCrossPackageLink(packageElement);
+        }
+        if (targetLink != null) {
+            if (flags.contains(ElementFlag.PREVIEW)) {
+                return new ContentBuilder(
+                    links.createLink(targetLink, label),
+                    HtmlTree.SUP(links.createLink(targetLink.withFragment(htmlIds.forPreviewSection(packageElement).name()),
+                                                  contents.previewMark))
+                );
             }
+            return links.createLink(targetLink, label);
+        } else {
+            if (flags.contains(ElementFlag.PREVIEW)) {
+                return new ContentBuilder(
+                    label,
+                    HtmlTree.SUP(contents.previewMark)
+                );
+            }
+            return label;
         }
     }
 
@@ -659,17 +662,28 @@ public class HtmlDocletWriter {
      * @return a content for the module link
      */
     public Content getModuleLink(ModuleElement mdle, Content label) {
+        Set<ElementFlag> flags = mdle != null ? utils.elementFlags(mdle)
+                                              : EnumSet.noneOf(ElementFlag.class);
         boolean included = utils.isIncluded(mdle);
-        return (included)
-                ? links.createLink(pathToRoot.resolve(docPaths.moduleSummary(mdle)), label, "", "")
-                : label;
-    }
-
-    public Content interfaceName(TypeElement typeElement, boolean qual) {
-        Content name = new StringContent((qual)
-                ? typeElement.getQualifiedName()
-                : utils.getSimpleName(typeElement));
-        return (utils.isInterface(typeElement)) ?  HtmlTree.SPAN(HtmlStyle.interfaceName, name) : name;
+        if (included) {
+            DocLink targetLink = new DocLink(pathToRoot.resolve(docPaths.moduleSummary(mdle)));
+            Content link = links.createLink(targetLink, label, "");
+            if (flags.contains(ElementFlag.PREVIEW) && label != contents.moduleLabel) {
+                link = new ContentBuilder(
+                        link,
+                        HtmlTree.SUP(links.createLink(targetLink.withFragment(htmlIds.forPreviewSection(mdle).name()),
+                                                      contents.previewMark))
+                );
+            }
+            return link;
+        }
+        if (flags.contains(ElementFlag.PREVIEW)) {
+            return new ContentBuilder(
+                label,
+                HtmlTree.SUP(contents.previewMark)
+            );
+        }
+        return label;
     }
 
     /**
@@ -693,7 +707,7 @@ public class HtmlDocletWriter {
                     .resolve(DocPaths.SOURCE_OUTPUT)
                     .resolve(docPaths.forClass(te));
             Content content = links.createLink(href
-                    .fragment(SourceToHTMLConverter.getAnchorName(utils, element)), label, "", "");
+                    .fragment(SourceToHTMLConverter.getAnchorName(utils, element).name()), label, "");
             htmltree.add(content);
         } else {
             htmltree.add(label);
@@ -707,8 +721,8 @@ public class HtmlDocletWriter {
      *
      * @return the link for the given class.
      */
-    public Content getLink(LinkInfoImpl linkInfo) {
-        LinkFactoryImpl factory = new LinkFactoryImpl(this);
+    public Content getLink(HtmlLinkInfo linkInfo) {
+        HtmlLinkFactory factory = new HtmlLinkFactory(this);
         return factory.getLink(linkInfo);
     }
 
@@ -718,9 +732,9 @@ public class HtmlDocletWriter {
      * @param linkInfo the information about the link.
      * @return the type for the given class.
      */
-    public Content getTypeParameterLinks(LinkInfoImpl linkInfo) {
-        LinkFactoryImpl factory = new LinkFactoryImpl(this);
-        return factory.getTypeParameterLinks(linkInfo, false);
+    public Content getTypeParameterLinks(HtmlLinkInfo linkInfo) {
+        HtmlLinkFactory factory = new HtmlLinkFactory(this);
+        return factory.getTypeParameterLinks(linkInfo);
     }
 
     /*************************************************************
@@ -732,16 +746,16 @@ public class HtmlDocletWriter {
      * @param refMemName the name of the member being referenced.  This should
      * be null or empty string if no member is being referenced.
      * @param label the label for the external link.
-     * @param strong true if the link should be strong.
+     * @param style optional style for the link.
      * @param code true if the label should be code font.
      * @return the link
      */
     public Content getCrossClassLink(TypeElement classElement, String refMemName,
-                                    Content label, boolean strong, boolean code) {
+                                    Content label, HtmlStyle style, boolean code) {
         if (classElement != null) {
             String className = utils.getSimpleName(classElement);
             PackageElement packageElement = utils.containingPackage(classElement);
-            Content defaultLabel = new StringContent(className);
+            Content defaultLabel = Text.of(className);
             if (code)
                 defaultLabel = HtmlTree.CODE(defaultLabel);
             if (getCrossPackageLink(packageElement) != null) {
@@ -755,20 +769,12 @@ public class HtmlDocletWriter {
                 DocLink link = configuration.extern.getExternalLink(packageElement, pathToRoot,
                                 className + ".html", refMemName);
                 return links.createLink(link,
-                    (label == null) || label.isEmpty() ? defaultLabel : label,
-                    strong,
+                    (label == null) || label.isEmpty() ? defaultLabel : label, style,
                     resources.getText("doclet.Href_Class_Or_Interface_Title",
-                        utils.getPackageName(packageElement)), "", true);
+                        getLocalizedPackageName(packageElement)), true);
             }
         }
         return null;
-    }
-
-    public boolean isClassLinkable(TypeElement typeElement) {
-        if (utils.isIncluded(typeElement)) {
-            return configuration.isGeneratedDoc(typeElement);
-        }
-        return configuration.extern.isExternal(typeElement);
     }
 
     public DocLink getCrossPackageLink(PackageElement element) {
@@ -788,9 +794,9 @@ public class HtmlDocletWriter {
      * @param element to link to
      * @return a content tree for the link
      */
-    public Content getQualifiedClassLink(LinkInfoImpl.Kind context, Element element) {
-        LinkInfoImpl linkInfoImpl = new LinkInfoImpl(configuration, context, (TypeElement)element);
-        return getLink(linkInfoImpl.label(utils.getFullyQualifiedName(element)));
+    public Content getQualifiedClassLink(HtmlLinkInfo.Kind context, Element element) {
+        HtmlLinkInfo htmlLinkInfo = new HtmlLinkInfo(configuration, context, (TypeElement)element);
+        return getLink(htmlLinkInfo.label(utils.getFullyQualifiedName(element)));
     }
 
     /**
@@ -800,8 +806,8 @@ public class HtmlDocletWriter {
      * @param typeElement to link to
      * @param contentTree the content tree to which the link will be added
      */
-    public void addPreQualifiedClassLink(LinkInfoImpl.Kind context, TypeElement typeElement, Content contentTree) {
-        addPreQualifiedClassLink(context, typeElement, false, contentTree);
+    public void addPreQualifiedClassLink(HtmlLinkInfo.Kind context, TypeElement typeElement, Content contentTree) {
+        addPreQualifiedClassLink(context, typeElement, null, contentTree);
     }
 
     /**
@@ -810,18 +816,16 @@ public class HtmlDocletWriter {
      * link label.
      *
      * @param typeElement the class to link to.
-     * @param isStrong true if the link should be strong.
      * @return the link with the package portion of the label in plain text.
      */
-    public Content getPreQualifiedClassLink(LinkInfoImpl.Kind context,
-            TypeElement typeElement, boolean isStrong) {
+    public Content getPreQualifiedClassLink(HtmlLinkInfo.Kind context, TypeElement typeElement) {
         ContentBuilder classlink = new ContentBuilder();
         PackageElement pkg = utils.containingPackage(typeElement);
         if (pkg != null && ! configuration.shouldExcludeQualifier(pkg.getSimpleName().toString())) {
             classlink.add(getEnclosingPackageName(typeElement));
         }
-        classlink.add(getLink(new LinkInfoImpl(configuration,
-                context, typeElement).label(utils.getSimpleName(typeElement)).strong(isStrong)));
+        classlink.add(getLink(new HtmlLinkInfo(configuration,
+                context, typeElement).label(utils.getSimpleName(typeElement))));
         return classlink;
     }
 
@@ -832,18 +836,18 @@ public class HtmlDocletWriter {
      *
      * @param context the id of the context where the link will be added
      * @param typeElement the class to link to
-     * @param isStrong true if the link should be strong
+     * @param style optional style for the link
      * @param contentTree the content tree to which the link with be added
      */
-    public void addPreQualifiedClassLink(LinkInfoImpl.Kind context,
-            TypeElement typeElement, boolean isStrong, Content contentTree) {
+    public void addPreQualifiedClassLink(HtmlLinkInfo.Kind context,
+                                         TypeElement typeElement, HtmlStyle style, Content contentTree) {
         PackageElement pkg = utils.containingPackage(typeElement);
         if(pkg != null && ! configuration.shouldExcludeQualifier(pkg.getSimpleName().toString())) {
             contentTree.add(getEnclosingPackageName(typeElement));
         }
-        LinkInfoImpl linkinfo = new LinkInfoImpl(configuration, context, typeElement)
+        HtmlLinkInfo linkinfo = new HtmlLinkInfo(configuration, context, typeElement)
                 .label(utils.getSimpleName(typeElement))
-                .strong(isStrong);
+                .style(style);
         Content link = getLink(linkinfo);
         contentTree.add(link);
     }
@@ -877,8 +881,8 @@ public class HtmlDocletWriter {
      * @param typeElement the class to link to
      * @param contentTree the content tree to which the link with be added
      */
-    public void addPreQualifiedStrongClassLink(LinkInfoImpl.Kind context, TypeElement typeElement, Content contentTree) {
-        addPreQualifiedClassLink(context, typeElement, true, contentTree);
+    public void addPreQualifiedStrongClassLink(HtmlLinkInfo.Kind context, TypeElement typeElement, Content contentTree) {
+        addPreQualifiedClassLink(context, typeElement, HtmlStyle.typeNameLink, contentTree);
     }
 
     /**
@@ -889,215 +893,202 @@ public class HtmlDocletWriter {
      * @param label the label for the link
      * @return a content tree for the element link
      */
-    public Content getDocLink(LinkInfoImpl.Kind context, Element element, CharSequence label) {
+    public Content getDocLink(HtmlLinkInfo.Kind context, Element element, CharSequence label) {
         return getDocLink(context, utils.getEnclosingTypeElement(element), element,
-                new StringContent(label));
+                Text.of(label), null, false);
     }
 
     /**
      * Return the link for the given member.
      *
      * @param context the id of the context where the link will be printed.
+     * @param typeElement the typeElement that we should link to. This is not
+     *            not necessarily the type containing element since we may be
+     *            inheriting comments.
      * @param element the member being linked to.
      * @param label the label for the link.
-     * @param strong true if the link should be strong.
      * @return the link for the given member.
      */
-    public Content getDocLink(LinkInfoImpl.Kind context, Element element, CharSequence label,
-            boolean strong) {
-        return getDocLink(context, utils.getEnclosingTypeElement(element), element, label, strong);
+    public Content getDocLink(HtmlLinkInfo.Kind context, TypeElement typeElement, Element element,
+                              CharSequence label) {
+        return getDocLink(context, typeElement, element, Text.of(label), null, false);
     }
 
     /**
      * Return the link for the given member.
      *
      * @param context the id of the context where the link will be printed.
-     * @param typeElement the typeElement that we should link to.  This is not
-                 necessarily equal to element.containingClass().  We may be
-                 inheriting comments.
+     * @param typeElement the typeElement that we should link to. This is not
+     *            not necessarily the type containing element since we may be
+     *            inheriting comments.
      * @param element the member being linked to.
      * @param label the label for the link.
-     * @param strong true if the link should be strong.
+     * @param style optional style for the link.
      * @return the link for the given member.
      */
-    public Content getDocLink(LinkInfoImpl.Kind context, TypeElement typeElement, Element element,
-            CharSequence label, boolean strong) {
-        return getDocLink(context, typeElement, element, label, strong, false);
-    }
-
-    public Content getDocLink(LinkInfoImpl.Kind context, TypeElement typeElement, Element element,
-            Content label, boolean strong) {
-        return getDocLink(context, typeElement, element, label, strong, false);
+    public Content getDocLink(HtmlLinkInfo.Kind context, TypeElement typeElement, Element element,
+                              CharSequence label, HtmlStyle style) {
+        return getDocLink(context, typeElement, element, Text.of(label), style, false);
     }
 
     /**
      * Return the link for the given member.
      *
      * @param context the id of the context where the link will be printed.
-     * @param typeElement the typeElement that we should link to.  This is not
-                 necessarily equal to element.containingClass().  We may be
-                 inheriting comments.
+     * @param typeElement the typeElement that we should link to. This is not
+     *            not necessarily the type containing element since we may be
+     *            inheriting comments.
      * @param element the member being linked to.
      * @param label the label for the link.
-     * @param strong true if the link should be strong.
+     * @return the link for the given member.
+     */
+    public Content getDocLink(HtmlLinkInfo.Kind context, TypeElement typeElement, Element element,
+                              CharSequence label, boolean isProperty) {
+        return getDocLink(context, typeElement, element, Text.of(label), null, isProperty);
+    }
+
+    /**
+     * Return the link for the given member.
+     *
+     * @param context the id of the context where the link will be printed.
+     * @param typeElement the typeElement that we should link to. This is not
+     *            not necessarily the type containing element since we may be
+     *            inheriting comments.
+     * @param element the member being linked to.
+     * @param label the label for the link.
+     * @param style optional style to use for the link.
      * @param isProperty true if the element parameter is a JavaFX property.
      * @return the link for the given member.
      */
-    public Content getDocLink(LinkInfoImpl.Kind context, TypeElement typeElement, Element element,
-            CharSequence label, boolean strong, boolean isProperty) {
-        return getDocLink(context, typeElement, element, new StringContent(label), strong, isProperty);
-    }
-
-    public Content getDocLink(LinkInfoImpl.Kind context, TypeElement typeElement, Element element,
-            Content label, boolean strong, boolean isProperty) {
+    public Content getDocLink(HtmlLinkInfo.Kind context, TypeElement typeElement, Element element,
+                              Content label, HtmlStyle style, boolean isProperty) {
         if (!utils.isLinkable(typeElement, element)) {
             return label;
         }
 
         if (utils.isExecutableElement(element)) {
             ExecutableElement ee = (ExecutableElement)element;
-            return getLink(new LinkInfoImpl(configuration, context, typeElement)
+            HtmlId id = isProperty ? htmlIds.forProperty(ee) : htmlIds.forMember(ee);
+            return getLink(new HtmlLinkInfo(configuration, context, typeElement)
                 .label(label)
-                .where(links.getName(getAnchor(ee, isProperty)))
-                .strong(strong));
+                .where(id.name())
+                .style(style)
+                .targetMember(element));
         }
 
         if (utils.isVariableElement(element) || utils.isTypeElement(element)) {
-            return getLink(new LinkInfoImpl(configuration, context, typeElement)
+            return getLink(new HtmlLinkInfo(configuration, context, typeElement)
                 .label(label)
-                .where(links.getName(element.getSimpleName().toString()))
-                .strong(strong));
+                .where(element.getSimpleName().toString())
+                .style(style)
+                .targetMember(element));
         }
 
         return label;
     }
 
-    /**
-     * Return the link for the given member.
-     *
-     * @param context the id of the context where the link will be added
-     * @param typeElement the typeElement that we should link to.  This is not
-                 necessarily equal to element.containingClass().  We may be
-                 inheriting comments
-     * @param element the member being linked to
-     * @param label the label for the link
-     * @return the link for the given member
-     */
-    public Content getDocLink(LinkInfoImpl.Kind context, TypeElement typeElement, Element element,
-            Content label) {
-        if (! (utils.isIncluded(element) || utils.isLinkable(typeElement))) {
-            return label;
-        } else if (utils.isExecutableElement(element)) {
-            ExecutableElement emd = (ExecutableElement) element;
-            return getLink(new LinkInfoImpl(configuration, context, typeElement)
-                .label(label)
-                .where(links.getName(getAnchor(emd))));
-        } else if (utils.isVariableElement(element) || utils.isTypeElement(element)) {
-            return getLink(new LinkInfoImpl(configuration, context, typeElement)
-                .label(label).where(links.getName(element.getSimpleName().toString())));
-        } else {
-            return label;
-        }
-    }
-
-    public String getAnchor(ExecutableElement executableElement) {
-        return getAnchor(executableElement, false);
-    }
-
-    public String getAnchor(ExecutableElement executableElement, boolean isProperty) {
-        if (isProperty) {
-            return executableElement.getSimpleName().toString();
-        }
-        String member = anchorName(executableElement);
-        String erasedSignature = utils.makeSignature(executableElement, true, true);
-        return member + erasedSignature;
-    }
-
-    public String anchorName(Element member) {
-        if (member.getKind() == ElementKind.CONSTRUCTOR) {
-            return "<init>";
-        } else {
-            return utils.getSimpleName(member);
-        }
-    }
-
-    public Content seeTagToContent(Element element, DocTree see) {
+    public Content seeTagToContent(Element element, DocTree see, TagletWriterImpl.Context context) {
         Kind kind = see.getKind();
-        if (!(kind == LINK || kind == SEE || kind == LINK_PLAIN)) {
-            return new ContentBuilder();
-        }
-
         CommentHelper ch = utils.getCommentHelper(element);
         String tagName = ch.getTagName(see);
-        String seetext = replaceDocRootDir(utils.normalizeNewlines(ch.getText(see)).toString());
-        // Check if @see is an href or "string"
-        if (seetext.startsWith("<") || seetext.startsWith("\"")) {
-            return new RawHtml(seetext);
+
+        String seeText = utils.normalizeNewlines(ch.getText(see)).toString();
+        List<? extends DocTree> label;
+        switch (kind) {
+            case LINK, LINK_PLAIN ->
+                // {@link[plain] reference label...}
+                label = ((LinkTree) see).getLabel();
+
+            case SEE -> {
+                List<? extends DocTree> ref = ((SeeTree) see).getReference();
+                assert !ref.isEmpty();
+                switch (ref.get(0).getKind()) {
+                    case TEXT -> {
+                        // @see "Reference"
+                        return Text.of(seeText);
+                    }
+                    case START_ELEMENT -> {
+                        // @see <a href="...">...</a>
+                        return new RawHtml(replaceDocRootDir(removeTrailingSlash(seeText)));
+                    }
+                    case REFERENCE -> {
+                        // @see reference label...
+                        label = ref.subList(1, ref.size());
+                    }
+                    default ->
+                        throw new IllegalStateException(ref.get(0).getKind().toString());
+                }
+            }
+
+            default ->
+                throw new IllegalStateException(kind.toString());
         }
+
         boolean isLinkPlain = kind == LINK_PLAIN;
-        Content label = plainOrCode(isLinkPlain, new RawHtml(ch.getLabel(configuration, see)));
+        Content labelContent = plainOrCode(isLinkPlain,
+                commentTagsToContent(see, element, label, context));
 
-        //The text from the @see tag.  We will output this text when a label is not specified.
-        Content text = plainOrCode(kind == LINK_PLAIN, new RawHtml(seetext));
+        // The signature from the @see tag. We will output this text when a label is not specified.
+        Content text = plainOrCode(isLinkPlain,
+                Text.of(Objects.requireNonNullElse(ch.getReferencedSignature(see), "")));
 
-        TypeElement refClass = ch.getReferencedClass(configuration, see);
-        String refClassName =  ch.getReferencedClassName(configuration, see);
-        Element refMem =       ch.getReferencedMember(configuration, see);
+        TypeElement refClass = ch.getReferencedClass(see);
+        Element refMem =       ch.getReferencedMember(see);
         String refMemName =    ch.getReferencedMemberName(see);
 
         if (refMemName == null && refMem != null) {
             refMemName = refMem.toString();
         }
         if (refClass == null) {
+            ModuleElement refModule = ch.getReferencedModule(see);
+            if (refModule != null && utils.isIncluded(refModule)) {
+                return getModuleLink(refModule, labelContent.isEmpty() ? text : labelContent);
+            }
             //@see is not referencing an included class
-            PackageElement refPackage = ch.getReferencedPackage(configuration, see);
+            PackageElement refPackage = ch.getReferencedPackage(see);
             if (refPackage != null && utils.isIncluded(refPackage)) {
                 //@see is referencing an included package
-                if (label.isEmpty())
-                    label = plainOrCode(isLinkPlain,
-                            new StringContent(refPackage.getQualifiedName()));
-                return getPackageLink(refPackage, label);
+                if (labelContent.isEmpty())
+                    labelContent = plainOrCode(isLinkPlain,
+                            Text.of(refPackage.getQualifiedName()));
+                return getPackageLink(refPackage, labelContent);
             } else {
                 // @see is not referencing an included class, module or package. Check for cross links.
-                DocLink elementCrossLink = (configuration.extern.isModule(refClassName))
-                        ? getCrossModuleLink(utils.elementUtils.getModuleElement(refClassName)) :
-                        (refPackage != null) ? getCrossPackageLink(refPackage) : null;
+                String refModuleName =  ch.getReferencedModuleName(see);
+                DocLink elementCrossLink = (refPackage != null) ? getCrossPackageLink(refPackage) :
+                        (configuration.extern.isModule(refModuleName))
+                                ? getCrossModuleLink(utils.elementUtils.getModuleElement(refModuleName))
+                                : null;
                 if (elementCrossLink != null) {
                     // Element cross link found
-                    return links.createLink(elementCrossLink,
-                            (label.isEmpty() ? text : label), true);
+                    return links.createExternalLink(elementCrossLink,
+                            (labelContent.isEmpty() ? text : labelContent));
                 } else {
                     // No cross link found so print warning
                     messages.warning(ch.getDocTreePath(see),
                             "doclet.see.class_or_package_not_found",
                             "@" + tagName,
-                            seetext);
-                    return (label.isEmpty() ? text: label);
+                            seeText);
+                    return (labelContent.isEmpty() ? text: labelContent);
                 }
             }
         } else if (refMemName == null) {
             // Must be a class reference since refClass is not null and refMemName is null.
-            if (label.isEmpty()) {
-                /*
-                 * it seems to me this is the right thing to do, but it causes comparator failures.
-                 */
-                if (!configuration.backwardCompatibility) {
-                    StringContent content = utils.isEnclosingPackageIncluded(refClass)
-                            ? new StringContent(utils.getSimpleName(refClass))
-                            : new StringContent(utils.getFullyQualifiedName(refClass));
-                    label = plainOrCode(isLinkPlain, content);
-                } else {
-                    label = plainOrCode(isLinkPlain,
-                            new StringContent(utils.getSimpleName(refClass)));
+            if (labelContent.isEmpty()) {
+                TypeMirror referencedType = ch.getReferencedType(see);
+                if (utils.isGenericType(referencedType)) {
+                    // This is a generic type link, use the TypeMirror representation.
+                    return plainOrCode(isLinkPlain, getLink(
+                            new HtmlLinkInfo(configuration, HtmlLinkInfo.Kind.DEFAULT, referencedType)));
                 }
-
+                labelContent = plainOrCode(isLinkPlain, Text.of(utils.getSimpleName(refClass)));
             }
-            return getLink(new LinkInfoImpl(configuration, LinkInfoImpl.Kind.DEFAULT, refClass)
-                    .label(label));
+            return getLink(new HtmlLinkInfo(configuration, HtmlLinkInfo.Kind.DEFAULT, refClass)
+                    .label(labelContent));
         } else if (refMem == null) {
             // Must be a member reference since refClass is not null and refMemName is not null.
             // However, refMem is null, so this referenced member does not exist.
-            return (label.isEmpty() ? text: label);
+            return (labelContent.isEmpty() ? text: labelContent);
         } else {
             // Must be a member reference since refClass is not null and refMemName is not null.
             // refMem is not null, so this @see tag must be referencing a valid member.
@@ -1119,8 +1110,8 @@ public class HtmlDocletWriter {
                 // documented, this must be an inherited link.  Redirect it.
                 // The current class either overrides the referenced member or
                 // inherits it automatically.
-                if (this instanceof ClassWriterImpl) {
-                    containing = ((ClassWriterImpl) this).getTypeElement();
+                if (this instanceof ClassWriterImpl writer) {
+                    containing = writer.getTypeElement();
                 } else if (!utils.isPublic(containing)) {
                     messages.warning(
                         ch.getDocTreePath(see), "doclet.see.class_or_package_not_accessible",
@@ -1128,7 +1119,7 @@ public class HtmlDocletWriter {
                 } else {
                     messages.warning(
                         ch.getDocTreePath(see), "doclet.see.class_or_package_not_found",
-                        tagName, seetext);
+                        tagName, seeText);
                 }
             }
             if (configuration.currentTypeElement != containing) {
@@ -1138,7 +1129,7 @@ public class HtmlDocletWriter {
             }
             if (utils.isExecutableElement(refMem)) {
                 if (refMemName.indexOf('(') < 0) {
-                    refMemName += utils.makeSignature((ExecutableElement)refMem, true);
+                    refMemName += utils.makeSignature((ExecutableElement) refMem, null, true);
                 }
                 if (overriddenMethod != null) {
                     // The method to actually link.
@@ -1146,11 +1137,15 @@ public class HtmlDocletWriter {
                 }
             }
 
-            text = plainOrCode(kind == LINK_PLAIN, new StringContent(refMemName));
-
-            return getDocLink(LinkInfoImpl.Kind.SEE_TAG, containing,
-                    refMem, (label.isEmpty() ? text: label), false);
+            return getDocLink(HtmlLinkInfo.Kind.SEE_TAG, containing,
+                    refMem, (labelContent.isEmpty()
+                            ? plainOrCode(isLinkPlain, Text.of(refMemName))
+                            : labelContent), null, false);
         }
+    }
+
+    private String removeTrailingSlash(String s) {
+        return s.endsWith("/") ? s.substring(0, s.length() -1) : s;
     }
 
     private Content plainOrCode(boolean plain, Content body) {
@@ -1166,8 +1161,8 @@ public class HtmlDocletWriter {
      */
     public void addInlineComment(Element element, DocTree tag, Content htmltree) {
         CommentHelper ch = utils.getCommentHelper(element);
-        List<? extends DocTree> description = ch.getDescription(configuration, tag);
-        addCommentTags(element, tag, description, false, false, false, htmltree);
+        List<? extends DocTree> description = ch.getDescription(tag);
+        addCommentTags(element, description, false, false, false, htmltree);
     }
 
     /**
@@ -1189,9 +1184,9 @@ public class HtmlDocletWriter {
      * @param tag the inline tag to be added
      * @param htmltree the content tree to which the comment will be added
      */
-    public void addInlineDeprecatedComment(Element e, DocTree tag, Content htmltree) {
+    public void addInlineDeprecatedComment(Element e, DeprecatedTree tag, Content htmltree) {
         CommentHelper ch = utils.getCommentHelper(e);
-        addCommentTags(e, ch.getBody(configuration, tag), true, false, false, htmltree);
+        addCommentTags(e, ch.getBody(tag), true, false, false, htmltree);
     }
 
     /**
@@ -1205,6 +1200,17 @@ public class HtmlDocletWriter {
     }
 
     /**
+     * Adds the preview content.
+     *
+     * @param element the Element for which the summary will be generated
+     * @param firstSentenceTags the first sentence tags for the doc
+     * @param htmltree the documentation tree to which the summary will be added
+     */
+    public void addPreviewComment(Element element, List<? extends DocTree> firstSentenceTags, Content htmltree) {
+        addCommentTags(element, firstSentenceTags, false, true, true, htmltree);
+    }
+
+    /**
      * Adds the summary content.
      *
      * @param element the Element for which the summary will be generated
@@ -1215,10 +1221,10 @@ public class HtmlDocletWriter {
         addCommentTags(element, firstSentenceTags, false, true, true, htmltree);
     }
 
-    public void addSummaryDeprecatedComment(Element element, DocTree tag, Content htmltree) {
+    public void addSummaryDeprecatedComment(Element element, DeprecatedTree tag, Content htmltree) {
         CommentHelper ch = utils.getCommentHelper(element);
-        List<? extends DocTree> body = ch.getBody(configuration, tag);
-        addCommentTags(element, ch.getFirstSentenceTrees(configuration, body), true, true, true, htmltree);
+        List<? extends DocTree> body = ch.getBody(tag);
+        addCommentTags(element, ch.getFirstSentenceTrees(body), true, true, true, htmltree);
     }
 
     /**
@@ -1243,23 +1249,7 @@ public class HtmlDocletWriter {
      */
     private void addCommentTags(Element element, List<? extends DocTree> tags, boolean depr,
             boolean first, boolean inSummary, Content htmltree) {
-        addCommentTags(element, null, tags, depr, first, inSummary, htmltree);
-    }
-
-    /**
-     * Adds the comment tags.
-     *
-     * @param element for which the comment tags will be generated
-     * @param holderTag the block tag context for the inline tags
-     * @param tags the first sentence tags for the doc
-     * @param depr true if it is deprecated
-     * @param first true if the first sentence tags should be added
-     * @param inSummary true if the comment tags are added into the summary section
-     * @param htmltree the documentation tree to which the comment tags will be added
-     */
-    private void addCommentTags(Element element, DocTree holderTag, List<? extends DocTree> tags, boolean depr,
-            boolean first, boolean inSummary, Content htmltree) {
-        if(configuration.nocomment){
+        if (options.noComment()) {
             return;
         }
         Content div;
@@ -1267,8 +1257,7 @@ public class HtmlDocletWriter {
         if (depr) {
             div = HtmlTree.DIV(HtmlStyle.deprecationComment, result);
             htmltree.add(div);
-        }
-        else {
+        } else {
             div = HtmlTree.DIV(HtmlStyle.block, result);
             htmltree.add(div);
         }
@@ -1288,9 +1277,9 @@ public class HtmlDocletWriter {
         }
 
         if (name != null) {
-            com.sun.tools.doclint.HtmlTag htmlTag = com.sun.tools.doclint.HtmlTag.get(name);
+            HtmlTag htmlTag = HtmlTag.get(name);
             if (htmlTag != null &&
-                    htmlTag.blockType != com.sun.tools.doclint.HtmlTag.BlockType.INLINE) {
+                    htmlTag.blockType != jdk.javadoc.internal.doclint.HtmlTag.BlockType.INLINE) {
                 return true;
             }
         }
@@ -1321,8 +1310,11 @@ public class HtmlDocletWriter {
      * @param isFirstSentence  true if text is first sentence
      * @return a Content object
      */
-    public Content commentTagsToContent(DocTree holderTag, Element element,
-            List<? extends DocTree> tags, boolean isFirstSentence) {
+    public Content commentTagsToContent(DocTree holderTag,
+                                        Element element,
+                                        List<? extends DocTree> tags,
+                                        boolean isFirstSentence)
+    {
         return commentTagsToContent(holderTag, element, tags, isFirstSentence, false);
     }
 
@@ -1340,13 +1332,38 @@ public class HtmlDocletWriter {
      * @param inSummary       if the comment tags are added into the summary section
      * @return a Content object
      */
-    public Content commentTagsToContent(DocTree holderTag, Element element,
-            List<? extends DocTree> trees, boolean isFirstSentence, boolean inSummary) {
+    public Content commentTagsToContent(DocTree holderTag,
+                                        Element element,
+                                        List<? extends DocTree> trees,
+                                        boolean isFirstSentence,
+                                        boolean inSummary) {
+        return commentTagsToContent(holderTag, element, trees,
+                new TagletWriterImpl.Context(isFirstSentence, inSummary));
+    }
 
+    /**
+     * Converts inline tags and text to text strings, expanding the
+     * inline tags along the way.  Called wherever text can contain
+     * an inline tag, such as in comments or in free-form text arguments
+     * to block tags.
+     *
+     * @param holderTag specific tag where comment resides
+     * @param element   specific element where comment resides
+     * @param trees     list of text trees and inline tag trees (often alternating)
+     *                  present in the text of interest for this element
+     * @param context   the enclosing context for the trees
+     *
+     * @return a Content object
+     */
+    public Content commentTagsToContent(DocTree holderTag,
+                                        Element element,
+                                        List<? extends DocTree> trees,
+                                        TagletWriterImpl.Context context)
+    {
         final Content result = new ContentBuilder() {
             @Override
-            public void add(CharSequence text) {
-                super.add(utils.normalizeNewlines(text));
+            public ContentBuilder add(CharSequence text) {
+                return super.add(utils.normalizeNewlines(text));
             }
         };
         CommentHelper ch = utils.getCommentHelper(element);
@@ -1359,7 +1376,7 @@ public class HtmlDocletWriter {
             DocTree tag = iterator.next();
             boolean isLastNode  = !iterator.hasNext();
 
-            if (isFirstSentence) {
+            if (context.isFirstSentence) {
                 // Ignore block tags
                 if (ignoreNonInlineTag(tag))
                     continue;
@@ -1384,9 +1401,8 @@ public class HtmlDocletWriter {
                         StartElementTree st = (StartElementTree)tag;
                         Name name = st.getName();
                         if (name != null) {
-                            com.sun.tools.doclint.HtmlTag htag =
-                                    com.sun.tools.doclint.HtmlTag.get(name);
-                            return htag != null && htag.equals(com.sun.tools.doclint.HtmlTag.A);
+                            HtmlTag htag = HtmlTag.get(name);
+                            return htag != null && htag.equals(HtmlTag.A);
                         }
                     }
                     return false;
@@ -1394,7 +1410,7 @@ public class HtmlDocletWriter {
 
                 @Override
                 public Boolean visitAttribute(AttributeTree node, Content c) {
-                    StringBuilder sb = new StringBuilder(SPACER).append(node.getName());
+                    StringBuilder sb = new StringBuilder(SPACER).append(node.getName().toString());
                     if (node.getValueKind() == ValueKind.EMPTY) {
                         result.add(sb);
                         return false;
@@ -1406,7 +1422,7 @@ public class HtmlDocletWriter {
                             quote = "\"";
                             break;
                         case SINGLE:
-                            quote = "\'";
+                            quote = "'";
                             break;
                         default:
                             quote = "";
@@ -1420,8 +1436,8 @@ public class HtmlDocletWriter {
                     for (DocTree dt : node.getValue()) {
                         if (utils.isText(dt) && isHRef) {
                             String text = ((TextTree) dt).getBody();
-                            if (text.startsWith("/..") && !configuration.docrootparent.isEmpty()) {
-                                result.add(configuration.docrootparent);
+                            if (text.startsWith("/..") && !options.docrootParent().isEmpty()) {
+                                result.add(options.docrootParent());
                                 docRootContent = new ContentBuilder();
                                 result.add(textCleanup(text.substring(3), isLastNode));
                             } else {
@@ -1458,11 +1474,7 @@ public class HtmlDocletWriter {
 
                 @Override
                 public Boolean visitDocRoot(DocRootTree node, Content c) {
-                    Content docRootContent = TagletWriter.getInlineTagOutput(element,
-                            configuration.tagletManager,
-                            holderTag,
-                            node,
-                            getTagletWriterInstance(isFirstSentence));
+                    Content docRootContent = getInlineTagOutput(element, holderTag, node, context);
                     if (c != null) {
                         c.add(docRootContent);
                     } else {
@@ -1486,27 +1498,30 @@ public class HtmlDocletWriter {
 
                 @Override
                 public Boolean visitErroneous(ErroneousTree node, Content c) {
-                    messages.warning(ch.getDocTreePath(node),
-                            "doclet.tag.invalid_usage", node);
-                    result.add(new RawHtml(node.toString()));
+                    DocTreePath dtp = ch.getDocTreePath(node);
+                    if (dtp != null) {
+                        String body = node.getBody();
+                        if (body.matches("(?i)\\{@[a-z]+.*")) {
+                            messages.warning(dtp,"doclet.tag.invalid_usage", body);
+                        } else {
+                            messages.warning(dtp, "doclet.tag.invalid_input", body);
+                        }
+                    }
+                    result.add(Text.of(node.toString()));
                     return false;
                 }
 
                 @Override
                 public Boolean visitInheritDoc(InheritDocTree node, Content c) {
-                    Content output = TagletWriter.getInlineTagOutput(element,
-                            configuration.tagletManager, holderTag,
-                            tag, getTagletWriterInstance(isFirstSentence));
+                    Content output = getInlineTagOutput(element, holderTag, node, context);
                     result.add(output);
                     // if we obtained the first sentence successfully, nothing more to do
-                    return (isFirstSentence && !output.isEmpty());
+                    return (context.isFirstSentence && !output.isEmpty());
                 }
 
                 @Override
                 public Boolean visitIndex(IndexTree node, Content p) {
-                    Content output = TagletWriter.getInlineTagOutput(element,
-                            configuration.tagletManager, holderTag, tag,
-                            getTagletWriterInstance(isFirstSentence, inSummary));
+                    Content output = getInlineTagOutput(element, holderTag, node, context);
                     if (output != null) {
                         result.add(output);
                     }
@@ -1515,16 +1530,28 @@ public class HtmlDocletWriter {
 
                 @Override
                 public Boolean visitLink(LinkTree node, Content c) {
-                    // we need to pass the DocTreeImpl here, so ignore node
-                    Content content = seeTagToContent(element, tag);
-                    result.add(content);
+                    var inTags = context.inTags;
+                    if (inTags.contains(LINK) || inTags.contains(LINK_PLAIN) || inTags.contains(SEE)) {
+                        DocTreePath dtp = ch.getDocTreePath(node);
+                        if (dtp != null) {
+                            messages.warning(dtp, "doclet.see.nested_link", "{@" + node.getTagName() + "}");
+                        }
+                        Content label = commentTagsToContent(node, element, node.getLabel(), context);
+                        if (label.isEmpty()) {
+                            label = Text.of(node.getReference().getSignature());
+                        }
+                        result.add(label);
+                    } else {
+                        Content content = seeTagToContent(element, node, context.within(node));
+                        result.add(content);
+                    }
                     return false;
                 }
 
                 @Override
                 public Boolean visitLiteral(LiteralTree node, Content c) {
                     String s = node.getBody().getBody();
-                    Content content = new StringContent(utils.normalizeNewlines(s));
+                    Content content = Text.of(utils.normalizeNewlines(s));
                     if (node.getKind() == CODE)
                         content = HtmlTree.CODE(content);
                     result.add(content);
@@ -1533,8 +1560,7 @@ public class HtmlDocletWriter {
 
                 @Override
                 public Boolean visitSee(SeeTree node, Content c) {
-                    // we need to pass the DocTreeImpl here, so ignore node
-                    result.add(seeTagToContent(element, tag));
+                    result.add(seeTagToContent(element, node, context));
                     return false;
                 }
 
@@ -1553,18 +1579,14 @@ public class HtmlDocletWriter {
 
                 @Override
                 public Boolean visitSummary(SummaryTree node, Content c) {
-                    Content output = TagletWriter.getInlineTagOutput(element,
-                            configuration.tagletManager, holderTag, tag,
-                            getTagletWriterInstance(isFirstSentence));
+                    Content output = getInlineTagOutput(element, holderTag, node, context);
                     result.add(output);
                     return false;
                 }
 
                 @Override
                 public Boolean visitSystemProperty(SystemPropertyTree node, Content p) {
-                    Content output = TagletWriter.getInlineTagOutput(element,
-                            configuration.tagletManager, holderTag, tag,
-                            getTagletWriterInstance(isFirstSentence, inSummary));
+                    Content output = getInlineTagOutput(element, holderTag, node, context);
                     if (output != null) {
                         result.add(output);
                     }
@@ -1576,7 +1598,7 @@ public class HtmlDocletWriter {
                 }
 
                 private CharSequence textCleanup(String text, boolean isLast, boolean stripLeading) {
-                    boolean stripTrailing = isFirstSentence && isLast;
+                    boolean stripTrailing = context.isFirstSentence && isLast;
                     if (stripLeading && stripTrailing) {
                         text = text.strip();
                     } else if (stripLeading) {
@@ -1597,9 +1619,7 @@ public class HtmlDocletWriter {
 
                 @Override
                 protected Boolean defaultAction(DocTree node, Content c) {
-                    Content output = TagletWriter.getInlineTagOutput(element,
-                            configuration.tagletManager, holderTag, tag,
-                            getTagletWriterInstance(isFirstSentence));
+                    Content output = getInlineTagOutput(element, holderTag, node, context);
                     if (output != null) {
                         result.add(output);
                     }
@@ -1615,14 +1635,41 @@ public class HtmlDocletWriter {
     }
 
     /**
-     * Return true if relative links should not be redirected.
+     * Returns true if relative links should be redirected.
      *
-     * @return Return true if a relative link should not be redirected.
+     * @return true if a relative link should be redirected.
      */
-    private boolean shouldNotRedirectRelativeLinks() {
-        return  this instanceof AnnotationTypeWriter ||
-                this instanceof ClassWriter ||
-                this instanceof PackageSummaryWriter;
+    private boolean shouldRedirectRelativeLinks(Element element) {
+        if (element == null || utils.isOverviewElement(element)) {
+            // Can't redirect unless there is a valid source element.
+            return false;
+        }
+        // Retrieve the element of this writer if it is a "primary" writer for an element.
+        // Note: It would be nice to have getCurrentPageElement() return package and module elements
+        // in their respective writers, but other uses of the method are only interested in TypeElements.
+        Element currentPageElement = getCurrentPageElement();
+        if (currentPageElement == null) {
+            if (this instanceof PackageWriterImpl packageWriter) {
+                currentPageElement = packageWriter.packageElement;
+            } else if (this instanceof ModuleWriterImpl moduleWriter) {
+                currentPageElement = moduleWriter.mdle;
+            }
+        }
+        // Redirect link if the current writer is not the primary writer for the source element.
+        return currentPageElement == null
+                || (currentPageElement != element
+                    &&  currentPageElement != utils.getEnclosingTypeElement(element));
+    }
+
+    /**
+     * Returns true if element lives in the same package as the type or package
+     * element of this writer.
+     */
+    private boolean inSamePackage(Element element) {
+        Element currentPageElement = (this instanceof PackageWriterImpl packageWriter)
+                ? packageWriter.packageElement : getCurrentPageElement();
+        return currentPageElement != null && !utils.isModule(element)
+                && utils.containingPackage(currentPageElement) == utils.containingPackage(element);
     }
 
     /**
@@ -1648,57 +1695,75 @@ public class HtmlDocletWriter {
      *
      * @return the text, with all the relative links redirected to work.
      */
-    @SuppressWarnings("preview")
     private String redirectRelativeLinks(Element element, TextTree tt) {
         String text = tt.getBody();
-        if (element == null || utils.isOverviewElement(element) || shouldNotRedirectRelativeLinks()) {
-            return text;
-        }
-
-        DocPath redirectPathFromRoot = new SimpleElementVisitor14<DocPath, Void>() {
-            @Override
-            public DocPath visitType(TypeElement e, Void p) {
-                return docPaths.forPackage(utils.containingPackage(e));
-            }
-
-            @Override
-            public DocPath visitPackage(PackageElement e, Void p) {
-                return docPaths.forPackage(e);
-            }
-
-            @Override
-            public DocPath visitVariable(VariableElement e, Void p) {
-                return docPaths.forPackage(utils.containingPackage(e));
-            }
-
-            @Override
-            public DocPath visitExecutable(ExecutableElement e, Void p) {
-                return docPaths.forPackage(utils.containingPackage(e));
-            }
-
-            @Override
-            protected DocPath defaultAction(Element e, Void p) {
-                return null;
-            }
-        }.visit(element);
-        if (redirectPathFromRoot == null) {
+        if (!shouldRedirectRelativeLinks(element)) {
             return text;
         }
         String lower = Utils.toLowerCase(text);
-        if (!(lower.startsWith("mailto:")
+        if (lower.startsWith("mailto:")
                 || lower.startsWith("http:")
                 || lower.startsWith("https:")
-                || lower.startsWith("file:"))) {
-            text = "{@" + (new DocRootTaglet()).getName() + "}/"
-                    + redirectPathFromRoot.resolve(text).getPath();
-            text = replaceDocRootDir(text);
+                || lower.startsWith("file:")) {
+            return text;
+        }
+        if (text.startsWith("#")) {
+            // Redirected fragment link: prepend HTML file name to make it work
+            if (utils.isModule(element)) {
+                text = "module-summary.html" + text;
+            } else if (utils.isPackage(element)) {
+                text = DocPaths.PACKAGE_SUMMARY.getPath() + text;
+            } else {
+                TypeElement typeElement = element instanceof TypeElement
+                        ? (TypeElement) element : utils.getEnclosingTypeElement(element);
+                text = docPaths.forName(typeElement).getPath() + text;
+            }
+        }
+
+        if (!inSamePackage(element)) {
+            DocPath redirectPathFromRoot = new SimpleElementVisitor14<DocPath, Void>() {
+                @Override
+                public DocPath visitType(TypeElement e, Void p) {
+                    return docPaths.forPackage(utils.containingPackage(e));
+                }
+
+                @Override
+                public DocPath visitPackage(PackageElement e, Void p) {
+                    return docPaths.forPackage(e);
+                }
+
+                @Override
+                public DocPath visitVariable(VariableElement e, Void p) {
+                    return docPaths.forPackage(utils.containingPackage(e));
+                }
+
+                @Override
+                public DocPath visitExecutable(ExecutableElement e, Void p) {
+                    return docPaths.forPackage(utils.containingPackage(e));
+                }
+
+                @Override
+                public DocPath visitModule(ModuleElement e, Void p) {
+                    return DocPaths.forModule(e);
+                }
+
+                @Override
+                protected DocPath defaultAction(Element e, Void p) {
+                    return null;
+                }
+            }.visit(element);
+            if (redirectPathFromRoot != null) {
+                text = "{@" + (new DocRootTaglet()).getName() + "}/"
+                        + redirectPathFromRoot.resolve(text).getPath();
+                return replaceDocRootDir(text);
+            }
         }
         return text;
     }
 
     /**
      * According to
-     * <cite>The Java&trade; Language Specification</cite>,
+     * <cite>The Java Language Specification</cite>,
      * all the outer classes and static nested classes are core classes.
      */
     public boolean isCoreClass(TypeElement typeElement) {
@@ -1706,68 +1771,22 @@ public class HtmlDocletWriter {
     }
 
     /**
-     * Adds the annotation types for the given packageElement.
+     * Return a content tree containing the  annotation types for the given element.
      *
-     * @param packageElement the package to write annotations for.
-     * @param htmltree the documentation tree to which the annotation info will be
-     *        added
+     * @param element an Element
+     * @param lineBreak if true add new line between each member value
+     * @return the documentation tree containing the annotation info
      */
-    public void addAnnotationInfo(PackageElement packageElement, Content htmltree) {
-        addAnnotationInfo(packageElement.getAnnotationMirrors(), htmltree);
-    }
-
-    /*
-     * this is a hack to delay dealing with Annotations in the writers, the assumption
-     * is that all necessary checks have been made to get here.
-     */
-    public void addReceiverAnnotationInfo(ExecutableElement method, TypeMirror rcvrTypeMirror,
-            List<? extends AnnotationMirror> annotationMirrors, Content htmltree) {
-        TypeMirror rcvrType = method.getReceiverType();
-        List<? extends AnnotationMirror> annotationMirrors1 = rcvrType.getAnnotationMirrors();
-        htmltree.add(getAnnotationInfo(annotationMirrors1, false));
-    }
-
-    /**
-     * Adds the annotation types for the given element.
-     *
-     * @param element the package to write annotations for
-     * @param htmltree the content tree to which the annotation types will be added
-     */
-    public void addAnnotationInfo(Element element, Content htmltree) {
-        addAnnotationInfo(element.getAnnotationMirrors(), htmltree);
-    }
-
-    /**
-     * Add the annotation types for the given element and parameter.
-     *
-     * @param param the parameter to write annotations for.
-     * @param tree the content tree to which the annotation types will be added
-     */
-    public boolean addAnnotationInfo(VariableElement param, Content tree) {
-        Content annotationInfo = getAnnotationInfo(param.getAnnotationMirrors(), false);
-        if (annotationInfo.isEmpty()) {
-            return false;
-        }
-        tree.add(annotationInfo);
-        return true;
-    }
-
-    /**
-     * Adds the annotation types for the given Element.
-     *
-     * @param descList a list of annotation mirrors.
-     * @param htmltree the documentation tree to which the annotation info will be
-     *        added
-     */
-    private void addAnnotationInfo(List<? extends AnnotationMirror> descList, Content htmltree) {
-        htmltree.add(getAnnotationInfo(descList, true));
+    Content getAnnotationInfo(Element element, boolean lineBreak) {
+        return getAnnotationInfo(element.getAnnotationMirrors(), lineBreak);
     }
 
     /**
      * Return a content tree containing the annotation types for the given element.
      *
-     * @param descList a list of annotation mirrors.
-     * @return the documentation tree containing the annotation info.
+     * @param descList a list of annotation mirrors
+     * @param lineBreak if true add new line between each member value
+     * @return the documentation tree containing the annotation info
      */
     Content getAnnotationInfo(List<? extends AnnotationMirror> descList, boolean lineBreak) {
         List<Content> annotations = getAnnotations(descList, lineBreak);
@@ -1788,11 +1807,11 @@ public class HtmlDocletWriter {
      * the given doc.
      *
      * @param descList a list of annotation mirrors.
-     * @param linkBreak if true, add new line between each member value.
+     * @param lineBreak if true, add new line between each member value.
      * @return a list of strings representing the annotations being
      *         documented.
      */
-    public List<Content> getAnnotations(List<? extends AnnotationMirror> descList, boolean linkBreak) {
+    public List<Content> getAnnotations(List<? extends AnnotationMirror> descList, boolean lineBreak) {
         List<Content> results = new ArrayList<>();
         ContentBuilder annotation;
         for (AnnotationMirror aDesc : descList) {
@@ -1808,8 +1827,8 @@ public class HtmlDocletWriter {
             }
             annotation = new ContentBuilder();
             isAnnotationDocumented = false;
-            LinkInfoImpl linkInfo = new LinkInfoImpl(configuration,
-                                                     LinkInfoImpl.Kind.ANNOTATION, annotationElement);
+            HtmlLinkInfo linkInfo = new HtmlLinkInfo(configuration,
+                                                     HtmlLinkInfo.Kind.ANNOTATION, annotationElement);
             Map<? extends ExecutableElement, ? extends AnnotationValue> pairs = aDesc.getElementValues();
             // If the annotation is synthesized, do not print the container.
             if (utils.configuration.workArounds.isSynthesized(aDesc)) {
@@ -1867,9 +1886,9 @@ public class HtmlDocletWriter {
                 }
             }
             else {
-                addAnnotations(annotationElement, linkInfo, annotation, pairs, linkBreak);
+                addAnnotations(annotationElement, linkInfo, annotation, pairs, lineBreak);
             }
-            annotation.add(linkBreak ? DocletConstants.NL : "");
+            annotation.add(lineBreak ? DocletConstants.NL : "");
             results.add(annotation);
         }
         return results;
@@ -1884,12 +1903,11 @@ public class HtmlDocletWriter {
      * @param map annotation type element to annotation value pairs
      * @param linkBreak if true, add new line between each member value
      */
-    private void addAnnotations(TypeElement annotationDoc, LinkInfoImpl linkInfo,
+    private void addAnnotations(TypeElement annotationDoc, HtmlLinkInfo linkInfo,
                                 ContentBuilder annotation,
                                 Map<? extends ExecutableElement, ? extends AnnotationValue> map,
                                 boolean linkBreak) {
-        linkInfo.label = new StringContent("@");
-        linkInfo.label.add(annotationDoc.getSimpleName());
+        linkInfo.label = Text.of("@" + annotationDoc.getSimpleName());
         annotation.add(getLink(linkInfo));
         if (!map.isEmpty()) {
             annotation.add("(");
@@ -1911,8 +1929,7 @@ public class HtmlDocletWriter {
                 }
                 String simpleName = element.getSimpleName().toString();
                 if (multipleValues || !"value".equals(simpleName)) { // Omit "value=" where unnecessary
-                    annotation.add(getDocLink(LinkInfoImpl.Kind.ANNOTATION,
-                                                     element, simpleName, false));
+                    annotation.add(getDocLink(HtmlLinkInfo.Kind.ANNOTATION, element, simpleName));
                     annotation.add("=");
                 }
                 AnnotationValue annotationValue = map.get(element);
@@ -2001,17 +2018,17 @@ public class HtmlDocletWriter {
                 return new SimpleTypeVisitor9<Content, Void>() {
                     @Override
                     public Content visitDeclared(DeclaredType t, Void p) {
-                        LinkInfoImpl linkInfo = new LinkInfoImpl(configuration,
-                                LinkInfoImpl.Kind.ANNOTATION, t);
+                        HtmlLinkInfo linkInfo = new HtmlLinkInfo(configuration,
+                                HtmlLinkInfo.Kind.ANNOTATION, t);
                         String name = utils.isIncluded(t.asElement())
                                 ? t.asElement().getSimpleName().toString()
                                 : utils.getFullyQualifiedName(t.asElement());
-                        linkInfo.label = new StringContent(name + utils.getDimension(t) + ".class");
+                        linkInfo.label = Text.of(name + utils.getDimension(t) + ".class");
                         return getLink(linkInfo);
                     }
                     @Override
                     protected Content defaultAction(TypeMirror e, Void p) {
-                        return new StringContent(t + utils.getDimension(t) + ".class");
+                        return Text.of(t + utils.getDimension(t) + ".class");
                     }
                 }.visit(t);
             }
@@ -2026,8 +2043,7 @@ public class HtmlDocletWriter {
             }
             @Override
             public Content visitEnumConstant(VariableElement c, Void p) {
-                return getDocLink(LinkInfoImpl.Kind.ANNOTATION,
-                        c, c.getSimpleName(), false);
+                return getDocLink(HtmlLinkInfo.Kind.ANNOTATION, c, c.getSimpleName());
             }
             @Override
             public Content visitArray(List<? extends AnnotationValue> vals, Void p) {
@@ -2042,7 +2058,7 @@ public class HtmlDocletWriter {
             }
             @Override
             protected Content defaultAction(Object o, Void p) {
-                return new StringContent(annotationValue.toString());
+                return Text.of(annotationValue.toString());
             }
         }.visit(annotationValue);
     }
@@ -2069,18 +2085,18 @@ public class HtmlDocletWriter {
         }
         StringBuilder sb = new StringBuilder();
         for (Element e: chain) {
-            CharSequence name;
+            String name;
             switch (e.getKind()) {
                 case MODULE:
                 case PACKAGE:
-                    name = ((QualifiedNameable) e).getQualifiedName();
+                    name = ((QualifiedNameable) e).getQualifiedName().toString();
                     if (name.length() == 0) {
                         name = "<unnamed>";
                     }
                     break;
 
                 default:
-                    name = e.getSimpleName();
+                    name = e.getSimpleName().toString();
                     break;
             }
 
@@ -2107,8 +2123,7 @@ public class HtmlDocletWriter {
      * @return an HtmlTree for the BODY tag
      */
     public HtmlTree getBody(String title) {
-        HtmlTree body = new HtmlTree(HtmlTag.BODY);
-        body.put(HtmlAttr.CLASS, getBodyClass());
+        HtmlTree body = new HtmlTree(TagName.BODY).setStyle(getBodyStyle());
 
         this.winTitle = title;
         // Don't print windowtitle script for overview-frame, allclasses-frame
@@ -2119,13 +2134,14 @@ public class HtmlDocletWriter {
         return body;
     }
 
-    public String getBodyClass() {
-        return getClass().getSimpleName()
+    public HtmlStyle getBodyStyle() {
+        String kind = getClass().getSimpleName()
                 .replaceAll("(Writer)?(Impl)?$", "")
                 .replaceAll("AnnotationType", "Class")
-                .replaceAll("(.)([A-Z])", "$1-$2")
-                .replaceAll("(?i)^(module|package|class)$", "$1-declaration")
-                .toLowerCase(Locale.US);
+                .replaceAll("^(Module|Package|Class)$", "$1Declaration")
+                .replace("API", "Api");
+        String page = kind.substring(0, 1).toLowerCase(Locale.US) + kind.substring(1) + "Page";
+        return HtmlStyle.valueOf(page);
     }
 
     Script getMainBodyScript() {
@@ -2141,11 +2157,11 @@ public class HtmlDocletWriter {
     List<DocPath> getLocalStylesheets(Element element) throws DocFileIOException {
         List<DocPath> stylesheets = new ArrayList<>();
         DocPath basePath = null;
-        if (element instanceof PackageElement) {
-            stylesheets.addAll(getModuleStylesheets((PackageElement)element));
-            basePath = docPaths.forPackage((PackageElement)element);
-        } else if (element instanceof ModuleElement) {
-            basePath = DocPaths.forModule((ModuleElement)element);
+        if (element instanceof PackageElement pkg) {
+            stylesheets.addAll(getModuleStylesheets(pkg));
+            basePath = docPaths.forPackage(pkg);
+        } else if (element instanceof ModuleElement mdle) {
+            basePath = DocPaths.forModule(mdle);
         }
         for (DocPath stylesheet : getStylesheets(element)) {
             stylesheets.add(basePath.resolve(stylesheet.getPath()));
@@ -2178,7 +2194,146 @@ public class HtmlDocletWriter {
         return localStylesheets;
     }
 
-    Content getVerticalSeparator() {
-        return HtmlTree.SPAN(HtmlStyle.verticalSeparator, new FixedStringContent("|"));
+    public void addPreviewSummary(Element forWhat, Content target) {
+        if (utils.isPreviewAPI(forWhat)) {
+            Content div = HtmlTree.DIV(HtmlStyle.block);
+            div.add(HtmlTree.SPAN(HtmlStyle.previewLabel, contents.previewPhrase));
+            target.add(div);
+        }
     }
+
+    public void addPreviewInfo(Element forWhat, Content target) {
+        if (utils.isPreviewAPI(forWhat)) {
+            //in Java platform:
+            HtmlTree previewDiv = HtmlTree.DIV(HtmlStyle.previewBlock);
+            previewDiv.setId(htmlIds.forPreviewSection(forWhat));
+            String name = (switch (forWhat.getKind()) {
+                case PACKAGE, MODULE ->
+                        ((QualifiedNameable) forWhat).getQualifiedName();
+                case CONSTRUCTOR ->
+                        ((TypeElement) forWhat.getEnclosingElement()).getSimpleName();
+                default -> forWhat.getSimpleName();
+            }).toString();
+            Content nameCode = HtmlTree.CODE(Text.of(name));
+            boolean isReflectivePreview = utils.isReflectivePreviewAPI(forWhat);
+            String leadingNoteKey =
+                    !isReflectivePreview ? "doclet.PreviewPlatformLeadingNote"
+                                         : "doclet.ReflectivePreviewPlatformLeadingNote";
+            Content leadingNote =
+                    contents.getContent(leadingNoteKey, nameCode);
+            previewDiv.add(HtmlTree.SPAN(HtmlStyle.previewLabel,
+                                         leadingNote));
+            if (!isReflectivePreview) {
+                Content note1 = contents.getContent("doclet.PreviewTrailingNote1", nameCode);
+                previewDiv.add(HtmlTree.DIV(HtmlStyle.previewComment, note1));
+            }
+            Content note2 = contents.getContent("doclet.PreviewTrailingNote2", nameCode);
+            previewDiv.add(HtmlTree.DIV(HtmlStyle.previewComment, note2));
+            target.add(previewDiv);
+        } else if (forWhat.getKind().isClass() || forWhat.getKind().isInterface()) {
+            //in custom code:
+            List<Content> previewNotes = getPreviewNotes((TypeElement) forWhat);
+            if (!previewNotes.isEmpty()) {
+                Name name = forWhat.getSimpleName();
+                Content nameCode = HtmlTree.CODE(Text.of(name));
+                HtmlTree previewDiv = HtmlTree.DIV(HtmlStyle.previewBlock);
+                previewDiv.setId(htmlIds.forPreviewSection(forWhat));
+                Content leadingNote = contents.getContent("doclet.PreviewLeadingNote", nameCode);
+                previewDiv.add(HtmlTree.SPAN(HtmlStyle.previewLabel,
+                                             leadingNote));
+                HtmlTree ul = new HtmlTree(TagName.UL);
+                ul.setStyle(HtmlStyle.previewComment);
+                for (Content note : previewNotes) {
+                    ul.add(HtmlTree.LI(note));
+                }
+                previewDiv.add(ul);
+                Content note1 =
+                        contents.getContent("doclet.PreviewTrailingNote1",
+                                            nameCode);
+                previewDiv.add(HtmlTree.DIV(HtmlStyle.previewComment, note1));
+                Content note2 =
+                        contents.getContent("doclet.PreviewTrailingNote2",
+                                            name);
+                previewDiv.add(HtmlTree.DIV(HtmlStyle.previewComment, note2));
+                target.add(previewDiv);
+            }
+        }
+    }
+
+    private List<Content> getPreviewNotes(TypeElement el) {
+        String className = el.getSimpleName().toString();
+        List<Content> result = new ArrayList<>();
+        PreviewSummary previewAPITypes = utils.declaredUsingPreviewAPIs(el);
+        Set<TypeElement> previewAPI = new HashSet<>(previewAPITypes.previewAPI);
+        Set<TypeElement> reflectivePreviewAPI = new HashSet<>(previewAPITypes.reflectivePreviewAPI);
+        Set<TypeElement> declaredUsingPreviewFeature = new HashSet<>(previewAPITypes.declaredUsingPreviewFeature);
+        Set<DeclarationPreviewLanguageFeatures> previewLanguageFeatures = new HashSet<>();
+        for (Element enclosed : el.getEnclosedElements()) {
+            if (!utils.isIncluded(enclosed)) {
+                continue;
+            }
+            if (!enclosed.getKind().isClass() && !enclosed.getKind().isInterface()) {
+                PreviewSummary memberAPITypes = utils.declaredUsingPreviewAPIs(enclosed);
+                declaredUsingPreviewFeature.addAll(memberAPITypes.declaredUsingPreviewFeature);
+                previewAPI.addAll(memberAPITypes.previewAPI);
+                reflectivePreviewAPI.addAll(memberAPITypes.reflectivePreviewAPI);
+                previewLanguageFeatures.addAll(utils.previewLanguageFeaturesUsed(enclosed));
+            } else if (!utils.previewLanguageFeaturesUsed(enclosed).isEmpty()) {
+                declaredUsingPreviewFeature.add((TypeElement) enclosed);
+            }
+        }
+        previewLanguageFeatures.addAll(utils.previewLanguageFeaturesUsed(el));
+        if (!previewLanguageFeatures.isEmpty()) {
+            for (DeclarationPreviewLanguageFeatures feature : previewLanguageFeatures) {
+                String featureDisplayName =
+                        resources.getText("doclet.Declared_Using_Preview." + feature.name());
+                result.add(withPreviewFeatures("doclet.Declared_Using_Preview", className,
+                                               featureDisplayName, feature.features));
+            }
+        }
+        if (!declaredUsingPreviewFeature.isEmpty()) {
+            result.add(withLinks("doclet.UsesDeclaredUsingPreview", className, declaredUsingPreviewFeature));
+        }
+        if (!previewAPI.isEmpty()) {
+            result.add(withLinks("doclet.PreviewAPI", className, previewAPI));
+        }
+        if (!reflectivePreviewAPI.isEmpty()) {
+            result.add(withLinks("doclet.ReflectivePreviewAPI", className, reflectivePreviewAPI));
+        }
+        return result;
+    }
+
+    private Content withPreviewFeatures(String key, String className, String featureName, List<String> features) {
+        String[] sep = new String[] {""};
+        ContentBuilder featureCodes = new ContentBuilder();
+        features.stream()
+                .forEach(c -> {
+                    featureCodes.add(sep[0]);
+                    featureCodes.add(HtmlTree.CODE(new ContentBuilder().add(c)));
+                    sep[0] = ", ";
+                });
+        return contents.getContent(key,
+                                   HtmlTree.CODE(Text.of(className)),
+                                   new HtmlTree(TagName.EM).add(featureName),
+                                   featureCodes);
+    }
+
+    private Content withLinks(String key, String className, Set<TypeElement> elements) {
+        String[] sep = new String[] {""};
+        ContentBuilder links = new ContentBuilder();
+        elements.stream()
+                .sorted((te1, te2) -> te1.getSimpleName().toString().compareTo(te2.getSimpleName().toString()))
+                .distinct()
+                .map(te -> getLink(new HtmlLinkInfo(configuration, HtmlLinkInfo.Kind.CLASS, te)
+                        .label(HtmlTree.CODE(Text.of(te.getSimpleName()))).skipPreview(true)))
+                .forEach(c -> {
+                    links.add(sep[0]);
+                    links.add(c);
+                    sep[0] = ", ";
+                });
+        return contents.getContent(key,
+                                   HtmlTree.CODE(Text.of(className)),
+                                   links);
+    }
+
 }

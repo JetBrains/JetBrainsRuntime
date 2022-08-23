@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,18 @@
  */
 
 #include "precompiled.hpp"
-#include "classfile/symbolTable.hpp"
-#include "classfile/systemDictionary.hpp"
+#include "classfile/vmClasses.hpp"
 #include "memory/resourceArea.hpp"
 #include "oops/instanceKlass.hpp"
 #include "unittest.hpp"
 
-// Tests InstanceKlass::package_from_name()
-TEST_VM(InstanceKlass, null_symbol) {
-  ResourceMark rm;
-  TempNewSymbol package_sym = InstanceKlass::package_from_name(NULL, NULL);
-  ASSERT_TRUE(package_sym == NULL) << "Wrong package for NULL symbol";
-}
-
 // Tests for InstanceKlass::is_class_loader_instance_klass() function
 TEST_VM(InstanceKlass, class_loader_class) {
-  InstanceKlass* klass = SystemDictionary::ClassLoader_klass();
+  InstanceKlass* klass = vmClasses::ClassLoader_klass();
   ASSERT_TRUE(klass->is_class_loader_instance_klass());
 }
 
 TEST_VM(InstanceKlass, string_klass) {
-  InstanceKlass* klass = SystemDictionary::String_klass();
+  InstanceKlass* klass = vmClasses::String_klass();
   ASSERT_TRUE(!klass->is_class_loader_instance_klass());
 }

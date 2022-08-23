@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,9 @@
 /*
  * @test
  * @summary Unit test for LingeredApp
- * @compile LingeredAppTest.java
- * @compile LingeredApp.java
- * @run main LingeredAppTest
+ * @library /test/lib
+ * @build jdk.test.lib.apps.LingeredAppTest jdk.test.lib.apps.LingeredApp
+ * @run main jdk.test.lib.apps.LingeredAppTest
  */
 
 package jdk.test.lib.apps;
@@ -52,13 +52,13 @@ public class LingeredAppTest {
 
             cmd.add("-XX:+PrintFlagsFinal");
 
-            LingeredApp a = LingeredApp.startApp(cmd);
+            LingeredApp a = LingeredApp.startApp(cmd.toArray(new String[cmd.size()]));
             System.out.printf("App pid: %d\n", a.getPid());
             a.stopApp();
 
             System.out.println("App output:");
             int count = 0;
-            for (String line : a.getAppOutput()) {
+            for (String line : a.getOutput().getStdoutAsList()) {
                 count += 1;
             }
             System.out.println("Found " + count + " lines in VM output");

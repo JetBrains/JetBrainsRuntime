@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,21 +25,25 @@
 #define SHARE_GC_Z_ZUNCOMMITTER_HPP
 
 #include "gc/shared/concurrentGCThread.hpp"
-#include "runtime/mutex.hpp"
+#include "gc/z/zLock.hpp"
+
+class ZPageAllocation;
 
 class ZUncommitter : public ConcurrentGCThread {
 private:
-  Monitor _monitor;
-  bool    _stop;
+  ZPageAllocator* const  _page_allocator;
+  mutable ZConditionLock _lock;
+  bool                   _stop;
 
-  bool idle(uint64_t timeout);
+  bool wait(uint64_t timeout) const;
+  bool should_continue() const;
 
 protected:
   virtual void run_service();
   virtual void stop_service();
 
 public:
-  ZUncommitter();
+  ZUncommitter(ZPageAllocator* page_allocator);
 };
 
 #endif // SHARE_GC_Z_ZUNCOMMITTER_HPP

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,7 +73,8 @@ final class SealedObjectForKeyProtector extends SealedObject {
         return params;
     }
 
-    final Key getKey(Cipher c)
+    @SuppressWarnings("removal")
+    final Key getKey(Cipher c, int maxLength)
             throws IOException, ClassNotFoundException, IllegalBlockSizeException,
             BadPaddingException {
 
@@ -81,7 +82,7 @@ final class SealedObjectForKeyProtector extends SealedObject {
                 .getExtObjectInputStream(this, c)) {
             AccessController.doPrivileged(
                     (PrivilegedAction<Void>) () -> {
-                        ois.setObjectInputFilter(DeserializationChecker.ONE_FILTER);
+                        ois.setObjectInputFilter(new DeserializationChecker(maxLength));
                         return null;
                     });
             try {
@@ -109,9 +110,10 @@ final class SealedObjectForKeyProtector extends SealedObject {
      */
     private static class DeserializationChecker implements ObjectInputFilter {
 
-        private static final ObjectInputFilter ONE_FILTER;
+        private static final ObjectInputFilter OWN_FILTER;
 
         static {
+            @SuppressWarnings("removal")
             String prop = AccessController.doPrivileged(
                     (PrivilegedAction<String>) () -> {
                         String tmp = System.getProperty(KEY_SERIAL_FILTER);
@@ -121,26 +123,32 @@ final class SealedObjectForKeyProtector extends SealedObject {
                             return Security.getProperty(KEY_SERIAL_FILTER);
                         }
                     });
-            ONE_FILTER = new DeserializationChecker(prop == null ? null
-                    : ObjectInputFilter.Config.createFilter(prop));
+            OWN_FILTER = prop == null
+                    ? null
+                    : ObjectInputFilter.Config.createFilter(prop);
         }
 
-        private final ObjectInputFilter base;
+        // Maximum possible length of anything inside
+        private final int maxLength;
 
-        private DeserializationChecker(ObjectInputFilter base) {
-            this.base = base;
+        private DeserializationChecker(int maxLength) {
+            this.maxLength = maxLength;
         }
 
         @Override
         public ObjectInputFilter.Status checkInput(
                 ObjectInputFilter.FilterInfo info) {
 
+            if (info.arrayLength() > maxLength) {
+                return Status.REJECTED;
+            }
+
             if (info.serialClass() == Object.class) {
                 return Status.UNDECIDED;
             }
 
-            if (base != null) {
-                Status result = base.checkInput(info);
+            if (OWN_FILTER != null) {
+                Status result = OWN_FILTER.checkInput(info);
                 if (result != Status.UNDECIDED) {
                     return result;
                 }

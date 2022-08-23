@@ -22,17 +22,17 @@
  */
 
 #include "precompiled.hpp"
+#include "gc/shared/gcLogPrecious.hpp"
 #include "gc/z/zLargePages.hpp"
-#include "logging/log.hpp"
 #include "runtime/os.hpp"
 
 ZLargePages::State ZLargePages::_state;
 
 void ZLargePages::initialize() {
-  initialize_platform();
+  pd_initialize();
 
-  log_info(gc, init)("Memory: " JULONG_FORMAT "M", os::physical_memory() / M);
-  log_info(gc, init)("Large Page Support: %s", to_string());
+  log_info_p(gc, init)("Memory: " JULONG_FORMAT "M", os::physical_memory() / M);
+  log_info_p(gc, init)("Large Page Support: %s", to_string());
 }
 
 const char* ZLargePages::to_string() {

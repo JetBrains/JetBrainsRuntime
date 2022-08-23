@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -98,7 +98,7 @@ import sun.util.locale.provider.TimeZoneNameUtility;
  * <p>
  * New {@code DateFormatSymbols} subclasses may be added to support
  * {@code SimpleDateFormat} for date-time formatting for additional locales.
-
+ *
  * @see          DateFormat
  * @see          SimpleDateFormat
  * @see          java.util.SimpleTimeZone
@@ -176,7 +176,6 @@ public class DateFormatSymbols implements Serializable, Cloneable {
      * Short month strings. For example: "Jan", "Feb", etc.  An array of
      * 13 strings (some calendars have 13 months), indexed by
      * {@code Calendar.JANUARY}, {@code Calendar.FEBRUARY}, etc.
-
      * @serial
      */
     String shortMonths[] = null;
@@ -759,6 +758,11 @@ public class DateFormatSymbols implements Serializable, Cloneable {
             dfs.months = resource.getStringArray("MonthNames");
             dfs.shortMonths = resource.getStringArray("MonthAbbreviations");
             dfs.ampms = resource.getStringArray("AmPmMarkers");
+            // the array in the resource bundle may contain more elements for day periods.
+            // Extract only am/pm.
+            if (dfs.ampms.length > 2) {
+                dfs.ampms = Arrays.copyOf(dfs.ampms, 2);
+            }
             dfs.localPatternChars = resource.getString("DateTimePatternChars");
 
             // Day of week names are stored in a 1-based array.

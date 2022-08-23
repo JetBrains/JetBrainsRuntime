@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,11 +88,11 @@ final class PBES1Core {
         cipher.setMode(mode);
     }
 
-     /**
+    /**
      * Sets the padding mechanism of this cipher. This algorithm only uses
      * PKCS #5 padding.
      *
-     * @param padding the padding mechanism
+     * @param paddingScheme the padding mechanism
      *
      * @exception NoSuchPaddingException if the requested padding mechanism
      * is invalid
@@ -537,9 +537,14 @@ final class PBES1Core {
                String wrappedKeyAlgorithm,
                int wrappedKeyType)
         throws InvalidKeyException, NoSuchAlgorithmException {
-        byte[] encodedKey;
         try {
-            encodedKey = doFinal(wrappedKey, 0, wrappedKey.length);
+            byte[] encodedKey = doFinal(wrappedKey, 0, wrappedKey.length);
+            try {
+                return ConstructKeys.constructKey(encodedKey, wrappedKeyAlgorithm,
+                        wrappedKeyType);
+            } finally {
+                Arrays.fill(encodedKey, (byte)0);
+            }
         } catch (BadPaddingException ePadding) {
             throw new InvalidKeyException("The wrapped key is not padded " +
                                           "correctly");
@@ -547,7 +552,5 @@ final class PBES1Core {
             throw new InvalidKeyException("The wrapped key does not have " +
                                           "the correct length");
         }
-        return ConstructKeys.constructKey(encodedKey, wrappedKeyAlgorithm,
-                                          wrappedKeyType);
     }
 }

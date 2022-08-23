@@ -32,12 +32,12 @@
 #import "com_apple_eawt__AppMenuBarHandler.h"
 #import "com_apple_eawt__AppMiscHandlers.h"
 
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
-
 #import "CPopupMenu.h"
 #import "CMenuBar.h"
 #import "ThreadUtilities.h"
 #import "NSApplicationAWT.h"
+#import "JNIUtilities.h"
+#import "AWTWindow.h"
 
 #pragma mark App Menu helpers
 
@@ -243,9 +243,11 @@ AWT_ASSERT_APPKIT_THREAD;
     BOOL prefsEnabled = (prefsAvailable && [self.fPreferencesMenu isEnabled] && ([self.fPreferencesMenu target] != nil));
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    static JNF_CLASS_CACHE(sjc_AppMenuBarHandler, "com/apple/eawt/_AppMenuBarHandler");
-    static JNF_STATIC_MEMBER_CACHE(sjm_initMenuStates, sjc_AppMenuBarHandler, "initMenuStates", "(ZZZZ)V");
-    JNFCallStaticVoidMethod(env, sjm_initMenuStates, aboutAvailable, aboutEnabled, prefsAvailable, prefsEnabled);
+    DECLARE_CLASS_RETURN(sjc_AppMenuBarHandler, "com/apple/eawt/_AppMenuBarHandler", NULL);
+    DECLARE_STATIC_METHOD_RETURN(sjm_initMenuStates, sjc_AppMenuBarHandler, "initMenuStates", "(ZZZZ)V", NULL);
+    (*env)->CallStaticVoidMethod(env, sjc_AppMenuBarHandler, sjm_initMenuStates,
+                                 aboutAvailable, aboutEnabled, prefsAvailable, prefsEnabled);
+    CHECK_EXCEPTION();
 
     // register for the finish launching and system power off notifications by default
     NSNotificationCenter *ctr = [NSNotificationCenter defaultCenter];
@@ -256,6 +258,12 @@ AWT_ASSERT_APPKIT_THREAD;
     [ctr addObserver:clz selector:@selector(_appDidDeactivate) name:NSApplicationDidResignActiveNotification object:nil];
     [ctr addObserver:clz selector:@selector(_appDidHide) name:NSApplicationDidHideNotification object:nil];
     [ctr addObserver:clz selector:@selector(_appDidUnhide) name:NSApplicationDidUnhideNotification object:nil];
+    [ctr addObserver:clz selector:@selector(_didChangeScreenParameters) name:NSApplicationDidChangeScreenParametersNotification object:nil];
+
+    [[[NSWorkspace sharedWorkspace] notificationCenter] addObserver:[AWTWindow class]
+                                                           selector:@selector(activeSpaceDidChange)
+                                                               name:NSWorkspaceActiveSpaceDidChangeNotification
+                                                             object:nil];
 
     return self;
 }
@@ -272,7 +280,12 @@ AWT_ASSERT_APPKIT_THREAD;
 
 #pragma mark Callbacks from AppKit
 
-static JNF_CLASS_CACHE(sjc_AppEventHandler, "com/apple/eawt/_AppEventHandler");
+static jclass sjc_AppEventHandler = NULL;
+#define GET_APPEVENTHANDLER_CLASS() \
+    GET_CLASS(sjc_AppEventHandler, "com/apple/eawt/_AppEventHandler");
+
+#define GET_APPEVENTHANDLER_CLASS_RETURN(ret) \
+    GET_CLASS_RETURN(sjc_AppEventHandler, "com/apple/eawt/_AppEventHandler", ret);
 
 - (void)_handleOpenURLEvent:(NSAppleEventDescriptor *)openURLEvent withReplyEvent:(NSAppleEventDescriptor *)replyEvent {
 AWT_ASSERT_APPKIT_THREAD;
@@ -282,9 +295,11 @@ AWT_ASSERT_APPKIT_THREAD;
 
     //fprintf(stderr,"jm_handleOpenURL\n");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jstring jURL = JNFNSToJavaString(env, url);
-    static JNF_STATIC_MEMBER_CACHE(jm_handleOpenURI, sjc_AppEventHandler, "handleOpenURI", "(Ljava/lang/String;)V");
-    JNFCallStaticVoidMethod(env, jm_handleOpenURI, jURL); // AWT_THREADING Safe (event)
+    jstring jURL = NSStringToJavaString(env, url);
+    GET_APPEVENTHANDLER_CLASS();
+    DECLARE_STATIC_METHOD(jm_handleOpenURI, sjc_AppEventHandler, "handleOpenURI", "(Ljava/lang/String;)V");
+    (*env)->CallStaticVoidMethod(env, sjc_AppEventHandler, jm_handleOpenURI, jURL);
+    CHECK_EXCEPTION();
     (*env)->DeleteLocalRef(env, jURL);
 
     [replyEvent insertDescriptor:[NSAppleEventDescriptor nullDescriptor] atIndex:0];
@@ -293,14 +308,22 @@ AWT_ASSERT_APPKIT_THREAD;
 // Helper for both open file and print file methods
 // Creates a Java list of files from a native list of files
 - (jobject)_createFilePathArrayFrom:(NSArray *)filenames withEnv:(JNIEnv *)env {
-    static JNF_CLASS_CACHE(sjc_ArrayList, "java/util/ArrayList");
-    static JNF_CTOR_CACHE(jm_ArrayList_ctor, sjc_ArrayList, "(I)V");
-    static JNF_MEMBER_CACHE(jm_ArrayList_add, sjc_ArrayList, "add", "(Ljava/lang/Object;)Z");
+    static jclass sjc_ArrayList = NULL;
+    if (sjc_ArrayList == NULL) {
+        sjc_ArrayList = (*env)->FindClass(env, "java/util/ArrayList");
+        if (sjc_ArrayList != NULL) sjc_ArrayList = (*env)->NewGlobalRef(env, sjc_ArrayList); \
+    }
+    CHECK_NULL_RETURN(sjc_ArrayList, NULL);
+    DECLARE_METHOD_RETURN(jm_ArrayList_ctor, sjc_ArrayList, "<init>", "(I)V", NULL);
+    DECLARE_METHOD_RETURN(jm_ArrayList_add, sjc_ArrayList, "add", "(Ljava/lang/Object;)Z", NULL);
 
-    jobject jFileNamesArray = JNFNewObject(env, jm_ArrayList_ctor, (jint)[filenames count]); // AWT_THREADING Safe (known object)
+    jobject jFileNamesArray = (*env)->NewObject(env, sjc_ArrayList, jm_ArrayList_ctor, (jint)[filenames count]);
+    CHECK_EXCEPTION_NULL_RETURN(jFileNamesArray, NULL);
+
     for (NSString *filename in filenames) {
-        jstring jFileName = JNFNormalizedJavaStringForPath(env, filename);
-        JNFCallVoidMethod(env, jFileNamesArray, jm_ArrayList_add, jFileName);
+        jstring jFileName = NormalizedPathJavaStringFromNSString(env, filename);
+        (*env)->CallVoidMethod(env, jFileNamesArray, jm_ArrayList_add, jFileName);
+        CHECK_EXCEPTION();
     }
 
     return jFileNamesArray;
@@ -320,13 +343,16 @@ AWT_ASSERT_APPKIT_THREAD;
     // if these files were opened from a Spotlight query, try to get the search text from the current AppleEvent
     NSAppleEventDescriptor *currentEvent = [[NSAppleEventManager sharedAppleEventManager] currentAppleEvent];
     NSString *searchString = [[currentEvent paramDescriptorForKeyword:keyAESearchText] stringValue];
-    jstring jSearchString = JNFNSToJavaString(env, searchString);
+    jstring jSearchString = NSStringToJavaString(env, searchString);
 
     // convert the file names array
     jobject jFileNamesArray = [self _createFilePathArrayFrom:fileNames withEnv:env];
 
-    static JNF_STATIC_MEMBER_CACHE(jm_handleOpenFiles, sjc_AppEventHandler, "handleOpenFiles", "(Ljava/util/List;Ljava/lang/String;)V");
-    JNFCallStaticVoidMethod(env, jm_handleOpenFiles, jFileNamesArray, jSearchString);
+    GET_APPEVENTHANDLER_CLASS();
+    DECLARE_STATIC_METHOD(jm_handleOpenFiles, sjc_AppEventHandler,
+                              "handleOpenFiles", "(Ljava/util/List;Ljava/lang/String;)V");
+    (*env)->CallStaticVoidMethod(env, sjc_AppEventHandler, jm_handleOpenFiles, jFileNamesArray, jSearchString);
+    CHECK_EXCEPTION();
     (*env)->DeleteLocalRef(env, jFileNamesArray);
     (*env)->DeleteLocalRef(env, jSearchString);
 
@@ -341,8 +367,11 @@ AWT_ASSERT_APPKIT_THREAD;
     //fprintf(stderr,"jm_handlePrintFile\n");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject jFileNamesArray = [self _createFilePathArrayFrom:fileNames withEnv:env];
-    static JNF_STATIC_MEMBER_CACHE(jm_handlePrintFile, sjc_AppEventHandler, "handlePrintFiles", "(Ljava/util/List;)V");
-    JNFCallStaticVoidMethod(env, jm_handlePrintFile, jFileNamesArray); // AWT_THREADING Safe (event)
+    GET_APPEVENTHANDLER_CLASS_RETURN(NSPrintingCancelled);
+    DECLARE_STATIC_METHOD_RETURN(jm_handlePrintFile, sjc_AppEventHandler,
+                              "handlePrintFiles", "(Ljava/util/List;)V", NSPrintingCancelled);
+    (*env)->CallStaticVoidMethod(env, sjc_AppEventHandler, jm_handlePrintFile, jFileNamesArray);
+    CHECK_EXCEPTION();
     (*env)->DeleteLocalRef(env, jFileNamesArray);
 
     return NSPrintingSuccess;
@@ -354,8 +383,10 @@ AWT_ASSERT_APPKIT_THREAD;
 
     //fprintf(stderr,"jm_handleOpenApplication\n");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    static JNF_STATIC_MEMBER_CACHE(jm_handleNativeNotification, sjc_AppEventHandler, "handleNativeNotification", "(I)V");
-    JNFCallStaticVoidMethod(env, jm_handleNativeNotification, notificationType); // AWT_THREADING Safe (event)
+    GET_APPEVENTHANDLER_CLASS();
+    DECLARE_STATIC_METHOD(jm_handleNativeNotification, sjc_AppEventHandler, "handleNativeNotification", "(I)V");
+    (*env)->CallStaticVoidMethod(env, sjc_AppEventHandler, jm_handleNativeNotification, notificationType);
+    CHECK_EXCEPTION();
 }
 
 // About menu handler
@@ -453,6 +484,10 @@ AWT_ASSERT_APPKIT_THREAD;
     }
 }
 
++ (void)_didChangeScreenParameters {
+    [ApplicationDelegate _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_SCREEN_CHANGE_PARAMETERS];
+}
+
 // Retrieves the menu to be attached to the Dock icon (AppKit callback)
 - (NSMenu *)applicationDockMenu:(NSApplication *)sender {
 AWT_ASSERT_APPKIT_THREAD;
@@ -544,12 +579,12 @@ AWT_ASSERT_APPKIT_THREAD;
 JNIEXPORT void JNICALL Java_com_apple_eawt_Application_nativeInitializeApplicationDelegate
 (JNIEnv *env, jclass clz)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
     // Force initialization to happen on AppKit thread!
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         [ApplicationDelegate sharedDelegate];
     }];
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -560,13 +595,13 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_com_apple_eawt__1AppEventHandler_nativeOpenCocoaAboutWindow
 (JNIEnv *env, jclass clz)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         [NSApp orderFrontStandardAboutPanel:nil];
     }];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -577,13 +612,13 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_com_apple_eawt__1AppEventHandler_nativeReplyToAppShouldTerminate
 (JNIEnv *env, jclass clz, jboolean doTerminate)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         [NSApp replyToApplicationShouldTerminate:doTerminate];
     }];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -594,12 +629,12 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_com_apple_eawt__1AppEventHandler_nativeRegisterForNotification
 (JNIEnv *env, jclass clz, jint notificationType)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
     [ThreadUtilities performOnMainThread:@selector(_registerForNotification:)
                                       on:[ApplicationDelegate class]
                               withObject:[NSNumber numberWithInt:notificationType]
-                           waitUntilDone:NO]; // AWT_THREADING Safe (non-blocking)
-JNF_COCOA_EXIT(env);
+                           waitUntilDone:NO];
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -610,14 +645,14 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_com_apple_eawt__1AppDockIconHandler_nativeSetDockMenu
 (JNIEnv *env, jclass clz, jlong nsMenuPtr)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     NSMenu *menu = (NSMenu *)jlong_to_ptr(nsMenuPtr);
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
         [ApplicationDelegate sharedDelegate].fDockMenu = menu;
     }];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -628,7 +663,7 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_com_apple_eawt__1AppDockIconHandler_nativeSetDockIconImage
 (JNIEnv *env, jclass clz, jlong nsImagePtr)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     NSImage *_image = (NSImage *)jlong_to_ptr(nsImagePtr);
     [ThreadUtilities performOnMainThread:@selector(_setDockIconImage:)
@@ -636,7 +671,7 @@ JNF_COCOA_ENTER(env);
                               withObject:_image
                            waitUntilDone:NO];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -647,14 +682,14 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_com_apple_eawt__1AppDockIconHandler_nativeSetDockIconProgress
   (JNIEnv *env, jclass clz, jint value)
 {
-    JNF_COCOA_ENTER(env);
+    JNI_COCOA_ENTER(env);
 
      [ThreadUtilities performOnMainThread:@selector(_setDockIconProgress:)
                                        on:[ApplicationDelegate class]
                                withObject:[NSNumber numberWithInt:value]
                             waitUntilDone:NO];
 
-    JNF_COCOA_EXIT(env);
+    JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -667,13 +702,13 @@ JNIEXPORT jlong JNICALL Java_com_apple_eawt__1AppDockIconHandler_nativeGetDockIc
 {
     __block NSImage *image = nil;
 
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
         image = [[ApplicationDelegate _dockIconImage] retain];
     }];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 
     return ptr_to_jlong(image);
 }
@@ -686,16 +721,16 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_com_apple_eawt__1AppDockIconHandler_nativeSetDockIconBadge
 (JNIEnv *env, jclass clz, jstring badge)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
-    NSString *badgeString = JNFJavaToNSString(env, badge);
+    NSString *badgeString = JavaStringToNSString(env, badge);
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         NSDockTile *dockTile = [NSApp dockTile];
         [dockTile setBadgeLabel:badgeString];
         [dockTile display];
     }];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -706,7 +741,7 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_com_apple_eawt__1AppMiscHandlers_nativeRequestActivation
 (JNIEnv *env, jclass clz, jboolean allWindows)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         NSApplicationActivationOptions options = allWindows ? NSApplicationActivateAllWindows : 0;
@@ -714,7 +749,7 @@ JNF_COCOA_ENTER(env);
         [[NSRunningApplication currentApplication] activateWithOptions:options];
     }];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -725,13 +760,13 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_com_apple_eawt__1AppMiscHandlers_nativeRequestUserAttention
 (JNIEnv *env, jclass clz, jboolean critical)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         [NSApp requestUserAttention:critical ? NSCriticalRequest : NSInformationalRequest];
     }];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -742,14 +777,14 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_com_apple_eawt__1AppMiscHandlers_nativeOpenHelpViewer
 (JNIEnv *env, jclass clz)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     [ThreadUtilities performOnMainThread:@selector(showHelp:)
                                       on:NSApp
                               withObject:nil
                            waitUntilDone:NO];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -760,11 +795,11 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_com_apple_eawt__1AppMiscHandlers_nativeEnableSuddenTermination
 (JNIEnv *env, jclass clz)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     [[NSProcessInfo processInfo] enableSuddenTermination]; // Foundation thread-safe
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -775,11 +810,11 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_com_apple_eawt__1AppMiscHandlers_nativeDisableSuddenTermination
 (JNIEnv *env, jclass clz)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     [[NSProcessInfo processInfo] disableSuddenTermination]; // Foundation thread-safe
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -790,7 +825,7 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_com_apple_eawt__1AppMenuBarHandler_nativeSetMenuState
 (JNIEnv *env, jclass clz, jint menuID, jboolean visible, jboolean enabled)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         ApplicationDelegate *delegate = [ApplicationDelegate sharedDelegate];
@@ -804,7 +839,7 @@ JNF_COCOA_ENTER(env);
         }
     }];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -815,14 +850,14 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_com_apple_eawt__1AppMenuBarHandler_nativeSetDefaultMenuBar
 (JNIEnv *env, jclass clz, jlong cMenuBarPtr)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     CMenuBar *menu = (CMenuBar *)jlong_to_ptr(cMenuBarPtr);
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         [ApplicationDelegate sharedDelegate].fDefaultMenuBar = menu;
     }];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -833,7 +868,7 @@ JNF_COCOA_EXIT(env);
 JNIEXPORT void JNICALL Java_com_apple_eawt__1AppMenuBarHandler_nativeActivateDefaultMenuBar
 (JNIEnv *env, jclass clz, jlong cMenuBarPtr)
 {
-JNF_COCOA_ENTER(env);
+JNI_COCOA_ENTER(env);
 
     CMenuBar *menu = (CMenuBar *)jlong_to_ptr(cMenuBarPtr);
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
@@ -842,5 +877,5 @@ JNF_COCOA_ENTER(env);
         }
     }];
 
-JNF_COCOA_EXIT(env);
+JNI_COCOA_EXIT(env);
 }

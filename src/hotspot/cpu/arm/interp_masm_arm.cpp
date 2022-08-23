@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,9 @@
 #include "runtime/basicLock.hpp"
 #include "runtime/biasedLocking.hpp"
 #include "runtime/frame.inline.hpp"
+#include "runtime/safepointMechanism.hpp"
 #include "runtime/sharedRuntime.hpp"
+#include "utilities/powerOfTwo.hpp"
 
 //--------------------------------------------------------------------
 // Implementation of InterpreterMacroAssembler
@@ -556,7 +558,7 @@ void InterpreterMacroAssembler::dispatch_epilog(TosState state, int step) {
 
 void InterpreterMacroAssembler::dispatch_base(TosState state,
                                               DispatchTableMode table_mode,
-                                              bool verifyoop) {
+                                              bool verifyoop, bool generate_poll) {
   if (VerifyActivationFrameSize) {
     Label L;
     sub(Rtemp, FP, SP);
@@ -569,6 +571,17 @@ void InterpreterMacroAssembler::dispatch_base(TosState state,
 
   if (verifyoop) {
     interp_verify_oop(R0_tos, state, __FILE__, __LINE__);
+  }
+
+  Label safepoint;
+  address* const safepoint_table = Interpreter::safept_table(state);
+  address* const table           = Interpreter::dispatch_table(state);
+  bool needs_thread_local_poll = generate_poll && table != safepoint_table;
+
+  if (needs_thread_local_poll) {
+    NOT_PRODUCT(block_comment("Thread-local Safepoint poll"));
+    ldr(Rtemp, Address(Rthread, JavaThread::polling_word_offset()));
+    tbnz(Rtemp, exact_log2(SafepointMechanism::poll_bit()), safepoint);
   }
 
   if((state == itos) || (state == btos) || (state == ztos) || (state == ctos) || (state == stos)) {
@@ -600,12 +613,18 @@ void InterpreterMacroAssembler::dispatch_base(TosState state,
     indirect_jump(Address::indexed_ptr(Rtemp, R3_bytecode), Rtemp);
   }
 
+  if (needs_thread_local_poll) {
+    bind(safepoint);
+    lea(Rtemp, ExternalAddress((address)safepoint_table));
+    indirect_jump(Address::indexed_ptr(Rtemp, R3_bytecode), Rtemp);
+  }
+
   nop(); // to avoid filling CPU pipeline with invalid instructions
   nop();
 }
 
-void InterpreterMacroAssembler::dispatch_only(TosState state) {
-  dispatch_base(state, DispatchDefault);
+void InterpreterMacroAssembler::dispatch_only(TosState state, bool generate_poll) {
+  dispatch_base(state, DispatchDefault, true, generate_poll);
 }
 
 
@@ -617,10 +636,10 @@ void InterpreterMacroAssembler::dispatch_only_noverify(TosState state) {
   dispatch_base(state, DispatchNormal, false);
 }
 
-void InterpreterMacroAssembler::dispatch_next(TosState state, int step) {
+void InterpreterMacroAssembler::dispatch_next(TosState state, int step, bool generate_poll) {
   // load next bytecode and advance Rbcp
   ldrb(R3_bytecode, Address(Rbcp, step, pre_indexed));
-  dispatch_base(state, DispatchDefault);
+  dispatch_base(state, DispatchDefault, true, generate_poll);
 }
 
 void InterpreterMacroAssembler::narrow(Register result) {
@@ -710,7 +729,7 @@ void InterpreterMacroAssembler::remove_activation(TosState state, Register ret_a
   // BasicObjectLock will be first in list, since this is a synchronized method. However, need
   // to check that the object has not been unlocked by an explicit monitorexit bytecode.
 
-  const Register Rmonitor = R1;                  // fixed in unlock_object()
+  const Register Rmonitor = R0;                  // fixed in unlock_object()
   const Register Robj = R2;
 
   // address of first monitor
@@ -753,8 +772,8 @@ void InterpreterMacroAssembler::remove_activation(TosState state, Register ret_a
     // Unlock does not block, so don't have to worry about the frame
 
     push(state);
-    mov(R1, Rcur);
-    unlock_object(R1);
+    mov(Rmonitor, Rcur);
+    unlock_object(Rmonitor);
 
     if (install_monitor_exception) {
       call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::new_illegal_monitor_state_exception));
@@ -864,6 +883,13 @@ void InterpreterMacroAssembler::lock_object(Register Rlock) {
     // Load object pointer
     ldr(Robj, Address(Rlock, obj_offset));
 
+    if (DiagnoseSyncOnValueBasedClasses != 0) {
+      load_klass(R0, Robj);
+      ldr_u32(R0, Address(R0, Klass::access_flags_offset()));
+      tst(R0, JVM_ACC_IS_VALUE_BASED_CLASS);
+      b(slow_case, ne);
+    }
+
     if (UseBiasedLocking) {
       biased_locking_enter(Robj, Rmark/*scratched*/, R0, false, Rtemp, done, slow_case);
     }
@@ -957,21 +983,20 @@ void InterpreterMacroAssembler::lock_object(Register Rlock) {
 
 // Unlocks an object. Used in monitorexit bytecode and remove_activation.
 //
-// Argument: R1: Points to BasicObjectLock structure for lock
+// Argument: R0: Points to BasicObjectLock structure for lock
 // Throw an IllegalMonitorException if object is not locked by current thread
 // Blows volatile registers R0-R3, Rtemp, LR. Calls VM.
 void InterpreterMacroAssembler::unlock_object(Register Rlock) {
-  assert(Rlock == R1, "the second argument");
+  assert(Rlock == R0, "the first argument");
 
   if (UseHeavyMonitors) {
-    call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorexit), Rlock);
+    call_VM_leaf(CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorexit), Rlock);
   } else {
     Label done, slow_case;
 
     const Register Robj = R2;
     const Register Rmark = R3;
-    const Register Rresult = R0;
-    assert_different_registers(Robj, Rmark, Rlock, R0, Rtemp);
+    assert_different_registers(Robj, Rmark, Rlock, Rtemp);
 
     const int obj_offset = BasicObjectLock::obj_offset_in_bytes();
     const int lock_offset = BasicObjectLock::lock_offset_in_bytes ();
@@ -1005,7 +1030,7 @@ void InterpreterMacroAssembler::unlock_object(Register Rlock) {
 
     // Call the runtime routine for slow case.
     str(Robj, Address(Rlock, obj_offset)); // restore obj
-    call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorexit), Rlock);
+    call_VM_leaf(CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorexit), Rlock);
 
     bind(done);
   }

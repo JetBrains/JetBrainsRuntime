@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,7 @@ import jdk.jfr.internal.LongMap;
 /**
  * Holds mapping between a set of keys and their corresponding object.
  *
- * If the type is a known type, i.e. {@link RecordedThread}, an
+ * If the type is a known type, i.e. {@link jdk.jfr.consumer.RecordedThread}, an
  * {@link ObjectFactory} can be supplied which will instantiate a typed object.
  */
 final class ConstantMap {
@@ -47,7 +47,7 @@ final class ConstantMap {
     // reference themselves (directly, or indirectly),
     // when making a transition from numeric id references
     // to normal Java references.
-    private final static class Reference {
+    private static final class Reference {
         private final long key;
         private final ConstantMap pool;
 
@@ -60,6 +60,7 @@ final class ConstantMap {
             return pool.get(key);
         }
 
+        @Override
         public String toString() {
             return "ref: " + pool.name + "[" + key + "]";
         }
@@ -137,8 +138,8 @@ final class ConstantMap {
     }
 
     private static Object resolve(Object o) {
-        if (o instanceof Reference) {
-            return resolve(((Reference) o).resolve());
+        if (o instanceof Reference r) {
+            return resolve(r.resolve());
         }
         if (o != null && o.getClass().isArray()) {
             final Object[] array = (Object[]) o;
@@ -156,6 +157,9 @@ final class ConstantMap {
     }
 
     public void put(long key, Object value) {
+        if (objects.hasKey(key)) {
+            objects.clearId(key);
+        }
         objects.put(key, value);
     }
 

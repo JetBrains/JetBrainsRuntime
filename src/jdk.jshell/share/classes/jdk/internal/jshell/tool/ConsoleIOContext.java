@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 
 package jdk.internal.jshell.tool;
 
-
 import jdk.jshell.SourceCodeAnalysis.Documentation;
 import jdk.jshell.SourceCodeAnalysis.QualifiedNames;
 import jdk.jshell.SourceCodeAnalysis.Suggestion;
@@ -35,6 +34,7 @@ import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.net.URI;
 import java.nio.charset.Charset;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -47,10 +47,14 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+import javax.tools.DiagnosticListener;
+import javax.tools.JavaFileObject;
+import javax.tools.SimpleJavaFileObject;
 
 import jdk.internal.shellsupport.doc.JavadocFormatter;
 import jdk.internal.jshell.tool.StopDetectingInputStream.State;
@@ -77,6 +81,8 @@ import jdk.internal.org.jline.terminal.Size;
 import jdk.internal.org.jline.terminal.Terminal;
 import jdk.internal.org.jline.terminal.TerminalBuilder;
 import jdk.internal.org.jline.utils.Display;
+import jdk.internal.org.jline.utils.NonBlocking;
+import jdk.internal.org.jline.utils.NonBlockingInputStreamImpl;
 import jdk.internal.org.jline.utils.NonBlockingReader;
 import jdk.jshell.ExpressionSnippet;
 import jdk.jshell.Snippet;
@@ -98,22 +104,41 @@ class ConsoleIOContext extends IOContext {
 
     String prefix = "";
 
-    ConsoleIOContext(JShellTool repl, InputStream cmdin, PrintStream cmdout) throws Exception {
-        this.allowIncompleteInputs = Boolean.getBoolean("jshell.test.allow.incomplete.inputs");
+    ConsoleIOContext(JShellTool repl, InputStream cmdin, PrintStream cmdout,
+                     boolean interactive) throws Exception {
         this.repl = repl;
         Map<String, Object> variables = new HashMap<>();
         this.input = new StopDetectingInputStream(() -> repl.stop(),
                                                   ex -> repl.hard("Error on input: %s", ex));
+        InputStream nonBlockingInput = new NonBlockingInputStreamImpl(null, input) {
+            @Override
+            public int readBuffered(byte[] b) throws IOException {
+                return input.read(b);
+            }
+        };
         Terminal terminal;
-        if (System.getProperty("test.jdk") != null) {
-            terminal = new TestTerminal(input, cmdout);
+        boolean allowIncompleteInputs = Boolean.getBoolean("jshell.test.allow.incomplete.inputs");
+        Consumer<LineReaderImpl> setupReader = r -> {};
+        if (cmdin != System.in) {
+            if (System.getProperty("test.jdk") != null) {
+                terminal = new TestTerminal(nonBlockingInput, cmdout);
+            } else {
+                Size size = null;
+                terminal = new ProgrammaticInTerminal(nonBlockingInput, cmdout, interactive,
+                                                      size);
+                if (!interactive) {
+                    setupReader = r -> r.unsetOpt(Option.BRACKETED_PASTE);
+                    allowIncompleteInputs = true;
+                }
+            }
             input.setInputStream(cmdin);
         } else {
             terminal = TerminalBuilder.builder().inputStreamWrapper(in -> {
                 input.setInputStream(in);
-                return input;
+                return nonBlockingInput;
             }).build();
         }
+        this.allowIncompleteInputs = allowIncompleteInputs;
         originalAttributes = terminal.getAttributes();
         Attributes noIntr = new Attributes(originalAttributes);
         noIntr.setControlChar(ControlChar.VINTR, 0);
@@ -146,13 +171,35 @@ class ConsoleIOContext extends IOContext {
                 completionState.actionCount++;
                 return super.readBinding(keys, local);
             }
+            @Override
+            protected boolean insertCloseParen() {
+                Object oldIndent = getVariable(INDENTATION);
+                try {
+                    setVariable(INDENTATION, 0);
+                    return super.insertCloseParen();
+                } finally {
+                    setVariable(INDENTATION, oldIndent);
+                }
+            }
+            @Override
+            protected boolean insertCloseSquare() {
+                Object oldIndent = getVariable(INDENTATION);
+                try {
+                    setVariable(INDENTATION, 0);
+                    return super.insertCloseSquare();
+                } finally {
+                    setVariable(INDENTATION, oldIndent);
+                }
+            }
         };
 
+        setupReader.accept(reader);
         reader.setOpt(Option.DISABLE_EVENT_EXPANSION);
 
         reader.setParser((line, cursor, context) -> {
-            if (!allowIncompleteInputs && !repl.isComplete(line)) {
-                throw new EOFError(cursor, cursor, line);
+            if (!ConsoleIOContext.this.allowIncompleteInputs && !repl.isComplete(line)) {
+                int pendingBraces = countPendingOpenBraces(line);
+                throw new EOFError(cursor, cursor, line, null, pendingBraces, null);
             }
             return new ArgumentLine(line, cursor);
         });
@@ -198,7 +245,7 @@ class ConsoleIOContext extends IOContext {
         this.prefix = prefix;
         try {
             in.setVariable(LineReader.SECONDARY_PROMPT_PATTERN, continuationPrompt);
-            return in.readLine(firstLinePrompt);
+            return in.readLine(firstLine ? firstLinePrompt : continuationPrompt);
         } catch (UserInterruptException ex) {
             throw (InputInterruptedException) new InputInterruptedException().initCause(ex);
         } catch (EndOfFileException ex) {
@@ -215,8 +262,8 @@ class ConsoleIOContext extends IOContext {
     public Iterable<String> history(boolean currentSession) {
         return StreamSupport.stream(getHistory().spliterator(), false)
                             .filter(entry -> !currentSession || !historyLoad.equals(entry.time()))
-                            .map(entry -> entry.line())
-                            .collect(Collectors.toList());
+                            .map(History.Entry::line)
+                            .toList();
     }
 
     @Override
@@ -231,7 +278,7 @@ class ConsoleIOContext extends IOContext {
             StreamSupport.stream(in.getHistory().spliterator(), false)
                          .map(History.Entry::line)
                          .flatMap(this::toSplitEntries)
-                         .collect(Collectors.toList());
+                         .toList();
         if (!savedHistory.isEmpty()) {
             int len = (int) Math.ceil(Math.log10(savedHistory.size()+1));
             String format = HISTORY_LINE_PREFIX + "%0" + len + "d";
@@ -283,6 +330,11 @@ class ConsoleIOContext extends IOContext {
         return count;
     }
 
+    @Override
+    public void setIndent(int indent) {
+        in.variable(LineReader.INDENTATION, indent);
+    }
+
     private static final String FIXES_SHORTCUT = "\033\133\132"; //Shift-TAB
 
     private static final String LINE_SEPARATOR = System.getProperty("line.separator");
@@ -317,7 +369,7 @@ class ConsoleIOContext extends IOContext {
                     doc = repl.analysis.documentation(prefix + text, cursor + prefix.length(), false)
                                        .stream()
                                        .map(Documentation::signature)
-                                       .collect(Collectors.toList());
+                                       .toList();
                 }
                 long smartCount = suggestions.stream().filter(Suggestion::matchesType).count();
                 boolean hasSmart = smartCount > 0 && smartCount <= /*in.getAutoprintThreshold()*/AUTOPRINT_THRESHOLD;
@@ -327,11 +379,49 @@ class ConsoleIOContext extends IOContext {
                                              .distinct()
                                              .count() == 2;
                 boolean tooManyItems = suggestions.size() > /*in.getAutoprintThreshold()*/AUTOPRINT_THRESHOLD;
-                CompletionTask ordinaryCompletion =
-                        new OrdinaryCompletionTask(suggestions,
-                                                   anchor[0],
-                                                   !command && !doc.isEmpty(),
-                                                   hasBoth);
+                CompletionTask ordinaryCompletion;
+                List<? extends CharSequence> ordinaryCompletionToShow;
+
+                if (hasBoth) {
+                    ordinaryCompletionToShow =
+                        suggestions.stream()
+                                   .filter(Suggestion::matchesType)
+                                   .map(Suggestion::continuation)
+                                   .distinct()
+                                   .toList();
+                } else {
+                    ordinaryCompletionToShow =
+                        suggestions.stream()
+                                   .map(Suggestion::continuation)
+                                   .distinct()
+                                   .toList();
+                }
+
+                if (ordinaryCompletionToShow.isEmpty()) {
+                    ordinaryCompletion = new ContinueCompletionTask();
+                } else {
+                    Optional<String> prefixOpt =
+                            suggestions.stream()
+                                       .map(Suggestion::continuation)
+                                       .reduce(ConsoleIOContext::commonPrefix);
+
+                    String prefix =
+                            prefixOpt.orElse("").substring(cursor - anchor[0]);
+
+                    if (!prefix.isEmpty() && !command) {
+                        //the completion will fill in the prefix, which will invalidate
+                        //the documentation, avoid adding documentation tasks into the
+                        //todo list:
+                        doc = List.of();
+                    }
+
+                    ordinaryCompletion =
+                            new OrdinaryCompletionTask(ordinaryCompletionToShow,
+                                                       prefix,
+                                                       !command && !doc.isEmpty(),
+                                                       hasBoth);
+                }
+
                 CompletionTask allCompletion = new AllSuggestionsCompletionTask(suggestions, anchor[0]);
 
                 todo = new ArrayList<>();
@@ -530,17 +620,17 @@ class ConsoleIOContext extends IOContext {
     }
 
     private final class OrdinaryCompletionTask implements CompletionTask {
-        private final List<Suggestion> suggestions;
-        private final int anchor;
+        private final List<? extends CharSequence> toShow;
+        private final String prefix;
         private final boolean cont;
         private final boolean showSmart;
 
-        public OrdinaryCompletionTask(List<Suggestion> suggestions,
-                                      int anchor,
+        public OrdinaryCompletionTask(List<? extends CharSequence> toShow,
+                                      String prefix,
                                       boolean cont,
                                       boolean showSmart) {
-            this.suggestions = suggestions;
-            this.anchor = anchor;
+            this.toShow = toShow;
+            this.prefix = prefix;
             this.cont = cont;
             this.showSmart = showSmart;
         }
@@ -552,34 +642,7 @@ class ConsoleIOContext extends IOContext {
 
         @Override
         public Result perform(String text, int cursor) throws IOException {
-            List<CharSequence> toShow;
-
-            if (showSmart) {
-                toShow =
-                    suggestions.stream()
-                               .filter(Suggestion::matchesType)
-                               .map(Suggestion::continuation)
-                               .distinct()
-                               .collect(Collectors.toList());
-            } else {
-                toShow =
-                    suggestions.stream()
-                               .map(Suggestion::continuation)
-                               .distinct()
-                               .collect(Collectors.toList());
-            }
-
-            if (toShow.isEmpty()) {
-                return Result.CONTINUE;
-            }
-
-            Optional<String> prefix =
-                    suggestions.stream()
-                               .map(Suggestion::continuation)
-                               .reduce(ConsoleIOContext::commonPrefix);
-
-            String prefixStr = prefix.orElse("").substring(cursor - anchor);
-            in.putString(prefixStr);
+            in.putString(prefix);
 
             boolean showItems = toShow.size() > 1 || showSmart;
 
@@ -588,7 +651,7 @@ class ConsoleIOContext extends IOContext {
                 printColumns(toShow);
             }
 
-            if (!prefixStr.isEmpty())
+            if (!prefix.isEmpty())
                 return showItems ? Result.FINISH : Result.SKIP_NOREPAINT;
 
             return cont ? Result.CONTINUE : Result.FINISH;
@@ -621,7 +684,7 @@ class ConsoleIOContext extends IOContext {
                     suggestions.stream()
                                .map(Suggestion::continuation)
                                .distinct()
-                               .collect(Collectors.toList());
+                               .toList();
 
             Optional<String> prefix =
                     candidates.stream()
@@ -755,10 +818,23 @@ class ConsoleIOContext extends IOContext {
             List<String> doc = repl.analysis.documentation(prefix + text, cursor + prefix.length(), true)
                                             .stream()
                                             .map(convertor)
-                                            .collect(Collectors.toList());
+                                            .toList();
             return doPrintFullDocumentation(todo, doc, false);
         }
 
+    }
+
+    private static class ContinueCompletionTask implements ConsoleIOContext.CompletionTask {
+
+        @Override
+        public String description() {
+            throw new UnsupportedOperationException("Should not get here.");
+        }
+
+        @Override
+        public CompletionTask.Result perform(String text, int cursor) throws IOException {
+            return CompletionTask.Result.CONTINUE;
+        }
     }
 
     @Override
@@ -796,13 +872,14 @@ class ConsoleIOContext extends IOContext {
         }
         it.remove();
         in.getHistory().add(source);
+        in.getHistory().resetIndex();
     }
 
     private static final long ESCAPE_TIMEOUT = 100;
 
     private boolean fixes() {
         try {
-            int c = in.getTerminal().input().read();
+            int c = in.getTerminal().reader().read();
 
             if (c == (-1)) {
                 return true; //TODO: true or false???
@@ -935,6 +1012,34 @@ class ConsoleIOContext extends IOContext {
             }
         }
         return inputBytes[inputBytesPointer++];
+    }
+
+    private int countPendingOpenBraces(String code) {
+        int pendingBraces = 0;
+        com.sun.tools.javac.util.Context ctx =
+                new com.sun.tools.javac.util.Context();
+        SimpleJavaFileObject source = new SimpleJavaFileObject(URI.create("mem://snippet"),
+                                                               JavaFileObject.Kind.SOURCE) {
+            @Override
+            public CharSequence getCharContent(boolean ignoreEncodingErrors) throws IOException {
+                return code;
+            }
+        };
+        ctx.put(DiagnosticListener.class, d -> {});
+        com.sun.tools.javac.util.Log.instance(ctx).useSource(source);
+        com.sun.tools.javac.parser.ScannerFactory scannerFactory =
+                com.sun.tools.javac.parser.ScannerFactory.instance(ctx);
+        com.sun.tools.javac.parser.Scanner scanner =
+                scannerFactory.newScanner(code, false);
+
+        while (true) {
+            switch (scanner.token().kind) {
+                case LBRACE: pendingBraces++; break;
+                case RBRACE: pendingBraces--; break;
+                case EOF: return pendingBraces;
+            }
+            scanner.nextToken();
+        }
     }
 
     /**
@@ -1186,42 +1291,70 @@ class ConsoleIOContext extends IOContext {
         return in.getHistory();
     }
 
-    private static final class TestTerminal extends LineDisciplineTerminal {
+    private static class ProgrammaticInTerminal extends LineDisciplineTerminal {
 
-        private static final int DEFAULT_HEIGHT = 24;
+        protected static final int DEFAULT_HEIGHT = 24;
 
-        public TestTerminal(StopDetectingInputStream input, OutputStream output) throws Exception {
-            super("test", "ansi", output, Charset.forName("UTF-8"));
-//            setAnsiSupported(true);
-//            setEchoEnabled(false);
-//            this.input = input;
+        private final NonBlockingReader inputReader;
+        private final Size bufferSize;
+
+        public ProgrammaticInTerminal(InputStream input, OutputStream output,
+                                       boolean interactive, Size size) throws Exception {
+            this(input, output, interactive ? "ansi" : "dumb",
+                 size != null ? size : new Size(80, DEFAULT_HEIGHT),
+                 size != null ? size
+                              : interactive ? new Size(80, DEFAULT_HEIGHT)
+                                            : new Size(Integer.MAX_VALUE - 1, DEFAULT_HEIGHT));
+        }
+
+        protected ProgrammaticInTerminal(InputStream input, OutputStream output,
+                                         String terminal, Size size, Size bufferSize) throws Exception {
+            super("non-system-in", terminal, output, Charset.forName("UTF-8"));
+            this.inputReader = NonBlocking.nonBlocking(getName(), input, encoding());
             Attributes a = new Attributes(getAttributes());
             a.setLocalFlag(LocalFlag.ECHO, false);
             setAttributes(attributes);
+            setSize(size);
+            this.bufferSize = bufferSize;
+        }
+
+        @Override
+        public NonBlockingReader reader() {
+            return inputReader;
+        }
+
+        @Override
+        protected void doClose() throws IOException {
+            super.doClose();
+            slaveInput.close();
+            inputReader.close();
+        }
+
+        @Override
+        public Size getBufferSize() {
+            return bufferSize;
+        }
+    }
+
+    private static final class TestTerminal extends ProgrammaticInTerminal {
+        private static Size computeSize() {
             int h = DEFAULT_HEIGHT;
             try {
                 String hp = System.getProperty("test.terminal.height");
-                if (hp != null && !hp.isEmpty()) {
+                if (hp != null && !hp.isEmpty() && System.getProperty("test.jdk") != null) {
                     h = Integer.parseInt(hp);
                 }
             } catch (Throwable ex) {
                 // ignore
             }
-            setSize(new Size(80, h));
-            new Thread(() -> {
-                int r;
-
-                try {
-                    while ((r = input.read()) != (-1)) {
-                        processInputByte(r);
-                    }
-                    slaveInput.close();
-                } catch (IOException ex) {
-                    throw new IllegalStateException(ex);
-                }
-            }).start();
+            return new Size(80, h);
         }
-
+        public TestTerminal(InputStream input, OutputStream output) throws Exception {
+            this(input, output, computeSize());
+        }
+        private TestTerminal(InputStream input, OutputStream output, Size size) throws Exception {
+            super(input, output, "ansi", size, size);
+        }
     }
 
     private static final class CompletionState {

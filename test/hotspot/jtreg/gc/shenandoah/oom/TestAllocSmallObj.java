@@ -23,12 +23,11 @@
  */
 
 /**
- * @test TestAllocSmallObj
+ * @test
  * @summary Test allocation of small object to result OOM, but not to crash JVM
- * @key gc
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
- * @run main TestAllocSmallObj
+ * @run driver TestAllocSmallObj
  */
 
 import jdk.test.lib.process.OutputAnalyzer;

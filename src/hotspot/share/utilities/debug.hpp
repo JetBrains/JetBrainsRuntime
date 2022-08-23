@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -106,7 +106,7 @@ do {                                                                            
 #define fatal(...)                                                                \
 do {                                                                              \
   TOUCH_ASSERT_POISON;                                                            \
-  report_fatal(__FILE__, __LINE__, __VA_ARGS__);                                  \
+  report_fatal(INTERNAL_ERROR, __FILE__, __LINE__, __VA_ARGS__);                  \
   BREAKPOINT;                                                                     \
 } while (0)
 
@@ -149,23 +149,22 @@ do {                                                                            
 enum VMErrorType {
   INTERNAL_ERROR   = 0xe0000000,
   OOM_MALLOC_ERROR = 0xe0000001,
-  OOM_MMAP_ERROR   = 0xe0000002
+  OOM_MMAP_ERROR   = 0xe0000002,
+  OOM_MPROTECT_ERROR = 0xe0000003,
+  OOM_JAVA_HEAP_FATAL = 0xe0000004
 };
+
+// Set to suppress secondary error reporting.
+// Really should have a qualified name or something.
+extern bool Debugging;
 
 // error reporting helper functions
 void report_vm_error(const char* file, int line, const char* error_msg);
-#if !defined(__GNUC__) || defined (__clang_major__) || (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || __GNUC__ > 4)
-// ATTRIBUTE_PRINTF works with gcc >= 4.8 and any other compiler.
 void report_vm_error(const char* file, int line, const char* error_msg,
                      const char* detail_fmt, ...) ATTRIBUTE_PRINTF(4, 5);
-#else
-// GCC < 4.8 warns because of empty format string.  Warning can not be switched off selectively.
-void report_vm_error(const char* file, int line, const char* error_msg,
-                     const char* detail_fmt, ...);
-#endif
 void report_vm_status_error(const char* file, int line, const char* error_msg,
                             int status, const char* detail);
-void report_fatal(const char* file, int line, const char* detail_fmt, ...) ATTRIBUTE_PRINTF(3, 4);
+void report_fatal(VMErrorType error_type, const char* file, int line, const char* detail_fmt, ...) ATTRIBUTE_PRINTF(4, 5);
 void report_vm_out_of_memory(const char* file, int line, size_t size, VMErrorType vm_err_type,
                              const char* detail_fmt, ...) ATTRIBUTE_PRINTF(5, 6);
 void report_should_not_call(const char* file, int line);

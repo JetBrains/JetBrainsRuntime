@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,9 @@
 #include "c1/c1_ValueMap.hpp"
 #include "ci/ciMethodData.hpp"
 #include "runtime/deoptimization.hpp"
+#ifdef ASSERT
+#include "utilities/bitMap.inline.hpp"
+#endif
 
 // Macros for the Trace and the Assertion flag
 #ifdef ASSERT
@@ -225,6 +228,24 @@ void RangeCheckEliminator::Visitor::do_ArithmeticOp(ArithmeticOp *ao) {
     Bound* y_bound = _rce->get_bound(y);
     if (x_bound->lower() >= 0 && x_bound->lower_instr() == NULL && y->as_ArrayLength() != NULL) {
       _bound = new Bound(0, NULL, -1, y);
+    } else if (y->type()->as_IntConstant() && y->type()->as_IntConstant()->value() != 0) {
+      // The binary % operator is said to yield the remainder of its operands from an implied division; the
+      // left-hand operand is the dividend and the right-hand operand is the divisor.
+      //
+      // % operator follows from this rule that the result of the remainder operation can be negative only
+      // if the dividend is negative, and can be positive only if the dividend is positive. Moreover, the
+      // magnitude of the result is always less than the magnitude of the divisor(See JLS 15.17.3).
+      //
+      // So if y is a constant integer and not equal to 0, then we can deduce the bound of remainder operation:
+      // x % -y  ==> [0, y - 1] Apply RCE
+      // x % y   ==> [0, y - 1] Apply RCE
+      // -x % y  ==> [-y + 1, 0]
+      // -x % -y ==> [-y + 1, 0]
+      if (x_bound->has_lower() && x_bound->lower() >= 0) {
+        _bound = new Bound(0, NULL, y->type()->as_IntConstant()->value() - 1, NULL);
+      } else {
+        _bound = new Bound();
+      }
     } else {
       _bound = new Bound();
     }
@@ -344,7 +365,12 @@ void RangeCheckEliminator::update_bound(IntegerStack &pushed, Value v, Instructi
 bool RangeCheckEliminator::loop_invariant(BlockBegin *loop_header, Instruction *instruction) {
   assert(loop_header, "Loop header must not be null!");
   if (!instruction) return true;
-  return instruction->dominator_depth() < loop_header->dominator_depth();
+  for (BlockBegin *d = loop_header->dominator(); d != NULL; d = d->dominator()) {
+    if (d == instruction->block()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // Update bound. Pushes a new bound onto the stack. Tries to do a conjunction with the current bound.
@@ -509,7 +535,7 @@ void RangeCheckEliminator::in_block_motion(BlockBegin *block, AccessIndexedList 
           // Calculate lower bound
           Instruction *lower_compare = index_instruction;
           if (min_constant) {
-            ArithmeticOp *ao = new ArithmeticOp(Bytecodes::_iadd, min_constant, lower_compare, false, NULL);
+            ArithmeticOp *ao = new ArithmeticOp(Bytecodes::_iadd, min_constant, lower_compare, NULL);
             insert_position = insert_position->insert_after_same_bci(ao);
             lower_compare = ao;
           }
@@ -517,7 +543,7 @@ void RangeCheckEliminator::in_block_motion(BlockBegin *block, AccessIndexedList 
           // Calculate upper bound
           Instruction *upper_compare = index_instruction;
           if (max_constant) {
-            ArithmeticOp *ao = new ArithmeticOp(Bytecodes::_iadd, max_constant, upper_compare, false, NULL);
+            ArithmeticOp *ao = new ArithmeticOp(Bytecodes::_iadd, max_constant, upper_compare, NULL);
             insert_position = insert_position->insert_after_same_bci(ao);
             upper_compare = ao;
           }
@@ -639,7 +665,7 @@ Instruction* RangeCheckEliminator::predicate_cmp_with_const(Instruction* instr, 
 Instruction* RangeCheckEliminator::predicate_add(Instruction* left, int left_const, Instruction::Condition cond, Instruction* right, ValueStack* state, Instruction *insert_position, int bci) {
   Constant *constant = new Constant(new IntConstant(left_const));
   insert_position = insert_after(insert_position, constant, bci);
-  ArithmeticOp *ao = new ArithmeticOp(Bytecodes::_iadd, constant, left, false, NULL);
+  ArithmeticOp *ao = new ArithmeticOp(Bytecodes::_iadd, constant, left, NULL);
   insert_position = insert_position->insert_after_same_bci(ao);
   return predicate(ao, cond, right, state, insert_position);
 }
@@ -801,6 +827,15 @@ void RangeCheckEliminator::process_access_indexed(BlockBegin *loop_header, Block
     } else {
       array_bound = get_bound(ai->array());
     }
+
+    TRACE_RANGE_CHECK_ELIMINATION(
+      tty->fill_to(block->dominator_depth()*2);
+      tty->print("Index bound: ");
+      index_bound->print();
+      tty->print(", Array bound: ");
+      array_bound->print();
+      tty->cr();
+    );
 
     if (in_array_bound(index_bound, ai->array()) ||
       (index_bound && array_bound && index_bound->is_smaller(array_bound) && !index_bound->lower_instr() && index_bound->lower() >= 0)) {
@@ -971,7 +1006,7 @@ void RangeCheckEliminator::calc_bounds(BlockBegin *block, BlockBegin *loop_heade
           } else {
             // Has no upper bound
             Instruction *instr = ai->length();
-            if (instr != NULL) instr = ai->array();
+            if (instr == NULL) instr = ai->array();
             update_bound(pushed, ai->index(), Instruction::lss, instr, 0);
           }
         }
@@ -1050,6 +1085,7 @@ void RangeCheckEliminator::dump_condition_stack(BlockBegin *block) {
 }
 #endif
 
+#ifdef ASSERT
 // Verification or the IR
 RangeCheckEliminator::Verification::Verification(IR *ir) : _used(BlockBegin::number_of_blocks(), BlockBegin::number_of_blocks(), false) {
   this->_ir = ir;
@@ -1099,21 +1135,16 @@ void RangeCheckEliminator::Verification::block_do(BlockBegin *block) {
     BlockList *all_blocks = _ir->linear_scan_order();
     assert(block->number_of_preds() >= 1, "Block must have at least one predecessor");
     assert(!block->is_set(BlockBegin::exception_entry_flag), "Loop header must not be exception handler!");
-    // Sometimes, the backbranch comes from an exception handler. In
-    // this case, loop indexes/loop depths may not appear correct.
-    bool loop_through_xhandler = false;
-    for (int i = 0; i < block->number_of_exception_handlers(); i++) {
-      BlockBegin *xhandler = block->exception_handler_at(i);
-      for (int j = 0; j < block->number_of_preds(); j++) {
-        if (dominates(xhandler, block->pred_at(j)) || xhandler == block->pred_at(j)) {
-          loop_through_xhandler = true;
-        }
-      }
-    }
 
+    bool loop_through_xhandler = false;
     for (int i=0; i<block->number_of_sux(); i++) {
       BlockBegin *sux = block->sux_at(i);
-      assert(sux->loop_depth() != block->loop_depth() || sux->loop_index() == block->loop_index() || loop_through_xhandler, "Loop index has to be same");
+      if (!loop_through_xhandler) {
+        if (sux->loop_depth() == block->loop_depth() && sux->loop_index() != block->loop_index()) {
+          loop_through_xhandler = is_backbranch_from_xhandler(block);
+          assert(loop_through_xhandler, "Loop indices have to be the same if same depths but no backbranch from xhandler");
+        }
+      }
       assert(sux->loop_depth() == block->loop_depth() || sux->loop_index() != block->loop_index(), "Loop index has to be different");
     }
 
@@ -1130,6 +1161,54 @@ void RangeCheckEliminator::Verification::block_do(BlockBegin *block) {
     assert(cur->block() == block, "Block begin has to be set correctly!");
     cur = cur->next();
   }
+}
+
+// Called when a successor of a block has the same loop depth but a different loop index. This can happen if a backbranch comes from
+// an exception handler of a loop head block, for example, when a loop is only executed once on the non-exceptional path but is
+// repeated in case of an exception. In this case, the edge block->sux is not critical and was not split before.
+// Check if there is such a backbranch from an xhandler of 'block'.
+bool RangeCheckEliminator::Verification::is_backbranch_from_xhandler(BlockBegin* block) {
+  for (int i = 0; i < block->number_of_exception_handlers(); i++) {
+    BlockBegin *xhandler = block->exception_handler_at(i);
+    for (int j = 0; j < block->number_of_preds(); j++) {
+      if (dominates(xhandler, block->pred_at(j)) || xhandler == block->pred_at(j)) {
+        return true;
+      }
+    }
+  }
+
+  // In case of nested xhandlers, we need to walk through the loop (and all blocks belonging to exception handlers)
+  // to find an xhandler of 'block'.
+  if (block->number_of_exception_handlers() > 0) {
+    for (int i = 0; i < block->number_of_preds(); i++) {
+      BlockBegin* pred = block->pred_at(i);
+      if (pred->loop_index() == block->loop_index()) {
+        // Only check blocks that belong to the loop
+        // Do a BFS to find an xhandler block of 'block' starting from 'pred'
+        ResourceMark rm;
+        ResourceBitMap visited(BlockBegin::number_of_blocks());
+        BlockBeginList list;
+        list.push(pred);
+        while (!list.is_empty()) {
+          BlockBegin* next = list.pop();
+          if (!visited.at(next->block_id())) {
+            visited.set_bit(next->block_id());
+            for (int j = 0; j < block->number_of_exception_handlers(); j++) {
+               if (next == block->exception_handler_at(j)) {
+                 return true;
+               }
+            }
+            for (int j = 0; j < next->number_of_preds(); j++) {
+               if (next->pred_at(j) != block) {
+                 list.push(next->pred_at(j));
+               }
+            }
+          }
+        }
+      }
+    }
+  }
+  return false;
 }
 
 // Loop header must dominate all loop blocks
@@ -1195,6 +1274,7 @@ bool RangeCheckEliminator::Verification::can_reach(BlockBegin *start, BlockBegin
 
   return false;
 }
+#endif // ASSERT
 
 // Bound
 RangeCheckEliminator::Bound::~Bound() {
@@ -1202,7 +1282,6 @@ RangeCheckEliminator::Bound::~Bound() {
 
 // Bound constructor
 RangeCheckEliminator::Bound::Bound() {
-  init();
   this->_lower = min_jint;
   this->_upper = max_jint;
   this->_lower_instr = NULL;
@@ -1211,7 +1290,6 @@ RangeCheckEliminator::Bound::Bound() {
 
 // Bound constructor
 RangeCheckEliminator::Bound::Bound(int lower, Value lower_instr, int upper, Value upper_instr) {
-  init();
   assert(!lower_instr || !lower_instr->as_Constant() || !lower_instr->type()->as_IntConstant(), "Must not be constant!");
   assert(!upper_instr || !upper_instr->as_Constant() || !upper_instr->type()->as_IntConstant(), "Must not be constant!");
   this->_lower = lower;
@@ -1225,7 +1303,6 @@ RangeCheckEliminator::Bound::Bound(Instruction::Condition cond, Value v, int con
   assert(!v || (v->type() && (v->type()->as_IntType() || v->type()->as_ObjectType())), "Type must be array or integer!");
   assert(!v || !v->as_Constant() || !v->type()->as_IntConstant(), "Must not be constant!");
 
-  init();
   if (cond == Instruction::eql) {
     _lower = constant;
     _lower_instr = v;
@@ -1277,10 +1354,6 @@ void RangeCheckEliminator::Bound::set_upper(int value, Value v) {
 void RangeCheckEliminator::Bound::add_constant(int value) {
   this->_lower += value;
   this->_upper += value;
-}
-
-// Init
-void RangeCheckEliminator::Bound::init() {
 }
 
 // or
@@ -1481,7 +1554,7 @@ void RangeCheckEliminator::Bound::add_assertion(Instruction *instruction, Instru
     }
     // Add operation only if necessary
     if (constant) {
-      ArithmeticOp *ao = new ArithmeticOp(Bytecodes::_iadd, constant, op, false, NULL);
+      ArithmeticOp *ao = new ArithmeticOp(Bytecodes::_iadd, constant, op, NULL);
       NOT_PRODUCT(ao->set_printable_bci(position->printable_bci()));
       result = result->insert_after(ao);
       compare_with = ao;
@@ -1519,4 +1592,3 @@ void RangeCheckEliminator::add_assertions(Bound *bound, Instruction *instruction
   }
 }
 #endif
-

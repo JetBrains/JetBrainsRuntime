@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,9 +29,7 @@ package java.util.regex;
  * Unchecked exception thrown to indicate a syntax error in a
  * regular-expression pattern.
  *
- * @author  unascribed
  * @since 1.4
- * @spec JSR-51
  */
 
 public class PatternSyntaxException
@@ -109,7 +107,9 @@ public class PatternSyntaxException
         sb.append(pattern);
         if (index >= 0 && pattern != null && index < pattern.length()) {
             sb.append(System.lineSeparator());
-            for (int i = 0; i < index; i++) sb.append(' ');
+            for (int i = 0; i < index; i++) {
+                sb.append((pattern.charAt(i) == '\t') ? '\t' : ' ');
+            }
             sb.append('^');
         }
         return sb.toString();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.text.MessageFormat;
 import java.util.Locale;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
+import java.util.function.Function;
 
 /**
  * Access to the localizable resources used by a doclet.
@@ -39,50 +40,36 @@ import java.util.ResourceBundle;
  * HTML doclet.
  */
 public class Resources {
-    public final String annotationTypeSummary;
-    public final String classSummary;
-    private final BaseConfiguration configuration;
-    private final String commonBundleName;
-    private final String docletBundleName;
-    public final String enumSummary;
-    public final String errorSummary;
-    public final String exceptionSummary;
-    public final String interfaceSummary;
-    public final String packageSummary;
-    public final String recordSummary;
 
-    protected ResourceBundle commonBundle;
-    protected ResourceBundle docletBundle;
+    protected final ResourceBundle commonBundle;
+    protected final ResourceBundle docletBundle;
+    protected Function<String, String> mapper;
 
     /**
-     * Creates a {@code Resources} to provide access the resource
+     * Creates a {@code Resources} object to provide access the resource
      * bundles used by a doclet.
      *
-     * @param configuration the configuration for the doclet,
-     *  to provide access the locale to be used when accessing the
-     *  names resource bundles.
+     * @param locale           the locale to be used when accessing the
+     *                         resource bundles.
      * @param commonBundleName the name of the bundle containing the strings
-     *  common to all output formats
+     *                         common to all output formats
      * @param docletBundleName the name of the bundle containing the strings
-     *  specific to a particular format
+     *                         specific to a particular format
      */
-    public Resources(BaseConfiguration configuration, String commonBundleName, String docletBundleName) {
-        this.configuration = configuration;
-        this.commonBundleName = commonBundleName;
-        this.docletBundleName = docletBundleName;
-        this.annotationTypeSummary = getText("doclet.Annotation_Types_Summary");
-        this.classSummary = getText("doclet.Class_Summary");
-        this.enumSummary = getText("doclet.Enum_Summary");
-        this.errorSummary = getText("doclet.Error_Summary");
-        this.exceptionSummary = getText("doclet.Exception_Summary");
-        this.interfaceSummary = getText("doclet.Interface_Summary");
-        this.packageSummary = getText("doclet.Package_Summary");
-        this.recordSummary = getText("doclet.Record_Summary");
+    public Resources(Locale locale, String commonBundleName, String docletBundleName) {
+        this.commonBundle = ResourceBundle.getBundle(commonBundleName, locale);
+        this.docletBundle = ResourceBundle.getBundle(docletBundleName, locale);
+    }
+
+    public void setKeyMapper(Function<String, String> mapper) {
+        this.mapper = mapper;
     }
 
     /**
-     * Gets the string for the given key from one of the doclet's
-     * resource bundles.
+     * Returns the string for the given key from one of the doclet's
+     * resource bundles. If the current {@code mapper} is not {@code null},
+     * it will be applied to the {@code key} before looking up the resulting
+     * key in the resource bundle(s).
      *
      * The more specific bundle is checked first;
      * if it is not there, the common bundle is then checked.
@@ -90,18 +77,20 @@ public class Resources {
      * @param key the key for the desired string
      * @return the string for the given key
      * @throws MissingResourceException if the key is not found in either
-     *  bundle.
+     *                                  bundle.
      */
     public String getText(String key) throws MissingResourceException {
-        initBundles();
+        String mKey = mapper == null ? key : mapper.apply(key);
 
-        if (docletBundle.containsKey(key))
-            return docletBundle.getString(key);
+        if (docletBundle.containsKey(mKey))
+            return docletBundle.getString(mKey);
 
-        return commonBundle.getString(key);
+        return commonBundle.getString(mKey);
     }
+
     /**
-     * Gets the string for the given key from one of the doclet's
+     * Returns the string for the given key (after applying the current
+     * {@code mapper} if it is not {@code null}) from one of the doclet's
      * resource bundles, substituting additional arguments into
      * into the resulting string with {@link MessageFormat#format}.
      *
@@ -116,17 +105,5 @@ public class Resources {
      */
     public String getText(String key, Object... args) throws MissingResourceException {
         return MessageFormat.format(getText(key), args);
-    }
-
-    /**
-     * Lazily initializes the bundles. This is (currently) necessary because
-     * this object may be created before the locale to be used is known.
-     */
-    protected void initBundles() {
-        if (commonBundle == null) {
-            Locale locale = configuration.getLocale();
-            this.commonBundle = ResourceBundle.getBundle(commonBundleName, locale);
-            this.docletBundle = ResourceBundle.getBundle(docletBundleName, locale);
-        }
     }
 }

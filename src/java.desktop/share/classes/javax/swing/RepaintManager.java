@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,10 @@ package javax.swing;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.VolatileImage;
+import java.awt.peer.WindowPeer;
 import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -211,15 +214,20 @@ public class RepaintManager
             }
         });
 
-        volatileImageBufferEnabled = "true".equals(AccessController.
+        @SuppressWarnings("removal")
+        var t1 = "true".equals(AccessController.
                 doPrivileged(new GetPropertyAction(
                 "swing.volatileImageBufferEnabled", "true")));
+        volatileImageBufferEnabled = t1;
         boolean headless = GraphicsEnvironment.isHeadless();
         if (volatileImageBufferEnabled && headless) {
             volatileImageBufferEnabled = false;
         }
-        nativeDoubleBuffering = "true".equals(AccessController.doPrivileged(
+        @SuppressWarnings("removal")
+        var t2 = "true".equals(AccessController.doPrivileged(
                     new GetPropertyAction("awt.nativeDoubleBuffering")));
+        nativeDoubleBuffering = t2;
+        @SuppressWarnings("removal")
         String bs = AccessController.doPrivileged(
                           new GetPropertyAction("swing.bufferPerWindow"));
         if (headless) {
@@ -234,8 +242,10 @@ public class RepaintManager
         else {
             BUFFER_STRATEGY_TYPE = BUFFER_STRATEGY_SPECIFIED_OFF;
         }
-        HANDLE_TOP_LEVEL_PAINT = "true".equals(AccessController.doPrivileged(
+        @SuppressWarnings("removal")
+        var t3 = "true".equals(AccessController.doPrivileged(
                new GetPropertyAction("swing.handleTopLevelPaint", "true")));
+        HANDLE_TOP_LEVEL_PAINT = t3;
         GraphicsEnvironment ge = GraphicsEnvironment.
                 getLocalGraphicsEnvironment();
         if (ge instanceof SunGraphicsEnvironment) {
@@ -420,7 +430,7 @@ public class RepaintManager
      *
      * @see JComponent#repaint
      */
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("removal")
     private void addDirtyRegion0(Container c, int x, int y, int w, int h) {
         /* Special cases we don't have to bother with.
          */
@@ -538,12 +548,13 @@ public class RepaintManager
      * <a href="../../java/applet/package-summary.html"> java.applet package
      * documentation</a> for further information.
      */
-    @Deprecated(since = "9")
+    @Deprecated(since = "9", forRemoval = true)
+    @SuppressWarnings("removal")
     public void addDirtyRegion(Applet applet, int x, int y, int w, int h) {
         addDirtyRegion0(applet, x, y, w, h);
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("removal")
     void scheduleHeavyWeightPaints() {
         Map<Container,Rectangle> hws;
 
@@ -605,7 +616,9 @@ public class RepaintManager
             }
             runnableList.add(new Runnable() {
                 public void run() {
+                    @SuppressWarnings("removal")
                     AccessControlContext stack = AccessController.getContext();
+                    @SuppressWarnings("removal")
                     AccessControlContext acc =
                         AWTAccessor.getComponentAccessor().getAccessControlContext(c);
                     javaSecurityAccess.doIntersectionPrivilege(new PrivilegedAction<Void>() {
@@ -736,7 +749,9 @@ public class RepaintManager
         int n = ic.size();
         for(int i = 0; i < n; i++) {
             final Component c = ic.get(i);
+            @SuppressWarnings("removal")
             AccessControlContext stack = AccessController.getContext();
+            @SuppressWarnings("removal")
             AccessControlContext acc =
                 AWTAccessor.getComponentAccessor().getAccessControlContext(c);
             javaSecurityAccess.doIntersectionPrivilege(
@@ -842,7 +857,9 @@ public class RepaintManager
             for (int j=0 ; j < count.get(); j++) {
                 final int i = j;
                 final Component dirtyComponent = roots.get(j);
+                @SuppressWarnings("removal")
                 AccessControlContext stack = AccessController.getContext();
+                @SuppressWarnings("removal")
                 AccessControlContext acc =
                     AWTAccessor.getComponentAccessor().getAccessControlContext(dirtyComponent);
                 javaSecurityAccess.doIntersectionPrivilege(new PrivilegedAction<Void>() {
@@ -1211,8 +1228,15 @@ public class RepaintManager
                     GraphicsConfiguration gc = gd.getDefaultConfiguration();
                     virtualBounds = virtualBounds.union(gc.getBounds());
                 }
-                doubleBufferMaxSize = new Dimension(virtualBounds.width,
-                                                    virtualBounds.height);
+                doubleBufferMaxSize =
+                        // Sometimes underlying desktop environment reports
+                        // incorrect gc bounds (w=0,h=0). Replace them with
+                        // maximum values (as we do for headless mode)
+                    new Dimension(
+                            virtualBounds.width == 0 ?
+                                    Integer.MAX_VALUE : virtualBounds.width,
+                            virtualBounds.height == 0 ?
+                                    Integer.MAX_VALUE : virtualBounds.height);
             } catch (HeadlessException e) {
                 doubleBufferMaxSize = new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE);
             }
@@ -1611,7 +1635,8 @@ public class RepaintManager
          */
         protected void paintDoubleBuffered(JComponent c, Image image,
                 Graphics g, int clipX, int clipY,
-                int clipW, int clipH) {
+                int clipW, int clipH)
+        {
             if (image instanceof VolatileImage && isPixelsCopying(c, g)) {
                 paintDoubleBufferedFPScales(c, image, g, clipX, clipY, clipW, clipH);
             } else {

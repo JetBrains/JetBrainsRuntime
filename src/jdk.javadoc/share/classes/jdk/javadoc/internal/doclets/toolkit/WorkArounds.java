@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,9 +25,7 @@
 
 package jdk.javadoc.internal.doclets.toolkit;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,18 +41,14 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
+import javax.lang.model.util.Types;
 import javax.tools.FileObject;
 import javax.tools.JavaFileManager.Location;
 
-import com.sun.source.tree.CompilationUnitTree;
-import com.sun.source.util.JavacTask;
 import com.sun.source.util.TreePath;
-import com.sun.tools.doclint.DocLint;
-import com.sun.tools.javac.api.BasicJavacTask;
 import com.sun.tools.javac.code.Attribute;
 import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.Scope;
-import com.sun.tools.javac.code.Source.Feature;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Symbol.ClassSymbol;
 import com.sun.tools.javac.code.Symbol.MethodSymbol;
@@ -65,8 +59,8 @@ import com.sun.tools.javac.code.TypeTag;
 import com.sun.tools.javac.comp.AttrContext;
 import com.sun.tools.javac.comp.Env;
 import com.sun.tools.javac.model.JavacElements;
-import com.sun.tools.javac.model.JavacTypes;
 import com.sun.tools.javac.util.Names;
+import com.sun.tools.javac.util.Options;
 
 import jdk.javadoc.internal.doclets.toolkit.util.Utils;
 import jdk.javadoc.internal.tool.ToolEnvironment;
@@ -93,75 +87,36 @@ public class WorkArounds {
     public final BaseConfiguration configuration;
     public final ToolEnvironment toolEnv;
     public final Utils utils;
-
-    private DocLint doclint;
+    public final Elements elementUtils;
+    public final Types typeUtils;
+    public final com.sun.tools.javac.code.Types javacTypes;
 
     public WorkArounds(BaseConfiguration configuration) {
         this.configuration = configuration;
         this.utils = this.configuration.utils;
-        this.toolEnv = ((DocEnvImpl)this.configuration.docEnv).toolEnv;
-    }
 
-    Map<CompilationUnitTree, Boolean> shouldCheck = new HashMap<>();
-    // TODO: fix this up correctly
-    public void runDocLint(TreePath path) {
-        CompilationUnitTree unit = path.getCompilationUnit();
-        if (doclint != null && shouldCheck.computeIfAbsent(unit, doclint::shouldCheck)) {
-            doclint.scan(path);
-        }
-    }
+        elementUtils = configuration.docEnv.getElementUtils();
+        typeUtils = configuration.docEnv.getTypeUtils();
 
-    // TODO: fix this up correctly
-    public void initDocLint(Collection<String> opts, Collection<String> customTagNames) {
-        ArrayList<String> doclintOpts = new ArrayList<>();
-        boolean msgOptionSeen = false;
-
-        for (String opt : opts) {
-            if (opt.startsWith(DocLint.XMSGS_OPTION)) {
-                if (opt.equals(DocLint.XMSGS_CUSTOM_PREFIX + "none"))
-                    return;
-                msgOptionSeen = true;
-            }
-            doclintOpts.add(opt);
-        }
-
-        if (!msgOptionSeen) {
-            doclintOpts.add(DocLint.XMSGS_OPTION);
-        }
-
-        String sep = "";
-        StringBuilder customTags = new StringBuilder();
-        for (String customTag : customTagNames) {
-            customTags.append(sep);
-            customTags.append(customTag);
-            sep = DocLint.SEPARATOR;
-        }
-        doclintOpts.add(DocLint.XCUSTOM_TAGS_PREFIX + customTags.toString());
-        doclintOpts.add(DocLint.XHTML_VERSION_PREFIX + "html5");
-
-        JavacTask t = BasicJavacTask.instance(toolEnv.context);
-        doclint = new DocLint();
-        doclint.init(t, doclintOpts.toArray(new String[doclintOpts.size()]), false);
-    }
-
-    // TODO: fix this up correctly
-    public boolean haveDocLint() {
-        return (doclint == null);
+        // Note: this one use of DocEnvImpl is what prevents us tunnelling extra
+        // info from a doclet to its taglets via a doclet-specific subtype of
+        // DocletEnvironment.
+        toolEnv = ((DocEnvImpl)this.configuration.docEnv).toolEnv;
+        javacTypes = toolEnv.getTypes();
     }
 
     /*
      * TODO: This method exists because of a bug in javac which does not
-     * handle "@deprecated tag in package-info.java", when this issue
-     * is fixed this method and its uses must be jettisoned.
+     *       handle "@deprecated tag in package-info.java", when this issue
+     *       is fixed this method and its uses must be jettisoned.
      */
     public boolean isDeprecated0(Element e) {
         if (!utils.getDeprecatedTrees(e).isEmpty()) {
             return true;
         }
-        JavacTypes jctypes = ((DocEnvImpl)configuration.docEnv).toolEnv.typeutils;
         TypeMirror deprecatedType = utils.getDeprecatedType();
         for (AnnotationMirror anno : e.getAnnotationMirrors()) {
-            if (jctypes.isSameType(anno.getAnnotationType().asElement().asType(), deprecatedType))
+            if (typeUtils.isSameType(anno.getAnnotationType().asElement().asType(), deprecatedType))
                 return true;
         }
         return false;
@@ -172,22 +127,9 @@ public class WorkArounds {
         return ((Attribute)aDesc).isSynthesized();
     }
 
-    // TODO: fix the caller
-    public Object getConstValue(VariableElement ve) {
-        return ((VarSymbol)ve).getConstValue();
-    }
-
     // TODO: DocTrees: Trees.getPath(Element e) is slow a factor 4-5 times.
     public Map<Element, TreePath> getElementToTreePath() {
         return toolEnv.elementToTreePath;
-    }
-
-    // TODO: we need ElementUtils.getPackage to cope with input strings
-    // to return the proper unnamedPackage for all supported releases.
-    PackageElement getUnnamedPackage() {
-        return (Feature.MODULES.allowedInSource(toolEnv.source))
-                ? toolEnv.syms.unnamedModule.unnamedPackage
-                : toolEnv.syms.noModule.unnamedPackage;
     }
 
     // TODO: implement in either jx.l.m API (preferred) or DocletEnvironment.
@@ -202,7 +144,7 @@ public class WorkArounds {
         // search by qualified name in current module first
         ModuleElement me = utils.containingModule(klass);
         if (me != null) {
-            te = configuration.docEnv.getElementUtils().getTypeElement(me, className);
+            te = elementUtils.getTypeElement(me, className);
             if (te != null) {
                 return te;
             }
@@ -254,17 +196,12 @@ public class WorkArounds {
         }
 
         // finally, search by qualified name in all modules
-        te = configuration.docEnv.getElementUtils().getTypeElement(className);
-        if (te != null) {
-            return te;
-        }
-
-        return null; // not found
+        return elementUtils.getTypeElement(className);
     }
 
     // TODO:  need to re-implement this using j.l.m. correctly!, this has
-    // implications on testInterface, the note here is that javac's supertype
-    // does the right thing returning Parameters in scope.
+    //        implications on testInterface, the note here is that javac's supertype
+    //        does the right thing returning Parameters in scope.
     /**
      * Return the type containing the method that this method overrides.
      * It may be a <code>TypeElement</code> or a <code>TypeParameterElement</code>.
@@ -275,14 +212,14 @@ public class WorkArounds {
         if (utils.isStatic(method)) {
             return null;
         }
-        MethodSymbol sym = (MethodSymbol)method;
+        MethodSymbol sym = (MethodSymbol) method;
         ClassSymbol origin = (ClassSymbol) sym.owner;
-        for (com.sun.tools.javac.code.Type t = toolEnv.getTypes().supertype(origin.type);
+        for (com.sun.tools.javac.code.Type t = javacTypes.supertype(origin.type);
                 t.hasTag(TypeTag.CLASS);
-                t = toolEnv.getTypes().supertype(t)) {
+                t = javacTypes.supertype(t)) {
             ClassSymbol c = (ClassSymbol) t.tsym;
             for (com.sun.tools.javac.code.Symbol sym2 : c.members().getSymbolsByName(sym.name)) {
-                if (sym.overrides(sym2, origin, toolEnv.getTypes(), true)) {
+                if (sym.overrides(sym2, origin, javacTypes, true)) {
                     // Ignore those methods that may be a simple override
                     // and allow the real API method to be found.
                     if (sym2.type.hasTag(TypeTag.METHOD) &&
@@ -317,10 +254,10 @@ public class WorkArounds {
                !rider.isStatic() &&
 
                // Symbol.overrides assumes the following
-               ridee.isMemberOf(origin, toolEnv.getTypes()) &&
+               ridee.isMemberOf(origin, javacTypes) &&
 
                // check access, signatures and check return types
-               rider.overrides(ridee, origin, toolEnv.getTypes(), true);
+               rider.overrides(ridee, origin, javacTypes, true);
     }
 
     // TODO: jx.l.m ?
@@ -409,8 +346,8 @@ public class WorkArounds {
         NewSerializedForm(Utils utils, Elements elements, TypeElement te) {
             this.utils = utils;
             this.elements = elements;
-            methods = new TreeSet<>(utils.makeGeneralPurposeComparator());
-            fields = new TreeSet<>(utils.makeGeneralPurposeComparator());
+            methods = new TreeSet<>(utils.comparators.makeGeneralPurposeComparator());
+            fields = new TreeSet<>(utils.comparators.makeGeneralPurposeComparator());
             if (utils.isExternalizable(te)) {
                 /* look up required public accessible methods,
                  *   writeExternal and readExternal.
@@ -422,7 +359,7 @@ public class WorkArounds {
                 if (md != null) {
                     methods.add(md);
                 }
-                md = findMethod((ClassSymbol) te, "writeExternal", Arrays.asList(writeExternalParamArr));
+                md = findMethod(te, "writeExternal", Arrays.asList(writeExternalParamArr));
                 if (md != null) {
                     methods.add(md);
                 }
@@ -434,7 +371,7 @@ public class WorkArounds {
                      * serialField tag.
                      */
                     definesSerializableFields = true;
-                    fields.add((VariableElement) dsf);
+                    fields.add(dsf);
                 } else {
 
                     /* Calculate default Serializable fields as all
@@ -573,9 +510,36 @@ public class WorkArounds {
     public PackageElement getAbbreviatedPackageElement(PackageElement pkg) {
         String parsedPackageName = utils.parsePackageName(pkg);
         ModuleElement encl = (ModuleElement) pkg.getEnclosingElement();
-        PackageElement abbrevPkg = encl == null
+        return encl == null
                 ? utils.elementUtils.getPackageElement(parsedPackageName)
                 : ((JavacElements) utils.elementUtils).getPackageElement(encl, parsedPackageName);
-        return abbrevPkg;
     }
+
+    public boolean isPreviewAPI(Element el) {
+        Symbol sym = (Symbol) el;
+        return (sym.flags() & Flags.PREVIEW_API) != 0;
+    }
+
+    public boolean isReflectivePreviewAPI(Element el) {
+        Symbol sym = (Symbol) el;
+        return (sym.flags() & Flags.PREVIEW_REFLECTIVE) != 0;
+    }
+
+    /**
+     * Returns whether or not to permit dynamically loaded components to access
+     * part of the javadoc internal API. The flag is the same (hidden) compiler
+     * option that allows javac plugins and annotation processors to access
+     * javac internal API.
+     *
+     * As with all workarounds, it is better to consider updating the public API,
+     * rather than relying on undocumented features like this, that may be withdrawn
+     * at any time, without notice.
+     *
+     * @return true if access is permitted to internal API
+     */
+    public boolean accessInternalAPI() {
+        Options compilerOptions = Options.instance(toolEnv.context);
+        return compilerOptions.isSet("accessInternalAPI");
+    }
+
 }

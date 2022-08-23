@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,33 +24,36 @@ package nsk.jvmti.ResourceExhausted;
 
 import java.io.*;
 import java.util.Random;
+import jdk.test.lib.Utils;
 
 import nsk.share.Consts;
+import jtreg.SkippedException;
 
 public class resexhausted004 {
     public static int run(String args[], PrintStream out) {
 
-        Random selector = new Random(System.currentTimeMillis());
+        Random selector = Utils.getRandomInstance();
         int r;
 
         for ( int i = 4 + selector.nextInt() & 3; i > 0; i-- ) {
-            switch ( selector.nextInt() % 3 ) {
+            try {
+                switch (selector.nextInt() % 3) {
                 case 0:
                     r = resexhausted001.run(args, out);
-                    if ( r != Consts.TEST_PASSED )
-                        return r;
                     break;
                 case 1:
                     r = resexhausted002.run(args, out);
-                    if ( r != Consts.TEST_PASSED )
-                        return r;
                     break;
                 default:
                     r = resexhausted003.run(args, out);
-                    if ( r != Consts.TEST_PASSED )
-                        return r;
                     break;
-           }
+                }
+                if (r != Consts.TEST_PASSED) {
+                    return r;
+                }
+            } catch (SkippedException ex) {
+                // it's ok
+            }
        }
 
        return Consts.TEST_PASSED;

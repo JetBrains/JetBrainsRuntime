@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2016, 2019 SAP SE. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@
 #include "interpreter/interpreterRuntime.hpp"
 #include "oops/arrayOop.hpp"
 #include "oops/markWord.hpp"
+#include "oops/methodData.hpp"
 #include "prims/jvmtiExport.hpp"
 #include "prims/jvmtiThreadState.hpp"
 #include "runtime/basicLock.hpp"
@@ -42,6 +43,7 @@
 #include "runtime/safepointMechanism.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/thread.inline.hpp"
+#include "utilities/powerOfTwo.hpp"
 
 // Implementation of InterpreterMacroAssembler.
 // This file specializes the assembler with interpreter-specific macros.
@@ -115,11 +117,11 @@ void InterpreterMacroAssembler::dispatch_base(TosState state, address* table, bo
   // Dispatch table to use.
   load_absolute_address(Z_tmp_1, (address)table);  // Z_tmp_1 = table;
 
-  if (SafepointMechanism::uses_thread_local_poll() && generate_poll) {
+  if (generate_poll) {
     address *sfpt_tbl = Interpreter::safept_table(state);
     if (table != sfpt_tbl) {
       Label dispatch;
-      const Address poll_byte_addr(Z_thread, in_bytes(Thread::polling_page_offset()) + 7 /* Big Endian */);
+      const Address poll_byte_addr(Z_thread, in_bytes(JavaThread::polling_word_offset()) + 7 /* Big Endian */);
       // Armed page has poll_bit set, if poll bit is cleared just continue.
       z_tm(poll_byte_addr, SafepointMechanism::poll_bit());
       z_braz(dispatch);
@@ -967,8 +969,7 @@ void InterpreterMacroAssembler::remove_activation(TosState state,
 void InterpreterMacroAssembler::lock_object(Register monitor, Register object) {
 
   if (UseHeavyMonitors) {
-    call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter),
-            monitor, /*check_for_exceptions=*/false);
+    call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter), monitor);
     return;
   }
 
@@ -997,6 +998,12 @@ void InterpreterMacroAssembler::lock_object(Register monitor, Register object) {
 
   // Load markWord from object into displaced_header.
   z_lg(displaced_header, oopDesc::mark_offset_in_bytes(), object);
+
+  if (DiagnoseSyncOnValueBasedClasses != 0) {
+    load_klass(Z_R1_scratch, object);
+    testbit(Address(Z_R1_scratch, Klass::access_flags_offset()), exact_log2(JVM_ACC_IS_VALUE_BASED_CLASS));
+    z_btrue(slow_case);
+  }
 
   if (UseBiasedLocking) {
     biased_locking_enter(object, displaced_header, Z_R1, Z_R0, done, &slow_case);
@@ -1053,9 +1060,7 @@ void InterpreterMacroAssembler::lock_object(Register monitor, Register object) {
   // None of the above fast optimizations worked so we have to get into the
   // slow case of monitor enter.
   bind(slow_case);
-
-  call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter),
-          monitor, /*check_for_exceptions=*/false);
+  call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter), monitor);
 
   // }
 
@@ -1072,7 +1077,7 @@ void InterpreterMacroAssembler::lock_object(Register monitor, Register object) {
 void InterpreterMacroAssembler::unlock_object(Register monitor, Register object) {
 
   if (UseHeavyMonitors) {
-    call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorexit), monitor);
+    call_VM_leaf(CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorexit), monitor);
     return;
   }
 
@@ -1087,7 +1092,7 @@ void InterpreterMacroAssembler::unlock_object(Register monitor, Register object)
   //   monitor->set_obj(NULL);
   // } else {
   //   // Slow path.
-  //   InterpreterRuntime::monitorexit(THREAD, monitor);
+  //   InterpreterRuntime::monitorexit(monitor);
   // }
 
   const Register displaced_header = Z_ARG4;
@@ -1141,12 +1146,12 @@ void InterpreterMacroAssembler::unlock_object(Register monitor, Register object)
 
   // } else {
   //   // Slow path.
-  //   InterpreterRuntime::monitorexit(THREAD, monitor);
+  //   InterpreterRuntime::monitorexit(monitor);
 
   // The lock has been converted into a heavy lock and hence
   // we need to get into the slow case.
   z_stg(object, obj_entry);   // Restore object entry, has been cleared above.
-  call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorexit), monitor);
+  call_VM_leaf(CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorexit), monitor);
 
   // }
 
@@ -1801,11 +1806,11 @@ void InterpreterMacroAssembler::profile_return_type(Register mdp, Register ret, 
       get_method(tmp);
       // Supplement to 8139891: _intrinsic_id exceeded 1-byte size limit.
       if (Method::intrinsic_id_size_in_bytes() == 1) {
-        z_cli(Method::intrinsic_id_offset_in_bytes(), tmp, vmIntrinsics::_compiledLambdaForm);
+        z_cli(Method::intrinsic_id_offset_in_bytes(), tmp, static_cast<int>(vmIntrinsics::_compiledLambdaForm));
       } else {
         assert(Method::intrinsic_id_size_in_bytes() == 2, "size error: check Method::_intrinsic_id");
         z_lh(tmp, Method::intrinsic_id_offset_in_bytes(), Z_R0, tmp);
-        z_chi(tmp, vmIntrinsics::_compiledLambdaForm);
+        z_chi(tmp, static_cast<int>(vmIntrinsics::_compiledLambdaForm));
       }
       z_brne(profile_continue);
 

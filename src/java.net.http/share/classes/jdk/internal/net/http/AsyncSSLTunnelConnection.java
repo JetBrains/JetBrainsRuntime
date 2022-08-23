@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import java.util.function.Function;
 import jdk.internal.net.http.common.MinimalFuture;
 import jdk.internal.net.http.common.SSLTube;
 import jdk.internal.net.http.common.Utils;
+import static jdk.internal.net.http.common.Utils.ProxyHeaders;
 
 /**
  * An SSL tunnel built on a Plain (CONNECT) TCP tunnel.
@@ -47,7 +48,7 @@ class AsyncSSLTunnelConnection extends AbstractAsyncSSLConnection {
                              HttpClientImpl client,
                              String[] alpn,
                              InetSocketAddress proxy,
-                             HttpHeaders proxyHeaders)
+                             ProxyHeaders proxyHeaders)
     {
         super(addr, client, Utils.getServerName(addr), addr.getPort(), alpn);
         this.plainConnection = new PlainTunnelingConnection(addr, proxy, client, proxyHeaders);
@@ -121,6 +122,11 @@ class AsyncSSLTunnelConnection extends AbstractAsyncSSLConnection {
     @Override
     boolean isProxied() {
         return true;
+    }
+
+    @Override
+    InetSocketAddress proxy() {
+        return plainConnection.proxyAddr;
     }
 
     @Override

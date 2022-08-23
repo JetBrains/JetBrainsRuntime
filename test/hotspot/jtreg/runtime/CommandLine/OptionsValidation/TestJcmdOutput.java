@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,7 @@
  * @modules java.base/jdk.internal.misc
  *          java.management
  *          jdk.management
- * @run main TestJcmdOutput
+ * @run driver TestJcmdOutput
  */
 
 import jdk.test.lib.Asserts;
@@ -63,8 +63,8 @@ public class TestJcmdOutput {
     public static class runJcmd {
 
         public static void main(String[] args) throws Exception {
-            int minHeapFreeRatio = new Integer((new DynamicVMOption("MinHeapFreeRatio")).getValue());
-            int maxHeapFreeRatio = new Integer((new DynamicVMOption("MaxHeapFreeRatio")).getValue());
+            int minHeapFreeRatio = Integer.valueOf((new DynamicVMOption("MinHeapFreeRatio")).getValue());
+            int maxHeapFreeRatio = Integer.valueOf((new DynamicVMOption("MaxHeapFreeRatio")).getValue());
             PidJcmdExecutor executor = new PidJcmdExecutor();
 
             Asserts.assertGT(minHeapFreeRatio, 0, "MinHeapFreeRatio must be greater than 0");

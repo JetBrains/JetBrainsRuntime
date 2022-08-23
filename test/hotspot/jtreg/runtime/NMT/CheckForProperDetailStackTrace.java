@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,16 +24,19 @@
  /*
  * @test
  * @bug 8133747 8218458
- * @key nmt
  * @summary Running with NMT detail should produce expected stack traces.
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management
+ * @compile ../modules/CompilerUtils.java
+ * @run driver CheckForProperDetailStackTrace
  */
 
 import jdk.test.lib.Platform;
 import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.process.OutputAnalyzer;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -49,12 +52,17 @@ import java.util.regex.Pattern;
  * through this test and update it accordingly.
  */
 public class CheckForProperDetailStackTrace {
+    private static final String TEST_SRC = System.getProperty("test.src");
+    private static final String TEST_CLASSES = System.getProperty("test.classes");
+
+    private static final Path SRC_DIR = Paths.get(TEST_SRC, "src");
+    private static final Path MODS_DIR = Paths.get(TEST_CLASSES, "mods");
 
     /* The stack trace we look for by default. Note that :: has been replaced by .*
        to make sure it matches even if the symbol is not unmangled.
     */
     private static String stackTraceDefault =
-        ".*Hashtable.*allocate_new_entry.*\n" +
+        ".*Hashtable.*new_entry.*\n" +
         ".*ModuleEntryTable.*new_entry.*\n" +
         ".*ModuleEntryTable.*locked_create_entry.*\n" +
         ".*Modules.*define_module.*\n";
@@ -63,12 +71,12 @@ public class CheckForProperDetailStackTrace {
        new_entry may be inlined.
     */
     private static String stackTraceAlternate =
-        ".*Hashtable.*allocate_new_entry.*\n" +
+        ".*Hashtable.*new_entry.*\n" +
         ".*ModuleEntryTable.*locked_create_entry.*\n" +
         ".*Modules.*define_module.*\n" +
         ".*JVM_DefineModule.*\n";
 
-    /* The stack trace we look for on AIX, Solaris and Windows slowdebug builds.
+    /* The stack trace we look for on AIX and Windows slowdebug builds.
        ALWAYSINLINE is only a hint and is ignored for AllocateHeap on the
        aforementioned platforms. When that happens allocate_new_entry is
        inlined instead.
@@ -83,11 +91,24 @@ public class CheckForProperDetailStackTrace {
     private static String expectedSymbol = "locked_create_entry";
 
     public static void main(String args[]) throws Exception {
+        boolean compiled;
+        // Compile module jdk.test declaration
+        compiled = CompilerUtils.compile(
+            SRC_DIR.resolve("jdk.test"),
+            MODS_DIR.resolve("jdk.test"));
+        if (!compiled) {
+            throw new RuntimeException("Test failed to compile module jdk.test");
+        }
+
+        // If modules in the system image have been archived in CDS, they will not be
+        // created again at run time. Explicitly use an external module to make sure
+        // we have a runtime-defined ModuleEntry
         ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
             "-XX:+UnlockDiagnosticVMOptions",
             "-XX:NativeMemoryTracking=detail",
             "-XX:+PrintNMTStatistics",
-            "-version");
+            "-p", MODS_DIR.toString(),
+            "-m", "jdk.test/test.Main");
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
 
         output.shouldHaveExitValue(0);
@@ -97,10 +118,10 @@ public class CheckForProperDetailStackTrace {
         output.shouldNotContain("os::get_native_stack");
 
         // AllocateHeap shouldn't be in the output because it is supposed to always be inlined.
-        // We check for that here, but allow it for Aix, Solaris and Windows slowdebug builds
+        // We check for that here, but allow it for Aix and Windows slowdebug builds
         // because the compiler ends up not inlining AllocateHeap.
         Boolean okToHaveAllocateHeap = Platform.isSlowDebugBuild() &&
-                                       (Platform.isAix() || Platform.isSolaris() || Platform.isWindows());
+                                       (Platform.isAix() || Platform.isWindows());
         if (!okToHaveAllocateHeap) {
             output.shouldNotContain("AllocateHeap");
         }

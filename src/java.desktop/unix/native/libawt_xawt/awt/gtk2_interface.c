@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+#ifdef HEADLESS
+    #error This file should not be included in headless library
+#endif
+
 #include <dlfcn.h>
 #include <setjmp.h>
 #include <X11/Xlib.h>
@@ -142,10 +147,6 @@ static void (*fp_gtk_paint_arrow)(GtkStyle* style, GdkWindow* window,
         GdkRectangle* area, GtkWidget* widget, const gchar* detail,
         GtkArrowType arrow_type, gboolean fill, gint x, gint y,
         gint width, gint height);
-static void (*fp_gtk_paint_diamond)(GtkStyle* style, GdkWindow* window,
-        GtkStateType state_type, GtkShadowType shadow_type,
-        GdkRectangle* area, GtkWidget* widget, const gchar* detail,
-        gint x, gint y, gint width, gint height);
 static void (*fp_gtk_paint_box)(GtkStyle* style, GdkWindow* window,
         GtkStateType state_type, GtkShadowType shadow_type,
         GdkRectangle* area, GtkWidget* widget, const gchar* detail,
@@ -590,7 +591,6 @@ GtkApi* gtk2_load(JNIEnv *env, const char* lib_name)
         fp_gtk_paint_vline = dl_symbol("gtk_paint_vline");
         fp_gtk_paint_shadow = dl_symbol("gtk_paint_shadow");
         fp_gtk_paint_arrow = dl_symbol("gtk_paint_arrow");
-        fp_gtk_paint_diamond = dl_symbol("gtk_paint_diamond");
         fp_gtk_paint_box = dl_symbol("gtk_paint_box");
         fp_gtk_paint_flat_box = dl_symbol("gtk_paint_flat_box");
         fp_gtk_paint_check = dl_symbol("gtk_paint_check");
@@ -1012,45 +1012,46 @@ static gint gtk2_copy_image(gint *dst, gint width, gint height)
     black = (*fp_gdk_pixbuf_get_pixels)(gtk2_black_pixbuf);
     stride = (*fp_gdk_pixbuf_get_rowstride)(gtk2_black_pixbuf);
     padding = stride - width * 4;
+    if (padding >= 0 && stride > 0) {
+        for (i = 0; i < height; i++) {
+            for (j = 0; j < width; j++) {
+                int r1 = *white++;
+                int r2 = *black++;
+                int alpha = 0xff + r2 - r1;
 
-    for (i = 0; i < height; i++) {
-        for (j = 0; j < width; j++) {
-            int r1 = *white++;
-            int r2 = *black++;
-            int alpha = 0xff + r2 - r1;
+                switch (alpha) {
+                    case 0:       /* transparent pixel */
+                        r = g = b = 0;
+                        black += 3;
+                        white += 3;
+                        is_opaque = FALSE;
+                        break;
 
-            switch (alpha) {
-                case 0:       /* transparent pixel */
-                    r = g = b = 0;
-                    black += 3;
-                    white += 3;
-                    is_opaque = FALSE;
-                    break;
+                    case 0xff:    /* opaque pixel */
+                        r = r2;
+                        g = *black++;
+                        b = *black++;
+                        black++;
+                        white += 3;
+                        break;
 
-                case 0xff:    /* opaque pixel */
-                    r = r2;
-                    g = *black++;
-                    b = *black++;
-                    black++;
-                    white += 3;
-                    break;
+                    default:      /* translucent pixel */
+                        r = 0xff * r2 / alpha;
+                        g = 0xff * *black++ / alpha;
+                        b = 0xff * *black++ / alpha;
+                        black++;
+                        white += 3;
+                        is_opaque = FALSE;
+                        is_bitmask = FALSE;
+                        break;
+                }
 
-                default:      /* translucent pixel */
-                    r = 0xff * r2 / alpha;
-                    g = 0xff * *black++ / alpha;
-                    b = 0xff * *black++ / alpha;
-                    black++;
-                    white += 3;
-                    is_opaque = FALSE;
-                    is_bitmask = FALSE;
-                    break;
+                *dst++ = (alpha << 24 | r << 16 | g << 8 | b);
             }
 
-            *dst++ = (alpha << 24 | r << 16 | g << 8 | b);
+            white += padding;
+            black += padding;
         }
-
-        white += padding;
-        black += padding;
     }
     return is_opaque ? java_awt_Transparency_OPAQUE :
                        (is_bitmask ? java_awt_Transparency_BITMASK :
@@ -1844,19 +1845,6 @@ static void gtk2_paint_check(WidgetType widget_type, gint synth_state,
             x, y, width, height);
 }
 
-static void gtk2_paint_diamond(WidgetType widget_type, GtkStateType state_type,
-        GtkShadowType shadow_type, const gchar *detail,
-        gint x, gint y, gint width, gint height)
-{
-    gtk2_widget = gtk2_get_widget(widget_type);
-    (*fp_gtk_paint_diamond)(gtk2_widget->style, gtk2_white_pixmap, state_type,
-            shadow_type, NULL, gtk2_widget, detail,
-            x, y, width, height);
-    (*fp_gtk_paint_diamond)(gtk2_widget->style, gtk2_black_pixmap, state_type,
-            shadow_type, NULL, gtk2_widget, detail,
-            x, y, width, height);
-}
-
 static void gtk2_paint_expander(WidgetType widget_type, GtkStateType state_type,
         const gchar *detail, gint x, gint y, gint width, gint height,
         GtkExpanderStyle expander_style)
@@ -2473,6 +2461,8 @@ static jobject gtk2_get_setting(JNIEnv *env, Setting property)
             return get_string_property(env, settings, "gtk-font-name");
         case GTK_ICON_SIZES:
             return get_string_property(env, settings, "gtk-icon-sizes");
+        case GTK_XFT_DPI:
+            return get_integer_property(env, settings, "gtk-xft-dpi");
         case GTK_CURSOR_BLINK:
             return get_boolean_property(env, settings, "gtk-cursor-blink");
         case GTK_CURSOR_BLINK_TIME:
@@ -2523,7 +2513,7 @@ static gboolean gtk2_get_drawable_data(JNIEnv *env, jintArray pixelArray, jint x
                 int index;
                 for (_y = 0; _y < height; _y++) {
                     for (_x = 0; _x < width; _x++) {
-                        p = pix + _y * stride + _x * nchan;
+                        p = pix + (intptr_t) _y * stride + _x * nchan;
 
                         index = (_y + dy) * jwidth + (_x + dx);
                         ary[index] = 0xff000000

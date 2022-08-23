@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -105,6 +105,7 @@ public class AnnotationType {
         if (!annotationClass.isAnnotation())
             throw new IllegalArgumentException("Not an annotation type");
 
+        @SuppressWarnings("removal")
         Method[] methods =
             AccessController.doPrivileged(new PrivilegedAction<>() {
                 public Method[] run() {
@@ -121,7 +122,7 @@ public class AnnotationType {
             if (Modifier.isPublic(method.getModifiers()) &&
                 Modifier.isAbstract(method.getModifiers()) &&
                 !method.isSynthetic()) {
-                if (method.getParameterTypes().length != 0) {
+                if (method.getParameterCount() != 0) {
                     throw new IllegalArgumentException(method + " has params");
                 }
                 String name = method.getName();

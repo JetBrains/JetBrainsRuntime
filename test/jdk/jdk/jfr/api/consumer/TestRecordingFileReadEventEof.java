@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -44,19 +42,19 @@ import jdk.test.lib.jfr.SimpleEvent;
 public class TestRecordingFileReadEventEof {
 
     public static void main(String[] args) throws Throwable {
-        Recording r = new Recording();
-        r.start();
-        SimpleEvent t = new SimpleEvent();
-        t.commit();
-        r.stop();
-        RecordingFile file = Events.copyTo(r);
-        r.close();
-        file.readEvent();
-        try {
+        try (Recording r = new Recording()) {
+            r.start();
+            SimpleEvent t = new SimpleEvent();
+            t.commit();
+            r.stop();
+            RecordingFile file = Events.copyTo(r);
             file.readEvent();
-            Asserts.fail("Expected EOFException not thrown");
-        } catch (EOFException x) {
-            // OK, as expected
+            try {
+                file.readEvent();
+                Asserts.fail("Expected EOFException not thrown");
+            } catch (EOFException x) {
+                // OK, as expected
+            }
         }
     }
 }

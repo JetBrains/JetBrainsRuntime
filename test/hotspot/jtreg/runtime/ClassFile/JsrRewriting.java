@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,12 +32,11 @@
  * @bug 7053586
  * @bug 7185550
  * @bug 7149464
- * @key cte_test
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.desktop
  *          java.management
- * @run main JsrRewriting
+ * @run driver JsrRewriting
  */
 
 import jdk.test.lib.JDKToolFinder;
@@ -75,6 +74,7 @@ public class JsrRewriting {
             className);
 
         output = new OutputAnalyzer(pb.start());
+        output.shouldNotHaveExitValue(0);
         String[] expectedMsgs = {
             "java.lang.LinkageError",
             "java.lang.NoSuchMethodError",

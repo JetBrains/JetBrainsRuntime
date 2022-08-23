@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2016, 2019, SAP SE. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,7 +54,7 @@ address CompiledStaticCall::emit_to_interp_stub(CodeBuffer &cbuf, address mark/*
   // That's why we must use the macroassembler to generate a stub.
   MacroAssembler _masm(&cbuf);
 
-  address stub = __ start_a_stub(Compile::MAX_stubs_size);
+  address stub = __ start_a_stub(CompiledStaticCall::to_interp_stub_size());
   if (stub == NULL) {
     return NULL;  // CodeBuffer::expand failed.
   }
@@ -92,7 +92,7 @@ int CompiledStaticCall::reloc_to_interp_stub() {
 }
 
 void CompiledDirectStaticCall::set_to_interpreted(const methodHandle& callee, address entry) {
-  address stub = find_stub(/*is_aot*/ false);
+  address stub = find_stub();
   guarantee(stub != NULL, "stub not found");
 
   if (TraceICs) {
@@ -137,7 +137,7 @@ void CompiledDirectStaticCall::verify() {
   _call->verify_alignment();
 
   // Verify stub.
-  address stub = find_stub(/*is_aot*/ false);
+  address stub = find_stub();
   assert(stub != NULL, "no stub found for static call");
   // Creation also verifies the object.
   NativeMovConstReg* method_holder = nativeMovConstReg_at(stub + NativeCall::get_IC_pos_in_java_to_interp_stub());

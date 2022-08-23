@@ -106,6 +106,30 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider, Annotated
     boolean isLinked();
 
     /**
+     * Links this type. If this method returns normally, then future calls of {@link #isLinked} will
+     * return true and future calls of {@link #link} are no-ops. If the method throws an exception,
+     * then future calls of {@link #isLinked} will return false and future calls of {@link #link}
+     * will reattempt the linking step which might succeed or throw an exception.
+     */
+    default void link() {
+        throw new UnsupportedOperationException("link is unsupported");
+    }
+
+    /**
+     * Checks whether this type or any of its supertypes or superinterfaces has default methods.
+     */
+    default boolean hasDefaultMethods() {
+        throw new UnsupportedOperationException("hasDefaultMethods is unsupported");
+    }
+
+    /**
+     * Checks whether this type declares defaults methods.
+     */
+    default boolean declaresDefaultMethods() {
+        throw new UnsupportedOperationException("declaresDefaultMethods is unsupported");
+    }
+
+    /**
      * Determines if this type is either the same as, or is a superclass or superinterface of, the
      * type represented by the specified parameter. This method is identical to
      * {@link Class#isAssignableFrom(Class)} in terms of the value return for this type.
@@ -113,11 +137,13 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider, Annotated
     boolean isAssignableFrom(ResolvedJavaType other);
 
     /**
-     * Returns the {@link ResolvedJavaType} object representing the host class of this VM anonymous
-     * class (as opposed to the unrelated concept specified by {@link Class#isAnonymousClass()}) or
-     * {@code null} if this object does not represent a VM anonymous class.
+     * Returns {@code null} since support for VM anonymous class was removed by JDK-8243287.
+     * This method is preserved for JVMCI backwards compatibility.
      */
-    ResolvedJavaType getHostClass();
+    @Deprecated
+    default ResolvedJavaType getHostClass() {
+        return null;
+    }
 
     /**
      * Returns true if this type is exactly the type {@link java.lang.Object}.
@@ -308,13 +334,15 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider, Annotated
 
     /**
      * Returns an array reflecting all the constructors declared by this type. This method is
-     * similar to {@link Class#getDeclaredConstructors()} in terms of returned constructors.
+     * similar to {@link Class#getDeclaredConstructors()} in terms of returned constructors. Calling
+     * this method forces this type to be {@link #link linked}.
      */
     ResolvedJavaMethod[] getDeclaredConstructors();
 
     /**
      * Returns an array reflecting all the methods declared by this type. This method is similar to
-     * {@link Class#getDeclaredMethods()} in terms of returned methods.
+     * {@link Class#getDeclaredMethods()} in terms of returned methods. Calling this method forces
+     * this type to be {@link #link linked}.
      */
     ResolvedJavaMethod[] getDeclaredMethods();
 

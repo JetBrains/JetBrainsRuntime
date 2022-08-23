@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -27,6 +25,7 @@ package jdk.jfr.event.gc.detailed;
 import static jdk.test.lib.Asserts.assertEquals;
 import static jdk.test.lib.Asserts.assertNotEquals;
 import static jdk.test.lib.Asserts.assertTrue;
+import jdk.test.lib.Utils;
 
 import java.util.List;
 import java.util.Random;
@@ -105,6 +104,7 @@ public class StressAllocationGCEvents {
             this.OBJ_SIZE = obj_size;
             this.OLD_OBJ_COUNT = Math.max(1, (int) ((float) Runtime.getRuntime().maxMemory() / 2 / THREAD_COUNT / OBJ_SIZE));
             this.old_garbage = new Object[OLD_OBJ_COUNT];
+            this.r = new Random(Utils.getRandomInstance().nextLong());
 
             System.out.println(String.format("In \"%s\" old objects count  = %d, recursion depth = %d",
                     this.getName(), OLD_OBJ_COUNT, RECURSION_DEPTH));
@@ -122,7 +122,6 @@ public class StressAllocationGCEvents {
                 diver(stack - 1);
             } else {
                 long endTime = startTime + (SECONDS_TO_RUN * 1000);
-                Random r = new Random(startTime);
                 while (endTime > System.currentTimeMillis()) {
                     byte[] garbage = new byte[OBJ_SIZE];
                     if (r.nextInt(100) > OLD_GEN_RATE) {
@@ -136,6 +135,7 @@ public class StressAllocationGCEvents {
         private final Object[] old_garbage;
         private final int OBJ_SIZE;
         private final int OLD_OBJ_COUNT;
+        private final Random r;
     }
 
     ///< check stacktrace depth

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,10 @@
  * questions.
  */
 
+#ifdef HEADLESS
+    #error This file should not be included in headless library
+#endif
+
 #include "awt.h"
 #include "awt_util.h"
 #include "jni.h"
@@ -32,11 +36,14 @@
 #include "utility/rect.h"
 
 #include "sun_awt_X11_XlibWrapper.h"
+#include "keycode_cache.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <X11/extensions/Xdbe.h>
 #include <X11/extensions/shape.h>
+#include <X11/extensions/XI2.h>
+#include <X11/extensions/XInput2.h>
 #include <X11/keysym.h>
 #include <X11/Sunkeysym.h>
 #include <X11/Xlib.h>
@@ -49,9 +56,6 @@
 #undef X_HAVE_UTF8_STRING
 extern Bool statusWindowEventHandler(XEvent event);
 #endif
-
-// From XWindow.c
-extern KeySym keycodeToKeysym(Display *display, KeyCode keycode, int index);
 
 #if defined(DEBUG)
 static jmethodID lockIsHeldMID = NULL;
@@ -173,6 +177,11 @@ JNIEXPORT void JNICALL
 Java_sun_awt_X11_XlibWrapper_XCloseDisplay(JNIEnv *env, jclass clazz,
                        jlong display) {
     AWT_CHECK_HAVE_LOCK();
+
+#ifdef USE_KEYCODE_CACHE
+    resetKeyCodeCache();
+#endif
+
     XCloseDisplay((Display*) jlong_to_ptr(display));
 }
 
@@ -658,7 +667,11 @@ JNIEXPORT jboolean JNICALL Java_sun_awt_X11_XlibWrapper_XFilterEvent
         return (jboolean)True;
     }
 #endif
-    return (jboolean) XFilterEvent((XEvent *) jlong_to_ptr(ptr), (Window) window);
+    XEvent* const xEvent = (XEvent *)jlong_to_ptr(ptr);
+
+    const jboolean isEventFiltered = (jboolean) XFilterEvent(xEvent, (Window) window);
+
+    return isEventFiltered;
 }
 
 /*
@@ -1960,6 +1973,11 @@ JNIEXPORT void JNICALL Java_sun_awt_X11_XlibWrapper_XRefreshKeyboardMapping
 (JNIEnv *env, jclass clazz, jlong event_ptr)
 {
     AWT_CHECK_HAVE_LOCK();
+
+#ifdef USE_KEYCODE_CACHE
+    resetKeyCodeCache();
+#endif
+
     XRefreshKeyboardMapping((XMappingEvent*) jlong_to_ptr(event_ptr));
 }
 
@@ -2264,6 +2282,63 @@ Java_sun_awt_X11_XlibWrapper_SetZOrder
     XConfigureWindow((Display *)jlong_to_ptr(display),
                      (Window)jlong_to_ptr(window),
                      value_mask, &wc );
+}
+
+/*
+ * Class:     XlibWrapper
+ * Method:    XIQueryVersion
+ */
+JNIEXPORT jint JNICALL
+Java_sun_awt_X11_XlibWrapper_XIQueryVersion
+(JNIEnv *env, jclass clazz, jlong display, jlong major_version_iptr, jlong minor_version_iptr)
+{
+    return XIQueryVersion((Display *)jlong_to_ptr(display),
+        jlong_to_ptr(major_version_iptr), jlong_to_ptr(minor_version_iptr));
+}
+
+/*
+ * Class:     XlibWrapper
+ * Method:    XISelectEvents
+ */
+JNIEXPORT jint JNICALL
+Java_sun_awt_X11_XlibWrapper_XISelectEvents
+(JNIEnv *env, jclass clazz, jlong display, jlong window, jlong mask, jint deviceid)
+{
+    XIEventMask evmask;
+    evmask.deviceid = (int)deviceid;
+    evmask.mask_len = XIMaskLen(XI_LASTEVENT);
+    union jlong_to_char_ptr
+    {
+        jlong value;
+        unsigned char mask[8];
+    } converter;
+    converter.value = mask;
+    evmask.mask = (unsigned char*)&converter.mask;
+    return XISelectEvents((Display *)jlong_to_ptr(display), (Window)jlong_to_ptr(window),
+                          &evmask, /*num masks*/ 1);
+}
+
+/*
+ * Class:     XlibWrapper
+ * Method:    XGetEventData
+ */
+JNIEXPORT jboolean JNICALL
+Java_sun_awt_X11_XlibWrapper_XGetEventData
+(JNIEnv *env, jclass clazz, jlong display, jlong ptr)
+{
+    return XGetEventData((Display *)jlong_to_ptr(display),
+                         (XGenericEventCookie *)ptr_to_jlong(ptr)) ? JNI_TRUE : JNI_FALSE;
+}
+
+/*
+ * Class:     XlibWrapper
+ * Method:    XFreeEventData
+ */
+JNIEXPORT void JNICALL
+Java_sun_awt_X11_XlibWrapper_XFreeEventData
+(JNIEnv *env, jclass clazz, jlong display, jlong ptr)
+{
+    return XFreeEventData((Display *)jlong_to_ptr(display), (XGenericEventCookie *)ptr_to_jlong(ptr));
 }
 
 /*

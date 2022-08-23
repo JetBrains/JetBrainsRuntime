@@ -36,7 +36,7 @@
 AC_DEFUN([JDKVER_CHECK_AND_SET_NUMBER],
 [
   # Additional [] needed to keep m4 from mangling shell constructs.
-  if [ ! [[ "$2" =~ ^0*([1-9][0-9]*)|(0)$ ]] ] ; then
+  if [ ! [[ "$2" =~ ^0*([1-9][0-9]*)$|^0*(0)$ ]] ] ; then
     AC_MSG_ERROR(["$2" is not a valid numerical value for $1])
   fi
   # Extract the version number without leading zeros.
@@ -58,7 +58,9 @@ AC_DEFUN([JDKVER_CHECK_AND_SET_NUMBER],
 AC_DEFUN_ONCE([JDKVER_SETUP_JDK_VERSION_NUMBERS],
 [
   # Source the version numbers file
-  . $AUTOCONF_DIR/version-numbers
+  . $TOPDIR/make/conf/version-numbers.conf
+  # Source the branding file
+  . $TOPDIR/make/conf/branding.conf
 
   # Some non-version number information is set in that file
   AC_SUBST(LAUNCHER_NAME)
@@ -67,33 +69,16 @@ AC_DEFUN_ONCE([JDKVER_SETUP_JDK_VERSION_NUMBERS],
   AC_SUBST(JDK_RC_PLATFORM_NAME)
   AC_SUBST(HOTSPOT_VM_DISTRO)
 
-  # Set the MACOSX Bundle Name base
-  AC_ARG_WITH(macosx-bundle-name-base, [AS_HELP_STRING([--with-macosx-bundle-name-base],
-      [Set the MacOSX Bundle Name base. This is the base name for calculating MacOSX Bundle Names.
-      @<:@not specified@:>@])])
-  if test "x$with_macosx_bundle_name_base" = xyes; then
-    AC_MSG_ERROR([--with-macosx-bundle-name-base must have a value])
-  elif [ ! [[ $with_macosx_bundle_name_base =~ ^[[:print:]]*$ ]] ]; then
-    AC_MSG_ERROR([--with-macosx-bundle-name-base contains non-printing characters: $with_macosx_bundle_name_base])
-  elif test "x$with_macosx_bundle_name_base" != x; then
-    # Set MACOSX_BUNDLE_NAME_BASE to the configured value.
-    MACOSX_BUNDLE_NAME_BASE="$with_macosx_bundle_name_base"
+  # Setup username (for use in adhoc version strings etc)
+  AC_ARG_WITH([build-user], [AS_HELP_STRING([--with-build-user],
+      [build username to use in version strings])])
+  if test "x$with_build_user" != x; then
+    USERNAME="$with_build_user"
+  else
+    # Outer [ ] to quote m4.
+    [ USERNAME=`$ECHO "$USER" | $TR -d -c '[a-z][A-Z][0-9]'` ]
   fi
-  AC_SUBST(MACOSX_BUNDLE_NAME_BASE)
-
-  # Set the MACOSX Bundle ID base
-  AC_ARG_WITH(macosx-bundle-id-base, [AS_HELP_STRING([--with-macosx-bundle-id-base],
-      [Set the MacOSX Bundle ID base. This is the base ID for calculating MacOSX Bundle IDs.
-      @<:@not specified@:>@])])
-  if test "x$with_macosx_bundle_id_base" = xyes; then
-    AC_MSG_ERROR([--with-macosx-bundle-id-base must have a value])
-  elif [ ! [[ $with_macosx_bundle_id_base =~ ^[[:print:]]*$ ]] ]; then
-    AC_MSG_ERROR([--with-macosx-bundle-id-base contains non-printing characters: $with_macosx_bundle_id_base])
-  elif test "x$with_macosx_bundle_id_base" != x; then
-    # Set MACOSX_BUNDLE_ID_BASE to the configured value.
-    MACOSX_BUNDLE_ID_BASE="$with_macosx_bundle_id_base"
-  fi
-  AC_SUBST(MACOSX_BUNDLE_ID_BASE)
+  AC_SUBST(USERNAME)
 
   # Set the JDK RC name
   AC_ARG_WITH(jdk-rc-name, [AS_HELP_STRING([--with-jdk-rc-name],
@@ -107,7 +92,7 @@ AC_DEFUN_ONCE([JDKVER_SETUP_JDK_VERSION_NUMBERS],
     # Set JDK_RC_NAME to a custom value if '--with-jdk-rc-name' was used and is not empty.
     JDK_RC_NAME="$with_jdk_rc_name"
   else
-    # Otherwise calculate from "version-numbers" included above.
+    # Otherwise calculate from "branding.conf" included above.
     JDK_RC_NAME="$PRODUCT_NAME $JDK_RC_PLATFORM_NAME"
   fi
   AC_SUBST(JDK_RC_NAME)
@@ -122,7 +107,7 @@ AC_DEFUN_ONCE([JDKVER_SETUP_JDK_VERSION_NUMBERS],
     AC_MSG_ERROR([--with-vendor-name contains non-printing characters: $with_vendor_name])
   elif test "x$with_vendor_name" != x; then
     # Only set COMPANY_NAME if '--with-vendor-name' was used and is not empty.
-    # Otherwise we will use the value from "version-numbers" included above.
+    # Otherwise we will use the value from "branding.conf" included above.
     COMPANY_NAME="$with_vendor_name"
   fi
   AC_SUBST(COMPANY_NAME)
@@ -136,7 +121,7 @@ AC_DEFUN_ONCE([JDKVER_SETUP_JDK_VERSION_NUMBERS],
     AC_MSG_ERROR([--with-vendor-url contains non-printing characters: $with_vendor_url])
   elif test "x$with_vendor_url" != x; then
     # Only set VENDOR_URL if '--with-vendor-url' was used and is not empty.
-    # Otherwise we will use the value from "version-numbers" included above.
+    # Otherwise we will use the value from "branding.conf" included above.
     VENDOR_URL="$with_vendor_url"
   fi
   AC_SUBST(VENDOR_URL)
@@ -150,7 +135,7 @@ AC_DEFUN_ONCE([JDKVER_SETUP_JDK_VERSION_NUMBERS],
     AC_MSG_ERROR([--with-vendor-bug-url contains non-printing characters: $with_vendor_bug_url])
   elif test "x$with_vendor_bug_url" != x; then
     # Only set VENDOR_URL_BUG if '--with-vendor-bug-url' was used and is not empty.
-    # Otherwise we will use the value from "version-numbers" included above.
+    # Otherwise we will use the value from "branding.conf" included above.
     VENDOR_URL_BUG="$with_vendor_bug_url"
   fi
   AC_SUBST(VENDOR_URL_BUG)
@@ -164,7 +149,7 @@ AC_DEFUN_ONCE([JDKVER_SETUP_JDK_VERSION_NUMBERS],
     AC_MSG_ERROR([--with-vendor-vm-bug-url contains non-printing characters: $with_vendor_vm_bug_url])
   elif test "x$with_vendor_vm_bug_url" != x; then
     # Only set VENDOR_URL_VM_BUG if '--with-vendor-vm-bug-url' was used and is not empty.
-    # Otherwise we will use the value from "version-numbers" included above.
+    # Otherwise we will use the value from "branding.conf" included above.
     VENDOR_URL_VM_BUG="$with_vendor_vm_bug_url"
   fi
   AC_SUBST(VENDOR_URL_VM_BUG)
@@ -179,7 +164,7 @@ AC_DEFUN_ONCE([JDKVER_SETUP_JDK_VERSION_NUMBERS],
     AC_MSG_ERROR([--with-version-string must have a value])
   elif test "x$with_version_string" != x; then
     # Additional [] needed to keep m4 from mangling shell constructs.
-    if [ [[ $with_version_string =~ ^([0-9]+)(\.([0-9]+))?(\.([0-9]+))?(\.([0-9]+))?(\.([0-9]+))?(\.([0-9]+))?(\.([0-9]+))?(-([a-zA-Z]+))?((\+)([0-9]+)?(-([-a-zA-Z0-9.]+))?)?$ ]] ]; then
+    if [ [[ $with_version_string =~ ^([0-9]+)(\.([0-9]+))?(\.([0-9]+))?(\.([0-9]+))?(\.([0-9]+))?(\.([0-9]+))?(\.([0-9]+))?(-([a-zA-Z0-9]+))?(((\+)([0-9]*))?(-([-a-zA-Z0-9.]+))?)?$ ]] ]; then
       VERSION_FEATURE=${BASH_REMATCH[[1]]}
       VERSION_INTERIM=${BASH_REMATCH[[3]]}
       VERSION_UPDATE=${BASH_REMATCH[[5]]}
@@ -188,9 +173,9 @@ AC_DEFUN_ONCE([JDKVER_SETUP_JDK_VERSION_NUMBERS],
       VERSION_EXTRA2=${BASH_REMATCH[[11]]}
       VERSION_EXTRA3=${BASH_REMATCH[[13]]}
       VERSION_PRE=${BASH_REMATCH[[15]]}
-      version_plus_separator=${BASH_REMATCH[[17]]}
-      VERSION_BUILD=${BASH_REMATCH[[18]]}
-      VERSION_OPT=${BASH_REMATCH[[20]]}
+      version_plus_separator=${BASH_REMATCH[[18]]}
+      VERSION_BUILD=${BASH_REMATCH[[19]]}
+      VERSION_OPT=${BASH_REMATCH[[21]]}
       # Unspecified numerical fields are interpreted as 0.
       if test "x$VERSION_INTERIM" = x; then
         VERSION_INTERIM=0
@@ -233,8 +218,8 @@ AC_DEFUN_ONCE([JDKVER_SETUP_JDK_VERSION_NUMBERS],
       # Interpret --without-* as empty string instead of the literal "no"
       VERSION_PRE=
     else
-      # Only [a-zA-Z] is allowed in the VERSION_PRE. Outer [ ] to quote m4.
-      [ VERSION_PRE=`$ECHO "$with_version_pre" | $TR -c -d '[a-z][A-Z]'` ]
+      # Only [a-zA-Z0-9] is allowed in the VERSION_PRE. Outer [ ] to quote m4.
+      [ VERSION_PRE=`$ECHO "$with_version_pre" | $TR -c -d '[a-zA-Z0-9]'` ]
       if test "x$VERSION_PRE" != "x$with_version_pre"; then
         AC_MSG_WARN([--with-version-pre value has been sanitized from '$with_version_pre' to '$VERSION_PRE'])
       fi
@@ -308,7 +293,7 @@ AC_DEFUN_ONCE([JDKVER_SETUP_JDK_VERSION_NUMBERS],
     fi
   else
     if test "x$NO_DEFAULT_VERSION_PARTS" != xtrue; then
-      # Default is to get value from version-numbers
+      # Default is to get value from version-numbers.conf
       VERSION_FEATURE="$DEFAULT_VERSION_FEATURE"
     fi
   fi
@@ -502,9 +487,64 @@ AC_DEFUN_ONCE([JDKVER_SETUP_JDK_VERSION_NUMBERS],
     VENDOR_VERSION_STRING="$with_vendor_version_string"
   fi
 
+  # Set the MACOSX Bundle Name base
+  AC_ARG_WITH(macosx-bundle-name-base, [AS_HELP_STRING([--with-macosx-bundle-name-base],
+      [Set the MacOSX Bundle Name base. This is the base name for calculating MacOSX Bundle Names.
+      @<:@not specified@:>@])])
+  if test "x$with_macosx_bundle_name_base" = xyes; then
+    AC_MSG_ERROR([--with-macosx-bundle-name-base must have a value])
+  elif [ ! [[ $with_macosx_bundle_name_base =~ ^[[:print:]]*$ ]] ]; then
+    AC_MSG_ERROR([--with-macosx-bundle-name-base contains non-printing characters: $with_macosx_bundle_name_base])
+  elif test "x$with_macosx_bundle_name_base" != x; then
+    # Set MACOSX_BUNDLE_NAME_BASE to the configured value.
+    MACOSX_BUNDLE_NAME_BASE="$with_macosx_bundle_name_base"
+  fi
+  AC_SUBST(MACOSX_BUNDLE_NAME_BASE)
+
+  # Set the MACOSX Bundle ID base
+  AC_ARG_WITH(macosx-bundle-id-base, [AS_HELP_STRING([--with-macosx-bundle-id-base],
+      [Set the MacOSX Bundle ID base. This is the base ID for calculating MacOSX Bundle IDs.
+      @<:@not specified@:>@])])
+  if test "x$with_macosx_bundle_id_base" = xyes; then
+    AC_MSG_ERROR([--with-macosx-bundle-id-base must have a value])
+  elif [ ! [[ $with_macosx_bundle_id_base =~ ^[[:print:]]*$ ]] ]; then
+    AC_MSG_ERROR([--with-macosx-bundle-id-base contains non-printing characters: $with_macosx_bundle_id_base])
+  elif test "x$with_macosx_bundle_id_base" != x; then
+    # Set MACOSX_BUNDLE_ID_BASE to the configured value.
+    MACOSX_BUNDLE_ID_BASE="$with_macosx_bundle_id_base"
+  else
+    # If using the default value, append the VERSION_PRE if there is one
+    # to make it possible to tell official builds apart from developer builds
+    if test "x$VERSION_PRE" != x; then
+      MACOSX_BUNDLE_ID_BASE="$MACOSX_BUNDLE_ID_BASE-$VERSION_PRE"
+    fi
+  fi
+  AC_SUBST(MACOSX_BUNDLE_ID_BASE)
+
+  # Set the MACOSX CFBundleVersion field
+  AC_ARG_WITH(macosx-bundle-build-version, [AS_HELP_STRING([--with-macosx-bundle-build-version],
+      [Set the MacOSX Bundle CFBundleVersion field. This key is a machine-readable
+      string composed of one to three period-separated integers and should represent the
+      build version. Defaults to the build number.])])
+  if test "x$with_macosx_bundle_build_version" = xyes; then
+    AC_MSG_ERROR([--with-macosx-bundle-build-version must have a value])
+  elif [ ! [[ $with_macosx_bundle_build_version =~ ^[0-9\.]*$ ]] ]; then
+    AC_MSG_ERROR([--with-macosx-bundle-build-version contains non numbers and periods: $with_macosx_bundle_build_version])
+  elif test "x$with_macosx_bundle_build_version" != x; then
+    MACOSX_BUNDLE_BUILD_VERSION="$with_macosx_bundle_build_version"
+  else
+    MACOSX_BUNDLE_BUILD_VERSION="$VERSION_BUILD"
+    # If VERSION_OPT consists of only numbers and periods, add it.
+    if [ [[ $VERSION_OPT =~ ^[0-9\.]+$ ]] ]; then
+      MACOSX_BUNDLE_BUILD_VERSION+=".$VERSION_OPT"
+    fi
+  fi
+  AC_SUBST(MACOSX_BUNDLE_BUILD_VERSION)
+
   # We could define --with flags for these, if really needed
   VERSION_CLASSFILE_MAJOR="$DEFAULT_VERSION_CLASSFILE_MAJOR"
   VERSION_CLASSFILE_MINOR="$DEFAULT_VERSION_CLASSFILE_MINOR"
+  VERSION_DOCS_API_SINCE="$DEFAULT_VERSION_DOCS_API_SINCE"
   JDK_SOURCE_TARGET_VERSION="$DEFAULT_JDK_SOURCE_TARGET_VERSION"
 
   AC_MSG_CHECKING([for version string])
@@ -529,5 +569,6 @@ AC_DEFUN_ONCE([JDKVER_SETUP_JDK_VERSION_NUMBERS],
   AC_SUBST(VENDOR_VERSION_STRING)
   AC_SUBST(VERSION_CLASSFILE_MAJOR)
   AC_SUBST(VERSION_CLASSFILE_MINOR)
+  AC_SUBST(VERSION_DOCS_API_SINCE)
   AC_SUBST(JDK_SOURCE_TARGET_VERSION)
 ])

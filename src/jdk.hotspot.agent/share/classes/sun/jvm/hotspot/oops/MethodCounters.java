@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@ import sun.jvm.hotspot.debugger.*;
 import sun.jvm.hotspot.runtime.*;
 import sun.jvm.hotspot.types.*;
 import sun.jvm.hotspot.utilities.*;
+import sun.jvm.hotspot.utilities.Observable;
+import sun.jvm.hotspot.utilities.Observer;
 
 public class MethodCounters extends Metadata {
   public MethodCounters(Address addr) {
@@ -48,7 +50,6 @@ public class MethodCounters extends Metadata {
     Type type      = db.lookupType("MethodCounters");
 
     if (VM.getVM().isServerCompiler()) {
-      interpreterInvocationCountField = new CIntField(type.getCIntegerField("_interpreter_invocation_count"), 0);
       interpreterThrowoutCountField = new CIntField(type.getCIntegerField("_interpreter_throwout_count"), 0);
     }
     if (!VM.getVM().isCore()) {
@@ -57,18 +58,9 @@ public class MethodCounters extends Metadata {
     }
   }
 
-  private static CIntField interpreterInvocationCountField;
   private static CIntField interpreterThrowoutCountField;
   private static CIntField invocationCounter;
   private static CIntField backedgeCounter;
-
-  public int interpreterInvocationCount() {
-      if (interpreterInvocationCountField != null) {
-        return (int) interpreterInvocationCountField.getValue(this);
-      } else {
-        return 0;
-      }
-  }
 
   public int interpreterThrowoutCount() {
       if (interpreterThrowoutCountField != null) {

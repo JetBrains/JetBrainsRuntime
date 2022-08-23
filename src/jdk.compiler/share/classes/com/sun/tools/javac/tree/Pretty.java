@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,7 @@ import com.sun.source.tree.ModuleTree.ModuleKind;
 import com.sun.tools.javac.code.*;
 import com.sun.tools.javac.tree.JCTree.*;
 import com.sun.tools.javac.util.*;
-import com.sun.tools.javac.util.List;
+
 import static com.sun.tools.javac.code.Flags.*;
 import static com.sun.tools.javac.code.Flags.ANNOTATION;
 import static com.sun.tools.javac.tree.JCTree.Tag.*;
@@ -83,12 +83,12 @@ public class Pretty extends JCTree.Visitor {
      * A string sequence to be used when Pretty output should be constrained
      * to fit into a given size
      */
-    private final static String trimSequence = "[...]";
+    private static final String trimSequence = "[...]";
 
     /**
      * Max number of chars to be generated when output should fit into a single line
      */
-    private final static int PREFERRED_LENGTH = 20;
+    private static final int PREFERRED_LENGTH = 20;
 
     /** Align code to be indented to left margin.
      */
@@ -166,11 +166,11 @@ public class Pretty extends JCTree.Visitor {
 
     String lineSep = System.getProperty("line.separator");
 
-    /**************************************************************************
+    /* ************************************************************************
      * Traversal methods
      *************************************************************************/
 
-    /** Exception to propagate IOException through visitXXX methods */
+    /** Exception to propagate IOException through visitXYZ methods */
     private static class UncheckedIOException extends Error {
         static final long serialVersionUID = -4032692679158424751L;
         UncheckedIOException(IOException e) {
@@ -460,6 +460,7 @@ public class Pretty extends JCTree.Visitor {
             if (tree.directives == null) {
                 print(";");
             } else {
+                print(" ");
                 printBlock(tree.directives);
             }
             println();
@@ -564,6 +565,10 @@ public class Pretty extends JCTree.Visitor {
                     print(" extends ");
                     printExprs(tree.implementing);
                 }
+                if (tree.permitting.nonEmpty()) {
+                    print(" permits ");
+                    printExprs(tree.permitting);
+                }
             } else {
                 if ((tree.mods.flags & ENUM) != 0)
                     print("enum " + tree.name);
@@ -577,6 +582,10 @@ public class Pretty extends JCTree.Visitor {
                 if (tree.implementing.nonEmpty()) {
                     print(" implements ");
                     printExprs(tree.implementing);
+                }
+                if (tree.permitting.nonEmpty()) {
+                    print(" permits ");
+                    printExprs(tree.permitting);
                 }
             }
             print(" ");
@@ -692,9 +701,9 @@ public class Pretty extends JCTree.Visitor {
                 if ((tree.mods.flags & VARARGS) != 0) {
                     JCTree vartype = tree.vartype;
                     List<JCAnnotation> tas = null;
-                    if (vartype instanceof JCAnnotatedType) {
-                        tas = ((JCAnnotatedType)vartype).annotations;
-                        vartype = ((JCAnnotatedType)vartype).underlyingType;
+                    if (vartype instanceof JCAnnotatedType annotatedType) {
+                        tas = annotatedType.annotations;
+                        vartype = annotatedType.underlyingType;
                     }
                     printExpr(((JCArrayTypeTree) vartype).elemtype);
                     if (tas != null) {
@@ -843,11 +852,11 @@ public class Pretty extends JCTree.Visitor {
 
     public void visitCase(JCCase tree) {
         try {
-            if (tree.pats.isEmpty()) {
+            if (tree.labels.size() == 1 && tree.labels.get(0).hasTag(DEFAULTCASELABEL)) {
                 print("default");
             } else {
                 print("case ");
-                printExprs(tree.pats);
+                printExprs(tree.labels);
             }
             if (tree.caseKind == JCCase.STATEMENT) {
                 print(":");
@@ -858,8 +867,21 @@ public class Pretty extends JCTree.Visitor {
                 align();
             } else {
                 print(" -> ");
-                printStat(tree.stats.head);
+                if (tree.stats.size() == 1) {
+                    printStat(tree.stats.head);
+                } else {
+                    printBlock(tree.stats);
+                }
             }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    @Override
+    public void visitDefaultCaseLabel(JCTree.JCDefaultCaseLabel that) {
+        try {
+            print("default");
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -887,9 +909,29 @@ public class Pretty extends JCTree.Visitor {
 
     public void visitBindingPattern(JCBindingPattern patt) {
         try {
-            printExpr(patt.vartype);
-            print(" ");
-            print(patt.name);
+            printExpr(patt.var);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    @Override
+    public void visitParenthesizedPattern(JCParenthesizedPattern patt) {
+        try {
+            print("(");
+            printExpr(patt.pattern);
+            print(")");
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    @Override
+    public void visitGuardPattern(JCGuardPattern patt) {
+        try {
+            printExpr(patt.patt);
+            print(" && ");
+            printExpr(patt.expr);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }

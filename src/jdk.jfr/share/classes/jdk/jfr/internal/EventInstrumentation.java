@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,7 +64,11 @@ public final class EventInstrumentation {
         private String settingDescriptor;
         final String fieldName;
         final int index;
-        // Used when instantiating Setting
+
+        // The settingControl is passed to EventHandler where it is
+        // used to check enablement before calling commit
+        // Methods on settingControl must never be invoked
+        // directly by JFR, instead use jdk.jfr.internal.Control
         SettingControl settingControl;
 
         public SettingInfo(String fieldName, int index) {
@@ -74,7 +78,7 @@ public final class EventInstrumentation {
     }
 
     static final class FieldInfo {
-        private final static Type STRING = Type.getType(String.class);
+        private static final Type STRING = Type.getType(String.class);
         final String fieldName;
         final String fieldDescriptor;
         final String internalClassName;
@@ -191,9 +195,8 @@ public final class EventInstrumentation {
                     if (values != null && values.size() == 2) {
                         Object key = values.get(0);
                         Object value = values.get(1);
-                        if (key instanceof String && value != null) {
+                        if (key instanceof String keyName && value != null) {
                             if (type == value.getClass()) {
-                                String keyName = (String) key;
                                 if ("value".equals(keyName)) {
                                    return (T) value;
                                 }
@@ -320,7 +323,7 @@ public final class EventInstrumentation {
         return result;
     }
 
-    public byte[] builUninstrumented() {
+    public byte[] buildUninstrumented() {
         makeUninstrumented();
         return toByteArray();
     }

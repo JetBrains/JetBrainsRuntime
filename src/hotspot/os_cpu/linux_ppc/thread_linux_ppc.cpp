@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012, 2019 SAP SE. All rights reserved.
+ * Copyright (c) 1997, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 
 #include "precompiled.hpp"
+#include "memory/metaspace.hpp"
 #include "runtime/frame.inline.hpp"
 #include "runtime/thread.hpp"
 
@@ -34,6 +35,8 @@ frame JavaThread::pd_last_frame() {
   address pc = _anchor.last_Java_pc();
 
   // Last_Java_pc ist not set, if we come here from compiled code.
+  // Assume spill slot for link register contains a suitable pc.
+  // Should have been filled by method entry code.
   if (pc == NULL) {
     pc = (address) *(sp + 2);
   }
@@ -42,7 +45,6 @@ frame JavaThread::pd_last_frame() {
 }
 
 bool JavaThread::pd_get_top_frame_for_profiling(frame* fr_addr, void* ucontext, bool isInJava) {
-  assert(this->is_Java_thread(), "must be JavaThread");
 
   // If we have a last_Java_frame, then we should use it even if
   // isInJava == true.  It should be more reliable than ucontext info.
@@ -56,11 +58,23 @@ bool JavaThread::pd_get_top_frame_for_profiling(frame* fr_addr, void* ucontext, 
   // if we were running Java code when SIGPROF came in.
   if (isInJava) {
     ucontext_t* uc = (ucontext_t*) ucontext;
-    frame ret_frame((intptr_t*)uc->uc_mcontext.regs->gpr[1/*REG_SP*/],
-                     (address)uc->uc_mcontext.regs->nip);
+    address pc = (address)uc->uc_mcontext.regs->nip;
 
-    if (ret_frame.pc() == NULL) {
+    if (pc == NULL) {
       // ucontext wasn't useful
+      return false;
+    }
+
+    frame ret_frame((intptr_t*)uc->uc_mcontext.regs->gpr[1/*REG_SP*/], pc);
+
+    if (ret_frame.fp() == NULL) {
+      // The found frame does not have a valid frame pointer.
+      // Bail out because this will create big trouble later on, either
+      //  - when using istate, calculated as (NULL - ijava_state_size) or
+      //  - when using fp() directly in safe_for_sender()
+      //
+      // There is no conclusive description (yet) how this could happen, but it does.
+      // For more details on what was observed, see thread_linux_s390.cpp
       return false;
     }
 

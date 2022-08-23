@@ -92,9 +92,9 @@ public interface LocalVariable extends Mirror, Comparable<LocalVariable> {
     Type type() throws ClassNotLoadedException;
 
     /**
-     * Gets the JNI signature of the local variable.
+     * Gets the <a href="{@docRoot}/../specs/jni/types.html#type-signatures">
+     * type signature</a> of the local variable.
      *
-     * @see <a href="doc-files/signature.html">Type Signatures</a>
      * @return a string containing the signature.
      */
     String signature();
@@ -102,7 +102,7 @@ public interface LocalVariable extends Mirror, Comparable<LocalVariable> {
     /**
      * Gets the generic signature for this variable if there is one.
      * Generic signatures are described in the
-     * <cite>The Java&trade; Virtual Machine Specification</cite>.
+     * <cite>The Java Virtual Machine Specification</cite>.
      *
      * @return a string containing the generic signature, or <code>null</code>
      * if there is no generic signature.

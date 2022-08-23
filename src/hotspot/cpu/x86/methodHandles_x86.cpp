@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,15 +25,21 @@
 #include "precompiled.hpp"
 #include "jvm.h"
 #include "asm/macroAssembler.hpp"
+#include "classfile/vmClasses.hpp"
 #include "compiler/disassembler.hpp"
 #include "classfile/javaClasses.inline.hpp"
 #include "interpreter/interpreter.hpp"
 #include "interpreter/interpreterRuntime.hpp"
+#include "logging/log.hpp"
+#include "logging/logStream.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
+#include "prims/jvmtiExport.hpp"
 #include "prims/methodHandles.hpp"
 #include "runtime/flags/flagSetting.hpp"
 #include "runtime/frame.inline.hpp"
+#include "runtime/stubRoutines.hpp"
+#include "utilities/formatBuffer.hpp"
 #include "utilities/preserveException.hpp"
 
 #define __ Disassembler::hook<MacroAssembler>(__FILE__, __LINE__, _masm)->
@@ -50,9 +56,9 @@
 
 void MethodHandles::load_klass_from_Class(MacroAssembler* _masm, Register klass_reg) {
   if (VerifyMethodHandles)
-    verify_klass(_masm, klass_reg, SystemDictionary::WK_KLASS_ENUM_NAME(java_lang_Class),
+    verify_klass(_masm, klass_reg, VM_CLASS_ID(java_lang_Class),
                  "MH argument is a Class");
-  __ movptr(klass_reg, Address(klass_reg, java_lang_Class::klass_offset_in_bytes()));
+  __ movptr(klass_reg, Address(klass_reg, java_lang_Class::klass_offset()));
 }
 
 #ifdef ASSERT
@@ -67,13 +73,13 @@ static int check_nonzero(const char* xname, int x) {
 
 #ifdef ASSERT
 void MethodHandles::verify_klass(MacroAssembler* _masm,
-                                 Register obj, SystemDictionary::WKID klass_id,
+                                 Register obj, vmClassID klass_id,
                                  const char* error_message) {
-  InstanceKlass** klass_addr = SystemDictionary::well_known_klass_addr(klass_id);
-  Klass* klass = SystemDictionary::well_known_klass(klass_id);
+  InstanceKlass** klass_addr = vmClasses::klass_addr_at(klass_id);
+  Klass* klass = vmClasses::klass_at(klass_id);
   Register temp = rdi;
   Register temp2 = noreg;
-  LP64_ONLY(temp2 = rscratch1);  // used by MacroAssembler::cmpptr
+  LP64_ONLY(temp2 = rscratch1);  // used by MacroAssembler::cmpptr and load_klass
   Label L_ok, L_bad;
   BLOCK_COMMENT("verify_klass {");
   __ verify_oop(obj);
@@ -81,7 +87,7 @@ void MethodHandles::verify_klass(MacroAssembler* _masm,
   __ jcc(Assembler::zero, L_bad);
   __ push(temp); if (temp2 != noreg)  __ push(temp2);
 #define UNPUSH { if (temp2 != noreg)  __ pop(temp2);  __ pop(temp); }
-  __ load_klass(temp, obj);
+  __ load_klass(temp, obj, temp2);
   __ cmpptr(temp, ExternalAddress((address) klass_addr));
   __ jcc(Assembler::equal, L_ok);
   intptr_t super_check_offset = klass->super_check_offset();
@@ -99,7 +105,7 @@ void MethodHandles::verify_klass(MacroAssembler* _masm,
 void MethodHandles::verify_ref_kind(MacroAssembler* _masm, int ref_kind, Register member_reg, Register temp) {
   Label L;
   BLOCK_COMMENT("verify_ref_kind {");
-  __ movl(temp, Address(member_reg, NONZERO(java_lang_invoke_MemberName::flags_offset_in_bytes())));
+  __ movl(temp, Address(member_reg, NONZERO(java_lang_invoke_MemberName::flags_offset())));
   __ shrl(temp, java_lang_invoke_MemberName::MN_REFERENCE_KIND_SHIFT);
   __ andl(temp, java_lang_invoke_MemberName::MN_REFERENCE_KIND_MASK);
   __ cmpl(temp, ref_kind);
@@ -166,18 +172,16 @@ void MethodHandles::jump_to_lambda_form(MacroAssembler* _masm,
   assert(recv != noreg, "required register");
   assert(method_temp == rbx, "required register for loading method");
 
-  //NOT_PRODUCT({ FlagSetting fs(TraceMethodHandles, true); trace_method_handle(_masm, "LZMH"); });
-
   // Load the invoker, as MH -> MH.form -> LF.vmentry
   __ verify_oop(recv);
-  __ load_heap_oop(method_temp, Address(recv, NONZERO(java_lang_invoke_MethodHandle::form_offset_in_bytes())), temp2);
+  __ load_heap_oop(method_temp, Address(recv, NONZERO(java_lang_invoke_MethodHandle::form_offset())), temp2);
   __ verify_oop(method_temp);
-  __ load_heap_oop(method_temp, Address(method_temp, NONZERO(java_lang_invoke_LambdaForm::vmentry_offset_in_bytes())), temp2);
+  __ load_heap_oop(method_temp, Address(method_temp, NONZERO(java_lang_invoke_LambdaForm::vmentry_offset())), temp2);
   __ verify_oop(method_temp);
-  __ load_heap_oop(method_temp, Address(method_temp, NONZERO(java_lang_invoke_MemberName::method_offset_in_bytes())), temp2);
+  __ load_heap_oop(method_temp, Address(method_temp, NONZERO(java_lang_invoke_MemberName::method_offset())), temp2);
   __ verify_oop(method_temp);
   __ access_load_at(T_ADDRESS, IN_HEAP, method_temp,
-                    Address(method_temp, NONZERO(java_lang_invoke_ResolvedMethodName::vmtarget_offset_in_bytes())),
+                    Address(method_temp, NONZERO(java_lang_invoke_ResolvedMethodName::vmtarget_offset())),
                     noreg, noreg);
 
   if (VerifyMethodHandles && !for_compiler_entry) {
@@ -211,6 +215,13 @@ address MethodHandles::generate_method_handle_interpreter_entry(MacroAssembler* 
     // They are linked to Java-generated adapters via MethodHandleNatives.linkMethod.
     // They all allow an appendix argument.
     __ hlt();           // empty stubs make SG sick
+    return NULL;
+  }
+
+  // No need in interpreter entry for linkToNative for now.
+  // Interpreter calls compiled entry through i2c.
+  if (iid == vmIntrinsics::_linkToNative) {
+    __ hlt();
     return NULL;
   }
 
@@ -325,7 +336,10 @@ void MethodHandles::generate_method_handle_dispatch(MacroAssembler* _masm,
   assert_different_registers(temp1, temp2, temp3, receiver_reg);
   assert_different_registers(temp1, temp2, temp3, member_reg);
 
-  if (iid == vmIntrinsics::_invokeBasic) {
+  if (iid == vmIntrinsics::_invokeBasic || iid == vmIntrinsics::_linkToNative) {
+    if (iid == vmIntrinsics::_linkToNative) {
+      assert(for_compiler_entry, "only compiler entry is supported");
+    }
     // indirect through MH.form.vmentry.vmtarget
     jump_to_lambda_form(_masm, receiver_reg, rbx_method, temp1, for_compiler_entry);
 
@@ -333,14 +347,14 @@ void MethodHandles::generate_method_handle_dispatch(MacroAssembler* _masm,
     // The method is a member invoker used by direct method handles.
     if (VerifyMethodHandles) {
       // make sure the trailing argument really is a MemberName (caller responsibility)
-      verify_klass(_masm, member_reg, SystemDictionary::WK_KLASS_ENUM_NAME(java_lang_invoke_MemberName),
+      verify_klass(_masm, member_reg, VM_CLASS_ID(java_lang_invoke_MemberName),
                    "MemberName required for invokeVirtual etc.");
     }
 
-    Address member_clazz(    member_reg, NONZERO(java_lang_invoke_MemberName::clazz_offset_in_bytes()));
-    Address member_vmindex(  member_reg, NONZERO(java_lang_invoke_MemberName::vmindex_offset_in_bytes()));
-    Address member_vmtarget( member_reg, NONZERO(java_lang_invoke_MemberName::method_offset_in_bytes()));
-    Address vmtarget_method( rbx_method, NONZERO(java_lang_invoke_ResolvedMethodName::vmtarget_offset_in_bytes()));
+    Address member_clazz(    member_reg, NONZERO(java_lang_invoke_MemberName::clazz_offset()));
+    Address member_vmindex(  member_reg, NONZERO(java_lang_invoke_MemberName::vmindex_offset()));
+    Address member_vmtarget( member_reg, NONZERO(java_lang_invoke_MemberName::method_offset()));
+    Address vmtarget_method( rbx_method, NONZERO(java_lang_invoke_ResolvedMethodName::vmtarget_offset()));
 
     Register temp1_recv_klass = temp1;
     if (iid != vmIntrinsics::_linkToStatic) {
@@ -351,7 +365,7 @@ void MethodHandles::generate_method_handle_dispatch(MacroAssembler* _masm,
       } else {
         // load receiver klass itself
         __ null_check(receiver_reg, oopDesc::klass_offset_in_bytes());
-        __ load_klass(temp1_recv_klass, receiver_reg);
+        __ load_klass(temp1_recv_klass, receiver_reg, temp2);
         __ verify_klass_ptr(temp1_recv_klass);
       }
       BLOCK_COMMENT("check_receiver {");
@@ -359,7 +373,7 @@ void MethodHandles::generate_method_handle_dispatch(MacroAssembler* _masm,
       // Check the receiver against the MemberName.clazz
       if (VerifyMethodHandles && iid == vmIntrinsics::_linkToSpecial) {
         // Did not load it above...
-        __ load_klass(temp1_recv_klass, receiver_reg);
+        __ load_klass(temp1_recv_klass, receiver_reg, temp2);
         __ verify_klass_ptr(temp1_recv_klass);
       }
       if (VerifyMethodHandles && iid != vmIntrinsics::_linkToInterface) {
@@ -466,7 +480,7 @@ void MethodHandles::generate_method_handle_dispatch(MacroAssembler* _masm,
     }
 
     default:
-      fatal("unexpected intrinsic %d: %s", iid, vmIntrinsics::name_at(iid));
+      fatal("unexpected intrinsic %d: %s", vmIntrinsics::as_int(iid), vmIntrinsics::name_at(iid));
       break;
     }
 
@@ -489,89 +503,107 @@ void MethodHandles::generate_method_handle_dispatch(MacroAssembler* _masm,
 
 #ifndef PRODUCT
 void trace_method_handle_stub(const char* adaptername,
-                              oop mh,
+                              oopDesc* mh,
                               intptr_t* saved_regs,
                               intptr_t* entry_sp) {
   // called as a leaf from native code: do not block the JVM!
   bool has_mh = (strstr(adaptername, "/static") == NULL &&
                  strstr(adaptername, "linkTo") == NULL);    // static linkers don't have MH
   const char* mh_reg_name = has_mh ? "rcx_mh" : "rcx";
-  tty->print_cr("MH %s %s=" PTR_FORMAT " sp=" PTR_FORMAT,
-                adaptername, mh_reg_name,
-                p2i(mh), p2i(entry_sp));
+  log_info(methodhandles)("MH %s %s=" PTR_FORMAT " sp=" PTR_FORMAT, adaptername, mh_reg_name, p2i(mh), p2i(entry_sp));
 
-  if (Verbose) {
-    tty->print_cr("Registers:");
+  LogTarget(Trace, methodhandles) lt;
+  if (lt.is_enabled()) {
+    ResourceMark rm;
+    LogStream ls(lt);
+    ls.print_cr("Registers:");
     const int saved_regs_count = RegisterImpl::number_of_registers;
     for (int i = 0; i < saved_regs_count; i++) {
       Register r = as_Register(i);
       // The registers are stored in reverse order on the stack (by pusha).
-      tty->print("%3s=" PTR_FORMAT, r->name(), saved_regs[((saved_regs_count - 1) - i)]);
-      if ((i + 1) % 4 == 0) {
-        tty->cr();
+#ifdef AMD64
+      assert(RegisterImpl::number_of_registers == 16, "sanity");
+      if (r == rsp) {
+        // rsp is actually not stored by pusha(), compute the old rsp from saved_regs (rsp after pusha): saved_regs + 16 = old rsp
+        ls.print("%3s=" PTR_FORMAT, r->name(), (intptr_t)(&saved_regs[16]));
       } else {
-        tty->print(", ");
+        ls.print("%3s=" PTR_FORMAT, r->name(), saved_regs[((saved_regs_count - 1) - i)]);
+      }
+#else
+      ls.print("%3s=" PTR_FORMAT, r->name(), saved_regs[((saved_regs_count - 1) - i)]);
+#endif
+      if ((i + 1) % 4 == 0) {
+        ls.cr();
+      } else {
+        ls.print(", ");
       }
     }
-    tty->cr();
+    ls.cr();
+
+    // Note: We want to allow trace_method_handle from any call site.
+    // While trace_method_handle creates a frame, it may be entered
+    // without a PC on the stack top (e.g. not just after a call).
+    // Walking that frame could lead to failures due to that invalid PC.
+    // => carefully detect that frame when doing the stack walking
 
     {
-     // dumping last frame with frame::describe
+      // dumping last frame with frame::describe
 
       JavaThread* p = JavaThread::active();
 
-      ResourceMark rm;
-      PRESERVE_EXCEPTION_MARK; // may not be needed by safer and unexpensive here
+      // may not be needed by safer and unexpensive here
+      PreserveExceptionMark pem(Thread::current());
       FrameValues values;
 
-      // Note: We want to allow trace_method_handle from any call site.
-      // While trace_method_handle creates a frame, it may be entered
-      // without a PC on the stack top (e.g. not just after a call).
-      // Walking that frame could lead to failures due to that invalid PC.
-      // => carefully detect that frame when doing the stack walking
-
-      // Current C frame
       frame cur_frame = os::current_frame();
 
-      // Robust search of trace_calling_frame (independant of inlining).
-      // Assumes saved_regs comes from a pusha in the trace_calling_frame.
-      assert(cur_frame.sp() < saved_regs, "registers not saved on stack ?");
-      frame trace_calling_frame = os::get_sender_for_C_frame(&cur_frame);
-      while (trace_calling_frame.fp() < saved_regs) {
-        trace_calling_frame = os::get_sender_for_C_frame(&trace_calling_frame);
-      }
+      if (cur_frame.fp() != 0) {  // not walkable
 
-      // safely create a frame and call frame::describe
-      intptr_t *dump_sp = trace_calling_frame.sender_sp();
-      intptr_t *dump_fp = trace_calling_frame.link();
+        // Robust search of trace_calling_frame (independent of inlining).
+        // Assumes saved_regs comes from a pusha in the trace_calling_frame.
+        //
+        // We have to start the search from cur_frame, because trace_calling_frame may be it.
+        // It is guaranteed that trace_calling_frame is different from the top frame.
+        // But os::current_frame() does NOT return the top frame: it returns the next frame under it (caller's frame).
+        // (Due to inlining and tail call optimizations, caller's frame doesn't necessarily correspond to the immediate
+        // caller in the source code.)
+        assert(cur_frame.sp() < saved_regs, "registers not saved on stack ?");
+        frame trace_calling_frame = cur_frame;
+        while (trace_calling_frame.fp() < saved_regs) {
+          assert(trace_calling_frame.cb() == NULL, "not a C frame");
+          trace_calling_frame = os::get_sender_for_C_frame(&trace_calling_frame);
+        }
+        assert(trace_calling_frame.sp() < saved_regs, "wrong frame");
 
-      bool walkable = has_mh; // whether the traced frame shoud be walkable
+        // safely create a frame and call frame::describe
+        intptr_t *dump_sp = trace_calling_frame.sender_sp();
+        intptr_t *dump_fp = trace_calling_frame.link();
 
-      if (walkable) {
-        // The previous definition of walkable may have to be refined
-        // if new call sites cause the next frame constructor to start
-        // failing. Alternatively, frame constructors could be
-        // modified to support the current or future non walkable
-        // frames (but this is more intrusive and is not considered as
-        // part of this RFE, which will instead use a simpler output).
-        frame dump_frame = frame(dump_sp, dump_fp);
-        dump_frame.describe(values, 1);
-      } else {
-        // Stack may not be walkable (invalid PC above FP):
-        // Add descriptions without building a Java frame to avoid issues
-        values.describe(-1, dump_fp, "fp for #1 <not parsed, cannot trust pc>");
-        values.describe(-1, dump_sp, "sp for #1");
+        if (has_mh) {
+          // The previous definition of walkable may have to be refined
+          // if new call sites cause the next frame constructor to start
+          // failing. Alternatively, frame constructors could be
+          // modified to support the current or future non walkable
+          // frames (but this is more intrusive and is not considered as
+          // part of this RFE, which will instead use a simpler output).
+          frame dump_frame = frame(dump_sp, dump_fp);
+          dump_frame.describe(values, 1);
+        } else {
+          // Stack may not be walkable (invalid PC above FP):
+          // Add descriptions without building a Java frame to avoid issues
+          values.describe(-1, dump_fp, "fp for #1 <not parsed, cannot trust pc>");
+          values.describe(-1, dump_sp, "sp for #1");
+        }
       }
       values.describe(-1, entry_sp, "raw top of stack");
 
-      tty->print_cr("Stack layout:");
-      values.print(p);
+      ls.print_cr("Stack layout:");
+      values.print_on(p, &ls);
     }
     if (has_mh && oopDesc::is_oop(mh)) {
-      mh->print();
+      mh->print_on(&ls);
       if (java_lang_invoke_MethodHandle::is_instance(mh)) {
-        if (java_lang_invoke_MethodHandle::form_offset_in_bytes() != 0)
-          java_lang_invoke_MethodHandle::form(mh)->print();
+        java_lang_invoke_MethodHandle::form(mh)->print_on(&ls);
       }
     }
   }
@@ -594,7 +626,7 @@ void trace_method_handle_stub_wrapper(MethodHandleStubArguments* args) {
 }
 
 void MethodHandles::trace_method_handle(MacroAssembler* _masm, const char* adaptername) {
-  if (!TraceMethodHandles)  return;
+  if (!log_is_enabled(Info, methodhandles))  return;
   BLOCK_COMMENT(err_msg("trace_method_handle %s {", adaptername));
   __ enter();
   __ andptr(rsp, -16); // align stack if needed for FPU state
@@ -604,7 +636,10 @@ void MethodHandles::trace_method_handle(MacroAssembler* _masm, const char* adapt
   // robust stack walking implemented in trace_method_handle_stub.
 
   // save FP result, valid at some call sites (adapter_opt_return_float, ...)
-  __ increment(rsp, -2 * wordSize);
+  __ decrement(rsp, 2 * wordSize);
+#ifdef _LP64
+  __ movdbl(Address(rsp, 0), xmm0);
+#else
   if  (UseSSE >= 2) {
     __ movdbl(Address(rsp, 0), xmm0);
   } else if (UseSSE == 1) {
@@ -612,6 +647,7 @@ void MethodHandles::trace_method_handle(MacroAssembler* _masm, const char* adapt
   } else {
     __ fst_d(Address(rsp, 0));
   }
+#endif // LP64
 
   // Incoming state:
   // rcx: method handle
@@ -626,6 +662,9 @@ void MethodHandles::trace_method_handle(MacroAssembler* _masm, const char* adapt
   __ super_call_VM_leaf(CAST_FROM_FN_PTR(address, trace_method_handle_stub_wrapper), rsp);
   __ increment(rsp, sizeof(MethodHandleStubArguments));
 
+#ifdef _LP64
+  __ movdbl(xmm0, Address(rsp, 0));
+#else
   if  (UseSSE >= 2) {
     __ movdbl(xmm0, Address(rsp, 0));
   } else if (UseSSE == 1) {
@@ -633,6 +672,7 @@ void MethodHandles::trace_method_handle(MacroAssembler* _masm, const char* adapt
   } else {
     __ fld_d(Address(rsp, 0));
   }
+#endif // LP64
   __ increment(rsp, 2 * wordSize);
 
   __ popa();

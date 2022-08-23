@@ -31,13 +31,12 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.GeneralPath;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
-import java.util.ArrayList;
 
 // Right now this class is final to avoid a problem with native code.
 // For some reason the JNI IsInstanceOf was not working correctly
 // so we are checking the class specifically. If we subclass this
 // we need to modify the native code in CFontWrapper.m
-public final class CFont extends PhysicalFont implements FontSubstitution {
+public final class CFont extends PhysicalFont implements FontSubstitution, FontWithDerivedItalic {
 
     /* CFontStrike doesn't call these methods so they are unimplemented.
      * They are here to meet the requirements of PhysicalFont, needed
@@ -88,6 +87,7 @@ public final class CFont extends PhysicalFont implements FontSubstitution {
                                                 final int style);
     private static native void disposeNativeFont(final long nativeFontPtr);
 
+    private String faceName;
     private boolean isFakeItalic;
     private String nativeFontName;
     private long nativeFontPtr;
@@ -153,14 +153,15 @@ public final class CFont extends PhysicalFont implements FontSubstitution {
 
     // this constructor is called from CFontWrapper.m
     public CFont(String name) {
-        this(name, name);
+        this(name, name, null);
     }
 
-    public CFont(String name, String inFamilyName) {
+    public CFont(String name, String inFamilyName, String faceName) {
         handle = new Font2DHandle(this);
         fullName = name;
         familyName = inFamilyName;
         nativeFontName = fullName;
+        this.faceName = faceName;
         setStyle();
     }
 
@@ -174,19 +175,24 @@ public final class CFont extends PhysicalFont implements FontSubstitution {
         isFakeItalic = other.isFakeItalic;
     }
 
-    public CFont createItalicVariant() {
+    public CFont createItalicVariant(boolean updateStyle) {
         CFont font = new CFont(this, familyName);
         font.nativeFontName = fullName;
         font.fullName =
             fullName + (style == Font.BOLD ? "" : "-") + "Italic-Derived";
-        font.style |= Font.ITALIC;
+        if (updateStyle) {
+            font.style |= Font.ITALIC;
+        }
         font.isFakeItalic = true;
         return font;
     }
 
     protected synchronized long getNativeFontPtr() {
         if (nativeFontPtr == 0L) {
-            nativeFontPtr = createNativeFont(nativeFontName, style);
+            /* Do not try to create native italic font when isFakeItalic
+             * is true, otherwise we can make it italic twice */
+            nativeFontPtr = createNativeFont(nativeFontName, style &
+                    (isFakeItalic ? ~Font.ITALIC : -1));
         }
         return nativeFontPtr;
     }
@@ -198,45 +204,11 @@ public final class CFont extends PhysicalFont implements FontSubstitution {
         return getCGFontPtrNative(getNativeFontPtr());
     }
 
-    static native void getCascadeList(long nativeFontPtr, ArrayList<String> listOfString);
-
-    private CompositeFont createCompositeFont() {
-        ArrayList<String> listOfString = new ArrayList<String>();
-        getCascadeList(nativeFontPtr, listOfString);
-
-        // In some italic cases the standard Mac cascade list is missing Arabic.
-        listOfString.add("GeezaPro");
-        FontManager fm = FontManagerFactory.getInstance();
-        int numFonts = 1 + listOfString.size();
-        PhysicalFont[] fonts = new PhysicalFont[numFonts];
-        fonts[0] = this;
-        int idx = 1;
-        for (String s : listOfString) {
-            if (s.equals(".AppleSymbolsFB"))  {
-                // Don't know why we get the weird name above .. replace.
-                s = "AppleSymbols";
-            }
-            Font2D f2d = fm.findFont2D(s, Font.PLAIN, FontManager.NO_FALLBACK);
-            if (f2d == null || f2d == this) {
-                continue;
-            }
-            fonts[idx++] = (PhysicalFont)f2d;
-        }
-        if (idx < fonts.length) {
-            PhysicalFont[] orig = fonts;
-            fonts = new PhysicalFont[idx];
-            System.arraycopy(orig, 0, fonts, 0, idx);
-        }
-        CompositeFont compFont = new CompositeFont(fonts);
-        compFont.mapper = new CCompositeGlyphMapper(compFont);
-        return compFont;
-    }
-
     private CompositeFont compFont;
 
     public CompositeFont getCompositeFont2D() {
         if (compFont == null) {
-           compFont = createCompositeFont();
+           compFont = new CCompositeFont(this);
         }
         return compFont;
     }
@@ -262,6 +234,19 @@ public final class CFont extends PhysicalFont implements FontSubstitution {
             desc.glyphTx.concatenate(AffineTransform.getShearInstance(-0.2, 0));
         }
         return new CStrike(this, desc);
+    }
+
+    boolean isFakeItalic() {
+        return isFakeItalic;
+    }
+
+    String getNativeFontName() {
+        return nativeFontName;
+    }
+
+    @Override
+    public String getTypographicSubfamilyName() {
+        return faceName == null ? super.getTypographicSubfamilyName() : faceName;
     }
 
     // <rdar://problem/5321707> sun.font.Font2D caches the last used strike,
@@ -290,5 +275,9 @@ public final class CFont extends PhysicalFont implements FontSubstitution {
         return "CFont { fullName: " + fullName +
             ",  familyName: " + familyName + ", style: " + style +
             " } aka: " + super.toString();
+    }
+
+    public Font2D createItalic() {
+      return this.createItalicVariant(true);
     }
 }

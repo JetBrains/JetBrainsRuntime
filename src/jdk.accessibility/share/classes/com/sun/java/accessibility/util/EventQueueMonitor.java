@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -142,6 +142,7 @@ public class EventQueueMonitor
     /**
      * Tell the {@code EventQueueMonitor} to start listening for events.
      */
+    @SuppressWarnings("removal")
     public static void maybeInitialize() {
         if (cedt == null) {
             java.security.AccessController.doPrivileged(
@@ -293,15 +294,16 @@ public class EventQueueMonitor
         case MouseEvent.MOUSE_MOVED:
         case MouseEvent.MOUSE_DRAGGED:
         case FocusEvent.FOCUS_GAINED:
+        case WindowEvent.WINDOW_ACTIVATED:
         case WindowEvent.WINDOW_DEACTIVATED:
             queueComponentEvent((ComponentEvent) theEvent);
             break;
 
-        case WindowEvent.WINDOW_ACTIVATED:
-            // Dialogs fire WINDOW_ACTIVATED and FOCUS_GAINED events
-            // before WINDOW_OPENED so we need to add topLevelListeners
-            // for the dialog when it is first activated to get a
-            // focus gained event for the focus component in the dialog.
+        case WindowEvent.WINDOW_GAINED_FOCUS:
+            // WINDOW_GAINED_FOCUS, WINDOW_ACTIVATED and FOCUS_GAINED events
+            // are fired before WINDOW_OPENED so we need to add topLevelListeners
+            // for the window when it is first focused to get a
+            // focus gained event for the focus component in it.
             if (theEvent instanceof ComponentEvent) {
                 ComponentEvent ce = (ComponentEvent)theEvent;
                 if (ce.getComponent() instanceof Window) {
@@ -312,7 +314,6 @@ public class EventQueueMonitor
                     EventQueueMonitor.addTopLevelWindow(ce.getComponent());
                 }
             }
-            queueComponentEvent((ComponentEvent) theEvent);
             break;
 
             // handle WINDOW_OPENED and WINDOW_CLOSED events synchronously

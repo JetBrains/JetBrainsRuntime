@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,7 @@ import javax.lang.model.SourceVersion;
 
 /**
  * The user doclet must implement this interface, as described in the
- * <a href="package-summary.html#package.description">package description</a>.
+ * <a href="package-summary.html#package-description">package description</a>.
  * Each implementation of a Doclet must provide a public no-argument constructor
  * to be used by tools to instantiate the doclet. The tool infrastructure will
  * interact with classes implementing this interface as follows:
@@ -71,7 +71,7 @@ public interface Doclet {
 
     /**
      * Returns a name identifying the doclet. A name is a simple identifier
-     * without white spaces, as defined in <cite>The Java&trade; Language Specification</cite>,
+     * without white spaces, as defined in <cite>The Java Language Specification</cite>,
      * section 6.2 "Names and Identifiers".
      *
      * @return name of the Doclet
@@ -154,11 +154,11 @@ public interface Doclet {
          * The kind of an option.
          */
         enum Kind {
-            /** an extended option, such as those prefixed with -X */
+            /** An extended option, such as those prefixed with {@code -X}. */
             EXTENDED,
-            /** a standard option */
+            /** A standard option. */
             STANDARD,
-            /** an implementation reserved option */
+            /** An implementation-reserved option. */
             OTHER;
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -424,6 +424,7 @@ public class HTMLEditorKit extends StyledEditorKit implements Accessible {
      *             HTMLEditorKit class
      * @return a stream representing the resource
      */
+    @SuppressWarnings("removal")
     static InputStream getResourceAsStream(final String name) {
         return AccessController.doPrivileged(
                 new PrivilegedAction<InputStream>() {
@@ -673,6 +674,11 @@ public class HTMLEditorKit extends StyledEditorKit implements Accessible {
          * Current offset.
          */
         private int curOffset;
+
+        /**
+         * Constructs a {@code LinkController}.
+         */
+        public LinkController() {}
 
         /**
          * Called for a mouse click event.
@@ -990,6 +996,11 @@ public class HTMLEditorKit extends StyledEditorKit implements Accessible {
      */
     public abstract static class Parser {
         /**
+         * Constructor for subclasses to call.
+         */
+        protected Parser() {}
+
+        /**
          * Parse the given stream and drive the given callback
          * with the results of the parse.  This method should
          * be implemented to be thread-safe.
@@ -1016,6 +1027,11 @@ public class HTMLEditorKit extends StyledEditorKit implements Accessible {
      * @see javax.swing.text.html.parser.DocumentParser
      */
     public static class ParserCallback {
+        /**
+         * Constructs a {@code ParserCallback}.
+         */
+        public ParserCallback() {}
+
         /**
          * This is passed as an attribute in the attributeset to indicate
          * the element is implied eg, the string '&lt;&gt;foo&lt;\t&gt;'
@@ -1236,6 +1252,10 @@ public class HTMLEditorKit extends StyledEditorKit implements Accessible {
      * </table>
      */
     public static class HTMLFactory implements ViewFactory {
+        /**
+         * Constructs a {@code HTMLFactory}.
+         */
+        public HTMLFactory() {}
 
         /**
          * Creates a view from an element.

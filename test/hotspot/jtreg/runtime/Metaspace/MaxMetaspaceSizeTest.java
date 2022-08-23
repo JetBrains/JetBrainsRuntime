@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,19 +29,23 @@ import jdk.test.lib.process.OutputAnalyzer;
  * @requires vm.bits == 64 & vm.opt.final.UseCompressedOops == true
  * @bug 8087291
  * @library /test/lib
- * @run main/othervm MaxMetaspaceSizeTest
+ * @run driver MaxMetaspaceSizeTest
  */
 
 public class MaxMetaspaceSizeTest {
     public static void main(String... args) throws Exception {
         ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
             "-Xmx1g",
-            "-XX:InitialBootClassLoaderMetaspaceSize=4195328",
-            "-XX:MaxMetaspaceSize=4195328",
+            "-XX:MaxMetaspaceSize=4K",
             "-XX:+UseCompressedClassPointers",
             "-XX:CompressedClassSpaceSize=1g",
             "--version");
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
-        output.shouldContain("MaxMetaspaceSize is too small.");
+        // We do not explicitly limit MaxMetaspaceSize to a lower minimum. User can get as low as he wants.
+        // However, you most certainly will hit either one of
+        // "OutOfMemoryError: Metaspace" or
+        // "OutOfMemoryError: Compressed class space"
+        output.shouldMatch("OutOfMemoryError.*(Compressed class space|Metaspace)");
+        output.shouldNotHaveExitValue(0);
     }
 }

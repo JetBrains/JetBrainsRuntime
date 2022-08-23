@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1995, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1995, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -108,7 +108,6 @@ static void SetJavaLauncherProp();
 static void SetClassPath(const char *s);
 static void SetMainModule(const char *s);
 static void SelectVersion(int argc, char **argv, char **main_class);
-static void SetJvmEnvironment(int argc, char **argv);
 static jboolean ParseArguments(int *pargc, char ***pargv,
                                int *pmode, char **pwhat,
                                int *pret, const char *jrepath);
@@ -241,7 +240,7 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
     char *main_class = NULL;
     int ret;
     InvocationFunctions ifn;
-    jlong start, end;
+    jlong start = 0, end = 0;
     char jvmpath[MAXPATHLEN];
     char jrepath[MAXPATHLEN];
     char jvmcfg[MAXPATHLEN];
@@ -284,15 +283,11 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
                                jvmpath, sizeof(jvmpath),
                                jvmcfg,  sizeof(jvmcfg));
 
-    if (!IsJavaArgs()) {
-        SetJvmEnvironment(argc,argv);
-    }
-
     ifn.CreateJavaVM = 0;
     ifn.GetDefaultJavaVMInitArgs = 0;
 
     if (JLI_IsTraceLauncher()) {
-        start = CounterGet();
+        start = CurrentTimeMicros();
     }
 
     if (!LoadJavaVM(jvmpath, &ifn)) {
@@ -300,11 +295,10 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
     }
 
     if (JLI_IsTraceLauncher()) {
-        end   = CounterGet();
+        end   = CurrentTimeMicros();
     }
 
-    JLI_TraceLauncher("%ld micro seconds to LoadJavaVM\n",
-             (long)(jint)Counter2Micros(end-start));
+    JLI_TraceLauncher("%ld micro seconds to LoadJavaVM\n", (long)(end-start));
 
     ++argv;
     --argc;
@@ -408,12 +402,12 @@ JavaMain(void* _args)
     jmethodID mainID;
     jobjectArray mainArgs;
     int ret = 0;
-    jlong start, end;
+    jlong start = 0, end = 0;
 
     RegisterThread();
 
     /* Initialize the virtual machine */
-    start = CounterGet();
+    start = CurrentTimeMicros();
     if (!InitializeJVM(&vm, &env, &ifn)) {
         JLI_ReportErrorMessage(JVM_ERROR1);
         exit(1);
@@ -467,9 +461,8 @@ JavaMain(void* _args)
     FreeKnownVMs(); /* after last possible PrintUsage */
 
     if (JLI_IsTraceLauncher()) {
-        end = CounterGet();
-        JLI_TraceLauncher("%ld micro seconds to InitializeJVM\n",
-               (long)(jint)Counter2Micros(end-start));
+        end = CurrentTimeMicros();
+        JLI_TraceLauncher("%ld micro seconds to InitializeJVM\n", (long)(end-start));
     }
 
     /* At this stage, argc/argv have the application's arguments */
@@ -602,6 +595,7 @@ IsModuleOption(const char* name) {
            JLI_StrCmp(name, "-p") == 0 ||
            JLI_StrCmp(name, "--upgrade-module-path") == 0 ||
            JLI_StrCmp(name, "--add-modules") == 0 ||
+           JLI_StrCmp(name, "--enable-native-access") == 0 ||
            JLI_StrCmp(name, "--limit-modules") == 0 ||
            JLI_StrCmp(name, "--add-exports") == 0 ||
            JLI_StrCmp(name, "--add-opens") == 0 ||
@@ -614,6 +608,7 @@ IsLongFormModuleOption(const char* name) {
     return JLI_StrCCmp(name, "--module-path=") == 0 ||
            JLI_StrCCmp(name, "--upgrade-module-path=") == 0 ||
            JLI_StrCCmp(name, "--add-modules=") == 0 ||
+           JLI_StrCCmp(name, "--enable-native-access=") == 0 ||
            JLI_StrCCmp(name, "--limit-modules=") == 0 ||
            JLI_StrCCmp(name, "--add-exports=") == 0 ||
            JLI_StrCCmp(name, "--add-reads=") == 0 ||
@@ -797,80 +792,6 @@ CheckJvmType(int *pargc, char ***argv, jboolean speculative) {
     }
 
     return jvmtype;
-}
-
-/*
- * This method must be called before the VM is loaded, primarily
- * used to parse and set any VM related options or env variables.
- * This function is non-destructive leaving the argument list intact.
- */
-static void
-SetJvmEnvironment(int argc, char **argv) {
-
-    static const char*  NMT_Env_Name    = "NMT_LEVEL_";
-    int i;
-    /* process only the launcher arguments */
-    for (i = 0; i < argc; i++) {
-        char *arg = argv[i];
-        /*
-         * Since this must be a VM flag we stop processing once we see
-         * an argument the launcher would not have processed beyond (such
-         * as -version or -h), or an argument that indicates the following
-         * arguments are for the application (i.e. the main class name, or
-         * the -jar argument).
-         */
-        if (i > 0) {
-            char *prev = argv[i - 1];
-            // skip non-dash arg preceded by class path specifiers
-            if (*arg != '-' && IsWhiteSpaceOption(prev)) {
-                continue;
-            }
-
-            if (*arg != '-' || isTerminalOpt(arg)) {
-                return;
-            }
-        }
-        /*
-         * The following case checks for "-XX:NativeMemoryTracking=value".
-         * If value is non null, an environmental variable set to this value
-         * will be created to be used by the JVM.
-         * The argument is passed to the JVM, which will check validity.
-         * The JVM is responsible for removing the env variable.
-         */
-        if (JLI_StrCCmp(arg, "-XX:NativeMemoryTracking=") == 0) {
-            int retval;
-            // get what follows this parameter, include "="
-            size_t pnlen = JLI_StrLen("-XX:NativeMemoryTracking=");
-            if (JLI_StrLen(arg) > pnlen) {
-                char* value = arg + pnlen;
-                size_t pbuflen = pnlen + JLI_StrLen(value) + 10; // 10 max pid digits
-
-                /*
-                 * ensures that malloc successful
-                 * DONT JLI_MemFree() pbuf.  JLI_PutEnv() uses system call
-                 *   that could store the address.
-                 */
-                char * pbuf = (char*)JLI_MemAlloc(pbuflen);
-
-                JLI_Snprintf(pbuf, pbuflen, "%s%d=%s", NMT_Env_Name, JLI_GetPid(), value);
-                retval = JLI_PutEnv(pbuf);
-                if (JLI_IsTraceLauncher()) {
-                    char* envName;
-                    char* envBuf;
-
-                    // ensures that malloc successful
-                    envName = (char*)JLI_MemAlloc(pbuflen);
-                    JLI_Snprintf(envName, pbuflen, "%s%d", NMT_Env_Name, JLI_GetPid());
-
-                    printf("TRACER_MARKER: NativeMemoryTracking: env var is %s\n",envName);
-                    printf("TRACER_MARKER: NativeMemoryTracking: putenv arg %s\n",pbuf);
-                    envBuf = getenv(envName);
-                    printf("TRACER_MARKER: NativeMemoryTracking: got value %s\n",envBuf);
-                    free(envName);
-                }
-            }
-        }
-    }
 }
 
 /* copied from HotSpot function "atomll()" */
@@ -1618,11 +1539,11 @@ LoadMainClass(JNIEnv *env, int mode, char *name)
     jmethodID mid;
     jstring str;
     jobject result;
-    jlong start, end;
+    jlong start = 0, end = 0;
     jclass cls = GetLauncherHelperClass(env);
     NULL_CHECK0(cls);
     if (JLI_IsTraceLauncher()) {
-        start = CounterGet();
+        start = CurrentTimeMicros();
     }
     NULL_CHECK0(mid = (*env)->GetStaticMethodID(env, cls,
                 "checkAndLoadMain",
@@ -1633,9 +1554,8 @@ LoadMainClass(JNIEnv *env, int mode, char *name)
                                                         USE_STDERR, mode, str));
 
     if (JLI_IsTraceLauncher()) {
-        end   = CounterGet();
-        printf("%ld micro seconds to load main class\n",
-               (long)(jint)Counter2Micros(end-start));
+        end = CurrentTimeMicros();
+        printf("%ld micro seconds to load main class\n", (long)(end-start));
         printf("----%s----\n", JLDEBUG_ENV_ENTRY);
     }
 
@@ -1958,7 +1878,7 @@ DescribeModule(JNIEnv *env, char *optString)
     NULL_CHECK(cls);
     NULL_CHECK(describeModuleID = (*env)->GetStaticMethodID(env, cls,
             "describeModule", "(Ljava/lang/String;)V"));
-    NULL_CHECK(joptString = (*env)->NewStringUTF(env, optString));
+    NULL_CHECK(joptString = NewPlatformString(env, optString));
     (*env)->CallStaticVoidMethod(env, cls, describeModuleID, joptString);
 }
 
@@ -2080,14 +2000,14 @@ ReadKnownVMs(const char *jvmCfgName, jboolean speculative)
     char line[MAXPATHLEN+20];
     int cnt = 0;
     int lineno = 0;
-    jlong start, end;
+    jlong start = 0, end = 0;
     int vmType;
     char *tmpPtr;
     char *altVMName = NULL;
     char *serverClassVMName = NULL;
     static char *whiteSpace = " \t";
     if (JLI_IsTraceLauncher()) {
-        start = CounterGet();
+        start = CurrentTimeMicros();
     }
 
     jvmCfg = fopen(jvmCfgName, "r");
@@ -2172,9 +2092,8 @@ ReadKnownVMs(const char *jvmCfgName, jboolean speculative)
     knownVMsCount = cnt;
 
     if (JLI_IsTraceLauncher()) {
-        end   = CounterGet();
-        printf("%ld micro seconds to parse jvm.cfg\n",
-               (long)(jint)Counter2Micros(end-start));
+        end = CurrentTimeMicros();
+        printf("%ld micro seconds to parse jvm.cfg\n", (long)(end-start));
     }
 
     return cnt;

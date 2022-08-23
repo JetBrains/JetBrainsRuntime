@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -102,11 +102,11 @@ abstract class HandshakeContext implements ConnectionContext {
     boolean                                 isResumption;
     SSLSessionImpl                          resumingSession;
     // Session is using stateless resumption
-    boolean                                 statelessResumption = false;
+    boolean                                 statelessResumption;
 
     final Queue<Map.Entry<Byte, ByteBuffer>> delegatedActions;
-    volatile boolean                        taskDelegated = false;
-    volatile Exception                      delegatedThrown = null;
+    volatile boolean                        taskDelegated;
+    volatile Exception                      delegatedThrown;
 
     ProtocolVersion                         negotiatedProtocol;
     CipherSuite                             negotiatedCipherSuite;
@@ -164,8 +164,10 @@ abstract class HandshakeContext implements ConnectionContext {
         this.conContext = conContext;
         this.sslConfig = (SSLConfiguration)conContext.sslConfig.clone();
 
+        this.algorithmConstraints = new SSLAlgorithmConstraints(
+                sslConfig.userSpecifiedAlgorithmConstraints);
         this.activeProtocols = getActiveProtocols(sslConfig.enabledProtocols,
-                sslConfig.enabledCipherSuites, sslConfig.algorithmConstraints);
+                sslConfig.enabledCipherSuites, algorithmConstraints);
         if (activeProtocols.isEmpty()) {
             throw new SSLHandshakeException(
                 "No appropriate protocol (protocol is disabled or " +
@@ -181,12 +183,10 @@ abstract class HandshakeContext implements ConnectionContext {
         }
         this.maximumActiveProtocol = maximumVersion;
         this.activeCipherSuites = getActiveCipherSuites(this.activeProtocols,
-                sslConfig.enabledCipherSuites, sslConfig.algorithmConstraints);
+                sslConfig.enabledCipherSuites, algorithmConstraints);
         if (activeCipherSuites.isEmpty()) {
             throw new SSLHandshakeException("No appropriate cipher suite");
         }
-        this.algorithmConstraints =
-                new SSLAlgorithmConstraints(sslConfig.algorithmConstraints);
 
         this.handshakeConsumers = new LinkedHashMap<>();
         this.handshakeProducers = new HashMap<>();
@@ -209,7 +209,7 @@ abstract class HandshakeContext implements ConnectionContext {
     /**
      * Constructor for PostHandshakeContext
      */
-    HandshakeContext(TransportContext conContext) {
+    protected HandshakeContext(TransportContext conContext) {
         this.sslContext = conContext.sslContext;
         this.conContext = conContext;
         this.sslConfig = conContext.sslConfig;
@@ -219,6 +219,7 @@ abstract class HandshakeContext implements ConnectionContext {
         this.handshakeOutput = new HandshakeOutStream(conContext.outputRecord);
         this.delegatedActions = new LinkedList<>();
 
+        this.handshakeConsumers = new LinkedHashMap<>();
         this.handshakeProducers = null;
         this.handshakeHash = null;
         this.activeProtocols = null;
@@ -296,13 +297,13 @@ abstract class HandshakeContext implements ConnectionContext {
                 } else if (SSLLogger.isOn && SSLLogger.isOn("verbose")) {
                     SSLLogger.fine(
                         "Ignore unsupported cipher suite: " + suite +
-                             " for " + protocol);
+                             " for " + protocol.name);
                 }
             }
 
             if (!found && (SSLLogger.isOn) && SSLLogger.isOn("handshake")) {
                 SSLLogger.fine(
-                    "No available cipher suite for " + protocol);
+                    "No available cipher suite for " + protocol.name);
             }
         }
 
@@ -415,6 +416,41 @@ abstract class HandshakeContext implements ConnectionContext {
                         handshakeType,
                         fragment
                     ));
+
+                // For TLS 1.2 and previous versions, the ChangeCipherSpec
+                // message is always delivered before the Finished handshake
+                // message.  ChangeCipherSpec is not a handshake message,
+                // and cannot be wrapped in one TLS record.  The processing
+                // of Finished handshake message is unlikely to be delegated.
+                //
+                // However, for TLS 1.3 there is no non-handshake messages
+                // delivered immediately before Finished message.  Then, the
+                // 'hasDelegated' could be true, and the Finished message is
+                // handled in a delegated action.
+                //
+                // The HandshakeStatus.FINISHED for the final handshake flight
+                // could be used to determine if the handshake has completed.
+                // Per the HandshakeStatus.FINISHED specification, it is only
+                // generated by call to SSLEngine.wrap()/unwrap().  It is
+                // unlikely to change the spec, so we cannot use delegated
+                // action and SSLEngine.getHandshakeStatus() to indicate the
+                // FINISHED handshake status.
+                //
+                // To workaround this special user case, the follow-on call to
+                // SSLEngine.wrap() method will return HandshakeStatus.FINISHED
+                // status if needed.
+                //
+                // As the final handshake flight is always delivered from the
+                // client side, so we only need to take care of the server
+                // dispatching processes.
+                //
+                // See also the note on
+                // TransportContext.needHandshakeFinishedStatus.
+                if (hasDelegated &&
+                        !conContext.sslConfig.isClientMode &&
+                        handshakeType == SSLHandshake.FINISHED.id) {
+                    conContext.hasDelegatedFinished = true;
+                }
             } else {
                 dispatch(handshakeType, plaintext.fragment);
             }
@@ -498,15 +534,6 @@ abstract class HandshakeContext implements ConnectionContext {
         return activeProtocols.contains(protocolVersion);
     }
 
-    /**
-     * Set the active protocol version and propagate it to the SSLSocket
-     * and our handshake streams. Called from ClientHandshaker
-     * and ServerHandshaker with the negotiated protocol version.
-     */
-    void setVersion(ProtocolVersion protocolVersion) {
-        this.conContext.protocolVersion = protocolVersion;
-    }
-
     private static boolean isActivatable(CipherSuite suite,
             AlgorithmConstraints algorithmConstraints,
             Map<NamedGroupSpec, Boolean> cachedStatus) {
@@ -540,7 +567,7 @@ abstract class HandshakeContext implements ConnectionContext {
 
                     retval |= groupAvailable;
                 } else {
-                    retval |= true;
+                    retval = true;
                 }
             }
 

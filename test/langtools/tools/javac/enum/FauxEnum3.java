@@ -7,8 +7,7 @@
  * @compile/fail/ref=FauxEnum3.out -XDrawDiagnostics  FauxEnum3.java
  */
 
-public class FauxEnum3 extends SpecializedEnum {
-}
+public final class FauxEnum3 extends SpecializedEnum {}
 
 enum SpecializedEnum {
     RED {

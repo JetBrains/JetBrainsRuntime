@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,11 +23,15 @@
  */
 
 #include "precompiled.hpp"
+#include "jfr/jni/jfrJavaSupport.hpp"
 #include "jfr/recorder/jfrRecorder.hpp"
 #include "jfr/recorder/service/jfrPostBox.hpp"
 #include "jfr/recorder/service/jfrRecorderService.hpp"
 #include "jfr/recorder/service/jfrRecorderThread.hpp"
+#include "jfr/recorder/jfrRecorder.hpp"
 #include "logging/log.hpp"
+#include "runtime/handles.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/mutexLocker.hpp"
 #include "runtime/thread.inline.hpp"
 
@@ -35,14 +39,13 @@
 // Entry point for "JFR Recorder Thread" message loop.
 // The recorder thread executes service requests collected from the message system.
 //
-void recorderthread_entry(JavaThread* thread, Thread* unused) {
+void recorderthread_entry(JavaThread* thread, JavaThread* unused) {
   assert(thread != NULL, "invariant");
   #define START (msgs & (MSGBIT(MSG_START)))
   #define SHUTDOWN (msgs & MSGBIT(MSG_SHUTDOWN))
   #define ROTATE (msgs & (MSGBIT(MSG_ROTATE)|MSGBIT(MSG_STOP)))
   #define FLUSHPOINT (msgs & (MSGBIT(MSG_FLUSHPOINT)))
   #define PROCESS_FULL_BUFFERS (msgs & (MSGBIT(MSG_ROTATE)|MSGBIT(MSG_STOP)|MSGBIT(MSG_FULLBUFFER)))
-  #define SCAVENGE (msgs & (MSGBIT(MSG_DEADBUFFER)))
 
   JfrPostBox& post_box = JfrRecorderThread::post_box();
   log_debug(jfr, system)("Recorder thread STARTED");
@@ -60,21 +63,24 @@ void recorderthread_entry(JavaThread* thread, Thread* unused) {
       }
       msgs = post_box.collect();
       JfrMsg_lock->unlock();
-      if (PROCESS_FULL_BUFFERS) {
-        service.process_full_buffers();
-      }
-      if (SCAVENGE) {
-        service.scavenge();
-      }
-      // Check amount of data written to chunk already
-      // if it warrants asking for a new chunk
-      service.evaluate_chunk_size_for_rotation();
-      if (START) {
-        service.start();
-      } else if (ROTATE) {
-        service.rotate(msgs);
-      } else if (FLUSHPOINT) {
-        service.flushpoint();
+      {
+        // Run as _thread_in_native as much a possible
+        // to minimize impact on safepoint synchronizations.
+        NoHandleMark nhm;
+        ThreadToNativeFromVM transition(thread);
+        if (PROCESS_FULL_BUFFERS) {
+          service.process_full_buffers();
+        }
+        // Check amount of data written to chunk already
+        // if it warrants asking for a new chunk.
+        service.evaluate_chunk_size_for_rotation();
+        if (START) {
+          service.start();
+        } else if (ROTATE) {
+          service.rotate(msgs);
+        } else if (FLUSHPOINT) {
+          service.flushpoint();
+        }
       }
       JfrMsg_lock->lock();
       post_box.notify_waiters();

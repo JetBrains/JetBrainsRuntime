@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2006, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,10 +28,8 @@ package sun.font;
 import java.io.File;
 import java.awt.Font;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.Locale;
 
 public class FontFamily {
 
@@ -44,6 +42,8 @@ public class FontFamily {
     protected Font2D bold;
     protected Font2D italic;
     protected Font2D bolditalic;
+    private final List<FontAndStyle> fontSequence = new ArrayList<FontAndStyle>();
+    private boolean initialized = false;
     protected boolean logicalFont = false;
     protected int familyRank;
 
@@ -61,11 +61,12 @@ public class FontFamily {
      */
     static void remove(Font2D font2D) {
 
-        String name = font2D.getFamilyName(Locale.ENGLISH);
+        String name = font2D.familyName;
         FontFamily family = getFamily(name);
         if (family == null) {
             return;
         }
+        family.ensureFontsLoaded();
         if (family.plain == font2D) {
             family.plain = null;
         }
@@ -181,7 +182,7 @@ public class FontFamily {
             Math.abs(Font2D.FWIDTH_NORMAL - familyWidth))
         {
            if (FontUtilities.debugFonts()) {
-               FontUtilities.getLogger().info(
+               FontUtilities.logInfo(
                "Found more preferred width. New width = " + newWidth +
                " Old width = " + familyWidth + " in font " + font +
                " nulling out fonts plain: " + plain + " bold: " + bold +
@@ -191,7 +192,7 @@ public class FontFamily {
            plain = bold = italic = bolditalic = null;
            return true;
         } else if (FontUtilities.debugFonts()) {
-               FontUtilities.getLogger().info(
+               FontUtilities.logInfo(
                "Family rejecting font " + font +
                " of less preferred width " + newWidth);
         }
@@ -208,7 +209,7 @@ public class FontFamily {
         }
 
         if (FontUtilities.debugFonts()) {
-            FontUtilities.getLogger().info(
+            FontUtilities.logInfo(
             "New weight for style " + style + ". Curr.font=" + currFont +
             " New font="+font+" Curr.weight="+ + currFont.getWeight()+
             " New weight="+font.getWeight());
@@ -219,11 +220,11 @@ public class FontFamily {
             case Font.PLAIN:
             case Font.ITALIC:
                 return (newWeight <= Font2D.FWEIGHT_NORMAL &&
-                        newWeight > currFont.getWeight());
+                        newWeight >= currFont.getWeight());
 
             case Font.BOLD:
             case Font.BOLD|Font.ITALIC:
-                return (Math.abs(newWeight - Font2D.FWEIGHT_BOLD) <
+                return (Math.abs(newWeight - Font2D.FWEIGHT_BOLD) <=
                         Math.abs(currFont.getWeight() - Font2D.FWEIGHT_BOLD));
 
             default:
@@ -242,18 +243,52 @@ public class FontFamily {
                 msg = "Request to add " + font +
                       " with style " + style + " to family " + this;
             }
-            FontUtilities.getLogger().info(msg);
+            FontUtilities.logInfo(msg);
         }
+        synchronized (fontSequence) {
+            if (initialized) {
+                doSetFont(font, style);
+                return;
+            }
+            fontSequence.add(new FontAndStyle(font, style));
+        }
+    }
+
+    private void ensureFontsLoaded() {
+        synchronized (fontSequence) {
+            if (initialized) {
+                return;
+            }
+            if (FontUtilities.isMacOSX) {
+                fontSequence.sort(Comparator.comparing(FontAndStyle::getWeight));
+            }
+            for (FontAndStyle fontAndStyle : fontSequence) {
+                doSetFont(fontAndStyle.font, fontAndStyle.style);
+            }
+            if (italic == null && plain instanceof FontWithDerivedItalic) {
+                italic = ((FontWithDerivedItalic)plain).createItalic();
+            }
+            if (bolditalic == null) {
+                Font2D boldItalicPrototype = bold != null ? bold : plain;
+                if (boldItalicPrototype instanceof FontWithDerivedItalic) {
+                    bolditalic = ((FontWithDerivedItalic)boldItalicPrototype).createItalic();
+                }
+            }
+            fontSequence.clear();
+            initialized = true;
+        }
+    }
+
+    private void doSetFont(Font2D font, int style) {
         /* Allow a lower-rank font only if its a file font
          * from the exact same source as any previous font.
          */
         if ((font.getRank() > familyRank) && !isFromSameSource(font)) {
             if (FontUtilities.isLogging()) {
-                FontUtilities.getLogger()
-                                  .warning("Rejecting adding " + font +
-                                           " of lower rank " + font.getRank() +
-                                           " to family " + this +
-                                           " of rank " + familyRank);
+                FontUtilities.logWarning("Rejecting adding " + font +
+                                         " of lower rank " + font.getRank() +
+                                         " to family " + this +
+                                         " of rank " + familyRank);
             }
             return;
         }
@@ -290,7 +325,7 @@ public class FontFamily {
     }
 
     public Font2D getFontWithExactStyleMatch(int style) {
-
+        ensureFontsLoaded();
         switch (style) {
 
         case Font.PLAIN:
@@ -319,7 +354,7 @@ public class FontFamily {
      * same location.
      */
     public Font2D getFont(int style) {
-
+        ensureFontsLoaded();
         switch (style) {
 
         case Font.PLAIN:
@@ -367,7 +402,7 @@ public class FontFamily {
      * it might as well be from the same family.
      */
      Font2D getClosestStyle(int style) {
-
+        ensureFontsLoaded();
         switch (style) {
             /* if you ask for a plain font try to return a non-italic one,
              * then a italic one, finally a bold italic one */
@@ -444,8 +479,23 @@ public class FontFamily {
             " plain="+plain+
             " bold=" + bold +
             " italic=" + italic +
-            " bolditalic=" + bolditalic;
+            " bolditalic=" + bolditalic +
+            " initialized=" + initialized;
 
+    }
+
+    private static class FontAndStyle {
+        private final Font2D font;
+        private final int style;
+
+        private FontAndStyle(Font2D inFont, int inStyle) {
+            font = inFont;
+            style = inStyle;
+        }
+
+        int getWeight() {
+            return font.getWeight();
+        }
     }
 
 }

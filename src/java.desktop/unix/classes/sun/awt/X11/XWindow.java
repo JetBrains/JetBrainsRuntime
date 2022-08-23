@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,22 +25,44 @@
 
 package sun.awt.X11;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.awt.peer.ComponentPeer;
+import java.awt.AWTEvent;
+import java.awt.AWTKeyStroke;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Cursor;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.GraphicsConfiguration;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.SystemColor;
+import java.awt.Toolkit;
+import java.awt.Window;
+import java.awt.event.ComponentEvent;
+import java.awt.event.FocusEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.PaintEvent;
 import java.awt.image.ColorModel;
-
+import java.awt.peer.ComponentPeer;
 import java.lang.ref.WeakReference;
 
+import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
-import sun.util.logging.PlatformLogger;
-
-import sun.awt.*;
-
-import sun.awt.image.PixelConverter;
-
+import sun.awt.PaintEventDispatcher;
+import sun.awt.PeerEvent;
+import sun.awt.SunToolkit;
+import sun.awt.X11ComponentPeer;
+import sun.awt.X11GraphicsConfig;
+import sun.awt.event.KeyEventProcessing;
+import sun.awt.event.TouchEvent;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
+import sun.util.logging.PlatformLogger;
 
 class XWindow extends XBaseWindow implements X11ComponentPeer {
     private static PlatformLogger log = PlatformLogger.getLogger("sun.awt.X11.XWindow");
@@ -48,6 +70,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     private static PlatformLogger eventLog = PlatformLogger.getLogger("sun.awt.X11.event.XWindow");
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.X11.focus.XWindow");
     private static PlatformLogger keyEventLog = PlatformLogger.getLogger("sun.awt.X11.kye.XWindow");
+    private static PlatformLogger touchEventLog = PlatformLogger.getLogger("sun.awt.event.TouchEvent");
   /* If a motion comes in while a multi-click is pending,
    * allow a smudge factor so that moving the mouse by a small
    * amount does not wipe out the multi-click state variables.
@@ -59,6 +82,12 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     static long lastButton = 0;
     static WeakReference<XWindow> lastWindowRef = null;
     static int clickCount = 0;
+
+    // all touch scrolls are measured in pixels
+    private static int touchBeginX = 0, touchBeginY = 0;
+    private static int trackingId = 0;
+    private static long lastTouchUpdateTime = 0;
+    private static boolean isTouchScroll = false;
 
     // used to check if we need to re-create surfaceData.
     int oldWidth = -1;
@@ -117,10 +146,6 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     */
     private int mouseButtonClickAllowed = 0;
 
-    native int getNativeColor(Color clr, GraphicsConfiguration gc);
-    native void getWMInsets(long window, long left, long top, long right, long bottom, long border);
-    native long getTopWindow(long window, long rootWin);
-    native void getWindowBounds(long window, long x, long y, long width, long height);
     private static native void initIDs();
 
     static {
@@ -222,6 +247,11 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         }
 
         params.putIfNull(BACKING_STORE, XToolkit.getBackingStoreType());
+
+        params.putIfNull(XI_EVENT_MASK, XConstants.XI_TouchBeginMask |
+                        XConstants.XI_TouchUpdateMask |
+                        XConstants.XI_TouchEndMask);
+        params.putIfNull(XI_DEVICE_ID, XConstants.XIAllMasterDevices);
 
         XToolkit.awtLock();
         try {
@@ -394,13 +424,14 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         return false;
     }
 
-    static void sendEvent(final AWTEvent e) {
+    static void sendEvent(final AWTEvent e, Runnable lightweigtRequestRunnable) {
         // The uses of this method imply that the incoming event is system-generated
         SunToolkit.setSystemGenerated(e);
         PeerEvent pe = new PeerEvent(Toolkit.getDefaultToolkit(), new Runnable() {
                 public void run() {
                     AWTAccessor.getAWTEventAccessor().setPosted(e);
                     ((Component)e.getSource()).dispatchEvent(e);
+                    lightweigtRequestRunnable.run();
                 }
             }, PeerEvent.ULTIMATE_PRIORITY_EVENT);
         if (focusLog.isLoggable(PlatformLogger.Level.FINER) && (e instanceof FocusEvent)) {
@@ -409,6 +440,9 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         XToolkit.postEvent(XToolkit.targetToAppContext(e.getSource()), pe);
     }
 
+    static void sendEvent(final AWTEvent e) {
+        sendEvent(e, () -> {});
+    }
 
 /*
  * Post an event to the event queue.
@@ -666,7 +700,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         }
         int type = xev.get_type();
         when = xbe.get_time();
-        long jWhen = XToolkit.nowMillisUTC_offset(when);
+        long jWhen = System.currentTimeMillis();
 
         int x = scaleDown(xbe.get_x());
         int y = scaleDown(xbe.get_y());
@@ -765,6 +799,143 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         }
     }
 
+    public void handleTouchEvent(XEvent xev) {
+        super.handleTouchEvent(xev);
+
+        XIDeviceEvent dev = XToolkit.GetXIDeviceEvent(xev.get_xcookie());
+        // TODO remove this after TouchEvents support
+        // own touch processing by tracking id
+        if (isTouchReleased()) {
+            trackingId = dev.get_detail();
+        } else if (!isOwningTouch(dev.get_detail())) {
+            return;
+        }
+
+        int x = scaleDown((int) dev.get_event_x());
+        int y = scaleDown((int) dev.get_event_y());
+
+        if (dev.get_event() != window) {
+            Point localXY = toLocal(x, y);
+            x = localXY.x;
+            y = localXY.y;
+        }
+        int modifiers = getModifiers(dev.get_mods().get_effective(), MouseEvent.BUTTON1, 0);
+        int scrollModifiers = modifiers & ~InputEvent.SHIFT_DOWN_MASK;
+
+        long jWhen = System.currentTimeMillis();
+
+        switch (dev.get_evtype()) {
+            case XConstants.XI_TouchBegin:
+                if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
+                    touchEventLog.finest("Touch Begin at: " + x + ", " + y);
+                }
+                isTouchScroll = false;
+                touchBeginX = x;
+                touchBeginY = y;
+                lastTouchUpdateTime = jWhen;
+                sendWheelEventFromTouch(dev, jWhen, scrollModifiers, touchBeginX, touchBeginY, TouchEvent.TOUCH_BEGIN, 1);
+                break;
+            case XConstants.XI_TouchUpdate:
+                if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
+                    touchEventLog.finest("Touch Update at: " + x + ", " + y);
+                }
+                lastTouchUpdateTime = jWhen;
+
+                if (!isTouchScroll && isInsideTouchClickBoundaries(x, y)) {
+                    return;
+                }
+                isTouchScroll = true;
+
+                int deltaY = lastY - y;
+                if (deltaY != 0) {
+                    if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
+                        touchEventLog.finest("Vertical touch scroll, delta: " + deltaY);
+                    }
+                    sendWheelEventFromTouch(dev, jWhen, scrollModifiers, x, y, TouchEvent.TOUCH_UPDATE, deltaY);
+                }
+
+                int deltaX = lastX - x;
+                if (deltaX != 0) {
+                    if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
+                        touchEventLog.finest("Horizontal touch scroll, delta: " + deltaX);
+                    }
+                    int horizontalScrollMods = scrollModifiers | InputEvent.SHIFT_DOWN_MASK;
+                    sendWheelEventFromTouch(dev, jWhen, horizontalScrollMods, x, y, TouchEvent.TOUCH_UPDATE, deltaX);
+                }
+                break;
+            case XConstants.XI_TouchEnd:
+                if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
+                    touchEventLog.finest("Touch End at: " + x + ", " + y);
+                }
+                sendWheelEventFromTouch(dev, jWhen, scrollModifiers, x, y, TouchEvent.TOUCH_END, 1);
+
+                if (!isTouchScroll) {
+                    if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
+                        touchEventLog.finest("Touch Press at: " + x + ", " + y);
+                    }
+                    sendButtonPressFromTouch(dev, jWhen, modifiers, touchBeginX, touchBeginY);
+                }
+
+                // release touch processing
+                trackingId = 0;
+                break;
+        }
+
+        lastX = x;
+        lastY = y;
+    }
+
+    private boolean isInsideTouchClickBoundaries(int x, int y) {
+        return Math.abs(touchBeginX - x) <= TouchEvent.CLICK_RADIUS &&
+                Math.abs(touchBeginY - y) <= TouchEvent.CLICK_RADIUS;
+    }
+
+    private static boolean isOwningTouch(int fingerId) {
+        return trackingId == fingerId;
+    }
+
+    private static boolean isTouchReleased() {
+        if (trackingId == 0) {
+            return true;
+        }
+
+        // recovery from situation when TOUCH_END event didn't occurred
+        long msFromLastUpdate = Math.abs(System.currentTimeMillis() - lastTouchUpdateTime);
+        if (msFromLastUpdate >= TouchEvent.NO_UPDATE_TIMEOUT) {
+            touchEventLog.warning("Release touch processing, milliseconds from last update: " + msFromLastUpdate);
+        }
+        return msFromLastUpdate >= TouchEvent.NO_UPDATE_TIMEOUT;
+    }
+
+    private void sendButtonPressFromTouch(XIDeviceEvent dev, long jWhen, int modifiers, int x, int y) {
+        sendMouseEventFromTouch(dev, MouseEvent.MOUSE_MOVED, jWhen, modifiers, x, y, MouseEvent.NOBUTTON, 0);
+        sendMouseEventFromTouch(dev, MouseEvent.MOUSE_DRAGGED, jWhen, modifiers, x, y, MouseEvent.BUTTON1, 0);
+        sendMouseEventFromTouch(dev, MouseEvent.MOUSE_PRESSED, jWhen, modifiers, x, y, MouseEvent.BUTTON1, 1);
+        sendMouseEventFromTouch(dev, MouseEvent.MOUSE_RELEASED, jWhen, modifiers, x, y, MouseEvent.BUTTON1, 1);
+        sendMouseEventFromTouch(dev, MouseEvent.MOUSE_CLICKED, jWhen, modifiers, x, y, MouseEvent.BUTTON1, 1);
+    }
+
+    private void sendWheelEventFromTouch(XIDeviceEvent dev, long jWhen, int modifiers, int x, int y, int type, int delta) {
+        postEventToEventQueue(
+                new MouseWheelEvent(getEventSource(), MouseEvent.MOUSE_WHEEL, jWhen,
+                        modifiers,
+                        x, y,
+                        scaleDown((int) dev.get_root_x()),
+                        scaleDown((int) dev.get_root_y()),
+                        0, false, type,
+                        1, delta));
+    }
+
+    private void sendMouseEventFromTouch(XIDeviceEvent dev, int type, long jWhen, int modifiers, int x, int y, int button, int clickCount) {
+        boolean popupTrigger = button == MouseEvent.BUTTON3;
+        postEventToEventQueue(
+                new MouseEvent(getEventSource(), type, jWhen,
+                        modifiers, x, y,
+                        scaleDown((int) dev.get_root_x()),
+                        scaleDown((int) dev.get_root_y()),
+                        clickCount, popupTrigger, button));
+    }
+
     public void handleMotionNotify(XEvent xev) {
         super.handleMotionNotify(xev);
         XMotionEvent xme = xev.get_xmotion();
@@ -814,7 +985,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
           lastY = 0;
         }
 
-        long jWhen = XToolkit.nowMillisUTC_offset(xme.get_time());
+        long jWhen = System.currentTimeMillis();
         int modifiers = getModifiers(xme.get_state(), 0, 0);
         boolean popupTrigger = false;
 
@@ -941,7 +1112,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
             return;
         }
 
-        long jWhen = XToolkit.nowMillisUTC_offset(xce.get_time());
+        long jWhen = System.currentTimeMillis();
         int modifiers = getModifiers(xce.get_state(),0,0);
         int clickCount = 0;
         boolean popupTrigger = false;
@@ -1063,6 +1234,12 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         return (uni > 0? sun.awt.ExtendedKeyCodes.getExtendedKeyCodeForChar(uni) : 0);
         //return (uni > 0? uni + 0x01000000 : 0);
     }
+
+    // java keycodes for unicode values consistent with MacOS and Windows
+    private static int addUnicodeOffset(int uni) {
+        return uni > 0 ? uni + 0x01000000 : 0;
+    }
+
     void logIncomingKeyEvent(XKeyEvent ev) {
         if (keyEventLog.isLoggable(PlatformLogger.Level.FINE)) {
             keyEventLog.fine("--XWindow.java:handleKeyEvent:"+ev);
@@ -1151,12 +1328,19 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
             );
         }
 
-        int jkeyToReturn = XKeysym.getLegacyJavaKeycodeOnly(ev); // someway backward compatible
         int jkeyExtended = jkc.getJavaKeycode() == java.awt.event.KeyEvent.VK_UNDEFINED ?
-                           primaryUnicode2JavaKeycode( unicodeFromPrimaryKeysym ) :
-                             jkc.getJavaKeycode();
+                primaryUnicode2JavaKeycode( unicodeFromPrimaryKeysym ) :
+                jkc.getJavaKeycode();
+
+        int jkeyToReturn;
+        if (KeyEventProcessing.useNationalLayouts) {
+            jkeyToReturn = getNationalKeyCode(jkc, unicodeFromPrimaryKeysym);
+            jkeyExtended = jkeyToReturn;
+        } else {
+            jkeyToReturn = XKeysym.getLegacyJavaKeycodeOnly(ev); // someway backward compatible
+        }
+
         postKeyEvent( java.awt.event.KeyEvent.KEY_PRESSED,
-                          ev.get_time(),
                           isDeadKey ? jkeyExtended : jkeyToReturn,
                           (unicodeKey == 0 ? java.awt.event.KeyEvent.CHAR_UNDEFINED : unicodeKey),
                           jkc.getKeyLocation(),
@@ -1170,7 +1354,6 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                     keyEventLog.fine("fire _TYPED on "+unicodeKey);
                 }
                 postKeyEvent( java.awt.event.KeyEvent.KEY_TYPED,
-                              ev.get_time(),
                               java.awt.event.KeyEvent.VK_UNDEFINED,
                               unicodeKey,
                               java.awt.event.KeyEvent.KEY_LOCATION_UNKNOWN,
@@ -1235,12 +1418,19 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         // is undefined, we still will have a guess of what was engraved on a keytop.
         int unicodeFromPrimaryKeysym = keysymToUnicode( xkeycodeToPrimaryKeysym(ev) ,0);
 
-        int jkeyToReturn = XKeysym.getLegacyJavaKeycodeOnly(ev); // someway backward compatible
         int jkeyExtended = jkc.getJavaKeycode() == java.awt.event.KeyEvent.VK_UNDEFINED ?
-                           primaryUnicode2JavaKeycode( unicodeFromPrimaryKeysym ) :
-                             jkc.getJavaKeycode();
+                primaryUnicode2JavaKeycode( unicodeFromPrimaryKeysym ) :
+                jkc.getJavaKeycode();
+
+        int jkeyToReturn;
+        if (KeyEventProcessing.useNationalLayouts) {
+            jkeyToReturn = getNationalKeyCode(jkc, unicodeFromPrimaryKeysym);
+            jkeyExtended = jkeyToReturn;
+        } else {
+            jkeyToReturn = XKeysym.getLegacyJavaKeycodeOnly(ev); // someway backward compatible
+        }
+
         postKeyEvent(  java.awt.event.KeyEvent.KEY_RELEASED,
-                          ev.get_time(),
                           isDeadKey ? jkeyExtended : jkeyToReturn,
                           (unicodeKey == 0 ? java.awt.event.KeyEvent.CHAR_UNDEFINED : unicodeKey),
                           jkc.getKeyLocation(),
@@ -1249,6 +1439,14 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                           jkeyExtended);
 
 
+    }
+
+    private static int getNationalKeyCode(XKeysym.Keysym2JavaKeycode jkc, int unicodeFromPrimaryKeysym) {
+        // use this key code for both keyCode and extendedKeyCode
+        // compatible with MacOS and Windows
+        return jkc.getJavaKeycode() == java.awt.event.KeyEvent.VK_UNDEFINED ?
+                addUnicodeOffset(unicodeFromPrimaryKeysym) :
+                jkc.getJavaKeycode();
     }
 
 
@@ -1454,12 +1652,12 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         AWTAccessor.getAWTEventAccessor().setBData(e, data);
     }
 
-    public void postKeyEvent(int id, long when, int keyCode, int keyChar,
+    public void postKeyEvent(int id, int keyCode, int keyChar,
         int keyLocation, int state, long event, int eventSize, long rawCode,
         int unicodeFromPrimaryKeysym, int extendedKeyCode)
 
     {
-        long jWhen = XToolkit.nowMillisUTC_offset(when);
+        long jWhen = System.currentTimeMillis();
         int modifiers = getModifiers(state, 0, keyCode);
 
         KeyEvent ke = new KeyEvent(getEventSource(), id, jWhen,

@@ -34,7 +34,7 @@ import com.sun.jdi.event.VMDisconnectEvent;
 /**
  * The type of an object in a target VM. ReferenceType encompasses
  * classes, interfaces, and array types as defined in
- * <cite>The Java&trade; Language Specification</cite>.
+ * <cite>The Java Language Specification</cite>.
  * All ReferenceType objects belong to one of the following
  * subinterfaces:
  * {@link ClassType} for classes,
@@ -84,22 +84,19 @@ public interface ReferenceType
     extends Type, Comparable<ReferenceType>, Accessible
 {
     /**
-     * Gets the fully qualified name of this type. The returned name
-     * is formatted as it might appear in a Java programming langauge
-     * declaration for objects of this type.
-     * <p>
-     * For primitive classes
-     * the returned name is the name of the corresponding primitive
-     * type; for example, "int" is returned as the name of the class
-     * represented by {@link java.lang.Integer#TYPE Integer.TYPE}.
+     * Returns the name of this {@code ReferenceType} object.
+     * The returned name is of the same form as the name returned by
+     * {@link Class#getName()}.
+     *
      * @return a string containing the type name.
+     * @see Class#getName()
      */
     String name();
 
     /**
      * Gets the generic signature for this type if there is one.
      * Generic signatures are described in the
-     * <cite>The Java&trade; Virtual Machine Specification</cite>.
+     * <cite>The Java Virtual Machine Specification</cite>.
      *
      * @return a string containing the generic signature, or <code>null</code>
      * if there is no generic signature.

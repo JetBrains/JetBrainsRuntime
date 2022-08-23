@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,15 +35,15 @@ import java.util.stream.Stream;
  */
 public enum PackageType {
     WIN_MSI(".msi",
-            TKit.isWindows() ? "jdk.incubator.jpackage.internal.WinMsiBundler" : null),
+            TKit.isWindows() ? "jdk.jpackage.internal.WinMsiBundler" : null),
     WIN_EXE(".exe",
-            TKit.isWindows() ? "jdk.incubator.jpackage.internal.WinMsiBundler" : null),
+            TKit.isWindows() ? "jdk.jpackage.internal.WinMsiBundler" : null),
     LINUX_DEB(".deb",
-            TKit.isLinux() ? "jdk.incubator.jpackage.internal.LinuxDebBundler" : null),
+            TKit.isLinux() ? "jdk.jpackage.internal.LinuxDebBundler" : null),
     LINUX_RPM(".rpm",
-            TKit.isLinux() ? "jdk.incubator.jpackage.internal.LinuxRpmBundler" : null),
-    MAC_DMG(".dmg", TKit.isOSX() ? "jdk.incubator.jpackage.internal.MacDmgBundler" : null),
-    MAC_PKG(".pkg", TKit.isOSX() ? "jdk.incubator.jpackage.internal.MacPkgBundler" : null),
+            TKit.isLinux() ? "jdk.jpackage.internal.LinuxRpmBundler" : null),
+    MAC_DMG(".dmg", TKit.isOSX() ? "jdk.jpackage.internal.MacDmgBundler" : null),
+    MAC_PKG(".pkg", TKit.isOSX() ? "jdk.jpackage.internal.MacPkgBundler" : null),
     IMAGE("app-image", null, null);
 
     PackageType(String packageName, String bundleSuffix, String bundlerClass) {
@@ -117,9 +117,8 @@ public enum PackageType {
             MAC.stream()).collect(Collectors.toUnmodifiableSet());
 
     private final static class Inner {
-
         private final static Set<String> DISABLED_PACKAGERS = Optional.ofNullable(
                 TKit.tokenizeConfigProperty("disabledPackagers")).orElse(
-                Collections.emptySet());
+                TKit.isLinuxAPT() ? Set.of("rpm") : Collections.emptySet());
     }
 }

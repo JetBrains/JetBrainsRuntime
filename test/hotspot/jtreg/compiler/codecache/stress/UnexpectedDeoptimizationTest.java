@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,15 +23,14 @@
 
 /*
  * @test UnexpectedDeoptimizationTest
- * @key stress
+ * @key stress randomness
  * @summary stressing code cache by forcing unexpected deoptimizations
  * @library /test/lib /
  * @modules java.base/jdk.internal.misc
  *          java.management
  *
  * @build sun.hotspot.WhiteBox compiler.codecache.stress.Helper compiler.codecache.stress.TestCaseImpl
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox
- *                                sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run main/othervm -Xbootclasspath/a:. -XX:+UnlockDiagnosticVMOptions
  *                   -XX:+WhiteBoxAPI
  *                   -XX:+IgnoreUnrecognizedVMOptions -XX:-DeoptimizeRandom
@@ -48,7 +47,11 @@
 
 package compiler.codecache.stress;
 
+import java.util.Random;
+import jdk.test.lib.Utils;
+
 public class UnexpectedDeoptimizationTest implements Runnable {
+    private final Random rng = Utils.getRandomInstance();
 
     public static void main(String[] args) {
         new CodeCacheStressRunner(new UnexpectedDeoptimizationTest()).runTest();
@@ -56,7 +59,14 @@ public class UnexpectedDeoptimizationTest implements Runnable {
 
     @Override
     public void run() {
-        Helper.WHITE_BOX.deoptimizeFrames(Helper.RNG.nextBoolean());
+        Helper.WHITE_BOX.deoptimizeFrames(rng.nextBoolean());
+        // Sleep a short while to allow the stacks to grow - otherwise
+        //  we end up running almost all code in the interpreter
+        try {
+            Thread.sleep(10);
+        } catch (Exception e) {
+        }
+
     }
 
 }

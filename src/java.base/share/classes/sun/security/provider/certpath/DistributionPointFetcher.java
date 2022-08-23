@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import javax.security.auth.x500.X500Principal;
 import java.util.*;
 
 import sun.security.util.Debug;
+import sun.security.util.Event;
 import sun.security.validator.Validator;
 import static sun.security.x509.PKIXExtensions.*;
 import sun.security.x509.*;
@@ -73,7 +74,7 @@ public class DistributionPointFetcher {
             throws CertStoreException
     {
         return getCRLs(selector, signFlag, prevKey, null, provider, certStores,
-                reasonsMask, trustAnchors, validity, variant);
+                reasonsMask, trustAnchors, validity, variant, null);
     }
     /**
      * Return the X509CRLs matching this selector. The selector must be
@@ -90,8 +91,14 @@ public class DistributionPointFetcher {
                                               Date validity)
         throws CertStoreException
     {
+        if (trustAnchors.isEmpty()) {
+            throw new CertStoreException(
+                "at least one TrustAnchor must be specified");
+        }
+        TrustAnchor anchor = trustAnchors.iterator().next();
         return getCRLs(selector, signFlag, prevKey, null, provider, certStores,
-                reasonsMask, trustAnchors, validity, Validator.VAR_GENERIC);
+                reasonsMask, trustAnchors, validity,
+                Validator.VAR_PLUGIN_CODE_SIGNING, anchor);
     }
 
     /**
@@ -107,7 +114,8 @@ public class DistributionPointFetcher {
                                               boolean[] reasonsMask,
                                               Set<TrustAnchor> trustAnchors,
                                               Date validity,
-                                              String variant)
+                                              String variant,
+                                              TrustAnchor anchor)
         throws CertStoreException
     {
         X509Certificate cert = selector.getCertificateChecking();
@@ -136,7 +144,7 @@ public class DistributionPointFetcher {
                 DistributionPoint point = t.next();
                 Collection<X509CRL> crls = getCRLs(selector, certImpl,
                     point, reasonsMask, signFlag, prevKey, prevCert, provider,
-                    certStores, trustAnchors, validity, variant);
+                    certStores, trustAnchors, validity, variant, anchor);
                 results.addAll(crls);
             }
             if (debug != null) {
@@ -161,7 +169,8 @@ public class DistributionPointFetcher {
         X509CertImpl certImpl, DistributionPoint point, boolean[] reasonsMask,
         boolean signFlag, PublicKey prevKey, X509Certificate prevCert,
         String provider, List<CertStore> certStores,
-        Set<TrustAnchor> trustAnchors, Date validity, String variant)
+        Set<TrustAnchor> trustAnchors, Date validity, String variant,
+        TrustAnchor anchor)
             throws CertStoreException {
 
         // check for full name
@@ -224,7 +233,7 @@ public class DistributionPointFetcher {
                 selector.setIssuerNames(null);
                 if (selector.match(crl) && verifyCRL(certImpl, point, crl,
                         reasonsMask, signFlag, prevKey, prevCert, provider,
-                        trustAnchors, certStores, validity, variant)) {
+                        trustAnchors, certStores, validity, variant, anchor)) {
                     crls.add(crl);
                 }
             } catch (IOException | CRLException e) {
@@ -246,6 +255,8 @@ public class DistributionPointFetcher {
         if (debug != null) {
             debug.println("Trying to fetch CRL from DP " + uri);
         }
+
+        Event.report(Event.ReporterCategory.CRLCHECK, "event.crl.check", uri.toString());
         CertStore ucs = null;
         try {
             ucs = URICertStore.getInstance(new URICertStoreParameters(uri));
@@ -332,7 +343,8 @@ public class DistributionPointFetcher {
         X509CRL crl, boolean[] reasonsMask, boolean signFlag,
         PublicKey prevKey, X509Certificate prevCert, String provider,
         Set<TrustAnchor> trustAnchors, List<CertStore> certStores,
-        Date validity, String variant) throws CRLException, IOException {
+        Date validity, String variant, TrustAnchor anchor)
+        throws CRLException, IOException {
 
         if (debug != null) {
             debug.println("DistributionPointFetcher.verifyCRL: " +
@@ -679,7 +691,7 @@ public class DistributionPointFetcher {
 
         // check the crl signature algorithm
         try {
-            AlgorithmChecker.check(prevKey, crl, variant);
+            AlgorithmChecker.check(prevKey, crl, variant, anchor);
         } catch (CertPathValidatorException cpve) {
             if (debug != null) {
                 debug.println("CRL signature algorithm check failed: " + cpve);

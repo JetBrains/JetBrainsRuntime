@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@
 
 #include <assert.h>
 #include <jni.h>
+#include <jvm.h>
 #include <alloca.h>
 #include <signal.h>
 #include <string.h>
@@ -67,8 +68,17 @@ static void handler(int sig, siginfo_t *si, void *unused) {
   longjmp(context, 1);
 }
 
+static char* altstack = NULL;
+
 void set_signal_handler() {
-  static char altstack[SIGSTKSZ];
+  if (altstack == NULL) {
+    // Dynamically allocated in case SIGSTKSZ is not constant
+    altstack = malloc(SIGSTKSZ);
+    if (altstack == NULL) {
+      fprintf(stderr, "Test ERROR. Unable to malloc altstack space\n");
+      exit(7);
+    }
+  }
 
   stack_t ss = {
     .ss_size = SIGSTKSZ,
@@ -89,6 +99,21 @@ void set_signal_handler() {
     fprintf(stderr, "Test ERROR. Can't set sigaction (%d)\n", errno);
     exit(7);
   }
+}
+
+size_t get_java_stacksize () {
+  pthread_attr_t attr;
+  JDK1_1InitArgs jdk_args;
+
+  memset(&jdk_args, 0, (sizeof jdk_args));
+
+  jdk_args.version = JNI_VERSION_1_1;
+  JNI_GetDefaultJavaVMInitArgs(&jdk_args);
+  if (jdk_args.javaStackSize <= 0) {
+    fprintf(stderr, "Test ERROR. Can't get a valid value for the default stacksize.\n");
+    exit(7);
+  }
+  return jdk_args.javaStackSize;
 }
 
 void *run_java_overflow (void *p) {
@@ -162,6 +187,10 @@ void *run_native_overflow(void *p) {
   }
 
   (*env)->CallStaticVoidMethod (env, class_id, method_id, NULL);
+
+  // Initialize statics used in do_overflow
+  _kp_rec_count = 0;
+  _rec_count = 0;
 
   set_signal_handler();
   if (! setjmp(context)) {
@@ -254,14 +283,20 @@ int main (int argc, const char** argv) {
     exit(7);
   }
 
+  size_t stack_size = get_java_stacksize();
   pthread_t thr;
+  pthread_attr_t thread_attr;
+
+  pthread_attr_init(&thread_attr);
+  pthread_attr_setstacksize(&thread_attr, stack_size);
 
   if (argc > 1 && strcmp(argv[1], "test_java_overflow") == 0) {
     printf("\nTesting JAVA_OVERFLOW\n");
 
     printf("Testing stack guard page behaviour for other thread\n");
-    pthread_create (&thr, NULL, run_java_overflow, NULL);
-    pthread_join (thr, NULL);
+
+    pthread_create(&thr, &thread_attr, run_java_overflow, NULL);
+    pthread_join(thr, NULL);
 
     printf("Testing stack guard page behaviour for initial thread\n");
     run_java_overflow(NULL);
@@ -273,8 +308,8 @@ int main (int argc, const char** argv) {
     printf("\nTesting NATIVE_OVERFLOW\n");
 
     printf("Testing stack guard page behaviour for other thread\n");
-    pthread_create (&thr, NULL, run_native_overflow, NULL);
-    pthread_join (thr, NULL);
+    pthread_create(&thr, &thread_attr, run_native_overflow, NULL);
+    pthread_join(thr, NULL);
 
     printf("Testing stack guard page behaviour for initial thread\n");
     run_native_overflow(NULL);

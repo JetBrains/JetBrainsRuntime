@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2017, 2021, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,12 +23,11 @@
  */
 
 /*
- * @test TestStringDedupStress
+ * @test id=passive
  * @summary Test Shenandoah string deduplication implementation
- * @key gc
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @key randomness
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
- * @modules java.base/jdk.internal.misc:open
  * @modules java.base/java.lang:open
  *          java.management
  *
@@ -44,12 +43,11 @@
  */
 
 /*
- * @test TestStringDedupStress
+ * @test id=default
  * @summary Test Shenandoah string deduplication implementation
- * @key gc
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @key randomness
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
- * @modules java.base/jdk.internal.misc:open
  * @modules java.base/java.lang:open
  *          java.management
  *
@@ -71,60 +69,35 @@
  *
  * @run main/othervm -Xmx1g -Xlog:gc+stats -Xlog:gc -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=compact
- *      TestStringDedupStress
- *
- * @run main/othervm -Xmx1g -Xlog:gc+stats -Xlog:gc -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication
- *      -XX:+UseShenandoahGC
- *      -XX:ShenandoahUpdateRefsEarly=off
- *      -DtargetStrings=3000000
- *      TestStringDedupStress
- *
- * @run main/othervm -Xmx1g -Xlog:gc+stats -Xlog:gc -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication
- *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=compact
- *      -XX:ShenandoahUpdateRefsEarly=off
- *      -DtargetStrings=2000000
- *      TestStringDedupStress
- *
- * @run main/othervm -Xmx1g -Xlog:gc+stats -Xlog:gc -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication
- *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive
- *      -XX:ShenandoahUpdateRefsEarly=off
- *      -DtargetStrings=2000000
- *      TestStringDedupStress
- *
- * @run main/othervm -Xmx1g -Xlog:gc+stats -Xlog:gc -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication
- *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive
- *      -XX:ShenandoahUpdateRefsEarly=off -XX:+ShenandoahOOMDuringEvacALot
- *      -DtargetStrings=2000000
  *      TestStringDedupStress
  */
 
  /*
- * @test TestStringDedupStress
+ * @test id=iu
  * @summary Test Shenandoah string deduplication implementation
- * @key gc
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @key randomness
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
- * @modules java.base/jdk.internal.misc:open
  * @modules java.base/java.lang:open
  *          java.management
  *
  * @run main/othervm -Xmx1g -Xlog:gc+stats -Xlog:gc -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication
- *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=traversal
+ *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=iu
  *      TestStringDedupStress
  *
  * @run main/othervm -Xmx1g -Xlog:gc+stats -Xlog:gc -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication
- *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=traversal -XX:ShenandoahGCHeuristics=aggressive
+ *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=iu -XX:ShenandoahGCHeuristics=aggressive
  *      -DtargetStrings=2000000
  *      TestStringDedupStress
  *
  * @run main/othervm -Xmx1g -Xlog:gc+stats -Xlog:gc -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication
- *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=traversal
+ *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=iu
  *      -XX:+ShenandoahOOMDuringEvacALot
  *      -DtargetStrings=2000000
  *      TestStringDedupStress
  *
  * @run main/othervm -Xmx1g -Xlog:gc+stats -Xlog:gc -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication
- *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=traversal -XX:ShenandoahGCHeuristics=aggressive
+ *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=iu -XX:ShenandoahGCHeuristics=aggressive
  *      -XX:+ShenandoahOOMDuringEvacALot
  *      -DtargetStrings=2000000
  *      TestStringDedupStress
@@ -133,12 +106,10 @@
 import java.lang.management.*;
 import java.lang.reflect.*;
 import java.util.*;
-
-import sun.misc.*;
+import jdk.test.lib.Utils;
 
 public class TestStringDedupStress {
     private static Field valueField;
-    private static Unsafe unsafe;
 
     private static final int TARGET_STRINGS = Integer.getInteger("targetStrings", 2_500_000);
     private static final long MAX_REWRITE_GC_CYCLES = 6;
@@ -148,10 +119,6 @@ public class TestStringDedupStress {
 
     static {
         try {
-            Field field = Unsafe.class.getDeclaredField("theUnsafe");
-            field.setAccessible(true);
-            unsafe = (Unsafe) field.get(null);
-
             valueField = String.class.getDeclaredField("value");
             valueField.setAccessible(true);
         } catch (Exception e) {
@@ -187,7 +154,7 @@ public class TestStringDedupStress {
 
     // Generate uniqueStrings number of strings
     private static void generateStrings(ArrayList<StringAndId> strs, int uniqueStrings) {
-        Random rn = new Random();
+        Random rn = Utils.getRandomInstance();
         for (int u = 0; u < uniqueStrings; u++) {
             int n = rn.nextInt(uniqueStrings);
             strs.add(new StringAndId("Unique String " + n, n));
@@ -224,7 +191,7 @@ public class TestStringDedupStress {
     static GarbageCollectorMXBean gcCycleMBean;
 
     public static void main(String[] args) {
-        Random rn = new Random();
+        Random rn = Utils.getRandomInstance();
 
         for (GarbageCollectorMXBean bean : ManagementFactory.getGarbageCollectorMXBeans()) {
             if ("Shenandoah Cycles".equals(bean.getName())) {

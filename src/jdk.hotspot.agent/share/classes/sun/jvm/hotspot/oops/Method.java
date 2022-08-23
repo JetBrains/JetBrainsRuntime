@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,8 @@
 package sun.jvm.hotspot.oops;
 
 import java.io.PrintStream;
-import java.util.Observable;
-import java.util.Observer;
+import sun.jvm.hotspot.utilities.Observable;
+import sun.jvm.hotspot.utilities.Observer;
 
 import sun.jvm.hotspot.code.NMethod;
 import sun.jvm.hotspot.debugger.Address;
@@ -267,7 +267,8 @@ public class Method extends Metadata {
   }
 
   public void printValueOn(PrintStream tty) {
-    tty.print("Method " + getName().asString() + getSignature().asString() + "@" + getAddress());
+      tty.print("Method " + getMethodHolder().getName().asString() + "." +
+                getName().asString() + getSignature().asString() + "@" + getAddress());
   }
 
   public void iterateFields(MetadataVisitor visitor) {
@@ -363,8 +364,8 @@ public class Method extends Metadata {
     return getMethodCounters().interpreterThrowoutCount();
   }
 
-  public int interpreterInvocationCount() {
-    return getMethodCounters().interpreterInvocationCount();
+  public long interpreterInvocationCount() {
+    return getInvocationCount();
   }
 
   public String nameAsAscii() {

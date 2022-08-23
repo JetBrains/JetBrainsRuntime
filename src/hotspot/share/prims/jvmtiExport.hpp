@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@
 #include "memory/allocation.hpp"
 #include "memory/iterator.hpp"
 #include "oops/oop.hpp"
+#include "oops/oopHandle.hpp"
 #include "oops/oopsHierarchy.hpp"
 #include "runtime/frame.hpp"
 #include "runtime/handles.hpp"
@@ -41,10 +42,13 @@
 
 // Forward declarations
 
+struct JvmtiCachedClassFileData;
 class JvmtiEventControllerPrivate;
 class JvmtiManageCapabilities;
 class JvmtiEnv;
 class JvmtiThreadState;
+
+class OopStorage;
 
 #define JVMTI_SUPPORT_FLAG(key)                                           \
   private:                                                                \
@@ -161,6 +165,10 @@ class JvmtiExport : public AllStatic {
   static void post_dynamic_code_generated_internal(const char *name, const void *code_begin, const void *code_end) NOT_JVMTI_RETURN;
 
   static void post_class_unload_internal(const char *name) NOT_JVMTI_RETURN;
+
+  static void initialize_oop_storage() NOT_JVMTI_RETURN;
+  static OopStorage* jvmti_oop_storage();
+  static OopStorage* weak_tag_storage();
  private:
 
   // GenerateEvents support to allow posting of CompiledMethodLoad and
@@ -176,6 +184,7 @@ class JvmtiExport : public AllStatic {
   // systems as needed to relax invariant checks.
   static uint64_t _redefinition_count;
   friend class VM_RedefineClasses;
+  friend class VM_EnhancedRedefineClasses;
   inline static void increment_redefinition_count() {
     JVMTI_ONLY(_redefinition_count++;)
   }
@@ -186,6 +195,13 @@ class JvmtiExport : public AllStatic {
   // are incomplete. This flag is used by RedefineClasses to know if the
   // dependency information is complete or not.
   static bool _all_dependencies_are_recorded;
+
+  static void post_method_exit_inner(JavaThread* thread,
+                                     methodHandle& mh,
+                                     JvmtiThreadState *state,
+                                     bool exception_exit,
+                                     frame current_frame,
+                                     jvalue& value);
 
  public:
   inline static bool has_redefined_a_class() {
@@ -296,17 +312,11 @@ class JvmtiExport : public AllStatic {
   static oop jni_GetField_probe          (JavaThread *thread, jobject jobj,
     oop obj, Klass* klass, jfieldID fieldID, bool is_static)
     NOT_JVMTI_RETURN_(NULL);
-  static oop jni_GetField_probe_nh       (JavaThread *thread, jobject jobj,
-    oop obj, Klass* klass, jfieldID fieldID, bool is_static)
-    NOT_JVMTI_RETURN_(NULL);
   static void post_field_access_by_jni   (JavaThread *thread, oop obj,
     Klass* klass, jfieldID fieldID, bool is_static) NOT_JVMTI_RETURN;
   static void post_field_access          (JavaThread *thread, Method* method,
     address location, Klass* field_klass, Handle object, jfieldID field) NOT_JVMTI_RETURN;
   static oop jni_SetField_probe          (JavaThread *thread, jobject jobj,
-    oop obj, Klass* klass, jfieldID fieldID, bool is_static, char sig_type,
-    jvalue *value) NOT_JVMTI_RETURN_(NULL);
-  static oop jni_SetField_probe_nh       (JavaThread *thread, jobject jobj,
     oop obj, Klass* klass, jfieldID fieldID, bool is_static, char sig_type,
     jvalue *value) NOT_JVMTI_RETURN_(NULL);
   static void post_field_modification_by_jni(JavaThread *thread, oop obj,
@@ -393,9 +403,6 @@ class JvmtiExport : public AllStatic {
 
   static void cleanup_thread             (JavaThread* thread) NOT_JVMTI_RETURN;
   static void clear_detected_exception   (JavaThread* thread) NOT_JVMTI_RETURN;
-
-  static void oops_do(OopClosure* f) NOT_JVMTI_RETURN;
-  static void weak_oops_do(BoolObjectClosure* b, OopClosure* f) NOT_JVMTI_RETURN;
 
   static void transition_pending_onload_raw_monitors() NOT_JVMTI_RETURN;
 
@@ -491,23 +498,17 @@ class JvmtiDynamicCodeEventCollector : public JvmtiEventCollector {
 //
 class JvmtiObjectAllocEventCollector : public JvmtiEventCollector {
  protected:
-  GrowableArray<oop>* _allocated;      // field to record collected allocated object oop.
+  GrowableArray<OopHandle>* _allocated;      // field to record collected allocated object oop.
   bool _enable;                   // This flag is enabled in constructor if set up in the thread state
                                   // and disabled in destructor before posting event. To avoid
                                   // collection of objects allocated while running java code inside
                                   // agent post_X_object_alloc() event handler.
   void (*_post_callback)(JavaThread*, oop); // what callback to use when destroying the collector.
 
-  //GC support
-  void oops_do(OopClosure* f);
-
   friend class JvmtiExport;
 
   // Record allocated object oop.
   inline void record_allocation(oop obj);
-
-  //GC support
-  static void oops_do_for_all_threads(OopClosure* f);
 
  public:
   JvmtiObjectAllocEventCollector()  NOT_JVMTI_RETURN;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,13 +27,14 @@
 #include "gc/shared/collectedHeap.hpp"
 #include "gc/shared/softRefPolicy.hpp"
 #include "gc/z/zBarrierSet.hpp"
-#include "gc/z/zDirector.hpp"
-#include "gc/z/zDriver.hpp"
 #include "gc/z/zHeap.hpp"
 #include "gc/z/zInitialize.hpp"
 #include "gc/z/zRuntimeWorkers.hpp"
-#include "gc/z/zStat.hpp"
-#include "gc/z/zUncommitter.hpp"
+#include "memory/metaspace.hpp"
+
+class ZDirector;
+class ZDriver;
+class ZStat;
 
 class ZCollectedHeap : public CollectedHeap {
   friend class VMStructs;
@@ -43,9 +44,8 @@ private:
   ZBarrierSet       _barrier_set;
   ZInitialize       _initialize;
   ZHeap             _heap;
-  ZDirector*        _director;
   ZDriver*          _driver;
-  ZUncommitter*     _uncommitter;
+  ZDirector*        _director;
   ZStat*            _stat;
   ZRuntimeWorkers   _runtime_workers;
 
@@ -84,20 +84,18 @@ public:
   virtual void collect_as_vm_thread(GCCause::Cause cause);
   virtual void do_full_collection(bool clear_all_soft_refs);
 
-  virtual bool supports_tlab_allocation() const;
   virtual size_t tlab_capacity(Thread* thr) const;
   virtual size_t tlab_used(Thread* thr) const;
   virtual size_t max_tlab_size() const;
   virtual size_t unsafe_max_tlab_alloc(Thread* thr) const;
 
-  virtual bool can_elide_tlab_store_barriers() const;
-  virtual bool can_elide_initializing_store_barrier(oop new_obj);
-  virtual bool card_mark_must_follow_store() const;
+  virtual bool uses_stack_watermark_barrier() const;
 
   virtual GrowableArray<GCMemoryManager*> memory_managers();
   virtual GrowableArray<MemoryPool*> memory_pools();
 
   virtual void object_iterate(ObjectClosure* cl);
+  virtual ParallelObjectIterator* parallel_object_iterator(uint nworkers);
 
   virtual void keep_alive(oop obj);
 
@@ -106,9 +104,7 @@ public:
   virtual void flush_nmethod(nmethod* nm);
   virtual void verify_nmethod(nmethod* nmethod);
 
-  virtual WorkGang* get_safepoint_workers();
-
-  virtual jlong millis_since_last_gc();
+  virtual WorkGang* safepoint_workers();
 
   virtual void gc_threads_do(ThreadClosure* tc) const;
 
@@ -120,13 +116,13 @@ public:
   virtual void print_on(outputStream* st) const;
   virtual void print_on_error(outputStream* st) const;
   virtual void print_extended_on(outputStream* st) const;
-  virtual void print_gc_threads_on(outputStream* st) const;
   virtual void print_tracing_info() const;
   virtual bool print_location(outputStream* st, void* addr) const;
 
   virtual void prepare_for_verify();
   virtual void verify(VerifyOption option /* ignored */);
   virtual bool is_oop(oop object) const;
+  virtual bool supports_concurrent_gc_breakpoints() const;
 };
 
 #endif // SHARE_GC_Z_ZCOLLECTEDHEAP_HPP

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,47 +25,41 @@
 
 package sun.security.ec;
 
-import java.util.*;
-import java.security.*;
-import java.util.regex.Pattern;
+import java.security.AccessController;
+import java.security.InvalidParameterException;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivilegedAction;
+import java.security.Provider;
+import java.security.ProviderException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+
+import sun.security.ec.ed.EdDSAAlgorithmParameters;
+import sun.security.ec.ed.EdDSAKeyFactory;
+import sun.security.ec.ed.EdDSAKeyPairGenerator;
+import sun.security.ec.ed.EdDSASignature;
 import sun.security.util.CurveDB;
+import sun.security.util.KnownOIDs;
 import sun.security.util.NamedCurve;
 
 import static sun.security.util.SecurityConstants.PROVIDER_VER;
+import static sun.security.util.SecurityProviderConstants.*;
 
 /**
  * Provider class for the Elliptic Curve provider.
- * Supports EC keypair and parameter generation, ECDSA signing and
- * ECDH key agreement.
- *
- * IMPLEMENTATION NOTE:
- * The Java classes in this provider access a native ECC implementation
- * via JNI to a C++ wrapper class which in turn calls C functions.
- * The Java classes are packaged into the jdk.crypto.sunec module and the
- * C++ and C functions are packaged into libsunec.so or sunec.dll in the
- * JRE native libraries directory.  If the native library is not present
- * then this provider is registered with support for fewer ECC algorithms
- * (KeyPairGenerator, Signature and KeyAgreement are omitted).
- *
- * @since   1.7
  */
 public final class SunEC extends Provider {
 
     private static final long serialVersionUID = -2279741672933606418L;
 
-    // flag indicating whether the full EC implementation is present
-    // (when native library is absent then fewer EC algorithms are available)
-    private static boolean useFullImplementation = true;
-    static {
-        try {
-            AccessController.doPrivileged(new PrivilegedAction<Void>() {
-                public Void run() {
-                    System.loadLibrary("sunec"); // check for native library
-                    return null;
-                }
-            });
-        } catch (UnsatisfiedLinkError e) {
-            useFullImplementation = false;
+    private static class ProviderServiceA extends ProviderService {
+        ProviderServiceA(Provider p, String type, String algo, String cn,
+            HashMap<String, String> attrs) {
+            super(p, type, algo, cn, getAliases(algo), attrs);
         }
     }
 
@@ -76,9 +70,8 @@ public final class SunEC extends Provider {
         }
 
         ProviderService(Provider p, String type, String algo, String cn,
-            String[] aliases, HashMap<String, String> attrs) {
-            super(p, type, algo, cn,
-                  (aliases == null? null : Arrays.asList(aliases)), attrs);
+            List<String> aliases, HashMap<String, String> attrs) {
+            super(p, type, algo, cn, aliases, attrs);
         }
 
         @Override
@@ -93,6 +86,15 @@ public final class SunEC extends Provider {
             String algo = getAlgorithm();
             try {
                 if (type.equals("Signature")) {
+
+                    if (algo.equalsIgnoreCase("EdDSA")) {
+                        return new EdDSASignature();
+                    } else if (algo.equalsIgnoreCase("Ed25519")) {
+                        return new EdDSASignature.Ed25519();
+                    } else if (algo.equalsIgnoreCase("Ed448")) {
+                        return new EdDSASignature.Ed448();
+                    }
+
                     boolean inP1363 = algo.endsWith("inP1363Format");
                     if (inP1363) {
                         algo = algo.substring(0, algo.length() - 13);
@@ -115,8 +117,20 @@ public final class SunEC extends Provider {
                     } else if (algo.equals("NONEwithECDSA")) {
                         return (inP1363? new ECDSASignature.RawinP1363Format() :
                             new ECDSASignature.Raw());
-                    }
-                } else  if (type.equals("KeyFactory")) {
+                    } else if (algo.equals("SHA3-224withECDSA")) {
+                        return (inP1363? new ECDSASignature.SHA3_224inP1363Format() :
+                            new ECDSASignature.SHA3_224());
+                    } else if (algo.equals("SHA3-256withECDSA")) {
+                        return (inP1363? new ECDSASignature.SHA3_256inP1363Format() :
+                            new ECDSASignature.SHA3_256());
+                    } else if (algo.equals("SHA3-384withECDSA")) {
+                        return (inP1363? new ECDSASignature.SHA3_384inP1363Format() :
+                            new ECDSASignature.SHA3_384());
+                    } else if (algo.equals("SHA3-512withECDSA")) {
+                        return (inP1363? new ECDSASignature.SHA3_512inP1363Format() :
+                            new ECDSASignature.SHA3_512());
+                     }
+                } else if (type.equals("KeyFactory")) {
                     if (algo.equals("EC")) {
                         return new ECKeyFactory();
                     } else if (algo.equals("XDH")) {
@@ -125,6 +139,12 @@ public final class SunEC extends Provider {
                         return new XDHKeyFactory.X25519();
                     } else if (algo.equals("X448")) {
                         return new XDHKeyFactory.X448();
+                    } else if (algo.equalsIgnoreCase("EdDSA")) {
+                        return new EdDSAKeyFactory();
+                    } else if (algo.equalsIgnoreCase("Ed25519")) {
+                        return new EdDSAKeyFactory.Ed25519();
+                    } else if (algo.equalsIgnoreCase("Ed448")) {
+                        return new EdDSAKeyFactory.Ed448();
                     }
                 } else  if (type.equals("AlgorithmParameters")) {
                     if (algo.equals("EC")) {
@@ -139,6 +159,12 @@ public final class SunEC extends Provider {
                         return new XDHKeyPairGenerator.X25519();
                     } else if (algo.equals("X448")) {
                         return new XDHKeyPairGenerator.X448();
+                    } else if (algo.equalsIgnoreCase("EdDSA")) {
+                        return new EdDSAKeyPairGenerator();
+                    } else if (algo.equalsIgnoreCase("Ed25519")) {
+                        return new EdDSAKeyPairGenerator.Ed25519();
+                    } else if (algo.equalsIgnoreCase("Ed448")) {
+                        return new EdDSAKeyPairGenerator.Ed448();
                     }
                 } else  if (type.equals("KeyAgreement")) {
                     if (algo.equals("ECDH")) {
@@ -160,18 +186,18 @@ public final class SunEC extends Provider {
         }
     }
 
+    @SuppressWarnings("removal")
     public SunEC() {
-        super("SunEC", PROVIDER_VER,
-            "Sun Elliptic Curve provider (EC, ECDSA, ECDH)");
+        super("SunEC", PROVIDER_VER, "Sun Elliptic Curve provider");
         AccessController.doPrivileged(new PrivilegedAction<Void>() {
             public Void run() {
-                putEntries(useFullImplementation);
+                putEntries();
                 return null;
             }
         });
     }
 
-    void putEntries(boolean useFullImplementation) {
+    void putEntries() {
         HashMap<String, String> ATTRS = new HashMap<>(3);
         ATTRS.put("ImplementedIn", "Software");
         String ecKeyClasses = "java.security.interfaces.ECPublicKey" +
@@ -184,7 +210,7 @@ public final class SunEC extends Provider {
          */
         putService(new ProviderService(this, "KeyFactory",
             "EC", "sun.security.ec.ECKeyFactory",
-            new String[] { "EllipticCurve" }, ATTRS));
+            List.of("EllipticCurve"), ATTRS));
 
         /*
          * Algorithm Parameter engine
@@ -192,11 +218,12 @@ public final class SunEC extends Provider {
         // "AlgorithmParameters.EC SupportedCurves" prop used by unit test
         boolean firstCurve = true;
         StringBuilder names = new StringBuilder();
-        Pattern nameSplitPattern = Pattern.compile(CurveDB.SPLIT_PATTERN);
 
-        Collection<? extends NamedCurve> supportedCurves =
-            CurveDB.getSupportedCurves();
-        for (NamedCurve namedCurve : supportedCurves) {
+        for (NamedCurve namedCurve :
+            List.of(
+                CurveDB.lookup("secp256r1"),
+                CurveDB.lookup("secp384r1"),
+                CurveDB.lookup("secp521r1"))) {
             if (!firstCurve) {
                 names.append("|");
             } else {
@@ -204,10 +231,9 @@ public final class SunEC extends Provider {
             }
 
             names.append("[");
-
-            String[] commonNames = nameSplitPattern.split(namedCurve.getName());
+            String[] commonNames = namedCurve.getNameAndAliases();
             for (String commonName : commonNames) {
-                names.append(commonName.trim());
+                names.append(commonName);
                 names.append(",");
             }
 
@@ -218,20 +244,11 @@ public final class SunEC extends Provider {
         HashMap<String, String> apAttrs = new HashMap<>(ATTRS);
         apAttrs.put("SupportedCurves", names.toString());
 
-        putService(new ProviderService(this, "AlgorithmParameters",
-            "EC", "sun.security.util.ECParameters",
-            new String[] { "EllipticCurve", "1.2.840.10045.2.1", "OID.1.2.840.10045.2.1" },
-            apAttrs));
+        putService(new ProviderServiceA(this, "AlgorithmParameters",
+            "EC", "sun.security.util.ECParameters", apAttrs));
 
         putXDHEntries();
-
-        /*
-         * Register the algorithms below only when the full ECC implementation
-         * is available
-         */
-        if (!useFullImplementation) {
-            return;
-        }
+        putEdDSAEntries();
 
         /*
          * Signature engines
@@ -239,25 +256,32 @@ public final class SunEC extends Provider {
         putService(new ProviderService(this, "Signature",
             "NONEwithECDSA", "sun.security.ec.ECDSASignature$Raw",
             null, ATTRS));
-        putService(new ProviderService(this, "Signature",
+        putService(new ProviderServiceA(this, "Signature",
             "SHA1withECDSA", "sun.security.ec.ECDSASignature$SHA1",
-            new String[] { "1.2.840.10045.4.1", "OID.1.2.840.10045.4.1" },
             ATTRS));
-        putService(new ProviderService(this, "Signature",
+        putService(new ProviderServiceA(this, "Signature",
             "SHA224withECDSA", "sun.security.ec.ECDSASignature$SHA224",
-            new String[] { "1.2.840.10045.4.3.1", "OID.1.2.840.10045.4.3.1"},
             ATTRS));
-        putService(new ProviderService(this, "Signature",
+        putService(new ProviderServiceA(this, "Signature",
             "SHA256withECDSA", "sun.security.ec.ECDSASignature$SHA256",
-            new String[] { "1.2.840.10045.4.3.2", "OID.1.2.840.10045.4.3.2"},
             ATTRS));
-        putService(new ProviderService(this, "Signature",
+        putService(new ProviderServiceA(this, "Signature",
             "SHA384withECDSA", "sun.security.ec.ECDSASignature$SHA384",
-            new String[] { "1.2.840.10045.4.3.3", "OID.1.2.840.10045.4.3.3" },
             ATTRS));
-        putService(new ProviderService(this, "Signature",
+        putService(new ProviderServiceA(this, "Signature",
             "SHA512withECDSA", "sun.security.ec.ECDSASignature$SHA512",
-            new String[] { "1.2.840.10045.4.3.4", "OID.1.2.840.10045.4.3.4" },
+            ATTRS));
+        putService(new ProviderServiceA(this, "Signature",
+            "SHA3-224withECDSA", "sun.security.ec.ECDSASignature$SHA3_224",
+            ATTRS));
+        putService(new ProviderServiceA(this, "Signature",
+            "SHA3-256withECDSA", "sun.security.ec.ECDSASignature$SHA3_256",
+            ATTRS));
+        putService(new ProviderServiceA(this, "Signature",
+            "SHA3-384withECDSA", "sun.security.ec.ECDSASignature$SHA3_384",
+            ATTRS));
+        putService(new ProviderServiceA(this, "Signature",
+            "SHA3-512withECDSA", "sun.security.ec.ECDSASignature$SHA3_512",
             ATTRS));
 
         putService(new ProviderService(this, "Signature",
@@ -279,12 +303,25 @@ public final class SunEC extends Provider {
             "SHA512withECDSAinP1363Format",
             "sun.security.ec.ECDSASignature$SHA512inP1363Format"));
 
+        putService(new ProviderService(this, "Signature",
+             "SHA3-224withECDSAinP1363Format",
+             "sun.security.ec.ECDSASignature$SHA3_224inP1363Format"));
+        putService(new ProviderService(this, "Signature",
+             "SHA3-256withECDSAinP1363Format",
+             "sun.security.ec.ECDSASignature$SHA3_256inP1363Format"));
+        putService(new ProviderService(this, "Signature",
+            "SHA3-384withECDSAinP1363Format",
+            "sun.security.ec.ECDSASignature$SHA3_384inP1363Format"));
+        putService(new ProviderService(this, "Signature",
+            "SHA3-512withECDSAinP1363Format",
+            "sun.security.ec.ECDSASignature$SHA3_512inP1363Format"));
+
         /*
          *  Key Pair Generator engine
          */
         putService(new ProviderService(this, "KeyPairGenerator",
             "EC", "sun.security.ec.ECKeyPairGenerator",
-            new String[] { "EllipticCurve" }, ATTRS));
+            List.of("EllipticCurve"), ATTRS));
 
         /*
          * Key Agreement engine
@@ -298,33 +335,61 @@ public final class SunEC extends Provider {
         HashMap<String, String> ATTRS = new HashMap<>(1);
         ATTRS.put("ImplementedIn", "Software");
 
-        /* XDH does not require native implementation */
         putService(new ProviderService(this, "KeyFactory",
             "XDH", "sun.security.ec.XDHKeyFactory", null, ATTRS));
-        putService(new ProviderService(this, "KeyFactory",
+        putService(new ProviderServiceA(this, "KeyFactory",
             "X25519", "sun.security.ec.XDHKeyFactory.X25519",
-            new String[]{"1.3.101.110", "OID.1.3.101.110"}, ATTRS));
-        putService(new ProviderService(this, "KeyFactory",
+            ATTRS));
+        putService(new ProviderServiceA(this, "KeyFactory",
             "X448", "sun.security.ec.XDHKeyFactory.X448",
-            new String[]{"1.3.101.111", "OID.1.3.101.111"}, ATTRS));
+            ATTRS));
 
         putService(new ProviderService(this, "KeyPairGenerator",
             "XDH", "sun.security.ec.XDHKeyPairGenerator", null, ATTRS));
-        putService(new ProviderService(this, "KeyPairGenerator",
+        putService(new ProviderServiceA(this, "KeyPairGenerator",
             "X25519", "sun.security.ec.XDHKeyPairGenerator.X25519",
-            new String[]{"1.3.101.110", "OID.1.3.101.110"}, ATTRS));
-        putService(new ProviderService(this, "KeyPairGenerator",
+            ATTRS));
+        putService(new ProviderServiceA(this, "KeyPairGenerator",
             "X448", "sun.security.ec.XDHKeyPairGenerator.X448",
-            new String[]{"1.3.101.111", "OID.1.3.101.111"}, ATTRS));
+            ATTRS));
 
         putService(new ProviderService(this, "KeyAgreement",
             "XDH", "sun.security.ec.XDHKeyAgreement", null, ATTRS));
-        putService(new ProviderService(this, "KeyAgreement",
+        putService(new ProviderServiceA(this, "KeyAgreement",
             "X25519", "sun.security.ec.XDHKeyAgreement.X25519",
-            new String[]{"1.3.101.110", "OID.1.3.101.110"}, ATTRS));
-        putService(new ProviderService(this, "KeyAgreement",
+            ATTRS));
+        putService(new ProviderServiceA(this, "KeyAgreement",
             "X448", "sun.security.ec.XDHKeyAgreement.X448",
-            new String[]{"1.3.101.111", "OID.1.3.101.111"}, ATTRS));
+            ATTRS));
+    }
+
+    private void putEdDSAEntries() {
+
+        HashMap<String, String> ATTRS = new HashMap<>(1);
+        ATTRS.put("ImplementedIn", "Software");
+
+        putService(new ProviderService(this, "KeyFactory",
+            "EdDSA", "sun.security.ec.ed.EdDSAKeyFactory", null, ATTRS));
+        putService(new ProviderServiceA(this, "KeyFactory",
+            "Ed25519", "sun.security.ec.ed.EdDSAKeyFactory.Ed25519", ATTRS));
+        putService(new ProviderServiceA(this, "KeyFactory",
+            "Ed448", "sun.security.ec.ed.EdDSAKeyFactory.Ed448", ATTRS));
+
+        putService(new ProviderService(this, "KeyPairGenerator",
+            "EdDSA", "sun.security.ec.ed.EdDSAKeyPairGenerator", null, ATTRS));
+        putService(new ProviderServiceA(this, "KeyPairGenerator",
+            "Ed25519", "sun.security.ec.ed.EdDSAKeyPairGenerator.Ed25519",
+            ATTRS));
+        putService(new ProviderServiceA(this, "KeyPairGenerator",
+            "Ed448", "sun.security.ec.ed.EdDSAKeyPairGenerator.Ed448",
+            ATTRS));
+
+        putService(new ProviderService(this, "Signature",
+            "EdDSA", "sun.security.ec.ed.EdDSASignature", null, ATTRS));
+        putService(new ProviderServiceA(this, "Signature",
+            "Ed25519", "sun.security.ec.ed.EdDSASignature.Ed25519", ATTRS));
+        putService(new ProviderServiceA(this, "Signature",
+            "Ed448", "sun.security.ec.ed.EdDSASignature.Ed448", ATTRS));
 
     }
 }

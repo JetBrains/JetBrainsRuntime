@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,8 +41,6 @@ class OSContainer: AllStatic {
   static bool   _is_containerized;
   static int    _active_processor_count;
 
-  static jlong read_memory_limit_in_bytes();
-
  public:
   static void init();
   static inline bool is_containerized();
@@ -64,6 +62,8 @@ class OSContainer: AllStatic {
 
   static int cpu_shares();
 
+  static jlong pids_max();
+  static jlong pids_current();
 };
 
 inline bool OSContainer::is_containerized() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,19 +23,24 @@
  */
 
 #include "precompiled.hpp"
-#include "asm/assembler.hpp"
-#include "assembler_arm.inline.hpp"
+#include "asm/assembler.inline.hpp"
 #include "code/debugInfoRec.hpp"
 #include "code/icBuffer.hpp"
 #include "code/vtableStubs.hpp"
+#include "compiler/oopMap.hpp"
 #include "interpreter/interpreter.hpp"
 #include "logging/log.hpp"
 #include "memory/resourceArea.hpp"
 #include "oops/compiledICHolder.hpp"
 #include "oops/klass.inline.hpp"
+#include "prims/methodHandles.hpp"
+#include "runtime/jniHandles.hpp"
 #include "runtime/sharedRuntime.hpp"
+#include "runtime/safepointMechanism.hpp"
+#include "runtime/stubRoutines.hpp"
 #include "runtime/vframeArray.hpp"
 #include "utilities/align.hpp"
+#include "utilities/powerOfTwo.hpp"
 #include "vmreg_arm.inline.hpp"
 #ifdef COMPILER1
 #include "c1/c1_Runtime1.hpp"
@@ -132,14 +137,14 @@ OopMap* RegisterSaver::save_live_registers(MacroAssembler* masm,
   __ push(SAVED_BASE_REGS);
   if (HaveVFP) {
     if (VM_Version::has_vfp3_32()) {
-      __ fstmdbd(SP, FloatRegisterSet(D16, 16), writeback);
+      __ fpush(FloatRegisterSet(D16, 16));
     } else {
       if (FloatRegisterImpl::number_of_registers > 32) {
         assert(FloatRegisterImpl::number_of_registers == 64, "nb fp registers should be 64");
         __ sub(SP, SP, 32 * wordSize);
       }
     }
-    __ fstmdbd(SP, FloatRegisterSet(D0, 16), writeback);
+    __ fpush(FloatRegisterSet(D0, 16));
   } else {
     __ sub(SP, SP, fpu_save_size * wordSize);
   }
@@ -173,9 +178,9 @@ OopMap* RegisterSaver::save_live_registers(MacroAssembler* masm,
 
 void RegisterSaver::restore_live_registers(MacroAssembler* masm, bool restore_lr) {
   if (HaveVFP) {
-    __ fldmiad(SP, FloatRegisterSet(D0, 16), writeback);
+    __ fpop(FloatRegisterSet(D0, 16));
     if (VM_Version::has_vfp3_32()) {
-      __ fldmiad(SP, FloatRegisterSet(D16, 16), writeback);
+      __ fpop(FloatRegisterSet(D16, 16));
     } else {
       if (FloatRegisterImpl::number_of_registers > 32) {
         assert(FloatRegisterImpl::number_of_registers == 64, "nb fp registers should be 64");
@@ -220,26 +225,21 @@ static void push_param_registers(MacroAssembler* masm, int fp_regs_in_arguments)
   // R1-R3 arguments need to be saved, but we push 4 registers for 8-byte alignment
   __ push(RegisterSet(R0, R3));
 
-#ifdef __ABI_HARD__
   // preserve arguments
   // Likely not needed as the locking code won't probably modify volatile FP registers,
   // but there is no way to guarantee that
   if (fp_regs_in_arguments) {
     // convert fp_regs_in_arguments to a number of double registers
     int double_regs_num = (fp_regs_in_arguments + 1) >> 1;
-    __ fstmdbd(SP, FloatRegisterSet(D0, double_regs_num), writeback);
+    __ fpush_hardfp(FloatRegisterSet(D0, double_regs_num));
   }
-#endif // __ ABI_HARD__
 }
 
 static void pop_param_registers(MacroAssembler* masm, int fp_regs_in_arguments) {
-#ifdef __ABI_HARD__
   if (fp_regs_in_arguments) {
     int double_regs_num = (fp_regs_in_arguments + 1) >> 1;
-    __ fldmiad(SP, FloatRegisterSet(D0, double_regs_num), writeback);
+    __ fpop_hardfp(FloatRegisterSet(D0, double_regs_num));
   }
-#endif // __ABI_HARD__
-
   __ pop(RegisterSet(R0, R3));
 }
 
@@ -249,16 +249,6 @@ static void pop_param_registers(MacroAssembler* masm, int fp_regs_in_arguments) 
 // All vector registers are saved by default on ARM.
 bool SharedRuntime::is_wide_vector(int size) {
   return false;
-}
-
-size_t SharedRuntime::trampoline_size() {
-  return 16;
-}
-
-void SharedRuntime::generate_trampoline(MacroAssembler *masm, address destination) {
-  InlinedAddress dest(destination);
-  __ indirect_jump(dest, Rtemp);
-  __ bind_literal(dest);
 }
 
 int SharedRuntime::c_calling_convention(const BasicType *sig_bt,
@@ -364,15 +354,20 @@ int SharedRuntime::c_calling_convention(const BasicType *sig_bt,
   return slot;
 }
 
+int SharedRuntime::vector_calling_convention(VMRegPair *regs,
+                                             uint num_bits,
+                                             uint total_args_passed) {
+  Unimplemented();
+  return 0;
+}
+
 int SharedRuntime::java_calling_convention(const BasicType *sig_bt,
                                            VMRegPair *regs,
-                                           int total_args_passed,
-                                           int is_outgoing) {
+                                           int total_args_passed) {
 #ifdef __SOFTFP__
   // soft float is the same as the C calling convention.
   return c_calling_convention(sig_bt, regs, NULL, total_args_passed);
 #endif // __SOFTFP__
-  (void) is_outgoing;
   int slot = 0;
   int ireg = 0;
   int freg = 0;
@@ -461,11 +456,13 @@ static void patch_callers_callsite(MacroAssembler *masm) {
   // Pushing an even number of registers for stack alignment.
   // Selecting R9, which had to be saved anyway for some platforms.
   __ push(RegisterSet(R0, R3) | R9 | LR);
+  __ fpush_hardfp(FloatRegisterSet(D0, 8));
 
   __ mov(R0, Rmethod);
   __ mov(R1, LR);
   __ call(CAST_FROM_FN_PTR(address, SharedRuntime::fixup_callers_callsite));
 
+  __ fpop_hardfp(FloatRegisterSet(D0, 8));
   __ pop(RegisterSet(R0, R3) | R9 | LR);
 
   __ bind(skip);
@@ -703,7 +700,7 @@ static void gen_special_dispatch(MacroAssembler* masm,
   } else if (iid == vmIntrinsics::_invokeBasic) {
     has_receiver = true;
   } else {
-    fatal("unexpected intrinsic id %d", iid);
+    fatal("unexpected intrinsic id %d", vmIntrinsics::as_int(iid));
   }
 
   if (member_reg != noreg) {
@@ -1161,8 +1158,6 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
     // Remember the handle for the unlocking code
     __ mov(sync_handle, R1);
 
-    __ resolve(IS_NOT_NULL, sync_obj);
-
     if(UseBiasedLocking) {
       __ biased_locking_enter(sync_obj, tmp, disp_hdr/*scratched*/, false, Rtemp, lock_done, slow_lock_biased);
     }
@@ -1185,8 +1180,9 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
     // -2- test (hdr - SP) if the low two bits are 0
     __ sub(Rtemp, mark, SP, eq);
     __ movs(Rtemp, AsmOperand(Rtemp, lsr, exact_log2(os::vm_page_size())), eq);
-    // If still 'eq' then recursive locking OK: set displaced header to 0
-    __ str(Rtemp, Address(disp_hdr, BasicLock::displaced_header_offset_in_bytes()), eq);
+    // If still 'eq' then recursive locking OK
+    // set to zero if recursive lock, set to non zero otherwise (see discussion in JDK-8267042)
+    __ str(Rtemp, Address(disp_hdr, BasicLock::displaced_header_offset_in_bytes()));
     __ b(lock_done, eq);
     __ b(slow_lock);
 
@@ -1219,20 +1215,18 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
   }
 
   // Do a safepoint check while thread is in transition state
-  InlinedAddress safepoint_state(SafepointSynchronize::address_of_state());
   Label call_safepoint_runtime, return_to_java;
   __ mov(Rtemp, _thread_in_native_trans);
-  __ ldr_literal(R2, safepoint_state);
   __ str_32(Rtemp, Address(Rthread, JavaThread::thread_state_offset()));
 
   // make sure the store is observed before reading the SafepointSynchronize state and further mem refs
   __ membar(MacroAssembler::Membar_mask_bits(MacroAssembler::StoreLoad | MacroAssembler::StoreStore), Rtemp);
 
-  __ ldr_s32(R2, Address(R2));
+  __ safepoint_poll(R2, call_safepoint_runtime);
   __ ldr_u32(R3, Address(Rthread, JavaThread::suspend_flags_offset()));
-  __ cmp(R2, SafepointSynchronize::_not_synchronized);
-  __ cond_cmp(R3, 0, eq);
+  __ cmp(R3, 0);
   __ b(call_safepoint_runtime, ne);
+
   __ bind(return_to_java);
 
   // Perform thread state transition and reguard stack yellow pages if needed
@@ -1241,15 +1235,13 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
   __ ldr_s32(R2, Address(Rthread, JavaThread::stack_guard_state_offset()));
   __ str_32(Rtemp, Address(Rthread, JavaThread::thread_state_offset()));
 
-  __ cmp(R2, JavaThread::stack_guard_yellow_reserved_disabled);
+  __ cmp(R2, StackOverflow::stack_guard_yellow_reserved_disabled);
   __ b(reguard, eq);
   __ bind(reguard_done);
 
   Label slow_unlock, unlock_done;
   if (method->is_synchronized()) {
     __ ldr(sync_obj, Address(sync_handle));
-
-    __ resolve(IS_NOT_NULL, sync_obj);
 
     if(UseBiasedLocking) {
       __ biased_locking_exit(sync_obj, Rtemp, unlock_done);
@@ -1302,8 +1294,6 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
   __ call(CAST_FROM_FN_PTR(address, JavaThread::check_special_condition_for_native_trans));
   pop_result_registers(masm, ret_type);
   __ b(return_to_java);
-
-  __ bind_literal(safepoint_state);
 
   // Reguard stack pages. Save native results around a call to C runtime.
   __ bind(reguard);
@@ -1375,10 +1365,17 @@ int Deoptimization::last_frame_adjust(int callee_parameters, int callee_locals) 
 }
 
 
+// Number of stack slots between incoming argument block and the start of
+// a new frame.  The PROLOG must add this many slots to the stack.  The
+// EPILOG must remove this many slots.
+// FP + LR
+uint SharedRuntime::in_preserve_stack_slots() {
+  return 2 * VMRegImpl::slots_per_word;
+}
+
 uint SharedRuntime::out_preserve_stack_slots() {
   return 0;
 }
-
 
 //------------------------------generate_deopt_blob----------------------------
 void SharedRuntime::generate_deopt_blob() {
@@ -1502,18 +1499,17 @@ void SharedRuntime::generate_deopt_blob() {
   // Compilers generate code that bang the stack by as much as the
   // interpreter would need. So this stack banging should never
   // trigger a fault. Verify that it does not on non product builds.
-  // See if it is enough stack to push deoptimized frames
-  if (UseStackBanging) {
-    // The compiled method that we are deoptimizing was popped from the stack.
-    // If the stack bang results in a stack overflow, we don't return to the
-    // method that is being deoptimized. The stack overflow exception is
-    // propagated to the caller of the deoptimized method. Need to get the pc
-    // from the caller in LR and restore FP.
-    __ ldr(LR, Address(R2, 0));
-    __ ldr(FP, Address(Rublock, Deoptimization::UnrollBlock::initial_info_offset_in_bytes()));
-    __ ldr_s32(R8, Address(Rublock, Deoptimization::UnrollBlock::total_frame_sizes_offset_in_bytes()));
-    __ arm_stack_overflow_check(R8, Rtemp);
-  }
+  // See if it is enough stack to push deoptimized frames.
+  //
+  // The compiled method that we are deoptimizing was popped from the stack.
+  // If the stack bang results in a stack overflow, we don't return to the
+  // method that is being deoptimized. The stack overflow exception is
+  // propagated to the caller of the deoptimized method. Need to get the pc
+  // from the caller in LR and restore FP.
+  __ ldr(LR, Address(R2, 0));
+  __ ldr(FP, Address(Rublock, Deoptimization::UnrollBlock::initial_info_offset_in_bytes()));
+  __ ldr_s32(R8, Address(Rublock, Deoptimization::UnrollBlock::total_frame_sizes_offset_in_bytes()));
+  __ arm_stack_overflow_check(R8, Rtemp);
 #endif
   __ ldr_s32(R8, Address(Rublock, Deoptimization::UnrollBlock::number_of_frames_offset_in_bytes()));
 
@@ -1622,7 +1618,7 @@ void SharedRuntime::generate_deopt_blob() {
 #ifdef COMPILER2
 
 //------------------------------generate_uncommon_trap_blob--------------------
-// Ought to generate an ideal graph & compile, but here's some SPARC ASM
+// Ought to generate an ideal graph & compile, but here's some ASM
 // instead.
 void SharedRuntime::generate_uncommon_trap_blob() {
   // allocate space for the code
@@ -1698,22 +1694,21 @@ void SharedRuntime::generate_uncommon_trap_blob() {
 
   __ add(SP, SP, Rtemp);
 
-  // See if it is enough stack to push deoptimized frames
+  // See if it is enough stack to push deoptimized frames.
 #ifdef ASSERT
   // Compilers generate code that bang the stack by as much as the
   // interpreter would need. So this stack banging should never
   // trigger a fault. Verify that it does not on non product builds.
-  if (UseStackBanging) {
-    // The compiled method that we are deoptimizing was popped from the stack.
-    // If the stack bang results in a stack overflow, we don't return to the
-    // method that is being deoptimized. The stack overflow exception is
-    // propagated to the caller of the deoptimized method. Need to get the pc
-    // from the caller in LR and restore FP.
-    __ ldr(LR, Address(R2, 0));
-    __ ldr(FP, Address(Rublock, Deoptimization::UnrollBlock::initial_info_offset_in_bytes()));
-    __ ldr_s32(R8, Address(Rublock, Deoptimization::UnrollBlock::total_frame_sizes_offset_in_bytes()));
-    __ arm_stack_overflow_check(R8, Rtemp);
-  }
+  //
+  // The compiled method that we are deoptimizing was popped from the stack.
+  // If the stack bang results in a stack overflow, we don't return to the
+  // method that is being deoptimized. The stack overflow exception is
+  // propagated to the caller of the deoptimized method. Need to get the pc
+  // from the caller in LR and restore FP.
+  __ ldr(LR, Address(R2, 0));
+  __ ldr(FP, Address(Rublock, Deoptimization::UnrollBlock::initial_info_offset_in_bytes()));
+  __ ldr_s32(R8, Address(Rublock, Deoptimization::UnrollBlock::total_frame_sizes_offset_in_bytes()));
+  __ arm_stack_overflow_check(R8, Rtemp);
 #endif
   __ ldr_s32(R8, Address(Rublock, Deoptimization::UnrollBlock::number_of_frames_offset_in_bytes()));
   __ ldr_s32(Rtemp, Address(Rublock, Deoptimization::UnrollBlock::caller_adjustment_offset_in_bytes()));
@@ -1806,15 +1801,27 @@ SafepointBlob* SharedRuntime::generate_handler_blob(address call_ptr, int poll_t
   oop_maps->add_gc_map(pc_offset, map);
   __ reset_last_Java_frame(Rtemp); // Rtemp free since scratched by far call
 
-  // Check for pending exception
-  __ ldr(Rtemp, Address(Rthread, Thread::pending_exception_offset()));
-  __ cmp(Rtemp, 0);
-
   if (!cause_return) {
+    // If our stashed return pc was modified by the runtime we avoid touching it
+    __ ldr(R3_tmp, Address(Rthread, JavaThread::saved_exception_pc_offset()));
+    __ ldr(R2_tmp, Address(SP, RegisterSaver::LR_offset * wordSize));
+    __ cmp(R2_tmp, R3_tmp);
+    // Adjust return pc forward to step over the safepoint poll instruction
+    __ add(R2_tmp, R2_tmp, 4, eq);
+    __ str(R2_tmp, Address(SP, RegisterSaver::LR_offset * wordSize), eq);
+
+    // Check for pending exception
+    __ ldr(Rtemp, Address(Rthread, Thread::pending_exception_offset()));
+    __ cmp(Rtemp, 0);
+
     RegisterSaver::restore_live_registers(masm, false);
     __ pop(PC, eq);
     __ pop(Rexception_pc);
   } else {
+    // Check for pending exception
+    __ ldr(Rtemp, Address(Rthread, Thread::pending_exception_offset()));
+    __ cmp(Rtemp, 0);
+
     RegisterSaver::restore_live_registers(masm);
     __ bx(LR, eq);
     __ mov(Rexception_pc, LR);
@@ -1884,3 +1891,13 @@ RuntimeStub* SharedRuntime::generate_resolve_blob(address destination, const cha
 
   return RuntimeStub::new_runtime_stub(name, &buffer, frame_complete, frame_size_words, oop_maps, true);
 }
+
+#ifdef COMPILER2
+RuntimeStub* SharedRuntime::make_native_invoker(address call_target,
+                                                int shadow_space_bytes,
+                                                const GrowableArray<VMReg>& input_registers,
+                                                const GrowableArray<VMReg>& output_registers) {
+  Unimplemented();
+  return nullptr;
+}
+#endif

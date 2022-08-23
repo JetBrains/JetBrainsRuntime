@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
  * @test
  * @bug 8175312
  * @summary Test clhsdb 'g1regiondetails' and 'scanoops' commands for G1GC
+ * @requires vm.gc.G1
  * @requires vm.hasSA & (vm.bits == "64" & os.maxMemory > 8g)
  * @library /test/lib /test/hotspot/jtreg/serviceability/sa
  * @run main/othervm/timeout=2400 ClhsdbRegionDetailsScanOopsForG1
@@ -45,13 +46,12 @@ public class ClhsdbRegionDetailsScanOopsForG1 {
         LingeredAppWithLargeStringArray theApp = null;
         try {
             ClhsdbLauncher test = new ClhsdbLauncher();
-            List<String> vmArgs = new ArrayList<String>();
-            vmArgs.add("-XX:+UseG1GC");
-            vmArgs.add("-Xmx8g");
-            vmArgs.add("-XX:G1HeapRegionSize=2m");
 
             theApp = new LingeredAppWithLargeStringArray();
-            LingeredApp.startApp(vmArgs, theApp);
+            LingeredApp.startApp(theApp,
+                "-XX:+UseG1GC",
+                "-Xmx8g",
+                "-XX:G1HeapRegionSize=2m");
             System.out.println("Started LingeredAppWithLargeStringArray with pid " + theApp.getPid());
 
             List<String> cmds = List.of("g1regiondetails");

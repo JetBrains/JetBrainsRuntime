@@ -34,11 +34,33 @@ GrowableArray<jvmtiExtensionEventInfo*>* JvmtiExtensions::_ext_events;
 
 
 // extension function
-static jvmtiError JNICALL IsClassUnloadingEnabled(const jvmtiEnv* env, jboolean* enabled, ...) {
+static jvmtiError JNICALL IsClassUnloadingEnabled(const jvmtiEnv* env, ...) {
+  jboolean* enabled = NULL;
+  va_list ap;
+
+  va_start(ap, env);
+  enabled = va_arg(ap, jboolean *);
+  va_end(ap);
+
   if (enabled == NULL) {
     return JVMTI_ERROR_NULL_POINTER;
   }
   *enabled = (jboolean)ClassUnloading;
+  return JVMTI_ERROR_NONE;
+}
+
+// extension function
+static jvmtiError JNICALL IsEnhancedClassRedefinitionEnabled(const jvmtiEnv* env, ...) {
+  jboolean* enabled = NULL;
+  va_list ap;
+
+  va_start(ap, env);
+  enabled = va_arg(ap, jboolean *);
+  va_end(ap);
+  if (enabled == NULL) {
+    return JVMTI_ERROR_NULL_POINTER;
+  }
+  *enabled = (jboolean)AllowEnhancedClassRedefinition;
   return JVMTI_ERROR_NONE;
 }
 
@@ -49,8 +71,8 @@ static jvmtiError JNICALL IsClassUnloadingEnabled(const jvmtiEnv* env, jboolean*
 // event. The function and the event are registered here.
 //
 void JvmtiExtensions::register_extensions() {
-  _ext_functions = new (ResourceObj::C_HEAP, mtInternal) GrowableArray<jvmtiExtensionFunctionInfo*>(1,true);
-  _ext_events = new (ResourceObj::C_HEAP, mtInternal) GrowableArray<jvmtiExtensionEventInfo*>(1,true);
+  _ext_functions = new (ResourceObj::C_HEAP, mtServiceability) GrowableArray<jvmtiExtensionFunctionInfo*>(1, mtServiceability);
+  _ext_events = new (ResourceObj::C_HEAP, mtServiceability) GrowableArray<jvmtiExtensionEventInfo*>(1, mtServiceability);
 
   // register our extension function
   static jvmtiParamInfo func_params[] = {
@@ -81,6 +103,21 @@ void JvmtiExtensions::register_extensions() {
     event_params
   };
   _ext_events->append(&ext_event);
+
+  static jvmtiParamInfo func_params_enh_redef[] = {
+    { (char*)"IsEnhancedClassRedefinitionEnabled", JVMTI_KIND_OUT,  JVMTI_TYPE_JBOOLEAN, JNI_FALSE }
+
+  };
+  static jvmtiExtensionFunctionInfo ext_func_enh_redef = {
+    (jvmtiExtensionFunction)IsEnhancedClassRedefinitionEnabled,
+    (char*)"com.sun.hotspot.functions.IsEnhancedClassRedefinitionEnabled",
+    (char*)"Tell if enhanced class redefinition is enabled (-noclassgc)",
+    sizeof(func_params_enh_redef)/sizeof(func_params_enh_redef[0]),
+    func_params_enh_redef,
+    0,              // no non-universal errors
+    NULL
+  };
+  _ext_functions->append(&ext_func_enh_redef);
 }
 
 

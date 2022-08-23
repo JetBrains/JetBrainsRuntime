@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,29 +39,29 @@ class OopStorage;
 // This is the vm version of jweak but has different GC lifetimes and policies,
 // depending on the type.
 
-enum WeakHandleType { vm_class_loader_data, vm_string_table_data, vm_resolved_method_table_data };
-
-template <WeakHandleType T>
 class WeakHandle {
  public:
  private:
   oop* _obj;
 
   WeakHandle(oop* w) : _obj(w) {}
-  static OopStorage* get_storage();
  public:
   WeakHandle() : _obj(NULL) {} // needed for init
+  WeakHandle(OopStorage* storage, Handle obj);
+  WeakHandle(OopStorage* storage, oop obj);
 
-  static WeakHandle create(Handle obj);
   inline oop resolve() const;
   inline oop peek() const;
-  void release() const;
+  void release(OopStorage* storage) const;
   bool is_null() const { return _obj == NULL; }
 
   void replace(oop with_obj);
 
   void print() const;
   void print_on(outputStream* st) const;
+
+  bool is_empty() const { return _obj == NULL; }
+  oop* ptr_raw() const { return _obj; }
 };
 
 #endif // SHARE_OOPS_WEAKHANDLE_HPP

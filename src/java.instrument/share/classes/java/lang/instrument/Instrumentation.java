@@ -222,13 +222,8 @@ public interface Instrumentation {
      * Instances of the retransformed class are not affected.
      *
      * <P>
-     * The retransformation may change method bodies, the constant pool and
-     * attributes (unless explicitly prohibited).
-     * The retransformation must not add, remove or rename fields or methods, change the
-     * signatures of methods, or change inheritance.
-     * The retransformation must not change the <code>NestHost</code>,
-     * <code>NestMembers</code>, or <code>Record</code> attributes.
-     * These restrictions may be lifted in future versions.
+     * The supported class file changes are described in
+     * <a href="{@docRoot}/../specs/jvmti.html#RetransformClasses">JVM TI RetransformClasses</a>.
      * The class file bytes are not checked, verified and installed
      * until after the transformations have been applied, if the resultant bytes are in
      * error this method will throw an exception.
@@ -313,13 +308,8 @@ public interface Instrumentation {
      * Instances of the redefined class are not affected.
      *
      * <P>
-     * The redefinition may change method bodies, the constant pool and attributes
-     * (unless explicitly prohibited).
-     * The redefinition must not add, remove or rename fields or methods, change the
-     * signatures of methods, or change inheritance.
-     * The redefinition must not change the <code>NestHost</code>,
-     * <code>NestMembers</code>, or <code>Record</code> attributes.
-     * These restrictions may be lifted in future versions.
+     * The supported class file changes are described in
+     * <a href="{@docRoot}/../specs/jvmti.html#RedefineClasses">JVM TI RedefineClasses</a>.
      * The class file bytes are not checked, verified and installed
      * until after the transformations have been applied, if the resultant bytes are in
      * error this method will throw an exception.
@@ -387,6 +377,9 @@ public interface Instrumentation {
 
     /**
      * Returns an array of all classes currently loaded by the JVM.
+     * The returned array includes all classes and interfaces, including
+     * {@linkplain Class#isHidden hidden classes or interfaces}, and array classes
+     * of all types.
      *
      * @return an array containing all the classes loaded by the JVM, zero-length if there are none
      */
@@ -395,12 +388,21 @@ public interface Instrumentation {
     getAllLoadedClasses();
 
     /**
-     * Returns an array of all classes for which <code>loader</code> is an initiating loader.
-     * If the supplied loader is <code>null</code>, classes initiated by the bootstrap class
-     * loader are returned.
+     * Returns an array of all classes which {@code loader} can find by name
+     * via {@link ClassLoader#loadClass(String, boolean) ClassLoader::loadClass},
+     * {@link Class#forName(String) Class::forName} and bytecode linkage.
+     * That is, all classes for which {@code loader} has been recorded as
+     * an initiating loader. If the supplied {@code loader} is {@code null},
+     * classes that the bootstrap class loader can find by name are returned.
+     * <p>
+     * The returned array does not include {@linkplain Class#isHidden()
+     * hidden classes or interfaces} or array classes whose
+     * {@linkplain Class#componentType() element type} is a
+     * {@linkplain Class#isHidden() hidden class or interface}.
+     * as they cannot be discovered by any class loader.
      *
      * @param loader          the loader whose initiated class list will be returned
-     * @return an array containing all the classes for which loader is an initiating loader,
+     * @return an array containing all classes which {@code loader} can find by name;
      *          zero-length if there are none
      */
     @SuppressWarnings("rawtypes")
@@ -448,7 +450,7 @@ public interface Instrumentation {
      * instrumentation classes.
      *
      * <p>
-     * <cite>The Java&trade; Virtual Machine Specification</cite>
+     * <cite>The Java Virtual Machine Specification</cite>
      * specifies that a subsequent attempt to resolve a symbolic
      * reference that the Java virtual machine has previously unsuccessfully attempted
      * to resolve always fails with the same error that was thrown as a result of the
@@ -502,7 +504,7 @@ public interface Instrumentation {
      * parameter to the <code>appendToClassPathForInstrumentation</code> method.
      *
      * <p>
-     * <cite>The Java&trade; Virtual Machine Specification</cite>
+     * <cite>The Java Virtual Machine Specification</cite>
      * specifies that a subsequent attempt to resolve a symbolic
      * reference that the Java virtual machine has previously unsuccessfully attempted
      * to resolve always fails with the same error that was thrown as a result of the
@@ -695,7 +697,7 @@ public interface Instrumentation {
      * to export. The {@code extraOpens} parameter is the map of additional
      * packages to open. In both cases, the map key is the fully-qualified name
      * of the package as defined in section 6.5.3 of
-     * <cite>The Java&trade; Language Specification </cite>, for example, {@code
+     * <cite>The Java Language Specification </cite>, for example, {@code
      * "java.lang"}. The map value is the non-empty set of modules that the
      * package should be exported or opened to. </p>
      *
@@ -727,7 +729,6 @@ public interface Instrumentation {
      *
      * @see #isModifiableModule(Module)
      * @since 9
-     * @spec JPMS
      */
     void redefineModule(Module module,
                         Set<Module> extraReads,
@@ -748,7 +749,6 @@ public interface Instrumentation {
      * @throws NullPointerException if the module is {@code null}
      *
      * @since 9
-     * @spec JPMS
      */
     boolean isModifiableModule(Module module);
 }

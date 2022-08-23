@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ *  Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  *  This code is free software; you can redistribute it and/or modify it
@@ -26,38 +26,61 @@
 
 package jdk.internal.foreign;
 
-import jdk.incubator.foreign.MemorySegment;
-import jdk.internal.access.JavaNioAccess;
-import jdk.internal.access.SharedSecrets;
-import jdk.internal.access.foreign.UnmapperProxy;
-import jdk.internal.misc.Unsafe;
-import sun.nio.ch.FileChannelImpl;
-import sun.security.action.GetBooleanAction;
+import jdk.incubator.foreign.*;
+import jdk.internal.access.foreign.MemorySegmentProxy;
+import jdk.internal.misc.VM;
+import sun.invoke.util.Wrapper;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.file.OpenOption;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
+import java.util.Optional;
 import java.util.function.Supplier;
+
+import static sun.security.action.GetPropertyAction.*;
 
 /**
  * This class contains misc helper functions to support creation of memory segments.
  */
 public final class Utils {
+    // used when testing invoke exact behavior of memory access handles
+    private static final boolean SHOULD_ADAPT_HANDLES
+        = Boolean.parseBoolean(privilegedGetProperty("jdk.internal.foreign.SHOULD_ADAPT_HANDLES", "true"));
 
-    private static Unsafe unsafe = Unsafe.getUnsafe();
+    private static final MethodHandle SEGMENT_FILTER;
+    public static final MethodHandle MH_bitsToBytesOrThrowForOffset;
 
-    // The maximum alignment supported by malloc - typically 16 on 64-bit platforms.
-    private final static long MAX_ALIGN = 16;
+    public static final Supplier<RuntimeException> bitsToBytesThrowOffset
+        = () -> new UnsupportedOperationException("Cannot compute byte offset; bit offset is not a multiple of 8");
 
-    private static final JavaNioAccess javaNioAccess = SharedSecrets.getJavaNioAccess();
-
-    private static final boolean skipZeroMemory = GetBooleanAction.privilegedGetProperty("jdk.internal.foreign.skipZeroMemory");
+    static {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.lookup();
+            SEGMENT_FILTER = lookup.findStatic(Utils.class, "filterSegment",
+                    MethodType.methodType(MemorySegmentProxy.class, MemorySegment.class));
+            MH_bitsToBytesOrThrowForOffset = MethodHandles.insertArguments(
+                lookup.findStatic(Utils.class, "bitsToBytesOrThrow",
+                    MethodType.methodType(long.class, long.class, Supplier.class)),
+                1,
+                bitsToBytesThrowOffset);
+        } catch (Throwable ex) {
+            throw new ExceptionInInitializerError(ex);
+        }
+    }
 
     public static long alignUp(long n, long alignment) {
         return (n + alignment - 1) & -alignment;
+    }
+
+    public static MemoryAddress alignUp(MemoryAddress ma, long alignment) {
+        long offset = ma.toRawLongValue();
+        return ma.addOffset(alignUp(offset, alignment) - offset);
+    }
+
+    public static MemorySegment alignUp(MemorySegment ms, long alignment) {
+        long offset = ms.address().toRawLongValue();
+        return ms.asSlice(alignUp(offset, alignment) - offset);
     }
 
     public static long bitsToBytesOrThrow(long bits, Supplier<RuntimeException> exFactory) {
@@ -68,90 +91,38 @@ public final class Utils {
         }
     }
 
-    // segment factories
-
-    public static MemorySegment makeNativeSegment(long bytesSize, long alignmentBytes) {
-        long alignedSize = bytesSize;
-
-        if (alignmentBytes > MAX_ALIGN) {
-            alignedSize = bytesSize + (alignmentBytes - 1);
-        }
-
-        long buf = unsafe.allocateMemory(alignedSize);
-        if (!skipZeroMemory) {
-            unsafe.setMemory(buf, alignedSize, (byte)0);
-        }
-        long alignedBuf = Utils.alignUp(buf, alignmentBytes);
-        MemoryScope scope = new MemoryScope(null, () -> unsafe.freeMemory(buf));
-        MemorySegment segment = new MemorySegmentImpl(buf, null, alignedSize, 0, Thread.currentThread(), scope);
-        if (alignedBuf != buf) {
-            long delta = alignedBuf - buf;
-            segment = segment.asSlice(delta, bytesSize);
-        }
-        return segment;
+    public static VarHandle fixUpVarHandle(VarHandle handle) {
+        // This adaptation is required, otherwise the memory access var handle will have type MemorySegmentProxy,
+        // and not MemorySegment (which the user expects), which causes performance issues with asType() adaptations.
+        return SHOULD_ADAPT_HANDLES
+            ? MemoryHandles.filterCoordinates(handle, 0, SEGMENT_FILTER)
+            : handle;
     }
 
-    public static MemorySegment makeArraySegment(byte[] arr) {
-        return makeArraySegment(arr, arr.length, Unsafe.ARRAY_BYTE_BASE_OFFSET, Unsafe.ARRAY_BYTE_INDEX_SCALE);
+    private static MemorySegmentProxy filterSegment(MemorySegment segment) {
+        return (AbstractMemorySegmentImpl)segment;
     }
 
-    public static MemorySegment makeArraySegment(char[] arr) {
-        return makeArraySegment(arr, arr.length, Unsafe.ARRAY_CHAR_BASE_OFFSET, Unsafe.ARRAY_CHAR_INDEX_SCALE);
+    public static void checkPrimitiveCarrierCompat(Class<?> carrier, MemoryLayout layout) {
+        checkLayoutType(layout, ValueLayout.class);
+        if (!isValidPrimitiveCarrier(carrier))
+            throw new IllegalArgumentException("Unsupported carrier: " + carrier);
+        if (Wrapper.forPrimitiveType(carrier).bitWidth() != layout.bitSize())
+            throw new IllegalArgumentException("Carrier size mismatch: " + carrier + " != " + layout);
     }
 
-    public static MemorySegment makeArraySegment(short[] arr) {
-        return makeArraySegment(arr, arr.length, Unsafe.ARRAY_SHORT_BASE_OFFSET, Unsafe.ARRAY_SHORT_INDEX_SCALE);
+    public static boolean isValidPrimitiveCarrier(Class<?> carrier) {
+        return carrier == byte.class
+            || carrier == short.class
+            || carrier == char.class
+            || carrier == int.class
+            || carrier == long.class
+            || carrier == float.class
+            || carrier == double.class;
     }
 
-    public static MemorySegment makeArraySegment(int[] arr) {
-        return makeArraySegment(arr, arr.length, Unsafe.ARRAY_INT_BASE_OFFSET, Unsafe.ARRAY_INT_INDEX_SCALE);
-    }
-
-    public static MemorySegment makeArraySegment(float[] arr) {
-        return makeArraySegment(arr, arr.length, Unsafe.ARRAY_FLOAT_BASE_OFFSET, Unsafe.ARRAY_FLOAT_INDEX_SCALE);
-    }
-
-    public static MemorySegment makeArraySegment(long[] arr) {
-        return makeArraySegment(arr, arr.length, Unsafe.ARRAY_LONG_BASE_OFFSET, Unsafe.ARRAY_LONG_INDEX_SCALE);
-    }
-
-    public static MemorySegment makeArraySegment(double[] arr) {
-        return makeArraySegment(arr, arr.length, Unsafe.ARRAY_DOUBLE_BASE_OFFSET, Unsafe.ARRAY_DOUBLE_INDEX_SCALE);
-    }
-
-    private static MemorySegment makeArraySegment(Object arr, int size, int base, int scale) {
-        MemoryScope scope = new MemoryScope(null, null);
-        return new MemorySegmentImpl(base, arr, size * scale, 0, Thread.currentThread(), scope);
-    }
-
-    public static MemorySegment makeBufferSegment(ByteBuffer bb) {
-        long bbAddress = javaNioAccess.getBufferAddress(bb);
-        Object base = javaNioAccess.getBufferBase(bb);
-
-        int pos = bb.position();
-        int limit = bb.limit();
-
-        MemoryScope bufferScope = new MemoryScope(bb, null);
-        return new MemorySegmentImpl(bbAddress + pos, base, limit - pos, 0, Thread.currentThread(), bufferScope);
-    }
-
-    // create and map a file into a fresh segment
-    public static MemorySegment makeMappedSegment(Path path, long bytesSize, FileChannel.MapMode mapMode) throws IOException {
-        if (bytesSize <= 0) throw new IllegalArgumentException("Requested bytes size must be > 0.");
-        try (FileChannelImpl channelImpl = (FileChannelImpl)FileChannel.open(path, openOptions(mapMode))) {
-            UnmapperProxy unmapperProxy = channelImpl.mapInternal(mapMode, 0L, bytesSize);
-            MemoryScope scope = new MemoryScope(null, unmapperProxy::unmap);
-            return new MemorySegmentImpl(unmapperProxy.address(), null, bytesSize, 0, Thread.currentThread(), scope);
-        }
-    }
-
-    private static OpenOption[] openOptions(FileChannel.MapMode mapMode) {
-        if (mapMode == FileChannel.MapMode.READ_ONLY) {
-            return new OpenOption[] { StandardOpenOption.READ };
-        } else if (mapMode == FileChannel.MapMode.READ_WRITE || mapMode == FileChannel.MapMode.PRIVATE) {
-            return new OpenOption[] { StandardOpenOption.READ, StandardOpenOption.WRITE };
-        } else {
-            throw new UnsupportedOperationException("Unsupported map mode: " + mapMode);
-        }
+    public static void checkLayoutType(MemoryLayout layout, Class<? extends MemoryLayout> layoutType) {
+        if (!layoutType.isInstance(layout))
+            throw new IllegalArgumentException("Expected a " + layoutType.getSimpleName() + ": " + layout);
     }
 }

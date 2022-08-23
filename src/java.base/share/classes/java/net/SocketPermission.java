@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,12 +37,12 @@ import java.security.PermissionCollection;
 import java.security.PrivilegedAction;
 import java.security.Security;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Enumeration;
-import java.util.Vector;
+import java.util.Map;
 import java.util.StringJoiner;
 import java.util.StringTokenizer;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
 import sun.net.util.IPAddressUtil;
 import sun.net.PortConfig;
 import sun.security.util.RegisteredDomain;
@@ -245,6 +245,7 @@ public final class SocketPermission extends Permission
     };
 
     static {
+        @SuppressWarnings("removal")
         Boolean tmp = java.security.AccessController.doPrivileged(
                 new sun.security.action.GetBooleanAction("sun.net.trustNameService"));
         trustNameService = tmp.booleanValue();
@@ -469,7 +470,7 @@ public final class SocketPermission extends Permission
             if (!host.isEmpty()) {
                 // see if we are being initialized with an IP address.
                 char ch = host.charAt(0);
-                if (ch == ':' || Character.digit(ch, 16) != -1) {
+                if (ch == ':' || IPAddressUtil.digit(ch, 16) != -1) {
                     byte ip[] = IPAddressUtil.textToNumericFormatV4(host);
                     if (ip == null) {
                         ip = IPAddressUtil.textToNumericFormatV6(host);
@@ -860,13 +861,11 @@ public final class SocketPermission extends Permission
     public boolean implies(Permission p) {
         int i,j;
 
-        if (!(p instanceof SocketPermission))
+        if (!(p instanceof SocketPermission that))
             return false;
 
         if (p == this)
             return true;
-
-        SocketPermission that = (SocketPermission) p;
 
         return ((this.mask & that.mask) == that.mask) &&
                                         impliesIgnoreMask(that);
@@ -1040,10 +1039,8 @@ public final class SocketPermission extends Permission
         if (obj == this)
             return true;
 
-        if (! (obj instanceof SocketPermission))
+        if (! (obj instanceof SocketPermission that))
             return false;
-
-        SocketPermission that = (SocketPermission) obj;
 
         //this is (overly?) complex!!!
 
@@ -1189,9 +1186,12 @@ public final class SocketPermission extends Permission
     }
 
     /**
-     * WriteObject is called to save the state of the SocketPermission
-     * to a stream. The actions are serialized, and the superclass
-     * takes care of the name.
+     * {@code writeObject} is called to save the state of the
+     * {@code SocketPermission} to a stream. The actions are serialized,
+     * and the superclass takes care of the name.
+     *
+     * @param  s the {@code ObjectOutputStream} to which data is written
+     * @throws IOException if an I/O error occurs
      */
     @java.io.Serial
     private synchronized void writeObject(java.io.ObjectOutputStream s)
@@ -1205,8 +1205,12 @@ public final class SocketPermission extends Permission
     }
 
     /**
-     * readObject is called to restore the state of the SocketPermission from
-     * a stream.
+     * {@code readObject} is called to restore the state of the
+     * {@code SocketPermission} from a stream.
+     *
+     * @param  s the {@code ObjectInputStream} from which data is read
+     * @throws IOException if an I/O error occurs
+     * @throws ClassNotFoundException if a serialized class cannot be loaded
      */
     @java.io.Serial
     private synchronized void readObject(java.io.ObjectInputStream s)
@@ -1221,6 +1225,7 @@ public final class SocketPermission extends Permission
      * Check the system/security property for the ephemeral port range
      * for this system. The suffix is either "high" or "low"
      */
+    @SuppressWarnings("removal")
     private static int initEphemeralPorts(String suffix, int defval) {
         return AccessController.doPrivileged(
             new PrivilegedAction<>(){
@@ -1349,16 +1354,13 @@ final class SocketPermissionCollection extends PermissionCollection
     implements Serializable
 {
     // Not serialized; see serialization section at end of class
-    // A ConcurrentSkipListMap is used to preserve order, so that most
-    // recently added permissions are checked first (see JDK-4301064).
-    private transient ConcurrentSkipListMap<String, SocketPermission> perms;
+    private transient Map<String, SocketPermission> perms;
 
     /**
-     * Create an empty SocketPermissions object.
-     *
+     * Create an empty SocketPermissionCollection object.
      */
     public SocketPermissionCollection() {
-        perms = new ConcurrentSkipListMap<>(new SPCComparator());
+        perms = new ConcurrentHashMap<>();
     }
 
     /**
@@ -1375,14 +1377,12 @@ final class SocketPermissionCollection extends PermissionCollection
      */
     @Override
     public void add(Permission permission) {
-        if (! (permission instanceof SocketPermission))
+        if (! (permission instanceof SocketPermission sp))
             throw new IllegalArgumentException("invalid permission: "+
                                                permission);
         if (isReadOnly())
             throw new SecurityException(
                 "attempt to add a Permission to a readonly PermissionCollection");
-
-        SocketPermission sp = (SocketPermission)permission;
 
         // Add permission to map if it is absent, or replace with new
         // permission if applicable. NOTE: cannot use lambda for
@@ -1422,14 +1422,24 @@ final class SocketPermissionCollection extends PermissionCollection
     @Override
     public boolean implies(Permission permission)
     {
-        if (! (permission instanceof SocketPermission))
+        if (! (permission instanceof SocketPermission np))
                 return false;
-
-        SocketPermission np = (SocketPermission) permission;
 
         int desired = np.getMask();
         int effective = 0;
         int needed = desired;
+
+        var hit = perms.get(np.getName());
+        if (hit != null) {
+            // fastpath, if the host was explicitly listed
+            if (((needed & hit.getMask()) != 0) && hit.impliesIgnoreMask(np)) {
+                effective |= hit.getMask();
+                if ((effective & desired) == desired) {
+                    return true;
+                }
+                needed = (desired & ~effective);
+            }
+        }
 
         //System.out.println("implies "+np);
         for (SocketPermission x : perms.values()) {
@@ -1479,7 +1489,11 @@ final class SocketPermissionCollection extends PermissionCollection
     };
 
     /**
+     * Writes the state of this object to the stream.
      * @serialData "permissions" field (a Vector containing the SocketPermissions).
+     *
+     * @param  out the {@code ObjectOutputStream} to which data is written
+     * @throws IOException if an I/O error occurs
      */
     /*
      * Writes the contents of the perms field out as a Vector for
@@ -1497,8 +1511,13 @@ final class SocketPermissionCollection extends PermissionCollection
         out.writeFields();
     }
 
-    /*
-     * Reads in a Vector of SocketPermissions and saves them in the perms field.
+    /**
+     * Reads in a {@code Vector} of {@code SocketPermission} and saves
+     * them in the perms field.
+     *
+     * @param  in the {@code ObjectInputStream} from which data is read
+     * @throws IOException if an I/O error occurs
+     * @throws ClassNotFoundException if a serialized class cannot be loaded
      */
     @java.io.Serial
     private void readObject(ObjectInputStream in)
@@ -1512,22 +1531,9 @@ final class SocketPermissionCollection extends PermissionCollection
         // Get the one we want
         @SuppressWarnings("unchecked")
         Vector<SocketPermission> permissions = (Vector<SocketPermission>)gfields.get("permissions", null);
-        perms = new ConcurrentSkipListMap<>(new SPCComparator());
+        perms = new ConcurrentHashMap<>(permissions.size());
         for (SocketPermission sp : permissions) {
             perms.put(sp.getName(), sp);
-        }
-    }
-
-    /**
-     * A simple comparator that orders new non-equal entries at the beginning.
-     */
-    private static class SPCComparator implements Comparator<String> {
-        @Override
-        public int compare(String s1, String s2) {
-            if (s1.equals(s2)) {
-                return 0;
-            }
-            return -1;
         }
     }
 }

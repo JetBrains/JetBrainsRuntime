@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,6 @@ public class TrueTypeGlyphMapper extends CharToGlyphMapper {
      * apparently expected there.
      */
     static final boolean isJAlocale = Locale.JAPAN.equals(Locale.getDefault());
-    private final boolean needsJAremapping;
 
     TrueTypeFont font;
     CMap cmap;
@@ -61,11 +60,6 @@ public class TrueTypeGlyphMapper extends CharToGlyphMapper {
         } else {
             handleBadCMAP();
         }
-        if (FontUtilities.isSolaris && isJAlocale && font.supportsJA()) {
-            needsJAremapping = true;
-        } else {
-            needsJAremapping = false;
-        }
     }
 
     public int getNumGlyphs() {
@@ -80,10 +74,9 @@ public class TrueTypeGlyphMapper extends CharToGlyphMapper {
                 return glyphCode;
             } else {
                 if (FontUtilities.isLogging()) {
-                    FontUtilities.getLogger().warning
-                        (font + " out of range glyph id=" +
-                         Integer.toHexString((int)glyphCode) +
-                         " for char " + Integer.toHexString(charCode));
+                    FontUtilities.logWarning(font + " out of range glyph id=" +
+                             Integer.toHexString((int)glyphCode) +
+                             " for char " + Integer.toHexString(charCode));
                 }
                 return (char)missingGlyph;
             }
@@ -105,8 +98,7 @@ public class TrueTypeGlyphMapper extends CharToGlyphMapper {
                 return glyphCode;
             } else {
                 if (FontUtilities.isLogging()) {
-                    FontUtilities.getLogger().warning
-                        (font + " out of range glyph id=" +
+                    FontUtilities.logWarning(font + " out of range glyph id=" +
                          Integer.toHexString((int)glyphCode) +
                          " for char " + Integer.toHexString(charCode) +
                          " for vs " + Integer.toHexString(variationSelector));
@@ -121,9 +113,10 @@ public class TrueTypeGlyphMapper extends CharToGlyphMapper {
 
     private void handleBadCMAP() {
         if (FontUtilities.isLogging()) {
-            FontUtilities.getLogger().severe("Null Cmap for " + font +
-                                      "substituting for this font");
+            FontUtilities.logSevere("Null Cmap for " + font +
+                                    "substituting for this font");
         }
+
         SunFontManager.getInstance().deRegisterBadFont(font);
         /* The next line is not really a solution, but might
          * reduce the exceptions until references to this font2D
@@ -141,62 +134,31 @@ public class TrueTypeGlyphMapper extends CharToGlyphMapper {
     }
 
     public int charToGlyph(char unicode) {
-        if (needsJAremapping) {
-            unicode = remapJAChar(unicode);
-        }
         int glyph = getGlyphFromCMAP(unicode);
-        if (font.checkUseNatives() && glyph < font.glyphToCharMap.length) {
-            font.glyphToCharMap[glyph] = unicode;
-        }
         return glyph;
     }
 
     public int charToGlyph(int unicode) {
-        if (needsJAremapping) {
-            unicode = remapJAIntChar(unicode);
-        }
         int glyph = getGlyphFromCMAP(unicode);
-        if (font.checkUseNatives() && glyph < font.glyphToCharMap.length) {
-            font.glyphToCharMap[glyph] = (char)unicode;
-        }
         return glyph;
     }
 
     @Override
     public int charToVariationGlyph(int unicode, int variationSelector) {
-        if (needsJAremapping) {
-            unicode = remapJAIntChar(unicode);
-        }
         int glyph = getGlyphFromCMAP(unicode, variationSelector);
-        if (font.checkUseNatives() && glyph < font.glyphToCharMap.length) {
-            font.glyphToCharMap[glyph] = (char)unicode;
-        }
         return glyph;
     }
 
     public void charsToGlyphs(int count, int[] unicodes, int[] glyphs) {
         for (int i=0;i<count;i++) {
-            if (needsJAremapping) {
-                glyphs[i] = getGlyphFromCMAP(remapJAIntChar(unicodes[i]));
-            } else {
-                glyphs[i] = getGlyphFromCMAP(unicodes[i]);
-            }
-            if (font.checkUseNatives() &&
-                glyphs[i] < font.glyphToCharMap.length) {
-                font.glyphToCharMap[glyphs[i]] = (char)unicodes[i];
-            }
+            glyphs[i] = getGlyphFromCMAP(unicodes[i]);
         }
     }
 
     public void charsToGlyphs(int count, char[] unicodes, int[] glyphs) {
 
         for (int i=0; i<count; i++) {
-            int code;
-            if (needsJAremapping) {
-                code = remapJAChar(unicodes[i]);
-            } else {
-                code = unicodes[i]; // char is unsigned.
-            }
+            int code = unicodes[i]; // char is unsigned.
 
             if (code >= HI_SURROGATE_START &&
                 code <= HI_SURROGATE_END && i < count - 1) {
@@ -215,11 +177,6 @@ public class TrueTypeGlyphMapper extends CharToGlyphMapper {
             }
             glyphs[i] = getGlyphFromCMAP(code);
 
-            if (font.checkUseNatives() &&
-                glyphs[i] < font.glyphToCharMap.length) {
-                font.glyphToCharMap[glyphs[i]] = (char)code;
-            }
-
         }
     }
 
@@ -231,12 +188,7 @@ public class TrueTypeGlyphMapper extends CharToGlyphMapper {
     public boolean charsToGlyphsNS(int count, char[] unicodes, int[] glyphs) {
 
         for (int i=0; i<count; i++) {
-            int code;
-            if (needsJAremapping) {
-                code = remapJAChar(unicodes[i]);
-            } else {
-                code = unicodes[i]; // char is unsigned.
-            }
+            int code = unicodes[i]; // char is unsigned.
 
             if (code >= HI_SURROGATE_START &&
                 code <= HI_SURROGATE_END && i < count - 1) {
@@ -251,10 +203,6 @@ public class TrueTypeGlyphMapper extends CharToGlyphMapper {
             }
 
             glyphs[i] = getGlyphFromCMAP(code);
-            if (font.checkUseNatives() &&
-                glyphs[i] < font.glyphToCharMap.length) {
-                font.glyphToCharMap[glyphs[i]] = (char)code;
-            }
 
             if (code < FontUtilities.MIN_LAYOUT_CHARCODE) {
                 continue;

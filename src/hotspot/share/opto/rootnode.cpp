@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,7 +62,8 @@ Node *RootNode::Ideal(PhaseGVN *phase, bool can_reshape) {
 }
 
 //=============================================================================
-HaltNode::HaltNode(Node* ctrl, Node* frameptr, const char* halt_reason) : Node(TypeFunc::Parms), _halt_reason(halt_reason) {
+HaltNode::HaltNode(Node* ctrl, Node* frameptr, const char* halt_reason, bool reachable)
+                        : Node(TypeFunc::Parms), _halt_reason(halt_reason), _reachable(reachable) {
   init_class_id(Class_Halt);
   Node* top = Compile::current()->top();
   init_req(TypeFunc::Control,  ctrl        );
@@ -73,6 +74,7 @@ HaltNode::HaltNode(Node* ctrl, Node* frameptr, const char* halt_reason) : Node(T
 }
 
 const Type *HaltNode::bottom_type() const { return Type::BOTTOM; }
+uint HaltNode::size_of() const { return sizeof(*this); }
 
 //------------------------------Ideal------------------------------------------
 Node *HaltNode::Ideal(PhaseGVN *phase, bool can_reshape) {

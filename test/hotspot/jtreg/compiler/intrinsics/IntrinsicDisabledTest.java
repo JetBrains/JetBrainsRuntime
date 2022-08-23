@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,8 +30,7 @@
  * @library /test/lib /
  *
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox
- *                                sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run main/othervm -Xbootclasspath/a:.
  *                   -XX:+UnlockDiagnosticVMOptions
  *                   -XX:+WhiteBoxAPI
@@ -40,7 +39,26 @@
  *                   -XX:CompileCommand=option,jdk.internal.misc.Unsafe::putChar,ccstrlist,DisableIntrinsic,_getCharVolatile,_getInt
  *                   -XX:CompileCommand=option,jdk.internal.misc.Unsafe::putCharVolatile,ccstrlist,DisableIntrinsic,_getIntVolatile
  *                   compiler.intrinsics.IntrinsicDisabledTest
- */
+ * @run main/othervm -Xbootclasspath/a:.
+ *                   -XX:+UnlockDiagnosticVMOptions
+ *                   -XX:+WhiteBoxAPI
+ *                   -XX:ControlIntrinsic=-_putCharVolatile,-_putInt
+ *                   -XX:ControlIntrinsic=-_putIntVolatile
+ *                   -XX:CompileCommand=ControlIntrinsic,jdk.internal.misc.Unsafe::putChar,-_getCharVolatile,-_getInt
+ *                   -XX:CompileCommand=ControlIntrinsic,jdk.internal.misc.Unsafe::putCharVolatile,-_getIntVolatile
+ *                   compiler.intrinsics.IntrinsicDisabledTest
+ * @run main/othervm -Xbootclasspath/a:.
+ *                   -XX:+UnlockDiagnosticVMOptions
+ *                   -XX:+WhiteBoxAPI
+ *                   -XX:ControlIntrinsic=+_putIntVolatile,+_putCharVolatile,+_putInt
+ *                   -XX:DisableIntrinsic=_putCharVolatile,_putInt
+ *                   -XX:DisableIntrinsic=_putIntVolatile
+ *                   -XX:CompileCommand=ControlIntrinsic,jdk.internal.misc.Unsafe::putChar,+_getCharVolatile,+_getInt
+ *                   -XX:CompileCommand=ControlIntrinsic,jdk.internal.misc.Unsafe::putCharVolatile,+_getIntVolatile
+ *                   -XX:CompileCommand=DisableIntrinsic,jdk.internal.misc.Unsafe::putChar,_getCharVolatile,_getInt
+ *                   -XX:CompileCommand=DisableIntrinsic,jdk.internal.misc.Unsafe::putCharVolatile,_getIntVolatile
+ *                   compiler.intrinsics.IntrinsicDisabledTest
+*/
 
 package compiler.intrinsics;
 

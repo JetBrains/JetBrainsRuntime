@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
  * @test
  * @bug 8231595
  * @summary [TEST] develop a test case for SuspendThreadList including current thread
+ * @requires vm.jvmti
  * @library /test/lib
  * @compile SuspendWithCurrentThread.java
  * @run main/othervm/native -agentlib:SuspendWithCurrentThread SuspendWithCurrentThread SuspenderIndex=first
@@ -128,8 +129,8 @@ public class SuspendWithCurrentThread {
                 " to suspend all tested threads including itself");
             ThreadToSuspend.setAllThreadsReady();
 
-            if (!checkSuspendedStatus()) {
-                throw new RuntimeException("Main: FAILED status returned from checkTestedThreadsSuspended");
+            while (!checkSuspendedStatus()) {
+                Thread.sleep(10);
             }
 
             log("Main: resuming all tested threads");
@@ -165,7 +166,6 @@ public class SuspendWithCurrentThread {
 class ThreadToSuspend extends Thread {
     private static void log(String msg) { System.out.println(msg); }
 
-    private static native void init();
     private static native void suspendTestedThreads();
     private static volatile boolean allThreadsReady = false;
 
@@ -186,10 +186,6 @@ class ThreadToSuspend extends Thread {
     // run thread continuously
     public void run() {
         boolean needSuspend = true;
-
-        if (isSuspender) {
-            init();
-        }
         threadReady = true;
 
         // run in a loop

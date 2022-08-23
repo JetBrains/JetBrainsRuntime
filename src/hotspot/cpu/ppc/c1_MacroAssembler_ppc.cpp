@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2012, 2018 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -27,8 +27,8 @@
 #include "asm/macroAssembler.inline.hpp"
 #include "c1/c1_MacroAssembler.hpp"
 #include "c1/c1_Runtime1.hpp"
-#include "classfile/systemDictionary.hpp"
 #include "gc/shared/collectedHeap.hpp"
+#include "gc/shared/tlab_globals.hpp"
 #include "interpreter/interpreter.hpp"
 #include "oops/arrayOop.hpp"
 #include "oops/markWord.hpp"
@@ -38,7 +38,7 @@
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
 #include "utilities/align.hpp"
-
+#include "utilities/powerOfTwo.hpp"
 
 void C1_MacroAssembler::inline_cache_check(Register receiver, Register iCache) {
   const Register temp_reg = R12_scratch2;
@@ -79,13 +79,16 @@ void C1_MacroAssembler::build_frame(int frame_size_in_bytes, int bang_size_in_by
   assert(bang_size_in_bytes >= frame_size_in_bytes, "stack bang size incorrect");
   generate_stack_overflow_check(bang_size_in_bytes);
 
-  std(return_pc, _abi(lr), R1_SP);     // SP->lr = return_pc
+  std(return_pc, _abi0(lr), R1_SP);     // SP->lr = return_pc
   push_frame(frame_size_in_bytes, R0); // SP -= frame_size_in_bytes
+
+  BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
+  bs->nmethod_entry_barrier(this, R20);
 }
 
 
-void C1_MacroAssembler::verified_entry() {
-  if (C1Breakpoint) illtrap();
+void C1_MacroAssembler::verified_entry(bool breakAtEntry) {
+  if (breakAtEntry) illtrap();
   // build frame
 }
 
@@ -104,6 +107,13 @@ void C1_MacroAssembler::lock_object(Register Rmark, Register Roop, Register Rbox
 
   // Save object being locked into the BasicObjectLock...
   std(Roop, BasicObjectLock::obj_offset_in_bytes(), Rbox);
+
+  if (DiagnoseSyncOnValueBasedClasses != 0) {
+    load_klass(Rscratch, Roop);
+    lwz(Rscratch, in_bytes(Klass::access_flags_offset()), Rscratch);
+    testbitdi(CCR0, R0, Rscratch, exact_log2(JVM_ACC_IS_VALUE_BASED_CLASS));
+    bne(CCR0, slow_int);
+  }
 
   if (UseBiasedLocking) {
     biased_locking_enter(CCR0, Roop, Rmark, Rscratch, R0, done, &slow_int);
@@ -294,7 +304,7 @@ void C1_MacroAssembler::initialize_object(
     } else {
       cmpwi(CCR0, t1, con_size_in_bytes);
     }
-    asm_assert_eq("bad size in initialize_object", 0x753);
+    asm_assert_eq("bad size in initialize_object");
   }
 #endif
 
@@ -390,7 +400,7 @@ void C1_MacroAssembler::allocate_array(
 #ifndef PRODUCT
 
 void C1_MacroAssembler::verify_stack_oop(int stack_offset) {
-  verify_oop_addr((RegisterOrConstant)(stack_offset + STACK_BIAS), R1_SP, "broken oop in stack slot");
+  verify_oop_addr((RegisterOrConstant)stack_offset, R1_SP, "broken oop in stack slot");
 }
 
 void C1_MacroAssembler::verify_not_null_oop(Register r) {

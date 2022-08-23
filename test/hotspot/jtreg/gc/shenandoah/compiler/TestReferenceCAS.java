@@ -27,10 +27,9 @@
  */
 
 /*
- * @test TestReferenceCAS
+ * @test id=default
  * @summary Shenandoah reference CAS test
- * @key gc
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  * @modules java.base/jdk.internal.misc:+open
  *
  * @run main/othervm -Diters=20000 -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive -XX:+UseShenandoahGC                                                 TestReferenceCAS
@@ -41,10 +40,10 @@
  */
 
 /*
- * @test TestReferenceCAS
+ * @test id=no-coops
  * @summary Shenandoah reference CAS test
- * @key gc
- * @requires vm.gc.Shenandoah & !vm.graal.enabled & (vm.bits == "64")
+ * @requires vm.gc.Shenandoah
+ * @requires vm.bits == "64"
  * @modules java.base/jdk.internal.misc:+open
  *
  * @run main/othervm -Diters=20000 -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive -XX:+UseShenandoahGC -XX:-UseCompressedOops                          TestReferenceCAS

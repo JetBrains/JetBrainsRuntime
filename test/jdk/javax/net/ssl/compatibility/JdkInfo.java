@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,12 @@
  * questions.
  */
 
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 /*
  * It represents a JDK with some specific attributes.
  * If two JdkInfo instances have the same version value, the instances are
@@ -28,34 +34,55 @@
  */
 public class JdkInfo {
 
-    public final String jdkPath;
+    public static final JdkInfo DEFAULT = new JdkInfo(Jdk.DEFAULT.getPath());
+
+    public final Path javaPath;
 
     public final String version;
-    public final String supportedProtocols;
-    public final String supportedCipherSuites;
+    public final List<String> supportedProtocols;
+    public final List<String> enabledProtocols;
+    public final List<String> supportedCipherSuites;
+    public final List<String> enabledCipherSuites;
     public final boolean supportsSNI;
     public final boolean supportsALPN;
 
-    public JdkInfo(String jdkPath) {
-        this.jdkPath = jdkPath;
+    public JdkInfo(Path javaPath) {
+        this.javaPath = javaPath;
 
-        String output = jdkAttributes(jdkPath);
+        String output = jdkAttributes(javaPath);
         if (output == null || output.trim().isEmpty()) {
             throw new RuntimeException(
-                    "Cannot determine the JDK attributes: " + jdkPath);
+                    "Cannot determine the JDK attributes: " + javaPath);
         }
 
-        String[] attributes = Utils.split(output, Utils.PARAM_DELIMITER);
-        version = attributes[0].replaceAll(".*=", "");
-        supportedProtocols = attributes[1].replaceAll(".*=", "");
-        supportedCipherSuites = attributes[2].replaceAll(".*=", "");
-        supportsSNI = Boolean.valueOf(attributes[3].replaceAll(".*=", ""));
-        supportsALPN = Boolean.valueOf(attributes[4].replaceAll(".*=", ""));
+        String[] attributes = Utilities.split(output, Utilities.PARAM_DELIMITER);
+        version = parseAttribute(attributes[0]);
+        supportedProtocols = parseListAttribute(attributes[1]);
+        enabledProtocols = parseListAttribute(attributes[2]);
+        supportedCipherSuites = parseListAttribute(attributes[3]);
+        enabledCipherSuites = parseListAttribute(attributes[4]);
+        supportsSNI = parseBooleanAttribute(attributes[5]);
+        supportsALPN = parseBooleanAttribute(attributes[6]);
+    }
+
+    private List<String> parseListAttribute(String attribute) {
+        attribute = parseAttribute(attribute);
+        return Arrays.asList(attribute.split(","));
+    }
+
+    private boolean parseBooleanAttribute(String attribute) {
+        attribute = parseAttribute(attribute);
+        return Boolean.parseBoolean(attribute);
+    }
+    private String parseAttribute(String attribute) {
+        return attribute.replaceAll(".*=", "");
     }
 
     // Determines the specific attributes for the specified JDK.
-    private static String jdkAttributes(String jdkPath) {
-        return ProcessUtils.java(jdkPath, null, JdkUtils.class).getOutput();
+    private static String jdkAttributes(Path javaPath) {
+        Map<String, String> props = new LinkedHashMap<>();
+        props.put("java.security.properties", Utils.SEC_PROPS_FILE);
+        return ProcUtils.java(javaPath, JdkInfoUtils.class, props).getOutput();
     }
 
     @Override
@@ -89,7 +116,15 @@ public class JdkInfo {
         return supportedProtocols.contains(protocol.name);
     }
 
+    public boolean enablesProtocol(Protocol protocol) {
+        return enabledProtocols.contains(protocol.name);
+    }
+
     public boolean supportsCipherSuite(CipherSuite cipherSuite) {
         return supportedCipherSuites.contains(cipherSuite.name());
+    }
+
+    public boolean enablesCipherSuite(CipherSuite cipherSuite) {
+        return enabledCipherSuites.contains(cipherSuite.name());
     }
 }

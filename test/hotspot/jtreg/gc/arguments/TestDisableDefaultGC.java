@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package gc.arguments;
  * @test TestDisableDefaultGC
  * @summary Test that the VM complains when the default GC is disabled and no other GC is specified
  * @bug 8068579
- * @key gc
  * @library /test/lib
  * @library /
  * @requires vm.gc=="null"
@@ -44,9 +43,9 @@ public class TestDisableDefaultGC {
         ProcessBuilder pb = GCArguments.createJavaProcessBuilder("-XX:-UseSerialGC",
                                                                  "-XX:-UseParallelGC",
                                                                  "-XX:-UseG1GC",
+                                                                 "-XX:-UseZGC",
                                                                  "-XX:+UnlockExperimentalVMOptions",
                                                                  "-XX:-UseShenandoahGC",
-                                                                 "-XX:-UseZGC",
                                                                  "-version");
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         output.shouldMatch("Garbage collector not selected");

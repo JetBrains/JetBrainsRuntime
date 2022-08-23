@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,22 +25,35 @@
 /*
  * @test
  * @summary A few edge cases where there's no class to be included in the dynamic archive.
- * @requires vm.cds
+ * @requires vm.cds & !vm.graal.enabled
+ * @comment The test assumes that when "java -version" is executed, only a very limited number
+ *          of classes are loaded, and all of those are loaded from the default shared archive.
+ *
+ *          However, when graal is used as the JIT, many extra classes are loaded during VM start-up.
+ *          Some of those are loaded dynamically from jrt:/. Some classes are also defined by
+ *          LambdaMetafactory. This causes complexity that cannot be easily handled by this test.
+ *
+ *          The VM code covered by this test can be sufficiently tested with C1/C2. So there's no need
+ *          to bend over backwards to run this test with graal.
+ *
  * @library /test/lib /test/hotspot/jtreg/runtime/cds/appcds /test/hotspot/jtreg/runtime/cds/appcds/dynamicArchive/test-classes
  * @build StrConcatApp
- * @run driver ClassFileInstaller -jar strConcatApp.jar StrConcatApp
- * @run driver NoClassToArchive
+ * @build sun.hotspot.WhiteBox
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller -jar strConcatApp.jar StrConcatApp
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI -Xbootclasspath/a:. NoClassToArchive
  */
 
 import java.io.File;
+import jdk.test.lib.cds.CDSOptions;
+import jdk.test.lib.cds.CDSTestUtils;
 import jdk.test.lib.process.OutputAnalyzer;
-import jdk.test.lib.process.ProcessTools;
+import jdk.test.lib.helpers.ClassFileInstaller;
 
 public class NoClassToArchive extends DynamicArchiveTestBase {
     static final String warningMessage =
         "There is no class to be included in the dynamic archive";
-    static final String classList = System.getProperty("test.classes") +
-        File.separator + "NoClassToArchive.list";
+    static final String classList = CDSTestUtils.getOutputFileName("classlist");
     static final String appClass = "StrConcatApp";
 
     public static void main(String[] args) throws Exception {
@@ -51,7 +64,7 @@ public class NoClassToArchive extends DynamicArchiveTestBase {
     // (1) Test with default base archive + top archive
     static void testDefaultBase() throws Exception {
         String topArchiveName = getNewArchiveName("top");
-        doTest(null, topArchiveName);
+        doTest(topArchiveName);
     }
 
     // (2) Test with custom base archive + top archive
@@ -62,22 +75,26 @@ public class NoClassToArchive extends DynamicArchiveTestBase {
     }
 
     private static void checkWarning(OutputAnalyzer output) throws Exception {
-        if (output.getStdout().contains("jrt:/") || output.getStdout().contains("unsafe anonymous")) {
+        if (output.firstMatch("bytes: [0-9]+ checksum: [0-9a-f]+") != null) {
+            // Patterns like this indicate that a class was not loaded from CDS archive:
+            // [info ][class,load] jdk.internal.module.DefaultRoots$$Lambda$1/0x00007f80c4512048 source: jdk.internal.module.DefaultRoots
+            // [debug][class,load]  klass: 0x0000000800b77cf8 super: 0x0000000800007450 interfaces: 0x0000000800162538
+            //                      loader: [loader data: 0x00007f80f416a5b0 of 'bootstrap'] bytes: 403 checksum: 753e58aa
             System.out.println("test skipped: this platform uses non-archived classes when running -version");
         } else {
             output.shouldContain(warningMessage);
         }
     }
 
-    private static void doTest(String baseArchiveName, String topArchiveName) throws Exception {
-        dump2(baseArchiveName, topArchiveName,
+    private static void doTest(String topArchiveName) throws Exception {
+        dump(topArchiveName,
              "-Xlog:cds",
              "-Xlog:cds+dynamic=debug",
              "-Xlog:class+load=trace",
              "-version")
             .assertNormalExit(output -> checkWarning(output));
 
-        dump2(baseArchiveName, topArchiveName,
+        dump(topArchiveName,
              "-Xlog:cds",
              "-Xlog:cds+dynamic=debug",
              "-Xlog:class+load=trace",
@@ -91,17 +108,13 @@ public class NoClassToArchive extends DynamicArchiveTestBase {
     private static void doTestCustomBase(String baseArchiveName, String topArchiveName) throws Exception {
         String appJar = ClassFileInstaller.getJarPath("strConcatApp.jar");
         // dump class list by running the StrConcatApp
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
-            true,
-            "-XX:DumpLoadedClassList=" + classList,
-            "-cp",
-            appJar,
-            appClass);
-        OutputAnalyzer output = TestCommon.executeAndLog(pb, "dumpClassList");
-        TestCommon.checkExecReturn(output, 0, true, "length = 0");
+        CDSTestUtils.dumpClassList(classList, "-cp", appJar, appClass)
+            .assertNormalExit(output -> {
+                output.shouldContain("length = 0");
+            });
 
         // create a custom base archive based on the class list
-        dumpBaseArchive(baseArchiveName, "-XX:SharedClassListFile=" + classList);
+        TestCommon.dumpBaseArchive(baseArchiveName, "-XX:SharedClassListFile=" + classList);
 
         // create a dynamic archive with the custom base archive
         // no class should be included in the dynamic archive

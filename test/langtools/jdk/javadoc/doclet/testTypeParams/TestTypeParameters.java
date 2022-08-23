@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug      4927167 4974929 7010344 8025633 8081854 8182765 8187288
+ * @bug      4927167 4974929 7010344 8025633 8081854 8182765 8187288 8261976
  * @summary  When the type parameters are more than 10 characters in length,
  *           make sure there is a line break between type params and return type
  *           in member summary. Also, test for type parameter links in package-summary and
@@ -48,43 +48,50 @@ public class TestTypeParameters extends JavadocTester {
     public void test1() {
         javadoc("-d", "out-1",
                 "-use",
+                "--no-platform-links",
                 "-sourcepath", testSrc,
                 "pkg");
         checkExit(Exit.OK);
 
         checkOutput("pkg/C.html", true,
-                "<td class=\"colFirst\"><code>&lt;W extends java.lang.String,&#8203;\nV extends "
-                + "java.util.List&gt;<br>java.lang.Object</code></td>",
+                """
+                    <div class="col-first odd-row-color method-summary-table method-summary-table-ta\
+                    b2 method-summary-table-tab4"><code>&lt;W extends java.lang.String,<wbr>
+                    V extends java.util.List&gt;<br>java.lang.Object</code></div>""",
                 "<code>&lt;T&gt;&nbsp;java.lang.Object</code>");
 
         checkOutput("pkg/package-summary.html", true,
-                "C</a>&lt;E extends <a href=\"Parent.html\" "
-                + "title=\"class in pkg\">Parent</a>&gt;");
+                """
+                    C</a>&lt;E extends <a href="Parent.html" title="class in pkg">Parent</a>&gt;""");
 
         checkOutput("pkg/class-use/Foo4.html", true,
-                "<a href=\"../ClassUseTest3.html\" title=\"class in pkg\">"
-                + "ClassUseTest3</a>&lt;T extends <a href=\"../ParamTest2.html\" "
-                + "title=\"class in pkg\">ParamTest2</a>&lt;java.util.List&lt;? extends "
-                + "<a href=\"../Foo4.html\" title=\"class in pkg\">Foo4</a>&gt;&gt;&gt;");
+                """
+                    <a href="../ClassUseTest3.html" class="type-name-link" title="class in pkg">Clas\
+                    sUseTest3</a>&lt;T extends <a href="../ParamTest2.html" title="class in pkg">Par\
+                    amTest2</a>&lt;java.util.List&lt;? extends <a href="../Foo4.html" title="class i\
+                    n pkg">Foo4</a>&gt;&gt;&gt;""");
 
         // Nested type parameters
         checkOutput("pkg/C.html", true,
-                "<section class=\"detail\" id=\"formatDetails(java.util.Collection,java.util.Collection)\">\n"
-                + "<h3>formatDetails</h3>");
+                """
+                    <section class="detail" id="formatDetails(java.util.Collection,java.util.Collection)">
+                    <h3>formatDetails</h3>""");
     }
 
     @Test
     public void test2() {
         javadoc("-d", "out-2",
                 "-linksource",
+                "--no-platform-links",
                 "-sourcepath", testSrc,
                 "pkg");
         checkExit(Exit.OK);
 
         checkOutput("pkg/ClassUseTest3.html", true,
-            "public class <a href=\"../src-html/pkg/ClassUseTest3.html#line.28\">" +
-            "ClassUseTest3</a>&lt;T extends <a href=\"ParamTest2.html\" " +
-            "title=\"class in pkg\">ParamTest2</a>&lt;java.util.List&lt;? extends " +
-            "<a href=\"Foo4.html\" title=\"class in pkg\">Foo4</a>&gt;&gt;&gt;");
+                """
+                    public class </span><span class="element-name"><a href="../src-html/pkg/ClassUse\
+                    Test3.html#line-28">ClassUseTest3</a>&lt;T extends <a href="ParamTest2.html" tit\
+                    le="class in pkg">ParamTest2</a>&lt;java.util.List&lt;? extends <a href="Foo4.ht\
+                    ml" title="class in pkg">Foo4</a>&gt;&gt;&gt;""");
     }
 }

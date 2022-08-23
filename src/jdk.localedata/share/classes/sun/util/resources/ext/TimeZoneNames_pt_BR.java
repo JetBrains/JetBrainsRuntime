@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -252,6 +252,9 @@ public final class TimeZoneNames_pt_BR extends TimeZoneNamesBundle {
         String WET[] = new String[] {"Fuso hor\u00e1rio da Europa Ocidental", "WET",
                                      "Fuso hor\u00e1rio de ver\u00e3o da Europa Ocidental", "WEST",
                                      "Hor\u00E1rio da Europa Ocidental", "WET"};
+        String WGT[] = new String[] {"Fuso hor\u00e1rio da Groenl\u00e2ndia Ocidental", "WGT",
+                                     "Fuso hor\u00e1rio de ver\u00e3o da Groenl\u00e2ndia Ocidental", "WGST",
+                                     "Hor\u00E1rio da Groenl\u00E2ndia Ocidental", "WGT"};
         String WIT[] = new String[] {"Fuso hor\u00e1rio da Indon\u00e9sia Ocidental", "WIB",
                                      "Fuso hor\u00e1rio de ver\u00e3o da Indon\u00e9sia Ocidental", "WIST",
                                      "Hor\u00E1rio da Indon\u00E9sia Ocidental", "WIB"};
@@ -348,7 +351,7 @@ public final class TimeZoneNames_pt_BR extends TimeZoneNamesBundle {
             {"Africa/Gaborone", CAT},
             {"Africa/Harare", CAT},
             {"Africa/Johannesburg", SAST},
-            {"Africa/Juba", EAT},
+            {"Africa/Juba", CAT},
             {"Africa/Kampala", EAT},
             {"Africa/Khartoum", CAT},
             {"Africa/Kigali", CAT},
@@ -375,7 +378,9 @@ public final class TimeZoneNames_pt_BR extends TimeZoneNamesBundle {
             {"Africa/Timbuktu", GMT},
             {"Africa/Tripoli", EET},
             {"Africa/Tunis", CET},
-            {"Africa/Windhoek", CAT},
+            {"Africa/Windhoek", new String[] {"Central African Time", "CAT",
+                                              "Western African Time", "WAT",
+                                              "Central African Time", "CAT"}},
             {"America/Adak", HST},
             {"America/Anguilla", AST},
             {"America/Antigua", AST},
@@ -430,7 +435,7 @@ public final class TimeZoneNames_pt_BR extends TimeZoneNamesBundle {
             {"America/Cuiaba", AMT},
             {"America/Curacao", AST},
             {"America/Danmarkshavn", GMT},
-            {"America/Dawson", PST},
+            {"America/Dawson", MST},
             {"America/Dawson_Creek", MST},
             {"America/Detroit", EST},
             {"America/Dominica", AST},
@@ -442,9 +447,7 @@ public final class TimeZoneNames_pt_BR extends TimeZoneNamesBundle {
             {"America/Fort_Wayne", EST},
             {"America/Fortaleza", BRT},
             {"America/Glace_Bay", AST},
-            {"America/Godthab", new String[] {"Fuso hor\u00e1rio da Groenl\u00e2ndia Ocidental", "WGT",
-                                              "Fuso hor\u00e1rio de ver\u00e3o da Groenl\u00e2ndia Ocidental", "WGST",
-                                              "Hor\u00E1rio da Groenl\u00E2ndia Ocidental", "WGT"}},
+            {"America/Godthab", WGT},
             {"America/Goose_Bay", AST},
             {"America/Grand_Turk", EST},
             {"America/Grenada", AST},
@@ -512,6 +515,7 @@ public final class TimeZoneNames_pt_BR extends TimeZoneNamesBundle {
             {"America/North_Dakota/Beulah", CST},
             {"America/North_Dakota/Center", CST},
             {"America/North_Dakota/New_Salem", CST},
+            {"America/Nuuk", WGT},
             {"America/Ojinaga", MST},
             {"America/Panama", EST},
             {"America/Pangnirtung", EST},
@@ -551,7 +555,7 @@ public final class TimeZoneNames_pt_BR extends TimeZoneNamesBundle {
             {"America/Tortola", AST},
             {"America/Vancouver", PST},
             {"America/Virgin", AST},
-            {"America/Whitehorse", PST},
+            {"America/Whitehorse", MST},
             {"America/Winnipeg", CST},
             {"America/Yakutat", AKST},
             {"America/Yellowknife", MST},
@@ -562,9 +566,9 @@ public final class TimeZoneNames_pt_BR extends TimeZoneNamesBundle {
             {"Antarctica/DumontDUrville", new String[] {"Fuso hor\u00e1rio de Dumont-d'Urville", "DDUT",
                                                         "Fuso hor\u00e1rio de ver\u00e3o de Dumont-d'Urville", "DDUST",
                                                         "Fuso Hor\u00E1rio de Dumont-d'Urville", "DDUT"}},
-            {"Antarctica/Macquarie", new String[] {"Fuso Hor\u00E1rio da Ilha de Macquarie", "MIST",
-                                                   "Fuso Hor\u00E1rio de Ver\u00E3o da Ilha de Macquarie", "MIST",
-                                                   "Fuso Hor\u00E1rio da Ilha de Macquarie", "MIST"}},
+            {"Antarctica/Macquarie", new String[] {"Australian Eastern Standard Time (Macquarie)", "AEST",
+                                                   "Australian Eastern Daylight Time (Macquarie)", "AEDT",
+                                                   "Australian Eastern Time (Macquarie)", "AET"}},
             {"Antarctica/Mawson", new String[] {"Fuso hor\u00e1rio de Mawson", "MAWT",
                                                 "Fuso hor\u00e1rio de ver\u00e3o de Mawson", "MAWST",
                                                 "Hor\u00E1rio de Mawson", "MAWT"}},
@@ -782,7 +786,7 @@ public final class TimeZoneNames_pt_BR extends TimeZoneNamesBundle {
             {"Canada/Mountain", MST},
             {"Canada/Newfoundland", NST},
             {"Canada/Pacific", PST},
-            {"Canada/Yukon", PST},
+            {"Canada/Yukon", MST},
             {"Canada/Saskatchewan", CST},
             {"CAT", CAT},
             {"CET", CET},
@@ -1033,7 +1037,6 @@ public final class TimeZoneNames_pt_BR extends TimeZoneNamesBundle {
             {"US/Michigan", EST},
             {"US/Mountain", MST},
             {"US/Pacific", PST},
-            {"US/Pacific-New", PST},
             {"US/Samoa", SAMOA},
             {"VST", ICT},
             {"W-SU", MSK},

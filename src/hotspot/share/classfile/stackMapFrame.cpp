@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 #include "precompiled.hpp"
 #include "classfile/stackMapFrame.hpp"
 #include "classfile/verifier.hpp"
+#include "classfile/vmSymbols.hpp"
 #include "memory/resourceArea.hpp"
 #include "oops/oop.inline.hpp"
 #include "oops/symbol.hpp"
@@ -74,7 +75,7 @@ void StackMapFrame::initialize_object(
 }
 
 VerificationType StackMapFrame::set_locals_from_arg(
-    const methodHandle& m, VerificationType thisKlass, TRAPS) {
+    const methodHandle& m, VerificationType thisKlass) {
   SignatureStream ss(m->signature());
   int init_local_num = 0;
   if (!m->is_static()) {
@@ -106,7 +107,7 @@ VerificationType StackMapFrame::set_locals_from_arg(
         // Create another symbol to save as signature stream unreferences
         // this symbol.
         Symbol *sig_copy =
-          verifier()->create_temporary_symbol(sig, 0, sig->utf8_length());
+          verifier()->create_temporary_symbol(sig);
         assert(sig_copy == sig, "symbols don't match");
         sig = sig_copy;
       }

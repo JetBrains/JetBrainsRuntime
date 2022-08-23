@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -86,7 +86,7 @@ class StandardDocFileFactory extends DocFileFactory {
                 fileManager.setLocationFromPaths(DocumentationTool.Location.DOCUMENTATION_OUTPUT, Arrays.asList(dir));
             } catch (IOException e) {
                 // generic IOException from file manager, setting location, e.g. file not a directory
-                String message = configuration.getResources().getText("doclet.error.initializing.dest.dir", e);
+                String message = configuration.getDocResources().getText("doclet.error.initializing.dest.dir", e);
                 throw new SimpleDocletException(message, e);
             }
         }
@@ -107,6 +107,11 @@ class StandardDocFileFactory extends DocFileFactory {
     @Override
     public DocFile createFileForInput(String file) {
         return new StandardDocFile(Paths.get(file));
+    }
+
+    @Override
+    public DocFile createFileForInput(Path file) {
+        return new StandardDocFile(file);
     }
 
     @Override
@@ -140,12 +145,12 @@ class StandardDocFileFactory extends DocFileFactory {
         private final Path file;
 
         /** Create a StandardDocFile for a given file. */
-        private StandardDocFile(Path file) {
+        StandardDocFile(Path file) {
             this.file = file;
         }
 
         /** Create a StandardDocFile for a given location and relative path. */
-        private StandardDocFile(Location location, DocPath path) {
+        StandardDocFile(Location location, DocPath path) {
             super(location, path);
             Assert.check(location == DocumentationTool.Location.DOCUMENTATION_OUTPUT);
             this.file = newFile(getDestDir(), path.getPath());
@@ -207,7 +212,8 @@ class StandardDocFileFactory extends DocFileFactory {
 
             try {
                 OutputStream out = getFileObjectForOutput(path).openOutputStream();
-                return new BufferedWriter(new OutputStreamWriter(out, configuration.docencoding));
+                String docencoding = configuration.getOptions().docEncoding();
+                return new BufferedWriter(new OutputStreamWriter(out, docencoding));
             } catch (IOException e) {
                 throw new DocFileIOException(this, DocFileIOException.Mode.WRITE, e);
             }
@@ -328,7 +334,7 @@ class StandardDocFileFactory extends DocFileFactory {
         /**
          * Resolve a relative file against the given output location.
          * @param locn Currently, only
-         * {@link DocumentationTool.Location.DOCUMENTATION_OUTPUT} is supported.
+         * {@link DocumentationTool.Location#DOCUMENTATION_OUTPUT} is supported.
          */
         @Override
         public DocFile resolveAgainst(Location locn) {

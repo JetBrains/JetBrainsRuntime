@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,15 +23,18 @@
  * questions.
  */
 
+#include "awt_ole.h"
 #include "awt.h"
 #include "awt_FileDialog.h"
 #include "awt_Dialog.h"
 #include "awt_Toolkit.h"
 #include "ComCtl32Util.h"
+#include "com_jetbrains_desktop_JBRFileDialog.h"
 #include <commdlg.h>
 #include <cderr.h>
 #include <shlobj.h>
-
+#include <shlwapi.h>
+#include <shobjidl.h>
 
 /************************************************************************
  * AwtFileDialog fields
@@ -51,12 +54,110 @@ jfieldID AwtFileDialog::modeID;
 jfieldID AwtFileDialog::dirID;
 jfieldID AwtFileDialog::fileID;
 jfieldID AwtFileDialog::filterID;
+jfieldID AwtFileDialog::jbrDialogID;
+jfieldID AwtFileDialog::openButtonTextID;
+jfieldID AwtFileDialog::selectFolderButtonTextID;
+jfieldID AwtFileDialog::hintsID;
+
+class CoTaskStringHolder {
+public:
+    CoTaskStringHolder() : m_str(NULL) {}
+
+    CoTaskStringHolder(CoTaskStringHolder& other) {
+        m_str = other.m_str;
+        other.m_str = NULL;
+    }
+
+    CoTaskStringHolder& operator=(CoTaskStringHolder& other) {
+        if (m_str == other.m_str) return *this;
+        Clean();
+        m_str = other.m_str;
+        other.m_str = NULL;
+        return *this;
+    }
+
+    LPTSTR* operator&() {
+        return &m_str;
+    }
+
+    operator bool() {
+        return m_str != NULL;
+    }
+
+    operator LPTSTR() {
+        return m_str;
+    }
+
+    ~CoTaskStringHolder() {
+        Clean();
+    }
+private:
+    LPTSTR m_str;
+
+    void Clean() {
+        if (m_str) {
+            ::CoTaskMemFree(m_str);
+            m_str = NULL;
+        }
+    }
+};
+
+template <typename T>
+class SmartHolderBase {
+public:
+    SmartHolderBase() : m_pointer(NULL) {}
+
+    SmartHolderBase& operator=(const SmartHolderBase&) = delete;
+
+    void Attach(T* other) {
+        if (m_pointer == other) return;
+        Clean();
+        m_pointer = other;
+    }
+
+    operator bool() {
+        return m_pointer != NULL;
+    }
+
+    operator T*() {
+        return m_pointer;
+    }
+
+    ~SmartHolderBase() {
+        Clean();
+    }
+protected:
+    T* m_pointer;
+
+    virtual void Clean() {
+        if (m_pointer) {
+            delete m_pointer;
+            m_pointer = NULL;
+        }
+    }
+};
+
+template<typename T>
+class SmartHolder : public SmartHolderBase<T> {
+};
+
+template <typename T>
+class SmartHolder<T[]> : public SmartHolderBase<T> {
+    virtual void Clean() {
+        if (m_pointer) {
+            delete [] m_pointer;
+            m_pointer = NULL;
+        }
+    }
+};
 
 /* Localized filter string */
 #define MAX_FILTER_STRING       128
 static TCHAR s_fileFilterString[MAX_FILTER_STRING];
 /* Non-localized suffix of the filter string */
 static const TCHAR s_additionalString[] = TEXT(" (*.*)\0*.*\0");
+static SmartHolder<COMDLG_FILTERSPEC> s_fileFilterSpec;
+static UINT s_fileFilterCount;
 
 // Default limit of the output buffer.
 #define SINGLE_MODE_BUFFER_LIMIT     MAX_PATH+1
@@ -65,7 +166,44 @@ static const TCHAR s_additionalString[] = TEXT(" (*.*)\0*.*\0");
 // The name of the property holding the pointer to the OPENFILENAME structure.
 static LPCTSTR OpenFileNameProp = TEXT("AWT_OFN");
 
+_COM_SMARTPTR_TYPEDEF(IFileDialog, __uuidof(IFileDialog));
+_COM_SMARTPTR_TYPEDEF(IFileDialogEvents, __uuidof(IFileDialogEvents));
+_COM_SMARTPTR_TYPEDEF(IShellItem, __uuidof(IShellItem));
+_COM_SMARTPTR_TYPEDEF(IFileOpenDialog, __uuidof(IFileOpenDialog));
+_COM_SMARTPTR_TYPEDEF(IShellItemArray, __uuidof(IShellItemArray));
+_COM_SMARTPTR_TYPEDEF(IOleWindowPtr, __uuidof(IOleWindowPtr));
+
 /***********************************************************************/
+
+COMDLG_FILTERSPEC *CreateFilterSpec(UINT *count) {
+    UINT filterCount = 0;
+    for (UINT index = 0; index < MAX_FILTER_STRING - 1; index++) {
+        if (s_fileFilterString[index] == _T('\0')) {
+            filterCount++;
+            if (s_fileFilterString[index + 1] == _T('\0'))
+                break;
+        }
+    }
+    filterCount /= 2;
+    COMDLG_FILTERSPEC *filterSpec = new COMDLG_FILTERSPEC[filterCount];
+    UINT currentIndex = 0;
+    TCHAR *currentStart = s_fileFilterString;
+    for (UINT index = 0; index < MAX_FILTER_STRING - 1; index++) {
+        if (s_fileFilterString[index] == _T('\0')) {
+            if (currentIndex & 1) {
+                filterSpec[currentIndex / 2].pszSpec = currentStart;
+            } else {
+                filterSpec[currentIndex / 2].pszName = currentStart;
+            }
+            currentStart = s_fileFilterString + index + 1;
+            currentIndex++;
+            if (s_fileFilterString[index + 1] == _T('\0'))
+                break;
+        }
+    }
+    *count = filterCount;
+    return filterSpec;
+}
 
 void
 AwtFileDialog::Initialize(JNIEnv *env, jstring filterDescription)
@@ -86,6 +224,7 @@ AwtFileDialog::Initialize(JNIEnv *env, jstring filterDescription)
     }
     DASSERT(s + sizeof(s_additionalString) < s_fileFilterString + MAX_FILTER_STRING);
     memcpy(s, s_additionalString, sizeof(s_additionalString));
+    s_fileFilterSpec.Attach(CreateFilterSpec(&s_fileFilterCount));
 }
 
 LRESULT CALLBACK FileDialogWndProc(HWND hWnd, UINT message,
@@ -237,12 +376,407 @@ FileDialogHookProc(HWND hdlg, UINT uiMsg, WPARAM wParam, LPARAM lParam)
     CATCH_BAD_ALLOC_RET(TRUE);
 }
 
+struct FileDialogData {
+    IFileDialogPtr fileDialog;
+    SmartHolder<TCHAR[]> result;
+    UINT resultSize;
+    jobject peer;
+    BOOL ignoreCustomizations;
+
+    // Whether the container folder of the current item should be used irregardless of the dialog result.
+    BOOL forceUseContainerFolder;
+
+    SmartHolder<WCHAR[]> openButtonText;
+    SmartHolder<WCHAR[]> selectFolderButtonText;
+
+    // Last observed value of the "File name" text box before user entered or selected a directory; kept for checking in
+    // some of the routines which have to behave differently in case user never touched the file name box.
+    CoTaskStringHolder lastIgnoredFileName;
+};
+
+bool SkipSelectedResults(FileDialogData *data) {
+    // Usually, when the "Open" / "Select Folder" button is pressed, we should close the file dialog (sometimes do it
+    // forcibly, because IFileDialog doesn't always thinks it should accept currently selected items, even if the dialog
+    // logic advices it should).
+    //
+    // But there's one case when we shouldn't: when the user has pasted a directory path into the "File name" text box,
+    // we should navigate to the directory entered instead of closing the dialog. This check guarantees we won't close
+    // the dialog if a directory path is pasted.
+    OLE_TRY
+        IFileDialogPtr fileDialog = data->fileDialog;
+
+        CoTaskStringHolder currentFileName;
+        OLE_HRT(fileDialog->GetFileName(&currentFileName));
+        if (_tcslen(currentFileName) == 0 || wcscmp(currentFileName, data->lastIgnoredFileName) == 0) {
+            return false; // do not skip anything if there's no file name entered
+        }
+
+        IFileOpenDialogPtr fileOpenDialog = nullptr;
+        IShellItemArrayPtr psia = nullptr;
+        OLE_HRT(fileDialog->QueryInterface(IID_PPV_ARGS(&fileOpenDialog)))
+        if (FAILED(fileOpenDialog->GetSelectedItems(&psia))) {
+            return false; // not a real path entered (thus it couldn't be resolved): don't skip anything
+        }
+
+        DWORD itemsCount = 0;
+        OLE_HRT(psia->GetCount(&itemsCount));
+        if (itemsCount != 1) {
+            return false; // zero or multiple items selected for some reason: fall back to default flow
+        }
+
+        IShellItemPtr singleItem = nullptr;
+        OLE_HRT(psia->GetItemAt(0, &singleItem));
+
+        SFGAOF attributes = 0;
+        bool isFolder = singleItem->GetAttributes(SFGAO_FOLDER, &attributes) == S_OK;
+        if (isFolder) {
+            // There's a folder name or path written in the file name text box: skip result selection, then.
+            return true;
+        }
+    OLE_CATCH
+
+    // Skip selected results (and fall back to default dialog logic) in case of any error.
+    return true;
+}
+
+HRESULT GetSelectedResults(FileDialogData *data) {
+    OLE_TRY
+
+    IFileOpenDialogPtr fileOpenDialog;
+    UINT currentOffset = 0;
+    IShellItemArrayPtr psia;
+    DWORD itemsCount;
+
+    OLE_HRT(data->fileDialog->QueryInterface(IID_PPV_ARGS(&fileOpenDialog)))
+    OLE_HRT(fileOpenDialog->GetSelectedItems(&psia));
+    OLE_HRT(psia->GetCount(&itemsCount));
+
+    UINT maxBufferSize = (MAX_PATH + 1) * itemsCount + 1;
+    data->result.Attach(new TCHAR[maxBufferSize]);
+    data->resultSize = maxBufferSize;
+    LPTSTR resultBuffer = data->result;
+    for (DWORD i = 0; i < itemsCount; i++) {
+        IShellItemPtr psi;
+        OLE_HRT(psia->GetItemAt(i, &psi));
+        if (i == 0 && itemsCount > 1) {
+            IShellItemPtr psiParent;
+            CoTaskStringHolder filePath;
+            OLE_HRT(psi->GetParent(&psiParent));
+            OLE_HRT(psiParent->GetDisplayName(SIGDN_FILESYSPATH, &filePath));
+            size_t filePathLength = _tcslen(filePath);
+            _tcsncpy(resultBuffer + currentOffset, filePath, filePathLength);
+            resultBuffer[currentOffset + filePathLength] = _T('\0');
+            currentOffset += filePathLength + 1;
+        }
+
+        CoTaskStringHolder filePath;
+        SIGDN displayForm = itemsCount > 1 ? SIGDN_PARENTRELATIVE : SIGDN_FILESYSPATH;
+        OLE_HRT(psi->GetDisplayName(displayForm, &filePath));
+        size_t filePathLength = _tcslen(filePath);
+        _tcsncpy(resultBuffer + currentOffset, filePath, filePathLength);
+        resultBuffer[currentOffset + filePathLength] = _T('\0');
+        currentOffset += filePathLength + 1;
+    }
+    resultBuffer[currentOffset] = _T('\0');
+    resultBuffer[currentOffset + 1] = _T('\0');
+    data->fileDialog->Close(S_OK);
+
+    OLE_CATCH
+    OLE_RETURN_HR
+}
+
+bool ShouldForceCloseDialogOnApply(FileDialogData *data) {
+    // We shouldn't force-close the dialog if we aren't in the force-close mode, or if we're in the folder picker mode:
+    if (!data->forceUseContainerFolder) return false;
+    if (data->ignoreCustomizations) return false;
+
+    IFileDialogPtr fileDialog = data->fileDialog;
+
+    OLE_TRY
+        // We should force-close the dialog on Enter, if there's nothing entered into the file name box:
+        CoTaskStringHolder currentFileName;
+        OLE_HRT(fileDialog->GetFileName(&currentFileName));
+        if (_tcslen(currentFileName) == 0 || wcscmp(currentFileName, data->lastIgnoredFileName) == 0) {
+            return true;
+        }
+
+        // If there's something entered into the file name box, then we should only force-close the dialog if it
+        // corresponds to a real file; otherwise, the user was probably looking for a file filter (e.g. entered
+        // "*.xml"), so we shouldn't close the dialog.
+        //
+        // To detect it, check the selected item list: if it's unavailable, it means that the item entered isn't an
+        // existing one.
+        IFileOpenDialogPtr fileOpenDialog;
+        IShellItemArrayPtr psia;
+        OLE_HRT(fileDialog->QueryInterface(IID_PPV_ARGS(&fileOpenDialog)))
+        if (FAILED(fileOpenDialog->GetSelectedItems(&psia))) {
+            return false;
+        }
+    OLE_CATCH
+
+    // Don't close the dialog: this will assume default behavior, as if no customization were applied.
+    return false;
+}
+
+LRESULT CALLBACK
+FileDialogSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+{
+    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+
+    TRY;
+
+    HWND parent = ::GetParent(hWnd);
+
+    switch (uMsg) {
+        case WM_COMMAND: {
+            if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == IDOK) {
+                FileDialogData *data = (FileDialogData*) dwRefData;
+                if (!data->ignoreCustomizations) {
+                    OLE_TRY
+                        if (!SkipSelectedResults(data)) {
+                            OLE_HRT(GetSelectedResults(data));
+                        }
+                    OLE_CATCH
+
+                    // Force to close the dialog even if there's no item selected, but we're in the forceUseContainerFolder
+                    // mode.
+                    if (ShouldForceCloseDialogOnApply(data)) {
+                        DestroyWindow(hWnd);
+                    }
+                }
+            }
+            if (LOWORD(wParam) == IDCANCEL) {
+                jobject peer = (jobject) (::GetProp(hWnd, ModalDialogPeerProp));
+                env->CallVoidMethod(peer, AwtFileDialog::setHWndMID, (jlong) 0);
+
+                FileDialogData *data = (FileDialogData*) dwRefData;
+                if (!data->ignoreCustomizations) {
+                    data->forceUseContainerFolder = FALSE; // disable mode on cancel
+                }
+            }
+            break;
+        }
+        case WM_SETICON: {
+            return 0;
+        }
+        case WM_DESTROY: {
+            HIMC hIMC = ::ImmGetContext(hWnd);
+            if (hIMC != NULL) {
+                ::ImmNotifyIME(hIMC, NI_COMPOSITIONSTR, CPS_CANCEL, 0);
+                ::ImmReleaseContext(hWnd, hIMC);
+            }
+
+            RemoveWindowSubclass(hWnd, &FileDialogSubclassProc, uIdSubclass);
+
+            ::RemoveProp(parent, ModalDialogPeerProp);
+            break;
+        }
+    }
+
+    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+
+    CATCH_BAD_ALLOC_RET(TRUE);
+}
+
+class CDialogEventHandler : public IFileDialogEvents
+{
+public:
+    IFACEMETHODIMP QueryInterface(REFIID riid, void** ppv)
+    {
+        static const QITAB qit[] = {
+                QITABENT(CDialogEventHandler, IFileDialogEvents),
+                { 0 },
+        };
+        return QISearch(this, qit, riid, ppv);
+    }
+
+    IFACEMETHODIMP_(ULONG) AddRef()
+    {
+        return InterlockedIncrement(&m_refCount);
+    }
+
+    IFACEMETHODIMP_(ULONG) Release()
+    {
+        long retVal = InterlockedDecrement(&m_refCount);
+        if (!retVal)
+            delete this;
+        return retVal;
+    }
+
+    IFACEMETHODIMP OnFolderChange(IFileDialog *fileDialog) {
+        if (!m_activated) {
+            InitDialog(fileDialog);
+            m_activated = true;
+        }
+
+        OLE_TRY
+            if (!data->ignoreCustomizations) {
+                IShellItemPtr folder = nullptr;
+                OLE_HRT(fileDialog->GetFolder(&folder));
+                CoTaskStringHolder filePath;
+                OLE_HRT(folder->GetDisplayName(SIGDN_FILESYSPATH, &filePath));
+                size_t filePathLength = _tcslen(filePath);
+                data->result.Attach(new TCHAR[filePathLength + 1]);
+                _tcscpy_s(data->result, filePathLength + 1, filePath);
+                data->resultSize = filePathLength + 1;
+
+                CoTaskStringHolder fileName;
+                OLE_HRT(fileDialog->GetFileName(&fileName));
+                data->lastIgnoredFileName = fileName;
+
+                OLE_HRT(fileDialog->SetOkButtonLabel(data->selectFolderButtonText));
+                data->forceUseContainerFolder = TRUE;
+            }
+        OLE_CATCH
+
+        return S_OK;
+    };
+
+    IFACEMETHODIMP OnFileOk(IFileDialog *) {
+        OLE_TRY
+            OLE_HRT(GetSelectedResults(data));
+        OLE_CATCH
+
+        // Since the user has chosen a file, reset the forceUseContainerFolder mode.
+        data->forceUseContainerFolder = FALSE;
+
+        return S_OK;
+    };
+
+    IFACEMETHODIMP OnFolderChanging(IFileDialog *, IShellItem *) { return S_OK; };
+    IFACEMETHODIMP OnHelp(IFileDialog *) { return S_OK; };
+    IFACEMETHODIMP OnSelectionChange(IFileDialog *fileDialog) {
+        OLE_TRY
+            if (!data->ignoreCustomizations) {
+                IShellItemPtr currentSelection = NULL;
+                OLE_HRT(fileDialog->GetCurrentSelection(&currentSelection));
+                SFGAOF att = 0;
+                bool isFolder = currentSelection->GetAttributes(SFGAO_FOLDER, &att) == S_OK;
+
+                LPCWSTR buttonLabel = nullptr;
+                if (isFolder) {
+                    buttonLabel = data->selectFolderButtonText ? data->selectFolderButtonText : L"Select Folder";
+                } else {
+                    buttonLabel = data->openButtonText ? data->openButtonText : L"Open";
+                }
+                OLE_HRT(fileDialog->SetOkButtonLabel(buttonLabel));
+
+                // Since we have an item selected, we're no more in the forceUseContainerFolder mode.
+                data->forceUseContainerFolder = FALSE;
+
+                if (isFolder) {
+                    CoTaskStringHolder fileName;
+                    OLE_HRT(fileDialog->GetFileName(&fileName));
+                    data->lastIgnoredFileName = fileName;
+                }
+            }
+        OLE_CATCH
+
+        return S_OK;
+    };
+    IFACEMETHODIMP OnShareViolation(IFileDialog *, IShellItem *, FDE_SHAREVIOLATION_RESPONSE *) { return S_OK; };
+    IFACEMETHODIMP OnTypeChange(IFileDialog *pfd) { return S_OK; };
+    IFACEMETHODIMP OnOverwrite(IFileDialog *, IShellItem *, FDE_OVERWRITE_RESPONSE *) { return S_OK; };
+
+    CDialogEventHandler(FileDialogData *data) : data(data), m_refCount(1), m_activated(false) { };
+private:
+    ~CDialogEventHandler() { };
+    FileDialogData *data;
+    bool m_activated;
+    long m_refCount;
+
+    void InitDialog(IFileDialog *fileDialog) {
+        JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+
+        TRY;
+        OLE_TRY
+
+        IOleWindowPtr pWindow;
+        OLE_HR = fileDialog->QueryInterface(IID_PPV_ARGS(&pWindow));
+        if (!SUCCEEDED(OLE_HR))
+            return;
+
+        HWND hdlg;
+        OLE_HRT(pWindow->GetWindow(&hdlg));
+
+        jobject peer = data->peer;
+        env->CallVoidMethod(peer, AwtFileDialog::setHWndMID, (jlong)hdlg);
+        ::SetProp(hdlg, ModalDialogPeerProp, reinterpret_cast<HANDLE>(peer));
+
+        // fix for 4508670 - disable CS_SAVEBITS
+        DWORD style = ::GetClassLong(hdlg, GCL_STYLE);
+        ::SetClassLong(hdlg, GCL_STYLE, style & ~CS_SAVEBITS);
+
+        // set appropriate icon for parentless dialogs
+        jobject awtParent = env->GetObjectField(peer, AwtFileDialog::parentID);
+        if (awtParent == NULL) {
+            ::SendMessage(hdlg, WM_SETICON, (WPARAM)ICON_BIG,
+                          (LPARAM)AwtToolkit::GetInstance().GetAwtIcon());
+        } else {
+            AwtWindow *awtWindow = (AwtWindow *)JNI_GET_PDATA(awtParent);
+            ::SendMessage(hdlg, WM_SETICON, (WPARAM)ICON_BIG,
+                          (LPARAM)(awtWindow->GetHIcon()));
+            ::SendMessage(hdlg, WM_SETICON, (WPARAM)ICON_SMALL,
+                          (LPARAM)(awtWindow->GetHIconSm()));
+            env->DeleteLocalRef(awtParent);
+        }
+
+        SetWindowSubclass(hdlg, &FileDialogSubclassProc, 0, (DWORD_PTR) data);
+
+        OLE_CATCH
+        CATCH_BAD_ALLOC;
+    }
+};
+
+HRESULT CDialogEventHandler_CreateInstance(FileDialogData *data, REFIID riid, void **ppv)
+{
+    OLE_TRY
+    IFileDialogEventsPtr dlg(new CDialogEventHandler(data), false);
+    OLE_HRT(dlg->QueryInterface(riid, ppv));
+    OLE_CATCH
+    OLE_RETURN_HR
+}
+
+HRESULT CreateShellItem(LPTSTR path, IShellItemPtr& shellItem) {
+    size_t pathLength = _tcslen(path);
+    for (size_t index = 0; index < pathLength; index++) {
+        if (path[index] == _T('/'))
+            path[index] = _T('\\');
+    }
+
+    return ::SHCreateItemInKnownFolder(FOLDERID_ComputerFolder, 0, path, IID_PPV_ARGS(&shellItem));
+}
+
+void AttachString(JNIEnv *env, const jstring string, SmartHolder<WCHAR[]> &holder) {
+    if (JNU_IsNull(env, string)) {
+        holder.Attach(nullptr);
+    } else {
+        JavaStringBuffer buffer(env, string);
+
+        size_t length = buffer.GetSize();
+        size_t lengthWithTerminatingNull = length + 1;
+        holder.Attach(new WCHAR[lengthWithTerminatingNull]);
+
+        wcscpy_s(holder, lengthWithTerminatingNull, buffer);
+    }
+}
+
+void SaveCommonDialogLocalizationData(JNIEnv *env, const jobject jbrFileDialog, FileDialogData &data) {
+    jstring openButtonText = static_cast<jstring>(env->GetObjectField(jbrFileDialog, AwtFileDialog::openButtonTextID));
+    jstring selectFolderButtonText = static_cast<jstring>(env->GetObjectField(jbrFileDialog, AwtFileDialog::selectFolderButtonTextID));
+
+    AttachString(env, openButtonText, data.openButtonText);
+    AttachString(env, selectFolderButtonText, data.selectFolderButtonText);
+
+    env->DeleteLocalRef(openButtonText);
+    env->DeleteLocalRef(selectFolderButtonText);
+}
+
 void
 AwtFileDialog::Show(void *p)
 {
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
     jobject peer;
-    LPTSTR fileBuffer = NULL;
     LPTSTR currentDirectory = NULL;
     jint mode = 0;
     BOOL result = FALSE;
@@ -256,13 +790,26 @@ AwtFileDialog::Show(void *p)
     AwtComponent* awtParent = NULL;
     jboolean multipleMode = JNI_FALSE;
 
+    OLE_DECL
+    OLEHolder _ole_;
+    IFileDialogPtr pfd;
+    IFileDialogEventsPtr pfde;
+    IShellItemPtr psiResult;
+    FileDialogData data;
+    DWORD dwCookie = OLE_BAD_COOKIE;
+
     OPENFILENAME ofn;
     memset(&ofn, 0, sizeof(ofn));
 
     peer = (jobject)p;
 
+    LPTSTR fileBuffer = NULL;
+
+    BOOL useCommonItemDialog = JNU_CallStaticMethodByName(env, NULL,
+            "sun/awt/windows/WFileDialogPeer", "useCommonItemDialog", "()Z").z == JNI_TRUE;
     try {
         DASSERT(peer);
+
         target = env->GetObjectField(peer, AwtObject::targetID);
         parent = env->GetObjectField(peer, AwtFileDialog::parentID);
         if (parent != NULL) {
@@ -270,6 +817,18 @@ AwtFileDialog::Show(void *p)
         }
 //      DASSERT(awtParent);
         title = (jstring)(env)->GetObjectField(target, AwtDialog::titleID);
+        /*
+              Fix for 6488834.
+              To disable Win32 native parent modality we have to set
+              hwndOwner field to either NULL or some hidden window. For
+              parentless dialogs we use NULL to show them in the taskbar,
+              and for all other dialogs AwtToolkit's HWND is used.
+            */
+        /* [moklev] This fix does not needed anymore
+         * Tested on Windows 10 with example from JDK-4080029
+         * Revert the fix and set the proper parent to keep correct position of modal dialogs
+         */
+//        HWND hwndOwner = awtParent ? AwtToolkit::GetInstance().GetHWnd() : NULL;
         HWND hwndOwner = awtParent ? awtParent->GetHWnd() : NULL;
 
         if (title == NULL || env->GetStringLength(title)==0) {
@@ -292,7 +851,7 @@ AwtFileDialog::Show(void *p)
         } else {
             bufferLimit = SINGLE_MODE_BUFFER_LIMIT;
         }
-        LPTSTR fileBuffer = new TCHAR[bufferLimit];
+        fileBuffer = new TCHAR[bufferLimit];
         memset(fileBuffer, 0, bufferLimit * sizeof(TCHAR));
 
         file = (jstring)env->GetObjectField(target, AwtFileDialog::fileID);
@@ -304,68 +863,147 @@ AwtFileDialog::Show(void *p)
             fileBuffer[0] = _T('\0');
         }
 
-        ofn.lStructSize = sizeof(ofn);
-        ofn.lpstrFilter = s_fileFilterString;
-        ofn.nFilterIndex = 1;
-        /*
-          Fix for 6488834.
-          To disable Win32 native parent modality we have to set
-          hwndOwner field to either NULL or some hidden window. For
-          parentless dialogs we use NULL to show them in the taskbar,
-          and for all other dialogs AwtToolkit's HWND is used.
-        */
-        if (awtParent != NULL)
-        {
-            ofn.hwndOwner = AwtToolkit::GetInstance().GetHWnd();
-        }
-        else
-        {
-            ofn.hwndOwner = NULL;
-        }
-        ofn.lpstrFile = fileBuffer;
-        ofn.nMaxFile = bufferLimit;
-        ofn.lpstrTitle = titleBuffer;
-        ofn.lpstrInitialDir = directoryBuffer;
-        ofn.Flags = OFN_LONGNAMES | OFN_OVERWRITEPROMPT | OFN_HIDEREADONLY |
-                    OFN_ENABLEHOOK | OFN_EXPLORER | OFN_ENABLESIZING;
-        fileFilter = env->GetObjectField(peer,
-        AwtFileDialog::fileFilterID);
-        if (!JNU_IsNull(env,fileFilter)) {
-            ofn.Flags |= OFN_ENABLEINCLUDENOTIFY;
-        }
-        ofn.lCustData = (LPARAM)peer;
-        ofn.lpfnHook = (LPOFNHOOKPROC)FileDialogHookProc;
+        fileFilter = env->GetObjectField(peer, AwtFileDialog::fileFilterID);
 
-        if (multipleMode == JNI_TRUE) {
-            ofn.Flags |= OFN_ALLOWMULTISELECT;
+        if (!useCommonItemDialog) {
+            ofn.lStructSize = sizeof(ofn);
+            ofn.lpstrFilter = s_fileFilterString;
+            ofn.nFilterIndex = 1;
+            /*
+              Fix for 6488834.
+              To disable Win32 native parent modality we have to set
+              hwndOwner field to either NULL or some hidden window. For
+              parentless dialogs we use NULL to show them in the taskbar,
+              and for all other dialogs AwtToolkit's HWND is used.
+            */
+            if (awtParent != NULL) {
+                ofn.hwndOwner = AwtToolkit::GetInstance().GetHWnd();
+            } else {
+                ofn.hwndOwner = NULL;
+            }
+            ofn.lpstrFile = fileBuffer;
+            ofn.nMaxFile = bufferLimit;
+            ofn.lpstrTitle = titleBuffer;
+            ofn.lpstrInitialDir = directoryBuffer;
+            ofn.Flags = OFN_LONGNAMES | OFN_OVERWRITEPROMPT | OFN_HIDEREADONLY |
+                        OFN_ENABLEHOOK | OFN_EXPLORER | OFN_ENABLESIZING;
+
+            if (!JNU_IsNull(env,fileFilter)) {
+                ofn.Flags |= OFN_ENABLEINCLUDENOTIFY;
+            }
+            ofn.lCustData = (LPARAM)peer;
+            ofn.lpfnHook = (LPOFNHOOKPROC)FileDialogHookProc;
+
+            if (multipleMode == JNI_TRUE) {
+                ofn.Flags |= OFN_ALLOWMULTISELECT;
+            }
+
+            // Save current directory, so we can reset if it changes.
+            currentDirectory = new TCHAR[MAX_PATH+1];
+
+            VERIFY(::GetCurrentDirectory(MAX_PATH, currentDirectory) > 0);
         }
-
-        // Save current directory, so we can reset if it changes.
-        currentDirectory = new TCHAR[MAX_PATH+1];
-
-        VERIFY(::GetCurrentDirectory(MAX_PATH, currentDirectory) > 0);
 
         mode = env->GetIntField(target, AwtFileDialog::modeID);
 
         AwtDialog::CheckInstallModalHook();
 
-        // show the Win32 file dialog
-        if (mode == java_awt_FileDialog_LOAD) {
-            result = ::GetOpenFileName(&ofn);
-        } else {
-            result = ::GetSaveFileName(&ofn);
+        if (useCommonItemDialog) {
+            OLE_NEXT_TRY
+            GUID fileDialogMode = mode == java_awt_FileDialog_LOAD ? CLSID_FileOpenDialog : CLSID_FileSaveDialog;
+            OLE_HRT(pfd.CreateInstance(fileDialogMode));
+
+            jobject jbrDialog = env->GetObjectField(target, AwtFileDialog::jbrDialogID);
+            jint hints = env->GetIntField(jbrDialog, AwtFileDialog::hintsID);
+            bool folderPickerMode = hints & com_jetbrains_desktop_JBRFileDialog_SELECT_DIRECTORIES_HINT;
+            bool fileExclusivePickerMode = hints & com_jetbrains_desktop_JBRFileDialog_SELECT_FILES_HINT;
+            if (folderPickerMode && fileExclusivePickerMode) {
+                folderPickerMode = fileExclusivePickerMode = false;
+            }
+            data.ignoreCustomizations = folderPickerMode || fileExclusivePickerMode || mode == java_awt_FileDialog_SAVE;
+            data.fileDialog = pfd;
+            data.peer = peer;
+            SaveCommonDialogLocalizationData(env, jbrDialog, data);
+            OLE_HRT(CDialogEventHandler_CreateInstance(&data, IID_PPV_ARGS(&pfde)));
+            OLE_HRT(pfd->Advise(pfde, &dwCookie));
+
+            DWORD dwFlags;
+            OLE_HRT(pfd->GetOptions(&dwFlags));
+            dwFlags |= FOS_FORCEFILESYSTEM;
+            if (multipleMode == JNI_TRUE) {
+                dwFlags |= FOS_ALLOWMULTISELECT;
+            }
+            if (folderPickerMode) {
+                dwFlags |= FOS_PICKFOLDERS;
+            }
+            OLE_HRT(pfd->SetOptions(dwFlags));
+
+            OLE_HRT(pfd->SetTitle(titleBuffer));
+
+            if (!folderPickerMode) {
+                OLE_HRT(pfd->SetFileTypes(s_fileFilterCount, s_fileFilterSpec));
+                OLE_HRT(pfd->SetFileTypeIndex(1));
+            }
+
+            {
+                IShellItemPtr directoryItem;
+                OLE_TRY
+                OLE_HRT(CreateShellItem(const_cast<LPTSTR>(static_cast<LPCTSTR>(directoryBuffer)), directoryItem));
+                OLE_HRT(pfd->SetFolder(directoryItem));
+                OLE_CATCH
+            }
+
+            {
+                OLE_TRY
+                OLE_HRT(pfd->SetFileName(fileBuffer));
+                OLE_CATCH
+            }
+
+            OLE_CATCH
         }
-        // Fix for 4181310: FileDialog does not show up.
-        // If the dialog is not shown because of invalid file name
-        // replace the file name by empty string.
-        if (!result) {
-            dlgerr = ::CommDlgExtendedError();
-            if (dlgerr == FNERR_INVALIDFILENAME) {
-                _tcscpy_s(fileBuffer, bufferLimit, TEXT(""));
-                if (mode == java_awt_FileDialog_LOAD) {
-                    result = ::GetOpenFileName(&ofn);
-                } else {
-                    result = ::GetSaveFileName(&ofn);
+
+        if (useCommonItemDialog && SUCCEEDED(OLE_HR)) {
+            if (mode == java_awt_FileDialog_LOAD) {
+                result = SUCCEEDED(pfd->Show(hwndOwner));
+                if (!result && data.forceUseContainerFolder && data.result) {
+                    // If the dialog has "failed", but we're in the forceUseContainerFolder mode, then we're supposed to
+                    // use the container set in data.result, so just proceed as if the dialog succeeded:
+                    result = TRUE;
+                }
+            } else {
+                result = SUCCEEDED(pfd->Show(hwndOwner));
+                if (result) {
+                    OLE_NEXT_TRY
+                    OLE_HRT(pfd->GetResult(&psiResult));
+                    CoTaskStringHolder filePath;
+                    OLE_HRT(psiResult->GetDisplayName(SIGDN_FILESYSPATH, &filePath));
+                    size_t filePathLength = _tcslen(filePath);
+                    data.resultSize = filePathLength;
+                    data.result.Attach(new TCHAR[filePathLength + 1]);
+                    _tcscpy_s(data.result, filePathLength + 1, filePath);
+                    OLE_CATCH
+                    result = SUCCEEDED(OLE_HR);
+                }
+            }
+        } else {
+            // show the Win32 file dialog
+            if (mode == java_awt_FileDialog_LOAD) {
+                result = ::GetOpenFileName(&ofn);
+            } else {
+                result = ::GetSaveFileName(&ofn);
+            }
+            // Fix for 4181310: FileDialog does not show up.
+            // If the dialog is not shown because of invalid file name
+            // replace the file name by empty string.
+            if (!result) {
+                dlgerr = ::CommDlgExtendedError();
+                if (dlgerr == FNERR_INVALIDFILENAME) {
+                    _tcscpy_s(fileBuffer, bufferLimit, TEXT(""));
+                    if (mode == java_awt_FileDialog_LOAD) {
+                        result = ::GetOpenFileName(&ofn);
+                    } else {
+                        result = ::GetSaveFileName(&ofn);
+                    }
                 }
             }
         }
@@ -376,19 +1014,31 @@ AwtFileDialog::Show(void *p)
 
         AwtDialog::ModalActivateNextWindow(NULL, target, peer);
 
-        VERIFY(::SetCurrentDirectory(currentDirectory));
+        if (!useCommonItemDialog) {
+            VERIFY(::SetCurrentDirectory(currentDirectory));
+        }
 
         // Report result to peer.
         if (result) {
-            jint length = multipleMode
-                    ? (jint)GetBufferLength(ofn.lpstrFile, ofn.nMaxFile)
-                    : (jint)_tcslen(ofn.lpstrFile);
+            jint length;
+            if (useCommonItemDialog) {
+                length = (jint) GetBufferLength(data.result, data.resultSize);
+            } else {
+                length = multipleMode
+                         ? (jint) GetBufferLength(ofn.lpstrFile, ofn.nMaxFile)
+                         : (jint) _tcslen(ofn.lpstrFile);
+            }
+
             jcharArray jnames = env->NewCharArray(length);
             if (jnames == NULL) {
                 throw std::bad_alloc();
             }
-            env->SetCharArrayRegion(jnames, 0, length, (jchar*)ofn.lpstrFile);
 
+            if (useCommonItemDialog) {
+                env->SetCharArrayRegion(jnames, 0, length, (jchar *) (LPTSTR) data.result);
+            } else {
+                env->SetCharArrayRegion(jnames, 0, length, (jchar *) ofn.lpstrFile);
+            }
             env->CallVoidMethod(peer, AwtFileDialog::handleSelectedMID, jnames);
             env->DeleteLocalRef(jnames);
         } else {
@@ -396,6 +1046,12 @@ AwtFileDialog::Show(void *p)
         }
         DASSERT(!safe_ExceptionOccurred(env));
     } catch (...) {
+
+        if (useCommonItemDialog) {
+            if (pfd && dwCookie != OLE_BAD_COOKIE) {
+                pfd->Unadvise(dwCookie);
+            }
+        }
 
         env->DeleteLocalRef(target);
         env->DeleteLocalRef(parent);
@@ -406,9 +1062,16 @@ AwtFileDialog::Show(void *p)
         env->DeleteGlobalRef(peer);
 
         delete[] currentDirectory;
-        if (ofn.lpstrFile)
-            delete[] ofn.lpstrFile;
+        /* ofn.lpstrFile may have not been set if useCommonItemDialog == true,
+         * so use fileBuffer instead */
+        delete[] fileBuffer;
         throw;
+    }
+
+    if (useCommonItemDialog) {
+        if (pfd && dwCookie != OLE_BAD_COOKIE) {
+            pfd->Unadvise(dwCookie);
+        }
     }
 
     env->DeleteLocalRef(target);
@@ -420,8 +1083,9 @@ AwtFileDialog::Show(void *p)
     env->DeleteGlobalRef(peer);
 
     delete[] currentDirectory;
-    if (ofn.lpstrFile)
-        delete[] ofn.lpstrFile;
+    /* ofn.lpstrFile may have not been set if useCommonItemDialog == true,
+     * so use fileBuffer instead */
+    delete[] fileBuffer;
 }
 
 BOOL AwtFileDialog::InheritsNativeMouseWheelBehavior() {return true;}
@@ -546,6 +1210,29 @@ Java_sun_awt_windows_WFileDialogPeer_initIDs(JNIEnv *env, jclass cls)
         env->GetFieldID(cls, "filter", "Ljava/io/FilenameFilter;");
     DASSERT(AwtFileDialog::filterID != NULL);
 
+    AwtFileDialog::jbrDialogID =
+        env->GetFieldID(cls, "jbrDialog", "Lcom/jetbrains/desktop/JBRFileDialog;");
+    DASSERT(AwtFileDialog::jbrDialogID != NULL);
+    CHECK_NULL(AwtFileDialog::jbrDialogID);
+
+    /* com.jetbrains.desktop.JBRFileDialog fields */
+    cls = env->FindClass("com/jetbrains/desktop/JBRFileDialog");
+    CHECK_NULL(cls);
+
+    AwtFileDialog::openButtonTextID =
+        env->GetFieldID(cls, "openButtonText", "Ljava/lang/String;");
+    DASSERT(AwtFileDialog::openButtonTextID != NULL);
+    CHECK_NULL(AwtFileDialog::openButtonTextID);
+
+    AwtFileDialog::selectFolderButtonTextID =
+        env->GetFieldID(cls, "selectFolderButtonText", "Ljava/lang/String;");
+    DASSERT(AwtFileDialog::selectFolderButtonTextID != NULL);
+    CHECK_NULL(AwtFileDialog::selectFolderButtonTextID);
+
+    AwtFileDialog::hintsID = env->GetFieldID(cls, "hints", "I");
+    DASSERT(AwtFileDialog::hintsID != NULL);
+    CHECK_NULL(AwtFileDialog::hintsID);
+
     CATCH_BAD_ALLOC;
 }
 
@@ -631,18 +1318,18 @@ Java_sun_awt_windows_WFileDialogPeer_toBack(JNIEnv *env, jobject peer)
     CATCH_BAD_ALLOC;
 }
 
-int ScaleDownX(int x, HWND hwnd) {
+int ScaleDownAbsX(int x, HWND hwnd) {
     int screen = AwtWin32GraphicsDevice::DeviceIndexForWindow(hwnd);
     Devices::InstanceAccess devices;
     AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
-    return device == NULL ? x : device->ScaleDownX(x);
+    return device == NULL ? x : device->ScaleDownAbsX(x);
 }
 
-int ScaleDownY(int y, HWND hwnd) {
+int ScaleDownAbsY(int y, HWND hwnd) {
     int screen = AwtWin32GraphicsDevice::DeviceIndexForWindow(hwnd);
     Devices::InstanceAccess devices;
     AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
-    return device == NULL ? y : device->ScaleDownY(y);
+    return device == NULL ? y : device->ScaleDownAbsY(y);
 }
 
 jobject AwtFileDialog::_GetLocationOnScreen(void *param)
@@ -657,7 +1344,8 @@ jobject AwtFileDialog::_GetLocationOnScreen(void *param)
         RECT rect;
         VERIFY(::GetWindowRect(hwnd, &rect));
         result = JNU_NewObjectByName(env, "java/awt/Point", "(II)V",
-                       ScaleDownX(rect.left, hwnd), ScaleDownY(rect.top, hwnd));
+                                     ScaleDownAbsX(rect.left, hwnd),
+                                     ScaleDownAbsY(rect.top, hwnd));
     }
 
     if (result != NULL)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1995, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1995, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,14 +42,6 @@ import java.io.ObjectStreamField;
  * <p>
  * but no definition for the class with the specified name could be found.
  *
- * <p>As of release 1.4, this exception has been retrofitted to conform to
- * the general purpose exception-chaining mechanism.  The "optional exception
- * that was raised while loading the class" that may be provided at
- * construction time and accessed via the {@link #getException()} method is
- * now known as the <i>cause</i>, and may be accessed via the {@link
- * Throwable#getCause()} method, as well as the aforementioned "legacy method."
- *
- * @author  unascribed
  * @see     java.lang.Class#forName(java.lang.String)
  * @see     java.lang.ClassLoader#findSystemClass(java.lang.String)
  * @see     java.lang.ClassLoader#loadClass(java.lang.String, boolean)
@@ -96,7 +88,8 @@ public class ClassNotFoundException extends ReflectiveOperationException {
      * Returns the exception that was raised if an error occurred while
      * attempting to load the class. Otherwise, returns {@code null}.
      *
-     * <p>This method predates the general-purpose exception chaining facility.
+     * @apiNote
+     * This method predates the general-purpose exception chaining facility.
      * The {@link Throwable#getCause()} method is now the preferred means of
      * obtaining this information.
      *
@@ -110,14 +103,14 @@ public class ClassNotFoundException extends ReflectiveOperationException {
     /**
      * Serializable fields for ClassNotFoundException.
      *
-     * @serialField ex Throwable
+     * @serialField ex Throwable  the {@code Throwable}
      */
     @java.io.Serial
     private static final ObjectStreamField[] serialPersistentFields = {
         new ObjectStreamField("ex", Throwable.class)
     };
 
-    /*
+    /**
      * Reconstitutes the ClassNotFoundException instance from a stream
      * and initialize the cause properly when deserializing from an older
      * version.
@@ -125,6 +118,10 @@ public class ClassNotFoundException extends ReflectiveOperationException {
      * The getException and getCause method returns the private "ex" field
      * in the older implementation and ClassNotFoundException::cause
      * was set to null.
+     *
+     * @param  s the {@code ObjectInputStream} from which data is read
+     * @throws IOException if an I/O error occurs
+     * @throws ClassNotFoundException if a serialized class cannot be loaded
      */
     @java.io.Serial
     private void readObject(ObjectInputStream s) throws IOException, ClassNotFoundException {
@@ -135,9 +132,12 @@ public class ClassNotFoundException extends ReflectiveOperationException {
         }
     }
 
-    /*
+    /**
      * To maintain compatibility with older implementation, write a serial
      * "ex" field with the cause as the value.
+     *
+     * @param  out the {@code ObjectOutputStream} to which data is written
+     * @throws IOException if an I/O error occurs
      */
     @java.io.Serial
     private void writeObject(ObjectOutputStream out) throws IOException {

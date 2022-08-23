@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,10 @@
 #ifndef AWT_OLE_H
 #define AWT_OLE_H
 
-#include "awt.h"
 #include <ole2.h>
 #include <comdef.h>
 #include <comutil.h>
+#include "awt.h"
 
 #ifdef _DEBUG
     #define _SUN_DEBUG
@@ -183,11 +183,20 @@ struct CLogEntryPoint0 {
 struct OLEHolder
 {
     OLEHolder()
-    : m_hr(::OleInitialize(NULL))
-    {}
+            : m_hr(::OleInitialize(NULL))
+    {
+        if (SUCCEEDED(m_hr)) {
+            STRACE(_T("{OLE"));
+        }
+    }
 
-    ~OLEHolder(){}
-    operator bool() const { return S_OK==SUCCEEDED(m_hr); }
+    ~OLEHolder(){
+        if (SUCCEEDED(m_hr)) {
+            ::OleUninitialize();
+            STRACE(_T("}OLE"));
+        }
+    }
+    operator bool() const { return TRUE==SUCCEEDED(m_hr); }
     HRESULT m_hr;
 };
 

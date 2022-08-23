@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,9 @@
 #include "jfr/recorder/checkpoint/types/traceid/jfrTraceId.inline.hpp"
 #include "jfr/recorder/repository/jfrChunkWriter.hpp"
 #include "jfr/recorder/stacktrace/jfrStackTrace.hpp"
+#include "jfr/support/jfrMethodLookup.hpp"
 #include "memory/allocation.inline.hpp"
+#include "oops/instanceKlass.inline.hpp"
 #include "runtime/vframe.inline.hpp"
 
 static void copy_frames(JfrStackFrame** lhs_frames, u4 length, const JfrStackFrame* rhs_frames) {
@@ -39,11 +41,11 @@ static void copy_frames(JfrStackFrame** lhs_frames, u4 length, const JfrStackFra
   }
 }
 
-JfrStackFrame::JfrStackFrame(const traceid& id, int bci, int type, const Method* method) :
-  _method(method), _methodid(id), _line(0), _bci(bci), _type(type) {}
+JfrStackFrame::JfrStackFrame(const traceid& id, int bci, int type, const InstanceKlass* ik) :
+  _klass(ik), _methodid(id), _line(0), _bci(bci), _type(type) {}
 
-JfrStackFrame::JfrStackFrame(const traceid& id, int bci, int type, int lineno) :
-  _method(NULL), _methodid(id), _line(lineno), _bci(bci), _type(type) {}
+JfrStackFrame::JfrStackFrame(const traceid& id, int bci, int type, int lineno, const InstanceKlass* ik) :
+  _klass(ik), _methodid(id), _line(lineno), _bci(bci), _type(type) {}
 
 JfrStackTrace::JfrStackTrace(JfrStackFrame* frames, u4 max_frames) :
   _next(NULL),
@@ -132,7 +134,7 @@ void JfrStackFrame::write(JfrCheckpointWriter& cpw) const {
 class vframeStreamSamples : public vframeStreamCommon {
  public:
   // constructor that starts with sender of frame fr (top_frame)
-  vframeStreamSamples(JavaThread *jt, frame fr, bool stop_at_java_call_stub) : vframeStreamCommon(jt) {
+  vframeStreamSamples(JavaThread *jt, frame fr, bool stop_at_java_call_stub) : vframeStreamCommon(jt, false /* process_frames */) {
     _stop_at_java_call_stub = stop_at_java_call_stub;
     _frame = fr;
 
@@ -178,6 +180,7 @@ bool JfrStackTrace::record_thread(JavaThread& thread, frame& frame) {
   u4 count = 0;
   _reached_root = true;
 
+  _hash = 1;
   while (!st.at_end()) {
     if (count >= _max_frames) {
       _reached_root = false;
@@ -189,7 +192,7 @@ bool JfrStackTrace::record_thread(JavaThread& thread, frame& frame) {
       // none of it is safe
       return false;
     }
-    const traceid mid = JfrTraceId::use(method);
+    const traceid mid = JfrTraceId::load(method);
     int type = st.is_interpreted_frame() ? JfrStackFrame::FRAME_INTERPRETER : JfrStackFrame::FRAME_JIT;
     int bci = 0;
     if (method->is_native()) {
@@ -197,11 +200,20 @@ bool JfrStackTrace::record_thread(JavaThread& thread, frame& frame) {
     } else {
       bci = st.bci();
     }
-    const int lineno = method->line_number_from_bci(bci);
-    // Can we determine if it's inlined?
-    _hash = (_hash << 2) + (unsigned int)(((size_t)mid >> 2) + (bci << 4) + type);
-    _frames[count] = JfrStackFrame(mid, bci, type, method);
+
+    intptr_t* frame_id = st.frame_id();
     st.samples_next();
+    if (type == JfrStackFrame::FRAME_JIT && !st.at_end() && frame_id == st.frame_id()) {
+      // This frame and the caller frame are both the same physical
+      // frame, so this frame is inlined into the caller.
+      type = JfrStackFrame::FRAME_INLINE;
+    }
+
+    const int lineno = method->line_number_from_bci(bci);
+    _hash = (_hash * 31) + mid;
+    _hash = (_hash * 31) + bci;
+    _hash = (_hash * 31) + type;
+    _frames[count] = JfrStackFrame(mid, bci, type, lineno, method->method_holder());
     count++;
   }
 
@@ -211,9 +223,12 @@ bool JfrStackTrace::record_thread(JavaThread& thread, frame& frame) {
 }
 
 void JfrStackFrame::resolve_lineno() const {
-  assert(_method, "no method pointer");
+  assert(_klass, "no klass pointer");
   assert(_line == 0, "already have linenumber");
-  _line = _method->line_number_from_bci(_bci);
+  const Method* const method = JfrMethodLookup::lookup(_klass, _methodid);
+  assert(method != NULL, "invariant");
+  assert(method->method_holder() == _klass, "invariant");
+  _line = method->line_number_from_bci(_bci);
 }
 
 void JfrStackTrace::resolve_linenos() const {
@@ -225,7 +240,7 @@ void JfrStackTrace::resolve_linenos() const {
 
 bool JfrStackTrace::record_safe(JavaThread* thread, int skip) {
   assert(thread == Thread::current(), "Thread stack needs to be walkable");
-  vframeStream vfs(thread);
+  vframeStream vfs(thread, false /* stop_at_java_call_stub */, false /* process_frames */);
   u4 count = 0;
   _reached_root = true;
   for (int i = 0; i < skip; i++) {
@@ -235,13 +250,14 @@ bool JfrStackTrace::record_safe(JavaThread* thread, int skip) {
     vfs.next();
   }
 
+  _hash = 1;
   while (!vfs.at_end()) {
     if (count >= _max_frames) {
       _reached_root = false;
       break;
     }
     const Method* method = vfs.method();
-    const traceid mid = JfrTraceId::use(method);
+    const traceid mid = JfrTraceId::load(method);
     int type = vfs.is_interpreted_frame() ? JfrStackFrame::FRAME_INTERPRETER : JfrStackFrame::FRAME_JIT;
     int bci = 0;
     if (method->is_native()) {
@@ -250,10 +266,18 @@ bool JfrStackTrace::record_safe(JavaThread* thread, int skip) {
     else {
       bci = vfs.bci();
     }
-    // Can we determine if it's inlined?
-    _hash = (_hash << 2) + (unsigned int)(((size_t)mid >> 2) + (bci << 4) + type);
-    _frames[count] = JfrStackFrame(mid, bci, type, method);
+    intptr_t* frame_id = vfs.frame_id();
     vfs.next();
+    if (type == JfrStackFrame::FRAME_JIT && !vfs.at_end() && frame_id == vfs.frame_id()) {
+      // This frame and the caller frame are both the same physical
+      // frame, so this frame is inlined into the caller.
+      type = JfrStackFrame::FRAME_INLINE;
+    }
+
+    _hash = (_hash * 31) + mid;
+    _hash = (_hash * 31) + bci;
+    _hash = (_hash * 31) + type;
+    _frames[count] = JfrStackFrame(mid, bci, type, method->method_holder());
     count++;
   }
 

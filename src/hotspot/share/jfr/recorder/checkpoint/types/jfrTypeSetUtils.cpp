@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
 
 #include "precompiled.hpp"
 #include "jfr/recorder/checkpoint/types/jfrTypeSetUtils.hpp"
+#include "jfr/utilities/jfrPredicate.hpp"
+#include "jfr/utilities/jfrRelation.hpp"
 #include "oops/instanceKlass.hpp"
 #include "oops/oop.inline.hpp"
 #include "oops/symbol.hpp"
@@ -182,59 +184,59 @@ traceid JfrSymbolId::mark(uintptr_t hash, const char* str, bool leakp) {
 }
 
 /*
-* jsr292 anonymous classes symbol is the external name +
-* the identity_hashcode slash appended:
+* hidden classes symbol is the external name +
+* the address of its InstanceKlass slash appended:
 *   java.lang.invoke.LambdaForm$BMH/22626602
 *
 * caller needs ResourceMark
 */
 
-uintptr_t JfrSymbolId::unsafe_anonymous_klass_name_hash(const InstanceKlass* ik) {
+uintptr_t JfrSymbolId::hidden_klass_name_hash(const InstanceKlass* ik) {
   assert(ik != NULL, "invariant");
-  assert(ik->is_unsafe_anonymous(), "invariant");
+  assert(ik->is_hidden(), "invariant");
   const oop mirror = ik->java_mirror_no_keepalive();
   assert(mirror != NULL, "invariant");
   return (uintptr_t)mirror->identity_hash();
 }
 
-static const char* create_unsafe_anonymous_klass_symbol(const InstanceKlass* ik, uintptr_t hash) {
+static const char* create_hidden_klass_symbol(const InstanceKlass* ik, uintptr_t hash) {
   assert(ik != NULL, "invariant");
-  assert(ik->is_unsafe_anonymous(), "invariant");
+  assert(ik->is_hidden(), "invariant");
   assert(hash != 0, "invariant");
-  char* anonymous_symbol = NULL;
+  char* hidden_symbol = NULL;
   const oop mirror = ik->java_mirror_no_keepalive();
   assert(mirror != NULL, "invariant");
   char hash_buf[40];
   sprintf(hash_buf, "/" UINTX_FORMAT, hash);
   const size_t hash_len = strlen(hash_buf);
   const size_t result_len = ik->name()->utf8_length();
-  anonymous_symbol = NEW_RESOURCE_ARRAY(char, result_len + hash_len + 1);
-  ik->name()->as_klass_external_name(anonymous_symbol, (int)result_len + 1);
-  assert(strlen(anonymous_symbol) == result_len, "invariant");
-  strcpy(anonymous_symbol + result_len, hash_buf);
-  assert(strlen(anonymous_symbol) == result_len + hash_len, "invariant");
-  return anonymous_symbol;
+  hidden_symbol = NEW_RESOURCE_ARRAY(char, result_len + hash_len + 1);
+  ik->name()->as_klass_external_name(hidden_symbol, (int)result_len + 1);
+  assert(strlen(hidden_symbol) == result_len, "invariant");
+  strcpy(hidden_symbol + result_len, hash_buf);
+  assert(strlen(hidden_symbol) == result_len + hash_len, "invariant");
+  return hidden_symbol;
 }
 
-bool JfrSymbolId::is_unsafe_anonymous_klass(const Klass* k) {
+bool JfrSymbolId::is_hidden_klass(const Klass* k) {
   assert(k != NULL, "invariant");
-  return k->is_instance_klass() && ((const InstanceKlass*)k)->is_unsafe_anonymous();
+  return k->is_instance_klass() && ((const InstanceKlass*)k)->is_hidden();
 }
 
-traceid JfrSymbolId::mark_unsafe_anonymous_klass_name(const InstanceKlass* ik, bool leakp) {
+traceid JfrSymbolId::mark_hidden_klass_name(const InstanceKlass* ik, bool leakp) {
   assert(ik != NULL, "invariant");
-  assert(ik->is_unsafe_anonymous(), "invariant");
-  const uintptr_t hash = unsafe_anonymous_klass_name_hash(ik);
-  const char* const anonymous_klass_symbol = create_unsafe_anonymous_klass_symbol(ik, hash);
-  return mark(hash, anonymous_klass_symbol, leakp);
+  assert(ik->is_hidden(), "invariant");
+  const uintptr_t hash = hidden_klass_name_hash(ik);
+  const char* const hidden_symbol = create_hidden_klass_symbol(ik, hash);
+  return mark(hash, hidden_symbol, leakp);
 }
 
 traceid JfrSymbolId::mark(const Klass* k, bool leakp) {
   assert(k != NULL, "invariant");
   traceid symbol_id = 0;
-  if (is_unsafe_anonymous_klass(k)) {
+  if (is_hidden_klass(k)) {
     assert(k->is_instance_klass(), "invariant");
-    symbol_id = mark_unsafe_anonymous_klass_name((const InstanceKlass*)k, leakp);
+    symbol_id = mark_hidden_klass_name((const InstanceKlass*)k, leakp);
   }
   if (0 == symbol_id) {
     Symbol* const sym = k->name();
@@ -253,7 +255,8 @@ JfrArtifactSet::JfrArtifactSet(bool class_unload) : _symbol_id(new JfrSymbolId()
   assert(_klass_list != NULL, "invariant");
 }
 
-static const size_t initial_class_list_size = 200;
+static const size_t initial_klass_list_size = 256;
+const int initial_klass_loader_set_size = 64;
 
 void JfrArtifactSet::initialize(bool class_unload, bool clear /* false */) {
   assert(_symbol_id != NULL, "invariant");
@@ -263,22 +266,23 @@ void JfrArtifactSet::initialize(bool class_unload, bool clear /* false */) {
   _symbol_id->set_class_unload(class_unload);
   _total_count = 0;
   // resource allocation
-  _klass_list = new GrowableArray<const Klass*>(initial_class_list_size, false, mtTracing);
+  _klass_list = new GrowableArray<const Klass*>(initial_klass_list_size);
+  _klass_loader_set = new GrowableArray<const Klass*>(initial_klass_loader_set_size);
 }
 
 JfrArtifactSet::~JfrArtifactSet() {
   _symbol_id->clear();
   delete _symbol_id;
-  // _klass_list will be cleared by a ResourceMark
+  // _klass_list and _klass_loader_list will be cleared by a ResourceMark
 }
 
 traceid JfrArtifactSet::bootstrap_name(bool leakp) {
   return _symbol_id->bootstrap_name(leakp);
 }
 
-traceid JfrArtifactSet::mark_unsafe_anonymous_klass_name(const Klass* klass, bool leakp) {
+traceid JfrArtifactSet::mark_hidden_klass_name(const Klass* klass, bool leakp) {
   assert(klass->is_instance_klass(), "invariant");
-  return _symbol_id->mark_unsafe_anonymous_klass_name((const InstanceKlass*)klass, leakp);
+  return _symbol_id->mark_hidden_klass_name((const InstanceKlass*)klass, leakp);
 }
 
 traceid JfrArtifactSet::mark(uintptr_t hash, const Symbol* sym, bool leakp) {
@@ -305,10 +309,15 @@ int JfrArtifactSet::entries() const {
   return _klass_list->length();
 }
 
+bool JfrArtifactSet::should_do_loader_klass(const Klass* k) {
+  assert(k != NULL, "invariant");
+  assert(_klass_loader_set != NULL, "invariant");
+  return !JfrMutablePredicate<const Klass*, compare_klasses>::test(_klass_loader_set, k);
+}
+
 void JfrArtifactSet::register_klass(const Klass* k) {
   assert(k != NULL, "invariant");
   assert(_klass_list != NULL, "invariant");
-  assert(_klass_list->find(k) == -1, "invariant");
   _klass_list->append(k);
 }
 

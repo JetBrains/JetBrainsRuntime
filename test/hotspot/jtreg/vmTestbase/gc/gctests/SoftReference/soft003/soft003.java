@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,14 +23,13 @@
 
 /*
  * @test
- * @key stress gc
+ * @key stress randomness
  *
  * @summary converted from VM Testbase gc/gctests/SoftReference/soft003.
  * VM Testbase keywords: [gc, stress, stressopt, nonconcurrent]
  *
  * @library /vmTestbase
  *          /test/lib
- * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm -XX:-UseGCOverheadLimit gc.gctests.SoftReference.soft003.soft003 -t 1
  */
 
@@ -51,7 +50,7 @@ import java.lang.ref.SoftReference;
  */
 public class soft003 extends ThreadedGCTest {
 
-    class Worker implements Runnable {
+    class Worker implements Runnable, OOMStress {
 
         private int arrayLength;
         private int objectSize = 100;

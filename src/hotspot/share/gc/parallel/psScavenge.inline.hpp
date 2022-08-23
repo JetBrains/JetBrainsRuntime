@@ -25,8 +25,9 @@
 #ifndef SHARE_GC_PARALLEL_PSSCAVENGE_INLINE_HPP
 #define SHARE_GC_PARALLEL_PSSCAVENGE_INLINE_HPP
 
-#include "gc/parallel/parallelScavengeHeap.hpp"
 #include "gc/parallel/psScavenge.hpp"
+
+#include "gc/parallel/parallelScavengeHeap.hpp"
 #include "logging/log.hpp"
 #include "memory/iterator.hpp"
 #include "memory/resourceArea.hpp"
@@ -49,7 +50,7 @@ inline bool PSScavenge::should_scavenge(T* p, MutableSpace* to_space) {
   if (should_scavenge(p)) {
     oop obj = RawAccess<IS_NOT_NULL>::oop_load(p);
     // Skip objects copied to to_space since the scavenge started.
-    HeapWord* const addr = (HeapWord*)obj;
+    HeapWord* const addr = cast_from_oop<HeapWord*>(obj);
     return addr < to_space_top_before_gc() || addr >= to_space->end();
   }
   return false;

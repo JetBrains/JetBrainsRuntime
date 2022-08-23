@@ -23,11 +23,12 @@
 
 /**
  * @test
- * @bug 8178077
+ * @bug 8178077 8232856
  * @summary Check the UI behavior of editing history.
  * @modules
  *     jdk.compiler/com.sun.tools.javac.api
  *     jdk.compiler/com.sun.tools.javac.main
+ *     jdk.jshell/jdk.internal.jshell.tool:open
  *     jdk.jshell/jdk.internal.jshell.tool.resources:open
  *     jdk.jshell/jdk.jshell:open
  * @library /tools/lib
@@ -54,7 +55,7 @@ public class HistoryUITest extends UITesting {
             waitOutput(out, PROMPT);
             inputSink.write(UP);
             waitOutput(out, "^void test2\\(\\) \\{\n" +
-                            CONTINUATION_PROMPT + "System.err.println\\(2\\);\n" +
+                            CONTINUATION_PROMPT + "    System.err.println\\(2\\);\n" +
                             CONTINUATION_PROMPT + "\\}");
             inputSink.write(UP);
             waitOutput(out, "^\u001b\\[A");
@@ -62,18 +63,30 @@ public class HistoryUITest extends UITesting {
             waitOutput(out, "^\u001b\\[A");
             inputSink.write(UP);
             waitOutput(out, "^\u001b\\[8C1\n" +
-                            "\u001b\\[19C1\n\u001b\\[C");
+                            "\u001b\\[23C1\n\u001b\\[C");
             inputSink.write(DOWN);
             waitOutput(out, "^\u001B\\[2A\u001b\\[8C2\n" +
-                            "\u001b\\[19C2\n\u001b\\[C");
+                            "\u001b\\[23C2\n\u001b\\[C");
             inputSink.write(UP);
             waitOutput(out, "^\u001b\\[A");
-            for (int i = 0; i < 19; i++) inputSink.write("\033[C");
+            for (int i = 0; i < 23; i++) inputSink.write("\033[C");
             waitOutput(out, "C");
             inputSink.write("\u0008\"Modified!\"\n");
             waitOutput(out, PROMPT);
             inputSink.write("test2()\n");
             waitOutput(out, "\\u001B\\[\\?2004lModified!\n\\u001B\\[\\?2004h" + PROMPT);
+        });
+    }
+
+    public void testReRun() throws Exception {
+        doRunTest((inputSink, out) -> {
+            inputSink.write("System.err.println(\"RAN\");\n");
+            waitOutput(out, "RAN.*" + PROMPT);
+            inputSink.write("/!\n");
+            waitOutput(out, "RAN.*" + PROMPT);
+            inputSink.write(UP);
+            inputSink.write("\n");
+            waitOutput(out, "RAN.*" + PROMPT);
         });
     }
 

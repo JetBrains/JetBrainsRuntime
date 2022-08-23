@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@
 #include "c1/c1_LIRAssembler.hpp"
 #include "c1/c1_MacroAssembler.hpp"
 #include "c1/c1_Runtime1.hpp"
+#include "classfile/javaClasses.hpp"
 #include "nativeInst_x86.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "utilities/align.hpp"
@@ -37,6 +38,7 @@
 
 #define __ ce->masm()->
 
+#ifndef _LP64
 float ConversionStub::float_zero = 0.0;
 double ConversionStub::double_zero = 0.0;
 
@@ -52,7 +54,6 @@ void ConversionStub::emit_code(LIR_Assembler* ce) {
     __ comisd(input()->as_xmm_double_reg(),
               ExternalAddress((address)&double_zero));
   } else {
-    LP64_ONLY(ShouldNotReachHere());
     __ push(rax);
     __ ftst();
     __ fnstsw_ax();
@@ -75,6 +76,33 @@ void ConversionStub::emit_code(LIR_Assembler* ce) {
 
   __ bind(do_return);
   __ jmp(_continuation);
+}
+#endif // !_LP64
+
+void C1SafepointPollStub::emit_code(LIR_Assembler* ce) {
+  __ bind(_entry);
+  InternalAddress safepoint_pc(ce->masm()->pc() - ce->masm()->offset() + safepoint_offset());
+#ifdef _LP64
+  __ lea(rscratch1, safepoint_pc);
+  __ movptr(Address(r15_thread, JavaThread::saved_exception_pc_offset()), rscratch1);
+#else
+  const Register tmp1 = rcx;
+  const Register tmp2 = rdx;
+  __ push(tmp1);
+  __ push(tmp2);
+
+  __ lea(tmp1, safepoint_pc);
+  __ get_thread(tmp2);
+  __ movptr(Address(tmp2, JavaThread::saved_exception_pc_offset()), tmp1);
+
+  __ pop(tmp2);
+  __ pop(tmp1);
+#endif /* _LP64 */
+  assert(SharedRuntime::polling_page_return_handler_blob() != NULL,
+         "polling page return stub not created yet");
+
+  address stub = SharedRuntime::polling_page_return_handler_blob()->entry_point();
+  __ jump(RuntimeAddress(stub));
 }
 
 void CounterOverflowStub::emit_code(LIR_Assembler* ce) {
@@ -360,7 +388,7 @@ void PatchingStub::emit_code(LIR_Assembler* ce) {
     __ push(tmp2);
     // Load without verification to keep code size small. We need it because
     // begin_initialized_entry_offset has to fit in a byte. Also, we know it's not null.
-    __ movptr(tmp2, Address(_obj, java_lang_Class::klass_offset_in_bytes()));
+    __ movptr(tmp2, Address(_obj, java_lang_Class::klass_offset()));
     __ get_thread(tmp);
     __ cmpptr(tmp, Address(tmp2, InstanceKlass::init_thread_offset()));
     __ pop(tmp2);
@@ -481,7 +509,7 @@ void ArrayCopyStub::emit_code(LIR_Assembler* ce) {
   //
   VMRegPair args[5];
   BasicType signature[5] = { T_OBJECT, T_INT, T_OBJECT, T_INT, T_INT};
-  SharedRuntime::java_calling_convention(signature, args, 5, true);
+  SharedRuntime::java_calling_convention(signature, args, 5);
 
   // push parameters
   // (src, src_pos, dest, destPos, length)

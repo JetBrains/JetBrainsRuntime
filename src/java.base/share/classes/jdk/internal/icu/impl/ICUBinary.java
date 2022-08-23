@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,7 +81,7 @@ public final class ICUBinary {
     public static ByteBuffer getRequiredData(String itemPath) {
         final Class<ICUBinary> root = ICUBinary.class;
 
-        try (InputStream is = AccessController.doPrivileged(new PrivilegedAction<InputStream>() {
+        try (@SuppressWarnings("removal") InputStream is = AccessController.doPrivileged(new PrivilegedAction<InputStream>() {
                 public InputStream run() {
                     return root.getResourceAsStream(itemPath);
                 }
@@ -303,20 +303,20 @@ public final class ICUBinary {
     // private variables -------------------------------------------------
 
     /**
-    * Magic numbers to authenticate the data file
-    */
+     * Magic numbers to authenticate the data file
+     */
     private static final byte MAGIC1 = (byte)0xda;
     private static final byte MAGIC2 = (byte)0x27;
 
     /**
-    * File format authentication values
-    */
+     * File format authentication values
+     */
     private static final byte CHAR_SET_ = 0;
     private static final byte CHAR_SIZE_ = 2;
 
     /**
-    * Error messages
-    */
+     * Error messages
+     */
     private static final String MAGIC_NUMBER_AUTHENTICATION_FAILED_ =
                        "ICUBinary data file error: Magic number authentication failed";
     private static final String HEADER_AUTHENTICATION_FAILED_ =

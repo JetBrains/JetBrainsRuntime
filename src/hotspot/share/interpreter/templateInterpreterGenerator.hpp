@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,7 @@
 // This file contains the platform-independent parts
 // of the template interpreter generator.
 
-#ifndef CC_INTERP
+#ifndef ZERO
 
 class TemplateInterpreterGenerator: public AbstractInterpreterGenerator {
  protected:
@@ -105,14 +105,10 @@ class TemplateInterpreterGenerator: public AbstractInterpreterGenerator {
   void generate_stack_overflow_check(void);
   void generate_stack_overflow_check(Register Rframe_size, Register Rscratch);
 
-  void generate_counter_incr(Label* overflow, Label* profile_method, Label* profile_method_continue);
+  void generate_counter_incr(Label* overflow);
   void generate_counter_overflow(Label& continue_entry);
 
   void generate_fixed_frame(bool native_call);
-#ifdef SPARC
-  void save_native_result(void);
-  void restore_native_result(void);
-#endif // SPARC
 
 #ifdef AARCH64
   void generate_transcendental_entry(AbstractInterpreter::MethodKind kind, int fpargs);
@@ -127,6 +123,6 @@ class TemplateInterpreterGenerator: public AbstractInterpreterGenerator {
   TemplateInterpreterGenerator(StubQueue* _code);
 };
 
-#endif // !CC_INTERP
+#endif // !ZERO
 
 #endif // SHARE_INTERPRETER_TEMPLATEINTERPRETERGENERATOR_HPP

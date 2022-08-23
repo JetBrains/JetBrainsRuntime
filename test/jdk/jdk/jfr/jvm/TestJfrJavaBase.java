@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -28,7 +26,7 @@
  * @bug 8157032
  * @key jfr
  * @summary verify that jfr can not be used when JVM is executed only with java.base
- * @requires vm.hasJFR
+ * @requires vm.hasJFR & !vm.graal.enabled
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  * @run driver jdk.jfr.jvm.TestJfrJavaBase
@@ -51,13 +49,13 @@ public class TestJfrJavaBase {
     public static void main(String[] args) throws Exception {
         OutputAnalyzer output;
         if (args.length == 0) {
-            output = ProcessTools.executeProcess(ProcessTools.createJavaProcessBuilder(false,
+            output = ProcessTools.executeProcess(ProcessTools.createJavaProcessBuilder(
                 "-Dtest.jdk=" + System.getProperty("test.jdk"),
                 "--limit-modules", "java.base", "-cp", System.getProperty("java.class.path"),
                 TestJfrJavaBase.class.getName(), "runtest"));
             output.shouldHaveExitValue(0);
         } else {
-            output = ProcessTools.executeTestJava("-XX:StartFlightRecording=dumponexit=true",
+            output = ProcessTools.executeTestJava("-XX:StartFlightRecording:dumponexit=true",
                 "--limit-modules", "java.base", "-version");
             checkOutput(output);
             output.shouldHaveExitValue(1);

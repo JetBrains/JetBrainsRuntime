@@ -244,22 +244,30 @@ public class Basic {
         }
     }
 
-    @DataProvider(name = "topLevelPkgDirs")
-    private Object[][] topLevelPkgDirs() {
+    @DataProvider(name = "topLevelNonExistingDirs")
+    private Object[][] topLevelNonExistingDirs() {
         return new Object[][] {
             { "/java/lang" },
             { "java/lang"  },
             { "/java/util" },
             { "java/util"  },
+            { "/modules/modules"  },
+            { "/modules/modules/"  },
+            { "/modules/modules/java.base"  },
+            { "/modules/modules/java.base/"  },
+            { "/modules/modules/java.base/java/lang/Object.class"  },
+            { "/modules/modules/javax.scripting"  },
+            { "/modules/modules/javax.scripting/"  },
+            { "/modules/modules/javax.scripting/javax/script/ScriptEngine.class"  },
         };
     }
 
-    @Test(dataProvider = "topLevelPkgDirs")
+    @Test(dataProvider = "topLevelNonExistingDirs")
     public void testNotExists(String path) throws Exception {
         FileSystem fs = FileSystems.getFileSystem(URI.create("jrt:/"));
         Path dir = fs.getPath(path);
 
-        // package directories should not be there at top level
+        // These directories should not be there at top level
         assertTrue(Files.notExists(dir));
     }
 
@@ -607,7 +615,6 @@ public class Basic {
             { "java.lang" },
             { "java.util" },
             { "java.nio"  },
-            { "jdk.nashorn.api.scripting" }
         };
     }
 
@@ -632,7 +639,6 @@ public class Basic {
             { "/packages/javax/java.xml"  },
             { "/packages/javax/java.management"  },
             { "/packages/java.util/java.base" },
-            { "/packages/jdk.nashorn.api.scripting/jdk.scripting.nashorn" },
         };
     }
 
@@ -651,7 +657,6 @@ public class Basic {
         return new Object[][] {
             { "java.base" },
             { "java.sql" },
-            { "jdk.scripting.nashorn" },
         };
     }
 
@@ -668,7 +673,6 @@ public class Basic {
         return new Object[][] {
             { "/modules/java.base/java/lang" },
             { "/modules/java.base/java/util/Vector.class" },
-            { "/modules/jdk.scripting.nashorn/jdk/nashorn" },
             { "/packages/java.lang/java.base/java/lang" },
             { "/packages/java.util/java.base/java/util/Vector.class" },
         };
@@ -759,6 +763,16 @@ public class Basic {
         Path classFile = fs.getPath(path);
 
         assertTrue(Files.size(classFile) > 0L);
+    }
+
+    // @bug 8266291: (jrtfs) Calling Files.exists may break the JRT filesystem
+    @Test
+    public void fileExistsCallBreaksFileSystem() throws Exception {
+        Path p = FileSystems.getFileSystem(URI.create("jrt:/")).getPath("modules");
+        boolean wasDirectory = Files.isDirectory(p);
+        Path m = p.resolve("modules");
+        Files.exists(m);
+        assertTrue(wasDirectory == Files.isDirectory(p));
     }
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,7 @@ import jdk.test.lib.process.ProcessTools;
  * @summary ThreadsListHandle info should be in error handling output.
  * @modules java.base/jdk.internal.misc
  * @library /test/lib
- * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+EnableThreadSMRStatistics ThreadsListHandleInErrorHandlingTest
+ * @run driver ThreadsListHandleInErrorHandlingTest
  */
 
 /*
@@ -54,6 +54,7 @@ public class ThreadsListHandleInErrorHandlingTest {
     // counters and confusing this test.
     ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
         "-XX:+UnlockDiagnosticVMOptions",
+        "-XX:+EnableThreadSMRStatistics",
         "-Xmx100M",
         "-XX:ErrorHandlerTest=16",
         "-XX:-CreateCoredumpOnCrash",
@@ -92,9 +93,13 @@ public class ThreadsListHandleInErrorHandlingTest {
         Pattern.compile("Current thread .* _threads_hazard_ptr=0x[0-9A-Fa-f][0-9A-Fa-f]*, _nested_threads_hazard_ptr_cnt=0.*"),
         // We should have a section of Threads class SMR info:
         Pattern.compile("Threads class SMR info:"),
+        // We should have had a single nested ThreadsListHandle since
+        // ThreadsSMRSupport::print_info_on() now protects itself with
+        // a ThreadsListHandle:
+        Pattern.compile(".*, _nested_thread_list_max=1"),
         // The current thread (marked with '=>') in the threads list
-        // should show a hazard ptr and no nested hazard ptrs:
-        Pattern.compile("=>.* JavaThread \"main\" .* _threads_hazard_ptr=0x[0-9A-Fa-f][0-9A-Fa-f]*, _nested_threads_hazard_ptr_cnt=0.*"),
+        // should show no nested hazard ptrs:
+        Pattern.compile("=>.* JavaThread \"main\" .*, _nested_threads_hazard_ptr_cnt=0.*"),
     };
     int currentPattern = 0;
 

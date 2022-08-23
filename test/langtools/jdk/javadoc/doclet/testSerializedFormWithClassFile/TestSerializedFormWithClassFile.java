@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,6 +66,7 @@ public class TestSerializedFormWithClassFile extends JavadocTester {
         Path outDir = base.resolve("out");
         javadoc("-d", outDir.toString(),
                 "-linksource",
+                "--no-platform-links",
                 "-classpath", base.resolve("classes").toString(),
                 "-sourcepath", "",
                 srcDir.resolve("B.java").toString());
@@ -73,11 +74,13 @@ public class TestSerializedFormWithClassFile extends JavadocTester {
         checkExit(Exit.OK);
 
         checkOutput("serialized-form.html", true,
-                "<div class=\"memberSignature\"><span class=\"modifiers\">public</span>&nbsp;"
-                + "<span class=\"returnType\">void</span>&nbsp;<span class=\"memberName\">readObject</span>"
-                + "&#8203;(<span class=\"arguments\">java.io.ObjectInputStream&nbsp;arg0)</span>\n"
-                + "                throws <span class=\"exceptions\">java.lang.ClassNotFoundException,\n"
-                + "java.io.IOException</span></div>\n");
+                """
+                    <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span c\
+                    lass="return-type">void</span>&nbsp;<span class="element-name">readObject</span>\
+                    <wbr><span class="parameters">(java.io.ObjectInputStream&nbsp;arg0)</span>
+                                    throws <span class="exceptions">java.lang.ClassNotFoundException,
+                    java.io.IOException</span></div>
+                    """);
     }
 
     void createTestClass(Path base, Path srcDir) throws Exception {

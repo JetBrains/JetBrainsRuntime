@@ -25,6 +25,8 @@
 
 package com.sun.source.tree;
 
+import jdk.internal.javac.PreviewFeature;
+
 /**
  * A visitor of trees, in the style of the visitor design pattern.
  * Classes implementing this interface are used to operate
@@ -40,7 +42,7 @@ package com.sun.source.tree;
  *
  * <p> <b>WARNING:</b> It is possible that methods will be added to
  * this interface to accommodate new, currently unknown, language
- * structures added to future versions of the Java&trade; programming
+ * structures added to future versions of the Java programming
  * language.  Therefore, visitor classes directly implementing this
  * interface may be source incompatible with future versions of the
  * platform.
@@ -258,21 +260,23 @@ public interface TreeVisitor<R,P> {
     R visitLiteral(LiteralTree node, P p);
 
     /**
-     * {@preview Associated with pattern matching for instanceof, a preview feature of
-     *           the Java language.
-     *
-     *           This method is associated with <i>pattern matching for instanceof</i>, a preview
-     *           feature of the Java language. Preview features
-     *           may be removed in a future release, or upgraded to permanent
-     *           features of the Java language.}
-     *
      * Visits an BindingPattern node.
      * @param node the node being visited
      * @param p a parameter value
      * @return a result value
-     * @since 14
+     * @since 16
      */
     R visitBindingPattern(BindingPatternTree node, P p);
+
+    /**
+     * Visits a DefaultCaseLabelTree node.
+     * @param node the node being visited
+     * @param p a parameter value
+     * @return a result value
+     * @since 17
+     */
+    @PreviewFeature(feature=PreviewFeature.Feature.SWITCH_PATTERN_MATCHING, reflective=true)
+    R visitDefaultCaseLabel(DefaultCaseLabelTree node, P p);
 
     /**
      * Visits a MethodTree node.
@@ -297,6 +301,26 @@ public interface TreeVisitor<R,P> {
      * @return a result value
      */
     R visitNewArray(NewArrayTree node, P p);
+
+    /**
+     * Visits a GuardPatternTree node.
+     * @param node the node being visited
+     * @param p a parameter value
+     * @return a result value
+     * @since 17
+     */
+    @PreviewFeature(feature=PreviewFeature.Feature.SWITCH_PATTERN_MATCHING, reflective=true)
+    R visitGuardedPattern(GuardedPatternTree node, P p);
+
+    /**
+     * Visits a ParenthesizedPatternTree node.
+     * @param node the node being visited
+     * @param p a parameter value
+     * @return a result value
+     * @since 17
+     */
+    @PreviewFeature(feature=PreviewFeature.Feature.SWITCH_PATTERN_MATCHING, reflective=true)
+    R visitParenthesizedPattern(ParenthesizedPatternTree node, P p);
 
     /**
      * Visits a NewClassTree node.

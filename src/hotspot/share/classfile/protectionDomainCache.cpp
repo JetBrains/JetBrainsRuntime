@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,14 +25,17 @@
 #include "precompiled.hpp"
 #include "classfile/classLoaderDataGraph.hpp"
 #include "classfile/dictionary.hpp"
+#include "classfile/javaClasses.hpp"
 #include "classfile/protectionDomainCache.hpp"
-#include "classfile/systemDictionary.hpp"
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
 #include "memory/iterator.hpp"
 #include "memory/resourceArea.hpp"
+#include "memory/universe.hpp"
 #include "oops/oop.inline.hpp"
 #include "oops/weakHandle.inline.hpp"
+#include "runtime/atomic.hpp"
+#include "utilities/growableArray.hpp"
 #include "utilities/hashtable.inline.hpp"
 
 unsigned int ProtectionDomainCacheTable::compute_hash(Handle protection_domain) {
@@ -45,7 +48,7 @@ int ProtectionDomainCacheTable::index_for(Handle protection_domain) {
 }
 
 ProtectionDomainCacheTable::ProtectionDomainCacheTable(int table_size)
-  : Hashtable<WeakHandle<vm_class_loader_data>, mtClass>(table_size, sizeof(ProtectionDomainCacheEntry))
+  : Hashtable<WeakHandle, mtClass>(table_size, sizeof(ProtectionDomainCacheEntry))
 {   _dead_entries = false;
     _total_oops_removed = 0;
 }
@@ -57,15 +60,61 @@ void ProtectionDomainCacheTable::trigger_cleanup() {
 }
 
 class CleanProtectionDomainEntries : public CLDClosure {
+  GrowableArray<ProtectionDomainEntry*>* _delete_list;
+ public:
+  CleanProtectionDomainEntries(GrowableArray<ProtectionDomainEntry*>* delete_list) :
+                               _delete_list(delete_list) {}
+
   void do_cld(ClassLoaderData* data) {
     Dictionary* dictionary = data->dictionary();
     if (dictionary != NULL) {
-      dictionary->clean_cached_protection_domains();
+      dictionary->clean_cached_protection_domains(_delete_list);
     }
   }
 };
 
+static GrowableArray<ProtectionDomainEntry*>* _delete_list = NULL;
+
+class HandshakeForPD : public HandshakeClosure {
+ public:
+  HandshakeForPD() : HandshakeClosure("HandshakeForPD") {}
+
+  void do_thread(Thread* thread) {
+    log_trace(protectiondomain)("HandshakeForPD::do_thread: thread="
+                                INTPTR_FORMAT, p2i(thread));
+  }
+};
+
+static void purge_deleted_entries() {
+  // If there are any deleted entries, Handshake-all then they'll be
+  // safe to remove since traversing the pd_set list does not stop for
+  // safepoints and only JavaThreads will read the pd_set.
+  // This is actually quite rare because the protection domain is generally associated
+  // with the caller class and class loader, which if still alive will keep this
+  // protection domain entry alive.
+  if (_delete_list->length() >= 10) {
+    HandshakeForPD hs_pd;
+    Handshake::execute(&hs_pd);
+
+    for (int i = _delete_list->length() - 1; i >= 0; i--) {
+      ProtectionDomainEntry* entry = _delete_list->at(i);
+      _delete_list->remove_at(i);
+      delete entry;
+    }
+    assert(_delete_list->length() == 0, "should be cleared");
+  }
+}
+
 void ProtectionDomainCacheTable::unlink() {
+  // The dictionary entries _pd_set field should be null also, so nothing to do.
+  assert(java_lang_System::allow_security_manager(), "should not be called otherwise");
+
+  // Create a list for holding deleted entries
+  if (_delete_list == NULL) {
+    _delete_list = new (ResourceObj::C_HEAP, mtClass)
+                       GrowableArray<ProtectionDomainEntry*>(20, mtClass);
+  }
+
   {
     // First clean cached pd lists in loaded CLDs
     // It's unlikely, but some loaded classes in a dictionary might
@@ -73,9 +122,12 @@ void ProtectionDomainCacheTable::unlink() {
     // The dictionary pd_set points at entries in the ProtectionDomainCacheTable.
     MutexLocker ml(ClassLoaderDataGraph_lock);
     MutexLocker mldict(SystemDictionary_lock);  // need both.
-    CleanProtectionDomainEntries clean;
+    CleanProtectionDomainEntries clean(_delete_list);
     ClassLoaderDataGraph::loaded_cld_do(&clean);
   }
+
+  // Purge any deleted entries outside of the SystemDictionary_lock.
+  purge_deleted_entries();
 
   MutexLocker ml(SystemDictionary_lock);
   int oops_removed = 0;
@@ -93,7 +145,7 @@ void ProtectionDomainCacheTable::unlink() {
           LogStream ls(lt);
           ls.print_cr("protection domain unlinked at %d", i);
         }
-        entry->literal().release();
+        entry->literal().release(Universe::vm_weak());
         *p = entry->next();
         free_entry(entry);
       }
@@ -123,10 +175,6 @@ void ProtectionDomainCacheTable::verify() {
 
 oop ProtectionDomainCacheEntry::object() {
   return literal().resolve();
-}
-
-oop ProtectionDomainEntry::object() {
-  return _pd_cache->object();
 }
 
 // The object_no_keepalive() call peeks at the phantomly reachable oop without
@@ -180,8 +228,8 @@ ProtectionDomainCacheEntry* ProtectionDomainCacheTable::add_entry(int index, uns
     protection_domain->print_value_on(&ls);
     ls.cr();
   }
-  WeakHandle<vm_class_loader_data> w = WeakHandle<vm_class_loader_data>::create(protection_domain);
+  WeakHandle w(Universe::vm_weak(), protection_domain);
   ProtectionDomainCacheEntry* p = new_entry(hash, w);
-  Hashtable<WeakHandle<vm_class_loader_data>, mtClass>::add_entry(index, p);
+  Hashtable<WeakHandle, mtClass>::add_entry(index, p);
   return p;
 }

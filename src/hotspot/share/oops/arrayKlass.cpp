@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 #include "precompiled.hpp"
 #include "classfile/javaClasses.hpp"
 #include "classfile/moduleEntry.hpp"
-#include "classfile/systemDictionary.hpp"
+#include "classfile/vmClasses.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
 #include "jvmtifiles/jvmti.h"
@@ -35,6 +35,7 @@
 #include "oops/arrayKlass.hpp"
 #include "oops/arrayOop.hpp"
 #include "oops/instanceKlass.hpp"
+#include "oops/klass.inline.hpp"
 #include "oops/objArrayOop.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/handles.inline.hpp"
@@ -54,7 +55,7 @@ InstanceKlass* ArrayKlass::java_super() const {
   if (super() == NULL)  return NULL;  // bootstrap case
   // Array klasses have primary supertypes which are not reported to Java.
   // Example super chain:  String[][] -> Object[][] -> Object[] -> Object
-  return SystemDictionary::Object_klass();
+  return vmClasses::Object_klass();
 }
 
 
@@ -79,7 +80,7 @@ Method* ArrayKlass::uncached_lookup_method(const Symbol* name,
   // Always ignore overpass methods in superclasses, although technically the
   // super klass of an array, (j.l.Object) should not have
   // any overpass methods present.
-  return super()->uncached_lookup_method(name, signature, Klass::skip_overpass, private_mode);
+  return super()->uncached_lookup_method(name, signature, OverpassLookupMode::skip, private_mode);
 }
 
 ArrayKlass::ArrayKlass(Symbol* name, KlassID id) :
@@ -91,7 +92,7 @@ ArrayKlass::ArrayKlass(Symbol* name, KlassID id) :
     // the vtable of klass Object.
     set_vtable_length(Universe::base_vtable_size());
     set_name(name);
-    set_super(Universe::is_bootstrapping() ? NULL : SystemDictionary::Object_klass());
+    set_super(Universe::is_bootstrapping() ? NULL : vmClasses::Object_klass());
     set_layout_helper(Klass::_lh_neutral_value);
     set_is_cloneable(); // All arrays are considered to be cloneable (See JLS 20.1.5)
     JFR_ONLY(INIT_ID(this);)
@@ -102,7 +103,7 @@ ArrayKlass::ArrayKlass(Symbol* name, KlassID id) :
 // since a GC can happen. At this point all instance variables of the ArrayKlass must be setup.
 void ArrayKlass::complete_create_array_klass(ArrayKlass* k, Klass* super_klass, ModuleEntry* module_entry, TRAPS) {
   k->initialize_supers(super_klass, NULL, CHECK);
-  k->vtable().initialize_vtable(false, CHECK);
+  k->vtable().initialize_vtable();
 
   // During bootstrapping, before java.base is defined, the module_entry may not be present yet.
   // These classes will be put on a fixup list and their module fields will be patched once
@@ -110,7 +111,7 @@ void ArrayKlass::complete_create_array_klass(ArrayKlass* k, Klass* super_klass, 
   assert((module_entry != NULL) || ((module_entry == NULL) && !ModuleEntryTable::javabase_defined()),
          "module entry not available post " JAVA_BASE_NAME " definition");
   oop module = (module_entry != NULL) ? module_entry->module() : (oop)NULL;
-  java_lang_Class::create_mirror(k, Handle(THREAD, k->class_loader()), Handle(THREAD, module), Handle(), CHECK);
+  java_lang_Class::create_mirror(k, Handle(THREAD, k->class_loader()), Handle(THREAD, module), Handle(), Handle(), CHECK);
 }
 
 GrowableArray<Klass*>* ArrayKlass::compute_secondary_supers(int num_extra_slots,
@@ -124,12 +125,12 @@ GrowableArray<Klass*>* ArrayKlass::compute_secondary_supers(int num_extra_slots,
 }
 
 objArrayOop ArrayKlass::allocate_arrayArray(int n, int length, TRAPS) {
-  check_array_allocation_length(length, arrayOopDesc::max_array_length(T_ARRAY), CHECK_0);
+  check_array_allocation_length(length, arrayOopDesc::max_array_length(T_ARRAY), CHECK_NULL);
   int size = objArrayOopDesc::object_size(length);
-  Klass* k = array_klass(n+dimension(), CHECK_0);
+  Klass* k = array_klass(n+dimension(), CHECK_NULL);
   ArrayKlass* ak = ArrayKlass::cast(k);
   objArrayOop o = (objArrayOop)Universe::heap()->array_allocate(ak, size, length,
-                                                                /* do_zero */ true, CHECK_0);
+                                                                /* do_zero */ true, CHECK_NULL);
   // initialization to NULL not necessary, area already cleared
   return o;
 }
@@ -152,9 +153,7 @@ void ArrayKlass::array_klasses_do(void f(Klass* k)) {
   }
 }
 
-// JVM support
-
-jint ArrayKlass::compute_modifier_flags(TRAPS) const {
+jint ArrayKlass::compute_modifier_flags() const {
   return JVM_ACC_ABSTRACT | JVM_ACC_FINAL | JVM_ACC_PUBLIC;
 }
 

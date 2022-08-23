@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,8 +48,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
+import java.util.ResourceBundle;
 import java.util.ServiceLoader;
 
+import sun.security.util.FilePaths;
 import sun.security.util.PropertyExpander;
 
 /**
@@ -62,12 +64,6 @@ public class KeyStoreUtil {
     private KeyStoreUtil() {
         // this class is not meant to be instantiated
     }
-
-    private static final Collator collator = Collator.getInstance();
-    static {
-        // this is for case insensitive string comparisons
-        collator.setStrength(Collator.PRIMARY);
-    };
 
     /**
      * Returns true if the certificate is self-signed, false otherwise.
@@ -115,10 +111,7 @@ public class KeyStoreUtil {
      * Returns the file name of the keystore with the configured CA certificates.
      */
     public static String getCacerts() {
-        String sep = File.separator;
-        return System.getProperty("java.home") + sep
-                + "lib" + sep + "security" + sep
-                + "cacerts";
+        return FilePaths.cacerts();
     }
 
     /**
@@ -133,7 +126,8 @@ public class KeyStoreUtil {
     }
 
     public static char[] getPassWithModifier(String modifier, String arg,
-                                             java.util.ResourceBundle rb) {
+                                             ResourceBundle rb,
+                                             Collator collator) {
         if (modifier == null) {
             return arg.toCharArray();
         } else if (collator.compare(modifier, "env") == 0) {
@@ -304,13 +298,10 @@ public class KeyStoreUtil {
     public static void loadProviderByClass(
             String provClass, String arg, ClassLoader cl) {
 
-        // For compatibility, SunPKCS11, OracleUcrypto, and SunMSCAPI
+        // For compatibility, SunPKCS11, and SunMSCAPI
         // can still be loadable with -providerClass.
         if (provClass.equals("sun.security.pkcs11.SunPKCS11")) {
             loadProviderByName("SunPKCS11", arg);
-            return;
-        } else if (provClass.equals("com.oracle.security.crypto.UcryptoProvider")) {
-            loadProviderByName("OracleUcrypto", arg);
             return;
         } else if (provClass.equals("sun.security.mscapi.SunMSCAPI")) {
             loadProviderByName("SunMSCAPI", arg);

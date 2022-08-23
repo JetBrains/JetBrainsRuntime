@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,11 +43,13 @@ public:
   void compile_method(ciEnv* env,
                       ciMethod* target,
                       int entry_bci,
+                      bool install_code,
                       DirectiveSet* directive);
 
   // sentinel value used to trigger backtracking in compile_method().
   static const char* retry_no_subsuming_loads();
   static const char* retry_no_escape_analysis();
+  static const char* retry_no_locks_coarsening();
   static const char* retry_class_loading_during_parsing();
 
   // Print compilation timers and statistics
@@ -64,7 +66,7 @@ public:
 
   // Check if the compiler supports an intrinsic for 'method' given the
   // the dispatch mode specified by the 'is_virtual' parameter.
-  virtual bool is_intrinsic_supported(const methodHandle& method, bool is_virtual);
+  bool is_intrinsic_supported(const methodHandle& method, bool is_virtual);
 
   // Initial size of the code buffer (may be increased at runtime)
   static int initial_code_buffer_size(int const_size = initial_const_capacity);

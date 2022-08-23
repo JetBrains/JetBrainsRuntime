@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2014, 2015, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -34,11 +34,10 @@ const bool CCallingConventionRequiresIntsAsLongs = false;
 
 #define SUPPORTS_NATIVE_CX8
 
-// Aarch64 was not originally defined as multi-copy-atomic, but now is.
-// See: "Simplifying ARM Concurrency: Multicopy-atomic Axiomatic and
-// Operational Models for ARMv8"
-// So we could #define CPU_MULTI_COPY_ATOMIC but historically we have
-// not done so.
+// Aarch64 was not originally defined to be multi-copy-atomic, but now
+// is.  See: "Simplifying ARM Concurrency: Multicopy-atomic Axiomatic
+// and Operational Models for ARMv8"
+#define CPU_MULTI_COPY_ATOMIC
 
 // According to the ARMv8 ARM, "Concurrent modification and execution
 // of instructions can lead to the resulting instruction performing
@@ -57,8 +56,15 @@ const bool CCallingConventionRequiresIntsAsLongs = false;
 
 #define SUPPORT_RESERVED_STACK_AREA
 
-#define THREAD_LOCAL_POLL
+#define COMPRESSED_CLASS_POINTERS_DEPENDS_ON_COMPRESSED_OOPS false
 
-#define PREFERRED_METASPACE_ALIGNMENT
+#if defined(__APPLE__) || defined(_WIN64)
+#define R18_RESERVED
+#define R18_RESERVED_ONLY(code) code
+#define NOT_R18_RESERVED(code)
+#else
+#define R18_RESERVED_ONLY(code)
+#define NOT_R18_RESERVED(code) code
+#endif
 
 #endif // CPU_AARCH64_GLOBALDEFINITIONS_AARCH64_HPP

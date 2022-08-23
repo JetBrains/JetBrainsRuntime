@@ -32,7 +32,7 @@ $(foreach v, $(JVM_VARIANTS), \
   $(eval $(call SetupCopyFiles, COPY_GTEST_$v, \
       SRC := $(HOTSPOT_OUTPUTDIR)/variant-$v/libjvm/gtest, \
       DEST := $(TEST_IMAGE_DIR)/hotspot/gtest/$v, \
-      FILES := $(call SHARED_LIBRARY,jvm) gtestLauncher$(EXE_SUFFIX), \
+      FILES := $(call SHARED_LIBRARY,jvm) gtestLauncher$(EXECUTABLE_SUFFIX), \
   )) \
   $(eval TARGETS += $$(COPY_GTEST_$v)) \
 )
@@ -41,7 +41,7 @@ ifeq ($(call isTargetOs, windows), true)
   $(foreach v, $(JVM_VARIANTS), \
     $(eval $(call SetupCopyFiles, COPY_GTEST_MSVCR_$v, \
         DEST := $(TEST_IMAGE_DIR)/hotspot/gtest/$v, \
-        FILES := $(MSVCR_DLL) $(MSVCP_DLL), \
+        FILES := $(MSVCR_DLL) $(VCRUNTIME_1_DLL) $(MSVCP_DLL), \
         FLATTEN := true, \
     )) \
     $(eval TARGETS += $$(COPY_GTEST_MSVCR_$v)) \
@@ -53,16 +53,6 @@ ifeq ($(call isTargetOs, windows), true)
       )) \
       $(eval TARGETS += $$(COPY_GTEST_PDB_$v)) \
     ) \
-  )
-endif
-
-ifeq ($(call isTargetOs, solaris), true)
-  $(foreach v, $(JVM_VARIANTS), \
-    $(eval $(call SetupCopyFiles, COPY_GTEST_STLPORT_$v, \
-        DEST := $(TEST_IMAGE_DIR)/hotspot/gtest/$v, \
-        FILES := $(STLPORT_LIB), \
-    )) \
-    $(eval TARGETS += $$(COPY_GTEST_STLPORT_$v)) \
   )
 endif
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,10 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.AbstractSelector;
 import java.nio.channels.spi.SelectorProvider;
+import java.util.Objects;
+import static java.net.StandardProtocolFamily.INET;
+import static java.net.StandardProtocolFamily.INET6;
+import static java.net.StandardProtocolFamily.UNIX;
 
 public abstract class SelectorProviderImpl
     extends SelectorProvider
@@ -71,5 +75,33 @@ public abstract class SelectorProviderImpl
     @Override
     public SocketChannel openSocketChannel() throws IOException {
         return new SocketChannelImpl(this);
+    }
+
+    @Override
+    public SocketChannel openSocketChannel(ProtocolFamily family) throws IOException {
+        Objects.requireNonNull(family, "'family' is null");
+        if (family == INET6 && !Net.isIPv6Available()) {
+            throw new UnsupportedOperationException("IPv6 not available");
+        } else if (family == INET || family == INET6) {
+            return new SocketChannelImpl(this, family);
+        } else if (family == UNIX && UnixDomainSockets.isSupported()) {
+            return new SocketChannelImpl(this, family);
+        } else {
+            throw new UnsupportedOperationException("Protocol family not supported");
+        }
+    }
+
+    @Override
+    public ServerSocketChannel openServerSocketChannel(ProtocolFamily family) throws IOException {
+        Objects.requireNonNull(family, "'family' is null");
+        if (family == INET6 && !Net.isIPv6Available()) {
+            throw new UnsupportedOperationException("IPv6 not available");
+        } else if (family == INET || family == INET6)  {
+            return new ServerSocketChannelImpl(this, family);
+        } else if (family == UNIX && UnixDomainSockets.isSupported()) {
+            return new ServerSocketChannelImpl(this, family);
+        } else {
+            throw new UnsupportedOperationException("Protocol family not supported");
+        }
     }
 }

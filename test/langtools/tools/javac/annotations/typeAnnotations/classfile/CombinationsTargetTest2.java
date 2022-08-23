@@ -399,19 +399,17 @@ public class CombinationsTargetTest2 extends ClassfileTestHelper {
             case src7p: // (repeating) type annotations in use of instanceof with type test pattern
                     /*
                      *   class Test10{
-                     *       String data = "test";
+                     *       Object data = "test";
                      *       boolean dataIsString = ( data instanceof @A @B @A @B String str);
                      *   }
                      */
                 source = new String( source +
                     "// " + src.description + "\n" +
                     "class "+ testname + "{\n" +
-                    "    String data = \"test\";\n" +
+                    "    Object data = \"test\";\n" +
                     "    boolean dataIsString = ( data instanceof _As_ _Bs_ String str && str.isEmpty());\n" +
                     "}\n").concat(sourceBase).replace("_OTHER_", annot2).replace("_As_",As).replace("_Bs_",Bs) +
                     "\n\n";
-                extraOptions = List.of("--enable-preview",
-                                       "-source", JDK_VERSION);
                 hasInnerClass=false;
                 break;
             case src8: // (repeating) type annotations in use of instanceof
@@ -455,7 +453,7 @@ public class CombinationsTargetTest2 extends ClassfileTestHelper {
                 source = new String( source +
                     "// " + src.description + "\n" +
                     "class "+ testname + "{\n" +
-                    "    String data = \"test\";\n" +
+                    "    Object data = \"test\";\n" +
                     "    Boolean isString() { \n" +
                     "        if( data instanceof _As_ _Bs_ String str)\n" +
                     "            return true;\n" +
@@ -464,8 +462,6 @@ public class CombinationsTargetTest2 extends ClassfileTestHelper {
                     "    }\n" +
                     "}\n").concat(sourceBase).replace("_OTHER_", annot2).replace("_As_",As).replace("_Bs_",Bs) +
                     "\n\n";
-                extraOptions = List.of("--enable-preview",
-                                       "-source", JDK_VERSION);
                 hasInnerClass=false;
                 break;
 

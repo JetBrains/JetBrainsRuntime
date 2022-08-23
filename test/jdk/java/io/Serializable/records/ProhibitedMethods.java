@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,11 +23,11 @@
 
 /*
  * @test
+ * @bug 8246774
  * @summary Basic tests for prohibited magic serialization methods
  * @library /test/lib
  * @modules java.base/jdk.internal.org.objectweb.asm
- * @compile --enable-preview -source ${jdk.version} ProhibitedMethods.java
- * @run testng/othervm --enable-preview ProhibitedMethods
+ * @run testng ProhibitedMethods
  */
 
 import java.io.ByteArrayInputStream;
@@ -69,7 +69,6 @@ import static org.testng.Assert.fail;
  * record objects.
  */
 public class ProhibitedMethods {
-    private static final String VERSION = Integer.toString(Runtime.version().feature());
 
     public interface ThrowingExternalizable extends Externalizable {
         default void writeExternal(ObjectOutput out) {
@@ -106,8 +105,7 @@ public class ProhibitedMethods {
     public void setup() {
         {
             byte[] byteCode = InMemoryJavaCompiler.compile("Foo",
-                    "public record Foo () implements java.io.Serializable { }",
-                    "--enable-preview", "-source", VERSION);
+                    "public record Foo () implements java.io.Serializable { }");
             byteCode = addWriteObject(byteCode);
             byteCode = addReadObject(byteCode);
             byteCode = addReadObjectNoData(byteCode);
@@ -115,8 +113,7 @@ public class ProhibitedMethods {
         }
         {
             byte[] byteCode = InMemoryJavaCompiler.compile("Bar",
-                    "public record Bar (int x, int y) implements java.io.Serializable { }",
-                    "--enable-preview", "-source", VERSION);
+                    "public record Bar (int x, int y) implements java.io.Serializable { }");
             byteCode = addWriteObject(byteCode);
             byteCode = addReadObject(byteCode);
             byteCode = addReadObjectNoData(byteCode);
@@ -125,8 +122,7 @@ public class ProhibitedMethods {
         {
             byte[] byteCode = InMemoryJavaCompiler.compile("Baz",
                     "import java.io.Serializable;" +
-                    "public record Baz<U extends Serializable,V extends Serializable>(U u, V v) implements Serializable { }",
-                    "--enable-preview", "-source", VERSION);
+                    "public record Baz<U extends Serializable,V extends Serializable>(U u, V v) implements Serializable { }");
             byteCode = addWriteObject(byteCode);
             byteCode = addReadObject(byteCode);
             byteCode = addReadObjectNoData(byteCode);
@@ -246,7 +242,7 @@ public class ProhibitedMethods {
     static abstract class AbstractVisitor extends ClassVisitor {
         final String nameOfMethodToAdd;
         AbstractVisitor(ClassVisitor cv, String nameOfMethodToAdd) {
-            super(ASM7, cv);
+            super(ASM8, cv);
             this.nameOfMethodToAdd = nameOfMethodToAdd;
         }
         @Override

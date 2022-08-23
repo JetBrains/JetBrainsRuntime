@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,6 @@ public:
 protected:
   // The declaration order of these const fields is important; see the
   // constructor before changing.
-  const bool      _scanned_concurrently;
   const MemRegion _whole_heap;       // the region covered by the card table
   size_t          _guard_index;      // index of very last element in the card
                                      // table; it is set to a guard value
@@ -105,16 +104,15 @@ protected:
     clean_card                  = (CardValue)-1,
 
     dirty_card                  =  0,
-    precleaned_card             =  1,
-    last_card                   =  2,
-    CT_MR_BS_last_reserved      =  4
+    last_card                   =  1,
+    CT_MR_BS_last_reserved      =  2
   };
 
   // a word's worth (row) of clean card values
   static const intptr_t clean_card_row = (intptr_t)(-1);
 
 public:
-  CardTable(MemRegion whole_heap, bool conc_scan);
+  CardTable(MemRegion whole_heap);
   virtual ~CardTable();
   virtual void initialize();
 
@@ -239,7 +237,6 @@ public:
 
   static CardValue clean_card_val()          { return clean_card; }
   static CardValue dirty_card_val()          { return dirty_card; }
-  static CardValue precleaned_card_val()     { return precleaned_card; }
   static intptr_t clean_card_row_val()   { return clean_card_row; }
 
   // Card marking array base (adjusted for heap low boundary)
@@ -247,7 +244,6 @@ public:
   // But since the heap starts at some higher address, this points to somewhere
   // before the beginning of the actual _byte_map.
   CardValue* byte_map_base() const { return _byte_map_base; }
-  bool scanned_concurrently() const { return _scanned_concurrently; }
 
   virtual bool is_in_young(oop obj) const = 0;
 

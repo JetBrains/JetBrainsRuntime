@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,19 +35,28 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.Principal;
 import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.SignatureException;
 import java.security.cert.CRLException;
 import java.security.cert.CertPath;
 import java.security.cert.CertPathBuilder;
 import java.security.cert.CertPathValidator;
 import java.security.cert.CertStore;
+import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
+import java.security.cert.CertificateExpiredException;
 import java.security.cert.CertificateFactory;
+import java.security.cert.CertificateNotYetValidException;
 import java.security.cert.CollectionCertStoreParameters;
 import java.security.cert.PKIXBuilderParameters;
 import java.security.cert.PKIXCertPathBuilderResult;
@@ -59,6 +68,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -159,6 +169,39 @@ public class CertUtils {
             "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgajTO2cTGJdOUawrQ\n" +
             "XqGfGuX6AEevTXQY0hlVHAVx516hRANCAASzxOGY/xeL1oGQHdY98dF+WmTq7jj/\n" +
             "00gfgiJFKZsHuOaAIfes/nSLM1G9rh8ohlQnS88JL3MGvispVyj1nqpX";
+
+    /*
+     * This EC-key certificate is singed by the above RSA CA, namely RSA_CERT.
+     *
+     * Version: 3 (0x2)
+     * Serial Number:
+     *     6a:5e:bb:97:3c:f8:0a:0d:ef:0a:ca:72:0b:6d:7f:b5:e0:af:b2:86
+     * Signature Algorithm: sha256WithRSAEncryption
+     * Issuer: CN = localhost
+     * Validity
+     *      Not Before: Apr 14 08:14:04 2020 GMT
+     *      Not After : Apr 12 08:14:04 2030 GMT
+     * Subject: CN = localhost
+     */
+    public static final String ECRSA_CERT =
+            "-----BEGIN CERTIFICATE-----\n" +
+            "MIICLTCCARWgAwIBAgIUal67lzz4Cg3vCspyC21/teCvsoYwDQYJKoZIhvcNAQEL\n" +
+            "BQAwFDESMBAGA1UEAwwJbG9jYWxob3N0MB4XDTIwMDQxNDA4MTQwNFoXDTMwMDQx\n" +
+            "MjA4MTQwNFowFDESMBAGA1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0CAQYIKoZI\n" +
+            "zj0DAQcDQgAEZOIGqyJHpWFhyiRbZACdNBYHvXTzWVWMC10RW8vfxiOPAZBlPzqn\n" +
+            "d2X6/bGhSN1EkrMl8YlJTAKvZcGaaKFUHKNCMEAwHQYDVR0OBBYEFCl9FR9xeNjc\n" +
+            "5+Zkg/Rrk7JpTKnFMB8GA1UdIwQYMBaAFG2c8J0rzOu1Agd54OX0xnC9uLqlMA0G\n" +
+            "CSqGSIb3DQEBCwUAA4IBAQCPcwr88n/vjsHPByiF28P2cEZ02JdQH0FQVe+6Xw7t\n" +
+            "Rn62aTAmS3kaHovXXrFpDpwgz+BMtGSNVTeR7zFttAZLyYb6w6rD8tCfZqHqOTC8\n" +
+            "ctCHz7D2QnsH3tdSV1J7A8N3+P8t4cmCs1AED92yLhy9sumXBvZ2ZskpUtcA5nZB\n" +
+            "djTvyJ3F74835w0s2FzWPnTULvBmit2Z94b22QyZLkFhThUpMBlu2LmXosLrdfji\n" +
+            "xVcV68tpQ1nk1o9tE4V7h4/SjYVaDM1fmlaY+eM3XcbK30mVyktty5ScuOMhLpb6\n" +
+            "RFP/QKvmQ/2l4+rj/epV84ImDuEAhkBGOU6vo4X4l1Du\n" +
+            "-----END CERTIFICATE-----";
+    public static final String ECRSA_KEY =
+            "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgldlJrkmEDVtzh4r9\n" +
+            "NO8Yn/89mZuBhKPasVgpRjKQxRyhRANCAARk4garIkelYWHKJFtkAJ00Fge9dPNZ\n" +
+            "VYwLXRFby9/GI48BkGU/Oqd3Zfr9saFI3USSsyXxiUlMAq9lwZpooVQc";
 
     /*
      * Version: 3 (0x2)
@@ -277,6 +320,59 @@ public class CertUtils {
             "x1hK+QWz1XptP6VAco2mozxppvrUqn1oHf6nf2cpiboo+lz/C5IezkTPkLz2Yusc\n" +
             "HiXrFkAwBarCQOdSaJFJzB/I4gobxVjZz0a19k4IHbV26nBcau4UfW1yDkg/vAcl\n" +
             "105YIAQjAiEAvP+ZQ7yzUk8rNgk65U/SF++Eyt+i+WR1UBvGxAEEKIQ=";
+
+    /*
+     * Version: 3 (0x2)
+     * Serial Number:
+     *     58:75:88:9a:e1:e0:da:83:da:d0:e7:3f:02:23:4f:74:ce:43:e0:3f
+     * Signature Algorithm: ED25519
+     * Issuer: CN = localhost
+     * Validity
+     *     Not Before: May 25 01:28:49 2020 GMT
+     *     Not After : May 23 01:28:49 2030 GMT
+     * Subject: CN = localhost
+     */
+    public static final String ED25519_CERT =
+            "-----BEGIN CERTIFICATE-----\n" +
+            "MIIBezCCAS2gAwIBAgIUWHWImuHg2oPa0Oc/AiNPdM5D4D8wBQYDK2VwMBQxEjAQ\n" +
+            "BgNVBAMMCWxvY2FsaG9zdDAeFw0yMDA1MjUwMTI4NDlaFw0zMDA1MjMwMTI4NDla\n" +
+            "MBQxEjAQBgNVBAMMCWxvY2FsaG9zdDAqMAUGAytlcAMhADPu3xC31fcrVuWZ6sOC\n" +
+            "85Wap5RqQHiVQIJ1DbQhKgjso4GQMIGNMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0O\n" +
+            "BBYEFPbedM1iNhjOapOtdXXnHezJnnSTMB8GA1UdIwQYMBaAFPbedM1iNhjOapOt\n" +
+            "dXXnHezJnnSTMA4GA1UdDwEB/wQEAwIBhjAqBgNVHSUBAf8EIDAeBggrBgEFBQcD\n" +
+            "AwYIKwYBBQUHAwgGCCsGAQUFBwMJMAUGAytlcANBAOzu4k2pIqplPBx5k+JVcOB7\n" +
+            "K325r21JCAWqME+fa2sdUR1FM8LpQkWD363YOfEFleUkl28Tk6Kccz3oc4yc5AI=\n" +
+            "-----END CERTIFICATE-----";
+    public static final String ED25519_KEY =
+            "MC4CAQAwBQYDK2VwBCIEICyAry1Yd7O4M5ttEERs86vMixQRR71oKi4vzSEBTXag";
+
+    /*
+     * Version: 3 (0x2)
+     * Serial Number:
+     *     76:ea:9f:03:d9:af:dd:6a:d4:23:71:54:fe:9e:af:6a:c2:e3:2b:5d
+     * Signature Algorithm: ED448
+     * Issuer: CN = localhost
+     * Validity
+     *     Not Before: May 25 01:32:42 2020 GMT
+     *     Not After : May 23 01:32:42 2030 GMT
+     * Subject: CN = localhost
+     */
+    public static final String ED448_CERT =
+            "-----BEGIN CERTIFICATE-----\n" +
+            "MIIBxjCCAUagAwIBAgIUduqfA9mv3WrUI3FU/p6vasLjK10wBQYDK2VxMBQxEjAQ\n" +
+            "BgNVBAMMCWxvY2FsaG9zdDAeFw0yMDA1MjUwMTMyNDJaFw0zMDA1MjMwMTMyNDJa\n" +
+            "MBQxEjAQBgNVBAMMCWxvY2FsaG9zdDBDMAUGAytlcQM6AFVSJI1vSXDf9UMNBfNQ\n" +
+            "IUA4lfGSr+7klW//faIVrRphIvD1Mq0SkYQv5b3uyyrkht9FcbVMJjVPAKOBkDCB\n" +
+            "jTAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBQ61lrTCnJftliX4a3xBrWlU/XK\n" +
+            "eDAfBgNVHSMEGDAWgBQ61lrTCnJftliX4a3xBrWlU/XKeDAOBgNVHQ8BAf8EBAMC\n" +
+            "AYYwKgYDVR0lAQH/BCAwHgYIKwYBBQUHAwMGCCsGAQUFBwMIBggrBgEFBQcDCTAF\n" +
+            "BgMrZXEDcwD95HY/4XWzrgFNsW2sFha7GWnAZMW9PXcUP243Kt6O1HUsJa/ynKQJ\n" +
+            "c0DDikNF+8wl/lwF7XX4toCh9WyN+wWCAi2Eau9ATDumDsme7r+VniT0UZto8WQ2\n" +
+            "I4B1bAfPIO7JR1zPfpDVu12muwfm+u4pCAA=\n" +
+            "-----END CERTIFICATE-----";
+    public static final String ED448_KEY =
+            "MEcCAQAwBQYDK2VxBDsEOQcoJHPOIS+azOeX2MIEF4TYdfVEaZf/x1OdYpkI0J3m\n" +
+            "//MKpGqR4+s6XL8EQNKKJhjNZlvs34XbQw==";
 
     private static final String TEST_SRC = System.getProperty("test.src", ".");
 
@@ -543,5 +639,68 @@ public class CertUtils {
         } catch (IOException e) {
             throw new RuntimeException("Cannot read file", e);
         }
+    }
+
+    /**
+     * This class is useful for overriding one or more methods of an
+     * X509Certificate for testing purposes.
+     */
+    public static class ForwardingX509Certificate extends X509Certificate {
+        private final X509Certificate cert;
+        public ForwardingX509Certificate(X509Certificate cert) {
+            this.cert = cert;
+        }
+        public Set<String> getCriticalExtensionOIDs() {
+           return cert.getCriticalExtensionOIDs();
+        }
+        public byte[] getExtensionValue(String oid) {
+            return cert.getExtensionValue(oid);
+        }
+        public Set<String> getNonCriticalExtensionOIDs() {
+            return cert.getNonCriticalExtensionOIDs();
+        }
+        public boolean hasUnsupportedCriticalExtension() {
+            return cert.hasUnsupportedCriticalExtension();
+        }
+        public void checkValidity() throws CertificateExpiredException,
+            CertificateNotYetValidException { /* always pass */ }
+        public void checkValidity(Date date) throws CertificateExpiredException,
+            CertificateNotYetValidException { /* always pass */ }
+        public int getVersion() { return cert.getVersion(); }
+        public BigInteger getSerialNumber() { return cert.getSerialNumber(); }
+        public Principal getIssuerDN() { return cert.getIssuerDN(); }
+        public Principal getSubjectDN() { return cert.getSubjectDN(); }
+        public Date getNotBefore() { return cert.getNotBefore(); }
+        public Date getNotAfter() { return cert.getNotAfter(); }
+        public byte[] getTBSCertificate() throws CertificateEncodingException {
+            return cert.getTBSCertificate();
+        }
+        public byte[] getSignature() { return cert.getSignature(); }
+        public String getSigAlgName() { return cert.getSigAlgName(); }
+        public String getSigAlgOID() { return cert.getSigAlgOID(); }
+        public byte[] getSigAlgParams() { return cert.getSigAlgParams(); }
+        public boolean[] getIssuerUniqueID() {
+            return cert.getIssuerUniqueID();
+        }
+        public boolean[] getSubjectUniqueID() {
+            return cert.getSubjectUniqueID();
+        }
+        public boolean[] getKeyUsage() { return cert.getKeyUsage(); }
+        public int getBasicConstraints() { return cert.getBasicConstraints(); }
+        public byte[] getEncoded() throws CertificateEncodingException {
+            return cert.getEncoded();
+        }
+        public void verify(PublicKey key) throws CertificateException,
+            InvalidKeyException, NoSuchAlgorithmException,
+            NoSuchProviderException, SignatureException {
+            cert.verify(key);
+        }
+        public void verify(PublicKey key, String sigProvider) throws
+            CertificateException, InvalidKeyException, NoSuchAlgorithmException,
+            NoSuchProviderException, SignatureException {
+            cert.verify(key, sigProvider);
+        }
+        public PublicKey getPublicKey() { return cert.getPublicKey(); }
+        public String toString() { return cert.toString(); }
     }
 }

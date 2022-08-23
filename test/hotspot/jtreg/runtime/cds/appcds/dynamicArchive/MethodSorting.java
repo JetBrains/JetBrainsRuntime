@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,8 @@
  * @library /test/lib /test/hotspot/jtreg/runtime/cds/appcds /test/hotspot/jtreg/runtime/cds/appcds/test-classes
  *          /test/hotspot/jtreg/runtime/cds/appcds/dynamicArchive/test-classes
  * @build MethodSortingApp
- * @run driver ClassFileInstaller -jar method_sorting.jar
+ * @build sun.hotspot.WhiteBox
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller -jar method_sorting.jar
  *             MethodSortingApp
  *             MethodSortingApp$HelloA
  *             MethodSortingApp$HelloA1
@@ -44,8 +45,11 @@
  *             MethodSortingApp$ImplementorA1
  *             MethodSortingApp$ImplementorB
  *             MethodSortingApp$ImplementorB1
- * @run driver MethodSorting
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI -Xbootclasspath/a:. MethodSorting
  */
+
+import jdk.test.lib.helpers.ClassFileInstaller;
 
 public class MethodSorting extends DynamicArchiveTestBase {
     public static void main(String[] args) throws Exception {

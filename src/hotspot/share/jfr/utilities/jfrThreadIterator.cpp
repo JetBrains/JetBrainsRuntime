@@ -32,43 +32,47 @@ static bool thread_inclusion_predicate(Thread* t) {
   return !t->jfr_thread_local()->is_dead();
 }
 
-static bool java_thread_inclusion_predicate(JavaThread* jt) {
+static bool java_thread_inclusion_predicate(JavaThread* jt, bool live_only) {
   assert(jt != NULL, "invariant");
-  return thread_inclusion_predicate(jt) && jt->thread_state() != _thread_new;
+  if (live_only && jt->thread_state() == _thread_new) {
+    return false;
+  }
+  return thread_inclusion_predicate(jt);
 }
 
-static JavaThread* next_java_thread(JavaThreadIteratorWithHandle& iter) {
+static JavaThread* next_java_thread(JavaThreadIteratorWithHandle& iter, bool live_only) {
   JavaThread* next = iter.next();
-  while (next != NULL && !java_thread_inclusion_predicate(next)) {
+  while (next != NULL && !java_thread_inclusion_predicate(next, live_only)) {
     next = iter.next();
   }
   return next;
 }
 
 static NonJavaThread* next_non_java_thread(NonJavaThread::Iterator& iter) {
-  NonJavaThread* next = NULL;
   while (!iter.end()) {
-    next = iter.current();
+    NonJavaThread* next = iter.current();
     iter.step();
     assert(next != NULL, "invariant");
-    if (!thread_inclusion_predicate(next)) {
-      continue;
+    if (thread_inclusion_predicate(next)) {
+      return next;
     }
   }
-  return next;
+  return NULL;
 }
 
-JfrJavaThreadIteratorAdapter::JfrJavaThreadIteratorAdapter() : _iter(), _next(next_java_thread(_iter)) {}
+JfrJavaThreadIteratorAdapter::JfrJavaThreadIteratorAdapter(bool live_only /* true */) : _iter(),
+                                                                                        _next(next_java_thread(_iter, live_only)),
+                                                                                        _live_only(live_only) {}
 
 JavaThread* JfrJavaThreadIteratorAdapter::next() {
   assert(has_next(), "invariant");
   Type* const temp = _next;
-  _next = next_java_thread(_iter);
+  _next = next_java_thread(_iter, _live_only);
   assert(temp != _next, "invariant");
   return temp;
 }
 
-JfrNonJavaThreadIteratorAdapter::JfrNonJavaThreadIteratorAdapter() : _iter(), _next(next_non_java_thread(_iter)) {}
+JfrNonJavaThreadIteratorAdapter::JfrNonJavaThreadIteratorAdapter(bool live_only /* true */) : _iter(), _next(next_non_java_thread(_iter)) {}
 
 bool JfrNonJavaThreadIteratorAdapter::has_next() const {
   return _next != NULL;

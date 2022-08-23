@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,8 @@
 
 package java.lang.invoke;
 
+import jdk.internal.access.JavaLangAccess;
+import jdk.internal.access.SharedSecrets;
 import jdk.internal.ref.CleanerFactory;
 import sun.invoke.util.Wrapper;
 
@@ -33,6 +35,7 @@ import java.lang.reflect.Field;
 
 import static java.lang.invoke.MethodHandleNatives.Constants.*;
 import static java.lang.invoke.MethodHandleStatics.TRACE_METHOD_LINKAGE;
+import static java.lang.invoke.MethodHandleStatics.UNSAFE;
 import static java.lang.invoke.MethodHandles.Lookup.IMPL_LOOKUP;
 
 /**
@@ -49,7 +52,7 @@ class MethodHandleNatives {
 
     static native void init(MemberName self, Object ref);
     static native void expand(MemberName self);
-    static native MemberName resolve(MemberName self, Class<?> caller,
+    static native MemberName resolve(MemberName self, Class<?> caller, int lookupMode,
             boolean speculativeResolve) throws LinkageError, ClassNotFoundException;
     static native int getMembers(Class<?> defc, String matchName, String matchSig,
             int matchFlags, Class<?> caller, int skip, MemberName[] results);
@@ -116,6 +119,7 @@ class MethodHandleNatives {
             MN_IS_FIELD            = 0x00040000, // field
             MN_IS_TYPE             = 0x00080000, // nested type
             MN_CALLER_SENSITIVE    = 0x00100000, // @CallerSensitive annotation detected
+            MN_TRUSTED_FINAL       = 0x00200000, // trusted final field
             MN_REFERENCE_KIND_SHIFT = 24, // refKind
             MN_REFERENCE_KIND_MASK = 0x0F000000 >> MN_REFERENCE_KIND_SHIFT,
             // The SEARCH_* bits are not for MN.flags but for the matchFlags argument of MHN.getMembers:
@@ -137,6 +141,24 @@ class MethodHandleNatives {
             REF_newInvokeSpecial        = 8,
             REF_invokeInterface         = 9,
             REF_LIMIT                  = 10;
+
+        /**
+         * Flags for Lookup.ClassOptions
+         */
+        static final int
+            NESTMATE_CLASS            = 0x00000001,
+            HIDDEN_CLASS              = 0x00000002,
+            STRONG_LOADER_LINK        = 0x00000004,
+            ACCESS_VM_ANNOTATIONS     = 0x00000008;
+
+        /**
+         * Lookup modes
+         */
+        static final int
+            LM_MODULE        = Lookup.MODULE,
+            LM_UNCONDITIONAL = Lookup.UNCONDITIONAL,
+            LM_TRUSTED       = -1;
+
     }
 
     static boolean refKindIsValid(int refKind) {
@@ -184,18 +206,18 @@ class MethodHandleNatives {
     }
     static String refKindName(byte refKind) {
         assert(refKindIsValid(refKind));
-        switch (refKind) {
-        case REF_getField:          return "getField";
-        case REF_getStatic:         return "getStatic";
-        case REF_putField:          return "putField";
-        case REF_putStatic:         return "putStatic";
-        case REF_invokeVirtual:     return "invokeVirtual";
-        case REF_invokeStatic:      return "invokeStatic";
-        case REF_invokeSpecial:     return "invokeSpecial";
-        case REF_newInvokeSpecial:  return "newInvokeSpecial";
-        case REF_invokeInterface:   return "invokeInterface";
-        default:                    return "REF_???";
-        }
+        return switch (refKind) {
+            case REF_getField         -> "getField";
+            case REF_getStatic        -> "getStatic";
+            case REF_putField         -> "putField";
+            case REF_putStatic        -> "putStatic";
+            case REF_invokeVirtual    -> "invokeVirtual";
+            case REF_invokeStatic     -> "invokeStatic";
+            case REF_invokeSpecial    -> "invokeSpecial";
+            case REF_newInvokeSpecial -> "newInvokeSpecial";
+            case REF_invokeInterface  -> "invokeInterface";
+            default -> "REF_???";
+        };
     }
 
     private static native int getNamedCon(int which, Object[] name);
@@ -499,7 +521,7 @@ class MethodHandleNatives {
     /**
      * Obtain the method to link to the VarHandle operation.
      * This method is located here and not in Invokers to avoid
-     * intializing that and other classes early on in VM bootup.
+     * initializing that and other classes early on in VM bootup.
      */
     private static MemberName varHandleOperationLinkerMethod(String name,
                                                              MethodType mtype,
@@ -549,14 +571,14 @@ class MethodHandleNatives {
                     guardType, REF_invokeStatic);
 
             linker = MemberName.getFactory().resolveOrNull(REF_invokeStatic, linker,
-                                                           VarHandleGuards.class);
+                                                           VarHandleGuards.class, LM_TRUSTED);
             if (linker != null) {
                 return linker;
             }
             // Fall back to lambda form linkage if guard method is not available
             // TODO Optionally log fallback ?
         }
-        return Invokers.varHandleInvokeLinkerMethod(ak, mtype);
+        return Invokers.varHandleInvokeLinkerMethod(mtype);
     }
     static String getVarHandleGuardMethodName(MethodType guardType) {
         String prefix = "guard_";
@@ -645,11 +667,8 @@ class MethodHandleNatives {
 
     static boolean canBeCalledVirtual(MemberName mem) {
         assert(mem.isInvocable());
-        switch (mem.getName()) {
-        case "getContextClassLoader":
-            return canBeCalledVirtual(mem, java.lang.Thread.class);
-        }
-        return false;
+        return mem.getName().equals("getContextClassLoader") &&
+            canBeCalledVirtual(mem, java.lang.Thread.class);
     }
 
     static boolean canBeCalledVirtual(MemberName symbolicRef, Class<?> definingClass) {
@@ -658,5 +677,17 @@ class MethodHandleNatives {
         if (symbolicRef.isStatic() || symbolicRef.isPrivate())  return false;
         return (definingClass.isAssignableFrom(symbolicRefClass) ||  // Msym overrides Mdef
                 symbolicRefClass.isInterface());                     // Mdef implements Msym
+    }
+
+    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    /*
+     * Returns the class data set by the VM in the Class::classData field.
+     *
+     * This is also invoked by LambdaForms as it cannot use condy via
+     * MethodHandles.classData due to bootstrapping issue.
+     */
+    static Object classData(Class<?> c) {
+        UNSAFE.ensureClassInitialized(c);
+        return JLA.classData(c);
     }
 }

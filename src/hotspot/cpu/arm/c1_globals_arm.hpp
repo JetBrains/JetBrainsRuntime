@@ -35,8 +35,6 @@
 
 #ifndef COMPILER2 // avoid duplicated definitions, favoring C2 version
 define_pd_global(bool, BackgroundCompilation,        true );
-define_pd_global(bool, UseTLAB,                      true );
-define_pd_global(bool, ResizeTLAB,                   true );
 define_pd_global(bool, InlineIntrinsics,             false); // TODO: ARM
 define_pd_global(bool, PreferInterpreterNativeStubs, false);
 define_pd_global(bool, ProfileTraps,                 false);
@@ -45,7 +43,6 @@ define_pd_global(bool, TieredCompilation,            false);
 define_pd_global(intx, CompileThreshold,             1500 );
 
 define_pd_global(intx, OnStackReplacePercentage,     933  );
-define_pd_global(intx, FreqInlineSize,               325  );
 define_pd_global(size_t, NewSizeThreadIncrease,      4*K  );
 define_pd_global(size_t, InitialCodeCacheSize,       160*K);
 define_pd_global(size_t, ReservedCodeCacheSize,      32*M );
@@ -56,16 +53,12 @@ define_pd_global(bool, ProfileInterpreter,           false);
 define_pd_global(size_t, CodeCacheExpansionSize,     32*K );
 define_pd_global(uintx, CodeCacheMinBlockLength,     1);
 define_pd_global(size_t, CodeCacheMinimumUseSpace,   400*K);
-define_pd_global(size_t, MetaspaceSize,              12*M );
 define_pd_global(bool, NeverActAsServerClassMachine, true);
 define_pd_global(uint64_t, MaxRAM,                   1ULL*G);
 define_pd_global(bool, CICompileOSR,                 true );
 #endif // COMPILER2
 define_pd_global(bool, UseTypeProfile,               false);
-define_pd_global(bool, RoundFPResults,               false);
 
-
-define_pd_global(bool, LIRFillDelaySlots,            false);
 define_pd_global(bool, OptimizeSinglePrecision,      true);
 define_pd_global(bool, CSEArrayLength,               true);
 define_pd_global(bool, TwoOperandLIRForm,            false);

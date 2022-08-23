@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
 package gc;
 
 /* @test TestVerifySubSet.java
- * @key gc
  * @bug 8072725
  * @summary Test VerifySubSet option
  * @library /test/lib
@@ -56,8 +55,7 @@ public class TestVerifySubSet {
                                                  "-Xlog:gc+verify=debug",
                                                  "-XX:VerifySubSet="+subset,
                                                  TestVerifySubSetRunSystemGC.class.getName()});
-        ProcessBuilder pb =
-            ProcessTools.createJavaProcessBuilder(vmOpts.toArray(new String[vmOpts.size()]));
+        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(vmOpts);
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
 
         System.out.println("Output:\n" + output.getOutput());

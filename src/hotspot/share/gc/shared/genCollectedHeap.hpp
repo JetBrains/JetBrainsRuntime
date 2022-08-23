@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -102,27 +102,6 @@ private:
   PreGenGCValues get_pre_gc_values() const;
 
 protected:
-
-  // The set of potentially parallel tasks in root scanning.
-  enum GCH_strong_roots_tasks {
-    GCH_PS_Universe_oops_do,
-    GCH_PS_JNIHandles_oops_do,
-    GCH_PS_ObjectSynchronizer_oops_do,
-    GCH_PS_FlatProfiler_oops_do,
-    GCH_PS_Management_oops_do,
-    GCH_PS_SystemDictionary_oops_do,
-    GCH_PS_ClassLoaderDataGraph_oops_do,
-    GCH_PS_jvmti_oops_do,
-    GCH_PS_CodeCache_oops_do,
-    AOT_ONLY(GCH_PS_aot_oops_do COMMA)
-    GCH_PS_younger_gens,
-    // Leave this one last.
-    GCH_PS_NumElements
-  };
-
-  // Data structure for claiming the (potentially) parallel tasks in
-  // (gen-specific) roots processing.
-  SubTasksDone* _process_strong_tasks;
 
   GCMemoryManager* _young_manager;
   GCMemoryManager* _old_manager;
@@ -272,7 +251,6 @@ public:
   bool block_is_obj(const HeapWord* addr) const;
 
   // Section on TLAB's.
-  virtual bool supports_tlab_allocation() const;
   virtual size_t tlab_capacity(Thread* thr) const;
   virtual size_t tlab_used(Thread* thr) const;
   virtual size_t unsafe_max_tlab_alloc(Thread* thr) const;
@@ -294,10 +272,6 @@ public:
   // Ensure parsability: override
   virtual void ensure_parsability(bool retire_tlabs);
 
-  // Time in ms since the longest time a collector ran in
-  // in any generation.
-  virtual jlong millis_since_last_gc();
-
   // Total number of full collections completed.
   unsigned int total_full_collections_completed() {
     assert(_full_collections_completed <= _total_full_collections,
@@ -307,14 +281,6 @@ public:
 
   // Update above counter, as appropriate, at the end of a stop-world GC cycle
   unsigned int update_full_collections_completed();
-  // Update above counter, as appropriate, at the end of a concurrent GC cycle
-  unsigned int update_full_collections_completed(unsigned int count);
-
-  // Update "time of last gc" for all generations to "now".
-  void update_time_of_last_gc(jlong now) {
-    _young_gen->update_time_of_last_gc(now);
-    _old_gen->update_time_of_last_gc(now);
-  }
 
   // Update the gc statistics for each generation.
   void update_gc_stats(Generation* current_generation, bool full) {
@@ -331,7 +297,6 @@ public:
 
   // Override.
   virtual void print_on(outputStream* st) const;
-  virtual void print_gc_threads_on(outputStream* st) const;
   virtual void gc_threads_do(ThreadClosure* tc) const;
   virtual void print_tracing_info() const;
 
@@ -376,8 +341,7 @@ public:
   };
 
  protected:
-  void process_roots(StrongRootsScope* scope,
-                     ScanningOption so,
+  void process_roots(ScanningOption so,
                      OopClosure* strong_roots,
                      CLDClosure* strong_cld_closure,
                      CLDClosure* weak_cld_closure,
@@ -387,16 +351,10 @@ public:
   virtual void gc_epilogue(bool full);
 
  public:
-  void young_process_roots(StrongRootsScope* scope,
-                           OopsInGenClosure* root_closure,
-                           OopsInGenClosure* old_gen_closure,
-                           CLDClosure* cld_closure);
-
-  void full_process_roots(StrongRootsScope* scope,
-                          bool is_adjust_phase,
+  void full_process_roots(bool is_adjust_phase,
                           ScanningOption so,
                           bool only_strong_roots,
-                          OopsInGenClosure* root_closure,
+                          OopClosure* root_closure,
                           CLDClosure* cld_closure);
 
   // Apply "root_closure" to all the weak roots of the system.

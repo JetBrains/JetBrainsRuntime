@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,12 +50,13 @@ import jdk.jfr.internal.settings.EnabledSetting;
 import jdk.jfr.internal.settings.PeriodSetting;
 import jdk.jfr.internal.settings.StackTraceSetting;
 import jdk.jfr.internal.settings.ThresholdSetting;
+import jdk.jfr.internal.settings.ThrottleSetting;
 
 // This class can't have a hard reference from PlatformEventType, since it
 // holds SettingControl instances that need to be released
 // when a class is unloaded (to avoid memory leaks).
 public final class EventControl {
-    final static class NamedControl {
+    static final class NamedControl {
         public final String name;
         public final Control control;
         NamedControl(String name, Control control) {
@@ -69,6 +70,7 @@ public final class EventControl {
     private static final Type TYPE_STACK_TRACE = TypeLibrary.createType(StackTraceSetting.class);
     private static final Type TYPE_PERIOD = TypeLibrary.createType(PeriodSetting.class);
     private static final Type TYPE_CUTOFF = TypeLibrary.createType(CutoffSetting.class);
+    private static final Type TYPE_THROTTLE = TypeLibrary.createType(ThrottleSetting.class);
 
     private final ArrayList<SettingInfo> settingInfos = new ArrayList<>();
     private final ArrayList<NamedControl> namedControls = new ArrayList<>(5);
@@ -76,7 +78,6 @@ public final class EventControl {
     private final String idName;
 
     EventControl(PlatformEventType eventType) {
-        addControl(Enabled.NAME, defineEnabled(eventType));
         if (eventType.hasDuration()) {
             addControl(Threshold.NAME, defineThreshold(eventType));
         }
@@ -89,14 +90,18 @@ public final class EventControl {
         if (eventType.hasCutoff()) {
             addControl(Cutoff.NAME, defineCutoff(eventType));
         }
+        if (eventType.hasThrottle()) {
+            addControl(Throttle.NAME, defineThrottle(eventType));
+        }
+        addControl(Enabled.NAME, defineEnabled(eventType));
 
-        ArrayList<AnnotationElement> aes = new ArrayList<>(eventType.getAnnotationElements());
+        List<AnnotationElement> aes = new ArrayList<>(eventType.getAnnotationElements());
         remove(eventType, aes, Threshold.class);
         remove(eventType, aes, Period.class);
         remove(eventType, aes, Enabled.class);
         remove(eventType, aes, StackTrace.class);
         remove(eventType, aes, Cutoff.class);
-        aes.trimToSize();
+        remove(eventType, aes, Throttle.class);
         eventType.setAnnotations(aes);
         this.type = eventType;
         this.idName = String.valueOf(eventType.getId());
@@ -167,9 +172,9 @@ public final class EventControl {
             int index = settingInfos.size();
             SettingInfo si = new SettingInfo(FIELD_SETTING_PREFIX + index, index);
             si.settingControl = instantiateSettingControl(settingsClass);
-            Control c = si.settingControl;
+            Control c = new Control(si.settingControl, null);
             c.setDefault();
-            String defaultValue = c.getValueSafe();
+            String defaultValue = c.getValue();
             if (defaultValue != null) {
                 Type settingType = TypeLibrary.createType(settingsClass);
                 ArrayList<AnnotationElement> aes = new ArrayList<>();
@@ -180,7 +185,7 @@ public final class EventControl {
                     }
                 }
                 aes.trimToSize();
-                addControl(settingName, si.settingControl);
+                addControl(settingName, c);
                 eventType.add(PrivateAccess.getInstance().newSettingDescriptor(settingType, settingName, defaultValue, aes));
                 settingInfos.add(si);
             }
@@ -205,7 +210,7 @@ public final class EventControl {
         try {
             return (SettingControl) cc.newInstance();
         } catch (IllegalArgumentException | InvocationTargetException e) {
-            throw (Error) new InternalError("Could not instantiate setting for class " + settingControlClass.getName());
+            throw new InternalError("Could not instantiate setting for class " + settingControlClass.getName());
         }
     }
 
@@ -219,7 +224,7 @@ public final class EventControl {
             def = Boolean.toString(enabled.value());
         }
         type.add(PrivateAccess.getInstance().newSettingDescriptor(TYPE_ENABLED, Enabled.NAME, def, Collections.emptyList()));
-        return new EnabledSetting(type, def);
+        return new Control(new EnabledSetting(type, def), def);
     }
 
     private static Control defineThreshold(PlatformEventType type) {
@@ -229,7 +234,7 @@ public final class EventControl {
             def = threshold.value();
         }
         type.add(PrivateAccess.getInstance().newSettingDescriptor(TYPE_THRESHOLD, Threshold.NAME, def, Collections.emptyList()));
-        return new ThresholdSetting(type, def);
+        return new Control(new ThresholdSetting(type), def);
     }
 
     private static Control defineStackTrace(PlatformEventType type) {
@@ -239,19 +244,28 @@ public final class EventControl {
             def = Boolean.toString(stackTrace.value());
         }
         type.add(PrivateAccess.getInstance().newSettingDescriptor(TYPE_STACK_TRACE, StackTrace.NAME, def, Collections.emptyList()));
-        return new StackTraceSetting(type, def);
+        return new Control(new StackTraceSetting(type, def), def);
     }
 
     private static Control defineCutoff(PlatformEventType type) {
         Cutoff cutoff = type.getAnnotation(Cutoff.class);
-        String def = Cutoff.INIFITY;
+        String def = Cutoff.INFINITY;
         if (cutoff != null) {
             def = cutoff.value();
         }
         type.add(PrivateAccess.getInstance().newSettingDescriptor(TYPE_CUTOFF, Cutoff.NAME, def, Collections.emptyList()));
-        return new CutoffSetting(type, def);
+        return new Control(new CutoffSetting(type), def);
     }
 
+    private static Control defineThrottle(PlatformEventType type) {
+        Throttle throttle = type.getAnnotation(Throttle.class);
+        String def = Throttle.DEFAULT;
+        if (throttle != null) {
+            def = throttle.value();
+        }
+        type.add(PrivateAccess.getInstance().newSettingDescriptor(TYPE_THROTTLE, Throttle.NAME, def, Collections.emptyList()));
+        return new Control(new ThrottleSetting(type), def);
+    }
 
     private static Control definePeriod(PlatformEventType type) {
         Period period = type.getAnnotation(Period.class);
@@ -260,13 +274,13 @@ public final class EventControl {
             def = period.value();
         }
         type.add(PrivateAccess.getInstance().newSettingDescriptor(TYPE_PERIOD, PeriodSetting.NAME, def, Collections.emptyList()));
-        return new PeriodSetting(type, def);
+        return new Control(new PeriodSetting(type), def);
     }
 
     void disable() {
         for (NamedControl nc : namedControls) {
-            if (nc.control instanceof EnabledSetting) {
-                nc.control.setValueSafe("false");
+            if (nc.control.isType(EnabledSetting.class)) {
+                nc.control.setValue("false");
                 return;
             }
         }

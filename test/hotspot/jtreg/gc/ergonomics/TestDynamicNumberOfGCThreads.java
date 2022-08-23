@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,11 +27,10 @@ package gc.ergonomics;
  * @test TestDynamicNumberOfGCThreads
  * @bug 8017462
  * @summary Ensure that UseDynamicNumberOfGCThreads runs
- * @key gc
  * @modules java.base/jdk.internal.misc
  * @library /test/lib
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run main/othervm -Xbootclasspath/a:. -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI gc.ergonomics.TestDynamicNumberOfGCThreads
  */
 
@@ -70,19 +69,11 @@ public class TestDynamicNumberOfGCThreads {
   }
 
   private static void testDynamicNumberOfGCThreads(String gcFlag) throws Exception {
-    // UseDynamicNumberOfGCThreads and TraceDynamicGCThreads enabled
+    // UseDynamicNumberOfGCThreads enabled
     String[] baseArgs = {"-XX:+UnlockExperimentalVMOptions", "-XX:+" + gcFlag, "-Xmx10M", "-XX:+UseDynamicNumberOfGCThreads", "-Xlog:gc+task=trace", GCTest.class.getName()};
 
     // Base test with gc and +UseDynamicNumberOfGCThreads:
     ProcessBuilder pb_enabled = ProcessTools.createJavaProcessBuilder(baseArgs);
-    verifyDynamicNumberOfGCThreads(new OutputAnalyzer(pb_enabled.start()));
-
-    // Ensure it also works on uniprocessors or if user specifies -XX:ParallelGCThreads=1:
-    String[] extraArgs = {"-XX:+UnlockDiagnosticVMOptions", "-XX:+ForceDynamicNumberOfGCThreads", "-XX:ParallelGCThreads=1"};
-    String[] finalArgs = new String[baseArgs.length + extraArgs.length];
-    System.arraycopy(extraArgs, 0, finalArgs, 0,                extraArgs.length);
-    System.arraycopy(baseArgs,  0, finalArgs, extraArgs.length, baseArgs.length);
-    pb_enabled = ProcessTools.createJavaProcessBuilder(finalArgs);
     verifyDynamicNumberOfGCThreads(new OutputAnalyzer(pb_enabled.start()));
 
     // Turn on parallel reference processing

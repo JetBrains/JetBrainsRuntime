@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug 8188225
+ * @bug 8188225 8243557
  * @summary Tests for shell error translation
  * @modules jdk.compiler/com.sun.tools.javac.api
  *          jdk.compiler/com.sun.tools.javac.main
@@ -67,19 +67,10 @@ public class ErrorTranslationTest extends ReplToolTesting {
         );
     }
 
-    public void testWarnings() {
-        List<ReplTest> list = new ArrayList<>();
-        ExpectedDiagnostic[] diagnostics = new ExpectedDiagnostic[]{
-                newExpectedDiagnostic(0, 6, 0, -1, -1, Diagnostic.Kind.WARNING),
-                newExpectedDiagnostic(0, 5, 0, -1, -1, Diagnostic.Kind.WARNING)};
-        String[] mods = {"static", "final"};
-        for (int i = 0; i < mods.length; ++i) {
-            for (String code : new String[] {"class A {}", "void f() {}", "int a;"}) {
-                final int finalI = i;
-                list.add(a -> assertDiagnostic(a, mods[finalI] + " " + code, diagnostics[finalI]));
-            }
-        }
-        test(list.toArray(new ReplTest[list.size()]));
+    public void testExceptionErrors() {
+        test(
+                a -> assertDiagnostic(a, "try { } catch (IllegalStateException | java.io.IOException ex) { }", newExpectedDiagnostic(39, 58, -1, -1, -1, Diagnostic.Kind.ERROR))
+        );
     }
 
     @Test(enabled = false) // TODO 8132147

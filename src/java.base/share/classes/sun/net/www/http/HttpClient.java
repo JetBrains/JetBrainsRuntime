@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1994, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1994, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@ import java.net.*;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.locks.ReentrantLock;
+
 import sun.net.NetworkClient;
 import sun.net.ProgressSource;
 import sun.net.www.MessageHeader;
@@ -47,6 +49,8 @@ import sun.security.action.GetPropertyAction;
  * @author Dave Brown
  */
 public class HttpClient extends NetworkClient {
+    private final ReentrantLock clientLock = new ReentrantLock();
+
     // whether this httpclient comes from the cache
     protected boolean cachedHttpClient = false;
 
@@ -140,10 +144,25 @@ public class HttpClient extends NetworkClient {
     // Traffic capture tool, if configured. See HttpCapture class for info
     private HttpCapture capture = null;
 
+    /* "jdk.https.negotiate.cbt" property can be set to "always" (always sent), "never" (never sent) or
+     * "domain:a,c.d,*.e.f" (sent to host a, or c.d or to the domain e.f and any of its subdomains). This is
+     * a comma separated list of arbitrary length with no white-space allowed.
+     * If enabled (for a particular destination) then Negotiate/SPNEGO authentication requests will include
+     * a channel binding token for the destination server. The default behavior and setting for the
+     * property is "never"
+     */
+    private static final String spnegoCBT;
+
     private static final PlatformLogger logger = HttpURLConnection.getHttpLogger();
+
     private static void logFinest(String msg) {
         if (logger.isLoggable(PlatformLogger.Level.FINEST)) {
             logger.finest(msg);
+        }
+    }
+    private static void logError(String msg) {
+        if (logger.isLoggable(PlatformLogger.Level.SEVERE)) {
+            logger.severe(msg);
         }
     }
 
@@ -161,12 +180,27 @@ public class HttpClient extends NetworkClient {
         return keepAliveTimeout;
     }
 
+    static String normalizeCBT(String s) {
+        if (s == null || s.equals("never")) {
+            return "never";
+        }
+        if (s.equals("always") || s.startsWith("domain:")) {
+            return s;
+        } else {
+            logError("Unexpected value for \"jdk.https.negotiate.cbt\" system property");
+            return "never";
+        }
+    }
+
     static {
         Properties props = GetPropertyAction.privilegedGetProperties();
         String keepAlive = props.getProperty("http.keepAlive");
         String retryPost = props.getProperty("sun.net.http.retryPost");
         String cacheNTLM = props.getProperty("jdk.ntlm.cache");
         String cacheSPNEGO = props.getProperty("jdk.spnego.cache");
+
+        String s = props.getProperty("jdk.https.negotiate.cbt");
+        spnegoCBT = normalizeCBT(s);
 
         if (keepAlive != null) {
             keepAliveProp = Boolean.parseBoolean(keepAlive);
@@ -201,6 +235,10 @@ public class HttpClient extends NetworkClient {
         return keepAliveProp;
     }
 
+
+    public String getSpnegoCBT() {
+        return spnegoCBT;
+    }
 
     protected HttpClient() {
     }
@@ -303,7 +341,7 @@ public class HttpClient extends NetworkClient {
             ret = kac.get(url, null);
             if (ret != null && httpuc != null &&
                 httpuc.streaming() &&
-                httpuc.getRequestMethod() == "POST") {
+                "POST".equals(httpuc.getRequestMethod())) {
                 if (!ret.available()) {
                     ret.inCache = false;
                     ret.closeServer();
@@ -316,22 +354,28 @@ public class HttpClient extends NetworkClient {
                 boolean compatible = Objects.equals(ret.proxy, p)
                      && Objects.equals(ret.getAuthenticatorKey(), ak);
                 if (compatible) {
-                    synchronized (ret) {
+                    ret.lock();
+                    try {
                         ret.cachedHttpClient = true;
                         assert ret.inCache;
                         ret.inCache = false;
                         if (httpuc != null && ret.needsTunneling())
                             httpuc.setTunnelState(TUNNELING);
                         logFinest("KeepAlive stream retrieved from the cache, " + ret);
+                    } finally {
+                        ret.unlock();
                     }
                 } else {
                     // We cannot return this connection to the cache as it's
                     // KeepAliveTimeout will get reset. We simply close the connection.
                     // This should be fine as it is very rare that a connection
                     // to the same host will not use the same proxy.
-                    synchronized(ret) {
+                    ret.lock();
+                    try  {
                         ret.inCache = false;
                         ret.closeServer();
+                    } finally {
+                        ret.unlock();
                     }
                     ret = null;
                 }
@@ -343,6 +387,7 @@ public class HttpClient extends NetworkClient {
                 ret.authenticatorKey = httpuc.getAuthenticatorKey();
             }
         } else {
+            @SuppressWarnings("removal")
             SecurityManager security = System.getSecurityManager();
             if (security != null) {
                 if (ret.proxy == Proxy.NO_PROXY || ret.proxy == null) {
@@ -409,10 +454,11 @@ public class HttpClient extends NetworkClient {
         }
     }
 
-    protected synchronized boolean available() {
+    protected boolean available() {
         boolean available = true;
         int old = -1;
 
+        lock();
         try {
             try {
                 old = serverSocket.getSoTimeout();
@@ -436,21 +482,33 @@ public class HttpClient extends NetworkClient {
             logFinest("HttpClient.available(): " +
                         "SocketException: not available");
             available = false;
+        } finally {
+            unlock();
         }
         return available;
     }
 
-    protected synchronized void putInKeepAliveCache() {
-        if (inCache) {
-            assert false : "Duplicate put to keep alive cache";
-            return;
+    protected void putInKeepAliveCache() {
+        lock();
+        try {
+            if (inCache) {
+                assert false : "Duplicate put to keep alive cache";
+                return;
+            }
+            inCache = true;
+            kac.put(url, null, this);
+        } finally {
+            unlock();
         }
-        inCache = true;
-        kac.put(url, null, this);
     }
 
-    protected synchronized boolean isInKeepAliveCache() {
-        return inCache;
+    protected boolean isInKeepAliveCache() {
+        lock();
+        try {
+            return inCache;
+        } finally {
+            unlock();
+        }
     }
 
     /*
@@ -497,8 +555,13 @@ public class HttpClient extends NetworkClient {
     /*
      * Returns true if this httpclient is from cache
      */
-    public synchronized boolean isCachedConnection() {
-        return cachedHttpClient;
+    public boolean isCachedConnection() {
+        lock();
+        try {
+            return cachedHttpClient;
+        } finally {
+            unlock();
+        }
     }
 
     /*
@@ -516,9 +579,11 @@ public class HttpClient extends NetworkClient {
     /*
      * call openServer in a privileged block
      */
-    private synchronized void privilegedOpenServer(final InetSocketAddress server)
+    @SuppressWarnings("removal")
+    private void privilegedOpenServer(final InetSocketAddress server)
          throws IOException
     {
+        assert clientLock.isHeldByCurrentThread();
         try {
             java.security.AccessController.doPrivileged(
                 new java.security.PrivilegedExceptionAction<>() {
@@ -544,48 +609,54 @@ public class HttpClient extends NetworkClient {
 
     /*
      */
-    protected synchronized void openServer() throws IOException {
+    protected void openServer() throws IOException {
 
+        @SuppressWarnings("removal")
         SecurityManager security = System.getSecurityManager();
 
-        if (security != null) {
-            security.checkConnect(host, port);
-        }
+        lock();
+        try {
+            if (security != null) {
+                security.checkConnect(host, port);
+            }
 
-        if (keepingAlive) { // already opened
-            return;
-        }
-
-        if (url.getProtocol().equals("http") ||
-            url.getProtocol().equals("https") ) {
-
-            if ((proxy != null) && (proxy.type() == Proxy.Type.HTTP)) {
-                sun.net.www.URLConnection.setProxiedHost(host);
-                privilegedOpenServer((InetSocketAddress) proxy.address());
-                usingProxy = true;
-                return;
-            } else {
-                // make direct connection
-                openServer(host, port);
-                usingProxy = false;
+            if (keepingAlive) { // already opened
                 return;
             }
 
-        } else {
-            /* we're opening some other kind of url, most likely an
-             * ftp url.
-             */
-            if ((proxy != null) && (proxy.type() == Proxy.Type.HTTP)) {
-                sun.net.www.URLConnection.setProxiedHost(host);
-                privilegedOpenServer((InetSocketAddress) proxy.address());
-                usingProxy = true;
-                return;
+            if (url.getProtocol().equals("http") ||
+                    url.getProtocol().equals("https")) {
+
+                if ((proxy != null) && (proxy.type() == Proxy.Type.HTTP)) {
+                    sun.net.www.URLConnection.setProxiedHost(host);
+                    privilegedOpenServer((InetSocketAddress) proxy.address());
+                    usingProxy = true;
+                    return;
+                } else {
+                    // make direct connection
+                    openServer(host, port);
+                    usingProxy = false;
+                    return;
+                }
+
             } else {
-                // make direct connection
-                super.openServer(host, port);
-                usingProxy = false;
-                return;
+                /* we're opening some other kind of url, most likely an
+                 * ftp url.
+                 */
+                if ((proxy != null) && (proxy.type() == Proxy.Type.HTTP)) {
+                    sun.net.www.URLConnection.setProxiedHost(host);
+                    privilegedOpenServer((InetSocketAddress) proxy.address());
+                    usingProxy = true;
+                    return;
+                } else {
+                    // make direct connection
+                    super.openServer(host, port);
+                    usingProxy = false;
+                    return;
+                }
             }
+        } finally {
+            unlock();
         }
     }
 
@@ -1010,8 +1081,13 @@ public class HttpClient extends NetworkClient {
         return ret;
     }
 
-    public synchronized InputStream getInputStream() {
-        return serverInput;
+    public InputStream getInputStream() {
+        lock();
+        try {
+            return serverInput;
+        } finally {
+            unlock();
+        }
     }
 
     public OutputStream getOutputStream() {
@@ -1083,5 +1159,13 @@ public class HttpClient extends NetworkClient {
         if (usingProxy)
             return ((InetSocketAddress)proxy.address()).getPort();
         return -1;
+    }
+
+    public final void lock() {
+        clientLock.lock();
+    }
+
+    public final void unlock() {
+        clientLock.unlock();
     }
 }

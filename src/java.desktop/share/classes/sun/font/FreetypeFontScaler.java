@@ -25,10 +25,13 @@
 
 package sun.font;
 
+import java.awt.*;
 import java.awt.geom.GeneralPath;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
+import java.io.File;
 import java.lang.ref.WeakReference;
+import java.security.PrivilegedAction;
 
 /* This is Freetype based implementation of FontScaler.
  *
@@ -47,10 +50,38 @@ class FreetypeFontScaler extends FontScaler {
         /* At the moment fontmanager library depends on freetype library
            and therefore no need to load it explicitly here */
         FontManagerNativeLibrary.load();
-        initIDs(FreetypeFontScaler.class);
+        @SuppressWarnings("removal")
+        String fontConfName = java.security.AccessController.doPrivileged(
+                (PrivilegedAction<String>) () -> {
+                    String loadFontConfig = System.getProperty(
+                            "java2d.font.loadFontConf", "");
+                    if ("true".equals(loadFontConfig)) {
+                        File f = new File(System.getProperty("user.home", "") +
+                                File.separator + ".fonts.conf");
+
+                        if (f.exists()) {
+                            return f.getAbsolutePath();
+                        }
+                    }
+
+                    if ("true".equals(loadFontConfig) || "bundled".equals(loadFontConfig)) {
+                        File f = new File(System.getProperty("java.home", "") +
+                                File.separator + "lib" + File.separator + "fonts" + File.separator + "font.conf");
+
+                        return f.getAbsolutePath();
+                    }
+                    return null;
+                });
+
+        initIDs(FreetypeFontScaler.class, Toolkit.class, PhysicalFont.class,
+                fontConfName,
+                FontUtilities.subpixelResolution.width,
+                FontUtilities.subpixelResolution.height);
     }
 
-    private static native void initIDs(Class<?> FFS);
+    private static native void initIDs(Class<?> FFS, Class<?> toolkitClass, Class<?> pfClass,
+                                       String jreFontDirName,
+                                       int subpixelResolutionX, int subpixelResolutionY);
 
     private void invalidateScaler() throws FontScalerException {
         nativeScaler = 0;
@@ -163,6 +194,21 @@ class FreetypeFontScaler extends FontScaler {
             .getNullScaler().getGlyphVectorOutline(0L, glyphs, numGlyphs, x, y);
     }
 
+    synchronized GlyphRenderData getGlyphRenderData(long pScalerContext, int glyphCode,
+                                                    float x, float y) throws FontScalerException {
+        if (nativeScaler != 0L) {
+            GlyphRenderData result = new GlyphRenderData();
+            getGlyphRenderDataNative(font.get(),
+                                     pScalerContext,
+                                     nativeScaler,
+                                     glyphCode,
+                                     x, y, result);
+            return result;
+        }
+        return FontScaler.getNullScaler().
+                getGlyphRenderData(0L, glyphCode, x,y);
+    }
+
     /* This method should not be called directly, in case
      * it is being invoked from a thread with a native context.
      */
@@ -225,8 +271,7 @@ class FreetypeFontScaler extends FontScaler {
     }
 
     synchronized long createScalerContext(double[] matrix,
-            int aa, int fm, float boldness, float italic,
-            boolean disableHinting) {
+            int aa, int fm, float boldness, float italic) {
         if (nativeScaler != 0L) {
             return createScalerContextNative(nativeScaler, matrix,
                                              aa, fm, boldness, italic);
@@ -254,6 +299,9 @@ class FreetypeFontScaler extends FontScaler {
     private native GeneralPath getGlyphVectorOutlineNative(Font2D font,
             long pScalerContext, long pScaler,
             int[] glyphs, int numGlyphs, float x, float y);
+    private native void getGlyphRenderDataNative(Font2D font, long pScalerContext,
+                                                 long pScaler, int glyphCode,
+                                                 float x, float y, GlyphRenderData result);
     private native Point2D.Float getGlyphPointNative(Font2D font,
             long pScalerContext, long pScaler, int glyphCode, int ptNumber);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,7 +44,7 @@ import sun.jvm.hotspot.types.*;
     one.) </P>
 */
 
-public class VMObjectFactory {
+public class VMObjectFactory<T extends VMObject> {
   public static <T> T newObject(Class<T> clazz, Address addr)
     throws ConstructionException {
     try {
@@ -58,8 +58,8 @@ public class VMObjectFactory {
       return c.newInstance(new Object[] { addr });
     }
     catch (java.lang.reflect.InvocationTargetException ite) {
-        if (ite.getTargetException() instanceof RuntimeException) {
-            throw (RuntimeException)ite.getTargetException();
+        if (ite.getCause() instanceof RuntimeException) {
+            throw (RuntimeException)ite.getCause();
         }
         throw new ConstructionException(ite);
     }

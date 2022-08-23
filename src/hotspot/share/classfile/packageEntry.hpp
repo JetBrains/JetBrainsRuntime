@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@
 
 #include "classfile/moduleEntry.hpp"
 #include "oops/symbol.hpp"
+#include "runtime/atomic.hpp"
 #include "utilities/growableArray.hpp"
 #include "utilities/hashtable.hpp"
 #include "utilities/macros.hpp"
@@ -35,6 +36,8 @@
 #include "jfr/support/jfrTraceIdExtension.hpp"
 #endif
 
+template <class T> class Array;
+class MetaspaceClosure;
 
 // A PackageEntry basically represents a Java package.  It contains:
 //   - Symbol* containing the package's name.
@@ -114,6 +117,8 @@ private:
   // Initial size of a package entry's list of qualified exports.
   enum {QUAL_EXP_SIZE = 43};
 
+  // a bit map indicating which CDS classpath entries have defined classes in this package.
+  volatile int _defined_by_cds_in_class_path;
 public:
   void init() {
     _module = NULL;
@@ -121,6 +126,7 @@ public:
     _classpath_index = -1;
     _must_walk_exports = false;
     _qualified_exports = NULL;
+    _defined_by_cds_in_class_path = 0;
   }
 
   // package name
@@ -212,6 +218,32 @@ public:
 
   void print(outputStream* st = tty);
   void verify();
+
+#if INCLUDE_CDS_JAVA_HEAP
+  void iterate_symbols(MetaspaceClosure* closure);
+  PackageEntry* allocate_archived_entry() const;
+  void init_as_archived_entry();
+  static PackageEntry* get_archived_entry(PackageEntry* orig_entry);
+  void load_from_archive();
+#endif
+
+  static int max_index_for_defined_in_class_path() {
+    return sizeof(int) * BitsPerByte;
+  }
+
+  bool is_defined_by_cds_in_class_path(int idx) const {
+    assert(idx < max_index_for_defined_in_class_path(), "sanity");
+    return((Atomic::load(&_defined_by_cds_in_class_path) & ((int)1 << idx)) != 0);
+  }
+  void set_defined_by_cds_in_class_path(int idx) {
+    assert(idx < max_index_for_defined_in_class_path(), "sanity");
+    int old_val = 0;
+    int new_val = 0;
+    do {
+      old_val = Atomic::load(&_defined_by_cds_in_class_path);
+      new_val = old_val | ((int)1 << idx);
+    } while (Atomic::cmpxchg(&_defined_by_cds_in_class_path, old_val, new_val) != old_val);
+  }
 };
 
 // The PackageEntryTable is a Hashtable containing a list of all packages defined
@@ -273,6 +305,13 @@ public:
 
   void print(outputStream* st = tty);
   void verify();
+
+#if INCLUDE_CDS_JAVA_HEAP
+  void iterate_symbols(MetaspaceClosure* closure);
+  Array<PackageEntry*>* allocate_archived_entries();
+  void init_archived_entries(Array<PackageEntry*>* archived_packages);
+  void load_archived_entries(Array<PackageEntry*>* archived_packages);
+#endif
 };
 
 #endif // SHARE_CLASSFILE_PACKAGEENTRY_HPP

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,61 +61,67 @@ public class TestModuleServices extends JavadocTester {
                 .comment("This module exports a package containing the declaration of a service type.")
                 .exports("pkgService")
                 .classes("/**A Package that has a service.*/ package pkgService;")
-                .classes("package pkgService; /**A service Interface for service providers.*/ "
-                        + "public interface Service {\n"
-                        + "    /**\n"
-                        + "     * A test method for the service.\n"
-                        + "     */\n"
-                        + "    void testMethod1();\n"
-                        + "    /**\n"
-                        + "     * Another test method for the service.\n"
-                        + "     */\n"
-                        + "    void testMethod2();\n"
-                        + "}");
+                .classes("""
+                    package pkgService; /**A service Interface for service providers.*/ public interface Service {
+                        /**
+                         * A test method for the service.
+                         */
+                        void testMethod1();
+                        /**
+                         * Another test method for the service.
+                         */
+                        void testMethod2();
+                    }""");
         mb.write(src);
         mb = new ModuleBuilder(tb, "moduleServiceProvider")
-                .comment("This module provides an implementation of a service.\n" +
-                        "@provides pkgService.Service Provides a service whose name is ServiceProvider.")
+                .comment("""
+                    This module provides an implementation of a service.
+                    @provides pkgService.Service Provides a service whose name is ServiceProvider.""")
                 .requires("moduleService")
                 .provides("pkgService.Service", "pkgServiceProvider.ServiceProvider")
                 .classes("/**A Package that has a service provider.*/ package pkgServiceProvider;")
-                .classes("package pkgServiceProvider;\n"
-                        + "public class ServiceProvider implements pkgService.Service {\n"
-                        + "    /**\n"
-                        + "     * {@inheritDoc}\n"
-                        + "     */\n"
-                        + "    public void testMethod1() {}\n"
-                        + "    /**\n"
-                        + "     * This is an internal implementation so the documentation will not be seen.\n"
-                        + "     */\n"
-                        + "    public void testMethod2() {}\n"
-                        + "}");
+                .classes("""
+                    package pkgServiceProvider;
+                    public class ServiceProvider implements pkgService.Service {
+                        /**
+                         * {@inheritDoc}
+                         */
+                        public void testMethod1() {}
+                        /**
+                         * This is an internal implementation so the documentation will not be seen.
+                         */
+                        public void testMethod2() {}
+                    }""");
         mb.write(src);
         mb = new ModuleBuilder(tb, "moduleServiceUser")
-                .comment("This module uses a service defined in another module.\n"
-                        + "@uses pkgService.Service If no other provider is found, a default internal implementation will be used.")
+                .comment("""
+                    This module uses a service defined in another module.
+                    @uses pkgService.Service If no other provider is found, a default internal implementation will be used.""")
                 .requires("moduleService")
                 .uses("pkgService.Service")
                 .classes("/**A Package that has a service user.*/ package pkgServiceUser;")
-                .classes("package pkgServiceUser;\n"
-                        + "/**\n"
-                        + " * A service user class.\n"
-                        + " */\n"
-                        + "public class ServiceUser {\n"
-                        + "}");
+                .classes("""
+                    package pkgServiceUser;
+                    /**
+                     * A service user class.
+                     */
+                    public class ServiceUser {
+                    }""");
         mb.write(src);
         mb = new ModuleBuilder(tb, "moduleServiceUserNoDescription")
-                .comment("This is another module that uses a service defined in another module.\n"
-                        + "@uses pkgService.Service")
+                .comment("""
+                    This is another module that uses a service defined in another module.
+                    @uses pkgService.Service""")
                 .requires("moduleService")
                 .uses("pkgService.Service")
                 .classes("/**A Package that has a service user with no description.*/ package pkgServiceUserNoDescription;")
-                .classes("package pkgServiceUserNoDescription;\n"
-                        + "/**\n"
-                        + " * A service user class.\n"
-                        + " */\n"
-                        + "public class ServiceUserNoDescription {\n"
-                        + "}");
+                .classes("""
+                    package pkgServiceUserNoDescription;
+                    /**
+                     * A service user class.
+                     */
+                    public class ServiceUserNoDescription {
+                    }""");
         mb.write(src);
 
         javadoc("-d", base.resolve("out").toString(),
@@ -128,27 +134,24 @@ public class TestModuleServices extends JavadocTester {
         checkExit(Exit.OK);
 
         checkOutput("moduleServiceProvider/module-summary.html", true,
-                "<tr class=\"altColor\">\n"
-                + "<th class=\"colFirst\" scope=\"row\"><a href=\"../moduleService/pkgService/Service.html\" "
-                + "title=\"interface in pkgService\">Service</a></th>\n"
-                + "<td class=\"colLast\">\n"
-                + "<div class=\"block\">Provides a service whose name is ServiceProvider.</div>\n"
-                + "</td>\n"
-                + "</tr>");
+                """
+                    <div class="col-first even-row-color"><a href="../moduleService/pkgService/Service.ht\
+                    ml" title="interface in pkgService">Service</a></div>
+                    <div class="col-last even-row-color">
+                    <div class="block">Provides a service whose name is ServiceProvider.</div>""");
         checkOutput("moduleServiceUser/module-summary.html", true,
-                "<tr class=\"altColor\">\n"
-                + "<th class=\"colFirst\" scope=\"row\"><a href=\"../moduleService/pkgService/Service.html\" title=\"interface in pkgService\">Service</a></th>\n"
-                + "<td class=\"colLast\">\n"
-                + "<div class=\"block\">If no other provider is found, a default internal implementation will be used.</div>\n"
-                + "</td>\n"
-                + "</tr>");
+                """
+                    <div class="col-first even-row-color"><a href="../moduleService/pkgService/Service.ht\
+                    ml" title="interface in pkgService">Service</a></div>
+                    <div class="col-last even-row-color">
+                    <div class="block">If no other provider is found, a default internal implementat\
+                    ion will be used.</div>""");
         checkOutput("moduleServiceUserNoDescription/module-summary.html", true,
-                "<tr class=\"altColor\">\n"
-                + "<th class=\"colFirst\" scope=\"row\"><a href=\"../moduleService/pkgService/Service.html\" title=\"interface in pkgService\">Service</a></th>\n"
-                + "<td class=\"colLast\">\n"
-                + "<div class=\"block\">A service Interface for service providers.</div>\n"
-                + "</td>\n"
-                + "</tr>");
+                """
+                    <div class="col-first even-row-color"><a href="../moduleService/pkgService/Service.ht\
+                    ml" title="interface in pkgService">Service</a></div>
+                    <div class="col-last even-row-color">
+                    <div class="block">A service Interface for service providers.</div>""");
         checkOutput("moduleServiceProvider/module-summary.html", false,
                 "A service Interface for service providers.");
         checkOutput("moduleServiceUser/module-summary.html", false,
@@ -197,25 +200,17 @@ public class TestModuleServices extends JavadocTester {
                 "<h2>Services</h2>");
 
         checkOutput("m/module-summary.html", true,
-                "<div class=\"usesSummary\">\n<table>\n" +
-                "<caption><span>Uses</span><span class=\"tabEnd\">&nbsp;</span></caption>\n" +
-                "<thead>\n" +
-                "<tr>\n" +
-                "<th class=\"colFirst\" scope=\"col\">Type</th>\n" +
-                "<th class=\"colLast\" scope=\"col\">Description</th>\n" +
-                "</tr>\n" +
-                "</thead>\n" +
-                "<tbody>\n" +
-                "<tr class=\"altColor\">\n" +
-                "<th class=\"colFirst\" scope=\"row\"><a href=\"p1/A.html\" title=\"class in p1\">A</a></th>\n" +
-                "<td class=\"colLast\">&nbsp;</td>\n" +
-                "</tr>\n" +
-                "<tr class=\"rowColor\">\n" +
-                "<th class=\"colFirst\" scope=\"row\"><a href=\"p1/B.html\" title=\"class in p1\">B</a></th>\n" +
-                "<td class=\"colLast\">&nbsp;</td>\n" +
-                "</tr>\n" +
-                "</tbody>\n" +
-                "</table>\n");
+                """
+                    <div class="caption"><span>Uses</span></div>
+                    <div class="details-table two-column-summary">
+                    <div class="table-header col-first">Type</div>
+                    <div class="table-header col-last">Description</div>
+                    <div class="col-first even-row-color"><a href="p1/A.html" title="class in p1">A</a></div>
+                    <div class="col-last even-row-color">&nbsp;</div>
+                    <div class="col-first odd-row-color"><a href="p1/B.html" title="class in p1">B</a></div>
+                    <div class="col-last odd-row-color">&nbsp;</div>
+                    </div>
+                    """);
 
     }
 
@@ -240,21 +235,15 @@ public class TestModuleServices extends JavadocTester {
                 "<h2>Services</h2>");
 
         checkOutput("m/module-summary.html", true,
-                "<div class=\"usesSummary\">\n<table>\n" +
-                "<caption><span>Uses</span><span class=\"tabEnd\">&nbsp;</span></caption>\n" +
-                "<thead>\n" +
-                "<tr>\n" +
-                "<th class=\"colFirst\" scope=\"col\">Type</th>\n" +
-                "<th class=\"colLast\" scope=\"col\">Description</th>\n" +
-                "</tr>\n" +
-                "</thead>\n" +
-                "<tbody>\n" +
-                "<tr class=\"altColor\">\n" +
-                "<th class=\"colFirst\" scope=\"row\"><a href=\"p1/A.html\" title=\"class in p1\">A</a></th>\n" +
-                "<td class=\"colLast\">&nbsp;</td>\n" +
-                "</tr>\n" +
-                "</tbody>\n" +
-                "</table>\n");
+                """
+                    <div class="caption"><span>Uses</span></div>
+                    <div class="details-table two-column-summary">
+                    <div class="table-header col-first">Type</div>
+                    <div class="table-header col-last">Description</div>
+                    <div class="col-first even-row-color"><a href="p1/A.html" title="class in p1">A</a></div>
+                    <div class="col-last even-row-color">&nbsp;</div>
+                    </div>
+                    """);
 
     }
 
@@ -309,24 +298,17 @@ public class TestModuleServices extends JavadocTester {
                 "<h2>Services</h2>");
 
         checkOutput("m/module-summary.html", true,
-                "<div class=\"providesSummary\">\n<table>\n" +
-                "<caption><span>Provides</span><span class=\"tabEnd\">&nbsp;</span></caption>\n" +
-                "<thead>\n" +
-                "<tr>\n" +
-                "<th class=\"colFirst\" scope=\"col\">Type</th>\n" +
-                "<th class=\"colLast\" scope=\"col\">Description</th>\n" +
-                "</tr>\n" +
-                "</thead>\n" +
-                "<tbody>\n" +
-                "<tr class=\"altColor\">\n" +
-                "<th class=\"colFirst\" scope=\"row\"><a href=\"p1/A.html\" title=\"interface in p1\">A</a></th>\n" +
-                "<td class=\"colLast\">&nbsp;<br>(<span class=\"implementationLabel\">Implementation(s):</span>&nbsp;<a href=\"p1/B.html\" title=\"class in p1\">B</a>)</td>\n" +
-                "</tr>\n" +
-                "<tr class=\"rowColor\">\n" +
-                "<th class=\"colFirst\" scope=\"row\"><a href=\"p2/A.html\" title=\"interface in p2\">A</a></th>\n" +
-                "<td class=\"colLast\">&nbsp;<br>(<span class=\"implementationLabel\">Implementation(s):</span>&nbsp;<a href=\"p2/B.html\" title=\"class in p2\">B</a>)</td>\n" +
-                "</tr>\n" +
-                "</tbody>\n");
+                """
+                    <div class="caption"><span>Provides</span></div>
+                    <div class="details-table two-column-summary">
+                    <div class="table-header col-first">Type</div>
+                    <div class="table-header col-last">Description</div>
+                    <div class="col-first even-row-color"><a href="p1/A.html" title="interface in p1">A</a></div>
+                    <div class="col-last even-row-color">&nbsp;<br>(<span class="implementation-label">Implementation(s):</span>&nbsp;<a href="p1/B.html" title="class in p1">B</a>)</div>
+                    <div class="col-first odd-row-color"><a href="p2/A.html" title="interface in p2">A</a></div>
+                    <div class="col-last odd-row-color">&nbsp;<br>(<span class="implementation-label">Implementation(s):</span>&nbsp;<a href="p2/B.html" title="class in p2">B</a>)</div>
+                    </div>
+                    """);
 
     }
 
@@ -355,29 +337,27 @@ public class TestModuleServices extends JavadocTester {
                 "<h2>Services</h2>");
 
         checkOutput("m/module-summary.html", true,
-                "<div class=\"providesSummary\">\n<table>\n" +
-                "<caption><span>Provides</span><span class=\"tabEnd\">&nbsp;</span></caption>\n" +
-                "<thead>\n" +
-                "<tr>\n" +
-                "<th class=\"colFirst\" scope=\"col\">Type</th>\n" +
-                "<th class=\"colLast\" scope=\"col\">Description</th>\n" +
-                "</tr>\n" +
-                "</thead>\n" +
-                "<tbody>\n" +
-                "<tr class=\"altColor\">\n" +
-                "<th class=\"colFirst\" scope=\"row\"><a href=\"p1/A.html\" title=\"interface in p1\">A</a></th>\n" +
-                "<td class=\"colLast\">\n" +
-                "<div class=\"block\">abc</div>\n</td>\n" +
-                "</tr>\n" +
-                "</tbody>\n" +
-                "</table>\n");
+                """
+                    <div class="caption"><span>Provides</span></div>
+                    <div class="details-table two-column-summary">
+                    <div class="table-header col-first">Type</div>
+                    <div class="table-header col-last">Description</div>
+                    <div class="col-first even-row-color"><a href="p1/A.html" title="interface in p1">A</a></div>
+                    <div class="col-last even-row-color">
+                    <div class="block">abc</div>
+                    </div>
+                    </div>
+                    """);
 
     }
 
     @Test
     public void checkUsesProvidesWithApiTagsModeDefault(Path base) throws Exception {
         ModuleBuilder mb = new ModuleBuilder(tb, "m")
-                .comment("module m.\n@provides p1.A abc\n@uses p2.B def")
+                .comment("""
+                    module m.
+                    @provides p1.A abc
+                    @uses p2.B def""")
                 .provides("p1.A", "p1.B")
                 .exports("p1")
                 .classes("package p1; public interface A {}")
@@ -400,38 +380,28 @@ public class TestModuleServices extends JavadocTester {
                 "<h2>Services</h2>");
 
         checkOutput("m/module-summary.html", true,
-                "<div class=\"providesSummary\">\n<table>\n" +
-                "<caption><span>Provides</span><span class=\"tabEnd\">&nbsp;</span></caption>\n" +
-                "<thead>\n" +
-                "<tr>\n" +
-                "<th class=\"colFirst\" scope=\"col\">Type</th>\n" +
-                "<th class=\"colLast\" scope=\"col\">Description</th>\n" +
-                "</tr>\n" +
-                "</thead>\n" +
-                "<tbody>\n" +
-                "<tr class=\"altColor\">\n" +
-                "<th class=\"colFirst\" scope=\"row\"><a href=\"p1/A.html\" title=\"interface in p1\">A</a></th>\n" +
-                "<td class=\"colLast\">\n" +
-                "<div class=\"block\">abc</div>\n</td>\n" +
-                "</tr>\n" +
-                "</tbody>\n" +
-                "</table>",
-                "<div class=\"usesSummary\">\n<table>\n" +
-                "<caption><span>Uses</span><span class=\"tabEnd\">&nbsp;</span></caption>\n" +
-                "<thead>\n" +
-                "<tr>\n" +
-                "<th class=\"colFirst\" scope=\"col\">Type</th>\n" +
-                "<th class=\"colLast\" scope=\"col\">Description</th>\n" +
-                "</tr>\n" +
-                "</thead>\n" +
-                "<tbody>\n" +
-                "<tr class=\"altColor\">\n" +
-                "<th class=\"colFirst\" scope=\"row\"><a href=\"p2/B.html\" title=\"class in p2\">B</a></th>\n" +
-                "<td class=\"colLast\">\n" +
-                "<div class=\"block\">def</div>\n</td>\n" +
-                "</tr>\n" +
-                "</tbody>\n" +
-                "</table>\n");
+                """
+                    <div class="caption"><span>Provides</span></div>
+                    <div class="details-table two-column-summary">
+                    <div class="table-header col-first">Type</div>
+                    <div class="table-header col-last">Description</div>
+                    <div class="col-first even-row-color"><a href="p1/A.html" title="interface in p1">A</a></div>
+                    <div class="col-last even-row-color">
+                    <div class="block">abc</div>
+                    </div>
+                    </div>
+                    """,
+                """
+                    <div class="caption"><span>Uses</span></div>
+                    <div class="details-table two-column-summary">
+                    <div class="table-header col-first">Type</div>
+                    <div class="table-header col-last">Description</div>
+                    <div class="col-first even-row-color"><a href="p2/B.html" title="class in p2">B</a></div>
+                    <div class="col-last even-row-color">
+                    <div class="block">def</div>
+                    </div>
+                    </div>
+                    """);
 
     }
 

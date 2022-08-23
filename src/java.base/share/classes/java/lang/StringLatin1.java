@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,8 +34,8 @@ import java.util.function.IntConsumer;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import jdk.internal.HotSpotIntrinsicCandidate;
 import jdk.internal.util.ArraysSupport;
+import jdk.internal.vm.annotation.IntrinsicCandidate;
 
 import static java.lang.String.LATIN1;
 import static java.lang.String.UTF16;
@@ -90,7 +90,7 @@ final class StringLatin1 {
         System.arraycopy(value, srcBegin, dst, dstBegin, srcEnd - srcBegin);
     }
 
-    @HotSpotIntrinsicCandidate
+    @IntrinsicCandidate
     public static boolean equals(byte[] value, byte[] other) {
         if (value.length == other.length) {
             for (int i = 0; i < value.length; i++) {
@@ -103,7 +103,7 @@ final class StringLatin1 {
         return false;
     }
 
-    @HotSpotIntrinsicCandidate
+    @IntrinsicCandidate
     public static int compareTo(byte[] value, byte[] other) {
         int len1 = value.length;
         int len2 = other.length;
@@ -120,7 +120,7 @@ final class StringLatin1 {
         return len1 - len2;
     }
 
-    @HotSpotIntrinsicCandidate
+    @IntrinsicCandidate
     public static int compareToUTF16(byte[] value, byte[] other) {
         int len1 = length(value);
         int len2 = StringUTF16.length(other);
@@ -210,6 +210,11 @@ final class StringLatin1 {
             // Note: fromIndex might be near -1>>>1.
             return -1;
         }
+        return indexOfChar(value, ch, fromIndex, max);
+    }
+
+    @IntrinsicCandidate
+    private static int indexOfChar(byte[] value, int ch, int fromIndex, int max) {
         byte c = (byte)ch;
         for (int i = fromIndex; i < max; i++) {
             if (value[i] == c) {
@@ -219,7 +224,7 @@ final class StringLatin1 {
         return -1;
     }
 
-    @HotSpotIntrinsicCandidate
+    @IntrinsicCandidate
     public static int indexOf(byte[] value, byte[] str) {
         if (str.length == 0) {
             return 0;
@@ -230,7 +235,7 @@ final class StringLatin1 {
         return indexOf(value, value.length, str, str.length, 0);
     }
 
-    @HotSpotIntrinsicCandidate
+    @IntrinsicCandidate
     public static int indexOf(byte[] value, int valueCount, byte[] str, int strCount, int fromIndex) {
         byte first = str[0];
         int max = (valueCount - strCount);
@@ -357,7 +362,7 @@ final class StringLatin1 {
             resultLen = Math.addExact(valLen,
                     Math.multiplyExact(++p, replLen - targLen));
         } catch (ArithmeticException ignored) {
-            throw new OutOfMemoryError();
+            throw new OutOfMemoryError("Required length exceeds implementation limit");
         }
         if (resultLen == 0) {
             return "";
@@ -630,21 +635,15 @@ final class StringLatin1 {
 
     public static String stripLeading(byte[] value) {
         int left = indexOfNonWhitespace(value);
-        if (left == value.length) {
-            return "";
-        }
         return (left != 0) ? newString(value, left, value.length - left) : null;
     }
 
     public static String stripTrailing(byte[] value) {
         int right = lastIndexOfNonWhitespace(value);
-        if (right == 0) {
-            return "";
-        }
         return (right != value.length) ? newString(value, 0, right) : null;
     }
 
-    private final static class LinesSpliterator implements Spliterator<String> {
+    private static final class LinesSpliterator implements Spliterator<String> {
         private byte[] value;
         private int index;        // current index, modified on advance/split
         private final int fence;  // one past last index
@@ -764,6 +763,9 @@ final class StringLatin1 {
     }
 
     public static String newString(byte[] val, int index, int len) {
+        if (len == 0) {
+            return "";
+        }
         return new String(Arrays.copyOfRange(val, index, index + len),
                           LATIN1);
     }
@@ -773,7 +775,7 @@ final class StringLatin1 {
     }
 
     // inflatedCopy byte[] -> char[]
-    @HotSpotIntrinsicCandidate
+    @IntrinsicCandidate
     public static void inflate(byte[] src, int srcOff, char[] dst, int dstOff, int len) {
         for (int i = 0; i < len; i++) {
             dst[dstOff++] = (char)(src[srcOff++] & 0xff);
@@ -781,7 +783,7 @@ final class StringLatin1 {
     }
 
     // inflatedCopy byte[] -> byte[]
-    @HotSpotIntrinsicCandidate
+    @IntrinsicCandidate
     public static void inflate(byte[] src, int srcOff, byte[] dst, int dstOff, int len) {
         StringUTF16.inflate(src, srcOff, dst, dstOff, len);
     }

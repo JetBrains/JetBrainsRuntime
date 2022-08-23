@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -27,18 +27,24 @@
 # It also contains test-suite configuration information.
 
 # The list of keywords supported in this test suite
-keys=cte_test jcmd nmt regression gc stress metaspace headful intermittent
+# stress:               stress/slow test
+# headful:              test can be run only on headful host
+# intermittent:         flaky test, known to fail intermittently
+# randomness:           test uses randomness, test cases differ from run to run
+# cgroups:              test uses cgroups
+keys=stress headful intermittent randomness cgroups
 
 groups=TEST.groups TEST.quick-groups
 
 # Source files for classes that will be used at the beginning of each test suite run,
 # to determine additional characteristics of the system for use with the @requires tag.
-# Note: compiled bootlibs code will be located in the folder 'bootClasses'
+# Note: compiled bootlibs classes will be added to BCP.
 requires.extraPropDefns = ../../jtreg-ext/requires/VMProps.java
-requires.extraPropDefns.bootlibs = ../../lib/sun \
+requires.extraPropDefns.bootlibs = ../../lib/jdk/test/whitebox
+requires.extraPropDefns.libs = \
     ../../lib/jdk/test/lib/Platform.java \
     ../../lib/jdk/test/lib/Container.java
-requires.extraPropDefns.vmOpts = -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI -Xbootclasspath/a:bootClasses
+requires.extraPropDefns.vmOpts = -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
 requires.properties= \
     sun.arch.data.model \
     vm.simpleArch \
@@ -53,25 +59,27 @@ requires.properties= \
     vm.jvmci \
     vm.emulatedClient \
     vm.cpu.features \
+    vm.pageSize \
     vm.debug \
     vm.hasSA \
-    vm.hasSAandCanAttach \
     vm.hasJFR \
+    vm.hasDTrace \
     vm.rtm.cpu \
     vm.rtm.compiler \
-    vm.aot \
-    vm.aot.enabled \
     vm.cds \
     vm.cds.custom.loaders \
     vm.cds.archived.java.heap \
+    vm.jvmti \
     vm.graal.enabled \
     vm.compiler1.enabled \
     vm.compiler2.enabled \
+    vm.musl \
+    vm.flagless \
     docker.support \
-    test.vm.gc.nvdimm
+    jdk.containerized
 
 # Minimum jtreg version
-requiredVersion=4.2 b16
+requiredVersion=6+1
 
 # Path to libraries in the topmost test directory. This is needed so @library
 # does not need ../../../ notation to reach them

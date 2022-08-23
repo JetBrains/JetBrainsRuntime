@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import java.util.ResourceBundle;
 import java.util.MissingResourceException;
 import java.util.Vector;
 import sun.awt.AWTAccessor;
+import sun.security.action.GetBooleanAction;
 
 final class WFileDialogPeer extends WWindowPeer implements FileDialogPeer {
 
@@ -71,6 +72,11 @@ final class WFileDialogPeer extends WWindowPeer implements FileDialogPeer {
     }
 
     @Override
+    public void updateGC() {
+        // nop
+    }
+
+    @Override
     void create(WComponentPeer parent) {
         this.parent = parent;
     }
@@ -90,6 +96,10 @@ final class WFileDialogPeer extends WWindowPeer implements FileDialogPeer {
     protected void disposeImpl() {
         WToolkit.targetDisposedPeer(target, this);
         _dispose();
+    }
+    @SuppressWarnings("removal")
+    private static boolean useCommonItemDialog() {
+        return AccessController.doPrivileged(new GetBooleanAction("sun.awt.windows.useCommonItemDialog"));
     }
 
     private native void _show();
@@ -197,6 +207,7 @@ final class WFileDialogPeer extends WWindowPeer implements FileDialogPeer {
 
     //This whole static block is a part of 4152317 fix
     static {
+        @SuppressWarnings("removal")
         String filterString = AccessController.doPrivileged(
             new PrivilegedAction<String>() {
                 @Override

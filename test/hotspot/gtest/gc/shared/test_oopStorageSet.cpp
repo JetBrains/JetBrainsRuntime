@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,79 +27,72 @@
 #include "gc/shared/oopStorageSet.hpp"
 #include "memory/allocation.inline.hpp"
 #include "utilities/debug.hpp"
+#include "utilities/enumIterator.hpp"
 #include "utilities/globalDefinitions.hpp"
 #include "utilities/macros.hpp"
 #include "unittest.hpp"
 
-// GTEST assertions may introduce ODR-uses.  Dodge them.
-template<typename T> static T no_odr(T x) { return x; }
+class OopStorageSetTest : public ::testing::Test {
+protected:
+  // Returns index of s in storages, or size if not found.
+  template <uint count>
+  static size_t find_storage(OopStorage* s, OopStorage* storages[count]) {
+    for (uint i = 0; i < count; ++i) {
+      if (s == storages[i]) {
+        return i;
+      }
+    }
+    return count;
+  }
 
-static void fill_strong(OopStorage** storages, size_t size) {
-  ASSERT_EQ(size, no_odr(OopStorageSet::strong_count));
-  STATIC_ASSERT(2 == OopStorageSet::strong_count);
-  storages[0] = OopStorageSet::jni_global();
-  storages[1] = OopStorageSet::vm_global();
-}
-
-static void fill_weak(OopStorage** storages, size_t size) {
-  ASSERT_EQ(size, no_odr(OopStorageSet::weak_count));
-  STATIC_ASSERT(4 == OopStorageSet::weak_count);
-  storages[0] = OopStorageSet::jni_weak();
-  storages[1] = OopStorageSet::vm_weak();
-  storages[2] = OopStorageSet::string_table_weak();
-  storages[3] = OopStorageSet::resolved_method_table_weak();
-}
-
-static void fill_all(OopStorage** storages, size_t size) {
-  ASSERT_EQ(size, no_odr(OopStorageSet::all_count));
-  const uint strong_count = OopStorageSet::strong_count;
-  fill_strong(storages, strong_count);
-  fill_weak(storages + strong_count, size - strong_count);
-}
-
-// Returns index of s in storages, or size if not found.
-static size_t find_storage(OopStorage* s, OopStorage** storages, size_t size) {
-  for (uint i = 0; i < size; ++i) {
-    if (s == storages[i]) {
-      return i;
+  template <uint count, typename Range>
+  static void check_iteration(Range range, OopStorage* storages[count]) {
+    ASSERT_EQ(range.size(), count);
+    for (auto id : range) {
+      OopStorage* storage = OopStorageSet::storage(id);
+      size_t index = find_storage<count>(storage, storages);
+      ASSERT_LT(index, count);
+      storages[index] = nullptr;
+    }
+    for (uint i = 0; i < count; ++i) {
+      ASSERT_EQ(nullptr /* null_storage */, storages[i]);
     }
   }
-  return size;
-}
 
-static void check_iterator(OopStorageSet::Iterator it,
-                           OopStorage** storages,
-                           size_t size) {
-  OopStorageSet::Iterator start = it;
-  ASSERT_EQ(start, it);
-  for ( ; !it.is_end(); ++it) {
-    size_t index = find_storage(*it, storages, size);
-    ASSERT_LT(index, size);
-    storages[index] = NULL;
-  }
-  ASSERT_NE(start, it);
-  const OopStorage* null_storage = NULL;
-  for (uint i = 0; i < size; ++i) {
-    ASSERT_EQ(null_storage, storages[i]);
-  }
-}
-
-static void test_iterator(uint count,
-                          OopStorageSet::Iterator iterator,
-                          void (*fill)(OopStorage**, size_t)) {
-  OopStorage** storages = NEW_C_HEAP_ARRAY(OopStorage*, count, mtGC);
-  fill(storages, count);
-  check_iterator(iterator, storages, count);
-  FREE_C_HEAP_ARRAY(OopStorage*, storages);
-}
-
-#define TEST_ITERATOR(kind)                                             \
-  TEST_VM(OopStorageSetTest, PASTE_TOKENS(kind, _iterator)) {           \
-    test_iterator(OopStorageSet::PASTE_TOKENS(kind, _count),            \
-                  OopStorageSet::PASTE_TOKENS(kind, _iterator)(),       \
-                  &PASTE_TOKENS(fill_, kind));                          \
+  template<uint count, typename Range>
+  static void test_iteration(Range range, void (*fill)(OopStorage*[count])) {
+    OopStorage* storages[count];
+    fill(storages);
+    check_iteration<count>(range, storages);
   }
 
-TEST_ITERATOR(strong);
-TEST_ITERATOR(weak)
-TEST_ITERATOR(all)
+  static void test_strong_iteration() {
+    test_iteration<OopStorageSet::strong_count>(
+      EnumRange<OopStorageSet::StrongId>(),
+      &OopStorageSet::fill_strong);
+
+  }
+  static void test_weak_iteration() {
+    test_iteration<OopStorageSet::weak_count>(
+      EnumRange<OopStorageSet::WeakId>(),
+      &OopStorageSet::fill_weak);
+
+  }
+  static void test_all_iteration() {
+    test_iteration<OopStorageSet::all_count>(
+      EnumRange<OopStorageSet::Id>(),
+      &OopStorageSet::fill_all);
+  }
+};
+
+TEST_VM_F(OopStorageSetTest, strong_iteration) {
+  test_strong_iteration();
+}
+
+TEST_VM_F(OopStorageSetTest, weak_iteration) {
+  test_weak_iteration();
+}
+
+TEST_VM_F(OopStorageSetTest, all_iteration) {
+  test_all_iteration();
+}

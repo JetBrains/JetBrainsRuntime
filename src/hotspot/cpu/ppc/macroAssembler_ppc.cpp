@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012, 2019, SAP SE. All rights reserved.
+ * Copyright (c) 1997, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@
 #include "memory/resourceArea.hpp"
 #include "nativeInst_ppc.hpp"
 #include "oops/klass.inline.hpp"
+#include "oops/methodData.hpp"
 #include "prims/methodHandles.hpp"
 #include "runtime/biasedLocking.hpp"
 #include "runtime/icache.hpp"
@@ -43,10 +44,9 @@
 #include "runtime/safepointMechanism.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
+#include "runtime/vm_version.hpp"
 #include "utilities/macros.hpp"
-#ifdef COMPILER2
-#include "opto/intrinsicnode.hpp"
-#endif
+#include "utilities/powerOfTwo.hpp"
 
 #ifdef PRODUCT
 #define BLOCK_COMMENT(str) // nothing
@@ -221,8 +221,9 @@ address MacroAssembler::patch_set_narrow_oop(address a, address bound, narrowOop
   }
   assert(inst1_found, "inst is not lis");
 
-  int xc = (data >> 16) & 0xffff;
-  int xd = (data >>  0) & 0xffff;
+  uint32_t data_value = CompressedOops::narrow_oop_value(data);
+  int xc = (data_value >> 16) & 0xffff;
+  int xd = (data_value >>  0) & 0xffff;
 
   set_imm((int *)inst1_addr, (short)(xc)); // see enc_load_con_narrow_hi/_lo
   set_imm((int *)inst2_addr,        (xd)); // unsigned int
@@ -255,7 +256,7 @@ narrowOop MacroAssembler::get_narrow_oop(address a, address bound) {
   uint xl = ((unsigned int) (get_imm(inst2_addr, 0) & 0xffff));
   uint xh = (((get_imm(inst1_addr, 0)) & 0xffff) << 16);
 
-  return (int) (xl | xh);
+  return CompressedOops::narrow_oop_cast(xl | xh);
 }
 #endif // _LP64
 
@@ -380,25 +381,6 @@ AddressLiteral MacroAssembler::constant_oop_address(jobject obj) {
   assert(oop_recorder() != NULL, "this assembler needs an OopRecorder");
   int oop_index = oop_recorder()->find_index(obj);
   return AddressLiteral(address(obj), oop_Relocation::spec(oop_index));
-}
-
-RegisterOrConstant MacroAssembler::delayed_value_impl(intptr_t* delayed_value_addr,
-                                                      Register tmp, int offset) {
-  intptr_t value = *delayed_value_addr;
-  if (value != 0) {
-    return RegisterOrConstant(value + offset);
-  }
-
-  // Load indirectly to solve generation ordering problem.
-  // static address, no relocation
-  int simm16_offset = load_const_optimized(tmp, delayed_value_addr, noreg, true);
-  ld(tmp, simm16_offset, tmp); // must be aligned ((xa & 3) == 0)
-
-  if (offset != 0) {
-    addi(tmp, tmp, offset);
-  }
-
-  return RegisterOrConstant(tmp);
 }
 
 #ifndef PRODUCT
@@ -725,6 +707,30 @@ address MacroAssembler::get_dest_of_bxx64_patchable_at(address instruction_addr,
   }
 }
 
+void MacroAssembler::clobber_volatile_gprs(Register excluded_register) {
+  const int magic_number = 0x42;
+
+  // Preserve stack pointer register (R1_SP) and system thread id register (R13);
+  // although they're technically volatile
+  for (int i = 2; i < 13; i++) {
+    Register reg = as_Register(i);
+    if (reg == excluded_register) {
+      continue;
+    }
+
+    li(reg, magic_number);
+  }
+}
+
+void MacroAssembler::clobber_carg_stack_slots(Register tmp) {
+  const int magic_number = 0x43;
+
+  li(tmp, magic_number);
+  for (int m = 0; m <= 7; m++) {
+    std(tmp, frame::abi_minframe_size + m * 8, R1_SP);
+  }
+}
+
 // Uses ordering which corresponds to ABI:
 //    _savegpr0_14:  std  r14,-144(r1)
 //    _savegpr0_15:  std  r15,-136(r1)
@@ -815,9 +821,11 @@ void MacroAssembler::restore_nonvolatile_gprs(Register src, int offset) {
 }
 
 // For verify_oops.
-void MacroAssembler::save_volatile_gprs(Register dst, int offset) {
+void MacroAssembler::save_volatile_gprs(Register dst, int offset, bool include_fp_regs, bool include_R3_RET_reg) {
   std(R2,  offset, dst);   offset += 8;
-  std(R3,  offset, dst);   offset += 8;
+  if (include_R3_RET_reg) {
+    std(R3, offset, dst);  offset += 8;
+  }
   std(R4,  offset, dst);   offset += 8;
   std(R5,  offset, dst);   offset += 8;
   std(R6,  offset, dst);   offset += 8;
@@ -828,26 +836,30 @@ void MacroAssembler::save_volatile_gprs(Register dst, int offset) {
   std(R11, offset, dst);   offset += 8;
   std(R12, offset, dst);   offset += 8;
 
-  stfd(F0, offset, dst);   offset += 8;
-  stfd(F1, offset, dst);   offset += 8;
-  stfd(F2, offset, dst);   offset += 8;
-  stfd(F3, offset, dst);   offset += 8;
-  stfd(F4, offset, dst);   offset += 8;
-  stfd(F5, offset, dst);   offset += 8;
-  stfd(F6, offset, dst);   offset += 8;
-  stfd(F7, offset, dst);   offset += 8;
-  stfd(F8, offset, dst);   offset += 8;
-  stfd(F9, offset, dst);   offset += 8;
-  stfd(F10, offset, dst);  offset += 8;
-  stfd(F11, offset, dst);  offset += 8;
-  stfd(F12, offset, dst);  offset += 8;
-  stfd(F13, offset, dst);
+  if (include_fp_regs) {
+    stfd(F0, offset, dst);   offset += 8;
+    stfd(F1, offset, dst);   offset += 8;
+    stfd(F2, offset, dst);   offset += 8;
+    stfd(F3, offset, dst);   offset += 8;
+    stfd(F4, offset, dst);   offset += 8;
+    stfd(F5, offset, dst);   offset += 8;
+    stfd(F6, offset, dst);   offset += 8;
+    stfd(F7, offset, dst);   offset += 8;
+    stfd(F8, offset, dst);   offset += 8;
+    stfd(F9, offset, dst);   offset += 8;
+    stfd(F10, offset, dst);  offset += 8;
+    stfd(F11, offset, dst);  offset += 8;
+    stfd(F12, offset, dst);  offset += 8;
+    stfd(F13, offset, dst);
+  }
 }
 
 // For verify_oops.
-void MacroAssembler::restore_volatile_gprs(Register src, int offset) {
+void MacroAssembler::restore_volatile_gprs(Register src, int offset, bool include_fp_regs, bool include_R3_RET_reg) {
   ld(R2,  offset, src);   offset += 8;
-  ld(R3,  offset, src);   offset += 8;
+  if (include_R3_RET_reg) {
+    ld(R3,  offset, src);   offset += 8;
+  }
   ld(R4,  offset, src);   offset += 8;
   ld(R5,  offset, src);   offset += 8;
   ld(R6,  offset, src);   offset += 8;
@@ -858,35 +870,37 @@ void MacroAssembler::restore_volatile_gprs(Register src, int offset) {
   ld(R11, offset, src);   offset += 8;
   ld(R12, offset, src);   offset += 8;
 
-  lfd(F0, offset, src);   offset += 8;
-  lfd(F1, offset, src);   offset += 8;
-  lfd(F2, offset, src);   offset += 8;
-  lfd(F3, offset, src);   offset += 8;
-  lfd(F4, offset, src);   offset += 8;
-  lfd(F5, offset, src);   offset += 8;
-  lfd(F6, offset, src);   offset += 8;
-  lfd(F7, offset, src);   offset += 8;
-  lfd(F8, offset, src);   offset += 8;
-  lfd(F9, offset, src);   offset += 8;
-  lfd(F10, offset, src);  offset += 8;
-  lfd(F11, offset, src);  offset += 8;
-  lfd(F12, offset, src);  offset += 8;
-  lfd(F13, offset, src);
+  if (include_fp_regs) {
+    lfd(F0, offset, src);   offset += 8;
+    lfd(F1, offset, src);   offset += 8;
+    lfd(F2, offset, src);   offset += 8;
+    lfd(F3, offset, src);   offset += 8;
+    lfd(F4, offset, src);   offset += 8;
+    lfd(F5, offset, src);   offset += 8;
+    lfd(F6, offset, src);   offset += 8;
+    lfd(F7, offset, src);   offset += 8;
+    lfd(F8, offset, src);   offset += 8;
+    lfd(F9, offset, src);   offset += 8;
+    lfd(F10, offset, src);  offset += 8;
+    lfd(F11, offset, src);  offset += 8;
+    lfd(F12, offset, src);  offset += 8;
+    lfd(F13, offset, src);
+  }
 }
 
 void MacroAssembler::save_LR_CR(Register tmp) {
   mfcr(tmp);
-  std(tmp, _abi(cr), R1_SP);
+  std(tmp, _abi0(cr), R1_SP);
   mflr(tmp);
-  std(tmp, _abi(lr), R1_SP);
+  std(tmp, _abi0(lr), R1_SP);
   // Tmp must contain lr on exit! (see return_addr and prolog in ppc64.ad)
 }
 
 void MacroAssembler::restore_LR_CR(Register tmp) {
   assert(tmp != R1_SP, "must be distinct");
-  ld(tmp, _abi(lr), R1_SP);
+  ld(tmp, _abi0(lr), R1_SP);
   mtlr(tmp);
-  ld(tmp, _abi(cr), R1_SP);
+  ld(tmp, _abi0(cr), R1_SP);
   mtcr(tmp);
 }
 
@@ -903,11 +917,11 @@ void MacroAssembler::resize_frame(Register offset, Register tmp) {
 #ifdef ASSERT
   assert_different_registers(offset, tmp, R1_SP);
   andi_(tmp, offset, frame::alignment_in_bytes-1);
-  asm_assert_eq("resize_frame: unaligned", 0x204);
+  asm_assert_eq("resize_frame: unaligned");
 #endif
 
   // tmp <- *(SP)
-  ld(tmp, _abi(callers_sp), R1_SP);
+  ld(tmp, _abi0(callers_sp), R1_SP);
   // addr <- SP + offset;
   // *(addr) <- tmp;
   // SP <- addr
@@ -919,7 +933,7 @@ void MacroAssembler::resize_frame(int offset, Register tmp) {
   assert_different_registers(tmp, R1_SP);
   assert((offset & (frame::alignment_in_bytes-1))==0, "resize_frame: unaligned");
   // tmp <- *(SP)
-  ld(tmp, _abi(callers_sp), R1_SP);
+  ld(tmp, _abi0(callers_sp), R1_SP);
   // addr <- SP + offset;
   // *(addr) <- tmp;
   // SP <- addr
@@ -942,7 +956,7 @@ void MacroAssembler::push_frame(Register bytes, Register tmp) {
 #ifdef ASSERT
   assert(bytes != R0, "r0 not allowed here");
   andi_(R0, bytes, frame::alignment_in_bytes-1);
-  asm_assert_eq("push_frame(Reg, Reg): unaligned", 0x203);
+  asm_assert_eq("push_frame(Reg, Reg): unaligned");
 #endif
   neg(tmp, bytes);
   stdux(R1_SP, R1_SP, tmp);
@@ -973,7 +987,7 @@ void MacroAssembler::push_frame_reg_args_nonvolatiles(unsigned int bytes,
 
 // Pop current C frame.
 void MacroAssembler::pop_frame() {
-  ld(R1_SP, _abi(callers_sp), R1_SP);
+  ld(R1_SP, _abi0(callers_sp), R1_SP);
 }
 
 #if defined(ABI_ELFv2)
@@ -1295,7 +1309,7 @@ bool MacroAssembler::is_load_from_polling_page(int instruction, void* ucontext,
   if (polling_address_ptr != NULL) {
     *polling_address_ptr = addr;
   }
-  return os::is_poll_address(addr);
+  return SafepointMechanism::is_poll_address(addr);
 #else
   // Not on Linux, ucontext must be NULL.
   ShouldNotReachHere();
@@ -2314,7 +2328,7 @@ void MacroAssembler::tlab_allocate(
     Label L;
     andi_(R0, new_top, MinObjAlignmentInBytesMask);
     beq(CCR0, L);
-    stop("updated TLAB free is not properly aligned", 0x934);
+    stop("updated TLAB free is not properly aligned");
     bind(L);
   }
 #endif // ASSERT
@@ -2793,7 +2807,7 @@ void MacroAssembler::rtm_inflated_locking(ConditionRegister flag,
     ld(mark_word, oopDesc::mark_offset_in_bytes(), obj);
 #ifdef ASSERT
     andi_(R0, mark_word, markWord::monitor_value);
-    asm_assert_ne("must be inflated", 0xa754); // Deflating only allowed at safepoint.
+    asm_assert_ne("must be inflated"); // Deflating only allowed at safepoint.
 #endif
     addi(owner_addr_Reg, mark_word, owner_offset);
   }
@@ -2837,6 +2851,12 @@ void MacroAssembler::compiler_fast_lock_object(ConditionRegister flag, Register 
   // Load markWord from object into displaced_header.
   ld(displaced_header, oopDesc::mark_offset_in_bytes(), oop);
 
+  if (DiagnoseSyncOnValueBasedClasses != 0) {
+    load_klass(temp, oop);
+    lwz(temp, in_bytes(Klass::access_flags_offset()), temp);
+    testbitdi(flag, R0, temp, exact_log2(JVM_ACC_IS_VALUE_BASED_CLASS));
+    bne(flag, cont);
+  }
 
   if (try_bias) {
     biased_locking_enter(flag, oop, displaced_header, temp, current_header, cont);
@@ -2922,16 +2942,17 @@ void MacroAssembler::compiler_fast_lock_object(ConditionRegister flag, Register 
 
   // Store a non-null value into the box.
   std(box, BasicLock::displaced_header_offset_in_bytes(), box);
+  beq(flag, cont);
 
-# ifdef ASSERT
+  // Check for recursive locking.
+  cmpd(flag, current_header, R16_thread);
   bne(flag, cont);
-  // We have acquired the monitor, check some invariants.
-  addi(/*monitor=*/temp, temp, -ObjectMonitor::owner_offset_in_bytes());
-  // Invariant 1: _recursions should be 0.
-  //assert(ObjectMonitor::recursions_size_in_bytes() == 8, "unexpected size");
-  asm_assert_mem8_is_zero(ObjectMonitor::recursions_offset_in_bytes(), temp,
-                            "monitor->_recursions should be 0", -1);
-# endif
+
+  // Current thread already owns the lock. Just increment recursions.
+  Register recursions = displaced_header;
+  ld(recursions, ObjectMonitor::recursions_offset_in_bytes()-ObjectMonitor::owner_offset_in_bytes(), temp);
+  addi(recursions, recursions, 1);
+  std(recursions, ObjectMonitor::recursions_offset_in_bytes()-ObjectMonitor::owner_offset_in_bytes(), temp);
 
 #if INCLUDE_RTM_OPT
   } // use_rtm()
@@ -2947,8 +2968,7 @@ void MacroAssembler::compiler_fast_unlock_object(ConditionRegister flag, Registe
                                                  bool try_bias, bool use_rtm) {
   assert_different_registers(oop, box, temp, displaced_header, current_header);
   assert(flag != CCR0, "bad condition register");
-  Label cont;
-  Label object_has_monitor;
+  Label cont, object_has_monitor, notRecursive;
 
   if (try_bias) {
     biased_locking_exit(flag, oop, current_header, cont);
@@ -3019,11 +3039,16 @@ void MacroAssembler::compiler_fast_unlock_object(ConditionRegister flag, Registe
 #endif
 
   ld(displaced_header, ObjectMonitor::recursions_offset_in_bytes(), current_header);
-  xorr(temp, R16_thread, temp);      // Will be 0 if we are the owner.
-  orr(temp, temp, displaced_header); // Will be 0 if there are 0 recursions.
-  cmpdi(flag, temp, 0);
+
+  cmpd(flag, temp, R16_thread);
   bne(flag, cont);
 
+  addic_(displaced_header, displaced_header, -1);
+  blt(CCR0, notRecursive); // Not recursive if negative after decrement.
+  std(displaced_header, ObjectMonitor::recursions_offset_in_bytes(), current_header);
+  b(cont); // flag is already EQ here.
+
+  bind(notRecursive);
   ld(temp,             ObjectMonitor::EntryList_offset_in_bytes(), current_header);
   ld(displaced_header, ObjectMonitor::cxq_offset_in_bytes(), current_header);
   orr(temp, temp, displaced_header); // Will be 0 if both are 0.
@@ -3037,21 +3062,38 @@ void MacroAssembler::compiler_fast_unlock_object(ConditionRegister flag, Registe
   // flag == NE indicates failure
 }
 
-void MacroAssembler::safepoint_poll(Label& slow_path, Register temp_reg) {
-  if (SafepointMechanism::uses_thread_local_poll()) {
-    ld(temp_reg, in_bytes(Thread::polling_page_offset()), R16_thread);
-    // Armed page has poll_bit set.
-    andi_(temp_reg, temp_reg, SafepointMechanism::poll_bit());
-  } else {
-    lwz(temp_reg, (RegisterOrConstant)(intptr_t)SafepointSynchronize::address_of_state());
-    cmpwi(CCR0, temp_reg, SafepointSynchronize::_not_synchronized);
+void MacroAssembler::safepoint_poll(Label& slow_path, Register temp, bool at_return, bool in_nmethod) {
+  ld(temp, in_bytes(JavaThread::polling_word_offset()), R16_thread);
+
+  if (at_return) {
+    if (in_nmethod) {
+      if (UseSIGTRAP) {
+        // Use Signal Handler.
+        relocate(relocInfo::poll_return_type);
+        td(traptoGreaterThanUnsigned, R1_SP, temp);
+      } else {
+        cmpld(CCR0, R1_SP, temp);
+        // Stub may be out of range for short conditional branch.
+        bc_far_optimized(Assembler::bcondCRbiIs1, bi0(CCR0, Assembler::greater), slow_path);
+      }
+    } else { // Not in nmethod.
+      // Frame still on stack, need to get fp.
+      Register fp = R0;
+      ld(fp, _abi0(callers_sp), R1_SP);
+      cmpld(CCR0, fp, temp);
+      bgt(CCR0, slow_path);
+    }
+  } else { // Normal safepoint poll. Not at return.
+    assert(!in_nmethod, "should use load_from_polling_page");
+    andi_(temp, temp, SafepointMechanism::poll_bit());
+    bne(CCR0, slow_path);
   }
-  bne(CCR0, slow_path);
 }
 
-void MacroAssembler::resolve_jobject(Register value, Register tmp1, Register tmp2, bool needs_frame) {
+void MacroAssembler::resolve_jobject(Register value, Register tmp1, Register tmp2,
+                                     MacroAssembler::PreservationLevel preservation_level) {
   BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
-  bs->resolve_jobject(this, value, tmp1, tmp2, needs_frame);
+  bs->resolve_jobject(this, value, tmp1, tmp2, preservation_level);
 }
 
 // Values for last_Java_pc, and last_Java_sp must comply to the rules
@@ -3064,7 +3106,7 @@ void MacroAssembler::set_last_Java_frame(Register last_Java_sp, Register last_Ja
 
   // Verify that last_Java_pc was zeroed on return to Java
   asm_assert_mem8_is_zero(in_bytes(JavaThread::last_Java_pc_offset()), R16_thread,
-                          "last_Java_pc not zeroed before leaving Java", 0x200);
+                          "last_Java_pc not zeroed before leaving Java");
 
   // When returning from calling out from Java mode the frame anchor's
   // last_Java_pc will always be set to NULL. It is set here so that
@@ -3080,7 +3122,7 @@ void MacroAssembler::set_last_Java_frame(Register last_Java_sp, Register last_Ja
 
 void MacroAssembler::reset_last_Java_frame(void) {
   asm_assert_mem8_isnot_zero(in_bytes(JavaThread::last_Java_sp_offset()),
-                             R16_thread, "SP was not set, still zero", 0x202);
+                             R16_thread, "SP was not set, still zero");
 
   BLOCK_COMMENT("reset_last_Java_frame {");
   li(R0, 0);
@@ -3171,10 +3213,25 @@ void MacroAssembler::store_klass_gap(Register dst_oop, Register val) {
 }
 
 int MacroAssembler::instr_size_for_decode_klass_not_null() {
-  if (!UseCompressedClassPointers) return 0;
-  int num_instrs = 1;  // shift or move
-  if (CompressedKlassPointers::base() != 0) num_instrs = 7;  // shift + load const + add
-  return num_instrs * BytesPerInstWord;
+  static int computed_size = -1;
+
+  // Not yet computed?
+  if (computed_size == -1) {
+
+    if (!UseCompressedClassPointers) {
+      computed_size = 0;
+    } else {
+      // Determine by scratch emit.
+      ResourceMark rm;
+      int code_size = 8 * BytesPerInstWord;
+      CodeBuffer cb("decode_klass_not_null scratch buffer", code_size, 0);
+      MacroAssembler* a = new MacroAssembler(&cb);
+      a->decode_klass_not_null(R11_scratch1);
+      computed_size = a->offset();
+    }
+  }
+
+  return computed_size;
 }
 
 void MacroAssembler::decode_klass_not_null(Register dst, Register src) {
@@ -3202,16 +3259,22 @@ void MacroAssembler::load_klass(Register dst, Register src) {
 }
 
 // ((OopHandle)result).resolve();
-void MacroAssembler::resolve_oop_handle(Register result) {
-  // OopHandle::resolve is an indirection.
-  ld(result, 0, result);
+void MacroAssembler::resolve_oop_handle(Register result, Register tmp1, Register tmp2,
+                                        MacroAssembler::PreservationLevel preservation_level) {
+  access_load_at(T_OBJECT, IN_NATIVE, result, noreg, result, tmp1, tmp2, preservation_level);
 }
 
-void MacroAssembler::load_mirror_from_const_method(Register mirror, Register const_method) {
-  ld(mirror, in_bytes(ConstMethod::constants_offset()), const_method);
-  ld(mirror, ConstantPool::pool_holder_offset_in_bytes(), mirror);
-  ld(mirror, in_bytes(Klass::java_mirror_offset()), mirror);
-  resolve_oop_handle(mirror);
+void MacroAssembler::resolve_weak_handle(Register result, Register tmp1, Register tmp2,
+                                         MacroAssembler::PreservationLevel preservation_level) {
+  Label resolved;
+
+  // A null weak handle resolves to null.
+  cmpdi(CCR0, result, 0);
+  beq(CCR0, resolved);
+
+  access_load_at(T_OBJECT, IN_NATIVE | ON_PHANTOM_OOP_REF, result, noreg, result, tmp1, tmp2,
+                 preservation_level);
+  bind(resolved);
 }
 
 void MacroAssembler::load_method_holder(Register holder, Register method) {
@@ -3310,552 +3373,6 @@ void MacroAssembler::clear_memory_doubleword(Register base_ptr, Register cnt_dwo
 
 /////////////////////////////////////////// String intrinsics ////////////////////////////////////////////
 
-#ifdef COMPILER2
-// Intrinsics for CompactStrings
-
-// Compress char[] to byte[] by compressing 16 bytes at once.
-void MacroAssembler::string_compress_16(Register src, Register dst, Register cnt,
-                                        Register tmp1, Register tmp2, Register tmp3, Register tmp4, Register tmp5,
-                                        Label& Lfailure) {
-
-  const Register tmp0 = R0;
-  assert_different_registers(src, dst, cnt, tmp0, tmp1, tmp2, tmp3, tmp4, tmp5);
-  Label Lloop, Lslow;
-
-  // Check if cnt >= 8 (= 16 bytes)
-  lis(tmp1, 0xFF);                // tmp1 = 0x00FF00FF00FF00FF
-  srwi_(tmp2, cnt, 3);
-  beq(CCR0, Lslow);
-  ori(tmp1, tmp1, 0xFF);
-  rldimi(tmp1, tmp1, 32, 0);
-  mtctr(tmp2);
-
-  // 2x unrolled loop
-  bind(Lloop);
-  ld(tmp2, 0, src);               // _0_1_2_3 (Big Endian)
-  ld(tmp4, 8, src);               // _4_5_6_7
-
-  orr(tmp0, tmp2, tmp4);
-  rldicl(tmp3, tmp2, 6*8, 64-24); // _____1_2
-  rldimi(tmp2, tmp2, 2*8, 2*8);   // _0_2_3_3
-  rldicl(tmp5, tmp4, 6*8, 64-24); // _____5_6
-  rldimi(tmp4, tmp4, 2*8, 2*8);   // _4_6_7_7
-
-  andc_(tmp0, tmp0, tmp1);
-  bne(CCR0, Lfailure);            // Not latin1.
-  addi(src, src, 16);
-
-  rlwimi(tmp3, tmp2, 0*8, 24, 31);// _____1_3
-  srdi(tmp2, tmp2, 3*8);          // ____0_2_
-  rlwimi(tmp5, tmp4, 0*8, 24, 31);// _____5_7
-  srdi(tmp4, tmp4, 3*8);          // ____4_6_
-
-  orr(tmp2, tmp2, tmp3);          // ____0123
-  orr(tmp4, tmp4, tmp5);          // ____4567
-
-  stw(tmp2, 0, dst);
-  stw(tmp4, 4, dst);
-  addi(dst, dst, 8);
-  bdnz(Lloop);
-
-  bind(Lslow);                    // Fallback to slow version
-}
-
-// Compress char[] to byte[]. cnt must be positive int.
-void MacroAssembler::string_compress(Register src, Register dst, Register cnt, Register tmp, Label& Lfailure) {
-  Label Lloop;
-  mtctr(cnt);
-
-  bind(Lloop);
-  lhz(tmp, 0, src);
-  cmplwi(CCR0, tmp, 0xff);
-  bgt(CCR0, Lfailure);            // Not latin1.
-  addi(src, src, 2);
-  stb(tmp, 0, dst);
-  addi(dst, dst, 1);
-  bdnz(Lloop);
-}
-
-// Inflate byte[] to char[] by inflating 16 bytes at once.
-void MacroAssembler::string_inflate_16(Register src, Register dst, Register cnt,
-                                       Register tmp1, Register tmp2, Register tmp3, Register tmp4, Register tmp5) {
-  const Register tmp0 = R0;
-  assert_different_registers(src, dst, cnt, tmp0, tmp1, tmp2, tmp3, tmp4, tmp5);
-  Label Lloop, Lslow;
-
-  // Check if cnt >= 8
-  srwi_(tmp2, cnt, 3);
-  beq(CCR0, Lslow);
-  lis(tmp1, 0xFF);                // tmp1 = 0x00FF00FF
-  ori(tmp1, tmp1, 0xFF);
-  mtctr(tmp2);
-
-  // 2x unrolled loop
-  bind(Lloop);
-  lwz(tmp2, 0, src);              // ____0123 (Big Endian)
-  lwz(tmp4, 4, src);              // ____4567
-  addi(src, src, 8);
-
-  rldicl(tmp3, tmp2, 7*8, 64-8);  // _______2
-  rlwimi(tmp2, tmp2, 3*8, 16, 23);// ____0113
-  rldicl(tmp5, tmp4, 7*8, 64-8);  // _______6
-  rlwimi(tmp4, tmp4, 3*8, 16, 23);// ____4557
-
-  andc(tmp0, tmp2, tmp1);         // ____0_1_
-  rlwimi(tmp2, tmp3, 2*8, 0, 23); // _____2_3
-  andc(tmp3, tmp4, tmp1);         // ____4_5_
-  rlwimi(tmp4, tmp5, 2*8, 0, 23); // _____6_7
-
-  rldimi(tmp2, tmp0, 3*8, 0*8);   // _0_1_2_3
-  rldimi(tmp4, tmp3, 3*8, 0*8);   // _4_5_6_7
-
-  std(tmp2, 0, dst);
-  std(tmp4, 8, dst);
-  addi(dst, dst, 16);
-  bdnz(Lloop);
-
-  bind(Lslow);                    // Fallback to slow version
-}
-
-// Inflate byte[] to char[]. cnt must be positive int.
-void MacroAssembler::string_inflate(Register src, Register dst, Register cnt, Register tmp) {
-  Label Lloop;
-  mtctr(cnt);
-
-  bind(Lloop);
-  lbz(tmp, 0, src);
-  addi(src, src, 1);
-  sth(tmp, 0, dst);
-  addi(dst, dst, 2);
-  bdnz(Lloop);
-}
-
-void MacroAssembler::string_compare(Register str1, Register str2,
-                                    Register cnt1, Register cnt2,
-                                    Register tmp1, Register result, int ae) {
-  const Register tmp0 = R0,
-                 diff = tmp1;
-
-  assert_different_registers(str1, str2, cnt1, cnt2, tmp0, tmp1, result);
-  Label Ldone, Lslow, Lloop, Lreturn_diff;
-
-  // Note: Making use of the fact that compareTo(a, b) == -compareTo(b, a)
-  // we interchange str1 and str2 in the UL case and negate the result.
-  // Like this, str1 is always latin1 encoded, except for the UU case.
-  // In addition, we need 0 (or sign which is 0) extend.
-
-  if (ae == StrIntrinsicNode::UU) {
-    srwi(cnt1, cnt1, 1);
-  } else {
-    clrldi(cnt1, cnt1, 32);
-  }
-
-  if (ae != StrIntrinsicNode::LL) {
-    srwi(cnt2, cnt2, 1);
-  } else {
-    clrldi(cnt2, cnt2, 32);
-  }
-
-  // See if the lengths are different, and calculate min in cnt1.
-  // Save diff in case we need it for a tie-breaker.
-  subf_(diff, cnt2, cnt1); // diff = cnt1 - cnt2
-  // if (diff > 0) { cnt1 = cnt2; }
-  if (VM_Version::has_isel()) {
-    isel(cnt1, CCR0, Assembler::greater, /*invert*/ false, cnt2);
-  } else {
-    Label Lskip;
-    blt(CCR0, Lskip);
-    mr(cnt1, cnt2);
-    bind(Lskip);
-  }
-
-  // Rename registers
-  Register chr1 = result;
-  Register chr2 = tmp0;
-
-  // Compare multiple characters in fast loop (only implemented for same encoding).
-  int stride1 = 8, stride2 = 8;
-  if (ae == StrIntrinsicNode::LL || ae == StrIntrinsicNode::UU) {
-    int log2_chars_per_iter = (ae == StrIntrinsicNode::LL) ? 3 : 2;
-    Label Lfastloop, Lskipfast;
-
-    srwi_(tmp0, cnt1, log2_chars_per_iter);
-    beq(CCR0, Lskipfast);
-    rldicl(cnt2, cnt1, 0, 64 - log2_chars_per_iter); // Remaining characters.
-    li(cnt1, 1 << log2_chars_per_iter); // Initialize for failure case: Rescan characters from current iteration.
-    mtctr(tmp0);
-
-    bind(Lfastloop);
-    ld(chr1, 0, str1);
-    ld(chr2, 0, str2);
-    cmpd(CCR0, chr1, chr2);
-    bne(CCR0, Lslow);
-    addi(str1, str1, stride1);
-    addi(str2, str2, stride2);
-    bdnz(Lfastloop);
-    mr(cnt1, cnt2); // Remaining characters.
-    bind(Lskipfast);
-  }
-
-  // Loop which searches the first difference character by character.
-  cmpwi(CCR0, cnt1, 0);
-  beq(CCR0, Lreturn_diff);
-  bind(Lslow);
-  mtctr(cnt1);
-
-  switch (ae) {
-    case StrIntrinsicNode::LL: stride1 = 1; stride2 = 1; break;
-    case StrIntrinsicNode::UL: // fallthru (see comment above)
-    case StrIntrinsicNode::LU: stride1 = 1; stride2 = 2; break;
-    case StrIntrinsicNode::UU: stride1 = 2; stride2 = 2; break;
-    default: ShouldNotReachHere(); break;
-  }
-
-  bind(Lloop);
-  if (stride1 == 1) { lbz(chr1, 0, str1); } else { lhz(chr1, 0, str1); }
-  if (stride2 == 1) { lbz(chr2, 0, str2); } else { lhz(chr2, 0, str2); }
-  subf_(result, chr2, chr1); // result = chr1 - chr2
-  bne(CCR0, Ldone);
-  addi(str1, str1, stride1);
-  addi(str2, str2, stride2);
-  bdnz(Lloop);
-
-  // If strings are equal up to min length, return the length difference.
-  bind(Lreturn_diff);
-  mr(result, diff);
-
-  // Otherwise, return the difference between the first mismatched chars.
-  bind(Ldone);
-  if (ae == StrIntrinsicNode::UL) {
-    neg(result, result); // Negate result (see note above).
-  }
-}
-
-void MacroAssembler::array_equals(bool is_array_equ, Register ary1, Register ary2,
-                                  Register limit, Register tmp1, Register result, bool is_byte) {
-  const Register tmp0 = R0;
-  assert_different_registers(ary1, ary2, limit, tmp0, tmp1, result);
-  Label Ldone, Lskiploop, Lloop, Lfastloop, Lskipfast;
-  bool limit_needs_shift = false;
-
-  if (is_array_equ) {
-    const int length_offset = arrayOopDesc::length_offset_in_bytes();
-    const int base_offset   = arrayOopDesc::base_offset_in_bytes(is_byte ? T_BYTE : T_CHAR);
-
-    // Return true if the same array.
-    cmpd(CCR0, ary1, ary2);
-    beq(CCR0, Lskiploop);
-
-    // Return false if one of them is NULL.
-    cmpdi(CCR0, ary1, 0);
-    cmpdi(CCR1, ary2, 0);
-    li(result, 0);
-    cror(CCR0, Assembler::equal, CCR1, Assembler::equal);
-    beq(CCR0, Ldone);
-
-    // Load the lengths of arrays.
-    lwz(limit, length_offset, ary1);
-    lwz(tmp0, length_offset, ary2);
-
-    // Return false if the two arrays are not equal length.
-    cmpw(CCR0, limit, tmp0);
-    bne(CCR0, Ldone);
-
-    // Load array addresses.
-    addi(ary1, ary1, base_offset);
-    addi(ary2, ary2, base_offset);
-  } else {
-    limit_needs_shift = !is_byte;
-    li(result, 0); // Assume not equal.
-  }
-
-  // Rename registers
-  Register chr1 = tmp0;
-  Register chr2 = tmp1;
-
-  // Compare 8 bytes per iteration in fast loop.
-  const int log2_chars_per_iter = is_byte ? 3 : 2;
-
-  srwi_(tmp0, limit, log2_chars_per_iter + (limit_needs_shift ? 1 : 0));
-  beq(CCR0, Lskipfast);
-  mtctr(tmp0);
-
-  bind(Lfastloop);
-  ld(chr1, 0, ary1);
-  ld(chr2, 0, ary2);
-  addi(ary1, ary1, 8);
-  addi(ary2, ary2, 8);
-  cmpd(CCR0, chr1, chr2);
-  bne(CCR0, Ldone);
-  bdnz(Lfastloop);
-
-  bind(Lskipfast);
-  rldicl_(limit, limit, limit_needs_shift ? 64 - 1 : 0, 64 - log2_chars_per_iter); // Remaining characters.
-  beq(CCR0, Lskiploop);
-  mtctr(limit);
-
-  // Character by character.
-  bind(Lloop);
-  if (is_byte) {
-    lbz(chr1, 0, ary1);
-    lbz(chr2, 0, ary2);
-    addi(ary1, ary1, 1);
-    addi(ary2, ary2, 1);
-  } else {
-    lhz(chr1, 0, ary1);
-    lhz(chr2, 0, ary2);
-    addi(ary1, ary1, 2);
-    addi(ary2, ary2, 2);
-  }
-  cmpw(CCR0, chr1, chr2);
-  bne(CCR0, Ldone);
-  bdnz(Lloop);
-
-  bind(Lskiploop);
-  li(result, 1); // All characters are equal.
-  bind(Ldone);
-}
-
-void MacroAssembler::string_indexof(Register result, Register haystack, Register haycnt,
-                                    Register needle, ciTypeArray* needle_values, Register needlecnt, int needlecntval,
-                                    Register tmp1, Register tmp2, Register tmp3, Register tmp4, int ae) {
-
-  // Ensure 0<needlecnt<=haycnt in ideal graph as prerequisite!
-  Label L_TooShort, L_Found, L_NotFound, L_End;
-  Register last_addr = haycnt, // Kill haycnt at the beginning.
-  addr      = tmp1,
-  n_start   = tmp2,
-  ch1       = tmp3,
-  ch2       = R0;
-
-  assert(ae != StrIntrinsicNode::LU, "Invalid encoding");
-  const int h_csize = (ae == StrIntrinsicNode::LL) ? 1 : 2;
-  const int n_csize = (ae == StrIntrinsicNode::UU) ? 2 : 1;
-
-  // **************************************************************************************************
-  // Prepare for main loop: optimized for needle count >=2, bail out otherwise.
-  // **************************************************************************************************
-
-  // Compute last haystack addr to use if no match gets found.
-  clrldi(haycnt, haycnt, 32);         // Ensure positive int is valid as 64 bit value.
-  addi(addr, haystack, -h_csize);     // Accesses use pre-increment.
-  if (needlecntval == 0) { // variable needlecnt
-   cmpwi(CCR6, needlecnt, 2);
-   clrldi(needlecnt, needlecnt, 32);  // Ensure positive int is valid as 64 bit value.
-   blt(CCR6, L_TooShort);             // Variable needlecnt: handle short needle separately.
-  }
-
-  if (n_csize == 2) { lwz(n_start, 0, needle); } else { lhz(n_start, 0, needle); } // Load first 2 characters of needle.
-
-  if (needlecntval == 0) { // variable needlecnt
-   subf(ch1, needlecnt, haycnt);      // Last character index to compare is haycnt-needlecnt.
-   addi(needlecnt, needlecnt, -2);    // Rest of needle.
-  } else { // constant needlecnt
-  guarantee(needlecntval != 1, "IndexOf with single-character needle must be handled separately");
-  assert((needlecntval & 0x7fff) == needlecntval, "wrong immediate");
-   addi(ch1, haycnt, -needlecntval);  // Last character index to compare is haycnt-needlecnt.
-   if (needlecntval > 3) { li(needlecnt, needlecntval - 2); } // Rest of needle.
-  }
-
-  if (h_csize == 2) { slwi(ch1, ch1, 1); } // Scale to number of bytes.
-
-  if (ae ==StrIntrinsicNode::UL) {
-   srwi(tmp4, n_start, 1*8);          // ___0
-   rlwimi(n_start, tmp4, 2*8, 0, 23); // _0_1
-  }
-
-  add(last_addr, haystack, ch1);      // Point to last address to compare (haystack+2*(haycnt-needlecnt)).
-
-  // Main Loop (now we have at least 2 characters).
-  Label L_OuterLoop, L_InnerLoop, L_FinalCheck, L_Comp1, L_Comp2;
-  bind(L_OuterLoop); // Search for 1st 2 characters.
-  Register addr_diff = tmp4;
-   subf(addr_diff, addr, last_addr);  // Difference between already checked address and last address to check.
-   addi(addr, addr, h_csize);         // This is the new address we want to use for comparing.
-   srdi_(ch2, addr_diff, h_csize);
-   beq(CCR0, L_FinalCheck);           // 2 characters left?
-   mtctr(ch2);                        // num of characters / 2
-  bind(L_InnerLoop);                  // Main work horse (2x unrolled search loop)
-   if (h_csize == 2) {                // Load 2 characters of haystack (ignore alignment).
-    lwz(ch1, 0, addr);
-    lwz(ch2, 2, addr);
-   } else {
-    lhz(ch1, 0, addr);
-    lhz(ch2, 1, addr);
-   }
-   cmpw(CCR0, ch1, n_start);          // Compare 2 characters (1 would be sufficient but try to reduce branches to CompLoop).
-   cmpw(CCR1, ch2, n_start);
-   beq(CCR0, L_Comp1);                // Did we find the needle start?
-   beq(CCR1, L_Comp2);
-   addi(addr, addr, 2 * h_csize);
-   bdnz(L_InnerLoop);
-  bind(L_FinalCheck);
-   andi_(addr_diff, addr_diff, h_csize); // Remaining characters not covered by InnerLoop: (num of characters) & 1.
-   beq(CCR0, L_NotFound);
-   if (h_csize == 2) { lwz(ch1, 0, addr); } else { lhz(ch1, 0, addr); } // One position left at which we have to compare.
-   cmpw(CCR1, ch1, n_start);
-   beq(CCR1, L_Comp1);
-  bind(L_NotFound);
-   li(result, -1);                    // not found
-   b(L_End);
-
-   // **************************************************************************************************
-   // Special Case: unfortunately, the variable needle case can be called with needlecnt<2
-   // **************************************************************************************************
-  if (needlecntval == 0) {           // We have to handle these cases separately.
-  Label L_OneCharLoop;
-  bind(L_TooShort);
-   mtctr(haycnt);
-   if (n_csize == 2) { lhz(n_start, 0, needle); } else { lbz(n_start, 0, needle); } // First character of needle
-  bind(L_OneCharLoop);
-   if (h_csize == 2) { lhzu(ch1, 2, addr); } else { lbzu(ch1, 1, addr); }
-   cmpw(CCR1, ch1, n_start);
-   beq(CCR1, L_Found);               // Did we find the one character needle?
-   bdnz(L_OneCharLoop);
-   li(result, -1);                   // Not found.
-   b(L_End);
-  }
-
-  // **************************************************************************************************
-  // Regular Case Part II: compare rest of needle (first 2 characters have been compared already)
-  // **************************************************************************************************
-
-  // Compare the rest
-  bind(L_Comp2);
-   addi(addr, addr, h_csize);        // First comparison has failed, 2nd one hit.
-  bind(L_Comp1);                     // Addr points to possible needle start.
-  if (needlecntval != 2) {           // Const needlecnt==2?
-   if (needlecntval != 3) {
-    if (needlecntval == 0) { beq(CCR6, L_Found); } // Variable needlecnt==2?
-    Register n_ind = tmp4,
-             h_ind = n_ind;
-    li(n_ind, 2 * n_csize);          // First 2 characters are already compared, use index 2.
-    mtctr(needlecnt);                // Decremented by 2, still > 0.
-   Label L_CompLoop;
-   bind(L_CompLoop);
-    if (ae ==StrIntrinsicNode::UL) {
-      h_ind = ch1;
-      sldi(h_ind, n_ind, 1);
-    }
-    if (n_csize == 2) { lhzx(ch2, needle, n_ind); } else { lbzx(ch2, needle, n_ind); }
-    if (h_csize == 2) { lhzx(ch1, addr, h_ind); } else { lbzx(ch1, addr, h_ind); }
-    cmpw(CCR1, ch1, ch2);
-    bne(CCR1, L_OuterLoop);
-    addi(n_ind, n_ind, n_csize);
-    bdnz(L_CompLoop);
-   } else { // No loop required if there's only one needle character left.
-    if (n_csize == 2) { lhz(ch2, 2 * 2, needle); } else { lbz(ch2, 2 * 1, needle); }
-    if (h_csize == 2) { lhz(ch1, 2 * 2, addr); } else { lbz(ch1, 2 * 1, addr); }
-    cmpw(CCR1, ch1, ch2);
-    bne(CCR1, L_OuterLoop);
-   }
-  }
-  // Return index ...
-  bind(L_Found);
-   subf(result, haystack, addr);     // relative to haystack, ...
-   if (h_csize == 2) { srdi(result, result, 1); } // in characters.
-  bind(L_End);
-} // string_indexof
-
-void MacroAssembler::string_indexof_char(Register result, Register haystack, Register haycnt,
-                                         Register needle, jchar needleChar, Register tmp1, Register tmp2, bool is_byte) {
-  assert_different_registers(haystack, haycnt, needle, tmp1, tmp2);
-
-  Label L_InnerLoop, L_FinalCheck, L_Found1, L_Found2, L_NotFound, L_End;
-  Register addr = tmp1,
-           ch1 = tmp2,
-           ch2 = R0;
-
-  const int h_csize = is_byte ? 1 : 2;
-
-//4:
-   srwi_(tmp2, haycnt, 1);   // Shift right by exact_log2(UNROLL_FACTOR).
-   mr(addr, haystack);
-   beq(CCR0, L_FinalCheck);
-   mtctr(tmp2);              // Move to count register.
-//8:
-  bind(L_InnerLoop);         // Main work horse (2x unrolled search loop).
-   if (!is_byte) {
-    lhz(ch1, 0, addr);
-    lhz(ch2, 2, addr);
-   } else {
-    lbz(ch1, 0, addr);
-    lbz(ch2, 1, addr);
-   }
-   (needle != R0) ? cmpw(CCR0, ch1, needle) : cmplwi(CCR0, ch1, (unsigned int)needleChar);
-   (needle != R0) ? cmpw(CCR1, ch2, needle) : cmplwi(CCR1, ch2, (unsigned int)needleChar);
-   beq(CCR0, L_Found1);      // Did we find the needle?
-   beq(CCR1, L_Found2);
-   addi(addr, addr, 2 * h_csize);
-   bdnz(L_InnerLoop);
-//16:
-  bind(L_FinalCheck);
-   andi_(R0, haycnt, 1);
-   beq(CCR0, L_NotFound);
-   if (!is_byte) { lhz(ch1, 0, addr); } else { lbz(ch1, 0, addr); } // One position left at which we have to compare.
-   (needle != R0) ? cmpw(CCR1, ch1, needle) : cmplwi(CCR1, ch1, (unsigned int)needleChar);
-   beq(CCR1, L_Found1);
-//21:
-  bind(L_NotFound);
-   li(result, -1);           // Not found.
-   b(L_End);
-
-  bind(L_Found2);
-   addi(addr, addr, h_csize);
-//24:
-  bind(L_Found1);            // Return index ...
-   subf(result, haystack, addr); // relative to haystack, ...
-   if (!is_byte) { srdi(result, result, 1); } // in characters.
-  bind(L_End);
-} // string_indexof_char
-
-
-void MacroAssembler::has_negatives(Register src, Register cnt, Register result,
-                                   Register tmp1, Register tmp2) {
-  const Register tmp0 = R0;
-  assert_different_registers(src, result, cnt, tmp0, tmp1, tmp2);
-  Label Lfastloop, Lslow, Lloop, Lnoneg, Ldone;
-
-  // Check if cnt >= 8 (= 16 bytes)
-  lis(tmp1, (int)(short)0x8080);  // tmp1 = 0x8080808080808080
-  srwi_(tmp2, cnt, 4);
-  li(result, 1);                  // Assume there's a negative byte.
-  beq(CCR0, Lslow);
-  ori(tmp1, tmp1, 0x8080);
-  rldimi(tmp1, tmp1, 32, 0);
-  mtctr(tmp2);
-
-  // 2x unrolled loop
-  bind(Lfastloop);
-  ld(tmp2, 0, src);
-  ld(tmp0, 8, src);
-
-  orr(tmp0, tmp2, tmp0);
-
-  and_(tmp0, tmp0, tmp1);
-  bne(CCR0, Ldone);               // Found negative byte.
-  addi(src, src, 16);
-
-  bdnz(Lfastloop);
-
-  bind(Lslow);                    // Fallback to slow version
-  rldicl_(tmp0, cnt, 0, 64-4);
-  beq(CCR0, Lnoneg);
-  mtctr(tmp0);
-  bind(Lloop);
-  lbz(tmp0, 0, src);
-  addi(src, src, 1);
-  andi_(tmp0, tmp0, 0x80);
-  bne(CCR0, Ldone);               // Found negative byte.
-  bdnz(Lloop);
-  bind(Lnoneg);
-  li(result, 0);
-
-  bind(Ldone);
-}
-
-#endif // Compiler2
-
 // Helpers for Intrinsic Emitters
 //
 // Revert the byte order of a 32bit value in a register
@@ -3888,7 +3405,7 @@ int MacroAssembler::crc32_table_columns(Register table, Register tc0, Register t
   assert(!VM_Version::has_vpmsumb(), "Vector version should be used instead!");
 
   // Point to 4 byte folding tables (byte-reversed version for Big Endian)
-  // Layout: See StubRoutines::generate_crc_constants.
+  // Layout: See StubRoutines::ppc::generate_crc_constants.
 #ifdef VM_LITTLE_ENDIAN
   const int ix0 = 3 * CRC32_TABLE_SIZE;
   const int ix1 = 2 * CRC32_TABLE_SIZE;
@@ -4879,7 +4396,7 @@ void MacroAssembler::multiply_to_len(Register x, Register xlen,
   bind(L_done);
 }   // multiply_to_len
 
-void MacroAssembler::asm_assert(bool check_equal, const char *msg, int id) {
+void MacroAssembler::asm_assert(bool check_equal, const char *msg) {
 #ifdef ASSERT
   Label ok;
   if (check_equal) {
@@ -4887,13 +4404,13 @@ void MacroAssembler::asm_assert(bool check_equal, const char *msg, int id) {
   } else {
     bne(CCR0, ok);
   }
-  stop(msg, id);
+  stop(msg);
   bind(ok);
 #endif
 }
 
 void MacroAssembler::asm_assert_mems_zero(bool check_equal, int size, int mem_offset,
-                                          Register mem_base, const char* msg, int id) {
+                                          Register mem_base, const char* msg) {
 #ifdef ASSERT
   switch (size) {
     case 4:
@@ -4907,7 +4424,7 @@ void MacroAssembler::asm_assert_mems_zero(bool check_equal, int size, int mem_of
     default:
       ShouldNotReachHere();
   }
-  asm_assert(check_equal, msg, id);
+  asm_assert(check_equal, msg);
 #endif // ASSERT
 }
 
@@ -4982,32 +4499,24 @@ void MacroAssembler::verify_oop_addr(RegisterOrConstant offs, Register base, con
   restore_volatile_gprs(R1_SP, -nbytes_save); // except R0
 }
 
-const char* stop_types[] = {
-  "stop",
-  "untested",
-  "unimplemented",
-  "shouldnotreachhere"
-};
-
-static void stop_on_request(int tp, const char* msg) {
-  tty->print("PPC assembly code requires stop: (%s) %s\n", stop_types[tp%/*stop_end*/4], msg);
-  guarantee(false, "PPC assembly code requires stop: %s", msg);
-}
-
 // Call a C-function that prints output.
-void MacroAssembler::stop(int type, const char* msg, int id) {
+void MacroAssembler::stop(int type, const char* msg) {
+  bool msg_present = (msg != NULL);
+
 #ifndef PRODUCT
-  block_comment(err_msg("stop: %s %s {", stop_types[type%stop_end], msg));
+  block_comment(err_msg("stop(type %d): %s {", type, msg_present ? msg : "null"));
 #else
   block_comment("stop {");
 #endif
 
-  // setup arguments
-  load_const_optimized(R3_ARG1, type);
-  load_const_optimized(R4_ARG2, (void *)msg, /*tmp=*/R0);
-  call_VM_leaf(CAST_FROM_FN_PTR(address, stop_on_request), R3_ARG1, R4_ARG2);
-  illtrap();
-  emit_int32(id);
+  if (msg_present) {
+    type |= stop_msg_present;
+  }
+  tdi_unchecked(traptoUnconditional, 0/*reg 0*/, type);
+  if (msg_present) {
+    emit_int64((uintptr_t)msg);
+  }
+
   block_comment("} stop;");
 }
 

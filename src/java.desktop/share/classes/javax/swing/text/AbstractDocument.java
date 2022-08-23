@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package javax.swing.text;
 
-import java.util.*;
-import java.io.*;
 import java.awt.font.TextAttribute;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectInputValidation;
+import java.io.ObjectOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.io.Serial;
+import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
 import java.text.Bidi;
+import java.util.Dictionary;
+import java.util.Enumeration;
+import java.util.EventListener;
+import java.util.Hashtable;
+import java.util.Vector;
 
 import javax.swing.UIManager;
-import javax.swing.undo.*;
-import javax.swing.event.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.event.EventListenerList;
+import javax.swing.event.UndoableEditEvent;
+import javax.swing.event.UndoableEditListener;
 import javax.swing.tree.TreeNode;
+import javax.swing.undo.AbstractUndoableEdit;
+import javax.swing.undo.CannotRedoException;
+import javax.swing.undo.CannotUndoException;
+import javax.swing.undo.CompoundEdit;
+import javax.swing.undo.UndoableEdit;
 
 import sun.font.BidiUtils;
 import sun.swing.SwingUtilities2;
@@ -91,7 +113,7 @@ import sun.swing.text.UndoableEditLockSupport;
  * future Swing releases. The current serialization support is
  * appropriate for short term storage or RMI between applications running
  * the same version of Swing.  As of 1.4, support for long term storage
- * of all JavaBeans&trade;
+ * of all JavaBeans
  * has been added to the <code>java.beans</code> package.
  * Please see {@link java.beans.XMLEncoder}.
  *
@@ -124,6 +146,7 @@ public abstract class AbstractDocument implements Document, Serializable {
 
         if (defaultI18NProperty == null) {
             // determine default setting for i18n support
+            @SuppressWarnings("removal")
             String o = java.security.AccessController.doPrivileged(
                 new java.security.PrivilegedAction<String>() {
                     public String run() {
@@ -1436,6 +1459,7 @@ public abstract class AbstractDocument implements Document, Serializable {
 
     // --- serialization ---------------------------------------------
 
+    @Serial
     @SuppressWarnings("unchecked")
     private void readObject(ObjectInputStream s)
       throws ClassNotFoundException, IOException
@@ -1584,7 +1608,12 @@ public abstract class AbstractDocument implements Document, Serializable {
     /**
      * Document property that indicates if a character has been inserted
      * into the document that is more than one byte long.  GlyphView uses
-     * this to determine if it should use BreakIterator.
+     * this to determine if it should use BreakIterator. This property should
+     * not be publicly exposed, since it is used for implementation convenience
+     * only.  As a side effect, copies of this property may be in its subclasses
+     * that live in different packages (e.g. HTMLDocument as of now), so those
+     * copies should also be taken care of when this property needs to be
+     * modified.
      */
     static final Object MultiByteProperty = "multiByte";
 
@@ -1775,7 +1804,7 @@ public abstract class AbstractDocument implements Document, Serializable {
      * future Swing releases. The current serialization support is
      * appropriate for short term storage or RMI between applications running
      * the same version of Swing.  As of 1.4, support for long term storage
-     * of all JavaBeans&trade;
+     * of all JavaBeans
      * has been added to the <code>java.beans</code> package.
      * Please see {@link java.beans.XMLEncoder}.
      */
@@ -2215,11 +2244,13 @@ public abstract class AbstractDocument implements Document, Serializable {
 
         // --- serialization ---------------------------------------------
 
+        @Serial
         private void writeObject(ObjectOutputStream s) throws IOException {
             s.defaultWriteObject();
             StyleContext.writeAttributeSet(s, attributes);
         }
 
+        @Serial
         private void readObject(ObjectInputStream s)
             throws ClassNotFoundException, IOException
         {
@@ -2245,7 +2276,7 @@ public abstract class AbstractDocument implements Document, Serializable {
      * future Swing releases. The current serialization support is
      * appropriate for short term storage or RMI between applications running
      * the same version of Swing.  As of 1.4, support for long term storage
-     * of all JavaBeans&trade;
+     * of all JavaBeans
      * has been added to the <code>java.beans</code> package.
      * Please see {@link java.beans.XMLEncoder}.
      */
@@ -2500,7 +2531,7 @@ public abstract class AbstractDocument implements Document, Serializable {
      * future Swing releases. The current serialization support is
      * appropriate for short term storage or RMI between applications running
      * the same version of Swing.  As of 1.4, support for long term storage
-     * of all JavaBeans&trade;
+     * of all JavaBeans
      * has been added to the <code>java.beans</code> package.
      * Please see {@link java.beans.XMLEncoder}.
      *
@@ -2634,12 +2665,14 @@ public abstract class AbstractDocument implements Document, Serializable {
 
         // --- serialization ---------------------------------------------
 
+        @Serial
         private void writeObject(ObjectOutputStream s) throws IOException {
             s.defaultWriteObject();
             s.writeInt(p0.getOffset());
             s.writeInt(p1.getOffset());
         }
 
+        @Serial
         private void readObject(ObjectInputStream s)
             throws ClassNotFoundException, IOException
         {

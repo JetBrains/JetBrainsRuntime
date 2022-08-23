@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,12 +28,16 @@ import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.cds.CDSOptions;
 import jdk.test.lib.cds.CDSTestUtils;
 import jdk.test.lib.cds.CDSTestUtils.Result;
+import jdk.test.lib.helpers.ClassFileInstaller;
+import sun.hotspot.WhiteBox;
 
 /**
  * Base class for test cases in test/hotspot/jtreg/runtime/cds/appcds/dynamicArchive/
  */
 class DynamicArchiveTestBase {
     private static boolean executedIn_run = false;
+
+    private static final WhiteBox WB = WhiteBox.getWhiteBox();
 
     public static interface DynamicArchiveTest {
         public void run() throws Exception;
@@ -104,6 +108,9 @@ class DynamicArchiveTestBase {
             "-XX:ArchiveClassesAtExit=" + topArchiveName);
         // to allow dynamic archive tests to be run in the "rt-non-cds-mode"
         cmdLine = TestCommon.concat(cmdLine, "-Xshare:auto");
+        if (baseArchiveName == null && isUseSharedSpacesDisabled()) {
+            baseArchiveName = getTempBaseArchive();
+        }
         if (baseArchiveName != null) {
             cmdLine = TestCommon.concat(cmdLine, "-XX:SharedArchiveFile=" + baseArchiveName);
         }
@@ -114,6 +121,9 @@ class DynamicArchiveTestBase {
     public static Result dump2_WB(String baseArchiveName, String topArchiveName, String ... cmdLineSuffix)
         throws Exception
     {
+        if (baseArchiveName == null && isUseSharedSpacesDisabled()) {
+            baseArchiveName = getTempBaseArchive();
+        }
         return dump2(baseArchiveName, topArchiveName,
                      TestCommon.concat(wbRuntimeArgs(), cmdLineSuffix));
     }
@@ -131,28 +141,12 @@ class DynamicArchiveTestBase {
     }
 
     /**
-     * Dump the base archive. The JDK's default class list is used (unless otherwise specified
-     * in cmdLineSuffix).
-     */
-    public static OutputAnalyzer dumpBaseArchive(String baseArchiveName, String ... cmdLineSuffix)
-        throws Exception
-    {
-        CDSOptions opts = new CDSOptions();
-        opts.setArchiveName(baseArchiveName);
-        opts.addSuffix(cmdLineSuffix);
-        opts.addSuffix("-Djava.class.path=");
-        OutputAnalyzer out = CDSTestUtils.createArchive(opts);
-        CDSTestUtils.checkDump(out);
-        return out;
-    }
-
-    /**
-     * Same as dumpBaseArchive, but also add WhiteBox to the bootcp
+     * Same as TestCommon.dumpBaseArchive, but also add WhiteBox to the bootcp
      */
     public static void dumpBaseArchive_WB(String baseArchiveName, String ... cmdLineSuffix)
         throws Exception
     {
-        dumpBaseArchive(baseArchiveName,
+        TestCommon.dumpBaseArchive(baseArchiveName,
                         TestCommon.concat("-Xbootclasspath/a:" + getWhiteBoxJar(), cmdLineSuffix));
     }
 
@@ -160,7 +154,7 @@ class DynamicArchiveTestBase {
         String wbJar = ClassFileInstaller.getJarPath("WhiteBox.jar");
         if (!(new File(wbJar)).exists()) {
             throw new RuntimeException("Test error: your test must have " +
-                                       "'@run driver ClassFileInstaller -jar WhiteBox.jar sun.hotspot.WhiteBox'");
+                                       "'@run driver jdk.test.lib.helpers.ClassFileInstaller -jar WhiteBox.jar sun.hotspot.WhiteBox'");
         }
         return wbJar;
     }
@@ -182,6 +176,9 @@ class DynamicArchiveTestBase {
         if (baseArchiveName == null && topArchiveName == null) {
             throw new RuntimeException("Both baseArchiveName and topArchiveName cannot be null at the same time.");
         }
+        if (baseArchiveName == null && isUseSharedSpacesDisabled()) {
+            baseArchiveName = getTempBaseArchive();
+        }
         String archiveFiles = (baseArchiveName == null) ? topArchiveName :
             (topArchiveName == null) ? baseArchiveName :
             baseArchiveName + File.pathSeparator + topArchiveName;
@@ -197,6 +194,9 @@ class DynamicArchiveTestBase {
         throws Exception {
         if (baseArchiveName == null && topArchiveName == null) {
             throw new RuntimeException("Both baseArchiveName and topArchiveName cannot be null at the same time.");
+        }
+        if (baseArchiveName == null && isUseSharedSpacesDisabled()) {
+            baseArchiveName = getTempBaseArchive();
         }
         String archiveFiles = (baseArchiveName == null) ? topArchiveName :
             (topArchiveName == null) ? baseArchiveName :
@@ -242,7 +242,7 @@ class DynamicArchiveTestBase {
         if (!executedIn_run) {
             throw new Exception("Test error: dynamic archive tests must be executed via DynamicArchiveTestBase.run()");
         }
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(true, cmdLine);
+        ProcessBuilder pb = ProcessTools.createTestJvm(cmdLine);
         if (jarDir != null) {
             pb.directory(new File(jarDir));
         }
@@ -262,5 +262,36 @@ class DynamicArchiveTestBase {
     public static void dumpAndRun(String topArchiveName, String ... cmdLineSuffix) throws Exception {
         dump(topArchiveName, cmdLineSuffix).assertNormalExit();
         run(topArchiveName,  cmdLineSuffix).assertNormalExit();
+    }
+
+    private static String tempBaseArchive;
+    /**
+     * Return the name of a base archive.
+     * It will generate one if one doesn't exist.
+     */
+    private static String getTempBaseArchive() throws Exception {
+        if (tempBaseArchive == null) {
+            tempBaseArchive = getNewArchiveName("tempBaseArchive");
+            TestCommon.dumpBaseArchive(tempBaseArchive);
+        }
+        return tempBaseArchive;
+    }
+
+    /**
+     * Return true if the UseSharedSpaces flag has been disabled.
+     * By default, the VM will be started with -Xshare:auto.
+     * The UseSharedSpaces flag will be disabled by the VM if there's some
+     * problem in using the default CDS archive. It could happen under some
+     * situations such as follows:
+     * - the default CDS archive wasn't generated during build time because
+     *   the JDK was built via cross-compilation on a different platform;
+     * - the VM under test was started with a different options than the ones
+     *   when the default CDS archive was built. E.g. the VM was started with
+     *   -XX:+UseZGC which implicitly disabled the UseCompressedOoops and the
+     *   UseCompressedClassPointers options. Those "compressed" options were
+     *   enabled when the default CDS archive was built.
+     */
+    private static boolean isUseSharedSpacesDisabled() {
+        return (WB.getBooleanVMFlag("UseSharedSpaces") == false);
     }
 }

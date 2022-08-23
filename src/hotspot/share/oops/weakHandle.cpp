@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,59 +24,40 @@
 
 #include "precompiled.hpp"
 #include "gc/shared/oopStorage.hpp"
-#include "gc/shared/oopStorageSet.hpp"
 #include "oops/access.inline.hpp"
 #include "oops/oop.hpp"
 #include "oops/weakHandle.inline.hpp"
 #include "utilities/debug.hpp"
 #include "utilities/ostream.hpp"
 
-template <> OopStorage* WeakHandle<vm_class_loader_data>::get_storage() {
-  return OopStorageSet::vm_weak();
-}
+WeakHandle::WeakHandle(OopStorage* storage, Handle obj) :
+    WeakHandle(storage, obj()) {}
 
-template <> OopStorage* WeakHandle<vm_string_table_data>::get_storage() {
-  return OopStorageSet::string_table_weak();
-}
+WeakHandle::WeakHandle(OopStorage* storage, oop obj) :
+    _obj(storage->allocate()) {
+  assert(obj != NULL, "no need to create weak null oop");
 
-template <> OopStorage* WeakHandle<vm_resolved_method_table_data>::get_storage() {
-  return OopStorageSet::resolved_method_table_weak();
-}
-
-template <WeakHandleType T>
-WeakHandle<T> WeakHandle<T>::create(Handle obj) {
-  assert(obj() != NULL, "no need to create weak null oop");
-  oop* oop_addr = get_storage()->allocate();
-  if (oop_addr == NULL) {
+  if (_obj == NULL) {
     vm_exit_out_of_memory(sizeof(oop*), OOM_MALLOC_ERROR,
                           "Unable to create new weak oop handle in OopStorage %s",
-                          get_storage()->name());
+                          storage->name());
   }
-  // Create WeakHandle with address returned and store oop into it.
-  NativeAccess<ON_PHANTOM_OOP_REF>::oop_store(oop_addr, obj());
-  return WeakHandle(oop_addr);
+
+  NativeAccess<ON_PHANTOM_OOP_REF>::oop_store(_obj, obj);
 }
 
-template <WeakHandleType T>
-void WeakHandle<T>::release() const {
+void WeakHandle::release(OopStorage* storage) const {
   // Only release if the pointer to the object has been created.
   if (_obj != NULL) {
     // Clear the WeakHandle.  For race in creating ClassLoaderData, we can release this
     // WeakHandle before it is cleared by GC.
     NativeAccess<ON_PHANTOM_OOP_REF>::oop_store(_obj, (oop)NULL);
-    get_storage()->release(_obj);
+    storage->release(_obj);
   }
 }
 
-template <WeakHandleType T>
-void WeakHandle<T>::print() const { print_on(tty); }
+void WeakHandle::print() const { print_on(tty); }
 
-template <WeakHandleType T>
-void WeakHandle<T>::print_on(outputStream* st) const {
+void WeakHandle::print_on(outputStream* st) const {
   st->print("WeakHandle: " PTR_FORMAT, p2i(peek()));
 }
-
-// Provide instantiation.
-template class WeakHandle<vm_class_loader_data>;
-template class WeakHandle<vm_string_table_data>;
-template class WeakHandle<vm_resolved_method_table_data>;

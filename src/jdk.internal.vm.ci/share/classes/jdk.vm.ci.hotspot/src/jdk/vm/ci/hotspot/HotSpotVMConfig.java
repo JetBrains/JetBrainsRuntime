@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@ package jdk.vm.ci.hotspot;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static jdk.vm.ci.hotspot.UnsafeAccess.UNSAFE;
 
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.services.Services;
 import jdk.internal.misc.Unsafe;
 
@@ -46,6 +47,9 @@ class HotSpotVMConfig extends HotSpotVMConfigAccess {
 
     HotSpotVMConfig(HotSpotVMConfigStore store) {
         super(store);
+
+        int speculationLengthBits = getConstant("JVMCINMethodData::SPECULATION_LENGTH_BITS", Integer.class);
+        JVMCIError.guarantee(HotSpotSpeculationEncoding.LENGTH_BITS == speculationLengthBits, "%d != %d", HotSpotSpeculationEncoding.LENGTH_BITS, speculationLengthBits);
     }
 
     /**
@@ -58,8 +62,6 @@ class HotSpotVMConfig extends HotSpotVMConfigAccess {
             case "x86_64":
                 return "amd64";
 
-            case "sparcv9":
-                return "sparc";
             default:
                 return arch;
         }
@@ -96,7 +98,6 @@ class HotSpotVMConfig extends HotSpotVMConfigAccess {
     final int vtableEntrySize = getFieldValue("CompilerToVM::Data::sizeof_vtableEntry", Integer.class, "int");
     final int vtableEntryMethodOffset = getFieldOffset("vtableEntry::_method", Integer.class, "Method*");
 
-    final int instanceKlassSourceFileNameIndexOffset = getFieldOffset("InstanceKlass::_source_file_name_index", Integer.class, "u2");
     final int instanceKlassInitStateOffset = getFieldOffset("InstanceKlass::_init_state", Integer.class, "u1");
     final int instanceKlassConstantsOffset = getFieldOffset("InstanceKlass::_constants", Integer.class, "ConstantPool*");
     final int instanceKlassFieldsOffset = getFieldOffset("InstanceKlass::_fields", Integer.class, "Array<u2>*");
@@ -108,7 +109,6 @@ class HotSpotVMConfig extends HotSpotVMConfigAccess {
     final int instanceKlassStateLinked = getConstant("InstanceKlass::linked", Integer.class);
     final int instanceKlassStateFullyInitialized = getConstant("InstanceKlass::fully_initialized", Integer.class);
     final int instanceKlassStateBeingInitialized = getConstant("InstanceKlass::being_initialized", Integer.class);
-    final int instanceKlassMiscIsUnsafeAnonymous = getConstant("InstanceKlass::_misc_is_unsafe_anonymous", Integer.class);
 
     final int annotationsFieldAnnotationsOffset = getFieldOffset("Annotations::_fields_annotations", Integer.class, "Array<AnnotationArray*>*");
     final int fieldsAnnotationsBaseOffset = getFieldValue("CompilerToVM::Data::_fields_annotations_base_offset", Integer.class, "int");
@@ -139,6 +139,9 @@ class HotSpotVMConfig extends HotSpotVMConfigAccess {
     final int jvmAccVarargs = getConstant("JVM_ACC_VARARGS", Integer.class);
     final int jvmAccEnum = getConstant("JVM_ACC_ENUM", Integer.class);
     final int jvmAccInterface = getConstant("JVM_ACC_INTERFACE", Integer.class);
+
+    final int jvmMiscFlagsHasDefaultMethods = getConstant("InstanceKlass::_misc_has_nonstatic_concrete_methods", Integer.class);
+    final int jvmMiscFlagsDeclaresDefaultMethods = getConstant("InstanceKlass::_misc_declares_nonstatic_concrete_methods", Integer.class);
 
     // This is only valid on AMD64.
     final int runtimeCallStackSize = getConstant("frame::arg_reg_save_area_bytes", Integer.class, osArch.equals("amd64") ? null : 0);
@@ -173,12 +176,12 @@ class HotSpotVMConfig extends HotSpotVMConfigAccess {
     final int methodDataSize = getFieldOffset("MethodData::_size", Integer.class, "int");
     final int methodDataDataSize = getFieldOffset("MethodData::_data_size", Integer.class, "int");
     final int methodDataOopDataOffset = getFieldOffset("MethodData::_data[0]", Integer.class, "intptr_t");
-    final int methodDataOopTrapHistoryOffset = getFieldOffset("MethodData::_trap_hist._array[0]", Integer.class, "u1");
+    final int methodDataOopTrapHistoryOffset = getFieldOffset("MethodData::_compiler_counters._trap_hist._array[0]", Integer.class, "u1");
     final int methodDataIRSizeOffset = getFieldOffset("MethodData::_jvmci_ir_size", Integer.class, "int");
 
-    final int methodDataDecompiles = getFieldOffset("MethodData::_nof_decompiles", Integer.class, "uint");
-    final int methodDataOverflowRecompiles = getFieldOffset("MethodData::_nof_overflow_recompiles", Integer.class, "uint");
-    final int methodDataOverflowTraps = getFieldOffset("MethodData::_nof_overflow_traps", Integer.class, "uint");
+    final int methodDataDecompiles = getFieldOffset("MethodData::_compiler_counters._nof_decompiles", Integer.class, "uint");
+    final int methodDataOverflowRecompiles = getFieldOffset("MethodData::_compiler_counters._nof_overflow_recompiles", Integer.class, "uint");
+    final int methodDataOverflowTraps = getFieldOffset("MethodData::_compiler_counters._nof_overflow_traps", Integer.class, "uint");
 
     final int nmethodCompLevelOffset = getFieldOffset("nmethod::_comp_level", Integer.class, "int");
 
@@ -228,10 +231,11 @@ class HotSpotVMConfig extends HotSpotVMConfigAccess {
     final int constantPoolTagsOffset = getFieldOffset("ConstantPool::_tags", Integer.class, "Array<u1>*");
     final int constantPoolHolderOffset = getFieldOffset("ConstantPool::_pool_holder", Integer.class, "InstanceKlass*");
     final int constantPoolLengthOffset = getFieldOffset("ConstantPool::_length", Integer.class, "int");
-    final int constantPoolFlagsOffset = getFieldOffset("ConstantPool::_flags", Integer.class, "int");
+    final int constantPoolFlagsOffset = getFieldOffset("ConstantPool::_flags", Integer.class, "u2");
 
     final int constantPoolCpCacheIndexTag = getConstant("ConstantPool::CPCACHE_INDEX_TAG", Integer.class);
     final int constantPoolHasDynamicConstant = getConstant("ConstantPool::_has_dynamic_constant", Integer.class);
+    final int constantPoolSourceFileNameIndexOffset = getFieldOffset("ConstantPool::_source_file_name_index", Integer.class, "u2");
 
     final int jvmConstantUtf8 = getConstant("JVM_CONSTANT_Utf8", Integer.class);
     final int jvmConstantInteger = getConstant("JVM_CONSTANT_Integer", Integer.class);
@@ -250,6 +254,8 @@ class HotSpotVMConfig extends HotSpotVMConfigAccess {
     final int jvmConstantMethodHandleInError = getConstant("JVM_CONSTANT_MethodHandleInError", Integer.class);
     final int jvmConstantMethodType = getConstant("JVM_CONSTANT_MethodType", Integer.class);
     final int jvmConstantMethodTypeInError = getConstant("JVM_CONSTANT_MethodTypeInError", Integer.class);
+    final int jvmConstantDynamic = getConstant("JVM_CONSTANT_Dynamic", Integer.class);
+    final int jvmConstantDynamicInError = getConstant("JVM_CONSTANT_DynamicInError", Integer.class);
     final int jvmConstantInvokeDynamic = getConstant("JVM_CONSTANT_InvokeDynamic", Integer.class);
 
     final int jvmConstantExternalMax = getConstant("JVM_CONSTANT_ExternalMax", Integer.class);
@@ -258,7 +264,7 @@ class HotSpotVMConfig extends HotSpotVMConfigAccess {
 
     final int heapWordSize = getConstant("HeapWordSize", Integer.class);
 
-    final long vmSymbolsSymbols = getFieldAddress("vmSymbols::_symbols[0]", "Symbol*");
+    final long symbolVmSymbols = getFieldAddress("Symbol::_vm_symbols[0]", "Symbol*");
     final int vmSymbolsFirstSID = getConstant("vmSymbols::FIRST_SID", Integer.class);
     final int vmSymbolsSIDLimit = getConstant("vmSymbols::SID_LIMIT", Integer.class);
 
@@ -276,7 +282,7 @@ class HotSpotVMConfig extends HotSpotVMConfigAccess {
         HotSpotJVMCIRuntime runtime = runtime();
         assert vmSymbolsFirstSID <= index && index < vmSymbolsSIDLimit : "index " + index + " is out of bounds";
         int offset = index * Unsafe.ADDRESS_SIZE;
-        return runtime.getCompilerToVM().getSymbol(UNSAFE.getAddress(vmSymbolsSymbols + offset));
+        return runtime.getCompilerToVM().getSymbol(UNSAFE.getAddress(symbolVmSymbols + offset));
     }
 
     final int universeBaseVtableSize = getFieldValue("CompilerToVM::Data::Universe_base_vtable_size", Integer.class, "int");
@@ -313,7 +319,7 @@ class HotSpotVMConfig extends HotSpotVMConfigAccess {
 
     final int bciProfileWidth = getFlag("BciProfileWidth", Integer.class);
     final int typeProfileWidth = getFlag("TypeProfileWidth", Integer.class);
-    final int methodProfileWidth = getFlag("MethodProfileWidth", Integer.class);
+    final int methodProfileWidth = getFlag("MethodProfileWidth", Integer.class, 0);
 
     final int deoptReasonNone = getConstant("Deoptimization::Reason_none", Integer.class);
     final int deoptReasonNullCheck = getConstant("Deoptimization::Reason_null_check", Integer.class);
@@ -331,7 +337,7 @@ class HotSpotVMConfig extends HotSpotVMConfigAccess {
     final int deoptReasonLoopLimitCheck = getConstant("Deoptimization::Reason_loop_limit_check", Integer.class);
     final int deoptReasonAliasing = getConstant("Deoptimization::Reason_aliasing", Integer.class);
     final int deoptReasonTransferToInterpreter = getConstant("Deoptimization::Reason_transfer_to_interpreter", Integer.class);
-    final int deoptReasonOSROffset = getConstant("Deoptimization::Reason_LIMIT", Integer.class);
+    final int deoptReasonOSROffset = getConstant("Deoptimization::Reason_TRAP_HISTORY_LENGTH", Integer.class);
 
     final int deoptActionNone = getConstant("Deoptimization::Action_none", Integer.class);
     final int deoptActionMaybeRecompile = getConstant("Deoptimization::Action_maybe_recompile", Integer.class);
@@ -356,6 +362,8 @@ class HotSpotVMConfig extends HotSpotVMConfigAccess {
     final int codeInstallResultDependenciesFailed = getConstant("JVMCI::dependencies_failed", Integer.class);
     final int codeInstallResultCacheFull = getConstant("JVMCI::cache_full", Integer.class);
     final int codeInstallResultCodeTooLarge = getConstant("JVMCI::code_too_large", Integer.class);
+    final int codeInstallResultNMethodReclaimed = getConstant("JVMCI::nmethod_reclaimed", Integer.class);
+    final int codeInstallResultFirstPermanentBailout = getConstant("JVMCI::first_permanent_bailout", Integer.class);
 
     String getCodeInstallResultDescription(int codeInstallResult) {
         if (codeInstallResult == codeInstallResultOk) {
@@ -369,6 +377,9 @@ class HotSpotVMConfig extends HotSpotVMConfigAccess {
         }
         if (codeInstallResult == codeInstallResultCodeTooLarge) {
             return "code is too large";
+        }
+        if (codeInstallResult == codeInstallResultNMethodReclaimed) {
+            return "nmethod reclaimed";
         }
         assert false : codeInstallResult;
         return "unknown";

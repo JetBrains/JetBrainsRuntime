@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,13 @@ static jmethodID isaCtrID = 0;
 
 static const char* nativeSctpLib = "libsctp.so.1";
 static jboolean funcsLoaded = JNI_FALSE;
+
+sctp_getladdrs_func* nio_sctp_getladdrs;
+sctp_freeladdrs_func* nio_sctp_freeladdrs;
+sctp_getpaddrs_func* nio_sctp_getpaddrs;
+sctp_freepaddrs_func* nio_sctp_freepaddrs;
+sctp_bindx_func* nio_sctp_bindx;
+sctp_peeloff_func* nio_sctp_peeloff;
 
 JNIEXPORT jint JNICALL DEF_JNI_OnLoad
   (JavaVM *vm, void *reserved) {
@@ -183,7 +190,13 @@ JNIEXPORT jint JNICALL Java_sun_nio_ch_sctp_SctpNet_socket0
     fd = socket(domain, (oneToOne ? SOCK_STREAM : SOCK_SEQPACKET), IPPROTO_SCTP);
 
     if (fd < 0) {
-        return handleSocketError(env, errno);
+        if (errno == EPROTONOSUPPORT || errno == ESOCKTNOSUPPORT) {
+            JNU_ThrowByNameWithLastError(env, "java/lang/UnsupportedOperationException",
+                                         "Protocol not supported");
+            return IOS_THROWN;
+        } else {
+            return handleSocketError(env, errno);
+        }
     }
 
     /* Enable events */
@@ -351,11 +364,7 @@ JNIEXPORT jobjectArray JNICALL Java_sun_nio_ch_sctp_SctpNet_getLocalAddresses0
     int i, addrCount;
     jobjectArray isaa;
 
-#ifdef __solaris__
-    if ((addrCount = nio_sctp_getladdrs(fd, 0, (void **)&addr_buf)) == -1) {
-#else /* __linux__ */
     if ((addrCount = nio_sctp_getladdrs(fd, 0, (struct sockaddr **)&addr_buf)) == -1) {
-#endif
         handleSocketError(env, errno);
         return NULL;
     }
@@ -400,11 +409,7 @@ jobjectArray getRemoteAddresses(JNIEnv *env, jint fd, sctp_assoc_t id) {
     int i, addrCount;
     jobjectArray isaa;
 
-#if defined(__solaris__)
-    if ((addrCount = nio_sctp_getpaddrs(fd, id, (void **)&addr_buf)) == -1) {
-#else /* __linux__ */
     if ((addrCount = nio_sctp_getpaddrs(fd, id, (struct sockaddr **)&addr_buf)) == -1) {
-#endif
         handleSocketError(env, errno);
         return NULL;
     }

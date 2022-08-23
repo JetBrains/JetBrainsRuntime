@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,20 +25,21 @@
 
 package jdk.internal.net.http;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FilePermission;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.lang.reflect.UndeclaredThrowableException;
+import java.net.http.HttpRequest.BodyPublisher;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.AccessControlContext;
 import java.security.AccessController;
-import java.security.PrivilegedAction;
+import java.security.Permission;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
@@ -47,11 +48,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Flow;
 import java.util.concurrent.Flow.Publisher;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.function.Supplier;
-import java.net.http.HttpRequest.BodyPublisher;
+
+import jdk.internal.net.http.common.Demand;
+import jdk.internal.net.http.common.SequentialScheduler;
 import jdk.internal.net.http.common.Utils;
 
 public final class RequestPublishers {
@@ -177,11 +183,13 @@ public final class RequestPublishers {
         }
 
         static long computeLength(Iterable<byte[]> bytes) {
-            long len = 0;
-            for (byte[] b : bytes) {
-                len = Math.addExact(len, (long)b.length);
-            }
-            return len;
+            // Avoid iterating just for the purpose of computing
+            // a length, in case iterating is a costly operation
+            // For HTTP/1.1 it means we will be using chunk encoding
+            // when sending the request body.
+            // For HTTP/2 it means we will not send the optional
+            // Content-length header.
+            return -1;
         }
 
         @Override
@@ -220,17 +228,17 @@ public final class RequestPublishers {
 
     /**
      * Publishes the content of a given file.
-     *
+     * <p>
      * Privileged actions are performed within a limited doPrivileged that only
      * asserts the specific, read, file permission that was checked during the
-     * construction of this FilePublisher.
+     * construction of this FilePublisher. This only applies if the file system
+     * that created the file provides interoperability with {@code java.io.File}.
      */
-    public static class FilePublisher implements BodyPublisher  {
+    public static class FilePublisher implements BodyPublisher {
 
-        private static final FilePermission[] EMPTY_FILE_PERMISSIONS = new FilePermission[0];
-
-        private final File file;
-        private final FilePermission[] filePermissions;
+        private final Path path;
+        private final long length;
+        private final Function<Path, InputStream> inputStreamSupplier;
 
         private static String pathForSecurityCheck(Path path) {
             return path.toFile().getPath();
@@ -243,48 +251,115 @@ public final class RequestPublishers {
          * FilePublisher. Permission checking and construction are deliberately
          * and tightly co-located.
          */
-        public static FilePublisher create(Path path) throws FileNotFoundException {
-            FilePermission filePermission = null;
+        public static FilePublisher create(Path path)
+                throws FileNotFoundException {
+            @SuppressWarnings("removal")
             SecurityManager sm = System.getSecurityManager();
-            if (sm != null) {
+            FilePermission filePermission = null;
+            boolean defaultFS = true;
+
+            try {
                 String fn = pathForSecurityCheck(path);
-                FilePermission readPermission = new FilePermission(fn, "read");
-                sm.checkPermission(readPermission);
-                filePermission = readPermission;
+                if (sm != null) {
+                    FilePermission readPermission = new FilePermission(fn, "read");
+                    sm.checkPermission(readPermission);
+                    filePermission = readPermission;
+                }
+            } catch (UnsupportedOperationException uoe) {
+                defaultFS = false;
+                // Path not associated with the default file system
+                // Test early if an input stream can still be obtained
+                try {
+                    if (sm != null) {
+                        Files.newInputStream(path).close();
+                    }
+                } catch (IOException ioe) {
+                    if (ioe instanceof FileNotFoundException) {
+                        throw (FileNotFoundException) ioe;
+                    } else {
+                        var ex = new FileNotFoundException(ioe.getMessage());
+                        ex.initCause(ioe);
+                        throw ex;
+                    }
+                }
             }
 
             // existence check must be after permission checks
             if (Files.notExists(path))
                 throw new FileNotFoundException(path + " not found");
 
-            return new FilePublisher(path, filePermission);
+            Permission perm = filePermission;
+            assert perm == null || perm.getActions().equals("read");
+            @SuppressWarnings("removal")
+            AccessControlContext acc = sm != null ?
+                    AccessController.getContext() : null;
+            boolean finalDefaultFS = defaultFS;
+            Function<Path, InputStream> inputStreamSupplier = (p) ->
+                    createInputStream(p, acc, perm, finalDefaultFS);
+
+            long length;
+            try {
+                length = Files.size(path);
+            } catch (IOException ioe) {
+                length = -1;
+            }
+
+            return new FilePublisher(path, length, inputStreamSupplier);
         }
 
-        private FilePublisher(Path name, FilePermission filePermission) {
-            assert filePermission != null ? filePermission.getActions().equals("read") : true;
-            file = name.toFile();
-            this.filePermissions = filePermission == null ? EMPTY_FILE_PERMISSIONS
-                    : new FilePermission[] { filePermission };
+        @SuppressWarnings("removal")
+        private static InputStream createInputStream(Path path,
+                                                     AccessControlContext acc,
+                                                     Permission perm,
+                                                     boolean defaultFS) {
+            try {
+                if (acc != null) {
+                    PrivilegedExceptionAction<InputStream> pa = defaultFS
+                            ? () -> new FileInputStream(path.toFile())
+                            : () -> Files.newInputStream(path);
+                    return perm != null
+                            ? AccessController.doPrivileged(pa, acc, perm)
+                            : AccessController.doPrivileged(pa, acc);
+                } else {
+                    return defaultFS
+                            ? new FileInputStream(path.toFile())
+                            : Files.newInputStream(path);
+                }
+            } catch (PrivilegedActionException pae) {
+                throw toUncheckedException(pae.getCause());
+            } catch (IOException io) {
+                throw new UncheckedIOException(io);
+            }
+        }
+
+        private static RuntimeException toUncheckedException(Throwable t) {
+            if (t instanceof RuntimeException)
+                throw (RuntimeException) t;
+            if (t instanceof Error)
+                throw (Error) t;
+            if (t instanceof IOException)
+                throw new UncheckedIOException((IOException) t);
+            throw new UndeclaredThrowableException(t);
+        }
+
+        private FilePublisher(Path name,
+                              long length,
+                              Function<Path, InputStream> inputStreamSupplier) {
+            path = name;
+            this.length = length;
+            this.inputStreamSupplier = inputStreamSupplier;
         }
 
         @Override
         public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
             InputStream is = null;
             Throwable t = null;
-            if (System.getSecurityManager() == null) {
-                try {
-                    is = new FileInputStream(file);
-                } catch (IOException ioe) {
-                    t = ioe;
-                }
-            } else {
-                try {
-                    PrivilegedExceptionAction<FileInputStream> pa =
-                            () -> new FileInputStream(file);
-                    is = AccessController.doPrivileged(pa, null, filePermissions);
-                } catch (PrivilegedActionException pae) {
-                    t = pae.getCause();
-                }
+            try {
+                is = inputStreamSupplier.apply(path);
+            } catch (UncheckedIOException | UndeclaredThrowableException ue) {
+                t = ue.getCause();
+            } catch (Throwable th) {
+                t = th;
             }
             final InputStream fis = is;
             PullPublisher<ByteBuffer> publisher;
@@ -298,12 +373,7 @@ public final class RequestPublishers {
 
         @Override
         public long contentLength() {
-            if (System.getSecurityManager() == null) {
-                return file.length();
-            } else {
-                PrivilegedAction<Long> pa = () -> file.length();
-                return AccessController.doPrivileged(pa, null, filePermissions);
-            }
+            return length;
         }
     }
 
@@ -313,6 +383,7 @@ public final class RequestPublishers {
     public static class StreamIterator implements Iterator<ByteBuffer> {
         final InputStream is;
         final Supplier<? extends ByteBuffer> bufSupplier;
+        private volatile boolean eof;
         volatile ByteBuffer nextBuffer;
         volatile boolean need2Read = true;
         volatile boolean haveNext;
@@ -330,35 +401,54 @@ public final class RequestPublishers {
 //            return error;
 //        }
 
-        private int read() {
+        private int read() throws IOException {
+            if (eof)
+                return -1;
             nextBuffer = bufSupplier.get();
             nextBuffer.clear();
             byte[] buf = nextBuffer.array();
             int offset = nextBuffer.arrayOffset();
             int cap = nextBuffer.capacity();
-            try {
-                int n = is.read(buf, offset, cap);
-                if (n == -1) {
-                    is.close();
-                    return -1;
-                }
-                //flip
-                nextBuffer.limit(n);
-                nextBuffer.position(0);
-                return n;
-            } catch (IOException ex) {
+            int n = is.read(buf, offset, cap);
+            if (n == -1) {
+                eof = true;
                 return -1;
+            }
+            //flip
+            nextBuffer.limit(n);
+            nextBuffer.position(0);
+            return n;
+        }
+
+        /**
+         * Close stream in this instance.
+         * UncheckedIOException may be thrown if IOE happens at InputStream::close.
+         */
+        private void closeStream() {
+            try {
+                is.close();
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
             }
         }
 
         @Override
         public synchronized boolean hasNext() {
             if (need2Read) {
-                haveNext = read() != -1;
-                if (haveNext) {
+                try {
+                    haveNext = read() != -1;
+                    if (haveNext) {
+                        need2Read = false;
+                    }
+                } catch (IOException e) {
+                    haveNext = false;
                     need2Read = false;
+                    throw new UncheckedIOException(e);
+                } finally {
+                    if (!haveNext) {
+                        closeStream();
+                    }
                 }
-                return haveNext;
             }
             return haveNext;
         }
@@ -423,6 +513,196 @@ public final class RequestPublishers {
         @Override
         public final void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
             publisher.subscribe(subscriber);
+        }
+    }
+
+
+    public static BodyPublisher concat(BodyPublisher... publishers) {
+        if (publishers.length == 0) {
+            return new EmptyPublisher();
+        } else if (publishers.length == 1) {
+            return Objects.requireNonNull(publishers[0]);
+        } else {
+            return new AggregatePublisher(List.of(publishers));
+        }
+    }
+
+    /**
+     * An aggregate publisher acts as a proxy between a subscriber
+     * and a list of publishers. It lazily subscribes to each publisher
+     * in sequence in order to publish a request body that is
+     * composed from all the bytes obtained from each publisher.
+     * For instance, the following two publishers are equivalent, even
+     * though they may result in a different count of {@code onNext}
+     * invocations.
+     * <pre>{@code
+     *   var bp1 = BodyPublishers.ofString("ab");
+     *   var bp2 = BodyPublishers.concat(BodyPublishers.ofString("a"),
+     *                                   BodyPublisher.ofByteArray(new byte[] {(byte)'b'}));
+     * }</pre>
+     *
+     */
+    private static final class AggregatePublisher implements BodyPublisher {
+        final List<BodyPublisher> bodies;
+        AggregatePublisher(List<BodyPublisher> bodies) {
+            this.bodies = bodies;
+        }
+
+        // -1 must be returned if any publisher returns -1
+        // Otherwise, we can just sum the contents.
+        @Override
+        public long contentLength() {
+            long length =  bodies.stream()
+                    .mapToLong(BodyPublisher::contentLength)
+                    .reduce((a,b) -> a < 0 || b < 0 ? -1 : a + b)
+                    .orElse(0);
+            // In case of overflow in any operation but the last, length
+            // will be -1.
+            // In case of overflow in the last reduce operation, length
+            // will be negative, but not necessarily -1: in that case,
+            // return -1
+            if (length < 0) return -1;
+            return length;
+        }
+
+        @Override
+        public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
+            subscriber.onSubscribe(new AggregateSubscription(bodies, subscriber));
+        }
+    }
+
+    private static final class AggregateSubscription
+            implements Flow.Subscription, Flow.Subscriber<ByteBuffer> {
+        final Flow.Subscriber<? super ByteBuffer> subscriber; // upstream
+        final Queue<BodyPublisher> bodies;
+        final SequentialScheduler scheduler;
+        final Demand demand = new Demand(); // from upstream
+        final Demand demanded = new Demand(); // requested downstream
+        final AtomicReference<Throwable> error = new AtomicReference<>();
+        volatile Throwable illegalRequest;
+        volatile BodyPublisher publisher; // downstream
+        volatile Flow.Subscription subscription; // downstream
+        volatile boolean cancelled;
+        AggregateSubscription(List<BodyPublisher> bodies, Flow.Subscriber<? super ByteBuffer> subscriber) {
+            this.bodies = new ConcurrentLinkedQueue<>(bodies);
+            this.subscriber = subscriber;
+            this.scheduler = SequentialScheduler.lockingScheduler(this::run);
+        }
+
+        @Override
+        public void request(long n) {
+            if (cancelled || publisher == null && bodies.isEmpty()) {
+                return;
+            }
+            try {
+                demand.increase(n);
+            } catch (IllegalArgumentException x) {
+                illegalRequest = x;
+            }
+            scheduler.runOrSchedule();
+        }
+
+        @Override
+        public void cancel() {
+            cancelled = true;
+            scheduler.runOrSchedule();
+        }
+
+        private boolean cancelSubscription() {
+            Flow.Subscription subscription = this.subscription;
+            if (subscription != null) {
+                this.subscription = null;
+                this.publisher = null;
+                subscription.cancel();
+            }
+            scheduler.stop();
+            return subscription != null;
+        }
+
+        public void run() {
+            try {
+                while (error.get() == null
+                        && (!demand.isFulfilled()
+                        || (publisher == null && !bodies.isEmpty()))) {
+                    boolean cancelled = this.cancelled;
+                    BodyPublisher publisher = this.publisher;
+                    Flow.Subscription subscription = this.subscription;
+                    Throwable illegalRequest = this.illegalRequest;
+                    if (cancelled) {
+                        bodies.clear();
+                        cancelSubscription();
+                        return;
+                    }
+                    if (publisher == null && !bodies.isEmpty()) {
+                        this.publisher = publisher = bodies.poll();
+                        publisher.subscribe(this);
+                        subscription = this.subscription;
+                    } else if (publisher == null) {
+                        return;
+                    }
+                    if (illegalRequest != null) {
+                        onError(illegalRequest);
+                        return;
+                    }
+                    if (subscription == null) return;
+                    if (!demand.isFulfilled()) {
+                        long n = demand.decreaseAndGet(demand.get());
+                        demanded.increase(n);
+                        subscription.request(n);
+                    }
+                }
+            } catch (Throwable t) {
+                onError(t);
+            }
+        }
+
+
+        @Override
+        public void onSubscribe(Flow.Subscription subscription) {
+            this.subscription = subscription;
+            scheduler.runOrSchedule();
+        }
+
+        @Override
+        public void onNext(ByteBuffer item) {
+            // make sure to cancel the subscription if we receive
+            // an item after the subscription was cancelled or
+            // an error was reported.
+            if (cancelled || error.get() != null) {
+                cancelSubscription();
+                return;
+            }
+            demanded.tryDecrement();
+            subscriber.onNext(item);
+        }
+
+        @Override
+        public void onError(Throwable throwable) {
+            if (error.compareAndSet(null, throwable)) {
+                publisher = null;
+                subscription = null;
+                subscriber.onError(throwable);
+                scheduler.stop();
+            }
+        }
+
+        @Override
+        public void onComplete() {
+            if (publisher != null && !bodies.isEmpty()) {
+                while (!demanded.isFulfilled()) {
+                    demand.increase(demanded.decreaseAndGet(demanded.get()));
+                }
+                publisher = null;
+                subscription = null;
+                scheduler.runOrSchedule();
+            } else {
+                publisher = null;
+                subscription = null;
+                if (!cancelled) {
+                    subscriber.onComplete();
+                }
+                scheduler.stop();
+            }
         }
     }
 }

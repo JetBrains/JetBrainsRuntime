@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 
-import jdk.javadoc.internal.doclets.toolkit.BaseConfiguration;
+import jdk.javadoc.internal.doclets.toolkit.BaseOptions;
 import jdk.javadoc.internal.doclets.toolkit.Content;
 import jdk.javadoc.internal.doclets.toolkit.DocletException;
 import jdk.javadoc.internal.doclets.toolkit.PropertyWriter;
@@ -75,7 +75,7 @@ public class PropertyBuilder extends AbstractMemberBuilder {
             TypeElement typeElement,
             PropertyWriter writer) {
         super(context, typeElement);
-        this.writer = writer;
+        this.writer = Objects.requireNonNull(writer);
         properties = getVisibleMembers(PROPERTIES);
     }
 
@@ -103,9 +103,6 @@ public class PropertyBuilder extends AbstractMemberBuilder {
         return !properties.isEmpty();
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void build(Content contentTree) throws DocletException {
         buildPropertyDoc(contentTree);
@@ -114,16 +111,13 @@ public class PropertyBuilder extends AbstractMemberBuilder {
     /**
      * Build the property documentation.
      *
-     * @param memberDetailsTree the content tree to which the documentation will be added
+     * @param detailsList the content tree to which the documentation will be added
      * @throws DocletException if there is a problem while building the documentation
      */
-    protected void buildPropertyDoc(Content memberDetailsTree) throws DocletException {
-        if (writer == null) {
-            return;
-        }
+    protected void buildPropertyDoc(Content detailsList) throws DocletException {
         if (hasMembersToDocument()) {
-            Content propertyDetailsTreeHeader = writer.getPropertyDetailsTreeHeader(memberDetailsTree);
-            Content propertyDetailsTree = writer.getMemberTreeHeader();
+            Content propertyDetailsTreeHeader = writer.getPropertyDetailsTreeHeader(detailsList);
+            Content memberList = writer.getMemberList();
 
             for (Element property : properties) {
                 currentProperty = (ExecutableElement)property;
@@ -133,10 +127,10 @@ public class PropertyBuilder extends AbstractMemberBuilder {
                 buildPropertyComments(propertyDocTree);
                 buildTagInfo(propertyDocTree);
 
-                propertyDetailsTree.add(writer.getPropertyDoc(propertyDocTree));
+                memberList.add(writer.getMemberListItem(propertyDocTree));
             }
-            memberDetailsTree.add(
-                    writer.getPropertyDetails(propertyDetailsTreeHeader, propertyDetailsTree));
+            Content propertyDetails = writer.getPropertyDetails(propertyDetailsTreeHeader, memberList);
+            detailsList.add(propertyDetails);
         }
     }
 
@@ -159,13 +153,22 @@ public class PropertyBuilder extends AbstractMemberBuilder {
     }
 
     /**
+     * Build the preview information.
+     *
+     * @param propertyDocTree the content tree to which the documentation will be added
+     */
+    protected void buildPreviewInfo(Content propertyDocTree) {
+        writer.addPreview(currentProperty, propertyDocTree);
+    }
+
+    /**
      * Build the comments for the property.  Do nothing if
-     * {@link BaseConfiguration#nocomment} is set to true.
+     * {@link BaseOptions#noComment()} is set to true.
      *
      * @param propertyDocTree the content tree to which the documentation will be added
      */
     protected void buildPropertyComments(Content propertyDocTree) {
-        if (!configuration.nocomment) {
+        if (!options.noComment()) {
             writer.addComments(currentProperty, propertyDocTree);
         }
     }

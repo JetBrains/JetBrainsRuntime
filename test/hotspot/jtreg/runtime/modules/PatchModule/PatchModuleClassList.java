@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import java.nio.file.Paths;
 import jdk.test.lib.compiler.InMemoryJavaCompiler;
 import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.process.ProcessTools;
+import jdk.test.lib.helpers.ClassFileInstaller;
 
 public class PatchModuleClassList {
     private static final String BOOT_CLASS = "javax/naming/spi/NamingManager";
@@ -63,8 +64,7 @@ public class PatchModuleClassList {
         String moduleJar = BasicJarBuilder.getTestJar("javanaming.jar");
 
         String classList = "javanaming.list";
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
-            true,
+        ProcessBuilder pb = ProcessTools.createTestJvm(
             "-XX:DumpLoadedClassList=" + classList,
             "--patch-module=java.naming=" + moduleJar,
             "PatchModuleMain", BOOT_CLASS.replace('/', '.'));
@@ -98,8 +98,7 @@ public class PatchModuleClassList {
         moduleJar = BasicJarBuilder.getTestJar("javasql.jar");
 
         classList = "javasql.list";
-        pb = ProcessTools.createJavaProcessBuilder(
-            true,
+        pb = ProcessTools.createTestJvm(
             "-XX:DumpLoadedClassList=" + classList,
             "--patch-module=java.sql=" + moduleJar,
             "PatchModuleMain", PLATFORM_CLASS.replace('/', '.'));
@@ -131,8 +130,7 @@ public class PatchModuleClassList {
         moduleJar = BasicJarBuilder.getTestJar("hello.jar");
 
         classList = "hello.list";
-        pb = ProcessTools.createJavaProcessBuilder(
-            true,
+        pb = ProcessTools.createTestJvm(
             "-XX:DumpLoadedClassList=" + classList,
             "-Xbootclasspath/a:" + moduleJar,
             "Hello");

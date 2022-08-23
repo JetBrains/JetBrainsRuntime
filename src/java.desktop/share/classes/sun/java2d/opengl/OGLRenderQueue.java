@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 
 package sun.java2d.opengl;
 
+import sun.awt.AWTThreading;
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.RenderQueue;
@@ -32,6 +33,7 @@ import sun.java2d.pipe.RenderQueue;
 import static sun.java2d.pipe.BufferedOpCodes.*;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.concurrent.TimeUnit;
 
 /**
  * OGL-specific implementation of RenderQueue.  This class provides a
@@ -44,6 +46,7 @@ public class OGLRenderQueue extends RenderQueue {
     private static OGLRenderQueue theInstance;
     private final QueueFlusher flusher;
 
+    @SuppressWarnings("removal")
     private OGLRenderQueue() {
         /*
          * The thread must be a member of a thread group
@@ -153,7 +156,7 @@ public class OGLRenderQueue extends RenderQueue {
     }
 
     private class QueueFlusher implements Runnable {
-        private boolean needsFlush;
+        private volatile boolean needsFlush;
         private Runnable task;
         private Error error;
         private final Thread thread;
@@ -167,28 +170,49 @@ public class OGLRenderQueue extends RenderQueue {
             thread.start();
         }
 
-        public synchronized void flushNow() {
-            // wake up the flusher
-            needsFlush = true;
-            notify();
+        public void flushNow() {
+            flushNow(null);
+        }
 
-            // wait for flush to complete
-            while (needsFlush) {
+        private void flushNow(Runnable task) {
+            Error err;
+            synchronized (this) {
+                if (task != null) {
+                    this.task = task;
+                }
+                // wake up the flusher
+                needsFlush = true;
+                notifyAll();
+
+                // wait for flush to complete
                 try {
-                    wait();
+                    wait(100);
                 } catch (InterruptedException e) {
                 }
+                err = error;
             }
-
+            if (needsFlush) {
+                // if we still wait for flush then avoid potential deadlock
+                err = AWTThreading.executeWaitToolkit(() -> {
+                    synchronized (QueueFlusher.this) {
+                        while (needsFlush) {
+                            try {
+                                QueueFlusher.this.wait();
+                            } catch (InterruptedException e) {
+                            }
+                        }
+                        return error;
+                    }
+                }, 5, TimeUnit.SECONDS);
+            }
             // re-throw any error that may have occurred during the flush
-            if (error != null) {
-                throw error;
+            if (err != null) {
+                throw err;
             }
         }
 
-        public synchronized void flushAndInvokeNow(Runnable task) {
-            this.task = task;
-            flushNow();
+        public void flushAndInvokeNow(Runnable task) {
+            flushNow(task);
         }
 
         public synchronized void run() {
@@ -242,7 +266,7 @@ public class OGLRenderQueue extends RenderQueue {
                     task = null;
                     // allow the waiting thread to continue
                     needsFlush = false;
-                    notify();
+                    notifyAll();
                 }
             }
         }

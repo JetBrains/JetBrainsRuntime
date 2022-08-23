@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
 #include "precompiled.hpp"
 #include "gc/z/zAddress.inline.hpp"
 #include "gc/z/zForwarding.inline.hpp"
+#include "gc/z/zForwardingAllocator.inline.hpp"
 #include "gc/z/zGlobals.hpp"
 #include "gc/z/zPage.inline.hpp"
 #include "unittest.hpp"
@@ -39,10 +40,6 @@ using namespace testing;
 class ZForwardingTest : public Test {
 public:
   // Helper functions
-
-  static bool is_power_of_2(size_t value) {
-    return ::is_power_of_2((intptr_t)value);
-  }
 
   class SequenceToFromIndex : AllStatic {
   public:
@@ -60,7 +57,7 @@ public:
   // Test functions
 
   static void setup(ZForwarding* forwarding) {
-    EXPECT_PRED1(is_power_of_2, forwarding->_entries.length()) << CAPTURE(forwarding->_entries.length());
+    EXPECT_PRED1(is_power_of_2<size_t>, forwarding->_entries.length()) << CAPTURE(forwarding->_entries.length());
   }
 
   static void find_empty(ZForwarding* forwarding) {
@@ -70,7 +67,9 @@ public:
     for (size_t i = 0; i < entries_to_check; i++) {
       uintptr_t from_index = SequenceToFromIndex::one_to_one(i);
 
-      EXPECT_FALSE(forwarding->find(from_index).populated()) << CAPTURE2(from_index, size);
+      ZForwardingCursor cursor;
+      ZForwardingEntry entry = forwarding->find(from_index, &cursor);
+      EXPECT_FALSE(entry.populated()) << CAPTURE2(from_index, size);
     }
   }
 
@@ -93,7 +92,8 @@ public:
     for (size_t i = 0; i < entries_to_populate; i++) {
       uintptr_t from_index = SequenceToFromIndex::one_to_one(i);
 
-      ZForwardingEntry entry = forwarding->find(from_index);
+      ZForwardingCursor cursor;
+      ZForwardingEntry entry = forwarding->find(from_index, &cursor);
       ASSERT_TRUE(entry.populated()) << CAPTURE2(from_index, size);
 
       ASSERT_EQ(entry.from_index(), from_index) << CAPTURE(size);
@@ -135,7 +135,8 @@ public:
     for (size_t i = 0; i < entries_to_populate; i++) {
       uintptr_t from_index = SequenceToFromIndex::odd(i);
 
-      ZForwardingEntry entry = forwarding->find(from_index);
+      ZForwardingCursor cursor;
+      ZForwardingEntry entry = forwarding->find(from_index, &cursor);
 
       ASSERT_FALSE(entry.populated()) << CAPTURE2(from_index, size);
     }
@@ -144,7 +145,7 @@ public:
   static void test(void (*function)(ZForwarding*), uint32_t size) {
     // Create page
     const ZVirtualMemory vmem(0, ZPageSizeSmall);
-    const ZPhysicalMemory pmem(ZPhysicalMemorySegment(0, ZPageSizeSmall));
+    const ZPhysicalMemory pmem(ZPhysicalMemorySegment(0, ZPageSizeSmall, true));
     ZPage page(ZPageTypeSmall, vmem, pmem);
 
     page.reset();
@@ -161,14 +162,16 @@ public:
     const size_t live_bytes = live_objects * object_size;
     page.inc_live(live_objects, live_bytes);
 
+    // Setup allocator
+    ZForwardingAllocator allocator;
+    const uint32_t nentries = ZForwarding::nentries(&page);
+    allocator.reset((sizeof(ZForwarding)) + (nentries * sizeof(ZForwardingEntry)));
+
     // Setup forwarding
-    ZForwarding* const forwarding = ZForwarding::create(&page);
+    ZForwarding* const forwarding = ZForwarding::alloc(&allocator, &page);
 
     // Actual test function
     (*function)(forwarding);
-
-    // Teardown forwarding
-    ZForwarding::destroy(forwarding);
   }
 
   // Run the given function with a few different input values.

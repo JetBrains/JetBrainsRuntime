@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@
 package jdk.test.lib.hprof.parser;
 
 import java.io.*;
+import java.util.zip.GZIPInputStream;
 import jdk.test.lib.hprof.model.*;
 
 /**
@@ -45,6 +46,8 @@ import jdk.test.lib.hprof.model.*;
 
 public abstract class Reader {
     protected PositionDataInputStream in;
+    // Magic number of gzip dump file header.
+    private static final int GZIP_HEADER_MAGIC = 0x1f8b08;
 
     protected Reader(PositionDataInputStream in) {
         this.in = in;
@@ -81,6 +84,7 @@ public abstract class Reader {
             }
             heapFile = heapFile.substring(0, pos);
         }
+        GzipRandomAccess access = null;
         try (PositionDataInputStream in = new PositionDataInputStream(
                 new BufferedInputStream(new FileInputStream(heapFile)))) {
             int i = in.readInt();
@@ -89,6 +93,20 @@ public abstract class Reader {
                     = new HprofReader(heapFile, in, dumpNumber,
                                       callStack, debugLevel);
                 return r.read();
+            } else if ((access = GzipRandomAccess.getAccess(heapFile, 16)) != null) {
+                in.close();
+                try (PositionDataInputStream in2 = new PositionDataInputStream(
+                        new BufferedInputStream(access.asStream(0)))) {
+                    i = in2.readInt();
+                    if (i == HprofReader.MAGIC_NUMBER) {
+                        Reader r
+                            = new HprofReader(access.asFileBuffer(), in2, dumpNumber,
+                                              callStack, debugLevel);
+                        return r.read();
+                    } else {
+                        throw new IOException("Wrong magic number in gzipped file: " + i);
+                    }
+                }
             } else {
                 throw new IOException("Unrecognized magic number: " + i);
             }
@@ -127,9 +145,39 @@ public abstract class Reader {
                                       true, debugLevel);
                 r.read();
                 return r.printStackTraces();
+            } else if ((i >>> 8) == GZIP_HEADER_MAGIC) {
+                // Possible gziped file, try decompress it and get the stack trace.
+                in.close();
+                String deCompressedFile = "heapdump" + System.currentTimeMillis() + ".hprof";
+                File out = new File(deCompressedFile);
+                // Decompress to get dump file.
+                try {
+                    GZIPInputStream gis = new GZIPInputStream(new FileInputStream(heapFile));
+                    FileOutputStream fos = new FileOutputStream(out);
+                    byte[] buffer = new byte[1024 * 1024];
+                    int len = 0;
+                    while ((len = gis.read(buffer)) > 0) {
+                        fos.write(buffer, 0, len);
+                    }
+                    // Check dump data header and print stack trace.
+                    PositionDataInputStream in2 = new PositionDataInputStream(
+                        new BufferedInputStream(new FileInputStream(out)));
+                    i = in2.readInt();
+                    if (i == HprofReader.MAGIC_NUMBER) {
+                        HprofReader r
+                            = new HprofReader(deCompressedFile, in2, dumpNumber,
+                                              true, debugLevel);
+                        r.read();
+                        return r.printStackTraces();
+                    }
+                } catch (Exception e) {
+                    throw new IOException("Can not decompress the compressed hprof file", e);
+                }
+                out.delete();
             } else {
                 throw new IOException("Unrecognized magic number: " + i);
             }
         }
+        return null;
     }
 }

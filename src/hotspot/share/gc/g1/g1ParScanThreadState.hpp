@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,10 +29,12 @@
 #include "gc/g1/g1CollectedHeap.hpp"
 #include "gc/g1/g1RedirtyCardsQueue.hpp"
 #include "gc/g1/g1OopClosures.hpp"
-#include "gc/g1/g1Policy.hpp"
 #include "gc/g1/g1RemSet.hpp"
 #include "gc/g1/heapRegionRemSet.hpp"
 #include "gc/shared/ageTable.hpp"
+#include "gc/shared/partialArrayTaskStepper.hpp"
+#include "gc/shared/stringdedup/stringDedup.hpp"
+#include "gc/shared/taskqueue.hpp"
 #include "memory/allocation.hpp"
 #include "oops/oop.hpp"
 #include "utilities/ticks.hpp"
@@ -45,8 +47,8 @@ class outputStream;
 
 class G1ParScanThreadState : public CHeapObj<mtGC> {
   G1CollectedHeap* _g1h;
-  RefToScanQueue* _refs;
-  G1RedirtyCardsQueue _rdcq;
+  G1ScannerTasksQueue* _task_queue;
+  G1RedirtyCardsLocalQueueSet _rdc_local_qset;
   G1CardTable* _ct;
   G1EvacuationRootClosures* _closures;
 
@@ -79,11 +81,12 @@ class G1ParScanThreadState : public CHeapObj<mtGC> {
   // Indicates whether in the last generation (old) there is no more space
   // available for allocation.
   bool _old_gen_is_full;
+  // Size (in elements) of a partial objArray task chunk.
+  int _partial_objarray_chunk_size;
+  PartialArrayTaskStepper _partial_array_stepper;
+  StringDedup::Requests _string_dedup_requests;
 
-#define PADDING_ELEM_NUM (DEFAULT_CACHE_LINE_SIZE / sizeof(size_t))
-
-  G1RedirtyCardsQueue& redirty_cards_queue()     { return _rdcq; }
-  G1CardTable* ct()                              { return _ct; }
+  G1CardTable* ct() { return _ct; }
 
   G1HeapRegionAttr dest(G1HeapRegionAttr original) const {
     assert(original.is_valid(),
@@ -107,6 +110,7 @@ public:
   G1ParScanThreadState(G1CollectedHeap* g1h,
                        G1RedirtyCardsQueueSet* rdcqs,
                        uint worker_id,
+                       uint n_workers,
                        size_t young_cset_length,
                        size_t optional_cset_length);
   virtual ~G1ParScanThreadState();
@@ -114,22 +118,22 @@ public:
   void set_ref_discoverer(ReferenceDiscoverer* rd) { _scanner.set_ref_discoverer(rd); }
 
 #ifdef ASSERT
-  bool queue_is_empty() const { return _refs->is_empty(); }
+  bool queue_is_empty() const { return _task_queue->is_empty(); }
+#endif
 
-  bool verify_ref(narrowOop* ref) const;
-  bool verify_ref(oop* ref) const;
-  bool verify_task(StarTask ref) const;
-#endif // ASSERT
+  void verify_task(narrowOop* task) const NOT_DEBUG_RETURN;
+  void verify_task(oop* task) const NOT_DEBUG_RETURN;
+  void verify_task(PartialArrayScanTask task) const NOT_DEBUG_RETURN;
+  void verify_task(ScannerTask task) const NOT_DEBUG_RETURN;
 
-  template <class T> void do_oop_ext(T* ref);
-  template <class T> void push_on_queue(T* ref);
+  void push_on_queue(ScannerTask task);
 
   template <class T> void enqueue_card_if_tracked(G1HeapRegionAttr region_attr, T* p, oop o) {
     assert(!HeapRegion::is_in_same_region(p, o), "Should have filtered out cross-region references already.");
     assert(!_g1h->heap_region_containing(p)->is_young(), "Should have filtered out from-young references already.");
 
 #ifdef ASSERT
-    HeapRegion* const hr_obj = _g1h->heap_region_containing((HeapWord*)o);
+    HeapRegion* const hr_obj = _g1h->heap_region_containing(o);
     assert(region_attr.needs_remset_update() == hr_obj->rem_set()->is_tracked(),
            "State flag indicating remset tracking disagrees (%s) with actual remembered set (%s) for region %u",
            BOOL_TO_STR(region_attr.needs_remset_update()),
@@ -142,7 +146,7 @@ public:
     size_t card_index = ct()->index_for(p);
     // If the card hasn't been added to the buffer, do it.
     if (_last_enqueued_card != card_index) {
-      redirty_cards_queue().enqueue(ct()->byte_for_index(card_index));
+      _rdc_local_qset.enqueue(ct()->byte_for_index(card_index));
       _last_enqueued_card = card_index;
     }
   }
@@ -158,43 +162,28 @@ public:
   size_t flush(size_t* surviving_young_words);
 
 private:
-  #define G1_PARTIAL_ARRAY_MASK 0x2
+  void do_partial_array(PartialArrayScanTask task);
+  void start_partial_objarray(G1HeapRegionAttr dest_dir, oop from, oop to);
 
-  inline bool has_partial_array_mask(oop* ref) const {
-    return ((uintptr_t)ref & G1_PARTIAL_ARRAY_MASK) == G1_PARTIAL_ARRAY_MASK;
-  }
+  HeapWord* allocate_copy_slow(G1HeapRegionAttr* dest_attr,
+                               oop old,
+                               size_t word_sz,
+                               uint age,
+                               uint node_index);
 
-  // We never encode partial array oops as narrowOop*, so return false immediately.
-  // This allows the compiler to create optimized code when popping references from
-  // the work queue.
-  inline bool has_partial_array_mask(narrowOop* ref) const {
-    assert(((uintptr_t)ref & G1_PARTIAL_ARRAY_MASK) != G1_PARTIAL_ARRAY_MASK, "Partial array oop reference encoded as narrowOop*");
-    return false;
-  }
+  void undo_allocation(G1HeapRegionAttr dest_addr,
+                       HeapWord* obj_ptr,
+                       size_t word_sz,
+                       uint node_index);
 
-  // Only implement set_partial_array_mask() for regular oops, not for narrowOops.
-  // We always encode partial arrays as regular oop, to allow the
-  // specialization for has_partial_array_mask() for narrowOops above.
-  // This means that unintentional use of this method with narrowOops are caught
-  // by the compiler.
-  inline oop* set_partial_array_mask(oop obj) const {
-    assert(((uintptr_t)(void *)obj & G1_PARTIAL_ARRAY_MASK) == 0, "Information loss!");
-    return (oop*) ((uintptr_t)(void *)obj | G1_PARTIAL_ARRAY_MASK);
-  }
-
-  inline oop clear_partial_array_mask(oop* ref) const {
-    return cast_to_oop((intptr_t)ref & ~G1_PARTIAL_ARRAY_MASK);
-  }
-
-  inline void do_oop_partial_array(oop* p);
+  oop do_copy_to_survivor_space(G1HeapRegionAttr region_attr,
+                                oop obj,
+                                markWord old_mark);
 
   // This method is applied to the fields of the objects that have just been copied.
-  template <class T> inline void do_oop_evac(T* p);
+  template <class T> void do_oop_evac(T* p);
 
-  inline void deal_with_reference(oop* ref_to_scan);
-  inline void deal_with_reference(narrowOop* ref_to_scan);
-
-  inline void dispatch_reference(StarTask ref);
+  void dispatch_task(ScannerTask task);
 
   // Tries to allocate word_sz in the PLAB of the next "generation" after trying to
   // allocate into dest. Previous_plab_refill_failed indicates whether previous
@@ -213,26 +202,24 @@ private:
                               oop const old, size_t word_sz, uint age,
                               HeapWord * const obj_ptr, uint node_index) const;
 
-  inline bool needs_partial_trimming() const;
-  inline bool is_partially_trimmed() const;
+  void trim_queue_to_threshold(uint threshold);
 
-  inline void trim_queue_to_threshold(uint threshold);
+  inline bool needs_partial_trimming() const;
 
   // NUMA statistics related methods.
-  inline void initialize_numa_stats();
-  inline void flush_numa_stats();
+  void initialize_numa_stats();
+  void flush_numa_stats();
   inline void update_numa_stats(uint node_index);
 
 public:
-  oop copy_to_survivor_space(G1HeapRegionAttr const region_attr, oop const obj, markWord const old_mark);
+  oop copy_to_survivor_space(G1HeapRegionAttr region_attr, oop obj, markWord old_mark);
 
-  void trim_queue();
-  void trim_queue_partially();
+  inline void trim_queue();
+  inline void trim_queue_partially();
+  void steal_and_trim_queue(G1ScannerTasksQueueSet *task_queues);
 
   Tickspan trim_ticks() const;
   void reset_trim_ticks();
-
-  inline void steal_and_trim_queue(RefToScanQueueSet *task_queues);
 
   // An attempt to evacuate "obj" has failed; take necessary steps.
   oop handle_evacuation_failure_par(oop obj, markWord m);
@@ -269,9 +256,6 @@ class G1ParScanThreadStateSet : public StackObj {
   G1ParScanThreadState* state_for_worker(uint worker_id);
 
   const size_t* surviving_young_words() const;
-
- private:
-  G1ParScanThreadState* new_par_scan_state(uint worker_id, size_t young_cset_length);
 };
 
 #endif // SHARE_GC_G1_G1PARSCANTHREADSTATE_HPP

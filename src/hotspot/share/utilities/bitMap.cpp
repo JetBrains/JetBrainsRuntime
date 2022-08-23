@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,7 +87,13 @@ BitMap::bm_word_t* BitMap::reallocate(const Allocator& allocator, bm_word_t* old
                            MIN2(old_size_in_words, new_size_in_words));
     }
 
-    if (clear && new_size_in_words > old_size_in_words) {
+    if (clear && (new_size_in_bits > old_size_in_bits)) {
+      // If old_size_in_bits is not word-aligned, then the preceeding
+      // copy can include some trailing bits in the final copied word
+      // that also need to be cleared.  See clear_range_within_word.
+      bm_word_t mask = bit_mask(old_size_in_bits) - 1;
+      map[raw_to_words_align_down(old_size_in_bits)] &= mask;
+      // Clear the remaining full words.
       clear_range_of_words(map, old_size_in_words, new_size_in_words);
     }
   }
@@ -621,39 +627,55 @@ void BitMap::clear_large() {
   clear_large_range_of_words(0, size_in_words());
 }
 
-// Note that if the closure itself modifies the bitmap
-// then modifications in and to the left of the _bit_ being
-// currently sampled will not be seen. Note also that the
-// interval [leftOffset, rightOffset) is right open.
-bool BitMap::iterate(BitMapClosure* blk, idx_t leftOffset, idx_t rightOffset) {
-  verify_range(leftOffset, rightOffset);
-
-  idx_t startIndex = to_words_align_down(leftOffset);
-  idx_t endIndex   = to_words_align_up(rightOffset);
-  for (idx_t index = startIndex, offset = leftOffset;
-       offset < rightOffset && index < endIndex;
-       offset = (++index) << LogBitsPerWord) {
-    idx_t rest = map(index) >> (offset & (BitsPerWord - 1));
-    for (; offset < rightOffset && rest != 0; offset++) {
-      if (rest & 1) {
-        if (!blk->do_bit(offset)) return false;
-        //  resample at each closure application
-        // (see, for instance, CMS bug 4525989)
-        rest = map(index) >> (offset & (BitsPerWord -1));
-      }
-      rest = rest >> 1;
-    }
-  }
-  return true;
-}
-
-BitMap::idx_t BitMap::count_one_bits() const {
+BitMap::idx_t BitMap::count_one_bits_in_range_of_words(idx_t beg_full_word, idx_t end_full_word) const {
   idx_t sum = 0;
-  for (idx_t i = 0; i < size_in_words(); i++) {
+  for (idx_t i = beg_full_word; i < end_full_word; i++) {
     bm_word_t w = map()[i];
     sum += population_count(w);
   }
   return sum;
+}
+
+BitMap::idx_t BitMap::count_one_bits_within_word(idx_t beg, idx_t end) const {
+  if (beg != end) {
+    assert(end > beg, "must be");
+    bm_word_t mask = ~inverted_bit_mask_for_range(beg, end);
+    bm_word_t w = *word_addr(beg);
+    w &= mask;
+    return population_count(w);
+  }
+  return 0;
+}
+
+BitMap::idx_t BitMap::count_one_bits() const {
+  return count_one_bits(0, size());
+}
+
+// Returns the number of bits set within  [beg, end).
+BitMap::idx_t BitMap::count_one_bits(idx_t beg, idx_t end) const {
+  verify_range(beg, end);
+
+  idx_t beg_full_word = to_words_align_up(beg);
+  idx_t end_full_word = to_words_align_down(end);
+
+  idx_t sum = 0;
+
+  if (beg_full_word < end_full_word) {
+    // The range includes at least one full word.
+    sum += count_one_bits_within_word(beg, bit_index(beg_full_word));
+    sum += count_one_bits_in_range_of_words(beg_full_word, end_full_word);
+    sum += count_one_bits_within_word(bit_index(end_full_word), end);
+  } else {
+    // The range spans at most 2 partial words.
+    idx_t boundary = MIN2(bit_index(beg_full_word), end);
+    sum += count_one_bits_within_word(beg, boundary);
+    sum += count_one_bits_within_word(boundary, end);
+  }
+
+  assert(sum <= (beg - end), "must be");
+
+  return sum;
+
 }
 
 void BitMap::print_on_error(outputStream* st, const char* prefix) const {

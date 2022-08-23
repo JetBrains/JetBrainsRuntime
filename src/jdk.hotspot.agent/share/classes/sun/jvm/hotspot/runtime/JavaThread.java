@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@ import sun.jvm.hotspot.debugger.*;
 import sun.jvm.hotspot.oops.*;
 import sun.jvm.hotspot.types.*;
 import sun.jvm.hotspot.utilities.*;
+import sun.jvm.hotspot.utilities.Observable;
+import sun.jvm.hotspot.utilities.Observer;
 
 /** This is an abstract class because there are certain OS- and
     CPU-specific operations (like the setting and getting of the last
@@ -41,7 +43,7 @@ import sun.jvm.hotspot.utilities.*;
 public class JavaThread extends Thread {
   private static final boolean DEBUG = System.getProperty("sun.jvm.hotspot.runtime.JavaThread.DEBUG") != null;
 
-  private static sun.jvm.hotspot.types.OopField threadObjField;
+  private static long          threadObjFieldOffset;
   private static AddressField  anchorField;
   private static AddressField  lastJavaSPField;
   private static AddressField  lastJavaPCField;
@@ -83,7 +85,8 @@ public class JavaThread extends Thread {
     Type type = db.lookupType("JavaThread");
     Type anchorType = db.lookupType("JavaFrameAnchor");
 
-    threadObjField    = type.getOopField("_threadObj");
+    threadObjFieldOffset = type.getField("_threadObj").getOffset();
+
     anchorField       = type.getAddressField("_anchor");
     lastJavaSPField   = anchorType.getAddressField("_last_Java_sp");
     lastJavaPCField   = anchorType.getAddressField("_last_Java_pc");
@@ -345,7 +348,9 @@ public class JavaThread extends Thread {
   public Oop getThreadObj() {
     Oop obj = null;
     try {
-      obj = VM.getVM().getObjectHeap().newOop(threadObjField.getValue(addr));
+      Address addr = getAddress().addOffsetTo(threadObjFieldOffset);
+      VMOopHandle vmOopHandle = VMObjectFactory.newObject(VMOopHandle.class, addr);
+      obj = vmOopHandle.resolve();
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -462,7 +467,7 @@ public class JavaThread extends Thread {
     return fr;
   }
 
-  private Address lastSPDbg() {
+  public Address lastSPDbg() {
     return access.getLastSP(addr);
   }
 

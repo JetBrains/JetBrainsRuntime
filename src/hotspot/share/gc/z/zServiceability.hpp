@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,9 @@ public:
 
 class ZServiceabilityMemoryManager : public GCMemoryManager {
 public:
-  ZServiceabilityMemoryManager(ZServiceabilityMemoryPool* pool);
+  ZServiceabilityMemoryManager(const char* name,
+                               const char* end_message,
+                               ZServiceabilityMemoryPool* pool);
 };
 
 class ZServiceability {
@@ -51,7 +53,8 @@ private:
   const size_t                 _min_capacity;
   const size_t                 _max_capacity;
   ZServiceabilityMemoryPool    _memory_pool;
-  ZServiceabilityMemoryManager _memory_manager;
+  ZServiceabilityMemoryManager _cycle_memory_manager;
+  ZServiceabilityMemoryManager _pause_memory_manager;
   ZServiceabilityCounters*     _counters;
 
 public:
@@ -60,50 +63,28 @@ public:
   void initialize();
 
   MemoryPool* memory_pool();
-  GCMemoryManager* memory_manager();
+  GCMemoryManager* cycle_memory_manager();
+  GCMemoryManager* pause_memory_manager();
   ZServiceabilityCounters* counters();
 };
 
-class ZServiceabilityMemoryUsageTracker {
-public:
-  ~ZServiceabilityMemoryUsageTracker();
-};
-
-class ZServiceabilityManagerStatsTracer {
+class ZServiceabilityCycleTracer : public StackObj {
 private:
-  TraceMemoryManagerStats _stats;
+  TraceMemoryManagerStats _memory_manager_stats;
 
 public:
-  ZServiceabilityManagerStatsTracer(bool is_gc_begin, bool is_gc_end);
+  ZServiceabilityCycleTracer();
 };
 
-class ZServiceabilityCountersTracer {
+class ZServiceabilityPauseTracer : public StackObj {
 private:
-  TraceCollectorStats _stats;
+  SvcGCMarker             _svc_gc_marker;
+  TraceCollectorStats     _counters_stats;
+  TraceMemoryManagerStats _memory_manager_stats;
 
 public:
-  ZServiceabilityCountersTracer();
-  ~ZServiceabilityCountersTracer();
+  ZServiceabilityPauseTracer();
+  ~ZServiceabilityPauseTracer();
 };
-
-template <bool IsGCStart, bool IsGCEnd>
-class ZServiceabilityTracer : public StackObj {
-private:
-  SvcGCMarker                       _svc_gc_marker;
-  ZServiceabilityMemoryUsageTracker _memory_usage_tracker;
-  ZServiceabilityManagerStatsTracer _manager_stats_tracer;
-  ZServiceabilityCountersTracer     _counters_tracer;
-
-public:
-  ZServiceabilityTracer() :
-      _svc_gc_marker(SvcGCMarker::CONCURRENT),
-      _memory_usage_tracker(),
-      _manager_stats_tracer(IsGCStart, IsGCEnd),
-      _counters_tracer() {}
-};
-
-typedef ZServiceabilityTracer<true,  false> ZServiceabilityMarkStartTracer;
-typedef ZServiceabilityTracer<false, false> ZServiceabilityMarkEndTracer;
-typedef ZServiceabilityTracer<false, true>  ZServiceabilityRelocateStartTracer;
 
 #endif // SHARE_GC_Z_ZSERVICEABILITY_HPP

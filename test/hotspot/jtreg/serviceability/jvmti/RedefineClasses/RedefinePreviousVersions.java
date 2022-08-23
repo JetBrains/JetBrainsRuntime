@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,14 +25,16 @@
  * @test
  * @bug 8165246 8010319
  * @summary Test has_previous_versions flag and processing during class unloading.
+ * @requires vm.jvmti
  * @requires vm.opt.final.ClassUnloading
+ * @requires vm.flagless
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  * @modules java.compiler
  *          java.instrument
  *          jdk.jartool/sun.tools.jar
- * @run main RedefineClassHelper
- * @run main/othervm RedefinePreviousVersions test
+ * @run driver RedefineClassHelper
+ * @run driver RedefinePreviousVersions test
  */
 
 import jdk.test.lib.process.ProcessTools;

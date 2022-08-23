@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Red Hat, Inc.
+ * Copyright (c) 2019, 2020, Red Hat, Inc.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package jdk.tools.jlink.internal.plugins;
 
+import java.io.InputStream;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
 import java.nio.file.FileVisitResult;
@@ -44,7 +45,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.ResourceBundle;
 
-import jdk.tools.jlink.plugin.Plugin;
 import jdk.tools.jlink.plugin.PluginException;
 import jdk.tools.jlink.plugin.ResourcePool;
 import jdk.tools.jlink.plugin.ResourcePoolBuilder;
@@ -55,7 +55,7 @@ import jdk.tools.jlink.plugin.ResourcePoolEntry;
  * libraries and binaries.
  *
  */
-public final class StripNativeDebugSymbolsPlugin implements Plugin {
+public final class StripNativeDebugSymbolsPlugin extends AbstractPlugin {
 
     public static final String NAME = "strip-native-debug-symbols";
     private static final boolean DEBUG = Boolean.getBoolean("jlink.debug");
@@ -91,12 +91,8 @@ public final class StripNativeDebugSymbolsPlugin implements Plugin {
     }
 
     public StripNativeDebugSymbolsPlugin(ObjCopyCmdBuilder cmdBuilder) {
+        super(NAME, resourceBundle);
         this.cmdBuilder = cmdBuilder;
-    }
-
-    @Override
-    public String getName() {
-        return NAME;
     }
 
     @Override
@@ -136,10 +132,9 @@ public final class StripNativeDebugSymbolsPlugin implements Plugin {
     }
 
     private void logError(ResourcePoolEntry resource, String msgKey) {
-        String msg = PluginsResourceBundle.getMessage(resourceBundle,
-                                                      msgKey,
-                                                      NAME,
-                                                      resource.path());
+        String msg = getMessage(msgKey,
+                                NAME,
+                                resource.path());
         System.err.println(msg);
     }
 
@@ -149,20 +144,8 @@ public final class StripNativeDebugSymbolsPlugin implements Plugin {
     }
 
     @Override
-    public String getDescription() {
-        String key = NAME + ".description";
-        return PluginsResourceBundle.getMessage(resourceBundle, key);
-    }
-
-    @Override
     public boolean hasArguments() {
         return true;
-    }
-
-    @Override
-    public String getArgumentsDescription() {
-        String key = NAME + ".argument";
-        return PluginsResourceBundle.getMessage(resourceBundle, key);
     }
 
     @Override
@@ -195,8 +178,7 @@ public final class StripNativeDebugSymbolsPlugin implements Plugin {
             String[] tokens = arg.split("=");
             if (tokens.length != 2 || !KEEP_DEBUG_INFO_ARG.equals(tokens[0])) {
                 throw new IllegalArgumentException(
-                        PluginsResourceBundle.getMessage(resourceBundle,
-                                                         NAME + ".iae", NAME, arg));
+                        getMessage(NAME + ".iae", NAME, arg));
             }
             hasKeepDebugInfo = true;
             debuginfoExt = tokens[1];
@@ -210,8 +192,7 @@ public final class StripNativeDebugSymbolsPlugin implements Plugin {
             String[] tokens = arg.split("=");
             if (tokens.length != 2 || !STRIP_CMD_ARG.equals(tokens[0])) {
                 throw new IllegalArgumentException(
-                        PluginsResourceBundle.getMessage(resourceBundle,
-                                                         NAME + ".iae", NAME, arg));
+                        getMessage(NAME + ".iae", NAME, arg));
             }
             if (withChecks) {
                 validateStripArg(tokens[1]);
@@ -245,26 +226,23 @@ public final class StripNativeDebugSymbolsPlugin implements Plugin {
             // on the same plugin instance multiple times. Plugin option can
             // repeat.
             throw new IllegalArgumentException(
-                    PluginsResourceBundle.getMessage(resourceBundle,
-                                                     NAME + ".iae.conflict",
-                                                     NAME,
-                                                     EXCLUDE_DEBUG_INFO_ARG,
-                                                     KEEP_DEBUG_INFO_ARG));
+                    getMessage(NAME + ".iae.conflict",
+                               NAME,
+                               EXCLUDE_DEBUG_INFO_ARG,
+                               KEEP_DEBUG_INFO_ARG));
         }
         if (!arg.startsWith(STRIP_CMD_ARG) &&
             !arg.startsWith(KEEP_DEBUG_INFO_ARG) &&
             !arg.startsWith(EXCLUDE_DEBUG_INFO_ARG)) {
             // unknown arg value; case --strip-native-debug-symbols foobar
             throw new IllegalArgumentException(
-                    PluginsResourceBundle.getMessage(resourceBundle,
-                                                     NAME + ".iae", NAME, arg));
+                    getMessage(NAME + ".iae", NAME, arg));
         }
         if (!config.isEmpty()) {
             // extraneous values; --strip-native-debug-symbols keep-debuginfo-files:foo=bar
             throw new IllegalArgumentException(
-                    PluginsResourceBundle.getMessage(resourceBundle,
-                                                     NAME + ".iae", NAME,
-                                                     config.toString()));
+                    getMessage(NAME + ".iae", NAME,
+                               config.toString()));
         }
         includeDebugSymbols = hasKeepDebugInfo;
     }
@@ -274,15 +252,13 @@ public final class StripNativeDebugSymbolsPlugin implements Plugin {
             Path strip = Paths.get(stripArg); // verify it's a resonable path
             if (!Files.isExecutable(strip)) {
                 throw new IllegalArgumentException(
-                        PluginsResourceBundle.getMessage(resourceBundle,
-                                                         NAME + ".invalidstrip",
-                                                         stripArg));
+                        getMessage(NAME + ".invalidstrip",
+                                   stripArg));
             }
         } catch (InvalidPathException e) {
             throw new IllegalArgumentException(
-                    PluginsResourceBundle.getMessage(resourceBundle,
-                                                     NAME + ".invalidstrip",
-                                                     e.getInput()));
+                    getMessage(NAME + ".invalidstrip",
+                               e.getInput()));
         }
     }
 
@@ -313,7 +289,10 @@ public final class StripNativeDebugSymbolsPlugin implements Plugin {
                 Path resourceFileBinary = tempDir.resolve(relativeFileName);
                 String relativeDbgFileName = relativeFileName + "." + debugExt;
 
-                Files.write(resourceFileBinary, resource.contentBytes());
+                try (InputStream in = resource.content()) {
+                    Files.copy(in, resourceFileBinary);
+                }
+
                 Path resourceFileDebugSymbols;
                 if (includeDebug) {
                     resourceFileDebugSymbols = tempDir.resolve(Paths.get(relativeDbgFileName));

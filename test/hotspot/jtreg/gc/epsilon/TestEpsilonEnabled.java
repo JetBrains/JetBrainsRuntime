@@ -25,11 +25,13 @@ package gc.epsilon;
 
 /**
  * @test TestAlwaysPretouch
- * @key gc
- * @requires vm.gc.Epsilon & !vm.graal.enabled
+ * @requires vm.gc.Epsilon
  * @summary Basic sanity test for Epsilon
  * @library /test/lib
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC gc.epsilon.TestEpsilonEnabled
+ *
+ * @run main/othervm -Xmx256m
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
+ *                   gc.epsilon.TestEpsilonEnabled
  */
 
 import java.lang.management.GarbageCollectorMXBean;

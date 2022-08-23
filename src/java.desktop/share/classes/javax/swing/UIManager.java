@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,7 +62,7 @@ import java.util.HashMap;
 import java.util.Objects;
 import sun.awt.AppContext;
 import sun.awt.AWTAccessor;
-
+import java.awt.GraphicsEnvironment;
 
 /**
  * {@code UIManager} manages the current look and feel, the set of
@@ -168,7 +168,7 @@ import sun.awt.AWTAccessor;
  * future Swing releases. The current serialization support is
  * appropriate for short term storage or RMI between applications running
  * the same version of Swing.  As of 1.4, support for long term storage
- * of all JavaBeans&trade;
+ * of all JavaBeans
  * has been added to the <code>java.beans</code> package.
  * Please see {@link java.beans.XMLEncoder}.
  *
@@ -233,6 +233,11 @@ public class UIManager implements Serializable
     /* Lock object used in place of class object for synchronization. (4187686)
      */
     private static final Object classLock = new Object();
+
+    /**
+     * Constructs a {@code UIManager}.
+     */
+    public UIManager() {}
 
     /**
      * Return the <code>LAFState</code> object, lazily create one if necessary.
@@ -376,10 +381,16 @@ public class UIManager implements Serializable
                   "com.sun.java.swing.plaf.motif.MotifLookAndFeel"));
 
         // Only include windows on Windows boxs.
+        @SuppressWarnings("removal")
         OSInfo.OSType osType = AccessController.doPrivileged(OSInfo.getOSTypeAction());
         if (osType == OSInfo.OSType.WINDOWS) {
             iLAFs.add(new LookAndFeelInfo("Windows",
                         "com.sun.java.swing.plaf.windows.WindowsLookAndFeel"));
+            if (!GraphicsEnvironment.isHeadless()) {
+                // Force DPI settings in Win32GraphicsEnvironment.initDisplayWrapper()
+                // prior to font size settings in desktop properties.
+                GraphicsEnvironment.getLocalGraphicsEnvironment();
+            }
             if (Toolkit.getDefaultToolkit().getDesktopProperty(
                     "win.xpstyle.themeActive") != null) {
                 iLAFs.add(new LookAndFeelInfo("Windows Classic",
@@ -648,11 +659,13 @@ public class UIManager implements Serializable
      * @see #getCrossPlatformLookAndFeelClassName
      */
     public static String getSystemLookAndFeelClassName() {
+        @SuppressWarnings("removal")
         String systemLAF = AccessController.doPrivileged(
                              new GetPropertyAction("swing.systemlaf"));
         if (systemLAF != null) {
             return systemLAF;
         }
+        @SuppressWarnings("removal")
         OSInfo.OSType osType = AccessController.doPrivileged(OSInfo.getOSTypeAction());
         if (osType == OSInfo.OSType.WINDOWS) {
             return "com.sun.java.swing.plaf.windows.WindowsLookAndFeel";
@@ -672,9 +685,6 @@ public class UIManager implements Serializable
                     return "com.apple.laf.AquaLookAndFeel";
                 }
             }
-            if (osType == OSInfo.OSType.SOLARIS) {
-                return "com.sun.java.swing.plaf.motif.MotifLookAndFeel";
-            }
         }
         return getCrossPlatformLookAndFeelClassName();
     }
@@ -691,6 +701,7 @@ public class UIManager implements Serializable
      * @see #getSystemLookAndFeelClassName
      */
     public static String getCrossPlatformLookAndFeelClassName() {
+        @SuppressWarnings("removal")
         String laf = AccessController.doPrivileged(
                              new GetPropertyAction("swing.crossplatformlaf"));
         if (laf != null) {
@@ -1269,6 +1280,7 @@ public class UIManager implements Serializable
         }
     }
 
+    @SuppressWarnings("removal")
     private static Properties loadSwingProperties()
     {
         /* Don't bother checking for Swing properties if untrusted, as

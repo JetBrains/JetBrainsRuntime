@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -252,6 +252,9 @@ public final class TimeZoneNames_zh_TW extends TimeZoneNamesBundle {
         String WET[] = new String[] {"\u897f\u6b50\u6642\u9593", "WET",
                                      "\u897f\u6b50\u590f\u4ee4\u6642\u9593", "WEST",
                                      "\u897F\u6B50\u6642\u9593", "WET"};
+        String WGT[] = new String[] {"\u897f\u683c\u6797\u862d\u5cf6\u6642\u9593", "WGT",
+                                     "\u897f\u683c\u6797\u862d\u5cf6\u590f\u4ee4\u6642\u9593", "WGST",
+                                     "\u897F\u683C\u9675\u862D\u6642\u9593", "WGT"};
         String WIT[] = new String[] {"\u897f\u5370\u5c3c\u6642\u9593", "WIB",
                                      "\u897f\u5370\u5c3c\u590f\u4ee4\u6642\u9593", "WIST",
                                      "\u897F\u5370\u5C3C\u6642\u9593", "WIB"};
@@ -348,7 +351,7 @@ public final class TimeZoneNames_zh_TW extends TimeZoneNamesBundle {
             {"Africa/Gaborone", CAT},
             {"Africa/Harare", CAT},
             {"Africa/Johannesburg", SAST},
-            {"Africa/Juba", EAT},
+            {"Africa/Juba", CAT},
             {"Africa/Kampala", EAT},
             {"Africa/Khartoum", CAT},
             {"Africa/Kigali", CAT},
@@ -375,7 +378,9 @@ public final class TimeZoneNames_zh_TW extends TimeZoneNamesBundle {
             {"Africa/Timbuktu", GMT},
             {"Africa/Tripoli", EET},
             {"Africa/Tunis", CET},
-            {"Africa/Windhoek", CAT},
+            {"Africa/Windhoek", new String[] {"Central African Time", "CAT",
+                                              "Western African Time", "WAT",
+                                              "Central African Time", "CAT"}},
             {"America/Adak", HST},
             {"America/Anguilla", AST},
             {"America/Antigua", AST},
@@ -430,7 +435,7 @@ public final class TimeZoneNames_zh_TW extends TimeZoneNamesBundle {
             {"America/Cuiaba", AMT},
             {"America/Curacao", AST},
             {"America/Danmarkshavn", GMT},
-            {"America/Dawson", PST},
+            {"America/Dawson", MST},
             {"America/Dawson_Creek", MST},
             {"America/Detroit", EST},
             {"America/Dominica", AST},
@@ -442,9 +447,7 @@ public final class TimeZoneNames_zh_TW extends TimeZoneNamesBundle {
             {"America/Fort_Wayne", EST},
             {"America/Fortaleza", BRT},
             {"America/Glace_Bay", AST},
-            {"America/Godthab", new String[] {"\u897f\u683c\u6797\u862d\u5cf6\u6642\u9593", "WGT",
-                                              "\u897f\u683c\u6797\u862d\u5cf6\u590f\u4ee4\u6642\u9593", "WGST",
-                                              "\u897F\u683C\u9675\u862D\u6642\u9593", "WGT"}},
+            {"America/Godthab", WGT},
             {"America/Goose_Bay", AST},
             {"America/Grand_Turk", EST},
             {"America/Grenada", AST},
@@ -512,6 +515,7 @@ public final class TimeZoneNames_zh_TW extends TimeZoneNamesBundle {
             {"America/North_Dakota/Beulah", CST},
             {"America/North_Dakota/Center", CST},
             {"America/North_Dakota/New_Salem", CST},
+            {"America/Nuuk", WGT},
             {"America/Ojinaga", MST},
             {"America/Panama", EST},
             {"America/Pangnirtung", EST},
@@ -551,7 +555,7 @@ public final class TimeZoneNames_zh_TW extends TimeZoneNamesBundle {
             {"America/Tortola", AST},
             {"America/Vancouver", PST},
             {"America/Virgin", AST},
-            {"America/Whitehorse", PST},
+            {"America/Whitehorse", MST},
             {"America/Winnipeg", CST},
             {"America/Yakutat", AKST},
             {"America/Yellowknife", MST},
@@ -562,9 +566,9 @@ public final class TimeZoneNames_zh_TW extends TimeZoneNamesBundle {
             {"Antarctica/DumontDUrville", new String[] {"Dumont-d'Urville \u6642\u9593", "DDUT",
                                                         "Dumont-d'Urville \u590f\u4ee4\u6642\u9593", "DDUST",
                                                         "Dumont-d'Urville \u6642\u9593", "DDUT"}},
-            {"Antarctica/Macquarie", new String[] {"\u9EA5\u5938\u5229\u5CF6\u6642\u9593", "MIST",
-                                                   "\u9EA5\u5938\u5229\u5CF6\u590F\u4EE4\u6642\u9593", "MIST",
-                                                   "\u9EA5\u5938\u5229\u5CF6\u6642\u9593", "MIST"}},
+            {"Antarctica/Macquarie", new String[] {"Australian Eastern Standard Time (Macquarie)", "AEST",
+                                                   "Australian Eastern Daylight Time (Macquarie)", "AEDT",
+                                                   "Australian Eastern Time (Macquarie)", "AET"}},
             {"Antarctica/Mawson", new String[] {"\u83ab\u68ee\u6642\u9593", "MAWT",
                                                 "\u83ab\u68ee\u590f\u4ee4\u6642\u9593", "MAWST",
                                                 "\u83AB\u68EE\u6642\u9593", "MAWT"}},
@@ -784,7 +788,7 @@ public final class TimeZoneNames_zh_TW extends TimeZoneNamesBundle {
             {"Canada/Mountain", MST},
             {"Canada/Newfoundland", NST},
             {"Canada/Pacific", PST},
-            {"Canada/Yukon", PST},
+            {"Canada/Yukon", MST},
             {"Canada/Saskatchewan", CST},
             {"CAT", CAT},
             {"CET", CET},
@@ -1035,7 +1039,6 @@ public final class TimeZoneNames_zh_TW extends TimeZoneNamesBundle {
             {"US/Michigan", EST},
             {"US/Mountain", MST},
             {"US/Pacific", PST},
-            {"US/Pacific-New", PST},
             {"US/Samoa", SAMOA},
             {"VST", ICT},
             {"W-SU", MSK},

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,10 +31,12 @@ import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.security.AccessController;
@@ -67,11 +69,11 @@ public class NetworkConfiguration {
         isIPv6Available = !ip6Interfaces().collect(Collectors.toList()).isEmpty();
         ip6Interfaces().forEach(nif -> {
             ip6Addresses(nif)
-                // On Solaris or AIX, a configuration with only local or loopback
+                // On AIX, a configuration with only local or loopback
                 // addresses does not fully enable IPv6 operations.
                 // E.g. IPv6 multicasting does not work.
                 // So, don't set has_testableipv6address if we only find these.
-                .filter(addr -> Platform.isSolaris() || Platform.isAix() ?
+                .filter(addr -> Platform.isAix() ?
                     !(addr.isAnyLocalAddress() || addr.isLoopbackAddress()) : true)
                 .forEach(ia -> {
                     has_testableipv6address = true;
@@ -87,10 +89,56 @@ public class NetworkConfiguration {
         });
     }
 
-    private static boolean isNotExcludedInterface(NetworkInterface nif) {
-        if (Platform.isOSX() && nif.getName().contains("awdl")) {
-            return false;
+    private static boolean isIPv6LinkLocal(InetAddress a) {
+        return Inet6Address.class.isInstance(a) && a.isLinkLocalAddress();
+    }
+
+    /**
+     * Returns true if the two interfaces point to the same network interface.
+     *
+     * @implNote
+     * This method first looks at whether the two interfaces are
+     * {@linkplain NetworkInterface#equals(Object) equals}, and if so it returns
+     * true. Otherwise, it looks at whether the two interfaces have the same
+     * {@linkplain NetworkInterface#getName() name} and
+     * {@linkplain NetworkInterface#getIndex() index}, and if so returns true.
+     * Otherwise, it returns false.
+     *
+     * @apiNote
+     * This method ignores differences in the addresses to which the network
+     * interfaces are bound, to cater for possible reconfiguration that might
+     * have happened between the time at which each interface configuration
+     * was looked up.
+     *
+     * @param ni1 A network interface, may be {@code null}
+     * @param ni2 An other network interface, may be {@code null}
+     * @return {@code true} if the two network interfaces have the same name
+     *         and index, {@code false} otherwise.
+     */
+    public static boolean isSameInterface(NetworkInterface ni1, NetworkInterface ni2) {
+        if (Objects.equals(ni1, ni2)) return true;
+        // Objects equals has taken care of the case where
+        // ni1 == ni2 so either they are both non-null or only
+        // one of them is null - in which case they can't be equal.
+        if (ni1 == null || ni2 == null) return false;
+        if (ni1.getIndex() != ni2.getIndex()) return false;
+        return Objects.equals(ni1.getName(), ni2.getName());
+    }
+
+    public static boolean isTestable(NetworkInterface nif) {
+        if (Platform.isOSX()) {
+            if (nif.getName().contains("awdl")) {
+                return false; // exclude awdl
+            }
+            // filter out interfaces that only have link-local IPv6 addresses
+            // on macOS interfaces like 'en6' fall in this category and
+            // need to be skipped
+            return nif.inetAddresses()
+                    .filter(Predicate.not(NetworkConfiguration::isIPv6LinkLocal))
+                    .findAny()
+                    .isPresent();
         }
+
         if (Platform.isWindows()) {
             String dName = nif.getDisplayName();
             if (dName != null && dName.contains("Teredo")) {
@@ -116,6 +164,12 @@ public class NetworkConfiguration {
         return ip6Interfaces.get(nif).stream().anyMatch(a -> !a.isAnyLocalAddress());
     }
 
+    public static boolean hasNonLinkLocalAddress(NetworkInterface nif) {
+        return nif.inetAddresses()
+                .filter(Predicate.not(InetAddress::isLinkLocalAddress))
+                .findAny().isPresent();
+    }
+
     private boolean supportsIp4Multicast(NetworkInterface nif) {
         try {
             if (!nif.supportsMulticast()) {
@@ -133,6 +187,14 @@ public class NetworkConfiguration {
                 return false;
             }
 
+            if (Platform.isOSX()) {
+                // multicasting may not work on interfaces that only
+                // have link local addresses
+                if (!hasNonLinkLocalAddress(nif)) {
+                    return false;
+                }
+            }
+
             return hasIp4Addresses(nif);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -143,6 +205,14 @@ public class NetworkConfiguration {
         try {
             if (!nif.supportsMulticast()) {
                 return false;
+            }
+
+            if (Platform.isOSX()) {
+                // multicasting may not work on interfaces that only
+                // have link local addresses
+                if (!hasNonLinkLocalAddress(nif)) {
+                    return false;
+                }
             }
 
             return hasIp6Addresses(nif);
@@ -201,7 +271,7 @@ public class NetworkConfiguration {
     public Stream<NetworkInterface> ip4Interfaces() {
         return ip4Interfaces.keySet()
                             .stream()
-                            .filter(NetworkConfiguration::isNotExcludedInterface)
+                            .filter(NetworkConfiguration::isTestable)
                             .filter(this::hasIp4Addresses);
     }
 
@@ -211,7 +281,7 @@ public class NetworkConfiguration {
     public Stream<NetworkInterface> ip6Interfaces() {
         return ip6Interfaces.keySet()
                             .stream()
-                            .filter(NetworkConfiguration::isNotExcludedInterface)
+                            .filter(NetworkConfiguration::isTestable)
                             .filter(this::hasIp6Addresses);
     }
 
@@ -309,8 +379,8 @@ public class NetworkConfiguration {
      * Return a NetworkConfiguration instance.
      */
     public static NetworkConfiguration probe() throws IOException {
-        Map<NetworkInterface, List<Inet4Address>> ip4Interfaces = new HashMap<>();
-        Map<NetworkInterface, List<Inet6Address>> ip6Interfaces = new HashMap<>();
+        Map<NetworkInterface, List<Inet4Address>> ip4Interfaces = new LinkedHashMap<>();
+        Map<NetworkInterface, List<Inet6Address>> ip6Interfaces = new LinkedHashMap<>();
 
         List<NetworkInterface> nifs = list(getNetworkInterfaces());
         for (NetworkInterface nif : nifs) {

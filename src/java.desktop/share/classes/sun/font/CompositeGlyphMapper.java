@@ -31,15 +31,6 @@ package sun.font;
  * and the JDK scaler others. That needs to be dealt with somewhere, but
  * here we can just always get the same glyph code without
  * needing a strike.
- *
- * The C implementation would cache the results of anything up
- * to the maximum surrogate pair code point.
- * This implementation will not cache as much, since the storage
- * requirements are not justifiable. Even so it still can use up
- * to 216*256*4 bytes of storage per composite font. If an app
- * calls canDisplay on this range for all 20 composite fonts that's
- * over 1Mb of cached data. May need to employ WeakReferences if
- * this appears to cause problems.
  */
 
 public class CompositeGlyphMapper extends CharToGlyphMapper {
@@ -47,7 +38,7 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
     public static final int SLOTMASK =  0xff000000;
     public static final int GLYPHMASK = 0x00ffffff;
 
-    public static final int NBLOCKS = 216;
+    public static final int NBLOCKS = 512; // covering BMP and SMP
     public static final int BLOCKSZ = 256;
     public static final int MAXUNICODE = NBLOCKS*BLOCKSZ;
 
@@ -85,7 +76,7 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
 
     private int getCachedGlyphCode(int unicode) {
         if (unicode >= MAXUNICODE) {
-            return UNINITIALIZED_GLYPH; // don't cache surrogates
+            return UNINITIALIZED_GLYPH;
         }
         int[] gmap;
         if ((gmap = glyphMaps[unicode >> 8]) == null) {
@@ -94,9 +85,9 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
         return gmap[unicode & 0xff];
     }
 
-    private void setCachedGlyphCode(int unicode, int glyphCode) {
+    void setCachedGlyphCode(int unicode, int glyphCode) {
         if (unicode >= MAXUNICODE) {
-            return;     // don't cache surrogates
+            return;
         }
         int index0 = unicode >> 8;
         if (glyphMaps[index0] == null) {
@@ -117,20 +108,46 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
         return mapper;
     }
 
-    private int convertToGlyph(int unicode) {
+    protected int convertToGlyph(int unicode) {
+        return convertToGlyph(unicode, 0);
+    }
+
+    protected int convertToGlyph(int unicode, int variationSelector) {
 
         for (int slot = 0; slot < font.numSlots; slot++) {
             if (!hasExcludes || !font.isExcludedChar(slot, unicode)) {
                 CharToGlyphMapper mapper = getSlotMapper(slot);
-                int glyphCode = mapper.charToGlyph(unicode);
+                int glyphCode = mapper.charToVariationGlyph(unicode, variationSelector);
                 if (glyphCode != mapper.getMissingGlyphCode()) {
                     glyphCode = compositeGlyphCode(slot, glyphCode);
-                    setCachedGlyphCode(unicode, glyphCode);
+                    if (variationSelector == 0) setCachedGlyphCode(unicode, glyphCode);
                     return glyphCode;
                 }
             }
         }
         return missingGlyph;
+    }
+
+    @Override
+    public int charToVariationGlyph(int unicode, int variationSelector) {
+        if (variationSelector == 0) return charToGlyph(unicode);
+        else {
+            int glyph = convertToGlyph(unicode, variationSelector);
+            // Glyph variation not found, fallback to base glyph.
+            // In fallback from variation glyph we ignore excluded chars,
+            // this is needed for proper display of monochrome emoji (\ufe0e)
+            if (glyph == missingGlyph) {
+                for (int slot = 0; slot < font.numSlots; slot++) {
+                    CharToGlyphMapper mapper = getSlotMapper(slot);
+                    glyph = mapper.charToGlyph(unicode);
+                    if (glyph != mapper.getMissingGlyphCode()) {
+                        glyph = compositeGlyphCode(slot, glyph);
+                        break;
+                    }
+                }
+            }
+            return glyph;
+        }
     }
 
     public int getNumGlyphs() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2006, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,8 @@
 
 package sun.security.util;
 
+import jdk.internal.access.SharedSecrets;
+
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.*;
@@ -33,6 +35,17 @@ import java.security.spec.*;
 import java.util.Arrays;
 
 public final class ECUtil {
+
+    // Used by SunEC
+    public static byte[] sArray(BigInteger s, ECParameterSpec params) {
+        byte[] arr = s.toByteArray();
+        ArrayUtil.reverse(arr);
+        int byteLength = (params.getOrder().bitLength() + 7) / 8;
+        byte[] arrayS = new byte[byteLength];
+        int length = Math.min(byteLength, arr.length);
+        System.arraycopy(arr, 0, arrayS, 0, length);
+        return arrayS;
+    }
 
     // Used by SunPKCS11 and SunJSSE.
     public static ECPoint decodePoint(byte[] data, EllipticCurve curve)
@@ -111,8 +124,11 @@ public final class ECUtil {
             throws InvalidKeySpecException {
         KeyFactory keyFactory = getKeyFactory();
         PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(encoded);
-
-        return (ECPrivateKey)keyFactory.generatePrivate(keySpec);
+        try {
+            return (ECPrivateKey) keyFactory.generatePrivate(keySpec);
+        } finally {
+            SharedSecrets.getJavaSecuritySpecAccess().clearEncodedKeySpec(keySpec);
+        }
     }
 
     public static ECPrivateKey generateECPrivateKey(BigInteger s,

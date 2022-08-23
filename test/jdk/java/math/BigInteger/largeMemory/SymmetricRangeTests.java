@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,8 @@
  * @bug 6910473 8021204 8021203 9005933 8074460 8078672
  * @summary Test range of BigInteger values (use -Dseed=X to set PRNG seed)
  * @library /test/lib
- * @requires os.maxMemory > 8g
- * @run main/timeout=180/othervm -Xmx8g SymmetricRangeTests
+ * @requires (sun.arch.data.model == "64" & os.maxMemory >= 10g)
+ * @run main/timeout=180/othervm -Xmx8g -XX:+CompactStrings SymmetricRangeTests
  * @author Dmitry Nadezhin
  * @key randomness
  */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,17 +43,18 @@ public class TestIndentation extends JavadocTester {
     @Test
     public void test() {
         javadoc("-d", "out",
+                "--no-platform-links",
                 "-sourcepath", testSrc,
                 "p");
         checkExit(Exit.OK);
 
         checkOutput("p/Indent.html", true,
-                "<div class=\"memberSignature\"><span class=\"modifiers\">public</span>&nbsp;"
-                + "<span class=\"typeParameters\">&lt;T&gt;</span>&nbsp;"
-                + "<span class=\"returnType\">void</span>&nbsp;<span class=\"memberName\">m</span>"
-                + "&#8203;(<span class=\"arguments\">T&nbsp;t1,\n"
-                + "T&nbsp;t2)</span>\n"
-                + "           throws <span class=\"exceptions\">java.lang.Exception</span></div>");
+                """
+                    <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span c\
+                    lass="type-parameters">&lt;T&gt;</span>&nbsp;<span class="return-type">void</spa\
+                    n>&nbsp;<span class="element-name">m</span><wbr><span class="parameters">(T&nbsp;t1,
+                     T&nbsp;t2)</span>
+                               throws <span class="exceptions">java.lang.Exception</span></div>""");
 
         // Test indentation of annotations and annotated method arguments
         checkOutput("p/IndentAnnot.html", false,

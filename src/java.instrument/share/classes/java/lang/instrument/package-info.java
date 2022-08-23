@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,8 +49,14 @@
  *   file.</p></li>
  * </ol>
  *
- * <p> Each of these ways to start an agent is described below.
+ * <p> Agents can transform classes in arbitrary ways at load time, transform
+ * modules, or transform the bytecode of methods of already loaded classes.
+ * Developers or administrators that deploy agents, deploy applications that
+ * package an agent with the application, or use tools that load agents into a
+ * running application, are responsible for verifying the trustworthiness of each
+ * agent including the content and structure of the agent JAR file.
  *
+ * <p> The three ways to start an agent are described below.
  *
  * <h2>Starting an Agent from the Command-Line Interface</h2>
  *
