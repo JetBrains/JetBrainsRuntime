@@ -22,7 +22,7 @@ function pack_jbr {
 
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
   JBR=${__bundle_name}-${JBSDK_VERSION}-windows-x86-${fastdebug_infix}b${build_number}
-  __root_dir=${__bundle_name}-${JBSDK_VERSION}-x86-${fastdebug_infix:-}b${build_number%%.*}
+  __root_dir=${__bundle_name}-${JBSDK_VERSION}-windows-x86-${fastdebug_infix}b${build_number}
 
   echo Creating $JBR.tar.gz ...
   chmod -R ug+rwx,o+rx ${BASE_DIR}/$__root_dir
