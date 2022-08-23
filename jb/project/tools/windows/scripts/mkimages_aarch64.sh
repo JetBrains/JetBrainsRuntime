@@ -59,7 +59,7 @@ function create_image_bundle {
   fastdebug_infix=''
 
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
-  __root_dir=${__bundle_name}-${JBSDK_VERSION}-aarch64-${fastdebug_infix:-}b${build_number%%.*}
+  __root_dir=${__bundle_name}-${JBSDK_VERSION}-windows-aarch64-${fastdebug_infix}b${build_number}
 
   echo Running jlink ...
   ${BUILD_JDK}/bin/jlink \
