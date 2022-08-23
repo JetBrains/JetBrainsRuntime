@@ -62,7 +62,7 @@ function create_image_bundle {
 
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
   JBR=${__bundle_name}-${JBSDK_VERSION}-osx-${architecture}-${fastdebug_infix:-}b${build_number}
-  __root_dir=${__bundle_name}-${JBSDK_VERSION}-${architecture}-${fastdebug_infix:-}b${build_number%%.*}
+  __root_dir=${__bundle_name}-${JBSDK_VERSION}-osx-${architecture}-${fastdebug_infix:-}b${build_number}
 
   JRE_CONTENTS=$tmp/$__root_dir/Contents
   mkdir -p "$JRE_CONTENTS" || do_exit $?
