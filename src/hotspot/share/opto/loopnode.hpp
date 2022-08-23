@@ -1392,7 +1392,6 @@ SHENANDOAHGC_ONLY(private:)
 
   uint require_nodes(uint require, uint minreq = REQUIRE_MIN) {
     precond(require > 0);
-    _nodes_required += MAX2(100u, require); // Keep requests at minimum 100.
     _nodes_required += MAX2(require, minreq);
     return _nodes_required;
   }
