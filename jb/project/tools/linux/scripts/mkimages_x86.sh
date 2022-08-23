@@ -52,7 +52,7 @@ function create_image_bundle {
 
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
   JBR=${__bundle_name}-${JBSDK_VERSION}-linux-${libc_type_suffix}x86-${fastdebug_infix}b${build_number}
-  __root_dir=${__bundle_name}-${JBSDK_VERSION}-${libc_type_suffix}x86-${fastdebug_infix:-}b${build_number%%.*}
+  __root_dir=${__bundle_name}-${JBSDK_VERSION}-linux-${libc_type_suffix}x86-${fastdebug_infix:-}b${build_number}
 
   echo Running jlink....
   [ -d "$IMAGES_DIR"/"$__root_dir" ] && rm -rf "${IMAGES_DIR:?}"/"$__root_dir"
