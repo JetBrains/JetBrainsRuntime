@@ -101,11 +101,18 @@ REPRODUCIBLE_BUILD_OPTS="--enable-reproducible-build
 
 function zip_native_debug_symbols() {
   image_bundle_path=$(echo $1 | cut -d"/" -f-4)
+  jdk_name=$(echo $1 | cut -d"/" -f5)
   jbr_diz_name=$2
 
-  (cd $image_bundle_path && find . -name '*.diz' -exec rsync -R {} ../../../../dizfiles \; )
+  [ -d "dizfiles" ] && rm -rf dizfiles
+  mkdir dizfiles
 
-  (cd dizfiles && find . -print0 | COPYFILE_DISABLE=1 \
+  rsync_target="../../../../dizfiles"
+  [ -z "$jdk_name" ] && rsync_target=$rsync_target"/"$jbr_diz_name
+  (cd $image_bundle_path && find . -name '*.diz' -exec rsync -R {} $rsync_target \;)
+  [ ! -z "$jdk_name" ] && mv dizfiles/$jdk_name dizfiles/$jbr_diz_name
+
+  (cd dizfiles && find $jbr_diz_name -print0 | COPYFILE_DISABLE=1 \
     tar --no-recursion --null -T - -czf ../"$jbr_diz_name".tar.gz) || do_exit $?
 }
 
