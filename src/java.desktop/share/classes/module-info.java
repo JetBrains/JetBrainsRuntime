@@ -51,6 +51,7 @@
  * @uses javax.sound.sampled.spi.AudioFileWriter
  * @uses javax.sound.sampled.spi.FormatConversionProvider
  * @uses javax.sound.sampled.spi.MixerProvider
+ * @uses com.jetbrains.hotkey.GlobalHotkeyProvider
  *
  * @moduleGraph
  * @since 9
@@ -111,6 +112,7 @@ module java.desktop {
     exports javax.swing.text.rtf;
     exports javax.swing.tree;
     exports javax.swing.undo;
+    exports com.jetbrains.hotkey;
 
     // qualified exports may be inserted at build time
     // see make/GensrcModuleInfo.gmk
@@ -144,6 +146,7 @@ module java.desktop {
     uses javax.sound.sampled.spi.MixerProvider;
 
     uses sun.swing.InteropProvider;
+    uses com.jetbrains.hotkey.GlobalHotkeyProvider;
 
     provides sun.datatransfer.DesktopDatatransferService with
         sun.awt.datatransfer.DesktopDatatransferServiceImpl;
@@ -198,4 +201,7 @@ module java.desktop {
     provides javax.sound.sampled.spi.MixerProvider with
         com.sun.media.sound.DirectAudioDeviceProvider,
         com.sun.media.sound.PortMixerProvider;
+
+    provides com.jetbrains.hotkey.GlobalHotkeyProvider with
+        com.jetbrains.hotkey.WindowsGlobalHotkeyProvider;
 }

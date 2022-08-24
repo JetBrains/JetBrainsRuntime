@@ -38,6 +38,31 @@ $(call FillFindCache, $(wildcard $(TOPDIR)/src/java.desktop/*/native))
 include lib/Awt2dLibraries.gmk
 
 ################################################################################
+# Create the globalhotkeys library
+
+ifeq ($(call isTargetOs, windows), true)
+
+  $(eval $(call SetupJdkLibrary, BUILD_LIBGLOBALHOTKEYS, \
+      NAME := globalhotkeys, \
+      TOOLCHAIN := $(LIBGLOBALHOTKEYS_TOOLCHAIN), \
+      OPTIMIZATION := LOW, \
+      CFLAGS := $(CFLAGS_JDKLIB) \
+          $(LIBGLOBALHOTKEYS_CFLAGS), \
+      CXXFLAGS := $(CXXFLAGS_JDKLIB) $(LIBGLOBALHOTKEYS_CFLAGS), \
+      DISABLED_WARNINGS_gcc := undef, \
+      DISABLED_WARNINGS_clang := undef, \
+      LDFLAGS := $(LDFLAGS_JDKLIB) \
+          $(call SET_SHARED_LIBRARY_ORIGIN), \
+      LIBS_windows := $(WIN_JAVA_LIB) user32.lib kernel32.lib \
+  ))
+
+  $(BUILD_LIBGLOBALHOTKEYS): $(call FindLib, java.base, java)
+
+  TARGETS += $(BUILD_LIBGLOBALHOTKEYS)
+
+endif
+
+################################################################################
 # Create the libjsound library
 
 ifeq ($(call isTargetOs, aix), false)
