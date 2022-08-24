@@ -95,7 +95,7 @@ class ProxyGenerator {
         originalBridgeWriter = generateBridge ? new ClassWriter(ClassWriter.COMPUTE_FRAMES) : null;
         if (generateBridge) {
             bridgeWriter = VERIFY_BYTECODE ? new CheckClassAdapter(originalBridgeWriter, true) : originalBridgeWriter;
-        } else bridgeWriter = new ClassVisitor(Opcodes.ASM9) { // Empty visitor
+        } else bridgeWriter = new ClassVisitor(Opcodes.ASM8) { // Empty visitor
             @Override
             public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
                 return new MethodVisitor(api) {};
