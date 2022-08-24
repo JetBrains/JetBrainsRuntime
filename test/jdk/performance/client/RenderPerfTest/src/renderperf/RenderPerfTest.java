@@ -52,6 +52,8 @@ import java.awt.image.DataBufferShort;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
@@ -86,6 +88,8 @@ public class RenderPerfTest {
     private final static int MAX_MEASURE_CYCLES = 6000/CYCLE_DELAY;
 
     private final static Color[] marker = {Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW, Color.ORANGE, Color.MAGENTA};
+
+    private final static boolean useMean = "true".equalsIgnoreCase(System.getProperty("useMean"));
 
     interface Configurable {
         void configure(Graphics2D g2d);
@@ -607,8 +611,7 @@ public class RenderPerfTest {
 
 
         private JPanel panel;
-
-        private double execTime = 0;
+        ArrayList<Double> execTime = new ArrayList<>(COUNT);
         private AtomicInteger markerIdx = new AtomicInteger(0);
         private int renderedMarkerIdx = -1;
         private AtomicLong markerPaintTime = new AtomicLong(0);
@@ -682,7 +685,7 @@ public class RenderPerfTest {
                             panel.getTopLevelAncestor().getY() + panel.getTopLevelAncestor().getInsets().top + BW / 2);
 
                     if (isAlmostEqual(c, marker[markerIdx.get()])) {
-                        execTime += System.nanoTime() - paintTime;
+                        execTime.add((double) (System.nanoTime() - paintTime));
                         frame++;
                         paintTime = 0;
                         maxFrameCycle = -1;
@@ -713,8 +716,14 @@ public class RenderPerfTest {
             });
 
             latchFrame.await();
-            if (execTime != 0 && frame != 0) {
-                fps = 1e9 / (execTime / frame);
+            if (!execTime.isEmpty() && frame != 0) {
+                if (useMean) {
+                    double meanTime = execTime.stream().reduce(0.0, (a, b) -> a + b) / frame;
+                    fps = 1e9 / meanTime;
+                } else {
+                    double medianTime = execTime.stream().sorted().toList().get(execTime.size() / 2);
+                    fps = 1e9 / medianTime;
+                }
             } else {
                 fps = 0;
             }
@@ -726,7 +735,7 @@ public class RenderPerfTest {
             if (skippedFrame > 0) {
                 System.err.println(skippedFrame + " frame(s) skipped");
             }
-            System.err.println(name + " : " + String.format("%.2f FPS", fps));
+            System.err.println(name + " : " + String.format("%.2f", fps));
         }
 
         private boolean isAlmostEqual(Color c1, Color c2) {
@@ -981,19 +990,26 @@ public class RenderPerfTest {
             throws InvocationTargetException, IllegalAccessException, NoSuchMethodException
     {
         RenderPerfTest test = new RenderPerfTest();
+        ArrayList<Method> testCases = new ArrayList<>();
 
         if (args.length > 0) {
             for (String testCase : args) {
                 Method m = RenderPerfTest.class.getDeclaredMethod("test" + testCase);
-                m.invoke(test);
+                testCases.add(m);
             }
         } else {
             Method[] methods = RenderPerfTest.class.getDeclaredMethods();
             for (Method m : methods) {
                 if (m.getName().startsWith("test") && !ignoredTests.contains(m.getName())) {
-                    m.invoke(test);
+                    testCases.add(m);
                 }
             }
+
+            testCases.sort(Comparator.comparing(Method::getName));
+        }
+
+        for (Method m : testCases) {
+            m.invoke(test);
         }
     }
 }
