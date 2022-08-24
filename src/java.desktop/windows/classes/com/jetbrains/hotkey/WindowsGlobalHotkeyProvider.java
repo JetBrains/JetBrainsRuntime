@@ -1,10 +1,20 @@
 package com.jetbrains.hotkey;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 
+/**
+ * Windows-specific global hotkey provider.
+ *
+ * <p>
+ * Normally, only a single instance of this class should be alive (the one loaded by GlobalHotkeyService), but
+ * nothing will break if more are created.
+ * </p>
+ *
+ * <p>
+ * Upon the first hotkey registration, an instance of this class creates a thread that will handle events regarding
+ * the hotkeys. Hotkey bindings are identified using numeric IDs.
+ * </p>
+ */
 public class WindowsGlobalHotkeyProvider implements GlobalHotkeyProvider, AutoCloseable {
     static {
         System.loadLibrary("globalhotkeys");
@@ -12,6 +22,9 @@ public class WindowsGlobalHotkeyProvider implements GlobalHotkeyProvider, AutoCl
 
     public WindowsGlobalHotkeyProvider() {}
 
+    /**
+     * Converts a modifier to bitmask for use inside the RegisterHotKey WinAPI call.
+     */
     private static int modifierToBitmask(Hotkey.Modifier modifier) {
         return switch (modifier) {
             case ALT     -> 0x0001; // MOD_ALT
@@ -23,8 +36,11 @@ public class WindowsGlobalHotkeyProvider implements GlobalHotkeyProvider, AutoCl
 
     private final Map<Hotkey, Integer> hotkeys = new HashMap<>();
     private final Map<Integer, HotkeyListener> listeners = new HashMap<>();
-    private final Set<Integer> freeIds = new TreeSet<>();
+    private final Set<Integer> freeIds = new HashSet<>();
 
+    /**
+     * Finds the next ID that isn't in use.
+     */
     private int nextFreeId() {
         var id = freeIds.stream().findFirst();
         id.ifPresent(freeIds::remove);
@@ -35,12 +51,18 @@ public class WindowsGlobalHotkeyProvider implements GlobalHotkeyProvider, AutoCl
         return hotkeys.containsKey(hotkey);
     }
 
+    /**
+     * Reserves the ID for the specified hotkey.
+     */
     private int assignHotkeyId(Hotkey hotkey) {
         int id = nextFreeId();
         hotkeys.put(hotkey, id);
         return id;
     }
 
+    /**
+     * Releases the ID for the specified hotkey.
+     */
     private void freeHotkey(Hotkey hotkey) {
         if (!isHotkeyRegistered(hotkey)) {
             return;
@@ -50,15 +72,67 @@ public class WindowsGlobalHotkeyProvider implements GlobalHotkeyProvider, AutoCl
         hotkeys.remove(hotkey);
     }
 
+    /**
+     * A thread that calls GetMessage in a loop to check for incoming WM_HOTKEY events.
+     * If this thread receives such an event, it calls an appropriate callback.
+     */
+    private Thread pollThread;
+
+    /**
+     * Opaque pointer to a C++ struct, containing data required by native code.
+     */
+    private long ctx;
+
+    /**
+     * Calls RegisterHotKey WinAPI function. If the calling thread is not pollThread, then this method
+     * posts a message to pollThread, asking it to register the hotkey. This is because only the thread that
+     * registers a hotkey can receive events regarding it.
+     *
+     * @param ctx Pointer to the context
+     * @param id ID of the hotkey
+     * @param keyCode Virtual key code
+     * @param modifiers Modifier bitset as described in RegisterHotKey docs
+     * @return boolean indicating the success of registering the hotkey
+     */
     private native static boolean nativeRegisterHotkey(long ctx, int id, int keyCode, int modifiers);
+
+    /**
+     * Calls UnregisterHotKey WinAPI function. Just like the nativeRegisterHotkey method, ensures that
+     * this function is called inside the pollThread.
+     *
+     * @param ctx Pointer to the context
+     * @param id ID of the hotkey
+     */
     private native static void nativeUnregisterHotkey(long ctx, int id);
+
+    /**
+     * Waits until a registered hotkey is triggered. Should only be called inside the pollThread.
+     *
+     * @param ctx Pointer to the context
+     * @return ID of the triggered hotkey or 0 if interrupted.
+     */
     private native static int nativePollHotkey(long ctx);
+
+    /**
+     * Creates the aforementioned opaque C++ context.
+     *
+     * @return Pointer to the context as a long integer
+     */
     private native static long nativeCreateContext();
-    private native static long nativeDestroyContext(long ctx);
+
+    /**
+     * Destroys the context.
+     *
+     * @param ctx Pointer to the context
+     */
+    private native static void nativeDestroyContext(long ctx);
+
+    /**
+     * Initializes the context. Should only be called inside the pollThread.
+     * @param ctx Pointer to the context
+     */
     private native static void nativeInitContext(long ctx);
 
-    private Thread pollThread;
-    private long ctx;
 
     private void startPollThread() {
         ctx = nativeCreateContext();

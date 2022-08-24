@@ -3,6 +3,10 @@ package com.jetbrains.hotkey;
 import java.awt.event.KeyEvent;
 import java.util.Set;
 
+/**
+ * This class represents a hotkey (keyboard shortcut) as a combination of a virtual key code
+ * and modifier keys (Ctrl, Alt, Shift, Super / Win / Meta).
+ */
 public record Hotkey(int keyCode, Set<Modifier> modifiers) {
     public enum Modifier {
         ALT,
@@ -11,6 +15,9 @@ public record Hotkey(int keyCode, Set<Modifier> modifiers) {
         SUPER,
     }
 
+    /**
+     * Returns a user-readable hotkey name, such as "Ctrl+Alt+P".
+     */
     @Override
     public String toString() {
         var result = new StringBuilder();

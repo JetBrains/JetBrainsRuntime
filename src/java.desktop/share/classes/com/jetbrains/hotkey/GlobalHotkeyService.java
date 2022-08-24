@@ -2,6 +2,9 @@ package com.jetbrains.hotkey;
 
 import java.util.ServiceLoader;
 
+/**
+ * This service loads platform-specific service providers for global hotkeys using ServiceLoader.
+ */
 public class GlobalHotkeyService {
     private static GlobalHotkeyService service;
     private final ServiceLoader<GlobalHotkeyProvider> loader;
