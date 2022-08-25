@@ -20,7 +20,7 @@ public final class GlobalHotkeyService {
         return service;
     }
 
-    private GlobalHotkeyProvider getLoader() {
+    private GlobalHotkeyProvider getProvider() {
         return loader.findFirst().orElseThrow(() ->
             new UnsupportedOperationException("Global hotkeys are not supported on this platform"));
     }
@@ -34,7 +34,7 @@ public final class GlobalHotkeyService {
             throw new IllegalArgumentException("listener");
         }
 
-        return getLoader().tryRegisterHotkey(hotkey, listener);
+        return getProvider().tryRegisterHotkey(hotkey, listener);
     }
 
     public void unregisterHotkey(Hotkey hotkey) {
@@ -42,6 +42,6 @@ public final class GlobalHotkeyService {
             throw new IllegalArgumentException("hotkey");
         }
 
-        getLoader().unregisterHotkey(hotkey);
+        getProvider().unregisterHotkey(hotkey);
     }
 }

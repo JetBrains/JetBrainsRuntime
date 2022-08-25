@@ -133,6 +133,12 @@ public final class WindowsGlobalHotkeyProvider implements GlobalHotkeyProvider, 
      */
     private native static void nativeInitContext(long ctx);
 
+    /**
+     * Interrupts pollThread, forcing pending nativePollHotkey() to return 0
+     * @param ctx Pointer to the context
+     */
+    private native static void nativeInterruptThread(long ctx);
+
 
     private void startPollThread() {
         ctx = nativeCreateContext();
@@ -200,13 +206,27 @@ public final class WindowsGlobalHotkeyProvider implements GlobalHotkeyProvider, 
     @Override
     public synchronized void close() {
         if (pollThread != null) {
+            // set interrupt flag
             pollThread.interrupt();
-            pollThread = null;
-        }
 
-        if (ctx != 0) {
-            nativeDestroyContext(ctx);
-            ctx = 0;
+            // force early return from nativePollHotkey
+            nativeInterruptThread(ctx);
+
+            try {
+                // wait until the thread is dead
+                pollThread.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                // nobody should be using the context now, since we're in a synchronized method
+                nativeDestroyContext(ctx);
+
+                pollThread = null;
+                ctx = 0;
+                hotkeys.clear();
+                listeners.clear();
+                freeIds.clear();
+            }
         }
     }
 }

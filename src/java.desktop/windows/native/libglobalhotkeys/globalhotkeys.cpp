@@ -97,7 +97,11 @@ extern "C" JNIEXPORT jint JNICALL Java_com_jetbrains_hotkey_WindowsGlobalHotkeyP
         if (msg.message == WM_HOTKEY) {
             return static_cast<jint>(msg.wParam);
         }
-        ctx->runQueuedFunction();
+
+        if (msg.message == INTERRUPT) {
+            ctx->runQueuedFunction();
+            break;
+        }
     }
 
     return 0;
@@ -134,4 +138,14 @@ extern "C" JNIEXPORT void JNICALL Java_com_jetbrains_hotkey_WindowsGlobalHotkeyP
     PeekMessage(&msg, NULL, 0, 0, PM_NOREMOVE);
 
     ctx->markReady();
+}
+
+
+extern "C" JNIEXPORT void JNICALL Java_com_jetbrains_hotkey_WindowsGlobalHotkeyProvider_nativeInterruptThread(
+        JNIEnv *jniEnv,
+        jclass jniClass,
+        jlong ctxPtr
+) noexcept {
+    auto ctx = reinterpret_cast<Context*>(ctxPtr);
+    PostThreadMessage(ctx->threadId, INTERRUPT, 0, 0);
 }
