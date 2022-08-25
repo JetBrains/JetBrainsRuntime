@@ -15,7 +15,7 @@ import java.util.*;
  * the hotkeys. Hotkey bindings are identified using numeric IDs.
  * </p>
  */
-public class WindowsGlobalHotkeyProvider implements GlobalHotkeyProvider, AutoCloseable {
+public final class WindowsGlobalHotkeyProvider implements GlobalHotkeyProvider, AutoCloseable {
     static {
         System.loadLibrary("globalhotkeys");
     }
