@@ -101,6 +101,15 @@ final class CPlatformResponder {
         }
 
         int jmodifiers = NSEvent.nsToJavaModifiers(modifierFlags);
+
+        if (!"false".equalsIgnoreCase(System.getProperty("jbr4765.forceMousePressedButtonModifier", "true"))) {
+            // JBR-4765: NSEvent.nsToJavaModifiers returns 0 for right taps.
+            // So ensure the pressed mouse button is also reflected by the appropriate modifier.
+            if ((jeventType == MouseEvent.MOUSE_PRESSED) && (jbuttonNumber > MouseEvent.NOBUTTON)) {
+                jmodifiers |= InputEvent.getMaskForButton(jbuttonNumber);
+            }
+        }
+
         boolean jpopupTrigger = NSEvent.isPopupTrigger(jmodifiers);
 
         eventNotifier.notifyMouseEvent(jeventType, System.currentTimeMillis(), jbuttonNumber,
