@@ -168,11 +168,13 @@ public class KeytoolOpensslInteropTest {
         // Current default pkcs12 setting
         keytool("-importkeystore -srckeystore ks -srcstorepass changeit "
                 + "-destkeystore ksnormal -deststorepass changeit");
+
         data = Files.readAllBytes(Path.of("ksnormal"));
         checkInt(data, "22", 10000); // Mac ic
         checkAlg(data, "2000", SHA_256); // Mac alg
         checkAlg(data, "110c010c01000", PBES2); // key alg
         checkInt(data, "110c010c01001011", 10000); // key ic
+        checkAlg(data, "110c10", ENCRYPTED_DATA_OID);
         checkAlg(data, "110c110110", PBES2); // cert alg
         check("ksnormal", "a", "changeit", "changeit", true, true, true);
         check("ksnormal", "a", null, "changeit", true, false, true);
@@ -180,7 +182,7 @@ public class KeytoolOpensslInteropTest {
 
         // Import it into a new keystore with legacy algorithms
         keytool("-importkeystore -srckeystore ksnormal -srcstorepass changeit "
-               + "-destkeystore kslegacyimp -deststorepass changeit "
+                + "-destkeystore kslegacyimp -deststorepass changeit "
                 + "-J-Dkeystore.pkcs12.legacy");
         data = Files.readAllBytes(Path.of("kslegacyimp"));
         checkInt(data, "22", 100000); // Mac ic
@@ -456,7 +458,7 @@ public class KeytoolOpensslInteropTest {
                 "pkcs12", "-in", "ksnormal", "-passin", "pass:changeit",
                 "-info", "-nokeys", "-nocerts");
         output1.shouldHaveExitValue(0)
-            .shouldContain("MAC: sha1, Iteration 100000")
+            .shouldContain("MAC:").shouldContain("sha256").shouldContain("Iteration 10000")
             .shouldContain("Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC,"
                     + " Iteration 10000, PRF hmacWithSHA256")
             .shouldContain("PKCS7 Encrypted data: PBES2, PBKDF2, AES-256-CBC,"
@@ -499,7 +501,7 @@ public class KeytoolOpensslInteropTest {
                 "ksnewic", "-passin", "pass:changeit", "-info", "-nokeys",
                 "-nocerts");
         output1.shouldHaveExitValue(0)
-            .shouldContain("MAC: sha1, Iteration 5555")
+            .shouldContain("MAC:").shouldContain("sha256").shouldContain("Iteration 5555")
             .shouldContain("Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC,"
                     + " Iteration 7777, PRF hmacWithSHA256")
             .shouldContain("Shrouded Keybag: pbeWithSHA1And128BitRC4,"
