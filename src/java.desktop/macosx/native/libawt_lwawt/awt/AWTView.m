@@ -37,6 +37,9 @@
 
 #import <Carbon/Carbon.h>
 
+#define DEFAULT_FRAME_WIDTH 1504
+#define DEFAULT_FRAME_HEIGHT 846
+
 // keyboard layout
 static NSString *kbdLayout;
 
@@ -143,6 +146,26 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     if ([self window] != NULL) {
         [self resetTrackingArea];
     }
+}
+
+- (void)setFrame:(NSRect)newFrame {
+    if (isnan(newFrame.origin.x)) {
+        newFrame.origin.x = 0;
+    }
+
+    if (isnan(newFrame.origin.y)) {
+        newFrame.origin.y = 0;
+    }
+
+    if (isnan(newFrame.size.width)) {
+        newFrame.size.width = DEFAULT_FRAME_WIDTH;
+    }
+
+    if (isnan(newFrame.size.height)) {
+        newFrame.size.height = DEFAULT_FRAME_HEIGHT;
+    }
+
+    [super setFrame:newFrame];
 }
 
 - (BOOL) acceptsFirstMouse: (NSEvent *)event {
