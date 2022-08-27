@@ -359,7 +359,9 @@ public abstract class VolatileSurfaceManager
             // Note that getBackupSurface may set sdAccel to null so we have to invalidate it before
             SurfaceData oldData = sdAccel;
             sdAccel = null;
-            oldData.invalidate();
+            if (oldData != null) {
+                oldData.invalidate();
+            }
         }
         // Update graphicsConfig for the vImg in case it changed due to
         // this display change event
