@@ -2200,7 +2200,7 @@ static FT_Outline* getFTOutlineNoSetup(FTScalerContext *context, FTScalerInfo* s
     FT_Int32 loadFlags;
 
     // We cannot get an outline from bitmap version of glyph
-    loadFlags = context->loadFlags | FT_LOAD_NO_BITMAP;
+    loadFlags = FT_LOAD_NO_HINTING | FT_LOAD_NO_BITMAP;
 
     error = FT_Load_Glyph(scalerInfo->face, glyphCode, loadFlags);
     if (error) {
