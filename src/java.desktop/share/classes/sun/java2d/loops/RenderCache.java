@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,68 +25,45 @@
 
 package sun.java2d.loops;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 public final class RenderCache {
-    static final class Entry {
-        private SurfaceType src;
-        private CompositeType comp;
-        private SurfaceType dst;
-        private Object value;
 
-        public Entry(SurfaceType src,
-                     CompositeType comp,
-                     SurfaceType dst,
-                     Object value)
-        {
-            this.src = src;
-            this.comp = comp;
-            this.dst = dst;
-            this.value = value;
-        }
+    private final int MAX_ENTRIES;
+    private final Map<Key, Object> mruCache;
 
-        public boolean matches(SurfaceType src,
-                               CompositeType comp,
-                               SurfaceType dst)
-        {
-            // bug 4725045: using equals() causes different SurfaceType
-            // objects with the same strings to match in the cache, which is
-            // not the behavior we want.  Constrain the match to succeed only
-            // on object matches instead.
-            return ((this.src == src) &&
-                    (this.comp == comp) &&
-                    (this.dst == dst));
-        }
-
-        public Object getValue() {
-            return value;
+    record Key(SurfaceType src, CompositeType comp, SurfaceType dst) {
+        @Override
+        public boolean equals(Object o) {
+            if (o instanceof Key other) {
+                // bug 4725045: using equals() causes different SurfaceType
+                // objects with the same strings to match in the cache, which is
+                // not the behavior we want. Constrain the match to succeed only
+                // on object matches instead.
+                return ((this.src  == other.src) &&
+                        (this.comp == other.comp) &&
+                        (this.dst  == other.dst));
+            }
+            return false;
         }
     }
 
-    private Entry[] entries;
-
     public RenderCache(int size) {
-        entries = new Entry[size];
+        MAX_ENTRIES = size;
+        mruCache = new LinkedHashMap<>(size + 1) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<Key, Object> eldest) {
+                return size() > MAX_ENTRIES;
+            }
+        };
     }
 
     public synchronized Object get(SurfaceType src,
                       CompositeType comp,
                       SurfaceType dst)
     {
-        int max = entries.length - 1;
-        for (int i = max; i >= 0; i--) {
-            Entry e = entries[i];
-            if (e == null) {
-                break;
-            }
-            if (e.matches(src, comp, dst)) {
-                if (i < max - 4) {
-                    System.arraycopy(entries, i+1, entries, i, max - i);
-                    entries[max] = e;
-                }
-                return e.getValue();
-            }
-        }
-
-        return null;
+        return mruCache.get(new Key(src, comp, dst));
     }
 
     public synchronized void put(SurfaceType src,
@@ -94,10 +71,6 @@ public final class RenderCache {
                     SurfaceType dst,
                     Object value)
     {
-        Entry e = new Entry(src, comp, dst, value);
-
-        int num = entries.length;
-        System.arraycopy(entries, 1, entries, 0, num - 1);
-        entries[num - 1] = e;
+        mruCache.put(new Key(src, comp, dst), value);
     }
 }
