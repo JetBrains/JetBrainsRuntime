@@ -47,7 +47,7 @@ public class PlainRead {
        oa.shouldNotMatch("^.*" + what + " *" + value + ".*$");
     }
 
-    static final String good_value = "(\\d+|-1|Unlimited)";
+    static final String good_value = "(\\d+|-1|-2|Unlimited)";
     static final String bad_value = "(failed)";
 
     static final String[] variables = {"Memory Limit is:", "CPU Quota is:", "CPU Period is:", "active_processor_count:"};
