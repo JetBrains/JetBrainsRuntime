@@ -74,8 +74,6 @@ class Linux {
   static int _page_size;
 
   static julong available_memory();
-  static julong physical_memory() { return _physical_memory; }
-  static void set_physical_memory(julong phys_mem) { _physical_memory = phys_mem; }
   static int active_processor_count();
 
   static void initialize_system_info();
@@ -152,6 +150,10 @@ class Linux {
 
   static address   ucontext_get_pc(const ucontext_t* uc);
   static void ucontext_set_pc(ucontext_t* uc, address pc);
+
+  static julong physical_memory() { return _physical_memory; }
+  static julong host_swap();
+
   static intptr_t* ucontext_get_sp(const ucontext_t* uc);
   static intptr_t* ucontext_get_fp(const ucontext_t* uc);
 
