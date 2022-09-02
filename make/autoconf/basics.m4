@@ -631,7 +631,6 @@ AC_DEFUN_ONCE([BASIC_SETUP_FUNDAMENTAL_TOOLS],
   BASIC_PATH_PROGS(DF, df)
   BASIC_PATH_PROGS(CPIO, [cpio bsdcpio])
   BASIC_PATH_PROGS(NICE, nice)
-  BASIC_PATH_PROGS(PANDOC, pandoc)
 ])
 
 ###############################################################################
@@ -1213,6 +1212,7 @@ AC_DEFUN_ONCE([BASIC_SETUP_COMPLEX_TOOLS],
   BASIC_CHECK_FIND_DELETE
   BASIC_CHECK_TAR
   BASIC_CHECK_GREP
+  BASIC_SETUP_PANDOC
 
   # These tools might not be installed by default,
   # need hint on how to install them.
@@ -1411,6 +1411,34 @@ AC_DEFUN_ONCE([BASIC_CHECK_BASH_OPTIONS],
   fi
 
   AC_SUBST(BASH_ARGS)
+])
+
+################################################################################
+#
+# Setup Pandoc
+#
+AC_DEFUN_ONCE([BASIC_SETUP_PANDOC],
+[
+  BASIC_PATH_PROGS(PANDOC, pandoc)
+
+  PANDOC_MARKDOWN_FLAG="markdown"
+  if test -n "$PANDOC"; then
+    AC_MSG_CHECKING(if the pandoc smart extension needs to be disabled for markdown)
+    if $PANDOC --list-extensions | $GREP -q '\+smart'; then
+      AC_MSG_RESULT([yes])
+      PANDOC_MARKDOWN_FLAG="markdown-smart"
+    else
+      AC_MSG_RESULT([no])
+    fi
+  fi
+
+  if test -n "$PANDOC"; then
+    ENABLE_PANDOC="true"
+  else
+    ENABLE_PANDOC="false"
+  fi
+  AC_SUBST(ENABLE_PANDOC)
+  AC_SUBST(PANDOC_MARKDOWN_FLAG)
 ])
 
 ################################################################################

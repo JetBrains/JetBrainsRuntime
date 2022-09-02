@@ -51,7 +51,8 @@ $$($1_$2_OUTPUT_FILE): $$($1_SRC)/$2 $$($1_$2_VARDEPS_FILE)
 	$$(call LogInfo, Converting $2 to html)
 	$$(call MakeDir, $$($1_$2_TARGET_DIR) $$(SUPPORT_OUTPUTDIR)/markdown)
 	$$(call ExecuteWithLog, $$(SUPPORT_OUTPUTDIR)/markdown/$$($1_$2_MARKER), \
-	    $$(PANDOC) $$($1_OPTIONS) -f markdown -t html5 --standalone \
+	    $$(PANDOC) $$($1_OPTIONS) -f $$(PANDOC_MARKDOWN_FLAG) \
+	    -t html5 --standalone \
 	    $$($1_$2_CSS_OPTION) $$($1_$2_OPTIONS) '$$<' -o '$$@')
         ifneq ($$(findstring $$(LOG_LEVEL), debug trace),)
 	TOO_LONG_LINES=`$$(GREP) -E -e '^.{80}.+$$$$' $$<` || true ; \
