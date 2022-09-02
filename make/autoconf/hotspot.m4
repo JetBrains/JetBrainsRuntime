@@ -110,7 +110,8 @@ AC_DEFUN_ONCE([HOTSPOT_SETUP_JVM_VARIANTS],
   AC_MSG_RESULT([$JVM_VARIANTS])
 
   # Check that the selected variants are valid
-  BASIC_GET_NON_MATCHING_VALUES(INVALID_VARIANTS, $JVM_VARIANTS, $VALID_JVM_VARIANTS)
+  UTIL_GET_NON_MATCHING_VALUES(INVALID_VARIANTS, $JVM_VARIANTS, \
+      $VALID_JVM_VARIANTS)
   if test "x$INVALID_VARIANTS" != x; then
     AC_MSG_NOTICE([Unknown variant(s) specified: "$INVALID_VARIANTS"])
     AC_MSG_NOTICE([The available JVM variants are: "$VALID_JVM_VARIANTS"])
@@ -119,9 +120,11 @@ AC_DEFUN_ONCE([HOTSPOT_SETUP_JVM_VARIANTS],
 
   # All "special" variants share the same output directory ("server")
   VALID_MULTIPLE_JVM_VARIANTS="server client minimal"
-  BASIC_GET_NON_MATCHING_VALUES(INVALID_MULTIPLE_VARIANTS, $JVM_VARIANTS, $VALID_MULTIPLE_JVM_VARIANTS)
-  if  test "x$INVALID_MULTIPLE_VARIANTS" != x && test "x$BUILDING_MULTIPLE_JVM_VARIANTS" = xtrue; then
-    AC_MSG_ERROR([You cannot build multiple variants with anything else than $VALID_MULTIPLE_JVM_VARIANTS.])
+  UTIL_GET_NON_MATCHING_VALUES(INVALID_MULTIPLE_VARIANTS, $JVM_VARIANTS, \
+      $VALID_MULTIPLE_JVM_VARIANTS)
+  if  test "x$INVALID_MULTIPLE_VARIANTS" != x && \
+      test "x$BUILDING_MULTIPLE_JVM_VARIANTS" = xtrue; then
+    AC_MSG_ERROR([You can only build multiple variants using these variants: '$VALID_MULTIPLE_JVM_VARIANTS'])
   fi
 
   # The "main" variant is the one used by other libs to link against during the
@@ -291,7 +294,7 @@ AC_DEFUN_ONCE([HOTSPOT_ENABLE_DISABLE_CDS],
 AC_DEFUN_ONCE([HOTSPOT_SETUP_JVM_FEATURES],
 [
   # Prettify the VALID_JVM_FEATURES string
-  BASIC_SORT_LIST(VALID_JVM_FEATURES, $VALID_JVM_FEATURES)
+  UTIL_SORT_LIST(VALID_JVM_FEATURES, $VALID_JVM_FEATURES)
 
   # The user can in some cases supply additional jvm features. For the custom
   # variant, this defines the entire variant.
@@ -307,7 +310,7 @@ AC_DEFUN_ONCE([HOTSPOT_SETUP_JVM_FEATURES],
     DISABLED_JVM_FEATURES=`$ECHO $USER_JVM_FEATURE_LIST | $AWK '{ for (i=1; i<=NF; i++) if (match($i, /^-.*/)) printf("%s ", substr($i, 2))}'`
 
     # Verify that the user has provided valid features
-    BASIC_GET_NON_MATCHING_VALUES(INVALID_FEATURES, $JVM_FEATURES $DISABLED_JVM_FEATURES, $VALID_JVM_FEATURES $DEPRECATED_JVM_FEATURES)
+    UTIL_GET_NON_MATCHING_VALUES(INVALID_FEATURES, $JVM_FEATURES $DISABLED_JVM_FEATURES, $VALID_JVM_FEATURES $DEPRECATED_JVM_FEATURES)
     if test "x$INVALID_FEATURES" != x; then
       AC_MSG_NOTICE([Unknown JVM features specified: "$INVALID_FEATURES"])
       AC_MSG_NOTICE([The available JVM features are: "$VALID_JVM_FEATURES"])
@@ -315,12 +318,12 @@ AC_DEFUN_ONCE([HOTSPOT_SETUP_JVM_FEATURES],
     fi
 
     # Check if the user has provided deprecated features
-    BASIC_GET_MATCHING_VALUES(DEPRECATED_FEATURES, $JVM_FEATURES $DISABLED_JVM_FEATURES, $DEPRECATED_JVM_FEATURES)
+    UTIL_GET_MATCHING_VALUES(DEPRECATED_FEATURES, $JVM_FEATURES $DISABLED_JVM_FEATURES, $DEPRECATED_JVM_FEATURES)
     if test "x$DEPRECATED_FEATURES" != x; then
       AC_MSG_WARN([Deprecated JVM features specified (will be ignored): "$DEPRECATED_FEATURES"])
       # Filter out deprecated features
-      BASIC_GET_NON_MATCHING_VALUES(JVM_FEATURES, $JVM_FEATURES, $DEPRECATED_FEATURES)
-      BASIC_GET_NON_MATCHING_VALUES(DISABLED_JVM_FEATURES, $DISABLED_JVM_FEATURES, $DEPRECATED_FEATURES)
+      UTIL_GET_NON_MATCHING_VALUES(JVM_FEATURES, $JVM_FEATURES, $DEPRECATED_FEATURES)
+      UTIL_GET_NON_MATCHING_VALUES(DISABLED_JVM_FEATURES, $DISABLED_JVM_FEATURES, $DEPRECATED_FEATURES)
     fi
 
   fi
@@ -554,7 +557,7 @@ AC_DEFUN_ONCE([HOTSPOT_SETUP_JVM_FEATURES],
   AC_SUBST(VALID_JVM_FEATURES)
 
   # We don't support --with-jvm-interpreter anymore, use zero instead.
-  BASIC_DEPRECATED_ARG_WITH(jvm-interpreter)
+  UTIL_DEPRECATED_ARG_WITH(jvm-interpreter)
 ])
 
 ###############################################################################
@@ -568,10 +571,10 @@ AC_DEFUN_ONCE([HOTSPOT_FINALIZE_JVM_FEATURES],
     JVM_FEATURES_FOR_VARIANT=${!features_var_name}
 
     # Filter out user-requested disabled features
-    BASIC_GET_NON_MATCHING_VALUES(JVM_FEATURES_FOR_VARIANT, $JVM_FEATURES_FOR_VARIANT, $DISABLED_JVM_FEATURES)
+    UTIL_GET_NON_MATCHING_VALUES(JVM_FEATURES_FOR_VARIANT, $JVM_FEATURES_FOR_VARIANT, $DISABLED_JVM_FEATURES)
 
     # Keep feature lists sorted and free of duplicates
-    BASIC_SORT_LIST(JVM_FEATURES_FOR_VARIANT, $JVM_FEATURES_FOR_VARIANT)
+    UTIL_SORT_LIST(JVM_FEATURES_FOR_VARIANT, $JVM_FEATURES_FOR_VARIANT)
 
     # Update real feature set variable
     eval $features_var_name='"'$JVM_FEATURES_FOR_VARIANT'"'
@@ -584,7 +587,7 @@ AC_DEFUN_ONCE([HOTSPOT_FINALIZE_JVM_FEATURES],
     fi
 
     # Validate features (for configure script errors, not user errors)
-    BASIC_GET_NON_MATCHING_VALUES(INVALID_FEATURES, $JVM_FEATURES_FOR_VARIANT, $VALID_JVM_FEATURES)
+    UTIL_GET_NON_MATCHING_VALUES(INVALID_FEATURES, $JVM_FEATURES_FOR_VARIANT, $VALID_JVM_FEATURES)
     if test "x$INVALID_FEATURES" != x; then
       AC_MSG_ERROR([Internal configure script error. Invalid JVM feature(s): $INVALID_FEATURES])
     fi

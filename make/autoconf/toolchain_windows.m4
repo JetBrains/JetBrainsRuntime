@@ -112,7 +112,7 @@ AC_DEFUN([TOOLCHAIN_CHECK_POSSIBLE_VISUAL_STUDIO_ROOT],
     VS_BASE="$2"
     METHOD="$3"
 
-    BASIC_WINDOWS_REWRITE_AS_UNIX_PATH(VS_BASE)
+    UTIL_REWRITE_AS_UNIX_PATH(VS_BASE)
     # In VS 2017 and VS 2019, the default installation is in a subdir named after the edition.
     # Find the first one present and use that.
     if test "x$VS_EDITIONS" != x; then
@@ -164,7 +164,7 @@ AC_DEFUN([TOOLCHAIN_CHECK_POSSIBLE_WIN_SDK_ROOT],
     VS_VERSION="$1"
     WIN_SDK_BASE="$2"
     METHOD="$3"
-    BASIC_WINDOWS_REWRITE_AS_UNIX_PATH(WIN_SDK_BASE)
+    UTIL_REWRITE_AS_UNIX_PATH(WIN_SDK_BASE)
     if test -d "$WIN_SDK_BASE"; then
       # There have been cases of partial or broken SDK installations. A missing
       # lib dir is not going to work.
@@ -319,14 +319,14 @@ AC_DEFUN([TOOLCHAIN_FIND_VISUAL_STUDIO],
     IFS=";"
     for i in $DEVKIT_VS_INCLUDE; do
       ipath=$i
-      BASIC_WINDOWS_REWRITE_AS_WINDOWS_MIXED_PATH([ipath])
+      UTIL_REWRITE_AS_WINDOWS_MIXED_PATH([ipath])
       VS_INCLUDE="$VS_INCLUDE;$ipath"
     done
     # Convert DEVKIT_VS_LIB into VS_LIB so that it can still be exported
     # as LIB for compiler invocations without SYSROOT_LDFLAGS
     for i in $DEVKIT_VS_LIB; do
       libpath=$i
-      BASIC_WINDOWS_REWRITE_AS_WINDOWS_MIXED_PATH([libpath])
+      UTIL_REWRITE_AS_WINDOWS_MIXED_PATH([libpath])
       VS_LIB="$VS_LIB;$libpath"
     done
     IFS="$OLDIFS"
@@ -396,7 +396,7 @@ AC_DEFUN([TOOLCHAIN_SETUP_VISUAL_STUDIO_ENV],
   if test "x$DEVKIT_VS_VERSION" = x; then
     if test "x$VS_ENV_CMD" != x; then
       # We have found a Visual Studio environment on disk, let's extract variables from the vsvars bat file.
-      BASIC_FIXUP_EXECUTABLE(VS_ENV_CMD)
+      UTIL_FIXUP_EXECUTABLE(VS_ENV_CMD)
 
       # Lets extract the variables that are set by vcvarsall.bat/vsvars32.bat/vsvars64.bat
       AC_MSG_NOTICE([Trying to extract Visual Studio environment variables])
@@ -408,9 +408,9 @@ AC_DEFUN([TOOLCHAIN_SETUP_VISUAL_STUDIO_ENV],
       # Cannot use the VS10 setup script directly (since it only updates the DOS subshell environment).
       # Instead create a shell script which will set the relevant variables when run.
       WINPATH_VS_ENV_CMD="$VS_ENV_CMD"
-      BASIC_WINDOWS_REWRITE_AS_WINDOWS_MIXED_PATH([WINPATH_VS_ENV_CMD])
+      UTIL_REWRITE_AS_WINDOWS_MIXED_PATH([WINPATH_VS_ENV_CMD])
       WINPATH_BASH="$BASH"
-      BASIC_WINDOWS_REWRITE_AS_WINDOWS_MIXED_PATH([WINPATH_BASH])
+      UTIL_REWRITE_AS_WINDOWS_MIXED_PATH([WINPATH_BASH])
 
       # Generate a DOS batch file which runs $VS_ENV_CMD, and then creates a shell
       # script (executable by bash) that will setup the important variables.
@@ -571,13 +571,13 @@ AC_DEFUN([TOOLCHAIN_SETUP_MSVC_DLL],
   if test "x$MSVC_DLL" = x; then
     if test "x$VCINSTALLDIR" != x; then
       CYGWIN_VC_INSTALL_DIR="$VCINSTALLDIR"
-      BASIC_FIXUP_PATH(CYGWIN_VC_INSTALL_DIR)
+      UTIL_FIXUP_PATH(CYGWIN_VC_INSTALL_DIR)
       if test "$VS_VERSION" -lt 2017; then
         # Probe: Using well-known location from Visual Studio 12.0 and older
         POSSIBLE_MSVC_DLL="$CYGWIN_VC_INSTALL_DIR/redist/$vs_target_cpu/Microsoft.VC${VS_VERSION_INTERNAL}.CRT/$DLL_NAME"
       else
         CYGWIN_VC_TOOLS_REDIST_DIR="$VCToolsRedistDir"
-        BASIC_FIXUP_PATH(CYGWIN_VC_TOOLS_REDIST_DIR)
+        UTIL_FIXUP_PATH(CYGWIN_VC_TOOLS_REDIST_DIR)
         # Probe: Using well-known location from VS 2017 and VS 2019
         POSSIBLE_MSVC_DLL="`ls $CYGWIN_VC_TOOLS_REDIST_DIR/$vs_target_cpu/Microsoft.VC${VS_VERSION_INTERNAL}.CRT/$DLL_NAME`"
       fi
@@ -600,7 +600,7 @@ AC_DEFUN([TOOLCHAIN_SETUP_MSVC_DLL],
   if test "x$MSVC_DLL" = x; then
     # Probe: Look in the Windows system32 directory
     CYGWIN_SYSTEMROOT="$SYSTEMROOT"
-    BASIC_WINDOWS_REWRITE_AS_UNIX_PATH(CYGWIN_SYSTEMROOT)
+    UTIL_REWRITE_AS_UNIX_PATH(CYGWIN_SYSTEMROOT)
     POSSIBLE_MSVC_DLL="$CYGWIN_SYSTEMROOT/system32/$DLL_NAME"
     TOOLCHAIN_CHECK_POSSIBLE_MSVC_DLL([$DLL_NAME], [$POSSIBLE_MSVC_DLL],
         [well-known location in SYSTEMROOT])
@@ -610,7 +610,7 @@ AC_DEFUN([TOOLCHAIN_SETUP_MSVC_DLL],
     # Probe: If Visual Studio Express is installed, there is usually one with the debugger
     if test "x$VS100COMNTOOLS" != x; then
       CYGWIN_VS_TOOLS_DIR="$VS100COMNTOOLS/.."
-      BASIC_WINDOWS_REWRITE_AS_UNIX_PATH(CYGWIN_VS_TOOLS_DIR)
+      UTIL_REWRITE_AS_UNIX_PATH(CYGWIN_VS_TOOLS_DIR)
       POSSIBLE_MSVC_DLL=`$FIND "$CYGWIN_VS_TOOLS_DIR" -name $DLL_NAME \
         | $GREP -i /$vs_target_cpu/ | $HEAD --lines 1`
       TOOLCHAIN_CHECK_POSSIBLE_MSVC_DLL([$DLL_NAME], [$POSSIBLE_MSVC_DLL],
@@ -707,14 +707,14 @@ AC_DEFUN([TOOLCHAIN_SETUP_VS_RUNTIME_DLLS],
       else
         AC_MSG_RESULT([$with_ucrt_dll_dir])
         UCRT_DLL_DIR="$with_ucrt_dll_dir"
-        BASIC_FIXUP_PATH([UCRT_DLL_DIR])
+        UTIL_FIXUP_PATH([UCRT_DLL_DIR])
       fi
     elif test "x$DEVKIT_UCRT_DLL_DIR" != "x"; then
       UCRT_DLL_DIR="$DEVKIT_UCRT_DLL_DIR"
       AC_MSG_RESULT($UCRT_DLL_DIR)
     else
       CYGWIN_WINDOWSSDKDIR="${WINDOWSSDKDIR}"
-      BASIC_FIXUP_PATH([CYGWIN_WINDOWSSDKDIR])
+      UTIL_FIXUP_PATH([CYGWIN_WINDOWSSDKDIR])
       dll_subdir=$OPENJDK_TARGET_CPU
       if test "x$OPENJDK_TARGET_CPU" = "xaarch64"; then
         dll_subdir="arm64"
@@ -761,9 +761,9 @@ AC_DEFUN([TOOLCHAIN_SETUP_VISUAL_STUDIO_SYSROOT_FLAGS],
       IFS="$OLDIFS"
       # Check that directory exists before calling fixup_path
       testpath=$ipath
-      BASIC_WINDOWS_REWRITE_AS_UNIX_PATH([testpath])
+      UTIL_REWRITE_AS_UNIX_PATH([testpath])
       if test -d "$testpath"; then
-        BASIC_FIXUP_PATH([ipath])
+        UTIL_FIXUP_PATH([ipath])
         $1SYSROOT_CFLAGS="[$]$1SYSROOT_CFLAGS -I$ipath"
       fi
       IFS=";"
@@ -777,9 +777,9 @@ AC_DEFUN([TOOLCHAIN_SETUP_VISUAL_STUDIO_SYSROOT_FLAGS],
       IFS="$OLDIFS"
       # Check that directory exists before calling fixup_path
       testpath=$libpath
-      BASIC_WINDOWS_REWRITE_AS_UNIX_PATH([testpath])
+      UTIL_REWRITE_AS_UNIX_PATH([testpath])
       if test -d "$testpath"; then
-        BASIC_FIXUP_PATH([libpath])
+        UTIL_FIXUP_PATH([libpath])
         $1SYSROOT_LDFLAGS="[$]$1SYSROOT_LDFLAGS -libpath:$libpath"
       fi
       IFS=";"

@@ -431,7 +431,7 @@ AC_DEFUN([FLAGS_SETUP_FLAGS],
 #                                  IF_FALSE: [RUN-IF-FALSE])
 # ------------------------------------------------------------
 # Check that the C compiler supports an argument
-BASIC_DEFUN_NAMED([FLAGS_C_COMPILER_CHECK_ARGUMENTS],
+UTIL_DEFUN_NAMED([FLAGS_C_COMPILER_CHECK_ARGUMENTS],
     [*ARGUMENT IF_TRUE IF_FALSE PREFIX], [$@],
 [
   AC_MSG_CHECKING([if ARG_PREFIX[CC] supports "ARG_ARGUMENT"])
@@ -462,7 +462,7 @@ BASIC_DEFUN_NAMED([FLAGS_C_COMPILER_CHECK_ARGUMENTS],
 #                                    IF_FALSE: [RUN-IF-FALSE])
 # ------------------------------------------------------------
 # Check that the C++ compiler supports an argument
-BASIC_DEFUN_NAMED([FLAGS_CXX_COMPILER_CHECK_ARGUMENTS],
+UTIL_DEFUN_NAMED([FLAGS_CXX_COMPILER_CHECK_ARGUMENTS],
     [*ARGUMENT IF_TRUE IF_FALSE PREFIX], [$@],
 [
   AC_MSG_CHECKING([if ARG_PREFIX[CXX] supports "ARG_ARGUMENT"])
@@ -493,7 +493,7 @@ BASIC_DEFUN_NAMED([FLAGS_CXX_COMPILER_CHECK_ARGUMENTS],
 #                                IF_FALSE: [RUN-IF-FALSE])
 # ------------------------------------------------------------
 # Check that the C and C++ compilers support an argument
-BASIC_DEFUN_NAMED([FLAGS_COMPILER_CHECK_ARGUMENTS],
+UTIL_DEFUN_NAMED([FLAGS_COMPILER_CHECK_ARGUMENTS],
     [*ARGUMENT IF_TRUE IF_FALSE PREFIX], [$@],
 [
   FLAGS_C_COMPILER_CHECK_ARGUMENTS(ARGUMENT: [ARG_ARGUMENT],
@@ -525,7 +525,7 @@ BASIC_DEFUN_NAMED([FLAGS_COMPILER_CHECK_ARGUMENTS],
 #                                   IF_FALSE: [RUN-IF-FALSE])
 # ------------------------------------------------------------
 # Check that the linker support an argument
-BASIC_DEFUN_NAMED([FLAGS_LINKER_CHECK_ARGUMENTS],
+UTIL_DEFUN_NAMED([FLAGS_LINKER_CHECK_ARGUMENTS],
     [*ARGUMENT IF_TRUE IF_FALSE], [$@],
 [
   AC_MSG_CHECKING([if linker supports "ARG_ARGUMENT"])

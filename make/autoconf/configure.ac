@@ -37,9 +37,9 @@ AC_CONFIG_AUX_DIR([$TOPDIR/make/autoconf/build-aux])
 m4_include([build-aux/pkg.m4])
 
 # Include these first...
-m4_include([basics.m4])
-m4_include([basics_windows.m4])
+m4_include([util.m4])
 # ... then the rest
+m4_include([basic.m4])
 m4_include([boot-jdk.m4])
 m4_include([build-performance.m4])
 m4_include([flags.m4])
@@ -51,7 +51,6 @@ m4_include([libraries.m4])
 m4_include([platform.m4])
 m4_include([source-dirs.m4])
 m4_include([toolchain.m4])
-m4_include([toolchain_windows.m4])
 
 AC_DEFUN_ONCE([CUSTOM_EARLY_HOOK])
 AC_DEFUN_ONCE([CUSTOM_LATE_HOOK])

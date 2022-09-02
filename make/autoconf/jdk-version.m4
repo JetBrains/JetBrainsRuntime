@@ -58,13 +58,13 @@ AC_DEFUN([JDKVER_CHECK_AND_SET_NUMBER],
 AC_DEFUN_ONCE([JDKVER_SETUP_JDK_VERSION_NUMBERS],
 [
   # Warn user that old version arguments are deprecated.
-  BASIC_DEPRECATED_ARG_WITH([milestone])
-  BASIC_DEPRECATED_ARG_WITH([update-version])
-  BASIC_DEPRECATED_ARG_WITH([user-release-suffix])
-  BASIC_DEPRECATED_ARG_WITH([build-number])
-  BASIC_DEPRECATED_ARG_WITH([version-major])
-  BASIC_DEPRECATED_ARG_WITH([version-minor])
-  BASIC_DEPRECATED_ARG_WITH([version-security])
+  UTIL_DEPRECATED_ARG_WITH([milestone])
+  UTIL_DEPRECATED_ARG_WITH([update-version])
+  UTIL_DEPRECATED_ARG_WITH([user-release-suffix])
+  UTIL_DEPRECATED_ARG_WITH([build-number])
+  UTIL_DEPRECATED_ARG_WITH([version-major])
+  UTIL_DEPRECATED_ARG_WITH([version-minor])
+  UTIL_DEPRECATED_ARG_WITH([version-security])
 
   # Source the version numbers file
   . $AUTOCONF_DIR/version-numbers
