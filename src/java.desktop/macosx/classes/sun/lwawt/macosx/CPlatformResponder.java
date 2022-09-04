@@ -101,6 +101,10 @@ final class CPlatformResponder {
         }
 
         int jmodifiers = NSEvent.nsToJavaModifiers(modifierFlags);
+        if ((jeventType == MouseEvent.MOUSE_PRESSED) && (jbuttonNumber > MouseEvent.NOBUTTON)) {
+            jmodifiers |= MouseEvent.getMaskForButton(jbuttonNumber);
+        }
+
         boolean jpopupTrigger = NSEvent.isPopupTrigger(jmodifiers);
 
         eventNotifier.notifyMouseEvent(jeventType, System.currentTimeMillis(), jbuttonNumber,
