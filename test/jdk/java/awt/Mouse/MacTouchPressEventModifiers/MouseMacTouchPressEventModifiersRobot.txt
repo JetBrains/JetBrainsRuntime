@@ -1,0 +1,237 @@
+/**
+ * @test
+ * bug JBR-4765 TODO: place OpenJDK bug id here
+ * @summary see the test MouseMacTouchPressEventModifiers.java.
+ *          NB: This test implementation via Robot doesn't work because it doesn't emulate 0 mouse modifiers.
+ * @author Nikita Provotorov
+ *
+ * @key headful
+ * @requires (os.family == "mac")
+ *
+ * @run main/othervm MouseMacTouchPressEventModifiersRobot
+ */
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
+
+public class MouseMacTouchPressEventModifiersRobot
+{
+    /**
+     * How it works:
+     * 1. Send a mouse press to {@code frame} via {@link java.awt.Robot}
+     * 2. Wait (via {@link Future#get()}) until it generates a usual java MouseEvent
+     *    and dispatches it to the MouseListener of the {@code frame}.
+     * 3. Verify the dispatched MouseEvent contains correct modifiers, modifiersEx and button number.
+     * 4. Do all the steps above but for a corresponding mouse release.
+     */
+    public static void main(String[] args) {
+        try {
+            final var testCases = new MouseEventFieldsToTest[]{
+                    new MouseEventFieldsToTest(MouseEvent.BUTTON1_MASK, MouseEvent.BUTTON1_DOWN_MASK, MouseEvent.BUTTON1),
+                    new MouseEventFieldsToTest(MouseEvent.BUTTON3_MASK, MouseEvent.BUTTON3_DOWN_MASK, MouseEvent.BUTTON3),
+                    new MouseEventFieldsToTest(MouseEvent.BUTTON2_MASK, MouseEvent.BUTTON2_DOWN_MASK, MouseEvent.BUTTON2)
+            };
+
+            final Robot robot = new Robot();
+
+            SwingUtilities.invokeAndWait(() -> createAndShowGUI(robot));
+
+            try {
+                for (var testCase : testCases) {
+                    final int mouseX = (frame.getWidth() - 1) / 2;
+                    final int mouseY = (frame.getHeight() - 1) / 2;
+
+                    // press
+
+                    MouseEvent event = frame.sendMousePress(
+                            testCase.pressModifiersEx,
+                            mouseX,
+                            mouseY
+                    ).get(500, TimeUnit.MILLISECONDS);
+                    System.out.println("A mouse press turned into: " + event);
+
+                    frame.checkInternalErrors();
+
+                    checkMouseEvent(event,
+                            MouseEvent.MOUSE_PRESSED, testCase.modifiers, testCase.pressModifiersEx, testCase.button);
+
+                    // release
+
+                    event = frame.sendMouseRelease(testCase.pressModifiersEx).get(500, TimeUnit.MILLISECONDS);
+                    System.out.println("A mouse release turned into: " + event);
+
+                    frame.checkInternalErrors();
+
+                    checkMouseEvent(event,
+                            MouseEvent.MOUSE_RELEASED, testCase.modifiers, 0, testCase.button);
+
+                    System.out.println();
+                }
+            } finally {
+                SwingUtilities.invokeAndWait(MouseMacTouchPressEventModifiersRobot::disposeGUI);
+                System.out.flush();
+            }
+        } catch (Throwable err) {
+            throw new RuntimeException("Test failed", err);
+        }
+    }
+
+
+    private record MouseEventFieldsToTest(int modifiers, int pressModifiersEx, int button) {}
+
+    private static volatile MouseFrame frame;
+
+    private static void createAndShowGUI(Robot robot) {
+        frame = new MouseFrame(robot);
+        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+
+        frame.pack();
+        frame.setSize(800, 500);
+
+        frame.setLocationRelativeTo(null);
+        frame.setAlwaysOnTop(true);
+
+        frame.setVisible(true);
+    }
+
+    private static void disposeGUI() {
+        if (frame != null) {
+            frame.dispose();
+        }
+    }
+
+    private static void checkMouseEvent(MouseEvent me,
+                                        int expectedId, int expectedModifiers, int expectedModifiersEx, int expectedButton
+    ) {
+        boolean wrong = false;
+
+        final var errMsg = new StringBuilder(1024);
+        errMsg.append("Wrong MouseEvent ").append(me).append(':');
+
+        if (me.getID() != expectedId) {
+            errMsg.append("\n  eventId: expected <").append(expectedId).append(">, actual <").append(me.getID()).append('>');
+            wrong = true;
+        }
+        if (me.getModifiers() != expectedModifiers) {
+            errMsg.append("\n  modifiers: expected <").append(expectedModifiers).append(">, actual <").append(me.getModifiers()).append('>');
+            wrong = true;
+        }
+        if (me.getModifiersEx() != expectedModifiersEx) {
+            errMsg.append("\n  modifiersEx: expected <").append(expectedModifiersEx).append(">, actual <").append(me.getModifiersEx()).append('>');
+            wrong = true;
+        }
+        if (me.getButton() != expectedButton) {
+            errMsg.append("\n  button: expected <").append(expectedButton).append(">, actual <").append(me.getButton()).append('>');
+            wrong = true;
+        }
+
+        if (wrong) {
+            throw new IllegalArgumentException(errMsg.append('\n').toString());
+        }
+    }
+}
+
+
+class MouseFrame extends JFrame {
+    public MouseFrame(Robot robot) {
+        this.robot = robot;
+
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                System.out.println("MyFrame::mousePressed: " + e);
+                keepPromiseVia(e);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                System.out.println("MyFrame::mouseReleased: " + e);
+                keepPromiseVia(e);
+            }
+        });
+    }
+
+    /** @see Robot#mousePress(int) */
+    public Future<MouseEvent> sendMousePress(int buttons, int relX, int relY) {
+        return sendMouseEvent(true, buttons, relX, relY);
+    }
+
+    public Future<MouseEvent> sendMouseRelease(int buttons) {
+        return sendMouseEvent(false, buttons, 0, 0);
+    }
+
+    public void checkInternalErrors() throws Throwable {
+        final Throwable result = internalError.getAndSet(null);
+        if (result != null) {
+            throw result;
+        }
+    }
+
+
+    private final Robot robot;
+    private final AtomicReference<CompletableFuture<MouseEvent>> mouseEventPromise = new AtomicReference<>(null);
+
+    private final AtomicReference<Throwable> internalError = new AtomicReference<>(null);
+
+    private Future<MouseEvent> sendMouseEvent(boolean press, int buttons, int relX, int relY) {
+        assert !SwingUtilities.isEventDispatchThread();
+        assert mouseEventPromise.get() == null : "Trying to send a mouse event while there is already a processing one";
+
+        final CompletableFuture<MouseEvent> result = new CompletableFuture<>();
+
+        if (mouseEventPromise.compareAndExchange(null, result) != null) {
+            throw new IllegalStateException("Trying to send a mouse event while there is already a processing one");
+        }
+
+        try {
+            final int absX = getX() + relX;
+            final int absY = getY() + relY;
+
+            if (press) {
+                robot.mouseMove(absX, absY);
+                robot.delay(100);
+
+                robot.mousePress(buttons);
+            } else {
+                robot.mouseRelease(buttons);
+            }
+
+            robot.delay(100);
+        } catch (Throwable err) {
+            // Remove the promise if a robot call failed
+            mouseEventPromise.compareAndExchange(result, null);
+            throw err;
+        }
+
+        return result;
+    }
+
+    /** Wraps {@link CompletableFuture#complete(Object)} */
+    private void keepPromiseVia(MouseEvent mouseEvent) {
+        try {
+            final CompletableFuture<MouseEvent> promise = mouseEventPromise.getAndSet(null);
+            if (promise == null) {
+                throw new IllegalStateException("The following unexpected MouseEvent has arrived: " + mouseEvent);
+            }
+
+            if (!promise.complete(mouseEvent)) {
+                throw new IllegalStateException("The promise is already completed when the following MouseEvent has arrived: " + mouseEvent);
+            }
+        } catch (Throwable err) {
+            setInternalError(err);
+        }
+    }
+
+    private void setInternalError(Throwable err) {
+        if (internalError.compareAndExchange(null, err) != null) {
+            System.err.println("Failed to set the following internal error because there is another one: " + err);
+        }
+    }
+}
