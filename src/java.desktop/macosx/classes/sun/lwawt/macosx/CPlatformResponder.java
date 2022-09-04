@@ -101,6 +101,10 @@ final class CPlatformResponder {
         }
 
         int jmodifiers = NSEvent.nsToJavaModifiers(modifierFlags);
+        if ((jeventType == MouseEvent.MOUSE_PRESSED) && (jbuttonNumber > MouseEvent.NOBUTTON)) {
+            jmodifiers |= MouseEvent.getMaskForButton(jbuttonNumber);
+        }
+
         if (jeventType != MouseEvent.MOUSE_MOVED) {
             System.err.println("CPlatformResponder::handleMouseEvent: NSEvent.nsToJavaModifiers(0x" + Integer.toHexString(modifierFlags) + ") => " + jmodifiers + "\n");
         }
