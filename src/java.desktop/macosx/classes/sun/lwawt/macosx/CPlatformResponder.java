@@ -105,10 +105,6 @@ final class CPlatformResponder {
             jmodifiers |= MouseEvent.getMaskForButton(jbuttonNumber);
         }
 
-        if (jeventType != MouseEvent.MOUSE_MOVED) {
-            System.err.println("CPlatformResponder::handleMouseEvent: NSEvent.nsToJavaModifiers(0x" + Integer.toHexString(modifierFlags) + ") => " + jmodifiers + "\n");
-        }
-
         boolean jpopupTrigger = NSEvent.isPopupTrigger(jmodifiers);
 
         eventNotifier.notifyMouseEvent(jeventType, System.currentTimeMillis(), jbuttonNumber,

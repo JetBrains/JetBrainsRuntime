@@ -47,7 +47,6 @@ static NSString *kbdLayout;
 @property (retain) CDropTarget *_dropTarget;
 @property (retain) CDragSource *_dragSource;
 
--(void) logMouseEvent: (NSEvent*) event withPrefix: (const char*) prefix;
 -(void) deliverResize: (NSRect) rect;
 -(void) resetTrackingArea;
 -(void) deliverJavaKeyEventHelper: (NSEvent*) event;
@@ -199,8 +198,6 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
  */
 
 - (void) mouseDown: (NSEvent *)event {
-    [self logMouseEvent:event withPrefix:"mouseDown"];
-
     NSInputManager *inputManager = [NSInputManager currentInputManager];
     if ([inputManager wantsToHandleMouseEvents]) {
 #if IM_DEBUG
@@ -226,8 +223,6 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 }
 
 - (void) rightMouseDown: (NSEvent *)event {
-    [self logMouseEvent:event withPrefix:"rightMouseDown"];
-
     [self deliverJavaMouseEvent: event];
 }
 
@@ -236,8 +231,6 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 }
 
 - (void) otherMouseDown: (NSEvent *)event {
-    [self logMouseEvent:event withPrefix:"otherMouseDown"];
-
     [self deliverJavaMouseEvent: event];
 }
 
@@ -301,8 +294,6 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
  */
 
 - (void) keyDown: (NSEvent *)event {
-    NSLog(@"keyDown: %@", event);
-
     fProcessingKeystroke = YES;
     fKeyEventsNeeded = YES;
 
@@ -359,8 +350,6 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 }
 
 - (void) flagsChanged: (NSEvent *)event {
-    NSLog(@"flagsChanged: %@", event);
-
     [self deliverJavaKeyEventHelper: event];
 }
 
@@ -410,77 +399,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
  * Utility methods and accessors
  */
 
--(void) logMouseEvent: (NSEvent*) event withPrefix: (const char*) prefix {
-    const CGEventRef cgEvent = [event CGEvent];
-    CGEventType cgEventType = 0;
-    CGEventFlags cgEventFlags = 0;
-    int64_t cgEventMouseEventNumber = 0;
-    int64_t cgEventMouseEventClickState = 0;
-    double cgEventMouseEventPressure = 0;
-    int64_t cgEventMouseEventButtonNumber = 0;
-    int64_t cgEventMouseEventInstantMouser = 0;
-    int64_t cgEventMouseEventSubtype = 0;
-
-    if (cgEvent != NULL)
-    {
-        cgEventType = CGEventGetType(cgEvent);
-        cgEventFlags = CGEventGetFlags(cgEvent);
-        cgEventMouseEventNumber = CGEventGetIntegerValueField(cgEvent, kCGMouseEventNumber);
-        cgEventMouseEventClickState = CGEventGetIntegerValueField(cgEvent, kCGMouseEventClickState);
-        cgEventMouseEventPressure = CGEventGetDoubleValueField(cgEvent, kCGMouseEventPressure);
-        cgEventMouseEventButtonNumber = CGEventGetIntegerValueField(cgEvent, kCGMouseEventButtonNumber);
-        cgEventMouseEventInstantMouser = CGEventGetIntegerValueField(cgEvent, kCGMouseEventInstantMouser);
-        cgEventMouseEventSubtype = CGEventGetIntegerValueField(cgEvent, kCGMouseEventSubtype);
-    }
-
-    NSLog(
-        @"%s: %p %@\n"
-        "  number: %llu\n"
-        "  type: %llu\n"
-        "  subtype: %llu\n"
-        "  modifierFlags: 0x%llX\n"
-        "  buttonNumber: %lld\n"
-        "  clickCount: %lld\n"
-        "  pressure: %f\n"
-        "  associatedEventsMask: 0x%llX\n"
-        "  CGEvent: %p\n"
-        "    type: %llu\n"
-        "    flags: 0x%llX\n"
-        "    mouseEventNumber: %lld\n"
-        "    mouseEventClickState: %lld\n"
-        "    mouseEventPressure: %f\n"
-        "    mouseEventButtonNumber: %lld\n"
-        "    mouseEventInstantMouser: %lld\n"
-        "    mouseEventSubtype: %lld",
-        (prefix == NULL) ? "mouse-event" : prefix,
-        event,
-        event,
-        (unsigned long long)[event eventNumber],
-        (unsigned long long)[event type],
-        (unsigned long long)[event subtype],
-        (unsigned long long)[event modifierFlags],
-        (long long)[event buttonNumber],
-        (long long)[event clickCount],
-        [event pressure],
-        [event associatedEventsMask],
-        cgEvent,
-        (unsigned long long)cgEventType,
-        (unsigned long long)cgEventFlags,
-        (long long)cgEventMouseEventNumber,
-        (long long)cgEventMouseEventClickState,
-        cgEventMouseEventPressure,
-        (long long)cgEventMouseEventButtonNumber,
-        (long long)cgEventMouseEventInstantMouser,
-        (long long)cgEventMouseEventSubtype
-    );
-}
-
 -(void) deliverJavaMouseEvent: (NSEvent *) event {
-    if ([event type] != NSMouseMoved)
-    {
-        NSLog(@"deliverJavaMouseEvent: %p %@", event, event);
-    }
-
     BOOL isEnabled = YES;
     NSWindow* window = [self window];
     if ([window isKindOfClass: [AWTWindow_Panel class]] || [window isKindOfClass: [AWTWindow_Normal class]]) {
