@@ -26,7 +26,7 @@ import java.lang.invoke.MethodHandles;
 public class JBRApiModule {
     static {
         JBRApi.registerModule(MethodHandles.lookup(), JBRApiModule.class.getModule()::addExports)
-                .service("com.jetbrains.JBR$ServiceApi", null)
-                    .withStatic("getService", "com.jetbrains.internal.JBRApi");
+                .service("com.jetbrains.JBR$ServiceApi")
+                    .withStatic("getService", "getService", "com.jetbrains.internal.JBRApi");
     }
 }
