@@ -30,7 +30,8 @@ public class ProxyRegistrationTest {
     public static void main(String[] args) {
         JBRApi.ModuleRegistry r = init();
         // Only service may not have target type
-        r.service("s", null);
+        r.service("s");
+        mustFail(() -> r.proxy("i"), IllegalArgumentException.class);
         mustFail(() -> r.proxy("i", null), NullPointerException.class);
         mustFail(() -> r.clientProxy("i", null), NullPointerException.class);
         mustFail(() -> r.twoWayProxy("i", null), NullPointerException.class);
