@@ -19,6 +19,8 @@ package com.jetbrains.internal;
 import java.lang.invoke.MethodHandles;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Stream;
 
 import static java.lang.invoke.MethodHandles.Lookup;
 
@@ -40,12 +42,14 @@ class ProxyInfo {
         type = i.type();
         interFaceLookup = lookup(getInterfaceLookup(), i.interfaceName());
         interFace = interFaceLookup == null ? null : interFaceLookup.lookupClass();
-        target = i.target() == null ? null : lookup(getTargetLookup(), i.target());
+        target = Stream.of(i.targets())
+                .map(t -> lookup(getTargetLookup(), t))
+                .filter(Objects::nonNull).findFirst().orElse(null);
         for (RegisteredProxyInfo.StaticMethodMapping m : i.staticMethods()) {
-            Lookup l = lookup(getTargetLookup(), m.clazz());
-            if (l != null) {
-                staticMethods.put(m.interfaceMethodName(), new StaticMethodMapping(l, m.methodName()));
-            }
+            Stream.of(m.classes())
+                    .map(t -> lookup(getTargetLookup(), t))
+                    .filter(Objects::nonNull).findFirst()
+                    .ifPresent(l -> staticMethods.put(m.interfaceMethodName(), new StaticMethodMapping(l, m.methodName())));
         }
     }
 
