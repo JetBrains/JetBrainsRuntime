@@ -25,9 +25,9 @@ import java.util.List;
  */
 record RegisteredProxyInfo(MethodHandles.Lookup apiModule,
                            String interfaceName,
-                           String target,
+                           String[] targets,
                            ProxyInfo.Type type,
                            List<StaticMethodMapping> staticMethods) {
 
-    record StaticMethodMapping(String interfaceMethodName, String clazz, String methodName) {}
+    record StaticMethodMapping(String interfaceMethodName, String methodName, String[] classes) {}
 }
