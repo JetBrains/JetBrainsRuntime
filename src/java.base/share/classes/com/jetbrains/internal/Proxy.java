@@ -58,6 +58,7 @@ class Proxy<INTERFACE> {
     private volatile MethodHandle constructor;
     private volatile MethodHandle targetExtractor;
 
+    private volatile boolean instanceInitialized;
     private volatile INTERFACE instance;
 
     Proxy(ProxyInfo info) {
@@ -194,15 +195,22 @@ class Proxy<INTERFACE> {
      */
     @SuppressWarnings("unchecked")
     INTERFACE getInstance() {
-        if (instance != null) return instance;
+        if (instanceInitialized) return instance;
         if (info.type != ProxyInfo.Type.SERVICE) return null;
         synchronized (this) {
             if (instance == null) {
                 initDependencyGraph();
                 try {
                     instance = (INTERFACE) getConstructor().invoke();
+                } catch (JBRApi.ServiceNotAvailableException e) {
+                    if (JBRApi.VERBOSE) {
+                        System.err.println("Service not available: " + info.interFace.getName());
+                        e.printStackTrace();
+                    }
                 } catch (Throwable e) {
                     throw new RuntimeException(e);
+                } finally {
+                    instanceInitialized = true;
                 }
             }
             return instance;
