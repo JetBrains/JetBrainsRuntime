@@ -39,11 +39,11 @@ public class ProxyInfoResolvingTest {
         r.proxy(InterfaceWithoutImplementation.class.getName(), "absentImpl");
         requireNull(getProxy(InterfaceWithoutImplementation.class));
         // Invalid JBR-side target static method mapping -> null
-        r.service(ServiceWithoutImplementation.class.getName(), null)
-                .withStatic("someMethod", "NoClass");
+        r.service(ServiceWithoutImplementation.class.getName())
+                .withStatic("someMethod", "someMethod", "NoClass");
         requireNull(getProxy(ServiceWithoutImplementation.class));
         // Service without target class or static method mapping -> null
-        r.service(EmptyService.class.getName(), null);
+        r.service(EmptyService.class.getName());
         requireNull(getProxy(EmptyService.class));
         // Class passed instead of interface for client proxy -> error
         r.clientProxy(ClientProxyClass.class.getName(), ClientProxyClassImpl.class.getName());
@@ -54,5 +54,8 @@ public class ProxyInfoResolvingTest {
         // Valid proxy
         r.proxy(ValidApi.class.getName(), ValidApiImpl.class.getName());
         Objects.requireNonNull(getProxy(ValidApi.class));
+        // Multiple implementations
+        r.proxy(ValidApi2.class.getName(), "MissingClass", ValidApi2Impl.class.getName());
+        Objects.requireNonNull(getProxy(ValidApi2.class));
     }
 }

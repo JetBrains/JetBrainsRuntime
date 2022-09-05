@@ -16,6 +16,7 @@
 
 package com.jetbrains.internal;
 
+import java.io.Serial;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.*;
@@ -176,9 +177,9 @@ public class JBRApi {
         }
     }
 
-    public static InternalServiceBuilder internalServiceBuilder(Lookup interFace, String target) {
+    public static InternalServiceBuilder internalServiceBuilder(Lookup interFace, String... targets) {
         return new InternalServiceBuilder(new RegisteredProxyInfo(
-                interFace, interFace.lookupClass().getName(), target, ProxyInfo.Type.INTERNAL_SERVICE, new ArrayList<>()));
+                interFace, interFace.lookupClass().getName(), targets, ProxyInfo.Type.INTERNAL_SERVICE, new ArrayList<>()));
     }
 
     public static class InternalServiceBuilder {
@@ -189,13 +190,9 @@ public class JBRApi {
             this.info = info;
         }
 
-        public InternalServiceBuilder withStatic(String methodName, String clazz) {
-            return withStatic(methodName, clazz, methodName);
-        }
-
-        public InternalServiceBuilder withStatic(String interfaceMethodName, String clazz, String methodName) {
+        public InternalServiceBuilder withStatic(String interfaceMethodName, String methodName, String... classes) {
             info.staticMethods().add(
-                    new RegisteredProxyInfo.StaticMethodMapping(interfaceMethodName, clazz, methodName));
+                    new RegisteredProxyInfo.StaticMethodMapping(interfaceMethodName, methodName, classes));
             return this;
         }
 
@@ -233,22 +230,24 @@ public class JBRApi {
             this.lookup = lookup;
         }
 
-        private ModuleRegistry addProxy(String interfaceName, String target, ProxyInfo.Type type) {
-            lastProxy = new RegisteredProxyInfo(lookup, interfaceName, target, type, new ArrayList<>());
+        private ModuleRegistry addProxy(ProxyInfo.Type type, String interfaceName, String... targets) {
+            lastProxy = new RegisteredProxyInfo(lookup, interfaceName, targets, type, new ArrayList<>());
             registeredProxyInfoByInterfaceName.put(interfaceName, lastProxy);
-            if (target != null) {
+            for (String target : targets) {
                 registeredProxyInfoByTargetName.put(target, lastProxy);
-                validate2WayMapping(lastProxy, registeredProxyInfoByInterfaceName.get(target));
+            }
+            if (targets.length == 1) {
+                validate2WayMapping(lastProxy, registeredProxyInfoByInterfaceName.get(targets[0]));
                 validate2WayMapping(lastProxy, registeredProxyInfoByTargetName.get(interfaceName));
             }
             return this;
         }
         private static void validate2WayMapping(RegisteredProxyInfo p, RegisteredProxyInfo reverse) {
             if (reverse != null &&
-                    (!p.interfaceName().equals(reverse.target()) || !p.target().equals(reverse.interfaceName()))) {
+                    (!p.interfaceName().equals(reverse.targets()[0]) || !p.targets()[0].equals(reverse.interfaceName()))) {
                 throw new IllegalArgumentException("Invalid 2-way proxy mapping: " +
-                        p.interfaceName() + " -> " + p.target() + " & " +
-                        reverse.interfaceName() + " -> " + reverse.target());
+                        p.interfaceName() + " -> " + p.targets()[0] + " & " +
+                        reverse.interfaceName() + " -> " + reverse.targets()[0]);
             }
         }
 
@@ -259,12 +258,12 @@ public class JBRApi {
          * it's converted to corresponding {@code interFace} type by creating a proxy object
          * that implements {@code interFace} and delegates method calls to {@code target}.
          * @param interFace interface name in {@link com.jetbrains.JBR jetbrains.api} module.
-         * @param target corresponding class/interface name in current JBR module.
+         * @param targets corresponding class/interface names in current JBR module, first found will be used. This must not be empty.
          * @apiNote class name example: {@code pac.ka.ge.Outer$Inner}
          */
-        public ModuleRegistry proxy(String interFace, String target) {
-            Objects.requireNonNull(target);
-            return addProxy(interFace, target, ProxyInfo.Type.PROXY);
+        public ModuleRegistry proxy(String interFace, String... targets) {
+            if (targets.length == 0) throw new IllegalArgumentException("Proxy must have at least one target");
+            return addProxy(ProxyInfo.Type.PROXY, interFace, targets);
         }
 
         /**
@@ -272,11 +271,11 @@ public class JBRApi {
          * <p>
          * Service is a singleton, which may be accessed by client using {@link com.jetbrains.JBR} class.
          * @param interFace interface name in {@link com.jetbrains.JBR jetbrains.api} module.
-         * @param target corresponding implementation class name in current JBR module, or null.
+         * @param targets corresponding implementation class names in current JBR module, first found will be used.
          * @apiNote class name example: {@code pac.ka.ge.Outer$Inner}
          */
-        public ModuleRegistry service(String interFace, String target) {
-            return addProxy(interFace, target, ProxyInfo.Type.SERVICE);
+        public ModuleRegistry service(String interFace, String... targets) {
+            return addProxy(ProxyInfo.Type.SERVICE, interFace, targets);
         }
 
         /**
@@ -292,7 +291,7 @@ public class JBRApi {
          */
         public ModuleRegistry clientProxy(String interFace, String target) {
             Objects.requireNonNull(target);
-            return addProxy(interFace, target, ProxyInfo.Type.CLIENT_PROXY);
+            return addProxy(ProxyInfo.Type.CLIENT_PROXY, interFace, target);
         }
 
         /**
@@ -313,20 +312,24 @@ public class JBRApi {
         }
 
         /**
-         * Delegate interface "{@code methodName}" calls to static "{@code methodName}" in "{@code clazz}".
-         * @see #withStatic(String, String, String)
+         * Delegate "{@code interfaceMethodName}" method calls to first found static "{@code methodName}" in "{@code classes}".
          */
-        public ModuleRegistry withStatic(String methodName, String clazz) {
-            return withStatic(methodName, clazz, methodName);
-        }
-
-        /**
-         * Delegate "{@code interfaceMethodName}" method calls to static "{@code methodName}" in "{@code clazz}".
-         */
-        public ModuleRegistry withStatic(String interfaceMethodName, String clazz, String methodName) {
+        public ModuleRegistry withStatic(String interfaceMethodName, String methodName, String... classes) {
             lastProxy.staticMethods().add(
-                    new RegisteredProxyInfo.StaticMethodMapping(interfaceMethodName, clazz, methodName));
+                    new RegisteredProxyInfo.StaticMethodMapping(interfaceMethodName, methodName, classes));
             return this;
         }
+    }
+
+    /**
+     * Thrown by service implementations indicating that the service is not available for some reason
+     */
+    public static class ServiceNotAvailableException extends RuntimeException {
+        @Serial
+        private static final long serialVersionUID = 1L;
+        public ServiceNotAvailableException() { super(); }
+        public ServiceNotAvailableException(String message) { super(message); }
+        public ServiceNotAvailableException(String message, Throwable cause) { super(message, cause); }
+        public ServiceNotAvailableException(Throwable cause) { super(cause); }
     }
 }
