@@ -35,14 +35,14 @@ import java.lang.invoke.MethodHandles;
 public class JBRApiModule {
     static {
         JBRApi.registerModule(MethodHandles.lookup(), JBRApiModule.class.getModule()::addExports)
-                .service("com.jetbrains.ExtendedGlyphCache", null)
-                    .withStatic("getSubpixelResolution", "sun.font.FontUtilities")
-                .service("com.jetbrains.JBRFileDialogService", null)
-                    .withStatic("getFileDialog", "com.jetbrains.desktop.JBRFileDialog", "get")
+                .service("com.jetbrains.ExtendedGlyphCache")
+                    .withStatic("getSubpixelResolution", "getSubpixelResolution", "sun.font.FontUtilities")
+                .service("com.jetbrains.JBRFileDialogService")
+                    .withStatic("getFileDialog", "get", "com.jetbrains.desktop.JBRFileDialog")
                 .proxy("com.jetbrains.JBRFileDialog", "com.jetbrains.desktop.JBRFileDialog")
                 .service("com.jetbrains.CustomWindowDecoration", "java.awt.Window$CustomWindowDecoration")
-                .service("com.jetbrains.DesktopActions", null)
-                    .withStatic("setHandler", "java.awt.Desktop", "setDesktopActionsHandler")
+                .service("com.jetbrains.DesktopActions")
+                    .withStatic("setHandler", "setDesktopActionsHandler", "java.awt.Desktop")
                 .clientProxy("java.awt.Desktop$DesktopActionsHandler", "com.jetbrains.DesktopActions$Handler");
     }
 }
