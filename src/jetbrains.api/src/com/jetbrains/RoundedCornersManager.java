@@ -18,8 +18,21 @@ package com.jetbrains;
 
 import java.awt.Window;
 
+/**
+ * This manager allows decorate awt Window with rounded corners.
+ * Appearance depends from operating system.
+ */
 public interface RoundedCornersManager {
     boolean isAvailable();
 
+    /**
+     * @param params for macOS is Float object with radius.
+     *
+     * @param params for Windows 11 is String with values:
+     * "default" - let the system decide whether or not to round window corners,
+     * "none" - never round window corners,
+     * "full" - round the corners if appropriate,
+     * "small" - round the corners if appropriate, with a small radius.
+     */
     void setRoundedCorners(Window window, Object params);
 }
