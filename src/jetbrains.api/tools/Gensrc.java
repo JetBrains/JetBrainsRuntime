@@ -250,12 +250,11 @@ public class Gensrc {
         }
 
         private void findInModule(String content) {
-            Pattern servicePattern = compile("(service|proxy|twoWayProxy)\\s*\\(([^)]+)");
+            Pattern servicePattern = compile("(service|proxy|twoWayProxy)\\s*\\(([^,)]+)");
             Matcher matcher = servicePattern.matcher(content);
             while (matcher.find()) {
                 String type = matcher.group(1);
-                String parameters = matcher.group(2);
-                String interfaceName = extractFromStringLiteral(parameters.substring(0, parameters.indexOf(',')));
+                String interfaceName = extractFromStringLiteral(matcher.group(2));
                 if (type.equals("service")) services.add(interfaceName);
                 else proxies.add(interfaceName);
             }
