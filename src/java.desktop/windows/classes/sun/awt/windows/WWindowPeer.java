@@ -52,6 +52,7 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.DataBufferInt;
+import java.awt.peer.ComponentPeer;
 import java.awt.peer.WindowPeer;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -818,6 +819,23 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
             updateWindow(true);
         }
     }
+
+    // JBR API internals
+    private static void setRoundedCorners(ComponentPeer peer, Object params) {
+        if (peer instanceof WWindowPeer && params instanceof String) {
+            int type = 0; // default
+            if ("none".equals(params)) {
+                type = 1;
+            } else if ("full".equals(params)) {
+                type = 2;
+            } else if ("small".equals(params)) {
+                type = 3;
+            }
+            ((WWindowPeer)peer).setRoundedCorners(type);
+        }
+    }
+
+    private native void setRoundedCorners(int type);
 
     native void updateWindowImpl(int[] data, int width, int height);
 
