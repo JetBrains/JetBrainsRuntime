@@ -30,4 +30,5 @@ public class ProxyInfoResolving {
     public static class ClientProxyClassImpl {}
     public static class ProxyClass {}
     public interface ValidApi {}
+    public interface ValidApi2 {}
 }
