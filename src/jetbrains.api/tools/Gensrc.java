@@ -182,6 +182,7 @@ public class Gensrc {
 
         private static Service[] findPublicServiceInterfaces() {
             Pattern javadocPattern = Pattern.compile("/\\*\\*((?:.|\n)*?)\\s*\\*/");
+            Pattern deprecatedPattern = Pattern.compile("@Deprecated( *\\(.*?forRemoval *= *true.*?\\))?");
             return modules.services.stream()
                     .map(fullName -> {
                         if (fullName.indexOf('$') != -1) return null; // Only top level services can be public
@@ -202,9 +203,12 @@ public class Gensrc {
                                 javadoc = "";
                                 javadocEnd = 0;
                             }
-                            return new Service(name, javadoc,
-                                    content.substring(javadocEnd, indexOfDeclaration).contains("@Deprecated"),
-                                    content.contains("__Fallback"));
+                            Matcher deprecatedMatcher = deprecatedPattern.matcher(content.substring(javadocEnd, indexOfDeclaration));
+                            Status status;
+                            if (!deprecatedMatcher.find()) status = Status.NORMAL;
+                            else if (deprecatedMatcher.group(1) == null) status = Status.DEPRECATED;
+                            else status = Status.FOR_REMOVAL;
+                            return new Service(name, javadoc, status, content.contains("__Fallback"));
                         } catch (IOException e) {
                             throw new UncheckedIOException(e);
                         }
@@ -235,10 +239,19 @@ public class Gensrc {
                     .replace("<FALLBACK>", service.hasFallback ? "$.__Fallback::new" : "null")
                     .replaceAll("\\$", service.name)
                     .replace("<JAVADOC>", service.javadoc)
-                    .replaceAll("<DEPRECATED>", service.deprecated ? "\n@Deprecated" : "");
+                    .replaceAll("<DEPRECATED>", service.status.text);
         }
 
-        private record Service(String name, String javadoc, boolean deprecated, boolean hasFallback) {}
+        private enum Status {
+            NORMAL(""),
+            DEPRECATED("\n@Deprecated"),
+            FOR_REMOVAL("\n@Deprecated(forRemoval=true)\n@SuppressWarnings(\"removal\")");
+
+            private final String text;
+            Status(String text) { this.text = text; }
+        }
+
+        private record Service(String name, String javadoc, Status status, boolean hasFallback) {}
     }
 
     /**
@@ -259,12 +272,11 @@ public class Gensrc {
         }
 
         private void findInModule(String content) {
-            Pattern servicePattern = compile("(service|proxy|twoWayProxy)\\s*\\(([^)]+)");
+            Pattern servicePattern = compile("(service|proxy|twoWayProxy)\\s*\\(([^,)]+)");
             Matcher matcher = servicePattern.matcher(content);
             while (matcher.find()) {
                 String type = matcher.group(1);
-                String parameters = matcher.group(2);
-                String interfaceName = extractFromStringLiteral(parameters.substring(0, parameters.indexOf(',')));
+                String interfaceName = extractFromStringLiteral(matcher.group(2));
                 if (type.equals("service")) services.add(interfaceName);
                 else proxies.add(interfaceName);
             }
