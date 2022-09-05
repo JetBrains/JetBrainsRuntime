@@ -3914,6 +3914,12 @@ public class Window extends Container implements Accessible {
 
     private static class CustomWindowDecoration {
 
+        CustomWindowDecoration() {
+            if (Win.INSTANCE == null && MacOS.INSTANCE == null) {
+                throw new JBRApi.ServiceNotAvailableException("Only supported on Windows and macOS");
+            }
+        }
+
         @Native public static final int
                 NO_HIT_SPOT = 0,
                 OTHER_HIT_SPOT = 1,
@@ -3955,14 +3961,14 @@ public class Window extends Container implements Accessible {
         }
 
         private interface Win {
-            Win INSTANCE = (Win) JBRApi.internalServiceBuilder(MethodHandles.lookup(), null)
-                    .withStatic("updateCustomDecoration", "sun.awt.windows.WFramePeer").build();
+            Win INSTANCE = (Win) JBRApi.internalServiceBuilder(MethodHandles.lookup())
+                    .withStatic("updateCustomDecoration", "updateCustomDecoration", "sun.awt.windows.WFramePeer").build();
             void updateCustomDecoration(ComponentPeer peer);
         }
 
         private interface MacOS {
-            MacOS INSTANCE = (MacOS) JBRApi.internalServiceBuilder(MethodHandles.lookup(), null)
-                    .withStatic("setTitleBarHeight", "sun.lwawt.macosx.CPlatformWindow", "setCustomDecorationTitleBarHeight").build();
+            MacOS INSTANCE = (MacOS) JBRApi.internalServiceBuilder(MethodHandles.lookup())
+                    .withStatic("setTitleBarHeight", "setCustomDecorationTitleBarHeight", "sun.lwawt.macosx.CPlatformWindow").build();
             void setTitleBarHeight(Window target, ComponentPeer peer, float height);
         }
     }
