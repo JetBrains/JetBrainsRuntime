@@ -44,7 +44,7 @@ public class MethodMappingTest {
         // Plain method mapping
         r.proxy(PlainFail.class.getName(), PlainImpl.class.getName());
         r.service(Plain.class.getName(), PlainImpl.class.getName())
-                .withStatic("c", MethodMappingTest.class.getName(), "main");
+                .withStatic("c", "main", MethodMappingTest.class.getName());
         requireNotImplemented(PlainFail.class);
         requireImplemented(Plain.class);
         // Callback (client proxy)
