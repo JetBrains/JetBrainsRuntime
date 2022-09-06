@@ -32,6 +32,9 @@ public class JBRApiModule {
                     .withStatic("getFileDialog", "get", "com.jetbrains.desktop.JBRFileDialog")
                 .proxy("com.jetbrains.JBRFileDialog", "com.jetbrains.desktop.JBRFileDialog")
                 .service("com.jetbrains.CustomWindowDecoration", "java.awt.Window$CustomWindowDecoration")
+                .service("com.jetbrains.RoundedCornersManager")
+                    .withStatic("setRoundedCorners", "setRoundedCorners", "sun.lwawt.macosx.CPlatformWindow",
+                                "sun.awt.windows.WWindowPeer")
                 .service("com.jetbrains.DesktopActions")
                     .withStatic("setHandler", "setDesktopActionsHandler", "java.awt.Desktop")
                 .clientProxy("java.awt.Desktop$DesktopActionsHandler", "com.jetbrains.DesktopActions$Handler");
