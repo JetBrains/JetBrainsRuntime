@@ -23,8 +23,6 @@ import java.awt.Window;
  * Appearance depends from operating system.
  */
 public interface RoundedCornersManager {
-    boolean isAvailable();
-
     /**
      * @param params for macOS is Float object with radius.
      *
