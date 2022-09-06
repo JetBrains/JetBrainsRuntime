@@ -33,8 +33,8 @@ import java.lang.reflect.InvocationTargetException;
  * @summary JBR-4563 Rounded corners for native Window on Mac OS
  * @summary JBR-4787 Rounded corners for native Window on Windows 11
  * @author Alexander Lobas
- * @run main TestSetRoundedCorners
  * @requires (os.family == "mac" || os.family == "windows")
+ * @run shell build.sh
  */
 public class TestSetRoundedCorners {
     private static final int TD_RED = 50;
