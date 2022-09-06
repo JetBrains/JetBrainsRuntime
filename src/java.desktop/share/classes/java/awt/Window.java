@@ -4080,32 +4080,6 @@ public class Window extends Container implements Accessible {
         }
     }
 
-    private static class RoundedCornersManager {
-        boolean isAvailable() {
-            return MacOS.INSTANCE != null || Win.INSTANCE != null;
-        }
-
-        void setRoundedCorners(Window window, Object params) {
-            if (MacOS.INSTANCE != null) {
-                MacOS.INSTANCE.setRoundedCorners(window.peer, params);
-            } else if (Win.INSTANCE != null) {
-                Win.INSTANCE.setRoundedCorners(window.peer, params);
-            }
-        }
-
-        private interface Win {
-            Win INSTANCE = (Win) JBRApi.internalServiceBuilder(MethodHandles.lookup(), null)
-                    .withStatic("setRoundedCorners", "sun.awt.windows.WWindowPeer").build();
-            void setRoundedCorners(ComponentPeer peer, Object params);
-        }
-
-        private interface MacOS {
-            MacOS INSTANCE = (MacOS) JBRApi.internalServiceBuilder(MethodHandles.lookup(), null)
-                    .withStatic("setRoundedCorners", "sun.lwawt.macosx.CPlatformWindow").build();
-            void setRoundedCorners(ComponentPeer peer, Object params);
-        }
-    }
-
     @Deprecated
     boolean hasCustomDecoration() {
         return hasCustomDecoration;
