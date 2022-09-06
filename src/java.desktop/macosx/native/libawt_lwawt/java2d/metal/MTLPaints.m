@@ -141,6 +141,27 @@ static void initTemplatePipelineDescriptors() {
 // color-mode
 jint _color;
 }
++ (void)setPipelineState:(id <MTLRenderCommandEncoder>)encoder
+                 context:(MTLContext *)mtlc
+           renderOptions:(const RenderOptions *)renderOptions
+    pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage
+                  rpDesc:(MTLRenderPipelineDescriptor *)rpDesc
+              vertShader:(NSString *)vertShader
+              fragShader:(NSString *)fragShader
+                   color:(jint)color {
+
+    struct FrameUniforms uf = {RGBA_TO_V4(color)};
+    [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+
+    id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
+                                                                        vertexShaderId:vertShader
+                                                                      fragmentShaderId:fragShader
+                                                                             composite:mtlc.composite
+                                                                         renderOptions:renderOptions
+                                                                         stencilNeeded:[mtlc.clip isShape]];
+    [encoder setRenderPipelineState:pipelineState];
+}
+
 - (id)initWithColor:(jint)color {
     self = [super initWithState:sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR];
 
@@ -194,10 +215,10 @@ jint _color;
     if (renderOptions->isTexture) {
         vertShader = @"vert_txt";
         fragShader = @"frag_txt";
-        rpDesc = [[templateTexturePipelineDesc copy] autorelease];
+        rpDesc = templateTexturePipelineDesc;
         if (renderOptions->isAA) {
             fragShader = @"aa_frag_txt";
-            rpDesc = [[templateAATexturePipelineDesc copy] autorelease];
+            rpDesc = templateAATexturePipelineDesc;
         }
         if (renderOptions->isGMCText) {
             fragShader = @"frag_gmc_text";
@@ -206,7 +227,7 @@ jint _color;
         if (renderOptions->isLCD) {
             vertShader = @"vert_txt_lcd";
             fragShader = @"lcd_color";
-            rpDesc = [[templateLCDPipelineDesc copy] autorelease];
+            rpDesc = templateLCDPipelineDesc;
         }
         setTxtUniforms(mtlc, _color, encoder,
                        renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha], &renderOptions->srcFlags,
@@ -214,21 +235,19 @@ jint _color;
     } else if (renderOptions->isAAShader) {
         vertShader = @"vert_col_aa";
         fragShader = @"frag_col_aa";
-        rpDesc = [[templateAAPipelineDesc copy] autorelease];
+        rpDesc = templateAAPipelineDesc;
     } else {
-        rpDesc = [[templateRenderPipelineDesc copy] autorelease];
+        rpDesc = templateRenderPipelineDesc;
     }
 
-    struct FrameUniforms uf = {RGBA_TO_V4(_color)};
-    [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
-
-    id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
-                                                                        vertexShaderId:vertShader
-                                                                      fragmentShaderId:fragShader
-                                                                             composite:mtlc.composite
-                                                                         renderOptions:renderOptions
-                                                                         stencilNeeded:[mtlc.clip isShape]];
-    [encoder setRenderPipelineState:pipelineState];
+    [MTLColorPaint setPipelineState:encoder
+                            context:mtlc
+                      renderOptions:renderOptions
+               pipelineStateStorage:pipelineStateStorage
+                             rpDesc:rpDesc
+                         vertShader:vertShader
+                         fragShader:fragShader
+                              color:_color];
 }
 
 - (void)setXorModePipelineState:(id<MTLRenderCommandEncoder>)encoder
@@ -249,7 +268,7 @@ jint _color;
     if (renderOptions->isTexture) {
         vertShader = @"vert_txt_xorMode";
         fragShader = @"frag_txt_xorMode";
-        rpDesc = [[templateTexturePipelineDesc copy] autorelease];
+        rpDesc = templateTexturePipelineDesc;
 
         setTxtUniforms(mtlc, col, encoder,
                        renderOptions->interpolation, NO, [mtlc.composite getExtraAlpha],
@@ -259,7 +278,7 @@ jint _color;
         [encoder setFragmentTexture:dstOps->pTexture atIndex:1];
     } else {
         struct FrameUniforms uf = {RGBA_TO_V4(col)};
-        rpDesc = [[templateRenderPipelineDesc copy] autorelease];
+        rpDesc = templateRenderPipelineDesc;
 
         [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
         [encoder setFragmentTexture:dstOps->pTexture atIndex:0];
@@ -385,9 +404,9 @@ jint _color;
     if (renderOptions->isTexture) {
         vertShader = @"vert_txt_grad";
         fragShader = @"frag_txt_grad";
-        rpDesc = [[templateTexturePipelineDesc copy] autorelease];
+        rpDesc = templateTexturePipelineDesc;
     } else {
-        rpDesc = [[templateRenderPipelineDesc copy] autorelease];
+        rpDesc = templateRenderPipelineDesc;
     }
 
     id <MTLRenderPipelineState> pipelineState = [pipelineStateStorage getPipelineState:rpDesc
@@ -409,7 +428,7 @@ jint _color;
     initTemplatePipelineDescriptors();
     NSString* vertShader = @"vert_grad_xorMode";
     NSString* fragShader = @"frag_grad_xorMode";
-    MTLRenderPipelineDescriptor *rpDesc = [[templateRenderPipelineDesc copy] autorelease];
+    MTLRenderPipelineDescriptor *rpDesc = templateRenderPipelineDesc;
     jint xorColor = (jint) [mtlc.composite getXorColor];
 
     struct GradFrameUniforms uf = {
@@ -513,9 +532,9 @@ jint _color;
     if (renderOptions->isTexture) {
         vertShader = @"vert_txt_grad";
         fragShader = @"frag_txt_lin_grad";
-        rpDesc = [[templateTexturePipelineDesc copy] autorelease];
+        rpDesc = templateTexturePipelineDesc;
     } else {
-        rpDesc = [[templateRenderPipelineDesc copy] autorelease];
+        rpDesc = templateRenderPipelineDesc;
     }
 
     struct LinGradFrameUniforms uf = {
@@ -677,9 +696,9 @@ jint _color;
     if (renderOptions->isTexture) {
         vertShader = @"vert_txt_grad";
         fragShader = @"frag_txt_rad_grad";
-        rpDesc = [[templateTexturePipelineDesc copy] autorelease];
+        rpDesc = templateTexturePipelineDesc;
     } else {
-        rpDesc = [[templateRenderPipelineDesc copy] autorelease];
+        rpDesc = templateRenderPipelineDesc;
     }
 
     struct RadGradFrameUniforms uf = {
@@ -785,10 +804,10 @@ jint _color;
     if (renderOptions->isTexture) {
         vertShader = @"vert_txt_tp";
         fragShader = @"frag_txt_tp";
-        rpDesc = [[templateTexturePipelineDesc copy] autorelease];
+        rpDesc = templateTexturePipelineDesc;
         [encoder setFragmentTexture:_paintTexture atIndex:1];
     } else {
-        rpDesc = [[templateRenderPipelineDesc copy] autorelease];
+        rpDesc = templateRenderPipelineDesc;
         [encoder setFragmentTexture:_paintTexture atIndex:0];
     }
     const SurfaceRasterFlags srcFlags = {_isOpaque, renderOptions->srcFlags.isPremultiplied};
@@ -814,7 +833,7 @@ jint _color;
     // Texture paint XOR mode rendering uses a tile based rendering using a SW pipe (similar to OGL)
     NSString* vertShader = @"vert_tp_xorMode";
     NSString* fragShader = @"frag_tp_xorMode";
-    MTLRenderPipelineDescriptor *rpDesc = [[templateRenderPipelineDesc copy] autorelease];
+    MTLRenderPipelineDescriptor *rpDesc = templateRenderPipelineDesc;
     jint xorColor = (jint) [mtlc.composite getXorColor];
 
     [encoder setVertexBytes:&_anchor length:sizeof(_anchor) atIndex:FrameUniformBuffer];
@@ -932,7 +951,7 @@ setTxtUniforms(MTLContext *mtlc, int color, id <MTLRenderCommandEncoder> encoder
     if (renderOptions->isTexture) {
         NSString * vertShader = @"vert_txt";
         NSString * fragShader = @"frag_txt";
-        MTLRenderPipelineDescriptor* rpDesc = [[templateTexturePipelineDesc copy] autorelease];
+        MTLRenderPipelineDescriptor* rpDesc = templateTexturePipelineDesc;
 
         NSObject *bufImgOp = [mtlc getBufImgOp];
         if (bufImgOp != nil) {
@@ -985,6 +1004,16 @@ setTxtUniforms(MTLContext *mtlc, int color, id <MTLRenderCommandEncoder> encoder
                                                                              renderOptions:renderOptions
                                                                              stencilNeeded:[mtlc.clip isShape]];
         [encoder setRenderPipelineState:pipelineState];
+    } else {
+      // Fallback to default pipeline state
+      [MTLColorPaint setPipelineState:encoder
+                            context:mtlc
+                      renderOptions:renderOptions
+               pipelineStateStorage:pipelineStateStorage
+                             rpDesc:templateRenderPipelineDesc
+                         vertShader:@"vert_col"
+                         fragShader:@"frag_col"
+                              color:0];
     }
 }
 
@@ -1001,7 +1030,7 @@ setTxtUniforms(MTLContext *mtlc, int color, id <MTLRenderCommandEncoder> encoder
         jint xorColor = (jint) [mtlc.composite getXorColor];
         NSString * vertShader = @"vert_txt_xorMode";
         NSString * fragShader = @"frag_txt_xorMode";
-        MTLRenderPipelineDescriptor * rpDesc = [[templateTexturePipelineDesc copy] autorelease];
+        MTLRenderPipelineDescriptor * rpDesc = templateTexturePipelineDesc;
 
         const int col = 0 ^ xorColor;
         setTxtUniforms(mtlc, col, encoder,
@@ -1023,6 +1052,16 @@ setTxtUniforms(MTLContext *mtlc, int color, id <MTLRenderCommandEncoder> encoder
                                                                              renderOptions:renderOptions
                                                                              stencilNeeded:[mtlc.clip isShape]];
         [encoder setRenderPipelineState:pipelineState];
+    } else {
+      // Fallback to default pipeline state
+      [MTLColorPaint setPipelineState:encoder
+                            context:mtlc
+                      renderOptions:renderOptions
+               pipelineStateStorage:pipelineStateStorage
+                             rpDesc:templateRenderPipelineDesc
+                         vertShader:@"vert_col"
+                         fragShader:@"frag_col"
+                              color:0];
     }
 }
 
