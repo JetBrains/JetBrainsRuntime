@@ -57,5 +57,8 @@ public class JBRApiTest {
     private static void testServices() {
         Objects.requireNonNull(JBR.getExtendedGlyphCache().getSubpixelResolution());
         Objects.requireNonNull(JBRFileDialog.get(new FileDialog((Frame) null)));
+        if (!System.getProperty("os.name").toLowerCase().contains("linux")) {
+            Objects.requireNonNull(JBR.getRoundedCornersManager());
+        }
     }
 }
