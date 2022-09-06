@@ -35,6 +35,7 @@ import java.lang.reflect.InvocationTargetException;
  * @author Alexander Lobas
  * @requires (os.family == "mac" || os.family == "windows")
  * @run shell build.sh
+ * @run main/manual TestSetRoundedCorners
  */
 public class TestSetRoundedCorners {
     private static final int TD_RED = 50;
@@ -56,6 +57,10 @@ public class TestSetRoundedCorners {
     }
 
     public void performTest(Object roundParams) {
+        if (!JBR.isRoundedCornersManagerSupported()) {
+            throw new RuntimeException("JBR Rounded API is not available");
+        }
+
         runSwing(() -> {
             frame = new JFrame("");
             frame.setUndecorated(true);
@@ -147,13 +152,6 @@ public class TestSetRoundedCorners {
     }
 
     public static void runTest(Object roundParams) {
-        if (!JBR.isRoundedCornersManagerSupported()) {
-            throw new RuntimeException("JBR API is not available");
-        }
-        if (!JBR.getRoundedCornersManager().isAvailable()) {
-            throw new RuntimeException("Rounded API is not available");
-        }
-
         try {
             runSwing(() -> theTest = new TestSetRoundedCorners());
             theTest.performTest(roundParams);
