@@ -70,11 +70,11 @@ Java_sun_java2d_metal_MTLGraphicsConfig_isMetalFrameworkAvailable
     return metalSupported;
 }
 
-JNIEXPORT jboolean JNICALL
+JNIEXPORT jint JNICALL
 Java_sun_java2d_metal_MTLGraphicsConfig_tryLoadMetalLibrary
     (JNIEnv *env, jclass mtlgc, jint displayID, jstring shadersLibName)
 {
-    __block jboolean ret = JNI_FALSE;
+    __block jint ret = sun_java2d_metal_MTLGraphicsConfig_LOAD_LIB_ERROR;
 
 JNI_COCOA_ENTER(env);
 
@@ -87,12 +87,14 @@ JNI_COCOA_ENTER(env);
             NSError* error = nil;
             id<MTLLibrary> lib = [device newLibraryWithFile:path error:&error];
             if (lib != nil) {
-                ret = JNI_TRUE;
+                ret = sun_java2d_metal_MTLGraphicsConfig_LOAD_LIB_OK;
             } else {
                 J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGraphicsConfig_tryLoadMetalLibrary - Failed to load Metal shader library.");
+                ret = sun_java2d_metal_MTLGraphicsConfig_LOAD_LIB_NO_SHADER_LIB;
             }
         } else {
             J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGraphicsConfig_tryLoadMetalLibrary - Failed to create MTLDevice.");
+            ret = sun_java2d_metal_MTLGraphicsConfig_LOAD_LIB_NO_DEVICE;
         }
     }];
 
