@@ -819,6 +819,24 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
         }
     }
 
+    // JBR API internals
+    private static void setRoundedCorners(Window window, Object params) {
+        Object peer = AWTAccessor.getComponentAccessor().getPeer(window);
+        if (peer != null && peer instanceof WWindowPeer && params instanceof String) {
+            int type = 0; // default
+            if ("none".equals(params)) {
+                type = 1;
+            } else if ("full".equals(params)) {
+                type = 2;
+            } else if ("small".equals(params)) {
+                type = 3;
+            }
+            ((WWindowPeer)peer).setRoundedCorners(type);
+        }
+    }
+
+    private native void setRoundedCorners(int type);
+
     native void updateWindowImpl(int[] data, int width, int height);
 
     @Override
