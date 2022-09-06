@@ -46,9 +46,14 @@
 #include "sun_awt_windows_WCanvasPeer.h"
 
 #include <windowsx.h>
+#include <dwmapi.h>
 #if !defined(__int3264)
 typedef int32_t LONG_PTR;
 #endif // __int3264
+
+// Define these to be able to build with older SDKs
+#define DWM_WINDOW_CORNER_PREFERENCE int
+#define DWMWA_WINDOW_CORNER_PREFERENCE 33
 
 // Used for Swing's Menu/Tooltip animation Support
 const int UNSPECIFIED = 0;
@@ -124,6 +129,11 @@ struct OpacityStruct {
 struct OpaqueStruct {
     jobject window;
     jboolean isOpaque;
+};
+// struct for _SetRoundedCorners() method
+struct RoundedCornersStruct {
+    jobject window;
+    DWM_WINDOW_CORNER_PREFERENCE type;
 };
 // struct for _UpdateWindow() method
 struct UpdateWindowStruct {
@@ -3355,6 +3365,23 @@ void AwtWindow::_SetOpaque(void* param)
     delete os;
 }
 
+void AwtWindow::_SetRoundedCorners(void *param) {
+    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+
+    RoundedCornersStruct *rcs = (RoundedCornersStruct *)param;
+    jobject self = rcs->window;
+
+    PDATA pData;
+    JNI_CHECK_PEER_GOTO(self, ret);
+    AwtWindow *window = (AwtWindow *)pData;
+
+    DwmSetWindowAttribute(window->GetHWnd(), DWMWA_WINDOW_CORNER_PREFERENCE, &rcs->type, sizeof(DWM_WINDOW_CORNER_PREFERENCE));
+
+  ret:
+    env->DeleteGlobalRef(self);
+    delete rcs;
+}
+
 void AwtWindow::_UpdateWindow(void* param)
 {
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
@@ -4111,6 +4138,26 @@ Java_sun_awt_windows_WWindowPeer_repositionSecurityWarning(JNIEnv *env,
     AwtToolkit::GetInstance().InvokeFunction(
             AwtWindow::_RepositionSecurityWarning, rsws);
     // global refs and mds are deleted in _RepositionSecurityWarning
+
+    CATCH_BAD_ALLOC;
+}
+
+/*
+ * Class:     sun_awt_windows_WWindowPeer
+ * Method:    setRoundedCorners
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL
+Java_sun_awt_windows_WWindowPeer_setRoundedCorners(JNIEnv *env, jobject self, jint type)
+{
+    TRY;
+
+    RoundedCornersStruct *rcs = new RoundedCornersStruct;
+    rcs->window = env->NewGlobalRef(self);
+    rcs->type = (DWM_WINDOW_CORNER_PREFERENCE)type;
+
+    AwtToolkit::GetInstance().SyncCall(AwtWindow::_SetRoundedCorners, rcs);
+    // global refs and rcs are deleted in _SetRoundedCorners
 
     CATCH_BAD_ALLOC;
 }
