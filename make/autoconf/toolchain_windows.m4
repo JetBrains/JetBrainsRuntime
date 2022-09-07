@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 
 ################################################################################
 # The order of these defines the priority by which we try to find them.
-VALID_VS_VERSIONS="2017 2019 2013 2015 2012 2010"
+VALID_VS_VERSIONS="2017 2019 2022 2013 2015 2012 2010"
 
 VS_DESCRIPTION_2010="Microsoft Visual Studio 2010"
 VS_VERSION_INTERNAL_2010=100
@@ -103,6 +103,21 @@ VS_VS_PLATFORM_NAME_2019="v142"
 VS_SDK_PLATFORM_NAME_2019=
 VS_SUPPORTED_2019=false
 VS_TOOLSET_SUPPORTED_2019=false
+
+VS_DESCRIPTION_2022="Microsoft Visual Studio 2022"
+VS_VERSION_INTERNAL_2022=143
+VS_MSVCR_2022=vcruntime140.dll
+VS_VCRUNTIME_1_2022=vcruntime140_1.dll
+VS_MSVCP_2022=msvcp140.dll
+VS_ENVVAR_2022="VS170COMNTOOLS"
+VS_USE_UCRT_2022="true"
+VS_VS_INSTALLDIR_2022="Microsoft Visual Studio/2022"
+VS_EDITIONS_2022="BuildTools Community Professional Enterprise"
+VS_SDK_INSTALLDIR_2022=
+VS_VS_PLATFORM_NAME_2022="v143"
+VS_SDK_PLATFORM_NAME_2022=
+VS_SUPPORTED_2022=true
+VS_TOOLSET_SUPPORTED_2022=true
 
 ################################################################################
 
