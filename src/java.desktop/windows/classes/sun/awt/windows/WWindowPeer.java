@@ -62,6 +62,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import javax.swing.JRootPane;
+import javax.swing.RootPaneContainer;
+
 import sun.awt.AWTAccessor;
 import sun.awt.AppContext;
 import sun.awt.DisplayChangedListener;
@@ -83,6 +86,8 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
 
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.windows.WWindowPeer");
     private static final PlatformLogger screenLog = PlatformLogger.getLogger("sun.awt.windows.screen.WWindowPeer");
+
+    public static final String WINDOW_CORNER_RADIUS = "apple.awt.windowCornerRadius";
 
     // we can't use WDialogPeer as blocker may be an instance of WPrintDialogPeer that
     // extends WWindowPeer, not WDialogPeer
@@ -253,6 +258,13 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
             // true here explicitly
             this.isOpaque = true;
             setOpaque(((Window)target).isOpaque());
+        }
+        
+        if (target instanceof RootPaneContainer) {
+            JRootPane rootpane = ((RootPaneContainer)target).getRootPane();
+            if (rootpane != null) {
+                setRoundedCornersImpl(rootpane.getClientProperty(WINDOW_CORNER_RADIUS));
+            }
         }
     }
 
@@ -822,7 +834,18 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
     // JBR API internals
     private static void setRoundedCorners(Window window, Object params) {
         Object peer = AWTAccessor.getComponentAccessor().getPeer(window);
-        if (peer != null && peer instanceof WWindowPeer && params instanceof String) {
+        if (peer instanceof WWindowPeer) {
+            ((WWindowPeer)peer).setRoundedCornersImpl(params);
+        } else if (window instanceof RootPaneContainer) {
+            JRootPane rootpane = ((RootPaneContainer)window).getRootPane();
+            if (rootpane != null) {
+                rootpane.putClientProperty(WINDOW_CORNER_RADIUS, params);
+            }
+        }
+    }
+
+    private void setRoundedCornersImpl(Object params) {
+        if (params instanceof String) {
             int type = 0; // default
             if ("none".equals(params)) {
                 type = 1;
@@ -831,7 +854,7 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
             } else if ("small".equals(params)) {
                 type = 3;
             }
-            ((WWindowPeer)peer).setRoundedCorners(type);
+            setRoundedCorners(type);
         }
     }
 
