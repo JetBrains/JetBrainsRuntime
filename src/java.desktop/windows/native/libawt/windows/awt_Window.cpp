@@ -52,6 +52,9 @@
 typedef __int32 LONG_PTR;
 #endif // __int3264
 
+#define DWM_WINDOW_CORNER_PREFERENCE int
+#define DWMWA_WINDOW_CORNER_PREFERENCE 33
+
 #if defined(_MSC_VER) && _MSC_VER >= 1800
 #  define ROUND_TO_INT(num)    ((int) round(num))
 #else
