@@ -1,0 +1,1 @@
+test/jdk/java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java 8292588 macosx-all
