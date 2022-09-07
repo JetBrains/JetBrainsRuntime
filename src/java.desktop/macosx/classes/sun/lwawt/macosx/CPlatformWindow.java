@@ -304,7 +304,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         },
         new Property<CPlatformWindow>(WINDOW_CORNER_RADIUS) {
             public void applyProperty(final CPlatformWindow c, final Object value) {
-                setRoundedCorners(c.target, value);
+                c.setRoundedCorners(value);
             }
         }
     }) {
@@ -1515,12 +1515,23 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             if (rootpane != null) rootpane.putClientProperty(WINDOW_TRANSPARENT_TITLE_BAR_HEIGHT, height);
         }
     }
-    
     // JBR API internals
-    private static void setRoundedCorners(Window window, final Object params) {
+    private static void setRoundedCorners(Window window, Object params) {
         Object peer = AWTAccessor.getComponentAccessor().getPeer(window);
-        if (peer != null && peer instanceof CPlatformWindow && params != null && params instanceof Float) {
-            ((CPlatformWindow)peer).execute(ptr -> nativeSetRoundedCorners(ptr, (float) params));
+        if (peer instanceof CPlatformWindow) {
+            ((CPlatformWindow)peer).setRoundedCorners(params);
+        } else if (window instanceof RootPaneContainer) {
+                JRootPane rootpane = ((RootPaneContainer)window).getRootPane();
+                if (rootpane != null) {
+                    rootpane.putClientProperty(WINDOW_CORNER_RADIUS, params);
+                }
+            }
         }
     }
+
+    private void setRoundedCorners(Object params) {
+        if (params instanceof Float) {
+            execute(ptr -> nativeSetRoundedCorners(ptr, (float) params));
+        }
+    }    
 }
