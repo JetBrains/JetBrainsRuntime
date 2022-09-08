@@ -26,16 +26,19 @@ package renderperf;
 
 import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Composite;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.GraphicsConfiguration;
 import java.awt.Image;
 import java.awt.LinearGradientPaint;
 import java.awt.RadialGradientPaint;
 import java.awt.RenderingHints;
 import java.awt.Robot;
 
+import java.awt.Transparency;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.AffineTransform;
@@ -49,6 +52,7 @@ import java.awt.image.DataBufferByte;
 import java.awt.image.DataBufferInt;
 import java.awt.image.DataBufferShort;
 
+import java.awt.image.VolatileImage;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -443,6 +447,43 @@ public class RenderPerfTest {
 
     }
 
+    static class VolImgParticleRenderer extends ImgParticleRenderer {
+        VolatileImage volImg;
+
+        VolImgParticleRenderer(int n, float r) {
+            super(n, r);
+        }
+
+        @Override
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
+            GraphicsConfiguration config = g2d.getDeviceConfiguration();
+            if (volImg == null) {
+                volImg = config.createCompatibleVolatileImage(dukeImg.getWidth(), dukeImg.getHeight(),
+                        Transparency.TRANSLUCENT);
+                Graphics2D g = volImg.createGraphics();
+                g.setComposite(AlphaComposite.Src);
+                g.drawImage(dukeImg, null, null);
+                g.dispose();
+            } else {
+                int status = volImg.validate(config);
+                if (status == VolatileImage.IMAGE_INCOMPATIBLE) {
+                    volImg = config.createCompatibleVolatileImage(dukeImg.getWidth(), dukeImg.getHeight(),
+                            Transparency.TRANSLUCENT);
+                }
+                if (status != VolatileImage.IMAGE_OK) {
+                    Graphics2D g = volImg.createGraphics();
+                    g.setComposite(AlphaComposite.Src);
+                    g.drawImage(dukeImg, null, null);
+                    g.dispose();
+                }
+            }
+            Composite savedComposite = g2d.getComposite();
+            g2d.setComposite(AlphaComposite.SrcOver);
+            g2d.drawImage(volImg, (int)(x[id] - r), (int)(y[id] - r), (int)(2*r), (int)(2*r), null);
+            g2d.setComposite(savedComposite);
+        }
+    }
+
     static class FlatBoxRotParticleRenderer extends FlatParticleRenderer {
 
 
@@ -762,6 +803,7 @@ public class RenderPerfTest {
     private static final ParticleRenderer flatQuadRenderer = new FlatQuadParticleRenderer(N, R);
     private static final ParticleRenderer wiredQuadRenderer = new WiredQuadParticleRenderer(N, R);
     private static final ParticleRenderer imgRenderer = new ImgParticleRenderer(N, R);
+    private static final ParticleRenderer volImgRenderer = new VolImgParticleRenderer(N, R);
     private static final ParticleRenderer textRenderer = new TextParticleRenderer(N, R);
     private static final ParticleRenderer largeTextRenderer = new LargeTextParticleRenderer(N, R);
     private static final ParticleRenderer whiteTextRenderer = new WhiteTextParticleRenderer(R);
@@ -829,6 +871,13 @@ public class RenderPerfTest {
 
     public void testImageAA() throws Exception {
         (new PerfMeter("ImageAA")).exec(createPR(imgRenderer).configure(AA)).report();
+    }
+    public void testVolImage() throws Exception {
+        (new PerfMeter("VolImage")).exec(createPR(volImgRenderer)).report();
+    }
+
+    public void testVolImageAA() throws Exception {
+        (new PerfMeter("VolImageAA")).exec(createPR(volImgRenderer).configure(AA)).report();
     }
 
     public void testRotatedBox() throws Exception {
