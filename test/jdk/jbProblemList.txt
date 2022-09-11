@@ -918,12 +918,13 @@ javax/swing/JList/6462008/bug6462008.java                                       
 javax/swing/JMenu/6470128/bug6470128.java                                           nobug windows-all
 
 # no printer found
-java/awt/print/PrinterJob/CheckPrivilege.java                                       nobug generic-all
+java/awt/print/PrinterJob/CheckPrivilege.java                                       JBR-893 generic-all
 java/awt/print/PrinterJob/ExceptionTest.java                                        nobug generic-all
 java/awt/print/PrinterJob/ExceptionFromPrintableIsIgnoredTest.java                  nobug generic-all
 java/awt/print/PrinterJob/ImagePrinting/NullClipARGB.java                           nobug generic-all
-java/awt/print/PrinterJob/LandscapeStackOverflow.java                               nobug generic-all
-java/awt/print/PrinterJob/PaintText.java                                            nobug generic-all
+java/awt/print/PrinterJob/LandscapeStackOverflow.java                               JBR-893 generic-all
+java/awt/print/PrinterJob/Margins.java                                              JBR-893 generic-all
+java/awt/print/PrinterJob/PaintText.java                                            JBR-893 generic-all
 java/awt/print/PrinterJob/PrintCrashTest.java                                       nobug generic-all
 java/awt/print/PrinterJob/PrtException.java                                         nobug generic-all
 javax/print/attribute/ChromaticityValues.java                                       nobug generic-all
