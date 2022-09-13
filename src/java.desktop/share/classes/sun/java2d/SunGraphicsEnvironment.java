@@ -50,6 +50,7 @@ import java.util.Locale;
 import java.util.TreeMap;
 
 import sun.awt.DisplayChangedListener;
+import sun.awt.DisplayParametersChangedListener;
 import sun.awt.SunDisplayChanger;
 import sun.font.*;
 import sun.java2d.pipe.Region;
@@ -64,7 +65,7 @@ import sun.security.action.GetPropertyAction;
  */
 @SuppressWarnings("removal")
 public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
-    implements DisplayChangedListener {
+    implements DisplayChangedListener, DisplayParametersChangedListener {
 
     /** Establish the default font to be used by SG2D. */
     private final Font defaultFont = new Font(Font.DIALOG, Font.PLAIN, 12);
@@ -269,6 +270,15 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
         // notify SunDisplayChanger list (e.g. VolatileSurfaceManagers and
         // SurfaceDataProxies) about the display change event
         displayChanger.notifyListeners();
+    }
+
+    @Override
+    public void displayParametersChanged() {
+        for (GraphicsDevice gd : getScreenDevices()) {
+            if (gd instanceof DisplayParametersChangedListener) {
+                ((DisplayParametersChangedListener) gd).displayParametersChanged();
+            }
+        }
     }
 
     /**
