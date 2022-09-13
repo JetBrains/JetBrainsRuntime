@@ -212,6 +212,16 @@ public final class CGraphicsDevice extends GraphicsDevice
         //TODO configs?
     }
 
+    public void displayParametersChanged() {
+        Insets newScreenInsets = nativeGetScreenInsets(displayID);
+        if (!newScreenInsets.equals(screenInsets)) {
+            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                logger.fine("Screen insets for display(" + displayID + ") changed " + screenInsets + "->" + newScreenInsets);
+            }
+            screenInsets = newScreenInsets;
+        }
+    }
+
     @Override
     public void paletteChanged() {
         // devices do not need to react to this event.
