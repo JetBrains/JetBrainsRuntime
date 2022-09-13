@@ -65,8 +65,11 @@ import java.util.List;
 import java.util.Set;
 import sun.awt.SunToolkit;
 import sun.java2d.SunGraphicsEnvironment;
+import sun.util.logging.PlatformLogger;
 
 final class _AppEventHandler {
+    private static final PlatformLogger logger = PlatformLogger.getLogger(_AppEventHandler.class.getName());
+
     private static final int NOTIFY_ABOUT = 1;
     private static final int NOTIFY_PREFS = 2;
     private static final int NOTIFY_OPEN_APP = 3;
@@ -266,10 +269,13 @@ final class _AppEventHandler {
                 instance.systemSleepDispatcher.dispatch(new _NativeEvent(Boolean.FALSE));
                 break;
             case NOTIFY_SCREEN_CHANGE_PARAMETERS:
+                if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                    logger.fine("NOTIFY_SCREEN_CHANGE_PARAMETERS");
+                }
                 if (AppContext.getAppContext() != null) {
                     EventQueue.invokeLater(
                             () -> ((SunGraphicsEnvironment)SunGraphicsEnvironment.
-                                    getLocalGraphicsEnvironment()).displayChanged());
+                                    getLocalGraphicsEnvironment()).displayParametersChanged());
                 }
                 break;
             default:
