@@ -464,10 +464,6 @@ public final class AWTAccessor {
          * Return the current focus cycle root
          */
         Container getCurrentFocusCycleRoot();
-
-        void enqueueKeyEvents(Component untilFocused);
-
-        void dequeueKeyEvents(Component untilFocused);
     }
 
     /**
