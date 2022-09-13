@@ -45,7 +45,7 @@ import sun.util.logging.PlatformLogger;
 import static java.awt.peer.ComponentPeer.SET_BOUNDS;
 
 public final class CGraphicsDevice extends GraphicsDevice
-        implements DisplayChangedListener {
+        implements DisplayChangedListener, DisplayParametersChangedListener {
 
     private static final PlatformLogger logger = PlatformLogger.getLogger(CGraphicsDevice.class.getName());
     /**
@@ -212,6 +212,20 @@ public final class CGraphicsDevice extends GraphicsDevice
         //TODO configs?
     }
 
+    public void displayParametersChanged() {
+        Insets newScreenInsets = nativeGetScreenInsets(displayID);
+        if (!newScreenInsets.equals(screenInsets)) {
+            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                logger.fine("Screen insets for display(" + displayID + ") changed " +
+                        "[top="  + screenInsets.top + ",left=" + screenInsets.left +
+                        ",bottom=" + screenInsets.bottom + ",right=" + screenInsets.right +
+                        "]->[top="  + newScreenInsets.top + ",left=" + newScreenInsets.left +
+                        ",bottom=" + newScreenInsets.bottom + ",right=" + newScreenInsets.right +
+                        "]");
+            }
+            screenInsets = newScreenInsets;
+        }
+    }
     @Override
     public void paletteChanged() {
         // devices do not need to react to this event.
