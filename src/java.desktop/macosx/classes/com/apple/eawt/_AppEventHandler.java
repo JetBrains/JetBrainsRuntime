@@ -27,6 +27,8 @@ package com.apple.eawt;
 
 import java.awt.EventQueue;
 import java.awt.Frame;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
 import java.awt.desktop.AboutEvent;
 import java.awt.desktop.AboutHandler;
 import java.awt.desktop.AppForegroundEvent;
@@ -64,10 +66,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import sun.awt.AppContext;
+import sun.awt.CGraphicsDevice;
 import sun.awt.SunToolkit;
-import sun.java2d.SunGraphicsEnvironment;
+import sun.util.logging.PlatformLogger;
 
 final class _AppEventHandler {
+    private static final PlatformLogger logger = PlatformLogger.getLogger(_AppEventHandler.class.getName());
+
     private static final int NOTIFY_ABOUT = 1;
     private static final int NOTIFY_PREFS = 2;
     private static final int NOTIFY_OPEN_APP = 3;
@@ -267,9 +272,15 @@ final class _AppEventHandler {
                 instance.systemSleepDispatcher.dispatch(new _NativeEvent(Boolean.FALSE));
                 break;
             case NOTIFY_SCREEN_CHANGE_PARAMETERS:
+                if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                    logger.fine("NOTIFY_SCREEN_CHANGE_PARAMETERS");
+                }
                 if (AppContext.getAppContext() != null) {
-                    ((SunGraphicsEnvironment)SunGraphicsEnvironment.
-                                    getLocalGraphicsEnvironment()).displayChanged();
+                    for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
+                        if (gd instanceof CGraphicsDevice cgd) {
+                            cgd.displayParametersChanged();
+                        }
+                    }
                 }
                 break;
             default:
