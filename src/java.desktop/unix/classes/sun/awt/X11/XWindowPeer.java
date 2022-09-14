@@ -618,6 +618,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             target.dispatchEvent(we);
         }
     }
+
     public void handleWindowFocusInSync(long serial) {
         WindowEvent we = new WindowEvent((Window)target, WindowEvent.WINDOW_GAINED_FOCUS);
         XKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow((Window) target);
@@ -1537,10 +1538,6 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         requestXFocus();
     }
 
-    // This will request focus without sending any requests to X server or window manager.
-    // It can only work for 'simple' windows, as their focusing is managed internally
-    // (natively, simple window's owner is seen as focused window).
-
     public void addToplevelStateListener(ToplevelStateListener l){
         toplevelStateListeners.add(l);
     }
@@ -2072,7 +2069,6 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         XDecoratedPeer wpeer = AWTAccessor.getComponentAccessor().getPeer(ownerWindow);
         if (wpeer != null && wpeer.requestWindowFocus(this, time, timeProvided)) {
             focusLog.fine("Parent window accepted focus request - generating focus for this window");
-            handleWindowFocusInSync(-1);
             return true;
         }
         focusLog.fine("Denied - parent window is not active and didn't accept focus request");

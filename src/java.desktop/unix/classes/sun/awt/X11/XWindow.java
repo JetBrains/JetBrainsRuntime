@@ -439,6 +439,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         XToolkit.postEvent(XToolkit.targetToAppContext(e.getSource()), pe);
     }
 
+
 /*
  * Post an event to the event queue.
  */
