@@ -219,7 +219,7 @@ public class CPlatformView extends CFRetainedResource {
         if (logger.isLoggable(PlatformLogger.Level.FINE)) {
             logger.fine("Changed backing properties, scale = " + scale);
         }
-        if (scale > 0) {
+        if (scale > 0 && windowLayer != null) {
             windowLayer.replaceSurfaceData(Math.round(scale));
         }
     }
