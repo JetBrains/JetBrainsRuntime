@@ -1508,6 +1508,9 @@ static jclass jc_CInputMethod = NULL;
 
 - (void)viewDidChangeBackingProperties {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
+    if ((*env)->IsSameObject(env, m_cPlatformView, NULL)) {
+        return;
+    }
     static double debugScale = -2.0;
     if (debugScale == -2.0) { // default debugScale value in SGE is -1.0
         debugScale = JNU_CallStaticMethodByName(env, NULL, "sun/java2d/SunGraphicsEnvironment",
