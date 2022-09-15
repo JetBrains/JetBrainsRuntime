@@ -1553,7 +1553,11 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     } else {
         jint hitSpot = [self hitTestCustomDecoration:event.locationInWindow];
         if (event.clickCount == 2 && hitSpot == java_awt_Window_CustomWindowDecoration_NO_HIT_SPOT) {
-            [self.window performZoom:nil];
+            if ([[[NSUserDefaults standardUserDefaults] stringForKey:@"AppleActionOnDoubleClick"] isEqualToString:@"Maximize"]) {
+                [self.window performZoom:nil];
+            } else {
+                [self.window performMiniaturize:nil];
+            }
         }
 
         // We don't follow the regular responder chain here since the native window swallows events in some cases
