@@ -109,7 +109,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     private static native boolean nativeDelayShowing(long nsWindowPtr);
     private static native void nativeUpdateCustomTitleBar(long nsWindowPtr);
     private static native void nativeCallDeliverMoveResizeEvent(long nsWindowPtr);
-    private static native void nativeSetRoundedCorners(long nsWindowPrt, float radius);
+    private static native void nativeSetRoundedCorners(long nsWindowPrt, float radius, int borderWidth, int borderColor);
 
     // Logger to report issues happened during execution but that do not affect functionality
     private static final PlatformLogger logger = PlatformLogger.getLogger("sun.lwawt.macosx.CPlatformWindow");
@@ -1500,7 +1500,13 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     private void setRoundedCorners(Object params) {
         if (params instanceof Float) {
-            execute(ptr -> nativeSetRoundedCorners(ptr, (float) params));
+            execute(ptr -> nativeSetRoundedCorners(ptr, (float) params, 0, 0));
+        } else if (params instanceof Object[]) {
+            Object[] values = (Object[]) params;
+            if (values.length == 3 && values[0] instanceof Float && values[1] instanceof Integer && values[2] instanceof Color) {
+                Color color = (Color) values[2];
+                execute(ptr -> nativeSetRoundedCorners(ptr, (float) values[0], (int) values[1], color.getRGB()));
+            }
         }
     }
 }
