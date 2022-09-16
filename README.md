@@ -20,6 +20,7 @@ Download the latest releases of JetBrains Runtime to use with JetBrains IDEs. Th
 
 | IDE Version | Latest JBR                                                                                   | Date Released |
 |-------------|----------------------------------------------------------------------------------------------|---------------|
+| 2022.3      | [17.0.4.1-b597.1](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.4.1b597.1)| 12-Sep-2022   |
 | 2022.2      | [17.0.4-b469.53](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.4b469.53)| 31-Aug-2022   |
 
 ## Releases based on JDK 11
