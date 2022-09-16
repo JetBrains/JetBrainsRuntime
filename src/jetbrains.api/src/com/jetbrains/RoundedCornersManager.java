@@ -33,7 +33,8 @@ import java.awt.Window;
  */
 public interface RoundedCornersManager {
     /**
-     * @param params for macOS is Float object with radius.
+     * @param params for macOS is Float object with radius or
+     *               Array with {Float for radius, Integer for border width, java.awt.Color for border color}.
      *
      * @param params for Windows 11 is String with values:
      * "default" - let the system decide whether or not to round window corners,
