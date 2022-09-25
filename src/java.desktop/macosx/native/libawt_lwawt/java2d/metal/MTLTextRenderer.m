@@ -135,7 +135,7 @@ MTLTR_InitGlyphCache(MTLContext *mtlc, jboolean lcdCache)
 
     MTLGlyphCacheInfo *gcinfo;
     // init glyph cache data structure
-    gcinfo = MTLGlyphCache_Init(MTLTR_CACHE_WIDTH,
+    gcinfo = MTLGlyphCache_Init(mtlc, MTLTR_CACHE_WIDTH,
                                 MTLTR_CACHE_HEIGHT,
                                 MTLTR_CACHE_CELL_WIDTH,
                                 MTLTR_CACHE_CELL_HEIGHT,
@@ -342,7 +342,6 @@ static jboolean
 MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc,
                                  GlyphInfo *ginfo, jint x, jint y, BMTLSDOps *dstOps)
 {
-    MTLCacheCellInfo *cell;
     jfloat x1, y1, x2, y2;
 
     if (glyphMode != MODE_USE_CACHE_GRAY) {
@@ -358,7 +357,11 @@ MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc,
         glyphMode = MODE_USE_CACHE_GRAY;
     }
 
-    if (ginfo->cellInfo == NULL) {
+    MTLCacheCellInfo *cell = (MTLCacheCellInfo *) (ginfo->cellInfo);
+    if (cell == NULL || cell->cacheInfo->mtlc != mtlc) {
+        if (cell != NULL) {
+            MTLGlyphCache_RemoveCellInfo(cell->glyphInfo, cell);
+        }
         // attempt to add glyph to accelerated glyph cache
         MTLTR_AddToGlyphCache(ginfo, mtlc, JNI_FALSE);
 
@@ -366,9 +369,8 @@ MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc,
             // we'll just no-op in the rare case that the cell is NULL
             return JNI_TRUE;
         }
+        cell = (MTLCacheCellInfo *) (ginfo->cellInfo);
     }
-
-    cell = (MTLCacheCellInfo *) (ginfo->cellInfo);
     cell->timesRendered++;
 
     x1 = (jfloat)x;
