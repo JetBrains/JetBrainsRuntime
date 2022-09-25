@@ -27,6 +27,7 @@
 #include "jni.h"
 #include "MTLGlyphCache.h"
 #include "Trace.h"
+#import "MTLContext.h"
 
 /**
  * When the cache is full, we will try to reuse the cache cells that have
@@ -60,7 +61,7 @@
  * field directly.
  */
 MTLGlyphCacheInfo *
-MTLGlyphCache_Init(jint width, jint height,
+MTLGlyphCache_Init(MTLContext* mtlc, jint width, jint height,
                      jint cellWidth, jint cellHeight,
                      MTLFlushFunc *func)
 {
@@ -82,6 +83,7 @@ MTLGlyphCache_Init(jint width, jint height,
     gcinfo->cellWidth = cellWidth;
     gcinfo->cellHeight = cellHeight;
     gcinfo->Flush = func;
+    gcinfo->mtlc = mtlc;
 
     return gcinfo;
 }
