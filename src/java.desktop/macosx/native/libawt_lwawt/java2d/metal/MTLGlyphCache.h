@@ -33,12 +33,14 @@ extern "C" {
 #include "jni.h"
 #include "fontscalerdefs.h"
 #import <Metal/Metal.h>
+@class MTLContext;
 
 typedef void (MTLFlushFunc)();
 
 typedef struct _MTLCacheCellInfo MTLCacheCellInfo;
 
 typedef struct {
+    MTLContext* mtlc;
     MTLCacheCellInfo *head;
     MTLCacheCellInfo *tail;
     id<MTLTexture> texture;
@@ -71,9 +73,8 @@ struct _MTLCacheCellInfo {
 };
 
 MTLGlyphCacheInfo *
-MTLGlyphCache_Init(jint width, jint height,
-                     jint cellWidth, jint cellHeight,
-                     MTLFlushFunc *func);
+MTLGlyphCache_Init(MTLContext* mtlc, jint width, jint height,
+                   jint cellWidth, jint cellHeight, MTLFlushFunc *func);
 MTLCacheCellInfo *
 MTLGlyphCache_AddGlyph(MTLGlyphCacheInfo *cache, struct GlyphInfo *glyph);
 bool
