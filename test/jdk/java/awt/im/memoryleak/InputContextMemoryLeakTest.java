@@ -47,8 +47,9 @@ import test.java.awt.regtesthelpers.Util;
 public class InputContextMemoryLeakTest {
 
     private static JFrame frame;
-    private static WeakReference<JTextField> text;
-    private static WeakReference<JPanel> p;
+    private static JTextField text;
+    private static WeakReference<JTextField> textWeakRef;
+    private static JPanel panel;
     private static JButton button;
 
     public static void init() throws Throwable {
@@ -61,16 +62,17 @@ public class InputContextMemoryLeakTest {
                 button = new JButton("Test");
                 p1.add(button);
                 frame.add(p1);
-                text = new WeakReference<JTextField>(new JTextField("Text"));
-                p = new WeakReference<JPanel>(new JPanel(new FlowLayout()));
-                p.get().add(text.get());
-                frame.add(p.get());
+                text = new JTextField("Text");
+                textWeakRef = new WeakReference<JTextField>(text);
+                panel = new JPanel(new FlowLayout());
+                panel.add(text);
+                frame.add(panel);
                 frame.setBounds(500, 400, 200, 200);
                 frame.setVisible(true);
             }
         });
 
-        Util.focusComponent(text.get(), 500);
+        Util.focusComponent(text, 500);
         Util.clickOnComp(button, new Robot());
         //References to objects testes for memory leak are stored in Util.
         //Need to clean them
@@ -79,13 +81,16 @@ public class InputContextMemoryLeakTest {
         SwingUtilities.invokeAndWait(new Runnable() {
             @Override
             public void run() {
-                frame.remove(p.get());
+                frame.remove(panel);
             }
         });
+        final int sleepTime = text.getCaret().getBlinkRate() * 2;
+        text = null;
+        panel = null;
 
         Util.waitForIdle(null);
         //After the next caret blink it automatically TextField references
-        Thread.sleep(text.get().getCaret().getBlinkRate() * 2);
+        Thread.sleep(sleepTime);
         Util.waitForIdle(null);
 
         try {
@@ -106,7 +111,7 @@ public class InputContextMemoryLeakTest {
             }
         }
         alloc = null;
-        if (text.get() != null) {
+        if (textWeakRef.get() != null) {
             throw new Exception("Test failed: JTextField was not collected");
         }
     }
