@@ -26,6 +26,10 @@
 package sun.font;
 
 import sun.awt.OSInfo;
+import sun.util.logging.PlatformLogger;
+
+import java.nio.file.Path;
+import java.util.Set;
 
 @SuppressWarnings("removal")
 public class FontManagerNativeLibrary {
@@ -57,6 +61,7 @@ public class FontManagerNativeLibrary {
                }
                System.loadLibrary("fontmanager");
 
+               checkLibraries();
                return null;
             }
         });
@@ -71,4 +76,72 @@ public class FontManagerNativeLibrary {
      * (no need to execute doPrivileged block more than once)
      */
     public static void load() {}
+
+
+    private static class Holder {
+        private static final PlatformLogger errorLog = PlatformLogger.getLogger("sun.font.FontManagerNativeLibrary");
+    }
+    public static void checkLibraries() {
+        final String osName = System.getProperty("os.name");
+        final boolean isMacOS = osName.startsWith("Mac");
+        final boolean isLinux = osName.startsWith("Linux");
+
+        if (!(isMacOS || isLinux)) return;
+
+        final String[] loadedLibraries = loadedLibraries();
+
+        final String libawtName = isMacOS ? "libawt.dylib" : "libawt.so";
+        final String bootPath = System.getProperty("sun.boot.library.path");
+        final Path basePath = bootPath != null
+                ? Path.of(bootPath)
+                : getBasePath(libawtName, loadedLibraries);
+
+        if (basePath == null) {
+            // Nothing to check if the native code failed to report where libawt is
+            return;
+        }
+
+        final String libraryPathEnvVarName = isMacOS
+                ? "DYLD_LIBRARY_PATH"
+                : "LD_LIBRARY_PATH";
+        final Set<String> ourLibraries = isMacOS
+                ? Set.of("libawt_lwawt.dylib", "libfontmanager.dylib", "libfreetype.dylib")
+                : Set.of("libawt_xawt.so", "libfontmanager.so");
+
+        boolean warnedAlready = false;
+        for (String pathName: loadedLibraries) {
+            if (pathName == null)
+                continue;
+            final Path libPath = Path.of(pathName);
+            final Path libFileName = libPath.getFileName();
+            if (ourLibraries.contains(libFileName.toString())) {
+                final Path libDirectory = libPath.getParent();
+                if (!basePath.equals(libDirectory)) {
+                    Holder.errorLog.severe("Library '" + libFileName +
+                            "' loaded from '" + libDirectory + "' instead of '" +
+                            basePath + "'");
+                    if (!warnedAlready) {
+                        warnedAlready = true;
+                        final String libraryPathOverride = System.getenv(libraryPathEnvVarName);
+                        if (libraryPathOverride != null) {
+                            Holder.errorLog.severe("Note: " + libraryPathEnvVarName +
+                                    " is set to '" + libraryPathOverride + "'");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static Path getBasePath(String libawtName, String[] libs) {
+        Path basePath = null;
+        for (String path: libs) {
+            if (path.endsWith(libawtName)) {
+                basePath = Path.of(path).getParent().normalize();
+            }
+        }
+        return basePath;
+    }
+
+    private static native String[] loadedLibraries();
 }
