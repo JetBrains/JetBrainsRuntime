@@ -24,6 +24,8 @@
  */
 
 #import <jni.h>
+#import <mach-o/dyld.h>
+#import <jni_util.h>
 
 #import "InitIDs.h"
 
@@ -195,4 +197,27 @@ JNIEXPORT void JNICALL Java_java_awt_event_KeyEvent_initIDs
 JNIEXPORT void JNICALL Java_java_awt_event_MouseEvent_initIDs
 (JNIEnv *env, jclass cls)
 {
+}
+
+JNIEXPORT jarray JNICALL Java_sun_font_FontManagerNativeLibrary_loadedLibraries
+    (JNIEnv *env, jclass cls)
+{
+  const uint32_t count = _dyld_image_count();
+
+  jclass stringClazz = (*env)->FindClass(env, "java/lang/String");
+  CHECK_NULL_RETURN(stringClazz, NULL);
+  jarray libsArray = (*env)->NewObjectArray(env, count, stringClazz, NULL);
+  JNU_CHECK_EXCEPTION_RETURN(env, NULL);
+
+  for (uint32_t i = 0; i < count; i++) {
+    const char * name = _dyld_get_image_name(i);
+    if (name) {
+      jstring jName = (*env)->NewStringUTF(env, name);
+      JNU_CHECK_EXCEPTION_RETURN(env, NULL);
+      (*env)->SetObjectArrayElement(env, libsArray, i, jName);
+      JNU_CHECK_EXCEPTION_RETURN(env, NULL);
+    }
+  }
+
+  return libsArray;
 }
