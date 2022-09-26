@@ -47,8 +47,9 @@ import test.java.awt.regtesthelpers.Util;
 public class InputContextMemoryLeakTest {
 
     private static JFrame frame;
-    private static WeakReference<JTextField> text;
-    private static WeakReference<JPanel> p;
+    private static JTextField text;
+    private static WeakReference<JTextField> textWeakRef;
+    private static JPanel panel;
     private static JButton button;
 
     public static void init() throws Throwable {
@@ -61,18 +62,17 @@ public class InputContextMemoryLeakTest {
                 button = new JButton("Test");
                 p1.add(button);
                 frame.add(p1);
-                JTextField tf = new JTextField("Text");
-                text = new WeakReference<JTextField>(tf);
-                JPanel jp = new JPanel(new FlowLayout());
-                p = new WeakReference<JPanel>(jp);
-                jp.add(tf);
-                frame.add(jp);
+                text = new JTextField("Text");
+                textWeakRef = new WeakReference<JTextField>(text);
+                panel = new JPanel(new FlowLayout());
+                panel.add(text);
+                frame.add(panel);
                 frame.setBounds(500, 400, 200, 200);
                 frame.setVisible(true);
             }
         });
 
-        Util.focusComponent(text.get(), 500);
+        Util.focusComponent(text, 500);
         Util.clickOnComp(button, new Robot());
         //References to objects testes for memory leak are stored in Util.
         //Need to clean them
@@ -81,17 +81,18 @@ public class InputContextMemoryLeakTest {
         SwingUtilities.invokeAndWait(new Runnable() {
             @Override
             public void run() {
-                // after this the JTextField as well as the JPanel
-                // are eligible to be GC'd
-                frame.remove(p.get());
+                frame.remove(panel);
             }
         });
+        final int sleepTime = text.getCaret().getBlinkRate() * 2;
+        text = null;
+        panel = null;
 
         Util.waitForIdle(null);
         //After the next caret blink it automatically TextField references
-        JTextField tf = text.get();
+        JTextField tf = textWeakRef.get();
         if (tf != null) {
-            Thread.sleep(tf.getCaret().getBlinkRate() * 2);
+            Thread.sleep(sleepTime);
             tf = null; // allow to be GCed
         }
         Util.waitForIdle(null);
@@ -114,7 +115,7 @@ public class InputContextMemoryLeakTest {
             }
         }
         alloc = null;
-        if (text.get() != null) {
+        if (textWeakRef.get() != null) {
             throw new Exception("Test failed: JTextField was not collected");
         }
     }
