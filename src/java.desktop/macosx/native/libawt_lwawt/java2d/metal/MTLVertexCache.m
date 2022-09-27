@@ -116,14 +116,14 @@ MTLVertexCache_FlushGlyphVertexCache()
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_FlushGlyphVertexCache");
 
     if (vertexCacheIndex > 0) {
-        [encoder setVertexBytes: vertexCache length:vertexCacheIndex * sizeof(J2DVertex)
-                                                atIndex:MeshVertexBuffer];
+        id<MTLRenderCommandEncoder> gcEncoder = MTLTR_GetGlyphCacheEncoder();
+        [gcEncoder setVertexBytes: vertexCache length:vertexCacheIndex * sizeof(J2DVertex)
+                          atIndex:MeshVertexBuffer];
         id<MTLTexture> glyphCacheTex = MTLTR_GetGlyphCacheTexture();
-        [encoder setFragmentTexture:glyphCacheTex atIndex: 0];
+        [gcEncoder setFragmentTexture:glyphCacheTex atIndex: 0];
         J2dTraceLn(J2D_TRACE_INFO,
-                   "MTLVertexCache_FlushGlyphVertexCache : encode %d characters",
-                   (vertexCacheIndex / 6));
-        [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:vertexCacheIndex];
+            "MTLVertexCache_FlushGlyphVertexCache : encode %d characters", (vertexCacheIndex / 6));
+        [gcEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:vertexCacheIndex];
     }
     vertexCacheIndex = 0;
 }
