@@ -322,6 +322,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBLCMS, \
     HEADERS_FROM_SRC := $(LIBLCMS_HEADERS_FROM_SRC), \
     DISABLED_WARNINGS_gcc := format-nonliteral type-limits stringop-truncation, \
     DISABLED_WARNINGS_clang := format-nonliteral, \
+    DISABLED_WARNINGS_clang_cmstypes.c := unused-but-set-parameter, \
     LDFLAGS := $(LDFLAGS_JDKLIB) \
         $(call SET_SHARED_LIBRARY_ORIGIN), \
     LDFLAGS_unix := -L$(INSTALL_LIBRARIES_HERE), \
@@ -901,6 +902,7 @@ ifeq ($(call isTargetOs, macosx), true)
       DISABLED_WARNINGS_clang_OGLBufImgOps.c := format-nonliteral, \
       DISABLED_WARNINGS_clang_OGLPaints.c := format-nonliteral, \
       DISABLED_WARNINGS_clang_PrinterView.m := enum-conversion, \
+      DISABLED_WARNINGS_clang_SystemHotkey.m := format-nonliteral, \
       LDFLAGS := $(LDFLAGS_JDKLIB) \
           $(call SET_SHARED_LIBRARY_ORIGIN) \
           -L$(INSTALL_LIBRARIES_HERE), \
