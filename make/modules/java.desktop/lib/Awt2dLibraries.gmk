@@ -298,7 +298,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBLCMS, \
     HEADERS_FROM_SRC := $(LIBLCMS_HEADERS_FROM_SRC), \
     DISABLED_WARNINGS_gcc := format-nonliteral type-limits \
         misleading-indentation undef unused-function stringop-truncation, \
-    DISABLED_WARNINGS_clang := tautological-compare format-nonliteral undef, \
+    DISABLED_WARNINGS_clang := unused-but-set-parameter tautological-compare format-nonliteral undef, \
     DISABLED_WARNINGS_microsoft := 4819, \
     LDFLAGS := $(LDFLAGS_JDKLIB) \
         $(call SET_SHARED_LIBRARY_ORIGIN), \
@@ -751,7 +751,7 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
       DISABLED_WARNINGS_gcc := sign-compare type-limits unused-result \
           maybe-uninitialized shift-negative-value implicit-fallthrough \
           unused-function, \
-      DISABLED_WARNINGS_clang := incompatible-pointer-types sign-compare \
+      DISABLED_WARNINGS_clang := null-pointer-subtraction incompatible-pointer-types sign-compare \
           deprecated-declarations, \
       DISABLED_WARNINGS_microsoft := 4018 4244 4267, \
       LDFLAGS := $(LDFLAGS_JDKLIB) \
