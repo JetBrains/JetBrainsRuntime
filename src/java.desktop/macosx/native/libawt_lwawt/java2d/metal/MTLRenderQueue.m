@@ -605,6 +605,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jlong pDst = NEXT_LONG(b);
 
                     if (mtlc != NULL) {
+                        MTLTR_FreeGlyphCacheAA();
+                        MTLTR_FreeGlyphCacheLCD();
                         MTLRenderer_SubmitVertexBatch(mtlc, dstOps);
                         [mtlc.encoderManager endEncoder];
                         MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
@@ -633,6 +635,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
 
                         } else {
                             if (mtlc != NULL) {
+                                MTLTR_FreeGlyphCacheAA();
+                                MTLTR_FreeGlyphCacheLCD();
                                 MTLRenderer_SubmitVertexBatch(mtlc, dstOps);
                                 [mtlc.encoderManager endEncoder];
                                 MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
@@ -655,7 +659,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                     if (mtlsdo != NULL) {
                         CONTINUE_IF_NULL(mtlc);
-                        MTLTR_FreeGlyphCaches();
+                        MTLTR_FreeGlyphCacheAA();
+                        MTLTR_FreeGlyphCacheLCD();
                         MTLSD_Delete(env, mtlsdo);
                     }
                     break;
@@ -679,15 +684,11 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_PREVIOUS_OP(MTL_OP_OTHER);
                     jlong pConfigInfo = NEXT_LONG(b);
                     CONTINUE_IF_NULL(mtlc);
-
-                    if (mtlc != NULL) {
-                        [mtlc.encoderManager endEncoder];
-                    }
-
+                    MTLTR_FreeGlyphCacheAA();
+                    MTLTR_FreeGlyphCacheLCD();
+                    [mtlc.encoderManager endEncoder];
                     MTLGC_DestroyMTLGraphicsConfig(pConfigInfo);
-
                     mtlc = NULL;
-                 //   dstOps = NULL;
                     break;
                 }
 
