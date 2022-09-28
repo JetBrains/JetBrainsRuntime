@@ -536,9 +536,10 @@ wl_keyboard_repeat_info(void *data, struct wl_keyboard *wl_keyboard,
                         int32_t rate, int32_t delay)
 {
     JNIEnv* env = getEnv();
-    (*env)->SetStaticIntField(env, wlToolkitClass, keyRepeatRateFID, rate);
-    (*env)->SetStaticIntField(env, wlToolkitClass, keyRepeatDelayFID, delay);
-
+    if (rate > 0 && delay > 0) {
+        (*env)->SetStaticIntField(env, wlToolkitClass, keyRepeatRateFID, rate);
+        (*env)->SetStaticIntField(env, wlToolkitClass, keyRepeatDelayFID, delay);
+    }
     J2dTrace2(J2D_TRACE_INFO, "WLToolkit: set keyboard repeat rate %d and delay %d\n", rate, delay);
 }
 
