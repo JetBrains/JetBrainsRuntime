@@ -39,7 +39,14 @@ class WLKeySym {
         static KeyDescriptor fromXKBCode(long code) {
             return xkbKeymap.getOrDefault(code, UNDEFINED_INSTANCE);
         }
-    };
+    }
+
+    static boolean xkbCodeIsModifier(long code) {
+        return code == XK_Shift_L || code == XK_Shift_R || code == XK_Control_L
+                || code == XK_Control_R || code == XK_Alt_L || code == XK_Alt_R
+                || code == XK_Meta_L || code == XK_Meta_R || code == XK_Caps_Lock
+                || code == XK_Shift_Lock;
+    }
 
     private static final Hashtable<Long, KeyDescriptor> xkbKeymap = new Hashtable<>();
 

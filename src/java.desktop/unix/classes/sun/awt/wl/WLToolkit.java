@@ -80,12 +80,15 @@ import java.awt.peer.TextFieldPeer;
 import java.awt.peer.TrayIconPeer;
 import java.awt.peer.WindowPeer;
 import java.beans.PropertyChangeListener;
+import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Timer;
+import java.util.TimerTask;
 
 /**
  * On events handling: the WLToolkit class creates a thread named "AWT-Wayland"
@@ -378,6 +381,92 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         }
     }
 
+    private static class KeyRepeatManager {
+        private Timer keyRepeatTimer;
+        private PostKeyEventTask postKeyEventTask;
+
+        KeyRepeatManager() {
+        }
+
+        private void stopKeyRepeat() {
+            assert EventQueue.isDispatchThread();
+
+            if (postKeyEventTask != null) {
+                postKeyEventTask.cancel();
+                postKeyEventTask = null;
+            }
+        }
+
+        private void initiateDelayedKeyRepeat(long keycode,
+                                              int keyCodePoint,
+                                              WLComponentPeer peer) {
+            assert EventQueue.isDispatchThread();
+            assert postKeyEventTask == null;
+
+            if (keyRepeatTimer == null) {
+                // The following starts a dedicated daemon thread.
+                keyRepeatTimer = new Timer("WLToolkit Key Repeat", true);
+            }
+
+            postKeyEventTask = new PostKeyEventTask(keycode, keyCodePoint, peer);
+
+            assert WLToolkit.keyRepeatRate > 0;
+            assert WLToolkit.keyRepeatDelay > 0;
+
+            keyRepeatTimer.schedule(
+                    postKeyEventTask,
+                    WLToolkit.keyRepeatDelay,
+                    (long)(1000.0 / WLToolkit.keyRepeatRate));
+        }
+
+        static boolean xkbCodeRequiresRepeat(long code) {
+            return !WLKeySym.xkbCodeIsModifier(code);
+        }
+
+        void keyboardEvent(long keycode, int keyCodePoint,
+                           boolean isPressed, WLComponentPeer peer) {
+            stopKeyRepeat();
+            if (isPressed && KeyRepeatManager.xkbCodeRequiresRepeat(keycode)) {
+                initiateDelayedKeyRepeat(keycode, keyCodePoint, peer);
+            }
+        }
+
+        void windowEvent(WindowEvent event) {
+            if (event.getID() == WindowEvent.WINDOW_LOST_FOCUS) {
+                stopKeyRepeat();
+            }
+        }
+
+        private static class PostKeyEventTask extends TimerTask {
+            final long keycode;
+            final int keyCodePoint;
+            final WLComponentPeer peer;
+
+            PostKeyEventTask(long keycode,
+                             int keyCodePoint,
+                             WLComponentPeer peer) {
+                this.keycode = keycode;
+                this.keyCodePoint = keyCodePoint;
+                this.peer = peer;
+            }
+
+            @Override
+            public void run() {
+                final long timestamp = System.currentTimeMillis();
+                try {
+                    EventQueue.invokeAndWait(() -> {
+                        generateKeyEventFrom(timestamp, keycode, keyCodePoint, true, peer);
+                    });
+                } catch (InterruptedException ignored) {
+                } catch (InvocationTargetException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
+
+    private static final KeyRepeatManager keyRepeatManager = new KeyRepeatManager();
+
     private static WLInputState inputState = WLInputState.initialState();
 
     private static void dispatchPointerEvent(WLPointerEvent e) {
@@ -414,12 +503,13 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         final long surfacePtr = inputState.getSurfaceForKeyboardInput();
         final WLComponentPeer peer = componentPeerFromSurface(surfacePtr);
         if (peer != null) {
-            convertToKeyEvent(timestamp, keycode, keyCodePoint, isPressed, peer);
+            generateKeyEventFrom(timestamp, keycode, keyCodePoint, isPressed, peer);
+            keyRepeatManager.keyboardEvent(keycode, keyCodePoint, isPressed, peer);
         }
     }
 
-    private static void convertToKeyEvent(long timestamp, long keycode, int keyCodePoint,
-                                          boolean isPressed, WLComponentPeer peer) {
+    private static void generateKeyEventFrom(long timestamp, long keycode, int keyCodePoint,
+                                             boolean isPressed, WLComponentPeer peer) {
         // See also XWindow.handleKeyPress()
         final char keyChar = Character.isBmpCodePoint(keyCodePoint)
                 ? (char) keyCodePoint
@@ -494,7 +584,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         inputState = inputState.updatedFromKeyboardModifiersEvent(serial, newModifiers);
     }
 
-    private static void dispatchKeyboardEnterEvent(long serial, long surfacePtr /*, TODO*/) {
+    private static void dispatchKeyboardEnterEvent(long serial, long surfacePtr) {
         // Invoked from the native code
         assert EventQueue.isDispatchThread();
 
@@ -525,10 +615,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         final WLInputState newInputState = inputState.updatedFromKeyboardLeaveEvent(serial, surfacePtr);
         final WLComponentPeer peer = componentPeerFromSurface(surfacePtr);
         if (peer != null && peer.getTarget() instanceof Window window) {
-            final WindowEvent windowEnterEvent = new WindowEvent(window, WindowEvent.WINDOW_LOST_FOCUS);
+            final WindowEvent winLostFocusEvent = new WindowEvent(window, WindowEvent.WINDOW_LOST_FOCUS);
             WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(null);
             WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusOwner(null);
-            postEvent(windowEnterEvent);
+            keyRepeatManager.windowEvent(winLostFocusEvent);
+            postEvent(winLostFocusEvent);
         }
         inputState = newInputState;
     }
