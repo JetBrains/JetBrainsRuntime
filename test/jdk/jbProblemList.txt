@@ -930,6 +930,7 @@ java/awt/print/PrinterJob/Margins.java                                          
 java/awt/print/PrinterJob/PaintText.java                                            JBR-893 generic-all
 java/awt/print/PrinterJob/PrintCrashTest.java                                       nobug generic-all
 java/awt/print/PrinterJob/PrtException.java                                         nobug generic-all
+java/awt/PrintJob/PrinterException.java                                             nobug generic-all
 javax/print/attribute/ChromaticityValues.java                                       nobug generic-all
 javax/print/CheckDupFlavor.java                                                     nobug generic-all
 javax/print/PrintSE/PrintSE.sh                                                      nobug generic-all
