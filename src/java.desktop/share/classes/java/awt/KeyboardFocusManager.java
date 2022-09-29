@@ -2810,6 +2810,8 @@ public abstract class KeyboardFocusManager
                     newFocusOwner = null;
                     return event;
                 }
+
+                newFocusOwner = null;
             }
         }
 
