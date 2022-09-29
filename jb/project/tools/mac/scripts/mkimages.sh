@@ -30,13 +30,6 @@ BOOT_JDK=${BOOT_JDK:=$(/usr/libexec/java_home -v 16)}
 function do_configure {
   if [[ "${architecture}" == *aarch64* ]]; then
 
-    if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
-      WITH_EXTRA_CFLAGS="--with-extra-cflags="-F$(pwd)/$JCEF_PATH/Frameworks"
-        --with-extra-cxxflags="-F$(pwd)/$JCEF_PATH/Frameworks"
-        --with-extra-ldflags="-F$(pwd)/$JCEF_PATH/Frameworks" "
-    else
-      WITH_EXTRA_CFLAGS=""
-    fi
     sh configure \
       $WITH_DEBUG_LEVEL \
       --with-vendor-name="${VENDOR_NAME}" \
@@ -51,7 +44,6 @@ function do_configure {
       --with-macosx-version-max="${MACOSX_VERSION_MAX:="11.00.00"}" \
       --disable-hotspot-gtest --disable-javac-server --disable-full-docs --disable-manpages \
       --enable-cds=no \
-      $WITH_EXTRA_CFLAGS \
       $STATIC_CONF_ARGS \
       $REPRODUCIBLE_BUILD_OPTS \
       $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
