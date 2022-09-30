@@ -34,6 +34,14 @@
         }                                       \
     } while(0)                                  \
 
+#define CHECK_NULL_THROW_IE(env, x, msg)\
+    do {                                        \
+        if ((x) == NULL) {                      \
+           JNU_ThrowInternalError((env), (msg));\
+           return;                          \
+        }                                       \
+    } while(0)                                  \
+
 extern struct wl_display *wl_display;
 extern struct wl_shm *wl_shm;
 extern struct wl_compositor *wl_compositor;

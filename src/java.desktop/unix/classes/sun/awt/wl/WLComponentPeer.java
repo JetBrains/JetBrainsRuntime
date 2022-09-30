@@ -38,21 +38,7 @@ import sun.java2d.wl.WLSurfaceData;
 import sun.util.logging.PlatformLogger;
 import sun.util.logging.PlatformLogger.Level;
 
-import java.awt.AWTEvent;
-import java.awt.AWTException;
-import java.awt.BufferCapabilities;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
-import java.awt.GraphicsConfiguration;
-import java.awt.Image;
-import java.awt.Point;
-import java.awt.Rectangle;
-import java.awt.SystemColor;
-import java.awt.Toolkit;
+import java.awt.*;
 import java.awt.event.FocusEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.InputMethodEvent;
@@ -226,7 +212,9 @@ public class WLComponentPeer implements ComponentPeer {
     protected void wlSetVisible(boolean v) {
         this.visible = v;
         if (this.visible) {
-            nativeShowComponent(nativePtr, getParentNativePtr(target), target.getX(), target.getY());
+            final String title = target instanceof Frame frame ? frame.getTitle() : null;
+            final String appID = System.getProperty("sun.java.command");
+            nativeShowComponent(nativePtr, getParentNativePtr(target), target.getX(), target.getY(), title, appID);
             WLToolkit.registerWLSurface(getWLSurface(), this);
             ((WLSurfaceData) surfaceData).initSurface(this, background != null ? background.getRGB() : 0, target.getWidth(), target.getHeight());
             PaintEvent event = PaintEventDispatcher.getPaintEventDispatcher().
@@ -586,17 +574,47 @@ public class WLComponentPeer implements ComponentPeer {
         throw new UnsupportedOperationException();
     }
 
+    protected final void setFrameTitle(String title) {
+        Objects.requireNonNull(title);
+        if (nativePtr != 0) {
+            nativeSetTitle(nativePtr, title);
+        }
+    }
+
+    protected final void requestMinimized() {
+        if (nativePtr != 0) {
+            nativeRequestMinimized(nativePtr);
+        }
+    }
+
+    protected final void requestMaximized() {
+        if (nativePtr != 0) {
+            nativeRequestMaximized(nativePtr);
+        }
+    }
+
+    protected final void requestUnmaximized() {
+        if (nativePtr != 0) {
+            nativeRequestUnmaximized(nativePtr);
+        }
+    }
+
     private static native void initIDs();
 
     protected native long nativeCreateFrame();
 
-    protected native void nativeShowComponent(long ptr, long parentPtr, int x, int y);
+    protected native void nativeShowComponent(long ptr, long parentPtr, int x, int y, String title, String appID);
 
     protected native void nativeHideFrame(long ptr);
 
     protected native void nativeDisposeFrame(long ptr);
 
     private native long getWLSurface();
+
+    private native void nativeSetTitle(long ptr, String title);
+    private native void nativeRequestMinimized(long ptr);
+    private native void nativeRequestMaximized(long ptr);
+    private native void nativeRequestUnmaximized(long ptr);
 
     static long getParentNativePtr(Component target) {
         Component parent = target.getParent();
@@ -606,5 +624,14 @@ public class WLComponentPeer implements ComponentPeer {
         ComponentPeer peer = acc.getPeer(parent);
 
         return ((WLComponentPeer)peer).nativePtr;
+    }
+
+    private final Object state_lock = new Object();
+    /**
+     * This lock object is used to protect instance data from concurrent access
+     * by two threads.
+     */
+    Object getStateLock() {
+        return state_lock;
     }
 }

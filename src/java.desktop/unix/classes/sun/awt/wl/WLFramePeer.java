@@ -25,13 +25,7 @@
  */
 package sun.awt.wl;
 
-import java.awt.Component;
-import java.awt.Window;
-import java.awt.Dialog;
-import java.awt.Frame;
-import java.awt.Insets;
-import java.awt.MenuBar;
-import java.awt.Rectangle;
+import java.awt.*;
 import java.awt.event.WindowEvent;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.FramePeer;
@@ -41,6 +35,8 @@ import sun.util.logging.PlatformLogger;
 
 public class WLFramePeer extends WLComponentPeer implements FramePeer {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLFramePeer");
+
+    private int state; // Guarded by getStateLock()
 
     public WLFramePeer(Frame target) {
         super(target);
@@ -59,6 +55,12 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
     }
 
     private static native void initIDs();
+
+    static {
+        if (!GraphicsEnvironment.isHeadless()) {
+            initIDs();
+        }
+    }
 
     @Override
     public Insets getInsets() {
@@ -85,7 +87,7 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
 
     @Override
     public void setTitle(String title) {
-        throw new UnsupportedOperationException();
+        setFrameTitle(title);
     }
 
     @Override
@@ -99,13 +101,39 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
     }
 
     @Override
-    public void setState(int state) {
-        throw new UnsupportedOperationException();
+    public void setState(int newState) {
+        synchronized(getStateLock()) {
+            if (newState == Frame.NORMAL) {
+                if ((state & Frame.MAXIMIZED_BOTH) != 0) {
+                    requestUnmaximized();
+                }
+                state = Frame.NORMAL;
+            }
+
+            if ((newState & Frame.ICONIFIED) != 0) {
+                // Per xdg-shell.xml, "There is no way to know if the surface
+                // is currently minimized, nor is there any way to unset
+                // minimization on this surface". So 'state' will never
+                // have 'Frame.ICONIFIED' bit set and every
+                // request to iconify will be granted.
+                requestMinimized();
+                state = Frame.NORMAL;
+            }
+
+            if ((newState & Frame.MAXIMIZED_BOTH) != 0) {
+                if ((state & Frame.MAXIMIZED_BOTH) == 0) {
+                    state &= Frame.MAXIMIZED_BOTH;
+                    requestMaximized();
+                }
+            }
+        }
     }
 
     @Override
     public int getState() {
-        throw new UnsupportedOperationException();
+        synchronized(getStateLock()) {
+            return state;
+        }
     }
 
     @Override
@@ -184,5 +212,10 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
     // called from native code
     private void postWindowClosing() {
         WLToolkit.postEvent(new WindowEvent((Window) target, WindowEvent.WINDOW_CLOSING));
+    }
+
+    private void postWindowActivated() {
+        // called from native code
+        WLToolkit.postEvent(new WindowEvent((Window) target, WindowEvent.WINDOW_ACTIVATED));
     }
 }
