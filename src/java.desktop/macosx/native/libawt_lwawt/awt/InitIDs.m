@@ -209,6 +209,10 @@ JNIEXPORT jarray JNICALL Java_sun_font_FontManagerNativeLibrary_loadedLibraries
   jarray libsArray = (*env)->NewObjectArray(env, count, stringClazz, NULL);
   JNU_CHECK_EXCEPTION_RETURN(env, NULL);
 
+  if ((*env)->EnsureLocalCapacity(env, count + 2) != JNI_OK) {
+    return NULL; // OOME has been thrown already
+  }
+
   for (uint32_t i = 0; i < count; i++) {
     const char * name = _dyld_get_image_name(i);
     if (name) {
