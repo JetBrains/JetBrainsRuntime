@@ -892,4 +892,11 @@ javax/swing/SwingUtilities/4917669/bug4917669.java                              
 javax/swing/SwingUtilities/7146377/bug7146377.java                                  JBR-4679 windows-all
 java/awt/FullScreen/BufferStrategyExceptionTest/BufferStrategyExceptionTest.java    JBR-4718 macosx-x64
 
+javax/swing/JFileChooser/8002077/bug8002077.java JBR-4880 windows-all
+javax/swing/JSpinner/4973721/bug4973721.java JBR-4880 windows-all
+javax/swing/JSpinner/5012888/bug5012888.java JBR-4880 windows-all
+javax/swing/JSpinner/SpinnerTest.java JBR-4880 windows-all
+javax/swing/text/FlowView/LayoutTest.java JBR-4880 windows-all
+javax/swing/text/html/7189299/bug7189299.java JBR-4880 windows-all
+
 jb/java/awt/Window/ModalDialogAndPopup.java JBR-4984 macosx-all
