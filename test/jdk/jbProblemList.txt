@@ -900,3 +900,4 @@ javax/swing/JSpinner/5012888/bug5012888.java JBR-4880 windows-all
 javax/swing/JSpinner/SpinnerTest.java JBR-4880 windows-all
 javax/swing/text/FlowView/LayoutTest.java JBR-4880 windows-all
 javax/swing/text/html/7189299/bug7189299.java JBR-4880 windows-all
+jb/java/jcef/HandleJSQueryTest3314.sh JBR-4866 linux-all
