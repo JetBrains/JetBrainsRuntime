@@ -471,6 +471,8 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
      */
     private boolean loadedXSettings;
 
+    private int cachedScreenResolution = 72;
+
     /**
     * XSETTINGS for the default screen.
      * <p>
@@ -1664,15 +1666,18 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
     @Override
     public int getScreenResolution() {
         long display = getDisplay();
-        awtLock();
-        try {
-            return (int) ((XlibWrapper.DisplayWidth(display,
-                XlibWrapper.DefaultScreen(display)) * 25.4) /
-                    XlibWrapper.DisplayWidthMM(display,
-                XlibWrapper.DefaultScreen(display)));
-        } finally {
-            awtUnlock();
+        if (awtTryLock()) {
+            try {
+                return cachedScreenResolution =
+                        (int) ((XlibWrapper.DisplayWidth(display,
+                                XlibWrapper.DefaultScreen(display)) * 25.4) /
+                                XlibWrapper.DisplayWidthMM(display,
+                                        XlibWrapper.DefaultScreen(display)));
+            } finally {
+                awtUnlock();
+            }
         }
+        return cachedScreenResolution;
     }
 
     static native long getDefaultXColormap();
