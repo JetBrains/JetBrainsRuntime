@@ -70,7 +70,7 @@ final class XRobotPeer implements RobotPeer {
 
     @Override
     public void mouseMove(int x, int y) {
-        mouseMoveImpl(xgc, xgc.scaleUp(x), xgc.scaleUp(y));
+        mouseMoveImpl(xgc, xgc.scaleUpX(x), xgc.scaleUpY(y));
         if (XdgDesktopPortal.isRemoteDesktop() && ScreencastHelper.isAvailable()) {
             // We still call mouseMoveImpl on purpose to change the mouse position
             // within the XWayland server so that we can retrieve it later.
