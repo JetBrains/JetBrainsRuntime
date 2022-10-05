@@ -91,7 +91,7 @@ final class XRobotPeer implements RobotPeer {
 
     @Override
     public void mouseMove(int x, int y) {
-        mouseMoveImpl(xgc, xgc.scaleUp(x), xgc.scaleUp(y));
+        mouseMoveImpl(xgc, xgc.scaleUpX(x), xgc.scaleUpY(y));
     }
 
     @Override
