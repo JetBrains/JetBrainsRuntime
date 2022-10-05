@@ -66,10 +66,9 @@ public final class XMouseInfoPeer implements MouseInfoPeer {
                     point.x = Native.getInt(XlibWrapper.larg3);
                     point.y = Native.getInt(XlibWrapper.larg4);
                     GraphicsDevice device = gds[i];
-                    if (device instanceof X11GraphicsDevice) {
-                        int scale = ((X11GraphicsDevice) device).getScaleFactor();
-                        point.x = XlibUtil.scaleDown(point.x, scale);
-                        point.y = XlibUtil.scaleDown(point.y, scale);
+                    if (device instanceof X11GraphicsDevice x11d) {
+                        point.x = x11d.scaleDownX(point.x);
+                        point.y = x11d.scaleDownY(point.y);
                     }
                     return i;
                 }
