@@ -139,9 +139,25 @@ public final class X11GraphicsDevice extends GraphicsDevice
     public int scaleUp(int x) {
         return Region.clipRound(x * (double)getScaleFactor());
     }
+    public int scaleUpX(int x) {
+        int s = bounds.x;
+        return Region.clipRound(s + (x - s) * (double)getScaleFactor());
+    }
+    public int scaleUpY(int y) {
+        int s = bounds.y;
+        return Region.clipRound(s + (y - s) * (double)getScaleFactor());
+    }
 
     public int scaleDown(int x) {
         return Region.clipRound(x / (double)getScaleFactor());
+    }
+    public int scaleDownX(int x) {
+        int s = bounds.x;
+        return Region.clipRound(s + (x - s) / (double)getScaleFactor());
+    }
+    public int scaleDownY(int y) {
+        int s = bounds.y;
+        return Region.clipRound(s + (y - s) / (double)getScaleFactor());
     }
 
     private Rectangle getBoundsImpl() {
@@ -161,8 +177,6 @@ public final class X11GraphicsDevice extends GraphicsDevice
         }
 
         if (getScaleFactor() != 1) {
-            rect.x = scaleDown(rect.x);
-            rect.y = scaleDown(rect.y);
             rect.width = scaleDown(rect.width);
             rect.height = scaleDown(rect.height);
         }
@@ -612,7 +626,6 @@ public final class X11GraphicsDevice extends GraphicsDevice
                 if (x11gd.isScaleFactorDefault.get() || !uiScaleEnabled) {
                     x11gd.scale = (int)Math.round(xftDpiScale * (uiScaleEnabled ? GDK_SCALE_MULTIPLIER : 1));
                     x11gd.isScaleFactorDefault.set(false);
-                    if (X11GraphicsEnvironment.useBoundsCache()) x11gd.resetBoundsCache();
                 }
             }
         }
