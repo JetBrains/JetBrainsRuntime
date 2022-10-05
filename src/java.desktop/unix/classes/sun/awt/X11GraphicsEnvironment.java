@@ -240,6 +240,8 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
         int index = getDefaultScreenNum();
         mainScreen = 0 < index && index < numScreens ? index : 0;
 
+        updateWaylandMonitorScaling();
+
         for (int id = 0; id < numScreens; ++id) {
             X11GraphicsDevice reused = old.remove(id);
             X11GraphicsDevice gd = reused != null ? reused : new X11GraphicsDevice(id);
@@ -379,6 +381,8 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
     public boolean runningXinerama() {
         return pRunningXinerama();
     }
+
+    private static native void updateWaylandMonitorScaling();
 
     /**
      * From the DisplayChangedListener interface; devices do not need
