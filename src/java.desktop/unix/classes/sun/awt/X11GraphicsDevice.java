@@ -144,6 +144,14 @@ public final class X11GraphicsDevice extends GraphicsDevice
         int s = bounds.y;
         return Region.clipRound(s + (y - s) * (double)getScaleFactor());
     }
+    public int scaleUpX(int x) {
+        int s = getBoundsCached().x;
+        return Region.clipRound(s + (x - s) * (double)getScaleFactor());
+    }
+    public int scaleUpY(int y) {
+        int s = getBoundsCached().y;
+        return Region.clipRound(s + (y - s) * (double)getScaleFactor());
+    }
 
     public int scaleDown(int i) {
         return Region.clipRound(i / (double)getScaleFactor());
@@ -154,6 +162,14 @@ public final class X11GraphicsDevice extends GraphicsDevice
     }
     public int scaleDownY(int y) {
         int s = bounds.y;
+        return Region.clipRound(s + (y - s) / (double)getScaleFactor());
+    }
+    public int scaleDownX(int x) {
+        int s = getBoundsCached().x;
+        return Region.clipRound(s + (x - s) / (double)getScaleFactor());
+    }
+    public int scaleDownY(int y) {
+        int s = getBoundsCached().y;
         return Region.clipRound(s + (y - s) / (double)getScaleFactor());
     }
 

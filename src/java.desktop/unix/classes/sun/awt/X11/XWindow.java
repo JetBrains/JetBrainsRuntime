@@ -1751,10 +1751,26 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     protected int scaleUpY(int y) {
         return graphicsConfig.scaleUpY(y);
     }
+    @Override
+    protected int scaleUpX(int x) {
+        return graphicsConfig.scaleUpX(x);
+    }
+    @Override
+    protected int scaleUpY(int y) {
+        return graphicsConfig.scaleUpY(y);
+    }
 
     @Override
     protected int scaleDown(int i) {
         return graphicsConfig.scaleDown(i);
+    }
+    @Override
+    protected int scaleDownX(int x) {
+        return graphicsConfig.scaleDownX(x);
+    }
+    @Override
+    protected int scaleDownY(int y) {
+        return graphicsConfig.scaleDownY(y);
     }
     @Override
     protected int scaleDownX(int x) {
