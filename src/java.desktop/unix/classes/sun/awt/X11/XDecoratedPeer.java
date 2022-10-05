@@ -868,17 +868,19 @@ abstract class XDecoratedPeer extends XWindowPeer {
                     currentInsets, newDimensions);
         }
 
-        checkIfOnNewScreen(newDimensions.getBounds());
+        checkIfOnNewScreen(newDimensions.getBounds(), () -> {
 
-        Point oldLocation = getLocation();
-        dimensions = newDimensions;
-        if (!newLocation.equals(oldLocation)) {
-            handleMoved(newDimensions);
-        }
-        reconfigureContentWindow(newDimensions);
-        updateChildrenSizes();
+            Point oldLocation = getLocation();
+            dimensions = newDimensions;
+            if (!newLocation.equals(oldLocation)) {
+                handleMoved(newDimensions);
+            }
+            reconfigureContentWindow(newDimensions);
+            updateChildrenSizes();
 
-        repositionSecurityWarning();
+            repositionSecurityWarning();
+
+        });
     }
 
     private void checkShellRectSize(Rectangle shellRect) {
@@ -906,7 +908,8 @@ abstract class XDecoratedPeer extends XWindowPeer {
         }
         updateSizeHints(rec.x, rec.y, rec.width, rec.height);
         XlibWrapper.XMoveResizeWindow(XToolkit.getDisplay(), getShell(),
-                                      scaleUp(rec.x), scaleUp(rec.y),
+                                      parentWindow == null ? scaleUpX(rec.x) : scaleUp(rec.x),
+                                      parentWindow == null ? scaleUpY(rec.y) : scaleUp(rec.y),
                                       scaleUp(rec.width), scaleUp(rec.height));
     }
 
@@ -925,7 +928,8 @@ abstract class XDecoratedPeer extends XWindowPeer {
         }
         updateSizeHints(rec.x, rec.y, rec.width, rec.height);
         XlibWrapper.XMoveWindow(XToolkit.getDisplay(), getShell(),
-                                scaleUp(rec.x), scaleUp(rec.y));
+                parentWindow == null ? scaleUpX(rec.x) : scaleUp(rec.x),
+                parentWindow == null ? scaleUpY(rec.y) : scaleUp(rec.y));
     }
 
     public void setResizable(boolean resizable) {
@@ -1402,5 +1406,16 @@ abstract class XDecoratedPeer extends XWindowPeer {
 
     public final boolean getWindowTitleVisible() {
         return getMWMDecorTitleProperty().orElse(true);
+    }
+
+    @Override
+    public boolean updateGraphicsData(GraphicsConfiguration gc) {
+        boolean ret = super.updateGraphicsData(gc);
+        if (content != null) {
+            content.initGraphicsConfiguration();
+            content.syncBounds();
+        }
+        updateMinimumSize();
+        return ret;
     }
 }
