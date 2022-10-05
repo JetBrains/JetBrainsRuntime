@@ -1330,7 +1330,10 @@ public class XComponentPeer extends XWindow implements ComponentPeer, DropTarget
 
                     int scale = getScale();
                     if (scale != 1) {
-                        shape = shape.getScaledRegion(scale, scale);
+                        Rectangle bounds = graphicsConfig.getBounds();
+                        shape = shape.getTranslatedRegion(-bounds.x, -bounds.y)
+                                .getScaledRegion(scale, scale)
+                                .getTranslatedRegion(bounds.x, bounds.y);
                     }
 
                     XlibWrapper.SetRectangularShape(
@@ -1378,7 +1381,7 @@ public class XComponentPeer extends XWindow implements ComponentPeer, DropTarget
         }
 
         initGraphicsConfiguration();
-        doValidateSurface();
+        syncBounds();
         return false;
     }
 }
