@@ -154,8 +154,6 @@ import sun.java2d.SunGraphicsEnvironment;
 import sun.print.PrintJob2D;
 import sun.util.logging.PlatformLogger;
 
-import static sun.awt.X11.XlibUtil.scaleDown;
-
 public final class XToolkit extends UNIXToolkit implements Runnable {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.X11.XToolkit");
     private static final PlatformLogger eventLog = PlatformLogger.getLogger("sun.awt.X11.event.XToolkit");
@@ -810,11 +808,11 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             awtLock();
             try {
                 if (lastCursorPos == null) {
-                    lastCursorPos = new Point(win.scaleDown(ev.get_x_root()),
-                                              win.scaleDown(ev.get_y_root()));
+                    lastCursorPos = new Point(win.scaleDownX(ev.get_x_root()),
+                                              win.scaleDownY(ev.get_y_root()));
                 } else {
-                    lastCursorPos.setLocation(win.scaleDown(ev.get_x_root()),
-                                              win.scaleDown(ev.get_y_root()));
+                    lastCursorPos.setLocation(win.scaleDownX(ev.get_x_root()),
+                                              win.scaleDownY(ev.get_y_root()));
                 }
             } finally {
                 awtUnlock();
@@ -833,11 +831,11 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             awtLock();
             try {
                 if (lastCursorPos == null) {
-                    lastCursorPos = new Point(win.scaleDown(ev.get_x_root()),
-                                              win.scaleDown(ev.get_y_root()));
+                    lastCursorPos = new Point(win.scaleDownX(ev.get_x_root()),
+                                              win.scaleDownY(ev.get_y_root()));
                 } else {
-                    lastCursorPos.setLocation(win.scaleDown(ev.get_x_root()),
-                                              win.scaleDown(ev.get_y_root()));
+                    lastCursorPos.setLocation(win.scaleDownX(ev.get_x_root()),
+                                              win.scaleDownY(ev.get_y_root()));
                 }
             } finally {
                 awtUnlock();
@@ -1079,7 +1077,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         return maxWindowHeightInPixels;
     }
 
-    private static Rectangle getWorkArea(long root, int scale)
+    private static Rectangle getWorkArea(long root)
     {
         XAtom XA_NET_WORKAREA = XAtom.get("_NET_WORKAREA");
 
@@ -1095,10 +1093,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 int rootWidth = (int)Native.getLong(native_ptr, 2);
                 int rootHeight = (int)Native.getLong(native_ptr, 3);
 
-                return new Rectangle(scaleDown(rootX, scale),
-                                     scaleDown(rootY, scale),
-                                     scaleDown(rootWidth, scale),
-                                     scaleDown(rootHeight, scale));
+                return new Rectangle(rootX, rootY, rootWidth, rootHeight);
             }
         }
         finally
@@ -1142,15 +1137,21 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         try {
             X11GraphicsDevice x11gd = (X11GraphicsDevice) gd;
             long root = XlibUtil.getRootWindow(x11gd.getScreen());
-            Rectangle workArea = getWorkArea(root, x11gd.getScaleFactor());
+            Rectangle workArea = getWorkArea(root);
             Rectangle screen = gc.getBounds();
-            if (workArea != null && screen.contains(workArea.getLocation())) {
-                workArea = workArea.intersection(screen);
-                int top = workArea.y - screen.y;
-                int left = workArea.x - screen.x;
-                int bottom = screen.height - workArea.height - top;
-                int right = screen.width - workArea.width - left;
-                return new Insets(top, left, bottom, right);
+            if (workArea != null) {
+                workArea.x = x11gd.scaleDownX(workArea.x);
+                workArea.y = x11gd.scaleDownY(workArea.y);
+                workArea.width = x11gd.scaleDown(workArea.width);
+                workArea.height = x11gd.scaleDown(workArea.height);
+                if (screen.contains(workArea.getLocation())) {
+                    workArea = workArea.intersection(screen);
+                    int top = workArea.y - screen.y;
+                    int left = workArea.x - screen.x;
+                    int bottom = screen.height - workArea.height - top;
+                    int right = screen.width - workArea.width - left;
+                    return new Insets(top, left, bottom, right);
+                }
             }
             // Note that it is better to return zeros than inadequate values
             return new Insets(0, 0, 0, 0);
