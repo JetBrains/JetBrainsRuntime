@@ -102,55 +102,17 @@ public final class XlibUtil
     }
 
     /**
-     * Returns the bounds of the given window, in absolute coordinates
-     */
-    static Rectangle getWindowGeometry(long window, int scale)
-    {
-        XToolkit.awtLock();
-        try
-        {
-            int res = XlibWrapper.XGetGeometry(XToolkit.getDisplay(),
-                                               window,
-                                               XlibWrapper.larg1, // root_return
-                                               XlibWrapper.larg2, // x_return
-                                               XlibWrapper.larg3, // y_return
-                                               XlibWrapper.larg4, // width_return
-                                               XlibWrapper.larg5, // height_return
-                                               XlibWrapper.larg6, // border_width_return
-                                               XlibWrapper.larg7); // depth_return
-            if (res == 0)
-            {
-                return null;
-            }
-
-            int x = Native.getInt(XlibWrapper.larg2);
-            int y = Native.getInt(XlibWrapper.larg3);
-            long width = Native.getUInt(XlibWrapper.larg4);
-            long height = Native.getUInt(XlibWrapper.larg5);
-
-            return new Rectangle(scaleDown(x, scale), scaleDown(y, scale),
-                                 scaleDown((int) width, scale),
-                                 scaleDown((int) height, scale));
-        }
-        finally
-        {
-            XToolkit.awtUnlock();
-        }
-    }
-
-    /**
      * Translates the given point from one window to another. Returns
-     * null if the translation is failed
+     * null if the translation is failed. Coordinates must be in device space.
      */
-    static Point translateCoordinates(long src, long dst, Point p, int scale)
+    static Point translateCoordinates(long src, long dst, int x, int y)
     {
         Point translated = null;
 
         XToolkit.awtLock();
         try
         {
-            XTranslateCoordinates xtc =
-                new XTranslateCoordinates(src, dst, p.x * scale, p.y * scale);
+            XTranslateCoordinates xtc = new XTranslateCoordinates(src, dst, x, y);
             try
             {
                 int status = xtc.execute(XErrorHandler.IgnoreBadWindowHandler.getInstance());
@@ -158,8 +120,7 @@ public final class XlibUtil
                     ((XErrorHandlerUtil.saved_error == null) ||
                     (XErrorHandlerUtil.saved_error.get_error_code() == XConstants.Success)))
                 {
-                    translated = new Point(scaleDown(xtc.get_dest_x(), scale),
-                                           scaleDown(xtc.get_dest_y(), scale));
+                    translated = new Point(xtc.get_dest_x(), xtc.get_dest_y());
                 }
             }
             finally
@@ -173,26 +134,6 @@ public final class XlibUtil
         }
 
         return translated;
-    }
-
-    /**
-     * Translates the given rectangle from one window to another.
-     * Returns null if the translation is failed
-     */
-    static Rectangle translateCoordinates(long src, long dst, Rectangle r,
-                                          int scale)
-    {
-        Point translatedLoc = translateCoordinates(src, dst, r.getLocation(),
-                                                   scale);
-
-        if (translatedLoc == null)
-        {
-            return null;
-        }
-        else
-        {
-            return new Rectangle(translatedLoc, r.getSize());
-        }
     }
 
     /**
@@ -413,9 +354,5 @@ public final class XlibUtil
         } else {
             return 1 << (7 + button);
         }
-    }
-
-    static int scaleDown(int x, int scale) {
-        return Region.clipRound(x / (double)scale);
     }
 }
