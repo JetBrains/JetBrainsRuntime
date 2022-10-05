@@ -656,6 +656,174 @@ static void resetNativeData(int screen) {
     x11Screens[screen].numConfigs = 0;
 }
 
+typedef void wl_proxy;
+typedef void wl_interface;
+typedef void wl_display;
+typedef void wl_registry;
+typedef void wl_output;
+
+struct wl_registry_listener {
+    void (*global)(void* data, wl_registry* wl_registry, uint name, const char* iface, uint ver);
+    void (*global_remove)(void* data, wl_registry* wl_registry, uint name);
+};
+
+struct wl_output_listener {
+    void (*geometry)(void *data,
+                     wl_output *wl_output,
+                     int32_t x,
+                     int32_t y,
+                     int32_t physical_width,
+                     int32_t physical_height,
+                     int32_t subpixel,
+                     const char *make,
+                     const char *model,
+                     int32_t transform);
+    void (*mode)(void *data,
+                 wl_output *wl_output,
+                 uint32_t flags,
+                 int32_t width,
+                 int32_t height,
+                 int32_t refresh);
+    void (*done)(void *data,
+                 wl_output *wl_output);
+    void (*scale)(void *data,
+                  wl_output *wl_output,
+                  int32_t factor);
+};
+
+static wl_display* (*wl_display_connect)(const char *name);
+static wl_proxy* (*wl_proxy_marshal_constructor)(wl_proxy *proxy,
+                                                 uint32_t opcode,
+                                                 const wl_interface *interface, ...);
+static wl_proxy* (*wl_proxy_marshal_constructor_versioned)(wl_proxy *proxy,
+                                                           uint32_t opcode,
+                                                           const wl_interface *interface,
+                                                           uint32_t version,
+                                                           ...);
+static int (*wl_proxy_add_listener)(wl_proxy *proxy, void (**implementation)(void), void *data);
+static int (*wl_display_roundtrip)(wl_display *display);
+static void (*wl_display_disconnect)(wl_display *display);
+
+static wl_interface* wl_registry_interface;
+static wl_interface* wl_output_interface;
+
+static void* wlLibHandle = NULL;
+#define LOAD_WAYLAND_SYMBOL(NAME) NAME = dlsym(wlLibHandle, #NAME); if (!(NAME)) goto cleanup
+
+static void wlInit() {
+    wlLibHandle = dlopen("libwayland-client.so.0", RTLD_LAZY | RTLD_LOCAL);
+    if (!wlLibHandle) return;
+
+    LOAD_WAYLAND_SYMBOL(wl_display_connect);
+    LOAD_WAYLAND_SYMBOL(wl_proxy_marshal_constructor);
+    LOAD_WAYLAND_SYMBOL(wl_proxy_marshal_constructor_versioned);
+    LOAD_WAYLAND_SYMBOL(wl_proxy_add_listener);
+    LOAD_WAYLAND_SYMBOL(wl_display_roundtrip);
+    LOAD_WAYLAND_SYMBOL(wl_display_disconnect);
+
+    LOAD_WAYLAND_SYMBOL(wl_registry_interface);
+    LOAD_WAYLAND_SYMBOL(wl_output_interface);
+
+    return;
+    cleanup:
+    dlclose(wlLibHandle);
+    wlLibHandle = NULL;
+}
+
+static int32_t* waylandMonitorScales = NULL;
+struct UpdateWaylandMonitorsData {
+    int32_t currentWaylandMonitor, currentWaylandScale, xinScreens;
+    XineramaScreenInfo *xinInfo;
+    int32_t* waylandMonitorScales;
+};
+
+static void wlOutputGeometry(void *data,
+                             wl_output *wl_output,
+                             int32_t x,
+                             int32_t y,
+                             int32_t physical_width,
+                             int32_t physical_height,
+                             int32_t subpixel,
+                             const char *make,
+                             const char *model,
+                             int32_t transform) {
+    struct UpdateWaylandMonitorsData* monData = (struct UpdateWaylandMonitorsData*) data;
+    // Match Wayland and Xinerama monitors by coordinates
+    for (int i = 0; i < monData->xinScreens; i++) {
+        if (monData->xinInfo[i].x_org == x && monData->xinInfo[i].y_org == y) {
+            monData->currentWaylandMonitor = monData->xinInfo[i].screen_number;
+            return;
+        }
+    }
+    monData->currentWaylandMonitor = -1;
+}
+static void wlOutputMode(void *data,
+                         wl_output *wl_output,
+                         uint32_t flags,
+                         int32_t width,
+                         int32_t height,
+                         int32_t refresh) {}
+static void wlOutputDone(void *data,
+                         wl_output *wl_output) {
+    struct UpdateWaylandMonitorsData* monData = (struct UpdateWaylandMonitorsData*) data;
+    if (monData->currentWaylandMonitor != -1) {
+        monData->waylandMonitorScales[monData->currentWaylandMonitor] = monData->currentWaylandScale;
+    }
+}
+static void wlOutputScale(void *data,
+                          wl_output *wl_output,
+                          int32_t factor) {
+    struct UpdateWaylandMonitorsData* monData = (struct UpdateWaylandMonitorsData*) data;
+    monData->currentWaylandScale = factor;
+}
+static struct wl_output_listener wlOutputListener = {&wlOutputGeometry, &wlOutputMode, &wlOutputDone, &wlOutputScale};
+
+static void wlGlobal(void* data,
+                     wl_registry* registry,
+                     uint32_t name,
+                     const char *interface,
+                     uint32_t version) {
+    const uint32_t ver = 2; // Output protocol version
+    if (strcmp(interface, "wl_output") == 0 && version >= ver) {
+        wl_output* output = wl_proxy_marshal_constructor_versioned(registry, 0, wl_output_interface, ver, name, "wl_output", ver, NULL); // wl_registry_bind
+        wl_proxy_add_listener(output, (void (**)(void)) &wlOutputListener, data); // wl_output_add_listener
+    }
+}
+static void wlGlobalRemove(void* data,
+                           wl_registry* registry,
+                           uint32_t name) {}
+static struct wl_registry_listener wlRegistryListener = {&wlGlobal, &wlGlobalRemove};
+
+/*
+ * Class:     sun_awt_X11GraphicsEnvironment
+ * Method:    updateWaylandMonitorScaling
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL
+Java_sun_awt_X11GraphicsEnvironment_updateWaylandMonitorScaling(JNIEnv *env, jclass clazz) {
+    if (!usingXinerama || !wlLibHandle) return;
+
+    struct UpdateWaylandMonitorsData monData;
+    monData.xinInfo = (*XineramaQueryScreens)(awt_display, &monData.xinScreens);
+    if (monData.xinInfo == NULL) return;
+    wl_display* display = wl_display_connect(NULL);
+    if (display == NULL) return;
+    monData.waylandMonitorScales = calloc(monData.xinScreens, sizeof(int32_t));
+
+    wl_registry* registry = wl_proxy_marshal_constructor(display, 1, wl_registry_interface, NULL); // wl_display_get_registry
+    wl_proxy_add_listener(registry, (void (**)(void)) &wlRegistryListener, &monData); // wl_registry_add_listener
+    wl_display_roundtrip(display); // Get globals (wl_outputs)
+    wl_display_roundtrip(display); // Get outputs info
+
+    XFree(monData.xinInfo);
+
+    int32_t* oldScales = waylandMonitorScales;
+    waylandMonitorScales = monData.waylandMonitorScales;
+    free(oldScales);
+
+    wl_display_disconnect(display);
+}
+
 /*
  * Class:     sun_awt_X11GraphicsEnvironment
  * Method:    initDevices
@@ -763,6 +931,9 @@ awt_init_Display(JNIEnv *env, jobject this)
     JNU_CallStaticMethodByName(env, NULL, "sun/awt/X11/XErrorHandlerUtil", "init", "(J)V",
         ptr_to_jlong(awt_display));
     JNU_CHECK_EXCEPTION_RETURN(env, NULL);
+
+    // Init Wayland if available, it's used to retrieve per-monitor scaling
+    wlInit();
 
     /* set awt_numScreens, and whether or not we're using Xinerama */
     xineramaInit();
@@ -2415,6 +2586,11 @@ static char *get_output_screen_name(JNIEnv *env, int screen) {
 JNIEXPORT jdouble JNICALL
 Java_sun_awt_X11GraphicsDevice_getNativeScaleFactor
     (JNIEnv *env, jobject this, jint screen, jdouble defValue) {
+    int32_t* wls = waylandMonitorScales;
+    if (wls != NULL && wls[screen] != 0) {
+        return (double) wls[screen];
+    }
+
     // in case of Xinerama individual screen scales are not supported
     char *name = get_output_screen_name(env, usingXinerama ? 0 : screen);
     double scale = getNativeScaleFactor(name, defValue);
