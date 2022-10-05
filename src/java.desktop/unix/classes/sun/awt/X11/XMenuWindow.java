@@ -286,8 +286,9 @@ public class XMenuWindow extends XBaseMenuWindow {
      */
     @Override
     protected Rectangle getSubmenuBounds(Rectangle itemBounds, Dimension windowSize) {
+        updateCurrentGraphicsConfiguration();
         Rectangle globalBounds = toGlobal(itemBounds);
-        Rectangle screenBounds = getCurrentGraphicsConfiguration().getBounds();
+        Rectangle screenBounds = graphicsConfig.getBounds();
         Rectangle res;
         res = fitWindowRight(globalBounds, windowSize, screenBounds);
         if (res != null) {
@@ -395,6 +396,9 @@ public class XMenuWindow extends XBaseMenuWindow {
             params.add(OVERRIDE_REDIRECT, Boolean.TRUE);
             params.add(XWindow.TARGET, target);
             init(params);
+        } else {
+            initGraphicsConfiguration();
+            syncBounds();
         }
         return true;
     }
