@@ -30,11 +30,13 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Frame;
 import java.awt.Graphics;
+import java.awt.GraphicsConfiguration;
 import java.awt.Insets;
 import java.awt.MenuBar;
 import java.awt.Rectangle;
 import java.awt.peer.FramePeer;
 import sun.awt.SunToolkit;
+import sun.awt.X11GraphicsConfig;
 import sun.util.logging.PlatformLogger;
 import sun.awt.AWTAccessor;
 
@@ -734,5 +736,15 @@ class XFramePeer extends XDecoratedPeer implements FramePeer {
         } else {
             handleWindowFocusOut(null, 0);
         }
+    }
+
+    @Override
+    public boolean updateGraphicsData(GraphicsConfiguration gc) {
+        boolean ret = super.updateGraphicsData(gc);
+        if (menubarPeer != null) {
+            menubarPeer.initGraphicsConfiguration();
+            menubarPeer.syncBounds();
+        }
+        return ret;
     }
 }
