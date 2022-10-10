@@ -23,15 +23,8 @@
 
 import com.apple.eawt.Application;
 
+import java.awt.Window;
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @test
@@ -45,15 +38,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 
 public class FullScreenChildWindowShownBefore {
-    private static final CompletableFuture<Boolean> dialogShown = new CompletableFuture<>();
-
     private static JFrame frame;
     private static JDialog dialog;
 
     public static void main(String[] args) throws Exception {
         try {
             SwingUtilities.invokeAndWait(FullScreenChildWindowShownBefore::initUI);
-            dialogShown.get(5, TimeUnit.SECONDS);
+            Thread.sleep(1000); // wait for windows to appear
             SwingUtilities.invokeAndWait(() -> Application.getApplication().requestToggleFullScreen(frame));
             Thread.sleep(1000); // wait for transition to full screen to finish
             ensureVisible(frame, 250, 150);
@@ -73,12 +64,6 @@ public class FullScreenChildWindowShownBefore {
         frame.setVisible(true);
 
         dialog = new JDialog(frame, false);
-        dialog.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowOpened(WindowEvent e) {
-                dialogShown.complete(true);
-            }
-        });
         dialog.setBounds(200, 200, 100, 100);
         dialog.setVisible(true);
     }
