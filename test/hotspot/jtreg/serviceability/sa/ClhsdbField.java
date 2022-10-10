@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,7 +57,6 @@ public class ClhsdbField {
                 "field Klass _name Symbol*",
                 "field JavaThread _next JavaThread*",
                 "field JavaThread _osthread OSThread*",
-                "field JVMState _bci",
                 "field TenuredGeneration _the_space ContiguousSpace*",
                 "field VirtualSpace _low_boundary char*",
                 "field MethodCounters _backedge_counter InvocationCounter",
