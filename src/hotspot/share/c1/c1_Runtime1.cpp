@@ -1237,6 +1237,37 @@ JRT_END
 
 #else // DEOPTIMIZE_WHEN_PATCHING
 
+static bool is_patching_needed(JavaThread* current, Runtime1::StubID stub_id) {
+  if (stub_id == Runtime1::load_klass_patching_id ||
+      stub_id == Runtime1::load_mirror_patching_id) {
+    // last java frame on stack
+    vframeStream vfst(current, true);
+    assert(!vfst.at_end(), "Java frame must exist");
+
+    methodHandle caller_method(current, vfst.method());
+    int bci = vfst.bci();
+    Bytecodes::Code code = caller_method()->java_code_at(bci);
+
+    switch (code) {
+      case Bytecodes::_new:
+      case Bytecodes::_anewarray:
+      case Bytecodes::_multianewarray:
+      case Bytecodes::_instanceof:
+      case Bytecodes::_checkcast: {
+        Bytecode bc(caller_method(), caller_method->bcp_from(bci));
+        constantTag tag = caller_method->constants()->tag_at(bc.get_index_u2(code));
+        if (tag.is_unresolved_klass_in_error()) {
+          return false; // throws resolution error
+        }
+        break;
+      }
+
+      default: break;
+    }
+  }
+  return true;
+}
+
 JRT_ENTRY(void, Runtime1::patch_code(JavaThread* thread, Runtime1::StubID stub_id ))
   RegisterMap reg_map(thread, false);
 
@@ -1248,11 +1279,12 @@ JRT_ENTRY(void, Runtime1::patch_code(JavaThread* thread, Runtime1::StubID stub_i
   frame runtime_frame = thread->last_frame();
   frame caller_frame = runtime_frame.sender(&reg_map);
 
-  // It's possible the nmethod was invalidated in the last
-  // safepoint, but if it's still alive then make it not_entrant.
-  nmethod* nm = CodeCache::find_nmethod(caller_frame.pc());
-  if (nm != NULL) {
-    nm->make_not_entrant();
+  if (is_patching_needed(thread, stub_id)) {
+    // Make sure the nmethod is invalidated, i.e. made not entrant.
+    nmethod* nm = CodeCache::find_nmethod(caller_frame.pc());
+    if (nm != NULL) {
+      nm->make_not_entrant();
+    }
   }
 
   Deoptimization::deoptimize_frame(thread, caller_frame.id());
