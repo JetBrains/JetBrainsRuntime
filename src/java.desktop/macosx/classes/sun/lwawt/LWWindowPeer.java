@@ -1107,10 +1107,13 @@ public class LWWindowPeer
                 setPlatformMaximizedBounds(getDefaultMaximizedBounds());
             }
         }
-        // Replace surface unconditionally, because internal state of the
-        // GraphicsDevice could be changed.
-        replaceSurfaceData();
-        repaintPeer();
+
+        SunToolkit.executeOnEventHandlerThread(getTarget(), () -> {
+            // Replace surface unconditionally, because internal state of the
+            // GraphicsDevice could be changed.
+            replaceSurfaceData();
+            repaintPeer();
+        });
     }
 
     @Override
