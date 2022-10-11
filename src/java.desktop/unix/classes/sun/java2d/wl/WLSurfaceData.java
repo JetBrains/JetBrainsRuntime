@@ -6,6 +6,7 @@ import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
 import java.awt.image.ColorModel;
 import java.awt.image.Raster;
+
 import sun.awt.image.SunVolatileImage;
 import sun.awt.wl.WLComponentPeer;
 import sun.awt.wl.WLGraphicsConfig;
@@ -15,82 +16,84 @@ import sun.util.logging.PlatformLogger;
 
 public class WLSurfaceData extends SurfaceData {
 
-  private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.wl.WLSurfaceData");
-  private final WLComponentPeer peer;
-  private final WLGraphicsConfig graphicsConfig;
-  private final int depth;
+    private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.wl.WLSurfaceData");
+    private final WLComponentPeer peer;
+    private final WLGraphicsConfig graphicsConfig;
+    private final int depth;
 
 
-  public native void initSurface(WLComponentPeer peer, int rgb, int width, int height);
-  protected native void initOps(WLComponentPeer peer, WLGraphicsConfig gc, int depth);
+    public native void assignSurface(long surfacePtr);
 
-  protected WLSurfaceData(WLComponentPeer peer,
-                          WLGraphicsConfig gc,
-                          SurfaceType sType,
-                          ColorModel cm)
-  {
-    super(sType, cm);
-    this.peer = peer;
-    this.graphicsConfig = gc;
-    this.depth = cm.getPixelSize();
-    initOps(peer, graphicsConfig, depth);
-  }
+    protected native void initOps(int width, int height, int backgroundRGB);
 
-  /**
-   * Method for instantiating a Window SurfaceData
-   */
-  public static WLSurfaceData createData(WLComponentPeer peer) {
-    WLGraphicsConfig gc = getGC(peer);
-    return new WLSurfaceData(peer, gc, gc.getSurfaceType(), peer.getColorModel());
-  }
-
-  public static WLGraphicsConfig getGC(WLComponentPeer peer) {
-    if (peer != null) {
-      return (WLGraphicsConfig) peer.getGraphicsConfiguration();
-    } else {
-      GraphicsEnvironment env =
-          GraphicsEnvironment.getLocalGraphicsEnvironment();
-      GraphicsDevice gd = env.getDefaultScreenDevice();
-      return (WLGraphicsConfig)gd.getDefaultConfiguration();
+    protected WLSurfaceData(WLComponentPeer peer,
+                            WLGraphicsConfig gc,
+                            SurfaceType sType,
+                            ColorModel cm) {
+        super(sType, cm);
+        this.peer = peer;
+        this.graphicsConfig = gc;
+        this.depth = cm.getPixelSize();
+        initOps(peer.getWidth(), peer.getHeight(), peer.getBackground().getRGB());
     }
-  }
-  @Override
-  public SurfaceData getReplacement() {
-    return null;
-  }
 
-  @Override
-  public GraphicsConfiguration getDeviceConfiguration() {
-    return null;
-  }
+    /**
+     * Method for instantiating a Window SurfaceData
+     */
+    public static WLSurfaceData createData(WLComponentPeer peer) {
+        WLGraphicsConfig gc = getGC(peer);
+        return new WLSurfaceData(peer, gc, gc.getSurfaceType(), peer.getColorModel());
+    }
 
-  @Override
-  public Raster getRaster(int x, int y, int w, int h) {
-    return null;
-  }
+    public static WLGraphicsConfig getGC(WLComponentPeer peer) {
+        if (peer != null) {
+            return (WLGraphicsConfig) peer.getGraphicsConfiguration();
+        } else {
+            GraphicsEnvironment env =
+                    GraphicsEnvironment.getLocalGraphicsEnvironment();
+            GraphicsDevice gd = env.getDefaultScreenDevice();
+            return (WLGraphicsConfig) gd.getDefaultConfiguration();
+        }
+    }
 
-  @Override
-  public Rectangle getBounds() {
-    Rectangle r = peer.getTarget().getBounds();
-    r.x = r.y = 0;
-    return r;
-  }
+    @Override
+    public SurfaceData getReplacement() {
+        return null;
+    }
 
-  @Override
-  public Object getDestination() {
-    return peer.getTarget();
-  }
+    @Override
+    public GraphicsConfiguration getDeviceConfiguration() {
+        return null;
+    }
 
-  public static boolean isAccelerationEnabled() {
-    return false;
-  }
+    @Override
+    public Raster getRaster(int x, int y, int w, int h) {
+        return null;
+    }
 
-  public static SurfaceData createData(WLGraphicsConfig gc, int width, int height, ColorModel cm,
-                                       SunVolatileImage vImg, long drawable, int opaque,
-                                       boolean b) {
-    log.info("Not implemented: WLSurfaceData.createData(WLGraphicsConfig,int,int,ColorModel," +
-                                                       "SunVolatileImage,long,int,boolean)");
-    return null;
-  }
+    @Override
+    public Rectangle getBounds() {
+        Rectangle r = peer.getTarget().getBounds();
+        r.x = r.y = 0;
+        return r;
+    }
 
+    @Override
+    public Object getDestination() {
+        return peer.getTarget();
+    }
+
+    public static boolean isAccelerationEnabled() {
+        return false;
+    }
+
+    public static SurfaceData createData(WLGraphicsConfig gc, int width, int height, ColorModel cm,
+                                         SunVolatileImage vImg, long drawable, int opaque,
+                                         boolean b) {
+        log.info("Not implemented: WLSurfaceData.createData(WLGraphicsConfig,int,int,ColorModel," +
+                "SunVolatileImage,long,int,boolean)");
+        return null;
+    }
+
+    public native void revalidate(int width, int height);
 }

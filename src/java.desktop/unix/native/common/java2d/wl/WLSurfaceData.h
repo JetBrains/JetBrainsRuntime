@@ -26,29 +26,11 @@
 
 #include "SurfaceData.h"
 
-typedef struct _WLSDOps WLSDOps;
-
-struct _WLSDOps {
-    SurfaceDataOps      sdOps;
-    jboolean            invalid;
-    jobject             peer;
-    jlong               wlSurface;
-    jlong               wlBuffer;
-    jlong               wlShmPool;
-    int                 fd;
-    uint32_t            *data;
-    jint                dataSize;
-    jint                width;
-    jint                height;
-    jint                bgPixel;
-    jint                pixelStride;
-    pthread_mutex_t     lock;
-    jboolean            isBgInitialized;
-};
+typedef struct WLSDOps WLSDOps;
 
 /*
  * This function returns a pointer to a native WLSDOps structure
- * for accessing the indicated WL SurfaceData Java object.  It
+ * for accessing the indicated WL SurfaceData Java object. It
  * verifies that the indicated SurfaceData object is an instance
  * of WLSurfaceData before returning and will return NULL if the
  * wrong SurfaceData object is being accessed.  This function will

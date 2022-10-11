@@ -39,6 +39,7 @@ import sun.util.logging.PlatformLogger;
 import sun.util.logging.PlatformLogger.Level;
 
 import java.awt.*;
+import java.awt.event.ComponentEvent;
 import java.awt.event.FocusEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.InputMethodEvent;
@@ -56,12 +57,14 @@ import java.util.Objects;
 public class WLComponentPeer implements ComponentPeer {
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.wl.focus.WLComponentPeer");
 
+    private static final String appID = System.getProperty("sun.java.command");
+
     private long nativePtr;
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLComponentPeer");
     protected final Component target;
     protected WLGraphicsConfig graphicsConfig;
     protected Color background;
-    SurfaceData surfaceData;
+    WLSurfaceData surfaceData;
     WLRepaintArea paintArea;
     boolean paintPending = false;
     boolean isLayouting = false;
@@ -69,11 +72,10 @@ public class WLComponentPeer implements ComponentPeer {
 
     int x;
     int y;
-    int width;
-    int height;
-    // used to check if we need to re-create surfaceData.
-    int oldWidth = -1;
-    int oldHeight = -1;
+
+    private final Object sizeLock = new Object();
+    int width;  // protected by sizeLock
+    int height; // protected by sizeLock
 
     static {
         initIDs();
@@ -86,26 +88,30 @@ public class WLComponentPeer implements ComponentPeer {
         this.target = target;
         this.background = target.getBackground();
         initGraphicsConfiguration();
-        this.surfaceData = graphicsConfig.createSurfaceData(this);
-        this.nativePtr = nativeCreateFrame();
-        paintArea = new WLRepaintArea();
         Rectangle bounds = target.getBounds();
         x = bounds.x;
         y = bounds.y;
         width = bounds.width;
         height = bounds.height;
+        this.surfaceData = (WLSurfaceData) graphicsConfig.createSurfaceData(this);
+        this.nativePtr = nativeCreateFrame();
+        paintArea = new WLRepaintArea();
         log.info("WLComponentPeer: target=" + target + " x=" + x + " y=" + y +
                 " width=" + width + " height=" + height);
         // TODO
         // setup parent window for target
     }
 
-    int getWidth() {
+    public int getWidth() {
         return width;
     }
 
-    int getHeight() {
+    public int getHeight() {
         return height;
+    }
+
+    public Color getBackground() {
+        return background;
     }
 
     public final void repaint(int x, int y, int width, int height) {
@@ -213,10 +219,10 @@ public class WLComponentPeer implements ComponentPeer {
         this.visible = v;
         if (this.visible) {
             final String title = target instanceof Frame frame ? frame.getTitle() : null;
-            final String appID = System.getProperty("sun.java.command");
-            nativeShowComponent(nativePtr, getParentNativePtr(target), target.getX(), target.getY(), title, appID);
-            WLToolkit.registerWLSurface(getWLSurface(), this);
-            ((WLSurfaceData) surfaceData).initSurface(this, background != null ? background.getRGB() : 0, target.getWidth(), target.getHeight());
+            nativeCreateWLSurface(nativePtr, getParentNativePtr(target), target.getX(), target.getY(), title, appID);
+            final long wlSurfacePtr = getWLSurface();
+            WLToolkit.registerWLSurface(wlSurfacePtr, this);
+            surfaceData.assignSurface(wlSurfacePtr);
             PaintEvent event = PaintEventDispatcher.getPaintEventDispatcher().
                     createPaintEvent(target, 0, 0, target.getWidth(), target.getHeight());
             if (event != null) {
@@ -224,6 +230,7 @@ public class WLComponentPeer implements ComponentPeer {
             }
         } else {
             WLToolkit.unregisterWLSurface(getWLSurface());
+            surfaceData.assignSurface(0);
             nativeHideFrame(nativePtr);
         }
     }
@@ -284,31 +291,27 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     public void setBounds(int x, int y, int width, int height, int op) {
-        if (this.x != x || this.y != y) {
+        final boolean positionChanged = this.x != x || this.y != y;
+        if (positionChanged) {
             WLRobotPeer.setLocationOfWLSurface(getWLSurface(), x, y);
         }
         this.x = x;
         this.y = y;
-        this.width = width;
-        this.height = height;
-        validateSurface();
-        layout();
-    }
 
-    void validateSurface() {
-        if ((width != oldWidth) || (height != oldHeight)) {
-            doValidateSurface();
-
-            oldWidth = width;
-            oldHeight = height;
+        if (positionChanged) {
+            WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_MOVED));
         }
-    }
 
-    final void doValidateSurface() {
-        SurfaceData oldData = surfaceData;
-        if (oldData != null) {
-            surfaceData = graphicsConfig.createSurfaceData(this);
-            oldData.invalidate();
+        synchronized(sizeLock) {
+            final boolean sizeChanged = this.width != width || this.height != height;
+            if (sizeChanged) {
+                this.width = width;
+                this.height = height;
+                surfaceData.revalidate(width, height);
+                layout();
+
+                WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_RESIZED));
+            }
         }
     }
 
@@ -478,6 +481,7 @@ public class WLComponentPeer implements ComponentPeer {
             return;
         }
         background = c;
+        // TODO: propagate this change to WLSurfaceData
     }
 
     @Override
@@ -603,7 +607,7 @@ public class WLComponentPeer implements ComponentPeer {
 
     protected native long nativeCreateFrame();
 
-    protected native void nativeShowComponent(long ptr, long parentPtr, int x, int y, String title, String appID);
+    protected native void nativeCreateWLSurface(long ptr, long parentPtr, int x, int y, String title, String appID);
 
     protected native void nativeHideFrame(long ptr);
 
