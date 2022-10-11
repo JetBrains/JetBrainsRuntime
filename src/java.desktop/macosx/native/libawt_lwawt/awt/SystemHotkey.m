@@ -469,7 +469,7 @@ bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, NSString
     }
 
     return ((modifiersMask == shortcutMask)
-        || (modifiersMask == (shortcutMask & NSShiftKeyMask)))
+        || (modifiersMask == (shortcutMask | NSShiftKeyMask)))
         && [chars isEqualToString:shortcutCharacter];
 }
 
