@@ -63,7 +63,9 @@ public class WindowPopupApp {
             try {
                 clickToButton(requestFocus ? openFocusedWindow : openNonFocusedWindow);
             } catch (AWTException e) {
-                throw new RuntimeException(e);
+                System.out.println("ERROR: unable to click to button");
+                e.printStackTrace();
+                System.exit(1);
             }
 
             runFocusTrackingApp(javaHome, testDir, requestFocus);
