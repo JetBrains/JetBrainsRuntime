@@ -89,6 +89,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.Semaphore;
 
 /**
  * On events handling: the WLToolkit class creates a thread named "AWT-Wayland"
@@ -112,30 +113,23 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     private static final int WAYLAND_DISPLAY_INTERACTION_TIMEOUT_MS = 50;
 
     /**
-     * Returned by readEvents() to signify the presence of new events
-     * on the default Wayland display queue that have not been dispatched yet.
+     * Returned by readEvents() to signify the presence of events on the default
+     * Wayland display queue that have not been dispatched yet.
      */
     private static final int READ_RESULT_FINISHED_WITH_EVENTS = 0;
 
     /**
-     * Returned by readEvents() to signify the total absence of events
-     * on any of the Wayland display queues.
+     * Returned by readEvents() to signify the absence of events on the default
+     * Wayland display queue.
      */
     private static final int READ_RESULT_FINISHED_NO_EVENTS = 1;
-
-    /**
-     * Returned by readEvents() to signify the absence of *new* events
-     * on the default Wayland display queue. The existing events
-     * should better be dispatched prior to calling readEvents() again.
-     */
-    private static final int READ_RESULT_NO_NEW_EVENTS = 2;
 
     /**
      * Returned by readEvents() in case of an error condition like
      * disappearing of the Wayland display. Errors not specifically
      * related to Wayland are reported via an exception.
      */
-    private static final int READ_RESULT_ERROR = 3;
+    private static final int READ_RESULT_ERROR = 2;
     
     private static final int MOUSE_BUTTONS_COUNT = 3;
     private static final int AWT_MULTICLICK_DEFAULT_TIME_MS = 500;
@@ -196,42 +190,29 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         dispatchNonDefaultQueuesImpl(); // does not return until error or server disconnect
     }
 
+    private final Semaphore eventsQueued = new Semaphore(0);
+
     @Override
     public void run() {
         while(true) {
             int result = readEvents();
-            // TODO: the result of the very first call can theoretically be READ_RESULT_NO_NEW_EVENTS
-            // and that assumes we already have a dispatcher queued, which is initially not so.
-            // Can be solved by queueing dispatch once in the very beginning (?)
-
-            // There's also a problem where we can start waiting in the READ_RESULT_NO_NEW_EVENTS branch,
-            // but at the same time dispatch has just completed. So on the one hand we are ready for
-            // more events, but on the other we will wait for 50ms before getting them. This may hinder
-            // the responsiveness.
-
             if (result == READ_RESULT_ERROR) {
+                log.severe("Wayland protocol I/O error");
                 // TODO: display disconnect handling here?
                 break;
             } else if (result == READ_RESULT_FINISHED_WITH_EVENTS) {
-                SunToolkit.postEvent(AppContext.getAppContext(),
-                        new PeerEvent(this, () -> {
-                            dispatchEventsOnEDT();
-                            synchronized (WLToolkit.this) {
-                                // Finally, processed the entire events queue, can ask for more now.
-                                WLToolkit.this.notifyAll();
-                            }
-                        }, PeerEvent.ULTIMATE_PRIORITY_EVENT));
-            } else if (result == READ_RESULT_NO_NEW_EVENTS) {
-                synchronized (WLToolkit.this) {
+                SunToolkit.postEvent(AppContext.getAppContext(), new PeerEvent(this, () -> {
                     try {
-                        // Give the EDT an opportunity to process the current event queue
-                        // (see above) before requesting yet another dispatch
-                        // on the very next loop iteration. That iteration may exit with
-                        // the same READ_RESULT_NO_NEW_EVENTS thus creating a busy loop
-                        // until EDT finally gets around to dispatching the existing queue.
-                        WLToolkit.this.wait(WAYLAND_DISPLAY_INTERACTION_TIMEOUT_MS);
-                    } catch (InterruptedException ignored) {
+                        dispatchEventsOnEDT();
+                    } finally {
+                        eventsQueued.release();
                     }
+                }, PeerEvent.ULTIMATE_PRIORITY_EVENT));
+                try {
+                    eventsQueued.acquire();
+                } catch (InterruptedException e) {
+                    log.severe("Wayland protocol I/O thread interrupted");
+                    break;
                 }
             }
         }

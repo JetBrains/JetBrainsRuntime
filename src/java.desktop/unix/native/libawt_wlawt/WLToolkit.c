@@ -847,9 +847,8 @@ Java_sun_awt_wl_WLToolkit_readEvents
     // lock the queue for this thread.
     rc = wl_display_prepare_read(wl_display);
     if (rc != 0) {
-        // Ask the caller to give dispatchEventsOnEDT() more time to process
-        // the default queue before calling us again.
-        return sun_awt_wl_WLToolkit_READ_RESULT_NO_NEW_EVENTS;
+        // There are existing events on the default queue
+        return sun_awt_wl_WLToolkit_READ_RESULT_FINISHED_WITH_EVENTS;
     }
 
     rc = wl_flush_to_server(env);
