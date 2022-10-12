@@ -21,6 +21,15 @@
 # @build WindowPopupApp
 # @run shell PreventStealingFocusTest.sh
 
+# Description
+# WindowPopupApp.java creates a simple Swing application (WindowPopupApp) that schedules opening a new window
+# in 5 seconds with requesting focus or not depending on the `requestFocus` property value.
+# Right after the scheduling of the window opening, the application starts another Swing application
+# FocusTrackingApp.java (FocusTrackingApp) that simulates keyboard input into a text field.
+# FocusTrackingApp checks for loss of focus and takes a screenshot.
+# Once FocusTrackingApp is finished, the WindowPopupApp checks for the exit code of FocusTrackingApp
+# and made a simple screenshot analysis to verify that there are no artifacts from WindowPopupApp.
+
 echo "Launching WindowPopupApp..."
 echo "WindowPopupApp is going to request focus"
 echo "> $TESTJAVA/bin/java $TESTVMOPTS -DrequestFocus=true -cp $TESTCLASSES WindowPopupApp"
@@ -28,7 +37,7 @@ $TESTJAVA/bin/java $TESTVMOPTS -DrequestFocus=true -cp $TESTCLASSES WindowPopupA
 result1=$?
 
 echo "Launching WindowPopupApp..."
-echo "WindowPopupApp isn't going to request focus"
+echo "WindowPopupApp without requesting focus"
 echo "> $TESTJAVA/bin/java $TESTVMOPTS -DrequestFocus=false -cp $TESTCLASSES WindowPopupApp"
 $TESTJAVA/bin/java $TESTVMOPTS -DrequestFocus=false -cp $TESTCLASSES WindowPopupApp
 result2=$?
