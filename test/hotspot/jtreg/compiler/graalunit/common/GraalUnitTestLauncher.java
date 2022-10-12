@@ -264,7 +264,7 @@ public class GraalUnitTestLauncher {
         javaFlags.add("@"+GENERATED_TESTCLASSES_FILENAME);
 
         ProcessBuilder javaPB = ProcessTools.createJavaProcessBuilder(true,
-                javaFlags.toArray(new String[javaFlags.size()]));
+                javaFlags);
         System.out.println("INFO: run command: " + String.join(" ", javaPB.command()));
 
         OutputAnalyzer outputAnalyzer = new OutputAnalyzer(javaPB.start());

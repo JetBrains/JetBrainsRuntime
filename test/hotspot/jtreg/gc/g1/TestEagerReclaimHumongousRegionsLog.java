@@ -53,7 +53,7 @@ public class TestEagerReclaimHumongousRegionsLog {
     private static final String LogSeparator = ": ";
 
     public static void runTest() throws Exception {
-        final String[] arguments = {
+        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
             "-Xbootclasspath/a:.",
             "-XX:+UnlockExperimentalVMOptions",
             "-XX:+UnlockDiagnosticVMOptions",
@@ -63,10 +63,7 @@ public class TestEagerReclaimHumongousRegionsLog {
             "-Xms128M",
             "-Xmx128M",
             "-Xlog:gc+phases=trace,gc+heap=info",
-            GCTest.class.getName()
-            };
-
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(arguments);
+            GCTest.class.getName());
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
 
         output.shouldHaveExitValue(0);

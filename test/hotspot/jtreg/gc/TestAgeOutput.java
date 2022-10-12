@@ -84,7 +84,7 @@ public class TestAgeOutput {
     }
 
     public static void runTest(String gcArg) throws Exception {
-        final String[] arguments = {
+        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
             "-Xbootclasspath/a:.",
             "-XX:+UnlockExperimentalVMOptions",
             "-XX:+UnlockDiagnosticVMOptions",
@@ -92,10 +92,7 @@ public class TestAgeOutput {
             "-XX:+" + gcArg,
             "-Xmx10M",
             "-Xlog:gc+age=trace",
-            GCTest.class.getName()
-            };
-
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(arguments);
+            GCTest.class.getName());
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
 
         output.shouldHaveExitValue(0);

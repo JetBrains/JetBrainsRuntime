@@ -104,10 +104,7 @@ public class TestShrinkAuxiliaryData {
     }
 
     private void performTest(List<String> opts) throws Exception {
-        ProcessBuilder pb
-                = ProcessTools.createJavaProcessBuilder(true,
-                        opts.toArray(new String[opts.size()])
-                );
+        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(true, opts);
 
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         System.out.println(output.getStdout());

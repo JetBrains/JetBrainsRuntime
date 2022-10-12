@@ -108,21 +108,18 @@ public class TestInstanceKlassSize {
                                               " java.lang.Thread",
                                               " java.lang.Byte",
                                           };
-            String[] toolArgs = {
+            ProcessBuilder processBuilder = ProcessTools.createJavaProcessBuilder(
                 "--add-modules=jdk.hotspot.agent",
                 "--add-exports=jdk.hotspot.agent/sun.jvm.hotspot=ALL-UNNAMED",
                 "--add-exports=jdk.hotspot.agent/sun.jvm.hotspot.utilities=ALL-UNNAMED",
                 "--add-exports=jdk.hotspot.agent/sun.jvm.hotspot.oops=ALL-UNNAMED",
                 "--add-exports=jdk.hotspot.agent/sun.jvm.hotspot.debugger=ALL-UNNAMED",
                 "TestInstanceKlassSize",
-                Long.toString(app.getPid())
-            };
+                Long.toString(app.getPid()));
 
             OutputAnalyzer jcmdOutput = jcmd(
                            app.getPid(),
                            "GC.class_stats", "VTab,ITab,OopMap,KlassBytes");
-            ProcessBuilder processBuilder = ProcessTools
-                                            .createJavaProcessBuilder(toolArgs);
             SATestUtils.addPrivilegesIfNeeded(processBuilder);
             output = ProcessTools.executeProcess(processBuilder);
             System.out.println(output.getOutput());

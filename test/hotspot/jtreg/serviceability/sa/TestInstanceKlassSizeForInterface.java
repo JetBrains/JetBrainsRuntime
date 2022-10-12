@@ -97,20 +97,16 @@ public class TestInstanceKlassSizeForInterface {
     private static void createAnotherToAttach(
                             String[] instanceKlassNames,
                             int lingeredAppPid) throws Exception {
-
-        String[] toolArgs = {
+        // Start a new process to attach to the LingeredApp process to get SA info
+        ProcessBuilder processBuilder = ProcessTools.createJavaProcessBuilder(
             "--add-modules=jdk.hotspot.agent",
             "--add-exports=jdk.hotspot.agent/sun.jvm.hotspot=ALL-UNNAMED",
             "--add-exports=jdk.hotspot.agent/sun.jvm.hotspot.utilities=ALL-UNNAMED",
             "--add-exports=jdk.hotspot.agent/sun.jvm.hotspot.oops=ALL-UNNAMED",
             "--add-exports=jdk.hotspot.agent/sun.jvm.hotspot.debugger=ALL-UNNAMED",
             "TestInstanceKlassSizeForInterface",
-            Integer.toString(lingeredAppPid)
-        };
+            Integer.toString(lingeredAppPid));
 
-        // Start a new process to attach to the LingeredApp process
-        ProcessBuilder processBuilder = ProcessTools
-                  .createJavaProcessBuilder(toolArgs);
         SATestUtils.addPrivilegesIfNeeded(processBuilder);
         OutputAnalyzer SAOutput = ProcessTools.executeProcess(processBuilder);
         SAOutput.shouldHaveExitValue(0);
