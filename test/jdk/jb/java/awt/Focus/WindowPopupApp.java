@@ -95,10 +95,9 @@ public class WindowPopupApp {
                 }
 
                 int code = process.waitFor();
-                System.out.printf("Focus tracking app has finished with exit code=%d%n", code);
 
                 if (code == 0) {
-                    System.out.println("Focus tracking app has finished successfully");
+                    System.out.println("Focus tracking app has been successfully finished");
                 } else if (code == 1) {
                     System.out.println("ERROR: focus tracking app have been lost the focus during the execution");
                 } else {
