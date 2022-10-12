@@ -114,7 +114,7 @@ public class WindowPopupApp {
                     System.out.println("ERROR: FocusTrackingApp internal error");
                 }
 
-                boolean result = analyzeScreenshot(focusWasRequested);
+                boolean result = isScreenshotHasArtifacts(focusWasRequested);
                 if (code == 0 && result) {
                     System.out.println("TEST PASSED");
                     System.exit(0);
@@ -129,7 +129,7 @@ public class WindowPopupApp {
         });
     }
 
-    private static boolean analyzeScreenshot(boolean focusWasRequested) throws IOException {
+    private static boolean isScreenshotHasArtifacts(boolean focusWasRequested) throws IOException {
         final String workingDir = System.getenv("PWD");
         final String nameSuffix = focusWasRequested ? "with-focus-requesting" : "without-focus-requesting";
         final String fileName = String.format("FocusTrackingApp_screenshot_%s.bmp", nameSuffix);
