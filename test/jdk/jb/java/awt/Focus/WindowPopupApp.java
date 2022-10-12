@@ -25,6 +25,16 @@ import java.io.InputStreamReader;
 import java.nio.file.Paths;
 import java.util.concurrent.*;
 
+/**
+* Description
+* An application to verify JBR-2496
+* This class creates a simple Swing application that schedules opening a new window in 5 seconds 
+* with requesting focus or not depending on the `requestFocus` property value.
+* Right after the scheduling of the window opening, the application starts another Swing application `FocusTrackingApp` 
+* that simulates keyboard input into a text field. FocusTrackingApp checks for loss of focus and takes a screenshot.
+* Once FocusTrackingApp is finished, the WindowPopupApp checks for the exit code of FocusTrackingApp 
+* and made a simple screenshot analysis to verify that there are no artifacts from WindowPopupApp.
+*/
 public class WindowPopupApp {
 
     private static final String FOCUS_TRACKING_APP_CLASS_NAME = "FocusTrackingApp.java";
