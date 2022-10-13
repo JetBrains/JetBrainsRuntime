@@ -120,18 +120,26 @@ void GetFontsAndGlyphsForCharacters(CTFontRef font, CTFontRef fallbackBase,
         CGGlyph glyph = glyphs[i];
         if (glyph > 0 && (!hasVariationSelector || glyphs[i + codePointSize] > 0)) {
             glyphsAsInts[i] = glyph;
+            if (actualFonts) actualFonts[i] = nil;
             continue;
         }
 
-        const CTFontRef fallback = JRSFontCreateFallbackFontForCharacters(fallbackBase, &unicodes[i], size);
+        CTFontRef fallback = JRSFontCreateFallbackFontForCharacters(fallbackBase, &unicodes[i], size);
         if (fallback) {
             CTFontGetGlyphsForCharacters(fallback, &unicodes[i], &glyphs[i], size);
             glyph = glyphs[i];
-            if (actualFonts && glyph > 0) {
-                actualFonts[i] = fallback;
-            } else {
-                CFRelease(fallback);
+        } else if (hasVariationSelector) { // Try without variation selector
+            fallback = JRSFontCreateFallbackFontForCharacters(fallbackBase, &unicodes[i], codePointSize);
+            if (fallback) {
+                CTFontGetGlyphsForCharacters(fallback, &unicodes[i], &glyphs[i], codePointSize);
+                glyph = glyphs[i];
             }
+        }
+        if (actualFonts && glyph > 0) {
+            actualFonts[i] = fallback;
+        } else {
+            if (actualFonts) actualFonts[i] = nil;
+            if (fallback) CFRelease(fallback);
         }
 
         if (glyph > 0) {
@@ -190,9 +198,12 @@ CGGlyph CTS_CopyGlyphAndFontNamesForCodePoint
     bool substitutionHappened = glyphsAsInts[0] < 0;
     if (glyph > 0 && substitutionHappened) {
         CTFontRef actualFont = actualFonts[0];
-        CFStringRef fontName = CTFontCopyPostScriptName(actualFont);
-        CFStringRef familyName = CTFontCopyFamilyName(actualFont);
-        CFRelease(actualFont);
+        CFStringRef fontName = nil, familyName = nil;
+        if (actualFont) {
+            fontName = CTFontCopyPostScriptName(actualFont);
+            familyName = CTFontCopyFamilyName(actualFont);
+            CFRelease(actualFont);
+        }
         fontNames[0] = fontName;
         fontNames[1] = familyName;
         if (!fontName || !familyName) glyph = 0;
