@@ -68,11 +68,6 @@ final class ScreenMenuPropertyListener implements PropertyChangeListener {
             return;
         }
 
-        if ("accelerator.text".equals(propertyName)) {
-            fMenu.setAcceleratorText((String)e.getNewValue());
-            return;
-        }
-
         if (AbstractButton.TEXT_CHANGED_PROPERTY.equals(propertyName)) {
             fMenu.setLabel((String)e.getNewValue());
             return;
