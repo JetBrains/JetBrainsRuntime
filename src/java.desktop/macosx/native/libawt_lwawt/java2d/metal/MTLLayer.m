@@ -85,7 +85,9 @@
         self.displayLinkCount--;
     }
 
-    if (self.ctx == NULL || self.javaLayer == NULL || self.buffer == nil || self.ctx.device == nil) {
+    if (self.ctx == NULL || self.javaLayer == NULL || self.buffer == NULL || *self.buffer == nil ||
+        self.ctx.device == nil)
+    {
         J2dTraceLn4(J2D_TRACE_VERBOSE,
                     "MTLLayer.blitTexture: uninitialized (mtlc=%p, javaLayer=%p, buffer=%p, devide=%p)", self.ctx,
                     self.javaLayer, self.buffer, ctx.device);
@@ -97,7 +99,7 @@
         return;
     }
     @autoreleasepool {
-        if ((self.buffer.width == 0) || (self.buffer.height == 0)) {
+        if (((*self.buffer).width == 0) || ((*self.buffer).height == 0)) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: cannot create drawable of size 0");
             [self stopDisplayLink];
             return;
@@ -105,8 +107,8 @@
 
         NSUInteger src_x = self.leftInset * self.contentsScale;
         NSUInteger src_y = self.topInset * self.contentsScale;
-        NSUInteger src_w = self.buffer.width - src_x;
-        NSUInteger src_h = self.buffer.height - src_y;
+        NSUInteger src_w = (*self.buffer).width - src_x;
+        NSUInteger src_h = (*self.buffer).height - src_y;
 
         if (src_h <= 0 || src_w <= 0) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: Invalid src width or height.");
@@ -132,7 +134,7 @@
         id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
 
         [blitEncoder
-                copyFromTexture:self.buffer sourceSlice:0 sourceLevel:0
+                copyFromTexture:(*self.buffer) sourceSlice:0 sourceLevel:0
                 sourceOrigin:MTLOriginMake(src_x, src_y, 0)
                 sourceSize:MTLSizeMake(src_w, src_h, 1)
                 toTexture:mtlDrawable.texture destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(0, 0, 0)];
@@ -157,11 +159,11 @@
         MTLSize threadgroupSize = MTLSizeMake(w, h, 1);
         MTLSize threadgroupCount;
 
-        threadgroupCount.width  = (buffer.width - src_x + threadgroupSize.width - 1) / threadgroupSize.width;
-        threadgroupCount.height = (buffer.height - src_y + threadgroupSize.height - 1) / threadgroupSize.height;
+        threadgroupCount.width  = (*buffer.width - src_x + threadgroupSize.width - 1) / threadgroupSize.width;
+        threadgroupCount.height = (*buffer.height - src_y + threadgroupSize.height - 1) / threadgroupSize.height;
         threadgroupCount.depth = 1;
 
-        [computeEncoder setTexture:buffer atIndex:0];
+        [computeEncoder setTexture:*buffer atIndex:0];
         [computeEncoder setTexture:mtlDrawable.texture atIndex:1];
         struct InsetsUniforms uniforms = {src_x, src_y};
         [computeEncoder setBytes:&uniforms length:sizeof(struct InsetsUniforms) atIndex:2];
@@ -190,6 +192,7 @@
     [self stopDisplayLink];
     CVDisplayLinkRelease(self.displayLink);
     self.displayLink = nil;
+    self.buffer = NULL;
     [super dealloc];
 }
 
@@ -284,13 +287,13 @@ Java_sun_java2d_metal_MTLLayer_validate
         BMTLSDOps *bmtlsdo = (BMTLSDOps*) SurfaceData_GetOps(env, surfaceData);
         layer.bufferWidth = bmtlsdo->width;
         layer.bufferHeight = bmtlsdo->width;
-        layer.buffer = bmtlsdo->pTexture;
+        layer.buffer = &bmtlsdo->pTexture;
         layer.ctx = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->context;
         layer.device = layer.ctx.device;
         layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
         layer.drawableSize =
-            CGSizeMake(layer.buffer.width,
-                       layer.buffer.height);
+            CGSizeMake((*layer.buffer).width,
+                       (*layer.buffer).height);
         [layer startDisplayLink];
     } else {
         layer.ctx = NULL;
