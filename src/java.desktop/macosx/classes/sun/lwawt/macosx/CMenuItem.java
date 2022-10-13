@@ -104,10 +104,6 @@ public class CMenuItem extends CMenuComponent implements MenuItemPeer {
         setLabel(label, (char)0, KeyEvent.VK_UNDEFINED, 0);
     }
 
-    public void setAcceleratorText(String acceleratorText) {
-        execute(ptr -> nativeSetAcceleratorText(ptr, acceleratorText));
-    }
-
     /**
      * This is new API that we've added to AWT menu items
      * because AWT menu items are used for Swing screen menu bars
@@ -154,7 +150,6 @@ public class CMenuItem extends CMenuComponent implements MenuItemPeer {
     private native void nativeSetImage(long modelPtr, long image);
     private native void nativeSetTooltip(long modelPtr, String text);
     private native void nativeSetEnabled(long modelPtr, boolean b);
-    private native void nativeSetAcceleratorText(long modelPtr, String acceleratorText);
 
     // native callbacks
     void handleAction(final long when, final int modifiers) {
