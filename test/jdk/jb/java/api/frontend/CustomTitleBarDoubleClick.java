@@ -45,7 +45,7 @@ public class CustomTitleBarDoubleClick implements WindowListener, WindowStateLis
 
     JFrame frame;
     Robot robot;
-    boolean stateChanged;
+    volatile boolean stateChanged;
 
     public static void main(final String[] args) {
         CustomTitleBarDoubleClick app = new CustomTitleBarDoubleClick();
