@@ -319,7 +319,7 @@ public:
   MulReductionVLNode(Node *ctrl, Node* in1, Node* in2) : ReductionNode(ctrl, in1, in2) {}
   virtual int Opcode() const;
   virtual const Type* bottom_type() const { return TypeLong::LONG; }
-  virtual uint ideal_reg() const { return Op_RegI; }
+  virtual uint ideal_reg() const { return Op_RegL; }
 };
 
 //------------------------------MulReductionVFNode--------------------------------------
