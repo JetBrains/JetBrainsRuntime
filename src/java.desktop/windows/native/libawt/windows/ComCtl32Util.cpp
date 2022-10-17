@@ -26,6 +26,9 @@
 #include "awt.h"
 #include "ComCtl32Util.h"
 
+// jbs #4194823
+#include "awt_Frame.h"
+
 ComCtl32Util::ComCtl32Util() {
     m_bToolTipControlInitialized = FALSE;
 }
@@ -61,12 +64,26 @@ void ComCtl32Util::UnsubclassHWND(HWND hwnd, WNDPROC _WindowProc, WNDPROC _DefWi
 }
 
 LRESULT ComCtl32Util::DefWindowProc(WNDPROC _DefWindowProc, HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    Jbs4194823Logger::FunctionScope logger{
+        (msg == WM_KEYDOWN) || (msg == WM_SYSKEYDOWN) || (msg == WM_KEYUP) || (msg == WM_SYSKEYUP) || ((msg >= WM_AWT_COMPONENT_CREATE) && (msg <= WM_SYNC_WAIT)),
+        __FILE__, __LINE__, __func__, hwnd, msg, wParam, lParam
+    };
+
     if (IS_WINXP) {
-        return ::DefSubclassProc(hwnd, msg, wParam, lParam);
+        logger.log("::DefSubclassProc(hwnd, msg, wParam, lParam) is being called...");
+        const LRESULT result = ::DefSubclassProc(hwnd, msg, wParam, lParam);
+        logger.logAtExit("<- ", result);
+        return result;
     } else if (_DefWindowProc != NULL) {
-        return ::CallWindowProc(_DefWindowProc, hwnd, msg, wParam, lParam);
+        logger.log("::CallWindowProc(_DefWindowProc, hwnd, msg, wParam, lParam) is being called...");
+        const LRESULT result = ::CallWindowProc(_DefWindowProc, hwnd, msg, wParam, lParam);
+        logger.logAtExit("<- ", result);
+        return result;
     } else {
-        return ::DefWindowProc(hwnd, msg, wParam, lParam);
+        logger.log("::DefWindowProc(hwnd, msg, wParam, lParam) is being called...");
+        const LRESULT result = ::DefWindowProc(hwnd, msg, wParam, lParam);
+        logger.logAtExit("<- ", result);
+        return result;
     }
 }
 

@@ -2129,6 +2129,13 @@ MsgRouting AwtWindow::WmGetIcon(WPARAM iconType, LRESULT& retValue)
 
 LRESULT AwtWindow::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
+    Jbs4194823Logger::FunctionScope logger{
+        (message == WM_KEYDOWN) || (message == WM_SYSKEYDOWN) || (message == WM_KEYUP) || (message == WM_SYSKEYUP) || ((message >= WM_AWT_COMPONENT_CREATE) && (message <= WM_SYNC_WAIT)),
+        __FILE__, __LINE__, __func__, message, wParam, lParam
+    };
+
+    logger.log("this=", this);
+
     MsgRouting mr = mrDoDefault;
     LRESULT retValue = 0L;
 
@@ -2176,8 +2183,11 @@ LRESULT AwtWindow::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
     }
 
     if (mr != mrConsume) {
+        logger.log("mr (", mr, ") != mrConsume ; retValue=", retValue);
         retValue = AwtCanvas::WindowProc(message, wParam, lParam);
     }
+
+    logger.logAtExit("<- ", retValue);
     return retValue;
 }
 

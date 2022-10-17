@@ -452,14 +452,25 @@ LRESULT AwtFrame::ProxyWindowProc(UINT message, WPARAM wParam, LPARAM lParam, Ms
 
 LRESULT AwtFrame::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
+    Jbs4194823Logger::FunctionScope logger{
+        (message == WM_KEYDOWN) || (message == WM_SYSKEYDOWN) || (message == WM_KEYUP) || (message == WM_SYSKEYUP) || ((message >= WM_AWT_COMPONENT_CREATE) && (message <= WM_SYNC_WAIT)),
+        __FILE__, __LINE__, __func__, message, wParam, lParam
+    };
+
+    logger.log("this=", this);
+
     MsgRouting mr = mrDoDefault;
     LRESULT retValue = 0L;
 
     retValue = ProxyWindowProc(message, wParam, lParam, mr);
 
+    logger.log("mr=", mr, " ; ", "retValue=", retValue);
+
     if (mr != mrConsume) {
         retValue = AwtWindow::WindowProc(message, wParam, lParam);
     }
+
+    logger.logAtExit("<- ", retValue);
     return retValue;
 }
 
@@ -2280,4 +2291,112 @@ static bool SetFocusToPluginControl(HWND hwndPlugin)
         return (::SendMessage(hwndPlugin, WM_AX_REQUEST_FOCUS_TO_EMBEDDER, 0, 0) == 0);
     }
     return true;
+}
+
+
+// jbs #4194823
+
+thread_local int Jbs4194823Logger::FunctionScope::level_ = 0;
+
+
+Jbs4194823Logger::FunctionScope::~FunctionScope()
+{
+    if (!enabled_)
+        return;
+
+    level_ = (level_ < 2) ? 0 : level_ - 1;
+
+    if (level_ == 0)
+        instance_.log("");
+}
+
+
+char* Jbs4194823Logger::FunctionScope::forceLogImpl1(char* buffer, char arg) const &
+{
+    const int written = sprintf(buffer, "%c", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+
+char* Jbs4194823Logger::FunctionScope::forceLogImpl1(char* buffer, bool arg) const &
+{
+    return forceLogImpl1(buffer, arg ? "true" : "false");
+}
+
+
+char* Jbs4194823Logger::FunctionScope::forceLogImpl1(char* buffer, short arg) const &
+{
+    const int written = sprintf(buffer, "%hd", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+char* Jbs4194823Logger::FunctionScope::forceLogImpl1(char* buffer, unsigned short arg) const &
+{
+    const int written = sprintf(buffer, "%hu", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+
+char* Jbs4194823Logger::FunctionScope::forceLogImpl1(char* buffer, int arg) const &
+{
+    const int written = sprintf(buffer, "%d", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+char* Jbs4194823Logger::FunctionScope::forceLogImpl1(char* buffer, unsigned int arg) const &
+{
+    const int written = sprintf(buffer, "%u", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+
+char* Jbs4194823Logger::FunctionScope::forceLogImpl1(char* buffer, long arg) const &
+{
+    const int written = sprintf(buffer, "%ld", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+char* Jbs4194823Logger::FunctionScope::forceLogImpl1(char* buffer, unsigned long arg) const &
+{
+    const int written = sprintf(buffer, "%lu", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+
+char* Jbs4194823Logger::FunctionScope::forceLogImpl1(char* buffer, long long arg) const &
+{
+    const int written = sprintf(buffer, "%lld", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+char* Jbs4194823Logger::FunctionScope::forceLogImpl1(char* buffer, unsigned long long arg) const &
+{
+    const int written = sprintf(buffer, "%llu", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+
+char* Jbs4194823Logger::FunctionScope::forceLogImpl1(char* buffer, const char* arg) const &
+{
+    const int written = (arg == nullptr) ? 0 : sprintf(buffer, "%s", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+
+char* Jbs4194823Logger::FunctionScope::forceLogImpl1(char* buffer, const void* arg) const &
+{
+    const int written = sprintf(buffer, "0x%p", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+
+Jbs4194823Logger Jbs4194823Logger::instance_;
+
+
+Jbs4194823Logger::Jbs4194823Logger() = default;
+
+
+void Jbs4194823Logger::log(const char* str)
+{
+    fprintf(stderr, "%s\n", str);
 }

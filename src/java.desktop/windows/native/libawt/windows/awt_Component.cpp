@@ -389,13 +389,24 @@ LRESULT CALLBACK AwtComponent::WndProc(HWND hWnd, UINT message,
 {
     TRY;
 
+    Jbs4194823Logger::FunctionScope logger{
+        (message == WM_KEYDOWN) || (message == WM_SYSKEYDOWN) || (message == WM_KEYUP) || (message == WM_SYSKEYUP) || ((message >= WM_AWT_COMPONENT_CREATE) && (message <= WM_SYNC_WAIT)),
+        __FILE__, __LINE__, __func__, hWnd, message, wParam, lParam
+    };
+
     AwtComponent * self = AwtComponent::GetComponentImpl(hWnd);
+    logger.log("self=", self, " ; ", "self->GetHWnd()=", (self == NULL) ? self->GetHWnd() : nullptr);
+
     if (self == NULL || self->GetHWnd() != hWnd ||
         message == WM_UNDOCUMENTED_CLIENTSHUTDOWN) // handle log-off gracefully
     {
-        return ComCtl32Util::GetInstance().DefWindowProc(NULL, hWnd, message, wParam, lParam);
+        const LRESULT result = ComCtl32Util::GetInstance().DefWindowProc(NULL, hWnd, message, wParam, lParam);
+        logger.logAtExit("<- ", result);
+        return result;
     } else {
-        return self->WindowProc(message, wParam, lParam);
+        const LRESULT result = self->WindowProc(message, wParam, lParam);
+        logger.logAtExit("<- ", result);
+        return result;
     }
 
     CATCH_BAD_ALLOC_RET(0);
@@ -1359,6 +1370,13 @@ static BOOL IsDefaultTouch()
  */
 LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
+    Jbs4194823Logger::FunctionScope logger{
+        (message == WM_KEYDOWN) || (message == WM_SYSKEYDOWN) || (message == WM_KEYUP) || (message == WM_SYSKEYUP) || ((message >= WM_AWT_COMPONENT_CREATE) && (message <= WM_SYNC_WAIT)),
+        __FILE__, __LINE__, __func__, message, wParam, lParam
+    };
+
+    logger.log("this=", this);
+
     CounterHelper ch(&m_MessagesProcessing);
 
     JNILocalFrame lframe(AwtToolkit::GetEnv(), 10);
@@ -1380,6 +1398,7 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
     }
 
     static const BOOL PROCESS_TOUCH_EVENTS = !IsDefaultTouch();
+    logger.log("PROCESS_TOUCH_EVENTS=", PROCESS_TOUCH_EVENTS);
 
     DWORD curPos = 0;
 
@@ -2028,6 +2047,8 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
     if (mr != mrConsume) {
         retValue = DefWindowProc(message, wParam, lParam);
     }
+
+    logger.logAtExit("<- ", retValue);
 
     return retValue;
 }
@@ -3772,22 +3793,49 @@ UINT AwtComponent::WindowsKeyToJavaChar(UINT wkey, UINT modifiers, TransOps ops,
 MsgRouting AwtComponent::WmKeyDown(UINT wkey, UINT repCnt,
                                    UINT flags, BOOL system)
 {
+    Jbs4194823Logger::FunctionScope logger{
+        true,
+        __FILE__, __LINE__, __func__, wkey, repCnt, flags, system
+    };
+
+    logger.log("this=", this);
+
     // VK_PROCESSKEY is a special value which means
     //          "Current IME wants to consume this KeyEvent"
     // Real key code is saved by IMM32.DLL and can be retrieved by
     // calling ImmGetVirtualKey();
     if (wkey == VK_PROCESSKEY) {
+        logger.log("wkey == VK_PROCESSKEY");
+        logger.logAtExit("<- mrDoDefault");
         return mrDoDefault;
     }
     MSG msg;
     InitMessage(&msg, (system ? WM_SYSKEYDOWN : WM_KEYDOWN),
                              wkey, MAKELPARAM(repCnt, flags));
 
+    logger.log("msg: ",
+        "hwnd=",    msg.hwnd, " ; ",
+        "message=", msg.message, " ; ",
+        "wParam=",  msg.wParam, " ; ",
+        "lParam=",  msg.lParam, " ; ",
+        "time=",    msg.time, " ; ",
+        "pt={",     msg.pt.x, ",", msg.pt.y, "}"
+    );
+
     UINT modifiers = GetJavaModifiers();
     jint keyLocation = GetKeyLocation(wkey, flags);
     BOOL isDeadKey = FALSE;
     UINT character = WindowsKeyToJavaChar(wkey, modifiers, SAVE, isDeadKey);
     UINT jkey = WindowsKeyToJavaKey(wkey, modifiers, character, isDeadKey);
+
+    logger.log(
+        "modifiers=",   modifiers, " ; ",
+        "keyLocation=", keyLocation, " ; ",
+        "isDeadKey=",   isDeadKey, " ; ",
+        "character=",   character, " ; ",
+        "jkey=",        jkey
+    );
+
     UpdateDynPrimaryKeymap(wkey, jkey, keyLocation, modifiers);
 
 
@@ -3807,6 +3855,8 @@ MsgRouting AwtComponent::WmKeyDown(UINT wkey, UINT repCnt,
                                  character, modifiers,
                                  java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN, (jlong)0);
     }
+
+    logger.logAtExit("<- mrConsume");
 
     return mrConsume;
 }
@@ -5108,6 +5158,14 @@ void AwtComponent::RemoveChild(UINT id) {
 void AwtComponent::SendKeyEvent(jint id, jlong when, jint raw, jint cooked,
                                 jint modifiers, jint keyLocation, jlong nativeCode, MSG *pMsg)
 {
+    Jbs4194823Logger::FunctionScope logger{
+        true,
+        __FILE__, __LINE__, __func__,
+        id, when, raw, cooked, modifiers, keyLocation, nativeCode, pMsg
+    };
+
+    logger.log("this=", this);
+
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
     CriticalSection::Lock l(GetLock());
     if (GetPeer(env) == NULL) {
@@ -5121,6 +5179,8 @@ void AwtComponent::SendKeyEvent(jint id, jlong when, jint raw, jint cooked,
         DASSERT(keyEventClsLocal);
         if (keyEventClsLocal == NULL) {
             /* exception already thrown */
+            logger.log("keyEventClsLocal == NULL");
+            logger.logAtExit("<- void");
             return;
         }
         keyEventCls = (jclass)env->NewGlobalRef(keyEventClsLocal);
@@ -5135,6 +5195,8 @@ void AwtComponent::SendKeyEvent(jint id, jlong when, jint raw, jint cooked,
         CHECK_NULL(keyEventConst);
     }
     if (env->EnsureLocalCapacity(2) < 0) {
+        logger.log("env->EnsureLocalCapacity(2) < 0");
+        logger.logAtExit("<- void");
         return;
     }
     jobject target = GetTarget(env);
@@ -5145,7 +5207,9 @@ void AwtComponent::SendKeyEvent(jint id, jlong when, jint raw, jint cooked,
     DASSERT(!safe_ExceptionOccurred(env));
     DASSERT(keyEvent != NULL);
     if (keyEvent == NULL) {
+        logger.log("keyEvent == NULL");
         env->DeleteLocalRef(target);
+        logger.logAtExit("<- void");
         return;
     }
     env->SetLongField(keyEvent, AwtKeyEvent::rawCodeID, nativeCode);
@@ -5163,10 +5227,14 @@ void AwtComponent::SendKeyEvent(jint id, jlong when, jint raw, jint cooked,
     if (pMsg != NULL) {
         AwtAWTEvent::saveMSG(env, pMsg, keyEvent);
     }
+
+    logger.log("SendEvent(keyEvent) is being called...");
     SendEvent(keyEvent);
 
     env->DeleteLocalRef(keyEvent);
     env->DeleteLocalRef(target);
+
+    logger.logAtExit("<- void");
 }
 
 void
@@ -5176,15 +5244,28 @@ AwtComponent::SendKeyEventToFocusOwner(jint id, jlong when,
                                        jlong nativeCode,
                                        MSG *msg)
 {
+    Jbs4194823Logger::FunctionScope logger{
+        true,
+        __FILE__, __LINE__, __func__,
+        id, when, raw, cooked, modifiers, keyLocation, nativeCode, msg
+    };
+
+    logger.log("this=", this);
+
     /*
      * if focus owner is null, but focused window isn't
      * we will send key event to focused window
      */
     HWND hwndTarget = ((sm_focusOwner != NULL) ? sm_focusOwner : AwtComponent::GetFocusedWindow());
+    logger.log("hwndTarget=", hwndTarget, " ; ", "sm_focusOwner=", sm_focusOwner);
 
     if (hwndTarget == GetHWnd()) {
+        logger.log("hwndTarget == GetHWnd()");
+
         SendKeyEvent(id, when, raw, cooked, modifiers, keyLocation, nativeCode, msg);
     } else {
+        logger.log("hwndTarget != GetHWnd() ; GetHWnd()=", GetHWnd());
+
         AwtComponent *target = NULL;
         if (hwndTarget != NULL) {
             target = AwtComponent::GetComponent(hwndTarget);
@@ -5192,11 +5273,16 @@ AwtComponent::SendKeyEventToFocusOwner(jint id, jlong when,
                 target = this;
             }
         }
+
+        logger.log("target=", target);
+
         if (target != NULL) {
             target->SendKeyEvent(id, when, raw, cooked, modifiers,
               keyLocation, nativeCode, msg);
         }
     }
+
+    logger.logAtExit("<- void");
 }
 
 void AwtComponent::SetDragCapture(UINT flags)
