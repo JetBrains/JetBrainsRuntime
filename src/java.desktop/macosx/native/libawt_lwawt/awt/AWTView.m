@@ -386,12 +386,12 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
     NSString *captureNextAppWinKey = [PropertiesUtilities javaSystemPropertyForKey:@"apple.awt.captureNextAppWinKey"
                                                                            withEnv:env];
-    if ([@"false" isCaseInsensitiveLike:captureNextAppWinKey]) {
-        return NO;
-    } else {
+    if ([@"true" isCaseInsensitiveLike:captureNextAppWinKey]) {
         NSUInteger deviceIndependentModifierFlagsMask =
             [event modifierFlags] & NSDeviceIndependentModifierFlagsMask;
         return isSystemShortcut_NextWindowInApplication(deviceIndependentModifierFlagsMask, [event characters]);
+    } else {
+        return NO;
     }
 }
 
