@@ -1,7 +1,9 @@
 package sun.awt.wl;
 
-import java.awt.GraphicsConfiguration;
-import java.awt.GraphicsDevice;
+import sun.awt.AWTAccessor;
+import sun.awt.X11ComponentPeer;
+
+import java.awt.*;
 
 public class WLGraphicsDevice extends GraphicsDevice {
     private double scale = 1.0;
@@ -28,7 +30,43 @@ public class WLGraphicsDevice extends GraphicsDevice {
         return config;
     }
 
+    @Override
+    public boolean isFullScreenSupported() {
+        return true;
+    }
+
+    public void setFullScreenWindow(Window w) {
+        Window old = getFullScreenWindow();
+        if (w == old) {
+            return;
+        }
+
+        super.setFullScreenWindow(w);
+
+        if (isFullScreenSupported()) {
+            if (w != null) {
+                enterFullScreenExclusive(w);
+            } else {
+                exitFullScreenExclusive(old);
+            }
+        }
+    }
+
     public double getScaleFactor() {
         return scale;
+    }
+
+    private void enterFullScreenExclusive(Window w) {
+        WLComponentPeer peer = AWTAccessor.getComponentAccessor().getPeer(w);
+        if (peer != null) {
+            peer.requestFullScreen();
+        }
+    }
+
+    private void exitFullScreenExclusive(Window w) {
+        WLComponentPeer peer = AWTAccessor.getComponentAccessor().getPeer(w);
+        if (peer != null) {
+            peer.requestUnsetFullScreen();
+        }
     }
 }

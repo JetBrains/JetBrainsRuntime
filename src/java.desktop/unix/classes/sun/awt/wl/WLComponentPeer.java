@@ -578,28 +578,40 @@ public class WLComponentPeer implements ComponentPeer {
         throw new UnsupportedOperationException();
     }
 
-    protected final void setFrameTitle(String title) {
+    final void setFrameTitle(String title) {
         Objects.requireNonNull(title);
         if (nativePtr != 0) {
             nativeSetTitle(nativePtr, title);
         }
     }
 
-    protected final void requestMinimized() {
+    final void requestMinimized() {
         if (nativePtr != 0) {
             nativeRequestMinimized(nativePtr);
         }
     }
 
-    protected final void requestMaximized() {
+    final void requestMaximized() {
         if (nativePtr != 0) {
             nativeRequestMaximized(nativePtr);
         }
     }
 
-    protected final void requestUnmaximized() {
+    final void requestUnmaximized() {
         if (nativePtr != 0) {
             nativeRequestUnmaximized(nativePtr);
+        }
+    }
+
+    final void requestFullScreen() {
+        if (nativePtr != 0) {
+            nativeRequestFullScreen(nativePtr);
+        }
+    }
+
+    final void requestUnsetFullScreen() {
+        if (nativePtr != 0) {
+            nativeRequestUnsetFullScreen(nativePtr);
         }
     }
 
@@ -619,6 +631,8 @@ public class WLComponentPeer implements ComponentPeer {
     private native void nativeRequestMinimized(long ptr);
     private native void nativeRequestMaximized(long ptr);
     private native void nativeRequestUnmaximized(long ptr);
+    private native void nativeRequestFullScreen(long ptr);
+    private native void nativeRequestUnsetFullScreen(long ptr);
 
     static long getParentNativePtr(Component target) {
         Component parent = target.getParent();

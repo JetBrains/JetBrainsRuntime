@@ -176,7 +176,7 @@ xkbcommon_bind_sym(JNIEnv *env, const char* sym_name)
 static bool
 xkbcommon_load(JNIEnv *env)
 {
-    void * handle = dlopen(JNI_LIB_NAME("xkbcommon"),RTLD_LAZY | RTLD_LOCAL);
+    void * handle = dlopen(JNI_LIB_NAME("xkbcommon"), RTLD_LAZY | RTLD_LOCAL);
     if (!handle) {
         JNU_ThrowByNameWithMessageAndLastError(env, "java/lang/UnsatisfiedLinkError",
                                                JNI_LIB_NAME("xkbcommon"));

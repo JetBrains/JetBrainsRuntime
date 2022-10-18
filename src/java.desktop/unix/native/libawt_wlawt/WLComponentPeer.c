@@ -41,6 +41,7 @@
 static jfieldID nativePtrID;
 static jmethodID postWindowClosingMID;
 static jmethodID postWindowActivatedMID;
+static jmethodID postWindowResizedMID;
 
 struct WLFrame {
     jobject nativeFramePeer; // weak reference
@@ -101,20 +102,34 @@ PostWindowActivated(struct WLFrame* frame)
 }
 
 static void
+PostWindowResized(struct WLFrame* frame, int32_t width, int32_t height)
+{
+    JNIEnv *env = getEnv();
+    const jobject nativeFramePeer = (*env)->NewLocalRef(env, frame->nativeFramePeer);
+    if (nativeFramePeer) {
+        (*env)->CallVoidMethod(env, nativeFramePeer, postWindowResizedMID, width, height);
+        (*env)->DeleteLocalRef(env, nativeFramePeer);
+        JNU_CHECK_EXCEPTION(env);
+    }
+}
+
+static void
 xdg_toplevel_configure(void *data,
                        struct xdg_toplevel *xdg_toplevel,
                        int32_t width,
                        int32_t height,
                        struct wl_array *states)
 {
-    J2dTrace3(J2D_TRACE_INFO, "WLComponentPeer: xdg_toplevel_configure(%p, %d, %d)\n", xdg_toplevel, width, height);
+    J2dTrace3(J2D_TRACE_INFO, "WLComponentPeer: xdg_toplevel_configure(%p, %d, %d)\n",
+              xdg_toplevel, width, height);
 
     struct WLFrame *wlFrame = (struct WLFrame*)data;
     assert(wlFrame);
 
     if (width != 0 || height !=0) {
-        // TODO: notify of size change
-
+        // This is the only way to react to, for example, a request
+        // to maximize a window.
+        PostWindowResized(wlFrame, width, height);
     }
 
     uint32_t *p;
@@ -194,6 +209,9 @@ Java_sun_awt_wl_WLFramePeer_initIDs
     CHECK_NULL_THROW_IE(env,
                         postWindowClosingMID = (*env)->GetMethodID(env, clazz, "postWindowClosing", "()V"),
                         "Failed to find method WLFramePeer.postWindowClosing");
+    CHECK_NULL_THROW_IE(env,
+                        postWindowResizedMID = (*env)->GetMethodID(env, clazz, "postWindowResized", "(II)V"),
+                        "Failed to find method WLFramePeer.postWindowResized");
 }
 
 JNIEXPORT jlong JNICALL
@@ -263,6 +281,30 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestMaximized
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     xdg_toplevel_set_maximized(frame->xdg_toplevel);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLComponentPeer_nativeRequestUnmaximized
+        (JNIEnv *env, jobject obj, jlong ptr)
+{
+    struct WLFrame *frame = jlong_to_ptr(ptr);
+    xdg_toplevel_unset_maximized(frame->xdg_toplevel);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLComponentPeer_nativeRequestFullScreen
+        (JNIEnv *env, jobject obj, jlong ptr)
+{
+    struct WLFrame *frame = jlong_to_ptr(ptr);
+    xdg_toplevel_set_fullscreen(frame->xdg_toplevel, NULL);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLComponentPeer_nativeRequestUnsetFullScreen
+        (JNIEnv *env, jobject obj, jlong ptr)
+{
+    struct WLFrame *frame = jlong_to_ptr(ptr);
+    xdg_toplevel_unset_fullscreen(frame->xdg_toplevel);
 }
 
 JNIEXPORT void JNICALL

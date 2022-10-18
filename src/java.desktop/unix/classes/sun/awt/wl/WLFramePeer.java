@@ -122,7 +122,7 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
 
             if ((newState & Frame.MAXIMIZED_BOTH) != 0) {
                 if ((state & Frame.MAXIMIZED_BOTH) == 0) {
-                    state &= Frame.MAXIMIZED_BOTH;
+                    state = Frame.MAXIMIZED_BOTH;
                     requestMaximized();
                 }
             }
@@ -157,7 +157,7 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
 
     @Override
     public void toFront() {
-        throw new UnsupportedOperationException();
+        //throw new UnsupportedOperationException();
     }
 
     @Override
@@ -217,5 +217,10 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
     private void postWindowActivated() {
         // called from native code
         WLToolkit.postEvent(new WindowEvent((Window) target, WindowEvent.WINDOW_ACTIVATED));
+    }
+
+    private void postWindowResized(int width, int height) {
+        // called from native code
+        target.setSize(width, height);
     }
 }
