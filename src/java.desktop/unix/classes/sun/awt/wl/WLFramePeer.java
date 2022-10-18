@@ -26,6 +26,7 @@
 package sun.awt.wl;
 
 import java.awt.*;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.FramePeer;
@@ -36,10 +37,13 @@ import sun.util.logging.PlatformLogger;
 public class WLFramePeer extends WLComponentPeer implements FramePeer {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLFramePeer");
 
+    private final WLFrameDecoration decoration;
+
     private int state; // Guarded by getStateLock()
 
     public WLFramePeer(Frame target) {
         super(target);
+        decoration = target.isUndecorated() ? null : new WLFrameDecoration(this);
     }
 
     @Override
@@ -64,7 +68,7 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
 
     @Override
     public Insets getInsets() {
-        return new Insets(0, 0, 0, 0);
+        return decoration == null ? new Insets(0, 0, 0, 0) : decoration.getInsets();
     }
 
     @Override
@@ -97,19 +101,12 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
 
     @Override
     public void setResizable(boolean resizeable) {
-        throw new UnsupportedOperationException();
+        repaintClientDecorations();
     }
 
     @Override
     public void setState(int newState) {
         synchronized(getStateLock()) {
-            if (newState == Frame.NORMAL) {
-                if ((state & Frame.MAXIMIZED_BOTH) != 0) {
-                    requestUnmaximized();
-                }
-                state = Frame.NORMAL;
-            }
-
             if ((newState & Frame.ICONIFIED) != 0) {
                 // Per xdg-shell.xml, "There is no way to know if the surface
                 // is currently minimized, nor is there any way to unset
@@ -117,14 +114,11 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
                 // have 'Frame.ICONIFIED' bit set and every
                 // request to iconify will be granted.
                 requestMinimized();
-                state = Frame.NORMAL;
-            }
-
-            if ((newState & Frame.MAXIMIZED_BOTH) != 0) {
-                if ((state & Frame.MAXIMIZED_BOTH) == 0) {
-                    state = Frame.MAXIMIZED_BOTH;
-                    requestMaximized();
-                }
+                AWTAccessor.getFrameAccessor().setExtendedState((Frame) target, newState & ~Frame.ICONIFIED);
+            } else if (newState == Frame.MAXIMIZED_BOTH) {
+                requestMaximized();
+            } else /* Frame.NORMAL */ {
+                requestUnmaximized();
             }
         }
     }
@@ -210,17 +204,37 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
     }
 
     // called from native code
-    private void postWindowClosing() {
+    void postWindowClosing() {
         WLToolkit.postEvent(new WindowEvent((Window) target, WindowEvent.WINDOW_CLOSING));
     }
 
-    private void postWindowActivated() {
-        // called from native code
-        WLToolkit.postEvent(new WindowEvent((Window) target, WindowEvent.WINDOW_ACTIVATED));
+    @Override
+    void postMouseEvent(MouseEvent e) {
+        if (decoration == null) {
+            super.postMouseEvent(e);
+        } else {
+            decoration.processMouseEvent(e);
+        }
     }
 
-    private void postWindowResized(int width, int height) {
-        // called from native code
-        target.setSize(width, height);
+    @Override
+    void notifyConfigured(int width, int height, boolean active, boolean maximized) {
+        if (width != 0 || height != 0) target.setSize(width, height);
+        if (decoration != null) decoration.setActive(active);
+
+        synchronized (getStateLock()) {
+            int oldState = state;
+            state = maximized ? Frame.MAXIMIZED_BOTH : Frame.NORMAL;
+            AWTAccessor.getFrameAccessor().setExtendedState((Frame)target, state);
+            if (state != oldState) {
+                WLToolkit.postEvent(new WindowEvent((Window)target, WindowEvent.WINDOW_STATE_CHANGED, oldState, state));
+                repaintClientDecorations();
+            }
+        }
+    }
+
+    @Override
+    void repaintClientDecorations() {
+        if (decoration != null) decoration.paint();
     }
 }

@@ -55,10 +55,12 @@ struct wl_display *wl_display = NULL;
 struct wl_shm *wl_shm = NULL;
 struct wl_compositor *wl_compositor = NULL;
 struct xdg_wm_base *xdg_wm_base = NULL;
+struct wl_seat     *wl_seat = NULL;
 
-struct wl_seat     *wl_seat;
 struct wl_keyboard *wl_keyboard;
 struct wl_pointer  *wl_pointer;
+
+uint32_t last_mouse_pressed_serial = 0;
 
 static jclass wlToolkitClass;
 static jmethodID dispatchPointerEventMID;
@@ -287,6 +289,9 @@ wl_pointer_button(void *data, struct wl_pointer *wl_pointer, uint32_t serial,
     pointer_event.serial           = serial;
     pointer_event.button           = button,
     pointer_event.state            = state;
+    if (state) {
+        last_mouse_pressed_serial = serial;
+    }
 }
 
 static void

@@ -42,10 +42,13 @@
         }                                       \
     } while(0)                                  \
 
+extern struct wl_seat *wl_seat;
 extern struct wl_display *wl_display;
 extern struct wl_shm *wl_shm;
 extern struct wl_compositor *wl_compositor;
 extern struct xdg_wm_base *xdg_wm_base;
+
+extern uint32_t last_mouse_pressed_serial;
 
 JNIEnv *getEnv();
 

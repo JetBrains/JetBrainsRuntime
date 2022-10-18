@@ -249,119 +249,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         return keyRepeatDelay;
     }
 
-    /**
-     * Creates and posts mouse events based on the given WLPointerEvent received from Wayland,
-     * the freshly updated WLInputState, and the previous WLInputState stored in inputState.
-     */
-    private static void dispatchPointerEventInContext(WLPointerEvent e, WLInputState newInputState) {
-        final WLComponentPeer peer = newInputState.getPeer();
-        if (peer == null)  {
-            log.severe("Surface doesn't map to any component");
-            return; // or else we don't know whom to notify of the event
-        }
-
-        final int x = newInputState.getPointerX();
-        final int y = newInputState.getPointerY();
-        final Point abs = peer.relativePointToAbsolute(new Point(x, y));
-        int xAbsolute = abs.x;
-        int yAbsolute = abs.y;
-        
-        final long timestamp = newInputState.getTimestamp();
-
-        if (e.hasEnterEvent()) {
-            final MouseEvent mouseEvent = new MouseEvent(peer.getTarget(), MouseEvent.MOUSE_ENTERED,
-                    timestamp,
-                    newInputState.getModifiers(),
-                    x, y,
-                    xAbsolute, yAbsolute,
-                    0, false, MouseEvent.NOBUTTON);
-            postEvent(mouseEvent);
-        }
-
-        int clickCount = 0;
-        boolean isPopupTrigger = false;
-        int buttonChanged = MouseEvent.NOBUTTON;
-
-        if (e.hasButtonEvent()) {
-            final WLPointerEvent.PointerButtonCodes buttonCode
-                    = WLPointerEvent.PointerButtonCodes.recognizedOrNull(e.getButtonCode());
-            if (buttonCode != null) {
-                clickCount = newInputState.getClickCount();
-                isPopupTrigger = buttonCode.isPopupTrigger();
-                buttonChanged = buttonCode.javaCode;
-
-                final MouseEvent mouseEvent = new MouseEvent(peer.getTarget(),
-                        e.getIsButtonPressed() ? MouseEvent.MOUSE_PRESSED : MouseEvent.MOUSE_RELEASED,
-                        timestamp,
-                        newInputState.getModifiers(),
-                        x, y,
-                        xAbsolute, yAbsolute,
-                        clickCount,
-                        isPopupTrigger,
-                        buttonChanged);
-                postEvent(mouseEvent);
-
-                final boolean isButtonReleased = !e.getIsButtonPressed();
-                final boolean wasSameButtonPressed = inputState.hasThisPointerButtonPressed(e.getButtonCode());
-                final boolean isButtonClicked = isButtonReleased && wasSameButtonPressed;
-                if (isButtonClicked) {
-                    final MouseEvent mouseClickEvent = new MouseEvent(peer.getTarget(),
-                            MouseEvent.MOUSE_CLICKED,
-                            timestamp,
-                            newInputState.getModifiers(),
-                            x, y,
-                            xAbsolute, yAbsolute,
-                            clickCount,
-                            isPopupTrigger,
-                            buttonChanged);
-                    postEvent(mouseClickEvent);
-                }
-            }
-        }
-        
-        if (e.hasAxisEvent() && e.getIsAxis0Valid()) {
-            final MouseEvent mouseEvent = new MouseWheelEvent(peer.getTarget(),
-                    MouseEvent.MOUSE_WHEEL,
-                    timestamp,
-                    newInputState.getModifiers(),
-                    x, y,
-                    xAbsolute, yAbsolute,
-                    1,
-                    isPopupTrigger,
-                    MouseWheelEvent.WHEEL_UNIT_SCROLL,
-                    1,
-                    e.getAxis0Value());
-            postEvent(mouseEvent);
-        }
-        
-        if (e.hasMotionEvent()) {
-            final MouseEvent mouseEvent = new MouseEvent(peer.getTarget(),
-                    newInputState.hasPointerButtonPressed()
-                            ? MouseEvent.MOUSE_DRAGGED : MouseEvent.MOUSE_MOVED,
-                    timestamp,
-                    newInputState.getModifiers(),
-                    x, y,
-                    xAbsolute, yAbsolute,
-                    clickCount,
-                    isPopupTrigger,
-                    buttonChanged);
-            postEvent(mouseEvent);
-        }
-
-        if (e.hasLeaveEvent()) {
-            final MouseEvent mouseEvent = new MouseEvent(peer.getTarget(),
-                    MouseEvent.MOUSE_EXITED,
-                    timestamp,
-                    newInputState.getModifiers(),
-                    x, y,
-                    xAbsolute, yAbsolute,
-                    clickCount,
-                    isPopupTrigger,
-                    buttonChanged);
-            postEvent(mouseEvent);
-        }
-    }
-
     private static class KeyRepeatManager {
         private Timer keyRepeatTimer;
         private PostKeyEventTask postKeyEventTask;
@@ -457,7 +344,13 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         if (log.isLoggable(PlatformLogger.Level.FINE)) log.fine("dispatchPointerEvent: " + e);
 
         final WLInputState newInputState = inputState.update(e);
-        dispatchPointerEventInContext(e, newInputState);
+        final WLComponentPeer peer = newInputState.getPeer();
+        if (peer == null) {
+            // we don't know whom to notify of the event
+            log.severe("Surface doesn't map to any component");
+        } else {
+            peer.dispatchPointerEventInContext(e, inputState, newInputState);
+        }
         inputState = newInputState;
     }
 

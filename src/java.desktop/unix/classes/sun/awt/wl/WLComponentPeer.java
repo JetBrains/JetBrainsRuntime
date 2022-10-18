@@ -322,6 +322,7 @@ public class WLComponentPeer implements ComponentPeer {
                 this.width = width;
                 this.height = height;
                 surfaceData.revalidate(width, height);
+                repaintClientDecorations();
                 layout();
 
                 WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_RESIZED));
@@ -596,6 +597,7 @@ public class WLComponentPeer implements ComponentPeer {
         Objects.requireNonNull(title);
         if (nativePtr != 0) {
             nativeSetTitle(nativePtr, title);
+            repaintClientDecorations();
         }
     }
 
@@ -640,6 +642,8 @@ public class WLComponentPeer implements ComponentPeer {
     protected native void nativeDisposeFrame(long ptr);
 
     private native long getWLSurface();
+    private native void nativeStartDrag(long ptr);
+    private native void nativeStartResize(long ptr, int edges);
 
     private native void nativeSetTitle(long ptr, String title);
     private native void nativeRequestMinimized(long ptr);
@@ -666,4 +670,127 @@ public class WLComponentPeer implements ComponentPeer {
     Object getStateLock() {
         return state_lock;
     }
+
+    void postMouseEvent(MouseEvent e) {
+        WLToolkit.postEvent(e);
+    }
+
+    /**
+     * Creates and posts mouse events based on the given WLPointerEvent received from Wayland,
+     * the freshly updated WLInputState, and the previous WLInputState.
+     */
+    void dispatchPointerEventInContext(WLPointerEvent e, WLInputState oldInputState, WLInputState newInputState) {
+        final int x = newInputState.getPointerX();
+        final int y = newInputState.getPointerY();
+        final Point abs = relativePointToAbsolute(new Point(x, y));
+        int xAbsolute = abs.x;
+        int yAbsolute = abs.y;
+
+        final long timestamp = newInputState.getTimestamp();
+
+        if (e.hasEnterEvent()) {
+            final MouseEvent mouseEvent = new MouseEvent(getTarget(), MouseEvent.MOUSE_ENTERED,
+                    timestamp,
+                    newInputState.getModifiers(),
+                    x, y,
+                    xAbsolute, yAbsolute,
+                    0, false, MouseEvent.NOBUTTON);
+            postMouseEvent(mouseEvent);
+        }
+
+        int clickCount = 0;
+        boolean isPopupTrigger = false;
+        int buttonChanged = MouseEvent.NOBUTTON;
+
+        if (e.hasButtonEvent()) {
+            final WLPointerEvent.PointerButtonCodes buttonCode
+                    = WLPointerEvent.PointerButtonCodes.recognizedOrNull(e.getButtonCode());
+            if (buttonCode != null) {
+                clickCount = newInputState.getClickCount();
+                isPopupTrigger = buttonCode.isPopupTrigger();
+                buttonChanged = buttonCode.javaCode;
+
+                final MouseEvent mouseEvent = new MouseEvent(getTarget(),
+                        e.getIsButtonPressed() ? MouseEvent.MOUSE_PRESSED : MouseEvent.MOUSE_RELEASED,
+                        timestamp,
+                        newInputState.getModifiers(),
+                        x, y,
+                        xAbsolute, yAbsolute,
+                        clickCount,
+                        isPopupTrigger,
+                        buttonChanged);
+                postMouseEvent(mouseEvent);
+
+                final boolean isButtonReleased = !e.getIsButtonPressed();
+                final boolean wasSameButtonPressed = oldInputState.hasThisPointerButtonPressed(e.getButtonCode());
+                final boolean isButtonClicked = isButtonReleased && wasSameButtonPressed;
+                if (isButtonClicked) {
+                    final MouseEvent mouseClickEvent = new MouseEvent(getTarget(),
+                            MouseEvent.MOUSE_CLICKED,
+                            timestamp,
+                            newInputState.getModifiers(),
+                            x, y,
+                            xAbsolute, yAbsolute,
+                            clickCount,
+                            isPopupTrigger,
+                            buttonChanged);
+                    postMouseEvent(mouseClickEvent);
+                }
+            }
+        }
+
+        if (e.hasAxisEvent() && e.getIsAxis0Valid()) {
+            final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
+                    MouseEvent.MOUSE_WHEEL,
+                    timestamp,
+                    newInputState.getModifiers(),
+                    x, y,
+                    xAbsolute, yAbsolute,
+                    1,
+                    isPopupTrigger,
+                    MouseWheelEvent.WHEEL_UNIT_SCROLL,
+                    1,
+                    e.getAxis0Value());
+            postMouseEvent(mouseEvent);
+        }
+
+        if (e.hasMotionEvent()) {
+            final MouseEvent mouseEvent = new MouseEvent(getTarget(),
+                    newInputState.hasPointerButtonPressed()
+                            ? MouseEvent.MOUSE_DRAGGED : MouseEvent.MOUSE_MOVED,
+                    timestamp,
+                    newInputState.getModifiers(),
+                    x, y,
+                    xAbsolute, yAbsolute,
+                    clickCount,
+                    isPopupTrigger,
+                    buttonChanged);
+            postMouseEvent(mouseEvent);
+        }
+
+        if (e.hasLeaveEvent()) {
+            final MouseEvent mouseEvent = new MouseEvent(getTarget(),
+                    MouseEvent.MOUSE_EXITED,
+                    timestamp,
+                    newInputState.getModifiers(),
+                    x, y,
+                    xAbsolute, yAbsolute,
+                    clickCount,
+                    isPopupTrigger,
+                    buttonChanged);
+            postMouseEvent(mouseEvent);
+        }
+    }
+
+    void startDrag() {
+        nativeStartDrag(nativePtr);
+    }
+
+    void startResize(int edges) {
+        nativeStartResize(nativePtr, edges);
+    }
+
+    void notifyConfigured(int width, int height, boolean active, boolean maximized) {}
+
+    void repaintClientDecorations() {}
 }
