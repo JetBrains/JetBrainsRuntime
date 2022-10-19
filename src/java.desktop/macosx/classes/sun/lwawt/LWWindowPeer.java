@@ -96,6 +96,7 @@ public class LWWindowPeer
     }
 
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.lwawt.focus.LWWindowPeer");
+    private static final PlatformLogger logger = PlatformLogger.getLogger("sun.lwawt.LWWindowPeer");
 
     private final PlatformWindow platformWindow;
 
@@ -685,7 +686,16 @@ public class LWWindowPeer
         setBounds(x, y, w, h, SET_BOUNDS, false, false);
 
         // Second, update the graphics config and surface data
-        final boolean isNewDevice = updateGraphicsDevice();
+        GraphicsDevice newGraphicsDevice = platformWindow.getGraphicsDevice();
+        if (newGraphicsDevice == null) {
+            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                logger.fine("Unable to update graphics device: " +
+                            "platform window graphics device is null");
+            }
+            return;
+        }
+        boolean isNewDevice = updateGraphicsDevice(newGraphicsDevice);
+
         if (isNewDevice && !isMaximizedBoundsSet()) {
             setPlatformMaximizedBounds(getDefaultMaximizedBounds());
         }
@@ -1078,8 +1088,7 @@ public class LWWindowPeer
     /**
      * Returns true if the GraphicsDevice has been changed, false otherwise.
      */
-    public boolean updateGraphicsDevice() {
-        GraphicsDevice newGraphicsDevice = platformWindow.getGraphicsDevice();
+    public boolean updateGraphicsDevice(GraphicsDevice newGraphicsDevice) {
         synchronized (getStateLock()) {
             if (graphicsDevice == newGraphicsDevice) {
                 return false;
@@ -1101,7 +1110,17 @@ public class LWWindowPeer
 
     @Override
     public final void displayChanged() {
-        if (updateGraphicsDevice()) {
+        GraphicsDevice newGraphicsDevice = platformWindow.getGraphicsDevice();
+        if (newGraphicsDevice == null) {
+            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                logger.fine("Unable to update graphics device: " +
+                            "platform window graphics device is null");
+            }
+            return;
+        }
+        boolean isNewDevice = updateGraphicsDevice(newGraphicsDevice);
+
+        if (isNewDevice) {
             updateMinimumSize();
             if (!isMaximizedBoundsSet()) {
                 setPlatformMaximizedBounds(getDefaultMaximizedBounds());
