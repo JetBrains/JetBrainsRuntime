@@ -27,6 +27,7 @@ package java.awt;
 
 import java.awt.image.BufferedImage;
 import java.util.Locale;
+import java.util.function.Supplier;
 
 import sun.awt.PlatformGraphicsInfo;
 import sun.font.FontManager;
@@ -69,6 +70,9 @@ public abstract class GraphicsEnvironment {
     protected GraphicsEnvironment() {
     }
 
+    // JBR API internals
+    private static Supplier<GraphicsEnvironment> graphicsEnvironmentProvider = null;
+
     /**
      * Lazy initialization of local graphics environment using holder idiom.
      */
@@ -86,6 +90,12 @@ public abstract class GraphicsEnvironment {
          * @return the graphics environment
          */
         private static GraphicsEnvironment createGE() {
+            if (graphicsEnvironmentProvider != null) {
+                GraphicsEnvironment overriddenGE = graphicsEnvironmentProvider.get();
+                if (overriddenGE != null)
+                    return overriddenGE;
+            }
+
             GraphicsEnvironment ge = PlatformGraphicsInfo.createGE();
             if (isHeadless()) {
                 ge = new HeadlessGraphicsEnvironment(ge);
@@ -100,6 +110,16 @@ public abstract class GraphicsEnvironment {
      */
     public static GraphicsEnvironment getLocalGraphicsEnvironment() {
         return LocalGE.INSTANCE;
+    }
+
+    // JBR API internals
+    private static void setLocalGraphicsEnvironmentProvider(Supplier<GraphicsEnvironment> geProvider) {
+        graphicsEnvironmentProvider = geProvider;
+    }
+
+    // JBR API internals
+    private static void overrideLocalGraphicsEnvironment(GraphicsEnvironment overriddenGE) {
+        setLocalGraphicsEnvironmentProvider(() -> overriddenGE);
     }
 
     /**
