@@ -73,6 +73,9 @@ public abstract class GraphicsEnvironment {
     protected GraphicsEnvironment() {
     }
 
+    // JBR API internals
+    private static GraphicsEnvironment overriddenGE = null;
+
     /**
      * Lazy initialization of local graphics environment using holder idiom.
      */
@@ -90,6 +93,9 @@ public abstract class GraphicsEnvironment {
          * @return the graphics environment
          */
         private static GraphicsEnvironment createGE() {
+            if (overriddenGE != null) {
+                return overriddenGE;
+            }
             GraphicsEnvironment ge = PlatformGraphicsInfo.createGE();
             if (isHeadless()) {
                 ge = new HeadlessGraphicsEnvironment(ge);
@@ -104,6 +110,11 @@ public abstract class GraphicsEnvironment {
      */
     public static GraphicsEnvironment getLocalGraphicsEnvironment() {
         return LocalGE.INSTANCE;
+    }
+
+    // JBR API internals
+    private static void overrideLocalGraphicsEnvironment(GraphicsEnvironment ge) {
+        overriddenGE = ge;
     }
 
     /**
