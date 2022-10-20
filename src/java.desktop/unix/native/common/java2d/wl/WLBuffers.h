@@ -76,6 +76,8 @@ void WLSBM_Destroy(WLSurfaceBufferManager *);
  */
 void WLSBM_SurfaceAssign(WLSurfaceBufferManager *, struct wl_surface *);
 
+void WLSBM_SurfaceCommit(WLSurfaceBufferManager *);
+
 /**
  * Returns the width of the buffer managed by this
  * WayLand Surface Buffer Manager.

@@ -91,6 +91,7 @@ AssertDrawLockIsHeld(WLSurfaceBufferManager* manager, const char * file, int lin
 #define ASSERT_ON_EDT() AssertCalledOnEDT(__FILE__, __LINE__)
 #define WL_FATAL_ERROR(msg) ReportFatalError(__FILE__, __LINE__, msg)
 #define ASSERT_DRAW_LOCK_IS_HELD(manager) AssertDrawLockIsHeld(manager, __FILE__, __LINE__)
+#define ASSERT_SHOW_LOCK_IS_HELD(manager) AssertShowLockIsHeld(manager, __FILE__, __LINE__)
 
 #define MUTEX_LOCK(m)   if (pthread_mutex_lock(&(m)))   { WL_FATAL_ERROR("Failed to lock mutex"); }
 #define MUTEX_UNLOCK(m) if (pthread_mutex_unlock(&(m))) { WL_FATAL_ERROR("Failed to unlock mutex"); }
@@ -194,10 +195,11 @@ struct WLDrawBuffer {
 struct WLSurfaceBufferManager {
     struct wl_surface * wlSurface;
     int                 backgroundRGB;
-    WLSurfaceBuffer     bufferForShow; // only accessed on EDT
+
+    pthread_mutex_t     showLock;
+    WLSurfaceBuffer     bufferForShow; // only accessed under showLock, mostly on EDT
 
     pthread_mutex_t     drawLock;
-
     WLDrawBuffer        bufferForDraw; // only accessed under drawLock
     jint                width;         // only accessed under drawLock
     jint                height;        // only accessed under drawLock
@@ -209,6 +211,16 @@ AssertDrawLockIsHeld(WLSurfaceBufferManager* manager, const char * file, int lin
 {
     if (pthread_mutex_trylock(&manager->drawLock) == 0) {
         fprintf(stderr, "drawLock not acquired at %s:%d\n", file, line);
+        fflush(stderr);
+        assert(0);
+    }
+}
+
+static inline void
+AssertShowLockIsHeld(WLSurfaceBufferManager* manager, const char * file, int line)
+{
+    if (pthread_mutex_trylock(&manager->showLock) == 0) {
+        fprintf(stderr, "showLock not acquired at %s:%d\n", file, line);
         fflush(stderr);
         assert(0);
     }
@@ -267,7 +279,7 @@ AllocateSharedMemoryFile(size_t size) {
 static inline size_t
 DrawBufferSizeInBytes(WLSurfaceBufferManager * manager)
 {
-    const jint stride = manager->width * sizeof(pixel_t);
+    const jint stride = manager->width * (jint)sizeof(pixel_t);
     return stride * manager->height;
 }
 
@@ -295,10 +307,11 @@ wl_buffer_release(void * data, struct wl_buffer * wl_buffer)
 {
     /* Sent by the compositor when it's no longer using this buffer */
     WLSurfaceBufferManager *manager = (WLSurfaceBufferManager *) data;
-    assert(manager->bufferForShow.state == WL_BUFFER_LOCKED);
 
-    ASSERT_ON_EDT();
+    MUTEX_LOCK(manager->showLock);
+    assert(manager->bufferForShow.state == WL_BUFFER_LOCKED);
     manager->bufferForShow.state = WL_BUFFER_RELEASED;
+    MUTEX_UNLOCK(manager->showLock);
 }
 
 static const struct wl_buffer_listener wl_buffer_listener = {
@@ -325,24 +338,25 @@ static const struct wl_callback_listener wl_frame_callback_listener = {
 static void
 SendToWayland(WLSurfaceBufferManager * manager)
 {
+    ASSERT_SHOW_LOCK_IS_HELD(manager);
+
     if (manager->wlSurface) { // may get called without an associated wl_surface
-        if (manager->bufferForShow.state != WL_BUFFER_LOCKED) {
-            manager->bufferForShow.state = WL_BUFFER_LOCKED;
-            // wl_buffer_listener will release bufferForShow when Wayland's done with it
-            wl_surface_attach(manager->wlSurface, manager->bufferForShow.wlBuffer, 0, 0);
+        assert (manager->bufferForShow.state != WL_BUFFER_LOCKED);
+        manager->bufferForShow.state = WL_BUFFER_LOCKED;
+        // wl_buffer_listener will release bufferForShow when Wayland's done with it
+        wl_surface_attach(manager->wlSurface, manager->bufferForShow.wlBuffer, 0, 0);
 
-            DamageList_SendAll(manager->bufferForShow.damageList, manager->wlSurface);
-            DamageList_FreeAll(manager->bufferForShow.damageList);
-            manager->bufferForShow.damageList = NULL;
+        DamageList_SendAll(manager->bufferForShow.damageList, manager->wlSurface);
+        DamageList_FreeAll(manager->bufferForShow.damageList);
+        manager->bufferForShow.damageList = NULL;
 
-            struct wl_callback *wl_frame_callback = wl_surface_frame(manager->wlSurface);
-            wl_callback_add_listener(wl_frame_callback, &wl_frame_callback_listener, manager);
-            wl_surface_commit(manager->wlSurface);
-        }
+        struct wl_callback *wl_frame_callback = wl_surface_frame(manager->wlSurface);
+        wl_callback_add_listener(wl_frame_callback, &wl_frame_callback_listener, manager);
+        wl_surface_commit(manager->wlSurface);
     }
 }
 
-static void
+static inline void
 CopyDamagedArea(WLSurfaceBufferManager * manager, jint x, jint y, jint width, jint height)
 {
     assert(x >= 0);
@@ -372,14 +386,16 @@ CopyDamagedArea(WLSurfaceBufferManager * manager, jint x, jint y, jint width, ji
  * moves that list to the displaying buffer so that Wayland can get
  * notified of what has changed in the buffer.
  */
-static void
-CopyDamagedAreasToShowBuffer(WLSurfaceBufferManager * manager)
-{
-    ASSERT_ON_EDT();
+static bool
+CopyDamagedAreasToShowBuffer(WLSurfaceBufferManager * manager) {
+    ASSERT_SHOW_LOCK_IS_HELD(manager);
     ASSERT_DRAW_LOCK_IS_HELD(manager);
 
     assert(manager->bufferForShow.damageList == NULL);
 
+    const bool needCommit = manager->sizeChanged
+                            || (manager->bufferForDraw.damageList != NULL)
+                            || manager->bufferForShow.state == WL_BUFFER_NEW;
     if (manager->sizeChanged) {
         manager->sizeChanged = false;
         SurfaceBufferAdjust(manager);
@@ -392,13 +408,14 @@ CopyDamagedAreasToShowBuffer(WLSurfaceBufferManager * manager)
     for (DamageList* l = manager->bufferForShow.damageList; l; l = l->next) {
         CopyDamagedArea(manager, l->x, l->y, l->width, l->height);
     }
+
+    return needCommit;
 }
 
 static void
 BufferShowToWayland(WLSurfaceBufferManager * manager)
 {
-    ASSERT_ON_EDT();
-
+    MUTEX_LOCK(manager->showLock);
     const bool bufferForDrawWasLocked = pthread_mutex_trylock(&manager->drawLock);
     if (bufferForDrawWasLocked) {
         // Can't display the buffer with new pixels, so let's give
@@ -413,16 +430,16 @@ BufferShowToWayland(WLSurfaceBufferManager * manager)
         if (manager->bufferForShow.state == WL_BUFFER_LOCKED) {
             RegisterFrameLost("New buffer is available, but Wayland hasn't released the old one yet");
             pthread_mutex_unlock(&manager->drawLock);
-        } else if (manager->bufferForDraw.damageList == NULL) {
-            // nothing new to show
-            pthread_mutex_unlock(&manager->drawLock);
         } else {
-            CopyDamagedAreasToShowBuffer(manager);
+            const bool doSend = CopyDamagedAreasToShowBuffer(manager);
             pthread_mutex_unlock(&manager->drawLock);
 
-            SendToWayland(manager);
+            if (doSend) {
+                SendToWayland(manager);
+            }
         }
     }
+    MUTEX_UNLOCK(manager->showLock);
 }
 
 static void
@@ -487,6 +504,7 @@ static void
 SurfaceBufferAdjust(WLSurfaceBufferManager * manager)
 {
     assert(manager->bufferForShow.state != WL_BUFFER_LOCKED);
+    ASSERT_SHOW_LOCK_IS_HELD(manager);
     ASSERT_DRAW_LOCK_IS_HELD(manager);
 
     const bool needNewMemory = (DrawBufferSizeInBytes(manager) > ShowBufferSizeInBytes(manager));
@@ -529,6 +547,7 @@ WLSBM_Create(jint width, jint height, jint rgb)
     manager->height = height;
     manager->backgroundRGB = rgb;
 
+    pthread_mutex_init(&manager->showLock, NULL);
     SurfaceBufferCreate(manager, DrawBufferSizeInBytes(manager));
     if (manager->bufferForShow.wlPool == NULL) {
         free(manager);
@@ -549,9 +568,11 @@ WLSBM_SurfaceAssign(WLSurfaceBufferManager * manager, struct wl_surface* wl_surf
 
     manager->wlSurface = wl_surface;
     if (wl_surface) {
+        MUTEX_LOCK(manager->showLock); // to avoid committing half-copied bufferForShow
         struct wl_callback *wl_frame_callback = wl_surface_frame(wl_surface);
         wl_callback_add_listener(wl_frame_callback, &wl_frame_callback_listener, manager);
         wl_surface_commit(manager->wlSurface); // commit the listener assignment
+        MUTEX_UNLOCK(manager->showLock);
     }
 }
 
@@ -560,6 +581,7 @@ WLSBM_Destroy(WLSurfaceBufferManager * manager)
 {
     J2dTrace1(J2D_TRACE_INFO, "WLSBM_Destroy: manger %p\n", manager);
 
+    pthread_mutex_destroy(&manager->showLock);
     SurfaceBufferDestroy(manager, true);
     DrawBufferDestroy(manager);
     pthread_mutex_destroy(&manager->drawLock);
@@ -601,8 +623,15 @@ WLSBM_BufferReturn(WLSurfaceBufferManager * manager, WLDrawBuffer * buffer)
 }
 
 void
+WLSBM_SurfaceCommit(WLSurfaceBufferManager * manager)
+{
+    BufferShowToWayland(manager);
+}
+
+void
 WLSB_Damage(WLDrawBuffer * buffer, jint x, jint y, jint width, jint height)
 {
+    assert(&buffer->manager->bufferForDraw == buffer); // only one buffer currently supported
     ASSERT_DRAW_LOCK_IS_HELD(buffer->manager);
     assert(x >= 0);
     assert(y >= 0);

@@ -254,7 +254,7 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     void paintPeer(final Graphics g) {
-        log.info("Not implemented: WLComponentPeer.paintPeer(Graphics)");
+        // commitToServer();
     }
 
     Graphics getGraphics(SurfaceData surfData, Color afore, Color aback, Font afont) {
@@ -280,6 +280,20 @@ public class WLComponentPeer implements ComponentPeer {
                 target.getForeground(),
                 target.getBackground(),
                 target.getFont());
+    }
+
+    /**
+     * Commits changes accumulated in the underlying SurfaceData object
+     * to the server for displaying on the screen. The request may not be
+     * granted immediately as the server may be busy reading data provided
+     * previously. In the latter case, the commit will happen later when
+     * the server notifies us (through an event on EDT) that the displaying
+     * buffer is ready to accept new data.
+     */
+    void commitToServer() {
+        if (getWLSurface() != 0) {
+            surfaceData.commitToServer();
+        }
     }
 
     public Component getTarget() {
