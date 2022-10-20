@@ -46,6 +46,9 @@ public class JBRApiModule {
                                 "sun.awt.windows.WWindowPeer")
                 .service("com.jetbrains.DesktopActions")
                     .withStatic("setHandler", "setDesktopActionsHandler", "java.awt.Desktop")
-                .clientProxy("java.awt.Desktop$DesktopActionsHandler", "com.jetbrains.DesktopActions$Handler");
+                .clientProxy("java.awt.Desktop$DesktopActionsHandler", "com.jetbrains.DesktopActions$Handler")
+                .service("com.jetbrains.ProjectorUtils")
+                    .withStatic("overrideGraphicsEnvironment", "overrideLocalGraphicsEnvironment", "java.awt.GraphicsEnvironment")
+                    .withStatic("setLocalGraphicsEnvironmentProvider", "setLocalGraphicsEnvironmentProvider", "java.awt.GraphicsEnvironment");
     }
 }
