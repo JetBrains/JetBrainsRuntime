@@ -85,7 +85,7 @@ public final class CGraphicsDevice extends GraphicsDevice
                 if (MTLGraphicsConfig.isMetalUsed()) {
                     // Should not fall back to OpenGL if Metal has been used before
                     // (it could cause CCE during replace of surface data)
-                    throw new InternalError("Error - unable to initialize Metal" +
+                    throw new IllegalStateException("Error - unable to initialize Metal" +
                             " after recreation of graphics device." + errorMessage);
                 }
 
