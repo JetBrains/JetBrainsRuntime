@@ -16,7 +16,7 @@
 
 # @test
 # @summary Regression test for JBR-2496: Prevent JVM stealing focus from other applications on Linux
-# @requires (jdk.version.major >= 11) & (os.family == "linux")
+# @requires jdk.version.major >= 11
 # @author sergey.v.shelomentsev@gmail.com
 # @build WindowPopupApp
 # @run shell PreventStealingFocusTest.sh
@@ -32,14 +32,14 @@
 
 echo "Launching WindowPopupApp..."
 echo "WindowPopupApp is going to request focus"
-echo "> $TESTJAVA/bin/java $TESTVMOPTS -DrequestFocus=true -cp $TESTCLASSES WindowPopupApp"
-$TESTJAVA/bin/java $TESTVMOPTS -DrequestFocus=true -cp $TESTCLASSES WindowPopupApp
+echo "> $TESTJAVA/bin/java${EXE_SUFFIX} $TESTVMOPTS -DrequestFocus=true -cp $TESTCLASSES WindowPopupApp"
+$TESTJAVA/bin/java${EXE_SUFFIX} $TESTVMOPTS -DrequestFocus=true -cp $TESTCLASSES WindowPopupApp
 result1=$?
 
 echo "Launching WindowPopupApp..."
 echo "WindowPopupApp without requesting focus"
-echo "> $TESTJAVA/bin/java $TESTVMOPTS -DrequestFocus=false -cp $TESTCLASSES WindowPopupApp"
-$TESTJAVA/bin/java $TESTVMOPTS -DrequestFocus=false -cp $TESTCLASSES WindowPopupApp
+echo "> $TESTJAVA/bin/java${EXE_SUFFIX} $TESTVMOPTS -DrequestFocus=false -cp $TESTCLASSES WindowPopupApp"
+$TESTJAVA/bin/java${EXE_SUFFIX} $TESTVMOPTS -DrequestFocus=false -cp $TESTCLASSES WindowPopupApp
 result2=$?
 
 result=$(( result1 + result2 ))
