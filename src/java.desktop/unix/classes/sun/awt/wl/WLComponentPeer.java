@@ -186,7 +186,7 @@ public class WLComponentPeer implements ComponentPeer {
 
     @Override
     public boolean isFocusable() {
-        return true;
+        return false;
     }
 
     public boolean requestFocus(Component lightweightChild, boolean temporary,
