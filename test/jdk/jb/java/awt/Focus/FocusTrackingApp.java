@@ -18,6 +18,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -62,9 +63,11 @@ public class FocusTrackingApp {
 
             parentFrame.requestFocus();
 
+            final String textToPrint = getText();
+
             try {
                 textField.requestFocus();
-                initTypingRobot(textField);
+                typeText(textField, textToPrint);
             } catch (AWTException e) {
                 e.printStackTrace();
                 System.exit(3);
@@ -72,7 +75,17 @@ public class FocusTrackingApp {
 
             scheduleTask(() -> {
                 takeScreenshot();
-                int exitCode = focusLost ? 1 : 0;
+
+                final String printedText = textField.getText();
+                boolean isTextMatch = textToPrint.matches(printedText);
+
+                if (!isTextMatch) {
+                    System.out.println("ERROR: Text that was printed to textField don't match to the source");
+                    System.out.printf("Source text: %s%n", textToPrint);
+                    System.out.printf("Printed text: %s%n", printedText);
+                }
+
+                int exitCode = focusLost || !isTextMatch ? 1 : 0;
                 System.exit(exitCode);
             }, 10);
         });
@@ -96,15 +109,24 @@ public class FocusTrackingApp {
         }
     }
 
-    private static void initTypingRobot(JTextField textField) throws AWTException {
+    private static String getText() {
+        StringBuilder sb = new StringBuilder();
+        for (char c = 0x61; c <= 0x7A; c++) {
+            sb.append(c);
+        }
+        return sb.toString();
+    }
+
+    private static void typeText(JTextField textField, String text) throws AWTException {
         Robot robot = new Robot();
         textField.requestFocus();
 
-        for (int c = 0x30; c <= 0x60; c++) {
-            robot.keyPress(c);
-            robot.delay(50);
-            robot.keyRelease(c);
-            robot.delay(50);
+        for (int i = 0; i < text.length(); i++) {
+            int code = KeyEvent.getExtendedKeyCodeForChar(text.charAt(i));
+            robot.keyPress(code);
+            robot.delay(125);
+            robot.keyRelease(code);
+            robot.delay(125);
         }
     }
 
