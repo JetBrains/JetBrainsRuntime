@@ -40,7 +40,7 @@ import java.util.Map;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
 import sun.java2d.SunGraphicsEnvironment;
-import sun.lwawt.macosx.CThreading;
+import sun.util.logging.PlatformLogger;
 
 /**
  * This is an implementation of a GraphicsEnvironment object for the default
@@ -51,6 +51,9 @@ import sun.lwawt.macosx.CThreading;
  * @see GraphicsConfiguration
  */
 public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
+
+    private static final PlatformLogger logger =
+            PlatformLogger.getLogger(CGraphicsEnvironment.class.getName());
 
     /**
      * Fetch an array of all valid CoreGraphics display identifiers.
@@ -162,35 +165,24 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
     private synchronized void initDevices() {
         Map<Integer, CGraphicsDevice> old = new HashMap<>(devices);
         devices.clear();
-        try {
-            mainDisplayID = CThreading.privilegedExecuteOnAppKit(
-                    CGraphicsEnvironment::getMainDisplayID);
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException("Could not get main display ID: " +
-                    e.getMessage() );
-        }
+        mainDisplayID = getMainDisplayID();
 
         // initialization of the graphics device may change list of displays on
         // hybrid systems via an activation of discrete video.
         // So, we initialize the main display first, then retrieve actual list
         // of displays, and then recheck the main display again.
         if (!old.containsKey(mainDisplayID)) {
-            old.put(mainDisplayID, new CGraphicsDevice(mainDisplayID));
+            try {
+                old.put(mainDisplayID, new CGraphicsDevice(mainDisplayID));
+            } catch (IllegalStateException e) {
+                if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                    logger.fine("Unable to initialize graphics device for displayID=" +
+                                mainDisplayID + " : " + e);
+                }
+            }
         }
 
-        int[] displayIDs;
-        try {
-            displayIDs = CThreading.privilegedExecuteOnAppKit(
-                    CGraphicsEnvironment::getDisplayIDs);
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException("Could not get display IDs: " +
-                    e.getMessage());
-        }
-
+        int[] displayIDs = getDisplayIDs();
         if (displayIDs.length == 0) {
             // we could throw AWTError in this case.
             displayIDs = new int[]{mainDisplayID};
