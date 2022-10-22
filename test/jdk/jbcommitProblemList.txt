@@ -6,6 +6,7 @@ java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java nobug
 java/awt/event/KeyEvent/KeyTyped/CtrlSpace.java JBR-3817 windows-all
 java/awt/hidpi/ClientAreaOriginWindowsTest.java JBR-630 windows-all
 java/awt/hidpi/SetMaximizedBoundsTest.java nobug windows-all
+java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java nobug windows-all
 java/awt/Focus/8073453/AWTFocusTransitionTest.java JBR-4354 windows-all,linux-all # linux: JBR-4354
 java/awt/Focus/8073453/SwingFocusTransitionTest.java nobug windows-all
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.javanobug windows-all,linux-all
@@ -36,7 +37,6 @@ java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java nobug windows
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java nobug windows-all
 java/awt/TextArea/OverScrollTest/OverScrollTest.java nobug windows-all
 java/awt/TextField/OverScrollTest/OverScrollTest.java nobug windows-all
-java/awt/Toolkit/RealSync/Test.java nobug windows-all
 java/awt/Window/8159168/SetShapeTest.java nobug windows-all
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java nobug windows-all
 
@@ -47,6 +47,7 @@ javax/swing/Action/8133039/bug8133039.java nobug windows-all
 javax/swing/ButtonGroup/TestButtonGroupFocusTraversal.java nobug windows-all
 javax/swing/dnd/7171812/bug7171812.java nobug windows-all
 javax/swing/event/RightAltKeyTest.java nobug windows-all
+javax/swing/JButton/4659800/SpaceKeyActivatesButton.java JBR-4949 windows-all,linux-all
 javax/swing/JColorChooser/Test6541987.java nobug windows-all
 javax/swing/JColorChooser/Test7194184.java nobug windows-all
 javax/swing/JColorChooser/Test8051548.java nobug windows-all
@@ -76,6 +77,7 @@ javax/swing/JInternalFrame/8069348/bug8069348.java nobug windows-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java nobug windows-all,linux-all
 javax/swing/JInternalFrame/Test6325652.java 8224977 macosx-all,windows-all
 javax/swing/JInternalFrame/Test6505027.java nobug windows-all
+javax/swing/JLabel/4138746/JLabelMnemonicsTest.java JBR-4949 windows-all,linux-all
 javax/swing/JLabel/7004134/bug7004134.java nobug linux-all
 javax/swing/JMenu/4213634/bug4213634.java nobug windows-all
 javax/swing/JMenu/4692443/bug4692443.java nobug windows-all
@@ -114,6 +116,7 @@ javax/swing/JTextField/8036819/bug8036819.java nobug windows-all
 javax/swing/JToolTip/4846413/bug4846413.java nobug windows-all
 javax/swing/JToolTip/6219960/bug6219960.java nobug windows-all
 javax/swing/JTree/4633594/JTreeFocusTest.java 8173125 macosx-all,windows-all
+javax/swing/JTree/4908142/bug4908142.java nobug windows-all,linux-all
 javax/swing/JTree/4927934/bug4927934.java nobug windows-all
 javax/swing/JTree/6263446/bug6263446.java nobug windows-all
 javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java 8159131 linux-all,windows-all
