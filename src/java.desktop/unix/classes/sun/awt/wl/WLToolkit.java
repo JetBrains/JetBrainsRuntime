@@ -978,4 +978,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     static void postEvent(AWTEvent event) {
         SunToolkit.postEvent(AppContext.getAppContext(), event);
     }
+
+    public boolean needUpdateWindow() {
+        return true;
+    }
 }

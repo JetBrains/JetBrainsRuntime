@@ -803,8 +803,8 @@ public class RepaintManager
             Window window = dirty instanceof Window ?
                 (Window)dirty :
                 SwingUtilities.getWindowAncestor(dirty);
-            if (window != null &&
-                !window.isOpaque())
+            final boolean needUpdateCall = Toolkit.class.getName().equals("WLToolkit") || (window != null && !window.isOpaque());
+            if (needUpdateCall)
             {
                 windows.add(window);
             }
@@ -1337,6 +1337,10 @@ public class RepaintManager
                                 x, y, w, h)) {
             g.setClip(x, y, w, h);
             paintingComponent.paintToOffscreen(g, x, y, w, h, x + w, y + h);
+        }
+        final Window window = SwingUtilities.getWindowAncestor(paintingComponent);
+        if (window != null) {
+            AWTAccessor.getWindowAccessor().updateWindow(window);
         }
     }
 

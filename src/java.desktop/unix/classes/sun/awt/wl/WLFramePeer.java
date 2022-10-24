@@ -92,6 +92,7 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
     @Override
     public void setTitle(String title) {
         setFrameTitle(title);
+        postPaintEventForClientDecorations();
     }
 
     @Override
@@ -101,7 +102,7 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
 
     @Override
     public void setResizable(boolean resizeable) {
-        repaintClientDecorations();
+        postPaintEventForClientDecorations();
     }
 
     @Override
@@ -195,7 +196,8 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
 
     @Override
     public void updateWindow() {
-        throw new UnsupportedOperationException();
+        // signals the end of repainting by swing
+        commitToServer();
     }
 
     @Override
@@ -219,7 +221,8 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
 
     @Override
     void notifyConfigured(int width, int height, boolean active, boolean maximized) {
-        if (width != 0 || height != 0) target.setSize(width, height);
+        super.notifyConfigured(width, height, active, maximized);
+        if (width != 0 && height != 0) target.setSize(width, height);
         if (decoration != null) decoration.setActive(active);
 
         synchronized (getStateLock()) {
@@ -228,13 +231,28 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
             AWTAccessor.getFrameAccessor().setExtendedState((Frame)target, state);
             if (state != oldState) {
                 WLToolkit.postEvent(new WindowEvent((Window)target, WindowEvent.WINDOW_STATE_CHANGED, oldState, state));
-                repaintClientDecorations();
+            }
+        }
+    }
+
+    final void postPaintEventForClientDecorations() {
+        if (decoration != null) {
+            final Rectangle bounds = decoration.getBounds();
+            postPaintEvent(getTarget(), bounds.x, bounds.y, bounds.width, bounds.height);
+        }
+    }
+
+    final void paintClientDecorations(final Graphics g) {
+        if (decoration != null) {
+            if (g.getClip().intersects(decoration.getBounds())) {
+                decoration.paint(g);
             }
         }
     }
 
     @Override
-    void repaintClientDecorations() {
-        if (decoration != null) decoration.paint();
+    void paintPeer(final Graphics g) {
+        super.paintPeer(g);
+        paintClientDecorations(g);
     }
 }

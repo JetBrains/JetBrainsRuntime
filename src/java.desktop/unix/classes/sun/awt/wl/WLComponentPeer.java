@@ -114,26 +114,6 @@ public class WLComponentPeer implements ComponentPeer {
         return background;
     }
 
-    public final void repaint(int x, int y, int width, int height) {
-        if (!isVisible() || getWidth() == 0 || getHeight() == 0) {
-            return;
-        }
-        Graphics g = getGraphics();
-        if (g != null) {
-            try {
-                g.setClip(x, y, width, height);
-                if (SunToolkit.isDispatchThreadForAppContext(getTarget())) {
-                    paint(g); // The native and target will be painted in place.
-                } else {
-                    paintPeer(g);
-                    postPaintEvent(target, x, y, width, height);
-                }
-            } finally {
-                g.dispose();
-            }
-        }
-    }
-
     public void postPaintEvent(Component target, int x, int y, int w, int h) {
         PaintEvent event = PaintEventDispatcher.getPaintEventDispatcher().
                 createPaintEvent(target, x, y, w, h);
@@ -154,9 +134,6 @@ public class WLComponentPeer implements ComponentPeer {
         return visible;
     }
 
-    void repaint() {
-        repaint(0, 0, getWidth(), getHeight());
-    }
 
     @Override
     public void reparent(ContainerPeer newContainer) {
@@ -223,11 +200,7 @@ public class WLComponentPeer implements ComponentPeer {
             final long wlSurfacePtr = getWLSurface();
             WLToolkit.registerWLSurface(wlSurfacePtr, this);
             surfaceData.assignSurface(wlSurfacePtr);
-            PaintEvent event = PaintEventDispatcher.getPaintEventDispatcher().
-                    createPaintEvent(target, 0, 0, target.getWidth(), target.getHeight());
-            if (event != null) {
-                WLToolkit.postEvent(WLToolkit.targetToAppContext(event.getSource()), event);
-            }
+            postPaintEvent();
         } else {
             WLToolkit.unregisterWLSurface(getWLSurface());
             surfaceData.assignSurface(0);
@@ -254,7 +227,6 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     void paintPeer(final Graphics g) {
-        // commitToServer();
     }
 
     Graphics getGraphics(SurfaceData surfData, Color afore, Color aback, Font afont) {
@@ -290,7 +262,7 @@ public class WLComponentPeer implements ComponentPeer {
      * the server notifies us (through an event on EDT) that the displaying
      * buffer is ready to accept new data.
      */
-    void commitToServer() {
+    public void commitToServer() {
         if (getWLSurface() != 0) {
             surfaceData.commitToServer();
         }
@@ -322,10 +294,10 @@ public class WLComponentPeer implements ComponentPeer {
                 this.width = width;
                 this.height = height;
                 surfaceData.revalidate(width, height);
-                repaintClientDecorations();
                 layout();
 
                 WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_RESIZED));
+                postPaintEvent();
             }
         }
     }
@@ -333,9 +305,9 @@ public class WLComponentPeer implements ComponentPeer {
     public void coalescePaintEvent(PaintEvent e) {
         Rectangle r = e.getUpdateRect();
         if (!(e instanceof IgnorePaintEvent)) {
-
             paintArea.add(r, e.getID());
         }
+
         if (true) {
             switch (e.getID()) {
                 case PaintEvent.UPDATE:
@@ -597,7 +569,6 @@ public class WLComponentPeer implements ComponentPeer {
         Objects.requireNonNull(title);
         if (nativePtr != 0) {
             nativeSetTitle(nativePtr, title);
-            repaintClientDecorations();
         }
     }
 
@@ -790,7 +761,6 @@ public class WLComponentPeer implements ComponentPeer {
         nativeStartResize(nativePtr, edges);
     }
 
-    void notifyConfigured(int width, int height, boolean active, boolean maximized) {}
-
-    void repaintClientDecorations() {}
+    void notifyConfigured(int width, int height, boolean active, boolean maximized) {
+    }
 }
