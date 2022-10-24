@@ -37,7 +37,6 @@ java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java nobug windows-all
 java/awt/TextArea/OverScrollTest/OverScrollTest.java nobug windows-all
 java/awt/TextField/OverScrollTest/OverScrollTest.java nobug windows-all
 java/awt/Toolkit/RealSync/Test.java nobug windows-all
-java/awt/Toolkit/SunDisplayChangerLeakTest/SunDisplayChangerLeakTest.java JBR-4089 generic-all
 java/awt/Window/8159168/SetShapeTest.java nobug windows-all
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java nobug windows-all
 
