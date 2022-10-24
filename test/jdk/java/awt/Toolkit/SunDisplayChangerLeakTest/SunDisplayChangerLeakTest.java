@@ -27,11 +27,12 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 /*
-  https://youtrack.jetbrains.com/issue/JRE-577
-  @test
-  @summary SunDisplayChanger should not prevent listeners from gc'ing
-  @author anton.tarasov
-  @run main/othervm -Xmx64m -Dswing.bufferPerWindow=true SunDisplayChangerLeakTest
+ * https://youtrack.jetbrains.com/issue/JRE-577
+ * @test
+ * @summary SunDisplayChanger should not prevent listeners from gc'ing
+ * @author anton.tarasov
+ * @modules java.desktop/sun.awt java.desktop/sun.awt.image java.desktop/sun.java2d
+ * @run main/othervm -Xmx64m -Dswing.bufferPerWindow=true SunDisplayChangerLeakTest
 */
 public class SunDisplayChangerLeakTest {
     static int frameCountDown = 20;
