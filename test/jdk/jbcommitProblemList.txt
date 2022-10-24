@@ -45,7 +45,7 @@ javax/imageio/plugins/external_plugin_tests/TestClassPathPlugin.sh nobug generic
 
 
 javax/swing/Action/8133039/bug8133039.java nobug windows-all
-javax/swing/ButtonGroup/TestButtonGroupFocusTraversal nobug windows-all
+javax/swing/ButtonGroup/TestButtonGroupFocusTraversal.java nobug windows-all
 javax/swing/dnd/7171812/bug7171812.java nobug windows-all
 javax/swing/event/RightAltKeyTest.java nobug windows-all
 javax/swing/JColorChooser/Test6541987.java nobug windows-all
@@ -133,7 +133,7 @@ javax/swing/plaf/windows/6921687/bug6921687.java nobug windows-all
 javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java nobug windows-all
 javax/swing/SwingUtilities/7088744/bug7088744.java nobug windows-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java nobug windows-all
-javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java nobug linux-all
+javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java 8194048 windows-all,linux-all nobug: linux, 8194048 windows
 javax/swing/text/DefaultEditorKit/4278839/bug4278839.java nobug windows-all
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java nobug windows-all
 javax/swing/text/JTextComponent/5074573/bug5074573.java nobug windows-all
