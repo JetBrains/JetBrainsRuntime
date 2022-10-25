@@ -732,6 +732,12 @@ javax/swing/plaf/basic/BasicComboPopup/7072653/bug7072653.java 8238720 windows-a
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureGtkTest.java 8282270 linux-all
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8282270 windows-all
 
+# Several tests which fail on some hidpi systems
+java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java 8274106 macosx-aarch64
+java/awt/Window/8159168/SetShapeTest.java 8274106 macosx-aarch64
+java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java 8274106 macosx-aarch64
+javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java 8274106 macosx-aarch64
+
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8225012 windows-all,macosx-all
 
 javax/swing/SwingWorker/6432565/bug6432565.java 8199077 generic-all
