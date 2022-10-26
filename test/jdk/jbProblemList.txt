@@ -978,4 +978,5 @@ jb/sun/awt/macos/NationalLayoutTest/Layout_GERMAN.java JBR-4933 macosx-all
 jb/sun/awt/macos/NationalLayoutTest/Layout_SPANISH_ISO.java JBR-4933 macosx-all
 jb/sun/awt/macos/NationalLayoutTest/Layout_US_INTERNATIONAL_PC.java JBR-4933 macosx-all
 
+jb/javax/swing/JDialog/JDialog392.java JBR-4941 macosx-all
 jb/javax/swing/JDialog/JDialog705.java JBR-4934 generic-all
