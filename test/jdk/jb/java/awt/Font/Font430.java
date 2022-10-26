@@ -66,6 +66,7 @@ public class Font430 extends JFrame implements
     private void addComponentsToPane() {
         editorPane = new JEditorPane("text/html",
                 "<html><head><style>body {font-family:'Segoe UI'; font-size:12pt;}</style></head><body>\u4e2d</body></html>");
+        editorPane.setCaretColor(getBackground());
 
         if (CALL_GET_FONT_METRICS) {
             editorPane.getFontMetrics(new Font("Segoe UI", Font.PLAIN, 12));
