@@ -114,8 +114,8 @@ Java_java_awt_event_MouseEvent_initIDs
 }
 
 struct shared_libs {
-    int      count;
-    int      index;
+    uint32_t count;
+    uint32_t index;
     char **  names;
 };
 
