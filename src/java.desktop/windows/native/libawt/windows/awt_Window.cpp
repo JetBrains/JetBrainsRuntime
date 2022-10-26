@@ -2129,6 +2129,13 @@ MsgRouting AwtWindow::WmGetIcon(WPARAM iconType, LRESULT& retValue)
 
 LRESULT AwtWindow::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
+    Idea302505Logger::FunctionScope logger {
+        (message == WM_ACTIVATE) || (message == WM_MOUSEACTIVATE) || (message == WM_SETFOCUS) || (message == WM_KILLFOCUS) || (message == WM_MOUSEWHEEL) || (message == WM_MOUSEHWHEEL) || (message == WM_VSCROLL) || (message == WM_HSCROLL),
+        __FILE__, __LINE__, __func__, message, wParam, lParam
+    };
+
+    logger.log("this=", this);
+
     MsgRouting mr = mrDoDefault;
     LRESULT retValue = 0L;
 
@@ -2178,6 +2185,8 @@ LRESULT AwtWindow::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
     if (mr != mrConsume) {
         retValue = AwtCanvas::WindowProc(message, wParam, lParam);
     }
+
+    logger.logAtExit("<- ", retValue);
     return retValue;
 }
 

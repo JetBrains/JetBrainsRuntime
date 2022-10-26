@@ -941,4 +941,136 @@ void MoveDCToPassiveList(HDC hDC, HWND hWnd);
 
 #include "ObjectList.h"
 
+
+// IDEA-302505
+
+class Idea302505Logger
+{
+public:
+    class FunctionScope
+    {
+    public:
+        template<typename Arg1, typename... Args>
+        FunctionScope(bool enabled, const char* fileName, const int line, const char* functionName, const Arg1& functionArg1, const Args&... functionArgs)
+                : enabled_(enabled)
+        {
+            if (enabled_) {
+                forceLog(true, level_, "-> ", functionName, "(", functionArg1,
+                         Pair<const char *, Args>(", ", functionArgs)..., ")", " at ", fileName, "(", line, ")");
+                ++level_;
+            }
+        }
+
+        FunctionScope(bool enabled, const char* fileName, const int line, const char* functionName)
+                : enabled_(enabled)
+        {
+            if (enabled_) {
+                forceLog(true, level_, "-> ", functionName, "(", ")", " at ", fileName, "(", line, ")");
+                ++level_;
+            }
+        }
+
+        ~FunctionScope();
+
+    public:
+        template <typename... Args>
+        void log(const Args&... args) const &
+        {
+            if (enabled_) {
+                forceLog(false, level_, args...);
+            }
+        }
+
+        template <typename... Args>
+        void logAtExit(const Args&... args) const &
+        {
+            if (enabled_) {
+                forceLog(false, level_ - 1, args...);
+            }
+        }
+
+    private:
+        template<typename T1, typename T2>
+        struct Pair
+        {
+            T1 first;
+            T2 second;
+
+            Pair(const T1& first, const T2& second)
+                    : first(first), second(second)
+            {}
+        };
+
+    private:
+        static constexpr const char* oneLevelPrefix_ = "  ";
+        static thread_local int level_;
+
+    private:
+        const bool enabled_;
+
+    private:
+        template <typename Arg1, typename... Args>
+        void forceLog(bool addNewLine, int level, Arg1 arg1, Args... args) const &
+        {
+            char buffer[2048] = { 0 };
+            char* bufferPtr = buffer;
+
+            if (addNewLine)
+                *bufferPtr++ = '\n';
+
+            for (int i = 0; i < level; ++i)
+                bufferPtr = forceLogImpl1(bufferPtr, oneLevelPrefix_);
+
+            const auto writer = [this, &bufferPtr](auto arg){
+                bufferPtr = forceLogImpl1(bufferPtr, arg);
+                return true;
+            };
+            const bool dummy[1 + sizeof...(Args)] = { writer(arg1), writer(args)... };
+
+            *bufferPtr = 0;
+
+            instance_.log(buffer);
+        }
+
+    private:
+        char* forceLogImpl1(char* buffer, char arg) const &;
+
+        char* forceLogImpl1(char* buffer, bool arg) const &;
+
+        char* forceLogImpl1(char* buffer, short arg) const &;
+        char* forceLogImpl1(char* buffer, unsigned short arg) const &;
+
+        char* forceLogImpl1(char* buffer, int arg) const &;
+        char* forceLogImpl1(char* buffer, unsigned int arg) const &;
+
+        char* forceLogImpl1(char* buffer, long arg) const &;
+        char* forceLogImpl1(char* buffer, unsigned long arg) const &;
+
+        char* forceLogImpl1(char* buffer, long long arg) const &;
+        char* forceLogImpl1(char* buffer, unsigned long long arg) const &;
+
+        char* forceLogImpl1(char* buffer, double arg) const &;
+
+        char* forceLogImpl1(char* buffer, const char* arg) const &;
+
+        char* forceLogImpl1(char* buffer, const void* arg) const &;
+
+        template<typename T1, typename T2>
+        char* forceLogImpl1(char* buffer, const Pair<T1, T2>& pair) const &
+        {
+            return forceLogImpl1(forceLogImpl1(buffer, pair.first), pair.second);
+        }
+    };
+
+private:
+    static Idea302505Logger instance_;
+
+private:
+    Idea302505Logger();
+
+private:
+    void log(const char* str);
+};
+
+
 #endif /* AWT_COMPONENT_H */

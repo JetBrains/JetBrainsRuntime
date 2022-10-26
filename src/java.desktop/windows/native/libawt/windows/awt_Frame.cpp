@@ -374,10 +374,23 @@ BOOL AwtFrame::IsEmbeddedInIE(HWND hwndParent)
 
 LRESULT AwtFrame::ProxyWindowProc(UINT message, WPARAM wParam, LPARAM lParam, MsgRouting &mr)
 {
+    Idea302505Logger::FunctionScope logger {
+        (message == WM_ACTIVATE) || (message == WM_MOUSEACTIVATE) || (message == WM_SETFOCUS) || (message == WM_KILLFOCUS) || (message == WM_MOUSEWHEEL) || (message == WM_MOUSEHWHEEL) || (message == WM_VSCROLL) || (message == WM_HSCROLL),
+        __FILE__, __LINE__, __func__, message, wParam, lParam, &mr
+    };
+
+    logger.log("this=", this);
+
     LRESULT retValue = 0L;
 
     AwtComponent *focusOwner = NULL;
     AwtComponent *imeTargetComponent = NULL;
+
+    logger.log(
+        "sm_inSynthesizeFocus=", sm_inSynthesizeFocus, " ; ",
+        "sm_suppressFocusAndActivation=", sm_suppressFocusAndActivation, " ; ",
+        "sm_restoreFocusAndActivation=", sm_restoreFocusAndActivation
+    );
 
     // IME and input language related messages need to be sent to a window
     // which has the Java input focus
@@ -411,16 +424,21 @@ LRESULT AwtFrame::ProxyWindowProc(UINT message, WPARAM wParam, LPARAM lParam, Ms
             }
             break;
         case WM_SETFOCUS:
+            logger.log("case WM_SETFOCUS");
+
             if (sm_inSynthesizeFocus) break; // pass it up the WindowProc chain
 
             if (!sm_suppressFocusAndActivation) {
                 if (IsLightweightFrame() || IsEmbeddedFrame()) {
+                    logger.log("AwtSetActiveWindow is being called...");
                     AwtSetActiveWindow();
                 }
             }
             mr = mrConsume;
             break;
         case WM_KILLFOCUS:
+            logger.log("case WM_KILLFOCUS");
+
             if (sm_inSynthesizeFocus) break; // pass it up the WindowProc chain
 
             if (!sm_suppressFocusAndActivation) {
@@ -447,19 +465,33 @@ LRESULT AwtFrame::ProxyWindowProc(UINT message, WPARAM wParam, LPARAM lParam, Ms
             break;
     }
 
+    logger.log("mr=", mr);
+
+    logger.logAtExit("<- ", retValue);
     return retValue;
 }
 
 LRESULT AwtFrame::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
+    Idea302505Logger::FunctionScope logger {
+        (message == WM_ACTIVATE) || (message == WM_MOUSEACTIVATE) || (message == WM_SETFOCUS) || (message == WM_KILLFOCUS) || (message == WM_MOUSEWHEEL) || (message == WM_MOUSEHWHEEL) || (message == WM_VSCROLL) || (message == WM_HSCROLL),
+        __FILE__, __LINE__, __func__, message, wParam, lParam
+    };
+
+    logger.log("this=", this);
+
     MsgRouting mr = mrDoDefault;
     LRESULT retValue = 0L;
 
     retValue = ProxyWindowProc(message, wParam, lParam, mr);
 
     if (mr != mrConsume) {
+        logger.log("mr != mrConsume");
         retValue = AwtWindow::WindowProc(message, wParam, lParam);
     }
+
+    logger.logAtExit("<- ", retValue);
+
     return retValue;
 }
 

@@ -997,8 +997,14 @@ public class BasicScrollPaneUI
         // MouseWheelListener
         //
         public void mouseWheelMoved(MouseWheelEvent e) {
+            new Throwable("BasicScrollPaneUI.Handler.mouseWheelMoved: " + e.hashCode() + "@" + e).printStackTrace();
+
+            System.err.printf("  scrollpane=%s%n", scrollpane);
+
             if (scrollpane.isWheelScrollingEnabled() &&
                 e.getWheelRotation() != 0) {
+                System.err.println("  if (scrollpane.isWheelScrollingEnabled() && e.getWheelRotation() != 0)");
+
                 JScrollBar toScroll = scrollpane.getVerticalScrollBar();
                 int direction = e.getWheelRotation() < 0 ? -1 : 1;
                 int orientation = SwingConstants.VERTICAL;
@@ -1015,8 +1021,21 @@ public class BasicScrollPaneUI
 
                 e.consume();
 
+                System.err.printf(
+                    """
+                        toScroll=%s
+                        direction=%d
+                        orientation=%d
+                    """,
+                    toScroll, direction, orientation
+                );
+
                 if (e.getScrollType() == MouseWheelEvent.WHEEL_UNIT_SCROLL) {
+                    System.err.println("    if (e.getScrollType() == MouseWheelEvent.WHEEL_UNIT_SCROLL)");
+
                     JViewport vp = scrollpane.getViewport();
+                    System.err.printf("      vp=%s%n", vp);
+
                     if (vp == null) { return; }
                     Component comp = vp.getView();
                     int units = Math.abs(e.getUnitsToScroll());
@@ -1033,8 +1052,21 @@ public class BasicScrollPaneUI
                     // Check if we should use the visibleRect trick
                     Object fastWheelScroll = toScroll.getClientProperty(
                                                "JScrollBar.fastWheelScrolling");
+
+                    System.err.printf(
+                        """
+                              comp=%s
+                              units=%d
+                              limitScroll=%b
+                              fastWheelScroll=%s
+                        """,
+                        comp, units, limitScroll, fastWheelScroll
+                    );
+
                     if (Boolean.TRUE == fastWheelScroll &&
                         comp instanceof Scrollable) {
+                        System.err.println("      if (Boolean.TRUE == fastWheelScroll && comp instanceof Scrollable)");
+
                         // 5078454: Under maximum acceleration, we may scroll
                         // by many 100s of units in ~1 second.
                         //
@@ -1121,13 +1153,19 @@ public class BasicScrollPaneUI
                         }
                         // Set the final view position on the ScrollBar
                         if (orientation == SwingConstants.VERTICAL) {
+                            System.err.println("        if (orientation == SwingConstants.VERTICAL)");
+
                             toScroll.setValue(viewRect.y);
                         }
                         else {
+                            System.err.println("        else");
                             if (leftToRight) {
+                                System.err.println("          if (leftToRight");
+
                                 toScroll.setValue(viewRect.x);
                             }
                             else {
+                                System.err.println("          else");
                                 // rightToLeft scrollbars are oriented with
                                 // minValue on the right and maxValue on the
                                 // left.
@@ -1144,6 +1182,7 @@ public class BasicScrollPaneUI
                         }
                     }
                     else {
+                        System.err.println("      else");
                         // Viewport's view is not a Scrollable, or fast wheel
                         // scrolling is not enabled.
                         BasicScrollBarUI.scrollByUnits(toScroll, direction,
@@ -1152,6 +1191,7 @@ public class BasicScrollPaneUI
                 }
                 else if (e.getScrollType() ==
                          MouseWheelEvent.WHEEL_BLOCK_SCROLL) {
+                    System.err.println("    else if (e.getScrollType() == MouseWheelEvent.WHEEL_BLOCK_SCROLL)");
                     BasicScrollBarUI.scrollByBlock(toScroll, direction);
                 }
             }

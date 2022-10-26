@@ -2259,6 +2259,10 @@ public class Container extends Component {
      * @param e the event
      */
     protected void processEvent(AWTEvent e) {
+        if (e instanceof MouseWheelEvent) {
+            System.err.printf("Container.processEvent: %d@%s%n", e.hashCode(), e);
+        }
+
         if (e instanceof ContainerEvent) {
             processContainerEvent((ContainerEvent)e);
             return;
@@ -2307,6 +2311,17 @@ public class Container extends Component {
      * @param e the event
      */
     void dispatchEventImpl(AWTEvent e) {
+        if (e instanceof MouseWheelEvent mwe) {
+            System.err.printf(
+                """
+                Container.dispatchEventImpl: %d@%s
+                  dispatcher=%s
+                  peer=%s
+                """,
+                mwe.hashCode(), mwe, dispatcher, peer
+            );
+        }
+
         if ((dispatcher != null) && dispatcher.dispatchEvent(e)) {
             // event was sent to a lightweight component.  The
             // native-produced event sent to the native container
@@ -2345,6 +2360,9 @@ public class Container extends Component {
      * @param e the event
      */
     void dispatchEventToSelf(AWTEvent e) {
+        if (e instanceof MouseWheelEvent mwe) {
+            System.err.printf("Container.dispatchEventToSelf: %d@%s%n", mwe.hashCode(), mwe);
+        }
         super.dispatchEventImpl(e);
     }
 
@@ -4498,6 +4516,19 @@ class LightweightDispatcher implements java.io.Serializable, AWTEventListener {
      * @param e the event
      */
     boolean dispatchEvent(AWTEvent e) {
+        if (e instanceof MouseWheelEvent mwe) {
+            System.err.printf(
+                """
+                LightweightDispatcher.dispatchEvent: %d@%s
+                  eventMask=%d
+                  MOUSE_MASK=%d
+                """,
+                mwe.hashCode(), mwe,
+                eventMask,
+                MOUSE_MASK
+            );
+        }
+
         boolean ret = false;
 
         /*
@@ -4547,6 +4578,10 @@ class LightweightDispatcher implements java.io.Serializable, AWTEventListener {
      * come in large and frequent amounts.
      */
     private boolean processMouseEvent(MouseEvent e) {
+        if (e instanceof MouseWheelEvent mwe) {
+            System.err.printf("LightweightDispatcher.processMouseEvent: %d@%s%n", mwe.hashCode(), mwe);
+        }
+
         int id = e.getID();
         Component mouseOver =   // sensitive to mouse events
             nativeContainer.getMouseEventTarget(e.getX(), e.getY(),
@@ -4561,6 +4596,21 @@ class LightweightDispatcher implements java.io.Serializable, AWTEventListener {
         if (!isMouseGrab(e) && id != MouseEvent.MOUSE_CLICKED) {
             met = (mouseOver != nativeContainer) ? mouseOver : null;
             mouseEventTarget = new WeakReference<>(met);
+        }
+
+        if (e instanceof MouseWheelEvent) {
+            System.err.printf(
+                """
+                  id=%d
+                  mouseOver=%s
+                  met=%s
+                  mouseEventTarget=%s
+                """,
+                id,
+                mouseOver,
+                met,
+                mouseEventTarget
+            );
         }
 
         if (met != null) {
@@ -4876,6 +4926,12 @@ class LightweightDispatcher implements java.io.Serializable, AWTEventListener {
      */
     @SuppressWarnings("deprecation")
     void retargetMouseEvent(Component target, int id, MouseEvent e) {
+        final boolean isMWE;
+        if (e instanceof MouseWheelEvent mwe) {
+            isMWE = true;
+            System.err.printf("LightweightDispatcher.retargetMouseEvent: %d@%s ; target=%s ; id=%d%n", mwe.hashCode(), mwe, target, id);
+        } else isMWE = false;
+
         if (target == null) {
             return; // mouse is over another hw component or target is disabled
         }
@@ -4932,10 +4988,32 @@ class LightweightDispatcher implements java.io.Serializable, AWTEventListener {
 
             ((AWTEvent)e).copyPrivateDataInto(retargeted);
 
+            if (isMWE) {
+                System.err.printf(
+                    """
+                      x=%d
+                      y=%d
+                      component=%s
+                      retargeted=%s
+                      target=%s
+                      nativeContainer=%s
+                    """,
+                    x,
+                    y,
+                    component,
+                    retargeted,
+                    target,
+                    nativeContainer
+                );
+            }
+
             if (target == nativeContainer) {
+                if (isMWE) System.err.println("  if (target == nativeContainer)");
                 // avoid recursively calling LightweightDispatcher...
                 ((Container)target).dispatchEventToSelf(retargeted);
             } else {
+                if (isMWE) System.err.println("  else ; target != nativeContainer");
+
                 assert AppContext.getAppContext() == target.appContext;
 
                 if (nativeContainer.modalComp != null) {
@@ -4949,6 +5027,7 @@ class LightweightDispatcher implements java.io.Serializable, AWTEventListener {
                 }
             }
             if (id == MouseEvent.MOUSE_WHEEL && retargeted.isConsumed()) {
+                if (isMWE) System.err.println("  if (id == MouseEvent.MOUSE_WHEEL && retargeted.isConsumed())");
                 //An exception for wheel bubbling to the native system.
                 //In "processMouseEvent" total event consuming for wheel events is skipped.
                 //Protection from bubbling of Java-accepted wheel events.

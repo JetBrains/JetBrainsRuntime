@@ -27,6 +27,7 @@ package java.awt;
 
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
+import java.awt.event.MouseWheelEvent;
 import java.awt.peer.ScrollbarPeer;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -1106,6 +1107,10 @@ public class Scrollbar extends Component implements Adjustable, Accessible {
      * @since        1.1
      */
     protected void processEvent(AWTEvent e) {
+        if (e instanceof MouseWheelEvent) {
+            System.err.printf("Scrollbar.processEvent: %d@%s%n", e.hashCode(), e);
+        }
+
         if (e instanceof AdjustmentEvent) {
             processAdjustmentEvent((AdjustmentEvent)e);
             return;

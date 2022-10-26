@@ -4851,16 +4851,30 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * @param e the event
      */
     public final void dispatchEvent(AWTEvent e) {
+        if (e instanceof MouseWheelEvent mwe) {
+            System.err.println("Component.dispatchEvent: " + mwe.hashCode() + "@" + mwe);
+        }
+
         dispatchEventImpl(e);
     }
 
     @SuppressWarnings("deprecation")
     void dispatchEventImpl(AWTEvent e) {
+        final boolean isMWE;
+        if (e instanceof MouseWheelEvent mwe) {
+            isMWE = true;
+            System.err.println("Component.dispatchEventImpl: " + mwe.hashCode() + "@" + mwe);
+        } else isMWE = false;
+
         int id = e.getID();
 
         // Check that this component belongs to this app-context
         AppContext compContext = appContext;
+
+        if (isMWE) System.err.printf("  appContext=%s ; compContext=%s%n", appContext, compContext);
+
         if (compContext != null && !compContext.equals(AppContext.getAppContext())) {
+            if (isMWE) System.err.println("  Event is being dispatched on the wrong AppContext");
             if (eventLog.isLoggable(PlatformLogger.Level.FINE)) {
                 eventLog.fine("Event " + e + " is being dispatched on the wrong AppContext");
             }
@@ -4889,11 +4903,14 @@ public abstract class Component implements ImageObserver, MenuContainer,
         }
 
         if (!e.focusManagerIsDispatching) {
+            if (isMWE) System.err.println("  if (!e.focusManagerIsDispatching)");
             // Invoke the private focus retargeting method which provides
             // lightweight Component support
             if (e.isPosted) {
+                if (isMWE) System.err.println("    if (e.isPosted)");
                 e = KeyboardFocusManager.retargetFocusEvent(e);
                 e.isPosted = true;
+                if (isMWE) System.err.printf("      Event is transformed to: %d@%s%n", e == null ? 0 : e.hashCode() ,e);
             }
 
             // Now, with the event properly targeted to a lightweight
@@ -4902,6 +4919,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
             if (KeyboardFocusManager.getCurrentKeyboardFocusManager().
                 dispatchEvent(e))
             {
+                if (isMWE) System.err.println("    if (KeyboardFocusManager.getCurrentKeyboardFocusManager().dispatchEvent(e))");
                 return;
             }
         }
@@ -4918,6 +4936,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
             (peer != null && !peer.handlesWheelScrolling()) &&
             (dispatchMouseWheelToAncestor((MouseWheelEvent)e)))
         {
+            if (isMWE) System.err.println("  if (id == MouseEvent.MOUSE_WHEEL && (!eventTypeEnabled(id)) && (peer != null && !peer.handlesWheelScrolling()) && (dispatchMouseWheelToAncestor((MouseWheelEvent)e)))");
             return;
         }
 
@@ -4946,6 +4965,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
          * 4. Allow input methods to process the event
          */
         if (areInputMethodsEnabled()) {
+            if (isMWE) System.err.println("  if (areInputMethodsEnabled())");
             // We need to pass on InputMethodEvents since some host
             // input method adapters send them through the Java
             // event queue instead of directly to the component,
@@ -4959,6 +4979,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
                (e instanceof InputEvent) || (e instanceof FocusEvent)) {
                 InputContext inputContext = getInputContext();
 
+                if (isMWE) System.err.printf("    inputContext=%s%n", inputContext);
 
                 if (inputContext != null) {
                     inputContext.dispatchEvent(e);
@@ -4971,6 +4992,8 @@ public abstract class Component implements ImageObserver, MenuContainer,
                 }
             }
         } else {
+            if (isMWE) System.err.println("  else ; !areInputMethodsEnabled()");
+
             // When non-clients get focus, we need to explicitly disable the native
             // input method. The native input method is actually not disabled when
             // the active/passive/peered clients loose focus.
@@ -5014,19 +5037,23 @@ public abstract class Component implements ImageObserver, MenuContainer,
          * 6. Deliver event for normal processing
          */
         if (newEventsOnly) {
+            if (isMWE) System.err.println("  if (newEventsOnly)");
             // Filtering needs to really be moved to happen at a lower
             // level in order to get maximum performance gain;  it is
             // here temporarily to ensure the API spec is honored.
             //
             if (eventEnabled(e)) {
+                if (isMWE) System.err.println("    if (eventEnabled(e))");
                 processEvent(e);
             }
         } else if (id == MouseEvent.MOUSE_WHEEL) {
+            if (isMWE) System.err.println("  else if (id == MouseEvent.MOUSE_WHEEL)");
             // newEventsOnly will be false for a listenerless ScrollPane, but
             // MouseWheelEvents still need to be dispatched to it so scrolling
             // can be done.
             autoProcessMouseWheel((MouseWheelEvent)e);
         } else if (!(e instanceof MouseEvent && !postsOldMouseEvents())) {
+            if (isMWE) System.err.println("  else if (!(e instanceof MouseEvent && !postsOldMouseEvents()))");
             //
             // backward compatibility
             //
@@ -5067,6 +5094,8 @@ public abstract class Component implements ImageObserver, MenuContainer,
          * (see DefaultKeyboardFocusManager.dispatchKeyEvent())
          */
         if (!(e instanceof KeyEvent)) {
+            if (isMWE) System.err.println("  if (!(e instanceof KeyEvent))");
+
             ComponentPeer tpeer = peer;
             if (e instanceof FocusEvent && (tpeer == null || tpeer instanceof LightweightPeer)) {
                 // if focus owner is lightweight then its native container
@@ -5080,6 +5109,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
                 }
             }
             if (tpeer != null) {
+                if (isMWE) System.err.printf("    if (tpeer != null) ; tpeer=%s%n", tpeer);
                 tpeer.handleEvent(e);
             }
         }
@@ -5096,7 +5126,11 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * override it and handle common-case mouse wheel scrolling.  NOP
      * for Component.
      */
-    void autoProcessMouseWheel(MouseWheelEvent e) {}
+    void autoProcessMouseWheel(MouseWheelEvent e) {
+        if (e != null) {
+            System.err.printf("Component.autoProcessMouseWheel: %d@%s%n", e.hashCode(), e);
+        }
+    }
 
     /*
      * Dispatch given MouseWheelEvent to the first ancestor for which
@@ -5106,6 +5140,8 @@ public abstract class Component implements ImageObserver, MenuContainer,
      */
     @SuppressWarnings("deprecation")
     boolean dispatchMouseWheelToAncestor(MouseWheelEvent e) {
+        System.err.printf("Component.dispatchMouseWheelToAncestor: %d@%s%n", e.hashCode(), e);
+
         int newX, newY;
         newX = e.getX() + getX(); // Coordinates take into account at least
         newY = e.getY() + getY(); // the cursor's position relative to this
@@ -5136,11 +5172,14 @@ public abstract class Component implements ImageObserver, MenuContainer,
                 }
             }
 
+            System.err.printf("  anc=%s%n", anc);
+
             if (eventLog.isLoggable(PlatformLogger.Level.FINEST)) {
                 eventLog.finest("new event src is " + anc.getClass());
             }
 
             if (anc != null && anc.eventEnabled(e)) {
+                System.err.println("  if (anc != null && anc.eventEnabled(e))");
                 // Change event to be from new source, with new x,y
                 // For now, just create a new event - yucky
 
@@ -6400,6 +6439,10 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * @since     1.1
      */
     protected void processEvent(AWTEvent e) {
+        if (e instanceof MouseWheelEvent) {
+            System.err.printf("Component.processEvent: %d@%s%n", e.hashCode(), e);
+        }
+
         if (e instanceof FocusEvent) {
             processFocusEvent((FocusEvent)e);
 
@@ -6728,8 +6771,12 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * @since       1.4
      */
     protected void processMouseWheelEvent(MouseWheelEvent e) {
+        if (e != null) System.err.printf("Component.processMouseWheelEvent: %d@%s%n", e.hashCode(), e);
+
         MouseWheelListener listener = mouseWheelListener;
         if (listener != null) {
+            if (e != null) System.err.printf("  if (listener != null) ; listener=%s%n", listener);
+
             int id = e.getID();
             switch(id) {
               case MouseEvent.MOUSE_WHEEL:

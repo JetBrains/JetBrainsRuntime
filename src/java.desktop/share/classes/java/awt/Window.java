@@ -2795,6 +2795,10 @@ public class Window extends Container implements Accessible {
      * @param e the event
      */
     void dispatchEventImpl(AWTEvent e) {
+        if (e instanceof MouseWheelEvent mwe) {
+            System.err.println("Window.dispatchEventImpl: " + mwe.hashCode() + "@" + mwe);
+        }
+
         if (e.getID() == ComponentEvent.COMPONENT_RESIZED) {
             invalidate();
             validate();

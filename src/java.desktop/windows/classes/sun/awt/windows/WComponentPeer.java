@@ -900,6 +900,10 @@ public abstract class WComponentPeer extends WObjectPeer
      * Post an event. Queue it for execution by the callback thread.
      */
     void postEvent(AWTEvent event) {
+        if (event instanceof MouseWheelEvent mwe) {
+            System.err.println("WComponentPeer.postEvent: " + mwe.hashCode() + "@" + mwe);
+        }
+
         preprocessPostEvent(event);
         WToolkit.postEvent(WToolkit.targetToAppContext(target), event);
     }

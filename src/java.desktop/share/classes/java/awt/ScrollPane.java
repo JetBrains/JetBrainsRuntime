@@ -614,6 +614,9 @@ public class ScrollPane extends Container implements Accessible {
     }
 
     void autoProcessMouseWheel(MouseWheelEvent e) {
+        if (e != null) {
+            System.err.printf("ScrollPane.autoProcessMouseWheel: %d@%s%n", e.hashCode(), e);
+        }
         processMouseWheelEvent(e);
     }
 
@@ -628,7 +631,15 @@ public class ScrollPane extends Container implements Accessible {
      * @since 1.4
      */
     protected void processMouseWheelEvent(MouseWheelEvent e) {
+        if (e != null) {
+            System.err.printf("ScrollPane.processMouseWheelEvent: %d@%s%n", e.hashCode(), e);
+        }
+
         if (isWheelScrollingEnabled()) {
+            if (e != null) {
+                System.err.println("  if (isWheelScrollingEnabled())");
+            }
+
             ScrollPaneWheelScroller.handleWheelScrolling(this, e);
             e.consume();
         }
@@ -757,6 +768,8 @@ public class ScrollPane extends Container implements Accessible {
          */
         @SuppressWarnings("deprecation")
         public void adjustmentValueChanged(AdjustmentEvent e) {
+            System.err.printf("ScrollPane.PeerFixer.adjustmentValueChanged(%d@%s)\n", e.hashCode(), e);
+
             Adjustable adj = e.getAdjustable();
             int value = e.getValue();
             ScrollPanePeer peer = (ScrollPanePeer) scroller.peer;
@@ -765,6 +778,9 @@ public class ScrollPane extends Container implements Accessible {
             }
 
             Component c = scroller.getComponent(0);
+
+            System.err.printf("  adj=%s\n  value=%d\n  peer=%s\n  c=%s\n", adj, value, peer, c);
+
             switch(adj.getOrientation()) {
             case Adjustable.VERTICAL:
                 c.move(c.getLocation().x, -(value));

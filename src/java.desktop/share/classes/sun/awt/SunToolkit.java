@@ -61,6 +61,7 @@ import java.awt.TrayIcon;
 import java.awt.Window;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseWheelEvent;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
@@ -466,6 +467,10 @@ public abstract class SunToolkit extends Toolkit
     public static void postEvent(AppContext appContext, AWTEvent event) {
         if (event == null) {
             throw new NullPointerException();
+        }
+
+        if (event instanceof MouseWheelEvent mwe) {
+            new Throwable("SunToolkit.postEvent: " + mwe.hashCode() + "@" + mwe + " for " + appContext).printStackTrace();
         }
 
         AWTAccessor.SequencedEventAccessor sea = AWTAccessor.getSequencedEventAccessor();

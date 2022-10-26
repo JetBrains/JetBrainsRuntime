@@ -277,6 +277,10 @@ public class EventQueue {
      * @throws NullPointerException if {@code theEvent} is {@code null}
      */
     public void postEvent(AWTEvent theEvent) {
+        if (theEvent instanceof MouseWheelEvent mwe) {
+            new Throwable("EventQueue.postEvent: " + mwe.hashCode() + "@" + mwe).printStackTrace();
+        }
+
         SunToolkit.flushPendingEvents(appContext);
         postEventPrivate(theEvent);
     }
@@ -772,6 +776,10 @@ public class EventQueue {
      * Called from dispatchEvent() under a correct AccessControlContext
      */
     private void dispatchEventImpl(final AWTEvent event, final Object src) {
+        if (event instanceof MouseWheelEvent mwe) {
+            System.err.println("EventQueue.dispatchEventImpl: " + mwe.hashCode() + "@" + mwe + " from " + src);
+        }
+
         event.isPosted = true;
         if (event instanceof ActiveEvent) {
             // This could become the sole method of dispatching in time.

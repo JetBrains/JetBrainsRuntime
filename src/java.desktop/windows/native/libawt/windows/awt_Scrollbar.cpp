@@ -310,21 +310,45 @@ const char * const AwtScrollbar::SbNwarp     = "warp";
 inline void
 AwtScrollbar::DoScrollCallbackCoalesce(const char* methodName, int newPos)
 {
+    Idea302505Logger::FunctionScope logger {
+        true,
+        __FILE__, __LINE__, __func__, methodName, newPos
+    };
+
+    logger.log("this=", this);
+
+    logger.log("m_prevCallback=", m_prevCallback, " ; ", "m_prevCallbackPos=", m_prevCallbackPos);
+
     if (methodName == m_prevCallback && newPos == m_prevCallbackPos) {
+        logger.log("ignoring duplicate callback ", methodName, "(", newPos, ")");
         DTRACE_PRINTLN2("AwtScrollbar: ignoring duplicate callback %s(%d)",
                         methodName, newPos);
     }
     else {
+        // see DoCallback
+        logger.log("m_peerObject=", m_peerObject, " ; ", "m_callbacksEnabled=", m_callbacksEnabled);
+
+        logger.log("DoCallback(", methodName, ", ", "(I)V", ", ", newPos, ") is being invoked...");
         DoCallback(methodName, "(I)V", newPos);
+
         m_prevCallback = methodName;
         m_prevCallbackPos = newPos;
     }
+
+    logger.logAtExit("<- void");
 }
 
 
 MsgRouting
 AwtScrollbar::WmVScroll(UINT scrollCode, UINT pos, HWND hScrollbar)
 {
+    Idea302505Logger::FunctionScope logger {
+        true,
+        __FILE__, __LINE__, __func__, scrollCode, pos, hScrollbar
+    };
+
+    logger.log("this=", this);
+
     int minVal, maxVal;    // scrollbar range
     int minPos, maxPos;    // thumb positions (max depends on visible amount)
     int curPos, newPos;
@@ -430,13 +454,24 @@ AwtScrollbar::WmVScroll(UINT scrollCode, UINT pos, HWND hScrollbar)
           m_prevCallback = NULL;
           break;
     }
+
+    logger.logAtExit("<- mrDoDefault");
     return mrDoDefault;
 }
 
 MsgRouting
 AwtScrollbar::WmHScroll(UINT scrollCode, UINT pos, HWND hScrollbar)
 {
-    return WmVScroll(scrollCode, pos, hScrollbar);
+    Idea302505Logger::FunctionScope logger {
+        true,
+        __FILE__, __LINE__, __func__, scrollCode, pos, hScrollbar
+    };
+
+    logger.log("this=", this);
+
+    const MsgRouting result = WmVScroll(scrollCode, pos, hScrollbar);
+    logger.logAtExit("<- ", result);
+    return result;
 }
 
 void AwtScrollbar::_SetValues(void *param)

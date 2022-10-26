@@ -292,7 +292,16 @@ void AwtScrollPane::Show(JNIEnv *env)
 }
 
 void AwtScrollPane::PostScrollEvent(int orient, int scrollCode, int pos) {
+    Idea302505Logger::FunctionScope logger {
+        true,
+        __FILE__, __LINE__, __func__, orient, scrollCode, pos
+    };
+
+    logger.log("this=", this);
+
     if (scrollCode == SB_ENDSCROLL) {
+        logger.log("scrollCode == SB_ENDSCROLL");
+        logger.logAtExit("<- void");
         return;
     }
 
@@ -304,6 +313,7 @@ void AwtScrollPane::PostScrollEvent(int orient, int scrollCode, int pos) {
         jorient = java_awt_Adjustable_HORIZONTAL;
     } else {
         DASSERT(FALSE);
+        logger.logAtExit("<- void");
         return;
     }
 
@@ -349,13 +359,18 @@ void AwtScrollPane::PostScrollEvent(int orient, int scrollCode, int pos) {
           break;
       default:
           DASSERT(FALSE);
+          logger.logAtExit("<- void");
           return;
     }
+
+    logger.log("WScrollPanePeer.postScrollEvent(", jorient, ", ", jscrollcode, ", ", (jint)pos, ", ", jadjusting, ") is being invoked...");
 
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
     env->CallVoidMethod(GetPeer(env), AwtScrollPane::postScrollEventID,
                         jorient, jscrollcode, (jint)pos, jadjusting);
     DASSERT(!safe_ExceptionOccurred(env));
+
+    logger.logAtExit("<- void");
 }
 
 MsgRouting
@@ -370,6 +385,13 @@ AwtScrollPane::WmNcHitTest(int x, int y, LRESULT& retVal)
 
 MsgRouting AwtScrollPane::WmVScroll(UINT scrollCode, UINT pos, HWND hScrollPane)
 {
+    Idea302505Logger::FunctionScope logger {
+        true,
+        __FILE__, __LINE__, __func__, scrollCode, pos, hScrollPane
+    };
+
+    logger.log("this=", this);
+
     // While user scrolls using tracker, SCROLLINFO.nPos is not changed, SCROLLINFO.nTrackPos is changed instead.
     int dragP = scrollCode == SB_THUMBPOSITION || scrollCode == SB_THUMBTRACK;
     int newPos = GetScrollPos(SB_VERT);
@@ -382,11 +404,20 @@ MsgRouting AwtScrollPane::WmVScroll(UINT scrollCode, UINT pos, HWND hScrollPane)
         newPos = si.nTrackPos;
     }
     PostScrollEvent(SB_VERT, scrollCode, newPos);
+
+    logger.logAtExit("<- mrConsume");
     return mrConsume;
 }
 
 MsgRouting AwtScrollPane::WmHScroll(UINT scrollCode, UINT pos, HWND hScrollPane)
 {
+    Idea302505Logger::FunctionScope logger {
+        true,
+        __FILE__, __LINE__, __func__, scrollCode, pos, hScrollPane
+    };
+
+    logger.log("this=", this);
+
     // While user scrolls using tracker, SCROLLINFO.nPos is not changed, SCROLLINFO.nTrackPos is changed instead.
     int dragP = scrollCode == SB_THUMBPOSITION || scrollCode == SB_THUMBTRACK;
     int newPos = GetScrollPos(SB_HORZ);
@@ -399,6 +430,8 @@ MsgRouting AwtScrollPane::WmHScroll(UINT scrollCode, UINT pos, HWND hScrollPane)
         newPos = si.nTrackPos;
     }
     PostScrollEvent(SB_HORZ, scrollCode, newPos);
+
+    logger.logAtExit("<- mrConsume");
     return mrConsume;
 }
 

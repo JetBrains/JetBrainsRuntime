@@ -152,6 +152,7 @@ final class WScrollPanePeer extends WPanelPeer implements ScrollPanePeer {
     private void postScrollEvent(int orient, int type,
                                  int pos, boolean isAdjusting)
     {
+        System.err.printf("WScrollPanePeer.postScrollEvent(%d, %d, %d, %b)\n", orient, type, pos, isAdjusting);
         Runnable adjustor = new Adjustor(orient, type, pos, isAdjusting);
         WToolkit.executeOnEventHandlerThread(new ScrollEvent(target, adjustor));
     }
@@ -165,6 +166,8 @@ final class WScrollPanePeer extends WPanelPeer implements ScrollPanePeer {
     class ScrollEvent extends PeerEvent {
         ScrollEvent(Object source, Runnable runnable) {
             super(source, runnable, 0L);
+
+            System.err.printf("ScrollEvent.new(%s, %s) -> %d@%s%n", source, runnable, hashCode(), this);
         }
 
         @Override
@@ -172,6 +175,7 @@ final class WScrollPanePeer extends WPanelPeer implements ScrollPanePeer {
             if (log.isLoggable(PlatformLogger.Level.FINEST)) {
                 log.finest("ScrollEvent coalesced: " + newEvent);
             }
+            System.err.printf("ScrollEvent.coalesceEvents(%d@%s) ; this=%d@%s%n", newEvent.hashCode(), newEvent, hashCode(), this);
             if (newEvent instanceof ScrollEvent) {
                 return newEvent;
             }

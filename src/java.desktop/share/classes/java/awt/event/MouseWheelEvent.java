@@ -307,6 +307,7 @@ public class MouseWheelEvent extends MouseEvent {
         this.wheelRotation = wheelRotation;
         this.preciseWheelRotation = preciseWheelRotation;
 
+        new Throwable("new MouseWheelEvent -> " + this.hashCode() + "@" + this).printStackTrace();
     }
 
     /**
@@ -445,5 +446,11 @@ public class MouseWheelEvent extends MouseEvent {
         return super.paramString()+",scrollType="+scrollTypeStr+
          ",scrollAmount="+getScrollAmount()+",wheelRotation="+
          getWheelRotation()+",preciseWheelRotation="+getPreciseWheelRotation();
+    }
+
+    @Override
+    public void consume() {
+        new Throwable("MouseWheelEvent.consume: " + hashCode() + "@" + this).printStackTrace();
+        super.consume();
     }
 }

@@ -389,13 +389,25 @@ LRESULT CALLBACK AwtComponent::WndProc(HWND hWnd, UINT message,
 {
     TRY;
 
+    Idea302505Logger::FunctionScope logger {
+        (message == WM_ACTIVATE) || (message == WM_MOUSEACTIVATE) || (message == WM_SETFOCUS) || (message == WM_KILLFOCUS) || (message == WM_MOUSEWHEEL) || (message == WM_MOUSEHWHEEL) || (message == WM_VSCROLL) || (message == WM_HSCROLL),
+        __FILE__, __LINE__, __func__, hWnd, message, wParam, lParam
+    };
+
     AwtComponent * self = AwtComponent::GetComponentImpl(hWnd);
+
+    logger.log("self=", self);
+
     if (self == NULL || self->GetHWnd() != hWnd ||
         message == WM_UNDOCUMENTED_CLIENTSHUTDOWN) // handle log-off gracefully
     {
-        return ComCtl32Util::GetInstance().DefWindowProc(NULL, hWnd, message, wParam, lParam);
+        const LRESULT result = ComCtl32Util::GetInstance().DefWindowProc(NULL, hWnd, message, wParam, lParam);
+        logger.logAtExit("<- ", result);
+        return result;
     } else {
-        return self->WindowProc(message, wParam, lParam);
+        const LRESULT result = self->WindowProc(message, wParam, lParam);
+        logger.logAtExit("<- ", result);
+        return result;
     }
 
     CATCH_BAD_ALLOC_RET(0);
@@ -1359,6 +1371,13 @@ static BOOL IsDefaultTouch()
  */
 LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
+    Idea302505Logger::FunctionScope logger {
+        (message == WM_ACTIVATE) || (message == WM_MOUSEACTIVATE) || (message == WM_SETFOCUS) || (message == WM_KILLFOCUS) || (message == WM_MOUSEWHEEL) || (message == WM_MOUSEHWHEEL) || (message == WM_VSCROLL) || (message == WM_HSCROLL),
+        __FILE__, __LINE__, __func__, message, wParam, lParam
+    };
+
+    logger.log("this=", this);
+
     CounterHelper ch(&m_MessagesProcessing);
 
     JNILocalFrame lframe(AwtToolkit::GetEnv(), 10);
@@ -1376,10 +1395,12 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
     if (message == WmAwtIsComponent) {
     // special message to identify AWT HWND's without using
     // resource hogging ::SetProp
+        logger.logAtExit("<- TRUE");
         return (LRESULT)TRUE;
     }
 
     static const BOOL PROCESS_TOUCH_EVENTS = !IsDefaultTouch();
+    logger.log("PROCESS_TOUCH_EVENTS=", PROCESS_TOUCH_EVENTS);
 
     DWORD curPos = 0;
 
@@ -1561,6 +1582,8 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
       // We don't expect any focus messages on non-proxy component,
       // except those that came from Java.
       case WM_SETFOCUS:
+          logger.log("case WM_SETFOCUS");
+          logger.log("sm_inSynthesizeFocus=", sm_inSynthesizeFocus);
           if (sm_inSynthesizeFocus) {
               mr = WmSetFocus((HWND)wParam);
           } else {
@@ -1568,6 +1591,8 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           }
           break;
       case WM_KILLFOCUS:
+          logger.log("case WM_KILLFOCUS");
+          logger.log("sm_inSynthesizeFocus=", sm_inSynthesizeFocus);
           if (sm_inSynthesizeFocus) {
               mr = WmKillFocus((HWND)wParam);
           } else {
@@ -1575,9 +1600,16 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           }
           break;
       case WM_ACTIVATE: {
+          logger.log("case WM_ACTIVATE");
           UINT nState = LOWORD(wParam);
           BOOL fMinimized = (BOOL)HIWORD(wParam);
           mr = mrConsume;
+
+          logger.log(
+              "nState=", nState, " ; ",
+              "fMinimized=", fMinimized, " ; ",
+              "sm_suppressFocusAndActivation=", sm_suppressFocusAndActivation
+          );
 
           if (!sm_suppressFocusAndActivation &&
               (!fMinimized || (nState == WA_INACTIVE)))
@@ -1597,7 +1629,12 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           break;
       }
       case WM_MOUSEACTIVATE: {
+          logger.log("case WM_MOUSEACTIVATE");
+
           AwtWindow *window = GetContainer();
+
+          logger.log("window=", window);
+
           if (window && window->IsFocusableWindow()) {
               // AWT/Swing will later request focus to a proper component
               // on handling the Java mouse event. Anyway, we have to
@@ -1621,9 +1658,11 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
                           *(HBRUSH*)&retValue);
           break;
       case WM_HSCROLL:
+          logger.log("case WM_HSCROLL");
           mr = WmHScroll(LOWORD(wParam), HIWORD(wParam), (HWND)lParam);
           break;
       case WM_VSCROLL:
+          logger.log("case WM_VSCROLL");
           mr = WmVScroll(LOWORD(wParam), HIWORD(wParam), (HWND)lParam);
           break;
       // 4664415: We're seeing a WM_LBUTTONUP when the user releases the
@@ -1673,7 +1712,14 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
       case WM_MOUSEHWHEEL:
       case WM_AWT_MOUSEENTER:
       case WM_AWT_MOUSEEXIT:
+          if (message == WM_MOUSEWHEEL)
+              logger.log("case WM_MOUSEWHEEL");
+          else if (message == WM_MOUSEHWHEEL)
+              logger.log("case WM_MOUSEHWHEEL");
+
           if (IsMouseEventFromTouch() && PROCESS_TOUCH_EVENTS) {
+              if ((message == WM_MOUSEWHEEL) || (message == WM_MOUSEHWHEEL))
+                  logger.log("IsMouseEventFromTouch() && PROCESS_TOUCH_EVENTS");
               break;
           }
           curPos = ::GetMessagePos();
@@ -2029,6 +2075,7 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
         retValue = DefWindowProc(message, wParam, lParam);
     }
 
+    logger.logAtExit("<- ", retValue);
     return retValue;
 }
 /*
@@ -2164,25 +2211,55 @@ MsgRouting AwtComponent::WmCtlColor(HDC hDC, HWND hCtrl,
 
 MsgRouting AwtComponent::WmHScroll(UINT scrollCode, UINT pos,
                                    HWND hScrollbar) {
+    Idea302505Logger::FunctionScope logger {
+        true,
+        __FILE__, __LINE__, __func__, scrollCode, pos, hScrollbar
+    };
+
+    logger.log("this=", this);
+
     if (hScrollbar && hScrollbar != GetHWnd()) {
         /* the last test should never happen */
+
+        logger.log("hScrollbar && hScrollbar != GetHWnd()");
+        logger.log("hScrollbar=", hScrollbar, " ; ", "GetHWnd()=", GetHWnd());
+
         AwtComponent* sb = GetComponent(hScrollbar);
+        logger.log("sb=", sb);
+
         if (sb) {
             sb->WmHScroll(scrollCode, pos, hScrollbar);
         }
     }
+
+    logger.logAtExit("<- mrDoDefault");
     return mrDoDefault;
 }
 
 MsgRouting AwtComponent::WmVScroll(UINT scrollCode, UINT pos, HWND hScrollbar)
 {
+    Idea302505Logger::FunctionScope logger {
+        true,
+        __FILE__, __LINE__, __func__, scrollCode, pos, hScrollbar
+    };
+
+    logger.log("this=", this);
+
     if (hScrollbar && hScrollbar != GetHWnd()) {
         /* the last test should never happen */
+
+        logger.log("hScrollbar && hScrollbar != GetHWnd()");
+        logger.log("hScrollbar=", hScrollbar, " ; ", "GetHWnd()=", GetHWnd());
+
         AwtComponent* sb = GetComponent(hScrollbar);
+        logger.log("sb=", sb);
+
         if (sb) {
             sb->WmVScroll(scrollCode, pos, hScrollbar);
         }
     }
+
+    logger.logAtExit("<- mrDoDefault");
     return mrDoDefault;
 }
 
@@ -2612,6 +2689,13 @@ MsgRouting AwtComponent::WmMouseExit(UINT flags, int x, int y)
 MsgRouting AwtComponent::WmMouseWheel(UINT flags, int x, int y,
                                       int wheelRotation, BOOL isHorizontal)
 {
+    Idea302505Logger::FunctionScope logger {
+        true,
+        __FILE__, __LINE__, __func__, flags, x, y, wheelRotation, isHorizontal
+    };
+
+    logger.log("this=", this);
+
     // convert coordinates to be Component-relative, not screen relative
     // for wheeling when outside the window, this works similar to
     // coordinates during a drag
@@ -2674,6 +2758,8 @@ MsgRouting AwtComponent::WmMouseWheel(UINT flags, int x, int y,
     m_wheelRotationAmountY %= WHEEL_DELTA;
     // this message could be propagated up to the parent chain
     // by the mouse message post processors
+
+    logger.logAtExit("<- mrConsume");
     return mrConsume;
 }
 
@@ -5288,11 +5374,20 @@ AwtComponent::SendMouseWheelEvent(jint id, jlong when, jint x, jint y,
                                   jint scrollAmount, jint roundedWheelRotation,
                                   jdouble preciseWheelRotation, MSG *pMsg)
 {
+    Idea302505Logger::FunctionScope logger {
+        true,
+        __FILE__, __LINE__, __func__, id, when, x, y, modifiers, clickCount, popupTrigger, scrollType, scrollAmount, roundedWheelRotation, preciseWheelRotation, pMsg
+    };
+
+    logger.log("this=", this);
+
     /* Code based not so loosely on AwtComponent::SendMouseEvent */
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
     CriticalSection::Lock l(GetLock());
     if (GetPeer(env) == NULL) {
         /* event received during termination. */
+        logger.log("GetPeer(env) == NULL");
+        logger.logAtExit("<- void");
         return;
     }
 
@@ -5339,18 +5434,26 @@ AwtComponent::SendMouseWheelEvent(jint id, jlong when, jint x, jint y,
 
     DASSERT(mouseWheelEvent != NULL);
     if (mouseWheelEvent == NULL || safe_ExceptionOccurred(env)) {
+        logger.log("mouseWheelEvent == NULL || safe_ExceptionOccurred(env)");
+
         env->ExceptionDescribe();
         env->ExceptionClear();
         env->DeleteLocalRef(target);
+
+        logger.logAtExit("<- void");
         return;
     }
     if (pMsg != NULL) {
         AwtAWTEvent::saveMSG(env, pMsg, mouseWheelEvent);
     }
+
+    logger.log("SendEvent(", mouseWheelEvent, ") is being called...");
     SendEvent(mouseWheelEvent);
 
     env->DeleteLocalRef(mouseWheelEvent);
     env->DeleteLocalRef(target);
+
+    logger.logAtExit("<- void");
 }
 
 void AwtComponent::SendFocusEvent(jint id, HWND opposite)
@@ -7660,4 +7763,119 @@ void ReleaseDCList(HWND hwnd, DCList &list) {
 
 void ReleaseDCList(DCList &list) {
     ReleaseDCList(list.RemoveAllDCs());
+}
+
+
+// IDEA-302505
+
+thread_local int Idea302505Logger::FunctionScope::level_ = 0;
+
+
+Idea302505Logger::FunctionScope::~FunctionScope()
+{
+    if (!enabled_)
+        return;
+
+    level_ = (level_ < 2) ? 0 : level_ - 1;
+
+    if (level_ == 0)
+        instance_.log("");
+}
+
+
+char* Idea302505Logger::FunctionScope::forceLogImpl1(char* buffer, char arg) const &
+{
+    const int written = sprintf(buffer, "%c", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+
+char* Idea302505Logger::FunctionScope::forceLogImpl1(char* buffer, bool arg) const &
+{
+    return forceLogImpl1(buffer, arg ? "true" : "false");
+}
+
+
+char* Idea302505Logger::FunctionScope::forceLogImpl1(char* buffer, short arg) const &
+{
+    const int written = sprintf(buffer, "%hd", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+char* Idea302505Logger::FunctionScope::forceLogImpl1(char* buffer, unsigned short arg) const &
+{
+    const int written = sprintf(buffer, "%hu", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+
+char* Idea302505Logger::FunctionScope::forceLogImpl1(char* buffer, int arg) const &
+{
+    const int written = sprintf(buffer, "%d", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+char* Idea302505Logger::FunctionScope::forceLogImpl1(char* buffer, unsigned int arg) const &
+{
+    const int written = sprintf(buffer, "%u", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+
+char* Idea302505Logger::FunctionScope::forceLogImpl1(char* buffer, long arg) const &
+{
+    const int written = sprintf(buffer, "%ld", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+char* Idea302505Logger::FunctionScope::forceLogImpl1(char* buffer, unsigned long arg) const &
+{
+    const int written = sprintf(buffer, "%lu", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+
+char* Idea302505Logger::FunctionScope::forceLogImpl1(char* buffer, long long arg) const &
+{
+    const int written = sprintf(buffer, "%lld", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+char* Idea302505Logger::FunctionScope::forceLogImpl1(char* buffer, unsigned long long arg) const &
+{
+    const int written = sprintf(buffer, "%llu", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+
+char* Idea302505Logger::FunctionScope::forceLogImpl1(char* buffer, double arg) const &
+{
+    const int written = sprintf(buffer, "%f", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+
+char* Idea302505Logger::FunctionScope::forceLogImpl1(char* buffer, const char* arg) const &
+{
+    const int written = sprintf(buffer, "%s", (arg == nullptr) ? "<nullptr-string>" : arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+
+char* Idea302505Logger::FunctionScope::forceLogImpl1(char* buffer, const void* arg) const &
+{
+    const int written = sprintf(buffer, "0x%p", arg);
+    return (written > 0) ? buffer + written : buffer;
+}
+
+
+Idea302505Logger Idea302505Logger::instance_;
+
+
+Idea302505Logger::Idea302505Logger() = default;
+
+
+void Idea302505Logger::log(const char* str)
+{
+    fprintf(stderr, "%s\n", str);
 }
