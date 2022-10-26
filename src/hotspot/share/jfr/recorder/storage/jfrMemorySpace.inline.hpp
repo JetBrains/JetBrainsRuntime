@@ -73,17 +73,25 @@ bool JfrMemorySpace<T, RetrievalType, Callback>::initialize() {
 // allocations are even multiples of the mspace min size
 static inline size_t align_allocation_size(size_t requested_size, size_t min_elem_size) {
   assert((int)min_elem_size % os::vm_page_size() == 0, "invariant");
+  if (requested_size > static_cast<size_t>(min_intx)) {
+    assert(false, "requested size: " SIZE_FORMAT " is too large", requested_size);
+    return 0;
+  }
   u8 alloc_size_bytes = min_elem_size;
   while (requested_size > alloc_size_bytes) {
     alloc_size_bytes <<= 1;
   }
   assert((int)alloc_size_bytes % os::vm_page_size() == 0, "invariant");
-  return (size_t)alloc_size_bytes;
+  assert(alloc_size_bytes <= static_cast<size_t>(min_intx), "invariant");
+  return static_cast<size_t>(alloc_size_bytes);
 }
 
 template <typename T, template <typename> class RetrievalType, typename Callback>
 inline T* JfrMemorySpace<T, RetrievalType, Callback>::allocate(size_t size) {
   const size_t aligned_size_bytes = align_allocation_size(size, _min_elem_size);
+  if (size != 0 && aligned_size_bytes == 0) {
+    return NULL;
+  }
   void* const allocation = JfrCHeapObj::new_array<u1>(aligned_size_bytes + sizeof(T));
   if (allocation == NULL) {
     return NULL;
