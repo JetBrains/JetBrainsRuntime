@@ -5,7 +5,7 @@
 # image creation reproducible.
 # NB: this also means there may be no security-related fixes there, need to
 # move the version to the next manually.
-FROM alpine:3.5
+FROM alpine:3.14
 
 # Install the necessary build tools
 RUN     apk --no-cache add --update bash grep tar zip bzip2 rsync fontconfig build-base \
