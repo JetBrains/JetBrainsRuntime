@@ -434,7 +434,7 @@ HRESULT GetSelectedResults(FileDialogData *data) {
     OLE_TRY
 
     IFileOpenDialogPtr fileOpenDialog;
-    UINT currentOffset = 0;
+    size_t currentOffset = 0;
     IShellItemArrayPtr psia;
     DWORD itemsCount;
 
@@ -609,7 +609,7 @@ public:
                 size_t filePathLength = _tcslen(filePath);
                 data->result.Attach(new TCHAR[filePathLength + 1]);
                 _tcscpy_s(data->result, filePathLength + 1, filePath);
-                data->resultSize = filePathLength + 1;
+                data->resultSize = (UINT)(filePathLength + 1);
 
                 CoTaskStringHolder fileName;
                 OLE_HRT(fileDialog->GetFileName(&fileName));
@@ -969,7 +969,7 @@ AwtFileDialog::Show(void *p)
                     CoTaskStringHolder filePath;
                     OLE_HRT(psiResult->GetDisplayName(SIGDN_FILESYSPATH, &filePath));
                     size_t filePathLength = _tcslen(filePath);
-                    data.resultSize = filePathLength;
+                    data.resultSize = (UINT)filePathLength;
                     data.result.Attach(new TCHAR[filePathLength + 1]);
                     _tcscpy_s(data.result, filePathLength + 1, filePath);
                     OLE_CATCH
