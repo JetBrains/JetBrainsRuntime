@@ -1,6 +1,8 @@
 package sun.awt.wl;
 
-import java.awt.*;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsDevice;
+import java.awt.Rectangle;
 import java.awt.geom.AffineTransform;
 import java.awt.image.ColorModel;
 import java.awt.image.DirectColorModel;
@@ -28,16 +30,7 @@ public class WLGraphicsConfig extends GraphicsConfiguration {
 
     @Override
     public ColorModel getColorModel(int transparency) {
-        switch (transparency) {
-            case Transparency.OPAQUE:
-                return getColorModel();
-            case Transparency.BITMASK:
-                throw new UnsupportedOperationException("Transparency BITMASK not supported");
-            case Transparency.TRANSLUCENT:
-                throw new UnsupportedOperationException("Transparency TRANSLUCENT not supported");
-            default:
-                return null;
-        }
+        throw new UnsupportedOperationException();
     }
 
     @Override

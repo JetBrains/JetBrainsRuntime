@@ -68,6 +68,7 @@ public class WLFrameDecoration {
         closeButton = new ButtonState(this::getCloseButtonCenter, peer::postWindowClosing);
         maximizeButton = new ButtonState(this::getMaximizeButtonCenter, this::toggleMaximizedState);
         minimizeButton = new ButtonState(this::getMinimizeButtonCenter, this::minimizeWindow);
+        paint();
     }
 
     private Frame getFrame() {
@@ -76,10 +77,6 @@ public class WLFrameDecoration {
 
     public Insets getInsets() {
         return new Insets(HEIGHT, 0, 0, 0);
-    }
-
-    public Rectangle getBounds() {
-        return new Rectangle(0, 0, peer.getWidth(), HEIGHT);
     }
 
     private Point getCloseButtonCenter() {
@@ -103,15 +100,30 @@ public class WLFrameDecoration {
         return (getFrame().isResizable() ? 3 : 2) * HEIGHT;
     }
 
-    public void paint(final Graphics g) {
+    public void paint() {
         int width = peer.getWidth();
         int height = peer.getHeight();
         if (width <= 0 || height <= 0) return;
-        Graphics2D g2d = (Graphics2D) g.create(0, 0, width, HEIGHT);
-        try {
-            doPaint(g2d);
-        } finally {
-            g2d.dispose();
+        Graphics2D g = (Graphics2D) peer.getGraphics();
+        if (g != null) {
+            try {
+                GraphicsConfiguration gc = g.getDeviceConfiguration();
+                do {
+                    if (buffer == null || buffer.getWidth() != width ||
+                            buffer.validate(gc) == VolatileImage.IMAGE_INCOMPATIBLE) {
+                        buffer = gc.createCompatibleVolatileImage(width, HEIGHT);
+                    }
+                    Graphics2D bg = buffer.createGraphics();
+                    try {
+                        doPaint(bg);
+                    } finally {
+                        bg.dispose();
+                    }
+                    g.drawImage(buffer, 0, 0, null);
+                } while (buffer.contentsLost());
+            } finally {
+                g.dispose();
+            }
         }
     }
 
@@ -122,6 +134,8 @@ public class WLFrameDecoration {
 
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+        g.clipRect(0, 0, width, HEIGHT);
 
         g.setColor(BACKGROUND);
         g.fillRect(0, 0, width, HEIGHT);
@@ -251,7 +265,7 @@ public class WLFrameDecoration {
         if (closeButton.processMouseEvent(e) |
             maximizeButton.processMouseEvent(e) |
             minimizeButton.processMouseEvent(e)) {
-            peer.postPaintEventForClientDecorations();
+            paint();
         }
         if (e.getID() == MouseEvent.MOUSE_PRESSED) {
             pressedLocation = point;
@@ -282,7 +296,7 @@ public class WLFrameDecoration {
     void setActive(boolean active) {
         if (active != this.active) {
             this.active = active;
-            peer.postPaintEventForClientDecorations();
+            paint();
         }
     }
 
