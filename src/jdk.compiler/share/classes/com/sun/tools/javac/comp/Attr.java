@@ -2723,7 +2723,7 @@ public class Attr extends JCTree.Visitor {
                 public void visitLambda(JCLambda that) {
                     // or lambda expressions!
                 }
-            }.scan(tree);
+            }.scan(tree.body);
         }
 
         Types.MapVisitor<DiagnosticPosition> targetChecker = new Types.MapVisitor<DiagnosticPosition>() {
