@@ -347,6 +347,10 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
             wakefield_move_surface(wakefield, frame->wl_surface, x, y);
         }
 #endif
+    // From xdg-shell.xml: "After creating a role-specific object and
+    // setting it up, the client must perform an initial commit
+    // without any buffer attached"
+    wl_surface_commit(frame->wl_surface);
 }
 
 static void
@@ -407,5 +411,32 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartResize
     struct WLFrame *frame = (struct WLFrame *) ptr;
     if (frame->toplevel && wl_seat) {
         xdg_toplevel_resize(frame->xdg_toplevel, wl_seat, last_mouse_pressed_serial, edges);
+    }
+}
+
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetWindowGeometry
+        (JNIEnv *env, jobject obj, jlong ptr, jint x, jint y, jint width, jint height)
+{
+    struct WLFrame *frame = (struct WLFrame *) ptr;
+    if (frame->xdg_surface) {
+        xdg_surface_set_window_geometry(frame->xdg_surface, x, y, width, height);
+    }
+}
+
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetMinimumSize
+        (JNIEnv *env, jobject obj, jlong ptr, jint width, jint height)
+{
+    struct WLFrame *frame = (struct WLFrame *) ptr;
+    if (frame->toplevel) {
+        xdg_toplevel_set_min_size(frame->xdg_toplevel, width, height);
+    }
+}
+
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetMaximumSize
+        (JNIEnv *env, jobject obj, jlong ptr, jint width, jint height)
+{
+    struct WLFrame *frame = (struct WLFrame *) ptr;
+    if (frame->toplevel) {
+        xdg_toplevel_set_max_size(frame->xdg_toplevel, width, height);
     }
 }

@@ -61,7 +61,8 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
     @Override
     void configureWLSurface() {
         super.configureWLSurface();
-
+        updateMinimumSize();
+        updateMaximumSize();
         int state = ((Frame) target).getExtendedState();
         if (state != Frame.NORMAL) {
             setState(state);
@@ -102,6 +103,7 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
     @Override
     public void setTitle(String title) {
         setFrameTitle(title);
+        notifyClientDecorationsChanged();
     }
 
     @Override
@@ -111,7 +113,7 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
 
     @Override
     public void setResizable(boolean resizeable) {
-        repaintClientDecorations();
+        notifyClientDecorationsChanged();
     }
 
     @Override
@@ -144,6 +146,19 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
 
     @Override
     public void setMaximizedBounds(Rectangle bounds) {
+    }
+
+    @Override
+    public Dimension getMinimumSize() {
+        final Dimension targetMinimumSize = target.isMinimumSizeSet()
+                ? target.getMinimumSize()
+                : new Dimension(1, 1);
+        final Dimension frameMinimumSize = decoration != null
+                ? decoration.getMinimumSize()
+                : new Dimension(1, 1);
+        return new Rectangle(targetMinimumSize)
+                .union(new Rectangle(frameMinimumSize))
+                .getSize();
     }
 
     @Override
@@ -187,7 +202,14 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
 
     @Override
     public void updateMinimumSize() {
-        throw new UnsupportedOperationException();
+        final Dimension minSize = getMinimumSize();
+        super.setMinimumSizeTo(minSize);
+    }
+
+    public void updateMaximumSize() {
+        // TODO: make sure this is called when our target's maximum size changes
+        final Dimension maxSize = target.isMaximumSizeSet() ? target.getMaximumSize() : null;
+        if (maxSize != null) super.setMaximumSizeTo(maxSize);
     }
 
     @Override
@@ -207,7 +229,9 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
 
     @Override
     public void updateWindow() {
-        throw new UnsupportedOperationException();
+        // signals the end of repainting by Swing and/or AWT
+        paintClientDecorations(getGraphics());
+        commitToServer();
     }
 
     @Override
@@ -231,7 +255,7 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
 
     @Override
     void notifyConfigured(int width, int height, boolean active, boolean maximized) {
-        if (width != 0 || height != 0) target.setSize(width, height);
+        super.notifyConfigured(width, height, active, maximized);
         if (decoration != null) decoration.setActive(active);
 
         synchronized (getStateLock()) {
@@ -240,13 +264,39 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
             AWTAccessor.getFrameAccessor().setExtendedState((Frame)target, state);
             if (state != oldState) {
                 WLToolkit.postEvent(new WindowEvent((Window)target, WindowEvent.WINDOW_STATE_CHANGED, oldState, state));
-                repaintClientDecorations();
             }
         }
     }
 
     @Override
-    void repaintClientDecorations() {
-        if (decoration != null) decoration.paint();
+    public Rectangle getVisibleBounds() {
+        // TODO: modify if our decorations ever acquire special effects that
+        // do not count into "visible bounds" of the window
+        return super.getVisibleBounds();
+    }
+
+    @Override
+    public void setBounds(int x, int y, int width, int height, int op) {
+        notifyClientDecorationsChanged();
+        super.setBounds(x, y, width, height, op);
+    }
+
+    final void notifyClientDecorationsChanged() {
+        if (decoration != null) {
+            final Rectangle bounds = decoration.getBounds();
+            decoration.markRepaintNeeded();
+            postPaintEvent(getTarget(), bounds.x, bounds.y, bounds.width, bounds.height);
+        }
+    }
+
+    final void paintClientDecorations(final Graphics g) {
+        if (decoration != null && decoration.getRepaintNeededAndReset()) {
+            decoration.paint(g);
+        }
+    }
+
+    @Override
+    void paintPeer(final Graphics g) {
+        super.paintPeer(g);
     }
 }

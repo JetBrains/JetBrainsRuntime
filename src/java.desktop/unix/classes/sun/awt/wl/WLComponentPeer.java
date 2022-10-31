@@ -29,7 +29,6 @@ package sun.awt.wl;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.PaintEventDispatcher;
-import sun.awt.SunToolkit;
 import sun.awt.event.IgnorePaintEvent;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
@@ -114,26 +113,6 @@ public class WLComponentPeer implements ComponentPeer {
         return background;
     }
 
-    public final void repaint(int x, int y, int width, int height) {
-        if (!isVisible() || getWidth() == 0 || getHeight() == 0) {
-            return;
-        }
-        Graphics g = getGraphics();
-        if (g != null) {
-            try {
-                g.setClip(x, y, width, height);
-                if (SunToolkit.isDispatchThreadForAppContext(getTarget())) {
-                    paint(g); // The native and target will be painted in place.
-                } else {
-                    paintPeer(g);
-                    postPaintEvent(target, x, y, width, height);
-                }
-            } finally {
-                g.dispose();
-            }
-        }
-    }
-
     public void postPaintEvent(Component target, int x, int y, int w, int h) {
         PaintEvent event = PaintEventDispatcher.getPaintEventDispatcher().
                 createPaintEvent(target, x, y, w, h);
@@ -144,9 +123,9 @@ public class WLComponentPeer implements ComponentPeer {
 
     void postPaintEvent() {
         if (isVisible()) {
-            PaintEvent pe = new PaintEvent(target, PaintEvent.PAINT,
-                    new Rectangle(0, 0, width, height));
-            WLToolkit.postEvent(pe);
+            synchronized (sizeLock) {
+                postPaintEvent(getTarget(), 0, 0, width, height);
+            }
         }
     }
 
@@ -154,9 +133,6 @@ public class WLComponentPeer implements ComponentPeer {
         return visible;
     }
 
-    void repaint() {
-        repaint(0, 0, getWidth(), getHeight());
-    }
 
     @Override
     public void reparent(ContainerPeer newContainer) {
@@ -220,15 +196,12 @@ public class WLComponentPeer implements ComponentPeer {
         if (this.visible) {
             final String title = target instanceof Frame frame ? frame.getTitle() : null;
             nativeCreateWLSurface(nativePtr, getParentNativePtr(target), target.getX(), target.getY(), title, appID);
+            // Now wait for the sequence of configure events and the window
+            // will finally appear on screen after we post a PaintEvent
+            // from notifyConfigured()
             configureWLSurface();
             final long wlSurfacePtr = getWLSurface();
             WLToolkit.registerWLSurface(wlSurfacePtr, this);
-            surfaceData.assignSurface(wlSurfacePtr);
-            PaintEvent event = PaintEventDispatcher.getPaintEventDispatcher().
-                    createPaintEvent(target, 0, 0, target.getWidth(), target.getHeight());
-            if (event != null) {
-                WLToolkit.postEvent(WLToolkit.targetToAppContext(event.getSource()), event);
-            }
         } else {
             WLToolkit.unregisterWLSurface(getWLSurface());
             surfaceData.assignSurface(0);
@@ -257,7 +230,6 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     void paintPeer(final Graphics g) {
-        // commitToServer();
     }
 
     Graphics getGraphics(SurfaceData surfData, Color afore, Color aback, Font afont) {
@@ -293,7 +265,7 @@ public class WLComponentPeer implements ComponentPeer {
      * the server notifies us (through an event on EDT) that the displaying
      * buffer is ready to accept new data.
      */
-    void commitToServer() {
+    public void commitToServer() {
         if (getWLSurface() != 0) {
             surfaceData.commitToServer();
         }
@@ -325,34 +297,53 @@ public class WLComponentPeer implements ComponentPeer {
                 this.width = width;
                 this.height = height;
                 surfaceData.revalidate(width, height);
-                repaintClientDecorations();
+                updateWindowGeometry();
                 layout();
 
                 WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_RESIZED));
             }
+            postPaintEvent();
+        }
+    }
+
+    public Rectangle getVisibleBounds() {
+        synchronized(sizeLock) {
+            return new Rectangle(0, 0, width, height);
+        }
+    }
+
+    private void updateWindowGeometry() {
+        // From xdg-shell.xml:
+        // "The window geometry of a surface is its "visible bounds" from the
+        //	user's perspective. Client-side decorations often have invisible
+        //	portions like drop-shadows which should be ignored for the
+        //	purposes of aligning, placing and constraining windows"
+        if (nativePtr != 0) {
+            final Rectangle visibleBounds = getVisibleBounds();
+            nativeSetWindowGeometry(nativePtr,
+                    visibleBounds.x, visibleBounds.y,
+                    visibleBounds.width, visibleBounds.height);
         }
     }
 
     public void coalescePaintEvent(PaintEvent e) {
         Rectangle r = e.getUpdateRect();
         if (!(e instanceof IgnorePaintEvent)) {
-
             paintArea.add(r, e.getID());
         }
-        if (true) {
-            switch (e.getID()) {
-                case PaintEvent.UPDATE:
-                    if (log.isLoggable(Level.INFO)) {
-                        log.info("WLCP coalescePaintEvent : UPDATE : add : x = " +
-                                r.x + ", y = " + r.y + ", width = " + r.width + ",height = " + r.height);
-                    }
-                    return;
-                case PaintEvent.PAINT:
-                    if (log.isLoggable(Level.INFO)) {
-                        log.info("WLCP coalescePaintEvent : PAINT : add : x = " +
-                                r.x + ", y = " + r.y + ", width = " + r.width + ",height = " + r.height);
-                    }
-                    return;
+
+        switch (e.getID()) {
+            case PaintEvent.UPDATE -> {
+                if (log.isLoggable(Level.INFO)) {
+                    log.info("WLCP coalescePaintEvent : UPDATE : add : x = " +
+                            r.x + ", y = " + r.y + ", width = " + r.width + ",height = " + r.height);
+                }
+            }
+            case PaintEvent.PAINT -> {
+                if (log.isLoggable(Level.INFO)) {
+                    log.info("WLCP coalescePaintEvent : PAINT : add : x = " +
+                            r.x + ", y = " + r.y + ", width = " + r.width + ",height = " + r.height);
+                }
             }
         }
     }
@@ -475,6 +466,18 @@ public class WLComponentPeer implements ComponentPeer {
 
     public Dimension getMinimumSize() {
         return target.getSize();
+    }
+    
+    void setMinimumSizeTo(Dimension minSize) {
+        if (nativePtr != 0) {
+            nativeSetMinimumSize(nativePtr, minSize.width, minSize.height);
+        }
+    }
+
+    void setMaximumSizeTo(Dimension maxSize) {
+        if (nativePtr != 0) {
+            nativeSetMaximumSize(nativePtr, maxSize.width, maxSize.height);
+        }
     }
 
     @Override
@@ -600,7 +603,6 @@ public class WLComponentPeer implements ComponentPeer {
         Objects.requireNonNull(title);
         if (nativePtr != 0) {
             nativeSetTitle(nativePtr, title);
-            repaintClientDecorations();
         }
     }
 
@@ -654,6 +656,10 @@ public class WLComponentPeer implements ComponentPeer {
     private native void nativeRequestUnmaximized(long ptr);
     private native void nativeRequestFullScreen(long ptr);
     private native void nativeRequestUnsetFullScreen(long ptr);
+
+    private native void nativeSetWindowGeometry(long ptr, int x, int y, int width, int height);
+    private native void nativeSetMinimumSize(long ptr, int width, int height);
+    private native void nativeSetMaximumSize(long ptr, int width, int height);
 
     static long getParentNativePtr(Component target) {
         Component parent = target.getParent();
@@ -793,7 +799,20 @@ public class WLComponentPeer implements ComponentPeer {
         nativeStartResize(nativePtr, edges);
     }
 
-    void notifyConfigured(int width, int height, boolean active, boolean maximized) {}
+    void notifyConfigured(int width, int height, boolean active, boolean maximized) {
+        final long wlSurfacePtr = getWLSurface();
+        // TODO: this needs to be done only once after wlSetVisible(true)
+        surfaceData.assignSurface(wlSurfacePtr);
+        if (width != 0 && height != 0) target.setSize(width, height);
+        if (width == 0 && height == 0) {
+            // From xdg-shell.xml: "If the width or height arguments are zero,
+            // it means the client should decide its own window dimension".
 
-    void repaintClientDecorations() {}
+            // In case this is the first configure after setVisible(true), we
+            // need to post the initial paint event for the window to appear on
+            // the screen. In the other case, this paint event is posted
+            // by setBounds() eventually called from target.setSize() above.
+            postPaintEvent();
+        }
+    }
 }

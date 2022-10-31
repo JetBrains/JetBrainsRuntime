@@ -27,11 +27,10 @@
 
 package sun.awt.wl;
 
-import java.awt.Component;
-import java.awt.Graphics;
+import java.awt.*;
+
 import sun.awt.AWTAccessor;
 import sun.awt.RepaintArea;
-import sun.awt.X11.XComponentPeer;
 
 /**
  * The {@code RepaintArea} is a geometric construct created for the
@@ -61,10 +60,16 @@ final class WLRepaintArea extends RepaintArea {
         if (comp != null) {
             final WLComponentPeer peer = AWTAccessor.getComponentAccessor()
                                                    .getPeer(comp);
-            if (peer != null) {
-                peer.paintPeer(g);
+            try {
+                if (peer != null) {
+                    peer.paintPeer(g);
+                }
+                super.paintComponent(comp, g);
+            } finally {
+                if (comp instanceof Window window) {
+                    AWTAccessor.getWindowAccessor().updateWindow(window);
+                }
             }
-            super.paintComponent(comp, g);
         }
     }
 }
