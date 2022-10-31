@@ -58,6 +58,16 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
         }
     }
 
+    @Override
+    void configureWLSurface() {
+        super.configureWLSurface();
+
+        int state = ((Frame) target).getExtendedState();
+        if (state != Frame.NORMAL) {
+            setState(state);
+        }
+    }
+
     private static native void initIDs();
 
     static {
@@ -106,6 +116,8 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
 
     @Override
     public void setState(int newState) {
+        if (!isVisible()) return;
+
         synchronized(getStateLock()) {
             if ((newState & Frame.ICONIFIED) != 0) {
                 // Per xdg-shell.xml, "There is no way to know if the surface

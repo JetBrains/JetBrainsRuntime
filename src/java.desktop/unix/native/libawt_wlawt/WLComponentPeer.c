@@ -53,6 +53,11 @@ struct WLFrame {
         struct xdg_toplevel *xdg_toplevel;
         struct xdg_popup *xdg_popup;
     };
+    jboolean configuredPending;
+    int32_t configuredWidth;
+    int32_t configuredHeight;
+    jboolean configuredActive;
+    jboolean configuredMaximized;
 };
 
 static void
@@ -61,6 +66,23 @@ xdg_surface_configure(void *data,
                       uint32_t serial)
 {
     xdg_surface_ack_configure(xdg_surface, serial);
+
+    struct WLFrame *wlFrame = (struct WLFrame*)data;
+    assert(wlFrame);
+
+    if (wlFrame->configuredPending) {
+        wlFrame->configuredPending = JNI_FALSE;
+        
+        JNIEnv *env = getEnv();
+        const jobject nativeFramePeer = (*env)->NewLocalRef(env, wlFrame->nativeFramePeer);
+        if (nativeFramePeer) {
+            (*env)->CallVoidMethod(env, nativeFramePeer, notifyConfiguredMID,
+                                   wlFrame->configuredWidth, wlFrame->configuredHeight,
+                                   wlFrame->configuredActive, wlFrame->configuredMaximized);
+            (*env)->DeleteLocalRef(env, nativeFramePeer);
+            JNU_CHECK_EXCEPTION(env);
+        }
+    }
 }
 
 static void
@@ -119,13 +141,12 @@ xdg_toplevel_configure(void *data,
                 break;
         }
     }
-    JNIEnv *env = getEnv();
-    const jobject nativeFramePeer = (*env)->NewLocalRef(env, wlFrame->nativeFramePeer);
-    if (nativeFramePeer) {
-        (*env)->CallVoidMethod(env, nativeFramePeer, notifyConfiguredMID, width, height, active, maximized);
-        (*env)->DeleteLocalRef(env, nativeFramePeer);
-        JNU_CHECK_EXCEPTION(env);
-    }
+
+    wlFrame->configuredPending = JNI_TRUE;
+    wlFrame->configuredWidth = width;
+    wlFrame->configuredHeight = height;
+    wlFrame->configuredActive = active;
+    wlFrame->configuredMaximized = maximized;
 }
 
 static void
@@ -200,6 +221,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateFrame
     frame->xdg_surface = NULL;
     frame->toplevel = JNI_FALSE;
     frame->xdg_popup = NULL;
+    frame->configuredPending = JNI_FALSE;
     return (jlong)frame;
 }
 
@@ -260,6 +282,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestMaximized
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
         xdg_toplevel_set_maximized(frame->xdg_toplevel);
+        wl_display_roundtrip(wl_display);
     }
 }
 
@@ -270,6 +293,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestUnmaximized
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
         xdg_toplevel_unset_maximized(frame->xdg_toplevel);
+        wl_display_roundtrip(wl_display);
     }
 }
 

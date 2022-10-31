@@ -220,6 +220,7 @@ public class WLComponentPeer implements ComponentPeer {
         if (this.visible) {
             final String title = target instanceof Frame frame ? frame.getTitle() : null;
             nativeCreateWLSurface(nativePtr, getParentNativePtr(target), target.getX(), target.getY(), title, appID);
+            configureWLSurface();
             final long wlSurfacePtr = getWLSurface();
             WLToolkit.registerWLSurface(wlSurfacePtr, this);
             surfaceData.assignSurface(wlSurfacePtr);
@@ -234,6 +235,8 @@ public class WLComponentPeer implements ComponentPeer {
             nativeHideFrame(nativePtr);
         }
     }
+
+    void configureWLSurface() {}
 
     @Override
     public void setVisible(boolean v) {
