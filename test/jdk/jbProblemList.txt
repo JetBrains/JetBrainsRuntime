@@ -201,6 +201,7 @@ java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474,8224055 macosx-all,wind
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java 8129778 generic-all
 java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java 8129778 generic-all
 java/awt/event/KeyEvent/KeyTyped/CtrlASCII.java 8252713 linux-all
+java/awt/event/KeyEvent/KeyTyped/CtrlSpace.java JBR-3817 windows-all,macosx-all
 java/awt/event/MouseEvent/MouseButtonsAndKeyMasksTest/MouseButtonsAndKeyMasksTest.java 8129778 generic-all
 
 java/awt/dnd/URIListToFileListBetweenJVMsTest/URIListToFileListBetweenJVMsTest.java 8194947 generic-all
@@ -668,6 +669,7 @@ javax/sound/sampled/Clip/bug5070081.java                             8055097 gen
 javax/sound/sampled/DataLine/LongFramePosition.java                  8055097 generic-all
 
 javax/sound/sampled/Clip/Drain/ClipDrain.java          7062792 generic-all
+javax/sound/sampled/Clip/SetPositionHang.java JBR-4969 linux-aarch64
 
 javax/sound/sampled/Mixers/DisabledAssertionCrash.java 7067310 generic-all
 
@@ -897,6 +899,7 @@ java/awt/FullScreen/BufferStrategyExceptionTest/BufferStrategyExceptionTest.java
 
 java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java JBR-4880 windows-all
 javax/swing/JFileChooser/8002077/bug8002077.java JBR-4880 windows-all
+javax/swing/JFileChooser/JFileChooserSetLocationTest.java 8295804 linux-all,macosx-10.15.7
 javax/swing/JSpinner/4973721/bug4973721.java JBR-4880 windows-all
 javax/swing/JSpinner/5012888/bug5012888.java JBR-4880 windows-all
 javax/swing/JSpinner/SpinnerTest.java JBR-4880 windows-all
