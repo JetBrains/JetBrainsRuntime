@@ -3,7 +3,6 @@
 #
 sun/awt/dnd/8024061/bug8024061.java nobug windows-all
 java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java nobug windows-all
-java/awt/event/KeyEvent/KeyTyped/CtrlSpace.java JBR-3817 windows-all
 java/awt/hidpi/ClientAreaOriginWindowsTest.java JBR-630 windows-all
 java/awt/hidpi/SetMaximizedBoundsTest.java nobug windows-all
 java/awt/Focus/8073453/AWTFocusTransitionTest.java JBR-4354 windows-all,linux-all # linux: JBR-4354
@@ -135,7 +134,7 @@ javax/swing/text/CSSBorder/6796710/bug6796710.java nobug windows-all
 javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java 8194048 windows-all,linux-all nobug: linux, 8194048 windows
 javax/swing/text/DefaultEditorKit/4278839/bug4278839.java nobug windows-all
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java nobug windows-all
-javax/swing/text/JTextComponent/5074573/bug5074573.java nobug windows-all
+javax/swing/text/JTextComponent/5074573/bug5074573.java nobug windows-all,linux-all
 javax/swing/text/JTextComponent/6361367/bug6361367.java nobug windows-all
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java nobug windows-all
 javax/swing/text/View/8014863/bug8014863.java nobug windows-all
