@@ -77,6 +77,12 @@ ifeq ($(call isTargetOs, windows), true)
       #
 endif
 
+#ifeq ($(call isTargetOs, linux), true)
+#  LIBAWT_EXTRA_SRC += \
+#      $(TOPDIR)/src/$(MODULE)/linux/native/libawt \
+#      #
+#endif
+
 ifeq ($(call isTargetOs, linux macosx aix), true)
   LIBAWT_EXFILES += awt_Font.c CUPSfuncs.c fontpath.c X11Color.c
 endif
@@ -192,6 +198,12 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/font \
         #
 
+    ifeq ($(call isTargetOs, linux), true)
+        LIBAWT_XAWT_EXTRA_SRC += \
+            $(TOPDIR)/src/$(MODULE)/linux/native/libawt_xawt \
+            #
+    endif
+
     LIBAWT_XAWT_EXCLUDES := medialib debug
 
     LIBAWT_XAWT_EXTRA_HEADER_DIRS := \
@@ -219,6 +231,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
 
     ifeq ($(call isTargetOs, linux), true)
       LIBAWT_XAWT_LIBS += -lpthread
+      LIBAWT_XAWT_LIBS += -lspeechd
     endif
 
     ifeq ($(TOOLCHAIN_TYPE), gcc)
