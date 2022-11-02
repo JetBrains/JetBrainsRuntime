@@ -208,15 +208,15 @@ java/awt/dnd/URIListToFileListBetweenJVMsTest/URIListToFileListBetweenJVMsTest.j
 java/awt/Frame/FramesGC/FramesGC.java 8079069 macosx-all
 java/awt/Scrollbar/ScrollbarMouseWheelTest/ScrollbarMouseWheelTest.java 8196018 windows-all,linux-all
 java/awt/TrayIcon/ActionCommand/ActionCommand.java 8150540 windows-all
-java/awt/TrayIcon/ActionEventMask/ActionEventMask.java 8150540 windows-all
+java/awt/TrayIcon/ActionEventMask/ActionEventMask.java 8150540,8242801 windows-all,macosx-all
 java/awt/TrayIcon/ActionEventTest/ActionEventTest.java 8150540,8242801 windows-all,macosx-all
-java/awt/TrayIcon/ModalityTest/ModalityTest.java 8150540 windows-all,macosx-all
-java/awt/TrayIcon/MouseEventMask/MouseEventMaskTest.java 8150540 windows-all
-java/awt/TrayIcon/MouseMovedTest/MouseMovedTest.java 8150540 windows-all
-java/awt/TrayIcon/SecurityCheck/FunctionalityCheck/FunctionalityCheck.java 8150540 windows-all
+java/awt/TrayIcon/ModalityTest/ModalityTest.java 8150540,8295300 windows-all,macosx-all,linux-5.15.0-39-generic
+java/awt/TrayIcon/MouseEventMask/MouseEventMaskTest.java 8150540,8295300 windows-all,linux-5.15.0-39-generic
+java/awt/TrayIcon/MouseMovedTest/MouseMovedTest.java 8150540,8295300 windows-all,linux-5.15.0-39-generic
+java/awt/TrayIcon/SecurityCheck/FunctionalityCheck/FunctionalityCheck.java 8150540,8295300 windows-all,linux-5.15.0-39-generic
 java/awt/TrayIcon/SystemTrayInstance/SystemTrayInstanceTest.java 8193543 linux-all
-java/awt/TrayIcon/TrayIconEventModifiers/TrayIconEventModifiersTest.java 8150540 windows-all
-java/awt/TrayIcon/TrayIconEvents/TrayIconEventsTest.java 8150540 windows-all
+java/awt/TrayIcon/TrayIconEventModifiers/TrayIconEventModifiersTest.java 8150540,8295300 windows-all,linux-5.15.0-39-generic
+java/awt/TrayIcon/TrayIconEvents/TrayIconEventsTest.java 8150540,8295300 windows-all,linux-5.15.0-39-generic
 java/awt/TrayIcon/TrayIconMouseTest/TrayIconMouseTest.java 8150540 windows-all
 java/awt/TrayIcon/TrayIconPopup/TrayIconPopupClickTest.java 8150540 windows-all,macosx-all
 java/awt/TrayIcon/TrayIconPopup/TrayIconPopupTest.java 8150540 windows-all
@@ -234,6 +234,8 @@ java/awt/Window/ShapedAndTranslucentWindows/Translucent.java 8222328 windows-all
 java/awt/Window/AlwaysOnTop/AutoTestOnTop.java 6847593 linux-all
 java/awt/Window/GrabSequence/GrabSequence.java 6848409 macosx-all,linux-all
 java/awt/Window/LocationAtScreenCorner/LocationAtScreenCorner.java 8203371 linux-all
+java/awt/font/GlyphVector/NLGlyphTest.java 8273321 linux-all
+java/awt/font/JNICheck/JNICheck.sh 8279878 linux-5.15.0-39-generic
 java/awt/font/TextLayout/TextLayoutBounds.java 8169188 generic-all
 java/awt/image/BufferedImage/ICMColorDataTest/ICMColorDataTest.java 8233028 generic-all
 java/awt/image/DrawImage/IncorrectAlphaSurface2SW.java 8056077 linux-all
@@ -245,7 +247,8 @@ sun/java2d/DirectX/OnScreenRenderingResizeTest/OnScreenRenderingResizeTest.java 
 sun/java2d/DirectX/OverriddenInsetsTest/OverriddenInsetsTest.java 8196102 generic-all
 sun/java2d/DirectX/RenderingToCachedGraphicsTest/RenderingToCachedGraphicsTest.java 8196180,8252812 windows-all,macosx-all,linux-all
 java/awt/Graphics2D/CopyAreaOOB.java 7001973 windows-all,macosx-all,linux-all
-java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java 8266283 linux-aarch64
+java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java 8266283 linux-all
+java/awt/Graphics2D/ScaledTransform/ScaledTransform.java 8277240 linux-all
 sun/java2d/SunGraphics2D/EmptyClipRenderingTest.java 8144029 macosx-all,linux-all,windows-all
 sun/java2d/SunGraphics2D/DrawImageBilinear.java 8191406 generic-all
 sun/java2d/SunGraphics2D/PolyVertTest.java 6986565 generic-all
@@ -477,7 +480,7 @@ java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 71
 java/awt/Focus/TranserFocusToWindow/TranserFocusToWindow.java 6848810 macosx-all,linux-all
 java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java 8194751 linux-all
 java/awt/image/VolatileImage/BitmaskVolatileImage.java 8133102 linux-all
-java/awt/SplashScreen/MultiResolutionSplash/MultiResolutionSplashTest.java 8134231 windows-all,linux-all
+java/awt/SplashScreen/MultiResolutionSplash/MultiResolutionSplashTest.java 8134231,8279190 windows-all,linux-all,macosx-all
 java/awt/SplashScreen/MultiResolutionSplash/unix/UnixMultiResolutionSplashTest.java 8203004 linux-all
 java/awt/Robot/AcceptExtraMouseButtons/AcceptExtraMouseButtons.java 7107528 linux-all,macosx-all
 java/awt/Mouse/MouseDragEvent/MouseDraggedTest.java 8080676 linux-all
@@ -687,18 +690,23 @@ javax/sound/midi/Sequencer/MetaCallback.java 8178698 linux-all
 javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java 8194945 macosx-all
 javax/swing/plaf/basic/BasicTextUI/8001470/bug8001470.java 8233177 linux-all,windows-all
 javax/swing/plaf/nimbus/TestNimbusOverride.java 8253184 windows-all
+javax/swing/plaf/windows/WindowsRootPaneUI/WrongAltProcessing/WrongAltProcessing.java JBR-4372 windows-all
 
 javax/swing/border/TestTitledBorderLeak.java 8213531 linux-all,windows-all
 javax/swing/JComponent/6683775/bug6683775.java 8172337 generic-all
+javax/swing/JLabel/4138746/JLabelMnemonicsTest.java JBR-4949 linux-all,windows-all
+javax/swing/JLabel/6596966/bug6596966.java 8197552 windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8233582 linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582 linux-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128 macosx-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8253184 windows-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128,8253184 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/SetShapeAndClickSwing.java 8013450 macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java 8024627 macosx-all
 # The next test below is an intermittent failure
 javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java 8159131 linux-all
 javax/swing/JTree/4633594/JTreeFocusTest.java 8173125 macosx-all
-javax/swing/AbstractButton/6711682/bug6711682.java 8060765 windows-all,macosx-all
+javax/swing/JTree/6263446/bug6263446.java 8296083 windows-all
+javax/swing/AbstractButton/6711682/bug6711682.java 8060765 windows-all,macosx-all,linux-5.15.0-39-generic
 javax/swing/JFileChooser/4524490/bug4524490.java 8042380 generic-all
 javax/swing/JFileChooser/6396844/TwentyThousandTest.java 8198003 generic-all
 javax/swing/JPopupMenu/6580930/bug6580930.java 7124313 macosx-all
@@ -729,7 +737,7 @@ java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8277816 macosx-aarch64
 java/awt/ColorClass/AlphaColorTest.java 8277816 macosx-aarch64
 java/awt/AlphaComposite/WindowAlphaCompositeTest.java 8277816 macosx-aarch64
 
-sanity/client/SwingSet/src/ColorChooserDemoTest.java 8278582 windows-all
+sanity/client/SwingSet/src/ColorChooserDemoTest.java 8278582,8273312 windows-all
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8225012 windows-all,macosx-all
 sanity/client/SwingSet/src/ScrollPaneDemoTest.java 8225013 linux-all
 
@@ -898,6 +906,7 @@ java/awt/FullScreen/BufferStrategyExceptionTest/BufferStrategyExceptionTest.java
 java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java JBR-4880 windows-all
 javax/swing/JFileChooser/8002077/bug8002077.java JBR-4880 windows-all
 javax/swing/JFileChooser/JFileChooserSetLocationTest.java 8295804 linux-all,macosx-10.15.7
+javax/swing/JSlider/6348946/bug6348946.java 8197552 windows-all
 javax/swing/JSpinner/4973721/bug4973721.java JBR-4880 windows-all
 javax/swing/JSpinner/5012888/bug5012888.java JBR-4880 windows-all
 javax/swing/JSpinner/SpinnerTest.java JBR-4880 windows-all
@@ -913,4 +922,5 @@ jb/sun/awt/macos/NationalLayoutTest/Layout_US_INTERNATIONAL_PC.java JBR-4933 mac
 
 jb/javax/swing/JDialog/JDialog705.java JBR-4934 generic-all
 
+jb/java/awt/Focus/ModalDialogFromMenuTest.java JBR-4974 linux-all
 jb/java/awt/Window/ModalDialogAndPopup.java JBR-4984 macosx-all
