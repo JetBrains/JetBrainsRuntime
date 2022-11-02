@@ -106,13 +106,13 @@ public class ModalDialogFromMenuTest {
     }
 
     private static void clickAt(int x, int y, int buttons) {
-        robot.delay(1000); // needed for GNOME, to give it some time to update internal state after window showing
         robot.mouseMove(x, y);
         robot.mousePress(buttons);
         robot.mouseRelease(buttons);
     }
 
     private static void clickOn(Component component, int buttons) {
+        robot.delay(1000); // needed for GNOME, to give it some time to update internal state after window showing
         Point location = component.getLocationOnScreen();
         clickAt(location.x + component.getWidth() / 2, location.y + component.getHeight() / 2, buttons);
     }
