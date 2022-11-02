@@ -119,6 +119,32 @@ public class AccessibleActionsTest extends AccessibleComponentTest {
     super.createUI(panel, "AccessibleTextTest");
   }
 
+  private void createEditableTextArea() {
+    AccessibleComponentTest.INSTRUCTIONS = "INSTRUCTIONS:\n"
+            + "Check a11y show context menu in editable JTextArea.\n\n"
+            + "Turn screen reader on and press Tab to move to the text area\n"
+            + "Perform the VO action \"Open a shortcut menu\" (VO+Shift+m)\n\n"
+            + "If the menu appears  tab further and press PASS, otherwise press FAIL.";
+
+    JTextArea textArea = new MyTextArea("some text to edit");
+    JLabel label = new JLabel(textArea.getText().length() + " chars");
+    label.setLabelFor(textArea);
+    textArea.setEditable(true);
+    textArea.addKeyListener(new KeyAdapter() {
+      @Override
+      public void keyReleased(KeyEvent e) {
+        label.setText(String.valueOf(textArea.getText().length()) + " chars");
+      }
+    });
+
+    JPanel panel = new JPanel();
+    panel.setLayout(new FlowLayout());
+    panel.add(textArea);
+    panel.add(label);
+    exceptionString = "Editable text area test failed!";
+    super.createUI(panel, "AccessibleTextTest");
+  }
+
   public static void main(String[] args) throws Exception {
     AccessibleActionsTest test = new AccessibleActionsTest();
 
@@ -132,6 +158,14 @@ public class AccessibleActionsTest extends AccessibleComponentTest {
 
     countDownLatch = test.createCountDownLatch();
     SwingUtilities.invokeLater(test::createTree);
+    countDownLatch.await();
+
+    if (!testResult) {
+      throw new RuntimeException(a11yTest.exceptionString);
+    }
+
+    countDownLatch = test.createCountDownLatch();
+    SwingUtilities.invokeLater(test::createEditableTextArea);
     countDownLatch.await();
 
     if (!testResult) {
