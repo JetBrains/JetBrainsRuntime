@@ -215,13 +215,8 @@ JNIEXPORT jlong JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeCreateFrame
   (JNIEnv *env, jobject obj)
 {
-    struct WLFrame *frame = (struct WLFrame *) malloc(sizeof(struct WLFrame));
+    struct WLFrame *frame = (struct WLFrame *) calloc(1, sizeof(struct WLFrame));
     frame->nativeFramePeer = (*env)->NewWeakGlobalRef(env, obj);
-    frame->wl_surface = NULL;
-    frame->xdg_surface = NULL;
-    frame->toplevel = JNI_FALSE;
-    frame->xdg_popup = NULL;
-    frame->configuredPending = JNI_FALSE;
     return (jlong)frame;
 }
 
