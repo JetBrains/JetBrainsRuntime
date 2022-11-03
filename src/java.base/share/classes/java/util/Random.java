@@ -303,7 +303,7 @@ class Random implements java.io.Serializable {
         if (origin < bound) {
             r = r * (bound - origin) + origin;
             if (r >= bound) // correct for rounding
-                r = Math.nextAfter(r, origin);
+                r = Math.nextAfter(bound, origin);
         }
         return r;
     }
