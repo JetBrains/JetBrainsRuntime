@@ -995,3 +995,4 @@ jb/javax/swing/JDialog/JDialog392.java JBR-4941 macosx-all
 jb/javax/swing/JDialog/JDialog705.java JBR-4934 generic-all
 
 jb/java/awt/Focus/ModalDialogFromMenuTest.java JBR-4974 linux-all
+jb/java/awt/Window/ModalDialogAndPopup.java JBR-4984 macosx-all
