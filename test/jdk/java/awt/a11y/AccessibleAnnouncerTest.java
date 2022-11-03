@@ -25,7 +25,6 @@
 /*
  * @test
  * @summary Test implementation of accessibility announcing
- * @author Artem.Semenov@jetbrains.com
  * @run main/manual AccessibleAnnouncerTest
  * @requires (os.family == "windows" | os.family == "mac")
  */
@@ -65,7 +64,7 @@ JTextField textField = new JTextField("This is text");
         @Override
         public void actionPerformed(ActionEvent e) {
             String str = textField.getText();
-            AccessibleAnnouncer.announce(str, AccessibleAnnouncer.ACCESSIBLE_PRIORITY_LOW);
+            AccessibleAnnouncer.announce(str, AccessibleAnnouncer.ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT );
         }
     });
 

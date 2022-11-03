@@ -41,7 +41,7 @@ bool JawsAnnounce(JNIEnv *env, jstring str, jint priority)
         const jchar *jchars = env->GetStringChars(str, NULL);
         BSTR param = SysAllocString(jchars);
         int jawsPriority = -1;
-        if (priority == javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_LOW) {
+        if (priority == javax_swing_AccessibleAnnouncer_ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT) {
             jawsPriority = 0;
         }
         pJawsApi->SayString(param, jawsPriority, &retval);

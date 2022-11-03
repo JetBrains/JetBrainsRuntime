@@ -37,19 +37,14 @@ import java.lang.annotation.Native;
 public class AccessibleAnnouncer {
 
     /**
-     * Low priority messages do not interrupt the current speech, they are spoken after the screen reader has spoken the current phrase
+     * messages do not interrupt the current speech, they are spoken after the screen reader has spoken the current phrase
      */
-    @Native public static final int ACCESSIBLE_PRIORITY_LOW = 0;
+    @Native public static final int ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT = 0;
 
     /**
-     * Medium priority messages interrupt the current speech, but only when the focus is on the window of the calling application
+     * messages interrupt the current speech, but only when the focus is on the window of the calling application
      */
-    @Native public static final int ACCESSIBLE_PRIORITY_MEDIUM = 1;
-
-    /**
-     * High priority messages interrupt current speech anyway
-     */
-    @Native public static final int ACCESSIBLE_PRIORITY_HIGH = 2;
+    @Native public static final int ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT = 1;
 
     private AccessibleAnnouncer() {}
 
