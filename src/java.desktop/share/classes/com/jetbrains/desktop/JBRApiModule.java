@@ -39,6 +39,7 @@ public class JBRApiModule {
                     .withStatic("setHandler", "setDesktopActionsHandler", "java.awt.Desktop")
                 .clientProxy("java.awt.Desktop$DesktopActionsHandler", "com.jetbrains.DesktopActions$Handler")
                 .service("com.jetbrains.ProjectorUtils")
-                    .withStatic("overrideGraphicsEnvironment", "overrideLocalGraphicsEnvironment", "java.awt.GraphicsEnvironment");
+                    .withStatic("overrideGraphicsEnvironment", "overrideLocalGraphicsEnvironment", "java.awt.GraphicsEnvironment")
+                    .withStatic("setLocalGraphicsEnvironmentProvider", "setLocalGraphicsEnvironmentProvider", "java.awt.GraphicsEnvironment");
     }
 }

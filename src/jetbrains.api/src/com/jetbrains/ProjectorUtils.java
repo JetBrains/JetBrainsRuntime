@@ -24,7 +24,9 @@
 package com.jetbrains;
 
 import java.awt.*;
+import java.util.function.Supplier;
 
 public interface ProjectorUtils {
-    void overrideGraphicsEnvironment(GraphicsEnvironment ge);
+    void setLocalGraphicsEnvironmentProvider(Supplier<GraphicsEnvironment> geProvider);
+    void overrideGraphicsEnvironment(GraphicsEnvironment overriddenGE);
 }
