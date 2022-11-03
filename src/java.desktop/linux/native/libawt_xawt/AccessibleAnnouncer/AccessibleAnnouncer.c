@@ -49,7 +49,7 @@ JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce(JNIEnv *env
                 {
                     SetSpeechConf(env, connection, conf);
                     int p = SPD_TEXT;
-                    if (priority == javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_HIGH)
+                    if (priority == javax_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT)
                     {
                         p = SPD_MESSAGE;
                     }
