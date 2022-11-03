@@ -547,7 +547,7 @@ public final class SplittableRandom {
             throw new IllegalArgumentException(BAD_BOUND);
         double result = (mix64(nextSeed()) >>> 11) * DOUBLE_UNIT * bound;
         return (result < bound) ?  result : // correct for rounding
-            Math.nextDown(result);
+            Math.nextDown(bound);
     }
 
     /**

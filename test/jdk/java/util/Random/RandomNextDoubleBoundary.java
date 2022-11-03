@@ -24,7 +24,7 @@
 /*
  * @test
  * @summary Verify nextDouble stays within range
- * @bug 8280550 8280950
+ * @bug 8280550 8280950 8281183
  */
 
 import java.util.SplittableRandom;
@@ -68,8 +68,11 @@ public class RandomNextDoubleBoundary {
         SplittableRandom rg = new SplittableRandom(42L);
         double value = rg.nextDouble(origin, bound);
 
-        assertTrue(value >= origin);
-        assertTrue(value < bound);
+        if (bound > 0) {
+            value = rg.nextDouble(bound); // Equivalent to nextDouble(0.0, bound)
+            assertTrue(value >= 0.0);
+            assertTrue(value < bound);
+        }
     }
 
     public static void assertTrue(boolean condition) {
