@@ -350,7 +350,7 @@ public final class SplittableRandom {
         if (origin < bound) {
             r = r * (bound - origin) + origin;
             if (r >= bound) // correct for rounding
-                r = Double.longBitsToDouble(Double.doubleToLongBits(bound) - 1);
+                r = Math.nextAfter(r, origin);
         }
         return r;
     }
@@ -547,7 +547,7 @@ public final class SplittableRandom {
             throw new IllegalArgumentException(BAD_BOUND);
         double result = (mix64(nextSeed()) >>> 11) * DOUBLE_UNIT * bound;
         return (result < bound) ?  result : // correct for rounding
-            Double.longBitsToDouble(Double.doubleToLongBits(bound) - 1);
+            Math.nextDown(result);
     }
 
     /**
