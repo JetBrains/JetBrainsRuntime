@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -684,13 +684,13 @@ public class LoginContext {
         // - this can only be non-zero if methodName is LOGIN_METHOD
 
         for (int i = moduleIndex; i < moduleStack.length; i++, moduleIndex++) {
+            String name = moduleStack[i].entry.getLoginModuleName();
             try {
 
                 if (moduleStack[i].module == null) {
 
                     // locate and instantiate the LoginModule
                     //
-                    String name = moduleStack[i].entry.getLoginModuleName();
                     Set<Provider<LoginModule>> lmProviders;
                     synchronized(providersCache){
                         lmProviders = providersCache.get(contextClassLoader);
@@ -772,16 +772,16 @@ public class LoginContext {
                         clearState();
 
                         if (debug != null)
-                            debug.println(methodName + " SUFFICIENT success");
+                            debug.println(name + " " + methodName + " SUFFICIENT success");
                         return;
                     }
 
                     if (debug != null)
-                        debug.println(methodName + " success");
+                        debug.println(name + " " + methodName + " success");
                     success = true;
                 } else {
                     if (debug != null)
-                        debug.println(methodName + " ignored");
+                        debug.println(name + " " + methodName + " ignored");
                 }
             } catch (Exception ite) {
 
@@ -846,7 +846,7 @@ public class LoginContext {
                     AppConfigurationEntry.LoginModuleControlFlag.REQUISITE) {
 
                     if (debug != null)
-                        debug.println(methodName + " REQUISITE failure");
+                        debug.println(name + " " + methodName + " REQUISITE failure");
 
                     // if REQUISITE, then immediately throw an exception
                     if (methodName.equals(ABORT_METHOD) ||
@@ -861,7 +861,7 @@ public class LoginContext {
                     AppConfigurationEntry.LoginModuleControlFlag.REQUIRED) {
 
                     if (debug != null)
-                        debug.println(methodName + " REQUIRED failure");
+                        debug.println(name + " " + methodName + " REQUIRED failure");
 
                     // mark down that a REQUIRED module failed
                     if (firstRequiredError == null)
@@ -870,7 +870,7 @@ public class LoginContext {
                 } else {
 
                     if (debug != null)
-                        debug.println(methodName + " OPTIONAL failure");
+                        debug.println(name + " " + methodName + " OPTIONAL failure");
 
                     // mark down that an OPTIONAL module failed
                     if (firstError == null)
