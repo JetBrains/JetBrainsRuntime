@@ -89,7 +89,6 @@ final class _AppEventHandler {
     private static final int NOTIFY_SYSTEM_SLEEP = 15;
     private static final int NOTIFY_SYSTEM_WAKE = 16;
     private static final int NOTIFY_SCREEN_CHANGE_PARAMETERS = 17;
-    private static final int NOTIFY_CHANGE_SCREEN = 18;
 
     private static final int REGISTER_USER_SESSION = 1;
     private static final int REGISTER_SCREEN_SLEEP = 2;
@@ -279,16 +278,6 @@ final class _AppEventHandler {
                     EventQueue.invokeLater(
                             () -> ((SunGraphicsEnvironment) GraphicsEnvironment.
                                     getLocalGraphicsEnvironment()).displayParametersChanged());
-                }
-                break;
-            case NOTIFY_CHANGE_SCREEN:
-                if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-                    logger.fine("NOTIFY_CHANGE_SCREEN");
-                }
-                if (AppContext.getAppContext() != null) {
-                    EventQueue.invokeLater(
-                            () -> ((SunGraphicsEnvironment) SunGraphicsEnvironment.
-                                    getLocalGraphicsEnvironment()).displayChanged());
                 }
                 break;
             default:
