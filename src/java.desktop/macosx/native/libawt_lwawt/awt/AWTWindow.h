@@ -73,6 +73,7 @@
 @property (nonatomic) BOOL isJustCreated;
 @property (nonatomic) NSWindowTabbingMode javaWindowTabbingMode;
 @property (nonatomic) BOOL isEnterFullScreen;
+@property (nonatomic, retain) NSNumber *currentDisplayID;
 @property (nonatomic, readonly) CGFloat customTitleBarHeight;
 @property (nonatomic) BOOL customTitleBarControlsVisible;
 @property (nonatomic, retain) NSMutableArray *customTitleBarConstraints;
