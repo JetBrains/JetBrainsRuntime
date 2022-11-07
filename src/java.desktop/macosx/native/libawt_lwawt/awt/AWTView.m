@@ -1629,13 +1629,15 @@ DECLARE_CLASS_ONLY(jc_CInputMethod);
     }
 
     if (self.window.backingScaleFactor > 0 && debugScale < 0) {
-        self.layer.contentsScale = self.window.backingScaleFactor;
-        DECLARE_CLASS(jc_CPlatformView, "sun/lwawt/macosx/CPlatformView");
-        DECLARE_METHOD(deliverChangeBackingProperties, jc_CPlatformView, "deliverChangeBackingProperties", "(F)V");
-        jobject jlocal = (*env)->NewLocalRef(env, m_cPlatformView);
-        (*env)->CallVoidMethod(env, jlocal, deliverChangeBackingProperties, self.window.backingScaleFactor);
-        CHECK_EXCEPTION();
-        (*env)->DeleteLocalRef(env, jlocal);
+        if (self.layer.contentsScale != self.window.backingScaleFactor) {
+            self.layer.contentsScale = self.window.backingScaleFactor;
+            DECLARE_CLASS(jc_CPlatformView, "sun/lwawt/macosx/CPlatformView");
+            DECLARE_METHOD(deliverChangeBackingProperties, jc_CPlatformView, "deliverChangeBackingProperties", "(F)V");
+            jobject jlocal = (*env)->NewLocalRef(env, m_cPlatformView);
+            (*env)->CallVoidMethod(env, jlocal, deliverChangeBackingProperties, self.window.backingScaleFactor);
+            CHECK_EXCEPTION();
+            (*env)->DeleteLocalRef(env, jlocal);
+        }
     }
 }
 
