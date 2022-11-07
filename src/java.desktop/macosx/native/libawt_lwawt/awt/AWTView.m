@@ -200,7 +200,16 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
  * MouseEvents support
  */
 
+- (BOOL)shouldDelayWindowOrderingForEvent:(NSEvent *)event {
+    return [self isWindowDisabled];
+}
+
 - (void) mouseDown: (NSEvent *)event {
+    if ([self isWindowDisabled]) {
+        [NSApp preventWindowOrdering];
+        [NSApp activateIgnoringOtherApps:YES];
+    }
+
     NSInputManager *inputManager = [NSInputManager currentInputManager];
     if ([inputManager wantsToHandleMouseEvents]) {
 #if IM_DEBUG
@@ -401,14 +410,17 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
  * Utility methods and accessors
  */
 
--(void) deliverJavaMouseEvent: (NSEvent *) event {
-    BOOL isEnabled = YES;
+-(BOOL) isWindowDisabled {
     NSWindow* window = [self window];
     if ([window isKindOfClass: [AWTWindow_Panel class]] || [window isKindOfClass: [AWTWindow_Normal class]]) {
-        isEnabled = [(AWTWindow*)[window delegate] isEnabled];
+        return ![(AWTWindow*)[window delegate] isEnabled];
+    } else {
+        return NO;
     }
+}
 
-    if (!isEnabled) {
+-(void) deliverJavaMouseEvent: (NSEvent *) event {
+    if ([self isWindowDisabled]) {
         return;
     }
 
