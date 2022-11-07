@@ -137,7 +137,13 @@ static BOOL orderingScheduled = NO;
     [self setInitialFirstResponder:view];                       \
     [self setReleasedWhenClosed:NO];                            \
     [self setPreservesContentDuringLiveResize:YES];             \
-                                                                \
+    [[NSNotificationCenter defaultCenter] addObserver:self      \
+         selector:@selector(windowDidChangeScreen)              \
+         name:NSWindowDidChangeScreenNotification object:self]; \
+    [[NSNotificationCenter defaultCenter] addObserver:self      \
+         selector:@selector(windowDidChangeProfile)             \
+         name:NSWindowDidChangeScreenProfileNotification        \
+         object:self];                                          \
     return self;                                                \
 }                                                               \
                                                                 \
@@ -170,7 +176,24 @@ static BOOL orderingScheduled = NO;
                                                                 \
 - (NSWindowTabbingMode)tabbingMode {                            \
     return ((AWTWindow*)[self delegate]).javaWindowTabbingMode; \
-}
+}                                                               \
+                                                                \
+- (void)windowDidChangeScreen {                                 \
+   [(AWTWindow*)[self delegate] _displayChanged:NO];           \
+}                                                               \
+                                                                \
+- (void)windowDidChangeProfile {                                \
+   [(AWTWindow*)[self delegate] _displayChanged:YES];            \
+}                                                               \
+                                                                \
+- (void)dealloc {                                               \
+   [[NSNotificationCenter defaultCenter] removeObserver:self    \
+       name:NSWindowDidChangeScreenNotification object:self];   \
+   [[NSNotificationCenter defaultCenter] removeObserver:self    \
+       name:NSWindowDidChangeScreenProfileNotification          \
+       object:self];                                            \
+   [super dealloc];                                             \
+}                                                               \
 
 @implementation AWTWindow_Normal
 AWT_NS_WINDOW_IMPLEMENTATION
@@ -610,6 +633,7 @@ AWT_ASSERT_APPKIT_THREAD;
         [self setUpCustomTitleBar];
     }
 
+    self.currentDisplayID = nil;
     return self;
 }
 
@@ -784,6 +808,7 @@ AWT_ASSERT_APPKIT_THREAD;
     self.javaPlatformWindow = nil;
     self.nsWindow = nil;
     self.ownerWindow = nil;
+    self.currentDisplayID = nil;
     self.customTitleBarConstraints = nil;
     self.customTitleBarHeightConstraint = nil;
     self.customTitleBarButtonCenterXConstraints = nil;
@@ -960,6 +985,42 @@ AWT_ASSERT_APPKIT_THREAD;
 
 
 // NSWindowDelegate methods
+
+- (void)_displayChanged:(BOOL)profileOnly {
+    AWT_ASSERT_APPKIT_THREAD;
+    if (!profileOnly) {
+        NSNumber* newDisplayID = [AWTWindow getNSWindowDisplayID_AppKitThread:nsWindow];
+        if (newDisplayID == nil) {
+            // Do not proceed with unset window display id
+            // to avoid receiving wrong boundary values
+            return;
+        }
+
+        if (self.currentDisplayID == nil) {
+            // Do not trigger notification at first appearance
+            // to avoid flickering on popups
+            self.currentDisplayID = newDisplayID;
+            return;
+        }
+
+        if ([self.currentDisplayID isEqualToNumber: newDisplayID]) {
+            return;
+        }
+        self.currentDisplayID = newDisplayID;
+    }
+
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
+    if (platformWindow == NULL) {
+        NSLog(@"[AWTWindow _displayChanged]: platformWindow == NULL");
+        return;
+    }
+    GET_CPLATFORM_WINDOW_CLASS();
+    DECLARE_METHOD(jm_displayChanged, jc_CPlatformWindow, "displayChanged", "(Z)V");
+    (*env)->CallVoidMethod(env, platformWindow, jm_displayChanged, profileOnly);
+    CHECK_EXCEPTION();
+    (*env)->DeleteLocalRef(env, platformWindow);
+}
 
 - (void) _deliverMoveResizeEvent {
     AWT_ASSERT_APPKIT_THREAD;
@@ -1605,7 +1666,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
     self.zoomButtonMouseResponder = [[AWTWindowZoomButtonMouseResponder alloc] initWithWindow:self.nsWindow];
     [self.zoomButtonMouseResponder release]; // property retains the object
-    
+
     AWTWindowDragView* windowDragView = [[AWTWindowDragView alloc] initWithPlatformWindow:self.javaPlatformWindow];
     [titlebar addSubview:windowDragView positioned:NSWindowBelow relativeTo:closeButtonView];
 
@@ -1694,7 +1755,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
     [self setWindowControlsHidden:NO];
     [self updateCustomTitleBarInsets:NO];
-    
+
     [self.nsWindow setIgnoreMove:NO];
 }
 
