@@ -30,10 +30,12 @@ import java.awt.Component;
 import java.awt.DefaultKeyboardFocusManager;
 import java.awt.Dialog;
 import java.awt.Dialog.ModalityType;
+import java.awt.EventQueue;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Frame;
 import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
 import java.awt.Insets;
 import java.awt.KeyboardFocusManager;
 import java.awt.MenuBar;
@@ -42,6 +44,7 @@ import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.FocusEvent;
+import java.awt.event.PaintEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowStateListener;
 import java.awt.peer.ComponentPeer;
@@ -65,6 +68,8 @@ import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.AWTAccessor.WindowAccessor;
 import sun.awt.AWTThreading;
+import sun.awt.PaintEventDispatcher;
+import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceData;
 import sun.lwawt.LWKeyboardFocusManagerPeer;
 import sun.lwawt.LWComponentPeer;
@@ -74,8 +79,6 @@ import sun.lwawt.LWWindowPeer;
 import sun.lwawt.LWWindowPeer.PeerType;
 import sun.lwawt.PlatformWindow;
 import sun.util.logging.PlatformLogger;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public class CPlatformWindow extends CFRetainedResource implements PlatformWindow {
     private native long nativeCreateNSWindow(long nsViewPtr,long ownerPtr, long styleBits, double x, double y, double w, double h, double transparentTitleBarHeight);
@@ -667,6 +670,18 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     @Override // PlatformWindow
     public SurfaceData replaceSurfaceData() {
         return contentView.replaceSurfaceData();
+    }
+
+    public void displayChanged(boolean profileOnly) {
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine(profileOnly ? "DISPLAY_PROFILE_CHANGED" : "DISPLAY_CHANGED");
+        }
+
+        if (peer != null && !profileOnly) {
+            EventQueue.invokeLater(
+                    () -> ((SunGraphicsEnvironment) GraphicsEnvironment.
+                            getLocalGraphicsEnvironment()).displayChanged());
+        }
     }
 
     @Override // PlatformWindow
