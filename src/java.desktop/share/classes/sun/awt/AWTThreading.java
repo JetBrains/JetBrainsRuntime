@@ -1,7 +1,6 @@
 package sun.awt;
 
 import sun.font.FontUtilities;
-import sun.lwawt.macosx.LWCToolkit;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
@@ -110,7 +109,8 @@ public class AWTThreading {
 
         boolean isEDT = EventQueue.isDispatchThread();
 
-        if (FontUtilities.isMacOSX && isEDT && !LWCToolkit.isAppKitThread()) {
+        if (FontUtilities.isMacOSX && isEDT &&
+                Thread.currentThread() != ((SunToolkit)Toolkit.getDefaultToolkit()).getMainThread()) {
             AWTThreading instance = getInstance(Thread.currentThread());
             if (instance != null) {
                 return instance.execute(callable, timeout, unit);
