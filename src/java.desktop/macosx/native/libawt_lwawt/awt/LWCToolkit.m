@@ -690,6 +690,24 @@ JNI_COCOA_EXIT(env);
 
 /*
  * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    performOnMainThread
+ * Signature: (Ljava/lang/Runnable)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_LWCToolkit_performOnMainThread
+(JNIEnv *env, jclass clz, jobject runnable)
+{
+JNI_COCOA_ENTER(env);
+    jobject gRunnable = (*env)->NewGlobalRef(env, runnable);
+    CHECK_NULL(gRunnable);
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
+        JavaRunnable* performer = [[JavaRunnable alloc] initWithRunnable:gRunnable];
+        [performer perform];
+    }];
+JNI_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
  * Method:    isCapsLockOn
  * Signature: ()Z
  */
@@ -957,4 +975,14 @@ Java_sun_lwawt_macosx_LWCToolkit_getMultiClickTime(JNIEnv *env, jclass klass) {
     }];
     JNI_COCOA_EXIT(env);
     return multiClickTime;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    setMainThreadImmediateDispatch
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL
+Java_sun_lwawt_macosx_LWCToolkit_setMainThreadImmediateDispatch(JNIEnv *env, jclass klass) {
+    [ThreadUtilities setMainThreadImmediateDispatch];
 }

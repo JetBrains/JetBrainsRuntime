@@ -193,8 +193,6 @@ public class EventQueue {
         return eventLog;
     }
 
-    private static boolean fxAppThreadIsDispatchThread;
-
     static {
         AWTAccessor.setEventQueueAccessor(
             new AWTAccessor.EventQueueAccessor() {
@@ -236,13 +234,6 @@ public class EventQueue {
                     return eventQueue.createSecondaryLoop(cond::getAsBoolean, null, 0);
                 }
             });
-        AccessController.doPrivileged(new PrivilegedAction<Object>() {
-            public Object run() {
-                fxAppThreadIsDispatchThread =
-                        "true".equals(System.getProperty("javafx.embed.singleThread"));
-                return null;
-            }
-        });
     }
 
     /**
@@ -829,7 +820,7 @@ public class EventQueue {
     private long getMostRecentEventTimeImpl() {
         pushPopLock.lock();
         try {
-            return (Thread.currentThread() == dispatchThread)
+            return (fwDispatcher == null ? Thread.currentThread() == dispatchThread : fwDispatcher.isDispatchThread())
                 ? mostRecentEventTime
                 : System.currentTimeMillis();
         } finally {
@@ -867,8 +858,7 @@ public class EventQueue {
     private AWTEvent getCurrentEventImpl() {
         pushPopLock.lock();
         try {
-            if (Thread.currentThread() == dispatchThread
-                    || fxAppThreadIsDispatchThread) {
+            if (fwDispatcher == null ? Thread.currentThread() == dispatchThread : fwDispatcher.isDispatchThread()) {
                 return (currentEvent != null)
                         ? currentEvent.get()
                         : null;
@@ -1267,7 +1257,7 @@ public class EventQueue {
     private void setCurrentEventAndMostRecentTimeImpl(AWTEvent e) {
         pushPopLock.lock();
         try {
-            if (!fxAppThreadIsDispatchThread && Thread.currentThread() != dispatchThread) {
+            if (!(fwDispatcher == null ? Thread.currentThread() == dispatchThread : fwDispatcher.isDispatchThread())) {
                 return;
             }
 

@@ -91,6 +91,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 
 import sun.awt.im.InputContext;
 import sun.awt.image.ByteArrayImageSource;
@@ -2113,6 +2114,14 @@ public abstract class SunToolkit extends Toolkit
         return AWTAccessor.getAWTEventAccessor().isSystemGenerated(e);
     }
 
+    public Consumer<AWTEvent> createAndInstallMainThreadDispatcher(EventQueue eventQueue,
+                                                                   Consumer<AWTEvent> customDispatcher) {
+        return null;
+    }
+
+    public Thread getMainThread() {
+        return null;
+    }
 } // class SunToolkit
 
 
