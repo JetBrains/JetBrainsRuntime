@@ -86,6 +86,7 @@ public class Font430 extends JFrame implements
 
         Rectangle rect = editorPane.getBounds();
         try {
+            threadSleep(1000);
             screenShoot = new BufferedImage(rect.width, rect.height, BufferedImage.TYPE_INT_ARGB);
             editorPane.paint(screenShoot.getGraphics());
             ImageIO.write(screenShoot, "png", new File(FILE_NAME));
@@ -118,5 +119,13 @@ public class Font430 extends JFrame implements
 
     @Override
     public void windowDeactivated(WindowEvent e) {
+    }
+
+    static private void threadSleep(long ms) {
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException ex) {
+            ex.printStackTrace();
+        }
     }
 }
