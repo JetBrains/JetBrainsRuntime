@@ -161,6 +161,14 @@ public class ExtendedKeyCodes {
          regularKeyCodesMap.put(0x7F, KeyEvent.VK_DELETE);
          regularKeyCodesMap.put(0xA1, KeyEvent.VK_INVERTED_EXCLAMATION_MARK);
 
+         // Some key codes are commented out.
+         // They are uppercase versions of lowercase latin letters already present in this key code set.
+         // This makes key codes consistent with what we see in the events from the OS.
+         //
+         // For example, the VK_SEMICOLON key on the German keyboard layout is the letter O umlaut
+         // when it is pressed, key code equals 0x01000000+0x00F6, but in the upstream OpenJDK,
+         // the key code returned by getExtendedKeyCodeForChar equals 0x01000000+0x00D6
+
          extendedKeyCodesSet.add(0x01000000+0x0060);
          extendedKeyCodesSet.add(0x01000000+0x007C);
          extendedKeyCodesSet.add(0x01000000+0x007E);
@@ -185,14 +193,14 @@ public class ExtendedKeyCodes {
          extendedKeyCodesSet.add(0x01000000+0x00BD);
          extendedKeyCodesSet.add(0x01000000+0x00BE);
          extendedKeyCodesSet.add(0x01000000+0x00BF);
-         extendedKeyCodesSet.add(0x01000000+0x00C4);
-         extendedKeyCodesSet.add(0x01000000+0x00C5);
-         extendedKeyCodesSet.add(0x01000000+0x00C6);
-         extendedKeyCodesSet.add(0x01000000+0x00C7);
-         extendedKeyCodesSet.add(0x01000000+0x00D1);
-         extendedKeyCodesSet.add(0x01000000+0x00D6);
+//         extendedKeyCodesSet.add(0x01000000+0x00C4);
+//         extendedKeyCodesSet.add(0x01000000+0x00C5);
+//         extendedKeyCodesSet.add(0x01000000+0x00C6);
+//         extendedKeyCodesSet.add(0x01000000+0x00C7);
+//         extendedKeyCodesSet.add(0x01000000+0x00D1);
+//         extendedKeyCodesSet.add(0x01000000+0x00D6);
          extendedKeyCodesSet.add(0x01000000+0x00D7);
-         extendedKeyCodesSet.add(0x01000000+0x00D8);
+//         extendedKeyCodesSet.add(0x01000000+0x00D8);
          extendedKeyCodesSet.add(0x01000000+0x00DF);
          extendedKeyCodesSet.add(0x01000000+0x00E0);
          extendedKeyCodesSet.add(0x01000000+0x00E1);
