@@ -474,6 +474,8 @@ static NSDictionary* getUnicharToVkCodeDictionary() {
                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_QUOTEDBL], @"\"",
                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_EXCLAMATION_MARK], @"!",
                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_LESS], @"<",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_INVERTED_EXCLAMATION_MARK], @"\u00a1",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_DOLLAR], @"$",
                  nil
              ];
              // This is ok to retain a singleton object
