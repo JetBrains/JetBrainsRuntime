@@ -33,7 +33,6 @@
  * Enumerates keys under test for com.apple.keylayout.German (macOS 10.14.5)
  */
 public enum Layout_GERMAN implements LayoutKey {
-
     // Enum name must be the same as KeyEvent.VK_ constant name corresponding to the key on US keyboard layout
     // Note that '\u0000' may be used if no char is mapped to a key + modifier or if one wants to skip its testing
 
