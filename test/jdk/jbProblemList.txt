@@ -143,6 +143,7 @@ java/awt/EventQueue/6980209/bug6980209.java 8198615 macosx-all
 java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.java 8198237 macosx-all
 java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java 8144030 macosx-all,linux-all
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java 7080150 macosx-all
+java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java 8169109 linux-all
 java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java 8168646 generic-all
 java/awt/Mixing/AWT_Mixing/HierarchyBoundsListenerMixingTest.java 8049405 generic-all
 java/awt/Mixing/AWT_Mixing/MixingFrameResizing.java 8049405 generic-all
@@ -965,6 +966,7 @@ com/sun/java/swing/plaf/windows/AltFocusIssueTest.java                          
 
 java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java            JBR-4207 windows-all
 jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest4207.java                    JBR-4207 windows-all
+jb/java/awt/Toolkit/AWTThreadingTest.java                                           JBR-4350 macosx-all
 
 java/awt/Dialog/NonResizableDialogSysMenuResize/NonResizableDialogSysMenuResize.java JBR-4250 windows-all
 java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                 JBR-4250 windows-all
