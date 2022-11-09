@@ -25,7 +25,6 @@ import java.awt.event.KeyEvent;
 import java.util.HashMap;
 
 import static java.awt.event.KeyEvent.*;
-import static sun.awt.event.KeyEvent.*; /* comment this line to compile with jbrsdk8 */
 
 /*
  * Class containing common key functionality
@@ -61,11 +60,7 @@ public class Key {
     int getKeyCode() {
         KeyChar keyChar = mappedKeyChars.getKeyChar();
         char ch = keyChar.getChar();
-        if (latinKeyCodesMap.containsKey(ch)) {
-            // TODO Fix this in jbruntime
-            // KeyEvent.getExtendedKeyCodeForChar(ch) does not return corresponding VK_ constant for non-English keys
-            return latinKeyCodesMap.get(ch);
-        } else if (keyChar.isDead() && deadKeyCodesMap.containsKey(ch)) {
+        if (keyChar.isDead() && deadKeyCodesMap.containsKey(ch)) {
             // KeyEvent.getExtendedKeyCodeForChar(ch) does not return corresponding VK_ constant for dead keys
             return deadKeyCodesMap.get(ch);
         } else {
@@ -97,49 +92,6 @@ public class Key {
     public boolean isDead(Modifier modifier) {
         return mappedKeyChars.getKeyChar(modifier).isDead();
     }
-
-    // TODO Remove this map when KeyEvent.getExtendedKeyCodeForChar(ch) is fixed for latin keys in jbruntime
-    // Map storing latin chars and corresponding VK_ codes
-    private static final HashMap<Character, Integer> latinKeyCodesMap = new HashMap<Character, Integer>() {
-        {
-            // Please see:
-            // jbruntime/src/java.desktop/share/classes/sun/awt/event/KeyEvent.java
-
-            put((char) 0x00DF, VK_ESZETT);
-            put((char) 0x00E0, VK_A_WITH_GRAVE);
-            put((char) 0x00E1, VK_A_WITH_ACUTE);
-            put((char) 0x00E2, VK_A_WITH_CIRCUMFLEX);
-            put((char) 0x00E3, VK_A_WITH_TILDE);
-            put((char) 0x00E4, VK_A_WITH_DIAERESIS);
-            put((char) 0x00E5, VK_A_WITH_RING_ABOVE);
-            put((char) 0x00E6, VK_AE);
-            put((char) 0x00E7, VK_C_WITH_CEDILLA);
-            put((char) 0x00E8, VK_E_WITH_GRAVE);
-            put((char) 0x00E9, VK_E_WITH_ACUTE);
-            put((char) 0x00EA, VK_E_WITH_CIRCUMFLEX);
-            put((char) 0x00EB, VK_E_WITH_DIAERESIS);
-            put((char) 0x00EC, VK_I_WITH_GRAVE);
-            put((char) 0x00ED, VK_I_WITH_GRAVE);
-            put((char) 0x00EE, VK_I_WITH_CIRCUMFLEX);
-            put((char) 0x00EF, VK_I_WITH_DIAERESIS);
-            put((char) 0x00F0, VK_ETH);
-            put((char) 0x00F1, VK_N_WITH_TILDE);
-            put((char) 0x00F2, VK_O_WITH_GRAVE);
-            put((char) 0x00F3, VK_O_WITH_ACUTE);
-            put((char) 0x00F4, VK_O_WITH_CIRCUMFLEX);
-            put((char) 0x00F5, VK_O_WITH_TILDE);
-            put((char) 0x00F6, VK_O_WITH_DIAERESIS);
-            put((char) 0x00F7, VK_DIVISION_SIGN);
-            put((char) 0x00F8, VK_O_WITH_SLASH);
-            put((char) 0x00F9, VK_U_WITH_GRAVE);
-            put((char) 0x00FA, VK_U_WITH_ACUTE);
-            put((char) 0x00FB, VK_U_WITH_CIRCUMFLEX);
-            put((char) 0x00FC, VK_U_WITH_DIAERESIS);
-            put((char) 0x00FD, VK_Y_WITH_ACUTE);
-            put((char) 0x00FE, VK_THORN);
-            put((char) 0x00FF, VK_Y_WITH_DIAERESIS);
-        }
-    };
 
     // Map storing possible dead key chars and corresponding VK_ codes
     private static final HashMap<Character, Integer> deadKeyCodesMap = new HashMap<Character, Integer>() {
@@ -174,4 +126,9 @@ public class Key {
             put((char) 0x309C, VK_DEAD_SEMIVOICED_SOUND);
         }
     };
+
+    @Override
+    public String toString() {
+        return this.vkName;
+    }
 }
