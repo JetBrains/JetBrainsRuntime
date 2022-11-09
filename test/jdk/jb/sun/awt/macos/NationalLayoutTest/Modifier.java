@@ -32,7 +32,8 @@ import java.util.stream.Collectors;
 public enum Modifier {
 
     E(),
-    //A(KeyEvent.VK_ALT),
+    A(KeyEvent.VK_ALT),
+    // TODO: uncomment the following line this once JBR-3860 is fixed
     //S(KeyEvent.VK_SHIFT),
     //SA(KeyEvent.VK_SHIFT, KeyEvent.VK_ALT),
 
@@ -111,5 +112,19 @@ public enum Modifier {
             return "no";
         }
         return Arrays.stream(modifiers).boxed().map(i -> KeyEvent.getKeyText(i)).collect(Collectors.joining(" "));
+    }
+
+    public String toPlaintextString() {
+        if (modifiers.length == 0) {
+            return "no";
+        }
+
+        var result = new StringBuilder();
+        var list = Arrays.stream(modifiers).boxed().toList();
+        if (list.contains(KeyEvent.VK_CONTROL)) result.append("Control");
+        if (list.contains(KeyEvent.VK_ALT)) result.append("Option");
+        if (list.contains(KeyEvent.VK_SHIFT)) result.append("Shift");
+        if (list.contains(KeyEvent.VK_META)) result.append("Command");
+        return result.toString();
     }
 }
