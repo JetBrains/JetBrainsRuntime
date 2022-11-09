@@ -40,6 +40,8 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
     private final WLFrameDecoration decoration;
 
     private int state; // Guarded by getStateLock()
+    private int widthBeforeMaximized; // Guarded by getStateLock()
+    private int heightBeforeMaximized; // Guarded by getStateLock()
 
     public WLFramePeer(Frame target) {
         super(target);
@@ -120,20 +122,18 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
     public void setState(int newState) {
         if (!isVisible()) return;
 
-        synchronized(getStateLock()) {
-            if ((newState & Frame.ICONIFIED) != 0) {
-                // Per xdg-shell.xml, "There is no way to know if the surface
-                // is currently minimized, nor is there any way to unset
-                // minimization on this surface". So 'state' will never
-                // have 'Frame.ICONIFIED' bit set and every
-                // request to iconify will be granted.
-                requestMinimized();
-                AWTAccessor.getFrameAccessor().setExtendedState((Frame) target, newState & ~Frame.ICONIFIED);
-            } else if (newState == Frame.MAXIMIZED_BOTH) {
-                requestMaximized();
-            } else /* Frame.NORMAL */ {
-                requestUnmaximized();
-            }
+        if ((newState & Frame.ICONIFIED) != 0) {
+            // Per xdg-shell.xml, "There is no way to know if the surface
+            // is currently minimized, nor is there any way to unset
+            // minimization on this surface". So 'state' will never
+            // have 'Frame.ICONIFIED' bit set and every
+            // request to iconify will be granted.
+            requestMinimized();
+            AWTAccessor.getFrameAccessor().setExtendedState((Frame) target, newState & ~Frame.ICONIFIED);
+        } else if (newState == Frame.MAXIMIZED_BOTH) {
+            requestMaximized();
+        } else /* Frame.NORMAL */ {
+            requestUnmaximized();
         }
     }
 
@@ -255,17 +255,29 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
 
     @Override
     void notifyConfigured(int width, int height, boolean active, boolean maximized) {
+        int widthBefore = getWidth();
+        int heightBefore = getHeight();
+
         super.notifyConfigured(width, height, active, maximized);
-        if (decoration != null) decoration.setActive(active);
+
 
         synchronized (getStateLock()) {
             int oldState = state;
             state = maximized ? Frame.MAXIMIZED_BOTH : Frame.NORMAL;
             AWTAccessor.getFrameAccessor().setExtendedState((Frame)target, state);
             if (state != oldState) {
+                if (maximized) {
+                    widthBeforeMaximized = widthBefore;
+                    heightBeforeMaximized = heightBefore;
+                } else if (width == 0 && height == 0 && widthBeforeMaximized > 0 && heightBeforeMaximized > 0) {
+                    target.setSize(widthBeforeMaximized, heightBeforeMaximized);
+                }
                 WLToolkit.postEvent(new WindowEvent((Window)target, WindowEvent.WINDOW_STATE_CHANGED, oldState, state));
+                notifyClientDecorationsChanged();
             }
         }
+
+        if (decoration != null) decoration.setActive(active);
     }
 
     @Override

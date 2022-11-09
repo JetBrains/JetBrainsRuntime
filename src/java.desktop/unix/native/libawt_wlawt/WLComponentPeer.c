@@ -277,7 +277,6 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestMaximized
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
         xdg_toplevel_set_maximized(frame->xdg_toplevel);
-        wl_display_roundtrip(wl_display);
     }
 }
 
@@ -288,7 +287,6 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestUnmaximized
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
         xdg_toplevel_unset_maximized(frame->xdg_toplevel);
-        wl_display_roundtrip(wl_display);
     }
 }
 
