@@ -4,6 +4,9 @@ import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.awt.image.ColorModel;
 import java.awt.image.DirectColorModel;
+import java.awt.image.WritableRaster;
+
+import sun.awt.image.OffScreenImage;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.SurfaceType;
 import sun.java2d.wl.WLSurfaceData;
@@ -28,16 +31,20 @@ public class WLGraphicsConfig extends GraphicsConfiguration {
 
     @Override
     public ColorModel getColorModel(int transparency) {
-        switch (transparency) {
-            case Transparency.OPAQUE:
-                return getColorModel();
-            case Transparency.BITMASK:
-                throw new UnsupportedOperationException("Transparency BITMASK not supported");
-            case Transparency.TRANSLUCENT:
-                throw new UnsupportedOperationException("Transparency TRANSLUCENT not supported");
-            default:
-                return null;
-        }
+        return switch (transparency) {
+            case Transparency.OPAQUE -> getColorModel();
+            case Transparency.BITMASK -> new DirectColorModel(25, 0xff0000, 0xff00, 0xff, 0x1000000);
+            case Transparency.TRANSLUCENT -> new DirectColorModel(32, 0xff0000, 0xff00, 0xff, 0xff000000);
+            default -> null;
+        };
+    }
+
+    public Image createAcceleratedImage(Component target,
+                                        int width, int height)
+    {
+        ColorModel model = getColorModel(Transparency.OPAQUE);
+        WritableRaster raster = model.createCompatibleWritableRaster(width, height);
+        return new OffScreenImage(target, model, raster, model.isAlphaPremultiplied());
     }
 
     @Override

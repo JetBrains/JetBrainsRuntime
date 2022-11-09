@@ -483,7 +483,7 @@ public class WLComponentPeer implements ComponentPeer {
     @Override
     public ColorModel getColorModel() {
         if (graphicsConfig != null) {
-            return graphicsConfig.getColorModel ();
+            return graphicsConfig.getColorModel();
         }
         else {
             return Toolkit.getDefaultToolkit().getColorModel();
@@ -539,7 +539,7 @@ public class WLComponentPeer implements ComponentPeer {
 
     @Override
     public Image createImage(int width, int height) {
-        throw new UnsupportedOperationException();
+        return graphicsConfig.createAcceleratedImage(target, width, height);
     }
 
     @Override
