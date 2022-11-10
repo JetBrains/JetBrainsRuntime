@@ -20,14 +20,14 @@ Download the latest releases of JetBrains Runtime to use with JetBrains IDEs. Th
 
 | IDE Version | Latest JBR                                                                                   | Date Released |
 |-------------|----------------------------------------------------------------------------------------------|---------------|
-| 2022.3      | [17.0.5-b653.6](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.5b653.6)| 31-Oct-2022   |
+| 2022.3      | [17.0.5-b653.12](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.5b653.12)| 10-Nov-2022   |
 | 2022.2      | [17.0.5-b469.67](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.5b469.67)| 31-Oct-2022   |
 
 ## Releases based on JDK 11
 
 | IDE Version | Latest JBR                                                                                            | Date Released |
 |-------------|-------------------------------------------------------------------------------------------------------|---------------|
-| 2022.1      | [11_0_15-b2043.56](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr11_0_15b2043.56)     | 17-May-2022   |
+| 2022.1      | [11_0_16-b2043.64](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr11_0_16b2043.64)     | 10-Nov-2022   |
 | 2021.3      | [11_0_14_1-b1751.46](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr11_0_14_1b1751.46) | 21-Feb-2022   |
 | 2021.2      | [11_0_13-b1504.49](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jb11_0_13-b1504.49)     | 15-Nov-2021   |
 | 2021.1      | [11.0.11+9-b1341.60](https://github.com/JetBrains/JetBrainsRuntime/issues/171#issuecomment-1248891540)| 15-Jun-2021   |
