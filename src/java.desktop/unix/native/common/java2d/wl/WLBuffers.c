@@ -38,6 +38,8 @@
 #include "Trace.h"
 #include "jni_util.h"
 
+#include "awt.h"
+
 #include "WLBuffers.h"
 
 #ifndef HEADLESS
@@ -238,7 +240,7 @@ struct WLSurfaceBufferManager {
      * Gets re-set to 0 right after sending to Wayland.
      */
     frame_id_t          commitFrameID;  // only accessed under showLock
-    bool                isFrameCallbackScheduled; // only accessed under showLock
+    struct wl_callback* wl_frame_callback; // only accessed under showLock
 
     pthread_mutex_t     showLock;
     WLSurfaceBuffer     bufferForShow; // only accessed under showLock
@@ -386,26 +388,28 @@ wl_frame_callback_done(void * data,
                        struct wl_callback * wl_callback,
                        uint32_t callback_data)
 {
-    wl_callback_destroy(wl_callback);
-
     WLSurfaceBufferManager * manager = (WLSurfaceBufferManager *) data;
     MUTEX_LOCK(manager->showLock);
-    manager->isFrameCallbackScheduled = false;
+    assert(manager->wl_frame_callback == wl_callback);
+    wl_callback_destroy(manager->wl_frame_callback);
+    manager->wl_frame_callback = NULL;
+
     struct wl_surface * wlSurface = manager->wlSurface;
+    if (wlSurface) {
+        // Wayland is ready to get a new frame from us. Send whatever we have
+        // managed to draw by this time (maybe nothing).
+        if (!BufferShowToWayland(manager)) {
+            // Re-schedule the same callback if we were unable to send the
+            // new frame to Wayland. This can happen, for instance, if Wayland
+            // haven't released the surface buffer to us yet.
+            ScheduleFrameCallback(manager);
+        }
 
-    // Wayland is ready to get a new frame from us. Send whatever we have
-    // managed to draw by this time (maybe nothing).
-    if (!BufferShowToWayland(manager)) {
-        // Re-schedule the same callback if we were unable to send the
-        // new frame to Wayland. This can happen, for instance, if Wayland
-        // haven't released the surface buffer to us yet.
-        ScheduleFrameCallback(manager);
+        ShowFrameNumbers(manager, "wl_frame_callback_done");
+        // Need to commit either the damage done to the surface or the re-scheduled
+        // callback.
+        wl_surface_commit(wlSurface);
     }
-
-    ShowFrameNumbers(manager, "wl_frame_callback_done");
-    // Need to commit either the damage done to the surface or the re-scheduled
-    // callback.
-    wl_surface_commit(wlSurface);
     MUTEX_UNLOCK(manager->showLock);
 }
 
@@ -417,11 +421,11 @@ static void
 ScheduleFrameCallback(WLSurfaceBufferManager * manager)
 {
     ASSERT_SHOW_LOCK_IS_HELD(manager);
+    assert(manager->wlSurface);
 
-    if (!manager->isFrameCallbackScheduled) {
-        struct wl_callback *wl_frame_callback = wl_surface_frame(manager->wlSurface);
-        wl_callback_add_listener(wl_frame_callback, &wl_frame_callback_listener, manager);
-        manager->isFrameCallbackScheduled = true;
+    if (!manager->wl_frame_callback) {
+        manager->wl_frame_callback = wl_surface_frame(manager->wlSurface);
+        wl_callback_add_listener(manager->wl_frame_callback, &wl_frame_callback_listener, manager);
     }
 }
 
@@ -703,10 +707,20 @@ WLSBM_Destroy(WLSurfaceBufferManager * manager)
 {
     J2dTrace1(J2D_TRACE_INFO, "WLSBM_Destroy: manger %p\n", manager);
 
-    pthread_mutex_destroy(&manager->showLock);
+    // NB: must never be called in parallel with the Wayland event handlers
+    MUTEX_LOCK(manager->showLock);
+    MUTEX_LOCK(manager->drawLock);
+    if (manager->wl_frame_callback) {
+        wl_callback_destroy(manager->wl_frame_callback);
+    }
     SurfaceBufferDestroy(manager, true);
     DrawBufferDestroy(manager);
+    MUTEX_UNLOCK(manager->drawLock);
+    MUTEX_UNLOCK(manager->showLock);
+
+    pthread_mutex_destroy(&manager->showLock);
     pthread_mutex_destroy(&manager->drawLock);
+    memset(manager, 0, sizeof(*manager));
     free(manager);
 }
 

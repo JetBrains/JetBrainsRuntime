@@ -31,6 +31,7 @@
 #include "jni.h"
 #include "jni_util.h"
 
+#include "awt.h"
 #include "Trace.h"
 #include "WLSurfaceData.h"
 #include "WLBuffers.h"
@@ -211,8 +212,15 @@ WLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
     /* ops is assumed non-null as it is checked in SurfaceData_DisposeOps */
     J2dTrace1(J2D_TRACE_INFO, "WLSD_Dispose %p\n", ops);
     WLSDOps *wsdo = (WLSDOps*)ops;
+
+    // No Wayland event handlers should be able to run while this method
+    // runs. Those handlers may retain a reference to the buffer manager
+    // and therefore must be cancelled before that reference becomes stale.
+    AWT_LOCK();
     WLSBM_Destroy(wsdo->bufferManager);
     wsdo->bufferManager = NULL;
+    AWT_NOFLUSH_UNLOCK();
+
     pthread_mutex_destroy(&wsdo->lock);
 #endif
 }

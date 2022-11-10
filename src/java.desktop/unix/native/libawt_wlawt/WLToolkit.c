@@ -40,6 +40,7 @@
 
 #include "jvm_md.h"
 #include "jni_util.h"
+#include "awt.h"
 #include "sun_awt_wl_WLToolkit.h"
 #include "WLToolkit.h"
 #include "WLRobotPeer.h"
@@ -62,7 +63,15 @@ struct wl_pointer  *wl_pointer;
 
 uint32_t last_mouse_pressed_serial = 0;
 
-static jclass wlToolkitClass;
+// This group of definitions corresponds to declarations from awt.h
+jclass    tkClass = NULL;
+jmethodID awtLockMID = NULL;
+jmethodID awtUnlockMID = NULL;
+jmethodID awtWaitMID = NULL;
+jmethodID awtNotifyMID = NULL;
+jmethodID awtNotifyAllMID = NULL;
+jboolean  awtLockInited = JNI_FALSE;
+
 static jmethodID dispatchPointerEventMID;
 static jclass pointerEventClass;
 static jmethodID pointerEventFactoryMID;
@@ -377,7 +386,7 @@ wl_pointer_frame(void *data, struct wl_pointer *wl_pointer)
 
     fill_java_pointer_event(env, pointerEventRef);
     (*env)->CallStaticVoidMethod(env,
-                                 wlToolkitClass,
+                                 tkClass,
                                  dispatchPointerEventMID,
                                  pointerEventRef);
     JNU_CHECK_EXCEPTION(env);
@@ -433,7 +442,7 @@ wl_keyboard_enter(void *data, struct wl_keyboard *wl_keyboard,
 {
     JNIEnv* env = getEnv();
     (*env)->CallStaticVoidMethod(env,
-                                 wlToolkitClass,
+                                 tkClass,
                                  dispatchKeyboardEnterEventMID,
                                  serial, jlong_to_ptr(surface));
     JNU_CHECK_EXCEPTION(env);
@@ -444,7 +453,7 @@ wl_keyboard_enter(void *data, struct wl_keyboard *wl_keyboard,
         const uint32_t keychar32 = xkb_ifs.xkb_state_key_get_utf32(xkb_state, scancode);
         const xkb_keysym_t keysym = xkb_ifs.xkb_state_key_get_one_sym(xkb_state, scancode);
         (*env)->CallStaticVoidMethod(env,
-                                     wlToolkitClass,
+                                     tkClass,
                                      dispatchKeyboardKeyEventMID,
                                      serial,
                                      0,
@@ -468,7 +477,7 @@ wl_keyboard_key(void *data, struct wl_keyboard *wl_keyboard,
     const bool pressed
             = (state == WL_KEYBOARD_KEY_STATE_PRESSED ? JNI_TRUE : JNI_FALSE);
     (*env)->CallStaticVoidMethod(env,
-                                 wlToolkitClass,
+                                 tkClass,
                                  dispatchKeyboardKeyEventMID,
                                  serial,
                                  time,
@@ -484,7 +493,7 @@ wl_keyboard_leave(void *data, struct wl_keyboard *wl_keyboard,
 {
     JNIEnv* env = getEnv();
     (*env)->CallStaticVoidMethod(env,
-                                 wlToolkitClass,
+                                 tkClass,
                                  dispatchKeyboardLeaveEventMID,
                                  serial,
                                  jlong_to_ptr(surface));
@@ -526,7 +535,7 @@ wl_keyboard_modifiers(void *data, struct wl_keyboard *wl_keyboard,
                                                XKB_STATE_MODS_EFFECTIVE);
 
     (*env)->CallStaticVoidMethod(env,
-                                 wlToolkitClass,
+                                 tkClass,
                                  dispatchKeyboardModifiersEventMID,
                                  serial,
                                  is_shift_active,
@@ -542,8 +551,8 @@ wl_keyboard_repeat_info(void *data, struct wl_keyboard *wl_keyboard,
 {
     JNIEnv* env = getEnv();
     if (rate > 0 && delay > 0) {
-        (*env)->SetStaticIntField(env, wlToolkitClass, keyRepeatRateFID, rate);
-        (*env)->SetStaticIntField(env, wlToolkitClass, keyRepeatDelayFID, delay);
+        (*env)->SetStaticIntField(env, tkClass, keyRepeatRateFID, rate);
+        (*env)->SetStaticIntField(env, tkClass, keyRepeatDelayFID, delay);
     }
     J2dTrace2(J2D_TRACE_INFO, "WLToolkit: set keyboard repeat rate %d and delay %d\n", rate, delay);
 }
@@ -636,11 +645,38 @@ static jboolean
 initJavaRefs(JNIEnv *env, jclass clazz)
 {
     CHECK_NULL_THROW_OOME_RETURN(env,
-                                 wlToolkitClass = (jclass)(*env)->NewGlobalRef(env, clazz),
+                                 tkClass = (jclass)(*env)->NewGlobalRef(env, clazz),
                                  "Allocation of a global reference to WLToolkit class failed",
                                  JNI_FALSE);
 
-    CHECK_NULL_RETURN(dispatchPointerEventMID = (*env)->GetStaticMethodID(env, wlToolkitClass,
+    CHECK_NULL_RETURN(awtLockMID = (*env)->GetStaticMethodID(env, tkClass,
+                                                             "awtLock",
+                                                             "()V"),
+                      JNI_FALSE);
+
+    CHECK_NULL_RETURN(awtUnlockMID = (*env)->GetStaticMethodID(env, tkClass,
+                                                             "awtUnlock",
+                                                             "()V"),
+                      JNI_FALSE);
+
+    CHECK_NULL_RETURN(awtWaitMID = (*env)->GetStaticMethodID(env, tkClass,
+                                                             "awtLockWait",
+                                                             "(J)V"),
+                      JNI_FALSE);
+
+    CHECK_NULL_RETURN(awtNotifyMID = (*env)->GetStaticMethodID(env, tkClass,
+                                                               "awtLockNotify",
+                                                               "()V"),
+                      JNI_FALSE);
+
+    CHECK_NULL_RETURN(awtNotifyMID = (*env)->GetStaticMethodID(env, tkClass,
+                                                               "awtLockNotifyAll",
+                                                               "()V"),
+                      JNI_FALSE);
+
+    awtLockInited = JNI_TRUE;
+
+    CHECK_NULL_RETURN(dispatchPointerEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                           "dispatchPointerEvent",
                                                                           "(Lsun/awt/wl/WLPointerEvent;)V"),
                       JNI_FALSE);
@@ -680,27 +716,27 @@ initJavaRefs(JNIEnv *env, jclass clazz)
     CHECK_NULL_RETURN(axis_0_validFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_valid", "Z"), JNI_FALSE);
     CHECK_NULL_RETURN(axis_0_valueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_value", "I"), JNI_FALSE);
 
-    CHECK_NULL_RETURN(dispatchKeyboardEnterEventMID = (*env)->GetStaticMethodID(env, wlToolkitClass,
+    CHECK_NULL_RETURN(dispatchKeyboardEnterEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                 "dispatchKeyboardEnterEvent",
                                                                                 "(JJ)V"),
                       JNI_FALSE);
-    CHECK_NULL_RETURN(dispatchKeyboardLeaveEventMID = (*env)->GetStaticMethodID(env, wlToolkitClass,
+    CHECK_NULL_RETURN(dispatchKeyboardLeaveEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                 "dispatchKeyboardLeaveEvent",
                                                                                 "(JJ)V"),
                       JNI_FALSE);
-    CHECK_NULL_RETURN(dispatchKeyboardKeyEventMID = (*env)->GetStaticMethodID(env, wlToolkitClass,
+    CHECK_NULL_RETURN(dispatchKeyboardKeyEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                               "dispatchKeyboardKeyEvent",
                                                                               "(JJJIZ)V"),
                       JNI_FALSE);
-    CHECK_NULL_RETURN(dispatchKeyboardModifiersEventMID = (*env)->GetStaticMethodID(env, wlToolkitClass,
+    CHECK_NULL_RETURN(dispatchKeyboardModifiersEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                     "dispatchKeyboardModifiersEvent",
                                                                                     "(JZZZZ)V"),
                       JNI_FALSE);
 
-    CHECK_NULL_RETURN(keyRepeatRateFID = (*env)->GetStaticFieldID(env, wlToolkitClass,
+    CHECK_NULL_RETURN(keyRepeatRateFID = (*env)->GetStaticFieldID(env, tkClass,
                                                                   "keyRepeatRate", "I"),
                       JNI_FALSE);
-    CHECK_NULL_RETURN(keyRepeatDelayFID = (*env)->GetStaticFieldID(env, wlToolkitClass,
+    CHECK_NULL_RETURN(keyRepeatDelayFID = (*env)->GetStaticFieldID(env, tkClass,
                                                                    "keyRepeatDelay", "I"),
                       JNI_FALSE);
 
@@ -1078,4 +1114,9 @@ Java_sun_awt_SunToolkit_closeSplashScreen(JNIEnv *env, jclass cls)
         splashClose();
     }
     dlclose(hSplashLib);
+}
+
+void awt_output_flush()
+{
+    wl_flush_to_server(getEnv());
 }
