@@ -26,6 +26,7 @@
 #include "runtime/os.hpp"
 #include "utilities/ostream.hpp"
 #include "unittest.hpp"
+#include "runtime/frame.inline.hpp"
 
 static size_t small_page_size() {
   return os::vm_page_size();
@@ -343,4 +344,14 @@ TEST_VM(os, jio_vsnprintf) {
 
 TEST_VM(os, jio_snprintf) {
   test_snprintf(jio_snprintf, false);
+}
+
+TEST_VM(os, is_first_C_frame) {
+#ifndef _WIN32
+  frame invalid_frame;
+  EXPECT_TRUE(os::is_first_C_frame(&invalid_frame)); // the frame has zeroes for all values
+
+  frame cur_frame = os::current_frame(); // this frame has to have a sender
+  EXPECT_FALSE(os::is_first_C_frame(&cur_frame));
+#endif // _WIN32
 }
