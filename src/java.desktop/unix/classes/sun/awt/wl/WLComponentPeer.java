@@ -34,7 +34,7 @@ import sun.awt.image.SunVolatileImage;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
 import sun.java2d.pipe.Region;
-import sun.java2d.wl.WLSurfaceData;
+import sun.java2d.wl.WLSurfaceDataExt;
 import sun.util.logging.PlatformLogger;
 import sun.util.logging.PlatformLogger.Level;
 
@@ -89,7 +89,7 @@ public class WLComponentPeer implements ComponentPeer {
     protected final java.util.List<WLGraphicsDevice> devices = new ArrayList<>();
 
     protected Color background;
-    WLSurfaceData surfaceData;
+    SurfaceData surfaceData;
     WLRepaintArea paintArea;
     boolean paintPending = false;
     boolean isLayouting = false;
@@ -120,7 +120,7 @@ public class WLComponentPeer implements ComponentPeer {
         height = bounds.height;
         final WLGraphicsConfig config = (WLGraphicsConfig)target.getGraphicsConfiguration();
         wlBufferScale = config.getScale();
-        surfaceData = (WLSurfaceData) config.createSurfaceData(this);
+        surfaceData = config.createSurfaceData(this);
         nativePtr = nativeCreateFrame();
         paintArea = new WLRepaintArea();
         log.fine("WLComponentPeer: target=" + target + " x=" + x + " y=" + y +
@@ -265,7 +265,7 @@ public class WLComponentPeer implements ComponentPeer {
         } else {
             performLocked(() -> {
                 WLToolkit.unregisterWLSurface(getWLSurface(nativePtr));
-                surfaceData.assignSurface(0);
+                SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(0);
                 nativeHideFrame(nativePtr);
             });
         }
@@ -276,7 +276,8 @@ public class WLComponentPeer implements ComponentPeer {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
                 log.fine(String.format("%s is configured to %dx%d with %dx scale", this, getBufferWidth(), getBufferHeight(), getBufferScale()));
             }
-            surfaceData.revalidate(getBufferWidth(), getBufferHeight(), getBufferScale());
+            SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
+                    getBufferWidth(), getBufferHeight(), getBufferScale());
         }
     }
 
@@ -337,7 +338,7 @@ public class WLComponentPeer implements ComponentPeer {
     public void commitToServer() {
         performLocked(() -> {
             if (getWLSurface(nativePtr) != 0) {
-                surfaceData.commitToServer();
+                surfaceData.flush();
             }
         });
     }
@@ -370,7 +371,8 @@ public class WLComponentPeer implements ComponentPeer {
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
                     log.fine(String.format("%s is resizing its buffer to %dx%d with %dx scale", this, getBufferWidth(), getBufferHeight(), getBufferScale()));
                 }
-                surfaceData.revalidate(getBufferWidth(), getBufferHeight(), getBufferScale());
+                SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
+                        getBufferWidth(), getBufferHeight(), getBufferScale());
                 updateWindowGeometry();
                 layout();
 
@@ -765,7 +767,9 @@ public class WLComponentPeer implements ComponentPeer {
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
                     log.fine(String.format("%s is updating buffer to %dx%d with %dx scale", this, getBufferWidth(), getBufferHeight(), wlBufferScale));
                 }
-                surfaceData.revalidate(getBufferWidth(), getBufferHeight(), wlBufferScale);
+                SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
+                        getBufferWidth(), getBufferHeight(), wlBufferScale);
+
                 postPaintEvent();
             }
         }
@@ -982,7 +986,7 @@ public class WLComponentPeer implements ComponentPeer {
     void notifyConfigured(int newWidth, int newHeight, boolean active, boolean maximized) {
         final long wlSurfacePtr = getWLSurface(nativePtr);
         // TODO: this needs to be done only once after wlSetVisible(true)
-        surfaceData.assignSurface(wlSurfacePtr);
+        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(wlSurfacePtr);
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine(String.format("%s configured to %dx%d", this, newWidth, newHeight));
         }
