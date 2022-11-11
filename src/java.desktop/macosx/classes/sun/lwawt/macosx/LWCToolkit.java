@@ -709,6 +709,12 @@ public final class LWCToolkit extends LWToolkit {
     public static void invokeAndWait(Runnable runnable, Component component, int timeoutSeconds)
             throws InvocationTargetException
     {
+        invokeAndWait(runnable, component, false, -1);
+    }
+
+    public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents, int timeoutSeconds)
+            throws InvocationTargetException
+    {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("invokeAndWait started: " + runnable);
         }
@@ -757,7 +763,7 @@ public final class LWCToolkit extends LWToolkit {
             invocationEvent.onDone(() -> eventDispatchThreadFreeFuture.cancel(false));
         }
 
-        if (!doAWTRunLoop(mediator, false, timeoutSeconds)) {
+        if (!doAWTRunLoop(mediator, processEvents, timeoutSeconds)) {
             invocationEvent.dispose("InvocationEvent has timed out");
         }
 
