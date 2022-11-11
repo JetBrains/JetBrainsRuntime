@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2010, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,8 @@ import sun.awt.image.SunVolatileImage;
 import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.opengl.GLXGraphicsConfig;
 import sun.java2d.opengl.GLXVolatileSurfaceManager;
+import sun.java2d.vulkan.WLVKGraphicsConfig;
+import sun.java2d.vulkan.WLVKVolatileSurfaceManager;
 import sun.java2d.wl.WLVolatileSurfaceManager;
 import sun.java2d.x11.X11VolatileSurfaceManager;
 import sun.java2d.xr.*;
@@ -64,6 +66,8 @@ public class UnixSurfaceManagerFactory extends SurfaceManagerFactory {
             return new XRVolatileSurfaceManager(vImg, context);
         } else if (gc instanceof X11GraphicsConfig){
             return new X11VolatileSurfaceManager(vImg, context);
+        } else if (gc instanceof WLVKGraphicsConfig) {
+            return new WLVKVolatileSurfaceManager(vImg, context);
         } else {
             return new WLVolatileSurfaceManager(vImg, context);
         }
