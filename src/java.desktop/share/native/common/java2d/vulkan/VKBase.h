@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,22 +32,85 @@
 #define VK_NO_PROTOTYPES
 #define VULKAN_HPP_NO_DEFAULT_DISPATCHER
 #include <vulkan/vulkan_raii.hpp>
-
-extern vk::raii::Instance vkInstance;
+#include "jni.h"
 
 class PhysicalDevice;
-class Device : public vk::raii::Device {
+class VKGraphicsEnvironment;
+
+class VKDevice : public vk::raii::Device {
+    friend class VKGraphicsEnvironment;
+    vk::raii::CommandPool  _command_pool;
+    int                    _queue_family = -1;
+    VKDevice(PhysicalDevice& physicalDevice);
 public:
-    Device(const PhysicalDevice& physicalDevice);
+    int queue_family() const {
+        return _queue_family;
+    }
+};
+
+class VKSurfaceData {
+    uint32_t               _width;
+    uint32_t               _height;
+    uint32_t               _scale;
+    uint32_t               _bg_color;
+public:
+    VKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
+        : _width(w), _height(h), _scale(s), _bg_color(bgc) {};
+
+    uint32_t width() const {
+        return _width;
+    }
+
+    uint32_t height() const {
+        return _height;
+    }
+
+    uint32_t scale() const {
+        return _scale;
+    }
+
+    uint32_t bg_color() const {
+        return _bg_color;
+    }
+
+    virtual void set_bg_color(uint32_t bg_color) {
+        _bg_color = bg_color;
+    }
+
+    virtual ~VKSurfaceData() = default;
+
+    virtual void revalidate(uint32_t w, uint32_t h, uint32_t s)
+    {
+        _width = w;
+        _height = h;
+        _scale = s;
+    }
+};
+
+
+class VKGraphicsEnvironment {
+    vk::raii::Context             _vk_context;
+    vk::raii::Instance            _vk_instance;
+    std::vector<PhysicalDevice>   _physical_devices;
+    std::vector<VKDevice>         _devices;
+    int                           _default_physical_device;
+    int                           _default_device;
+    static std::unique_ptr<VKGraphicsEnvironment> _ge_instance;
+    VKGraphicsEnvironment();
+public:
+    static VKGraphicsEnvironment* graphics_environment();
+    static void dispose();
+    VKDevice& default_device();
+    vk::raii::Instance& vk_instance();
+    uint32_t max_texture_size();
 };
 
 extern "C" {
 #endif //__cplusplus
 
-typedef unsigned char jboolean;
-
 jboolean VK_Init();
 
+jint VK_MaxTextureSize();
 
 #ifdef __cplusplus
 }
