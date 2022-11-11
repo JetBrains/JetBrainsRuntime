@@ -524,6 +524,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
       common/awt/debug \
       common/font \
       common/java2d/opengl \
+      common/java2d/vulkan \
       #
 
   LIBAWT_HEADLESS_CFLAGS := $(CUPS_CFLAGS) $(FONTCONFIG_CFLAGS) $(X_CFLAGS) \
@@ -536,6 +537,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
       OPTIMIZATION := LOW, \
       CFLAGS := $(CFLAGS_JDKLIB) \
           $(LIBAWT_HEADLESS_CFLAGS), \
+      CXXFLAGS := $(CXXFLAGS_JDKLIB), \
       EXTRA_HEADER_DIRS := $(LIBAWT_HEADLESS_EXTRA_HEADER_DIRS), \
       DISABLED_WARNINGS_gcc_X11Renderer.c := unused-function, \
       DISABLED_WARNINGS_gcc_X11SurfaceData.c := unused-function, \
