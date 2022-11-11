@@ -24,16 +24,11 @@
  * questions.
  */
 
-// These are stubs in case we were built with Vulkan disabled.
-#ifndef VULKAN_ENABLED
-#include "jni.h"
+package sun.java2d.vulkan;
 
-jboolean VK_Init() {
-    return 0;
+import sun.awt.image.SurfaceManager;
+import sun.java2d.pipe.hw.AccelGraphicsConfig;
+
+public interface VKGraphicsConfig extends AccelGraphicsConfig, SurfaceManager.ProxiedGraphicsConfig {
+    boolean isCapPresent(int capsExtGradShader);
 }
-
-jint VK_MaxTextureSize() {
-    return 0;
-}
-
-#endif
