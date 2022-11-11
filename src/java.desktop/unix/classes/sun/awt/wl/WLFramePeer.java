@@ -270,7 +270,7 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
                     widthBeforeMaximized = widthBefore;
                     heightBeforeMaximized = heightBefore;
                 } else if (width == 0 && height == 0 && widthBeforeMaximized > 0 && heightBeforeMaximized > 0) {
-                    target.setSize(widthBeforeMaximized, heightBeforeMaximized);
+                    performUnlocked(() -> target.setSize(widthBeforeMaximized, heightBeforeMaximized));
                 }
                 WLToolkit.postEvent(new WindowEvent((Window)target, WindowEvent.WINDOW_STATE_CHANGED, oldState, state));
                 notifyClientDecorationsChanged();

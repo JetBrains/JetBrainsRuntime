@@ -52,6 +52,7 @@ import java.awt.image.VolatileImage;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.ContainerPeer;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 public class WLComponentPeer implements ComponentPeer {
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.wl.focus.WLComponentPeer");
@@ -195,17 +196,22 @@ public class WLComponentPeer implements ComponentPeer {
         this.visible = v;
         if (this.visible) {
             final String title = target instanceof Frame frame ? frame.getTitle() : null;
-            nativeCreateWLSurface(nativePtr, getParentNativePtr(target), target.getX(), target.getY(), title, appID);
+            performLocked(() -> {
+                nativeCreateWLSurface(nativePtr,
+                        getParentNativePtr(target), target.getX(), target.getY(), title, appID);
+                final long wlSurfacePtr = getWLSurface(nativePtr);
+                WLToolkit.registerWLSurface(wlSurfacePtr, this);
+            });
+            configureWLSurface();
             // Now wait for the sequence of configure events and the window
             // will finally appear on screen after we post a PaintEvent
             // from notifyConfigured()
-            configureWLSurface();
-            final long wlSurfacePtr = getWLSurface();
-            WLToolkit.registerWLSurface(wlSurfacePtr, this);
         } else {
-            WLToolkit.unregisterWLSurface(getWLSurface());
-            surfaceData.assignSurface(0);
-            nativeHideFrame(nativePtr);
+            performLocked(() -> {
+                WLToolkit.unregisterWLSurface(getWLSurface(nativePtr));
+                surfaceData.assignSurface(0);
+                nativeHideFrame(nativePtr);
+            });
         }
     }
 
@@ -266,9 +272,11 @@ public class WLComponentPeer implements ComponentPeer {
      * buffer is ready to accept new data.
      */
     public void commitToServer() {
-        if (getWLSurface() != 0) {
-            surfaceData.commitToServer();
-        }
+        performLocked(() -> {
+            if (getWLSurface(nativePtr) != 0) {
+                surfaceData.commitToServer();
+            }
+        });
     }
 
     public Component getTarget() {
@@ -282,7 +290,7 @@ public class WLComponentPeer implements ComponentPeer {
     public void setBounds(int x, int y, int width, int height, int op) {
         final boolean positionChanged = this.x != x || this.y != y;
         if (positionChanged) {
-            WLRobotPeer.setLocationOfWLSurface(getWLSurface(), x, y);
+            performLocked(() -> WLRobotPeer.setLocationOfWLSurface(getWLSurface(nativePtr), x, y));
         }
         this.x = x;
         this.y = y;
@@ -318,12 +326,10 @@ public class WLComponentPeer implements ComponentPeer {
         //	user's perspective. Client-side decorations often have invisible
         //	portions like drop-shadows which should be ignored for the
         //	purposes of aligning, placing and constraining windows"
-        if (nativePtr != 0) {
-            final Rectangle visibleBounds = getVisibleBounds();
-            nativeSetWindowGeometry(nativePtr,
-                    visibleBounds.x, visibleBounds.y,
-                    visibleBounds.width, visibleBounds.height);
-        }
+        final Rectangle visibleBounds = getVisibleBounds();
+        performLocked(() -> nativeSetWindowGeometry(nativePtr,
+                visibleBounds.x, visibleBounds.y,
+                visibleBounds.width, visibleBounds.height));
     }
 
     public void coalescePaintEvent(PaintEvent e) {
@@ -350,16 +356,18 @@ public class WLComponentPeer implements ComponentPeer {
 
     @Override
     public Point getLocationOnScreen() {
-        final long wlSurfacePtr = getWLSurface();
-        if (wlSurfacePtr != 0) {
-            try {
-                return WLRobotPeer.getLocationOfWLSurface(wlSurfacePtr);
-            } catch (UnsupportedOperationException ignore) {
-                return new Point(0, 0);
+        return performLocked(() -> {
+            final long wlSurfacePtr = getWLSurface(nativePtr);
+            if (wlSurfacePtr != 0) {
+                try {
+                    return WLRobotPeer.getLocationOfWLSurface(wlSurfacePtr);
+                } catch (UnsupportedOperationException ignore) {
+                    return new Point(0, 0);
+                }
+            } else {
+                throw new UnsupportedOperationException("getLocationOnScreen() not supported without wayland surface");
             }
-        } else {
-            throw new UnsupportedOperationException("getLocationOnScreen() not supported without wayland surface");
-        }
+        }, Point::new);
     }
 
     /**
@@ -469,15 +477,11 @@ public class WLComponentPeer implements ComponentPeer {
     }
     
     void setMinimumSizeTo(Dimension minSize) {
-        if (nativePtr != 0) {
-            nativeSetMinimumSize(nativePtr, minSize.width, minSize.height);
-        }
+        performLocked(() -> nativeSetMinimumSize(nativePtr, minSize.width, minSize.height));
     }
 
     void setMaximumSizeTo(Dimension maxSize) {
-        if (nativePtr != 0) {
-            nativeSetMaximumSize(nativePtr, maxSize.width, maxSize.height);
-        }
+        performLocked(() -> nativeSetMaximumSize(nativePtr, maxSize.width, maxSize.height));
     }
 
     @Override
@@ -520,8 +524,11 @@ public class WLComponentPeer implements ComponentPeer {
 
     @Override
     public void dispose() {
-        WLToolkit.unregisterWLSurface(getWLSurface());
-        nativeDisposeFrame(nativePtr);
+        performLocked(() -> {
+            WLToolkit.unregisterWLSurface(getWLSurface(nativePtr));
+            nativeDisposeFrame(nativePtr);
+            nativePtr = 0;
+        });
     }
 
     @Override
@@ -601,39 +608,27 @@ public class WLComponentPeer implements ComponentPeer {
 
     final void setFrameTitle(String title) {
         Objects.requireNonNull(title);
-        if (nativePtr != 0) {
-            nativeSetTitle(nativePtr, title);
-        }
+        performLocked(() -> nativeSetTitle(nativePtr, title));
     }
 
     final void requestMinimized() {
-        if (nativePtr != 0) {
-            nativeRequestMinimized(nativePtr);
-        }
+        performLocked(() -> nativeRequestMinimized(nativePtr));
     }
 
     final void requestMaximized() {
-        if (nativePtr != 0) {
-            nativeRequestMaximized(nativePtr);
-        }
+        performLocked(() -> nativeRequestMaximized(nativePtr));
     }
 
     final void requestUnmaximized() {
-        if (nativePtr != 0) {
-            nativeRequestUnmaximized(nativePtr);
-        }
+        performLocked(() -> nativeRequestUnmaximized(nativePtr));
     }
 
     final void requestFullScreen() {
-        if (nativePtr != 0) {
-            nativeRequestFullScreen(nativePtr);
-        }
+        performLocked(() -> nativeRequestFullScreen(nativePtr));
     }
 
     final void requestUnsetFullScreen() {
-        if (nativePtr != 0) {
-            nativeRequestUnsetFullScreen(nativePtr);
-        }
+        performLocked(() -> nativeRequestUnsetFullScreen(nativePtr));
     }
 
     private static native void initIDs();
@@ -646,7 +641,7 @@ public class WLComponentPeer implements ComponentPeer {
 
     protected native void nativeDisposeFrame(long ptr);
 
-    private native long getWLSurface();
+    private native long getWLSurface(long ptr);
     private native void nativeStartDrag(long ptr);
     private native void nativeStartResize(long ptr, int edges);
 
@@ -792,18 +787,18 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     void startDrag() {
-        nativeStartDrag(nativePtr);
+        performLocked(() -> nativeStartDrag(nativePtr));
     }
 
     void startResize(int edges) {
-        nativeStartResize(nativePtr, edges);
+        performLocked(() -> nativeStartResize(nativePtr, edges));
     }
 
     void notifyConfigured(int width, int height, boolean active, boolean maximized) {
-        final long wlSurfacePtr = getWLSurface();
+        final long wlSurfacePtr = getWLSurface(nativePtr);
         // TODO: this needs to be done only once after wlSetVisible(true)
         surfaceData.assignSurface(wlSurfacePtr);
-        if (width != 0 && height != 0) target.setSize(width, height);
+        if (width != 0 && height != 0) performUnlocked(() ->target.setSize(width, height));
         if (width == 0 && height == 0) {
             // From xdg-shell.xml: "If the width or height arguments are zero,
             // it means the client should decide its own window dimension".
@@ -813,6 +808,51 @@ public class WLComponentPeer implements ComponentPeer {
             // the screen. In the other case, this paint event is posted
             // by setBounds() eventually called from target.setSize() above.
             postPaintEvent();
+        }
+    }
+
+    // The following methods exist to prevent native code from using stale pointers (pointing to memory already
+    // deallocated). This includes pointers to object allocated by the toolkit directly, as well as those allocated by
+    // Wayland client API.
+    // An example case when a stale pointer can be accessed is performing some operation on a window/surface, while it's
+    // being destroyed/hidden in another thread.
+    // All accesses to native data, associated with the peer object (e.g. wl_surface proxy object), are expected to be
+    // done using these methods. Then one can be sure that native data is not changed concurrently in any way while the
+    // specified task is executed.
+
+    void performLocked(Runnable task) {
+        WLToolkit.awtLock();
+        try {
+            if (nativePtr != 0) {
+                task.run();
+            }
+        } finally {
+            WLToolkit.awtUnlock();
+        }
+    }
+
+    <T> T performLocked(Supplier<T> task, Supplier<T> defaultValue) {
+        WLToolkit.awtLock();
+        try {
+            if (nativePtr != 0) {
+                return task.get();
+            }
+        } finally {
+            WLToolkit.awtUnlock();
+        }
+        return defaultValue.get();
+    }
+
+    // It's important not to take some other locks in AWT code (e.g. java.awt.Component.getTreeLock()) while holding the
+    // lock protecting native data. If the locks can be taken also in a different order, a deadlock might occur. If some
+    // code is known to be executed under native-data protection lock (e.g. Wayland event processing code), it can use
+    // this method to give up the lock temporarily, to be able to call the code employing other locks.
+    static void performUnlocked(Runnable task) {
+        WLToolkit.awtUnlock();
+        try {
+            task.run();
+        } finally {
+            WLToolkit.awtLock();
         }
     }
 }

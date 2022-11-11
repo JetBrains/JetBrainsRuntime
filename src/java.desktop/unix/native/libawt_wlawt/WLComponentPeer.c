@@ -389,9 +389,9 @@ Java_sun_awt_wl_WLComponentPeer_nativeDisposeFrame
 }
 
 JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLComponentPeer_getWLSurface
-  (JNIEnv *env, jobject obj)
+  (JNIEnv *env, jobject obj, jlong ptr)
 {
-    return (jlong)((struct WLFrame*)(*env)->GetLongField(env, obj, nativePtrID))->wl_surface;
+    return (jlong)((struct WLFrame*)ptr)->wl_surface;
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartDrag

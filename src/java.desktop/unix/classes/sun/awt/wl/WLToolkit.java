@@ -45,8 +45,6 @@ import java.awt.dnd.InvalidDnDOperationException;
 import java.awt.dnd.peer.DragSourceContextPeer;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseWheelEvent;
 import java.awt.event.WindowEvent;
 import java.awt.font.TextAttribute;
 import java.awt.im.InputMethodHighlight;
@@ -202,10 +200,12 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                 break;
             } else if (result == READ_RESULT_FINISHED_WITH_EVENTS) {
                 SunToolkit.postEvent(AppContext.getAppContext(), new PeerEvent(this, () -> {
+                    WLToolkit.awtLock();
                     try {
                         dispatchEventsOnEDT();
                     } finally {
                         eventsQueued.release();
+                        WLToolkit.awtUnlock();
                     }
                 }, PeerEvent.ULTIMATE_PRIORITY_EVENT));
                 try {
