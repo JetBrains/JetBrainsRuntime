@@ -24,16 +24,15 @@
  * questions.
  */
 
-// These are stubs in case we were built with Vulkan disabled.
-#ifndef VULKAN_ENABLED
 #include "jni.h"
+#include "VKBase.h"
 
-jboolean VK_Init() {
-    return 0;
+/*
+ * Class:     sun_java2d_vulkan_WLVKGraphicsConfig
+ * Method:    nativeGetMaxTextureSize
+ * Signature: ()I
+ */
+extern "C" JNIEXPORT jint JNICALL Java_sun_java2d_vulkan_WLVKGraphicsConfig_nativeGetMaxTextureSize
+        (JNIEnv *env, jclass vkgc) {
+    return VK_MaxTextureSize();
 }
-
-jint VK_MaxTextureSize() {
-    return 0;
-}
-
-#endif
