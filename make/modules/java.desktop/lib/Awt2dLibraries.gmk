@@ -190,7 +190,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/font \
         #
 
-    LIBAWT_XAWT_EXCLUDES := medialib debug wl
+    LIBAWT_XAWT_EXCLUDES := medialib debug wl vulkan
 
     LIBAWT_XAWT_EXTRA_HEADER_DIRS := \
         $(LIBAWT_DEFAULT_HEADER_DIRS) \
