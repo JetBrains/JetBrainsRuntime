@@ -40,6 +40,7 @@
 #import "sun_lwawt_macosx_LWCToolkit.h"
 
 #import "sizecalc.h"
+#import "AWTWindow.h"
 
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
 
@@ -612,7 +613,11 @@ JNI_COCOA_ENTER(env);
                                            untilDate:nil
                                               inMode:NSDefaultRunLoopMode
                                              dequeue:YES]) != nil) {
-                [NSApp sendEvent:event];
+                if ([event.window isKindOfClass:[AWTWindow_Normal class]]) {
+                    // Filter only events from AWTWindow (to skip events from ScreenMenu)
+                    // See https://youtrack.jetbrains.com/issue/IDEA-305287/Implement-non-blocking-ScreenMenu.invokeOpenLater#focus=Comments-27-6614719.0-0
+                    [NSApp sendEvent:event];
+                }
             }
 
         }
