@@ -15,7 +15,7 @@ import sun.java2d.SurfaceData;
 import sun.java2d.loops.SurfaceType;
 import sun.util.logging.PlatformLogger;
 
-public class WLSurfaceData extends SurfaceData {
+public class WLSurfaceData extends SurfaceData implements WLSurfaceDataExt {
 
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.wl.WLSurfaceData");
     private final WLComponentPeer peer;
@@ -71,10 +71,6 @@ public class WLSurfaceData extends SurfaceData {
         return peer.getTarget();
     }
 
-    public static boolean isAccelerationEnabled() {
-        return false;
-    }
-
     public static SurfaceData createData(WLGraphicsConfig gc, int width, int height, ColorModel cm,
                                          SunVolatileImage vImg, long drawable, int opaque,
                                          boolean b) {
@@ -83,5 +79,6 @@ public class WLSurfaceData extends SurfaceData {
 
     public native void revalidate(int width, int height, int scale);
 
-    public native void commitToServer();
+    @Override
+    public native void flush();
 }
