@@ -92,9 +92,7 @@ public class WLSurfaceData extends SurfaceData {
     public static SurfaceData createData(WLGraphicsConfig gc, int width, int height, ColorModel cm,
                                          SunVolatileImage vImg, long drawable, int opaque,
                                          boolean b) {
-        log.info("Not implemented: WLSurfaceData.createData(WLGraphicsConfig,int,int,ColorModel," +
-                "SunVolatileImage,long,int,boolean)");
-        return null;
+        throw new UnsupportedOperationException("SurfaceData not associated with a Component is not supported");
     }
 
     public native void revalidate(int width, int height);

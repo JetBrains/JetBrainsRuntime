@@ -30,6 +30,7 @@ import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.PaintEventDispatcher;
 import sun.awt.event.IgnorePaintEvent;
+import sun.awt.image.SunVolatileImage;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
 import sun.java2d.pipe.Region;
@@ -551,7 +552,7 @@ public class WLComponentPeer implements ComponentPeer {
 
     @Override
     public VolatileImage createVolatileImage(int width, int height) {
-        throw new UnsupportedOperationException();
+        return new SunVolatileImage(target, width, height);
     }
 
     protected void initGraphicsConfiguration() {
