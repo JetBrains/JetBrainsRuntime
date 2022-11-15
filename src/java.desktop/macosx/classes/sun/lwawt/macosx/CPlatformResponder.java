@@ -228,14 +228,9 @@ final class CPlatformResponder {
                 }
             }
 
-            // Workaround for JBR-2981
-            int metaAltCtrlMods = KeyEvent.META_DOWN_MASK | KeyEvent.ALT_DOWN_MASK | KeyEvent.CTRL_DOWN_MASK;
-            boolean metaAltCtrlAreNotPressed = (jmodifiers & metaAltCtrlMods) == 0;
-            boolean useShiftedCharacter = ((jmodifiers & KeyEvent.SHIFT_DOWN_MASK) == KeyEvent.SHIFT_DOWN_MASK) && metaAltCtrlAreNotPressed;
-
             char testCharIgnoringModifiers = charsIgnoringModifiers != null && charsIgnoringModifiers.length() > 0 ?
                     charsIgnoringModifiers.charAt(0) : KeyEvent.CHAR_UNDEFINED;
-            if (!useShiftedCharacter && charsIgnoringModifiersAndShift != null && charsIgnoringModifiersAndShift.length() > 0) {
+            if (charsIgnoringModifiersAndShift != null && charsIgnoringModifiersAndShift.length() > 0) {
                 testCharIgnoringModifiers = charsIgnoringModifiersAndShift.charAt(0);
             }
 
