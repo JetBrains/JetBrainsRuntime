@@ -33,9 +33,8 @@ public enum Modifier {
 
     E(),
     A(KeyEvent.VK_ALT),
-    // TODO: uncomment the following line this once JBR-3860 is fixed
-    //S(KeyEvent.VK_SHIFT),
-    //SA(KeyEvent.VK_SHIFT, KeyEvent.VK_ALT),
+    S(KeyEvent.VK_SHIFT),
+    SA(KeyEvent.VK_SHIFT, KeyEvent.VK_ALT),
 
     // Shortcuts
 
