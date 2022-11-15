@@ -677,9 +677,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 }
 
 -(BOOL) isCodePointInUnicodeBlockNeedingIMEvent: (unichar) codePoint {
-    if ((codePoint == 0x0024) || (codePoint == 0x00A3) ||
-        (codePoint == 0x00A5) ||
-        ((codePoint >= 0x900) && (codePoint <= 0x97F)) ||
+    if (((codePoint >= 0x900) && (codePoint <= 0x97F)) ||
         ((codePoint >= 0x20A3) && (codePoint <= 0x20BF)) ||
         ((codePoint >= 0x3000) && (codePoint <= 0x303F)) ||
         ((codePoint >= 0xFF00) && (codePoint <= 0xFFEF))) {
