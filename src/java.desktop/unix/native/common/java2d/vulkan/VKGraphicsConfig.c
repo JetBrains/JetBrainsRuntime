@@ -86,9 +86,9 @@ JNIEXPORT jboolean JNICALL Java_sun_java2d_vulkan_VKGraphicsConfig_isVulkanAvail
  * Method:    getMTLConfigInfo
  * Signature: (I)J
  */
-JNIEXPORT jlong JNICALL Java_sun_java2d_vulkan_VKGraphicsConfig_getMTLConfigInfo
-        (JNIEnv *env, jclass vkgc, jint displayID) {
-    fprintf(stderr, "Java_sun_java2d_vulkan_VKGraphicsConfig_getMTLConfigInfo\n");
+JNIEXPORT jlong JNICALL Java_sun_java2d_vulkan_VKGraphicsConfig_getVKConfigInfo
+        (JNIEnv *env, jclass vkgc) {
+    fprintf(stderr, "Not implemented:VKGraphicsConfig_getVKConfigInfo\n");
     return 0;
 }
 

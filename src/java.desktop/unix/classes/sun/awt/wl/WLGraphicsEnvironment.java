@@ -28,7 +28,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
     protected GraphicsDevice makeScreenDevice(int screennum) {
         log.info("Not implemented: WLGraphicsEnvironment.makeScreenDevice(int)");
         if (vulkanRequested) {
-            return new VKGraphicsDevice(0);
+            return new VKGraphicsDevice();
         } else {
             return new WLGraphicsDevice();
         }

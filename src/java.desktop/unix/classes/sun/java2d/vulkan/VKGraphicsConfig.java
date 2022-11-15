@@ -77,7 +77,7 @@ public final class VKGraphicsConfig extends WLGraphicsConfig
     private final VKContext context;
 
     private static native boolean isVulkanAvailable();
-    private static native long getMTLConfigInfo(int displayID);
+    private static native long getVKConfigInfo();
 
     /**
      * Returns maximum texture size supported by Vulkan. Must be
@@ -115,8 +115,7 @@ public final class VKGraphicsConfig extends WLGraphicsConfig
         return null;
     }
 
-    public static VKGraphicsConfig getConfig(VKGraphicsDevice device,
-                                              int displayID)
+    public static VKGraphicsConfig getConfig(VKGraphicsDevice device)
     {
         if (!vkAvailable) {
             return null;
@@ -127,21 +126,18 @@ public final class VKGraphicsConfig extends WLGraphicsConfig
         VKRenderQueue rq = VKRenderQueue.getInstance();
         rq.lock();
         try {
-            cfginfo = getMTLConfigInfo(displayID);
+            cfginfo = getVKConfigInfo();
             if (cfginfo != 0L) {
                 textureSize = nativeGetMaxTextureSize();
-                // TODO : This clamping code is same as in OpenGL.
-                // Whether we need such clamping or not in case of Metal
-                // will be pursued under 8260644
-                textureSize = textureSize <= 16384 ? textureSize / 2 : 8192;
                 VKContext.setScratchSurface(cfginfo);
             }
         } finally {
             rq.unlock();
         }
-        if (cfginfo == 0) {
-            return null;
-        }
+
+//        if (cfginfo == 0) {
+//            return null;
+//        }
 
         ContextCapabilities caps = new VKContext.VKContextCaps(
                 CAPS_PS30 | CAPS_PS20 |
@@ -218,7 +214,7 @@ public final class VKGraphicsConfig extends WLGraphicsConfig
 
     @Override
     public String toString() {
-        return ("MTLGraphicsConfig[" + getDevice().getIDstring() + "]");
+        return ("VKGraphicsConfig[" + getDevice().getIDstring() + "]");
     }
 
 
