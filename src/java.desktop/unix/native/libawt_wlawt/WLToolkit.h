@@ -49,6 +49,7 @@ extern struct wl_pointer *wl_pointer;
 extern struct wl_compositor *wl_compositor;
 extern struct xdg_wm_base *xdg_wm_base;
 extern struct wl_cursor_theme *wl_cursor_theme;
+extern struct wl_seat *wl_seat;
 
 extern uint32_t last_mouse_pressed_serial;
 extern uint32_t last_pointer_enter_serial;

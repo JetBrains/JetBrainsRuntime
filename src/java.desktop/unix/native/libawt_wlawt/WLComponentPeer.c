@@ -159,6 +159,13 @@ xdg_popup_configure(void *data,
 {
     J2dTrace5(J2D_TRACE_INFO, "WLComponentPeer: xdg_popup_configure(%p, %d, %d, %d, %d)\n",
               xdg_popup, x, y, width, height);
+
+    struct WLFrame *wlFrame = (struct WLFrame*)data;
+    assert(wlFrame);
+
+    wlFrame->configuredPending = JNI_TRUE;
+    wlFrame->configuredWidth = width;
+    wlFrame->configuredHeight = height;
 }
 
 static void
@@ -180,6 +187,7 @@ xdg_popup_done(void *data,
                struct xdg_popup *xdg_popup)
 {
     J2dTrace1(J2D_TRACE_INFO, "WLComponentPeer: xdg_popup_done(%p)\n", xdg_popup);
+    // TODO
 }
 
 static const struct xdg_toplevel_listener xdg_toplevel_listener = {
@@ -203,12 +211,12 @@ Java_sun_awt_wl_WLComponentPeer_initIDs
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLFramePeer_initIDs
+Java_sun_awt_wl_WLDecoratedPeer_initIDs
         (JNIEnv *env, jclass clazz)
 {
     CHECK_NULL_THROW_IE(env,
                         postWindowClosingMID = (*env)->GetMethodID(env, clazz, "postWindowClosing", "()V"),
-                        "Failed to find method WLFramePeer.postWindowClosing");
+                        "Failed to find method WLDecoratedPeer.postWindowClosing");
 }
 
 JNIEXPORT jlong JNICALL
@@ -312,7 +320,8 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestUnsetFullScreen
 
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
-  (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr, jint x, jint y, jstring title, jstring appid)
+  (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr, jboolean isPopup,
+   jint x, jint y, jstring title, jstring appid)
 {
     struct WLFrame *frame = (struct WLFrame *) ptr;
     struct WLFrame *parentFrame = (struct WLFrame*) parentPtr;
@@ -322,7 +331,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
 
     wl_surface_add_listener(frame->wl_surface, &wl_surface_listener, frame);
     xdg_surface_add_listener(frame->xdg_surface, &xdg_surface_listener, frame);
-    frame->toplevel = parentFrame == NULL;
+    frame->toplevel = !isPopup;
     if (frame->toplevel) {
         frame->xdg_toplevel = xdg_surface_get_toplevel(frame->xdg_surface);
         xdg_toplevel_add_listener(frame->xdg_toplevel, &xdg_toplevel_listener, frame);
@@ -332,7 +341,11 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
         if (appid) {
             FrameSetAppID(env, frame, appid);
         }
+        if (parentFrame) {
+            xdg_toplevel_set_parent(frame->xdg_toplevel, parentFrame->xdg_toplevel);
+        }
     } else {
+        assert(parentFrame);
         struct xdg_positioner *xdg_positioner =
                 xdg_wm_base_create_positioner(xdg_wm_base);
         xdg_positioner_set_offset(xdg_positioner, x, y);
@@ -436,5 +449,14 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetMaximumSize
     struct WLFrame *frame = (struct WLFrame *) ptr;
     if (frame->toplevel) {
         xdg_toplevel_set_max_size(frame->xdg_toplevel, width, height);
+    }
+}
+
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeShowWindowMenu
+        (JNIEnv *env, jobject obj, jlong ptr, jint x, jint y)
+{
+    struct WLFrame *frame = (struct WLFrame *) ptr;
+    if (frame->toplevel) {
+        xdg_toplevel_show_window_menu(frame->xdg_toplevel, wl_seat, last_mouse_pressed_serial, x, y);
     }
 }

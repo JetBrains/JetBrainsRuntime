@@ -647,14 +647,16 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public WindowPeer createWindow(Window target) {
-        log.info("Not implemented: WLToolkit.createWindow()");
-        return null;
+        WLWindowPeer peer = new WLWindowPeer(target);
+        targetCreatedPeer(target, peer);
+        return peer;
     }
 
     @Override
     public DialogPeer createDialog(Dialog target) {
-        log.info("Not implemented: WLToolkit.createDialog()");
-        return null;
+        WLDialogPeer peer = new WLDialogPeer(target);
+        targetCreatedPeer(target, peer);
+        return peer;
     }
 
     @Override
@@ -857,8 +859,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public boolean isModalityTypeSupported(Dialog.ModalityType modalityType) {
-        log.info("Not implemented: WLToolkit.isModalityTypeSupported()");
-        return false;
+        return (modalityType == Dialog.ModalityType.MODELESS) ||
+                (modalityType == Dialog.ModalityType.APPLICATION_MODAL);
     }
 
     @Override
