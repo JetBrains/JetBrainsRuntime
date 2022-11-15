@@ -29,7 +29,6 @@ import sun.swing.SwingUtilities2;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.Ellipse2D;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 public class WLFrameDecoration {
@@ -66,7 +65,8 @@ public class WLFrameDecoration {
             Cursor.SE_RESIZE_CURSOR
     };
 
-    private final WLFramePeer peer;
+    private final WLDecoratedPeer peer;
+
     private final ButtonState closeButton;
     private final ButtonState maximizeButton;
     private final ButtonState minimizeButton;
@@ -76,15 +76,11 @@ public class WLFrameDecoration {
     private boolean pressedInside;
     private Point pressedLocation;
 
-    public WLFrameDecoration(WLFramePeer peer) {
+    public WLFrameDecoration(WLDecoratedPeer peer, boolean showMinimize, boolean showMaximize) {
         this.peer = peer;
         closeButton = new ButtonState(this::getCloseButtonCenter, peer::postWindowClosing);
-        maximizeButton = new ButtonState(this::getMaximizeButtonCenter, this::toggleMaximizedState);
-        minimizeButton = new ButtonState(this::getMinimizeButtonCenter, this::minimizeWindow);
-    }
-
-    private Frame getFrame() {
-        return (Frame) peer.target;
+        maximizeButton = showMaximize ? new ButtonState(this::getMaximizeButtonCenter, this::toggleMaximizedState) : null;
+        minimizeButton = showMinimize ? new ButtonState(this::getMinimizeButtonCenter, this::minimizeWindow) : null;
     }
 
     public Insets getInsets() {
@@ -99,25 +95,37 @@ public class WLFrameDecoration {
         return new Dimension(getButtonSpaceWidth(), HEIGHT);
     }
 
+    private boolean hasMinimizeButton() {
+        return minimizeButton != null;
+    }
+
+    private boolean hasMaximizeButton() {
+        return maximizeButton != null && peer.isResizable();
+    }
+
     private Point getCloseButtonCenter() {
         int width = peer.getWidth();
         return width >= HEIGHT ? new Point(width - HEIGHT / 2, HEIGHT / 2) : null;
     }
 
     private Point getMaximizeButtonCenter() {
-        if (!getFrame().isResizable()) return null;
+        if (!hasMaximizeButton()) return null;
         int width = peer.getWidth();
         return width >= 2 * HEIGHT ? new Point(width - HEIGHT * 3 / 2, HEIGHT / 2) : null;
     }
 
     private Point getMinimizeButtonCenter() {
+        if (!hasMinimizeButton()) return null;
         int width = peer.getWidth();
         int buttonSpaceWidth = getButtonSpaceWidth();
         return width >= buttonSpaceWidth ? new Point(width - buttonSpaceWidth + HEIGHT / 2, HEIGHT / 2) : null;
     }
 
     private int getButtonSpaceWidth() {
-        return (getFrame().isResizable() ? 3 : 2) * HEIGHT;
+        final int numButtons = 1
+                + (hasMaximizeButton() ? 1 : 0)
+                + (hasMinimizeButton() ? 1 : 0);
+        return numButtons * HEIGHT;
     }
 
     public void paint(final Graphics g) {
@@ -129,12 +137,13 @@ public class WLFrameDecoration {
             doPaint(g2d);
         } finally {
             g2d.dispose();
+            needRepaint = false;
         }
     }
 
     private void doPaint(Graphics2D g) {
         int width = peer.getWidth();
-        String title = getFrame().getTitle();
+        String title = peer.getTitle();
         Color foregroundColor = active ? ACTIVE_FOREGROUND : INACTIVE_FOREGROUND;
 
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -242,8 +251,19 @@ public class WLFrameDecoration {
     }
 
     void processMouseEvent(MouseEvent e) {
+        final boolean isLMB = e.getButton() == MouseEvent.BUTTON1;
+        final boolean isRMB = e.getButton() == MouseEvent.BUTTON3;
+        final boolean isPressed = e.getID() == MouseEvent.MOUSE_PRESSED;
+        final boolean isLMBPressed = isLMB && isPressed;
+        final boolean isRMBPressed = isRMB && isPressed;
+
+        if (isRMBPressed && getBounds().contains(e.getX(), e.getY())) {
+            peer.showWindowMenu(e.getX(), e.getY());
+            return;
+        }
+
         Point point = e.getPoint();
-        if (e.getID() == MouseEvent.MOUSE_PRESSED) {
+        if (isLMBPressed && peer.isResizable()) {
             int resizeSide = getResizeEdges(point.x, point.y);
             if (resizeSide != 0) {
                 peer.startResize(resizeSide);
@@ -268,8 +288,8 @@ public class WLFrameDecoration {
             pressedInside = pointerInside;
         }
         if (closeButton.processMouseEvent(e) |
-            maximizeButton.processMouseEvent(e) |
-            minimizeButton.processMouseEvent(e)) {
+                (maximizeButton != null && maximizeButton.processMouseEvent(e)) |
+                (minimizeButton != null && minimizeButton.processMouseEvent(e))) {
             peer.notifyClientDecorationsChanged();
         }
         if (e.getID() == MouseEvent.MOUSE_PRESSED) {
@@ -277,7 +297,7 @@ public class WLFrameDecoration {
         } else if (e.getID() == MouseEvent.MOUSE_DRAGGED && pressedInDragStartArea() && isSignificantDrag(point)) {
             peer.startDrag();
         } else if (e.getID() == MouseEvent.MOUSE_CLICKED && e.getClickCount() == 2 && pressedInDragStartArea()
-                && getFrame().isResizable()) {
+                && peer.isResizable()) {
             toggleMaximizedState();
         } else if (e.getID() == MouseEvent.MOUSE_MOVED && !pointerInside) {
             peer.updateCursorImmediately();
@@ -285,7 +305,7 @@ public class WLFrameDecoration {
     }
 
     private int getResizeEdges(int x, int y) {
-        if (!getFrame().isResizable()) return 0;
+        if (!peer.isResizable()) return 0;
         int edges = 0;
         if (x < RESIZE_EDGE_THICKNESS) {
             edges |= XDG_TOPLEVEL_RESIZE_EDGE_LEFT;
@@ -308,20 +328,21 @@ public class WLFrameDecoration {
     }
 
     private void toggleMaximizedState() {
-        getFrame().setExtendedState(peer.getState() == Frame.NORMAL ? Frame.MAXIMIZED_BOTH : Frame.NORMAL);
+        peer.setExtendedState(peer.getState() == Frame.NORMAL ? Frame.MAXIMIZED_BOTH : Frame.NORMAL);
     }
 
     private void minimizeWindow() {
-        getFrame().setState(Frame.ICONIFIED);
+        peer.setState(Frame.ICONIFIED);
     }
 
-    private static final AtomicBoolean needRepaint = new AtomicBoolean(false);
-    boolean getRepaintNeededAndReset() {
-        return needRepaint.compareAndExchange(true, false);
+    private volatile boolean needRepaint = true;
+
+    boolean isRepaintNeeded() {
+        return needRepaint;
     }
 
     void markRepaintNeeded() {
-        needRepaint.set(true);
+        needRepaint = true;
     }
 
     Cursor getCursor(int x, int y) {

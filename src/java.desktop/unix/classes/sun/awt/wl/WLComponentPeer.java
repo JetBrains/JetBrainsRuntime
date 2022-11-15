@@ -172,7 +172,7 @@ public class WLComponentPeer implements ComponentPeer {
 
     @Override
     public boolean canDetermineObscurity() {
-        throw new UnsupportedOperationException();
+        return false;
     }
 
     public void focusGained(FocusEvent e) {
@@ -215,10 +215,11 @@ public class WLComponentPeer implements ComponentPeer {
     protected void wlSetVisible(boolean v) {
         this.visible = v;
         if (this.visible) {
-            final String title = target instanceof Frame frame ? frame.getTitle() : null;
+            final String title = getTitle();
+            final boolean isPopup = target instanceof Window window && window.getType() == Window.Type.POPUP;
             performLocked(() -> {
                 nativeCreateWLSurface(nativePtr,
-                        getParentNativePtr(target), target.getX(), target.getY(), title, appID);
+                        getParentNativePtr(target), isPopup, target.getX(), target.getY(), title, appID);
                 final long wlSurfacePtr = getWLSurface(nativePtr);
                 WLToolkit.registerWLSurface(wlSurfacePtr, this);
             });
@@ -504,6 +505,10 @@ public class WLComponentPeer implements ComponentPeer {
         performLocked(() -> nativeSetMaximumSize(nativePtr, maxSize.width, maxSize.height));
     }
 
+    void showWindowMenu(int x, int y) {
+        performLocked(() -> nativeShowWindowMenu(nativePtr, x, y));
+    }
+
     @Override
     public ColorModel getColorModel() {
         if (graphicsConfig != null) {
@@ -642,7 +647,7 @@ public class WLComponentPeer implements ComponentPeer {
 
     @Override
     public boolean handlesWheelScrolling() {
-        throw new UnsupportedOperationException();
+        return false;
     }
 
     @Override
@@ -685,6 +690,10 @@ public class WLComponentPeer implements ComponentPeer {
         performLocked(() -> nativeSetTitle(nativePtr, title));
     }
 
+    public String getTitle() {
+        return null;
+    }
+
     final void requestMinimized() {
         performLocked(() -> nativeRequestMinimized(nativePtr));
     }
@@ -709,7 +718,8 @@ public class WLComponentPeer implements ComponentPeer {
 
     protected native long nativeCreateFrame();
 
-    protected native void nativeCreateWLSurface(long ptr, long parentPtr, int x, int y, String title, String appID);
+    protected native void nativeCreateWLSurface(long ptr, long parentPtr, boolean isPopup,
+                                                int x, int y, String title, String appID);
 
     protected native void nativeHideFrame(long ptr);
 
@@ -731,6 +741,7 @@ public class WLComponentPeer implements ComponentPeer {
     private native void nativeSetMaximumSize(long ptr, int width, int height);
     private static native void nativeSetCursor(long pData);
     private static native long nativeGetPredefinedCursor(String name);
+    private native void nativeShowWindowMenu(long ptr, int x, int y);
 
     static long getParentNativePtr(Component target) {
         Component parent = target.getParent();

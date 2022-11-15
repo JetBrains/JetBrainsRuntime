@@ -26,70 +26,31 @@
 package sun.awt.wl;
 
 import java.awt.*;
-import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
-import java.awt.peer.ComponentPeer;
 import java.awt.peer.FramePeer;
 import sun.awt.AWTAccessor;
-import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.util.logging.PlatformLogger;
 
-public class WLFramePeer extends WLComponentPeer implements FramePeer {
+public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLFramePeer");
-
-    private final WLFrameDecoration decoration;
 
     private int state; // Guarded by getStateLock()
     private int widthBeforeMaximized; // Guarded by getStateLock()
     private int heightBeforeMaximized; // Guarded by getStateLock()
 
     public WLFramePeer(Frame target) {
-        super(target);
-        decoration = target.isUndecorated() ? null : new WLFrameDecoration(this);
-    }
-
-    @Override
-    protected void wlSetVisible(boolean v) {
-        super.wlSetVisible(v);
-        final ComponentAccessor acc = AWTAccessor.getComponentAccessor();
-        for (Component c : ((Frame)target).getComponents()) {
-            ComponentPeer cPeer = acc.getPeer(c);
-            if (cPeer instanceof WLComponentPeer) {
-                ((WLComponentPeer) cPeer).wlSetVisible(v);
-            }
-        }
+        super(target, target.isUndecorated(),
+                Toolkit.getDefaultToolkit().isFrameStateSupported(Frame.ICONIFIED),
+                Toolkit.getDefaultToolkit().isFrameStateSupported(Frame.MAXIMIZED_BOTH));
     }
 
     @Override
     void configureWLSurface() {
         super.configureWLSurface();
-        updateMinimumSize();
-        updateMaximumSize();
-        int state = ((Frame) target).getExtendedState();
+        int state = getFrame().getExtendedState();
         if (state != Frame.NORMAL) {
             setState(state);
         }
-    }
-
-    private static native void initIDs();
-
-    static {
-        if (!GraphicsEnvironment.isHeadless()) {
-            initIDs();
-        }
-    }
-
-    @Override
-    public Insets getInsets() {
-        return decoration == null ? new Insets(0, 0, 0, 0) : decoration.getInsets();
-    }
-
-    @Override
-    public void beginValidate() {
-    }
-
-    @Override
-    public void endValidate() {
     }
 
 //    @Override
@@ -103,19 +64,18 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
 //    }
 
     @Override
-    public void setTitle(String title) {
-        setFrameTitle(title);
-        notifyClientDecorationsChanged();
-    }
-
-    @Override
     public void setMenuBar(MenuBar mb) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void setResizable(boolean resizeable) {
-        notifyClientDecorationsChanged();
+    public boolean isResizable() {
+        return getFrame().isResizable();
+    }
+
+    @Override
+    public String getTitle() {
+        return getFrame().getTitle();
     }
 
     @Override
@@ -129,12 +89,16 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
             // have 'Frame.ICONIFIED' bit set and every
             // request to iconify will be granted.
             requestMinimized();
-            AWTAccessor.getFrameAccessor().setExtendedState((Frame) target, newState & ~Frame.ICONIFIED);
+            AWTAccessor.getFrameAccessor().setExtendedState(getFrame(), newState & ~Frame.ICONIFIED);
         } else if (newState == Frame.MAXIMIZED_BOTH) {
             requestMaximized();
         } else /* Frame.NORMAL */ {
             requestUnmaximized();
         }
+    }
+
+    public void setExtendedState(int newState) {
+        getFrame().setExtendedState(newState);
     }
 
     @Override
@@ -146,19 +110,6 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
 
     @Override
     public void setMaximizedBounds(Rectangle bounds) {
-    }
-
-    @Override
-    public Dimension getMinimumSize() {
-        final Dimension targetMinimumSize = target.isMinimumSizeSet()
-                ? target.getMinimumSize()
-                : new Dimension(1, 1);
-        final Dimension frameMinimumSize = decoration != null
-                ? decoration.getMinimumSize()
-                : new Dimension(1, 1);
-        return new Rectangle(targetMinimumSize)
-                .union(new Rectangle(frameMinimumSize))
-                .getSize();
     }
 
     @Override
@@ -187,84 +138,16 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
     }
 
     @Override
-    public void updateAlwaysOnTopState() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void updateFocusableWindowState() {
-    }
-
-    @Override
-    public void setModalBlocked(Dialog blocker, boolean blocked) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void updateMinimumSize() {
-        final Dimension minSize = getMinimumSize();
-        super.setMinimumSizeTo(minSize);
-    }
-
-    public void updateMaximumSize() {
-        // TODO: make sure this is called when our target's maximum size changes
-        final Dimension maxSize = target.isMaximumSizeSet() ? target.getMaximumSize() : null;
-        if (maxSize != null) super.setMaximumSizeTo(maxSize);
-    }
-
-    @Override
-    public void updateIconImages() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void setOpacity(float opacity) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void setOpaque(boolean isOpaque) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void updateWindow() {
-        // signals the end of repainting by Swing and/or AWT
-        paintClientDecorations(getGraphics());
-        commitToServer();
-    }
-
-    @Override
-    public void repositionSecurityWarning() {
-        throw new UnsupportedOperationException();
-    }
-
-    // called from native code
-    void postWindowClosing() {
-        WLToolkit.postEvent(new WindowEvent((Window) target, WindowEvent.WINDOW_CLOSING));
-    }
-
-    @Override
-    void postMouseEvent(MouseEvent e) {
-        if (decoration == null) {
-            super.postMouseEvent(e);
-        } else {
-            decoration.processMouseEvent(e);
-        }
-    }
-
-    @Override
     void notifyConfigured(int width, int height, boolean active, boolean maximized) {
         int widthBefore = getWidth();
         int heightBefore = getHeight();
 
         super.notifyConfigured(width, height, active, maximized);
 
-
         synchronized (getStateLock()) {
             int oldState = state;
             state = maximized ? Frame.MAXIMIZED_BOTH : Frame.NORMAL;
-            AWTAccessor.getFrameAccessor().setExtendedState((Frame)target, state);
+            AWTAccessor.getFrameAccessor().setExtendedState(getFrame(), state);
             if (state != oldState) {
                 if (maximized) {
                     widthBeforeMaximized = widthBefore;
@@ -272,54 +155,13 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
                 } else if (width == 0 && height == 0 && widthBeforeMaximized > 0 && heightBeforeMaximized > 0) {
                     performUnlocked(() -> target.setSize(widthBeforeMaximized, heightBeforeMaximized));
                 }
-                WLToolkit.postEvent(new WindowEvent((Window)target, WindowEvent.WINDOW_STATE_CHANGED, oldState, state));
+                WLToolkit.postEvent(new WindowEvent(getFrame(), WindowEvent.WINDOW_STATE_CHANGED, oldState, state));
                 notifyClientDecorationsChanged();
             }
         }
-
-        if (decoration != null) decoration.setActive(active);
     }
 
-    @Override
-    public Rectangle getVisibleBounds() {
-        // TODO: modify if our decorations ever acquire special effects that
-        // do not count into "visible bounds" of the window
-        return super.getVisibleBounds();
-    }
-
-    @Override
-    public void setBounds(int x, int y, int width, int height, int op) {
-        notifyClientDecorationsChanged();
-        super.setBounds(x, y, width, height, op);
-    }
-
-    final void notifyClientDecorationsChanged() {
-        if (decoration != null) {
-            final Rectangle bounds = decoration.getBounds();
-            decoration.markRepaintNeeded();
-            postPaintEvent(getTarget(), bounds.x, bounds.y, bounds.width, bounds.height);
-        }
-    }
-
-    final void paintClientDecorations(final Graphics g) {
-        if (decoration != null && decoration.getRepaintNeededAndReset()) {
-            decoration.paint(g);
-        }
-    }
-
-    @Override
-    void paintPeer(final Graphics g) {
-        super.paintPeer(g);
-    }
-
-    @Override
-    Cursor getCursor(int x, int y) {
-        if (decoration != null) {
-            Cursor cursor = decoration.getCursor(x, y);
-            if (cursor != null) {
-                return cursor;
-            }
-        }
-        return super.getCursor(x, y);
+    private Frame getFrame() {
+        return (Frame)target;
     }
 }
