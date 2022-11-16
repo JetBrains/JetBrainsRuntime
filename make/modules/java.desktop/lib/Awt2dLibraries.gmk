@@ -315,15 +315,20 @@ ifeq ($(call isTargetOs, windows macosx), false)
         EXTRA_HEADER_DIRS := $(LIBAWT_WLAWT_EXTRA_HEADER_DIRS), \
         EXCLUDES := $(LIBAWT_WLAWT_EXCLUDES), \
         OPTIMIZATION := LOW, \
+        CXXFLAGS := $(CXXFLAGS_JDKLIB), \
         CFLAGS := $(CFLAGS_JDKLIB) $(LIBAWT_WLAWT_CFLAGS), \
         WARNINGS_AS_ERRORS_xlc := false, \
-        DISABLED_WARNINGS_gcc := type-limits pointer-to-int-cast \
+        DISABLED_WARNINGS_C_gcc := type-limits pointer-to-int-cast \
             unused-result maybe-uninitialized format \
             format-security int-to-pointer-cast parentheses \
             implicit-fallthrough undef unused-function, \
+        DISABLED_WARNINGS_CXX_gcc := type-limits \
+            unused-result maybe-uninitialized format \
+            format-security parentheses \
+            implicit-fallthrough undef unused-function error, \
         DISABLED_WARNINGS_clang := parentheses format undef \
             logical-op-parentheses format-nonliteral int-conversion, \
-        LDFLAGS := $(LDFLAGS_JDKLIB) \
+        LDFLAGS := $(LDFLAGS_JDKLIB)  \
             $(call SET_SHARED_LIBRARY_ORIGIN) \
             -L$(INSTALL_LIBRARIES_HERE), \
         LIBS :=  $(LIBAWT_WLAWT_LIBS), \
@@ -445,6 +450,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
       common/awt/debug \
       common/font \
       common/java2d/opengl \
+      common/java2d/vulkan \
       #
 
   LIBAWT_HEADLESS_CFLAGS := $(CUPS_CFLAGS) $(FONTCONFIG_CFLAGS) $(X_CFLAGS) \
@@ -457,8 +463,13 @@ ifeq ($(call isTargetOs, windows macosx), false)
       OPTIMIZATION := LOW, \
       CFLAGS := $(CFLAGS_JDKLIB) \
           $(LIBAWT_HEADLESS_CFLAGS), \
+      CXXFLAGS := $(CXXFLAGS_JDKLIB), \
       EXTRA_HEADER_DIRS := $(LIBAWT_HEADLESS_EXTRA_HEADER_DIRS), \
       DISABLED_WARNINGS_gcc := unused-function, \
+      DISABLED_WARNINGS_CXX_gcc := type-limits \
+      unused-result maybe-uninitialized format \
+      format-security parentheses \
+      implicit-fallthrough undef unused-function error, \
       LDFLAGS := $(LDFLAGS_JDKLIB) \
           $(call SET_SHARED_LIBRARY_ORIGIN), \
       LDFLAGS_unix := -L$(INSTALL_LIBRARIES_HERE), \

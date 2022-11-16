@@ -30,8 +30,10 @@
 #include "vulkan/vulkan_wayland.h"
 #include "jni.h"
 #include "VKGraphicsConfig.h"
+typedef void* (*vkGetInstanceProcAddrPtrType)(void *, const char *);
+typedef int (*vkCreateInstancePtrType)(VkInstanceCreateInfo*, void *, void **);
 
-jboolean VKGC_IsVKAvailable() {
+extern "C" jboolean VKGC_IsVKAvailable() {
     static jboolean vkAvailable = JNI_FALSE;
     static jboolean firstTime = JNI_TRUE;
 
@@ -46,17 +48,18 @@ jboolean VKGC_IsVKAvailable() {
         }
 
         J2dRlsTraceLn(J2D_TRACE_INFO, "Found vulkan library");
+        vkGetInstanceProcAddrPtrType vkGetInstanceProcAddrPtr =
+                (vkGetInstanceProcAddrPtrType)dlsym(lib, "vkGetInstanceProcAddr");
 
-        void *(*vkGetInstanceProcAddr)(void *, const char *) = dlsym(lib, "vkGetInstanceProcAddr");
-
-        if (!vkGetInstanceProcAddr) {
+        if (!vkGetInstanceProcAddrPtr) {
             J2dRlsTraceLn(J2D_TRACE_ERROR, "Could not find vkGetInstanceProcAddr");
             break;
         }
 
-        int (*vkCreateInstance)(VkInstanceCreateInfo*, void *, void **) = vkGetInstanceProcAddr(0, "vkCreateInstance");
+        vkCreateInstancePtrType vkCreateInstancePtr =
+                (vkCreateInstancePtrType)vkGetInstanceProcAddrPtr(0, "vkCreateInstance");
 
-        if (!vkCreateInstance) {
+        if (!vkCreateInstancePtr) {
             J2dRlsTraceLn(J2D_TRACE_ERROR, "Could not find vkCreateInstance");
             break;
         }
@@ -72,7 +75,7 @@ jboolean VKGC_IsVKAvailable() {
         instanceCreateInfo.ppEnabledExtensionNames = instanceExtensions;
 
         void *instance = 0;
-        int result = vkCreateInstance(&instanceCreateInfo, NULL, &instance);
+        int result = vkCreateInstancePtr(&instanceCreateInfo, NULL, &instance);
 
         if (!instance || result != 0) {
             J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create vulkan instance");

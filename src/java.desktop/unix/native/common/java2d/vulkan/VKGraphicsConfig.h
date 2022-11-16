@@ -27,8 +27,13 @@
 #ifndef VKGraphicsConfig_h_Included
 #define VKGraphicsConfig_h_Included
 
-#include "jni.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 jboolean VKGC_IsVKAvailable();
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* VKGraphicsConfig_h_Included */
