@@ -255,11 +255,7 @@ struct WLSurfaceBufferManager {
 static inline void
 AssertDrawLockIsHeld(WLSurfaceBufferManager* manager, const char * file, int line)
 {
-    if (pthread_mutex_trylock(&manager->drawLock) == 0) {
-        fprintf(stderr, "drawLock not acquired at %s:%d\n", file, line);
-        fflush(stderr);
-        assert(0);
-    }
+    // TODO: would be nice to be able to check the mutex owner
 }
 
 static inline void
@@ -685,7 +681,14 @@ WLSBM_Create(jint width, jint height, jint rgb)
         return NULL;
     }
 
-    pthread_mutex_init(&manager->drawLock, NULL);
+    pthread_mutexattr_t attr;
+    pthread_mutexattr_init(&attr);
+    // Recursive mutex is required because the same "draw" buffer can be
+    // both read from and written to (when scrolling, for instance).
+    // So it needs to be able to be "locked" twice: once for writing and
+    // once for reading.
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP);
+    pthread_mutex_init(&manager->drawLock, &attr);
     DrawBufferCreate(manager);
 
     J2dTrace3(J2D_TRACE_INFO, "WLSBM_Create: created %p for %dx%d px\n", manager, width, height);

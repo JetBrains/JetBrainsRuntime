@@ -163,11 +163,6 @@ WLSD_GetRasInfo(JNIEnv *env,
     WLSDOps *wlso = (WLSDOps*)ops;
     logWSDOp("WLSD_GetRasInfo", wlso, priv->lockFlags);
 
-    if (pthread_mutex_trylock(&wlso->lock) == 0) {
-        fprintf(stderr, "FATAL ERROR: WLSD_GetRasInfo() called without holding the lock");
-        pthread_mutex_unlock(&wlso->lock);
-    }
-
     if (priv->lockFlags & SD_LOCK_RD_WR) {
         pRasInfo->rasBase = WLSB_DataGet(priv->wlBuffer);
         pRasInfo->pixelStride = sizeof(pixel_t);
@@ -258,6 +253,12 @@ Java_sun_java2d_wl_WLSurfaceData_initOps(JNIEnv *env, jobject wsd,
     wsdo->sdOps.GetRasInfo = WLSD_GetRasInfo;
     wsdo->sdOps.Dispose = WLSD_Dispose;
     wsdo->bufferManager = WLSBM_Create(width, height, backgroundRGB);
-    pthread_mutex_init(&wsdo->lock, NULL);
+    pthread_mutexattr_t attr;
+    pthread_mutexattr_init(&attr);
+    // Recursive mutex is required because blit can be done with both source
+    // and destination being the same surface (during scrolling, for example).
+    // So WLSD_Lock() should be able to lock the same surface twice in a row.
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP);
+    pthread_mutex_init(&wsdo->lock, &attr);
 #endif /* !HEADLESS */
 }
