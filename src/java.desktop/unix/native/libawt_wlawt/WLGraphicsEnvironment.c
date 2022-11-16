@@ -24,40 +24,19 @@
  * questions.
  */
 
-package sun.java2d.vulkan;
+#include <jni.h>
+#include "VKGraphicsConfig.h"
 
-import java.awt.DisplayMode;
-import java.awt.GraphicsConfiguration;
-import sun.awt.wl.WLGraphicsDevice;
-import sun.util.logging.PlatformLogger;
+/*
+ * Class:     sun_awt_wl_WLGraphicsEnvironment
+ * Method:    initVK
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL
+Java_sun_awt_wl_WLGraphicsEnvironment_initVK(JNIEnv *env, jclass wlge)
+{
+    jboolean vkAvailable;
+    vkAvailable = VKGC_IsVKAvailable();
 
-public final class VKGraphicsDevice extends WLGraphicsDevice {
-
-    private static final PlatformLogger log =
-            PlatformLogger.getLogger("sun.java2d.vulkan.VKGraphicsDevice");
-
-    private GraphicsConfiguration config = VKGraphicsConfig.getConfig(this);
-
-    // Save/restore DisplayMode for the Full Screen mode
-    private DisplayMode initialMode;
-
-    public VKGraphicsDevice() {
-        this.initialMode = getDisplayMode();
-    }
-
-    /**
-     * Return a list of all configurations.
-     */
-    @Override
-    public GraphicsConfiguration[] getConfigurations() {
-        return new GraphicsConfiguration[]{config};
-    }
-
-    /**
-     * Return the default configuration.
-     */
-    @Override
-    public GraphicsConfiguration getDefaultConfiguration() {
-        return config;
-    }
+    return vkAvailable;
 }

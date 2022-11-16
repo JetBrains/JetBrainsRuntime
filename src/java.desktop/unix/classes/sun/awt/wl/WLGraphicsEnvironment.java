@@ -9,12 +9,15 @@ import sun.util.logging.PlatformLogger;
 
 public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLComponentPeer");
-    private static boolean vulkanRequested = false;
+    private static boolean vulkanEnabled = false;
+    private static native boolean initVK();
+
     static {
+        System.loadLibrary("awt");
         SurfaceManagerFactory.setInstance(new UnixSurfaceManagerFactory());
         String prop = System.getProperty("sun.java2d.vulkan");
         if ("true".equals(prop)) {
-            vulkanRequested = true;
+            vulkanEnabled = initVK();
         }
     }
 
@@ -27,7 +30,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
     @Override
     protected GraphicsDevice makeScreenDevice(int screennum) {
         log.info("Not implemented: WLGraphicsEnvironment.makeScreenDevice(int)");
-        if (vulkanRequested) {
+        if (vulkanEnabled) {
             return new VKGraphicsDevice();
         } else {
             return new WLGraphicsDevice();

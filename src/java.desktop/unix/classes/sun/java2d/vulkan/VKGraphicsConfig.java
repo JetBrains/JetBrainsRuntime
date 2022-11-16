@@ -66,7 +66,6 @@ public final class VKGraphicsConfig extends WLGraphicsConfig
     private static final PlatformLogger log =
             PlatformLogger.getLogger("sun.java2d.vulkan.VKGraphicsConfig");
 
-    private static boolean vkAvailable;
     private static ImageCapabilities imageCaps = new VKImageCaps();
     private final int maxTextureSize;
 
@@ -76,7 +75,6 @@ public final class VKGraphicsConfig extends WLGraphicsConfig
     private final Object disposerReferent = new Object();
     private final VKContext context;
 
-    private static native boolean isVulkanAvailable();
     private static native long getVKConfigInfo();
 
     /**
@@ -84,10 +82,6 @@ public final class VKGraphicsConfig extends WLGraphicsConfig
      * called under VKRQ lock.
      */
     private static native int nativeGetMaxTextureSize();
-
-    static {
-        vkAvailable = isVulkanAvailable();
-    }
 
     private VKGraphicsConfig(VKGraphicsDevice device,
                              long configInfo, int maxTextureSize,
@@ -117,10 +111,6 @@ public final class VKGraphicsConfig extends WLGraphicsConfig
 
     public static VKGraphicsConfig getConfig(VKGraphicsDevice device)
     {
-        if (!vkAvailable) {
-            return null;
-        }
-
         long cfginfo = 0;
         int textureSize = 0;
         VKRenderQueue rq = VKRenderQueue.getInstance();
