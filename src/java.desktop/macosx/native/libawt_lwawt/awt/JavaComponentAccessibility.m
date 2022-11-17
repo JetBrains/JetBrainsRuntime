@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,7 @@
 // <http://archives.java.sun.com/archives/java-access.html> (Sun's mailing list for Java accessibility)
 
 #import "JavaComponentAccessibility.h"
-
+#import "a11y/CommonComponentAccessibility.h"
 #import "sun_lwawt_macosx_CAccessibility.h"
 
 #import <AppKit/AppKit.h>
@@ -149,7 +149,6 @@ static NSObject *sAttributeNamesLOCK = nil;
 - (NSArray *)accessibilityRowsAttribute;
 - (NSArray *)accessibilityColumnsAttribute;
 @end
-
 
 @implementation JavaComponentAccessibility
 
@@ -426,18 +425,23 @@ static NSObject *sAttributeNamesLOCK = nil;
 
     // otherwise, create a new instance
     JavaComponentAccessibility *newChild = nil;
-    if ([javaRole isEqualToString:@"pagetablist"]) {
-        newChild = [TabGroupAccessibility alloc];
-    } else if ([javaRole isEqualToString:@"table"]) {
-        newChild = [TableAccessibility alloc];
-    } else if ([javaRole isEqualToString:@"scrollpane"]) {
-        newChild = [ScrollAreaAccessibility alloc];
-    } else {
-        NSString *nsRole = [sRoles objectForKey:javaRole];
-        if ([nsRole isEqualToString:NSAccessibilityStaticTextRole] || [nsRole isEqualToString:NSAccessibilityTextAreaRole] || [nsRole isEqualToString:NSAccessibilityTextFieldRole]) {
-            newChild = [JavaTextAccessibility alloc];
+    newChild = [CommonComponentAccessibility getComponentAccessibility:javaRole];
+    if (newChild == nil) {
+        if ([javaRole isEqualToString:@"pagetablist"]) {
+            newChild = [TabGroupAccessibility alloc];
+        } else if ([javaRole isEqualToString:@"table"]) {
+            newChild = [TableAccessibility alloc];
+        } else if ([javaRole isEqualToString:@"scrollpane"]) {
+            newChild = [ScrollAreaAccessibility alloc];
         } else {
-            newChild = [JavaComponentAccessibility alloc];
+            NSString *nsRole = [sRoles objectForKey:javaRole];
+            if ([nsRole isEqualToString:NSAccessibilityStaticTextRole] ||
+                [nsRole isEqualToString:NSAccessibilityTextAreaRole] ||
+                [nsRole isEqualToString:NSAccessibilityTextFieldRole]) {
+                newChild = [JavaTextAccessibility alloc];
+            } else {
+                newChild = [JavaComponentAccessibility alloc];
+            }
         }
     }
 
