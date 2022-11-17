@@ -697,8 +697,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     @Override
     public Cursor createCustomCursor(Image cursor, Point hotSpot, String name)
       throws IndexOutOfBoundsException {
-        log.info("Not implemented: WLToolkit.createCustomCursor()");
-        return null;
+        return new WLCustomCursor(cursor, hotSpot, name);
     }
 
     @Override
@@ -727,18 +726,15 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         return null;
     }
 
-    /**
-     * Returns the supported cursor size
-     */
     @Override
     public Dimension getBestCursorSize(int preferredWidth, int preferredHeight) {
-        log.info("Not implemented: WLToolkit.getBestCursorSize()");
-        return null;
+        // we don't restrict the maximum size
+        return new Dimension(Math.max(1, preferredWidth), Math.max(1, preferredHeight));
     }
 
     @Override
     public int getMaximumCursorColors() {
-        return 2;  // Black and white.
+        return 16777216; // 24 bits per pixel, 8 bits per channel
     }
 
     @Override
@@ -982,5 +978,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     @Override
     public boolean needUpdateWindow() {
         return true;
+    }
+
+    static WLInputState getInputState() {
+        return inputState;
     }
 }

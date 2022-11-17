@@ -51,34 +51,37 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
 
     if test "x${with_wayland}" != x; then
       AC_MSG_CHECKING([for wayland headers])
-      if test -s "${with_wayland}/include/wayland-client.h"; then
+      if test -s "${with_wayland}/include/wayland-client.h" && test -s "${with_wayland}/include/wayland-cursor.h"; then
         WAYLAND_CFLAGS="-I${with_wayland}/include"
-        WAYLAND_LIBS="-L${with_wayland}/lib -lwayland-client"
+        WAYLAND_LIBS="-L${with_wayland}/lib -lwayland-client -lwayland-cursor"
 
         WAYLAND_FOUND=yes
         AC_MSG_RESULT([$WAYLAND_FOUND])
       else
-        AC_MSG_ERROR([Can't find 'include/wayland-client.h' under ${with_wayland} given with the --with-wayland option.])
+        AC_MSG_ERROR([Can't find 'include/wayland-client.h' and 'include/wayland-cursor.h' under ${with_wayland} given with the --with-wayland option.])
       fi
     fi
     if test "x${with_wayland_include}" != x; then
       AC_MSG_CHECKING([for wayland headers])
-      if test -s "${with_wayland_include}/wayland-client.h"; then
+      if test -s "${with_wayland_include}/wayland-client.h" && test -s "${with_wayland_include}/wayland-cursor.h"; then
         WAYLAND_CFLAGS="-I${with_wayland_include}"
         WAYLAND_FOUND=yes
         AC_MSG_RESULT([$WAYLAND_FOUND])
       else
-        AC_MSG_ERROR([Can't find 'wayland-client.h' under ${with_wayland_include} given with the --with-wayland-include option.])
+        AC_MSG_ERROR([Can't find 'wayland-client.h' and 'wayland-cursor.h' under ${with_wayland_include} given with the --with-wayland-include option.])
       fi
     fi
     if test "x$WAYLAND_FOUND" = xno; then
       # Are the wayland headers installed in the default /usr/include location?
-      AC_CHECK_HEADERS([wayland-client.h], [
-          WAYLAND_FOUND=yes
+      AC_CHECK_HEADERS([wayland-client.h wayland-cursor.h],
+          [ WAYLAND_FOUND=yes ],
+          [ WAYLAND_FOUND=no; break ]
+      )
+      if test "x$WAYLAND_FOUND" = xyes; then
           WAYLAND_CFLAGS=
-          WAYLAND_LIBS="-lwayland-client"
+          WAYLAND_LIBS="-lwayland-client -lwayland-cursor"
           DEFAULT_WAYLAND=yes
-      ])
+      fi
     fi
     if test "x$WAYLAND_FOUND" = xno; then
       HELP_MSG_MISSING_DEPENDENCY([wayland])

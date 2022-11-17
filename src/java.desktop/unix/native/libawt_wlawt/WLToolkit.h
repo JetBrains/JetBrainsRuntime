@@ -24,6 +24,7 @@
  */
 
 #include <wayland-client.h>
+#include <wayland-cursor.h>
 #include "xdg-shell-client-protocol.h"
 
 #define CHECK_NULL_THROW_OOME_RETURN(env, x, msg, z)\
@@ -44,12 +45,16 @@
 
 extern struct wl_seat *wl_seat;
 extern struct wl_display *wl_display;
-extern struct wl_shm *wl_shm;
+extern struct wl_pointer *wl_pointer;
 extern struct wl_compositor *wl_compositor;
 extern struct xdg_wm_base *xdg_wm_base;
+extern struct wl_cursor_theme *wl_cursor_theme;
 
 extern uint32_t last_mouse_pressed_serial;
+extern uint32_t last_pointer_enter_serial;
 
 JNIEnv *getEnv();
 
 int wl_flush_to_server(JNIEnv* env);
+
+struct wl_shm_pool *CreateShmPool(int32_t size, const char *name, void **data);

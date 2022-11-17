@@ -37,6 +37,7 @@
 #include <assert.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "jvm_md.h"
 #include "jni_util.h"
@@ -61,7 +62,10 @@ struct wl_seat     *wl_seat = NULL;
 struct wl_keyboard *wl_keyboard;
 struct wl_pointer  *wl_pointer;
 
+struct wl_cursor_theme *wl_cursor_theme = NULL;
+
 uint32_t last_mouse_pressed_serial = 0;
+uint32_t last_pointer_enter_serial = 0;
 
 // This group of definitions corresponds to declarations from awt.h
 jclass    tkClass = NULL;
@@ -268,6 +272,8 @@ wl_pointer_enter(void *data, struct wl_pointer *wl_pointer,
     pointer_event.surface         = surface;
     pointer_event.surface_x       = surface_x,
     pointer_event.surface_y       = surface_y;
+
+    last_pointer_enter_serial = serial;
 }
 
 static void
@@ -754,6 +760,56 @@ initXKB(JNIEnv* env)
     return true;
 }
 
+// Reading cursor theme/size using 'gsettings' command line tool proved to be faster than initializing GTK and reading
+// those values using corresponding GLib API (like e.g. com.sun.java.swing.plaf.gtk.GTKEngine.getSetting does). If GTK
+// will be required by WLToolkit anyway due to some reason, this code would probably need to be removed.
+static char*
+readDesktopProperty(const char* name, char *output, int outputSize) {
+#define CMD_PREFIX "gsettings get org.gnome.desktop.interface "
+    char command[128] = CMD_PREFIX;
+    strncat(command, name, sizeof(command) - sizeof(CMD_PREFIX));
+    FILE *fd = popen(command, "r");
+    if (!fd)
+        return NULL;
+    char *res = fgets(output, outputSize, fd);
+    return pclose(fd) ? NULL : res;
+}
+
+static void
+initCursors() {
+    char *theme_name;
+    int theme_size = 0;
+    char buffer[256];
+
+    char *size_str = getenv("XCURSOR_SIZE");
+    if (!size_str)
+        size_str = readDesktopProperty("cursor-size", buffer, sizeof(buffer));
+    if (size_str)
+        theme_size = atoi(size_str);
+    if (theme_size <= 0)
+        theme_size = 24;
+
+    theme_name = getenv("XCURSOR_THEME");
+    if (!theme_name) {
+        theme_name = readDesktopProperty("cursor-theme", buffer, sizeof(buffer));
+        if (theme_name) {
+            // drop surrounding quotes and trailing line break
+            int len = strlen(theme_name);
+            if (len > 2) {
+                theme_name[len - 2] = 0;
+                theme_name++;
+            } else {
+                theme_name = NULL;
+            }
+        }
+    }
+
+    wl_cursor_theme = wl_cursor_theme_load(theme_name, theme_size, wl_shm);
+    if (!wl_cursor_theme) {
+        J2dTrace(J2D_TRACE_ERROR, "WLToolkit: Failed to load cursor theme\n");
+    }
+}
+
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLToolkit_initIDs
   (JNIEnv *env, jclass clazz)
@@ -778,6 +834,8 @@ Java_sun_awt_wl_WLToolkit_initIDs
     wl_registry_add_listener(wl_registry, &wl_registry_listener, NULL);
     wl_display_roundtrip(wl_display);
     J2dTrace1(J2D_TRACE_INFO, "WLToolkit: Connection to display(%p) established\n", wl_display);
+
+    initCursors();
 }
 
 JNIEXPORT void JNICALL
@@ -983,12 +1041,6 @@ Java_java_awt_MenuComponent_initIDs(JNIEnv *env, jclass cls)
 {
 }
 
-JNIEXPORT void JNICALL
-Java_java_awt_Cursor_initIDs(JNIEnv *env, jclass cls)
-{
-}
-
-
 JNIEXPORT void JNICALL Java_java_awt_MenuItem_initIDs
   (JNIEnv *env, jclass cls)
 {
@@ -1037,17 +1089,6 @@ JNIEXPORT void JNICALL Java_java_awt_Dialog_initIDs (JNIEnv *env, jclass cls)
  * Signature: ()V
  */
 JNIEXPORT void JNICALL Java_java_awt_TrayIcon_initIDs(JNIEnv *env , jclass clazz)
-{
-}
-
-
-/*
- * Class:     java_awt_Cursor
- * Method:    finalizeImpl
- * Signature: ()V
- */
-JNIEXPORT void JNICALL
-Java_java_awt_Cursor_finalizeImpl(JNIEnv *env, jclass clazz, jlong pData)
 {
 }
 
@@ -1119,4 +1160,74 @@ Java_sun_awt_SunToolkit_closeSplashScreen(JNIEnv *env, jclass cls)
 void awt_output_flush()
 {
     wl_flush_to_server(getEnv());
+}
+
+static void
+RandomName(char *buf) {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    long r = ts.tv_nsec;
+    while (*buf) {
+        *buf++ = 'A' + (r & 15) + (r & 16) * 2;
+        r >>= 5;
+    }
+}
+
+static int
+CreateSharedMemoryFile(const char* baseName) {
+    // constructing the full name of the form /baseName-XXXXXX
+    int baseLen = strlen(baseName);
+    char *name = (char*) malloc(baseLen + 9);
+    if (!name)
+        return -1;
+    name[0] = '/';
+    strcpy(name + 1, baseName);
+    strcpy(name + baseLen + 1, "-XXXXXX");
+
+    int retries = 100;
+    do {
+        RandomName(name + baseLen + 2);
+        --retries;
+        int fd = shm_open(name, O_RDWR | O_CREAT | O_EXCL, 0600);
+        if (fd >= 0) {
+            shm_unlink(name);
+            free(name);
+            return fd;
+        }
+    } while (retries > 0 && errno == EEXIST);
+    free(name);
+    return -1;
+}
+
+static int
+AllocateSharedMemoryFile(size_t size, const char* baseName) {
+    int fd = CreateSharedMemoryFile(baseName);
+    if (fd < 0)
+        return -1;
+    int ret;
+    do {
+        ret = ftruncate(fd, size);
+    } while (ret < 0 && errno == EINTR);
+    if (ret < 0) {
+        close(fd);
+        return -1;
+    }
+    return fd;
+}
+
+struct wl_shm_pool *CreateShmPool(int32_t size, const char *name, void **data) {
+    if (size <= 0)
+        return NULL;
+    int poolFD = AllocateSharedMemoryFile(size, name);
+    if (poolFD < 0)
+        return NULL;
+    void *memPtr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, poolFD, 0);
+    if (memPtr == MAP_FAILED) {
+        close(poolFD);
+        return NULL;
+    }
+    *data = memPtr;
+    struct wl_shm_pool *pool = wl_shm_create_pool(wl_shm, poolFD, size);
+    close(poolFD);
+    return pool;
 }

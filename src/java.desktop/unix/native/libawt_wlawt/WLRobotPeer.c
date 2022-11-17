@@ -26,12 +26,7 @@
 
 #include <stdbool.h>
 #include <string.h>
-#include <time.h>
-#include <fcntl.h>
 #include <sys/mman.h>
-#include <errno.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <pthread.h>
 
 #include <Trace.h>
@@ -381,53 +376,6 @@ struct wakefield_listener wakefield_listener = {
 
 #ifndef HEADLESS
 
-static void
-random_shm_name(char *buf) {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    long r = ts.tv_nsec;
-    for (int i = 0; i < 6; ++i) {
-        buf[i] = (char)('A' + (r & 15) + (r & 16) * 2);
-        r >>= 5;
-    }
-}
-
-static int
-create_shm_file() {
-    int retries = 100;
-    do {
-        char name[] = "/wl_shm_robot-XXXXXX";
-        random_shm_name(name + sizeof(name) - 7);
-        --retries;
-        int fd = shm_open(name, O_RDWR | O_CREAT | O_EXCL, 0600);
-        if (fd >= 0) {
-            shm_unlink(name);
-            return fd;
-        }
-    } while (retries > 0 && errno == EEXIST);
-    return -1;
-}
-
-static int
-allocate_shm_file(int size) {
-    const int fd = create_shm_file();
-
-    if (fd < 0)
-        return -1;
-
-    int ret;
-    do {
-        ret = ftruncate(fd, size);
-    } while (ret < 0 && errno == EINTR);
-
-    if (ret < 0) {
-        close(fd);
-        return -1;
-    }
-
-    return fd;
-}
-
 static struct wl_buffer*
 allocate_buffer(JNIEnv *env, int width, int height, uint32_t **buffer_data, int* size)
 {
@@ -440,26 +388,14 @@ allocate_buffer(JNIEnv *env, int width, int height, uint32_t **buffer_data, int*
         return NULL;
     }
 
-    int fd = allocate_shm_file(*size);
-    if (fd == -1) {
-        JNU_ThrowByName(env, "java/awt/AWTError", "couldn't open shared memory buffer file");
+    struct wl_shm_pool *pool = CreateShmPool(*size, "wl_shm_robot", (void**)buffer_data);
+    if (!pool) {
+        JNU_ThrowByName(env, "java/awt/AWTError", "couldn't create shared memory pool");
         return NULL;
     }
-
-    uint32_t *data = (uint32_t *) mmap(NULL, *size,
-                                       PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if (data == MAP_FAILED) {
-        JNU_ThrowByName(env, "java/awt/AWTError", "couldn't mmap shared memory buffer");
-        close(fd);
-        return NULL;
-    }
-
-    struct wl_shm_pool *pool = wl_shm_create_pool(wl_shm, fd, *size);
     struct wl_buffer *buffer = wl_shm_pool_create_buffer(
             (struct wl_shm_pool*)pool, 0, width, height, stride, WL_SHM_FORMAT_XRGB8888);
-    *buffer_data = data;
     wl_shm_pool_destroy(pool); // buffers keep references to the pool, can "destroy" now
-    close(fd); // the server will keep this open as long as needed
 
     return buffer;
 }

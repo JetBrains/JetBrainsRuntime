@@ -311,4 +311,15 @@ public class WLFramePeer extends WLComponentPeer implements FramePeer {
     void paintPeer(final Graphics g) {
         super.paintPeer(g);
     }
+
+    @Override
+    Cursor getCursor(int x, int y) {
+        if (decoration != null) {
+            Cursor cursor = decoration.getCursor(x, y);
+            if (cursor != null) {
+                return cursor;
+            }
+        }
+        return super.getCursor(x, y);
+    }
 }

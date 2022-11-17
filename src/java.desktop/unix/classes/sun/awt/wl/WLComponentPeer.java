@@ -60,6 +60,25 @@ public class WLComponentPeer implements ComponentPeer {
 
     private static final String appID = System.getProperty("sun.java.command");
 
+    // mapping of AWT cursor types to X cursor names
+    // multiple variants can be specified, that will be tried in order
+    private static final String[][] CURSOR_NAMES = {
+            {"default", "arrow"}, // DEFAULT_CURSOR
+            {"crosshair"}, // CROSSHAIR_CURSOR
+            {"text", "xterm"}, // TEXT_CURSOR
+            {"wait", "watch"}, // WAIT_CURSOR
+            {"sw-resize", "bottom_left_corner"}, // SW_RESIZE_CURSOR
+            {"se-resize", "bottom_right_corner"}, // SE_RESIZE_CURSOR
+            {"nw-resize", "top_left_corner"}, // NW_RESIZE_CURSOR
+            {"ne-resize", "top_right_corner"}, // NE_RESIZE_CURSOR
+            {"n-resize", "top_side"}, // N_RESIZE_CURSOR
+            {"s-resize", "bottom_side"}, // S_RESIZE_CURSOR
+            {"w-resize", "left_side"}, // W_RESIZE_CURSOR
+            {"e-resize", "right_side"}, // E_RESIZE_CURSOR
+            {"hand"}, // HAND_CURSOR
+            {"move"}, // MOVE_CURSOR
+    };
+
     private long nativePtr;
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLComponentPeer");
     protected final Component target;
@@ -542,7 +561,58 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     public void updateCursorImmediately() {
-        log.info("Not implemented: WLComponentPeer.updateCursorImmediately()");
+        WLInputState inputState = WLToolkit.getInputState();
+        WLComponentPeer peer = inputState.getPeer();
+        if (peer == null) return;
+        Cursor cursor = peer.getCursor(inputState.getPointerX(), inputState.getPointerY());
+        setCursor(cursor);
+    }
+
+    Cursor getCursor(int x, int y) {
+        Component target = this.target;
+        if (target instanceof Container) {
+            Component c = AWTAccessor.getContainerAccessor().findComponentAt((Container) target, x, y, false);
+            if (c != null) {
+                target = c;
+            }
+        }
+        return AWTAccessor.getComponentAccessor().getCursor(target);
+    }
+
+    private static void setCursor(Cursor c) {
+        Cursor cursor;
+        if (c.getType() == Cursor.CUSTOM_CURSOR && !(c instanceof WLCustomCursor)) {
+            cursor = Cursor.getDefaultCursor();
+        } else {
+            cursor = c;
+        }
+        performLockedGlobal(() -> {
+            long pData = AWTAccessor.getCursorAccessor().getPData(cursor);
+            if (pData == 0) {
+                pData = createNativeCursor(cursor.getType());
+                if (pData == 0) {
+                    pData = createNativeCursor(Cursor.DEFAULT_CURSOR);
+                }
+                if (pData == 0) {
+                    pData = -1; // mark as unavailable
+                }
+                AWTAccessor.getCursorAccessor().setPData(cursor, pData);
+            }
+            nativeSetCursor(pData);
+        });
+    }
+
+    private static long createNativeCursor(int type) {
+        if (type < Cursor.DEFAULT_CURSOR || type > Cursor.MOVE_CURSOR) {
+            type = Cursor.DEFAULT_CURSOR;
+        }
+        for (String name : CURSOR_NAMES[type]) {
+            long pData = nativeGetPredefinedCursor(name);
+            if (pData != 0) {
+                return pData;
+            }
+        }
+        return 0;
     }
 
     @Override
@@ -656,6 +726,8 @@ public class WLComponentPeer implements ComponentPeer {
     private native void nativeSetWindowGeometry(long ptr, int x, int y, int width, int height);
     private native void nativeSetMinimumSize(long ptr, int width, int height);
     private native void nativeSetMaximumSize(long ptr, int width, int height);
+    private static native void nativeSetCursor(long pData);
+    private static native long nativeGetPredefinedCursor(String name);
 
     static long getParentNativePtr(Component target) {
         Component parent = target.getParent();
@@ -820,6 +892,15 @@ public class WLComponentPeer implements ComponentPeer {
     // All accesses to native data, associated with the peer object (e.g. wl_surface proxy object), are expected to be
     // done using these methods. Then one can be sure that native data is not changed concurrently in any way while the
     // specified task is executed.
+
+    static void performLockedGlobal(Runnable task) {
+        WLToolkit.awtLock();
+        try {
+            task.run();
+        } finally {
+            WLToolkit.awtUnlock();
+        }
+    }
 
     void performLocked(Runnable task) {
         WLToolkit.awtLock();

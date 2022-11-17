@@ -52,6 +52,20 @@ public class WLFrameDecoration {
     private static final int XDG_TOPLEVEL_RESIZE_EDGE_LEFT = 4;
     private static final int XDG_TOPLEVEL_RESIZE_EDGE_RIGHT = 8;
 
+    private static final int[] RESIZE_CURSOR_TYPES = {
+            -1, // not used
+            Cursor.N_RESIZE_CURSOR,
+            Cursor.S_RESIZE_CURSOR,
+            -1, // not used
+            Cursor.W_RESIZE_CURSOR,
+            Cursor.NW_RESIZE_CURSOR,
+            Cursor.SW_RESIZE_CURSOR,
+            -1, // not used
+            Cursor.E_RESIZE_CURSOR,
+            Cursor.NE_RESIZE_CURSOR,
+            Cursor.SE_RESIZE_CURSOR
+    };
+
     private final WLFramePeer peer;
     private final ButtonState closeButton;
     private final ButtonState maximizeButton;
@@ -229,8 +243,8 @@ public class WLFrameDecoration {
 
     void processMouseEvent(MouseEvent e) {
         Point point = e.getPoint();
-        if (e.getID() == MouseEvent.MOUSE_PRESSED && getFrame().isResizable()) {
-            int resizeSide = getResizeEdges(point);
+        if (e.getID() == MouseEvent.MOUSE_PRESSED) {
+            int resizeSide = getResizeEdges(point.x, point.y);
             if (resizeSide != 0) {
                 peer.startResize(resizeSide);
                 return;
@@ -263,20 +277,22 @@ public class WLFrameDecoration {
         } else if (e.getID() == MouseEvent.MOUSE_CLICKED && e.getClickCount() == 2 && pressedInDragStartArea()
                 && getFrame().isResizable()) {
             toggleMaximizedState();
+        } else if (e.getID() == MouseEvent.MOUSE_MOVED && !pointerInside) {
+            peer.updateCursorImmediately();
         }
     }
 
-    private int getResizeEdges(Point p) {
+    private int getResizeEdges(int x, int y) {
         if (!getFrame().isResizable()) return 0;
         int edges = 0;
-        if (p.x < RESIZE_EDGE_THICKNESS) {
+        if (x < RESIZE_EDGE_THICKNESS) {
             edges |= XDG_TOPLEVEL_RESIZE_EDGE_LEFT;
-        } else if (p.x > peer.getWidth() - RESIZE_EDGE_THICKNESS) {
+        } else if (x > peer.getWidth() - RESIZE_EDGE_THICKNESS) {
             edges |= XDG_TOPLEVEL_RESIZE_EDGE_RIGHT;
         }
-        if (p.y < RESIZE_EDGE_THICKNESS) {
+        if (y < RESIZE_EDGE_THICKNESS) {
             edges |= XDG_TOPLEVEL_RESIZE_EDGE_TOP;
-        } else if (p.y > peer.getHeight() - RESIZE_EDGE_THICKNESS) {
+        } else if (y > peer.getHeight() - RESIZE_EDGE_THICKNESS) {
             edges |= XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM;
         }
         return edges;
@@ -304,6 +320,17 @@ public class WLFrameDecoration {
 
     void markRepaintNeeded() {
         needRepaint.set(true);
+    }
+
+    Cursor getCursor(int x, int y) {
+        int edges = getResizeEdges(x, y);
+        if (edges != 0) {
+            return Cursor.getPredefinedCursor(RESIZE_CURSOR_TYPES[edges]);
+        }
+        if (y < HEIGHT) {
+            return Cursor.getDefaultCursor();
+        }
+        return null;
     }
 
     private static class ButtonState {

@@ -25,15 +25,8 @@
  */
 
 #include <stdbool.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <string.h>
-#include <time.h>
-#include <unistd.h>
 #include <sys/mman.h>
 #include <pthread.h>
-#include <assert.h>
 
 #include "Trace.h"
 #include "jni_util.h"
@@ -44,7 +37,7 @@
 
 #ifndef HEADLESS
 
-extern struct wl_shm *wl_shm; // defined in WLToolkit.c
+extern struct wl_shm_pool *CreateShmPool(int32_t size, const char *name, void **data); // defined in WLToolkit.c
 
 static bool
 BufferShowToWayland(WLSurfaceBufferManager * manager);
@@ -284,49 +277,6 @@ ShowFrameNumbers(WLSurfaceBufferManager* manager, const char *fmt, ...)
         fflush(stderr);
         va_end(args);
     }
-}
-
-static void
-RandomName(char *buf) {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    long r = ts.tv_nsec;
-    for (int i = 0; i < 6; ++i) {
-        buf[i] = 'A' + (r & 15) + (r & 16) * 2;
-        r >>= 5;
-    }
-}
-
-static int
-CreateSharedMemoryFile(void) {
-    int retries = 100;
-    do {
-        char name[] = "/jwlshm-XXXXXX";
-        RandomName(name + sizeof(name) - 7);
-        --retries;
-        int fd = shm_open(name, O_RDWR | O_CREAT | O_EXCL, 0600);
-        if (fd >= 0) {
-            shm_unlink(name);
-            return fd;
-        }
-    } while (retries > 0 && errno == EEXIST);
-    return -1;
-}
-
-static int
-AllocateSharedMemoryFile(size_t size) {
-    int fd = CreateSharedMemoryFile();
-    if (fd < 0)
-        return -1;
-    int ret;
-    do {
-        ret = ftruncate(fd, size);
-    } while (ret < 0 && errno == EINTR);
-    if (ret < 0) {
-        close(fd);
-        return -1;
-    }
-    return fd;
 }
 
 /**
@@ -570,21 +520,9 @@ SurfaceBufferCreate(WLSurfaceBufferManager * manager, size_t newSize)
     const bool createPool = (newSize > ShowBufferSizeInBytes(manager));
     if (createPool) {
         manager->bufferForShow.size = newSize;
-        int poolFD = AllocateSharedMemoryFile(newSize);
-        if (poolFD == -1) {
+        manager->bufferForShow.wlPool = CreateShmPool(newSize, "jwlshm", (void**)&manager->bufferForShow.data);
+        if (!manager->bufferForShow.wlPool)
             return;
-        }
-        pixel_t *data = (pixel_t *) mmap(NULL, newSize,
-                                         PROT_READ | PROT_WRITE, MAP_SHARED,
-                                         poolFD, 0);
-        if (data == MAP_FAILED) {
-            close(poolFD);
-            return;
-        }
-
-        manager->bufferForShow.data = data;
-        manager->bufferForShow.wlPool = wl_shm_create_pool(wl_shm, poolFD, newSize);
-        close(poolFD);
     } else {
         assert(manager->bufferForShow.size >= newSize);
         assert(manager->bufferForShow.data);
