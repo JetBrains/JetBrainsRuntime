@@ -609,6 +609,26 @@ public abstract class Toolkit {
     }
 
     /**
+     * Bla-bla-bla
+     *
+     * @param ignored bla-bla-bla
+     * @return bla-bla-bla
+     */
+    public static Toolkit getDefaultToolkit(int ignored) {
+        nativeLog("Toolkit.getDefaultToolkit\n");
+        final var result = getDefaultToolkit();
+        nativeLog("  Toolkit.getDefaultToolkit: <-\n");
+        return result;
+    }
+
+    /**
+     * Bla-bla-bla
+     *
+     * @param str bla-bla-bla
+     */
+    protected static native void nativeLog(String str);
+
+    /**
      * Returns an image which gets pixel data from the specified file,
      * whose format can be either GIF, JPEG or PNG.
      * The underlying toolkit attempts to resolve multiple requests

@@ -1831,7 +1831,9 @@ MsgRouting AwtWindow::WmCreate()
 
 MsgRouting AwtWindow::WmClose()
 {
+    MyLogFile::instance.printf("%s\n", "AwtWindow::WmClose()");
     SendWindowEvent(java_awt_event_WindowEvent_WINDOW_CLOSING);
+    MyLogFile::instance.printf("%s\n", "<- AwtWindow::WmClose()");
 
     /* Rely on above notification to handle quitting as needed */
     return mrConsume;
@@ -1839,7 +1841,9 @@ MsgRouting AwtWindow::WmClose()
 
 MsgRouting AwtWindow::WmDestroy()
 {
+    MyLogFile::instance.printf("%s\n", "AwtWindow::WmDestroy()");
     SendWindowEvent(java_awt_event_WindowEvent_WINDOW_CLOSED);
+    MyLogFile::instance.printf("%s\n", "<- AwtWindow::WmDestroy()");
     return AwtComponent::WmDestroy();
 }
 

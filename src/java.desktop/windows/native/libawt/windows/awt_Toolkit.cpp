@@ -66,6 +66,7 @@
 
 #include <java_awt_Toolkit.h>
 #include <java_awt_event_InputMethodEvent.h>
+#include <java_awt_EventQueue.h>
 
 extern void initScreens(JNIEnv *env);
 extern "C" void awt_dnd_initialize();
@@ -744,6 +745,8 @@ BOOL AwtToolkit::Dispose() {
         return FALSE;
     }
 
+    MyLogFile::instance.printf("AwtToolkit::Dispose()...\n");
+
     tk.m_isActive = FALSE;
 
     // dispose Direct3D-related resources. This should be done
@@ -769,15 +772,21 @@ BOOL AwtToolkit::Dispose() {
     }
     tk.m_inputMethodHWnd = NULL;
 
+    MyLogFile::instance.printf("  AwtToolkit::Dispose: wait for any messages to be processed...\n");
+
     // wait for any messages to be processed, in particular,
     // all WM_AWT_DELETEOBJECT messages that delete components; no
     // new messages will appear as all the windows except toolkit
     // window are unsubclassed and destroyed
     MSG msg;
     while (::GetMessage(&msg, NULL, 0, 0)) {
+        MyLogFile::instance.printf("  AwtToolkit::Dispose: got message 0x%04X\n", msg.message);
         ::TranslateMessage(&msg);
         ::DispatchMessage(&msg);
     }
+    MyLogFile::instance.printf("  AwtToolkit::Dispose: got the last message 0x%04X\n", msg.message);
+
+    MyLogFile::instance.printf("  AwtToolkit::Dispose: all messages have been processed.\n");
 
     AwtFont::Cleanup();
 
@@ -798,6 +807,8 @@ BOOL AwtToolkit::Dispose() {
     ::CloseHandle(m_inputMethodWaitEvent);
 
     tk.m_isDisposed = TRUE;
+
+    MyLogFile::instance.printf("<- AwtToolkit::Dispose()\n");
 
     return TRUE;
 }
@@ -1330,9 +1341,11 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
           tk.MessageLoop(AwtToolkit::PrimaryIdleFunc,
                          AwtToolkit::CommonPeekMessageFunc);
 
+          MyLogFile::instance.printf("%s\n", "AwtToolkit::WndProc: invoking AwtToolkit::Dispose()...");
           // Dispose here instead of in eventLoop so that we don't have
           // to return from the WM_ENDSESSION handler.
           tk.Dispose();
+          MyLogFile::instance.printf("%s\n", "AwtToolkit::WndProc: AwtToolkit::Dispose() is completed.");
 
           // Never return. The VM will halt the process.
           hang_if_shutdown();
@@ -1706,7 +1719,9 @@ AwtToolkit::SecondaryIdleFunc() {
 
 BOOL
 AwtToolkit::CommonPeekMessageFunc(MSG& msg) {
-    return ::PeekMessage(&msg, NULL, 0, 0, PM_REMOVE);
+    const auto result = ::PeekMessage(&msg, NULL, 0, 0, PM_REMOVE);
+    if (result != 0) MyLogFile::instance.printf("AwtToolkit::CommonPeekMessageFunc: got message 0x%04X\n", msg.message);
+    return result;
 }
 
 /*
@@ -2412,6 +2427,20 @@ Java_java_awt_Toolkit_initIDs(JNIEnv *env, jclass cls) {
 }
 
 
+JNIEXPORT void JNICALL Java_java_awt_Toolkit_nativeLog(JNIEnv* env, jclass, jstring str)
+{
+    if (env == nullptr) return;
+    if (str == nullptr) return;
+
+    const char* strCStr = GetStringUTF8Chars(env, str);
+    if (strCStr == nullptr) return;
+
+    MyLogFile::instance.printf("%s", strCStr);
+
+    ReleaseStringUTF8Chars(env, str, strCStr);
+}
+
+
 } /* extern "C" */
 
 /************************************************************************
@@ -2609,7 +2638,9 @@ Java_sun_awt_windows_WToolkit_eventLoop(JNIEnv *env, jobject self)
     AwtToolkit::GetInstance().MessageLoop(AwtToolkit::PrimaryIdleFunc,
                                           AwtToolkit::CommonPeekMessageFunc);
 
+    MyLogFile::instance.printf("%s\n", "Java_sun_awt_windows_WToolkit_eventLoop: invoking AwtToolkit::Dispose()...");
     AwtToolkit::GetInstance().Dispose();
+    MyLogFile::instance.printf("%s\n", "Java_sun_awt_windows_WToolkit_eventLoop: AwtToolkit::Dispose() is completed.");
 
     AwtToolkit::SetBusy(FALSE);
 
@@ -2630,6 +2661,8 @@ Java_sun_awt_windows_WToolkit_eventLoop(JNIEnv *env, jobject self)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WToolkit_shutdown(JNIEnv *env, jobject self)
 {
+    MyLogFile::instance.printf("Java_sun_awt_windows_WToolkit_shutdown(%p, %p)\n", env, self);
+
     TRY;
 
     AwtToolkit& tk = AwtToolkit::GetInstance();
@@ -2641,6 +2674,8 @@ Java_sun_awt_windows_WToolkit_shutdown(JNIEnv *env, jobject self)
     }
 
     CATCH_BAD_ALLOC;
+
+    MyLogFile::instance.printf("Java_sun_awt_windows_WToolkit_shutdown(%p, %p): <-\n", env, self);
 }
 
 /*
@@ -3260,3 +3295,21 @@ LRESULT AwtToolkit::InvokeInputMethodFunction(UINT msg, WPARAM wParam, LPARAM lP
     }
 }
 
+
+/*
+ * Class:     java_awt_EventQueue
+ * Method:    nativeLog
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_java_awt_EventQueue_nativeLog(JNIEnv* env, jobject, jstring str)
+{
+    if (env == nullptr) return;
+    if (str == nullptr) return;
+
+    const char* strCStr = GetStringUTF8Chars(env, str);
+    if (strCStr == nullptr) return;
+
+    MyLogFile::instance.printf("%s", strCStr);
+
+    ReleaseStringUTF8Chars(env, str, strCStr);
+}

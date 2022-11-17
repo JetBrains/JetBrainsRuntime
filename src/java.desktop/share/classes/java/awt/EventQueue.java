@@ -29,12 +29,18 @@ import java.awt.event.*;
 
 import java.awt.peer.ComponentPeer;
 
+import java.io.FileWriter;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.EmptyStackException;
 
 import sun.awt.*;
@@ -291,6 +297,19 @@ public class EventQueue {
      *          or a subclass of it
      */
     private void postEventPrivate(AWTEvent theEvent) {
+        {
+            final StringBuilder sb = new StringBuilder(2048);
+            sb.append("EventQueue.postEventPrivate: ").append(theEvent).append('\n')
+              .append("  this=").append(hashCode()).append('\n')
+              .append("  stacktrace:\n");
+
+            for (final var st : Thread.currentThread().getStackTrace()) {
+                sb.append("    ").append(st).append('\n');
+            }
+
+            nativeLog(sb.toString());
+        }
+
         theEvent.isPosted = true;
         pushPopLock.lock();
         try {
@@ -1408,6 +1427,38 @@ public class EventQueue {
             nextQueue.setFwDispatcher(dispatcher);
         } else {
             fwDispatcher = dispatcher;
+        }
+    }
+
+
+    private native void nativeLog(String str);
+
+
+    private static final Thread threadsDumper = new Thread(EventQueue::threadsDumpRoutine, "IDEA304163");
+    static {
+        threadsDumper.setDaemon(true);
+        threadsDumper.start();
+    }
+    private static void threadsDumpRoutine() {
+        final StringBuilder buffer = new StringBuilder(2048);
+        final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+
+        for (int i = 0; i < 180; ++i) {
+            try {
+                buffer.setLength(0);
+
+                final var now = DateTimeFormatter.ofPattern("HH-mm-ss").format(LocalTime.now());
+
+                for (ThreadInfo threadInfo : threadMXBean.dumpAllThreads(true, true)) {
+                    buffer.append(threadInfo.toString());
+                }
+
+                try (final var writer = new FileWriter("C:\\Separated\\Work\\IDEA-304163_logs\\pycharm_jstack_" + now + ".txt")) {
+                    writer.write(buffer.toString());
+                }
+
+                Thread.sleep(1000);
+            } catch (Throwable ignored) {}
         }
     }
 }

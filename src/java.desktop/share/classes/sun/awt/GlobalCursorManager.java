@@ -175,7 +175,9 @@ public abstract class GlobalCursorManager {
         Component comp;
 
         try {
+            nativeLog("GlobalCursorManager._updateCursor: calling findHeavyweightUnderCursor...\n");
             comp = findHeavyweightUnderCursor(useCache);
+            nativeLog("GlobalCursorManager._updateCursor: findHeavyweightUnderCursor is completed.\n");
             if (comp == null) {
                 updateCursorOutOfJava();
                 return;
@@ -208,6 +210,8 @@ public abstract class GlobalCursorManager {
             // Shouldn't happen, but if it does, abort.
         }
     }
+
+    private static native void nativeLog(String str);
 
     protected void updateCursorOutOfJava() {
         // Cursor is not over a Java Window. Do nothing...usually

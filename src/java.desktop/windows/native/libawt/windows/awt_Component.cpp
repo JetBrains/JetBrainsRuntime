@@ -67,6 +67,8 @@
 #include <sun_awt_windows_WInputMethod.h>
 #include <java_awt_event_MouseEvent.h>
 #include <java_awt_event_MouseWheelEvent.h>
+#include <javax_swing_RepaintManager.h>
+#include <java_awt_EventDispatchThread.h>
 
 // Begin -- Win32 SDK include files
 #include <imm.h>
@@ -728,9 +730,35 @@ HWND AwtComponent::GetTopLevelParentForWindow(HWND hwndDescendant) {
 }
 ////////////////////
 
+MyLogFile MyLogFile::instance;
+
+MyLogFile::MyLogFile()
+    : handle_(fopen("C:\\Separated\\Work\\IDEA-304163_logs\\fhuc-log.txt", "w"))
+{}
+
+MyLogFile::~MyLogFile()
+{
+    if (handle_ != nullptr) {
+        this->printf("%s\n", "MyLogFile::~MyLogFile()");
+
+        auto localHandle = handle_;
+        handle_ = nullptr;
+        fclose(localHandle);
+    }
+}
+
+
 jobject AwtComponent::FindHeavyweightUnderCursor(BOOL useCache) {
+    MyLogFile::instance.printf("AwtComponent::FindHeavyweightUnderCursor(%s)\n", useCache ? "true" : "false");
+
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+    MyLogFile::instance.printf("  env=%p\n", env);
+
     if (env->EnsureLocalCapacity(1) < 0) {
+        MyLogFile::instance.printf(
+            "  if (env->EnsureLocalCapacity(1) < 0)\n"
+            "<- NULL\n\n"
+        );
         return NULL;
     }
 
@@ -739,10 +767,15 @@ jobject AwtComponent::FindHeavyweightUnderCursor(BOOL useCache) {
     AwtComponent *comp = NULL;
 
     if (useCache) {
+        MyLogFile::instance.printf("  if (useCache)");
+
         if (sm_cursorOn == NULL) {
+            MyLogFile::instance.printf(
+                "    if (sm_cursorOn == NULL)\n"
+                "<- NULL\n\n"
+            );
             return NULL;
         }
-
 
         DASSERT(::IsWindow(sm_cursorOn));
         VERIFY(::GetCursorPos(&p));
@@ -751,51 +784,94 @@ jobject AwtComponent::FindHeavyweightUnderCursor(BOOL useCache) {
          * Allow a non-default cursor only for the client area.
          */
         comp = AwtComponent::GetComponent(sm_cursorOn);
+        MyLogFile::instance.printf("    comp=%p\n", comp);
+
         if (comp != NULL &&
             ::SendMessage(sm_cursorOn, WM_NCHITTEST, 0,
                           MAKELPARAM(p.x, p.y)) == HTCLIENT) {
+            MyLogFile::instance.printf("    if (comp != NULL && ::SendMessage(sm_cursorOn, WM_NCHITTEST, 0, MAKELPARAM(p.x, p.y)) == HTCLIENT)\n");
             goto found;
         }
     }
 
-    ::GetCursorPos(&p);
+    MyLogFile::instance.printf("  ::GetCursosPos(%p) -> ");
+    MyLogFile::instance.printf("%s\n", ::GetCursorPos(&p) ? "true" : "false");
+
+    MyLogFile::instance.printf("  p={%lld, %lld}\n", (long long)p.x, (long long)p.y);
+
     hit = ::WindowFromPoint(p);
+    MyLogFile::instance.printf("  hit=%p\n", hit);
+
+    MyLogFile::instance.printf("  while (hit != NULL) {\n");
     while (hit != NULL) {
         comp = AwtComponent::GetComponent(hit);
+        MyLogFile::instance.printf("    comp=%p\n", comp);
 
         if (comp != NULL) {
+            MyLogFile::instance.printf("    if (comp != NULL)\n");
+
             INT nHittest = (INT)::SendMessage(hit, WM_NCHITTEST,
                                           0, MAKELPARAM(p.x, p.y));
+
+            MyLogFile::instance.printf("      nHittest=%lld\n", (long long)nHittest);
             /*
              * Fix for BugTraq ID 4304024.
              * Allow a non-default cursor only for the client area.
              */
             if (nHittest != HTCLIENT) {
+                MyLogFile::instance.printf("      if (nHittest != HTCLIENT)\n");
                 /*
                  * When over the non-client area, send WM_SETCURSOR
                  * to revert the cursor to an arrow.
                  */
-                ::SendMessage(hit, WM_SETCURSOR, (WPARAM)hit,
-                              MAKELPARAM(nHittest, WM_MOUSEMOVE));
+                MyLogFile::instance.printf("        ::SendMessage(hit, WM_SETCURSOR, (WPARAM)hit, MAKELPARAM(nHittest, WM_MOUSEMOVE)) -> ");
+                MyLogFile::instance.printf(
+                    "%p\n"
+                    "<- NULL\n\n",
+                    ::SendMessage(hit, WM_SETCURSOR, (WPARAM)hit, MAKELPARAM(nHittest, WM_MOUSEMOVE))
+                );
                 return NULL;
             } else {
+              MyLogFile::instance.printf("      else ; if (nHittest == HTCLIENT)\n");
               sm_cursorOn = hit;
               goto found;
             }
         }
 
         if ((::GetWindowLong(hit, GWL_STYLE) & WS_CHILD) == 0) {
+            MyLogFile::instance.printf(
+                "    if ((::GetWindowLong(hit, GWL_STYLE) & WS_CHILD) == 0)\n"
+                "<- NULL\n\n"
+            );
             return NULL;
         }
         hit = ::GetParent(hit);
+
+        MyLogFile::instance.printf("    hit=%p\n", hit);
+        MyLogFile::instance.printf("  -------------------------------------------------------------------------------------------\n");
     }
 
+    MyLogFile::instance.printf("<- NULL\n\n");
     return NULL;
 
 found:
+    MyLogFile::instance.printf("  found:\n");
+    MyLogFile::instance.printf(
+        "    env=%p\n"
+        "    comp=%p\n",
+        env,
+        comp
+    );
+
     jobject localRef = comp->GetTarget(env);
+    MyLogFile::instance.printf("    localRef=%p\n", localRef);
+
     jobject globalRef = env->NewGlobalRef(localRef);
+    MyLogFile::instance.printf("    globalRef=%p\n", globalRef);
+
     env->DeleteLocalRef(localRef);
+
+    MyLogFile::instance.printf("<- %p\n\n", globalRef);
     return globalRef;
 }
 
@@ -2056,6 +2132,8 @@ MsgRouting AwtComponent::WmDestroy()
  */
 MsgRouting AwtComponent::WmNcDestroy()
 {
+    MyLogFile::instance.printf("%s\n", "AwtComponent::WmNcDestroy()");
+
     if (m_peerObject != NULL) { // is not being terminating
         // Stay in this handler until AwtComponent::Dispose is called.
         m_bPauseDestroy = TRUE;
@@ -2066,6 +2144,8 @@ MsgRouting AwtComponent::WmNcDestroy()
         // Wait until AwtComponent::Dispose is called
         AwtToolkit::GetInstance().PumpToDestroy(this);
     }
+
+    MyLogFile::instance.printf("%s\n", "<- AwtComponent::WmNcDestroy()");
 
     return mrConsume;
 }
@@ -7660,4 +7740,85 @@ void ReleaseDCList(HWND hwnd, DCList &list) {
 
 void ReleaseDCList(DCList &list) {
     ReleaseDCList(list.RemoveAllDCs());
+}
+
+
+/*
+ * Class:     javax_swing_RepaintManager
+ * Method:    logNative
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_javax_swing_RepaintManager_logNative(JNIEnv* env, jobject, jstring str)
+{
+    if (env == nullptr) return;
+    if (str == nullptr) return;
+
+    const char* strCStr = GetStringUTF8Chars(env, str);
+    if (strCStr == nullptr) return;
+
+    MyLogFile::instance.printf("%s", strCStr);
+
+    ReleaseStringUTF8Chars(env, str, strCStr);
+}
+
+
+/*
+ * Class:     java_awt_EventDispatchThread
+ * Method:    nativeLog
+ * Signature: (Ljava/lang/String;)V
+ */
+
+namespace
+{
+    class EdtLogger {
+    public:
+        static EdtLogger instance;
+
+    public:
+        template<typename... Args>
+        void printf(const char* format, Args... args) {
+            if (handle_ != nullptr) {
+                SYSTEMTIME st = { 0 };
+                ::GetLocalTime(&st);
+
+                fprintf(handle_, "[%02d:%02d:%02d.%03d@0x%04lX] ", (int)st.wHour, (int)st.wMinute, (int)st.wSecond, (int)st.wMilliseconds, ::GetCurrentThreadId());
+                fprintf(handle_, format, args...);
+                fflush(handle_);
+            }
+        }
+
+        ~EdtLogger()
+        {
+            if (handle_ != nullptr) {
+                this->printf("%s\n", "EdtLogger::~EdtLogger()");
+
+                auto localHandle = handle_;
+                handle_ = nullptr;
+                fclose(localHandle);
+            }
+        }
+
+    private:
+        FILE* handle_;
+
+    private:
+        EdtLogger()
+            : handle_(fopen("C:\\Separated\\Work\\IDEA-304163_logs\\edt-events.txt", "w"))
+        {}
+    };
+
+    EdtLogger EdtLogger::instance;
+}
+
+JNIEXPORT void JNICALL Java_java_awt_EventDispatchThread_nativeLog(JNIEnv* env, jobject, jstring str)
+{
+    if (env == nullptr) return;
+    if (str == nullptr) return;
+
+    const char* strCStr = GetStringUTF8Chars(env, str);
+    if (strCStr == nullptr) return;
+
+    EdtLogger::instance.printf("%s", strCStr);
+
+    ReleaseStringUTF8Chars(env, str, strCStr);
 }

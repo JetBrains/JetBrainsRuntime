@@ -33,6 +33,7 @@
 #include <java_awt_Cursor.h>
 #include <sun_awt_windows_WCustomCursor.h>
 #include <sun_awt_windows_WGlobalCursorManager.h>
+#include <sun_awt_GlobalCursorManager.h>
 
 
 /************************************************************************
@@ -536,6 +537,34 @@ Java_sun_awt_windows_WGlobalCursorManager_setCursor(JNIEnv *env, jobject,
 {
     TRY;
 
+    MyLogFile::instance.printf("Java_sun_awt_windows_WGlobalCursorManager_setCursor(%p, ..., %p, %s)\n",
+       env,
+       cursor,
+       u ? "true" : "false"
+    );
+
+    MyLogFile::instance.printf("  stacktrace:\n");
+    {
+        const auto currentThread = JNU_CallStaticMethodByName(env, nullptr, "java/lang/Thread", "currentThread", "()Ljava/lang/Thread;").l;
+        const auto stackTraceElements = (currentThread == nullptr) ? nullptr : static_cast<jobjectArray>(JNU_CallMethodByName(env, nullptr, currentThread, "getStackTrace", "()[Ljava/lang/StackTraceElement;").l);
+
+        const jsize stackTraceElementsCount = (stackTraceElements == nullptr) ? 0 : env->GetArrayLength(stackTraceElements);
+        for (jsize i = 0; i < stackTraceElementsCount; ++i) {
+            const auto stElem = env->GetObjectArrayElement(stackTraceElements, i);
+            if (stElem == nullptr) continue;
+
+            const auto stElemStr = JNU_ToString(env, stElem);
+            if (stElemStr == nullptr) continue;
+
+            const auto stElemCStr = GetStringUTF8Chars(env, stElemStr);
+            if (stElemCStr == nullptr) continue;
+
+            MyLogFile::instance.printf("    %s\n", stElemCStr);
+
+            ReleaseStringUTF8Chars(env, stElemStr, stElemCStr);
+        }
+    }
+
     if (cursor != NULL) {  // fix for 4430302 - getCursor() returns NULL
         GlobalSetCursorStruct data;
         data.cursor = env->NewGlobalRef(cursor);
@@ -546,6 +575,9 @@ Java_sun_awt_windows_WGlobalCursorManager_setCursor(JNIEnv *env, jobject,
     } else {
         JNU_ThrowNullPointerException(env, "NullPointerException");
     }
+
+    MyLogFile::instance.printf("<-\n\n");
+
     CATCH_BAD_ALLOC;
 }
 
@@ -558,18 +590,60 @@ JNIEXPORT jobject JNICALL
 Java_sun_awt_windows_WGlobalCursorManager_findHeavyweightUnderCursor(
     JNIEnv *env, jobject, jboolean useCache)
 {
-    TRY;
+    MyLogFile::instance.printf("Java_sun_awt_windows_WGlobalCursorManager_findHeavyweightUnderCursor(%p, ..., %s)\n",
+        env,
+        useCache ? "true" : "false"
+    );
+
+    MyLogFile::instance.printf("  stacktrace:\n");
+    {
+        const auto currentThread = JNU_CallStaticMethodByName(env, nullptr, "java/lang/Thread", "currentThread", "()Ljava/lang/Thread;").l;
+        const auto stackTraceElements = (currentThread == nullptr) ? nullptr : static_cast<jobjectArray>(JNU_CallMethodByName(env, nullptr, currentThread, "getStackTrace", "()[Ljava/lang/StackTraceElement;").l);
+
+        const jsize stackTraceElementsCount = (stackTraceElements == nullptr) ? 0 : env->GetArrayLength(stackTraceElements);
+        for (jsize i = 0; i < stackTraceElementsCount; ++i) {
+            const auto stElem = env->GetObjectArrayElement(stackTraceElements, i);
+            if (stElem == nullptr) continue;
+
+            const auto stElemStr = JNU_ToString(env, stElem);
+            if (stElemStr == nullptr) continue;
+
+            const auto stElemCStr = GetStringUTF8Chars(env, stElemStr);
+            if (stElemCStr == nullptr) continue;
+
+            MyLogFile::instance.printf("    %s\n", stElemCStr);
+
+            ReleaseStringUTF8Chars(env, stElemStr, stElemCStr);
+        }
+    }
+
+    //TRY;
+    try {
+        entry_point();
+        MyLogFile::instance.printf("  after entry_point()\n");
+        hang_if_shutdown();
+        MyLogFile::instance.printf("  after hang_if_shutdown()\n");
 
     if (env->EnsureLocalCapacity(1) < 0) {
+        MyLogFile::instance.printf(
+            "  if (env->EnsureLocalCapacity(1) < 0)\n"
+            "<- NULL\n\n"
+        );
         return NULL;
     }
 
-    jobject globalRef = (jobject)AwtToolkit::GetInstance().
+    MyLogFile::instance.printf("  AwtToolkit::GetInstance() -> ");
+    AwtToolkit& toolkit = AwtToolkit::GetInstance();
+    MyLogFile::instance.printf("%p\n", &toolkit);
+
+    jobject globalRef = (jobject)toolkit.
         InvokeFunction((void*(*)(void*))
                        AwtComponent::FindHeavyweightUnderCursor,
                        (void *)useCache);
     jobject localRef = env->NewLocalRef(globalRef);
     env->DeleteGlobalRef(globalRef);
+
+    MyLogFile::instance.printf("<- %p\n\n", localRef);
     return localRef;
 
     CATCH_BAD_ALLOC_RET(NULL);
@@ -592,6 +666,34 @@ Java_sun_awt_windows_WGlobalCursorManager_getLocationOnScreen(
     return point;
 
     CATCH_BAD_ALLOC_RET(NULL);
+}
+
+
+/*
+ * Class:     sun_awt_GlobalCursorManager
+ * Method:    nativeLog
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_sun_awt_GlobalCursorManager_nativeLog(JNIEnv* env, jclass, jstring str)
+{
+    if (env == nullptr) {
+        MyLogFile::instance.printf("%s\n", "Java_sun_awt_GlobalCursorManager_nativeLog: env == nullptr");
+        return;
+    }
+    if (str == nullptr) {
+        MyLogFile::instance.printf("%s\n", "Java_sun_awt_GlobalCursorManager_nativeLog: str == nullptr");
+        return;
+    }
+
+    const char* strCStr = GetStringUTF8Chars(env, str);
+    if (strCStr == nullptr) {
+        MyLogFile::instance.printf("%s\n", "Java_sun_awt_GlobalCursorManager_nativeLog: strCStr == nullptr");
+        return;
+    }
+
+    MyLogFile::instance.printf("%s", strCStr);
+
+    ReleaseStringUTF8Chars(env, str, strCStr);
 }
 
 } /* extern "C" */

@@ -204,6 +204,8 @@ class EventDispatchThread extends Thread {
                 eventLog.finest("Dispatching: " + event);
             }
 
+            nativeLog(event.toString() + "\n");
+
             eq.dispatchEvent(event);
         }
         catch (ThreadDeath death) {
@@ -232,6 +234,10 @@ class EventDispatchThread extends Thread {
     public synchronized void setEventQueue(EventQueue eq) {
         theQueue = eq;
     }
+
+
+    private native void nativeLog(String str);
+
 
     private static class HierarchyEventFilter implements EventFilter {
         private Component modalComponent;

@@ -31,9 +31,11 @@ import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.VolatileImage;
 import java.awt.peer.WindowPeer;
+import java.io.PrintWriter;
 import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.applet.*;
@@ -367,6 +369,8 @@ public class RepaintManager
      */
     public synchronized void addInvalidComponent(JComponent invalidComponent)
     {
+        //new Throwable(String.format("[%s] RepaintManager.addInvalidComponent: %s%n", LocalDateTime.now(), invalidComponent)).printStackTrace();
+
         RepaintManager delegate = getDelegate(invalidComponent);
         if (delegate != null) {
             delegate.addInvalidComponent(invalidComponent);
@@ -395,6 +399,8 @@ public class RepaintManager
             }
         }
         invalidComponents.add(validateRoot);
+
+        //System.err.printf("  invalidComponents.size() == %d%n", invalidComponents.size());
 
         // Queue a Runnable to invoke paintDirtyRegions and
         // validateInvalidComponents.
@@ -749,6 +755,7 @@ public class RepaintManager
         int n = ic.size();
         for(int i = 0; i < n; i++) {
             final Component c = ic.get(i);
+            logNative("RepaintManager.validateInvalidComponents: validating " + ((c == null) ? "<null>" : c) + "\n");
             @SuppressWarnings("removal")
             AccessControlContext stack = AccessController.getContext();
             @SuppressWarnings("removal")
@@ -761,6 +768,7 @@ public class RepaintManager
                         return null;
                     }
                 }, stack, acc);
+            logNative("RepaintManager.validateInvalidComponents: validated.\n");
         }
     }
 
@@ -1513,16 +1521,30 @@ public class RepaintManager
 
     private void scheduleProcessingRunnable(AppContext context) {
         if (processingRunnable.markPending()) {
-            Toolkit tk = Toolkit.getDefaultToolkit();
+            {
+                final StringBuilder builder = new StringBuilder(2048);
+                builder.append("RepaintManager.scheduleProcessingRunnable on ").append(this)
+                       .append("\n  stacktrace:\n");
+
+                for (final var stElem : Thread.currentThread().getStackTrace()) {
+                    builder.append("    ").append(stElem.toString()).append('\n');
+                }
+
+                logNative(builder.toString());
+            }
+
+            Toolkit tk = Toolkit.getDefaultToolkit(0);
             if (tk instanceof SunToolkit) {
                 SunToolkit.getSystemEventQueueImplPP(context).
-                  postEvent(new InvocationEvent(Toolkit.getDefaultToolkit(),
+                  postEvent(new InvocationEvent(Toolkit.getDefaultToolkit(0),
                                                 processingRunnable));
             } else {
-                Toolkit.getDefaultToolkit().getSystemEventQueue().
-                      postEvent(new InvocationEvent(Toolkit.getDefaultToolkit(),
+                Toolkit.getDefaultToolkit(0).getSystemEventQueue().
+                      postEvent(new InvocationEvent(Toolkit.getDefaultToolkit(0),
                                                     processingRunnable));
             }
+
+            logNative("  RepaintManager.scheduleProcessingRunnable: <-\n");
         }
     }
 
@@ -1893,9 +1915,18 @@ public class RepaintManager
         }
 
         public void run() {
+            logNative(String.format(
+                """
+                ProcessingRunnable.run:
+                  this=%s
+                  before synchronized
+                """,
+                ProcessingRunnable.this
+            ));
             synchronized (this) {
                 pending = false;
             }
+            logNative("  ProcessingRunnable.run: after synchronized\n");
             // First pass, flush any heavy paint events into real paint
             // events.  If there are pending heavy weight requests this will
             // result in q'ing this request up one more time.  As
@@ -1904,9 +1935,13 @@ public class RepaintManager
             // ideal, but the logic needed to suppress the second request is
             // more headache than it's worth.
             scheduleHeavyWeightPaints();
+            logNative("  ProcessingRunnable.run: after scheduleHeavyWeightPaints()\n");
             // Do the actual validation and painting.
             validateInvalidComponents();
+            logNative("  ProcessingRunnable.run: after validateInvalidComponents()\n");
             prePaintDirtyRegions();
+
+            logNative("  ProcessingRunnable.run: <-\n");
         }
     }
     private RepaintManager getDelegate(Component c) {
@@ -1916,4 +1951,6 @@ public class RepaintManager
         }
         return delegate;
     }
+
+    private native void logNative(String str);
 }

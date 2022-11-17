@@ -941,4 +941,31 @@ void MoveDCToPassiveList(HDC hDC, HWND hWnd);
 
 #include "ObjectList.h"
 
+
+class MyLogFile {
+public:
+    static MyLogFile instance;
+
+public:
+    template<typename... Args>
+    void printf(const char* format, Args... args) {
+        if (handle_ != nullptr) {
+            SYSTEMTIME st = { 0 };
+            ::GetLocalTime(&st);
+
+            fprintf(handle_, "[%02d:%02d:%02d.%03d@0x%04lX] ", (int)st.wHour, (int)st.wMinute, (int)st.wSecond, (int)st.wMilliseconds, ::GetCurrentThreadId());
+            fprintf(handle_, format, args...);
+            fflush(handle_);
+        }
+    }
+
+    ~MyLogFile();
+
+private:
+    FILE* handle_;
+
+private:
+    MyLogFile();
+};
+
 #endif /* AWT_COMPONENT_H */

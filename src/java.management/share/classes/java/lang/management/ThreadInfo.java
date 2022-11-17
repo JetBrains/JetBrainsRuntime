@@ -662,7 +662,7 @@ public class ThreadInfo {
        sb.append('\n');
        return sb.toString();
     }
-    private static final int MAX_FRAMES = 8;
+    private static final int MAX_FRAMES = 64;
 
     /**
      * Returns a {@code ThreadInfo} object represented by the
