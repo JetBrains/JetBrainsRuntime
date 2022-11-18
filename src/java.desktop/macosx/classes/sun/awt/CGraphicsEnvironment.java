@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,13 +30,18 @@ import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.HeadlessException;
 import java.awt.Toolkit;
+import java.io.File;
+import java.lang.annotation.Native;
 import java.lang.ref.WeakReference;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 
+import sun.java2d.MacOSFlags;
 import sun.java2d.MacosxSurfaceManagerFactory;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceManagerFactory;
@@ -55,6 +60,11 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
     private static final PlatformLogger logger =
             PlatformLogger.getLogger(CGraphicsEnvironment.class.getName());
 
+    @Native private final static int MTL_SUPPORTED = 0;
+    @Native private final static int MTL_NO_DEVICE = 1;
+    @Native private final static int MTL_NO_SHADER_LIB = 2;
+    @Native private final static int MTL_ERROR = 3;
+
     /**
      * Fetch an array of all valid CoreGraphics display identifiers.
      */
@@ -71,9 +81,35 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
      */
     public static void init() { }
 
+    @SuppressWarnings("removal")
+    private static final String mtlShadersLib = AccessController.doPrivileged(
+            (PrivilegedAction<String>) () ->
+                    System.getProperty("java.home", "") + File.separator +
+                            "lib" + File.separator + "shaders.metallib");
+
+    private static native int initMetal(String shaderLib);
+
     static {
         // Load libraries and initialize the Toolkit.
         Toolkit.getDefaultToolkit();
+        metalPipelineEnabled = false;
+        if (MacOSFlags.isMetalEnabled()) {
+            int res = initMetal(mtlShadersLib);
+            if (res != MTL_SUPPORTED) {
+                if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                    logger.fine("Cannot initialize Metal: " +
+                        switch (res) {
+                            case MTL_ERROR -> "Unexpected error.";
+                            case MTL_NO_DEVICE -> "No MTLDevice.";
+                            case MTL_NO_SHADER_LIB -> "No Metal shader library.";
+                            default -> "Unexpected error (" + res + ").";
+                    });
+                }
+            } else {
+                metalPipelineEnabled = true;
+            }
+        }
+
         // Install the correct surface manager factory.
         SurfaceManagerFactory.setInstance(new MacosxSurfaceManagerFactory());
     }
@@ -91,6 +127,12 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
      * Remove the instance's registration with CGDisplayRemoveReconfigurationCallback()
      */
     private native void deregisterDisplayReconfiguration(long context);
+
+    private static boolean metalPipelineEnabled;
+
+    public static boolean usingMetalPipeline() {
+        return metalPipelineEnabled;
+    }
 
     /** Available CoreGraphics displays. */
     private final Map<Integer, CGraphicsDevice> devices = new HashMap<>(5);
@@ -122,6 +164,10 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         if (displayReconfigContext == 0L) {
             throw new RuntimeException("Could not register CoreGraphics display reconfiguration callback");
         }
+    }
+
+    public static String getMtlShadersLibPath() {
+        return mtlShadersLib;
     }
 
     /**
