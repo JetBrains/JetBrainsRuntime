@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,9 +25,9 @@
 
 package sun.java2d.metal;
 
-import java.lang.annotation.Native;
 import sun.awt.CGraphicsConfig;
 import sun.awt.CGraphicsDevice;
+import sun.awt.CGraphicsEnvironment;
 import sun.awt.image.OffScreenImage;
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.SurfaceManager;
@@ -59,9 +59,6 @@ import java.awt.image.DataBuffer;
 import java.awt.image.DirectColorModel;
 import java.awt.image.VolatileImage;
 import java.awt.image.WritableRaster;
-import java.io.File;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 
 import static sun.java2d.metal.MTLContext.MTLContextCaps.CAPS_EXT_GRAD_SHADER;
 import static sun.java2d.pipe.hw.AccelSurface.TEXTURE;
@@ -73,20 +70,7 @@ import static sun.java2d.metal.MTLContext.MTLContextCaps.CAPS_EXT_BIOP_SHADER;
 public final class MTLGraphicsConfig extends CGraphicsConfig
         implements AccelGraphicsConfig, SurfaceManager.ProxiedGraphicsConfig
 {
-    @Native private final static int LOAD_LIB_ERROR = -1;
-    @Native private final static int LOAD_LIB_OK = 0;
-    @Native private final static int LOAD_LIB_NO_DEVICE = 1;
-    @Native private final static int LOAD_LIB_NO_SHADER_LIB = 2;
-
-    private static boolean mtlUsed = false;
     private static ImageCapabilities imageCaps = new MTLImageCaps();
-
-    @SuppressWarnings("removal")
-    private static final String mtlShadersLib = AccessController.doPrivileged(
-            (PrivilegedAction<String>) () ->
-                    System.getProperty("java.home", "") + File.separator +
-                            "lib" + File.separator + "shaders.metallib");
-
 
     private BufferCapabilities bufferCaps;
     private long pConfigInfo;
@@ -95,7 +79,6 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
     private final Object disposerReferent = new Object();
     private final int maxTextureSize;
 
-    private static native int tryLoadMetalLibrary(int displayID, String shaderLib);
     private static native long getMTLConfigInfo(int displayID, String mtlShadersLib);
 
     /**
@@ -139,19 +122,7 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
         MTLRenderQueue rq = MTLRenderQueue.getInstance();
         rq.lock();
         try {
-            int res = tryLoadMetalLibrary(displayID, mtlShadersLib);
-            if (res != LOAD_LIB_OK) {
-                errorMessage.append(" Cannot load metal library: " +
-                    switch (res) {
-                        case LOAD_LIB_ERROR -> "Unexpected error.";
-                        case LOAD_LIB_NO_DEVICE -> "No MTLDevice.";
-                        case LOAD_LIB_NO_SHADER_LIB -> "No Metal shader library.";
-                        default -> throw new IllegalStateException("Unexpected value: " + res);
-                    });
-                return null;
-            }
-
-            cfginfo = getMTLConfigInfo(displayID, mtlShadersLib);
+            cfginfo = getMTLConfigInfo(displayID, CGraphicsEnvironment.getMtlShadersLibPath());
             if (cfginfo != 0L) {
                 textureSize = nativeGetMaxTextureSize();
                 // TODO : This clamping code is same as in OpenGL.
@@ -175,12 +146,7 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
                         CAPS_EXT_BIOP_SHADER | CAPS_EXT_GRAD_SHADER,
                 null);
 
-        mtlUsed = true;
         return new MTLGraphicsConfig(device, cfginfo, textureSize, caps);
-    }
-
-    public static boolean isMetalUsed() {
-        return mtlUsed;
     }
 
     /**
