@@ -121,6 +121,7 @@ java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java 6848406 gen
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java 6848407 generic-all
 java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java 8239801 macosx-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
+java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java 8296972 macosx-13.0,macosx-13.1
 java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java 8160558 windows-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion.java 8060176 windows-all,macosx-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_1.java 8060176 windows-all,macosx-all
@@ -246,7 +247,7 @@ java/awt/Window/AlwaysOnTop/AutoTestOnTop.java 6847593 linux-all
 java/awt/Window/GrabSequence/GrabSequence.java 6848409 macosx-all,linux-all
 java/awt/Window/LocationAtScreenCorner/LocationAtScreenCorner.java 8203371 linux-all
 java/awt/font/GlyphVector/NLGlyphTest.java 8273321 linux-all
-java/awt/font/JNICheck/JNICheck.sh 8279878 linux-5.15.0-39-generic,5.15.0-33-generic
+java/awt/font/JNICheck/JNICheck.sh 8279878,JBR-5011 linux-5.15.0-39-generic,5.15.0-33-generic,linux-all
 java/awt/font/TextLayout/TextLayoutBounds.java 8169188 generic-all
 java/awt/FontMetrics/FontCrash.java 8198336 windows-all
 java/awt/image/BufferedImage/ICMColorDataTest/ICMColorDataTest.java 8233028 generic-all
@@ -259,6 +260,7 @@ sun/java2d/DirectX/OnScreenRenderingResizeTest/OnScreenRenderingResizeTest.java 
 sun/java2d/DirectX/OverriddenInsetsTest/OverriddenInsetsTest.java 8196102 generic-all
 sun/java2d/DirectX/RenderingToCachedGraphicsTest/RenderingToCachedGraphicsTest.java 8196180,8252812 windows-all,macosx-all,linux-all
 java/awt/Graphics2D/CopyAreaOOB.java 7001973 windows-all,macosx-all,linux-all
+java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5010 linux-aarch64
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java 8266283 linux-all
 java/awt/Graphics2D/DrawString/TextRenderingTest.java JBR-4260 macosx-11.7.1
 java/awt/Graphics2D/ScaledTransform/ScaledTransform.java 8277240 linux-all
@@ -916,6 +918,9 @@ java/awt/TrayIcon/DblClickActionEventTest/DblClickActionEventTest.html 8203867 m
 java/awt/Frame/FrameStateTest/FrameStateTest.html 8203920 macosx-all,linux-all
 javax/swing/SwingUtilities/TestTextPosInPrint.java 8227025 windows-all
 java/awt/print/PrinterJob/ScaledText/ScaledText.java 8231226 macosx-all
+java/awt/font/ComplexEmoji.java JBR-5009 linux-aarch64
+java/awt/font/OutlineTextRendererEmoji.java JBR-5009 linux-aarch64
+java/awt/font/EmojiVariation.java JBR-5009 linux-aarch64
 java/awt/font/TextLayout/TestJustification.html 8250791 macosx-all
 javax/swing/JTabbedPane/4209065/bug4209065.java 8251177 macosx-all
 java/awt/TrayIcon/DragEventSource/DragEventSource.java 8252242 macosx-all
@@ -1007,7 +1012,7 @@ jb/sun/awt/macos/NationalLayoutTest/Layout_GERMAN.java JBR-4933 macosx-all
 jb/sun/awt/macos/NationalLayoutTest/Layout_SPANISH_ISO.java JBR-4933 macosx-all
 jb/sun/awt/macos/NationalLayoutTest/Layout_US_INTERNATIONAL_PC.java JBR-4933 macosx-all
 
-jb/javax/swing/JDialog/JDialog392.java JBR-4941 macosx-all
+jb/javax/swing/JDialog/JDialog392.java JBR-4941 macosx-all,linux-all
 jb/javax/swing/JDialog/JDialog705.java JBR-4934 generic-all
 
 jb/java/awt/Focus/ModalDialogFromMenuTest.java JBR-4974 linux-all
