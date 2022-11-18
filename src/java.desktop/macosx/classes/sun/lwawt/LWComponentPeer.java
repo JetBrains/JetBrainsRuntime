@@ -66,7 +66,7 @@ import javax.swing.SwingUtilities;
 
 import com.sun.java.swing.SwingUtilities3;
 import sun.awt.AWTAccessor;
-import sun.awt.CGraphicsDevice;
+import sun.awt.CGraphicsEnvironment;
 import sun.awt.PaintEventDispatcher;
 import sun.awt.RepaintArea;
 import sun.awt.SunToolkit;
@@ -1399,7 +1399,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     }
 
     protected static final void flushOnscreenGraphics(){
-        RenderQueue rq =  CGraphicsDevice.usingMetalPipeline() ?
+        RenderQueue rq =  CGraphicsEnvironment.usingMetalPipeline() ?
                 MTLRenderQueue.getInstance() : OGLRenderQueue.getInstance();
         rq.lock();
         try {
