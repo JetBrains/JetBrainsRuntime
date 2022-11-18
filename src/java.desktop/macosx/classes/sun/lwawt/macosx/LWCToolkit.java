@@ -513,7 +513,7 @@ public final class LWCToolkit extends LWToolkit {
     @Override
     public void sync() {
         // flush the rendering pipeline
-        if (CGraphicsDevice.usingMetalPipeline()) {
+        if (CGraphicsEnvironment.usingMetalPipeline()) {
             MTLRenderQueue.sync();
         } else {
             OGLRenderQueue.sync();
