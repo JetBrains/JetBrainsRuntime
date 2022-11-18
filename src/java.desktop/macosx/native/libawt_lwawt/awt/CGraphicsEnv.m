@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,9 @@
  * questions.
  */
 
+#import <Metal/Metal.h>
+#import <Trace.h>
+#import "sun_awt_CGraphicsEnvironment.h"
 #import "AWT_debug.h"
 
 #import "JNIUtilities.h"
@@ -178,4 +181,37 @@ JNI_COCOA_ENTER(env);
     (*env)->DeleteWeakGlobalRef(env, cgeRef);
 
 JNI_COCOA_EXIT(env);
+}
+
+JNIEXPORT jint JNICALL Java_sun_awt_CGraphicsEnvironment_initMetal
+    (JNIEnv *env, jclass mtlgc, jstring shadersLibName)
+{
+    __block jint ret = sun_awt_CGraphicsEnvironment_MTL_ERROR;
+
+    JNI_COCOA_ENTER(env);
+
+        __block NSString* path = NormalizedPathNSStringFromJavaString(env, shadersLibName);
+
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
+
+          id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+          if (device != nil) {
+              NSError* error = nil;
+              id<MTLLibrary> lib = [device newLibraryWithFile:path error:&error];
+              if (lib != nil) {
+                  ret = sun_awt_CGraphicsEnvironment_MTL_SUPPORTED;
+              } else {
+                  J2dRlsTraceLn(J2D_TRACE_ERROR, "CGraphicsEnvironment_initMetal - "
+                                                 "Failed to load Metal shader library.");
+                  ret = sun_awt_CGraphicsEnvironment_MTL_NO_SHADER_LIB;
+              }
+          } else {
+              J2dRlsTraceLn(J2D_TRACE_ERROR, "CGraphicsEnvironment_initMetal - "
+                                             "Failed to create MTLDevice.");
+              ret = sun_awt_CGraphicsEnvironment_MTL_NO_DEVICE;
+          }
+        }];
+
+    JNI_COCOA_EXIT(env);
+    return ret;
 }
