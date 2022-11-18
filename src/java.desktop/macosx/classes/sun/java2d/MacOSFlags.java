@@ -153,4 +153,8 @@ public class MacOSFlags {
     public static boolean isOGLVerbose() {
         return oglVerbose;
     }
+
+    public static String getRenderPipelineName() {
+        return metalEnabled? "Metal" : oglEnabled ? "OpenGL" : "Unknown";
+    }
 }
