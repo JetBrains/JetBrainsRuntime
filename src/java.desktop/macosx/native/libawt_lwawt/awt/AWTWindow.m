@@ -547,6 +547,8 @@ AWT_ASSERT_APPKIT_THREAD;
     self.nsWindow.collectionBehavior = NSWindowCollectionBehaviorManaged;
     self.isEnterFullScreen = NO;
 
+    [self configureJavaWindowTabbingIdentifier];
+
     if (self.isCustomTitleBarEnabled && !self.isFullScreen) {
         [self setUpCustomTitleBar];
     }
@@ -567,6 +569,57 @@ AWT_ASSERT_APPKIT_THREAD;
 // checks that this window is under the mouse cursor and this point is not overlapped by others windows
 - (BOOL) isTopmostWindowUnderMouse {
     return [self.nsWindow windowNumber] == [AWTWindow getTopmostWindowUnderMouseID];
+}
+
+- (void) configureJavaWindowTabbingIdentifier {
+    AWT_ASSERT_APPKIT_THREAD;
+
+    if (self.javaWindowTabbingMode != NSWindowTabbingModeAutomatic) {
+        return;
+    }
+
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
+    if (platformWindow == NULL) {
+        return;
+    }
+
+    GET_CPLATFORM_WINDOW_CLASS();
+    DECLARE_FIELD(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;");
+    jobject awtWindow = (*env)->GetObjectField(env, platformWindow, jf_target);
+
+    if (awtWindow != NULL) {
+        DECLARE_CLASS(jc_RootPaneContainer, "javax/swing/RootPaneContainer");
+        if ((*env)->IsInstanceOf(env, awtWindow, jc_RootPaneContainer)) {
+            DECLARE_METHOD(jm_getRootPane, jc_RootPaneContainer, "getRootPane", "()Ljavax/swing/JRootPane;");
+            jobject rootPane = (*env)->CallObjectMethod(env, awtWindow, jm_getRootPane);
+            CHECK_EXCEPTION();
+
+            if (rootPane != NULL) {
+                DECLARE_CLASS(jc_JComponent, "javax/swing/JComponent");
+                DECLARE_METHOD(jm_getClientProperty, jc_JComponent, "getClientProperty", "(Ljava/lang/Object;)Ljava/lang/Object;");
+                jstring jKey = NSStringToJavaString(env, @"JavaWindowTabbingIdentifier");
+                jobject jValue = (*env)->CallObjectMethod(env, rootPane, jm_getClientProperty, jKey);
+                CHECK_EXCEPTION();
+
+                if (jValue != NULL) {
+                    DECLARE_CLASS(jc_String, "java/lang/String");
+                    if ((*env)->IsInstanceOf(env, jValue, jc_String)) {
+                        [self.nsWindow setTabbingIdentifier:JavaStringToNSString(env, (jstring)jValue)];
+                    }
+
+                    (*env)->DeleteLocalRef(env, jValue);
+                }
+
+                (*env)->DeleteLocalRef(env, jKey);
+                (*env)->DeleteLocalRef(env, rootPane);
+            }
+        }
+
+        (*env)->DeleteLocalRef(env, awtWindow);
+    }
+
+    (*env)->DeleteLocalRef(env, platformWindow);
 }
 
 - (NSWindowTabbingMode) getJavaWindowTabbingMode {
