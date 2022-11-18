@@ -35,7 +35,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import sun.awt.CGraphicsEnvironment;
-import sun.awt.CGraphicsDevice;
 import sun.java2d.metal.MTLLayer;
 import sun.lwawt.LWWindowPeer;
 
@@ -64,8 +63,7 @@ public class CPlatformView extends CFRetainedResource {
     public void initialize(LWWindowPeer peer, CPlatformResponder responder) {
         initializeBase(peer, responder);
 
-        this.windowLayer = CGraphicsDevice.usingMetalPipeline()? createMTLLayer() : createCGLayer();
-
+        this.windowLayer = CGraphicsEnvironment.usingMetalPipeline()? createMTLLayer() : createCGLayer();
         setPtr(nativeCreateView(0, 0, 0, 0, getWindowLayerPtr()));
     }
 
