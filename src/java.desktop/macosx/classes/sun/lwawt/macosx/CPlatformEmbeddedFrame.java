@@ -28,7 +28,7 @@ package sun.lwawt.macosx;
 import java.awt.*;
 import java.awt.event.FocusEvent;
 
-import sun.awt.CGraphicsDevice;
+import sun.awt.CGraphicsEnvironment;
 import sun.java2d.SurfaceData;
 import sun.java2d.metal.MTLLayer;
 import sun.java2d.opengl.CGLLayer;
@@ -55,7 +55,7 @@ public class CPlatformEmbeddedFrame implements PlatformWindow {
     @Override // PlatformWindow
     public void initialize(Window target, final LWWindowPeer peer, PlatformWindow owner) {
         this.peer = peer;
-        if (CGraphicsDevice.usingMetalPipeline()) {
+        if (CGraphicsEnvironment.usingMetalPipeline()) {
             this.windowLayer = new MTLLayer(peer);
         } else {
             this.windowLayer = new CGLLayer(peer);
