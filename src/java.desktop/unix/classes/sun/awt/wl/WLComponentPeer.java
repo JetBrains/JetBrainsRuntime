@@ -561,7 +561,10 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     public void updateCursorImmediately() {
-        WLInputState inputState = WLToolkit.getInputState();
+        updateCursorImmediately(WLToolkit.getInputState());
+    }
+
+    private void updateCursorImmediately(WLInputState inputState) {
         WLComponentPeer peer = inputState.getPeer();
         if (peer == null) return;
         Cursor cursor = peer.getCursor(inputState.getPointerX(), inputState.getPointerY());
@@ -766,6 +769,7 @@ public class WLComponentPeer implements ComponentPeer {
         final long timestamp = newInputState.getTimestamp();
 
         if (e.hasEnterEvent()) {
+            updateCursorImmediately(newInputState);
             final MouseEvent mouseEvent = new MouseEvent(getTarget(), MouseEvent.MOUSE_ENTERED,
                     timestamp,
                     newInputState.getModifiers(),
