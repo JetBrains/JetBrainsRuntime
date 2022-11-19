@@ -14,6 +14,7 @@ echo -e "test_results_ref - the file with metrics values for the reference measu
 echo -e "results - results of comaprison"
 echo -e "test_prefix - specifys measuring type, makes sense for enabled -tc, by default no prefixes"
 echo -e "noHeaders - by default 1-st line contains headers"
+echo -e "deviation - permissible deviation by default deviation=0.1"
 echo -e ""
 echo -e "test_results_* files content should be in csv format with header and tab separator:"
 echo -e "The 1-st column is the test name"
@@ -47,6 +48,9 @@ refFile=$2
 resFile=$3
 testNamePrefix=$4
 noHeaders=$5
+deviation=0.1
+test $# -ge 6 && deviation=$6
+
 echo $curFile
 echo $refFile
 echo $resFile
@@ -54,17 +58,17 @@ echo $resFile
 curValues=`cat "$curFile" | cut -f 2 | tr -d '\t'`
 if [ -z $noHeaders ]; then
   curValuesHeader=`echo "$curValues" | head -n +1`_cur
-  header=`cat "$refFile" | head -n +1 | awk -F'\t' -v x=$curValuesHeader '{print "  "$1"\t"$2"_ref\t"x"\tratio"}'`
+  header=`cat "$refFile" | head -n +1 | awk -F'\t' -v x=$curValuesHeader '{print "  "$1"\t"$2"_ref\t"x"\tdeviation"}'`
   testContent=`paste -d '\t' $refFile <(echo "$curValues") | tail -n +2`
 else
   testContent=`paste -d '\t' $refFile <(echo "$curValues") | tail -n +1`
 fi
 
-testContent=`echo "$testContent" | tr "," "." | awk -F'\t' '{
-  if ($3>$2+$2*0.1) {
-    print "* "$1"\t"$2"\t"$3"\t"(($2>0)?$3/$2:"-")
+testContent=`echo "$testContent" | tr "," "." | awk -v r="$deviation" -F'\t' '{
+  if ($3>$2+$2*r) {
+    print " * "$1"\t"$2"\t"$3"\t"(($2>0)?($3/$2 - 1):"-")" "r
   } else {
-    print "  "$1"\t"$2"\t"$3"\t"(($2>0)?$3/$2:"-")
+    print "  "$1"\t"$2"\t"$3"\t"(($2>0)?($3/$2 - 1):"-")" "r
   }
 }'`
 if [ -z $noHeaders ]; then
