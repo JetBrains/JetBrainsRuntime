@@ -50,6 +50,7 @@ testNamePrefix=$4
 noHeaders=$5
 deviation=0.1
 test $# -ge 6 && deviation=$6
+isHigherBetter=${7:-true}
 
 echo $curFile
 echo $refFile
@@ -64,11 +65,21 @@ else
   testContent=`paste -d '\t' $refFile <(echo "$curValues") | tail -n +1`
 fi
 
-testContent=`echo "$testContent" | tr "," "." | awk -v r="$deviation" -F'\t' '{
-  if ($3>$2+$2*r) {
-    print " * "$1"\t"$2"\t"$3"\t"(($2>0)?($3/$2 - 1):"-")" "r
+testContent=`echo "$testContent" | tr "," "." | awk -v r="$deviation" -v hb="$isHigherBetter" -F'\t' '{
+  if (hb=="true") {
+    diff=($2>0)?(100 - $3/$2*100):"-"
+    if ($3>$2+$2*r) {
+      print " * "$1"\t"$2"\t"$3"\t"diff" "r
+    } else {
+      print "  "$1"\t"$2"\t"$3"\t"diff" "r
+    }
   } else {
-    print "  "$1"\t"$2"\t"$3"\t"(($2>0)?($3/$2 - 1):"-")" "r
+    diff=($2>0)?(100 - $3/$2*100):"-"
+    if ($3<$2-$2*r) {
+      print " * "$1"\t"$2"\t"$3"\t"diff" "r
+    } else {
+      print " "$1"\t"$2"\t"$3"\t"diff" "r
+    }
   }
 }'`
 if [ -z $noHeaders ]; then
