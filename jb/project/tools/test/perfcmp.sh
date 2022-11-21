@@ -69,16 +69,16 @@ testContent=`echo "$testContent" | tr "," "." | awk -v r="$deviation" -v hb="$is
   if (hb=="true") {
     diff=($2>0)?(100 - $3/$2*100):"-"
     if ($3>$2+$2*r) {
-      print " * "$1"\t"$2"\t"$3"\t"diff" "r
+      printf " * %s\t%.3f\t%.3f\t[%6.2f]\t%.2f\n",$1,$2,$3,diff,r
     } else {
-      print "  "$1"\t"$2"\t"$3"\t"diff" "r
+      printf " %s\t%.3f\t%.3f\t[%6.2f]\t%.2f\n",$1,$2,$3,diff,r
     }
   } else {
     diff=($2>0)?(100 - $3/$2*100):"-"
     if ($3<$2-$2*r) {
-      print " * "$1"\t"$2"\t"$3"\t"diff" "r
+      printf " * %s\t%.3f\t%.3f\t[%6.2f]\t%.2f\n",$1,$2,$3,diff,r
     } else {
-      print " "$1"\t"$2"\t"$3"\t"diff" "r
+      printf " %s\t%.3f\t%.3f\t[%6.2f]\t%.2f\n",$1,$2,$3,diff,r
     }
   }
 }'`
