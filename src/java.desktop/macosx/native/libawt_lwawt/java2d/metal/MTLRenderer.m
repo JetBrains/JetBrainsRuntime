@@ -596,6 +596,11 @@ MTLRenderer_DrawParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps,
                               jfloat dx12, jfloat dy12,
                               jfloat lwr21, jfloat lwr12)
 {
+    if (mtlc == NULL || dstOps == NULL || dstOps->pTexture == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLRenderer_DrawParallelogram: mtlc=%p or dstOps=%p is NULL", mtlc, dstOps);
+        return;
+    }
+
     // dx,dy for line width in the "21" and "12" directions.
     jfloat ldx21 = dx21 * lwr21;
     jfloat ldy21 = dy21 * lwr21;
