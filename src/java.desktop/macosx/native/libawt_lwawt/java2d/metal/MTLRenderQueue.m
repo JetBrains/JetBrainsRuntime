@@ -69,7 +69,11 @@ void MTLRenderQueue_CheckPreviousOp(jint op) {
 
     if (isDrawOp(mtlPreviousOp)) {
         // submit the vertex batch
-        MTLRenderer_SubmitVertexBatch(mtlc, dstOps);
+        if (mtlc != NULL && dstOps != NULL && dstOps->pTexture != NULL) {
+            MTLRenderer_SubmitVertexBatch(mtlc, dstOps);
+        } else {
+            J2dTraceLn(J2D_TRACE_ERROR, "MTLRenderQueue_CheckPreviousOp: mtlc or dest is null");
+        }
         if (isDrawOp(op)) {
             // Do not cause endEncoder if we continue with Draw operations
             mtlPreviousOp = op;
@@ -605,9 +609,11 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jlong pDst = NEXT_LONG(b);
 
                     if (mtlc != NULL) {
-                        MTLTR_FreeGlyphCacheAA();
-                        MTLTR_FreeGlyphCacheLCD();
-                        MTLRenderer_SubmitVertexBatch(mtlc, dstOps);
+                        if (dstOps != NULL && dstOps->pTexture != NULL) {
+                            MTLTR_FreeGlyphCacheAA();
+                            MTLTR_FreeGlyphCacheLCD();
+                            MTLRenderer_SubmitVertexBatch(mtlc, dstOps);
+                        }
                         [mtlc.encoderManager endEncoder];
                         MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
                         id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
@@ -627,29 +633,27 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     MTLGraphicsConfigInfo *mtlInfo =
                             (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
 
-                    if (mtlInfo == NULL) {
-
-                    } else {
-                        MTLContext *newMtlc = mtlInfo->context;
-                        if (newMtlc == NULL) {
-
-                        } else {
-                            if (mtlc != NULL) {
-                                MTLTR_FreeGlyphCacheAA();
-                                MTLTR_FreeGlyphCacheLCD();
-                                MTLRenderer_SubmitVertexBatch(mtlc, dstOps);
-                                [mtlc.encoderManager endEncoder];
-                                MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
-                                id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
-                                [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-                                    [cbwrapper release];
-                                }];
-                                [commandbuf commit];
-                            }
-                            mtlc = newMtlc;
-                            dstOps = NULL;
+                    if (mtlc != NULL) {
+                        if (dstOps != NULL && dstOps->pTexture != NULL) {
+                            MTLTR_FreeGlyphCacheAA();
+                            MTLTR_FreeGlyphCacheLCD();
+                            MTLRenderer_SubmitVertexBatch(mtlc, dstOps);
                         }
+                        [mtlc.encoderManager endEncoder];
+                        MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
+                        id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
+                        [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+                            [cbwrapper release];
+                        }];
+                        [commandbuf commit];
                     }
+
+                    if (mtlInfo != NULL) {
+                        mtlc = mtlInfo->context;
+                    } else {
+                        mtlc = NULL;
+                    }
+                    dstOps = NULL;
                     break;
                 }
                 case sun_java2d_pipe_BufferedOpCodes_FLUSH_SURFACE:
@@ -904,7 +908,10 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             if (mtlPreviousOp == MTL_OP_MASK_OP) {
                 MTLVertexCache_DisableMaskCache(mtlc);
             }
-            MTLRenderer_SubmitVertexBatch(mtlc, dstOps);
+
+            if (dstOps != NULL && dstOps->pTexture != NULL) {
+                MTLRenderer_SubmitVertexBatch(mtlc, dstOps);
+            }
 
             [mtlc.encoderManager endEncoder];
             MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
@@ -952,7 +959,16 @@ MTLRenderQueue_GetCurrentDestination()
  */
 void commitEncodedCommands() {
 
-    MTLRenderer_SubmitVertexBatch(mtlc, dstOps);
+    if (mtlc == NULL) {
+        J2dTraceLn(J2D_TRACE_ERROR, "commitEncodedCommands: mtlc is null");
+        return;
+    }
+
+    if (dstOps != NULL && dstOps->pTexture != NULL) {
+        MTLRenderer_SubmitVertexBatch(mtlc, dstOps);
+    } else {
+        J2dTraceLn(J2D_TRACE_ERROR, "commitEncodedCommands: dstOps is null");
+    }
 
     [mtlc.encoderManager endEncoder];
 
