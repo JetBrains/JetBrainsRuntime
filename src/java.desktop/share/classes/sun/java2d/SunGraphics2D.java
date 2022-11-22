@@ -109,7 +109,7 @@ import static java.awt.geom.AffineTransform.TYPE_TRANSLATION;
  *
  * @author Jim Graham
  */
-public final class SunGraphics2D
+public class SunGraphics2D
     extends Graphics2D
     implements ConstrainableGraphics, Cloneable, DestSurfaceProvider
 {
