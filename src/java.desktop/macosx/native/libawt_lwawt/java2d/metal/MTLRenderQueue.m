@@ -595,8 +595,10 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jlong pDst = NEXT_LONG(b);
 
                     if (mtlc != NULL) {
-                        MTLTR_FreeGlyphCacheAA();
-                        MTLTR_FreeGlyphCacheLCD();
+                        if (dstOps != NULL && dstOps->pTexture != NULL) {
+                            MTLTR_FreeGlyphCacheAA();
+                            MTLTR_FreeGlyphCacheLCD();
+                        }
                         [mtlc.encoderManager endEncoder];
                         MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
                         id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
@@ -617,29 +619,26 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     MTLGraphicsConfigInfo *mtlInfo =
                             (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
 
-                    if (mtlInfo == NULL) {
-
-                    } else {
-                        MTLContext *newMtlc = mtlInfo->context;
-                        if (newMtlc == NULL) {
-
-                        } else {
-                            if (mtlc != NULL) {
-                                MTLTR_FreeGlyphCacheAA();
-                                MTLTR_FreeGlyphCacheLCD();
-                                [mtlc.encoderManager endEncoder];
-                                MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
-                                id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
-                                [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-                                    [cbwrapper release];
-                                }];
-                                [commandbuf commit];
-                                MTLSD_Flush();
-                            }
-                            mtlc = newMtlc;
-                            dstOps = NULL;
+                    if (mtlc != NULL) {
+                        if (dstOps != NULL && dstOps->pTexture != NULL) {
+                            MTLTR_FreeGlyphCacheAA();
+                            MTLTR_FreeGlyphCacheLCD();
                         }
+                        [mtlc.encoderManager endEncoder];
+                        MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
+                        id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
+                        [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+                            [cbwrapper release];
+                        }];
+                        [commandbuf commit];
+                    MTLSD_Flush();}
+
+                    if (mtlInfo != NULL) {
+                        mtlc = mtlInfo->context;
+                    } else {
+                        mtlc = NULL;
                     }
+                    dstOps = NULL;
                     break;
                 }
                 case sun_java2d_pipe_BufferedOpCodes_FLUSH_SURFACE:
@@ -933,6 +932,12 @@ MTLRenderQueue_GetCurrentDestination()
  * these would be rendered to the back-buffer - which is read in shader while rendering in XOR mode
  */
 void commitEncodedCommands() {
+
+    if (mtlc == NULL) {
+        J2dTraceLn(J2D_TRACE_ERROR, "commitEncodedCommands: mtlc is null");
+        return;
+    }
+
     [mtlc.encoderManager endEncoder];
 
     MTLCommandBufferWrapper *cbwrapper = [mtlc pullCommandBufferWrapper];
