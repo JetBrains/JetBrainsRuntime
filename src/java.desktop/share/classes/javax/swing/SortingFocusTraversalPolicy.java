@@ -141,7 +141,7 @@ public class SortingFocusTraversalPolicy
 
     private void enumerateAndSortCycle(Container focusCycleRoot, List<Component> cycle) {
         if (focusCycleRoot.isShowing()) {
-            enumerateCycle(focusCycleRoot, cycle);
+            enumerateCycle(focusCycleRoot, cycle, true);
             if (legacySortingFTPEnabled) {
                 legacySort(cycle, comparator);
             } else {
@@ -164,27 +164,21 @@ public class SortingFocusTraversalPolicy
     }
 
     @SuppressWarnings("deprecation")
-    private void enumerateCycle(Container container, List<Component> cycle) {
-        if (!(container.isVisible() && container.isDisplayable())) {
+    private void enumerateCycle(Component component, List<Component> cycle, boolean forceDescending) {
+        if (!(component.isVisible() && component.isDisplayable())) {
             return;
         }
 
-        cycle.add(container);
+        cycle.add(component);
 
-        Component[] components = container.getComponents();
-        for (Component comp : components) {
-            if (comp instanceof Container) {
-                Container cont = (Container)comp;
-
-                if (!cont.isFocusCycleRoot() &&
-                    !cont.isFocusTraversalPolicyProvider() &&
-                    !((cont instanceof JComponent) && ((JComponent)cont).isManagingFocus()))
-                {
-                    enumerateCycle(cont, cycle);
-                    continue;
-                }
+        if (component instanceof Container container &&
+                (forceDescending || !(container.isFocusCycleRoot() ||
+                                      container.isFocusTraversalPolicyProvider() ||
+                                      ((container instanceof JComponent jComp) && jComp.isManagingFocus())))) {
+            Component[] components = container.getComponents();
+            for (Component c : components) {
+                enumerateCycle(c, cycle, false);
             }
-            cycle.add(comp);
         }
     }
 
