@@ -44,7 +44,7 @@ static jclass sjc_CAccessibility = NULL;
 - (jobject)currentAccessibleWithENV:(JNIEnv *)env
 {
     GET_CACCESSIBILITY_CLASS_RETURN(NULL);
-    DECLARE_STATIC_METHOD_RETURN(sjm_getAccessibleJTreeNodeCurrentAccessible, sjc_CAccessibility, "getAccessibleJTReeNodeCurrentAccessible", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/Accessible;", NULL);
+    DECLARE_STATIC_METHOD_RETURN(sjm_getAccessibleJTreeNodeCurrentAccessible, sjc_CAccessibility, "getAccessibleJTreeNodeCurrentAccessible", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/Accessible;", NULL);
     jobject currentAccessible = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, sjm_getAccessibleJTreeNodeCurrentAccessible, fAccessible, fComponent);
     CHECK_EXCEPTION();
     return currentAccessible;
@@ -96,10 +96,10 @@ static jclass sjc_CAccessibility = NULL;
 
 /*
  * Class:     sun_lwawt_macosx_CAccessibility
- * Method:    nativeGetAccessibleJTReeNodeCurrentAccessible
+ * Method:    nativeGetAccessibleJTreeNodeCurrentAccessible
  * Signature: (Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljava/lang/Object;
  */
-JNIEXPORT jobject JNICALL Java_sun_lwawt_macosx_CAccessibility_nativeGetAccessibleJTReeNodeCurrentAccessible
+JNIEXPORT jobject JNICALL Java_sun_lwawt_macosx_CAccessibility_nativeGetAccessibleJTreeNodeCurrentAccessible
         (JNIEnv *env, jclass cls, jobject a, jobject c) {
     jobject jAxContext = getAxContext(env, a, c);
     if (jAxContext == NULL) return NULL;
