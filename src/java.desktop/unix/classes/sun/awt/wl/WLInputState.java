@@ -130,6 +130,17 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 0);
     }
 
+    public WLInputState resetPointerState() {
+        return new WLInputState(
+                eventWithSurface,
+                eventWithSerial,
+                eventWithTimestamp,
+                eventWithCoordinates,
+                pointerButtonPressedEvent,
+                0,
+                surfaceForKeyboardInput);
+    }
+
     private PointerButtonEvent getNewPointerButtonEvent(WLPointerEvent pointerEvent,
                                                         WLPointerEvent newEventWithSurface,
                                                         WLPointerEvent newEventWithSerial,

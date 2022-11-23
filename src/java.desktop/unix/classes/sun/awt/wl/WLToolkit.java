@@ -343,15 +343,16 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) log.fine("dispatchPointerEvent: " + e);
 
-        final WLInputState newInputState = inputState.update(e);
+        final WLInputState oldInputState = inputState;
+        final WLInputState newInputState = oldInputState.update(e);
+        inputState = newInputState;
         final WLComponentPeer peer = newInputState.getPeer();
         if (peer == null) {
             // we don't know whom to notify of the event
             log.severe("Surface doesn't map to any component");
         } else {
-            peer.dispatchPointerEventInContext(e, inputState, newInputState);
+            peer.dispatchPointerEventInContext(e, oldInputState, newInputState);
         }
-        inputState = newInputState;
     }
 
     private static void dispatchKeyboardKeyEvent(long serial,
@@ -982,5 +983,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     static WLInputState getInputState() {
         return inputState;
+    }
+
+    // this emulates pointer leave event, which isn't sent sometimes by compositor
+    static void resetPointerInputState() {
+        inputState = inputState.resetPointerState();
     }
 }

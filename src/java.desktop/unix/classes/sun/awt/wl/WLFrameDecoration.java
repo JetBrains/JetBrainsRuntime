@@ -247,6 +247,8 @@ public class WLFrameDecoration {
             int resizeSide = getResizeEdges(point.x, point.y);
             if (resizeSide != 0) {
                 peer.startResize(resizeSide);
+                // workaround for https://gitlab.gnome.org/GNOME/mutter/-/issues/2523
+                WLToolkit.resetPointerInputState();
                 return;
             }
         }
