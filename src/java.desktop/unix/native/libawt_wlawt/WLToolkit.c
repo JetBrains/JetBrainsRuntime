@@ -193,6 +193,9 @@ xkbcommon_load(JNIEnv *env)
 {
     void * handle = dlopen(JNI_LIB_NAME("xkbcommon"), RTLD_LAZY | RTLD_LOCAL);
     if (!handle) {
+        handle = dlopen(VERSIONED_JNI_LIB_NAME("xkbcommon", "0"), RTLD_LAZY | RTLD_LOCAL);
+    }
+    if (!handle) {
         JNU_ThrowByNameWithMessageAndLastError(env, "java/lang/UnsatisfiedLinkError",
                                                JNI_LIB_NAME("xkbcommon"));
         return false;
@@ -1231,3 +1234,4 @@ struct wl_shm_pool *CreateShmPool(int32_t size, const char *name, void **data) {
     close(poolFD);
     return pool;
 }
+
