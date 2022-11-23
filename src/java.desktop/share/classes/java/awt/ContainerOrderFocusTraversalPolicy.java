@@ -124,32 +124,26 @@ public class ContainerOrderFocusTraversalPolicy extends FocusTraversalPolicy
      */
     /*protected*/ private List<Component> getFocusTraversalCycle(Container aContainer) {
         List<Component> cycle = new ArrayList<Component>();
-        enumerateCycle(aContainer, cycle);
+        enumerateCycle(aContainer, cycle, true);
         return cycle;
     }
     /*protected*/ private int getComponentIndex(List<Component> cycle, Component aComponent) {
         return cycle.indexOf(aComponent);
     }
 
-    private void enumerateCycle(Container container, List<Component> cycle) {
-        if (!(container.isVisible() && container.isDisplayable())) {
+    private void enumerateCycle(Component component, List<Component> cycle, boolean forceDescending) {
+        if (!(component.isVisible() && component.isDisplayable())) {
             return;
         }
 
-        cycle.add(container);
+        cycle.add(component);
 
-        Component[] components = container.getComponents();
-        for (int i = 0; i < components.length; i++) {
-            Component comp = components[i];
-            if (comp instanceof Container) {
-                Container cont = (Container)comp;
-
-                if (!cont.isFocusCycleRoot() && !cont.isFocusTraversalPolicyProvider()) {
-                    enumerateCycle(cont, cycle);
-                    continue;
-                }
+        if (component instanceof Container container &&
+                (forceDescending || !(container.isFocusCycleRoot() || container.isFocusTraversalPolicyProvider()))) {
+            Component[] components = container.getComponents();
+            for (Component c : components) {
+                enumerateCycle(c, cycle, false);
             }
-            cycle.add(comp);
         }
     }
 
