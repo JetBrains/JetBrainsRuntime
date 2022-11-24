@@ -38,6 +38,7 @@ import java.beans.PropertyChangeListener;
 import java.lang.annotation.Native;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -927,6 +928,30 @@ if (o instanceof Accessible) {
                 }
             }
             return null;
+        }, c);
+    }
+
+    private static int getTableInfoAtIndex(final Accessible a, final Component c,
+                                              final int info, int index) {
+        if (a == null) return -1;
+
+        return invokeAndWait(new Callable<Integer>() {
+            @Override
+            public Integer call() throws Exception {
+                AccessibleContext ac = a.getAccessibleContext();
+                if (ac != null) {
+                    AccessibleTable at = ac.getAccessibleTable();
+                    if (at != null) {
+                        int columnCount = at.getAccessibleColumnCount();
+                        if (columnCount >= 0) {
+                            if (info == JAVA_AX_ROWS) return index / columnCount;
+                            if (info == JAVA_AX_COLS) return index % columnCount;
+                        }
+                    }
+                }
+
+                return -1;
+            }
         }, c);
     }
 
