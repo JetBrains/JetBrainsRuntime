@@ -183,7 +183,7 @@ final class CPlatformResponder {
         boolean spaceKeyTyped = false;
 
         char testChar = KeyEvent.CHAR_UNDEFINED;
-        boolean isDeadChar = (chars!= null && chars.length() == 0);
+        boolean isDeadChar = (chars != null && chars.length() == 0);
 
         if (isFlagsChangedEvent) {
             int[] in = new int[] {modifierFlags, keyCode};
@@ -215,10 +215,10 @@ final class CPlatformResponder {
                 testChar = KeyEvent.CHAR_UNDEFINED;
             }
 
-            if(isDeadChar){
+            if (isDeadChar) {
                 testChar = (char) out[2];
-                if(testChar == 0){
-                    return;
+                if (testChar == 0) {
+                    testChar = KeyEvent.CHAR_UNDEFINED;
                 }
             }
 

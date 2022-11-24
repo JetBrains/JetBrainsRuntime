@@ -530,7 +530,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     jstring charactersIgnoringModifiers = NULL;
     if ([event type] != NSFlagsChanged) {
         characters = NSStringToJavaString(env, [event characters]);
-        charactersIgnoringModifiers = NSStringToJavaString(env, [event charactersIgnoringModifiers]);
+        charactersIgnoringModifiers = NSStringToJavaString(env, [event charactersByApplyingModifiers:0]);
     }
 
     DECLARE_CLASS(jc_NSEvent, "sun/lwawt/macosx/NSEvent");

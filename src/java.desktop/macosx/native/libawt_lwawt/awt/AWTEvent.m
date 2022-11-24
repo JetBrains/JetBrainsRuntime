@@ -232,6 +232,54 @@ static const struct CharToVKEntry charToDeadVKTable[] = {
     {0,0}
 };
 
+static const struct CharToVKEntry extraCharToVKTable[] = {
+        { 0x0021, java_awt_event_KeyEvent_VK_EXCLAMATION_MARK },
+        { 0x0022, java_awt_event_KeyEvent_VK_QUOTEDBL },
+        { 0x0023, java_awt_event_KeyEvent_VK_NUMBER_SIGN },
+        { 0x0024, java_awt_event_KeyEvent_VK_DOLLAR },
+        { 0x0026, java_awt_event_KeyEvent_VK_AMPERSAND },
+        { 0x0027, java_awt_event_KeyEvent_VK_QUOTE },
+        { 0x0028, java_awt_event_KeyEvent_VK_LEFT_PARENTHESIS },
+        { 0x0029, java_awt_event_KeyEvent_VK_RIGHT_PARENTHESIS },
+        { 0x002A, java_awt_event_KeyEvent_VK_ASTERISK },
+        { 0x002B, java_awt_event_KeyEvent_VK_PLUS },
+        { 0x002C, java_awt_event_KeyEvent_VK_COMMA },
+        { 0x002D, java_awt_event_KeyEvent_VK_MINUS },
+        { 0x002E, java_awt_event_KeyEvent_VK_PERIOD },
+        { 0x002F, java_awt_event_KeyEvent_VK_SLASH },
+        { 0x003A, java_awt_event_KeyEvent_VK_COLON },
+        { 0x003B, java_awt_event_KeyEvent_VK_SEMICOLON },
+        { 0x003C, java_awt_event_KeyEvent_VK_LESS },
+        { 0x003D, java_awt_event_KeyEvent_VK_EQUALS },
+        { 0x003E, java_awt_event_KeyEvent_VK_GREATER },
+        { 0x0040, java_awt_event_KeyEvent_VK_AT },
+        { 0x005B, java_awt_event_KeyEvent_VK_OPEN_BRACKET },
+        { 0x005C, java_awt_event_KeyEvent_VK_BACK_SLASH },
+        { 0x005D, java_awt_event_KeyEvent_VK_CLOSE_BRACKET },
+        { 0x005E, java_awt_event_KeyEvent_VK_CIRCUMFLEX },
+        { 0x005F, java_awt_event_KeyEvent_VK_UNDERSCORE },
+        { 0x0060, java_awt_event_KeyEvent_VK_BACK_QUOTE },
+        { 0x007B, java_awt_event_KeyEvent_VK_BRACELEFT },
+        { 0x007D, java_awt_event_KeyEvent_VK_BRACERIGHT },
+        { 0x00A1, java_awt_event_KeyEvent_VK_INVERTED_EXCLAMATION_MARK },
+
+        // These are the extended latin characters which have a non-obvious key code.
+        // Their key codes are derived from the upper case instead of the lower case.
+        // It probably has to do with how these key codes are reported on Windows.
+        // Translating these characters to the key codes corresponding to their uppercase versions
+        // makes getExtendedKeyCodeForChar consistent with how these events are reported on macOS.
+        {0x00E4, 0x01000000+0x00C4},
+        {0x00E5, 0x01000000+0x00C5},
+        {0x00E6, 0x01000000+0x00C6},
+        {0x00E7, 0x01000000+0x00C7},
+        {0x00F1, 0x01000000+0x00D1},
+        {0x00F6, 0x01000000+0x00D6},
+        {0x00F8, 0x01000000+0x00D8},
+
+        { 0x20AC, java_awt_event_KeyEvent_VK_EURO_SIGN },
+        {0, 0}
+};
+
 // TODO: some constants below are part of CGS (private interfaces)...
 // for now we will look at the raw key code to determine left/right status
 // but not sure this is foolproof...
@@ -434,6 +482,8 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
     static size_t size = sizeof(keyTable) / sizeof(struct _key);
     NSInteger offset;
 
+    BOOL enableNationalKeyboards = YES;
+
     if (isDeadChar) {
         unichar testDeadChar = NsGetDeadKeyChar(key);
         const struct CharToVKEntry *map;
@@ -448,6 +498,22 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
             }
         }
         // If we got here, we keep looking for a normal key.
+        // Some key combinations (for example Option+Shift+Comma on the Spanish keyboard)
+        // don't produce any characters, nor do they change the dead key state.
+        // They are nevertheless considered "dead keys", since there doesn't seem
+        // to be a good way to tell them apart just from the NSEvent object.
+    }
+
+    if (enableNationalKeyboards) {
+        unichar testChar = tolower(ch);
+        for (const struct CharToVKEntry *map = extraCharToVKTable; map->c != 0; ++map) {
+            if (map->c == testChar) {
+                *keyCode = map->javaKey;
+                *postsTyped = !isDeadChar;
+                *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
+                return;
+            }
+        }
     }
 
     if ([[NSCharacterSet letterCharacterSet] characterIsMember:ch]) {
