@@ -28,6 +28,7 @@ package sun.awt.wl;
 
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
+import sun.awt.DisplayChangedListener;
 import sun.awt.PaintEventDispatcher;
 import sun.awt.event.IgnorePaintEvent;
 import sun.awt.image.SunVolatileImage;
@@ -52,10 +53,12 @@ import java.awt.image.ColorModel;
 import java.awt.image.VolatileImage;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.ContainerPeer;
+import java.util.ArrayList;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-public class WLComponentPeer implements ComponentPeer {
+public class WLComponentPeer implements ComponentPeer,
+        DisplayChangedListener {
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.wl.focus.WLComponentPeer");
 
     private static final String appID = System.getProperty("sun.java.command");
@@ -82,7 +85,10 @@ public class WLComponentPeer implements ComponentPeer {
     private long nativePtr;
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLComponentPeer");
     protected final Component target;
-    protected WLGraphicsConfig graphicsConfig;
+
+    // Graphics devices this top-level component is visible on
+    protected final java.util.List<WLGraphicsDevice> devices = new ArrayList<>();
+
     protected Color background;
     WLSurfaceData surfaceData;
     WLRepaintArea paintArea;
@@ -96,6 +102,7 @@ public class WLComponentPeer implements ComponentPeer {
     private final Object sizeLock = new Object();
     int width;  // protected by sizeLock
     int height; // protected by sizeLock
+    int wlBufferScale; // protected by sizeLock
 
     static {
         initIDs();
@@ -107,13 +114,14 @@ public class WLComponentPeer implements ComponentPeer {
     WLComponentPeer(Component target) {
         this.target = target;
         this.background = target.getBackground();
-        initGraphicsConfiguration();
         Rectangle bounds = target.getBounds();
         x = bounds.x;
         y = bounds.y;
         width = bounds.width;
         height = bounds.height;
-        this.surfaceData = (WLSurfaceData) graphicsConfig.createSurfaceData(this);
+        wlBufferScale = ((WLGraphicsConfig)target.getGraphicsConfiguration()).getScale();
+        this.surfaceData = (WLSurfaceData) ((WLGraphicsConfig)target.getGraphicsConfiguration())
+                .createSurfaceData(this);
         this.nativePtr = nativeCreateFrame();
         paintArea = new WLRepaintArea();
         log.info("WLComponentPeer: target=" + target + " x=" + x + " y=" + y +
@@ -123,11 +131,15 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     public int getWidth() {
-        return width;
+        synchronized (sizeLock) {
+            return width;
+        }
     }
 
     public int getHeight() {
-        return height;
+        synchronized (sizeLock) {
+            return height;
+        }
     }
 
     public Color getBackground() {
@@ -236,7 +248,12 @@ public class WLComponentPeer implements ComponentPeer {
         }
     }
 
-    void configureWLSurface() {}
+    void configureWLSurface() {
+        synchronized (sizeLock) {
+            surfaceData.revalidate(getBufferWidth(), getBufferHeight());
+            performLocked(() -> nativeSetBufferScale(nativePtr, wlBufferScale));
+        }
+    }
 
     @Override
     public void setVisible(boolean v) {
@@ -325,7 +342,7 @@ public class WLComponentPeer implements ComponentPeer {
             if (sizeChanged) {
                 this.width = width;
                 this.height = height;
-                surfaceData.revalidate(width, height);
+                surfaceData.revalidate(getBufferWidth(), getBufferHeight());
                 updateWindowGeometry();
                 layout();
 
@@ -338,6 +355,37 @@ public class WLComponentPeer implements ComponentPeer {
     public Rectangle getVisibleBounds() {
         synchronized(sizeLock) {
             return new Rectangle(0, 0, width, height);
+        }
+    }
+
+    /**
+     * Returns the scale of wl_buffer attached to this component's wl_surface.
+     * Buffer coordinate space is linearly scaled wrt the component (or surface)
+     * coordinate space, so component's coordinates have to be translated
+     * to buffers' whenever Wayland protocol requires "buffer-local" coordinates.
+     * See wl_surface.set_buffer_scale in wayland.xml for more details.
+     */
+    int getBufferScale() {
+        synchronized(sizeLock) {
+            return wlBufferScale;
+        }
+    }
+
+    private int toBufferUnits(int x) {
+        return x * getBufferScale();
+    }
+
+    public int getBufferWidth() {
+        return toBufferUnits(getWidth());
+    }
+
+    public int getBufferHeight() {
+        return toBufferUnits(getHeight());
+    }
+
+    public Rectangle getBufferBounds() {
+        synchronized (sizeLock) {
+            return new Rectangle(getBufferWidth(), getBufferHeight());
         }
     }
 
@@ -511,6 +559,7 @@ public class WLComponentPeer implements ComponentPeer {
 
     @Override
     public ColorModel getColorModel() {
+        GraphicsConfiguration graphicsConfig = target.getGraphicsConfiguration();
         if (graphicsConfig != null) {
             return graphicsConfig.getColorModel();
         }
@@ -625,6 +674,7 @@ public class WLComponentPeer implements ComponentPeer {
 
     @Override
     public Image createImage(int width, int height) {
+        WLGraphicsConfig graphicsConfig = (WLGraphicsConfig) target.getGraphicsConfiguration();
         return graphicsConfig.createAcceleratedImage(target, width, height);
     }
 
@@ -633,16 +683,9 @@ public class WLComponentPeer implements ComponentPeer {
         return new SunVolatileImage(target, width, height);
     }
 
-    protected void initGraphicsConfiguration() {
-        graphicsConfig = (WLGraphicsConfig) target.getGraphicsConfiguration();
-    }
-
     @Override
     public GraphicsConfiguration getGraphicsConfiguration() {
-        if (graphicsConfig == null) {
-            initGraphicsConfiguration();
-        }
-        return graphicsConfig;
+        return target.getGraphicsConfiguration();
     }
 
     @Override
@@ -706,8 +749,8 @@ public class WLComponentPeer implements ComponentPeer {
         performLocked(() -> nativeRequestUnmaximized(nativePtr));
     }
 
-    final void requestFullScreen() {
-        performLocked(() -> nativeRequestFullScreen(nativePtr));
+    final void requestFullScreen(int wlID) {
+        performLocked(() -> nativeRequestFullScreen(nativePtr, wlID));
     }
 
     final void requestUnsetFullScreen() {
@@ -733,7 +776,7 @@ public class WLComponentPeer implements ComponentPeer {
     private native void nativeRequestMinimized(long ptr);
     private native void nativeRequestMaximized(long ptr);
     private native void nativeRequestUnmaximized(long ptr);
-    private native void nativeRequestFullScreen(long ptr);
+    private native void nativeRequestFullScreen(long ptr, int wlID);
     private native void nativeRequestUnsetFullScreen(long ptr);
 
     private native void nativeSetWindowGeometry(long ptr, int x, int y, int width, int height);
@@ -742,6 +785,7 @@ public class WLComponentPeer implements ComponentPeer {
     private static native void nativeSetCursor(long pData);
     private static native long nativeGetPredefinedCursor(String name);
     private native void nativeShowWindowMenu(long ptr, int x, int y);
+    private native void nativeSetBufferScale(long ptr, int scale);
 
     static long getParentNativePtr(Component target) {
         Component parent = target.getParent();
@@ -882,12 +926,12 @@ public class WLComponentPeer implements ComponentPeer {
         performLocked(() -> nativeStartResize(nativePtr, edges));
     }
 
-    void notifyConfigured(int width, int height, boolean active, boolean maximized) {
+    void notifyConfigured(int newWidth, int newHeight, boolean active, boolean maximized) {
         final long wlSurfacePtr = getWLSurface(nativePtr);
         // TODO: this needs to be done only once after wlSetVisible(true)
         surfaceData.assignSurface(wlSurfacePtr);
-        if (width != 0 && height != 0) performUnlocked(() ->target.setSize(width, height));
-        if (width == 0 && height == 0) {
+        if (newWidth != 0 && newHeight != 0) performUnlocked(() ->target.setSize(newWidth, newHeight));
+        if (newWidth == 0 && newHeight == 0) {
             // From xdg-shell.xml: "If the width or height arguments are zero,
             // it means the client should decide its own window dimension".
 
@@ -896,6 +940,66 @@ public class WLComponentPeer implements ComponentPeer {
             // the screen. In the other case, this paint event is posted
             // by setBounds() eventually called from target.setSize() above.
             postPaintEvent();
+        }
+    }
+
+    @Override
+    public void displayChanged() {
+        updateBufferScale();
+    }
+
+    @Override
+    public void paletteChanged() {
+    }
+
+    void notifyEnteredOutput(int wlOutputID) {
+        // Called from native code whenever the corresponding wl_surface enters a new output
+        synchronized (devices) {
+            final WLGraphicsEnvironment ge = (WLGraphicsEnvironment)WLGraphicsEnvironment.getLocalGraphicsEnvironment();
+            final WLGraphicsDevice gd = ge.notifySurfaceEnteredOutput(this, wlOutputID);
+            if (gd != null) {
+                devices.add(gd);
+                updateBufferScale();
+            } else {
+                log.severe("Entered output " + wlOutputID + " for which WLGraphicsEnvironment has no record");
+            }
+        }
+    }
+
+    void notifyLeftOutput(int wlOutputID) {
+        // Called from native code whenever the corresponding wl_surface leaves an output
+        synchronized (devices) {
+            final WLGraphicsEnvironment ge = (WLGraphicsEnvironment)WLGraphicsEnvironment.getLocalGraphicsEnvironment();
+            final WLGraphicsDevice gd = ge.notifySurfaceLeftOutput(this, wlOutputID);
+            if (gd != null) {
+                devices.remove(gd);
+                updateBufferScale();
+            } else {
+                log.severe("Left output " + wlOutputID + " for which WLGraphicsEnvironment has no record");
+            }
+        }
+    }
+
+    private void updateBufferScale() {
+        if (devices.isEmpty()) return; // no devices, no update
+
+        int newScale = 1;
+        // AFAIK there's no way of knowing which WLGraphicsDevice is displaying
+        // the largest portion of this component, so we can't base scaling on that.
+        // Choose maximum scale simply to be deterministic.
+        for (WLGraphicsDevice gd : devices) {
+            if (gd.getScale() > newScale) {
+                newScale = gd.getScale();
+            }
+        }
+
+        synchronized (sizeLock) {
+            if (newScale != wlBufferScale) {
+                wlBufferScale = newScale;
+                surfaceData.revalidate(getBufferWidth(), getBufferHeight());
+                performLocked(() -> nativeSetBufferScale(nativePtr, wlBufferScale));
+                postPaintEvent();
+            }
         }
     }
 

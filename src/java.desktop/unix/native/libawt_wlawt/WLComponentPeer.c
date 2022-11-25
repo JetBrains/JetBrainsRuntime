@@ -28,11 +28,11 @@
 #include <jni.h>
 #include <Trace.h>
 #include <assert.h>
-#include <WLBuffers.h>
 
 #include "jni_util.h"
 #include "WLToolkit.h"
 #include "WLRobotPeer.h"
+#include "WLGraphicsEnvironment.h"
 
 #ifdef WAKEFIELD_ROBOT
 #include "wakefield-client-protocol.h"
@@ -41,6 +41,8 @@
 static jfieldID nativePtrID;
 static jmethodID postWindowClosingMID;
 static jmethodID notifyConfiguredMID;
+static jmethodID notifyEnteredOutputMID;
+static jmethodID notifyLeftOutputMID;
 
 struct WLFrame {
     jobject nativeFramePeer; // weak reference
@@ -91,6 +93,17 @@ wl_surface_entered_output(void *data,
                           struct wl_output *output)
 {
     J2dTrace2(J2D_TRACE_INFO, "wl_surface %p entered output %p\n", wl_surface, output);
+    struct WLFrame *wlFrame = (struct WLFrame*) data;
+    uint32_t wlOutputID = WLOutputID(output);
+    if (wlOutputID == 0) return;
+
+    JNIEnv *env = getEnv();
+    const jobject nativeFramePeer = (*env)->NewLocalRef(env, wlFrame->nativeFramePeer);
+    if (nativeFramePeer) {
+        (*env)->CallVoidMethod(env, nativeFramePeer, notifyEnteredOutputMID, wlOutputID);
+        (*env)->DeleteLocalRef(env, nativeFramePeer);
+        JNU_CHECK_EXCEPTION(env);
+    }
 }
 
 static void
@@ -99,6 +112,18 @@ wl_surface_left_output(void *data,
                        struct wl_output *output)
 {
     J2dTrace2(J2D_TRACE_INFO, "wl_surface %p left output %p\n", wl_surface, output);
+    struct WLFrame *wlFrame = (struct WLFrame*) data;
+    uint32_t wlOutputID = WLOutputID(output);
+    if (wlOutputID == 0) return;
+
+    JNIEnv *env = getEnv();
+    const jobject nativeFramePeer = (*env)->NewLocalRef(env, wlFrame->nativeFramePeer);
+    if (nativeFramePeer) {
+        (*env)->CallVoidMethod(env, nativeFramePeer, notifyLeftOutputMID, wlOutputID);
+        (*env)->DeleteLocalRef(env, nativeFramePeer);
+        JNU_CHECK_EXCEPTION(env);
+    }
+
 }
 
 static const struct xdg_surface_listener xdg_surface_listener = {
@@ -208,6 +233,12 @@ Java_sun_awt_wl_WLComponentPeer_initIDs
     CHECK_NULL_THROW_IE(env,
                         notifyConfiguredMID = (*env)->GetMethodID(env, clazz, "notifyConfigured", "(IIZZ)V"),
                         "Failed to find method WLComponentPeer.notifyConfigured");
+    CHECK_NULL_THROW_IE(env,
+                        notifyEnteredOutputMID = (*env)->GetMethodID(env, clazz, "notifyEnteredOutput", "(I)V"),
+                        "Failed to find method WLComponentPeer.notifyEnteredOutput");
+    CHECK_NULL_THROW_IE(env,
+                        notifyLeftOutputMID = (*env)->GetMethodID(env, clazz, "notifyLeftOutput", "(I)V"),
+                        "Failed to find method WLComponentPeer.notifyLeftOutput");
 }
 
 JNIEXPORT void JNICALL
@@ -300,11 +331,12 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestUnmaximized
 
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeRequestFullScreen
-        (JNIEnv *env, jobject obj, jlong ptr)
+        (JNIEnv *env, jobject obj, jlong ptr, jint wlID)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
-        xdg_toplevel_set_fullscreen(frame->xdg_toplevel, NULL);
+        struct wl_output *wl_output = WLOutputByID((uint32_t)wlID);
+        xdg_toplevel_set_fullscreen(frame->xdg_toplevel, wl_output);
     }
 }
 
@@ -387,7 +419,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeHideFrame
   (JNIEnv *env, jobject obj, jlong ptr)
 {
-    struct WLFrame *frame = (struct WLFrame *) ptr;
+    struct WLFrame *frame = jlong_to_ptr(ptr);
     DoHide(frame);
 }
 
@@ -395,7 +427,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeDisposeFrame
   (JNIEnv *env, jobject obj, jlong ptr)
 {
-    struct WLFrame *frame = (struct WLFrame *) ptr;
+    struct WLFrame *frame = jlong_to_ptr(ptr);
     DoHide(frame);
     (*env)->DeleteWeakGlobalRef(env, frame->nativeFramePeer);
     free(frame);
@@ -404,13 +436,13 @@ Java_sun_awt_wl_WLComponentPeer_nativeDisposeFrame
 JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLComponentPeer_getWLSurface
   (JNIEnv *env, jobject obj, jlong ptr)
 {
-    return (jlong)((struct WLFrame*)ptr)->wl_surface;
+    return ptr_to_jlong(((struct WLFrame*)jlong_to_ptr(ptr))->wl_surface);
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartDrag
   (JNIEnv *env, jobject obj, jlong ptr)
 {
-    struct WLFrame *frame = (struct WLFrame *) ptr;
+    struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel && wl_seat) {
         xdg_toplevel_move(frame->xdg_toplevel, wl_seat, last_mouse_pressed_serial);
     }
@@ -419,7 +451,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartDrag
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartResize
   (JNIEnv *env, jobject obj, jlong ptr, jint edges)
 {
-    struct WLFrame *frame = (struct WLFrame *) ptr;
+    struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel && wl_seat) {
         xdg_toplevel_resize(frame->xdg_toplevel, wl_seat, last_mouse_pressed_serial, edges);
     }
@@ -428,7 +460,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartResize
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetWindowGeometry
         (JNIEnv *env, jobject obj, jlong ptr, jint x, jint y, jint width, jint height)
 {
-    struct WLFrame *frame = (struct WLFrame *) ptr;
+    struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_surface) {
         xdg_surface_set_window_geometry(frame->xdg_surface, x, y, width, height);
     }
@@ -437,7 +469,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetWindowGeometry
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetMinimumSize
         (JNIEnv *env, jobject obj, jlong ptr, jint width, jint height)
 {
-    struct WLFrame *frame = (struct WLFrame *) ptr;
+    struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel) {
         xdg_toplevel_set_min_size(frame->xdg_toplevel, width, height);
     }
@@ -446,7 +478,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetMinimumSize
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetMaximumSize
         (JNIEnv *env, jobject obj, jlong ptr, jint width, jint height)
 {
-    struct WLFrame *frame = (struct WLFrame *) ptr;
+    struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel) {
         xdg_toplevel_set_max_size(frame->xdg_toplevel, width, height);
     }
@@ -455,8 +487,17 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetMaximumSize
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeShowWindowMenu
         (JNIEnv *env, jobject obj, jlong ptr, jint x, jint y)
 {
-    struct WLFrame *frame = (struct WLFrame *) ptr;
+    struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel) {
         xdg_toplevel_show_window_menu(frame->xdg_toplevel, wl_seat, last_mouse_pressed_serial, x, y);
+    }
+}
+
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetBufferScale
+        (JNIEnv *env, jobject obj, jlong ptr, jint scale)
+{
+    struct WLFrame *frame = jlong_to_ptr(ptr);
+    if (frame->wl_surface) {
+        wl_surface_set_buffer_scale(frame->wl_surface, scale);
     }
 }

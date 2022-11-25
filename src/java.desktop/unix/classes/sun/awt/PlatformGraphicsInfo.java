@@ -66,7 +66,7 @@ public class PlatformGraphicsInfo {
     public static GraphicsEnvironment createGE() {
         return (getToolkitID() == TK_X11)?
                 new X11GraphicsEnvironment() :
-                new WLGraphicsEnvironment();
+                WLGraphicsEnvironment.getSingleInstance();
     }
 
     public static Toolkit createToolkit() {

@@ -107,8 +107,8 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     }
 
     @Override
-    void notifyConfigured(int width, int height, boolean active, boolean maximized) {
-        super.notifyConfigured(width, height, active, maximized);
+    void notifyConfigured(int newWidth, int newHeight, boolean active, boolean maximized) {
+        super.notifyConfigured(newWidth, newHeight, active, maximized);
         if (decoration != null) decoration.setActive(active);
     }
 
@@ -131,6 +131,12 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
             decoration.markRepaintNeeded();
             postPaintEvent(getTarget(), bounds.x, bounds.y, bounds.width, bounds.height);
         }
+    }
+
+    void postPaintEvent() {
+        // Full re-paint must include window decorations, if any
+        notifyClientDecorationsChanged();
+        super.postPaintEvent();
     }
 
     final void paintClientDecorations(final Graphics g) {
