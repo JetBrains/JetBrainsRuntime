@@ -194,7 +194,7 @@ AC_DEFUN([PLATFORM_EXTRACT_VARS_FROM_OS],
       VAR_OS=windows
       VAR_OS_ENV=windows.cygwin
       ;;
-    *msys*)
+    *msys* | *mingw*)
       VAR_OS=windows
       VAR_OS_ENV=windows.msys2
       ;;
