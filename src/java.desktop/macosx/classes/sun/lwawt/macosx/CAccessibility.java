@@ -755,16 +755,21 @@ class CAccessibility implements PropertyChangeListener {
         return invokeAndWait(new Callable<Accessible>() {
             @Override
             public Accessible call() throws Exception {
-                Object o = nativeGetAccessibleJTreeNodeCurrentAccessible(a, c);
-if (o instanceof Accessible) {
-    return (Accessible)o;
-}
+                AccessibleContext ac = a.getAccessibleContext();
+                if (ac != null) {
+                    Class<?> accessibleJTreeNode = ac.getClass();
+                    Method getCurrentComponent = accessibleJTreeNode.getDeclaredMethod("getCurrentComponent");
+                    getCurrentComponent.setAccessible(true);
+                    Object o = getCurrentComponent.invoke(ac);
+                    if (o instanceof Accessible) {
+                        return (Accessible) o;
+                    }
+                    }
+
                 return null;
             }
         }, c);
     }
-
-    private static native Object nativeGetAccessibleJTreeNodeCurrentAccessible(Accessible a, Component c);
 
     private static Accessible createAccessibleTreeNode(JTree t, TreePath p) {
         Accessible a = null;
