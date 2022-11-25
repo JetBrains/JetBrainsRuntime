@@ -749,6 +749,25 @@ class CAccessibility implements PropertyChangeListener {
         return new Object[]{childrenAndRoles.get(whichChildren * 2), childrenAndRoles.get((whichChildren * 2) + 1)};
     }
 
+    private static Accessible getAccessibleComboboxValue(Accessible a, Component c) {
+        if (a == null) return null;
+
+        return invokeAndWait(new Callable<Accessible>() {
+            @Override
+            public Accessible call() throws Exception {
+                AccessibleContext ac = a.getAccessibleContext();
+                if (ac != null) {
+                    AccessibleSelection as = ac.getAccessibleSelection();
+                    if (as != null) {
+                        return as.getAccessibleSelection(0);
+                    }
+                }
+
+                return null;
+            }
+        }, c);
+    }
+
     private static Accessible getAccessibleJTreeNodeCurrentAccessible(Accessible a, Component c) {
         if (a == null) return null;
 
