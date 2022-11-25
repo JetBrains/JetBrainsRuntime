@@ -43,7 +43,7 @@ static jmethodID sjm_getAccessibleName = NULL;
 {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
 GET_CACCESSIBILITY_CLASS_RETURN(nil);
-    DECLARE_METHOD_RETURN(sjm_getAccessibleComboboxValue, sjc_CAccessibility, "getAccessibleComboboxValue", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/Accessible;", nil);
+    DECLARE_STATIC_METHOD_RETURN(sjm_getAccessibleComboboxValue, sjc_CAccessibility, "getAccessibleComboboxValue", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/Accessible;", nil);
     jobject axSelectedChild = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, sjm_getAccessibleComboboxValue, fAccessible, fComponent);
     CHECK_EXCEPTION();
     if (axSelectedChild == NULL) {

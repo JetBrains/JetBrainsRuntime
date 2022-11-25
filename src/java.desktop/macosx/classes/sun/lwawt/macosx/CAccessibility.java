@@ -956,7 +956,7 @@ class CAccessibility implements PropertyChangeListener {
     }
 
     private static int getTableInfoAtIndex(final Accessible a, final Component c,
-                                              final int info, int index) {
+                                              final int info, final int index) {
         if (a == null) return -1;
 
         return invokeAndWait(new Callable<Integer>() {
@@ -967,7 +967,7 @@ class CAccessibility implements PropertyChangeListener {
                     AccessibleTable at = ac.getAccessibleTable();
                     if (at != null) {
                         int columnCount = at.getAccessibleColumnCount();
-                        if (columnCount >= 0) {
+                        if (columnCount != 0) {
                             if (info == JAVA_AX_ROWS) return index / columnCount;
                             if (info == JAVA_AX_COLS) return index % columnCount;
                         }

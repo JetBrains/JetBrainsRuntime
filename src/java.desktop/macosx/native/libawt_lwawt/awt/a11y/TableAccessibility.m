@@ -91,7 +91,7 @@ static jmethodID sjm_getAccessibleName = NULL;
 JNIEnv* env = [ThreadUtilities getJNIEnv];
     GET_CACCESSIBILITY_CLASS_RETURN(-1);
     DECLARE_STATIC_METHOD_RETURN(sjm_getAccessibleTableInfoAtIndex, sjc_CAccessibility, "getTableInfoAtIndex", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;II)I", -1);
-    jint infoAtIndex = (*env)->CallStaticIntMethod(env, sjc_CAccessibility, sjm_getAccessibleTableInfoAtIndex, (jint)info, (jint)index);
+    jint infoAtIndex = (*env)->CallStaticIntMethod(env, sjc_CAccessibility, sjm_getAccessibleTableInfoAtIndex, fAccessible, fComponent, (jint)info, (jint)index);
     CHECK_EXCEPTION();
     return (int)infoAtIndex;
 }
@@ -104,19 +104,6 @@ JNIEnv* env = [ThreadUtilities getJNIEnv];
 - (int)accessibleColumnAtIndex:(int)index
 {
     return [self accessibleTableInfo:sun_lwawt_macosx_CAccessibility_JAVA_AX_COLS AtIndex:index];;
-}
-
-- (BOOL) isAccessibleChildSelectedFromIndex:(int)index
-{
-    JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject axContext = [self axContextWithEnv:env];
-    if (axContext == NULL) return NO;
-    jclass clsInfo = (*env)->GetObjectClass(env, axContext);
-    DECLARE_METHOD_RETURN(jm_isAccessibleChildSelected, clsInfo, "isAccessibleChildSelected", "(I)Z", NO);
-    jboolean isAccessibleChildSelected = (*env)->CallIntMethod(env, axContext, jm_isAccessibleChildSelected, (jint)index);
-    CHECK_EXCEPTION();
-    (*env)->DeleteLocalRef(env, axContext);
-    return isAccessibleChildSelected;
 }
 
 - (TableRowAccessibility *)createRowWithIndex:(NSUInteger)index
