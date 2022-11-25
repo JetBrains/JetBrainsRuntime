@@ -403,6 +403,9 @@ specific installation order. However, the solution suggested by the KB article
 does not always resolve the problem. See [this stackoverflow discussion](
 https://stackoverflow.com/questions/10888391) for other suggestions.
 
+If you have Visual Studio installed but `configure` fails to detect it, it may
+be because of [spaces in path](#spaces-in-path).
+
 ### IBM XL C/C++
 
 The regular builds by SAP is using version 12.1, described as `IBM XL C/C++ for
@@ -1509,6 +1512,15 @@ spawn failed
 This can be a sign of a Cygwin problem. See the information about solving
 problems in the [Cygwin](#cygwin) section. Rebooting the computer might help
 temporarily.
+
+#### Spaces in Path
+
+On Windows, when configuring, `fixpath.sh` may report that some directory
+names have spaces. Usually, it assumes those directories have
+[short paths](https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/fsutil-8dot3name).
+You can run `fsutil file setshortname` in `cmd` on certain directories, such as
+`Microsoft Visual Studio` or `Windows Kits`, to assign arbitrary short paths so
+`configure` can access them.
 
 ### Getting Help
 
