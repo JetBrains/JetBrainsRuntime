@@ -42,7 +42,7 @@ export CMP="@CMP@"
 export CP="@CP@"
 export CUT="@CUT@"
 export DIFF="@DIFF@"
-export DUMPBIN="@FIXPATH@ @DUMPBIN@"
+export DUMPBIN="@DUMPBIN@"
 export EXPR="@EXPR@"
 export FILE="@FILE@"
 export FIND="@FIND@"
@@ -84,7 +84,7 @@ else
 fi
 
 if [ "$OPENJDK_TARGET_OS" = "windows" ]; then
-  export PATH="@VS_PATH@"
+  export PATH="$PATH:@TOOLCHAIN_PATH@"
 fi
 
 # Now locate the main script and run it.

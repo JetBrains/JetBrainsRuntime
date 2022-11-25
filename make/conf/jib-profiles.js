@@ -232,7 +232,7 @@ var getJibProfilesCommon = function (input, data) {
     // List of the main profile names used for iteration
     common.main_profile_names = [
         "linux-x64", "linux-x86", "macosx-x64", "solaris-x64",
-        "solaris-sparcv9", "windows-x64", "windows-x86",
+        "solaris-sparcv9", "windows-x64", "windows-x86", "windows-aarch64",
         "linux-aarch64", "linux-arm32", "linux-arm64", "linux-arm-vfp-hflt",
         "linux-arm-vfp-hflt-dyn"
     ];
@@ -449,6 +449,15 @@ var getJibProfilesProfiles = function (input, common, data) {
             configure_args: concat(common.configure_args_32bit),
         },
 
+        "windows-aarch64": {
+            target_os: "windows",
+            target_cpu: "aarch64",
+            dependencies: ["devkit", "build_devkit"],
+            configure_args: [
+                "--openjdk-target=aarch64-unknown-cygwin",
+            ],
+        },
+
         "linux-aarch64": {
             target_os: "linux",
             target_cpu: "aarch64",
@@ -622,6 +631,10 @@ var getJibProfilesProfiles = function (input, common, data) {
         },
         "windows-x86": {
             platform: "windows-x86",
+            jdk_suffix: "zip",
+        },
+        "windows-aarch64": {
+            platform: "windows-aarch64",
             jdk_suffix: "zip",
         },
        "linux-aarch64": {
@@ -853,7 +866,7 @@ var getJibProfilesDependencies = function (input, common) {
         macosx_x64: "Xcode11.3.1-MacOSX10.15+1.0",
         solaris_x64: "SS12u4-Solaris11u1+1.0",
         solaris_sparcv9: "SS12u4-Solaris11u1+1.1",
-        windows_x64: "VS2017-15.9.16+1.0",
+        windows_x64: "VS2017-15.9.16+1.1",
         linux_aarch64: (input.profile != null && input.profile.indexOf("arm64") >= 0
                     ? "gcc-linaro-aarch64-linux-gnu-4.8-2013.11_linux+1.0"
                     : "gcc7.3.0-Fedora27+1.1"),
@@ -869,6 +882,16 @@ var getJibProfilesDependencies = function (input, common) {
     var devkit_platform = (input.target_cpu == "x86"
         ? input.target_os + "_x64"
         : input.target_platform);
+    if (input.target_platform == "windows_aarch64") {
+        devkit_platform = "windows_x64";
+    }
+    var devkit_cross_prefix = "";
+    if (!(input.target_os == "windows")) {
+        if (input.build_platform != input.target_platform
+           && input.build_platform != devkit_platform) {
+            devkit_cross_prefix = input.build_platform + "-to-";
+        }
+    }
 
     var boot_jdk_platform = (input.build_os == "macosx" ? "osx" : input.build_os)
         + "-" + input.build_cpu;

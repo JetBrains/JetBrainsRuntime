@@ -44,10 +44,9 @@ ifeq ($(OPENJDK_TARGET_OS), windows)
   # Reset targets so we don't build libjvm.
   TARGETS :=
 
-  # Helper macro to convert a unix path to a Windows path, suitable for
-  # inclusion in a command line.
-  FixPath = \
-    $(strip $(subst \,\\,$(shell $(CYGPATH) -w $1)))
+  ifeq ($(call isBuildOsEnv, windows.cygwin windows.msys2), true)
+    FixLinuxExecutable = $(call FixPath, $1)
+  endif
 
   JVM_DEFINES_client := $(patsubst -D%,%, $(filter -D%, $(JVM_CFLAGS)))
   EXTRACTED_DEFINES_client := $(addprefix -define , $(JVM_DEFINES_client))

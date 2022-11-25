@@ -341,8 +341,8 @@ define SetupJavaCompilationBody
     $1_SJAVAC:=$$(subst com.sun.tools.javac.Main,com.sun.tools.sjavac.Main,$$($1_JAVAC))
 
     # Set the $1_REMOTE to spawn a background javac server.
-    $1_REMOTE:=--server:portfile=$$($1_SJAVAC_PORTFILE),id=$1,sjavac=$$(subst \
-        $$(SPACE),%20,$$(subst $$(COMMA),%2C,$$(strip $$($1_SERVER_JVM) $$($1_SJAVAC))))
+    $1_REMOTE:=--server:portfile=$$(call FixPath,$$($1_SJAVAC_PORTFILE)),id=$1,sjavac=$$(subst \
+        $$(SPACE),%20,$$(subst $$(COMMA),%2C,$$(strip $$(call FixPath, $$($1_SERVER_JVM) $$($1_SJAVAC)))))
 
     $1_COMPILE_TARGET := $$($1_BIN)$$($1_MODULE_SUBDIR)/_the.$1_batch
     $1_API_TARGET := $$($1_BIN)$$($1_MODULE_SUBDIR)/_the.$1_pubapi

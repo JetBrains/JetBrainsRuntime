@@ -164,6 +164,7 @@ AC_DEFUN([FLAGS_SETUP_WARNINGS],
   case "${TOOLCHAIN_TYPE}" in
     microsoft)
       DISABLE_WARNING_PREFIX="-wd"
+      BUILD_CC_DISABLE_WARNING_PREFIX="-wd"
       CFLAGS_WARNINGS_ARE_ERRORS="-WX"
       ;;
     solstudio)
@@ -172,8 +173,8 @@ AC_DEFUN([FLAGS_SETUP_WARNINGS],
       ;;
     gcc)
       DISABLE_WARNING_PREFIX="-Wno-"
-      CFLAGS_WARNINGS_ARE_ERRORS="-Werror"
       BUILD_CC_DISABLE_WARNING_PREFIX="-Wno-"
+      CFLAGS_WARNINGS_ARE_ERRORS="-Werror"
       ;;
     clang)
       DISABLE_WARNING_PREFIX="-Wno-"

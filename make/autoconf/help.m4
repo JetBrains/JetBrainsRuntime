@@ -25,7 +25,7 @@
 
 AC_DEFUN_ONCE([HELP_SETUP_DEPENDENCY_HELP],
 [
-  AC_CHECK_PROGS(PKGHANDLER, apt-get yum brew port pkgutil pkgadd apk)
+  UTIL_LOOKUP_PROGS(PKGHANDLER, apt-get yum brew port pkgutil pkgadd pacman apk)
 ])
 
 AC_DEFUN([HELP_MSG_MISSING_DEPENDENCY],
@@ -36,8 +36,6 @@ AC_DEFUN([HELP_MSG_MISSING_DEPENDENCY],
 
   if test "x$OPENJDK_BUILD_OS_ENV" = "xwindows.cygwin"; then
     cygwin_help $MISSING_DEPENDENCY
-  elif test "x$OPENJDK_BUILD_OS_ENV" = "xwindows.msys"; then
-    msys_help $MISSING_DEPENDENCY
   else
     PKGHANDLER_COMMAND=
 
@@ -54,6 +52,8 @@ AC_DEFUN([HELP_MSG_MISSING_DEPENDENCY],
         pkgutil_help $MISSING_DEPENDENCY ;;
       pkgadd)
         pkgadd_help  $MISSING_DEPENDENCY ;;
+      pacman)
+        pacman_help  $MISSING_DEPENDENCY ;;
       apk)
         apk_help     $MISSING_DEPENDENCY ;;
     esac
@@ -79,10 +79,6 @@ cygwin_help() {
       HELP_MSG="You might be able to fix this by running '$PKGHANDLER_COMMAND'."
       ;;
   esac
-}
-
-msys_help() {
-  PKGHANDLER_COMMAND=""
 }
 
 apt_help() {
@@ -145,6 +141,17 @@ brew_help() {
       PKGHANDLER_COMMAND="brew install freetype" ;;
     ccache)
       PKGHANDLER_COMMAND="brew install ccache" ;;
+  esac
+}
+
+pacman_help() {
+  case $1 in
+    unzip)
+      PKGHANDLER_COMMAND="sudo pacman -S unzip" ;;
+    zip)
+      PKGHANDLER_COMMAND="sudo pacman -S zip" ;;
+    make)
+      PKGHANDLER_COMMAND="sudo pacman -S make" ;;
   esac
 }
 
@@ -256,12 +263,13 @@ AC_DEFUN_ONCE([HELP_PRINT_SUMMARY_AND_WARNINGS],
   printf "\n"
   printf "Tools summary:\n"
   if test "x$OPENJDK_BUILD_OS" = "xwindows"; then
-    printf "* Environment:    $WINDOWS_ENV_VENDOR version $WINDOWS_ENV_VERSION (root at $WINDOWS_ENV_ROOT_PATH)\n"
+    printf "* Environment:    %s version %s; windows version %s; prefix \"%s\"; root \"%s\"\n" \
+        "$WINENV_VENDOR" "$WINENV_VERSION" "$WINDOWS_VERSION" "$WINENV_PREFIX" "$WINENV_ROOT"
   fi
   printf "* Boot JDK:       $BOOT_JDK_VERSION (at $BOOT_JDK)\n"
   printf "* Toolchain:      $TOOLCHAIN_TYPE ($TOOLCHAIN_DESCRIPTION)\n"
-  printf "* C Compiler:     Version $CC_VERSION_NUMBER (at $CC)\n"
-  printf "* C++ Compiler:   Version $CXX_VERSION_NUMBER (at $CXX)\n"
+  printf "* C Compiler:     Version $CC_VERSION_NUMBER (at ${CC#"$FIXPATH "})\n"
+  printf "* C++ Compiler:   Version $CXX_VERSION_NUMBER (at ${CXX#"$FIXPATH "})\n"
 
   printf "\n"
   printf "Build performance summary:\n"

@@ -73,11 +73,11 @@ define WriteCompileCommandsFragment
   $(call LogInfo, Creating compile commands fragment for $(notdir $3))
   $(call MakeDir, $(dir $1))
   $(call WriteFile,{ \
-      "directory": "$(strip $2)"$(COMMA) \
-      "file": "$(strip $3)"$(COMMA) \
+      "directory": "$(strip $(call FixPath, $2))"$(COMMA) \
+      "file": "$(strip $(call FixPath, $3))"$(COMMA) \
       "command": "$(strip $(subst $(DQUOTE),\$(DQUOTE),$(subst \,\\,\
-        $(subst $(FIXPATH),,$4))))"$(COMMA) \
-      "output": "$(strip $5)" \
+        $(subst $(FIXPATH),,$(call FixPath, $4)))))"$(COMMA) \
+      "output": "$(strip $(call FixPath, $5))" \
     }$(COMMA), \
     $1)
 endef
@@ -177,12 +177,6 @@ $(strip \
 )
 endef
 
-ifeq ($(OPENJDK_BUILD_OS_ENV), windows.cygwin)
-  UNIX_PATH_PREFIX := /cygdrive
-else ifeq ($(OPENJDK_BUILD_OS_ENV), windows.msys)
-  UNIX_PATH_PREFIX :=
-endif
-
 # This pattern is used to transform the output of the microsoft CL compiler
 # into a make syntax dependency file (.d)
 WINDOWS_SHOWINCLUDE_SED_PATTERN := \
@@ -190,7 +184,7 @@ WINDOWS_SHOWINCLUDE_SED_PATTERN := \
     -e 's|Note: including file: *||' \
     -e 's|\r||g' \
     -e 's|\\|/|g' \
-    -e 's|^\([a-zA-Z]\):|$(UNIX_PATH_PREFIX)/\1|g' \
+    -e 's|^\([a-zA-Z]\):|$(WINENV_PREFIX)/\1|g' \
     -e '\|$(TOPDIR)|I !d' \
     -e 's|$$$$| \\|g' \
     #
@@ -558,7 +552,7 @@ define SetupNativeCompilationBody
   ifeq ($$($1_TYPE), EXECUTABLE)
     $1_PREFIX :=
     ifeq ($$($1_SUFFIX), )
-      $1_SUFFIX := $(EXE_SUFFIX)
+      $1_SUFFIX := $(EXECUTABLE_SUFFIX)
     endif
   else
     $1_PREFIX := $(LIBRARY_PREFIX)

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,12 @@ if echo $* | grep linux-musl >/dev/null ; then
     exit
 fi
 
+# Allow msys2
+if echo $* | grep pc-msys >/dev/null ; then
+    echo $*
+    exit
+fi
+
 # First, filter out everything that doesn't begin with "aarch64-"
 if ! echo $* | grep '^aarch64-' >/dev/null ; then
     . $DIR/autoconf-config.sub "$@"
@@ -43,7 +49,7 @@ if ! echo $* | grep '^aarch64-' >/dev/null ; then
 fi
 
 while test $# -gt 0 ; do
-    case $1 in 
+    case $1 in
         -- )   # Stop option processing
             shift; break ;;
         aarch64-* )

@@ -180,7 +180,7 @@ AC_DEFUN([BPERF_SETUP_CCACHE],
       if test "x$TOOLCHAIN_PATH" != x; then
         PATH=$TOOLCHAIN_PATH:$PATH
       fi
-      UTIL_REQUIRE_PROGS(CCACHE, ccache)
+      UTIL_LOOKUP_PROGS(CCACHE, ccache)
       PATH="$OLD_PATH"
       CCACHE_VERSION=[`$CCACHE --version | head -n1 | $SED 's/[A-Za-z ]*//'`]
       CCACHE_STATUS="Active ($CCACHE_VERSION)"
