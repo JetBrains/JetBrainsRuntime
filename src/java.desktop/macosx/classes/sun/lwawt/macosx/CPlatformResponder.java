@@ -196,7 +196,7 @@ final class CPlatformResponder {
             jeventType = out[2];
         } else {
             if (chars != null && chars.length() > 0) {
-                testChar = chars.charAt(0);
+                testChar = chars.charAt(chars.length() - 1);
 
                 //Check if String chars contains SPACE character.
                 if (chars.trim().isEmpty()) {

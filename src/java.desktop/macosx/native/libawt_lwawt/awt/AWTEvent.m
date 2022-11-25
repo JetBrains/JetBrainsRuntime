@@ -429,14 +429,18 @@ unichar NsCharToJavaChar(unichar nsChar, NSUInteger modifiers, BOOL spaceKeyType
     return nsChar;
 }
 
-static unichar NsGetDeadKeyChar(unsigned short keyCode)
+static unichar NsGetDeadKeyChar(unsigned short keyCode, BOOL useModifiers)
 {
     TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
     CFDataRef uchr = (CFDataRef)TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData);
     if (uchr == nil) { return 0; }
     const UCKeyboardLayout *keyboardLayout = (const UCKeyboardLayout*)CFDataGetBytePtr(uchr);
-    // Carbon modifiers should be used instead of NSEvent modifiers
-    UInt32 modifierKeyState = (GetCurrentEventKeyModifiers() >> 8) & 0xFF;
+
+    UInt32 modifierKeyState = 0;
+    if (useModifiers) {
+        // Carbon modifiers should be used instead of NSEvent modifiers
+        modifierKeyState = (GetCurrentEventKeyModifiers() >> 8) & 0xFF;
+    }
 
     if (keyboardLayout) {
         UInt32 deadKeyState = 0;
@@ -483,31 +487,30 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
     NSInteger offset;
 
     BOOL enableNationalKeyboards = YES;
+    unichar testLowercaseChar = tolower(ch);
+    unichar testDeadChar = NsGetDeadKeyChar(key, YES);
+    unichar testDeadCharWithoutModifiers = NsGetDeadKeyChar(key, NO);
 
-    if (isDeadChar) {
-        unichar testDeadChar = NsGetDeadKeyChar(key);
+    if (testDeadCharWithoutModifiers != 0) {
+        // The base key is a dead key in the current layout.
+        // The key with modifiers might be not.
+
         const struct CharToVKEntry *map;
         for (map = charToDeadVKTable; map->c != 0; ++map) {
-            if (testDeadChar == map->c) {
+            if (testDeadCharWithoutModifiers == map->c) {
                 *keyCode = map->javaKey;
-                *postsTyped = NO;
+                *postsTyped = testDeadChar == 0;
                 // TODO: use UNKNOWN here?
                 *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
                 *deadChar = testDeadChar;
                 return;
             }
         }
-        // If we got here, we keep looking for a normal key.
-        // Some key combinations (for example Option+Shift+Comma on the Spanish keyboard)
-        // don't produce any characters, nor do they change the dead key state.
-        // They are nevertheless considered "dead keys", since there doesn't seem
-        // to be a good way to tell them apart just from the NSEvent object.
     }
 
     if (enableNationalKeyboards) {
-        unichar testChar = tolower(ch);
         for (const struct CharToVKEntry *map = extraCharToVKTable; map->c != 0; ++map) {
-            if (map->c == testChar) {
+            if (map->c == testLowercaseChar) {
                 *keyCode = map->javaKey;
                 *postsTyped = !isDeadChar;
                 *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
@@ -518,16 +521,13 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
 
     if ([[NSCharacterSet letterCharacterSet] characterIsMember:ch]) {
         // key is an alphabetic character
-        unichar lower;
-        lower = tolower(ch);
-        offset = lower - 'a';
+        offset = testLowercaseChar - 'a';
         if (offset >= 0 && offset <= 25) {
             // checking for A-Z characters
             *postsTyped = YES;
             // do quick conversion
             *keyCode = java_awt_event_KeyEvent_VK_A + offset;
             *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
-            return;
         } else {
             // checking for non-english characters
             // this value comes from ExtendedKeyCodes.java
@@ -537,8 +537,9 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
             // the keyCode is off by 32, so adding it here
             *keyCode = java_awt_event_KeyEvent_VK_A + offset + 32;
             *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
-return;
          }
+
+        return;
     }
 
     if ([[NSCharacterSet decimalDigitCharacterSet] characterIsMember:ch]) {
