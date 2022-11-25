@@ -13,7 +13,16 @@ import sun.java2d.wl.WLSurfaceData;
 
 public class WLGraphicsConfig extends GraphicsConfiguration {
     private final WLGraphicsDevice device;
+
+    private final Object dataLock = new Object();
+
     private final Rectangle bounds = new Rectangle(800, 600);
+
+    // This is Wayland scale for the use with wl_buffers only.
+    // From wayland.xml, wl_surface.set_buffer_scale request:
+    // "It is intended that you pick the same buffer scale as the scale of the
+    //	output that the surface is displayed on."
+    private int wlBufferScale = 1;
 
     public WLGraphicsConfig(WLGraphicsDevice device) {
         this.device = device;
@@ -55,12 +64,17 @@ public class WLGraphicsConfig extends GraphicsConfiguration {
 
     @Override
     public AffineTransform getNormalizingTransform() {
-        throw new UnsupportedOperationException();
+        // TODO: may not be able to implement this fully, but we can try
+        // obtaining physical width/height from wl_output.geometry event.
+        // Those may be 0, of course.
+        return getDefaultTransform();
     }
 
     @Override
     public Rectangle getBounds() {
-        return bounds;
+        synchronized (dataLock) {
+            return bounds;
+        }
     }
 
     public SurfaceType getSurfaceType() {
@@ -71,7 +85,16 @@ public class WLGraphicsConfig extends GraphicsConfiguration {
         return WLSurfaceData.createData(peer);
     }
 
-    public double getScale() {
-        return getDevice().getScaleFactor();
+    int getScale() {
+        synchronized (dataLock) {
+            return wlBufferScale;
+        }
+    }
+
+    void update(int width, int height, int scale) {
+        synchronized (dataLock) {
+            this.wlBufferScale = scale;
+            bounds.setSize(width, height);
+        }
     }
 }

@@ -45,6 +45,7 @@
 #include "sun_awt_wl_WLToolkit.h"
 #include "WLToolkit.h"
 #include "WLRobotPeer.h"
+#include "WLGraphicsEnvironment.h"
 
 #ifdef WAKEFIELD_ROBOT
 #include "wakefield-client-protocol.h"
@@ -609,8 +610,10 @@ static const struct wl_seat_listener wl_seat_listener = {
         .name = wl_seat_name
 };
 
-static void registry_global(void *data, struct wl_registry *wl_registry,
-                            uint32_t name, const char *interface, uint32_t version) {
+static void
+registry_global(void *data, struct wl_registry *wl_registry,
+                uint32_t name, const char *interface, uint32_t version)
+{
     if (strcmp(interface, wl_shm_interface.name) == 0) {
         wl_shm = wl_registry_bind( wl_registry, name, &wl_shm_interface, 1);
     } else if (strcmp(interface, wl_compositor_interface.name) == 0) {
@@ -621,6 +624,8 @@ static void registry_global(void *data, struct wl_registry *wl_registry,
     } else if (strcmp(interface, wl_seat_interface.name) == 0) {
         wl_seat = wl_registry_bind(wl_registry, name, &wl_seat_interface, 5);
         wl_seat_add_listener(wl_seat, &wl_seat_listener, NULL);
+    } else if (strcmp(interface, wl_output_interface.name) == 0) {
+        WLOutputRegister(wl_registry, name);
     }
 #ifdef WAKEFIELD_ROBOT
     else if (strcmp(interface, wakefield_interface.name) == 0) {
@@ -643,6 +648,8 @@ static void registry_global(void *data, struct wl_registry *wl_registry,
 static void
 registry_global_remove(void *data, struct wl_registry *wl_registry, uint32_t name)
 {
+    WLOutputDeregister(wl_registry, name);
+    // TODO: also handle wl_seat removal
 }
 
 static const struct wl_registry_listener wl_registry_listener = {
@@ -749,7 +756,10 @@ initJavaRefs(JNIEnv *env, jclass clazz)
                                                                    "keyRepeatDelay", "I"),
                       JNI_FALSE);
 
-    return JNI_TRUE;
+    jclass wlgeClass = (*env)->FindClass(env, "sun/awt/wl/WLGraphicsEnvironment");
+    CHECK_NULL_RETURN(wlgeClass, JNI_FALSE);
+
+    return WLGraphicsEnvironment_initIDs(env, wlgeClass);
 }
 
 static bool

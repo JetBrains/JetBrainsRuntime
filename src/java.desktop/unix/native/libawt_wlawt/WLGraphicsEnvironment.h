@@ -1,5 +1,4 @@
 /*
- * Copyright (c) 2002, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -23,23 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package sun.awt.wl;
 
-import java.awt.Component;
-import java.awt.GraphicsConfiguration;
-import java.awt.GraphicsEnvironment;
-import java.awt.peer.CanvasPeer;
+#include "jni.h"
 
-class WLCanvasPeer extends WLComponentPeer implements CanvasPeer {
-
-    WLCanvasPeer(Component target) {
-        super(target);
-    }
-
-
-    public GraphicsConfiguration getAppropriateGraphicsConfiguration(
-                                    GraphicsConfiguration gc)
-    {
-        return gc;
-    }
-}
+jboolean WLGraphicsEnvironment_initIDs(JNIEnv *env, jclass clazz);
+void WLOutputRegister(struct wl_registry *wl_registry, uint32_t id);
+void WLOutputDeregister(struct wl_registry *wl_registry, uint32_t id);
+uint32_t WLOutputID(struct wl_output *wlOutput);
+struct wl_output* WLOutputByID(uint32_t id);

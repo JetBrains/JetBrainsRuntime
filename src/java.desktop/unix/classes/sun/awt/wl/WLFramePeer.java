@@ -138,11 +138,11 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
     }
 
     @Override
-    void notifyConfigured(int width, int height, boolean active, boolean maximized) {
+    void notifyConfigured(int newWidth, int newHeight, boolean active, boolean maximized) {
         int widthBefore = getWidth();
         int heightBefore = getHeight();
 
-        super.notifyConfigured(width, height, active, maximized);
+        super.notifyConfigured(newWidth, newHeight, active, maximized);
 
         synchronized (getStateLock()) {
             int oldState = state;
@@ -152,7 +152,7 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
                 if (maximized) {
                     widthBeforeMaximized = widthBefore;
                     heightBeforeMaximized = heightBefore;
-                } else if (width == 0 && height == 0 && widthBeforeMaximized > 0 && heightBeforeMaximized > 0) {
+                } else if (newWidth == 0 && newHeight == 0 && widthBeforeMaximized > 0 && heightBeforeMaximized > 0) {
                     performUnlocked(() -> target.setSize(widthBeforeMaximized, heightBeforeMaximized));
                 }
                 WLToolkit.postEvent(new WindowEvent(getFrame(), WindowEvent.WINDOW_STATE_CHANGED, oldState, state));

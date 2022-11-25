@@ -36,7 +36,7 @@ public class WLSurfaceData extends SurfaceData {
         final int backgroundRGB = peer.getBackground() != null
                 ? peer.getBackground().getRGB()
                 : 0;
-        initOps(peer.getWidth(), peer.getHeight(), backgroundRGB);
+        initOps(peer.getBufferWidth(), peer.getBufferHeight(), backgroundRGB);
     }
 
     /**
@@ -75,7 +75,7 @@ public class WLSurfaceData extends SurfaceData {
 
     @Override
     public Rectangle getBounds() {
-        Rectangle r = peer.getTarget().getBounds();
+        Rectangle r = peer.getBufferBounds();
         r.x = r.y = 0;
         return r;
     }
