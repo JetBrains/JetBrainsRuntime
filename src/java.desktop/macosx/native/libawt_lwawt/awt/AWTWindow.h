@@ -53,6 +53,7 @@
     NSMutableArray* _transparentTitleBarConstraints;
     NSLayoutConstraint *_transparentTitleBarHeightConstraint;
     NSMutableArray *_transparentTitleBarButtonCenterXConstraints;
+    NSNumber* currentDisplayID;
 }
 
 // An instance of either AWTWindow_Normal or AWTWindow_Panel
@@ -71,6 +72,7 @@
 @property (nonatomic) BOOL isJustCreated;
 @property (nonatomic) NSWindowTabbingMode javaWindowTabbingMode;
 @property (nonatomic) BOOL isEnterFullScreen;
+@property (nonatomic, retain) NSNumber *currentDisplayID;
 
 - (id) initWithPlatformWindow:(jobject)javaPlatformWindow
                   ownerWindow:owner
