@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -93,7 +93,13 @@ static BOOL orderingScheduled = NO;
     [self setInitialFirstResponder:view];                       \
     [self setReleasedWhenClosed:NO];                            \
     [self setPreservesContentDuringLiveResize:YES];             \
-                                                                \
+    [[NSNotificationCenter defaultCenter] addObserver:self      \
+         selector:@selector(windowDidChangeScreen)              \
+         name:NSWindowDidChangeScreenNotification object:self]; \
+    [[NSNotificationCenter defaultCenter] addObserver:self      \
+         selector:@selector(windowDidChangeProfile)             \
+         name:NSWindowDidChangeScreenProfileNotification        \
+         object:self];                                          \
     return self;                                                \
 }                                                               \
                                                                 \
@@ -126,7 +132,24 @@ static BOOL orderingScheduled = NO;
                                                                 \
 - (NSWindowTabbingMode)tabbingMode {                            \
     return ((AWTWindow*)[self delegate]).javaWindowTabbingMode; \
-}
+}                                                               \
+                                                                \
+- (void)windowDidChangeScreen {                                 \
+   [(AWTWindow*)[self delegate] _displayChanged:YES];           \
+}                                                               \
+                                                                \
+- (void)windowDidChangeProfile {                                \
+   [(AWTWindow*)[self delegate] _displayChanged:NO];            \
+}                                                               \
+                                                                \
+- (void)dealloc {                                               \
+   [[NSNotificationCenter defaultCenter] removeObserver:self    \
+       name:NSWindowDidChangeScreenNotification object:self];   \
+   [[NSNotificationCenter defaultCenter] removeObserver:self    \
+       name:NSWindowDidChangeScreenProfileNotification          \
+       object:self];                                            \
+   [super dealloc];                                             \
+}                                                               \
 
 @implementation AWTWindow_Normal
 AWT_NS_WINDOW_IMPLEMENTATION
@@ -331,6 +354,7 @@ AWT_NS_WINDOW_IMPLEMENTATION
 @synthesize isJustCreated;
 @synthesize javaWindowTabbingMode;
 @synthesize isEnterFullScreen;
+@synthesize currentDisplayID;
 
 - (void) updateMinMaxSize:(BOOL)resizable {
     if (resizable) {
@@ -602,6 +626,7 @@ AWT_ASSERT_APPKIT_THREAD;
     self.javaPlatformWindow = nil;
     self.nsWindow = nil;
     self.ownerWindow = nil;
+    self.currentDisplayID = nil;
     [super dealloc];
 }
 
@@ -774,6 +799,33 @@ AWT_ASSERT_APPKIT_THREAD;
 
 
 // NSWindowDelegate methods
+
+- (void)_displayChanged:(BOOL)checkDisplay {
+    AWT_ASSERT_APPKIT_THREAD;
+    if (checkDisplay) {
+        NSNumber* newDisplayID = [AWTWindow getNSWindowDisplayID_AppKitThread:nsWindow];
+        if (self.currentDisplayID == nil) {
+            self.currentDisplayID = newDisplayID;
+            return;
+        }
+        if ([currentDisplayID isEqualToNumber: newDisplayID]) {
+            return;
+        }
+        self.currentDisplayID = newDisplayID;
+    }
+
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
+    if (platformWindow == NULL) {
+        NSLog(@"[AWTWindow _displayChanged]: platformWindow == NULL");
+        return;
+    }
+    GET_CPLATFORM_WINDOW_CLASS();
+    DECLARE_METHOD(jm_displayChanged, jc_CPlatformWindow, "displayChanged", "()V");
+    (*env)->CallVoidMethod(env, platformWindow, jm_displayChanged);
+    CHECK_EXCEPTION();
+    (*env)->DeleteLocalRef(env, platformWindow);
+}
 
 - (void) _deliverMoveResizeEvent {
     AWT_ASSERT_APPKIT_THREAD;

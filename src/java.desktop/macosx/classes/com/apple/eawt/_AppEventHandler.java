@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,7 +89,6 @@ class _AppEventHandler {
     private static final int NOTIFY_SYSTEM_SLEEP = 15;
     private static final int NOTIFY_SYSTEM_WAKE = 16;
     private static final int NOTIFY_SCREEN_CHANGE_PARAMETERS = 17;
-    private static final int NOTIFY_CHANGE_SCREEN = 18;
 
     private static final int REGISTER_USER_SESSION = 1;
     private static final int REGISTER_SCREEN_SLEEP = 2;
@@ -279,16 +278,6 @@ class _AppEventHandler {
                     EventQueue.invokeLater(
                             () -> ((SunGraphicsEnvironment) GraphicsEnvironment.
                                     getLocalGraphicsEnvironment()).displayParametersChanged());
-                }
-                break;
-            case NOTIFY_CHANGE_SCREEN:
-                if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-                    logger.fine("NOTIFY_CHANGE_SCREEN");
-                }
-                if (AppContext.getAppContext() != null) {
-                    EventQueue.invokeLater(
-                            () -> ((SunGraphicsEnvironment) GraphicsEnvironment.
-                                    getLocalGraphicsEnvironment()).displayChanged());
                 }
                 break;
             default:

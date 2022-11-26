@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,10 +30,12 @@ import java.awt.Component;
 import java.awt.DefaultKeyboardFocusManager;
 import java.awt.Dialog;
 import java.awt.Dialog.ModalityType;
+import java.awt.EventQueue;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Frame;
 import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
 import java.awt.Insets;
 import java.awt.KeyboardFocusManager;
 import java.awt.MenuBar;
@@ -65,6 +67,7 @@ import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.AWTAccessor.WindowAccessor;
 import sun.awt.AWTThreading;
+import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceData;
 import sun.lwawt.LWComponentPeer;
 import sun.lwawt.LWLightweightFramePeer;
@@ -74,8 +77,6 @@ import sun.lwawt.LWWindowPeer.PeerType;
 import sun.lwawt.PlatformWindow;
 import sun.security.action.GetPropertyAction;
 import sun.util.logging.PlatformLogger;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public class CPlatformWindow extends CFRetainedResource implements PlatformWindow {
     private native long nativeCreateNSWindow(long nsViewPtr,long ownerPtr, long styleBits, double x, double y, double w, double h);
@@ -648,6 +649,14 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     @Override // PlatformWindow
     public SurfaceData replaceSurfaceData() {
         return contentView.replaceSurfaceData();
+    }
+
+    public void displayChanged() {
+        if (peer != null) {
+            EventQueue.invokeLater(
+                    () -> ((SunGraphicsEnvironment) GraphicsEnvironment.
+                            getLocalGraphicsEnvironment()).displayChanged());
+        }
     }
 
     @Override // PlatformWindow
