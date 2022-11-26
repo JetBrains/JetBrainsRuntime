@@ -672,7 +672,11 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return contentView.replaceSurfaceData();
     }
 
-    public void displayChanged() {
+    public void displayChanged(boolean profileOnly) {
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine(profileOnly ? "DISPLAY_PROFILE_CHANGED" : "DISPLAY_CHANGED");
+        }
+
         if (peer != null) {
             EventQueue.invokeLater(
                     () -> ((SunGraphicsEnvironment) GraphicsEnvironment.

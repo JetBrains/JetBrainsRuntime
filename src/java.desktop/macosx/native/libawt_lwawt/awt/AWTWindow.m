@@ -135,11 +135,11 @@ static BOOL orderingScheduled = NO;
 }                                                               \
                                                                 \
 - (void)windowDidChangeScreen {                                 \
-   [(AWTWindow*)[self delegate] _displayChanged:YES];           \
+   [(AWTWindow*)[self delegate] _displayChanged:NO];           \
 }                                                               \
                                                                 \
 - (void)windowDidChangeProfile {                                \
-   [(AWTWindow*)[self delegate] _displayChanged:NO];            \
+   [(AWTWindow*)[self delegate] _displayChanged:YES];            \
 }                                                               \
                                                                 \
 - (void)dealloc {                                               \
@@ -859,9 +859,9 @@ AWT_ASSERT_APPKIT_THREAD;
 
 // NSWindowDelegate methods
 
-- (void)_displayChanged:(BOOL)checkDisplay {
+- (void)_displayChanged:(BOOL)profileOnly {
     AWT_ASSERT_APPKIT_THREAD;
-    if (checkDisplay) {
+    if (!profileOnly) {
         NSNumber* newDisplayID = [AWTWindow getNSWindowDisplayID_AppKitThread:nsWindow];
         if (newDisplayID == nil) {
             // Do not proceed with unset window display id
@@ -889,8 +889,8 @@ AWT_ASSERT_APPKIT_THREAD;
         return;
     }
     GET_CPLATFORM_WINDOW_CLASS();
-    DECLARE_METHOD(jm_displayChanged, jc_CPlatformWindow, "displayChanged", "()V");
-    (*env)->CallVoidMethod(env, platformWindow, jm_displayChanged);
+    DECLARE_METHOD(jm_displayChanged, jc_CPlatformWindow, "displayChanged", "(Z)V");
+    (*env)->CallVoidMethod(env, platformWindow, jm_displayChanged, profileOnly);
     CHECK_EXCEPTION();
     (*env)->DeleteLocalRef(env, platformWindow);
 }
