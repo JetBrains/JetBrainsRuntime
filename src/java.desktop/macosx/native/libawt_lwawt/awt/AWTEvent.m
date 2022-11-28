@@ -486,6 +486,10 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
     static size_t size = sizeof(keyTable) / sizeof(struct _key);
     NSInteger offset;
 
+    TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
+
+    BOOL asciiCapable = CFBooleanGetValue(
+            (CFBooleanRef)TISGetInputSourceProperty(currentKeyboard, kTISPropertyInputSourceIsASCIICapable));
     BOOL enableNationalKeyboards = YES;
     unichar testLowercaseChar = tolower(ch);
     unichar testDeadChar = NsGetDeadKeyChar(key, YES);
@@ -508,7 +512,7 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
         }
     }
 
-    if (enableNationalKeyboards) {
+    if (enableNationalKeyboards && asciiCapable) {
         for (const struct CharToVKEntry *map = extraCharToVKTable; map->c != 0; ++map) {
             if (map->c == testLowercaseChar) {
                 *keyCode = map->javaKey;
@@ -519,7 +523,7 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
         }
     }
 
-    if ([[NSCharacterSet letterCharacterSet] characterIsMember:ch]) {
+    if ((!enableNationalKeyboards || asciiCapable) && [[NSCharacterSet letterCharacterSet] characterIsMember:ch]) {
         // key is an alphabetic character
         offset = testLowercaseChar - 'a';
         if (offset >= 0 && offset <= 25) {

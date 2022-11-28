@@ -530,7 +530,32 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     jstring charactersIgnoringModifiers = NULL;
     if ([event type] != NSFlagsChanged) {
         characters = NSStringToJavaString(env, [event characters]);
-        charactersIgnoringModifiers = NSStringToJavaString(env, [event charactersByApplyingModifiers:0]);
+        charactersIgnoringModifiers = NSStringToJavaString(env, [event charactersIgnoringModifiers]);
+
+        TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
+        CFDataRef uchr = (CFDataRef)TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData);
+
+        if (uchr != nil) {
+            UInt32 deadKeyState = 0;
+            UniCharCount maxStringLength = 8;
+            UniCharCount actualStringLength = 0;
+            unichar unicodeString[maxStringLength];
+
+            const UCKeyboardLayout *keyboardLayout = (const UCKeyboardLayout *) CFDataGetBytePtr(uchr);
+            OSStatus status = UCKeyTranslate(
+                    keyboardLayout,
+                    [event keyCode],
+                    kUCKeyActionDown,
+                    0,
+                    LMGetKbdType(),
+                    kUCKeyTranslateNoDeadKeysMask,
+                    &deadKeyState,
+                    maxStringLength,
+                    &actualStringLength,
+                    unicodeString
+            );
+            charactersIgnoringModifiers = NSStringToJavaString(env, [NSString stringWithCharacters:unicodeString length:actualStringLength]);
+        }
     }
 
     DECLARE_CLASS(jc_NSEvent, "sun/lwawt/macosx/NSEvent");
