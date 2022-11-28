@@ -25,6 +25,7 @@
  */
 
 #include "JawsAnnouncer.h"
+#include "NVDAAnnouncer.h"
 #include "javax_swing_AccessibleAnnouncer.h"
 
 /*
@@ -35,5 +36,8 @@
 JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
 (JNIEnv *env, jclass cls, jobject accessible, jstring str, jint priority)
 {
+if (!NVDAAnnounce(env, str, priority)) {
 JawsAnnounce(env, str, priority);
+}
+
 }
