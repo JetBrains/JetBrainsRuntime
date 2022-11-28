@@ -1,2 +1,10 @@
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java                 8286840 linux-all
 jb/java/awt/Window/ZOrderOnModalDialogActivation.java                               JBR-4494 windows-all,linux-all
+java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java                              JBR-4199 linux-5.4.0-1083-aws
+java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java              JBR-4199 linux-5.4.0-1083-aws
+
+java/awt/Graphics/LineClipTest.java                                                 JBR-5071 linux-all
+java/awt/image/VolatileImage/DrawHugeImageTest.java                                 JBR-5071 linux-all
+java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java        JBR-5071 linux-all
+java/awt/PopupMenu/PopupMenuLocation.java                                           JBR-5071 linux-all
+javax/swing/JPopupMenu/6580930/bug6580930.java                                      JBR-5071 linux-all
