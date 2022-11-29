@@ -73,6 +73,7 @@ public class Font430 extends JFrame implements
     private void addComponentsToPane() {
         editorPane = new JEditorPane("text/html",
                 "<html><head><style>body {font-family:'Segoe UI'; font-size:12pt;}</style></head><body>\u4e2d</body></html>");
+        editorPane.setCaretColor(getBackground());
 
         if (CALL_GET_FONT_METRICS) {
             editorPane.getFontMetrics(new Font("Segoe UI", Font.PLAIN, 12));
@@ -92,7 +93,8 @@ public class Font430 extends JFrame implements
 
         Rectangle rect = editorPane.getBounds();
         try {
-            screenShoot = new BufferedImage(rect.width, rect.height, BufferedImage.TYPE_INT_ARGB);
+            threadSleep(1000);
+            screenShoot = new BufferedImage(rect.width - 1, rect.height, BufferedImage.TYPE_INT_ARGB);
             editorPane.paint(screenShoot.getGraphics());
             ImageIO.write(screenShoot, "png", new File(FILE_NAME));
         } catch (IOException ex) {
@@ -124,5 +126,13 @@ public class Font430 extends JFrame implements
 
     @Override
     public void windowDeactivated(WindowEvent e) {
+    }
+
+    static private void threadSleep(long ms) {
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException ex) {
+            ex.printStackTrace();
+        }
     }
 }
