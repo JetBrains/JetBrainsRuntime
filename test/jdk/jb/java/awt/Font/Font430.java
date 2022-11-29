@@ -87,7 +87,7 @@ public class Font430 extends JFrame implements
         Rectangle rect = editorPane.getBounds();
         try {
             threadSleep(1000);
-            screenShoot = new BufferedImage(rect.width, rect.height, BufferedImage.TYPE_INT_ARGB);
+            screenShoot = new BufferedImage(rect.width - 1, rect.height, BufferedImage.TYPE_INT_ARGB);
             editorPane.paint(screenShoot.getGraphics());
             ImageIO.write(screenShoot, "png", new File(FILE_NAME));
         } catch (IOException ex) {
