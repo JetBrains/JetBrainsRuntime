@@ -42,6 +42,7 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Locale;
 
 
 public class RenderPerfTest {
@@ -555,7 +556,7 @@ public class RenderPerfTest {
         }
 
         private void report() {
-            System.err.println(name + " : " + String.format("%.2f FPS", fps));
+            System.err.println(name + " : " + String.format(Locale.UK, "%.2f FPS", fps));
         }
 
         private boolean isAlmostEqual(Color c1, Color c2) {
