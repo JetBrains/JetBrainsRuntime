@@ -69,6 +69,7 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
+import java.util.Locale;
 
 public class RenderPerfTest {
     private static HashSet<String> ignoredTests = new HashSet<>();
@@ -776,7 +777,7 @@ public class RenderPerfTest {
             if (skippedFrame > 0) {
                 System.err.println(skippedFrame + " frame(s) skipped");
             }
-            System.err.println(name + " : " + String.format("%.2f", fps));
+            System.err.println(name + " : " + String.format(Locale.UK, "%.2f FPS", fps));
         }
 
         private boolean isAlmostEqual(Color c1, Color c2) {
