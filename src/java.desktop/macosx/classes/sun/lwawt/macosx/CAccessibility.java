@@ -64,6 +64,7 @@ import javax.swing.JComponent;
 import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
+import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JList;
 import javax.swing.JTree;
@@ -72,6 +73,7 @@ import javax.swing.tree.TreePath;
 
 import sun.awt.AWTAccessor;
 import sun.lwawt.LWWindowPeer;
+import sun.swing.AccessibleComponentAccessor;
 
 @SuppressWarnings("removal")
 class CAccessibility implements PropertyChangeListener {
@@ -768,28 +770,6 @@ class CAccessibility implements PropertyChangeListener {
         }, c);
     }
 
-    private static Accessible getAccessibleJTreeNodeCurrentAccessible(Accessible a, Component c) {
-        if (a == null) return null;
-
-        return invokeAndWait(new Callable<Accessible>() {
-            @Override
-            public Accessible call() throws Exception {
-                AccessibleContext ac = a.getAccessibleContext();
-                if (ac != null) {
-                    Class<?> accessibleJTreeNode = ac.getClass();
-                    Method getCurrentComponent = accessibleJTreeNode.getDeclaredMethod("getCurrentComponent");
-                    getCurrentComponent.setAccessible(true);
-                    Object o = getCurrentComponent.invoke(ac);
-                    if (o instanceof Accessible) {
-                        return (Accessible) o;
-                    }
-                    }
-
-                return null;
-            }
-        }, c);
-    }
-
     private static Accessible createAccessibleTreeNode(JTree t, TreePath p) {
         Accessible a = null;
 
@@ -1159,6 +1139,14 @@ class CAccessibility implements PropertyChangeListener {
                 }
                 return false;
             }
+        }, c);
+    }
+
+    private static Accessible getAccessibleJTreeNodeCurrentAccessible(Accessible a, Component c) {
+        if (a == null) return null;
+        return invokeAndWait(() -> {
+            AccessibleContext ac = a.getAccessibleContext();
+            return ac == null ? null : AccessibleComponentAccessor.getAccessible(ac);
         }, c);
     }
 }
