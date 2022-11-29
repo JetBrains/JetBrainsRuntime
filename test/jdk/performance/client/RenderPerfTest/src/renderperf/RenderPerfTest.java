@@ -767,7 +767,7 @@ public class RenderPerfTest {
             if (skippedFrame > 0) {
                 System.err.println(skippedFrame + " frame(s) skipped");
             }
-            System.err.println(name + " : " + String.format(Locale.UK, "%.2f FPS", fps);
+            System.err.println(name + " : " + String.format(Locale.UK, "%.2f FPS", fps));
         }
 
         private boolean isAlmostEqual(Color c1, Color c2) {
