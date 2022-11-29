@@ -72,6 +72,40 @@ static pthread_cond_t sAppKitStarted_cv = PTHREAD_COND_INITIALIZER;
 
 static time_t YEAR_SECONDS = 60 * 60 * 24 * 365;
 
+@interface JavaAWTEvent : JavaEvent
+- (id)initWithEvent:(jobject)awtEvent;
+@property (readonly) jobject awtEvent;
+@end
+
+@implementation JavaAWTEvent
+
+- (id) initWithEvent:(jobject)awtEvent env:(JNIEnv*) env {
+    if (self = [super init]) {
+        _awtEvent = (*env)->NewGlobalRef(env, awtEvent);
+    }
+    return self;
+}
+
+- (void) dealloc {
+    JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+    if (_awtEvent) {
+        (*env)->DeleteGlobalRef(env, _awtEvent);
+    }
+    [super dealloc];
+}
+
+- (void) dispatch {
+AWT_ASSERT_APPKIT_THREAD;
+    if (_awtEvent) {
+        JNIEnv* env = [ThreadUtilities getJNIEnv];
+        DECLARE_CLASS(sjc_LWCToolkit, "sun/lwawt/macosx/LWCToolkit");
+        DECLARE_STATIC_METHOD(jm_LWCToolkit_dispatch, sjc_LWCToolkit, "dispatch", "(Ljava/awt/AWTEvent;)V");
+        (*env)->CallStaticVoidMethod(env, sjc_LWCToolkit, jm_LWCToolkit_dispatch, _awtEvent);
+        CHECK_EXCEPTION();
+    }
+}
+@end
+
 @implementation AWTToolkit
 
 static long eventCount;
@@ -627,6 +661,79 @@ JNI_COCOA_EXIT(env);
 
 /*
  * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    doSimpleRunLoop
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_LWCToolkit_doSimpleRunLoop
+(JNIEnv *env, jclass clz, jlong mediator)
+{
+AWT_ASSERT_APPKIT_THREAD;
+JNI_COCOA_ENTER(env);
+    AWTRunLoopObject* mediatorObject = (AWTRunLoopObject*)jlong_to_ptr(mediator);
+    CHECK_NULL(mediatorObject);
+
+    while (![mediatorObject shouldEndRunLoop]) {
+        NSEvent *event;
+        if ((event = [NSApp nextEventMatchingMask:NSAnyEventMask
+                                        untilDate:NSDate.distantFuture
+                                           inMode:NSDefaultRunLoopMode
+                                          dequeue:YES]) != nil) {
+            [NSApp sendEvent:event];
+        }
+    }
+
+    [mediatorObject release];
+JNI_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    getNextEvent
+ * Signature: (Z)Ljava/awt/AWTEvent;
+ */
+JNIEXPORT jobject JNICALL Java_sun_lwawt_macosx_LWCToolkit_getNextEvent
+(JNIEnv *env, jclass clz, jboolean removeFromQueue)
+{
+AWT_ASSERT_APPKIT_THREAD;
+JNI_COCOA_ENTER(env);
+    if (removeFromQueue) {
+        while (1) {
+            NSEvent *event = [NSApp nextEventMatchingMask:NSAnyEventMask
+                                                untilDate:NSDate.distantFuture
+                                                   inMode:NSDefaultRunLoopMode
+                                                  dequeue:(BOOL)removeFromQueue];
+            JavaAWTEvent *e = [NSApplicationAWT extractJavaEvent:event];
+            if (e) {
+                return [e awtEvent];
+            }
+            [NSApp sendEvent:event];
+        }
+    } else {
+        while (1) {
+            NSEvent *event = [NSApp nextEventMatchingMask:NSAnyEventMask
+                                                untilDate:nil
+                                                   inMode:NSDefaultRunLoopMode
+                                                  dequeue:NO];
+            if (event == nil) {
+                return NULL;
+            }
+            JavaAWTEvent *e = [NSApplicationAWT extractJavaEvent:event];
+            if (e) {
+                return [e awtEvent];
+            }
+            event = [NSApp nextEventMatchingMask:NSAnyEventMask
+                                       untilDate:nil
+                                          inMode:NSDefaultRunLoopMode
+                                         dequeue:YES];
+            assert(event && ![NSApplicationAWT extractJavaEvent:event]);
+            [NSApp sendEvent:event];
+        }
+    }
+JNI_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
  * Method:    isBlockingEventDispatchThread
  * Signature: ()Z
  */
@@ -695,19 +802,17 @@ JNI_COCOA_EXIT(env);
 
 /*
  * Class:     sun_lwawt_macosx_LWCToolkit
- * Method:    performOnMainThread
- * Signature: (Ljava/lang/Runnable)V
+ * Method:    scheduleEvent
+ * Signature: (Ljava/awt/AWTEvent)V
  */
-JNIEXPORT void JNICALL Java_sun_lwawt_macosx_LWCToolkit_performOnMainThread
-(JNIEnv *env, jclass clz, jobject runnable)
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_LWCToolkit_scheduleEvent
+(JNIEnv *env, jclass clz, jobject event)
 {
 JNI_COCOA_ENTER(env);
-    jobject gRunnable = (*env)->NewGlobalRef(env, runnable);
-    CHECK_NULL(gRunnable);
-    [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
-        JavaRunnable* performer = [[JavaRunnable alloc] initWithRunnable:gRunnable];
-        [performer perform];
-    }];
+    CHECK_NULL(event);
+    JavaAWTEvent* jae = [[JavaAWTEvent alloc] initWithEvent:event env:env];
+    [NSApplicationAWT postJavaEvent:jae];
+    [jae release];
 JNI_COCOA_EXIT(env);
 }
 

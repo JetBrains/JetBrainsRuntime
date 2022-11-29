@@ -33,6 +33,8 @@ import java.awt.*;
  * The delegate should be set in EventQueue by {@link EventQueue#setFwDispatcher(FwDispatcher)}
  * If the delegate is not null, than it handles supported methods instead of the
  * event queue. If it is null than the behaviour of an event queue does not change.
+ * <p>
+ * This class is also used to implement AWT event dispatching on native 'main' thread.
  *
  * @see EventQueue
  *
@@ -56,4 +58,29 @@ public interface FwDispatcher {
      * Delegates the {@link java.awt.EventQueue#createSecondaryLoop()} method
      */
     SecondaryLoop createSecondaryLoop();
+
+    /**
+     * Schedules event dispatching on the appropriate thread. If this method returns {@code false},
+     * {@link #scheduleDispatch(Runnable)} method will be used instead.
+     */
+    default boolean scheduleEvent(AWTEvent event) {
+        return false;
+    }
+
+    /**
+     * If this method returns {@code true} on some thread, {@link #getNextEventFromNativeQueue(boolean)} method will be
+     * used to implement {@link EventQueue#getNextEvent()} and {@link EventQueue#peekEvent()} on that thread.
+     */
+    default boolean canGetEventsFromNativeQueue() {
+        return false;
+    }
+
+    /**
+     * Allows to access events which were scheduled for execution on 'appropriate' thread by
+     * {@link #scheduleEvent(AWTEvent)} method. This method will (only) be used by {@link EventQueue#getNextEvent()} and
+     * {@link EventQueue#peekEvent()} implementation if {@link #canGetEventsFromNativeQueue()} returns {@code true}.
+     */
+    default AWTEvent getNextEventFromNativeQueue(boolean removeFromQueue) {
+        throw new UnsupportedOperationException();
+    }
 }

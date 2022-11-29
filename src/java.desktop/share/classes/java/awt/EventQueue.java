@@ -233,6 +233,11 @@ public class EventQueue {
                 public SecondaryLoop createSecondaryLoop(EventQueue eventQueue, BooleanSupplier cond) {
                     return eventQueue.createSecondaryLoop(cond::getAsBoolean, null, 0);
                 }
+
+                @Override
+                public void dispatchEvent(EventQueue eventQueue, AWTEvent event) {
+                    eventQueue.dispatchEvent(event);
+                }
             });
     }
 
@@ -255,6 +260,8 @@ public class EventQueue {
         appContext = AppContext.getAppContext();
         pushPopLock = (Lock)appContext.get(AppContext.EVENT_QUEUE_LOCK_KEY);
         pushPopCond = (Condition)appContext.get(AppContext.EVENT_QUEUE_COND_KEY);
+
+        ((SunToolkit) Toolkit.getDefaultToolkit()).installMainThreadDispatcher(this);
     }
 
     /**
@@ -548,6 +555,9 @@ public class EventQueue {
      *            if any thread has interrupted this thread
      */
     public AWTEvent getNextEvent() throws InterruptedException {
+        if (fwDispatcher != null && fwDispatcher.canGetEventsFromNativeQueue()) {
+            return fwDispatcher.getNextEventFromNativeQueue(true);
+        }
         do {
             /*
              * SunToolkit.flushPendingEvents must be called outside
@@ -631,6 +641,9 @@ public class EventQueue {
      * @return the first event
      */
     public AWTEvent peekEvent() {
+        if (fwDispatcher != null && fwDispatcher.canGetEventsFromNativeQueue()) {
+            return fwDispatcher.getNextEventFromNativeQueue(false);
+        }
         pushPopLock.lock();
         try {
             for (int i = NUM_PRIORITIES - 1; i >= 0; i--) {
@@ -719,7 +732,7 @@ public class EventQueue {
                 // dispatch the event straight away.
                 if (fwDispatcher == null || isDispatchThreadImpl()) {
                     dispatchEventImpl(event, src);
-                } else {
+                } else if (!fwDispatcher.scheduleEvent(event)) {
                     fwDispatcher.scheduleDispatch(new Runnable() {
                         @Override
                         public void run() {
@@ -891,8 +904,8 @@ public class EventQueue {
             while (topQueue.nextQueue != null) {
                 topQueue = topQueue.nextQueue;
             }
-            if (topQueue.fwDispatcher != null) {
-                throw new RuntimeException("push() to queue with fwDispatcher");
+            if (topQueue.fwDispatcher != newEventQueue.fwDispatcher) {
+                throw new RuntimeException("push() to queue with a different fwDispatcher");
             }
             if ((topQueue.dispatchThread != null) &&
                 (topQueue.dispatchThread.getEventQueue() == this))

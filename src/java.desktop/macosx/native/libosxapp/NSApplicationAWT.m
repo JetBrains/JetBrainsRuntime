@@ -50,8 +50,12 @@ BOOL postEventDuringEventSynthesis = NO;
  * Subtypes of NSApplicationDefined, which are used for custom events.
  */
 enum {
-    ExecuteBlockEvent = 777, NativeSyncQueueEvent
+    ExecuteBlockEvent = 777, NativeSyncQueueEvent, NativeJavaEvent
 };
+
+@implementation JavaEvent
+- (void)dispatch {}
+@end
 
 @implementation NSApplicationAWT
 
@@ -407,6 +411,10 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
         void (^block)() = (void (^)()) [event data1];
         block();
         [block release];
+    } else if ([event type] == NSApplicationDefined && [event subtype] == NativeJavaEvent) {
+        JavaEvent *je = (JavaEvent*)[event data1];
+        [je dispatch];
+        [je release];
     } else if ([event type] == NSKeyUp && ([event modifierFlags] & NSCommandKeyMask)) {
         // Cocoa won't send us key up event when releasing a key while Cmd is down,
         // so we have to do it ourselves.
@@ -462,6 +470,28 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
         CGEventPostToPSN(&psn, [event CGEvent]);
     }
     [pool drain];
+}
+
++ (void) postJavaEvent:(JavaEvent*) je {
+    [je retain];
+    NSInteger encode = (NSInteger) je;
+    NSEvent* e = [NSEvent otherEventWithType: NSApplicationDefined
+                                    location: NSMakePoint(0,0)
+                               modifierFlags: 0
+                                   timestamp: 0
+                                windowNumber: 0
+                                     context: nil
+                                     subtype: NativeJavaEvent
+                                       data1: encode
+                                       data2: 0];
+    [NSApp postEvent:e atStart:NO];
+}
+
++ (JavaEvent*) extractJavaEvent:(NSEvent*) event {
+    if ([event type] == NSApplicationDefined && [event subtype] == NativeJavaEvent) {
+        return (JavaEvent*)[event data1];
+    }
+    return nil;
 }
 
 - (void)waitForDummyEvent:(double)timeout {

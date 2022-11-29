@@ -551,6 +551,11 @@ public final class AWTAccessor {
          * Creates a secondary loop with the provided condition.
          */
         SecondaryLoop createSecondaryLoop(EventQueue eventQueue, BooleanSupplier cond);
+
+        /**
+         * Dispatches event using the given EventQueue.
+         */
+        void dispatchEvent(EventQueue eventQueue, AWTEvent event);
     }
 
     /*

@@ -26,6 +26,10 @@
 #import "JNIUtilities.h"
 #import <Cocoa/Cocoa.h>
 
+JNIEXPORT @interface JavaEvent : NSObject
+- (void)dispatch;
+@end
+
 JNIEXPORT @interface NSApplicationAWT : NSApplication {
     NSString *fApplicationName;
     NSWindow *eventTransparentWindow;
@@ -42,6 +46,9 @@ JNIEXPORT @interface NSApplicationAWT : NSApplication {
 
 + (void) runAWTLoopWithApp:(NSApplication*)app;
 + (void)logException:(NSException *)exception forProcess:(NSProcessInfo*)processInfo;
+
++ (void) postJavaEvent:(JavaEvent*) javaEvent;
++ (JavaEvent*) extractJavaEvent:(NSEvent*) event;
 
 @end
 
