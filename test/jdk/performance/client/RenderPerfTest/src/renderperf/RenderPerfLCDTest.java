@@ -330,7 +330,7 @@ public class RenderPerfLCDTest {
         }
 
         private void report() {
-            System.err.println(name + " : " + String.format((Locale.UK, "%.2f FPS", fps));
+            System.err.println(name + " : " + String.format(Locale.UK, "%.2f FPS", fps);
         }
 
         private boolean isAlmostEqual(Color c1, Color c2) {
