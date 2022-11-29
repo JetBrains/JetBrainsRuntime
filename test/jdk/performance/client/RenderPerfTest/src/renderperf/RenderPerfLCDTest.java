@@ -49,6 +49,7 @@ import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import java.util.Locale;
 
 public class RenderPerfLCDTest {
     private static HashSet<String> ignoredTests = new HashSet<>();
@@ -329,7 +330,7 @@ public class RenderPerfLCDTest {
         }
 
         private void report() {
-            System.err.println(name + " : " + String.format("%.2f FPS", fps));
+            System.err.println(name + " : " + String.format((Locale.UK, "%.2f FPS", fps));
         }
 
         private boolean isAlmostEqual(Color c1, Color c2) {
