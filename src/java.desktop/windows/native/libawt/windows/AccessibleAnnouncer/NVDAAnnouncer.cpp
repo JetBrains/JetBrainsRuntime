@@ -16,22 +16,48 @@
 // Created by Artem.Semenov on 28.11.2022.
 //
 
+
 #include "NVDAAnnouncer.h"
-#include "nvdaController.h"
-#include "IJawsApi.h"
+#include "NVDAClient.h"
 #include "javax_swing_AccessibleAnnouncer.h"
 
-bool NVDAAnnounce(JNIEnv *env, jstring str, jint priority)
+
+bool NVDAAnnounce(JNIEnv* env, jstring str, jint priority)
 {
-    error_status_t nvdaStatus = nvdaController_testIfRunning();
-    if (nvdaStatus == 0) return false;
-    const jchar *jchars = env->GetStringChars(str, NULL);
-    BSTR param = SysAllocString(jchars);
-    if (priority == javax_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT) {
-        nvdaController_cancelSpeech();
+    if ((env == nullptr) || (str == nullptr)) {
+        // TODO: add some error handling
+        return false;
     }
-    nvdaStatus = nvdaController_speakText(param);
-    if (nvdaStatus == 0) return false;
+
+    NVDAClient* const nvdaClient = NVDAClient::getInstance();
+    if (nvdaClient == nullptr) {
+        // NVDA has failed to initialize
+        // TODO: add some error handling
+        return false;
+    }
+
+    if (!nvdaClient->testIfRunning()) {
+        // NVDA isn't running or an RPC error occurred
+        return false;
+    }
+
+    if (priority == javax_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT) {
+        nvdaClient->cancelSpeech();
+    }
+
+    const jchar* const jchars = env->GetStringChars(str, nullptr);
+    if (jchars == nullptr) {
+        // TODO: add some error handling
+        return false;
+    }
+
+    static_assert(sizeof(*jchars) == sizeof(wchar_t), "Can't cast jchar* to wchar_t*");
+    const wchar_t* const announceText = reinterpret_cast<const wchar_t*>(jchars);
+
+    if (!nvdaClient->speakText(announceText)) {
+        // TODO: add some error handling
+        return false;
+    }
 
     return true;
 }

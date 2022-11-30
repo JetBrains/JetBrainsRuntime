@@ -16,8 +16,11 @@
 // Created by Artem.Semenov on 28.11.2022.
 //
 
+
 #ifndef JDK_NVDAANNOUNCER_H
 #define JDK_NVDAANNOUNCER_H
+
+#include <jni.h>
 
 bool NVDAAnnounce(JNIEnv *env, jstring str, jint priority);
 
