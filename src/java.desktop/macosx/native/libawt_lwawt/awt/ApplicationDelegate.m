@@ -44,9 +44,6 @@
 // The following is a AWT convention?
 #define PREFERENCES_TAG  42
 
-// Do not pass extra NOTIFY_CHANGE_SCREEN during this timeout
-#define CHANGE_SCREEN_MUTE_TIME 0.1
-
 static void addMenuItem(NSMenuItem* menuItem, NSInteger index) {
 AWT_ASSERT_APPKIT_THREAD;
 
