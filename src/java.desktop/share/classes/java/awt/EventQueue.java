@@ -261,7 +261,10 @@ public class EventQueue {
         pushPopLock = (Lock)appContext.get(AppContext.EVENT_QUEUE_LOCK_KEY);
         pushPopCond = (Condition)appContext.get(AppContext.EVENT_QUEUE_COND_KEY);
 
-        ((SunToolkit) Toolkit.getDefaultToolkit()).installMainThreadDispatcher(this);
+        Toolkit toolkit = Toolkit.getDefaultToolkit();
+        if (toolkit instanceof SunToolkit) {
+            ((SunToolkit) toolkit).installMainThreadDispatcher(this);
+        }
     }
 
     /**
