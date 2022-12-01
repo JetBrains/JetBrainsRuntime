@@ -42,6 +42,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.ActionEvent;
 import java.awt.Rectangle;
 import java.util.concurrent.CountDownLatch;
+import java.lang.Thread;
 
 public class AccessibleAnnouncerTest extends AccessibleComponentTest {
 
@@ -51,11 +52,14 @@ public class AccessibleAnnouncerTest extends AccessibleComponentTest {
     }
 
 void createTest() {
-    INSTRUCTIONS = "";
+    INSTRUCTIONS = "INSTRUCTIONS:\n"
+            + "Check announcing.\n\n"
+            + "Turn screen reader on, and Tab to the say button.\n\n"
+            + "If you can hear text from text filt tab further and press PASS, otherwise press FAIL.\n";;
 
     JPanel frame = new JPanel();
 
-    JButton button = new JButton("show");
+    JButton button = new JButton("Say");
     button.setPreferredSize(new Dimension(100, 35));
 JTextField textField = new JTextField("This is text");
 
@@ -71,15 +75,59 @@ JTextField textField = new JTextField("This is text");
     frame.setLayout(new FlowLayout());
     frame.add(textField);
     frame.add(button);
-    exceptionString = "Accessible JList push button with simple window test failed!";
+    exceptionString = "Accessible announcer test failed!";
     super.createUI(frame, "Accessible Anouncer test");
 }
+
+    void createPreoretyTest() {
+        String firstMessage = "This is first message";
+        String secondMessage = "This is second message";
+        INSTRUCTIONS = "INSTRUCTIONS:\n"
+                + "Check announcing preorety.\n\n"
+                + "Turn screen reader on, and Tab to the say button and press.\n\n"
+                + "If you can hear \"" + firstMessage
+                + "\" and \"" + secondMessage
+                + "\" tab further and press PASS, otherwise press FAIL.\n";;
+
+        JPanel frame = new JPanel();
+
+        JButton button = new JButton("Say");
+        button.setPreferredSize(new Dimension(100, 35));
+
+        button.addActionListener(new ActionListener() {
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                AccessibleAnnouncer.announce(firstMessage, AccessibleAnnouncer.ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT);
+                try {
+                    Thread.sleep(3000);
+                    AccessibleAnnouncer.announce("You must not hear this message.", AccessibleAnnouncer.ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT);
+                    AccessibleAnnouncer.announce(secondMessage, AccessibleAnnouncer.ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT);
+                 } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
+
+        frame.setLayout(new FlowLayout());
+        frame.add(button);
+        exceptionString = "Accessible announcer preorety test failed!";
+        super.createUI(frame, "Accessible Anouncer test");
+    }
 
     public static void main(String[] args)  throws Exception {
         AccessibleAnnouncerTest test = new AccessibleAnnouncerTest();
 
         countDownLatch = test.createCountDownLatch();
         SwingUtilities.invokeLater(test::createTest);
+        countDownLatch.await();
+
+        if (!testResult) {
+            throw new RuntimeException(a11yTest.exceptionString);
+        }
+
+        countDownLatch = test.createCountDownLatch();
+        SwingUtilities.invokeLater(test::createPreoretyTest);
         countDownLatch.await();
 
         if (!testResult) {

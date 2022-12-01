@@ -437,7 +437,7 @@ static jobject sAccessibilityClass = NULL;
     NSNumber *nsPriority = [sAnnouncePriorities objectForKey:priority];
 
     if (nsPriority == nil) {
-        nsPriority = [sAnnouncePriorities objectForKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ACCESSIBLE_PRIORITY_LOW]];
+        nsPriority = [sAnnouncePriorities objectForKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT]];
     }
 
     [dictionary setObject:nsPriority forKey:NSAccessibilityPriorityKey];
