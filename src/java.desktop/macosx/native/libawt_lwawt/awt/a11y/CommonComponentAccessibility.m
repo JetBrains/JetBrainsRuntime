@@ -1361,7 +1361,7 @@ JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
     NSString *text = JavaStringToNSString(env, str);
     NSNumber *javaPriority = [NSNumber numberWithInt:priority];
 
-        [ThreadUtilities performOnMainThreadWaiting:NO block:^{
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^{
 
             id caller = nil;
 
