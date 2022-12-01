@@ -479,7 +479,7 @@ static unichar NsGetDeadKeyChar(unsigned short keyCode, BOOL useModifiers)
  */
 static void
 NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
-                           NSUInteger flags, unsigned short key,
+                           NSUInteger flags, unsigned short key, BOOL useNationalLayouts,
                            jint *keyCode, jint *keyLocation, BOOL *postsTyped,
                            unichar *deadChar)
 {
@@ -490,7 +490,6 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
 
     BOOL asciiCapable = CFBooleanGetValue(
             (CFBooleanRef)TISGetInputSourceProperty(currentKeyboard, kTISPropertyInputSourceIsASCIICapable));
-    BOOL enableNationalKeyboards = YES;
     unichar testLowercaseChar = tolower(ch);
     unichar testDeadChar = NsGetDeadKeyChar(key, YES);
     unichar testDeadCharWithoutModifiers = NsGetDeadKeyChar(key, NO);
@@ -512,7 +511,7 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
         }
     }
 
-    if (enableNationalKeyboards && asciiCapable) {
+    if (useNationalLayouts && asciiCapable) {
         for (const struct CharToVKEntry *map = extraCharToVKTable; map->c != 0; ++map) {
             if (map->c == testLowercaseChar) {
                 *keyCode = map->javaKey;
@@ -523,7 +522,7 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
         }
     }
 
-    if ((!enableNationalKeyboards || asciiCapable) && [[NSCharacterSet letterCharacterSet] characterIsMember:ch]) {
+    if ((!useNationalLayouts || asciiCapable) && [[NSCharacterSet letterCharacterSet] characterIsMember:ch]) {
         // key is an alphabetic character
         offset = testLowercaseChar - 'a';
         if (offset >= 0 && offset <= 25) {
@@ -759,11 +758,12 @@ JNI_COCOA_ENTER(env);
     jint *data = (*env)->GetIntArrayElements(env, inData, &copy);
     CHECK_NULL_RETURN(data, postsTyped);
 
-    // in  = [testChar, testDeadChar, modifierFlags, keyCode]
+    // in  = [testChar, testDeadChar, modifierFlags, keyCode, useNationalLayouts]
     jchar testChar = (jchar)data[0];
     BOOL isDeadChar = (data[1] != 0);
     jint modifierFlags = data[2];
     jshort keyCode = (jshort)data[3];
+    BOOL useNationalLayouts = (data[4] != 0);
 
     jint jkeyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
     jint jkeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
@@ -771,6 +771,7 @@ JNI_COCOA_ENTER(env);
 
     NsCharToJavaVirtualKeyCode((unichar)testChar, isDeadChar,
                                (NSUInteger)modifierFlags, (unsigned short)keyCode,
+                               useNationalLayouts,
                                &jkeyCode, &jkeyLocation, &postsTyped,
                                (unichar *) &testDeadChar);
 
