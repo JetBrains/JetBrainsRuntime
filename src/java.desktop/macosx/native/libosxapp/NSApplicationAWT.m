@@ -398,6 +398,8 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
 
 - (void)sendEvent:(NSEvent *)event
 {
+    JavaEvent *je;
+
     if ([event type] == NSApplicationDefined
             && TS_EQUAL([event timestamp], dummyEventTimestamp)
             && (short)[event subtype] == NativeSyncQueueEvent
@@ -411,8 +413,7 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
         void (^block)() = (void (^)()) [event data1];
         block();
         [block release];
-    } else if ([event type] == NSApplicationDefined && [event subtype] == NativeJavaEvent) {
-        JavaEvent *je = (JavaEvent*)[event data1];
+    } else if ((je = [NSApplicationAWT extractJavaEvent:event])) {
         [je dispatch];
         [je release];
     } else if ([event type] == NSKeyUp && ([event modifierFlags] & NSCommandKeyMask)) {
