@@ -2,12 +2,12 @@ package sun.swing;
 
 import javax.accessibility.Accessible;
 import javax.accessibility.AccessibleContext;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class AccessibleComponentAccessor {
-    private static final List<Function<AccessibleContext, Object>> accessors = new ArrayList<>();
+    private static final List<Function<AccessibleContext, Object>> accessors = new CopyOnWriteArrayList<>();
 
     public static void addAccessor(Function<AccessibleContext, Object> accessor) {
         accessors.add(accessor);
