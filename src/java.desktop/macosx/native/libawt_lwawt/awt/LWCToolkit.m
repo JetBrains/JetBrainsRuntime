@@ -43,7 +43,6 @@
 #import "AWTWindow.h"
 
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
 #import <Carbon/Carbon.h>
 
 // SCROLL PHASE STATE
