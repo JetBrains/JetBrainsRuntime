@@ -28,6 +28,22 @@
 #include "AccessibleAnnouncerJNIUtils.h"
 #include "jni_util.h"
 
+static jclass jc_AccessibleAnnouncerUtilities = NULL;
+static jmethodID jsm_getOrcaConf = NULL;
+static jmethodID jsm_getSpeechServerInfo = NULL;
+static jmethodID jsm_getGain = NULL;
+static jmethodID jsm_getVariant = NULL;
+static jmethodID jsm_getDialect = NULL;
+static jmethodID jsm_getLang = NULL;
+static jmethodID jsm_getName = NULL;
+static jmethodID jsm_getAveragePitch = NULL;
+static jmethodID jsm_getRate = NULL;
+static jmethodID jsm_getEstablished = NULL;
+static jmethodID jsm_getActiveProfile = NULL;
+static jmethodID jsm_getVerbalizePunctuationStyle = NULL;
+static jmethodID jsm_getOnlySpeakDisplayedText = NULL;
+static jmethodID jsm_getEnableSpeech = NULL;
+
 void SetSpeechConf(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
 SetOutputModule(env, connection, conf);
@@ -88,10 +104,11 @@ void SetOutputModule(JNIEnv *env, SPDConnection *connection, jobject conf)
     jobject jStr = (*env)->CallStaticObjectMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getSpeechServerInfo, conf);
     if (jStr != NULL)
     {
-        const char *sintName = JNU_GetStringPlatformChars(env, jStr, JNI_FALSE);
+        const char *sintName = JNU_GetStringPlatformChars(env, jStr, NULL);
         if (sintName != NULL)
         {
             spd_set_output_module(connection, sintName);
+            JNU_ReleaseStringPlatformChars(env, jStr, sintName);
             (*env)->DeleteLocalRef(env, jStr);
         }
     }
@@ -103,10 +120,11 @@ void set_language(JNIEnv *env, SPDConnection *connection, jobject conf)
     jobject jStr = (*env)->CallStaticObjectMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getLang, conf);
     if (jStr != NULL)
     {
-        const char *lang = JNU_GetStringPlatformChars(env, jStr, JNI_FALSE);
+        const char *lang = JNU_GetStringPlatformChars(env, jStr, NULL);
         if (lang != NULL)
         {
             spd_set_language(connection, lang);
+            JNU_ReleaseStringPlatformChars(env, jStr, lang);
             (*env)->DeleteLocalRef(env, jStr);
         }
     }
@@ -136,10 +154,11 @@ void SetSynthesisVoice(JNIEnv *env, SPDConnection *connection, jobject conf)
     jobject jStr = (*env)->CallStaticObjectMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getName, conf);
     if (jStr != NULL)
     {
-        const char *voiceName = JNU_GetStringPlatformChars(env, jStr, JNI_FALSE);
+        const char *voiceName = JNU_GetStringPlatformChars(env, jStr, NULL);
         if (voiceName != NULL)
         {
 spd_set_synthesis_voice(connection, voiceName);
+JNU_ReleaseStringPlatformChars(env, jStr, voiceName);
             (*env)->DeleteLocalRef(env, jStr);
         }
     }

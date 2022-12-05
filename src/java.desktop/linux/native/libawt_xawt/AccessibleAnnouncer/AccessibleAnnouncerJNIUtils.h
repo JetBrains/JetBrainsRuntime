@@ -29,7 +29,6 @@
 
 #include "jni.h"
 
-jclass jc_AccessibleAnnouncerUtilities = NULL;
 #define GET_AccessibleAnnouncerUtilities()\
 if (jc_AccessibleAnnouncerUtilities == NULL) {\
 jc_AccessibleAnnouncerUtilities = (*env)->FindClass(env, "Lsun/awt/AccessibleAnnouncerUtilities;");\
@@ -46,7 +45,6 @@ return ret;\
 }\
 }\
 
-jmethodID jsm_getOrcaConf = NULL;
 #define GET_getOrcaConf()\
 GET_AccessibleAnnouncerUtilities();\
 if (jsm_getOrcaConf == NULL) {\
@@ -65,7 +63,6 @@ return ret;\
 }\
 }\
 
-jmethodID jsm_getSpeechServerInfo = NULL;
 #define GET_getSpeechServerInfo()\
 GET_AccessibleAnnouncerUtilities();\
 if (jsm_getSpeechServerInfo == NULL) {\
@@ -75,7 +72,6 @@ return;\
 }\
 }\
 
-jmethodID jsm_getGain = NULL;
 #define GET_getGain()\
 GET_AccessibleAnnouncerUtilities();\
 if (jsm_getGain == NULL) {\
@@ -85,7 +81,6 @@ return;\
 }\
 }\
 
-jmethodID jsm_getVariant = NULL;
 #define GET_getVariant()\
 GET_AccessibleAnnouncerUtilities();\
 if (jsm_getVariant == NULL) {\
@@ -95,7 +90,6 @@ return;\
 }\
 }\
 
-jmethodID jsm_getDialect = NULL;
 #define GET_getDialect()\
 GET_AccessibleAnnouncerUtilities();\
 if (jsm_getDialect == NULL) {\
@@ -105,7 +99,6 @@ return;\
 }\
 }\
 
-jmethodID jsm_getLang = NULL;
 #define GET_getLang()\
 GET_AccessibleAnnouncerUtilities();\
 if (jsm_getLang == NULL) {\
@@ -115,7 +108,6 @@ return;\
 }\
 }\
 
-jmethodID jsm_getName = NULL;
 #define GET_getName()\
 GET_AccessibleAnnouncerUtilities();\
 if (jsm_getName == NULL) {\
@@ -125,7 +117,6 @@ return;\
 }\
 }\
 
-jmethodID jsm_getAveragePitch = NULL;
 #define GET_getAveragePitch()\
 GET_AccessibleAnnouncerUtilities();\
 if (jsm_getAveragePitch == NULL) {\
@@ -135,7 +126,6 @@ return;\
 }\
 }\
 
-jmethodID jsm_getRate = NULL;
 #define GET_getRate()\
 GET_AccessibleAnnouncerUtilities();\
 if (jsm_getRate == NULL) {\
@@ -145,7 +135,6 @@ return;\
 }\
 }\
 
-jmethodID jsm_getEstablished = NULL;
 #define GET_getEstablished(ret)\
 GET_AccessibleAnnouncerUtilitiesReturn(ret);\
 if (jsm_getEstablished == NULL) {\
@@ -155,7 +144,6 @@ return ret;\
 }\
 }\
 
-jmethodID jsm_getActiveProfile = NULL;
 #define GET_getActiveProfile()\
 GET_AccessibleAnnouncerUtilities();\
 if (jsm_getActiveProfile == NULL) {\
@@ -165,7 +153,6 @@ return;\
 }\
 }\
 
-jmethodID jsm_getVerbalizePunctuationStyle = NULL;
 #define GET_getVerbalizePunctuationStyle()\
 GET_AccessibleAnnouncerUtilities();\
 if (jsm_getVerbalizePunctuationStyle == NULL) {\
@@ -175,7 +162,6 @@ return;\
 }\
 }\
 
-jmethodID jsm_getOnlySpeakDisplayedText = NULL;
 #define GET_getOnlySpeakDisplayedText(ret)\
 GET_AccessibleAnnouncerUtilitiesReturn(ret);\
 if (jsm_getOnlySpeakDisplayedText == NULL) {\
@@ -185,7 +171,6 @@ return ret;\
 }\
 }\
 
-jmethodID jsm_getEnableSpeech = NULL;
 #define GET_getEnableSpeech(ret)\
 GET_AccessibleAnnouncerUtilitiesReturn(ret);\
 if (jsm_getEnableSpeech == NULL) {\
