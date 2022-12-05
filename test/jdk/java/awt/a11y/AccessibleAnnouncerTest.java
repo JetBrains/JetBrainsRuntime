@@ -54,8 +54,8 @@ public class AccessibleAnnouncerTest extends AccessibleComponentTest {
 void createTest() {
     INSTRUCTIONS = "INSTRUCTIONS:\n"
             + "Check announcing.\n\n"
-            + "Turn screen reader on, and Tab to the say button.\n\n"
-            + "If you can hear text from text filt tab further and press PASS, otherwise press FAIL.\n";;
+            + "Turn screen reader on, and Tab to the say button and press it.\n\n"
+            + "If you can hear text from text field tab further and press PASS, otherwise press FAIL.\n";;
 
     JPanel frame = new JPanel();
 
@@ -79,11 +79,11 @@ JTextField textField = new JTextField("This is text");
     super.createUI(frame, "Accessible Anouncer test");
 }
 
-    void createPreoretyTest() {
+    void createPriorityTest() {
         String firstMessage = "This is first message";
         String secondMessage = "This is second message";
         INSTRUCTIONS = "INSTRUCTIONS:\n"
-                + "Check announcing preorety.\n\n"
+                + "Check announcing priority.\n\n"
                 + "Turn screen reader on, and Tab to the say button and press.\n\n"
                 + "If you can hear \"" + firstMessage
                 + "\" and \"" + secondMessage
@@ -127,7 +127,7 @@ JTextField textField = new JTextField("This is text");
         }
 
         countDownLatch = test.createCountDownLatch();
-        SwingUtilities.invokeLater(test::createPreoretyTest);
+        SwingUtilities.invokeLater(test::createPriorityTest);
         countDownLatch.await();
 
         if (!testResult) {
