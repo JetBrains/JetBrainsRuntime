@@ -53,7 +53,6 @@
     NSMutableArray* _transparentTitleBarConstraints;
     NSLayoutConstraint *_transparentTitleBarHeightConstraint;
     NSMutableArray *_transparentTitleBarButtonCenterXConstraints;
-    NSNumber* currentDisplayID;
 }
 
 // An instance of either AWTWindow_Normal or AWTWindow_Panel
