@@ -87,7 +87,7 @@ $ docker run -v `pwd`../../../../:/JetBrainsRuntime -it 942ea9900054
 Install the necessary tools, libraries, and headers with:
 ```
 $ sudo apt-get install autoconf make build-essential libx11-dev libxext-dev libxrender-dev libxtst-dev \
-       libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev \
+       libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev libspeechd-dev \
        java-16-amazon-corretto-jdk
 ```
 Then run the following:

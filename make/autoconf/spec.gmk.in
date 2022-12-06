@@ -447,6 +447,9 @@ endif
 X_CFLAGS:=@X_CFLAGS@
 X_LIBS:=@X_LIBS@
 
+SPEECHD_CFLAGS:=@SPEECHD_CFLAGS@
+SPEECHD_LIBS:=@SPEECHD_LIBS@
+
 # The lowest required version of macosx
 MACOSX_VERSION_MIN=@MACOSX_VERSION_MIN@
 # The highest allowed version of macosx

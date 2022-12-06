@@ -32,6 +32,7 @@ m4_include([lib-freetype.m4])
 m4_include([lib-std.m4])
 m4_include([lib-x11.m4])
 m4_include([lib-fontconfig.m4])
+m4_include([lib-speechd.m4])
 m4_include([lib-tests.m4])
 
 ################################################################################
@@ -43,12 +44,15 @@ AC_DEFUN_ONCE([LIB_DETERMINE_DEPENDENCIES],
   if test "x$OPENJDK_TARGET_OS" = xwindows || test "x$OPENJDK_TARGET_OS" = xmacosx; then
     # No X11 support on windows or macosx
     NEEDS_LIB_X11=false
+    NEEDS_LIB_SPEECHD=false
   elif test "x$ENABLE_HEADLESS_ONLY" = xtrue; then
     # No X11 support needed when building headless only
     NEEDS_LIB_X11=false
+    NEEDS_LIB_SPEECHD=false
   else
     # All other instances need X11
     NEEDS_LIB_X11=true
+    NEEDS_LIB_SPEECHD=true
   fi
 
   # Check if fontconfig is needed
@@ -103,6 +107,7 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBRARIES],
   LIB_SETUP_LIBFFI
   LIB_SETUP_BUNDLED_LIBS
   LIB_SETUP_MISC_LIBS
+  LIB_SETUP_SPEECHD
   LIB_TESTS_SETUP_GTEST
 
   BASIC_JDKLIB_LIBS=""

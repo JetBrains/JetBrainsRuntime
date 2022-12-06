@@ -26,7 +26,6 @@
  * @test
  * @summary Test implementation of accessibility announcing
  * @run main/manual AccessibleAnnouncerTest
- * @requires (os.family == "windows" | os.family == "mac")
  */
 
 import javax.swing.AccessibleAnnouncer;
@@ -51,33 +50,33 @@ public class AccessibleAnnouncerTest extends AccessibleComponentTest {
         return new CountDownLatch(1);
     }
 
-void createTest() {
-    INSTRUCTIONS = "INSTRUCTIONS:\n"
-            + "Check announcing.\n\n"
-            + "Turn screen reader on, and Tab to the say button and press it.\n\n"
-            + "If you can hear text from text field tab further and press PASS, otherwise press FAIL.\n";;
+    void createTest() {
+        INSTRUCTIONS = "INSTRUCTIONS:\n"
+                + "Check announcing.\n\n"
+                + "Turn screen reader on, and Tab to the say button and press it.\n\n"
+                + "If you can hear text from text field tab further and press PASS, otherwise press FAIL.\n";
+        ;
 
-    JPanel frame = new JPanel();
+        JPanel frame = new JPanel();
 
-    JButton button = new JButton("Say");
-    button.setPreferredSize(new Dimension(100, 35));
-JTextField textField = new JTextField("This is text");
+        JButton button = new JButton("Say");
+        button.setPreferredSize(new Dimension(100, 35));
+        JTextField textField = new JTextField("This is text");
 
-    button.addActionListener(new ActionListener() {
+        button.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String str = textField.getText();
+                AccessibleAnnouncer.announce(str, AccessibleAnnouncer.ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT);
+            }
+        });
 
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            String str = textField.getText();
-            AccessibleAnnouncer.announce(str, AccessibleAnnouncer.ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT );
-        }
-    });
-
-    frame.setLayout(new FlowLayout());
-    frame.add(textField);
-    frame.add(button);
-    exceptionString = "Accessible announcer test failed!";
-    super.createUI(frame, "Accessible Anouncer test");
-}
+        frame.setLayout(new FlowLayout());
+        frame.add(textField);
+        frame.add(button);
+        exceptionString = "Accessible announcer test failed!";
+        super.createUI(frame, "Accessible Anouncer test");
+    }
 
     void createPriorityTest() {
         String firstMessage = "This is first message";
