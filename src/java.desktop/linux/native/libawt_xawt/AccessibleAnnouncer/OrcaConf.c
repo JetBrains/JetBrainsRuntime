@@ -59,6 +59,7 @@ void SetVolume(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
     GET_getGain();
     jdouble gain = (*env)->CallStaticDoubleMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getGain, conf);
+    JNU_CHECK_EXCEPTION(env);
     if (gain >= 0)
     {
         int volume = gain * 20 - 100;
@@ -70,6 +71,7 @@ void SetVoiceRate(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
     GET_getRate();
     jdouble rate = (*env)->CallStaticDoubleMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getRate, conf);
+    JNU_CHECK_EXCEPTION(env);
     if (rate >= 0)
     {
         int iRate = rate * 2 - 100;
@@ -81,6 +83,7 @@ void SetPunctuation(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
     GET_getVerbalizePunctuationStyle();
     jint punctuation = (*env)->CallStaticIntMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getVerbalizePunctuationStyle, conf);
+    JNU_CHECK_EXCEPTION(env);
     if (punctuation >= 0)
     {
         spd_set_punctuation(connection, punctuation);
@@ -91,6 +94,7 @@ void SetVoicePitch(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
     GET_getAveragePitch();
     jdouble pitch = (*env)->CallStaticDoubleMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getAveragePitch, conf);
+    JNU_CHECK_EXCEPTION(env);
     if (pitch >= 0)
     {
         int iPitch = pitch * 20 - 100;
@@ -102,6 +106,7 @@ void SetOutputModule(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
     GET_getSpeechServerInfo();
     jobject jStr = (*env)->CallStaticObjectMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getSpeechServerInfo, conf);
+    JNU_CHECK_EXCEPTION(env);
     if (jStr != NULL)
     {
         const char *sintName = JNU_GetStringPlatformChars(env, jStr, NULL);
@@ -109,8 +114,8 @@ void SetOutputModule(JNIEnv *env, SPDConnection *connection, jobject conf)
         {
             spd_set_output_module(connection, sintName);
             JNU_ReleaseStringPlatformChars(env, jStr, sintName);
-            (*env)->DeleteLocalRef(env, jStr);
         }
+        (*env)->DeleteLocalRef(env, jStr);
     }
 }
 
@@ -118,6 +123,7 @@ void set_language(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
     GET_getLang();
     jobject jStr = (*env)->CallStaticObjectMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getLang, conf);
+    JNU_CHECK_EXCEPTION(env);
     if (jStr != NULL)
     {
         const char *lang = JNU_GetStringPlatformChars(env, jStr, NULL);
@@ -125,33 +131,40 @@ void set_language(JNIEnv *env, SPDConnection *connection, jobject conf)
         {
             spd_set_language(connection, lang);
             JNU_ReleaseStringPlatformChars(env, jStr, lang);
-            (*env)->DeleteLocalRef(env, jStr);
         }
+        (*env)->DeleteLocalRef(env, jStr);
     }
 }
 
 int GetEnableSpeech(JNIEnv *env, jobject conf)
 {
     GET_getEnableSpeech(-1);
-    return (*env)->CallStaticBooleanMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getEnableSpeech, conf);
+    int es = (*env)->CallStaticBooleanMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getEnableSpeech, conf);
+    JNU_CHECK_EXCEPTION_RETURN(env, -1);
+    return es;
 }
 
 int GetOnlySpeakDisplayedText(JNIEnv *env, jobject conf)
 {
     GET_getOnlySpeakDisplayedText(-1);
-    return (*env)->CallStaticBooleanMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getOnlySpeakDisplayedText, conf);
+    int osd = (*env)->CallStaticBooleanMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getOnlySpeakDisplayedText, conf);
+    JNU_CHECK_EXCEPTION_RETURN(env, -1);
+    return osd;
 }
 
 int GetEstablished(JNIEnv *env, jobject conf)
 {
     GET_getEstablished(-1);
-    return (*env)->CallStaticBooleanMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getOnlySpeakDisplayedText, conf);
+    int e = (*env)->CallStaticBooleanMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getOnlySpeakDisplayedText, conf);
+    JNU_CHECK_EXCEPTION_RETURN(env, -1);
+    return e;
 }
 
 void SetSynthesisVoice(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
     GET_getName();
     jobject jStr = (*env)->CallStaticObjectMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getName, conf);
+    JNU_CHECK_EXCEPTION(env);
     if (jStr != NULL)
     {
         const char *voiceName = JNU_GetStringPlatformChars(env, jStr, NULL);
@@ -159,13 +172,15 @@ void SetSynthesisVoice(JNIEnv *env, SPDConnection *connection, jobject conf)
         {
 spd_set_synthesis_voice(connection, voiceName);
 JNU_ReleaseStringPlatformChars(env, jStr, voiceName);
-            (*env)->DeleteLocalRef(env, jStr);
         }
+        (*env)->DeleteLocalRef(env, jStr);
     }
 }
 
 jobject GetOrcaConf(JNIEnv *env)
 {
     GET_getOrcaConfReturn(NULL);
-return (*env)->CallStaticObjectMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getOrcaConf);
+    jobject o = (*env)->CallStaticObjectMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getOrcaConf);
+    JNU_CHECK_EXCEPTION_RETURN(env, NULL);
+return o;
 }
