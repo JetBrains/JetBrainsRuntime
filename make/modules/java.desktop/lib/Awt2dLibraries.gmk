@@ -192,6 +192,12 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/font \
         #
 
+    ifeq ($(A11Y_ANNOUNCING_ENABLED), true)
+        A11Y_ANNOUNCING_CFLAGS :=
+    else
+        A11Y_ANNOUNCING_CFLAGS := -DNO_A11Y_ANNOUNCING
+    endif
+
     ifeq ($(call isTargetOs, linux), true)
         LIBAWT_XAWT_EXTRA_SRC += \
             $(TOPDIR)/src/$(MODULE)/linux/native/libawt_xawt \
@@ -215,6 +221,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         $(FONTCONFIG_CFLAGS) \
         $(CUPS_CFLAGS) \
         $(SPEECHD_CFLAGS) \
+        $(A11Y_ANNOUNCING_CFLAGS) \
         #
 
     ifeq ($(call isTargetOs, linux), true)
