@@ -354,7 +354,6 @@ AWT_NS_WINDOW_IMPLEMENTATION
 @synthesize isJustCreated;
 @synthesize javaWindowTabbingMode;
 @synthesize isEnterFullScreen;
-@synthesize currentDisplayID;
 
 - (void) updateMinMaxSize:(BOOL)resizable {
     if (resizable) {
@@ -516,7 +515,7 @@ AWT_ASSERT_APPKIT_THREAD;
         [self setUpTransparentTitleBar];
     }
 
-    currentDisplayID = nil;
+    self.currentDisplayID = nil;
     return self;
 }
 
@@ -811,11 +810,20 @@ AWT_ASSERT_APPKIT_THREAD;
     AWT_ASSERT_APPKIT_THREAD;
     if (!profileOnly) {
         NSNumber* newDisplayID = [AWTWindow getNSWindowDisplayID_AppKitThread:nsWindow];
+        if (newDisplayID == nil) {
+            // Do not proceed with unset window display id
+            // to avoid receiving wrong boundary values
+            return;
+        }
+
         if (self.currentDisplayID == nil) {
+            // Do not trigger notification at first appearance
+            // to avoid flickering on popups
             self.currentDisplayID = newDisplayID;
             return;
         }
-        if ([currentDisplayID isEqualToNumber: newDisplayID]) {
+
+        if ([self.currentDisplayID isEqualToNumber: newDisplayID]) {
             return;
         }
         self.currentDisplayID = newDisplayID;
