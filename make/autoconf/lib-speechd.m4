@@ -31,30 +31,27 @@ AC_DEFUN_ONCE([LIB_SETUP_SPEECHD],
 [
   AC_ARG_WITH(speechd, [AS_HELP_STRING([--with-speechd],
       [specify prefix directory for the libspeechd package
-      (expecting the headers under PATH/include)])])
+      (expecting the headers under PATH/include); required for AccessibleAnnouncer to work])])
   AC_ARG_WITH(speechd-include, [AS_HELP_STRING([--with-speechd-include],
       [specify directory for the speechd include files])])
 
-  if test "x$NEEDS_LIB_SPEECHD" = xfalse; then
+  if test "x$NEEDS_LIB_SPEECHD" = xfalse || test "x${with_speechd}" = xno || \
+      test "x${with_speechd_include}" = xno; then
     if (test "x${with_speechd}" != x && test "x${with_speechd}" != xno) || \
         (test "x${with_speechd_include}" != x && test "x${with_speechd_include}" != xno); then
       AC_MSG_WARN([[speechd not used, so --with-speechd[-*] is ignored]])
     fi
+    A11Y_ANNOUNCING_ENABLED=false
     SPEECHD_CFLAGS=
     SPEECHD_LIBS=
   else
     SPEECHD_FOUND=no
-
-    if test "x${with_speechd}" = xno || test "x${with_speechd_include}" = xno; then
-      AC_MSG_ERROR([It is not possible to disable the use of libspeechd. Remove the --without-speechd option.])
-    fi
 
     if test "x${with_speechd}" != x; then
       AC_MSG_CHECKING([for speechd header and library])
       if test -s "${with_speechd}/include/libspeechd.h"; then
         SPEECHD_CFLAGS="-I${with_speechd}/include"
         SPEECHD_LIBS="-L${with_speechd}/lib -lspeechd"
-
         SPEECHD_FOUND=yes
         AC_MSG_RESULT([$SPEECHD_FOUND])
       else
@@ -83,11 +80,13 @@ AC_DEFUN_ONCE([LIB_SETUP_SPEECHD],
       fi
     fi
     if test "x$SPEECHD_FOUND" = xno; then
-      HELP_MSG_MISSING_DEPENDENCY([speechd])
-      AC_MSG_ERROR([Could not find libspeechd! $HELP_MSG ])
+      A11Y_ANNOUNCING_ENABLED=false
+    else
+      A11Y_ANNOUNCING_ENABLED=true
     fi
   fi
 
+  AC_SUBST(A11Y_ANNOUNCING_ENABLED)
   AC_SUBST(SPEECHD_CFLAGS)
   AC_SUBST(SPEECHD_LIBS)
 ])
