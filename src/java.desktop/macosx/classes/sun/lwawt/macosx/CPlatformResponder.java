@@ -197,6 +197,10 @@ final class CPlatformResponder {
             jeventType = out[2];
         } else {
             if (chars != null && chars.length() > 0) {
+                // Find a suitable character to report as a keypress.
+                // `chars` might contain more than one character
+                // e.g. when Dead Grave + S were pressed, `chars` will contain "`s"
+                // Since we only really care about the last character, let's use it
                 testChar = chars.charAt(chars.length() - 1);
 
                 //Check if String chars contains SPACE character.
@@ -219,6 +223,7 @@ final class CPlatformResponder {
             if (isDeadChar) {
                 testChar = (char) out[2];
                 if (testChar == 0) {
+                    // Not abandoning the input event here, since we want to catch dead key presses
                     testChar = KeyEvent.CHAR_UNDEFINED;
                 }
             }

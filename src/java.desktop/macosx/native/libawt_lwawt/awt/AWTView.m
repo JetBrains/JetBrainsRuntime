@@ -532,6 +532,11 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
         characters = NSStringToJavaString(env, [event characters]);
         charactersIgnoringModifiers = NSStringToJavaString(env, [event charactersIgnoringModifiers]);
 
+        // event.charactersIgnoringModifiers is actually not what we want, since it doesn't ignore Shift.
+        // What we really want is event.charactersByApplyingModifiers:0, but that's only available on macOS 10.15+
+        // The code below simulates what that function does by looking up the current keyboard and emulating
+        // a corresponding key press on it.
+
         TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
         CFDataRef uchr = (CFDataRef)TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData);
 
