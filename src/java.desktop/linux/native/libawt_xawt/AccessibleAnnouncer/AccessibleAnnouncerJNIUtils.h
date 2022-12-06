@@ -27,6 +27,8 @@
 #ifndef ACCESSIBLEANNOUNCERJNIUTILS_H
 #define ACCESSIBLEANNOUNCERJNIUTILS_H
 
+#if NO_A11Y_ANNOUNCING
+
 #include "jni.h"
 
 #define GET_AccessibleAnnouncerUtilities()\
@@ -179,5 +181,7 @@ if (jsm_getEnableSpeech == NULL) {\
 return ret;\
 }\
 }\
+
+#endif
 
 #endif //ACCESSIBLEANNOUNCERJNIUTILS_H
