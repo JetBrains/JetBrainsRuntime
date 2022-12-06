@@ -751,7 +751,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
 
     private XEvent pendingConfigureEvent;
 
-    private void setPendingConfigureEvent(XEvent xev) {
+    private void setPendingConfigureEvent(XConfigureEvent xev) {
         if (pendingConfigureEvent != null) {
             pendingConfigureEvent.dispose();
         }
@@ -825,7 +825,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
                 // For reparenting window managers we're not processing ConfigureNotify events received before
                 // ReparentNotify. But we cannot know for sure whether WM is reparenting or not, so we remember
                 // the last received ConfigureNotify event, and process it at the time MapNotify is received.
-                setPendingConfigureEvent(xev);
+                setPendingConfigureEvent(xe);
                 return;
             }
         }
