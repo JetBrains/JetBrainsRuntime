@@ -27,6 +27,8 @@
 #ifndef ORCACONF_H
 #define ORCACONF_H
 
+#if NO_A11Y_ANNOUNCING
+
 #include <libspeechd.h>
 #include "jni.h"
 
@@ -42,5 +44,7 @@ void SetVolume(JNIEnv *env, SPDConnection *connection, jobject conf);
 int GetEnableSpeech(JNIEnv *env, jobject conf);
 int GetOnlySpeakDisplayedText(JNIEnv *env, jobject conf);
 int GetEstablished(JNIEnv *env, jobject conf);
+
+#endif
 
 #endif //ORCACONF_H

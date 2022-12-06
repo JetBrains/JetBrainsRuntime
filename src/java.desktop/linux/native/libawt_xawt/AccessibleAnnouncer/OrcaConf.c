@@ -24,6 +24,8 @@
  * questions.
  */
 
+#if NO_A11Y_ANNOUNCING
+
 #include "OrcaConf.h"
 #include "AccessibleAnnouncerJNIUtils.h"
 #include "jni_util.h"
@@ -184,3 +186,5 @@ jobject GetOrcaConf(JNIEnv *env)
     JNU_CHECK_EXCEPTION_RETURN(env, NULL);
 return o;
 }
+
+#endif
