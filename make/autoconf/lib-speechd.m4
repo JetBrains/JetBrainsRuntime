@@ -47,7 +47,7 @@ AC_DEFUN_ONCE([LIB_SETUP_SPEECHD],
   else
     SPEECHD_FOUND=no
 
-    if test "x${with_speechd}" != x; then
+    if test "x${with_speechd}" != x && test "x${with_speechd}" != xyes; then
       AC_MSG_CHECKING([for speechd header and library])
       if test -s "${with_speechd}/include/libspeechd.h"; then
         SPEECHD_CFLAGS="-I${with_speechd}/include"
