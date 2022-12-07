@@ -42,10 +42,11 @@ JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce(JNIEnv *env
         if (msg != NULL)
         {
 			jobject conf = GetOrcaConf(env);
-            if (conf != NULL &&
-            (GetEnableSpeech(env, conf) > 0))
+            if (conf != NULL)
             {
-                SPDConnection *connection = spd_open("Cli announcer", NULL, NULL, SPD_MODE_SINGLE);
+                if (GetEnableSpeech(env, conf) > 0)
+                {
+                    SPDConnection *connection = spd_open("Cli announcer", NULL, NULL, SPD_MODE_SINGLE);
                 if (connection != NULL)
                 {
                     SetSpeechConf(env, connection, conf);
@@ -55,9 +56,10 @@ JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce(JNIEnv *env
                         p = SPD_MESSAGE;
                     }
                     spd_say(connection, p, msg);
-                    (*env)->DeleteLocalRef(env, conf);
                     spd_close(connection);
                 }
+                }
+                (*env)->DeleteLocalRef(env, conf);
             }
             JNU_ReleaseStringPlatformChars(env, str, msg);
         }
