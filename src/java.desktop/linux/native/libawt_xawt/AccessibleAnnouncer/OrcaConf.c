@@ -64,7 +64,7 @@ void SetVolume(JNIEnv *env, SPDConnection *connection, jobject conf)
     JNU_CHECK_EXCEPTION(env);
     if (gain >= 0)
     {
-        int volume = gain * 20 - 100;
+        int volume = (gain - 5) * 20;
         spd_set_volume(connection, volume);
     }
 }
@@ -76,7 +76,7 @@ void SetVoiceRate(JNIEnv *env, SPDConnection *connection, jobject conf)
     JNU_CHECK_EXCEPTION(env);
     if (rate >= 0)
     {
-        int iRate = rate * 2 - 100;
+        int iRate = (rate - 50) * 2;
         spd_set_voice_rate(connection, iRate);
     }
 }
@@ -99,7 +99,7 @@ void SetVoicePitch(JNIEnv *env, SPDConnection *connection, jobject conf)
     JNU_CHECK_EXCEPTION(env);
     if (pitch >= 0)
     {
-        int iPitch = pitch * 20 - 100;
+        int iPitch = (pitch - 5) * 20;
         spd_set_voice_pitch(connection, iPitch);
     }
 }

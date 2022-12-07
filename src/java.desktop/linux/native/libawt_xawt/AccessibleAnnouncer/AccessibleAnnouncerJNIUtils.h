@@ -33,18 +33,22 @@
 
 #define GET_AccessibleAnnouncerUtilities()\
 if (jc_AccessibleAnnouncerUtilities == NULL) {\
-jc_AccessibleAnnouncerUtilities = (*env)->FindClass(env, "sun/awt/AccessibleAnnouncerUtilities");\
-if (jc_AccessibleAnnouncerUtilities == NULL) {\
+jclass cls = (*env)->FindClass(env, "sun/awt/AccessibleAnnouncerUtilities");\
+if (cls == NULL) {\
 return;\
 }\
+jc_AccessibleAnnouncerUtilities =  (*env)->NewGlobalRef(env, cls);\
+(*env)->DeleteLocalRef(env, cls);\
 }\
 
 #define GET_AccessibleAnnouncerUtilitiesReturn(ret)\
 if (jc_AccessibleAnnouncerUtilities == NULL) {\
-jc_AccessibleAnnouncerUtilities = (*env)->FindClass(env, "sun/awt/AccessibleAnnouncerUtilities");\
-if (jc_AccessibleAnnouncerUtilities == NULL) {\
+jclass cls = (*env)->FindClass(env, "sun/awt/AccessibleAnnouncerUtilities");\
+if (cls == NULL) {\
 return ret;\
 }\
+jc_AccessibleAnnouncerUtilities =  (*env)->NewGlobalRef(env, cls);\
+(*env)->DeleteLocalRef(env, cls);\
 }\
 
 #define GET_getOrcaConf()\
