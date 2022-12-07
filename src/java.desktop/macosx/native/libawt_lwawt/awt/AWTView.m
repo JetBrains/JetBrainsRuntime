@@ -85,6 +85,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     fInputMethodLOCKABLE = NULL;
     fKeyEventsNeeded = NO;
     fProcessingKeystroke = NO;
+    fComplexInputNeeded = NO;
 
     fEnablePressAndHold = shouldUsePressAndHold();
     fInPressAndHold = NO;
@@ -305,6 +306,19 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 - (void) keyDown: (NSEvent *)event {
     fProcessingKeystroke = YES;
     fKeyEventsNeeded = YES;
+    fComplexInputNeeded = NO;
+
+    NSString *eventCharacters = [event characters];
+
+    if ([eventCharacters length] > 0) {
+        unichar codePoint = [eventCharacters characterAtIndex:0];
+        if (codePoint >= 0x3000 && codePoint <= 0x303F) {
+            // CJK Symbols and Punctuation
+            // Force the complex input method because macOS doesn't properly send us
+            // the half-width characters when the user has them enabled.
+            fComplexInputNeeded = YES;
+        }
+    }
 
     // Allow TSM to look at the event and potentially send back NSTextInputClient messages.
     [self interpretKeyEvents:[NSArray arrayWithObject:event]];
@@ -344,7 +358,6 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
         }
     }
 
-    NSString *eventCharacters = [event characters];
     BOOL isDeadKey = (eventCharacters != nil && [eventCharacters length] == 0);
 
     if ((![self hasMarkedText] && fKeyEventsNeeded) || isDeadKey) {
@@ -1088,7 +1101,7 @@ static jclass jc_CInputMethod = NULL;
         aStringIsComplex = YES;
     }
 
-    if ([self hasMarkedText] || !fProcessingKeystroke || aStringIsComplex) {
+    if ([self hasMarkedText] || !fProcessingKeystroke || aStringIsComplex || fComplexInputNeeded) {
         JNIEnv *env = [ThreadUtilities getJNIEnv];
 
         GET_CIM_CLASS();
@@ -1109,6 +1122,7 @@ static jclass jc_CInputMethod = NULL;
         // The input method event will create psuedo-key events for each character in the committed string.
         // We also don't want to send the character that triggered the insertText, usually a return. [3337563]
         fKeyEventsNeeded = NO;
+        fComplexInputNeeded = NO;
     }
     else {
         // Need to set back the fKeyEventsNeeded flag so that the string following the
