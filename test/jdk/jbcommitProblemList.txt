@@ -6,7 +6,7 @@ java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java nobug
 java/awt/hidpi/ClientAreaOriginWindowsTest.java JBR-630 windows-all
 java/awt/hidpi/SetMaximizedBoundsTest.java nobug windows-all
 java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java nobug windows-all
-java/awt/Focus/8073453/AWTFocusTransitionTest.java JBR-4354 windows-all,linux-all # linux: JBR-4354
+java/awt/Focus/8073453/AWTFocusTransitionTest.java JBR-4354,8298247 windows-all,linux-all
 java/awt/Focus/8073453/SwingFocusTransitionTest.java nobug windows-all
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.javanobug windows-all,linux-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java nobug windows-all
