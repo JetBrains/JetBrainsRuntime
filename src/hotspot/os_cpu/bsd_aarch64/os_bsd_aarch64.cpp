@@ -291,7 +291,7 @@ JVM_handle_bsd_signal(int sig,
   }
 
   // Handle SafeFetch faults:
-  if (uc != NULL) {
+  if ((sig == SIGSEGV || sig == SIGBUS) && uc != NULL) {
     address const pc = (address) os::Bsd::ucontext_get_pc(uc);
     if (pc && StubRoutines::is_safefetch_fault(pc)) {
       os::Bsd::ucontext_set_pc(uc, StubRoutines::continuation_for_safefetch_fault(pc));
