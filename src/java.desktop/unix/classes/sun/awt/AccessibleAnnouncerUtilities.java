@@ -31,7 +31,6 @@ import java.nio.file.Paths;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -163,7 +162,7 @@ private static String getActiveProfile(Object conf) {
     int counter = 0;
     String str = JSONParser.getStringValue(conf, GENERAL_KEY, ACTIVE_PROFILE_KEY, String.valueOf(counter));
     while (str != null) {
-        if (JSONParser.getObjectValue(conf, PROFILES_KEY, str) == null) {
+        if (!JSONParser.valueExists(conf, PROFILES_KEY, str)) {
         counter++;
         str = JSONParser.getStringValue(conf, GENERAL_KEY, ACTIVE_PROFILE_KEY, String.valueOf(counter));
         } else {
@@ -206,7 +205,7 @@ private static class JSONParser {
     }
 
     public static class ParseException extends Exception {
-private static final long serialVersionUID = 1992707L;
+        private static final long serialVersionUID = 1992707L;
 
         ParseException(String message) {
             super(message);
@@ -334,6 +333,14 @@ private static final long serialVersionUID = 1992707L;
                             final char utf16 = (char)Integer.parseInt(String.valueOf(hex1) + hex2 + hex3 + hex4, 16);
                             builder.append(utf16);
                         } else {
+                            ch = switch(ch) {
+                                case 'b' -> '\b';
+                                case 'f' -> '\f';
+                                case 'n' -> '\n';
+                                case 'r' -> '\r';
+                                case 't' -> '\t';
+                                default  -> ch;
+                            };
                             builder.append(ch);
                         }
                     } else {
@@ -374,9 +381,10 @@ private static final long serialVersionUID = 1992707L;
             if (it.current() != CharacterIterator.DONE) {
                 builder.append("(at '");
                 for (int i = 0; it.current() != CharacterIterator.DONE && i < 15; i++) {
-                    char ch = it.next();
-                    if (ch == '\n') builder.append("\n");
+                    final char ch = it.current();
+                    if (ch == '\n') builder.append("\\n");
                     else builder.append(ch);
+                    it.next();
                 }
                 builder.append("')");
             } else {
@@ -385,12 +393,14 @@ private static final long serialVersionUID = 1992707L;
 
             throw new ParseException(builder.toString());
         }
+
         private static void skipOver(CharacterIterator it, char ch) throws ParseException {
             if (it.current() != ch) {
                 error(it, "expected '" + ch + "', found '" + it.current() + "'");
             }
             it.next();
         }
+
         private static void skipWhitespace(CharacterIterator it) {
             while (Character.isWhitespace(it.current())) it.next();
         }
@@ -408,7 +418,7 @@ private static final long serialVersionUID = 1992707L;
 
     public static Integer getIntValue(Object json, String... qualifiers) {
         Object value = getObjectValueImpl(json, qualifiers);
-        return value instanceof Integer intValue ? intValue : null;
+        return value instanceof Double doubleValue ? doubleValue.intValue() : null;
     }
 
     public static Double getDoubleValue(Object json, String... qualifiers) {
@@ -416,8 +426,8 @@ private static final long serialVersionUID = 1992707L;
         return value instanceof Double booleanValue ? booleanValue : null;
     }
 
-    private static Object getObjectValue(Object json, String... qualifiers) {
-return getObjectValueImpl(json, qualifiers);
+    private static boolean valueExists(Object json, String... qualifiers) {
+        return getObjectValueImpl(json, qualifiers) != null;
     }
 
     @SuppressWarnings("rawtypes")
