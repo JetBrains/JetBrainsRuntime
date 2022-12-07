@@ -41,7 +41,7 @@ return;\
 
 #define GET_AccessibleAnnouncerUtilitiesReturn(ret)\
 if (jc_AccessibleAnnouncerUtilities == NULL) {\
-jc_AccessibleAnnouncerUtilities = (*env)->FindClass(env, "Lsun/awt/AccessibleAnnouncerUtilities;");\
+jc_AccessibleAnnouncerUtilities = (*env)->FindClass(env, "sun/awt/AccessibleAnnouncerUtilities");\
 if (jc_AccessibleAnnouncerUtilities == NULL) {\
 return ret;\
 }\
