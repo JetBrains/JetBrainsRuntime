@@ -1,3 +1,4 @@
-test/jdk/java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java 8292588 macosx-all
-java/awt/FullScreen/CurrentDisplayModeTest/CurrentDisplayModeTest.java JBR-5059 linux-5.15.0-39-generic Ubuntu-22.04
-java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java JBR-5062 linux-5.15.0-39-generic Ubuntu-22.04
+java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java 8292588 macosx-all
+java/awt/FullScreen/CurrentDisplayModeTest/CurrentDisplayModeTest.java JBR-5059 linux-all
+java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java JBR-5062 linux-all
+java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5.15.0-46-generic Ubuntu 20.04
