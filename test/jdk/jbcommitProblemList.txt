@@ -5,7 +5,8 @@ sun/awt/dnd/8024061/bug8024061.java nobug windows-all
 java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java nobug windows-all
 java/awt/hidpi/ClientAreaOriginWindowsTest.java JBR-630 windows-all
 java/awt/hidpi/SetMaximizedBoundsTest.java nobug windows-all
-java/awt/Focus/8073453/AWTFocusTransitionTest.java JBR-4354 windows-all,linux-all # linux: JBR-4354
+java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java nobug windows-all
+java/awt/Focus/8073453/AWTFocusTransitionTest.java JBR-4354,8298247 windows-all,linux-all
 java/awt/Focus/8073453/SwingFocusTransitionTest.java nobug windows-all
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.javanobug windows-all,linux-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java nobug windows-all
@@ -82,15 +83,15 @@ javax/swing/JMenu/8072900/WrongSelectionOnMouseOver.java nobug windows-all,linux
 javax/swing/JMenuBar/4750590/bug4750590.java nobug windows-all
 javax/swing/JMenuItem/4171437/bug4171437.java nobug windows-all
 javax/swing/JMenuItem/4654927/bug4654927.java nobug windows-all,linux-all
-javax/swing/JMenuItem/6209975/bug6209975.java nobug windows-all
-javax/swing/JMenuItem/6249972/bug6249972.java nobug windows-all
+javax/swing/JMenuItem/6209975/bug6209975.java JBR-4894 windows-all
+javax/swing/JMenuItem/6249972/bug6249972.java JBR-4894 windows-all
 javax/swing/JMenuItem/8158566/CloseOnMouseClickPropertyTest.java nobug windows-all,linux-all
 javax/swing/JPopupMenu/4634626/bug4634626.java nobug windows-all
-javax/swing/JPopupMenu/4760494/bug4760494.java nobug windows-all
+javax/swing/JPopupMenu/4760494/bug4760494.java JBR-4894 windows-all
 javax/swing/JPopupMenu/6415145/bug6415145.java nobug windows-all
-javax/swing/JPopupMenu/6515446/bug6515446.java nobug windows-all
+javax/swing/JPopupMenu/6515446/bug6515446.java JBR-4894 windows-all
 javax/swing/JPopupMenu/7156657/bug7156657.java nobug windows-all
-javax/swing/JPopupMenu/8075063/ContextMenuScrollTest.java nobug windows-all
+javax/swing/JPopupMenu/8075063/ContextMenuScrollTest.java JBR-4894 windows-all
 javax/swing/JPopupMenu/SetInvokerJPopupMenuTest.java nobug linux-all
 javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java nobug windows-all
 javax/swing/JRadioButton/8033699/bug8033699.java nobug windows-all
@@ -105,7 +106,7 @@ javax/swing/JSpinner/TestJSpinnerFocusLost.java nobug windows-all
 javax/swing/JTabbedPane/4624207/bug4624207.java 8064922,8197552 macosx-all,windows-all,linux-all 8064922:macosx-all, 8197552:windows-all
 javax/swing/JTabbedPane/TestBackgroundScrollPolicy.java nobug windows-all
 javax/swing/JTable/7068740/bug7068740.java nobug windows-all,linux-all
-javax/swing/JTable/7124218/SelectEditTableCell.java nobug windows-all
+javax/swing/JTable/7124218/SelectEditTableCell.java JBR-4894 windows-all
 javax/swing/JTableHeader/6889007/bug6889007.java nobug windows-all
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java nobug windows-all
 javax/swing/JTextField/8036819/bug8036819.java nobug windows-all
