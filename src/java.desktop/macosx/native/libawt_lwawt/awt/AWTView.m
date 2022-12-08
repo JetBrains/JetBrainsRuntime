@@ -657,6 +657,16 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 }
 
 -(BOOL) isCodePointInUnicodeBlockNeedingIMEvent: (unichar) codePoint {
+    if ([(NSString *)kbdLayout containsString:@"com.apple.inputmethod.SCIM"] ||
+        [(NSString *)kbdLayout containsString:@"com.apple.inputmethod.TCIM"] ||
+        [(NSString *)kbdLayout containsString:@"com.apple.inputmethod.TYIM"]) {
+        // Chinese input method
+        if (codePoint == 0x2018 || codePoint == 0x2019 || codePoint == 0x201C || codePoint == 0x201D) {
+            // left/right single/double quotation mark
+            return YES;
+        }
+    }
+
     if (((codePoint >= 0x900) && (codePoint <= 0x97F)) ||
         ((codePoint >= 0x20A3) && (codePoint <= 0x20BF)) ||
         ((codePoint >= 0x3000) && (codePoint <= 0x303F)) ||
