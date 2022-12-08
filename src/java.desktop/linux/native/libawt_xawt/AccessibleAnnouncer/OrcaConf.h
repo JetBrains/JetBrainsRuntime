@@ -32,18 +32,18 @@
 #include <libspeechd.h>
 #include "jni.h"
 
-jobject GetOrcaConf(JNIEnv *env);
-void SetSpeechConf(JNIEnv *env, SPDConnection *connection, jobject conf);
-void set_language(JNIEnv *env, SPDConnection *connection, jobject conf);
-void SetOutputModule(JNIEnv *env, SPDConnection *connection, jobject conf);
-void SetPunctuation(JNIEnv *env, SPDConnection *connection, jobject conf);
-void SetSynthesisVoice(JNIEnv *env, SPDConnection *connection, jobject conf);
-void SetVoiceRate(JNIEnv *env, SPDConnection *connection, jobject conf);
-void SetVoicePitch(JNIEnv *env, SPDConnection *connection, jobject conf);
-void SetVolume(JNIEnv *env, SPDConnection *connection, jobject conf);
-int GetEnableSpeech(JNIEnv *env, jobject conf);
-int GetOnlySpeakDisplayedText(JNIEnv *env, jobject conf);
-int GetEstablished(JNIEnv *env, jobject conf);
+jobject OrcaGetConf(JNIEnv *env);
+void OrcaSetSpeechConf(JNIEnv *env, SPDConnection *connection, jobject conf);
+void Orcaset_language(JNIEnv *env, SPDConnection *connection, jobject conf);
+void OrcaSetOutputModule(JNIEnv *env, SPDConnection *connection, jobject conf);
+void OrcaSetPunctuation(JNIEnv *env, SPDConnection *connection, jobject conf);
+void OrcaSetSynthesisVoice(JNIEnv *env, SPDConnection *connection, jobject conf);
+void OrcaSetVoiceRate(JNIEnv *env, SPDConnection *connection, jobject conf);
+void OrcaSetVoicePitch(JNIEnv *env, SPDConnection *connection, jobject conf);
+void OrcaSetVolume(JNIEnv *env, SPDConnection *connection, jobject conf);
+int OrcaGetEnableSpeech(JNIEnv *env, jobject conf);
+int OrcaGetOnlySpeakDisplayedText(JNIEnv *env, jobject conf);
+int OrcaGetEstablished(JNIEnv *env, jobject conf);
 
 #endif // #ifndef NO_A11Y_ANNOUNCING
 

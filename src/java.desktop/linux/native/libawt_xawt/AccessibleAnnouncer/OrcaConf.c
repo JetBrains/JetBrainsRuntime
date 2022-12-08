@@ -46,18 +46,18 @@ static jmethodID jsm_getVerbalizePunctuationStyle = NULL;
 static jmethodID jsm_getOnlySpeakDisplayedText = NULL;
 static jmethodID jsm_getEnableSpeech = NULL;
 
-void SetSpeechConf(JNIEnv *env, SPDConnection *connection, jobject conf)
+void OrcaSetSpeechConf(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
-SetOutputModule(env, connection, conf);
-SetSynthesisVoice(env, connection, conf);
-set_language(env, connection, conf);
-SetPunctuation(env, connection, conf);
-SetVoiceRate(env, connection, conf);
-SetVoicePitch(env, connection, conf);
-SetVolume(env, connection, conf);
+OrcaSetOutputModule(env, connection, conf);
+OrcaSetSynthesisVoice(env, connection, conf);
+Orcaset_language(env, connection, conf);
+OrcaSetPunctuation(env, connection, conf);
+OrcaSetVoiceRate(env, connection, conf);
+OrcaSetVoicePitch(env, connection, conf);
+OrcaSetVolume(env, connection, conf);
 }
 
-void SetVolume(JNIEnv *env, SPDConnection *connection, jobject conf)
+void OrcaSetVolume(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
     GET_getGain();
     jdouble gain = (*env)->CallStaticDoubleMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getGain, conf);
@@ -69,7 +69,7 @@ void SetVolume(JNIEnv *env, SPDConnection *connection, jobject conf)
     }
 }
 
-void SetVoiceRate(JNIEnv *env, SPDConnection *connection, jobject conf)
+void OrcaSetVoiceRate(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
     GET_getRate();
     jdouble rate = (*env)->CallStaticDoubleMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getRate, conf);
@@ -81,7 +81,7 @@ void SetVoiceRate(JNIEnv *env, SPDConnection *connection, jobject conf)
     }
 }
 
-void SetPunctuation(JNIEnv *env, SPDConnection *connection, jobject conf)
+void OrcaSetPunctuation(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
     GET_getVerbalizePunctuationStyle();
     jint punctuation = (*env)->CallStaticIntMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getVerbalizePunctuationStyle, conf);
@@ -92,7 +92,7 @@ void SetPunctuation(JNIEnv *env, SPDConnection *connection, jobject conf)
     }
 }
 
-void SetVoicePitch(JNIEnv *env, SPDConnection *connection, jobject conf)
+void OrcaSetVoicePitch(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
     GET_getAveragePitch();
     jdouble pitch = (*env)->CallStaticDoubleMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getAveragePitch, conf);
@@ -104,7 +104,7 @@ void SetVoicePitch(JNIEnv *env, SPDConnection *connection, jobject conf)
     }
 }
 
-void SetOutputModule(JNIEnv *env, SPDConnection *connection, jobject conf)
+void OrcaSetOutputModule(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
     GET_getSpeechServerInfo();
     jobject jStr = (*env)->CallStaticObjectMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getSpeechServerInfo, conf);
@@ -121,7 +121,7 @@ void SetOutputModule(JNIEnv *env, SPDConnection *connection, jobject conf)
     }
 }
 
-void set_language(JNIEnv *env, SPDConnection *connection, jobject conf)
+void Orcaset_language(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
     GET_getLang();
     jobject jStr = (*env)->CallStaticObjectMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getLang, conf);
@@ -138,7 +138,7 @@ void set_language(JNIEnv *env, SPDConnection *connection, jobject conf)
     }
 }
 
-int GetEnableSpeech(JNIEnv *env, jobject conf)
+int OrcaGetEnableSpeech(JNIEnv *env, jobject conf)
 {
     GET_getEnableSpeech(-1);
     int es = (*env)->CallStaticBooleanMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getEnableSpeech, conf);
@@ -146,7 +146,7 @@ int GetEnableSpeech(JNIEnv *env, jobject conf)
     return es;
 }
 
-int GetOnlySpeakDisplayedText(JNIEnv *env, jobject conf)
+int OrcaGetOnlySpeakDisplayedText(JNIEnv *env, jobject conf)
 {
     GET_getOnlySpeakDisplayedText(-1);
     int osd = (*env)->CallStaticBooleanMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getOnlySpeakDisplayedText, conf);
@@ -154,7 +154,7 @@ int GetOnlySpeakDisplayedText(JNIEnv *env, jobject conf)
     return osd;
 }
 
-int GetEstablished(JNIEnv *env, jobject conf)
+int OrcaGetEstablished(JNIEnv *env, jobject conf)
 {
     GET_getEstablished(-1);
     int e = (*env)->CallStaticBooleanMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getOnlySpeakDisplayedText, conf);
@@ -162,7 +162,7 @@ int GetEstablished(JNIEnv *env, jobject conf)
     return e;
 }
 
-void SetSynthesisVoice(JNIEnv *env, SPDConnection *connection, jobject conf)
+void OrcaSetSynthesisVoice(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
     GET_getName();
     jobject jStr = (*env)->CallStaticObjectMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getName, conf);
@@ -179,7 +179,7 @@ JNU_ReleaseStringPlatformChars(env, jStr, voiceName);
     }
 }
 
-jobject GetOrcaConf(JNIEnv *env)
+jobject OrcaGetConf(JNIEnv *env)
 {
     GET_getOrcaConfReturn(NULL);
     jobject o = (*env)->CallStaticObjectMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getOrcaConf);
