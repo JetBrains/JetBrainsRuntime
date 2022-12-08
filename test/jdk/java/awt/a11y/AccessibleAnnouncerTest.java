@@ -110,7 +110,7 @@ public class AccessibleAnnouncerTest extends AccessibleComponentTest {
 
         frame.setLayout(new FlowLayout());
         frame.add(button);
-        exceptionString = "Accessible announcer preorety test failed!";
+        exceptionString = "Accessible announcer priority test failed!";
         super.createUI(frame, "Accessible Anouncer test");
     }
 
