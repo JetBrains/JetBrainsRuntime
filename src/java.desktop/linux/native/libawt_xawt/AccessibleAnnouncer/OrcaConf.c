@@ -50,7 +50,7 @@ void OrcaSetSpeechConf(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
 OrcaSetOutputModule(env, connection, conf);
 OrcaSetSynthesisVoice(env, connection, conf);
-OrcasetLanguage(env, connection, conf);
+OrcaSetLanguage(env, connection, conf);
 OrcaSetPunctuation(env, connection, conf);
 OrcaSetVoiceRate(env, connection, conf);
 OrcaSetVoicePitch(env, connection, conf);
@@ -121,7 +121,7 @@ void OrcaSetOutputModule(JNIEnv *env, SPDConnection *connection, jobject conf)
     }
 }
 
-void OrcasetLanguage(JNIEnv *env, SPDConnection *connection, jobject conf)
+void OrcaSetLanguage(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
     GET_getLang();
     jobject jStr = (*env)->CallStaticObjectMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getLang, conf);

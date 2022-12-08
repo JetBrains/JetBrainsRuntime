@@ -34,7 +34,7 @@
 
 jobject OrcaGetConf(JNIEnv *env);
 void OrcaSetSpeechConf(JNIEnv *env, SPDConnection *connection, jobject conf);
-void OrcasetLanguage(JNIEnv *env, SPDConnection *connection, jobject conf);
+void OrcaSetLanguage(JNIEnv *env, SPDConnection *connection, jobject conf);
 void OrcaSetOutputModule(JNIEnv *env, SPDConnection *connection, jobject conf);
 void OrcaSetPunctuation(JNIEnv *env, SPDConnection *connection, jobject conf);
 void OrcaSetSynthesisVoice(JNIEnv *env, SPDConnection *connection, jobject conf);
