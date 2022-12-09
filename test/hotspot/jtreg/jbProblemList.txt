@@ -38,6 +38,20 @@
 #
 #############################################################################
 
+# gtest
+
+gtest/AsyncLogGtest.java initial_run generic-all
+gtest/MetaspaceGtests.java#reclaim-none-ndebug initial_run generic-all
+gtest/LargePageGtests.java#use-large-pages-sysV initial_run linux-all
+gtest/LargePageGtests.java#use-large-pages-1G initial_run linux-all
+gtest/GTestWrapper.java initial_run generic-all
+gtest/MetaspaceUtilsGtests.java initial_run generic-all
+gtest/MetaspaceGtests.java#balanced-no-ccs initial_run generic-all
+gtest/MetaspaceGtests.java#reclaim-aggressive-ndebug initial_run generic-all
+gtest/LargePageGtests.java#use-large-pages initial_run linux-all,windows-all
+
+gc/stress/TestReclaimStringsLeaksMemory.java initial_run windows-all
+
 # :hotspot_compiler
 
 compiler/ciReplay/TestSAServer.java 8029528 generic-all
@@ -195,3 +209,6 @@ vmTestbase/vm/jit/LongTransitions/nativeFnc6/TestDescription.java 8271615 macosx
 vmTestbase/vm/jit/LongTransitions/nativeFnc7/TestDescription.java 8271615 macosx-all
 vmTestbase/vm/jit/LongTransitions/nativeFnc8/TestDescription.java 8271615 macosx-all
 vmTestbase/vm/jit/LongTransitions/nativeFnc9/TestDescription.java 8271615 macosx-all
+
+
+resourcehogs/serviceability/sa/TestHeapDumpForLargeArray.java initial_run linux-all
