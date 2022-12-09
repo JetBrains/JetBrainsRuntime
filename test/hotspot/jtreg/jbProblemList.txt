@@ -41,6 +41,20 @@
 
 #############################################################################
 
+# gtest
+
+gtest/AsyncLogGtest.java initial_run generic-all
+gtest/MetaspaceGtests.java#reclaim-none-ndebug initial_run generic-all
+gtest/LargePageGtests.java#use-large-pages-sysV initial_run linux-all
+gtest/LargePageGtests.java#use-large-pages-1G initial_run linux-all
+gtest/GTestWrapper.java initial_run generic-all
+gtest/MetaspaceUtilsGtests.java initial_run generic-all
+gtest/MetaspaceGtests.java#balanced-no-ccs initial_run generic-all
+gtest/MetaspaceGtests.java#reclaim-aggressive-ndebug initial_run generic-all
+gtest/LargePageGtests.java#use-large-pages initial_run linux-all,windows-all
+
+gc/stress/TestReclaimStringsLeaksMemory.java initial_run windows-all
+
 # :hotspot_compiler
 
 compiler/ciReplay/TestSAServer.java 8029528 generic-all
@@ -115,7 +129,7 @@ serviceability/dcmd/gc/RunFinalizationTest.java 8227120 linux-all,windows-x64
 
 serviceability/sa/ClhsdbCDSCore.java 8294316,8267433 macosx-x64
 serviceability/sa/ClhsdbFindPC.java#xcomp-core 8294316,8267433 macosx-x64
-serviceability/sa/ClhsdbFindPC.java#no-xcomp-core 8294316,8267433 macosx-x64
+serviceability/sa/ClhsdbFindPC.java#no-xcomp-core 8294316,8267433 macosx-x64,linux_aarch64
 serviceability/sa/ClhsdbPmap.java#core 8294316,8267433 macosx-x64
 serviceability/sa/ClhsdbPstack.java#core 8294316,8267433 macosx-x64
 serviceability/sa/TestJmapCore.java 8294316,8267433 macosx-x64
@@ -176,20 +190,6 @@ compiler/vectorapi/VectorRebracket128Test.java NO_BUG linux_aarch64
 
 gc/shenandoah/mxbeans/TestChurnNotifications.java#aggressive NO_BUG macosx_all
 
-gtest/AsyncLogGtest.java.AsyncLogGtest NO_BUG generic_all
-gtest/GTestWrapper.java NO_BUG generic_all
-gtest/LargePageGtests.java#use-large-pages NO_BUG linux_all
-gtest/LargePageGtests.java#use-large-pages-1G NO_BUG linux_all
-gtest/LargePageGtests.java#use-large-pages-sysV NO_BUG linux_all
-gtest/MetaspaceGtests.java#balanced-no-ccs NO_BUG generic_all
-gtest/MetaspaceGtests.java#reclaim-aggressive-ndebug NO_BUG generic_all
-gtest/MetaspaceGtests.java#reclaim-none-ndebug NO_BUG generic_all
-gtest/MetaspaceUtilsGtests.java NO_BUG generic_all
-gtest/NMTGtests.java#nmt-detail NO_BUG generic_all
-gtest/NMTGtests.java#nmt-off NO_BUG generic_all
-gtest/NMTGtests.java#nmt-summary NO_BUG generic_all
-
-
 runtime/cds/appcds/TestDumpClassListSource.java NO_BUG generic_all
 runtime/cds/appcds/CommandLineFlagCombo.java NO_BUG generic_all
 runtime/cds/appcds/dynamicArchive/TestAutoCreateSharedArchiveNoDefaultArchive.java NO_BUG generic_all
@@ -197,4 +197,5 @@ runtime/cds/appcds/dynamicArchive/TestAutoCreateSharedArchiveUpgrade.java NO_BUG
 runtime/cds/CheckDefaultArchiveFile.java NO_BUG generic_all
 
 serviceability/jvmti/SetBreakpoint/TestManyBreakpoints.java NO_BUG linux_aarch64
-serviceability/sa/ClhsdbFindPC.java#no-xcomp-core NO_BUG linux_aarch64
+
+resourcehogs/serviceability/sa/TestHeapDumpForLargeArray.java initial_run linux-all
