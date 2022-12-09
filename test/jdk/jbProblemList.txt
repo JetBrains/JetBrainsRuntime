@@ -852,6 +852,8 @@ security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootecccar3 8328825 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootecccar4 8328825 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#microsoftecc2017 8328825 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#sslrooteccca 8333788 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#sslrootevrsaca 8333788 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#teliasonerarootcav1 8328825 generic-all
 
 sun/security/smartcardio/TestChannel.java                       8039280 generic-all
@@ -1081,6 +1083,8 @@ java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8253184,JBR-5510 windows
 java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java JBR-5802 windows-all
 java/awt/Robot/MultiScreenRobotPosition/MultiScreenRobotPosition.java JBR-830 windows-x64
 
+native_sanity/simplenativelauncher/ProgramTest.java JBR-5287 windows-all
+
 sanity/client/SwingSet/src/ButtonDemoScreenshotTest.java 8265770,8273312,JBR-5510,JBR-6475 windows-all,macosx-all,linux-all
 sanity/client/SwingSet/src/ColorChooserDemoTest.java 8278582,8273312,JBR-5510 windows-all,linux-5.18.2-arch1-1
 sanity/client/SwingSet/src/DialogDemoTest.java 8253184 windows-all
@@ -1139,6 +1143,8 @@ java/util/concurrent/ExecutorService/CloseTest.java             8288899 macosx-a
 # svc_tools
 
 sun/tools/jhsdb/HeapDumpTest.java                               8269881 windows-all
+sun/tools/jhsdb/HeapDumpTestWithActiveProcess.java              JBR-6288 windows-all
+sun/tools/jhsdb/JShellHeapDumpTest.java                         JBR-6288 windows-all
 sun/tools/jstatd/TestJstatdRmiPort.java                         8226420,8251259,8293577 generic-all
 
 sun/tools/jstat/jstatLineCounts1.sh                             8268211 linux-aarch64
