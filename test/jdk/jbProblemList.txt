@@ -697,7 +697,7 @@ java/awt/event/MouseEvent/FrameMouseEventAbsoluteCoordsTest/FrameMouseEventAbsol
 
 java/awt/Dialog/CloseDialog/CloseDialogTest.java JBR-6537 macosx-all
 java/awt/Dialog/DialogAboveFrame/DialogAboveFrameTest.java JBR-5210,JBR-5510 windows-all,linux-5.18.2-arch1-1
-java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindowAlwaysOnTop.java 8266243,JBR-5359,JBR-5510 macosx-all,windows-aarch64,linux-5.18.2-arch1-1
+java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindowAlwaysOnTop.java 8266243,JBR-5359,JBR-6632 macosx-all,windows-aarch64,linux-all
 java/awt/Dialog/SiblingChildOrder/SiblingChildOrderTest.java JBR-5082,JBR-5359 linux-all,windows-aarch64
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java 8225787,8253184 linux-all,windows-all
 
@@ -1323,6 +1323,7 @@ jb/javax/swing/JComboBox/ComboBoxTransparentTittleBarTest.java JBR-5432,JBR-4875
 jb/javax/swing/JDialog/JDialog186.java JBR-5210 windows-all
 jb/javax/swing/JDialog/JDialog392.java JBR-4941 macosx-all,linux-all
 jb/javax/swing/JDialog/JDialog705.java JBR-4934 generic-all
+jb/javax/swing/JEditorPane/ZeroMargin.java JBR-2256 generic-all
 jb/javax/swing/JLabel/JLabel/JLabel269.java JBR-6404 generic-all
 
 jb/java/awt/Window/ModalDialogAndPopup.java JBR-4984 macosx-all
