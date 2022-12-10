@@ -3,8 +3,7 @@
 # Welcome to JetBrains Runtime!
 
 JetBrains Runtime is a fork of [OpenJDK](https://github.com/openjdk/jdk) available for Windows, Mac OS X, and Linux.
-It includes a number of enhancements in font rendering, HiDPI support, windowing/focus subsystems, performance
-improvements and bugfixes.
+It includes a number of enhancements in font rendering, ligatures, HiDPI support, windowing/focus subsystems, performance improvements, and bugfixes.
 
 > **_NOTE_**: This is a **development** branch that is periodically synchronized with 
 > the [OpenJDK master](https://github.com/openjdk/jdk/tree/master) branch.
@@ -14,7 +13,7 @@ improvements and bugfixes.
  * [jbr17](https://github.com/JetBrains/JetBrainsRuntime/tree/jbr17) (JDK 17)
  
 Download the latest releases of JetBrains Runtime to use with JetBrains IDEs. The full list
- can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntime/releases).
+can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntime/releases).
 
 ## Releases based on JDK 17
 
@@ -111,7 +110,7 @@ Get Java 18 (for instance, [Azul Zulu Builds of OpenJDK 18](https://www.azul.com
 Then run the following:
 ```
 $ cd JetBrainsRuntime
-$ git checkout jbr-dev
+$ git checkout main
 $ sh ./configure
 $ make images
 ```
@@ -139,7 +138,7 @@ The first command sets up environment variables, the second starts a Cygwin shel
 In the Cygwin shell: 
 ```
 $ cd JetBrainsRuntime
-$ git checkout jbr-dev
+$ git checkout main
 $ bash configure --with-toolchain-version=2019
 $ make images
 ```
@@ -153,7 +152,7 @@ Install the following:
 From the command line:
 ```
 $ cd JetBrainsRuntime
-$ git checkout jbr-dev
+$ git checkout main
 $ sh ./configure
 $ make images
 ```
@@ -192,3 +191,4 @@ Before you submit one, please sign our [Contributor License Agreement (CLA)](htt
 * [JetBrains Runtime on GitHub](https://github.com/JetBrains/JetBrainsRuntime).
 * [OpenJDK build instructions](https://openjdk.java.net/groups/build/doc/building.html).
 * [OpenJDK test instructions](https://htmlpreview.github.io/?https://raw.githubusercontent.com/openjdk/jdk/master/doc/building.html#running-tests).
+* [How to develop OpenJDK with CLion](https://blog.jetbrains.com/clion/2020/03/openjdk-with-clion/).
