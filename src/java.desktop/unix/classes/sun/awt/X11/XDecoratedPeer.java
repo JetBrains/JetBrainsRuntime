@@ -341,18 +341,11 @@ abstract class XDecoratedPeer extends XWindowPeer {
             || ev.get_atom() == XWM.XA_NET_FRAME_EXTENTS.getAtom())
         {
             if (XWM.getWMID() != XWM.UNITY_COMPIZ_WM) {
-                if (getMWMDecorTitleProperty().isPresent()) {
-                    // Insets might have changed "in-flight" if that property
-                    // is present, so we need to get the actual values of
-                    // insets from the WM and propagate them through all the
-                    // proper channels.
-                    wm_set_insets = null;
-                    Insets in = getWMSetInsets(XAtom.get(ev.get_atom()));
-                    if (in != null && !in.equals(dimensions.getInsets())) {
-                        handleCorrectInsets(in);
-                    }
-                } else {
-                    getWMSetInsets(XAtom.get(ev.get_atom()));
+                wm_set_insets = null;
+                Insets in = getWMSetInsets(XAtom.get(ev.get_atom()));
+                if (isReparented() && (!isMapped() || getMWMDecorTitleProperty().isPresent()) &&
+                        in != null && !in.equals(dimensions.getInsets())) {
+                    handleCorrectInsets(in);
                 }
             } else {
                 if (!isReparented()) {
