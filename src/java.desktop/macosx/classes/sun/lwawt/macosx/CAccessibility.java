@@ -38,6 +38,7 @@ import java.beans.PropertyChangeListener;
 import java.lang.annotation.Native;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -63,6 +64,7 @@ import javax.swing.JComponent;
 import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
+import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JList;
 import javax.swing.JTree;
@@ -71,6 +73,7 @@ import javax.swing.tree.TreePath;
 
 import sun.awt.AWTAccessor;
 import sun.lwawt.LWWindowPeer;
+import sun.swing.AccessibleComponentAccessor;
 
 @SuppressWarnings("removal")
 class CAccessibility implements PropertyChangeListener {
@@ -748,6 +751,25 @@ class CAccessibility implements PropertyChangeListener {
         return new Object[]{childrenAndRoles.get(whichChildren * 2), childrenAndRoles.get((whichChildren * 2) + 1)};
     }
 
+    private static Accessible getAccessibleComboboxValue(Accessible a, Component c) {
+        if (a == null) return null;
+
+        return invokeAndWait(new Callable<Accessible>() {
+            @Override
+            public Accessible call() throws Exception {
+                AccessibleContext ac = a.getAccessibleContext();
+                if (ac != null) {
+                    AccessibleSelection as = ac.getAccessibleSelection();
+                    if (as != null) {
+                        return as.getAccessibleSelection(0);
+                    }
+                }
+
+                return null;
+            }
+        }, c);
+    }
+
     private static Accessible createAccessibleTreeNode(JTree t, TreePath p) {
         Accessible a = null;
 
@@ -910,6 +932,30 @@ class CAccessibility implements PropertyChangeListener {
                 }
             }
             return null;
+        }, c);
+    }
+
+    private static int getTableInfoAtIndex(final Accessible a, final Component c,
+                                              final int info, final int index) {
+        if (a == null) return -1;
+
+        return invokeAndWait(new Callable<Integer>() {
+            @Override
+            public Integer call() throws Exception {
+                AccessibleContext ac = a.getAccessibleContext();
+                if (ac != null) {
+                    AccessibleTable at = ac.getAccessibleTable();
+                    if (at != null) {
+                        int columnCount = at.getAccessibleColumnCount();
+                        if (columnCount != 0) {
+                            if (info == JAVA_AX_ROWS) return index / columnCount;
+                            if (info == JAVA_AX_COLS) return index % columnCount;
+                        }
+                    }
+                }
+
+                return -1;
+            }
         }, c);
     }
 
@@ -1093,6 +1139,14 @@ class CAccessibility implements PropertyChangeListener {
                 }
                 return false;
             }
+        }, c);
+    }
+
+    private static Accessible getAccessibleJTreeNodeCurrentAccessible(Accessible a, Component c) {
+        if (a == null) return null;
+        return invokeAndWait(() -> {
+            AccessibleContext ac = a.getAccessibleContext();
+            return ac == null ? null : AccessibleComponentAccessor.getAccessible(ac);
         }, c);
     }
 }

@@ -33,6 +33,7 @@
 #import "sun_lwawt_macosx_CAccessibility.h"
 
 static jclass sjc_CAccessible = NULL;
+static jclass sjc_CAccessibility = NULL;
 #define GET_CACCESSIBLE_CLASS_RETURN(ret) \
     GET_CLASS_RETURN(sjc_CAccessible, "sun/lwawt/macosx/CAccessible", ret);
 
@@ -42,23 +43,11 @@ static jclass sjc_CAccessible = NULL;
 
 - (jobject)currentAccessibleWithENV:(JNIEnv *)env
 {
-    jobject jAxContext = getAxContext(env, fAccessible, fComponent);
-    if (jAxContext == NULL) return NULL;
-    jclass axContextClass = (*env)->GetObjectClass(env, jAxContext);
-    DECLARE_METHOD_RETURN(jm_getCurrentComponent, axContextClass, "getCurrentComponent", "()Ljava/awt/Component;", NULL);
-    jobject newComponent = (*env)->CallObjectMethod(env, jAxContext, jm_getCurrentComponent);
+    GET_CACCESSIBILITY_CLASS_RETURN(NULL);
+    DECLARE_STATIC_METHOD_RETURN(sjm_getAccessibleJTreeNodeCurrentAccessible, sjc_CAccessibility, "getAccessibleJTreeNodeCurrentAccessible", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Ljavax/accessibility/Accessible;", NULL);
+    jobject currentAccessible = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, sjm_getAccessibleJTreeNodeCurrentAccessible, fAccessible, fComponent);
     CHECK_EXCEPTION();
-    (*env)->DeleteLocalRef(env, jAxContext);
-    if (newComponent != NULL) {
-        GET_CACCESSIBLE_CLASS_RETURN(NULL);
-        DECLARE_STATIC_METHOD_RETURN(sjm_getCAccessible, sjc_CAccessible, "getCAccessible", "(Ljavax/accessibility/Accessible;)Lsun/lwawt/macosx/CAccessible;", NULL);
-        jobject currentAccessible = (*env)->CallStaticObjectMethod(env, sjc_CAccessible, sjm_getCAccessible, newComponent);
-        CHECK_EXCEPTION();
-        (*env)->DeleteLocalRef(env, newComponent);
-        return currentAccessible;
-    } else {
-        return NULL;
-    }
+    return currentAccessible;
 }
 
 // NSAccessibilityElement protocol methods
