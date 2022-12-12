@@ -2465,6 +2465,8 @@ static void print_stack_element_to_stream(outputStream* st, Handle mirror, int m
                                           int version, int bci, Symbol* name) {
   ResourceMark rm;
 
+  st->print("!!!! from vm  print_stack_element_to_stream !!!!\n");
+
   // Get strings and string lengths
   InstanceKlass* holder = InstanceKlass::cast(java_lang_Class::as_Klass(mirror()));
   const char* klass_name  = holder->external_name();
@@ -2540,6 +2542,25 @@ void java_lang_Throwable::print_stack_element(outputStream *st, Method* method, 
   int method_id = method->orig_method_idnum();
   int version = method->constants()->version();
   print_stack_element_to_stream(st, mirror, method_id, version, bci, method->name());
+
+}
+
+void java_lang_Throwable::print_hello_world(JavaThread* javaThread) {
+    JavaThread* THREAD = javaThread;
+    InstanceKlass* klass = vmClasses::Throwable_klass();
+    TempNewSymbol method_name = SymbolTable::new_symbol("helloWorld");
+    Symbol* signature = vmSymbols::void_method_signature();
+
+    Method *method = klass->find_method(method_name, signature);
+    if (method != NULL) {
+        assert(method->is_private(), "must be");
+        JavaValue result(T_VOID);
+        JavaCallArguments args;
+        JavaCalls::call_static(&result, klass,
+                                method_name, signature, THREAD);
+    } else {
+        fprintf(stderr, "Couldn't find helloWorld()\n");
+    }
 }
 
 /**
@@ -2550,6 +2571,7 @@ void java_lang_Throwable::print_stack_trace(Handle throwable, outputStream* st) 
   // First, print the message.
   print(throwable(), st);
   st->cr();
+
 
   // Now print the stack trace.
   JavaThread* THREAD = JavaThread::current(); // For exception macros.
