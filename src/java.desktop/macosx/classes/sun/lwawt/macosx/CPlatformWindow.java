@@ -680,7 +680,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             logger.fine(profileOnly ? "DISPLAY_PROFILE_CHANGED" : "DISPLAY_CHANGED");
         }
 
-        if (peer != null) {
+        if (peer != null && !profileOnly) {
             EventQueue.invokeLater(
                     () -> ((SunGraphicsEnvironment) GraphicsEnvironment.
                             getLocalGraphicsEnvironment()).displayChanged());
