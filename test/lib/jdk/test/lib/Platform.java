@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,6 +46,7 @@ public class Platform {
     private static final String osArch      = privilegedGetProperty("os.arch");
     private static final String userName    = privilegedGetProperty("user.name");
     private static final String compiler    = privilegedGetProperty("sun.management.compiler");
+    private static final String testJdk     = privilegedGetProperty("test.jdk");
 
     private static String privilegedGetProperty(String key) {
         return AccessController.doPrivileged((
@@ -337,6 +338,34 @@ public class Platform {
             return "LIBPATH";
         } else {
             return "LD_LIBRARY_PATH";
+        }
+    }
+
+    /**
+     * Returns absolute path to directory containing JVM shared library.
+     */
+    public static Path jvmLibDir() {
+        Path dir = Paths.get(testJdk);
+        if (Platform.isWindows()) {
+            return dir.resolve("bin")
+                .resolve(variant())
+                .toAbsolutePath();
+        } else {
+            return dir.resolve("lib")
+                .resolve(variant())
+                .toAbsolutePath();
+        }
+    }
+
+    private static String variant() {
+        if (Platform.isServer()) {
+            return "server";
+        } else if (Platform.isClient()) {
+            return "client";
+        } else if (Platform.isMinimal()) {
+            return "minimal";
+        } else {
+            throw new Error("TESTBUG: unsupported vm variant");
         }
     }
 
