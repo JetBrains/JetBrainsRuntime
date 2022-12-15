@@ -621,8 +621,10 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
 
     public void handleWindowFocusInSync(long serial) {
         WindowEvent we = new WindowEvent((Window)target, WindowEvent.WINDOW_GAINED_FOCUS);
-        XKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow((Window) target);
-        sendEvent(we);
+        synchronized (focusRequestLock) {
+            XKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow((Window) target);
+            sendEvent(we);
+        }
     }
     // NOTE: This method may be called by privileged threads.
     //       DO NOT INVOKE CLIENT CODE ON THIS THREAD!
@@ -637,9 +639,11 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     }
     public void handleWindowFocusOutSync(Window oppositeWindow, long serial) {
         WindowEvent we = new WindowEvent((Window)target, WindowEvent.WINDOW_LOST_FOCUS, oppositeWindow);
-        XKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(null);
-        XKeyboardFocusManagerPeer.getInstance().setCurrentFocusOwner(null);
-        sendEvent(we);
+        synchronized (focusRequestLock) {
+            XKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(null);
+            XKeyboardFocusManagerPeer.getInstance().setCurrentFocusOwner(null);
+            sendEvent(we);
+        }
     }
 
 /* --- DisplayChangedListener Stuff --- */
