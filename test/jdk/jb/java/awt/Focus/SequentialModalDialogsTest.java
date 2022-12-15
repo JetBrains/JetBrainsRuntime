@@ -30,7 +30,6 @@ import java.util.concurrent.TimeUnit;
  */
 
 public class SequentialModalDialogsTest {
-    private static final CompletableFuture<Boolean> initFinished = new CompletableFuture<>();
     private static final CompletableFuture<Boolean> secondDialogShown = new CompletableFuture<>();
     private static final CompletableFuture<Boolean> typedInDialog = new CompletableFuture<>();
     private static Robot robot;
@@ -42,7 +41,7 @@ public class SequentialModalDialogsTest {
         robot = new Robot();
         try {
             SwingUtilities.invokeAndWait(SequentialModalDialogsTest::initUI);
-            initFinished.get(10, TimeUnit.SECONDS);
+            robot.delay(1000);
             clickOn(frameButton);
             secondDialogShown.get(10, TimeUnit.SECONDS);
             pressAndRelease(KeyEvent.VK_ENTER);
@@ -55,12 +54,6 @@ public class SequentialModalDialogsTest {
     private static void initUI() {
         frame = new JFrame("SequentialModalDialogsTest");
         frameButton = new JButton("Open dialogs");
-        frameButton.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent e) {
-                initFinished.complete(true);
-            }
-        });
         frameButton.addActionListener(e -> {
             showDialogs();
         });
