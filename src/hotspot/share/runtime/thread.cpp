@@ -3760,6 +3760,8 @@ public:
   }
 };
 
+static void dump_kotlin_coroutines(outputStream* st);
+
 // Threads::print_on() is called at safepoint by VM_PrintThreads operation.
 void Threads::print_on(outputStream* st, bool print_stacks,
                        bool internal_format, bool print_concurrent_locks,
@@ -3801,6 +3803,8 @@ void Threads::print_on(outputStream* st, bool print_stacks,
     }
 #endif // INCLUDE_SERVICES
   }
+
+  dump_kotlin_coroutines(st);
 
   PrintOnClosure cl(st);
   cl.do_thread(VMThread::vm_thread());
@@ -3978,3 +3982,28 @@ void JavaThread::verify_cross_modify_fence_failure(JavaThread *thread) {
    report_vm_error(__FILE__, __LINE__, "Cross modify fence failure", "%p", thread);
 }
 #endif
+
+static void dump_kotlin_coroutines(outputStream* st) {
+  st->print("Kotlin coroutines\n");
+
+  JavaThread* THREAD = JavaThread::current();
+  ExceptionMark em(THREAD);
+  JavaValue debugDumpStr(T_OBJECT);
+
+  JavaCalls::call_static(&debugDumpStr,
+                         vmClasses::Throwable_klass(),
+                         vmSymbols::get_coroutines_debug_dump_name(),
+                         vmSymbols::void_string_signature(),
+                         THREAD);
+
+  if (HAS_PENDING_EXCEPTION) {
+    CLEAR_PENDING_EXCEPTION;
+  }
+/*
+  oop strObj = debugDumpStr.get_oop();
+  Handle strHandle(THREAD, strObj);
+  char* str = java_lang_String::as_platform_dependent_str(strHandle, THREAD);
+  st->print("%s\n", str);
+  */
+st->print("test\n");
+}

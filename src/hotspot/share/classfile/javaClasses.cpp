@@ -2337,8 +2337,6 @@ static void print_stack_element_to_stream(outputStream* st, Handle mirror, int m
                                           int version, int bci, Symbol* name) {
   ResourceMark rm;
 
-  st->print("!!!! from vm  print_stack_element_to_stream !!!!\n");
-
   // Get strings and string lengths
   InstanceKlass* holder = InstanceKlass::cast(java_lang_Class::as_Klass(mirror()));
   const char* klass_name  = holder->external_name();

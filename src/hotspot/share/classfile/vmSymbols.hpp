@@ -489,6 +489,7 @@
   template(static_offset_name,                        "staticOffset")                             \
   template(static_base_name,                          "staticBase")                               \
   template(field_offset_name,                         "fieldOffset")                              \
+  template(get_coroutines_debug_dump_name,            "getCoroutinesDebugDump")                              \
                                                                                                   \
    /* name symbols needed by intrinsics */                                                         \
                                                                                                   \
