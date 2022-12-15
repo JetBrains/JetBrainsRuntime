@@ -81,6 +81,9 @@ public class XComponentPeer extends XWindow implements ComponentPeer, DropTarget
     private static final PlatformLogger enableLog = PlatformLogger.getLogger("sun.awt.X11.enable.XComponentPeer");
     private static final PlatformLogger shapeLog = PlatformLogger.getLogger("sun.awt.X11.shape.XComponentPeer");
 
+    // A lock ensuring focus requests are processed atomically
+    static final Object focusRequestLock = new Object();
+
     boolean paintPending = false;
     boolean isLayouting = false;
     private boolean enabled;
@@ -251,73 +254,89 @@ public class XComponentPeer extends XWindow implements ComponentPeer, DropTarget
 
     // TODO: consider moving it to KeyboardFocusManagerPeerImpl
     @Override
+    @SuppressWarnings("deprecation")
     public final boolean requestFocus(Component lightweightChild, boolean temporary,
                                       boolean focusedWindowChangeAllowed, long time,
                                       FocusEvent.Cause cause)
     {
-        if (XKeyboardFocusManagerPeer.
-            processSynchronousLightweightTransfer(target, lightweightChild, temporary,
-                                                  focusedWindowChangeAllowed, time))
-        {
-            return true;
+        XWindowPeer wpeerToFocus = null;
+        synchronized (focusRequestLock) {
+            if (XKeyboardFocusManagerPeer.
+                processSynchronousLightweightTransfer(target, lightweightChild, temporary,
+                                                      focusedWindowChangeAllowed, time))
+            {
+                return true;
+            }
+
+            int result = XKeyboardFocusManagerPeer.
+                shouldNativelyFocusHeavyweight(target, lightweightChild,
+                                               temporary, focusedWindowChangeAllowed,
+                                               time, cause, true);
+
+            switch (result) {
+              case XKeyboardFocusManagerPeer.SNFH_FAILURE:
+                  return false;
+              case XKeyboardFocusManagerPeer.SNFH_SUCCESS_PROCEED:
+                  // Currently we just generate focus events like we deal with lightweight instead of calling
+                  // XSetInputFocus on native window
+                  if (focusLog.isLoggable(PlatformLogger.Level.FINER)) {
+                      focusLog.finer("Proceeding with request to " +
+                                     lightweightChild + " in " + target);
+                  }
+                  /**
+                   * The problems with requests in non-focused window arise because shouldNativelyFocusHeavyweight
+                   * checks that native window is focused while appropriate WINDOW_GAINED_FOCUS has not yet
+                   * been processed - it is in EventQueue. Thus, SNFH allows native request and stores request record
+                   * in requests list - and it breaks our requests sequence as first record on WGF should be the last
+                   * focus owner which had focus before WLF. So, we should not add request record for such requests
+                   * but store this component in mostRecent - and return true as before for compatibility.
+                   */
+                  Window parentWindow = SunToolkit.getContainingWindow(target);
+                  if (parentWindow == null) {
+                      return rejectFocusRequestHelper("WARNING: Parent window is null");
+                  }
+
+                  if (parentWindow.isFocused()) {
+                      if (focusLog.isLoggable(PlatformLogger.Level.FINER)) {
+                          focusLog.finer("Target window is already focused, requesting focus internally");
+                      }
+                      return XKeyboardFocusManagerPeer.deliverFocus(lightweightChild,
+                                                                    target,
+                                                                    temporary,
+                                                                    focusedWindowChangeAllowed,
+                                                                    time, cause);
+                  }
+
+                  if (!focusedWindowChangeAllowed) {
+                      return rejectFocusRequestHelper("Target window isn't focused, aborting");
+                  }
+
+                  wpeerToFocus = AWTAccessor.getComponentAccessor()
+                                            .getPeer(parentWindow);
+                  if (wpeerToFocus == null) {
+                      return rejectFocusRequestHelper("WARNING: Parent window's peer is null");
+                  }
+
+                  rejectFocusRequestHelper("Waiting for asynchronous processing of the request");
+                  break;
+
+                  // Motif compatibility code
+              case XKeyboardFocusManagerPeer.SNFH_SUCCESS_HANDLED:
+                  // Either lightweight or excessive request - all events are generated.
+                  return true;
+            }
         }
-
-        int result = XKeyboardFocusManagerPeer.
-            shouldNativelyFocusHeavyweight(target, lightweightChild,
-                                           temporary, focusedWindowChangeAllowed,
-                                           time, cause, true);
-
-        switch (result) {
-          case XKeyboardFocusManagerPeer.SNFH_FAILURE:
-              return false;
-          case XKeyboardFocusManagerPeer.SNFH_SUCCESS_PROCEED:
-              // Currently we just generate focus events like we deal with lightweight instead of calling
-              // XSetInputFocus on native window
-              if (focusLog.isLoggable(PlatformLogger.Level.FINER)) {
-                  focusLog.finer("Proceeding with request to " +
-                                 lightweightChild + " in " + target);
-              }
-              /**
-               * The problems with requests in non-focused window arise because shouldNativelyFocusHeavyweight
-               * checks that native window is focused while appropriate WINDOW_GAINED_FOCUS has not yet
-               * been processed - it is in EventQueue. Thus, SNFH allows native request and stores request record
-               * in requests list - and it breaks our requests sequence as first record on WGF should be the last
-               * focus owner which had focus before WLF. So, we should not add request record for such requests
-               * but store this component in mostRecent - and return true as before for compatibility.
-               */
-              Window parentWindow = SunToolkit.getContainingWindow(target);
-              if (parentWindow == null) {
-                  return rejectFocusRequestHelper("WARNING: Parent window is null");
-              }
-              XWindowPeer wpeer = AWTAccessor.getComponentAccessor()
-                                             .getPeer(parentWindow);
-              if (wpeer == null) {
-                  return rejectFocusRequestHelper("WARNING: Parent window's peer is null");
-              }
-              /*
-               * Passing null 'actualFocusedWindow' as we don't want to restore focus on it
-               * when a component inside a Frame is requesting focus.
-               * See 6314575 for details.
-               */
-              boolean res = wpeer.requestWindowFocus(null);
-
-              if (focusLog.isLoggable(PlatformLogger.Level.FINER)) {
-                  focusLog.finer("Requested window focus: " + res);
-              }
-              // If parent window can be made focused and has been made focused(synchronously)
-              // then we can proceed with children, otherwise we retreat.
-              if (!(res && parentWindow.isFocused())) {
-                  return rejectFocusRequestHelper("Waiting for asynchronous processing of the request");
-              }
-              return XKeyboardFocusManagerPeer.deliverFocus(lightweightChild,
-                                                            target,
-                                                            temporary,
-                                                            focusedWindowChangeAllowed,
-                                                            time, cause);
-              // Motif compatibility code
-          case XKeyboardFocusManagerPeer.SNFH_SUCCESS_HANDLED:
-              // Either lightweight or excessive request - all events are generated.
-              return true;
+        // doing this with 'focusLock' not held to avoid deadlocks
+        if (wpeerToFocus != null) {
+            /*
+             * Passing null 'actualFocusedWindow' as we don't want to restore focus on it
+             * when a component inside a Frame is requesting focus.
+             * See 6314575 for details.
+             */
+            boolean res = wpeerToFocus.requestWindowFocus(null);
+            if (focusLog.isLoggable(PlatformLogger.Level.FINER)) {
+                focusLog.finer("Requested window focus: " + res);
+            }
         }
         return false;
     }
