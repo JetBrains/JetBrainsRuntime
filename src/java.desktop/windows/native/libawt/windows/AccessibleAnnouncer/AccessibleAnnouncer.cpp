@@ -24,9 +24,9 @@
  * questions.
  */
 
-#include "JawsAnnouncer.h"
-#include "NVDAAnnouncer.h"
 #include "javax_swing_AccessibleAnnouncer.h"
+#include "NVDAAnnouncer.h"  // NVDAAnnounce
+#include "JawsAnnouncer.h"  // JawsAnnounce
 
 /*
  * Class:     javax_swing_AccessibleAnnouncer
@@ -36,8 +36,10 @@
 JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
 (JNIEnv *env, jclass cls, jobject accessible, jstring str, jint priority)
 {
-if (!NVDAAnnounce(env, str, priority)) {
-JawsAnnounce(env, str, priority);
-}
+    #ifndef NO_A11Y_NVDA_ANNOUNCING
+        if (NVDAAnnounce(env, str, priority)) {
+            return;
+        }
+    #endif
 
 }

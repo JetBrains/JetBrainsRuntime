@@ -33,6 +33,7 @@ m4_include([lib-std.m4])
 m4_include([lib-x11.m4])
 m4_include([lib-fontconfig.m4])
 m4_include([lib-speechd.m4])
+m4_include([lib-nvdacontrollerclient.m4])
 m4_include([lib-tests.m4])
 
 ################################################################################
@@ -91,6 +92,13 @@ AC_DEFUN_ONCE([LIB_DETERMINE_DEPENDENCIES],
   else
     NEEDS_LIB_FFI=false
   fi
+
+  # Check if nvdacontrollerclient is needed
+  if test "x$OPENJDK_TARGET_OS" = xwindows && test "x$ENABLE_HEADLESS_ONLY" != xtrue; then
+    NEEDS_LIB_NVDACONTROLLERCLIENT=true
+  else
+    NEEDS_LIB_NVDACONTROLLERCLIENT=false
+  fi
 ])
 
 ################################################################################
@@ -108,6 +116,7 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBRARIES],
   LIB_SETUP_BUNDLED_LIBS
   LIB_SETUP_MISC_LIBS
   LIB_SETUP_SPEECHD
+  LIB_SETUP_NVDACONTROLLERCLIENT
   LIB_TESTS_SETUP_GTEST
 
   BASIC_JDKLIB_LIBS=""
