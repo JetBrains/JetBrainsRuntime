@@ -26,52 +26,54 @@
 
 
 #include "NVDAAnnouncer.h"
-#include "NVDAClient.h"
+
+#ifndef NO_A11Y_NVDA_ANNOUNCING
 #include "javax_swing_AccessibleAnnouncer.h"
+#include "jni_util.h"                           // JNU_ThrowOutOfMemoryError
+#include "debug_assert.h"                       // DASSERT
+#include <nvdaController.h>                     // nvdaController_*, error_status_t
 
 
-bool NVDAAnnounce(JNIEnv* env, jstring str, jint priority)
+bool NVDAAnnounce(JNIEnv* const env, const jstring str, const jint priority)
 {
-    if ((env == nullptr) || (str == nullptr)) {
-        // TODO: add some error handling
-        return false;
-    }
+    DASSERT(env != nullptr);
+    DASSERT(str != nullptr);
 
-    NVDAClient* const nvdaClient = NVDAClient::getInstance();
-    if (nvdaClient == nullptr) {
-        // NVDA has failed to initialize
-        // TODO: add some error handling
-        return false;
-    }
+    error_status_t nvdaStatus;
 
-    if (!nvdaClient->testIfRunning()) {
+    if ( (nvdaStatus = nvdaController_testIfRunning()) != 0 ) {
         // NVDA isn't running or an RPC error occurred
         return false;
     }
 
     if (priority == javax_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT) {
-        nvdaClient->cancelSpeech(); // TODO: add some error handling
+        if ( (nvdaStatus = nvdaController_cancelSpeech()) != 0 ) {
+            // TODO: add some error handling
+        }
     }
 
     const jchar* jchars = env->GetStringChars(str, nullptr);
     if (jchars == nullptr) {
-        // TODO: add some error handling
+        JNU_ThrowOutOfMemoryError(env, "NVDAAnnounce: failed to obtain chars from the announcing string");
         return false;
     }
 
     static_assert(sizeof(*jchars) == sizeof(wchar_t), "Can't cast jchar* to wchar_t*");
     const wchar_t* announceText = reinterpret_cast<const wchar_t*>(jchars);
 
-    bool nvdaSuccess = nvdaClient->speakText(announceText);
+    nvdaStatus = nvdaController_speakText(announceText);
 
     env->ReleaseStringChars(str, jchars);
     jchars = nullptr;
     announceText = nullptr;
 
-    if (!nvdaSuccess) {
+    if (nvdaStatus != 0) {
+        // nvdaController_speakText failed
         // TODO: add some error handling
         return false;
     }
 
     return true;
 }
+
+#endif // ndef NO_A11Y_NVDA_ANNOUNCING

@@ -28,8 +28,13 @@
 #ifndef NVDA_ANNOUNCER_H
 #define NVDA_ANNOUNCER_H
 
-#include <jni.h>
+#ifndef NO_A11Y_NVDA_ANNOUNCING
 
-bool NVDAAnnounce(JNIEnv *env, jstring str, jint priority);
+#include <jni.h>    // JNIEnv, jstring, jint
+
+// TODO: reconsider the data type is used for error reporting (maybe the bool isn't informative enough)
+[[nodiscard]] bool NVDAAnnounce(JNIEnv *env, jstring str, jint priority);
+
+#endif // ndef NO_A11Y_NVDA_ANNOUNCING
 
 #endif // ndef NVDA_ANNOUNCER_H

@@ -127,6 +127,14 @@ $ make images
 ```
 This will build the release configuration under `./build/windows-x86_64-server-release/`.
 
+#### Enable optional NVDA screen reader support
+If you want to add support of a11y announcing via [NVDA screen reader](https://www.nvaccess.org/about-nvda/),
+you will need to bundle the NVDA Controller Client library.
+You can do it with the following steps:
+1. Download the NVDA Controller Client library. You can find the link in its official README [here](https://github.com/nvaccess/nvda/blob/master/extras/controllerClient/readme.md)
+2. Pass the path to the unpacked package to `configure` via an additional flag `--with-nvdacontrollerclient=<path>`.
+   The build system will search the required library files under `<path>/<target-arch>`.
+
 ### macOS
 Install the following:
 * Xcode command line developer tools and `autoconf` via [Homebrew](getDpiInfo).
