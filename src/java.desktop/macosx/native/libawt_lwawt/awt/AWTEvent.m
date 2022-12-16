@@ -235,51 +235,51 @@ static const struct CharToVKEntry charToDeadVKTable[] = {
 // This table is analogous to a similar one found in sun.awt.ExtendedKeyCodes
 // It governs translating the unicode codepoints into the proper VK_ values for keys that have one
 static const struct CharToVKEntry extraCharToVKTable[] = {
-        { 0x0021, java_awt_event_KeyEvent_VK_EXCLAMATION_MARK },
-        { 0x0022, java_awt_event_KeyEvent_VK_QUOTEDBL },
-        { 0x0023, java_awt_event_KeyEvent_VK_NUMBER_SIGN },
-        { 0x0024, java_awt_event_KeyEvent_VK_DOLLAR },
-        { 0x0026, java_awt_event_KeyEvent_VK_AMPERSAND },
-        { 0x0027, java_awt_event_KeyEvent_VK_QUOTE },
-        { 0x0028, java_awt_event_KeyEvent_VK_LEFT_PARENTHESIS },
-        { 0x0029, java_awt_event_KeyEvent_VK_RIGHT_PARENTHESIS },
-        { 0x002A, java_awt_event_KeyEvent_VK_ASTERISK },
-        { 0x002B, java_awt_event_KeyEvent_VK_PLUS },
-        { 0x002C, java_awt_event_KeyEvent_VK_COMMA },
-        { 0x002D, java_awt_event_KeyEvent_VK_MINUS },
-        { 0x002E, java_awt_event_KeyEvent_VK_PERIOD },
-        { 0x002F, java_awt_event_KeyEvent_VK_SLASH },
-        { 0x003A, java_awt_event_KeyEvent_VK_COLON },
-        { 0x003B, java_awt_event_KeyEvent_VK_SEMICOLON },
-        { 0x003C, java_awt_event_KeyEvent_VK_LESS },
-        { 0x003D, java_awt_event_KeyEvent_VK_EQUALS },
-        { 0x003E, java_awt_event_KeyEvent_VK_GREATER },
-        { 0x0040, java_awt_event_KeyEvent_VK_AT },
-        { 0x005B, java_awt_event_KeyEvent_VK_OPEN_BRACKET },
-        { 0x005C, java_awt_event_KeyEvent_VK_BACK_SLASH },
-        { 0x005D, java_awt_event_KeyEvent_VK_CLOSE_BRACKET },
-        { 0x005E, java_awt_event_KeyEvent_VK_CIRCUMFLEX },
-        { 0x005F, java_awt_event_KeyEvent_VK_UNDERSCORE },
-        { 0x0060, java_awt_event_KeyEvent_VK_BACK_QUOTE },
-        { 0x007B, java_awt_event_KeyEvent_VK_BRACELEFT },
-        { 0x007D, java_awt_event_KeyEvent_VK_BRACERIGHT },
-        { 0x00A1, java_awt_event_KeyEvent_VK_INVERTED_EXCLAMATION_MARK },
+    {0x0021, java_awt_event_KeyEvent_VK_EXCLAMATION_MARK},
+    {0x0022, java_awt_event_KeyEvent_VK_QUOTEDBL},
+    {0x0023, java_awt_event_KeyEvent_VK_NUMBER_SIGN},
+    {0x0024, java_awt_event_KeyEvent_VK_DOLLAR},
+    {0x0026, java_awt_event_KeyEvent_VK_AMPERSAND},
+    {0x0027, java_awt_event_KeyEvent_VK_QUOTE},
+    {0x0028, java_awt_event_KeyEvent_VK_LEFT_PARENTHESIS},
+    {0x0029, java_awt_event_KeyEvent_VK_RIGHT_PARENTHESIS},
+    {0x002A, java_awt_event_KeyEvent_VK_ASTERISK},
+    {0x002B, java_awt_event_KeyEvent_VK_PLUS},
+    {0x002C, java_awt_event_KeyEvent_VK_COMMA},
+    {0x002D, java_awt_event_KeyEvent_VK_MINUS},
+    {0x002E, java_awt_event_KeyEvent_VK_PERIOD},
+    {0x002F, java_awt_event_KeyEvent_VK_SLASH},
+    {0x003A, java_awt_event_KeyEvent_VK_COLON},
+    {0x003B, java_awt_event_KeyEvent_VK_SEMICOLON},
+    {0x003C, java_awt_event_KeyEvent_VK_LESS},
+    {0x003D, java_awt_event_KeyEvent_VK_EQUALS},
+    {0x003E, java_awt_event_KeyEvent_VK_GREATER},
+    {0x0040, java_awt_event_KeyEvent_VK_AT},
+    {0x005B, java_awt_event_KeyEvent_VK_OPEN_BRACKET},
+    {0x005C, java_awt_event_KeyEvent_VK_BACK_SLASH},
+    {0x005D, java_awt_event_KeyEvent_VK_CLOSE_BRACKET},
+    {0x005E, java_awt_event_KeyEvent_VK_CIRCUMFLEX},
+    {0x005F, java_awt_event_KeyEvent_VK_UNDERSCORE},
+    {0x0060, java_awt_event_KeyEvent_VK_BACK_QUOTE},
+    {0x007B, java_awt_event_KeyEvent_VK_BRACELEFT},
+    {0x007D, java_awt_event_KeyEvent_VK_BRACERIGHT},
+    {0x00A1, java_awt_event_KeyEvent_VK_INVERTED_EXCLAMATION_MARK},
 
-        // These are the extended latin characters which have a non-obvious key code.
-        // Their key codes are derived from the upper case instead of the lower case.
-        // It probably has to do with how these key codes are reported on Windows.
-        // Translating these characters to the key codes corresponding to their uppercase versions
-        // makes getExtendedKeyCodeForChar consistent with how these events are reported on macOS.
-        {0x00E4, 0x01000000+0x00C4},
-        {0x00E5, 0x01000000+0x00C5},
-        {0x00E6, 0x01000000+0x00C6},
-        {0x00E7, 0x01000000+0x00C7},
-        {0x00F1, 0x01000000+0x00D1},
-        {0x00F6, 0x01000000+0x00D6},
-        {0x00F8, 0x01000000+0x00D8},
+    // These are the extended latin characters which have a non-obvious key code.
+    // Their key codes are derived from the upper case instead of the lower case.
+    // It probably has to do with how these key codes are reported on Windows.
+    // Translating these characters to the key codes corresponding to their uppercase versions
+    // makes getExtendedKeyCodeForChar consistent with how these events are reported on macOS.
+    {0x00E4, 0x01000000+0x00C4},
+    {0x00E5, 0x01000000+0x00C5},
+    {0x00E6, 0x01000000+0x00C6},
+    {0x00E7, 0x01000000+0x00C7},
+    {0x00F1, 0x01000000+0x00D1},
+    {0x00F6, 0x01000000+0x00D6},
+    {0x00F8, 0x01000000+0x00D8},
 
-        { 0x20AC, java_awt_event_KeyEvent_VK_EURO_SIGN },
-        {0, 0}
+    {0x20AC, java_awt_event_KeyEvent_VK_EURO_SIGN},
+    {0, 0}
 };
 
 // TODO: some constants below are part of CGS (private interfaces)...
@@ -491,10 +491,8 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
     TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
 
     // Whether this is a latin-based keyboard layout (English, German, French, etc)
-    BOOL asciiCapable = CFBooleanGetValue(
+    BOOL asciiCapable = (BOOL)CFBooleanGetValue(
             (CFBooleanRef)TISGetInputSourceProperty(currentKeyboard, kTISPropertyInputSourceIsASCIICapable));
-
-    unichar testLowercaseChar = tolower(ch);
 
     // If the key press generates a dead char, then this is the character
     // that is produced when pressing the key followed by a space
@@ -522,6 +520,8 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
             }
         }
     }
+
+    unichar testLowercaseChar = tolower(ch);
 
     if (useNationalLayouts && asciiCapable) {
         // If national layouts are enabled and the current keyboard is latin-based then
