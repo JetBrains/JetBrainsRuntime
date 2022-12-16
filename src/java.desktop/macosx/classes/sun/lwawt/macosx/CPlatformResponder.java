@@ -181,7 +181,11 @@ final class CPlatformResponder {
     };
 
     private static boolean isCyrillicKeyboardLayout() {
-        return Arrays.stream(cyrillicKeyboardLayouts).anyMatch(l -> l.equals(LWCToolkit.getKeyboardLayoutId()));
+        final var currentLayout = LWCToolkit.getKeyboardLayoutId();
+        if ( (currentLayout == null) || currentLayout.isEmpty() ) {
+            return false;
+        }
+        return Arrays.asList(cyrillicKeyboardLayouts).contains(currentLayout);
     }
 
     /**
