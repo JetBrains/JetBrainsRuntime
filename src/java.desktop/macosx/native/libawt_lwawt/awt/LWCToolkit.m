@@ -891,14 +891,26 @@ Java_sun_lwawt_macosx_LWCToolkit_isEmbedded
 JNIEXPORT jstring JNICALL
 JNICALL Java_sun_lwawt_macosx_LWCToolkit_getKeyboardLayoutNativeId(JNIEnv *env, jclass cls)
 {
-    __block NSString * layoutId = NULL;
+    jstring result = NULL;
+
     JNI_COCOA_ENTER(env);
+    NSMutableString * const layoutId = [NSMutableString stringWithCapacity:0];
+    if (layoutId == NULL) {
+        return NULL;
+    }
+
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
         TISInputSourceRef source = TISCopyCurrentKeyboardInputSource();
-        layoutId = TISGetInputSourceProperty(source, kTISPropertyInputSourceID);
+        NSString * const layoutIdLocal = TISGetInputSourceProperty(source, kTISPropertyInputSourceID);
+        if (layoutIdLocal != NULL) {
+            [layoutId appendString:layoutIdLocal];
+        }
     }];
+
+    result = NSStringToJavaString(env, layoutId);
     JNI_COCOA_EXIT(env);
-    return NSStringToJavaString(env, layoutId);
+
+    return result;
 }
 
 /*
