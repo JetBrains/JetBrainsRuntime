@@ -35,7 +35,7 @@
  */
 JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce(JNIEnv *env, jclass cls, jobject accessible, jstring str, jint priority)
 {
-#ifndef NO_A11Y_ANNOUNCING
+#ifndef NO_A11Y_SPEECHD_ANNOUNCING
     if (str != NULL)
     {
         const char *msg = JNU_GetStringPlatformChars(env, str, NULL);

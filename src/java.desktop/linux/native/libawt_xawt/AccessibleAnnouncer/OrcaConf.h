@@ -27,7 +27,7 @@
 #ifndef ORCACONF_H
 #define ORCACONF_H
 
-#ifndef NO_A11Y_ANNOUNCING
+#ifndef NO_A11Y_SPEECHD_ANNOUNCING
 
 #include <libspeechd.h>
 #include "jni.h"
@@ -45,7 +45,7 @@ int OrcaGetEnableSpeech(JNIEnv *env, jobject conf);
 int OrcaGetOnlySpeakDisplayedText(JNIEnv *env, jobject conf);
 int OrcaGetEstablished(JNIEnv *env, jobject conf);
 
-#endif // #ifndef NO_A11Y_ANNOUNCING
+#endif // #ifndef NO_A11Y_SPEECHD_ANNOUNCING
 
 #endif //ORCACONF_H
 

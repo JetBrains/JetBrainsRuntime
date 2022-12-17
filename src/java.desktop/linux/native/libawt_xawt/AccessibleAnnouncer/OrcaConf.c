@@ -24,7 +24,7 @@
  * questions.
  */
 
-#ifndef NO_A11Y_ANNOUNCING
+#ifndef NO_A11Y_SPEECHD_ANNOUNCING
 
 #include "OrcaConf.h"
 #include "AccessibleAnnouncerJNIUtils.h"
@@ -187,5 +187,5 @@ jobject OrcaGetConf(JNIEnv *env)
 return o;
 }
 
-#endif // #ifndef NO_A11Y_ANNOUNCING
+#endif // #ifndef NO_A11Y_SPEECHD_ANNOUNCING
 

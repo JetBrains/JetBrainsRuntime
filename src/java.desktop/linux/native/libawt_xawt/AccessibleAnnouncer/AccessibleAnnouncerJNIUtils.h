@@ -27,7 +27,7 @@
 #ifndef ACCESSIBLEANNOUNCERJNIUTILS_H
 #define ACCESSIBLEANNOUNCERJNIUTILS_H
 
-#ifndef NO_A11Y_ANNOUNCING
+#ifndef NO_A11Y_SPEECHD_ANNOUNCING
 
 #include "jni.h"
 
@@ -186,7 +186,7 @@ return ret;\
 }\
 }\
 
-#endif // #ifndef NO_A11Y_ANNOUNCING
+#endif // #ifndef NO_A11Y_SPEECHD_ANNOUNCING
 
 
 #endif //ACCESSIBLEANNOUNCERJNIUTILS_H
