@@ -152,6 +152,19 @@ ifeq ($(call isTargetOs, windows), true)
   LIBAWT_CFLAGS += $(A11Y_NVDA_ANNOUNCING_CFLAGS)
 endif
 
+# Setup the client for the JAWS screen reader
+ifeq ($(call isTargetOs, windows), true)
+  A11Y_JAWS_ANNOUNCING_CFLAGS := -DNO_A11Y_JAWS_ANNOUNCING
+
+  ifeq ($(ENABLE_HEADLESS_ONLY), false)
+    ifeq ($(A11Y_JAWS_ANNOUNCING_ENABLED), true)
+      A11Y_JAWS_ANNOUNCING_CFLAGS :=
+    endif
+  endif
+
+  LIBAWT_CFLAGS += $(A11Y_JAWS_ANNOUNCING_CFLAGS)
+endif
+
 $(eval $(call SetupJdkLibrary, BUILD_LIBAWT, \
     NAME := awt, \
     EXTRA_SRC := $(LIBAWT_EXTRA_SRC), \

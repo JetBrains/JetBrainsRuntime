@@ -42,4 +42,13 @@ JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
         }
     #endif
 
+    #ifndef NO_A11Y_JAWS_ANNOUNCING
+        if (JawsAnnounce(env, str, priority)) {
+            return;
+        } else {
+            // TODO: add some error handling?
+        }
+    #endif
+
+    // Each announcer has failed or the build was made without any of them
 }

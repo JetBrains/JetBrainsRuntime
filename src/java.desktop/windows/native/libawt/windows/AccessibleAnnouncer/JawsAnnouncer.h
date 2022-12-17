@@ -24,11 +24,15 @@
  * questions.
  */
 
-#ifndef JAWSANNOUNCER_H
-#define JAWSANNOUNCER_H
+#ifndef JAWS_ANNOUNCER_H
+#define JAWS_ANNOUNCER_H
+
+#ifndef NO_A11Y_JAWS_ANNOUNCING
 
 #include "jni.h"
 
 bool JawsAnnounce(JNIEnv *env, jstring str, jint priority);
 
-#endif //JAWSANNOUNCER_H
+#endif // ndef NO_A11Y_JAWS_ANNOUNCING
+
+#endif // ndef JAWS_ANNOUNCER_H

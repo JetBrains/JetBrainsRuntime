@@ -24,8 +24,10 @@
  * questions.
  */
 
-#ifndef IJAWSAPI_H
-#define IJAWSAPI_H
+#ifndef IJAWS_API_H
+#define IJAWS_API_H
+
+#ifndef NO_A11Y_JAWS_ANNOUNCING
 
 #include <windows.h>
 #include <objbase.h>
@@ -45,4 +47,6 @@ STDMETHOD(Disable)(THIS_ VARIANT_BOOL* retval) PURE;
 STDMETHOD(RunFunction)(THIS_ /*[in]*/ BSTR FunctionName, VARIANT_BOOL* retval) PURE;
 };
 
-#endif //JETBRAINSRUNTIME_IJAWSAPI_H
+#endif // ndef NO_A11Y_JAWS_ANNOUNCING
+
+#endif // ndef IJAWS_API_H
