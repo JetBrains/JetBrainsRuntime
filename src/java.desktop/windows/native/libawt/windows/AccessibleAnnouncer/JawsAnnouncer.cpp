@@ -25,6 +25,8 @@
  */
 
 #include "JawsAnnouncer.h"
+
+#ifndef NO_A11Y_JAWS_ANNOUNCING
 #include "IJawsApi.h"
 #include "javax_swing_AccessibleAnnouncer.h"
 
@@ -63,3 +65,5 @@ DEFINE_GUID(CLSID_JAWSCLASS ,
 /* {123DEDB4-2CF6-429C-A2AB-CC809E5516CE} */
 DEFINE_GUID(IID_IJAWSAPI ,
 0x123DEDB4,0x2CF6, 0x429C, 0x0A2, 0x0AB, 0x0CC, 0x80, 0x9E, 0x55, 0x16, 0x0CE);
+
+#endif // ndef NO_A11Y_JAWS_ANNOUNCING

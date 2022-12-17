@@ -135,6 +135,10 @@ You can do it with the following steps:
 2. Pass the path to the unpacked package to `configure` via an additional flag `--with-nvdacontrollerclient=<path>`.
    The build system will search the required library files under `<path>/<target-arch>`.
 
+#### Disable optional JAWS screen reader support
+JBR is built with built-in support of JAWS screen reader.
+If you want to disable it, run `configure` with the additional flag `--disable-jaws-client`.
+
 ### macOS
 Install the following:
 * Xcode command line developer tools and `autoconf` via [Homebrew](getDpiInfo).
