@@ -41,7 +41,7 @@ AC_DEFUN_ONCE([LIB_SETUP_SPEECHD],
         (test "x${with_speechd_include}" != x && test "x${with_speechd_include}" != xno); then
       AC_MSG_WARN([[speechd not used, so --with-speechd[-*] is ignored]])
     fi
-    A11Y_ANNOUNCING_ENABLED=false
+    A11Y_SPEECHD_ANNOUNCING_ENABLED=false
     SPEECHD_CFLAGS=
     SPEECHD_LIBS=
   else
@@ -80,13 +80,13 @@ AC_DEFUN_ONCE([LIB_SETUP_SPEECHD],
       fi
     fi
     if test "x$SPEECHD_FOUND" = xno; then
-      A11Y_ANNOUNCING_ENABLED=false
+      A11Y_SPEECHD_ANNOUNCING_ENABLED=false
     else
-      A11Y_ANNOUNCING_ENABLED=true
+      A11Y_SPEECHD_ANNOUNCING_ENABLED=true
     fi
   fi
 
-  AC_SUBST(A11Y_ANNOUNCING_ENABLED)
+  AC_SUBST(A11Y_SPEECHD_ANNOUNCING_ENABLED)
   AC_SUBST(SPEECHD_CFLAGS)
   AC_SUBST(SPEECHD_LIBS)
 ])

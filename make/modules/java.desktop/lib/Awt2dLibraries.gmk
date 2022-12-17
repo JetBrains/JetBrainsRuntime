@@ -234,10 +234,10 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/font \
         #
 
-    ifeq ($(A11Y_ANNOUNCING_ENABLED), true)
-        A11Y_ANNOUNCING_CFLAGS :=
+    ifeq ($(A11Y_SPEECHD_ANNOUNCING_ENABLED), true)
+        A11Y_SPEECHD_ANNOUNCING_CFLAGS :=
     else
-        A11Y_ANNOUNCING_CFLAGS := -DNO_A11Y_ANNOUNCING
+        A11Y_SPEECHD_ANNOUNCING_CFLAGS := -DNO_A11Y_SPEECHD_ANNOUNCING
     endif
 
     ifeq ($(call isTargetOs, linux), true)
@@ -263,7 +263,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         $(FONTCONFIG_CFLAGS) \
         $(CUPS_CFLAGS) \
         $(SPEECHD_CFLAGS) \
-        $(A11Y_ANNOUNCING_CFLAGS) \
+        $(A11Y_SPEECHD_ANNOUNCING_CFLAGS) \
         #
 
     ifeq ($(call isTargetOs, linux), true)
