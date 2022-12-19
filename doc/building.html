@@ -1,19 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
-  <meta charset="utf-8">
-  <meta name="generator" content="pandoc">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>Building the JDK</title>
-  <style type="text/css">code{white-space: pre;}</style>
-  <link rel="stylesheet" href="../make/data/docs-resources/resources/jdk-default.css">
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
+  <link rel="stylesheet" href="../make/data/docs-resources/resources/jdk-default.css" />
   <!--[if lt IE 9]>
     <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
   <![endif]-->
   <style type="text/css">pre, code, tt { color: #1d6ae5; }</style>
 </head>
 <body>
-<header>
+<header id="title-block-header">
 <h1 class="title">Building the JDK</h1>
 </header>
 <nav id="TOC">
@@ -234,30 +239,30 @@
 <table>
 <thead>
 <tr class="header">
-<th style="text-align: left;">Operating system</th>
-<th style="text-align: left;">Supported toolchain</th>
+<th>Operating system</th>
+<th>Supported toolchain</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">Linux</td>
-<td style="text-align: left;">gcc, clang</td>
+<td>Linux</td>
+<td>gcc, clang</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">macOS</td>
-<td style="text-align: left;">Apple Xcode (using clang)</td>
+<td>macOS</td>
+<td>Apple Xcode (using clang)</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">Solaris</td>
-<td style="text-align: left;">Oracle Solaris Studio</td>
+<td>Solaris</td>
+<td>Oracle Solaris Studio</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">AIX</td>
-<td style="text-align: left;">IBM XL C/C++</td>
+<td>AIX</td>
+<td>IBM XL C/C++</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">Windows</td>
-<td style="text-align: left;">Microsoft Visual Studio</td>
+<td>Windows</td>
+<td>Microsoft Visual Studio</td>
 </tr>
 </tbody>
 </table>
@@ -265,26 +270,26 @@
 <table>
 <thead>
 <tr class="header">
-<th style="text-align: left;">Operating system</th>
-<th style="text-align: left;">Toolchain version</th>
+<th>Operating system</th>
+<th>Toolchain version</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">Linux</td>
-<td style="text-align: left;">gcc 7.3.0</td>
+<td>Linux</td>
+<td>gcc 7.3.0</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">macOS</td>
-<td style="text-align: left;">Apple Xcode 9.4 (using clang 9.1.0)</td>
+<td>macOS</td>
+<td>Apple Xcode 9.4 (using clang 9.1.0)</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">Solaris</td>
-<td style="text-align: left;">Oracle Solaris Studio 12.4 (with compiler version 5.13)</td>
+<td>Solaris</td>
+<td>Oracle Solaris Studio 12.4 (with compiler version 5.13)</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">Windows</td>
-<td style="text-align: left;">Microsoft Visual Studio 2017 update 15.9.16</td>
+<td>Windows</td>
+<td>Microsoft Visual Studio 2017 update 15.9.16</td>
 </tr>
 </tbody>
 </table>
@@ -297,9 +302,13 @@
 <p>To use clang instead of gcc on Linux, use <code>--with-toolchain-type=clang</code>.</p>
 <h3 id="apple-xcode">Apple Xcode</h3>
 <p>The oldest supported version of Xcode is 8.</p>
-<p>You will need the Xcode command lines developers tools to be able to build the JDK. (Actually, <em>only</em> the command lines tools are needed, not the IDE.) The simplest way to install these is to run:</p>
+<p>You will need the Xcode command line developer tools to be able to build the JDK. (Actually, <em>only</em> the command line tools are needed, not the IDE.) The simplest way to install these is to run:</p>
 <pre><code>xcode-select --install</code></pre>
-<p>It is advisable to keep an older version of Xcode for building the JDK when updating Xcode. This <a href="http://iosdevelopertips.com/xcode/install-multiple-versions-of-xcode.html">blog page</a> has good suggestions on managing multiple Xcode versions. To use a specific version of Xcode, use <code>xcode-select -s</code> before running <code>configure</code>, or use <code>--with-toolchain-path</code> to point to the version of Xcode to use, e.g. <code>configure --with-toolchain-path=/Applications/Xcode8.app/Contents/Developer/usr/bin</code></p>
+<p>When updating Xcode, it is advisable to keep an older version for building the JDK. To use a specific version of Xcode you have multiple options:</p>
+<ul>
+<li>Use <code>xcode-select -s</code> before running <code>configure</code>, e.g. <code>xcode-select -s /Applications/Xcode13.1.app</code>. The drawback is that the setting is system wide and you may have to revert it after an OpenJDK build.</li>
+<li>Use configure option <code>--with-xcode-path</code>, e.g. <code>configure --with-xcode-path=/Applications/Xcode13.1.app</code> This allows using a specific Xcode version for an OpenJDK build, independently of the active Xcode version by <code>xcode-select</code>.</li>
+</ul>
 <p>If you have recently (inadvertently) updated your OS and/or Xcode version, and the JDK can no longer be built, please see the section on <a href="#problems-with-the-build-environment">Problems with the Build Environment</a>, and <a href="#getting-help">Getting Help</a> to find out if there are any recent, non-merged patches available for this update.</p>
 <h3 id="oracle-solaris-studio">Oracle Solaris Studio</h3>
 <p>The minimum accepted version of the Solaris Studio compilers is 5.13 (corresponding to Solaris Studio 12.4). Older versions will not be accepted by configure.</p>
@@ -362,8 +371,8 @@ CC: Sun C++ 5.13 SunOS_i386 151846-10 2015/10/30</code></pre>
 <h3 id="microsoft-visual-studio">Microsoft Visual Studio</h3>
 <p>The minimum accepted version of Visual Studio is 2010. Older versions will not be accepted by <code>configure</code>. The maximum accepted version of Visual Studio is 2019. Versions older than 2017 are unlikely to continue working for long.</p>
 <p>If you have multiple versions of Visual Studio installed, <code>configure</code> will by default pick the latest. You can request a specific version to be used by setting <code>--with-toolchain-version</code>, e.g. <code>--with-toolchain-version=2015</code>.</p>
-<p>If you have Visual Studio installed but <code>configure</code> fails to detect it, it may be because of <a href="#spaces-in-path">spaces in path</a>.</p>
 <p>If you get <code>LINK: fatal error LNK1123: failure during conversion to COFF: file invalid</code> when building using Visual Studio 2010, you have encountered <a href="http://support.microsoft.com/kb/2757355">KB2757355</a>, a bug triggered by a specific installation order. However, the solution suggested by the KB article does not always resolve the problem. See <a href="https://stackoverflow.com/questions/10888391">this stackoverflow discussion</a> for other suggestions.</p>
+<p>If you have Visual Studio installed but <code>configure</code> fails to detect it, it may be because of <a href="#spaces-in-path">spaces in path</a>.</p>
 <h3 id="ibm-xl-cc">IBM XL C/C++</h3>
 <p>The regular builds by SAP is using version 12.1, described as <code>IBM XL C/C++ for AIX, V12.1 (5765-J02, 5725-C72) Version: 12.01.0000.0017</code>.</p>
 <p>See the <a href="http://cr.openjdk.java.net/~simonis/ppc-aix-port">OpenJDK PowerPC Port Status Page</a> for details.</p>
@@ -403,7 +412,7 @@ CC: Sun C++ 5.13 SunOS_i386 151846-10 2015/10/30</code></pre>
 <ul>
 <li>To install on an apt-based Linux, try running <code>sudo apt-get install libx11-dev libxext-dev libxrender-dev libxtst-dev libxt-dev</code>.</li>
 <li>To install on an rpm-based Linux, try running <code>sudo yum install libXtst-devel libXt-devel libXrender-devel libXi-devel</code>.</li>
-<li>To install on Alpine Linux, try running <code>sudo apk add libx11-dev libxext-dev libxrender-dev libxtst-dev libxt-dev</code>.</li>
+<li>To install on Alpine Linux, try running <code>sudo apk add libx11-dev libxext-dev libxrender-dev libxrandr-dev libxtst-dev libxt-dev</code>.</li>
 <li>To install on Solaris, try running <code>pkg install x11/header/x11-protocols x11/library/libice x11/library/libpthread-stubs x11/library/libsm x11/library/libx11 x11/library/libxau x11/library/libxcb x11/library/libxdmcp x11/library/libxevie x11/library/libxext x11/library/libxrender x11/library/libxscrnsaver x11/library/libxtst x11/library/toolkit/libxt</code>.</li>
 </ul>
 <p>Use <code>--with-x=&lt;path&gt;</code> if <code>configure</code> does not properly locate your X11 files.</p>
@@ -645,11 +654,13 @@ x86_64-linux-gnu-to-ppc64le-linux-gnu</code></pre>
 <p>Note that alsa is needed even if you only want to build a headless JDK.</p>
 <ul>
 <li><p>Go to <a href="https://www.debian.org/distrib/packages">Debian Package Search</a> and search for the <code>libasound2</code> and <code>libasound2-dev</code> packages for your <em>target</em> system. Download them to /tmp.</p></li>
-<li><p>Install the libraries into the cross-compilation toolchain. For instance:</p>
+<li>Install the libraries into the cross-compilation toolchain. For instance:</li>
+</ul>
 <pre><code>cd /tools/gcc-linaro-arm-linux-gnueabihf-raspbian-2012.09-20120921_linux/arm-linux-gnueabihf/libc
 dpkg-deb -x /tmp/libasound2_1.0.25-4_armhf.deb .
-dpkg-deb -x /tmp/libasound2-dev_1.0.25-4_armhf.deb .</code></pre></li>
-<li><p>If alsa is not properly detected by <code>configure</code>, you can point it out by <code>--with-alsa</code>.</p></li>
+dpkg-deb -x /tmp/libasound2-dev_1.0.25-4_armhf.deb .</code></pre>
+<ul>
+<li>If alsa is not properly detected by <code>configure</code>, you can point it out by <code>--with-alsa</code>.</li>
 </ul>
 <h4 id="x11-1">X11</h4>
 <p>You will need X11 libraries suitable for your <em>target</em> system. For most cases, using Debian's pre-built libraries work fine.</p>
