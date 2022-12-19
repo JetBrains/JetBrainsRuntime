@@ -70,6 +70,10 @@ inline int frame::frame_size(RegisterMap* map) const { return sender_sp() - sp()
 
 inline intptr_t* frame::link() const { return (intptr_t *)(fp()[FP->sp_offset_in_saved_window()] + STACK_BIAS); }
 
+inline intptr_t* frame::link_or_null() const {
+  return link();
+}
+
 inline intptr_t* frame::unextended_sp() const { return sp() + _sp_adjustment_by_callee; }
 
 // return address:
