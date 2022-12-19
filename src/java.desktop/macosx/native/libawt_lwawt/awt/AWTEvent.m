@@ -485,7 +485,7 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
                            jint *keyCode, jint *keyLocation, BOOL *postsTyped,
                            unichar *deadChar)
 {
-    static size_t size = sizeof(keyTable) / sizeof(struct _key);
+    static const size_t keyTableSize = sizeof(keyTable) / sizeof(struct _key);
     NSInteger offset;
 
     TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
@@ -584,7 +584,7 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
         }
     }
 
-    if (key < size) {
+    if (key < keyTableSize) {
         *postsTyped = keyTable[key].postsTyped;
         *keyCode = keyTable[key].javaKeyCode;
         *keyLocation = keyTable[key].javaKeyLocation;
