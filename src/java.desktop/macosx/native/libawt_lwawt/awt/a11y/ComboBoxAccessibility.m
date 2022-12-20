@@ -62,11 +62,11 @@ GET_CACCESSIBILITY_CLASS_RETURN(nil);
 - (id)accessibilityValue
 {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    BOOL isExpandet = isExpanded(env, [self axContextWithEnv:env], fComponent);
-    if (isExpandet) {
+    BOOL expanded = isExpanded(env, [self axContextWithEnv:env], fComponent);
+    if (expanded) {
         return nil;
     }
-    if (!isExpandet &&
+    if (!expanded &&
         (value == nil)) {
         [self accessibleSelection];
     }
