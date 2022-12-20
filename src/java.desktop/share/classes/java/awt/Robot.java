@@ -136,7 +136,7 @@ public class Robot {
         checkRobotAllowed();
         Toolkit toolkit = Toolkit.getDefaultToolkit();
         if (toolkit instanceof ComponentFactory) {
-            peer = ((ComponentFactory)toolkit).createRobot(this, screen);
+            peer = ((ComponentFactory)toolkit).createRobot(screen);
         }
         initLegalButtonMask();
     }

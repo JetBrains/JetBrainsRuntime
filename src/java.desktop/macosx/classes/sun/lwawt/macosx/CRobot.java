@@ -27,7 +27,6 @@ package sun.lwawt.macosx;
 
 import java.awt.Point;
 import java.awt.Rectangle;
-import java.awt.Robot;
 import java.awt.peer.RobotPeer;
 
 import sun.awt.CGraphicsDevice;
@@ -49,7 +48,7 @@ final class CRobot implements RobotPeer {
      * Uses the given GraphicsDevice as the coordinate system for subsequent
      * coordinate calls.
      */
-    public CRobot(Robot r, CGraphicsDevice d) {
+    CRobot(CGraphicsDevice d) {
         fDevice = d;
         initRobot();
     }
