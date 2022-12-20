@@ -41,23 +41,23 @@ JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce(JNIEnv *env
         const char *msg = JNU_GetStringPlatformChars(env, str, NULL);
         if (msg != NULL)
         {
-			jobject conf = OrcaGetConf(env);
+            jobject conf = OrcaGetConf(env);
             if (conf != NULL)
             {
                 if (OrcaGetEnableSpeech(env, conf) > 0)
                 {
                     SPDConnection *connection = spd_open("Cli announcer", NULL, NULL, SPD_MODE_SINGLE);
-                if (connection != NULL)
-                {
-                    OrcaSetSpeechConf(env, connection, conf);
-                    int p = SPD_TEXT;
-                    if (priority == javax_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT)
+                    if (connection != NULL)
                     {
-                        p = SPD_MESSAGE;
+                        OrcaSetSpeechConf(env, connection, conf);
+                        int p = SPD_TEXT;
+                        if (priority == javax_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT)
+                        {
+                            p = SPD_MESSAGE;
+                        }
+                        spd_say(connection, p, msg);
+                        spd_close(connection);
                     }
-                    spd_say(connection, p, msg);
-                    spd_close(connection);
-                }
                 }
                 (*env)->DeleteLocalRef(env, conf);
             }
