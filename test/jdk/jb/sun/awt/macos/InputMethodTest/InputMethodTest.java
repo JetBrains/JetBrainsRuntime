@@ -33,6 +33,7 @@ public class InputMethodTest {
     private static boolean success = true;
 
     private enum TestCases {
+        DeadKeysTest (new DeadKeysTest()),
         PinyinQuotesTest (new PinyinQuotesTest()),
         PinyinFullWidthPunctuationTest (new PinyinFullWidthPunctuationTest()),
         PinyinHalfWidthPunctuationTest (new PinyinHalfWidthPunctuationTest())
