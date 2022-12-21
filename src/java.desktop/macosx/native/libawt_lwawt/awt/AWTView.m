@@ -312,8 +312,8 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 
     if ([eventCharacters length] > 0) {
         unichar codePoint = [eventCharacters characterAtIndex:0];
-        if (codePoint >= 0x3000 && codePoint <= 0x303F) {
-            // CJK Symbols and Punctuation
+        if ((codePoint >= 0x3000 && codePoint <= 0x303F) || (codePoint >= 0xff00 && codePoint <= 0xffef)) {
+            // "CJK Symbols and Punctuation" or "Halfwidth and Fullwidth Forms"
             // Force the complex input method because macOS doesn't properly send us
             // the half-width characters when the user has them enabled.
             fComplexInputNeeded = YES;

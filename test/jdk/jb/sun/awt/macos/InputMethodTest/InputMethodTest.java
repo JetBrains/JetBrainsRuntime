@@ -33,7 +33,9 @@ public class InputMethodTest {
     private static boolean success = true;
 
     private enum TestCases {
-        IDEA_271898 (new IDEA_271898())
+        PinyinQuotesTest (new PinyinQuotesTest()),
+        PinyinFullWidthPunctuationTest (new PinyinFullWidthPunctuationTest()),
+        PinyinHalfWidthPunctuationTest (new PinyinHalfWidthPunctuationTest())
         ;
 
         private Runnable test;
@@ -53,16 +55,13 @@ public class InputMethodTest {
             runTest(arg);
         }
         LWCToolkit.switchKeyboardLayout(initialLayout);
-
-        if (!success) {
-            throw new RuntimeException("Some tests failed");
-        }
+        System.exit(success ? 0 : 1);
     }
 
     private static void init() {
         try {
             robot = new Robot();
-            robot.setAutoDelay(50);
+            robot.setAutoDelay(100);
         } catch (AWTException e) {
             e.printStackTrace();
             System.exit(1);
@@ -94,6 +93,7 @@ public class InputMethodTest {
     public static void section(String description) {
         currentSection = description;
         textArea.setText("");
+        frame.setTitle(currentTest + ": " + description);
     }
 
     public static void layout(String name) {
