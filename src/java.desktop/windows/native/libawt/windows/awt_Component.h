@@ -66,6 +66,9 @@ const UINT MAX_ACP_STR_LEN = 7; // ANSI CP identifiers are no longer than this
 // combination of standard mouse button flags
 const int ALL_MK_BUTTONS = MK_LBUTTON|MK_MBUTTON|MK_RBUTTON;
 const int X_BUTTONS = MK_XBUTTON1|MK_XBUTTON2;
+// Do not set drag capture when dispatching mouse event.
+// This is useful for non-client events in custom title bar area for preserving native behavior.
+#define MK_NOCAPTURE 0x80000000
 
 // Whether to check for embedded frame and adjust location
 #define CHECK_EMBEDDED 0
