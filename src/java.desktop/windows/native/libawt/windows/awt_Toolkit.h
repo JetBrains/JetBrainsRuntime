@@ -195,6 +195,10 @@ class CriticalSection {
 #ifndef MOUSEEVENTF_FROMTOUCH
 #define MOUSEEVENTF_FROMTOUCH       0xFF515700
 #endif
+
+inline BOOL IsMouseEventFromTouch() {
+    return (::GetMessageExtraInfo() & MOUSEEVENTF_FROMTOUCH_MASK) == MOUSEEVENTF_FROMTOUCH;
+}
 /************************************************************************
  * AwtToolkit class
  */
@@ -444,6 +448,9 @@ public:
         return lpAdjustWindowRectExForDpi != NULL ?
                lpAdjustWindowRectExForDpi(lpRect, dwStyle, bMenu, dwExStyle, dpi) : ::AdjustWindowRectEx(lpRect, dwStyle, bMenu, dwExStyle);
     }
+    static INLINE UINT GetDpiForWindow(HWND hwnd) {
+        return lpGetDpiForWindow != NULL ? lpGetDpiForWindow(hwnd) : 96;
+    }
 
     HANDLE m_waitEvent;
     volatile DWORD eventNumber;
@@ -513,6 +520,7 @@ private:
     LRESULT m_inputMethodData;
 
     static AdjustWindowRectExForDpiFunc *lpAdjustWindowRectExForDpi;
+    static GetDpiForWindowFunc *lpGetDpiForWindow;
 
 /* track display changes - used by palette-updating code.
    This is a workaround for a windows bug that prevents
@@ -736,5 +744,7 @@ template<typename T> inline T* SafeCreate(T* &pArg) {
         return pNew;
     }
 }
+
+POINT ScreenToBottommostChild(HWND& w, LONG ncx, LONG ncy);
 
 #endif /* AWT_TOOLKIT_H */
