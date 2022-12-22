@@ -49,19 +49,43 @@ static jmethodID sjm_getAccessibleName = NULL;
     if (axSelectedChild == NULL) {
         return nil;
     }
-    return [CommonComponentAccessibility createWithAccessible:axSelectedChild withEnv:env withView:fView];
+    if (value != nil) {
+        [value release];
+        value = nil;
+    }
+    value = [CommonComponentAccessibility createWithAccessible:axSelectedChild withEnv:env withView:fView];
+    return value;
 }
 
 // NSAccessibilityElement protocol methods
 
 - (id)accessibilityValue
 {
-    return [[self accessibleSelection] accessibilityLabel];
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    BOOL expanded = isExpanded(env, [self axContextWithEnv:env], fComponent);
+    if (expanded) {
+        return nil;
+    }
+    if (!expanded &&
+        (value == nil)) {
+        [self accessibleSelection];
+    }
+
+    return [value accessibilityLabel];
 }
 
 - (NSArray *)accessibilitySelectedChildren
 {
     return [NSArray arrayWithObject:[self accessibleSelection]];
+}
+
+- (void)dealloc
+{
+    if (value != nil) {
+        [value release];
+        value = nil;
+    }
+    [super dealloc];
 }
 
 @end
