@@ -179,7 +179,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBAWT, \
     DISABLED_WARNINGS_microsoft_awt_Toolkit.cpp := 4267, \
     LDFLAGS := $(LDFLAGS_JDKLIB) $(call SET_SHARED_LIBRARY_ORIGIN), \
     LDFLAGS_macosx := -L$(INSTALL_LIBRARIES_HERE), \
-    LDFLAGS_windows := -delayload:user32.dll -delayload:gdi32.dll \
+    LDFLAGS_windows := -delayload:user32.dll -delayload:gdi32.dll -delayload:gdiplus.dll \
         -delayload:shell32.dll -delayload:winmm.dll \
         -delayload:winspool.drv -delayload:imm32.dll \
         -delayload:ole32.dll -delayload:comdlg32.dll \
@@ -194,7 +194,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBAWT, \
         -framework JavaRuntimeSupport \
         -framework ApplicationServices \
         -framework AudioToolbox, \
-    LIBS_windows := kernel32.lib user32.lib gdi32.lib winspool.lib \
+    LIBS_windows := kernel32.lib user32.lib gdi32.lib gdiplus.lib winspool.lib \
         imm32.lib ole32.lib uuid.lib shell32.lib \
         comdlg32.lib winmm.lib comctl32.lib shlwapi.lib \
         delayimp.lib jvm.lib $(WIN_JAVA_LIB) advapi32.lib dwmapi.lib $(A11Y_NVDA_ANNOUNCING_LIBS), \
