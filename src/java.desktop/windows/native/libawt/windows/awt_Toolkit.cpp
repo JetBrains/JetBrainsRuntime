@@ -141,6 +141,7 @@ extern "C" JNIEXPORT jboolean JNICALL AWTIsHeadless() {
 #define IDT_AWT_MOUSECHECK 0x101
 
 AdjustWindowRectExForDpiFunc* AwtToolkit::lpAdjustWindowRectExForDpi = NULL;
+GetDpiForWindowFunc* AwtToolkit::lpGetDpiForWindow = NULL;
 
 static LPCTSTR szAwtToolkitClassName = TEXT("SunAwtToolkit");
 
@@ -676,6 +677,7 @@ BOOL AwtToolkit::Initialize(BOOL localPump) {
     HMODULE hLibUser32Dll = JDK_LoadSystemLibrary("User32.dll");
     if (hLibUser32Dll != NULL) {
         lpAdjustWindowRectExForDpi = (AdjustWindowRectExForDpiFunc*)GetProcAddress(hLibUser32Dll, "AdjustWindowRectExForDpi");
+        lpGetDpiForWindow = (GetDpiForWindowFunc*)GetProcAddress(hLibUser32Dll, "GetDpiForWindow");
         ::FreeLibrary(hLibUser32Dll);
     }
 
@@ -1771,6 +1773,8 @@ BOOL AwtToolkit::PreProcessMouseMsg(AwtComponent* p, MSG& msg)
     curPos.x = GET_X_LPARAM(dwCurPos);
     curPos.y = GET_Y_LPARAM(dwCurPos);
     HWND hWndFromPoint = ::WindowFromPoint(curPos);
+    // In case of custom title bar, WindowFromPoint will return root frame, so search further just in case
+    if (hWndFromPoint) ScreenToBottommostChild(hWndFromPoint, curPos.x, curPos.y);
     // hWndFromPoint == 0 if mouse is over a scrollbar
     AwtComponent* mouseComp =
         AwtComponent::GetComponent(hWndFromPoint);
@@ -3259,6 +3263,17 @@ LRESULT AwtToolkit::InvokeInputMethodFunction(UINT msg, WPARAM wParam, LPARAM lP
             return m_inputMethodData;
         }
         return 0;
+    }
+}
+
+POINT ScreenToBottommostChild(HWND& w, LONG ncx, LONG ncy) {
+    POINT p;
+    for (;;) {
+        p = {ncx, ncy};
+        ::ScreenToClient(w, &p);
+        HWND t = ::ChildWindowFromPointEx(w, p, CWP_SKIPINVISIBLE | CWP_SKIPDISABLED | CWP_SKIPTRANSPARENT);
+        if (t == NULL || t == w) return p;
+        w = t;
     }
 }
 
