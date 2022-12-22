@@ -256,8 +256,27 @@ class WFramePeer extends WWindowPeer implements FramePeer {
     private native void synthesizeWmActivate(boolean activate);
 
     // JBR API internals
-    private static void updateCustomDecoration(ComponentPeer peer) {
-        if (peer instanceof WFramePeer) ((WFramePeer) peer).updateCustomDecoration();
+    private static void updateCustomTitleBar(ComponentPeer peer) {
+        // In native code AwtDialog is actually a descendant of AwtFrame,
+        // so we don't distinguish between WFramePeer and WDialogPeer here,
+        // just treat WFramePeer like a base class.
+        if (peer instanceof WFramePeer || peer instanceof WDialogPeer) {
+            updateCustomTitleBar((WWindowPeer) peer);
+        }
     }
-    private native void updateCustomDecoration();
+    private static native void updateCustomTitleBar(WWindowPeer peer);
+
+    // Used from native
+    private static final boolean WIN11_OR_NEWER;
+    static {
+        if ("Windows 10".equals(System.getProperty("os.name"))) {
+            WIN11_OR_NEWER = false;
+        } else {
+            int version = 10;
+            try {
+                version = (int) Double.parseDouble(System.getProperty("os.version"));
+            } catch (NullPointerException | NumberFormatException ignored) {}
+            WIN11_OR_NEWER = version >= 10;
+        }
+    }
 }
