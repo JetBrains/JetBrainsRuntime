@@ -55,12 +55,8 @@ import java.awt.image.DataBufferInt;
 import java.awt.peer.WindowPeer;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.swing.JRootPane;
 import javax.swing.RootPaneContainer;
@@ -1037,31 +1033,5 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
             }
         }
         return err;
-    }
-
-    // called from client via reflection
-    @Deprecated
-    private void setCustomDecorationHitTestSpots(List<Rectangle> hitTestSpots) {
-        List<Map.Entry<Shape, Integer>> spots = new ArrayList<>();
-        for (Rectangle spot : hitTestSpots) spots.add(Map.entry(spot, 1));
-        try {
-            Field f = Window.class.getDeclaredField("customDecorHitTestSpots");
-            f.setAccessible(true);
-            f.set(target, spots);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new Error(e);
-        }
-    }
-
-    // called from client via reflection
-    @Deprecated
-    private void setCustomDecorationTitleBarHeight(int height) {
-        try {
-            Field f = Window.class.getDeclaredField("customDecorTitleBarHeight");
-            f.setAccessible(true);
-            f.set(target, height);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new Error(e);
-        }
     }
 }
