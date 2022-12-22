@@ -56,6 +56,8 @@ public:
     static jfieldID autoRequestFocusID;
     static jfieldID securityWarningWidthID;
     static jfieldID securityWarningHeightID;
+    static jfieldID customTitleBarHitTestID;
+    static jfieldID customTitleBarHitTestQueryID;
 
     /* sun.awt.windows.WWindowPeer field and method IDs */
     static jfieldID windowTypeID;
@@ -65,6 +67,7 @@ public:
     static jmethodID getWarningStringMID;
     static jmethodID calculateSecurityWarningPositionMID;
     static jmethodID windowTypeNameMID;
+    static jmethodID internalCustomTitleBarHeightMID;
 
     static jfieldID sysInsetsID;
 
@@ -269,8 +272,6 @@ public:
     inline HWND GetOverriddenHWnd() { return m_overriddenHwnd; }
     inline void OverrideHWnd(HWND hwnd) { m_overriddenHwnd = hwnd; }
 
-    virtual BOOL HasCustomDecoration() { return FALSE; }
-
 private:
     static int ms_instanceCounter;
     static HHOOK ms_hCBTFilter;
@@ -398,6 +399,13 @@ protected:
     };
 
     inline Type GetType() { return m_windowType; }
+
+    // SetWindowPos flags to cause frame edge to be recalculated
+    static const UINT SwpFrameChangeFlags =
+            SWP_FRAMECHANGED | /* causes WM_NCCALCSIZE to be called */
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+            SWP_NOACTIVATE | SWP_NOCOPYBITS |
+            SWP_NOREPOSITION | SWP_NOSENDCHANGING;
 
 private:
     int m_screenNum;
