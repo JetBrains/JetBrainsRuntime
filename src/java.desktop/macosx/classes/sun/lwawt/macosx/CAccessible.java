@@ -37,8 +37,7 @@ import java.beans.PropertyChangeListener;
 import java.util.Objects;
 import java.security.PrivilegedAction;
 
-import javax.accessibility.Accessible;
-import javax.accessibility.AccessibleContext;
+import javax.accessibility.*;
 import javax.swing.*;
 
 import static javax.accessibility.AccessibleContext.ACCESSIBLE_ACTIVE_DESCENDANT_PROPERTY;
@@ -50,8 +49,6 @@ import static javax.accessibility.AccessibleContext.ACCESSIBLE_TEXT_PROPERTY;
 import static javax.accessibility.AccessibleContext.ACCESSIBLE_NAME_PROPERTY;
 import static javax.accessibility.AccessibleContext.ACCESSIBLE_VALUE_PROPERTY;
 
-import javax.accessibility.AccessibleRole;
-import javax.accessibility.AccessibleState;
 import sun.awt.AWTAccessor;
 
 
@@ -238,12 +235,19 @@ final class CAccessible extends CFRetainedResource implements Accessible {
                     }
 
                     if (thisRole == AccessibleRole.COMBO_BOX) {
-                        if (timer != null) {
-                            timer.stop();
-                        }
-                        timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> execute(ptr -> selectionChanged(ptr)));
-                        timer.setRepeats(false);
-                        timer.start();
+                        AccessibleStateSet as = thisAC.getAccessibleStateSet();
+                        if (as != null)
+                            if (as.contains(AccessibleState.EXPANDED)) {
+                                if (timer != null) {
+                                    timer.stop();
+                                }
+                                timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> execute(ptr -> selectionChanged(ptr)));
+                                timer.setRepeats(false);
+                                timer.start();
+                                if (as.contains(AccessibleState.COLLAPSED)) {
+                                    execute(ptr -> valueChanged(ptr));
+                                }
+                            }
                     }
 
                     if (thisRole == AccessibleRole.POPUP_MENU) {
