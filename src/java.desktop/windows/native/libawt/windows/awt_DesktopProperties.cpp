@@ -49,6 +49,8 @@ jmethodID AwtDesktopProperties::setColorPropertyID = 0;
 jmethodID AwtDesktopProperties::setFontPropertyID = 0;
 jmethodID AwtDesktopProperties::setSoundPropertyID = 0;
 
+BOOL AppsUseLightThemeCached = TRUE;
+
 AwtDesktopProperties::AwtDesktopProperties(jobject self) {
     this->self = GetEnv()->NewGlobalRef(self);
     GetEnv()->SetLongField( self, AwtDesktopProperties::pDataID,
@@ -699,15 +701,15 @@ void AwtDesktopProperties::GetOtherParameters() {
         // Add property for light/dark theme detection
         value = getWindowsPropFromReg(TEXT("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"),
                                       TEXT("AppsUseLightTheme"), &valueType);
+        BOOL lightTheme = TRUE;
         if (value != NULL) {
             if (valueType == REG_DWORD) {
-                SetBooleanProperty(TEXT("win.lightTheme.on"), (BOOL)((int)*value == 1));
+                lightTheme = (BOOL)((int)*value == 1);
             }
             free(value);
         }
-        else {
-            SetBooleanProperty(TEXT("win.lightTheme.on"), TRUE);
-        }
+        SetBooleanProperty(TEXT("win.lightTheme.on"), lightTheme);
+        AppsUseLightThemeCached = lightTheme;
 
     }
     catch (std::bad_alloc&) {
