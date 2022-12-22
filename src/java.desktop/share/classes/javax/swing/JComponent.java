@@ -1090,13 +1090,6 @@ public abstract class JComponent extends Container implements Serializable,
                 clipH = clipRect.height;
             }
 
-            if(clipW > getWidth()) {
-                clipW = getWidth();
-            }
-            if(clipH > getHeight()) {
-                clipH = getHeight();
-            }
-
             if(getParent() != null && !(getParent() instanceof JComponent)) {
                 adjustPaintFlags();
                 shouldClearPaintFlags = true;
