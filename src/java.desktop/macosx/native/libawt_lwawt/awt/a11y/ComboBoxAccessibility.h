@@ -26,5 +26,7 @@
 
 #import "CommonComponentAccessibility.h"
 
-@interface ComboBoxAccessibility : CommonComponentAccessibility
+@interface ComboBoxAccessibility : CommonComponentAccessibility {
+    CommonComponentAccessibility *value;
+}
 @end
