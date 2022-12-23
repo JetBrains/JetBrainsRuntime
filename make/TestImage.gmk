@@ -37,8 +37,8 @@ FIXPATH_ECHO := $(FIXPATH) $(call FixPath, $(ECHO))
 $(BUILD_INFO_PROPERTIES):
 	$(call MakeTargetDir)
 	$(ECHO) "# Build info properties for JDK tests" > $@
-	$(ECHO) "build.workspace.root=$(call FixPath, $(WORKSPACE_ROOT))" >> $@
-	$(ECHO) "build.output.root=$(call FixPath, $(OUTPUTDIR))" >> $@
+	$(ECHO) 'build.workspace.root=$(call FixPath, $(WORKSPACE_ROOT))' >> $@
+	$(ECHO) 'build.output.root=$(call FixPath, $(OUTPUTDIR))' >> $@
 
 prepare-test-image: $(BUILD_INFO_PROPERTIES)
 	$(call MakeDir, $(TEST_IMAGE_DIR))

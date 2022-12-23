@@ -95,6 +95,13 @@ public class AbsPathsInImage {
         if (buildOutputRoot == null) {
             throw new Error("Could not find build output root, test cannot run");
         }
+        // Validate the root paths
+        if (!Paths.get(buildWorkspaceRoot).isAbsolute()) {
+            throw new Error("Workspace root is not an absolute path: " + buildWorkspaceRoot);
+        }
+        if (!Paths.get(buildOutputRoot).isAbsolute()) {
+            throw new Error("Output root is not an absolute path: " + buildOutputRoot);
+        }
 
         List<byte[]> searchPatterns = new ArrayList<>();
         expandPatterns(searchPatterns, buildWorkspaceRoot);
@@ -158,11 +165,6 @@ public class AbsPathsInImage {
                     return super.visitFile(file, attrs);
                 } else if (fileName.endsWith(".debuginfo") || fileName.endsWith(".pdb")) {
                     // Do nothing
-                } else if (fileName.endsWith("jvm.dll")) {
-                    // On Windows, the Microsoft toolchain does not provide a way
-                    // to reliably remove all absolute paths from __FILE__ usage.
-                    // Until that is fixed, we simply exclude jvm.dll from this
-                    // test.
                 } else if (fileName.endsWith(".zip")) {
                     scanZipFile(file, searchPatterns);
                 } else {
