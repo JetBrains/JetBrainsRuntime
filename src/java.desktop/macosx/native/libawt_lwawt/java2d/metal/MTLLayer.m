@@ -64,6 +64,13 @@
     return self;
 }
 
+- (NSUInteger) maxDrawableCount {
+    if (@available(macOS 10.13.2, *)) {
+        return self.maximumDrawableCount;
+    }
+    return 1;
+}
+
 - (void) blitTexture {
     if (self.ctx == NULL || self.javaLayer == NULL || self.buffer == NULL || *self.buffer == nil ||
         self.ctx.device == nil)
@@ -74,7 +81,7 @@
         return;
     }
 
-    if (self.nextDrawableCount >= self.maximumDrawableCount) {
+    if (self.nextDrawableCount >= [self maxDrawableCount]) {
         return;
     }
     @autoreleasepool {
