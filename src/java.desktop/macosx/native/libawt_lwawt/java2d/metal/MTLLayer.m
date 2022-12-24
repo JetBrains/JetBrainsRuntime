@@ -77,7 +77,7 @@
     {
         J2dTraceLn4(J2D_TRACE_VERBOSE,
                     "MTLLayer.blitTexture: uninitialized (mtlc=%p, javaLayer=%p, buffer=%p, device=%p)", self.ctx,
-                    self.javaLayer, self.buffer, ctx.device);
+                    self.javaLayer, self.buffer, self.ctx.device);
         return;
     }
 
