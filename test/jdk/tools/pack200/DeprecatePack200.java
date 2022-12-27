@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,19 +52,19 @@ public class DeprecatePack200 {
     public static final Object[][] provide() { return cases; }
 
     private static final Object[][] cases = {
-        { PACK200_MSG, 1, List.of(PACK200_CMD) },
-        { PACK200_MSG, 1, List.of(PACK200_CMD, "-V") },
-        { PACK200_MSG, 2, List.of(PACK200_CMD, "--help") },
-        { PACK200_MSG, 0, List.of(PACK200_CMD, "-XDsuppress-tool-removal-message") },
-        { PACK200_MSG, 0, List.of(PACK200_CMD, "--version", "-XDsuppress-tool-removal-message") },
-        { PACK200_MSG, 0, List.of(PACK200_CMD, "-h", "-XDsuppress-tool-removal-message") },
+        { PACK200_MSG, 1, List.of(PACK200_CMD, "-J-Duser.language=en", "-J-Duser.country=US") },
+        { PACK200_MSG, 1, List.of(PACK200_CMD, "-J-Duser.language=en", "-J-Duser.country=US", "-V") },
+        { PACK200_MSG, 2, List.of(PACK200_CMD, "-J-Duser.language=en", "-J-Duser.country=US", "--help") },
+        { PACK200_MSG, 0, List.of(PACK200_CMD, "-J-Duser.language=en", "-J-Duser.country=US", "-XDsuppress-tool-removal-message") },
+        { PACK200_MSG, 0, List.of(PACK200_CMD, "-J-Duser.language=en", "-J-Duser.country=US", "--version", "-XDsuppress-tool-removal-message") },
+        { PACK200_MSG, 0, List.of(PACK200_CMD, "-J-Duser.language=en", "-J-Duser.country=US", "-h", "-XDsuppress-tool-removal-message") },
 
-        { UNPACK200_MSG, 1, List.of(UNPACK200_CMD) },
-        { UNPACK200_MSG, 1, List.of(UNPACK200_CMD, "-V") },
-        { UNPACK200_MSG, 1, List.of(UNPACK200_CMD, "--help") },
-        { UNPACK200_MSG, 0, List.of(UNPACK200_CMD, "-XDsuppress-tool-removal-message") },
-        { UNPACK200_MSG, 0, List.of(UNPACK200_CMD, "--version", "-XDsuppress-tool-removal-message") },
-        { UNPACK200_MSG, 0, List.of(UNPACK200_CMD, "-h", "-XDsuppress-tool-removal-message") }
+        { UNPACK200_MSG, 1, List.of(UNPACK200_CMD, "-J-Duser.language=en", "-J-Duser.country=US") },
+        { UNPACK200_MSG, 1, List.of(UNPACK200_CMD, "-J-Duser.language=en", "-J-Duser.country=US", "-V") },
+        { UNPACK200_MSG, 1, List.of(UNPACK200_CMD, "-J-Duser.language=en", "-J-Duser.country=US", "--help") },
+        { UNPACK200_MSG, 0, List.of(UNPACK200_CMD, "-J-Duser.language=en", "-J-Duser.country=US", "-XDsuppress-tool-removal-message") },
+        { UNPACK200_MSG, 0, List.of(UNPACK200_CMD, "-J-Duser.language=en", "-J-Duser.country=US", "--version", "-XDsuppress-tool-removal-message") },
+        { UNPACK200_MSG, 0, List.of(UNPACK200_CMD, "-J-Duser.language=en", "-J-Duser.country=US", "-h", "-XDsuppress-tool-removal-message") }
     };
 
     @Test(dataProvider = "tools")
