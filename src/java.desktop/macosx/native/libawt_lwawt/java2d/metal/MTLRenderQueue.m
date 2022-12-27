@@ -580,13 +580,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                             MTLTR_FreeGlyphCacheAA();
                             MTLTR_FreeGlyphCacheLCD();
                         }
-                        [mtlc.encoderManager endEncoder];
-                        MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
-                        id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
-                        [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-                            [cbwrapper release];
-                        }];
-                        [commandbuf commit];
+                        [mtlc commitCommandBuffer:NO display:NO];
                     }
                     mtlc = [MTLContext setSurfacesEnv:env src:pSrc dst:pDst];
                     dstOps = (BMTLSDOps *)jlong_to_ptr(pDst);
@@ -604,13 +598,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                             MTLTR_FreeGlyphCacheAA();
                             MTLTR_FreeGlyphCacheLCD();
                         }
-                        [mtlc.encoderManager endEncoder];
-                        MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
-                        id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
-                        [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-                            [cbwrapper release];
-                        }];
-                        [commandbuf commit];
+                        [mtlc commitCommandBuffer:NO display:NO];
                     }
 
                     if (mtlInfo != NULL) {
