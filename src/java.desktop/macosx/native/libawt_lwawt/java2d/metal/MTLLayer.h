@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,8 @@
 @property (readwrite, atomic) int nextDrawableCount;
 @property (readwrite, assign) int topInset;
 @property (readwrite, assign) int leftInset;
+@property (readwrite, assign) CVDisplayLinkRef displayLink;
+@property (readwrite, atomic) int displayLinkCount;
 
 - (id) initWithJavaLayer:(jobject)layer;
 
@@ -51,6 +53,8 @@
 - (void) blitCallback;
 - (void) display;
 - (void) redraw;
+- (void)startRedraw;
+- (void)stopRedraw:(BOOL)force;
 @end
 
 #endif /* MTLLayer_h_Included */
