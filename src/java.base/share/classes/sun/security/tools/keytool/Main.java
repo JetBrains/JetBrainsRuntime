@@ -59,8 +59,6 @@ import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.ECParameterSpec;
 import java.text.Collator;
 import java.text.MessageFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -4847,17 +4845,6 @@ public final class Main {
                         throw new Exception(rb.getString(
                                 "Unable.to.parse.denyAfter.string.in.exception.message"));
                     }
-
-                    SimpleDateFormat formatter = new SimpleDateFormat("EEE MMM dd HH:mm:ss Z yyyy");
-                    Date dateObj = null;
-                    try {
-                        dateObj = formatter.parse(denyAfterDate);
-                    } catch (ParseException e2) {
-                        throw new Exception(rb.getString(
-                                "Unable.to.parse.denyAfter.string.in.exception.message"));
-                    }
-                    formatter = new SimpleDateFormat("yyyy-MM-dd");
-                    denyAfterDate = formatter.format(dateObj);
 
                     weakWarnings.add(String.format(
                             rb.getString("whose.sigalg.usagesignedjar"), label, sigAlg,
