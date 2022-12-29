@@ -521,7 +521,7 @@ class CAccessibility implements PropertyChangeListener {
     }
 
     private static int getAccessibleActionCount(final AccessibleAction aa, final Component c) {
-        if (aa == null) return -1;
+        if (aa == null) return 0;
 
         return invokeAndWait(new Callable<Integer>() {
             public Integer call() throws Exception {
