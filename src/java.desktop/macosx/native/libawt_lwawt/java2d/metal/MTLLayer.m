@@ -79,15 +79,9 @@ BOOL isDisplaySyncEnabled() {
     if (isDisplaySyncEnabled()) {
         CVDisplayLinkCreateWithActiveCGDisplays(&_displayLink);
         CVDisplayLinkSetOutputCallback(_displayLink, &displayLinkCallback, (__bridge void *) self);
+        self.displayLinkCount = 0;
     }
     return self;
-}
-
-- (NSUInteger) maxDrawableCount {
-    if (@available(macOS 10.13.2, *)) {
-        return self.maximumDrawableCount;
-    }
-    return 1;
 }
 
 - (void) blitTexture {
@@ -103,7 +97,7 @@ BOOL isDisplaySyncEnabled() {
         return;
     }
 
-    if (self.nextDrawableCount >= [self maxDrawableCount]) {
+    if (self.nextDrawableCount != 0) {
         return;
     }
 
@@ -277,8 +271,10 @@ Java_sun_java2d_metal_MTLLayer_validate
         layer.drawableSize =
             CGSizeMake((*layer.buffer).width,
                        (*layer.buffer).height);
+        [layer startRedraw];
     } else {
         layer.ctx = NULL;
+        [layer stopRedraw:YES];
     }
 }
 
@@ -316,6 +312,7 @@ Java_sun_java2d_metal_MTLLayer_blitTexture
     MTLContext * ctx = layer.ctx;
     if (layer == NULL || ctx == NULL) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_blit : Layer or Context is null");
+        [layer stopRedraw:YES];
         return;
     }
 
