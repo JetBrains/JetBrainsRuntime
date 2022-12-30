@@ -139,8 +139,6 @@ struct OpaqueStruct {
 struct RoundedCornersStruct {
     jobject window;
     DWM_WINDOW_CORNER_PREFERENCE type;
-    jboolean isBorderColor;
-    jint borderColor;
 };
 // struct for _UpdateWindow() method
 struct UpdateWindowStruct {
@@ -3377,14 +3375,6 @@ void AwtWindow::_SetRoundedCorners(void *param) {
 
     DwmSetWindowAttribute(window->GetHWnd(), DWMWA_WINDOW_CORNER_PREFERENCE, &rcs->type, sizeof(DWM_WINDOW_CORNER_PREFERENCE));
 
-    if (rcs->isBorderColor) {
-        jint red = (rcs->borderColor >> 16) & 0xff;
-        jint green = (rcs->borderColor >> 8) & 0xff;
-        jint blue  = (rcs->borderColor >> 0) & 0xff;
-        COLORREF borderColor = RGB(red, green, blue);
-        DwmSetWindowAttribute(window->GetHWnd(), DWMWA_BORDER_COLOR, &borderColor, sizeof(COLORREF));
-    }
-
   ret:
     env->DeleteGlobalRef(self);
     delete rcs;
@@ -4153,19 +4143,17 @@ Java_sun_awt_windows_WWindowPeer_repositionSecurityWarning(JNIEnv *env,
 /*
  * Class:     sun_awt_windows_WWindowPeer
  * Method:    setRoundedCorners
- * Signature: (IZI)V
+ * Signature: (I)V
  */
 JNIEXPORT void JNICALL
-Java_sun_awt_windows_WWindowPeer_setRoundedCorners(JNIEnv *env, jobject self, jint type, jboolean isBorderColor, jint borderColor)
+Java_sun_awt_windows_WWindowPeer_setRoundedCorners(JNIEnv *env, jobject self, jint type)
 {
     TRY;
 
     RoundedCornersStruct *rcs = new RoundedCornersStruct;
     rcs->window = env->NewGlobalRef(self);
     rcs->type = (DWM_WINDOW_CORNER_PREFERENCE)type;
-    rcs->isBorderColor = isBorderColor;
-    rcs->borderColor = borderColor;
-    
+
     AwtToolkit::GetInstance().SyncCall(AwtWindow::_SetRoundedCorners, rcs);
     // global refs and rcs are deleted in _SetRoundedCorners
 
