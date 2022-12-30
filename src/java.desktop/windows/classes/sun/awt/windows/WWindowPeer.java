@@ -846,30 +846,19 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
 
     private void setRoundedCornersImpl(Object params) {
         if (params instanceof String) {
-            setRoundedCorners(getRoundedType(params), false, 0);
-        } else if (params instanceof Object[]) {
-            Object[] values = (Object[]) params;
-            if (values.length == 2 && values[0] instanceof String && values[1] instanceof Color) {
-                Color color = (Color) values[1];
-                setRoundedCorners(getRoundedType(values[0]), true, color.getRGB());
+            int type = 0; // default
+            if ("none".equals(params)) {
+                type = 1;
+            } else if ("full".equals(params)) {
+                type = 2;
+            } else if ("small".equals(params)) {
+                type = 3;
             }
+            setRoundedCorners(type);
         }
     }
 
-    private static int getRoundedType(Object params) {
-        if ("none".equals(params)) {
-            return  1;
-        }
-        if ("full".equals(params)) {
-            return 2;
-        }
-        if ("small".equals(params)) {
-            return 3;
-        }
-        return 0; // default
-    }
-
-    private native void setRoundedCorners(int type, boolean isBorderColor, int borderColor);
+    private native void setRoundedCorners(int type);
 
     native void updateWindowImpl(int[] data, int width, int height);
 
