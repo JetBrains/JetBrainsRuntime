@@ -54,6 +54,7 @@ typedef __int32 LONG_PTR;
 // Define these to be able to build with older SDKs
 #define DWM_WINDOW_CORNER_PREFERENCE int
 #define DWMWA_WINDOW_CORNER_PREFERENCE 33
+#define DWMWA_BORDER_COLOR 34
 
 // Used for Swing's Menu/Tooltip animation Support
 const int UNSPECIFIED = 0;
@@ -3406,7 +3407,6 @@ void AwtWindow::_SetRoundedCorners(void *param) {
         COLORREF borderColor = RGB(red, green, blue);
         DwmSetWindowAttribute(window->GetHWnd(), DWMWA_BORDER_COLOR, &borderColor, sizeof(COLORREF));
     }
-
   ret:
     env->DeleteGlobalRef(self);
     delete rcs;
@@ -4193,7 +4193,7 @@ Java_sun_awt_windows_WWindowPeer_setRoundedCorners(JNIEnv *env, jobject self, ji
     rcs->type = (DWM_WINDOW_CORNER_PREFERENCE)type;
     rcs->isBorderColor = isBorderColor;
     rcs->borderColor = borderColor;
-    
+
     AwtToolkit::GetInstance().SyncCall(AwtWindow::_SetRoundedCorners, rcs);
     // global refs and rcs are deleted in _SetRoundedCorners
 
