@@ -29,15 +29,15 @@
 
 #ifndef NO_A11Y_NVDA_ANNOUNCING
 #include "javax_swing_AccessibleAnnouncer.h"
+#include "jni_util.h"                           // JNU_ThrowOutOfMemoryError
+#include "debug_assert.h"                       // DASSERT
 #include <nvdaController.h>                     // nvdaController_*, error_status_t
 
 
-bool NVDAAnnounce(JNIEnv* env, jstring str, jint priority)
+bool NVDAAnnounce(JNIEnv* const env, const jstring str, const jint priority)
 {
-    if ((env == nullptr) || (str == nullptr)) {
-        // TODO: add some error handling
-        return false;
-    }
+    DASSERT(env != nullptr);
+    DASSERT(str != nullptr);
 
     error_status_t nvdaStatus;
 
@@ -47,14 +47,14 @@ bool NVDAAnnounce(JNIEnv* env, jstring str, jint priority)
     }
 
     if (priority == javax_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT) {
-        if ( (nvdaStatus = nvdaController_cancelSpeech()) != 0) {
+        if ( (nvdaStatus = nvdaController_cancelSpeech()) != 0 ) {
             // TODO: add some error handling
         }
     }
 
     const jchar* jchars = env->GetStringChars(str, nullptr);
     if (jchars == nullptr) {
-        // TODO: add some error handling
+        JNU_ThrowOutOfMemoryError(env, "NVDAAnnounce: failed to obtain chars from the announcing string");
         return false;
     }
 
@@ -68,6 +68,7 @@ bool NVDAAnnounce(JNIEnv* env, jstring str, jint priority)
     announceText = nullptr;
 
     if (nvdaStatus != 0) {
+        // nvdaController_speakText failed
         // TODO: add some error handling
         return false;
     }
