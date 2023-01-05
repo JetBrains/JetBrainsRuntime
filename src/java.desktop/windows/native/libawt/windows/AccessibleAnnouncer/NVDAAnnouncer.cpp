@@ -42,13 +42,17 @@ bool NVDAAnnounce(JNIEnv* const env, const jstring str, const jint priority)
     error_status_t nvdaStatus;
 
     if ( (nvdaStatus = nvdaController_testIfRunning()) != 0 ) {
-        // NVDA isn't running or an RPC error occurred
+#ifdefDEBUG
+        fprintf(stderr, "NVDA isn't running or an RPC error occurred code = %d\n", nvdaStatus);
+#endif
         return false;
     }
 
     if (priority == sun_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT) {
         if ( (nvdaStatus = nvdaController_cancelSpeech()) != 0 ) {
-            // TODO: add some error handling
+      #ifdefDEBUG
+        fprintf(stderr, "Failed to interapt current output. code = %d\n", nvdaStatus);
+#endif
         }
     }
 
@@ -68,8 +72,9 @@ bool NVDAAnnounce(JNIEnv* const env, const jstring str, const jint priority)
     announceText = nullptr;
 
     if (nvdaStatus != 0) {
-        // nvdaController_speakText failed
-        // TODO: add some error handling
+        #ifdefDEBUG
+        fprintf(stderr, "nvdaController_speakText failed code = %d\n", nvdaStatus);
+#endif
         return false;
     }
 

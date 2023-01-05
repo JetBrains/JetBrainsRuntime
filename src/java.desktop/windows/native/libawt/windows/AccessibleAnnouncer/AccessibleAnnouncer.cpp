@@ -45,8 +45,6 @@ JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_announce
     #ifndef NO_A11Y_JAWS_ANNOUNCING
         if (JawsAnnounce(env, str, priority)) {
             return;
-        } else {
-            // TODO: add some error handling?
         }
     #endif
 
