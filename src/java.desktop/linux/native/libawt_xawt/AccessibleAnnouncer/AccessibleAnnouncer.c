@@ -24,16 +24,16 @@
  * questions.
  */
 
-#include "javax_swing_AccessibleAnnouncer.h"
+#include "sun_swing_AccessibleAnnouncer.h"
 #include "OrcaConf.h"
 #include "jni_util.h"
 
 /*
- * Class:     javax_swing_AccessibleAnnouncer
+ * Class:     sun_swing_AccessibleAnnouncer
  * Method:    announce
  * Signature: (Ljavax/accessibility/Accessible;Ljava/lang/String;I)V
  */
-JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce(JNIEnv *env, jclass cls, jobject accessible, jstring str, jint priority)
+JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_announce(JNIEnv *env, jclass cls, jobject accessible, jstring str, jint priority)
 {
 #ifndef NO_A11Y_SPEECHD_ANNOUNCING
     if (str != NULL)
@@ -51,7 +51,7 @@ JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce(JNIEnv *env
                     {
                         OrcaSetSpeechConf(env, connection, conf);
                         int p = SPD_TEXT;
-                        if (priority == javax_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT)
+                        if (priority == sun_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT)
                         {
                             p = SPD_MESSAGE;
                         }

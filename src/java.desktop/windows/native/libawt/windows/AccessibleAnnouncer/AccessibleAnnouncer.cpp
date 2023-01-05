@@ -24,16 +24,16 @@
  * questions.
  */
 
-#include "javax_swing_AccessibleAnnouncer.h"
+#include "sun_swing_AccessibleAnnouncer.h"
 #include "NVDAAnnouncer.h"  // NVDAAnnounce
 #include "JawsAnnouncer.h"  // JawsAnnounce
 
 /*
- * Class:     javax_swing_AccessibleAnnouncer
+ * Class:     sun_swing_AccessibleAnnouncer
  * Method:    announce
  * Signature: (Ljavax/accessibility/Accessible;Ljava/lang/String;I)V
  */
-JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
+JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_announce
 (JNIEnv *env, jclass cls, jobject accessible, jstring str, jint priority)
 {
     #ifndef NO_A11Y_NVDA_ANNOUNCING

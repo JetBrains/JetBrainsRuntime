@@ -28,7 +28,7 @@
 
 #ifndef NO_A11Y_JAWS_ANNOUNCING
 #include "IJawsApi.h"
-#include "javax_swing_AccessibleAnnouncer.h"
+#include "sun_swing_AccessibleAnnouncer.h"
 
 extern const CLSID CLSID_JAWSCLASS;
 extern const IID IID_IJAWSAPI;
@@ -43,7 +43,7 @@ bool JawsAnnounce(JNIEnv *env, jstring str, jint priority)
         const jchar *jchars = env->GetStringChars(str, NULL);
         BSTR param = SysAllocString(jchars);
         int jawsPriority = -1;
-        if (priority == javax_swing_AccessibleAnnouncer_ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT) {
+        if (priority == sun_swing_AccessibleAnnouncer_ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT) {
             jawsPriority = 0;
         }
         pJawsApi->SayString(param, jawsPriority, &retval);

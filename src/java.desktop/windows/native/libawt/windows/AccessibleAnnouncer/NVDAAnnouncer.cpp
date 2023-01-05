@@ -28,7 +28,7 @@
 #include "NVDAAnnouncer.h"
 
 #ifndef NO_A11Y_NVDA_ANNOUNCING
-#include "javax_swing_AccessibleAnnouncer.h"
+#include "sun_swing_AccessibleAnnouncer.h"
 #include "jni_util.h"                           // JNU_ThrowOutOfMemoryError
 #include "debug_assert.h"                       // DASSERT
 #include <nvdaController.h>                     // nvdaController_*, error_status_t
@@ -46,7 +46,7 @@ bool NVDAAnnounce(JNIEnv* const env, const jstring str, const jint priority)
         return false;
     }
 
-    if (priority == javax_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT) {
+    if (priority == sun_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT) {
         if ( (nvdaStatus = nvdaController_cancelSpeech()) != 0 ) {
             // TODO: add some error handling
         }

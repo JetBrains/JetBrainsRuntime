@@ -48,13 +48,13 @@ static jmethodID jsm_getEnableSpeech = NULL;
 
 void OrcaSetSpeechConf(JNIEnv *env, SPDConnection *connection, jobject conf)
 {
-OrcaSetOutputModule(env, connection, conf);
-OrcaSetSynthesisVoice(env, connection, conf);
-OrcaSetLanguage(env, connection, conf);
-OrcaSetPunctuation(env, connection, conf);
-OrcaSetVoiceRate(env, connection, conf);
-OrcaSetVoicePitch(env, connection, conf);
-OrcaSetVolume(env, connection, conf);
+    OrcaSetOutputModule(env, connection, conf);
+    OrcaSetSynthesisVoice(env, connection, conf);
+    OrcaSetLanguage(env, connection, conf);
+    OrcaSetPunctuation(env, connection, conf);
+    OrcaSetVoiceRate(env, connection, conf);
+    OrcaSetVoicePitch(env, connection, conf);
+    OrcaSetVolume(env, connection, conf);
 }
 
 void OrcaSetVolume(JNIEnv *env, SPDConnection *connection, jobject conf)
@@ -172,8 +172,8 @@ void OrcaSetSynthesisVoice(JNIEnv *env, SPDConnection *connection, jobject conf)
         const char *voiceName = JNU_GetStringPlatformChars(env, jStr, NULL);
         if (voiceName != NULL)
         {
-spd_set_synthesis_voice(connection, voiceName);
-JNU_ReleaseStringPlatformChars(env, jStr, voiceName);
+            spd_set_synthesis_voice(connection, voiceName);
+            JNU_ReleaseStringPlatformChars(env, jStr, voiceName);
         }
         (*env)->DeleteLocalRef(env, jStr);
     }
@@ -184,7 +184,7 @@ jobject OrcaGetConf(JNIEnv *env)
     GET_getOrcaConfReturn(NULL);
     jobject o = (*env)->CallStaticObjectMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getOrcaConf);
     JNU_CHECK_EXCEPTION_RETURN(env, NULL);
-return o;
+    return o;
 }
 
 #endif // #ifndef NO_A11Y_SPEECHD_ANNOUNCING
