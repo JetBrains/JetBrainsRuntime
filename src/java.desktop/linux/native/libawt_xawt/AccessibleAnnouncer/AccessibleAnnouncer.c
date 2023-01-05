@@ -33,12 +33,16 @@
  * Signature: (Ljavax/accessibility/Accessible;Ljava/lang/String;I)V
  */
 JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_announce
-  (JNIEnv *env, jclass cls, jobject accessible, jstring str, jint priority)
+(JNIEnv *env, jclass cls, jobject accessible, jstring str, jint priority)
 {
 #ifndef NO_A11Y_SPEECHD_ANNOUNCING
-if (OrcaAnnounce(env, str, priority) == 0)
-{
-    return;
-}
+    if (OrcaAnnounce(env, str, priority) == 0)
+    {
+        return;
+    }
+#endif
+
+#ifdef DEBUG
+    fprintf(stderr, "Each announcer has failed or the build was made without any of them");
 #endif
 }
