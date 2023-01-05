@@ -29,39 +29,52 @@
 #ifndef NO_A11Y_JAWS_ANNOUNCING
 #include "IJawsApi.h"
 #include "sun_swing_AccessibleAnnouncer.h"
+#include "jni_util.h"                           // JNU_ThrowOutOfMemoryError
+#include "debug_assert.h"                       // DASSERT
 
 extern const CLSID CLSID_JAWSCLASS;
 extern const IID IID_IJAWSAPI;
 
 bool JawsAnnounce(JNIEnv *env, jstring str, jint priority)
 {
-    IJawsApi* pJawsApi= NULL;
+    DASSERT(env != nullptr);
+    DASSERT(str != nullptr);
+
+    IJawsApi* pJawsApi = NULL;
     CoInitialize(NULL);
     HRESULT hr = CoCreateInstance(CLSID_JAWSCLASS, NULL, CLSCTX_INPROC_SERVER, IID_IJAWSAPI, reinterpret_cast<void**>(&pJawsApi));
-    if (SUCCEEDED(hr) && pJawsApi) {
-        VARIANT_BOOL retval;
-        const jchar *jchars = env->GetStringChars(str, NULL);
-        BSTR param = SysAllocString(jchars);
-        int jawsPriority = -1;
-        if (priority == sun_swing_AccessibleAnnouncer_ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT) {
-            jawsPriority = 0;
-        }
-        pJawsApi->SayString(param, jawsPriority, &retval);
+    if (!(SUCCEEDED(hr) && pJawsApi)) {
 #ifdef DEBUG
-        if(retval != -1) {
-            fprintf(stderr, "Failed say string with jaws with code = %d\n", retval);
-        }
+        fprintf(stderr, "Failed to get instans of Jaws API with code = %d\n", hr);
 #endif
-        SysFreeString(param);
-        env->ReleaseStringChars(str, jchars);
         CoUninitialize();
-        return true;
+        return false;
     }
+
+    const jchar *jchars = env->GetStringChars(str, NULL);
+    if (jchars == nullptr) {
+        JNU_ThrowOutOfMemoryError(env, "NVDAAnnounce: failed to obtain chars from the announcing string");
+        return false;
+    }
+
+    VARIANT_BOOL retval;
+    BSTR param = SysAllocString(jchars);
+    int jawsPriority = -1;
+    if (priority == sun_swing_AccessibleAnnouncer_ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT) {
+        jawsPriority = 0;
+    }
+    pJawsApi->SayString(param, jawsPriority, &retval);
+    SysFreeString(param);
+    env->ReleaseStringChars(str, jchars);
     CoUninitialize();
+    if(retval != -1) {
 #ifdef DEBUG
-    fprintf(stderr, "Failed to get instans of Jaws API with code = %d\n", hr);
+        fprintf(stderr, "Failed say string with jaws with code = %d\n", retval);
 #endif
-    return false;
+        return false;
+    }
+
+    return true;
 }
 
 #include <initguid.h>
