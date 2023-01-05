@@ -24,21 +24,27 @@
  * questions.
  */
 
-#include "sun_swing_AccessibleAnnouncer.h"
-#include "OrcaAnnouncer.h"
+#ifndef ORCACONF_H
+#define ORCACONF_H
 
-/*
- * Class:     sun_swing_AccessibleAnnouncer
- * Method:    announce
- * Signature: (Ljavax/accessibility/Accessible;Ljava/lang/String;I)V
- */
-JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_announce
-  (JNIEnv *env, jclass cls, jobject accessible, jstring str, jint priority)
-{
 #ifndef NO_A11Y_SPEECHD_ANNOUNCING
-if (OrcaAnnounce(env, str, priority) == 0)
-{
-    return;
-}
-#endif
-}
+
+#include <libspeechd.h>
+#include "jni.h"
+
+int OrcaAnnounce(JNIEnv *env, jstring str, jint priority);
+jobject OrcaGetConf(JNIEnv *env);
+void OrcaSetSpeechConf(JNIEnv *env, SPDConnection *connection, jobject conf);
+void OrcaSetLanguage(JNIEnv *env, SPDConnection *connection, jobject conf);
+void OrcaSetOutputModule(JNIEnv *env, SPDConnection *connection, jobject conf);
+void OrcaSetPunctuation(JNIEnv *env, SPDConnection *connection, jobject conf);
+void OrcaSetSynthesisVoice(JNIEnv *env, SPDConnection *connection, jobject conf);
+void OrcaSetVoiceRate(JNIEnv *env, SPDConnection *connection, jobject conf);
+void OrcaSetVoicePitch(JNIEnv *env, SPDConnection *connection, jobject conf);
+void OrcaSetVolume(JNIEnv *env, SPDConnection *connection, jobject conf);
+int OrcaGetEnableSpeech(JNIEnv *env, jobject conf);
+
+#endif // #ifndef NO_A11Y_SPEECHD_ANNOUNCING
+
+#endif //ORCACONF_H
+

@@ -37,12 +37,10 @@ import java.util.Map;
 class AccessibleAnnouncerUtilities {
     private final static String GENERAL_KEY = "general";
     private final static String ENABLE_SPEECH_KEY = "enableSpeech";
-    private final static String ONLY_SPEAK_DISPLAYED_TEXT_KEY = "onlySpeakDisplayedText";
     private final static String ACTIVE_PROFILE_KEY = "activeProfile";
     private final static String PROFILES_KEY = "profiles";
     private final static String SPEECH_SERVER_INFO_KEY = "speechServerInfo";
     private final static String VOICES_KEY = "voices";
-    private final static String ESTABLISHED_KEY = "established";
     private final static String RATE_KEY = "rate";
     private final static String AVERAGE_PITCH_KEY = "average-pitch";
     private final static String FAMILY_KEY = "family";
@@ -145,17 +143,6 @@ private static double getRate(Object conf) {
     return -1;
 }
 
-private static boolean getEstablished(Object conf) {
-    if (conf == null) return false;
-
-    String moduleName = getActiveProfile(conf);
-    if (moduleName == null) return false;
-
-    Boolean val = JSONParser.getBooleanValue(conf, PROFILES_KEY, moduleName, VOICES_KEY, DEFAULT_KEY, ESTABLISHED_KEY);
-    if (val != null) return val;
-    return false;
-}
-
 private static String getActiveProfile(Object conf) {
     if (conf == null) return null;
 
@@ -179,13 +166,6 @@ private static int getVerbalizePunctuationStyle(Object conf) {
     Integer val = JSONParser.getIntValue(conf, GENERAL_KEY, VERBALIZE_PUNCTUATION_STYLE_KEY);
     if (val != null) return val;
     return -1;
-}
-
-private static boolean getOnlySpeakDisplayedText(Object conf) {
-    if (conf == null) return false;
-    Boolean val = JSONParser.getBooleanValue(conf, GENERAL_KEY,ONLY_SPEAK_DISPLAYED_TEXT_KEY);
-    if (val != null) return val;
-    return false;
 }
 
 private static boolean getEnableSpeech(Object conf) {
