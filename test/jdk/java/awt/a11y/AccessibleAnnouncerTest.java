@@ -24,11 +24,12 @@
 
 /*
  * @test
+ * @modules java.desktop/sun.swing:+open
  * @summary Test implementation of accessibility announcing
  * @run main/manual AccessibleAnnouncerTest
  */
 
-import javax.swing.AccessibleAnnouncer;
+import sun.swing.AccessibleAnnouncer;
 import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
