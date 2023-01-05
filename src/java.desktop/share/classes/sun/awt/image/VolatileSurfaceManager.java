@@ -138,6 +138,9 @@ public abstract class VolatileSurfaceManager
     }
 
     public SurfaceData getPrimarySurfaceData() {
+        if (sdCurrent == null) {
+            sdCurrent = getBackupSurface();
+        }
         return sdCurrent;
     }
 
@@ -356,6 +359,8 @@ public abstract class VolatileSurfaceManager
                 sdBackup = null;
                 needBackup = true;
             }
+            // Clear primary surface data for lazy initialization
+            sdCurrent = null;
             // Now, invalidate the old hardware-based SurfaceData
             // Note that getBackupSurface may set sdAccel to null so we have to invalidate it before
             sdAccel = null;
@@ -380,6 +385,8 @@ public abstract class VolatileSurfaceManager
                     sdBackup = null;
                     needBackup = true;
                 }
+                // Clear primary surface data for lazy initialization
+                sdCurrent = null;
             } else {
                 // Software backed surface was not invalidated.
                 lostSurface = false;
