@@ -47,12 +47,20 @@ bool JawsAnnounce(JNIEnv *env, jstring str, jint priority)
             jawsPriority = 0;
         }
         pJawsApi->SayString(param, jawsPriority, &retval);
+#ifdef DEBUG
+        if(retval != -1) {
+            fprintf(stderr, "Failed say string with jaws with code = %d\n", retval);
+        }
+#endif
         SysFreeString(param);
         env->ReleaseStringChars(str, jchars);
         CoUninitialize();
         return true;
     }
     CoUninitialize();
+#ifdef DEBUG
+    fprintf(stderr, "Failed to get instans of Jaws API with code = %d\n", hr);
+#endif
     return false;
 }
 
