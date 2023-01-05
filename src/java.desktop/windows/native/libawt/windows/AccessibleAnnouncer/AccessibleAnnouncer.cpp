@@ -49,6 +49,6 @@ JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_announce
     #endif
 
 #ifdef DEBUG
-    fprintf(stderr, "Each announcer has failed or the build was made without any of them");
+    fprintf(stderr, "Each announcer has failed or the build was made without any of them\n");
 #endif
 }
