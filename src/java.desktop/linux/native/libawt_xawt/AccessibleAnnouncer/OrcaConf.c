@@ -66,6 +66,10 @@ void OrcaSetVolume(JNIEnv *env, SPDConnection *connection, jobject conf)
     {
         int volume = (gain - 5) * 20;
         spd_set_volume(connection, volume);
+    } else {
+#ifdef DEBUG
+        fprintf(stderr, "Failed to read value of gain from config\n");
+#endif
     }
 }
 
@@ -78,6 +82,10 @@ void OrcaSetVoiceRate(JNIEnv *env, SPDConnection *connection, jobject conf)
     {
         int iRate = (rate - 50) * 2;
         spd_set_voice_rate(connection, iRate);
+    } else {
+#ifdef DEBUG
+        fprintf(stderr, "Failed to read value of rate from config\n");
+#endif
     }
 }
 
@@ -89,6 +97,10 @@ void OrcaSetPunctuation(JNIEnv *env, SPDConnection *connection, jobject conf)
     if (punctuation >= 0)
     {
         spd_set_punctuation(connection, punctuation);
+    } else {
+#ifdef DEBUG
+        fprintf(stderr, "Failed to read value of punctuation from config\n");
+#endif
     }
 }
 
@@ -101,6 +113,10 @@ void OrcaSetVoicePitch(JNIEnv *env, SPDConnection *connection, jobject conf)
     {
         int iPitch = (pitch - 5) * 20;
         spd_set_voice_pitch(connection, iPitch);
+    } else {
+#ifdef DEBUG
+        fprintf(stderr, "Failed to read value of pitch from config\n");
+#endif
     }
 }
 
@@ -116,8 +132,16 @@ void OrcaSetOutputModule(JNIEnv *env, SPDConnection *connection, jobject conf)
         {
             spd_set_output_module(connection, sintName);
             JNU_ReleaseStringPlatformChars(env, jStr, sintName);
+        } else {
+#ifdef DEBUG
+            fprintf(stderr, "Char string for sint  name is null\n");
+#endif
         }
         (*env)->DeleteLocalRef(env, jStr);
+    } else {
+#ifdef DEBUG
+        fprintf(stderr, "Failed to read value of speech server info from config\n");
+#endif
     }
 }
 
@@ -133,8 +157,16 @@ void OrcaSetLanguage(JNIEnv *env, SPDConnection *connection, jobject conf)
         {
             spd_set_language(connection, lang);
             JNU_ReleaseStringPlatformChars(env, jStr, lang);
+        } else {
+#ifdef DEBUG
+            fprintf(stderr, "Char string for lang is null\n");
+#endif
         }
         (*env)->DeleteLocalRef(env, jStr);
+    } else {
+#ifdef DEBUG
+        fprintf(stderr, "Failed to read value of lang from config\n");
+#endif
     }
 }
 
@@ -174,8 +206,16 @@ void OrcaSetSynthesisVoice(JNIEnv *env, SPDConnection *connection, jobject conf)
         {
             spd_set_synthesis_voice(connection, voiceName);
             JNU_ReleaseStringPlatformChars(env, jStr, voiceName);
+        } else {
+#ifdef DEBUG
+            fprintf(stderr, "Char string for voice name is null\n");
+#endif
         }
         (*env)->DeleteLocalRef(env, jStr);
+    } else {
+#ifdef DEBUG
+        fprintf(stderr, "Failed to read value of voice name from config\n");
+#endif
     }
 }
 
@@ -188,4 +228,3 @@ jobject OrcaGetConf(JNIEnv *env)
 }
 
 #endif // #ifndef NO_A11Y_SPEECHD_ANNOUNCING
-

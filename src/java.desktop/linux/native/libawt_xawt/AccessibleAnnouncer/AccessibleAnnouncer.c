@@ -57,12 +57,32 @@ JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_announce(JNIEnv *env, 
                         }
                         spd_say(connection, p, msg);
                         spd_close(connection);
+                    } else {
+#ifdef DEBUG
+                        fprintf(stderr, "Speech dispatcher connection is null\n");
+#endif
                     }
+                } else {
+#ifdef DEBUG
+                    fprintf(stderr, "Speech is disable\n");
+#endif
                 }
                 (*env)->DeleteLocalRef(env, conf);
+            } else {
+#ifdef DEBUG
+                fprintf(stderr, "Failed to read Orca configuration file\n");
+#endif
             }
             JNU_ReleaseStringPlatformChars(env, str, msg);
+        } else {
+#ifdef DEBUG
+            fprintf(stderr, "Char string for announcing is null\n");
+#endif
         }
+    } else {
+#ifdef DEBUG
+        fprintf(stderr, "java string for announcing is null\n");
+#endif
     }
 #endif
 }
