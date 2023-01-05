@@ -84,7 +84,7 @@ void MTLRenderQueue_CheckPreviousOp(jint op) {
             mtlPreviousOp == MTL_OP_MASK_OP)
         {
             [mtlc commitCommandBuffer:(op == MTL_OP_SYNC || op == MTL_OP_SHAPE_CLIP_SPANS)
-                              display:op == MTL_OP_SYNC];
+                              display:NO];
         }
     }
     mtlPreviousOp = op;
