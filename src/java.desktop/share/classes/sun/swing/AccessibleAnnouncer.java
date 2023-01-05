@@ -24,7 +24,7 @@
  * questions.
  */
 
-package javax.swing;
+package sun.swing;
 
 import javax.accessibility.Accessible;
 import java.lang.annotation.Native;
@@ -52,7 +52,7 @@ public class AccessibleAnnouncer {
      * This method makes an announcement with the specified priority
      *
      * @param str      string for announcing
-     * @param priority priority for announsing
+     * @param priority priority for announcing
      */
     public static void announce(final String str, final int priority) {
         announce(null, str, priority);
@@ -63,7 +63,11 @@ public class AccessibleAnnouncer {
      *
      * @param a      an accessible to which the announcing relates
      * @param str      string for announcing
-     * @param priority priority for announsing
+     * @param priority priority for announcing
      */
-    public static native void announce(Accessible a, final String str, final int priority);
+    public static void announce(Accessible a, final String str, final int priority) {
+        nativeAnnounce(a, str, priority);
+    }
+
+    private static native void nativeAnnounce(Accessible a, final String str, final int priority);
 }

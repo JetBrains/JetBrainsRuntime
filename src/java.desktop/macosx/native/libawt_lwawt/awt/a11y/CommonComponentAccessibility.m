@@ -34,7 +34,7 @@
 #import "AWTView.h"
 #import "sun_lwawt_macosx_CAccessible.h"
 #import "sun_lwawt_macosx_CAccessibility.h"
-#import "javax_swing_AccessibleAnnouncer.h"
+#import "sun_swing_AccessibleAnnouncer.h"
 
 // GET* macros defined in JavaAccessibilityUtilities.h, so they can be shared.
 static jclass sjc_CAccessibility = NULL;
@@ -437,7 +437,7 @@ static jobject sAccessibilityClass = NULL;
     NSNumber *nsPriority = [sAnnouncePriorities objectForKey:priority];
 
     if (nsPriority == nil) {
-        nsPriority = [sAnnouncePriorities objectForKey:[NSNumber numberWithInt:javax_swing_AccessibleAnnouncer_ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT]];
+        nsPriority = [sAnnouncePriorities objectForKey:[NSNumber numberWithInt:sun_swing_AccessibleAnnouncer_ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT]];
     }
 
     [dictionary setObject:nsPriority forKey:NSAccessibilityPriorityKey];
@@ -1349,17 +1349,17 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_menuItemSelected
 }
 
 /*
- * Class:     javax_swing_AccessibleAnnouncer
- * Method:    announce
+ * Class:     sun_swing_AccessibleAnnouncer
+ * Method:    nativeAnnounce
  * Signature: (Ljavax/accessibility/Accessible;Ljava/lang/String;I)V
  */
-JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
+JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_nativeAnnounce
         (JNIEnv *env, jclass cls, jobject jAccessible, jstring str, jint priority)
 {
     JNI_COCOA_ENTER(env);
 
-    NSString *text = JavaStringToNSString(env, str);
-    NSNumber *javaPriority = [NSNumber numberWithInt:priority];
+        NSString *text = JavaStringToNSString(env, str);
+        NSNumber *javaPriority = [NSNumber numberWithInt:priority];
 
         [ThreadUtilities performOnMainThreadWaiting:YES block:^{
 

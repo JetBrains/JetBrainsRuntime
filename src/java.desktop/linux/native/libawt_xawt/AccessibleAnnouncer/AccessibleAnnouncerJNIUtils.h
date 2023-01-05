@@ -141,15 +141,6 @@ return;\
 }\
 }\
 
-#define GET_getEstablished(ret)\
-GET_AccessibleAnnouncerUtilitiesReturn(ret);\
-if (jsm_getEstablished == NULL) {\
-jsm_getEstablished = (*env)->GetStaticMethodID(env, jc_AccessibleAnnouncerUtilities, "getEstablished", "(Ljava/lang/Object;)Z");\
-if (jsm_getEstablished == NULL) {\
-return ret;\
-}\
-}\
-
 #define GET_getActiveProfile()\
 GET_AccessibleAnnouncerUtilities();\
 if (jsm_getActiveProfile == NULL) {\
@@ -165,15 +156,6 @@ if (jsm_getVerbalizePunctuationStyle == NULL) {\
 jsm_getVerbalizePunctuationStyle = (*env)->GetStaticMethodID(env, jc_AccessibleAnnouncerUtilities, "getVerbalizePunctuationStyle", "(Ljava/lang/Object;)I");\
 if (jsm_getVerbalizePunctuationStyle == NULL) {\
 return;\
-}\
-}\
-
-#define GET_getOnlySpeakDisplayedText(ret)\
-GET_AccessibleAnnouncerUtilitiesReturn(ret);\
-if (jsm_getOnlySpeakDisplayedText == NULL) {\
-jsm_getOnlySpeakDisplayedText = (*env)->GetStaticMethodID(env, jc_AccessibleAnnouncerUtilities, "getOnlySpeakDisplayedText", "(Ljava/lang/Object;)Z");\
-if (jsm_getOnlySpeakDisplayedText == NULL) {\
-return ret;\
 }\
 }\
 

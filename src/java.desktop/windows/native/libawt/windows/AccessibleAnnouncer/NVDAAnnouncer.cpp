@@ -28,11 +28,10 @@
 #include "NVDAAnnouncer.h"
 
 #ifndef NO_A11Y_NVDA_ANNOUNCING
-#include "javax_swing_AccessibleAnnouncer.h"
+#include "sun_swing_AccessibleAnnouncer.h"
 #include "jni_util.h"                           // JNU_ThrowOutOfMemoryError
 #include "debug_assert.h"                       // DASSERT
 #include <nvdaController.h>                     // nvdaController_*, error_status_t
-
 
 bool NVDAAnnounce(JNIEnv* const env, const jstring str, const jint priority)
 {
@@ -42,13 +41,17 @@ bool NVDAAnnounce(JNIEnv* const env, const jstring str, const jint priority)
     error_status_t nvdaStatus;
 
     if ( (nvdaStatus = nvdaController_testIfRunning()) != 0 ) {
-        // NVDA isn't running or an RPC error occurred
+#ifdef DEBUG
+        fprintf(stderr, "NVDA isn't running or an RPC error occurred code = %d\n", nvdaStatus);
+#endif
         return false;
     }
 
-    if (priority == javax_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT) {
+    if (priority == sun_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT) {
         if ( (nvdaStatus = nvdaController_cancelSpeech()) != 0 ) {
-            // TODO: add some error handling
+#ifdef DEBUG
+            fprintf(stderr, "Failed to interapt current output. code = %d\n", nvdaStatus);
+#endif
         }
     }
 
@@ -68,8 +71,9 @@ bool NVDAAnnounce(JNIEnv* const env, const jstring str, const jint priority)
     announceText = nullptr;
 
     if (nvdaStatus != 0) {
-        // nvdaController_speakText failed
-        // TODO: add some error handling
+#ifdef DEBUG
+        fprintf(stderr, "nvdaController_speakText failed code = %d\n", nvdaStatus);
+#endif
         return false;
     }
 

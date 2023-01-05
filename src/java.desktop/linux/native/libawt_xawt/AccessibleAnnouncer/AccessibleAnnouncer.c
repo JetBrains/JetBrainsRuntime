@@ -24,45 +24,25 @@
  * questions.
  */
 
-#include "javax_swing_AccessibleAnnouncer.h"
-#include "OrcaConf.h"
-#include "jni_util.h"
+#include "sun_swing_AccessibleAnnouncer.h"
+#include "OrcaAnnouncer.h"
 
 /*
- * Class:     javax_swing_AccessibleAnnouncer
- * Method:    announce
+ * Class:     sun_swing_AccessibleAnnouncer
+ * Method:    nativeAnnounce
  * Signature: (Ljavax/accessibility/Accessible;Ljava/lang/String;I)V
  */
-JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce(JNIEnv *env, jclass cls, jobject accessible, jstring str, jint priority)
+JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_nativeAnnounce
+(JNIEnv *env, jclass cls, jobject accessible, jstring str, jint priority)
 {
 #ifndef NO_A11Y_SPEECHD_ANNOUNCING
-    if (str != NULL)
+    if (OrcaAnnounce(env, str, priority) == 0)
     {
-        const char *msg = JNU_GetStringPlatformChars(env, str, NULL);
-        if (msg != NULL)
-        {
-			jobject conf = OrcaGetConf(env);
-            if (conf != NULL)
-            {
-                if (OrcaGetEnableSpeech(env, conf) > 0)
-                {
-                    SPDConnection *connection = spd_open("Cli announcer", NULL, NULL, SPD_MODE_SINGLE);
-                if (connection != NULL)
-                {
-                    OrcaSetSpeechConf(env, connection, conf);
-                    int p = SPD_TEXT;
-                    if (priority == javax_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT)
-                    {
-                        p = SPD_MESSAGE;
-                    }
-                    spd_say(connection, p, msg);
-                    spd_close(connection);
-                }
-                }
-                (*env)->DeleteLocalRef(env, conf);
-            }
-            JNU_ReleaseStringPlatformChars(env, str, msg);
-        }
+        return;
     }
+#endif
+
+#ifdef DEBUG
+    fprintf(stderr, "Each announcer has failed or the build was made without any of them\n");
 #endif
 }

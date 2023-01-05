@@ -32,6 +32,7 @@
 #include <libspeechd.h>
 #include "jni.h"
 
+int OrcaAnnounce(JNIEnv *env, jstring str, jint priority);
 jobject OrcaGetConf(JNIEnv *env);
 void OrcaSetSpeechConf(JNIEnv *env, SPDConnection *connection, jobject conf);
 void OrcaSetLanguage(JNIEnv *env, SPDConnection *connection, jobject conf);
@@ -42,8 +43,6 @@ void OrcaSetVoiceRate(JNIEnv *env, SPDConnection *connection, jobject conf);
 void OrcaSetVoicePitch(JNIEnv *env, SPDConnection *connection, jobject conf);
 void OrcaSetVolume(JNIEnv *env, SPDConnection *connection, jobject conf);
 int OrcaGetEnableSpeech(JNIEnv *env, jobject conf);
-int OrcaGetOnlySpeakDisplayedText(JNIEnv *env, jobject conf);
-int OrcaGetEstablished(JNIEnv *env, jobject conf);
 
 #endif // #ifndef NO_A11Y_SPEECHD_ANNOUNCING
 
