@@ -54,6 +54,7 @@ bool JawsAnnounce(JNIEnv *env, jstring str, jint priority)
     const jchar *jchars = env->GetStringChars(str, NULL);
     if (jchars == nullptr) {
         JNU_ThrowOutOfMemoryError(env, "NVDAAnnounce: failed to obtain chars from the announcing string");
+        CoUninitialize();
         return false;
     }
 
