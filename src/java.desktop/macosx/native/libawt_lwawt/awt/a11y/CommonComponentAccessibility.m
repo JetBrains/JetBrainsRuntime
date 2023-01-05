@@ -1358,8 +1358,8 @@ JNIEXPORT void JNICALL Java_javax_swing_AccessibleAnnouncer_announce
 {
     JNI_COCOA_ENTER(env);
 
-    NSString *text = JavaStringToNSString(env, str);
-    NSNumber *javaPriority = [NSNumber numberWithInt:priority];
+        NSString *text = JavaStringToNSString(env, str);
+        NSNumber *javaPriority = [NSNumber numberWithInt:priority];
 
         [ThreadUtilities performOnMainThreadWaiting:YES block:^{
 
