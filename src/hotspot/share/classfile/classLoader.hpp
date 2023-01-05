@@ -61,6 +61,10 @@ public:
   // Attempt to locate file_name through this class path entry.
   // Returns a class file parsing stream if successfull.
   virtual ClassFileStream* open_stream(const char* name, TRAPS) = 0;
+  // Open the stream for a specific class loader
+  virtual ClassFileStream* open_stream_for_loader(const char* name, ClassLoaderData* loader_data, TRAPS) {
+    return open_stream(name, THREAD);
+  }
   // Debugging
   NOT_PRODUCT(virtual void compile_the_world(Handle loader, TRAPS) = 0;)
 };
@@ -140,7 +144,7 @@ public:
   ClassPathImageEntry(JImageFile* jimage, const char* name);
   virtual ~ClassPathImageEntry();
   ClassFileStream* open_stream(const char* name, TRAPS);
-
+  ClassFileStream* open_stream_for_loader(const char* name, ClassLoaderData* loader_data, TRAPS);
   // Debugging
   NOT_PRODUCT(void compile_the_world(Handle loader, TRAPS);)
 };
