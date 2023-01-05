@@ -227,6 +227,37 @@ CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* no
     }
     return kCVReturnSuccess;
 }
+
+- (void)commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay {
+    MTLCommandBufferWrapper * cbwrapper =[mtlc pullCommandBufferWrapper];
+
+    if (cbwrapper != nil) {
+        id <MTLCommandBuffer> commandbuf =[cbwrapper getCommandBuffer];
+        if (isDisplaySyncEnabled() || !updateDisplay) {
+            [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+                [cbwrapper release];
+            }];
+        } else {
+            __block MTLLayer* layer = self;
+            [layer retain];
+            [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+                [cbwrapper release];
+                [layer startRedraw];
+                [layer release];
+            }];
+       }
+       [commandbuf commit];
+       if (isDisplaySyncEnabled()) {
+            [self startRedraw];
+       }
+
+       if (waitUntilCompleted) {
+           [commandbuf waitUntilCompleted];
+       }
+    } else if (updateDisplay) {
+        [self startRedraw];
+    }
+}
 @end
 
 /*
@@ -310,9 +341,11 @@ Java_sun_java2d_metal_MTLLayer_blitTexture
     J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_blitTexture");
     MTLLayer *layer = jlong_to_ptr(layerPtr);
     MTLContext * ctx = layer.ctx;
-    if (layer == NULL || ctx == NULL) {
+    if (layer == nil || ctx == nil) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_blit : Layer or Context is null");
-        [layer stopRedraw:YES];
+        if (layer != nil) {
+            [layer stopRedraw:YES];
+        }
         return;
     }
 
