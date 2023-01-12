@@ -98,10 +98,18 @@ int OrcaAnnounce(JNIEnv *env, jstring str, jint priority)
     {
         p = SPD_MESSAGE;
     }
-    spd_say(connection, p, msg);
+    int err = spd_say(connection, p, msg);
     spd_close(connection);
     (*env)->DeleteLocalRef(env, conf);
     JNU_ReleaseStringPlatformChars(env, str, msg);
+
+    if (err < 0)
+    {
+#ifdef DEBUG
+        fprintf(stderr, "Failed to say message\n");
+#endif
+        return -1;
+    }
 
     return 0;
 }
