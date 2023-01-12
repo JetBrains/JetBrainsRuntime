@@ -1036,6 +1036,15 @@ void VMError::report(outputStream* st, bool _verbose) {
        st->cr();
      }
 
+#ifndef _WIN32
+  STEP("printing locale settings")
+
+     if (_verbose) {
+       os::Posix::print_active_locale(st);
+       st->cr();
+     }
+#endif
+
   STEP("printing signal handlers")
 
      if (_verbose) {
@@ -1232,6 +1241,12 @@ void VMError::print_vm_info(outputStream* st) {
 
   os::print_environment_variables(st, env_list);
   st->cr();
+
+  // STEP("printing locale settings")
+#ifndef _WIN32
+  os::Posix::print_active_locale(st);
+  st->cr();
+#endif
 
   // STEP("printing signal handlers")
 
