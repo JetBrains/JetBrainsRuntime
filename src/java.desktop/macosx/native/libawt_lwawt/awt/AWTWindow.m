@@ -55,6 +55,18 @@ static jclass jc_CPlatformWindow = NULL;
 #define GET_CPLATFORM_WINDOW_CLASS_RETURN(ret) \
     GET_CLASS_RETURN(jc_CPlatformWindow, "sun/lwawt/macosx/CPlatformWindow", ret);
 
+@interface NSButton (Private)
+- (void)setAlphaValue:(CGFloat)alpha;
+@end
+
+@interface NSTitlebarAccessoryViewController (Private)
+- (void)_setHidden:(BOOL)h animated:(BOOL)a;
+@end
+
+@interface NSWindow (Private)
+- (void)_setTabBarAccessoryViewController:(id)controller;
+@end
+
 // Cocoa windowDidBecomeKey/windowDidResignKey notifications
 // doesn't provide information about "opposite" window, so we
 // have to do a bit of tracking. This variable points to a window
@@ -330,6 +342,23 @@ AWT_NS_WINDOW_IMPLEMENTATION
     [super orderOut:sender];
 }
 
+- (void)_setTabBarAccessoryViewController:(id)_controller {
+    if (((AWTWindow *)self.delegate).hideTabController) {
+        NSTitlebarAccessoryViewController* controller = [[NSTitlebarAccessoryViewController alloc] init];
+        controller.view = [[NSView alloc] init];
+        [controller.view setFrame:NSMakeRect(0, 0, 0, 0)];
+        [controller _setHidden:YES animated:NO];
+
+        [super _setTabBarAccessoryViewController:controller];
+    } else {
+        [super _setTabBarAccessoryViewController:_controller];
+    }
+}
+
+- (BOOL)isNativeSelected {
+    return self.tabGroup.selectedWindow == self;
+}
+
 @end
 @implementation AWTWindow_Panel
 AWT_NS_WINDOW_IMPLEMENTATION
@@ -354,6 +383,7 @@ AWT_NS_WINDOW_IMPLEMENTATION
 @synthesize isJustCreated;
 @synthesize javaWindowTabbingMode;
 @synthesize isEnterFullScreen;
+@synthesize hideTabController;
 
 - (void) updateMinMaxSize:(BOOL)resizable {
     if (resizable) {
@@ -537,6 +567,8 @@ AWT_ASSERT_APPKIT_THREAD;
 
 - (void) configureJavaWindowTabbingIdentifier {
     AWT_ASSERT_APPKIT_THREAD;
+    
+    self.hideTabController = NO;
 
     if (self.javaWindowTabbingMode != NSWindowTabbingModeAutomatic) {
         return;
@@ -569,7 +601,12 @@ AWT_ASSERT_APPKIT_THREAD;
                 if (jValue != NULL) {
                     DECLARE_CLASS(jc_String, "java/lang/String");
                     if ((*env)->IsInstanceOf(env, jValue, jc_String)) {
-                        [self.nsWindow setTabbingIdentifier:JavaStringToNSString(env, (jstring)jValue)];
+                        NSString *winId = JavaStringToNSString(env, (jstring)jValue);
+                        [self.nsWindow setTabbingIdentifier:winId];
+                        if ([winId characterAtIndex:0] == '+') {
+                            self.hideTabController = YES;
+                            [self.nsWindow _setTabBarAccessoryViewController:nil];
+                        }
                     }
 
                     (*env)->DeleteLocalRef(env, jValue);
@@ -1268,6 +1305,10 @@ AWT_ASSERT_APPKIT_THREAD;
     [self allowMovingChildrenBetweenSpaces:NO];
     [self fullScreenTransitionFinished];
 
+    if ([self isTransparentTitleBarEnabled]) {
+        [self setWindowFullScreeControls];
+    }
+
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_windowDidEnterFullScreen, jc_CPlatformWindow, "windowDidEnterFullScreen", "()V");
@@ -1308,6 +1349,8 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 - (void)windowDidExitFullScreen:(NSNotification *)notification {
+    [self resetWindowFullScreeControls];
+
     self.isEnterFullScreen = NO;
 
     [self fullScreenTransitionFinished];
@@ -1553,7 +1596,64 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
 - (void) setWindowControlsHidden: (BOOL) hidden
 {
-    [self.nsWindow standardWindowButton:NSWindowCloseButton].superview.hidden = hidden;
+    if (_fullScreenOriginalButtons != nil) {
+        [_fullScreenOriginalButtons.window setContentSize:CGSizeZero];
+        [_fullScreenOriginalButtons.window.contentView setHidden:NO];
+        _fullScreenOriginalButtons.hidden = hidden;
+    }
+    else {
+        [self.nsWindow standardWindowButton:NSWindowCloseButton].superview.hidden = hidden;
+    }
+}
+
+- (void) setWindowFullScreeControls {
+    NSView* oldCloseButton = [self.nsWindow standardWindowButton:NSWindowCloseButton];
+    _fullScreenOriginalButtons = oldCloseButton.superview;
+
+    CGFloat h = _fullScreenOriginalButtons.frame.size.height;
+    NSRect closeButtonRect = [oldCloseButton frame];
+
+    NSRect miniaturizeButtonRect = [[self.nsWindow standardWindowButton:NSWindowMiniaturizeButton] frame];
+    NSRect zoomButtonRect = [[self.nsWindow standardWindowButton:NSWindowZoomButton] frame];
+
+    for (NSWindow* window in [[NSApplication sharedApplication] windows]) {
+          if ([window isKindOfClass:NSClassFromString(@"NSToolbarFullScreenWindow")]) {
+            [window.contentView setHidden:YES];
+          }
+    }
+
+    NSView *parent = self.nsWindow.contentView;
+    CGFloat w = 80;
+    CGFloat x = 6;
+    CGFloat y = parent.frame.size.height - h - (_transparentTitleBarHeight - h) / 2.0;
+
+    _fullScreenButtons = [[AWTButtonsView alloc] init];
+    [_fullScreenButtons setFrame:NSMakeRect(x, y, w - x, h)];
+    [_fullScreenButtons addTrackingArea:[[NSTrackingArea alloc] initWithRect:[_fullScreenButtons visibleRect]
+                                                      options:(NSTrackingActiveAlways | NSTrackingMouseEnteredAndExited | NSTrackingMouseMoved)
+                                                      owner:_fullScreenButtons userInfo:nil]];
+
+    NSUInteger masks = [self.nsWindow styleMask];
+
+    NSButton *closeButton = [NSWindow standardWindowButton:NSWindowCloseButton forStyleMask:masks];
+    [closeButton setFrame:closeButtonRect];
+    [closeButton setEnabled:NO];
+    [closeButton setAlphaValue:0.1];
+    [_fullScreenButtons addSubview:closeButton];
+
+    NSButton *miniaturizeButton = [NSWindow standardWindowButton:NSWindowMiniaturizeButton forStyleMask:masks];
+    [miniaturizeButton setFrame:miniaturizeButtonRect];
+    [miniaturizeButton setEnabled:NO];
+    [miniaturizeButton setAlphaValue:0.1];
+    [_fullScreenButtons addSubview:miniaturizeButton];
+
+    NSButton *zoomButton = [NSWindow standardWindowButton:NSWindowZoomButton forStyleMask:masks];
+    [zoomButton setFrame:zoomButtonRect];
+    [zoomButton setEnabled:NO];
+    [zoomButton setAlphaValue:0.1];
+    [_fullScreenButtons addSubview:zoomButton];
+
+    [parent addSubview:_fullScreenButtons];
 }
 
 - (BOOL) isFullScreen
@@ -1677,6 +1777,32 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
         // We don't follow the regular responder chain here since the native window swallows events in some cases
         [[self.window contentView] deliverJavaMouseEvent:event];
     }
+}
+
+@end
+
+@implementation AWTButtonsView
+
+- (void)mouseEntered:(NSEvent *)theEvent {
+    [self updateButtons:YES];
+}
+
+- (void)mouseExited:(NSEvent *)theEvent {
+    [self updateButtons:NO];
+}
+
+- (void)updateButtons:(BOOL) flag {
+    if (self.subviews.count == 3) {
+        [self updateButton:0 flag:flag]; // close
+        [self updateButton:2 flag:flag]; // zoom
+    }
+}
+
+- (void)updateButton: (int)index flag:(BOOL) flag {
+    NSButton *button = (NSButton*)self.subviews[index];
+    [button setEnabled:flag];
+    [button setAlphaValue:(flag ? 1.0 : 0.1)];
+    [button setHighlighted:flag];
 }
 
 @end
