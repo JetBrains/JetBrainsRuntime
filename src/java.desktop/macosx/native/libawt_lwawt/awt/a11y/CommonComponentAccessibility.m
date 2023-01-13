@@ -1353,7 +1353,7 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_menuItemSelected
  * Method:    announce
  * Signature: (Ljavax/accessibility/Accessible;Ljava/lang/String;I)V
  */
-JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_announce
+JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_nativeAnnounce
         (JNIEnv *env, jclass cls, jobject jAccessible, jstring str, jint priority)
 {
     JNI_COCOA_ENTER(env);

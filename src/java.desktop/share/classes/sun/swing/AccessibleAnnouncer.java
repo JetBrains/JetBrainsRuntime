@@ -65,5 +65,9 @@ public class AccessibleAnnouncer {
      * @param str      string for announcing
      * @param priority priority for announcing
      */
-    public static native void announce(Accessible a, final String str, final int priority);
+    public static void announce(Accessible a, final String str, final int priority) {
+        nativeAnnounce(a, str, priority);
+    }
+
+    private static native void nativeAnnounce(Accessible a, final String str, final int priority);
 }

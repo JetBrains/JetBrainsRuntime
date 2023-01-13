@@ -33,7 +33,7 @@
  * Method:    announce
  * Signature: (Ljavax/accessibility/Accessible;Ljava/lang/String;I)V
  */
-JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_announce
+JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_nativeAnnounce
 (JNIEnv *env, jclass cls, jobject accessible, jstring str, jint priority)
 {
     #ifndef NO_A11Y_NVDA_ANNOUNCING
