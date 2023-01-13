@@ -30,7 +30,7 @@
 
 /*
  * Class:     sun_swing_AccessibleAnnouncer
- * Method:    announce
+ * Method:    nativeAnnounce
  * Signature: (Ljavax/accessibility/Accessible;Ljava/lang/String;I)V
  */
 JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_nativeAnnounce
