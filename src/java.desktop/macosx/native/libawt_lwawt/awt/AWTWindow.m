@@ -356,7 +356,10 @@ AWT_NS_WINDOW_IMPLEMENTATION
 }
 
 - (BOOL)isNativeSelected {
-    return self.tabGroup.selectedWindow == self;
+    if (@available(macOS 10.13, *)) {
+        return [[self tabGroup] selectedWindow] == self;
+    }
+    return NO;
 }
 
 @end
