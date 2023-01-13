@@ -84,15 +84,14 @@ int OrcaAnnounce(JNIEnv *env, jstring str, jint priority)
     const char *msg = JNU_GetStringPlatformChars(env, str, NULL);
     if (msg == NULL)
     {
-#ifdef DEBUG
-        fprintf(stderr, "Char string for announcing is null\n");
-#endif
-        (*env)->DeleteLocalRef(env, conf);
         spd_close(connection);
+        (*env)->DeleteLocalRef(env, conf);
+JNU_ThrowOutOfMemoryError(env, "OrcaAnnounce: failed to obtain chars from the announcing string");
         return -1;
     }
 
     OrcaSetSpeechConf(env, connection, conf);
+    (*env)->DeleteLocalRef(env, conf);
     int p = SPD_TEXT;
     if (priority == sun_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT)
     {
@@ -100,7 +99,6 @@ int OrcaAnnounce(JNIEnv *env, jstring str, jint priority)
     }
     int err = spd_say(connection, p, msg);
     spd_close(connection);
-    (*env)->DeleteLocalRef(env, conf);
     JNU_ReleaseStringPlatformChars(env, str, msg);
 
     if (err < 0)
@@ -208,10 +206,8 @@ void OrcaSetOutputModule(JNIEnv *env, SPDConnection *connection, jobject conf)
     const char *sintName = JNU_GetStringPlatformChars(env, jStr, NULL);
     if (sintName == NULL)
     {
-#ifdef DEBUG
-        fprintf(stderr, "Char string for sint  name is null\n");
-#endif
         (*env)->DeleteLocalRef(env, jStr);
+JNU_ThrowOutOfMemoryError(env, "OrcaAnnounce: failed to obtain chars from the sintName string");
         return;
     }
 
@@ -236,10 +232,8 @@ void OrcaSetLanguage(JNIEnv *env, SPDConnection *connection, jobject conf)
     const char *lang = JNU_GetStringPlatformChars(env, jStr, NULL);
     if (lang == NULL)
     {
-#ifdef DEBUG
-        fprintf(stderr, "Char string for lang is null\n");
-#endif
         (*env)->DeleteLocalRef(env, jStr);
+        JNU_ThrowOutOfMemoryError(env, "OrcaAnnounce: failed to obtain chars from the lang string");
         return;
     }
 
@@ -272,10 +266,8 @@ void OrcaSetSynthesisVoice(JNIEnv *env, SPDConnection *connection, jobject conf)
     const char *voiceName = JNU_GetStringPlatformChars(env, jStr, NULL);
     if (voiceName == NULL)
     {
-#ifdef DEBUG
-        fprintf(stderr, "Char string for voice name is null\n");
-#endif
         (*env)->DeleteLocalRef(env, jStr);
+        JNU_ThrowOutOfMemoryError(env, "OrcaAnnounce: failed to obtain chars from the voiceName string");
         return;
     }
 
