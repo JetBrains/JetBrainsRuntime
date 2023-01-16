@@ -37,14 +37,14 @@
 
 DECLARE_INTERFACE_(IJawsApi ,IDispatch)
 {
-STDMETHOD(RunScript)(THIS_ /* [in] */ BSTR ScriptName, VARIANT_BOOL* retval) PURE;
-STDMETHOD(SayString)(THIS_ /*  [in]*/ BSTR StringToSpeak,
-        /*[in, optional, defaultvalue(-1)]*/ VARIANT_BOOL bFlush, VARIANT_BOOL* retval) PURE;
-STDMETHOD(StopSpeech)(THIS_ ) PURE;
-STDMETHOD(Enable)(THIS_ /*[in]*/ VARIANT_BOOL vbNoDDIHooks,
-                  VARIANT_BOOL* retval) PURE;
-STDMETHOD(Disable)(THIS_ VARIANT_BOOL* retval) PURE;
-STDMETHOD(RunFunction)(THIS_ /*[in]*/ BSTR FunctionName, VARIANT_BOOL* retval) PURE;
+    STDMETHOD(RunScript)(THIS_ /* [in] */ BSTR ScriptName, VARIANT_BOOL* retval) PURE;
+    STDMETHOD(SayString)(THIS_ /*  [in]*/ BSTR StringToSpeak,
+            /*[in, optional, defaultvalue(-1)]*/ VARIANT_BOOL bFlush, VARIANT_BOOL* retval) PURE;
+    STDMETHOD(StopSpeech)(THIS_ ) PURE;
+    STDMETHOD(Enable)(THIS_ /*[in]*/ VARIANT_BOOL vbNoDDIHooks,
+                      VARIANT_BOOL* retval) PURE;
+    STDMETHOD(Disable)(THIS_ VARIANT_BOOL* retval) PURE;
+    STDMETHOD(RunFunction)(THIS_ /*[in]*/ BSTR FunctionName, VARIANT_BOOL* retval) PURE;
 };
 
 #endif // ndef NO_A11Y_JAWS_ANNOUNCING
