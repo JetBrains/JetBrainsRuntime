@@ -32,7 +32,6 @@
 
 #include <jni.h>    // JNIEnv, jstring, jint
 
-// TODO: reconsider the data type is used for error reporting (maybe the bool isn't informative enough)
 [[nodiscard]] bool NVDAAnnounce(JNIEnv *env, jstring str, jint priority);
 
 #endif // ndef NO_A11Y_NVDA_ANNOUNCING

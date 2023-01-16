@@ -50,7 +50,7 @@ bool NVDAAnnounce(JNIEnv* const env, const jstring str, const jint priority)
     if (priority == sun_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT) {
         if ( (nvdaStatus = nvdaController_cancelSpeech()) != 0 ) {
 #ifdef DEBUG
-            fprintf(stderr, "Failed to interapt current output. code = %d\n", nvdaStatus);
+            fprintf(stderr, "Failed to interrupt current output. code = %d\n", nvdaStatus);
 #endif
         }
     }
