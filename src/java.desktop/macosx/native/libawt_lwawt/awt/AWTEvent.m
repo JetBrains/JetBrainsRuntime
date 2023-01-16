@@ -481,28 +481,22 @@ static unichar NsGetDeadKeyChar(unsigned short keyCode, BOOL useModifiers)
  */
 static void
 NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
-                           NSUInteger flags, unsigned short key, BOOL useNationalLayouts,
+                           NSUInteger flags, unsigned short key, const BOOL useNationalLayouts,
                            jint *keyCode, jint *keyLocation, BOOL *postsTyped,
                            unichar *deadChar)
 {
     static const size_t keyTableSize = sizeof(keyTable) / sizeof(struct _key);
     NSInteger offset;
 
-    TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
-
-    // Whether this is a latin-based keyboard layout (English, German, French, etc)
-    BOOL asciiCapable = (BOOL)CFBooleanGetValue(
-            (CFBooleanRef)TISGetInputSourceProperty(currentKeyboard, kTISPropertyInputSourceIsASCIICapable));
-
-    // If the key press generates a dead char, then this is the character
+    // If the key without modifiers generates a dead char, then this is the character
     // that is produced when pressing the key followed by a space
     // Otherwise, it's the null character
-    unichar testDeadChar = NsGetDeadKeyChar(key, YES);
-
-    // Same thing, but this time pretend that the key was pressed without any modifiers
     unichar testDeadCharWithoutModifiers = NsGetDeadKeyChar(key, NO);
 
     if (testDeadCharWithoutModifiers != 0) {
+        // Same as testDeadCharWithoutModifiers above, only this time we take modifiers into account.
+        unichar testDeadChar = NsGetDeadKeyChar(key, YES);
+
         const struct CharToVKEntry *map;
         for (map = charToDeadVKTable; map->c != 0; ++map) {
             if (testDeadCharWithoutModifiers == map->c) {
@@ -512,7 +506,7 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
                 // since non-dead keys can reuse the same characters as dead keys
 
                 *keyCode = map->javaKey;
-                *postsTyped = testDeadChar == 0;
+                *postsTyped = (BOOL)(testDeadChar == 0);
                 // TODO: use UNKNOWN here?
                 *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
                 *deadChar = testDeadChar;
@@ -521,12 +515,19 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
         }
     }
 
+    TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
+
+    // Whether this is a latin-based keyboard layout (English, German, French, etc)
+    BOOL asciiCapable = (BOOL)((Boolean)CFBooleanGetValue(
+            (CFBooleanRef)TISGetInputSourceProperty(currentKeyboard, kTISPropertyInputSourceIsASCIICapable)));
+
     unichar testLowercaseChar = tolower(ch);
 
     if (useNationalLayouts && asciiCapable) {
         // If national layouts are enabled and the current keyboard is latin-based then
         // we try to look up a character in a table first, before falling back to looking up
-        // the virtual key code from macOS's hardware key code.
+        // the virtual key code from macOS's hardware key code, since hardware key codes
+        // don't respect the specific keyboard layout the user uses.
 
         for (const struct CharToVKEntry *map = extraCharToVKTable; map->c != 0; ++map) {
             if (map->c == testLowercaseChar) {
