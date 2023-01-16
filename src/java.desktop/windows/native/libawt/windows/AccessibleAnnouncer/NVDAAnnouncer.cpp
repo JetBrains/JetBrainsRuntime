@@ -57,7 +57,9 @@ bool NVDAAnnounce(JNIEnv* const env, const jstring str, const jint priority)
 
     const jchar* jchars = env->GetStringChars(str, nullptr);
     if (jchars == nullptr) {
-        JNU_ThrowOutOfMemoryError(env, "NVDAAnnounce: failed to obtain chars from the announcing string");
+        if (env->ExceptionCheck() == JNI_FALSE) {
+            JNU_ThrowOutOfMemoryError(env, "NVDAAnnounce: failed to obtain chars from the announcing string");
+        }
         return false;
     }
 
