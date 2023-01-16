@@ -1759,6 +1759,14 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     [parent addSubview:_fullScreenButtons];
 }
 
+- (void) resetWindowFullScreeControls {
+    if (_fullScreenButtons != nil) {
+        [_fullScreenButtons removeFromSuperview];
+        _fullScreenButtons = nil;
+        _fullScreenOriginalButtons = nil;
+    }
+}
+
 - (BOOL) isFullScreen {
     NSUInteger masks = [self.nsWindow styleMask];
     return (masks & NSWindowStyleMaskFullScreen) != 0;
