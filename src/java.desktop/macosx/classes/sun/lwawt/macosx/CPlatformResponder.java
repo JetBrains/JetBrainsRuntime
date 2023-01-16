@@ -223,7 +223,10 @@ final class CPlatformResponder {
             if (isDeadChar) {
                 testChar = (char) out[2];
                 if (testChar == 0) {
-                    // Not abandoning the input event here, since we want to catch dead key presses
+                    // Not abandoning the input event here, since we want to catch dead key presses.
+                    // Consider Option+E on the standard ABC layout. This key combination produces a dead accent.
+                    // The key 'E' by itself is not dead, thus out[2] will be 0, even though isDeadChar is true.
+                    // If we abandon the event there, this key press will never get delivered to the application.
                     testChar = KeyEvent.CHAR_UNDEFINED;
                 }
             }
