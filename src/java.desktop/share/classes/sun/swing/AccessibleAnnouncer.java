@@ -66,6 +66,10 @@ public class AccessibleAnnouncer {
      * @param priority priority for announcing
      */
     public static void announce(Accessible a, final String str, final int priority) {
+        if (str == null ||
+        priority != ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT &&
+        priority != ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT) return;
+
         nativeAnnounce(a, str, priority);
     }
 
