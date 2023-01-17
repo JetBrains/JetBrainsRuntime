@@ -232,8 +232,10 @@ static const struct CharToVKEntry charToDeadVKTable[] = {
     {0,0}
 };
 
-// This table is analogous to a similar one found in sun.awt.ExtendedKeyCodes
-// It governs translating the unicode codepoints into the proper VK_ values for keys that have one
+// This table is analogous to a similar one found in sun.awt.ExtendedKeyCodes.
+// It governs translating the unicode codepoints into the proper VK_ values for keys that have one.
+// It only deals with punctuation characters and certain exceptional letters from extended latin set.
+// Also see test/jdk/jb/sun/awt/macos/InputMethodTest/KeyCodesTest.java
 static const struct CharToVKEntry extraCharToVKTable[] = {
     {0x0021, java_awt_event_KeyEvent_VK_EXCLAMATION_MARK},
     {0x0022, java_awt_event_KeyEvent_VK_QUOTEDBL},

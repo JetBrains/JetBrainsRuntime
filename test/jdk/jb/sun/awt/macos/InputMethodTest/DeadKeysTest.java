@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000-2022 JetBrains s.r.o.
+ * Copyright (c) 2000-2023 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 /**
  * @test
  * @summary Regression test for JBR-5006 Dead keys exhibit invalid behavior on macOS
- * @run shell Runner.sh --halfwidth DeadKeysTest
+ * @run shell Runner.sh DeadKeysTest
  * @requires (jdk.version.major >= 8 & os.family == "mac")
  */
 

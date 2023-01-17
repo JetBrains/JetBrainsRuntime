@@ -20,6 +20,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,9 +32,11 @@ public class InputMethodTest {
     private static String currentSection = "";
     private static String initialLayout;
     private static boolean success = true;
+    private static int lastKeyCode = -1;
 
     private enum TestCases {
         DeadKeysTest (new DeadKeysTest()),
+        KeyCodesTest (new KeyCodesTest()),
         PinyinQuotesTest (new PinyinQuotesTest()),
         PinyinFullWidthPunctuationTest (new PinyinFullWidthPunctuationTest()),
         PinyinHalfWidthPunctuationTest (new PinyinHalfWidthPunctuationTest())
@@ -76,6 +79,18 @@ public class InputMethodTest {
         frame.setLocationRelativeTo(null);
 
         textArea = new JTextArea();
+        textArea.addKeyListener(new KeyListener() {
+            @Override
+            public void keyTyped(KeyEvent keyEvent) {}
+
+            @Override
+            public void keyPressed(KeyEvent keyEvent) {
+                lastKeyCode = keyEvent.getKeyCode();
+            }
+
+            @Override
+            public void keyReleased(KeyEvent keyEvent) {}
+        });
 
         frame.setLayout(new BorderLayout());
         frame.getContentPane().add(textArea, BorderLayout.CENTER);
@@ -102,6 +117,7 @@ public class InputMethodTest {
     }
 
     public static void type(int key, int modifiers) {
+        lastKeyCode = -1;
         List<Integer> modKeys = new ArrayList<>();
 
         if ((modifiers & InputEvent.ALT_DOWN_MASK) != 0) {
@@ -139,6 +155,24 @@ public class InputMethodTest {
         } else {
             success = false;
             System.out.printf("Test %s (%s) failed, expected '%s', got '%s'\n", currentTest, currentSection, expectedValue, actualValue);
+        }
+    }
+
+    public static void expectKeyCode(int keyCode) {
+        if (lastKeyCode == keyCode) {
+            System.out.printf("Test %s (%s) passed, got key code %d\n", currentTest, currentSection, keyCode);
+        } else {
+            success = false;
+            System.out.printf("Test %s (%s) failed, expected key code %d, got %d\n", currentTest, currentSection, keyCode, lastKeyCode);
+        }
+    }
+
+    public static void expectTrue(boolean value, String comment) {
+        if (value) {
+            System.out.printf("Test %s (%s) passed: %s\n", currentTest, currentSection, comment);
+        } else {
+            success = false;
+            System.out.printf("Test %s (%s) failed: %s\n", currentTest, currentSection, comment);
         }
     }
 }
