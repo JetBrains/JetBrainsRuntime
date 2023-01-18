@@ -464,7 +464,7 @@ JVM_handle_solaris_signal(int sig, siginfo_t* info, void* ucVoid,
   }
 
   // Handle SafeFetch faults:
-  if (uc != NULL) {
+  if ((sig == SIGSEGV || sig == SIGBUS) && uc != NULL) {
     address const pc = (address) uc->uc_mcontext.gregs[REG_PC];
     if (pc && StubRoutines::is_safefetch_fault(pc)) {
       os::Solaris::ucontext_set_pc(uc, StubRoutines::continuation_for_safefetch_fault(pc));

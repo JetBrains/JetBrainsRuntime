@@ -333,7 +333,7 @@ extern "C" int JVM_handle_linux_signal(int sig, siginfo_t* info,
   }
 
   // Handle SafeFetch faults:
-  if (uc != NULL) {
+  if ((sig == SIGSEGV || sig == SIGBUS) && uc != NULL) {
     address const pc = (address) os::Linux::ucontext_get_pc(uc);
     if (pc && StubRoutines::is_safefetch_fault(pc)) {
       os::Linux::ucontext_set_pc(uc, StubRoutines::continuation_for_safefetch_fault(pc));
