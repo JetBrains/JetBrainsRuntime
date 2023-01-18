@@ -73,7 +73,6 @@
 
 @property (readonly, strong)   id<MTLDevice>   device;
 @property (strong) id<MTLCommandQueue>         commandQueue;
-@property (strong) id<MTLCommandQueue>         blitCommandQueue;
 @property (strong) id<MTLBuffer>               vertexBuffer;
 
 @property (readonly) EncoderManager * encoderManager;
@@ -228,7 +227,6 @@
 -(NSObject*)getBufImgOp;
 
 - (id<MTLCommandBuffer>)createCommandBuffer;
-- (id<MTLCommandBuffer>)createBlitCommandBuffer;
 - (void)commitCommandBuffer:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
 @end
 
