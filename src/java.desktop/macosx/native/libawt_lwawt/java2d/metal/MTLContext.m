@@ -129,7 +129,7 @@ MTLTransform* tempTransform = nil;
 
 @synthesize textureFunction,
             vertexCacheEnabled, aaEnabled, device, pipelineStateStorage,
-            commandQueue, blitCommandQueue, vertexBuffer,
+            commandQueue, vertexBuffer,
             texturePool, paint=_paint, encoderManager=_encoderManager,
             samplerManager=_samplerManager, stencilManager=_stencilManager;
 
@@ -172,7 +172,6 @@ extern void initSamplers(id<MTLDevice> device);
 
         // Create command queue
         commandQueue = [device newCommandQueue];
-        blitCommandQueue = [device newCommandQueue];
 
         _tempTransform = [[MTLTransform alloc] init];
         if (isDisplaySyncEnabled()) {
@@ -194,7 +193,6 @@ extern void initSamplers(id<MTLDevice> device);
     //self.texturePool = nil;
     self.vertexBuffer = nil;
     self.commandQueue = nil;
-    self.blitCommandQueue = nil;
     self.pipelineStateStorage = nil;
 
     if (_encoderManager != nil) {
@@ -508,14 +506,6 @@ extern void initSamplers(id<MTLDevice> device);
 
 - (id<MTLCommandBuffer>)createCommandBuffer {
     return [self.commandQueue commandBuffer];
-}
-
-/*
- * This should be exclusively used only for final blit
- * and present of CAMetalDrawable in MTLLayer
- */
-- (id<MTLCommandBuffer>)createBlitCommandBuffer {
-    return [self.blitCommandQueue commandBuffer];
 }
 
 -(void)setBufImgOp:(NSObject*)bufImgOp {
