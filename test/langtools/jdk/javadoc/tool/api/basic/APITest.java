@@ -198,7 +198,7 @@ class APITest {
             "help-doc.html",
             "index-all.html",
             "index.html",
-            "jquery/jquery-3.6.0.min.js",
+            "jquery/jquery-3.6.1.min.js",
             "jquery/jquery-ui.min.js",
             "jquery/jquery-ui.min.css",
             "jquery/external/jquery/jquery.js",
