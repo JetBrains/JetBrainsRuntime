@@ -119,7 +119,7 @@ BOOL isDisplaySyncEnabled() {
             return;
         }
 
-        id<MTLCommandBuffer> commandBuf = [self.ctx createBlitCommandBuffer];
+        id<MTLCommandBuffer> commandBuf = [self.ctx createCommandBuffer];
         if (commandBuf == nil) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: commandBuf is null");
             [self stopRedraw:YES];
