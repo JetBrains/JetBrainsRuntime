@@ -73,9 +73,10 @@ BOOL isDisplaySyncEnabled() {
     [actions release];
     self.topInset = 0;
     self.leftInset = 0;
-    self.framebufferOnly = NO;
+    self.framebufferOnly = YES;
     self.nextDrawableCount = 0;
     self.opaque = YES;
+    self.presentsWithTransaction = YES;
     if (isDisplaySyncEnabled()) {
         CVDisplayLinkCreateWithActiveCGDisplays(&_displayLink);
         CVDisplayLinkSetOutputCallback(_displayLink, &displayLinkCallback, (__bridge void *) self);
@@ -143,7 +144,6 @@ BOOL isDisplaySyncEnabled() {
                 destinationOrigin:MTLOriginMake(0, 0, 0)];
         [blitEncoder endEncoding];
 
-        [commandBuf presentDrawable:mtlDrawable];
         __block MTLLayer* layer = self;
         [layer retain];
         [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
@@ -152,6 +152,8 @@ BOOL isDisplaySyncEnabled() {
         }];
 
         [commandBuf commit];
+        [commandBuf waitUntilScheduled];
+        [mtlDrawable present];
     }
 }
 
