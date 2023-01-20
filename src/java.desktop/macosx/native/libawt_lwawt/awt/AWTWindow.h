@@ -119,6 +119,7 @@
 @end
 
 @interface AWTButtonsView : NSView
+- (CGFloat)getThemeAlphaValue:(NSWindow *)window;
 @end
 
 #endif _AWTWINDOW_H
