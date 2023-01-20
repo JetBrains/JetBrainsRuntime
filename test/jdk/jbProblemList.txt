@@ -342,10 +342,10 @@ java/awt/Modal/ModalBlockingTests/BlockingDDToolkitModalTest.java 8198665,825318
 java/awt/Modal/ModalBlockingTests/BlockingDFAppModalTest.java 8198665,8253184 macosx-all,windows-all
 java/awt/Modal/ModalBlockingTests/BlockingDFSetModalTest.java 8198665,8253184 macosx-all,windows-all
 java/awt/Modal/ModalBlockingTests/BlockingDFToolkitModalTest.java 8198665,8253184 macosx-all,windows-all
-java/awt/Modal/ModalBlockingTests/BlockingDFWModeless1Test.java8198665,8253184 macosx-all,windows-all
-java/awt/Modal/ModalBlockingTests/BlockingDFWModeless2Test.java8198665,8253184 macosx-all,windows-all
-java/awt/Modal/ModalBlockingTests/BlockingDFWNonModal1Test.java8198665,8253184 macosx-all,windows-all
-java/awt/Modal/ModalBlockingTests/BlockingDFWNonModal2Test.java8198665,8253184 macosx-all,windows-all
+java/awt/Modal/ModalBlockingTests/BlockingDFWModeless1Test.java 8198665,8253184 macosx-all,windows-all
+java/awt/Modal/ModalBlockingTests/BlockingDFWModeless2Test.java 8198665,8253184 macosx-all,windows-all
+java/awt/Modal/ModalBlockingTests/BlockingDFWNonModal1Test.java 8198665,8253184 macosx-all,windows-all
+java/awt/Modal/ModalBlockingTests/BlockingDFWNonModal2Test.java 8198665,8253184 macosx-all,windows-all
 java/awt/Modal/ModalBlockingTests/BlockingDocModalTest.java 8198665,8253184 macosx-all,windows-all
 java/awt/Modal/ModalBlockingTests/BlockingFDAppModalTest.java 8253184 windows-all
 java/awt/Modal/ModalBlockingTests/BlockingFDDocModalTest.java 8253184 windows-all
@@ -399,7 +399,7 @@ java/awt/Modal/ModalExclusionTests/ApplicationExcludeDialogPrintSetupTest.java 8
 java/awt/Modal/ModalExclusionTests/ApplicationExcludeFramePageSetupTest.java 8196431,8253184 linux-all,macosx-all,windows-all
 java/awt/Modal/ModalExclusionTests/ApplicationExcludeFramePrintSetupTest.java 8196431,8253184 linux-all,macosx-all,windows-all
 java/awt/Modal/ModalExclusionTests/ToolkitExcludeFrameFileTest.java 8047179,8253184 linux-all,macosx-all,windows-all
-java/awt/Modal/ModalExclusionTests/ToolkitExcludeDialogFileTest.java 8047179 linux-all,macosx-all
+java/awt/Modal/ModalExclusionTests/ToolkitExcludeDialogFileTest.java 8047179,8253184 linux-all,macosx-all,windows-all
 java/awt/Modal/ModalExclusionTests/ToolkitExcludeDialogPageSetupTest.java 8196431,8253184 linux-all,macosx-all,windows-all
 java/awt/Modal/ModalExclusionTests/ToolkitExcludeDialogPrintSetupTest.java 8196431,8253184 linux-all,macosx-all,windows-all
 java/awt/Modal/ModalExclusionTests/ToolkitExcludeFramePageSetupTest.java 8196431,8253184 linux-all,macosx-all,windows-all
