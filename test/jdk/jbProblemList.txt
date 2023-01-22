@@ -152,13 +152,14 @@ java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java 8169109,J
 java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java 8168646 generic-all
 java/awt/Mixing/AWT_Mixing/HierarchyBoundsListenerMixingTest.java 8049405,8253184 generic-all
 java/awt/Mixing/AWT_Mixing/MixingFrameResizing.java 8049405,8253184 generic-all
+java/awt/Mixing/AWT_Mixing/OpaqueOverlapping.java 8294264 windows-x64
 java/awt/Mixing/AWT_Mixing/OpaqueOverlappingChoice.java 8048171 generic-all
 java/awt/Mixing/AWT_Mixing/JMenuBarOverlapping.java 8159451 linux-all,windows-all,macosx-all
 java/awt/Mixing/AWT_Mixing/JSplitPaneOverlapping.java 6986109 generic-all
 java/awt/Mixing/AWT_Mixing/JInternalFrameMoveOverlapping.java 6986109 windows-all
 java/awt/Mixing/AWT_Mixing/MixingPanelsResizing.java 8049405 generic-all
 java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405 macosx-all
-java/awt/Mixing/AWT_Mixing/JPopupMenuOverlapping.java 8049405 macosx-all
+java/awt/Mixing/AWT_Mixing/JPopupMenuOverlapping.java JBR-5210,8049405 windows-all,macosx-all
 java/awt/Mixing/AWT_Mixing/JButtonInGlassPaneOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JButtonOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JColorChooserOverlapping.java 8158801 windows-all
@@ -174,6 +175,7 @@ java/awt/Mixing/AWT_Mixing/JProgressBarInGlassPaneOverlapping.java 8158801 windo
 java/awt/Mixing/AWT_Mixing/JProgressBarOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JScrollBarInGlassPaneOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JScrollBarOverlapping.java 8158801 windows-all
+java/awt/Mixing/AWT_Mixing/JScrollPaneOverlapping.java JBR-5210 windows-all
 java/awt/Mixing/AWT_Mixing/JSliderInGlassPaneOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JSliderOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JSpinnerInGlassPaneOverlapping.java 8158801 windows-all
@@ -212,7 +214,9 @@ java/awt/Focus/8013611/JDK8013611.java 8175366 windows-all,macosx-all
 java/awt/Focus/6981400/Test1.java 8029675 windows-all,macosx-all
 java/awt/Focus/6981400/Test3.java 8173264 generic-all
 java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java JBR-4997 windows-all
-java/awt/Focus/8073453/AWTFocusTransitionTest.java 8298247 linux-all
+java/awt/Focus/8073453/AWTFocusTransitionTest.java JBR-5210,8298247 windows-all,linux-all
+java/awt/Focus/8073453/SwingFocusTransitionTest.java JBR-5210 windows-all
+java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java JBR-5210 windows-all
 java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java 8169476 windows-all,macosx-all
 java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474,8224055 macosx-all,windows-all
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java 8129778 generic-all
@@ -593,6 +597,10 @@ java/awt/GraphicsDevice/CheckDisplayModes.java 8266242 macosx-aarch64
 java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java 7099223 linux-all,windows-all,macosx-all
 java/awt/keyboard/8218917/AltKeyBug.java JBR-3636 macosx-all
 java/awt/keyboard/AllKeyCode/AllKeyCode.java 8242930 macosx-all
+java/awt/keyboard/AltPlusNumberKeyCombinationsTest/AltPlusNumberKeyCombinationsTest.java JBR-5210 windows-all
+java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogButtonTest/EnqueueWithDialogButtonTest.java JBR-5210 windows-all
+java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java JBR-5210 windows-all
+java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.java JBR-5210 windows-all
 java/awt/FullScreen/8013581/bug8013581.java 8169471,JBR-80 macosx-all,windows-all
 java/awt/event/MouseEvent/RobotLWTest/RobotLWTest.java 8233568 macosx-all
 java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java 8233568 macosx-all
@@ -964,6 +972,10 @@ jdk/jfr/startupargs/TestStartDuration.java                      8214685 windows-
 ############################################################################
 
 # jdk_internal
+
+jdk/internal/platform/docker/TestDockerBasic.java          JBR-5220 linux-aarch64
+jdk/internal/platform/docker/TestDockerMemoryMetrics.java  JBR-5220 linux-aarch64
+jdk/internal/platform/docker/TestGetFreeSwapSpaceSize.java JBR-5220 linux-aarch64
 
 ############################################################################
 
