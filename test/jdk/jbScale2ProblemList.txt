@@ -8,3 +8,5 @@ java/awt/image/VolatileImage/DrawHugeImageTest.java                             
 java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java        JBR-5071 linux-all
 java/awt/PopupMenu/PopupMenuLocation.java                                           8238720,8288415,JBR-5071 windows-all,macosx-all,linux-all
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      7124313,JBR-5071 macosx-all,linux-all
+
+sun/java2d/GdiRendering/ClipShapeRendering.java                                     JBR-5204 linux-all,windows-all
