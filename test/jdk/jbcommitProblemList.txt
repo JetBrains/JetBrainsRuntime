@@ -10,8 +10,6 @@ java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java nobug
 java/awt/hidpi/ClientAreaOriginWindowsTest.java JBR-630 windows-all
 java/awt/hidpi/SetMaximizedBoundsTest.java nobug windows-all
 java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java nobug windows-all
-java/awt/Focus/8073453/AWTFocusTransitionTest.java JBR-4354,8298247 windows-all,linux-all
-java/awt/Focus/8073453/SwingFocusTransitionTest.java nobug windows-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java nobug windows-all
 java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayoutTraversalTest.java nobug windows-all
 java/awt/Focus/KeyEventForBadFocusOwnerTest/KeyEventForBadFocusOwnerTest.java nobug windows-all
@@ -22,8 +20,6 @@ java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java nobug windows-all
 java/awt/Focus/WindowInitialFocusTest/WindowInitialFocusTest.java nobug windows-all
 java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java nobug windows-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-2687 windows-all
-java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogButtonTest/EnqueueWithDialogButtonTest.java nobug windows-all,linux-all
-java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java nobug windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java nobug windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.java nobug windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.java nobug windows-all
@@ -52,7 +48,6 @@ javax/swing/event/RightAltKeyTest.java nobug windows-all
 javax/swing/JColorChooser/Test6541987.java nobug windows-all
 javax/swing/JColorChooser/Test7194184.java nobug windows-all
 javax/swing/JColorChooser/Test8051548.java nobug windows-all
-javax/swing/JComboBox/4523758/bug4523758.java nobug windows-all
 javax/swing/JComboBox/4743225/bug4743225.java nobug windows-all
 javax/swing/JComboBox/6236162/bug6236162.java nobug windows-all
 javax/swing/JComboBox/8032878/bug8032878.java nobug windows-all
