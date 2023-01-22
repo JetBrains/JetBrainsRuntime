@@ -103,7 +103,7 @@ gc/stress/TestJNIBlockFullGC/TestJNIBlockFullGC.java 8192647 generic-all
 gc/stress/TestStressG1Humongous.java 8286554 windows-x64
 gc/metaspace/CompressedClassSpaceSizeInJmapHeap.java 8241293 macosx-x64
 
-gc/stress/gcold/TestGCOldWithShenandoah.java#aggressive initial_run windows-all
+gc/stress/gcold/TestGCOldWithShenandoah.java initial_run windows-all
 
 #############################################################################
 
@@ -165,12 +165,14 @@ serviceability/sa/TestJmapCoreMetaspace.java 8294316,8267433 macosx-x64
 
 serviceability/attach/ConcAttachTest.java 8290043 linux-all
 serviceability/jvmti/RedefineClasses/TestMultipleClasses.java initial_run windows-all
-serviceability/jvmti/SetBreakpoint/TestManyBreakpoints.java initial_run linux-aarch64
+serviceability/jvmti/SetBreakpoint/TestManyBreakpoints.java initial_run generic-aarch64
 
 serviceability/sa/ClhsdbJstackXcompStress.java initial_run windows-all
 
 serviceability/sa/ClhsdbPrintAs.java initial_run windows-aarch64
-serviceability/sa/ClhsdbFindPC.java initial_run generic-aarch64
+serviceability/sa/ClhsdbFindPC.java#id1 initial_run generic-aarch64
+serviceability/sa/ClhsdbFindPC.java#id2 initial_run generic-aarch64
+serviceability/sa/ClhsdbFindPC.java#id3 initial_run generic-aarch64
 serviceability/sa/ClhsdbCDSJstackPrintAll.java initial_run windows-aarch64
 serviceability/sa/TestClhsdbJstackLock.java initial_run windows-aarch64
 serviceability/sa/ClhsdbSource.java initial_run windows-aarch64
@@ -179,7 +181,7 @@ serviceability/sa/TestJhsdbJstackLock.java initial_run windows-aarch64
 serviceability/sa/ClhsdbCDSCore.java initial_run generic-aarch64
 serviceability/sa/ClhsdbJstack.java#id1 initial_run windows-aarch64
 serviceability/sa/ClhsdbPstack.java#id1 initial_run windows-aarch64
-serviceability/sa/ClhsdbPmap.java#id1 initial_run windows-aarch64
+serviceability/sa/ClhsdbPmap.java#id1 initial_run generic-aarch64
 serviceability/sa/ClhsdbWhere.java initial_run windows-aarch64
 serviceability/sa/ClhsdbDumpheap.java initial_run windows-aarch64
 
@@ -204,8 +206,13 @@ vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded004
 vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded005/TestDescription.java 8153598 generic-all
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Deadlock/JavaDeadlock001/TestDescription.java 8060733 generic-all
 
-vmTestbase/nsk/jdi/ThreadReference/stop/stop001/TestDescription.java 7034630 generic-all
+vmTestbase/nsk/jdb/options/listconnectors/listconnectors001/listconnectors001.java initial_run windows-aarch64
 
+vmTestbase/nsk/jdi/LaunchingConnector/launch/launch001/TestDescription.java initial_run windows-aarch64
+vmTestbase/nsk/jdi/LaunchingConnector/launch/launch003/TestDescription.java initial_run windows-aarch64
+vmTestbase/nsk/jdi/LaunchingConnector/launchnosuspend/launchnosuspend001/TestDescription.java initial_run windows-aarch64
+
+vmTestbase/nsk/jdi/ThreadReference/stop/stop001/TestDescription.java 7034630 generic-all
 vmTestbase/nsk/jdi/ReferenceType/instances/instances002/instances002.java initial_run linux-all
 
 vmTestbase/metaspace/gc/firstGC_10m/TestDescription.java 8208250 generic-all
@@ -221,6 +228,8 @@ vmTestbase/nsk/jvmti/AttachOnDemand/attach002a/TestDescription.java 8277812 gene
 vmTestbase/nsk/jvmti/scenarios/capability/CM03/cm03t001/TestDescription.java 8073470 linux-all
 vmTestbase/nsk/jvmti/InterruptThread/intrpthrd003/TestDescription.java 8288911 macosx-x64
 
+vmTestbase/nsk/jvmti/scenarios/sampling/SP04/sp04t001/TestDescription.java initial_run windows-x64
+vmTestbase/nsk/jvmti/scenarios/sampling/SP04/sp04t002/TestDescription.java initial_run windows-x64
 vmTestbase/nsk/jvmti/scenarios/sampling/SP05/sp05t003/TestDescription.java initial_run osx-aarch64
 
 vmTestbase/gc/lock/jni/jnilock002/TestDescription.java 8192647 generic-all
@@ -230,6 +239,7 @@ vmTestbase/jit/escape/LockCoarsening/LockCoarsening002.java 8208259 generic-all
 
 vmTestbase/jit/misctests/fpustack/GraphApplet.java linux-x64
 
+vmTestbase/vm/mlvm/hiddenloader/stress/byteMutation/Test.java initial_run windows-aarch64
 vmTestbase/vm/mlvm/indy/func/jvmti/redefineClassInBootstrap/TestDescription.java 8013267 generic-all
 vmTestbase/vm/mlvm/meth/stress/jdi/breakpointInCompiledCode/Test.java 8257761 generic-all
 vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2none_a/TestDescription.java 8013267 generic-all
@@ -311,6 +321,10 @@ serviceability/jvmti/SetBreakpoint/TestManyBreakpoints.java NO_BUG linux_aarch64
 vmTestbase/nsk/stress/thread/thread008.java initial_run windows-all
 compiler/vectorapi/VectorRebracket128Test.java NO_BUG linux_aarch64
 
+vmTestbase/nsk/sysdict/vm/stress/btree/btree001/btree001.java initial_run windows-aarch64
+vmTestbase/nsk/sysdict/vm/stress/btree/btree005/btree005.java initial_run windows-aarch64
+vmTestbase/nsk/sysdict/vm/stress/btree/btree009/btree009.java initial_run windows-aarch64
+
 resourcehogs/serviceability/sa/TestHeapDumpForLargeArray.java initial_run linux-all
 
-testlibrary_tests/ir_framework/tests/TestDTestAndExclude.java initial_run windows-aarch64
+testlibrary_tests/ir_framework/tests/TestDTestAndExclude.java initial_run windows-all
