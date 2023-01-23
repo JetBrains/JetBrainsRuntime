@@ -88,7 +88,7 @@ int OrcaAnnounce(JNIEnv *env, jstring str, jint priority)
         {
             JNU_ThrowOutOfMemoryError(env, "OrcaAnnounce: failed to obtain chars from the announcing string");
         }
-        
+
         spd_close(connection);
         (*env)->DeleteLocalRef(env, conf);
         return -1;
@@ -214,7 +214,7 @@ void OrcaSetOutputModule(JNIEnv *env, SPDConnection *connection, jobject conf)
         {
             JNU_ThrowOutOfMemoryError(env, "OrcaAnnounce: failed to obtain chars from the sintName string");
         }
-        
+
         (*env)->DeleteLocalRef(env, jStr);
         return;
     }
@@ -244,7 +244,7 @@ void OrcaSetLanguage(JNIEnv *env, SPDConnection *connection, jobject conf)
         {
             JNU_ThrowOutOfMemoryError(env, "OrcaAnnounce: failed to obtain chars from the lang string");
         }
-        
+
         (*env)->DeleteLocalRef(env, jStr);
         return;
     }
@@ -282,7 +282,7 @@ void OrcaSetSynthesisVoice(JNIEnv *env, SPDConnection *connection, jobject conf)
         {
             JNU_ThrowOutOfMemoryError(env, "OrcaAnnounce: failed to obtain chars from the voiceName string");
         }
-        
+
         (*env)->DeleteLocalRef(env, jStr);
         return;
     }
