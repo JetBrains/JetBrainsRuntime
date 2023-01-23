@@ -54,7 +54,7 @@ public class AccessibleAnnouncer {
      * @param str      string for announcing
      * @param priority priority for announcing
      */
-    public static void announce(final String str, final int priority) {
+    public static void announce(final String str, final int priority) throws Exception {
         announce(null, str, priority);
     }
 
@@ -65,10 +65,12 @@ public class AccessibleAnnouncer {
      * @param str      string for announcing
      * @param priority priority for announcing
      */
-    public static void announce(Accessible a, final String str, final int priority) {
+    public static void announce(Accessible a, final String str, final int priority) throws Exception {
         if (str == null ||
         priority != ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT &&
-        priority != ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT) return;
+        priority != ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT) {
+            throw new IllegalArgumentException("Invalid parameters passed for declaration");
+        }
 
         nativeAnnounce(a, str, priority);
     }

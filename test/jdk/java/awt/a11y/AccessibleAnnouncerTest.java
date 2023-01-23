@@ -51,6 +51,15 @@ public class AccessibleAnnouncerTest extends AccessibleComponentTest {
         return new CountDownLatch(1);
     }
 
+    private static void announce(final String str, final int priority) {
+        try {
+            AccessibleAnnouncer.announce(str, priority);
+        } catch (final Exception e) {
+            e.printStackTrace();
+
+        }
+    }
+
     void createTest() {
         INSTRUCTIONS = "INSTRUCTIONS:\n"
                 + "Check announcing.\n\n"
@@ -68,7 +77,7 @@ public class AccessibleAnnouncerTest extends AccessibleComponentTest {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String str = textField.getText();
-                AccessibleAnnouncer.announce(str, AccessibleAnnouncer.ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT);
+                announce(str, AccessibleAnnouncer.ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT);
             }
         });
 
@@ -98,11 +107,11 @@ public class AccessibleAnnouncerTest extends AccessibleComponentTest {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                AccessibleAnnouncer.announce(firstMessage, AccessibleAnnouncer.ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT);
+                announce(firstMessage, AccessibleAnnouncer.ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT);
                 try {
                     Thread.sleep(3000);
-                    AccessibleAnnouncer.announce("You must not hear this message.", AccessibleAnnouncer.ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT);
-                    AccessibleAnnouncer.announce(secondMessage, AccessibleAnnouncer.ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT);
+                    announce("You must not hear this message.", AccessibleAnnouncer.ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT);
+                    announce(secondMessage, AccessibleAnnouncer.ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT);
                  } catch (Exception ex) {
                     ex.printStackTrace();
                 }
