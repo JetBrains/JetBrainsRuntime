@@ -71,7 +71,7 @@ int OrcaAnnounce(JNIEnv *env, jstring str, jint priority)
         return -1;
     }
 
-    SPDConnection *connection = spd_open("Cli announcer", NULL, NULL, SPD_MODE_SINGLE);
+    SPDConnection *connection = spd_open("Java announcer", NULL, NULL, SPD_MODE_SINGLE);
     if (connection == NULL)
     {
 #ifdef DEBUG
@@ -140,7 +140,7 @@ void OrcaSetVolume(JNIEnv *env, SPDConnection *connection, jobject conf)
         return;
     }
 
-    int volume = (gain - 5) * 20;
+    int volume = (int)((gain - 5) * 20);
     spd_set_volume(connection, volume);
 }
 
@@ -157,7 +157,7 @@ void OrcaSetVoiceRate(JNIEnv *env, SPDConnection *connection, jobject conf)
         return;
     }
 
-    int iRate = (rate - 50) * 2;
+    int iRate = (int)((rate - 50) * 2);
     spd_set_voice_rate(connection, iRate);
 }
 
@@ -190,7 +190,7 @@ void OrcaSetVoicePitch(JNIEnv *env, SPDConnection *connection, jobject conf)
         return;
     }
 
-    int iPitch = (pitch - 5) * 20;
+    int iPitch = (int)((pitch - 5) * 20);
     spd_set_voice_pitch(connection, iPitch);
 }
 
