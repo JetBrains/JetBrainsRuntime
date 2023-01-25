@@ -104,7 +104,7 @@ $ docker run -v `pwd`../../../../:/JetBrainsRuntime -it 942ea9900054
 Install the necessary tools, libraries, and headers with:
 ```
 $ sudo apt-get install autoconf make build-essential libx11-dev libxext-dev libxrender-dev libxtst-dev \
-       libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev
+       libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev libspeechd-dev
 ```
 Get Java 18 (for instance, [Azul Zulu Builds of OpenJDK 18](https://www.azul.com/downloads/?version=java-18-sts&os=linux&package=jdk)).
 
@@ -144,6 +144,18 @@ $ bash configure --with-toolchain-version=2019
 $ make images
 ```
 This will build the release configuration under `./build/windows-x86_64-server-release/`.
+
+#### Enable optional NVDA screen reader support
+If you want to add support of a11y announcing via [NVDA screen reader](https://www.nvaccess.org/about-nvda/),
+you will need to bundle the NVDA Controller Client library.
+You can do it with the following steps:
+1. Download the NVDA Controller Client library. You can find the link in its official README [here](https://github.com/nvaccess/nvda/blob/master/extras/controllerClient/readme.md)
+2. Pass the path to the unpacked package to `configure` via an additional flag `--with-nvdacontrollerclient=<path>`.
+   The build system will search the required library files under `<path>/<target-arch>`.
+
+#### Disable optional JAWS screen reader support
+JBR is built with built-in support of JAWS screen reader.
+If you want to disable it, run `configure` with the additional flag `--disable-jaws-client`.
 
 ### macOS
 Install the following:
