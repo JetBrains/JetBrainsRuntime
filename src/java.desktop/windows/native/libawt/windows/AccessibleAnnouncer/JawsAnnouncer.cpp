@@ -113,19 +113,19 @@ bool JawsAnnounce(JNIEnv *env, jstring str, jint priority)
 
     const DWORD currThread = ::GetCurrentThreadId();
     if (currThread != comInitThreadId) {
-        #ifdef DEBUG
-            fprintf(stderr, "JawsAnnounce: currThread != comInitThreadId.\n");
-        #endif
+#ifdef DEBUG
+        fprintf(stderr, "JawsAnnounce: currThread != comInitThreadId.\n");
+#endif
         return false;
     }
 
     static ComInitializationWrapper comInitializer;
     comInitializer.tryInitialize();
     if (!comInitializer.isInitialized()) {
-        #ifdef DEBUG
-            fprintf(stderr, "JawsAnnounce: CoInitialize failed ; HRESULT=0x%llX.\n",
-                    static_cast<unsigned long long>(comInitializer.getInitializeResult()));
-        #endif
+#ifdef DEBUG
+        fprintf(stderr, "JawsAnnounce: CoInitialize failed ; HRESULT=0x%llX.\n",
+                static_cast<unsigned long long>(comInitializer.getInitializeResult()));
+#endif
         return false;
     }
 
@@ -133,9 +133,9 @@ bool JawsAnnounce(JNIEnv *env, jstring str, jint priority)
     if (pJawsApi.objPtr == nullptr) {
         HRESULT hr = CoCreateInstance(CLSID_JAWSCLASS, nullptr, CLSCTX_INPROC_SERVER, IID_IJAWSAPI, reinterpret_cast<void**>(&pJawsApi.objPtr));
         if ((hr != S_OK) || (pJawsApi.objPtr == nullptr)) {
-            #ifdef DEBUG
-                fprintf(stderr, "JawsAnnounce: CoCreateInstance failed ; HRESULT=0x%llX.\n", static_cast<unsigned long long>(hr));
-            #endif
+#ifdef DEBUG
+            fprintf(stderr, "JawsAnnounce: CoCreateInstance failed ; HRESULT=0x%llX.\n", static_cast<unsigned long long>(hr));
+#endif
             // just in case
             if (pJawsApi.objPtr != nullptr) {
                 pJawsApi.objPtr->Release();
@@ -178,15 +178,15 @@ bool JawsAnnounce(JNIEnv *env, jstring str, jint priority)
     stringToSpeak = nullptr;
 
     if (FAILED(comCallResult)) {
-        #ifdef DEBUG
-            fprintf(stderr, "JawsAnnounce: failed to invoke COM function to say string ; HRESULT=0x%llX.\n", static_cast<unsigned long long>(comCallResult));
-        #endif
+#ifdef DEBUG
+        fprintf(stderr, "JawsAnnounce: failed to invoke COM function to say string ; HRESULT=0x%llX.\n", static_cast<unsigned long long>(comCallResult));
+#endif
         return false;
     }
     if (jawsSucceeded != VARIANT_TRUE) {
-        #ifdef DEBUG
-            fprintf(stderr, "JawsAnnounce: failed to say string ; code = %d.\n", static_cast<int>(jawsSucceeded));
-        #endif
+#ifdef DEBUG
+        fprintf(stderr, "JawsAnnounce: failed to say string ; code = %d.\n", static_cast<int>(jawsSucceeded));
+#endif
         return false;
     }
 

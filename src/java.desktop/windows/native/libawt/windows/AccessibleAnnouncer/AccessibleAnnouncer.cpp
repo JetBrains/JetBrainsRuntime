@@ -36,17 +36,17 @@
 JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_nativeAnnounce
 (JNIEnv *env, jclass cls, jobject accessible, jstring str, jint priority)
 {
-    #ifndef NO_A11Y_NVDA_ANNOUNCING
-        if (NVDAAnnounce(env, str, priority)) {
-            return;
-        }
-    #endif
+#ifndef NO_A11Y_NVDA_ANNOUNCING
+    if (NVDAAnnounce(env, str, priority)) {
+        return;
+    }
+#endif
 
-    #ifndef NO_A11Y_JAWS_ANNOUNCING
-        if (JawsAnnounce(env, str, priority)) {
-            return;
-        }
-    #endif
+#ifndef NO_A11Y_JAWS_ANNOUNCING
+    if (JawsAnnounce(env, str, priority)) {
+        return;
+    }
+#endif
 
 #ifdef DEBUG
     fprintf(stderr, "Each announcer has failed or the build was made without any of them\n");
