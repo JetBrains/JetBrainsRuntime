@@ -62,6 +62,7 @@
 - (BOOL)isAccessibleWithEnv:(JNIEnv _Nonnull * _Nonnull)env forAccessible:(nonnull jobject)accessible;
 
 + (void)postFocusChanged:(nullable id)message;
++ (void)postAnnounceWithCaller:(id _Nonnull)caller andText:(NSString * _Nonnull)text andPriority:(NSNumber * _Nonnull)priority;
 
 + (void) initializeRolesMap;
 
