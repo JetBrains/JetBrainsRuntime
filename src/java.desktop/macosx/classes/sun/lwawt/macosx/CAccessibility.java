@@ -957,33 +957,28 @@ class CAccessibility implements PropertyChangeListener {
     }
 
     private static int getTableHeaderCount(final Accessible a, final Component c,
-            final int info) {
+                                           final int info) {
         if (a == null) return 0;
 
-        return invokeAndWait(new Callable<Integer>() {
-            @Override
-            public Integer call() throws Exception {
-                AccessibleContext ac = a.getAccessibleContext();
-                if (ac !=  null) {
-                    AccessibleTable at = ac.getAccessibleTable();
-                    if (at != null) {
-                        if (info == JAVA_AX_ROWS) {
-                            AccessibleTable aht = at.getAccessibleRowHeader();
-                            if (aht != null) {
-                                return aht.getAccessibleColumnCount();
-                            }
-                        }
-                        if (info == JAVA_AX_COLS) {
-                            AccessibleTable aht = at.getAccessibleColumnHeader();
-                            if (aht != null) {
-                                return aht.getAccessibleRowCount();
-                            }
-                        }
+        AccessibleContext ac = a.getAccessibleContext();
+        if (ac !=  null) {
+            AccessibleTable at = ac.getAccessibleTable();
+            if (at != null) {
+                if (info == JAVA_AX_ROWS) {
+                    AccessibleTable aht = at.getAccessibleRowHeader();
+                    if (aht != null) {
+                        return aht.getAccessibleColumnCount();
                     }
                 }
-                return null;
+                if (info == JAVA_AX_COLS) {
+                    AccessibleTable aht = at.getAccessibleColumnHeader();
+                    if (aht != null) {
+                        return aht.getAccessibleRowCount();
+                    }
+                }
             }
-        }, c);
+        }
+        return 0;
     }
 
     private static Object[] getTableHeaderInfo(final Accessible a, final Component c,

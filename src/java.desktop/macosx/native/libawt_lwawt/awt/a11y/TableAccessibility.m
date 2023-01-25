@@ -227,6 +227,68 @@ static jmethodID sjm_getAccessibleName = NULL;
     cacheValid = NO;
 }
 
+- (NSArray *) accessibleHeadersWithInfo:(int)info andChildCode:(int)childCode
+{
+            JNIEnv *env = [ThreadUtilities getJNIEnv];
+
+        GET_CACCESSIBILITY_CLASS_RETURN(nil);
+        DECLARE_STATIC_METHOD_RETURN(jm_getTableHeaderInfo, sjc_CAccessibility, "getTableHeaderInfo",\
+            "(Ljavax/accessibility/Accessible;Ljava/awt/Component;II)[Ljava/lang/Object;", nil);
+
+        jobjectArray jchildrenAndRoles = (jobjectArray)(*env)->CallStaticObjectMethod(
+                env, sjc_CAccessibility, jm_getTableHeaderInfo, fAccessible, fComponent,
+                info, childCode);
+        CHECK_EXCEPTION();
+
+        if (jchildrenAndRoles == NULL) return nil;
+
+        jsize arrayLen = (*env)->GetArrayLength(env, jchildrenAndRoles);
+        NSMutableArray *children = [NSMutableArray arrayWithCapacity:arrayLen / 2];
+        int childIndex = 0;
+
+        for (NSInteger i = 0; i < arrayLen; i += 2) {
+            jobject /* Accessible */ jchild = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i);
+            jobject /* String */ jchildJavaRole = (*env)->GetObjectArrayElement(env, jchildrenAndRoles, i+1);
+
+            NSString *childJavaRole = nil;
+            if (jchildJavaRole != NULL) {
+                DECLARE_CLASS_RETURN(sjc_AccessibleRole, "javax/accessibility/AccessibleRole", nil);
+                DECLARE_FIELD_RETURN(sjf_key, sjc_AccessibleRole, "key", "Ljava/lang/String;", nil);
+                jobject jkey = (*env)->GetObjectField(env, jchildJavaRole, sjf_key);
+                CHECK_EXCEPTION();
+                childJavaRole = JavaStringToNSString(env, jkey);
+                (*env)->DeleteLocalRef(env, jkey);
+            }
+
+            CellAccessibility *child = (CellAccessibility *)
+                [CommonComponentAccessibility createWithParent:self
+                                                     withClass:[CellAccessibility class]
+                                                    accessible:jchild
+                                                          role:childJavaRole
+                                                         index:childIndex
+                                                       withEnv:env
+                                                      withView:self->fView];
+            [children addObject:child];
+
+            (*env)->DeleteLocalRef(env, jchild);
+            (*env)->DeleteLocalRef(env, jchildJavaRole);
+
+            childIndex++;
+        }
+        (*env)->DeleteLocalRef(env, jchildrenAndRoles);
+    return children;
+}
+
+-(nullable NSArray *)accessibilityRowHeaderUIElements
+{
+    return [self accessibleHeadersWithInfo:sun_lwawt_macosx_CAccessibility_JAVA_AX_ROWS andChildCode:sun_lwawt_macosx_CAccessibility_JAVA_AX_ALL_CHILDREN];
+}
+
+- (nullable NSArray *)accessibilityColumnHeaderUIElements
+{
+    return [self accessibleHeadersWithInfo:sun_lwawt_macosx_CAccessibility_JAVA_AX_COLS andChildCode:sun_lwawt_macosx_CAccessibility_JAVA_AX_ALL_CHILDREN];
+}
+
 @end
 
 /*
