@@ -126,6 +126,36 @@ ifeq ($(TOOLCHAIN_TYPE), gcc)
   LIBAWT_CFLAGS += -fgcse-after-reload
 endif
 
+# Setup NVDA a11y announcer
+ifeq ($(call isTargetOs, windows), true)
+  A11Y_NVDA_ANNOUNCING_CFLAGS := -DNO_A11Y_NVDA_ANNOUNCING
+  A11Y_NVDA_ANNOUNCING_LIBS :=
+  A11Y_NVDA_ANNOUNCING_DEPENDENCIES :=
+
+  ifeq ($(ENABLE_HEADLESS_ONLY), false)
+    ifeq ($(A11Y_NVDA_ANNOUNCING_ENABLED), true)
+      A11Y_NVDA_ANNOUNCING_CFLAGS := $(NVDACONTROLLERCLIENT_CFLAGS)
+      A11Y_NVDA_ANNOUNCING_LIBS := $(NVDACONTROLLERCLIENT_LIB)
+      A11Y_NVDA_ANNOUNCING_DEPENDENCIES := $(NVDACONTROLLERCLIENT_DLL)
+    endif
+  endif
+
+  LIBAWT_CFLAGS += $(A11Y_NVDA_ANNOUNCING_CFLAGS)
+endif
+
+# Setup the client for the JAWS screen reader
+ifeq ($(call isTargetOs, windows), true)
+  A11Y_JAWS_ANNOUNCING_CFLAGS := -DNO_A11Y_JAWS_ANNOUNCING
+
+  ifeq ($(ENABLE_HEADLESS_ONLY), false)
+    ifeq ($(A11Y_JAWS_ANNOUNCING_ENABLED), true)
+      A11Y_JAWS_ANNOUNCING_CFLAGS :=
+    endif
+  endif
+
+  LIBAWT_CFLAGS += $(A11Y_JAWS_ANNOUNCING_CFLAGS)
+endif
+
 $(eval $(call SetupJdkLibrary, BUILD_LIBAWT, \
     NAME := awt, \
     EXTRA_SRC := $(LIBAWT_EXTRA_SRC), \
@@ -167,7 +197,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBAWT, \
     LIBS_windows := kernel32.lib user32.lib gdi32.lib winspool.lib \
         imm32.lib ole32.lib uuid.lib shell32.lib \
         comdlg32.lib winmm.lib comctl32.lib shlwapi.lib \
-        delayimp.lib jvm.lib $(WIN_JAVA_LIB) advapi32.lib dwmapi.lib, \
+        delayimp.lib jvm.lib $(WIN_JAVA_LIB) advapi32.lib dwmapi.lib $(A11Y_NVDA_ANNOUNCING_LIBS), \
     VERSIONINFO_RESOURCE := $(LIBAWT_VERSIONINFO_RESOURCE), \
     EXTRA_RCFLAGS := $(LIBAWT_RCFLAGS), \
 ))
@@ -176,6 +206,18 @@ $(BUILD_LIBAWT): $(call FindLib, java.base, java)
 
 ifeq ($(call isTargetOs, macosx), true)
   $(BUILD_LIBAWT): $(BUILD_LIBMLIB_IMAGE)
+endif
+
+ifeq ($(call isTargetOs, windows)+$(ENABLE_HEADLESS_ONLY)+$(A11Y_NVDA_ANNOUNCING_ENABLED), true+false+true)
+  $(eval $(call SetupCopyFiles, COPY_NVDA_DEPENDENCIES, \
+      FILES := $(A11Y_NVDA_ANNOUNCING_DEPENDENCIES), \
+      DEST := $(BUILD_LIBAWT_OUTPUT_DIR), \
+  ))
+
+  $(COPY_NVDA_DEPENDENCIES): $(A11Y_NVDA_ANNOUNCING_DEPENDENCIES)
+  $(BUILD_LIBAWT): $(COPY_NVDA_DEPENDENCIES)
+
+  TARGETS += $(COPY_NVDA_DEPENDENCIES)
 endif
 
 TARGETS += $(BUILD_LIBAWT)
@@ -190,6 +232,18 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/java2d \
         common/font \
         #
+
+    ifeq ($(A11Y_SPEECHD_ANNOUNCING_ENABLED), true)
+        A11Y_SPEECHD_ANNOUNCING_CFLAGS :=
+    else
+        A11Y_SPEECHD_ANNOUNCING_CFLAGS := -DNO_A11Y_SPEECHD_ANNOUNCING
+    endif
+
+    ifeq ($(call isTargetOs, linux), true)
+        LIBAWT_XAWT_EXTRA_SRC += \
+            $(TOPDIR)/src/$(MODULE)/linux/native/libawt_xawt \
+            #
+    endif
 
     LIBAWT_XAWT_EXCLUDES := medialib debug
 
@@ -209,7 +263,10 @@ ifeq ($(call isTargetOs, windows macosx), false)
 
     LIBAWT_XAWT_CFLAGS += -DXAWT -DXAWT_HACK \
         $(FONTCONFIG_CFLAGS) \
-        $(CUPS_CFLAGS)
+        $(CUPS_CFLAGS) \
+        $(SPEECHD_CFLAGS) \
+        $(A11Y_SPEECHD_ANNOUNCING_CFLAGS) \
+        #
 
     ifeq ($(call isTargetOs, linux), true)
       ifeq ($(DISABLE_XRENDER), true)
@@ -217,7 +274,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
       endif
     endif
 
-    LIBAWT_XAWT_LIBS := $(LIBM) -lawt -lXext -lX11 -lXrender $(LIBDL) -lXtst -lXi -ljava -ljvm
+    LIBAWT_XAWT_LIBS := $(LIBM) -lawt -lXext -lX11 -lXrender $(SPEECHD_LIBS) $(LIBDL) -lXtst -lXi -ljava -ljvm
 
     ifeq ($(call isTargetOs, linux), true)
       LIBAWT_XAWT_LIBS += -lpthread
