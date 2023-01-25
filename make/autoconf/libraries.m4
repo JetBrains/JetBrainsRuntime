@@ -33,7 +33,8 @@ m4_include([lib-freetype.m4])
 m4_include([lib-hsdis.m4])
 m4_include([lib-std.m4])
 m4_include([lib-x11.m4])
-
+m4_include([lib-speechd.m4])
+m4_include([lib-nvdacontrollerclient.m4])
 m4_include([lib-tests.m4])
 
 ################################################################################
@@ -45,10 +46,17 @@ AC_DEFUN_ONCE([LIB_DETERMINE_DEPENDENCIES],
   if test "x$OPENJDK_TARGET_OS" = xwindows || test "x$OPENJDK_TARGET_OS" = xmacosx; then
     # No X11 support on windows or macosx
     NEEDS_LIB_X11=false
+    NEEDS_LIB_SPEECHD=false
   else
     # All other instances need X11, even if building headless only, libawt still
     # needs X11 headers.
     NEEDS_LIB_X11=true
+
+    if test "x$ENABLE_HEADLESS_ONLY" = xtrue; then
+      NEEDS_LIB_SPEECHD=false
+    else
+      NEEDS_LIB_SPEECHD=true
+    fi
   fi
 
   # Check if fontconfig is needed
@@ -87,6 +95,13 @@ AC_DEFUN_ONCE([LIB_DETERMINE_DEPENDENCIES],
   else
     NEEDS_LIB_FFI=false
   fi
+
+  # Check if nvdacontrollerclient is needed
+  if test "x$OPENJDK_TARGET_OS" = xwindows && test "x$ENABLE_HEADLESS_ONLY" != xtrue; then
+    NEEDS_LIB_NVDACONTROLLERCLIENT=true
+  else
+    NEEDS_LIB_NVDACONTROLLERCLIENT=false
+  fi
 ])
 
 ################################################################################
@@ -120,7 +135,8 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBRARIES],
   LIB_SETUP_LIBFFI
   LIB_SETUP_MISC_LIBS
   LIB_SETUP_X11
-
+  LIB_SETUP_SPEECHD
+  LIB_SETUP_NVDACONTROLLERCLIENT
   LIB_TESTS_SETUP_GTEST
 
   # Math library
