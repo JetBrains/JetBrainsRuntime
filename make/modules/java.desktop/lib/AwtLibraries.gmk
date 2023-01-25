@@ -106,6 +106,36 @@ ifeq ($(call isTargetOs, aix), true)
   LIBAWT_STATIC_EXCLUDE_OBJS := porting_aix.o
 endif
 
+# Setup NVDA a11y announcer
+ifeq ($(call isTargetOs, windows), true)
+  A11Y_NVDA_ANNOUNCING_CFLAGS := -DNO_A11Y_NVDA_ANNOUNCING
+  A11Y_NVDA_ANNOUNCING_LIBS :=
+  A11Y_NVDA_ANNOUNCING_DEPENDENCIES :=
+
+  ifeq ($(ENABLE_HEADLESS_ONLY), false)
+    ifeq ($(A11Y_NVDA_ANNOUNCING_ENABLED), true)
+      A11Y_NVDA_ANNOUNCING_CFLAGS := $(NVDACONTROLLERCLIENT_CFLAGS)
+      A11Y_NVDA_ANNOUNCING_LIBS := $(NVDACONTROLLERCLIENT_LIB)
+      A11Y_NVDA_ANNOUNCING_DEPENDENCIES := $(NVDACONTROLLERCLIENT_DLL)
+    endif
+  endif
+
+  LIBAWT_CFLAGS += $(A11Y_NVDA_ANNOUNCING_CFLAGS)
+endif
+
+# Setup the client for the JAWS screen reader
+ifeq ($(call isTargetOs, windows), true)
+  A11Y_JAWS_ANNOUNCING_CFLAGS := -DNO_A11Y_JAWS_ANNOUNCING
+
+  ifeq ($(ENABLE_HEADLESS_ONLY), false)
+    ifeq ($(A11Y_JAWS_ANNOUNCING_ENABLED), true)
+      A11Y_JAWS_ANNOUNCING_CFLAGS :=
+    endif
+  endif
+
+  LIBAWT_CFLAGS += $(A11Y_JAWS_ANNOUNCING_CFLAGS)
+endif
+
 # -fgcse-after-reload improves performance of MaskFill in Java2D by 20% for
 # some gcc
 $(eval $(call SetupJdkLibrary, BUILD_LIBAWT, \
@@ -148,11 +178,23 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBAWT, \
         -framework OpenGL, \
     LIBS_windows := advapi32.lib comctl32.lib comdlg32.lib delayimp.lib \
         gdi32.lib imm32.lib kernel32.lib ole32.lib shell32.lib shlwapi.lib \
-        user32.lib uuid.lib winmm.lib winspool.lib dwmapi.lib, \
+        user32.lib uuid.lib winmm.lib winspool.lib dwmapi.lib $(A11Y_NVDA_ANNOUNCING_LIBS), \
     VERSIONINFO_RESOURCE := $(LIBAWT_VERSIONINFO_RESOURCE), \
     EXTRA_RCFLAGS := $(LIBAWT_RCFLAGS), \
     STATIC_LIB_EXCLUDE_OBJS := $(LIBAWT_STATIC_EXCLUDE_OBJS), \
 ))
+
+ifeq ($(call isTargetOs, windows)+$(ENABLE_HEADLESS_ONLY)+$(A11Y_NVDA_ANNOUNCING_ENABLED), true+false+true)
+  $(eval $(call SetupCopyFiles, COPY_NVDA_DEPENDENCIES, \
+      FILES := $(A11Y_NVDA_ANNOUNCING_DEPENDENCIES), \
+      DEST := $(BUILD_LIBAWT_OUTPUT_DIR), \
+  ))
+
+  $(COPY_NVDA_DEPENDENCIES): $(A11Y_NVDA_ANNOUNCING_DEPENDENCIES)
+  $(BUILD_LIBAWT): $(COPY_NVDA_DEPENDENCIES)
+
+  TARGETS += $(COPY_NVDA_DEPENDENCIES)
+endif
 
 TARGETS += $(BUILD_LIBAWT)
 
@@ -222,6 +264,20 @@ ifeq ($(call isTargetOs, windows macosx)+$(ENABLE_HEADLESS_ONLY), false+false)
       common/java2d \
       common/font \
       #
+
+  ifeq ($(A11Y_SPEECHD_ANNOUNCING_ENABLED), true)
+      A11Y_SPEECHD_ANNOUNCING_CFLAGS :=
+  else
+      A11Y_SPEECHD_ANNOUNCING_CFLAGS := -DNO_A11Y_SPEECHD_ANNOUNCING
+  endif
+
+  ifeq ($(call isTargetOs, linux), true)
+      LIBAWT_XAWT_EXTRA_SRC += \
+          $(TOPDIR)/src/$(MODULE)/linux/native/libawt_xawt \
+          #
+  endif
+
+  LIBAWT_XAWT_CFLAGS += $(SPEECHD_CFLAGS) $(A11Y_SPEECHD_ANNOUNCING_CFLAGS)
 
   LIBAWT_XAWT_EXTRA_HEADER_DIRS := \
       $(LIBAWT_DEFAULT_HEADER_DIRS) \
@@ -298,7 +354,7 @@ ifeq ($(call isTargetOs, windows macosx)+$(ENABLE_HEADLESS_ONLY), false+false)
           parentheses, \
       DISABLED_WARNINGS_clang_aix_awt_InputMethod.c := unused-function sign-compare, \
       JDK_LIBS := libawt java.base:libjava, \
-      LIBS_unix := $(LIBDL) $(LIBM) $(X_LIBS) -lX11 -lXext -lXi -lXrender \
+      LIBS_unix := $(LIBDL) $(LIBM) $(SPEECHD_LIBS) $(X_LIBS) -lX11 -lXext -lXi -lXrender \
           -lXtst, \
       LIBS_linux := $(LIBPTHREAD), \
       STATIC_LIB_EXCLUDE_OBJS := $(LIBAWT_XAWT_STATIC_EXCLUDE_OBJS), \
