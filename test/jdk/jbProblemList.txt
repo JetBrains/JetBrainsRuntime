@@ -159,7 +159,7 @@ java/awt/Mixing/AWT_Mixing/JSplitPaneOverlapping.java 6986109 generic-all
 java/awt/Mixing/AWT_Mixing/JInternalFrameMoveOverlapping.java 6986109 windows-all
 java/awt/Mixing/AWT_Mixing/MixingPanelsResizing.java 8049405 generic-all
 java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405 macosx-all
-java/awt/Mixing/AWT_Mixing/JPopupMenuOverlapping.java 8049405 macosx-all
+java/awt/Mixing/AWT_Mixing/JPopupMenuOverlapping.java JBR-5210,8049405 windows-all,macosx-all
 java/awt/Mixing/AWT_Mixing/JButtonInGlassPaneOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JButtonOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JColorChooserOverlapping.java 8158801 windows-all
@@ -175,6 +175,7 @@ java/awt/Mixing/AWT_Mixing/JProgressBarInGlassPaneOverlapping.java 8158801 windo
 java/awt/Mixing/AWT_Mixing/JProgressBarOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JScrollBarInGlassPaneOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JScrollBarOverlapping.java 8158801 windows-all
+java/awt/Mixing/AWT_Mixing/JScrollPaneOverlapping.java JBR-5210 windows-all
 java/awt/Mixing/AWT_Mixing/JSliderInGlassPaneOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JSliderOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JSpinnerInGlassPaneOverlapping.java 8158801 windows-all
@@ -213,7 +214,9 @@ java/awt/Focus/8013611/JDK8013611.java 8175366 windows-all,macosx-all
 java/awt/Focus/6981400/Test1.java 8029675 windows-all,macosx-all
 java/awt/Focus/6981400/Test3.java 8173264 generic-all
 java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java JBR-4997 windows-all
-java/awt/Focus/8073453/AWTFocusTransitionTest.java 8298247 linux-all
+java/awt/Focus/8073453/AWTFocusTransitionTest.java JBR-5210,8298247 windows-all,linux-all
+java/awt/Focus/8073453/SwingFocusTransitionTest.java JBR-5210 windows-all
+java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java JBR-5210 windows-all
 java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java 8169476 windows-all,macosx-all
 java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474,8224055 macosx-all,windows-all
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java 8129778 generic-all
@@ -961,6 +964,10 @@ jdk/jfr/startupargs/TestStartDuration.java                      8214685 windows-
 ############################################################################
 
 # jdk_internal
+
+jdk/internal/platform/docker/TestDockerBasic.java          JBR-5220 linux-aarch64
+jdk/internal/platform/docker/TestDockerMemoryMetrics.java  JBR-5220 linux-aarch64
+jdk/internal/platform/docker/TestGetFreeSwapSpaceSize.java JBR-5220 linux-aarch64
 
 ############################################################################
 
