@@ -956,6 +956,112 @@ class CAccessibility implements PropertyChangeListener {
         }, c);
     }
 
+    private static int getTableHeaderCount(final Accessible a, final Component c,
+            final int info) {
+        if (a == null) return 0;
+
+        return invokeAndWait(new Callable<Integer>() {
+            @Override
+            public Integer call() throws Exception {
+                AccessibleContext ac = a.getAccessibleContext();
+                if (ac !=  null) {
+                    AccessibleTable at = ac.getAccessibleTable();
+                    if (at != null) {
+                        if (info == JAVA_AX_ROWS) {
+                            AccessibleTable aht = at.getAccessibleRowHeader();
+                            if (aht != null) {
+                                return aht.getAccessibleColumnCount();
+                            }
+                        }
+                        if (info == JAVA_AX_COLS) {
+                            AccessibleTable aht = at.getAccessibleColumnHeader();
+                            if (aht != null) {
+                                return aht.getAccessibleRowCount();
+                            }
+                        }
+                    }
+                }
+                return null;
+            }
+        }, c);
+    }
+
+    private static Object[] getTableHeaderInfo(final Accessible a, final Component c,
+                                          final int info, final int whichChildren) {
+        if (a == null) return null;
+
+        return invokeAndWait(new Callable<Object[]>() {
+            @Override
+            public Object[] call() throws Exception {
+                AccessibleContext ac = a.getAccessibleContext();
+                if (ac == null) return null;
+
+                AccessibleTable at = ac.getAccessibleTable();
+                if (at == null) return null;
+
+                AccessibleTable aht = null;
+                if (info == JAVA_AX_ROWS) {
+                    aht = at.getAccessibleRowHeader();
+                }
+                if (info == JAVA_AX_COLS) {
+                    aht = at.getAccessibleColumnHeader();
+                }
+                if (aht == null) return null;
+
+                ArrayList<Object> children = new ArrayList<>();
+
+                if (whichChildren == JAVA_AX_ALL_CHILDREN) {
+                    int count = getTableHeaderCount(a, c, info);
+                    for (int i = 0; i < count; i++) {
+                        Accessible ah = null;
+                        if (info == JAVA_AX_ROWS) {
+                            ah = aht.getAccessibleAt(0, i);
+                        }
+                        if (info == JAVA_AX_COLS) {
+                            ah = aht.getAccessibleAt(i, 0);
+                        }
+                        if (ah != null) {
+                            AccessibleContext hac = ah.getAccessibleContext();
+                            if (hac != null) {
+                                AccessibleRole har = hac.getAccessibleRole();
+                                if (har != null) {
+                                    children.add(ah);
+                                    children.add(har);
+                                }
+                            }
+                        }
+                    }
+                }
+
+if (whichChildren == JAVA_AX_SELECTED_CHILDREN) {
+    int[] indexes = info == JAVA_AX_ROWS ? aht.getSelectedAccessibleColumns()
+            : aht.getSelectedAccessibleRows();
+    for (int i = 0; i < indexes.length; i++) {
+        Accessible ah = null;
+        if (info == JAVA_AX_ROWS) {
+            ah = aht.getAccessibleAt(0, indexes[i]);
+        }
+        if (info == JAVA_AX_COLS) {
+            ah = aht.getAccessibleAt(indexes[i], 0);
+        }
+        if (ah != null) {
+            AccessibleContext hac = ah.getAccessibleContext();
+            if (hac != null) {
+                AccessibleRole har = hac.getAccessibleRole();
+                if (har != null) {
+                    children.add(ah);
+                    children.add(har);
+                }
+            }
+        }
+    }
+}
+
+                return children.toArray();
+            }
+        }, c);
+    }
+
     private static AccessibleRole getAccessibleRoleForLabel(JLabel l, AccessibleRole fallback) {
         String text = l.getText();
         if (text != null && text.length() > 0) {
