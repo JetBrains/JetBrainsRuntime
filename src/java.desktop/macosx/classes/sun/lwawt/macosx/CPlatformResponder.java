@@ -236,11 +236,12 @@ final class CPlatformResponder {
             // It is necessary to use testCharIgnoringModifiers instead of testChar for event
             // generation in such case to avoid uppercase letters in text components.
             LWCToolkit lwcToolkit = (LWCToolkit)Toolkit.getDefaultToolkit();
-            if ((lwcToolkit.getLockingKeyState(KeyEvent.VK_CAPS_LOCK) &&
+            if (testChar != KeyEvent.CHAR_UNDEFINED &&
+                ((lwcToolkit.getLockingKeyState(KeyEvent.VK_CAPS_LOCK) &&
                     Locale.SIMPLIFIED_CHINESE.equals(lwcToolkit.getDefaultKeyboardLocale())) ||
                 (LWCToolkit.isLocaleUSInternationalPC(lwcToolkit.getDefaultKeyboardLocale()) &&
                     LWCToolkit.isCharModifierKeyInUSInternationalPC(testChar) &&
-                    (testChar != testCharIgnoringModifiers))) {
+                    (testChar != testCharIgnoringModifiers)))) {
                 testChar = testCharIgnoringModifiers;
             }
 
@@ -250,10 +251,16 @@ final class CPlatformResponder {
                                            NSEvent.nsToJavaEventType(eventType);
         }
 
-        char javaChar = NSEvent.nsToJavaChar(testChar, modifierFlags, spaceKeyTyped);
-        // Some keys may generate a KEY_TYPED, but we can't determine
-        // what that character is. That's likely a bug, but for now we
-        // just check for CHAR_UNDEFINED.
+        char javaChar = (testChar == KeyEvent.CHAR_UNDEFINED) ? KeyEvent.CHAR_UNDEFINED :
+                NSEvent.nsToJavaChar(testChar, modifierFlags, spaceKeyTyped);
+        // Some keys may generate a KEY_TYPED, but we can't determine what that character is.
+        // This may happen during the key combinations that produce dead keys (like Option+E described before),
+        // since we don't care about the dead key for the purposes of keyPressed event, nor do the dead keys
+        // produce input by themselves. In this case we set postsTyped to false, so that the application
+        // doesn't receive unnecessary KEY_TYPED events.
+        //
+        // In cases not involving dead keys combos, having javaChar == CHAR_UNDEFINED is most likely a bug.
+        // Since we can't determine which character is supposed to be typed let's just ignore it.
         if (javaChar == KeyEvent.CHAR_UNDEFINED) {
             postsTyped = false;
         }

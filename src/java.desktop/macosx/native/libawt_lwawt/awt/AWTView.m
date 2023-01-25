@@ -662,9 +662,9 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 }
 
 -(BOOL) isChineseInputMethod {
-    return ([(NSString *)kbdLayout containsString:@"com.apple.inputmethod.SCIM"] ||
-            [(NSString *)kbdLayout containsString:@"com.apple.inputmethod.TCIM"] ||
-            [(NSString *)kbdLayout containsString:@"com.apple.inputmethod.TYIM"]);
+    return ([kbdLayout containsString:@"com.apple.inputmethod.SCIM"] ||
+            [kbdLayout containsString:@"com.apple.inputmethod.TCIM"] ||
+            [kbdLayout containsString:@"com.apple.inputmethod.TYIM"]);
 }
 
 -(BOOL) isCodePointInUnicodeBlockNeedingIMEvent: (unichar) codePoint {
