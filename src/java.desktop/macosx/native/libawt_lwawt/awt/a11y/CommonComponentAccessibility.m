@@ -34,7 +34,7 @@
 #import "AWTView.h"
 #import "sun_lwawt_macosx_CAccessible.h"
 #import "sun_lwawt_macosx_CAccessibility.h"
-
+#import "sun_swing_AccessibleAnnouncer.h"
 
 // GET* macros defined in JavaAccessibilityUtilities.h, so they can be shared.
 static jclass sjc_CAccessibility = NULL;
@@ -422,6 +422,28 @@ static jobject sAccessibilityClass = NULL;
 {
     AWT_ASSERT_APPKIT_THREAD;
     NSAccessibilityPostNotification([NSApp accessibilityFocusedUIElement], NSAccessibilityFocusedUIElementChangedNotification);
+}
+
++ (void)postAnnounceWithCaller:(id)caller andText:(NSString *)text andPriority:(NSNumber *)priority
+{
+    AWT_ASSERT_APPKIT_THREAD;
+
+    NSMutableDictionary<NSAccessibilityNotificationUserInfoKey, id> *dictionary = [NSMutableDictionary<NSAccessibilityNotificationUserInfoKey, id> dictionaryWithCapacity:2];
+    [dictionary setObject:text forKey: NSAccessibilityAnnouncementKey];
+
+    if (sAnnouncePriorities == nil) {
+        initializeAnnouncePriorities();
+    }
+
+    NSNumber *nsPriority = [sAnnouncePriorities objectForKey:priority];
+
+    if (nsPriority == nil) {
+        nsPriority = [sAnnouncePriorities objectForKey:[NSNumber numberWithInt:sun_swing_AccessibleAnnouncer_ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT]];
+    }
+
+    [dictionary setObject:nsPriority forKey:NSAccessibilityPriorityKey];
+
+    NSAccessibilityPostNotificationWithUserInfo(caller, NSAccessibilityAnnouncementRequestedNotification, dictionary);
 }
 
 + (jobject) getCAccessible:(jobject)jaccessible withEnv:(JNIEnv *)env {
@@ -1322,5 +1344,37 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_menuItemSelected
                          on:(CommonComponentAccessibility *)jlong_to_ptr(element)
                          withObject:nil
                          waitUntilDone:NO];
+    JNI_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_swing_AccessibleAnnouncer
+ * Method:    nativeAnnounce
+ * Signature: (Ljavax/accessibility/Accessible;Ljava/lang/String;I)V
+ */
+JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_nativeAnnounce
+        (JNIEnv *env, jclass cls, jobject jAccessible, jstring str, jint priority)
+{
+    JNI_COCOA_ENTER(env);
+
+        NSString *text = JavaStringToNSString(env, str);
+        NSNumber *javaPriority = [NSNumber numberWithInt:priority];
+
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^{
+
+            id caller = nil;
+
+            DECLARE_CLASS(jc_Accessible, "javax/accessibility/Accessible");
+
+            if ((jAccessible != NULL) && (*env)->IsInstanceOf(env, jAccessible, jc_Accessible)) {
+                caller = [CommonComponentAccessibility createWithAccessible:jAccessible withEnv:env withView:[AWTView awtView:env ofAccessible:jAccessible]];
+            }
+
+            if (caller == nil) {
+                caller = [NSApp accessibilityFocusedUIElement];
+            }
+
+            [CommonComponentAccessibility postAnnounceWithCaller:caller andText:text andPriority:javaPriority];
+        }];
     JNI_COCOA_EXIT(env);
 }
