@@ -40,6 +40,10 @@ public class JBRApiModule {
                 .clientProxy("java.awt.Desktop$DesktopActionsHandler", "com.jetbrains.DesktopActions$Handler")
                 .service("com.jetbrains.ProjectorUtils")
                     .withStatic("overrideGraphicsEnvironment", "overrideLocalGraphicsEnvironment", "java.awt.GraphicsEnvironment")
-                    .withStatic("setLocalGraphicsEnvironmentProvider", "setLocalGraphicsEnvironmentProvider", "java.awt.GraphicsEnvironment");
+                    .withStatic("setLocalGraphicsEnvironmentProvider", "setLocalGraphicsEnvironmentProvider", "java.awt.GraphicsEnvironment")
+                .service("com.jetbrains.ForceTouch")
+                    .withStatic("addForceTouchListener", "addForceTouchListener", "com.apple.eawt.event.JBRForceTouchAdapter")
+                    .proxy("com.jetbrains.ForceTouch$Event", "com.apple.eawt.event.JBRForceTouchAdapter$Event")
+                    .clientProxy("com.apple.eawt.event.JBRForceTouchAdapter$Listener", "com.jetbrains.ForceTouch$Listener");
     }
 }
