@@ -611,6 +611,10 @@ public final class LWCToolkit extends LWToolkit {
         return Thread.currentThread() == APPKIT_THREAD;
     }
 
+    public static boolean isDispatchingOnMainThread() {
+        return MAIN_THREAD_DISPATCHER != null && APPKIT_THREAD != null;
+    }
+
     @Override
     public boolean isWindowOpacitySupported() {
         return true;
@@ -1173,7 +1177,7 @@ public final class LWCToolkit extends LWToolkit {
 
     @Override
     public void installMainThreadDispatcher(EventQueue eventQueue) {
-        if (MAIN_THREAD_DISPATCHER != null && APPKIT_THREAD != null) {
+        if (isDispatchingOnMainThread()) {
             APPKIT_THREAD.setContextClassLoader(Thread.currentThread().getContextClassLoader());
             setMainThreadImmediateDispatch();
             AWTAccessor.getEventQueueAccessor().setFwDispatcher(eventQueue, MAIN_THREAD_DISPATCHER);

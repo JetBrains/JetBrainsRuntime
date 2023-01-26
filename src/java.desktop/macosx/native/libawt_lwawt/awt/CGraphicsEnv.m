@@ -179,3 +179,56 @@ JNI_COCOA_ENTER(env);
 
 JNI_COCOA_EXIT(env);
 }
+
+/*
+ * Class:     sun_awt_CGraphicsEnvironment
+ * Method:    registerScreenParametersChangedListener
+ * Signature: ()J
+ */
+JNIEXPORT jlong JNICALL
+Java_sun_awt_CGraphicsEnvironment_registerScreenParametersChangedListener
+(JNIEnv *env, jobject this)
+{
+JNI_COCOA_ENTER(env);
+
+    jobject cgeRef = (*env)->NewWeakGlobalRef(env, this);
+    NSNotificationCenter *ctr = [NSNotificationCenter defaultCenter];
+    id listener = [ctr addObserverForName:NSApplicationDidChangeScreenParametersNotification
+                                                           object:nil
+                                                            queue:nil
+                                                       usingBlock:^(NSNotification *note){
+        JNIEnv *env = [ThreadUtilities getJNIEnv];
+        jobject graphicsEnv = (*env)->NewLocalRef(env, cgeRef);
+        if (graphicsEnv != NULL) {
+            DECLARE_CLASS(jc_CGraphicsEnvironment, "sun/awt/CGraphicsEnvironment");
+            DECLARE_METHOD(jm_displayReconfiguration, jc_CGraphicsEnvironment, "_displayReconfiguration","(IZ)V");
+            (*env)->CallVoidMethod(env, graphicsEnv, jm_displayReconfiguration, 0, JNI_FALSE);
+            (*env)->DeleteLocalRef(env, graphicsEnv);
+            CHECK_EXCEPTION();
+        }
+    }];
+    return ptr_to_jlong(listener);
+
+JNI_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_awt_CGraphicsEnvironment
+ * Method:    deregisterScreenParametersChangedListener
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL
+Java_sun_awt_CGraphicsEnvironment_deregisterScreenParametersChangedListener
+(JNIEnv *env, jobject this, jlong listenerPtr)
+{
+JNI_COCOA_ENTER(env);
+
+    id listener = (id)jlong_to_ptr(listenerPtr);
+    if (listener) {
+        [[NSNotificationCenter defaultCenter] removeObserver:listener
+                                                        name:NSApplicationDidChangeScreenParametersNotification
+                                                      object:nil];
+    }
+
+JNI_COCOA_EXIT(env);
+}

@@ -67,6 +67,7 @@ import java.util.Map;
 import sun.awt.AppContext;
 import sun.awt.SunToolkit;
 import sun.java2d.SunGraphicsEnvironment;
+import sun.lwawt.macosx.LWCToolkit;
 import sun.util.logging.PlatformLogger;
 
 class _AppEventHandler {
@@ -274,7 +275,7 @@ class _AppEventHandler {
                 if (logger.isLoggable(PlatformLogger.Level.FINE)) {
                     logger.fine("NOTIFY_SCREEN_CHANGE_PARAMETERS");
                 }
-                if (AppContext.getAppContext() != null) {
+                if (!LWCToolkit.isDispatchingOnMainThread() && AppContext.getAppContext() != null) {
                     EventQueue.invokeLater(
                             () -> ((SunGraphicsEnvironment) GraphicsEnvironment.
                                     getLocalGraphicsEnvironment()).displayParametersChanged());
