@@ -26,21 +26,19 @@ package com.jetbrains;
 import javax.accessibility.Accessible;
 
 /**
- * Custom window decoration allows merging of window content with native title bar,
- * which is usually done by treating title bar as part of client area, but with some
- * special behavior like dragging or maximizing on double click.
- * @implNote Behavior is platform-dependent, only macOS and Windows are supported.
+ * This interface provides the ability to speak a given string using screen readers.
+ *
  */
 public interface AccessibleAnnouncer {
 
     /*CONST sun.swing.AccessibleAnnouncer.ANNOUNCE_**/
 
-        /**
-         * This method makes an announcement with the specified priority from an accessible to which the announcing relates
-         *
-         * @param a      an accessible to which the announcing relates
-         * @param str      string for announcing
-         * @param priority priority for announcing
-         */
-        void announce(Accessible a, final String str, final int priority);
+    /**
+     * This method makes an announcement with the specified priority from an accessible to which the announcing relates
+     *
+     * @param a      an accessible to which the announcing relates
+     * @param str      string for announcing
+     * @param priority priority for announcing
+     */
+    void announce(Accessible a, final String str, final int priority);
 }

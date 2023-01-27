@@ -42,6 +42,6 @@ public class JBRApiModule {
                     .withStatic("overrideGraphicsEnvironment", "overrideLocalGraphicsEnvironment", "java.awt.GraphicsEnvironment")
                     .withStatic("setLocalGraphicsEnvironmentProvider", "setLocalGraphicsEnvironmentProvider", "java.awt.GraphicsEnvironment")
                 .service("com.jetbrains.AccessibleAnnouncer")
-                .withStatic("announce", "announce", "sun.swing.AccessibleAnnouncer");
+                    .withStatic("announce", "announce", "sun.swing.AccessibleAnnouncer");
     }
 }
