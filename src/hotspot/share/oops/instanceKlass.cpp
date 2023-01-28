@@ -1662,21 +1662,6 @@ void InstanceKlass::methods_do(void f(Method* method)) {
   }
 }
 
-void InstanceKlass::methods_do(void f(Method* method, TRAPS), TRAPS) {
-  // Methods aren't stable until they are loaded.  This can be read outside
-  // a lock through the ClassLoaderData for profiling
-  if (!is_loaded()) {
-    return;
-  }
-
-  int len = methods()->length();
-  for (int index = 0; index < len; index++) {
-    Method* m = methods()->at(index);
-    assert(m->is_method(), "must be method");
-    f(m, CHECK);
-  }
-}
-
 //  (DCEVM) Update information contains mapping of fields from old class to the new class.
 //  Info is stored on HEAP, you need to call clear_update_information to free the space.
 void InstanceKlass::store_update_information(GrowableArray<int> &values) {

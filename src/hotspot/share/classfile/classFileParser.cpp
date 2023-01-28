@@ -6005,7 +6005,7 @@ void ClassFileParser::post_process_parsed_stream(const ClassFileStream* const st
     if (loader.is_null() && super_class_name == vmSymbols::java_lang_Object()) {
       super_klass = vmClasses::Object_klass();
     } else {
-      super_klass = (const InstanceKlass*)
+      super_klass = (InstanceKlass*)
                        SystemDictionary::resolve_super_or_fail(_class_name,
                                                                super_class_name,
                                                                loader,
@@ -6013,7 +6013,7 @@ void ClassFileParser::post_process_parsed_stream(const ClassFileStream* const st
                                                                true,
                                                                CHECK);
     }
-    super_klass = (const InstanceKlass*) maybe_newest(super_klass);
+    super_klass = (InstanceKlass*) maybe_newest(super_klass);
   }
 
   if (_super_klass != nullptr) {

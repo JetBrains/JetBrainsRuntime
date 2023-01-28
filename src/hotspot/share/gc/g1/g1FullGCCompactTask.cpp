@@ -163,16 +163,21 @@ void G1FullGCCompactTask::compact_region_dcevm(HeapRegion* hr, GrowableArray<Hea
   assert(!hr->is_humongous(), "Should be no humongous regions in compaction queue");
   ResourceMark rm; //
 
-  G1CompactRegionClosureDcevm compact(collector()->mark_bitmap(), rescued_oops_values, rescue_oops_it);
-  hr->apply_to_marked_objects(collector()->mark_bitmap(), &compact);
-  // Once all objects have been moved the liveness information
-  // needs be cleared.
-  collector()->mark_bitmap()->clear_region(hr);
-  if (G1VerifyBitmaps) {
-    collector()->mark_bitmap()->clear_region(hr);
+  if (!collector()->is_free(hr->hrm_index())) {
+    // The compaction closure not only copies the object to the new
+    // location, but also clears the bitmap for it. This is needed
+    // for bitmap verification and to be able to use the bitmap
+    // for evacuation failures in the next young collection. Testing
+    // showed that it was better overall to clear bit by bit, compared
+    // to clearing the whole region at the end. This difference was
+    // clearly seen for regions with few marks.
+    G1CompactRegionClosureDcevm compact(collector()->mark_bitmap(), rescued_oops_values, rescue_oops_it);
+    hr->apply_to_marked_objects(collector()->mark_bitmap(), &compact);
   }
-  hr->reset_compacted_after_full_gc();
+
+  hr->reset_compacted_after_full_gc(_collector->compaction_top(hr));
 }
+
 
 void G1FullGCCompactTask::serial_compaction_dcevm() {
   GCTraceTime(Debug, gc, phases) tm("Phase 4: Serial Compaction", collector()->scope()->timer());
@@ -210,18 +215,18 @@ size_t G1FullGCCompactTask::G1CompactRegionClosureDcevm::apply(oop obj) {
     Klass* new_version = obj->klass()->new_version();
     if (new_version->update_information() == NULL) {
       Copy::aligned_conjoint_words(obj_addr, destination, size);
-      oop(destination)->set_klass(new_version);
+      cast_to_oop(destination)->set_klass(new_version);
     } else {
-      DcevmSharedGC::update_fields(obj, oop(destination));
+      DcevmSharedGC::update_fields(obj, cast_to_oop(destination));
     }
-    oop(destination)->init_mark();
-    assert(oop(destination)->klass() != NULL, "should have a class");
+    cast_to_oop(destination)->init_mark();
+    assert(cast_to_oop(destination)->klass() != NULL, "should have a class");
     return size;
   }
 
   Copy::aligned_conjoint_words(obj_addr, destination, size);
-  oop(destination)->init_mark();
-  assert(oop(destination)->klass() != NULL, "should have a class");
+  cast_to_oop(destination)->init_mark();
+  assert(cast_to_oop(destination)->klass() != NULL, "should have a class");
 
   return size;
 }

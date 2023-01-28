@@ -122,7 +122,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   static void mark_as_scavengable(nmethod* nm);
   static void unregister_nmethod_g1(nmethod* nm);
   static void register_nmethod_g1(nmethod* nm);
-  static void unpatch_bytecode(Method* method, TRAPS);
+  static void unpatch_bytecode(Method* method);
 
   void root_oops_do(OopClosure *oopClosure);
 
@@ -131,26 +131,24 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   void compute_added_deleted_matching_methods();
 
   // Change jmethodIDs to point to the new methods
-  void update_jmethod_ids(TRAPS);
+  void update_jmethod_ids(Thread *current);
 
   // marking methods as old and/or obsolete
   void check_methods_and_mark_as_obsolete();
   void transfer_old_native_function_registrations(InstanceKlass* the_class);
 
   // Install the redefinition of a class
-  void redefine_single_class(InstanceKlass* new_class_oop, TRAPS);
+  void redefine_single_class(Thread *current, InstanceKlass* new_class_oop);
 
   // Increment the classRedefinedCount field in the specific InstanceKlass
   // and in all direct and indirect subclasses.
-  void increment_class_counter(InstanceKlass *ik, TRAPS);
+  void increment_class_counter(Thread *current, InstanceKlass *ik);
 
-  void mark_dependent_code(InstanceKlass* ik);
-
-  void flush_dependent_code(TRAPS);
+  void flush_dependent_code();
 
   u8 next_id();
 
-  static void check_class(InstanceKlass* k_oop, TRAPS);
+  static void check_class(InstanceKlass* k_oop);
 
   static void dump_methods();
 

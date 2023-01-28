@@ -327,13 +327,12 @@ void G1FullCollector::phase2_prepare_compaction() {
   // Try to avoid OOM immediately after Full GC in case there are no free regions
   // left after determining the result locations (i.e. this phase). Prepare to
   // maximally compact the tail regions of the compaction queues serially.
-    if (!Universe::is_redefining_gc_run()) {
-      if (!has_free_compaction_targets) {
-        phase2c_prepare_serial_compaction();
-      }
-    } else {
-      phase2c_prepare_serial_compaction_dcevm();
+  if (!Universe::is_redefining_gc_run()) {
+    if (!has_free_compaction_targets) {
+      phase2c_prepare_serial_compaction();
     }
+  } else {
+    phase2c_prepare_serial_compaction_dcevm();
   }
 }
 
@@ -395,10 +394,10 @@ void G1FullCollector::phase2c_prepare_serial_compaction_dcevm() {
     // collect remaining, not forwarded rescued oops using serial compact point
     while (cp->last_rescued_oop() < cp->rescued_oops()->length()) {
       HeapRegion* hr = G1CollectedHeap::heap()->new_region(HeapRegion::GrainBytes / HeapWordSize, HeapRegionType::Eden, true, G1NUMA::AnyNodeIndex);
-      if (hr == NULL) {
+      if (hr == nullptr) {
         vm_exit_out_of_memory(0, OOM_MMAP_ERROR, "G1 - not enough of free regions after redefinition.");
       }
-      hr->set_compaction_top(hr->bottom());
+      set_compaction_top(hr, hr->bottom());
       cp->add(hr);
       cp->forward_rescued();
       cp->update();
@@ -406,7 +405,6 @@ void G1FullCollector::phase2c_prepare_serial_compaction_dcevm() {
   }
 }
 
-}
 
 void G1FullCollector::phase3_adjust_pointers() {
   // Adjust the pointers to reflect the new locations

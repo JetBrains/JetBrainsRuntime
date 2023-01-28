@@ -89,7 +89,7 @@ class CallInfo : public StackObj {
   // utility to extract an effective CallInfo from a method and an optional receiver limit
   // does not queue the method for compilation.  This also creates a ResolvedMethodName
   // object for the resolved_method.
-  CallInfo(Method* resolved_method, Klass* resolved_klass, TRAPS);
+  CallInfo(Method* resolved_method, Klass* resolved_klass, Thread* thread);
 
   Klass*  resolved_klass() const                 { return _resolved_klass; }
   Method* resolved_method() const                { return _resolved_method(); }
@@ -98,6 +98,7 @@ class CallInfo : public StackObj {
   Handle       resolved_method_name() const      { return _resolved_method_name; }
   // Materialize a java.lang.invoke.ResolvedMethodName for this resolved_method
   void     set_resolved_method_name(TRAPS);
+  void     set_resolved_method_name_dcevm(oop rmethod_name, Thread* thread);
 
   BasicType    result_type() const               { return selected_method()->result_type(); }
   CallKind     call_kind() const                 { return _call_kind; }

@@ -1496,9 +1496,7 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, InstanceKlass* ol
 
   if (is_redefining) {
     Dictionary* dictionary = loader_data->dictionary();
-    Symbol*  name_h = k->name();
-    unsigned int name_hash = name_h->identity_hash();
-    bool ok = dictionary->update_klass(name_hash, name_h, loader_data, k, old_klass);
+    bool ok = dictionary->update_klass(THREAD, k->name(), k, old_klass);
     assert (ok, "must have found old class and updated!");
   }
   check_constraints(k, loader_data, true, CHECK);
@@ -1670,11 +1668,6 @@ void SystemDictionary::remove_from_hierarchy(InstanceKlass* k) {
 
   // remove receiver from sibling list
   k->remove_from_sibling_list();
-}
-
-// (DCEVM)
-void SystemDictionary::update_constraints_after_redefinition() {
-  constraints()->update_after_redefinition();
 }
 
 // ----------------------------------------------------------------------------

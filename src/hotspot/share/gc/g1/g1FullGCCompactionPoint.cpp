@@ -34,12 +34,11 @@ G1FullGCCompactionPoint::G1FullGCCompactionPoint(G1FullCollector* collector) :
     _collector(collector),
     _current_region(nullptr),
     _compaction_top(nullptr),
-    _compaction_top(NULL),
     _last_rescued_oop(0) {
   _compaction_regions = new (mtGC) GrowableArray<HeapRegion*>(32, mtGC);
   _compaction_region_iterator = _compaction_regions->begin();
-  _rescued_oops = new (ResourceObj::C_HEAP, mtGC) GrowableArray<HeapWord*>(128, mtGC);
-  _rescued_oops_values = new (ResourceObj::C_HEAP, mtGC) GrowableArray<HeapWord*>(128, mtGC);
+  _rescued_oops = new (mtGC) GrowableArray<HeapWord*>(128, mtGC);
+  _rescued_oops_values = new (mtGC) GrowableArray<HeapWord*>(128, mtGC);
 }
 
 G1FullGCCompactionPoint::~G1FullGCCompactionPoint() {
@@ -150,35 +149,22 @@ HeapWord* G1FullGCCompactionPoint::forward_compact_top(size_t size) {
 void G1FullGCCompactionPoint::forward_dcevm(oop object, size_t size, bool force_forward) {
   assert(_current_region != NULL, "Must have been initialized");
 
+  // Ensure the object fit in the current region.
+  while (!object_will_fit(size)) {
+    switch_region();
+  }
+
   // Store a forwarding pointer if the object should be moved.
   if (cast_from_oop<HeapWord*>(object) != _compaction_top || force_forward) {
-    object->forward_to(oop(_compaction_top));
+    object->forward_to(cast_to_oop(_compaction_top));
+    assert(object->is_forwarded(), "must be forwarded");
   } else {
-    if (object->forwardee() != NULL) {
-      // Object should not move but mark-word is used so it looks like the
-      // object is forwarded. Need to clear the mark and it's no problem
-      // since it will be restored by preserved marks. There is an exception
-      // with BiasedLocking, in this case forwardee() will return NULL
-      // even if the mark-word is used. This is no problem since
-      // forwardee() will return NULL in the compaction phase as well.
-      object->init_mark();
-    } else {
-      // Make sure object has the correct mark-word set or that it will be
-      // fixed when restoring the preserved marks.
-      assert(object->mark() == markWord::prototype_for_klass(object->klass()) || // Correct mark
-             object->mark_must_be_preserved() || // Will be restored by PreservedMarksSet
-             (UseBiasedLocking && object->has_bias_pattern()), // Will be restored by BiasedLocking
-             "should have correct prototype obj: " PTR_FORMAT " mark: " PTR_FORMAT " prototype: " PTR_FORMAT,
-             p2i(object), object->mark().value(), markWord::prototype_for_klass(object->klass()).value());
-    }
-    assert(object->forwardee() == NULL, "should be forwarded to NULL");
+    assert(!object->is_forwarded(), "must not be forwarded");
   }
 
   // Update compaction values.
   _compaction_top += size;
-  if (_compaction_top > _threshold) {
-    _threshold = _current_region->cross_threshold(_compaction_top - size, _compaction_top);
-  }
+  _current_region->update_bot_for_block(_compaction_top - size, _compaction_top);
 }
 
 void G1FullGCCompactionPoint::forward_rescued() {
@@ -189,17 +175,17 @@ void G1FullGCCompactionPoint::forward_rescued() {
   for (;i<rescued_oops()->length(); i++) {
     HeapWord* q = rescued_oops()->at(i);
 
-    size_t size = oop(q)->size();
+    size_t size = cast_to_oop(q)->size();
 
     // (DCEVM) There is a new version of the class of q => different size
-    if (oop(q)->klass()->new_version() != NULL) {
+    if (cast_to_oop(q)->klass()->new_version() != NULL) {
       // assert(size != new_size, "instances without changed size have to be updated prior to GC run");
-      size = oop(q)->size_given_klass(oop(q)->klass()->new_version());
+      size = cast_to_oop(q)->size_given_klass(cast_to_oop(q)->klass()->new_version());
     }
     if (forward_compact_top(size) == NULL) {
       break;
     }
-    forward_dcevm(oop(q), size, true);
+    forward_dcevm(cast_to_oop(q), size, true);
   }
   _last_rescued_oop = i;
 }
