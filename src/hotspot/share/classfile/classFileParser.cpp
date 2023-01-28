@@ -6013,7 +6013,7 @@ void ClassFileParser::post_process_parsed_stream(const ClassFileStream* const st
                                                                true,
                                                                CHECK);
     }
-    super_klass = (InstanceKlass*) maybe_newest(super_klass);
+    _super_klass = (InstanceKlass*) maybe_newest(super_klass);
   }
 
   if (_super_klass != nullptr) {
