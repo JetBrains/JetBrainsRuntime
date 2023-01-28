@@ -1593,15 +1593,12 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
 - (void) updateTransparentTitleBarConstraints
 {
-    dispatch_sync(dispatch_get_main_queue(), ^{
-        _transparentTitleBarHeightConstraint.constant = _transparentTitleBarHeight;
-        CGFloat shrinkingFactor = [self getTransparentTitleBarButtonShrinkingFactor];
-        CGFloat horizontalButtonOffset = shrinkingFactor * DefaultHorizontalTitleBarButtonOffset;
-        [_transparentTitleBarButtonCenterXConstraints enumerateObjectsUsingBlock:^(NSLayoutConstraint* buttonConstraint, NSUInteger index, BOOL *stop)
-        {
-            buttonConstraint.constant = (_transparentTitleBarHeight/2.0 + (index * horizontalButtonOffset));
-        }];
-    });
+    _transparentTitleBarHeightConstraint.constant = _transparentTitleBarHeight;
+    CGFloat shrinkingFactor = [self getTransparentTitleBarButtonShrinkingFactor];
+    CGFloat horizontalButtonOffset = shrinkingFactor * DefaultHorizontalTitleBarButtonOffset;
+    [_transparentTitleBarButtonCenterXConstraints enumerateObjectsUsingBlock:^(NSLayoutConstraint* buttonConstraint, NSUInteger index, BOOL *stop) {
+        buttonConstraint.constant = (_transparentTitleBarHeight/2.0 + (index * horizontalButtonOffset));
+    }];
 }
 
 - (void) resetTitleBar
@@ -1725,9 +1722,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
         _transparentTitleBarHeight = transparentTitleBarHeight;
         if (transparentTitleBarHeight == 0.0f) {
             if (!self.isFullScreen) {
-                dispatch_sync(dispatch_get_main_queue(), ^{
-                    [self resetTitleBar];
-                });
+                [self resetTitleBar];
             }
         } else if (_transparentTitleBarHeightConstraint != nil || _transparentTitleBarButtonCenterXConstraints != nil) {
             [self updateTransparentTitleBarConstraints];
@@ -1735,9 +1730,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     } else {
         _transparentTitleBarHeight = transparentTitleBarHeight;
         if (!self.isFullScreen) {
-            dispatch_sync(dispatch_get_main_queue(), ^{
-                [self setUpTransparentTitleBar];
-            });
+            [self setUpTransparentTitleBar];
         }
     }
 }
@@ -2675,7 +2668,10 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeSetTransparen
 
     NSWindow *nsWindow = (NSWindow *)jlong_to_ptr(windowPtr);
     AWTWindow *window = (AWTWindow*)[nsWindow delegate];
-    [window setTransparentTitleBarHeight:((CGFloat) transparentTitleBarHeight)];
+
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+        [window setTransparentTitleBarHeight:((CGFloat) transparentTitleBarHeight)];
+    }];
 
     JNI_COCOA_EXIT(env);
 }
