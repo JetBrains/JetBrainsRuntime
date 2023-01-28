@@ -306,7 +306,7 @@ void mutex_init() {
     def(Compilation_lock           , PaddedMonitor, nosafepoint);
   }
 
-  def(DcevmCompilation_lock        , PaddedMonitor, nonleaf+1,   false, _safepoint_check_never);
+  def(DcevmCompilation_lock        , PaddedMonitor, nosafepoint);
 
 #if INCLUDE_JFR
   def(JfrBuffer_lock               , PaddedMutex  , nosafepoint);
