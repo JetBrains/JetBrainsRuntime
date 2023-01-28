@@ -304,33 +304,28 @@ DictionaryEntry* Dictionary::get_entry(Thread* current,
 }
 
 // (DCEVM) replace old_class by new class in dictionary
-bool Dictionary::update_klass(unsigned int hash, Symbol* name, ClassLoaderData* loader_data, InstanceKlass* k, InstanceKlass* old_klass) {
-  // There are several entries for the same class in the dictionary: One extra entry for each parent classloader of the classloader of the class.
-  bool found = false;
-  for (int index = 0; index < table_size(); index++) {
-    for (DictionaryEntry* entry = bucket(index); entry != NULL; entry = entry->next()) {
-      if (entry->instance_klass() == old_klass) {
-        entry->set_literal(k);
-        found = true;
-      }
-    }
+bool Dictionary::update_klass(Thread* current, Symbol* class_name, InstanceKlass* k, InstanceKlass* old_klass) {
+  DictionaryEntry* entry = get_entry(current, class_name);
+  if (entry != NULL) {
+    assert(entry->instance_klass() == old_klass, "should be old class");
+    entry->set_instance_klass(k);
+    return true;
   }
-  return found;
+  return false;
 }
 
 // (DCEVM) rollback redefinition
 void Dictionary::rollback_redefinition() {
-  for (int index = 0; index < table_size(); index++) {
-    for (DictionaryEntry* entry = bucket(index);
-                          entry != NULL;
-                          entry = entry->next()) {
-      if (entry->instance_klass()->is_redefining()) {
-        entry->set_literal((InstanceKlass*) entry->instance_klass()->old_version());
-      }
+  // TODO : (DCEVM)
+  auto all_doit = [&] (DictionaryEntry** value) {
+    if ((*value)->instance_klass()->is_redefining()) {
+      (*value)->set_instance_klass((InstanceKlass*) (*value)->instance_klass()->old_version());
     }
-  }
-}
+    return true;
+  };
 
+  _table->do_scan(Thread::current(), all_doit);
+}
 
 
 InstanceKlass* Dictionary::find(Thread* current, Symbol* name,

@@ -2186,13 +2186,13 @@ public:
   }
 };
 
-class G1IterateObjectClosureTask : public AbstractGangTask {
+class G1IterateObjectClosureTask : public WorkerTask {
  private:
   ObjectClosure* _cl;
   G1CollectedHeap* _g1h;
   HeapRegionClaimer _hrclaimer;
  public:
-  G1IterateObjectClosureTask(ObjectClosure* cl, G1CollectedHeap* g1h) : AbstractGangTask("IterateObject Closure"),
+  G1IterateObjectClosureTask(ObjectClosure* cl, G1CollectedHeap* g1h) : WorkerTask("IterateObject Closure"),
     _cl(cl), _g1h(g1h),  _hrclaimer(g1h->workers()->active_workers()) { }
 
   virtual void work(uint worker_id) {

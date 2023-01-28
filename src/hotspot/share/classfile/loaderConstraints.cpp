@@ -174,17 +174,17 @@ void LoaderConstraintTable::add_loader_constraint(Symbol* name, InstanceKlass* k
 
 // (DCEVM) update constraint entries to new classes, called from dcevm redefinition code only
 void LoaderConstraintTable::update_after_redefinition() {
-  for (int index = 0; index < table_size(); index++) {
-    LoaderConstraintEntry** p = bucket_addr(index);
-    while(*p) {
-      LoaderConstraintEntry* probe = *p;
+  auto update_old = [&] (SymbolHandle& key, ConstraintSet& set) {
+    int len = set.num_constraints();
+    for (int i = 0; i < len; i++) {
+      LoaderConstraint* probe = set.constraint_at(i);
       if (probe->klass() != NULL) {
         // We swap the class with the newest version with an assumption that the hash will be the same
         probe->set_klass((InstanceKlass*) probe->klass()->newest_version());
       }
-      p = probe->next_addr();
     }
-  }
+  };
+  _loader_constraint_table.iterate_all(update_old);
 }
 
 class PurgeUnloadedConstraints : public StackObj {

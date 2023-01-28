@@ -130,14 +130,14 @@ void CallInfo::set_common(Klass* resolved_klass,
 }
 
 // utility query for unreflecting a method
-CallInfo::CallInfo(Method* resolved_method, Klass* resolved_klass, TRAPS) {
+CallInfo::CallInfo(Method* resolved_method, Klass* resolved_klass, Thread* thread) {
   Klass* resolved_method_holder = resolved_method->method_holder();
   if (resolved_klass == nullptr) { // 2nd argument defaults to holder of 1st
     resolved_klass = resolved_method_holder;
   }
   _resolved_klass  = resolved_klass;
-  _resolved_method = methodHandle(THREAD, resolved_method);
-  _selected_method = methodHandle(THREAD, resolved_method);
+  _resolved_method = methodHandle(thread, resolved_method);
+  _selected_method = methodHandle(thread, resolved_method);
   // classify:
   CallKind kind = CallInfo::unknown_kind;
   int index = resolved_method->vtable_index();
@@ -178,8 +178,9 @@ CallInfo::CallInfo(Method* resolved_method, Klass* resolved_klass, TRAPS) {
   _call_index = index;
   _resolved_appendix = Handle();
   // Find or create a ResolvedMethod instance for this Method*
-  set_resolved_method_name(CHECK);
-
+  if (thread->is_Java_thread()) { // exclude DCEVM VM thread
+    set_resolved_method_name(JavaThread::cast(thread));
+  }
   DEBUG_ONLY(verify());
 }
 
@@ -187,6 +188,10 @@ void CallInfo::set_resolved_method_name(TRAPS) {
   assert(_resolved_method() != nullptr, "Should already have a Method*");
   oop rmethod_name = java_lang_invoke_ResolvedMethodName::find_resolved_method(_resolved_method, CHECK);
   _resolved_method_name = Handle(THREAD, rmethod_name);
+}
+
+void CallInfo::set_resolved_method_name_dcevm(oop rmethod_name, Thread* thread) {
+  _resolved_method_name = Handle(thread, rmethod_name);
 }
 
 #ifdef ASSERT

@@ -90,7 +90,7 @@ public:
   void verify();
 
   // (DCEVM) Enhanced class redefinition
-  bool update_klass(unsigned int hash, Symbol* name, ClassLoaderData* loader_data, InstanceKlass* k, InstanceKlass* old_klass);
+  bool update_klass(Thread* current, Symbol* class_name, InstanceKlass* k, InstanceKlass* old_klass);
 
   void rollback_redefinition();
 
@@ -138,6 +138,8 @@ class DictionaryEntry : public CHeapObj<mtClass> {
 
   InstanceKlass* instance_klass() const { return _instance_klass; }
   InstanceKlass** instance_klass_addr() { return &_instance_klass; }
+
+  void set_instance_klass(InstanceKlass* instance_klass) { _instance_klass = instance_klass; }
 
   ProtectionDomainEntry* pd_set_acquire() const            { return Atomic::load_acquire(&_pd_set); }
   void release_set_pd_set(ProtectionDomainEntry* entry)    { Atomic::release_store(&_pd_set, entry); }

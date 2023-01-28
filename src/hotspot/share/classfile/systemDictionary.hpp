@@ -202,7 +202,6 @@ class SystemDictionary : AllStatic {
 
   // (DCEVM) Enhanced class redefinition
   static void remove_from_hierarchy(InstanceKlass* k);
-  static void update_constraints_after_redefinition();
 
 public:
   // Returns java system loader
