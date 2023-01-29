@@ -117,7 +117,7 @@ java/awt/event/MouseEvent/MouseClickTest/MouseClickTest.java 8168389 windows-all
 java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java 8224055 macosx-all
 java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java 8081489 generic-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java JBR-5178 windows-all
-java/awt/Focus/FrameMinimizeTest/FrameMinimizeTest.java 8016266 linux-x64
+java/awt/Focus/FrameMinimizeTest/FrameMinimizeTest.java 8016266 linux-all
 java/awt/Focus/IconifiedFrameFocusChangeTest/IconifiedFrameFocusChangeTest.java 6849364 generic-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java 6848406 generic-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java 6848407 generic-all
@@ -610,7 +610,7 @@ java/awt/event/KeyEvent/DeadKey/deadKeyMacOSX.java 8233568 macosx-all
 java/awt/event/SequencedEvent/MultipleContextsFunctionalTest.java 8271519 linux-all
 java/awt/TrayIcon/RightClickWhenBalloonDisplayed/RightClickWhenBalloonDisplayed.java 8238720 windows-all
 java/awt/Paint/ComponentIsNotDrawnAfterRemoveAddTest/ComponentIsNotDrawnAfterRemoveAddTest.java 8253184 windows-all
-java/awt/Paint/ListRepaint.java JBR-5060 linux-5.15.0-39-generic Ubuntu-22.04
+java/awt/Paint/ListRepaint.java JBR-5060 linux-all
 java/awt/Paint/PaintNativeOnUpdate.java 8253184 windows-all
 java/awt/PopupMenu/PopupMenuLocation.java 8238720,8288415 windows-all,macosx-all
 java/awt/GridBagLayout/GridBagLayoutIpadXYTest/GridBagLayoutIpadXYTest.java 8253184 windows-all
@@ -618,6 +618,7 @@ java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java 8238720 w
 java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java   8238720 windows-all
 java/awt/event/MouseEvent/FrameMouseEventAbsoluteCoordsTest/FrameMouseEventAbsoluteCoordsTest.java
 
+java/awt/Dialog/DialogAboveFrame/DialogAboveFrameTest.java JBR-5210 windows-all
 java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindowAlwaysOnTop.java 8266243 macosx-all
 java/awt/Dialog/SiblingChildOrder/SiblingChildOrderTest.java JBR-5082 linux-all
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java 8225787,8253184 linux-all,windows-all
