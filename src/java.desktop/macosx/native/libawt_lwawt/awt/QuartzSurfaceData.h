@@ -29,14 +29,6 @@
 #import <Cocoa/Cocoa.h>
 #import "JNIUtilities.h"
 
-// these flags are not defined on Tiger on PPC, so we need to make them a no-op
-#if !defined(kCGBitmapByteOrder32Host)
-#define kCGBitmapByteOrder32Host 0
-#endif
-#if !defined(kCGBitmapByteOrder16Host)
-#define kCGBitmapByteOrder16Host 0
-#endif
-
 // NOTE : Modify the printSurfaceDataDiagnostics API if you change this enum
 enum SDRenderType
 {
