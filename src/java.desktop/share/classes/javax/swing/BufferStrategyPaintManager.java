@@ -33,6 +33,7 @@ import java.util.*;
 import com.sun.java.swing.SwingUtilities3;
 import sun.awt.AWTAccessor;
 
+import com.jetbrains.desktop.ConstrainableGraphics2D;
 import sun.awt.SubRegionShowable;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.pipe.hw.ExtendedBufferCapabilities;
@@ -252,6 +253,15 @@ class BufferStrategyPaintManager extends RepaintManager.PaintManager {
                     g2d.setBackground(oldBg);
                 }
 
+                paintingComponent.paintToOffscreen(bsg, x, y, w, h,
+                                                   x + w, y + h);
+                accumulate(xOffset + x, yOffset + y, w, h);
+                return true;
+            } else if ((g instanceof ConstrainableGraphics2D) &&
+                    ((ConstrainableGraphics2D)g).getDestination() == root) {
+                ((ConstrainableGraphics2D)bsg).constrain(new Rectangle.Double(xOffset, yOffset,
+                                                                              x + w, y + h));
+                bsg.setClip(x, y, w, h);
                 paintingComponent.paintToOffscreen(bsg, x, y, w, h,
                                                    x + w, y + h);
                 accumulate(xOffset + x, yOffset + y, w, h);
