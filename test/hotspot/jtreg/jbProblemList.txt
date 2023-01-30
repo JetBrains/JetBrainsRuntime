@@ -173,11 +173,11 @@ vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded004
 vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded005/TestDescription.java 8153598 generic-all
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Deadlock/JavaDeadlock001/TestDescription.java 8060733 generic-all
 
-vmTestbase/nsk/jdb/options/listconnectors/listconnectors001/listconnectors001.java initial_run windows\ 11-aarch64
+vmTestbase/nsk/jdb/options/listconnectors/listconnectors001/listconnectors001.java initial_run windows-all
 
-vmTestbase/nsk/jdi/LaunchingConnector/launch/launch001/TestDescription.java initial_run windows\ 11-aarch64
-vmTestbase/nsk/jdi/LaunchingConnector/launch/launch003/TestDescription.java initial_run windows\ 11-aarch64
-vmTestbase/nsk/jdi/LaunchingConnector/launchnosuspend/launchnosuspend001/TestDescription.java initial_run windows\ 11-aarch64
+vmTestbase/nsk/jdi/LaunchingConnector/launch/launch001/TestDescription.java initial_run windows-all
+vmTestbase/nsk/jdi/LaunchingConnector/launch/launch003/TestDescription.java initial_run windows-all
+vmTestbase/nsk/jdi/LaunchingConnector/launchnosuspend/launchnosuspend001/TestDescription.java initial_run windows-all
 
 vmTestbase/nsk/jdi/ThreadReference/stop/stop001/TestDescription.java 7034630 generic-all
 vmTestbase/nsk/jdi/ReferenceType/instances/instances002/instances002.java initial_run linux-all
