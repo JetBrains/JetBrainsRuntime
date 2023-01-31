@@ -406,7 +406,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
         NSString *eventChars = [event charactersIgnoringModifiers];
         if ([eventChars length] == 1) {
             unichar ch = [eventChars characterAtIndex:0];
-            if (ch == '=' || ch == '.' || ch == /*small cyrillic u*/ 0x044E) {
+            if (ch == '=' || ch == '.') {
                 [[NSApp mainMenu] performKeyEquivalent: event];
                 return YES;
             }
@@ -548,82 +548,22 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 
     [AWTToolkit eventCountPlusPlus];
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    TISInputSourceRef sourceRef = TISCopyCurrentKeyboardLayoutInputSource();
-    CFDataRef keyLayoutPtr = (CFDataRef)TISGetInputSourceProperty(
-    sourceRef, kTISPropertyUnicodeKeyLayoutData);
-    CFRelease( sourceRef);
-
-    const UCKeyboardLayout *keyboardLayout =  (UCKeyboardLayout*)CFDataGetBytePtr(keyLayoutPtr);
-
-    UInt32 isDeadKeyPressed = 0;
-    UInt32 lengthOfBuffer = 8;
-    UniChar stringWithChars[lengthOfBuffer];
-    UniCharCount actualLength = 0;
-
-    OSStatus status =  UCKeyTranslate(
-                   keyboardLayout,
-                   [event keyCode],
-                   kUCKeyActionDown,
-                   0,
-                   LMGetKbdType(),
-                   0,
-                   &isDeadKeyPressed,
-                   lengthOfBuffer,
-                   &actualLength,
-                   stringWithChars);
-
-    NSString*  charactersIgnoringModifiersAndShiftAsNsString = [NSString stringWithCharacters:stringWithChars length:actualLength];
 
     jstring characters = NULL;
     jstring charactersIgnoringModifiers = NULL;
-    jstring charactersIgnoringModifiersAndShift = NULL;
-
     if ([event type] != NSEventTypeFlagsChanged) {
         characters = NSStringToJavaString(env, [event characters]);
         charactersIgnoringModifiers = NSStringToJavaString(env, [event charactersIgnoringModifiers]);
-        charactersIgnoringModifiersAndShift = NSStringToJavaString(env, charactersIgnoringModifiersAndShiftAsNsString);
-    }
-
-    jint javaDeadKeyCode = 0;
-
-    if (status == noErr && isDeadKeyPressed != 0) {
-
-        status = UCKeyTranslate(
-                    keyboardLayout,
-                    kVK_Space,
-                    kUCKeyActionDown,
-                    0,
-                    LMGetKbdType(),
-                    0,
-                    &isDeadKeyPressed,
-                    lengthOfBuffer,
-                    &actualLength,
-                    stringWithChars);
-
-        charactersIgnoringModifiersAndShift = NSStringToJavaString(env, [NSString stringWithCharacters:stringWithChars length:actualLength]);
-    }
-
-    jstring oldCharacters = NULL;
-    jstring oldCharactersIgnoringModifiers = NULL;
-    if ([event type] != NSFlagsChanged) {
-        oldCharacters = NSStringToJavaString(env, [event characters]);
-        oldCharactersIgnoringModifiers = NSStringToJavaString(env, [event charactersIgnoringModifiers]);
     }
 
     DECLARE_CLASS(jc_NSEvent, "sun/lwawt/macosx/NSEvent");
-    DECLARE_METHOD(jctor_NSEvent, jc_NSEvent, "<init>", "(IISLjava/lang/String;Ljava/lang/String;Ljava/lang/String;ZILjava/lang/String;Ljava/lang/String;)V");
+    DECLARE_METHOD(jctor_NSEvent, jc_NSEvent, "<init>", "(IISLjava/lang/String;Ljava/lang/String;)V");
     jobject jEvent = (*env)->NewObject(env, jc_NSEvent, jctor_NSEvent,
                                   [event type],
                                   [event modifierFlags],
                                   [event keyCode],
                                   characters,
-                                  charactersIgnoringModifiers,
-                                  charactersIgnoringModifiersAndShift,
-                                  isDeadKeyPressed,
-                                  javaDeadKeyCode,
-                                  oldCharacters,
-                                  oldCharactersIgnoringModifiers);
-
+                                  charactersIgnoringModifiers);
     CHECK_NULL(jEvent);
 
     DECLARE_CLASS(jc_PlatformView, "sun/lwawt/macosx/CPlatformView");
