@@ -400,11 +400,6 @@ public class NationalLayoutTest {
             // Get Key object from LayoutKey enum
             Key key = layoutKey.getKey();
 
-            if (key.isDead() || key.isDead(modifier)) {
-                // TODO: Disable skipping testing dead keys once they work properly on macOS
-                continue;
-            }
-
             // Obtain the key code for the current layout
             int keyCode = key.getKeyCode();
 
