@@ -70,13 +70,13 @@ public enum Layout_ABC implements LayoutKey {
 
     // macOS system shortcuts: Shift+Cmd+Q - Log Out, Ctrl+Cmd+Q - Lock Screen
     //VK_Q ('q', 'œ', 'Q', 'Œ'),
-    //VK_W ('w', '∑', 'W', '„'),
-    //VK_E (KeyChar.ch('e'), KeyChar.dead('´') ,KeyChar.ch('E'), KeyChar.ch('´')),
+    VK_W ('w', '∑', 'W', '„', '\u0017'),
+    VK_E (KeyChar.ch('e'), KeyChar.dead('´') ,KeyChar.ch('E'), KeyChar.ch('´'), KeyChar.ch('\u0005')),
     //VK_R ('r', '®', 'R', '‰'),
     //VK_T ('t', '†', 'T', 'ˇ'),
     //VK_Y ('y', '¥', 'Y', 'Á'),
-    //VK_U (KeyChar.ch('u'), KeyChar.dead('¨'), KeyChar.ch('U'), KeyChar.ch('¨')),
-    //VK_I (KeyChar.ch('i'), KeyChar.dead('ˆ'), KeyChar.ch('I'), KeyChar.ch('ˆ')),
+    VK_U (KeyChar.ch('u'), KeyChar.dead('¨'), KeyChar.ch('U'), KeyChar.ch('¨'), KeyChar.ch('\u0015')),
+    VK_I (KeyChar.ch('i'), KeyChar.dead('ˆ'), KeyChar.ch('I'), KeyChar.ch('ˆ'), KeyChar.ch('\u0009')),
     //VK_O ('o', 'ø', 'O', 'Ø'),
     //VK_P ('p', 'π', 'P', '∏'),
 
