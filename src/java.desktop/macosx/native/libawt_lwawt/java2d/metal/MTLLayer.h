@@ -38,8 +38,6 @@
 @property (readwrite, atomic) int nextDrawableCount;
 @property (readwrite, assign) int topInset;
 @property (readwrite, assign) int leftInset;
-@property (readwrite, assign) CVDisplayLinkRef displayLink;
-@property (readwrite, atomic) int displayLinkCount;
 
 - (id) initWithJavaLayer:(jobject)layer;
 
@@ -54,7 +52,7 @@
 - (void) display;
 - (void) redraw;
 - (void) startRedraw;
-- (void) stopRedraw:(BOOL)force;
+- (void) stopRedraw;
 - (void) commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
 @end
 
