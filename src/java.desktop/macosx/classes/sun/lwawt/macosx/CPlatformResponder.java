@@ -26,7 +26,6 @@
 package sun.lwawt.macosx;
 
 import sun.awt.SunToolkit;
-import sun.awt.event.KeyEventProcessing;
 import sun.lwawt.LWWindowPeer;
 import sun.lwawt.PlatformEventNotifier;
 
@@ -35,7 +34,6 @@ import java.awt.event.MouseEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.KeyEvent;
-import java.util.Arrays;
 import java.util.Locale;
 
 /**
@@ -169,30 +167,10 @@ final class CPlatformResponder {
                                             -roundDelta, -delta, null);
     }
 
-    private static final String [] cyrillicKeyboardLayouts = new String [] {
-            "com.apple.keylayout.Russian",
-            "com.apple.keylayout.RussianWin",
-            "com.apple.keylayout.Russian-Phonetic",
-            "com.apple.keylayout.Byelorussian",
-            "com.apple.keylayout.Ukrainian",
-            "com.apple.keylayout.UkrainianWin",
-            "com.apple.keylayout.Bulgarian",
-            "com.apple.keylayout.Serbian"
-    };
-
-    private static boolean isCyrillicKeyboardLayout() {
-        final var currentLayout = LWCToolkit.getKeyboardLayoutId();
-        if ( (currentLayout == null) || currentLayout.isEmpty() ) {
-            return false;
-        }
-        return Arrays.asList(cyrillicKeyboardLayouts).contains(currentLayout);
-    }
-
     /**
      * Handles key events.
      */
-    void handleKeyEvent(int eventType, int modifierFlags, String chars,
-                        String charsIgnoringModifiers, String charsIgnoringModifiersAndShift,
+    void handleKeyEvent(int eventType, int modifierFlags, String chars, String charsIgnoringModifiers,
                         short keyCode, boolean needsKeyTyped, boolean needsKeyReleased) {
         boolean isFlagsChangedEvent =
             isNpapiCallback ? (eventType == CocoaConstants.NPCocoaEventFlagsChanged) :
@@ -203,8 +181,6 @@ final class CPlatformResponder {
         int jkeyLocation = KeyEvent.KEY_LOCATION_UNKNOWN;
         boolean postsTyped = false;
         boolean spaceKeyTyped = false;
-
-        int jmodifiers = NSEvent.nsToJavaModifiers(modifierFlags);
 
         char testChar = KeyEvent.CHAR_UNDEFINED;
         boolean isDeadChar = (chars!= null && chars.length() == 0);
@@ -230,12 +206,8 @@ final class CPlatformResponder {
 
             char testCharIgnoringModifiers = charsIgnoringModifiers != null && charsIgnoringModifiers.length() > 0 ?
                     charsIgnoringModifiers.charAt(0) : KeyEvent.CHAR_UNDEFINED;
-            if (charsIgnoringModifiersAndShift != null && charsIgnoringModifiersAndShift.length() > 0) {
-                testCharIgnoringModifiers = charsIgnoringModifiersAndShift.charAt(0);
-            }
 
-            int useNationalLayouts = (KeyEventProcessing.useNationalLayouts && !isCyrillicKeyboardLayout()) ? 1 : 0;
-            int[] in = new int[] {testCharIgnoringModifiers, isDeadChar ? 1 : 0, modifierFlags, keyCode, useNationalLayouts};
+            int[] in = new int[] {testCharIgnoringModifiers, isDeadChar ? 1 : 0, modifierFlags, keyCode};
             int[] out = new int[3]; // [jkeyCode, jkeyLocation, deadChar]
 
             postsTyped = NSEvent.nsToJavaKeyInfo(in, out);
@@ -245,8 +217,7 @@ final class CPlatformResponder {
 
             if(isDeadChar){
                 testChar = (char) out[2];
-                jkeyCode = out[0];
-                if(testChar == 0 && jkeyCode == KeyEvent.VK_UNDEFINED){
+                if(testChar == 0){
                     return;
                 }
             }
@@ -278,6 +249,7 @@ final class CPlatformResponder {
             postsTyped = false;
         }
 
+        int jmodifiers = NSEvent.nsToJavaModifiers(modifierFlags);
         long when = System.currentTimeMillis();
 
         if (jeventType == KeyEvent.KEY_PRESSED) {
