@@ -85,6 +85,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     fInputMethodLOCKABLE = NULL;
     fKeyEventsNeeded = NO;
     fProcessingKeystroke = NO;
+    fComplexInputNeeded = NO;
 
     fEnablePressAndHold = shouldUsePressAndHold();
     fInPressAndHold = NO;
@@ -305,6 +306,19 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 - (void) keyDown: (NSEvent *)event {
     fProcessingKeystroke = YES;
     fKeyEventsNeeded = YES;
+    fComplexInputNeeded = NO;
+
+    NSString *eventCharacters = [event characters];
+
+    if ([eventCharacters length] > 0) {
+        unichar codePoint = [eventCharacters characterAtIndex:0];
+        if ((codePoint >= 0x3000 && codePoint <= 0x303F) || (codePoint >= 0xff00 && codePoint <= 0xffef)) {
+            // "CJK Symbols and Punctuation" or "Halfwidth and Fullwidth Forms"
+            // Force the complex input method because macOS doesn't properly send us
+            // the half-width characters when the user has them enabled.
+            fComplexInputNeeded = YES;
+        }
+    }
 
     // Allow TSM to look at the event and potentially send back NSTextInputClient messages.
     [self interpretKeyEvents:[NSArray arrayWithObject:event]];
@@ -344,7 +358,6 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
         }
     }
 
-    NSString *eventCharacters = [event characters];
     BOOL isDeadKey = (eventCharacters != nil && [eventCharacters length] == 0);
 
     if ((![self hasMarkedText] && fKeyEventsNeeded) || isDeadKey) {
@@ -523,6 +536,41 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     [self resetTrackingArea];
 }
 
+- (NSString *) extractCharactersIgnoringAllModifiers: (NSEvent *) event {
+    // event.charactersIgnoringModifiers is actually not what we want, since it doesn't ignore Shift.
+    // What we really want is event.charactersByApplyingModifiers:0, but that's only available on macOS 10.15+
+    // The code below simulates what that function does by looking up the current keyboard and emulating
+    // a corresponding key press on it.
+
+    TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
+    CFDataRef uchr = (CFDataRef)TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData);
+
+    if (uchr == nil) {
+        return [event charactersIgnoringModifiers];
+    }
+
+    UInt32 deadKeyState = 0;
+    UniCharCount maxStringLength = 8;
+    UniCharCount actualStringLength = 0;
+    unichar unicodeString[maxStringLength];
+
+    const UCKeyboardLayout *keyboardLayout = (const UCKeyboardLayout *) CFDataGetBytePtr(uchr);
+    OSStatus status = UCKeyTranslate(
+            keyboardLayout,
+            [event keyCode],
+            kUCKeyActionDown,
+            0,
+            LMGetKbdType(),
+            kUCKeyTranslateNoDeadKeysMask,
+            &deadKeyState,
+            maxStringLength,
+            &actualStringLength,
+            unicodeString
+    );
+
+    return [NSString stringWithCharacters:unicodeString length:actualStringLength];
+}
+
 -(void) deliverJavaKeyEventHelper: (NSEvent *) event {
     static NSEvent* sLastKeyEvent = nil;
     if (event == sLastKeyEvent) {
@@ -539,7 +587,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     jstring charactersIgnoringModifiers = NULL;
     if ([event type] != NSEventTypeFlagsChanged) {
         characters = NSStringToJavaString(env, [event characters]);
-        charactersIgnoringModifiers = NSStringToJavaString(env, [event charactersIgnoringModifiers]);
+        charactersIgnoringModifiers = NSStringToJavaString(env, [self extractCharactersIgnoringAllModifiers:event]);
     }
 
     DECLARE_CLASS(jc_NSEvent, "sun/lwawt/macosx/NSEvent");
@@ -622,7 +670,18 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     }
 }
 
+-(BOOL) isChineseInputMethod {
+    return ([kbdLayout containsString:@"com.apple.inputmethod.SCIM"] ||
+            [kbdLayout containsString:@"com.apple.inputmethod.TCIM"] ||
+            [kbdLayout containsString:@"com.apple.inputmethod.TYIM"]);
+}
+
 -(BOOL) isCodePointInUnicodeBlockNeedingIMEvent: (unichar) codePoint {
+    if ((codePoint == 0x2018 || codePoint == 0x2019 || codePoint == 0x201C || codePoint == 0x201D) && [self isChineseInputMethod]) {
+        // left/right single/double quotation mark
+        return YES;
+    }
+
     if (((codePoint >= 0x900) && (codePoint <= 0x97F)) ||
         ((codePoint >= 0x20A3) && (codePoint <= 0x20BF)) ||
         ((codePoint >= 0x3000) && (codePoint <= 0x303F)) ||
@@ -1067,7 +1126,7 @@ static jclass jc_CInputMethod = NULL;
         aStringIsComplex = YES;
     }
 
-    if ([self hasMarkedText] || !fProcessingKeystroke || aStringIsComplex) {
+    if ([self hasMarkedText] || !fProcessingKeystroke || aStringIsComplex || fComplexInputNeeded) {
         JNIEnv *env = [ThreadUtilities getJNIEnv];
 
         GET_CIM_CLASS();
@@ -1088,6 +1147,7 @@ static jclass jc_CInputMethod = NULL;
         // The input method event will create psuedo-key events for each character in the committed string.
         // We also don't want to send the character that triggered the insertText, usually a return. [3337563]
         fKeyEventsNeeded = NO;
+        fComplexInputNeeded = NO;
     }
     else {
         // Need to set back the fKeyEventsNeeded flag so that the string following the
