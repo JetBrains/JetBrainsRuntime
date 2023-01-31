@@ -46,6 +46,7 @@
     BOOL fInputMethodInteractionEnabled;
     BOOL fKeyEventsNeeded;
     BOOL fProcessingKeystroke;
+    BOOL fComplexInputNeeded;
 
     BOOL fEnablePressAndHold;
     BOOL fInPressAndHold;
