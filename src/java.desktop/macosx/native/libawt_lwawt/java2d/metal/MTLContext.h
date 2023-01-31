@@ -41,6 +41,7 @@
 #include "MTLSamplerManager.h"
 
 @class MTLStencilManager;
+@class MTLLayer;
 
 // Constant from
 // https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf
@@ -92,7 +93,7 @@
  */
 + (MTLContext*) setSurfacesEnv:(JNIEnv*)env src:(jlong)pSrc dst:(jlong)pDst;
 
-- (id)initWithDevice:(id<MTLDevice>)d shadersLib:(NSString*)shadersLib;
+- (id)initWithDevice:(jint)displayID shadersLib:(NSString*)shadersLib;
 - (void)dealloc;
 
 /**
@@ -228,6 +229,8 @@
 
 - (id<MTLCommandBuffer>)createCommandBuffer;
 - (void)commitCommandBuffer:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
+- (void)startRedraw:(MTLLayer*)layer;
+- (void)stopRedraw:(MTLLayer*)layer;
 @end
 
 /**
