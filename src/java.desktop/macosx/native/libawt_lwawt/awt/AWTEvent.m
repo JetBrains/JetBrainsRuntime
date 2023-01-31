@@ -232,6 +232,58 @@ static const struct CharToVKEntry charToDeadVKTable[] = {
     {0,0}
 };
 
+// This table is analogous to a similar one found in sun.awt.ExtendedKeyCodes.
+// It governs translating the unicode codepoints into the proper VK_ values for keys that have one.
+// It only deals with punctuation characters and certain exceptional letters from extended latin set.
+// Also see test/jdk/jb/sun/awt/macos/InputMethodTest/KeyCodesTest.java
+static const struct CharToVKEntry extraCharToVKTable[] = {
+    {0x0021, java_awt_event_KeyEvent_VK_EXCLAMATION_MARK},
+    {0x0022, java_awt_event_KeyEvent_VK_QUOTEDBL},
+    {0x0023, java_awt_event_KeyEvent_VK_NUMBER_SIGN},
+    {0x0024, java_awt_event_KeyEvent_VK_DOLLAR},
+    {0x0026, java_awt_event_KeyEvent_VK_AMPERSAND},
+    {0x0027, java_awt_event_KeyEvent_VK_QUOTE},
+    {0x0028, java_awt_event_KeyEvent_VK_LEFT_PARENTHESIS},
+    {0x0029, java_awt_event_KeyEvent_VK_RIGHT_PARENTHESIS},
+    {0x002A, java_awt_event_KeyEvent_VK_ASTERISK},
+    {0x002B, java_awt_event_KeyEvent_VK_PLUS},
+    {0x002C, java_awt_event_KeyEvent_VK_COMMA},
+    {0x002D, java_awt_event_KeyEvent_VK_MINUS},
+    {0x002E, java_awt_event_KeyEvent_VK_PERIOD},
+    {0x002F, java_awt_event_KeyEvent_VK_SLASH},
+    {0x003A, java_awt_event_KeyEvent_VK_COLON},
+    {0x003B, java_awt_event_KeyEvent_VK_SEMICOLON},
+    {0x003C, java_awt_event_KeyEvent_VK_LESS},
+    {0x003D, java_awt_event_KeyEvent_VK_EQUALS},
+    {0x003E, java_awt_event_KeyEvent_VK_GREATER},
+    {0x0040, java_awt_event_KeyEvent_VK_AT},
+    {0x005B, java_awt_event_KeyEvent_VK_OPEN_BRACKET},
+    {0x005C, java_awt_event_KeyEvent_VK_BACK_SLASH},
+    {0x005D, java_awt_event_KeyEvent_VK_CLOSE_BRACKET},
+    {0x005E, java_awt_event_KeyEvent_VK_CIRCUMFLEX},
+    {0x005F, java_awt_event_KeyEvent_VK_UNDERSCORE},
+    {0x0060, java_awt_event_KeyEvent_VK_BACK_QUOTE},
+    {0x007B, java_awt_event_KeyEvent_VK_BRACELEFT},
+    {0x007D, java_awt_event_KeyEvent_VK_BRACERIGHT},
+    {0x00A1, java_awt_event_KeyEvent_VK_INVERTED_EXCLAMATION_MARK},
+
+    // These are the extended latin characters which have a non-obvious key code.
+    // Their key codes are derived from the upper case instead of the lower case.
+    // It probably has to do with how these key codes are reported on Windows.
+    // Translating these characters to the key codes corresponding to their uppercase versions
+    // makes getExtendedKeyCodeForChar consistent with how these events are reported on macOS.
+    {0x00E4, 0x01000000+0x00C4},
+    {0x00E5, 0x01000000+0x00C5},
+    {0x00E6, 0x01000000+0x00C6},
+    {0x00E7, 0x01000000+0x00C7},
+    {0x00F1, 0x01000000+0x00D1},
+    {0x00F6, 0x01000000+0x00D6},
+    {0x00F8, 0x01000000+0x00D8},
+
+    {0x20AC, java_awt_event_KeyEvent_VK_EURO_SIGN},
+    {0, 0}
+};
+
 // TODO: some constants below are part of CGS (private interfaces)...
 // for now we will look at the raw key code to determine left/right status
 // but not sure this is foolproof...
@@ -381,14 +433,18 @@ unichar NsCharToJavaChar(unichar nsChar, NSUInteger modifiers, BOOL spaceKeyType
     return nsChar;
 }
 
-static unichar NsGetDeadKeyChar(unsigned short keyCode)
+static unichar NsGetDeadKeyChar(unsigned short keyCode, BOOL useModifiers)
 {
     TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
     CFDataRef uchr = (CFDataRef)TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData);
     if (uchr == nil) { return 0; }
     const UCKeyboardLayout *keyboardLayout = (const UCKeyboardLayout*)CFDataGetBytePtr(uchr);
-    // Carbon modifiers should be used instead of NSEvent modifiers
-    UInt32 modifierKeyState = (GetCurrentEventKeyModifiers() >> 8) & 0xFF;
+
+    UInt32 modifierKeyState = 0;
+    if (useModifiers) {
+        // Carbon modifiers should be used instead of NSEvent modifiers
+        modifierKeyState = (GetCurrentEventKeyModifiers() >> 8) & 0xFF;
+    }
 
     if (keyboardLayout) {
         UInt32 deadKeyState = 0;
@@ -427,41 +483,77 @@ static unichar NsGetDeadKeyChar(unsigned short keyCode)
  */
 static void
 NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
-                           NSUInteger flags, unsigned short key,
+                           NSUInteger flags, unsigned short key, const BOOL useNationalLayouts,
                            jint *keyCode, jint *keyLocation, BOOL *postsTyped,
                            unichar *deadChar)
 {
-    static size_t size = sizeof(keyTable) / sizeof(struct _key);
+    static const size_t keyTableSize = sizeof(keyTable) / sizeof(struct _key);
     NSInteger offset;
 
-    if (isDeadChar) {
-        unichar testDeadChar = NsGetDeadKeyChar(key);
+    // If the key without modifiers generates a dead char, then this is the character
+    // that is produced when pressing the key followed by a space
+    // Otherwise, it's the null character
+    unichar testDeadCharWithoutModifiers = NsGetDeadKeyChar(key, NO);
+
+    if (testDeadCharWithoutModifiers != 0) {
+        // Same as testDeadCharWithoutModifiers above, only this time we take modifiers into account.
+        unichar testDeadChar = NsGetDeadKeyChar(key, YES);
+
         const struct CharToVKEntry *map;
         for (map = charToDeadVKTable; map->c != 0; ++map) {
-            if (testDeadChar == map->c) {
+            if (testDeadCharWithoutModifiers == map->c) {
+                // The base key is a dead key in the current layout.
+                // The key with modifiers might or might not be dead.
+                // We report it here so as not to cause any confusion,
+                // since non-dead keys can reuse the same characters as dead keys
+
                 *keyCode = map->javaKey;
-                *postsTyped = NO;
+                *postsTyped = (BOOL)(testDeadChar == 0);
                 // TODO: use UNKNOWN here?
                 *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
                 *deadChar = testDeadChar;
                 return;
             }
         }
-        // If we got here, we keep looking for a normal key.
     }
 
-    if ([[NSCharacterSet letterCharacterSet] characterIsMember:ch]) {
+    TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
+
+    // Whether this is a latin-based keyboard layout (English, German, French, etc)
+    BOOL asciiCapable = (BOOL)((Boolean)CFBooleanGetValue(
+            (CFBooleanRef)TISGetInputSourceProperty(currentKeyboard, kTISPropertyInputSourceIsASCIICapable)));
+
+    unichar testLowercaseChar = tolower(ch);
+
+    if (useNationalLayouts && asciiCapable) {
+        // If national layouts are enabled and the current keyboard is latin-based then
+        // we try to look up a character in a table first, before falling back to looking up
+        // the virtual key code from macOS's hardware key code, since hardware key codes
+        // don't respect the specific keyboard layout the user uses.
+
+        for (const struct CharToVKEntry *map = extraCharToVKTable; map->c != 0; ++map) {
+            if (map->c == testLowercaseChar) {
+                *keyCode = map->javaKey;
+                *postsTyped = !isDeadChar;
+                *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
+                return;
+            }
+        }
+    }
+
+    if ((!useNationalLayouts || asciiCapable) && [[NSCharacterSet letterCharacterSet] characterIsMember:ch]) {
+        // Let's convert the received letter to a key code.
+        // If national layouts are enabled, then the letter must be (extended) latin.
+        // Otherwise, we will look up the key code from the key location further down below.
+
         // key is an alphabetic character
-        unichar lower;
-        lower = tolower(ch);
-        offset = lower - 'a';
+        offset = testLowercaseChar - 'a';
         if (offset >= 0 && offset <= 25) {
             // checking for A-Z characters
             *postsTyped = YES;
             // do quick conversion
             *keyCode = java_awt_event_KeyEvent_VK_A + offset;
             *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
-            return;
         } else {
             // checking for non-english characters
             // this value comes from ExtendedKeyCodes.java
@@ -471,8 +563,9 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
             // the keyCode is off by 32, so adding it here
             *keyCode = java_awt_event_KeyEvent_VK_A + offset + 32;
             *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
-return;
          }
+
+        return;
     }
 
     if ([[NSCharacterSet decimalDigitCharacterSet] characterIsMember:ch]) {
@@ -494,7 +587,7 @@ return;
         }
     }
 
-    if (key < size) {
+    if (key < keyTableSize) {
         *postsTyped = keyTable[key].postsTyped;
         *keyCode = keyTable[key].javaKeyCode;
         *keyLocation = keyTable[key].javaKeyLocation;
@@ -688,11 +781,12 @@ JNI_COCOA_ENTER(env);
     jint *data = (*env)->GetIntArrayElements(env, inData, &copy);
     CHECK_NULL_RETURN(data, postsTyped);
 
-    // in  = [testChar, testDeadChar, modifierFlags, keyCode]
+    // in  = [testChar, testDeadChar, modifierFlags, keyCode, useNationalLayouts]
     jchar testChar = (jchar)data[0];
     BOOL isDeadChar = (data[1] != 0);
     jint modifierFlags = data[2];
     jshort keyCode = (jshort)data[3];
+    BOOL useNationalLayouts = (data[4] != 0);
 
     jint jkeyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
     jint jkeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
@@ -700,6 +794,7 @@ JNI_COCOA_ENTER(env);
 
     NsCharToJavaVirtualKeyCode((unichar)testChar, isDeadChar,
                                (NSUInteger)modifierFlags, (unsigned short)keyCode,
+                               useNationalLayouts,
                                &jkeyCode, &jkeyLocation, &postsTyped,
                                (unichar *) &testDeadChar);
 
