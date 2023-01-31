@@ -538,7 +538,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 
     jstring characters = NULL;
     jstring charactersIgnoringModifiers = NULL;
-    if ([event type] != NSEventTypeFlagsChanged) {
+    if ([event type] != NSFlagsChanged) {
         characters = NSStringToJavaString(env, [event characters]);
         charactersIgnoringModifiers = NSStringToJavaString(env, [event charactersIgnoringModifiers]);
     }

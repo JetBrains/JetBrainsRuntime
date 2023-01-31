@@ -421,69 +421,6 @@ static unichar NsGetDeadKeyChar(unsigned short keyCode)
     return 0;
 }
 
-static const int UNICODE_OFFSET = 0x01000000;
-
-static BOOL isLatinUnicode(unichar ch) {
-    // Latin-1 Supplement 0x0080 - 0x00FF
-    // Latin Extended-A   0x0100 - 0x017F
-    // Latin Extended-B   0x0180 - 0x024F
-    return 0x0080 <= ch && ch <= 0x024F;
-}
-
-static NSDictionary* getUnicharToVkCodeDictionary() {
-
-    static NSDictionary* unicharToVkCodeDictionary = nil;
-    static dispatch_once_t onceToken;
-
-    dispatch_once(&onceToken, ^{
-         unicharToVkCodeDictionary =
-             [NSDictionary dictionaryWithObjectsAndKeys:
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_BACK_QUOTE], @"`",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_1], @"1",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_2], @"2",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_3], @"3",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_4], @"4",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_5], @"5",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_6], @"6",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_7], @"7",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_8], @"8",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_9], @"9",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_0], @"0",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_EQUALS], @"=",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_MINUS], @"-",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_CLOSE_BRACKET], @"]",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_OPEN_BRACKET], @"[",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_QUOTE], @"\'",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_SEMICOLON], @";",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_COLON], @":",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_BACK_SLASH], @"\\",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_COMMA], @",",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_SLASH], @"/",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_PERIOD], @".",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_ASTERISK], @"*",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_PLUS], @"+",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_COMMA], @",",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_NUMBER_SIGN], @"#",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_DOLLAR], @"$",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_CIRCUMFLEX], @"^",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_LEFT_PARENTHESIS], @"(",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_RIGHT_PARENTHESIS], @")",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_UNDERSCORE], @"_",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_AMPERSAND], @"&",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_QUOTEDBL], @"\"",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_EXCLAMATION_MARK], @"!",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_LESS], @"<",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_INVERTED_EXCLAMATION_MARK], @"\u00a1",
-                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_DOLLAR], @"$",
-                 nil
-             ];
-             // This is ok to retain a singleton object
-             [unicharToVkCodeDictionary retain];
-    });
-
-    return unicharToVkCodeDictionary;
-}
-
 /*
  * This is the function that uses the table above to take incoming
  * NSEvent keyCodes and translate to the Java virtual key code.
@@ -764,7 +701,7 @@ JNI_COCOA_ENTER(env);
     NsCharToJavaVirtualKeyCode((unichar)testChar, isDeadChar,
                                (NSUInteger)modifierFlags, (unsigned short)keyCode,
                                &jkeyCode, &jkeyLocation, &postsTyped,
-                               (unichar *) &testDeadChar, &jextendedkeyCode);
+                               (unichar *) &testDeadChar);
 
     // out = [jkeyCode, jkeyLocation, deadChar, jextendedkeyCode];
     (*env)->SetIntArrayRegion(env, outData, 0, 1, &jkeyCode);
