@@ -30,7 +30,6 @@
 #import "LWCToolkit.h"
 #import "MTLSurfaceData.h"
 #import "JNIUtilities.h"
-#define KEEP_ALIVE_INC 4
 
 BOOL isDisplaySyncEnabled() {
     static int syncEnabled = -1;
@@ -77,35 +76,28 @@ BOOL isDisplaySyncEnabled() {
     self.nextDrawableCount = 0;
     self.opaque = YES;
     self.presentsWithTransaction = YES;
-    if (isDisplaySyncEnabled()) {
-        CVDisplayLinkCreateWithActiveCGDisplays(&_displayLink);
-        CVDisplayLinkSetOutputCallback(_displayLink, &displayLinkCallback, (__bridge void *) self);
-        self.displayLinkCount = 0;
-    }
     return self;
 }
 
 - (void) blitTexture {
-    [self stopRedraw:NO];
-
     if (self.ctx == NULL || self.javaLayer == NULL || self.buffer == NULL || *self.buffer == nil ||
         self.ctx.device == nil)
     {
         J2dTraceLn4(J2D_TRACE_VERBOSE,
                     "MTLLayer.blitTexture: uninitialized (mtlc=%p, javaLayer=%p, buffer=%p, device=%p)", self.ctx,
                     self.javaLayer, self.buffer, self.ctx.device);
-        [self stopRedraw:YES];
+        [self stopRedraw];
         return;
     }
 
     if (self.nextDrawableCount != 0) {
         return;
     }
+    [self stopRedraw];
 
     @autoreleasepool {
         if (((*self.buffer).width == 0) || ((*self.buffer).height == 0)) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: cannot create drawable of size 0");
-            [self stopRedraw:YES];
             return;
         }
 
@@ -116,20 +108,17 @@ BOOL isDisplaySyncEnabled() {
 
         if (src_h <= 0 || src_w <= 0) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: Invalid src width or height.");
-            [self stopRedraw:YES];
             return;
         }
 
         id<MTLCommandBuffer> commandBuf = [self.ctx createCommandBuffer];
         if (commandBuf == nil) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: commandBuf is null");
-            [self stopRedraw:YES];
             return;
         }
         id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
         if (mtlDrawable == nil) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null)");
-            [self stopRedraw:NO];
             return;
         }
         self.nextDrawableCount++;
@@ -161,11 +150,7 @@ BOOL isDisplaySyncEnabled() {
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
     (*env)->DeleteWeakGlobalRef(env, self.javaLayer);
     self.javaLayer = nil;
-    [self stopRedraw:YES];
-    if (isDisplaySyncEnabled()) {
-        CVDisplayLinkRelease(self.displayLink);
-    }
-    self.displayLink = nil;
+    [self stopRedraw];
     self.buffer = NULL;
     [super dealloc];
 }
@@ -200,23 +185,17 @@ BOOL isDisplaySyncEnabled() {
 
 - (void)startRedraw {
     if (isDisplaySyncEnabled()) {
-        if (!CVDisplayLinkIsRunning(self.displayLink)) {
-            CVDisplayLinkStart(self.displayLink);
-            J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_startDisplayLink");
+        if (self.ctx != nil) {
+            [self.ctx startRedraw:self];
         }
-        _displayLinkCount += KEEP_ALIVE_INC; // Keep alive displaylink counter
     } else {
         [self performSelectorOnMainThread:@selector(redraw) withObject:nil waitUntilDone:NO];
     }
 }
 
-- (void)stopRedraw:(BOOL)force {
-    if (isDisplaySyncEnabled() && CVDisplayLinkIsRunning(self.displayLink)) {
-        if (force || --self.displayLinkCount <= 0) {
-            self.displayLinkCount = 0;
-            CVDisplayLinkStop(self.displayLink);
-            J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_stopDisplayLink");
-        }
+- (void)stopRedraw {
+    if (self.ctx != nil && isDisplaySyncEnabled()) {
+        [self.ctx stopRedraw:self];
     }
 }
 
@@ -307,7 +286,7 @@ Java_sun_java2d_metal_MTLLayer_validate
         [layer startRedraw];
     } else {
         layer.ctx = NULL;
-        [layer stopRedraw:YES];
+        [layer stopRedraw];
     }
 }
 
@@ -346,7 +325,7 @@ Java_sun_java2d_metal_MTLLayer_blitTexture
     if (layer == nil || ctx == nil) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_blit : Layer or Context is null");
         if (layer != nil) {
-            [layer stopRedraw:YES];
+            [layer stopRedraw];
         }
         return;
     }
