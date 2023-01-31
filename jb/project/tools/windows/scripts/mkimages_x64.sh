@@ -66,7 +66,9 @@ function create_image_bundle {
     sed 's/JBR/JBRSDK/g' $__root_dir/release > release
     mv release $__root_dir/release
     cp $IMAGES_DIR/jdk/lib/src.zip $__root_dir/lib
-    cp $IMAGES_DIR/jdk/bin/*.pdb $__root_dir/bin
+    for dir in $(ls -d $IMAGES_DIR/jdk/*); do
+      rsync -amv --include="*/" --include="*.pdb" --exclude="*" $dir $__root_dir
+    done
     copy_jmods "$__modules" "$__modules_path" "$__root_dir"/jmods
   fi
 }
