@@ -45,6 +45,7 @@
     jobject fInputMethodLOCKABLE;
     BOOL fKeyEventsNeeded;
     BOOL fProcessingKeystroke;
+    BOOL fComplexInputNeeded;
 
     BOOL fEnablePressAndHold;
     BOOL fInPressAndHold;
