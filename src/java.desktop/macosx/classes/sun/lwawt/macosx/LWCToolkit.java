@@ -134,6 +134,21 @@ public final class LWCToolkit extends LWToolkit {
     private static native void initAppkit(ThreadGroup appKitThreadGroup, boolean headless);
     private static CInputMethodDescriptor sInputMethodDescriptor;
 
+    private static native void switchKeyboardLayoutNative(String layoutName);
+
+    static private native String getKeyboardLayoutNativeId();
+
+    public static void switchKeyboardLayout (String layoutName) {
+        if (layoutName == null || layoutName.isEmpty()) {
+            throw new RuntimeException("A valid layout ID is expected. Found:  " + layoutName);
+        }
+        switchKeyboardLayoutNative(layoutName);
+    }
+
+    public static String getKeyboardLayoutId () {
+        return getKeyboardLayoutNativeId();
+    }
+
     // Listens to EDT state in invokeAndWait() and disposes the invocation event
     // when EDT becomes free but the invocation event is not yet dispatched (considered lost).
     // This prevents a deadlock and makes the invocation return some default result.
