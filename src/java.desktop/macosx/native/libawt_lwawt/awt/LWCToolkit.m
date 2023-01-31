@@ -43,6 +43,7 @@
 #import "AWTWindow.h"
 
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
+#import <Carbon/Carbon.h>
 
 // SCROLL PHASE STATE
 #define SCROLL_PHASE_UNSUPPORTED 1
@@ -925,4 +926,44 @@ Java_sun_lwawt_macosx_LWCToolkit_getMultiClickTime(JNIEnv *env, jclass klass) {
     }];
     JNI_COCOA_EXIT(env);
     return multiClickTime;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    getKeyboardLayoutNativeId
+ * Signature: ()Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL
+JNICALL Java_sun_lwawt_macosx_LWCToolkit_getKeyboardLayoutNativeId(JNIEnv *env, jclass cls)
+{
+    __block NSString * layoutId = NULL;
+    JNI_COCOA_ENTER(env);
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+            TISInputSourceRef source = TISCopyCurrentKeyboardInputSource();
+            layoutId = TISGetInputSourceProperty(source, kTISPropertyInputSourceID);
+        }];
+    JNI_COCOA_EXIT(env);
+    return NSStringToJavaString(env, layoutId);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    switchKeyboardLayoutNative
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL
+JNICALL Java_sun_lwawt_macosx_LWCToolkit_switchKeyboardLayoutNative(JNIEnv *env, jclass cls, jstring jLayoutId)
+{
+    JNI_COCOA_ENTER(env);
+        __block NSString* layoutId = [JavaStringToNSString(env, jLayoutId) retain];
+        [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+            NSArray* sources = CFBridgingRelease(TISCreateInputSourceList((__bridge CFDictionaryRef)@{ (__bridge NSString*)kTISPropertyInputSourceID : layoutId }, FALSE));
+            TISInputSourceRef source = (__bridge TISInputSourceRef)sources[0];
+            OSStatus status = TISSelectInputSource(source);
+            if (status != noErr) {
+                NSLog(@"error during keyboard layout switch");
+            }
+            [layoutId release];
+        }];
+    JNI_COCOA_EXIT(env);
 }
