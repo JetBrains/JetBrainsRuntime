@@ -117,9 +117,4 @@ final class DelegateStrike extends NativeStrike {
         return delegateStrike.getGlyphOutline(glyphCode, x, y);
     }
 
-    @Override
-    GeneralPath getGlyphVectorOutline(int[] glyphs, float x, float y) {
-        return delegateStrike.getGlyphVectorOutline(glyphs, x, y);
-    }
-
 }
