@@ -214,6 +214,7 @@ public class HBShaper {
             JAVA_INT,    // direction
             ADDRESS,     // features
             JAVA_INT,    // slot,
+            JAVA_INT,    // slotShift,
             ADDRESS,     // ptr to harfbuzz font_funcs object.
             ADDRESS);    // store_results_fn
 
@@ -285,6 +286,7 @@ public class HBShaper {
         FunctionDescriptor store_layout_fd =
            FunctionDescriptor.ofVoid(
                    JAVA_INT,               // slot
+                   JAVA_INT,               // slotShift
                    JAVA_INT,               // baseIndex
                    JAVA_INT,               // offset
                    JAVA_FLOAT,             // startX
@@ -448,7 +450,8 @@ public class HBShaper {
         Point2D.Float startPt,
         boolean ltrDirection,
         String features,
-        int slot) {
+        int slot,
+        int slotShift) {
 
         /*
          * ScopedValue is needed so that call backs into Java during
@@ -471,7 +474,7 @@ public class HBShaper {
                 jdk_hb_shape_handle.invokeExact(
                      ptSize, matrix, hbface, textChars, text.length,
                      script, offset, limit,
-                     baseIndex, startX, startY, ltrDirection ? 1 : 0, featuresChars, slot,
+                     baseIndex, startX, startY, ltrDirection ? 1 : 0, featuresChars, slot, slotShift,
                      hb_jdk_font_funcs_struct,
                      store_layout_results_stub);
             } catch (Throwable t) {
@@ -575,6 +578,7 @@ public class HBShaper {
     /* Upcall to receive results of layout */
     private static void store_layout_results(
         int slot,
+        int slotShift,
         int baseIndex,
         int offset,
         float startX,
@@ -616,7 +620,7 @@ public class HBShaper {
              int cluster = (int)clusterHandle.get(glyphInfoArr, (long)i) - offset;
              gvdata._indices[storei] = baseIndex + cluster;
              int codePoint = (int)codePointHandle.get(glyphInfoArr, (long)i);
-             gvdata._glyphs[storei] = (slot | codePoint);
+             gvdata._glyphs[storei] = (codePoint << slotShift) | slot;
              int x_offset = (int)x_offsetHandle.get(glyphPosArr, (long)i);
              int y_offset = (int)y_offsetHandle.get(glyphPosArr, (long)i);
              gvdata._positions[(storei*2)]   = startX + x + (x_offset * scale);
