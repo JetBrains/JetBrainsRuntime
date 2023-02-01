@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 JetBrains s.r.o.
+ * Copyright 2021-2023 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
