@@ -37,6 +37,19 @@ public final class CCompositeFont extends CompositeFont {
     }
 
     @Override
+    protected void initSlotMask() {
+        // List of fallback fonts can grow dynamically for CCompositeFont.
+        // Adding a new font to fallback list may require more bits
+        // to represent slot index, which will cause slotShift to increment,
+        // which in turn will invalidate all glyph codes returned earlier.
+        // This will cause rendering garbage when fallback list grows
+        // while rendering a chunk of text, so here we just set slotShift
+        // to fixed 8 bits and hope we never exceed it (just like before).
+        slotShift = 8;
+        slotMask = 0xff;
+    }
+
+    @Override
     public synchronized int getNumSlots() {
         return super.getNumSlots();
     }
