@@ -83,13 +83,6 @@ public final class NativeFont extends PhysicalFont {
         return null;
     }
 
-    @Override
-    public  GeneralPath getGlyphVectorOutline(long pScalerContext,
-                                              int[] glyphs, int numGlyphs,
-                                              float x, float y) {
-        return null;
-    }
-
 
     @Override
     long getGlyphImage(long pScalerContext, int glyphCode) {
@@ -112,5 +105,9 @@ public final class NativeFont extends PhysicalFont {
     Rectangle2D.Float getGlyphOutlineBounds(long pScalerContext,
                                             int glyphCode) {
         return new Rectangle2D.Float(0f, 0f, 0f, 0f);
+    }
+
+    public SlotInfo getSlotInfoForGlyph(int glyphCode) {
+        return new SlotInfo(getDelegateFont());
     }
 }
