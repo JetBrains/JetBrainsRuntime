@@ -193,10 +193,15 @@ public final class XRGlyphCacheEntry {
 
     public Type getType() {
         byte format = StrikeCache.getGlyphFormat(glyphInfoPtr);
-        if (format == StrikeCache.PIXEL_FORMAT_GREYSCALE) return Type.GRAYSCALE;
-        else if (format == StrikeCache.PIXEL_FORMAT_LCD) return Type.LCD;
-        else if (format == StrikeCache.PIXEL_FORMAT_BGRA) return Type.BGRA;
-        else throw new IllegalStateException("Unknown glyph format: " + format);
+        if (format == StrikeCache.PIXEL_FORMAT_GREYSCALE) {
+            return Type.GRAYSCALE;
+        } else if (format == StrikeCache.PIXEL_FORMAT_LCD) {
+            return Type.LCD;
+        } else if (format == StrikeCache.PIXEL_FORMAT_BGRA) {
+            return Type.BGRA;
+        } else {
+            throw new IllegalStateException("Unknown glyph format: " + format);
+        }
     }
 
     public int getPaddedWidth() {

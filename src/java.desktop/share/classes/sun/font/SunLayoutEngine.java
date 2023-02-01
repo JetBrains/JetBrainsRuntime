@@ -172,7 +172,7 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
 
     }
 
-    public void layout(FontStrikeDesc desc, float[] mat, float ptSize, int gmask,
+    public void layout(FontStrikeDesc desc, float[] mat, float ptSize, int slot, int slotShift,
                        int baseIndex, TextRecord tr, boolean ltrDirection, Map<String, Integer> features,
                        Point2D.Float pt, GVData data) {
 
@@ -184,7 +184,8 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
                 HBShaper.shape(font, strike, ptSize, mat, face,
                         tr.text, data, key.script(),
                         tr.start, tr.limit, baseIndex, pt,
-                        ltrDirection, FontExtensions.featuresToString(features), gmask);
+                        ltrDirection, FontExtensions.featuresToString(features),
+                        slot, slotShift);
             }
         } else {
             long pFace = getFacePtr(font);
@@ -192,7 +193,8 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
                 SunLayoutEngine.shape(font, strike, ptSize, mat, pFace,
                         tr.text, data, key.script(),
                         tr.start, tr.limit, baseIndex, pt,
-                        ltrDirection, FontExtensions.featuresToString(features), gmask);
+                        ltrDirection, FontExtensions.featuresToString(features),
+                        slot, slotShift);
             }
         }
     }
@@ -203,7 +205,8 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
               long pFace,
               char[] chars, GVData data,
               int script, int offset, int limit,
-              int baseIndex, Point2D.Float pt, boolean ltrDirection, String features, int slot);
+              int baseIndex, Point2D.Float pt, boolean ltrDirection, String features,
+              int slot, int slotShift);
 
     private static native long createFace(Font2D font,
                                           long platformNativeFontPtr);
