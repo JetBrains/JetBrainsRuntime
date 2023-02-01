@@ -90,6 +90,21 @@ public class CCharToGlyphMapper extends CharToGlyphMapper {
         return false;
     }
 
+    public synchronized int charToVariationGlyph(int unicode, int variationSelector) {
+        if (variationSelector == 0) {
+            return charToGlyph(unicode);
+        }
+        final char[] unicodeArray = new char[4];
+        final int[] glyphArray = new int[4];
+
+        int size = Character.toChars(unicode, unicodeArray, 0);
+        size += Character.toChars(variationSelector, unicodeArray, size);
+
+        nativeCharsToGlyphs(fFont.getNativeFontPtr(), size, unicodeArray, glyphArray);
+
+        return glyphArray[0];
+    }
+
     public synchronized int charToGlyph(char unicode) {
         final int glyph = cache.get(unicode);
         if (glyph != 0) return glyph == UNMAPPED_CHAR ? 0 : glyph;
