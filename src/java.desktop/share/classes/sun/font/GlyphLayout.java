@@ -175,7 +175,7 @@ public final class GlyphLayout {
          * If the GVData does not have room for the glyphs, throws an IndexOutOfBoundsException and
          * leave pt and the gvdata unchanged.
          */
-        public void layout(FontStrikeDesc sd, float[] mat, float ptSize, int gmask, int baseIndex, TextRecord text,
+        public void layout(FontStrikeDesc sd, float[] mat, float ptSize, int slot, int slotShift, int baseIndex, TextRecord text,
                            boolean ltrDirection, Map<String, Integer> features, Point2D.Float pt, GVData data);
     }
 
@@ -403,36 +403,19 @@ public final class GlyphLayout {
 
         _textRecord.init(text, offset, lim, min, max);
         int start = offset;
-        if (font2D instanceof CompositeFont) {
-            _scriptRuns.init(text, offset, count); // ??? how to handle 'common' chars
-            _fontRuns.init((CompositeFont)font2D, text, offset, lim);
-            while (_scriptRuns.next()) {
-                int limit = _scriptRuns.getScriptLimit();
-                int script = _scriptRuns.getScriptCode();
-                while (_fontRuns.next(script, limit)) {
-                    Font2D pfont = _fontRuns.getFont();
-                    /* layout can't deal with NativeFont instances. The
-                     * native font is assumed to know of a suitable non-native
-                     * substitute font. This currently works because
-                     * its consistent with the way NativeFonts delegate
-                     * in other cases too.
-                     */
-                    if (pfont instanceof NativeFont) {
-                        pfont = ((NativeFont)pfont).getDelegateFont();
-                    }
-                    int gmask = _fontRuns.getGlyphMask();
-                    int pos = _fontRuns.getPos();
-                    nextEngineRecord(start, pos, script, lang, pfont, gmask);
-                    start = pos;
-                }
-            }
-        } else {
-            _scriptRuns.init(text, offset, count); // ??? don't worry about 'common' chars
-            while (_scriptRuns.next()) {
-                int limit = _scriptRuns.getScriptLimit();
-                int script = _scriptRuns.getScriptCode();
-                nextEngineRecord(start, limit, script, lang, font2D, 0);
-                start = limit;
+        _scriptRuns.init(text, offset, count); // ??? how to handle 'common' chars
+        _fontRuns.init(font2D, text, offset, lim);
+        while (_scriptRuns.next()) {
+            int limit = _scriptRuns.getScriptLimit();
+            int script = _scriptRuns.getScriptCode();
+            while (_fontRuns.next(limit)) {
+                Font2D.SlotInfo slotInfo = _fontRuns.getSlotInfo();
+                Font2D pfont = slotInfo.font;
+                int slotShift = slotInfo.slotShift;
+                int slot = _fontRuns.getSlot();
+                int pos = _fontRuns.getPos();
+                nextEngineRecord(start, pos, script, lang, pfont, slot, slotShift);
+                start = pos;
             }
         }
 
@@ -503,7 +486,7 @@ public final class GlyphLayout {
         this._gvdata.init(capacity);
     }
 
-    private void nextEngineRecord(int start, int limit, int script, int lang, Font2D font, int gmask) {
+    private void nextEngineRecord(int start, int limit, int script, int lang, Font2D font, int slot, int slotShift) {
         EngineRecord er = null;
         if (_ercount == _erecords.size()) {
             er = new EngineRecord();
@@ -511,7 +494,7 @@ public final class GlyphLayout {
         } else {
             er = _erecords.get(_ercount);
         }
-        er.init(start, limit, font, script, lang, gmask);
+        er.init(start, limit, font, script, lang, slot, slotShift);
         ++_ercount;
     }
 
@@ -620,7 +603,8 @@ public final class GlyphLayout {
     private final class EngineRecord {
         private int start;
         private int limit;
-        private int gmask;
+        private int slot;
+        private int slotShift;
         private int eflags;
         private LayoutEngineKey key;
         private LayoutEngine engine;
@@ -629,10 +613,11 @@ public final class GlyphLayout {
             key = new LayoutEngineKey();
         }
 
-        void init(int start, int limit, Font2D font, int script, int lang, int gmask) {
+        void init(int start, int limit, Font2D font, int script, int lang, int slot, int slotShift) {
             this.start = start;
             this.limit = limit;
-            this.gmask = gmask;
+            this.slot = slot;
+            this.slotShift = slotShift;
             this.key.init(font, script, lang);
             this.eflags = 0;
 
@@ -661,7 +646,7 @@ public final class GlyphLayout {
         void layout(boolean ltrDirection, Map<String, Integer> features) {
             _textRecord.start = start;
             _textRecord.limit = limit;
-            engine.layout(_sd, _mat, ptSize, gmask, start - _offset, _textRecord,
+            engine.layout(_sd, _mat, ptSize, slot, slotShift, start - _offset, _textRecord,
                     ltrDirection, features, _pt, _gvdata);
         }
     }
