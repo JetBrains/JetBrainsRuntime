@@ -565,7 +565,7 @@ final class WPathGraphics extends PathGraphics {
                     endChar++;
                 }
                 String substr = new String(chars, startChar,endChar-startChar);
-                PhysicalFont slotFont = compFont.getSlotFont(slot);
+                Font2D slotFont = compFont.getSlotFont(slot);
                 textOut(substr, font, slotFont, frc,
                         scaledFontSizeY, iangle, devangle, awScale,
                         advanceScaleX, advanceScaleY,
@@ -791,7 +791,7 @@ final class WPathGraphics extends PathGraphics {
                  * if only one slot is unavailable is not worth worrying
                  * about.
                  */
-                PhysicalFont slotFont = compFont.getSlotFont(slot);
+                Font2D slotFont = compFont.getSlotFont(slot);
                 if (!(slotFont instanceof TrueTypeFont)) {
                     return false;
                 }
@@ -822,7 +822,7 @@ final class WPathGraphics extends PathGraphics {
     }
 
     private void textOut(String str,
-                          Font font, PhysicalFont font2D,
+                          Font font, Font2D font2D,
                           FontRenderContext frc,
                           float deviceSize, int iangle, double devangle,
                           float awScale,
