@@ -26,7 +26,6 @@
 package sun.font;
 
 import java.nio.ByteBuffer;
-import java.util.Locale;
 
 import static sun.font.FontUtilities.isDefaultIgnorable;
 import static sun.font.FontUtilities.isIgnorableWhitespace;
@@ -150,77 +149,6 @@ public class TrueTypeGlyphMapper extends CharToGlyphMapper {
     public int charToVariationGlyph(int unicode, int variationSelector) {
         int glyph = getGlyphFromCMAP(unicode, variationSelector, false);
         return glyph;
-    }
-
-    public void charsToGlyphs(int count, int[] unicodes, int[] glyphs) {
-        for (int i=0;i<count;i++) {
-            glyphs[i] = getGlyphFromCMAP(unicodes[i], false);
-        }
-    }
-
-    public void charsToGlyphs(int count, char[] unicodes, int[] glyphs) {
-
-        for (int i=0; i<count; i++) {
-            int code = unicodes[i]; // char is unsigned.
-
-            if (code >= HI_SURROGATE_START &&
-                code <= HI_SURROGATE_END && i < count - 1) {
-                char low = unicodes[i + 1];
-
-                if (low >= LO_SURROGATE_START &&
-                    low <= LO_SURROGATE_END) {
-                    code = (code - HI_SURROGATE_START) *
-                        0x400 + low - LO_SURROGATE_START + 0x10000;
-
-                    glyphs[i] = getGlyphFromCMAP(code, false);
-                    i += 1; // Empty glyph slot after surrogate
-                    glyphs[i] = INVISIBLE_GLYPH_ID;
-                    continue;
-                }
-            }
-            glyphs[i] = getGlyphFromCMAP(code, false);
-
-        }
-    }
-
-    /* This variant checks if shaping is needed and immediately
-     * returns true if it does. A caller of this method should be expecting
-     * to check the return type because it needs to know how to handle
-     * the character data for display.
-     */
-    public boolean charsToGlyphsNS(int count, char[] unicodes, int[] glyphs) {
-
-        for (int i=0; i<count; i++) {
-            int code = unicodes[i]; // char is unsigned.
-
-            if (code >= HI_SURROGATE_START &&
-                code <= HI_SURROGATE_END && i < count - 1) {
-                char low = unicodes[i + 1];
-
-                if (low >= LO_SURROGATE_START &&
-                    low <= LO_SURROGATE_END) {
-                    code = (code - HI_SURROGATE_START) *
-                        0x400 + low - LO_SURROGATE_START + 0x10000;
-                    glyphs[i + 1] = INVISIBLE_GLYPH_ID;
-                }
-            }
-
-            glyphs[i] = getGlyphFromCMAP(code, false);
-
-            if (code < FontUtilities.MIN_LAYOUT_CHARCODE) {
-                continue;
-            }
-            else if (FontUtilities.isComplexCharCode(code) ||
-                     CharToGlyphMapper.isVariationSelector(code)) {
-                return true;
-            }
-            else if (code >= 0x10000) {
-                i += 1; // Empty glyph slot after surrogate
-                continue;
-            }
-        }
-
-        return false;
     }
 
     /* A pretty good heuristic is that the cmap we are using
