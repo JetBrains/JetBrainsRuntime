@@ -59,7 +59,7 @@ hb_font_t* jdk_font_create_hbp(
 
 
 typedef void (*store_layoutdata_func_t)
-   (int slot, int baseIndex, int offset,
+   (int slot, int slotShift, int baseIndex, int offset,
     float startX, float startY, float devScale,
     int charCount, int glyphCount,
     hb_glyph_info_t *glyphInfo, hb_glyph_position_t *glyphPos);
@@ -80,6 +80,7 @@ JDKEXPORT void jdk_hb_shape(
      int ltrDirection,
      const char *features,
      int slot, // used only to store results
+     int slotShift, // used only to store results
      // Provide upcall Method handles that harfbuzz needs
      hb_font_funcs_t* font_funcs,
      store_layoutdata_func_t store_layout_data_upcall
