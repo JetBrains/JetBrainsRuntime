@@ -59,7 +59,7 @@ public final class CCompositeGlyphMapper extends CompositeGlyphMapper {
         String fallbackFontName = fallbackFontInfo[0];
         String fallbackFontFamilyName = fallbackFontInfo[1];
         if (fallbackFontName == null || fallbackFontFamilyName == null) {
-            int result = compositeGlyphCode(0, glyphCode);
+            int result = font.compositeGlyphCode(0, glyphCode);
             if (variationSelector == 0) setCachedGlyphCode(unicode, result, raw);
             return result;
         }
@@ -82,7 +82,7 @@ public final class CCompositeGlyphMapper extends CompositeGlyphMapper {
             slot = compositeFont.addSlot((CFont) fallbackFont);
         }
 
-        int result = compositeGlyphCode(slot, glyphCode);
+        int result = font.compositeGlyphCode(slot, glyphCode);
         if (variationSelector == 0) setCachedGlyphCode(unicode, result, raw);
         return result;
     }
