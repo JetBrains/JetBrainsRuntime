@@ -286,12 +286,6 @@ public class NativeFont extends PhysicalFont {
         throw new RuntimeException("this should be called on the strike");
     }
 
-    public  GeneralPath getGlyphVectorOutline(long pScalerContext,
-                                              int[] glyphs, int numGlyphs,
-                                              float x,  float y) {
-        return null;
-    }
-
     private native int countGlyphs(byte[] platformNameBytes, int ptSize);
 
     public int getNumGlyphs() {
@@ -308,6 +302,10 @@ public class NativeFont extends PhysicalFont {
             delegateFont = fm.getDefaultPhysicalFont();
         }
         return delegateFont;
+    }
+
+    public SlotInfo getSlotInfoForGlyph(int glyphCode) {
+        return new SlotInfo(getDelegateFont());
     }
 
     /* Specify that the dpi is 72x72, as this corresponds to JDK's
