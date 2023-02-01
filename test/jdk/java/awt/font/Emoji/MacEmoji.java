@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 JetBrains s.r.o.
+ * Copyright 2021-2023 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,8 @@
  *          representation when rendered to different types of images,
  *          including an accelerated (OpenGL or Metal) surface.
  * @requires (os.family == "mac")
- * @run main/othervm -Dsun.java2d.uiScale=1 MacEmoji
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.font.layout.ffm=true MacEmoji
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.font.layout.ffm=false MacEmoji
  */
 
 import java.awt.*;

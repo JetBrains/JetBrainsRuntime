@@ -87,7 +87,8 @@ public final class CCharToGlyphMapper extends CharToGlyphMapper {
 
             if (code < FontUtilities.MIN_LAYOUT_CHARCODE) {
                 continue;
-            } else if (FontUtilities.isComplexCharCode(code)) {
+            } else if (FontUtilities.isComplexCharCode(code) ||
+                    CharToGlyphMapper.isVariationSelector(code)) {
                 return true;
             } else if (code >= 0x10000) {
                 i += 1; // Empty glyph slot after surrogate
@@ -96,6 +97,27 @@ public final class CCharToGlyphMapper extends CharToGlyphMapper {
         }
 
         return false;
+    }
+
+    @Override
+    public synchronized int charToVariationGlyphRaw(int unicode, int variationSelector) {
+        return charToVariationGlyph(unicode, variationSelector);
+    }
+
+    @Override
+    public synchronized int charToVariationGlyph(int unicode, int variationSelector) {
+        if (variationSelector == 0) {
+            return charToGlyph(unicode);
+        }
+        final char[] unicodeArray = new char[4];
+        final int[] glyphArray = new int[4];
+
+        int size = Character.toChars(unicode, unicodeArray, 0);
+        size += Character.toChars(variationSelector, unicodeArray, size);
+
+        nativeCharsToGlyphs(fFont.getNativeFontPtr(), size, unicodeArray, glyphArray);
+
+        return glyphArray[0];
     }
 
     @Override
