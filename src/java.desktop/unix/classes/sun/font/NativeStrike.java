@@ -296,11 +296,6 @@ class NativeStrike extends PhysicalStrike {
          return new GeneralPath();
      }
 
-     @Override
-     GeneralPath getGlyphVectorOutline(int[] glyphs, float x, float y) {
-         return new GeneralPath();
-     }
-
      GlyphRenderData getGlyphRenderData(int glyphCode, float x, float y) {
          return new GlyphRenderData();
      }
