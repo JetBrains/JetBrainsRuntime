@@ -76,6 +76,7 @@ JDKEXPORT int jdk_hb_shape(
      int ltrDirection,
      const char *features,
      int slot,
+     int slotShift,
      hb_font_funcs_t* font_funcs,
      store_layoutdata_func_t store_layout_results_fn) {
 
@@ -113,7 +114,7 @@ JDKEXPORT int jdk_hb_shape(
      glyphPos = hb_buffer_get_glyph_positions(buffer, &buflen);
 
      ret = (*store_layout_results_fn)
-               (slot, baseIndex, offset, startX, startY, devScale,
+               (slot, slotShift, baseIndex, offset, startX, startY, devScale,
                 charCount, glyphCount, glyphInfo, glyphPos);
 
      hb_buffer_destroy (buffer);
