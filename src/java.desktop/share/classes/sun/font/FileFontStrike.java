@@ -482,16 +482,17 @@ public class FileFontStrike extends PhysicalStrike {
 
     /* The following method is called from CompositeStrike as a special case.
      */
-    int getSlot0GlyphImagePtrs(int[] glyphCodes, long[] images, int len) {
+    int getSlot0GlyphImagePtrs(int[] glyphCodes, long[] images, int len, int slotMask, int slotShift) {
 
         int convertedCnt = 0;
 
         for (int i=0; i<len; i++) {
             int glyphCode = glyphCodes[i];
-            if (glyphCode >>> 24 != 0) {
+            if ((glyphCode & slotMask) != 0) {
                 return convertedCnt;
             } else {
                 convertedCnt++;
+                glyphCode >>>= slotShift;
             }
             if (glyphCode >= INVISIBLE_GLYPHS) {
                 images[i] = StrikeCache.invisibleGlyphPtr;
@@ -843,7 +844,9 @@ public class FileFontStrike extends PhysicalStrike {
     private int getGlyphImageMinX(long ptr, int origMinX) {
 
         byte format = StrikeCache.getGlyphFormat(ptr);
-        if (format != StrikeCache.PIXEL_FORMAT_LCD) return origMinX;
+        if (format != StrikeCache.PIXEL_FORMAT_LCD) {
+            return origMinX;
+        }
 
         int height = StrikeCache.getGlyphHeight(ptr);
         int rowBytes = StrikeCache.getGlyphRowBytes(ptr);
@@ -1028,11 +1031,6 @@ public class FileFontStrike extends PhysicalStrike {
             gp.transform(AffineTransform.getTranslateInstance(x, y));
         }
         return gp;
-    }
-
-    GeneralPath getGlyphVectorOutline(int[] glyphs, float x, float y) {
-        return fileFont.getGlyphVectorOutline(pScalerContext,
-                                              glyphs, glyphs.length, x, y);
     }
 
     private
