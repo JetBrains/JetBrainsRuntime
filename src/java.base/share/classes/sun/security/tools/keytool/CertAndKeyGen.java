@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -144,7 +144,7 @@ public final class CertAndKeyGen {
             }
 
         } catch (Exception e) {
-            throw new IllegalArgumentException(e.getMessage());
+            throw new IllegalArgumentException(e.getMessage(), e);
         }
         generateInternal();
     }
@@ -160,7 +160,7 @@ public final class CertAndKeyGen {
                 keyGen.initialize(keyBits, prng);
 
             } catch (Exception e) {
-                throw new IllegalArgumentException(e.getMessage());
+                throw new IllegalArgumentException(e.getMessage(), e);
             }
         }
         generateInternal();
@@ -317,7 +317,7 @@ public final class CertAndKeyGen {
 
         } catch (IOException e) {
              throw new CertificateEncodingException("getSelfCert: " +
-                                                    e.getMessage());
+                                                    e.getMessage(), e);
         } catch (InvalidAlgorithmParameterException e2) {
             throw new SignatureException(
                     "Unsupported PSSParameterSpec: " + e2.getMessage());

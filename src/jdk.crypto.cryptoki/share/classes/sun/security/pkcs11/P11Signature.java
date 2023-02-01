@@ -440,7 +440,7 @@ final class P11Signature extends SignatureSpi {
             padding = RSAPadding.getInstance
                 (RSAPadding.PAD_BLOCKTYPE_1, (len + 7) >> 3);
         } catch (InvalidAlgorithmParameterException iape) {
-            throw new InvalidKeyException(iape.getMessage());
+            throw new InvalidKeyException(iape.getMessage(), iape);
         }
         int maxDataSize = padding.getMaxDataSize();
         int encodedLength;
@@ -801,7 +801,7 @@ final class P11Signature extends SignatureSpi {
             DerValue result = new DerValue(DerValue.tag_Sequence,
                                            outseq.toByteArray());
             return result.toByteArray();
-        } catch (java.io.IOException e) {
+        } catch (IOException e) {
             throw new RuntimeException("Internal error", e);
         }
     }
