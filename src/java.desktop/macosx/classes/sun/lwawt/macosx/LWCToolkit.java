@@ -139,7 +139,13 @@ public final class LWCToolkit extends LWToolkit {
 
     private static native void switchKeyboardLayoutNative(String layoutName);
 
-    static private native String getKeyboardLayoutNativeId();
+    private static native String getKeyboardLayoutNativeId();
+
+    private static native String[] getKeyboardLayoutListNative(boolean includeAll);
+
+    private static native void enableKeyboardLayoutNative(String layoutName);
+
+    private static native void disableKeyboardLayoutNative(String layoutName);
 
     public static void switchKeyboardLayout (String layoutName) {
         if (layoutName == null || layoutName.isEmpty()) {
@@ -150,6 +156,32 @@ public final class LWCToolkit extends LWToolkit {
 
     public static String getKeyboardLayoutId () {
         return getKeyboardLayoutNativeId();
+    }
+
+    public static List<String> getKeyboardLayoutList(boolean includeAll) {
+        String[] result = getKeyboardLayoutListNative(includeAll);
+        if (result == null) {
+            return new ArrayList<>();
+        }
+        return Arrays.asList(result);
+    }
+
+    public static void enableKeyboardLayout(String layoutName) {
+        if (layoutName == null || layoutName.isEmpty()) {
+            throw new RuntimeException("A valid layout ID is expected. Found:  " + layoutName);
+        }
+        enableKeyboardLayoutNative(layoutName);
+    }
+
+    public static void disableKeyboardLayout(String layoutName) {
+        if (layoutName == null || layoutName.isEmpty()) {
+            throw new RuntimeException("A valid layout ID is expected. Found:  " + layoutName);
+        }
+        disableKeyboardLayoutNative(layoutName);
+    }
+
+    public static boolean isKeyboardLayoutEnabled(String layoutName) {
+        return getKeyboardLayoutList(false).contains(layoutName);
     }
 
     // Listens to EDT state in invokeAndWait() and disposes the invocation event

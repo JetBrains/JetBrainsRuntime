@@ -22,7 +22,9 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class InputMethodTest {
     private static JFrame frame;
@@ -31,6 +33,7 @@ public class InputMethodTest {
     private static String currentTest = "";
     private static String currentSection = "";
     private static String initialLayout;
+    private static final Set<String> addedLayouts = new HashSet<>();
     private static boolean success = true;
     private static int lastKeyCode = -1;
 
@@ -55,10 +58,16 @@ public class InputMethodTest {
 
     public static void main(String[] args) {
         init();
-        for (String arg : args) {
-            runTest(arg);
+        try {
+            for (String arg : args) {
+                runTest(arg);
+            }
+        } finally {
+            LWCToolkit.switchKeyboardLayout(initialLayout);
+            for (String layoutId : addedLayouts) {
+                LWCToolkit.disableKeyboardLayout(layoutId);
+            }
         }
-        LWCToolkit.switchKeyboardLayout(initialLayout);
         System.exit(success ? 0 : 1);
     }
 
@@ -113,6 +122,15 @@ public class InputMethodTest {
     }
 
     public static void layout(String name) {
+        String enableName = name;
+        if (name.equals("com.apple.inputmethod.SCIM.ITABC")) {
+            enableName = "com.apple.inputmethod.SCIM";
+        }
+
+        if (!LWCToolkit.isKeyboardLayoutEnabled(enableName)) {
+            addedLayouts.add(enableName);
+            LWCToolkit.enableKeyboardLayout(enableName);
+        }
         LWCToolkit.switchKeyboardLayout(name);
     }
 
