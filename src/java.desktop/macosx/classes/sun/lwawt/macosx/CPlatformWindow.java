@@ -48,12 +48,14 @@ import java.awt.event.WindowEvent;
 import java.awt.peer.ComponentPeer;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -615,8 +617,9 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     @Override // PlatformWindow
     public FontMetrics getFontMetrics(Font f) {
-        // TODO: not implemented
-        (new RuntimeException("unimplemented")).printStackTrace();
+        logger.severe("CPlatformWindow.getFontMetrics: exception occurred: ",
+                new RuntimeException("unimplemented"));
+
         return null;
     }
 
@@ -1176,17 +1179,43 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return contentView.getWindowLayerPtr();
     }
 
+    /**
+     * Warning: use with care as it is prone to deadlocks (appkit vs EDT vs flusher thread)
+     */
     void flushBuffers() {
+        // 24.11: only 1 usage by deliverMoveResizeEvent():
+        //                          System-dependent appearance optimization.
+        //                          May be blocking so postpone this event processing:
+
         if (isVisible() && !nativeBounds.isEmpty() && !isFullScreenMode) {
+            // use weak reference to avoid retaining the Window (GC)
+            final WeakReference<Window> targetRef = new WeakReference<>(target) {
+                @Override
+                public final String toString() {
+                    final Window window = get();
+                    return "WeakReference<Window>@" +
+                            ((window != null) ? Integer.toHexString(hashCode()) : "<invalid-ref>")
+                            + " :: {" + window + "}";
+                }
+            };
+            logger.fine("CPlatformWindow.flushBuffers: " +
+                            "enter LWCToolkit.invokeAndWait(empty) on target = {0}", targetRef);
             try {
-                LWCToolkit.invokeAndWait(new Runnable() {
+                // check invokeAndWait: KO (operations require AWTLock and main thread)
+                // => use invokeLater as it is an empty event to force refresh ASAP:
+                LWCToolkit.invokeLater(new Runnable() {
                     @Override
                     public void run() {
-                        //Posting an empty to flush the EventQueue without blocking the main thread
+                        // Posting an empty to flush the EventQueue without blocking the main thread
+                        logger.fine("CPlatformWindow.flushBuffers: run() " +
+                                "invoked on target = {0}", targetRef);
                     }
                 }, target);
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
+            } catch (InvocationTargetException ite) {
+                logger.severe("CPlatformWindow.flushBuffers: exception occurred: ", ite);
+            } finally {
+                logger.fine("CPlatformWindow.flushBuffers: " +
+                        "exit LWCToolkit.invokeAndWait(empty) on target = {0}", targetRef);
             }
         }
     }
@@ -1213,6 +1242,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     }
 
     public void doDeliverMoveResizeEvent() {
+        // logger.warning("CPlatformWindow.doDeliverMoveResizeEvent() {0}", Thread.currentThread());
         execute(ptr -> nativeCallDeliverMoveResizeEvent(ptr));
     }
 
@@ -1229,9 +1259,14 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         nativeBounds = new Rectangle(x, y, width, height);
         if (peer != null) {
             peer.notifyReshape(x, y, width, height);
+
+            logger.fine("CPlatformWindow.deliverMoveResizeEvent(): byUser = {0}", byUser);
+
             // System-dependent appearance optimization.
             if ((byUser && !oldB.getSize().equals(nativeBounds.getSize()))
                     || isFullScreenAnimationOn) {
+
+                // May be blocking so postpone this event processing:
                 flushBuffers();
             }
         }

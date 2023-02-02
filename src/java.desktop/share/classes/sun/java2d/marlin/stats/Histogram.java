@@ -36,12 +36,12 @@ public final class Histogram extends StatLong {
     static final int[] STEPS = new int[MAX];
 
     static {
-            STEPS[0] = 0;
-            STEPS[1] = 1;
+        STEPS[0] = 0;
+        STEPS[1] = 1;
 
-            for (int i = 2; i < MAX; i++) {
-                STEPS[i] = STEPS[i - 1] * BUCKET;
-            }
+        for (int i = 2; i < MAX; i++) {
+            STEPS[i] = STEPS[i - 1] * BUCKET;
+        }
     }
 
     static int bucket(int val) {
@@ -59,7 +59,7 @@ public final class Histogram extends StatLong {
         super(name);
         for (int i = 0; i < MAX; i++) {
             stats[i] = new StatLong(String.format("%5s .. %5s", STEPS[i],
-                                    ((i + 1 < MAX) ? STEPS[i + 1] : "~")));
+                    ((i + 1 < MAX) ? STEPS[i + 1] : "~")));
         }
     }
 
@@ -89,11 +89,23 @@ public final class Histogram extends StatLong {
 
         for (int i = 0; i < MAX; i++) {
             if (stats[i].count != 0L) {
-                sb.append("\n        ").append(stats[i].toString());
+                sb.append("\n        ");
+                stats[i].toString(sb);
             }
         }
+        return sb.append(" }").toString();
+    }
 
+    public String toString(double scale) {
+        final StringBuilder sb = new StringBuilder(2048);
+        super.toString(sb, scale).append(" { ");
+
+        for (int i = 0; i < MAX; i++) {
+            if (stats[i].count != 0L) {
+                sb.append("\n        ");
+                stats[i].toString(sb, scale);
+            }
+        }
         return sb.append(" }").toString();
     }
 }
-

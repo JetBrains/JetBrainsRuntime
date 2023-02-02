@@ -89,6 +89,8 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
             toolkitThread.setDaemon(true);
             toolkitThread.setPriority(Thread.NORM_PRIORITY + 1);
             toolkitThread.start();
+            // Always register thread:
+            SunToolkit.registerAwtLockThread(toolkitThread);
             return null;
         });
         waitForRunState(STATE_MESSAGELOOP);
