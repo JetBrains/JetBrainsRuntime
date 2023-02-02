@@ -210,28 +210,26 @@ static void MTLVertexCache_InitFullTile()
 {
     if (maskCacheLastIndex == MTLVC_MASK_CACHE_MAX_INDEX) {
         // init special fully opaque tile in the upper-right corner of
-        // the mask cache texture
-        static char tile[MTLVC_MASK_CACHE_TILE_SIZE];
+        // the mask cache texture(only 1x1 pixel used)
+        static char tile[1];
         static char* pTile = NULL;
         if (!pTile) {
-            memset(tile, 0xff, MTLVC_MASK_CACHE_TILE_SIZE);
+            tile[0] = (char)0xFF;
             pTile = tile;
         }
 
         jint texx = MTLVC_MASK_CACHE_TILE_WIDTH * (MTLVC_MASK_CACHE_WIDTH_IN_TILES - 1);
         jint texy = MTLVC_MASK_CACHE_TILE_HEIGHT * (MTLVC_MASK_CACHE_HEIGHT_IN_TILES - 1);
 
-        NSUInteger bytesPerRow = MTLVC_MASK_CACHE_TILE_WIDTH;
-
         MTLRegion region = {
                 {texx,  texy,   0},
-                {MTLVC_MASK_CACHE_TILE_WIDTH, MTLVC_MASK_CACHE_TILE_HEIGHT, 1}
+                {1, 1, 1}
         };
 
         [maskCacheTex.texture replaceRegion:region
                                 mipmapLevel:0
                                   withBytes:tile
-                                bytesPerRow:bytesPerRow];
+                                bytesPerRow:1];
 
         maskCacheLastIndex = MTLVC_MASK_CACHE_MAX_INDEX_RESERVED;
     }
@@ -322,6 +320,10 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
         MTLVertexCache_EnableMaskCache(mtlc, dstOps);
     }
 
+    static jint nextFullDx = -1;
+    static jint nextFullDy = -1;
+    bool mergeTile = NO;
+
     if (mask != NULL) {
         jint texx = MTLVC_MASK_CACHE_TILE_WIDTH *
                     (maskCacheIndex % MTLVC_MASK_CACHE_WIDTH_IN_TILES);
@@ -346,7 +348,7 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
         // adds extra blitting logic.
         // TODO : Research more and try removing memcpy logic.
         if (maskscan <= width) {
-            int height_offset = bytesPerRow * srcy;
+            NSUInteger height_offset = bytesPerRow * srcy;
             [maskCacheTex.texture replaceRegion:region
                             mipmapLevel:0
                               withBytes:mask + height_offset
@@ -372,25 +374,43 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
         tx1 = ((jfloat) texx) / MTLVC_MASK_CACHE_WIDTH_IN_TEXELS;
         ty1 = ((jfloat) texy) / MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS;
 
+        tx2 = tx1 + (((jfloat)width) / MTLVC_MASK_CACHE_WIDTH_IN_TEXELS);
+        ty2 = ty1 + (((jfloat)height) / MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS);
+
         // count added masks:
         maskCacheIndex++;
+
+        // reset next Full-tile coords:
+        nextFullDx = -1;
     } else {
         if (maskCacheLastIndex == MTLVC_MASK_CACHE_MAX_INDEX) {
             MTLVertexCache_InitFullTile();
         }
-        tx1 = ((jfloat)MTLVC_MASK_CACHE_SPECIAL_TILE_X) /
-              MTLVC_MASK_CACHE_WIDTH_IN_TEXELS;
-        ty1 = ((jfloat)MTLVC_MASK_CACHE_SPECIAL_TILE_Y) /
-              MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS;
-    }
+        // const: texture coords of full tile:
+        tx1 = (((jfloat)MTLVC_MASK_CACHE_SPECIAL_TILE_X) /
+              MTLVC_MASK_CACHE_WIDTH_IN_TEXELS);
+        ty1 = (((jfloat)MTLVC_MASK_CACHE_SPECIAL_TILE_Y) /
+              MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS);
 
-    tx2 = tx1 + (((jfloat)width) / MTLVC_MASK_CACHE_WIDTH_IN_TEXELS);
-    ty2 = ty1 + (((jfloat)height) / MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS);
+        // const: use only 1x1 pixel:
+        tx2 = tx1;
+        ty2 = ty1;
+
+        if ((dstx == nextFullDx) && (dsty == nextFullDy)
+            && (vertexCacheIndex > 0))
+        {
+            mergeTile = YES;
+        }
+
+        // store next Full-tile coords:
+        nextFullDx = dstx + width;
+        nextFullDy = dsty;
+    }
 
     dx1 = (jfloat)dstx;
     dy1 = (jfloat)dsty;
-    dx2 = dx1 + width;
-    dy2 = dy1 + height;
+    dx2 = dx1 + (jfloat)width;
+    dy2 = dy1 + (jfloat)height;
 
     if ([mtlc useMaskColor]) {
         // ColorPaint class is already checked in MTLVertexCache_EnableMaskCache:
@@ -404,14 +424,35 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
             lastColor = color;
             unsigned char uColor[RGBA_COMP] = RGBA_TO_U4(color);
             MTLVC_COPY_COLOR(last_uColor, uColor);
+            // color changed, cannot merge tile:
+            mergeTile = NO;
         }
-        // add only 1 color per quad:
-        MTLVC_ADD_QUAD_COLOR(last_uColor);
+        if (!mergeTile) {
+            // add only 1 color per quad:
+            MTLVC_ADD_QUAD_COLOR(last_uColor);
+        }
     }
 
-    J2dTraceLn(J2D_TRACE_INFO, "tx1 = %f ty1 = %f tx2 = %f ty2 = %f dx1 = %f dy1 = %f dx2 = %f dy2 = %f", tx1, ty1, tx2, ty2, dx1, dy1, dx2, dy2);
-    MTLVC_ADD_TRIANGLES(tx1, ty1, tx2, ty2,
-                        dx1, dy1, dx2, dy2);
+    if (mergeTile) {
+        // Color, Gradient & Texture paints support tile-merging:
+        // Fix dx2 coordinate in previous triangles:
+        const jint prevIndex = vertexCacheIndex - VERTS_FOR_A_QUAD; // already tested > 0
+        // skip vertex 1 (dx1, dy1)
+        // fix  vertex 2 (dx2, dy1)
+        J2DVertex *v = &vertexCache[prevIndex + 1];
+        v->position[0] = dx2;
+        // fix  vertex 3 (dx2, dy2)
+        v = &vertexCache[prevIndex + 2];
+        v->position[0] = dx2;
+        // fix  vertex 4 (dx2, dy2)
+        v = &vertexCache[prevIndex + 3];
+        v->position[0] = dx2;
+        // skip vertex 5 (dx1, dy2)
+        // skip vertex 6 (dx1, dy1)
+    } else {
+        J2dTraceLn(J2D_TRACE_INFO, "tx1 = %f ty1 = %f tx2 = %f ty2 = %f dx1 = %f dy1 = %f dx2 = %f dy2 = %f", tx1, ty1, tx2, ty2, dx1, dy1, dx2, dy2);
+        MTLVC_ADD_TRIANGLES(tx1, ty1, tx2, ty2, dx1, dy1, dx2, dy2);
+    }
 }
 
 void
@@ -429,6 +470,5 @@ MTLVertexCache_AddGlyphQuad(MTLContext *mtlc,
         MTLVertexCache_FlushGlyphVertexCache(mtlc);
     }
 
-    MTLVC_ADD_TRIANGLES(tx1, ty1, tx2, ty2,
-                        dx1, dy1, dx2, dy2);
+    MTLVC_ADD_TRIANGLES(tx1, ty1, tx2, ty2, dx1, dy1, dx2, dy2);
 }
