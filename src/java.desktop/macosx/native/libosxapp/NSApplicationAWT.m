@@ -43,8 +43,7 @@ static NSString *SHARED_FRAMEWORK_BUNDLE = @"/System/Library/Frameworks/JavaVM.f
 static id <NSApplicationDelegate> applicationDelegate = nil;
 static QueuingApplicationDelegate * qad = nil;
 
-// Flag used to indicate to the Plugin2 event synthesis code to do a postEvent instead of sendEvent
-BOOL postEventDuringEventSynthesis = NO;
+static BOOL promptJavaEventsDispatch = NO;
 
 /**
  * Subtypes of NSApplicationDefined, which are used for custom events.
@@ -374,23 +373,34 @@ AWT_ASSERT_APPKIT_THREAD;
     [super orderFrontStandardAboutPanelWithOptions:optionsDictionary];
 }
 
-#define DRAGMASK (NSMouseMovedMask | NSLeftMouseDraggedMask | NSRightMouseDownMask | NSRightMouseDraggedMask | NSLeftMouseUpMask | NSRightMouseUpMask | NSFlagsChangedMask | NSKeyDownMask)
++ (void) enablePromptJavaEventsDispatch {
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+        promptJavaEventsDispatch = YES;
+    }];
+}
 
-#if defined(MAC_OS_X_VERSION_10_12) && __LP64__
-   // 10.12 changed `mask` to NSEventMask (unsigned long long) for x86_64 builds.
 - (NSEvent *)nextEventMatchingMask:(NSEventMask)mask
-#else
-- (NSEvent *)nextEventMatchingMask:(NSUInteger)mask
-#endif
-untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
-    if (mask == DRAGMASK && [((NSString *)kCFRunLoopDefaultMode) isEqual:mode]) {
-        postEventDuringEventSynthesis = YES;
+                         untilDate:(NSDate *)expiration
+                            inMode:(NSString *)mode
+                           dequeue:(BOOL)deqFlag {
+    if (!promptJavaEventsDispatch || !deqFlag || mask & NSEventMaskApplicationDefined) {
+        return [super nextEventMatchingMask:mask
+                                  untilDate:expiration
+                                     inMode:mode
+                                    dequeue:deqFlag];
+    } else {
+        for (;;) {
+            NSEvent *event = [super nextEventMatchingMask:mask|NSEventMaskApplicationDefined
+                                                untilDate:expiration
+                                                   inMode:mode
+                                                  dequeue:YES];
+            if (event.type == NSApplicationDefined) {
+                [self sendEvent:event];
+            } else {
+                return event;
+            }
+        }
     }
-
-    NSEvent *event = [super nextEventMatchingMask:mask untilDate:expiration inMode:mode dequeue: deqFlag];
-    postEventDuringEventSynthesis = NO;
-
-    return event;
 }
 
 // NSTimeInterval has microseconds precision
