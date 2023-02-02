@@ -1178,7 +1178,10 @@ public final class LWCToolkit extends LWToolkit {
     @Override
     public void installMainThreadDispatcher(EventQueue eventQueue) {
         if (isDispatchingOnMainThread()) {
-            APPKIT_THREAD.setContextClassLoader(Thread.currentThread().getContextClassLoader());
+            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+                APPKIT_THREAD.setContextClassLoader(Thread.currentThread().getContextClassLoader());
+                return null;
+            });
             setMainThreadImmediateDispatch();
             AWTAccessor.getEventQueueAccessor().setFwDispatcher(eventQueue, MAIN_THREAD_DISPATCHER);
         }
