@@ -1138,6 +1138,7 @@ public class EventQueue {
                     }
                 );
                 dispatchThread.start();
+                getEventLog().info("initDispatchThread: EDT created: {0}", dispatchThread);
             }
         } finally {
             pushPopLock.unlock();

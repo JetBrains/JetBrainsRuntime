@@ -161,7 +161,8 @@ static inline jint doPaintCGContext(CGContextRef cgRef, jlong controlPtr, jlong 
     JRSUIControlRef control = (JRSUIControlRef)jlong_to_ptr(controlPtr);
     _SyncEncodedProperties(control, oldProperties, newProperties);
 
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // direct mode
+                                          block:^(){
         CGRect bounds = CGRectMake(x, y, w, h);
         JRSUIControlDraw(gRenderer, control, cgRef, bounds);
     }];
@@ -255,10 +256,10 @@ JNIEXPORT jint JNICALL Java_apple_laf_JRSUIControl_getNativeHitPart
 
     __block jint result;
 
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // direct mode
+                                          block:^(){
         result = JRSUIControlGetHitPart(gRenderer, control, bounds, point);
     }];
-
     return result;
 }
 
@@ -272,7 +273,8 @@ JNIEXPORT jboolean JNICALL Java_apple_laf_JRSUIUtils_00024ScrollBar_shouldUseScr
 {
     __block Boolean result;
 
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // direct mode
+                                          block:^(){
         result = JRSUIControlShouldScrollToClick();
     }];
     return result;
@@ -291,7 +293,8 @@ JNIEXPORT void JNICALL Java_apple_laf_JRSUIControl_getNativePartBounds
 
     __block CGRect partBounds;
 
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // direct mode
+                                          block:^(){
         CGRect frame = CGRectMake(x, y, w, h);
         partBounds = JRSUIControlGetScrollBarPartBounds(control, frame, part);
     }];
@@ -319,7 +322,8 @@ JNIEXPORT jdouble JNICALL Java_apple_laf_JRSUIControl_getNativeScrollBarOffsetCh
 
     __block jdouble result;
 
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // direct mode
+                                          block:^(){
         CGRect frame = CGRectMake(x, y, w, h);
         result = (jdouble)JRSUIControlGetScrollBarOffsetFor(control, frame, offset, visibleAmount, extent);
     }];

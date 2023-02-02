@@ -35,11 +35,15 @@ import sun.awt.AWTAccessor;
 import sun.awt.SunToolkit;
 import sun.lwawt.LWToolkit;
 import sun.lwawt.macosx.*;
+import sun.util.logging.PlatformLogger;
 
 @SuppressWarnings("serial") // JDK implementation class
 final class ScreenMenu extends Menu
         implements ContainerListener, ComponentListener,
                    ScreenMenuPropertyHandler {
+
+    // Logger to report issues happened during execution but that do not affect functionality
+    private static final PlatformLogger logger = PlatformLogger.getLogger("com.apple.laf.ScreenMenu");
 
     static {
         loadAWTLibrary();
@@ -132,12 +136,14 @@ final class ScreenMenu extends Menu
     public void invokeOpenLater() {
         final JMenu invoker = fInvoker;
         if (invoker == null) {
-            System.err.println("invoker is null!");
+            logger.severe("ScreenMenu.invokeOpenLater: invoker is null!");
             return;
         }
 
         try {
+            // check invokeAndWait: OK (operations look not requiring locks or main thread):
             LWCToolkit.invokeAndWait(new Runnable() {
+                @Override
                 public void run() {
                     invoker.setSelected(true);
                     invoker.validate();
@@ -146,8 +152,7 @@ final class ScreenMenu extends Menu
                 }
             }, invoker);
         } catch (final Exception e) {
-            System.err.println(e);
-            e.printStackTrace();
+            logger.severe("ScreenMenu.invokeOpenLater: exception occurred: ", e);
         }
     }
 
@@ -159,6 +164,7 @@ final class ScreenMenu extends Menu
         if (invoker == null) return;
 
         try {
+            // check invokeAndWait: OK (operations look not requiring locks or main thread):
             LWCToolkit.invokeAndWait(new Runnable() {
                 public void run() {
                     invoker.setSelected(false);
@@ -172,7 +178,7 @@ final class ScreenMenu extends Menu
                 }
             }, invoker);
         } catch (final Exception e) {
-            e.printStackTrace();
+            logger.severe("ScreenMenu.invokeMenuClosing: exception occurred: ", e);
         }
     }
 

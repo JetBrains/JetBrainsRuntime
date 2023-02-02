@@ -43,10 +43,15 @@ import javax.swing.text.JTextComponent;
 import sun.awt.AWTAccessor;
 import sun.awt.im.InputMethodAdapter;
 import sun.lwawt.*;
+import sun.util.logging.PlatformLogger;
 
 import static sun.awt.AWTAccessor.ComponentAccessor;
 
 public class CInputMethod extends InputMethodAdapter {
+
+    // Logger to report issues happened during execution but that do not affect functionality
+    private static final PlatformLogger logger = PlatformLogger.getLogger("sun.lwawt.macosx.CInputMethod");
+
     private volatile InputMethodContext fIMContext;
     private volatile Component fAwtFocussedComponent;
     private LWComponentPeer<?, ?> fAwtFocussedComponentPeer;
@@ -541,7 +546,7 @@ public class CInputMethod extends InputMethodAdapter {
                 }
             }, fAwtFocussedComponent);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.severe("CInputMethod.selectRange: exception occurred: ", e);
         }
     }
 
@@ -557,7 +562,7 @@ public class CInputMethod extends InputMethodAdapter {
                 }
             }, fAwtFocussedComponent);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.severe("CInputMethod.selectNextGlyph: exception occurred: ", e);
         }
     }
 
@@ -772,7 +777,9 @@ public class CInputMethod extends InputMethodAdapter {
                     }
                 }, (sun.awt.im.InputContext)fIMContext, fAwtFocussedComponent);
             }
-        } catch (InvocationTargetException ite) { ite.printStackTrace(); }
+        } catch (InvocationTargetException ite) {
+            logger.severe("CInputMethod.firstRectForCharacterRange: exception occurred: ", ite);
+        }
 
         synchronized(rect) { return rect; }
     }
@@ -794,7 +801,9 @@ public class CInputMethod extends InputMethodAdapter {
                     }
                 }, (sun.awt.im.InputContext)fIMContext, fAwtFocussedComponent);
             }
-        } catch (InvocationTargetException ite) { ite.printStackTrace(); }
+        } catch (InvocationTargetException ite) {
+            logger.severe("CInputMethod.characterIndexForPoint: exception occurred: ", ite);
+        }
 
         // This bit of gymnastics ensures that the returned location is within the composed text.
         // If it falls outside that region, the input method will commit the text, which is inconsistent with native
@@ -861,6 +870,7 @@ public class CInputMethod extends InputMethodAdapter {
                 m = sun.awt.im.InputContext.class.getDeclaredMethod("getClientComponent");
                 if (m != null) m.setAccessible(true);
             } catch (NoSuchMethodException ignore) {
+                logger.fine("CInputMethod.FxInvoker: exception occurred: ", ignore);
             }
             GET_CLIENT_COMPONENT_METHOD = m;
         }
@@ -870,6 +880,7 @@ public class CInputMethod extends InputMethodAdapter {
                 try {
                     return (Component)GET_CLIENT_COMPONENT_METHOD.invoke(ctx);
                 } catch (IllegalAccessException | InvocationTargetException ignore) {
+                    logger.fine("CInputMethod.FxInvoker.getClientComponent: exception occurred: ", ignore);
                 }
             }
             return null;
@@ -882,6 +893,7 @@ public class CInputMethod extends InputMethodAdapter {
                         // the class is not available in the current class loader context, use the client class loader
                         JFX_PANEL_CLASS = Class.forName("javafx.embed.swing.JFXPanel", false, clientComponent.getClass().getClassLoader());
                     } catch (ClassNotFoundException ignore) {
+                        logger.fine("CInputMethod.FxInvoker.instanceofJFXPanel: exception occurred: ", ignore);
                     }
                 }
                 if (JFX_PANEL_CLASS != null) {
@@ -912,9 +924,10 @@ public class CInputMethod extends InputMethodAdapter {
 
     static void invokeAndWaitNoThrow(Runnable runnable, Component component) {
         try {
+            // check invokeAndWait: OK (given Runnable in callers look not requiring locks or main thread):
             LWCToolkit.invokeAndWait(runnable, component);
         } catch (Throwable e) {
-            e.printStackTrace();
+            logger.severe("CInputMethod.invokeAndWaitNoThrow: exception occurred: ", e);
         }
     }
 }

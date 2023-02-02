@@ -25,6 +25,7 @@
 
 package sun.java2d.metal;
 
+import sun.awt.SunToolkit;
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.RenderQueue;
@@ -127,18 +128,16 @@ public class MTLRenderQueue extends RenderQueue {
         try {
             flusher.flushNow();
         } catch (Exception e) {
-            System.err.println("exception in flushNow:");
-            e.printStackTrace();
+            logger.severe("MTLRenderQueue.flushNow: exception occurred: ", e);
         }
     }
 
-    public void flushAndInvokeNow(Runnable r) {
+    public synchronized void flushAndInvokeNow(Runnable r) {
         // assert lock.isHeldByCurrentThread();
         try {
             flusher.flushAndInvokeNow(r);
         } catch (Exception e) {
-            System.err.println("exception in flushAndInvokeNow:");
-            e.printStackTrace();
+            logger.severe("MTLRenderQueue.flushAndInvokeNow: exception occurred: ", e);
         }
     }
 
@@ -170,6 +169,8 @@ public class MTLRenderQueue extends RenderQueue {
             thread.setDaemon(true);
             thread.setPriority(Thread.MAX_PRIORITY);
             thread.start();
+            // Always register thread:
+            SunToolkit.registerAwtLockThread(thread);
         }
 
         public synchronized void flushNow() {
@@ -237,9 +238,8 @@ public class MTLRenderQueue extends RenderQueue {
                     }
                 } catch (Error e) {
                     error = e;
-                } catch (Exception x) {
-                    System.err.println("exception in QueueFlusher:");
-                    x.printStackTrace();
+                } catch (Exception ex) {
+                    logger.severe("QueueFlusher.run: exception occurred: ", ex);
                 } finally {
                     if (timedOut) {
                         unlock();

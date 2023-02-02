@@ -26,6 +26,7 @@
 package sun.java2d.opengl;
 
 import sun.awt.AWTThreading;
+import sun.awt.SunToolkit;
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.RenderQueue;
@@ -168,6 +169,8 @@ public class OGLRenderQueue extends RenderQueue {
             thread.setDaemon(true);
             thread.setPriority(Thread.MAX_PRIORITY);
             thread.start();
+            // Always register thread:
+            SunToolkit.registerAwtLockThread(thread);
         }
 
         public void flushNow() {

@@ -26,6 +26,8 @@ import java.util.function.Consumer;
 public class AWTThreading {
     private static final PlatformLogger logger = PlatformLogger.getLogger(AWTThreading.class.getName());
 
+    private static final boolean TRACE_RUN_LOOP = false;
+
     private static final Runnable EMPTY_RUNNABLE = () -> {};
 
     private static final AtomicReference<Function<Thread, AWTThreading>> theAWTThreadingFactory =
@@ -140,6 +142,8 @@ public class AWTThreading {
                                     Thread t = factory.newThread(r);
                                     t.setDaemon(true);
                                     t.setName(AWTThreading.class.getSimpleName() + " " + t.getName());
+                                    // Always register thread:
+                                    SunToolkit.registerAwtLockThread(t);
                                     return t;
                                 }
                             })
@@ -156,6 +160,8 @@ public class AWTThreading {
                 }
             }
 
+            if (TRACE_RUN_LOOP) logger.info("AWTThreading.execute: callable " + callable);
+
             FutureTask<T> task = new FutureTask<>(callable) {
                 @Override
                 protected void done() {
@@ -170,6 +176,8 @@ public class AWTThreading {
 
             try {
                 while (!task.isDone() || !currentQueue.isEmpty()) {
+                    if (TRACE_RUN_LOOP) logger.info("AWTThreading.execute: poll event = will be WAITING for : " + timeout + " " + unit);
+
                     InvocationEvent event;
                     if (timeout >= 0 && unit != null) {
                         event = currentQueue.poll(timeout, unit);
@@ -181,9 +189,11 @@ public class AWTThreading {
                         synchronized (invocations) {
                             invocations.remove(currentQueue);
                         }
-                        new RuntimeException("Waiting for the invocation event timed out").printStackTrace();
+                        logger.warning("AWTThreading.execute: ",
+                                new RuntimeException("Waiting for the invocation event timed out"));
                         break;
                     }
+                    if (TRACE_RUN_LOOP) logger.info("AWTThreading.execute: dispatch event: " + event);
                     event.dispatch();
                 }
                 return task.isCancelled() ? null : task.get();
@@ -291,6 +301,9 @@ public class AWTThreading {
                   catchThrowables);
 
             futureResult.whenComplete((r, ex) -> {
+
+                if (TRACE_RUN_LOOP) logger.info("TrackedInvocationEvent.whenComplete: awaiting " + (System.currentTimeMillis() - creationTime) + " ms)");
+
                 if (ex != null) {
                     String message = ex.getMessage() + " (awaiting " + (System.currentTimeMillis() - creationTime) + " ms)";
                     if (logger.isLoggable(PlatformLogger.Level.FINE)) {

@@ -40,7 +40,9 @@ import sun.java2d.pipe.hw.AccelTypedVolatileImage;
 import sun.java2d.pipe.hw.ContextCapabilities;
 import sun.lwawt.LWComponentPeer;
 import sun.lwawt.macosx.CFRetainedResource;
+import sun.lwawt.macosx.CThreading;
 
+import java.awt.AWTError;
 import java.awt.AWTException;
 import java.awt.BufferCapabilities;
 import java.awt.Component;
@@ -58,6 +60,8 @@ import java.awt.image.DataBuffer;
 import java.awt.image.DirectColorModel;
 import java.awt.image.VolatileImage;
 import java.awt.image.WritableRaster;
+import java.security.PrivilegedAction;
+import java.util.concurrent.Callable;
 
 import static sun.java2d.metal.MTLContext.MTLContextCaps.CAPS_EXT_GRAD_SHADER;
 import static sun.java2d.pipe.hw.AccelSurface.TEXTURE;
@@ -88,8 +92,12 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
      */
     private static native int nativeGetMaxTextureSize();
 
+    private static final boolean DO_DIRECT = true;
+
     static {
         mtlAvailable = isMetalFrameworkAvailable();
+
+        System.out.println("MTLGraphicsConfig DO_DIRECT: " + DO_DIRECT);
     }
 
     private MTLGraphicsConfig(CGraphicsDevice device,
@@ -114,39 +122,73 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
                 MTLSurfaceData.TEXTURE);
     }
 
+    @SuppressWarnings("removal")
     public static MTLGraphicsConfig getConfig(CGraphicsDevice device,
                                               int displayID, StringBuilder errorMessage)
     {
-        long cfginfo = 0;
-        int textureSize = 0;
-        MTLRenderQueue rq = MTLRenderQueue.getInstance();
-        rq.lock();
-        try {
-            cfginfo = getMTLConfigInfo(displayID, CGraphicsEnvironment.getMtlShadersLibPath());
-            if (cfginfo != 0L) {
-                textureSize = nativeGetMaxTextureSize();
-                // TODO : This clamping code is same as in OpenGL.
-                // Whether we need such clamping or not in case of Metal
-                // will be pursued under 8260644
-                textureSize = textureSize <= 16384 ? textureSize / 2 : 8192;
-                MTLContext.setScratchSurface(cfginfo);
+        // Move MTLGraphicsConfig creation code to AppKit thread in order to avoid the
+        // following deadlock:
+// TODO: fix
+        // 1) CGLGraphicsConfig.getCGLConfigInfo (called from EDT) takes RenderQueue.lock
+        // 2) CGLLayer.drawInCGLContext is invoked on AppKit thread and
+        //    blocked on RenderQueue.lock
+        // 1) invokes native block on AppKit and wait
+
+        Callable<MTLGraphicsConfig> command = () -> {
+            long cfginfo = 0;
+            int textureSize = 0;
+            MTLRenderQueue rq = MTLRenderQueue.getInstance();
+            rq.lock();
+            try {
+                cfginfo = getMTLConfigInfo(displayID, CGraphicsEnvironment.getMtlShadersLibPath());
+                if (cfginfo != 0L) {
+                    textureSize = nativeGetMaxTextureSize();
+                    // TODO : This clamping code is same as in OpenGL.
+                    // Whether we need such clamping or not in case of Metal
+                    // will be pursued under 8260644
+                    textureSize = textureSize <= 16384 ? textureSize / 2 : 8192;
+                    MTLContext.setScratchSurface(cfginfo);
+                }
+            } finally {
+                rq.unlock();
             }
-        } finally {
-            rq.unlock();
-        }
-        if (cfginfo == 0) {
-            errorMessage.append(" Cannot create MTLConfigInfo.");
-            return null;
-        }
+            if (cfginfo == 0) {
+                errorMessage.append(" Cannot create MTLConfigInfo.");
+                return null;
+            }
 
-        ContextCapabilities caps = new MTLContext.MTLContextCaps(
-                CAPS_PS30 | CAPS_PS20 |
-                        CAPS_RT_TEXTURE_ALPHA | CAPS_RT_TEXTURE_OPAQUE |
-                        CAPS_MULTITEXTURE | CAPS_TEXNONPOW2 | CAPS_TEXNONSQUARE |
-                        CAPS_EXT_BIOP_SHADER | CAPS_EXT_GRAD_SHADER,
-                null);
+            ContextCapabilities caps = new MTLContext.MTLContextCaps(
+                    CAPS_PS30 | CAPS_PS20 |
+                            CAPS_RT_TEXTURE_ALPHA | CAPS_RT_TEXTURE_OPAQUE |
+                            CAPS_MULTITEXTURE | CAPS_TEXNONPOW2 | CAPS_TEXNONSQUARE |
+                            CAPS_EXT_BIOP_SHADER | CAPS_EXT_GRAD_SHADER,
+                    null);
 
-        return new MTLGraphicsConfig(device, cfginfo, textureSize, caps);
+            return new MTLGraphicsConfig(device, cfginfo, textureSize, caps);
+        };
+
+        System.out.println("MTLGraphicsConfig.getConfig: enter");
+        // TODO: decide
+        if (DO_DIRECT) {
+            try {
+                return command.call();
+            } catch (Throwable throwable) {
+                throw new AWTError(throwable.getMessage());
+            } finally {
+                System.out.println("MTLGraphicsConfig.getConfig: exit");
+            }
+        } else {
+            return java.security.AccessController.doPrivileged(
+                    (PrivilegedAction<MTLGraphicsConfig>) () -> {
+                        try {
+                            return CThreading.executeOnAppKit(command);
+                        } catch (Throwable throwable) {
+                            throw new AWTError(throwable.getMessage());
+                        } finally {
+                            System.out.println("MTLGraphicsConfig.getConfig: exit");
+                        }
+                    });
+        }
     }
 
     public static boolean isMetalAvailable() {

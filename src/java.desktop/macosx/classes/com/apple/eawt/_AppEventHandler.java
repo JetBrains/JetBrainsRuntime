@@ -219,7 +219,7 @@ class _AppEventHandler {
 
     // default funnel for non-complex events
     private static void handleNativeNotification(final int code) {
-//        System.out.println(code);
+        logger.fine("handleNativeNotification: {0}", code);
 
         switch (code) {
             case NOTIFY_ABOUT:
