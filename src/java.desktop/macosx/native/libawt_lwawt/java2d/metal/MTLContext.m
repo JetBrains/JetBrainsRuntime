@@ -747,7 +747,10 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
     J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_mtlDisplayLinkCallback: ctx=%p", displayLinkContext);
     @autoreleasepool {
         DLParams* dlParams = (__bridge DLParams* *)displayLinkContext;
-        [ThreadUtilities performOnMainThread:@selector(redraw:) on:dlParams->mtlc withObject:@(dlParams->displayID) waitUntilDone:NO];
+        [ThreadUtilities performOnMainThread:@selector(redraw:)
+                                          on:dlParams->mtlc
+                                  withObject:@(dlParams->displayID)
+                               waitUntilDone:NO useJavaModes:NO]; // direct mode
     }
     return kCVReturnSuccess;
 }

@@ -1067,7 +1067,6 @@ AWT_ASSERT_APPKIT_THREAD;
 
 - (void)windowDidMove:(NSNotification *)notification {
 AWT_ASSERT_APPKIT_THREAD;
-
     [self _deliverMoveResizeEvent];
 }
 
@@ -1079,7 +1078,6 @@ AWT_ASSERT_APPKIT_THREAD;
 #endif
         return;
     }
-
     [self _deliverMoveResizeEvent];
 }
 
@@ -1383,7 +1381,9 @@ AWT_ASSERT_APPKIT_THREAD;
         jobject target = (*env)->GetObjectField(env, platformWindow, jf_target);
         if (target) {
             h = (CGFloat) (*env)->CallFloatMethod(env, target, jm_internalCustomTitleBarHeight);
-            self.customTitleBarControlsVisible = (BOOL) (*env)->CallBooleanMethod(env, target, jm_internalCustomTitleBarControlsVisible);
+            if (!(*env)->ExceptionCheck(env)) {
+                self.customTitleBarControlsVisible = (BOOL) (*env)->CallBooleanMethod(env, target, jm_internalCustomTitleBarControlsVisible);
+            }
             (*env)->DeleteLocalRef(env, target);
         }
         CHECK_EXCEPTION();
@@ -1896,7 +1896,10 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
                             nsWindow.styleMask & NSWindowStyleMaskFullScreen)];
     // calls methods on NSWindow to change other properties, based on the mask
     [self setPropertiesForStyleBits:newBits mask:mask];
-    if (!fullscreen && !self.nsWindow.miniaturized) [self _deliverMoveResizeEvent];
+
+    if (!fullscreen && !self.nsWindow.miniaturized) {
+        [self _deliverMoveResizeEvent];
+    }
 
     if (enabled != (self.customTitleBarConstraints != nil)) {
         if (!fullscreen) {
@@ -2629,7 +2632,7 @@ JNI_COCOA_ENTER(env);
     NSWindow *nsWindow = OBJC(windowPtr);
     [ThreadUtilities performOnMainThread:@selector(setTitle:) on:nsWindow
                              withObject:JavaStringToNSString(env, jtitle)
-                           waitUntilDone:NO];
+                           waitUntilDone:NO useJavaModes:NO]; // direct mode
 
 JNI_COCOA_EXIT(env);
 }

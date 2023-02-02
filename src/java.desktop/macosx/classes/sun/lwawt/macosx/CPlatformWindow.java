@@ -615,8 +615,9 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     @Override // PlatformWindow
     public FontMetrics getFontMetrics(Font f) {
-        // TODO: not implemented
-        (new RuntimeException("unimplemented")).printStackTrace();
+        logger.severe("CPlatformWindow.getFontMetrics: exception occurred: ",
+                new RuntimeException("unimplemented"));
+
         return null;
     }
 
@@ -1176,17 +1177,42 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return contentView.getWindowLayerPtr();
     }
 
+    private final static boolean INVOKE_LATER_FLUSH_BUFFERS
+            = Boolean.getBoolean(System.getProperty("awt.mac.flushBuffers.invokeLater", "false"));
+
     void flushBuffers() {
+        // 24.11: only 1 usage by deliverMoveResizeEvent():
         if (isVisible() && !nativeBounds.isEmpty() && !isFullScreenMode) {
+            logger.fine("CPlatformWindow.flushBuffers: " +
+                            "enter LWCToolkit.invokeAndWait(empty) on target = {0}", target);
+
+            // Runnable needed to get obvious stack traces:
+            final Runnable emptyTask = new Runnable() {
+                @Override
+                public void run() {
+                    // Posting an empty to flush the EventQueue without blocking the main thread
+                    logger.fine("CPlatformWindow.flushBuffers: run() " +
+                            "invoked on target = {0}", target);
+                }
+            };
             try {
-                LWCToolkit.invokeAndWait(new Runnable() {
-                    @Override
-                    public void run() {
-                        //Posting an empty to flush the EventQueue without blocking the main thread
-                    }
-                }, target);
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
+                // check invokeAndWait: KO (operations require AWTLock and main thread)
+                // => use invokeLater as it is an empty event to force refresh ASAP:
+
+                // use the system property 'awt.mac.flushBuffers.invokeLater' to 'true' (default: false)
+                // to avoid deadlocks.
+
+                // TODO: use an alternative mean to signal immediate refresh!
+                if (INVOKE_LATER_FLUSH_BUFFERS) {
+                    LWCToolkit.invokeLater(emptyTask, target);
+                } else {
+                    LWCToolkit.invokeAndWait(emptyTask, target);
+                }
+            } catch (InvocationTargetException ite) {
+                logger.severe("CPlatformWindow.flushBuffers: exception occurred: ", ite);
+            } finally {
+                logger.fine("CPlatformWindow.flushBuffers: " +
+                        "exit LWCToolkit.invokeAndWait(empty) on target = {0}", target);
             }
         }
     }

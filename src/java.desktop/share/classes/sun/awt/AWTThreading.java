@@ -24,7 +24,10 @@ import java.util.function.Consumer;
  * Note: the log messages are tested by jdk/jb/java/awt/Toolkit/LWCToolkitInvokeAndWaitTest.java
  */
 public class AWTThreading {
-    private static final PlatformLogger logger = PlatformLogger.getLogger(AWTThreading.class.getName());
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(AWTThreading.class.getName());
+
+    private static final boolean TRACE_RUN_LOOP = false; // use System property
 
     private static final Runnable EMPTY_RUNNABLE = () -> {};
 
@@ -119,7 +122,7 @@ public class AWTThreading {
         try {
             return callable.call();
         } catch (Exception e) {
-            e.printStackTrace();
+            log.severe("AWTThreading.executeWaitToolkit: failure", e);
         }
         return null;
     }
@@ -140,6 +143,8 @@ public class AWTThreading {
                                     Thread t = factory.newThread(r);
                                     t.setDaemon(true);
                                     t.setName(AWTThreading.class.getSimpleName() + " " + t.getName());
+                                    // Always register thread:
+                                    SunToolkit.registerAwtLockThread(t);
                                     return t;
                                 }
                             })
@@ -156,6 +161,8 @@ public class AWTThreading {
                 }
             }
 
+            if (TRACE_RUN_LOOP) log.info("AWTThreading.execute: callable " + callable);
+
             FutureTask<T> task = new FutureTask<>(callable) {
                 @Override
                 protected void done() {
@@ -170,6 +177,8 @@ public class AWTThreading {
 
             try {
                 while (!task.isDone() || !currentQueue.isEmpty()) {
+                    if (TRACE_RUN_LOOP) log.info("AWTThreading.execute: poll event = will be WAITING for : " + timeout + " " + unit);
+
                     InvocationEvent event;
                     if (timeout >= 0 && unit != null) {
                         event = currentQueue.poll(timeout, unit);
@@ -181,15 +190,17 @@ public class AWTThreading {
                         synchronized (invocations) {
                             invocations.remove(currentQueue);
                         }
-                        new RuntimeException("Waiting for the invocation event timed out").printStackTrace();
+                        log.warning("AWTThreading.execute: ",
+                                new RuntimeException("Waiting for the invocation event timed out"));
                         break;
                     }
+                    if (TRACE_RUN_LOOP) log.info("AWTThreading.execute: dispatch event: " + event);
                     event.dispatch();
                 }
                 return task.isCancelled() ? null : task.get();
 
             } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
+                log.severe("AWTThreading.execute: failure", e);
             }
         } finally {
             level--;
@@ -245,12 +256,13 @@ public class AWTThreading {
                 return eventRef.get();
             }
         }
-        return TrackedInvocationEvent.create(source, onDispatched, () -> {}, catchThrowables);
+        return TrackedInvocationEvent.create(source, onDispatched, EMPTY_RUNNABLE, catchThrowables);
     }
 
     @SuppressWarnings("serial")
     public static class TrackedInvocationEvent extends InvocationEvent {
         private final long creationTime = System.currentTimeMillis();
+        // TODO: costly => use lazy ?
         private final Throwable throwable = new Throwable();
         private final CompletableFuture<Void> futureResult = new CompletableFuture<>();
 
@@ -291,14 +303,19 @@ public class AWTThreading {
                   catchThrowables);
 
             futureResult.whenComplete((r, ex) -> {
+                if (TRACE_RUN_LOOP) log.info("TrackedInvocationEvent.whenComplete: awaiting " + (System.currentTimeMillis() - creationTime) + " ms)");
+
                 if (ex != null) {
                     String message = ex.getMessage() + " (awaiting " + (System.currentTimeMillis() - creationTime) + " ms)";
-                    if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                    if (log.isLoggable(PlatformLogger.Level.FINE)) {
                         ex.initCause(throwable);
-                        logger.fine(message, ex);
-                    } else if (logger.isLoggable(PlatformLogger.Level.INFO)) {
+                        log.fine(message, ex);
+                    } else if (log.isLoggable(PlatformLogger.Level.INFO)) {
                         StackTraceElement[] stack = throwable.getStackTrace();
-                        logger.info(message + ". Originated at " + stack[stack.length - 1]);
+                        log.info(message + ". Originated at " + stack[stack.length - 1]);
+                    } else {
+                        log.severe("AWTThreading.TrackedInvocationEvent.whenComplete: failure", ex);
+                        log.severe("AWTThreading.TrackedInvocationEvent.whenComplete: caller:", throwable);
                     }
                 }
             });
@@ -417,8 +434,8 @@ public class AWTThreading {
                 notifiers = List.copyOf(eventDispatchThreadStateNotifiers);
             }
         }
-        if (logger.isLoggable(PlatformLogger.Level.FINER)) {
-            logger.finer("notifyEventDispatchThreadFree");
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer("notifyEventDispatchThreadFree");
         }
         // notify callbacks out of the synchronization block
         notifiers.forEach(f -> f.complete(null));
@@ -428,8 +445,8 @@ public class AWTThreading {
         synchronized (eventDispatchThreadStateNotifiers) {
             isEventDispatchThreadFree = false;
         }
-        if (logger.isLoggable(PlatformLogger.Level.FINER)) {
-            logger.finer("notifyEventDispatchThreadBusy");
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer("notifyEventDispatchThreadBusy");
         }
     }
 
@@ -455,8 +472,8 @@ public class AWTThreading {
                 }
             }
         }
-        if (logger.isLoggable(PlatformLogger.Level.FINER)) {
-            logger.finer("onEventDispatchThreadFree: free at the moment");
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer("onEventDispatchThreadFree: free at the moment");
         }
         future.complete(null);
         return future;
