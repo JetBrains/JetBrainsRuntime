@@ -155,6 +155,8 @@ import sun.awt.util.PerformanceLogger;
 import sun.awt.util.ThreadGroupUtils;
 import sun.font.FontConfigManager;
 import sun.java2d.SunGraphicsEnvironment;
+import sun.java2d.marlin.stats.Histogram;
+import sun.java2d.marlin.stats.StatLong;
 import sun.print.PrintJob2D;
 import sun.security.action.GetBooleanAction;
 import sun.security.action.GetPropertyAction;
@@ -301,24 +303,45 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             return (pattern == null || mname.toUpperCase().contains(pattern));
         }
 
-        private static final class AwtLockerDescriptor {
-            public long startTimeMs;             // when the locking has occurred
-            public StackWalker.StackFrame frame; // the frame that called awtLock()
+        /** use System.nanoTime() (true) or System currentTimeMillis() (false) */
+        private static final boolean USE_NANO_TIME = true;
 
-            public AwtLockerDescriptor(StackWalker.StackFrame frame, long start) {
-                this.startTimeMs = start;
-                this.frame       = frame;
+        // 10ns = micro-second is >> minimum measurable time by nanoTime (10ns)
+        private static final long TIME_GRANULARITY = (USE_NANO_TIME) ? 10L : 0L;
+
+        private static final boolean LOG_AWT_LOCK_LINES = false;
+
+        static long getCurrentTime() {
+            if (USE_NANO_TIME) {
+                return System.nanoTime();
+            }
+            return System.currentTimeMillis();
+        }
+
+        static String getTimeUnit() {
+            return (USE_NANO_TIME ? "ns" : "ms");
+        }
+
+        static final class AwtLockerDescriptor {
+            final long startTime;               // when the locking has occurred
+            final long waitTime;                // lock() duration in ns
+            final StackWalker.StackFrame frame; // the frame that called awtLock()
+
+            AwtLockerDescriptor(final StackWalker.StackFrame frame, final long start, final long waitTime) {
+                this.startTime = start;
+                this.frame     = frame;
+                this.waitTime  = waitTime;
             }
         }
 
         private static final Deque<AwtLockerDescriptor> awtLockersStack = new ArrayDeque<>();
 
-        private static void pushAwtLockCaller(StackWalker.StackFrame frame, long startTimeMs) {
+        private static void pushAwtLockCaller(final StackWalker.StackFrame frame, final long startTime, final long waitTime) {
             // accessed under AWT lock so no need for additional synchronization
-            awtLockersStack.push(new AwtLockerDescriptor(frame, startTimeMs));
+            awtLockersStack.push(new AwtLockerDescriptor(frame, startTime, waitTime));
         }
 
-        private static long popAwtLockCaller(StackWalker.StackFrame frame, long finishTimeMs) {
+        private static AwtLockerDescriptor popAwtLockCaller(final StackWalker.StackFrame frame) {
             // accessed under AWT lock so no need for additional synchronization
             try {
                 final AwtLockerDescriptor descr = awtLockersStack.pop();
@@ -326,45 +349,52 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                     // Note: this often happens with XToolkit.waitForEvents()/XToolkit.run().
                     // traceError("Mismatching awtLock()/awtUnlock(): locked by " + descr.frame + ", unlocked by " + frame);
                 }
-                return finishTimeMs - descr.startTimeMs;
+                return descr;
             } catch(NoSuchElementException e) {
                 traceError("No matching awtLock() for awtUnlock(): " + frame);
             }
-
-            return -1;
+            return null;
         }
 
-        private static class AwtLockTracer implements SunToolkit.AwtLockListener {
+        private static final class AwtLockTracer implements SunToolkit.AwtLockListener {
             private static final Set<String> awtLockerMethods = Set.of("awtLock", "awtUnlock", "awtTryLock");
 
             private static StackWalker.StackFrame getLockCallerFrame() {
                 Optional<StackWalker.StackFrame> frame = StackWalker.getInstance().walk(
                         s -> s.dropWhile(stackFrame -> !awtLockerMethods.contains(stackFrame.getMethodName()))
-                                .dropWhile(stackFrame -> awtLockerMethods.contains( stackFrame.getMethodName()))
+                                .dropWhile(stackFrame -> awtLockerMethods.contains(stackFrame.getMethodName()))
                                 .findFirst() );
 
                 return frame.orElse(null);
             }
 
-            public void afterAwtLocked() {
+            public void afterAwtLocked(final long elapsed) {
+                final long now = getCurrentTime();
                 final StackWalker.StackFrame awtLockerFrame = getLockCallerFrame();
                 if (awtLockerFrame != null) {
                     final String mname = awtLockerFrame.getMethodName();
                     if (isInterestedInMethod(mname)) {
-                        pushAwtLockCaller(awtLockerFrame, System.currentTimeMillis());
+                        pushAwtLockCaller(awtLockerFrame, now, elapsed);
                     }
                 }
             }
 
             public void beforeAwtUnlocked() {
+                final long now = getCurrentTime();
                 final StackWalker.StackFrame awtLockerFrame = getLockCallerFrame();
                 if (awtLockerFrame != null) {
                     final String mname = awtLockerFrame.getMethodName();
                     if (isInterestedInMethod(mname)) {
-                        final long timeSpentMs = popAwtLockCaller(awtLockerFrame, System.currentTimeMillis());
-                        if (timeSpentMs >= threshold) {
-                            updateStatistics(awtLockerFrame.toString(), timeSpentMs);
-                            traceLine(String.format("%s held AWT lock for %dms", awtLockerFrame, timeSpentMs));
+                        final AwtLockerDescriptor descr = popAwtLockCaller(awtLockerFrame);
+                        if (descr != null) {
+                        final long elapsed = now - descr.startTime;
+                            if (elapsed >= threshold) {
+                                updateStatistics(awtLockerFrame.toString(), elapsed, descr.waitTime);
+                                if (LOG_AWT_LOCK_LINES) {
+                                    traceLine(String.format("%s held AWT lock for %d%s",
+                                            awtLockerFrame, elapsed, getTimeUnit()));
+                                }
+                            }
                         }
                     }
                 }
@@ -372,52 +402,82 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         }
 
         private static final class MethodStats implements Comparable<MethodStats> {
-            public  long minTimeMs;
-            public  long maxTimeMs;
-            public  long count;
-            private long totalTimeMs;
+            long minTime;
+            long maxTime;
+            long count;
+            long totalTime;
+
+            final Histogram hist_time = new Histogram("awtLock times (1 unit = "
+                + ((TIME_GRANULARITY != 0L) ? (TIME_GRANULARITY + " ns") : "1 ms") + ")");
+
+            final StatLong stat_wait = new StatLong("awtLock wait");
 
             MethodStats() {
-                this.minTimeMs = Long.MAX_VALUE;
+                this.minTime = Long.MAX_VALUE;
             }
 
-            public void update(long timeSpentMs) {
+            void update(final long elapsed, final long wait) {
                 count++;
-                minTimeMs    = Math.min(minTimeMs, timeSpentMs);
-                maxTimeMs    = Math.max(maxTimeMs, timeSpentMs);
-                totalTimeMs += timeSpentMs;
+                minTime = Math.min(minTime, elapsed);
+                maxTime = Math.max(maxTime, elapsed);
+                totalTime += elapsed;
+
+                hist_time.add((TIME_GRANULARITY != 0L) ? 1L + divide(elapsed, TIME_GRANULARITY) : elapsed);
+                if (wait > 0L) {
+                    stat_wait.add(wait);
+                }
             }
 
-            public long averageTimeMs() {
-                return (long)((double)totalTimeMs / count);
+            long averageTime() {
+                return divide(totalTime, count);
+            }
+
+            static long divide(final long val, final long divider) {
+                return (long)((double) val / divider);
             }
 
             @Override
-            public int compareTo(MethodStats other) {
-                return Long.compare(other.averageTimeMs(), this.averageTimeMs());
+            public int compareTo(final MethodStats other) {
+                // descending
+                if (true) {
+                    return Long.compare(other.totalTime, this.totalTime);
+                } else {
+                    return Long.compare(other.averageTime(), this.averageTime());
+                }
             }
 
             @Override
             public String toString() {
-                return String.format("%dms (%dx[%d-%d]ms)",  averageTimeMs(), count, minTimeMs, maxTimeMs);
+                final String timeUnit = getTimeUnit();
+                return String.format("%d%s\t(%d x[%d - %d] = %d%s) [%s]",
+                        averageTime(), timeUnit, count, minTime, maxTime, totalTime, timeUnit,
+                        (stat_wait.count != 0) ? stat_wait.toString() : "no wait");
+            }
+
+            String histogramToString() {
+                return hist_time.toString();
             }
         }
 
         private static HashMap<String, MethodStats> methodTimingTable;
 
-        private static synchronized void updateStatistics(String mname, long timeSpentMs) {
-            if ((flags & TRACESTATS) != 0) {
-                if (methodTimingTable == null) {
-                    methodTimingTable = new HashMap<>(1024);
-                    TraceReporter.setShutdownHook();
-                }
-
-                final MethodStats descr = methodTimingTable.computeIfAbsent(mname, k -> new MethodStats());
-                descr.update(timeSpentMs);
+        private static synchronized void initMethodTimingTable() {
+            if (methodTimingTable == null) {
+                methodTimingTable = new HashMap<>(1024);
+                TraceReporter.setShutdownHook();
             }
         }
 
-        private static class TraceReporter implements Runnable {
+        private static synchronized void updateStatistics(final String mname, final long elapsed, final long wait) {
+            if ((flags & TRACESTATS) != 0) {
+                initMethodTimingTable();
+
+                final MethodStats descr = methodTimingTable.computeIfAbsent(mname, k -> new MethodStats());
+                descr.update(elapsed, wait);
+            }
+        }
+
+        private static final class TraceReporter implements Runnable {
             public static void setShutdownHook() {
                 final Tracer.TraceReporter t = new Tracer.TraceReporter();
                 final Thread thread = new Thread(ThreadGroupUtils.getRootThreadGroup(), t,
@@ -430,6 +490,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 traceRawLine("");
                 traceRawLine("AWT Lock usage statistics");
                 traceRawLine("=========================");
+
                 final ArrayList<AbstractMap.SimpleImmutableEntry<String, MethodStats>> l;
                 synchronized(Tracer.class) { // in order to avoid methodTimingTable modifications during the traversal
                     l = new ArrayList<>(methodTimingTable.size());
@@ -439,6 +500,9 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 l.sort(Map.Entry.comparingByValue());
                 l.forEach(item -> traceRawLine(item.getValue() + " --- " + item.getKey()));
                 traceRawLine("Legend: <avg time> ( <times called> x [ <fastest time> - <slowest time> ] ms) --- <caller of XToolkit.awtUnlock()>");
+
+                // Histogram dump:
+                l.forEach(item -> traceRawLine(item.getKey() + " --- " + item.getValue().histogramToString()));
             }
         }
     }

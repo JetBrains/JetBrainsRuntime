@@ -235,7 +235,7 @@ public abstract class SunToolkit extends Toolkit
     private static final Condition AWT_LOCK_COND = AWT_LOCK.newCondition();
 
     public interface AwtLockListener {
-        void afterAwtLocked();
+        void afterAwtLocked(long elapsed);
         void beforeAwtUnlocked();
     }
 
@@ -248,16 +248,24 @@ public abstract class SunToolkit extends Toolkit
     }
 
     public static final void awtLock() {
+        // fast-path:
+        if (awtTryLock()) {
+            return;
+        }
+        // measure waiting time:
+        final long start = System.nanoTime();
         AWT_LOCK.lock();
+        final long elapsed = System.nanoTime() - start;
+
         if (awtLockListeners != null) {
-            awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
+            awtLockListeners.forEach(l -> l.afterAwtLocked(elapsed));
         }
     }
 
     public static final boolean awtTryLock() {
         final boolean wasLocked = AWT_LOCK.tryLock();
         if (wasLocked && awtLockListeners != null) {
-            awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
+            awtLockListeners.forEach(l -> l.afterAwtLocked(-1));
         }
         return wasLocked;
     }
