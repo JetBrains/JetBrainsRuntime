@@ -129,15 +129,20 @@ public class InputMethodTest {
     }
 
     public static void layout(String name) {
-        String enableName = name;
-        if (name.equals("com.apple.inputmethod.SCIM.ITABC")) {
-            enableName = "com.apple.inputmethod.SCIM";
+        List<String> layouts = new ArrayList<>();
+        if (name.matches("com\\.apple\\.inputmethod\\.(SCIM|TCIM|TYIM)\\.\\w+")) {
+            layouts.add(name.replaceFirst("\\.\\w+$", ""));
         }
 
-        if (!LWCToolkit.isKeyboardLayoutEnabled(enableName)) {
-            LWCToolkit.enableKeyboardLayout(enableName);
-            addedLayouts.add(enableName);
+        layouts.add(name);
+
+        for (String layout : layouts) {
+            if (!LWCToolkit.isKeyboardLayoutEnabled(layout)) {
+                LWCToolkit.enableKeyboardLayout(layout);
+                addedLayouts.add(layout);
+            }
         }
+
         LWCToolkit.switchKeyboardLayout(name);
     }
 
