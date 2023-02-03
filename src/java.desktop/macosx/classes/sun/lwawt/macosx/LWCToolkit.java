@@ -137,21 +137,23 @@ public final class LWCToolkit extends LWToolkit {
     private static native void initAppkit(ThreadGroup appKitThreadGroup, boolean headless);
     private static CInputMethodDescriptor sInputMethodDescriptor;
 
-    private static native void switchKeyboardLayoutNative(String layoutName);
+    private static native boolean switchKeyboardLayoutNative(String layoutName);
 
     private static native String getKeyboardLayoutNativeId();
 
     private static native String[] getKeyboardLayoutListNative(boolean includeAll);
 
-    private static native void enableKeyboardLayoutNative(String layoutName);
+    private static native boolean enableKeyboardLayoutNative(String layoutName);
 
-    private static native void disableKeyboardLayoutNative(String layoutName);
+    private static native boolean disableKeyboardLayoutNative(String layoutName);
 
     public static void switchKeyboardLayout (String layoutName) {
         if (layoutName == null || layoutName.isEmpty()) {
             throw new RuntimeException("A valid layout ID is expected. Found:  " + layoutName);
         }
-        switchKeyboardLayoutNative(layoutName);
+        if (!switchKeyboardLayoutNative(layoutName)) {
+            throw new RuntimeException("Couldn't switch layout to " + layoutName);
+        }
     }
 
     public static String getKeyboardLayoutId () {
@@ -170,14 +172,18 @@ public final class LWCToolkit extends LWToolkit {
         if (layoutName == null || layoutName.isEmpty()) {
             throw new RuntimeException("A valid layout ID is expected. Found:  " + layoutName);
         }
-        enableKeyboardLayoutNative(layoutName);
+        if (!enableKeyboardLayoutNative(layoutName)) {
+            throw new RuntimeException("Couldn't enable layout " + layoutName);
+        }
     }
 
     public static void disableKeyboardLayout(String layoutName) {
         if (layoutName == null || layoutName.isEmpty()) {
             throw new RuntimeException("A valid layout ID is expected. Found:  " + layoutName);
         }
-        disableKeyboardLayoutNative(layoutName);
+        if (!disableKeyboardLayoutNative(layoutName)) {
+            throw new RuntimeException("Couldn't disable layout " + layoutName);
+        }
     }
 
     public static boolean isKeyboardLayoutEnabled(String layoutName) {

@@ -196,7 +196,9 @@ public class NationalLayoutTest {
 
         } finally {
             for (String layoutId : addedLayouts) {
-                LWCToolkit.disableKeyboardLayout(layoutId);
+                try {
+                    LWCToolkit.disableKeyboardLayout(layoutId);
+                } catch (Exception ignored) {}
             }
 
             // Restore initial keyboard layout
@@ -365,8 +367,8 @@ public class NationalLayoutTest {
         if(jbr) {
             String layoutId = layout.toString();
             if (!LWCToolkit.isKeyboardLayoutEnabled(layoutId)) {
-                addedLayouts.add(layoutId);
                 LWCToolkit.enableKeyboardLayout(layoutId);
+                addedLayouts.add(layoutId);
             }
             LWCToolkit.switchKeyboardLayout(layoutId);
         }

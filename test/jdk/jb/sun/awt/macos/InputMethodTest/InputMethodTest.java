@@ -65,7 +65,9 @@ public class InputMethodTest {
         } finally {
             LWCToolkit.switchKeyboardLayout(initialLayout);
             for (String layoutId : addedLayouts) {
-                LWCToolkit.disableKeyboardLayout(layoutId);
+                try {
+                    LWCToolkit.disableKeyboardLayout(layoutId);
+                } catch (Exception ignored) {}
             }
         }
         System.exit(success ? 0 : 1);
@@ -112,7 +114,12 @@ public class InputMethodTest {
 
     private static void runTest(String name) {
         currentTest = name;
-        TestCases.valueOf(name).run();
+        try {
+            TestCases.valueOf(name).run();
+        } catch (Exception e) {
+            System.out.printf("Test %s (%s) failed: %s\n", currentTest, currentSection, e);
+            success = false;
+        }
     }
 
     public static void section(String description) {
@@ -128,8 +135,8 @@ public class InputMethodTest {
         }
 
         if (!LWCToolkit.isKeyboardLayoutEnabled(enableName)) {
-            addedLayouts.add(enableName);
             LWCToolkit.enableKeyboardLayout(enableName);
+            addedLayouts.add(enableName);
         }
         LWCToolkit.switchKeyboardLayout(name);
     }
