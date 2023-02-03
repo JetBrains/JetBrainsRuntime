@@ -30,6 +30,7 @@ source jb/project/tools/common/scripts/common.sh
 
 WORK_DIR=$(pwd)
 JCEF_PATH=${JCEF_PATH:=$WORK_DIR/jcef_win_aarch64}
+NVDA_PATH=${NVDA_PATH:=$WORK_DIR/nvda_controllerClient}
 
 function do_configure {
   sh ./configure \
@@ -44,6 +45,7 @@ function do_configure {
     --with-toolchain-version=$TOOLCHAIN_VERSION \
     --with-boot-jdk=$BOOT_JDK \
     --with-build-jdk=$BUILD_JDK \
+    --with-nvdacontrollerclient=$NVDA_PATH \
     --disable-ccache \
     $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
