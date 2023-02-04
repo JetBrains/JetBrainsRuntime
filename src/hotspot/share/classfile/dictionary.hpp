@@ -70,7 +70,10 @@ public:
   InstanceKlass* find_class(Thread* current, Symbol* name);
 
   void classes_do(void f(InstanceKlass*));
+  // (DCEVM)
+  void classes_do_safepoint(void f(InstanceKlass*));
   void classes_do(KlassClosure* closure);
+
   void all_entries_do(KlassClosure* closure);
   void classes_do(MetaspaceClosure* it);
 

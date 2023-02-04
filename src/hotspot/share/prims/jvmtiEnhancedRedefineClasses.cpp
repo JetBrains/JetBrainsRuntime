@@ -35,15 +35,12 @@
 #include "classfile/classLoaderDataGraph.hpp"
 #include "classfile/loaderConstraints.hpp"
 #include "interpreter/linkResolver.hpp"
-#include "interpreter/oopMapCache.hpp"
 #include "interpreter/rewriter.hpp"
 #include "logging/logStream.hpp"
 #include "memory/metadataFactory.hpp"
 #include "memory/resourceArea.hpp"
-#include "memory/iterator.inline.hpp"
 #include "oops/fieldStreams.hpp"
 #include "oops/fieldStreams.inline.hpp"
-#include "oops/klassVtable.hpp"
 #include "oops/oop.inline.hpp"
 #include "oops/constantPool.inline.hpp"
 #include "oops/metadata.hpp"
@@ -63,7 +60,6 @@
 #include "utilities/bitMap.inline.hpp"
 #include "prims/jvmtiThreadState.inline.hpp"
 #include "utilities/events.hpp"
-#include "oops/constantPool.inline.hpp"
 #if INCLUDE_G1GC
 #include "gc/g1/g1CollectedHeap.hpp"
 #endif
@@ -421,7 +417,7 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
 
 // Closure to scan all objects on heap for objects of changed classes
 //  - if the fields are compatible, only update class definition reference
-//  - otherwise if the new object size is smaller then old size, reshufle
+//  - otherwise if the new object size is smaller than old size, reshufle
 //         the fields and fill the gap with "dead_space"
 //  - otherwise set the _needs_instance_update flag, we need to do full GC
 //         and reshuffle object positions durring mark&sweep
@@ -467,7 +463,7 @@ public:
           // We need an instance update => set back to old klass
           _needs_instance_update = true;
         } else {
-          // Either new size is bigger or gap is to small to be filled
+          // Either new size is bigger or gap is too small to be filled
           oop src = obj;
           if (new_klass->is_copying_backwards()) {
             copy_to_tmp(obj);
@@ -490,7 +486,7 @@ public:
 //  - for each scratch class call redefine_single_class
 //  - clear code cache (flush_dependent_code)
 //  - iterate the heap and update object definitions, check it old/new class fields
-//       are compatible. If new class size is smaller then old, it can be solved directly here.
+//       are compatible. If new class size is smaller than old, it can be solved directly here.
 //  - iterate the heap and update method handles to new version
 //  - Swap marks to have same hashcodes
 //  - copy static fields
@@ -702,7 +698,7 @@ void VM_EnhancedRedefineClasses::doit() {
     assert(new_version->super() == NULL || new_version->super()->new_version() == NULL, "Super class must be newest version");
   }
   log_trace(redefine, class, obsolete, metadata)("calling check_class");
-  ClassLoaderData::the_null_class_loader_data()->dictionary()->classes_do(check_class);
+  ClassLoaderData::the_null_class_loader_data()->dictionary()->classes_do_safepoint(check_class);
 #ifdef PRODUCT
   }
 #endif
@@ -928,7 +924,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
       ClassLoadInfo cl_info(protection_domain,
                             NULL,     // dynamic_nest_host
                             Handle(), // classData
-                            false,    // is_hidden
+                            the_class->is_hidden(),    // is_hidden
                             !the_class->is_non_strong_hidden(),    // is_strong_hidden
                             true);    // FIXME: check if correct. can_access_vm_annotations
       k = SystemDictionary::resolve_from_stream(&st,
@@ -957,7 +953,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
         return JVMTI_ERROR_NAMES_DONT_MATCH;
       } else if (ex_name == vmSymbols::java_lang_OutOfMemoryError()) {
         return JVMTI_ERROR_OUT_OF_MEMORY;
-      } else {  // Just in case more exceptions can be thrown..
+      } else {  // Just in case more exceptions can be thrown.
         return JVMTI_ERROR_FAILS_VERIFICATION;
       }
     }
@@ -1340,7 +1336,7 @@ jvmtiError VM_EnhancedRedefineClasses::find_class_bytes(InstanceKlass* the_class
       // Not cached, we need to reconstitute the class file from the
       // VM representation. We don't attach the reconstituted class
       // bytes to the InstanceKlass here because they have not been
-      // validated and we're not at a safepoint.
+      // validated, and we're not at a safepoint.
       JvmtiClassFileReconstituter reconstituter(the_class);
       if (reconstituter.get_error() != JVMTI_ERROR_NONE) {
         return reconstituter.get_error();
@@ -1397,6 +1393,8 @@ void VM_EnhancedRedefineClasses::calculate_instance_update_information(Klass* ne
       if (alignment > 0) {
         // This field was aligned, so we need to make sure that we fill the gap
         fill(alignment);
+      } else if (alignment < 0) {
+        assert(false, "Fields must be sorted by offset!");
       }
 
       assert(_position == fd->offset(), "must be correct offset!");
@@ -1451,7 +1449,7 @@ void VM_EnhancedRedefineClasses::calculate_instance_update_information(Klass* ne
 
   //
   CalculateFieldUpdates cl(old_ik);
-  ik->do_nonstatic_fields(&cl);
+  ik->do_nonstatic_fields_sorted(&cl);
 
   GrowableArray<int> result = cl.finish();
   ik->store_update_information(result);
@@ -1566,7 +1564,7 @@ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
 
   constantPoolHandle other_cp = constantPoolHandle(_thread, ik->constants());
 
-  // Update host klass of anonymous classes (for example, produced by lambdas) to newest version.
+  // Update host klass of anonymous classes (for example, produced by lambdas) to the newest version.
   /*
   if (ik->is_unsafe_anonymous() && ik->unsafe_anonymous_host()->new_version() != NULL) {
     ik->set_unsafe_anonymous_host(InstanceKlass::cast(ik->unsafe_anonymous_host()->newest_version()));

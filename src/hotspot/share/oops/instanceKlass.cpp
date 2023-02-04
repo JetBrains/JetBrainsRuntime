@@ -1717,6 +1717,36 @@ static int compare_fields_by_offset(Pair<int,int>* a, Pair<int,int>* b) {
   return a->first - b->first;
 }
 
+void InstanceKlass::do_nonstatic_fields_sorted(FieldClosure* cl) {
+  InstanceKlass* super = superklass();
+  if (super != NULL) {
+    super->do_nonstatic_fields_sorted(cl);
+  }
+  fieldDescriptor fd;
+  // In DebugInfo nonstatic fields are sorted by offset.
+  GrowableArray<Pair<int,int> > fields_sorted;
+  int i = 0;
+  for (AllFieldStream fs(this); !fs.done(); fs.next()) {
+    if (!fs.access_flags().is_static()) {
+      fd = fs.field_descriptor();
+      Pair<int,int> f(fs.offset(), fs.index());
+      fields_sorted.push(f);
+      i++;
+    }
+  }
+  if (i > 0) {
+    int length = i;
+    assert(length == fields_sorted.length(), "duh");
+    // _sort_Fn is defined in growableArray.hpp.
+    fields_sorted.sort(compare_fields_by_offset);
+    for (int i = 0; i < length; i++) {
+      fd.reinitialize(this, fields_sorted.at(i).second);
+      assert(!fd.is_static() && fd.offset() == fields_sorted.at(i).first, "only nonstatic fields");
+      cl->do_field(&fd);
+    }
+  }
+}
+
 void InstanceKlass::print_nonstatic_fields(FieldClosure* cl) {
   InstanceKlass* super = superklass();
   if (super != NULL) {
@@ -3955,7 +3985,7 @@ void JNIid::verify(Klass* holder) {
 }
 
 void InstanceKlass::set_init_state(ClassState state) {
-  if (state > loaded) {
+  if (!is_redefining() && state > loaded) {
     assert_lock_strong(_init_monitor);
   }
 #ifdef ASSERT
