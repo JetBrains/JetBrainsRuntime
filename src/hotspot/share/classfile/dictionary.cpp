@@ -198,6 +198,18 @@ void Dictionary::classes_do(void f(InstanceKlass*)) {
   _table->do_scan(Thread::current(), doit);
 }
 
+void Dictionary::classes_do_safepoint(void f(InstanceKlass*)) {
+    auto doit = [&] (DictionaryEntry** value) {
+        InstanceKlass* k = (*value)->instance_klass();
+        if (loader_data() == k->class_loader_data()) {
+            f(k);
+        }
+        return true;
+    };
+
+    _table->do_safepoint_scan(doit);
+}
+
 // (DCEVM) iterate over dict entry
 void Dictionary::classes_do(KlassClosure* closure) {
   auto doit = [&] (DictionaryEntry** value) {

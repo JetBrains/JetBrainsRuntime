@@ -919,6 +919,8 @@ public:
   // Iterators
   void do_local_static_fields(FieldClosure* cl);
   void do_nonstatic_fields(FieldClosure* cl); // including inherited fields
+  // (DCEVM)
+  void do_nonstatic_fields_sorted(FieldClosure* cl);
   void do_local_static_fields(void f(fieldDescriptor*, Handle, TRAPS), Handle, TRAPS);
   void print_nonstatic_fields(FieldClosure* cl); // including inherited and injected fields
 
