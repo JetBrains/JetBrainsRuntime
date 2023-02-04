@@ -2847,8 +2847,6 @@ void CompileBroker::stopCompilationBeforeEnhancedRedefinition() {
     MonitorLocker locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
     _compilation_stopped = true;
     while (_active_compilations > 0) {
-      VM_ThreadsSuspendJVMTI tsj; // force safepoint to run C1/C2 VM op
-      VMThread::execute(&tsj);
       locker.wait(10);
     }
   }
