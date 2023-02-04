@@ -1503,7 +1503,7 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, InstanceKlass* ol
     ClassLoaderDataGraph_lock->unlock();
     assert (ok, "must have found old class and updated!");
   }
-  check_constraints(k, loader_data, true, CHECK);
+  check_constraints(k, loader_data, !is_redefining, CHECK);
 
   // Register class just loaded with class loader (placed in ArrayList)
   // Note we do this before updating the dictionary, as this can
