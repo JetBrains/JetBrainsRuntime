@@ -485,7 +485,7 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
   u8 op_id;
 
   if (AllowEnhancedClassRedefinition) {
-    MutexLocker sd_mutex(EnhancedRedefineClasses_lock);
+    // MutexLocker sd_mutex(EnhancedRedefineClasses_lock, Monitor::_no_safepoint_check_flag);
     // Stop compilation to avoid compilator race condition (crashes) with advanced redefinition
     CompileBroker::stopCompilationBeforeEnhancedRedefinition();
     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_retransform);
@@ -519,7 +519,7 @@ JvmtiEnv::RedefineClasses(jint class_count, const jvmtiClassDefinition* class_de
   u8 op_id;
 
   if (AllowEnhancedClassRedefinition) {
-    MutexLocker sd_mutex(EnhancedRedefineClasses_lock);
+    // MutexLocker sd_mutex(EnhancedRedefineClasses_lock, Monitor::_no_safepoint_check_flag);
     // Stop compilation to avoid compilator race condition (crashes) with advanced redefinition
     CompileBroker::stopCompilationBeforeEnhancedRedefinition();
     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
