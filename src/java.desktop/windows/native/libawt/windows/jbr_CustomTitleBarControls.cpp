@@ -306,7 +306,7 @@ public:
         delete graphics;
         DeleteDC(hdc);
         DeleteObject(hbitmap);
-        delete bitmap;
+        ::delete bitmap;
         delete bitmapData;
     }
 };
