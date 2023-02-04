@@ -2182,7 +2182,7 @@ jmethodID Method::make_jmethod_id(ClassLoaderData* cld, Method* m) {
   // Have to add jmethod_ids() to class loader data thread-safely.
   // Also have to add the method to the list safely, which the lock
   // protects as well.
-  assert(JmethodIdCreation_lock->owned_by_self(), "sanity check");
+  assert(AllowEnhancedClassRedefinition || JmethodIdCreation_lock->owned_by_self(), "sanity check");
   if (AllowEnhancedClassRedefinition && m != m->newest_version()) {
     m = m->newest_version();
   }
