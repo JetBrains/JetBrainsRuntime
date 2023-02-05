@@ -467,14 +467,14 @@ int CompactibleSpace::space_index(oop obj) {
 
 bool CompactibleSpace::must_rescue(oop old_obj, oop new_obj) {
   // Only redefined objects can have the need to be rescued.
-  if (cast_to_oop(old_obj)->klass()->new_version() == NULL) return false;
+  if (oop(old_obj)->klass()->new_version() == NULL) return false;
 
   //if (old_obj->is_perm()) {
   //  // This object is in perm gen: Always rescue to satisfy invariant obj->klass() <= obj.
   //  return true;
   //}
 
-  int new_size = old_obj->size_given_klass(cast_to_oop(old_obj)->klass()->new_version());
+  int new_size = old_obj->size_given_klass(oop(old_obj)->klass()->new_version());
   int original_size = old_obj->size();
 
   Generation* tenured_gen = GenCollectedHeap::heap()->old_gen();
@@ -592,7 +592,12 @@ void CompactibleSpace::compact() {
   if (_first_dead > cur_obj && !cast_to_oop(cur_obj)->is_gc_marked()) {
     // All object before _first_dead can be skipped. They should not be moved.
     // A pointer to the first live object is stored at the memory location for _first_dead.
-    cur_obj = *(HeapWord**)(_first_dead);
+    if (redefinition_run) {
+      // _first_dead could be living redefined object
+      cur_obj = _first_dead;
+    } else {
+      cur_obj = *(HeapWord**)(_first_dead);
+    }
   }
 
   debug_only(HeapWord* prev_obj = NULL);
@@ -871,6 +876,12 @@ void TenuredSpace::verify() const {
   guarantee(p == top(), "end of last object must match end of space");
 }
 
+
+size_t TenuredSpace::allowed_dead_ratio() const {
+  return MarkSweepDeadRatio;
+}
+#endif // INCLUDE_SERIALGC
+
 // Compute the forward sizes and leave out objects whose position could
 // possibly overlap other objects.
 HeapWord* CompactibleSpace::forward_with_rescue(HeapWord* q, size_t size,
@@ -905,7 +916,6 @@ HeapWord* CompactibleSpace::forward_rescued(CompactPoint* cp, HeapWord* compact_
     for (int i=0; i<MarkSweep::_rescued_oops->length(); i++) {
       HeapWord* q = MarkSweep::_rescued_oops->at(i);
 
-      /* size_t size = cast_to_oop(q)->size();  changing this for cms for perm gen */
       size_t size = block_size(q);
 
       // (DCEVM) There is a new version of the class of q => different size
@@ -924,7 +934,3 @@ HeapWord* CompactibleSpace::forward_rescued(CompactPoint* cp, HeapWord* compact_
   return compact_top;
 }
 
-size_t TenuredSpace::allowed_dead_ratio() const {
-  return MarkSweepDeadRatio;
-}
-#endif // INCLUDE_SERIALGC
