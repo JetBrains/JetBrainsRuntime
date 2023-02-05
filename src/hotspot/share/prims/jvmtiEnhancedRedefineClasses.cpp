@@ -649,6 +649,8 @@ void VM_EnhancedRedefineClasses::doit() {
   if (objectClosure.needs_instance_update()) {
     // Do a full garbage collection to update the instance sizes accordingly
 
+    log_trace(redefine, class, obsolete, metadata)("Before redefinition full GC run");
+
     if (log_is_enabled(Info, redefine, class, timer)) {
       _timer_heap_full_gc.start();
     }
@@ -661,6 +663,7 @@ void VM_EnhancedRedefineClasses::doit() {
     Universe::set_redefining_gc_run(false);
 
     _timer_heap_full_gc.stop();
+    log_trace(redefine, class, obsolete, metadata)("After redefinition full GC run");
   }
 
   // Unmark Klass*s as "redefining"
