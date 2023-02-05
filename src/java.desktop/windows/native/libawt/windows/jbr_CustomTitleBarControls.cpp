@@ -170,7 +170,7 @@ namespace CustomTitleBarControlsSupport {
         int size = (int) (10.0f * scale + 0.5f); // All icons are 10x10px at 100% scale
         int stride = ((size * 3 + 3) / 4) * 4;
         BYTE* bitmapData = new BYTE[size * stride];
-        Bitmap* bitmap = ::new Bitmap(size, size, stride, PixelFormat24bppRGB, bitmapData);
+        Bitmap* bitmap = new Bitmap(size, size, stride, PixelFormat24bppRGB, bitmapData);
         SolidBrush mask(0xffffffff);
         Graphics g(bitmap);
         g.SetCompositingMode(CompositingModeSourceCopy);
@@ -295,7 +295,7 @@ public:
     Resources(SIZE s, HDC hdcComp) :
         size(s) {
         bitmapData = new BYTE[s.cx * s.cy * 4];
-        bitmap = ::new Bitmap(s.cx, s.cy, s.cx * 4, PixelFormat32bppPARGB, bitmapData);
+        bitmap = new Bitmap(s.cx, s.cy, s.cx * 4, PixelFormat32bppPARGB, bitmapData);
         bitmap->GetHBITMAP(Color(0), &hbitmap);
         hdc = CreateCompatibleDC(hdcComp);
         SelectObject(hdc, hbitmap);
