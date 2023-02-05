@@ -179,8 +179,6 @@ jfieldID AwtWindow::locationByPlatformID;
 jfieldID AwtWindow::autoRequestFocusID;
 jfieldID AwtWindow::securityWarningWidthID;
 jfieldID AwtWindow::securityWarningHeightID;
-jfieldID AwtWindow::customTitleBarHitTestID;
-jfieldID AwtWindow::customTitleBarHitTestQueryID;
 
 jfieldID AwtWindow::windowTypeID;
 jmethodID AwtWindow::notifyWindowStateChangedMID;
@@ -189,7 +187,6 @@ jfieldID AwtWindow::sysInsetsID;
 jmethodID AwtWindow::getWarningStringMID;
 jmethodID AwtWindow::calculateSecurityWarningPositionMID;
 jmethodID AwtWindow::windowTypeNameMID;
-jmethodID AwtWindow::internalCustomTitleBarHeightMID;
 
 int AwtWindow::ms_instanceCounter = 0;
 HHOOK AwtWindow::ms_hCBTFilter;
@@ -1536,23 +1533,11 @@ BOOL AwtWindow::UpdateInsets(jobject insets)
     jobject peerSysInsets = (env)->GetObjectField(peer, AwtWindow::sysInsetsID);
     DASSERT(!safe_ExceptionOccurred(env));
 
-    // Floor resulting insets
-    int screen = GetScreenImOn();
-    Devices::InstanceAccess devices;
-    AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
-    float scaleX = device == NULL ? 1.0f : device->GetScaleX();
-    float scaleY = device == NULL ? 1.0f : device->GetScaleY();
-    RECT result;
-    result.top = (LONG) floor(m_insets.top / scaleY);
-    result.bottom = (LONG) floor(m_insets.bottom / scaleY);
-    result.left = (LONG) floor(m_insets.left / scaleX);
-    result.right = (LONG) floor(m_insets.right / scaleX);
-
     if (peerInsets != NULL) { // may have been called during creation
-        (env)->SetIntField(peerInsets, AwtInsets::topID, result.top);
-        (env)->SetIntField(peerInsets, AwtInsets::bottomID, result.bottom);
-        (env)->SetIntField(peerInsets, AwtInsets::leftID, result.left);
-        (env)->SetIntField(peerInsets, AwtInsets::rightID, result.right);
+        (env)->SetIntField(peerInsets, AwtInsets::topID, ScaleDownY(m_insets.top));
+        (env)->SetIntField(peerInsets, AwtInsets::bottomID, ScaleDownY(m_insets.bottom));
+        (env)->SetIntField(peerInsets, AwtInsets::leftID, ScaleDownX(m_insets.left));
+        (env)->SetIntField(peerInsets, AwtInsets::rightID, ScaleDownX(m_insets.right));
     }
     if (peerSysInsets != NULL) {
         (env)->SetIntField(peerSysInsets, AwtInsets::topID, m_insets.top);
@@ -1562,10 +1547,10 @@ BOOL AwtWindow::UpdateInsets(jobject insets)
     }
     /* Get insets into the Inset object (if any) that was passed */
     if (insets != NULL) {
-        (env)->SetIntField(insets, AwtInsets::topID, result.top);
-        (env)->SetIntField(insets, AwtInsets::bottomID, result.bottom);
-        (env)->SetIntField(insets, AwtInsets::leftID, result.left);
-        (env)->SetIntField(insets, AwtInsets::rightID, result.right);
+        (env)->SetIntField(insets, AwtInsets::topID, ScaleDownY(m_insets.top));
+        (env)->SetIntField(insets, AwtInsets::bottomID, ScaleDownY(m_insets.bottom));
+        (env)->SetIntField(insets, AwtInsets::leftID, ScaleDownX(m_insets.left));
+        (env)->SetIntField(insets, AwtInsets::rightID, ScaleDownX(m_insets.right));
     }
     env->DeleteLocalRef(peerInsets);
 
@@ -2261,6 +2246,13 @@ void AwtWindow::SetResizable(BOOL isResizable)
     RedrawNonClient();
 }
 
+// SetWindowPos flags to cause frame edge to be recalculated
+static const UINT SwpFrameChangeFlags =
+    SWP_FRAMECHANGED | /* causes WM_NCCALCSIZE to be called */
+    SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+    SWP_NOACTIVATE | SWP_NOCOPYBITS |
+    SWP_NOREPOSITION | SWP_NOSENDCHANGING;
+
 //
 // Forces WM_NCCALCSIZE to be called to recalculate
 // window border (updates insets) without redrawing it
@@ -2276,7 +2268,16 @@ void AwtWindow::RecalcNonClient()
 //
 void AwtWindow::RedrawNonClient()
 {
-    ::SetWindowPos(GetHWnd(), (HWND) NULL, 0, 0, 0, 0, SwpFrameChangeFlags|SWP_ASYNCWINDOWPOS);
+    UINT flags = SwpFrameChangeFlags;
+    if (!HasCustomDecoration()) {
+        // With custom decorations enabled, SetWindowPos call below can cause WM_SIZE message being sent.
+        // If we're coming here from WFramePeer.initialize (as part of 'setResizable' call),
+        // WM_SIZE message processing can happen concurrently with window flags update done as part of
+        // 'setState' call), and lead to inconsistent state.
+        // So, we disable asynchronous processing in case we have custom decorations to avoid the race condition.
+        flags |= SWP_ASYNCWINDOWPOS;
+    }
+    ::SetWindowPos(GetHWnd(), (HWND) NULL, 0, 0, 0, 0, flags);
 }
 
 int AwtWindow::GetScreenImOn() {
@@ -3474,18 +3475,12 @@ Java_java_awt_Window_initIDs(JNIEnv *env, jclass cls)
         env->GetFieldID(cls, "securityWarningWidth", "I"));
     CHECK_NULL(AwtWindow::securityWarningHeightID =
         env->GetFieldID(cls, "securityWarningHeight", "I"));
-    CHECK_NULL(AwtWindow::customTitleBarHitTestID =
-        env->GetFieldID(cls, "customTitleBarHitTest", "I"));
-    CHECK_NULL(AwtWindow::customTitleBarHitTestQueryID =
-        env->GetFieldID(cls, "customTitleBarHitTestQuery", "I"));
     CHECK_NULL(AwtWindow::getWarningStringMID =
         env->GetMethodID(cls, "getWarningString", "()Ljava/lang/String;"));
     CHECK_NULL(AwtWindow::autoRequestFocusID =
         env->GetFieldID(cls, "autoRequestFocus", "Z"));
     CHECK_NULL(AwtWindow::calculateSecurityWarningPositionMID =
         env->GetMethodID(cls, "calculateSecurityWarningPosition", "(DDDD)Ljava/awt/geom/Point2D;"));
-    CHECK_NULL(AwtWindow::internalCustomTitleBarHeightMID =
-        env->GetMethodID(cls, "internalCustomTitleBarHeight", "()F"));
 
     jclass windowTypeClass = env->FindClass("java/awt/Window$Type");
     CHECK_NULL(windowTypeClass);

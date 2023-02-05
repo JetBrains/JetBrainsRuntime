@@ -29,7 +29,6 @@
 #include "awt_Window.h"
 #include "awt_MenuBar.h" //add for multifont
 #include "awt_Toolkit.h"
-#include "jbr_CustomTitleBarControls.h"
 #include "Hashtable.h"
 
 #include "java_awt_Frame.h"
@@ -149,7 +148,6 @@ public:
     static void _SetIMMOption(void *param);
     static void _SynthesizeWmActivate(void *param);
     static void _NotifyModalBlocked(void *param);
-    static void _UpdateCustomTitleBar(void *param);
 
     virtual void Reshape(int x, int y, int width, int height);
 
@@ -161,17 +159,12 @@ public:
     INLINE HWND GetImeTargetComponent() { return m_imeTargetComponent; }
     INLINE void SetImeTargetComponent(HWND hwnd) { m_imeTargetComponent = hwnd; }
 
-    void RedrawNonClient();
-    BOOL HasCustomTitleBar();
-    static inline BOOL IsTitleBarHitTest(UINT_PTR hitTest) {
-        return hitTest == HTCAPTION || hitTest == HTMINBUTTON || hitTest == HTMAXBUTTON || hitTest == HTCLOSE;
-    }
+    BOOL* m_pHasCustomDecoration;
+    BOOL HasCustomDecoration();
 
 protected:
     /* The frame is undecorated. */
     BOOL m_isUndecorated;
-
-    CustomTitleBarControls* customTitleBarControls;
 
 private:
     LRESULT ProxyWindowProc(UINT message, WPARAM wParam, LPARAM lParam, MsgRouting &mr);
@@ -231,16 +224,6 @@ private:
     BOOL isInManualMoveOrSize;
     WPARAM grabbedHitTest;
     POINT savedMousePos;
-
-    float customTitleBarHeight;
-    LPARAM customTitleBarTouchDragPosition;
-
-    float GetCustomTitleBarHeight();
-    jint GetCustomTitleBarHitTest();
-    BOOL AreCustomTitleBarNativeActionsAllowed();
-    void SendMessageAtPoint(UINT msg, WPARAM w, int x, int y);
-    RECT GetSysInsets();
-    LRESULT HitTestNCA(int x, int y);
 
     /*
      * Hashtable<Thread, BlockedThreadStruct> - a table that contains all the

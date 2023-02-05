@@ -173,7 +173,6 @@ public class Gensrc {
 
         private static Service[] findPublicServiceInterfaces() {
             Pattern javadocPattern = Pattern.compile("/\\*\\*((?:.|\n)*?)\\s*\\*/");
-            Pattern deprecatedPattern = Pattern.compile("@Deprecated( *\\(.*?forRemoval *= *true.*?\\))?");
             return modules.services.stream()
                     .map(fullName -> {
                         if (fullName.indexOf('$') != -1) return null; // Only top level services can be public
@@ -194,12 +193,9 @@ public class Gensrc {
                                 javadoc = "";
                                 javadocEnd = 0;
                             }
-                            Matcher deprecatedMatcher = deprecatedPattern.matcher(content.substring(javadocEnd, indexOfDeclaration));
-                            Status status;
-                            if (!deprecatedMatcher.find()) status = Status.NORMAL;
-                            else if (deprecatedMatcher.group(1) == null) status = Status.DEPRECATED;
-                            else status = Status.FOR_REMOVAL;
-                            return new Service(name, javadoc, status, content.contains("__Fallback"));
+                            return new Service(name, javadoc,
+                                    content.substring(javadocEnd, indexOfDeclaration).contains("@Deprecated"),
+                                    content.contains("__Fallback"));
                         } catch (IOException e) {
                             throw new UncheckedIOException(e);
                         }
@@ -230,19 +226,10 @@ public class Gensrc {
                     .replace("<FALLBACK>", service.hasFallback ? "$.__Fallback::new" : "null")
                     .replaceAll("\\$", service.name)
                     .replace("<JAVADOC>", service.javadoc)
-                    .replaceAll("<DEPRECATED>", service.status.text);
+                    .replaceAll("<DEPRECATED>", service.deprecated ? "\n@Deprecated" : "");
         }
 
-        private enum Status {
-            NORMAL(""),
-            DEPRECATED("\n@Deprecated"),
-            FOR_REMOVAL("\n@Deprecated(forRemoval=true)\n@SuppressWarnings(\"removal\")");
-
-            private final String text;
-            Status(String text) { this.text = text; }
-        }
-
-        private record Service(String name, String javadoc, Status status, boolean hasFallback) {}
+        private record Service(String name, String javadoc, boolean deprecated, boolean hasFallback) {}
     }
 
     /**
