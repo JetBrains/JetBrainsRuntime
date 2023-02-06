@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -5535,17 +5535,18 @@ void CMSCollector::reset_stw() {
 
 void CMSCollector::do_CMS_operation(CMS_op_type op, GCCause::Cause gc_cause) {
   GCTraceCPUTime tcpu;
-  TraceCollectorStats tcs_cgc(cgc_counters());
 
   switch (op) {
     case CMS_op_checkpointRootsInitial: {
       GCTraceTime(Info, gc) t("Pause Initial Mark", NULL, GCCause::_no_gc, true);
+      TraceCollectorStats tcs_cgc(cgc_counters());
       SvcGCMarker sgcm(SvcGCMarker::CONCURRENT);
       checkpointRootsInitial();
       break;
     }
     case CMS_op_checkpointRootsFinal: {
       GCTraceTime(Info, gc) t("Pause Remark", NULL, GCCause::_no_gc, true);
+      TraceCollectorStats tcs_cgc(cgc_counters());
       SvcGCMarker sgcm(SvcGCMarker::CONCURRENT);
       checkpointRootsFinal();
       break;
