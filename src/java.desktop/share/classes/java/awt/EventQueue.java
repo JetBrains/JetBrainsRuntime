@@ -342,7 +342,23 @@ public class EventQueue {
      * @param priority  the desired priority of the event
      */
     private void postEvent(AWTEvent theEvent, int priority) {
+        final boolean isKeyEvent = theEvent instanceof KeyEvent;
+        if (isKeyEvent) {
+            ((KeyEvent)theEvent).logKeyEvent(
+                new Throwable(),
+                "EventQueue.postEvent: a KeyEvent is being posted",
+                this
+            );
+        }
+
         if (coalesceEvent(theEvent, priority)) {
+            if (isKeyEvent) {
+                ((KeyEvent)theEvent).logKeyEvent(
+                    null,
+                    "EventQueue.postEvent: the KeyEvent has been coalesced",
+                    this
+                );
+            }
             return;
         }
 
@@ -779,6 +795,15 @@ public class EventQueue {
      * Called from dispatchEvent() under a correct AccessControlContext
      */
     private void dispatchEventImpl(final AWTEvent event, final Object src) {
+        final boolean isKeyEvent = event instanceof KeyEvent;
+        if (isKeyEvent) {
+            ((KeyEvent)event).logKeyEvent(
+                new Throwable(),
+                "EventQueue.dispatchEventImpl: a KeyEvent is being dispatched... (src=" + src + ")",
+                this
+            );
+        }
+
         event.isPosted = true;
         if (event instanceof ActiveEvent) {
             // This could become the sole method of dispatching in time.

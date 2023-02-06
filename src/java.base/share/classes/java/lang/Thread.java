@@ -1755,6 +1755,12 @@ public class Thread implements Runnable {
     }
 
     /**
+     * Returns current thread native ID
+     * @return current thread native ID
+     */
+    public static native long getCurrentThreadNativeId();
+
+    /**
      * A thread state.  A thread can be in one of the following states:
      * <ul>
      * <li>{@link #NEW}<br>

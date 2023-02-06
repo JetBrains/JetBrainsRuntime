@@ -31,6 +31,9 @@ import java.awt.Toolkit;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serial;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import sun.awt.AWTAccessor;
 
@@ -1826,6 +1829,55 @@ public class KeyEvent extends InputEvent {
         // Return a keycode (if any) associated with a character.
         return sun.awt.ExtendedKeyCodes.getExtendedKeyCodeForChar(c);
     }
+
+
+    @Override
+    public void consume() {
+        super.consume();
+
+        logKeyEvent(new Throwable(), "KeyEvent.consume(): the event has been consumed", null);
+    }
+
+
+    /**
+     * Suppresses build errors
+     * @param stacktrace to suppress build errors
+     * @param message to suppress build errors
+     * @param invoker to suppress build errors
+     */
+    public final void logKeyEvent(final Throwable stacktrace, final String message, final Object invoker) {
+        final var threadId = Thread.getCurrentThreadNativeId();
+        final var utcDateTime = LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC);
+
+        final String logStr;
+        if (stacktrace == null) {
+            logStr = String.format("[%d] [%02d.%02d.%d %02d:%02d:%02d.%03d] %s\n  keyEvent=%s\n  invoker=%s\n\n",
+                threadId,
+                utcDateTime.getDayOfMonth(), utcDateTime.getMonth().getValue(), utcDateTime.getYear(),
+                utcDateTime.getHour(), utcDateTime.getMinute(), utcDateTime.getSecond(), utcDateTime.getNano() / 1000000,
+                message, this,
+                invoker
+            );
+        } else {
+            final StringBuilder sb = new StringBuilder(1024);
+            for (final var ste : stacktrace.getStackTrace()) {
+                sb.append("\n    ").append(ste);
+            }
+
+            logStr = String.format("[%d] [%02d.%02d.%d %02d:%02d:%02d.%03d] %s\n  keyEvent=%s\n  invoker=%s\n  Stacktrace: %s\n\n",
+                threadId,
+                utcDateTime.getDayOfMonth(), utcDateTime.getMonth().getValue(), utcDateTime.getYear(),
+                utcDateTime.getHour(), utcDateTime.getMinute(), utcDateTime.getSecond(), utcDateTime.getNano() / 1000000,
+                message, this,
+                invoker,
+                sb
+            );
+        }
+
+        System.err.print(logStr);
+    }
+
+
 
     /**
      * Sets new modifiers by the old ones. The key modifiers
