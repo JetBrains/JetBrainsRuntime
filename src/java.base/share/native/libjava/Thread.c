@@ -76,3 +76,18 @@ Java_java_lang_Thread_clearInterruptEvent(JNIEnv *env, jclass cls)
     ResetEvent((HANDLE) JVM_GetThreadInterruptEvent());
 #endif
 }
+
+/*
+ * Class:     java_lang_Thread
+ * Method:    getCurrentThreadNativeId
+ * Signature: ()J
+ */
+JNIEXPORT jlong JNICALL Java_java_lang_Thread_getCurrentThreadNativeId(JNIEnv *env, jclass cls)
+{
+#if defined(_WIN32)
+    // Need to reset the interrupt event used by Process.waitFor
+    return GetCurrentThreadId();
+#else
+    return 0;
+#endif // defined(_WIN32)
+}
