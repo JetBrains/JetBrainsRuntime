@@ -26,6 +26,8 @@
 
 package sun.swing;
 
+import sun.awt.AWTThreading;
+
 import javax.accessibility.Accessible;
 import java.lang.annotation.Native;
 
@@ -72,7 +74,12 @@ public class AccessibleAnnouncer {
             throw new IllegalArgumentException("Invalid parameters passed for declaration");
         }
 
-        nativeAnnounce(a, str, priority);
+        AWTThreading.executeWaitToolkit(new Runnable() {
+            @Override
+            public void run() {
+                nativeAnnounce(a, str, priority);
+            }
+        });
     }
 
     private static native void nativeAnnounce(Accessible a, final String str, final int priority);
