@@ -73,6 +73,9 @@ static jclass sjc_CAccessible = NULL;
 #define GET_CACCESSIBLE_CLASS_RETURN(ret) \
     GET_CLASS_RETURN(sjc_CAccessible, "sun/lwawt/macosx/CAccessible", ret);
 
+#define GET_CACCESSIBLE_CLASS() \
+    GET_CLASS(sjc_CAccessible, "sun/lwawt/macosx/CAccessible");
+
 static NSMutableDictionary * _Nullable rolesMap;
 static NSMutableDictionary * _Nullable rowRolesMapForParent;
 NSString *const IgnoreClassName = @"IgnoreAccessibility";
@@ -1367,7 +1370,14 @@ JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_nativeAnnounce
             DECLARE_CLASS(jc_Accessible, "javax/accessibility/Accessible");
 
             if ((jAccessible != NULL) && (*env)->IsInstanceOf(env, jAccessible, jc_Accessible)) {
-                caller = [CommonComponentAccessibility createWithAccessible:jAccessible withEnv:env withView:[AWTView awtView:env ofAccessible:jAccessible]];
+                GET_CACCESSIBLE_CLASS();
+                DECLARE_FIELD(jf_ptr, sjc_CAccessible, "ptr", "J");
+                // try to fetch the jCAX from Java, and return autoreleased
+                jobject jCAX = [CommonComponentAccessibility getCAccessible:jAccessible withEnv:env];
+                if (jCAX != NULL) {
+                    caller = (CommonComponentAccessibility *) jlong_to_ptr((*env)->GetLongField(env, jCAX, jf_ptr));
+                    (*env)->DeleteLocalRef(env, jCAX);
+                }
             }
 
             if (caller == nil) {
