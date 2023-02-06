@@ -761,4 +761,148 @@ template<typename T> inline T* SafeCreate(T* &pArg) {
 
 POINT ScreenToBottommostChild(HWND& w, LONG ncx, LONG ncy);
 
+
+class Jbs9571512976146Logger final
+{
+public: // forbids copies and moves
+    Jbs9571512976146Logger(const Jbs9571512976146Logger&) = delete;
+    Jbs9571512976146Logger(Jbs9571512976146Logger&&) = delete;
+
+    Jbs9571512976146Logger& operator=(const Jbs9571512976146Logger&) = delete;
+    Jbs9571512976146Logger& operator=(Jbs9571512976146Logger&&) = delete;
+
+public:
+    /**
+     * Log entry:
+     *   [<threadId>] [<date-time>] args...<newline>
+     *   Stacktrace:<newline>
+     *   -- stacktrace TOP entry<newline>
+     *   -- stacktrace entry<newline>
+     *   -- ...
+     *   -- stacktrace ROOT entry<newline>
+     *   <newline>
+     */
+    template<typename T1, typename... Ts>
+    static void logEntry(bool doPrintStacktrace, const T1& val1, const Ts&... values)
+    {
+        TLSBuffer::reset();
+
+        const auto threadId = ::GetCurrentThreadId();
+        const auto dateTime = [] {
+            SYSTEMTIME time{};
+            ::GetSystemTime(&time);
+            return time;
+        }();
+
+        TLSBuffer::appendFormatted('[', threadId, "] [", dateTime, "] ", val1, values..., '\n');
+        if (doPrintStacktrace)
+        {
+            TLSBuffer::appendFormatted("  Stacktrace:\n");
+            TLSBuffer::appendNativeStacktraceFormatted(1, "    ");
+        }
+        TLSBuffer::appendFormatted('\n');
+
+        const auto payload = TLSBuffer::getPayload();
+        if ((payload.payloadUtf8 == nullptr) || (payload.payloadLength < 1))
+        {
+            constexpr char errStr[] = "Jbs9571512976146Logger::logEntry: FAILED TO CONSTRUCT A STRING TO LOG";
+            constexpr auto errStrLen = sizeof(errStr) / sizeof(errStr[0]) - 1;
+
+            javaSystemErrPrint(errStr, errStrLen);
+
+            return;
+        }
+
+        javaSystemErrPrint(payload.payloadUtf8, payload.payloadLength);
+    }
+
+private: // ctors/dtor
+    Jbs9571512976146Logger();
+    ~Jbs9571512976146Logger();
+
+private:
+    class TLSBuffer final
+    {
+    public:
+        struct View final {
+            const char* const payloadUtf8;
+            const size_t payloadLength;
+        };
+
+    public:
+        static View getPayload();
+
+    public:
+        static void reset();
+
+    public:
+        template<typename T1, typename T2, typename... Ts>
+        static void appendFormatted(const T1& val1, const T2& val2, const Ts&... values)
+        {
+            appendFormatted(val1);
+            appendFormatted(val2, values...);
+        }
+
+        static void appendFormatted(bool value);
+
+        static void appendFormatted(char value);
+        static void appendFormatted(signed char value);
+        static void appendFormatted(unsigned char value);
+
+        //static void appendFormatted(wchar_t value);
+
+        static void appendFormatted(signed short value);
+        static void appendFormatted(unsigned short value);
+
+        static void appendFormatted(signed int value);
+        static void appendFormatted(unsigned int value);
+
+        static void appendFormatted(signed long value);
+        static void appendFormatted(unsigned long value);
+
+        static void appendFormatted(signed long long value);
+        static void appendFormatted(unsigned long long value);
+
+        static void appendFormatted(float value);
+        static void appendFormatted(double value);
+        static void appendFormatted(long double value);
+
+        static void appendFormatted(std::nullptr_t);
+
+        static void appendFormatted(const char* str);
+        static void appendFormatted(const wchar_t* str);
+
+        static void appendFormatted(const void* ptr);
+
+        static void appendFormatted(const ::SYSTEMTIME& dateTime);
+
+        static void appendNativeStacktraceFormatted(unsigned framesToSkip = 0, const char* prefix = nullptr);
+
+    private:
+        char* buffer_;
+        size_t length_;
+        size_t charsCapacity_;
+
+    private:
+        static TLSBuffer& getInstance();
+
+    private:
+        explicit TLSBuffer();
+        ~TLSBuffer();
+
+    private:
+        void reallocImpl(size_t newCharsCapacity);
+        void freeImpl();
+        void resetImpl();
+
+    private:
+        template<typename... Ts>
+        void appendFormattedImpl(const char* formatStr, const Ts&... params);
+    };
+
+private:
+    // System.err.print(...)
+    static void javaSystemErrPrint(const char* utf8Str, size_t charsLen);
+};
+
 #endif /* AWT_TOOLKIT_H */

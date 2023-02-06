@@ -2064,6 +2064,23 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           if (::IsWindow(AwtWindow::GetModalBlocker(GetHWnd()))) {
               mr = mrConsume;
           }
+          break;
+      }
+      case WM_DEADCHAR:
+      {
+          Jbs9571512976146Logger::logEntry(false, "AwtComponent::WindowProc: not forwarded WM_DEADCHAR", " ; ",
+              "wParam=", static_cast<unsigned long long>(wParam), " ; ",
+              "lParam=", static_cast<unsigned long long>(lParam)
+          );
+          break;
+      }
+      case WM_SYSDEADCHAR:
+      {
+          Jbs9571512976146Logger::logEntry(false, "AwtComponent::WindowProc: not forwarded WM_SYSDEADCHAR", " ; ",
+              "wParam=", static_cast<unsigned long long>(wParam), " ; ",
+              "lParam=", static_cast<unsigned long long>(lParam)
+          );
+          break;
       }
     }
 
@@ -3819,11 +3836,14 @@ UINT AwtComponent::WindowsKeyToJavaChar(UINT wkey, UINT modifiers, TransOps ops,
 MsgRouting AwtComponent::WmKeyDown(UINT wkey, UINT repCnt,
                                    UINT flags, BOOL system)
 {
+    Jbs9571512976146Logger::logEntry(true, "AwtComponent::WmKeyDown(", wkey, ", ", repCnt, ", ", flags, ", ", system, ')');
+
     // VK_PROCESSKEY is a special value which means
     //          "Current IME wants to consume this KeyEvent"
     // Real key code is saved by IMM32.DLL and can be retrieved by
     // calling ImmGetVirtualKey();
     if (wkey == VK_PROCESSKEY) {
+        Jbs9571512976146Logger::logEntry(false, "<- AwtComponent::WmKeyDown: wkey == VK_PROCESSKEY");
         return mrDoDefault;
     }
     MSG msg;
@@ -3855,18 +3875,22 @@ MsgRouting AwtComponent::WmKeyDown(UINT wkey, UINT repCnt,
                                  java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN, (jlong)0);
     }
 
+    Jbs9571512976146Logger::logEntry(false, "<- AwtComponent::WmKeyDown");
+
     return mrConsume;
 }
 
 MsgRouting AwtComponent::WmKeyUp(UINT wkey, UINT repCnt,
                                  UINT flags, BOOL system)
 {
+    Jbs9571512976146Logger::logEntry(true, "AwtComponent::WmKeyUp(", wkey, ", ", repCnt, ", ", flags, ", ", system, ')');
 
     // VK_PROCESSKEY is a special value which means
     //          "Current IME wants to consume this KeyEvent"
     // Real key code is saved by IMM32.DLL and can be retrieved by
     // calling ImmGetVirtualKey();
     if (wkey == VK_PROCESSKEY) {
+        Jbs9571512976146Logger::logEntry(false, "AwtComponent::WmKeyUp: wkey == VK_PROCESSKEY; returning from here");
         return mrDoDefault;
     }
     MSG msg;
@@ -3883,6 +3907,9 @@ MsgRouting AwtComponent::WmKeyUp(UINT wkey, UINT repCnt,
     SendKeyEventToFocusOwner(java_awt_event_KeyEvent_KEY_RELEASED,
                              ::JVM_CurrentTimeMillis(NULL, 0), jkey, character,
                              modifiers, keyLocation, (jlong)wkey, &msg);
+
+    Jbs9571512976146Logger::logEntry(false, "<- AwtComponent::WmKeyUp");
+
     return mrConsume;
 }
 
@@ -3918,6 +3945,8 @@ UINT AwtComponent::LangToCodePage(LANGID idLang)
 
 MsgRouting AwtComponent::WmIMEChar(UINT character, UINT repCnt, UINT flags, BOOL system)
 {
+    Jbs9571512976146Logger::logEntry(true, "AwtComponent::WmIMEChar(", character, ", ", repCnt, ", ", flags, ", ", system, ')');
+
     // We will simply create Java events here.
     WCHAR unicodeChar = character;
     MSG msg;
@@ -3931,12 +3960,17 @@ MsgRouting AwtComponent::WmIMEChar(UINT character, UINT repCnt, UINT flags, BOOL
                              unicodeChar, modifiers,
                              java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN, (jlong)0,
                              &msg);
+
+    Jbs9571512976146Logger::logEntry(false, "<- AwtComponent::WmIMEChar");
+
     return mrConsume;
 }
 
 MsgRouting AwtComponent::WmChar(UINT character, UINT repCnt, UINT flags,
                                 BOOL system)
 {
+    Jbs9571512976146Logger::logEntry(true, "AwtComponent::WmChar(", character, ", ", repCnt, ", ", flags, ", ", system, ')');
+
     deadKeyActive = FALSE;
 
     // Will only get WmChar messages with DBCS if we create them for
@@ -3961,6 +3995,7 @@ MsgRouting AwtComponent::WmChar(UINT character, UINT repCnt, UINT flags,
 
     if (system && alt_is_down) {
         if (character == VK_SPACE) {
+            Jbs9571512976146Logger::logEntry(false, "<- AwtComponent::WmChar: system && alt_is_down && (character == VK_SPACE)");
             return mrDoDefault;
         }
     }
@@ -3993,6 +4028,14 @@ MsgRouting AwtComponent::WmChar(UINT character, UINT repCnt, UINT flags,
         // Enter key generates \r in windows, but \n is required in java
         unicodeChar = java_awt_event_KeyEvent_VK_ENTER;
     }
+
+    Jbs9571512976146Logger::logEntry(false, "AwtComponent::WmChar: ",
+        "message=", message, " ; ",
+        "alt_is_down=", alt_is_down, " ; ",
+        "modifiers=", modifiers, " ; ",
+        "unicodeChar=", unicodeChar
+    );
+
     MSG msg;
     InitMessage(&msg, message, character,
                               MAKELPARAM(repCnt, flags));
@@ -4002,6 +4045,9 @@ MsgRouting AwtComponent::WmChar(UINT character, UINT repCnt, UINT flags,
                              unicodeChar, modifiers,
                              java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN, (jlong)0,
                              &msg);
+
+    Jbs9571512976146Logger::logEntry(false, "<- AwtComponent::WmChar");
+
     return mrConsume;
 }
 
@@ -5155,9 +5201,15 @@ void AwtComponent::RemoveChild(UINT id) {
 void AwtComponent::SendKeyEvent(jint id, jlong when, jint raw, jint cooked,
                                 jint modifiers, jint keyLocation, jlong nativeCode, MSG *pMsg)
 {
+    Jbs9571512976146Logger::logEntry(true, "AwtComponent::SendKeyEvent(",
+        id, ", ", when, ", ", raw, ", ", cooked, ", ", modifiers, ", ", keyLocation, ", ", nativeCode, ", ", pMsg, ')'
+    );
+
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
     CriticalSection::Lock l(GetLock());
     if (GetPeer(env) == NULL) {
+        Jbs9571512976146Logger::logEntry(false, "<- AwtComponent::SendKeyEvent: GetPeer(env) == NULL");
+
         /* event received during termination. */
         return;
     }
@@ -5167,6 +5219,7 @@ void AwtComponent::SendKeyEvent(jint id, jlong when, jint raw, jint cooked,
         jclass keyEventClsLocal = env->FindClass("java/awt/event/KeyEvent");
         DASSERT(keyEventClsLocal);
         if (keyEventClsLocal == NULL) {
+            Jbs9571512976146Logger::logEntry(false, "<- AwtComponent::SendKeyEvent: keyEventClsLocal == NULL");
             /* exception already thrown */
             return;
         }
@@ -5179,9 +5232,15 @@ void AwtComponent::SendKeyEvent(jint id, jlong when, jint raw, jint cooked,
         keyEventConst =  env->GetMethodID(keyEventCls, "<init>",
                                           "(Ljava/awt/Component;IJIICI)V");
         DASSERT(keyEventConst);
+
+        if (keyEventConst == NULL) {
+            Jbs9571512976146Logger::logEntry(false, "<- AwtComponent::SendKeyEvent: keyEventConst == NULL");
+        }
+
         CHECK_NULL(keyEventConst);
     }
     if (env->EnsureLocalCapacity(2) < 0) {
+        Jbs9571512976146Logger::logEntry(false, "<- AwtComponent::SendKeyEvent: env->EnsureLocalCapacity(2) < 0");
         return;
     }
     jobject target = GetTarget(env);
@@ -5193,6 +5252,7 @@ void AwtComponent::SendKeyEvent(jint id, jlong when, jint raw, jint cooked,
     DASSERT(keyEvent != NULL);
     if (keyEvent == NULL) {
         env->DeleteLocalRef(target);
+        Jbs9571512976146Logger::logEntry(false, "<- AwtComponent::SendKeyEvent: keyEvent == NULL");
         return;
     }
     env->SetLongField(keyEvent, AwtKeyEvent::rawCodeID, nativeCode);
@@ -5214,6 +5274,8 @@ void AwtComponent::SendKeyEvent(jint id, jlong when, jint raw, jint cooked,
 
     env->DeleteLocalRef(keyEvent);
     env->DeleteLocalRef(target);
+
+    Jbs9571512976146Logger::logEntry(false, "<- AwtComponent::SendKeyEvent");
 }
 
 void
@@ -5223,13 +5285,23 @@ AwtComponent::SendKeyEventToFocusOwner(jint id, jlong when,
                                        jlong nativeCode,
                                        MSG *msg)
 {
+    Jbs9571512976146Logger::logEntry(true, "AwtComponent::SendKeyEventToFocusOwner(",
+        id, ", ", raw, ", ", cooked, ", ", modifiers, ", ", keyLocation, ", ", nativeCode, ", ", msg, ')'
+    );
+
     /*
      * if focus owner is null, but focused window isn't
      * we will send key event to focused window
      */
     HWND hwndTarget = ((sm_focusOwner != NULL) ? sm_focusOwner : AwtComponent::GetFocusedWindow());
 
-    if (hwndTarget == GetHWnd()) {
+    const auto getHwndLocal = GetHWnd();
+
+    Jbs9571512976146Logger::logEntry(false, "AwtComponent::SendKeyEventToFocusOwner: ",
+        "hwndTarget=", hwndTarget, ", ", "GetHWnd()=", getHwndLocal
+    );
+
+    if (hwndTarget == getHwndLocal) {
         SendKeyEvent(id, when, raw, cooked, modifiers, keyLocation, nativeCode, msg);
     } else {
         AwtComponent *target = NULL;
@@ -5239,11 +5311,18 @@ AwtComponent::SendKeyEventToFocusOwner(jint id, jlong when,
                 target = this;
             }
         }
+
+        Jbs9571512976146Logger::logEntry(false, "AwtComponent::SendKeyEventToFocusOwner: ",
+            "target=", target
+        );
+
         if (target != NULL) {
             target->SendKeyEvent(id, when, raw, cooked, modifiers,
               keyLocation, nativeCode, msg);
         }
     }
+
+    Jbs9571512976146Logger::logEntry(false, "<- AwtComponent::SendKeyEventToFocusOwner");
 }
 
 void AwtComponent::SetDragCapture(UINT flags)
