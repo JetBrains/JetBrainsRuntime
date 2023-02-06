@@ -42,6 +42,6 @@ CreateFile = $(shell $(MKDIR) -p $(call ShellQuote, $(dir $1)) \
 
 # On macosx, file system timestamps only have 1 second resultion so must add
 # sleeps to properly test dependencies.
-ifeq ($(OPENJDK_BUILD_OS), macosx)
+ifeq ($(call isBuildOs, macosx), true)
   SLEEP_ON_MAC := sleep 1
 endif

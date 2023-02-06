@@ -1123,7 +1123,7 @@ ifneq ($(CREATE_BUILDJDK), true)
   endif
 endif
 
-ifeq ($(OPENJDK_TARGET_OS), macosx)
+ifeq ($(call isTargetOs, macosx), true)
   product-images: mac-jdk-bundle
 
   legacy-images: mac-legacy-jre-bundle

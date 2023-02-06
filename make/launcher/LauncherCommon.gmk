@@ -207,11 +207,11 @@ define SetupBuildLauncherBody
 
   $$(BUILD_LAUNCHER_$1): $$(BUILD_PLIST_$1)
 
-  ifeq ($(OPENJDK_TARGET_OS), aix)
+  ifeq ($(call isTargetOs, aix), true)
     $$(BUILD_LAUNCHER_$1): $(call FindStaticLib, java.base, jli_static)
   endif
 
-  ifeq ($(OPENJDK_TARGET_OS), windows)
+  ifeq ($(call isTargetOs, windows), true)
     $$(BUILD_LAUNCHER_$1): $(call FindStaticLib, java.base, java, /libjava) \
         $$($1_WINDOWS_JLI_LIB)
   endif

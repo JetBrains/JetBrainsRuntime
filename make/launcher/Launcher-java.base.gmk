@@ -41,7 +41,7 @@ $(eval $(call SetupBuildLauncher, java, \
     OPTIMIZATION := HIGH, \
 ))
 
-ifeq ($(OPENJDK_TARGET_OS), windows)
+ifeq ($(call isTargetOs, windows), true)
   $(eval $(call SetupBuildLauncher, javaw, \
       CFLAGS := -DJAVAW -DEXPAND_CLASSPATH_WILDCARDS -DENABLE_ARG_FILES, \
       LIBS_windows := user32.lib comctl32.lib, \
@@ -56,7 +56,7 @@ $(eval $(call SetupBuildLauncher, keytool, \
 
 ################################################################################
 
-ifeq ($(OPENJDK_TARGET_OS), linux)
+ifeq ($(call isTargetOs, linux), true)
   $(eval $(call SetupJdkExecutable, BUILD_JEXEC, \
       NAME := jexec, \
       SRC := $(TOPDIR)/src/$(MODULE)/unix/native/launcher, \
@@ -75,7 +75,7 @@ endif
 
 ################################################################################
 
-ifneq ($(findstring $(OPENJDK_TARGET_OS), macosx solaris aix linux), )
+ifeq ($(call isTargetOs, macosx solaris aix linux), true)
   $(eval $(call SetupJdkExecutable, BUILD_JSPAWNHELPER, \
       NAME := jspawnhelper, \
       SRC := $(TOPDIR)/src/$(MODULE)/unix/native/jspawnhelper, \
