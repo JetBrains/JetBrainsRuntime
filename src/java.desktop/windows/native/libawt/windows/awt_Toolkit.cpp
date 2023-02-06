@@ -67,6 +67,9 @@
 #include <java_awt_Toolkit.h>
 #include <java_awt_event_InputMethodEvent.h>
 
+#include "dbghelp.h"
+
+
 extern void initScreens(JNIEnv *env);
 extern "C" void awt_dnd_initialize();
 extern "C" void awt_dnd_uninitialize();
@@ -3275,3 +3278,338 @@ POINT ScreenToBottommostChild(HWND& w, LONG ncx, LONG ncy) {
     }
 }
 
+
+// ====================================================================================================================
+// Jbs9571512976146Logger
+// ====================================================================================================================
+
+Jbs9571512976146Logger::Jbs9571512976146Logger() = default;
+Jbs9571512976146Logger::~Jbs9571512976146Logger() = default;
+
+void Jbs9571512976146Logger::javaSystemErrPrint(const char* const utf8Str, size_t charsLen)
+{
+    if (jvm == nullptr) {
+        return;
+    }
+
+    JNIEnv* const env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+    if (env == nullptr) {
+        return;
+    }
+
+    jboolean exceptionOccurred = JNI_FALSE;
+    jvalue systemErr = JNU_GetStaticFieldByName(env, &exceptionOccurred, "java/lang/System", "err", "Ljava/io/PrintStream;");
+    if (exceptionOccurred == JNI_TRUE) {
+        return;
+    }
+
+    //static_assert(sizeof(*utf16Str) == sizeof(jchar), "Cannot cast utf16Str to jchar*");
+
+    jstring strToPrint = env->NewStringUTF(/*reinterpret_cast<const jchar*>(*/utf8Str/*)*/);
+    if (strToPrint == nullptr) {
+        return;
+    }
+
+    (void)JNU_CallMethodByName(env, &exceptionOccurred, systemErr.l, "print", "(Ljava/lang/String;)V", strToPrint);
+
+    env->DeleteLocalRef(strToPrint);
+    strToPrint = nullptr;
+}
+
+
+
+Jbs9571512976146Logger::TLSBuffer::View Jbs9571512976146Logger::TLSBuffer::getPayload()
+{
+    auto& instance = getInstance();
+
+    if ((instance.buffer_ == nullptr) || (instance.length_ < 1))
+    {
+        return { nullptr, 0 };
+    }
+
+    return { instance.buffer_, instance.length_ };
+}
+
+void Jbs9571512976146Logger::TLSBuffer::reset()
+{
+    getInstance().resetImpl();
+}
+
+Jbs9571512976146Logger::TLSBuffer& Jbs9571512976146Logger::TLSBuffer::getInstance()
+{
+    static thread_local TLSBuffer result;
+    return result;
+}
+
+Jbs9571512976146Logger::TLSBuffer::TLSBuffer()
+    : buffer_(nullptr)
+    , charsCapacity_(0)
+    , length_(0)
+{
+}
+
+Jbs9571512976146Logger::TLSBuffer::~TLSBuffer()
+{
+    freeImpl();
+}
+
+void Jbs9571512976146Logger::TLSBuffer::reallocImpl(const size_t newCharsCapacity)
+{
+    void* newBuffer = nullptr;
+
+    try
+    {
+        newBuffer = ::safe_Realloc(buffer_, newCharsCapacity * sizeof(*buffer_));
+    }
+    catch(...)
+    {
+    }
+
+    if (newBuffer == nullptr)
+    {
+        freeImpl();
+        return;
+    }
+
+    buffer_ = reinterpret_cast<decltype(buffer_)>(newBuffer);
+    charsCapacity_ = newCharsCapacity;
+
+    if (charsCapacity_ < 1)
+    {
+        charsCapacity_ = length_ = 0;
+    }
+
+    if (length_ > charsCapacity_)
+    {
+        length_ = charsCapacity_ - 1;
+        buffer_[length_] = 0;
+    }
+}
+
+void Jbs9571512976146Logger::TLSBuffer::freeImpl()
+{
+    if (buffer_ != nullptr)
+    {
+        ::free(buffer_);
+    }
+
+    buffer_ = nullptr;
+    charsCapacity_ = 0;
+    length_ = 0;
+}
+
+void Jbs9571512976146Logger::TLSBuffer::resetImpl()
+{
+    length_ = 0;
+    if (charsCapacity_ > 0)
+    {
+        buffer_[0] = 0;
+    }
+}
+
+
+template<typename... Ts>
+void Jbs9571512976146Logger::TLSBuffer::appendFormattedImpl(const char* const formatStr, const Ts&... params)
+{
+    const auto getFreeSpace = [this] { return (charsCapacity_ > length_) ? charsCapacity_ - length_ - 1 : 0; };
+
+    int written = -1;
+    if ((charsCapacity_ > 0) && (charsCapacity_ > length_))
+    {
+        written = ::snprintf(buffer_ + length_, getFreeSpace(), formatStr, params...);
+    }
+
+    while ((written < 0) || (written >= getFreeSpace()))
+    {
+        reallocImpl( (charsCapacity_ < 1) ? 1024 : (charsCapacity_ * 2) );
+        written = ::snprintf(buffer_ + length_, getFreeSpace(), formatStr, params...);
+    }
+
+    length_ += written;
+    buffer_[length_] = 0;
+}
+
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(const bool value)
+{
+    appendFormatted(value ? "true" : "false");
+}
+
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(const char value)
+{
+    const int intVal = value;
+    getInstance().appendFormattedImpl("%c", intVal);
+}
+
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(const signed char value)
+{
+    appendFormatted(static_cast<signed long long>(value));
+}
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(const unsigned char value)
+{
+    appendFormatted(static_cast<unsigned long long>(value));
+}
+
+
+/*void Jbs9571512976146Logger::TLSBuffer::appendFormatted(const wchar_t value)
+{
+    const int intVal = value;
+    getInstance().appendFormattedImpl(L"%c", intVal, intVal);
+}*/
+
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(signed short value)
+{
+    appendFormatted(static_cast<signed long long>(value));
+}
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(unsigned short value)
+{
+    appendFormatted(static_cast<unsigned long long>(value));
+}
+
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(signed int value)
+{
+    appendFormatted(static_cast<signed long long>(value));
+}
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(unsigned int value)
+{
+    appendFormatted(static_cast<unsigned long long>(value));
+}
+
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(signed long value)
+{
+    appendFormatted(static_cast<signed long long>(value));
+}
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(unsigned long value)
+{
+    appendFormatted(static_cast<unsigned long long>(value));
+}
+
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(signed long long value)
+{
+    getInstance().appendFormattedImpl("%lld", value);
+}
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(unsigned long long value)
+{
+    getInstance().appendFormattedImpl("%llu", value);
+}
+
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(float value)
+{
+    appendFormatted(static_cast<double>(value));
+}
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(double value)
+{
+    getInstance().appendFormattedImpl("%f", value);
+}
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(long double value)
+{
+    getInstance().appendFormattedImpl("%Lf", value);
+}
+
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(std::nullptr_t)
+{
+    getInstance().appendFormattedImpl("%s", "nullptr");
+}
+
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(const char* str)
+{
+    if (str == nullptr) {
+        getInstance().appendFormattedImpl("%s", "(char*)nullptr");
+    } else {
+        getInstance().appendFormattedImpl("%s", str);
+    }
+}
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(const wchar_t* str)
+{
+    if (str == nullptr) {
+        getInstance().appendFormattedImpl("%s", "(wchar_t*)nullptr");
+    } else {
+        getInstance().appendFormattedImpl("%ls", str);
+    }
+}
+
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(const void* ptr)
+{
+    if (ptr == nullptr) {
+        getInstance().appendFormattedImpl("%s", "nullptr");
+    } else {
+        getInstance().appendFormattedImpl("0x%p", ptr);
+    }
+}
+
+
+void Jbs9571512976146Logger::TLSBuffer::appendFormatted(const ::SYSTEMTIME& dateTime)
+{
+    getInstance().appendFormattedImpl(
+        "%02u.%02u.%u %02u:%02u:%02u.%03u",
+        static_cast<unsigned>(dateTime.wDay),
+        static_cast<unsigned>(dateTime.wMonth),
+        static_cast<unsigned>(dateTime.wYear),
+        static_cast<unsigned>(dateTime.wHour),
+        static_cast<unsigned>(dateTime.wMinute),
+        static_cast<unsigned>(dateTime.wSecond),
+        static_cast<unsigned>(dateTime.wMilliseconds)
+    );
+}
+
+void Jbs9571512976146Logger::TLSBuffer::appendNativeStacktraceFormatted(unsigned framesToSkip, const char* prefix)
+{
+    // TODO: it just doesn't work (see TODOs below)
+
+    ++framesToSkip; // to exclude this frame
+    if (prefix == nullptr) prefix = "";
+
+    static const auto thisProcess = [] {
+        const ::HANDLE process = ::GetCurrentProcess();
+        if (::SymInitializeW(process, nullptr, TRUE) != TRUE) { // TODO: fails with ERROR_INVALID_PARAMETER (87)
+            ::fprintf(stderr, "SymInitializeW failed (GetLastError=%llu)\n", (unsigned long long)::GetLastError());
+        }
+        return process;
+    }();
+
+    constexpr unsigned framesToCapture = 50;
+    void* stack[framesToCapture] = { nullptr };
+
+    const auto capturedFramesCount = ::CaptureStackBackTrace(framesToSkip, framesToCapture, &stack[0], nullptr);
+
+    constexpr unsigned symbolMaxNameLength = 255;
+    static_assert(sizeof(unsigned char) == 1, "sizeof(unsigned char) != 1");
+    alignas(::SYMBOL_INFOW) unsigned char symbolBuffer[sizeof(::SYMBOL_INFOW) + (symbolMaxNameLength + 1) * sizeof(::SYMBOL_INFOW{}.Name[0])] = { 0 };
+
+    ::SYMBOL_INFOW* const symbol = reinterpret_cast<::SYMBOL_INFOW*>(&symbolBuffer[0]);
+    symbol->SizeOfStruct = sizeof(*symbol);
+    symbol->MaxNameLen = symbolMaxNameLength;
+
+    for (unsigned i = 0; i < capturedFramesCount; ++i)
+    {
+        // TODO: fails with ERROR_INVALID_ADDRESS (487) or ERROR_MOD_NOT_FOUND (126)
+        if (::SymFromAddrW(thisProcess, reinterpret_cast<DWORD64>(stack[i]), nullptr, symbol) == TRUE)
+        {
+            symbol->Name[symbol->NameLen] = 0;
+            getInstance().appendFormattedImpl("%s%ls\n", prefix, &symbol->Name[0]);
+        }
+        else
+        {
+            const auto err = ::GetLastError();
+            getInstance().appendFormattedImpl("%s%p (<failed-to-obtain-symbol-name> ; GetLastError=%llu)\n", prefix, stack[i], (unsigned long long)err);
+        }
+    }
+}
