@@ -47,9 +47,10 @@ public class InputMethodTest {
     private enum TestCases {
         DeadKeysTest (new DeadKeysTest()),
         KeyCodesTest (new KeyCodesTest()),
-        PinyinQuotesTest (new PinyinQuotesTest()),
+        PinyinCapsLockTest (new PinyinCapsLockTest()),
         PinyinFullWidthPunctuationTest (new PinyinFullWidthPunctuationTest()),
-        PinyinHalfWidthPunctuationTest (new PinyinHalfWidthPunctuationTest())
+        PinyinHalfWidthPunctuationTest (new PinyinHalfWidthPunctuationTest()),
+        PinyinQuotesTest (new PinyinQuotesTest())
         ;
 
         private Runnable test;
@@ -70,6 +71,7 @@ public class InputMethodTest {
                 runTest(arg);
             }
         } finally {
+            setCapsLockState(false);
             LWCToolkit.switchKeyboardLayout(initialLayout);
             for (String layoutId : addedLayouts) {
                 try {
@@ -121,6 +123,7 @@ public class InputMethodTest {
 
     private static void runTest(String name) {
         currentTest = name;
+        setCapsLockState(false);
         try {
             TestCases.valueOf(name).run();
         } catch (Exception e) {
@@ -151,6 +154,7 @@ public class InputMethodTest {
         }
 
         LWCToolkit.switchKeyboardLayout(name);
+        robot.delay(250);
     }
 
     public static void type(int key, int modifiers) {
@@ -183,6 +187,11 @@ public class InputMethodTest {
         for (var modKey : modKeys) {
             robot.keyRelease(modKey);
         }
+    }
+
+    public static void setCapsLockState(boolean desiredState) {
+        LWCToolkit.getDefaultToolkit().setLockingKeyState(KeyEvent.VK_CAPS_LOCK, desiredState);
+        robot.delay(250);
     }
 
     public static void expect(String expectedValue) {
