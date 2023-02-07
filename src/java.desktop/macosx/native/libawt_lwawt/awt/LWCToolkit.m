@@ -45,6 +45,9 @@
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
 #import <Carbon/Carbon.h>
 
+#include <IOKit/hidsystem/IOHIDShared.h>
+#include <IOKit/hidsystem/IOHIDParameter.h>
+
 // SCROLL PHASE STATE
 #define SCROLL_PHASE_UNSUPPORTED 1
 #define SCROLL_PHASE_BEGAN 2
@@ -1034,4 +1037,34 @@ JNICALL Java_sun_lwawt_macosx_LWCToolkit_disableKeyboardLayoutNative(JNIEnv *env
         }];
     JNI_COCOA_EXIT(env);
     return status == noErr;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    setCapsLockState
+ * Signature: (Z)Z
+ */
+JNIEXPORT jboolean JNICALL
+JNICALL Java_sun_lwawt_macosx_LWCToolkit_setCapsLockState(JNIEnv *env, jclass cls, jboolean on) {
+    __block kern_return_t err = KERN_SUCCESS;
+    JNI_COCOA_ENTER(env);
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
+            io_service_t ioHIDService = IOServiceGetMatchingService(kIOMasterPortDefault,
+                                                                    IOServiceMatching(kIOHIDSystemClass));
+            if (!ioHIDService) {
+                err = KERN_FAILURE;
+                return;
+            }
+
+            io_connect_t ioHIDConnect;
+            err = IOServiceOpen(ioHIDService, mach_task_self(), kIOHIDParamConnectType, &ioHIDConnect);
+            if (err == KERN_SUCCESS) {
+                err = IOHIDSetModifierLockState(ioHIDConnect, kIOHIDCapsLockState, on);
+                IOServiceClose(ioHIDConnect);
+            }
+
+            IOObjectRelease(ioHIDService);
+        }];
+    JNI_COCOA_EXIT(env);
+    return err == KERN_SUCCESS;
 }
