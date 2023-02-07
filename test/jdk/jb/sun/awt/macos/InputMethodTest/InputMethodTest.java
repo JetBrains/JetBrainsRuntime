@@ -29,7 +29,9 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class InputMethodTest {
     private static JFrame frame;
@@ -38,6 +40,7 @@ public class InputMethodTest {
     private static String currentTest = "";
     private static String currentSection = "";
     private static String initialLayout;
+    private static final Set<String> addedLayouts = new HashSet<>();
     private static boolean success = true;
     private static int lastKeyCode = -1;
 
@@ -62,10 +65,18 @@ public class InputMethodTest {
 
     public static void main(String[] args) {
         init();
-        for (String arg : args) {
-            runTest(arg);
+        try {
+            for (String arg : args) {
+                runTest(arg);
+            }
+        } finally {
+            LWCToolkit.switchKeyboardLayout(initialLayout);
+            for (String layoutId : addedLayouts) {
+                try {
+                    LWCToolkit.disableKeyboardLayout(layoutId);
+                } catch (Exception ignored) {}
+            }
         }
-        LWCToolkit.switchKeyboardLayout(initialLayout);
         System.exit(success ? 0 : 1);
     }
 
@@ -110,7 +121,12 @@ public class InputMethodTest {
 
     private static void runTest(String name) {
         currentTest = name;
-        TestCases.valueOf(name).run();
+        try {
+            TestCases.valueOf(name).run();
+        } catch (Exception e) {
+            System.out.printf("Test %s (%s) failed: %s\n", currentTest, currentSection, e);
+            success = false;
+        }
     }
 
     public static void section(String description) {
@@ -120,6 +136,20 @@ public class InputMethodTest {
     }
 
     public static void layout(String name) {
+        List<String> layouts = new ArrayList<>();
+        if (name.matches("com\\.apple\\.inputmethod\\.(SCIM|TCIM|TYIM)\\.\\w+")) {
+            layouts.add(name.replaceFirst("\\.\\w+$", ""));
+        }
+
+        layouts.add(name);
+
+        for (String layout : layouts) {
+            if (!LWCToolkit.isKeyboardLayoutEnabled(layout)) {
+                LWCToolkit.enableKeyboardLayout(layout);
+                addedLayouts.add(layout);
+            }
+        }
+
         LWCToolkit.switchKeyboardLayout(name);
     }
 
