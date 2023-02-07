@@ -424,6 +424,7 @@ ifeq ($(call isTargetOs, macosx), true)
           -framework AudioToolbox \
           -framework Carbon \
           -framework Cocoa \
+          -framework IOKit \
           -framework ExceptionHandling \
           -framework JavaRuntimeSupport \
           -framework Metal \
