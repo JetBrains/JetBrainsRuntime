@@ -555,6 +555,8 @@ public final class LWCToolkit extends LWToolkit {
 
     private native boolean isCapsLockOn();
 
+    private static native boolean setCapsLockState(boolean on);
+
     /*
      * NOTE: Among the keys this method is supposed to check,
      * only Caps Lock works as a true locking key with OS X.
@@ -578,6 +580,25 @@ public final class LWCToolkit extends LWToolkit {
 
             default:
                 throw new IllegalArgumentException("invalid key for Toolkit.getLockingKeyState");
+        }
+    }
+
+    @Override
+    public void setLockingKeyState(int keyCode, boolean on) throws UnsupportedOperationException {
+        switch (keyCode) {
+            case KeyEvent.VK_NUM_LOCK:
+            case KeyEvent.VK_SCROLL_LOCK:
+            case KeyEvent.VK_KANA_LOCK:
+                throw new UnsupportedOperationException("Toolkit.setLockingKeyState");
+
+            case KeyEvent.VK_CAPS_LOCK:
+                if (!setCapsLockState(on)) {
+                    throw new RuntimeException("failed to set caps lock state");
+                }
+                break;
+
+            default:
+                throw new IllegalArgumentException("invalid key for Toolkit.setLockingKeyState");
         }
     }
 
