@@ -934,8 +934,7 @@ Java_sun_lwawt_macosx_LWCToolkit_getMultiClickTime(JNIEnv *env, jclass klass) {
  * Signature: ()Ljava/lang/String;
  */
 JNIEXPORT jstring JNICALL
-JNICALL Java_sun_lwawt_macosx_LWCToolkit_getKeyboardLayoutNativeId(JNIEnv *env, jclass cls)
-{
+JNICALL Java_sun_lwawt_macosx_LWCToolkit_getKeyboardLayoutNativeId(JNIEnv *env, jclass cls) {
     __block NSString * layoutId = NULL;
     JNI_COCOA_ENTER(env);
         [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
@@ -951,19 +950,88 @@ JNICALL Java_sun_lwawt_macosx_LWCToolkit_getKeyboardLayoutNativeId(JNIEnv *env, 
  * Method:    switchKeyboardLayoutNative
  * Signature: (Ljava/lang/String;)V
  */
-JNIEXPORT void JNICALL
-JNICALL Java_sun_lwawt_macosx_LWCToolkit_switchKeyboardLayoutNative(JNIEnv *env, jclass cls, jstring jLayoutId)
-{
+JNIEXPORT jboolean JNICALL
+JNICALL Java_sun_lwawt_macosx_LWCToolkit_switchKeyboardLayoutNative(JNIEnv *env, jclass cls, jstring jLayoutId) {
+    __block OSStatus status = noErr;
     JNI_COCOA_ENTER(env);
-        __block NSString* layoutId = [JavaStringToNSString(env, jLayoutId) retain];
-        [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+        __block NSString* layoutId = JavaStringToNSString(env, jLayoutId);
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
             NSArray* sources = CFBridgingRelease(TISCreateInputSourceList((__bridge CFDictionaryRef)@{ (__bridge NSString*)kTISPropertyInputSourceID : layoutId }, FALSE));
             TISInputSourceRef source = (__bridge TISInputSourceRef)sources[0];
-            OSStatus status = TISSelectInputSource(source);
+            status = TISSelectInputSource(source);
             if (status != noErr) {
-                NSLog(@"error during keyboard layout switch");
+                NSLog(@"failed to switch to keyboard layout %@, error code %d", layoutId, status);
             }
-            [layoutId release];
         }];
     JNI_COCOA_EXIT(env);
+    return status == noErr;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    getKeyboardLayoutListNative
+ * Signature: (Z)[Ljava/lang/String;
+ */
+JNIEXPORT jarray JNICALL
+JNICALL Java_sun_lwawt_macosx_LWCToolkit_getKeyboardLayoutListNative(JNIEnv *env, jclass cls, jboolean includeAll) {
+    __block jarray out = NULL;
+    jclass stringClazz = (*env)->FindClass(env, "java/lang/String");
+    JNI_COCOA_ENTER(env);
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+        NSArray* sources = CFBridgingRelease(TISCreateInputSourceList(nil, includeAll));
+        int numOfSources = (int)[sources count];
+        out = (*env)->NewObjectArray(env, numOfSources, stringClazz, NULL);
+        for (int i = 0; i < numOfSources; ++i) {
+            id layout = [sources objectAtIndex:i];
+            NSString* layoutId = TISGetInputSourceProperty((TISInputSourceRef)layout, kTISPropertyInputSourceID);
+            jstring layoutIdJava = NSStringToJavaString(env, layoutId);
+            (*env)->SetObjectArrayElement(env, out, i, layoutIdJava);
+        }
+    }];
+    JNI_COCOA_EXIT(env);
+    return out;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    enableKeyboardLayoutNative
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT jboolean JNICALL
+JNICALL Java_sun_lwawt_macosx_LWCToolkit_enableKeyboardLayoutNative(JNIEnv *env, jclass cls, jstring jLayoutId) {
+    __block OSStatus status = noErr;
+    JNI_COCOA_ENTER(env);
+        __block NSString* layoutId = JavaStringToNSString(env, jLayoutId);
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+            NSArray* sources = CFBridgingRelease(TISCreateInputSourceList((__bridge CFDictionaryRef)@{ (__bridge NSString*)kTISPropertyInputSourceID : layoutId }, YES));
+            TISInputSourceRef source = (__bridge TISInputSourceRef)sources[0];
+            status = TISEnableInputSource(source);
+            if (status != noErr) {
+                NSLog(@"failed to enable keyboard layout %@, error code %d", layoutId, status);
+            }
+        }];
+    JNI_COCOA_EXIT(env);
+    return status == noErr;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    disableKeyboardLayoutNative
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT jboolean JNICALL
+JNICALL Java_sun_lwawt_macosx_LWCToolkit_disableKeyboardLayoutNative(JNIEnv *env, jclass cls, jstring jLayoutId) {
+    __block OSStatus status = noErr;
+    JNI_COCOA_ENTER(env);
+        __block NSString* layoutId = JavaStringToNSString(env, jLayoutId);
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+            NSArray* sources = CFBridgingRelease(TISCreateInputSourceList((__bridge CFDictionaryRef)@{ (__bridge NSString*)kTISPropertyInputSourceID : layoutId }, YES));
+            TISInputSourceRef source = (__bridge TISInputSourceRef)sources[0];
+            status = TISDisableInputSource(source);
+            if (status != noErr) {
+                NSLog(@"failed to disable keyboard layout %@, error code %d", layoutId, status);
+            }
+        }];
+    JNI_COCOA_EXIT(env);
+    return status == noErr;
 }
