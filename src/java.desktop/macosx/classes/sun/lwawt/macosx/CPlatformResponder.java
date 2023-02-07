@@ -36,6 +36,8 @@ import java.awt.event.InputEvent;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.KeyEvent;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Translates NSEvents/NPCocoaEvents into AWT events.
@@ -55,6 +57,7 @@ final class CPlatformResponder {
     private int lastDraggedAbsoluteY;
     private int lastDraggedRelativeX;
     private int lastDraggedRelativeY;
+    private static final Pattern layoutsNeedingCapsLockFix = Pattern.compile("com\\.apple\\.inputmethod\\.(SCIM|TCIM)\\.(Shuangpin|Pinyin|ITABC)");
 
     CPlatformResponder(final PlatformEventNotifier eventNotifier,
                        final boolean isNpapiCallback) {
@@ -231,14 +234,23 @@ final class CPlatformResponder {
                 }
             }
 
-            // If Pinyin Simplified input method is selected, CAPS_LOCK key is supposed to switch
+            // If a Chinese input method is selected, CAPS_LOCK key is supposed to switch
             // input to latin letters.
             // It is necessary to use testCharIgnoringModifiers instead of testChar for event
             // generation in such case to avoid uppercase letters in text components.
-            LWCToolkit lwcToolkit = (LWCToolkit)Toolkit.getDefaultToolkit();
+            // This is only necessary for the following Chinese input methods:
+            //      com.apple.inputmethod.SCIM.ITABC
+            //      com.apple.inputmethod.SCIM.Shuangpin
+            //      com.apple.inputmethod.TCIM.Pinyin
+            //      com.apple.inputmethod.TCIM.Shuangpin
+            // All the other ones work properly without this fix. Zhuyin (Traditional) for example reports
+            // Bopomofo characters in 'charactersIgnoringModifiers', and latin letters in 'characters'.
+            // This means that applying this fix will actually produce invalid behavior in this IM.
+            // Also see test/jdk/jb/sun/awt/macos/InputMethodTest/PinyinCapsLockTest.java
+
             if (testChar != KeyEvent.CHAR_UNDEFINED &&
-                    lwcToolkit.getLockingKeyState(KeyEvent.VK_CAPS_LOCK) &&
-                    Locale.SIMPLIFIED_CHINESE.equals(lwcToolkit.getDefaultKeyboardLocale())) {
+                Toolkit.getDefaultToolkit().getLockingKeyState(KeyEvent.VK_CAPS_LOCK) &&
+                layoutsNeedingCapsLockFix.matcher(LWCToolkit.getKeyboardLayoutId()).matches()) {
                 testChar = testCharIgnoringModifiers;
             }
 
