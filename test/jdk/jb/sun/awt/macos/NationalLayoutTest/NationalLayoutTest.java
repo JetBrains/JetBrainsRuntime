@@ -40,9 +40,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.text.CharacterIterator;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -124,6 +122,8 @@ public class NationalLayoutTest {
 
     private static Robot robot;
 
+    private static final Set<String> addedLayouts = new HashSet<>();
+
     // Synchronized lists for storing results of different key events
     private static CopyOnWriteArrayList<Integer> keysPressed = new CopyOnWriteArrayList();
     private static CopyOnWriteArrayList<Character> charsTyped = new CopyOnWriteArrayList();
@@ -202,10 +202,17 @@ public class NationalLayoutTest {
             }
 
         } finally {
+            for (String layoutId : addedLayouts) {
+                try {
+                    LWCToolkit.disableKeyboardLayout(layoutId);
+                } catch (Exception ignored) {}
+            }
+
             // Restore initial keyboard layout
             if(initialLayoutName != null && !initialLayoutName.isEmpty()) {
                 LWCToolkit.switchKeyboardLayout(initialLayoutName);
             }
+
             // Destroy test GUI
             destroyGUI();
             // Wait for EDT auto-shutdown
@@ -365,7 +372,12 @@ public class NationalLayoutTest {
 
         // Switch current keyboard layout to the test one
         if(jbr) {
-            LWCToolkit.switchKeyboardLayout(layout.toString());
+            String layoutId = layout.toString();
+            if (!LWCToolkit.isKeyboardLayoutEnabled(layoutId)) {
+                LWCToolkit.enableKeyboardLayout(layoutId);
+                addedLayouts.add(layoutId);
+            }
+            LWCToolkit.switchKeyboardLayout(layoutId);
         }
 
         // Support for manual mode: wait while user switches the keyboard layout (if needed)
