@@ -969,6 +969,7 @@ ifeq ($(call isTargetOs, macosx), true)
           -framework AudioToolbox \
           -framework Carbon \
           -framework Cocoa \
+          -framework IOKit \
           -framework Metal \
           -framework Security \
           -framework ExceptionHandling \
