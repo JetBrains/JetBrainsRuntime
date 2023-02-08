@@ -1947,9 +1947,6 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 - (void) flagsChanged: (NSEvent *)event {
     [[self.window contentView] flagsChanged:event];
 }
-- (BOOL) performKeyEquivalent: (NSEvent *) event {
-    return [[self.window contentView] performKeyEquivalent:event];
-}
 
 @end
 
