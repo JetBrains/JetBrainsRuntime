@@ -525,6 +525,6 @@ void initializeRoles()
 void initializeAnnouncePriorities() {
     sAnnouncePriorities = [[NSMutableDictionary alloc] initWithCapacity:3];
 
-    [sAnnouncePriorities setObject:[NSNumber numberWithInt:NSAccessibilityPriorityLow] forKey:[NSNumber numberWithInt:sun_swing_AccessibleAnnouncer_ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT]];
-    [sAnnouncePriorities setObject:[NSNumber numberWithInt:NSAccessibilityPriorityMedium] forKey:[NSNumber numberWithInt:sun_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT]];
+    [sAnnouncePriorities setObject:[NSNumber numberWithInt:NSAccessibilityPriorityMedium] forKey:[NSNumber numberWithInt:sun_swing_AccessibleAnnouncer_ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT]];
+    [sAnnouncePriorities setObject:[NSNumber numberWithInt:NSAccessibilityPriorityHigh] forKey:[NSNumber numberWithInt:sun_swing_AccessibleAnnouncer_ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT]];
 }
