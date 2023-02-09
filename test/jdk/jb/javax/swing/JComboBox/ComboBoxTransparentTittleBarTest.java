@@ -1,9 +1,15 @@
+import com.jetbrains.JBR;
+import com.jetbrains.WindowDecorations;
+
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicComboPopup;
 import java.awt.*;
 import java.awt.event.InputEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 
-/**
+/*
  * @test
  * @key headful
  * @summary JBR-4875 The test drag&drops a frame which contains an instance of JComboBox and checks that ComboBoxPopup
@@ -11,6 +17,7 @@ import java.awt.event.InputEvent;
  * <code>apple.awt.transparentTitleBar</code> is not set and it is set to <code>true</code>.
  * It is expected that <code>x</code>-coordinates for <code>JFrame</code>, <code>JComboBox</code> and ComboBoxPopup
  * have the same values after dragging&dropping <code>JFrame</code>.
+ * @run shell ${test.root}/jb/build-jbr-api.sh
  * @run main/timeout=600 ComboBoxTransparentTittleBarTest
  */
 public final class ComboBoxTransparentTittleBarTest {
@@ -23,6 +30,8 @@ public final class ComboBoxTransparentTittleBarTest {
     private static final int DRAG_X = 200;
     private static final StringBuilder errMessages= new StringBuilder();
     private static int errCount = 0;
+
+    private static final float TITLE_BAR_HEIGHT = 54f;
 
     public static void main(final String[] args) throws Exception {
         robot = new Robot();
@@ -42,17 +51,17 @@ public final class ComboBoxTransparentTittleBarTest {
             throw new RuntimeException(String.valueOf(errMessages));
     }
 
-    private static void test() throws Exception {
-        Point framePoint = getLocationOnScreen(frame);
-        Point comboBoxPoint = getLocationOnScreen(comboBox);
+    private static void test() {
+        getLocationOnScreen(frame);
+        getLocationOnScreen(comboBox);
 
         BasicComboPopup popup = (BasicComboPopup) comboBox.getUI().getAccessibleChild(comboBox, 0);
         popup.show();
-        Point popupPoint = getLocationOnScreen(popup);
+        getLocationOnScreen(popup);
         popup.hide();
 
-        int x_init = framePoint.x + frame.getWidth() / 2;
-        int y_init = framePoint.y + 5;
+        int x_init = frame.getLocationOnScreen().x + frame.getWidth() / 2;;
+        int y_init = frame.getLocationOnScreen().y + 5;
         System.out.print("Drag " + frame.getName() + " from: (" + x_init + ", " + y_init + ")");
         robot.mouseMove(x_init, y_init);
         robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
@@ -68,17 +77,17 @@ public final class ComboBoxTransparentTittleBarTest {
         robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
         robot.waitForIdle();
 
-        framePoint = getLocationOnScreen(frame);
-        comboBoxPoint = getLocationOnScreen(comboBox);
+        Point frameLocation = getLocationOnScreen(frame);
+        Point comboBoxLocation = getLocationOnScreen(comboBox);
 
         int errCount_before = errCount;
         if (popup.isVisible()) {
             System.out.println("ComboPopup is visible");
-            popupPoint = getLocationOnScreen(popup);
-            if (framePoint.x - comboBoxPoint.x !=0)
-                appendErrMsg("***ComboBox location was not changed. Expected point: (" + framePoint.x + ", " + comboBoxPoint.y + ")");
-            if (framePoint.x - popupPoint.x !=0)
-                appendErrMsg("***ComboPopup location was not changed. Expected point: (" + framePoint.x + ", " + popupPoint.y + ")");
+            Point popupLocation = popup.getLocationOnScreen();
+            if (frameLocation.x - comboBoxLocation.x != 0)
+                appendErrMsg("***ComboBox location was not changed. Expected point: (" + frameLocation.x + ", " + comboBoxLocation.y + ")");
+            if (frameLocation.x - popupLocation.x != 0)
+                appendErrMsg("***ComboPopup location was not changed. Expected point: (" + frameLocation.x + ", " + popupLocation.y + ")");
         }
         if (errCount_before < errCount)
             System.out.println("***FAILED***");
@@ -120,8 +129,20 @@ public final class ComboBoxTransparentTittleBarTest {
         System.out.println("------------------------------------");
         System.out.println("The case transparentTitleBar = " + doTitleBarTransparent);
         if (doTitleBarTransparent) {
-            frame.getRootPane().putClientProperty("apple.awt.transparentTitleBar", true);
-            frame.getRootPane().putClientProperty("apple.awt.windowTransparentTitleBarHeight", 54f);
+            WindowDecorations.CustomTitleBar titleBar = JBR.getWindowDecorations().createCustomTitleBar();
+            titleBar.setHeight(TITLE_BAR_HEIGHT);
+            JBR.getWindowDecorations().setCustomTitleBar(frame, titleBar);
+
+            MouseListener mouseListener = new MouseAdapter() {
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    titleBar.forceHitTest(false);
+                }
+            };
+            for (int i = 0; i < comboBox.getComponents().length; i++) {
+                comboBox.getComponent(i).addMouseListener(mouseListener);
+            }
+
         }
     }
 }
