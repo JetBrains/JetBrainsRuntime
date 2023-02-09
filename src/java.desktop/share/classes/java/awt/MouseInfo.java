@@ -74,30 +74,7 @@ public class MouseInfo {
 
         GraphicsDevice[] gds = GraphicsEnvironment.getLocalGraphicsEnvironment().
                                    getScreenDevices();
-        PointerInfo retval = null;
-        if (areScreenDevicesIndependent(gds)) {
-            retval = new PointerInfo(gds[deviceNum], point);
-        } else {
-            for (int i = 0; i < gds.length; i++) {
-                GraphicsConfiguration gc = gds[i].getDefaultConfiguration();
-                Rectangle bounds = gc.getBounds();
-                if (bounds.contains(point)) {
-                    retval = new PointerInfo(gds[i], point);
-                }
-            }
-        }
-
-        return retval;
-    }
-
-    private static boolean areScreenDevicesIndependent(GraphicsDevice[] gds) {
-        for (int i = 0; i < gds.length; i++) {
-            Rectangle bounds = gds[i].getDefaultConfiguration().getBounds();
-            if (bounds.x != 0 || bounds.y != 0) {
-                return false;
-            }
-        }
-        return true;
+        return new PointerInfo(gds[deviceNum], point);
     }
 
     /**
