@@ -19,7 +19,7 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
 
 | IDE Version | Latest JBR                                                                                             | Date Released |
 |-------------|--------------------------------------------------------------------------------------------------------|---------------|
-| 2023.1      | [17.0.6-b802.1](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.6b802.1)   | 07-Feb-2023   |
+| 2023.1      | [17.0.6-b802.4](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.6b802.4)   | 09-Feb-2023   |
 | 2022.3      | [17.0.5-b653.25](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.5b653.25) | 10-Jan-2023   |
 | 2022.2      | [17.0.5-b469.71](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.5b469.71) | 14-Nov-2022   |
 
