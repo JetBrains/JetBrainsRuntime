@@ -28,6 +28,7 @@ package sun.awt.X11;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.Window;
 import java.awt.peer.MouseInfoPeer;
 
@@ -65,12 +66,35 @@ public final class XMouseInfoPeer implements MouseInfoPeer {
                 if (pointerFound) {
                     point.x = Native.getInt(XlibWrapper.larg3);
                     point.y = Native.getInt(XlibWrapper.larg4);
-                    GraphicsDevice device = gds[i];
+                    // In virtual screen environment XQueryPointer returns true only for the
+                    // default screen, so search all available devices to determine correct scale.
+                    // Note that in XWayland mode, pointer position is returned only when over
+                    // owned or *some other* windows, so it may "freeze" when moving over
+                    // desktop or some non-owned windows.
+                    boolean independentScreens = true;
+                    int nearestScreen = i, nearestScreenDistance = Integer.MAX_VALUE;
+                    for (int j = 0; j < gdslen; j++) {
+                        Rectangle bounds = gds[j].getDefaultConfiguration().getBounds();
+                        if (bounds.x != 0 || bounds.y != 0) independentScreens = false;
+                        if (gds[j] instanceof X11GraphicsDevice d) {
+                            bounds.width = d.scaleUp(bounds.width);
+                            bounds.height = d.scaleUp(bounds.height);
+                        }
+                        int dx = Math.max(Math.min(point.x, bounds.x + bounds.width), bounds.x) - point.x;
+                        int dy = Math.max(Math.min(point.y, bounds.y + bounds.height), bounds.y) - point.y;
+                        int dist = dx*dx + dy*dy;
+                        if (dist < nearestScreenDistance) {
+                            nearestScreen = j;
+                            nearestScreenDistance = dist;
+                        }
+                    }
+                    if (independentScreens) nearestScreen = i;
+                    GraphicsDevice device = gds[nearestScreen];
                     if (device instanceof X11GraphicsDevice x11d) {
                         point.x = x11d.scaleDownX(point.x);
                         point.y = x11d.scaleDownY(point.y);
                     }
-                    return i;
+                    return nearestScreen;
                 }
             }
         } finally {
