@@ -241,11 +241,8 @@ final class CPlatformResponder {
             // generation in such case to avoid uppercase letters in text components.
             LWCToolkit lwcToolkit = (LWCToolkit)Toolkit.getDefaultToolkit();
             if (testChar != KeyEvent.CHAR_UNDEFINED &&
-                ((lwcToolkit.getLockingKeyState(KeyEvent.VK_CAPS_LOCK) &&
-                    Locale.SIMPLIFIED_CHINESE.equals(lwcToolkit.getDefaultKeyboardLocale())) ||
-                (LWCToolkit.isLocaleUSInternationalPC(lwcToolkit.getDefaultKeyboardLocale()) &&
-                    LWCToolkit.isCharModifierKeyInUSInternationalPC(testChar) &&
-                    (testChar != testCharIgnoringModifiers)))) {
+                    lwcToolkit.getLockingKeyState(KeyEvent.VK_CAPS_LOCK) &&
+                    Locale.SIMPLIFIED_CHINESE.equals(lwcToolkit.getDefaultKeyboardLocale())) {
                 testChar = testCharIgnoringModifiers;
             }
 
