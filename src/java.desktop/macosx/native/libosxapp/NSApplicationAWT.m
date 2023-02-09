@@ -43,8 +43,6 @@ static NSString *SHARED_FRAMEWORK_BUNDLE = @"/System/Library/Frameworks/JavaVM.f
 static id <NSApplicationDelegate> applicationDelegate = nil;
 static QueuingApplicationDelegate * qad = nil;
 
-static BOOL promptJavaEventsDispatch = NO;
-
 /**
  * Subtypes of NSApplicationDefined, which are used for custom events.
  */
@@ -373,17 +371,11 @@ AWT_ASSERT_APPKIT_THREAD;
     [super orderFrontStandardAboutPanelWithOptions:optionsDictionary];
 }
 
-+ (void) enablePromptJavaEventsDispatch {
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
-        promptJavaEventsDispatch = YES;
-    }];
-}
-
 - (NSEvent *)nextEventMatchingMask:(NSEventMask)mask
                          untilDate:(NSDate *)expiration
                             inMode:(NSString *)mode
                            dequeue:(BOOL)deqFlag {
-    if (!promptJavaEventsDispatch || !deqFlag || mask & NSEventMaskApplicationDefined) {
+    if (![ThreadUtilities isJavaEventsDispatchingOnMainThread] || !deqFlag || mask & NSEventMaskApplicationDefined) {
         return [super nextEventMatchingMask:mask
                                   untilDate:expiration
                                      inMode:mode

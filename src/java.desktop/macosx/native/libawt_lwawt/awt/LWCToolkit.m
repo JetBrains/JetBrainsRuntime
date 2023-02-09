@@ -1054,9 +1054,8 @@ Java_sun_lwawt_macosx_LWCToolkit_getMultiClickTime(JNIEnv *env, jclass klass) {
  * Signature: ()V
  */
 JNIEXPORT void JNICALL
-Java_sun_lwawt_macosx_LWCToolkit_setMainThreadImmediateDispatch(JNIEnv *env, jclass klass) {
-    [ThreadUtilities setMainThreadImmediateDispatch];
-    [NSApplicationAWT enablePromptJavaEventsDispatch];
+Java_sun_lwawt_macosx_LWCToolkit_setJavaEventsDispatchingOnMainThread(JNIEnv *env, jclass klass) {
+    [ThreadUtilities setJavaEventsDispatchingOnMainThread];
 }
 
 /*

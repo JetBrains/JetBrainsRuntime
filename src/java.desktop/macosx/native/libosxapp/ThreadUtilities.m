@@ -52,7 +52,7 @@ static inline void attachCurrentThread(void** env) {
 
 static BOOL _blockingEventDispatchThread = NO;
 static long eventDispatchThreadPtr = (long)nil;
-static BOOL mainThreadImmediateDispatch = NO;
+static BOOL javaEventsDispatchingOnMainThread = NO;
 
 static BOOL isEventDispatchThread() {
     return (long)[NSThread currentThread] == eventDispatchThreadPtr;
@@ -64,10 +64,15 @@ static void setBlockingEventDispatchThread(BOOL value) {
     _blockingEventDispatchThread = value;
 }
 
-+ (void)setMainThreadImmediateDispatch {
++ (void)setJavaEventsDispatchingOnMainThread {
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
-        mainThreadImmediateDispatch = YES;
+        javaEventsDispatchingOnMainThread = YES;
     }];
+}
+
++ (BOOL)isJavaEventsDispatchingOnMainThread {
+AWT_ASSERT_APPKIT_THREAD;
+    return javaEventsDispatchingOnMainThread;
 }
 
 + (BOOL) blockingEventDispatchThread {
@@ -118,7 +123,7 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 + (void)performOnMainThreadWaiting:(BOOL)wait block:(void (^)())block {
-    if ([NSThread isMainThread] && (wait || mainThreadImmediateDispatch)) {
+    if ([NSThread isMainThread] && (wait || javaEventsDispatchingOnMainThread)) {
         block();
     } else {
         [self performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block) waitUntilDone:wait];
@@ -126,7 +131,7 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 + (void)performOnMainThread:(SEL)aSelector on:(id)target withObject:(id)arg waitUntilDone:(BOOL)wait {
-    if ([NSThread isMainThread] && (wait || mainThreadImmediateDispatch)) {
+    if ([NSThread isMainThread] && (wait || javaEventsDispatchingOnMainThread)) {
         [target performSelector:aSelector withObject:arg];
     } else {
         if (wait && isEventDispatchThread()) {

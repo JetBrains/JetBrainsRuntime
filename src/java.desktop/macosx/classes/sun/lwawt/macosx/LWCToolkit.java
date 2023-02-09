@@ -1211,7 +1211,7 @@ public final class LWCToolkit extends LWToolkit {
         }
     }
 
-    private static native void setMainThreadImmediateDispatch();
+    private static native void setJavaEventsDispatchingOnMainThread();
 
     @Override
     public void installMainThreadDispatcher(EventQueue eventQueue) {
@@ -1220,7 +1220,7 @@ public final class LWCToolkit extends LWToolkit {
                 APPKIT_THREAD.setContextClassLoader(Thread.currentThread().getContextClassLoader());
                 return null;
             });
-            setMainThreadImmediateDispatch();
+            setJavaEventsDispatchingOnMainThread();
             AWTAccessor.getEventQueueAccessor().setFwDispatcher(eventQueue, MAIN_THREAD_DISPATCHER);
         }
     }

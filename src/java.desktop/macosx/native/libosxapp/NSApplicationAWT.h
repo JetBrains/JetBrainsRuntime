@@ -49,7 +49,6 @@ JNIEXPORT @interface NSApplicationAWT : NSApplication {
 
 + (void) postJavaEvent:(JavaEvent*) javaEvent;
 + (JavaEvent*) extractJavaEvent:(NSEvent*) event;
-+ (void) enablePromptJavaEventsDispatch;
 
 @end
 

@@ -2633,6 +2633,32 @@ JNI_COCOA_ENTER(env);
         }
         BOOL savedValue = inProgress;
         inProgress = YES;
+
+        if ([ThreadUtilities isJavaEventsDispatchingOnMainThread]) {
+            @autoreleasepool {
+                // If a previous full screen toggle operation isn't fully completed,
+                // a new request might fail, so we'll spin a secondary event loop here,
+                // waiting for the previous operation to finish.
+                // We do this with a timeout, which will prevent an infinite loop in case
+                // something unexpected happened and 'fullScreenTransitionInProgress'
+                // variable will be never reset.
+                NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:3];
+                while (fullScreenTransitionInProgress) {
+                    if ([[NSDate date] isGreaterThan:deadline]) {
+                        NSLog(@"Full screen toggle operation hasn't finished as expected");
+                        break;
+                    }
+                    NSEvent *event;
+                    if ((event = [NSApp nextEventMatchingMask:NSAnyEventMask
+                                                    untilDate:deadline
+                                                       inMode:NSDefaultRunLoopMode
+                                                      dequeue:YES]) != nil) {
+                        [NSApp sendEvent:event];
+                    }
+                }
+            }
+        }
+
         [nsWindow performSelector:toggleFullScreenSelector withObject:nil];
         inProgress = savedValue;
     }];
