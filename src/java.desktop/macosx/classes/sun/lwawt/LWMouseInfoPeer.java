@@ -25,8 +25,7 @@
 
 package sun.lwawt;
 
-import java.awt.Point;
-import java.awt.Window;
+import java.awt.*;
 
 import java.awt.peer.MouseInfoPeer;
 
@@ -41,8 +40,21 @@ public class LWMouseInfoPeer implements MouseInfoPeer {
         Point cursorPos = cursorManager.getCursorPosition();
         point.x = cursorPos.x;
         point.y = cursorPos.y;
-        // TODO: multiscreen
-        return 0;
+        GraphicsDevice[] gds = GraphicsEnvironment.getLocalGraphicsEnvironment().
+                getScreenDevices();
+        int nearestScreen = 0, nearestScreenDistance = Integer.MAX_VALUE;
+        for (int i = 0; i < gds.length; i++) {
+            Rectangle bounds = gds[i].getDefaultConfiguration().getBounds();
+            int dx = Math.max(Math.min(point.x, bounds.x + bounds.width), bounds.x) - point.x;
+            int dy = Math.max(Math.min(point.y, bounds.y + bounds.height), bounds.y) - point.y;
+            int dist = dx*dx + dy*dy;
+            if (dist == 0) return i;
+            if (dist < nearestScreenDistance) {
+                nearestScreen = i;
+                nearestScreenDistance = dist;
+            }
+        }
+        return nearestScreen;
     }
 
     @Override
