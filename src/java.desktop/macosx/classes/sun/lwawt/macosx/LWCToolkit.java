@@ -959,7 +959,11 @@ public final class LWCToolkit extends LWToolkit {
 
     // invoked from native code
     private static void dispatch(AWTEvent event) {
-        AWTAccessor.getEventQueueAccessor().dispatchEvent(Toolkit.getDefaultToolkit().getSystemEventQueue(), event);
+        try {
+            AWTAccessor.getEventQueueAccessor().dispatchEvent(Toolkit.getDefaultToolkit().getSystemEventQueue(), event);
+        } catch (Throwable t) {
+            APPKIT_THREAD.getUncaughtExceptionHandler().uncaughtException(APPKIT_THREAD, t);
+        }
     }
 
 // DnD support
