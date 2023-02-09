@@ -112,9 +112,7 @@ Java_sun_awt_windows_WMouseInfoPeer_fillPointWithCoords(JNIEnv *env, jclass cls,
     env->SetIntField(point, xID, x);
     env->SetIntField(point, yID, y);
 
-    // Always return 0 on Windows: we assume there's always a
-    // virtual screen device used.
-    return (jint)0;
+    return (jint) screen;
 }
 
 } // extern "C"
