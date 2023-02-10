@@ -160,6 +160,11 @@
             [NSNumber numberWithInt : OSX_F19], [NSNumber numberWithInt : java_awt_event_KeyEvent_VK_F19],
             [NSNumber numberWithInt : OSX_F20], [NSNumber numberWithInt : java_awt_event_KeyEvent_VK_F20],
 
+            // There's no VK_ key code for the section key (\u00a7), found on the Standard QWERTY (ABC) ISO layout.
+            // For consistency, let's use the code returned by getExtendedKeyCodeForChar for this symbol.
+            // Also see src/java.desktop/share/classes/sun/awt/ExtendedKeyCodes.java
+            [NSNumber numberWithInt : OSX_kVK_ISO_Section], [NSNumber numberWithInt : 0x1000000 + 0x00A7],
+
             nil];
     }
 
