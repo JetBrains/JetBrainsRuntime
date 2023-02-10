@@ -733,7 +733,9 @@ public class EventQueue {
                 // In case fwDispatcher is installed and we're already on the
                 // dispatch thread (e.g. performing DefaultKeyboardFocusManager.sendMessage),
                 // dispatch the event straight away.
-                if (fwDispatcher == null || isDispatchThreadImpl()) {
+                // Also, AWTAutoShutdown event should be processed on EDT,
+                // as that event's purpose is to terminate EDT.
+                if (fwDispatcher == null || isDispatchThreadImpl() || src == AWTAutoShutdown.getInstance()) {
                     dispatchEventImpl(event, src);
                 } else if (!fwDispatcher.scheduleEvent(event)) {
                     fwDispatcher.scheduleDispatch(new Runnable() {
