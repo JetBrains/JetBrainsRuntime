@@ -623,6 +623,9 @@ MsgRouting AwtFrame::WmNcMouseUp(WPARAM hitTest, int x, int y, int button) {
         if (IsMouseEventFromTouch()) {
             if (button & LEFT_BUTTON) {
                 // We didn't send MouseDown event in NcMouseDown, so send it here.
+                if (customTitleBarControls) {
+                    customTitleBarControls->Hit(CustomTitleBarControls::HitType::PRESS, x, y);
+                }
                 msg.flags |= MK_NOCAPTURE;
                 SendMessageAtPoint(msg.mouseDown, msg.flags, x, y);
             } else {
