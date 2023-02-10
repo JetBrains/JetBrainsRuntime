@@ -24,6 +24,8 @@
 import static java.awt.event.KeyEvent.*;
 
 public class KeyCodesTest implements Runnable {
+    static private final int VK_BACK_QUOTE_ISO = 0x01000000+0x0060;
+    static private final int VK_SECTION = 0x01000000+0x00A7;
     @Override
     public void run() {
         verify('!', VK_EXCLAMATION_MARK, "com.apple.keylayout.French-PC", VK_SLASH);
@@ -56,6 +58,13 @@ public class KeyCodesTest implements Runnable {
         verify('}', VK_BRACERIGHT, "com.apple.keylayout.LatinAmerican", VK_BACK_SLASH);
         verify('\u00a1', VK_INVERTED_EXCLAMATION_MARK, "com.apple.keylayout.Spanish-ISO", VK_EQUALS);
         // TODO: figure out which keyboard layout has VK_EURO_SIGN as a key on the primary layer
+
+        // Test ANSI/ISO keyboard weirdness
+        verify('\u00a7', 0x01000000+0x00A7, "com.apple.keylayout.ABC", VK_SECTION);
+        verify('\u00b2', 0x01000000+0x00B2, "com.apple.keylayout.French-PC", VK_SECTION);
+        verify('#', VK_NUMBER_SIGN, "com.apple.keylayout.CanadianFrench-PC", VK_SECTION);
+        verify('\u00ab', 0x01000000+0x00AB, "com.apple.keylayout.CanadianFrench-PC", VK_BACK_QUOTE_ISO);
+        verify('#', VK_NUMBER_SIGN, "com.apple.keylayout.CanadianFrench-PC", VK_BACK_QUOTE);
 
         verify('\u00e4', 0x01000000+0x00C4, "com.apple.keylayout.German", VK_QUOTE);
         verify('\u00e5', 0x01000000+0x00C5, "com.apple.keylayout.Norwegian", VK_OPEN_BRACKET);
