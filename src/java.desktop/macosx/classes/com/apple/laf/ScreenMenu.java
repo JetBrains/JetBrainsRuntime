@@ -193,7 +193,7 @@ final class ScreenMenu extends Menu
         if (kind == 0) return;
         if (fItemBounds == null) return;
 
-        SunToolkit.executeOnEventHandlerThread(fInvoker, new Runnable() {
+        Runnable runnable = new Runnable() {
             @Override
             public void run() {
                 Component target = null;
@@ -239,7 +239,12 @@ final class ScreenMenu extends Menu
                                        x - targetRect.x, y - targetRect.y, 0,
                                        false));
             }
-        });
+        };
+        if (EventQueue.isDispatchThread()) {
+            runnable.run();
+        } else {
+            SunToolkit.executeOnEventHandlerThread(fInvoker, runnable);
+        }
     }
 
     @Override
