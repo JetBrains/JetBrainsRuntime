@@ -190,42 +190,44 @@ void G1FullGCCompactTask::serial_compaction_dcevm() {
 
 }
 
+void G1FullGCCompactTask::G1CompactRegionClosureDcevm::clear_in_bitmap(oop obj) {
+  assert(_bitmap->is_marked(obj), "Should only compact marked objects");
+  _bitmap->clear(obj);
+}
+
 size_t G1FullGCCompactTask::G1CompactRegionClosureDcevm::apply(oop obj) {
   size_t size = obj->size();
-  HeapWord* destination = cast_from_oop<HeapWord*>(obj->forwardee());
-  if (destination == NULL) {
-    // Object not moving
-    return size;
-  }
+  if (obj->is_forwarded()) {
+    HeapWord* destination = cast_from_oop<HeapWord*>(obj->forwardee());
+    // copy object and reinit its mark
+    HeapWord *obj_addr = cast_from_oop<HeapWord *>(obj);
 
-  // copy object and reinit its mark
-  HeapWord* obj_addr = cast_from_oop<HeapWord*>(obj);
-
-  if (!_rescue_oops_it->at_end() && **_rescue_oops_it == obj_addr) {
-    ++(*_rescue_oops_it);
-    HeapWord* rescued_obj = NEW_C_HEAP_ARRAY(HeapWord, size, mtInternal);
-    Copy::aligned_disjoint_words(obj_addr, rescued_obj, size);
-    _rescued_oops_values->append(rescued_obj);
-    debug_only(Copy::fill_to_words(obj_addr, size, 0));
-    return size;
-  }
-
-  if (obj->klass()->new_version() != NULL) {
-    Klass* new_version = obj->klass()->new_version();
-    if (new_version->update_information() == NULL) {
-      Copy::aligned_conjoint_words(obj_addr, destination, size);
-      cast_to_oop(destination)->set_klass(new_version);
-    } else {
-      DcevmSharedGC::update_fields(obj, cast_to_oop(destination));
+    if (!_rescue_oops_it->at_end() && **_rescue_oops_it == obj_addr) {
+      ++(*_rescue_oops_it);
+      HeapWord *rescued_obj = NEW_C_HEAP_ARRAY(HeapWord, size, mtInternal);
+      Copy::aligned_disjoint_words(obj_addr, rescued_obj, size);
+      _rescued_oops_values->append(rescued_obj);
+      debug_only(Copy::fill_to_words(obj_addr, size, 0));
+      return size;
     }
+
+    if (obj->klass()->new_version() != NULL) {
+      Klass *new_version = obj->klass()->new_version();
+      if (new_version->update_information() == NULL) {
+        Copy::aligned_conjoint_words(obj_addr, destination, size);
+        cast_to_oop(destination)->set_klass(new_version);
+      } else {
+        DcevmSharedGC::update_fields(obj, cast_to_oop(destination));
+      }
+      cast_to_oop(destination)->init_mark();
+      assert(cast_to_oop(destination)->klass() != NULL, "should have a class");
+      return size;
+    }
+
+    Copy::aligned_conjoint_words(obj_addr, destination, size);
     cast_to_oop(destination)->init_mark();
     assert(cast_to_oop(destination)->klass() != NULL, "should have a class");
-    return size;
   }
-
-  Copy::aligned_conjoint_words(obj_addr, destination, size);
-  cast_to_oop(destination)->init_mark();
-  assert(cast_to_oop(destination)->klass() != NULL, "should have a class");
-
+  clear_in_bitmap(obj);
   return size;
 }

@@ -64,7 +64,7 @@ public:
     G1CMBitMap* _bitmap;
     GrowableArray<HeapWord*>* _rescued_oops_values;
     GrowableArrayIterator<HeapWord*>* _rescue_oops_it;
-
+    void clear_in_bitmap(oop object);
   public:
     G1CompactRegionClosureDcevm(G1CMBitMap* bitmap,
                            GrowableArray<HeapWord*>* rescued_oops_values,
