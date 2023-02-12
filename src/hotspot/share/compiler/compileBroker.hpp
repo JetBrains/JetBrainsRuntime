@@ -176,7 +176,7 @@ class CompileBroker: AllStatic {
   static volatile jint _native_compilation_id;
 
   static volatile bool _compilation_stopped;
-  static volatile int _active_compilations;
+  static volatile jint _active_compilations;
 
   static CompileQueue* _c2_compile_queue;
   static CompileQueue* _c1_compile_queue;
