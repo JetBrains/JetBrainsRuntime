@@ -436,7 +436,7 @@ void ConstantPoolCacheEntry::set_method_handle_common(const constantPoolHandle& 
     assert(AllowEnhancedClassRedefinition || old_oop == nullptr, "init just once");
   }
 
-  Atomic::release_store(&_flags, (intx) _flags & ~(1u << is_f1_null_dcevm_shift));
+  Atomic::release_store(&_flags, (intx) (_flags & ~(1u << is_f1_null_dcevm_shift)));
 
   release_set_f1(adapter);  // This must be the last one to set (see NOTE above)!
 
