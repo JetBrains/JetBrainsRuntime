@@ -143,7 +143,7 @@ volatile jint CompileBroker::_compilation_id     = 0;
 volatile jint CompileBroker::_osr_compilation_id = 0;
 volatile jint CompileBroker::_native_compilation_id = 0;
 volatile bool CompileBroker::_compilation_stopped = false;
-volatile int CompileBroker::_active_compilations = 0;
+volatile jint CompileBroker::_active_compilations = 0;
 
 // Performance counters
 PerfCounter* CompileBroker::_perf_total_compilation = nullptr;
@@ -2844,11 +2844,18 @@ void CompileBroker::stopCompilationBeforeEnhancedRedefinition() {
   // There are hard to fix C1/C2 race conditions with dcevm. The easiest solution
   // is to stop compilation.
   if (AllowEnhancedClassRedefinition) {
-    MonitorLocker locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
+    DcevmCompilation_lock->lock_without_safepoint_check();
     _compilation_stopped = true;
     while (_active_compilations > 0) {
-      locker.wait(10);
+      DcevmCompilation_lock->wait_without_safepoint_check(10);
+      if (_active_compilations > 0) {
+        DcevmCompilation_lock->unlock();   // must unlock to run following VM op
+        VM_ForceSafepoint forceSafePoint;  // force safepoint to avoid deadlock
+        VMThread::execute(&forceSafePoint);
+        DcevmCompilation_lock->lock_without_safepoint_check();
+      }
     }
+    DcevmCompilation_lock->unlock();
   }
 }
 
