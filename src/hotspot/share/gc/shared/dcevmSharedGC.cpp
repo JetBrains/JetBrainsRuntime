@@ -48,7 +48,7 @@ void DcevmSharedGC::copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_
       HeapWord* rescued_ptr = rescued_oops->at(i);
       oop rescued_obj = cast_to_oop(rescued_ptr);
 
-      int size = rescued_obj->size();
+      size_t size = rescued_obj->size();
       oop new_obj = rescued_obj->forwardee();
 
       assert(!must_be_new || rescued_obj->klass()->new_version() != NULL, "Just checking");
@@ -75,7 +75,7 @@ void DcevmSharedGC::clear_rescued_objects_resource(GrowableArray<HeapWord*>* res
   if (rescued_oops != NULL) {
     for (int i=0; i < rescued_oops->length(); i++) {
       HeapWord* rescued_ptr = rescued_oops->at(i);
-      int size = cast_to_oop(rescued_ptr)->size();
+      size_t size = cast_to_oop(rescued_ptr)->size();
       FREE_RESOURCE_ARRAY(HeapWord, rescued_ptr, size);
     }
     rescued_oops->clear();
@@ -103,8 +103,8 @@ void DcevmSharedGC::update_fields(oop q, oop new_location) {
   InstanceKlass *old_klass = InstanceKlass::cast(old_klass_oop);
   InstanceKlass *new_klass = InstanceKlass::cast(new_klass_oop);
 
-  int size = q->size_given_klass(old_klass);
-  int new_size = q->size_given_klass(new_klass);
+  size_t size = q->size_given_klass(old_klass);
+  size_t new_size = q->size_given_klass(new_klass);
 
   HeapWord* tmp = NULL;
   oop tmp_obj = q;

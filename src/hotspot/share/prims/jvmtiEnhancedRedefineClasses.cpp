@@ -427,7 +427,7 @@ class ChangePointersObjectClosure : public ObjectClosure {
   OopIterateClosure *_closure;
   bool _needs_instance_update;
   oop _tmp_obj;
-  int _tmp_obj_size;
+  size_t _tmp_obj_size;
 
 public:
   ChangePointersObjectClosure(OopIterateClosure *closure) : _closure(closure), _needs_instance_update(false), _tmp_obj(nullptr), _tmp_obj_size(0) {}
@@ -437,7 +437,7 @@ public:
   }
 
   void copy_to_tmp(oop o) {
-    int size = o->size();
+    size_t size = o->size();
     if (_tmp_obj_size < size) {
       _tmp_obj_size = size;
       _tmp_obj = cast_to_oop(resource_allocate_bytes(size * HeapWordSize));
