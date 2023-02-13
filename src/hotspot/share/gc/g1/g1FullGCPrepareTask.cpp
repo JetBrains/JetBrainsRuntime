@@ -236,8 +236,8 @@ bool G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::must_rescue(oop old_
   }
 
   // old obj and new obj are within same region
-  int new_size = old_obj->size_given_klass(oop(old_obj)->klass()->new_version());
-  int original_size = old_obj->size();
+  size_t new_size = old_obj->size_given_klass(oop(old_obj)->klass()->new_version());
+  size_t original_size = old_obj->size();
 
   // what if old_obj > new_obj ?
   bool overlap = (cast_from_oop<HeapWord*>(old_obj) + original_size < cast_from_oop<HeapWord*>(new_obj) + new_size);

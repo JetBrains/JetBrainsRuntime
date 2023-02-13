@@ -474,8 +474,8 @@ bool CompactibleSpace::must_rescue(oop old_obj, oop new_obj) {
   //  return true;
   //}
 
-  int new_size = old_obj->size_given_klass(oop(old_obj)->klass()->new_version());
-  int original_size = old_obj->size();
+  size_t new_size = old_obj->size_given_klass(oop(old_obj)->klass()->new_version());
+  size_t original_size = old_obj->size();
 
   Generation* tenured_gen = GenCollectedHeap::heap()->old_gen();
   bool old_in_tenured = tenured_gen->is_in_reserved(old_obj);
@@ -516,7 +516,7 @@ bool CompactibleSpace::must_rescue(oop old_obj, oop new_obj) {
 HeapWord* CompactibleSpace::rescue(HeapWord* old_obj) {
   assert(must_rescue(cast_to_oop(old_obj), cast_to_oop(old_obj)->forwardee()), "do not call otherwise");
 
-  int size = cast_to_oop(old_obj)->size();
+  size_t size = cast_to_oop(old_obj)->size();
   HeapWord* rescued_obj = NEW_RESOURCE_ARRAY(HeapWord, size);
   Copy::aligned_disjoint_words(old_obj, rescued_obj, size);
 
