@@ -29,6 +29,9 @@
 
 - (NSAccessibilityRole _Nonnull)accessibilityRole
 {
+    if ([fJavaRole isEqualToString:@"hyperlink"]) {
+        return NSAccessibilityLinkRole;
+    }
     return NSAccessibilityStaticTextRole;
 }
 
