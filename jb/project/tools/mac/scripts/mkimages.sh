@@ -158,4 +158,6 @@ if [ $do_maketest -eq 1 ]; then
     COPYFILE_DISABLE=1 tar -pczf "$JBRSDK_TEST".tar.gz -C $IMAGES_DIR --exclude='test/jdk/demos' test || do_exit $?
 fi
 
+build_jbr_api
+
 do_exit 0
