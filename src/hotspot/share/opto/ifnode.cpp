@@ -723,6 +723,7 @@ bool IfNode::is_ctrl_folds(Node* ctrl, PhaseIterGVN* igvn) {
     ctrl->in(0)->as_If()->cmpi_folds(igvn) &&
     // Must compare same value
     ctrl->in(0)->in(1)->in(1)->in(1) != NULL &&
+    ctrl->in(0)->in(1)->in(1)->in(1) != igvn->C->top() &&
     ctrl->in(0)->in(1)->in(1)->in(1) == in(1)->in(1)->in(1);
 }
 
