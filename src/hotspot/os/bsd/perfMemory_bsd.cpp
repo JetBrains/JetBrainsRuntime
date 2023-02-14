@@ -73,18 +73,6 @@ static char* create_standard_memory(size_t size) {
   return mapAddress;
 }
 
-// delete the PerfData memory region
-//
-static void delete_standard_memory(char* addr, size_t size) {
-
-  // there are no persistent external resources to cleanup for standard
-  // memory. since DestroyJavaVM does not support unloading of the JVM,
-  // cleanup of the memory resource is not performed. The memory will be
-  // reclaimed by the OS upon termination of the process.
-  //
-  return;
-}
-
 // save the specified memory region to the given file
 //
 // Note: this function might be called from signal handler (by os::abort()),
@@ -656,16 +644,17 @@ static void remove_file(const char* path) {
 }
 
 
-// cleanup stale shared memory resources
+// cleanup stale shared memory files
 //
 // This method attempts to remove all stale shared memory files in
 // the named user temporary directory. It scans the named directory
-// for files matching the pattern ^$[0-9]*$. For each file found, the
-// process id is extracted from the file name and a test is run to
-// determine if the process is alive. If the process is not alive,
-// any stale file resources are removed.
+// for files matching the pattern ^$[0-9]*$.
 //
-static void cleanup_sharedmem_resources(const char* dirname) {
+// This directory should be used only by JVM processes owned by the
+// current user to store PerfMemory files. Any other files found
+// in this directory may be removed.
+//
+static void cleanup_sharedmem_files(const char* dirname) {
 
   int saved_cwd_fd;
   // open the directory and set the current working directory to it
@@ -675,50 +664,56 @@ static void cleanup_sharedmem_resources(const char* dirname) {
     return;
   }
 
-  // for each entry in the directory that matches the expected file
-  // name pattern, determine if the file resources are stale and if
-  // so, remove the file resources. Note, instrumented HotSpot processes
-  // for this user may start and/or terminate during this search and
-  // remove or create new files in this directory. The behavior of this
-  // loop under these conditions is dependent upon the implementation of
-  // opendir/readdir.
+  // For each entry in the directory that matches the expected file
+  // name pattern, remove the file if it's determine to be stale
+  // Note, instrumented HotSpot processes for this user may start and/or
+  // terminate during this search and remove or create new files in this
+  // directory. The behavior of this loop under these conditions is dependent
+  // upon the implementation of opendir/readdir.
   //
   struct dirent* entry;
   errno = 0;
   while ((entry = os::readdir(dirp)) != NULL) {
 
-    pid_t pid = filename_to_pid(entry->d_name);
+    const char* filename = entry->d_name;
+    pid_t pid = filename_to_pid(filename);
 
     if (pid == 0) {
 
-      if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+      if (strcmp(filename, ".") != 0 && strcmp(filename, "..") != 0) {
 
         // attempt to remove all unexpected files, except "." and ".."
-        unlink(entry->d_name);
+        unlink(filename);
       }
 
       errno = 0;
       continue;
     }
 
-    // we now have a file name that converts to a valid integer
-    // that could represent a process id . if this process id
-    // matches the current process id or the process is not running,
-    // then remove the stale file resources.
-    //
-    // process liveness is detected by sending signal number 0 to
-    // the process id (see kill(2)). if kill determines that the
-    // process does not exist, then the file resources are removed.
-    // if kill determines that that we don't have permission to
-    // signal the process, then the file resources are assumed to
-    // be stale and are removed because the resources for such a
-    // process should be in a different user specific directory.
-    //
-    if ((pid == os::current_process_id()) ||
-        (kill(pid, 0) == OS_ERR && (errno == ESRCH || errno == EPERM))) {
+    // The following code assumes that pid must be in the same
+    // namespace as the current process.
+    bool stale = false;
 
-        unlink(entry->d_name);
+    if (pid == os::current_process_id()) {
+      // The file was created by a terminated process that happened
+      // to have the same pid as the current process.
+      stale = true;
+    } else if (kill(pid, 0) == OS_ERR) {
+      if (errno == ESRCH) {
+        // The target process does not exist.
+        stale = true;
+      } else if (errno == EPERM) {
+        // The file was created by a terminated process that happened
+        // to have the same pid as a process not owned by the current user.
+        stale = true;
+      }
     }
+
+    if (stale) {
+      log_info(perf, memops)("Remove stale file %s/%s", dirname, filename);
+      unlink(filename);
+    }
+
     errno = 0;
   }
 
@@ -764,13 +759,13 @@ static bool make_user_tmp_dir(const char* dirname) {
   return true;
 }
 
-// create the shared memory file resources
+// create the shared memory file
 //
 // This method creates the shared memory file with the given size
 // This method also creates the user specific temporary directory, if
 // it does not yet exist.
 //
-static int create_sharedmem_resources(const char* dirname, const char* filename, size_t size) {
+static int create_sharedmem_file(const char* dirname, const char* filename, size_t size) {
 
   // make the user temporary directory
   if (!make_user_tmp_dir(dirname)) {
@@ -934,12 +929,13 @@ static char* mmap_create_shared(size_t size) {
   }
 
   // cleanup any stale shared memory files
-  cleanup_sharedmem_resources(dirname);
+  cleanup_sharedmem_files(dirname);
 
   assert(((size > 0) && (size % os::vm_page_size() == 0)),
          "unexpected PerfMemory region size");
 
-  fd = create_sharedmem_resources(dirname, short_filename, size);
+  log_info(perf, memops)("Trying to open %s/%s", dirname, short_filename);
+  fd = create_sharedmem_file(dirname, short_filename, size);
 
   FREE_C_HEAP_ARRAY(char, user_name);
   FREE_C_HEAP_ARRAY(char, dirname);
@@ -972,6 +968,8 @@ static char* mmap_create_shared(size_t size) {
   // it does not go through os api, the operation has to record from here
   MemTracker::record_virtual_memory_reserve_and_commit((address)mapAddress, size, CURRENT_PC, mtInternal);
 
+  log_info(perf, memops)("Successfully opened");
+
   return mapAddress;
 }
 
@@ -993,10 +991,10 @@ static char* create_shared_memory(size_t size) {
 //
 static void delete_shared_memory(char* addr, size_t size) {
 
-  // cleanup the persistent shared memory resources. since DestroyJavaVM does
-  // not support unloading of the JVM, unmapping of the memory resource is
+  // Remove the shared memory file. Since DestroyJavaVM does
+  // not support unloading of the JVM, unmapping of the memory region is
   // not performed. The memory will be reclaimed by the OS upon termination of
-  // the process. The backing store file is deleted from the file system.
+  // the process.
 
   assert(!PerfDisableSharedMem, "shouldn't be here");
 
@@ -1196,10 +1194,7 @@ void PerfMemory::delete_memory_region() {
     save_memory_to_file(start(), capacity());
   }
 
-  if (PerfDisableSharedMem) {
-    delete_standard_memory(start(), capacity());
-  }
-  else {
+  if (!PerfDisableSharedMem) {
     delete_shared_memory(start(), capacity());
   }
 }
