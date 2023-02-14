@@ -3271,7 +3271,7 @@ POINT ScreenToBottommostChild(HWND& w, LONG ncx, LONG ncy) {
     for (;;) {
         p = {ncx, ncy};
         ::ScreenToClient(w, &p);
-        HWND t = ::RealChildWindowFromPoint(w, p);
+        HWND t = ::ChildWindowFromPointEx(w, p, CWP_SKIPINVISIBLE | CWP_SKIPDISABLED | CWP_SKIPTRANSPARENT);
         if (t == NULL || t == w) return p;
         w = t;
     }
