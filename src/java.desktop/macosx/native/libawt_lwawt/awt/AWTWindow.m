@@ -1741,15 +1741,12 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
 - (void) setWindowControlsHidden: (BOOL) hidden {
     if (_fullScreenOriginalButtons != nil) {
-        [_fullScreenOriginalButtons.window setContentSize:CGSizeZero];
         [_fullScreenOriginalButtons.window.contentView setHidden:NO];
-        _fullScreenOriginalButtons.hidden = hidden;
     }
-    else {
-        [self.nsWindow standardWindowButton:NSWindowCloseButton].hidden = hidden;
-        [self.nsWindow standardWindowButton:NSWindowZoomButton].hidden = hidden;
-        [self.nsWindow standardWindowButton:NSWindowMiniaturizeButton].hidden = hidden;
-    }
+
+    [self.nsWindow standardWindowButton:NSWindowCloseButton].hidden = hidden;
+    [self.nsWindow standardWindowButton:NSWindowZoomButton].hidden = hidden;
+    [self.nsWindow standardWindowButton:NSWindowMiniaturizeButton].hidden = hidden;
 }
 
 - (void) setWindowFullScreeControls {
