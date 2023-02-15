@@ -28,7 +28,6 @@
   @summary Test that window state changes on titlebar double-click
   @library    ../../../../java/awt/regtesthelpers
   @build      Util
-  @run shell build.sh
   @run main CustomTitleBarDoubleClick
 */
 
@@ -36,6 +35,8 @@ import com.jetbrains.JBR;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+
+import com.jetbrains.WindowDecorations;
 import test.java.awt.regtesthelpers.Util;
 
 public class CustomTitleBarDoubleClick implements WindowListener, WindowStateListener {
@@ -62,8 +63,10 @@ public class CustomTitleBarDoubleClick implements WindowListener, WindowStateLis
         frame.setBounds(BOUNDS);
         frame.addWindowListener(this);
         frame.addWindowStateListener(this);
-        JBR.getCustomWindowDecoration().setCustomDecorationEnabled(frame, true);
-        JBR.getCustomWindowDecoration().setCustomDecorationTitleBarHeight(frame, 50);
+
+        WindowDecorations.CustomTitleBar titleBar = JBR.getWindowDecorations().createCustomTitleBar();
+        titleBar.setHeight(50);
+        JBR.getWindowDecorations().setCustomTitleBar(frame, titleBar);
         frame.setVisible(true);
         robot.delay(2000);
         if (!stateChanged) throw new AWTError("Test failed");
