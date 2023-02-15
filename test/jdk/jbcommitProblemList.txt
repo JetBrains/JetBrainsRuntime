@@ -1,6 +1,6 @@
 # cannotbe run against jbr which does not contain some jbrsdk's utilities required for test executions
-javax/imageio/stream/StreamCloserLeak/run_test.sh NO_BUG generic_all
-javax/imageio/spi/AppletContextTest/BadPluginConfigurationTest.sh NO_BUG generic_all
+javax/imageio/stream/StreamCloserLeak/run_test.sh nobug generic-all
+javax/imageio/spi/AppletContextTest/BadPluginConfigurationTest.sh nobug generic-all
 
 #
 # intermittently failed, they were muted in regular runs with the option "unmute manually"
