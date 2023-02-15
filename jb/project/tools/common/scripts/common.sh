@@ -176,7 +176,7 @@ function copy_jmods() {
 }
 
 function build_jbr_api() {
-  make jbr-api || do_exit $?
+  make jbr-api JBR_API_JBR_VERSION=TEST || do_exit $?
 
   JBR_API_DIR=build/${RELEASE_NAME}/jbr-api
   JBR_API_JAR=jbr-api-b${build_number}.jar
