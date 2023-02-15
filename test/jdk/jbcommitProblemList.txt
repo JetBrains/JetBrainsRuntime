@@ -19,7 +19,6 @@ java/awt/Focus/TranserFocusToWindow/TranserFocusToWindow.java nobug windows-all,
 java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java nobug windows-all
 java/awt/Focus/WindowInitialFocusTest/WindowInitialFocusTest.java nobug windows-all
 java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java nobug windows-all
-java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-2687 windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java nobug windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.java nobug windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.java nobug windows-all
