@@ -1046,8 +1046,10 @@ jb/sun/awt/macos/NationalLayoutTest/Layout_US_INTERNATIONAL_PC.java JBR-4933 mac
 
 jb/javax/swing/JDialog/JDialog392.java JBR-4941 macosx-all,linux-all
 jb/javax/swing/JDialog/JDialog705.java JBR-4934 generic-all
+jb/javax/swing/JEditorPane/ZeroMargin.java 8242410 generic-all
 
 jb/java/awt/Window/ModalDialogAndPopup.java JBR-4984 macosx-all
+jb/java/api/frontend/CustomTitleBarDoubleClick.java JBR-4912 windows-all
 
 jb/java/jcef/MouseEventTest.java JBR-4908 linux-all
 
