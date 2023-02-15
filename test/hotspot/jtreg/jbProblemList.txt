@@ -64,7 +64,6 @@ gc/shenandoah/mxbeans/TestChurnNotifications.java#aggressive initial_run linux-x
 compiler/ciReplay/TestSAServer.java 8029528 generic-all
 compiler/compilercontrol/jcmd/ClearDirectivesFileStackTest.java 8225370 generic-all
 compiler/jvmci/compilerToVM/GetFlagValueTest.java 8204459 generic-all
-compiler/jvmci/jdk.vm.ci.code.test/src/jdk/vm/ci/code/test/NativeCallTest.java 8262901 macosx-aarch64
 
 compiler/cpuflags/TestAESIntrinsicsOnSupportedConfig.java 8190680 generic-all
 
@@ -102,7 +101,6 @@ gc/stress/gclocker/TestGCLockerWithParallel.java 8180622 generic-all
 gc/stress/gclocker/TestGCLockerWithG1.java 8180622 generic-all
 gc/stress/TestJNIBlockFullGC/TestJNIBlockFullGC.java 8192647 generic-all
 gc/stress/TestStressG1Humongous.java 8286554 windows-x64
-gc/metaspace/CompressedClassSpaceSizeInJmapHeap.java 8241293 macosx-x64
 
 gc/stress/gcold/TestGCOldWithShenandoah.java initial_run windows-all
 
@@ -112,7 +110,6 @@ gc/stress/gcold/TestGCOldWithShenandoah.java initial_run windows-all
 
 runtime/cds/appcds/jigsaw/modulepath/ModulePathAndCP_JFR.java 8253437 windows-x64
 runtime/cds/CheckDefaultArchiveFile.java JBR-4227 generic-all
-runtime/cds/DeterministicDump.java 8253495 generic-all
 runtime/jni/terminatedThread/TestTerminatedThread.java 8219652 aix-ppc64
 runtime/handshake/HandshakeSuspendExitTest.java 8294313 generic-all
 runtime/os/TestTracePageSizes.java#no-options 8267460 linux-aarch64
@@ -198,12 +195,9 @@ serviceability/sa/ClhsdbDumpheap.java initial_run windows-aarch64
 #############################################################################
 
 vmTestbase/nsk/monitoring/MemoryPoolMBean/isCollectionUsageThresholdExceeded/isexceeded003/TestDescription.java 8153598 generic-all
-vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded001/TestDescription.java 8198668 generic-all
 vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded002/TestDescription.java 8153598 generic-all
-vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded003/TestDescription.java 8198668 generic-all
 vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded004/TestDescription.java 8153598 generic-all
 vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded005/TestDescription.java 8153598 generic-all
-vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Deadlock/JavaDeadlock001/TestDescription.java 8060733 generic-all
 
 vmTestbase/nsk/jdb/options/listconnectors/listconnectors001/listconnectors001.java initial_run windows-all
 
@@ -256,59 +250,6 @@ vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi005/TestDescription
 
 ### initial_runs
 
-vmTestbase/vm/jit/LongTransitions/nativeFnc1/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc10/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc11/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc12/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc13/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc14/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc15/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc16/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc17/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc18/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc19/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc2/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc20/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc21/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc22/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc23/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc24/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc25/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc26/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc27/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc28/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc29/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc3/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc30/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc31/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc32/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc33/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc34/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc35/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc36/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc37/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc38/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc39/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc4/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc40/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc41/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc42/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc43/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc44/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc45/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc46/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc47/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc48/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc49/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc5/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc50/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc51/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc52/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc6/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc7/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc8/TestDescription.java 8271615 macosx-all
-vmTestbase/vm/jit/LongTransitions/nativeFnc9/TestDescription.java 8271615 macosx-all
-
 gc/shenandoah/mxbeans/TestChurnNotifications.java#aggressive NO_BUG macosx_all
 
 runtime/cds/appcds/TestDumpClassListSource.java NO_BUG generic_all
@@ -324,7 +265,5 @@ compiler/vectorapi/VectorRebracket128Test.java NO_BUG linux_aarch64
 vmTestbase/nsk/sysdict/vm/stress/btree/btree001/btree001.java initial_run windows-aarch64
 vmTestbase/nsk/sysdict/vm/stress/btree/btree005/btree005.java initial_run windows-aarch64
 vmTestbase/nsk/sysdict/vm/stress/btree/btree009/btree009.java initial_run windows-aarch64
-
-resourcehogs/serviceability/sa/TestHeapDumpForLargeArray.java 8220624   generic-all
 
 testlibrary_tests/ir_framework/tests/TestDTestAndExclude.java initial_run windows-all
