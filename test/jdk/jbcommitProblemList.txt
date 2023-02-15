@@ -19,7 +19,6 @@ java/awt/Focus/TranserFocusToWindow/TranserFocusToWindow.java nobug windows-all,
 java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java nobug windows-all
 java/awt/Focus/WindowInitialFocusTest/WindowInitialFocusTest.java nobug windows-all
 java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java nobug windows-all
-java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-2687 windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java nobug windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.java nobug windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.java nobug windows-all
@@ -71,7 +70,6 @@ javax/swing/JInternalFrame/5066752/bug5066752.java nobug windows-all
 javax/swing/JInternalFrame/6288609/TestJInternalFrameDispose.java nobug windows-all
 javax/swing/JInternalFrame/8069348/bug8069348.java nobug windows-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java nobug windows-all,linux-all
-javax/swing/JInternalFrame/Test6325652.java 8224977 macosx-all,windows-all
 javax/swing/JInternalFrame/Test6505027.java nobug windows-all
 javax/swing/JLabel/7004134/bug7004134.java nobug linux-all
 javax/swing/JMenu/4213634/bug4213634.java nobug windows-all
@@ -125,7 +123,7 @@ javax/swing/plaf/windows/6921687/bug6921687.java nobug windows-all
 javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java nobug windows-all
 javax/swing/SwingUtilities/7088744/bug7088744.java nobug windows-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java nobug windows-all
-javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java 8194048 windows-all,linux-all nobug: linux, 8194048 windows
+javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java nobug linux-all
 javax/swing/text/DefaultEditorKit/4278839/bug4278839.java nobug windows-all
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java nobug windows-all
 javax/swing/text/JTextComponent/5074573/bug5074573.java nobug windows-all,linux-all
