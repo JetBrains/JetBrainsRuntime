@@ -1,7 +1,6 @@
 java/awt/Toolkit/LWCToolkitInvokeAndWaitTest.java   nobug macosx-all,linux-all,windows-all
 java/awt/Toolkit/AWTThreadingTest.java              nobug macosx-all,linux-all,windows-all
 java/awt/Toolkit/AWTThreadingCMenuTest.java         nobug macosx-all,linux-all,windows-all
-sanity/client/SwingSet/src/TreeDemoTest.java        JBR-3389 macosx-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java nobug macosx-all,linux-all,windows-all
 java/awt/List/NofocusListDblClickTest/NofocusListDblClickTest.java nobug macosx-all,linux-all,windows-all
 javax/swing/JInternalFrame/Test6505027.java         nobug macosx-all,linux-all,windows-all
