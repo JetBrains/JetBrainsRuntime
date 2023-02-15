@@ -17,7 +17,6 @@ import java.awt.event.MouseListener;
  * <code>apple.awt.transparentTitleBar</code> is not set and it is set to <code>true</code>.
  * It is expected that <code>x</code>-coordinates for <code>JFrame</code>, <code>JComboBox</code> and ComboBoxPopup
  * have the same values after dragging&dropping <code>JFrame</code>.
- * @run shell ${test.root}/jb/build-jbr-api.sh
  * @run main/timeout=600 ComboBoxTransparentTittleBarTest
  */
 public final class ComboBoxTransparentTittleBarTest {
