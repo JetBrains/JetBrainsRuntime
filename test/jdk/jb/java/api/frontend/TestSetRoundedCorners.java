@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 JetBrains s.r.o.
+ * Copyright 2023 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,8 +33,7 @@ import java.lang.reflect.InvocationTargetException;
  * @summary JBR-4563 Rounded corners for native Window on Mac OS
  * @summary JBR-4787 Rounded corners for native Window on Windows 11
  * @author Alexander Lobas
- * @requires (os.family == "mac" || os.family == "windows")
- * @run shell build.sh
+ * @requires (os.family == "mac" | os.family == "windows")
  * @run main/manual TestSetRoundedCorners
  */
 public class TestSetRoundedCorners {
