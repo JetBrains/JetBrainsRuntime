@@ -1,0 +1,7 @@
+<component name="CopyrightManager">
+  <settings default="JetBrainsCE">
+    <module2copyright>
+      <element module="TestFiles" copyright="JetBrains" />
+    </module2copyright>
+  </settings>
+</component>
