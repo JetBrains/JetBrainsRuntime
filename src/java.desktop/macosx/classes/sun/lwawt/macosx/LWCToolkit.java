@@ -1234,6 +1234,11 @@ public final class LWCToolkit extends LWToolkit {
     }
 
     @Override
+    protected boolean isMainThreadDispatching() {
+        return isDispatchingOnMainThread();
+    }
+
+    @Override
     public Thread getMainThread() {
         return APPKIT_THREAD;
     }

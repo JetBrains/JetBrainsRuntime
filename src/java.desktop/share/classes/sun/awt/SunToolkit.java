@@ -537,7 +537,19 @@ public abstract class SunToolkit extends Toolkit
         PostEventQueue postEventQueue =
                 (PostEventQueue)appContext.get(POST_EVENT_QUEUE_KEY);
         if (postEventQueue != null) {
-            postEventQueue.flush();
+            Toolkit tk = Toolkit.getDefaultToolkit();
+            if (tk instanceof SunToolkit stk && stk.isMainThreadDispatching()) {
+                // This synchronized block ensures that we don't see a heavyweight component
+                // with a peer in the process of being created but not set yet, so the
+                // EventQueue.coalescePaintEvent method won't miss notifying the peer about
+                // the repaint request for that component, and the component will be repainted as expected.
+                // This lock cannot be taken deeper in call stack, as that might cause deadlocks.
+                synchronized (AWTAccessor.getComponentAccessor().getTreeLock()) {
+                    postEventQueue.flush();
+                }
+            } else {
+                postEventQueue.flush();
+            }
         }
     }
 
@@ -2114,6 +2126,7 @@ public abstract class SunToolkit extends Toolkit
     }
 
     public void installMainThreadDispatcher(EventQueue eventQueue) {}
+    protected boolean isMainThreadDispatching() { return false; }
 
     public Thread getMainThread() {
         return null;
