@@ -1757,8 +1757,8 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     }
 
     @Override
-    protected int scaleUp(int x) {
-        return graphicsConfig.scaleUp(x);
+    protected int scaleUp(int i) {
+        return graphicsConfig.scaleUp(i);
     }
     @Override
     protected int scaleUpX(int x) {
@@ -1770,8 +1770,8 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     }
 
     @Override
-    protected int scaleDown(int x) {
-        return graphicsConfig.scaleDown(x);
+    protected int scaleDown(int i) {
+        return graphicsConfig.scaleDown(i);
     }
     @Override
     protected int scaleDownX(int x) {
