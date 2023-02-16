@@ -150,22 +150,21 @@ public final class XEmbeddedFramePeer extends XFramePeer {
             xembedLog.fine(xe.toString());
         }
 
+        WindowLocation newLocation = getNewLocation(xe);
+        Dimension newDimension = new Dimension(xe.get_width(), xe.get_height());
+        boolean xinerama = XToolkit.localEnv.runningXinerama();
         // fix for 5063031
         // if we use super.handleConfigureNotifyEvent() we would get wrong
         // size and position because embedded frame really is NOT a decorated one
-        checkIfOnNewScreen(toGlobal(new Rectangle(
-                scaleDown(xe.get_x()),
-                scaleDown(xe.get_y()),
-                scaleDown(xe.get_width()),
-                scaleDown(xe.get_height()))), () -> {
-
+        SunToolkit.executeOnEventHandlerThread(target, () -> {
+            Point newUserLocation = newLocation.getUserLocation();
             Rectangle oldBounds = getBounds();
 
             synchronized (getStateLock()) {
-                x = scaleDown(xe.get_x());
-                y = scaleDown(xe.get_y());
-                width = scaleDown(xe.get_width());
-                height = scaleDown(xe.get_height());
+                x = newUserLocation.x;
+                y = newUserLocation.y;
+                width = scaleDown(newDimension.width);
+                height = scaleDown(newDimension.height);
 
                 dimensions.setClientSize(width, height);
                 dimensions.setLocation(x, y);
@@ -176,6 +175,9 @@ public final class XEmbeddedFramePeer extends XFramePeer {
             }
             reconfigureContentWindow(dimensions);
 
+            if (xinerama) {
+                checkIfOnNewScreen(new Rectangle(newLocation.getDeviceLocation(), newDimension));
+            }
         });
     }
 
