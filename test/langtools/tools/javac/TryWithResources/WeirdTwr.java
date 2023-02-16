@@ -3,7 +3,7 @@
  * @bug 6911256 6964740
  * @author Joseph D. Darcy
  * @summary Strange TWRs
- * @compile/fail/ref=WeirdTwr.out -XDrawDiagnostics -source 6 WeirdTwr.java
+ * @compile/fail/ref=WeirdTwr.out -XDrawDiagnostics -Xlint:-options -source 6 WeirdTwr.java
  * @compile WeirdTwr.java
  * @run main WeirdTwr
  */
