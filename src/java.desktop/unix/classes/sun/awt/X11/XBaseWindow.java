@@ -315,8 +315,8 @@ public class XBaseWindow {
         return 1;
     }
 
-    protected int scaleUp(int x) {
-        return x;
+    protected int scaleUp(int i) {
+        return i;
     }
     protected int scaleUpX(int x) {
         return x;
@@ -325,8 +325,8 @@ public class XBaseWindow {
         return y;
     }
 
-    protected int scaleDown(int x) {
-        return x;
+    protected int scaleDown(int i) {
+        return i;
     }
     protected int scaleDownX(int x) {
         return x;
