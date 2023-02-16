@@ -136,8 +136,8 @@ public final class X11GraphicsDevice extends GraphicsDevice
         return TYPE_RASTER_SCREEN;
     }
 
-    public int scaleUp(int x) {
-        return Region.clipRound(x * (double)getScaleFactor());
+    public int scaleUp(int i) {
+        return Region.clipRound(i * (double)getScaleFactor());
     }
     public int scaleUpX(int x) {
         int s = bounds.x;
@@ -148,8 +148,8 @@ public final class X11GraphicsDevice extends GraphicsDevice
         return Region.clipRound(s + (y - s) * (double)getScaleFactor());
     }
 
-    public int scaleDown(int x) {
-        return Region.clipRound(x / (double)getScaleFactor());
+    public int scaleDown(int i) {
+        return Region.clipRound(i / (double)getScaleFactor());
     }
     public int scaleDownX(int x) {
         int s = bounds.x;
