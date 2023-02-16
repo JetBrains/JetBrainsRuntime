@@ -43,7 +43,6 @@ import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.DisplayChangedListener;
 import sun.awt.IconInfo;
 import sun.awt.SunToolkit;
-import sun.awt.X11GraphicsConfig;
 import sun.awt.X11GraphicsDevice;
 import sun.awt.X11GraphicsEnvironment;
 import sun.java2d.pipe.Region;
@@ -97,6 +96,8 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
 
     private Long desktopId; // guarded by AWT lock
     private boolean desktopIdInvalid; // guarded by AWT lock
+
+    transient boolean syncSizeOnly; // Force syncBounds() to sync only size, not location.
 
     /*
      * Focus related flags
@@ -519,6 +520,10 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         }
     }
 
+    Insets getRealUnscaledInsets() {
+        return new Insets(0, 0, 0, 0);
+    }
+
     @Override
     public Insets getInsets() {
         return new Insets(0, 0, 0, 0);
@@ -644,22 +649,12 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     /* Xinerama
      * called to check if we've been moved onto a different screen
      * Based on checkNewXineramaScreen() in awt_GraphicsEnv.c
+     * newBounds are specified in device space.
      */
-    public void checkIfOnNewScreen(Rectangle newBounds, Runnable next) {
-        if (!XToolkit.localEnv.runningXinerama()) {
-            if (next != null) next.run();
-            return;
-        }
-
+    public boolean checkIfOnNewScreen(Rectangle newBounds) {
         if (log.isLoggable(PlatformLogger.Level.FINEST)) {
             log.finest("XWindowPeer: Check if we've been moved to a new screen since we're running in Xinerama mode");
         }
-
-        // Remap new bounds to native unscaled coordinates
-        newBounds.x = scaleUpX(newBounds.x);
-        newBounds.y = scaleUpY(newBounds.y);
-        newBounds.width = scaleUp(newBounds.width);
-        newBounds.height = scaleUp(newBounds.height);
 
         int largestIntersection = 0;
         int curScreenNum = ((X11GraphicsDevice)getGraphicsConfiguration().getDevice()).getScreen();
@@ -667,60 +662,56 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         GraphicsDevice[] gds = XToolkit.localEnv.getScreenDevices();
         GraphicsConfiguration newGC = null;
 
-        XToolkit.awtUnlock();
-        try {
-            for (int i = 0; i < gds.length; i++) {
-                X11GraphicsDevice device = (X11GraphicsDevice) gds[i];
-                Rectangle screenBounds = gds[i].getDefaultConfiguration().getBounds();
-                // Rescale screen size to native unscaled coordinates
-                screenBounds.width = device.scaleUp(screenBounds.width);
-                screenBounds.height = device.scaleUp(screenBounds.height);
+        for (int i = 0; i < gds.length; i++) {
+            X11GraphicsDevice device = (X11GraphicsDevice) gds[i];
+            Rectangle screenBounds = gds[i].getDefaultConfiguration().getBounds();
+            // Rescale screen size to native unscaled coordinates
+            screenBounds.width = device.scaleUp(screenBounds.width);
+            screenBounds.height = device.scaleUp(screenBounds.height);
 
-                Rectangle intersection = screenBounds.intersection(newBounds);
-                if (!intersection.isEmpty()) {
-                    int area = intersection.width * intersection.height;
-                    if (area > largestIntersection) {
-                        largestIntersection = area;
-                        newScreenNum = i;
-                        newGC = gds[i].getDefaultConfiguration();
-                        if (intersection.equals(newBounds)) break;
-                    }
+            Rectangle intersection = screenBounds.intersection(newBounds);
+            if (!intersection.isEmpty()) {
+                int area = intersection.width * intersection.height;
+                if (area > largestIntersection) {
+                    largestIntersection = area;
+                    newScreenNum = i;
+                    newGC = gds[i].getDefaultConfiguration();
+                    if (intersection.equals(newBounds)) break;
                 }
             }
-            // Ensure that after window will be moved to another monitor and (probably)
-            // resized as a result, majority of its area will stay on the new monitor
-            if (newScreenNum != curScreenNum) {
-                X11GraphicsDevice device = (X11GraphicsDevice) gds[newScreenNum];
-                Rectangle screenBounds = newGC.getBounds();
-                // Rescale screen size to native unscaled coordinates
-                screenBounds.width = device.scaleUp(screenBounds.width);
-                screenBounds.height = device.scaleUp(screenBounds.height);
-                // Rescale window to new screen's scale
-                newBounds.width = newBounds.width * device.getScaleFactor() / graphicsConfig.getScale();
-                newBounds.height = newBounds.height * device.getScaleFactor() / graphicsConfig.getScale();
+        }
+        // Ensure that after window will be moved to another monitor and (probably)
+        // resized as a result, majority of its area will stay on the new monitor
+        if (newScreenNum != curScreenNum) {
+            X11GraphicsDevice device = (X11GraphicsDevice) gds[newScreenNum];
+            Rectangle screenBounds = newGC.getBounds();
+            // Rescale screen size to native unscaled coordinates
+            screenBounds.width = device.scaleUp(screenBounds.width);
+            screenBounds.height = device.scaleUp(screenBounds.height);
+            // Rescale window to new screen's scale
+            newBounds.width = newBounds.width * device.getScaleFactor() / graphicsConfig.getScale();
+            newBounds.height = newBounds.height * device.getScaleFactor() / graphicsConfig.getScale();
 
-                Rectangle intersection = screenBounds.intersection(newBounds);
-                if (intersection.isEmpty() ||
-                        intersection.width * intersection.height < newBounds.width * newBounds.height / 2) {
-                    newScreenNum = curScreenNum; // Don't move to new screen
-                }
+            Rectangle intersection = screenBounds.intersection(newBounds);
+            if (intersection.isEmpty() ||
+                    intersection.width * intersection.height <= newBounds.width * newBounds.height / 2) {
+                newScreenNum = curScreenNum; // Don't move to new screen
             }
-        } finally {
-            XToolkit.awtLock();
         }
         if (newScreenNum != curScreenNum) {
             if (log.isLoggable(PlatformLogger.Level.FINEST)) {
                 log.finest("XWindowPeer: Moved to a new screen");
             }
-            graphicsConfig = (X11GraphicsConfig) newGC;
-            final GraphicsConfiguration ngc = newGC;
-            SunToolkit.executeOnEventHandlerThread(target, () -> {
-                AWTAccessor.getComponentAccessor().setGraphicsConfiguration(target, ngc);
-                if (next != null) next.run();
-            });
-        } else {
-            if (next != null) next.run();
+            var gc = newGC;
+            var device = (X11GraphicsDevice) gc.getDevice();
+            var acc = AWTAccessor.getComponentAccessor();
+            syncSizeOnly = true;
+            acc.setSize(target, device.scaleDown(newBounds.width), device.scaleDown(newBounds.height));
+            acc.setGraphicsConfiguration(target, gc);
+            syncSizeOnly = false;
+            return true;
         }
+        return false;
     }
 
     /**
@@ -755,42 +746,76 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     public void paletteChanged() {
     }
 
-    private Point queryXLocation()
-    {
-        Point p = XlibUtil.translateCoordinates(getContentWindow(), XlibWrapper
-                                             .RootWindow(XToolkit.getDisplay(),
-                                             getScreenNumber()),
-                                             0, 0);
-        p.x = scaleDownX(p.x);
-        p.y = scaleDownY(p.y);
-        return p;
+    void xSetSize(int width, int height) {
+        if (getWindow() == 0) {
+            insLog.warning("Attempt to resize uncreated window");
+            throw new IllegalStateException("Attempt to resize uncreated window");
+        }
+        if (insLog.isLoggable(PlatformLogger.Level.FINE)) {
+            insLog.fine("Setting size on " + this + " to " + width + "x" + height);
+        }
+        width = Math.max(MIN_SIZE, width);
+        height = Math.max(MIN_SIZE, height);
+        XToolkit.awtLock();
+        try {
+            XlibWrapper.XResizeWindow(XToolkit.getDisplay(), getWindow(),
+                    scaleUp(width), scaleUp(height));
+        } finally {
+            XToolkit.awtUnlock();
+        }
     }
 
-    protected Point getNewLocation(XConfigureEvent xe, int leftInset, int topInset) {
-        // Bounds of the window
-        Rectangle targetBounds = AWTAccessor.getComponentAccessor().getBounds(target);
+    class WindowLocation {
+        private final Point location; // Device space
+        private final boolean client;
+        private WindowLocation(Point location, boolean client) {
+            this.location = location;
+            this.client = client;
+        }
+        Point getDeviceLocation() {
+            if (location == null) {
+                Point l = AWTAccessor.getComponentAccessor().getLocation(target);
+                l.x = scaleUpX(l.x);
+                l.y = scaleUpY(l.y);
+                return l;
+            } else if (client) {
+                Insets insets = getRealUnscaledInsets();
+                return new Point(location.x - insets.left, location.y - insets.top);
+            } else {
+                return location;
+            }
+        }
+        Point getUserLocation() {
+            if (location == null) {
+                return AWTAccessor.getComponentAccessor().getLocation(target);
+            } else if (client) {
+                Insets insets = getRealUnscaledInsets();
+                return new Point(scaleDownX(location.x - insets.left), scaleDownY(location.y - insets.top));
+            } else {
+                return new Point(scaleDownX(location.x), scaleDownY(location.y));
+            }
+        }
+    }
 
+    WindowLocation getNewLocation(XConfigureEvent xe) {
         int runningWM = XWM.getWMID();
-        Point newLocation = targetBounds.getLocation();
         if (xe.get_send_event() ||
                 (ENABLE_REPARENTING_CHECK ? (runningWM == XWM.NO_WM || XWM.isNonReparentingWM()) : !isReparented())) {
             // Location, Client size + insets
-            newLocation = new Point(scaleDownX(xe.get_x()) - leftInset,
-                                    scaleDownY(xe.get_y()) - topInset);
+            return new WindowLocation(new Point(xe.get_x(), xe.get_y()), true);
         } else {
             // ICCCM 4.1.5 states that a real ConfigureNotify will be sent when
             // a window is resized but the client can not tell if the window was
             // moved or not. The client should consider the position as unknown
             // and use TranslateCoordinates to find the actual position.
-            Point xlocation = queryXLocation();
+            Point xlocation = XlibUtil.translateCoordinates(getContentWindow(),
+                    XlibWrapper.RootWindow(XToolkit.getDisplay(), getScreenNumber()), 0, 0);
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
                 log.fine("New X location: {0}", xlocation);
             }
-            if (xlocation != null) {
-                newLocation = xlocation;
-            }
+            return new WindowLocation(xlocation, false);
         }
-        return newLocation;
+        return new WindowLocation(null, false);
     }
 
     /*
@@ -805,18 +830,18 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             insLog.fine(xe.toString());
         }
 
-        Rectangle oldBounds = getBounds();
+        WindowLocation newLocation = getNewLocation(xe);
+        Dimension newDimension = new Dimension(xe.get_width(), xe.get_height());
+        boolean xinerama = XToolkit.localEnv.runningXinerama();
 
-        x = scaleDownX(xe.get_x());
-        y = scaleDownY(xe.get_y());
-        width = scaleDown(xe.get_width());
-        height = scaleDown(xe.get_height());
+        SunToolkit.executeOnEventHandlerThread(target, () -> {
+            Point newUserLocation = newLocation.getUserLocation();
+            Rectangle oldBounds = getBounds();
 
-        checkIfOnNewScreen(new Rectangle(
-                scaleDownX(xe.get_x()),
-                scaleDownY(xe.get_y()),
-                scaleDown(xe.get_width()),
-                scaleDown(xe.get_height())), () -> {
+            x = newUserLocation.x;
+            y = newUserLocation.y;
+            width = scaleDown(newDimension.width);
+            height = scaleDown(newDimension.height);
 
             if (!getBounds().getSize().equals(oldBounds.getSize())) {
                 AWTAccessor.getComponentAccessor().setSize(target, width, height);
@@ -825,6 +850,10 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             if (!getBounds().getLocation().equals(oldBounds.getLocation())) {
                 AWTAccessor.getComponentAccessor().setLocation(target, x, y);
                 postEvent(new ComponentEvent(target, ComponentEvent.COMPONENT_MOVED));
+            }
+
+            if (xinerama) {
+                checkIfOnNewScreen(new Rectangle(newLocation.getDeviceLocation(), newDimension));
             }
         });
     }
@@ -2494,6 +2523,29 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                 qt.dispose();
             }
         }
+        return false;
+    }
+
+    @Override
+    void syncBounds() {
+        Rectangle r = target.getBounds();
+        width = r.width;
+        height = r.height;
+        if (syncSizeOnly) {
+            xSetSize(width, height);
+        } else {
+            x = r.x;
+            y = r.y;
+            xSetBounds(x, y, width, height);
+        }
+        doValidateSurface();
+        layout();
+    }
+
+    @Override
+    public boolean updateGraphicsData(GraphicsConfiguration gc) {
+        if (super.updateGraphicsData(gc)) return true;
+        repositionSecurityWarning();
         return false;
     }
 
