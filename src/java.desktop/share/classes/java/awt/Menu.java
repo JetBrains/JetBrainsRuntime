@@ -40,6 +40,7 @@ import javax.accessibility.AccessibleContext;
 import javax.accessibility.AccessibleRole;
 
 import sun.awt.AWTAccessor;
+import sun.awt.SunToolkit;
 
 /**
  * A {@code Menu} object is a pull-down menu component
@@ -277,7 +278,7 @@ public class Menu extends MenuItem implements MenuContainer, Accessible {
      * @see         java.awt.Menu#insert(java.awt.MenuItem, int)
      */
     public MenuItem add(MenuItem mi) {
-        synchronized (getTreeLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             if (mi.parent != null) {
                 mi.parent.remove(mi);
             }
@@ -288,8 +289,8 @@ public class Menu extends MenuItem implements MenuContainer, Accessible {
                 mi.addNotify();
                 peer.addItem(mi);
             }
-            return mi;
-        }
+        });
+        return mi;
     }
 
     /**

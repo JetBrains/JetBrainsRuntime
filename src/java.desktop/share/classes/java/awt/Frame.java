@@ -480,7 +480,7 @@ public class Frame extends Window implements MenuContainer {
      * @see #removeNotify
      */
     public void addNotify() {
-        synchronized (getTreeLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             if (peer == null) {
                 peer = getComponentFactory().createFrame(this);
             }
@@ -493,7 +493,7 @@ public class Frame extends Window implements MenuContainer {
             }
             p.setMaximizedBounds(maximizedBounds);
             super.addNotify();
-        }
+        });
     }
 
     /**
@@ -581,7 +581,7 @@ public class Frame extends Window implements MenuContainer {
      * @see       #getMenuBar
      */
     public void setMenuBar(MenuBar mb) {
-        synchronized (getTreeLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             if (menuBar == mb) {
                 return;
             }
@@ -603,7 +603,7 @@ public class Frame extends Window implements MenuContainer {
                     peer.setMenuBar(menuBar);
                 }
             }
-        }
+        });
     }
 
     /**
@@ -1034,7 +1034,7 @@ public class Frame extends Window implements MenuContainer {
      * @see #addNotify
      */
     public void removeNotify() {
-        synchronized (getTreeLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             FramePeer peer = (FramePeer)this.peer;
             if (peer != null) {
                 // get the latest Frame state before disposing
@@ -1047,7 +1047,7 @@ public class Frame extends Window implements MenuContainer {
                 }
             }
             super.removeNotify();
-        }
+        });
     }
 
     void postProcessKeyEvent(KeyEvent e) {

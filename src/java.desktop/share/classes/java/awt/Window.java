@@ -829,23 +829,25 @@ public class Window extends Container implements Accessible {
      */
     @SuppressWarnings("deprecation")
     public void pack() {
-        Container parent = this.parent;
-        if (parent != null && parent.peer == null) {
-            parent.addNotify();
-        }
-        if (peer == null) {
-            addNotify();
-        }
-        Dimension newSize = getPreferredSize();
-        if (peer != null) {
-            setClientSize(newSize.width, newSize.height);
-        }
+        SunToolkit.performOnMainThreadIfNeeded(() -> {
+            Container parent = this.parent;
+            if (parent != null && parent.peer == null) {
+                parent.addNotify();
+            }
+            if (peer == null) {
+                addNotify();
+            }
+            Dimension newSize = getPreferredSize();
+            if (peer != null) {
+                setClientSize(newSize.width, newSize.height);
+            }
 
-        if(beforeFirstShow) {
-            isPacked = true;
-        }
+            if(beforeFirstShow) {
+                isPacked = true;
+            }
 
-        validateUnconditionally();
+            validateUnconditionally();
+        });
     }
 
     /**
@@ -1057,51 +1059,53 @@ public class Window extends Container implements Accessible {
      */
     @Deprecated
     public void show() {
-        if (peer == null) {
-            addNotify();
-        }
-        validateUnconditionally();
+        SunToolkit.performOnMainThreadIfNeeded(() -> {
+            if (peer == null) {
+                addNotify();
+            }
+            validateUnconditionally();
 
-        isInShow = true;
-        if (visible) {
-            toFront();
-        } else {
-            beforeFirstShow = false;
-            closeSplashScreen();
-            Dialog.checkShouldBeBlocked(this);
-            super.show();
-            locationByPlatform = false;
-            for (int i = 0; i < ownedWindowList.size(); i++) {
-                Window child = ownedWindowList.elementAt(i).get();
-                if ((child != null) && child.showWithParent) {
-                    child.show();
-                    child.showWithParent = false;
-                }       // endif
-            }   // endfor
-            if (!isModalBlocked()) {
-                updateChildrenBlocking();
+            isInShow = true;
+            if (visible) {
+                toFront();
             } else {
-                // fix for 6532736: after this window is shown, its blocker
-                // should be raised to front
-                boolean storedValue = modalBlocker.isAutoRequestFocus();
-                modalBlocker.setAutoRequestFocus(false);
-                try {
-                    modalBlocker.toFront_NoClientCode();
-                } finally {
-                    modalBlocker.setAutoRequestFocus(storedValue);
+                beforeFirstShow = false;
+                closeSplashScreen();
+                Dialog.checkShouldBeBlocked(this);
+                super.show();
+                locationByPlatform = false;
+                for (int i = 0; i < ownedWindowList.size(); i++) {
+                    Window child = ownedWindowList.elementAt(i).get();
+                    if ((child != null) && child.showWithParent) {
+                        child.show();
+                        child.showWithParent = false;
+                    }       // endif
+                }   // endfor
+                if (!isModalBlocked()) {
+                    updateChildrenBlocking();
+                } else {
+                    // fix for 6532736: after this window is shown, its blocker
+                    // should be raised to front
+                    boolean storedValue = modalBlocker.isAutoRequestFocus();
+                    modalBlocker.setAutoRequestFocus(false);
+                    try {
+                        modalBlocker.toFront_NoClientCode();
+                    } finally {
+                        modalBlocker.setAutoRequestFocus(storedValue);
+                    }
+                }
+                if (this instanceof Frame || this instanceof Dialog) {
+                    updateChildFocusableWindowState(this);
                 }
             }
-            if (this instanceof Frame || this instanceof Dialog) {
-                updateChildFocusableWindowState(this);
-            }
-        }
-        isInShow = false;
+            isInShow = false;
 
-        // If first time shown, generate WindowOpened event
-        if ((state & OPENED) == 0) {
-            postWindowEvent(WindowEvent.WINDOW_OPENED);
-            state |= OPENED;
-        }
+            // If first time shown, generate WindowOpened event
+            if ((state & OPENED) == 0) {
+                postWindowEvent(WindowEvent.WINDOW_OPENED);
+                state |= OPENED;
+            }
+        });
     }
 
     static void updateChildFocusableWindowState(Window w) {

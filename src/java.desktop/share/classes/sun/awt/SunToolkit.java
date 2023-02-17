@@ -89,8 +89,10 @@ import java.util.Vector;
 import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 import sun.awt.im.InputContext;
 import sun.awt.image.ByteArrayImageSource;
@@ -2130,6 +2132,57 @@ public abstract class SunToolkit extends Toolkit
 
     public Thread getMainThread() {
         return null;
+    }
+
+    public static void performWithTreeLock(Runnable task) {
+        performOnMainThreadIfNeeded(() -> {
+            synchronized (AWTAccessor.getComponentAccessor().getTreeLock()) {
+                task.run();
+            }
+        });
+    }
+
+    public static <T> T performWithTreeLock(Supplier<T> task) {
+        if (needsSpecialHandling()) {
+            AtomicReference<T> result = new AtomicReference<>();
+            performOnMainThread(() -> {
+                synchronized (AWTAccessor.getComponentAccessor().getTreeLock()) {
+                    result.set(task.get());
+                }
+            });
+            return result.get();
+        } else {
+            synchronized (AWTAccessor.getComponentAccessor().getTreeLock()) {
+                return task.get();
+            }
+        }
+    }
+
+    public static void performOnMainThreadIfNeeded(Runnable task) {
+        if (needsSpecialHandling()) {
+            performOnMainThread(task);
+        } else {
+            task.run();
+        }
+    }
+
+    private static boolean needsSpecialHandling() {
+        Toolkit tk = Toolkit.getDefaultToolkit();
+        return tk instanceof SunToolkit stk && stk.isMainThreadDispatching() && !EventQueue.isDispatchThread();
+    }
+
+    private static void performOnMainThread(Runnable task) {
+        try {
+            EventQueue.invokeAndWait(task);
+        } catch (Exception e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException rec) {
+                rec.addSuppressed(e);
+                throw rec;
+            } else {
+                throw new RuntimeException(e);
+            }
+        }
     }
 } // class SunToolkit
 

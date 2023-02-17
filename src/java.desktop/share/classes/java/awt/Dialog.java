@@ -1038,73 +1038,75 @@ public class Dialog extends Window {
      */
     @Deprecated
     public void show() {
-        if (!initialized) {
-            throw new IllegalStateException("The dialog component " +
-                "has not been initialized properly");
-        }
+        SunToolkit.performOnMainThreadIfNeeded(() -> {
+            if (!initialized) {
+                throw new IllegalStateException("The dialog component " +
+                        "has not been initialized properly");
+            }
 
-        beforeFirstShow = false;
-        if (!isModal()) {
-            conditionalShow(null, null);
-        } else {
-            AppContext showAppContext = AppContext.getAppContext();
+            beforeFirstShow = false;
+            if (!isModal()) {
+                conditionalShow(null, null);
+            } else {
+                AppContext showAppContext = AppContext.getAppContext();
 
-            AtomicLong time = new AtomicLong();
-            Component predictedFocusOwner = null;
-            try {
-                predictedFocusOwner = getMostRecentFocusOwner();
-                if (conditionalShow(predictedFocusOwner, time)) {
-                    modalFilter = ModalEventFilter.createFilterForDialog(this);
-                    // if this dialog is toolkit-modal, the filter should be added
-                    // to all EDTs (for all AppContexts)
-                    if (modalityType == ModalityType.TOOLKIT_MODAL) {
-                        for (AppContext appContext : AppContext.getAppContexts()) {
-                            if (appContext == showAppContext) {
-                                continue;
+                AtomicLong time = new AtomicLong();
+                Component predictedFocusOwner = null;
+                try {
+                    predictedFocusOwner = getMostRecentFocusOwner();
+                    if (conditionalShow(predictedFocusOwner, time)) {
+                        modalFilter = ModalEventFilter.createFilterForDialog(this);
+                        // if this dialog is toolkit-modal, the filter should be added
+                        // to all EDTs (for all AppContexts)
+                        if (modalityType == ModalityType.TOOLKIT_MODAL) {
+                            for (AppContext appContext : AppContext.getAppContexts()) {
+                                if (appContext == showAppContext) {
+                                    continue;
+                                }
+                                EventQueue eventQueue = (EventQueue)appContext.get(AppContext.EVENT_QUEUE_KEY);
+                                // it may occur that EDT for appContext hasn't been started yet, so
+                                // we post an empty invocation event to trigger EDT initialization
+                                eventQueue.postEvent(new InvocationEvent(this, () -> {}));
+                                EventDispatchThread edt = eventQueue.getDispatchThread();
+                                edt.addEventFilter(modalFilter);
                             }
-                            EventQueue eventQueue = (EventQueue)appContext.get(AppContext.EVENT_QUEUE_KEY);
-                            // it may occur that EDT for appContext hasn't been started yet, so
-                            // we post an empty invocation event to trigger EDT initialization
-                            eventQueue.postEvent(new InvocationEvent(this, () -> {}));
-                            EventDispatchThread edt = eventQueue.getDispatchThread();
-                            edt.addEventFilter(modalFilter);
                         }
-                    }
 
-                    modalityPushed();
-                    try {
-                        @SuppressWarnings("removal")
-                        final EventQueue eventQueue = AccessController.doPrivileged(
-                                (PrivilegedAction<EventQueue>) Toolkit.getDefaultToolkit()::getSystemEventQueue);
-                        secondaryLoop = eventQueue.createSecondaryLoop(() -> true, modalFilter, 0);
-                        if (!secondaryLoop.enter()) {
-                            secondaryLoop = null;
-                        }
-                    } finally {
-                        modalityPopped();
-                    }
-
-                    // if this dialog is toolkit-modal, its filter must be removed
-                    // from all EDTs (for all AppContexts)
-                    if (modalityType == ModalityType.TOOLKIT_MODAL) {
-                        for (AppContext appContext : AppContext.getAppContexts()) {
-                            if (appContext == showAppContext) {
-                                continue;
+                        modalityPushed();
+                        try {
+                            @SuppressWarnings("removal")
+                            final EventQueue eventQueue = AccessController.doPrivileged(
+                                    (PrivilegedAction<EventQueue>) Toolkit.getDefaultToolkit()::getSystemEventQueue);
+                            secondaryLoop = eventQueue.createSecondaryLoop(() -> true, modalFilter, 0);
+                            if (!secondaryLoop.enter()) {
+                                secondaryLoop = null;
                             }
-                            EventQueue eventQueue = (EventQueue)appContext.get(AppContext.EVENT_QUEUE_KEY);
-                            EventDispatchThread edt = eventQueue.getDispatchThread();
-                            edt.removeEventFilter(modalFilter);
+                        } finally {
+                            modalityPopped();
+                        }
+
+                        // if this dialog is toolkit-modal, its filter must be removed
+                        // from all EDTs (for all AppContexts)
+                        if (modalityType == ModalityType.TOOLKIT_MODAL) {
+                            for (AppContext appContext : AppContext.getAppContexts()) {
+                                if (appContext == showAppContext) {
+                                    continue;
+                                }
+                                EventQueue eventQueue = (EventQueue)appContext.get(AppContext.EVENT_QUEUE_KEY);
+                                EventDispatchThread edt = eventQueue.getDispatchThread();
+                                edt.removeEventFilter(modalFilter);
+                            }
                         }
                     }
-                }
-            } finally {
-                if (predictedFocusOwner != null) {
-                    // Restore normal key event dispatching
-                    KeyboardFocusManager.getCurrentKeyboardFocusManager().
-                        dequeueKeyEvents(time.get(), predictedFocusOwner);
+                } finally {
+                    if (predictedFocusOwner != null) {
+                        // Restore normal key event dispatching
+                        KeyboardFocusManager.getCurrentKeyboardFocusManager().
+                                dequeueKeyEvents(time.get(), predictedFocusOwner);
+                    }
                 }
             }
-        }
+        });
     }
 
     final void modalityPushed() {

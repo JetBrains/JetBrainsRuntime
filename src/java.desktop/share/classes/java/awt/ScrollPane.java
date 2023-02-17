@@ -258,7 +258,7 @@ public class ScrollPane extends Container implements Accessible {
      * @param index position of child component (must be &lt;= 0)
      */
     protected final void addImpl(Component comp, Object constraints, int index) {
-        synchronized (getTreeLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             if (getComponentCount() > 0) {
                 remove(0);
             }
@@ -271,7 +271,7 @@ public class ScrollPane extends Container implements Accessible {
             } else {
                 addToPanel(comp, constraints, index);
             }
-        }
+        });
     }
 
     /**

@@ -8399,7 +8399,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * @since     1.1
      */
     public void add(PopupMenu popup) {
-        synchronized (getTreeLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             if (popup.parent != null) {
                 popup.parent.remove(popup);
             }
@@ -8414,7 +8414,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
                     popup.addNotify();
                 }
             }
-        }
+        });
     }
 
     /**

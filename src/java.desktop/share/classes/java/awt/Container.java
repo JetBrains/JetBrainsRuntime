@@ -1101,7 +1101,7 @@ public class Container extends Component {
      * @since     1.1
      */
     protected void addImpl(Component comp, Object constraints, int index) {
-        synchronized (getTreeLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             /* Check for correct arguments:  index in bounds,
              * comp cannot be one of this container's parents,
              * and comp cannot be a window.
@@ -1173,7 +1173,7 @@ public class Container extends Component {
             if (peer != null && layoutMgr == null && isVisible()) {
                 updateCursorImmediately();
             }
-        }
+        });
     }
 
     @Override
@@ -1286,14 +1286,14 @@ public class Container extends Component {
      * @see #remove(int)
      */
     public void remove(Component comp) {
-        synchronized (getTreeLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             if (comp.parent == this)  {
                 int index = component.indexOf(comp);
                 if (index >= 0) {
                     remove(index);
                 }
             }
-        }
+        });
     }
 
     /**
@@ -1821,12 +1821,12 @@ public class Container extends Component {
          */
         Dimension dim = prefSize;
         if (dim == null || !(isPreferredSizeSet() || isValid())) {
-            synchronized (getTreeLock()) {
+            dim = SunToolkit.performWithTreeLock(() -> {
                 prefSize = (layoutMgr != null) ?
                     layoutMgr.preferredLayoutSize(this) :
                     super.preferredSize();
-                dim = prefSize;
-            }
+                return prefSize;
+            });
         }
         if (dim != null){
             return new Dimension(dim);
@@ -1916,15 +1916,15 @@ public class Container extends Component {
          */
         Dimension dim = maxSize;
         if (dim == null || !(isMaximumSizeSet() || isValid())) {
-            synchronized (getTreeLock()) {
+            dim = SunToolkit.performWithTreeLock(() -> {
                if (layoutMgr instanceof LayoutManager2) {
                     LayoutManager2 lm = (LayoutManager2) layoutMgr;
                     maxSize = lm.maximumLayoutSize(this);
                } else {
                     maxSize = super.getMaximumSize();
                }
-               dim = maxSize;
-            }
+               return maxSize;
+            });
         }
         if (dim != null){
             return new Dimension(dim);
@@ -1944,10 +1944,10 @@ public class Container extends Component {
     public float getAlignmentX() {
         float xAlign;
         if (layoutMgr instanceof LayoutManager2) {
-            synchronized (getTreeLock()) {
+            xAlign = SunToolkit.performWithTreeLock(() -> {
                 LayoutManager2 lm = (LayoutManager2) layoutMgr;
-                xAlign = lm.getLayoutAlignmentX(this);
-            }
+                return lm.getLayoutAlignmentX(this);
+            });
         } else {
             xAlign = super.getAlignmentX();
         }
@@ -1964,10 +1964,10 @@ public class Container extends Component {
     public float getAlignmentY() {
         float yAlign;
         if (layoutMgr instanceof LayoutManager2) {
-            synchronized (getTreeLock()) {
+            yAlign = SunToolkit.performWithTreeLock(() -> {
                 LayoutManager2 lm = (LayoutManager2) layoutMgr;
-                yAlign = lm.getLayoutAlignmentY(this);
-            }
+                return lm.getLayoutAlignmentY(this);
+            });
         } else {
             yAlign = super.getAlignmentY();
         }
