@@ -68,6 +68,9 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
      */
     private static native int getMainDisplayID();
 
+    private static native int[] getDisplayIDsAppKit();
+    private static native int getMainDisplayIDAppKit();
+
     /**
      * Noop function that just acts as an entry point for someone to force a
      * static initialization of this class.
@@ -184,7 +187,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
     private synchronized void initDevices() {
         Map<Integer, CGraphicsDevice> old = new HashMap<>(devices);
         devices.clear();
-        mainDisplayID = getMainDisplayID();
+        mainDisplayID = LWCToolkit.isDispatchingOnMainThread() ? getMainDisplayIDAppKit() : getMainDisplayID();
 
         // initialization of the graphics device may change list of displays on
         // hybrid systems via an activation of discrete video.
@@ -201,7 +204,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
             }
         }
 
-        int[] displayIDs = getDisplayIDs();
+        int[] displayIDs = LWCToolkit.isDispatchingOnMainThread() ? getDisplayIDsAppKit() : getDisplayIDs();
         if (displayIDs.length == 0) {
             // we could throw AWTError in this case.
             displayIDs = new int[]{mainDisplayID};
@@ -211,7 +214,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
                                                 : new CGraphicsDevice(id));
         }
         // fetch the main display again, the old value might be outdated
-        mainDisplayID = getMainDisplayID();
+        mainDisplayID = LWCToolkit.isDispatchingOnMainThread() ? getMainDisplayIDAppKit() : getMainDisplayID();
 
         // unlikely but make sure the main screen is in the list of screens,
         // most probably one more "displayReconfiguration" is on the road if not

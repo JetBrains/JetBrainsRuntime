@@ -103,6 +103,70 @@ Java_sun_awt_CGraphicsEnvironment_getMainDisplayID
 }
 
 /*
+ * Class:     sun_awt_CGraphicsEnvironment
+ * Method:    getDisplayIDsAppKit
+ * Signature: ()[I
+ */
+JNIEXPORT jintArray JNICALL
+Java_sun_awt_CGraphicsEnvironment_getDisplayIDsAppKit
+(JNIEnv *env, jclass class)
+{
+    __block jintArray ret = NULL;
+
+JNI_COCOA_ENTER(env);
+
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+        NSArray *screens = [NSScreen screens];
+        ret = (*env)->NewIntArray(env, [screens count]);
+        if (ret) {
+            jint *elems = (*env)->GetIntArrayElements(env, ret, NULL);
+            if (elems) {
+                int i = 0;
+                for (NSScreen *screen in screens) {
+                    NSDictionary *screenInfo = [screen deviceDescription];
+                    NSNumber *screenID = [screenInfo objectForKey:@"NSScreenNumber"];
+                    elems[i++] = [screenID unsignedIntValue];
+                }
+                (*env)->ReleaseIntArrayElements(env, ret, elems, 0);
+            }
+        }
+    }];
+
+JNI_COCOA_EXIT(env);
+
+    return ret;
+}
+
+/*
+ * Class:     sun_awt_CGraphicsEnvironment
+ * Method:    getMainDisplayIDAppKit
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL
+Java_sun_awt_CGraphicsEnvironment_getMainDisplayIDAppKit
+(JNIEnv *env, jclass class)
+{
+
+    __block jint result = 0;
+
+JNI_COCOA_ENTER(env);
+
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+        NSArray *screens = [NSScreen screens];
+        for (NSScreen *screen in screens) {
+            NSDictionary *screenInfo = [screen deviceDescription];
+            NSNumber *screenID = [screenInfo objectForKey:@"NSScreenNumber"];
+            result = [screenID unsignedIntValue];
+            break;
+        }
+    }];
+
+JNI_COCOA_EXIT(env);
+
+    return result;
+}
+
+/*
  * Post the display reconfiguration event.
  */
 static void displaycb_handle
