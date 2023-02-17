@@ -32,6 +32,8 @@ function pack_jbr {
 [ "$bundle_type" == "nomod" ] && bundle_type=""
 
 JBRSDK_BUNDLE=jbrsdk
+RELEASE_NAME=windows-x86_64-server-release
+IMAGES_DIR=build/$RELEASE_NAME/images
 BASE_DIR=.
 
 if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "dcevm" ] || [ "$bundle_type" == "fd" ]; then
@@ -45,6 +47,7 @@ pack_jbr jbrsdk${jbr_name_postfix} jbrsdk
 
 if [ $do_maketest -eq 1 ]; then
   JBRSDK_TEST=$JBRSDK_BUNDLE-$JBSDK_VERSION-windows-test-x86-b$build_number
+  cp "build/${RELEASE_NAME}/jbr-api/jbr-api.jar" "${IMAGES_DIR}/test" || do_exit $?
   echo Creating $JBRSDK_TEST.tar.gz ...
   /usr/bin/tar -czf $JBRSDK_TEST.tar.gz -C $BASE_DIR --exclude='test/jdk/demos' test || do_exit $?
 fi
