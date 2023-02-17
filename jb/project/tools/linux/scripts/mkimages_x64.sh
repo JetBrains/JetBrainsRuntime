@@ -160,6 +160,4 @@ if [ $do_maketest -eq 1 ]; then
     gzip "$JBRSDK_TEST".tar || do_exit $?
 fi
 
-build_jbr_api
-
 do_exit 0
