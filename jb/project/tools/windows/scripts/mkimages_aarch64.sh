@@ -101,13 +101,13 @@ esac
 if [ -z "${INC_BUILD:-}" ]; then
   do_configure || do_exit $?
   if [ $do_maketest -eq 1 ]; then
-    make LOG=info CONF=$RELEASE_NAME clean images test-image || do_exit $?
+    make LOG=info CONF=$RELEASE_NAME clean images test-image jbr-api JBR_API_JBR_VERSION=TEST || do_exit $?
   else
     make LOG=info CONF=$RELEASE_NAME clean images || do_exit $?
   fi
 else
   if [ $do_maketest -eq 1 ]; then
-    make LOG=info CONF=$RELEASE_NAME images test-image || do_exit $?
+    make LOG=info CONF=$RELEASE_NAME images test-image jbr-api JBR_API_JBR_VERSION=TEST || do_exit $?
   else
     make LOG=info CONF=$RELEASE_NAME images || do_exit $?
   fi
@@ -144,7 +144,5 @@ if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ] || [ "$bundle_type
   modules=${modules},$(get_mods_list "$JCEF_PATH"/jmods)
 fi
 create_image_bundle "$JBRSDK_BUNDLE${jbr_name_postfix}" "$JBRSDK_BUNDLE" "$JSDK_MODS_DIR" "$modules" || do_exit $?
-
-build_jbr_api
 
 do_exit 0
