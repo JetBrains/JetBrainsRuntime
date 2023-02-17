@@ -575,17 +575,10 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
 
     if (ch >= '0' && ch <= '9') {
         // key is a digit
+        // numpad digits are already handled, since they don't vary between layouts
         offset = ch - '0';
-        // make sure in range for decimal digits
-        jboolean numpad = (flags & NSNumericPadKeyMask) && (key > 81 && key < 93);
-        *postsTyped = YES;
-        if (numpad) {
-            *keyCode = offset + java_awt_event_KeyEvent_VK_NUMPAD0;
-            *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD;
-        } else {
-            *keyCode = offset + java_awt_event_KeyEvent_VK_0;
-            *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
-        }
+        *keyCode = offset + java_awt_event_KeyEvent_VK_0;
+        *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
         return;
     }
 

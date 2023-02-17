@@ -560,7 +560,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
             [event keyCode],
             kUCKeyActionDown,
             0,
-            LMGetKbdLast(),
+            LMGetKbdType(),
             kUCKeyTranslateNoDeadKeysMask,
             &deadKeyState,
             maxStringLength,
