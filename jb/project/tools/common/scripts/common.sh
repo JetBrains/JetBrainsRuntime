@@ -174,11 +174,3 @@ function copy_jmods() {
 
   echo "${__mods_list}," | while read -d, mod; do cp $__jmods_from/$mod.jmod $__jmods_to/; done
 }
-
-function build_jbr_api() {
-  make jbr-api JBR_API_JBR_VERSION=TEST || do_exit $?
-
-  JBR_API_DIR=build/${RELEASE_NAME}/jbr-api
-  JBR_API_JAR=jbr-api-b${build_number}.jar
-  cp "${JBR_API_DIR}/jbr-api.jar" "${JBR_API_JAR}"
-}
