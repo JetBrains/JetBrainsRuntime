@@ -113,7 +113,9 @@ void ciObjectFactory::initialize() {
   // compiler thread that initializes the initial ciObjectFactory which
   // creates the shared ciObjects that all later ciObjectFactories use.
   Arena* arena = new (mtCompiler) Arena(mtCompiler);
-  ciObjectFactory::_initial_arena = arena;
+  if (AllowEnhancedClassRedefinition) {
+    ciObjectFactory::_initial_arena = arena;
+  }
   ciEnv initial(arena);
   ciEnv* env = ciEnv::current();
   env->_factory->init_shared_objects();
