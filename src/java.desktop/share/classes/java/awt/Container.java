@@ -2921,9 +2921,27 @@ public class Container extends Component {
         }
 
         Runnable pumpEventsForHierarchy = () -> {
-            EventDispatchThread dispatchThread = (EventDispatchThread)Thread.currentThread();
-            dispatchThread.pumpEventsForHierarchy(() -> nativeContainer.modalComp != null,
-                    Container.this);
+            Thread thread = Thread.currentThread();
+            if (thread instanceof EventDispatchThread edt) {
+                edt.pumpEventsForHierarchy(() -> nativeContainer.modalComp != null,
+                        Container.this);
+            } else {
+                EventFilter filter = new EventDispatchThread.HierarchyEventFilter(Container.this);
+                while (nativeContainer.modalComp != null) {
+                    try {
+                        EventQueue eq = Toolkit.getEventQueue();
+                        AWTEvent event = eq.getNextEvent();
+                        if (filter.acceptEvent(event) == EventFilter.FilterAction.ACCEPT) {
+                            eq.dispatchEvent(event);
+                        } else {
+                            event.consume();
+                        }
+                    }
+                    catch (Throwable e) {
+                        thread.getUncaughtExceptionHandler().uncaughtException(thread, e);
+                    }
+                }
+            }
         };
 
         if (EventQueue.isDispatchThread()) {

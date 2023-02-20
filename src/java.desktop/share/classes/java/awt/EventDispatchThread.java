@@ -233,7 +233,7 @@ class EventDispatchThread extends Thread {
         theQueue = eq;
     }
 
-    private static class HierarchyEventFilter implements EventFilter {
+    static class HierarchyEventFilter implements EventFilter {
         private Component modalComponent;
         public HierarchyEventFilter(Component modalComponent) {
             this.modalComponent = modalComponent;
