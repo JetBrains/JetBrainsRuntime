@@ -1278,31 +1278,47 @@ class MainThreadDispatcher implements FwDispatcher {
 }
 
 class MainThreadSecondaryLoop implements SecondaryLoop {
+    private int entryCount;
     private long mediatorHandle;
 
     @Override
     public boolean enter() {
-        AtomicBoolean result = new AtomicBoolean();
-        LWCToolkit.performOnMainThreadAndWait(() -> {
+        int count;
+        synchronized (this) {
+            if ((entryCount & 1) == 1) {
+                return false;
+            }
+            count = ++entryCount;
+        }
+        SunToolkit.performOnMainThreadIfNeeded(() -> {
+            synchronized (MainThreadSecondaryLoop.this) {
+                // This should cater for complex multi-threaded use cases.
+                // It might not help in every case, but SecondaryLoopTest
+                // does pass with this.
+                if (count != entryCount) return;
+            }
             if (mediatorHandle == 0) {
                 mediatorHandle = LWCToolkit.createAWTRunLoopMediator();
                 LWCToolkit.doSimpleRunLoop(mediatorHandle);
-                result.set(true);
             }
         });
-        return result.get();
+        return true;
     }
 
     @Override
     public boolean exit() {
-        AtomicBoolean result = new AtomicBoolean();
-        LWCToolkit.performOnMainThreadAndWait(() -> {
+        synchronized (this) {
+            if ((entryCount & 1) == 0) {
+                return false;
+            }
+            ++entryCount;
+        }
+        SunToolkit.performOnMainThreadIfNeeded(() -> {
             if (mediatorHandle != 0) {
                 LWCToolkit.stopAWTRunLoop(mediatorHandle);
                 mediatorHandle = 0;
-                result.set(true);
             }
         });
-        return result.get();
+        return true;
     }
 }
