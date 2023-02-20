@@ -290,7 +290,7 @@ public class NationalLayoutTest {
             if (keyCode == KeyEvent.VK_UNDEFINED) {
                 keyCode = e.getExtendedKeyCode();
             }
-            if (keyCode == NEXT_MODIFIER) {
+            if (keyCode == NEXT_MODIFIER && !autoTest) {
                 // Support for manual mode: notify main thread that testing may be continued
                 nextModifierSet.countDown();
             } else if (keyCode == NEXT_KEY) {
@@ -376,12 +376,13 @@ public class NationalLayoutTest {
         // Support for manual mode: wait while user switches the keyboard layout (if needed)
         // and proceed with layout + modifier testing by pressing NEXT_MODIFIER.
         // Corresponding latch is released in the keyListener when NEXT_MODIFIER key event is received.
-        nextModifierSet = new CountDownLatch(1);
-        if(autoTest) {
-            pressKey(NEXT_MODIFIER);
-        }
-        if(!nextModifierSet.await(PAUSE*10, TimeUnit.MILLISECONDS)) {
-            throw new RuntimeException("TEST ERROR: User has not proceeded with manual testing");
+        if (autoTest) {
+            robot.waitForIdle();
+        } else {
+            nextModifierSet = new CountDownLatch(1);
+            if (!nextModifierSet.await(PAUSE * 10, TimeUnit.MILLISECONDS)) {
+                throw new RuntimeException("TEST ERROR: User has not proceeded with manual testing");
+            }
         }
 
         // Clean up the test text areas
