@@ -79,6 +79,7 @@ public class HitTestNonClientArea {
         @Override
         protected void cleanup() {
             Arrays.fill(gotClicks, false);
+            titleBar = null;
         }
 
         @Override
@@ -114,21 +115,6 @@ public class HitTestNonClientArea {
                 public void mouseReleased(MouseEvent e) {
                     hit();
                 }
-
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    hit();
-                }
-
-                @Override
-                public void mouseDragged(MouseEvent e) {
-                    hit();
-                }
-
-                @Override
-                public void mouseMoved(MouseEvent e) {
-                    hit();
-                }
             };
             button.addMouseListener(adapter);
             button.addMouseMotionListener(adapter);
@@ -143,31 +129,31 @@ public class HitTestNonClientArea {
         public void test() throws AWTException {
             Robot robot = new Robot();
 
-            BUTTON_MASKS.forEach(mask -> {
-                robot.delay(500);
+            int initialX = button.getLocationOnScreen().x + button.getWidth() / 2;
+            int initialY = button.getLocationOnScreen().y + button.getHeight() / 2;
 
-                robot.mouseMove(button.getLocationOnScreen().x + button.getWidth() / 2,
-                        button.getLocationOnScreen().y + button.getHeight() / 2);
+            for (Integer mask: BUTTON_MASKS) {
+                robot.waitForIdle();
+
+                robot.mouseMove(initialX, initialY);
                 robot.mousePress(mask);
                 robot.mouseRelease(mask);
 
-                robot.delay(500);
-            });
+                robot.waitForIdle();
+            }
 
             Point initialLocation = window.getLocationOnScreen();
-            robot.delay(500);
-            int initialX = button.getLocationOnScreen().x + button.getWidth() / 2;
-            int initialY = button.getLocationOnScreen().y + button.getHeight() / 2;
+            robot.waitForIdle();
             robot.mouseMove(initialX, initialY);
             robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
             for (int i = 0; i < 10; i++) {
                 initialX += 3;
                 initialY += 3;
-                robot.delay(500);
+                robot.delay(300);
                 robot.mouseMove(initialX, initialY);
             }
-            robot.delay(500);
-            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+            robot.waitForIdle();
+            robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
             Point newLocation = window.getLocationOnScreen();
 
             passed = initialLocation.x < newLocation.x && initialLocation.y < newLocation.y;
