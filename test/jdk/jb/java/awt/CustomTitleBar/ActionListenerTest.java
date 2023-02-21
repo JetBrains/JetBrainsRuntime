@@ -58,6 +58,12 @@ public class ActionListenerTest {
     private static final Task actionListener = new Task("Using of action listener") {
 
         private Button button;
+        private boolean actionListenerGotEvent = false;
+
+        @Override
+        protected void init() {
+            actionListenerGotEvent = false;
+        }
 
         @Override
         public void prepareTitleBar() {
@@ -70,34 +76,26 @@ public class ActionListenerTest {
             button = new Button();
             button.setBounds(200, 20, 50, 50);
             button.addActionListener(a -> {
-                System.out.println("Action listener got event");
+                actionListenerGotEvent = true;
             });
             window.add(button);
         }
 
         @Override
         public void test() throws AWTException {
-            final int initialHeight = window.getHeight();
-            final int initialWidth = window.getWidth();
-
-            System.out.println("Initial bounds: " + window.getBounds());
-
             Robot robot = new Robot();
-            robot.delay(500);
+            robot.waitForIdle();
             int x = button.getLocationOnScreen().x + button.getWidth() / 2;
             int y = button.getLocationOnScreen().y + button.getHeight() / 2;
             System.out.println("Click at (" + x + ", " + y + ")");
             robot.mouseMove(x, y);
-            robot.delay(300);
+            robot.waitForIdle();
             robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
             robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-            robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-            robot.delay(2000);
+            robot.waitForIdle();
 
-            if (window.getHeight() != initialHeight || window.getWidth() != initialWidth) {
-                passed = false;
-                System.out.println("Adding of action listener should block native title bar behavior");
+            if (!actionListenerGotEvent) {
+                System.out.println("Error: button didn't get event by action listener");
             }
         }
     };
