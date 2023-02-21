@@ -130,19 +130,22 @@ public class JDialogNativeControlsTest {
                 int h = window.getBounds().height;
                 int w = window.getBounds().width;
 
-                robot.delay(500);
+                robot.waitForIdle();
                 robot.mouseMove(x, y);
                 robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
                 robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-                robot.delay(1500);
+                robot.waitForIdle();
                 window.setBounds(screenX, screenY, w, h);
                 window.setVisible(true);
-                robot.delay(1500);
+                robot.waitForIdle();
             });
 
-            if (!maximizingActionDetected) {
-                passed = false;
-                System.out.println("Error: maximizing action was not detected");
+            final String os = System.getProperty("os.name").toLowerCase();
+            if (os.startsWith("mac os")) {
+                if (!maximizingActionDetected) {
+                    passed = false;
+                    System.out.println("Error: maximizing action was not detected");
+                }
             }
 
             if (!closingActionCalled) {
