@@ -57,13 +57,15 @@ gc/stress/TestReclaimStringsLeaksMemory.java initial_run windows-all
 
 gc/shenandoah/TestAllocObjects.java#aggressive initial_run generic-all
 gc/shenandoah/TestAllocObjects.java#iu-aggressive initial_run generic-all
-gc/shenandoah/mxbeans/TestChurnNotifications.java#aggressive initial_run linux-x64
+gc/shenandoah/mxbeans/TestChurnNotifications.java#aggressive initial_run generic-all
+gc/shenandoah/mxbeans/TestChurnNotifications.java#iu initial_run linux-x64
 
 # :hotspot_compiler
 
 compiler/ciReplay/TestSAServer.java 8029528 generic-all
 compiler/compilercontrol/jcmd/ClearDirectivesFileStackTest.java 8225370 generic-all
 compiler/jvmci/compilerToVM/GetFlagValueTest.java 8204459 generic-all
+compiler/jvmci/jdk.vm.ci.code.test/src/jdk/vm/ci/code/test/NativeCallTest.java 8262901 macosx-aarch64
 
 compiler/cpuflags/TestAESIntrinsicsOnSupportedConfig.java 8190680 generic-all
 
@@ -99,6 +101,7 @@ gc/g1/humongousObjects/TestHeapCounters.java 8178918 generic-all
 gc/stress/gclocker/TestExcessGCLockerCollections.java 8229120 generic-all
 gc/stress/gclocker/TestGCLockerWithParallel.java 8180622 generic-all
 gc/stress/gclocker/TestGCLockerWithG1.java 8180622 generic-all
+gc/stress/gclocker/TestGCLockerWithShenandoah.java initial_run generic-all
 gc/stress/TestJNIBlockFullGC/TestJNIBlockFullGC.java 8192647 generic-all
 gc/stress/TestStressG1Humongous.java 8286554 windows-x64
 
@@ -168,7 +171,9 @@ serviceability/jvmti/SetBreakpoint/TestManyBreakpoints.java initial_run generic-
 serviceability/sa/ClhsdbJstackXcompStress.java initial_run windows-all
 
 serviceability/sa/ClhsdbPrintAs.java initial_run windows-aarch64
-serviceability/sa/ClhsdbFindPC.java initial_run generic-aarch64
+serviceability/sa/ClhsdbFindPC.java#id1 initial_run generic-all
+serviceability/sa/ClhsdbFindPC.java#id2 initial_run generic-all
+serviceability/sa/ClhsdbFindPC.java#id3 initial_run generic-all
 serviceability/sa/ClhsdbCDSJstackPrintAll.java initial_run windows-aarch64
 serviceability/sa/TestClhsdbJstackLock.java initial_run windows-aarch64
 serviceability/sa/ClhsdbSource.java initial_run windows-aarch64
@@ -177,7 +182,7 @@ serviceability/sa/TestJhsdbJstackLock.java initial_run windows-aarch64
 serviceability/sa/ClhsdbCDSCore.java initial_run generic-aarch64
 serviceability/sa/ClhsdbJstack.java#id1 initial_run windows-aarch64
 serviceability/sa/ClhsdbPstack.java#id1 initial_run windows-aarch64
-serviceability/sa/ClhsdbPmap.java initial_run generic-aarch64
+serviceability/sa/ClhsdbPmap.java#id1 initial_run generic-all
 serviceability/sa/ClhsdbWhere.java initial_run windows-aarch64
 serviceability/sa/ClhsdbDumpheap.java initial_run windows-aarch64
 
