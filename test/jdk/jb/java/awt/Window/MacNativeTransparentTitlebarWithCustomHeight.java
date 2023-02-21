@@ -31,6 +31,9 @@
  * @requires (os.family == "mac")
  */
 
+import com.jetbrains.JBR;
+import com.jetbrains.WindowDecorations;
+
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.lang.reflect.InvocationTargetException;
@@ -81,7 +84,11 @@ public class MacNativeTransparentTitleBarWithCustomHeight
         }
 
         robot.delay(DELAY);
-        runSwing(() -> rootPane.putClientProperty("apple.awt.windowTransparentTitleBarHeight", 42f));
+        runSwing(() -> {
+            WindowDecorations.CustomTitleBar titleBar = JBR.getWindowDecorations().createCustomTitleBar();
+            titleBar.setHeight(42f);
+            JBR.getWindowDecorations().setCustomTitleBar(frame, titleBar);
+        });
         robot.delay(DELAY);
 
         // check that titlebar is of background color
