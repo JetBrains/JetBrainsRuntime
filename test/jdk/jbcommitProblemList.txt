@@ -7,7 +7,6 @@ javax/imageio/spi/AppletContextTest/BadPluginConfigurationTest.sh nobug generic-
 #
 sun/awt/dnd/8024061/bug8024061.java nobug windows-all
 java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java nobug windows-all
-java/awt/hidpi/ClientAreaOriginWindowsTest.java JBR-630 windows-all
 java/awt/hidpi/SetMaximizedBoundsTest.java nobug windows-all
 java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java nobug windows-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java nobug windows-all
@@ -42,7 +41,6 @@ javax/imageio/plugins/external_plugin_tests/TestClassPathPlugin.sh nobug generic
 
 javax/swing/dnd/7171812/bug7171812.java nobug windows-all
 javax/swing/event/RightAltKeyTest.java nobug windows-all
-javax/swing/JComboBox/8032878/bug8032878.java nobug windows-all
 javax/swing/JComboBox/8033069/bug8033069NoScrollBar.java nobug windows-all
 javax/swing/JComboBox/8033069/bug8033069ScrollBar.java nobug windows-all
 javax/swing/JComboBox/8041909/ActionListenerExceptionTest.java nobug windows-all
