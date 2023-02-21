@@ -30,14 +30,11 @@ import util.TestUtils;
 
 import java.awt.AWTException;
 import java.awt.Dialog;
-import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.Robot;
-import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.InputEvent;
 import java.lang.invoke.MethodHandles;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 

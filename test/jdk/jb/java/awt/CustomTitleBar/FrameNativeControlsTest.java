@@ -22,7 +22,12 @@
  */
 import com.jetbrains.JBR;
 import com.jetbrains.WindowDecorations;
-import util.*;
+import util.CommonAPISuite;
+import util.Rect;
+import util.ScreenShotHelpers;
+import util.Task;
+import util.TestUtils;
+import util.TaskResult;
 
 import javax.swing.JFrame;
 import java.awt.Frame;
