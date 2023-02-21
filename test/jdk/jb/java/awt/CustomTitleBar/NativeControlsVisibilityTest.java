@@ -82,21 +82,49 @@ public class NativeControlsVisibilityTest {
 
             BufferedImage image = ScreenShotHelpers.takeScreenshot(window);
 
-//            List<Rect> foundControls = ScreenShotHelpers.detectControls(image, (int) titleBar.getHeight(),
-//                    (int) titleBar.getLeftInset(), (int) titleBar.getRightInset());
             List<Rect> foundControls = ScreenShotHelpers.detectControlsByBackground(image, (int) titleBar.getHeight(), TestUtils.TITLE_BAR_COLOR);
             System.out.println("Found controls at the title bar:");
             foundControls.forEach(System.out::println);
 
-            if (foundControls.size() != 3) {
-                passed = false;
-                System.out.println("Error: there are must be 3 controls");
-            }
+            passed = verifyControls(foundControls, window.getName());
 
             if (!passed) {
                 String path = ScreenShotHelpers.storeScreenshot("visible-controls-test-" + window.getName(), image);
                 System.out.println("Screenshot stored in " + path);
             }
+        }
+
+        private static boolean verifyControls(List<Rect> foundControls, String windowName) {
+            final String os = System.getProperty("os.name").toLowerCase();
+            if (os.startsWith("windows")) {
+                return verifyControlsOnWindows(foundControls, windowName);
+            } else if (os.startsWith("mac os")) {
+                return verifyControlsOnMac(foundControls);
+            }
+            return true;
+        }
+
+        private static boolean verifyControlsOnWindows(List<Rect> foundControls, String windowName) {
+            if (windowName.equals("Frame") || windowName.equals("JFrame")) {
+                if (foundControls.size() != 3) {
+                    System.out.println("Error: there are must be 3 controls");
+                    return false;
+                }
+            } else if (windowName.equals("JDialog") || windowName.equals("Dialog")) {
+                if (foundControls.size() != 1) {
+                    System.out.println("Error: there are must be 1 control");
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static boolean verifyControlsOnMac(List<Rect> foundControls) {
+            if (foundControls.size() != 3) {
+                System.out.println("Error: there are must be 3 controls");
+                return false;
+            }
+            return true;
         }
     };
 
