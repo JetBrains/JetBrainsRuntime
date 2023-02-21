@@ -580,6 +580,7 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
 
 - (void)startRedraw:(MTLLayer*)layer {
     [_dlLock lock];
+    layer.redrawCount++;
     J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_startRedraw: ctx=%p layer=%p", self, layer);
     @try {
         _displayLinkCount = KEEP_ALIVE_COUNT;
@@ -598,7 +599,10 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
     [_dlLock lock];
     @try {
         if (_displayLink != nil) {
-            [_layers removeObject:layer];
+            if (--layer.redrawCount <= 0) {
+                [_layers removeObject:layer];
+                layer.redrawCount = 0;
+            }
             if (_layers.count == 0 && _displayLinkCount == 0) {
                 if (CVDisplayLinkIsRunning(_displayLink)) {
                     CVDisplayLinkStop(_displayLink);
