@@ -76,6 +76,7 @@ BOOL isDisplaySyncEnabled() {
     self.nextDrawableCount = 0;
     self.opaque = YES;
     self.presentsWithTransaction = YES;
+    self.redrawCount = 0;
     return self;
 }
 
@@ -86,14 +87,14 @@ BOOL isDisplaySyncEnabled() {
         J2dTraceLn4(J2D_TRACE_VERBOSE,
                     "MTLLayer.blitTexture: uninitialized (mtlc=%p, javaLayer=%p, buffer=%p, device=%p)", self.ctx,
                     self.javaLayer, self.buffer, self.ctx.device);
-        [self stopRedraw];
+        [self stopRedraw:YES];
         return;
     }
 
     if (self.nextDrawableCount != 0) {
         return;
     }
-    [self stopRedraw];
+    [self stopRedraw:NO];
 
     @autoreleasepool {
         if (((*self.buffer).width == 0) || ((*self.buffer).height == 0)) {
@@ -150,7 +151,7 @@ BOOL isDisplaySyncEnabled() {
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
     (*env)->DeleteWeakGlobalRef(env, self.javaLayer);
     self.javaLayer = nil;
-    [self stopRedraw];
+    [self stopRedraw:YES];
     self.buffer = NULL;
     [super dealloc];
 }
@@ -193,8 +194,11 @@ BOOL isDisplaySyncEnabled() {
     }
 }
 
-- (void)stopRedraw {
+- (void)stopRedraw:(BOOL)force {
     if (self.ctx != nil && isDisplaySyncEnabled()) {
+        if (force) {
+            self.redrawCount = 0;
+        }
         [self.ctx stopRedraw:self];
     }
 }
@@ -286,7 +290,7 @@ Java_sun_java2d_metal_MTLLayer_validate
         [layer startRedraw];
     } else {
         layer.ctx = NULL;
-        [layer stopRedraw];
+        [layer stopRedraw:YES];
     }
 }
 
@@ -325,7 +329,7 @@ Java_sun_java2d_metal_MTLLayer_blitTexture
     if (layer == nil || ctx == nil) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_blit : Layer or Context is null");
         if (layer != nil) {
-            [layer stopRedraw];
+            [layer stopRedraw:YES];
         }
         return;
     }
