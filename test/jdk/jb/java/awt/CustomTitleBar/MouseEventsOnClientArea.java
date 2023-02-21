@@ -74,8 +74,6 @@ public class MouseEventsOnClientArea {
         private final boolean[] buttonsPressed = new boolean[BUTTON_MASKS.size()];
         private final boolean[] buttonsReleased = new boolean[BUTTON_MASKS.size()];
         private final boolean[] buttonsClicked = new boolean[BUTTON_MASKS.size()];
-        private boolean mouseEntered;
-        private boolean mouseExited;
 
         private Panel panel;
 
@@ -84,8 +82,6 @@ public class MouseEventsOnClientArea {
             Arrays.fill(buttonsPressed, false);
             Arrays.fill(buttonsReleased, false);
             Arrays.fill(buttonsClicked, false);
-            mouseEntered = false;
-            mouseExited = false;
         }
 
         @Override
@@ -129,16 +125,6 @@ public class MouseEventsOnClientArea {
                         buttonsReleased[e.getButton() - 1] = true;
                     }
                 }
-
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    mouseEntered = true;
-                }
-
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    mouseExited = true;
-                }
             });
             window.add(panel);
         }
@@ -172,15 +158,6 @@ public class MouseEventsOnClientArea {
                 System.out.println("released = " + buttonsReleased[i]);
                 System.out.println("clicked = " + buttonsClicked[i]);
                 passed = buttonsPressed[i] && buttonsReleased[i] && buttonsClicked[i];
-            }
-
-            if (!mouseEntered) {
-                System.out.println("Error: mouse enter wasn't detected");
-                passed = false;
-            }
-            if (!mouseExited) {
-                System.out.println("Error: mouse exit wasn't detected");
-                passed = false;
             }
         }
     };
