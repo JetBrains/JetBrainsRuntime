@@ -157,6 +157,7 @@ public class MouseEventsOnClientArea {
                 System.out.println("clicked = " + buttonsClicked[i]);
                 status = status && buttonsPressed[i] && buttonsReleased[i] && buttonsClicked[i];
             }
+
             if (!status) {
                 err("some of mouse events weren't registered");
             }

@@ -91,11 +91,12 @@ public class WindowsControlWidthTest {
                 int maxX = foundControls.get(2).getX2();
                 int dist = (foundControls.get(1).getX1() - foundControls.get(0).getX2() + foundControls.get(2).getX1() - foundControls.get(1).getX2()) / 2;
                 int calculatedWidth = maxX - minX + dist;
+
                 double diff = calculatedWidth / adjustedControlsWidth;
                 if (diff < 0.95 || diff > 1.05) {
                     err("control's width is much differ than the expected value");
                 }
-            } else if (foundControls.size() == 1){
+            } else if (foundControls.size() == 1) {
                 System.out.println("1 control found");
                 int calculatedWidth = foundControls.get(0).getX2() - foundControls.get(0).getX1();
                 if (calculatedWidth < 0.5) {
