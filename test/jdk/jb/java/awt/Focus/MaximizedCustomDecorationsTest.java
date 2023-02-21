@@ -21,12 +21,14 @@
  * questions.
  */
 
+import com.jetbrains.JBR;
+import com.jetbrains.WindowDecorations;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.lang.reflect.Method;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -62,7 +64,9 @@ public class MaximizedCustomDecorationsTest {
         button.addActionListener(e -> {
             frame1.dispose();
             frame2 = new JFrame("Frame with custom decorations");
-            enableCustomDecorations(frame2);
+            WindowDecorations.CustomTitleBar titleBar = JBR.getWindowDecorations().createCustomTitleBar();
+            titleBar.setHeight(80);
+            JBR.getWindowDecorations().setCustomTitleBar(frame2, titleBar);
             frame2.addWindowFocusListener(new WindowAdapter() {
                 @Override
                 public void windowGainedFocus(WindowEvent e) {
@@ -75,17 +79,6 @@ public class MaximizedCustomDecorationsTest {
         frame1.add(button);
         frame1.pack();
         frame1.setVisible(true);
-    }
-
-    private static void enableCustomDecorations(Window window) {
-        try {
-            Method setHasCustomDecoration = Window.class.getDeclaredMethod("setHasCustomDecoration");
-            setHasCustomDecoration.setAccessible(true);
-            setHasCustomDecoration.invoke(window);
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.exit(1);
-        }
     }
 
     private static void disposeUI() {
