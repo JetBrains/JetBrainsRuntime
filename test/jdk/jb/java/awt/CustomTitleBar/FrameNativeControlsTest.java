@@ -21,11 +21,16 @@
  * questions.
  */
 import com.jetbrains.JBR;
+import com.jetbrains.WindowDecorations;
+import util.CommonAPISuite;
 import util.Rect;
 import util.ScreenShotHelpers;
 import util.Task;
 import util.TestUtils;
 
+import javax.swing.JFrame;
+import java.awt.Frame;
+import java.awt.Window;
 import java.awt.event.InputEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -33,6 +38,7 @@ import java.awt.event.WindowListener;
 import java.awt.event.WindowStateListener;
 import java.awt.image.BufferedImage;
 import java.util.List;
+import java.util.function.Function;
 
 /*
  * @test
@@ -51,7 +57,9 @@ import java.util.List;
 public class FrameNativeControlsTest {
 
     public static void main(String... args) {
-        boolean status = frameNativeControlsClicks.run(TestUtils::createFrameWithCustomTitleBar);
+        List<Function<WindowDecorations.CustomTitleBar, Window>> functions =
+                List.of(TestUtils::createFrameWithCustomTitleBar, TestUtils::createJFrameWithCustomTitleBar);
+        boolean status = CommonAPISuite.runTestSuite(functions, frameNativeControlsClicks);
 
         if (!status) {
             throw new RuntimeException("FrameNativeControlsTest FAILED");
@@ -73,7 +81,15 @@ public class FrameNativeControlsTest {
             @Override
             public void windowIconified(WindowEvent e) {
                 iconifyingActionCalled = true;
+
+                if (window.getName().equals("Frame")) {
+                    ((Frame) window).setState(Frame.NORMAL);
+                } else if (window.getName().equals("JFrame")) {
+                    ((JFrame) window).setState(JFrame.NORMAL);
+                }
+
                 window.setVisible(true);
+                window.requestFocus();
             }
         };
 
@@ -142,14 +158,14 @@ public class FrameNativeControlsTest {
                 int h = window.getBounds().height;
                 int w = window.getBounds().width;
 
-                robot.delay(500);
+                robot.waitForIdle();
                 robot.mouseMove(x, y);
                 robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
                 robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-                robot.delay(1500);
+                robot.waitForIdle();
                 window.setBounds(screenX, screenY, w, h);
                 window.setVisible(true);
-                robot.delay(1500);
+                robot.waitForIdle();
             });
 
             if (!maximizingActionDetected) {
