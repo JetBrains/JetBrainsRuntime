@@ -91,17 +91,31 @@ public class WindowsControlWidthTest {
 
             List<Rect> foundControls = ScreenShotHelpers.detectControlsByBackground(image, (int) titleBar.getHeight(), TestUtils.TITLE_BAR_COLOR);
 
-            foundControls.forEach(control -> {
-                System.out.println("Detected control: " + control);
-                int calculatedWidth = control.getY2() - control.getY1();
-                System.out.println("Calculated width: " + calculatedWidth);
-
-                float diff = (float) calculatedWidth / (float) (control.getX2() - control.getX1());
-                if (diff < 0.9 || diff > 1.1) {
+            if (foundControls.size() == 0) {
+                System.out.println("Error: controls not found");
+                passed = false;
+            } else if (foundControls.size() == 3) {
+                System.out.println("3 controls found");
+                int minX = foundControls.get(0).getX1();
+                int maxX = foundControls.get(2).getX2();
+                int dist = (foundControls.get(1).getX1() - foundControls.get(0).getX2() + foundControls.get(2).getX1() - foundControls.get(1).getX2()) / 2;
+                int calculatedWidth = maxX - minX + dist;
+                float diff = (float) calculatedWidth / CONTROLS_WIDTH;
+                if (diff < 0.95 || diff > 1.05) {
                     System.out.println("Error: control's width is much differ than the expected value");
                     passed = false;
                 }
-            });
+            } else if (foundControls.size() == 1){
+                System.out.println("1 control found");
+                int calculatedWidth = foundControls.get(0).getX2() - foundControls.get(0).getX1();
+                if (calculatedWidth < 0.5) {
+                    System.out.println("Error: control's width is much differ than the expected value");
+                    passed = false;
+                }
+            } else {
+                System.out.println("Error: unexpected controls count = " + foundControls.size());
+                passed = false;
+            }
         }
 
     };
