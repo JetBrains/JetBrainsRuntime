@@ -27,6 +27,7 @@ import util.ScreenShotHelpers;
 import util.Task;
 import util.TestUtils;
 
+import java.awt.Frame;
 import java.awt.Robot;
 import java.awt.event.InputEvent;
 import java.awt.event.WindowAdapter;
@@ -69,7 +70,6 @@ public class MinimizingWindowTest {
             @Override
             public void windowIconified(WindowEvent e) {
                 iconifyingActionCalled = true;
-                window.setVisible(true);
             }
         };
 
@@ -79,6 +79,8 @@ public class MinimizingWindowTest {
                 System.out.println("change " + e.getOldState() + " -> " + e.getNewState());
                 if (e.getOldState() == 0 && e.getNewState() == 1) {
                     iconifyingActionDetected = true;
+					((Frame) window).setState(Frame.NORMAL);
+					window.setVisible(true);
                 }
             }
         };
@@ -109,10 +111,10 @@ public class MinimizingWindowTest {
 
         @Override
         public void test() throws Exception {
-            robot.delay(500);
+            robot.waitForIdle();
             robot.mouseMove(window.getLocationOnScreen().x + window.getWidth() / 2,
                     window.getLocationOnScreen().y + window.getHeight() / 2);
-            robot.delay(500);
+            robot.waitForIdle();
 
             BufferedImage image = ScreenShotHelpers.takeScreenshot(window);
             List<Rect> foundControls = ScreenShotHelpers.detectControlsByBackground(image, (int) titleBar.getHeight(), TestUtils.TITLE_BAR_COLOR);
@@ -133,14 +135,14 @@ public class MinimizingWindowTest {
                 int h = window.getBounds().height;
                 int w = window.getBounds().width;
 
-                robot.delay(500);
+                robot.waitForIdle();
                 robot.mouseMove(x, y);
                 robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
                 robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-                robot.delay(1500);
+                robot.waitForIdle();
                 window.setBounds(screenX, screenY, w, h);
                 window.setVisible(true);
-                robot.delay(1500);
+                robot.waitForIdle();
             });
 
             if (!iconifyingActionCalled || !iconifyingActionDetected) {
