@@ -54,7 +54,7 @@ gc/stress/TestReclaimStringsLeaksMemory.java initial_run windows-all
 
 gc/shenandoah/TestAllocObjects.java#aggressive initial_run generic-all
 gc/shenandoah/TestAllocObjects.java#iu-aggressive initial_run generic-all
-gc/shenandoah/mxbeans/TestChurnNotifications.java#aggressive initial_run linux-x64
+gc/shenandoah/mxbeans/TestChurnNotifications.java#aggressive initial_run generic-all
 gc/shenandoah/mxbeans/TestChurnNotifications.java#iu initial_run linux-x64
 
 # :hotspot_compiler
@@ -140,7 +140,9 @@ serviceability/jvmti/SetBreakpoint/TestManyBreakpoints.java initial_run generic-
 serviceability/sa/ClhsdbJstackXcompStress.java initial_run windows-all
 
 serviceability/sa/ClhsdbPrintAs.java initial_run windows-aarch64
-serviceability/sa/ClhsdbFindPC.java initial_run generic-aarch64
+serviceability/sa/ClhsdbFindPC.java#id1 initial_run generic-all
+serviceability/sa/ClhsdbFindPC.java#id2 initial_run generic-all
+serviceability/sa/ClhsdbFindPC.java#id3 initial_run generic-all
 serviceability/sa/ClhsdbCDSJstackPrintAll.java initial_run windows-aarch64
 serviceability/sa/TestClhsdbJstackLock.java initial_run windows-aarch64
 serviceability/sa/ClhsdbSource.java initial_run windows-aarch64
@@ -149,7 +151,7 @@ serviceability/sa/TestJhsdbJstackLock.java initial_run windows-aarch64
 serviceability/sa/ClhsdbCDSCore.java initial_run generic-aarch64
 serviceability/sa/ClhsdbJstack.java#id1 initial_run windows-aarch64
 serviceability/sa/ClhsdbPstack.java#id1 initial_run windows-aarch64
-serviceability/sa/ClhsdbPmap.java initial_run generic-aarch64
+serviceability/sa/ClhsdbPmap.java#id1 initial_run generic-all
 serviceability/sa/ClhsdbWhere.java initial_run windows-aarch64
 serviceability/sa/ClhsdbDumpheap.java initial_run windows-aarch64
 
