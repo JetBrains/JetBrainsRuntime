@@ -35,6 +35,9 @@ import java.awt.Robot;
 import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.InputEvent;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
 
 /*
  * @test
@@ -53,7 +56,15 @@ import java.awt.event.InputEvent;
 public class MaximizeWindowTest {
 
     public static void main(String... args) {
-        boolean status = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), maximizeWindow);
+        final String os = System.getProperty("os.name").toLowerCase();
+        List<Function<WindowDecorations.CustomTitleBar, Window>> functions;
+        if (os.startsWith("windows")) {
+            functions = List.of(TestUtils::createFrameWithCustomTitleBar, TestUtils::createJFrameWithCustomTitleBar);
+        } else {
+            functions = TestUtils.getWindowCreationFunctions();
+        }
+
+        boolean status = CommonAPISuite.runTestSuite(functions, maximizeWindow);
 
         if (!status) {
             throw new RuntimeException("MaximizeWindowTest FAILED");
