@@ -47,6 +47,8 @@
 
 #define k_JAVA_ROBOT_WHEEL_COUNT 1
 
+static id lockObj;
+
 // In OS X, left and right mouse button share the same click count.
 // That is, if one starts clicking the left button rapidly and then
 // switches to the right button, then the click count will continue
@@ -96,14 +98,16 @@ CreateJavaException(JNIEnv* env, CGError err)
  * for clicks.
  */
 static inline void autoDelay(BOOL isMove) {
-    if (!isMove){
-        NSTimeInterval now = [[NSDate date] timeIntervalSinceReferenceDate];
-        NSTimeInterval delay = gNextKeyEventTime - now;
-        if (delay > 0) {
-            [NSThread sleepForTimeInterval:delay];
+    @synchronized(lockObj) {
+        if (!isMove){
+            NSTimeInterval now = [[NSDate date] timeIntervalSinceReferenceDate];
+            NSTimeInterval delay = gNextKeyEventTime - now;
+            if (delay > 0) {
+                [NSThread sleepForTimeInterval:delay];
+            }
         }
+        gNextKeyEventTime = [[NSDate date] timeIntervalSinceReferenceDate] + safeDelay;
     }
-    gNextKeyEventTime = [[NSDate date] timeIntervalSinceReferenceDate] + safeDelay;
 }
 
 static void initKeyFlags() {
@@ -133,6 +137,7 @@ Java_sun_lwawt_macosx_CRobot_initRobot
     // Always set all states, in case Apple ever changes default behaviors.
     static int setupDone = 0;
     if (!setupDone) {
+        lockObj = [[NSObject alloc] init];
         [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
             int i;
             jint* tmp;
@@ -254,18 +259,22 @@ Java_sun_lwawt_macosx_CRobot_mouseEvent
     }
 
     int clickCount = 0;
-    int eventNumber = gsEventNumber;
+    int eventNumber = 0;
 
-    if (isMouseMove) {
-        // any mouse movement resets click count
-        gsLastClickTime = 0;
-    } else {
-        clickCount = GetClickCount(isButtonsDownState);
+    @synchronized(lockObj) {
+        eventNumber = gsEventNumber;
 
-        if (isButtonsDownState) {
-            gsButtonEventNumber[button] = gsEventNumber++;
+        if (isMouseMove) {
+            // any mouse movement resets click count
+            gsLastClickTime = 0;
+        } else {
+            clickCount = GetClickCount(isButtonsDownState);
+
+            if (isButtonsDownState) {
+                gsButtonEventNumber[button] = gsEventNumber++;
+            }
+            eventNumber = gsButtonEventNumber[button];
         }
-        eventNumber = gsButtonEventNumber[button];
     }
 
     PostMouseEvent(point, button, type, clickCount, eventNumber);
@@ -433,26 +442,28 @@ static inline CGKeyCode GetCGKeyCode(jint javaKeyCode)
 }
 
 static int GetClickCount(BOOL isDown) {
-    NSTimeInterval now = [[NSDate date] timeIntervalSinceReferenceDate];
-    NSTimeInterval clickInterval = now - gsLastClickTime;
-    BOOL isWithinTreshold = clickInterval < [NSEvent doubleClickInterval];
+    @synchronized(lockObj) {
+        NSTimeInterval now = [[NSDate date] timeIntervalSinceReferenceDate];
+        NSTimeInterval clickInterval = now - gsLastClickTime;
+        BOOL isWithinTreshold = clickInterval < [NSEvent doubleClickInterval];
 
-    if (isDown) {
-        if (isWithinTreshold) {
-            gsClickCount++;
+        if (isDown) {
+            if (isWithinTreshold) {
+                gsClickCount++;
+            } else {
+                gsClickCount = 1;
+            }
+
+            gsLastClickTime = now;
         } else {
-            gsClickCount = 1;
+            // In OS X, a mouse up has the click count of the last mouse down
+            // if an interval between up and down is within the double click
+            // threshold, and 0 otherwise.
+            if (!isWithinTreshold) {
+                gsClickCount = 0;
+            }
         }
 
-        gsLastClickTime = now;
-    } else {
-        // In OS X, a mouse up has the click count of the last mouse down
-        // if an interval between up and down is within the double click
-        // threshold, and 0 otherwise.
-        if (!isWithinTreshold) {
-            gsClickCount = 0;
-        }
+        return gsClickCount;
     }
-
-    return gsClickCount;
 }

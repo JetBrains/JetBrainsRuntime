@@ -2130,6 +2130,11 @@ public abstract class SunToolkit extends Toolkit
     public void installMainThreadDispatcher(EventQueue eventQueue) {}
     protected boolean isMainThreadDispatching() { return false; }
 
+    public static boolean isDispatchingOnMainThread() {
+        Toolkit tk = Toolkit.getDefaultToolkit();
+        return tk instanceof SunToolkit stk && stk.isMainThreadDispatching();
+    }
+
     public Thread getMainThread() {
         return null;
     }

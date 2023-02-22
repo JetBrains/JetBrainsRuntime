@@ -38,13 +38,13 @@ final class CRobot implements RobotPeer {
     private static final int DEFAULT_SAFE_DELAY_MILLIS   = 50;
 
     private final CGraphicsDevice fDevice;
-    private int mouseLastX = MOUSE_LOCATION_UNKNOWN;
-    private int mouseLastY = MOUSE_LOCATION_UNKNOWN;
+    private volatile int mouseLastX = MOUSE_LOCATION_UNKNOWN;
+    private volatile int mouseLastY = MOUSE_LOCATION_UNKNOWN;
 
     // OS X doesn't generate dragged event as a result of button press and
     // mouse move events. This means that we have to track buttons state
     // in order to generate dragged events ourselves.
-    private int mouseButtonsState = 0;
+    private volatile int mouseButtonsState = 0;
 
     /**
      * Uses the given GraphicsDevice as the coordinate system for subsequent
@@ -81,7 +81,9 @@ final class CRobot implements RobotPeer {
      */
     @Override
     public void mousePress(int buttons) {
-        mouseButtonsState |= buttons;
+        synchronized (this) {
+            mouseButtonsState |= buttons;
+        }
         checkMousePos();
         mouseEvent(mouseLastX, mouseLastY, buttons, true, false);
     }
@@ -94,7 +96,9 @@ final class CRobot implements RobotPeer {
      */
     @Override
     public void mouseRelease(int buttons) {
-        mouseButtonsState &= ~buttons;
+        synchronized (this) {
+            mouseButtonsState &= ~buttons;
+        }
         checkMousePos();
         mouseEvent(mouseLastX, mouseLastY, buttons, false, false);
     }

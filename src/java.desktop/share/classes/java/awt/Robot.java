@@ -75,8 +75,8 @@ import static sun.java2d.SunGraphicsEnvironment.toDeviceSpaceAbs;
 public class Robot {
     private static final int MAX_DELAY = 60000;
     private RobotPeer peer;
-    private boolean isAutoWaitForIdle = false;
-    private int autoDelay = 0;
+    private volatile boolean isAutoWaitForIdle = false;
+    private volatile int autoDelay = 0;
     private static int LEGAL_BUTTON_MASK = 0;
 
     private DirectColorModel screenCapCM = null;
@@ -192,9 +192,11 @@ public class Robot {
      * @param x         X position
      * @param y         Y position
      */
-    public synchronized void mouseMove(int x, int y) {
-        peer.mouseMove(x, y);
-        afterEvent();
+    public void mouseMove(int x, int y) {
+        runSynchronized(() -> {
+            peer.mouseMove(x, y);
+            afterEvent();
+        });
     }
 
     /**
@@ -249,10 +251,12 @@ public class Robot {
      * @see java.awt.MouseInfo#getNumberOfButtons()
      * @see java.awt.event.MouseEvent
      */
-    public synchronized void mousePress(int buttons) {
-        checkButtonsArgument(buttons);
-        peer.mousePress(buttons);
-        afterEvent();
+    public void mousePress(int buttons) {
+        runSynchronized(() -> {
+            checkButtonsArgument(buttons);
+            peer.mousePress(buttons);
+            afterEvent();
+        });
     }
 
     /**
@@ -306,10 +310,12 @@ public class Robot {
      * @see java.awt.MouseInfo#getNumberOfButtons()
      * @see java.awt.event.MouseEvent
      */
-    public synchronized void mouseRelease(int buttons) {
-        checkButtonsArgument(buttons);
-        peer.mouseRelease(buttons);
-        afterEvent();
+    public void mouseRelease(int buttons) {
+        runSynchronized(() -> {
+            checkButtonsArgument(buttons);
+            peer.mouseRelease(buttons);
+            afterEvent();
+        });
     }
 
     private static void checkButtonsArgument(int buttons) {
@@ -327,9 +333,11 @@ public class Robot {
      *
      * @since 1.4
      */
-    public synchronized void mouseWheel(int wheelAmt) {
-        peer.mouseWheel(wheelAmt);
-        afterEvent();
+    public void mouseWheel(int wheelAmt) {
+        runSynchronized(() -> {
+            peer.mouseWheel(wheelAmt);
+            afterEvent();
+        });
     }
 
     /**
@@ -346,10 +354,12 @@ public class Robot {
      * @see     #keyRelease(int)
      * @see     java.awt.event.KeyEvent
      */
-    public synchronized void keyPress(int keycode) {
-        checkKeycodeArgument(keycode);
-        peer.keyPress(keycode);
-        afterEvent();
+    public void keyPress(int keycode) {
+        runSynchronized(() -> {
+            checkKeycodeArgument(keycode);
+            peer.keyPress(keycode);
+            afterEvent();
+        });
     }
 
     /**
@@ -365,10 +375,12 @@ public class Robot {
      * @see  #keyPress(int)
      * @see     java.awt.event.KeyEvent
      */
-    public synchronized void keyRelease(int keycode) {
-        checkKeycodeArgument(keycode);
-        peer.keyRelease(keycode);
-        afterEvent();
+    public void keyRelease(int keycode) {
+        runSynchronized(() -> {
+            checkKeycodeArgument(keycode);
+            peer.keyRelease(keycode);
+            afterEvent();
+        });
     }
 
     private static void checkKeycodeArgument(int keycode) {
@@ -682,10 +694,12 @@ public class Robot {
      * Waits until all events currently on the event queue have been processed.
      * @throws  IllegalThreadStateException if called on the AWT event dispatching thread
      */
-    public synchronized void waitForIdle() {
-        checkNotDispatchThread();
-        SunToolkit.flushPendingEvents();
-        ((SunToolkit) Toolkit.getDefaultToolkit()).realSync();
+    public void waitForIdle() {
+        runSynchronized(() -> {
+            checkNotDispatchThread();
+            SunToolkit.flushPendingEvents();
+            ((SunToolkit) Toolkit.getDefaultToolkit()).realSync();
+        });
     }
 
     private static void checkNotDispatchThread() {
@@ -703,5 +717,15 @@ public class Robot {
     public synchronized String toString() {
         String params = "autoDelay = "+getAutoDelay()+", "+"autoWaitForIdle = "+isAutoWaitForIdle();
         return getClass().getName() + "[ " + params + " ]";
+    }
+
+    private void runSynchronized(Runnable task) {
+        if (SunToolkit.isDispatchingOnMainThread()) {
+            task.run();
+        } else {
+            synchronized (this) {
+                task.run();
+            }
+        }
     }
 }
