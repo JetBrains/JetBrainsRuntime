@@ -2187,10 +2187,10 @@ public abstract class Component implements ImageObserver, MenuContainer,
      */
     @Deprecated
     public void move(int x, int y) {
-        synchronized(getTreeLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             setBoundsOp(ComponentPeer.SET_LOCATION);
             setBounds(x, y, width, height);
-        }
+        });
     }
 
     /**
@@ -2271,10 +2271,10 @@ public abstract class Component implements ImageObserver, MenuContainer,
      */
     @Deprecated
     public void resize(int width, int height) {
-        synchronized(getTreeLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             setBoundsOp(ComponentPeer.SET_SIZE);
             setBounds(x, y, width, height);
-        }
+        });
     }
 
     /**
@@ -2373,7 +2373,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
      */
     @Deprecated
     public void reshape(int x, int y, int width, int height) {
-        synchronized (getTreeLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             try {
                 setBoundsOp(ComponentPeer.SET_BOUNDS);
                 boolean resized = (this.width != width) || (this.height != height);
@@ -2425,7 +2425,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
             } finally {
                 setBoundsOp(ComponentPeer.RESET_OPERATION);
             }
-        }
+        });
     }
 
     private void repaintParentIfNeeded(int oldX, int oldY, int oldWidth,
@@ -3103,7 +3103,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * Revalidates the component synchronously.
      */
     final void revalidateSynchronously() {
-        synchronized (getTreeLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             invalidate();
 
             Container root = getContainer();
@@ -3123,7 +3123,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
 
                 root.validate();
             }
-        }
+        });
     }
 
     /**

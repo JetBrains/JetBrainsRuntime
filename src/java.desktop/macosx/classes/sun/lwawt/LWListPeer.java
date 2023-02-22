@@ -25,6 +25,8 @@
 
 package sun.lwawt;
 
+import sun.awt.SunToolkit;
+
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -118,18 +120,18 @@ final class LWListPeer extends LWComponentPeer<List, LWListPeer.ScrollableJList>
 
     @Override
     public void delItems(final int start, final int end) {
-        synchronized (getDelegateLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             getDelegate().getModel().removeRange(start, end);
             revalidate();
-        }
+        });
     }
 
     @Override
     public void removeAll() {
-        synchronized (getDelegateLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             getDelegate().getModel().removeAllElements();
             revalidate();
-        }
+        });
     }
 
     @Override

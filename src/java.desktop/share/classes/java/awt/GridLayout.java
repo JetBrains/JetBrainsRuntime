@@ -25,6 +25,8 @@
 
 package java.awt;
 
+import sun.awt.SunToolkit;
+
 import java.io.Serial;
 
 /**
@@ -419,7 +421,7 @@ public class GridLayout implements LayoutManager, java.io.Serializable {
      * @see        java.awt.Container#doLayout
      */
     public void layoutContainer(Container parent) {
-      synchronized (parent.getTreeLock()) {
+      SunToolkit.performWithTreeLock(() -> {
         Insets insets = parent.getInsets();
         int ncomponents = parent.getComponentCount();
         int nrows = rows;
@@ -467,7 +469,7 @@ public class GridLayout implements LayoutManager, java.io.Serializable {
                 }
             }
         }
-      }
+      });
     }
 
     /**

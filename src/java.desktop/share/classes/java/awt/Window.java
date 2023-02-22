@@ -804,12 +804,12 @@ public class Window extends Container implements Accessible {
      * {@inheritDoc}
      */
     public void removeNotify() {
-        synchronized (getTreeLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             synchronized (allWindows) {
                 allWindows.remove(this);
             }
             super.removeNotify();
-        }
+        });
     }
 
     /**
@@ -3574,14 +3574,14 @@ public class Window extends Container implements Accessible {
      * @since 1.6
      */
     public void setBounds(int x, int y, int width, int height) {
-        synchronized (getTreeLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             if (getBoundsOp() == ComponentPeer.SET_LOCATION ||
                 getBoundsOp() == ComponentPeer.SET_BOUNDS)
             {
                 locationByPlatform = false;
             }
             super.setBounds(x, y, width, height);
-        }
+        });
     }
 
     /**

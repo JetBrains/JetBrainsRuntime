@@ -1312,7 +1312,7 @@ public class Container extends Component {
      * @see #invalidate
      */
     public void removeAll() {
-        synchronized (getTreeLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             adjustListeningChildren(AWTEvent.HIERARCHY_EVENT_MASK,
                                     -listeningChildren);
             adjustListeningChildren(AWTEvent.HIERARCHY_BOUNDS_EVENT_MASK,
@@ -1348,7 +1348,7 @@ public class Container extends Component {
                 updateCursorImmediately();
             }
             invalidateIfValid();
-        }
+        });
     }
 
     // Should only be called while holding tree lock
@@ -1645,8 +1645,7 @@ public class Container extends Component {
      * @see #validateTree
      */
     public void validate() {
-        boolean updateCur = false;
-        synchronized (getTreeLock()) {
+        boolean updateCur = SunToolkit.performWithTreeLock(() -> {
             if ((!isValid() || descendUnconditionallyWhenValidating)
                     && peer != null)
             {
@@ -1663,11 +1662,12 @@ public class Container extends Component {
                     // Avoid updating cursor if this is an internal call.
                     // See validateUnconditionally() for details.
                     if (!descendUnconditionallyWhenValidating) {
-                        updateCur = isVisible();
+                        return isVisible();
                     }
                 }
             }
-        }
+            return false;
+        });
         if (updateCur) {
             updateCursorImmediately();
         }

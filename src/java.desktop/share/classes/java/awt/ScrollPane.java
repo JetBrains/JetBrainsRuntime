@@ -368,13 +368,13 @@ public class ScrollPane extends Container implements Accessible {
      *     a child
      */
     public void setScrollPosition(int x, int y) {
-        synchronized (getTreeLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             if (getComponentCount()==0) {
                 throw new NullPointerException("child is null");
             }
             hAdjustable.setValue(x);
             vAdjustable.setValue(y);
-        }
+        });
     }
 
     /**

@@ -42,6 +42,7 @@ import javax.swing.TransferHandler;
 import javax.swing.text.Document;
 
 import sun.awt.AWTAccessor;
+import sun.awt.SunToolkit;
 
 /**
  * Lightweight implementation of {@link TextAreaPeer}. Delegates most of the
@@ -141,7 +142,7 @@ final class LWTextAreaPeer
     @Override
     public void insert(final String text, final int pos) {
         final ScrollableJTextArea pane = getDelegate();
-        synchronized (getDelegateLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             final JTextArea area = pane.getView();
             final boolean doScroll = pos >= area.getDocument().getLength()
                                      && area.getDocument().getLength() != 0;
@@ -153,14 +154,14 @@ final class LWTextAreaPeer
                     vbar.setValue(vbar.getMaximum() - vbar.getVisibleAmount());
                 }
             }
-        }
+        });
         repaintPeer();
     }
 
     @Override
     public void replaceRange(final String text, final int start,
                              final int end) {
-        synchronized (getDelegateLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             // JTextArea.replaceRange() posts two different events.
             // Since we make no differences between text events,
             // the document listener has to be disabled while
@@ -171,7 +172,7 @@ final class LWTextAreaPeer
             revalidate();
             postEvent(new TextEvent(getTarget(), TextEvent.TEXT_VALUE_CHANGED));
             document.addDocumentListener(this);
-        }
+        });
         repaintPeer();
     }
 

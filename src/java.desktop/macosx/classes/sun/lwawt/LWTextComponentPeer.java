@@ -37,6 +37,7 @@ import java.awt.event.InputMethodEvent;
 import java.awt.im.InputMethodRequests;
 import java.awt.peer.TextComponentPeer;
 import sun.awt.AWTAccessor;
+import sun.awt.SunToolkit;
 
 import javax.swing.JComponent;
 import javax.swing.event.DocumentEvent;
@@ -124,7 +125,7 @@ abstract class LWTextComponentPeer<T extends TextComponent, D extends JComponent
 
     @Override
     public final void setText(final String text) {
-        synchronized (getDelegateLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             // JTextArea.setText() posts two different events (remove & insert).
             // Since we make no differences between text events,
             // the document listener has to be disabled while
@@ -138,7 +139,7 @@ abstract class LWTextComponentPeer<T extends TextComponent, D extends JComponent
                                         TextEvent.TEXT_VALUE_CHANGED));
             }
             document.addDocumentListener(this);
-        }
+        });
         repaintPeer();
     }
 
