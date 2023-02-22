@@ -19,8 +19,6 @@ set -x
 source jb/project/tools/common/scripts/common.sh
 
 WORK_DIR=$(pwd)
-NVDA_PATH=${NVDA_PATH:=$WORK_DIR/nvda_controllerClient}
-
 
 function do_configure {
   sh ./configure \
@@ -33,7 +31,6 @@ function do_configure {
     --with-version-opt=b${build_number} \
     --with-toolchain-version=$TOOLCHAIN_VERSION \
     --with-boot-jdk=$BOOT_JDK \
-    --with-nvdacontrollerclient=$NVDA_PATH \
     --disable-ccache \
     --enable-cds=yes \
     $STATIC_CONF_ARGS \
