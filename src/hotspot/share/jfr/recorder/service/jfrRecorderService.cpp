@@ -135,7 +135,7 @@ class RotationLock : public StackObj {
 static int64_t write_checkpoint_event_prologue(JfrChunkWriter& cw, u8 type_id) {
   const int64_t last_cp_offset = cw.last_checkpoint_offset();
   const int64_t delta_to_last_checkpoint = 0 == last_cp_offset ? 0 : last_cp_offset - cw.current_offset();
-  cw.reserve(sizeof(u4));
+  cw.reserve(sizeof(u8));
   cw.write<u8>(EVENT_CHECKPOINT);
   cw.write(JfrTicks::now());
   cw.write((int64_t)0); // duration
@@ -176,7 +176,7 @@ class WriteCheckpointEvent : public StackObj {
     assert(number_of_elements > 0, "invariant");
     assert(_cw.current_offset() > num_elements_offset, "invariant");
     _cw.write_padded_at_offset<u4>(number_of_elements, num_elements_offset);
-    _cw.write_padded_at_offset<u4>((u4)_cw.current_offset() - current_cp_offset, current_cp_offset);
+    _cw.write_padded_at_offset<u8>((u8)(_cw.current_offset() - current_cp_offset), current_cp_offset);
     // update writer with last checkpoint position
     _cw.set_last_checkpoint_offset(current_cp_offset);
     return true;
