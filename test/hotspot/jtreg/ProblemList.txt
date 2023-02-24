@@ -42,6 +42,7 @@
 
 compiler/aot/verification/vmflags/TrackedFlagTest.java 8215224 generic-all
 compiler/aot/verification/vmflags/NotTrackedFlagTest.java 8215224 generic-all
+compiler/aot/cli/jaotc/CompileClassWithDebugTest.java 8303074 linux-aarch64
 compiler/ciReplay/TestSAServer.java 8029528 generic-all
 compiler/codecache/stress/OverloadCompileQueueTest.java 8166554 generic-all
 compiler/codegen/Test6896617.java 8193479 generic-all
