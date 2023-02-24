@@ -79,6 +79,7 @@ import sun.java2d.metal.MTLRenderQueue;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.java2d.pipe.Region;
 import sun.java2d.pipe.RenderQueue;
+import sun.lwawt.macosx.LWCToolkit;
 import sun.util.logging.PlatformLogger;
 
 public abstract class LWComponentPeer<T extends Component, D extends JComponent>
@@ -203,6 +204,12 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
 
     LWComponentPeer(final T target, final PlatformComponent platformComponent) {
         targetPaintArea = new LWRepaintArea();
+        if (LWCToolkit.isDispatchingOnMainThread()) {
+            // This ensures the component is painted despite the race condition,
+            // when EventQueue.coalescePaintEvent is called with peer not yet set
+            // to its component.
+            targetPaintArea.add(new Rectangle(target.getSize()), PaintEvent.PAINT);
+        }
         this.target = target;
         this.platformComponent = platformComponent;
 
