@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,40 +21,73 @@
  * questions.
  */
 
-/**
+/*
  * @test
  * @bug 6357858
  * @summary Job must reports the number of copies set in the dialog.
  * @run main/manual DialogCopies
  */
 
-import java.awt.print.*;
+import java.awt.Frame;
+import java.awt.TextArea;
+import java.awt.BorderLayout;
+import java.awt.print.PrinterJob;
 
 public class DialogCopies {
 
-  static String[] instructions = {
-     "This test assumes and requires that you have a printer installed",
-     "When the dialog appears, increment the number of copies then press OK.",
-     "The test will throw an exception if you fail to do this, since",
-     "it cannot distinguish that from a failure",
-     ""
-  };
+    private static Frame createInstructionUI() {
+        final String instruction =
+                "This test requires that you have a printer.\n" +
+                "\n" +
+                "Press Cancel if your system has only virtual printers such as\n" +
+                "Microsoft Print to PDF or Microsoft XPS Document Writer since\n" +
+                "they don't allow setting copies to anything but 1.\n" +
+                "\n" +
+                "If a real printer is installed, select it from the drop-down\n" +
+                "list in the Print dialog and increase the number of copies,\n" +
+                "then press OK button.\n";
 
-  public static void main(String[] args) {
+        TextArea instructionTextArea = new TextArea(instruction);
+        instructionTextArea.setEditable(false);
 
-      for (int i=0;i<instructions.length;i++) {
-         System.out.println(instructions[i]);
-      }
+        Frame instructionFrame = new Frame();
+        instructionFrame.add(instructionTextArea, BorderLayout.CENTER);
+        instructionFrame.pack();
+        instructionFrame.setLocationRelativeTo(null);
+        instructionFrame.setVisible(true);
+        return instructionFrame;
+    }
 
-      PrinterJob job = PrinterJob.getPrinterJob();
-      if (job.getPrintService() == null || !job.printDialog()) {
-         return;
-      }
+    public static void showPrintDialog() {
+        PrinterJob job = PrinterJob.getPrinterJob();
+        if (job.getPrintService() == null) {
+            System.out.println("Looks like printer is not configured. Please install printer " +
+                    " and re-run the test case.");
+            return;
+        }
+        checkNoOfCopies(job, job.printDialog());
+    }
 
-      System.out.println("Job copies is " + job.getCopies());
+    public static void checkNoOfCopies(PrinterJob job, boolean pdReturnValue) {
+        if (pdReturnValue) {
+            System.out.println("User has selected OK/Print button on the PrintDialog");
+            int copies = job.getCopies();
+            if (copies <= 1) {
+                throw new RuntimeException("Expected the number of copies to be more than 1 but got " + copies);
+            } else {
+                System.out.println("Total number of copies : " + copies);
+            }
+        } else {
+            System.out.println("User has selected Cancel button on the PrintDialog.");
+        }
+    }
 
-      if (job.getCopies() == 1) {
-            throw new RuntimeException("Copies not incremented");
-      }
-   }
+    public static void main(String[] args) throws InterruptedException {
+        Frame frame = createInstructionUI();
+        try {
+            showPrintDialog();
+        } finally {
+            frame.dispose();
+        }
+    }
 }
