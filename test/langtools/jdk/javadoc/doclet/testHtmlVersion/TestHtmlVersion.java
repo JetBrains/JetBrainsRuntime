@@ -147,6 +147,25 @@ public class TestHtmlVersion extends JavadocTester {
                 + "<nav role=\"navigation\">\n"
                 + "<!-- ======= START OF BOTTOM NAVBAR ====== -->");
 
+        // Test for package-frame page
+        checkOutput("pkg/package-frame.html", true,
+                "<!DOCTYPE HTML>",
+                "<meta name=\"dc.created\"",
+                "<main role=\"main\">\n"
+                + "<h1 class=\"bar\"><a href=\"package-summary.html\" target=\"classFrame\">pkg</a></h1>",
+                "<section>\n"
+                + "<h2 title=\"Interfaces\">Interfaces</h2>",
+                "<section>\n"
+                + "<h2 title=\"Classes\">Classes</h2>",
+                "<section>\n"
+                + "<h2 title=\"Enums\">Enums</h2>",
+                "<section>\n"
+                + "<h2 title=\"Exceptions\">Exceptions</h2>",
+                "<section>\n"
+                + "<h2 title=\"Errors\">Errors</h2>",
+                "<section>\n"
+                + "<h2 title=\"Annotation Types\">Annotation Types</h2>");
+
         // Test for package-summary page
         checkOutput("pkg/package-summary.html", true,
                 "<!DOCTYPE HTML>",
