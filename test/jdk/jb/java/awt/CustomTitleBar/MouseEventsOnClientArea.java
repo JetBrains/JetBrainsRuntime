@@ -41,15 +41,15 @@ import java.util.List;
  * @test
  * @summary Verify mouse events on custom title bar area
  * @requires (os.family == "windows" | os.family == "mac")
- * @run main MouseEventsOnClientArea
- * @run main MouseEventsOnClientArea -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0
- * @run main MouseEventsOnClientArea -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25
- * @run main MouseEventsOnClientArea -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5
- * @run main MouseEventsOnClientArea -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0
- * @run main MouseEventsOnClientArea -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5
- * @run main MouseEventsOnClientArea -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0
- * @run main MouseEventsOnClientArea -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5
- * @run main MouseEventsOnClientArea -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0
+ * @run main/othervm MouseEventsOnClientArea
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 MouseEventsOnClientArea
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 MouseEventsOnClientArea
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 MouseEventsOnClientArea
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 MouseEventsOnClientArea
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5 MouseEventsOnClientArea
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 MouseEventsOnClientArea
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 MouseEventsOnClientArea
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 MouseEventsOnClientArea
  */
 public class MouseEventsOnClientArea {
 
