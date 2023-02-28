@@ -37,23 +37,23 @@ import java.util.List;
  * @test
  * @summary Verify a property to change visibility of native controls
  * @requires os.family == "windows"
- * @run main WindowsControlWidthTest
- * @run main WindowsControlWidthTest -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0
- * @run main WindowsControlWidthTest -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0
- * @run main WindowsControlWidthTest -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25
- * @run main WindowsControlWidthTest -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25
- * @run main WindowsControlWidthTest -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5
- * @run main WindowsControlWidthTest -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5
- * @run main WindowsControlWidthTest -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0
- * @run main WindowsControlWidthTest -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0
- * @run main WindowsControlWidthTest -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5
- * @run main WindowsControlWidthTest -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5
- * @run main WindowsControlWidthTest -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0
- * @run main WindowsControlWidthTest -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0
- * @run main WindowsControlWidthTest -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5
- * @run main WindowsControlWidthTest -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5
- * @run main WindowsControlWidthTest -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0
- * @run main WindowsControlWidthTest -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0
+ * @run main/othervm WindowsControlWidthTest
+ * @run main/othervm -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 WindowsControlWidthTest
+ * @run main/othervm -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 WindowsControlWidthTest
+ * @run main/othervm -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 WindowsControlWidthTest
+ * @run main/othervm -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 WindowsControlWidthTest
+ * @run main/othervm -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 WindowsControlWidthTest
+ * @run main/othervm -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 WindowsControlWidthTest
+ * @run main/othervm -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 WindowsControlWidthTest
+ * @run main/othervm -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 WindowsControlWidthTest
+ * @run main/othervm -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5 WindowsControlWidthTest
+ * @run main/othervm -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5 WindowsControlWidthTest
+ * @run main/othervm -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 WindowsControlWidthTest
+ * @run main/othervm -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 WindowsControlWidthTest
+ * @run main/othervm -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 WindowsControlWidthTest
+ * @run main/othervm -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 WindowsControlWidthTest
+ * @run main/othervm -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 WindowsControlWidthTest
+ * @run main/othervm -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 WindowsControlWidthTest
  */
 public class WindowsControlWidthTest {
 
