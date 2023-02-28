@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @test
  * @summary Regression test for JBR-3157 Maximized window with custom decorations isn't focused on showing
+ * @requires (os.family == "windows" | os.family == "mac")
  * @key headful
  * @run main/othervm --add-opens java.desktop/java.awt=ALL-UNNAMED MaximizedCustomDecorationsTest
  */
