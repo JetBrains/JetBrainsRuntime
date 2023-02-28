@@ -28,7 +28,6 @@ import util.Task;
 import util.TestUtils;
 
 import java.awt.Frame;
-import java.awt.Robot;
 import java.awt.event.InputEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -41,15 +40,15 @@ import java.util.List;
  * @test
  * @summary Detect and check behavior of clicking to native controls
  * @requires (os.family == "windows" | os.family == "mac")
- * @run main MinimizingWindowTest
- * @run main MinimizingWindowTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0
- * @run main MinimizingWindowTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25
- * @run main MinimizingWindowTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5
- * @run main MinimizingWindowTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0
- * @run main MinimizingWindowTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5
- * @run main MinimizingWindowTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0
- * @run main MinimizingWindowTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5
- * @run main MinimizingWindowTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0
+ * @run main/othervm MinimizingWindowTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 MinimizingWindowTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 MinimizingWindowTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 MinimizingWindowTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 MinimizingWindowTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5 MinimizingWindowTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 MinimizingWindowTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 MinimizingWindowTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 MinimizingWindowTest
  */
 public class MinimizingWindowTest {
 
