@@ -43,15 +43,15 @@ import java.util.function.Function;
  * @test
  * @summary Verify ability to maximize window by clicking to custom title bar area
  * @requires (os.family == "windows" | os.family == "mac")
- * @run main MaximizeWindowTest
- * @run main MaximizeWindowTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0
- * @run main MaximizeWindowTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25
- * @run main MaximizeWindowTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5
- * @run main MaximizeWindowTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0
- * @run main MaximizeWindowTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5
- * @run main MaximizeWindowTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0
- * @run main MaximizeWindowTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5
- * @run main MaximizeWindowTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0
+ * @run main/othervm MaximizeWindowTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 MaximizeWindowTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 MaximizeWindowTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 MaximizeWindowTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 MaximizeWindowTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5 MaximizeWindowTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 MaximizeWindowTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 MaximizeWindowTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 MaximizeWindowTest
  */
 public class MaximizeWindowTest {
 
