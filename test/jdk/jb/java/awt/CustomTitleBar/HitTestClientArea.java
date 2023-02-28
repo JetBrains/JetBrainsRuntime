@@ -46,15 +46,15 @@ import java.util.List;
  * @test
  * @summary Verify control under native actions in custom title bar
  * @requires (os.family == "windows" | os.family == "mac")
- * @run main HitTestClientArea
- * @run main HitTestClientArea -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0
- * @run main HitTestClientArea -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25
- * @run main HitTestClientArea -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5
- * @run main HitTestClientArea -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0
- * @run main HitTestClientArea -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5
- * @run main HitTestClientArea -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0
- * @run main HitTestClientArea -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5
- * @run main HitTestClientArea -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0
+ * @run main/othervm HitTestClientArea
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 HitTestClientArea
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 HitTestClientArea
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 HitTestClientArea
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 HitTestClientArea
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5 HitTestClientArea
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 HitTestClientArea
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 HitTestClientArea
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 HitTestClientArea
  */
 public class HitTestClientArea {
 
