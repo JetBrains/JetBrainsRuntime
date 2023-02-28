@@ -35,15 +35,15 @@ import java.util.List;
  * @test
  * @summary Verify a property to change visibility of native controls
  * @requires (os.family == "windows" | os.family == "mac")
- * @run main HiddenNativeControlsTest
- * @run main HiddenNativeControlsTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0
- * @run main HiddenNativeControlsTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25
- * @run main HiddenNativeControlsTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5
- * @run main HiddenNativeControlsTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0
- * @run main HiddenNativeControlsTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5
- * @run main HiddenNativeControlsTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0
- * @run main HiddenNativeControlsTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5
- * @run main HiddenNativeControlsTest -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0
+ * @run main/othervm HiddenNativeControlsTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 HiddenNativeControlsTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 HiddenNativeControlsTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 HiddenNativeControlsTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 HiddenNativeControlsTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5 HiddenNativeControlsTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 HiddenNativeControlsTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 HiddenNativeControlsTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 HiddenNativeControlsTest
  */
 public class HiddenNativeControlsTest {
 
