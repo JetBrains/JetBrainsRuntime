@@ -19,8 +19,8 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
 
 | IDE Version | Latest JBR                                                                                             | Date Released |
 |-------------|--------------------------------------------------------------------------------------------------------|---------------|
-| 2023.1      | [17.0.6-b829.1](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.6b829.1)   | 14-Feb-2023   |
-| 2022.3      | [17.0.6-b653.32](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.6b653.32) | 14-Feb-2023   |
+| 2023.1      | [17.0.6-b829.4](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.6b829.4)   | 28-Feb-2023   |
+| 2022.3      | [17.0.6-b653.34](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.6b653.34) | 28-Feb-2023   |
 | 2022.2      | [17.0.5-b469.71](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.5b469.71) | 14-Nov-2022   |
 
 ## Releases based on JDK 11
