@@ -31,6 +31,7 @@ on:
       - master
       - pr/*
       - jdk*
+      - main
   workflow_dispatch:
     inputs:
       platforms:
@@ -63,7 +64,8 @@ jobs:
     outputs:
       linux-x64: ${{ steps.include.outputs.linux-x64 }}
       linux-x86-hs: ${{ steps.include.outputs.linux-x86-hs }}
-      linux-x64-variants: ${{ steps.include.outputs.linux-x64-variants }}
+      # additional build options for linux-x64 are disabled
+      # linux-x64-variants: ${{ steps.include.outputs.linux-x64-variants }}
       linux-cross-compile: ${{ steps.include.outputs.linux-cross-compile }}
       alpine-linux-x64: ${{ steps.include.outputs.alpine-linux-x64 }}
       macos-x64: ${{ steps.include.outputs.macos-x64 }}
