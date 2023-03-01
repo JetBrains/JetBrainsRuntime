@@ -21,11 +21,16 @@
  * questions.
  */
 import com.jetbrains.JBR;
+import com.jetbrains.WindowDecorations;
+import util.CommonAPISuite;
 import util.Rect;
 import util.ScreenShotHelpers;
 import util.Task;
 import util.TestUtils;
 
+import javax.swing.JFrame;
+import java.awt.Frame;
+import java.awt.Window;
 import java.awt.event.InputEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -33,28 +38,33 @@ import java.awt.event.WindowListener;
 import java.awt.event.WindowStateListener;
 import java.awt.image.BufferedImage;
 import java.util.List;
+import java.util.function.Function;
 
 /*
  * @test
  * @summary Detect and check behavior of clicking to native controls
- * @requires (os.family == "windows")
- * @run main/othervm FrameNativeControlsTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 FrameNativeControlsTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 FrameNativeControlsTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 FrameNativeControlsTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 FrameNativeControlsTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5 FrameNativeControlsTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 FrameNativeControlsTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 FrameNativeControlsTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 FrameNativeControlsTest
+ * @requires (os.family == "mac")
+ * @modules java.desktop/com.apple.eawt
+ *          java.desktop/com.apple.eawt.event
+ * @run main/othervm FrameNativeControlsMacOSTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 FrameNativeControlsMacOSTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 FrameNativeControlsMacOSTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 FrameNativeControlsMacOSTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 FrameNativeControlsMacOSTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5 FrameNativeControlsMacOSTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 FrameNativeControlsMacOSTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 FrameNativeControlsMacOSTest
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 FrameNativeControlsMacOSTest
  */
-public class FrameNativeControlsTest {
+public class FrameNativeControlsMacOSTest {
 
     public static void main(String... args) {
-        boolean status = frameNativeControlsClicks.run(TestUtils::createFrameWithCustomTitleBar);
+        List<Function<WindowDecorations.CustomTitleBar, Window>> functions =
+                List.of(TestUtils::createFrameWithCustomTitleBar, TestUtils::createJFrameWithCustomTitleBar);
+        boolean status = CommonAPISuite.runTestSuite(functions, frameNativeControlsClicks);
 
         if (!status) {
-            throw new RuntimeException("FrameNativeControlsTest FAILED");
+            throw new RuntimeException("FrameNativeControlsMacOSTest FAILED");
         }
     }
 
@@ -73,7 +83,15 @@ public class FrameNativeControlsTest {
             @Override
             public void windowIconified(WindowEvent e) {
                 iconifyingActionCalled = true;
+
+                if (window.getName().equals("Frame")) {
+                    ((Frame) window).setState(Frame.NORMAL);
+                } else if (window.getName().equals("JFrame")) {
+                    ((JFrame) window).setState(JFrame.NORMAL);
+                }
+
                 window.setVisible(true);
+                window.requestFocus();
             }
         };
 
@@ -114,6 +132,28 @@ public class FrameNativeControlsTest {
         protected void customizeWindow() {
             window.addWindowListener(windowListener);
             window.addWindowStateListener(windowStateListener);
+
+            if (window.getName().equals("JFrame")) {
+                com.apple.eawt.FullScreenUtilities.addFullScreenListenerTo(window, new com.apple.eawt.FullScreenListener() {
+                    @Override
+                    public void windowEnteringFullScreen(com.apple.eawt.event.FullScreenEvent fse) {
+                        maximizingActionDetected = true;
+                    }
+
+                    @Override
+                    public void windowEnteredFullScreen(com.apple.eawt.event.FullScreenEvent fse) {
+                    }
+
+                    @Override
+                    public void windowExitingFullScreen(com.apple.eawt.event.FullScreenEvent fse) {
+
+                    }
+
+                    @Override
+                    public void windowExitedFullScreen(com.apple.eawt.event.FullScreenEvent fse) {
+                    }
+                });
+            }
         }
 
         @Override
@@ -142,14 +182,14 @@ public class FrameNativeControlsTest {
                 int h = window.getBounds().height;
                 int w = window.getBounds().width;
 
-                robot.delay(500);
+                robot.waitForIdle();
                 robot.mouseMove(x, y);
                 robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
                 robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-                robot.delay(1500);
+                robot.waitForIdle();
                 window.setBounds(screenX, screenY, w, h);
                 window.setVisible(true);
-                robot.delay(1500);
+                robot.waitForIdle();
             });
 
             if (!maximizingActionDetected) {
