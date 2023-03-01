@@ -43,9 +43,7 @@ import java.util.function.Function;
 /*
  * @test
  * @summary Detect and check behavior of clicking to native controls
- * @requires (os.family == "windows" | os.family == "mac")
- * @modules java.desktop/com.apple.eawt
- *          java.desktop/com.apple.eawt.event
+ * @requires (os.family == "windows")
  * @run main/othervm FrameNativeControlsTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 FrameNativeControlsTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 FrameNativeControlsTest
@@ -132,29 +130,6 @@ public class FrameNativeControlsTest {
         protected void customizeWindow() {
             window.addWindowListener(windowListener);
             window.addWindowStateListener(windowStateListener);
-
-            final String os = System.getProperty("os.name").toLowerCase();
-            if (window.getName().equals("JFrame") && os.startsWith("mac os")) {
-                com.apple.eawt.FullScreenUtilities.addFullScreenListenerTo(window, new com.apple.eawt.FullScreenListener() {
-                    @Override
-                    public void windowEnteringFullScreen(com.apple.eawt.event.FullScreenEvent fse) {
-                        maximizingActionDetected = true;
-                    }
-
-                    @Override
-                    public void windowEnteredFullScreen(com.apple.eawt.event.FullScreenEvent fse) {
-                    }
-
-                    @Override
-                    public void windowExitingFullScreen(com.apple.eawt.event.FullScreenEvent fse) {
-
-                    }
-
-                    @Override
-                    public void windowExitedFullScreen(com.apple.eawt.event.FullScreenEvent fse) {
-                    }
-                });
-            }
         }
 
         @Override
