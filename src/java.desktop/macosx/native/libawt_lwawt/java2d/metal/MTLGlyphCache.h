@@ -35,12 +35,13 @@ extern "C" {
 #import <Metal/Metal.h>
 @class MTLContext;
 
-typedef void (MTLFlushFunc)();
+typedef void (MTLFlushFunc)(MTLContext* mtlc);
 
 typedef struct _MTLCacheCellInfo MTLCacheCellInfo;
 
 typedef struct {
     MTLContext* mtlc;
+    id<MTLRenderCommandEncoder> encoder;
     MTLCacheCellInfo *head;
     MTLCacheCellInfo *tail;
     id<MTLTexture> texture;
@@ -72,26 +73,29 @@ struct _MTLCacheCellInfo {
     jfloat           ty2;
 };
 
-MTLGlyphCacheInfo *
-MTLGlyphCache_Init(MTLContext* mtlc, jint width, jint height,
-                   jint cellWidth, jint cellHeight, MTLFlushFunc *func);
-MTLCacheCellInfo *
-MTLGlyphCache_AddGlyph(MTLGlyphCacheInfo *cache, struct GlyphInfo *glyph);
-bool
-MTLGlyphCache_IsCacheFull(MTLGlyphCacheInfo *cache, GlyphInfo *glyph);
-void
-MTLGlyphCache_Invalidate(MTLGlyphCacheInfo *cache);
 void
 MTLGlyphCache_AddCellInfo(struct GlyphInfo *glyph, MTLCacheCellInfo *cellInfo);
 void
 MTLGlyphCache_RemoveCellInfo(struct GlyphInfo *glyph, MTLCacheCellInfo *cellInfo);
-MTLCacheCellInfo *
-MTLGlyphCache_GetCellInfoForCache(struct GlyphInfo *glyph,
-                                    MTLGlyphCacheInfo *cache);
-JNIEXPORT void
-MTLGlyphCache_RemoveAllCellInfos(struct GlyphInfo *glyph);
-void
-MTLGlyphCache_Free(MTLGlyphCacheInfo *cache);
+
+@interface MTLGlyphCache : NSObject
+- (id)initWithContext:(MTLContext*)ctx;
+- (void) dealloc;
+- (BOOL) glyphCacheInitWidth:(jint)width
+                     height:(jint)height
+                  cellWidth:(jint)cellWidth
+                 cellHeight:(jint)cellHeight
+                 pixelFormat:(NSUInteger)pixelFormat
+                       func:(MTLFlushFunc*)func;
+- (MTLCacheCellInfo*) addGlyph:(GlyphInfo*)glyph;
+- (BOOL) isCacheFull:(GlyphInfo*)glyph;
+- (void) invalidate;
+- (void) free;
+
+@property (readwrite) MTLGlyphCacheInfo *cacheInfo;
+
+@end
+
 
 #ifdef __cplusplus
 }
