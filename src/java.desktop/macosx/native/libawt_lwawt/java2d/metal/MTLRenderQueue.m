@@ -585,10 +585,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jlong pDst = NEXT_LONG(b);
 
                     if (mtlc != NULL) {
-                        if (dstOps != NULL && dstOps->pTexture != NULL) {
-                            MTLTR_FreeGlyphCacheAA();
-                            MTLTR_FreeGlyphCacheLCD();
-                        }
+                        [mtlc.glyphCacheAA free];
+                        [mtlc.glyphCacheLCD free];
                         if (isDisplaySyncEnabled() && IS_OUTPUT_DEST(dstOps)) {
                             [mtlc commitCommandBuffer:YES display:YES];
                             sync = NO;
@@ -608,10 +606,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                             (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
 
                     if (mtlc != NULL) {
-                        if (dstOps != NULL && dstOps->pTexture != NULL) {
-                            MTLTR_FreeGlyphCacheAA();
-                            MTLTR_FreeGlyphCacheLCD();
-                        }
+                        [mtlc.glyphCacheAA free];
+                        [mtlc.glyphCacheLCD free];
                         [mtlc commitCommandBuffer:NO display:NO];
                     }
 
@@ -630,8 +626,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                     if (mtlsdo != NULL) {
                         CONTINUE_IF_NULL(mtlc);
-                        MTLTR_FreeGlyphCacheAA();
-                        MTLTR_FreeGlyphCacheLCD();
+                        [mtlc.glyphCacheAA free];
+                        [mtlc.glyphCacheLCD free];
                         MTLSD_Delete(env, mtlsdo);
                     }
                     break;
@@ -655,9 +651,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_PREVIOUS_OP(MTL_OP_OTHER);
                     jlong pConfigInfo = NEXT_LONG(b);
                     CONTINUE_IF_NULL(mtlc);
+                    [mtlc.glyphCacheAA free];
+                    [mtlc.glyphCacheLCD free];
                     [mtlc commitCommandBuffer:YES display:NO];
-                    MTLTR_FreeGlyphCacheAA();
-                    MTLTR_FreeGlyphCacheLCD();
                     MTLGC_DestroyMTLGraphicsConfig(pConfigInfo);
                     mtlc = NULL;
                     break;
