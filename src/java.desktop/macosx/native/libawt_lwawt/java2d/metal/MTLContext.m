@@ -181,6 +181,8 @@ extern void initSamplers(id<MTLDevice> device);
             CVDisplayLinkCreateWithCGDisplay(displayID, &_displayLink);
             CVDisplayLinkSetOutputCallback(_displayLink, &mtlDisplayLinkCallback, (__bridge void *) self);
         }
+        _glyphCacheLCD = [[MTLGlyphCache alloc] initWithContext:self];
+        _glyphCacheAA = [[MTLGlyphCache alloc] initWithContext:self];
     }
     return self;
 }
@@ -255,6 +257,8 @@ extern void initSamplers(id<MTLDevice> device);
         _dlLock = nil;
     }
 
+    [_glyphCacheLCD release];
+    [_glyphCacheAA release];
     [super dealloc];
 }
 
