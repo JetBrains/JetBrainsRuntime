@@ -181,6 +181,8 @@ extern void initSamplers(id<MTLDevice> device);
             CVDisplayLinkCreateWithCGDisplay(displayID, &_displayLink);
             CVDisplayLinkSetOutputCallback(_displayLink, &mtlDisplayLinkCallback, (__bridge void *) self);
         }
+        _glyphCacheLCD = [[MTLGlyphCache alloc] initWithContext:self];
+        _glyphCacheAA = [[MTLGlyphCache alloc] initWithContext:self];
     }
     return self;
 }
@@ -191,6 +193,9 @@ extern void initSamplers(id<MTLDevice> device);
     // TODO : Check that texturePool is completely released.
     // texturePool content is released in MTLCommandBufferWrapper.onComplete()
     //self.texturePool = nil;
+    [_glyphCacheLCD release];
+    [_glyphCacheAA release];
+
     self.vertexBuffer = nil;
     self.commandQueue = nil;
     self.pipelineStateStorage = nil;
