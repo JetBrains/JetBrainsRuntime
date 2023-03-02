@@ -84,6 +84,7 @@ MTLGlyphCache_Init(MTLContext* mtlc, jint width, jint height,
     gcinfo->cellHeight = cellHeight;
     gcinfo->Flush = func;
     gcinfo->mtlc = mtlc;
+    gcinfo->encoder = nil;
 
     return gcinfo;
 }
@@ -215,7 +216,7 @@ MTLGlyphCache_Invalidate(MTLGlyphCacheInfo *cache)
     // flush any pending vertices that may be depending on the current
     // glyph cache layout
     if (cache->Flush != NULL) {
-        cache->Flush();
+        cache->Flush(cache->mtlc);
     }
 
     cellinfo = cache->head;
@@ -247,7 +248,7 @@ MTLGlyphCache_Free(MTLGlyphCacheInfo *cache)
     // flush any pending vertices that may be depending on the current
     // glyph cache
     if (cache->Flush != NULL) {
-        cache->Flush();
+        cache->Flush(cache->mtlc);
     }
 
     while (cache->head != NULL) {

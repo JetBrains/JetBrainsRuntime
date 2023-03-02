@@ -35,12 +35,13 @@ extern "C" {
 #import <Metal/Metal.h>
 @class MTLContext;
 
-typedef void (MTLFlushFunc)();
+typedef void (MTLFlushFunc)(MTLContext* mtlc);
 
 typedef struct _MTLCacheCellInfo MTLCacheCellInfo;
 
 typedef struct {
     MTLContext* mtlc;
+    id<MTLRenderCommandEncoder> encoder;
     MTLCacheCellInfo *head;
     MTLCacheCellInfo *tail;
     id<MTLTexture> texture;
