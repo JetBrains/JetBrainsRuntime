@@ -591,6 +591,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jlong pDst = NEXT_LONG(b);
 
                     if (mtlc != NULL) {
+                        [mtlc.glyphCacheAA free];
+                        [mtlc.glyphCacheLCD free];
                         [mtlc commitCommandBuffer:isSyncSurfacesEnabled() display:NO];
                     }
                     mtlc = [MTLContext setSurfacesEnv:env src:pSrc dst:pDst];
@@ -604,16 +606,18 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     MTLGraphicsConfigInfo *mtlInfo =
                             (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
 
-                    if (mtlInfo != NULL) {
-                        MTLContext *newMtlc = mtlInfo->context;
-                        if (newMtlc != NULL) {
-                            if (mtlc != NULL) {
-                                [mtlc commitCommandBuffer:NO display:NO];
-                            }
-                            mtlc = newMtlc;
-                            dstOps = NULL;
-                        }
+                    if (mtlc != NULL) {
+                        [mtlc.glyphCacheAA free];
+                        [mtlc.glyphCacheLCD free];
+                        [mtlc commitCommandBuffer:NO display:NO];
                     }
+
+                    if (mtlInfo != NULL) {
+                        mtlc = mtlInfo->context;
+                    } else {
+                        mtlc = NULL;
+                    }
+                    dstOps = NULL;
                     break;
                 }
                 case sun_java2d_pipe_BufferedOpCodes_FLUSH_SURFACE:
@@ -623,8 +627,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                     if (mtlsdo != NULL) {
                         CONTINUE_IF_NULL(mtlc);
-                        MTLTR_FreeGlyphCacheAA();
-                        MTLTR_FreeGlyphCacheLCD();
+                        [mtlc.glyphCacheAA free];
+                        [mtlc.glyphCacheLCD free];
                         MTLSD_Delete(env, mtlsdo);
                     }
                     break;
@@ -648,8 +652,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_PREVIOUS_OP(MTL_OP_OTHER);
                     jlong pConfigInfo = NEXT_LONG(b);
                     CONTINUE_IF_NULL(mtlc);
-                    MTLTR_FreeGlyphCacheAA();
-                    MTLTR_FreeGlyphCacheLCD();
+                    [mtlc.glyphCacheAA free];
+                    [mtlc.glyphCacheLCD free];
                     [mtlc.encoderManager endEncoder];
                     MTLGC_DestroyMTLGraphicsConfig(pConfigInfo);
                     mtlc = NULL;
