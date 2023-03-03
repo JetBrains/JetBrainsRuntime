@@ -124,7 +124,7 @@ function generate {
 
       echo $args
       java $SPP -nel -K$Qualifier -Dpackage=$package -DQualifier=$Qualifier -Dmodule=$module \
-          $args < X-UnsafeAccessTest.java.template > ${Qualifier}UnsafeAccessTest${Type}.java
+          $args -iX-UnsafeAccessTest.java.template -o${Qualifier}UnsafeAccessTest${Type}.java
     done
 }
 

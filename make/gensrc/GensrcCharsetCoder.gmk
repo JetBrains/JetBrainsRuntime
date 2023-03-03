@@ -37,7 +37,7 @@ $(GENSRC_CHARSETCODER_DST)/CharsetDecoder.java: $(GENSRC_CHARSETCODER_TEMPLATE)
 	$(MKDIR) -p $(@D)
 	-$(RM) $@.tmp
 	$(call ExecuteWithLog, $(SUPPORT_OUTPUTDIR)/gensrc/java.base/_charset_decoder, \
-		$(TOOL_SPP) < $< >$@.tmp \
+		$(TOOL_SPP) -i$< -o$@.tmp \
 	    -Kdecoder \
 	    -DA='A' \
 	    -Da='a' \
@@ -71,9 +71,9 @@ GENSRC_CHARSETCODER += $(GENSRC_CHARSETCODER_DST)/CharsetDecoder.java
 
 $(GENSRC_CHARSETCODER_DST)/CharsetEncoder.java: $(GENSRC_CHARSETCODER_TEMPLATE)
 	$(MKDIR) -p $(@D)
-	-$(RM) $@.tmp
+	$(RM) $@.tmp
 	$(call ExecuteWithLog, $(SUPPORT_OUTPUTDIR)/gensrc/java.base/_charset_encoder, \
-		$(TOOL_SPP) < $< >$@.tmp \
+		$(TOOL_SPP) -i$< -o$@.tmp \
 	    -Kencoder \
 	    -DA='An' \
 	    -Da='an' \
