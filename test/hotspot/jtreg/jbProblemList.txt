@@ -71,21 +71,19 @@ compiler/cpuflags/TestAESIntrinsicsOnSupportedConfig.java 8190680 generic-all
 
 compiler/runtime/Test8168712.java 8211769,8211771 generic-ppc64,generic-ppc64le,linux-s390x
 
-compiler/rtm/locking/TestRTMAbortRatio.java 8183263 generic-x64,generic-i586
-compiler/rtm/locking/TestRTMAbortThreshold.java 8183263 generic-x64,generic-i586
-compiler/rtm/locking/TestRTMAfterNonRTMDeopt.java 8183263 generic-x64,generic-i586
-compiler/rtm/locking/TestRTMDeoptOnHighAbortRatio.java 8183263 generic-x64,generic-i586
-compiler/rtm/locking/TestRTMDeoptOnLowAbortRatio.java 8183263 generic-x64,generic-i586
-compiler/rtm/locking/TestRTMLockingCalculationDelay.java 8183263 generic-x64,generic-i586
-compiler/rtm/locking/TestRTMLockingThreshold.java 8183263 generic-x64,generic-i586
-compiler/rtm/locking/TestRTMSpinLoopCount.java 8183263 generic-x64,generic-i586
-compiler/rtm/locking/TestUseRTMDeopt.java 8183263 generic-x64,generic-i586
-compiler/rtm/locking/TestUseRTMXendForLockBusy.java 8183263 generic-x64,generic-i586
-compiler/rtm/print/TestPrintPreciseRTMLockingStatistics.java 8183263 generic-x64,generic-i586
+compiler/rtm/locking/TestRTMAbortRatio.java 8183263 generic-x64
+compiler/rtm/locking/TestRTMAbortThreshold.java 8183263 generic-x64
+compiler/rtm/locking/TestRTMAfterNonRTMDeopt.java 8183263 generic-x64
+compiler/rtm/locking/TestRTMDeoptOnHighAbortRatio.java 8183263 generic-x64
+compiler/rtm/locking/TestRTMDeoptOnLowAbortRatio.java 8183263 generic-x64
+compiler/rtm/locking/TestRTMLockingCalculationDelay.java 8183263 generic-x64
+compiler/rtm/locking/TestRTMLockingThreshold.java 8183263 generic-x64
+compiler/rtm/locking/TestRTMSpinLoopCount.java 8183263 generic-x64
+compiler/rtm/locking/TestUseRTMDeopt.java 8183263 generic-x64
+compiler/rtm/locking/TestUseRTMXendForLockBusy.java 8183263 generic-x64
+compiler/rtm/print/TestPrintPreciseRTMLockingStatistics.java 8183263 generic-x64
 
 compiler/c2/Test8004741.java 8235801 generic-all
-
-compiler/codecache/jmx/PoolsIndependenceTest.java 8264632 macosx-all
 
 compiler/vectorapi/VectorCastShape64Test.java  initial_run generic-aarch64
 compiler/vectorapi/VectorRebracket128Test.java initial_run generic-aarch64
@@ -103,7 +101,6 @@ gc/stress/gclocker/TestGCLockerWithParallel.java 8180622 generic-all
 gc/stress/gclocker/TestGCLockerWithG1.java 8180622 generic-all
 gc/stress/gclocker/TestGCLockerWithShenandoah.java initial_run generic-all
 gc/stress/TestJNIBlockFullGC/TestJNIBlockFullGC.java 8192647 generic-all
-gc/stress/TestStressG1Humongous.java 8286554 windows-x64
 
 gc/stress/gcold/TestGCOldWithShenandoah.java initial_run windows-all
 
@@ -170,7 +167,7 @@ serviceability/jvmti/SetBreakpoint/TestManyBreakpoints.java initial_run generic-
 
 serviceability/sa/ClhsdbJstackXcompStress.java initial_run windows-all
 
-serviceability/sa/ClhsdbPrintAs.java initial_run windows-aarch64
+serviceability/sa/ClhsdbPrintAs.java initial_run generic-all
 serviceability/sa/ClhsdbFindPC.java#id1 initial_run generic-all
 serviceability/sa/ClhsdbFindPC.java#id2 initial_run generic-all
 serviceability/sa/ClhsdbFindPC.java#id3 initial_run generic-all
@@ -181,7 +178,7 @@ serviceability/sa/ClhsdbJdis.java initial_run windows-aarch64
 serviceability/sa/TestJhsdbJstackLock.java initial_run windows-aarch64
 serviceability/sa/ClhsdbCDSCore.java initial_run generic-aarch64
 serviceability/sa/ClhsdbJstack.java#id1 initial_run windows-aarch64
-serviceability/sa/ClhsdbPstack.java#id1 initial_run windows-aarch64
+serviceability/sa/ClhsdbPstack.java#id1 initial_run generic-aarch64
 serviceability/sa/ClhsdbPmap.java#id1 initial_run generic-all
 serviceability/sa/ClhsdbWhere.java initial_run windows-aarch64
 serviceability/sa/ClhsdbDumpheap.java initial_run windows-aarch64
@@ -228,7 +225,7 @@ vmTestbase/nsk/jvmti/InterruptThread/intrpthrd003/TestDescription.java 8288911 m
 
 vmTestbase/nsk/jvmti/scenarios/sampling/SP04/sp04t001/TestDescription.java initial_run windows-x64
 vmTestbase/nsk/jvmti/scenarios/sampling/SP04/sp04t002/TestDescription.java initial_run windows-x64
-vmTestbase/nsk/jvmti/scenarios/sampling/SP05/sp05t003/TestDescription.java initial_run generic-aarch64
+vmTestbase/nsk/jvmti/scenarios/sampling/SP05/sp05t003/TestDescription.java initial_run generic-all
 
 vmTestbase/gc/lock/jni/jnilock002/TestDescription.java 8192647 generic-all
 
