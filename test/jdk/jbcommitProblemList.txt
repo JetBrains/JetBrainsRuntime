@@ -7,7 +7,6 @@ javax/imageio/spi/AppletContextTest/BadPluginConfigurationTest.sh nobug generic-
 #
 sun/awt/dnd/8024061/bug8024061.java nobug windows-all
 java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java nobug windows-all
-java/awt/hidpi/ClientAreaOriginWindowsTest.java JBR-630 windows-all
 java/awt/hidpi/SetMaximizedBoundsTest.java nobug windows-all
 java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java nobug windows-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java nobug windows-all
@@ -40,30 +39,17 @@ java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java nobug windows
 javax/imageio/plugins/external_plugin_tests/TestClassPathPlugin.sh nobug generic-all # line 59: /opt/teamcity-agent/work/efb45cc305c2e813/jbr/Contents/Home/bin/jar: No such file or directory
 
 
-javax/swing/Action/8133039/bug8133039.java nobug windows-all
-javax/swing/ButtonGroup/TestButtonGroupFocusTraversal.java nobug windows-all
 javax/swing/dnd/7171812/bug7171812.java nobug windows-all
 javax/swing/event/RightAltKeyTest.java nobug windows-all
-javax/swing/JColorChooser/Test6541987.java nobug windows-all
-javax/swing/JColorChooser/Test7194184.java nobug windows-all
-javax/swing/JColorChooser/Test8051548.java nobug windows-all
-javax/swing/JComboBox/4743225/bug4743225.java nobug windows-all
-javax/swing/JComboBox/6236162/bug6236162.java nobug windows-all
-javax/swing/JComboBox/8032878/bug8032878.java nobug windows-all
 javax/swing/JComboBox/8033069/bug8033069NoScrollBar.java nobug windows-all
 javax/swing/JComboBox/8033069/bug8033069ScrollBar.java nobug windows-all
 javax/swing/JComboBox/8041909/ActionListenerExceptionTest.java nobug windows-all
 javax/swing/JComboBox/8072767/bug8072767.java nobug windows-all
 javax/swing/JComboBox/8136998/bug8136998.java nobug windows-all
 javax/swing/JComboBox/8182031/ComboPopupTest.java nobug windows-all
-javax/swing/JComboBox/ConsumedKeyTest/ConsumedKeyTest.java nobug windows-all
 javax/swing/JComponent/7154030/bug7154030.java nobug windows-all
 javax/swing/JEditorPane/6917744/bug6917744.java 8213124 macosx-all,windows-all
 javax/swing/JEditorPane/8195095/ImageViewTest.java nobug windows-all
-javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest_i18n.java nobug windows-all
-javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest.java nobug windows-all
-javax/swing/JFileChooser/8021253/bug8021253.java nobug windows-all
-javax/swing/JFileChooser/8041694/bug8041694.java nobug windows-all
 javax/swing/JFrame/8016356/bug8016356.java nobug windows-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java nobug windows-all
 javax/swing/JInternalFrame/5066752/bug5066752.java nobug windows-all
@@ -92,17 +78,13 @@ javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java nobug win
 javax/swing/JRadioButton/8033699/bug8033699.java nobug windows-all
 javax/swing/JRadioButton/8075609/bug8075609.java nobug windows-all
 javax/swing/JRadioButton/ButtonGroupFocus/ButtonGroupFocusTest.java nobug windows-all
-javax/swing/JRadioButton/FocusTraversal/FocusTraversal.java nobug windows-all
 javax/swing/JRootPane/4670486/bug4670486.java nobug windows-all
-javax/swing/JScrollPane/HorizontalMouseWheelOnShiftPressed/HorizontalMouseWheelOnShiftPressed.java nobug windows-all
 javax/swing/JSpinner/4788637/bug4788637.java nobug windows-all
 javax/swing/JSpinner/8223788/JSpinnerButtonFocusTest.java nobug windows-all
 javax/swing/JSpinner/TestJSpinnerFocusLost.java nobug windows-all
 javax/swing/JTabbedPane/4624207/bug4624207.java 8064922,8197552 macosx-all,windows-all,linux-all 8064922:macosx-all, 8197552:windows-all
 javax/swing/JTabbedPane/TestBackgroundScrollPolicy.java nobug windows-all
-javax/swing/JTable/7068740/bug7068740.java nobug windows-all,linux-all
 javax/swing/JTable/7124218/SelectEditTableCell.java JBR-4894 windows-all
-javax/swing/JTableHeader/6889007/bug6889007.java nobug windows-all
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java nobug windows-all
 javax/swing/JTextField/8036819/bug8036819.java nobug windows-all
 javax/swing/JToolTip/4846413/bug4846413.java nobug windows-all
@@ -112,23 +94,18 @@ javax/swing/JTree/4927934/bug4927934.java nobug windows-all
 javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java 8159131 linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/SetShapeAndClickSwing.java 8013450 macosx-all,windows-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java nobug windows-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,nobug linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java nobug windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java 8024627 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentWindowClickSwing.java nobug windows-all
 javax/swing/plaf/nimbus/8057791/bug8057791.java nobug windows-all
 javax/swing/plaf/nimbus/TestNimbusOverride.java nobug linux-all,windows-all
-javax/swing/plaf/synth/7158712/bug7158712.java nobug windows-all
 javax/swing/plaf/windows/6921687/bug6921687.java nobug windows-all
 javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java nobug windows-all
 javax/swing/SwingUtilities/7088744/bug7088744.java nobug windows-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java nobug windows-all
-javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java nobug linux-all
-javax/swing/text/DefaultEditorKit/4278839/bug4278839.java nobug windows-all
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java nobug windows-all
-javax/swing/text/JTextComponent/5074573/bug5074573.java nobug windows-all,linux-all
 javax/swing/text/JTextComponent/6361367/bug6361367.java nobug windows-all
-javax/swing/text/StyledEditorKit/4506788/bug4506788.java nobug windows-all
 javax/swing/text/View/8014863/bug8014863.java nobug windows-all
 javax/swing/text/View/8156217/FPMethodCalledTest.java nobug linux-all
 javax/swing/ToolTipManager/Test6256140.java nobug windows-all
