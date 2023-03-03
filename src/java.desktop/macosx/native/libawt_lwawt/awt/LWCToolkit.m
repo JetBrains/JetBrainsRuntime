@@ -77,34 +77,33 @@ static pthread_cond_t sAppKitStarted_cv = PTHREAD_COND_INITIALIZER;
 static time_t YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 @interface JavaAWTEvent : JavaEvent
-- (id)initWithEvent:(jobject)awtEvent;
-@property (readonly) jobject awtEvent;
+@property (readonly) jobject eventQueue;
 @end
 
 @implementation JavaAWTEvent
-
-- (id) initWithEvent:(jobject)awtEvent env:(JNIEnv*) env {
+- (id) initWithEventQueue:(jobject)eventQueue env:(JNIEnv*) env {
     if (self = [super init]) {
-        _awtEvent = (*env)->NewGlobalRef(env, awtEvent);
+        _eventQueue = (*env)->NewGlobalRef(env, eventQueue);
     }
     return self;
 }
 
 - (void) dealloc {
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-    if (_awtEvent) {
-        (*env)->DeleteGlobalRef(env, _awtEvent);
+    if (_eventQueue) {
+        (*env)->DeleteGlobalRef(env, _eventQueue);
     }
     [super dealloc];
 }
 
 - (void) dispatch {
 AWT_ASSERT_APPKIT_THREAD;
-    if (_awtEvent) {
+    if (_eventQueue) {
+        [AWTToolkit eventCountPlusPlus];
         JNIEnv* env = [ThreadUtilities getJNIEnv];
         DECLARE_CLASS(sjc_LWCToolkit, "sun/lwawt/macosx/LWCToolkit");
-        DECLARE_STATIC_METHOD(jm_LWCToolkit_dispatch, sjc_LWCToolkit, "dispatch", "(Ljava/awt/AWTEvent;)V");
-        (*env)->CallStaticVoidMethod(env, sjc_LWCToolkit, jm_LWCToolkit_dispatch, _awtEvent);
+        DECLARE_STATIC_METHOD(jm_LWCToolkit_dispatch, sjc_LWCToolkit, "dispatch", "(Ljava/awt/EventQueue;)V");
+        (*env)->CallStaticVoidMethod(env, sjc_LWCToolkit, jm_LWCToolkit_dispatch, _eventQueue);
         CHECK_EXCEPTION();
     }
 }
@@ -692,46 +691,24 @@ JNI_COCOA_EXIT(env);
 
 /*
  * Class:     sun_lwawt_macosx_LWCToolkit
- * Method:    getNextEvent
- * Signature: (Z)Ljava/awt/AWTEvent;
+ * Method:    waitForNextEvent
+ * Signature: ()V
  */
-JNIEXPORT jobject JNICALL Java_sun_lwawt_macosx_LWCToolkit_getNextEvent
-(JNIEnv *env, jclass clz, jboolean removeFromQueue)
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_LWCToolkit_waitForNextEvent
+(JNIEnv *env, jclass clz)
 {
 AWT_ASSERT_APPKIT_THREAD;
 JNI_COCOA_ENTER(env);
-    if (removeFromQueue) {
-        while (1) {
-            NSEvent *event = [NSApp nextEventMatchingMask:NSAnyEventMask
-                                                untilDate:NSDate.distantFuture
-                                                   inMode:NSDefaultRunLoopMode
-                                                  dequeue:(BOOL)removeFromQueue];
-            JavaAWTEvent *e = [NSApplicationAWT extractJavaEvent:event];
-            if (e) {
-                return [e awtEvent];
-            }
-            [NSApp sendEvent:event];
+    while (1) {
+        NSEvent *event = [NSApp nextEventMatchingMask:NSAnyEventMask
+                                            untilDate:NSDate.distantFuture
+                                               inMode:NSDefaultRunLoopMode
+                                              dequeue:YES];
+        JavaEvent *e = [NSApplicationAWT extractJavaEvent:event];
+        if (e) {
+            return;
         }
-    } else {
-        while (1) {
-            NSEvent *event = [NSApp nextEventMatchingMask:NSAnyEventMask
-                                                untilDate:nil
-                                                   inMode:NSDefaultRunLoopMode
-                                                  dequeue:NO];
-            if (event == nil) {
-                return NULL;
-            }
-            JavaAWTEvent *e = [NSApplicationAWT extractJavaEvent:event];
-            if (e) {
-                return [e awtEvent];
-            }
-            event = [NSApp nextEventMatchingMask:NSAnyEventMask
-                                       untilDate:nil
-                                          inMode:NSDefaultRunLoopMode
-                                         dequeue:YES];
-            assert(event && ![NSApplicationAWT extractJavaEvent:event]);
-            [NSApp sendEvent:event];
-        }
+        [NSApp sendEvent:event];
     }
 JNI_COCOA_EXIT(env);
 }
@@ -807,14 +784,14 @@ JNI_COCOA_EXIT(env);
 /*
  * Class:     sun_lwawt_macosx_LWCToolkit
  * Method:    scheduleEvent
- * Signature: (Ljava/awt/AWTEvent)V
+ * Signature: (Ljava/awt/EventQueue;)V
  */
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_LWCToolkit_scheduleEvent
-(JNIEnv *env, jclass clz, jobject event)
+(JNIEnv *env, jclass clz, jobject eventQueue)
 {
 JNI_COCOA_ENTER(env);
-    CHECK_NULL(event);
-    JavaAWTEvent* jae = [[JavaAWTEvent alloc] initWithEvent:event env:env];
+    CHECK_NULL(eventQueue);
+    JavaAWTEvent* jae = [[JavaAWTEvent alloc] initWithEventQueue:eventQueue env:env];
     [NSApplicationAWT postJavaEvent:jae];
     [jae release];
 JNI_COCOA_EXIT(env);
