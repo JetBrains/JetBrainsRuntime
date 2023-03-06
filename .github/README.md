@@ -21,7 +21,7 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
 |-------------|--------------------------------------------------------------------------------------------------------|---------------|
 | 2023.1      | [17.0.6-b829.5](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.6b829.5)   | 01-Mar-2023   |
 | 2022.3      | [17.0.6-b653.34](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.6b653.34) | 28-Feb-2023   |
-| 2022.2      | [17.0.5-b469.71](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.5b469.71) | 14-Nov-2022   |
+| 2022.2      | [17.0.6-b469.82](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.6b469.82) | 06-Mar-2023   |
 
 ## Releases based on JDK 11
 
