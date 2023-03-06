@@ -160,9 +160,9 @@ MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc,
 
     if ([gc isCacheFull:glyph]) {
         if (lcdCache) {
-            MTLTR_FreeGlyphCacheLCD(mtlc);
+            [mtlc.glyphCacheLCD free];
         } else {
-            MTLTR_FreeGlyphCacheAA(mtlc);
+            [mtlc.glyphCacheAA free];
         }
         MTLTR_ValidateGlyphCache(mtlc, dstOps, lcdCache);
     }
@@ -260,24 +260,6 @@ MTLTR_DisableGlyphVertexCache(MTLContext *mtlc)
     J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DisableGlyphVertexCache");
     MTLVertexCache_FlushGlyphVertexCache(mtlc);
     MTLVertexCache_FreeVertexCache();
-}
-
-void MTLTR_FreeGlyphCacheAA(MTLContext *mtlc) {
-    if (mtlc.glyphCacheAA.cacheInfo != NULL) {
-        id<MTLTexture> txt = mtlc.glyphCacheAA.cacheInfo->texture;
-        [mtlc.glyphCacheAA free];
-        [txt release];
-        mtlc.glyphCacheAA.cacheInfo = NULL;
-    }
-}
-
-void MTLTR_FreeGlyphCacheLCD(MTLContext *mtlc) {
-    if (mtlc.glyphCacheLCD.cacheInfo != NULL) {
-        id<MTLTexture> txt = mtlc.glyphCacheLCD.cacheInfo->texture;
-        [mtlc.glyphCacheLCD free];
-        [txt release];
-        mtlc.glyphCacheLCD.cacheInfo = NULL;
-    }
 }
 
 static MTLPaint* storedPaint = nil;
