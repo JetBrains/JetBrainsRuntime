@@ -72,11 +72,9 @@
 /**
  * There are two separate glyph caches: for AA and for LCD.
  * Once one of them is initialized as either GRAY or LCD, it
- * stays in that mode for the duration of the application.  It should
- * be safe to use this one glyph cache for all screens in a multimon
- * environment, since the glyph cache texture is shared between all contexts,
- * and (in theory) Metal drivers should be smart enough to manage that
- * texture across all screens.
+ * stays in that mode for the duration of the MTLContext (it is not safe
+ * to use this one glyph cache for all screens in a multi-monitor
+ * environment)
  */
 @property (readonly) MTLGlyphCache *glyphCacheLCD;
 @property (readonly) MTLGlyphCache *glyphCacheAA;
