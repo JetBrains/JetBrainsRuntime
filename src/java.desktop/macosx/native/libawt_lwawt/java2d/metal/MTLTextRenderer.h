@@ -46,8 +46,6 @@
 
 void MTLTR_EnableGlyphVertexCache(MTLContext *mtlc, BMTLSDOps *dstOps);
 void MTLTR_DisableGlyphVertexCache(MTLContext *mtlc);
-void MTLTR_FreeGlyphCacheAA(MTLContext *mtlc);
-void MTLTR_FreeGlyphCacheLCD(MTLContext *mtlc);
 
 void MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
                          jint totalGlyphs, jboolean usePositions,
