@@ -278,6 +278,11 @@
     _cacheInfo = NULL;
 }
 
+- (void) dealloc {
+    [self free];
+    [super dealloc];
+}
+
 @end
 /**
  * Add cell info to the head of the glyph's list of cached cells.
