@@ -252,10 +252,7 @@
  */
 - (void) free
 {
-    MTLCacheCellInfo *cellinfo;
-
     J2dTraceLn(J2D_TRACE_INFO, "MTLGlyphCache.free");
-
     if (_cacheInfo == NULL) {
         return;
     }
@@ -265,9 +262,10 @@
     if (_cacheInfo->Flush != NULL) {
         _cacheInfo->Flush(_cacheInfo->mtlc);
     }
+    [_cacheInfo->texture release];
 
     while (_cacheInfo->head != NULL) {
-        cellinfo = _cacheInfo->head;
+        MTLCacheCellInfo *cellinfo = _cacheInfo->head;
         if (cellinfo->glyphInfo != NULL) {
             // if the cell is occupied, notify the base glyph that its
             // cached version for this cache is about to be invalidated
@@ -277,6 +275,7 @@
         free(cellinfo);
     }
     free(_cacheInfo);
+    _cacheInfo = NULL;
 }
 
 @end
