@@ -193,6 +193,9 @@ extern void initSamplers(id<MTLDevice> device);
     // TODO : Check that texturePool is completely released.
     // texturePool content is released in MTLCommandBufferWrapper.onComplete()
     //self.texturePool = nil;
+    [_glyphCacheLCD release];
+    [_glyphCacheAA release];
+
     self.vertexBuffer = nil;
     self.commandQueue = nil;
     self.pipelineStateStorage = nil;
@@ -257,8 +260,6 @@ extern void initSamplers(id<MTLDevice> device);
         _dlLock = nil;
     }
 
-    [_glyphCacheLCD release];
-    [_glyphCacheAA release];
     [super dealloc];
 }
 
