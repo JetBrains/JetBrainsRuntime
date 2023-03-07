@@ -38,10 +38,7 @@ public enum Layout_ABC implements LayoutKey {
     // Enum name must be the same as KeyEvent.VK_ constant name corresponding to the key on US keyboard layout
     // Note that '\u0000' may be used if no char is mapped to a key + modifier or if one wants to skip its testing
 
-    // TODO Robot cannot press section sign key (16777383),
-    // located on the left side of the key 1 on the Apple International English keyboard
-    // SECTION       ('§', '§', '±', '±'),
-
+    VK_SECTION       ('§', '§', '±', '±', '0'),
     VK_MINUS         ('-', '–', '_', '—', '\u001F'),
     VK_EQUALS        ('=', '≠', '+', '±', '='),
 
