@@ -163,7 +163,7 @@ const keyTable[] =
     {0x5A, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F20},
     {0x5B, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD8},
     {0x5C, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD9},
-    {0x5D, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_BACK_SLASH}, // This is a combo yen/backslash on JIS keyboards.
+    {0x5D, YES, NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_BACK_SLASH}, // This is a combo yen/backslash on JIS keyboards.
     {0x5E, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_UNDERSCORE},
     {0x5F, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_COMMA},
     {0x60, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F5},
@@ -545,11 +545,13 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
 
     unichar testLowercaseChar = tolower(ch);
 
-    if (useNationalLayouts && asciiCapable) {
+    if (!useNationalLayouts || asciiCapable) {
         // If national layouts are enabled and the current keyboard is latin-based then
         // we try to look up a character in a table first, before falling back to looking up
         // the virtual key code from macOS's hardware key code, since hardware key codes
         // don't respect the specific keyboard layout the user uses.
+        // The same happens when the national layouts are disabled to be consistent
+        // with the default behavior of OpenJDK.
 
         // Together with the following two checks (letters and digits) this table
         // properly handles all keys that have corresponding VK_ codes.
