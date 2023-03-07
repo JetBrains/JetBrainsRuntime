@@ -31,6 +31,8 @@
 import static java.awt.event.KeyEvent.*;
 
 public class KeyCodesTest implements Runnable {
+    static private final int VK_BACK_QUOTE_ISO = 0x01000000+0x0060;
+    static private final int VK_SECTION = 0x01000000+0x00A7;
     @Override
     public void run() {
         verify('!', VK_EXCLAMATION_MARK, "com.apple.keylayout.French-PC", VK_SLASH);
@@ -63,7 +65,28 @@ public class KeyCodesTest implements Runnable {
         verify('}', VK_BRACERIGHT, "com.apple.keylayout.LatinAmerican", VK_BACK_SLASH);
         verify('\u00a1', VK_INVERTED_EXCLAMATION_MARK, "com.apple.keylayout.Spanish-ISO", VK_EQUALS);
         // TODO: figure out which keyboard layout has VK_EURO_SIGN as a key on the primary layer
+        verify('/', VK_DIVIDE, "com.apple.keylayout.ABC", VK_DIVIDE, VK_SLASH);
+        verify('*', VK_MULTIPLY, "com.apple.keylayout.ABC", VK_MULTIPLY, VK_ASTERISK);
+        verify('+', VK_ADD, "com.apple.keylayout.ABC", VK_ADD, VK_PLUS);
+        verify('-', VK_SUBTRACT, "com.apple.keylayout.ABC", VK_SUBTRACT, VK_MINUS);
+        verify('\t', VK_TAB, "com.apple.keylayout.ABC", VK_TAB);
+        verify(' ', VK_SPACE, "com.apple.keylayout.ABC", VK_SPACE);
 
+        // Test numpad numbers
+        for (int i = 0; i < 10; ++i) {
+            verify((char)('0' + i), VK_NUMPAD0 + i, "com.apple.keylayout.ABC", VK_NUMPAD0 + i, VK_0 + i);
+        }
+        verify('\0', VK_F1, "com.apple.keylayout.ABC", VK_F1);
+        verify('\0', VK_F19, "com.apple.keylayout.ABC", VK_F19);
+
+        // Test ANSI/ISO keyboard weirdness
+        verify('\u00a7', 0x01000000+0x00A7, "com.apple.keylayout.ABC", VK_SECTION);
+        verify('\u00b2', 0x01000000+0x00B2, "com.apple.keylayout.French-PC", VK_SECTION);
+        verify('#', VK_NUMBER_SIGN, "com.apple.keylayout.CanadianFrench-PC", VK_SECTION);
+        verify('\u00ab', 0x01000000+0x00AB, "com.apple.keylayout.CanadianFrench-PC", VK_BACK_QUOTE_ISO);
+        verify('#', VK_NUMBER_SIGN, "com.apple.keylayout.CanadianFrench-PC", VK_BACK_QUOTE);
+
+        // Test extended key codes that don't match the unicode char
         verify('\u00e4', 0x01000000+0x00C4, "com.apple.keylayout.German", VK_QUOTE);
         verify('\u00e5', 0x01000000+0x00C5, "com.apple.keylayout.Norwegian", VK_OPEN_BRACKET);
         verify('\u00e6', 0x01000000+0x00C6, "com.apple.keylayout.Norwegian", VK_QUOTE);
@@ -73,12 +96,18 @@ public class KeyCodesTest implements Runnable {
         verify('\u00f8', 0x01000000+0x00D8, "com.apple.keylayout.Norwegian", VK_SEMICOLON);
     }
 
-    private void verify(char ch, int vk, String layout, int key) {
+    private void verify(char ch, int vk, String layout, int key, int correctKeyCode) {
         InputMethodTest.section("Key code test: " + vk + ", char: " + ch);
         InputMethodTest.layout(layout);
         InputMethodTest.type(key, 0);
-        InputMethodTest.expect(String.valueOf(ch));
         InputMethodTest.expectKeyCode(vk);
-        InputMethodTest.expectTrue(getExtendedKeyCodeForChar(ch) == vk, "getExtendedKeyCodeForChar(ch) == vk");
+        if (ch != 0) {
+            InputMethodTest.expect(String.valueOf(ch));
+            InputMethodTest.expectTrue(getExtendedKeyCodeForChar(ch) == correctKeyCode, "getExtendedKeyCodeForChar");
+        }
+    }
+
+    private void verify(char ch, int vk, String layout, int key) {
+        verify(ch, vk, layout, key, vk);
     }
 }
