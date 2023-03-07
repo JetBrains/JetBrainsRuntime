@@ -118,7 +118,6 @@ java/awt/Desktop/8064934/bug8064934.java JBR-5764 windows-all
 java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java JBR-5915 linux-all
 java/awt/Debug/DumpOnKey/DumpOnKey.java JBR-5225,JBR-5359 windows-all,windows-aarch64
 java/awt/event/MouseEvent/MouseClickTest/MouseClickTest.java 8168389 windows-all,macosx-all
-java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java 8224055 macosx-all
 java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java 8081489 generic-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java JBR-5178 windows-all
 java/awt/Focus/FocusTransitionTest/FocusTransitionTest.java JBR-5809 linux-all
@@ -147,18 +146,11 @@ java/awt/dnd/URIListBetweenJVMsTest/URIListBetweenJVMsTest.java 8171510,JBR-881 
 javax/swing/dnd/7171812/bug7171812.java 8041447,8253184 macosx-all,windows-all
 java/awt/Focus/ChildWindowFocusTest/ChildWindowFocusTest.java JBR-5545 linux-all,windows-all
 java/awt/Focus/ChoiceFocus/ChoiceFocus.java 8169103 windows-all,macosx-all
-java/awt/Focus/ClearGlobalFocusOwnerTest/ClearGlobalFocusOwnerTest.java JBR-5907 linux-all
-java/awt/Focus/ClearLwQueueBreakTest/ClearLwQueueBreakTest.java 8198618,JBR-814 macosx-all,linux-all
-java/awt/Focus/CloseDialogActivateOwnerTest/CloseDialogActivateOwnerTest.java JBR-5225,JBR-5359 windows-all,windows-aarch64
+java/awt/Focus/ClearLwQueueBreakTest/ClearLwQueueBreakTest.java 8198618 macosx-all
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java 6986252,JBR-5178 windows-all
-java/awt/Focus/KeyEventForBadFocusOwnerTest/KeyEventForBadFocusOwnerTest.java JBR-5210 windows-all
-java/awt/Focus/ConsumedTabKeyTest.java JBR-5833 windows-all
-java/awt/Focus/KeyEventForBadFocusOwnerTest/KeyEventForBadFocusOwnerTest.java JBR-5210 windows-all
 java/awt/Focus/MouseClickRequestFocusRaceTest/MouseClickRequestFocusRaceTest.java 8194753 linux-all,macosx-all
 java/awt/Focus/NoAutotransferToDisabledCompTest/NoAutotransferToDisabledCompTest.java 7152980,JBR-5210 macosx-all,windows-all
 java/awt/Focus/ToFrontFocusTest/ToFrontFocus.java 7156130 linux-all
-java/awt/Focus/TypeAhead/TestFocusFreeze.java JBR-5856 windows-all
-java/awt/Focus/WindowInitialFocusTest/WindowInitialFocusTest.java JBR-69 windows-all
 java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java 8169096,JBR-4880,JBR-5387 windows-all,linux-all
 java/awt/EventQueue/6980209/bug6980209.java 8198615 macosx-all
 java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.java 8198237 macosx-all
@@ -237,15 +229,12 @@ java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java JBR-4997,JBR-5729 w
 java/awt/Focus/8073453/AWTFocusTransitionTest.java JBR-5210,8298247 windows-all,linux-all
 java/awt/Focus/8073453/SwingFocusTransitionTest.java JBR-5210 windows-all
 java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java JBR-5210 windows-all
-java/awt/event/KeyEvent/AltGraphModifier.java JBR-5359 windows-aarch64
 java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java 8169476 windows-all
-java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474,8224055,JBR-93 windows-all,linux-all
-java/awt/event/KeyEvent/KeyEventLocationTest.java JBR-5916 linux-all
+java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474,8224055 windows-all
 
-java/awt/event/KeyEvent/KeyTyped/CtrlASCII.java JBR-3636,JBR-4880 macosx-all,windows-all
+java/awt/event/KeyEvent/KeyTyped/CtrlASCII.java JBR-3636,JBR-4880 windows-all
 
-java/awt/event/KeyEvent/KeyTyped/CtrlSpace.java JBR-3817 windows-all,macosx-all
-java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java JBR-5906 linux-all
+java/awt/event/KeyEvent/KeyTyped/CtrlSpace.java JBR-3817 windows-all
 
 java/awt/dnd/BadSerializationTest/BadSerializationTest.java linux-x64,windows-x64
 java/awt/dnd/Button2DragTest/Button2DragTest.java 8310490 linux-all
@@ -631,7 +620,7 @@ java/awt/Robot/AcceptExtraMouseButtons/AcceptExtraMouseButtons.java 7107528,8253
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java 8282232 windows-all
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithOverlay.java 8253184 windows-all
 java/awt/Mouse/MouseDragEvent/MouseDraggedTest.java 8080676,8253184 linux-all,windows-all
-java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java 8157147 linux-all,windows-all,macosx-all
+java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java 8157147 linux-all,windows-all
 java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java 8253184 windows-all
 java/awt/Toolkit/ToolkitPropertyTest/ToolkitPropertyTest_Enable.java 6847163 linux-all
 java/awt/xembed/server/RunTestXEmbed.java 7034201 linux-all
@@ -643,7 +632,6 @@ java/awt/GraphicsDevice/CheckDisplayModes.java 8266242 macosx-aarch64
 java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java 7099223,8274106 macosx-all,linux-all,windows-all
 java/awt/keyboard/AllKeyCode/AllKeyCode.java 8242930 macosx-all
 java/awt/keyboard/8218917/AltKeyBug.java JBR-3636,JBR-5312 macosx-all,windows-all
-java/awt/keyboard/AllKeyCode/AllKeyCode.java 8242930 macosx-all
 java/awt/keyboard/AltPlusNumberKeyCombinationsTest/AltPlusNumberKeyCombinationsTest.java JBR-5210 windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.java 8257529 windows-x64
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogButtonTest/EnqueueWithDialogButtonTest.java JBR-5210 windows-all
@@ -654,7 +642,6 @@ java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.java JBR-5210 window
 java/awt/FullScreen/8013581/bug8013581.java 8169471,JBR-80 macosx-all,windows-all
 java/awt/event/MouseEvent/RobotLWTest/RobotLWTest.java 8233568,JBR-5583 macosx-all,windows-x64
 java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java 8233568 macosx-all
-java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java 8233568,JBR-5915 macosx-all,linux-all
 java/awt/event/KeyEvent/DeadKey/DeadKeyMacOSXInputText.java 8233568 macosx-all
 java/awt/event/KeyEvent/DeadKey/deadKeyMacOSX.java 8233568 macosx-all
 java/awt/TrayIcon/RightClickWhenBalloonDisplayed/RightClickWhenBalloonDisplayed.java 8238720 windows-all
