@@ -168,7 +168,10 @@ void Space::clear(bool mangle_space) {
   }
 }
 
-ContiguousSpace::ContiguousSpace(): CompactibleSpace(), _top(nullptr) {
+ContiguousSpace::ContiguousSpace(): Space(),
+  _compaction_top(nullptr),
+  _next_compaction_space(nullptr),
+  _top(nullptr) {
   _mangler = new GenSpaceMangler(this);
 }
 
@@ -180,13 +183,16 @@ void ContiguousSpace::initialize(MemRegion mr,
                                  bool clear_space,
                                  bool mangle_space)
 {
-  CompactibleSpace::initialize(mr, clear_space, mangle_space);
+  Space::initialize(mr, clear_space, mangle_space);
+  set_compaction_top(bottom());
+  _next_compaction_space = nullptr;
 }
 
 void ContiguousSpace::clear(bool mangle_space) {
   set_top(bottom());
   set_saved_mark();
-  CompactibleSpace::clear(mangle_space);
+  Space::clear(mangle_space);
+  _compaction_top = bottom();
 }
 
 bool ContiguousSpace::is_free_block(const HeapWord* p) const {
@@ -239,21 +245,9 @@ void ContiguousSpace::mangle_unused_area_complete() {
 }
 #endif  // NOT_PRODUCT
 
-void CompactibleSpace::initialize(MemRegion mr,
-                                  bool clear_space,
-                                  bool mangle_space) {
-  Space::initialize(mr, clear_space, mangle_space);
-  set_compaction_top(bottom());
-  _next_compaction_space = nullptr;
-}
-
-void CompactibleSpace::clear(bool mangle_space) {
-  Space::clear(mangle_space);
-  _compaction_top = bottom();
-}
 
 // (DCEVM) Calculates the compact_top that will be used for placing the next object with the giving size on the heap.
-HeapWord* CompactibleSpace::forward_compact_top(size_t size, CompactPoint* cp, HeapWord* compact_top) {
+HeapWord* ContiguousSpace::forward_compact_top(size_t size, CompactPoint* cp, HeapWord* compact_top) {
   // First check if we should switch compaction space
   assert(this == cp->space, "'this' should be current compaction space.");
   size_t compaction_max_size = pointer_delta(end(), compact_top);
@@ -276,7 +270,7 @@ HeapWord* CompactibleSpace::forward_compact_top(size_t size, CompactPoint* cp, H
   return compact_top;
 }
 
-HeapWord* CompactibleSpace::forward(oop q, size_t size,
+HeapWord* ContiguousSpace::forward(oop q, size_t size,
                                     CompactPoint* cp, HeapWord* compact_top, bool force_forward) {
   compact_top = forward_compact_top(size, cp, compact_top);
 
@@ -410,7 +404,7 @@ void ContiguousSpace::prepare_for_compaction(CompactPoint* cp) {
 
 #ifdef ASSERT
 
-int CompactibleSpace::space_index(oop obj) {
+int ContiguousSpace::space_index(oop obj) {
   GenCollectedHeap* heap = GenCollectedHeap::heap();
 
   //if (heap->is_in_permanent(obj)) {
@@ -418,7 +412,7 @@ int CompactibleSpace::space_index(oop obj) {
   //}
 
   int index = 0;
-  CompactibleSpace* space = heap->old_gen()->first_compaction_space();
+  ContiguousSpace* space = heap->old_gen()->first_compaction_space();
   while (space != NULL) {
     if (space->is_in_reserved(obj)) {
       return index;
@@ -464,7 +458,7 @@ int CompactibleSpace::space_index(oop obj) {
 }
 #endif
 
-bool CompactibleSpace::must_rescue(oop old_obj, oop new_obj) {
+bool ContiguousSpace::must_rescue(oop old_obj, oop new_obj) {
   // Only redefined objects can have the need to be rescued.
   if (oop(old_obj)->klass()->new_version() == NULL) return false;
 
@@ -512,7 +506,7 @@ bool CompactibleSpace::must_rescue(oop old_obj, oop new_obj) {
   }
 }
 
-HeapWord* CompactibleSpace::rescue(HeapWord* old_obj) {
+HeapWord* ContiguousSpace::rescue(HeapWord* old_obj) {
   assert(must_rescue(cast_to_oop(old_obj), cast_to_oop(old_obj)->forwardee()), "do not call otherwise");
 
   size_t size = cast_to_oop(old_obj)->size();
@@ -527,7 +521,7 @@ HeapWord* CompactibleSpace::rescue(HeapWord* old_obj) {
   return rescued_obj;
 }
 
-void CompactibleSpace::adjust_pointers() {
+void ContiguousSpace::adjust_pointers() {
   // Check first is there is any work to do.
   if (used() == 0) {
     return;   // Nothing to do.
@@ -564,10 +558,9 @@ void CompactibleSpace::adjust_pointers() {
   assert(cur_obj == end_of_live, "just checking");
 }
 
-void CompactibleSpace::compact() {
-
+void ContiguousSpace::compact() {
   bool redefinition_run = Universe::is_redefining_gc_run();
-
+  
   // Copy all live objects to their new location
   // Used by MarkSweep::mark_sweep_phase4()
 
@@ -883,7 +876,7 @@ size_t TenuredSpace::allowed_dead_ratio() const {
 
 // Compute the forward sizes and leave out objects whose position could
 // possibly overlap other objects.
-HeapWord* CompactibleSpace::forward_with_rescue(HeapWord* q, size_t size,
+HeapWord* ContiguousSpace::forward_with_rescue(HeapWord* q, size_t size,
                                                 CompactPoint* cp, HeapWord* compact_top, bool force_forward) {
   size_t forward_size = size;
 
@@ -909,7 +902,7 @@ HeapWord* CompactibleSpace::forward_with_rescue(HeapWord* q, size_t size,
 }
 
 // Compute the forwarding addresses for the objects that need to be rescued.
-HeapWord* CompactibleSpace::forward_rescued(CompactPoint* cp, HeapWord* compact_top) {
+HeapWord* ContiguousSpace::forward_rescued(CompactPoint* cp, HeapWord* compact_top) {
   // TODO: empty the _rescued_oops after ALL spaces are compacted!
   if (MarkSweep::_rescued_oops != NULL) {
     for (int i=0; i<MarkSweep::_rescued_oops->length(); i++) {
