@@ -46,6 +46,9 @@ public class Key {
     // So to press some key on the current layout, one needs to pass corresponding US layout key code to Robot.
     // So every key stores corresponding KeyEvent.VK_ constant name to provide mapping to US layout.
     int getKeyCode_US() {
+        if (vkName.equals("VK_SECTION")) {
+            return 0x01000000 + 0x00A7;
+        }
         try {
             return KeyEvent.class.getField(vkName).getInt(null);
         } catch (IllegalAccessException | NoSuchFieldException e) {
