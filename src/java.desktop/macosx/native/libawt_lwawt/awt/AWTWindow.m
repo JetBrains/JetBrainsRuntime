@@ -1610,6 +1610,8 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
         self.customTitleBarHeightConstraint,
     ]];
 
+    self.nsWindow.movable = NO;
+    
     AWTWindowDragView* windowDragView = [[AWTWindowDragView alloc] initWithPlatformWindow:self.javaPlatformWindow];
     [titlebar addSubview:windowDragView positioned:NSWindowBelow relativeTo:closeButtonView];
 
@@ -1698,6 +1700,8 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
     [self setWindowControlsHidden:NO];
     [self updateCustomTitleBarInsets:NO];
+    
+    self.nsWindow.movable = YES;
 }
 
 - (void) setWindowControlsHidden: (BOOL) hidden {
@@ -1884,10 +1888,6 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     CHECK_EXCEPTION();
     (*env)->DeleteLocalRef(env, platformWindow);
     return hitTest <= java_awt_Window_CustomTitleBar_HIT_TITLEBAR;
-}
-
-- (BOOL) mouseDownCanMoveWindow {
-    return NO;
 }
 
 - (BOOL) acceptsFirstMouse:(NSEvent *)event {
