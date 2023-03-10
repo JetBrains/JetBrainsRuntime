@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -915,10 +915,10 @@ final class CipherCore {
         int estOutSize = getOutputSizeByOperation(inputLen, true);
         int outputCapacity = checkOutputCapacity(output, outputOffset,
                 estOutSize);
-        int offset = decrypting ? 0 : outputOffset; // 0 for decrypting
+        int offset = outputOffset; // 0 for decrypting
         byte[] finalBuf = prepareInputBuffer(input, inputOffset,
                 inputLen, output, outputOffset);
-        byte[] outWithPadding = null; // for decrypting only
+        byte[] internalOutput = null; // for decrypting only
 
         int finalOffset = (finalBuf == input) ? inputOffset : 0;
         int finalBufLen = (finalBuf == input) ? inputLen : finalBuf.length;
@@ -932,11 +932,15 @@ final class CipherCore {
             if (outputCapacity < estOutSize) {
                 cipher.save();
             }
-            // create temporary output buffer so that only "real"
-            // data bytes are passed to user's output buffer.
-            outWithPadding = new byte[estOutSize];
+            if (outputCapacity < estOutSize || padding != null) {
+                // create temporary output buffer if the estimated size is larger
+                // than the user-provided buffer or a padding needs to be removed
+                // before copying the unpadded result to the output buffer
+                internalOutput = new byte[estOutSize];
+                offset = 0;
+            }
         }
-        byte[] outBuffer = decrypting ? outWithPadding : output;
+        byte[] outBuffer = (internalOutput != null) ? internalOutput : output;
 
         int outLen = fillOutputBuffer(finalBuf, finalOffset, outBuffer,
                 offset, finalBufLen, input);
@@ -952,9 +956,11 @@ final class CipherCore {
                                                + " bytes needed");
             }
             // copy the result into user-supplied output buffer
-            System.arraycopy(outWithPadding, 0, output, outputOffset, outLen);
-            // decrypt mode. Zero out output data that's not required
-            Arrays.fill(outWithPadding, (byte) 0x00);
+            if (internalOutput != null) {
+              System.arraycopy(internalOutput, 0, output, outputOffset, outLen);
+              // decrypt mode. Zero out output data that's not required
+              Arrays.fill(internalOutput, (byte) 0x00);
+            }
         }
         endDoFinal();
         return outLen;
