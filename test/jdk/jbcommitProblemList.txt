@@ -17,7 +17,6 @@ java/awt/Focus/ShowFrameCheckForegroundTest/ShowFrameCheckForegroundTest.java no
 java/awt/Focus/TranserFocusToWindow/TranserFocusToWindow.java nobug windows-all,macosx-all,linux-all
 java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java nobug windows-all
 java/awt/Focus/WindowInitialFocusTest/WindowInitialFocusTest.java nobug windows-all
-java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java nobug windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java nobug windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.java nobug windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.java nobug windows-all
@@ -54,7 +53,6 @@ javax/swing/JFrame/8016356/bug8016356.java nobug windows-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java nobug windows-all
 javax/swing/JInternalFrame/5066752/bug5066752.java nobug windows-all
 javax/swing/JInternalFrame/6288609/TestJInternalFrameDispose.java nobug windows-all
-javax/swing/JInternalFrame/8069348/bug8069348.java nobug windows-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java nobug windows-all,linux-all
 javax/swing/JInternalFrame/Test6505027.java nobug windows-all
 javax/swing/JLabel/7004134/bug7004134.java nobug linux-all
