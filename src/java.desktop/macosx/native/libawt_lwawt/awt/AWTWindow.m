@@ -606,7 +606,7 @@ AWT_ASSERT_APPKIT_THREAD;
         [self setUpCustomTitleBar];
     }
 
-    self.currentDisplayID = nil;
+    self.currentDisplayID = [AWTWindow getNSWindowDisplayID_AppKitThread:nsWindow];;
     return self;
 }
 
@@ -969,8 +969,7 @@ AWT_ASSERT_APPKIT_THREAD;
         }
 
         if (self.currentDisplayID == nil) {
-            // Do not trigger notification at first appearance
-            // to avoid flickering on popups
+            // Do not trigger notification at first initialization
             self.currentDisplayID = newDisplayID;
             return;
         }
