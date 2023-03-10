@@ -193,6 +193,8 @@ module java.base {
         jdk.jlink;
     exports jdk.internal.logger to
         java.logging;
+    exports jdk.internal.classfile to
+        jdk.jlink;
     exports jdk.internal.org.objectweb.asm to
         jdk.jartool,
         jdk.jfr,
