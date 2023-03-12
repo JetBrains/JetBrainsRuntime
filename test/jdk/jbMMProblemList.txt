@@ -1,3 +1,4 @@
+java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java 8202931,JBR-5398 macosx-all,linux-all,windows-all
 java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java 8292588 macosx-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenSmall.java JBR-4379 windows-all
 java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java JBR-4379 windows-all
