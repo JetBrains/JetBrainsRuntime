@@ -52,8 +52,6 @@ javax/swing/JEditorPane/8195095/ImageViewTest.java nobug windows-all
 javax/swing/JFrame/8016356/bug8016356.java nobug windows-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java nobug windows-all
 javax/swing/JInternalFrame/5066752/bug5066752.java nobug windows-all
-javax/swing/JInternalFrame/6288609/TestJInternalFrameDispose.java nobug windows-all
-javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java nobug windows-all,linux-all
 javax/swing/JInternalFrame/Test6505027.java nobug windows-all
 javax/swing/JLabel/7004134/bug7004134.java nobug linux-all
 javax/swing/JMenu/6538132/6538132.java 8197552 windows-all
