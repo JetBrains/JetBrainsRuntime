@@ -63,7 +63,6 @@ import sun.security.action.GetPropertyAction;
  * @see GraphicsDevice
  * @see GraphicsConfiguration
  */
-@SuppressWarnings("removal")
 public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
     implements DisplayChangedListener, DisplayParametersChangedListener {
 
@@ -73,9 +72,14 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
     private static final Object UI_SCALE_LOCK = new Object();
     private static boolean uiScaleEnabled;
     private static Boolean uiScaleEnabled_overridden;
-    private static final double debugScale;
+    private static double debugScale;
 
     static {
+        setUIScale();
+    }
+
+    @SuppressWarnings("removal")
+    private static void setUIScale() {
         uiScaleEnabled = FontUtilities.isMacOSX ||
                 ("true".equals(AccessController.doPrivileged(
                         new GetPropertyAction("sun.java2d.uiScale.enabled", "true"))) &&
@@ -94,6 +98,7 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
     private static boolean isWindows_8_1_orUpper() {
         if (!FontUtilities.isWindows) return false;
 
+        @SuppressWarnings("removal")
         String osVersion = AccessController.doPrivileged(new GetPropertyAction("os.version"));
         if (osVersion == null) return false;
 
@@ -365,6 +370,7 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
 
     public static double getScaleFactor(String propertyName) {
 
+        @SuppressWarnings("removal")
         String scaleFactor = AccessController.doPrivileged(
                 new GetPropertyAction(propertyName, "-1"));
 
