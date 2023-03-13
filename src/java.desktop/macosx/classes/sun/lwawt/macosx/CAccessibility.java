@@ -75,14 +75,17 @@ import sun.awt.AWTAccessor;
 import sun.lwawt.LWWindowPeer;
 import sun.swing.AccessibleComponentAccessor;
 
-@SuppressWarnings("removal")
 class CAccessibility implements PropertyChangeListener {
     private static Set<String> ignoredRoles;
-    private static final int INVOKE_TIMEOUT_SECONDS;
+    private static int INVOKE_TIMEOUT_SECONDS;
 
     static {
+        loadAWTLibrary();
+    }
+    
+    @SuppressWarnings("removal")
+    private static void loadAWTLibrary() {
         // (-1) for the infinite timeout
-        @SuppressWarnings("removal")
         int value = java.security.AccessController.doPrivileged(
             (PrivilegedAction<Integer>) () -> {
                 // Need to load the native library for this code.
