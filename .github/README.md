@@ -3,7 +3,11 @@
 # Welcome to JetBrains Runtime!
 
 JetBrains Runtime is a fork of [OpenJDK](https://github.com/openjdk/jdk) available for Windows, Mac OS X, and Linux.
-It includes a number of enhancements in font rendering, ligatures, HiDPI support, windowing/focus subsystems, performance improvements, and bugfixes.
+It supports enhanced class redefinition ([DCEVM](https://ssw.jku.at/dcevm/)),
+features optional [JCEF](https://github.com/JetBrains/jcef), a framework for embedding Chromium-based browsers,
+includes a number of improvements in font rendering, keyboards support, 
+windowing/focus subsystems, HiDPI, accessibility, and performance, provides better desktop integration
+and bugfixes not yet present in OpenJDK.
 
 > **_NOTE_**: This is a **development** branch that is periodically synchronized with 
 > the [OpenJDK master](https://github.com/openjdk/jdk/tree/master) branch.
@@ -35,6 +39,7 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
 
 ## Contents
 - [Welcome to JetBrains Runtime](#welcome-to-jetbrains-runtime)
+  - [Why Use JetBrains Runtime?](#why-use-jetbrains-runtime)
   - [Products Built on JetBrains Runtime](#products-built-on-jetbrains-runtime)
   - [Getting Sources](#getting-sources)
     - [macOS, Linux](#macos-linux)
@@ -47,6 +52,17 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
   - [Developing](#developing)
   - [Contributing](#contributing)
   - [Resources](#resources)
+
+## Why Use JetBrains Runtime?
+* **Embedded browser**: JetBrains Runtime includes the Java Chromium Embedded Framework ([JCEF](https://github.com/JetBrains/jcef)), which
+  enables you to embed a Chromium-based browsers in your JVM-based application. 
+ To use it, [download a build with JCEF](https://github.com/JetBrains/JetBrainsRuntime/releases).
+* **Enhanced class re-definition** with the [DCEVM](https://ssw.jku.at/dcevm/) technology that makes it easier to reload
+  changed code without restarting JVM; this feature needs to be explicitly enabled with `-XX:+AllowEnhancedClassRedefinition`.
+* **Better FPS performance** for graphics-intensive applications.
+* **Improved font rendering**, **keyboard input** (such as shortcuts and multinational keyboards),
+  **HiDPI** and **accessibility** support.
+* **Robust desktop experience**: GUI-related fixes often reach JetBrains Runtime much earlier than the corresponding version of OpenJDK.
 
 ## Products Built on JetBrains Runtime
 * [Android Studio](https://developer.android.com/studio). The official IDE for Google's Android operating system.
