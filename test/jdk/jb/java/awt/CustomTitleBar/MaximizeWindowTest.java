@@ -25,6 +25,7 @@ import com.jetbrains.JBR;
 import com.jetbrains.WindowDecorations;
 import util.CommonAPISuite;
 import util.Task;
+import util.TaskResult;
 import util.TestUtils;
 
 import java.awt.AWTException;
@@ -35,6 +36,7 @@ import java.awt.Robot;
 import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.InputEvent;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -64,14 +66,15 @@ public class MaximizeWindowTest {
             functions = TestUtils.getWindowCreationFunctions();
         }
 
-        boolean status = CommonAPISuite.runTestSuite(functions, maximizeWindow);
+        TaskResult result = CommonAPISuite.runTestSuite(functions, maximizeWindow);
 
-        if (!status) {
-            throw new RuntimeException("MaximizeWindowTest FAILED");
+        if (!result.isPassed()) {
+            final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
+            throw new RuntimeException(message);
         }
     }
 
-    private static final Task maximizeWindow = new Task("Maximize frame") {
+    private static final Task maximizeWindow = new Task("Maximize window") {
 
         @Override
         public void prepareTitleBar() {
@@ -90,8 +93,7 @@ public class MaximizeWindowTest {
             System.out.printf(String.format("Initial size (w = %d, h = %d)%n", window.getWidth(), window.getHeight()));
             System.out.printf(String.format("New size (w = %d, h = %d)%n", window.getWidth(), window.getHeight()));
             if (initialHeight == window.getHeight() && initialWidth == window.getWidth()) {
-                passed = false;
-                System.out.println("Frame size wasn't changed");
+                err("Frame size wasn't changed after double click to title bar");
             }
 
             setResizable(false);
@@ -102,8 +104,7 @@ public class MaximizeWindowTest {
             System.out.printf(String.format("Initial size (w = %d, h = %d)%n", window.getWidth(), window.getHeight()));
             System.out.printf(String.format("New size (w = %d, h = %d)%n", window.getWidth(), window.getHeight()));
             if (initialHeight != window.getHeight() || initialWidth != window.getWidth()) {
-                passed = false;
-                System.out.println("Frame size was changed");
+                err("Frame size was changed after double click to title bar, but resize is disabled");
             }
         }
 
@@ -121,7 +122,7 @@ public class MaximizeWindowTest {
         System.out.println("Window was created with bounds: " + window.getBounds());
 
         int w = window.getBounds().width / 2;
-        int h = window.getBounds().height / 2;
+        int h = Math.max(window.getBounds().height / 2, 20 + (int) titleBar.getHeight());
         window.setBounds(window.getBounds().x, window.getBounds().y, w, h);
 
         System.out.println("New window bounds: " + window.getBounds());
