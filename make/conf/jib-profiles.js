@@ -862,18 +862,18 @@ var getJibProfilesProfiles = function (input, common, data) {
 var getJibProfilesDependencies = function (input, common) {
 
     var devkit_platform_revisions = {
-        linux_x64: "gcc7.3.0-OEL6.4+1.1",
+        linux_x64: "gcc8.2.0-OL6.4+1.0",
         macosx_x64: "Xcode11.3.1-MacOSX10.15+1.0",
         solaris_x64: "SS12u4-Solaris11u1+1.0",
         solaris_sparcv9: "SS12u4-Solaris11u1+1.1",
         windows_x64: "VS2017-15.9.16+1.1",
         linux_aarch64: (input.profile != null && input.profile.indexOf("arm64") >= 0
                     ? "gcc-linaro-aarch64-linux-gnu-4.8-2013.11_linux+1.0"
-                    : "gcc7.3.0-Fedora27+1.1"),
+                    : "gcc8.2.0-Fedora27+1.0"),
         linux_arm: (input.profile != null && input.profile.indexOf("hflt") >= 0
                     ? "gcc-linaro-arm-linux-gnueabihf-raspbian-2012.09-20120921_linux+1.0"
                     : (input.profile != null && input.profile.indexOf("arm32") >= 0
-                       ? "gcc7.3.0-Fedora27+1.1"
+                       ? "gcc8.2.0-Fedora27+1.0"
                        : "arm-linaro-4.7+1.0"
                        )
                     )
@@ -891,6 +891,11 @@ var getJibProfilesDependencies = function (input, common) {
            && input.build_platform != devkit_platform) {
             devkit_cross_prefix = input.build_platform + "-to-";
         }
+    }
+
+    var devkit_cross_prefix = "";
+    if (input.target_platform != input.build_platform) {
+        devkit_cross_prefix = input.build_platform + "-to-";
     }
 
     var boot_jdk_platform = (input.build_os == "macosx" ? "osx" : input.build_os)
@@ -916,7 +921,7 @@ var getJibProfilesDependencies = function (input, common) {
         devkit: {
             organization: common.organization,
             ext: "tar.gz",
-            module: "devkit-" + devkit_platform,
+            module: "devkit-" + devkit_cross_prefix + devkit_platform,
             revision: devkit_platform_revisions[devkit_platform],
             environment: {
                 "DEVKIT_HOME": input.get("devkit", "home_path"),
