@@ -22,10 +22,7 @@
  */
 
 import com.jetbrains.JBR;
-import util.Rect;
-import util.ScreenShotHelpers;
-import util.Task;
-import util.TestUtils;
+import util.*;
 
 import java.awt.Frame;
 import java.awt.event.InputEvent;
@@ -34,6 +31,7 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.awt.event.WindowStateListener;
 import java.awt.image.BufferedImage;
+import java.lang.invoke.MethodHandles;
 import java.util.List;
 
 /*
@@ -53,10 +51,11 @@ import java.util.List;
 public class MinimizingWindowTest {
 
     public static void main(String... args) {
-        boolean status = minimizingWindowTest.run(TestUtils::createFrameWithCustomTitleBar);
+        TaskResult result = minimizingWindowTest.run(TestUtils::createFrameWithCustomTitleBar);
 
-        if (!status) {
-            throw new RuntimeException("MinimizingWindowTest FAILED");
+        if (!result.isPassed()) {
+            final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
+            throw new RuntimeException(message);
         }
     }
 
@@ -116,11 +115,10 @@ public class MinimizingWindowTest {
             robot.waitForIdle();
 
             BufferedImage image = ScreenShotHelpers.takeScreenshot(window);
-            List<Rect> foundControls = ScreenShotHelpers.detectControlsByBackground(image, (int) titleBar.getHeight(), TestUtils.TITLE_BAR_COLOR);
+            List<Rect> foundControls = ScreenShotHelpers.findControls(image, window, titleBar);
 
             if (foundControls.size() == 0) {
-                passed = false;
-                System.out.println("Error: no controls found");
+                err("no controls found");
             }
 
             foundControls.forEach(control -> {
@@ -145,8 +143,7 @@ public class MinimizingWindowTest {
             });
 
             if (!iconifyingActionCalled || !iconifyingActionDetected) {
-                passed = false;
-                System.out.println("Error: iconifying action was not detected");
+                err("iconifying action was not detected");
             }
 
             if (!passed) {
