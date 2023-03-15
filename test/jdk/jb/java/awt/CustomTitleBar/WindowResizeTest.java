@@ -21,16 +21,13 @@
  * questions.
  */
 import com.jetbrains.JBR;
-import util.CommonAPISuite;
-import util.RectCoordinates;
-import util.Task;
-import util.ScreenShotHelpers;
-import util.TestUtils;
+import util.*;
 
 import java.awt.Dimension;
 import java.awt.Robot;
 import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
+import java.lang.invoke.MethodHandles;
 
 /*
  * @test
@@ -49,10 +46,11 @@ import java.awt.image.BufferedImage;
 public class WindowResizeTest {
 
     public static void main(String... args) {
-        boolean status = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), windowResizeTest);
+        TaskResult result = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), windowResizeTest);
 
-        if (!status) {
-            throw new RuntimeException("WindowResizeTest FAILED");
+        if (!result.isPassed()) {
+            final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
+            throw new RuntimeException(message);
         }
     }
 
@@ -78,8 +76,7 @@ public class WindowResizeTest {
             robot.delay(1000);
 
             if (titleBar.getHeight() != initialTitleBarHeight) {
-                passed = false;
-                System.out.println("Error: title bar height has been changed");
+                err("title bar height has been changed");
             }
 
             BufferedImage image = ScreenShotHelpers.takeScreenshot(window);
