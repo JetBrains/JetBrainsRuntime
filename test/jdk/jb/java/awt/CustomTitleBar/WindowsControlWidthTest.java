@@ -22,15 +22,12 @@
  */
 
 import com.jetbrains.JBR;
-import util.CommonAPISuite;
-import util.Rect;
-import util.ScreenShotHelpers;
-import util.Task;
-import util.TestUtils;
+import util.*;
 
 import java.awt.Color;
 import java.awt.Robot;
 import java.awt.image.BufferedImage;
+import java.lang.invoke.MethodHandles;
 import java.util.List;
 
 /*
@@ -38,30 +35,23 @@ import java.util.List;
  * @summary Verify a property to change visibility of native controls
  * @requires os.family == "windows"
  * @run main/othervm WindowsControlWidthTest
- * @run main/othervm -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 WindowsControlWidthTest
- * @run main/othervm -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 WindowsControlWidthTest
- * @run main/othervm -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 WindowsControlWidthTest
- * @run main/othervm -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 WindowsControlWidthTest
- * @run main/othervm -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 WindowsControlWidthTest
- * @run main/othervm -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 WindowsControlWidthTest
- * @run main/othervm -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 WindowsControlWidthTest
- * @run main/othervm -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 WindowsControlWidthTest
- * @run main/othervm -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5 WindowsControlWidthTest
- * @run main/othervm -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5 WindowsControlWidthTest
- * @run main/othervm -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 WindowsControlWidthTest
- * @run main/othervm -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 WindowsControlWidthTest
- * @run main/othervm -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 WindowsControlWidthTest
- * @run main/othervm -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 WindowsControlWidthTest
- * @run main/othervm -Dos.version=10 -Dos.name="Windows 10" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 WindowsControlWidthTest
- * @run main/othervm -Dos.version=10 -Dos.name="Windows 11" -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 WindowsControlWidthTest
+ * @run main/othervm  -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 WindowsControlWidthTest
+ * @run main/othervm  -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 WindowsControlWidthTest
+ * @run main/othervm  -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 WindowsControlWidthTest
+ * @run main/othervm  -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 WindowsControlWidthTest
+ * @run main/othervm  -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5 WindowsControlWidthTest
+ * @run main/othervm  -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 WindowsControlWidthTest
+ * @run main/othervm  -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 WindowsControlWidthTest
+ * @run main/othervm  -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 WindowsControlWidthTest
  */
 public class WindowsControlWidthTest {
 
     public static void main(String... args) {
-        boolean status = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), nativeControlsWidth);
+        TaskResult result = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), nativeControlsWidth);
 
-        if (!status) {
-            throw new RuntimeException("WindowsControlWidthTest FAILED");
+        if (!result.isPassed()) {
+            final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
+            throw new RuntimeException(message);
         }
     }
 
@@ -83,17 +73,15 @@ public class WindowsControlWidthTest {
             passed = passed && TestUtils.checkFrameInsets(window);
 
             if (titleBar.getLeftInset() == 0 && titleBar.getRightInset() == 0) {
-                passed = false;
-                System.out.println("Left or right inset must be non-zero");
+                err("Left or right inset must be non-zero");
             }
 
             BufferedImage image = ScreenShotHelpers.takeScreenshot(window);
 
-            List<Rect> foundControls = ScreenShotHelpers.detectControlsByBackground(image, (int) titleBar.getHeight(), TestUtils.TITLE_BAR_COLOR);
+            List<Rect> foundControls = ScreenShotHelpers.findControls(image, window, titleBar);
 
             if (foundControls.size() == 0) {
-                System.out.println("Error: controls not found");
-                passed = false;
+                err("controls not found");
             } else if (foundControls.size() == 3) {
                 System.out.println("3 controls found");
                 int minX = foundControls.get(0).getX1();
@@ -102,19 +90,16 @@ public class WindowsControlWidthTest {
                 int calculatedWidth = maxX - minX + dist;
                 float diff = (float) calculatedWidth / CONTROLS_WIDTH;
                 if (diff < 0.95 || diff > 1.05) {
-                    System.out.println("Error: control's width is much differ than the expected value");
-                    passed = false;
+                    err("control's width is much differ than the expected value");
                 }
             } else if (foundControls.size() == 1){
                 System.out.println("1 control found");
                 int calculatedWidth = foundControls.get(0).getX2() - foundControls.get(0).getX1();
                 if (calculatedWidth < 0.5) {
-                    System.out.println("Error: control's width is much differ than the expected value");
-                    passed = false;
+                    err("control's width is much differ than the expected value");
                 }
             } else {
-                System.out.println("Error: unexpected controls count = " + foundControls.size());
-                passed = false;
+                err("unexpected controls count = " + foundControls.size());
             }
         }
 
