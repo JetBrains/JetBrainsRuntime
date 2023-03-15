@@ -23,9 +23,11 @@
 import com.jetbrains.JBR;
 import util.CommonAPISuite;
 import util.Task;
+import util.TaskResult;
 import util.TestUtils;
 
 import java.awt.Robot;
+import java.lang.invoke.MethodHandles;
 
 /*
  * @test
@@ -44,10 +46,11 @@ import java.awt.Robot;
 public class WindowVisibilityTest {
 
     public static void main(String... args) {
-        boolean status = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), visibilityTest);
+        TaskResult result = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), visibilityTest);
 
-        if (!status) {
-            throw new RuntimeException("WindowVisibilityTest FAILED");
+        if (!result.isPassed()) {
+            final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
+            throw new RuntimeException(message);
         }
     }
 
@@ -72,12 +75,10 @@ public class WindowVisibilityTest {
             robot.delay(1000);
 
             if (titleBarHeight != titleBar.getHeight()) {
-                passed = false;
-                System.out.println("Error: title bar height has been changed");
+                err("Error: title bar height has been changed");
             }
             if (!titleBar.getContainingWindow().equals(window)) {
-                passed = false;
-                System.out.println("Error: wrong containing window");
+                err("wrong containing window");
             }
         }
 
