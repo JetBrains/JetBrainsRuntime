@@ -21,10 +21,7 @@
  * questions.
  */
 import com.jetbrains.JBR;
-import util.Rect;
-import util.ScreenShotHelpers;
-import util.Task;
-import util.TestUtils;
+import util.*;
 
 import java.awt.event.InputEvent;
 import java.awt.event.WindowAdapter;
@@ -32,6 +29,7 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.awt.event.WindowStateListener;
 import java.awt.image.BufferedImage;
+import java.lang.invoke.MethodHandles;
 import java.util.List;
 
 /*
@@ -51,11 +49,13 @@ import java.util.List;
 public class DialogNativeControlsTest {
 
     public static void main(String... args) {
-        boolean status = nativeControlClicks.run(TestUtils::createDialogWithCustomTitleBar);
+        TaskResult result = nativeControlClicks.run(TestUtils::createDialogWithCustomTitleBar);
 
-        if (!status) {
-            throw new RuntimeException("DialogNativeControlsTest FAILED");
+        if (!result.isPassed()) {
+            final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
+            throw new RuntimeException(message);
         }
+
     }
 
     private static final Task nativeControlClicks = new Task("Native controls clicks") {
@@ -111,7 +111,7 @@ public class DialogNativeControlsTest {
             robot.waitForIdle();
 
             BufferedImage image = ScreenShotHelpers.takeScreenshot(window);
-            List<Rect> foundControls = ScreenShotHelpers.detectControlsByBackground(image, (int) titleBar.getHeight(), TestUtils.TITLE_BAR_COLOR);
+            List<Rect> foundControls = ScreenShotHelpers.findControls(image, window, titleBar);
 
             if (foundControls.size() == 0) {
                 passed = false;
@@ -140,13 +140,11 @@ public class DialogNativeControlsTest {
             });
 
             if (System.getProperty("os.name").toLowerCase().startsWith("mac") && !maximizingActionDetected) {
-                passed = false;
-                System.out.println("Error: maximizing action was not detected");
+                err("maximizing action was not detected");
             }
 
             if (!closingActionCalled) {
-                passed = false;
-                System.out.println("Error: closing action was not detected");
+                err("closing action was not detected");
             }
 
         }
