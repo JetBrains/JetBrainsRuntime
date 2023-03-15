@@ -21,18 +21,21 @@
  * questions.
  */
 import com.jetbrains.JBR;
-import util.Rect;
-import util.ScreenShotHelpers;
-import util.Task;
-import util.TestUtils;
+import com.jetbrains.WindowDecorations;
+import util.*;
 
+import javax.swing.JFrame;
+import java.awt.Frame;
+import java.awt.Window;
 import java.awt.event.InputEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.awt.event.WindowStateListener;
 import java.awt.image.BufferedImage;
+import java.lang.invoke.MethodHandles;
 import java.util.List;
+import java.util.function.Function;
 
 /*
  * @test
@@ -51,10 +54,13 @@ import java.util.List;
 public class FrameNativeControlsTest {
 
     public static void main(String... args) {
-        boolean status = frameNativeControlsClicks.run(TestUtils::createFrameWithCustomTitleBar);
+        List<Function<WindowDecorations.CustomTitleBar, Window>> functions =
+                List.of(TestUtils::createFrameWithCustomTitleBar, TestUtils::createJFrameWithCustomTitleBar);
+        TaskResult result = CommonAPISuite.runTestSuite(functions, frameNativeControlsClicks);
 
-        if (!status) {
-            throw new RuntimeException("FrameNativeControlsTest FAILED");
+        if (!result.isPassed()) {
+            final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
+            throw new RuntimeException(message);
         }
     }
 
@@ -73,7 +79,15 @@ public class FrameNativeControlsTest {
             @Override
             public void windowIconified(WindowEvent e) {
                 iconifyingActionCalled = true;
+
+                if (window.getName().equals("Frame")) {
+                    ((Frame) window).setState(Frame.NORMAL);
+                } else if (window.getName().equals("JFrame")) {
+                    ((JFrame) window).setState(JFrame.NORMAL);
+                }
+
                 window.setVisible(true);
+                window.requestFocus();
             }
         };
 
@@ -124,7 +138,7 @@ public class FrameNativeControlsTest {
             robot.delay(500);
 
             BufferedImage image = ScreenShotHelpers.takeScreenshot(window);
-            List<Rect> foundControls = ScreenShotHelpers.detectControlsByBackground(image, (int) titleBar.getHeight(), TestUtils.TITLE_BAR_COLOR);
+            List<Rect> foundControls = ScreenShotHelpers.findControls(image, window, titleBar);
 
             if (foundControls.size() == 0) {
                 passed = false;
@@ -142,33 +156,29 @@ public class FrameNativeControlsTest {
                 int h = window.getBounds().height;
                 int w = window.getBounds().width;
 
-                robot.delay(500);
+                robot.waitForIdle();
                 robot.mouseMove(x, y);
                 robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
                 robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-                robot.delay(1500);
+                robot.waitForIdle();
                 window.setBounds(screenX, screenY, w, h);
                 window.setVisible(true);
-                robot.delay(1500);
+                robot.waitForIdle();
             });
 
             if (!maximizingActionDetected) {
-                passed = false;
-                System.out.println("Error: maximizing action was not detected");
+                err("maximizing action was not detected");
             }
 
             if (!closingActionCalled) {
-                passed = false;
-                System.out.println("Error: closing action was not detected");
+                err("closing action was not detected");
             }
 
             if (!iconifyingActionCalled) {
-                passed = false;
-                System.out.println("Error: iconifying action was not detected");
+                err("iconifying action was not detected");
             }
             if (!deiconifyindActionDetected) {
-                passed = false;
-                System.out.println("Error: deiconifying action was not detected");
+                err("deiconifying action was not detected");
             }
         }
     };

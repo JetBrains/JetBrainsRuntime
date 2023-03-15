@@ -24,8 +24,12 @@
 import com.jetbrains.JBR;
 import util.CommonAPISuite;
 import util.Task;
+import util.TaskResult;
 import util.TestUtils;
 
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
 import java.awt.AWTException;
 import java.awt.Color;
 import java.awt.Graphics;
@@ -36,6 +40,8 @@ import java.awt.Robot;
 import java.awt.event.InputEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.lang.invoke.MethodHandles;
+import java.util.Arrays;
 import java.util.List;
 
 /*
@@ -55,14 +61,17 @@ import java.util.List;
 public class HitTestClientArea {
 
     public static void main(String... args) {
-        boolean status = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), hitTestClientArea);
+        TaskResult awtResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createFrameWithCustomTitleBar, TestUtils::createDialogWithCustomTitleBar), hitTestClientAreaAWT);
+        TaskResult swingResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createJFrameWithCustomTitleBar, TestUtils::createJFrameWithCustomTitleBar), hitTestClientAreaSwing);
 
-        if (!status) {
-            throw new RuntimeException("HitTestClientArea FAILED");
+        TaskResult result = awtResult.merge(swingResult);
+        if (!result.isPassed()) {
+            final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
+            throw new RuntimeException(message);
         }
     }
 
-    private static final Task hitTestClientArea = new Task("Hit test client area") {
+    private static final Task hitTestClientAreaAWT = new Task("Hit test client area AWT") {
 
         private static final List<Integer> BUTTON_MASKS = List.of(
                 InputEvent.BUTTON1_DOWN_MASK,
@@ -72,13 +81,17 @@ public class HitTestClientArea {
         private static final int PANEL_WIDTH = 400;
         private static final int PANEL_HEIGHT = (int) TestUtils.TITLE_BAR_HEIGHT;
 
-        private final boolean[] gotClicks = new boolean[BUTTON_MASKS.size()];
+        private final int[] gotClicks = new int[BUTTON_MASKS.size()];
+        private static boolean mousePressed = false;
+        private static boolean mouseReleased = false;
 
         private Panel panel;
 
         @Override
         protected void cleanup() {
-            super.cleanup();
+            Arrays.fill(gotClicks, 0);
+            mousePressed = false;
+            mouseReleased = false;
         }
 
         @Override
@@ -109,33 +122,20 @@ public class HitTestClientArea {
                 public void mouseClicked(MouseEvent e) {
                     hit();
                     if (e.getButton() >= 1 && e.getButton() <= 3) {
-                        gotClicks[e.getButton() - 1] = true;
+                        gotClicks[e.getButton() - 1]++;
                     }
                 }
 
                 @Override
                 public void mousePressed(MouseEvent e) {
                     hit();
+                    mousePressed = true;
                 }
 
                 @Override
                 public void mouseReleased(MouseEvent e) {
                     hit();
-                }
-
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    hit();
-                }
-
-                @Override
-                public void mouseDragged(MouseEvent e) {
-                    hit();
-                }
-
-                @Override
-                public void mouseMoved(MouseEvent e) {
-                    hit();
+                    mouseReleased = true;
                 }
             });
 
@@ -146,41 +146,182 @@ public class HitTestClientArea {
         public void test() throws AWTException {
             Robot robot = new Robot();
 
-            BUTTON_MASKS.forEach(mask -> {
-                robot.delay(500);
+            int initialX = window.getLocationOnScreen().x + PANEL_WIDTH / 2;
+            int initialY = window.getLocationOnScreen().y + PANEL_HEIGHT / 2;
 
-                robot.mouseMove(panel.getLocationOnScreen().x + panel.getWidth() / 2,
-                        panel.getLocationOnScreen().y + panel.getHeight() / 2);
+            window.requestFocus();
+            for (Integer mask: BUTTON_MASKS) {
+                robot.waitForIdle();
+
+                robot.mouseMove(initialX, initialY);
                 robot.mousePress(mask);
                 robot.mouseRelease(mask);
 
-                robot.delay(500);
-            });
+                robot.waitForIdle();
+            }
 
             Point initialLocation = window.getLocationOnScreen();
-            robot.delay(500);
-            int initialX = panel.getLocationOnScreen().x + panel.getWidth() / 2;
-            int initialY = panel.getLocationOnScreen().y + panel.getHeight() / 2;
+            robot.waitForIdle();
             robot.mouseMove(initialX, initialY);
             robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
             for (int i = 0; i < 10; i++) {
                 initialX += 3;
                 initialY += 3;
-                robot.delay(500);
+                robot.delay(300);
                 robot.mouseMove(initialX, initialY);
             }
-            robot.delay(500);
-            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+            robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+            robot.waitForIdle();
             Point newLocation = window.getLocationOnScreen();
-            boolean moved = initialLocation.x < newLocation.x && initialLocation.y < newLocation.y;
 
             for (int i = 0; i < BUTTON_MASKS.size(); i++) {
-                if (!gotClicks[i]) {
-                    System.out.println("Mouse click to button no " + (i+1) + " was not registered");
-                    passed = false;
+                System.out.println("Button no " + (i+1) + " clicks count = " + gotClicks[i]);
+                if (gotClicks[i] == 0) {
+                    err("Mouse click to button no " + (i+1) + " was not registered");
                 }
             }
-            passed = passed && !moved;
+
+            boolean moved = initialLocation.x < newLocation.x && initialLocation.y < newLocation.y;
+            if (moved) {
+                err("Window was moved, but drag'n drop action must be disabled in the client area");
+            }
+
+            if (!mousePressed) {
+                err("Mouse press to the client area wasn't detected");
+            }
+            if (!mouseReleased) {
+                err("Mouse release to the client area wasn't detected");
+            }
+        }
+
+    };
+
+    private static final Task hitTestClientAreaSwing = new Task("Hit test client area Swing") {
+        private static final List<Integer> BUTTON_MASKS = List.of(
+                InputEvent.BUTTON1_DOWN_MASK,
+                InputEvent.BUTTON2_DOWN_MASK,
+                InputEvent.BUTTON3_DOWN_MASK
+        );
+        private static final int PANEL_WIDTH = 400;
+        private static final int PANEL_HEIGHT = (int) TestUtils.TITLE_BAR_HEIGHT;
+
+        private final int[] gotClicks = new int[BUTTON_MASKS.size()];
+        private static boolean mousePressed = false;
+        private static boolean mouseReleased = false;
+
+        private JPanel panel;
+
+        @Override
+        protected void cleanup() {
+            Arrays.fill(gotClicks, 0);
+            mousePressed = false;
+            mouseReleased = false;
+            titleBar = null;
+        }
+
+        @Override
+        public void prepareTitleBar() {
+            titleBar = JBR.getWindowDecorations().createCustomTitleBar();
+            titleBar.setHeight(TestUtils.TITLE_BAR_HEIGHT);
+        }
+
+        @Override
+        protected void customizeWindow() {
+
+            panel = new JPanel() {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    super.paintComponent(g);
+                    Rectangle r = g.getClipBounds();
+                    g.setColor(Color.CYAN);
+                    g.fillRect(r.x, r.y, PANEL_WIDTH, PANEL_HEIGHT);
+                }
+            };
+
+            if (window.getName().equals("JFrame")) {
+                ((JFrame) window).setContentPane(panel);
+            } else if (window.getName().equals("JDialog")) {
+                ((JDialog) window).setContentPane(panel);
+            }
+
+            panel.setBounds(0, 0, PANEL_WIDTH, PANEL_HEIGHT);
+            panel.setSize(PANEL_WIDTH, PANEL_HEIGHT);
+            panel.addMouseListener(new MouseAdapter() {
+                private void hit() {
+                    titleBar.forceHitTest(true);
+                }
+
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    hit();
+                    if (e.getButton() >= 1 && e.getButton() <= 3) {
+                        gotClicks[e.getButton() - 1]++;
+                    }
+                }
+
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    hit();
+                    mousePressed = true;
+                }
+
+                @Override
+                public void mouseReleased(MouseEvent e) {
+                    hit();
+                    mouseReleased = true;
+                }
+            });
+        }
+
+        @Override
+        public void test() throws AWTException {
+            Robot robot = new Robot();
+
+            int initialX = window.getLocationOnScreen().x + PANEL_WIDTH / 2;
+            int initialY = window.getLocationOnScreen().y + PANEL_HEIGHT / 2;
+
+            for (Integer mask: BUTTON_MASKS) {
+                robot.waitForIdle();
+
+                robot.mouseMove(initialX, initialY);
+                robot.mousePress(mask);
+                robot.mouseRelease(mask);
+
+                robot.waitForIdle();
+            }
+
+            Point initialLocation = window.getLocationOnScreen();
+            robot.waitForIdle();
+            robot.mouseMove(initialX, initialY);
+            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+            for (int i = 0; i < 10; i++) {
+                initialX += 3;
+                initialY += 3;
+                robot.delay(300);
+                robot.mouseMove(initialX, initialY);
+            }
+            robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+            robot.waitForIdle();
+            Point newLocation = window.getLocationOnScreen();
+
+            for (int i = 0; i < BUTTON_MASKS.size(); i++) {
+                System.out.println("Button no " + (i+1) + " clicks count = " + gotClicks[i]);
+                if (gotClicks[i] == 0) {
+                    err("Mouse click to button no " + (i+1) + " was not registered");
+                }
+            }
+
+            boolean moved = initialLocation.x < newLocation.x && initialLocation.y < newLocation.y;
+            if (moved) {
+                err("Window was moved, but drag'n drop action must be disabled in the client area");
+            }
+
+            if (!mousePressed) {
+                err("Mouse press to the client area wasn't detected");
+            }
+            if (!mouseReleased) {
+                err("Mouse release to the client area wasn't detected");
+            }
         }
 
     };

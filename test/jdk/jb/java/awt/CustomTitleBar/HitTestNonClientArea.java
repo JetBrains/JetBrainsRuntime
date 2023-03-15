@@ -24,6 +24,7 @@
 import com.jetbrains.JBR;
 import util.CommonAPISuite;
 import util.Task;
+import util.TaskResult;
 import util.TestUtils;
 
 import java.awt.AWTException;
@@ -35,6 +36,7 @@ import java.awt.Robot;
 import java.awt.event.InputEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.List;
 
@@ -55,10 +57,11 @@ import java.util.List;
 public class HitTestNonClientArea {
 
     public static void main(String... args) {
-        boolean status = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), hitTestNonClientArea);
+        TaskResult result = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), hitTestNonClientArea);
 
-        if (!status) {
-            throw new RuntimeException("HitTestNonClientArea FAILED");
+        if (!result.isPassed()) {
+            final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
+            throw new RuntimeException(message);
         }
     }
 
@@ -79,6 +82,7 @@ public class HitTestNonClientArea {
         @Override
         protected void cleanup() {
             Arrays.fill(gotClicks, false);
+            titleBar = null;
         }
 
         @Override
@@ -114,21 +118,6 @@ public class HitTestNonClientArea {
                 public void mouseReleased(MouseEvent e) {
                     hit();
                 }
-
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    hit();
-                }
-
-                @Override
-                public void mouseDragged(MouseEvent e) {
-                    hit();
-                }
-
-                @Override
-                public void mouseMoved(MouseEvent e) {
-                    hit();
-                }
             };
             button.addMouseListener(adapter);
             button.addMouseMotionListener(adapter);
@@ -143,31 +132,31 @@ public class HitTestNonClientArea {
         public void test() throws AWTException {
             Robot robot = new Robot();
 
-            BUTTON_MASKS.forEach(mask -> {
-                robot.delay(500);
+            int initialX = button.getLocationOnScreen().x + button.getWidth() / 2;
+            int initialY = button.getLocationOnScreen().y + button.getHeight() / 2;
 
-                robot.mouseMove(button.getLocationOnScreen().x + button.getWidth() / 2,
-                        button.getLocationOnScreen().y + button.getHeight() / 2);
+            for (Integer mask: BUTTON_MASKS) {
+                robot.waitForIdle();
+
+                robot.mouseMove(initialX, initialY);
                 robot.mousePress(mask);
                 robot.mouseRelease(mask);
 
-                robot.delay(500);
-            });
+                robot.waitForIdle();
+            }
 
             Point initialLocation = window.getLocationOnScreen();
-            robot.delay(500);
-            int initialX = button.getLocationOnScreen().x + button.getWidth() / 2;
-            int initialY = button.getLocationOnScreen().y + button.getHeight() / 2;
+            robot.waitForIdle();
             robot.mouseMove(initialX, initialY);
             robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
             for (int i = 0; i < 10; i++) {
                 initialX += 3;
                 initialY += 3;
-                robot.delay(500);
+                robot.delay(300);
                 robot.mouseMove(initialX, initialY);
             }
-            robot.delay(500);
-            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+            robot.waitForIdle();
+            robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
             Point newLocation = window.getLocationOnScreen();
 
             passed = initialLocation.x < newLocation.x && initialLocation.y < newLocation.y;
@@ -176,8 +165,7 @@ public class HitTestNonClientArea {
             }
             for (int i = 0; i < BUTTON_MASKS.size(); i++) {
                 if (!gotClicks[i]) {
-                    System.out.println("Mouse click to button no " + (i+1) + " was not registered");
-                    passed = false;
+                    err("Mouse click to button no " + (i+1) + " was not registered");
                 }
             }
         }
