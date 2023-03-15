@@ -22,14 +22,11 @@
  */
 
 import com.jetbrains.JBR;
-import util.CommonAPISuite;
-import util.Rect;
-import util.Task;
-import util.ScreenShotHelpers;
-import util.TestUtils;
+import util.*;
 
 import java.awt.Robot;
 import java.awt.image.BufferedImage;
+import java.lang.invoke.MethodHandles;
 import java.util.List;
 
 /*
@@ -49,15 +46,15 @@ import java.util.List;
 public class NativeControlsVisibilityTest {
 
     public static void main(String... args) {
-        boolean status = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), visibleControls);
+        TaskResult result = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), visibleControls);
 
-        if (!status) {
-            throw new RuntimeException("NativeControlsVisibilityTest FAILED");
+        if (!result.isPassed()) {
+            final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
+            throw new RuntimeException(message);
         }
     }
 
     private static final Task visibleControls = new Task("Visible native controls") {
-        private static final String PROPERTY_NAME = "controls.visible";
         @Override
         public void prepareTitleBar() {
             titleBar = JBR.getWindowDecorations().createCustomTitleBar();
@@ -82,7 +79,7 @@ public class NativeControlsVisibilityTest {
 
             BufferedImage image = ScreenShotHelpers.takeScreenshot(window);
 
-            List<Rect> foundControls = ScreenShotHelpers.detectControlsByBackground(image, (int) titleBar.getHeight(), TestUtils.TITLE_BAR_COLOR);
+            List<Rect> foundControls = ScreenShotHelpers.findControls(image, window, titleBar, false);
             System.out.println("Found controls at the title bar:");
             foundControls.forEach(System.out::println);
 
