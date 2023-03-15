@@ -21,14 +21,11 @@
  * questions.
  */
 import com.jetbrains.JBR;
-import util.CommonAPISuite;
-import util.Rect;
-import util.ScreenShotHelpers;
-import util.Task;
-import util.TestUtils;
+import util.*;
 
 import java.awt.Robot;
 import java.awt.image.BufferedImage;
+import java.lang.invoke.MethodHandles;
 import java.util.List;
 
 /*
@@ -48,10 +45,11 @@ import java.util.List;
 public class HiddenNativeControlsTest {
 
     public static void main(String... args) {
-        boolean status = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), hiddenControls);
+        TaskResult result = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), hiddenControls);
 
-        if (!status) {
-            throw new RuntimeException("HiddenNativeControlsTest FAILED");
+        if (!result.isPassed()) {
+            final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
+            throw new RuntimeException(message);
         }
     }
 
@@ -77,25 +75,22 @@ public class HiddenNativeControlsTest {
             passed = passed && TestUtils.checkFrameInsets(window);
 
             if (!"false".equals(titleBar.getProperties().get(PROPERTY_NAME).toString())) {
-                passed = false;
-                System.out.println("controls.visible isn't false");
+                err("controls.visible isn't false");
             }
             if (titleBar.getLeftInset() != 0 || titleBar.getRightInset() != 0) {
-                passed = false;
-                System.out.println("System controls are hidden so insets must be zero");
+                err("System controls are hidden so insets must be zero");
             }
 
             BufferedImage image = ScreenShotHelpers.takeScreenshot(window);
 
             System.out.println("image w = " + image.getWidth() + " h = " + image.getHeight());
 
-            List<Rect> foundControls = ScreenShotHelpers.detectControlsByBackground(image, (int) titleBar.getHeight(), TestUtils.TITLE_BAR_COLOR);
+            List<Rect> foundControls = ScreenShotHelpers.findControls(image, window, titleBar, true);
             System.out.println("Found controls at the title bar:");
             foundControls.forEach(System.out::println);
 
             if (foundControls.size() != 0) {
-                passed = false;
-                System.out.println("Error: there are must be 0 controls");
+                err("controls are disabled, but found in the screenshot");
             }
 
             if (!passed) {
