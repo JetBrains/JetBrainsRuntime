@@ -36,23 +36,25 @@ abstract public class Task {
     protected Window window;
     protected boolean passed = true;
     protected Robot robot;
+    protected String error;
 
 
     public Task(String name) {
         this.name = name;
     }
 
-    public final boolean run(Function<WindowDecorations.CustomTitleBar, Window> windowCreator) {
+    public final TaskResult run(Function<WindowDecorations.CustomTitleBar, Window> windowCreator) {
         try {
             robot = new Robot();
         } catch (AWTException e) {
-            System.out.println("ERROR: unable to initialize robot");
+            final String message = "ERROR: unable to initialize robot";
             e.printStackTrace();
-            return false;
+            return new TaskResult(false, message);
         }
         init();
         System.out.printf("RUN TEST CASE: %s%n", name);
         passed = true;
+        error = "";
         prepareTitleBar();
         window = windowCreator.apply(titleBar);
         System.out.println("Created a window with the custom title bar. Window name: " + window.getName());
@@ -71,12 +73,21 @@ abstract public class Task {
         titleBar = null;
         window.dispose();
 
-        if (passed) {
-            System.out.println("State: PASSED");
-        } else {
-            System.out.println("State: FAILED");
+        if (!TestUtils.isBasicTestCase()) {
+            boolean isMetConditions = TestUtils.checkScreenSizeConditions(window);
+            if (!isMetConditions) {
+                error += "SKIPPED: environment don't match screen size conditions";
+                return new TaskResult(false, true, error);
+            }
         }
-        return passed;
+
+        return new TaskResult(passed, error);
+    }
+
+    protected void err(String message) {
+        this.error = error + message + "\n";
+        passed = false;
+        System.out.println(message);
     }
 
     protected void init() {
