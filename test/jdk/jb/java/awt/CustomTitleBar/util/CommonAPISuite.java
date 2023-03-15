@@ -26,17 +26,24 @@ package util;
 import com.jetbrains.WindowDecorations;
 
 import java.awt.Window;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class CommonAPISuite {
 
-    public static boolean runTestSuite(List<Function<WindowDecorations.CustomTitleBar, Window>> functions, Task task) {
+    public static TaskResult runTestSuite(List<Function<WindowDecorations.CustomTitleBar, Window>> functions, Task task) {
         AtomicBoolean testPassed = new AtomicBoolean(true);
-        functions.forEach(function -> testPassed.set(testPassed.get() && task.run(function)));
+        List<String> errors = new ArrayList<>();
+        functions.forEach(function -> {
+            TaskResult result = task.run(function);
+            testPassed.set(testPassed.get() && result.isPassed());
+            errors.add(result.getError());
+        });
 
-        return testPassed.get();
+        return new TaskResult(testPassed.get(), errors.stream().collect(Collectors.joining("\n")));
     }
 
 }
