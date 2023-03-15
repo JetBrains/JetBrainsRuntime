@@ -24,12 +24,14 @@
 import com.jetbrains.JBR;
 import util.CommonAPISuite;
 import util.Task;
+import util.TaskResult;
 import util.TestUtils;
 
 import java.awt.AWTException;
 import java.awt.Button;
 import java.awt.Robot;
 import java.awt.event.InputEvent;
+import java.lang.invoke.MethodHandles;
 
 /*
  * @test
@@ -48,10 +50,11 @@ import java.awt.event.InputEvent;
 public class ActionListenerTest {
 
     public static void main(String... args) {
-        boolean status = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), actionListener);
+        TaskResult result = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), actionListener);
 
-        if (!status) {
-            throw new RuntimeException("ActionListenerTest FAILED");
+        if (!result.isPassed()) {
+            final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
+            throw new RuntimeException(message);
         }
     }
 
@@ -74,7 +77,7 @@ public class ActionListenerTest {
         @Override
         public void customizeWindow() {
             button = new Button();
-            button.setBounds(200, 20, 50, 50);
+            button.setBounds(window.getWidth() / 2, 0, 50, 50);
             button.addActionListener(a -> {
                 actionListenerGotEvent = true;
             });
@@ -93,9 +96,15 @@ public class ActionListenerTest {
             robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
             robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
             robot.waitForIdle();
+            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+            robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+            robot.waitForIdle();
+            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+            robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+            robot.waitForIdle();
 
             if (!actionListenerGotEvent) {
-                System.out.println("Error: button didn't get event by action listener");
+                err("button didn't get event by action listener");
             }
         }
     };
