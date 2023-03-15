@@ -160,14 +160,56 @@ public class TestUtils {
         return dialog;
     }
 
-    private static Rectangle calculateWindowBounds(Window window) {
+    public static boolean isBasicTestCase() {
+        return getUIScale() == 1.0;
+    }
+
+    public static boolean checkScreenSizeConditions(Window window) {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         Insets scnMax = Toolkit.getDefaultToolkit().
                 getScreenInsets(window.getGraphicsConfiguration());
-        int maxHeight = screenSize.height - scnMax.top - scnMax.bottom;
-        int maxWidth = screenSize.width - scnMax.left - scnMax.right;
+        System.out.println("Screen size: " + screenSize);
+        System.out.println("Screen insets: " + scnMax);
+        final int width = screenSize.width - scnMax.left - scnMax.right;
+        final int height = screenSize.height - scnMax.top - scnMax.bottom;
+        System.out.println("Max width = " + width + " max height = " + height);
 
-        return new Rectangle(scnMax.left + 2, scnMax.top + 2, (int) (maxWidth * 0.8), (int) (maxHeight * 0.8));
+        double uiScale = getUIScale();
+
+        final int effectiveWidth = (int) (width / uiScale);
+        final int effectiveHeight = (int) (height / uiScale);
+
+        if (effectiveWidth < 200 || effectiveHeight < 200) {
+            return false;
+        }
+        return true;
+    }
+
+    private static Rectangle calculateWindowBounds(Window window) {
+        double uiScale = getUIScale();
+        System.out.println("UI Scale: " + uiScale);
+
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        System.out.println("Screen size: " + screenSize);
+
+        Insets scnMax = Toolkit.getDefaultToolkit().
+                getScreenInsets(window.getGraphicsConfiguration());
+        int maxHeight = (int) ((screenSize.height - scnMax.top - scnMax.bottom) / uiScale);
+        int maxWidth = (int) ((screenSize.width - scnMax.left - scnMax.right) / uiScale);
+
+        Rectangle bounds = new Rectangle(scnMax.left + 2, scnMax.top + 2, (int) (maxWidth * 0.95), (int) (maxHeight * 0.95));
+        System.out.println("Window bounds: " + bounds);
+
+        return bounds;
+    }
+
+    public static double getUIScale() {
+        boolean scaleEnabled = "true".equals(System.getProperty("sun.java2d.uiScale.enabled"));
+        double uiScale = 1.0;
+        if (scaleEnabled) {
+            uiScale = Float.parseFloat(System.getProperty("sun.java2d.uiScale"));
+        }
+        return uiScale;
     }
 
 }
