@@ -24,6 +24,7 @@
 import com.jetbrains.JBR;
 import util.CommonAPISuite;
 import util.Task;
+import util.TaskResult;
 import util.TestUtils;
 
 import javax.swing.JDialog;
@@ -39,6 +40,7 @@ import java.awt.Robot;
 import java.awt.event.InputEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.List;
 
@@ -59,13 +61,13 @@ import java.util.List;
 public class HitTestClientArea {
 
     public static void main(String... args) {
-        boolean awtStatus = CommonAPISuite.runTestSuite(List.of(TestUtils::createFrameWithCustomTitleBar, TestUtils::createDialogWithCustomTitleBar), hitTestClientAreaAWT);
-        boolean swingStatus = CommonAPISuite.runTestSuite(List.of(TestUtils::createJFrameWithCustomTitleBar, TestUtils::createJFrameWithCustomTitleBar), hitTestClientAreaSwing);
+        TaskResult awtResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createFrameWithCustomTitleBar, TestUtils::createDialogWithCustomTitleBar), hitTestClientAreaAWT);
+        TaskResult swingResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createJFrameWithCustomTitleBar, TestUtils::createJFrameWithCustomTitleBar), hitTestClientAreaSwing);
 
-        boolean status = awtStatus && swingStatus;
-
-        if (!status) {
-            throw new RuntimeException("HitTestClientArea FAILED");
+        TaskResult result = awtResult.merge(swingResult);
+        if (!result.isPassed()) {
+            final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
+            throw new RuntimeException(message);
         }
     }
 
@@ -147,6 +149,7 @@ public class HitTestClientArea {
             int initialX = window.getLocationOnScreen().x + PANEL_WIDTH / 2;
             int initialY = window.getLocationOnScreen().y + PANEL_HEIGHT / 2;
 
+            window.requestFocus();
             for (Integer mask: BUTTON_MASKS) {
                 robot.waitForIdle();
 
@@ -174,24 +177,20 @@ public class HitTestClientArea {
             for (int i = 0; i < BUTTON_MASKS.size(); i++) {
                 System.out.println("Button no " + (i+1) + " clicks count = " + gotClicks[i]);
                 if (gotClicks[i] == 0) {
-                    System.out.println("Mouse click to button no " + (i+1) + " was not registered");
-                    passed = false;
+                    err("Mouse click to button no " + (i+1) + " was not registered");
                 }
             }
 
             boolean moved = initialLocation.x < newLocation.x && initialLocation.y < newLocation.y;
             if (moved) {
-                System.out.println("Window was moved, but drag'n drop action must be disabled in the client area");
-                passed = false;
+                err("Window was moved, but drag'n drop action must be disabled in the client area");
             }
 
             if (!mousePressed) {
-                System.out.println("Mouse press to the client area wasn't detected");
-                passed = false;
+                err("Mouse press to the client area wasn't detected");
             }
             if (!mouseReleased) {
-                System.out.println("Mouse release to the client area wasn't detected");
-                passed = false;
+                err("Mouse release to the client area wasn't detected");
             }
         }
 
@@ -308,24 +307,20 @@ public class HitTestClientArea {
             for (int i = 0; i < BUTTON_MASKS.size(); i++) {
                 System.out.println("Button no " + (i+1) + " clicks count = " + gotClicks[i]);
                 if (gotClicks[i] == 0) {
-                    System.out.println("Mouse click to button no " + (i+1) + " was not registered");
-                    passed = false;
+                    err("Mouse click to button no " + (i+1) + " was not registered");
                 }
             }
 
             boolean moved = initialLocation.x < newLocation.x && initialLocation.y < newLocation.y;
             if (moved) {
-                System.out.println("Window was moved, but drag'n drop action must be disabled in the client area");
-                passed = false;
+                err("Window was moved, but drag'n drop action must be disabled in the client area");
             }
 
             if (!mousePressed) {
-                System.out.println("Mouse press to the client area wasn't detected");
-                passed = false;
+                err("Mouse press to the client area wasn't detected");
             }
             if (!mouseReleased) {
-                System.out.println("Mouse release to the client area wasn't detected");
-                passed = false;
+                err("Mouse release to the client area wasn't detected");
             }
         }
 
