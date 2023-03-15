@@ -24,6 +24,7 @@
 import com.jetbrains.JBR;
 import util.CommonAPISuite;
 import util.Task;
+import util.TaskResult;
 import util.TestUtils;
 
 import java.awt.AWTException;
@@ -35,6 +36,7 @@ import java.awt.Robot;
 import java.awt.event.InputEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.List;
 
@@ -55,10 +57,11 @@ import java.util.List;
 public class HitTestNonClientArea {
 
     public static void main(String... args) {
-        boolean status = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), hitTestNonClientArea);
+        TaskResult result = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), hitTestNonClientArea);
 
-        if (!status) {
-            throw new RuntimeException("HitTestNonClientArea FAILED");
+        if (!result.isPassed()) {
+            final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
+            throw new RuntimeException(message);
         }
     }
 
@@ -162,8 +165,7 @@ public class HitTestNonClientArea {
             }
             for (int i = 0; i < BUTTON_MASKS.size(); i++) {
                 if (!gotClicks[i]) {
-                    System.out.println("Mouse click to button no " + (i+1) + " was not registered");
-                    passed = false;
+                    err("Mouse click to button no " + (i+1) + " was not registered");
                 }
             }
         }
