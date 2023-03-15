@@ -24,7 +24,10 @@
 import com.jetbrains.JBR;
 import util.CommonAPISuite;
 import util.Task;
+import util.TaskResult;
 import util.TestUtils;
+
+import java.lang.invoke.MethodHandles;
 
 /*
  * @test
@@ -43,11 +46,13 @@ import util.TestUtils;
 public class CreateTitleBarTest {
 
     public static void main(String... args) {
-        boolean status = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), createTitleBar);
+        TaskResult result = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), createTitleBar);
 
-        if (!status) {
-            throw new RuntimeException("CreateTitleBarTest FAILED");
+        if (!result.isPassed()) {
+            final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
+            throw new RuntimeException(message);
         }
+
     }
 
     private static final Task createTitleBar = new Task("Create title bar with default settings") {
@@ -64,8 +69,7 @@ public class CreateTitleBarTest {
             passed = passed && TestUtils.checkFrameInsets(window);
 
             if (titleBar.getLeftInset() == 0 && titleBar.getRightInset() == 0) {
-                passed = false;
-                System.out.println("Left or right space must be occupied by system controls");
+                err("Left or right space must be occupied by system controls");
             }
         }
     };
