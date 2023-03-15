@@ -22,11 +22,7 @@
  */
 import com.jetbrains.JBR;
 import com.jetbrains.WindowDecorations;
-import util.CommonAPISuite;
-import util.Rect;
-import util.ScreenShotHelpers;
-import util.Task;
-import util.TestUtils;
+import util.*;
 
 import javax.swing.JFrame;
 import java.awt.Frame;
@@ -37,6 +33,7 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.awt.event.WindowStateListener;
 import java.awt.image.BufferedImage;
+import java.lang.invoke.MethodHandles;
 import java.util.List;
 import java.util.function.Function;
 
@@ -59,10 +56,11 @@ public class FrameNativeControlsTest {
     public static void main(String... args) {
         List<Function<WindowDecorations.CustomTitleBar, Window>> functions =
                 List.of(TestUtils::createFrameWithCustomTitleBar, TestUtils::createJFrameWithCustomTitleBar);
-        boolean status = CommonAPISuite.runTestSuite(functions, frameNativeControlsClicks);
+        TaskResult result = CommonAPISuite.runTestSuite(functions, frameNativeControlsClicks);
 
-        if (!status) {
-            throw new RuntimeException("FrameNativeControlsTest FAILED");
+        if (!result.isPassed()) {
+            final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
+            throw new RuntimeException(message);
         }
     }
 
@@ -140,7 +138,7 @@ public class FrameNativeControlsTest {
             robot.delay(500);
 
             BufferedImage image = ScreenShotHelpers.takeScreenshot(window);
-            List<Rect> foundControls = ScreenShotHelpers.detectControlsByBackground(image, (int) titleBar.getHeight(), TestUtils.TITLE_BAR_COLOR);
+            List<Rect> foundControls = ScreenShotHelpers.findControls(image, window, titleBar);
 
             if (foundControls.size() == 0) {
                 passed = false;
@@ -169,22 +167,18 @@ public class FrameNativeControlsTest {
             });
 
             if (!maximizingActionDetected) {
-                passed = false;
-                System.out.println("Error: maximizing action was not detected");
+                err("maximizing action was not detected");
             }
 
             if (!closingActionCalled) {
-                passed = false;
-                System.out.println("Error: closing action was not detected");
+                err("closing action was not detected");
             }
 
             if (!iconifyingActionCalled) {
-                passed = false;
-                System.out.println("Error: iconifying action was not detected");
+                err("iconifying action was not detected");
             }
             if (!deiconifyindActionDetected) {
-                passed = false;
-                System.out.println("Error: deiconifying action was not detected");
+                err("deiconifying action was not detected");
             }
         }
     };
