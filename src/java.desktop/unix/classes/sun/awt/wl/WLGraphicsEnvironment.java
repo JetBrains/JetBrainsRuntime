@@ -11,13 +11,22 @@ import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceManagerFactory;
 import sun.java2d.UnixSurfaceManagerFactory;
 import sun.util.logging.PlatformLogger;
+import sun.util.logging.PlatformLogger.Level;
 
 public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLGraphicsEnvironment");
 
+    private static boolean vkwlAvailable;
+
     static {
         SurfaceManagerFactory.setInstance(new UnixSurfaceManagerFactory());
+        vkwlAvailable = initVKWL();
+        if (log.isLoggable(Level.INFO)) {
+            log.info("Vulkan rendering available: " + (vkwlAvailable?"YES":"NO"));
+        }
     }
+
+    private static native boolean initVKWL();
 
     private WLGraphicsEnvironment() {
     }
@@ -28,6 +37,10 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
 
     public static WLGraphicsEnvironment getSingleInstance() {
         return Holder.INSTANCE;
+    }
+
+    public static boolean isVKWLAvailable() {
+        return vkwlAvailable;
     }
 
     @Override
