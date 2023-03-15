@@ -24,7 +24,10 @@
 import com.jetbrains.JBR;
 import util.CommonAPISuite;
 import util.Task;
+import util.TaskResult;
 import util.TestUtils;
+
+import java.lang.invoke.MethodHandles;
 
 /*
  * @test
@@ -43,11 +46,13 @@ import util.TestUtils;
 public class ChangeTitleBarHeightTest {
 
     public static void main(String... args) {
-        boolean status = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), changeTitleBarHeight);
+        TaskResult result = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), changeTitleBarHeight);
 
-        if (!status) {
-            throw new RuntimeException("ChangeTitleBarHeightTest FAILED");
+        if (!result.isPassed()) {
+            final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
+            throw new RuntimeException(message);
         }
+
     }
 
     private static final Task changeTitleBarHeight = new Task("Changing of title bar height") {
