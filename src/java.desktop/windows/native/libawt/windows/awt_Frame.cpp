@@ -552,7 +552,6 @@ MsgRouting AwtFrame::WmMouseUp(UINT flags, int x, int y, int button) {
 }
 
 MsgRouting AwtFrame::WmMouseMove(UINT flags, int x, int y) {
-    if (customTitleBarControls) customTitleBarControls->Hit(CustomTitleBarControls::HitType::RESET, 0, 0);
     /**
      * If this Frame is non-focusable then we should implement move and size operation for it by
      * ourselfves because we don't dispatch appropriate mouse messages to default window procedure.
