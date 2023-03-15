@@ -22,6 +22,8 @@
  */
 package util;
 
+import com.jetbrains.WindowDecorations;
+
 import javax.imageio.ImageIO;
 import java.awt.AWTException;
 import java.awt.Color;
@@ -55,6 +57,88 @@ public class ScreenShotHelpers {
         File file = new File(fileName);
         ImageIO.write(image, "png", file);
         return file.getAbsolutePath();
+    }
+
+    public static List<Rect> findControls(BufferedImage image, Window window, WindowDecorations.CustomTitleBar titleBar) {
+        return findControls(image, window, titleBar, false);
+    }
+
+    public static List<Rect> findControls(BufferedImage image, Window window, WindowDecorations.CustomTitleBar titleBar, boolean disabledControls) {
+        final int windowWidth = window.getWidth();
+        final int windowHeight = window.getHeight();
+        final int titleBarHeight = (int) titleBar.getHeight();
+        final int leftInset = Math.round(titleBar.getLeftInset());
+        final int rightInset = Math.round(titleBar.getRightInset());
+
+        System.out.println("Image w = " + image.getWidth() + " height = " + image.getHeight());
+        System.out.println("Window w = " + windowWidth + " height = " + window.getHeight());
+
+        // option 1
+        List<Rect> controls1 = detectControlsByBackground(image, titleBarHeight, TestUtils.TITLE_BAR_COLOR);
+        System.out.println("Option1 for " + window.getName());
+        controls1.forEach(System.out::println);
+
+        if (isMatchCondition(window, controls1.size(), disabledControls)) {
+            return controls1;
+        }
+
+        // option2
+        List<Rect> controls2 = detectControlsByBackground2(image, windowWidth, windowHeight, titleBarHeight, leftInset, rightInset, TestUtils.TITLE_BAR_COLOR);
+        System.out.println("Option2 for " + window.getName());
+        controls2.forEach(System.out::println);
+
+        if (isMatchCondition(window, controls2.size(), disabledControls)) {
+            return controls2;
+        }
+
+        // option3
+        List<Rect> controls3 = detectControls(image, titleBarHeight, leftInset, rightInset);
+        System.out.println("Option3 for " + window.getName());
+        controls3.forEach(System.out::println);
+
+        if (isMatchCondition(window, controls3.size(), disabledControls)) {
+            return controls3;
+        }
+
+        // option4
+        List<Rect> controls4 = detectControls2(image, windowWidth, windowHeight, titleBarHeight, leftInset, rightInset);
+        System.out.println("Option4 for " + window.getName());
+        controls4.forEach(System.out::println);
+
+        return controls4;
+    }
+
+    private static boolean isMatchCondition(Window window, int size, boolean disabledControls) {
+        if (!disabledControls) {
+            if (window.getName().equals("Frame") || window.getName().equals("JFrame")) {
+                return size == 3;
+            }
+            if (window.getName().equals("Dialog") || window.getName().equals("JDialog")) {
+                final String os = System.getProperty("os.name").toLowerCase();
+                if (os.startsWith("windows")) {
+                    return size == 1;
+                }
+                return size == 3;
+            }
+        }
+        return size == 0;
+    }
+
+    public static RectCoordinates calculateControlsRect(BufferedImage image, int windowWidth, int windowHeight, int titleBarHeight, int leftInset, int rightInset) {
+        final int shiftW = (image.getWidth() - windowWidth) / 2;
+        final int shiftH = (image.getHeight() - windowHeight) / 2;
+        int x1;
+        int y1 = shiftH;
+        int x2;
+        int y2 = shiftH + titleBarHeight;
+        if (leftInset > rightInset) {
+            x1 = shiftW;
+            x2 = shiftW + leftInset;
+        } else {
+            x1 = shiftW + windowWidth - rightInset;
+            x2 = windowWidth - shiftW;
+        }
+        return new RectCoordinates(x1, y1, x2, y2);
     }
 
     public static RectCoordinates findRectangleTitleBar(BufferedImage image, int titleBarHeight) {
@@ -106,6 +190,7 @@ public class ScreenShotHelpers {
         RectCoordinates coords = findRectangleTitleBar(image, titleBarHeight);
         List<Rect> result = new ArrayList<>();
 
+        System.out.println("Detect controls by background");
         System.out.println(coords);
 
         List<Integer> lefts = new ArrayList<>();
@@ -114,9 +199,54 @@ public class ScreenShotHelpers {
         int leftX = -1;
         int rightX = -1;
 
-        for (int x = coords.x1(); x <= coords.x2(); x++) {
+        for (int x = coords.x1(); x < coords.x2(); x++) {
             boolean isBackground = true;
-            for (int y = coords.y1(); y <= coords.y2(); y++) {
+            for (int y = coords.y1(); y < coords.y2(); y++) {
+                Color color = adjustColor(new Color(image.getRGB(x, y)));
+                if (!color.equals(backgroundColor)) {
+                    isBackground = false;
+                    break;
+                }
+            }
+            if (!isBackground) {
+                if (leftX == -1) {
+                    leftX = x;
+                }
+                rightX = x;
+            } else if (leftX != -1) {
+                lefts.add(leftX);
+                rights.add(rightX);
+                leftX = -1;
+                rightX = -1;
+            }
+        }
+
+        for (int i = 0; i < lefts.size(); i++) {
+            int lx = lefts.get(i);
+            int rx = rights.get(i);
+
+            System.out.println("lx = " + lx + " rx = " + rx);
+            result.add(new Rect(lx, coords.y1(), rx, coords.y2(), 0, Color.BLACK));
+        }
+        return result;
+    }
+
+    public static List<Rect> detectControlsByBackground2(BufferedImage image, int windowWidth, int windowHeight, int titleBarHeight, int leftInset, int rightInset, Color backgroundColor) {
+        RectCoordinates coords = calculateControlsRect(image, windowWidth, windowHeight, titleBarHeight, leftInset, rightInset);
+        List<Rect> result = new ArrayList<>();
+
+        System.out.println("Detect controls by background2");
+        System.out.println(coords);
+
+        List<Integer> lefts = new ArrayList<>();
+        List<Integer> rights = new ArrayList<>();
+
+        int leftX = -1;
+        int rightX = -1;
+
+        for (int x = coords.x1(); x < coords.x2(); x++) {
+            boolean isBackground = true;
+            for (int y = coords.y1(); y < coords.y2(); y++) {
                 Color color = adjustColor(new Color(image.getRGB(x, y)));
                 if (!color.equals(backgroundColor)) {
                     isBackground = false;
@@ -148,11 +278,41 @@ public class ScreenShotHelpers {
 
     public static List<Rect> detectControls(BufferedImage image, int titleBarHeight, int leftInset, int rightInset) {
         RectCoordinates coords = ScreenShotHelpers.findRectangleTitleBar(image, titleBarHeight);
+        System.out.println("Detect controls");
+        System.out.println(coords);
 
         Map<Color, Rect> map = new HashMap<>();
 
-        for (int x = coords.x1(); x <= coords.x2(); x++) {
-            for (int y = coords.y1(); y <= coords.y2(); y++) {
+        for (int x = coords.x1(); x < coords.x2(); x++) {
+            for (int y = coords.y1(); y < coords.y2(); y++) {
+                Color color = new Color(image.getRGB(x, y));
+                Color adjustedColor = adjustColor(color);
+                Rect rect = map.getOrDefault(adjustedColor, new Rect(adjustedColor));
+                rect.addPoint(x, y);
+                map.put(adjustedColor, rect);
+            }
+        }
+
+        int checkedHeight = coords.y2() - coords.y1() + 1;
+        int checkedWidth = coords.x2() - coords.x1() + 1;
+        int pixels = checkedWidth * checkedHeight;
+
+        int nonCoveredAreaApprox = pixels - (leftInset * checkedHeight + rightInset * checkedHeight);
+
+        List<Rect> rects = map.values().stream().filter(v -> v.getPixelCount() < nonCoveredAreaApprox).toList();
+
+        return groupRects(rects);
+    }
+
+    public static List<Rect> detectControls2(BufferedImage image, int windowWidth, int windowHeight, int titleBarHeight, int leftInset, int rightInset) {
+        RectCoordinates coords = calculateControlsRect(image, windowWidth, windowHeight, titleBarHeight, leftInset, rightInset);
+        System.out.println("Detect controls 2");
+        System.out.println(coords);
+
+        Map<Color, Rect> map = new HashMap<>();
+
+        for (int x = coords.x1(); x < coords.x2(); x++) {
+            for (int y = coords.y1(); y < coords.y2(); y++) {
                 Color color = new Color(image.getRGB(x, y));
                 Color adjustedColor = adjustColor(color);
                 Rect rect = map.getOrDefault(adjustedColor, new Rect(adjustedColor));
