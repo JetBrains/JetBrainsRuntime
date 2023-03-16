@@ -326,22 +326,39 @@ Java_sun_lwawt_macosx_CRobot_keyEvent
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
         CGEventSourceRef source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
         CGKeyCode keyCode;
-        if (javaKeyCode == 0x1000000 + 0x0060) {
-            // This is a dirty, dirty hack and is only used in tests.
-            // When receiving this key code, Robot should switch the keyboard type to ISO
-            // and then send the key code corresponding to VK_BACK_QUOTE.
 
-            // find an ISO keyboard type...
+        if (javaKeyCode & 0x2000000) {
+            // This is a dirty, dirty hack and is only used in tests.
+            // This allows us to send macOS virtual key code directly, without first looking up a Java key code.
+            // It also allows the caller to set the physical keyboard layout directly.
+            // The key code that should be passed to Robot in this case is the following:
+            //   0x2000000 | keyCode | (physicalLayout << 8)
+            // where physicalLayout is:
+            //   0 - ANSI
+            //   1 - ISO
+            //   2 - JIS
+
+            UInt32 physicalLayout = (javaKeyCode >> 8) & 0xff;
+            PhysicalKeyboardLayoutType layoutType;
+            if (physicalLayout == 1) {
+                layoutType = kKeyboardISO;
+            } else if (physicalLayout == 2) {
+                layoutType = kKeyboardJIS;
+            } else {
+                layoutType = kKeyboardANSI;
+            }
+
+            // find a corresponding keyboard type...
             // LMGetKbdType() returns Uint8, why don't we just iterate over all the possible values and find one
             // that works? It's really sad that macOS doesn't provide a decent API for this sort of thing.
             for (UInt32 keyboardType = 0; keyboardType < 0x100; ++keyboardType) {
-                if (KBGetLayoutType(keyboardType) == kKeyboardISO) {
+                if (KBGetLayoutType(keyboardType) == layoutType) {
                     CGEventSourceSetKeyboardType(source, keyboardType);
                     break;
                 }
             }
 
-            keyCode = OSX_kVK_ANSI_Grave;
+            keyCode = javaKeyCode & 0xff;
         } else {
             keyCode = GetCGKeyCode(javaKeyCode);
         }

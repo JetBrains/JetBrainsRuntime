@@ -27,7 +27,7 @@
 [ -z "${TESTJAVA}" ] && echo "TESTJAVA not set" && exit 1
 cd "${TESTSRC}" || exit 1
 
-"${TESTJAVA}/bin/javac" -d "${TESTCLASSES}" --add-modules java.desktop --add-exports java.desktop/sun.lwawt.macosx=ALL-UNNAMED InputMethodTest.java
+"${TESTJAVA}/bin/javac" -d "${TESTCLASSES}" --add-modules java.desktop --add-exports java.desktop/sun.lwawt.macosx=ALL-UNNAMED InputMethodTest.java || exit 1
 
 half_width_override=
 

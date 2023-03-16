@@ -31,7 +31,12 @@
 import static java.awt.event.KeyEvent.*;
 
 public class KeyCodesTest implements Runnable {
-    static private final int VK_BACK_QUOTE_ISO = 0x01000000+0x0060;
+    static private final int ROBOT_KEYCODE_BACK_QUOTE_ISO = 0x2000132;
+    static private final int ROBOT_KEYCODE_RIGHT_COMMAND = 0x2000036;
+    static private final int ROBOT_KEYCODE_RIGHT_SHIFT = 0x200003C;
+    static private final int ROBOT_KEYCODE_RIGHT_CONTROL = 0x200003E;
+    static private final int ROBOT_KEYCODE_YEN_SYMBOL_JIS = 0x200025D;
+    static private final int ROBOT_KEYCODE_CIRCUMFLEX_JIS = 0x2000218;
     static private final int VK_SECTION = 0x01000000+0x00A7;
     @Override
     public void run() {
@@ -58,33 +63,35 @@ public class KeyCodesTest implements Runnable {
         verify('[', VK_OPEN_BRACKET, "com.apple.keylayout.ABC", VK_OPEN_BRACKET);
         verify('\\', VK_BACK_SLASH, "com.apple.keylayout.ABC", VK_BACK_SLASH);
         verify(']', VK_CLOSE_BRACKET, "com.apple.keylayout.ABC", VK_CLOSE_BRACKET);
-        // TODO: figure out which keyboard layout has VK_CIRCUMFLEX as a key on the primary layer
+        verify('^', VK_CIRCUMFLEX, "com.apple.keylayout.ABC", ROBOT_KEYCODE_CIRCUMFLEX_JIS);
         verify('_', VK_UNDERSCORE, "com.apple.keylayout.French-PC", VK_8);
         verify('`', VK_BACK_QUOTE, "com.apple.keylayout.ABC", VK_BACK_QUOTE);
         verify('{', VK_BRACELEFT, "com.apple.keylayout.LatinAmerican", VK_QUOTE);
         verify('}', VK_BRACERIGHT, "com.apple.keylayout.LatinAmerican", VK_BACK_SLASH);
         verify('\u00a1', VK_INVERTED_EXCLAMATION_MARK, "com.apple.keylayout.Spanish-ISO", VK_EQUALS);
         // TODO: figure out which keyboard layout has VK_EURO_SIGN as a key on the primary layer
-        verify('/', VK_DIVIDE, "com.apple.keylayout.ABC", VK_DIVIDE, VK_SLASH);
-        verify('*', VK_MULTIPLY, "com.apple.keylayout.ABC", VK_MULTIPLY, VK_ASTERISK);
-        verify('+', VK_ADD, "com.apple.keylayout.ABC", VK_ADD, VK_PLUS);
-        verify('-', VK_SUBTRACT, "com.apple.keylayout.ABC", VK_SUBTRACT, VK_MINUS);
+        verify('/', VK_DIVIDE, "com.apple.keylayout.ABC", VK_DIVIDE, VK_SLASH, KEY_LOCATION_NUMPAD, 0);
+        verify('*', VK_MULTIPLY, "com.apple.keylayout.ABC", VK_MULTIPLY, VK_ASTERISK, KEY_LOCATION_NUMPAD, 0);
+        verify('+', VK_ADD, "com.apple.keylayout.ABC", VK_ADD, VK_PLUS, KEY_LOCATION_NUMPAD, 0);
+        verify('-', VK_SUBTRACT, "com.apple.keylayout.ABC", VK_SUBTRACT, VK_MINUS, KEY_LOCATION_NUMPAD, 0);
+        verify('\0', VK_CLEAR, "com.apple.keylayout.ABC", VK_CLEAR, VK_UNDEFINED, KEY_LOCATION_NUMPAD, 0);
         verify('\t', VK_TAB, "com.apple.keylayout.ABC", VK_TAB);
         verify(' ', VK_SPACE, "com.apple.keylayout.ABC", VK_SPACE);
 
         // Test numpad numbers
         for (int i = 0; i < 10; ++i) {
-            verify((char)('0' + i), VK_NUMPAD0 + i, "com.apple.keylayout.ABC", VK_NUMPAD0 + i, VK_0 + i);
+            verify((char)('0' + i), VK_NUMPAD0 + i, "com.apple.keylayout.ABC", VK_NUMPAD0 + i, VK_0 + i, KEY_LOCATION_NUMPAD, 0);
         }
         verify('\0', VK_F1, "com.apple.keylayout.ABC", VK_F1);
         verify('\0', VK_F19, "com.apple.keylayout.ABC", VK_F19);
 
-        // Test ANSI/ISO keyboard weirdness
+        // Test ANSI/ISO/JIS keyboard weirdness
         verify('\u00a7', 0x01000000+0x00A7, "com.apple.keylayout.ABC", VK_SECTION);
         verify('\u00b2', 0x01000000+0x00B2, "com.apple.keylayout.French-PC", VK_SECTION);
         verify('#', VK_NUMBER_SIGN, "com.apple.keylayout.CanadianFrench-PC", VK_SECTION);
-        verify('\u00ab', 0x01000000+0x00AB, "com.apple.keylayout.CanadianFrench-PC", VK_BACK_QUOTE_ISO);
+        verify('\u00ab', 0x01000000+0x00AB, "com.apple.keylayout.CanadianFrench-PC", ROBOT_KEYCODE_BACK_QUOTE_ISO);
         verify('#', VK_NUMBER_SIGN, "com.apple.keylayout.CanadianFrench-PC", VK_BACK_QUOTE);
+        verify('\u00a5', 0x01000000+0x00A5, "com.apple.keylayout.ABC", ROBOT_KEYCODE_YEN_SYMBOL_JIS);
 
         // Test extended key codes that don't match the unicode char
         verify('\u00e4', 0x01000000+0x00C4, "com.apple.keylayout.German", VK_QUOTE);
@@ -94,20 +101,60 @@ public class KeyCodesTest implements Runnable {
         verify('\u00f1', 0x01000000+0x00D1, "com.apple.keylayout.Spanish-ISO", VK_SEMICOLON);
         verify('\u00f6', 0x01000000+0x00D6, "com.apple.keylayout.German", VK_SEMICOLON);
         verify('\u00f8', 0x01000000+0x00D8, "com.apple.keylayout.Norwegian", VK_SEMICOLON);
+
+        // test modifier keys
+        verify('\0', VK_ALT, "com.apple.keylayout.ABC", VK_ALT, VK_UNDEFINED, KEY_LOCATION_LEFT, ALT_DOWN_MASK);
+        verify('\0', VK_ALT_GRAPH, "com.apple.keylayout.ABC", VK_ALT_GRAPH, VK_UNDEFINED, KEY_LOCATION_RIGHT, ALT_GRAPH_DOWN_MASK);
+        verify('\0', VK_META, "com.apple.keylayout.ABC", VK_META, VK_UNDEFINED, KEY_LOCATION_LEFT, META_DOWN_MASK);
+        verify('\0', VK_META, "com.apple.keylayout.ABC", ROBOT_KEYCODE_RIGHT_COMMAND, VK_UNDEFINED, KEY_LOCATION_RIGHT, META_DOWN_MASK);
+        verify('\0', VK_CONTROL, "com.apple.keylayout.ABC", VK_CONTROL, VK_UNDEFINED, KEY_LOCATION_LEFT, CTRL_DOWN_MASK);
+        verify('\0', VK_CONTROL, "com.apple.keylayout.ABC", ROBOT_KEYCODE_RIGHT_CONTROL, VK_UNDEFINED, KEY_LOCATION_RIGHT, CTRL_DOWN_MASK);
+        verify('\0', VK_SHIFT, "com.apple.keylayout.ABC", VK_SHIFT, VK_UNDEFINED, KEY_LOCATION_LEFT, SHIFT_DOWN_MASK);
+        verify('\0', VK_SHIFT, "com.apple.keylayout.ABC", ROBOT_KEYCODE_RIGHT_SHIFT, VK_UNDEFINED, KEY_LOCATION_RIGHT, SHIFT_DOWN_MASK);
     }
 
-    private void verify(char ch, int vk, String layout, int key, int correctKeyCode) {
+    private void verify(char ch, int vk, String layout, int key, int charKeyCode, int location, int modifiers) {
         InputMethodTest.section("Key code test: " + vk + ", char: " + ch);
         InputMethodTest.layout(layout);
         InputMethodTest.type(key, 0);
-        InputMethodTest.expectKeyCode(vk);
+
+        var events = InputMethodTest.getTriggeredEvents();
+        var pressed = events.stream().filter(e -> e.getID() == KEY_PRESSED).toList();
+        var released = events.stream().filter(e -> e.getID() == KEY_RELEASED).toList();
+
+        if (pressed.size() == 1) {
+            var keyCode = pressed.get(0).getKeyCode();
+            InputMethodTest.expectTrue(keyCode == vk, "key press, actual key code: " + keyCode + ", expected: " + vk);
+
+            var keyLocation = pressed.get(0).getKeyLocation();
+            InputMethodTest.expectTrue(keyLocation == location, "key press, actual key location: " + keyLocation + ", expected: " + location);
+
+            var keyModifiers = pressed.get(0).getModifiersEx();
+            InputMethodTest.expectTrue(keyModifiers == modifiers, "key press, actual key modifiers: " + keyModifiers + ", expected: " + modifiers);
+        } else {
+            InputMethodTest.fail("expected exactly one KEY_PRESSED event, got " + pressed.size());
+        }
+
+        if (released.size() == 1) {
+            var keyCode = released.get(0).getKeyCode();
+            InputMethodTest.expectTrue(keyCode == vk, "key release, actual key code: " + keyCode + ", expected: " + vk);
+
+            var keyLocation = released.get(0).getKeyLocation();
+            InputMethodTest.expectTrue(keyLocation == location, "key release, actual key location: " + keyLocation + ", expected: " + location);
+
+            var keyModifiers = released.get(0).getModifiersEx();
+            InputMethodTest.expectTrue(keyModifiers == 0, "key release, actual key modifiers: " + keyModifiers + ", expected: 0");
+        } else {
+            InputMethodTest.fail("expected exactly one KEY_RELEASED event, got " + released.size());
+        }
+
         if (ch != 0) {
             InputMethodTest.expect(String.valueOf(ch));
-            InputMethodTest.expectTrue(getExtendedKeyCodeForChar(ch) == correctKeyCode, "getExtendedKeyCodeForChar");
+            InputMethodTest.expectTrue(getExtendedKeyCodeForChar(ch) == charKeyCode, "getExtendedKeyCodeForChar");
         }
     }
 
     private void verify(char ch, int vk, String layout, int key) {
-        verify(ch, vk, layout, key, vk);
+        verify(ch, vk, layout, key, vk, KEY_LOCATION_STANDARD, 0);
     }
 }

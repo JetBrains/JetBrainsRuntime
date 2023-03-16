@@ -163,7 +163,7 @@ const keyTable[] =
     {0x5A, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F20},
     {0x5B, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD8},
     {0x5C, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD9},
-    {0x5D, YES, NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_BACK_SLASH}, // This is a combo yen/backslash on JIS keyboards.
+    {0x5D, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_BACK_SLASH}, // This is a combo yen/backslash on JIS keyboards.
     {0x5E, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_UNDERSCORE},
     {0x5F, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_COMMA},
     {0x60, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F5},
@@ -338,9 +338,18 @@ const nsKeyToJavaModifierTable[] =
         java_awt_event_InputEvent_META_DOWN_MASK,
         java_awt_event_InputEvent_META_MASK,
         java_awt_event_KeyEvent_VK_META
+    }, {
+        NX_DEVICERALTKEYMASK,
+        //kCGSFlagsMaskAppleLeftAlternateKey,
+        //kCGSFlagsMaskAppleRightAlternateKey,
+        0,
+        61,
+        java_awt_event_InputEvent_ALT_GRAPH_DOWN_MASK,
+        java_awt_event_InputEvent_ALT_GRAPH_MASK,
+        java_awt_event_KeyEvent_VK_ALT_GRAPH
     },
     {
-        NSAlternateKeyMask,
+        NX_DEVICELALTKEYMASK,
         //kCGSFlagsMaskAppleLeftAlternateKey,
         //kCGSFlagsMaskAppleRightAlternateKey,
         58,
@@ -642,8 +651,6 @@ NsKeyModifiersToJavaKeyInfo(NSUInteger nsFlags, unsigned short eventKeyCode,
                 *javaKeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_LEFT;
             } else if (eventKeyCode == cur->rightKeyCode) {
                 *javaKeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_RIGHT;
-            } else if (cur->nsMask == NSAlternateKeyMask) {
-                continue;
             }
             *javaKeyType = (cur->nsMask & nsFlags) ?
                 java_awt_event_KeyEvent_KEY_PRESSED :
