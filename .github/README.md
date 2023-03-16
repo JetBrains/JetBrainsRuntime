@@ -5,8 +5,8 @@
 JetBrains Runtime is a fork of [OpenJDK](https://github.com/openjdk/jdk) available for Windows, Mac OS X, and Linux.
 It supports enhanced class redefinition ([DCEVM](https://ssw.jku.at/dcevm/)),
 features optional [JCEF](https://github.com/JetBrains/jcef), a framework for embedding Chromium-based browsers,
-includes a number of improvements in font rendering, ligatures, keyboards support, 
-windowing/focus subsystems, HiDPI and accessibility, performance, provides better desktop integration
+includes a number of improvements in font rendering, keyboards support, 
+windowing/focus subsystems, HiDPI, accessibility, and performance, provides better desktop integration
 and bugfixes not yet present in OpenJDK.
 
 > **_NOTE_**: This is a **development** branch that is periodically synchronized with 
@@ -60,7 +60,7 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
 * **Enhanced class re-definition** with the [DCEVM](https://ssw.jku.at/dcevm/) technology that makes it easier to reload
   changed code without restarting JVM; this feature needs to be explicitly enabled with `-XX:+AllowEnhancedClassRedefinition`.
 * **Better FPS performance** for graphics-intensive applications.
-* **Improved font rendering**, **ligatures**, **keyboard input** (such as shortcuts and multinational keyboards),
+* **Improved font rendering**, **keyboard input** (such as shortcuts and multinational keyboards),
   **HiDPI** and **accessibility** support.
 * **Robust desktop experience**: GUI-related fixes often reach JetBrains Runtime much earlier than the corresponding version of OpenJDK.
 
