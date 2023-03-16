@@ -1,6 +1,7 @@
 #include <dlfcn.h>
 #include <Trace.h>
 #include <stdint.h>
+#include <jvm_md.h>
 #include "jni.h"
 
 //#include "vulkan/vulkan.h"
@@ -33,13 +34,18 @@ typedef struct VkInstanceCreateInfo {
 #define VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO  1
 
 
-//#ifndef HEADLESS
+#ifndef HEADLESS
 /**
  * Returns JNI_TRUE if vulkan is available for the current wayland display
  */
 jboolean VKWLGC_IsVKWLAvailable()
 {
-    void *lib = dlopen("libvulkan.so", RTLD_LOCAL|RTLD_LAZY);
+    void *lib = dlopen(JNI_LIB_NAME("vulkan"), RTLD_LOCAL|RTLD_LAZY);
+
+    if (lib == NULL)  {
+        lib = dlopen(VERSIONED_JNI_LIB_NAME("vulkan", "1"), RTLD_LOCAL|RTLD_LAZY);
+    }
+
     if (lib == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Could not open vulkan library");
         return JNI_FALSE;
@@ -82,4 +88,4 @@ jboolean VKWLGC_IsVKWLAvailable()
     dlclose(lib);
     return JNI_TRUE;
 }
-//#endif
+#endif
