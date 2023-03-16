@@ -296,6 +296,8 @@ ifeq ($(call isTargetOs, windows macosx), false)
         $(FONTCONFIG_CFLAGS) \
         $(CUPS_CFLAGS)
 
+    LIBAWT_WLAWT_CXXFLAGS += -DVK_USE_PLATFORM_WAYLAND_KHR
+
     LIBAWT_WLAWT_LIBS := $(LIBM) -lawt $(WAYLAND_LIBS) $(LIBDL) -ljava -ljvm -lrt
 
     ifeq ($(call isTargetOs, linux), true)
@@ -320,7 +322,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         OPTIMIZATION := LOW, \
         TOOLCHAIN := TOOLCHAIN_LINK_CXX, \
         CFLAGS := $(CFLAGS_JDKLIB) $(LIBAWT_WLAWT_CFLAGS), \
-        CXXFLAGS := $(CXXFLAGS_JDKLIB), \
+        CXXFLAGS := $(CXXFLAGS_JDKLIB) $(LIBAWT_WLAWT_CXXFLAGS), \
         WARNINGS_AS_ERRORS_xlc := false, \
         DISABLED_WARNINGS_C_gcc := type-limits pointer-to-int-cast \
             unused-result maybe-uninitialized format \

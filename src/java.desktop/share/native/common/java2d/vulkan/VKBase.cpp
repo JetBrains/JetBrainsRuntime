@@ -1,26 +1,14 @@
-#include <dlfcn.h>
+#include "VKBase.h"
 #include <Trace.h>
-#include <stdint.h>
-#include <jvm_md.h>
-#include "jni.h"
-
 #include <set>
 
-#define VK_USE_PLATFORM_WAYLAND_KHR
-#define VK_NO_PROTOTYPES
-#define VULKAN_HPP_NO_DEFAULT_DISPATCHER
-#include <vulkan/vulkan_raii.hpp>
-
-const uint32_t REQUIRED_VULKAN_VERSION = VK_MAKE_API_VERSION(0, 1, 0, 0);
+static const uint32_t REQUIRED_VULKAN_VERSION = VK_MAKE_API_VERSION(0, 1, 0, 0);
 static vk::raii::Context* context;
-static vk::raii::Instance instance = nullptr;
+vk::raii::Instance vkInstance = nullptr;
 
-/**
- * Returns JNI_TRUE if vulkan is available for the current wayland display
- */
-extern "C" jboolean VKWLGC_IsVKWLAvailable() {
+static bool createInstance() {
     try {
-        // Load library
+        // Load library.
         vk::raii::Context ctx;
         uint32_t version = ctx.enumerateInstanceVersion();
         J2dRlsTraceLn3(J2D_TRACE_INFO, "Found Vulkan %d.%d.%d",
@@ -28,10 +16,10 @@ extern "C" jboolean VKWLGC_IsVKWLAvailable() {
 
         if (version < REQUIRED_VULKAN_VERSION) {
             J2dRlsTraceLn(J2D_TRACE_ERROR, "Unsupported Vulkan version");
-            return JNI_FALSE;
+            return false;
         }
 
-        // Populate maps and log supported layers & extansions
+        // Populate maps and log supported layers & extensions.
         std::set<std::string> layers, extensions;
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "Supported instance layers:");
         for (auto& l : ctx.enumerateInstanceLayerProperties()) {
@@ -46,9 +34,11 @@ extern "C" jboolean VKWLGC_IsVKWLAvailable() {
 
         std::vector<const char*> enabledLayers, enabledExtensions;
 
-        // Check required layers & extensions
-        enabledExtensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+        // Check required layers & extensions.
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
         enabledExtensions.push_back(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
+#endif
+        enabledExtensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
         bool requiredNotFound = false;
         for (auto e : enabledExtensions) {
             if (extensions.find(e) == extensions.end()) {
@@ -56,9 +46,9 @@ extern "C" jboolean VKWLGC_IsVKWLAvailable() {
                 requiredNotFound = true;
             }
         }
-        if (requiredNotFound) return JNI_FALSE;
+        if (requiredNotFound) return false;
 
-        // Check optional layers & extensions
+        // Check optional layers & extensions.
 #ifdef DEBUG
         const char* const VALIDATION_LAYER_NAME = "VK_LAYER_KHRONOS_validation";
         if (layers.find(VALIDATION_LAYER_NAME) != layers.end() &&
@@ -80,22 +70,27 @@ extern "C" jboolean VKWLGC_IsVKWLAvailable() {
         };
 
         vk::InstanceCreateInfo instanceCreateInfo {
-            /*flags*/                   {},
-            /*pApplicationInfo*/        &applicationInfo,
-            /*ppEnabledLayerNames*/     enabledLayers,
-            /*ppEnabledExtensionNames*/ enabledExtensions
+                /*flags*/                   {},
+                /*pApplicationInfo*/        &applicationInfo,
+                /*ppEnabledLayerNames*/     enabledLayers,
+                /*ppEnabledExtensionNames*/ enabledExtensions
         };
 
         // Save context object at persistent address before passing it further.
         context = new vk::raii::Context(std::move(ctx));
 
-        instance = vk::raii::Instance(*context, instanceCreateInfo);
+        vkInstance = vk::raii::Instance(*context, instanceCreateInfo);
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "Vulkan instance created");
 
-        return JNI_TRUE;
+        return true;
     } catch (std::exception& e) {
         // Usually this means we didn't find the shared library.
         J2dRlsTraceLn(J2D_TRACE_ERROR, e.what());
-        return JNI_FALSE;
+        return false;
     }
+}
+
+extern "C" jboolean VK_Init() {
+    if (!createInstance()) return false;
+    return true;
 }

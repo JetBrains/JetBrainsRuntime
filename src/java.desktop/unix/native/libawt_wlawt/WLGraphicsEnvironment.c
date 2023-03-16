@@ -35,6 +35,7 @@
 #include "jni_util.h"
 #include "awt.h"
 #include "WLToolkit.h"
+#include "VKBase.h"
 #include "VKWLGraphicsConfig.h"
 
 typedef struct WLOutput {
@@ -278,7 +279,7 @@ Java_sun_awt_wl_WLGraphicsEnvironment_initVKWL(JNIEnv *env, jclass wlge)
        WLGraphicsEnvironment.initVKWL()
     */
     //AWT_LOCK();
-    vkwlAvailable = VKWLGC_IsVKWLAvailable();
+    vkwlAvailable = VK_Init();
     //AWT_UNLOCK();
     return vkwlAvailable;
 }
