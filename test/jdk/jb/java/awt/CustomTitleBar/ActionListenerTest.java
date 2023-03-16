@@ -27,11 +27,11 @@ import util.Task;
 import util.TaskResult;
 import util.TestUtils;
 
-import java.awt.AWTException;
-import java.awt.Button;
-import java.awt.Robot;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.InputEvent;
 import java.lang.invoke.MethodHandles;
+import java.util.List;
 
 /*
  * @test
@@ -50,7 +50,10 @@ import java.lang.invoke.MethodHandles;
 public class ActionListenerTest {
 
     public static void main(String... args) {
-        TaskResult result = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), actionListener);
+        TaskResult awtResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createFrameWithCustomTitleBar, TestUtils::createDialogWithCustomTitleBar), actionListenerAWT);
+        TaskResult swingResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createJFrameWithCustomTitleBar, TestUtils::createJFrameWithCustomTitleBar), actionListenerSwing);
+
+        TaskResult result = awtResult.merge(swingResult);
 
         if (!result.isPassed()) {
             final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
@@ -58,7 +61,7 @@ public class ActionListenerTest {
         }
     }
 
-    private static final Task actionListener = new Task("Using of action listener") {
+    private static final Task actionListenerAWT = new Task("Using of action listener in AWT") {
 
         private Button button;
         private boolean actionListenerGotEvent = false;
@@ -77,7 +80,7 @@ public class ActionListenerTest {
         @Override
         public void customizeWindow() {
             button = new Button();
-            button.setBounds(window.getWidth() / 2, 0, 50, 50);
+            button.setLocation(window.getWidth() / 2, 0);
             button.addActionListener(a -> {
                 actionListenerGotEvent = true;
             });
@@ -86,27 +89,67 @@ public class ActionListenerTest {
 
         @Override
         public void test() throws AWTException {
-            Robot robot = new Robot();
-            robot.waitForIdle();
-            int x = button.getLocationOnScreen().x + button.getWidth() / 2;
-            int y = button.getLocationOnScreen().y + button.getHeight() / 2;
-            System.out.println("Click at (" + x + ", " + y + ")");
-            robot.mouseMove(x, y);
-            robot.waitForIdle();
-            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-            robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-            robot.waitForIdle();
-            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-            robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-            robot.waitForIdle();
-            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-            robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-            robot.waitForIdle();
+            doClick(button.getLocationOnScreen(), button.getWidth(), button.getHeight());
 
             if (!actionListenerGotEvent) {
                 err("button didn't get event by action listener");
             }
         }
     };
+
+    private static final Task actionListenerSwing = new Task("Using of action listener in Swing") {
+
+        private JButton button;
+        private boolean actionListenerGotEvent = false;
+
+        @Override
+        protected void init() {
+            actionListenerGotEvent = false;
+        }
+
+        @Override
+        public void prepareTitleBar() {
+            titleBar = JBR.getWindowDecorations().createCustomTitleBar();
+            titleBar.setHeight(TestUtils.TITLE_BAR_HEIGHT);
+        }
+
+        @Override
+        public void customizeWindow() {
+            button = new JButton();
+            button.setLocation(window.getWidth() / 2, 0);
+            button.addActionListener(a -> {
+                actionListenerGotEvent = true;
+            });
+            window.add(button);
+        }
+
+        @Override
+        public void test() throws AWTException {
+            doClick(button.getLocationOnScreen(), button.getWidth(), button.getHeight());
+
+            if (!actionListenerGotEvent) {
+                err("button didn't get event by action listener");
+            }
+        }
+    };
+
+    private static void doClick(Point location, int w, int h) throws AWTException {
+        Robot robot = new Robot();
+        robot.waitForIdle();
+        int x = location.x + w / 2;
+        int y = location.y + h / 2;
+        System.out.println("Click at (" + x + ", " + y + ")");
+        robot.mouseMove(x, y);
+        robot.waitForIdle();
+        robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+        robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+        robot.waitForIdle();
+        robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+        robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+        robot.waitForIdle();
+        robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+        robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+        robot.waitForIdle();
+    }
 
 }
