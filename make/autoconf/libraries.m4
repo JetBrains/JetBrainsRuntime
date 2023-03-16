@@ -42,20 +42,23 @@ m4_include([lib-tests.m4])
 ################################################################################
 AC_DEFUN_ONCE([LIB_DETERMINE_DEPENDENCIES],
 [
-  # Check if X11 and wayland is needed
+  # Check if X11, wayland and vulkan is needed
   if test "x$OPENJDK_TARGET_OS" = xwindows || test "x$OPENJDK_TARGET_OS" = xmacosx; then
     # No X11 and wayland support on windows or macosx
     NEEDS_LIB_X11=false
     NEEDS_LIB_WAYLAND=false
+    NEEDS_LIB_VULKAN=false
   elif test "x$ENABLE_HEADLESS_ONLY" = xtrue; then
     # No X11 support needed when building headless only
     NEEDS_LIB_X11=false
     NEEDS_LIB_WAYLAND=false
+    NEEDS_LIB_VULKAN=false
   else
     # All other instances need X11 and wayland, even if building headless only, libawt still
     # needs X11 headers.
     NEEDS_LIB_X11=true
     NEEDS_LIB_WAYLAND=true
+    NEEDS_LIB_VULKAN=true
   fi
 
   # Check if fontconfig is needed

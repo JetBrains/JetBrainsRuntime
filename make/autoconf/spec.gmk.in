@@ -455,6 +455,7 @@ X_CFLAGS:=@X_CFLAGS@
 X_LIBS:=@X_LIBS@
 WAYLAND_CFLAGS:=@WAYLAND_CFLAGS@
 WAYLAND_LIBS:=@WAYLAND_LIBS@
+VULKAN_CFLAGS:=@VULKAN_CFLAGS@
 # The lowest required version of macosx
 MACOSX_VERSION_MIN=@MACOSX_VERSION_MIN@
 # The highest allowed version of macosx

@@ -294,6 +294,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
     LIBAWT_WLAWT_CFLAGS += -DWLAWT \
         $(WAKEFIELD_ROBOT_CFLAGS) \
         $(FONTCONFIG_CFLAGS) \
+        $(VULKAN_CFLAGS) \
         $(CUPS_CFLAGS)
 
     LIBAWT_WLAWT_CXXFLAGS += -DVK_USE_PLATFORM_WAYLAND_KHR

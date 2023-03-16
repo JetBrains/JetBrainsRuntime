@@ -1,6 +1,6 @@
 #
 # Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
-# Copyright (c) 2021, JetBrains s.r.o.. All rights reserved.
+# Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
     fi
     WAYLAND_CFLAGS=
     WAYLAND_LIBS=
+    VULKAN_CFLAGS=
   else
     WAYLAND_FOUND=no
 
@@ -87,8 +88,56 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
       HELP_MSG_MISSING_DEPENDENCY([wayland])
       AC_MSG_ERROR([Could not find wayland! $HELP_MSG ])
     fi
-  fi
 
+
+    # Checking for vulkan sdk
+
+    AC_ARG_WITH(vulkan-include, [AS_HELP_STRING([--with-vulkan-include],
+      [specify directory for the vulkan include files])])
+
+    if test "x$NEEDS_LIB_VULKAN" = xfalse; then
+      if test "x${with_vulkan_include}" != x && test "x${with_vulkan_include}" != xno; then
+        AC_MSG_WARN([[vulkan not used, so --with-vulkan-include is ignored]])
+      fi
+      VULKAN_CFLAGS=
+    else
+      if test "x${with_vulkan_include}" = xno; then
+        VULKAN_CFLAGS=
+      else
+        VULKAN_FOUND=no
+
+        if test "x${with_vulkan_include}" != x; then
+          AC_MSG_CHECKING([for vulkan headers])
+          if test -s "${with_vulkan_include}/include/vulkan/vulkan.h" && test -s "${with_vulkan_include}/include/vulkan/vulkan_wayland.h"; then
+            VULKAN_CFLAGS="-I${with_vulkan_include}/include -DVKWL_GRAPHICS"
+            VULKAN_FOUND=yes
+            AC_MSG_RESULT([$VULKAN_FOUND])
+          else
+            AC_MSG_ERROR([Can't find 'vulkan/vulkan.h' and 'vulkan/vulkan_wayland.h' under '${with_vulkan_include}' given with the --with-vulkan-include option.])
+          fi
+        fi
+
+        if test "x$VULKAN_FOUND" = xno; then
+          # Are the vulkan headers installed in the default /usr/include location?
+          AC_CHECK_HEADERS([vulkan/vulkan.h])
+          AC_CHECK_HEADERS([vulkan/vulkan_wayland.h],
+            [ VULKAN_FOUND=yes ],
+            [ VULKAN_FOUND=no; break ],
+            [
+              #include <wayland-client.h>
+              #ifdef HAVE_VULKAN_VULKAN_H
+              #include <vulkan/vulkan.h>
+              #endif
+            ]
+          )
+          if test "x$VULKAN_FOUND" = xyes; then
+            VULKAN_CFLAGS=-DVKWL_GRAPHICS
+          fi
+        fi
+      fi
+    fi
+  fi
+  AC_SUBST(VULKAN_CFLAGS)
   AC_SUBST(WAYLAND_CFLAGS)
   AC_SUBST(WAYLAND_LIBS)
 ])
