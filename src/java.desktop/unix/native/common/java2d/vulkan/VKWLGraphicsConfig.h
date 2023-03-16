@@ -3,12 +3,12 @@
 
 #include "jni.h"
 
-#ifdef HEADLESS
-#else /* HEADLESS */
+#ifdef __cplusplus
+#define EXTERN_C extern "C"
+#else
+#define EXTERN_C
+#endif
 
-
-jboolean VKWLGC_IsVKWLAvailable();
-
-#endif /* HEADLESS */
+EXTERN_C jboolean VKWLGC_IsVKWLAvailable();
 
 #endif /* VKWLGraphicsConfig_h_Included */

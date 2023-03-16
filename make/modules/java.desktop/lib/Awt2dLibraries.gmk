@@ -190,7 +190,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/font \
         #
 
-    LIBAWT_XAWT_EXCLUDES := medialib debug wl
+    LIBAWT_XAWT_EXCLUDES := medialib debug wl vulkan
 
     LIBAWT_XAWT_EXTRA_HEADER_DIRS := \
         $(LIBAWT_DEFAULT_HEADER_DIRS) \
@@ -285,6 +285,9 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/java2d/vulkan \
         #
 
+    # TODO use bundled/system Vulkan
+    LIBAWT_WLAWT_EXTRA_HEADER_DIRS += libvulkan
+
     # Enable 'wakefield' extension for java.awt.Robot support
     WAKEFIELD_ROBOT_CFLAGS=-DWAKEFIELD_ROBOT
 
@@ -315,12 +318,15 @@ ifeq ($(call isTargetOs, windows macosx), false)
         EXTRA_HEADER_DIRS := $(LIBAWT_WLAWT_EXTRA_HEADER_DIRS), \
         EXCLUDES := $(LIBAWT_WLAWT_EXCLUDES), \
         OPTIMIZATION := LOW, \
+        TOOLCHAIN := TOOLCHAIN_LINK_CXX, \
         CFLAGS := $(CFLAGS_JDKLIB) $(LIBAWT_WLAWT_CFLAGS), \
+        CXXFLAGS := $(CXXFLAGS_JDKLIB), \
         WARNINGS_AS_ERRORS_xlc := false, \
-        DISABLED_WARNINGS_gcc := type-limits pointer-to-int-cast \
+        DISABLED_WARNINGS_C_gcc := type-limits pointer-to-int-cast \
             unused-result maybe-uninitialized format \
             format-security int-to-pointer-cast parentheses \
             implicit-fallthrough undef unused-function, \
+        DISABLED_WARNINGS_CXX_gcc := undef, \
         DISABLED_WARNINGS_clang := parentheses format undef \
             logical-op-parentheses format-nonliteral int-conversion, \
         LDFLAGS := $(LDFLAGS_JDKLIB) \
@@ -438,7 +444,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
       $(TOPDIR)/src/$(MODULE)/$(OPENJDK_TARGET_OS_TYPE)/native/common/awt \
       #
 
-  LIBAWT_HEADLESS_EXCLUDES := medialib
+  LIBAWT_HEADLESS_EXCLUDES := medialib wl vulkan
 
   LIBAWT_HEADLESS_EXTRA_HEADER_DIRS := \
       $(LIBAWT_DEFAULT_HEADER_DIRS) \
