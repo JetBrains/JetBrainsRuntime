@@ -80,6 +80,9 @@ public class WindowsControlWidthTest {
 
             List<Rect> foundControls = ScreenShotHelpers.findControls(image, window, titleBar);
 
+            double uiScale = TestUtils.getUIScale();
+            double adjustedControlsWidth = CONTROLS_WIDTH / uiScale;
+
             if (foundControls.size() == 0) {
                 err("controls not found");
             } else if (foundControls.size() == 3) {
@@ -88,7 +91,7 @@ public class WindowsControlWidthTest {
                 int maxX = foundControls.get(2).getX2();
                 int dist = (foundControls.get(1).getX1() - foundControls.get(0).getX2() + foundControls.get(2).getX1() - foundControls.get(1).getX2()) / 2;
                 int calculatedWidth = maxX - minX + dist;
-                float diff = (float) calculatedWidth / CONTROLS_WIDTH;
+                double diff = calculatedWidth / adjustedControlsWidth;
                 if (diff < 0.95 || diff > 1.05) {
                     err("control's width is much differ than the expected value");
                 }
