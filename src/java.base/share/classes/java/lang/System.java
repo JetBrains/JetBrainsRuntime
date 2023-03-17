@@ -2209,6 +2209,9 @@ public final class System {
                 return StringCoding.getBytesUTF8NoRepl(s);
             }
 
+            public String getLoaderNameID(ClassLoader loader) {
+                return loader.nameAndId();
+            }
         });
     }
 }

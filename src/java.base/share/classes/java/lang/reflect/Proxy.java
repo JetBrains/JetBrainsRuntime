@@ -44,6 +44,8 @@ import java.util.stream.Stream;
 
 import jdk.internal.loader.BootLoader;
 import jdk.internal.module.Modules;
+import jdk.internal.misc.JavaLangAccess;
+import jdk.internal.misc.SharedSecrets;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.misc.VM;
 import jdk.internal.reflect.CallerSensitive;
@@ -469,6 +471,7 @@ public class Proxy implements java.io.Serializable {
      */
     private static final class ProxyBuilder {
         private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+        private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
 
         // prefix for all proxy class names
         private static final String proxyClassNamePrefix = "$Proxy";
@@ -856,7 +859,7 @@ public class Proxy implements java.io.Serializable {
             }
             if (type != c) {
                 throw new IllegalArgumentException(c.getName() +
-                        " referenced from a method is not visible from class loader");
+                        " referenced from a method is not visible from class loader: " + JLA.getLoaderNameID(ld));
             }
         }
 
