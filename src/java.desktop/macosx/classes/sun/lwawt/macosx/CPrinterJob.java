@@ -38,13 +38,8 @@ import java.awt.Toolkit;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
-import java.awt.print.Pageable;
-import java.awt.print.PageFormat;
-import java.awt.print.Paper;
-import java.awt.print.Printable;
-import java.awt.print.PrinterAbortException;
-import java.awt.print.PrinterException;
-import java.awt.print.PrinterJob;
+import java.awt.print.*;
+import java.io.File;
 import java.net.URI;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -223,6 +218,15 @@ public final class CPrinterJob extends RasterPrinterJob {
 
         if (attributes == null) {
             return;
+        }
+        if (getPrintService() == null && isPrintToFile) {
+            Destination destination = (Destination)attributes.get(Destination.class);
+            if (destination != null) {
+                try {
+                    destinationAttr = "" + new File(destination.getURI().getSchemeSpecificPart());
+                } catch (Exception e) {
+                }
+            }
         }
         Attribute attr = attributes.get(Media.class);
         if (attr instanceof CustomMediaTray) {
