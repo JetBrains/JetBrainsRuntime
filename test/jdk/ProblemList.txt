@@ -666,7 +666,7 @@ javax/sound/sampled/Clip/Drain/ClipDrain.java          7062792 generic-all
 
 javax/sound/sampled/Mixers/DisabledAssertionCrash.java 7067310 generic-all
 
-javax/sound/midi/Sequencer/Recording.java 8167580 linux-all,solaris-all
+javax/sound/midi/Sequencer/Recording.java 8167580,8265485 linux-all,solaris-all,macosx-aarch64
 
 ############################################################################
 
