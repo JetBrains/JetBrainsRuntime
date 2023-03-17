@@ -376,10 +376,18 @@ class AuthenticationFilter implements HeaderFilter {
             return null;
         }
 
+        private static boolean equalsIgnoreCase(String s1, String s2) {
+            return s1 == s2 || (s1 != null && s1.equalsIgnoreCase(s2));
+        }
+
         synchronized void remove(String authscheme, URI domain, boolean proxy) {
-            for (CacheEntry entry : entries) {
-                if (entry.equalsKey(domain, proxy)) {
-                    entries.remove(entry);
+            var iterator = entries.iterator();
+            while (iterator.hasNext()) {
+                var entry = iterator.next();
+                if (equalsIgnoreCase(entry.scheme, authscheme)) {
+                    if (entry.equalsKey(domain, proxy)) {
+                        iterator.remove();
+                    }
                 }
             }
         }
