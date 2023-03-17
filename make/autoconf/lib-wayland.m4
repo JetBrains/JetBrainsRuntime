@@ -92,47 +92,59 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
 
     # Checking for vulkan sdk
 
+    AC_ARG_WITH(vulkan, [AS_HELP_STRING([--with-vulkan],
+      [specify whether we use vulkan])])
+
     AC_ARG_WITH(vulkan-include, [AS_HELP_STRING([--with-vulkan-include],
       [specify directory for the vulkan include files])])
 
-    if test "x$NEEDS_LIB_VULKAN" = xfalse; then
-      if test "x${with_vulkan_include}" != x && test "x${with_vulkan_include}" != xno; then
+    if test "x$SUPPORTS_LIB_VULKAN" = xfalse; then
+
+      if (test "x${with_vulkan}" != x && test "x${with_vulkan}" != xno) || \
+         (test "x${with_vulkan_include}" != x && test "x${with_vulkan_include}" != xno); then
         AC_MSG_WARN([[vulkan not used, so --with-vulkan-include is ignored]])
       fi
       VULKAN_CFLAGS=
     else
-      if test "x${with_vulkan_include}" = xno; then
+      # Do not build vulkan rendering pipeline by default
+      if (test "x${with_vulkan}" = x && test "x${with_vulkan_include}" = x) || \
+          test "x${with_vulkan}" = xno || test "x${with_vulkan_include}" = xno ; then
         VULKAN_CFLAGS=
       else
         VULKAN_FOUND=no
 
         if test "x${with_vulkan_include}" != x; then
-          AC_MSG_CHECKING([for vulkan headers])
-          if test -s "${with_vulkan_include}/include/vulkan/vulkan.h" && test -s "${with_vulkan_include}/include/vulkan/vulkan_wayland.h"; then
-            VULKAN_CFLAGS="-I${with_vulkan_include}/include -DVKWL_GRAPHICS"
-            VULKAN_FOUND=yes
-            AC_MSG_RESULT([$VULKAN_FOUND])
-          else
-            AC_MSG_ERROR([Can't find 'vulkan/vulkan.h' and 'vulkan/vulkan_wayland.h' under '${with_vulkan_include}' given with the --with-vulkan-include option.])
-          fi
+          AC_CHECK_HEADERS([${with_vulkan_include}/include/vulkan/vulkan.h],
+            [ VULKAN_FOUND=yes
+              VULKAN_CFLAGS="-I${with_vulkan_include} -DVKWL_GRAPHICS"
+            ],
+            [ AC_MSG_ERROR([Can't find 'vulkan/vulkan.h' under '${with_vulkan_include}']) ]
+          )
         fi
 
         if test "x$VULKAN_FOUND" = xno; then
-          # Are the vulkan headers installed in the default /usr/include location?
-          AC_CHECK_HEADERS([vulkan/vulkan.h])
-          AC_CHECK_HEADERS([vulkan/vulkan_wayland.h],
-            [ VULKAN_FOUND=yes ],
-            [ VULKAN_FOUND=no; break ],
-            [
-              #include <wayland-client.h>
-              #ifdef HAVE_VULKAN_VULKAN_H
-              #include <vulkan/vulkan.h>
-              #endif
-            ]
+          # Check vulkan sdk location
+          AC_CHECK_HEADERS([$VULKAN_SDK/include/vulkan/vulkan.h],
+            [ VULKAN_FOUND=yes
+              VULKAN_CFLAGS="-I${VULKAN_SDK} -DVKWL_GRAPHICS"
+            ],
+            [ VULKAN_FOUND=no; break ]
           )
-          if test "x$VULKAN_FOUND" = xyes; then
-            VULKAN_CFLAGS=-DVKWL_GRAPHICS
-          fi
+        fi
+
+        if test "x$VULKAN_FOUND" = xno; then
+          # Check default /usr/include location
+          AC_CHECK_HEADERS([vulkan/vulkan.h],
+            [ VULKAN_FOUND=yes
+              VULKAN_CFLAGS="-DVKWL_GRAPHICS"
+            ],
+            [ VULKAN_FOUND=no; break ]
+          )
+        fi
+
+        if test "x$VULKAN_FOUND" = xno; then
+          HELP_MSG_MISSING_DEPENDENCY([vulkan])
+          AC_MSG_ERROR([Could not find vulkan! $HELP_MSG ])
         fi
       fi
     fi

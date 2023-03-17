@@ -269,7 +269,7 @@ WLOutputByID(uint32_t id)
 JNIEXPORT jboolean JNICALL
 Java_sun_awt_wl_WLGraphicsEnvironment_initVKWL(JNIEnv *env, jclass wlge)
 {
-    jboolean vkwlAvailable;
+    jboolean vkwlAvailable = JNI_FALSE;
     /* TODO: The following sequence lead to uninitialized awt lock
        BufferedImage.getGraphics()
        BufferedImage.createGraphics()
@@ -279,7 +279,9 @@ Java_sun_awt_wl_WLGraphicsEnvironment_initVKWL(JNIEnv *env, jclass wlge)
        WLGraphicsEnvironment.initVKWL()
     */
     //AWT_LOCK();
+#ifdef VKWL_GRAPHICS
     vkwlAvailable = VK_Init();
+#endif
     //AWT_UNLOCK();
     return vkwlAvailable;
 }
