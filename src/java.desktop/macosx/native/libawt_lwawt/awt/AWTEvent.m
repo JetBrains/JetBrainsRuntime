@@ -570,7 +570,6 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
             if (map->c == testLowercaseChar) {
                 *keyCode = map->javaKey;
                 *postsTyped = !isDeadChar;
-                *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
                 return;
             }
         }
@@ -580,7 +579,6 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
         // key is a basic latin letter
         *postsTyped = YES;
         *keyCode = java_awt_event_KeyEvent_VK_A + testLowercaseChar - 'a';
-        *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
         return;
     }
 
@@ -589,7 +587,6 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
         // numpad digits are already handled, since they don't vary between layouts
         offset = ch - '0';
         *keyCode = offset + java_awt_event_KeyEvent_VK_0;
-        *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
         return;
     }
 
@@ -612,7 +609,6 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
 
         *postsTyped = YES;
         *keyCode = 0x01000000 + testLowercaseChar;
-        *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
     }
 }
 

@@ -37,9 +37,13 @@ public class KeyCodesTest implements Runnable {
     static private final int ROBOT_KEYCODE_RIGHT_CONTROL = 0x200003E;
     static private final int ROBOT_KEYCODE_YEN_SYMBOL_JIS = 0x200025D;
     static private final int ROBOT_KEYCODE_CIRCUMFLEX_JIS = 0x2000218;
+    static private final int ROBOT_KEYCODE_NUMPAD_COMMA_JIS = 0x200025F;
+    static private final int ROBOT_KEYCODE_NUMPAD_ENTER = 0x200004C;
+    static private final int ROBOT_KEYCODE_NUMPAD_EQUALS = 0x2000051;
     static private final int VK_SECTION = 0x01000000+0x00A7;
     @Override
     public void run() {
+        // ordinary non-letter character with VK_ key codes
         verify('!', VK_EXCLAMATION_MARK, "com.apple.keylayout.French-PC", VK_SLASH);
         verify('"', VK_QUOTEDBL, "com.apple.keylayout.French-PC", VK_3);
         verify('#', VK_NUMBER_SIGN, "com.apple.keylayout.British-PC", VK_BACK_SLASH);
@@ -70,18 +74,31 @@ public class KeyCodesTest implements Runnable {
         verify('}', VK_BRACERIGHT, "com.apple.keylayout.LatinAmerican", VK_BACK_SLASH);
         verify('\u00a1', VK_INVERTED_EXCLAMATION_MARK, "com.apple.keylayout.Spanish-ISO", VK_EQUALS);
         // TODO: figure out which keyboard layout has VK_EURO_SIGN as a key on the primary layer
+        verify(' ', VK_SPACE, "com.apple.keylayout.ABC", VK_SPACE);
+
+        // control characters
+        verify('\t', VK_TAB, "com.apple.keylayout.ABC", VK_TAB);
+        verify('\n', VK_ENTER, "com.apple.keylayout.ABC", VK_ENTER);
+        verify('\0', VK_BACK_SPACE, "com.apple.keylayout.ABC", VK_BACK_SPACE);
+        verify('\0', VK_ESCAPE, "com.apple.keylayout.ABC", VK_ESCAPE);
+
+        // keypad
         verify('/', VK_DIVIDE, "com.apple.keylayout.ABC", VK_DIVIDE, VK_SLASH, KEY_LOCATION_NUMPAD, 0);
         verify('*', VK_MULTIPLY, "com.apple.keylayout.ABC", VK_MULTIPLY, VK_ASTERISK, KEY_LOCATION_NUMPAD, 0);
         verify('+', VK_ADD, "com.apple.keylayout.ABC", VK_ADD, VK_PLUS, KEY_LOCATION_NUMPAD, 0);
         verify('-', VK_SUBTRACT, "com.apple.keylayout.ABC", VK_SUBTRACT, VK_MINUS, KEY_LOCATION_NUMPAD, 0);
         verify('\0', VK_CLEAR, "com.apple.keylayout.ABC", VK_CLEAR, VK_UNDEFINED, KEY_LOCATION_NUMPAD, 0);
-        verify('\t', VK_TAB, "com.apple.keylayout.ABC", VK_TAB);
-        verify(' ', VK_SPACE, "com.apple.keylayout.ABC", VK_SPACE);
+        verify('\n', VK_ENTER, "com.apple.keylayout.ABC", ROBOT_KEYCODE_NUMPAD_ENTER, VK_ENTER, KEY_LOCATION_NUMPAD, 0);
+        verify(',', VK_COMMA, "com.apple.keylayout.ABC", ROBOT_KEYCODE_NUMPAD_COMMA_JIS, VK_COMMA, KEY_LOCATION_NUMPAD, 0);
+        verify('=', VK_EQUALS, "com.apple.keylayout.ABC", ROBOT_KEYCODE_NUMPAD_EQUALS, VK_EQUALS, KEY_LOCATION_NUMPAD, 0);
+        verify('.', VK_DECIMAL, "com.apple.keylayout.ABC", VK_DECIMAL, VK_PERIOD, KEY_LOCATION_NUMPAD, 0);
 
-        // Test numpad numbers
+        // keypad numbers
         for (int i = 0; i < 10; ++i) {
             verify((char)('0' + i), VK_NUMPAD0 + i, "com.apple.keylayout.ABC", VK_NUMPAD0 + i, VK_0 + i, KEY_LOCATION_NUMPAD, 0);
         }
+
+        // function keys
         verify('\0', VK_F1, "com.apple.keylayout.ABC", VK_F1);
         verify('\0', VK_F19, "com.apple.keylayout.ABC", VK_F19);
 
@@ -114,7 +131,7 @@ public class KeyCodesTest implements Runnable {
     }
 
     private void verify(char ch, int vk, String layout, int key, int charKeyCode, int location, int modifiers) {
-        InputMethodTest.section("Key code test: " + vk + ", char: " + ch);
+        InputMethodTest.section("Key code test: " + vk + ", char: " + String.format("U+%04X", (int)ch));
         InputMethodTest.layout(layout);
         InputMethodTest.type(key, 0);
 
