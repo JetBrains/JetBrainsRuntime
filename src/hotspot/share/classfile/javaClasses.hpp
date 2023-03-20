@@ -591,7 +591,6 @@ class java_lang_Throwable: AllStatic {
   static void set_message(oop throwable, oop value);
   static Symbol* detail_message(oop throwable);
   static void print_stack_element(outputStream *st, Method* method, int bci);
-  static void print_hello_world(JavaThread* javaThread);
 
   static void compute_offsets();
   static void serialize_offsets(SerializeClosure* f) NOT_CDS_RETURN;

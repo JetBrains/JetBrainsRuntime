@@ -1681,12 +1681,6 @@ void JavaThread::print_stack_on(outputStream* st) {
   ResourceMark rm(current_thread);
   HandleMark hm(current_thread);
 
-  /*
-    if (current_thread->is_Java_thread()) {
-        JavaThread* javaThread = JavaThread::cast(current_thread);
-        java_lang_Throwable::print_hello_world(this);
-    } */
-
   RegisterMap reg_map(this,
                       RegisterMap::UpdateMap::include,
                       RegisterMap::ProcessFrames::include,
