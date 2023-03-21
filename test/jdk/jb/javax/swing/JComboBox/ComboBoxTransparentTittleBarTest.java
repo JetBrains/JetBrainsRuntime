@@ -12,6 +12,7 @@ import java.awt.event.MouseListener;
 /*
  * @test
  * @key headful
+ * @requires (os.family == "windows" | os.family == "mac")
  * @summary JBR-4875 The test drag&drops a frame which contains an instance of JComboBox and checks that ComboBoxPopup
  * does not become detached from its' control. The test performs checking for both cases when
  * <code>apple.awt.transparentTitleBar</code> is not set and it is set to <code>true</code>.
