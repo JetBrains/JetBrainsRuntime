@@ -742,17 +742,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
      * X11GraphicsDevice when the display mode has been changed.
      */
     public void displayChanged() {
-        XToolkit.awtLock();
-        try {
-            final GraphicsConfiguration oldGC = getGraphicsConfiguration();
-            checkIfOnNewScreen(getBounds(), () -> {
-                if (getGraphicsConfiguration() == oldGC) {
-                    executeDisplayChangedOnEDT(oldGC);
-                }
-            });
-        } finally {
-            XToolkit.awtUnlock();
-        }
+        executeDisplayChangedOnEDT(getGraphicsConfiguration());
     }
 
     /**
