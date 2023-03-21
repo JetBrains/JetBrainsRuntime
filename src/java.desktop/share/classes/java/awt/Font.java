@@ -57,7 +57,6 @@ import java.util.Set;
 import sun.awt.ComponentFactory;
 import sun.font.AttributeMap;
 import sun.font.AttributeValues;
-import sun.font.CompositeFont;
 import sun.font.CoreMetrics;
 import sun.font.CreatedFontTracker;
 import sun.font.Font2D;
@@ -404,6 +403,11 @@ public class Font implements java.io.Serializable
      */
     public static final int TYPE1_FONT = 1;
 
+    private static final String CALT_FEATURE = "calt";
+    private static final String LIGA_FEATURE = "liga";
+    private static final String KERN_FEATURE = "kern";
+
+
     /**
      * The logical name of this {@code Font}, as passed to the
      * constructor.
@@ -441,6 +445,15 @@ public class Font implements java.io.Serializable
      * @see #getSize2D()
      */
     protected float pointSize;
+
+    /**
+     * The list of choosing features from https://learn.microsoft.com/en-us/typography/opentype/spec/featurelist
+     * in {@code float}.
+     *
+     * @serial
+     * @see #getFeatures
+     */
+    private String features = "";
 
     /**
      * The platform specific font information.
@@ -616,8 +629,9 @@ public class Font implements java.io.Serializable
     /* This constructor is used by deriveFont when attributes is null */
     private Font(String name, int style, float sizePts,
                  boolean created, boolean withFallback,
-                 Font2DHandle handle, boolean useOldHandle) {
+                 Font2DHandle handle, boolean useOldHandle, String features) {
         this(name, style, sizePts);
+        this.features = features;
         this.createdFont = created;
         this.withFallback = withFallback;
         /* Fonts created from a stream will use the same font2D instance
@@ -681,8 +695,9 @@ public class Font implements java.io.Serializable
      */
     private Font(AttributeValues values, String oldName, int oldStyle,
                  boolean created, boolean withFallback,
-                 Font2DHandle handle, boolean useOldHandle) {
+                 Font2DHandle handle, boolean useOldHandle, String features) {
 
+        this.features = features;
         this.createdFont = created;
         this.withFallback = withFallback;
         if (created || withFallback) {
@@ -717,6 +732,13 @@ public class Font implements java.io.Serializable
         }
         initFromValues(values);
     }
+
+    private Font(AttributeValues values, String oldName, int oldStyle,
+                 boolean created, boolean withFallback,
+                 Font2DHandle handle, boolean useOldHandle) {
+        this(values, oldName, oldStyle, created, withFallback, handle, useOldHandle, "");
+    }
+
 
     /**
      * Creates a new {@code Font} with the specified attributes.
@@ -755,7 +777,18 @@ public class Font implements java.io.Serializable
         this.font2DHandle = font.font2DHandle;
         this.createdFont = font.createdFont;
         this.withFallback = font.withFallback;
+        this.features = font.features;
     }
+
+    private interface Features {
+        String toString();
+    }
+
+    private Font(Font font, Features features) {
+        this(font);
+        this.features = features.toString();
+    }
+
 
     /**
      * Font recognizes all attributes except FONT.
@@ -1618,7 +1651,15 @@ public class Font implements java.io.Serializable
      * @since 1.6
      */
     public boolean hasLayoutAttributes() {
-        return hasLayoutAttributes;
+        return !features.isEmpty() || hasLayoutAttributes;
+    }
+
+    private static String getFeatures(Font font) {
+        StringBuilder res = new StringBuilder("");
+        if (font.values.getKerning() != 0) res.append(KERN_FEATURE);
+        if (font.values.getLigatures() != 0) res.append(LIGA_FEATURE + CALT_FEATURE);
+        res.append(font.features);
+        return res.toString();
     }
 
     /**
@@ -1826,7 +1867,7 @@ public class Font implements java.io.Serializable
      */
     public int hashCode() {
         if (hash == 0) {
-            hash = name.hashCode() ^ style ^ size;
+            hash = name.hashCode() ^ style ^ size ^ features.hashCode();
             /* It is possible many fonts differ only in transform.
              * So include the transform in the hash calculation.
              * nonIdentityTx is set whenever there is a transform in
@@ -1864,7 +1905,8 @@ public class Font implements java.io.Serializable
                 hasLayoutAttributes == font.hasLayoutAttributes &&
                 pointSize == font.pointSize &&
                 withFallback == font.withFallback &&
-                name.equals(font.name)) {
+                name.equals(font.name) &&
+                features.equals(font.features)) {
 
                 /* 'values' is usually initialized lazily, except when
                  * the font is constructed from a Map, or derived using
@@ -2098,14 +2140,14 @@ public class Font implements java.io.Serializable
     public Font deriveFont(int style, float size){
         if (values == null) {
             return new Font(name, style, size, createdFont, withFallback,
-                            font2DHandle, false);
+                            font2DHandle, false, features);
         }
         AttributeValues newValues = getAttributeValues().clone();
         int oldStyle = (this.style != style) ? this.style : -1;
         applyStyle(style, newValues);
         newValues.setSize(size);
         return new Font(newValues, null, oldStyle, createdFont, withFallback,
-                        font2DHandle, false);
+                        font2DHandle, false, features);
     }
 
     /**
@@ -2125,7 +2167,7 @@ public class Font implements java.io.Serializable
         applyStyle(style, newValues);
         applyTransform(trans, newValues);
         return new Font(newValues, null, oldStyle, createdFont, withFallback,
-                        font2DHandle, false);
+                        font2DHandle, false, features);
     }
 
     /**
@@ -2138,12 +2180,12 @@ public class Font implements java.io.Serializable
     public Font deriveFont(float size){
         if (values == null) {
             return new Font(name, style, size, createdFont, withFallback,
-                            font2DHandle, true);
+                            font2DHandle, true, features);
         }
         AttributeValues newValues = getAttributeValues().clone();
         newValues.setSize(size);
         return new Font(newValues, null, -1, createdFont, withFallback,
-                        font2DHandle, true);
+                        font2DHandle, true, features);
     }
 
     /**
@@ -2173,7 +2215,7 @@ public class Font implements java.io.Serializable
     public Font deriveFont(int style){
         if (values == null) {
            return new Font(name, style, size, createdFont, withFallback,
-                           font2DHandle, false);
+                           font2DHandle, false, features);
         }
         AttributeValues newValues = getAttributeValues().clone();
         int oldStyle = (this.style != style) ? this.style : -1;
@@ -2217,7 +2259,11 @@ public class Font implements java.io.Serializable
             }
         }
         return new Font(newValues, name, style, createdFont, withFallback,
-                        font2DHandle, keepFont2DHandle);
+                        font2DHandle, keepFont2DHandle, features);
+    }
+
+    private static Font deriveFont(Font font, Features features) {
+        return new Font(font, features);
     }
 
     /**

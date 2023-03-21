@@ -35,8 +35,6 @@ import java.lang.invoke.MethodHandles;
 public class JBRApiModule {
     static {
         JBRApi.registerModule(MethodHandles.lookup(), JBRApiModule.class.getModule()::addExports)
-                .service("com.jetbrains.ExtendedGlyphCache")
-                    .withStatic("getSubpixelResolution", "getSubpixelResolution", "sun.font.FontUtilities")
                 .service("com.jetbrains.JBRFileDialogService")
                     .withStatic("getFileDialog", "get", "com.jetbrains.desktop.JBRFileDialog")
                 .proxy("com.jetbrains.JBRFileDialog", "com.jetbrains.desktop.JBRFileDialog")
@@ -56,6 +54,10 @@ public class JBRApiModule {
                     .withStatic("createConstrainableGraphics", "create", "com.jetbrains.desktop.JBRGraphicsDelegate")
                 .clientProxy("com.jetbrains.desktop.ConstrainableGraphics2D", "com.jetbrains.GraphicsUtils$ConstrainableGraphics2D")
                 .service("com.jetbrains.WindowDecorations", "java.awt.Window$WindowDecorations")
-                .proxy("com.jetbrains.WindowDecorations$CustomTitleBar", "java.awt.Window$CustomTitleBar");
+                .proxy("com.jetbrains.WindowDecorations$CustomTitleBar", "java.awt.Window$CustomTitleBar")
+                .service("com.jetbrains.FontExtensions")
+                    .withStatic("getSubpixelResolution", "getSubpixelResolution", "sun.font.FontUtilities")
+                    .withStatic("deriveFontWithFeatures", "deriveFont", "java.awt.Font")
+                .clientProxy("java.awt.Font$Features", "com.jetbrains.FontExtensions$Features");
     }
 }
