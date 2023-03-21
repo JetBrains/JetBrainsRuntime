@@ -86,7 +86,8 @@ reg_def RSP_H(NS,  NS,  Op_RegI,  4, rsp->as_VMReg()->next());
 reg_def RBP  (NS, SOE, Op_RegI,  5, rbp->as_VMReg());
 reg_def RBP_H(NS, SOE, Op_RegI,  5, rbp->as_VMReg()->next());
 
-#ifdef _WIN64
+// #ifdef _WIN64  There is a problem in 11u with this, see JDK-8304389.
+#ifdef DISABLED
 
 reg_def RSI  (SOC, SOE, Op_RegI,  6, rsi->as_VMReg());
 reg_def RSI_H(SOC, SOE, Op_RegI,  6, rsi->as_VMReg()->next());
