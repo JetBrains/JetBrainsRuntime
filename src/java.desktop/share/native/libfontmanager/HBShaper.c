@@ -25,6 +25,8 @@
 
 #include <jni_util.h>
 #include <stdlib.h>
+#include <string.h>
+#include <assert.h>
 #include "hb.h"
 #include "hb-jdk.h"
 #include "hb-ot.h"
@@ -221,9 +223,8 @@ JDKFontInfo*
 }
 
 
-#define TYPO_KERN 0x00000001
-#define TYPO_LIGA 0x00000002
 #define TYPO_RTL  0x80000000
+#define FEATURE_CHAR_LENGTH 4
 
 JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
     (JNIEnv *env, jclass cls,
@@ -240,6 +241,7 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
      jint baseIndex,
      jobject startPt,
      jint flags,
+     jstring featuresStr,
      jint slot) {
 
      hb_buffer_t *buffer;
@@ -252,9 +254,6 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
      hb_glyph_position_t *glyphPos;
      hb_direction_t direction = HB_DIRECTION_LTR;
      hb_feature_t *features = NULL;
-     int featureCount = 0;
-     char* kern = (flags & TYPO_KERN) ? "kern" : "-kern";
-     char* liga = (flags & TYPO_LIGA) ? "liga" : "-liga";
      jboolean ret;
      unsigned int buflen;
 
@@ -292,10 +291,13 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
 
      hb_buffer_add_utf16(buffer, chars, len, offset, limit-offset);
 
-     features = calloc(2, sizeof(hb_feature_t));
-     if (features) {
-         hb_feature_from_string(kern, -1, &features[featureCount++]);
-         hb_feature_from_string(liga, -1, &features[featureCount++]);
+     const char *featuresStrPtr = (*env)->GetStringUTFChars(env, featuresStr, 0);
+     assert(strlen(featuresStrPtr) % FEATURE_CHAR_LENGTH == 0);
+     unsigned int featureCount = strlen(featuresStrPtr) / FEATURE_CHAR_LENGTH;
+     features = calloc(featureCount, sizeof(hb_feature_t));
+     for (unsigned int i = 0; i < featureCount; i++) {
+         hb_feature_from_string(featuresStrPtr, FEATURE_CHAR_LENGTH, &features[i]);
+         featuresStrPtr += FEATURE_CHAR_LENGTH;
      }
 
      hb_shape_full(hbfont, buffer, features, featureCount, 0);

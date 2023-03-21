@@ -73,13 +73,14 @@ public class FontStrikeDesc {
     int style;
     int aaHint;
     int fmHint;
+    private String features = "";
     private int hashCode;
     private int valuemask;
 
     public int hashCode() {
         /* Can cache hashcode since a strike(desc) is immutable.*/
         if (hashCode == 0) {
-            hashCode = glyphTx.hashCode() + devTx.hashCode() + valuemask;
+            hashCode = glyphTx.hashCode() + devTx.hashCode() + valuemask + features.hashCode();
         }
         return hashCode;
     }
@@ -89,7 +90,8 @@ public class FontStrikeDesc {
             FontStrikeDesc desc = (FontStrikeDesc)obj;
             return (desc.valuemask == this.valuemask &&
                     desc.glyphTx.equals(this.glyphTx) &&
-                    desc.devTx.equals(this.devTx));
+                    desc.devTx.equals(this.devTx) &&
+                    desc.features.equals(this.features));
         } catch (Exception e) {
             /* class cast or NP exceptions should not happen often, if ever,
              * and I am hoping that this is faster than an instanceof check.
@@ -256,8 +258,19 @@ public class FontStrikeDesc {
         fmHint = desc.fmHint;
         hashCode = desc.hashCode;
         valuemask = desc.valuemask;
+        features = desc.features;
     }
 
+    private static FontStrikeDesc createFontStrikeDesc(AffineTransform devAt, AffineTransform at,
+                                                       int fStyle, int aa, int fm, String features) {
+        FontStrikeDesc desc = new FontStrikeDesc(devAt, at, fStyle, aa, fm);
+        desc.features = features;
+        return desc;
+    }
+
+    private static String getFeatures(FontStrikeDesc desc) {
+        return desc.features;
+    }
 
     public String toString() {
         return "FontStrikeDesc: Style="+style+ " AA="+aaHint+ " FM="+fmHint+

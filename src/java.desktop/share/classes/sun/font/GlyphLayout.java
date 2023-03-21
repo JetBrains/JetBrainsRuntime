@@ -68,12 +68,13 @@
 
 package sun.font;
 
+import com.jetbrains.desktop.FontExtensions;
+
+import java.awt.*;
 import java.lang.ref.SoftReference;
-import java.awt.Font;
 import java.awt.font.FontRenderContext;
 import java.awt.font.GlyphVector;
 import java.awt.geom.AffineTransform;
-import java.awt.geom.NoninvertibleTransformException;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
@@ -255,7 +256,8 @@ public final class GlyphLayout {
                                                (int)Math.abs(ptSize));
             int fm = FontStrikeDesc.getFMHintIntVal
                 (frc.getFractionalMetricsHint());
-            sd = new FontStrikeDesc(dtx, gtx, font.getStyle(), aa, fm);
+            sd = FontExtensions.createFontStrikeDesc(dtx, gtx, font.getStyle(), aa, fm,
+                    FontExtensions.getFeatures(font));
         }
 
         private static final Point2D.Float ZERO_DELTA = new Point2D.Float();
@@ -359,14 +361,6 @@ public final class GlyphLayout {
         }
 
         init(count);
-
-        // need to set after init
-        // go through the back door for this
-        if (font.hasLayoutAttributes()) {
-            AttributeValues values = ((AttributeMap)font.getAttributes()).getValues();
-            if (values.getKerning() != 0) _typo_flags |= 0x1;
-            if (values.getLigatures() != 0) _typo_flags |= 0x2;
-        }
 
         _offset = offset;
 
@@ -626,7 +620,6 @@ public final class GlyphLayout {
         private int start;
         private int limit;
         private int gmask;
-        private int eflags;
         private LayoutEngineKey key;
         private LayoutEngine engine;
 
@@ -639,7 +632,6 @@ public final class GlyphLayout {
             this.limit = limit;
             this.gmask = gmask;
             this.key.init(font, script, lang);
-            this.eflags = 0;
 
             // only request canonical substitution if we have combining marks
             for (int i = start; i < limit; ++i) {
@@ -655,7 +647,7 @@ public final class GlyphLayout {
                     gc == ENCLOSING_MARK ||
                     gc == COMBINING_SPACING_MARK) { // could do range test also
 
-                    this.eflags = 0x4;
+                    // Here was removed eflags variable due to unusing on native side. Revert changes on demand
                     break;
                 }
             }
@@ -667,7 +659,7 @@ public final class GlyphLayout {
             _textRecord.start = start;
             _textRecord.limit = limit;
             engine.layout(_sd, _mat, ptSize, gmask, start - _offset, _textRecord,
-                          _typo_flags | eflags, _pt, _gvdata);
+                          _typo_flags, _pt, _gvdata);
         }
     }
 }
