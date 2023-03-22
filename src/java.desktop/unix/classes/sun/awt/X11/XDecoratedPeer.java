@@ -50,6 +50,9 @@ abstract class XDecoratedPeer extends XWindowPeer {
     // reparented - indicates that WM has adopted the top-level.
     boolean configure_seen;
     boolean insets_corrected;
+    // Set to true after reconfigureContentWindow is called for the first time.
+    // Before this, content window may not be in sync with insets.
+    private boolean content_reconfigured;
 
     XIconWindow iconWindow;
     volatile WindowDimensions dimensions;
@@ -736,6 +739,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
             return;
         }
         content.setContentBounds(dims);
+        content_reconfigured = true;
     }
 
     private XEvent pendingConfigureEvent;
@@ -873,6 +877,14 @@ abstract class XDecoratedPeer extends XWindowPeer {
                 checkIfOnNewScreen(new Rectangle(newLocation.getDeviceLocation(), newDimension));
             }
         });
+    }
+
+    @Override
+    WindowLocation queryXLocation() {
+        XContentWindow c = content;
+        boolean client = c == null || !content_reconfigured;
+        return new WindowLocation(XlibUtil.translateCoordinates(client ? window : c.getWindow(),
+                XlibWrapper.RootWindow(XToolkit.getDisplay(), getScreenNumber()), 0, 0), client);
     }
 
     private void checkShellRectSize(Rectangle shellRect) {
