@@ -768,7 +768,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     class WindowLocation {
         private final Point location; // Device space
         private final boolean client;
-        private WindowLocation(Point location, boolean client) {
+        WindowLocation(Point location, boolean client) {
             this.location = location;
             this.client = client;
         }
@@ -797,6 +797,11 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         }
     }
 
+    WindowLocation queryXLocation() {
+        return new WindowLocation(XlibUtil.translateCoordinates(getContentWindow(),
+                XlibWrapper.RootWindow(XToolkit.getDisplay(), getScreenNumber()), 0, 0), false);
+    }
+
     WindowLocation getNewLocation(XConfigureEvent xe) {
         int runningWM = XWM.getWMID();
         if (xe.get_send_event() ||
@@ -808,14 +813,12 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             // a window is resized but the client can not tell if the window was
             // moved or not. The client should consider the position as unknown
             // and use TranslateCoordinates to find the actual position.
-            Point xlocation = XlibUtil.translateCoordinates(getContentWindow(),
-                    XlibWrapper.RootWindow(XToolkit.getDisplay(), getScreenNumber()), 0, 0);
+            WindowLocation xlocation = queryXLocation();
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                log.fine("New X location: {0}", xlocation);
+                log.fine("New X location: {0} ({1})", xlocation.location, xlocation.client ? "client" : "bounds");
             }
-            return new WindowLocation(xlocation, false);
+            return xlocation;
         }
-        return new WindowLocation(null, false);
     }
 
     /*
@@ -2545,7 +2548,6 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     @Override
     public boolean updateGraphicsData(GraphicsConfiguration gc) {
         if (super.updateGraphicsData(gc)) return true;
-        repositionSecurityWarning();
         return false;
     }
 
