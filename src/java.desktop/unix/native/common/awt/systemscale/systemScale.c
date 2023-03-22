@@ -143,6 +143,32 @@ static void* get_schema_value(char *name, char *key) {
     return NULL;
 }
 
+// When monitor framebuffer scaling enabled, compositor scales down monitor resolutions according to their scales,
+// so that we're working in logical, not device pixels, just like in macOS. This approach is used for implementing
+// fractional scaling, so basically this function tells you whether fractional scaling is enabled or not.
+int isMonitorFramebufferScalingEnabled() {
+    int result = 0;
+    void* features = get_schema_value("org.gnome.mutter", "experimental-features");
+    if (features) {
+        if (fp_g_variant_is_of_type(features, "as")) {
+            int numFeatures = fp_g_variant_n_children(features);
+            for (int i = 0; i < numFeatures; i++) {
+                void* feature = fp_g_variant_get_child_value(features, i);
+                if (feature) {
+                    char* name = fp_g_variant_get_string(feature, NULL);
+                    if (name && strcmp(name, "scale-monitor-framebuffer") == 0) {
+                        result = 1;
+                    }
+                    fp_g_variant_unref(feature);
+                    if (result) break;
+                }
+            }
+        }
+        fp_g_variant_unref(features);
+    }
+    return result;
+}
+
 
 static double getDesktopScale(char *output_name) {
     double result = -1;
