@@ -802,24 +802,28 @@ Java_sun_awt_X11GraphicsEnvironment_updateWaylandMonitorScaling(JNIEnv *env, jcl
     if (!usingXinerama || !wlLibHandle) return;
 
     struct UpdateWaylandMonitorsData monData;
-    monData.xinInfo = (*XineramaQueryScreens)(awt_display, &monData.xinScreens);
-    if (monData.xinInfo == NULL) return;
-    wl_display* display = wl_display_connect(NULL);
-    if (display == NULL) return;
-    monData.waylandMonitorScales = calloc(monData.xinScreens, sizeof(int32_t));
+    monData.currentWaylandMonitor = -1;
+    monData.currentWaylandScale = 1;
+    monData.waylandMonitorScales = NULL;
+    if (!isMonitorFramebufferScalingEnabled()) {
+        monData.xinInfo = (*XineramaQueryScreens)(awt_display, &monData.xinScreens);
+        if (monData.xinInfo == NULL) return;
+        wl_display* display = wl_display_connect(NULL);
+        if (display == NULL) return;
+        monData.waylandMonitorScales = calloc(monData.xinScreens, sizeof(int32_t));
 
-    wl_registry* registry = wl_proxy_marshal_constructor(display, 1, wl_registry_interface, NULL); // wl_display_get_registry
-    wl_proxy_add_listener(registry, (void (**)(void)) &wlRegistryListener, &monData); // wl_registry_add_listener
-    wl_display_roundtrip(display); // Get globals (wl_outputs)
-    wl_display_roundtrip(display); // Get outputs info
+        wl_registry* registry = wl_proxy_marshal_constructor(display, 1, wl_registry_interface, NULL); // wl_display_get_registry
+        wl_proxy_add_listener(registry, (void (**)(void)) &wlRegistryListener, &monData); // wl_registry_add_listener
+        wl_display_roundtrip(display); // Get globals (wl_outputs)
+        wl_display_roundtrip(display); // Get outputs info
 
-    XFree(monData.xinInfo);
+        wl_display_disconnect(display);
+        XFree(monData.xinInfo);
+    }
 
     int32_t* oldScales = waylandMonitorScales;
     waylandMonitorScales = monData.waylandMonitorScales;
     free(oldScales);
-
-    wl_display_disconnect(display);
 }
 
 /*
