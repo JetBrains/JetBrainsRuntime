@@ -99,8 +99,22 @@ class UnixDomainSockets {
     }
 
     static byte[] getPathBytes(Path path) {
-        FileSystemProvider provider = FileSystems.getDefault().provider();
-        return ((AbstractFileSystemProvider) provider).getSunPathForSocketFile(path);
+        java.nio.file.FileSystem fs = path.getFileSystem();
+        FileSystemProvider provider = fs.provider();
+        if (fs == sun.nio.fs.DefaultFileSystemProvider.theFileSystem()) {
+            return ((AbstractFileSystemProvider) provider).getSunPathForSocketFile(path);
+        } else {
+            try {
+                java.lang.reflect.Method method = provider.getClass().getMethod("getSunPathForSocketFile", Path.class);
+                Object result = method.invoke(provider, path);
+                return (byte[]) result;
+            } catch (NoSuchMethodException | SecurityException e) {
+                // This should've been verified when UnixDomainSocketAddress was created
+                throw new Error("Can't find getSunPathForSocketFile(Path) in the non-default file system provider " + provider.getClass());
+            } catch (java.lang.reflect.InvocationTargetException | IllegalAccessException e) {
+                throw new RuntimeException("Can't invoke getSunPathForSocketFile(Path) from a non-default file system provider", e);
+            }
+        }
     }
 
     static FileDescriptor socket() throws IOException {
@@ -136,13 +150,11 @@ class UnixDomainSockets {
         int rnd = random.nextInt(Integer.MAX_VALUE);
         try {
             final Path path = Path.of(dir, "socket_" + rnd);
-            if (path.getFileSystem().provider() != sun.nio.fs.DefaultFileSystemProvider.instance()) {
-                throw new UnsupportedOperationException(
-                        "Unix Domain Sockets not supported on non-default file system");
-            }
             return UnixDomainSocketAddress.of(path);
         } catch (InvalidPathException e) {
             throw new BindException("Invalid temporary directory");
+        } catch (IllegalArgumentException e) {
+            throw new UnsupportedOperationException("Unix Domain Sockets not supported on non-default file system without method getSunPathForSocketFile(Path)");
         }
     }
 
