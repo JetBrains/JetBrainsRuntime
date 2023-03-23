@@ -858,6 +858,8 @@ public:
   void mark_dependent_nmethods(DeoptimizationScope* deopt_scope, KlassDepChange& changes);
   void add_dependent_nmethod(nmethod* nm);
   void clean_dependency_context();
+  // Setup link to hierarchy and deoptimize
+  void add_to_hierarchy(JavaThread* current);
 
   // On-stack replacement support
   nmethod* osr_nmethods_head() const         { return _osr_nmethods_head; };
@@ -896,9 +898,11 @@ public:
   void init_implementor();           // initialize
   void init_implementor_from_redefine();           // initialize
 
+ private:
   // link this class into the implementors list of every interface it implements
   void process_interfaces();
 
+ public:
   // virtual operations from Klass
   GrowableArray<Klass*>* compute_secondary_supers(int num_extra_slots,
                                                   Array<InstanceKlass*>* transitive_interfaces);
