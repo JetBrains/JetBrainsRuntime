@@ -75,7 +75,6 @@ BOOL isDisplaySyncEnabled() {
     self.framebufferOnly = YES;
     self.nextDrawableCount = 0;
     self.opaque = YES;
-    self.presentsWithTransaction = YES;
     self.redrawCount = 0;
     return self;
 }
@@ -134,6 +133,7 @@ BOOL isDisplaySyncEnabled() {
                 destinationOrigin:MTLOriginMake(0, 0, 0)];
         [blitEncoder endEncoding];
 
+        [commandBuf presentDrawable:mtlDrawable];
         __block MTLLayer* layer = self;
         [layer retain];
         [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
@@ -142,8 +142,6 @@ BOOL isDisplaySyncEnabled() {
         }];
 
         [commandBuf commit];
-        [commandBuf waitUntilScheduled];
-        [mtlDrawable present];
     }
 }
 
