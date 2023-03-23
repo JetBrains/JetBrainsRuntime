@@ -160,13 +160,19 @@ public final class UnixDomainSocketAddress extends SocketAddress {
      * @throws NullPointerException if path is {@code null}
      */
     public static UnixDomainSocketAddress of(Path path) {
-        FileSystem fs = path.getFileSystem();
-        if (fs != FileSystems.getDefault()) {
-            throw new IllegalArgumentException();
+        final FileSystem fs = path.getFileSystem();
+        final FileSystem defaultFS = sun.nio.fs.DefaultFileSystemProvider.theFileSystem();
+        if (fs != defaultFS || fs.getClass().getModule() != Object.class.getModule()) {
+            try {
+                // Check if we'll be able to create a socket from this Path later on by
+                // testing for the presence of a method identical to
+                // AbstractFileSystemProvider.getSunPathForSocketFile()
+                fs.provider().getClass().getMethod("getSunPathForSocketFile", Path.class);
+            } catch (NoSuchMethodException | SecurityException e) {
+                throw new IllegalArgumentException();
+            }
         }
-        if (fs.getClass().getModule() != Object.class.getModule()) {
-            throw new IllegalArgumentException();
-        }
+
         return new UnixDomainSocketAddress(path);
     }
 
