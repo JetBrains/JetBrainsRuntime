@@ -1109,12 +1109,8 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
      * insets are calculated using _NET_WORKAREA property of the root window.
      * <p>
      * Note that _NET_WORKAREA is a rectangular area and it does not work
-     * well in the Xinerama mode.
-     * <p>
-     * We will trust the part of this rectangular area only if it starts at the
-     * requested graphics configuration. Below is an example when the
-     * _NET_WORKAREA intersects with the requested graphics configuration but
-     * produces wrong result.
+     * well in the Xinerama mode, so we assume that only 0th screen has insets.
+     * Below is an example when _NET_WORKAREA produces wrong result.
      *
      *         //<-x1,y1///////
      *         //            // ////////////////
@@ -1132,20 +1128,25 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         if (np == null || !(gd instanceof X11GraphicsDevice) || !np.active()) {
             return super.getScreenInsets(gc);
         }
+        X11GraphicsDevice x11gd = (X11GraphicsDevice) gd;
+        int screenNum = x11gd.getScreen();
+        if (localEnv.runningXinerama() && screenNum != 0) {
+            // We cannot estimate insets for non-default screen,
+            // there are often none.
+            return new Insets(0, 0, 0, 0);
+        }
 
         XToolkit.awtLock();
         try {
-            X11GraphicsDevice x11gd = (X11GraphicsDevice) gd;
-            long root = XlibUtil.getRootWindow(x11gd.getScreen());
-            Rectangle workArea = getWorkArea(root);
+            Rectangle workArea = getWorkArea(XlibUtil.getRootWindow(screenNum));
             Rectangle screen = gc.getBounds();
             if (workArea != null) {
                 workArea.x = x11gd.scaleDownX(workArea.x);
                 workArea.y = x11gd.scaleDownY(workArea.y);
                 workArea.width = x11gd.scaleDown(workArea.width);
                 workArea.height = x11gd.scaleDown(workArea.height);
-                if (screen.contains(workArea.getLocation())) {
-                    workArea = workArea.intersection(screen);
+                workArea = workArea.intersection(screen);
+                if (!workArea.isEmpty()) {
                     int top = workArea.y - screen.y;
                     int left = workArea.x - screen.x;
                     int bottom = screen.height - workArea.height - top;
