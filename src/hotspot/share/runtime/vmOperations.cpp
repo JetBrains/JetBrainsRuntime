@@ -26,6 +26,7 @@
 #include "classfile/stringTable.hpp"
 #include "classfile/symbolTable.hpp"
 #include "classfile/vmSymbols.hpp"
+#include "classfile/symbolTable.hpp"
 #include "code/codeCache.hpp"
 #include "compiler/compileBroker.hpp"
 #include "gc/shared/collectedHeap.hpp"
@@ -38,6 +39,7 @@
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
 #include "oops/symbol.hpp"
+#include "oops/symbolHandle.hpp"
 #include "runtime/arguments.hpp"
 #include "runtime/deoptimization.hpp"
 #include "runtime/frame.inline.hpp"
@@ -51,7 +53,7 @@
 #include "runtime/threadSMR.inline.hpp"
 #include "runtime/vmOperations.hpp"
 #include "services/threadService.hpp"
-#include "utilities/ticks.hpp"
+#include "javaCalls.hpp"
 
 #define VM_OP_NAME_INITIALIZE(name) #name,
 
@@ -169,6 +171,37 @@ void VM_ZombieAll::doit() {
 
 #endif // !PRODUCT
 
+
+// Prints out additional information supplied by the application
+// through the use of JBR API. The data in the form of a String
+// are obtained from Throwable.$$jb$getAdditionalInfoForJstack()
+// and, not not null, are included into the output.
+void VM_PrintThreads::print_additional_info() {
+  JavaThread *THREAD = JavaThread::current();
+  HandleMark hm(THREAD);
+  ResourceMark rm;
+
+  InstanceKlass *klass = vmClasses::Throwable_klass();
+  if (klass != NULL) {
+    TempNewSymbol method_name = SymbolTable::new_symbol("$$jb$getAdditionalInfoForJstack");
+    Symbol *signature = vmSymbols::void_string_signature();
+    Method *method = klass->find_method(method_name, signature);
+    if (method != NULL) {
+      JavaValue result(T_OBJECT);
+      JavaCalls::call_static(&result, klass,
+                             method_name, signature, THREAD);
+      oop dump_oop = result.get_oop();
+      if (dump_oop != NULL) {
+        // convert Java String to utf8 string
+        char *s = java_lang_String::as_utf8_string(dump_oop);
+        _out->cr();
+        _out->print_raw_cr(s);
+        _out->cr();
+      }
+    }
+  }
+}
+
 bool VM_PrintThreads::doit_prologue() {
   // Get Heap_lock if concurrent locks will be dumped
   if (_print_concurrent_locks) {
@@ -189,6 +222,13 @@ void VM_PrintThreads::doit_epilogue() {
   if (_print_concurrent_locks) {
     // Release Heap_lock
     Heap_lock->unlock();
+  }
+
+  // We should be on the "signal handler" thread, which is a JavaThread
+  if (Thread::current()->is_Java_thread()) {
+      // .. but best play it safe as we're going to need to make
+      // Java calls on the current thread.
+    print_additional_info();
   }
 }
 
