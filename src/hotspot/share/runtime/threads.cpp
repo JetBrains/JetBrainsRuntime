@@ -29,7 +29,6 @@
 #include "classfile/classLoader.hpp"
 #include "classfile/javaClasses.hpp"
 #include "classfile/javaThreadStatus.hpp"
-#include "classfile/symbolTable.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "classfile/vmClasses.hpp"
 #include "classfile/vmSymbols.hpp"
@@ -1426,80 +1425,6 @@ public:
   }
 };
 
-static void
-print_coroutine_dump_from_field(outputStream *st, const char *class_with_info)
-{
-  Thread *THREAD = Thread::current();
-  ResourceMark rm;
-  HandleMark hm(THREAD);
-  Symbol *name = SymbolTable::new_symbol(class_with_info);
-  Handle class_loader = Handle(THREAD, SystemDictionary::java_system_loader());
-  Handle protection_domain;
-  InstanceKlass *ik = SystemDictionary::find_instance_klass(THREAD, name,
-                                                            class_loader, protection_domain);
-  const char *dump = NULL;
-  long dump_time = 0L;
-  bool dump_is_possible = false; // possible, but maybe next time when data are available
-  {
-    fieldDescriptor fd;
-    const bool found = ik != NULL &&
-                       ik->find_local_field(SymbolTable::new_symbol("coroutineDump"),
-                                            vmSymbols::string_signature(), &fd);
-    if (found) {
-      oop dump_oop = ik->java_mirror()->obj_field(fd.offset());
-      if (dump_oop != NULL) {
-        dump = java_lang_String::as_utf8_string(dump_oop);
-        if (dump != NULL && strlen(dump) < 2) dump = NULL;
-      }
-    }
-    dump_is_possible = found;
-  }
-
-  {
-    fieldDescriptor fd;
-    const bool found = ik != NULL &&
-                       ik->find_local_field(SymbolTable::new_symbol("coroutineDumpTime"),
-                                            vmSymbols::long_signature(), &fd);
-    if (found) {
-      dump_time = ik->java_mirror()->long_field(fd.offset());
-    }
-    dump_is_possible &= found;
-  }
-
-  if (dump != NULL) {
-    st->cr();
-    st->print("Kotlin coroutines info");
-
-    if (dump_time > 0) {
-      const long current_time = os::javaTimeNanos();
-      const long seconds_passed = (current_time - dump_time) / NANOSECS_PER_SEC;
-      if (seconds_passed >= 0) {
-        if (seconds_passed <= 1) {
-          st->print_cr(" (from less than a second ago):");
-        } else {
-          st->print_cr(" (from %ld seconds ago):", seconds_passed);
-        }
-      } else {
-        st->print_cr(" (from some unknown point in the past):");
-      }
-    } else {
-      st->print_cr(" (from some unknown point in the past):");
-    }
-
-    st->print_raw_cr(dump);
-    st->cr();
-  } else {
-    // Can't show anything useful now, but the data may be there upon
-    // subsequent requests.
-    if (dump_is_possible) {
-       // Encourage the user to execute jstack or hit Ctrl-\ once more
-       st->cr();
-       st->print_cr("Kotlin coroutines info will be available here the next time threads are dumped.");
-       st->cr();
-    }
-  }
-}
-
 // Threads::print_on() is called at safepoint by VM_PrintThreads operation.
 void Threads::print_on(outputStream* st, bool print_stacks,
                        bool internal_format, bool print_concurrent_locks,
@@ -1524,20 +1449,8 @@ void Threads::print_on(outputStream* st, bool print_stacks,
   ThreadsSMRSupport::print_info_on(st);
   st->cr();
 
-  const char *thread_to_interrupt = Arguments::get_property("jstack.interrupt.thread");
-  bool coroutine_dump_initiated = false;
   ALL_JAVA_THREADS(p) {
     ResourceMark rm;
-    if (thread_to_interrupt != NULL &&
-            strlen(thread_to_interrupt) > 2 &&
-            strstr(p->name(), thread_to_interrupt) != NULL) {
-      // ThreadsListHandle tlh(Thread::current()); // no need, we're at safepoint
-      java_lang_Thread::set_interrupted(p->threadObj(), true);
-      p->interrupt();
-      coroutine_dump_initiated = true;
-      // ...but since we're at safepoint, it will become available only after we have exited from here
-    }
-
     p->print_on(st, print_extended_info);
     if (print_stacks) {
       if (internal_format) {
@@ -1563,10 +1476,6 @@ void Threads::print_on(outputStream* st, bool print_stacks,
   cl.do_thread(WatcherThread::watcher_thread());
   cl.do_thread(AsyncLogWriter::instance());
 
-  const char *class_with_info = Arguments::get_property("jstack.coroutine.dump.class");
-  if (coroutine_dump_initiated && class_with_info != NULL) {
-    print_coroutine_dump_from_field(st, class_with_info);
-  }
   st->flush();
 }
 
