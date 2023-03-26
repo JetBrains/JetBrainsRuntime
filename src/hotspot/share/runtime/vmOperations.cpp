@@ -25,6 +25,7 @@
 #include "precompiled.hpp"
 #include "classfile/classLoaderDataGraph.hpp"
 #include "classfile/vmSymbols.hpp"
+#include "classfile/symbolTable.hpp"
 #include "code/codeCache.hpp"
 #include "compiler/compileBroker.hpp"
 #include "gc/shared/collectedHeap.hpp"
@@ -37,6 +38,7 @@
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
 #include "oops/symbol.hpp"
+#include "oops/symbolHandle.hpp"
 #include "runtime/arguments.hpp"
 #include "runtime/deoptimization.hpp"
 #include "runtime/frame.inline.hpp"
@@ -49,6 +51,7 @@
 #include "runtime/threadSMR.inline.hpp"
 #include "runtime/vmOperations.hpp"
 #include "services/threadService.hpp"
+#include "javaCalls.hpp"
 
 #define VM_OP_NAME_INITIALIZE(name) #name,
 
@@ -158,6 +161,41 @@ void VM_ZombieAll::doit() {
 
 #endif // !PRODUCT
 
+
+// Prints out Kotlin coroutines by calling
+// com.intellij.diagnostic.CoroutineDumperKt.dumpCoroutines()
+// and including the returned String into the output.
+void VM_PrintThreads::print_coroutines() {
+  JavaThread *THREAD = JavaThread::current();
+  HandleMark hm(THREAD);
+  ResourceMark rm;
+
+  Symbol *name = SymbolTable::new_symbol("com/intellij/diagnostic/CoroutineDumperKt");
+  Handle class_loader = Handle(THREAD, SystemDictionary::java_system_loader());
+  Handle protection_domain;
+  InstanceKlass *klass = SystemDictionary::find_instance_klass(THREAD, name,
+                                                            class_loader, protection_domain);
+  if (klass != NULL) {
+    TempNewSymbol method_name = SymbolTable::new_symbol("dumpCoroutines");
+    Symbol *signature = vmSymbols::void_string_signature();
+    Method *method = klass->find_method(method_name, signature);
+    if (method != NULL) {
+      JavaValue result(T_OBJECT);
+      JavaCalls::call_static(&result, klass,
+                             method_name, signature, THREAD);
+      oop dump_oop = result.get_oop();
+      if (dump_oop != NULL) {
+        // convert Java String to utf8 string
+        char *s = java_lang_String::as_utf8_string(dump_oop);
+        _out->cr();
+        _out->print_cr("Kotlin coroutines:");
+        _out->print_raw_cr(s);
+        _out->cr();
+      }
+    }
+  }
+}
+
 bool VM_PrintThreads::doit_prologue() {
   // Get Heap_lock if concurrent locks will be dumped
   if (_print_concurrent_locks) {
@@ -177,6 +215,11 @@ void VM_PrintThreads::doit_epilogue() {
   if (_print_concurrent_locks) {
     // Release Heap_lock
     Heap_lock->unlock();
+  }
+
+  // We should be on the "signal handler" thread, which is a JavaThread
+  if (Thread::current()->is_Java_thread()) {
+    print_coroutines();
   }
 }
 
