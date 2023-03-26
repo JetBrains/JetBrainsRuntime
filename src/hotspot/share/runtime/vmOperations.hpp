@@ -169,6 +169,9 @@ class VM_PrintThreads: public VM_Operation {
   void doit();
   bool doit_prologue();
   void doit_epilogue();
+
+private:
+  void print_additional_info();
 };
 
 class VM_PrintMetadata : public VM_Operation {
