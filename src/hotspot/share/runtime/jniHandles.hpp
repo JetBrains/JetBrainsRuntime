@@ -110,6 +110,7 @@ public:
 
   // Debugging
   static void print_on(outputStream* st);
+  static void print_memory_usage_on(outputStream* st);
   static void print();
   static void verify();
   // The category predicates all require handle != nullptr.

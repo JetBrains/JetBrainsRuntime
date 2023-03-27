@@ -44,6 +44,7 @@
 #include "runtime/flags/jvmFlag.hpp"
 #include "runtime/frame.inline.hpp"
 #include "runtime/javaThread.inline.hpp"
+#include "runtime/jniHandles.hpp"
 #include "runtime/init.hpp"
 #include "runtime/os.inline.hpp"
 #include "runtime/osThread.hpp"
@@ -1076,6 +1077,13 @@ void VMError::report(outputStream* st, bool _verbose) {
 
   STEP_IF("Native Memory Tracking", _verbose)
     MemTracker::error_report(st);
+
+  STEP("JNI global references")
+  st->print_cr("JNI global refs");
+  if (SafepointSynchronize::is_at_safepoint()) {
+    JNIHandles::print_on(st);
+  }
+  JNIHandles::print_memory_usage_on(st);
 
   STEP_IF("printing system", _verbose)
     st->cr();
