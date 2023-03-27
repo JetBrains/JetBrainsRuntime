@@ -47,6 +47,7 @@
 #include "runtime/frame.inline.hpp"
 #include "runtime/init.hpp"
 #include "runtime/javaThread.inline.hpp"
+#include "runtime/jniHandles.hpp"
 #include "runtime/os.inline.hpp"
 #include "runtime/osThread.hpp"
 #include "runtime/safefetch.hpp"
@@ -1308,6 +1309,11 @@ void VMError::report(outputStream* st, bool _verbose) {
   STEP_IF("printing periodic trim state", _verbose)
     NativeHeapTrimmer::print_state(st);
     st->cr();
+
+  STEP("JNI global references")
+  st->print_cr("JNI global refs:");
+  JNIHandles::print_on_unsafe(st);
+  JNIHandles::print_memory_usage_on(st);
 
   STEP_IF("printing system", _verbose)
     st->print_cr("---------------  S Y S T E M  ---------------");
