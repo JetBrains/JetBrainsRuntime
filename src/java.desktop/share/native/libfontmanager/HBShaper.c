@@ -224,7 +224,6 @@ JDKFontInfo*
 
 
 #define TYPO_RTL  0x80000000
-#define FEATURE_CHAR_LENGTH 4
 
 JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
     (JNIEnv *env, jclass cls,
@@ -242,6 +241,7 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
      jobject startPt,
      jint flags,
      jstring featuresStr,
+     jint featuresCount,
      jint slot) {
 
      hb_buffer_t *buffer;
@@ -292,15 +292,21 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
      hb_buffer_add_utf16(buffer, chars, len, offset, limit-offset);
 
      const char *featuresStrPtr = (*env)->GetStringUTFChars(env, featuresStr, 0);
-     assert(strlen(featuresStrPtr) % FEATURE_CHAR_LENGTH == 0);
-     unsigned int featureCount = strlen(featuresStrPtr) / FEATURE_CHAR_LENGTH;
-     features = calloc(featureCount, sizeof(hb_feature_t));
-     for (unsigned int i = 0; i < featureCount; i++) {
-         hb_feature_from_string(featuresStrPtr, FEATURE_CHAR_LENGTH, &features[i]);
-         featuresStrPtr += FEATURE_CHAR_LENGTH;
+     features = calloc(featuresCount, sizeof(hb_feature_t));
+     if (features) {
+         for (int i = 0; i < featuresCount; i++) {
+             const char *featureEnd = strchr(featuresStrPtr, ' ');
+             assert(featureEnd != NULL);
+             int featureLen = (int) (featureEnd - featuresStrPtr);
+
+             hb_bool_t parseStatus = hb_feature_from_string(featuresStrPtr, featureLen, &features[i]);
+             assert(parseStatus);
+
+             featuresStrPtr = featureEnd + 1;
+         }
      }
 
-     hb_shape_full(hbfont, buffer, features, featureCount, 0);
+     hb_shape_full(hbfont, buffer, features, featuresCount, 0);
      glyphCount = hb_buffer_get_length(buffer);
      glyphInfo = hb_buffer_get_glyph_infos(buffer, 0);
      glyphPos = hb_buffer_get_glyph_positions(buffer, &buflen);

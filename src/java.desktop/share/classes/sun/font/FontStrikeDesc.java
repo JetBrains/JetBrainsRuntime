@@ -28,6 +28,9 @@ package sun.font;
 import java.awt.Font;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
+import java.util.Map;
+import java.util.TreeMap;
+
 import static sun.awt.SunHints.*;
 
 /*
@@ -73,14 +76,14 @@ public class FontStrikeDesc {
     int style;
     int aaHint;
     int fmHint;
-    private String features = "";
+    private Map<String, Integer> features;
     private int hashCode;
     private int valuemask;
 
     public int hashCode() {
         /* Can cache hashcode since a strike(desc) is immutable.*/
         if (hashCode == 0) {
-            hashCode = glyphTx.hashCode() + devTx.hashCode() + valuemask + features.hashCode();
+            hashCode = glyphTx.hashCode() + devTx.hashCode() + valuemask;
         }
         return hashCode;
     }
@@ -90,8 +93,7 @@ public class FontStrikeDesc {
             FontStrikeDesc desc = (FontStrikeDesc)obj;
             return (desc.valuemask == this.valuemask &&
                     desc.glyphTx.equals(this.glyphTx) &&
-                    desc.devTx.equals(this.devTx) &&
-                    desc.features.equals(this.features));
+                    desc.devTx.equals(this.devTx));
         } catch (Exception e) {
             /* class cast or NP exceptions should not happen often, if ever,
              * and I am hoping that this is faster than an instanceof check.
@@ -262,13 +264,13 @@ public class FontStrikeDesc {
     }
 
     private static FontStrikeDesc createFontStrikeDesc(AffineTransform devAt, AffineTransform at,
-                                                       int fStyle, int aa, int fm, String features) {
+                                                       int fStyle, int aa, int fm, Map<String, Integer> features) {
         FontStrikeDesc desc = new FontStrikeDesc(devAt, at, fStyle, aa, fm);
         desc.features = features;
         return desc;
     }
 
-    private static String getFeatures(FontStrikeDesc desc) {
+    private static Map<String, Integer> getFeatures(FontStrikeDesc desc) {
         return desc.features;
     }
 

@@ -70,8 +70,8 @@ package sun.font;
 
 import com.jetbrains.desktop.FontExtensions;
 
-import java.awt.*;
 import java.lang.ref.SoftReference;
+import java.awt.Font;
 import java.awt.font.FontRenderContext;
 import java.awt.font.GlyphVector;
 import java.awt.geom.AffineTransform;
@@ -620,6 +620,7 @@ public final class GlyphLayout {
         private int start;
         private int limit;
         private int gmask;
+        private int eflags;
         private LayoutEngineKey key;
         private LayoutEngine engine;
 
@@ -632,6 +633,7 @@ public final class GlyphLayout {
             this.limit = limit;
             this.gmask = gmask;
             this.key.init(font, script, lang);
+            this.eflags = 0;
 
             // only request canonical substitution if we have combining marks
             for (int i = start; i < limit; ++i) {
@@ -647,7 +649,7 @@ public final class GlyphLayout {
                     gc == ENCLOSING_MARK ||
                     gc == COMBINING_SPACING_MARK) { // could do range test also
 
-                    // Here was removed eflags variable due to unusing on native side. Revert changes on demand
+                    this.eflags = 0x4; // TODO remove eflags due to unusing on native side
                     break;
                 }
             }
