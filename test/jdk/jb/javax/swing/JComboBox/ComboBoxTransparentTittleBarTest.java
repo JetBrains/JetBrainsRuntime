@@ -35,7 +35,7 @@ public final class ComboBoxTransparentTittleBarTest {
 
     public static void main(final String[] args) throws Exception {
         robot = new Robot();
-        robot.setAutoDelay(100);
+        robot.setAutoDelay(1000);
         robot.setAutoWaitForIdle(true);
 
         for (boolean doTitleBarTransparent : titleBarTransparencies) {
