@@ -135,6 +135,7 @@ if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
 
   jbr_name_postfix="_${bundle_type}"
   [ "$bundle_type" != "fd" ] && jbrsdk_name_postfix="_${bundle_type}"
+  cat $JCEF_PATH/jcef.version >> $JSDK/release
 else
   jbr_name_postfix=""
 fi
