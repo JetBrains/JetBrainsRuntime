@@ -39,7 +39,8 @@ public interface Jstack {
      *
      * @param infoSupplier a supplier of {@code String} values to be
      *                     included into jstack's output. If {@code null},
-     *                     no extra info will be included.
+     *                     then the previously registered supplier is removed
+     *                     (if any) and no extra info will be included.
      */
     void includeInfoFrom(Supplier<String> infoSupplier);
 }
