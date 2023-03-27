@@ -81,6 +81,10 @@ function create_image_bundle {
     zip_native_debug_symbols $IMAGES_DIR/jdk-bundle/jdk-$JBSDK_VERSION.jdk "${JBR}_diz"
   fi
 
+  if [ "$bundle_type" == "jcef" ]; then
+    cat $JCEF_PATH/jcef.version >> "$JRE_CONTENTS/Home/release"
+  fi
+
   cp -R "$JSDK"/../MacOS "$JRE_CONTENTS"
   cp "$JSDK"/../Info.plist "$JRE_CONTENTS"
 
