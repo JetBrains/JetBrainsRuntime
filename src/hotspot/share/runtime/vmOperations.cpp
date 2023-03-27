@@ -201,6 +201,9 @@ bool VM_PrintThreads::doit_prologue() {
 
 void VM_PrintThreads::doit() {
   Threads::print_on(_out, true, false, _print_concurrent_locks, _print_extended_info);
+
+  JNIHandles::print_on(_out);
+  JNIHandles::print_memory_usage_on(_out);
 }
 
 void VM_PrintThreads::doit_epilogue() {

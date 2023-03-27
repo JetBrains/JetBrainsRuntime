@@ -42,6 +42,7 @@
 #include "runtime/atomic.hpp"
 #include "runtime/frame.inline.hpp"
 #include "runtime/init.hpp"
+#include "runtime/jniHandles.hpp"
 #include "runtime/os.hpp"
 #include "runtime/osThread.hpp"
 #include "runtime/safefetch.inline.hpp"
@@ -1044,6 +1045,11 @@ void VMError::report(outputStream* st, bool _verbose) {
      if (_verbose) {
        MemTracker::error_report(st);
      }
+
+  STEP("JNI global references")
+  st->print_cr("JNI global refs:");
+  JNIHandles::print_on_unsafe(st);
+  JNIHandles::print_memory_usage_on(st);
 
   STEP("printing system")
 
