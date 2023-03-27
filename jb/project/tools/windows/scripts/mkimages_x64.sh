@@ -122,6 +122,7 @@ if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
   cp $JCEF_PATH/jmods/* ${JSDK_MODS_DIR} # $JSDK/jmods is not unchanged
 
   jbr_name_postfix="_${bundle_type}"
+  cat $JCEF_PATH/jcef.version >> $JSDK/release
 else
   jbr_name_postfix=""
 fi
