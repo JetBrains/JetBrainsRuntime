@@ -1130,4 +1130,20 @@ public class Throwable implements Serializable {
         else
             return suppressedExceptions.toArray(EMPTY_THROWABLE_ARRAY);
     }
+
+    private static volatile java.util.function.Supplier<String> additionalInfoSupplier = null;
+
+    // JBR API internals
+    private static void additionalInfoForJstack(java.util.function.Supplier<String> supplier) {
+        additionalInfoSupplier = supplier;
+    }
+
+    // NB: this is invoked from the VM
+    private static String additionalInfoForJstack() {
+        java.util.function.Supplier<String> supplier = additionalInfoSupplier;
+        if (supplier != null) {
+            return supplier.get();
+        }
+        return null;
+    }
 }

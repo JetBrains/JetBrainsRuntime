@@ -14,36 +14,35 @@
  * limitations under the License.
  */
 
-
-/**
+/*
  * @test
- * @summary Verifies that jstack includes whatever the method
- *          com.intellij.diagnostic.CoroutineDumperKt.dumpCoroutines()
- *          returns
+ * @summary Verifies that jstack includes whatever the supplier
+ *          provided to Jstack.includeInfoFrom() returns.
  * @library /test/lib
- * @compile CoroutineDumperKt.java
- * @run main/othervm CoroutineDumpTest
+ * @run shell build.sh
+ * @run main JstackTest
  */
 
- import jdk.test.lib.process.OutputAnalyzer;
- import jdk.test.lib.process.ProcessTools;
- import jdk.test.lib.JDKToolFinder;
- import jdk.test.lib.Platform;
+import com.jetbrains.JBR;
 
- import java.io.IOException;
+import jdk.test.lib.process.OutputAnalyzer;
+import jdk.test.lib.process.ProcessTools;
+import jdk.test.lib.JDKToolFinder;
+import jdk.test.lib.Platform;
 
- public class CoroutineDumpTest {
+import java.io.IOException;
+
+public class JstackTest {
+    final static String MAGIC_STRING = "Additional info:\nthis appears in jstack's output";
 
     public static void main(String[] args) {
-        // load the dumper class
-        System.out.println(com.intellij.diagnostic.CoroutineDumperKt.dumpCoroutines());
-
+        JBR.getJstack().includeInfoFrom( () -> MAGIC_STRING );
         long pid = ProcessHandle.current().pid();
         final OutputAnalyzer jstackOutput = runJstack(pid);
-        jstackOutput.shouldHaveExitValue(0)
-                    .shouldContain(com.intellij.diagnostic.CoroutineDumperKt.MAGIC_STRING);
+        jstackOutput
+                .shouldHaveExitValue(0)
+                .shouldContain(MAGIC_STRING);
     }
-
 
     static OutputAnalyzer runJstack(long pid) {
         try {
@@ -57,4 +56,4 @@
             throw new RuntimeException("Launching jstack failed", e);
         }
     }
- }
+}

@@ -165,18 +165,14 @@ void VM_ZombieAll::doit() {
 // Prints out Kotlin coroutines by calling
 // com.intellij.diagnostic.CoroutineDumperKt.dumpCoroutines()
 // and including the returned String into the output.
-void VM_PrintThreads::print_coroutines() {
+void VM_PrintThreads::print_additional_info() {
   JavaThread *THREAD = JavaThread::current();
   HandleMark hm(THREAD);
   ResourceMark rm;
 
-  Symbol *name = SymbolTable::new_symbol("com/intellij/diagnostic/CoroutineDumperKt");
-  Handle class_loader = Handle(THREAD, SystemDictionary::java_system_loader());
-  Handle protection_domain;
-  InstanceKlass *klass = SystemDictionary::find_instance_klass(THREAD, name,
-                                                            class_loader, protection_domain);
+  InstanceKlass *klass = vmClasses::Throwable_klass();
   if (klass != NULL) {
-    TempNewSymbol method_name = SymbolTable::new_symbol("dumpCoroutines");
+    TempNewSymbol method_name = SymbolTable::new_symbol("additionalInfoForJstack");
     Symbol *signature = vmSymbols::void_string_signature();
     Method *method = klass->find_method(method_name, signature);
     if (method != NULL) {
@@ -188,7 +184,6 @@ void VM_PrintThreads::print_coroutines() {
         // convert Java String to utf8 string
         char *s = java_lang_String::as_utf8_string(dump_oop);
         _out->cr();
-        _out->print_cr("Kotlin coroutines:");
         _out->print_raw_cr(s);
         _out->cr();
       }
@@ -219,7 +214,7 @@ void VM_PrintThreads::doit_epilogue() {
 
   // We should be on the "signal handler" thread, which is a JavaThread
   if (Thread::current()->is_Java_thread()) {
-    print_coroutines();
+    print_additional_info();
   }
 }
 
