@@ -43,6 +43,7 @@ import java.util.*;
 public class FontExtensionsTest {
     @Retention(RetentionPolicy.RUNTIME)
     private @interface JBRTest {}
+
     private static final int IMG_WIDTH = 500;
     private static final int IMG_HEIGHT = 50;
     private static final String LIGATURES_STRING = "== != -> <>";

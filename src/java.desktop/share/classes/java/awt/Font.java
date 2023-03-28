@@ -53,6 +53,7 @@ import java.util.*;
 import sun.awt.ComponentFactory;
 import sun.font.AttributeMap;
 import sun.font.AttributeValues;
+import sun.font.CompositeFont;
 import sun.font.CoreMetrics;
 import sun.font.CreatedFontTracker;
 import sun.font.Font2D;
@@ -443,7 +444,9 @@ public class Font implements java.io.Serializable
     protected float pointSize;
 
     /**
-     * The ordered map of choose features contained from pair of (jetbrains.api:FontExtensions$FeatureTag and int value)
+     * OpenType's features setup as list of tag and corresponding value.
+     * This field represent map of features where key is feature's tag and value is feature's value
+     * Ordered map choose intentionally as field's type. It allows to correctly comparing two Font objects
      *
      * @serial
      * @see #getFeatures
