@@ -262,6 +262,15 @@ void JNIHandles::print_on(outputStream* st) {
   st->flush();
 }
 
+// Called while generating crash log, possibly not at safepoint
+void JNIHandles::print_on_unsafe(outputStream* st) {
+  st->print_cr("JNI global refs: " SIZE_FORMAT ", weak refs: " SIZE_FORMAT,
+               global_handles()->allocation_count(),
+               weak_global_handles()->allocation_count());
+  st->cr();
+  st->flush();
+}
+
 void JNIHandles::print_memory_usage_on(outputStream *st) {
   st->print_cr("JNI global refs memory usage: " SIZE_FORMAT ", weak refs: " SIZE_FORMAT,
                global_handles()->total_memory_usage(),

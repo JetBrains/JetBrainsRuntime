@@ -1079,10 +1079,8 @@ void VMError::report(outputStream* st, bool _verbose) {
     MemTracker::error_report(st);
 
   STEP("JNI global references")
-  st->print_cr("JNI global refs");
-  if (SafepointSynchronize::is_at_safepoint()) {
-    JNIHandles::print_on(st);
-  }
+  st->print_cr("JNI global refs:");
+  JNIHandles::print_on_unsafe(st);
   JNIHandles::print_memory_usage_on(st);
 
   STEP_IF("printing system", _verbose)
