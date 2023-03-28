@@ -172,7 +172,7 @@ void VM_PrintThreads::print_additional_info() {
 
   InstanceKlass *klass = vmClasses::Throwable_klass();
   if (klass != NULL) {
-    TempNewSymbol method_name = SymbolTable::new_symbol("additionalInfoForJstack");
+    TempNewSymbol method_name = SymbolTable::new_symbol("$$jb$getAdditionalInfoForJstack");
     Symbol *signature = vmSymbols::void_string_signature();
     Method *method = klass->find_method(method_name, signature);
     if (method != NULL) {

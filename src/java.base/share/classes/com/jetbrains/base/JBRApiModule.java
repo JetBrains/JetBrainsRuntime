@@ -29,6 +29,6 @@ public class JBRApiModule {
                 .service("com.jetbrains.JBR$ServiceApi")
                     .withStatic("getService", "getService", "com.jetbrains.internal.JBRApi")
                 .service("com.jetbrains.Jstack")
-                    .withStatic("includeInfoFrom", "additionalInfoForJstack", "java.lang.Throwable");
+                    .withStatic("includeInfoFrom", "$$jb$additionalInfoForJstack", "java.lang.Throwable");
     }
 }
