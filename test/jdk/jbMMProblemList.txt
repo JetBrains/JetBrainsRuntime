@@ -1,11 +1,20 @@
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java 8202931,JBR-5398 macosx-all,linux-all,windows-all
+java/awt/Debug/X11Trace.java JBR-5442 linux-all
 java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java 8292588 macosx-all
+java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117 linux-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenSmall.java JBR-4379 windows-all
 java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java JBR-4379 windows-all
 java/awt/FullScreen/CurrentDisplayModeTest/CurrentDisplayModeTest.java JBR-5059 linux-all
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-4379 windows-all
+java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5442 linux-all
 java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java JBR-5062 linux-all
 java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5.15.0-46-generic Ubuntu 20.04
-java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117 linux-all
+java/awt/Robot/NonEmptyErrorStream.java JBR-5442 linux-all
+java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390 macosx-all,linux-all
+java/awt/Window/SlowMotion/SlowMotion.java JBR-5442 linux-all
+java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5442 linux-all
 
+javax/swing/JTextArea/8149849/DNDTextToScaledArea.java JBR-5442 linux-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-4379 windows-all
+
+jb/java/awt/dnd/DnDScalingWithHIDPI/DnDScalingWithHIDPITest.java JBR-5442 linux-all
