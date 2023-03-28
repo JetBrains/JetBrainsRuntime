@@ -8,12 +8,14 @@ import java.util.stream.Collectors;
 
 public interface FontExtensions {
     /**
-     * The list of all supported features. For feature description look at
-     * https://learn.microsoft.com/en-us/typography/opentype/spec/featurelistThis features will be adding
-     * The following features: KERN, LIGA, CALT are missing intentionally. These features will be added automatically via text
-     * attributes of Font
-     * Adding TextAttribute.KERNING to Font's values manage by KERN feature
-     * Adding TextAttribute.LIGATURES to Font's values manage by LIGA and CALT features
+     * The list of all supported features. For feature's description look at
+     * <a href=https://learn.microsoft.com/en-us/typography/opentype/spec/featurelist>documentation</a> <br>
+     * The following features: KERN, LIGA, CALT are missing intentionally. These features will be added automatically
+     * by adding {@link java.awt.font.TextAttribute} to {@link java.awt.Font}:
+     * <ul>
+     * <li>Attribute {@link java.awt.font.TextAttribute#KERNING} manages KERN feature</li>
+     * <li>Attribute {@link java.awt.font.TextAttribute#LIGATURES} manages LIGA and CALT features</li>
+     * </ul>
      */
     enum FeatureTag {
         AALT, ABVF, ABVM, ABVS, AFRC, AKHN, BLWF, BLWM, BLWS, CASE, CCMP, CFAR, CHWS, CJCT, CLIG, CPCT, CPSP, CSWH, CURS,
@@ -72,7 +74,15 @@ public interface FontExtensions {
         }
     }
 
-    Font deriveFontWithFeatures(Font font, Features fontFeatures);
+
+    /**
+     * This method derives a new {@link java.awt.Font} object with certain set of {@link FeatureTag}
+     * and correspoinding values
+     *
+     * @param font       basic font
+     * @param features   set of OpenType's features wrapped inside {@link Features}
+     */
+    Font deriveFontWithFeatures(Font font, Features features);
 
     // use only for testing purpose
     @Deprecated
