@@ -76,7 +76,6 @@ public class FontStrikeDesc {
     int style;
     int aaHint;
     int fmHint;
-    private Map<String, Integer> features;
     private int hashCode;
     private int valuemask;
 
@@ -260,18 +259,6 @@ public class FontStrikeDesc {
         fmHint = desc.fmHint;
         hashCode = desc.hashCode;
         valuemask = desc.valuemask;
-        features = desc.features;
-    }
-
-    private static FontStrikeDesc createFontStrikeDesc(AffineTransform devAt, AffineTransform at,
-                                                       int fStyle, int aa, int fm, Map<String, Integer> features) {
-        FontStrikeDesc desc = new FontStrikeDesc(devAt, at, fStyle, aa, fm);
-        desc.features = features;
-        return desc;
-    }
-
-    private static Map<String, Integer> getFeatures(FontStrikeDesc desc) {
-        return desc.features;
     }
 
     public String toString() {

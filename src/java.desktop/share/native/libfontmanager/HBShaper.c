@@ -223,8 +223,6 @@ JDKFontInfo*
 }
 
 
-#define TYPO_RTL  0x80000000
-
 JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
     (JNIEnv *env, jclass cls,
      jobject font2D,
@@ -239,7 +237,7 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
      jint limit,
      jint baseIndex,
      jobject startPt,
-     jint flags,
+     jboolean ltrDirection,
      jstring featuresStr,
      jint featuresCount,
      jint slot) {
@@ -252,7 +250,7 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
      int glyphCount;
      hb_glyph_info_t *glyphInfo;
      hb_glyph_position_t *glyphPos;
-     hb_direction_t direction = HB_DIRECTION_LTR;
+     hb_direction_t direction = ltrDirection ? HB_DIRECTION_LTR : HB_DIRECTION_RTL;
      hb_feature_t *features = NULL;
      jboolean ret;
      unsigned int buflen;
@@ -273,9 +271,6 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
      hb_buffer_set_script(buffer, getHBScriptCode(script));
      hb_buffer_set_language(buffer,
                             hb_ot_tag_to_language(HB_OT_TAG_DEFAULT_LANGUAGE));
-     if ((flags & TYPO_RTL) != 0) {
-         direction = HB_DIRECTION_RTL;
-     }
      hb_buffer_set_direction(buffer, direction);
      hb_buffer_set_cluster_level(buffer,
                                  HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);

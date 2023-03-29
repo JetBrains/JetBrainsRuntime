@@ -166,17 +166,16 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
     }
 
     public void layout(FontStrikeDesc desc, float[] mat, float ptSize, int gmask,
-                       int baseIndex, TextRecord tr, int typo_flags,
+                       int baseIndex, TextRecord tr, boolean ltrDirection, Map<String, Integer> features,
                        Point2D.Float pt, GVData data) {
         Font2D font = key.font();
         FontStrike strike = font.getStrike(desc);
         long pFace = getFacePtr(font);
-        Map<String, Integer> features = FontExtensions.getFeatures(desc);
         if (pFace != 0) {
             shape(font, strike, ptSize, mat, pFace,
                     tr.text, data, key.script(),
                     tr.start, tr.limit, baseIndex, pt,
-                    typo_flags, FontExtensions.featuresToString(features), features.size(), gmask);
+                    ltrDirection, FontExtensions.featuresToString(features), features.size(), gmask);
         }
     }
 
@@ -186,7 +185,7 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
               long pFace,
               char[] chars, GVData data,
               int script, int offset, int limit,
-              int baseIndex, Point2D.Float pt, int typo_flags, String features, int featuresCount, int slot);
+              int baseIndex, Point2D.Float pt, boolean ltrDirection, String features, int featuresCount, int slot);
 
     private static native long createFace(Font2D font,
                                           long platformNativeFontPtr);

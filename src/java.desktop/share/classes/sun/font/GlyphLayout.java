@@ -75,8 +75,10 @@ import java.awt.Font;
 import java.awt.font.FontRenderContext;
 import java.awt.font.GlyphVector;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.NoninvertibleTransformException;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static java.lang.Character.*;
@@ -98,7 +100,6 @@ public final class GlyphLayout {
     private FontStrikeDesc _sd;
     private float[] _mat;
     private float ptSize;
-    private int _typo_flags;
     private int _offset;
 
     public static final class LayoutEngineKey {
@@ -174,8 +175,8 @@ public final class GlyphLayout {
          * If the GVData does not have room for the glyphs, throws an IndexOutOfBoundsException and
          * leave pt and the gvdata unchanged.
          */
-        public void layout(FontStrikeDesc sd, float[] mat, float ptSize, int gmask,
-                           int baseIndex, TextRecord text, int typo_flags, Point2D.Float pt, GVData data);
+        public void layout(FontStrikeDesc sd, float[] mat, float ptSize, int gmask, int baseIndex, TextRecord text,
+                           boolean ltrDirection, Map<String, Integer> features, Point2D.Float pt, GVData data);
     }
 
     /**
@@ -256,8 +257,7 @@ public final class GlyphLayout {
                                                (int)Math.abs(ptSize));
             int fm = FontStrikeDesc.getFMHintIntVal
                 (frc.getFractionalMetricsHint());
-            sd = FontExtensions.createFontStrikeDesc(dtx, gtx, font.getStyle(), aa, fm,
-                    FontExtensions.getFeatures(font));
+            sd = new FontStrikeDesc(dtx, gtx, font.getStyle(), aa, fm);
         }
 
         private static final Point2D.Float ZERO_DELTA = new Point2D.Float();
@@ -378,9 +378,10 @@ public final class GlyphLayout {
 
         int min = 0;
         int max = text.length;
+        boolean ltrDirection = true;
         if (flags != 0) {
             if ((flags & Font.LAYOUT_RIGHT_TO_LEFT) != 0) {
-              _typo_flags |= 0x80000000; // RTL
+                ltrDirection = false; // RTL
             }
 
             if ((flags & Font.LAYOUT_NO_START_CONTEXT) != 0) {
@@ -438,7 +439,7 @@ public final class GlyphLayout {
         int stop = _ercount;
         int dir = 1;
 
-        if (_typo_flags < 0) { // RTL
+        if (!ltrDirection) { // RTL
             ix = stop - 1;
             stop = -1;
             dir = -1;
@@ -450,7 +451,7 @@ public final class GlyphLayout {
             EngineRecord er = _erecords.get(ix);
             for (;;) {
                 try {
-                    er.layout();
+                    er.layout(ltrDirection, FontExtensions.getFeatures(font));
                     break;
                 }
                 catch (IndexOutOfBoundsException e) {
@@ -497,7 +498,6 @@ public final class GlyphLayout {
     }
 
     private void init(int capacity) {
-        this._typo_flags = 0;
         this._ercount = 0;
         this._gvdata.init(capacity);
     }
@@ -649,7 +649,7 @@ public final class GlyphLayout {
                     gc == ENCLOSING_MARK ||
                     gc == COMBINING_SPACING_MARK) { // could do range test also
 
-                    this.eflags = 0x4; // TODO remove eflags due to unusing on native side
+                    this.eflags = 0x4;
                     break;
                 }
             }
@@ -657,11 +657,11 @@ public final class GlyphLayout {
             this.engine = _lef.getEngine(key); // flags?
         }
 
-        void layout() {
+        void layout(boolean ltrDirection, Map<String, Integer> features) {
             _textRecord.start = start;
             _textRecord.limit = limit;
             engine.layout(_sd, _mat, ptSize, gmask, start - _offset, _textRecord,
-                          _typo_flags, _pt, _gvdata);
+                    ltrDirection, features, _pt, _gvdata);
         }
     }
 }

@@ -30,6 +30,7 @@
 
 import com.jetbrains.FontExtensions;
 import com.jetbrains.JBR;
+import sun.jvm.hotspot.utilities.Assert;
 
 import java.awt.*;
 import java.awt.font.TextAttribute;
@@ -67,7 +68,7 @@ public class FontExtensionsTest {
     }
 
     private static Boolean isImageEquals(BufferedImage first, BufferedImage second) {
-        assert first.getWidth() == second.getWidth() && first.getHeight() == second.getHeight();
+        Assert.that(first.getWidth() == second.getWidth() && first.getHeight() == second.getHeight(), "images size differs");
         for (int y = 0; y < first.getHeight(); y++) {
             for (int x = 0; x < first.getWidth(); x++) {
                 if (first.getRGB(x, y) != second.getRGB(x, y)) {
@@ -155,6 +156,14 @@ public class FontExtensionsTest {
     private static Boolean testWeight() {
         Font font = BASE_FONT.deriveFont(Map.of(TextAttribute.WEIGHT, TextAttribute.WEIGHT_BOLD));
         return !textDrawingEquals(BASE_FONT, font, TEST_STRING);
+    }
+
+    @JBRTest
+    private static Boolean testDisablingFeatures() {
+        Font font = JBR.getFontExtensions().deriveFontWithFeatures(BASE_FONT, new FontExtensions.Features(Set.of(
+                new FontExtensions.Feature(FontExtensions.FeatureTag.ZERO, 0),
+                new FontExtensions.Feature(FontExtensions.FeatureTag.FRAC, 0))));
+        return textDrawingEquals(BASE_FONT, font, TEST_STRING);
     }
 
     @JBRTest

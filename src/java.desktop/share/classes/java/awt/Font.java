@@ -444,12 +444,13 @@ public class Font implements java.io.Serializable
     protected float pointSize;
 
     /**
-     * OpenType's features setup as list of tag and corresponding value.
-     * This field represent map of features where key is feature's tag and value is feature's value
+     * OpenType's features setup as list of tag and corresponding value.<br>
+     * This field represent map of features where key is feature's tag and value is feature's value<br>
      * Ordered map choose intentionally as field's type. It allows to correctly comparing two Font objects
      *
      * @serial
      * @see #getFeatures
+     * @see #deriveFont(Font, Features)
      */
     private TreeMap<String, Integer> features;
 
@@ -552,6 +553,10 @@ public class Font implements java.io.Serializable
          * original one is marked invalid
          */
         return font2DHandle.font2D;
+    }
+
+    private boolean anyEnabledFeatures() {
+        return (features.values().stream().filter((x) -> (x != 0)).count()) > 0;
     }
 
     /**
@@ -1643,7 +1648,7 @@ public class Font implements java.io.Serializable
      * @since 1.6
      */
     public boolean hasLayoutAttributes() {
-        return !features.isEmpty() || hasLayoutAttributes;
+        return anyEnabledFeatures() || hasLayoutAttributes;
     }
 
     private static TreeMap<String, Integer> getFeatures(Font font) {
@@ -2710,9 +2715,9 @@ public class Font implements java.io.Serializable
         // this code should be in textlayout
         // quick check for simple text, assume GV ok to use if simple
 
-        boolean simple = values == null ||
+        boolean simple = (values == null ||
             (values.getKerning() == 0 && values.getLigatures() == 0 &&
-              values.getBaselineTransform() == null && features.isEmpty());
+              values.getBaselineTransform() == null)) && !anyEnabledFeatures();
         if (simple) {
             simple = ! FontUtilities.isComplexText(chars, beginIndex, limit);
         }
