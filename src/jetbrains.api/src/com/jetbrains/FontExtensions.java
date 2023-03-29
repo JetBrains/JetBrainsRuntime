@@ -1,12 +1,14 @@
 package com.jetbrains;
 
 import java.awt.*;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
 
 public interface FontExtensions {
+    public static int FEATURE_ON = 1;
+    public static int FEATURE_OFF = 0;
+
     /**
      * The list of all supported features. For feature's description look at
      * <a href=https://learn.microsoft.com/en-us/typography/opentype/spec/featurelist>documentation</a> <br>
@@ -30,39 +32,10 @@ public interface FontExtensions {
         PKNA, PNUM, PREF, PRES, PSTF, PSTS, PWID, QWID, RAND, RCLT, RKRF, RLIG, RPHF, RTBD, RTLA, RTLM, RUBY, RVRN, SALT,
         SINF, SIZE, SMCP, SMPL, SS01, SS02, SS03, SS04, SS05, SS06, SS07, SS08, SS09, SS10, SS11, SS12, SS13, SS14, SS15,
         SS16, SS17, SS18, SS19, SS20, SSTY, STCH, SUBS, SUPS, SWSH, TITL, TJMO, TNAM, TNUM, TRAD, TWID, UNIC, VALT, VATU,
-        VCHW, VERT, VHAL, VJMO, VKNA, VKRN, VPAL, VRT2, VRTR, ZERO
-    }
+        VCHW, VERT, VHAL, VJMO, VKNA, VKRN, VPAL, VRT2, VRTR, ZERO;
 
-    class Feature {
-        private final FeatureTag featureTag;
-        private final int value;
-
-        public Feature(FeatureTag featureTag) {
-            this.featureTag = featureTag;
-            this.value = 1;
-        }
-
-        public Feature(FeatureTag featureTag, int value) {
-            this.featureTag = featureTag;
-            this.value = value;
-        }
-
-        private String getTagName() {
-            return featureTag.toString().toLowerCase();
-        }
-    }
-
-    class Features {
-        private final Set<Feature> features;
-
-        public Features(Set<Feature> features) {
-            this.features = features;
-        }
-
-        public TreeMap<String, Integer> toMap() {
-            TreeMap<String, Integer> res = new TreeMap<>();
-            features.forEach((Feature feature) -> res.put(feature.getTagName(), feature.value));
-            return res;
+        private String getName() {
+            return toString().toLowerCase();
         }
 
         public static Optional<FeatureTag> getFeatureTag(String str) {
@@ -74,6 +47,19 @@ public interface FontExtensions {
         }
     }
 
+    class Features {
+        private final Map<FeatureTag, Integer> features;
+
+        public Features(Map<FeatureTag, Integer> features) {
+            this.features = features;
+        }
+
+        public TreeMap<String, Integer> toMap() {
+            TreeMap<String, Integer> res = new TreeMap<>();
+            features.forEach((tag, value) -> res.put(tag.getName(), value));
+            return res;
+        }
+    }
 
     /**
      * This method derives a new {@link java.awt.Font} object with certain set of {@link FeatureTag}

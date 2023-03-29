@@ -40,6 +40,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class FontExtensionsTest {
     @Retention(RetentionPolicy.RUNTIME)
@@ -80,7 +81,8 @@ public class FontExtensionsTest {
     }
 
     private static Font fontWithFeatures(Font font, FontExtensions.FeatureTag ... features) {
-        Set<FontExtensions.Feature> featureSet = new HashSet<>(Arrays.stream(features).map(FontExtensions.Feature::new).toList());
+        Map<FontExtensions.FeatureTag, Integer> featureSet = Arrays.stream(features).collect(Collectors.toMap(
+                x -> x, (x -> FontExtensions.FEATURE_ON)));
         return JBR.getFontExtensions().deriveFontWithFeatures(font, new FontExtensions.Features(featureSet));
     }
 
@@ -96,18 +98,18 @@ public class FontExtensionsTest {
 
     @JBRTest
     private static Boolean testFeatureFromString() {
-        return  FontExtensions.Features.getFeatureTag("frac").isPresent() &&
-                FontExtensions.Features.getFeatureTag("FrAc").isPresent() &&
-                FontExtensions.Features.getFeatureTag("ss10").isPresent() &&
-                FontExtensions.Features.getFeatureTag("tttt").isEmpty();
+        return  FontExtensions.FeatureTag.getFeatureTag("frac").isPresent() &&
+                FontExtensions.FeatureTag.getFeatureTag("FrAc").isPresent() &&
+                FontExtensions.FeatureTag.getFeatureTag("ss10").isPresent() &&
+                FontExtensions.FeatureTag.getFeatureTag("tttt").isEmpty();
     }
 
     @JBRTest
     private static Boolean testFeaturesToString1() {
-        Font font = JBR.getFontExtensions().deriveFontWithFeatures(BASE_FONT, new FontExtensions.Features(Set.of(
-                new FontExtensions.Feature(FontExtensions.FeatureTag.ZERO),
-                new FontExtensions.Feature(FontExtensions.FeatureTag.SALT, 123),
-                new FontExtensions.Feature(FontExtensions.FeatureTag.FRAC, 0))));
+        Font font = JBR.getFontExtensions().deriveFontWithFeatures(BASE_FONT, new FontExtensions.Features(Map.of(
+                FontExtensions.FeatureTag.ZERO, FontExtensions.FEATURE_ON,
+                FontExtensions.FeatureTag.SALT, 123,
+                FontExtensions.FeatureTag.FRAC, FontExtensions.FEATURE_OFF)));
         return JBR.getFontExtensions().getFeaturesAsString(font).equals("calt=0 frac=0 kern=0 liga=0 salt=123 zero=1 ");
     }
 
@@ -125,10 +127,10 @@ public class FontExtensionsTest {
 
     @JBRTest
     private static Boolean testSettingValuesToFeatures() {
-        Font font = JBR.getFontExtensions().deriveFontWithFeatures(BASE_FONT, new FontExtensions.Features(Set.of(
-                new FontExtensions.Feature(FontExtensions.FeatureTag.ZERO, 1),
-                new FontExtensions.Feature(FontExtensions.FeatureTag.SALT, 123),
-                new FontExtensions.Feature(FontExtensions.FeatureTag.FRAC, 9999))));
+        Font font = JBR.getFontExtensions().deriveFontWithFeatures(BASE_FONT, new FontExtensions.Features(Map.of(
+                FontExtensions.FeatureTag.ZERO, FontExtensions.FEATURE_ON,
+                FontExtensions.FeatureTag.SALT, 123,
+                FontExtensions.FeatureTag.FRAC, 9999)));
         return textDrawingEquals(fontWithFeatures(FontExtensions.FeatureTag.FRAC, FontExtensions.FeatureTag.ZERO,
                 FontExtensions.FeatureTag.SALT), font, TEST_STRING);
     }
@@ -160,9 +162,9 @@ public class FontExtensionsTest {
 
     @JBRTest
     private static Boolean testDisablingFeatures() {
-        Font font = JBR.getFontExtensions().deriveFontWithFeatures(BASE_FONT, new FontExtensions.Features(Set.of(
-                new FontExtensions.Feature(FontExtensions.FeatureTag.ZERO, 0),
-                new FontExtensions.Feature(FontExtensions.FeatureTag.FRAC, 0))));
+        Font font = JBR.getFontExtensions().deriveFontWithFeatures(BASE_FONT, new FontExtensions.Features(Map.of(
+                FontExtensions.FeatureTag.ZERO, FontExtensions.FEATURE_OFF,
+                FontExtensions.FeatureTag.FRAC, FontExtensions.FEATURE_OFF)));
         return textDrawingEquals(BASE_FONT, font, TEST_STRING);
     }
 
