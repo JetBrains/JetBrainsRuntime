@@ -92,10 +92,12 @@ public final class CGraphicsDevice extends GraphicsDevice
             }
         }
 
-        // initializes default device state, might be redundant step since we
-        // call "displayChanged()" later anyway, but we do not want to leave the
-        // device in an inconsistent state after construction
+        // [JBR] we don't call displayChanged after creating a device, so call it here.
         displayChanged();
+    }
+
+    int getDisplayID() {
+        return displayID;
     }
 
     /**
@@ -173,6 +175,17 @@ public final class CGraphicsDevice extends GraphicsDevice
         initScaleFactor();
         resizeFSWindow(getFullScreenWindow(), bounds);
         //TODO configs?
+    }
+
+    /**
+     * @return false if display parameters were changed, so we need to recreate the device.
+     */
+    boolean updateDevice() {
+        int s = scale;
+        double xr = xResolution, yr = yResolution;
+        var b = bounds;
+        displayChanged();
+        return s == scale && xr == xResolution && yr == yResolution && b.equals(bounds);
     }
 
     public void displayParametersChanged() {
