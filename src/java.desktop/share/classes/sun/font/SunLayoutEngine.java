@@ -31,7 +31,6 @@
 package sun.font;
 
 import com.jetbrains.desktop.FontExtensions;
-import com.jetbrains.desktop.JBRFontStrikeDesc;
 import sun.font.GlyphLayout.*;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;

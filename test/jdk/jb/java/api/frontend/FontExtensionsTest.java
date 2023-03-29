@@ -23,7 +23,7 @@
 
 /*
   @test
-  @summary checking visualisation of drawing text with custom attributes
+  @summary checking visualisation of drawing text with custom OpenType's features
   @run main FontExtensionsTest
 */
 
@@ -82,7 +82,7 @@ public class FontExtensionsTest {
 
     private static Font fontWithFeatures(Font font, FontExtensions.FeatureTag ... features) {
         Map<FontExtensions.FeatureTag, Integer> featureSet = Arrays.stream(features).collect(Collectors.toMap(
-                x -> x, (x -> FontExtensions.FEATURE_ON)));
+                x -> x, x -> FontExtensions.FEATURE_ON));
         return JBR.getFontExtensions().deriveFontWithFeatures(font, new FontExtensions.Features(featureSet));
     }
 
@@ -222,17 +222,21 @@ public class FontExtensionsTest {
         String error = "";
         for (final Method method : FontExtensionsTest.class.getDeclaredMethods()) {
             if (method.isAnnotationPresent(JBRTest.class)) {
+                System.out.print("Testing " + method.getName() + "...");
                 try {
-                    if (method.invoke(null) == Boolean.FALSE) {
-                        error += "Test failed: " + method.getName() + System.lineSeparator();
+                    boolean statusOk = (boolean) method.invoke(null);
+                    if (!statusOk) {
+                        error += System.lineSeparator() + "Test failed: " + method.getName();
                     }
+                    System.out.println(statusOk ? "passed" : "failed");
                 } catch (IllegalAccessException | InvocationTargetException e) {
                     throw new RuntimeException("JBR: internal error during testing");
                 }
             }
         }
+
         if (!error.isEmpty()) {
-            throw new RuntimeException(System.lineSeparator() + error);
+            throw new RuntimeException(error);
         }
     }
 }

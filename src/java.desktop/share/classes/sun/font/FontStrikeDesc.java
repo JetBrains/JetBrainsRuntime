@@ -28,8 +28,6 @@ package sun.font;
 import java.awt.Font;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
-import java.util.Map;
-import java.util.TreeMap;
 
 import static sun.awt.SunHints.*;
 
@@ -260,6 +258,7 @@ public class FontStrikeDesc {
         hashCode = desc.hashCode;
         valuemask = desc.valuemask;
     }
+
 
     public String toString() {
         return "FontStrikeDesc: Style="+style+ " AA="+aaHint+ " FM="+fmHint+

@@ -379,6 +379,7 @@ public final class GlyphLayout {
         int min = 0;
         int max = text.length;
         boolean ltrDirection = true;
+
         if (flags != 0) {
             if ((flags & Font.LAYOUT_RIGHT_TO_LEFT) != 0) {
                 ltrDirection = false; // RTL
