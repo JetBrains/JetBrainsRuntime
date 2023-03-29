@@ -37,7 +37,7 @@ import java.util.Objects;
 public class JBRApiTest {
 
     public static void main(String[] args) throws Exception {
-        if (!JBR.getApiVersion().matches("\\w+\\.\\d+\\.\\d+\\.\\d+")) throw new Error("Invalid JBR API version");
+        if (!JBR.getApiVersion().matches("\\w+\\.\\d+\\.\\d+\\.\\d+")) throw new Error("Invalid JBR API version: " + JBR.getApiVersion());
         if (!JBR.isAvailable()) throw new Error("JBR API is not available");
         checkMetadata();
         testServices();
