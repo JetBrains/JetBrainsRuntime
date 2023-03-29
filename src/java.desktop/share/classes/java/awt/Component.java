@@ -345,6 +345,13 @@ public abstract class Component implements ImageObserver, MenuContainer,
     private transient volatile GraphicsConfiguration graphicsConfig;
 
     /**
+     * Last observed value of {@code graphicsConfig.getDefaultTransform()}.
+     * Used for firing 'graphicsContextScaleTransform' property change,
+     * as values returned by {@link #graphicsConfig} may change over time.
+     */
+    private transient volatile AffineTransform lastGraphicsConfigTransform;
+
+    /**
      * A reference to a {@code BufferStrategy} object
      * used to manipulate the buffers on this component.
      *
@@ -1172,13 +1179,17 @@ public abstract class Component implements ImageObserver, MenuContainer,
             return false;
         }
 
-        AffineTransform tx = graphicsConfig != null ? graphicsConfig.getDefaultTransform() : new AffineTransform();
+        AffineTransform tx = lastGraphicsConfigTransform;
         AffineTransform newTx = gc != null ? gc.getDefaultTransform() : new AffineTransform();
         graphicsConfig = gc;
-        if (tx.getScaleX() != newTx.getScaleX() ||
-            tx.getScaleY() != newTx.getScaleY())
+        // We cannot rely on graphicsConfig.getDefaultTransform(),
+        // because its device might have been invalidated and now
+        // reports different scale than it did before.
+        if (!newTx.equals(lastGraphicsConfigTransform))
         {
-            firePropertyChange("graphicsContextScaleTransform", tx, newTx);
+            lastGraphicsConfigTransform = newTx;
+            firePropertyChange("graphicsContextScaleTransform",
+                    tx != null ? tx : new AffineTransform(), newTx);
         }
 
         ComponentPeer peer = this.peer;
