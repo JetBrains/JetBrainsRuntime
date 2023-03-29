@@ -1073,10 +1073,7 @@ final class XWM
         try {
             Rectangle shellBounds;
             if (getWMID() != UNITY_COMPIZ_WM) {
-                Insets insets = window.getRealInsets();
-                shellBounds = window.getShellBounds();
-                shellBounds.translate(-insets.left,
-                                      -insets.top);
+                shellBounds = window.getBounds();
             } else {
                 shellBounds = window.getDimensions().getScreenBounds();
             }
