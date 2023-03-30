@@ -31,8 +31,4 @@ public class FontExtensions {
     public static TreeMap<String, Integer> getFeatures(Font font) {
         return FontExtension.INSTANCE.getFeatures(font);
     }
-
-    private static String getFeaturesAsString(Font font) {
-        return featuresToString(getFeatures(font));
-    }
 }
