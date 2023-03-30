@@ -42,7 +42,8 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
     fi
     WAYLAND_CFLAGS=
     WAYLAND_LIBS=
-    VULKAN_CFLAGS=
+    VULKAN_FLAGS=
+    VULKAN_ENABLED=false
   else
     WAYLAND_FOUND=no
 
@@ -104,19 +105,22 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
          (test "x${with_vulkan_include}" != x && test "x${with_vulkan_include}" != xno); then
         AC_MSG_WARN([[vulkan not used, so --with-vulkan-include is ignored]])
       fi
-      VULKAN_CFLAGS=
+      VULKAN_FLAGS=
+      VULKAN_ENABLED=false
     else
       # Do not build vulkan rendering pipeline by default
       if (test "x${with_vulkan}" = x && test "x${with_vulkan_include}" = x) || \
           test "x${with_vulkan}" = xno || test "x${with_vulkan_include}" = xno ; then
-        VULKAN_CFLAGS=
+        VULKAN_FLAGS=
+        VULKAN_ENABLED=false
       else
         VULKAN_FOUND=no
 
         if test "x${with_vulkan_include}" != x; then
           AC_CHECK_HEADERS([${with_vulkan_include}/include/vulkan/vulkan.h],
             [ VULKAN_FOUND=yes
-              VULKAN_CFLAGS="-I${with_vulkan_include} -DVKWL_GRAPHICS"
+              VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -I${with_vulkan_include} -DVULKAN_ENABLED"
+              VULKAN_ENABLED=true
             ],
             [ AC_MSG_ERROR([Can't find 'vulkan/vulkan.h' under '${with_vulkan_include}']) ]
           )
@@ -126,7 +130,8 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
           # Check vulkan sdk location
           AC_CHECK_HEADERS([$VULKAN_SDK/include/vulkan/vulkan.h],
             [ VULKAN_FOUND=yes
-              VULKAN_CFLAGS="-I${VULKAN_SDK} -DVKWL_GRAPHICS"
+              VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -I${VULKAN_SDK} -DVULKAN_ENABLED"
+              VULKAN_ENABLED=true
             ],
             [ VULKAN_FOUND=no; break ]
           )
@@ -136,7 +141,8 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
           # Check default /usr/include location
           AC_CHECK_HEADERS([vulkan/vulkan.h],
             [ VULKAN_FOUND=yes
-              VULKAN_CFLAGS="-DVKWL_GRAPHICS"
+              VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -DVULKAN_ENABLED"
+              VULKAN_ENABLED=true
             ],
             [ VULKAN_FOUND=no; break ]
           )
@@ -149,7 +155,8 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
       fi
     fi
   fi
-  AC_SUBST(VULKAN_CFLAGS)
+  AC_SUBST(VULKAN_FLAGS)
+  AC_SUBST(VULKAN_ENABLED)
   AC_SUBST(WAYLAND_CFLAGS)
   AC_SUBST(WAYLAND_LIBS)
 ])

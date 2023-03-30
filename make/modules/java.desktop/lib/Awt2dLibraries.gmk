@@ -274,6 +274,12 @@ ifeq ($(call isTargetOs, windows macosx), false)
     LIBAWT_WLAWT_EXCLUDES := medialib debug opengl x11
     LIBAWT_WLAWT_EXCLUDE_FILES := common/awt/X11Color.c common/awt/awt_Font.c
 
+    # Substitute Vulkan with stubs if disabled.
+    ifeq ($(VULKAN_ENABLED), false)
+      LIBAWT_WLAWT_EXCLUDES += vulkan
+      LIBAWT_WLAWT_EXTRA_FILES += $(TOPDIR)/src/$(MODULE)/share/native/common/java2d/vulkan/VKStubs.c
+    endif
+
     LIBAWT_WLAWT_EXTRA_HEADER_DIRS := \
         $(LIBAWT_DEFAULT_HEADER_DIRS) \
         libawt_wlawt/awt \
@@ -285,19 +291,16 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/java2d/vulkan \
         #
 
-    # TODO use bundled/system Vulkan
-    LIBAWT_WLAWT_EXTRA_HEADER_DIRS += libvulkan
-
     # Enable 'wakefield' extension for java.awt.Robot support
     WAKEFIELD_ROBOT_CFLAGS=-DWAKEFIELD_ROBOT
 
     LIBAWT_WLAWT_CFLAGS += -DWLAWT \
         $(WAKEFIELD_ROBOT_CFLAGS) \
         $(FONTCONFIG_CFLAGS) \
-        $(VULKAN_CFLAGS) \
+        $(VULKAN_FLAGS) \
         $(CUPS_CFLAGS)
 
-    LIBAWT_WLAWT_CXXFLAGS += -DVK_USE_PLATFORM_WAYLAND_KHR
+    LIBAWT_WLAWT_CXXFLAGS += $(VULKAN_FLAGS)
 
     LIBAWT_WLAWT_LIBS := $(LIBM) -lawt $(WAYLAND_LIBS) $(LIBDL) -ljava -ljvm -lrt
 
@@ -317,6 +320,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
     $(eval $(call SetupJdkLibrary, BUILD_LIBAWT_WLAWT, \
         NAME := awt_wlawt, \
         EXCLUDE_FILES := $(LIBAWT_WLAWT_EXCLUDE_FILES), \
+        EXTRA_FILES := $(LIBAWT_WLAWT_EXTRA_FILES), \
         EXTRA_SRC := $(LIBAWT_WLAWT_EXTRA_SRC), \
         EXTRA_HEADER_DIRS := $(LIBAWT_WLAWT_EXTRA_HEADER_DIRS), \
         EXCLUDES := $(LIBAWT_WLAWT_EXCLUDES), \

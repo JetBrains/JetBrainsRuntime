@@ -279,9 +279,7 @@ Java_sun_awt_wl_WLGraphicsEnvironment_initVKWL(JNIEnv *env, jclass wlge)
        WLGraphicsEnvironment.initVKWL()
     */
     //AWT_LOCK();
-#ifdef VKWL_GRAPHICS
     vkwlAvailable = VK_Init();
-#endif
     //AWT_UNLOCK();
     return vkwlAvailable;
 }
