@@ -213,6 +213,7 @@ struct CharToVKEntry {
 };
 static const struct CharToVKEntry charToDeadVKTable[] = {
     {0x0060, java_awt_event_KeyEvent_VK_DEAD_GRAVE},
+    {0x0027, java_awt_event_KeyEvent_VK_DEAD_ACUTE},
     {0x00B4, java_awt_event_KeyEvent_VK_DEAD_ACUTE},
     {0x0384, java_awt_event_KeyEvent_VK_DEAD_ACUTE}, // Unicode "GREEK TONOS" -- Greek keyboard, semicolon key
     {0x005E, java_awt_event_KeyEvent_VK_DEAD_CIRCUMFLEX},

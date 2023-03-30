@@ -26,7 +26,8 @@
  * @test
  * @summary Regression test for IDEA-271898: Cannot enter Chinese full-corner single and double quotes (IDEA: macOS Intel version)
  * @requires (jdk.version.major >= 8 & os.family == "mac")
- * @run shell Runner.sh PinyinQuotesTest
+ * @modules java.desktop/sun.lwawt.macosx
+ * @run main InputMethodTest PinyinQuotesTest
  */
 
 import static java.awt.event.KeyEvent.*;

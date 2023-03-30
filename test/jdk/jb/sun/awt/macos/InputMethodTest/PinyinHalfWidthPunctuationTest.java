@@ -24,7 +24,8 @@
 /**
  * @test
  * @summary Regression test for IDEA-221385: Cannot input with half-width punctuation.
- * @run shell Runner.sh --halfwidth PinyinHalfWidthPunctuationTest
+ * @modules java.desktop/sun.lwawt.macosx
+ * @run main InputMethodTest PinyinHalfWidthPunctuationTest
  * @requires (jdk.version.major >= 8 & os.family == "mac")
  */
 
@@ -34,6 +35,7 @@ public class PinyinHalfWidthPunctuationTest implements Runnable {
     @Override
     public void run() {
         InputMethodTest.layout("com.apple.inputmethod.SCIM.ITABC");
+        InputMethodTest.setUseHalfWidthPunctuation(true);
 
         InputMethodTest.section("comma");
         InputMethodTest.type(VK_COMMA, 0);

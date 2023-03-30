@@ -28,6 +28,7 @@ import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.IOException;
 import java.util.*;
 import java.util.List;
 
@@ -48,7 +49,9 @@ public class InputMethodTest {
         PinyinCapsLockTest (new PinyinCapsLockTest()),
         PinyinFullWidthPunctuationTest (new PinyinFullWidthPunctuationTest()),
         PinyinHalfWidthPunctuationTest (new PinyinHalfWidthPunctuationTest()),
-        PinyinQuotesTest (new PinyinQuotesTest())
+        PinyinQuotesTest (new PinyinQuotesTest()),
+        RomajiYenTest (new RomajiYenTest(false)),
+        RomajiYenBackslashTest (new RomajiYenTest(true))
         ;
 
         private Runnable test;
@@ -77,7 +80,11 @@ public class InputMethodTest {
                 } catch (Exception ignored) {}
             }
         }
-        System.exit(success ? 0 : 1);
+        if (success) {
+            System.out.println("TEST PASSED");
+        } else {
+            throw new RuntimeException("TEST FAILED: check output");
+        }
     }
 
     private static void init() {
@@ -134,6 +141,30 @@ public class InputMethodTest {
         }
     }
 
+    private static String readDefault(String domain, String key) {
+        try {
+            var proc = Runtime.getRuntime().exec(new String[]{"defaults", "read", domain, key});
+            var exitCode = proc.waitFor();
+            if (exitCode == 0) {
+                return new Scanner(proc.getInputStream()).next();
+            }
+        } catch (Exception exc) {
+            exc.printStackTrace();
+            throw new RuntimeException("internal error");
+        }
+
+        return null;
+    }
+
+    private static void writeDefault(String domain, String key, String value) {
+        try {
+            Runtime.getRuntime().exec(new String[]{"defaults", "write", domain, key, value}).waitFor();
+        } catch (Exception exc) {
+            exc.printStackTrace();
+            throw new RuntimeException("internal error");
+        }
+    }
+
     public static void section(String description) {
         currentSection = description;
         textArea.setText("");
@@ -143,7 +174,7 @@ public class InputMethodTest {
 
     public static void layout(String name) {
         List<String> layouts = new ArrayList<>();
-        if (name.matches("com\\.apple\\.inputmethod\\.(SCIM|TCIM|TYIM|Kotoeri\\.KanaTyping)\\.\\w+")) {
+        if (name.matches("com\\.apple\\.inputmethod\\.(SCIM|TCIM|TYIM|Kotoeri\\.\\w+)\\.\\w+")) {
             layouts.add(name.replaceFirst("\\.\\w+$", ""));
         }
 
@@ -158,6 +189,25 @@ public class InputMethodTest {
 
         LWCToolkit.switchKeyboardLayout(name);
         robot.delay(250);
+    }
+
+    public static void setUseHalfWidthPunctuation(boolean flag) {
+        writeDefault("com.apple.inputmethod.CoreChineseEngineFramework", "usesHalfwidthPunctuation", flag ? "1" : "0");
+    }
+
+    public static void setUseBackslashInsteadOfYen(boolean flag) {
+        writeDefault("com.apple.inputmethod.Kotoeri", "JIMPrefCharacterForYenKey", flag ? "1" : "0");
+
+        // Need to kill Kotoeri, since it doesn't reload the config otherwise. This makes me sad.
+        try {
+            Runtime.getRuntime().exec(new String[]{"killall", "-9", "-m", "JapaneseIM"}).waitFor();
+        } catch (Exception exc) {
+            exc.printStackTrace();
+            throw new RuntimeException("internal error");
+        }
+
+        // wait for it to restart...
+        robot.delay(3000);
     }
 
     public static void type(int key, int modifiers) {

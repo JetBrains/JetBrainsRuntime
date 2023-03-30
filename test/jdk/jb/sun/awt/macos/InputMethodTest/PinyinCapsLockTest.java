@@ -24,7 +24,8 @@
 /**
  * @test
  * @summary Regression test for JBR-5254: CapsLock and Chinese IMs don't work properly
- * @run shell Runner.sh PinyinCapsLockTest
+ * @modules java.desktop/sun.lwawt.macosx
+ * @run main InputMethodTest PinyinCapsLockTest
  * @requires (jdk.version.major >= 8 & os.family == "mac")
  */
 

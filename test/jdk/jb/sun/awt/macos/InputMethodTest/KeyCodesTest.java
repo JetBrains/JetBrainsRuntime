@@ -24,7 +24,8 @@
 /**
  * @test
  * @summary Regression test for JBR-5173 macOS keyboard support rewrite
- * @run shell Runner.sh KeyCodesTest
+ * @modules java.desktop/sun.lwawt.macosx
+ * @run main InputMethodTest KeyCodesTest
  * @requires (jdk.version.major >= 8 & os.family == "mac")
  */
 

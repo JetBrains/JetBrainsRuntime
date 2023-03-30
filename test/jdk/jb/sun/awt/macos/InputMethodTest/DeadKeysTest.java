@@ -24,7 +24,8 @@
 /**
  * @test
  * @summary Regression test for JBR-5006 Dead keys exhibit invalid behavior on macOS
- * @run shell Runner.sh DeadKeysTest
+ * @modules java.desktop/sun.lwawt.macosx
+ * @run main InputMethodTest DeadKeysTest
  * @requires (jdk.version.major >= 8 & os.family == "mac")
  */
 

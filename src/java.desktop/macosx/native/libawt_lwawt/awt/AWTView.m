@@ -676,9 +676,18 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
             [kbdLayout containsString:@"com.apple.inputmethod.TYIM"]);
 }
 
+-(BOOL) isJapaneseInputMethod {
+    return [kbdLayout containsString:@"com.apple.inputmethod.Kotoeri"];
+}
+
 -(BOOL) isCodePointInUnicodeBlockNeedingIMEvent: (unichar) codePoint {
     if ((codePoint == 0x2018 || codePoint == 0x2019 || codePoint == 0x201C || codePoint == 0x201D) && [self isChineseInputMethod]) {
         // left/right single/double quotation mark
+        return YES;
+    }
+
+    if ((codePoint == 0x5C || codePoint == 0xA5) && [self isJapaneseInputMethod]) {
+        // Backslash/Yen symbol
         return YES;
     }
 
@@ -1117,9 +1126,7 @@ static jclass jc_CInputMethod = NULL;
     NSLog(@"codePoint %x", codePoint);
 #endif // IM_DEBUG
 
-    if ((utf16Length > 2) ||
-        ((utf8Length > 1) && [self isCodePointInUnicodeBlockNeedingIMEvent:codePoint]) ||
-        ((codePoint == 0x5c) && ([(NSString *)kbdLayout containsString:@"Kotoeri"]))) {
+    if ((utf16Length > 2) || [self isCodePointInUnicodeBlockNeedingIMEvent:codePoint]) {
 #ifdef IM_DEBUG
         NSLog(@"string complex ");
 #endif
