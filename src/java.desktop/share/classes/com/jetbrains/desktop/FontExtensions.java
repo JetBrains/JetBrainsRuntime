@@ -1,14 +1,11 @@
 package com.jetbrains.desktop;
 
 import com.jetbrains.internal.JBRApi;
-import sun.font.FontStrikeDesc;
 
 import java.awt.*;
-import java.awt.geom.AffineTransform;
 import java.lang.invoke.MethodHandles;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.function.BiConsumer;
 
 public class FontExtensions {
     private interface FontExtension {
