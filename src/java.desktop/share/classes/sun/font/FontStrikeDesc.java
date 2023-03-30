@@ -28,7 +28,6 @@ package sun.font;
 import java.awt.Font;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
-
 import static sun.awt.SunHints.*;
 
 /*

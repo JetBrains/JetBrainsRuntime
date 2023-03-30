@@ -556,7 +556,7 @@ public class Font implements java.io.Serializable
     }
 
     private boolean anyEnabledFeatures() {
-        return (features.values().stream().filter((x) -> (x != 0)).count()) > 0;
+        return features.values().stream().anyMatch(x -> x != 0);
     }
 
     /**
@@ -777,15 +777,10 @@ public class Font implements java.io.Serializable
         this.features = font.features;
     }
 
-    private interface Features {
-        TreeMap<String, Integer> toMap();
-    }
-
-    private Font(Font font, Features features) {
+    private Font(Font font, TreeMap<String, Integer> features) {
         this(font);
-        this.features = features.toMap();
+        this.features = features;
     }
-
 
     /**
      * Font recognizes all attributes except FONT.
@@ -2261,8 +2256,12 @@ public class Font implements java.io.Serializable
                         font2DHandle, keepFont2DHandle, features);
     }
 
+    private interface Features {
+        TreeMap<String, Integer> getAsTreeMap();
+    }
+
     private static Font deriveFont(Font font, Features features) {
-        return new Font(font, features);
+        return new Font(font, features.getAsTreeMap());
     }
 
     /**

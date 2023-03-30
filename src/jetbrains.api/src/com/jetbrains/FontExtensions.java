@@ -1,13 +1,15 @@
 package com.jetbrains;
 
 import java.awt.*;
+import java.io.Serial;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 
 public interface FontExtensions {
-    public static int FEATURE_ON = 1;
-    public static int FEATURE_OFF = 0;
+    public static final int FEATURE_ON = 1;
+    public static final int FEATURE_OFF = 0;
 
     /**
      * The list of all supported features. For feature's description look at
@@ -34,7 +36,7 @@ public interface FontExtensions {
         SS16, SS17, SS18, SS19, SS20, SSTY, STCH, SUBS, SUPS, SWSH, TITL, TJMO, TNAM, TNUM, TRAD, TWID, UNIC, VALT, VATU,
         VCHW, VERT, VHAL, VJMO, VKNA, VKRN, VPAL, VRT2, VRTR, ZERO;
 
-        private String getName() {
+        String getName() {
             return toString().toLowerCase();
         }
 
@@ -47,17 +49,20 @@ public interface FontExtensions {
         }
     }
 
-    class Features {
-        private final Map<FeatureTag, Integer> features;
+    class Features extends TreeMap<String, Integer> {
+        @Serial
+        private static final long serialVersionUID = 1L;
 
-        public Features(Map<FeatureTag, Integer> features) {
-            this.features = features;
+        public Features(Map<FontExtensions.FeatureTag, Integer> map) {
+            map.forEach((tag, value) -> put(tag.getName(), value));
         }
 
-        public TreeMap<String, Integer> toMap() {
-            TreeMap<String, Integer> res = new TreeMap<>();
-            features.forEach((tag, value) -> res.put(tag.getName(), value));
-            return res;
+        public Features(FontExtensions.FeatureTag... features) {
+            Arrays.stream(features).forEach(tag -> put(tag.getName(), FontExtensions.FEATURE_ON));
+        }
+
+        private TreeMap<String, Integer> getAsTreeMap() {
+            return this;
         }
     }
 
@@ -69,10 +74,6 @@ public interface FontExtensions {
      * @param features   set of OpenType's features wrapped inside {@link Features}
      */
     Font deriveFontWithFeatures(Font font, Features features);
-
-    // use only for testing purpose
-    @Deprecated
-    String getFeaturesAsString(Font font);
 
     Dimension getSubpixelResolution();
 }

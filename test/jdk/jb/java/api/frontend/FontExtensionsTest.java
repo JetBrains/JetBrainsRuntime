@@ -24,6 +24,7 @@
 /*
   @test
   @summary checking visualisation of drawing text with custom OpenType's features
+  @modules java.desktop/com.jetbrains.desktop:+open
   @run main FontExtensionsTest
 */
 
@@ -40,6 +41,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class FontExtensionsTest {
@@ -53,6 +55,7 @@ public class FontExtensionsTest {
     private static final String ZERO_STRING = "0";
     private static final String TEST_STRING = "hello abc 012345 " + FRACTION_STRING + LIGATURES_STRING;
     private static final Font BASE_FONT = new Font("JetBrains Mono", Font.PLAIN, 20);
+    private static Function<Font, String> featuresToString = null;
 
     private static BufferedImage getImageWithString(Font font, String str) {
         BufferedImage img = new BufferedImage(IMG_WIDTH, IMG_HEIGHT, BufferedImage.TYPE_INT_RGB);
@@ -110,14 +113,14 @@ public class FontExtensionsTest {
                 FontExtensions.FeatureTag.ZERO, FontExtensions.FEATURE_ON,
                 FontExtensions.FeatureTag.SALT, 123,
                 FontExtensions.FeatureTag.FRAC, FontExtensions.FEATURE_OFF)));
-        return JBR.getFontExtensions().getFeaturesAsString(font).equals("calt=0 frac=0 kern=0 liga=0 salt=123 zero=1 ");
+        return featuresToString.apply(font).equals("calt=0 frac=0 kern=0 liga=0 salt=123 zero=1 ");
     }
 
     @JBRTest
     private static Boolean testFeaturesToString2() {
         Font font = BASE_FONT.deriveFont(Map.of(TextAttribute.LIGATURES, TextAttribute.LIGATURES_ON,
                 TextAttribute.KERNING, TextAttribute.KERNING_ON));
-        return JBR.getFontExtensions().getFeaturesAsString(font).equals("calt=1 kern=1 liga=1 ");
+        return featuresToString.apply(font).equals("calt=1 kern=1 liga=1 ");
     }
 
     @JBRTest
@@ -220,19 +223,30 @@ public class FontExtensionsTest {
         }
 
         String error = "";
-        for (final Method method : FontExtensionsTest.class.getDeclaredMethods()) {
-            if (method.isAnnotationPresent(JBRTest.class)) {
-                System.out.print("Testing " + method.getName() + "...");
+        try {
+            Method featuresToStringMethod =
+                    com.jetbrains.desktop.FontExtensions.class.getDeclaredMethod("getFeaturesAsString", Font.class);
+            featuresToStringMethod.setAccessible(true);
+            featuresToString = font -> {
                 try {
+                    return (String) featuresToStringMethod.invoke(null, font);
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    throw new RuntimeException(e);
+                }
+            };
+
+            for (final Method method : FontExtensionsTest.class.getDeclaredMethods()) {
+                if (method.isAnnotationPresent(JBRTest.class)) {
+                    System.out.print("Testing " + method.getName() + "...");
                     boolean statusOk = (boolean) method.invoke(null);
                     if (!statusOk) {
                         error += System.lineSeparator() + "Test failed: " + method.getName();
                     }
                     System.out.println(statusOk ? "passed" : "failed");
-                } catch (IllegalAccessException | InvocationTargetException e) {
-                    throw new RuntimeException("JBR: internal error during testing");
                 }
             }
+        } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            throw new RuntimeException("JBR: internal error during testing");
         }
 
         if (!error.isEmpty()) {
