@@ -132,7 +132,7 @@ public class MaximizeWindowTest {
     private static void doubleClickToTitleBar(Window window, WindowDecorations.CustomTitleBar titleBar) throws AWTException {
         int leftX = window.getInsets().left + (int) titleBar.getLeftInset();
         int rightX = window.getBounds().width - window.getInsets().right - (int) titleBar.getRightInset();
-        int x = window.getLocationOnScreen().x + (rightX - leftX) / 2;
+        int x = window.getLocationOnScreen().x + leftX + (rightX - leftX) / 2;
         int topY = window.getInsets().top;
         int bottomY = (int) TestUtils.TITLE_BAR_HEIGHT;
         int y = window.getLocationOnScreen().y + (bottomY - topY) / 2;
