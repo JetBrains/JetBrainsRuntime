@@ -34,6 +34,11 @@
 
 extern vk::raii::Instance vkInstance;
 
+class PhysicalDevice;
+class Device : public vk::raii::Device {
+public:
+    Device(const PhysicalDevice& physicalDevice);
+};
 
 extern "C" {
 #endif //__cplusplus

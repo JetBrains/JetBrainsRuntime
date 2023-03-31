@@ -27,10 +27,14 @@
 #include <Trace.h>
 #include <set>
 
+#define VALIDATION_LAYER_NAME "VK_LAYER_KHRONOS_validation"
 static const uint32_t REQUIRED_VULKAN_VERSION = VK_MAKE_API_VERSION(0, 1, 0, 0);
-static vk::raii::Context* context;
-vk::raii::Instance vkInstance = nullptr;
 
+
+// ========== Vulkan instance ==========
+
+static vk::raii::Context* context = nullptr;
+vk::raii::Instance vkInstance = nullptr;
 
 #if defined(DEBUG)
 static vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
@@ -64,24 +68,24 @@ static bool createInstance() {
         // Load library.
         vk::raii::Context ctx;
         uint32_t version = ctx.enumerateInstanceVersion();
-        J2dRlsTraceLn3(J2D_TRACE_INFO, "Found Vulkan %d.%d.%d",
+        J2dRlsTrace3(J2D_TRACE_INFO, "Vulkan: Available (%d.%d.%d)\n",
                        VK_API_VERSION_MAJOR(version), VK_API_VERSION_MINOR(version), VK_API_VERSION_PATCH(version));
 
         if (version < REQUIRED_VULKAN_VERSION) {
-            J2dRlsTraceLn(J2D_TRACE_ERROR, "Unsupported Vulkan version");
+            J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: Unsupported version\n");
             return false;
         }
 
         // Populate maps and log supported layers & extensions.
         std::set<std::string> layers, extensions;
-        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "Supported instance layers:");
+        J2dRlsTrace(J2D_TRACE_VERBOSE, "    Supported instance layers:\n");
         for (auto& l : ctx.enumerateInstanceLayerProperties()) {
-            J2dRlsTrace1(J2D_TRACE_VERBOSE, "    %s\n", (char*) l.layerName);
+            J2dRlsTrace1(J2D_TRACE_VERBOSE, "        %s\n", (char*) l.layerName);
             layers.emplace((char*) l.layerName);
         }
-        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "Supported instance extensions:");
+        J2dRlsTrace(J2D_TRACE_VERBOSE, "    Supported instance extensions:\n");
         for (auto& e : ctx.enumerateInstanceExtensionProperties(nullptr)) {
-            J2dRlsTrace1(J2D_TRACE_VERBOSE, "    %s\n", (char*) e.extensionName);
+            J2dRlsTrace1(J2D_TRACE_VERBOSE, "        %s\n", (char*) e.extensionName);
             extensions.emplace((char*) e.extensionName);
         }
 
@@ -96,7 +100,7 @@ static bool createInstance() {
         bool requiredNotFound = false;
         for (auto e : enabledExtensions) {
             if (extensions.find(e) == extensions.end()) {
-                J2dRlsTraceLn1(J2D_TRACE_ERROR, "Required instance extension not supported: %s", (char*) e);
+                J2dRlsTrace1(J2D_TRACE_ERROR, "Vulkan: Required instance extension not supported: %s\n", (char*) e);
                 requiredNotFound = true;
             }
         }
@@ -111,14 +115,13 @@ static bool createInstance() {
                 vk::ValidationFeatureEnableEXT::eSynchronizationValidation
         };
         vk::ValidationFeaturesEXT validationFeatures {enabledValidationFeatures};
-        const char* const VALIDATION_LAYER_NAME = "VK_LAYER_KHRONOS_validation";
         if (layers.find(VALIDATION_LAYER_NAME) != layers.end() &&
             extensions.find(VK_EXT_DEBUG_UTILS_EXTENSION_NAME) != extensions.end()) {
             enabledLayers.push_back(VALIDATION_LAYER_NAME);
             enabledExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
             pNext = &validationFeatures;
         } else {
-            J2dRlsTraceLn2(J2D_TRACE_WARNING, "%s and %s are not supported",
+            J2dRlsTrace2(J2D_TRACE_WARNING, "Vulkan: %s and %s are not supported\n",
                            VALIDATION_LAYER_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }
 #endif
@@ -143,7 +146,7 @@ static bool createInstance() {
         context = new vk::raii::Context(std::move(ctx));
 
         vkInstance = vk::raii::Instance(*context, instanceCreateInfo);
-        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "Vulkan instance created");
+        J2dRlsTrace(J2D_TRACE_INFO, "Vulkan: Instance created\n");
 
         // Create debug messenger
 #if defined(DEBUG)
@@ -163,17 +166,169 @@ static bool createInstance() {
 
 #endif
 
-        vkInstance.createWaylandSurfaceKHR(vk::WaylandSurfaceCreateInfoKHR {vk::WaylandSurfaceCreateFlagsKHR(123542)}); // TODO just to verify that debug messenger works
-
         return true;
     } catch (std::exception& e) {
         // Usually this means we didn't find the shared library.
-        J2dRlsTraceLn(J2D_TRACE_ERROR, e.what());
+        J2dRlsTrace1(J2D_TRACE_ERROR, "Vulkan: %s\n", e.what());
         return false;
     }
 }
 
+
+// ========== Vulkan device ==========
+
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+extern struct wl_display *wl_display;
+#endif
+
+class PhysicalDevice : vk::raii::PhysicalDevice {
+    friend class Device;
+
+    bool supported = false;
+    int queueFamily = -1;
+    std::vector<const char*> enabledLayers, enabledExtensions;
+
+public:
+    PhysicalDevice(vk::raii::PhysicalDevice&& handle) : vk::raii::PhysicalDevice(std::move(handle)) {
+        const auto& properties = getProperties();
+        const auto& queueFamilies = getQueueFamilyProperties();
+
+        J2dRlsTrace5(J2D_TRACE_INFO, "Vulkan: Found device %s (%d.%d.%d, %s)\n",
+                       (const char*) properties.deviceName,
+                       VK_API_VERSION_MAJOR(properties.apiVersion),
+                       VK_API_VERSION_MINOR(properties.apiVersion),
+                       VK_API_VERSION_PATCH(properties.apiVersion),
+                       vk::to_string(properties.deviceType).c_str());
+        if (properties.apiVersion < REQUIRED_VULKAN_VERSION) {
+            J2dRlsTrace(J2D_TRACE_INFO, "    Unsupported Vulkan version\n");
+            return;
+        }
+
+        // Check supported queue families.
+        for (unsigned int i = 0; i < queueFamilies.size(); i++) {
+            const auto& family = queueFamilies[i];
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+            bool presentationSupported = getWaylandPresentationSupportKHR(i, *wl_display);
+#endif
+            char logFlags[5] {
+                    family.queueFlags & vk::QueueFlagBits::eGraphics ? 'G' : '-',
+                    family.queueFlags & vk::QueueFlagBits::eCompute ? 'C' : '-',
+                    family.queueFlags & vk::QueueFlagBits::eTransfer ? 'T' : '-',
+                    family.queueFlags & vk::QueueFlagBits::eSparseBinding ? 'S' : '-',
+                    presentationSupported ? 'P' : '-'
+            };
+            J2dRlsTrace3(J2D_TRACE_INFO, "    %d queues in family (%.*s)\n", family.queueCount, 5, logFlags);
+
+            // TODO use compute workloads? Separate transfer-only DMA queue?
+            if (queueFamily == -1 && (family.queueFlags & vk::QueueFlagBits::eGraphics) && presentationSupported) {
+                queueFamily = i;
+            }
+        }
+        if (queueFamily == -1) {
+            J2dRlsTrace(J2D_TRACE_INFO, "    No suitable queue\n");
+            return;
+        }
+
+        // Populate maps and log supported layers & extensions.
+        std::set<std::string> layers, extensions;
+        J2dRlsTrace(J2D_TRACE_VERBOSE, "    Supported device layers:\n");
+        for (auto& l : enumerateDeviceLayerProperties()) {
+            J2dRlsTrace1(J2D_TRACE_VERBOSE, "        %s\n", (char*) l.layerName);
+            layers.emplace((char*) l.layerName);
+        }
+        J2dRlsTrace(J2D_TRACE_VERBOSE, "    Supported device extensions:\n");
+        for (auto& e : enumerateDeviceExtensionProperties(nullptr)) {
+            J2dRlsTrace1(J2D_TRACE_VERBOSE, "        %s\n", (char*) e.extensionName);
+            extensions.emplace((char*) e.extensionName);
+        }
+
+        // Check required layers & extensions.
+        enabledExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        bool requiredNotFound = false;
+        for (auto e : enabledExtensions) {
+            if (extensions.find(e) == extensions.end()) {
+                J2dRlsTrace1(J2D_TRACE_INFO, "    Required device extension not supported: %s\n", (char*) e);
+                requiredNotFound = true;
+            }
+        }
+        if (requiredNotFound) return;
+
+        // Validation layer
+#ifdef DEBUG
+        if (layers.find(VALIDATION_LAYER_NAME) != layers.end()) {
+            enabledLayers.push_back(VALIDATION_LAYER_NAME);
+        } else {
+            J2dRlsTrace1(J2D_TRACE_INFO, "    %s device layer is not supported\n", VALIDATION_LAYER_NAME);
+        }
+#endif
+
+        // This device is supported
+        supported = true;
+    }
+
+    operator bool() const {
+        return !!**this && supported;
+    }
+};
+
+Device::Device(const PhysicalDevice& physicalDevice) : vk::raii::Device(nullptr) {
+    float queuePriorities[1] {1.0f}; // We only use one queue for now
+    std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
+    queueCreateInfos.push_back(vk::DeviceQueueCreateInfo {
+            {}, (uint32_t) physicalDevice.queueFamily, 1, &queuePriorities[0]
+    });
+
+    vk::DeviceCreateInfo deviceCreateInfo {
+            /*flags*/                   {},
+            /*pQueueCreateInfos*/       queueCreateInfos,
+            /*ppEnabledLayerNames*/     physicalDevice.enabledLayers,
+            /*ppEnabledExtensionNames*/ physicalDevice.enabledExtensions,
+            /*pEnabledFeatures*/        nullptr
+    };
+    *((vk::raii::Device*) this) = {physicalDevice, deviceCreateInfo};
+    J2dRlsTrace(J2D_TRACE_INFO, "Vulkan: Device created\n"); // TODO which one?
+}
+
+static std::vector<PhysicalDevice> physicalDevices; // Only supported ones.
+
+static bool initDevices() {
+    try {
+        // Find suitable devices.
+        for (auto& handle : vkInstance.enumeratePhysicalDevices()) {
+            PhysicalDevice physicalDevice {std::move(handle)};
+            if (physicalDevice) { // Supported.
+                physicalDevices.push_back(std::move(physicalDevice));
+            }
+        }
+        if (physicalDevices.empty()) {
+            J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: No suitable device found\n");
+        }
+
+        // Create virtual device for a physical device.
+        // TODO system property for manual choice of GPU
+        // TODO integrated/discrete presets
+        // TODO performance/power saving mode switch on the fly?
+        Device device {physicalDevices[0]}; // TODO pick first just to check that virtual device creation works
+
+        return true;
+    } catch (std::exception& e) {
+        J2dRlsTrace1(J2D_TRACE_ERROR, "Vulkan: %s\n", e.what());
+        return false;
+    }
+}
+
+
 extern "C" jboolean VK_Init() {
-    if (!createInstance()) return false;
-    return true;
+    if (createInstance() && initDevices()) {
+        return true;
+    }
+
+    physicalDevices.clear();
+#if defined(DEBUG)
+    debugMessenger = nullptr;
+#endif
+    vkInstance = nullptr;
+    delete context;
+
+    return false;
 }
