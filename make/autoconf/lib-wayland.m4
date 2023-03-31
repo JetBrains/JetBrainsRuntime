@@ -119,7 +119,7 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
         if test "x${with_vulkan_include}" != x; then
           AC_CHECK_HEADERS([${with_vulkan_include}/include/vulkan/vulkan.h],
             [ VULKAN_FOUND=yes
-              VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -I${with_vulkan_include} -DVULKAN_ENABLED"
+              VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -I${with_vulkan_include}/include -DVULKAN_ENABLED"
               VULKAN_ENABLED=true
             ],
             [ AC_MSG_ERROR([Can't find 'vulkan/vulkan.h' under '${with_vulkan_include}']) ]
@@ -130,7 +130,7 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
           # Check vulkan sdk location
           AC_CHECK_HEADERS([$VULKAN_SDK/include/vulkan/vulkan.h],
             [ VULKAN_FOUND=yes
-              VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -I${VULKAN_SDK} -DVULKAN_ENABLED"
+              VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -I${VULKAN_SDK}/include -DVULKAN_ENABLED"
               VULKAN_ENABLED=true
             ],
             [ VULKAN_FOUND=no; break ]
