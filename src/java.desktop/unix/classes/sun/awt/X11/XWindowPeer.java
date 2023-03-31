@@ -1731,7 +1731,9 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                     }
                     modalBlocker = d;
 
-                    if (isReparented() || ENABLE_REPARENTING_CHECK && XWM.isNonReparentingWM()) {
+                    if (isReparented() ||
+                            ENABLE_REPARENTING_CHECK && XWM.isNonReparentingWM() ||
+                            !ENABLE_REPARENTING_CHECK && isMapped()) {
                         addToTransientFors(blockerPeer, javaToplevels);
                     } else {
                         delayedModalBlocking = true;
@@ -1742,7 +1744,9 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                     }
                     modalBlocker = null;
 
-                    if (isReparented() || ENABLE_REPARENTING_CHECK && XWM.isNonReparentingWM()) {
+                    if (isReparented() ||
+                            ENABLE_REPARENTING_CHECK && XWM.isNonReparentingWM() ||
+                            !ENABLE_REPARENTING_CHECK && isMapped()) {
                         if (FULL_MODAL_TRANSIENTS_CHAIN || haveCommonAncestor(target, d)) {
                             removeFromTransientFors();
                         }
