@@ -31,7 +31,6 @@
 
 import com.jetbrains.FontExtensions;
 import com.jetbrains.JBR;
-import sun.jvm.hotspot.utilities.Assert;
 
 import java.awt.*;
 import java.awt.font.TextAttribute;
@@ -41,7 +40,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.stream.Collectors;
+
+import static com.jetbrains.desktop.FontExtensions.featuresToStringArray;
+import static com.jetbrains.desktop.FontExtensions.getFeatures;
 
 public class FontExtensionsTest {
     @Retention(RetentionPolicy.RUNTIME)
@@ -54,8 +55,6 @@ public class FontExtensionsTest {
     private static final String ZERO_STRING = "0";
     private static final String TEST_STRING = "hello abc 012345 " + FRACTION_STRING + LIGATURES_STRING;
     private static final Font BASE_FONT = new Font("JetBrains Mono", Font.PLAIN, 20);
-    private static Method getFeaturesMethod = null;
-    private static Method featuresToStringMethod = null;
 
     private static BufferedImage getImageWithString(Font font, String str) {
         BufferedImage img = new BufferedImage(IMG_WIDTH, IMG_HEIGHT, BufferedImage.TYPE_INT_RGB);
@@ -72,7 +71,6 @@ public class FontExtensionsTest {
     }
 
     private static Boolean isImageEquals(BufferedImage first, BufferedImage second) {
-        Assert.that(first.getWidth() == second.getWidth() && first.getHeight() == second.getHeight(), "images size differs");
         for (int y = 0; y < first.getHeight(); y++) {
             for (int x = 0; x < first.getWidth(); x++) {
                 if (first.getRGB(x, y) != second.getRGB(x, y)) {
@@ -83,13 +81,11 @@ public class FontExtensionsTest {
         return true;
     }
 
-    private static Font fontWithFeatures(Font font, FontExtensions.FeatureTag ... features) {
-        Map<FontExtensions.FeatureTag, Integer> featureSet = Arrays.stream(features).collect(Collectors.toMap(
-                x -> x, x -> FontExtensions.FEATURE_ON));
-        return JBR.getFontExtensions().deriveFontWithFeatures(font, new FontExtensions.Features(featureSet));
+    private static Font fontWithFeatures(Font font, FontExtensions.FeatureTag... features) {
+        return JBR.getFontExtensions().deriveFontWithFeatures(font, new FontExtensions.Features(features));
     }
 
-    private static Font fontWithFeatures(FontExtensions.FeatureTag ... features) {
+    private static Font fontWithFeatures(FontExtensions.FeatureTag... features) {
         return fontWithFeatures(BASE_FONT, features);
     }
 
@@ -99,9 +95,8 @@ public class FontExtensionsTest {
         return isImageEquals(image1, image2);
     }
 
-    private static String fontFeaturesAsString(Font font) throws InvocationTargetException, IllegalAccessException {
-        Map<String, Integer> features = (Map<String, Integer>) getFeaturesMethod.invoke(null, font);
-        return (String) featuresToStringMethod.invoke(null,features);
+    private static String[] fontFeaturesAsString(Font font) {
+        return featuresToStringArray(getFeatures(font));
     }
 
     @JBRTest
@@ -113,19 +108,21 @@ public class FontExtensionsTest {
     }
 
     @JBRTest
-    private static Boolean testFeaturesToString1() throws InvocationTargetException, IllegalAccessException {
+    private static Boolean testFeaturesToString1() {
         Font font = JBR.getFontExtensions().deriveFontWithFeatures(BASE_FONT, new FontExtensions.Features(Map.of(
                 FontExtensions.FeatureTag.ZERO, FontExtensions.FEATURE_ON,
                 FontExtensions.FeatureTag.SALT, 123,
                 FontExtensions.FeatureTag.FRAC, FontExtensions.FEATURE_OFF)));
-        return fontFeaturesAsString(font).equals("calt=0 frac=0 kern=0 liga=0 salt=123 zero=1 ");
+        String[] features = {"calt=0", "frac=0", "kern=0", "liga=0", "salt=123", "zero=1"};
+        return Arrays.equals(fontFeaturesAsString(font), features);
     }
 
     @JBRTest
-    private static Boolean testFeaturesToString2() throws InvocationTargetException, IllegalAccessException {
+    private static Boolean testFeaturesToString2() {
         Font font = BASE_FONT.deriveFont(Map.of(TextAttribute.LIGATURES, TextAttribute.LIGATURES_ON,
                 TextAttribute.KERNING, TextAttribute.KERNING_ON));
-        return fontFeaturesAsString(font).equals("calt=1 kern=1 liga=1 ");
+        String[] features = {"calt=1", "kern=1", "liga=1"};
+        return Arrays.equals(fontFeaturesAsString(font), features);
     }
 
     @JBRTest
@@ -229,11 +226,6 @@ public class FontExtensionsTest {
 
         String error = "";
         try {
-            getFeaturesMethod =
-                    com.jetbrains.desktop.FontExtensions.class.getDeclaredMethod("getFeatures", Font.class);
-            featuresToStringMethod =
-                    com.jetbrains.desktop.FontExtensions.class.getDeclaredMethod("featuresToString", Map.class);
-
             for (final Method method : FontExtensionsTest.class.getDeclaredMethods()) {
                 if (method.isAnnotationPresent(JBRTest.class)) {
                     System.out.print("Testing " + method.getName() + "...");
@@ -244,7 +236,7 @@ public class FontExtensionsTest {
                     System.out.println(statusOk ? "passed" : "failed");
                 }
             }
-        } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+        } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException("JBR: internal error during testing");
         }
 

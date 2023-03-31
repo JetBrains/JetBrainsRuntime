@@ -4,8 +4,10 @@ import com.jetbrains.internal.JBRApi;
 
 import java.awt.*;
 import java.lang.invoke.MethodHandles;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 public class FontExtensions {
     private interface FontExtension {
@@ -15,14 +17,10 @@ public class FontExtensions {
         TreeMap<String, Integer> getFeatures(Font font);
     }
 
-    public static String featuresToString(Map<String, Integer> features) {
-        StringBuilder res = new StringBuilder();
-
-        features.forEach((String tag, Integer value) -> {
-            res.append(tag).append("=").append(String.valueOf(value)).append(" ");
-        });
-
-        return res.toString();
+    public static String[] featuresToStringArray(Map<String, Integer> features) {
+        List<String> list = features.entrySet().stream().map(feature -> (feature.getKey() + "=" + feature.getValue())).
+                collect(Collectors.toList());
+        return list.toArray(String[]::new);
     }
 
     public static TreeMap<String, Integer> getFeatures(Font font) {

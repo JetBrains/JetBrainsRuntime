@@ -49,20 +49,22 @@ public interface FontExtensions {
         }
     }
 
-    class Features extends TreeMap<String, Integer> {
+    class Features extends TreeMap<FeatureTag, Integer> {
         @Serial
         private static final long serialVersionUID = 1L;
 
         public Features(Map<FontExtensions.FeatureTag, Integer> map) {
-            map.forEach((tag, value) -> put(tag.getName(), value));
+            super(map);
         }
 
         public Features(FontExtensions.FeatureTag... features) {
-            Arrays.stream(features).forEach(tag -> put(tag.getName(), FontExtensions.FEATURE_ON));
+            Arrays.stream(features).forEach(tag -> put(tag, FontExtensions.FEATURE_ON));
         }
 
         private TreeMap<String, Integer> getAsTreeMap() {
-            return this;
+            TreeMap<String, Integer> res = new TreeMap<>();
+            forEach((tag, value) -> res.put(tag.getName(), value));
+            return res;
         }
     }
 

@@ -48,7 +48,12 @@ import java.security.AccessController;
 import java.security.PrivilegedExceptionAction;
 import java.text.AttributedCharacterIterator.Attribute;
 import java.text.CharacterIterator;
-import java.util.*;
+import java.util.EventListener;
+import java.util.Hashtable;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
 import sun.awt.ComponentFactory;
 import sun.font.AttributeMap;

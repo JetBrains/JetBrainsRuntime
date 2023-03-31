@@ -174,7 +174,7 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
             shape(font, strike, ptSize, mat, pFace,
                     tr.text, data, key.script(),
                     tr.start, tr.limit, baseIndex, pt,
-                    ltrDirection, FontExtensions.featuresToString(features), features.size(), gmask);
+                    ltrDirection, FontExtensions.featuresToStringArray(features), gmask);
         }
     }
 
@@ -184,7 +184,7 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
               long pFace,
               char[] chars, GVData data,
               int script, int offset, int limit,
-              int baseIndex, Point2D.Float pt, boolean ltrDirection, String features, int featuresCount, int slot);
+              int baseIndex, Point2D.Float pt, boolean ltrDirection, String[] features, int slot);
 
     private static native long createFace(Font2D font,
                                           long platformNativeFontPtr);

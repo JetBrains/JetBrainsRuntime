@@ -238,8 +238,7 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
      jint baseIndex,
      jobject startPt,
      jboolean ltrDirection,
-     jstring featuresStr,
-     jint featuresCount,
+     jobjectArray featuresArray,
      jint slot) {
 
      hb_buffer_t *buffer;
@@ -286,18 +285,16 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
 
      hb_buffer_add_utf16(buffer, chars, len, offset, limit-offset);
 
-     const char *featuresStrPtr = (*env)->GetStringUTFChars(env, featuresStr, 0);
+     int featuresCount = (*env)->GetArrayLength(env, featuresArray);
      features = calloc(featuresCount, sizeof(hb_feature_t));
      if (features) {
          for (int i = 0; i < featuresCount; i++) {
-             const char *featureEnd = strchr(featuresStrPtr, ' ');
-             assert(featureEnd != NULL);
-             int featureLen = (int) (featureEnd - featuresStrPtr);
-
-             hb_bool_t parseStatus = hb_feature_from_string(featuresStrPtr, featureLen, &features[i]);
-             assert(parseStatus);
-
-             featuresStrPtr = featureEnd + 1;
+             jstring feature = (*env)->GetObjectArrayElement(env, featuresArray, i);
+             const char *featurePtr = (*env)->GetStringUTFChars(env, feature, 0);
+             hb_bool_t status = hb_feature_from_string(featurePtr, -1, &features[i]);
+             
+             assert(status);
+             (*env)->ReleaseStringUTFChars(env, feature, featurePtr);
          }
      }
 
