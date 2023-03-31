@@ -168,8 +168,8 @@ public class CheckResourceKeys {
             // ignore this partial key, tested by usageTests
             if (ck.equals("main.opt."))
                 continue;
-            // ignore this system property name
-            if (ck.equals("javadoc.internal.show.taglets"))
+            // ignore these system property names
+            if (ck.equals("javadoc.internal.show.taglets") || ck.equals("javadoc.legal-notices"))
                 continue;
             if (resourceKeys.contains(ck))
                 continue;

@@ -123,6 +123,11 @@ public class HtmlConfiguration extends BaseConfiguration {
     public String helpfile = "";
 
     /**
+     * Argument for command-line option "--legal-notices".
+     */
+    public String legalnotices = "";
+
+    /**
      * Argument for command line option "-stylesheetfile".
      */
     public String stylesheetfile = "";
@@ -653,6 +658,13 @@ public class HtmlConfiguration extends BaseConfiguration {
                 @Override
                 public boolean process(String opt,  List<String> args) {
                     htmlVersion = HtmlVersion.HTML5;
+                    return true;
+                }
+            },
+            new Option(resources, "--legal-notices", 1) {
+                @Override
+                public boolean process(String opt,  List<String> args) {
+                    legalnotices = args.get(0);
                     return true;
                 }
             },
