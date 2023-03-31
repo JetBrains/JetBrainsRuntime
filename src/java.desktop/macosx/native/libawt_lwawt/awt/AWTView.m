@@ -34,6 +34,7 @@
 #import "JNIUtilities.h"
 #import "jni_util.h"
 #import "PropertiesUtilities.h"
+#import <AppKit/NSAccessibility.h>
 
 #import <Carbon/Carbon.h>
 
@@ -750,6 +751,15 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     if ([@"false" isCaseInsensitiveLike:a11yEnabledProp]) {
         return nil;
     }
+
+    if (![@"true" isCaseInsensitiveLike:a11yEnabledProp]) {
+      if (@available(macOS 10.13, *)) {
+        if (![NSWorkspace sharedWorkspace].voiceOverEnabled && ![NSWorkspace sharedWorkspace].isSwitchControlEnabled) {
+          return nil;
+        }
+      }
+    }
+
     jobject jcomponent = [self awtComponent:env];
     id ax = [[[CommonComponentAccessibility alloc] initWithParent:self withEnv:env withAccessible:jcomponent withIndex:-1 withView:self withJavaRole:nil] autorelease];
     (*env)->DeleteLocalRef(env, jcomponent);
