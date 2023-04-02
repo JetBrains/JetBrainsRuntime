@@ -1162,6 +1162,7 @@ javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5359 windows-aarch64
 jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-5359 windows-aarch64
 jb/java/awt/CustomTitleBar/FrameNativeControlsTest.java JBR-5359 windows-aarch64
 jb/java/awt/CustomTitleBar/JDialogNativeControlsTest.java JBR-5359 windows-aarch64
+jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-5465 windows-all
 jb/java/awt/CustomTitleBar/MinimizingWindowTest.java JBR-5359 windows-aarch64
 jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java JBR-5359 windows-aarch64
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java JBR-5359 windows-aarch64
