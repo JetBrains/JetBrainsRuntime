@@ -716,37 +716,10 @@ void VM_EnhancedRedefineClasses::reinitializeJDKClasses() {
     for (int i = 0; i < _new_classes->length(); i++) {
       InstanceKlass* cur = _new_classes->at(i);
 
-      if ((cur->name()->starts_with("java/") || cur->name()->starts_with("jdk/") || cur->name()->starts_with("sun/"))
-          && cur->name()->index_of_at(0, "$$", (int) strlen("$$")) == -1) { // skip dynamic proxies
-
-        if (cur == vmClasses::ClassLoader_klass()) {
-          // ClassLoader.addClass method is cached in Universe, we must redefine
-          Universe::reinitialize_loader_addClass_method(JavaThread::current());
-          log_trace(redefine, class, obsolete, metadata)("Reinitialize ClassLoade addClass method cache.");
-        }
-
-        // naive assumptions that only JDK classes has native static "registerNative" and "initIDs" methods
-        int end;
-        Symbol* signature = vmSymbols::registerNatives_method_name();
-        int midx = cur->find_method_by_name(signature, &end);
-        if (midx == -1) {
-          signature = vmSymbols::initIDs_method_name();
-          midx = cur->find_method_by_name(signature, &end);
-        }
-        Method* m = nullptr;
-        if (midx != -1) {
-          m = cur->methods()->at(midx);
-        }
-        if (m != nullptr && m->is_static() && m->is_native()) {
-          // call static registerNative if present
-          JavaValue result(T_VOID);
-          JavaCalls::call_static(&result,
-                                  cur,
-                                  signature,
-                                  vmSymbols::void_method_signature(),
-                                  JavaThread::current());
-          log_trace(redefine, class, obsolete, metadata)("Reregister natives of JDK class %s", cur->external_name());
-        }
+      if (cur == vmClasses::ClassLoader_klass()) {
+        // ClassLoader.addClass method is cached in Universe, we must redefine
+        Universe::reinitialize_loader_addClass_method(JavaThread::current());
+        log_trace(redefine, class, obsolete, metadata)("Reinitialize ClassLoade addClass method cache.");
       }
     }
   }
@@ -1720,7 +1693,7 @@ void VM_EnhancedRedefineClasses::check_methods_and_mark_as_obsolete() {
 // removed.
 // It expects only to be used during the VM_EnhancedRedefineClasses op (a safepoint).
 //
-// This class is used after the new methods have been installed in "the_class".
+// This class is used after the new methods have been installed in "new_class".
 //
 // So, for example, the following must be handled.  Where 'm' is a method and
 // a number followed by an underscore is a prefix.
@@ -1736,7 +1709,7 @@ void VM_EnhancedRedefineClasses::check_methods_and_mark_as_obsolete() {
 //
 class TransferNativeFunctionRegistration {
  private:
-  InstanceKlass* the_class;
+  InstanceKlass* new_class;
   int prefix_count;
   char** prefixes;
 
@@ -1751,7 +1724,7 @@ class TransferNativeFunctionRegistration {
                                      Symbol* signature) {
     TempNewSymbol name_symbol = SymbolTable::probe(name_str, (int)name_len);
     if (name_symbol != nullptr) {
-      Method* method = the_class->lookup_method(name_symbol, signature);
+      Method* method = new_class->lookup_method(name_symbol, signature);
       if (method != nullptr) {
         // Even if prefixed, intermediate methods must exist.
         if (method->is_native()) {
@@ -1814,10 +1787,10 @@ class TransferNativeFunctionRegistration {
  public:
 
   // Construct a native method transfer processor for this class.
-  TransferNativeFunctionRegistration(InstanceKlass* _the_class) {
+  TransferNativeFunctionRegistration(InstanceKlass* _new_class) {
     assert(SafepointSynchronize::is_at_safepoint(), "sanity check");
 
-    the_class = _the_class;
+    new_class = _new_class;
     prefixes = JvmtiExport::get_all_native_method_prefixes(&prefix_count);
   }
 
@@ -1841,8 +1814,8 @@ class TransferNativeFunctionRegistration {
 };
 
 // Don't lose the association between a native method and its JNI function.
-void VM_EnhancedRedefineClasses::transfer_old_native_function_registrations(InstanceKlass* the_class) {
-  TransferNativeFunctionRegistration transfer(the_class);
+void VM_EnhancedRedefineClasses::transfer_old_native_function_registrations(InstanceKlass* new_class) {
+  TransferNativeFunctionRegistration transfer(new_class);
   transfer.transfer_registrations(_deleted_methods, _deleted_methods_length);
   transfer.transfer_registrations(_matching_old_methods, _matching_methods_length);
 }
@@ -1981,7 +1954,7 @@ void VM_EnhancedRedefineClasses::redefine_single_class(Thread *current, Instance
 
   _any_class_has_resolved_methods = the_class->has_resolved_methods() || _any_class_has_resolved_methods;
 
-  transfer_old_native_function_registrations(the_class);
+  transfer_old_native_function_registrations(new_class);
 
 
   // JSR-292 support
