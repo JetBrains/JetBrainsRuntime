@@ -11,3 +11,26 @@ javax/swing/JPopupMenu/6580930/bug6580930.java                                  
 javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java                        8274106 macosx-all
 
 sun/java2d/GdiRendering/ClipShapeRendering.java                                     JBR-5204 linux-all,windows-all
+
+#
+# the below tests are not intended to be executed in S2 configurations because
+# the tests contains tags to be launched for various scales including S2
+#
+jb/java/awt/CustomTitleBar/ActionListenerTest.java                                  nobug generic-all
+jb/java/awt/CustomTitleBar/ChangeTitleBarHeightTest.java                            nobug generic-all
+jb/java/awt/CustomTitleBar/CheckFullScreen.java                                     nobug generic-all
+jb/java/awt/CustomTitleBar/CreateTitleBarTest.java                                  nobug generic-all
+jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java                            nobug generic-all
+jb/java/awt/CustomTitleBar/FrameNativeControlsTest.java                             nobug generic-all
+jb/java/awt/CustomTitleBar/HiddenNativeControlsTest.java                            nobug generic-all
+jb/java/awt/CustomTitleBar/HitTestClientArea.java                                   nobug generic-all
+jb/java/awt/CustomTitleBar/HitTestNonClientArea.java                                nobug generic-all
+jb/java/awt/CustomTitleBar/JDialogNativeControlsTest.java                           nobug generic-all
+jb/java/awt/CustomTitleBar/MaximizedWindowFocusTest.java                            nobug generic-all
+jb/java/awt/CustomTitleBar/MaximizeWindowTest.java                                  nobug generic-all
+jb/java/awt/CustomTitleBar/MinimizingWindowTest.java                                nobug generic-all
+jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java                             nobug generic-all
+jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java                        nobug generic-all
+jb/java/awt/CustomTitleBar/WindowResizeTest.java                                    nobug generic-all
+jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java                             nobug generic-all
+jb/java/awt/CustomTitleBar/WindowVisibilityTest.java                                nobug generic-all
