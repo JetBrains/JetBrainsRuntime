@@ -135,7 +135,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
 
   // marking methods as old and/or obsolete
   void check_methods_and_mark_as_obsolete();
-  void transfer_old_native_function_registrations(InstanceKlass* the_class);
+  void transfer_old_native_function_registrations(InstanceKlass* new_class);
 
   // Install the redefinition of a class
   void redefine_single_class(Thread* current, InstanceKlass* new_class_oop);
