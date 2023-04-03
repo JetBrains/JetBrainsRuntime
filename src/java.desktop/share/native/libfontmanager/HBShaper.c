@@ -296,9 +296,11 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
              ret = JNI_FALSE;
              goto cleanup;
          }
+
          ret = hb_feature_from_string(featurePtr, -1, &features[i]);
+         (*env)->ReleaseStringUTFChars(env, feature, featurePtr);
          if (!ret) {
-             (*env)->ReleaseStringUTFChars(env, feature, featurePtr);
+             ret = JNI_FALSE;
              goto cleanup;
          }
      }
