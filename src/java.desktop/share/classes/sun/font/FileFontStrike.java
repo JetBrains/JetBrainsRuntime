@@ -1036,11 +1036,6 @@ public class FileFontStrike extends PhysicalStrike {
         return gp;
     }
 
-    GeneralPath getGlyphVectorOutline(int[] glyphs, float x, float y) {
-        return fileFont.getGlyphVectorOutline(pScalerContext,
-                                              glyphs, glyphs.length, x, y);
-    }
-
     private
         WeakReference<ConcurrentHashMap<Integer, GlyphRenderData>> glyphRenderDataMapRef;
 
