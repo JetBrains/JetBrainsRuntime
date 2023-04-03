@@ -457,7 +457,7 @@ public class Font implements java.io.Serializable
      * @see #getFeatures
      * @see #deriveFont(Font, Features)
      */
-    private TreeMap<String, Integer> features;
+    private TreeMap<String, Integer> features = new TreeMap<String, Integer>();
 
     /**
      * The platform specific font information.
@@ -625,7 +625,6 @@ public class Font implements java.io.Serializable
         this.style = (style & ~0x03) == 0 ? style : 0;
         this.size = size;
         this.pointSize = size;
-        this.features = new TreeMap<String, Integer>();
     }
 
     private Font(String name, int style, float sizePts, TreeMap<String, Integer> features) {
