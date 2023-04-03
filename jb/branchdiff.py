@@ -5,10 +5,18 @@ import os.path
 import sys
 import subprocess
 
+errors_count = 0
+
 
 def fatal(msg):
     sys.stderr.write(f"[fatal] {msg}\n")
     sys.exit(1)
+
+
+def error(msg):
+    global errors_count
+    errors_count += 1
+    sys.stderr.write(f"[error] {msg}\n")
 
 
 def verbose(options, *msg):
@@ -31,7 +39,8 @@ class Options:
         ap.add_argument('--from', dest='frombranch', help='branch to take commits from', required=True)
         ap.add_argument('--to', dest='tobranch', help='branch to apply new commits to', required=True)
         ap.add_argument('--path', dest='path', help='limit to changes in this path (relative to git root)')
-        ap.add_argument('--limit', dest='limit', help='limit to this many log entries in --jdk repo', type=int, default=-1)
+        ap.add_argument('--limit', dest='limit', help='limit to this many log entries in --jdk repo', type=int,
+                        default=-1)
         ap.add_argument('--html', dest="ishtml", help="print out HTML rather than plain text", action='store_true')
         ap.add_argument('-o', dest="output", help="print the list of missing commits to this file"
                                                   " to be used as exclude list later")
@@ -55,6 +64,7 @@ class Options:
         self.output = args.output
         self.ishtml = args.ishtml
         self.verbose = args.verbose
+
 
 class GitRepo:
     def __init__(self, rootpath):
@@ -96,24 +106,27 @@ class Commit:
     def __init__(self, lines):
         self.sha = lines[0].split()[1]
         self.message = ""
+        self.fullmessage = ""
         self.bugid = ""
 
         # Commit message starts after one blank line
         read_message = False
         for l in lines:
             if read_message:
-                self.message = l.strip()
-                t = self.message.split(' ')
-                if len(t) > 1:
-                    bugid = t[0]
-                    if bugid.startswith("fixup"):
-                        bugid = t[1]
-                    bugid = bugid.strip(":")
-                    if bugid.startswith("JBR-") or bugid.isnumeric():
-                        self.bugid = bugid
-                break
+                self.fullmessage += l.strip() + "\n"
             if not read_message and l == "":
                 read_message = True
+
+        if len(self.fullmessage) > 0:
+            self.message = first_line(self.fullmessage).strip()
+            t = self.message.split(' ')
+            if len(t) > 1:
+                bugid = t[0]
+                if bugid.startswith("fixup"):
+                    bugid = t[1]
+                bugid = bugid.strip(":")
+                if bugid.startswith("JBR-") or bugid.isnumeric():
+                    self.bugid = bugid
 
 
 class History:
@@ -132,8 +145,11 @@ class History:
             commit = Commit(commit_lines)
             self.commits.append(commit)
 
-    def contains(self, str):
-        return any(str in commit.message for commit in self.commits)
+    def count_commits_like(self, commit):
+        return sum(commit.fullmessage == c.fullmessage for c in self.commits)
+
+    def contains(self, commit):
+        return self.count_commits_like(commit) > 0
 
     def size(self):
         return len(self.commits)
@@ -170,9 +186,10 @@ def main():
         history_from = History(log_from)
         history_to = History(log_to)
 
-        verbose(options, f"Read {history_from.size()} commits from '{options.frombranch}', {history_to.size()} from {options.tobranch}")
+        verbose(options,
+                f"Read {history_from.size()} commits from '{options.frombranch}', {history_to.size()} from {options.tobranch}")
 
-        exclude_list=[]
+        exclude_list = []
         if options.exclude:
             with open(options.exclude, "r") as exclude_file:
                 l = exclude_file.read().split('\n')
@@ -184,13 +201,23 @@ def main():
                 if c.message in exclude_list:
                     verbose(options, "...nope, in exclude list")
                     continue
-                if not history_to.contains(c.message):
+
+                if not history_to.contains(c):
                     commits_to_save.append(c)
+                else:
+                    count = history_from.count_commits_like(c)
+                    if count > 1:
+                        # Not sure which of those seemingly identical commits are present in the target branch
+                        error(f"Commit '{c.message}' appears more than once in branch '{options.frombranch}'. ")
+
+
     except KeyboardInterrupt:
         fatal("Interrupted")
 
     print_out_commits(options, commits_to_save)
     save_commits_to_file(commits_to_save, options)
+    if errors_count > 0:
+        error(f"{errors_count} error(s) generated to stderr. MANUAL CHECK OF COMMITS IS REQUIRED.")
 
 
 def save_commits_to_file(commits_to_save, options):
@@ -228,6 +255,7 @@ def print_out_commits(options, commits_to_save):
                 print(f"{c.message} ({c.sha[0:8]})")
     if options.ishtml:
         print("</body></html>")
+
 
 def check_python_min_requirements():
     if sys.version_info < (3, 6):
