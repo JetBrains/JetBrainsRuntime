@@ -26,7 +26,6 @@
 #include <jni_util.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include "hb.h"
 #include "hb-jdk.h"
 #include "hb-ot.h"
