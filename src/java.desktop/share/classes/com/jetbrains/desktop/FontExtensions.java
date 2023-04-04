@@ -18,7 +18,7 @@ public class FontExtensions {
 
     public static String[] featuresToStringArray(Map<String, Integer> features) {
         return features.entrySet().stream().map(feature -> (feature.getKey() + "=" + feature.getValue())).
-                collect(Collectors.toList()).toArray(String[]::new);
+                toArray(String[]::new);
     }
 
     public static TreeMap<String, Integer> getFeatures(Font font) {
