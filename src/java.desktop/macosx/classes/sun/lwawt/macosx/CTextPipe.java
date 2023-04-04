@@ -81,10 +81,10 @@ public class CTextPipe implements TextPipe {
         }
     }
 
-    private boolean hasSlotData(GlyphVector gv) {
+    private boolean hasSlotData(GlyphVector gv, Font2D font2D) {
         final int length = gv.getNumGlyphs();
         if (length > 0) {
-            int slotMask = FontUtilities.getFont2D(gv.getFont())
+            int slotMask = font2D
                     .getSlotInfoForGlyph(gv.getGlyphCode(0))
                     .getSlotMask();
             for (int i = 0; i < length; i++) {
@@ -138,9 +138,12 @@ public class CTextPipe implements TextPipe {
     public void drawGlyphVector(final SunGraphics2D sg2d, final GlyphVector gV, final float x, final float y) {
         final Font prevFont = sg2d.getFont();
         Font gvFont = gV.getFont();
+        Font2D f2d = FontUtilities.getFont2D(gvFont);
+        if (f2d instanceof FontSubstitution fs) {
+            f2d = fs.getCompositeFont2D();
+        }
 
-        if (hasSlotData(gV)) {
-            Font2D f2d = FontUtilities.getFont2D(gvFont);
+        if (hasSlotData(gV, f2d)) {
             final int length = gV.getNumGlyphs();
             float[] positions = gV.getGlyphPositions(0, length, null);
             int start = 0;
