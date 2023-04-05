@@ -267,7 +267,8 @@ public:
     }
 
     operator bool() const {
-        return !!**this && supported;
+        vk::PhysicalDevice handle = **this;
+        return handle && supported;
     }
 };
 
@@ -302,6 +303,7 @@ static bool initDevices() {
         }
         if (physicalDevices.empty()) {
             J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: No suitable device found\n");
+            return false;
         }
 
         // Create virtual device for a physical device.
