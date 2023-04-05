@@ -22,6 +22,8 @@
  */
 
 import java.io.File;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -48,7 +50,7 @@ public class TestProvider extends FileSystemProvider {
         this.theFileSystem = new TestFileSystem(fs, this);
     }
 
-    FileSystemProvider defaultProvider() {
+    public FileSystemProvider defaultProvider() {
         return defaultProvider;
     }
 
@@ -285,7 +287,7 @@ public class TestProvider extends FileSystemProvider {
 
         @Override
         public WatchService newWatchService() throws IOException {
-            throw new UnsupportedOperationException();
+            return delegate.newWatchService();
         }
     }
 
@@ -459,14 +461,23 @@ public class TestProvider extends FileSystemProvider {
                                  WatchEvent.Kind<?>[] events,
                                  WatchEvent.Modifier... modifiers)
         {
-            throw new UnsupportedOperationException();
+            try {
+                Method registerMethod = delegate.getClass().getDeclaredMethod("register",
+                        WatchService.class,
+                        WatchEvent.Kind[].class,
+                        WatchEvent.Modifier[].class);
+                registerMethod.setAccessible(true);
+                return (WatchKey)registerMethod.invoke(delegate, watcher, events, modifiers);
+            } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+                throw new UnsupportedOperationException(e);
+            }
         }
 
         @Override
         public  WatchKey register(WatchService watcher,
                                   WatchEvent.Kind<?>... events)
         {
-            throw new UnsupportedOperationException();
+            return register(watcher, events, new WatchEvent.Modifier[0]);
         }
     }
 
