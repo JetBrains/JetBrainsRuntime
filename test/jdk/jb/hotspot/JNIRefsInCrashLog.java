@@ -26,51 +26,45 @@
  */
 
 import jdk.internal.misc.Unsafe;
-import jdk.test.lib.Asserts;
-import jdk.test.lib.Platform;
-import jdk.test.lib.Utils;
 import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.process.OutputAnalyzer;
 import java.util.ArrayList;
-import java.nio.file.Paths;
-import java.nio.file.Path;
-import java.nio.file.Files;
+
 
 public class JNIRefsInCrashLog {
-    static final String HS_ERR_FILE_NAME = "hs_err_42.txt";
     static final Unsafe unsafe = Unsafe.getUnsafe();
 
     public static void main(String args[]) throws Exception {
         if (args.length > 0 && args[0].equals("--test")) {
-            unsafe.putAddress(0, 42);
+            System.out.println("Proceeding to crash JVM with OOME");
+            crashJVM();
+            System.out.println("...shouldn't reach here");
         } else {
             generateAndVerifyCrashLogContents();
         }
     }
 
+    static void crashJVM() {
+        long[][][] array = new long[Integer.MAX_VALUE][][];
+        for (int i = 0; i < Integer.MAX_VALUE; i++) {
+            array[i] = new long[Integer.MAX_VALUE][Integer.MAX_VALUE];
+        }
+        int random = (int) (Math.random() * Integer.MAX_VALUE);
+        System.out.println(array[random][42][0]);
+    }
 
     public static void generateAndVerifyCrashLogContents() throws Exception {
         ArrayList<String> opts = new ArrayList<>();
         opts.add("--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED");
+        opts.add("-Xmx8m");
         opts.add("-XX:-CreateCoredumpOnCrash");
-        opts.add("-XX:ErrorFile=./" + HS_ERR_FILE_NAME);
+        opts.add("-XX:+CrashOnOutOfMemoryError");
+        opts.add("-XX:+ErrorFileToStdout");
         opts.add(JNIRefsInCrashLog.class.getName());
         opts.add("--test");
         ProcessBuilder pb = ProcessTools.createTestJvm(opts);
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
-
-        output.shouldContain(HS_ERR_FILE_NAME);
-
-        final Path hsErrPath = Paths.get(HS_ERR_FILE_NAME);
-        if (!Files.exists(hsErrPath)) {
-            throw new RuntimeException(HS_ERR_FILE_NAME + " file missing");
-        }
-
-        final String hsErrorFile = new String(Files.readAllBytes(hsErrPath));
-        System.out.println(hsErrorFile);
-
-        if (!hsErrorFile.contains("JNI global refs memory usage:")) {
-            throw new RuntimeException("JNI global refs memory usage missing from " + HS_ERR_FILE_NAME);
-        }
+        output.outputTo(System.out);
+        output.shouldContain("JNI global refs memory usage:");
     }
 }
