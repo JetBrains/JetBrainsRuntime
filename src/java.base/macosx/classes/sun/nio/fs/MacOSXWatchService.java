@@ -313,7 +313,7 @@ class MacOSXWatchService extends AbstractWatchService {
         private static final long kFSEventStreamEventFlagMustScanSubDirs = 0x00000001;
         private static final long kFSEventStreamEventFlagRootChanged     = 0x00000020;
 
-        private final static Path relativeRootPath = Path.of("");
+        private final Path relativeRootPath;
 
         // Full path to this key's watch root directory.
         private final Path   realRootPath;
@@ -334,6 +334,7 @@ class MacOSXWatchService extends AbstractWatchService {
 
         MacOSXWatchKey(final MacOSXWatchService watchService, final UnixPath dir, final Object rootPathKey) throws IOException {
             super(dir, watchService);
+            this.relativeRootPath   = dir.getFileSystem().getPath("");
             this.realRootPath       = dir.toRealPath().normalize();
             this.realRootPathLength = realRootPath.toString().length() + 1;
             this.rootPathKey        = rootPathKey;
@@ -398,7 +399,7 @@ class MacOSXWatchService extends AbstractWatchService {
 
         private Path toRelativePath(final String absPath) {
             return   (absPath.length() > realRootPathLength)
-                    ? Path.of(absPath.substring(realRootPathLength))
+                    ? relativeRootPath.getFileSystem().getPath(absPath.substring(realRootPathLength))
                     : relativeRootPath;
         }
 
