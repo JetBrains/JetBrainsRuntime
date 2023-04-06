@@ -101,7 +101,9 @@
 
 @end
 
-@interface AWTWindow_Normal : NSWindow
+@interface AWTWindow_Normal : NSWindow {
+    @private BOOL _ignoreMove;
+}
 - (id) initWithDelegate:(AWTWindow *)delegate
               frameRect:(NSRect)rect
               styleMask:(NSUInteger)styleMask
