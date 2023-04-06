@@ -123,8 +123,13 @@
 - (id) initWithPlatformWindow:(jobject)javaPlatformWindow;
 @end
 
-@interface AWTButtonsView : NSView
-- (CGFloat)getThemeAlphaValue:(NSWindow *)window;
+@interface AWTButtonsView : NSView {
+    @private BOOL _showButtons;
+             NSColor* _color;
+}
+
+- (void)configureColors;
+
 @end
 
 #endif _AWTWINDOW_H
