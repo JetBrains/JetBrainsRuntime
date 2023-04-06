@@ -41,9 +41,9 @@ public class FontExtensions {
         TreeMap<String, Integer> getFeatures(Font font);
     }
 
-    public static String[] featuresToStringArray(Map<String, Integer> features) {
+    public static String featuresToString(Map<String, Integer> features) {
         return features.entrySet().stream().map(feature -> (feature.getKey() + "=" + feature.getValue())).
-                toArray(String[]::new);
+                collect(Collectors.joining(";"));
     }
 
     public static TreeMap<String, Integer> getFeatures(Font font) {

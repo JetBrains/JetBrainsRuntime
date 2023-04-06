@@ -40,6 +40,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.ref.SoftReference;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.WeakHashMap;
 
@@ -188,15 +189,15 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
                 HBShaper.shape(font, strike, ptSize, mat, face,
                         tr.text, data, key.script(),
                         tr.start, tr.limit, baseIndex, pt,
-                        typo_flags, gmask);
+                        ltrDirection, FontExtensions.featuresToString(features), gmask);
             }
         } else {
             long pFace = getFacePtr(font);
             if (pFace != 0) {
-                shape(font, strike, ptSize, mat, pFace,
-                    tr.text, data, key.script(),
-                    tr.start, tr.limit, baseIndex, pt,
-                    typo_flags, gmask);
+                SunLayoutEngine.shape(font, strike, ptSize, mat, pFace,
+                        tr.text, data, key.script(),
+                        tr.start, tr.limit, baseIndex, pt,
+                        ltrDirection, FontExtensions.featuresToString(features), gmask);
             }
         }
     }
@@ -207,7 +208,7 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
               long pFace,
               char[] chars, GVData data,
               int script, int offset, int limit,
-              int baseIndex, Point2D.Float pt, boolean ltrDirection, String[] features, int slot);
+              int baseIndex, Point2D.Float pt, boolean ltrDirection, String features, int slot);
 
     private static native long createFace(Font2D font,
                                           long platformNativeFontPtr);

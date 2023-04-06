@@ -26,10 +26,12 @@
 #include <jni_util.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include "hb.h"
 #include "hb-jdk.h"
 #include "hb-ot.h"
 #include "scriptMapping.h"
+#include "HBShaper.h"
 
 static jclass gvdClass = 0;
 static const char* gvdClassName = "sun/font/GlyphLayout$GVData";
@@ -221,6 +223,49 @@ JDKFontInfo*
     return fi;
 }
 
+hb_buffer_t *create_buffer(int script, int ltrDirection) {
+    hb_buffer_t *buffer = hb_buffer_create();
+
+    hb_direction_t direction = ltrDirection ? HB_DIRECTION_LTR : HB_DIRECTION_RTL;
+    hb_buffer_set_script(buffer, getHBScriptCode(script));
+    hb_buffer_set_language(buffer, hb_ot_tag_to_language(HB_OT_TAG_DEFAULT_LANGUAGE));
+    hb_buffer_set_direction(buffer, direction);
+    hb_buffer_set_cluster_level(buffer, HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
+
+    return buffer;
+}
+
+bool shape_full(hb_font_t* hbfont, hb_buffer_t *buffer, const char *featuresStr) {
+    if (featuresStr == NULL) {
+        return false;
+    }
+
+    const char SEPARATOR = ';';
+    int featuresCount = 1;
+    for (int i = 0; i < (int)strlen(featuresStr); i++) {
+        featuresCount += featuresStr[i] == SEPARATOR ? 1 : 0;
+    }
+    hb_feature_t *features = calloc(featuresCount, sizeof(hb_feature_t));
+    jboolean res = true;
+    if (features == NULL) {
+        return false;
+    }
+
+    const char *iter = featuresStr;
+    for (int i = 0; i < 3; i++) {
+        char *next = strchr(iter, SEPARATOR);
+        if (!hb_feature_from_string(iter, next != NULL ? next - iter : -1, &features[i])) {
+            res = false;
+            goto cleanup;
+        }
+        iter = next + 1;
+    }
+
+    res = hb_shape_full(hbfont, buffer, features, featuresCount, 0);
+cleanup:
+    free(features);
+    return res;
+}
 
 JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
     (JNIEnv *env, jclass cls,
@@ -237,7 +282,7 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
      jint baseIndex,
      jobject startPt,
      jboolean ltrDirection,
-     jobjectArray featuresArray,
+     jstring features,
      jint slot) {
 
      hb_buffer_t *buffer;
@@ -248,8 +293,7 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
      int glyphCount;
      hb_glyph_info_t *glyphInfo;
      hb_glyph_position_t *glyphPos;
-     hb_direction_t direction = ltrDirection ? HB_DIRECTION_LTR : HB_DIRECTION_RTL;
-     hb_feature_t *features = NULL;
+     const char *featuresPtr = NULL;
      jboolean ret = JNI_TRUE;
      unsigned int buflen;
 
@@ -265,13 +309,7 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
      hbface = (hb_face_t*) jlong_to_ptr(pFace);
      hbfont = hb_jdk_font_create(hbface, jdkFontInfo, NULL);
 
-     buffer = hb_buffer_create();
-     hb_buffer_set_script(buffer, getHBScriptCode(script));
-     hb_buffer_set_language(buffer,
-                            hb_ot_tag_to_language(HB_OT_TAG_DEFAULT_LANGUAGE));
-     hb_buffer_set_direction(buffer, direction);
-     hb_buffer_set_cluster_level(buffer,
-                                 HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
+     buffer = create_buffer(script, ltrDirection);
 
      chars = (*env)->GetCharArrayElements(env, text, NULL);
      if (chars == NULL || (*env)->ExceptionCheck(env)) {
@@ -281,33 +319,12 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
      len = (*env)->GetArrayLength(env, text);
      hb_buffer_add_utf16(buffer, chars, len, offset, limit-offset);
 
-     const int featuresCount = (*env)->GetArrayLength(env, featuresArray);
-     features = calloc(featuresCount, sizeof(hb_feature_t));
-     if (features == NULL) {
+     featuresPtr = (*env)->GetStringUTFChars(env, features, NULL);
+     if (!shape_full(hbfont, buffer, featuresPtr)) {
          ret = JNI_FALSE;
          goto cleanup;
      }
 
-     for (int i = 0; i < featuresCount; i++) {
-         jstring feature = (*env)->GetObjectArrayElement(env, featuresArray, i);
-         const char *featurePtr = (*env)->GetStringUTFChars(env, feature, NULL);
-         if (featurePtr == NULL) {
-             ret = JNI_FALSE;
-             goto cleanup;
-         }
-
-         ret = hb_feature_from_string(featurePtr, -1, &features[i]);
-         (*env)->ReleaseStringUTFChars(env, feature, featurePtr);
-         if (!ret) {
-             ret = JNI_FALSE;
-             goto cleanup;
-         }
-     }
-
-     ret = hb_shape_full(hbfont, buffer, features, featuresCount, 0);
-     if (!ret) {
-         goto cleanup;
-     }
      glyphCount = hb_buffer_get_length(buffer);
      glyphInfo = hb_buffer_get_glyph_infos(buffer, 0);
      glyphPos = hb_buffer_get_glyph_positions(buffer, &buflen);
@@ -317,8 +334,8 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
                        jdkFontInfo->devScale);
 
 cleanup:
-     if (features) {
-         free(features);
+     if (featuresPtr) {
+         (*env)->ReleaseStringUTFChars(env, features, featuresPtr);
      }
      if (chars) {
          (*env)->ReleaseCharArrayElements(env, text, chars, JNI_ABORT);
