@@ -36,15 +36,15 @@ public class JNIRefsInCrashLog {
 
     public static void main(String args[]) throws Exception {
         if (args.length > 0 && args[0].equals("--test")) {
+            System.out.println("Proceeding to crash JVM with OOME");
             crashJVM();
+            System.out.println("...shouldn't reach here");
         } else {
             generateAndVerifyCrashLogContents();
         }
     }
 
     static void crashJVM() {
-        unsafe.putInt(0L, 0); // doesn't crash on Windows ARM for some reason
-
         long[][][] array = new long[Integer.MAX_VALUE][][];
         for (int i = 0; i < Integer.MAX_VALUE; i++) {
             array[i] = new long[Integer.MAX_VALUE][Integer.MAX_VALUE];
