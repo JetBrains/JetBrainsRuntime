@@ -24,10 +24,12 @@
  */
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include "hb.h"
 #include "hb-jdk-p.h"
 #include "hb-ot.h"
 #include "scriptMapping.h"
+#include "HBShaper.h"
 
 static float euclidianDistance(float a, float b)
 {
@@ -59,10 +61,6 @@ static float euclidianDistance(float a, float b)
     return root;
 }
 
-#define TYPO_KERN 0x00000001
-#define TYPO_LIGA 0x00000002
-#define TYPO_RTL  0x80000000
-
 JDKEXPORT void jdk_hb_shape(
      float ptSize,
      float *matrix,
@@ -75,11 +73,11 @@ JDKEXPORT void jdk_hb_shape(
      int baseIndex,
      float startX,
      float startY,
-     int flags,
+     int ltrDirection,
+     const char *features,
      int slot,
      hb_font_funcs_t* font_funcs,
-     store_layoutdata_func_t store_layout_results_fn
-    ) {
+     store_layoutdata_func_t store_layout_results_fn) {
 
      hb_buffer_t *buffer;
      hb_face_t* hbface;
@@ -87,11 +85,7 @@ JDKEXPORT void jdk_hb_shape(
      int glyphCount;
      hb_glyph_info_t *glyphInfo;
      hb_glyph_position_t *glyphPos;
-     hb_direction_t direction = HB_DIRECTION_LTR;
-     hb_feature_t *features = NULL;
      int featureCount = 0;
-     char* kern = (flags & TYPO_KERN) ? "kern" : "-kern";
-     char* liga = (flags & TYPO_LIGA) ? "liga" : "-liga";
      unsigned int buflen;
 
      float devScale = 1.0f;
@@ -105,28 +99,13 @@ JDKEXPORT void jdk_hb_shape(
                                   ptSize, devScale, NULL,
                                   font_funcs);
 
-     buffer = hb_buffer_create();
-     hb_buffer_set_script(buffer, getHBScriptCode(script));
-     hb_buffer_set_invisible_glyph(buffer, INVISIBLE_GLYPH_ID);
-     hb_buffer_set_language(buffer,
-                            hb_ot_tag_to_language(HB_OT_TAG_DEFAULT_LANGUAGE));
-     if ((flags & TYPO_RTL) != 0) {
-         direction = HB_DIRECTION_RTL;
-     }
-     hb_buffer_set_direction(buffer, direction);
-     hb_buffer_set_cluster_level(buffer,
-                                 HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
+     buffer = create_buffer(script, ltrDirection);
 
      int charCount = limit - offset;
      hb_buffer_add_utf16(buffer, chars, len, offset, charCount);
 
-     features = calloc(2, sizeof(hb_feature_t));
-     if (features) {
-         hb_feature_from_string(kern, -1, &features[featureCount++]);
-         hb_feature_from_string(liga, -1, &features[featureCount++]);
-     }
+     shape_full(hbfont, buffer, features);
 
-     hb_shape_full(hbfont, buffer, features, featureCount, 0);
      glyphCount = hb_buffer_get_length(buffer);
      glyphInfo = hb_buffer_get_glyph_infos(buffer, 0);
      glyphPos = hb_buffer_get_glyph_positions(buffer, &buflen);
@@ -137,8 +116,5 @@ JDKEXPORT void jdk_hb_shape(
 
      hb_buffer_destroy (buffer);
      hb_font_destroy(hbfont);
-     if (features != NULL) {
-         free(features);
-     }
      return;
 }
