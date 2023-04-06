@@ -56,17 +56,12 @@ static jclass jc_CPlatformWindow = NULL;
 #define GET_CPLATFORM_WINDOW_CLASS_RETURN(ret) \
     GET_CLASS_RETURN(jc_CPlatformWindow, "sun/lwawt/macosx/CPlatformWindow", ret);
 
-@interface NSButton (Private)
-- (void)setAlphaValue:(CGFloat)alpha;
-@end
-
 @interface NSTitlebarAccessoryViewController (Private)
 - (void)_setHidden:(BOOL)h animated:(BOOL)a;
 @end
 
 @interface NSWindow (Private)
 - (void)_setTabBarAccessoryViewController:(id)controller;
-- (int)getJavaWindowBackgroundColor;
 - (void)setIgnoreMove:(BOOL)value;
 - (void)_adjustWindowToScreen;
 @end
@@ -395,46 +390,11 @@ AWT_NS_WINDOW_IMPLEMENTATION
     }
 
     [super _adjustWindowToScreen];
+    [(AWTWindow *)self.delegate updateFullScreenButtons];
 
     if (_ignoreMove) {
         self.movable = NO;
     }
-}
-
-- (int)getJavaWindowBackgroundColor {
-    AWT_ASSERT_APPKIT_THREAD;
-
-    JNIEnv *env = [ThreadUtilities getJNIEnv];
-    jobject platformWindow = (*env)->NewLocalRef(env, ((AWTWindow *)self.delegate).javaPlatformWindow);
-    if (platformWindow == NULL) {
-        return -1;
-    }
-
-    GET_CPLATFORM_WINDOW_CLASS_RETURN(-1);
-    DECLARE_FIELD_RETURN(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;", -1);
-    jobject awtWindow = (*env)->GetObjectField(env, platformWindow, jf_target);
-
-    int rgb = -1;
-
-    if (awtWindow != NULL) {
-        DECLARE_CLASS_RETURN(jc_Component, "java/awt/Component", -1);
-        DECLARE_METHOD_RETURN(jm_getBackground, jc_Component, "getBackground", "()Ljava/awt/Color;", -1);
-        jobject jColor = (*env)->CallObjectMethod(env, awtWindow, jm_getBackground);
-
-        if (jColor != NULL) {
-            DECLARE_CLASS_RETURN(jc_Color, "java/awt/Color", -1);
-            DECLARE_METHOD_RETURN(jm_getRGB, jc_Color, "getRGB", "()I", -1);
-
-            rgb = (*env)->CallIntMethod(env, jColor, jm_getRGB);
-            (*env)->DeleteLocalRef(env, jColor);
-        }
-
-        (*env)->DeleteLocalRef(env, awtWindow);
-    }
-
-    (*env)->DeleteLocalRef(env, platformWindow);
-
-    return rgb;
 }
 
 @end
@@ -1625,7 +1585,9 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 }
 
 - (void) setUpCustomTitleBar {
-
+    if (self.customTitleBarConstraints != nil) {
+        [self resetCustomTitleBar];
+    }
     /**
      * The view hierarchy normally looks as follows:
      * NSThemeFrame
@@ -1723,6 +1685,8 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     }];
     [self setWindowControlsHidden:!self.customTitleBarControlsVisible];
     [self updateCustomTitleBarInsets:self.customTitleBarControlsVisible];
+
+    [self updateFullScreenButtons];
 }
 
 - (void) resetCustomTitleBar {
@@ -1765,6 +1729,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 - (void) setWindowControlsHidden: (BOOL) hidden {
     if (_fullScreenOriginalButtons != nil) {
         [_fullScreenOriginalButtons.window.contentView setHidden:NO];
+        _fullScreenButtons.hidden = YES;
     }
 
     [self.nsWindow standardWindowButton:NSWindowCloseButton].hidden = hidden;
@@ -1773,12 +1738,16 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 }
 
 - (void) setWindowFullScreeControls {
+    JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+    NSString *dfmMode = [PropertiesUtilities javaSystemPropertyForKey:@"apple.awt.distraction.free.mode" withEnv:env];
+    if ([@"true" isCaseInsensitiveLike:dfmMode]) {
+        return;
+    }
+
     NSView* oldCloseButton = [self.nsWindow standardWindowButton:NSWindowCloseButton];
     _fullScreenOriginalButtons = oldCloseButton.superview;
 
-    CGFloat h = _fullScreenOriginalButtons.frame.size.height;
     NSRect closeButtonRect = [oldCloseButton frame];
-
     NSRect miniaturizeButtonRect = [[self.nsWindow standardWindowButton:NSWindowMiniaturizeButton] frame];
     NSRect zoomButtonRect = [[self.nsWindow standardWindowButton:NSWindowZoomButton] frame];
 
@@ -1788,39 +1757,66 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
           }
     }
 
-    NSView *parent = self.nsWindow.contentView;
-    CGFloat w = 80;
-    CGFloat x = 6;
-    CGFloat y = parent.frame.size.height - h - (_transparentTitleBarHeight - h) / 2.0;
-
     _fullScreenButtons = [[AWTButtonsView alloc] init];
-    [_fullScreenButtons setFrame:NSMakeRect(x, y, w - x, h)];
+    [self updateFullScreenButtons];
     [_fullScreenButtons addTrackingArea:[[NSTrackingArea alloc] initWithRect:[_fullScreenButtons visibleRect]
                                                       options:(NSTrackingActiveAlways | NSTrackingMouseEnteredAndExited | NSTrackingMouseMoved)
                                                       owner:_fullScreenButtons userInfo:nil]];
 
     NSUInteger masks = [self.nsWindow styleMask];
-    CGFloat alphaValue = [(AWTButtonsView *)_fullScreenButtons getThemeAlphaValue:self.nsWindow];
 
     NSButton *closeButton = [NSWindow standardWindowButton:NSWindowCloseButton forStyleMask:masks];
     [closeButton setFrame:closeButtonRect];
-    [closeButton setEnabled:NO];
-    [closeButton setAlphaValue:alphaValue];
     [_fullScreenButtons addSubview:closeButton];
 
     NSButton *miniaturizeButton = [NSWindow standardWindowButton:NSWindowMiniaturizeButton forStyleMask:masks];
     [miniaturizeButton setFrame:miniaturizeButtonRect];
-    [miniaturizeButton setEnabled:NO];
-    [miniaturizeButton setAlphaValue:alphaValue];
     [_fullScreenButtons addSubview:miniaturizeButton];
 
     NSButton *zoomButton = [NSWindow standardWindowButton:NSWindowZoomButton forStyleMask:masks];
     [zoomButton setFrame:zoomButtonRect];
-    [zoomButton setEnabled:NO];
-    [zoomButton setAlphaValue:alphaValue];
     [_fullScreenButtons addSubview:zoomButton];
 
-    [parent addSubview:_fullScreenButtons];
+    [self.nsWindow.contentView addSubview:_fullScreenButtons];
+
+    [self updateColors];
+}
+
+- (void)updateColors {
+    if (_fullScreenButtons != nil) {
+        [(AWTButtonsView *)_fullScreenButtons configureColors];
+    }
+}
+
+- (void)updateFullScreenButtons {
+    if (_fullScreenButtons == nil || _fullScreenOriginalButtons == nil) {
+        return;
+    }
+
+    NSView *parent = self.nsWindow.contentView;
+    CGFloat w = 80;
+    CGFloat h = _fullScreenOriginalButtons.frame.size.height;
+    CGFloat x = 6;
+    CGFloat y = parent.frame.size.height - h - (self.customTitleBarHeight - h) / 2.0;
+
+    [_fullScreenButtons setFrame:NSMakeRect(x, y, w - x, h)];
+}
+
+- (void)updateFullScreenButtons: (BOOL) dfm {
+    if (dfm) {
+        if (_fullScreenButtons == nil || _fullScreenOriginalButtons == nil) {
+            NSLog(@"WARNING: updateFullScreenButtons after dfm open but _fullScreenButtons == nil");
+            return;
+        }
+        [_fullScreenOriginalButtons.window.contentView setHidden:NO];
+        [self resetWindowFullScreeControls];
+    } else {
+        if (_fullScreenButtons != nil) {
+            NSLog(@"WARNING: updateFullScreenButtons after dfm exit but _fullScreenButtons != nil");
+            return;
+        }
+        [self setWindowFullScreeControls];
+    }
 }
 
 - (void) resetWindowFullScreeControls {
@@ -1992,6 +1988,11 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
 @implementation AWTButtonsView
 
+- (void)dealloc {
+    [_color release];
+    [super dealloc];
+}
+
 - (void)mouseEntered:(NSEvent *)theEvent {
     [self updateButtons:YES];
 }
@@ -2000,28 +2001,77 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     [self updateButtons:NO];
 }
 
+- (void)configureColors {
+    JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+    NSString *javaColor = [PropertiesUtilities javaSystemPropertyForKey:@"apple.awt.newFullScreeControls.background" withEnv:env];
+
+    [_color release];
+
+    if (javaColor == nil) {
+        _color = nil;
+    } else {
+        int rgb = [javaColor intValue];
+
+        CGFloat alpha = (((rgb >> 24) & 0xff) / 255.0);
+        CGFloat red   = (((rgb >> 16) & 0xff) / 255.0);
+        CGFloat green = (((rgb >>  8) & 0xff) / 255.0);
+        CGFloat blue  = (((rgb >>  0) & 0xff) / 255.0);
+
+        _color = [NSColor colorWithDeviceRed:red green:green blue:blue alpha:alpha];
+        [_color retain];
+    }
+
+    [self updateButtons:NO];
+}
+
 - (void)updateButtons:(BOOL) flag {
+    _showButtons = flag;
+
     if (self.subviews.count == 3) {
         [self updateButton:0 flag:flag]; // close
-        [self updateButton:1 flag:NO]; // miniaturize
+        [self updateButton:1 flag:NO];   // miniaturize
         [self updateButton:2 flag:flag]; // zoom
     }
+
+    [self setNeedsDisplay:YES];
 }
 
 - (void)updateButton: (int)index flag:(BOOL) flag {
     NSButton *button = (NSButton*)self.subviews[index];
-    [button setEnabled:flag];
-    [button setAlphaValue:(flag ? 1.0 : [self getThemeAlphaValue:self.window])];
+    [button setHidden:!flag];
     [button setHighlighted:flag];
 }
 
-- (CGFloat)getThemeAlphaValue:(NSWindow *)window {
-    int rgb = [window getJavaWindowBackgroundColor];
-    int r = (rgb >> 16) & 0xff;
-    int g = (rgb >> 8) & 0xff;
-    int b = (rgb >> 0) & 0xff;
+- (void)drawRect: (NSRect)dirtyRect {
+    if (self.subviews.count != 3) {
+        return;
+    }
 
-    return r > 128 && g > 128 && b > 128 ? 0.1 : 0.7;
+    if (_color == nil) {
+        [[NSColor whiteColor] setFill];
+    } else {
+        [_color setFill];
+    }
+
+    if (_showButtons) {
+        [self drawButton:1]; // miniaturize
+    } else {
+        for (int i = 0; i < 3; i++) {
+            [self drawButton:i];
+        }
+    }
+}
+
+- (void)drawButton: (int)index {
+    NSButton *button = (NSButton*)self.subviews[index];
+    NSRect rect = button.frame;
+    CGFloat r = 12;
+    CGFloat x = rect.origin.x + (rect.size.width - r) / 2;
+    CGFloat y = rect.origin.y + (rect.size.height - r) / 2;
+
+    NSBezierPath* circlePath = [NSBezierPath bezierPath];
+    [circlePath appendBezierPathWithOvalInRect:CGRectMake(x, y, r, r)];
+    [circlePath fill];
 }
 
 @end
