@@ -48,6 +48,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.WeakHashMap;
 
@@ -198,7 +199,8 @@ public class HBShaper {
             JAVA_INT,    // baseIndex
             JAVA_FLOAT,  // startX
             JAVA_FLOAT,  // startY
-            JAVA_INT,    // flags,
+            JAVA_INT,    // direction
+            ADDRESS,     // features
             JAVA_INT,    // slot,
             ADDRESS,     // ptr to harfbuzz font_funcs object.
             ADDRESS);    // store_results_fn
@@ -449,7 +451,8 @@ public class HBShaper {
         int limit,
         int baseIndex,
         Point2D.Float startPt,
-        int flags,
+        boolean ltrDirection,
+        String features,
         int slot) {
 
         /*
@@ -467,12 +470,13 @@ public class HBShaper {
                 float startY = (float)startPt.getY();
 
                 MemorySegment matrix = arena.allocateFrom(JAVA_FLOAT, mat);
-                MemorySegment chars = arena.allocateFrom(JAVA_CHAR, text);
+                MemorySegment textChars = arena.allocateFrom(JAVA_CHAR, text);
+                MemorySegment featuresChars = arena.allocateFrom(features);
 
                 jdk_hb_shape_handle.invokeExact(
-                     ptSize, matrix, hbface, chars, text.length,
+                     ptSize, matrix, hbface, textChars, text.length,
                      script, offset, limit,
-                     baseIndex, startX, startY, flags, slot,
+                     baseIndex, startX, startY, ltrDirection ? 1 : 0, featuresChars, slot,
                      hb_jdk_font_funcs_struct,
                      store_layout_results_stub);
             } catch (Throwable t) {
