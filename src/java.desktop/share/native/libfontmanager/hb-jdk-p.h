@@ -77,7 +77,8 @@ JDKEXPORT void jdk_hb_shape(
      int baseIndex, // used only to store results.
      float startX, // used only to store results.
      float startY, // used only to store results.
-     int flags,
+     int ltrDirection,
+     const char *features,
      int slot, // used only to store results
      // Provide upcall Method handles that harfbuzz needs
      hb_font_funcs_t* font_funcs,
