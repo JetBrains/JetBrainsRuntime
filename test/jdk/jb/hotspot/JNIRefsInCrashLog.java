@@ -36,17 +36,29 @@ public class JNIRefsInCrashLog {
 
     public static void main(String args[]) throws Exception {
         if (args.length > 0 && args[0].equals("--test")) {
-            unsafe.putAddress(0, 42);
+            crashJVM();
         } else {
             generateAndVerifyCrashLogContents();
         }
     }
 
+    static void crashJVM() {
+        unsafe.putInt(0L, 0); // doesn't crash on Windows ARM for some reason
+
+        long[][][] array = new long[Integer.MAX_VALUE][][];
+        for (int i = 0; i < Integer.MAX_VALUE; i++) {
+            array[i] = new long[Integer.MAX_VALUE][Integer.MAX_VALUE];
+        }
+        int random = (int) (Math.random() * Integer.MAX_VALUE);
+        System.out.println(array[random][42][0]);
+    }
 
     public static void generateAndVerifyCrashLogContents() throws Exception {
         ArrayList<String> opts = new ArrayList<>();
         opts.add("--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED");
+        opts.add("-Xmx8m");
         opts.add("-XX:-CreateCoredumpOnCrash");
+        opts.add("-XX:+CrashOnOutOfMemoryError");
         opts.add("-XX:+ErrorFileToStdout");
         opts.add(JNIRefsInCrashLog.class.getName());
         opts.add("--test");
