@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2023 JetBrains s.r.o.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,11 +23,15 @@
  * questions.
  */
 
-package com.jetbrains;
+#ifndef JETBRAINSRUNTIME_HBSHAPER_H
+#define JETBRAINSRUNTIME_HBSHAPER_H
 
-import java.awt.*;
+#include "hb.h"
+#include "hb-jdk.h"
+#include "hb-ot.h"
+#include <stdbool.h>
 
-@Deprecated(forRemoval=true)
-public interface ExtendedGlyphCache {
-    Dimension getSubpixelResolution();
-}
+hb_buffer_t *create_buffer(int script, int ltrDirection);
+bool shape_full(hb_font_t* hbfont, hb_buffer_t *buffer, const char *featuresStr);
+
+#endif
