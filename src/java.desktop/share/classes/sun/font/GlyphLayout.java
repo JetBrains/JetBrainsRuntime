@@ -68,6 +68,8 @@
 
 package sun.font;
 
+import com.jetbrains.desktop.FontExtensions;
+
 import java.lang.ref.SoftReference;
 import java.awt.Font;
 import java.awt.font.FontRenderContext;
@@ -76,6 +78,7 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.NoninvertibleTransformException;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.WeakHashMap;
 
 import static java.lang.Character.*;
@@ -95,7 +98,6 @@ public final class GlyphLayout {
     private Point2D.Float _pt;
     private FontStrikeDesc _sd;
     private float[] _mat;
-    private int _typo_flags;
     private int _offset;
 
     /**
@@ -263,14 +265,6 @@ public final class GlyphLayout {
 
         init(count);
 
-        // need to set after init
-        // go through the back door for this
-        if (font.hasLayoutAttributes()) {
-            AttributeValues values = ((AttributeMap)font.getAttributes()).getValues();
-            if (values.getKerning() != 0) _typo_flags |= 0x1;
-            if (values.getLigatures() != 0) _typo_flags |= 0x2;
-        }
-
         _offset = offset;
 
         // use cache now - can we use the strike cache for this?
@@ -287,9 +281,11 @@ public final class GlyphLayout {
 
         int min = 0;
         int max = text.length;
+        boolean ltrDirection = true;
+
         if (flags != 0) {
             if ((flags & Font.LAYOUT_RIGHT_TO_LEFT) != 0) {
-              _typo_flags |= 0x80000000; // RTL
+                ltrDirection = false; // RTL
             }
 
             if ((flags & Font.LAYOUT_NO_START_CONTEXT) != 0) {
@@ -345,7 +341,7 @@ public final class GlyphLayout {
         int stop = _ercount;
         int dir = 1;
 
-        if (_typo_flags < 0) { // RTL
+        if (!ltrDirection) { // RTL
             ix = stop - 1;
             stop = -1;
             dir = -1;
@@ -357,7 +353,7 @@ public final class GlyphLayout {
             EngineRecord er = _erecords.get(ix);
             for (;;) {
                 try {
-                    er.layout();
+                    er.layout(ltrDirection, FontExtensions.getFeatures(font));
                     break;
                 }
                 catch (IndexOutOfBoundsException e) {
@@ -404,7 +400,6 @@ public final class GlyphLayout {
     }
 
     private void init(int capacity) {
-        this._typo_flags = 0;
         this._ercount = 0;
         this._gvdata.init(capacity);
     }
@@ -562,11 +557,11 @@ public final class GlyphLayout {
             }
         }
 
-        void layout() {
+        void layout(boolean ltrDirection, Map<String, Integer> features) {
             _textRecord.start = start;
             _textRecord.limit = limit;
             SunLayoutEngine.layout(font, script, _sd, _mat, gmask, start - _offset, _textRecord,
-                          _typo_flags | eflags, _pt, _gvdata);
+                    ltrDirection, features, _pt, _gvdata);
         }
     }
 }
