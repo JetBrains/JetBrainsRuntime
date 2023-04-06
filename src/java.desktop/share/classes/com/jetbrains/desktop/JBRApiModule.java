@@ -58,6 +58,10 @@ public class JBRApiModule {
                 .service("com.jetbrains.WindowDecorations", "java.awt.Window$WindowDecorations")
                 .proxy("com.jetbrains.WindowDecorations$CustomTitleBar", "java.awt.Window$CustomTitleBar")
                 .service("com.jetbrains.WindowMove", "java.awt.Window$WindowMoveService")
-        ;
+                .service("com.jetbrains.FontExtensions")
+                    .withStatic("getSubpixelResolution", "getSubpixelResolution", "sun.font.FontUtilities")
+                    .withStatic("deriveFontWithFeatures", "deriveFont", "java.awt.Font")
+                    .withStatic("getFeaturesAsString", "getFeaturesAsString", "com.jetbrains.desktop.FontExtensions")
+                .clientProxy("java.awt.Font$Features", "com.jetbrains.FontExtensions$Features");
     }
 }
