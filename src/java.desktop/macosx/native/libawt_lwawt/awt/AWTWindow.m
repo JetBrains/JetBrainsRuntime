@@ -62,6 +62,8 @@ static jclass jc_CPlatformWindow = NULL;
 
 @interface NSWindow (Private)
 - (void)_setTabBarAccessoryViewController:(id)controller;
+- (void)setIgnoreMove:(BOOL)value;
+- (void)_adjustWindowToScreen;
 @end
 
 // Cocoa windowDidBecomeKey/windowDidResignKey notifications
@@ -375,6 +377,24 @@ AWT_NS_WINDOW_IMPLEMENTATION
         return [[self tabGroup] selectedWindow] == self;
     }
     return NO;
+}
+
+- (void)setIgnoreMove:(BOOL)value {
+    _ignoreMove = value;
+    self.movable = !value;
+}
+
+- (void)_adjustWindowToScreen {
+    if (_ignoreMove) {
+        self.movable = YES;
+    }
+
+    [super _adjustWindowToScreen];
+    [(AWTWindow *)self.delegate updateFullScreenButtons];
+
+    if (_ignoreMove) {
+        self.movable = NO;
+    }
 }
 
 @end
@@ -1614,7 +1634,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
         self.customTitleBarHeightConstraint,
     ]];
 
-    self.nsWindow.movable = NO;
+    [self.nsWindow setIgnoreMove:YES];
     
     AWTWindowDragView* windowDragView = [[AWTWindowDragView alloc] initWithPlatformWindow:self.javaPlatformWindow];
     [titlebar addSubview:windowDragView positioned:NSWindowBelow relativeTo:closeButtonView];
@@ -1705,7 +1725,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     [self setWindowControlsHidden:NO];
     [self updateCustomTitleBarInsets:NO];
     
-    self.nsWindow.movable = YES;
+    [self.nsWindow setIgnoreMove:NO];
 }
 
 - (void) setWindowControlsHidden: (BOOL) hidden {
