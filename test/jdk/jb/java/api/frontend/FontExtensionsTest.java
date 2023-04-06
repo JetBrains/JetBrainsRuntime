@@ -28,7 +28,6 @@
   @run main FontExtensionsTest
 */
 
-
 import com.jetbrains.FontExtensions;
 import com.jetbrains.JBR;
 

@@ -35,6 +35,8 @@ import java.lang.invoke.MethodHandles;
 public class JBRApiModule {
     static {
         JBRApi.registerModule(MethodHandles.lookup(), JBRApiModule.class.getModule()::addExports)
+                .service("com.jetbrains.ExtendedGlyphCache")
+                    .withStatic("getSubpixelResolution", "getSubpixelResolution", "sun.font.FontUtilities")
                 .service("com.jetbrains.JBRFileDialogService")
                     .withStatic("getFileDialog", "get", "com.jetbrains.desktop.JBRFileDialog")
                 .proxy("com.jetbrains.JBRFileDialog", "com.jetbrains.desktop.JBRFileDialog")
