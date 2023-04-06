@@ -31,12 +31,14 @@
 
 package sun.font;
 
+import com.jetbrains.desktop.FontExtensions;
 import sun.font.GlyphLayout.*;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
 
 import java.awt.geom.Point2D;
 import java.lang.foreign.MemorySegment;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.WeakHashMap;
 
@@ -68,7 +70,7 @@ public final class SunLayoutEngine {
     }
 
     public static void layout(Font2D font, int script, FontStrikeDesc desc, float[] mat, float ptSize, int gmask,
-                       int baseIndex, TextRecord tr, int typo_flags,
+                       int baseIndex, TextRecord tr, boolean ltrDirection, Map<String, Integer> features,
                        Point2D.Float pt, GVData data) {
 
         FontStrike strike = font.getStrike(desc);
@@ -78,7 +80,7 @@ public final class SunLayoutEngine {
                 HBShaper.shape(font, strike, ptSize, mat, face,
                         tr.text, data, script,
                         tr.start, tr.limit, baseIndex, pt,
-                        typo_flags, gmask);
+                        ltrDirection, FontExtensions.featuresToString(features), gmask);
             }
         } else {
             long pFace = getFacePtr(font);
@@ -86,7 +88,7 @@ public final class SunLayoutEngine {
                 shape(font, strike, ptSize, mat, pFace,
                     tr.text, data, script,
                     tr.start, tr.limit, baseIndex, pt,
-                    typo_flags, gmask);
+                        ltrDirection, FontExtensions.featuresToString(features), gmask);
             }
         }
     }
@@ -97,7 +99,7 @@ public final class SunLayoutEngine {
               long pFace,
               char[] chars, GVData data,
               int script, int offset, int limit,
-              int baseIndex, Point2D.Float pt, int typo_flags, int slot);
+              int baseIndex, Point2D.Float pt, boolean ltrDirection, String features, int slot);
 
     private static native long createFace(Font2D font,
                                           long platformNativeFontPtr);
