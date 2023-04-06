@@ -25,6 +25,7 @@
 
 #include <jni_util.h>
 #include <stdlib.h>
+#include <string.h>
 #include "hb.h"
 #include "hb-jdk.h"
 #include "hb-ot.h"
@@ -221,10 +222,6 @@ JDKFontInfo*
 }
 
 
-#define TYPO_KERN 0x00000001
-#define TYPO_LIGA 0x00000002
-#define TYPO_RTL  0x80000000
-
 JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
     (JNIEnv *env, jclass cls,
      jobject font2D,
@@ -239,7 +236,8 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
      jint limit,
      jint baseIndex,
      jobject startPt,
-     jint flags,
+     jboolean ltrDirection,
+     jobjectArray featuresArray,
      jint slot) {
 
      hb_buffer_t *buffer;
@@ -250,12 +248,9 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
      int glyphCount;
      hb_glyph_info_t *glyphInfo;
      hb_glyph_position_t *glyphPos;
-     hb_direction_t direction = HB_DIRECTION_LTR;
+     hb_direction_t direction = ltrDirection ? HB_DIRECTION_LTR : HB_DIRECTION_RTL;
      hb_feature_t *features = NULL;
-     int featureCount = 0;
-     char* kern = (flags & TYPO_KERN) ? "kern" : "-kern";
-     char* liga = (flags & TYPO_LIGA) ? "liga" : "-liga";
-     jboolean ret;
+     jboolean ret = JNI_TRUE;
      unsigned int buflen;
 
      JDKFontInfo *jdkFontInfo =
@@ -274,31 +269,45 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
      hb_buffer_set_script(buffer, getHBScriptCode(script));
      hb_buffer_set_language(buffer,
                             hb_ot_tag_to_language(HB_OT_TAG_DEFAULT_LANGUAGE));
-     if ((flags & TYPO_RTL) != 0) {
-         direction = HB_DIRECTION_RTL;
-     }
      hb_buffer_set_direction(buffer, direction);
      hb_buffer_set_cluster_level(buffer,
                                  HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
 
      chars = (*env)->GetCharArrayElements(env, text, NULL);
-     if ((*env)->ExceptionCheck(env)) {
-         hb_buffer_destroy(buffer);
-         hb_font_destroy(hbfont);
-         free((void*)jdkFontInfo);
-         return JNI_FALSE;
+     if (chars == NULL || (*env)->ExceptionCheck(env)) {
+         ret = JNI_FALSE;
+         goto cleanup;
      }
      len = (*env)->GetArrayLength(env, text);
-
      hb_buffer_add_utf16(buffer, chars, len, offset, limit-offset);
 
-     features = calloc(2, sizeof(hb_feature_t));
-     if (features) {
-         hb_feature_from_string(kern, -1, &features[featureCount++]);
-         hb_feature_from_string(liga, -1, &features[featureCount++]);
+     const int featuresCount = (*env)->GetArrayLength(env, featuresArray);
+     features = calloc(featuresCount, sizeof(hb_feature_t));
+     if (features == NULL) {
+         ret = JNI_FALSE;
+         goto cleanup;
      }
 
-     hb_shape_full(hbfont, buffer, features, featureCount, 0);
+     for (int i = 0; i < featuresCount; i++) {
+         jstring feature = (*env)->GetObjectArrayElement(env, featuresArray, i);
+         const char *featurePtr = (*env)->GetStringUTFChars(env, feature, NULL);
+         if (featurePtr == NULL) {
+             ret = JNI_FALSE;
+             goto cleanup;
+         }
+
+         ret = hb_feature_from_string(featurePtr, -1, &features[i]);
+         (*env)->ReleaseStringUTFChars(env, feature, featurePtr);
+         if (!ret) {
+             ret = JNI_FALSE;
+             goto cleanup;
+         }
+     }
+
+     ret = hb_shape_full(hbfont, buffer, features, featuresCount, 0);
+     if (!ret) {
+         goto cleanup;
+     }
      glyphCount = hb_buffer_get_length(buffer);
      glyphInfo = hb_buffer_get_glyph_infos(buffer, 0);
      glyphPos = hb_buffer_get_glyph_positions(buffer, &buflen);
@@ -307,11 +316,16 @@ JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
                        limit - offset, glyphCount, glyphInfo, glyphPos,
                        jdkFontInfo->devScale);
 
-     hb_buffer_destroy (buffer);
+cleanup:
+     if (features) {
+         free(features);
+     }
+     if (chars) {
+         (*env)->ReleaseCharArrayElements(env, text, chars, JNI_ABORT);
+     }
+     hb_buffer_destroy(buffer);
      hb_font_destroy(hbfont);
      free((void*)jdkFontInfo);
-     if (features != NULL) free(features);
-     (*env)->ReleaseCharArrayElements(env, text, chars, JNI_ABORT);
      return ret;
 }
 
