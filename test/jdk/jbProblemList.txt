@@ -1062,6 +1062,7 @@ java/awt/font/EmojiVariation.java JBR-5009 linux-aarch64
 java/awt/font/TextLayout/TestJustification.html 8250791 macosx-all
 java/awt/font/TextLayout/TestSinhalaChar.java JBR-5103 generic-all
 javax/swing/JTabbedPane/4209065/bug4209065.java 8251177 macosx-all
+javax/swing/JTableHeader/6884066/bug6884066.java 8305778 linux-all
 javax/swing/JTableHeader/6889007/bug6889007.java 8253184,8197552,JBR-5387 windows-all,linux-all
 javax/swing/JTextField/8036819/bug8036819.java 8197552 windows-all
 javax/swing/JTree/4908142/bug4908142.java 8197552 windows-all
