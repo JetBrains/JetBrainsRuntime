@@ -98,8 +98,6 @@ javax/swing/JComboBox/6236162/bug6236162.java JBR-5397 macosx-all
 javax/swing/JComboBox/6559152/bug6559152.java JBR-5397 macosx-all
 javax/swing/JComboBox/8033069/bug8033069NoScrollBar.java JBR-5397 macosx-all
 javax/swing/JComboBox/8033069/bug8033069ScrollBar.java JBR-5397 macosx-all
-javax/swing/JComboBox/8041909/ActionListenerExceptionTest.java JBR-5397 macosx-all
-javax/swing/JComboBox/8072767/bug8072767.java JBR-5397 macosx-all
 javax/swing/JComboBox/8182031/ComboPopupTest.java JBR-5397 macosx-all
 javax/swing/JComboBox/JComboBoxPopupMenuEventTest.java JBR-5397 macosx-all
 javax/swing/JComboBox/JComboBoxWithTitledBorderTest.java JBR-5397 macosx-all
@@ -125,7 +123,7 @@ java/awt/Focus/OwnedWindowFocusIMECrashTest/OwnedWindowFocusIMECrashTest.java JB
 java/awt/Focus/ShowFrameCheckForegroundTest/ShowFrameCheckForegroundTest.java JBR-5505 windows-all
 java/awt/Focus/TranserFocusToWindow/TranserFocusToWindow.java JBR-5505 windows-all
 java/awt/Focus/TypeAhead/TestFocusFreeze.java JBR-5505 windows-all
-java/awt/Focus/WindowInitialFocusTest/WindowInitialFocusTest.java JBR-5505 windows-all
+java/awt/Focus/WindowInitialFocusTest/WindowInitialFocusTest.java JBR-5210 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java JBR-5505 windows-all
 java/awt/FontClass/FontAccess.java JBR-5505 windows-all
 java/awt/Frame/FramesGC/FramesGC.java JBR-5505 windows-all
@@ -173,8 +171,6 @@ javax/accessibility/JSlider/AccessibleAction/JSliderAccessibleAction.java JBR-55
 javax/imageio/plugins/external_plugin_tests/TestClassPathPlugin.sh JBR-5505 windows-all
 javax/swing/JComboBox/8033069/bug8033069NoScrollBar.java JBR-5505 windows-all
 javax/swing/JComboBox/8033069/bug8033069ScrollBar.java JBR-5505 windows-all
-javax/swing/JComboBox/8041909/ActionListenerExceptionTest.java JBR-5505 windows-all
-javax/swing/JComboBox/8072767/bug8072767.java JBR-5505 windows-all
 javax/swing/JComboBox/8136998/bug8136998.java JBR-5505 windows-all
 javax/swing/JComboBox/JComboBoxPopupMenuEventTest.java JBR-5505 windows-all
 javax/swing/JComboBox/JComboBoxWithTitledBorderTest.java JBR-5505 windows-all
@@ -187,7 +183,6 @@ javax/swing/JFileChooser/ShellFolderQueries/ShellFolderQueriesSecurityManagerTes
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java JBR-5505 windows-all
 javax/swing/JInternalFrame/6288609/TestJInternalFrameDispose.java JBR-5505 windows-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java JBR-5505 windows-all
-javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java JBR-5505 windows-all
 javax/swing/JInternalFrame/Test6325652.java JBR-5505 windows-all
 javax/swing/JInternalFrame/Test6505027.java JBR-5505 windows-all
 javax/swing/JMenu/4213634/bug4213634.java JBR-5505 windows-all
@@ -196,7 +191,6 @@ javax/swing/JMenu/4692443/bug4692443.java JBR-5505 windows-all
 javax/swing/JMenu/PopupReferenceMemoryLeak.java JBR-5505 windows-all
 javax/swing/JMenuBar/4750590/bug4750590.java JBR-5505 windows-all
 javax/swing/JMenuItem/4171437/bug4171437.java JBR-5505 windows-all
-javax/swing/JMenuItem/4654927/bug4654927.java JBR-5505 windows-all
 javax/swing/JMenuItem/8158566/CloseOnMouseClickPropertyTest.java JBR-5505 windows-all
 javax/swing/JOptionPane/8081019/bug8081019.java JBR-5505 windows-all
 javax/swing/JPopupMenu/4458079/bug4458079.java JBR-5505 windows-all
@@ -208,7 +202,6 @@ javax/swing/JRadioButton/FocusTraversal/FocusTraversal.java JBR-5505 windows-all
 javax/swing/JRootPane/DefaultButtonTest.java JBR-5505 windows-all
 javax/swing/JScrollBar/bug4202954/bug4202954.java JBR-5505 windows-all
 javax/swing/JSpinner/4515999/JSpinnerMouseAndKeyPressTest.java JBR-5505 windows-all
-javax/swing/JSpinner/8223788/JSpinnerButtonFocusTest.java JBR-5505 windows-all
 javax/swing/JTable/6263446/bug6263446.java JBR-5505 windows-all
 javax/swing/JTextField/8036819/bug8036819.java JBR-5505 windows-all
 javax/swing/JTree/4908142/bug4908142.java JBR-5505 windows-all
@@ -221,7 +214,6 @@ javax/swing/plaf/synth/Test8043627.java JBR-5505 windows-all
 javax/swing/PopupFactory/6276087/NonOpaquePopupMenuTest.java JBR-5505 windows-all
 javax/swing/SwingUtilities/7088744/bug7088744.java JBR-5505 windows-all
 javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-5505 windows-all
-javax/swing/text/View/8014863/bug8014863.java JBR-5505 windows-all
 javax/swing/ToolTipManager/Test6256140.java JBR-5505 windows-all
 javax/swing/UIDefaults/6795356/TableTest.java JBR-5505 windows-all
 jdk/editpad/EditPadTest.java JBR-5505 windows-all
@@ -239,7 +231,6 @@ javax/swing/JScrollBar/7163696/Test7163696.java JBR-5505 windows-all
 javax/swing/JScrollPane/TestMouseWheelScroll.java JBR-5505 windows-all
 javax/swing/JSlider/6401380/bug6401380.java JBR-5505 windows-all
 javax/swing/JSpinner/4788637/bug4788637.java JBR-5505 windows-all
-javax/swing/JSpinner/TestJSpinnerFocusLost.java JBR-5505 windows-all
 javax/swing/JSplitPane/4615365/JSplitPaneDividerLocationTest.java JBR-5505 windows-all
 javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java JBR-5505 windows-all
 javax/swing/JSplitPane/4885629/bug4885629.java JBR-5505 windows-all
