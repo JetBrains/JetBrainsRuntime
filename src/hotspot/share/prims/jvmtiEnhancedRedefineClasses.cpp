@@ -1839,20 +1839,22 @@ void VM_EnhancedRedefineClasses::transfer_old_native_function_registrations(Inst
 void VM_EnhancedRedefineClasses::flush_dependent_code() {
   assert_locked_or_safepoint(Compile_lock);
 
+  DeoptimizationScope deopt_scope;
+
   // All dependencies have been recorded from startup or this is a second or
   // subsequent use of RedefineClasses
   // FIXME: for now, deoptimize all!
   if (0 && JvmtiExport::all_dependencies_are_recorded()) {
-    int deopt = CodeCache::mark_dependents_for_evol_deoptimization();
-    log_debug(redefine, class, nmethod)("Marked %d dependent nmethods for deopt", deopt);
-    if (deopt != 0) {
-      CodeCache::flush_evol_dependents();
-    }
+    CodeCache::mark_dependents_for_evol_deoptimization(&deopt_scope);
+    log_debug(redefine, class, nmethod)("Marked dependent nmethods for deopt");
   } else {
-    CodeCache::mark_all_nmethods_for_evol_deoptimization();
-    CodeCache::flush_evol_dependents();
-    JvmtiExport::set_all_dependencies_are_recorded(true);
+    CodeCache::mark_all_nmethods_for_evol_deoptimization(&deopt_scope);
   }
+
+  deopt_scope.deoptimize_marked();
+
+  // From now on we know that the dependency information is complete
+  JvmtiExport::set_all_dependencies_are_recorded(true);
 }
 
 //  Compare _old_methods and _new_methods arrays and store the result into
