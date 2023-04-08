@@ -962,20 +962,6 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
 
     if ((redefinition_flags & Klass::ModifyInstances) != 0) {
        calculate_instance_update_information(_new_classes->at(i));
-    } else {
-      // Fields were not changed, transfer special flags only
-      assert(new_class->layout_helper() >> 1 == new_class->old_version()->layout_helper() >> 1, "must be equal");
-      assert(new_class->fields()->length() == InstanceKlass::cast(new_class->old_version())->fields()->length(), "must be equal");
-
-      JavaFieldStream old_fs(the_class);
-      JavaFieldStream new_fs(new_class);
-      for (; !old_fs.done() && !new_fs.done(); old_fs.next(), new_fs.next()) {
-        AccessFlags flags = new_fs.access_flags();
-        flags.set_is_field_modification_watched(old_fs.access_flags().is_field_modification_watched());
-        flags.set_is_field_access_watched(old_fs.access_flags().is_field_access_watched());
-        flags.set_has_field_initialized_final_update(old_fs.access_flags().has_field_initialized_final_update());
-        new_fs.set_access_flags(flags);
-      }
     }
 
     log_debug(redefine, class, load)
