@@ -2068,7 +2068,8 @@ Java_sun_awt_X11InputMethod_recreateX11InputMethod(JNIEnv *env, jclass cls)
 // It uses the "over-the-spot" interaction style with the IME
 //   (to be more precise, XIMPreeditPosition | XIMStatusNothing flags. XIMStatusNothing is used because it's the only
 //    style supported by each of fcitx, fcitx5, iBus IMEs)
-// Usage of the new client is controlled by the TODO: system property
+// Usage of the new client is controlled by the function jbNewXimClient_isEnabled that invokes
+//   the sun.awt.X11.XInputMethod#isJbNewXimClientEnabled method
 // ====================================================================================================================
 
 /**
@@ -2118,7 +2119,9 @@ static XIMStyles* jbNewXimClient_obtainSupportedInputStylesBy(XIM inputMethod);
 typedef enum jbNewXimClient_SupportedInputStyle {
     JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_ON_THE_SPOT_1    = XIMPreeditCallbacks | XIMStatusCallbacks,
     JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_ON_THE_SPOT_2    = XIMPreeditCallbacks | XIMStatusNothing,
+    // Corresponds to jbNewXimClient_createInputContextOfPreeditPositionStatusNothing
     JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_BELOW_THE_SPOT_1 = XIMPreeditPosition  | XIMStatusNothing,
+    // Corresponds to jbNewXimClient_createInputContextOfPreeditNothingStatusNothing
     JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_ROOT_WINDOW_1    = XIMPreeditNothing   | XIMStatusNothing,
     JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_NOFEEDBACK       = XIMPreeditNone      | XIMStatusNone
 } jbNewXimClient_SupportedInputStyle;
@@ -2173,6 +2176,54 @@ static jbNewXimClient_ExtendedInputContext jbNewXimClient_createInputContextOfSt
     Window window,
     const jbNewXimClient_XIMFeatures *allXimSupportedFeatures
 );
+
+
+static jclass XInputMethodCls = NULL;
+static jmethodID isJbNewXimClientEnabledMID = NULL;
+static Bool jbNewXimClient_isEnabled() {
+    // Basically it just calls the java static method sun.awt.X11.XInputMethod#isJbNewXimClientEnabled()
+
+    JNIEnv * const jniEnv = GetJNIEnv();
+
+    if ((jniEnv == NULL) || (jniEnv == (void*)JNI_ERR)) {
+        jio_fprintf(stderr, "%s: GetJNIEnv() failed (jniEnv == NULL || jniEnv == (void*)JNI_ERR).\n", __func__);
+        return False;
+    }
+
+    // Looking up the method sun.awt.X11.XInputMethod#isJbNewXimClientEnabled()
+
+    if (XInputMethodCls == NULL) {
+        jclass XInputMethodClsTmp = NULL;
+        const jclass XInputMethodClsLocalRef = (*jniEnv)->FindClass(jniEnv, "sun/awt/X11/XInputMethod");
+        if (XInputMethodClsLocalRef == NULL) {
+            jio_fprintf(stderr, "%s: failed to find the sun.awt.X11.XInputMethod class (XInputMethodClsLocalRef == NULL).\n", __func__);
+            return False;
+        }
+
+        XInputMethodClsTmp = (jclass)(*jniEnv)->NewGlobalRef(jniEnv, XInputMethodClsLocalRef);
+        if (XInputMethodClsTmp == NULL) {
+            jio_fprintf(stderr, "%s: NewGlobalRef() failed (XInputMethodClsTmp == NULL).\n", __func__);
+            return False;
+        }
+
+        XInputMethodCls = XInputMethodClsTmp;
+    }
+
+    if (isJbNewXimClientEnabledMID == NULL) {
+        const jmethodID isJbNewXimClientEnabledMIDTmp =
+            (*jniEnv)->GetStaticMethodID(jniEnv, XInputMethodCls, "isJbNewXimClientEnabled", "()Z");
+        if (isJbNewXimClientEnabledMIDTmp == NULL) {
+            jio_fprintf(stderr, "%s: GetStaticMethodID() failed (isJbNewXimClientEnabledMIDTmp == NULL).\n", __func__);
+            return False;
+        }
+
+        isJbNewXimClientEnabledMID = isJbNewXimClientEnabledMIDTmp;
+    }
+
+    return ( (*jniEnv)->CallStaticBooleanMethod(jniEnv, XInputMethodCls, isJbNewXimClientEnabledMID) == JNI_TRUE )
+           ? True
+           : False;
+}
 
 
 static Bool jbNewXimClient_initializeXICs(
@@ -2329,4 +2380,562 @@ finally:
     }
 
     return result;
+}
+
+
+static jbNewXimClient_XIMFeatures jbNewXimClient_obtainSupportedXIMFeaturesBy(XIM inputMethod)
+{
+    jbNewXimClient_XIMFeatures result = { 0 };
+    XIMValuesList *ximValues = NULL;
+    XIMValuesList *xicValues = NULL;
+    char *unsupportedIMValue = NULL;
+
+    result.ximFeatures.isXNVisiblePositionAvailable = False;
+    result.ximFeatures.isXNR6PreeditCallbackAvailable = False;
+
+    result.xicFeatures.isXNStringConversionAvailable = False;
+    result.xicFeatures.isXNStringConversionCallbackAvailable = False;
+    result.xicFeatures.isXNResetStateAvailable = False;
+    result.xicFeatures.isXNHotKeyAvailable = False;
+    result.xicFeatures.isXNPreeditStateAvailable = False;
+    result.xicFeatures.isXNPreeditStateNotifyCallbackAvailable = False;
+    result.xicFeatures.isXNCommitStringCallbackAvailable = False;
+
+    if (inputMethod == NULL) {
+        return result;
+    }
+
+    unsupportedIMValue = XGetIMValues(
+        inputMethod,
+        XNQueryIMValuesList, &ximValues,
+        XNQueryICValuesList, &xicValues,
+        NULL
+    );
+    if (unsupportedIMValue != NULL) {
+        jio_fprintf(stderr, "%s: failed to get the following property \"%s\".\n", __func__, unsupportedIMValue);
+        // Mustn't be freed
+        unsupportedIMValue = NULL;
+    }
+
+    if (ximValues != NULL) {
+        for (unsigned int i = 0; i < ximValues->count_values; ++i) {
+            if        (strcmp(XNVisiblePosition, ximValues->supported_values[i]) == 0) {
+                result.ximFeatures.isXNVisiblePositionAvailable = True;
+            } else if (strcmp(XNR6PreeditCallback, ximValues->supported_values[i]) == 0) {
+                result.ximFeatures.isXNR6PreeditCallbackAvailable = True;
+            }
+        }
+    }
+    if (xicValues != NULL) {
+        for (unsigned int i = 0; i < xicValues->count_values; ++i) {
+            if        (strcmp(XNStringConversion, xicValues->supported_values[i]) == 0) {
+                result.xicFeatures.isXNStringConversionAvailable = True;
+            } else if (strcmp(XNStringConversionCallback, xicValues->supported_values[i]) == 0) {
+                result.xicFeatures.isXNStringConversionCallbackAvailable = True;
+            } else if (strcmp(XNResetState, xicValues->supported_values[i]) == 0) {
+                result.xicFeatures.isXNResetStateAvailable = True;
+            } else if (strcmp(XNHotKey, xicValues->supported_values[i]) == 0) {
+                result.xicFeatures.isXNHotKeyAvailable = True;
+            } else if (strcmp(XNPreeditState, xicValues->supported_values[i]) == 0) {
+                result.xicFeatures.isXNPreeditStateAvailable = True;
+            } else if (strcmp(XNPreeditStateNotifyCallback, xicValues->supported_values[i]) == 0) {
+                result.xicFeatures.isXNPreeditStateNotifyCallbackAvailable = True;
+            } else if (strcmp(XNCommitStringCallback, xicValues->supported_values[i]) == 0) {
+                result.xicFeatures.isXNCommitStringCallbackAvailable = True;
+            }
+        }
+    }
+
+finally:
+    if (ximValues != NULL) {
+        XFree(ximValues);
+        ximValues = NULL;
+    }
+    if (xicValues != NULL) {
+        XFree(xicValues);
+        xicValues = NULL;
+    }
+
+    return result;
+}
+
+
+static XIMStyles* jbNewXimClient_obtainSupportedInputStylesBy(XIM inputMethod)
+{
+    XIMStyles* result = NULL;
+    char *unsupportedIMValue = NULL;
+
+    if (inputMethod == NULL) {
+        return NULL;
+    }
+    if ( (unsupportedIMValue = XGetIMValues(inputMethod, XNQueryInputStyle, &result, NULL)) != NULL ) {
+        jio_fprintf(stderr, "%s: failed to get the following property \"%s\".\n", __func__, unsupportedIMValue);
+        unsupportedIMValue = NULL;
+    }
+
+    return result;
+}
+
+static jbNewXimClient_PrioritizedStyles jbNewXimClient_chooseAndPrioritizeInputStyles(
+    Bool preferBelowTheSpot,
+    const XIMStyles *allXimSupportedInputStyles,
+    const jbNewXimClient_XIMFeatures *allXimSupportedFeatures
+) {
+    jbNewXimClient_PrioritizedStyles result = { 0 };
+
+    const jbNewXimClient_SupportedInputStyle activeClientStylesTemplate[] = {
+        (preferBelowTheSpot == True) ? JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_BELOW_THE_SPOT_1 : JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_ON_THE_SPOT_1,
+        (preferBelowTheSpot == True) ?    JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_ON_THE_SPOT_1 : JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_ON_THE_SPOT_2,
+        (preferBelowTheSpot == True) ?    JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_ON_THE_SPOT_2 : JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_BELOW_THE_SPOT_1,
+        JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_ROOT_WINDOW_1,
+        JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_NOFEEDBACK
+    };
+    enum { ACTIVE_CLIENT_ALL_STYLES_COUNT = sizeof(activeClientStylesTemplate) / sizeof(activeClientStylesTemplate[0]) };
+
+    const jbNewXimClient_SupportedInputStyle passiveClientStylesTemplate[] = {
+        JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_ROOT_WINDOW_1,
+        JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_NOFEEDBACK
+    };
+    enum { PASSIVE_CLIENT_ALL_STYLES_COUNT = sizeof(passiveClientStylesTemplate) / sizeof(passiveClientStylesTemplate[0]) };
+
+    // Will be filled later based on the templates
+    jbNewXimClient_SupportedInputStyle activeClientStyles[ACTIVE_CLIENT_ALL_STYLES_COUNT] = { 0 };
+    unsigned int activeClientStylesCount = 0;
+
+    // Will be filled later based on the templates
+    jbNewXimClient_SupportedInputStyle passiveClientStyles[PASSIVE_CLIENT_ALL_STYLES_COUNT] = { 0 };
+    unsigned int passiveClientStylesCount = 0;
+
+    unsigned int i = 0, j = 0;
+
+    assert( (activeClientStylesCount  <= JBNEWXIMCLIENT_COUNTOF_SUPPORTED_INPUT_STYLES) );
+    assert( (passiveClientStylesCount <= JBNEWXIMCLIENT_COUNTOF_SUPPORTED_INPUT_STYLES) );
+
+    result.pairsCount = 0;
+
+    if ((allXimSupportedInputStyles == NULL) || (allXimSupportedFeatures == NULL)) {
+        return result;
+    }
+
+    // Filling activeClientStyles
+    for (i = 0; i < ACTIVE_CLIENT_ALL_STYLES_COUNT; ++i) {
+        const jbNewXimClient_SupportedInputStyle searchedStyle = activeClientStylesTemplate[i];
+
+        for (j = 0; j < allXimSupportedInputStyles->count_styles; ++j) {
+            if ( (allXimSupportedInputStyles->supported_styles[j] & searchedStyle) == searchedStyle ) {
+                activeClientStyles[activeClientStylesCount++] = searchedStyle;
+                break;
+            }
+        }
+    }
+
+    // Filling passiveClientStyles
+    for (i = 0; i < PASSIVE_CLIENT_ALL_STYLES_COUNT; ++i) {
+        const jbNewXimClient_SupportedInputStyle searchedStyle = passiveClientStylesTemplate[i];
+
+        for (j = 0; j < allXimSupportedInputStyles->count_styles; ++j) {
+            if ( (allXimSupportedInputStyles->supported_styles[j] & searchedStyle) == searchedStyle ) {
+                passiveClientStyles[passiveClientStylesCount++] = searchedStyle;
+                break;
+            }
+        }
+    }
+
+    // Combining the pairs (activeClientStyles[i], passiveClientStyles[j]) into result
+    assert( (activeClientStylesCount * passiveClientStylesCount <= sizeof(result.combinations) / sizeof(result.combinations[0])) );
+    for (i = 0; i < activeClientStylesCount; ++i) {
+        const jbNewXimClient_SupportedInputStyle activeStyle = activeClientStyles[i];
+
+        for (j = 0; j < passiveClientStylesCount; ++j) {
+            const jbNewXimClient_SupportedInputStyle passiveStyle = passiveClientStyles[i];
+
+            result.combinations[result.pairsCount].forActiveClient  = activeStyle;
+            result.combinations[result.pairsCount].forPassiveClient = passiveStyle;
+            ++result.pairsCount;
+        }
+    }
+
+    return result;
+}
+
+
+/**
+ * Creates an input context of the style XIMPreeditPosition | XIMStatusNothing (corresponds to the java below-the-spot style).
+ */
+static jbNewXimClient_ExtendedInputContext jbNewXimClient_createInputContextOfPreeditPositionStatusNothing(
+    JNIEnv *jEnv,
+    jobject x11inputmethod,
+    XIM xInputMethodConnection,
+    Window window,
+    const jbNewXimClient_XIMFeatures *allXimSupportedFeatures
+);
+
+/**
+ * Creates an input context of the style XIMPreeditNothing | XIMStatusNothing (corresponds to the java root-window style).
+ */
+static jbNewXimClient_ExtendedInputContext jbNewXimClient_createInputContextOfPreeditNothingStatusNothing(
+    JNIEnv *jEnv,
+    jobject x11inputmethod,
+    XIM xInputMethodConnection,
+    Window window,
+    const jbNewXimClient_XIMFeatures *allXimSupportedFeatures
+);
+
+static jbNewXimClient_ExtendedInputContext jbNewXimClient_createInputContextOfStyle(
+    const jbNewXimClient_SupportedInputStyle style,
+    JNIEnv * const jEnv,
+    const X11InputMethodData * const pX11IMData,
+    const XIM xInputMethodConnection,
+    const Window window,
+    const jbNewXimClient_XIMFeatures *allXimSupportedFeatures
+) {
+    jbNewXimClient_ExtendedInputContext result;
+    jbNewXimClient_setInputContextFields(&result, NULL, NULL, NULL, NULL, NULL);
+
+    switch (style) {
+        case JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_BELOW_THE_SPOT_1:
+            result = jbNewXimClient_createInputContextOfPreeditPositionStatusNothing(
+                jEnv, pX11IMData->x11inputmethod, xInputMethodConnection, window, allXimSupportedFeatures
+            );
+            break;
+        case JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_ROOT_WINDOW_1:
+            result = jbNewXimClient_createInputContextOfPreeditNothingStatusNothing(
+                jEnv, pX11IMData->x11inputmethod, xInputMethodConnection, window, allXimSupportedFeatures
+            );
+            break;
+        case JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_ON_THE_SPOT_1:
+        case JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_ON_THE_SPOT_2:
+        case JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_NOFEEDBACK:
+            // TODO: support
+            break;
+    }
+
+    if (result.xic != NULL) {
+        /* Unsets focus to avoid unexpected IM on */
+        setXICFocus(result.xic, False);
+    }
+
+    return result;
+}
+
+
+/** A wrapper around XCreateFontSet */
+static XFontSet jbNewXimClient_createIcFontset(Display *display, const char *xlfdFontSet);
+
+
+static jbNewXimClient_ExtendedInputContext jbNewXimClient_createInputContextOfPreeditPositionStatusNothing(
+    JNIEnv * const jEnv,
+    const jobject x11inputmethod,
+    const XIM xInputMethodConnection,
+    const Window window,
+    const jbNewXimClient_XIMFeatures *allXimSupportedFeatures
+) {
+    jbNewXimClient_ExtendedInputContext result;
+    Display *xicDisplay = NULL;
+    // XNFontSet
+    XFontSet preeditFontSet = NULL;
+    // XNSpotLocation
+    XPoint imCandidatesInitLocation = { 0, 0 };
+    // XNPreeditAttributes
+    XVaNestedList preeditAttributes = NULL;
+    XIC xic = NULL;
+    char *unsupportedIMValue = NULL;
+
+    jbNewXimClient_setInputContextFields(&result, NULL, NULL, NULL, NULL, NULL);
+
+    if ((jEnv == NULL) || (x11inputmethod == NULL) || (xInputMethodConnection == NULL) || (allXimSupportedFeatures == NULL)) {
+        return result;
+    }
+
+    xicDisplay = XDisplayOfIM(xInputMethodConnection);
+    if (xicDisplay == NULL) {
+        jio_fprintf(stderr, "%s: xicDisplay == NULL.\n", __func__);
+        goto finally;
+    }
+
+    preeditFontSet = jbNewXimClient_createIcFontset(
+        xicDisplay,
+        // Literally any fonts
+        "-*-*-*-*-*-*-*-*-*-*-*-*-*-*"
+    );
+    if (preeditFontSet == NULL) {
+        goto finally;
+    }
+
+    preeditAttributes = XVaCreateNestedList(0,
+        /*
+         * Xlib mistakenly requires to set XNFontSet for the XIMPreeditPosition style (otherwise XCreateIC fails)
+         *   due to its own bug there:
+         *   https://github.com/mirror/libX11/blob/ff8706a5eae25b8bafce300527079f68a201d27f/modules/im/ximcp/imRm.c#L2011
+         *   (it should have XIM_MODE_PRE_DEFAULT instead of XIM_MODE_PRE_CREATE)
+         */
+        XNFontSet, preeditFontSet,
+        /*
+         * Xlib mistakenly requires to set XNSpotLocation for the XIMPreeditPosition style
+         *   at the creation time (otherwise XCreateIC fails) due to its own bug there:
+         *   https://github.com/mirror/libX11/blob/ff8706a5eae25b8bafce300527079f68a201d27f/modules/im/ximcp/imRm.c#L1951
+         *   (it should have XIM_MODE_PRE_DEFAULT instead of XIM_MODE_PRE_CREATE)
+         */
+        XNSpotLocation, &imCandidatesInitLocation,
+        NULL
+    );
+    if (preeditAttributes == NULL) {
+        jio_fprintf(stderr, "%s: preeditAttributes == NULL.\n", __func__);
+        goto finally;
+    }
+
+    xic = XCreateIC(
+        xInputMethodConnection,
+        /*
+         * Since we're forced to set XNSpotLocation at the creation time (see above),
+         *   we have to set XNClientWindow before
+         *   (otherwise we can get an undefined behavior according to the documentation of the XNSpotLocation)
+         */
+        XNClientWindow, window,
+        XNInputStyle, (XIMStyle)(XIMPreeditPosition | XIMStatusNothing),
+        XNPreeditAttributes, preeditAttributes,
+        NULL
+    );
+
+    XFree(preeditAttributes);
+    preeditAttributes = NULL;
+
+    if (xic == NULL) {
+        jio_fprintf(stderr, "%s: XCreateIC failed to create an input context.\n", __func__);
+        goto finally;
+    }
+
+    // Setting up various XIC properties
+
+    // First, obligatory properties
+
+    // XNClientWindow has already been set at XCreateIC
+
+    if ( (unsupportedIMValue = XSetICValues(xic, XNFocusWindow, window, NULL)) != NULL ) {
+        jio_fprintf(stderr, "%s: failed to set the following property \"%s\".\n", __func__, unsupportedIMValue);
+        unsupportedIMValue = NULL;
+        // Not a critical error so let's proceed
+    }
+
+    // Optional properties
+
+    /*
+     * Use commit string call back if possible.
+     * This will ensure the correct order of preedit text and commit text
+     */
+    if (allXimSupportedFeatures->xicFeatures.isXNCommitStringCallbackAvailable == True)
+    {
+        const char* setIcErr = NULL;
+        XIMCallback cb;
+        cb.client_data = (XPointer)x11inputmethod;
+        cb.callback = (XIMProc)&CommitStringCallback;
+
+        if ( (setIcErr = XSetICValues(xic, XNCommitStringCallback, &cb, NULL)) != NULL ) {
+            jio_fprintf(stderr, "%s: failed to set the IC value \"%s\".\n", __func__, setIcErr);
+        }
+    }
+
+    /*
+     * The code sets the IC mode that the preedit state is not initialized
+     * at XmbResetIC. This attribute can be set at XCreateIC. I separately
+     * set the attribute to avoid the failure of XCreateIC at some platform
+     * which does not support the attribute.
+     */
+    if (allXimSupportedFeatures->xicFeatures.isXNResetStateAvailable == True) {
+        const char* setIcErr = XSetICValues(xic, XNResetState, XIMInitialState, NULL);
+        if (setIcErr != NULL) {
+            jio_fprintf(stderr, "%s: failed to set the IC value \"%s\".\n", __func__, setIcErr);
+        }
+    }
+
+    result.xic = xic;
+    result.xicDisplay = xicDisplay;
+    result.preeditCustomFontSet = preeditFontSet;
+
+finally:
+    if (preeditAttributes != NULL) {
+        XFree(preeditAttributes);
+        preeditAttributes = NULL;
+    }
+    if (result.xic == NULL) {
+        // Cleanup if smth failed
+
+        if (xic != NULL) {
+            XDestroyIC(xic);
+            xic = NULL;
+        }
+        if (preeditFontSet != NULL) {
+            assert( (xicDisplay != NULL) );
+            XFreeFontSet(xicDisplay, preeditFontSet);
+            preeditFontSet = NULL;
+        }
+    }
+
+    return result;
+}
+
+static jbNewXimClient_ExtendedInputContext jbNewXimClient_createInputContextOfPreeditNothingStatusNothing(
+    JNIEnv * const jEnv,
+    const jobject x11inputmethod,
+    const XIM xInputMethodConnection,
+    const Window window,
+    const jbNewXimClient_XIMFeatures *allXimSupportedFeatures
+) {
+    jbNewXimClient_ExtendedInputContext result;
+    Display *xicDisplay = NULL;
+    XIC xic = NULL;
+    char *unsupportedIMValue = NULL;
+
+    jbNewXimClient_setInputContextFields(&result, NULL, NULL, NULL, NULL, NULL);
+
+    if ((jEnv == NULL) || (x11inputmethod == NULL) || (xInputMethodConnection == NULL) || (allXimSupportedFeatures == NULL)) {
+        return result;
+    }
+
+    xicDisplay = XDisplayOfIM(xInputMethodConnection);
+    if (xicDisplay == NULL) {
+        jio_fprintf(stderr, "%s: xicDisplay == NULL.\n", __func__);
+        goto finally;
+    }
+
+    xic = XCreateIC(
+        xInputMethodConnection,
+        XNInputStyle, (XIMStyle)(XIMPreeditNothing | XIMStatusNothing),
+        NULL
+    );
+
+    if (xic == NULL) {
+        jio_fprintf(stderr, "%s: XCreateIC failed to create an input context.\n", __func__);
+        goto finally;
+    }
+
+    // Setting up various XIC properties
+
+    // First, obligatory properties
+
+    if ( (unsupportedIMValue = XSetICValues(xic, XNClientWindow, window, NULL)) != NULL ) {
+        jio_fprintf(stderr, "%s: failed to set the following property \"%s\".\n", __func__, unsupportedIMValue);
+        unsupportedIMValue = NULL;
+        // The X protocol requires to set the property once and only once and before any input is done using
+        //   the input context. So a failure here is critical, we can't proceed
+        goto finally;
+    }
+
+    if ( (unsupportedIMValue = XSetICValues(xic, XNFocusWindow, window, NULL)) != NULL ) {
+        jio_fprintf(stderr, "%s: failed to set the following property \"%s\".\n", __func__, unsupportedIMValue);
+        unsupportedIMValue = NULL;
+        // Not a critical error so let's proceed
+    }
+
+    // Optional properties
+
+    /*
+     * Use commit string call back if possible.
+     * This will ensure the correct order of preedit text and commit text.
+     */
+    if (allXimSupportedFeatures->xicFeatures.isXNCommitStringCallbackAvailable == True)
+    {
+        const char* setIcErr = NULL;
+        XIMCallback cb;
+        cb.client_data = (XPointer)x11inputmethod;
+        cb.callback = (XIMProc)&CommitStringCallback;
+
+        if ( (setIcErr = XSetICValues(xic, XNCommitStringCallback, &cb, NULL)) != NULL ) {
+            jio_fprintf(stderr, "%s: failed to set the IC value \"%s\".\n", __func__, setIcErr);
+        }
+    }
+
+    /*
+     * The code sets the IC mode that the preedit state is not initialized
+     * at XmbResetIC.  This attribute can be set at XCreateIC. I separately
+     * set the attribute to avoid the failure of XCreateIC at some platform
+     * which does not support the attribute.
+     */
+    if (allXimSupportedFeatures->xicFeatures.isXNResetStateAvailable == True) {
+        const char* setIcErr = XSetICValues(xic, XNResetState, XIMInitialState, NULL);
+        if (setIcErr != NULL) {
+            jio_fprintf(stderr, "%s: failed to set the IC value \"%s\".\n", __func__, setIcErr);
+        }
+    }
+
+    result.xic = xic;
+    result.xicDisplay = xicDisplay;
+
+finally:
+    return result;
+}
+
+
+static XFontSet jbNewXimClient_createIcFontset(Display * const display, const char * const xlfdFontSet) {
+    XFontSet result = NULL;
+    // Has to be freed via XFreeStringList
+    char** missingCharsets = NULL;
+    int missingCharsetsCount = 0;
+    // Mustn't be freed
+    char* defStringReturn = NULL;
+
+    if ((display == NULL) || (xlfdFontSet == NULL)) {
+        return result;
+    }
+
+    result = XCreateFontSet(display, xlfdFontSet, &missingCharsets, &missingCharsetsCount, &defStringReturn);
+
+    if (missingCharsets != NULL) {
+        XFreeStringList(missingCharsets);
+        missingCharsets = NULL;
+        missingCharsetsCount = 0;
+    }
+
+    return result;
+}
+
+
+static inline void jbNewXimClient_setInputContextFields(
+    // Non-nullable
+    jbNewXimClient_ExtendedInputContext * const context,
+    // Nullable
+    const XIC xic,
+    // Nullable
+    Display * const xicDisplay,
+    // Nullable
+    const XFontSet preeditCustomFontSet,
+    // Nullable
+    const XFontSet statusCustomFontSet,
+    // Nullable
+    XIMCallback (* const preeditAndStatusCallbacks)[NCALLBACKS]
+) {
+    if (context == NULL) {
+        return;
+    }
+
+    context->xic = xic;
+    context->xicDisplay = xicDisplay;
+    context->preeditCustomFontSet = preeditCustomFontSet;
+    context->statusCustomFontSet = statusCustomFontSet;
+    context->preeditAndStatusCallbacks = preeditAndStatusCallbacks;
+}
+
+static void jbNewXimClient_destroyInputContext(jbNewXimClient_ExtendedInputContext *context)
+{
+    if (context == NULL) {
+        return;
+    }
+
+    jbNewXimClient_ExtendedInputContext localContext = *context;
+    jbNewXimClient_setInputContextFields(context, NULL, NULL, NULL, NULL, NULL);
+
+    if (localContext.xic != NULL) {
+        XDestroyIC(localContext.xic);
+    }
+    if (localContext.preeditCustomFontSet != NULL) {
+        assert( (localContext.xicDisplay != NULL) );
+        XFreeFontSet(localContext.xicDisplay, localContext.preeditCustomFontSet);
+    }
+    if ((localContext.statusCustomFontSet != NULL) && (localContext.statusCustomFontSet != localContext.preeditCustomFontSet)) {
+        assert( (localContext.xicDisplay != NULL) );
+        XFreeFontSet(localContext.xicDisplay, localContext.statusCustomFontSet);
+    }
+    if (localContext.preeditAndStatusCallbacks != NULL) {
+        free(localContext.preeditAndStatusCallbacks);
+    }
 }

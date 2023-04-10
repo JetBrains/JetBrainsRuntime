@@ -62,9 +62,35 @@ public class XInputMethod extends X11InputMethod {
     }
 
 
-    private boolean preferXBelowTheSpot() {
-        // TODO: implementation
-        return true;
+    // Is called from native
+    private static boolean isJbNewXimClientEnabled() {
+        try {
+            final String strVal = System.getProperty("jb.awt.newXimClient.enabled");
+            final boolean defVal = true;
+
+            return (strVal == null) ? defVal : Boolean.parseBoolean(strVal);
+        } catch (Exception err) {
+            if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
+                log.severe("Error at isJbNewXimClientEnabled", err);
+            }
+        }
+
+        return false;
+    }
+
+    protected boolean preferXBelowTheSpot() {
+        try {
+            final String strVal = System.getProperty("jb.awt.newXimClient.preferBelowTheSpot");
+            final boolean defVal = true;
+
+            return (strVal == null) ? defVal : Boolean.parseBoolean(strVal);
+        } catch (Exception err) {
+            if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
+                log.severe("Error at isJbNewXimClientEnabled", err);
+            }
+        }
+
+        return false;
     }
 
 
