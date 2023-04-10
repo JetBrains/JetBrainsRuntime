@@ -477,16 +477,7 @@ public class TestProvider extends FileSystemProvider {
         public  WatchKey register(WatchService watcher,
                                   WatchEvent.Kind<?>... events)
         {
-            try {
-                Method registerMethod = delegate.getClass().getDeclaredMethod("register",
-                        WatchService.class,
-                        WatchEvent.Kind[].class,
-                        WatchEvent.Modifier[].class);
-                registerMethod.setAccessible(true);
-                return (WatchKey)registerMethod.invoke(delegate, watcher, events, new WatchEvent.Modifier[0]);
-            } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-                throw new UnsupportedOperationException(e);
-            }
+            return register(watcher, events, new WatchEvent.Modifier[0]);
         }
     }
 

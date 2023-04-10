@@ -37,6 +37,9 @@ import static java.nio.file.StandardWatchEventKinds.*;
 import java.io.*;
 import java.nio.file.spi.FileSystemProvider;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Comparator;
+import java.util.stream.Stream;
+
 import static com.sun.nio.file.ExtendedWatchEventModifier.*;
 
 
@@ -170,34 +173,10 @@ public class WatchServiceWithCustomProvider {
     }
 
     static void removeAll(Path dir) throws IOException {
-        Files.walkFileTree(dir, new FileVisitor<Path>() {
-            @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-                return FileVisitResult.CONTINUE;
-            }
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                try {
-                    Files.delete(file);
-                } catch (IOException x) {
-                    System.err.format("Unable to delete %s: %s\n", file, x);
-                }
-                return FileVisitResult.CONTINUE;
-            }
-            @Override
-            public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
-                try {
-                    Files.delete(dir);
-                } catch (IOException x) {
-                    System.err.format("Unable to delete %s: %s\n", dir, x);
-                }
-                return FileVisitResult.CONTINUE;
-            }
-            @Override
-            public FileVisitResult visitFileFailed(Path file, IOException exc) {
-                System.err.format("Unable to visit %s: %s\n", file, exc);
-                return FileVisitResult.CONTINUE;
-            }
-        });
+        try (Stream<Path> files = Files.walk(dir)) {
+            files.sorted(Comparator.reverseOrder()).forEach(f -> {
+                    try { Files.delete(f); } catch (IOException ignored) {}
+            });
+        }
     }
 }
