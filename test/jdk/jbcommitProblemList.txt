@@ -83,6 +83,5 @@ javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java nobug windows-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java nobug windows-all
 javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java 8194048 windows-all,linux-all nobug: linux, 8194048 windows
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java nobug windows-all
-javax/swing/text/JTextComponent/6361367/bug6361367.java nobug windows-all
 javax/swing/text/View/8014863/bug8014863.java nobug windows-all
 javax/swing/text/View/8156217/FPMethodCalledTest.java nobug linux-all
