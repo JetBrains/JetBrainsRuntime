@@ -133,23 +133,32 @@ class History:
     def __init__(self, log):
         log_itr = iter(log.splitlines())
         self.commits = []
+        self.unique_fullmessages = set()
+        self.duplicates = set()
         commit_lines = []
         for line in log_itr:
             if line.startswith("commit ") and len(commit_lines) > 0:
                 commit = Commit(commit_lines)
-                self.commits.append(commit)
+                self.add_commit(commit)
                 commit_lines = []
             commit_lines.append(line)
 
         if len(commit_lines) > 0:
             commit = Commit(commit_lines)
-            self.commits.append(commit)
+            self.add_commit(commit)
 
-    def count_commits_like(self, commit):
-        return sum(commit.fullmessage == c.fullmessage for c in self.commits)
+    def add_commit(self, commit):
+        self.commits.append(commit)
+        if commit.fullmessage in self.unique_fullmessages:
+            self.duplicates.add(commit.fullmessage)
+        else:
+            self.unique_fullmessages.add(commit.fullmessage)
+
+    def appears_more_than_once(self, commit):
+        return commit.fullmessage in self.duplicates
 
     def contains(self, commit):
-        return self.count_commits_like(commit) > 0
+        return commit.fullmessage in self.unique_fullmessages
 
     def size(self):
         return len(self.commits)
@@ -195,6 +204,7 @@ def main():
                 l = exclude_file.read().split('\n')
                 exclude_list = list(filter(lambda line: not line.startswith("#"), l))
 
+        warned = set()
         for c in history_from.commits:
             if c.message:
                 verbose(options, f"Looking for commit '{c.message}'")
@@ -205,12 +215,10 @@ def main():
                 if not history_to.contains(c):
                     commits_to_save.append(c)
                 else:
-                    count = history_from.count_commits_like(c)
-                    if count > 1:
+                    if history_from.appears_more_than_once(c) and c.fullmessage not in warned:
                         # Not sure which of those seemingly identical commits are present in the target branch
                         error(f"Commit '{c.message}' appears more than once in branch '{options.frombranch}'. ")
-
-
+                        warned.add(c.fullmessage)
     except KeyboardInterrupt:
         fatal("Interrupted")
 
