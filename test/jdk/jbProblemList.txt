@@ -114,7 +114,6 @@
 # jdk_awt
 
 java/awt/Button/DisabledButtonPress.java JBR-5799 windows-aarch64
-java/awt/Desktop/8064934/bug8064934.java JBR-5764,JBR-5799 windows-all
 java/awt/Debug/DumpOnKey/DumpOnKey.java JBR-5225 windows-all
 java/awt/Desktop/8064934/bug8064934.java JBR-5764,JBR-5799 windows-all
 java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java 8233568,JBR-5915 macosx-all,linux-all
@@ -253,6 +252,7 @@ java/awt/dnd/URIListToFileListBetweenJVMsTest/URIListToFileListBetweenJVMsTest.j
 java/awt/Frame/FramesGC/FramesGC.java 8079069 macosx-all
 java/awt/Frame/FrameVisible/FrameContentAppearanceTest.java JBR-5838 macosx-x64
 java/awt/ScrollPane/ScrollPanePreferredSize/ScrollPanePreferredSize.java 8253184 windows-all
+java/awt/TrayIcon/8072769/bug8072769.java JBR-6913 windows-all
 java/awt/TrayIcon/ActionCommand/ActionCommand.java 8150540,JBR-3107 windows-all,linux-all
 java/awt/TrayIcon/ActionEventMask/ActionEventMask.java 8150540,8242801,8295300,JBR-3107 windows-all,macosx-all,linux-all
 java/awt/TrayIcon/ActionEventTest/ActionEventTest.java 8150540,8242801 windows-all,macosx-all
@@ -1314,7 +1314,7 @@ jb/java/awt/CustomTitleBar/HitTestNonClientArea.java JBR-5465,JBR-5550 windows-a
 jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-5465,JBR-5550 windows-all
 jb/java/awt/CustomTitleBar/MaximizedWindowFocusTest.java JBR-5828 windows-all
 jb/java/awt/CustomTitleBar/MinimizingWindowTest.java JBR-5345 windows-x64
-jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java JBR-5910 windows-x64
+jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java JBR-6914 windows-all
 jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java JBR-5345 windows-x64
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java JBR-5345 windows-x64
 jb/java/awt/CustomTitleBar/WindowResizeTest.java JBR-5592 windows-all
@@ -1329,8 +1329,8 @@ javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java JBR-5510,JB
 javax/swing/JMenu/JMenuSelectedColorTest.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JSpinner/4788637/bug4788637.java JBR-5510 linux-5.18.2-arch1-1
-javax/swing/LookAndFeel/8145547/DemandGTK2.sh JBR-5510 linux-5.18.2-arch1-1
-javax/swing/LookAndFeel/8145547/DemandGTK3.sh JBR-5510 linux-5.18.2-arch1-1
+javax/swing/LookAndFeel/8145547/DemandGTK2.sh JBR-5510,JBR-6908 linux-5.18.2-arch1-1,linux-i386
+javax/swing/LookAndFeel/8145547/DemandGTK3.sh JBR-5510,JBR-6908 linux-5.18.2-arch1-1,linux-i386
 
 jb/java/awt/Focus/BrokenTraversalAWT.java JBR-5799 windows-all
 jb/java/awt/Focus/ContextMenuAfterPopup.java JBR-5799 windows-all
@@ -1352,7 +1352,7 @@ javax/swing/JProgressBar/TestJProgressBarHighlightColor.java JBR-5510 linux-5.18
 javax/swing/JSlider/TestJSliderRendering.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JTextPane/TestJTextPaneBackgroundColor.java JBR-5510 linux-5.18.2-arch1-1
-javax/swing/JToolTip/TestTooltipBackgroundColor.java JBR-5510 linux-5.18.2-arch1-1
+javax/swing/JToolTip/TestTooltipBackgroundColor.java JBR-5510,JBR-6907 linux-5.18.2-arch1-1,linux-i386
 javax/swing/JTree/TestTreeBackgroundColor.java JBR-5510 linux-5.18.2-arch1-1
 sun/java2d/ClassCastExceptionForInvalidSurface.java JBR-5510 linux-5.18.2-arch1-1
 
