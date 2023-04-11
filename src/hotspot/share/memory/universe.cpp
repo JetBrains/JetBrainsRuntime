@@ -85,6 +85,7 @@
 #include "utilities/macros.hpp"
 #include "utilities/ostream.hpp"
 #include "utilities/preserveException.hpp"
+#include "utilities/vmError.hpp"
 
 // Known objects
 Klass* Universe::_typeArrayKlassObjs[T_LONG+1]        = { nullptr /*, nullptr...*/ };
@@ -836,6 +837,8 @@ jint universe_init() {
   }
 
   ResolvedMethodTable::create_table();
+
+  VMError::init();
 
   return JNI_OK;
 }
