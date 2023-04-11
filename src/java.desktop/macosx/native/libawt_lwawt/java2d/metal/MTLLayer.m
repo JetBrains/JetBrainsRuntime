@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,33 +23,28 @@
  * questions.
  */
 
+#import "PropertiesUtilities.h"
 #import "MTLGraphicsConfig.h"
 #import "MTLLayer.h"
 #import "ThreadUtilities.h"
 #import "LWCToolkit.h"
 #import "MTLSurfaceData.h"
 #import "JNIUtilities.h"
-#define KEEP_ALIVE_INC 4
+
+BOOL isDisplaySyncEnabled() {
+    static int syncEnabled = -1;
+    if (syncEnabled == -1) {
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        if (env == NULL) return NO;
+        NSString *syncEnabledProp = [PropertiesUtilities javaSystemPropertyForKey:@"sun.java2d.metal.displaySync"
+                                                                          withEnv:env];
+        syncEnabled = [@"false" isCaseInsensitiveLike:syncEnabledProp] ? NO : YES;
+        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLLayer_isDisplaySyncEnabled: %d", syncEnabled);
+    }
+    return (BOOL)syncEnabled;
+}
 
 @implementation MTLLayer
-
-
-@synthesize javaLayer;
-@synthesize ctx;
-@synthesize bufferWidth;
-@synthesize bufferHeight;
-@synthesize buffer;
-@synthesize topInset;
-@synthesize leftInset;
-@synthesize nextDrawableCount;
-@synthesize displayLink;
-@synthesize displayLinkCount;
-
-- (void) createDisplayLink {
-    CVDisplayLinkCreateWithActiveCGDisplays(&displayLink);
-    CVDisplayLinkSetOutputCallback(displayLink, &displayLinkCallback, (__bridge void*)self);
-    self.displayLinkCount = 0;
-}
 
 - (id) initWithJavaLayer:(jobject)layer
 {
@@ -77,39 +72,11 @@
     [actions release];
     self.topInset = 0;
     self.leftInset = 0;
-    self.framebufferOnly = NO;
+    self.framebufferOnly = YES;
     self.nextDrawableCount = 0;
     self.opaque = YES;
-    [self createDisplayLink];
-
-    [[[NSWorkspace sharedWorkspace] notificationCenter]
-        addObserver : self
-           selector : @selector(onScreenSleep)
-               name : NSWorkspaceScreensDidSleepNotification object: NULL];
-
-    [[[NSWorkspace sharedWorkspace] notificationCenter]
-        addObserver : self
-           selector : @selector(onScreenWakeup)
-               name : NSWorkspaceScreensDidWakeNotification object: NULL];
-
+    self.redrawCount = 0;
     return self;
-}
-
-- (void) onScreenSleep {
-    J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.onScreenSleep ---  received screen sleep notification.");
-
-    [self stopDisplayLink];
-}
-
-- (void) onScreenWakeup {
-    J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.onScreenWakeup ---  received screen wakeup notification.");
-    [self stopDisplayLink];
-    CVDisplayLinkRelease(self.displayLink);
-    self.displayLink = nil;
-
-    [self createDisplayLink];
-
-    [self startDisplayLink];
 }
 
 - (void) blitTexture {
@@ -118,18 +85,19 @@
     {
         J2dTraceLn4(J2D_TRACE_VERBOSE,
                     "MTLLayer.blitTexture: uninitialized (mtlc=%p, javaLayer=%p, buffer=%p, device=%p)", self.ctx,
-                    self.javaLayer, self.buffer, ctx.device);
-        [self stopDisplayLink];
+                    self.javaLayer, self.buffer, self.ctx.device);
+        [self stopRedraw:YES];
         return;
     }
 
     if (self.nextDrawableCount != 0) {
         return;
     }
+    [self stopRedraw:NO];
+
     @autoreleasepool {
         if (((*self.buffer).width == 0) || ((*self.buffer).height == 0)) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: cannot create drawable of size 0");
-            [self stopDisplayLink];
             return;
         }
 
@@ -140,20 +108,17 @@
 
         if (src_h <= 0 || src_w <= 0) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: Invalid src width or height.");
-            [self stopDisplayLink];
             return;
         }
 
         id<MTLCommandBuffer> commandBuf = [self.ctx createBlitCommandBuffer];
         if (commandBuf == nil) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: commandBuf is null");
-            [self stopDisplayLink];
             return;
         }
         id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
         if (mtlDrawable == nil) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null)");
-            [self stopDisplayLink];
             return;
         }
         self.nextDrawableCount++;
@@ -164,33 +129,27 @@
                 copyFromTexture:(*self.buffer) sourceSlice:0 sourceLevel:0
                 sourceOrigin:MTLOriginMake(src_x, src_y, 0)
                 sourceSize:MTLSizeMake(src_w, src_h, 1)
-                toTexture:mtlDrawable.texture destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(0, 0, 0)];
+                toTexture:mtlDrawable.texture destinationSlice:0 destinationLevel:0
+                destinationOrigin:MTLOriginMake(0, 0, 0)];
         [blitEncoder endEncoding];
 
         [commandBuf presentDrawable:mtlDrawable];
+        __block MTLLayer* layer = self;
+        [layer retain];
         [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
-            self.nextDrawableCount--;
+            layer.nextDrawableCount--;
+            [layer release];
         }];
 
         [commandBuf commit];
-
-        if (--self.displayLinkCount <= 0) {
-            self.displayLinkCount = 0;
-            [self stopDisplayLink];
-        }
     }
 }
 
 - (void) dealloc {
-
-    [[[NSWorkspace sharedWorkspace] notificationCenter] removeObserver:self];
-
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
     (*env)->DeleteWeakGlobalRef(env, self.javaLayer);
     self.javaLayer = nil;
-    [self stopDisplayLink];
-    CVDisplayLinkRelease(self.displayLink);
-    self.displayLink = nil;
+    [self stopRedraw:YES];
     self.buffer = NULL;
     [super dealloc];
 }
@@ -223,18 +182,22 @@
     [self setNeedsDisplay];
 }
 
-- (void) startDisplayLink {
-    if (!CVDisplayLinkIsRunning(self.displayLink)) {
-        CVDisplayLinkStart(self.displayLink);
-        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_startDisplayLink");
+- (void)startRedraw {
+    if (isDisplaySyncEnabled()) {
+        if (self.ctx != nil) {
+            [self.ctx startRedraw:self];
+        }
+    } else {
+        [self performSelectorOnMainThread:@selector(redraw) withObject:nil waitUntilDone:NO];
     }
-    displayLinkCount += KEEP_ALIVE_INC; // Keep alive displaylink counter
 }
 
-- (void) stopDisplayLink {
-    if (CVDisplayLinkIsRunning(self.displayLink)) {
-        CVDisplayLinkStop(self.displayLink);
-        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_stopDisplayLink");
+- (void)stopRedraw:(BOOL)force {
+    if (self.ctx != nil && isDisplaySyncEnabled()) {
+        if (force) {
+            self.redrawCount = 0;
+        }
+        [self.ctx stopRedraw:self];
     }
 }
 
@@ -246,6 +209,37 @@ CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* no
         [layer performSelectorOnMainThread:@selector(redraw) withObject:nil waitUntilDone:NO];
     }
     return kCVReturnSuccess;
+}
+
+- (void)commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay {
+    MTLCommandBufferWrapper * cbwrapper =[mtlc pullCommandBufferWrapper];
+
+    if (cbwrapper != nil) {
+        id <MTLCommandBuffer> commandbuf =[cbwrapper getCommandBuffer];
+        if (isDisplaySyncEnabled() || !updateDisplay) {
+            [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+                [cbwrapper release];
+            }];
+        } else {
+            __block MTLLayer* layer = self;
+            [layer retain];
+            [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+                [cbwrapper release];
+                [layer startRedraw];
+                [layer release];
+            }];
+       }
+       [commandbuf commit];
+       if (isDisplaySyncEnabled()) {
+            [self startRedraw];
+       }
+
+       if (waitUntilCompleted) {
+           [commandbuf waitUntilCompleted];
+       }
+    } else if (updateDisplay) {
+        [self startRedraw];
+    }
 }
 @end
 
@@ -284,8 +278,6 @@ Java_sun_java2d_metal_MTLLayer_validate
 
     if (surfaceData != NULL) {
         BMTLSDOps *bmtlsdo = (BMTLSDOps*) SurfaceData_GetOps(env, surfaceData);
-        layer.bufferWidth = bmtlsdo->width;
-        layer.bufferHeight = bmtlsdo->width;
         layer.buffer = &bmtlsdo->pTexture;
         layer.ctx = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->context;
         layer.device = layer.ctx.device;
@@ -293,10 +285,10 @@ Java_sun_java2d_metal_MTLLayer_validate
         layer.drawableSize =
             CGSizeMake((*layer.buffer).width,
                        (*layer.buffer).height);
-        [layer startDisplayLink];
+        [layer startRedraw];
     } else {
         layer.ctx = NULL;
-        [layer stopDisplayLink];
+        [layer stopRedraw:YES];
     }
 }
 
@@ -332,9 +324,11 @@ Java_sun_java2d_metal_MTLLayer_blitTexture
     J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_blitTexture");
     MTLLayer *layer = jlong_to_ptr(layerPtr);
     MTLContext * ctx = layer.ctx;
-    if (layer == NULL || ctx == NULL) {
+    if (layer == nil || ctx == nil) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_blit : Layer or Context is null");
-        [layer stopDisplayLink];
+        if (layer != nil) {
+            [layer stopRedraw:YES];
+        }
         return;
     }
 
