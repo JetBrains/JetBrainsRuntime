@@ -262,6 +262,8 @@ void report_untested(const char* file, int line, const char* message) {
 void report_java_out_of_memory(const char* message) {
   static int out_of_memory_reported = 0;
 
+  VMError::record_oome_stack(message);
+
   // A number of threads may attempt to report OutOfMemoryError at around the
   // same time. To avoid dumping the heap or executing the data collection
   // commands multiple times we just do it once when the first threads reports
