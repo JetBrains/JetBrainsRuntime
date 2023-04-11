@@ -69,6 +69,12 @@ class VMError : public AllStatic {
   // used for reattempt step logic
   static const size_t _reattempt_required_stack_headroom;
 
+  static const int   OOME_STACKTRACE_BUFSIZE = 16*K;
+  static const int   OOME_STACKTRACE_COUNT   = 4;
+  static char        _oome_stacktrace[OOME_STACKTRACE_COUNT][OOME_STACKTRACE_BUFSIZE];
+  static int         _oome_free_index;
+  static void *      _ballast_memory;
+
   // Thread id of the first error. We must be able to handle native thread,
   // so use thread id instead of Thread* to identify thread.
   static volatile intptr_t _first_error_tid;
@@ -220,6 +226,12 @@ public:
   static int prepare_log_file(const char* pattern, const char* default_pattern, bool overwrite_existing, char* buf, size_t buflen);
 
   static bool was_assert_poison_crash(const void* sigInfo);
+
+  static void init();
+  static void record_oome_stack(const char *message);
+  static void print_oome_stacks(outputStream *st);
+  static void print_classloaders_stats(outputStream *st);
+  static void print_dup_classes(outputStream *st);
 };
 
 class VMErrorCallback {
