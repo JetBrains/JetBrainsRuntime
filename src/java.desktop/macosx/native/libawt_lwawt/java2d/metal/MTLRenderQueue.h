@@ -99,7 +99,6 @@ enum {
 
 MTLContext *MTLRenderQueue_GetCurrentContext();
 BMTLSDOps *MTLRenderQueue_GetCurrentDestination();
-void commitEncodedCommands();
 
 extern jint mtlPreviousOp;
 
