@@ -159,6 +159,7 @@ Monitor* JVMCI_lock                   = nullptr;
 Monitor* JVMCIRuntime_lock            = nullptr;
 #endif
 
+Mutex*   OOMEStacks_lock              = nullptr;
 
 #define MAX_NUM_MUTEX 128
 static Mutex* _mutex_array[MAX_NUM_MUTEX];
@@ -364,6 +365,8 @@ void mutex_init() {
   // JVMCIRuntime_lock must be acquired before JVMCI_lock to avoid deadlock
   MUTEX_DEFL(JVMCI_lock                     , PaddedMonitor, JVMCIRuntime_lock);
 #endif
+
+  MUTEX_DEFN(OOMEStacks_lock                , PaddedMutex  , safepoint);
 }
 
 #undef MUTEX_DEFL
