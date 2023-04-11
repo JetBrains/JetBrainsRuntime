@@ -154,6 +154,8 @@ Monitor* JVMCI_lock                   = nullptr;
 Monitor* JVMCIRuntime_lock            = nullptr;
 #endif
 
+Mutex*   OOMEStacks_lock              = nullptr;
+
 // Only one RecursiveMutex
 RecursiveMutex* MultiArray_lock       = nullptr;
 
@@ -355,6 +357,7 @@ void mutex_init() {
   // JVMCIRuntime_lock must be acquired before JVMCI_lock to avoid deadlock
   MUTEX_DEFL(JVMCI_lock                     , PaddedMonitor, JVMCIRuntime_lock);
 #endif
+  MUTEX_DEFN(OOMEStacks_lock                , PaddedMutex  , safepoint);
 
   // Allocate RecursiveMutex
   MultiArray_lock = new RecursiveMutex();
