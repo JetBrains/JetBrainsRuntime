@@ -31,31 +31,14 @@
 #import "common.h"
 
 @interface MTLLayer : CAMetalLayer
-{
-@private
-    jobject javaLayer;
-
-    // intermediate buffer, used the RQ lock to synchronize
-    MTLContext* ctx;
-    float bufferWidth;
-    float bufferHeight;
-    id<MTLTexture>* buffer;
-    int nextDrawableCount;
-    int topInset;
-    int leftInset;
-    CVDisplayLinkRef displayLink;
-}
 
 @property (nonatomic) jobject javaLayer;
 @property (readwrite, assign) MTLContext* ctx;
-@property (readwrite, assign) float bufferWidth;
-@property (readwrite, assign) float bufferHeight;
 @property (readwrite, assign) id<MTLTexture>* buffer;
-@property (readwrite, assign) int nextDrawableCount;
+@property (readwrite, atomic) int nextDrawableCount;
 @property (readwrite, assign) int topInset;
 @property (readwrite, assign) int leftInset;
-@property (readwrite, assign) CVDisplayLinkRef displayLink;
-@property (readwrite, atomic) int displayLinkCount;
+@property (readwrite, atomic) int redrawCount;
 @property (readwrite, atomic) int displayLinkFailCount;
 
 - (id) initWithJavaLayer:(jobject)layer;
@@ -70,8 +53,9 @@
 - (void) blitCallback;
 - (void) display;
 - (void) redraw;
-- (void) startDisplayLink;
-- (void) stopDisplayLink;
+- (void) startRedraw;
+- (void) stopRedraw:(BOOL)force;
+- (void) commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
 @end
 
 #endif /* MTLLayer_h_Included */
