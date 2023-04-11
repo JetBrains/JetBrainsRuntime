@@ -177,15 +177,7 @@ static void initTemplatePipelineDescriptors() {
 
     // Complete the rendering to the stencil buffer ------------
     [mtlc.encoderManager endEncoder];
-
-    MTLCommandBufferWrapper* cbWrapper = [mtlc pullCommandBufferWrapper];
-
-    id<MTLCommandBuffer> commandBuffer = [cbWrapper getCommandBuffer];
-    [commandBuffer addCompletedHandler:^(id <MTLCommandBuffer> c) {
-        [cbWrapper release];
-    }];
-
-    [commandBuffer commit];
+    [mtlc commitCommandBuffer:NO display:NO];
     _stencilMaskGenerationInProgress = NO;
     _stencilMaskGenerationStarted = NO;
     _dstOps = dstOps;
