@@ -26,6 +26,7 @@
 
 #include "precompiled.hpp"
 #include "cds/metaspaceShared.hpp"
+#include "classfile/classLoaderDataGraph.hpp"
 #include "code/codeCache.hpp"
 #include "compiler/compileBroker.hpp"
 #include "compiler/disassembler.hpp"
@@ -1315,6 +1316,17 @@ void VMError::report(outputStream* st, bool _verbose) {
   JNIHandles::print_on_unsafe(st);
   JNIHandles::print_memory_usage_on(st);
 
+  STEP("OOME stack traces")
+  st->print_cr("OOME stack traces (most recent first):");
+  print_oome_stacks(st);
+
+  STEP("Classloader stats")
+  st->print_cr("Classloader memory used:");
+  FREE_C_HEAP_ARRAY(void*, _ballast_memory);
+  _ballast_memory = nullptr;
+  print_classloaders_stats(st);
+  print_dup_classes(st); // do it separately in case we're low on memory
+
   STEP_IF("printing system", _verbose)
     st->print_cr("---------------  S Y S T E M  ---------------");
     st->cr();
@@ -2159,4 +2171,179 @@ VMErrorCallbackMark::VMErrorCallbackMark(VMErrorCallback* callback)
 VMErrorCallbackMark::~VMErrorCallbackMark() {
   assert(_thread->_vm_error_callbacks != nullptr, "Popped too far");
   _thread->_vm_error_callbacks = _thread->_vm_error_callbacks->_next;
+}
+
+char   VMError::_oome_stacktrace[OOME_STACKTRACE_COUNT][OOME_STACKTRACE_BUFSIZE];
+int    VMError::_oome_free_index;
+void * VMError::_ballast_memory;
+
+void VMError::init() {
+  _oome_free_index = 0;
+  // This will be released before dumping classes statistics as the latter
+  // may need to allocate some memory in an OOME situation.
+  _ballast_memory = NEW_C_HEAP_ARRAY(void*, 36000*4, mtStatistics);
+}
+
+void VMError::record_oome_stack(const char *message) {
+  MutexLocker ml(OOMEStacks_lock);
+
+  static char buf[O_BUFLEN];
+
+  stringStream st(_oome_stacktrace[_oome_free_index], OOME_STACKTRACE_BUFSIZE);
+  st.print_cr("OutOfMemoryError(\"%s\"):", message);
+  if (os::platform_print_native_stack(&st, _context, buf, sizeof(buf))) {
+    // We have printed the native stack in platform-specific code
+    // Windows/x64 needs special handling.
+  } else {
+    print_native_stack(&st, os::current_frame(), Thread::current(), true, -1, buf, sizeof(buf));
+    _print_native_stack_used = true;
+  }
+
+  st.cr();
+
+  if (Thread::current()->is_Java_thread()) {
+    print_stack_trace(&st, JavaThread::current(), buf, sizeof(buf));
+  }
+
+  _oome_free_index = (_oome_free_index + 1) % OOME_STACKTRACE_COUNT;
+}
+
+void VMError::print_oome_stacks(outputStream *st) {
+  int index = _oome_free_index == 0 ? OOME_STACKTRACE_COUNT - 1 : _oome_free_index - 1;
+
+  for (int i = 0; i < OOME_STACKTRACE_COUNT; i++) {
+    const char * const trace = _oome_stacktrace[index];
+    if (strcmp(trace, "") != 0) st->print_raw_cr(trace);
+    index = index == 0 ? OOME_STACKTRACE_COUNT - 1 : index - 1;
+  }
+}
+
+class CLDCounterClosure : public CLDClosure {
+public:
+    // Loader Klass -> memory used in words
+    using TABLE = ResizeableResourceHashtable<Klass*, size_t, AnyObj::C_HEAP, mtStatistics>;
+
+private:
+    TABLE& _loaded_size;
+
+public:
+    explicit CLDCounterClosure(TABLE& loaded_size) : _loaded_size(loaded_size) {}
+
+    void do_cld(ClassLoaderData* cld) override {
+      Klass * const loader = cld->class_loader_klass();
+      ClassLoaderMetaspace * const ms = cld->metaspace_or_null();
+      if (ms != nullptr) {
+        size_t used_words = 0;
+        ms->usage_numbers(&used_words, nullptr, nullptr);
+
+        const size_t * const new_size_ptr = _loaded_size.get(loader);
+        size_t new_size = new_size_ptr == nullptr
+            ? used_words
+            : *new_size_ptr + used_words;
+        _loaded_size.put(loader, new_size);
+      }
+    }
+};
+
+static int compare_by_size(Pair<Klass *, size_t>* p1, Pair<Klass *, size_t>* p2) {
+  return p2->second == p1->second
+         ? 0
+         : p2->second > p1->second ? 1 : -1;
+}
+
+void VMError::print_classloaders_stats(outputStream *st) {
+  if (_thread) {
+    ResourceMark rm(_thread);
+    MutexLocker ml(_thread, ClassLoaderDataGraph_lock);
+
+    CLDCounterClosure::TABLE sizes(10, 100);
+    CLDCounterClosure counter(sizes);
+    ClassLoaderDataGraph::cld_do(&counter);
+    GrowableArray<Pair<Klass *, size_t>> loaders_stats;
+    sizes.iterate_all([&] (Klass* loader_klass, size_t total_words) {
+      loaders_stats.push(Pair<Klass *, size_t>(loader_klass, total_words));
+    });
+
+    loaders_stats.sort(compare_by_size);
+
+    for (const auto loaders_stat : loaders_stats) {
+      Klass * const loader_klass = loaders_stat.first;
+      const size_t total_words = loaders_stat.second;
+      const char *name = loader_klass != nullptr
+          ? loader_klass->external_name()
+          : BOOTSTRAP_LOADER_NAME;
+      const size_t total_bytes = total_words * BytesPerWord;
+      st->print_cr("Loader %-80s: " SIZE_FORMAT "%s",
+                   name,
+                   byte_size_in_proper_unit(total_bytes),
+                   proper_unit_for_byte_size(total_bytes));
+    }
+
+    st->cr();
+  } else {
+    st->print_cr("Not available (crashed in non-Java thread)");
+  }
+}
+
+class DuplicateKlassClosure : public KlassClosure {
+    static bool klass_equals(Klass* const & klass1, Klass* const & klass2) {
+      return strcmp(klass1->external_name(), klass2->external_name()) == 0;
+    }
+
+    static unsigned klass_hash(Klass* const &  k) {
+      int h = 0;
+      const char* p = k->external_name();
+      while (*p != '\0') {
+        h = 31 * h + *p;
+        p++;
+      }
+      return h;
+    }
+
+public:
+    // Klass -> number times loaded
+    using TABLE = ResizeableResourceHashtable<Klass*, size_t, AnyObj::C_HEAP,
+                                              mtStatistics, &klass_hash, &klass_equals>;
+
+private:
+    TABLE& _classes_count;
+
+public:
+    explicit DuplicateKlassClosure(TABLE& classes_count) : _classes_count(classes_count) {}
+
+    void do_klass(Klass* klass) override {
+      const size_t * const new_count_ptr = _classes_count.get(klass);
+      const size_t new_count = new_count_ptr != nullptr ? *new_count_ptr + 1 : 1;
+      _classes_count.put(klass, new_count);
+    }
+};
+
+void VMError::print_dup_classes(outputStream *st) {
+  if (_thread) {
+    ResourceMark rm(_thread);
+    MutexLocker ma(_thread, MultiArray_lock);
+    MutexLocker mcld(_thread, ClassLoaderDataGraph_lock);
+
+    DuplicateKlassClosure::TABLE classes_count(100, 200);
+    DuplicateKlassClosure counter(classes_count);
+    ClassLoaderDataGraph::loaded_classes_do(&counter);
+
+    GrowableArray<Pair<Klass *, size_t>> dup_classes;
+    classes_count.iterate_all([&] (Klass* const name, size_t count) {
+        if (count > 1) dup_classes.push(Pair<Klass *, size_t>(name, count));
+    });
+
+    if (dup_classes.length() > 0) {
+      st->print_cr("Classes loaded by more than one classloader:");
+      dup_classes.sort(compare_by_size);
+      for (const auto dup : dup_classes) {
+        const char * const name = dup.first->external_name();
+        const size_t size = dup.first->size();
+        const size_t count = dup.second;
+        st->print_cr("Class %-80s: loaded " SIZE_FORMAT " times (x " SIZE_FORMAT "B)",
+                     name, count, size);
+      }
+      st->cr();
+    }
+  }
 }
