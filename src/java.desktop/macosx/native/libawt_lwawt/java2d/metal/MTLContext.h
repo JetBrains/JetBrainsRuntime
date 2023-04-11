@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@
 #include "MTLSamplerManager.h"
 
 @class MTLStencilManager;
+@class MTLLayer;
 
 // Constant from
 // https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf
@@ -93,7 +94,7 @@
  */
 + (MTLContext*) setSurfacesEnv:(JNIEnv*)env src:(jlong)pSrc dst:(jlong)pDst;
 
-- (id)initWithDevice:(id<MTLDevice>)d shadersLib:(NSString*)shadersLib;
+- (id)initWithDevice:(jint)displayID shadersLib:(NSString*)shadersLib;
 - (void)dealloc;
 
 /**
@@ -229,6 +230,9 @@
 
 - (id<MTLCommandBuffer>)createCommandBuffer;
 - (id<MTLCommandBuffer>)createBlitCommandBuffer;
+- (void)commitCommandBuffer:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
+- (void)startRedraw:(MTLLayer*)layer;
+- (void)stopRedraw:(MTLLayer*)layer;
 @end
 
 /**
