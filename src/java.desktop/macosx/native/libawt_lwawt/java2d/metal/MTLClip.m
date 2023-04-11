@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -174,15 +174,7 @@ static void initTemplatePipelineDescriptors() {
 
     // Complete the rendering to the stencil buffer ------------
     [mtlc.encoderManager endEncoder];
-
-    MTLCommandBufferWrapper* cbWrapper = [mtlc pullCommandBufferWrapper];
-
-    id<MTLCommandBuffer> commandBuffer = [cbWrapper getCommandBuffer];
-    [commandBuffer addCompletedHandler:^(id <MTLCommandBuffer> c) {
-        [cbWrapper release];
-    }];
-
-    [commandBuffer commit];
+    [mtlc commitCommandBuffer:NO display:NO];
     _stencilMaskGenerationInProgress = NO;
     _stencilMaskGenerationStarted = NO;
     _dstOps = dstOps;
