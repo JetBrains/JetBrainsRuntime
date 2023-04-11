@@ -62,6 +62,12 @@ class VMError : public AllStatic {
   static int         _current_step;
   static const char* _current_step_info;
 
+  static const int   OOME_STACKTRACE_BUFSIZE = 16*K;
+  static const int   OOME_STACKTRACE_COUNT   = 4;
+  static char        _oome_stacktrace[OOME_STACKTRACE_COUNT][OOME_STACKTRACE_BUFSIZE];
+  static int         _oome_free_index;
+  static void *      _ballast_memory;
+
   // Thread id of the first error. We must be able to handle native thread,
   // so use thread id instead of Thread* to identify thread.
   static volatile intptr_t _first_error_tid;
@@ -184,5 +190,11 @@ public:
   // Needed when printing signal handlers.
   NOT_WINDOWS(static const void* crash_handler_address;)
 
+  static void init();
+
+  static void record_oome_stack(const char *message);
+  static void print_oome_stacks(outputStream *st);
+  static void print_classloaders_stats(outputStream *st);
+  static void print_dup_classes(outputStream *st);
 };
 #endif // SHARE_UTILITIES_VMERROR_HPP
