@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 
 #include <stdlib.h>
+#import <ThreadUtilities.h>
 
 #include "sun_java2d_SunGraphics2D.h"
 
@@ -33,9 +34,11 @@
 #import "MTLSamplerManager.h"
 #import "MTLStencilManager.h"
 
+#define KEEP_ALIVE_COUNT 4
 
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
-
+extern BOOL isDisplaySyncEnabled();
+        
 static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
         {{-1.0, 1.0}, {0.0, 0.0}},
         {{1.0, 1.0}, {1.0, 0.0}},
@@ -104,16 +107,21 @@ MTLTransform* tempTransform = nil;
 
 @end
 
+
 @implementation MTLContext {
     MTLCommandBufferWrapper * _commandBufferWrapper;
+    CVDisplayLinkRef _displayLink;
+    NSMutableSet* _layers;
+    int _displayLinkCount;
+    NSLock* _dlLock;
 
     MTLComposite *     _composite;
     MTLPaint *         _paint;
     MTLTransform *     _transform;
     MTLTransform *     _tempTransform;
     MTLClip *          _clip;
-    NSObject*          _bufImgOp; // TODO: pass as parameter of IsoBlit
 
+    NSObject*          _bufImgOp; // TODO: pass as parameter of IsoBlit
     EncoderManager * _encoderManager;
     MTLSamplerManager * _samplerManager;
     MTLStencilManager * _stencilManager;
@@ -127,11 +135,16 @@ MTLTransform* tempTransform = nil;
 
 extern void initSamplers(id<MTLDevice> device);
 
-- (id)initWithDevice:(id<MTLDevice>)d shadersLib:(NSString*)shadersLib {
+- (id)initWithDevice:(jint)displayID shadersLib:(NSString*)shadersLib {
     self = [super init];
     if (self) {
         // Initialization code here.
-        device = d;
+        device = CGDirectDisplayCopyCurrentMetalDevice(displayID);
+        if (device == nil) {
+            J2dRlsTraceLn1(J2D_TRACE_ERROR, "MTLContext.initWithDevice(): Cannot create device from displayID=%d",
+                           displayID);
+            return nil;
+        }
 
         pipelineStateStorage = [[MTLPipelineStatesStorage alloc] initWithDevice:device shaderLibPath:shadersLib];
         if (pipelineStateStorage == nil) {
@@ -162,6 +175,13 @@ extern void initSamplers(id<MTLDevice> device);
         blitCommandQueue = [device newCommandQueue];
 
         _tempTransform = [[MTLTransform alloc] init];
+        if (isDisplaySyncEnabled()) {
+            _layers = [[NSMutableArray alloc] init];
+            _displayLinkCount = 0;
+            _dlLock = [[NSLock alloc] init];
+            CVDisplayLinkCreateWithCGDisplay(displayID, &_displayLink);
+            CVDisplayLinkSetOutputCallback(_displayLink, &mtlDisplayLinkCallback, (__bridge void *) self);
+        }
     }
     return self;
 }
@@ -215,6 +235,26 @@ extern void initSamplers(id<MTLDevice> device);
     if (_clip != nil) {
         [_clip release];
         _clip = nil;
+    }
+
+    if (_layers != nil) {
+        [_layers release];
+        _layers = nil;
+    }
+
+    if (_displayLink != NULL) {
+        if (CVDisplayLinkIsRunning(_displayLink)) {
+            CVDisplayLinkStop(_displayLink);
+            J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStop: ctx=%p", self);
+        }
+        CVDisplayLinkRelease(_displayLink);
+        _displayLink = NULL;
+    }
+
+    if (_dlLock != nil) {
+        [_dlLock unlock];
+        [_dlLock release];
+        _dlLock = nil;
     }
 
     [super dealloc];
@@ -487,6 +527,102 @@ extern void initSamplers(id<MTLDevice> device);
 
 -(NSObject*)getBufImgOp {
     return _bufImgOp;
+}
+
+- (void)commitCommandBuffer:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay {
+    [self.encoderManager endEncoder];
+    BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+    MTLLayer *layer = nil;
+    if (dstOps != NULL) {
+        MTLSDOps *dstMTLOps = (MTLSDOps *) dstOps->privOps;
+        layer = (MTLLayer *) dstMTLOps->layer;
+    }
+
+    if (layer != nil) {
+        [layer commitCommandBuffer:self wait:waitUntilCompleted display:updateDisplay];
+    } else {
+        MTLCommandBufferWrapper * cbwrapper = [self pullCommandBufferWrapper];
+        if (cbwrapper != nil) {
+            id <MTLCommandBuffer> commandbuf =[cbwrapper getCommandBuffer];
+            [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+                [cbwrapper release];
+            }];
+            [commandbuf commit];
+            if (waitUntilCompleted) {
+                [commandbuf waitUntilCompleted];
+            }
+        }
+    }
+}
+
+- (void) redraw {
+    AWT_ASSERT_APPKIT_THREAD;
+    [_dlLock lock];
+    @try {
+        for (MTLLayer *layer in _layers) {
+            [layer setNeedsDisplay];
+        }
+        if (_displayLinkCount > 0) {
+            _displayLinkCount--;
+        } else {
+            if (_layers.count > 0) {
+                [_layers removeAllObjects];
+            }
+            if (CVDisplayLinkIsRunning(_displayLink)) {
+                CVDisplayLinkStop(_displayLink);
+                J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStop: ctx=%p", self);
+            }
+        }
+    } @finally {
+        [_dlLock unlock];
+    }
+}
+
+CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* now, const CVTimeStamp* outputTime, CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* displayLinkContext)
+{
+    J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_mtlDisplayLinkCallback: ctx=%p", displayLinkContext);
+    @autoreleasepool {
+        MTLContext *ctx = (__bridge MTLContext *)displayLinkContext;
+        [ctx performSelectorOnMainThread:@selector(redraw) withObject:nil waitUntilDone:NO];
+    }
+    return kCVReturnSuccess;
+}
+
+- (void)startRedraw:(MTLLayer*)layer {
+    [_dlLock lock];
+    layer.redrawCount++;
+    J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_startRedraw: ctx=%p layer=%p", self, layer);
+    @try {
+        _displayLinkCount = KEEP_ALIVE_COUNT;
+        [_layers addObject:layer];
+        if (_displayLink != NULL && !CVDisplayLinkIsRunning(_displayLink)) {
+            CVDisplayLinkStart(_displayLink);
+            J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStart: ctx=%p", self);
+        }
+    } @finally {
+        [_dlLock unlock];
+    }
+}
+
+- (void)stopRedraw:(MTLLayer*) layer {
+    J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_stopRedraw: ctx=%p layer=%p", self, layer);
+    [_dlLock lock];
+    @try {
+        if (_displayLink != nil) {
+            if (--layer.redrawCount <= 0) {
+                [_layers removeObject:layer];
+                layer.redrawCount = 0;
+            }
+            if (_layers.count == 0 && _displayLinkCount == 0) {
+                if (CVDisplayLinkIsRunning(_displayLink)) {
+                    CVDisplayLinkStop(_displayLink);
+                    J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStop: ctx=%p", self);
+                }
+            }
+        }
+    } @finally {
+        [_dlLock unlock];
+    }
 }
 
 @end
