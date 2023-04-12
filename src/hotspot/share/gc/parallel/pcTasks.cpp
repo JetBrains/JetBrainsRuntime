@@ -137,9 +137,10 @@ void RefProcTaskProxy::do_it(GCTaskManager* manager, uint which)
   ParCompactionManager* cm =
     ParCompactionManager::gc_thread_compaction_manager(which);
   ParCompactionManager::MarkAndPushClosure mark_and_push_closure(cm);
+  BarrierEnqueueDiscoveredFieldClosure enqueue;
   ParCompactionManager::FollowStackClosure follow_stack_closure(cm);
   _rp_task.work(_work_id, *PSParallelCompact::is_alive_closure(),
-                mark_and_push_closure, follow_stack_closure);
+                mark_and_push_closure, enqueue, follow_stack_closure);
 }
 
 //

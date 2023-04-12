@@ -5068,8 +5068,9 @@ void CMSRefProcTaskProxy::work(uint worker_id) {
   CMSParDrainMarkingStackClosure par_drain_stack(_collector, _span,
                                                  _mark_bit_map,
                                                  work_queue(worker_id));
+  BarrierEnqueueDiscoveredFieldClosure enqueue;
   CMSIsAliveClosure is_alive_closure(_span, _mark_bit_map);
-  _task.work(worker_id, is_alive_closure, par_keep_alive, par_drain_stack);
+  _task.work(worker_id, is_alive_closure, par_keep_alive, enqueue, par_drain_stack);
   if (_task.marks_oops_alive()) {
     do_work_steal(worker_id, &par_drain_stack, &par_keep_alive,
                   _collector->hash_seed(worker_id));
@@ -5167,6 +5168,7 @@ void CMSCollector::refProcessingWork() {
     // Setup keep_alive and complete closures.
     CMSKeepAliveClosure cmsKeepAliveClosure(this, _span, &_markBitMap,
                                             &_markStack, false /* !preclean */);
+    BarrierEnqueueDiscoveredFieldClosure cmsEnqueue;
     CMSDrainMarkingStackClosure cmsDrainMarkingStackClosure(this,
                                   _span, &_markBitMap, &_markStack,
                                   &cmsKeepAliveClosure, false /* !preclean */);
@@ -5192,12 +5194,14 @@ void CMSCollector::refProcessingWork() {
       CMSRefProcTaskExecutor task_executor(*this);
       stats = rp->process_discovered_references(&_is_alive_closure,
                                         &cmsKeepAliveClosure,
+                                        &cmsEnqueue,
                                         &cmsDrainMarkingStackClosure,
                                         &task_executor,
                                         &pt);
     } else {
       stats = rp->process_discovered_references(&_is_alive_closure,
                                         &cmsKeepAliveClosure,
+                                        &cmsEnqueue,
                                         &cmsDrainMarkingStackClosure,
                                         NULL,
                                         &pt);

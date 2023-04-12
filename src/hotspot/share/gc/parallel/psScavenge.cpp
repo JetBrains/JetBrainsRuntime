@@ -145,9 +145,10 @@ void PSRefProcTaskProxy::do_it(GCTaskManager* manager, uint which)
     PSPromotionManager::gc_thread_promotion_manager(which);
   assert(promotion_manager != NULL, "sanity check");
   PSKeepAliveClosure keep_alive(promotion_manager);
+  BarrierEnqueueDiscoveredFieldClosure enqueue;
   PSEvacuateFollowersClosure evac_followers(promotion_manager);
   PSIsAliveClosure is_alive;
-  _rp_task.work(_work_id, is_alive, keep_alive, evac_followers);
+  _rp_task.work(_work_id, is_alive, keep_alive, enqueue, evac_followers);
 }
 
 class PSRefProcTaskExecutor: public AbstractRefProcTaskExecutor {
@@ -405,17 +406,18 @@ bool PSScavenge::invoke_no_policy() {
       reference_processor()->setup_policy(false); // not always_clear
       reference_processor()->set_active_mt_degree(active_workers);
       PSKeepAliveClosure keep_alive(promotion_manager);
+      BarrierEnqueueDiscoveredFieldClosure enqueue;
       PSEvacuateFollowersClosure evac_followers(promotion_manager);
       ReferenceProcessorStats stats;
       ReferenceProcessorPhaseTimes pt(&_gc_timer, reference_processor()->max_num_queues());
       if (reference_processor()->processing_is_mt()) {
         PSRefProcTaskExecutor task_executor;
         stats = reference_processor()->process_discovered_references(
-          &_is_alive_closure, &keep_alive, &evac_followers, &task_executor,
+          &_is_alive_closure, &keep_alive, &enqueue, &evac_followers, &task_executor,
           &pt);
       } else {
         stats = reference_processor()->process_discovered_references(
-          &_is_alive_closure, &keep_alive, &evac_followers, NULL, &pt);
+          &_is_alive_closure, &keep_alive, &enqueue, &evac_followers, NULL, &pt);
       }
 
       _gc_tracer.report_gc_reference_stats(stats);

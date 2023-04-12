@@ -58,10 +58,12 @@ G1FullGCReferenceProcessingExecutor::G1RefProcTaskProxy::G1RefProcTaskProxy(Proc
 void G1FullGCReferenceProcessingExecutor::G1RefProcTaskProxy::work(uint worker_id) {
   G1FullGCMarker* marker = _collector->marker(worker_id);
   G1IsAliveClosure is_alive(_collector->mark_bitmap());
+  BarrierEnqueueDiscoveredFieldClosure enqueue;
   G1FullKeepAliveClosure keep_alive(marker);
   _proc_task.work(worker_id,
                   is_alive,
                   keep_alive,
+                  enqueue,
                   *marker->stack_closure());
 }
 
@@ -84,6 +86,7 @@ void G1FullGCReferenceProcessingExecutor::execute(STWGCTimer* timer, G1FullGCTra
   G1FullGCMarker* marker = _collector->marker(0);
   G1IsAliveClosure is_alive(_collector->mark_bitmap());
   G1FullKeepAliveClosure keep_alive(marker);
+  BarrierEnqueueDiscoveredFieldClosure enqueue;
   ReferenceProcessorPhaseTimes pt(timer, _reference_processor->max_num_queues());
   AbstractRefProcTaskExecutor* executor = _reference_processor->processing_is_mt() ? this : NULL;
 
@@ -92,6 +95,7 @@ void G1FullGCReferenceProcessingExecutor::execute(STWGCTimer* timer, G1FullGCTra
   const ReferenceProcessorStats& stats =
       _reference_processor->process_discovered_references(&is_alive,
                                                           &keep_alive,
+                                                          &enqueue,
                                                           marker->stack_closure(),
                                                           executor,
                                                           &pt);

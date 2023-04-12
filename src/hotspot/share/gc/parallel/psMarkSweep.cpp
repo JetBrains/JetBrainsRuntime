@@ -534,9 +534,10 @@ void PSMarkSweep::mark_sweep_phase1(bool clear_all_softrefs) {
 
     ref_processor()->setup_policy(clear_all_softrefs);
     ReferenceProcessorPhaseTimes pt(_gc_timer, ref_processor()->max_num_queues());
+    BarrierEnqueueDiscoveredFieldClosure enqueue;
     const ReferenceProcessorStats& stats =
       ref_processor()->process_discovered_references(
-        is_alive_closure(), mark_and_push_closure(), follow_stack_closure(), NULL, &pt);
+        is_alive_closure(), mark_and_push_closure(), &enqueue, follow_stack_closure(), NULL, &pt);
     gc_tracer()->report_gc_reference_stats(stats);
     pt.print_all_references();
   }

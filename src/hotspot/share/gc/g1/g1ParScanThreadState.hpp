@@ -105,6 +105,12 @@ public:
   template <class T> void do_oop_ext(T* ref);
   template <class T> void push_on_queue(T* ref);
 
+  // Apply the post barrier to the given reference field. Enqueues the card of p
+  // if the barrier does not filter out the reference for some reason (e.g.
+  // p and q are in the same region, p is in survivor, p is in collection set)
+  // To be called during GC if nothing particular about p and obj are known.
+  template <class T> void write_ref_field_post(T* p, oop obj);
+
   template <class T> void update_rs(HeapRegion* from, T* p, oop o) {
     assert(!HeapRegion::is_in_same_region(p, o), "Caller should have filtered out cross-region references already.");
     // If the field originates from the to-space, we don't need to include it

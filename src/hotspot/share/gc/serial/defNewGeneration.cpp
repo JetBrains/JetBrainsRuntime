@@ -619,11 +619,12 @@ void DefNewGeneration::collect(bool   full,
   evacuate_followers.do_void();
 
   FastKeepAliveClosure keep_alive(this, &scan_weak_ref);
+  BarrierEnqueueDiscoveredFieldClosure enqueue;
   ReferenceProcessor* rp = ref_processor();
   rp->setup_policy(clear_all_soft_refs);
   ReferenceProcessorPhaseTimes pt(_gc_timer, rp->max_num_queues());
   const ReferenceProcessorStats& stats =
-  rp->process_discovered_references(&is_alive, &keep_alive, &evacuate_followers,
+  rp->process_discovered_references(&is_alive, &keep_alive, &enqueue, &evacuate_followers,
                                     NULL, &pt);
   gc_tracer.report_gc_reference_stats(stats);
   gc_tracer.report_tenuring_threshold(tenuring_threshold());

@@ -612,15 +612,16 @@ public:
     HandleMark hm;
     assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
     ShenandoahHeap* heap = ShenandoahHeap::heap();
+    BarrierEnqueueDiscoveredFieldClosure enqueue;
     ShenandoahCMDrainMarkingStackClosure complete_gc(worker_id, _terminator);
     if (heap->has_forwarded_objects()) {
       ShenandoahForwardedIsAliveClosure is_alive;
       ShenandoahCMKeepAliveUpdateClosure keep_alive(heap->concurrent_mark()->get_queue(worker_id));
-      _proc_task.work(worker_id, is_alive, keep_alive, complete_gc);
+      _proc_task.work(worker_id, is_alive, keep_alive, enqueue, complete_gc);
     } else {
       ShenandoahIsAliveClosure is_alive;
       ShenandoahCMKeepAliveClosure keep_alive(heap->concurrent_mark()->get_queue(worker_id));
-      _proc_task.work(worker_id, is_alive, keep_alive, complete_gc);
+      _proc_task.work(worker_id, is_alive, keep_alive, enqueue, complete_gc);
     }
   }
 };
@@ -699,6 +700,7 @@ void ShenandoahConcurrentMark::weak_refs_work_doit(bool full_gc) {
   // times, we need to be able to reuse the terminator.
   uint serial_worker_id = 0;
   ShenandoahTaskTerminator terminator(1, task_queues());
+  BarrierEnqueueDiscoveredFieldClosure enqueue;
   ShenandoahCMDrainMarkingStackClosure complete_gc(serial_worker_id, &terminator, /* reset_terminator = */ true);
 
   ShenandoahRefProcTaskExecutor executor(workers);
@@ -712,14 +714,14 @@ void ShenandoahConcurrentMark::weak_refs_work_doit(bool full_gc) {
       ShenandoahCMKeepAliveUpdateClosure keep_alive(get_queue(serial_worker_id));
       const ReferenceProcessorStats& stats =
         rp->process_discovered_references(is_alive.is_alive_closure(), &keep_alive,
-                                          &complete_gc, &executor,
+                                          &enqueue, &complete_gc, &executor,
                                           &pt);
        _heap->tracer()->report_gc_reference_stats(stats);
     } else {
       ShenandoahCMKeepAliveClosure keep_alive(get_queue(serial_worker_id));
       const ReferenceProcessorStats& stats =
         rp->process_discovered_references(is_alive.is_alive_closure(), &keep_alive,
-                                          &complete_gc, &executor,
+                                          &enqueue, &complete_gc, &executor,
                                           &pt);
       _heap->tracer()->report_gc_reference_stats(stats);
     }
