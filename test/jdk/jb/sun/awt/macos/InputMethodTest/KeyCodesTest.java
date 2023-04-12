@@ -63,7 +63,7 @@ public class KeyCodesTest implements Runnable {
         verify(';', VK_SEMICOLON, "com.apple.keylayout.ABC", VK_SEMICOLON);
         verify('<', VK_LESS, "com.apple.keylayout.French-PC", VK_BACK_QUOTE);
         verify('=', VK_EQUALS, "com.apple.keylayout.ABC", VK_EQUALS);
-        // TODO: figure out which keyboard layout has VK_GREATER as a key on the primary layer
+        verify('>', VK_GREATER, "com.apple.keylayout.Turkish", VK_CLOSE_BRACKET);
         verify('@', VK_AT, "com.apple.keylayout.Norwegian", VK_BACK_SLASH);
         verify('[', VK_OPEN_BRACKET, "com.apple.keylayout.ABC", VK_OPEN_BRACKET);
         verify('\\', VK_BACK_SLASH, "com.apple.keylayout.ABC", VK_BACK_SLASH);

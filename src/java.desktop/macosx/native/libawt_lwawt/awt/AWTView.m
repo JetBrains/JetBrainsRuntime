@@ -546,7 +546,13 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     CFDataRef uchr = (CFDataRef)TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData);
 
     if (uchr == nil) {
-        return [event charactersIgnoringModifiers];
+        TISInputSourceRef currentOverride = TISCopyInputMethodKeyboardLayoutOverride();
+        if (currentOverride != nil) {
+            uchr = (CFDataRef) TISGetInputSourceProperty(currentOverride, kTISPropertyUnicodeKeyLayoutData);
+        }
+        if (uchr == nil) {
+            return [event charactersIgnoringModifiers];
+        }
     }
 
     UInt32 deadKeyState = 0;

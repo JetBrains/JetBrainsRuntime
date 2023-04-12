@@ -60,15 +60,21 @@
 #define KL_STANDARD java_awt_event_KeyEvent_KEY_LOCATION_STANDARD
 #define KL_NUMPAD   java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD
 #define KL_UNKNOWN  java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN
-static struct _key
+
+struct KeyTableEntry
 {
     unsigned short keyCode;
     BOOL postsTyped;
     BOOL variesBetweenLayouts;
     jint javaKeyLocation;
     jint javaKeyCode;
-}
-const keyTable[] =
+};
+
+static const struct KeyTableEntry unknownKeyEntry = {
+    0xFFFF, NO, NO, KL_UNKNOWN, java_awt_event_KeyEvent_VK_UNDEFINED
+};
+
+static const struct KeyTableEntry keyTable[] =
 {
     {0x00, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_A},
     {0x01, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_S},
@@ -164,8 +170,8 @@ const keyTable[] =
     {0x5B, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD8},
     {0x5C, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD9},
     {0x5D, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_BACK_SLASH}, // This is a combo yen/backslash on JIS keyboards.
-    {0x5E, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_UNDERSCORE},
-    {0x5F, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_COMMA},
+    {0x5E, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_UNDERSCORE}, // This is the key to the left of Right Shift on JIS keyboards.
+    {0x5F, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_COMMA},      // This is a comma on the JIS keypad.
     {0x60, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F5},
     {0x61, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F6},
     {0x62, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F7},
@@ -198,6 +204,15 @@ const keyTable[] =
     {0x7D, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_DOWN},
     {0x7E, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_UP},
     {0x7F, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
+};
+
+static const struct KeyTableEntry keyTableJISOverride[] = {
+    {0x18, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_CIRCUMFLEX},
+    {0x1E, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_OPEN_BRACKET},
+    {0x21, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_AT},
+    {0x27, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_COLON},
+    {0x2A, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_CLOSE_BRACKET},
+    // Some other keys are already handled in the previous table, no need to repeat them here
 };
 
 /*
@@ -444,12 +459,30 @@ unichar NsCharToJavaChar(unichar nsChar, NSUInteger modifiers, BOOL spaceKeyType
     return nsChar;
 }
 
-static unichar NsGetDeadKeyChar(unsigned short keyCode, BOOL useModifiers)
+struct KeyCodeTranslationResult {
+    unichar character;
+    BOOL isSuccess;
+    BOOL isDead;
+    BOOL isTyped;
+};
+
+static struct KeyCodeTranslationResult NsTranslateKeyCode(TISInputSourceRef layout, unsigned short keyCode, BOOL useModifiers)
 {
-    TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
-    CFDataRef uchr = (CFDataRef)TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData);
-    if (uchr == nil) { return 0; }
+    struct KeyCodeTranslationResult result = {
+        .character = (unichar)0,
+        .isSuccess = NO,
+        .isDead = NO,
+        .isTyped = NO
+    };
+
+    CFDataRef uchr = (CFDataRef)TISGetInputSourceProperty(layout, kTISPropertyUnicodeKeyLayoutData);
+    if (uchr == nil) {
+        return result;
+    }
     const UCKeyboardLayout *keyboardLayout = (const UCKeyboardLayout*)CFDataGetBytePtr(uchr);
+    if (keyboardLayout == NULL) {
+        return result;
+    }
 
     UInt32 modifierKeyState = 0;
     if (useModifiers) {
@@ -457,35 +490,55 @@ static unichar NsGetDeadKeyChar(unsigned short keyCode, BOOL useModifiers)
         modifierKeyState = (GetCurrentEventKeyModifiers() >> 8) & 0xFF;
     }
 
-    if (keyboardLayout) {
-        UInt32 deadKeyState = 0;
-        UniCharCount maxStringLength = 255;
-        UniCharCount actualStringLength = 0;
-        UniChar unicodeString[maxStringLength];
+    UInt32 deadKeyState = 0;
+    UniCharCount maxStringLength = 255;
+    UniCharCount actualStringLength = 0;
+    UniChar unicodeString[maxStringLength];
 
-        // get the deadKeyState
-        OSStatus status = UCKeyTranslate(keyboardLayout,
-                                         keyCode, kUCKeyActionDown, modifierKeyState,
-                                         LMGetKbdType(), kUCKeyTranslateNoDeadKeysBit,
-                                         &deadKeyState,
-                                         maxStringLength,
-                                         &actualStringLength, unicodeString);
+    // get the deadKeyState
+    OSStatus status = UCKeyTranslate(keyboardLayout,
+                                     keyCode, kUCKeyActionDown, modifierKeyState,
+                                     LMGetKbdType(), 0,
+                                     &deadKeyState,
+                                     maxStringLength,
+                                     &actualStringLength, unicodeString);
 
-        if (status == noErr && deadKeyState != 0) {
-            // Press SPACE to get the dead key char
-            status = UCKeyTranslate(keyboardLayout,
-                                    kVK_Space, kUCKeyActionDown, 0,
-                                    LMGetKbdType(), 0,
-                                    &deadKeyState,
-                                    maxStringLength,
-                                    &actualStringLength, unicodeString);
-
-            if (status == noErr && actualStringLength > 0) {
-                return unicodeString[0];
-            }
-        }
+    if (status != noErr) {
+        return result;
     }
-    return 0;
+
+    if (deadKeyState == 0) {
+        result.isSuccess = YES;
+        result.isDead = NO;
+
+        if (actualStringLength > 0) {
+            result.isTyped = YES;
+            result.character = unicodeString[0];
+        }
+
+        return result;
+    }
+
+    // Press SPACE to get the dead key char
+    status = UCKeyTranslate(keyboardLayout,
+                            kVK_Space, kUCKeyActionDown, 0,
+                            LMGetKbdType(), 0,
+                            &deadKeyState,
+                            maxStringLength,
+                            &actualStringLength, unicodeString);
+
+    if (status != noErr) {
+        return result;
+    }
+
+    result.isSuccess = YES;
+    result.isDead = YES;
+
+    if (actualStringLength > 0) {
+        result.character = unicodeString[0];
+    }
+
+    return result;
 }
 
 /*
@@ -498,87 +551,164 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
                            jint *keyCode, jint *keyLocation, BOOL *postsTyped,
                            unichar *deadChar)
 {
-    static const size_t keyTableSize = sizeof(keyTable) / sizeof(struct _key);
+    // This is going to be a lengthy explanation about what it is that we need to achieve in this function.
+    // It took me quite a while to figure out myself, so hopefully it will be useful to others as well.
+    // I will describe the desired behavior when useNationalLayouts = true. Setting this parameter to false should
+    // ideally make the behavior identical to the one of OpenJDK, barring a few obvious bugfixes, like JBR-3860.
+    //
+    // For clarity here's what I mean by certain phrases:
+    //   - Input source: what macOS calls "Keyboard layout input source", so excluding emoji pickers and handwriting
+    //   - Key layout: Input source in the com.apple.keylayout namespace, i.e. a "simple" keyboard
+    //   - IME: Input source in the com.apple.inputmethod namespace, i.e. a "complex" input method
+    //   - Physical layout: A property of the physical keyboard device that has to do with the physical location of keys and their mapping to key codes
+    //   - Underlying key layout: The key layout which actually translates the keys that the user presses to Java events.
+    //   - Override key layout: A key layout that an IME is based on, this is the one that the Keyboard Viewer shows for that IME.
+    //   - Key code: A macOS virtual key code (the property `keyCode` on `NSEvent`)
+    //   - Java key code: The values returned by `KeyEvent.getKeyCode()`
+    //   - Key: Keyboard key without any modifiers
+    //   - Combo: Keyboard key with modifiers
+    //   - Dead key/combo: A key/combo that sets a dead key state when interpreted using UCKeyTranslate
+    //
+    // Whenever I refer to a key on the physical keyboard I will use the US layout.
+    //
+    // These are the types of input sources that we want to handle:
+    //   - Latin-based key layouts (ABC, German, French, Spanish, etc)
+    //   - Non-latin-based key layouts (Arabic, Armenian, Russian, etc)
+    //   - Latin-based IMEs (Pinyin, Cantonese - Phonetic, Japanese Romaji, etc.)
+    //   - Non-latin-based IMEs (Korean, Zhuyin, Japanese Kana, etc.)
+    //
+    // These are possible physical layouts supported on macOS:
+    //   - ANSI (North America, most of Asia and others)
+    //   - ISO (Europe, Latin America, Middle East and others)
+    //   - JIS (Japan)
+    //
+    // As a rule, any input source can be used on any physical layout.
+    // This might cause some key codes to correspond to different characters on the same input source.
+    //
+    // Basically we want the following behavior:
+    //   - Latin-based key layouts should report their own keys unchanged.
+    //   - Other input sources should report the key on their underlying key layout.
+    //
+    // Latin-based IMEs make it easy to determine the underlying key layout.
+    // macOS allows us to obtain a copy of the input source by calling TISCopyInputMethodKeyboardLayoutOverride().
+    //
+    // Non-latin-based key layouts and IMEs will use the US key layout as the underlying one.
+    // This is the behavior of native apps.
+    //
+    // Java has builtin key codes for most characters that can appear at the base layer of various key layouts.
+    // The rest are constructed like this: 0x01000000 + codePoint. All keys on builtin ASCII-capable layouts produce
+    // no surrogate pairs, but some of them can produce strings containing more than one code point. These need to be
+    // dealt with carefully as to avoid having different keys produce same Java key codes.
+    //
+    // Here's the various groups of named Java key codes that we need to handle:
+    //   - Fixed keys that don't vary between input sources: VK_SPACE, VK_SHIFT, VK_NUMPAD0-VK_NUMPAD9, VK_F1-VK_F24, etc.
+    //   - Dead keys: VK_DEAD_ACUTE, VK_DEAD_GRAVE, etc.
+    //   - Punctuation: VK_PLUS, VK_SLASH, VK_SEMICOLON, etc.
+    //   - Latin letters: VK_A-VK_Z
+    //   - Numbers: VK_0-VK_9
+    //
+    // Fixed keys are hardcoded in keyTable and keyTableJISOverride.
+    //
+    // Dead keys need to be mapped into the corresponding VK_DEAD_ key codes in the same way the normal keys are mapped,
+    // that is using an underlying layout. This is done by using the UCKeyTranslate function together with charToDeadVKTable.
+    // It is possible to extract a non-combining dead key character by calling UCKeyTranslate twice: to type
+    // first the dead key and then to type the Space key. Alternatively, it's possible to call UCKeyTranslate
+    // with the kUCKeyTranslateNoDeadKeysMask option.
+    //
+    // Punctuation is hardcoded in extraCharToVKTable. Latin letters and numbers are dealt with separately.
+    //
+    // Bonus! What does it mean to have the "national layouts" disabled? In my opinion this simply means that
+    // the underlying key layout is the one that the user currently uses, or the override key layout for the input method
+    // that the user currently uses. I think this approach strikes the right balance between preserving compatibility
+    // with OpenJDK where it matters, while at the same time fixing a lot of annoying bugs.
 
-    NSInteger offset;
+    static const size_t keyTableSize = sizeof(keyTable) / sizeof(struct KeyTableEntry);
+    static const size_t keyTableJISOverrideSize = sizeof(keyTableJISOverride) / sizeof(struct KeyTableEntry);
+    BOOL isJIS = KBGetLayoutType(LMGetKbdType()) == kKeyboardJIS;
 
-    // If the key without modifiers generates a dead char, then this is the character
-    // that is produced when pressing the key followed by a space
-    // Otherwise, it's the null character
-    unichar testDeadCharWithoutModifiers = NsGetDeadKeyChar(key, NO);
+    // Find out which key does the key code correspond to in the US/ABC key layout.
+    // Need to take into account that the same virtual key code may correspond to
+    // different keys depending on the physical layout.
 
-    if (testDeadCharWithoutModifiers != 0) {
-        // Same as testDeadCharWithoutModifiers above, only this time we take modifiers into account.
-        unichar testDeadChar = NsGetDeadKeyChar(key, YES);
+    const struct KeyTableEntry* usKey = &unknownKeyEntry;
 
+    if (key < keyTableSize) {
+        usKey = &keyTable[key];
+    }
+
+    if (isJIS) {
+        for (int i = 0; i < keyTableJISOverrideSize; ++i) {
+            if (keyTableJISOverride[i].keyCode == key) {
+                usKey = &keyTableJISOverride[i];
+                break;
+            }
+        }
+    }
+
+    // Determine the underlying layout.
+    // If underlyingLayout is nil then fall back to using the usKey.
+
+    TISInputSourceRef currentLayout = TISCopyCurrentKeyboardInputSource();
+    TISInputSourceRef overrideLayout = TISCopyInputMethodKeyboardLayoutOverride();
+    Boolean currentAscii = CFBooleanGetValue((CFBooleanRef) TISGetInputSourceProperty(currentLayout, kTISPropertyInputSourceIsASCIICapable));
+    TISInputSourceRef underlyingLayout =
+            (overrideLayout != nil) ? overrideLayout :
+            (!useNationalLayouts || currentAscii) ? currentLayout : nil;
+
+    // Default to returning the US key data.
+    *postsTyped = usKey->postsTyped;
+    *keyCode = usKey->javaKeyCode;
+    *keyLocation = usKey->javaKeyLocation;
+
+    if (underlyingLayout == nil || !keyTable[key].variesBetweenLayouts) {
+        return;
+    }
+
+    // Translate the key using the underlying key layout.
+    struct KeyCodeTranslationResult translatedKey = NsTranslateKeyCode(underlyingLayout, key, NO);
+    // Same as translatedKey above, only this time we take modifiers into account.
+    struct KeyCodeTranslationResult translatedCombo = NsTranslateKeyCode(underlyingLayout, key, YES);
+
+    if (translatedKey.isTyped) {
+        ch = translatedKey.character;
+    }
+
+    if (translatedCombo.isSuccess) {
+        *postsTyped = translatedCombo.isTyped;
+        *deadChar = translatedCombo.isDead ? translatedCombo.character : 0;
+    }
+
+    // Test whether this key is dead.
+    if (translatedKey.isDead) {
         const struct CharToVKEntry *map;
         for (map = charToDeadVKTable; map->c != 0; ++map) {
-            if (testDeadCharWithoutModifiers == map->c) {
+            if (translatedKey.character == map->c) {
                 // The base key is a dead key in the current layout.
                 // The key with modifiers might or might not be dead.
                 // We report it here so as not to cause any confusion,
                 // since non-dead keys can reuse the same characters as dead keys
 
                 *keyCode = map->javaKey;
-                *postsTyped = (BOOL)(testDeadChar == 0);
-                // TODO: use UNKNOWN here?
-                *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
-                *deadChar = testDeadChar;
                 return;
             }
         }
     }
-
-    if (key < keyTableSize) {
-        // US physical key -> character mapping
-        *postsTyped = keyTable[key].postsTyped;
-        *keyCode = keyTable[key].javaKeyCode;
-        *keyLocation = keyTable[key].javaKeyLocation;
-
-        if (!keyTable[key].variesBetweenLayouts) {
-            return;
-        }
-    } else {
-        // Should we report this? This means we've got a keyboard
-        // we don't know about...
-        *postsTyped = NO;
-        *keyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
-        *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
-        return;
-    }
-
-    TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
-
-    // Whether this is a latin-based keyboard layout (English, German, French, etc)
-    BOOL asciiCapable = (BOOL)((Boolean)CFBooleanGetValue(
-            (CFBooleanRef)TISGetInputSourceProperty(currentKeyboard, kTISPropertyInputSourceIsASCIICapable)));
 
     unichar testLowercaseChar = tolower(ch);
 
-    if (!useNationalLayouts || asciiCapable) {
-        // If national layouts are enabled and the current keyboard is latin-based then
-        // we try to look up a character in a table first, before falling back to looking up
-        // the virtual key code from macOS's hardware key code, since hardware key codes
-        // don't respect the specific keyboard layout the user uses.
-        // The same happens when the national layouts are disabled to be consistent
-        // with the default behavior of OpenJDK.
+    // Together with the following two checks (letters and digits) this table
+    // properly handles all keys that have corresponding VK_ codes.
+    // Unfortunately not all keys are like that. They are handled separately.
 
-        // Together with the following two checks (letters and digits) this table
-        // properly handles all keys that have corresponding VK_ codes.
-        // Unfortunately not all keys are like that. They are handled separately.
-
-        for (const struct CharToVKEntry *map = extraCharToVKTable; map->c != 0; ++map) {
-            if (map->c == testLowercaseChar) {
-                *keyCode = map->javaKey;
-                *postsTyped = !isDeadChar;
-                return;
-            }
+    for (const struct CharToVKEntry *map = extraCharToVKTable; map->c != 0; ++map) {
+        if (map->c == testLowercaseChar) {
+            *keyCode = map->javaKey;
+            return;
         }
     }
 
     if (testLowercaseChar >= 'a' && testLowercaseChar <= 'z') {
         // key is a basic latin letter
-        *postsTyped = YES;
         *keyCode = java_awt_event_KeyEvent_VK_A + testLowercaseChar - 'a';
         return;
     }
@@ -586,29 +716,21 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
     if (ch >= '0' && ch <= '9') {
         // key is a digit
         // numpad digits are already handled, since they don't vary between layouts
-        offset = ch - '0';
-        *keyCode = offset + java_awt_event_KeyEvent_VK_0;
+        *keyCode = ch - '0' + java_awt_event_KeyEvent_VK_0;
         return;
     }
 
     BOOL isLetter = [[NSCharacterSet letterCharacterSet] characterIsMember:ch];
-    BOOL needExtendedKeyCodeConversion = useNationalLayouts ? asciiCapable : isLetter;
 
-    if (needExtendedKeyCodeConversion) {
+    if (useNationalLayouts || isLetter) {
         // If useNationalLayouts = false, then we only convert the key codes for letters here.
         // This is the default behavior in OpenJDK and I don't think it's a good idea to change that.
 
-        // If useNationalLayouts = true but the keyboard is not ASCII-capable then this conversion
-        // doesn't happen, meaning that key codes remain in the US layout.
-
         // Otherwise we also need to report characters other than letters.
         // If we ended up in this branch, this means that the character doesn't have its own VK_ code.
-        // Apart from letters, this is the case for characters like the Section Sign (U+00A7) on the
-        // US ISO English keyboard or the Left-Pointing Double Angle Quotation Mark (U+00AB) found on the
-        // Canadian French - PC (ISO) keyboard. I couldn't find examples of ANSI keyboards that have non-letter
-        // characters that don't have a VK_ code.
+        // Apart from letters, this is the case for characters like the Section Sign (U+00A7)
+        // on the French keyboard (key ANSI_6) or Pound Sign (U+00A3) on the Italian – QZERTY keyboard (key ANSI_8).
 
-        *postsTyped = YES;
         *keyCode = 0x01000000 + testLowercaseChar;
     }
 }
