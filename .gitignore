@@ -13,3 +13,5 @@ test/nashorn/lib
 NashornProfile.txt
 **/JTreport/**
 **/JTwork/**
+/compile_commands.json
+/.cache
