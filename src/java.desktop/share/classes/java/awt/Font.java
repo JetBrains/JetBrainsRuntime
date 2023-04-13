@@ -2719,8 +2719,10 @@ public class Font implements java.io.Serializable
         // quick check for simple text, assume GV ok to use if simple
 
         boolean simple = (values == null ||
-            (values.getKerning() == 0 && values.getLigatures() == 0 &&
-              values.getBaselineTransform() == null)) && !anyEnabledFeatures();
+            (values.getKerning() == 0
+             && values.getLigatures() == 0
+             && values.getTracking() == 0
+             && values.getBaselineTransform() == null)) && !anyEnabledFeatures();
         if (simple) {
             simple = ! FontUtilities.isComplexText(chars, beginIndex, limit);
         }
