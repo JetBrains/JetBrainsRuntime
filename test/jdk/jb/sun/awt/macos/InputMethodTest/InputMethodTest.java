@@ -166,6 +166,10 @@ public class InputMethodTest {
     }
 
     public static void section(String description) {
+        // clear dead key state
+        robot.keyPress(KeyEvent.VK_ESCAPE);
+        robot.keyRelease(KeyEvent.VK_ESCAPE);
+
         currentSection = description;
         textArea.setText("");
         frame.setTitle(currentTest + ": " + description);

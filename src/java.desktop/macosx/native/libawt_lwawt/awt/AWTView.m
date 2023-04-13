@@ -536,47 +536,6 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     [self resetTrackingArea];
 }
 
-- (NSString *) extractCharactersIgnoringAllModifiers: (NSEvent *) event {
-    // event.charactersIgnoringModifiers is actually not what we want, since it doesn't ignore Shift.
-    // What we really want is event.charactersByApplyingModifiers:0, but that's only available on macOS 10.15+
-    // The code below simulates what that function does by looking up the current keyboard and emulating
-    // a corresponding key press on it.
-
-    TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
-    CFDataRef uchr = (CFDataRef)TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData);
-
-    if (uchr == nil) {
-        TISInputSourceRef currentOverride = TISCopyInputMethodKeyboardLayoutOverride();
-        if (currentOverride != nil) {
-            uchr = (CFDataRef) TISGetInputSourceProperty(currentOverride, kTISPropertyUnicodeKeyLayoutData);
-        }
-        if (uchr == nil) {
-            return [event charactersIgnoringModifiers];
-        }
-    }
-
-    UInt32 deadKeyState = 0;
-    UniCharCount maxStringLength = 8;
-    UniCharCount actualStringLength = 0;
-    unichar unicodeString[maxStringLength];
-
-    const UCKeyboardLayout *keyboardLayout = (const UCKeyboardLayout *) CFDataGetBytePtr(uchr);
-    OSStatus status = UCKeyTranslate(
-            keyboardLayout,
-            [event keyCode],
-            kUCKeyActionDown,
-            0,
-            LMGetKbdType(),
-            kUCKeyTranslateNoDeadKeysMask,
-            &deadKeyState,
-            maxStringLength,
-            &actualStringLength,
-            unicodeString
-    );
-
-    return [NSString stringWithCharacters:unicodeString length:actualStringLength];
-}
-
 -(void) deliverJavaKeyEventHelper: (NSEvent *) event {
     static NSEvent* sLastKeyEvent = nil;
     if (event == sLastKeyEvent) {
@@ -593,7 +552,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     jstring charactersIgnoringModifiers = NULL;
     if ([event type] != NSFlagsChanged) {
         characters = NSStringToJavaString(env, [event characters]);
-        charactersIgnoringModifiers = NSStringToJavaString(env, [self extractCharactersIgnoringAllModifiers:event]);
+        charactersIgnoringModifiers = NSStringToJavaString(env, [event charactersIgnoringModifiers]);
     }
 
     DECLARE_CLASS(jc_NSEvent, "sun/lwawt/macosx/NSEvent");

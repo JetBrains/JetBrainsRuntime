@@ -238,6 +238,7 @@ static const struct CharToVKEntry charToDeadVKTable[] = {
     {0x02D8, java_awt_event_KeyEvent_VK_DEAD_BREVE},
     {0x02D9, java_awt_event_KeyEvent_VK_DEAD_ABOVEDOT},
     {0x00A8, java_awt_event_KeyEvent_VK_DEAD_DIAERESIS},
+    {0x00B0, java_awt_event_KeyEvent_VK_DEAD_ABOVERING},
     {0x02DA, java_awt_event_KeyEvent_VK_DEAD_ABOVERING},
     {0x02DD, java_awt_event_KeyEvent_VK_DEAD_DOUBLEACUTE},
     {0x02C7, java_awt_event_KeyEvent_VK_DEAD_CARON},
@@ -513,16 +514,18 @@ static struct KeyCodeTranslationResult NsTranslateKeyCode(TISInputSourceRef layo
 
         if (actualStringLength > 0) {
             result.isTyped = YES;
-            result.character = unicodeString[0];
+            result.character = unicodeString[actualStringLength - 1];
         }
 
         return result;
     }
 
-    // Press SPACE to get the dead key char
+    deadKeyState = 0;
+
+    // Extract the dead key non-combining character
     status = UCKeyTranslate(keyboardLayout,
-                            kVK_Space, kUCKeyActionDown, 0,
-                            LMGetKbdType(), 0,
+                            keyCode, kUCKeyActionDown, modifierKeyState,
+                            LMGetKbdType(), kUCKeyTranslateNoDeadKeysMask,
                             &deadKeyState,
                             maxStringLength,
                             &actualStringLength, unicodeString);
@@ -535,7 +538,7 @@ static struct KeyCodeTranslationResult NsTranslateKeyCode(TISInputSourceRef layo
     result.isDead = YES;
 
     if (actualStringLength > 0) {
-        result.character = unicodeString[0];
+        result.character = unicodeString[actualStringLength - 1];
     }
 
     return result;
@@ -546,8 +549,7 @@ static struct KeyCodeTranslationResult NsTranslateKeyCode(TISInputSourceRef layo
  * NSEvent keyCodes and translate to the Java virtual key code.
  */
 static void
-NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
-                           NSUInteger flags, unsigned short key, const BOOL useNationalLayouts,
+NsCharToJavaVirtualKeyCode(unichar ch, unsigned short key, const BOOL useNationalLayouts,
                            jint *keyCode, jint *keyLocation, BOOL *postsTyped,
                            unichar *deadChar)
 {
@@ -611,8 +613,7 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
     //
     // Dead keys need to be mapped into the corresponding VK_DEAD_ key codes in the same way the normal keys are mapped,
     // that is using an underlying layout. This is done by using the UCKeyTranslate function together with charToDeadVKTable.
-    // It is possible to extract a non-combining dead key character by calling UCKeyTranslate twice: to type
-    // first the dead key and then to type the Space key. Alternatively, it's possible to call UCKeyTranslate
+    // It is possible to extract a non-combining dead key character by calling UCKeyTranslate
     // with the kUCKeyTranslateNoDeadKeysMask option.
     //
     // Punctuation is hardcoded in extraCharToVKTable. Latin letters and numbers are dealt with separately.
@@ -669,10 +670,6 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
     // Same as translatedKey above, only this time we take modifiers into account.
     struct KeyCodeTranslationResult translatedCombo = NsTranslateKeyCode(underlyingLayout, key, YES);
 
-    if (translatedKey.isTyped) {
-        ch = translatedKey.character;
-    }
-
     if (translatedCombo.isSuccess) {
         *postsTyped = translatedCombo.isTyped;
         *deadChar = translatedCombo.isDead ? translatedCombo.character : 0;
@@ -680,49 +677,59 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
 
     // Test whether this key is dead.
     if (translatedKey.isDead) {
-        const struct CharToVKEntry *map;
-        for (map = charToDeadVKTable; map->c != 0; ++map) {
+        for (const struct CharToVKEntry *map = charToDeadVKTable; map->c != 0; ++map) {
             if (translatedKey.character == map->c) {
-                // The base key is a dead key in the current layout.
-                // The key with modifiers might or might not be dead.
-                // We report it here so as not to cause any confusion,
-                // since non-dead keys can reuse the same characters as dead keys
-
                 *keyCode = map->javaKey;
                 return;
             }
         }
+
+        // No builtin VK_DEAD_ constant for this dead key,
+        // nothing better to do than to fall back to the extended key code.
+        // This can happen on the following ascii-capable key layouts:
+        //   - Apache (com.apple.keylayout.Apache)
+        //   - Chickasaw (com.apple.keylayout.Chickasaw)
+        //   - Choctaw (com.apple.keylayout.Choctaw)
+        //   - Navajo (com.apple.keylayout.Navajo)
+        //   - Vietnamese (com.apple.keylayout.Vietnamese)
+        // Vietnamese layout is unique among these in that the "dead key" is actually a self-containing symbol,
+        // that can be modified by an accent typed after it. In essence, it's like a dead key in reverse:
+        // the user should first type the letter and only then the necessary accent.
+        // This way the key code would be what the user expects.
+
+        *keyCode = 0x1000000 + translatedKey.character;
+        return;
     }
 
-    unichar testLowercaseChar = tolower(ch);
+    if (translatedKey.isTyped) {
+        ch = translatedKey.character;
+    }
 
     // Together with the following two checks (letters and digits) this table
     // properly handles all keys that have corresponding VK_ codes.
     // Unfortunately not all keys are like that. They are handled separately.
 
     for (const struct CharToVKEntry *map = extraCharToVKTable; map->c != 0; ++map) {
-        if (map->c == testLowercaseChar) {
+        if (map->c == ch) {
             *keyCode = map->javaKey;
             return;
         }
     }
 
-    if (testLowercaseChar >= 'a' && testLowercaseChar <= 'z') {
+    if (ch >= 'a' && ch <= 'z') {
         // key is a basic latin letter
-        *keyCode = java_awt_event_KeyEvent_VK_A + testLowercaseChar - 'a';
+        *keyCode = java_awt_event_KeyEvent_VK_A + ch - 'a';
         return;
     }
 
     if (ch >= '0' && ch <= '9') {
         // key is a digit
         // numpad digits are already handled, since they don't vary between layouts
-        *keyCode = ch - '0' + java_awt_event_KeyEvent_VK_0;
+        *keyCode = java_awt_event_KeyEvent_VK_0 + ch - '0';
         return;
     }
 
-    BOOL isLetter = [[NSCharacterSet letterCharacterSet] characterIsMember:ch];
-
-    if (useNationalLayouts || isLetter) {
+    if (useNationalLayouts || [[NSCharacterSet letterCharacterSet] characterIsMember:ch]) {
         // If useNationalLayouts = false, then we only convert the key codes for letters here.
         // This is the default behavior in OpenJDK and I don't think it's a good idea to change that.
 
@@ -731,7 +738,7 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
         // Apart from letters, this is the case for characters like the Section Sign (U+00A7)
         // on the French keyboard (key ANSI_6) or Pound Sign (U+00A3) on the Italian – QZERTY keyboard (key ANSI_8).
 
-        *keyCode = 0x01000000 + testLowercaseChar;
+        *keyCode = 0x01000000 + ch;
     }
 }
 
@@ -914,19 +921,16 @@ JNI_COCOA_ENTER(env);
     jint *data = (*env)->GetIntArrayElements(env, inData, &copy);
     CHECK_NULL_RETURN(data, postsTyped);
 
-    // in  = [testChar, testDeadChar, modifierFlags, keyCode, useNationalLayouts]
+    // in  = [testChar, keyCode, useNationalLayouts]
     jchar testChar = (jchar)data[0];
-    BOOL isDeadChar = (data[1] != 0);
-    jint modifierFlags = data[2];
-    jshort keyCode = (jshort)data[3];
-    BOOL useNationalLayouts = (data[4] != 0);
+    jshort keyCode = (jshort)data[1];
+    BOOL useNationalLayouts = (data[2] != 0);
 
     jint jkeyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
     jint jkeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
     jint testDeadChar = 0;
 
-    NsCharToJavaVirtualKeyCode((unichar)testChar, isDeadChar,
-                               (NSUInteger)modifierFlags, (unsigned short)keyCode,
+    NsCharToJavaVirtualKeyCode((unichar)testChar, (unsigned short)keyCode,
                                useNationalLayouts,
                                &jkeyCode, &jkeyLocation, &postsTyped,
                                (unichar *) &testDeadChar);

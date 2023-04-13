@@ -339,25 +339,15 @@ Java_sun_lwawt_macosx_CRobot_keyEvent
             //   2 - JIS
 
             UInt32 physicalLayout = (javaKeyCode >> 8) & 0xff;
-            PhysicalKeyboardLayoutType layoutType;
+            UInt32 keyboardType;
             if (physicalLayout == 1) {
-                layoutType = kKeyboardISO;
+                keyboardType = 41; // ISO
             } else if (physicalLayout == 2) {
-                layoutType = kKeyboardJIS;
+                keyboardType = 42; // JIS
             } else {
-                layoutType = kKeyboardANSI;
+                keyboardType = 40; // ANSI
             }
-
-            // find a corresponding keyboard type...
-            // LMGetKbdType() returns Uint8, why don't we just iterate over all the possible values and find one
-            // that works? It's really sad that macOS doesn't provide a decent API for this sort of thing.
-            for (UInt32 keyboardType = 0; keyboardType < 0x100; ++keyboardType) {
-                if (KBGetLayoutType(keyboardType) == layoutType) {
-                    CGEventSourceSetKeyboardType(source, keyboardType);
-                    break;
-                }
-            }
-
+            CGEventSourceSetKeyboardType(source, keyboardType);
             keyCode = javaKeyCode & 0xff;
         } else {
             keyCode = GetCGKeyCode(javaKeyCode);

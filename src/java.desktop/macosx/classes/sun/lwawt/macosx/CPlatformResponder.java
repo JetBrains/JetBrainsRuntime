@@ -215,7 +215,7 @@ final class CPlatformResponder {
             char testCharIgnoringModifiers = charsIgnoringModifiers != null && charsIgnoringModifiers.length() > 0 ?
                     charsIgnoringModifiers.charAt(0) : KeyEvent.CHAR_UNDEFINED;
 
-            int[] in = new int[] {testCharIgnoringModifiers, isDeadChar ? 1 : 0, modifierFlags, keyCode, KeyEventProcessing.useNationalLayouts ? 1 : 0};
+            int[] in = new int[] {testCharIgnoringModifiers, keyCode, KeyEventProcessing.useNationalLayouts ? 1 : 0};
             int[] out = new int[3]; // [jkeyCode, jkeyLocation, deadChar]
 
             postsTyped = NSEvent.nsToJavaKeyInfo(in, out);
