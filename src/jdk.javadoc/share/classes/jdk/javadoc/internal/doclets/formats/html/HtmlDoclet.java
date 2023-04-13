@@ -30,6 +30,7 @@ import java.io.OutputStream;
 import java.io.Writer;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.FileSystems;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.*;
@@ -243,14 +244,14 @@ public class HtmlDoclet extends AbstractDoclet {
         switch (legalNotices) {
             case "":
             case "default" :
-                Path javaHome = Path.of(System.getProperty("java.home"));
+                Path javaHome = FileSystems.getDefault().getPath(System.getProperty("java.home"));
                 legalNoticesDir = javaHome.resolve("legal").resolve(getClass().getModule().getName());
                 break;
             case "none":
                 return;
             default:
                 try {
-                    legalNoticesDir = Path.of(legalNotices);
+                    legalNoticesDir = FileSystems.getDefault().getPath(legalNotices);
                 } catch (InvalidPathException e) {
                     messages.error("doclet.Error_invalid_path_for_legal_notices",
                             legalNotices, e.getMessage());
