@@ -1351,6 +1351,9 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_menuItemSelected
     JNI_COCOA_EXIT(env);
 }
 
+
+static void nativeAnnounceAppKit(jobject jAccessible, NSString *text, NSNumber *javaPriority);
+
 /*
  * Class:     sun_swing_AccessibleAnnouncer
  * Method:    nativeAnnounce
@@ -1361,31 +1364,50 @@ JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_nativeAnnounce
 {
     JNI_COCOA_ENTER(env);
 
-        NSString *text = JavaStringToNSString(env, str);
-        NSNumber *javaPriority = [NSNumber numberWithInt:priority];
+    NSString *text = JavaStringToNSString(env, str);
+    NSNumber *javaPriority = [NSNumber numberWithInt:priority];
 
-        [ThreadUtilities performOnMainThreadWaiting:YES block:^{
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^{
+        nativeAnnounceAppKit(jAccessible, text, javaPriority);
+    }];
 
-            id caller = nil;
-
-            DECLARE_CLASS(jc_Accessible, "javax/accessibility/Accessible");
-
-            if ((jAccessible != NULL) && (*env)->IsInstanceOf(env, jAccessible, jc_Accessible)) {
-                GET_CACCESSIBLE_CLASS();
-                DECLARE_FIELD(jf_ptr, sjc_CAccessible, "ptr", "J");
-                // try to fetch the jCAX from Java, and return autoreleased
-                jobject jCAX = [CommonComponentAccessibility getCAccessible:jAccessible withEnv:env];
-                if (jCAX != NULL) {
-                    caller = (CommonComponentAccessibility *) jlong_to_ptr((*env)->GetLongField(env, jCAX, jf_ptr));
-                    (*env)->DeleteLocalRef(env, jCAX);
-                }
-            }
-
-            if (caller == nil) {
-                caller = [NSApp accessibilityFocusedUIElement];
-            }
-
-            [CommonComponentAccessibility postAnnounceWithCaller:caller andText:text andPriority:javaPriority];
-        }];
     JNI_COCOA_EXIT(env);
+}
+
+void nativeAnnounceAppKit(
+    const jobject jAccessible,
+    NSString * const text,
+    NSNumber * const javaPriority
+) {
+    AWT_ASSERT_APPKIT_THREAD;
+    assert((text != NULL));
+    assert((javaPriority != NULL));
+
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    if (env == NULL) { // unlikely
+        NSLog(@"%s: failed to get JNIEnv instance\n%@\n", __func__, [NSThread callStackSymbols]);
+        return;
+    }
+
+    id caller = nil;
+
+    DECLARE_CLASS(jc_Accessible, "javax/accessibility/Accessible");
+
+    if ( (jAccessible != NULL) && ((*env)->IsInstanceOf(env, jAccessible, jc_Accessible) == JNI_TRUE) ) {
+        GET_CACCESSIBLE_CLASS();
+        DECLARE_FIELD(jf_ptr, sjc_CAccessible, "ptr", "J");
+
+        // try to fetch the jCAX from Java, and return autoreleased
+        const jobject jCAX = [CommonComponentAccessibility getCAccessible:jAccessible withEnv:env];
+        if (jCAX != NULL) {
+            caller = (CommonComponentAccessibility*)jlong_to_ptr((*env)->GetLongField(env, jCAX, jf_ptr));
+            (*env)->DeleteLocalRef(env, jCAX);
+        }
+    }
+
+    if (caller == nil) {
+        caller = [NSApp accessibilityFocusedUIElement];
+    }
+
+    [CommonComponentAccessibility postAnnounceWithCaller:caller andText:text andPriority:javaPriority];
 }
