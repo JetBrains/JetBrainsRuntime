@@ -1863,7 +1863,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
                             nsWindow.styleMask & NSWindowStyleMaskFullScreen)];
     // calls methods on NSWindow to change other properties, based on the mask
     [self setPropertiesForStyleBits:newBits mask:mask];
-    if (!fullscreen) [self _deliverMoveResizeEvent];
+    if (!fullscreen && !self.nsWindow.miniaturized) [self _deliverMoveResizeEvent];
 
     if (enabled != (self.customTitleBarConstraints != nil)) {
         if (!fullscreen) {
