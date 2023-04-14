@@ -306,10 +306,6 @@ public final class AWTAccessor {
          */
         void updateWindow(Window window);
 
-        boolean needUpdateWindowAfterPaint(Window window);
-
-        boolean needUpdateWindow(Window window);
-
         /**
          * Set the size of the security warning.
          */

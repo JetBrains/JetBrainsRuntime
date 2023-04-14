@@ -806,7 +806,8 @@ public class RepaintManager
             Window window = dirty instanceof Window ?
                 (Window)dirty :
                 SwingUtilities.getWindowAncestor(dirty);
-            if (AWTAccessor.getWindowAccessor().needUpdateWindow(window))
+            if (window != null &&
+                !window.isOpaque())
             {
                 windows.add(window);
             }
@@ -1346,12 +1347,6 @@ public class RepaintManager
                                 x, y, w, h)) {
             g.setClip(x, y, w, h);
             paintingComponent.paintToOffscreen(g, x, y, w, h, x + w, y + h);
-        }
-        final Window window = SwingUtilities.getWindowAncestor(paintingComponent);
-        if (AWTAccessor.getWindowAccessor().needUpdateWindowAfterPaint(window)) {
-            // TODO: maybe introduce a more general "commitWindow" call instead
-            // of mixing Windows-specific "updateWindow" with Wayland commits.
-            AWTAccessor.getWindowAccessor().updateWindow(window);
         }
     }
 
