@@ -27,7 +27,6 @@ package com.jetbrains;
 
 import java.awt.*;
 
-@Deprecated(forRemoval=true)
 public interface ExtendedGlyphCache {
     Dimension getSubpixelResolution();
 }

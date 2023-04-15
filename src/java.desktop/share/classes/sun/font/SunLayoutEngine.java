@@ -30,14 +30,12 @@
 
 package sun.font;
 
-import com.jetbrains.desktop.FontExtensions;
 import sun.font.GlyphLayout.*;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
 
 import java.awt.geom.Point2D;
 import java.lang.ref.SoftReference;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.WeakHashMap;
 
@@ -165,7 +163,7 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
     }
 
     public void layout(FontStrikeDesc desc, float[] mat, float ptSize, int gmask,
-                       int baseIndex, TextRecord tr, boolean ltrDirection, Map<String, Integer> features,
+                       int baseIndex, TextRecord tr, int typo_flags,
                        Point2D.Float pt, GVData data) {
         Font2D font = key.font();
         FontStrike strike = font.getStrike(desc);
@@ -174,7 +172,7 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
             shape(font, strike, ptSize, mat, pFace,
                     tr.text, data, key.script(),
                     tr.start, tr.limit, baseIndex, pt,
-                    ltrDirection, FontExtensions.featuresToStringArray(features), gmask);
+                    typo_flags, gmask);
         }
     }
 
@@ -184,7 +182,7 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
               long pFace,
               char[] chars, GVData data,
               int script, int offset, int limit,
-              int baseIndex, Point2D.Float pt, boolean ltrDirection, String[] features, int slot);
+              int baseIndex, Point2D.Float pt, int typo_flags, int slot);
 
     private static native long createFace(Font2D font,
                                           long platformNativeFontPtr);

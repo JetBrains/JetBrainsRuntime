@@ -68,8 +68,6 @@
 
 package sun.font;
 
-import com.jetbrains.desktop.FontExtensions;
-
 import java.lang.ref.SoftReference;
 import java.awt.Font;
 import java.awt.font.FontRenderContext;
@@ -78,7 +76,6 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.NoninvertibleTransformException;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static java.lang.Character.*;
@@ -100,6 +97,7 @@ public final class GlyphLayout {
     private FontStrikeDesc _sd;
     private float[] _mat;
     private float ptSize;
+    private int _typo_flags;
     private int _offset;
 
     public static final class LayoutEngineKey {
@@ -175,8 +173,8 @@ public final class GlyphLayout {
          * If the GVData does not have room for the glyphs, throws an IndexOutOfBoundsException and
          * leave pt and the gvdata unchanged.
          */
-        public void layout(FontStrikeDesc sd, float[] mat, float ptSize, int gmask, int baseIndex, TextRecord text,
-                           boolean ltrDirection, Map<String, Integer> features, Point2D.Float pt, GVData data);
+        public void layout(FontStrikeDesc sd, float[] mat, float ptSize, int gmask,
+                           int baseIndex, TextRecord text, int typo_flags, Point2D.Float pt, GVData data);
     }
 
     /**
@@ -362,6 +360,14 @@ public final class GlyphLayout {
 
         init(count);
 
+        // need to set after init
+        // go through the back door for this
+        if (font.hasLayoutAttributes()) {
+            AttributeValues values = ((AttributeMap)font.getAttributes()).getValues();
+            if (values.getKerning() != 0) _typo_flags |= 0x1;
+            if (values.getLigatures() != 0) _typo_flags |= 0x2;
+        }
+
         _offset = offset;
 
         // use cache now - can we use the strike cache for this?
@@ -378,11 +384,9 @@ public final class GlyphLayout {
 
         int min = 0;
         int max = text.length;
-        boolean ltrDirection = true;
-
         if (flags != 0) {
             if ((flags & Font.LAYOUT_RIGHT_TO_LEFT) != 0) {
-                ltrDirection = false; // RTL
+              _typo_flags |= 0x80000000; // RTL
             }
 
             if ((flags & Font.LAYOUT_NO_START_CONTEXT) != 0) {
@@ -440,7 +444,7 @@ public final class GlyphLayout {
         int stop = _ercount;
         int dir = 1;
 
-        if (!ltrDirection) { // RTL
+        if (_typo_flags < 0) { // RTL
             ix = stop - 1;
             stop = -1;
             dir = -1;
@@ -452,7 +456,7 @@ public final class GlyphLayout {
             EngineRecord er = _erecords.get(ix);
             for (;;) {
                 try {
-                    er.layout(ltrDirection, FontExtensions.getFeatures(font));
+                    er.layout();
                     break;
                 }
                 catch (IndexOutOfBoundsException e) {
@@ -499,6 +503,7 @@ public final class GlyphLayout {
     }
 
     private void init(int capacity) {
+        this._typo_flags = 0;
         this._ercount = 0;
         this._gvdata.init(capacity);
     }
@@ -658,11 +663,11 @@ public final class GlyphLayout {
             this.engine = _lef.getEngine(key); // flags?
         }
 
-        void layout(boolean ltrDirection, Map<String, Integer> features) {
+        void layout() {
             _textRecord.start = start;
             _textRecord.limit = limit;
             engine.layout(_sd, _mat, ptSize, gmask, start - _offset, _textRecord,
-                    ltrDirection, features, _pt, _gvdata);
+                          _typo_flags | eflags, _pt, _gvdata);
         }
     }
 }
