@@ -78,7 +78,6 @@ sun/java2d/GdiRendering/InsetClipping.java JBR-5397 macosx-all
 java/awt/Focus/NullActiveWindowOnFocusLost/NullActiveWindowOnFocusLost.java JBR-5397 macosx-all
 java/awt/FullScreen/BufferStrategyExceptionTest/BufferStrategyExceptionTest.java JBR-5397 macosx-all
 java/awt/FullScreen/FullScreenInsets/FullScreenInsets.java JBR-5397 macosx-all
-java/awt/List/ListMultipleSelectTest/ListMultipleSelectTest.java JBR-5397 macosx-all
 java/awt/Mouse/EnterExitEvents/DragWindowTest.java JBR-5397 macosx-all
 java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.java JBR-5397 macosx-all
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java JBR-5397 macosx-all
@@ -124,7 +123,6 @@ java/awt/Focus/OwnedWindowFocusIMECrashTest/OwnedWindowFocusIMECrashTest.java JB
 java/awt/Focus/ShowFrameCheckForegroundTest/ShowFrameCheckForegroundTest.java JBR-5505 windows-all
 java/awt/Focus/TranserFocusToWindow/TranserFocusToWindow.java JBR-5505 windows-all
 java/awt/Focus/TypeAhead/TestFocusFreeze.java JBR-5505 windows-all
-java/awt/Focus/WindowInitialFocusTest/WindowInitialFocusTest.java JBR-5210 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java JBR-5505 windows-all
 java/awt/FontClass/FontAccess.java JBR-5505 windows-all
 java/awt/Frame/FramesGC/FramesGC.java JBR-5505 windows-all
@@ -140,7 +138,6 @@ java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.java JBR-5505 window
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java JBR-5505 windows-all
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5505 windows-all
 java/awt/List/KeyEventsTest/KeyEventsTest.java JBR-5505 windows-all
-java/awt/List/ListMultipleSelectTest/ListMultipleSelectTest.java JBR-5505 windows-all
 java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java JBR-5505 windows-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5505 windows-all
 java/awt/Mixing/LWPopupMenu.java JBR-5505 windows-all
