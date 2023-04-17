@@ -1964,9 +1964,9 @@ private:
     TABLE& _loaded_size;
 
 public:
-    CLDCounterClosure(TABLE& loaded_size) : _loaded_size(loaded_size) {}
+    explicit CLDCounterClosure(TABLE& loaded_size) : _loaded_size(loaded_size) {}
 
-    virtual void do_cld(ClassLoaderData* cld) {
+    void do_cld(ClassLoaderData* cld) override {
       Klass * const loader = cld->class_loader_klass();
       ClassLoaderMetaspace * const ms = cld->metaspace_or_null();
       if (ms != nullptr) {
@@ -1983,7 +1983,9 @@ public:
 };
 
 static int compare_by_size(Pair<Klass *, size_t>* p1, Pair<Klass *, size_t>* p2) {
-  return p2->second - p1->second;
+  return p2->second == p1->second
+         ? 0
+         : p2->second > p1->second ? 1 : -1;
 }
 
 void VMError::print_classloaders_stats(outputStream *st) {
@@ -2001,9 +2003,9 @@ void VMError::print_classloaders_stats(outputStream *st) {
 
     loaders_stats.sort(compare_by_size);
 
-    for (int i = 0; i < loaders_stats.length(); i++) {
-      Klass * const loader_klass = loaders_stats.at(i).first;
-      const size_t total_words = loaders_stats.at(i).second;
+    for (const auto & loaders_stat : loaders_stats) {
+      Klass * const loader_klass = loaders_stat.first;
+      const size_t total_words = loaders_stat.second;
       const char *name = loader_klass != nullptr
           ? loader_klass->external_name()
           : BOOTSTRAP_LOADER_NAME;
@@ -2015,11 +2017,13 @@ void VMError::print_classloaders_stats(outputStream *st) {
     }
 
     st->cr();
+  } else {
+    st->print_cr("Not available (crashed in non-Java thread)");
   }
 }
 
-static bool klass_equals(Klass* const & k1, Klass* const & k2) {
-  return strcmp(k1->external_name(), k2->external_name()) == 0;
+static bool klass_equals(Klass* const & klass1, Klass* const & klass2) {
+  return strcmp(klass1->external_name(), klass2->external_name()) == 0;
 }
 
 static unsigned klass_hash(Klass* const &  k) {
@@ -2032,7 +2036,7 @@ static unsigned klass_hash(Klass* const &  k) {
   return h;
 }
 
-class CLDDuplicatesClosure : public CLDClosure {
+class DuplicateKlassClosure : public KlassClosure {
 public:
     // Klass -> number times loaded
     using TABLE = ResizeableResourceHashtable<Klass*, size_t, AnyObj::RESOURCE_AREA,
@@ -2042,26 +2046,24 @@ private:
     TABLE& _classes_count;
 
 public:
-    CLDDuplicatesClosure(TABLE& classes_count) : _classes_count(classes_count) {}
+    explicit DuplicateKlassClosure(TABLE& classes_count) : _classes_count(classes_count) {}
 
-    virtual void do_cld(ClassLoaderData* cld) {
-      const Klass * const loader = cld->class_loader_klass();
-      for (Klass* klass = cld->klasses(); klass != nullptr; klass = klass->next_link()) {
-        const size_t * const new_count_ptr = _classes_count.get(klass);
-        const size_t new_count = new_count_ptr != nullptr ? *new_count_ptr + 1 : 1;
-        _classes_count.put(klass, new_count);
-      }
+    void do_klass(Klass* klass) override {
+      const size_t * const new_count_ptr = _classes_count.get(klass);
+      const size_t new_count = new_count_ptr != nullptr ? *new_count_ptr + 1 : 1;
+      _classes_count.put(klass, new_count);
     }
 };
 
 void VMError::print_dup_classes(outputStream *st) {
   if (_thread) {
     ResourceMark rm(_thread);
-    MutexLocker ml(_thread, ClassLoaderDataGraph_lock);
+    MutexLocker ma(_thread, MultiArray_lock);
+    MutexLocker mcld(_thread, ClassLoaderDataGraph_lock);
 
-    CLDDuplicatesClosure::TABLE classes_count(100, 200);
-    CLDDuplicatesClosure counter(classes_count);
-    ClassLoaderDataGraph::cld_do(&counter);
+    DuplicateKlassClosure::TABLE classes_count(100, 200);
+    DuplicateKlassClosure counter(classes_count);
+    ClassLoaderDataGraph::loaded_classes_do(&counter);
 
     GrowableArray<Pair<Klass *, size_t>> dup_classes;
     classes_count.iterate_all([&] (Klass* const name, size_t count) {
@@ -2071,10 +2073,10 @@ void VMError::print_dup_classes(outputStream *st) {
     if (dup_classes.length() > 0) {
       st->print_cr("Classes loaded by more than one classloader:");
       dup_classes.sort(compare_by_size);
-      for (int i = 0; i < dup_classes.length(); i++) {
-        const char * const name = dup_classes.at(i).first->external_name();
-        const size_t size = dup_classes.at(i).first->size();
-        const size_t count = dup_classes.at(i).second;
+      for (const auto & dup : dup_classes) {
+        const char * const name = dup.first->external_name();
+        const size_t size = dup.first->size();
+        const size_t count = dup.second;
         st->print_cr("Class %-80s: loaded " SIZE_FORMAT " times (x " SIZE_FORMAT "B)",
                      name, count, size);
       }
