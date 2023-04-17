@@ -1255,9 +1255,13 @@ javax/swing/JRadioButton/8041561/bug8041561.java JBR-5359,JBR-5510 windows-aarch
 javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
 javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
+jb/java/awt/CustomTitleBar/ActionListenerTest.java JBR-5550 windows-all
 jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-5359 windows-aarch64
 jb/java/awt/CustomTitleBar/FrameNativeControlsTest.java JBR-5359 windows-aarch64
 jb/java/awt/CustomTitleBar/JDialogNativeControlsTest.java JBR-5359 windows-aarch64
+jb/java/awt/CustomTitleBar/HitTestClientArea.java JBR-5551 windows-all
+jb/java/awt/CustomTitleBar/HitTestNonClientArea.java JBR-5550 windows-all
+jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-5550 windows-all
 jb/java/awt/CustomTitleBar/MinimizingWindowTest.java JBR-5359 windows-aarch64
 jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java JBR-5359 windows-aarch64
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java JBR-5359 windows-aarch64
