@@ -70,6 +70,7 @@ class VMError : public AllStatic {
   static const int   OOME_STACKTRACE_COUNT   = 4;
   static char        _oome_stacktrace[OOME_STACKTRACE_COUNT][OOME_STACKTRACE_BUFSIZE];
   static int         _oome_free_index;
+  static void *      _ballast_memory;
 
   // Thread id of the first error. We must be able to handle native thread,
   // so use thread id instead of Thread* to identify thread.

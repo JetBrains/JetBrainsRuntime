@@ -1091,6 +1091,8 @@ void VMError::report(outputStream* st, bool _verbose) {
 
   STEP("Classloader stats")
   st->print_cr("Classloader memory used:");
+  FREE_C_HEAP_ARRAY(void*, _ballast_memory);
+  _ballast_memory = nullptr;
   print_classloaders_stats(st);
   print_dup_classes(st); // do it separately in case we're low on memory
 
@@ -1914,11 +1916,15 @@ void VMError::controlled_crash(int how) {
 }
 #endif // !ASSERT
 
-char VMError::_oome_stacktrace[OOME_STACKTRACE_COUNT][OOME_STACKTRACE_BUFSIZE];
-int  VMError::_oome_free_index;
+char   VMError::_oome_stacktrace[OOME_STACKTRACE_COUNT][OOME_STACKTRACE_BUFSIZE];
+int    VMError::_oome_free_index;
+void * VMError::_ballast_memory;
 
 void VMError::init() {
   _oome_free_index = 0;
+  // This will be released before dumping classes statistics as the latter
+  // may need to allocate some memory in an OOME situation.
+  _ballast_memory = NEW_C_HEAP_ARRAY(void*, 36000*4, mtStatistics);
 }
 
 void VMError::record_oome_stack(const char *message) {
@@ -1958,7 +1964,7 @@ void VMError::print_oome_stacks(outputStream *st) {
 class CLDCounterClosure : public CLDClosure {
 public:
     // Loader Klass -> memory used in words
-    using TABLE = ResizeableResourceHashtable<Klass*, size_t, AnyObj::RESOURCE_AREA, mtStatistics>;
+    using TABLE = ResizeableResourceHashtable<Klass*, size_t, AnyObj::C_HEAP, mtStatistics>;
 
 private:
     TABLE& _loaded_size;
@@ -2039,7 +2045,7 @@ static unsigned klass_hash(Klass* const &  k) {
 class DuplicateKlassClosure : public KlassClosure {
 public:
     // Klass -> number times loaded
-    using TABLE = ResizeableResourceHashtable<Klass*, size_t, AnyObj::RESOURCE_AREA,
+    using TABLE = ResizeableResourceHashtable<Klass*, size_t, AnyObj::C_HEAP,
                                               mtStatistics, &klass_hash, &klass_equals>;
 
 private:
