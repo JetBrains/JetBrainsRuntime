@@ -162,8 +162,12 @@ wl_output_done(
 struct wl_output_listener wl_output_listener = {
         .geometry = &wl_output_geometry,
         .mode = &wl_output_mode,
+#ifdef WL_OUTPUT_NAME_SINCE_VERSION
         .name = &wl_output_name,
+#endif
+#ifdef WL_OUTPUT_DESCRIPTION_SINCE_VERSION
         .description = &wl_output_description,
+#endif
         .done = &wl_output_done,
         .scale = &wl_output_scale
 };
