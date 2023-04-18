@@ -51,6 +51,8 @@ ifeq ($(call isTargetOs, macosx), true)
   EXCLUDES += \
       sun/awt/screencast \
       sun/awt/X11 \
+      sun/awt/wl \
+      sun/java2d/wl \
       sun/java2d/x11 \
       sun/java2d/jules \
       sun/java2d/xr \
