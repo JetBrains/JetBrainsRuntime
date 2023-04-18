@@ -1940,7 +1940,7 @@ void VMError::print_classloaders_stats(outputStream *st) {
 
     counter._loaders_stats.sort(compare_by_size);
 
-    for (const auto & loaders_stat : counter._loaders_stats) {
+    for (const auto loaders_stat : counter._loaders_stats) {
       Klass * const loader_klass = loaders_stat.first;
       const size_t total_bytes = loaders_stat.second;
       const char *name = loader_klass != nullptr
@@ -2011,7 +2011,7 @@ void VMError::print_dup_classes(outputStream *st) {
     if (counter._dup_classes.length() > 0) {
       st->print_cr("Classes loaded by more than one classloader:");
       counter._dup_classes.sort(compare_by_size);
-      for (const auto & dup : counter._dup_classes) {
+      for (const auto dup : counter._dup_classes) {
         const char * const name = dup.first->external_name();
         const size_t size = dup.first->size();
         const size_t count = dup.second;
