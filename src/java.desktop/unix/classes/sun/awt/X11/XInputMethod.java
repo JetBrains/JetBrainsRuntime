@@ -279,6 +279,79 @@ public class XInputMethod extends X11InputMethod {
     }
 
 
+    // JBR-2460
+    private Point lastKnownCandidatesNativeWindowAbsolutePosition = null;
+
+    private void updateCandidatesNativeWindowPosition(final boolean forceUpdate) {
+        assert(SwingUtilities.isEventDispatchThread());
+
+        final Component clientComponent = getClientComponent();
+        if (clientComponent == null) {
+            // No client
+            return;
+        }
+
+        final Window clientComponentWindow = getClientComponentWindow();
+        if (clientComponentWindow == null) {
+            // Impossible?
+            return;
+        }
+
+        if (!clientComponent.isShowing() || (!clientComponentWindow.isShowing())) {
+            // Components are not showing yet, so it's impossible to determine their location on the screen
+            //   and/or the location of the caret
+            return;
+        }
+
+        final Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        if (screenSize == null) {
+            return;
+        }
+
+        final Point clientComponentPos = clientComponent.getLocationOnScreen();
+
+        // Initial values are the fallback which is the bottom-left corner of the component
+        final Point expectedCandidatesNativeWindowAbsolutePosition = new Point(
+            clientComponentPos.x,
+            clientComponentPos.y + clientComponent.getHeight()
+        );
+
+        final InputMethodRequests clientImr = clientComponent.getInputMethodRequests();
+        if (clientImr != null) {
+            // An active client
+
+            final Rectangle caretRect = clientImr.getTextLocation(null);
+            if (caretRect != null) {
+                expectedCandidatesNativeWindowAbsolutePosition.x = caretRect.x;
+                expectedCandidatesNativeWindowAbsolutePosition.y = caretRect.y + caretRect.height;
+            }
+        }
+
+        // Clamping to the screen's size
+        expectedCandidatesNativeWindowAbsolutePosition.x =
+            Math.max(0, Math.min(screenSize.width, expectedCandidatesNativeWindowAbsolutePosition.x));
+        expectedCandidatesNativeWindowAbsolutePosition.y =
+            Math.max(0, Math.min(screenSize.height, expectedCandidatesNativeWindowAbsolutePosition.y));
+
+        if (forceUpdate || !expectedCandidatesNativeWindowAbsolutePosition.equals(lastKnownCandidatesNativeWindowAbsolutePosition)) {
+            final Point clientWindowPos = clientComponentWindow.getLocationOnScreen();
+
+            final int relativeX =
+                Math.max(0, Math.min(screenSize.width, expectedCandidatesNativeWindowAbsolutePosition.x - clientWindowPos.x));
+            final int relativeY =
+                Math.max(0, Math.min(screenSize.height, expectedCandidatesNativeWindowAbsolutePosition.y - clientWindowPos.y));
+
+            lastKnownCandidatesNativeWindowAbsolutePosition = expectedCandidatesNativeWindowAbsolutePosition;
+            awtLock();
+            try {
+                adjustCandidatesNativeWindowPosition(relativeX, relativeY);
+            } finally {
+                awtUnlock();
+            }
+        }
+    }
+
+
     /*
      * Native methods
      */
@@ -289,4 +362,6 @@ public class XInputMethod extends X11InputMethod {
     private native void setXICFocusNative(long window,
                                     boolean value, boolean active);
     private native void adjustStatusWindow(long window);
+
+    private native void adjustCandidatesNativeWindowPosition(int x, int y);
 }

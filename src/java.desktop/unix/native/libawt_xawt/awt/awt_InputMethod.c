@@ -2027,6 +2027,31 @@ JNIEXPORT void JNICALL Java_sun_awt_X11_XInputMethod_adjustStatusWindow
 #endif
 }
 
+
+static void jbNewXimClient_moveImCandidatesWindow(XIC ic, XPoint newLocation);
+
+JNIEXPORT void JNICALL Java_sun_awt_X11_XInputMethod_adjustCandidatesNativeWindowPosition
+  (JNIEnv *env, jobject this, jint x, jint y)
+{
+    // Must be called under awt lock
+
+    XPoint location = {x, y};
+    XIC xic = NULL;
+    X11InputMethodData *pX11IMData = getX11InputMethodData(env, this);
+
+    if (pX11IMData == NULL) {
+        return;
+    }
+
+    xic = pX11IMData->current_ic;
+    if (xic == NULL) {
+        jio_fprintf(stderr, "%s: xic == NULL.\n", __func__);
+        return;
+    }
+
+    jbNewXimClient_moveImCandidatesWindow(xic, location);
+}
+
 #if defined(__linux__)
 static Window getParentWindow(Window w)
 {
@@ -2937,5 +2962,32 @@ static void jbNewXimClient_destroyInputContext(jbNewXimClient_ExtendedInputConte
     }
     if (localContext.preeditAndStatusCallbacks != NULL) {
         free(localContext.preeditAndStatusCallbacks);
+    }
+}
+
+
+static void jbNewXimClient_moveImCandidatesWindow(XIC ic, XPoint newLocation)
+{
+    XVaNestedList preeditAttributes = NULL;
+    char *unsupportedIMValue = NULL;
+
+    if (ic == NULL) {
+        jio_fprintf(stderr, "%s: ic == NULL.\n", __func__);
+        return;
+    }
+
+    preeditAttributes = XVaCreateNestedList(0, XNSpotLocation, &newLocation, NULL);
+    if (preeditAttributes == NULL) {
+        jio_fprintf(stderr, "%s: failed to create XVaNestedList.\n", __func__);
+        return;
+    }
+
+    unsupportedIMValue = XSetICValues(ic, XNPreeditAttributes, preeditAttributes, NULL);
+
+    XFree(preeditAttributes);
+    preeditAttributes = NULL;
+
+    if (unsupportedIMValue != NULL) {
+        jio_fprintf(stderr, "%s: failed to set the following property \"%s\".\n", __func__, unsupportedIMValue);
     }
 }
