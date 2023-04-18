@@ -69,6 +69,8 @@ ifeq ($(call isTargetOs, macosx), true)
   # exclude all X11 on Mac.
   EXCLUDES += \
       sun/awt/X11 \
+      sun/awt/wl \
+      sun/java2d/wl \
       sun/java2d/x11 \
       sun/java2d/jules \
       sun/java2d/xr \
