@@ -175,7 +175,7 @@ final class CPlatformResponder {
      * Handles key events.
      */
     void handleKeyEvent(int eventType, int modifierFlags, String chars, String charsIgnoringModifiers,
-                        short keyCode, boolean needsKeyTyped, boolean needsKeyReleased) {
+                        String actualCharacters, short keyCode, boolean needsKeyTyped, boolean needsKeyReleased) {
         boolean isFlagsChangedEvent =
             isNpapiCallback ? (eventType == CocoaConstants.NPCocoaEventFlagsChanged) :
                               (eventType == CocoaConstants.NSFlagsChanged);
@@ -188,7 +188,6 @@ final class CPlatformResponder {
         boolean charsReserved = false;
 
         char testChar = KeyEvent.CHAR_UNDEFINED;
-        char leadingSpaceChar = KeyEvent.CHAR_UNDEFINED;
 
         if (isFlagsChangedEvent) {
             int[] in = new int[] {modifierFlags, keyCode};
@@ -218,12 +217,6 @@ final class CPlatformResponder {
                 // Check if String chars contains SPACE character.
                 if (chars.trim().isEmpty()) {
                     spaceKeyTyped = true;
-                }
-
-                if (chars.length() > 1 && (chars.charAt(0) == ' ' || chars.charAt(0) == '\u00a0')) {
-                    // The string starts with U+0020 Space or U+00A0 No-Break Space.
-                    // Let's remember that so we can send a KEY_TYPED event later.
-                    leadingSpaceChar = chars.charAt(0);
                 }
 
                 if (!charsReserved) {
@@ -307,15 +300,22 @@ final class CPlatformResponder {
             if (needsKeyReleased && (jkeyCode == KeyEvent.VK_ENTER || jkeyCode == KeyEvent.VK_SPACE)) {
                 return;
             }
-            if (leadingSpaceChar != KeyEvent.CHAR_UNDEFINED) {
+
+            if (actualCharacters == null) {
+                // Either macOS didn't send us anything in insertText: to type,
+                // or this event was not generated in AWTView.m. Let's fall back to using javaChar
+                // since we still need to generate KEY_TYPED events, for instance for Ctrl+ combinations.
+                // javaChar is guaranteed to be a valid character, since postsTyped is true.
+                actualCharacters = String.valueOf(javaChar);
+            }
+
+            for (char ch : actualCharacters.toCharArray()) {
                 eventNotifier.notifyKeyEvent(KeyEvent.KEY_TYPED, when, jmodifiers,
-                        KeyEvent.VK_UNDEFINED, leadingSpaceChar,
+                        KeyEvent.VK_UNDEFINED, ch,
                         KeyEvent.KEY_LOCATION_UNKNOWN);
             }
-            eventNotifier.notifyKeyEvent(KeyEvent.KEY_TYPED, when, jmodifiers,
-                    KeyEvent.VK_UNDEFINED, javaChar,
-                    KeyEvent.KEY_LOCATION_UNKNOWN);
-            //If events come from Firefox, released events should also be generated.
+
+            // If events come from Firefox, released events should also be generated.
             if (needsKeyReleased) {
                 eventNotifier.notifyKeyEvent(KeyEvent.KEY_RELEASED, when, jmodifiers,
                         jkeyCode, javaChar,

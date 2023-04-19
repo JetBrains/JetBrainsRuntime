@@ -57,14 +57,16 @@ final class NSEvent {
     private short keyCode;
     private String characters;
     private String charactersIgnoringModifiers;
+    private String actualCharacters;
 
     // Called from native
-    NSEvent(int type, int modifierFlags, short keyCode, String characters, String charactersIgnoringModifiers) {
+    NSEvent(int type, int modifierFlags, short keyCode, String characters, String charactersIgnoringModifiers, String actualCharacters) {
         this.type = type;
         this.modifierFlags = modifierFlags;
         this.keyCode = keyCode;
         this.characters = characters;
         this.charactersIgnoringModifiers = charactersIgnoringModifiers;
+        this.actualCharacters = actualCharacters;
     }
 
     // Called from native
@@ -138,6 +140,10 @@ final class NSEvent {
 
     String getCharacters() {
         return characters;
+    }
+
+    String getActualCharacters() {
+        return actualCharacters;
     }
 
     @Override

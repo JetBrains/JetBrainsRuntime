@@ -104,7 +104,7 @@ public class CEmbeddedFrame extends EmbeddedFrame {
                                String charsIgnoringMods, boolean isRepeat, short keyCode,
                                boolean needsKeyTyped) {
         responder.handleKeyEvent(eventType, modifierFlags, characters, charsIgnoringMods,
-                keyCode, needsKeyTyped, isRepeat);
+                null, keyCode, needsKeyTyped, isRepeat);
     }
 
     public void handleInputEvent(String text) {

@@ -50,7 +50,6 @@ static NSString *kbdLayout;
 -(void) deliverResize: (NSRect) rect;
 -(void) resetTrackingArea;
 -(void) deliverJavaKeyEventHelper: (NSEvent*) event;
--(BOOL) isCodePointInUnicodeBlockNeedingIMEvent: (unichar) codePoint;
 -(NSMutableString *) parseString : (id) complexString;
 @end
 
@@ -86,7 +85,6 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     fInputMethodLOCKABLE = NULL;
     fKeyEventsNeeded = NO;
     fProcessingKeystroke = NO;
-    fComplexInputNeeded = NO;
 
     fEnablePressAndHold = shouldUsePressAndHold();
     fInPressAndHold = NO;
@@ -360,19 +358,8 @@ static void debugPrintNSEvent(NSEvent* event) {
 #endif
     fProcessingKeystroke = YES;
     fKeyEventsNeeded = YES;
-    fComplexInputNeeded = NO;
 
     NSString *eventCharacters = [event characters];
-
-    if ([eventCharacters length] > 0) {
-        unichar codePoint = [eventCharacters characterAtIndex:0];
-        if ((codePoint >= 0x3000 && codePoint <= 0x303F) || (codePoint >= 0xff00 && codePoint <= 0xffef)) {
-            // "CJK Symbols and Punctuation" or "Halfwidth and Fullwidth Forms"
-            // Force the complex input method because macOS doesn't properly send us
-            // the half-width characters when the user has them enabled.
-            fComplexInputNeeded = YES;
-        }
-    }
 
     // Allow TSM to look at the event and potentially send back NSTextInputClient messages.
     [self interpretKeyEvents:[NSArray arrayWithObject:event]];
@@ -416,6 +403,11 @@ static void debugPrintNSEvent(NSEvent* event) {
 
     if ((![self hasMarkedText] && fKeyEventsNeeded) || isDeadKey) {
         [self deliverJavaKeyEventHelper: event];
+    }
+
+    if (actualCharacters != nil) {
+        [actualCharacters release];
+        actualCharacters = nil;
     }
 
     fProcessingKeystroke = NO;
@@ -614,15 +606,20 @@ static void debugPrintNSEvent(NSEvent* event) {
         characters = NSStringToJavaString(env, [event characters]);
         charactersIgnoringModifiers = NSStringToJavaString(env, [event charactersIgnoringModifiers]);
     }
+    jstring jActualCharacters = NULL;
+    if (actualCharacters != nil) {
+        jActualCharacters = NSStringToJavaString(env, actualCharacters);
+    }
 
     DECLARE_CLASS(jc_NSEvent, "sun/lwawt/macosx/NSEvent");
-    DECLARE_METHOD(jctor_NSEvent, jc_NSEvent, "<init>", "(IISLjava/lang/String;Ljava/lang/String;)V");
+    DECLARE_METHOD(jctor_NSEvent, jc_NSEvent, "<init>", "(IISLjava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
     jobject jEvent = (*env)->NewObject(env, jc_NSEvent, jctor_NSEvent,
-                                  [event type],
-                                  [event modifierFlags],
-                                  [event keyCode],
-                                  characters,
-                                  charactersIgnoringModifiers);
+                                       [event type],
+                                       [event modifierFlags],
+                                       [event keyCode],
+                                       characters,
+                                       charactersIgnoringModifiers,
+                                       jActualCharacters);
     CHECK_NULL(jEvent);
 
     DECLARE_CLASS(jc_PlatformView, "sun/lwawt/macosx/CPlatformView");
@@ -636,6 +633,12 @@ static void debugPrintNSEvent(NSEvent* event) {
     }
     if (characters != NULL) {
         (*env)->DeleteLocalRef(env, characters);
+    }
+    if (charactersIgnoringModifiers != NULL) {
+        (*env)->DeleteLocalRef(env, charactersIgnoringModifiers);
+    }
+    if (jActualCharacters != NULL) {
+        (*env)->DeleteLocalRef(env, jActualCharacters);
     }
     (*env)->DeleteLocalRef(env, jEvent);
 }
@@ -693,39 +696,6 @@ static void debugPrintNSEvent(NSEvent* event) {
          }
          */
     }
-}
-
--(BOOL) isChineseInputMethod {
-    return ([kbdLayout containsString:@"com.apple.inputmethod.SCIM"] ||
-            [kbdLayout containsString:@"com.apple.inputmethod.TCIM"] ||
-            [kbdLayout containsString:@"com.apple.inputmethod.TYIM"]);
-}
-
--(BOOL) isJapaneseInputMethod {
-    return [kbdLayout containsString:@"com.apple.inputmethod.Kotoeri"];
-}
-
--(BOOL) isCodePointInUnicodeBlockNeedingIMEvent: (unichar) codePoint {
-    if ((codePoint == 0x2018 || codePoint == 0x2019 || codePoint == 0x201C || codePoint == 0x201D) && [self isChineseInputMethod]) {
-        // left/right single/double quotation mark
-        return YES;
-    }
-
-    if ((codePoint == 0x5C || codePoint == 0xA5) && [self isJapaneseInputMethod]) {
-        // Backslash/Yen symbol
-        return YES;
-    }
-
-    if (((codePoint >= 0x900) && (codePoint <= 0x97F)) ||
-        ((codePoint >= 0x20A3) && (codePoint <= 0x20BF)) ||
-        ((codePoint >= 0x3000) && (codePoint <= 0x303F)) ||
-        ((codePoint >= 0xFF00) && (codePoint <= 0xFFEF))) {
-        // Code point is in 'CJK Symbols and Punctuation' or
-        // 'Halfwidth and Fullwidth Forms' Unicode block or
-        // currency symbols unicode or Devanagari script
-        return YES;
-    }
-    return NO;
 }
 
 -(NSMutableString *) parseString : (id) complexString {
@@ -1138,12 +1108,7 @@ static jclass jc_CInputMethod = NULL;
     // Unicode value.
 
     NSMutableString * useString = [self parseString:aString];
-    // Standard macOS layouts sometimes have keys that produce a U+0020 Space or U+00A0 No-Break Space as the first character
-    // This is a temporary workaround so that KEY_PRESSED events on these keys are properly reported.
-    NSUInteger strippedCodeUnits = [[useString stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@" \u00a0"]] length];
-    BOOL aStringIsComplex = NO;
-
-    unichar codePoint = [useString characterAtIndex:0];
+    BOOL usingComplexIM = [self hasMarkedText] || !fProcessingKeystroke;
 
 #ifdef IM_DEBUG
     NSUInteger utf16Length = [useString lengthOfBytesUsingEncoding:NSUTF16StringEncoding];
@@ -1152,45 +1117,32 @@ static jclass jc_CInputMethod = NULL;
     NSLog(@"insertText kbdlayout %@ ",(NSString *)kbdLayout);
 
     NSLog(@"utf8Length %lu utf16Length %lu", (unsigned long)utf8Length, (unsigned long)utf16Length);
-    NSLog(@"codePoint %x", codePoint);
 #endif // IM_DEBUG
 
-    if ((strippedCodeUnits > 1) || [self isCodePointInUnicodeBlockNeedingIMEvent:codePoint]) {
-#ifdef IM_DEBUG
-        NSLog(@"string complex ");
-#endif
-        aStringIsComplex = YES;
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+
+    GET_CIM_CLASS();
+    DECLARE_METHOD(jm_selectPreviousGlyph, jc_CInputMethod, "selectPreviousGlyph", "()V");
+    // We need to select the previous glyph so that it is overwritten.
+    if (fPAHNeedsToSelect) {
+        (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_selectPreviousGlyph);
+        CHECK_EXCEPTION();
+        fPAHNeedsToSelect = NO;
     }
 
-    if ([self hasMarkedText] || !fProcessingKeystroke || aStringIsComplex || fComplexInputNeeded) {
-        JNIEnv *env = [ThreadUtilities getJNIEnv];
-
-        GET_CIM_CLASS();
-        DECLARE_METHOD(jm_selectPreviousGlyph, jc_CInputMethod, "selectPreviousGlyph", "()V");
-        // We need to select the previous glyph so that it is overwritten.
-        if (fPAHNeedsToSelect) {
-            (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_selectPreviousGlyph);
-            CHECK_EXCEPTION();
-            fPAHNeedsToSelect = NO;
-        }
-
+    if (usingComplexIM) {
         DECLARE_METHOD(jm_insertText, jc_CInputMethod, "insertText", "(Ljava/lang/String;)V");
         jstring insertedText =  NSStringToJavaString(env, useString);
         (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_insertText, insertedText);
         CHECK_EXCEPTION();
         (*env)->DeleteLocalRef(env, insertedText);
-
-        // The input method event will create psuedo-key events for each character in the committed string.
-        // We also don't want to send the character that triggered the insertText, usually a return. [3337563]
         fKeyEventsNeeded = NO;
-        fComplexInputNeeded = NO;
-    }
-    else {
-        // Need to set back the fKeyEventsNeeded flag so that the string following the
-        // marked text is not ignored by keyDown
-        if ([useString length] > 0) {
-            fKeyEventsNeeded = YES;
+    } else {
+        if (actualCharacters != nil) {
+            [actualCharacters release];
         }
+        actualCharacters = [useString copy];
+        fKeyEventsNeeded = YES;
     }
     fPAHNeedsToSelect = NO;
 
