@@ -1958,21 +1958,20 @@ void VMError::print_classloaders_stats(outputStream *st) {
   }
 }
 
-static bool klass_equals(Klass* const & klass1, Klass* const & klass2) {
-  return strcmp(klass1->external_name(), klass2->external_name()) == 0;
-}
-
-static unsigned klass_hash(Klass* const &  k) {
-  int h = 0;
-  const char* p = k->external_name();
-  while (*p != '\0') {
-    h = 31 * h + *p;
-    p++;
-  }
-  return h;
-}
-
 class DuplicateKlassClosure : public KlassClosure {
+    static bool klass_equals(Klass* const & klass1, Klass* const & klass2) {
+      return strcmp(klass1->external_name(), klass2->external_name()) == 0;
+    }
+
+    static unsigned klass_hash(Klass* const &  k) {
+      int h = 0;
+      const char* p = k->external_name();
+      while (*p != '\0') {
+        h = 31 * h + *p;
+        p++;
+      }
+      return h;
+    }
 public:
     // Klass -> number times loaded
     using TABLE = ResourceHashtable<Klass*, size_t,
