@@ -550,8 +550,7 @@ static struct KeyCodeTranslationResult NsTranslateKeyCode(TISInputSourceRef layo
  */
 static void
 NsCharToJavaVirtualKeyCode(unichar ch, unsigned short key, const BOOL useNationalLayouts,
-                           jint *keyCode, jint *keyLocation, BOOL *postsTyped,
-                           unichar *deadChar)
+                           jint *keyCode, jint *keyLocation)
 {
     // This is going to be a lengthy explanation about what it is that we need to achieve in this function.
     // It took me quite a while to figure out myself, so hopefully it will be useful to others as well.
@@ -573,7 +572,13 @@ NsCharToJavaVirtualKeyCode(unichar ch, unsigned short key, const BOOL useNationa
     //
     // Whenever I refer to a key on the physical keyboard I will use the US layout.
     //
-    // These are the types of input sources that we want to handle:
+    // This function needs to determine the following:
+    //   - Java key code
+    //   - Java key location
+    //
+    // Obtaining the key location is fairly easy, since it can be looked up in the table by key code and physical layout type.
+    //
+    // To understand how to obtain the Java key code, let's take a look at the types of input sources that we want to handle:
     //   - Latin-based key layouts (ABC, German, French, Spanish, etc)
     //   - Non-latin-based key layouts (Arabic, Armenian, Russian, etc)
     //   - Latin-based IMEs (Pinyin, Cantonese - Phonetic, Japanese Romaji, etc.)
@@ -613,7 +618,7 @@ NsCharToJavaVirtualKeyCode(unichar ch, unsigned short key, const BOOL useNationa
     //
     // Dead keys need to be mapped into the corresponding VK_DEAD_ key codes in the same way the normal keys are mapped,
     // that is using an underlying layout. This is done by using the UCKeyTranslate function together with charToDeadVKTable.
-    // It is possible to extract a non-combining dead key character by calling UCKeyTranslate
+    // It is possible to extract a (usually) non-combining dead key character by calling UCKeyTranslate
     // with the kUCKeyTranslateNoDeadKeysMask option.
     //
     // Punctuation is hardcoded in extraCharToVKTable. Latin letters and numbers are dealt with separately.
@@ -657,7 +662,6 @@ NsCharToJavaVirtualKeyCode(unichar ch, unsigned short key, const BOOL useNationa
             (!useNationalLayouts || currentAscii) ? currentLayout : nil;
 
     // Default to returning the US key data.
-    *postsTyped = usKey->postsTyped;
     *keyCode = usKey->javaKeyCode;
     *keyLocation = usKey->javaKeyLocation;
 
@@ -667,13 +671,6 @@ NsCharToJavaVirtualKeyCode(unichar ch, unsigned short key, const BOOL useNationa
 
     // Translate the key using the underlying key layout.
     struct KeyCodeTranslationResult translatedKey = NsTranslateKeyCode(underlyingLayout, key, NO);
-    // Same as translatedKey above, only this time we take modifiers into account.
-    struct KeyCodeTranslationResult translatedCombo = NsTranslateKeyCode(underlyingLayout, key, YES);
-
-    if (translatedCombo.isSuccess) {
-        *postsTyped = translatedCombo.isTyped;
-        *deadChar = translatedCombo.isDead ? translatedCombo.character : 0;
-    }
 
     // Test whether this key is dead.
     if (translatedKey.isDead) {
@@ -907,19 +904,17 @@ JNI_COCOA_EXIT(env);
 /*
  * Class:     sun_lwawt_macosx_NSEvent
  * Method:    nsToJavaKeyInfo
- * Signature: ([I[I)Z
+ * Signature: ([I[I)V
  */
-JNIEXPORT jboolean JNICALL
+JNIEXPORT void JNICALL
 Java_sun_lwawt_macosx_NSEvent_nsToJavaKeyInfo
 (JNIEnv *env, jclass cls, jintArray inData, jintArray outData)
 {
-    BOOL postsTyped = NO;
-
 JNI_COCOA_ENTER(env);
 
     jboolean copy = JNI_FALSE;
     jint *data = (*env)->GetIntArrayElements(env, inData, &copy);
-    CHECK_NULL_RETURN(data, postsTyped);
+    CHECK_NULL(data);
 
     // in  = [testChar, keyCode, useNationalLayouts]
     jchar testChar = (jchar)data[0];
@@ -928,23 +923,18 @@ JNI_COCOA_ENTER(env);
 
     jint jkeyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
     jint jkeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
-    jint testDeadChar = 0;
 
     NsCharToJavaVirtualKeyCode((unichar)testChar, (unsigned short)keyCode,
                                useNationalLayouts,
-                               &jkeyCode, &jkeyLocation, &postsTyped,
-                               (unichar *) &testDeadChar);
+                               &jkeyCode, &jkeyLocation);
 
     // out = [jkeyCode, jkeyLocation, deadChar];
     (*env)->SetIntArrayRegion(env, outData, 0, 1, &jkeyCode);
     (*env)->SetIntArrayRegion(env, outData, 1, 1, &jkeyLocation);
-    (*env)->SetIntArrayRegion(env, outData, 2, 1, &testDeadChar);
 
     (*env)->ReleaseIntArrayElements(env, inData, data, 0);
 
 JNI_COCOA_EXIT(env);
-
-    return postsTyped;
 }
 
 /*

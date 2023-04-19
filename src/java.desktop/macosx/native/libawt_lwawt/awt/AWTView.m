@@ -57,6 +57,7 @@ static NSString *kbdLayout;
 // Uncomment this line to see fprintfs of each InputMethod API being called on this View
 //#define IM_DEBUG TRUE
 //#define EXTRA_DEBUG
+//#define LOG_KEY_EVENTS
 
 static BOOL shouldUsePressAndHold() {
     return YES;
@@ -303,7 +304,51 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
  * KeyEvents support
  */
 
+#ifdef LOG_KEY_EVENTS
+static void debugPrintNSString(const char* name, NSString* s) {
+    if (s == nil) {
+        fprintf(stderr, "\t%s: nil\n", name);
+        return;
+    }
+    const char* utf8 = [s UTF8String];
+    int codeUnits = [s length];
+    int bytes = strlen(utf8);
+    fprintf(stderr, "\t%s: [utf8 = \"", name);
+    for (const unsigned char* c = (const unsigned char*)utf8; *c; ++c) {
+        if (*c >= 0x20 && *c <= 0x7e) {
+            fputc(*c, stderr);
+        } else {
+            fprintf(stderr, "\\x%02x", *c);
+        }
+    }
+    fprintf(stderr, "\", bytes = %d, codeUnits = %d]\n", bytes, codeUnits);
+}
+
+static void debugPrintNSEvent(NSEvent* event) {
+    NSEventType type = [event type];
+    if (type == NSEventTypeKeyDown) {
+        fprintf(stderr, "[AWTView.m] keyDown\n");
+    } else if (type == NSEventTypeKeyUp) {
+        fprintf(stderr, "[AWTView.m] keyUp\n");
+    } else if (type == NSEventTypeFlagsChanged) {
+        fprintf(stderr, "[AWTView.m] flagsChanged\n");
+    } else {
+        fprintf(stderr, "[AWTView.m] unknown event %d\n", (int)type);
+        return;
+    }
+    if (type == NSEventTypeKeyDown || type == NSEventTypeKeyUp) {
+        debugPrintNSString("characters", [event characters]);
+        debugPrintNSString("charactersIgnoringModifiers", [event charactersIgnoringModifiers]);
+        fprintf(stderr, "\tkeyCode: %d (0x%02x)\n", [event keyCode], [event keyCode]);
+    }
+    fprintf(stderr, "\tmodifierFlags: 0x%08x\n", (unsigned)[event modifierFlags]);
+}
+#endif
+
 - (void) keyDown: (NSEvent *)event {
+#ifdef LOG_KEY_EVENTS
+    debugPrintNSEvent(event);
+#endif
     fProcessingKeystroke = YES;
     fKeyEventsNeeded = YES;
     fComplexInputNeeded = NO;
@@ -368,10 +413,16 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 }
 
 - (void) keyUp: (NSEvent *)event {
+#ifdef LOG_KEY_EVENTS
+    debugPrintNSEvent(event);
+#endif
     [self deliverJavaKeyEventHelper: event];
 }
 
 - (void) flagsChanged: (NSEvent *)event {
+#ifdef LOG_KEY_EVENTS
+    debugPrintNSEvent(event);
+#endif
     [self deliverJavaKeyEventHelper: event];
 }
 

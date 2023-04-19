@@ -185,9 +185,9 @@ final class CPlatformResponder {
         int jkeyLocation = KeyEvent.KEY_LOCATION_UNKNOWN;
         boolean postsTyped = false;
         boolean spaceKeyTyped = false;
+        boolean charsReserved = false;
 
         char testChar = KeyEvent.CHAR_UNDEFINED;
-        boolean isDeadChar = (chars != null && chars.length() == 0);
 
         if (isFlagsChangedEvent) {
             int[] in = new int[] {modifierFlags, keyCode};
@@ -200,6 +200,14 @@ final class CPlatformResponder {
             jeventType = out[2];
         } else {
             if (chars != null && chars.length() > 0) {
+                if (chars.length() == 1) {
+                    // NSEvent.h declares this range of characters to signify various function keys
+                    // This is a subrange of the Unicode private use area.
+                    // No builtin key layouts normally produce any characters within this range, except when
+                    // pressing the corresponding function keys.
+                    charsReserved = chars.charAt(0) >= 0xF700 && chars.charAt(0) <= 0xF7FF;
+                }
+
                 // Find a suitable character to report as a keypress.
                 // `chars` might contain more than one character
                 // e.g. when Dead Grave + S were pressed, `chars` will contain "`s"
@@ -210,28 +218,21 @@ final class CPlatformResponder {
                 if (chars.trim().isEmpty()) {
                     spaceKeyTyped = true;
                 }
+
+                if (!charsReserved) {
+                    postsTyped = true;
+                }
             }
 
             char testCharIgnoringModifiers = charsIgnoringModifiers != null && charsIgnoringModifiers.length() > 0 ?
                     charsIgnoringModifiers.charAt(0) : KeyEvent.CHAR_UNDEFINED;
 
             int[] in = new int[] {testCharIgnoringModifiers, keyCode, KeyEventProcessing.useNationalLayouts ? 1 : 0};
-            int[] out = new int[3]; // [jkeyCode, jkeyLocation, deadChar]
+            int[] out = new int[2]; // [jkeyCode, jkeyLocation]
 
-            postsTyped = NSEvent.nsToJavaKeyInfo(in, out);
+            NSEvent.nsToJavaKeyInfo(in, out);
             if (!postsTyped) {
                 testChar = KeyEvent.CHAR_UNDEFINED;
-            }
-
-            if (isDeadChar) {
-                testChar = (char) out[2];
-                if (testChar == 0) {
-                    // Not abandoning the input event here, since we want to catch dead key presses.
-                    // Consider Option+E on the standard ABC layout. This key combination produces a dead accent.
-                    // The key 'E' by itself is not dead, thus out[2] will be 0, even though isDeadChar is true.
-                    // If we abandon the event there, this key press will never get delivered to the application.
-                    testChar = KeyEvent.CHAR_UNDEFINED;
-                }
             }
 
             // If a Chinese input method is selected, CAPS_LOCK key is supposed to switch
