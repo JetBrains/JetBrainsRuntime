@@ -80,8 +80,8 @@ public class KeyCodesTest implements Runnable {
         // control characters
         verify("\t", VK_TAB, "com.apple.keylayout.ABC", VK_TAB);
         verify("\n", VK_ENTER, "com.apple.keylayout.ABC", VK_ENTER);
-        verify("\0", VK_BACK_SPACE, "com.apple.keylayout.ABC", VK_BACK_SPACE);
-        verify("\0", VK_ESCAPE, "com.apple.keylayout.ABC", VK_ESCAPE);
+        verify("", VK_BACK_SPACE, "com.apple.keylayout.ABC", VK_BACK_SPACE);
+        verify("", VK_ESCAPE, "com.apple.keylayout.ABC", VK_ESCAPE);
 
         // keypad
         verify("/", VK_DIVIDE, "com.apple.keylayout.ABC", VK_DIVIDE, VK_SLASH, KEY_LOCATION_NUMPAD, 0);

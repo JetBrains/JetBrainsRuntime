@@ -188,6 +188,7 @@ final class CPlatformResponder {
         boolean charsReserved = false;
 
         char testChar = KeyEvent.CHAR_UNDEFINED;
+        char leadingSpaceChar = KeyEvent.CHAR_UNDEFINED;
 
         if (isFlagsChangedEvent) {
             int[] in = new int[] {modifierFlags, keyCode};
@@ -200,23 +201,29 @@ final class CPlatformResponder {
             jeventType = out[2];
         } else {
             if (chars != null && chars.length() > 0) {
-                if (chars.length() == 1) {
-                    // NSEvent.h declares this range of characters to signify various function keys
-                    // This is a subrange of the Unicode private use area.
-                    // No builtin key layouts normally produce any characters within this range, except when
-                    // pressing the corresponding function keys.
-                    charsReserved = chars.charAt(0) >= 0xF700 && chars.charAt(0) <= 0xF7FF;
-                }
-
                 // Find a suitable character to report as a keypress.
                 // `chars` might contain more than one character
                 // e.g. when Dead Grave + S were pressed, `chars` will contain "`s"
                 // Since we only really care about the last character, let's use it
                 testChar = chars.charAt(chars.length() - 1);
 
-                //Check if String chars contains SPACE character.
+                if (chars.length() == 1) {
+                    // NSEvent.h declares this range of characters to signify various function keys
+                    // This is a subrange of the Unicode private use area.
+                    // No builtin key layouts normally produce any characters within this range, except when
+                    // pressing the corresponding function keys.
+                    charsReserved = testChar >= 0xF700 && testChar <= 0xF7FF;
+                }
+
+                // Check if String chars contains SPACE character.
                 if (chars.trim().isEmpty()) {
                     spaceKeyTyped = true;
+                }
+
+                if (chars.length() > 1 && (chars.charAt(0) == ' ' || chars.charAt(0) == '\u00a0')) {
+                    // The string starts with U+0020 Space or U+00A0 No-Break Space.
+                    // Let's remember that so we can send a KEY_TYPED event later.
+                    leadingSpaceChar = chars.charAt(0);
                 }
 
                 if (!charsReserved) {
@@ -299,6 +306,11 @@ final class CPlatformResponder {
             // KEY_TYPED and KEY_RELEASED events for them are synthesized in handleInputEvent.
             if (needsKeyReleased && (jkeyCode == KeyEvent.VK_ENTER || jkeyCode == KeyEvent.VK_SPACE)) {
                 return;
+            }
+            if (leadingSpaceChar != KeyEvent.CHAR_UNDEFINED) {
+                eventNotifier.notifyKeyEvent(KeyEvent.KEY_TYPED, when, jmodifiers,
+                        KeyEvent.VK_UNDEFINED, leadingSpaceChar,
+                        KeyEvent.KEY_LOCATION_UNKNOWN);
             }
             eventNotifier.notifyKeyEvent(KeyEvent.KEY_TYPED, when, jmodifiers,
                     KeyEvent.VK_UNDEFINED, javaChar,

@@ -321,6 +321,15 @@ static void debugPrintNSString(const char* name, NSString* s) {
             fprintf(stderr, "\\x%02x", *c);
         }
     }
+    fprintf(stderr, "\", utf16 = \"");
+    for (int i = 0; i < codeUnits; ++i) {
+        int c = (int)[s characterAtIndex:i];
+        if (c >= 0x20 && c <= 0x7e) {
+            fputc(c, stderr);
+        } else {
+            fprintf(stderr, "\\u%04x", c);
+        }
+    }
     fprintf(stderr, "\", bytes = %d, codeUnits = %d]\n", bytes, codeUnits);
 }
 
@@ -1129,20 +1138,24 @@ static jclass jc_CInputMethod = NULL;
     // Unicode value.
 
     NSMutableString * useString = [self parseString:aString];
-    NSUInteger utf16Length = [useString lengthOfBytesUsingEncoding:NSUTF16StringEncoding];
-    NSUInteger utf8Length = [useString lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+    // Standard macOS layouts sometimes have keys that produce a U+0020 Space or U+00A0 No-Break Space as the first character
+    // This is a temporary workaround so that KEY_PRESSED events on these keys are properly reported.
+    NSUInteger strippedCodeUnits = [[useString stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@" \u00a0"]] length];
     BOOL aStringIsComplex = NO;
 
     unichar codePoint = [useString characterAtIndex:0];
 
 #ifdef IM_DEBUG
+    NSUInteger utf16Length = [useString lengthOfBytesUsingEncoding:NSUTF16StringEncoding];
+    NSUInteger utf8Length = [useString lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+
     NSLog(@"insertText kbdlayout %@ ",(NSString *)kbdLayout);
 
     NSLog(@"utf8Length %lu utf16Length %lu", (unsigned long)utf8Length, (unsigned long)utf16Length);
     NSLog(@"codePoint %x", codePoint);
 #endif // IM_DEBUG
 
-    if ((utf16Length > 2) || [self isCodePointInUnicodeBlockNeedingIMEvent:codePoint]) {
+    if ((strippedCodeUnits > 1) || [self isCodePointInUnicodeBlockNeedingIMEvent:codePoint]) {
 #ifdef IM_DEBUG
         NSLog(@"string complex ");
 #endif

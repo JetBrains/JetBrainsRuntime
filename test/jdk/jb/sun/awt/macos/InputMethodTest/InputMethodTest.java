@@ -257,10 +257,10 @@ public class InputMethodTest {
     public static void expect(String expectedValue) {
         var actualValue = textArea.getText();
         if (actualValue.equals(expectedValue)) {
-            System.out.printf("Test %s (%s) passed, got '%s'\n", currentTest, currentSection, actualValue);
+            System.out.printf("Test %s (%s) passed: got '%s'\n", currentTest, currentSection, actualValue);
         } else {
             success = false;
-            System.out.printf("Test %s (%s) FAILED, expected '%s', got '%s'\n", currentTest, currentSection, expectedValue, actualValue);
+            System.out.printf("Test %s (%s) FAILED: expected '%s', got '%s'\n", currentTest, currentSection, expectedValue, actualValue);
         }
     }
 
