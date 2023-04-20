@@ -780,8 +780,10 @@ void ParNewRefProcTaskProxy::work(uint worker_id) {
   HandleMark hm;
   ParScanThreadState& par_scan_state = _state_set.thread_state(worker_id);
   par_scan_state.set_young_old_boundary(_young_old_boundary);
+  BarrierEnqueueDiscoveredFieldClosure enqueue;
   _task.work(worker_id, par_scan_state.is_alive_closure(),
              par_scan_state.keep_alive_closure(),
+             enqueue,
              par_scan_state.evacuate_followers_closure());
 }
 
@@ -948,6 +950,7 @@ void ParNewGeneration::collect(bool   full,
   IsAliveClosure is_alive(this);
   ScanWeakRefClosure scan_weak_ref(this);
   KeepAliveClosure keep_alive(&scan_weak_ref);
+  BarrierEnqueueDiscoveredFieldClosure enqueue;
   ScanClosure               scan_without_gc_barrier(this, false);
   ScanClosureWithParBarrier scan_with_gc_barrier(this, true);
   set_promo_failure_scan_stack_closure(&scan_without_gc_barrier);
@@ -960,13 +963,13 @@ void ParNewGeneration::collect(bool   full,
   ReferenceProcessorPhaseTimes pt(_gc_timer, rp->max_num_queues());
   if (rp->processing_is_mt()) {
     ParNewRefProcTaskExecutor task_executor(*this, *_old_gen, thread_state_set);
-    stats = rp->process_discovered_references(&is_alive, &keep_alive,
+    stats = rp->process_discovered_references(&is_alive, &keep_alive, &enqueue,
                                               &evacuate_followers, &task_executor,
                                               &pt);
   } else {
     thread_state_set.flush();
     gch->save_marks();
-    stats = rp->process_discovered_references(&is_alive, &keep_alive,
+    stats = rp->process_discovered_references(&is_alive, &keep_alive, &enqueue,
                                               &evacuate_followers, NULL,
                                               &pt);
   }
