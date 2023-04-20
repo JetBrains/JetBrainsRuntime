@@ -111,7 +111,7 @@ BOOL isDisplaySyncEnabled() {
             return;
         }
 
-        id<MTLCommandBuffer> commandBuf = [self.ctx createCommandBuffer];
+        id<MTLCommandBuffer> commandBuf = [self.ctx createBlitCommandBuffer];
         if (commandBuf == nil) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: commandBuf is null");
             return;
@@ -122,6 +122,11 @@ BOOL isDisplaySyncEnabled() {
             return;
         }
         self.nextDrawableCount++;
+        id<MTLCommandBuffer> renderBuffer =  [self.ctx createCommandBuffer];
+        self.ctx.syncCount++;
+        if (@available(macOS 10.14, *)) {
+            [renderBuffer encodeWaitForEvent:self.ctx.syncEvent value:self.ctx.syncCount];
+        }
 
         id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
 
@@ -132,6 +137,10 @@ BOOL isDisplaySyncEnabled() {
                 toTexture:mtlDrawable.texture destinationSlice:0 destinationLevel:0
                 destinationOrigin:MTLOriginMake(0, 0, 0)];
         [blitEncoder endEncoding];
+
+        if (@available(macOS 10.14, *)) {
+            [commandBuf encodeSignalEvent:self.ctx.syncEvent value:self.ctx.syncCount];
+        }
 
         [commandBuf presentDrawable:mtlDrawable];
         __block MTLLayer* layer = self;
