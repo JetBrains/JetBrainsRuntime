@@ -517,7 +517,7 @@ static struct KeyCodeTranslationResult NsTranslateKeyCode(TISInputSourceRef layo
 
             // This is the character that will determine the Java key code of this key.
             // There are some keys (even on ASCII-capable key layouts) that produce more than one
-            // code unit (not just more than one UTF-16 code unit mind you!). It's unclear how one
+            // code point (not just more than one UTF-16 code unit mind you!). It's unclear how one
             // would go around constructing an extended key code for these keys. Luckily, if we
             // use the last code unit to construct the extended key codes, there won't be any collisions
             // among the standard macOS ASCII-capable key layouts. That seems good enough to me.
