@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -111,7 +111,7 @@ BOOL isDisplaySyncEnabled() {
             return;
         }
 
-        id<MTLCommandBuffer> commandBuf = [self.ctx createCommandBuffer];
+        id<MTLCommandBuffer> commandBuf = [self.ctx createBlitCommandBuffer];
         if (commandBuf == nil) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: commandBuf is null");
             return;
@@ -122,6 +122,12 @@ BOOL isDisplaySyncEnabled() {
             return;
         }
         self.nextDrawableCount++;
+        id<MTLCommandBuffer> renderBuffer =  [self.ctx createCommandBuffer];
+        self.ctx.syncCount++;
+        if (@available(macOS 10.14, *)) {
+            [renderBuffer encodeWaitForEvent:self.ctx.syncEvent value:self.ctx.syncCount];
+        }
+
 #define MTL_LAYER_USE_BLIT_ENC
 #ifdef MTL_LAYER_USE_BLIT_ENC
         id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
@@ -167,6 +173,10 @@ BOOL isDisplaySyncEnabled() {
         [computeEncoder endEncoding];
         [cb commit];
 #endif
+        if (@available(macOS 10.14, *)) {
+            [commandBuf encodeSignalEvent:self.ctx.syncEvent value:self.ctx.syncCount];
+        }
+
         [commandBuf presentDrawable:mtlDrawable];
         __block MTLLayer* layer = self;
         [layer retain];
