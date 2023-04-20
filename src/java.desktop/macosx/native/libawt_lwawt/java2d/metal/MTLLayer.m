@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,6 +75,7 @@ BOOL isDisplaySyncEnabled() {
     self.framebufferOnly = YES;
     self.nextDrawableCount = 0;
     self.opaque = YES;
+    self.redrawCount = 0;
     return self;
 }
 
@@ -85,14 +86,14 @@ BOOL isDisplaySyncEnabled() {
         J2dTraceLn4(J2D_TRACE_VERBOSE,
                     "MTLLayer.blitTexture: uninitialized (mtlc=%p, javaLayer=%p, buffer=%p, device=%p)", self.ctx,
                     self.javaLayer, self.buffer, self.ctx.device);
-        [self stopRedraw];
+        [self stopRedraw:YES];
         return;
     }
 
     if (self.nextDrawableCount != 0) {
         return;
     }
-    [self stopRedraw];
+    [self stopRedraw:NO];
 
     @autoreleasepool {
         if (((*self.buffer).width == 0) || ((*self.buffer).height == 0)) {
@@ -110,7 +111,7 @@ BOOL isDisplaySyncEnabled() {
             return;
         }
 
-        id<MTLCommandBuffer> commandBuf = [self.ctx createCommandBuffer];
+        id<MTLCommandBuffer> commandBuf = [self.ctx createBlitCommandBuffer];
         if (commandBuf == nil) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: commandBuf is null");
             return;
@@ -121,6 +122,11 @@ BOOL isDisplaySyncEnabled() {
             return;
         }
         self.nextDrawableCount++;
+        id<MTLCommandBuffer> renderBuffer =  [self.ctx createCommandBuffer];
+        self.ctx.syncCount++;
+        if (@available(macOS 10.14, *)) {
+            [renderBuffer encodeWaitForEvent:self.ctx.syncEvent value:self.ctx.syncCount];
+        }
 
         id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
 
@@ -131,6 +137,10 @@ BOOL isDisplaySyncEnabled() {
                 toTexture:mtlDrawable.texture destinationSlice:0 destinationLevel:0
                 destinationOrigin:MTLOriginMake(0, 0, 0)];
         [blitEncoder endEncoding];
+
+        if (@available(macOS 10.14, *)) {
+            [commandBuf encodeSignalEvent:self.ctx.syncEvent value:self.ctx.syncCount];
+        }
 
         [commandBuf presentDrawable:mtlDrawable];
         __block MTLLayer* layer = self;
@@ -148,7 +158,7 @@ BOOL isDisplaySyncEnabled() {
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
     (*env)->DeleteWeakGlobalRef(env, self.javaLayer);
     self.javaLayer = nil;
-    [self stopRedraw];
+    [self stopRedraw:YES];
     self.buffer = NULL;
     [super dealloc];
 }
@@ -191,8 +201,11 @@ BOOL isDisplaySyncEnabled() {
     }
 }
 
-- (void)stopRedraw {
+- (void)stopRedraw:(BOOL)force {
     if (self.ctx != nil && isDisplaySyncEnabled()) {
+        if (force) {
+            self.redrawCount = 0;
+        }
         [self.ctx stopRedraw:self];
     }
 }
@@ -284,7 +297,7 @@ Java_sun_java2d_metal_MTLLayer_validate
         [layer startRedraw];
     } else {
         layer.ctx = NULL;
-        [layer stopRedraw];
+        [layer stopRedraw:YES];
     }
 }
 
@@ -323,7 +336,7 @@ Java_sun_java2d_metal_MTLLayer_blitTexture
     if (layer == nil || ctx == nil) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_blit : Layer or Context is null");
         if (layer != nil) {
-            [layer stopRedraw];
+            [layer stopRedraw:YES];
         }
         return;
     }

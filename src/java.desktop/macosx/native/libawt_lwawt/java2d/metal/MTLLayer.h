@@ -38,6 +38,7 @@
 @property (readwrite, atomic) int nextDrawableCount;
 @property (readwrite, assign) int topInset;
 @property (readwrite, assign) int leftInset;
+@property (readwrite, atomic) int redrawCount;
 
 - (id) initWithJavaLayer:(jobject)layer;
 
@@ -52,7 +53,7 @@
 - (void) display;
 - (void) redraw;
 - (void) startRedraw;
-- (void) stopRedraw;
+- (void) stopRedraw:(BOOL)force;
 - (void) commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
 @end
 

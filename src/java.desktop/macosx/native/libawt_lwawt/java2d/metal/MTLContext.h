@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,6 +67,8 @@
 @property (readwrite, retain) MTLPaint * paint;
 @property (readonly) MTLTransform * transform;
 @property (readonly) MTLClip * clip;
+@property (readonly) id syncEvent;
+@property (readwrite, atomic) UInt64 syncCount;
 
 @property jint          textureFunction;
 @property jboolean      vertexCacheEnabled;
@@ -74,6 +76,7 @@
 
 @property (readonly, strong)   id<MTLDevice>   device;
 @property (strong) id<MTLCommandQueue>         commandQueue;
+@property (strong) id<MTLCommandQueue>         blitCommandQueue;
 @property (strong) id<MTLBuffer>               vertexBuffer;
 
 @property (readonly) EncoderManager * encoderManager;
@@ -228,6 +231,7 @@
 -(NSObject*)getBufImgOp;
 
 - (id<MTLCommandBuffer>)createCommandBuffer;
+- (id<MTLCommandBuffer>)createBlitCommandBuffer;
 - (void)commitCommandBuffer:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
 - (void)startRedraw:(MTLLayer*)layer;
 - (void)stopRedraw:(MTLLayer*)layer;

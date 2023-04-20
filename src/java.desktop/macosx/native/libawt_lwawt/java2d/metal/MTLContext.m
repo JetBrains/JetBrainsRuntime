@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,15 @@
 #import "MTLSamplerManager.h"
 #import "MTLStencilManager.h"
 
+// Keep displaylink thread alive for KEEP_ALIVE_COUNT more times
+// to avoid multiple start/stop displaylink operations. It speeds up
+// scenarios with multiple subsequent updates.
 #define KEEP_ALIVE_COUNT 4
+
+// Amount of blit operations per update to make sure that everything is
+// rendered into the window drawable. It does not slow things down as we
+// use separate command queue for blitting.
+#define REDRAW_INC 2
 
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern BOOL isDisplaySyncEnabled();
@@ -129,9 +137,10 @@ MTLTransform* tempTransform = nil;
 
 @synthesize textureFunction,
             vertexCacheEnabled, aaEnabled, device, pipelineStateStorage,
-            commandQueue, vertexBuffer,
+            commandQueue, blitCommandQueue, vertexBuffer,
             texturePool, paint=_paint, encoderManager=_encoderManager,
-            samplerManager=_samplerManager, stencilManager=_stencilManager;
+            samplerManager=_samplerManager, stencilManager=_stencilManager,
+            syncEvent, syncCount;
 
 extern void initSamplers(id<MTLDevice> device);
 
@@ -172,6 +181,7 @@ extern void initSamplers(id<MTLDevice> device);
 
         // Create command queue
         commandQueue = [device newCommandQueue];
+        blitCommandQueue = [device newCommandQueue];
 
         _tempTransform = [[MTLTransform alloc] init];
         if (isDisplaySyncEnabled()) {
@@ -181,6 +191,10 @@ extern void initSamplers(id<MTLDevice> device);
             CVDisplayLinkCreateWithCGDisplay(displayID, &_displayLink);
             CVDisplayLinkSetOutputCallback(_displayLink, &mtlDisplayLinkCallback, (__bridge void *) self);
         }
+        if (@available(macOS 10.14, *)) {
+            syncEvent = [device newEvent];
+        }
+        self.syncCount = 0;
     }
     return self;
 }
@@ -193,6 +207,7 @@ extern void initSamplers(id<MTLDevice> device);
     //self.texturePool = nil;
     self.vertexBuffer = nil;
     self.commandQueue = nil;
+    self.blitCommandQueue = nil;
     self.pipelineStateStorage = nil;
 
     if (_encoderManager != nil) {
@@ -253,6 +268,9 @@ extern void initSamplers(id<MTLDevice> device);
         [_dlLock unlock];
         [_dlLock release];
         _dlLock = nil;
+    }
+    if (@available(macOS 10.14, *)) {
+        [syncEvent release];
     }
 
     [super dealloc];
@@ -508,6 +526,14 @@ extern void initSamplers(id<MTLDevice> device);
     return [self.commandQueue commandBuffer];
 }
 
+/*
+ * This should be exclusively used only for final blit
+ * and present of CAMetalDrawable in MTLLayer
+ */
+- (id<MTLCommandBuffer>)createBlitCommandBuffer {
+    return [self.blitCommandQueue commandBuffer];
+}
+
 -(void)setBufImgOp:(NSObject*)bufImgOp {
     if (_bufImgOp != nil) {
         [_bufImgOp release]; // context owns bufImgOp object
@@ -580,6 +606,7 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
 
 - (void)startRedraw:(MTLLayer*)layer {
     [_dlLock lock];
+    layer.redrawCount += REDRAW_INC;
     J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_startRedraw: ctx=%p layer=%p", self, layer);
     @try {
         _displayLinkCount = KEEP_ALIVE_COUNT;
@@ -598,7 +625,10 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
     [_dlLock lock];
     @try {
         if (_displayLink != nil) {
-            [_layers removeObject:layer];
+            if (--layer.redrawCount <= 0) {
+                [_layers removeObject:layer];
+                layer.redrawCount = 0;
+            }
             if (_layers.count == 0 && _displayLinkCount == 0) {
                 if (CVDisplayLinkIsRunning(_displayLink)) {
                     CVDisplayLinkStop(_displayLink);
