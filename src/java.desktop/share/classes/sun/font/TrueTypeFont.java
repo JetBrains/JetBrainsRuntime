@@ -111,6 +111,7 @@ public class TrueTypeFont extends FileFont {
     public static final int SUBFAMILY_NAME_ID = 2;
     // public static final int STYLE_WEIGHT_ID = 2; // currently unused.
     public static final int FULL_NAME_ID = 4;
+    public static final int VERSION_NAME_ID = 5;
     public static final int POSTSCRIPT_NAME_ID = 6;
     public static final int TYPOGRAPHIC_FAMILY_NAME_ID = 16;
     public static final int TYPOGRAPHIC_SUBFAMILY_NAME_ID = 17;
@@ -185,6 +186,7 @@ public class TrueTypeFont extends FileFont {
     private String localeFullName;
     private String typographicFamilyName;
     private String typographicSubfamilyName;
+    private String version;
 
     private Byte supportedCharset;
 
@@ -1218,6 +1220,12 @@ public class TrueTypeFont extends FileFont {
                         buffer.get(name, 0, nameLen);
                         subfamilyName = makeString(name, nameLen, platformID, encodingID);
                     }
+                    break;
+
+                case VERSION_NAME_ID:
+                    buffer.position(namePtr);
+                    buffer.get(name, 0, nameLen);
+                    version = makeString(name, nameLen, platformID, encodingID);
                     break;
 
                 case TYPOGRAPHIC_FAMILY_NAME_ID:

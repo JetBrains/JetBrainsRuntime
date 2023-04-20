@@ -49,7 +49,7 @@ public abstract class Font2D {
      * them the same rank is the easy solution for now at least.
      */
     public static final int FONT_CONFIG_RANK   = 2;
-    public static final int JRE_RANK     = 2;
+    public static final int JRE_RANK     = 6;
     public static final int TTF_RANK     = 3;
     public static final int TYPE1_RANK   = 4;
     public static final int NATIVE_RANK  = 5;

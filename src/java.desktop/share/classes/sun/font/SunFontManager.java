@@ -1814,7 +1814,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
      * to register those again, but we do want to register other registry
      * installed fonts.
      */
-    protected void registerOtherFontFiles(HashSet<String> registeredFontFiles) {
+    protected void registerOtherFontFiles() {
         if (getFullNameToFileMap().size() == 0) {
             return;
         }
@@ -2034,7 +2034,9 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         /* First see if its a family name. */
         FontFamily family = FontFamily.getFamily(name);
         if (family != null) {
+            System.out.println("Before " + registeredFontFiles.size());
             font = family.getFontWithExactStyleMatch(style);
+            System.out.println("After " + registeredFontFiles.size());
             if (font == null) {
                 font = findDeferredFont(name, style);
             }
@@ -2996,6 +2998,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                 continue; // skip this font file.
             }
 
+            System.out.println("adding 1");
             registeredFontFiles.add(fullName);
 
             if (FontUtilities.debugFonts()
@@ -3082,7 +3085,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                             loadedAllFontFiles = true;
                         }
                     }
-                    registerOtherFontFiles(registeredFontFiles);
+                    registerOtherFontFiles();
                     discoveredAllFonts = true;
                     return null;
                 }
@@ -3345,6 +3348,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         } else {
             fontFormat = FONTFORMAT_NATIVE;
         }
+        System.out.println("adding");
         registeredFontFiles.add(fontFileName);
         if (defer) {
             registerDeferredFont(fontFileName, fontFileName, nativeNames,

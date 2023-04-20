@@ -283,7 +283,7 @@ public class FontFamily {
         /* Allow a lower-rank font only if its a file font
          * from the exact same source as any previous font.
          */
-        if ((font.getRank() > familyRank) && !isFromSameSource(font)) {
+/*        if ((font.getRank() > familyRank) && !isFromSameSource(font)) {
             if (FontUtilities.isLogging()) {
                 FontUtilities.logWarning("Rejecting adding " + font +
                                          " of lower rank " + font.getRank() +
@@ -292,7 +292,7 @@ public class FontFamily {
             }
             return;
         }
-
+*/
         switch (style) {
 
         case Font.PLAIN:
