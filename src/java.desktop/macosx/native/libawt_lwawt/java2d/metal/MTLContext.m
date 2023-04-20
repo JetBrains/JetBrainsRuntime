@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@
 #import "MTLStencilManager.h"
 
 #define KEEP_ALIVE_COUNT 4
+#define REDRAW_INC 2
 
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern BOOL isDisplaySyncEnabled();
@@ -129,9 +130,10 @@ MTLTransform* tempTransform = nil;
 
 @synthesize textureFunction,
             vertexCacheEnabled, aaEnabled, device, pipelineStateStorage,
-            commandQueue, vertexBuffer,
+            commandQueue, blitCommandQueue, vertexBuffer,
             texturePool, paint=_paint, encoderManager=_encoderManager,
-            samplerManager=_samplerManager, stencilManager=_stencilManager;
+            samplerManager=_samplerManager, stencilManager=_stencilManager,
+            syncEvent, syncCount;
 
 extern void initSamplers(id<MTLDevice> device);
 
@@ -172,6 +174,7 @@ extern void initSamplers(id<MTLDevice> device);
 
         // Create command queue
         commandQueue = [device newCommandQueue];
+        blitCommandQueue = [device newCommandQueue];
 
         _tempTransform = [[MTLTransform alloc] init];
         if (isDisplaySyncEnabled()) {
@@ -181,6 +184,10 @@ extern void initSamplers(id<MTLDevice> device);
             CVDisplayLinkCreateWithCGDisplay(displayID, &_displayLink);
             CVDisplayLinkSetOutputCallback(_displayLink, &mtlDisplayLinkCallback, (__bridge void *) self);
         }
+        if (@available(macOS 10.14, *)) {
+            syncEvent = [device newEvent];
+        }
+        self.syncCount = 0;
         _glyphCacheLCD = [[MTLGlyphCache alloc] initWithContext:self];
         _glyphCacheAA = [[MTLGlyphCache alloc] initWithContext:self];
     }
@@ -198,6 +205,7 @@ extern void initSamplers(id<MTLDevice> device);
 
     self.vertexBuffer = nil;
     self.commandQueue = nil;
+    self.blitCommandQueue = nil;
     self.pipelineStateStorage = nil;
 
     if (_encoderManager != nil) {
@@ -258,6 +266,9 @@ extern void initSamplers(id<MTLDevice> device);
         [_dlLock unlock];
         [_dlLock release];
         _dlLock = nil;
+    }
+    if (@available(macOS 10.14, *)) {
+        [syncEvent release];
     }
 
     [super dealloc];
@@ -511,6 +522,14 @@ extern void initSamplers(id<MTLDevice> device);
 
 - (id<MTLCommandBuffer>)createCommandBuffer {
     return [self.commandQueue commandBuffer];
+}
+
+/*
+ * This should be exclusively used only for final blit
+ * and present of CAMetalDrawable in MTLLayer
+ */
+- (id<MTLCommandBuffer>)createBlitCommandBuffer {
+    return [self.blitCommandQueue commandBuffer];
 }
 
 -(void)setBufImgOp:(NSObject*)bufImgOp {
