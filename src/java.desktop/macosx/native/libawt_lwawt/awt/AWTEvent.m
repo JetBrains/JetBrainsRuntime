@@ -514,6 +514,13 @@ static struct KeyCodeTranslationResult NsTranslateKeyCode(TISInputSourceRef layo
 
         if (actualStringLength > 0) {
             result.isTyped = YES;
+
+            // This is the character that will determine the Java key code of this key.
+            // There are some keys (even on ASCII-capable key layouts) that produce more than one
+            // code unit (not just more than one UTF-16 code unit mind you!). It's unclear how one
+            // would go around constructing an extended key code for these keys. Luckily, if we
+            // use the last code unit to construct the extended key codes, there won't be any collisions
+            // among the standard macOS ASCII-capable key layouts. That seems good enough to me.
             result.character = unicodeString[actualStringLength - 1];
         }
 
@@ -549,7 +556,7 @@ static struct KeyCodeTranslationResult NsTranslateKeyCode(TISInputSourceRef layo
  * NSEvent keyCodes and translate to the Java virtual key code.
  */
 static void
-NsCharToJavaVirtualKeyCode(unichar ch, unsigned short key, const BOOL useNationalLayouts,
+NsCharToJavaVirtualKeyCode(unsigned short key, const BOOL useNationalLayouts,
                            jint *keyCode, jint *keyLocation)
 {
     // This is going to be a lengthy explanation about what it is that we need to achieve in this function.
@@ -697,6 +704,8 @@ NsCharToJavaVirtualKeyCode(unichar ch, unsigned short key, const BOOL useNationa
         *keyCode = 0x1000000 + translatedKey.character;
         return;
     }
+
+    unichar ch = 0;
 
     if (translatedKey.isTyped) {
         ch = translatedKey.character;
@@ -916,19 +925,18 @@ JNI_COCOA_ENTER(env);
     jint *data = (*env)->GetIntArrayElements(env, inData, &copy);
     CHECK_NULL(data);
 
-    // in  = [testChar, keyCode, useNationalLayouts]
-    jchar testChar = (jchar)data[0];
-    jshort keyCode = (jshort)data[1];
-    BOOL useNationalLayouts = (data[2] != 0);
+    // in  = [keyCode, useNationalLayouts]
+    jshort keyCode = (jshort)data[0];
+    BOOL useNationalLayouts = (data[1] != 0);
 
     jint jkeyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
     jint jkeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
 
-    NsCharToJavaVirtualKeyCode((unichar)testChar, (unsigned short)keyCode,
+    NsCharToJavaVirtualKeyCode((unsigned short)keyCode,
                                useNationalLayouts,
                                &jkeyCode, &jkeyLocation);
 
-    // out = [jkeyCode, jkeyLocation, deadChar];
+    // out = [jkeyCode, jkeyLocation];
     (*env)->SetIntArrayRegion(env, outData, 0, 1, &jkeyCode);
     (*env)->SetIntArrayRegion(env, outData, 1, 1, &jkeyLocation);
 
