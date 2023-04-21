@@ -49,8 +49,6 @@ bool G1FullGCPrepareTask::G1CalculatePointersClosure::do_heap_region(HeapRegion*
   hr->set_processing_order(_region_processing_order++);
 
   assert(!hr->is_pinned(), "must be");
-  assert(!hr->is_closed_archive(), "must be");
-  assert(!hr->is_open_archive(), "must be");
 
   prepare_for_compaction(hr);
 
