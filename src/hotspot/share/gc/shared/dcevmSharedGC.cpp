@@ -24,18 +24,11 @@
 
 #include "precompiled.hpp"
 #include "gc/shared/dcevmSharedGC.hpp"
-#include "memory/iterator.inline.hpp"
-#include "oops/access.inline.hpp"
 #include "oops/compressedOops.inline.hpp"
-#include "oops/instanceClassLoaderKlass.inline.hpp"
-#include "oops/instanceKlass.inline.hpp"
-#include "oops/instanceMirrorKlass.inline.hpp"
-#include "oops/instanceRefKlass.inline.hpp"
 #include "oops/oop.inline.hpp"
-#include "utilities/macros.hpp"
 
 void DcevmSharedGC::copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_oops, bool must_be_new) {
-  if (rescued_oops != NULL) {
+  if (rescued_oops != nullptr) {
     copy_rescued_objects_back(rescued_oops, 0, rescued_oops->length(), must_be_new);
   }
 }
@@ -43,7 +36,7 @@ void DcevmSharedGC::copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_
 // (DCEVM) Copy the rescued objects to their destination address after compaction.
 void DcevmSharedGC::copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_oops, int from, int to, bool must_be_new) {
 
-  if (rescued_oops != NULL) {
+  if (rescued_oops != nullptr) {
     for (int i=from; i < to; i++) {
       HeapWord* rescued_ptr = rescued_oops->at(i);
       oop rescued_obj = cast_to_oop(rescued_ptr);
@@ -51,10 +44,10 @@ void DcevmSharedGC::copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_
       size_t size = rescued_obj->size();
       oop new_obj = rescued_obj->forwardee();
 
-      assert(!must_be_new || rescued_obj->klass()->new_version() != NULL, "Just checking");
+      assert(!must_be_new || rescued_obj->klass()->new_version() != nullptr, "Just checking");
       Klass* new_klass = rescued_obj->klass()->new_version();
-      if (new_klass!= NULL) {
-        if (new_klass->update_information() != NULL) {
+      if (new_klass!= nullptr) {
+        if (new_klass->update_information() != nullptr) {
           DcevmSharedGC::update_fields(rescued_obj, new_obj);
         } else {
           rescued_obj->set_klass(new_klass);
@@ -72,7 +65,7 @@ void DcevmSharedGC::copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_
 }
 
 void DcevmSharedGC::clear_rescued_objects_resource(GrowableArray<HeapWord*>* rescued_oops) {
-  if (rescued_oops != NULL) {
+  if (rescued_oops != nullptr) {
     for (int i=0; i < rescued_oops->length(); i++) {
       HeapWord* rescued_ptr = rescued_oops->at(i);
       size_t size = cast_to_oop(rescued_ptr)->size();
@@ -83,7 +76,7 @@ void DcevmSharedGC::clear_rescued_objects_resource(GrowableArray<HeapWord*>* res
 }
 
 void DcevmSharedGC::clear_rescued_objects_heap(GrowableArray<HeapWord*>* rescued_oops) {
-  if (rescued_oops != NULL) {
+  if (rescued_oops != nullptr) {
     for (int i=0; i < rescued_oops->length(); i++) {
       HeapWord* rescued_ptr = rescued_oops->at(i);
       FREE_C_HEAP_ARRAY(HeapWord, rescued_ptr);
@@ -95,7 +88,7 @@ void DcevmSharedGC::clear_rescued_objects_heap(GrowableArray<HeapWord*>* rescued
 // (DCEVM) Update instances of a class whose fields changed.
 void DcevmSharedGC::update_fields(oop q, oop new_location) {
 
-  assert(q->klass()->new_version() != NULL, "class of old object must have new version");
+  assert(q->klass()->new_version() != nullptr, "class of old object must have new version");
 
   Klass* old_klass_oop = q->klass();
   Klass* new_klass_oop = q->klass()->new_version();
@@ -106,7 +99,7 @@ void DcevmSharedGC::update_fields(oop q, oop new_location) {
   size_t size = q->size_given_klass(old_klass);
   size_t new_size = q->size_given_klass(new_klass);
 
-  HeapWord* tmp = NULL;
+  HeapWord* tmp = nullptr;
   oop tmp_obj = q;
 
   // Save object somewhere, there is an overlap in fields
@@ -121,16 +114,16 @@ void DcevmSharedGC::update_fields(oop q, oop new_location) {
 
   q->set_klass(new_klass_oop);
   int *cur = new_klass_oop->update_information();
-  assert(cur != NULL, "just checking");
+  assert(cur != nullptr, "just checking");
   DcevmSharedGC::update_fields(new_location, q, cur);
 
-  if (tmp != NULL) {
+  if (tmp != nullptr) {
     FREE_RESOURCE_ARRAY(HeapWord, tmp, size);
   }
 }
 
 void DcevmSharedGC::update_fields(oop new_location, oop tmp_obj, int *cur) {
-  assert(cur != NULL, "just checking");
+  assert(cur != nullptr, "just checking");
   char* to = (char*)cast_from_oop<HeapWord*>(new_location);
   while (*cur != 0) {
     int size = *cur;

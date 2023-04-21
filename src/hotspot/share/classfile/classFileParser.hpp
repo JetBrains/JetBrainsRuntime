@@ -200,7 +200,7 @@ class ClassFileParser {
   bool _has_vanilla_constructor;
   int _max_bootstrap_specifier_index;  // detects BSS values
 
-  // (DCEVM) Enhanced class redefinition
+  // (DCEVM)
   const bool _pick_newest;
 
   void parse_stream(const ClassFileStream* const stream, TRAPS);

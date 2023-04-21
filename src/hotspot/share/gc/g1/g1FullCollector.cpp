@@ -347,7 +347,7 @@ void G1FullCollector::phase2_prepare_compaction() {
   // Try to avoid OOM immediately after Full GC in case there are no free regions
   // left after determining the result locations (i.e. this phase). Prepare to
   // maximally compact the tail regions of the compaction queues serially.
-  if (!Universe::is_redefining_gc_run()) {
+  if (!AllowEnhancedClassRedefinition || !Universe::is_redefining_gc_run()) {
     if (scope()->do_maximal_compaction() || !has_free_compaction_targets) {
       phase2c_prepare_serial_compaction();
 
@@ -500,7 +500,7 @@ void G1FullCollector::phase4_do_compaction() {
   run_task(&task);
 
   // Serial compact to avoid OOM when very few free regions.
-  if (!Universe::is_redefining_gc_run()) {
+  if (!AllowEnhancedClassRedefinition || !Universe::is_redefining_gc_run()) {
     if (serial_compaction_point()->has_regions()) {
       task.serial_compaction();
     }

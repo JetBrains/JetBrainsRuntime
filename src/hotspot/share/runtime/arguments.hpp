@@ -493,8 +493,8 @@ class Arguments : AllStatic {
   // Adjusts the arguments after the OS have adjusted the arguments
   static jint adjust_after_os();
 
-  // Check for consistency in the selection of the garbage collector.
-  static bool check_gc_consistency();        // Check user-selected gc
+  // (DCEVM) Check for consistency in the selection of the garbage collector.
+  static bool check_dcevm_gc_consistency();        // Check user-selected gc
   // Check consistency or otherwise of VM argument settings
   static bool check_vm_args_consistency();
   // Used by os_solaris
@@ -503,7 +503,7 @@ class Arguments : AllStatic {
   static size_t conservative_max_heap_alignment() { return _conservative_max_heap_alignment; }
 
 
-  // Initialize HotswapAgent
+  // (DCEVM) Initialize HotswapAgent
   static void setup_hotswap_agent();
 
   // Return the maximum size a heap with compressed oops can take

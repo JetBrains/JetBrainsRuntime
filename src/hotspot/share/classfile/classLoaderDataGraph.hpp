@@ -98,8 +98,7 @@ class ClassLoaderDataGraph : public AllStatic {
   // Called from VMOperation
   static void walk_metadata_and_clean_metaspaces();
 
-  // (DCEVM) Enhanced class redefinition
-  static void dictionary_classes_do(KlassClosure* klass_closure);
+  // (DCEVM)
   static void rollback_redefinition();
   static bool dictionary_classes_do_update_klass(Thread* current, Symbol* name, InstanceKlass* k, InstanceKlass* old_klass);
 

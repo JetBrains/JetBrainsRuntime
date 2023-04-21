@@ -86,7 +86,7 @@ void G1FullGCPrepareTask::work(uint worker_id) {
          ++it) {
       closure.do_heap_region(*it);
     }
-    if (Universe::is_redefining_gc_run()) {
+    if (AllowEnhancedClassRedefinition && Universe::is_redefining_gc_run()) {
       compaction_point->forward_rescued();
     }
     compaction_point->update();
@@ -131,6 +131,7 @@ void G1FullGCPrepareTask::G1CalculatePointersClosure::prepare_for_compaction(Hea
     }
   }
 }
+
 G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::G1PrepareCompactLiveClosureDcevm(G1FullGCCompactionPoint* cp,
                                                                                         uint region_processing_order) :
     _cp(cp),

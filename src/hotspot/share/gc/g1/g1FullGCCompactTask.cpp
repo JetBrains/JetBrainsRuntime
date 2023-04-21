@@ -90,7 +90,7 @@ void G1FullGCCompactTask::work(uint worker_id) {
   Ticks start = Ticks::now();
   GrowableArray<HeapRegion*>* compaction_queue = collector()->compaction_point(worker_id)->regions();
 
-  if (!Universe::is_redefining_gc_run()) {
+  if (!AllowEnhancedClassRedefinition || !Universe::is_redefining_gc_run()) {
     for (GrowableArrayIterator<HeapRegion*> it = compaction_queue->begin();
          it != compaction_queue->end();
          ++it) {

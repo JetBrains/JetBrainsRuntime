@@ -50,7 +50,7 @@ inline bool G1DetermineCompactionQueueClosure::should_compact(HeapRegion* hr) co
   if (hr->is_pinned()) {
     return false;
   }
-  if (Universe::is_redefining_gc_run()) {
+  if (AllowEnhancedClassRedefinition && Universe::is_redefining_gc_run()) {
     return true;
   }
   size_t live_words = _collector->live_words(hr->hrm_index());

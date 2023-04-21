@@ -165,13 +165,11 @@ class Klass : public Metadata {
 
   JFR_ONLY(DEFINE_TRACE_ID_FIELD;)
 
-  // Advanced class redefinition
-
+  // (DCEVM)
   // Old version (used in advanced class redefinition)
   Klass*      _old_version;
   // New version (used in advanced class redefinition)
   Klass*      _new_version;
-
   int         _redefinition_flags;     // Level of class redefinition
   bool        _is_redefining;
   int*        _update_information;
@@ -305,6 +303,8 @@ protected:
 
   InstanceKlass* superklass() const;
   void append_to_sibling_list();           // add newly created receiver to superklass' subklass list
+
+  // (DCEVM)
   void remove_from_sibling_list();         // enhanced class redefinition
 
   void set_next_link(Klass* k) { _next_link = k; }
@@ -380,7 +380,7 @@ protected:
   virtual ModuleEntry* module() const = 0;
   virtual PackageEntry* package() const = 0;
 
-  // Advanced class redefinition
+  // (DCEVM)
   Klass* old_version() const             { return _old_version; }
   void set_old_version(Klass* klass)     { assert(_old_version == NULL || klass == NULL, "Old version can only be set once!"); _old_version = klass; }
   Klass* new_version() const             { return _new_version; }
@@ -410,6 +410,7 @@ protected:
   void     set_next_sibling(Klass* s);
 
  public:
+   // (DCEVM)
    enum RedefinitionFlags {
      NoRedefinition,                             // This class is not redefined at all!
      ModifyClass = 1,                            // There are changes to the class meta data.

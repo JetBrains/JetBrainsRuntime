@@ -79,7 +79,8 @@ class Method : public Metadata {
   AdapterHandlerEntry* _adapter;
   AccessFlags       _access_flags;               // Access flags
   int               _vtable_index;               // vtable index of this method (see VtableIndexFlag)
-  // (DCEVM) Newer version of method available?
+
+  // (DCEVM)
   Method*           _new_version;
   Method*           _old_version;
                                                  // note: can have vtables with >2**16 elements (because of inheritance)
@@ -161,17 +162,12 @@ class Method : public Metadata {
   int name_index() const                         { return constMethod()->name_index();         }
   void set_name_index(int index)                 { constMethod()->set_name_index(index);       }
 
+  // (DCEVM)
   Method* new_version() const                    { return _new_version; }
   void set_new_version(Method* m)                { _new_version = m; }
   Method* newest_version()                       { return (_new_version == NULL) ? this : _new_version->newest_version(); }
-
   Method* old_version() const                    { return _old_version; }
   void set_old_version(Method* m) {
-    /*if (m == NULL) {
-      _old_version = NULL;
-      return;
-    }*/
-
     assert(_old_version == NULL, "may only be set once");
     assert(this->code_size() == m->code_size(), "must have same code length");
     _old_version = m;

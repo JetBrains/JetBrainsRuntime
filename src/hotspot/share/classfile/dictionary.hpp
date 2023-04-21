@@ -70,9 +70,9 @@ public:
   InstanceKlass* find_class(Thread* current, Symbol* name);
 
   void classes_do(void f(InstanceKlass*));
+
   // (DCEVM)
   void classes_do_safepoint(void f(InstanceKlass*));
-  void classes_do(KlassClosure* closure);
 
   void all_entries_do(KlassClosure* closure);
   void classes_do(MetaspaceClosure* it);
@@ -92,7 +92,7 @@ public:
   void print_size(outputStream* st) const;
   void verify();
 
-  // (DCEVM) Enhanced class redefinition
+  // (DCEVM)
   bool update_klass(Thread* current, Symbol* class_name, InstanceKlass* k, InstanceKlass* old_klass);
 
   void rollback_redefinition();
@@ -142,6 +142,7 @@ class DictionaryEntry : public CHeapObj<mtClass> {
   InstanceKlass* instance_klass() const { return _instance_klass; }
   InstanceKlass** instance_klass_addr() { return &_instance_klass; }
 
+  // (DCEVM)
   void set_instance_klass(InstanceKlass* instance_klass) { _instance_klass = instance_klass; }
 
   ProtectionDomainEntry* pd_set_acquire() const            { return Atomic::load_acquire(&_pd_set); }

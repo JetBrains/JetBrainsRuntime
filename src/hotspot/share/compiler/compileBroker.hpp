@@ -422,6 +422,7 @@ public:
   static void print_info(outputStream *out);
   static void print_heapinfo(outputStream *out, const char* function, size_t granularity);
 
+  // (DCEVM)
   static void stopCompilationBeforeEnhancedRedefinition();
   static void releaseCompilationAfterEnhancedRedefinition();
 };

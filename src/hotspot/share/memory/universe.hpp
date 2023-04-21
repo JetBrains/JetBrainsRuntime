@@ -195,6 +195,8 @@ class Universe: AllStatic {
 
   static uintptr_t _verify_oop_mask;
   static uintptr_t _verify_oop_bits;
+
+  // (DCEVM)
   static bool _is_redefining_gc_run;
 
   // Table of primitive type mirrors, excluding T_OBJECT and T_ARRAY
@@ -210,7 +212,7 @@ class Universe: AllStatic {
  public:
   static void calculate_verify_data(HeapWord* low_boundary, HeapWord* high_boundary) PRODUCT_RETURN;
 
-  // Advanced class redefinition. FIXME: review?
+  // (DCEVM)
   static bool is_redefining_gc_run()               { return _is_redefining_gc_run; }
   static void set_redefining_gc_run(bool b)        { _is_redefining_gc_run = b;    }
 
@@ -284,6 +286,7 @@ class Universe: AllStatic {
   // Function to initialize these
   static void initialize_known_methods(TRAPS);
 
+  // (DCEVM)
   static void reinitialize_loader_addClass_method(TRAPS);
 
   static void create_preallocated_out_of_memory_errors(TRAPS);

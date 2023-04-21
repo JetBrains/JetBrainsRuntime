@@ -45,6 +45,8 @@ class G1FullGCCompactTask : public G1FullGCTask {
   void free_non_overlapping_regions(uint src_start_idx, uint dest_start_idx, uint num_regions);
 
   static void copy_object_to_new_location(oop obj);
+
+  // (DCEVM)
   void compact_region_dcevm(HeapRegion* hr, GrowableArray<HeapWord*>* rescued_oops_values,
     GrowableArrayIterator<HeapWord*>* rescue_oops_it);
 
@@ -58,6 +60,8 @@ public:
   void work(uint worker_id);
   void serial_compaction();
   void humongous_compaction();
+
+  // (DCEVM)
   void serial_compaction_dcevm();
 
   class G1CompactRegionClosure : public StackObj {

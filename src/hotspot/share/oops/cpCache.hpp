@@ -368,8 +368,7 @@ class ConstantPoolCacheEntry {
   bool check_no_old_or_obsolete_entries();
   Method* get_interesting_method_entry();
 
-  // Enhanced RedefineClasses() API support (DCEVM):
-  // Clear cached entry, let it be re-resolved
+  // (DCEVM) clear cached entry, let it be re-resolved
   void clear_entry();
 #endif // INCLUDE_JVMTI
 

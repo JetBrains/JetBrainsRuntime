@@ -806,6 +806,7 @@ public:
                 size_t *length_p, jmethodID* id_p);
   void ensure_space_for_methodids(int start_offset = 0);
   jmethodID jmethod_id_or_null(Method* method);
+  // (DCEVM)
   bool update_jmethod_id(Method* method, jmethodID newMethodID);
 
   // annotations support
@@ -882,6 +883,7 @@ public:
 
   // subclass/subinterface checks
   bool implements_interface(Klass* k) const;
+  // (DCEVM)
   bool implements_interface_any_version(Klass* k) const;
   bool is_same_or_direct_interface(Klass* k) const;
 
@@ -896,6 +898,7 @@ public:
   int  nof_implementors() const;
   void add_implementor(InstanceKlass* ik);  // ik is a new class that implements this interface
   void init_implementor();           // initialize
+  // (DCEVM)
   void init_implementor_from_redefine();           // initialize
 
  private:
@@ -920,7 +923,7 @@ public:
   void do_local_static_fields(void f(fieldDescriptor*, Handle, TRAPS), Handle, TRAPS);
   void print_nonstatic_fields(FieldClosure* cl); // including inherited and injected fields
 
-  // Advanced class redefinition: FIXME: why here?
+  // (DCEVM)
   void store_update_information(GrowableArray<int> &values);
   void clear_update_information();
 

@@ -2296,7 +2296,6 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
         comp->compile_method(&ci_env, target, osr_bci, false, directive);
         repeat_compilation_count--;
       }
-
     }
 
     DirectivesStack::release(directive);
@@ -2870,8 +2869,8 @@ void CompileBroker::print_heapinfo(outputStream* out, const char* function, size
 }
 
 void CompileBroker::stopCompilationBeforeEnhancedRedefinition() {
-  // There are hard to fix C1/C2 race conditions with dcevm. The easiest solution
-  // is to stop compilation.
+  // There are hard to fix C1/C2 race conditions with dcevm. The simple solution of it
+  // is to stop compilation before enhanced redefinition.
   if (AllowEnhancedClassRedefinition) {
     DcevmCompilation_lock->lock_without_safepoint_check();
     _compilation_stopped = true;

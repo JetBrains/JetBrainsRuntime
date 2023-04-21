@@ -1938,7 +1938,7 @@ unsigned int patch_mod_count = 0;
 unsigned int enable_native_access_count = 0;
 
 // Check consistency of GC selection
-bool Arguments::check_gc_consistency() {
+bool Arguments::check_dcevm_gc_consistency() {
   // Ensure that the user has not selected conflicting sets
   // of collectors.
   uint i = 0;
@@ -1985,7 +1985,7 @@ bool Arguments::check_vm_args_consistency() {
     status = false;
   }
 
-  status = status && check_gc_consistency();
+  status = status && (!AllowEnhancedClassRedefinition || check_dcevm_gc_consistency());
 
   status = CompilerConfig::check_args_consistency(status);
 #if INCLUDE_JVMCI

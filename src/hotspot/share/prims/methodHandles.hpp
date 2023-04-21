@@ -179,6 +179,8 @@ public:
     assert(ref_kind_is_valid(ref_kind), "");
     return (ref_kind & 1) != 0;
   }
+
+  // (DCEVM)
   static bool ref_kind_is_static(int ref_kind) {
     return !ref_kind_has_receiver(ref_kind) && (ref_kind != JVM_REF_newInvokeSpecial);
   }

@@ -1067,6 +1067,8 @@ public:
   // Iteration functions.
 
   void object_iterate_parallel(ObjectClosure* cl, uint worker_id, HeapRegionClaimer* claimer);
+
+  // (DCEVM)
   void object_par_iterate(ObjectClosure* cl);
 
   // Iterate over all objects, calling "cl.do_object" on each.

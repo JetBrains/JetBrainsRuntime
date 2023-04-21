@@ -80,6 +80,8 @@ private:
     G1FullCollector* _collector;
     G1CMBitMap* _bitmap;
     G1FullGCCompactionPoint* _cp;
+
+    // (DCEVM)
     uint _region_processing_order;
 
     void prepare_for_compaction(HeapRegion* hr);

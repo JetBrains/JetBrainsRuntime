@@ -30,7 +30,6 @@
 #include "oops/oop.inline.hpp"
 #include "utilities/debug.hpp"
 
-
 G1FullGCCompactionPoint::G1FullGCCompactionPoint(G1FullCollector* collector) :
     _collector(collector),
     _current_region(nullptr),
@@ -38,14 +37,21 @@ G1FullGCCompactionPoint::G1FullGCCompactionPoint(G1FullCollector* collector) :
     _last_rescued_oop(0) {
   _compaction_regions = new (mtGC) GrowableArray<HeapRegion*>(32, mtGC);
   _compaction_region_iterator = _compaction_regions->begin();
-  _rescued_oops = new (mtGC) GrowableArray<HeapWord*>(128, mtGC);
-  _rescued_oops_values = new (mtGC) GrowableArray<HeapWord*>(128, mtGC);
+  if (AllowEnhancedClassRedefinition) {
+    _rescued_oops = new(mtGC) GrowableArray<HeapWord *>(128, mtGC);
+    _rescued_oops_values = new(mtGC) GrowableArray<HeapWord *>(128, mtGC);
+  } else {
+    _rescued_oops = nullptr;
+    _rescued_oops_values = nullptr;
+  }
 }
 
 G1FullGCCompactionPoint::~G1FullGCCompactionPoint() {
   delete _compaction_regions;
-  delete _rescued_oops;
-  delete _rescued_oops_values;
+  if (AllowEnhancedClassRedefinition && _rescued_oops != nullptr) {
+    delete _rescued_oops;
+    delete _rescued_oops_values;
+  }
 }
 
 void G1FullGCCompactionPoint::update() {

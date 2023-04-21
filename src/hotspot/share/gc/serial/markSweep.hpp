@@ -89,6 +89,7 @@ class MarkSweep : AllStatic {
   friend class GenMarkSweep;
 
  public:
+  // (DCEVM)
   static GrowableArray<HeapWord*>*             _rescued_oops;
 
   //

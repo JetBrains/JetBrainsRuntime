@@ -98,6 +98,8 @@ class CallInfo : public StackObj {
   Handle       resolved_method_name() const      { return _resolved_method_name; }
   // Materialize a java.lang.invoke.ResolvedMethodName for this resolved_method
   void     set_resolved_method_name(TRAPS);
+
+  // (DCEVM)
   void     set_resolved_method_name_dcevm(oop rmethod_name, Thread* thread);
 
   BasicType    result_type() const               { return selected_method()->result_type(); }

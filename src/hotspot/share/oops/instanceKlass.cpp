@@ -1411,7 +1411,6 @@ bool InstanceKlass::implements_interface(Klass* k) const {
   return false;
 }
 
-
 // (DCEVM)
 bool InstanceKlass::implements_interface_any_version(Klass* k) const {
   k = k->newest_version();
@@ -1798,18 +1797,15 @@ void InstanceKlass::do_nonstatic_fields_sorted(FieldClosure* cl) {
   fieldDescriptor fd;
   // In DebugInfo nonstatic fields are sorted by offset.
   GrowableArray<Pair<int,int> > fields_sorted;
-  int i = 0;
   for (AllFieldStream fs(this); !fs.done(); fs.next()) {
     if (!fs.access_flags().is_static()) {
       fd = fs.field_descriptor();
       Pair<int,int> f(fs.offset(), fs.index());
       fields_sorted.push(f);
-      i++;
     }
   }
-  if (i > 0) {
-    int length = i;
-    assert(length == fields_sorted.length(), "duh");
+  int length = fields_sorted.length();
+  if (length > 0) {
     // _sort_Fn is defined in growableArray.hpp.
     fields_sorted.sort(compare_fields_by_offset);
     for (int i = 0; i < length; i++) {
@@ -4088,7 +4084,7 @@ void JNIid::verify(Klass* holder) {
 }
 
 void InstanceKlass::set_init_state(ClassState state) {
-  if (!is_redefining() && state > loaded) {
+  if (state > loaded && (!AllowEnhancedClassRedefinition || !is_redefining())) {
     assert_lock_strong(_init_monitor);
   }
 #ifdef ASSERT

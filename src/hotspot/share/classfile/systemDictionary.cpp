@@ -282,7 +282,8 @@ void verify_dictionary_entry(Symbol* class_name, InstanceKlass* k) {
   Dictionary* dictionary = loader_data->dictionary();
   assert(class_name == k->name(), "Must be the same");
   InstanceKlass* kk = dictionary->find_class(JavaThread::current(), class_name);
-  assert((kk == k && !k->is_redefining()) || (k->is_redefining() && kk == k->old_version()), "should be present in dictionary");
+  assert(kk == k && (!AllowEnhancedClassRedefinition || !k->is_redefining()) ||
+        (AllowEnhancedClassRedefinition && k->is_redefining() && kk == k->old_version()), "should be present in dictionary");
 }
 #endif
 
@@ -319,7 +320,10 @@ Klass* SystemDictionary::resolve_or_fail(Symbol* class_name, Handle class_loader
   if (HAS_PENDING_EXCEPTION || klass == nullptr) {
     handle_resolution_exception(class_name, throw_error, CHECK_NULL);
   }
-  assert(klass == NULL || klass->new_version() == NULL || klass->newest_version()->is_redefining(), "must be");
+  assert(!AllowEnhancedClassRedefinition ||
+          klass == nullptr ||
+          klass->new_version() == nullptr ||
+          klass->newest_version()->is_redefining(), "must be");
   return klass;
 }
 
@@ -825,7 +829,7 @@ InstanceKlass* SystemDictionary::resolve_hidden_class_from_stream(
                                                       cl_info,
                                                       is_redefining, // pick_newest
                                                       CHECK_NULL);
-  assert(k != NULL, "no klass created");
+  assert(k != nullptr, "no klass created");
   if (is_redefining && k != nullptr) {
     k->set_redefining(true);
     k->set_old_version(old_klass);
@@ -870,7 +874,7 @@ InstanceKlass* SystemDictionary::resolve_class_from_stream(
 
   HandleMark hm(THREAD);
 
-  bool is_redefining = (old_klass != NULL);
+  bool is_redefining = (old_klass != nullptr);
   ClassLoaderData* loader_data = register_loader(class_loader);
 
   // Classloaders that support parallelism, e.g. bootstrap classloader,
@@ -1393,7 +1397,7 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, InstanceKlass* ol
 
   ClassLoaderData* loader_data = k->class_loader_data();
   assert(loader_data->class_loader() == class_loader(), "they must be the same");
-  bool is_redefining = (old_klass != NULL);
+  bool is_redefining = (old_klass != nullptr);
 
   // Bootstrap and other parallel classloaders don't acquire a lock,
   // they use placeholder token.
@@ -1520,7 +1524,7 @@ InstanceKlass* SystemDictionary::find_or_define_helper(Symbol* class_name, Handl
     }
   }
 
-  define_instance_class(k, NULL, class_loader, THREAD);
+  define_instance_class(k, nullptr, class_loader, THREAD);
 
   // definer must notify any waiting threads
   {
@@ -1556,10 +1560,9 @@ InstanceKlass* SystemDictionary::find_or_define_instance_class(Symbol* class_nam
 }
 
 
-// ----------------------------------------------------------------------------
 // (DCEVM) - remove from klass hierarchy
 void SystemDictionary::remove_from_hierarchy(InstanceKlass* k) {
-    assert(k != NULL, "just checking");
+    assert(k != nullptr, "just checking");
 
   // remove receiver from sibling list
   k->remove_from_sibling_list();

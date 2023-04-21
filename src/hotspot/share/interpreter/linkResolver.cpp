@@ -178,7 +178,7 @@ CallInfo::CallInfo(Method* resolved_method, Klass* resolved_klass, Thread* threa
   _call_index = index;
   _resolved_appendix = Handle();
   // Find or create a ResolvedMethod instance for this Method*
-  if (thread->is_Java_thread()) { // exclude DCEVM VM thread
+  if (!AllowEnhancedClassRedefinition || thread->is_Java_thread()) { // exclude DCEVM VM thread
     set_resolved_method_name(JavaThread::cast(thread));
   }
   DEBUG_ONLY(verify());

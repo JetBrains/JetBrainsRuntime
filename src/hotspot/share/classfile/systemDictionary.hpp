@@ -200,7 +200,7 @@ class SystemDictionary : AllStatic {
   // Initialization
   static void initialize(TRAPS);
 
-  // (DCEVM) Enhanced class redefinition
+  // (DCEVM)
   static void remove_from_hierarchy(InstanceKlass* k);
 
 public:

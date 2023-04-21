@@ -205,6 +205,7 @@ private:
   // The remembered set for this region.
   HeapRegionRemSet* _rem_set;
 
+  // (DCEVM)
   uint _processing_order;
 
   // Cached index of this region in the heap region sequence.
@@ -457,13 +458,9 @@ public:
     return _rem_set;
   }
 
-  uint processing_order() {
-    return _processing_order;
-  }
-
-  void set_processing_order(uint processing_order) {
-    _processing_order = processing_order;
-  }
+  // (DCEVM)
+  uint processing_order() { return _processing_order; }
+  void set_processing_order(uint processing_order) { _processing_order = processing_order; }
 
   inline bool in_collection_set() const;
 

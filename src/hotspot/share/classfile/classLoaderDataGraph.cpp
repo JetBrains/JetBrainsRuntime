@@ -443,13 +443,6 @@ void ClassLoaderDataGraph::verify_dictionary() {
                                 while (ClassLoaderData* X = iter.get_next()) \
                                   if (X->dictionary() != nullptr)
 
-// (DCEVM) - iterate over dict classes
-void ClassLoaderDataGraph::dictionary_classes_do(KlassClosure* klass_closure) {
-  FOR_ALL_DICTIONARY(cld) {
-    cld->dictionary()->classes_do(klass_closure);
-  }
-}
-
 // (DCEVM) rollback redefined classes
 void ClassLoaderDataGraph::rollback_redefinition() {
   FOR_ALL_DICTIONARY(cld) {
