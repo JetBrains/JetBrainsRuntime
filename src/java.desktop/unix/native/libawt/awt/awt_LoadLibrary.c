@@ -158,11 +158,11 @@ AWT_OnLoad(JavaVM *vm, void *reserved)
      * loading appropriate awt library, i.e. libawt_xawt or libawt_headless
      */
 
-    tkID = AWTGetToolkitID();
 
 #ifdef MACOSX
     tk = LWAWT_PATH;
 #else
+    tkID = AWTGetToolkitID();
     if (tkID == sun_awt_PlatformGraphicsInfo_TK_WAYLAND) {
         tk = WLAWT_PATH;
     } else {
