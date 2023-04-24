@@ -21,7 +21,9 @@
  * questions.
  */
 
-import com.jetbrains.JBR;
+import sun.font.Font2D;
+import sun.font.FontManager;
+import sun.font.SunFontManager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -56,10 +58,6 @@ public class TestSetRoundedCorners {
     }
 
     public void performTest(Object roundParams) {
-        if (!JBR.isRoundedCornersManagerSupported()) {
-            throw new RuntimeException("JBR Rounded API is not available");
-        }
-
         runSwing(() -> {
             frame = new JFrame("");
             frame.setUndecorated(true);
@@ -91,10 +89,6 @@ public class TestSetRoundedCorners {
         runSwing(() -> testFrame.setVisible(false));
         robot.delay(DELAY);
 
-        runSwing(() -> {
-            JBR.getRoundedCornersManager().setRoundedCorners(testFrame, roundParams);
-            testFrame.setVisible(true);
-        });
         robot.delay(DELAY);
 
         // check that window with rounded corners
@@ -163,6 +157,8 @@ public class TestSetRoundedCorners {
 
     public static void main(String[] args) {
         String osName = System.getProperty("os.name");
+        Font f = new Font("Fira Code", Font.ITALIC, 10);
+
         if (osName.contains("Windows 11")) {
             runTest("full");
         } else if (osName.contains("OS X")) {

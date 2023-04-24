@@ -625,6 +625,8 @@ public class Font implements java.io.Serializable
         this.style = (style & ~0x03) == 0 ? style : 0;
         this.size = size;
         this.pointSize = size;
+        Font2D font2D = getFont2D();
+        System.out.println(font2D.getFontName(Locale.ENGLISH));
     }
 
     private Font(String name, int style, float sizePts, TreeMap<String, Integer> features) {
