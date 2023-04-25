@@ -625,7 +625,9 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
             newDev.addDisplayChangedListener(this);
         }
 
-        updateIconImages();
+        if (((Window)target).isVisible()) {
+            updateIconImages();
+        }
 
         AWTAccessor.getComponentAccessor().
             setGraphicsConfiguration((Component)target, winGraphicsConfig);
