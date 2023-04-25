@@ -2135,7 +2135,7 @@ public class Basic {
 
         //----------------------------------------------------------------
         // Check that reads which are pending when Process.destroy is
-        // called, get EOF, not IOException("Stream closed").
+        // called, get EOF, or IOException("Stream closed").
         //----------------------------------------------------------------
         try {
             final int cases = 4;
@@ -2189,6 +2189,11 @@ public class Basic {
                                 default: throw new Error();
                             }
                             equal(-1, r);
+                        } catch (IOException ioe) {
+                            if (!ioe.getMessage().equals("Stream closed")) {
+                                // BufferedInputStream may throw IOE("Stream closed").
+                                unexpected(ioe);
+                            }
                         } catch (Throwable t) { unexpected(t); }}};
 
                 thread.start();
