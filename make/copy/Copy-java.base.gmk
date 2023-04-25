@@ -31,7 +31,7 @@ $(eval $(call IncludeCustomExtension, copy/Copy-java.base.gmk))
 
 ################################################################################
 
-ifeq ($(call isTargetOs, windows aix), true)
+ifeq ($(call isTargetOs, aix), true)
 
   TZMAPPINGS_SRC := $(TOPDIR)/src/java.base/$(OPENJDK_TARGET_OS)/conf
 
