@@ -584,7 +584,7 @@ java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogButtonTest/EnqueueWithD
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java JBR-5210 windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.java JBR-5210 windows-all
 java/awt/FullScreen/8013581/bug8013581.java 8169471,JBR-80 macosx-all,windows-all
-java/awt/event/MouseEvent/RobotLWTest/RobotLWTest.java 8233568 macosx-all
+java/awt/event/MouseEvent/RobotLWTest/RobotLWTest.java 8233568,JBR-5583 macosx-all,windows-x64
 java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java 8233568 macosx-all
 java/awt/event/KeyEvent/DeadKey/DeadKeyMacOSXInputText.java 8233568 macosx-all
 java/awt/event/KeyEvent/DeadKey/deadKeyMacOSX.java 8233568 macosx-all
@@ -1101,6 +1101,7 @@ jb/sun/awt/macos/NationalLayoutTest/Layout_GERMAN.java JBR-4933 macosx-all
 jb/sun/awt/macos/NationalLayoutTest/Layout_SPANISH_ISO.java JBR-4933 macosx-all
 jb/sun/awt/macos/NationalLayoutTest/Layout_US_INTERNATIONAL_PC.java JBR-4933 macosx-all
 
+jb/javax/swing/JComboBox/ComboBoxTransparentTittleBarTest.java JBR-5432 windows-all
 jb/javax/swing/JDialog/JDialog186.java JBR-5210 windows-all
 jb/javax/swing/JDialog/JDialog392.java JBR-4941 macosx-all,linux-all
 jb/javax/swing/JDialog/JDialog705.java JBR-4934 generic-all
@@ -1174,9 +1175,13 @@ javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5359,JBR-5510 windows-aarc
 jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-5359 windows-aarch64
 jb/java/awt/CustomTitleBar/FrameNativeControlsTest.java JBR-5359 windows-aarch64
 jb/java/awt/CustomTitleBar/JDialogNativeControlsTest.java JBR-5359 windows-aarch64
+jb/java/awt/CustomTitleBar/ActionListenerTest.java JBR-5597 windows-all
+jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-5465 windows-all
 jb/java/awt/CustomTitleBar/MinimizingWindowTest.java JBR-5359 windows-aarch64
+jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java JBR-5593 windows-all
 jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java JBR-5359 windows-aarch64
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java JBR-5359 windows-aarch64
+jb/java/awt/CustomTitleBar/WindowResizeTest.java JBR-5592 windows-all
 sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
 sun/java2d/AcceleratedXORModeTest.java JBR-5359 windows-aarch64
 sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
