@@ -144,6 +144,7 @@ java/awt/Focus/MouseClickRequestFocusRaceTest/MouseClickRequestFocusRaceTest.jav
 java/awt/Focus/NoAutotransferToDisabledCompTest/NoAutotransferToDisabledCompTest.java 7152980,JBR-5210 macosx-all,windows-all
 java/awt/Focus/TypeAhead/TestFocusFreeze.java 8198622,6447537 macosx-all,windows-all,linux-all
 java/awt/Focus/ToFrontFocusTest/ToFrontFocus.java 7156130 linux-all
+java/awt/Focus/WindowInitialFocusTest/WindowInitialFocusTest.java JBR-5210 windows-x64
 java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java 8169096,JBR-4880,JBR-5387 windows-all,linux-all
 java/awt/event/KeyEvent/CorrectTime/CorrectTime.java 6626492 generic-all
 java/awt/EventQueue/6980209/bug6980209.java 8198615 macosx-all
@@ -566,6 +567,7 @@ java/awt/Modal/OnTop/OnTopTKModal3Test.java 8198666,8253184 macosx-all,windows-a
 java/awt/Modal/OnTop/OnTopTKModal4Test.java 8198666,8253184 macosx-all,windows-all
 java/awt/Modal/OnTop/OnTopTKModal5Test.java 8198666,8253184 macosx-all,windows-all
 java/awt/Modal/OnTop/OnTopTKModal6Test.java 8198666,8253184 macosx-all,windows-all
+java/awt/List/EmptyListEventTest/EmptyListEventTest.java JBR-5387 linux-all
 java/awt/List/FirstItemRemoveTest/FirstItemRemoveTest.java JBR-86 windows-x64
 java/awt/List/KeyEventsTest/KeyEventsTest.java JBR-5210 windows-all
 java/awt/List/ListMultipleSelectTest/ListMultipleSelectTest.java JBR-5555 windows-all
@@ -609,7 +611,7 @@ java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java JBR-5210 wind
 java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.java JBR-5210 windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.java JBR-5210 windows-all
 java/awt/FullScreen/8013581/bug8013581.java 8169471,JBR-80 macosx-all,windows-all
-java/awt/event/MouseEvent/RobotLWTest/RobotLWTest.java 8233568 macosx-all
+java/awt/event/MouseEvent/RobotLWTest/RobotLWTest.java 8233568,JBR-5583 macosx-all,windows-x64
 java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java 8233568 macosx-all
 java/awt/event/KeyEvent/DeadKey/DeadKeyMacOSXInputText.java 8233568 macosx-all
 java/awt/event/KeyEvent/DeadKey/deadKeyMacOSX.java 8233568 macosx-all
@@ -1191,6 +1193,7 @@ jb/sun/awt/macos/NationalLayoutTest/Layout_GERMAN.java JBR-4933 macosx-all
 jb/sun/awt/macos/NationalLayoutTest/Layout_SPANISH_ISO.java JBR-4933 macosx-all
 jb/sun/awt/macos/NationalLayoutTest/Layout_US_INTERNATIONAL_PC.java JBR-4933 macosx-all
 
+jb/javax/swing/JComboBox/ComboBoxTransparentTittleBarTest.java JBR-5432 windows-all
 jb/javax/swing/JDialog/JDialog186.java JBR-5210 windows-all
 jb/javax/swing/JDialog/JDialog392.java JBR-4941 macosx-all,linux-all
 jb/javax/swing/JDialog/JDialog705.java JBR-4934 generic-all
