@@ -56,21 +56,7 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import sun.awt.ComponentFactory;
-import sun.font.AttributeMap;
-import sun.font.AttributeValues;
-import sun.font.CompositeFont;
-import sun.font.CoreMetrics;
-import sun.font.CreatedFontTracker;
-import sun.font.Font2D;
-import sun.font.Font2DHandle;
-import sun.font.FontAccess;
-import sun.font.FontDesignMetrics;
-import sun.font.FontLineMetrics;
-import sun.font.FontManager;
-import sun.font.FontManagerFactory;
-import sun.font.FontUtilities;
-import sun.font.GlyphLayout;
-import sun.font.StandardGlyphVector;
+import sun.font.*;
 
 import static sun.font.EAttribute.EBACKGROUND;
 import static sun.font.EAttribute.EBIDI_EMBEDDING;
