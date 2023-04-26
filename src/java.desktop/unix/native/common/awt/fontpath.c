@@ -803,10 +803,7 @@ Java_sun_font_FontConfigManager_getFontConfigVersion
 
 JNIEXPORT jstring JNICALL
 Java_sun_font_FontConfigManager_getFontProperty
-        (JNIEnv *env, jclass obj, jstring fontName, jstring property) {
-
-
-    jstring res = NULL;
+        (JNIEnv *env, jclass obj, jstring query, jstring property) {
 
     void* libfontconfig = NULL;
     FcNameParseFuncType FcNameParse;
@@ -815,6 +812,12 @@ Java_sun_font_FontConfigManager_getFontProperty
     FcDefaultSubstituteFuncType  FcDefaultSubstitute;
     FcFontMatchFuncType FcFontMatch;
     FcStrFreeFuncType FcStrFree;
+
+    const char *queryPtr = NULL;
+    const char *propertyPtr = NULL;
+    FcChar8 *fontFamily = NULL;
+    FcChar8 *fontPath = NULL;
+    jstring res = NULL;
 
     if ((libfontconfig = openFontConfig()) == NULL) {
         goto cleanup;
@@ -826,13 +829,13 @@ Java_sun_font_FontConfigManager_getFontProperty
     FcFontMatch = (FcFontMatchFuncType)dlsym(libfontconfig, "FcFontMatch");
     FcStrFree = (FcStrFreeFuncType)dlsym(libfontconfig, "FcStrFree");
 
-    const char *fontNamePtr = (*env)->GetStringUTFChars(env, fontName, 0);
-    const char *propertyPtr = (*env)->GetStringUTFChars(env, property, 0);
-    if (fontNamePtr == NULL || propertyPtr == NULL) {
+    queryPtr = (*env)->GetStringUTFChars(env, query, 0);
+    propertyPtr = (*env)->GetStringUTFChars(env, property, 0);
+    if (queryPtr == NULL || propertyPtr == NULL) {
         goto cleanup;
     }
 
-    FcPattern *pattern = (*FcNameParse)((FcChar8 *) fontNamePtr);
+    FcPattern *pattern = (*FcNameParse)((FcChar8 *) queryPtr);
     if (pattern == NULL) {
         goto cleanup;
     }
@@ -844,37 +847,37 @@ Java_sun_font_FontConfigManager_getFontProperty
     if (match == NULL || fcResult != FcResultMatch) {
         goto cleanup;
     }
-    FcChar8 *foundFontName = (FcPatternFormat)(match, (FcChar8*) "%{family}");
-    if (foundFontName == NULL) {
+    fontFamily = (FcPatternFormat)(match, (FcChar8*) "%{family}");
+    if (fontFamily == NULL) {
         goto cleanup;
     }
     // result of foundFontName could be set of families, so we left only first family
-    char *commaPos = strchr((char *) foundFontName, ',');
+    char *commaPos = strchr((char *) fontFamily, ',');
     if (commaPos != NULL) {
         *commaPos = '\0';
     }
-    if (strstr(fontNamePtr, (char *) foundFontName) == NULL) {
+    if (strstr(queryPtr, (char *) fontFamily) == NULL) {
         goto cleanup;
     }
 
-    FcChar8 *propertyRes = (FcPatternFormat)(match, (FcChar8*) propertyPtr);
-    if (propertyRes == NULL) {
+    fontPath = (FcPatternFormat)(match, (FcChar8*) propertyPtr);
+    if (fontPath == NULL) {
         goto cleanup;
     }
-    res = (*env)->NewStringUTF(env, (char *) propertyRes);
+    res = (*env)->NewStringUTF(env, (char *) fontPath);
 
 cleanup:
-    if (propertyRes) {
-        (FcStrFree)(propertyRes);
+    if (fontPath) {
+        (FcStrFree)(fontPath);
     }
-    if (foundFontName) {
-        (FcStrFree)(foundFontName);
+    if (fontFamily) {
+        (FcStrFree)(fontFamily);
     }
     if (propertyPtr) {
         (*env)->ReleaseStringUTFChars(env, property, (const char*)propertyPtr);
     }
-    if (fontNamePtr) {
-        (*env)->ReleaseStringUTFChars(env, fontName, (const char*)fontNamePtr);
+    if (queryPtr) {
+        (*env)->ReleaseStringUTFChars(env, query, (const char*)queryPtr);
     }
     if (libfontconfig) {
         closeFontConfig(libfontconfig, JNI_FALSE);

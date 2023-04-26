@@ -66,12 +66,6 @@ import sun.util.logging.PlatformLogger;
 public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     protected static class BundledFontInfo {
         private String psName;
-        private String version = "0";
-
-        public BundledFontInfo(String psName, String version) {
-            this.psName = psName;
-            this.version = version;
-        }
 
         public BundledFontInfo(String psName) {
             this.psName = psName;
@@ -2940,16 +2934,6 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
      */
     protected abstract String[] getDefaultPlatformFont();
 
-    // Begin: Refactored from SunGraphicsEnviroment.
-
-    private void addDirFonts(String dirName, File dirFile,
-                             FilenameFilter filter,
-                             int fontFormat, boolean useJavaRasterizer,
-                             int fontRank,
-                             boolean defer, boolean resolveSymLinks) {
-        addDirFonts(dirName, dirFile.list(filter), fontFormat, useJavaRasterizer, fontRank, defer, resolveSymLinks);
-    }
-
     /*
      * helper function for registerFonts
      */
@@ -3106,25 +3090,18 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         registerFontsInDir(dirName, true, Font2D.JRE_RANK, true, false);
     }
 
-    public void registerTrueTypeFontsInList(String dirName, String[] files, boolean useJavaRasterizer, int fontRank,
-                                    boolean defer, boolean resolveSymLinks) {
-        addDirFonts(dirName, files, FONTFORMAT_TRUETYPE, useJavaRasterizer,
-                fontRank==Font2D.UNKNOWN_RANK ? Font2D.TTF_RANK : fontRank,
-                defer, resolveSymLinks);
-    }
-
     // MACOSX begin -- need to access this in subclass
     protected void registerFontsInDir(String dirName, boolean useJavaRasterizer,
     // MACOSX end
                                     int fontRank,
                                     boolean defer, boolean resolveSymLinks) {
         File pathFile = new File(dirName);
-        addDirFonts(dirName, pathFile, ttFilter,
+        addDirFonts(dirName, pathFile.list(ttFilter),
                     FONTFORMAT_TRUETYPE, useJavaRasterizer,
                     fontRank==Font2D.UNKNOWN_RANK ?
                     Font2D.TTF_RANK : fontRank,
                     defer, resolveSymLinks);
-        addDirFonts(dirName, pathFile, t1Filter,
+        addDirFonts(dirName, pathFile.list(t1Filter),
                     FONTFORMAT_TYPE1, useJavaRasterizer,
                     fontRank==Font2D.UNKNOWN_RANK ?
                     Font2D.TYPE1_RANK : fontRank,
@@ -3178,14 +3155,13 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
             boolean versionCheckEnabled = !("true".equals(System.getProperty("java2d.font.noVersionCheck")));
             for (String f : files) {
                 boolean loadFont = true;
-                String bundledFontPath = jreFontDirName + File.separator + f;
                 BundledFontInfo fi = getBundledFontInfo(f);
-                String bundledVersion = fi.version;
+                String bundledVersion = "0";
                 String systemVersion = "0";
                 if (versionCheckEnabled) {
                     if (fi != null) {
                         try {
-                            TrueTypeFont bundledFont = new TrueTypeFont(bundledFontPath, null, 0, false, false);
+                            TrueTypeFont bundledFont = new TrueTypeFont(jreFontDirName + File.separator + f, null, 0, false, false);
                             bundledVersion = bundledFont.getVersion();
                             String query = null;
                             if (FontUtilities.isLinux) {
@@ -3197,7 +3173,10 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                             }
                             systemVersion = getFontVersion(query);
                         } catch (FontFormatException e) {
-                            throw new RuntimeException(e);
+                            if (logger != null) {
+                                FontUtilities.getLogger().warning("Version checking logic doesn't support for non TrueTypeFonts " + fi.getPsName());
+                            }
+                            continue;
                         }
                         if (logger != null) {
                             logger.info("Checking bundled " + fi.getPsName());
@@ -3224,7 +3203,8 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
             }
         }
 
-        registerTrueTypeFontsInList(jreFontDirName, fontsToLoad.toArray(new String[0]), true, Font2D.JRE_RANK, true, false);
+        addDirFonts(jreFontDirName, fontsToLoad.toArray(new String[0]), FONTFORMAT_TRUETYPE, true,
+                Font2D.JRE_RANK, true, false);
     }
 
     protected void registerFontDir(String path) {
