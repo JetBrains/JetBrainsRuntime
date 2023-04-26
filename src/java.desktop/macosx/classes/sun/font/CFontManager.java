@@ -141,8 +141,8 @@ public final class CFontManager extends SunFontManager {
     }
 
     @Override
-    protected String getFontVersion(String query) {
-        return getNativeFontVersion(query);
+    protected String getFontVersion(TrueTypeFont ttf) {
+        return getNativeFontVersion(ttf.getTypographicFamilyName());
     }
 
     protected void registerFontsInDir(final String dirName, boolean useJavaRasterizer,

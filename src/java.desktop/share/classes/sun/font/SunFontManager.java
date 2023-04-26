@@ -3088,12 +3088,11 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                     defer, resolveSymLinks);
     }
 
-    private String getVersion(String path) {
-        String version = "-1";
+    protected String getVersion(String path) {
+        String version = "0";
         try {
             TrueTypeFont ttf = new TrueTypeFont(path, null, 0, false, false);
             version = ttf.getVersion();
-            ttf.close();
         } catch (FontFormatException e) {
             throw new RuntimeException(e);
         }
@@ -3104,15 +3103,11 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         return versionFirst.compareTo(versionSecond) > 0;
     }
 
-    protected String getFontVersion(String query) {
-        String version = null;
-        if (FontUtilities.isLinux) {
-            String systemFont = FontConfigManager.getFontProperty(query, "%{file}");
-            version = systemFont.isEmpty() ? "0" : getVersion(systemFont);
-        } else if (FontUtilities.isWindows){
-            version = windowsSystemVersion.get(query);
+    protected String getFontVersion(TrueTypeFont ttf) {
+        if (FontUtilities.isWindows) {
+            return getVersion(windowsSystemVersion.get(ttf.getTypographicFamilyName()));
         }
-        return version;
+        return "0";
     }
 
     protected void registerJREFonts() {
@@ -3139,28 +3134,14 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                 String bundledVersion = "0";
                 String systemVersion = "0";
                 if (versionCheckEnabled) {
-                    if (fi != null) {
-                        try {
-                            TrueTypeFont bundledFont = new TrueTypeFont(jreFontDirName + File.separator + f, null, 0, false, false);
-                            bundledVersion = bundledFont.getVersion();
-                            String query = null;
-                            if (FontUtilities.isLinux) {
-                                query = bundledFont.getTypographicFamilyName() + ":style=" + bundledFont.getTypographicSubfamilyName();
-                            } else if (FontUtilities.isWindows) {
-                                query = bundledFont.fullName;
-                            } else {
-                                query = fi.psName;
-                            }
-                            systemVersion = getFontVersion(query);
-                        } catch (FontFormatException e) {
-                            if (logger != null) {
-                                FontUtilities.getLogger().warning("Version checking logic doesn't support for non TrueTypeFonts " + fi.getPsName());
-                            }
-                            continue;
-                        }
-                        if (logger != null) {
-                            logger.info("Checking bundled " + fi.getPsName());
-                        }
+                    if (logger != null) {
+                        logger.info("Checking bundled " + fi.getPsName());
+                    }
+                    try {
+                        TrueTypeFont bundledFont = new TrueTypeFont(jreFontDirName + File.separator + f, null, 0, false, false);
+                        bundledVersion = bundledFont.getVersion();
+                        systemVersion = getFontVersion(bundledFont);
+
                         if (isFontNewer(systemVersion, bundledVersion)) {
                             if (logger != null) {
                                 logger.info("Skip loading. Newer or same version platform font detected " +
@@ -3168,9 +3149,9 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                             }
                             loadFont = false;
                         }
-                    } else {
+                    } catch (FontFormatException e) {
                         if (logger != null) {
-                            FontUtilities.getLogger().warning("JREFonts: No BundledFontInfo for : " + f);
+                            FontUtilities.getLogger().warning("Version checking logic doesn't support for non TrueTypeFonts " + fi.getPsName());
                         }
                     }
                 }
