@@ -511,6 +511,7 @@ typedef FcPattern* (*FcFontMatchFuncType)(FcConfig *config,
                                           FcResult *result);
 typedef FcFontSet* (*FcFontSetCreateFuncType)();
 typedef FcBool (*FcFontSetAddFuncType)(FcFontSet *s, FcPattern *font);
+typedef void (*FcStrFreeFuncType)(FcChar8 *str);
 
 typedef FcResult (*FcPatternGetCharSetFuncType)(FcPattern *p,
                                                 const char *object,
@@ -804,90 +805,82 @@ JNIEXPORT jstring JNICALL
 Java_sun_font_FontConfigManager_getFontProperty
         (JNIEnv *env, jclass obj, jstring fontName, jstring property) {
 
+
+    jstring res = NULL;
+
+    void* libfontconfig = NULL;
     FcNameParseFuncType FcNameParse;
-    FcFreeTypeQueryAllFuncType FcFreeTypeQueryAll;
-    FcFontSetCreateFuncType FcFontSetCreate;
     FcPatternFormatFuncType FcPatternFormat;
-    FcFontSetDestroyFuncType FcFontSetDestroy;
-    FcFontSortFuncType FcFontSort;
     FcConfigSubstituteFuncType FcConfigSubstitute;
     FcDefaultSubstituteFuncType  FcDefaultSubstitute;
     FcFontMatchFuncType FcFontMatch;
-    FcFontSetAddFuncType FcFontSetAdd;
-
-    void* libfontconfig;
-    const char *error = "-1";
-    jstring res = (*env)->NewStringUTF(env, error);
+    FcStrFreeFuncType FcStrFree;
 
     if ((libfontconfig = openFontConfig()) == NULL) {
-        return res;
+        goto cleanup;
     }
-
-    FcFreeTypeQueryAll = (FcFreeTypeQueryAllFuncType)dlsym(libfontconfig, "FcFreeTypeQueryAll");
-    FcFontSetCreate = (FcFontSetCreateFuncType)dlsym(libfontconfig, "FcFontSetCreate");
     FcPatternFormat = (FcPatternFormatFuncType)dlsym(libfontconfig, "FcPatternFormat");
-    FcFontSetDestroy = (FcFontSetDestroyFuncType)dlsym(libfontconfig, "FcFontSetDestroy");
-    FcFontSort = (FcFontSortFuncType)dlsym(libfontconfig, "FcFontSort");
     FcNameParse = (FcNameParseFuncType)dlsym(libfontconfig, "FcNameParse");
     FcConfigSubstitute = (FcConfigSubstituteFuncType)dlsym(libfontconfig, "FcConfigSubstitute");
     FcDefaultSubstitute = (FcDefaultSubstituteFuncType)dlsym(libfontconfig, "FcDefaultSubstitute");
     FcFontMatch = (FcFontMatchFuncType)dlsym(libfontconfig, "FcFontMatch");
-    FcFontSetAdd = (FcFontSetAddFuncType)dlsym(libfontconfig, "FcFontSetAdd");
+    FcStrFree = (FcStrFreeFuncType)dlsym(libfontconfig, "FcStrFree");
 
-    FcFontSet *fs = (FcFontSetCreate)();
     const char *fontNamePtr = (*env)->GetStringUTFChars(env, fontName, 0);
     const char *propertyPtr = (*env)->GetStringUTFChars(env, property, 0);
     if (fontNamePtr == NULL || propertyPtr == NULL) {
         goto cleanup;
     }
 
-    if (strstr(fontNamePtr, ".") == NULL) {
-        FcResult result;
-
-        FcPattern *pattern = (*FcNameParse)((FcChar8 *) fontNamePtr);
-        if (pattern == NULL) {
-            goto cleanup;
-        }
-        (*FcConfigSubstitute)(NULL, pattern, FcMatchScan);
-        (*FcDefaultSubstitute)(pattern);
-
-        FcPattern *match = (*FcFontMatch)(0, pattern, &result);
-        if (!match || (result != FcResultMatch)) {
-            goto cleanup;
-        }
-        FcChar8 *foundFontName = (FcPatternFormat)(match, (FcChar8*) "%{fullname}");
-        if (strcmp((char *) foundFontName, fontNamePtr) != 0) {
-            goto cleanup;
-        }
-
-        FcFontSetAdd(fs, match);
-    } else {
-        if (!(FcFreeTypeQueryAll)((FcChar8 *) fontNamePtr, -1, NULL, NULL, fs)) {
-            goto cleanup;
-        }
+    FcPattern *pattern = (*FcNameParse)((FcChar8 *) fontNamePtr);
+    if (pattern == NULL) {
+        goto cleanup;
     }
+    (*FcConfigSubstitute)(NULL, pattern, FcMatchScan);
+    (*FcDefaultSubstitute)(pattern);
 
-    if (fs->nfont != 1) {
+    FcResult fcResult;
+    FcPattern *match = (*FcFontMatch)(0, pattern, &fcResult);
+    if (match == NULL || fcResult != FcResultMatch) {
+        goto cleanup;
+    }
+    FcChar8 *foundFontName = (FcPatternFormat)(match, (FcChar8*) "%{family}");
+    if (foundFontName == NULL) {
+        goto cleanup;
+    }
+    // result of foundFontName could be set of families, so we left only first family
+    char *commaPos = strchr((char *) foundFontName, ',');
+    if (commaPos != NULL) {
+        *commaPos = '\0';
+    }
+    if (strstr(fontNamePtr, (char *) foundFontName) == NULL) {
         goto cleanup;
     }
 
-    FcChar8 *propertyRes = (FcPatternFormat)(fs->fonts[0], (FcChar8*) propertyPtr);
-    if (res == NULL) {
+    FcChar8 *propertyRes = (FcPatternFormat)(match, (FcChar8*) propertyPtr);
+    if (propertyRes == NULL) {
         goto cleanup;
     }
-    // TODO think about freeing res
     res = (*env)->NewStringUTF(env, (char *) propertyRes);
 
 cleanup:
+    if (propertyRes) {
+        (FcStrFree)(propertyRes);
+    }
+    if (foundFontName) {
+        (FcStrFree)(foundFontName);
+    }
     if (propertyPtr) {
         (*env)->ReleaseStringUTFChars(env, property, (const char*)propertyPtr);
     }
     if (fontNamePtr) {
         (*env)->ReleaseStringUTFChars(env, fontName, (const char*)fontNamePtr);
     }
-    (FcFontSetDestroy) (fs);
-    closeFontConfig(libfontconfig, JNI_FALSE);
-    return res;
+    if (libfontconfig) {
+        closeFontConfig(libfontconfig, JNI_FALSE);
+    }
+    // if any issues return empty string
+    return res == NULL ? (*env)->NewStringUTF(env, "") : res;
 }
 
 JNIEXPORT void JNICALL

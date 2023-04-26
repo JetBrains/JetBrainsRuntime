@@ -66,34 +66,19 @@ import sun.util.logging.PlatformLogger;
 public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     protected static class BundledFontInfo {
         private String psName;
-        private int [] version;
+        private String version = "0";
 
-        public BundledFontInfo(String psName, int major, int minor, int bugfix) {
+        public BundledFontInfo(String psName, String version) {
             this.psName = psName;
-            version = new int[3];
-            version[0] = major;
-            version[1] = minor;
-            version[2] = bugfix;
+            this.version = version;
+        }
+
+        public BundledFontInfo(String psName) {
+            this.psName = psName;
         }
 
         public String getPsName() {
             return psName;
-        }
-
-        public boolean isNewerThan(int[] version) {
-            for (int i = 0; i < 3; i++) {
-                if (this.version[i] < version[i]) {
-                    return false;
-                } else if (this.version[i] > version[i]) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        @Override
-        public String toString() {
-            return psName + " v" + version[0] + "." + version[1] + "." + version[2];
         }
     }
 
@@ -233,6 +218,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     private String defaultFontName;
     private String defaultFontFileName;
     protected HashSet<String> registeredFontFiles = new HashSet<>();
+    private HashMap<String, String> windowsSystemVersion = new HashMap<>();
 
     private ArrayList<String> badFonts;
     /* fontPath is the location of all fonts on the system, excluding the
@@ -312,59 +298,59 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         jreFamilyMap = new HashMap<>();
 
         /* Droid Sans Mono Family */
-        jreFontMap.put("DroidSans.ttf", new BundledFontInfo("DroidSans", 1, 0, 0));
-        jreFontMap.put("DroidSans-Bold.ttf", new BundledFontInfo("DroidSans-Bold", 1, 0, 0));
+        jreFontMap.put("DroidSans.ttf", new BundledFontInfo("DroidSans"));
+        jreFontMap.put("DroidSans-Bold.ttf", new BundledFontInfo("DroidSans-Bold"));
 
         /* Droid Sans Mono Family */
-        jreFontMap.put("DroidSansMono.ttf", new BundledFontInfo("DroidSansMono", 1, 0, 0));
-        jreFontMap.put("DroidSansMonoSlashed.ttf", new BundledFontInfo("DroidSansMonoSlashed", 1, 0, 0));
-        jreFontMap.put("DroidSansMonoDotted.ttf", new BundledFontInfo("DroidSansMonoDotted", 1, 0, 0));
+        jreFontMap.put("DroidSansMono.ttf", new BundledFontInfo("DroidSansMono"));
+        jreFontMap.put("DroidSansMonoSlashed.ttf", new BundledFontInfo("DroidSansMonoSlashed"));
+        jreFontMap.put("DroidSansMonoDotted.ttf", new BundledFontInfo("DroidSansMonoDotted"));
 
         /* Droid Serif Family */
-        jreFontMap.put("DroidSerif-Regular.ttf", new BundledFontInfo("DroidSerif", 1, 0, 0));
-        jreFontMap.put("DroidSerif-Bold.ttf", new BundledFontInfo("DroidSerif-Bold", 1, 0, 0));
-        jreFontMap.put("DroidSerif-Italic.ttf", new BundledFontInfo("DroidSerif-Italic", 1, 0, 0));
-        jreFontMap.put("DroidSerif-BoldItalic.ttf", new BundledFontInfo("DroidSerif-BoldItalic", 1, 0, 0));
+        jreFontMap.put("DroidSerif-Regular.ttf", new BundledFontInfo("DroidSerif"));
+        jreFontMap.put("DroidSerif-Bold.ttf", new BundledFontInfo("DroidSerif-Bold"));
+        jreFontMap.put("DroidSerif-Italic.ttf", new BundledFontInfo("DroidSerif-Italic"));
+        jreFontMap.put("DroidSerif-BoldItalic.ttf", new BundledFontInfo("DroidSerif-BoldItalic"));
 
         /* Idea bundled fonts */
-        jreFontMap.put("FiraCode-Bold.ttf", new BundledFontInfo("FiraCode-Bold", 1, 206, 0));
-        jreFontMap.put("FiraCode-Light.ttf", new BundledFontInfo("FiraCode-Light", 1, 206, 0));
-        jreFontMap.put("FiraCode-Medium.ttf", new BundledFontInfo("FiraCode-Medium", 1, 206, 0));
-        jreFontMap.put("FiraCode-Retina.ttf", new BundledFontInfo("FiraCode-Retina", 1, 206, 0));
-        jreFontMap.put("FiraCode-Regular.ttf", new BundledFontInfo("FiraCode-Regular", 1, 206, 0));
+        jreFontMap.put("FiraCode-Bold.ttf", new BundledFontInfo("FiraCode-Bold"));
+        jreFontMap.put("FiraCode-Light.ttf", new BundledFontInfo("FiraCode-Light"));
+        jreFontMap.put("FiraCode-Medium.ttf", new BundledFontInfo("FiraCode-Medium"));
+        jreFontMap.put("FiraCode-Retina.ttf", new BundledFontInfo("FiraCode-Retina"));
+        jreFontMap.put("FiraCode-Regular.ttf", new BundledFontInfo("FiraCode-Regular"));
 
-        jreFontMap.put("SourceCodePro-BoldIt.ttf", new BundledFontInfo("SourceCodePro-BoldIt", 1, 30, 0));
-        jreFontMap.put("SourceCodePro-Regular.ttf", new BundledFontInfo("SourceCodePro-Regular", 2, 10, 0));
-        jreFontMap.put("SourceCodePro-Bold.ttf", new BundledFontInfo("SourceCodePro-Bold", 2, 10, 0));
-        jreFontMap.put("SourceCodePro-It.ttf", new BundledFontInfo("SourceCodePro-It", 1, 30, 0));
+        jreFontMap.put("SourceCodePro-BoldIt.ttf", new BundledFontInfo("SourceCodePro-BoldIt"));
+        jreFontMap.put("SourceCodePro-Regular.ttf", new BundledFontInfo("SourceCodePro-Regular"));
+        jreFontMap.put("SourceCodePro-Bold.ttf", new BundledFontInfo("SourceCodePro-Bold"));
+        jreFontMap.put("SourceCodePro-It.ttf", new BundledFontInfo("SourceCodePro-It"));
 
-        jreFontMap.put("Inconsolata.ttf", new BundledFontInfo("Inconsolata", 1, 10, 0));
+        jreFontMap.put("Inconsolata.ttf", new BundledFontInfo("Inconsolata"));
 
-        jreFontMap.put("Roboto-Light.ttf", new BundledFontInfo("Roboto-Light", 1, 100141, 0));
-        jreFontMap.put("Roboto-Thin.ttf", new BundledFontInfo("Roboto-Thin", 1, 100141, 0));
+        jreFontMap.put("Roboto-Light.ttf", new BundledFontInfo("Roboto-Light"));
+        jreFontMap.put("Roboto-Thin.ttf", new BundledFontInfo("Roboto-Thin"));
 
         jreFamilyMap.put("Roboto-Light", "Roboto Light");
         jreFamilyMap.put("Roboto-Thin", "Roboto Thin");
 
-        jreFontMap.put("JetBrainsMono-Bold.ttf", new BundledFontInfo("JetBrainsMono-Bold", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-BoldItalic.ttf", new BundledFontInfo("JetBrainsMono-BoldItalic", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-ExtraBold.ttf", new BundledFontInfo("JetBrainsMono-ExtraBold", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-ExtraBoldItalic.ttf", new BundledFontInfo("JetBrainsMono-ExtraBoldItalic", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-ExtraLight.ttf", new BundledFontInfo("JetBrainsMono-ExtraLight", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-ExtraLightItalic.ttf", new BundledFontInfo("JetBrainsMono-ExtraLightItalic", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-Italic.ttf", new BundledFontInfo("JetBrainsMono-Italic", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-Light.ttf", new BundledFontInfo("JetBrainsMono-Light", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-LightItalic.ttf", new BundledFontInfo("JetBrainsMono-LightItalic", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-Medium.ttf", new BundledFontInfo("JetBrainsMono-Medium", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-MediumItalic.ttf", new BundledFontInfo("JetBrainsMono-MediumItalic", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-Regular.ttf", new BundledFontInfo("JetBrainsMono-Regular", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-Thin.ttf", new BundledFontInfo("JetBrainsMono-Thin", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-ThinItalic.ttf", new BundledFontInfo("JetBrainsMono-ThinItalic", 2, 242, 0));
+        jreFontMap.put("JetBrainsMono-Bold.ttf", new BundledFontInfo("JetBrainsMono-Bold"));
+        jreFontMap.put("JetBrainsMono-BoldItalic.ttf", new BundledFontInfo("JetBrainsMono-BoldItalic"));
+        jreFontMap.put("JetBrainsMono-ExtraBold.ttf", new BundledFontInfo("JetBrainsMono-ExtraBold"));
+        jreFontMap.put("JetBrainsMono-ExtraBoldItalic.ttf", new BundledFontInfo("JetBrainsMono-ExtraBoldItalic"));
+        jreFontMap.put("JetBrainsMono-ExtraLight.ttf", new BundledFontInfo("JetBrainsMono-ExtraLight"));
+        jreFontMap.put("JetBrainsMono-ExtraLightItalic.ttf", new BundledFontInfo("JetBrainsMono-ExtraLightItalic"));
+        jreFontMap.put("JetBrainsMono-Italic.ttf", new BundledFontInfo("JetBrainsMono-Italic"));
+        jreFontMap.put("JetBrainsMono-Light.ttf", new BundledFontInfo("JetBrainsMono-Light"));
+        jreFontMap.put("JetBrainsMono-LightItalic.ttf", new BundledFontInfo("JetBrainsMono-LightItalic"));
+        jreFontMap.put("JetBrainsMono-Medium.ttf", new BundledFontInfo("JetBrainsMono-Medium"));
+        jreFontMap.put("JetBrainsMono-MediumItalic.ttf", new BundledFontInfo("JetBrainsMono-MediumItalic"));
+        jreFontMap.put("JetBrainsMono-Regular.ttf", new BundledFontInfo("JetBrainsMono-Regular"));
+        jreFontMap.put("JetBrainsMono-Thin.ttf", new BundledFontInfo("JetBrainsMono-Thin"));
+        jreFontMap.put("JetBrainsMono-ThinItalic.ttf", new BundledFontInfo("JetBrainsMono-ThinItalic"));
 
-        jreFontMap.put("Inter-Bold.otf", new BundledFontInfo("Inter-Bold", 3, 19, 0));
-        jreFontMap.put("Inter-Regular.otf", new BundledFontInfo("Inter-Regular", 3, 19, 0));
-        jreFontMap.put("Inter-Italic.otf", new BundledFontInfo("Inter-Italic", 3, 19, 0));
-        jreFontMap.put("Inter-BoldItalic.otf", new BundledFontInfo("Inter-BoldItalic", 3, 19, 0));
+        jreFontMap.put("Inter-Bold.otf", new BundledFontInfo("Inter-Bold"));
+        jreFontMap.put("Inter-Regular.otf", new BundledFontInfo("Inter-Regular"));
+        jreFontMap.put("Inter-Italic.otf", new BundledFontInfo("Inter-Italic"));
+        jreFontMap.put("Inter-BoldItalic.otf", new BundledFontInfo("Inter-BoldItalic"));
 
         jreBundledFontFiles.addAll(jreFontMap.keySet());
     }
@@ -2961,13 +2947,13 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                              int fontFormat, boolean useJavaRasterizer,
                              int fontRank,
                              boolean defer, boolean resolveSymLinks) {
-        addDirFonts(dirFile.list(filter), fontFormat, useJavaRasterizer, fontRank, defer, resolveSymLinks);
+        addDirFonts(dirName, dirFile.list(filter), fontFormat, useJavaRasterizer, fontRank, defer, resolveSymLinks);
     }
 
     /*
      * helper function for registerFonts
      */
-    private void addDirFonts(String[] ls, int fontFormat, boolean useJavaRasterizer,
+    private void addDirFonts(String dirFile, String[] ls, int fontFormat, boolean useJavaRasterizer,
                              int fontRank, boolean defer, boolean resolveSymLinks) {
         if (ls == null || ls.length == 0) {
             return;
@@ -2976,13 +2962,17 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         String[][] nativeNames = new String[ls.length][];
         int fontCount = 0;
 
-        for (String fullName : ls) {
-            File theFile = new File(fullName);
+        for (String name : ls) {
+            File theFile = new File(dirFile, name);
+            String fullName = null;
             if (resolveSymLinks) {
                 try {
                     fullName = theFile.getCanonicalPath();
                 } catch (IOException e) {
                 }
+            }
+            if (fullName == null) {
+                fullName = dirFile + File.separator + name;
             }
 
             // REMIND: case compare depends on platform
@@ -3116,9 +3106,9 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         registerFontsInDir(dirName, true, Font2D.JRE_RANK, true, false);
     }
 
-    public void registerTrueTypeFontsInList(List<String> files, boolean useJavaRasterizer, int fontRank,
+    public void registerTrueTypeFontsInList(String dirName, String[] files, boolean useJavaRasterizer, int fontRank,
                                     boolean defer, boolean resolveSymLinks) {
-        addDirFonts(files.toArray(new String[0]), FONTFORMAT_TRUETYPE, useJavaRasterizer,
+        addDirFonts(dirName, files, FONTFORMAT_TRUETYPE, useJavaRasterizer,
                 fontRank==Font2D.UNKNOWN_RANK ? Font2D.TTF_RANK : fontRank,
                 defer, resolveSymLinks);
     }
@@ -3141,32 +3131,81 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                     defer, resolveSymLinks);
     }
 
+    private String getVersion(String path) {
+        String version = "-1";
+        try {
+            TrueTypeFont ttf = new TrueTypeFont(path, null, 0, false, false);
+            version = ttf.getVersion();
+            ttf.close();
+        } catch (FontFormatException e) {
+            throw new RuntimeException(e);
+        }
+        return version;
+    }
+
+    public boolean isFontNewer(String versionFirst, String versionSecond) {
+        return versionFirst.compareTo(versionSecond) > 0;
+    }
+
+    protected String getFontVersion(String query) {
+        String version = null;
+        if (FontUtilities.isLinux) {
+            String systemFont = FontConfigManager.getFontProperty(query, "%{file}");
+            version = systemFont.isEmpty() ? "0" : getVersion(systemFont);
+        } else if (FontUtilities.isWindows){
+            version = windowsSystemVersion.get(query);
+        }
+        return version;
+    }
+
     protected void registerJREFonts() {
         @SuppressWarnings("removal")
         String[] files = AccessController.doPrivileged((PrivilegedAction<String[]>) () ->
                 new File(jreFontDirName).list(getTrueTypeFilter()));
 
+        if (FontUtilities.isWindows) {
+            String[] pathDirs = getPlatformFontDirs(noType1Font);
+            HashMap<String, String> fontToFileMap = new HashMap<>(100);
+            populateFontFileNameMap(fontToFileMap, new HashMap<>(), new HashMap<>(), Locale.ENGLISH);
+            for (String key : fontToFileMap.keySet()) {
+                windowsSystemVersion.put(key, getVersion(pathDirs[0] + File.separator + fontToFileMap.get(key)));
+            }
+        }
+
         List<String> fontsToLoad = new ArrayList<>();
         if (files != null) {
             PlatformLogger logger = FontUtilities.getLogger();
             boolean versionCheckEnabled = !("true".equals(System.getProperty("java2d.font.noVersionCheck")));
-            int [] ver = new int[3];
             for (String f : files) {
-                String fontPath = jreFontDirName + File.separator + f;
                 boolean loadFont = true;
+                String bundledFontPath = jreFontDirName + File.separator + f;
                 BundledFontInfo fi = getBundledFontInfo(f);
-                String version = null;
+                String bundledVersion = fi.version;
+                String systemVersion = "0";
                 if (versionCheckEnabled) {
                     if (fi != null) {
-                        String fontName = FontConfigManager.getFontProperty(fontPath, "%{fullname}");
-                        version = FontConfigManager.getFontProperty(fontName, "%{fontversion}");
+                        try {
+                            TrueTypeFont bundledFont = new TrueTypeFont(bundledFontPath, null, 0, false, false);
+                            bundledVersion = bundledFont.getVersion();
+                            String query = null;
+                            if (FontUtilities.isLinux) {
+                                query = bundledFont.getTypographicFamilyName() + ":style=" + bundledFont.getTypographicSubfamilyName();
+                            } else if (FontUtilities.isWindows) {
+                                query = bundledFont.fullName;
+                            } else {
+                                query = fi.psName;
+                            }
+                            systemVersion = getFontVersion(query);
+                        } catch (FontFormatException e) {
+                            throw new RuntimeException(e);
+                        }
                         if (logger != null) {
                             logger.info("Checking bundled " + fi.getPsName());
                         }
-                        if (version != null && parseFontVersion(version, ver) && !fi.isNewerThan(ver)) {
+                        if (isFontNewer(systemVersion, bundledVersion)) {
                             if (logger != null) {
                                 logger.info("Skip loading. Newer or same version platform font detected " +
-                                        fi.getPsName() + " " + version);
+                                        fi.getPsName() + " " + bundledVersion);
                             }
                             loadFont = false;
                         }
@@ -3177,15 +3216,15 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                     }
                 }
                 if (loadFont) {
-                    fontsToLoad.add(fontPath);
-                    if (logger != null && fi != null && version != null) {
-                        logger.info("Loaded " + fi.getPsName() + " (" + version + ")");
+                    fontsToLoad.add(f);
+                    if (logger != null && fi != null && bundledVersion != null) {
+                        logger.info("Loaded " + fi.getPsName() + " (" + bundledVersion + ")");
                     }
                 }
             }
         }
 
-        registerTrueTypeFontsInList(fontsToLoad, true, Font2D.JRE_RANK, true, false);
+        registerTrueTypeFontsInList(jreFontDirName, fontsToLoad.toArray(new String[0]), true, Font2D.JRE_RANK, true, false);
     }
 
     protected void registerFontDir(String path) {

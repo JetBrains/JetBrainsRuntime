@@ -141,46 +141,8 @@ public final class CFontManager extends SunFontManager {
     }
 
     @Override
-    protected void registerJREFonts() {
-        @SuppressWarnings("removal")
-        String[] files = AccessController.doPrivileged((PrivilegedAction<String[]>) () ->
-                new File(jreFontDirName).list(getTrueTypeFilter()));
-        if (files != null) {
-            PlatformLogger logger = FontUtilities.getLogger();
-            boolean versionCheckEnabled = !("true".equals(System.getProperty("java2d.font.noVersionCheck")));
-            int [] ver = new int[3];
-            for (String f : files) {
-                boolean loadFont = true;
-                BundledFontInfo fi = getBundledFontInfo(f);
-                if (versionCheckEnabled) {
-                    if (fi != null) {
-                        String verStr = getNativeFontVersion(fi.getPsName());
-                        if (logger != null) {
-                            logger.info("Checking bundled " + fi.getPsName());
-                        }
-                        if (verStr != null && parseFontVersion(verStr, ver) && !fi.isNewerThan(ver)) {
-                            if (logger != null) {
-                                logger.info("Skip loading. Newer or same version platform font detected " +
-                                             fi.getPsName() + " " + verStr);
-                            }
-                            loadFont = false;
-                        }
-                    } else {
-                        if (logger != null) {
-                            FontUtilities.getLogger().warning("JREFonts: No BundledFontInfo for : " + f);
-                        }
-                    }
-                }
-                if (loadFont) {
-                    String fontPath = jreFontDirName + File.separator + f;
-                    loadNativeDirFonts(fontPath);
-                    if (logger != null && fi != null) {
-                        String verStr = getNativeFontVersion(fi.getPsName());
-                        logger.info("Loaded " + fi.getPsName() + " (" + verStr + ")");
-                    }
-                }
-            }
-        }
+    protected String getFontVersion(String query) {
+        return getNativeFontVersion(query);
     }
 
     protected void registerFontsInDir(final String dirName, boolean useJavaRasterizer,
