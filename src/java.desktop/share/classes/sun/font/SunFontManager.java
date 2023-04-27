@@ -50,7 +50,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import javax.swing.plaf.FontUIResource;
 
-import sun.awt.FcFontManager;
 import sun.awt.FontConfiguration;
 import sun.awt.SunToolkit;
 import sun.awt.util.ThreadGroupUtils;
@@ -3105,7 +3104,10 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
 
     protected String getFontVersion(TrueTypeFont ttf) {
         if (FontUtilities.isWindows) {
-            return getVersion(windowsSystemVersion.get(ttf.getTypographicFamilyName()));
+            String query = ttf.getFullName().toLowerCase();
+            if (windowsSystemVersion.containsKey(query)) {
+                return getVersion(windowsSystemVersion.get(query));
+            }
         }
         return "0";
     }
@@ -3120,7 +3122,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
             HashMap<String, String> fontToFileMap = new HashMap<>(100);
             populateFontFileNameMap(fontToFileMap, new HashMap<>(), new HashMap<>(), Locale.ENGLISH);
             for (String key : fontToFileMap.keySet()) {
-                windowsSystemVersion.put(key, getVersion(pathDirs[0] + File.separator + fontToFileMap.get(key)));
+                windowsSystemVersion.put(key, pathDirs[0] + File.separator + fontToFileMap.get(key));
             }
         }
 
