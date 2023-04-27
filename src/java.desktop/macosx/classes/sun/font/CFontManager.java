@@ -142,7 +142,15 @@ public final class CFontManager extends SunFontManager {
 
     @Override
     protected String getFontVersion(TrueTypeFont ttf) {
-        return getNativeFontVersion(ttf.getTypographicFamilyName());
+        String path = getNativeFontPath(ttf.getFullName());
+        return path != null ? getVersion(path) : "0";
+    }
+
+    @Override
+    protected void registerListJREFonts(String path, String[] fonts) {
+        for (String name : fonts) {
+            loadNativeDirFonts(path + File.separator + name);
+        }
     }
 
     protected void registerFontsInDir(final String dirName, boolean useJavaRasterizer,
@@ -165,7 +173,7 @@ public final class CFontManager extends SunFontManager {
 
     private native void loadNativeDirFonts(String fontPath);
     private native void loadNativeFonts();
-    native String getNativeFontVersion(String psName);
+    native String getNativeFontPath(String psName);
 
     void registerFont(String fontName, String fontFamilyName, String faceName) {
         // Use different family for specific font faces

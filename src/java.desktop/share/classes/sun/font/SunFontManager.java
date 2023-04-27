@@ -2125,7 +2125,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                 return font;
             }
         }
-
+        
         /* We check for application registered fonts before
          * explicitly loading all fonts as if necessary the registration
          * code will have done so anyway. And we don't want to needlessly
@@ -3112,6 +3112,11 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         return "0";
     }
 
+    protected void registerListJREFonts(String dir, String[] fonts) {
+        addDirFonts(dir, fonts, FONTFORMAT_TRUETYPE, true,
+                Font2D.JRE_RANK, true, false);
+    }
+
     protected void registerJREFonts() {
         @SuppressWarnings("removal")
         String[] files = AccessController.doPrivileged((PrivilegedAction<String[]>) () ->
@@ -3164,10 +3169,8 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                     }
                 }
             }
+            registerListJREFonts(jreFontDirName, fontsToLoad.toArray(new String[0]));
         }
-
-        addDirFonts(jreFontDirName, fontsToLoad.toArray(new String[0]), FONTFORMAT_TRUETYPE, true,
-                Font2D.JRE_RANK, true, false);
     }
 
     protected void registerFontDir(String path) {
