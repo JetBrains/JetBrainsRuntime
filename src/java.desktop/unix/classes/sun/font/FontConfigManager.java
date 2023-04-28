@@ -454,6 +454,7 @@ public class FontConfigManager {
         return fcInfo;
     }
 
-    private static native int
-    getFontConfigAASettings(String locale, String fcFamily);
+    private static native int getFontConfigAASettings(String locale, String fcFamily);
+
+    public static native String getFontProperty(String name, String pattern);
 }
