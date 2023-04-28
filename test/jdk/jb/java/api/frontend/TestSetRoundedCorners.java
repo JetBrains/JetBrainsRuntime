@@ -21,7 +21,9 @@
  * questions.
  */
 
-import com.jetbrains.JBR;
+import sun.font.Font2D;
+import sun.font.FontManager;
+import sun.font.SunFontManager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -56,10 +58,6 @@ public class TestSetRoundedCorners {
     }
 
     public void performTest(Object roundParams) {
-        if (!JBR.isRoundedCornersManagerSupported()) {
-            throw new RuntimeException("JBR Rounded API is not available");
-        }
-
         runSwing(() -> {
             frame = new JFrame("");
             frame.setUndecorated(true);
@@ -91,10 +89,6 @@ public class TestSetRoundedCorners {
         runSwing(() -> testFrame.setVisible(false));
         robot.delay(DELAY);
 
-        runSwing(() -> {
-            JBR.getRoundedCornersManager().setRoundedCorners(testFrame, roundParams);
-            testFrame.setVisible(true);
-        });
         robot.delay(DELAY);
 
         // check that window with rounded corners
@@ -163,6 +157,21 @@ public class TestSetRoundedCorners {
 
     public static void main(String[] args) {
         String osName = System.getProperty("os.name");
+        Font f1 = new Font("Fira Code Regular", Font.PLAIN, 10);
+        Font f2 = new Font("Fira Code", Font.PLAIN, 10);
+        Font f3 = new Font("Fira Code Bold", Font.PLAIN, 10);
+        Font f4 = new Font("Fira Code Retina", Font.PLAIN, 10);
+        Font f5 = new Font("Fira Code Light", Font.PLAIN, 10);
+
+        Font f6 = new Font("JetBrains Mono", Font.PLAIN, 10);
+        Font f7 = new Font("JetBrains Mono Regular", Font.PLAIN, 10);
+        Font f8 = new Font("JetBrains Mono", Font.BOLD, 10);
+        Font f9 = new Font("JetBrains Mono Bold", Font.PLAIN, 10);
+
+        Font f10 = new Font("Inter", Font.PLAIN, 10);
+        Font f11 = new Font("Inter", Font.BOLD, 10);
+        Font f12 = new Font("Inter Bold", Font.PLAIN, 10);
+
         if (osName.contains("Windows 11")) {
             runTest("full");
         } else if (osName.contains("OS X")) {
