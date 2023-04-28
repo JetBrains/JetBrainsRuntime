@@ -2060,26 +2060,6 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
             }
         }
 
-        /* If reach here and no match has been located, then if there are
-         * uninitialised deferred fonts, load as many of those as needed
-         * to find the deferred font. If none is found through that
-         * search continue on.
-         * There is possibly a minor issue when more than one
-         * deferred font implements the same font face. Since deferred
-         * fonts are only those in font configuration files, this is a
-         * controlled situation, the known case being Solaris euro_fonts
-         * versions of Arial, Times New Roman, Courier New. However
-         * the larger font will transparently replace the smaller one
-         *  - see addToFontList() - when it is needed by the composite font.
-         */
-        if (deferredFontFiles.size() > 0) {
-            font = findDeferredFont(name, style);
-            if (font != null) {
-                fontNameCache.put(mapName, font);
-                return font;
-            }
-        }
-
         /* We check for application registered fonts before
          * explicitly loading all fonts as if necessary the registration
          * code will have done so anyway. And we don't want to needlessly

@@ -3139,7 +3139,7 @@ Java_sun_font_CFontManager_loadNativeFonts
     (JNIEnv *env, jobject jthis)
 {
     DECLARE_CLASS(jc_CFontManager, "sun/font/CFontManager");
-    DECLARE_METHOD(jm_registerFont, jc_CFontManager, "registerFont", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+    DECLARE_METHOD(jm_registerFont, jc_CFontManager, "registerFont", "(Ljava/lang/String;Ljava/lang/String;)V");
 
     jint num = 0;
 
@@ -3151,15 +3151,13 @@ JNI_COCOA_ENTER(env);
     jint i;
     for (i = 0; i < num; i++) {
         NSString *fontname = [filteredFonts objectAtIndex:i];
-        jobject jFontName = NSStringToJavaString(env, fontname);
         jobject jFontFamilyName =
             NSStringToJavaString(env, GetFamilyNameForFontName(fontname));
         NSString *face = GetFaceForFontName(fontname);
         jobject jFaceName = face ? NSStringToJavaString(env, face) : NULL;
 
-        (*env)->CallVoidMethod(env, jthis, jm_registerFont, jFontName, jFontFamilyName, jFaceName);
+        (*env)->CallVoidMethod(env, jthis, jm_registerFont, jFontFamilyName, jFaceName);
         CHECK_EXCEPTION();
-        (*env)->DeleteLocalRef(env, jFontName);
         (*env)->DeleteLocalRef(env, jFontFamilyName);
         if (jFaceName) {
             (*env)->DeleteLocalRef(env, jFaceName);
