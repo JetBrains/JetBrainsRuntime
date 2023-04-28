@@ -157,7 +157,17 @@ public class TestSetRoundedCorners {
 
     public static void main(String[] args) {
         String osName = System.getProperty("os.name");
-        Font f = new Font("Fira Code Retina", Font.PLAIN, 10);
+        Font f1 = new Font("Fira Code Regular", Font.PLAIN, 10);
+        Font f2 = new Font("Fira Code", Font.PLAIN, 10);
+        Font f3 = new Font("Fira Code Bold", Font.PLAIN, 10);
+        Font f4 = new Font("Fira Code Retina", Font.PLAIN, 10);
+        Font f5 = new Font("Fira Code Light", Font.PLAIN, 10);
+
+        Font f6 = new Font("JetBrains Mono", Font.PLAIN, 10);
+        Font f7 = new Font("JetBrains Mono", Font.BOLD, 10);
+
+        Font f9 = new Font("Inter", Font.PLAIN, 10);
+        Font f10 = new Font("Inter", Font.BOLD, 10);
 
         if (osName.contains("Windows 11")) {
             runTest("full");
