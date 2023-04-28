@@ -31,6 +31,7 @@
 #define PGRAM_VERTEX_COUNT 6
 #define QUAD_VERTEX_COUNT 4
 #define GRAD_MAX_FRACTIONS 12
+#define QUAD_VERTEX_COUNT_PER_COLOR 6
 
 enum GradCycleMethod {
     GradNoCycle = 0,
@@ -46,7 +47,8 @@ enum VertexAttributes {
 enum BufferIndex  {
     MeshVertexBuffer = 0,
     FrameUniformBuffer = 1,
-    MatrixBuffer = 2
+    MatrixBuffer = 2,
+    MaskColorBuffer = 3
 };
 
 struct FrameUniforms {
@@ -94,6 +96,10 @@ struct Vertex {
 struct TxtVertex {
     float position[2];
     float txtpos[2];
+};
+
+struct MaskFillColor {
+    unsigned char color[4];
 };
 
 struct AAVertex {
