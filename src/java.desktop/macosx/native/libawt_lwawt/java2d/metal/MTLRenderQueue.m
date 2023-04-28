@@ -55,7 +55,12 @@ void MTLRenderQueue_CheckPreviousOp(jint op) {
         return;
     }
 
-    if (op == MTL_OP_MASK_OP) {
+    if (op == MTL_OP_SET_COLOR) {
+        // MTL_OP_MASK_OP: switching from advanced paints to SET_COLOR must cause endEncoder:
+        if ((mtlPreviousOp != MTL_OP_MASK_OP) || (mtlc == NULL) || [mtlc useMaskColor]) {
+            return;
+        }
+    } else if (op == MTL_OP_MASK_OP) {
         MTLVertexCache_EnableMaskCache(mtlc, dstOps);
         mtlPreviousOp = op;
         return;
@@ -662,6 +667,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 }
                 case sun_java2d_pipe_BufferedOpCodes_SET_COLOR:
                 {
+                    CHECK_PREVIOUS_OP(MTL_OP_SET_COLOR);
                     jint pixel = NEXT_INT(b);
                     [mtlc setColorPaint:pixel];
                     break;

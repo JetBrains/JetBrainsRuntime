@@ -103,7 +103,7 @@ MTLVertexCache_InitVertexCache()
 
         if (len != MTLVC_SIZE_J2DVertex) {
             J2dRlsTraceLn2(J2D_TRACE_ERROR, "MTLVertexCache_InitVertexCache : sizeof(J2DVertex) = %lu != %d bytes !",
-                        len, MTLVC_SIZE_J2DVertex);
+                           len, MTLVC_SIZE_J2DVertex);
             return JNI_FALSE;
         }
 
@@ -111,7 +111,7 @@ MTLVertexCache_InitVertexCache()
 
         if (len > MTLVC_MAX_VERTEX_SIZE)  {
             J2dRlsTraceLn2(J2D_TRACE_ERROR, "MTLVertexCache_InitVertexCache : J2DVertex buffer size = %lu > %d bytes !",
-                        len, MTLVC_MAX_VERTEX_SIZE);
+                           len, MTLVC_MAX_VERTEX_SIZE);
             return JNI_FALSE;
         }
         vertexCache = (J2DVertex *)malloc(len);
@@ -125,7 +125,7 @@ MTLVertexCache_InitVertexCache()
 
         if (len > MTLVC_MAX_VERTEX_SIZE)  {
             J2dRlsTraceLn2(J2D_TRACE_ERROR, "MTLVertexCache_InitVertexCache : MaskFillColor buffer size = %lu > %d bytes !",
-                        len, MTLVC_MAX_VERTEX_SIZE);
+                           len, MTLVC_MAX_VERTEX_SIZE);
             return JNI_FALSE;
         }
         maskColorCache = (sMaskFillColor *)malloc(len);
@@ -259,6 +259,11 @@ MTLVertexCache_EnableMaskCache(MTLContext *mtlc, BMTLSDOps *dstOps)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_EnableMaskCache");
 
+    if ([mtlc useMaskColor]
+        && ![mtlc.paint isKindOfClass:[MTLColorPaint class]]) {
+        // Reset useMaskColor flag for advanced paints:
+        [mtlc setUseMaskColor: JNI_FALSE];
+    }
     if (vertexCache == NULL) {
         if (!MTLVertexCache_InitVertexCache()) {
             return;
@@ -387,7 +392,7 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
     dy2 = dy1 + height;
 
     if ([mtlc useMaskColor]) {
-        // implicit [mtlc.paint isKindOfClass:[MTLColorPaint class]] :
+        // ColorPaint class is already checked in MTLVertexCache_EnableMaskCache:
         MTLColorPaint* cPaint = (MTLColorPaint *) mtlc.paint;
         jint color = cPaint.color;
 
