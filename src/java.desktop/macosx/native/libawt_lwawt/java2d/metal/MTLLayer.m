@@ -186,18 +186,9 @@ BOOL isDisplaySyncEnabled() {
     [super display];
 }
 
-- (void) redraw {
-    AWT_ASSERT_APPKIT_THREAD;
-    [self setNeedsDisplay];
-}
-
 - (void)startRedraw {
-    if (isDisplaySyncEnabled()) {
-        if (self.ctx != nil) {
-            [self.ctx startRedraw:self];
-        }
-    } else {
-        [self performSelectorOnMainThread:@selector(redraw) withObject:nil waitUntilDone:NO];
+    if (self.ctx != nil) {
+        [self.ctx performSelectorOnMainThread:@selector(startRedraw:) withObject:self waitUntilDone:NO];
     }
 }
 
@@ -206,18 +197,8 @@ BOOL isDisplaySyncEnabled() {
         if (force) {
             self.redrawCount = 0;
         }
-        [self.ctx stopRedraw:self];
+        [self.ctx performSelectorOnMainThread:@selector(stopRedraw:) withObject:self waitUntilDone:NO];
     }
-}
-
-CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* now, const CVTimeStamp* outputTime, CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* displayLinkContext)
-{
-    J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_displayLinkCallback() called");
-    @autoreleasepool {
-        MTLLayer *layer = (__bridge MTLLayer *)displayLinkContext;
-        [layer performSelectorOnMainThread:@selector(redraw) withObject:nil waitUntilDone:NO];
-    }
-    return kCVReturnSuccess;
 }
 
 - (void)commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay {
