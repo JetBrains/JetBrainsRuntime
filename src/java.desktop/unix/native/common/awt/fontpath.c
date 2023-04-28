@@ -506,6 +506,7 @@ typedef FcPattern* (*FcFontMatchFuncType)(FcConfig *config,
                                           FcResult *result);
 typedef FcFontSet* (*FcFontSetCreateFuncType)();
 typedef FcBool (*FcFontSetAddFuncType)(FcFontSet *s, FcPattern *font);
+typedef void (*FcStrFreeFuncType)(FcChar8 *str);
 
 typedef FcResult (*FcPatternGetCharSetFuncType)(FcPattern *p,
                                                 const char *object,
@@ -527,6 +528,11 @@ typedef int (*FcGetVersionFuncType)();
 typedef FcStrList* (*FcConfigGetCacheDirsFuncType)(FcConfig *config);
 typedef FcChar8* (*FcStrListNextFuncType)(FcStrList *list);
 typedef FcChar8* (*FcStrListDoneFuncType)(FcStrList *list);
+
+typedef unsigned int (*FcFreeTypeQueryAllFuncType)(const FcChar8 *file, unsigned int id, FcBlanks *blanks,
+        int *count, FcFontSet *set);
+
+typedef FcChar8* (*FcPatternFormatFuncType)(FcPattern *pat, const FcChar8 *format);
 
 static char **getFontConfigLocations() {
 
@@ -760,7 +766,7 @@ Java_sun_font_FontConfigManager_getFontConfigAASettings
 
 JNIEXPORT jint JNICALL
 Java_sun_font_FontConfigManager_getFontConfigVersion
-    (JNIEnv *env, jclass obj) {
+        (JNIEnv *env, jclass obj) {
 
     void* libfontconfig;
     FcGetVersionFuncType FcGetVersion;
@@ -782,6 +788,90 @@ Java_sun_font_FontConfigManager_getFontConfigVersion
     return version;
 }
 
+JNIEXPORT jstring JNICALL
+Java_sun_font_FontConfigManager_getFontProperty
+        (JNIEnv *env, jclass obj, jstring query, jstring property) {
+
+    void* libfontconfig = NULL;
+    FcNameParseFuncType FcNameParse;
+    FcPatternFormatFuncType FcPatternFormat;
+    FcConfigSubstituteFuncType FcConfigSubstitute;
+    FcDefaultSubstituteFuncType  FcDefaultSubstitute;
+    FcFontMatchFuncType FcFontMatch;
+    FcStrFreeFuncType FcStrFree;
+
+    const char *queryPtr = NULL;
+    const char *propertyPtr = NULL;
+    FcChar8 *fontFamily = NULL;
+    FcChar8 *fontPath = NULL;
+    jstring res = NULL;
+
+    if ((libfontconfig = openFontConfig()) == NULL) {
+        goto cleanup;
+    }
+    FcPatternFormat = (FcPatternFormatFuncType)dlsym(libfontconfig, "FcPatternFormat");
+    FcNameParse = (FcNameParseFuncType)dlsym(libfontconfig, "FcNameParse");
+    FcConfigSubstitute = (FcConfigSubstituteFuncType)dlsym(libfontconfig, "FcConfigSubstitute");
+    FcDefaultSubstitute = (FcDefaultSubstituteFuncType)dlsym(libfontconfig, "FcDefaultSubstitute");
+    FcFontMatch = (FcFontMatchFuncType)dlsym(libfontconfig, "FcFontMatch");
+    FcStrFree = (FcStrFreeFuncType)dlsym(libfontconfig, "FcStrFree");
+
+    queryPtr = (*env)->GetStringUTFChars(env, query, 0);
+    propertyPtr = (*env)->GetStringUTFChars(env, property, 0);
+    if (queryPtr == NULL || propertyPtr == NULL) {
+        goto cleanup;
+    }
+
+    FcPattern *pattern = (*FcNameParse)((FcChar8 *) queryPtr);
+    if (pattern == NULL) {
+        goto cleanup;
+    }
+    (*FcConfigSubstitute)(NULL, pattern, FcMatchScan);
+    (*FcDefaultSubstitute)(pattern);
+
+    FcResult fcResult;
+    FcPattern *match = (*FcFontMatch)(0, pattern, &fcResult);
+    if (match == NULL || fcResult != FcResultMatch) {
+        goto cleanup;
+    }
+    fontFamily = (FcPatternFormat)(match, (FcChar8*) "%{family}");
+    if (fontFamily == NULL) {
+        goto cleanup;
+    }
+    // result of foundFontName could be set of families, so we left only first family
+    char *commaPos = strchr((char *) fontFamily, ',');
+    if (commaPos != NULL) {
+        *commaPos = '\0';
+    }
+    if (strstr(queryPtr, (char *) fontFamily) == NULL) {
+        goto cleanup;
+    }
+
+    fontPath = (FcPatternFormat)(match, (FcChar8*) propertyPtr);
+    if (fontPath == NULL) {
+        goto cleanup;
+    }
+    res = (*env)->NewStringUTF(env, (char *) fontPath);
+
+cleanup:
+    if (fontPath) {
+        (FcStrFree)(fontPath);
+    }
+    if (fontFamily) {
+        (FcStrFree)(fontFamily);
+    }
+    if (propertyPtr) {
+        (*env)->ReleaseStringUTFChars(env, property, (const char*)propertyPtr);
+    }
+    if (queryPtr) {
+        (*env)->ReleaseStringUTFChars(env, query, (const char*)queryPtr);
+    }
+    if (libfontconfig) {
+        closeFontConfig(libfontconfig, JNI_FALSE);
+    }
+
+    return res;
+}
 
 JNIEXPORT void JNICALL
 Java_sun_font_FontConfigManager_getFontConfig
