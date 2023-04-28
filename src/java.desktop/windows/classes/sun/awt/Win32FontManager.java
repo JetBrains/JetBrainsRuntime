@@ -29,15 +29,19 @@ package sun.awt;
 import java.awt.FontFormatException;
 import java.awt.GraphicsEnvironment;
 import java.io.File;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import sun.awt.windows.WFontConfiguration;
 import sun.font.FontManager;
+import sun.font.FontUtilities;
 import sun.font.SunFontManager;
 import sun.font.TrueTypeFont;
 
@@ -45,6 +49,7 @@ import sun.font.TrueTypeFont;
  * The X11 implementation of {@link FontManager}.
  */
 public final class Win32FontManager extends SunFontManager {
+    private HashMap<String, String> windowsSystemVersion = null;
 
     private static final TrueTypeFont eudcFont =
             ((Supplier<TrueTypeFont>) () -> {
@@ -176,6 +181,28 @@ public final class Win32FontManager extends SunFontManager {
 
         return new WFontConfiguration(this,
                                       preferLocaleFonts,preferPropFonts);
+    }
+
+    @Override
+    protected void registerJREFonts() {
+        if (versionCheckEnabled) {
+            windowsSystemVersion = new HashMap<>();
+            HashMap<String, String> fontToFileMap = new HashMap<>(100);
+            populateFontFileNameMap(fontToFileMap, new HashMap<>(), new HashMap<>(), Locale.ENGLISH);
+            for (String key : fontToFileMap.keySet()) {
+                // find maximum observable platform font's version
+                Optional<String> version = Stream.concat(Arrays.stream(getPlatformFontDirs(true)), Stream.of("")).
+                        map((path) -> (getTrueTypeVersion(path + File.separator + fontToFileMap.get(key)))).
+                        max(SunFontManager::fontVersionComparator);
+                windowsSystemVersion.put(key, version.isPresent() ? version.get() : "0");
+            }
+        }
+        super.registerJREFonts();
+    }
+
+    @Override
+    protected String getSystemFontVersion(TrueTypeFont bundledFont) {
+        return windowsSystemVersion.getOrDefault(bundledFont.getFullName().toLowerCase(), "0");
     }
 
     @Override
