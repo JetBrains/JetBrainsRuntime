@@ -38,10 +38,14 @@ import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
@@ -107,6 +111,7 @@ public class TrueTypeFont extends FileFont {
     public static final int SUBFAMILY_NAME_ID = 2;
     // public static final int STYLE_WEIGHT_ID = 2; // currently unused.
     public static final int FULL_NAME_ID = 4;
+    public static final int VERSION_NAME_ID = 5;
     public static final int POSTSCRIPT_NAME_ID = 6;
     public static final int TYPOGRAPHIC_FAMILY_NAME_ID = 16;
     public static final int TYPOGRAPHIC_SUBFAMILY_NAME_ID = 17;
@@ -181,6 +186,8 @@ public class TrueTypeFont extends FileFont {
     private String localeFullName;
     private String typographicFamilyName;
     private String typographicSubfamilyName;
+    private String version;
+    private String postScriptName;
 
     private Byte supportedCharset;
 
@@ -1092,6 +1099,22 @@ public class TrueTypeFont extends FileFont {
         }
     }
 
+    public static String parseVersion(String str) {
+        // get first part sequence of digits and dots
+        Matcher matcher = Pattern.compile("\\d(\\p{XDigit}|\\.)*").matcher(str);
+        if (!matcher.find()) {
+            return "0";
+        }
+        // removing leading zeros and hex parts from version e.g. 00010.002.0ab12.300.040 -> 10.2.300.40
+        String res = Arrays.stream(matcher.group().split("\\.")).filter(s -> s.matches("\\d+")).
+                map(s -> (s.replaceFirst("^0*", ""))).map(s -> s.isEmpty() ? "0" : s).collect(Collectors.joining("."));
+        return !res.isEmpty() ? res : "0";
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
     protected void initNames() {
 
         byte[] name = new byte[256];
@@ -1201,6 +1224,22 @@ public class TrueTypeFont extends FileFont {
                     }
                     break;
 
+                case VERSION_NAME_ID:
+                    if (version == null || langID == ENGLISH_LOCALE_ID) {
+                        buffer.position(namePtr);
+                        buffer.get(name, 0, nameLen);
+                        version = parseVersion(makeString(name, nameLen, platformID, encodingID));
+                    }
+                    break;
+
+                case POSTSCRIPT_NAME_ID:
+                    if (postScriptName == null || langID == ENGLISH_LOCALE_ID) {
+                        buffer.position(namePtr);
+                        buffer.get(name, 0, nameLen);
+                        postScriptName = makeString(name, nameLen, platformID, encodingID);
+                    }
+                    break;
+
                 case TYPOGRAPHIC_FAMILY_NAME_ID:
                     if (typographicFamilyName == null || langID == ENGLISH_LOCALE_ID) {
                         buffer.position(namePtr);
@@ -1226,6 +1265,12 @@ public class TrueTypeFont extends FileFont {
             }
             if (typographicSubfamilyName == null) {
                 typographicSubfamilyName = subfamilyName;
+            }
+            if (version == null) {
+                version = "0";
+            }
+            if (postScriptName == null) {
+                postScriptName = fullName;
             }
         }
     }
@@ -1299,12 +1344,7 @@ public class TrueTypeFont extends FileFont {
      */
     @Override
     public String getPostscriptName() {
-        String name = lookupName(ENGLISH_LOCALE_ID, POSTSCRIPT_NAME_ID);
-        if (name == null) {
-            return fullName;
-        } else {
-            return name;
-        }
+        return postScriptName;
     }
 
     @Override
