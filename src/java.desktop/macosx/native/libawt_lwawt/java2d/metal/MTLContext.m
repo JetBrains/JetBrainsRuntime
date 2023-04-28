@@ -121,7 +121,6 @@ MTLTransform* tempTransform = nil;
     CVDisplayLinkRef _displayLink;
     NSMutableSet* _layers;
     int _displayLinkCount;
-    NSLock* _dlLock;
 
     MTLComposite *     _composite;
     MTLPaint *         _paint;
@@ -188,7 +187,6 @@ extern void initSamplers(id<MTLDevice> device);
         if (isDisplaySyncEnabled()) {
             _layers = [[NSMutableArray alloc] init];
             _displayLinkCount = 0;
-            _dlLock = [[NSLock alloc] init];
             CVDisplayLinkCreateWithCGDisplay(displayID, &_displayLink);
             CVDisplayLinkSetOutputCallback(_displayLink, &mtlDisplayLinkCallback, (__bridge void *) self);
         }
@@ -270,11 +268,6 @@ extern void initSamplers(id<MTLDevice> device);
         _displayLink = NULL;
     }
 
-    if (_dlLock != nil) {
-        [_dlLock unlock];
-        [_dlLock release];
-        _dlLock = nil;
-    }
     if (@available(macOS 10.14, *)) {
         [syncEvent release];
     }
@@ -579,24 +572,19 @@ extern void initSamplers(id<MTLDevice> device);
 
 - (void) redraw {
     AWT_ASSERT_APPKIT_THREAD;
-    [_dlLock lock];
-    @try {
-        for (MTLLayer *layer in _layers) {
-            [layer setNeedsDisplay];
+    for (MTLLayer *layer in _layers) {
+        [layer setNeedsDisplay];
+    }
+    if (_displayLinkCount > 0) {
+        _displayLinkCount--;
+    } else {
+        if (_layers.count > 0) {
+            [_layers removeAllObjects];
         }
-        if (_displayLinkCount > 0) {
-            _displayLinkCount--;
-        } else {
-            if (_layers.count > 0) {
-                [_layers removeAllObjects];
-            }
-            if (CVDisplayLinkIsRunning(_displayLink)) {
-                CVDisplayLinkStop(_displayLink);
-                J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStop: ctx=%p", self);
-            }
+        if (CVDisplayLinkIsRunning(_displayLink)) {
+            CVDisplayLinkStop(_displayLink);
+            J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStop: ctx=%p", self);
         }
-    } @finally {
-        [_dlLock unlock];
     }
 }
 
@@ -611,39 +599,31 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
 }
 
 - (void)startRedraw:(MTLLayer*)layer {
-    [_dlLock lock];
+    AWT_ASSERT_APPKIT_THREAD;
     layer.redrawCount += REDRAW_INC;
     J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_startRedraw: ctx=%p layer=%p", self, layer);
-    @try {
-        _displayLinkCount = KEEP_ALIVE_COUNT;
-        [_layers addObject:layer];
-        if (_displayLink != NULL && !CVDisplayLinkIsRunning(_displayLink)) {
-            CVDisplayLinkStart(_displayLink);
-            J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStart: ctx=%p", self);
-        }
-    } @finally {
-        [_dlLock unlock];
+    _displayLinkCount = KEEP_ALIVE_COUNT;
+    [_layers addObject:layer];
+    if (_displayLink != NULL && !CVDisplayLinkIsRunning(_displayLink)) {
+        CVDisplayLinkStart(_displayLink);
+        J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStart: ctx=%p", self);
     }
 }
 
 - (void)stopRedraw:(MTLLayer*) layer {
+    AWT_ASSERT_APPKIT_THREAD;
     J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_stopRedraw: ctx=%p layer=%p", self, layer);
-    [_dlLock lock];
-    @try {
-        if (_displayLink != nil) {
-            if (--layer.redrawCount <= 0) {
-                [_layers removeObject:layer];
-                layer.redrawCount = 0;
-            }
-            if (_layers.count == 0 && _displayLinkCount == 0) {
-                if (CVDisplayLinkIsRunning(_displayLink)) {
-                    CVDisplayLinkStop(_displayLink);
-                    J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStop: ctx=%p", self);
-                }
+    if (_displayLink != nil) {
+        if (--layer.redrawCount <= 0) {
+            [_layers removeObject:layer];
+            layer.redrawCount = 0;
+        }
+        if (_layers.count == 0 && _displayLinkCount == 0) {
+            if (CVDisplayLinkIsRunning(_displayLink)) {
+                CVDisplayLinkStop(_displayLink);
+                J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStop: ctx=%p", self);
             }
         }
-    } @finally {
-        [_dlLock unlock];
     }
 }
 
