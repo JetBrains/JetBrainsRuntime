@@ -52,7 +52,6 @@
                            DY2:(jfloat)dy2;
 - (void) blitCallback;
 - (void) display;
-- (void) redraw;
 - (void) startRedraw;
 - (void) stopRedraw:(BOOL)force;
 - (void) commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
