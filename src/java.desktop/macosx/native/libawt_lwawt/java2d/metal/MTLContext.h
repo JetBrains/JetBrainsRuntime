@@ -73,6 +73,7 @@
 @property jint          textureFunction;
 @property jboolean      vertexCacheEnabled;
 @property jboolean      aaEnabled;
+@property jboolean      useMaskColor;
 
 @property (readonly, strong)   id<MTLDevice>   device;
 @property (strong) id<MTLCommandQueue>         commandQueue;
