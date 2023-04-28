@@ -86,7 +86,7 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
     private static native long createNativeFont(final String nativeFontName,
                                                 final int style);
     private static native void disposeNativeFont(final long nativeFontPtr);
-
+    
     private String faceName;
     private boolean isFakeItalic;
     private String nativeFontName;
@@ -159,10 +159,10 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
     public CFont(String name, String inFamilyName, String faceName) {
         handle = new Font2DHandle(this);
         fullName = name;
-        familyName = inFamilyName;
         nativeFontName = fullName;
         this.faceName = faceName;
         setStyle();
+        familyName = inFamilyName + (faceName.equals(super.getTypographicSubfamilyName()) ? "" : " " + faceName);
     }
 
     /* Called from CFontManager too */
