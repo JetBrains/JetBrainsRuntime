@@ -69,6 +69,13 @@ struct TxtShaderInOut {
     float2 tpCoords;
 };
 
+struct TxtColShaderInOut {
+    float4 position [[position]];
+    float2 texCoords;
+    float2 tpCoords;
+    float4 color [[flat]];
+};
+
 struct LCDShaderInOut {
     float4 position [[position]];
     float2 orig_pos;
@@ -210,6 +217,19 @@ vertex TxtShaderInOut vert_txt(TxtVertexInput in [[stage_in]], constant Transfor
     return out;
 }
 
+vertex TxtColShaderInOut vert_txt_col(TxtVertexInput in [[stage_in]],
+                                      constant TransformMatrix& transform [[buffer(MatrixBuffer)]],
+                                      const device uchar4* maskColors [[buffer(MaskColorBuffer)]],
+                                      uint vertexID [[vertex_id]]) {
+    TxtColShaderInOut out;
+    const float4 pos4 = float4(in.position, 0.0, 1.0);
+    out.position = transform.transformMatrix*pos4;
+    out.texCoords = in.texCoords;
+    const uint maskIdx = vertexID / QUAD_VERTEX_COUNT_PER_COLOR; // quad color index
+    out.color = float4(maskColors[maskIdx]) / 255.0f;
+    return out;
+}
+
 vertex LCDShaderInOut vert_txt_lcd(TxtVertexInput in [[stage_in]], constant TransformMatrix& transform [[buffer(MatrixBuffer)]]) {
     LCDShaderInOut out;
     float4 pos4 = float4(in.position, 0.0, 1.0);
@@ -311,15 +331,29 @@ fragment half4 frag_txt(
     float4 pixelColor = renderTexture.sample(textureSampler, vert.texCoords);
     float srcA = uniforms.isSrcOpaque ? 1 : pixelColor.a;
     if (uniforms.mode) {
-        float3 c = mix(pixelColor.rgb, uniforms.color.rgb, srcA);
-        return half4(c.r, c.g, c.b ,
-                     (uniforms.isSrcOpaque) ?
-                      uniforms.color.a : pixelColor.a*uniforms.color.a);
+        float4 in_col = uniforms.color;
+        float3 c = mix(pixelColor.rgb, in_col.rgb, srcA);
+        return half4(c.r, c.g, c.b,
+                     (uniforms.isSrcOpaque) ? in_col.a : pixelColor.a * in_col.a);
     }
-
     return half4(pixelColor.r,
                  pixelColor.g,
-                 pixelColor.b, srcA)*uniforms.extraAlpha;
+                 pixelColor.b, srcA) * uniforms.extraAlpha;
+}
+
+fragment half4 frag_txt_col(
+        TxtColShaderInOut vert [[stage_in]],
+        texture2d<float, access::sample> renderTexture [[texture(0)]],
+        constant TxtFrameUniforms& uniforms [[buffer(1)]],
+        sampler textureSampler [[sampler(0)]]
+) {
+    float4 pixelColor = renderTexture.sample(textureSampler, vert.texCoords);
+    float srcA = uniforms.isSrcOpaque ? 1 : pixelColor.a;
+
+    float4 in_col = vert.color;
+    float3 c = mix(pixelColor.rgb, in_col.rgb, srcA);
+    return half4(c.r, c.g, c.b,
+                 (uniforms.isSrcOpaque) ? in_col.a : pixelColor.a * in_col.a);
 }
 
 fragment half4 frag_text(
