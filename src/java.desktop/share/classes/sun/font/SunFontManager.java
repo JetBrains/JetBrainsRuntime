@@ -33,9 +33,13 @@ import java.io.FileInputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -54,6 +58,7 @@ import sun.awt.FontConfiguration;
 import sun.awt.SunToolkit;
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.FontSupport;
+import sun.security.action.GetPropertyAction;
 import sun.util.logging.PlatformLogger;
 
 /**
@@ -63,39 +68,6 @@ import sun.util.logging.PlatformLogger;
  * methods that have to be implemented by specific implementations.
  */
 public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
-    protected static class BundledFontInfo {
-        private String psName;
-        private int [] version;
-
-        public BundledFontInfo(String psName, int major, int minor, int bugfix) {
-            this.psName = psName;
-            version = new int[3];
-            version[0] = major;
-            version[1] = minor;
-            version[2] = bugfix;
-        }
-
-        public String getPsName() {
-            return psName;
-        }
-
-        public boolean isNewerThan(int[] version) {
-            for (int i = 0; i < 3; i++) {
-                if (this.version[i] < version[i]) {
-                    return false;
-                } else if (this.version[i] > version[i]) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        @Override
-        public String toString() {
-            return psName + " v" + version[0] + "." + version[1] + "." + version[2];
-        }
-    }
-
     private static class TTFilter implements FilenameFilter {
         public boolean accept(File dir,String name) {
             /* all conveniently have the same suffix length */
@@ -220,9 +192,8 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     private boolean loaded1dot0Fonts = false;
     boolean loadedAllFonts = false;
     boolean loadedAllFontFiles = false;
-    private HashMap<String,BundledFontInfo> jreFontMap;
-    private HashSet<String> jreBundledFontFiles;
-    HashMap<String,String> jreFamilyMap;
+    private HashSet<String> jreBundledFontFiles = new HashSet<>();
+    HashMap<String,String> jreFamilyMap = new HashMap<>();
     String[] jreOtherFontFiles;
     boolean noOtherJREFontFiles = false; // initial assumption.
 
@@ -232,6 +203,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     private String defaultFontName;
     private String defaultFontFileName;
     protected HashSet<String> registeredFontFiles = new HashSet<>();
+    protected static boolean versionCheckEnabled = false;
 
     private ArrayList<String> badFonts;
     /* fontPath is the location of all fonts on the system, excluding the
@@ -306,70 +278,19 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
          * are rarely used. Consider removing the other mappings if there's
          * no evidence they are useful in practice.
          */
-        jreFontMap = new HashMap<>();
-        jreBundledFontFiles = new HashSet<String>();
-        jreFamilyMap = new HashMap<>();
-
-        /* Droid Sans Mono Family */
-        jreFontMap.put("DroidSans.ttf", new BundledFontInfo("DroidSans", 1, 0, 0));
-        jreFontMap.put("DroidSans-Bold.ttf", new BundledFontInfo("DroidSans-Bold", 1, 0, 0));
-
-        /* Droid Sans Mono Family */
-        jreFontMap.put("DroidSansMono.ttf", new BundledFontInfo("DroidSansMono", 1, 0, 0));
-        jreFontMap.put("DroidSansMonoSlashed.ttf", new BundledFontInfo("DroidSansMonoSlashed", 1, 0, 0));
-        jreFontMap.put("DroidSansMonoDotted.ttf", new BundledFontInfo("DroidSansMonoDotted", 1, 0, 0));
-
-        /* Droid Serif Family */
-        jreFontMap.put("DroidSerif-Regular.ttf", new BundledFontInfo("DroidSerif", 1, 0, 0));
-        jreFontMap.put("DroidSerif-Bold.ttf", new BundledFontInfo("DroidSerif-Bold", 1, 0, 0));
-        jreFontMap.put("DroidSerif-Italic.ttf", new BundledFontInfo("DroidSerif-Italic", 1, 0, 0));
-        jreFontMap.put("DroidSerif-BoldItalic.ttf", new BundledFontInfo("DroidSerif-BoldItalic", 1, 0, 0));
-
-        /* Idea bundled fonts */
-        jreFontMap.put("FiraCode-Bold.ttf", new BundledFontInfo("FiraCode-Bold", 1, 206, 0));
-        jreFontMap.put("FiraCode-Light.ttf", new BundledFontInfo("FiraCode-Light", 1, 206, 0));
-        jreFontMap.put("FiraCode-Medium.ttf", new BundledFontInfo("FiraCode-Medium", 1, 206, 0));
-        jreFontMap.put("FiraCode-Retina.ttf", new BundledFontInfo("FiraCode-Retina", 1, 206, 0));
-        jreFontMap.put("FiraCode-Regular.ttf", new BundledFontInfo("FiraCode-Regular", 1, 206, 0));
-
-        jreFontMap.put("SourceCodePro-BoldIt.ttf", new BundledFontInfo("SourceCodePro-BoldIt", 1, 30, 0));
-        jreFontMap.put("SourceCodePro-Regular.ttf", new BundledFontInfo("SourceCodePro-Regular", 2, 10, 0));
-        jreFontMap.put("SourceCodePro-Bold.ttf", new BundledFontInfo("SourceCodePro-Bold", 2, 10, 0));
-        jreFontMap.put("SourceCodePro-It.ttf", new BundledFontInfo("SourceCodePro-It", 1, 30, 0));
-
-        jreFontMap.put("Inconsolata.ttf", new BundledFontInfo("Inconsolata", 1, 10, 0));
-
-        jreFontMap.put("Roboto-Light.ttf", new BundledFontInfo("Roboto-Light", 1, 100141, 0));
-        jreFontMap.put("Roboto-Thin.ttf", new BundledFontInfo("Roboto-Thin", 1, 100141, 0));
+        @SuppressWarnings("removal")
+        String[] files = AccessController.doPrivileged((PrivilegedAction<String[]>) () ->
+                        new File(jreFontDirName).list(getTrueTypeFilter()));
+        Collections.addAll(jreBundledFontFiles, files);
 
         jreFamilyMap.put("Roboto-Light", "Roboto Light");
         jreFamilyMap.put("Roboto-Thin", "Roboto Thin");
-
-        jreFontMap.put("JetBrainsMono-Bold.ttf", new BundledFontInfo("JetBrainsMono-Bold", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-BoldItalic.ttf", new BundledFontInfo("JetBrainsMono-BoldItalic", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-ExtraBold.ttf", new BundledFontInfo("JetBrainsMono-ExtraBold", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-ExtraBoldItalic.ttf", new BundledFontInfo("JetBrainsMono-ExtraBoldItalic", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-ExtraLight.ttf", new BundledFontInfo("JetBrainsMono-ExtraLight", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-ExtraLightItalic.ttf", new BundledFontInfo("JetBrainsMono-ExtraLightItalic", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-Italic.ttf", new BundledFontInfo("JetBrainsMono-Italic", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-Light.ttf", new BundledFontInfo("JetBrainsMono-Light", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-LightItalic.ttf", new BundledFontInfo("JetBrainsMono-LightItalic", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-Medium.ttf", new BundledFontInfo("JetBrainsMono-Medium", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-MediumItalic.ttf", new BundledFontInfo("JetBrainsMono-MediumItalic", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-Regular.ttf", new BundledFontInfo("JetBrainsMono-Regular", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-Thin.ttf", new BundledFontInfo("JetBrainsMono-Thin", 2, 242, 0));
-        jreFontMap.put("JetBrainsMono-ThinItalic.ttf", new BundledFontInfo("JetBrainsMono-ThinItalic", 2, 242, 0));
-
-        jreFontMap.put("Inter-Bold.otf", new BundledFontInfo("Inter-Bold", 3, 19, 0));
-        jreFontMap.put("Inter-Regular.otf", new BundledFontInfo("Inter-Regular", 3, 19, 0));
-        jreFontMap.put("Inter-Italic.otf", new BundledFontInfo("Inter-Italic", 3, 19, 0));
-        jreFontMap.put("Inter-BoldItalic.otf", new BundledFontInfo("Inter-BoldItalic", 3, 19, 0));
-
-        jreBundledFontFiles.addAll(jreFontMap.keySet());
     }
 
     static {
         initStatic();
+        versionCheckEnabled = !Boolean.parseBoolean(
+                GetPropertyAction.privilegedGetProperty("java2d.font.noVersionCheck", "false"));
     }
 
     @SuppressWarnings("removal")
@@ -441,21 +362,17 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                     }
                 }
 
-                        /* Here we get the fonts in jre/lib/fonts and register
-                         * them so they are always available and preferred over
-                         * other fonts. This needs to be registered before the
-                         * composite fonts as otherwise some native font that
-                         * corresponds may be found as we don't have a way to
-                         * handle two fonts of the same name, so the JRE one
-                         * must be the first one registered. Pass "true" to
-                         * registerFonts method as on-screen these JRE fonts
-                         * always go through the JDK rasteriser.
-                         */
-                        if (FontUtilities.isLinux) {
-                            /* Linux font configuration uses these fonts */
-                            registerFontDir(jreFontDirName);
-                        }
-                        registerJREFonts();
+                /* Here we get the fonts in jre/lib/fonts and register
+                 * them so they are always available and preferred over
+                 * other fonts. This needs to be registered before the
+                 * composite fonts as otherwise some native font that
+                 * corresponds may be found as we don't have a way to
+                 * handle two fonts of the same name, so the JRE one
+                 * must be the first one registered. Pass "true" to
+                 * registerFonts method as on-screen these JRE fonts
+                 * always go through the JDK rasteriser.
+                 */
+                registerJREFonts();
 
                 /* Create the font configuration and get any font path
                  * that might be specified.
@@ -774,7 +691,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                         newFont instanceof TrueTypeFont) {
                         TrueTypeFont oldTTFont = (TrueTypeFont)oldFont;
                         TrueTypeFont newTTFont = (TrueTypeFont)newFont;
-                        if (oldTTFont.fileSize >= newTTFont.fileSize) {
+                        if (isFontNewer(oldTTFont.getVersion(), newTTFont.getVersion())) {
                             return oldFont;
                         }
                     } else {
@@ -2958,12 +2875,8 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     /*
      * helper function for registerFonts
      */
-    private void addDirFonts(String dirName, File dirFile,
-                             FilenameFilter filter,
-                             int fontFormat, boolean useJavaRasterizer,
-                             int fontRank,
-                             boolean defer, boolean resolveSymLinks) {
-        String[] ls = dirFile.list(filter);
+    private void addDirFonts(String[] ls, int fontFormat, boolean useJavaRasterizer,
+                             int fontRank, boolean defer, boolean resolveSymLinks) {
         if (ls == null || ls.length == 0) {
             return;
         }
@@ -2971,8 +2884,8 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         String[][] nativeNames = new String[ls.length][];
         int fontCount = 0;
 
-        for (int i=0; i < ls.length; i++ ) {
-            File theFile = new File(dirFile, ls[i]);
+        for (String file : ls) {
+            File theFile = new File(file);
             String fullName = null;
             if (resolveSymLinks) {
                 try {
@@ -2981,7 +2894,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                 }
             }
             if (fullName == null) {
-                fullName = dirName + File.separator + ls[i];
+                fullName = file;
             }
 
             // REMIND: case compare depends on platform
@@ -3115,30 +3028,101 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         registerFontsInDir(dirName, true, Font2D.JRE_RANK, true, false);
     }
 
+    private String[] addPathToFiles(FilenameFilter filter, String path) {
+        String[] filteredFiles = (new File(path)).list(filter);
+        if (filteredFiles == null) {
+            return new String[0];
+        }
+        return Arrays.stream(filteredFiles).map((name) -> (path + File.separator + name)).toArray(String[]::new);
+    }
+
     // MACOSX begin -- need to access this in subclass
     protected void registerFontsInDir(String dirName, boolean useJavaRasterizer,
     // MACOSX end
                                     int fontRank,
                                     boolean defer, boolean resolveSymLinks) {
-        File pathFile = new File(dirName);
-        addDirFonts(dirName, pathFile, ttFilter,
+        addDirFonts(addPathToFiles(ttFilter, dirName),
                     FONTFORMAT_TRUETYPE, useJavaRasterizer,
                     fontRank==Font2D.UNKNOWN_RANK ?
                     Font2D.TTF_RANK : fontRank,
                     defer, resolveSymLinks);
-        addDirFonts(dirName, pathFile, t1Filter,
+        addDirFonts(addPathToFiles(t1Filter, dirName),
                     FONTFORMAT_TYPE1, useJavaRasterizer,
                     fontRank==Font2D.UNKNOWN_RANK ?
                     Font2D.TYPE1_RANK : fontRank,
                     defer, resolveSymLinks);
     }
 
-    protected void registerJREFonts() {
-        registerFontsInDir(jreFontDirName, true, Font2D.JRE_RANK,
-                true, false);
+    protected String getTrueTypeVersion(String path) {
+        try {
+            return (new TrueTypeFont(path, null, 0, false, false)).getVersion();
+        } catch (FontFormatException e) {
+            return "0";
+        }
     }
 
-    protected void registerFontDir(String path) {
+    // SunFontManager could be extended outside JBR scope (e.g. IdeFontManager) therefore default implementation of this
+    // method needed for compatibility. Returning of "0" repeats the logic of setting field versionCheckEnabled to false
+    protected String getSystemFontVersion(TrueTypeFont bundledFont) {
+        return "0";
+    }
+
+    protected void loadJREFonts(String[] fonts) {
+        addDirFonts(fonts, FONTFORMAT_TRUETYPE, true,
+                Font2D.JRE_RANK, true, false);
+    }
+
+    protected static int fontVersionComparator(String versionFirst, String versionSecond) {
+        return Arrays.compare(versionFirst.split("\\."), versionSecond.split("\\."),
+                Comparator.comparing(BigInteger::new));
+    }
+
+    private boolean isFontNewer(String versionFirst, String versionSecond) {
+        return fontVersionComparator(versionFirst, versionSecond) > 0;
+    }
+
+    protected void registerJREFonts() {
+        List<String> fontsToLoad = new ArrayList<>();
+        PlatformLogger logger = FontUtilities.getLogger();
+        boolean isLogging = logger != null && FontUtilities.isLogging();
+
+        if (!versionCheckEnabled && isLogging) {
+            logger.info("Skip version checking in font loading");
+        }
+
+        for (String fontName : jreBundledFontFiles) {
+            boolean loadFont = true;
+            String bundledVersion = "unknown";
+            String systemVersion = "0";
+            String path = jreFontDirName + File.separator + fontName;
+            if (versionCheckEnabled) {
+                try {
+                    TrueTypeFont bundledFont = new TrueTypeFont(path, null, 0, false, false);
+                    bundledVersion = bundledFont.getVersion();
+                    systemVersion = getSystemFontVersion(bundledFont);
+
+                    if (isFontNewer(systemVersion, bundledVersion)) {
+                        if (isLogging) {
+                            logger.info("Skip loading " + fontName + ", newer version font on platform were detected. " +
+                                    "System version = " + systemVersion + ", Bundled version = " + bundledVersion + ".");
+                        }
+                        loadFont = false;
+                    }
+                } catch (FontFormatException e) {
+                    if (isLogging) {
+                        logger.warning("Internal error have appeared while reading bundled font " + fontName + ".");
+                    }
+                }
+            }
+            if (loadFont) {
+                fontsToLoad.add(path);
+                if (isLogging) {
+                    logger.info("Loaded " + fontName + " (" + bundledVersion + ")");
+                }
+            }
+        }
+
+        loadJREFonts(fontsToLoad.toArray(new String[0]));
     }
 
     /**
@@ -3653,79 +3637,5 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                                                int size)
     {
         return new FontUIResource(family, style, size);
-    }
-
-    protected BundledFontInfo getBundledFontInfo(String fileName) {
-        return jreFontMap.get(fileName);
-    }
-
-    protected boolean parseFontVersion(String versionString, int[] version) {
-        int i = 0;
-        boolean foundDigit = false;
-        version[0] = version[1] = version[2] = 0;
-
-        // Skip prefix letters
-        while (i < versionString.length() &&
-                !(foundDigit = Character.isDigit(versionString.charAt(i)))) {
-            i++;
-        }
-        if (!foundDigit) {
-            return false;
-        }
-        StringBuilder buf = new StringBuilder();
-
-        boolean foundDot = false;
-        // Read major version
-        while (i < versionString.length() &&
-                !(foundDot = (versionString.charAt(i) == '.')) &&
-                Character.isDigit(versionString.charAt(i))) {
-            buf.append(versionString.charAt(i));
-            i++;
-        }
-        version[0] = Integer.parseInt(buf.toString());
-        if (!foundDot) {
-            return true;
-        }
-        buf.setLength(0);
-        i++;
-        foundDigit = false;
-
-        // Read minor version
-        while (i < versionString.length() &&
-                !(foundDot = (versionString.charAt(i) == '.')) &&
-                Character.isDigit(versionString.charAt(i))) {
-            buf.append(versionString.charAt(i));
-            foundDigit = true;
-            i++;
-        }
-        if (!foundDigit) {
-            return true;
-        }
-
-        version[1] = Integer.parseInt(buf.toString());
-
-        if (!foundDot) {
-            return true;
-        }
-
-        buf.setLength(0);
-        i++;
-        foundDigit = false;
-
-        // Read bugfix version
-        while (i < versionString.length() &&
-                !(versionString.charAt(i) == '.') &&
-                Character.isDigit(versionString.charAt(i))) {
-            buf.append(versionString.charAt(i));
-            foundDigit = true;
-            i++;
-        }
-
-        if (!foundDigit) {
-            return true;
-        }
-        version[2] = Integer.parseInt(buf.toString());
-
-        return true;
     }
 }
