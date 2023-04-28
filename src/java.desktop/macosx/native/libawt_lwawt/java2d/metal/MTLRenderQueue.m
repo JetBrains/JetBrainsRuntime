@@ -56,8 +56,9 @@ void MTLRenderQueue_CheckPreviousOp(jint op) {
     }
 
     if (op == MTL_OP_SET_COLOR) {
-        if (mtlPreviousOp != MTL_OP_MASK_OP) {
-            return; // SET_COLOR should not cause endEncoder
+        // MTL_OP_MASK_OP: switching from advanced paints to SET_COLOR must cause endEncoder:
+        if ((mtlPreviousOp != MTL_OP_MASK_OP) || (mtlc == NULL) || [mtlc useMaskColor]) {
+            return;
         }
     } else if (op == MTL_OP_MASK_OP) {
         MTLVertexCache_EnableMaskCache(mtlc, dstOps);
@@ -74,6 +75,8 @@ void MTLRenderQueue_CheckPreviousOp(jint op) {
             return;
         case MTL_OP_MASK_OP :
             MTLVertexCache_DisableMaskCache(mtlc);
+            break;
+        default:
             break;
     }
 
