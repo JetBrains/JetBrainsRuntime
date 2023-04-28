@@ -36,11 +36,13 @@ import java.io.InputStreamReader;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
@@ -3104,10 +3106,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
 
     protected String getFontVersion(TrueTypeFont ttf) {
         if (FontUtilities.isWindows) {
-            String query = ttf.getFullName().toLowerCase();
-            if (windowsSystemVersion.containsKey(query)) {
-                return getVersion(windowsSystemVersion.get(query));
-            }
+            return windowsSystemVersion.getOrDefault(ttf.getFullName().toLowerCase(), "0");
         }
         return "0";
     }
@@ -3123,11 +3122,14 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                 new File(jreFontDirName).list(getTrueTypeFilter()));
 
         if (FontUtilities.isWindows) {
-            String[] pathDirs = getPlatformFontDirs(noType1Font);
             HashMap<String, String> fontToFileMap = new HashMap<>(100);
             populateFontFileNameMap(fontToFileMap, new HashMap<>(), new HashMap<>(), Locale.ENGLISH);
             for (String key : fontToFileMap.keySet()) {
-                windowsSystemVersion.put(key, pathDirs[0] + File.separator + fontToFileMap.get(key));
+                // find maximum observable platform font's version
+                Optional<String> version = Arrays.stream(getPlatformFontDirs(true)).
+                        map((path) -> (getVersion(path + File.separator + fontToFileMap.get(key)))).
+                        max(String::compareTo);
+                windowsSystemVersion.put(key, version.isPresent() ? version.get() : "0");
             }
         }
 
