@@ -45,6 +45,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
@@ -111,6 +113,7 @@ public class TrueTypeFont extends FileFont {
     public static final int SUBFAMILY_NAME_ID = 2;
     // public static final int STYLE_WEIGHT_ID = 2; // currently unused.
     public static final int FULL_NAME_ID = 4;
+    public static final int VERSION_NAME_ID = 5;
     public static final int POSTSCRIPT_NAME_ID = 6;
     public static final int TYPOGRAPHIC_FAMILY_NAME_ID = 16;
     public static final int TYPOGRAPHIC_SUBFAMILY_NAME_ID = 17;
@@ -185,6 +188,7 @@ public class TrueTypeFont extends FileFont {
     private String localeFullName;
     private String typographicFamilyName;
     private String typographicSubfamilyName;
+    private String version;
 
     private Byte supportedCharset;
 
@@ -1111,6 +1115,16 @@ public class TrueTypeFont extends FileFont {
         }
     }
 
+    private String parseVersion(String str) {
+        // Parse first sequance of version
+        Matcher matcher = Pattern.compile("(\\d|\\.)+").matcher(str);
+        return matcher.find() ? matcher.group() : "0";
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
     protected void initNames() {
 
         byte[] name = new byte[256];
@@ -1218,6 +1232,12 @@ public class TrueTypeFont extends FileFont {
                         buffer.get(name, 0, nameLen);
                         subfamilyName = makeString(name, nameLen, platformID, encodingID);
                     }
+                    break;
+
+                case VERSION_NAME_ID:
+                    buffer.position(namePtr);
+                    buffer.get(name, 0, nameLen);
+                    version = parseVersion(makeString(name, nameLen, platformID, encodingID));
                     break;
 
                 case TYPOGRAPHIC_FAMILY_NAME_ID:
