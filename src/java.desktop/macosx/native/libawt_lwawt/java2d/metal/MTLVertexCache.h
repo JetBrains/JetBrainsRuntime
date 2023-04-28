@@ -29,17 +29,32 @@
 #include "MTLContext.h"
 #include "fontscalerdefs.h"
 
+// Next define should exactly match to the amount
+// of MTLVC_ADD_VERTEX in MTLVC_ADD_TRIANGLES
+#define VERTS_FOR_A_QUAD 6
+
+/**
+ * MTLBuffer.setVertexBytes() is limited to 4K buffer size
+ */
+#define MTLVC_MAX_VERTEX_SIZE   4096
+
+/**
+ * sizeof(J2DVertex) = 2 x 2 float values = 16 bytes (aligned)
+ */
+#define MTLVC_SIZE_J2DVertex    16
+
 /**
  * The max size of the vertex cache.
  *
  * Note:
- * This is the max number of vertices (of struct J2DVertex - 16 bytes)
+ * This is the max number of vertices (of struct J2DVertex)
  * that can be accommodated in 4KB.
  *
  * [MTLRenderCommandEncoder setVertexBytes] expects the data size
  * to be less than or equal to 4KB.
  */
-#define MTLVC_MAX_INDEX         250
+#define MTLVC_MAX_QUAD      ((MTLVC_MAX_VERTEX_SIZE / MTLVC_SIZE_J2DVertex) / VERTS_FOR_A_QUAD)
+#define MTLVC_MAX_INDEX     (MTLVC_MAX_QUAD * VERTS_FOR_A_QUAD)
 
 /**
  * Constants that control the size of the texture tile cache used for
@@ -50,8 +65,9 @@
 #define MTLVC_MASK_CACHE_TILE_SIZE \
    (MTLVC_MASK_CACHE_TILE_WIDTH * MTLVC_MASK_CACHE_TILE_HEIGHT)
 
+/* 1 texture contains 8 x 5 = 40 tiles (~ max quad) */
 #define MTLVC_MASK_CACHE_WIDTH_IN_TILES   8
-#define MTLVC_MASK_CACHE_HEIGHT_IN_TILES  4
+#define MTLVC_MASK_CACHE_HEIGHT_IN_TILES  5
 
 #define MTLVC_MASK_CACHE_WIDTH_IN_TEXELS \
    (MTLVC_MASK_CACHE_TILE_WIDTH * MTLVC_MASK_CACHE_WIDTH_IN_TILES)
@@ -63,7 +79,9 @@
  * operations where the mask is null.
  */
 #define MTLVC_MASK_CACHE_MAX_INDEX \
-   ((MTLVC_MASK_CACHE_WIDTH_IN_TILES * MTLVC_MASK_CACHE_HEIGHT_IN_TILES) - 1)
+   (MTLVC_MASK_CACHE_WIDTH_IN_TILES * MTLVC_MASK_CACHE_HEIGHT_IN_TILES)
+#define MTLVC_MASK_CACHE_MAX_INDEX_RESERVED \
+   (MTLVC_MASK_CACHE_MAX_INDEX - 1)
 #define MTLVC_MASK_CACHE_SPECIAL_TILE_X \
    (MTLVC_MASK_CACHE_WIDTH_IN_TEXELS - MTLVC_MASK_CACHE_TILE_WIDTH)
 #define MTLVC_MASK_CACHE_SPECIAL_TILE_Y \
