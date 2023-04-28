@@ -128,7 +128,7 @@ MTLTransform* tempTransform = nil;
 }
 
 @synthesize textureFunction,
-            vertexCacheEnabled, aaEnabled, device, pipelineStateStorage,
+            vertexCacheEnabled, aaEnabled, useMaskColor, device, pipelineStateStorage,
             commandQueue, vertexBuffer,
             texturePool, paint=_paint, encoderManager=_encoderManager,
             samplerManager=_samplerManager, stencilManager=_stencilManager;
