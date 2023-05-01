@@ -9,6 +9,19 @@ BUNDLE_ID=$3
 JB_DEVELOPER_CERT=$4
 JB_INSTALLER_CERT=$5
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" >/dev/null && pwd)"
+
+# Use JetBrains sign utility if it's available
+if [[ "${JETSIGN_CLIENT:=}" == "null" ]] || [[ "$JETSIGN_CLIENT" == "" ]]; then
+  JB_SIGN=false
+  SIGN_UTILITY="codesign"
+  PRODUCTSIGN_UTILITY="productsign"
+else
+  JB_SIGN=true
+  SIGN_UTILITY="$SCRIPT_DIR/codesign.sh"
+  PRODUCTSIGN_UTILITY="$SCRIPT_DIR/productsign.sh"
+fi
+
 if [[ -z "$APPLICATION_PATH" ]] || [[ -z "$JB_DEVELOPER_CERT" ]]; then
   echo "Usage: $0 AppDirectory CertificateID"
   exit 1
@@ -37,13 +50,13 @@ for f in \
   if [ -d "$APPLICATION_PATH/$f" ]; then
     find "$APPLICATION_PATH/$f" \
       -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "*.tbd" -o -name "*.node" -o -perm +111 \) \
-      -exec codesign --timestamp \
+      -exec "$SIGN_UTILITY" --timestamp \
       -v -s "$JB_DEVELOPER_CERT" --options=runtime --force \
-      --entitlements entitlements.xml {} \;
+      --entitlements "$SCRIPT_DIR/entitlements.xml" {} \;
   fi
 done
 
-log "Signing libraries in jars in $PWD"
+log "Signing libraries in jars in $APPLICATION_PATH"
 
 # todo: add set -euo pipefail; into the inner sh -c
 # `-e` prevents `grep -q && printf` loginc
@@ -61,10 +74,10 @@ find "$APPLICATION_PATH" -name '*.jar' \
 
     find jarfolder \
       -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "*.tbd" -o -name "jattach" \) \
-      -exec codesign --timestamp \
+      -exec "$SIGN_UTILITY" --timestamp \
       --force \
       -v -s "$JB_DEVELOPER_CERT" --options=runtime \
-      --entitlements entitlements.xml {} \;
+      --entitlements "$SCRIPT_DIR/entitlements.xml" {} \;
 
     (cd jarfolder; zip -q -r -o -0 ../jar.jar .)
     mv jar.jar "$file"
@@ -73,14 +86,15 @@ find "$APPLICATION_PATH" -name '*.jar' \
 rm -rf jarfolder jar.jar
 
 log "Signing other files..."
+# shellcheck disable=SC2043
 for f in \
   "Contents/Home/bin"; do
   if [ -d "$APPLICATION_PATH/$f" ]; then
     find "$APPLICATION_PATH/$f" \
       -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "*.tbd" -o -perm +111 \) \
-      -exec codesign --timestamp \
+      -exec "$SIGN_UTILITY" --timestamp \
       -v -s "$JB_DEVELOPER_CERT" --options=runtime --force \
-      --entitlements entitlements.xml {} \;
+      --entitlements "$SCRIPT_DIR/entitlements.xml" {} \;
   fi
 done
 
@@ -91,12 +105,23 @@ done
 #    --entitlements entitlements.xml "$APPLICATION_PATH/Contents/MacOS/idea"
 
 log "Signing whole app..."
-codesign --timestamp \
-  -v -s "$JB_DEVELOPER_CERT" --options=runtime \
-  --force \
-  --entitlements entitlements.xml "$APPLICATION_PATH"
+if [ "$JB_SIGN" = true ]; then
+  tar -pczvf tmp-to-sign.tar.gz --exclude='man' -C "$(dirname "$APPLICATION_PATH")" "$(basename "$APPLICATION_PATH")"
+  "$SIGN_UTILITY" --timestamp \
+    -v -s "$JB_DEVELOPER_CERT" --options=runtime \
+    --force \
+    --entitlements "$SCRIPT_DIR/entitlements.xml" tmp-to-sign.tar.gz
+  rm -rf "$APPLICATION_PATH"
+  tar -xzvf tmp-to-sign.tar.gz --directory "$(dirname "$APPLICATION_PATH")"
+  rm -f tmp-to-sign.tar.gz
+else
+  "$SIGN_UTILITY" --timestamp \
+    -v -s "$JB_DEVELOPER_CERT" --options=runtime \
+    --force \
+    --entitlements "$SCRIPT_DIR/entitlements.xml" "$APPLICATION_PATH"
+fi
 
-BUILD_NAME=$(echo $APPLICATION_PATH | awk -F"/" '{ print $2 }')
+BUILD_NAME="$(basename "$APPLICATION_PATH")"
 
 log "Creating $APP_NAME.pkg..."
 rm -rf "$APP_NAME.pkg"
@@ -104,7 +129,8 @@ rm -rf "$APP_NAME.pkg"
 mkdir -p unsigned
 pkgbuild --identifier $BUNDLE_ID --root $APPLICATION_PATH \
     --install-location /Library/Java/JavaVirtualMachines/${BUILD_NAME} unsigned/${APP_NAME}.pkg
-productsign --timestamp --sign "$JB_INSTALLER_CERT" unsigned/${APP_NAME}.pkg ${APP_NAME}.pkg
+log "Signing $APP_NAME.pkg..."
+"$PRODUCTSIGN_UTILITY" --timestamp --sign "$JB_INSTALLER_CERT" unsigned/${APP_NAME}.pkg ${APP_NAME}.pkg
 
 #log "Signing whole app..."
 #codesign --timestamp \
