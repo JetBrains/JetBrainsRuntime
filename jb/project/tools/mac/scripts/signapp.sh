@@ -107,9 +107,9 @@ set -e
 if [ "$NOTARIZE" = "yes" ]; then
   log "Notarizing..."
   "$SCRIPT_DIR/notarize.sh" "$APP_NAME.pkg"
-  set +e
   log "Stapling..."
-  xcrun stapler staple "$APPLICATION_PATH"
+  xcrun stapler staple "$APPLICATION_PATH" ||:
+  xcrun stapler staple "$APP_NAME.pkg" ||:
 else
   log "Notarization disabled"
   log "Stapling disabled"
