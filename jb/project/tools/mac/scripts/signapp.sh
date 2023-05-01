@@ -17,7 +17,7 @@ JB_INSTALLER_CERT=$6
 NOTARIZE=$7
 BUNDLE_ID=$8
 
-cd "$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" >/dev/null && pwd)"
 
 function log() {
   echo "$(date '+[%H:%M:%S]') $*"
@@ -44,7 +44,7 @@ fi
 
 log "$INPUT_FILE extracted and removed"
 
-APP_NAME=$(echo ${INPUT_FILE} | awk -F".tar" '{ print $1 }')
+APP_NAME=$(basename "$INPUT_FILE" | awk -F".tar" '{ print $1 }')
 APPLICATION_PATH=$EXPLODED/$(ls $EXPLODED)
 
 find "$APPLICATION_PATH/Contents/Home/bin" \
@@ -73,16 +73,18 @@ if [[ $non_plist -gt 0 ]]; then
   exit 1
 fi
 
-log "Unlocking keychain..."
-# Make sure *.p12 is imported into local KeyChain
-security unlock-keychain -p "$PASSWORD" "/Users/$USERNAME/Library/Keychains/login.keychain"
+if [[ "${JETSIGN_CLIENT:=}" == "null" ]] || [[ "$JETSIGN_CLIENT" == "" ]]; then
+  log "Unlocking keychain..."
+  # Make sure *.p12 is imported into local KeyChain
+  security unlock-keychain -p "$PASSWORD" "/Users/$USERNAME/Library/Keychains/login.keychain"
+fi
 
 attempt=1
 limit=3
 set +e
 while [[ $attempt -le $limit ]]; do
   log "Signing (attempt $attempt) $APPLICATION_PATH ..."
-  ./sign.sh "$APPLICATION_PATH" "$APP_NAME" "$BUNDLE_ID" "$CODESIGN_STRING" "$JB_INSTALLER_CERT"
+  "$SCRIPT_DIR/sign.sh" "$APPLICATION_PATH" "$APP_NAME" "$BUNDLE_ID" "$CODESIGN_STRING" "$JB_INSTALLER_CERT"
   ec=$?
   if [[ $ec -ne 0 ]]; then
     ((attempt += 1))
