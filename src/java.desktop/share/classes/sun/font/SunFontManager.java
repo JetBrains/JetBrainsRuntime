@@ -3061,6 +3061,10 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         boolean isLogging = logger != null && FontUtilities.isLogging();
         boolean versionCheckEnabled = !("true".equals(System.getProperty("java2d.font.noVersionCheck")));
 
+        if (!versionCheckEnabled && isLogging) {
+            logger.info("Skip version checking in font loading");
+        }
+
         if (versionCheckEnabled && FontUtilities.isWindows) {
             HashMap<String, String> fontToFileMap = new HashMap<>(100);
             populateFontFileNameMap(fontToFileMap, new HashMap<>(), new HashMap<>(), Locale.ENGLISH);
