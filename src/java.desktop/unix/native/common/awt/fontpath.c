@@ -539,9 +539,6 @@ typedef unsigned int (*FcFreeTypeQueryAllFuncType)(const FcChar8 *file, unsigned
 
 typedef FcChar8* (*FcPatternFormatFuncType)(FcPattern *pat, const FcChar8 *format);
 
-
-typedef FcChar8* (*FcStrListDoneFuncType)(FcStrList *list);
-
 static char **getFontConfigLocations() {
 
     char **fontdirs;
