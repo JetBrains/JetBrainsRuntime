@@ -3174,16 +3174,16 @@ JNI_COCOA_EXIT(env);
  */
 JNIEXPORT JNICALL jstring
 Java_sun_font_CFontManager_getNativeFontPath
-        (JNIEnv *env, jclass clz, jstring psName)
+        (JNIEnv *env, jclass clz, jstring fullName)
 {
     jstring result = NULL;
 JNI_COCOA_ENTER(env);
-    NSString *psNameStr = JavaStringToNSString(env, psName);
-    CTFontRef sFont = CTFontCreateWithName(psNameStr, 13, nil);
-    CFStringRef sFontFullName = CTFontCopyName(sFont, kCTFontFullNameKey);
+    NSString *fullNameStr = JavaStringToNSString(env, fullName);
+    CTFontRef sFont = CTFontCreateWithName(fullNameStr, 13, nil);
+    CFStringRef sFoundFontFullName = CTFontCopyName(sFont, kCTFontFullNameKey);
     // CTFontCreateWithName always returns some font,
     // so we need to check if it is right one
-    if ([psNameStr isEqualToString:sFontFullName]) {
+    if ([fullNameStr isEqualToString:sFoundFontFullName]) {
         CTFontDescriptorRef fontDescRef = CTFontCopyFontDescriptor(sFont);
         CFURLRef fontURL = (CFURLRef)CTFontDescriptorCopyAttribute(fontDescRef, kCTFontURLAttribute);
         result = NSStringToJavaString(env, [NSString stringWithString:[(NSURL *)fontURL path]]);
@@ -3191,7 +3191,7 @@ JNI_COCOA_ENTER(env);
         CFRelease(fontDescRef);
     }
 
-    CFRelease(sFontFullName);
+    CFRelease(sFoundFontFullName);
     CFRelease(sFont);
 JNI_COCOA_EXIT(env);
     return result;

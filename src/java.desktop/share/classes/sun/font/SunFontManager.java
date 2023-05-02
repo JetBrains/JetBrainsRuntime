@@ -190,7 +190,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     private boolean loaded1dot0Fonts = false;
     boolean loadedAllFonts = false;
     boolean loadedAllFontFiles = false;
-    private HashSet<String> jreBundledFontFiles;
+    private HashSet<String> jreBundledFontFiles = new HashSet<>();
     String[] jreOtherFontFiles;
     boolean noOtherJREFontFiles = false; // initial assumption.
 
@@ -278,7 +278,6 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         @SuppressWarnings("removal")
         String[] files = AccessController.doPrivileged((PrivilegedAction<String[]>) () ->
                         new File(jreFontDirName).list(getTrueTypeFilter()));
-        jreBundledFontFiles = new HashSet<>();
         Collections.addAll(jreBundledFontFiles, files);
     }
 
@@ -3028,10 +3027,6 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                     defer, resolveSymLinks);
     }
 
-    private boolean isFontNewer(String versionFirst, String versionSecond) {
-        return versionFirst.compareTo(versionSecond) > 0;
-    }
-
     protected String getTrueTypeVersion(String path) {
         try {
             return (new TrueTypeFont(path, null, 0, false, false)).getVersion();
@@ -3052,58 +3047,65 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                 Font2D.JRE_RANK, true, false);
     }
 
-    protected void registerJREFonts() {
-        if (jreBundledFontFiles != null) {
-            List<String> fontsToLoad = new ArrayList<>();
-            PlatformLogger logger = FontUtilities.getLogger();
-            boolean versionCheckEnabled = !("true".equals(System.getProperty("java2d.font.noVersionCheck")));
+    private static int fontVersionComparator(String versionFirst, String versionSecond) {
+        return versionFirst.compareTo(versionSecond);
+    }
 
-            if (versionCheckEnabled && FontUtilities.isWindows) {
-                HashMap<String, String> fontToFileMap = new HashMap<>(100);
-                populateFontFileNameMap(fontToFileMap, new HashMap<>(), new HashMap<>(), Locale.ENGLISH);
-                for (String key : fontToFileMap.keySet()) {
-                    // find maximum observable platform font's version
-                    Optional<String> version = Arrays.stream(getPlatformFontDirs(true)).
-                            map((path) -> (getTrueTypeVersion(path + File.separator + fontToFileMap.get(key)))).
-                            max(String::compareTo);
-                    windowsSystemVersion.put(key, version.isPresent() ? version.get() : "0");
-                }
+    private boolean isFontNewer(String versionFirst, String versionSecond) {
+        return fontVersionComparator(versionFirst, versionSecond) > 0;
+    }
+
+    private void registerJREFonts() {
+        List<String> fontsToLoad = new ArrayList<>();
+        PlatformLogger logger = FontUtilities.getLogger();
+        boolean isLogging = logger != null && FontUtilities.isLogging();
+        boolean versionCheckEnabled = !("true".equals(System.getProperty("java2d.font.noVersionCheck")));
+
+        if (versionCheckEnabled && FontUtilities.isWindows) {
+            HashMap<String, String> fontToFileMap = new HashMap<>(100);
+            populateFontFileNameMap(fontToFileMap, new HashMap<>(), new HashMap<>(), Locale.ENGLISH);
+            for (String key : fontToFileMap.keySet()) {
+                // find maximum observable platform font's version
+                Optional<String> version = Arrays.stream(getPlatformFontDirs(true)).
+                        map((path) -> (getTrueTypeVersion(path + File.separator + fontToFileMap.get(key)))).
+                        max(SunFontManager::fontVersionComparator);
+                windowsSystemVersion.put(key, version.isPresent() ? version.get() : "0");
             }
-
-            for (String f : jreBundledFontFiles) {
-                boolean loadFont = true;
-                String bundledVersion = "unknown";
-                String systemVersion = "0";
-                String path = jreFontDirName + File.separator + f;
-                if (versionCheckEnabled) {
-                    try {
-                        TrueTypeFont bundledFont = new TrueTypeFont(path, null, 0, false, false);
-                        bundledVersion = bundledFont.getVersion();
-                        systemVersion = getSystemFontVersion(bundledFont);
-
-                        if (isFontNewer(systemVersion, bundledVersion)) {
-                            if (logger != null) {
-                                logger.info("Skip loading. Newer or same version platform font detected " +
-                                        bundledFont.getFullName() + " " + bundledVersion);
-                            }
-                            loadFont = false;
-                        }
-                    } catch (FontFormatException e) {
-                        if (logger != null) {
-                            FontUtilities.getLogger().warning("Version checking logic doesn't support for non TrueTypeFonts " + f);
-                        }
-                    }
-                }
-                if (loadFont) {
-                    fontsToLoad.add(path);
-                    if (logger != null) {
-                        logger.info("Loaded " + f + " (" + bundledVersion + ")");
-                    }
-                }
-            }
-
-            loadJREFonts(fontsToLoad.toArray(new String[0]));
         }
+
+        for (String fontName : jreBundledFontFiles) {
+            boolean loadFont = true;
+            String bundledVersion = "unknown";
+            String systemVersion = "0";
+            String path = jreFontDirName + File.separator + fontName;
+            if (versionCheckEnabled) {
+                try {
+                    TrueTypeFont bundledFont = new TrueTypeFont(path, null, 0, false, false);
+                    bundledVersion = bundledFont.getVersion();
+                    systemVersion = getSystemFontVersion(bundledFont);
+
+                    if (isFontNewer(systemVersion, bundledVersion)) {
+                        if (isLogging) {
+                            logger.info("Skip loading " + fontName + ", newer version font on platform were detected. " +
+                                    "System version = " + systemVersion + ", Bundled version = " + bundledVersion + ".");
+                        }
+                        loadFont = false;
+                    }
+                } catch (FontFormatException e) {
+                    if (isLogging) {
+                        logger.warning("Internal error have appeared while reading bundled font " + fontName + ".");
+                    }
+                }
+            }
+            if (loadFont) {
+                fontsToLoad.add(path);
+                if (isLogging) {
+                    logger.info("Loaded " + fontName + " (" + bundledVersion + ")");
+                }
+            }
+        }
+
+        loadJREFonts(fontsToLoad.toArray(new String[0]));
     }
 
     protected void registerFontDir(String path) {

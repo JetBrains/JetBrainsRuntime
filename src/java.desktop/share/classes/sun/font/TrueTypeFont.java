@@ -41,12 +41,14 @@ import java.nio.channels.FileChannel;
 import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
@@ -1116,9 +1118,14 @@ public class TrueTypeFont extends FileFont {
     }
 
     private String parseVersion(String str) {
-        // Parse first sequance of version
+        // get first part sequence of digits and dots
         Matcher matcher = Pattern.compile("(\\d|\\.)+").matcher(str);
-        return matcher.find() ? matcher.group() : "0";
+        if (!matcher.find()) {
+            return "0";
+        }
+        // removing leading zeros from version e.g. 00010.002.300.040 -> 10.2.300.40
+        return Arrays.stream(matcher.group().split("\\.")).map(s -> (s.replaceFirst("^0*", ""))).
+                map(s -> s.isEmpty() ? "0" : s).collect(Collectors.joining("."));
     }
 
     public String getVersion() {
