@@ -49,6 +49,7 @@ public class UnderlyingLayoutTest implements Runnable {
             qwertz("com.apple.inputmethod.Kotoeri.RomajiTyping.Roman");
             qwertz("com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese");
             qwertz("com.apple.inputmethod.Kotoeri.KanaTyping.Roman");
+            // qwerty("com.apple.inputmethod.Kotoeri.KanaTyping.Japanese");
         } else {
             InputMethodTest.setRomajiLayout("com.apple.keylayout.ABC");
             qwerty("com.apple.keylayout.US");
@@ -58,28 +59,27 @@ public class UnderlyingLayoutTest implements Runnable {
             qwerty("com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese");
             qwerty("com.apple.inputmethod.Kotoeri.KanaTyping.Roman");
             qwerty("com.apple.inputmethod.Kotoeri.KanaTyping.Japanese");
-            qwerty("com.apple.inputmethod.Kotoeri.KanaTyping.Japanese");
         }
     }
 
     private void qwerty(String layout) {
-        InputMethodTest.section("QWERTY Cmd " + layout);
+        InputMethodTest.section("Cmd " + layout);
         InputMethodTest.layout(layout);
         InputMethodTest.type(VK_Y, META_DOWN_MASK);
         InputMethodTest.expressKeyPress(VK_Y);
 
-        InputMethodTest.section("QWERTY Ctrl " + layout);
+        InputMethodTest.section("Ctrl " + layout);
         InputMethodTest.type(VK_Y, CTRL_DOWN_MASK);
         InputMethodTest.expressKeyPress(VK_Y);
     }
 
     private void qwertz(String layout) {
-        InputMethodTest.section("QWERTZ Cmd " + layout);
+        InputMethodTest.section("Cmd " + layout);
         InputMethodTest.layout(layout);
         InputMethodTest.type(VK_Y, META_DOWN_MASK);
         InputMethodTest.expressKeyPress(VK_Z);
 
-        InputMethodTest.section("QWERTZ Ctrl " + layout);
+        InputMethodTest.section("Ctrl " + layout);
         InputMethodTest.type(VK_Y, CTRL_DOWN_MASK);
         InputMethodTest.expressKeyPress(VK_Z);
     }

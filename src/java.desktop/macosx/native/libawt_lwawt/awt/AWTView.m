@@ -331,16 +331,16 @@ static void debugPrintNSString(const char* name, NSString* s) {
     fprintf(stderr, "\", bytes = %d, codeUnits = %d]\n", bytes, codeUnits);
 }
 
-static void debugPrintNSEvent(NSEvent* event) {
+static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     NSEventType type = [event type];
     if (type == NSEventTypeKeyDown) {
-        fprintf(stderr, "[AWTView.m] keyDown\n");
+        fprintf(stderr, "[AWTView.m] keyDown in %s\n", comment);
     } else if (type == NSEventTypeKeyUp) {
-        fprintf(stderr, "[AWTView.m] keyUp\n");
+        fprintf(stderr, "[AWTView.m] keyUp in %s\n", comment);
     } else if (type == NSEventTypeFlagsChanged) {
-        fprintf(stderr, "[AWTView.m] flagsChanged\n");
+        fprintf(stderr, "[AWTView.m] flagsChanged in %s\n", comment);
     } else {
-        fprintf(stderr, "[AWTView.m] unknown event %d\n", (int)type);
+        fprintf(stderr, "[AWTView.m] unknown event %d in %s\n", (int)type, comment);
         return;
     }
     if (type == NSEventTypeKeyDown || type == NSEventTypeKeyUp) {
@@ -349,12 +349,14 @@ static void debugPrintNSEvent(NSEvent* event) {
         fprintf(stderr, "\tkeyCode: %d (0x%02x)\n", [event keyCode], [event keyCode]);
     }
     fprintf(stderr, "\tmodifierFlags: 0x%08x\n", (unsigned)[event modifierFlags]);
+    TISInputSourceRef is = TISCopyCurrentKeyboardLayoutInputSource();
+    fprintf(stderr, "\tTISCopyCurrentKeyboardLayoutInputSource: %s\n", is == nil ? "(nil)" : [(NSString*) TISGetInputSourceProperty(is, kTISPropertyInputSourceID) UTF8String]);
 }
 #endif
 
 - (void) keyDown: (NSEvent *)event {
 #ifdef LOG_KEY_EVENTS
-    debugPrintNSEvent(event);
+    debugPrintNSEvent(event, "keyDown");
 #endif
     fProcessingKeystroke = YES;
     fKeyEventsNeeded = YES;
@@ -415,19 +417,22 @@ static void debugPrintNSEvent(NSEvent* event) {
 
 - (void) keyUp: (NSEvent *)event {
 #ifdef LOG_KEY_EVENTS
-    debugPrintNSEvent(event);
+    debugPrintNSEvent(event, "keyUp");
 #endif
     [self deliverJavaKeyEventHelper: event];
 }
 
 - (void) flagsChanged: (NSEvent *)event {
 #ifdef LOG_KEY_EVENTS
-    debugPrintNSEvent(event);
+    debugPrintNSEvent(event, "flagsChanged");
 #endif
     [self deliverJavaKeyEventHelper: event];
 }
 
 - (BOOL) performKeyEquivalent: (NSEvent *) event {
+#ifdef LOG_KEY_EVENTS
+    debugPrintNSEvent(event, "performKeyEquivalent");
+#endif
     // if IM is active key events should be ignored
     if (![self hasMarkedText] && !fInPressAndHold) {
         [self deliverJavaKeyEventHelper: event];
