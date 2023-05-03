@@ -188,11 +188,7 @@ BOOL isDisplaySyncEnabled() {
 
 - (void)startRedraw {
     if (self.ctx != nil) {
-        [self retain];
-        [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
-          [self.ctx startRedraw:self];
-          [self release];
-        }];
+        [self.ctx performSelectorOnMainThread:@selector(startRedraw:) withObject:self waitUntilDone:NO];
     }
 }
 
@@ -201,11 +197,7 @@ BOOL isDisplaySyncEnabled() {
         if (force) {
             self.redrawCount = 0;
         }
-        [self retain];
-        [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
-          [self.ctx stopRedraw:self];
-          [self release];
-        }];
+        [self.ctx performSelectorOnMainThread:@selector(stopRedraw:) withObject:self waitUntilDone:NO];
     }
 }
 
