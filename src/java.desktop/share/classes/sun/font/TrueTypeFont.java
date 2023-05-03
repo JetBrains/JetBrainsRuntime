@@ -1119,13 +1119,13 @@ public class TrueTypeFont extends FileFont {
 
     private String parseVersion(String str) {
         // get first part sequence of digits and dots
-        Matcher matcher = Pattern.compile("(\\d|\\.)+").matcher(str);
+        Matcher matcher = Pattern.compile("\\d(\\p{XDigit}|\\.)*").matcher(str);
         if (!matcher.find()) {
             return "0";
         }
-        // removing leading zeros from version e.g. 00010.002.300.040 -> 10.2.300.40
+        // removing leading zeros and hex parts from version e.g. 00010.002.0ab12.300.040 -> 10.2.300.40
         return Arrays.stream(matcher.group().split("\\.")).map(s -> (s.replaceFirst("^0*", ""))).
-                map(s -> s.isEmpty() ? "0" : s).collect(Collectors.joining("."));
+                map(s -> s.isEmpty() ? "0" : s).filter(s -> s.matches("\\d+")).collect(Collectors.joining("."));
     }
 
     public String getVersion() {
