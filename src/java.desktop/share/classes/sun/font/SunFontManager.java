@@ -33,6 +33,7 @@ import java.io.FileInputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
@@ -3048,7 +3049,16 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     }
 
     private static int fontVersionComparator(String versionFirst, String versionSecond) {
-        return versionFirst.compareTo(versionSecond);
+        String[] versionFirstComponents = versionFirst.split("\\.");
+        String[] versionSecondComponents = versionSecond.split("\\.");
+        
+        for (int i = 0; i < Math.min(versionFirstComponents.length, versionSecondComponents.length); i++) {
+            int diff = new BigInteger(versionFirstComponents[i]).compareTo(new BigInteger(versionSecondComponents[i]));
+            if (diff != 0) {
+                return diff;
+            }
+        }
+        return 0;
     }
 
     private boolean isFontNewer(String versionFirst, String versionSecond) {
