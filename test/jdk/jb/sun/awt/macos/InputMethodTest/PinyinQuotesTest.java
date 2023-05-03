@@ -48,7 +48,7 @@ public class PinyinQuotesTest implements Runnable {
         InputMethodTest.type(VK_SPACE, 0);
         InputMethodTest.type(VK_QUOTE, 0);
 
-        InputMethodTest.expect("\u2018 \u2019");
+        InputMethodTest.expectText("\u2018 \u2019");
     }
 
     private void doubleQuotes() {
@@ -59,6 +59,6 @@ public class PinyinQuotesTest implements Runnable {
         InputMethodTest.type(VK_SPACE, 0);
         InputMethodTest.type(VK_QUOTE, SHIFT_DOWN_MASK);
 
-        InputMethodTest.expect("\u201c \u201d");
+        InputMethodTest.expectText("\u201c \u201d");
     }
 }

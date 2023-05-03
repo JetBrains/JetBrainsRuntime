@@ -40,24 +40,24 @@ public class DeadKeysTest implements Runnable {
         InputMethodTest.section("ABC: Acute accent + vowel");
         InputMethodTest.type(VK_E, ALT_DOWN_MASK);
         InputMethodTest.type(VK_A, 0);
-        InputMethodTest.expect("\u00e1");
+        InputMethodTest.expectText("\u00e1");
 
         InputMethodTest.section("ABC: Acute accent + consonant");
         InputMethodTest.type(VK_E, ALT_DOWN_MASK);
         InputMethodTest.type(VK_S, 0);
-        InputMethodTest.expect("\u00b4s");
+        InputMethodTest.expectText("\u00b4s");
 
         InputMethodTest.section("ABC: Acute accent + space");
         InputMethodTest.type(VK_E, ALT_DOWN_MASK);
         InputMethodTest.type(VK_SPACE, 0);
-        InputMethodTest.expect("\u00b4");
+        InputMethodTest.expectText("\u00b4");
 
         InputMethodTest.section("German - Standard: Opt+K, Section = Dead circumflex below");
         InputMethodTest.layout("com.apple.keylayout.German-DIN-2137");
         InputMethodTest.type(VK_K, ALT_DOWN_MASK);
         InputMethodTest.type(VK_SECTION, 0);
         InputMethodTest.type(VK_D, 0);
-        InputMethodTest.expect("\u1e13");
+        InputMethodTest.expectText("\u1e13");
 
         InputMethodTest.section("UnicodeHexInput: U+0041 = A");
         InputMethodTest.layout("com.apple.keylayout.UnicodeHexInput");
@@ -65,6 +65,6 @@ public class DeadKeysTest implements Runnable {
         InputMethodTest.type(VK_0, ALT_DOWN_MASK);
         InputMethodTest.type(VK_4, ALT_DOWN_MASK);
         InputMethodTest.type(VK_1, ALT_DOWN_MASK);
-        InputMethodTest.expect("A");
+        InputMethodTest.expectText("A");
     }
 }

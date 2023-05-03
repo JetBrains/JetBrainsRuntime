@@ -28,9 +28,11 @@ import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.io.IOException;
 import java.util.*;
 import java.util.List;
+
+import static java.awt.event.KeyEvent.KEY_PRESSED;
+import static java.awt.event.KeyEvent.KEY_RELEASED;
 
 public class InputMethodTest {
     private static JFrame frame;
@@ -51,7 +53,9 @@ public class InputMethodTest {
         PinyinHalfWidthPunctuationTest (new PinyinHalfWidthPunctuationTest()),
         PinyinQuotesTest (new PinyinQuotesTest()),
         RomajiYenTest (new RomajiYenTest(false)),
-        RomajiYenBackslashTest (new RomajiYenTest(true))
+        RomajiYenBackslashTest (new RomajiYenTest(true)),
+        UnderlyingLayoutQWERTYTest (new UnderlyingLayoutTest(false)),
+        UnderlyingLayoutQWERTZTest (new UnderlyingLayoutTest(true)),
         ;
 
         private Runnable test;
@@ -199,9 +203,7 @@ public class InputMethodTest {
         writeDefault("com.apple.inputmethod.CoreChineseEngineFramework", "usesHalfwidthPunctuation", flag ? "1" : "0");
     }
 
-    public static void setUseBackslashInsteadOfYen(boolean flag) {
-        writeDefault("com.apple.inputmethod.Kotoeri", "JIMPrefCharacterForYenKey", flag ? "1" : "0");
-
+    private static void restartKotoeri() {
         // Need to kill Kotoeri, since it doesn't reload the config otherwise. This makes me sad.
         try {
             Runtime.getRuntime().exec(new String[]{"killall", "-9", "-m", "JapaneseIM"}).waitFor();
@@ -211,7 +213,17 @@ public class InputMethodTest {
         }
 
         // wait for it to restart...
-        robot.delay(3000);
+        robot.delay(5000);
+    }
+
+    public static void setUseBackslashInsteadOfYen(boolean flag) {
+        writeDefault("com.apple.inputmethod.Kotoeri", "JIMPrefCharacterForYenKey", flag ? "1" : "0");
+        restartKotoeri();
+    }
+
+    public static void setRomajiLayout(String layout) {
+        writeDefault("com.apple.inputmethod.Kotoeri", "JIMPrefRomajiKeyboardLayoutKey", layout);
+        restartKotoeri();
     }
 
     public static void type(int key, int modifiers) {
@@ -254,13 +266,62 @@ public class InputMethodTest {
         return Collections.unmodifiableList(triggeredEvents);
     }
 
-    public static void expect(String expectedValue) {
+    public static void expectText(String expectedValue) {
         var actualValue = textArea.getText();
         if (actualValue.equals(expectedValue)) {
             System.out.printf("Test %s (%s) passed: got '%s'\n", currentTest, currentSection, actualValue);
         } else {
             success = false;
             System.out.printf("Test %s (%s) FAILED: expected '%s', got '%s'\n", currentTest, currentSection, expectedValue, actualValue);
+        }
+    }
+
+    public static void expressKeyPress(int vk) {
+        var pressed = triggeredEvents.stream().filter(e -> e.getID() == KEY_PRESSED).toList();
+        var released = triggeredEvents.stream().filter(e -> e.getID() == KEY_RELEASED).toList();
+        if (pressed.size() >= 1) {
+            var keyCode = pressed.get(pressed.size() - 1).getKeyCode();
+            expectTrue(keyCode == vk, "key press, actual key code: " + keyCode + ", expected: " + vk);
+        } else {
+            fail("expected at least one KEY_PRESSED event, got none");
+        }
+
+        if (released.size() >= 1) {
+            var keyCode = released.get(0).getKeyCode();
+            expectTrue(keyCode == vk, "key release, actual key code: " + keyCode + ", expected: " + vk);
+        } else {
+            fail("expected at least one KEY_RELEASED event, got none");
+        }
+    }
+
+    public static void expectKeyPressStrict(int vk, int location, int modifiers) {
+        var pressed = triggeredEvents.stream().filter(e -> e.getID() == KEY_PRESSED).toList();
+        var released = triggeredEvents.stream().filter(e -> e.getID() == KEY_RELEASED).toList();
+
+        if (pressed.size() == 1) {
+            var keyCode = pressed.get(0).getKeyCode();
+            expectTrue(keyCode == vk, "key press, actual key code: " + keyCode + ", expected: " + vk);
+
+            var keyLocation = pressed.get(0).getKeyLocation();
+            expectTrue(keyLocation == location, "key press, actual key location: " + keyLocation + ", expected: " + location);
+
+            var keyModifiers = pressed.get(0).getModifiersEx();
+            expectTrue(keyModifiers == modifiers, "key press, actual key modifiers: " + keyModifiers + ", expected: " + modifiers);
+        } else {
+            fail("expected exactly one KEY_PRESSED event, got " + pressed.size());
+        }
+
+        if (released.size() == 1) {
+            var keyCode = released.get(0).getKeyCode();
+            expectTrue(keyCode == vk, "key release, actual key code: " + keyCode + ", expected: " + vk);
+
+            var keyLocation = released.get(0).getKeyLocation();
+            expectTrue(keyLocation == location, "key release, actual key location: " + keyLocation + ", expected: " + location);
+
+            var keyModifiers = released.get(0).getModifiersEx();
+            expectTrue(keyModifiers == 0, "key release, actual key modifiers: " + keyModifiers + ", expected: 0");
+        } else {
+            fail("expected exactly one KEY_RELEASED event, got " + released.size());
         }
     }
 

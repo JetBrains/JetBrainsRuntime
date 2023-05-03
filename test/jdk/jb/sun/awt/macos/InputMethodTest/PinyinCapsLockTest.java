@@ -75,7 +75,7 @@ public class PinyinCapsLockTest implements Runnable {
         InputMethodTest.type(VK_A, 0);
         InputMethodTest.type(VK_B, 0);
         InputMethodTest.type(VK_C, 0);
-        InputMethodTest.expect(expectUppercase ? "ABC" : "abc");
+        InputMethodTest.expectText(expectUppercase ? "ABC" : "abc");
         InputMethodTest.type(VK_ESCAPE, 0);
     }
 }

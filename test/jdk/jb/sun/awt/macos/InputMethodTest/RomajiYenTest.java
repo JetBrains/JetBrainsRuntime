@@ -45,6 +45,7 @@ public class RomajiYenTest implements Runnable {
     @Override
     public void run() {
         InputMethodTest.setUseBackslashInsteadOfYen(isBackslash);
+        InputMethodTest.setRomajiLayout("com.apple.keylayout.ABC");
         InputMethodTest.layout("com.apple.inputmethod.Kotoeri.RomajiTyping.Roman");
         backslash();
         optBackslash();
@@ -60,54 +61,54 @@ public class RomajiYenTest implements Runnable {
     private void backslash() {
         InputMethodTest.section("Backslash");
         InputMethodTest.type(VK_BACK_SLASH, 0);
-        InputMethodTest.expect(isBackslash ? "\\" : YEN_SYMBOL);
+        InputMethodTest.expectText(isBackslash ? "\\" : YEN_SYMBOL);
     }
 
     private void optBackslash() {
         InputMethodTest.section("Opt+Backslash");
         InputMethodTest.type(VK_BACK_SLASH, ALT_DOWN_MASK);
-        InputMethodTest.expect(isBackslash ? YEN_SYMBOL : "\\");
+        InputMethodTest.expectText(isBackslash ? YEN_SYMBOL : "\\");
     }
 
     private void shiftBackslash() {
         InputMethodTest.section("Shift+Backslash");
         InputMethodTest.type(VK_BACK_SLASH, SHIFT_DOWN_MASK);
-        InputMethodTest.expect("|");
+        InputMethodTest.expectText("|");
     }
 
     private void optShiftBackslash() {
         InputMethodTest.section("Opt+Shift+Backslash");
         InputMethodTest.type(VK_BACK_SLASH, SHIFT_DOWN_MASK | ALT_DOWN_MASK);
-        InputMethodTest.expect(RIGHT_POINTING_DOUBLE_ANGLE_QUOTATION_MARK);
+        InputMethodTest.expectText(RIGHT_POINTING_DOUBLE_ANGLE_QUOTATION_MARK);
     }
 
     private void optY() {
         InputMethodTest.section("Opt+Y");
         InputMethodTest.type(VK_Y, ALT_DOWN_MASK);
-        InputMethodTest.expect(isBackslash ? "\\" : YEN_SYMBOL);
+        InputMethodTest.expectText(isBackslash ? "\\" : YEN_SYMBOL);
     }
 
     private void yen() {
         InputMethodTest.section("Yen");
         InputMethodTest.type(ROBOT_KEYCODE_YEN_SYMBOL_JIS, 0);
-        InputMethodTest.expect(isBackslash ? "\\" : YEN_SYMBOL);
+        InputMethodTest.expectText(isBackslash ? "\\" : YEN_SYMBOL);
     }
 
     private void optYen() {
         InputMethodTest.section("Opt+Yen");
         InputMethodTest.type(ROBOT_KEYCODE_YEN_SYMBOL_JIS, ALT_DOWN_MASK);
-        InputMethodTest.expect(isBackslash ? YEN_SYMBOL : "\\");
+        InputMethodTest.expectText(isBackslash ? YEN_SYMBOL : "\\");
     }
 
     private void shiftYen() {
         InputMethodTest.section("Shift+Yen");
         InputMethodTest.type(ROBOT_KEYCODE_YEN_SYMBOL_JIS, SHIFT_DOWN_MASK);
-        InputMethodTest.expect("|");
+        InputMethodTest.expectText("|");
     }
 
     private void optShiftYen() {
         InputMethodTest.section("Opt+Shift+Yen");
         InputMethodTest.type(ROBOT_KEYCODE_YEN_SYMBOL_JIS, SHIFT_DOWN_MASK | ALT_DOWN_MASK);
-        InputMethodTest.expect("|");
+        InputMethodTest.expectText("|");
     }
 }

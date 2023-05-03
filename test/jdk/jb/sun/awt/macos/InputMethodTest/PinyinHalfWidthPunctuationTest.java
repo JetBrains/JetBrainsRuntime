@@ -39,30 +39,30 @@ public class PinyinHalfWidthPunctuationTest implements Runnable {
 
         InputMethodTest.section("comma");
         InputMethodTest.type(VK_COMMA, 0);
-        InputMethodTest.expect(",");
+        InputMethodTest.expectText(",");
 
         InputMethodTest.section("period");
         InputMethodTest.type(VK_PERIOD, 0);
-        InputMethodTest.expect(".");
+        InputMethodTest.expectText(".");
 
         InputMethodTest.section("question mark");
         InputMethodTest.type(VK_SLASH, SHIFT_DOWN_MASK);
-        InputMethodTest.expect("?");
+        InputMethodTest.expectText("?");
 
         InputMethodTest.section("semicolon");
         InputMethodTest.type(VK_SEMICOLON, 0);
-        InputMethodTest.expect(";");
+        InputMethodTest.expectText(";");
 
         InputMethodTest.section("colon");
         InputMethodTest.type(VK_SEMICOLON, SHIFT_DOWN_MASK);
-        InputMethodTest.expect(":");
+        InputMethodTest.expectText(":");
 
         InputMethodTest.section("left square bracket");
         InputMethodTest.type(VK_OPEN_BRACKET, 0);
-        InputMethodTest.expect("[");
+        InputMethodTest.expectText("[");
 
         InputMethodTest.section("right square bracket");
         InputMethodTest.type(VK_CLOSE_BRACKET, 0);
-        InputMethodTest.expect("]");
+        InputMethodTest.expectText("]");
     }
 }

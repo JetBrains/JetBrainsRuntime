@@ -570,7 +570,6 @@ NsCharToJavaVirtualKeyCode(unsigned short key, const BOOL useNationalLayouts,
     //   - IME: Input source in the com.apple.inputmethod namespace, i.e. a "complex" input method
     //   - Physical layout: A property of the physical keyboard device that has to do with the physical location of keys and their mapping to key codes
     //   - Underlying key layout: The key layout which actually translates the keys that the user presses to Java events.
-    //   - Override key layout: A key layout that an IME is based on, this is the one that the Keyboard Viewer shows for that IME.
     //   - Key code: A macOS virtual key code (the property `keyCode` on `NSEvent`)
     //   - Java key code: The values returned by `KeyEvent.getKeyCode()`
     //   - Key: Keyboard key without any modifiers
@@ -604,7 +603,9 @@ NsCharToJavaVirtualKeyCode(unsigned short key, const BOOL useNationalLayouts,
     //   - Other input sources should report the key on their underlying key layout.
     //
     // Latin-based IMEs make it easy to determine the underlying key layout.
-    // macOS allows us to obtain a copy of the input source by calling TISCopyInputMethodKeyboardLayoutOverride().
+    // macOS allows us to obtain a copy of the input source by calling TISCopyCurrentKeyboardLayoutInputSource().
+    // There's also the TISCopyInputMethodKeyboardLayoutOverride() function, but certain IMs (Google Japanese IME)
+    // don't set it properly.
     //
     // Non-latin-based key layouts and IMEs will use the US key layout as the underlying one.
     // This is the behavior of native apps.
@@ -661,12 +662,10 @@ NsCharToJavaVirtualKeyCode(unsigned short key, const BOOL useNationalLayouts,
     // Determine the underlying layout.
     // If underlyingLayout is nil then fall back to using the usKey.
 
-    TISInputSourceRef currentLayout = TISCopyCurrentKeyboardInputSource();
-    TISInputSourceRef overrideLayout = TISCopyInputMethodKeyboardLayoutOverride();
-    Boolean currentAscii = CFBooleanGetValue((CFBooleanRef) TISGetInputSourceProperty(currentLayout, kTISPropertyInputSourceIsASCIICapable));
-    TISInputSourceRef underlyingLayout =
-            (overrideLayout != nil) ? overrideLayout :
-            (!useNationalLayouts || currentAscii) ? currentLayout : nil;
+    TISInputSourceRef currentLayout = TISCopyCurrentKeyboardLayoutInputSource();
+    Boolean currentAscii = currentLayout == nil ? NO :
+            CFBooleanGetValue((CFBooleanRef) TISGetInputSourceProperty(currentLayout, kTISPropertyInputSourceIsASCIICapable));
+    TISInputSourceRef underlyingLayout = (!useNationalLayouts || currentAscii) ? currentLayout : nil;
 
     // Default to returning the US key data.
     *keyCode = usKey->javaKeyCode;

@@ -144,41 +144,13 @@ public class KeyCodesTest implements Runnable {
         InputMethodTest.section("Key code test: " + vk + ", layout: " + layout + ", char: " + String.format("U+%04X", (int)ch));
         InputMethodTest.layout(layout);
         InputMethodTest.type(key, 0);
-        InputMethodTest.expect(typed);
+        InputMethodTest.expectText(typed);
 
         if (ch != 0) {
             InputMethodTest.expectTrue(getExtendedKeyCodeForChar(ch) == charKeyCode, "getExtendedKeyCodeForChar");
         }
 
-        var events = InputMethodTest.getTriggeredEvents();
-        var pressed = events.stream().filter(e -> e.getID() == KEY_PRESSED).toList();
-        var released = events.stream().filter(e -> e.getID() == KEY_RELEASED).toList();
-
-        if (pressed.size() == 1) {
-            var keyCode = pressed.get(0).getKeyCode();
-            InputMethodTest.expectTrue(keyCode == vk, "key press, actual key code: " + keyCode + ", expected: " + vk);
-
-            var keyLocation = pressed.get(0).getKeyLocation();
-            InputMethodTest.expectTrue(keyLocation == location, "key press, actual key location: " + keyLocation + ", expected: " + location);
-
-            var keyModifiers = pressed.get(0).getModifiersEx();
-            InputMethodTest.expectTrue(keyModifiers == modifiers, "key press, actual key modifiers: " + keyModifiers + ", expected: " + modifiers);
-        } else {
-            InputMethodTest.fail("expected exactly one KEY_PRESSED event, got " + pressed.size());
-        }
-
-        if (released.size() == 1) {
-            var keyCode = released.get(0).getKeyCode();
-            InputMethodTest.expectTrue(keyCode == vk, "key release, actual key code: " + keyCode + ", expected: " + vk);
-
-            var keyLocation = released.get(0).getKeyLocation();
-            InputMethodTest.expectTrue(keyLocation == location, "key release, actual key location: " + keyLocation + ", expected: " + location);
-
-            var keyModifiers = released.get(0).getModifiersEx();
-            InputMethodTest.expectTrue(keyModifiers == 0, "key release, actual key modifiers: " + keyModifiers + ", expected: 0");
-        } else {
-            InputMethodTest.fail("expected exactly one KEY_RELEASED event, got " + released.size());
-        }
+        InputMethodTest.expectKeyPressStrict(vk, location, modifiers);
     }
 
     private void verify(String typed, int vk, String layout, int key) {
