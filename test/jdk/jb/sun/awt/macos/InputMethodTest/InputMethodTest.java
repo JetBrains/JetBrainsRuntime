@@ -276,52 +276,44 @@ public class InputMethodTest {
         }
     }
 
-    public static void expressKeyPress(int vk) {
+    public static void expectKeyPress(int vk, int location, int modifiers, boolean strict) {
         var pressed = triggeredEvents.stream().filter(e -> e.getID() == KEY_PRESSED).toList();
         var released = triggeredEvents.stream().filter(e -> e.getID() == KEY_RELEASED).toList();
-        if (pressed.size() >= 1) {
+
+        if (pressed.size() == 1 || (pressed.size() > 1 && !strict)) {
             var keyCode = pressed.get(pressed.size() - 1).getKeyCode();
             expectTrue(keyCode == vk, "key press, actual key code: " + keyCode + ", expected: " + vk);
-        } else {
-            fail("expected at least one KEY_PRESSED event, got none");
-        }
 
-        if (released.size() >= 1) {
-            var keyCode = released.get(0).getKeyCode();
-            expectTrue(keyCode == vk, "key release, actual key code: " + keyCode + ", expected: " + vk);
-        } else {
-            fail("expected at least one KEY_RELEASED event, got none");
-        }
-    }
-
-    public static void expectKeyPressStrict(int vk, int location, int modifiers) {
-        var pressed = triggeredEvents.stream().filter(e -> e.getID() == KEY_PRESSED).toList();
-        var released = triggeredEvents.stream().filter(e -> e.getID() == KEY_RELEASED).toList();
-
-        if (pressed.size() == 1) {
-            var keyCode = pressed.get(0).getKeyCode();
-            expectTrue(keyCode == vk, "key press, actual key code: " + keyCode + ", expected: " + vk);
-
-            var keyLocation = pressed.get(0).getKeyLocation();
+            var keyLocation = pressed.get(pressed.size() - 1).getKeyLocation();
             expectTrue(keyLocation == location, "key press, actual key location: " + keyLocation + ", expected: " + location);
 
-            var keyModifiers = pressed.get(0).getModifiersEx();
+            var keyModifiers = pressed.get(pressed.size() - 1).getModifiersEx();
             expectTrue(keyModifiers == modifiers, "key press, actual key modifiers: " + keyModifiers + ", expected: " + modifiers);
         } else {
-            fail("expected exactly one KEY_PRESSED event, got " + pressed.size());
+            if (strict) {
+                fail("expected exactly one KEY_PRESSED event, got " + pressed.size());
+            } else {
+                fail("expected at least one KEY_PRESSED event, got none");
+            }
         }
 
-        if (released.size() == 1) {
+        if (released.size() == 1 || (released.size() > 1 && !strict)) {
             var keyCode = released.get(0).getKeyCode();
             expectTrue(keyCode == vk, "key release, actual key code: " + keyCode + ", expected: " + vk);
 
             var keyLocation = released.get(0).getKeyLocation();
             expectTrue(keyLocation == location, "key release, actual key location: " + keyLocation + ", expected: " + location);
 
-            var keyModifiers = released.get(0).getModifiersEx();
-            expectTrue(keyModifiers == 0, "key release, actual key modifiers: " + keyModifiers + ", expected: 0");
+            if (strict) {
+                var keyModifiers = released.get(0).getModifiersEx();
+                expectTrue(keyModifiers == 0, "key release, actual key modifiers: " + keyModifiers + ", expected: 0");
+            }
         } else {
-            fail("expected exactly one KEY_RELEASED event, got " + released.size());
+            if (strict) {
+                fail("expected exactly one KEY_RELEASED event, got " + released.size());
+            } else {
+                fail("expected at least one KEY_RELEASED event, got none");
+            }
         }
     }
 

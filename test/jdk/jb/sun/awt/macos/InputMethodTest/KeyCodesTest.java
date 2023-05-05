@@ -150,7 +150,7 @@ public class KeyCodesTest implements Runnable {
             InputMethodTest.expectTrue(getExtendedKeyCodeForChar(ch) == charKeyCode, "getExtendedKeyCodeForChar");
         }
 
-        InputMethodTest.expectKeyPressStrict(vk, location, modifiers);
+        InputMethodTest.expectKeyPress(vk, location, modifiers, true);
     }
 
     private void verify(String typed, int vk, String layout, int key) {

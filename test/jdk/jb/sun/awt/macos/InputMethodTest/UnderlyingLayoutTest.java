@@ -63,24 +63,21 @@ public class UnderlyingLayoutTest implements Runnable {
     }
 
     private void qwerty(String layout) {
-        InputMethodTest.section("Cmd " + layout);
-        InputMethodTest.layout(layout);
-        InputMethodTest.type(VK_Y, META_DOWN_MASK);
-        InputMethodTest.expressKeyPress(VK_Y);
-
-        InputMethodTest.section("Ctrl " + layout);
-        InputMethodTest.type(VK_Y, CTRL_DOWN_MASK);
-        InputMethodTest.expressKeyPress(VK_Y);
+        testImpl(layout, VK_Y);
     }
 
     private void qwertz(String layout) {
+        testImpl(layout, VK_Z);
+    }
+
+    private void testImpl(String layout, int vkY) {
         InputMethodTest.section("Cmd " + layout);
         InputMethodTest.layout(layout);
         InputMethodTest.type(VK_Y, META_DOWN_MASK);
-        InputMethodTest.expressKeyPress(VK_Z);
+        InputMethodTest.expectKeyPress(vkY, KEY_LOCATION_STANDARD, META_DOWN_MASK, false);
 
         InputMethodTest.section("Ctrl " + layout);
         InputMethodTest.type(VK_Y, CTRL_DOWN_MASK);
-        InputMethodTest.expressKeyPress(VK_Z);
+        InputMethodTest.expectKeyPress(vkY, KEY_LOCATION_STANDARD, CTRL_DOWN_MASK, false);
     }
 }
