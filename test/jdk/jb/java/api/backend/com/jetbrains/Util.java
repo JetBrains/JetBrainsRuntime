@@ -62,8 +62,9 @@ public class Util {
     public static JBRApi.ModuleRegistry init(String[] knownServices, String[] knownProxies) {
         JBR.Metadata.KNOWN_SERVICES = knownServices;
         JBR.Metadata.KNOWN_PROXIES = knownProxies;
-        JBRApi.init(MethodHandles.lookup());
-        return JBRApi.registerModule(MethodHandles.lookup(), JBR.class.getModule()::addExports);
+        JBRApi.init(MethodHandles.lookup(), "TEST");
+        JBRApi.linkModule(MethodHandles.lookup(), JBR.class.getModule()::addExports);
+        return JBRApi.registerModule("com.jetbrains.Util");
     }
 
     private static final ReflectedMethod getProxy = getMethod(JBRApi.class.getName(), "getProxy", Class.class);

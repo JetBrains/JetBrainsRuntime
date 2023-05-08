@@ -25,6 +25,8 @@
 
 package com.jetbrains.internal;
 
+import jdk.internal.loader.ClassLoaders;
+
 import java.io.Serial;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -97,8 +99,10 @@ import static java.lang.invoke.MethodHandles.Lookup;
  * user to directly create proxy object.
  */
 public class JBRApi {
+    public static final boolean ENABLED = System.getProperty("jetbrains.api.enabled", "true").equalsIgnoreCase("true");
     static final boolean VERBOSE = Boolean.getBoolean("jetbrains.api.verbose");
 
+    private static final Map<String, Lookup> moduleLookups = new HashMap<>();
     private static final Map<String, RegisteredProxyInfo> registeredProxyInfoByInterfaceName = new HashMap<>();
     private static final Map<String, RegisteredProxyInfo> registeredProxyInfoByTargetName = new HashMap<>();
     private static final ConcurrentMap<Class<?>, Proxy<?>> proxyByInterface = new ConcurrentHashMap<>();
@@ -108,12 +112,17 @@ public class JBRApi {
      */
     static Lookup outerLookup;
     /**
+     * JBR API version currently supported by this runtime
+     */
+    static String apiVersion;
+    /**
      * Known service and proxy interfaces extracted from {@link com.jetbrains.JBR.Metadata}
      */
     static Set<String> knownServices, knownProxies;
 
-    public static void init(Lookup outerLookup) {
+    public static void init(Lookup outerLookup, String apiVersion) {
         JBRApi.outerLookup = outerLookup;
+        JBRApi.apiVersion = apiVersion;
         try {
             Class<?> metadataClass = outerLookup.findClass("com.jetbrains.JBR$Metadata");
             Lookup lookup = MethodHandles.privateLookupIn(metadataClass, outerLookup);
@@ -222,11 +231,34 @@ public class JBRApi {
     }
 
     /**
-     * Called by {@linkplain com.jetbrains.bootstrap.JBRApiBootstrap#MODULES registry classes}
-     * to register a new mapping for corresponding modules.
+     * Called by {@code JBRApiModule} classes to make module usable by JBR API.
      */
-    public static ModuleRegistry registerModule(Lookup lookup, BiFunction<String, Module, Module> addExports) {
+    public static void linkModule(Lookup lookup, BiFunction<String, Module, Module> addExports) {
+        if (!JBRApi.ENABLED) throw new IllegalStateException("JBR API is disabled");
+        // Bridges are generated in the same package as JBRApiModule classes (like com.jetbrains.desktop)
+        // So we need to export this package to the API module so that proxies could call bridge methods.
         addExports.apply(lookup.lookupClass().getPackageName(), outerLookup.lookupClass().getModule());
+        moduleLookups.put(lookup.lookupClass().getName(), lookup);
+        if (VERBOSE) {
+            System.out.println("Linked JBR API module " + lookup.lookupClass().getName());
+        }
+    }
+
+    /**
+     * Creates a builder to register mapping for new JBR API module.
+     */
+    public static ModuleRegistry registerModule(String moduleClassName) {
+        if (!JBRApi.ENABLED) throw new IllegalStateException("JBR API is disabled");
+        try {
+            Class.forName(moduleClassName, true, ClassLoaders.platformClassLoader());
+        } catch (ClassNotFoundException e) {
+            if (VERBOSE) e.printStackTrace();
+        }
+        Lookup lookup = moduleLookups.remove(moduleClassName);
+        if (lookup == null) throw new NullPointerException("Lookup not found: " + moduleClassName);
+        if (VERBOSE) {
+            System.out.println("Registering JBR API module " + moduleClassName);
+        }
         return new ModuleRegistry(lookup);
     }
 
