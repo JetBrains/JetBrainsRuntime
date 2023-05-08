@@ -224,4 +224,27 @@ public:
   static void print_classloaders_stats(outputStream *st);
   static void print_dup_classes(outputStream *st);
 };
+
+class VMErrorCallback {
+  friend class VMError;
+  friend class VMErrorCallbackMark;
+
+  // Link through all callbacks active on a thread
+  VMErrorCallback* _next;
+
+  // Called by VMError reporting
+  virtual void call(outputStream* st) = 0;
+
+public:
+  VMErrorCallback() : _next(nullptr) {}
+};
+
+class VMErrorCallbackMark : public StackObj {
+  Thread* _thread;
+
+public:
+  VMErrorCallbackMark(VMErrorCallback* callback);
+  ~VMErrorCallbackMark();
+};
+
 #endif // SHARE_UTILITIES_VMERROR_HPP
