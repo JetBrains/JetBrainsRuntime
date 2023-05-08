@@ -30,7 +30,6 @@
 
 package sun.font;
 
-import com.jetbrains.desktop.FontExtensions;
 import sun.font.GlyphLayout.*;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
@@ -186,6 +185,11 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
                 : Set.of();
     }
 
+    private static String featuresToString(Map<String, Integer> features) {
+        return features.entrySet().stream().map(feature -> (feature.getKey() + "=" + feature.getValue()))
+                .collect(Collectors.joining(";"));
+    }
+
     public void layout(FontStrikeDesc desc, float[] mat, float ptSize, int slot, int slotShift,
                        int baseIndex, TextRecord tr, boolean ltrDirection, Map<String, Integer> features,
                        Point2D.Float pt, GVData data) {
@@ -198,7 +202,7 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
                 HBShaper.shape(font, strike, ptSize, mat, face,
                         tr.text, data, key.script(),
                         tr.start, tr.limit, baseIndex, pt,
-                        ltrDirection, FontExtensions.featuresToString(features),
+                        ltrDirection, featuresToString(features),
                         slot, slotShift);
             }
         } else {
@@ -207,7 +211,7 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
                 SunLayoutEngine.shape(font, strike, ptSize, mat, pFace,
                         tr.text, data, key.script(),
                         tr.start, tr.limit, baseIndex, pt,
-                        ltrDirection, FontExtensions.featuresToString(features),
+                        ltrDirection, featuresToString(features),
                         slot, slotShift);
             }
         }

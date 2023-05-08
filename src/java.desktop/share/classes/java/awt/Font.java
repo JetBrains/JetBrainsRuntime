@@ -55,10 +55,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
+import com.jetbrains.exported.JBRApi;
 import sun.awt.ComponentFactory;
 import sun.font.AttributeMap;
 import sun.font.AttributeValues;
-import sun.font.CompositeFont;
 import sun.font.CoreMetrics;
 import sun.font.CreatedFontTracker;
 import sun.font.Font2D;
@@ -284,6 +284,27 @@ public class Font implements java.io.Serializable
         public FontPeer getFontPeer(final Font font) {
             return font.getFontPeer();
         }
+
+        @Override
+        public TreeMap<String, Integer> getFeatures(Font font) {
+            TreeMap<String, Integer> res = new TreeMap<>();
+            res.putAll(font.features);
+            res.put(KERN_FEATURE, font.getAttributeValues().getKerning());
+            res.put(LIGA_FEATURE, font.getAttributeValues().getLigatures());
+            res.put(CALT_FEATURE, font.getAttributeValues().getLigatures());
+            return res;
+        }
+
+        @Override
+        public boolean isComplexRendering(Font font) {
+            return (font.values != null && (font.values.getLigatures() != 0 || font.values.getTracking() != 0 ||
+                    font.values.getBaselineTransform() != null)) || font.anyEnabledFeatures();
+        }
+
+        @Override
+        public boolean isKerning(Font font) {
+            return font.values != null && (font.values.getKerning() != 0);
+        }
     }
 
     static {
@@ -455,7 +476,6 @@ public class Font implements java.io.Serializable
      * Ordered map choose intentionally as field's type. It allows to correctly comparing two Font objects
      *
      * @serial
-     * @see #getFeatures
      * @see #deriveFont(Font, Features)
      */
     private TreeMap<String, Integer> features = new TreeMap<String, Integer>();
@@ -1651,16 +1671,6 @@ public class Font implements java.io.Serializable
         return anyEnabledFeatures() || hasLayoutAttributes;
     }
 
-    private static TreeMap<String, Integer> getFeatures(Font font) {
-        TreeMap<String, Integer> res = new TreeMap<>();
-        res.putAll(font.features);
-        res.put(KERN_FEATURE, font.getAttributeValues().getKerning());
-        res.put(LIGA_FEATURE, font.getAttributeValues().getLigatures());
-        res.put(CALT_FEATURE, font.getAttributeValues().getLigatures());
-
-        return res;
-    }
-
     /**
      * Returns a {@code Font} object from the system properties list.
      * {@code nm} is treated as the name of a system property to be
@@ -2265,10 +2275,12 @@ public class Font implements java.io.Serializable
                         font2DHandle, keepFont2DHandle, features);
     }
 
+    @JBRApi.Provided("FontExtensions.Features")
     private interface Features {
         TreeMap<String, Integer> getAsTreeMap();
     }
 
+    @JBRApi.Provides("FontExtensions#deriveFontWithFeatures")
     private static Font deriveFont(Font font, Features features) {
         return new Font(font, features.getAsTreeMap());
     }
@@ -2722,15 +2734,6 @@ public class Font implements java.io.Serializable
 
         FontDesignMetrics metrics = FontDesignMetrics.getMetrics(this, frc);
         return metrics.charsBounds(chars, beginIndex, limit - beginIndex);
-    }
-
-    private static boolean isComplexRendering(Font font) {
-        return (font.values != null && (font.values.getLigatures() != 0 || font.values.getTracking() != 0 ||
-                font.values.getBaselineTransform() != null)) || font.anyEnabledFeatures();
-    }
-
-    private static boolean isKerning(Font font) {
-        return font.values != null && (font.values.getKerning() != 0);
     }
 
     /**

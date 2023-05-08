@@ -20,3 +20,4 @@ NashornProfile.txt
 /.settings/
 /compile_commands.json
 /.cache
+/jbr-api/
