@@ -51,6 +51,7 @@ import java.util.StringTokenizer;
 import java.util.TreeMap;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 import javax.swing.plaf.FontUIResource;
 
@@ -3100,7 +3101,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
             populateFontFileNameMap(fontToFileMap, new HashMap<>(), new HashMap<>(), Locale.ENGLISH);
             for (String key : fontToFileMap.keySet()) {
                 // find maximum observable platform font's version
-                Optional<String> version = Arrays.stream(getPlatformFontDirs(true)).
+                Optional<String> version = Stream.concat(Arrays.stream(getPlatformFontDirs(true)), Stream.of("")).
                         map((path) -> (getTrueTypeVersion(path + File.separator + fontToFileMap.get(key)))).
                         max(SunFontManager::fontVersionComparator);
                 windowsSystemVersion.put(key, version.isPresent() ? version.get() : "0");
