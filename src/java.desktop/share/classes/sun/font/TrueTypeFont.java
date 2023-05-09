@@ -1242,9 +1242,11 @@ public class TrueTypeFont extends FileFont {
                     break;
 
                 case VERSION_NAME_ID:
-                    buffer.position(namePtr);
-                    buffer.get(name, 0, nameLen);
-                    version = parseVersion(makeString(name, nameLen, platformID, encodingID));
+                    if (version == null || langID == ENGLISH_LOCALE_ID) {
+                        buffer.position(namePtr);
+                        buffer.get(name, 0, nameLen);
+                        version = parseVersion(makeString(name, nameLen, platformID, encodingID));
+                    }
                     break;
 
                 case TYPOGRAPHIC_FAMILY_NAME_ID:
