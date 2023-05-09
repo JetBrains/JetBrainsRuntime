@@ -190,8 +190,8 @@ public class TrueTypeFont extends FileFont {
     private String localeFullName;
     private String typographicFamilyName;
     private String typographicSubfamilyName;
-    private String version;
-
+    private String version = "0";
+    
     private Byte supportedCharset;
 
     /*
