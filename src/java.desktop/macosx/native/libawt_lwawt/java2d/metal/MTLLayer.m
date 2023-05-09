@@ -143,11 +143,10 @@ BOOL isDisplaySyncEnabled() {
         }
 
         [commandBuf presentDrawable:mtlDrawable];
-        __block MTLLayer* layer = self;
-        [layer retain];
+        [self retain];
         [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
-            layer.nextDrawableCount--;
-            [layer release];
+            self.nextDrawableCount--;
+            [self release];
         }];
 
         [commandBuf commit];
