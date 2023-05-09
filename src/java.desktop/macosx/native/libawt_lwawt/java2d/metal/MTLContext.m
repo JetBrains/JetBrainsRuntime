@@ -185,7 +185,7 @@ extern void initSamplers(id<MTLDevice> device);
 
         _tempTransform = [[MTLTransform alloc] init];
         if (isDisplaySyncEnabled()) {
-            _layers = [[NSMutableArray alloc] init];
+            _layers = [[NSMutableSet alloc] init];
             _displayLinkCount = 0;
             CVDisplayLinkCreateWithCGDisplay(displayID, &_displayLink);
             CVDisplayLinkSetOutputCallback(_displayLink, &mtlDisplayLinkCallback, (__bridge void *) self);
