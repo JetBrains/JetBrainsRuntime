@@ -141,8 +141,8 @@ public final class CFontManager extends SunFontManager {
 
     @Override
     protected String getSystemFontVersion(TrueTypeFont bundledFont) {
-        String path = getNativeFontPath(bundledFont.getFullName());
-        return path != null ? getTrueTypeVersion(path) : "0";
+        String version = getNativeFontVersion(bundledFont.getPostscriptName());
+        return version != null ? TrueTypeFont.parseVersion(version) : "0";
     }
 
     @Override
@@ -172,12 +172,14 @@ public final class CFontManager extends SunFontManager {
 
     private native void loadNativeDirFonts(String fontPath);
     private native void loadNativeFonts();
-    native String getNativeFontPath(String fullName);
+    native String getNativeFontVersion(String fullName);
 
-    void registerFont(String fontFamilyName, String faceName) {
-        String fontName = fontFamilyName + (faceName != null ? " " + faceName : "");
+    void registerFont(String fontName, String fontFamilyName, String faceName) {
+        String lowerCaseFaceName = faceName.toLowerCase();
+        if (!(FontConfiguration.isLogicalFontStyleName(lowerCaseFaceName) || lowerCaseFaceName.equals("regular"))) {
+            fontFamilyName = fontFamilyName + " " + faceName;
+        }
         final CFont font = new CFont(fontName, fontFamilyName, faceName);
-
         registerGenericFont(font);
     }
 

@@ -1118,7 +1118,7 @@ public class TrueTypeFont extends FileFont {
         }
     }
 
-    private String parseVersion(String str) {
+    public static String parseVersion(String str) {
         // get first part sequence of digits and dots
         Matcher matcher = Pattern.compile("\\d(\\p{XDigit}|\\.)*").matcher(str);
         if (!matcher.find()) {
