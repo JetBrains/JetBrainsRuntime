@@ -175,10 +175,6 @@ public final class CFontManager extends SunFontManager {
     native String getNativeFontVersion(String fullName);
 
     void registerFont(String fontName, String fontFamilyName, String faceName) {
-        String lowerCaseFaceName = faceName.toLowerCase();
-        if (!(FontConfiguration.isLogicalFontStyleName(lowerCaseFaceName) || lowerCaseFaceName.equals("regular"))) {
-            fontFamilyName = fontFamilyName + " " + faceName;
-        }
         final CFont font = new CFont(fontName, fontFamilyName, faceName);
         registerGenericFont(font);
     }
