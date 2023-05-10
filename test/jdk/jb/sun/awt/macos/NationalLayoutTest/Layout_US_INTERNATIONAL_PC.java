@@ -27,6 +27,7 @@
  * @requires (jdk.version.major >= 8 & os.family == "mac")
  * @modules java.desktop/sun.lwawt.macosx
  * @run main NationalLayoutTest US_INTERNATIONAL_PC
+ * @run main/othervm -Dcom.sun.awt.reportDeadKeysAsNormal=true NationalLayoutTest nodead US_INTERNATIONAL_PC
  */
 
 /*

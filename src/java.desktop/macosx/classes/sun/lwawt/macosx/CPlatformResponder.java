@@ -233,7 +233,7 @@ final class CPlatformResponder {
                 }
             }
 
-            int[] in = new int[] {keyCode, KeyEventProcessing.useNationalLayouts ? 1 : 0};
+            int[] in = new int[] {keyCode, KeyEventProcessing.useNationalLayouts ? 1 : 0, KeyEventProcessing.reportDeadKeysAsNormal ? 1 : 0};
             int[] out = new int[2]; // [jkeyCode, jkeyLocation]
 
             NSEvent.nsToJavaKeyInfo(in, out);
