@@ -1285,7 +1285,7 @@ public class TrueTypeFont extends FileFont {
                 typographicSubfamilyName = subfamilyName;
             }
             if (version == null) {
-                version = "1";
+                version = "0";
             }
             if (postScriptName == null) {
                 postScriptName = fullName;
