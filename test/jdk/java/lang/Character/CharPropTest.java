@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,11 @@ public class CharPropTest {
     private static int diffs = 0;
     private static int rangeStart = 0x0000;
     private static boolean isRange = false;
+    // Japanese Era Square character code point and GB18030-2022
+    // code points past Unicode 10.0 are not valid identifiers for Java SE 11
+    private static final int JAPANESE_ERA_CODEPOINT = 0x32FF;
+    private static final int GB18030_2022_CODEPOINT_START = 0x9FEB;
+    private static final int GB18030_2022_CODEPOINT_END = 0x9FEF;
 
     public static void main(String[] args) throws Exception {
         Path path = Paths.get(System.getProperty("test.src", "."),
@@ -168,16 +173,38 @@ public class CharPropTest {
     }
 
     private static void isJavaIdentifierStartTest(int codePoint, String category) {
+        // Since Character.isJavaIdentifierPart(int) strictly conforms to
+        // character information from version 10.0 of the Unicode Standard,
+        // check if code point is either a Japanese Era Square character
+        // code point or one of the GB18030-2022 code points > Unicode 10.0.
+        // If the code point is either a Japanese Era Square character code
+        // point or one of the GB18030-2022 code points > Unicode 10.0,
+        // value of variable "expected" is considered false.
+        boolean expected = false;
+        if (codePoint != JAPANESE_ERA_CODEPOINT &&
+                !(codePoint >= GB18030_2022_CODEPOINT_START && codePoint <= GB18030_2022_CODEPOINT_END)) {
+            expected = isJavaIdentifierStart(category);
+        }
         boolean actual = Character.isJavaIdentifierStart(codePoint);
-        boolean expected = isJavaIdentifierStart(category);
         if (actual != expected) {
             printDiff(codePoint, "isJavaIdentifierStart", actual, expected);
         }
     }
 
     private static void isJavaIdentifierPartTest(int codePoint, String category) {
+        // Since Character.isJavaIdentifierPart(int) strictly conforms to
+        // character information from version 10.0 of the Unicode Standard,
+        // check if code point is either a Japanese Era Square character
+        // code point or one of the GB18030-2022 code points > Unicode 10.0.
+        // If the code point is either a Japanese Era Square character code
+        // point or one of the GB18030-2022 code points > Unicode 10.0,
+        // value of variable "expected" is considered false.
+        boolean expected = false;
+        if (codePoint != JAPANESE_ERA_CODEPOINT &&
+                !(codePoint >= GB18030_2022_CODEPOINT_START && codePoint <= GB18030_2022_CODEPOINT_END)) {
+            expected = isJavaIdentifierPart(codePoint, category);
+        }
         boolean actual = Character.isJavaIdentifierPart(codePoint);
-        boolean expected = isJavaIdentifierPart(codePoint, category);
         if (actual != expected) {
             printDiff(codePoint, "isJavaIdentifierPart", actual, expected);
         }

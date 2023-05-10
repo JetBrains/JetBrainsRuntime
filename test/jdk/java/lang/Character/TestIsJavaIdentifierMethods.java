@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,8 +30,11 @@
 
 public class TestIsJavaIdentifierMethods {
 
-    // Japanese Era Square character code point not present in Unicode 10.0
+    // Japanese Era Square character code point and GB18030-2022
+    // code points past Unicode 10.0 are not valid identifiers for Java SE 11
     private static final int JAPANESE_ERA_CODEPOINT = 0x32FF;
+    private static final int GB18030_2022_CODEPOINT_START = 0x9FEB;
+    private static final int GB18030_2022_CODEPOINT_END = 0x9FEF;
 
     public static void main(String[] args) {
         testIsJavaIdentifierPart_int();
@@ -65,10 +68,13 @@ public class TestIsJavaIdentifierMethods {
             boolean expected = false;
             // Since Character.isJavaIdentifierPart(int) strictly conforms to
             // character information from version 10.0 of the Unicode Standard,
-            // check if code point is "Japanese Era Square character code
-            // point". If the code point is "Japanese Era Square character code
-            // point", value of variable "expected" is considered false.
-            if (cp != JAPANESE_ERA_CODEPOINT) {
+            // check if code point is either a Japanese Era Square character
+            // code point or one of the GB18030-2022 code points > Unicode 10.0.
+            // If the code point is either a Japanese Era Square character code
+            // point or one of the GB18030-2022 code points > Unicode 10.0,
+            // value of variable "expected" is considered false.
+            if (cp != JAPANESE_ERA_CODEPOINT &&
+                    !(cp >= GB18030_2022_CODEPOINT_START && cp <= GB18030_2022_CODEPOINT_END)) {
                 byte type = (byte) Character.getType(cp);
                 expected = Character.isLetter(cp)
                         || type == Character.CURRENCY_SYMBOL
@@ -110,10 +116,13 @@ public class TestIsJavaIdentifierMethods {
             boolean expected = false;
             // Since Character.isJavaIdentifierPart(char) strictly conforms to
             // character information from version 10.0 of the Unicode Standard,
-            // check if code point is "Japanese Era Square character code
-            // point". If the code point is "Japanese Era Square character code
-            // point", value of variable "expected" is considered false.
-            if (i != JAPANESE_ERA_CODEPOINT) {
+            // check if code point is either a Japanese Era Square character
+            // code point or one of the GB18030-2022 code points > Unicode 10.0.
+            // If the code point is either a Japanese Era Square character code
+            // point or one of the GB18030-2022 code points > Unicode 10.0,
+            // value of variable "expected" is considered false.
+            if (i != JAPANESE_ERA_CODEPOINT &&
+                    !(i >= GB18030_2022_CODEPOINT_START && i <= GB18030_2022_CODEPOINT_END)) {
                 byte type = (byte) Character.getType(ch);
                 expected = Character.isLetter(ch)
                         || type == Character.CURRENCY_SYMBOL
@@ -150,10 +159,13 @@ public class TestIsJavaIdentifierMethods {
             boolean expected = false;
             // Since Character.isJavaIdentifierStart(int) strictly conforms to
             // character information from version 10.0 of the Unicode Standard,
-            // check if code point is "Japanese Era Square character code
-            // point". If the code point is "Japanese Era Square character code
-            // point", value of variable "expected" is considered false.
-            if (cp != JAPANESE_ERA_CODEPOINT) {
+            // check if code point is either a Japanese Era Square character
+            // code point or one of the GB18030-2022 code points > Unicode 10.0.
+            // If the code point is either a Japanese Era Square character code
+            // point or one of the GB18030-2022 code points > Unicode 10.0,
+            // value of variable "expected" is considered false.
+            if (cp != JAPANESE_ERA_CODEPOINT &&
+                    !(cp >= GB18030_2022_CODEPOINT_START && cp <= GB18030_2022_CODEPOINT_END)) {
                 byte type = (byte) Character.getType(cp);
                 expected = Character.isLetter(cp)
                         || type == Character.LETTER_NUMBER
@@ -187,10 +199,13 @@ public class TestIsJavaIdentifierMethods {
             boolean expected = false;
             // Since Character.isJavaIdentifierStart(char) strictly conforms to
             // character information from version 10.0 of the Unicode Standard,
-            // check if code point is "Japanese Era Square character code
-            // point". If the code point is "Japanese Era Square character code
-            // point", value of variable "expected" is considered false.
-            if (i != JAPANESE_ERA_CODEPOINT) {
+            // check if code point is either a Japanese Era Square character
+            // code point or one of the GB18030-2022 code points > Unicode 10.0.
+            // If the code point is either a Japanese Era Square character code
+            // point or one of the GB18030-2022 code points > Unicode 10.0,
+            // value of variable "expected" is considered false.
+            if (i != JAPANESE_ERA_CODEPOINT &&
+                    !(i >= GB18030_2022_CODEPOINT_START && i <= GB18030_2022_CODEPOINT_END)) {
                 byte type = (byte) Character.getType(ch);
                 expected = Character.isLetter(ch)
                         || type == Character.LETTER_NUMBER
@@ -224,10 +239,13 @@ public class TestIsJavaIdentifierMethods {
             boolean expected = false;
             // Since Character.isJavaLetter(char) strictly conforms to
             // character information from version 10.0 of the Unicode Standard,
-            // check if code point is "Japanese Era Square character code
-            // point". If the code point is "Japanese Era Square character code
-            // point", value of variable "expected" is considered false.
-            if (i != JAPANESE_ERA_CODEPOINT) {
+            // check if code point is either a Japanese Era Square character
+            // code point or one of the GB18030-2022 code points > Unicode 10.0.
+            // If the code point is either a Japanese Era Square character code
+            // point or one of the GB18030-2022 code points > Unicode 10.0,
+            // value of variable "expected" is considered false.
+            if (i != JAPANESE_ERA_CODEPOINT &&
+                    !(i >= GB18030_2022_CODEPOINT_START && i <= GB18030_2022_CODEPOINT_END)) {
                 byte type = (byte) Character.getType(ch);
                 expected = Character.isLetter(ch)
                         || type == Character.LETTER_NUMBER
@@ -265,10 +283,13 @@ public class TestIsJavaIdentifierMethods {
             boolean expected = false;
             // Since Character.isJavaLetterOrDigit(char) strictly conforms to
             // character information from version 10.0 of the Unicode Standard,
-            // check if code point is "Japanese Era Square character code
-            // point". If the code point is "Japanese Era Square character code
-            // point", value of variable "expected" is considered false.
-            if (i != JAPANESE_ERA_CODEPOINT) {
+            // check if code point is either a Japanese Era Square character
+            // code point or one of the GB18030-2022 code points > Unicode 10.0.
+            // If the code point is either a Japanese Era Square character code
+            // point or one of the GB18030-2022 code points > Unicode 10.0,
+            // value of variable "expected" is considered false.
+            if (i != JAPANESE_ERA_CODEPOINT &&
+                    !(i >= GB18030_2022_CODEPOINT_START && i <= GB18030_2022_CODEPOINT_END)) {
                 byte type = (byte) Character.getType(ch);
                 expected = Character.isLetter(ch)
                         || type == Character.CURRENCY_SYMBOL
