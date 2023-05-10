@@ -57,7 +57,7 @@ import jdk.internal.HotSpotIntrinsicCandidate;
  * of the Unicode Standard, with two extensions. First, the Java SE 11 Platform
  * allows an implementation of class {@code Character} to use the code points
  * in the range of {@code U+9FEB} to {@code U+9FEF} from the Unicode Standard
- * version 11.0, in order for the class to allow the "Implementation Level 1"
+ * version 11.0, in order for the class to allow the "Implementation Level 2"
  * of the Chinese GB18030-2022 standard. Second, the Java SE 11 Platform
  * allows an implementation of class {@code Character} to use the Japanese Era
  * code point, {@code U+32FF}, from the Unicode Standard version 12.1.
