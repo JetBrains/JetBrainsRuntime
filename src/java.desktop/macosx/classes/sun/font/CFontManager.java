@@ -172,7 +172,7 @@ public final class CFontManager extends SunFontManager {
 
     private native void loadNativeDirFonts(String fontPath);
     private native void loadNativeFonts();
-    native String getNativeFontVersion(String fullName);
+    native String getNativeFontVersion(String psName);
 
     void registerFont(String fontName, String fontFamilyName, String faceName) {
         final CFont font = new CFont(fontName, fontFamilyName, faceName);

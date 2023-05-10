@@ -631,7 +631,7 @@ public abstract class FontConfiguration {
     /**
      * Checks whether the given style name is a valid logical font style name.
      */
-    public static boolean isLogicalFontStyleName(String styleName) {
+    private static boolean isLogicalFontStyleName(String styleName) {
         for (int i = 0; i < styleNames.length; i++) {
             if (styleName.equals(styleNames[i])) {
                 return true;
