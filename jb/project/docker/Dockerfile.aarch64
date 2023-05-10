@@ -5,44 +5,42 @@
 # image creation reproducible.
 # NB: this also means there may be no security-related fixes there, need to
 # move the version to the next manually.
-FROM arm64v8/ubuntu:focal-20211006
+
+# jetbrains/runtime:jbr17env_aarch64
+FROM arm64v8/centos:7
 
 # Install the necessary build tools
-RUN export DEBIAN_FRONTEND=noninteractive \
-    export DEBCONF_NONINTERACTIVE_SEEN=true && \
-    echo 'tzdata tzdata/Areas select Etc' | debconf-set-selections; \
-    echo 'tzdata tzdata/Zones/Etc select UTC' | debconf-set-selections; \
-    apt-get update -qy && \
-    apt-get install -qy \
-        autoconf \
-        build-essential \
-        bzip2 \
-        file \
-        g++-10=10.3.0-1ubuntu1~20.04 \
-        gcc-10=10.3.0-1ubuntu1~20.04 \
-        git \
-        libasound2-dev \
-        libcups2-dev \
-        libfontconfig1-dev \
-        libx11-dev \
-        libxext-dev \
-        libxrandr-dev \
-        libxrender-dev \
-        libxt-dev \
-        libxtst-dev \
-        make \
-        rsync \
-        tar \
-        unzip \
-        zip && \
-   update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slave /usr/bin/g++ g++ /usr/bin/g++-10 && \
-   apt-get clean -qy && \
-   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN yum -y update; \
+    yum -y install centos-release-scl; \
+    yum -y install devtoolset-10-10.1-0.el7; \
+    yum -y install \
+        alsa-lib-devel-1.1.8-1.el7.aarch64 \
+        autoconf-2.69-11.el7.noarch \
+        automake-1.13.4-3.el7.noarch \
+        bzip2-1.0.6-13.el7.aarch64 \
+        cups-devel-1.6.3-51.el7.aarch64 \
+        file-5.11-37.el7.aarch64 \
+        fontconfig-devel-2.13.0-4.3.el7.aarch64 \
+        freetype-devel-2.8-14.el7_9.1.aarch64 \
+        giflib-devel-4.1.6-9.el7.aarch64 \
+        git-1.8.3.1-24.el7_9.aarch64 \
+        libtool-2.4.2-22.el7_3.aarch64 \
+        libXi-devel-1.7.9-1.el7.aarch64 \
+        libXrandr-devel-1.5.1-2.el7.aarch64 \
+        libXrender-devel-0.9.10-1.el7.aarch64 \
+        libXt-devel-1.1.5-3.el7.aarch64 \
+        libXtst-devel-1.2.3-1.el7.aarch64 \
+        make-3.82-24.el7.aarch64 \
+        rsync-3.1.2-12.el7_9.aarch64 \
+        tar-1.26-35.el7.aarch64 \
+        unzip-6.0-24.el7_9.aarch64 \
+        wayland-devel-1.15.0-1.el7 \
+        zip-3.0-11.el7.aarch64; \
+   yum -y clean all
 
-# Set up boot JDK for building
-COPY boot_jdk.tar.gz /jdk17/
-RUN cd /jdk17 && tar --strip-components=1 -xzf boot_jdk.tar.gz && rm /jdk17/boot_jdk.tar.gz
-ENV BOOT_JDK=/jdk17
+ENV PATH="/opt/rh/devtoolset-10/root/usr/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/opt/rh/devtoolset-10/root/usr/lib64:/opt/rh/devtoolset-10/root/usr/lib:/opt/rh/devtoolset-10/root/usr/lib64/dyninst:/opt/rh/devtoolset-10/root/usr/lib/dyninst:/opt/rh/devtoolset-10/root/usr/lib64:/opt/rh/devtoolset-10/root/usr/lib"
+ENV PKG_CONFIG_PATH="/opt/rh/devtoolset-10/root/usr/lib64/pkgconfig"
 
 RUN git config --global user.email "teamcity@jetbrains.com" && \
     git config --global user.name "builduser"
