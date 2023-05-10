@@ -190,8 +190,9 @@ public class TrueTypeFont extends FileFont {
     private String localeFullName;
     private String typographicFamilyName;
     private String typographicSubfamilyName;
-    private String version = "0";
-    
+    private String version;
+    private String postScriptName;
+
     private Byte supportedCharset;
 
     /*
@@ -1249,6 +1250,14 @@ public class TrueTypeFont extends FileFont {
                     }
                     break;
 
+                case POSTSCRIPT_NAME_ID:
+                    if (postScriptName == null || langID == ENGLISH_LOCALE_ID) {
+                        buffer.position(namePtr);
+                        buffer.get(name, 0, nameLen);
+                        postScriptName = makeString(name, nameLen, platformID, encodingID);
+                    }
+                    break;
+
                 case TYPOGRAPHIC_FAMILY_NAME_ID:
                     if (typographicFamilyName == null || langID == ENGLISH_LOCALE_ID) {
                         buffer.position(namePtr);
@@ -1274,6 +1283,12 @@ public class TrueTypeFont extends FileFont {
             }
             if (typographicSubfamilyName == null) {
                 typographicSubfamilyName = subfamilyName;
+            }
+            if (version == null) {
+                version = "1";
+            }
+            if (postScriptName == null) {
+                postScriptName = fullName;
             }
         }
     }
@@ -1347,12 +1362,7 @@ public class TrueTypeFont extends FileFont {
      */
     @Override
     public String getPostscriptName() {
-        String name = lookupName(ENGLISH_LOCALE_ID, POSTSCRIPT_NAME_ID);
-        if (name == null) {
-            return fullName;
-        } else {
-            return name;
-        }
+        return postScriptName;
     }
 
     @Override
