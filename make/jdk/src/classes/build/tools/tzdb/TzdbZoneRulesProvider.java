@@ -33,7 +33,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.time.*;
 import java.time.Year;
 import java.time.chrono.IsoChronology;
@@ -119,18 +119,18 @@ class TzdbZoneRulesProvider {
     /**
      * Zone region to rules mapping
      */
-    private final Map<String, Object> zones = new ConcurrentHashMap<>();
+    private final Map<String, Object> zones = new ConcurrentSkipListMap<>();
 
     /**
      * compatibility list
      */
-    private static HashSet<String> excludedZones;
+    private static Set<String> excludedZones;
     static {
         // (1) exclude EST, HST and MST. They are supported
         //     via the short-id mapping
         // (2) remove UTC and GMT
         // (3) remove ROC, which is not supported in j.u.tz
-        excludedZones = new HashSet<>(10);
+        excludedZones = new TreeSet<>();
         excludedZones.add("EST");
         excludedZones.add("HST");
         excludedZones.add("MST");
@@ -139,8 +139,8 @@ class TzdbZoneRulesProvider {
         excludedZones.add("ROC");
     }
 
-    private Map<String, String> links = new HashMap<>(150);
-    private Map<String, List<RuleLine>> rules = new HashMap<>(500);
+    private Map<String, String> links = new TreeMap<>();
+    private Map<String, List<RuleLine>> rules = new TreeMap<>();
 
     private void load(List<Path> files) throws IOException {
 

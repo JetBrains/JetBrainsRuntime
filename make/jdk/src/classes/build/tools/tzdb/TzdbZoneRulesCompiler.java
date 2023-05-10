@@ -65,8 +65,6 @@ import java.nio.file.Paths;
 import java.text.ParsePosition;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -76,6 +74,7 @@ import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * A compiler that reads a set of TZDB time-zone files and builds a single
@@ -256,8 +255,10 @@ public final class TzdbZoneRulesCompiler {
             for (String regionId : regionArray) {
                 out.writeUTF(regionId);
             }
-            // rules  -- hashset -> remove the dup
-            List<ZoneRules> rulesList = new ArrayList<>(new HashSet<>(builtZones.values()));
+            // rules  -- remove the dup
+            List<ZoneRules> rulesList = builtZones.values().stream()
+                .distinct()
+                .collect(Collectors.toList());
             out.writeShort(rulesList.size());
             ByteArrayOutputStream baos = new ByteArrayOutputStream(1024);
             for (ZoneRules rules : rulesList) {
