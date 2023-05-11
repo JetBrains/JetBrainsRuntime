@@ -209,6 +209,7 @@ class Universe: AllStatic {
 
  public:
   static void calculate_verify_data(HeapWord* low_boundary, HeapWord* high_boundary) PRODUCT_RETURN;
+  static void set_verify_data(uintptr_t mask, uintptr_t bits) PRODUCT_RETURN;
 
   // Advanced class redefinition. FIXME: review?
   static bool is_redefining_gc_run()               { return _is_redefining_gc_run; }
