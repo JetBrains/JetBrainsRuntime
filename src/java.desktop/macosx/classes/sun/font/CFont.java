@@ -31,7 +31,6 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.GeneralPath;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
-import java.util.Locale;
 
 // Right now this class is final to avoid a problem with native code.
 // For some reason the JNI IsInstanceOf was not working correctly
@@ -88,7 +87,6 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
                                                 final int style);
     private static native void disposeNativeFont(final long nativeFontPtr);
 
-    private String typographicFamilyName;
     private String faceName;
     private boolean isFakeItalic;
     private String nativeFontName;
@@ -161,11 +159,10 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
     public CFont(String name, String inFamilyName, String faceName) {
         handle = new Font2DHandle(this);
         fullName = name;
-        typographicFamilyName = inFamilyName;
+        familyName = inFamilyName;
         nativeFontName = fullName;
         this.faceName = faceName;
         setStyle();
-        familyName = inFamilyName + (!super.getTypographicSubfamilyName().equals(faceName) ? " " + faceName : "");
     }
 
     /* Called from CFontManager too */
@@ -173,7 +170,6 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
         handle = new Font2DHandle(this);
         fullName = logicalFamilyName;
         familyName = logicalFamilyName;
-        typographicFamilyName = logicalFamilyName;
         nativeFontName = other.nativeFontName;
         style = other.style;
         isFakeItalic = other.isFakeItalic;
@@ -246,11 +242,6 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
 
     String getNativeFontName() {
         return nativeFontName;
-    }
-
-    @Override
-    public String getTypographicFamilyName() {
-        return typographicFamilyName;
     }
 
     @Override

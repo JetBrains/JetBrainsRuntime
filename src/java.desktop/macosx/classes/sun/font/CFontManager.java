@@ -175,7 +175,8 @@ public final class CFontManager extends SunFontManager {
     native String getNativeFontVersion(String psName);
 
     void registerFont(String fontName, String fontFamilyName, String faceName) {
-        final CFont font = new CFont(fontName, fontFamilyName, faceName);
+        // Use different family for specific font faces
+        final CFont font = new CFont(fontName, jreFamilyMap.getOrDefault(fontName, fontFamilyName), faceName);
         registerGenericFont(font);
     }
 

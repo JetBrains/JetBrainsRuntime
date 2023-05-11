@@ -193,6 +193,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     boolean loadedAllFonts = false;
     boolean loadedAllFontFiles = false;
     private HashSet<String> jreBundledFontFiles = new HashSet<>();
+    HashMap<String,String> jreFamilyMap = new HashMap<>();
     String[] jreOtherFontFiles;
     boolean noOtherJREFontFiles = false; // initial assumption.
 
@@ -281,6 +282,9 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         String[] files = AccessController.doPrivileged((PrivilegedAction<String[]>) () ->
                         new File(jreFontDirName).list(getTrueTypeFilter()));
         Collections.addAll(jreBundledFontFiles, files);
+
+        jreFamilyMap.put("Roboto-Light", "Roboto Light");
+        jreFamilyMap.put("Roboto-Thin", "Roboto Thin");
     }
 
     static {
