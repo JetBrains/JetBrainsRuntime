@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# @test
+# @summary check_glibc.sh checks readability verifies that a Linux shared
+#          library has no dependency on symbols from glibc version higher than 2.17
+# @run shell check_glibc.sh
+
 set -euo pipefail
 
 test_jdk=$1
