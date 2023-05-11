@@ -1,0 +1,36 @@
+# jetbrains/runtime:jbr17env_x86_64
+FROM centos:7
+RUN yum -y install centos-release-scl; \
+    yum -y install devtoolset-10-10.1-0.el7; \
+    yum -y install \
+        alsa-lib-devel-1.1.8-1.el7 \
+        autoconf-2.69-11.el7 \
+        automake-1.13.4-3.el7 \
+        bzip2-1.0.6-13.el7 \
+        cups-devel-1.6.3-51.el7 \
+        file-5.11-37.el7 \
+        fontconfig-devel-2.13.0-4.3.el7 \
+        freetype-devel-2.8-14.el7_9.1 \
+        giflib-devel-4.1.6-9.el7 \
+        git-1.8.3.1-24.el7_9 \
+        libtool-2.4.2-22.el7_3 \
+        libXi-devel-1.7.9-1.el7 \
+        libXrandr-devel-1.5.1-2.el7 \
+        libXrender-devel-0.9.10-1.el7 \
+        libXt-devel-1.1.5-3.el7 \
+        libXtst-devel-1.2.3-1.el7 \
+        make-3.82-24.el7 \
+        tar-1.26-35.el7 \
+        unzip-6.0-24.el7_9 \
+        wayland-devel-1.15.0-1.el7 \
+        wget-1.14-18.el7_6.1 \
+        which-2.20-7.el7 \
+        zip-3.0-11.el7
+
+RUN mkdir .git && \
+    git config user.email "teamcity@jetbrains.com" && \
+    git config user.name "builduser"
+
+ENV LD_LIBRARY_PATH="/opt/rh/devtoolset-10/root/usr/lib64:/opt/rh/devtoolset-10/root/usr/lib:/opt/rh/devtoolset-10/root/usr/lib64/dyninst:/opt/rh/devtoolset-10/root/usr/lib/dyninst:/opt/rh/devtoolset-10/root/usr/lib64:/opt/rh/devtoolset-10/root/usr/lib"
+ENV PATH="/opt/rh/devtoolset-10/root/usr/bin::${PATH}"
+ENV PKG_CONFIG_PATH="/opt/rh/devtoolset-10/root/usr/lib64/pkgconfig"
