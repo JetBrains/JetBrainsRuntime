@@ -31,13 +31,17 @@ import com.jetbrains.internal.JBRApi;
  */
 public class JBRApiRegistry {
 
-	public static final String API_VERSION = "0.0.0";
+	/**
+	 * Version of JBR API implemented by current runtime.
+	 */
+	public static final String SUPPORTED_VERSION = "0.0.0";
 
     public static void registerModules() {
 
         JBRApi.registerModule("com.jetbrains.base.JBRApiModule")
                 .service("com.jetbrains.JBR$ServiceApi")
                     .withStatic("getService", "getService", "com.jetbrains.internal.JBRApi")
+                    .withStatic("getImplVersion", "getImplVersion", "com.jetbrains.internal.JBRApi")
                 .service("com.jetbrains.Jstack")
                     .withStatic("includeInfoFrom", "$$jb$additionalInfoForJstack", "java.lang.Throwable")
                 .service("com.jetbrains.Test", "com.jetbrains.base.JBRApiModule"); // TODO

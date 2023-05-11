@@ -50,7 +50,7 @@ public class JBRApiBootstrap {
                 throw new IllegalArgumentException("Lookup must be full-privileged from the com.jetbrains package: " +
                         outerLookup.lookupClass().getName());
             }
-            JBRApi.init(outerLookup, JBRApiRegistry.API_VERSION);
+            JBRApi.init(outerLookup, JBRApiRegistry.SUPPORTED_VERSION);
             JBRApiRegistry.registerModules();
             return JBRApi.getService(apiInterface);
         } catch(ClassNotFoundException | IllegalAccessException e) {

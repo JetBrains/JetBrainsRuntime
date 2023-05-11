@@ -235,22 +235,10 @@ class ProxyGenerator {
     private void generateMethods() {
         for (Method method : info.interFace.getMethods()) {
             int mod = method.getModifiers();
-            if (!Modifier.isAbstract(mod)) continue;
+            if (Modifier.isFinal(mod)) continue;
             MethodMapping methodMapping = getTargetMethodMapping(method);
 
             Exception e1 = null;
-            if (info.target != null) {
-                try {
-                    MethodHandle handle = info.target.findVirtual(
-                            info.target.lookupClass(), method.getName(), methodMapping.type());
-                    generateMethod(method, handle, methodMapping, true);
-                    continue;
-                } catch (NoSuchMethodException | IllegalAccessException e) {
-                    e1 = e;
-                }
-            }
-
-            Exception e2 = null;
             ProxyInfo.StaticMethodMapping mapping = info.staticMethods.get(method.getName());
             if (mapping != null) {
                 try {
@@ -259,9 +247,23 @@ class ProxyGenerator {
                     generateMethod(method, staticHandle, methodMapping, false);
                     continue;
                 } catch (NoSuchMethodException | IllegalAccessException e) {
+                    e1 = e;
+                }
+            }
+
+            Exception e2 = null;
+            if (info.target != null) {
+                try {
+                    MethodHandle handle = info.target.findVirtual(
+                            info.target.lookupClass(), method.getName(), methodMapping.type());
+                    generateMethod(method, handle, methodMapping, true);
+                    continue;
+                } catch (NoSuchMethodException | IllegalAccessException e) {
                     e2 = e;
                 }
             }
+
+            if (!Modifier.isAbstract(mod)) continue;
 
             if (e1 != null) exceptions.add(e1);
             if (e2 != null) exceptions.add(e2);

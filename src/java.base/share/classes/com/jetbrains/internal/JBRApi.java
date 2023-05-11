@@ -114,15 +114,15 @@ public class JBRApi {
     /**
      * JBR API version currently supported by this runtime
      */
-    static String apiVersion;
+    static String implVersion;
     /**
      * Known service and proxy interfaces extracted from {@link com.jetbrains.JBR.Metadata}
      */
     static Set<String> knownServices, knownProxies;
 
-    public static void init(Lookup outerLookup, String apiVersion) {
+    public static void init(Lookup outerLookup, String implVersion) {
         JBRApi.outerLookup = outerLookup;
-        JBRApi.apiVersion = apiVersion;
+        JBRApi.implVersion = implVersion;
         try {
             Class<?> metadataClass = outerLookup.findClass("com.jetbrains.JBR$Metadata");
             Lookup lookup = MethodHandles.privateLookupIn(metadataClass, outerLookup);
@@ -138,6 +138,13 @@ public class JBRApi {
         if (VERBOSE) {
             System.out.println("JBR API init\nKNOWN_SERVICES = " + knownServices + "\nKNOWN_PROXIES = " + knownProxies);
         }
+    }
+
+    /**
+     * @return JBR API version supported by current implementation.
+     */
+    public static String getImplVersion() {
+        return implVersion;
     }
 
     /**
