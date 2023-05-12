@@ -104,7 +104,7 @@ public class VerifyDependencies {
         }
     }
 
-    private static void findInDirectory(String directoryPath) throws IOException {
+    private static void findInDirectory(String directoryPath, bool findLibs) throws IOException {
         String libPattern = ".so";
 
         File directory = new File(directoryPath);
@@ -116,7 +116,7 @@ public class VerifyDependencies {
 
         FilenameFilter filter = new FilenameFilter() {
             public boolean accept(File dir, String name) {
-                return dir.getAbsolutePath().lastIndexOf("lib") != -1 ? name.endsWith(libPattern) : true;
+                return findLibs ? name.endsWith(libPattern) : true;
             }
         };
 
@@ -125,7 +125,7 @@ public class VerifyDependencies {
 
     public static void main(String[] args) throws IOException {
         String javaHome = System.getProperty("java.home");
-        findInDirectory(javaHome + "/bin");
-        findInDirectory(javaHome + "/lib");
+        findInDirectory(javaHome + "/bin", false);
+        findInDirectory(javaHome + "/lib", true);
     }
 }
