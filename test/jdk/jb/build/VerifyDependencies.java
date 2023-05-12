@@ -103,7 +103,7 @@ public class VerifyDependencies {
         }
     }
 
-    private static void findInDirectory(String directoryPath, bool findLibs) throws IOException {
+    private static void findInDirectory(String directoryPath, boolean findLibs) throws IOException {
         String libPattern = ".so";
 
         File directory = new File(directoryPath);
