@@ -57,6 +57,8 @@ import jdk.test.lib.process.ProcessTools;
 
 public class TimeoutInErrorHandlingTest {
 
+    // 16 seconds for hs_err generation timeout = 4 seconds per step timeout
+    public static final int ERROR_LOG_TIMEOUT = 16;
 
     public static void main(String[] args) throws Exception {
 
