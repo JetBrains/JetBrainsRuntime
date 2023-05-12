@@ -92,7 +92,6 @@ public class VerifyDependencies {
         if (files.length == 0) {
             return;
         } else {
-            //System.out.println("Files found with pattern " + filter.pattern() + " in " + directory.getAbsolutePath() + ":");
             for (File file : files) {
                 System.out.println(file.getAbsolutePath());
                 verifyLibrary(file.getAbsolutePath());
