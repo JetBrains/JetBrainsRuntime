@@ -80,6 +80,7 @@
 #include "runtime/timer.hpp"
 #include "runtime/vmThread.hpp"
 #include "services/memoryService.hpp"
+#include "services/memTracker.hpp"
 #include "services/runtimeService.hpp"
 #include "utilities/align.hpp"
 #include "utilities/stack.inline.hpp"
@@ -5655,6 +5656,9 @@ bool CMSBitMap::allocate(MemRegion mr) {
     log_warning(gc)("CMS bit map backing store failure");
     return false;
   }
+
+  // Record NMT memory type
+  MemTracker::record_virtual_memory_type(brs.base(), mtGC);
   assert(_virtual_space.committed_size() == brs.size(),
          "didn't reserve backing store for all of CMS bit map?");
   assert(_virtual_space.committed_size() << (_shifter + LogBitsPerByte) >=
@@ -5743,6 +5747,9 @@ bool CMSMarkStack::allocate(size_t size) {
     log_warning(gc)("CMSMarkStack backing store failure");
     return false;
   }
+
+  // Record NMT memory type
+  MemTracker::record_virtual_memory_type(rs.base(), mtGC);
   assert(_virtual_space.committed_size() == rs.size(),
          "didn't reserve backing store for all of CMS stack?");
   _base = (oop*)(_virtual_space.low());
