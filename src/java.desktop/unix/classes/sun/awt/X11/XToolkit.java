@@ -2957,6 +2957,16 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         return isXWayland;
     }
 
+    /**
+     * Checks if the window manager supports _NET_WM_MOVERESIZE protocol.
+     *
+     * @return {@code true} if _NET_WM_MOVERESIZE is supported by the
+     * window manager and false otherwise.
+     */
+    boolean isWindowMoveSupported() {
+        return XWM.isWMMoveResizeSupported();
+    }
+
     @SuppressWarnings("removal")
     private static final boolean useCachedInsets = Boolean.parseBoolean(AccessController.doPrivileged(
             new GetPropertyAction("x11.cache.screen.insets", "true")));
