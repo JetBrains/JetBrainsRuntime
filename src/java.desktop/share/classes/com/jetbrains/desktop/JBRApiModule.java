@@ -61,6 +61,8 @@ public class JBRApiModule {
                     .withStatic("getSubpixelResolution", "getSubpixelResolution", "sun.font.FontUtilities")
                     .withStatic("deriveFontWithFeatures", "deriveFont", "java.awt.Font")
                     .withStatic("getFeaturesAsString", "getFeaturesAsString", "com.jetbrains.desktop.FontExtensions")
-                .clientProxy("java.awt.Font$Features", "com.jetbrains.FontExtensions$Features");
+                .clientProxy("java.awt.Font$Features", "com.jetbrains.FontExtensions$Features")
+                .service("com.jetbrains.WindowMove", "sun.awt.X11.XWindowPeer$WindowMoveService")
+        ;
     }
 }
