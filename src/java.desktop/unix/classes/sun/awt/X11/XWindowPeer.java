@@ -34,6 +34,7 @@ import java.awt.peer.WindowPeer;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.jetbrains.internal.JBRApi;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.DisplayChangedListener;
@@ -2647,5 +2648,30 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             c = c.getParent();
         }
         return c;
+    }
+
+    void startMovingTogetherWithMouse(int mouseButton) {
+        setGrab(false);
+        XWM.getWM().startMovingWindowTogetherWithMouse(getParentTopLevel().getWindow(), getLastButtonPressAbsLocation(), mouseButton);
+    }
+
+    private static class WindowMoveService {
+        WindowMoveService() {
+            if (!((XToolkit)Toolkit.getDefaultToolkit()).isWindowMoveSupported()) {
+                throw new JBRApi.ServiceNotAvailableException("Window manager does not support _NET_WM_MOVE_RESIZE");
+            }
+        }
+
+        void startMovingTogetherWithMouse(Window window, int mouseButton) {
+            Objects.requireNonNull(window);
+
+            final AWTAccessor.ComponentAccessor acc = AWTAccessor.getComponentAccessor();
+            ComponentPeer peer = acc.getPeer(window);
+            if (peer instanceof XWindowPeer xWindowPeer) {
+                xWindowPeer.startMovingTogetherWithMouse(mouseButton);
+            } else {
+                throw new IllegalArgumentException("AWT window must have XWindowPeer as its peer");
+            }
+        }
     }
 }
