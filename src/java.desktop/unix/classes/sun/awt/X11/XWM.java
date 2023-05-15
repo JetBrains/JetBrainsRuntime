@@ -34,6 +34,7 @@ import sun.awt.IconInfo;
 import jdk.internal.misc.Unsafe;
 import java.awt.Insets;
 import java.awt.Frame;
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.Collection;
 import java.util.HashMap;
@@ -1827,5 +1828,19 @@ final class XWM
             return getWMID() != ICE_WM;
         }
         return false;
+    }
+
+    public static boolean isWMMoveResizeSupported() {
+        if (g_net_protocol == null) {
+            return false;
+        }
+
+        return g_net_protocol.doWMMoveResizeProtocol();
+    }
+
+    void startMovingWindowTogetherWithMouse(long window, Point lastButtonPressAbsLocation, int mouseButton) {
+        if (g_net_protocol != null) {
+            g_net_protocol.startMovingWindowTogetherWithMouse(window, lastButtonPressAbsLocation, mouseButton);
+        }
     }
 }
