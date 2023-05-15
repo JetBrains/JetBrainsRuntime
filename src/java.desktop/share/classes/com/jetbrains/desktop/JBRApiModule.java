@@ -56,6 +56,8 @@ public class JBRApiModule {
                     .withStatic("createConstrainableGraphics", "create", "com.jetbrains.desktop.JBRGraphicsDelegate")
                 .clientProxy("com.jetbrains.desktop.ConstrainableGraphics2D", "com.jetbrains.GraphicsUtils$ConstrainableGraphics2D")
                 .service("com.jetbrains.WindowDecorations", "java.awt.Window$WindowDecorations")
-                .proxy("com.jetbrains.WindowDecorations$CustomTitleBar", "java.awt.Window$CustomTitleBar");
+                .proxy("com.jetbrains.WindowDecorations$CustomTitleBar", "java.awt.Window$CustomTitleBar")
+                .service("com.jetbrains.WindowMove", "sun.awt.X11.XWindowPeer$WindowMoveService")
+        ;
     }
 }
