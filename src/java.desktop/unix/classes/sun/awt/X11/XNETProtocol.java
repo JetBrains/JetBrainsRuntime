@@ -27,8 +27,12 @@ package sun.awt.X11;
 
 import java.awt.Frame;
 import java.nio.charset.Charset;
-
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.Point;
+import java.awt.event.MouseEvent;
 import sun.awt.IconInfo;
+import sun.awt.SunToolkit;
 import sun.util.logging.PlatformLogger;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
@@ -307,6 +311,7 @@ final class XNETProtocol extends XProtocol implements XStateProtocol, XLayerProt
     XAtom XA_NET_WM_WINDOW_OPACITY = XAtom.get("_NET_WM_WINDOW_OPACITY");
 
     XAtom XA_NET_WM_USER_TIME = XAtom.get("_NET_WM_USER_TIME");
+    public final XAtom XA_NET_WM_MOVE_RESIZE = XAtom.get("_NET_WM_MOVERESIZE");
 
 /* For _NET_WM_STATE ClientMessage requests */
     static final int _NET_WM_STATE_REMOVE      =0; /* remove/unset property */
@@ -353,6 +358,10 @@ final class XNETProtocol extends XProtocol implements XStateProtocol, XLayerProt
     boolean doOpacityProtocol() {
         boolean res = active() && checkProtocol(XA_NET_SUPPORTED, XA_NET_WM_WINDOW_OPACITY);
         return res;
+    }
+
+    boolean doWMMoveResizeProtocol() {
+        return active() && checkProtocol(XA_NET_SUPPORTED, XA_NET_WM_MOVE_RESIZE);
     }
 
     public void setActiveWindow(long window) {
@@ -478,6 +487,75 @@ final class XNETProtocol extends XProtocol implements XStateProtocol, XLayerProt
     void setUserTime(XBaseWindow window, long time) {
         if (active()) {
             XA_NET_WM_USER_TIME.setCard32Property(window, time);
+        }
+    }
+
+    private static int convertToXButton(int mouseButton) {
+        return switch (mouseButton) {
+            case MouseEvent.BUTTON1 -> 1;
+            case MouseEvent.BUTTON2 -> 3;
+            case MouseEvent.BUTTON3 -> 2;
+            default -> -1;
+        };
+    }
+
+    /**
+     * Starts moving the window together with the mouse pointer by sending a _NET_WM_MOVERESIZE event with
+     * the direction set to _NET_WM_MOVERESIZE_MOVE (move only), x_root/y_root obtained from the current
+     * mouse pointer coordinates, and button set to {@code mouseButton}.
+     * See <a href="https://specifications.freedesktop.org/wm-spec/wm-spec-1.3.html">Extended Window Manager Hints</a>
+     * for more information.
+     * Preconditions for calling this method:
+     * <ul>
+     * <li>{@code XWM.isWMMoveResizeSupported()} returned true.</li>
+     * <li>Mouse pointer is within this window's bounds.</li>
+     * <li>The mouse button specified by {@code mouseButton} is pressed.</li>
+     * </ul>
+     * Calling this method will make the window to start moving together with the mouse pointer until
+     * the specified mouse button is released or Esc is pressed. The conditions for cancelling
+     * the move may differ between WMs.
+     *
+     * @param lastButtonPressAbsLocation the location of the mouse pointer in absolute coordinates where the mouse
+     *                                   button was pressed.
+     * @param mouseButton                indicates the mouse button that was pressed to start moving the window;
+     *                                   must be one of {@code MouseEvent.BUTTON1}, {@code MouseEvent.BUTTON2},
+     *                                   or {@code MouseEvent.BUTTON3}.
+     */
+    void startMovingWindowTogetherWithMouse(long window, Point lastButtonPressAbsLocation, int mouseButton) {
+        final int button = convertToXButton(mouseButton);
+        if (button <= 0) return;
+
+        if (lastButtonPressAbsLocation == null) return;
+
+        SunToolkit.awtLock();
+        final XClientMessageEvent msg = new XClientMessageEvent();
+        try {
+            msg.set_type(XConstants.ClientMessage);
+            msg.set_window(window);
+            msg.set_format(32);
+            msg.set_message_type(XA_NET_WM_MOVE_RESIZE.getAtom());
+
+            final int _NET_WM_MOVERESIZE_MOVE = 8;
+            // See https://specifications.freedesktop.org/wm-spec/wm-spec-1.3.html
+            msg.set_data(0, lastButtonPressAbsLocation.x);
+            msg.set_data(1, lastButtonPressAbsLocation.y);
+            msg.set_data(2, _NET_WM_MOVERESIZE_MOVE);
+            msg.set_data(3, button);
+            msg.set_data(4, 0);
+
+            // Though we already did setGrab(false) before, this may sometimes be not enough.
+            // Presumably pointer may be grabbed automatically by a button press,
+            // so release grabs again here, otherwise it wouldn't work on Xorg.
+            XlibWrapper.XUngrabPointer(XToolkit.getDisplay(), XConstants.CurrentTime);
+            XlibWrapper.XUngrabKeyboard(XToolkit.getDisplay(), XConstants.CurrentTime);
+            XlibWrapper.XSendEvent(XToolkit.getDisplay(),
+                    XToolkit.getDefaultRootWindow(),
+                    false,
+                    XConstants.SubstructureRedirectMask | XConstants.SubstructureNotifyMask,
+                    msg.pData);
+        } finally {
+            msg.dispose();
+            SunToolkit.awtUnlock();
         }
     }
 }
