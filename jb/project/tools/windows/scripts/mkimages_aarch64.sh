@@ -34,6 +34,7 @@ NVDA_PATH=${NVDA_PATH:=$WORK_DIR/nvda_controllerClient}
 
 function do_configure {
   sh ./configure \
+    --enable-option-checking=fatal \
     --openjdk-target=aarch64-unknown-cygwin \
     $WITH_DEBUG_LEVEL \
     --with-vendor-name="$VENDOR_NAME" \
@@ -47,9 +48,10 @@ function do_configure {
     --with-build-jdk=$BUILD_JDK \
     --with-nvdacontrollerclient=$NVDA_PATH \
     --disable-ccache \
+    --enable-cds=yes \
     $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
-    --enable-cds=yes || do_exit $?
+    || do_exit $?
 }
 
 function create_image_bundle {
@@ -68,7 +70,7 @@ function create_image_bundle {
     --module-path $__modules_path --no-man-pages --compress=2 \
     --add-modules $__modules --output $__root_dir || do_exit $?
 
-  grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> $__arch_name/release
+  grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> $__root_dir/release
   if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
     sed 's/JBR/JBRSDK/g' $__root_dir/release > release
     mv release $__root_dir/release
