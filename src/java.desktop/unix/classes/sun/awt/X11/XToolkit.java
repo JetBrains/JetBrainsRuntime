@@ -2951,4 +2951,14 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         }
         return isXWayland;
     }
+
+    /**
+     * Checks if the window manager supports _NET_WM_MOVERESIZE protocol.
+     *
+     * @return {@code true} if _NET_WM_MOVERESIZE is supported by the
+     * window manager and false otherwise.
+     */
+    boolean isWindowMoveSupported() {
+        return XWM.isWMMoveResizeSupported();
+    }
 }
