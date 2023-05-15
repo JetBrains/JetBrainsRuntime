@@ -1066,6 +1066,11 @@ public class XBaseWindow {
         if (theButton > SunToolkit.MAX_BUTTONS_SUPPORTED) {
             return;
         }
+
+        if (xbe.get_type() == XConstants.ButtonPress) {
+            rememberLastButtonPressLocation(xbe.get_x_root(), xbe.get_y_root());
+        }
+
         int buttonState = 0;
         buttonState = xbe.get_state() & XConstants.ALL_BUTTONS_MASK;
 
@@ -1359,5 +1364,16 @@ public class XBaseWindow {
         else {
             log.fine("No DESKTOP_STARTUP_ID");
         }
+    }
+
+
+    private static volatile Point lastButtonPressAbsLocation = null;
+
+    protected static Point getLastButtonPressAbsLocation() {
+        return lastButtonPressAbsLocation;
+    }
+
+    private static void rememberLastButtonPressLocation(int absX, int absY) {
+        lastButtonPressAbsLocation = new Point(absX, absY);
     }
 }
