@@ -25,6 +25,7 @@
 
 package com.jetbrains.internal;
 
+import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandles;
 import java.util.HashMap;
 import java.util.Map;
@@ -67,7 +68,26 @@ class ProxyInfo {
      */
     static ProxyInfo resolve(RegisteredProxyInfo i) {
         ProxyInfo info = new ProxyInfo(i);
-        if (info.interFace == null || (info.target == null && info.staticMethods.isEmpty())) return null;
+        if (info.interFace == null || (info.target == null &&
+                (info.type != Type.SERVICE || info.staticMethods.isEmpty()))) {
+            return null;
+        }
+        Class<? extends Annotation> annotationType = switch (info.type) {
+            case PROXY -> JBRApi.proxyAnnotation;
+            case SERVICE -> JBRApi.serviceAnnotation;
+            case CLIENT_PROXY -> JBRApi.clientAnnotation;
+            case INTERNAL_SERVICE -> null;
+        };
+        if (annotationType != null) {
+            Class<?> clientType = info.type == Type.CLIENT_PROXY ? info.target.lookupClass() : info.interFace;
+            Object annotation = clientType.getAnnotation(annotationType);
+            if (annotation == null) {
+                if (JBRApi.VERBOSE) {
+                    System.err.println("Client type " + clientType + " not marked with @" + annotationType.getSimpleName());
+                }
+                return null;
+            }
+        }
         if (!info.interFace.isInterface()) {
             if (info.type == Type.CLIENT_PROXY) {
                 throw new RuntimeException("Tried to create client proxy for non-interface: " + info.interFace);

@@ -28,6 +28,7 @@ package com.jetbrains.internal;
 import jdk.internal.loader.ClassLoaders;
 
 import java.io.Serial;
+import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.*;
@@ -120,6 +121,9 @@ public class JBRApi {
      */
     static Set<String> knownServices, knownProxies;
 
+    static Class<? extends Annotation> serviceAnnotation, proxyAnnotation, clientAnnotation;
+
+    @SuppressWarnings("unchecked")
     public static void init(Lookup outerLookup, String implVersion) {
         JBRApi.outerLookup = outerLookup;
         JBRApi.implVersion = implVersion;
@@ -134,6 +138,13 @@ public class JBRApi {
             e.printStackTrace();
             knownServices = Set.of();
             knownProxies = Set.of();
+        }
+        try { // These annotations may not be available on old JBR API
+            serviceAnnotation = (Class<? extends Annotation>) outerLookup.findClass("com.jetbrains.Service");
+            proxyAnnotation   = (Class<? extends Annotation>) outerLookup.findClass("com.jetbrains.Proxy");
+            clientAnnotation  = (Class<? extends Annotation>) outerLookup.findClass("com.jetbrains.Client");
+        } catch (ClassNotFoundException | IllegalAccessException e) {
+            if (VERBOSE) e.printStackTrace();
         }
         if (VERBOSE) {
             System.out.println("JBR API init\nKNOWN_SERVICES = " + knownServices + "\nKNOWN_PROXIES = " + knownProxies);
