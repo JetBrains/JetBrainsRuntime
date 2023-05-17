@@ -30,6 +30,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -63,12 +64,21 @@ public class AsyncProfilerRunnerTest {
             extractZipFile(ASYNC_PROFILER_2_9_MACOS_ZIP, CURRENT_DIR);
             System.out.println("File extracted successfully!");
 
-            System.out.println("running the helper against " + TEST_JDK);
-            ProcessResult result = runProfilerCommand(CURRENT_DIR + "/" + ASYNC_PROFILER_2_9_MACOS);
-            System.out.println("Process output:\n" + result.getOutput());
-            System.out.println("Process error:\n" + result.getError());
+            String[] profilerCommand =  new String[] {
+                    TEST_JDK + "/bin/java",
+                    "-agentpath:"
+                            + CURRENT_DIR + "/" + ASYNC_PROFILER_2_9_MACOS
+                            + "/build/libasyncProfiler.so=version,start,event=cpu,jfr,threads,jfrsync=profile,file=profile.html,title=test",
+                    "AsyncProfilerHelper"
+            };
 
-            int exitCode = result.getExitCode();
+            System.out.println("running the helper against: " + profilerCommand[0]);
+            System.out.println("          agent parameters: "  + profilerCommand[1]);
+            ProcessResult result = runProfilerCommand(profilerCommand);
+            System.out.println("Process output:\n" + result.output());
+            System.out.println("Process error:\n" + result.error());
+
+            int exitCode = result.exitCode();
             if (exitCode != 0)
                 throw new RuntimeException("Process exit code: " + exitCode);
 
@@ -78,10 +88,14 @@ public class AsyncProfilerRunnerTest {
     }
 
     public static void downloadFile(String fileUrl, String destinationPath) throws IOException {
-        URL url = new URL(fileUrl);
-        try (InputStream in = url.openStream()) {
-            Files.copy(in, Paths.get(destinationPath), StandardCopyOption.REPLACE_EXISTING);
-        }
+        System.out.println("Downloading: " + fileUrl);
+
+        HttpURLConnection connection = (HttpURLConnection) new URL(fileUrl).openConnection();
+
+        if (connection.getResponseCode() != 200)
+            throw new RuntimeException(connection.getResponseMessage());
+
+        Files.copy(connection.getInputStream(), Paths.get(destinationPath), StandardCopyOption.REPLACE_EXISTING);
     }
 
     public static void extractZipFile(String zipFilePath, String extractPath) throws IOException {
@@ -115,9 +129,8 @@ public class AsyncProfilerRunnerTest {
         bos.close();
     }
 
-    public static ProcessResult runProfilerCommand(String extractPath) throws IOException, InterruptedException {
-        String profilerCommand = TEST_JDK + "/bin/java -agentpath:" + extractPath
-                + "/build/libasyncProfiler.so=version,start,event=cpu,jfr,threads,jfrsync=profile,file=profile.html,title=test AsyncProfilerHelper";
+    public static ProcessResult runProfilerCommand(String[] profilerCommand) throws IOException, InterruptedException {
+
         Process process = Runtime.getRuntime().exec(profilerCommand);
         process.waitFor();
 
@@ -138,26 +151,11 @@ public class AsyncProfilerRunnerTest {
         return output.toString();
     }
 
-    static class ProcessResult {
-        private final String output;
-        private final String error;
-        private final int exitCode;
+    record ProcessResult(String output, String error, int exitCode) {
         public ProcessResult(String output, String error, int exitCode) {
             this.output = output;
             this.error = error;
             this.exitCode = exitCode;
-        }
-
-        public String getOutput() {
-            return output;
-        }
-
-        public String getError() {
-            return error;
-        }
-
-        public int getExitCode() {
-            return exitCode;
         }
     }
 }
