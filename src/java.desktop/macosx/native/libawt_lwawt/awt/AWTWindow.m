@@ -144,6 +144,8 @@ static BOOL orderingScheduled = NO;
          selector:@selector(windowDidChangeProfile)             \
          name:NSWindowDidChangeScreenProfileNotification        \
          object:self];                                          \
+    [self addObserver:self forKeyPath:@"visible"                \
+        options:NSKeyValueObservingOptionNew context:nil];      \
     return self;                                                \
 }                                                               \
                                                                 \
@@ -178,6 +180,21 @@ static BOOL orderingScheduled = NO;
     return ((AWTWindow*)[self delegate]).javaWindowTabbingMode; \
 }                                                               \
                                                                 \
+- (void)observeValueForKeyPath:(NSString *)keyPath              \
+    ofObject:(id)object                                         \
+    change:(NSDictionary<NSKeyValueChangeKey,id> *)change       \
+    context:(void *)context {                                   \
+    if ([keyPath isEqualToString:@"visible"]) {                 \
+        BOOL isVisible =                                        \
+            [[change objectForKey:NSKeyValueChangeNewKey]       \
+            boolValue];                                         \
+        if (isVisible) {                                        \
+            [(AWTWindow*)[self delegate]                        \
+                _windowDidBecomeVisible];                       \
+        }                                                       \
+    }                                                           \
+}                                                               \
+                                                                \
 - (void)windowDidChangeScreen {                                 \
    [(AWTWindow*)[self delegate] _displayChanged:NO];           \
 }                                                               \
@@ -192,6 +209,7 @@ static BOOL orderingScheduled = NO;
    [[NSNotificationCenter defaultCenter] removeObserver:self    \
        name:NSWindowDidChangeScreenProfileNotification          \
        object:self];                                            \
+   [self removeObserver:self forKeyPath:@"visible"];            \
    [super dealloc];                                             \
 }                                                               \
 
@@ -633,7 +651,7 @@ AWT_ASSERT_APPKIT_THREAD;
         [self setUpCustomTitleBar];
     }
 
-    self.currentDisplayID = [AWTWindow getNSWindowDisplayID_AppKitThread:nsWindow];;
+    self.currentDisplayID = nil;
     return self;
 }
 
@@ -985,6 +1003,10 @@ AWT_ASSERT_APPKIT_THREAD;
 
 
 // NSWindowDelegate methods
+
+- (void)_windowDidBecomeVisible {
+    self.currentDisplayID = [AWTWindow getNSWindowDisplayID_AppKitThread:nsWindow];
+}
 
 - (void)_displayChanged:(BOOL)profileOnly {
     AWT_ASSERT_APPKIT_THREAD;
