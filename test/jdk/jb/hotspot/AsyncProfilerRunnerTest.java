@@ -51,7 +51,8 @@ public class AsyncProfilerRunnerTest {
     static final String ASYNC_PROFILER_2_9_MACOS_ZIP = ASYNC_PROFILER_2_9_MACOS + ".zip";
     static final String ASYNC_PROFILER_2_9_MACOS_URL = "https://github.com/jvm-profiling-tools/async-profiler/releases/download/v2.9/" + ASYNC_PROFILER_2_9_MACOS_ZIP;
 
-    static String testJDK = System.getProperty("test.jdk");
+    static final String CURRENT_DIR=System.getProperty("user.dir");
+    static final String TEST_JDK = System.getProperty("test.jdk");
 
     public static void main(String[] args) {
 
@@ -59,11 +60,11 @@ public class AsyncProfilerRunnerTest {
             downloadFile(ASYNC_PROFILER_2_9_MACOS_URL, ASYNC_PROFILER_2_9_MACOS_ZIP);
             System.out.println("File downloaded successfully!");
 
-            extractZipFile(ASYNC_PROFILER_2_9_MACOS_ZIP, ASYNC_PROFILER_2_9_MACOS);
+            extractZipFile(ASYNC_PROFILER_2_9_MACOS_ZIP, CURRENT_DIR);
             System.out.println("File extracted successfully!");
 
-            System.out.println("running the helper against " + testJDK);
-            ProcessResult result = runProfilerCommand(ASYNC_PROFILER_2_9_MACOS);
+            System.out.println("running the helper against " + TEST_JDK);
+            ProcessResult result = runProfilerCommand(CURRENT_DIR + "/" + ASYNC_PROFILER_2_9_MACOS);
             System.out.println("Process output:\n" + result.getOutput());
             System.out.println("Process error:\n" + result.getError());
 
@@ -115,7 +116,7 @@ public class AsyncProfilerRunnerTest {
     }
 
     public static ProcessResult runProfilerCommand(String extractPath) throws IOException, InterruptedException {
-        String profilerCommand = testJDK + "/bin/java -agentpath=/" + extractPath
+        String profilerCommand = TEST_JDK + "/bin/java -agentpath:" + extractPath
                 + "/build/libasyncProfiler.so=version,start,event=cpu,jfr,threads,jfrsync=profile,file=profile.html,title=test AsyncProfilerHelper";
         Process process = Runtime.getRuntime().exec(profilerCommand);
         process.waitFor();
