@@ -1010,6 +1010,11 @@ void os::print_environment_variables(outputStream* st, const char** env_list) {
   }
 }
 
+void os::print_register_info(outputStream* st, const void* context) {
+  int continuation = 0;
+  print_register_info(st, context, continuation);
+}
+
 void os::print_cpu_info(outputStream* st, char* buf, size_t buflen) {
   // cpu
   st->print("CPU:");
