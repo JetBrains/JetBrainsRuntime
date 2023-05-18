@@ -217,7 +217,7 @@ java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474,8224055 windows-all
 
 java/awt/event/KeyEvent/KeyTyped/CtrlASCII.java JBR-3636,JBR-4880 windows-all
 
-java/awt/event/KeyEvent/KeyTyped/CtrlSpace.java JBR-3817 windows-all
+java/awt/event/KeyEvent/KeyTyped/CtrlSpace.java JBR-3817 windows-all,macosx-all
 
 java/awt/dnd/BadSerializationTest/BadSerializationTest.java 8277817 linux-x64,windows-x64
 java/awt/dnd/URIListToFileListBetweenJVMsTest/URIListToFileListBetweenJVMsTest.java 8194947 generic-all
@@ -267,6 +267,7 @@ java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java 8253184,J
 java/awt/print/Headless/HeadlessPrinterJob.java 8196088 windows-all
 sun/awt/datatransfer/SuplementaryCharactersTransferTest.java 8011371 generic-all
 sun/awt/shell/ShellFolderMemoryLeak.java 8197794 windows-all
+sun/java2d/DirectX/OpaqueImageToSurfaceBlitTest/OpaqueImageToSurfaceBlitTest.java JBR-5393 windows-aarch64
 sun/java2d/DirectX/OverriddenInsetsTest/OverriddenInsetsTest.java 8196102 generic-all
 sun/java2d/DirectX/RenderingToCachedGraphicsTest/RenderingToCachedGraphicsTest.java 8196180,8252812 windows-all,macosx-all,linux-all
 java/awt/Graphics2D/CopyAreaOOB.java JBR-5354 macosx-all,windows-all
@@ -1058,7 +1059,7 @@ java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java        
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTestLinux.sh                    JBR-4078 linux-all
 jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest4207.java                    JBR-4207 windows-all
 jb/java/awt/Toolkit/AWTThreadingTest.java                                           JBR-4350 macosx-all
-jb/java/awt/Toolkit/LWCToolkitInvokeAndWaitTest.java                                JBR-4896 macosx-aarch64
+jb/java/awt/Toolkit/LWCToolkitInvokeAndWaitTest.java                                JBR-4896,JBR-5163 macosx-all,
 
 java/awt/Dialog/NonResizableDialogSysMenuResize/NonResizableDialogSysMenuResize.java JBR-4250 windows-all
 java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                 JBR-4250 windows-all
@@ -1072,7 +1073,6 @@ javax/swing/SwingUtilities/7146377/bug7146377.java                              
 java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java JBR-4880 windows-all
 java/awt/event/KeyEvent/DeadKey/DeadKeySystemAssertionDialog.java JBR-4880 windows-all
 java/awt/event/KeyEvent/KeyCharTest/KeyCharTest.java JBR-4880 windows-all
-java/awt/event/KeyEvent/KeyTyped/CtrlASCII.java JBR-4880 windows-all
 java/awt/Frame/LayoutOnMaximizeTest/LayoutOnMaximizeTest.java JBR-4880 windows-all
 java/awt/Frame/MiscUndecorated/UndecoratedInitiallyIconified.java JBR-4880 windows-all
 java/awt/FullScreen/FullscreenWindowProps/FullscreenWindowProps.java JBR-4275,JBR-4880 linux-all,windows-all
@@ -1101,7 +1101,7 @@ jb/sun/awt/macos/NationalLayoutTest/Layout_GERMAN.java JBR-4933 macosx-all
 jb/sun/awt/macos/NationalLayoutTest/Layout_SPANISH_ISO.java JBR-4933 macosx-all
 jb/sun/awt/macos/NationalLayoutTest/Layout_US_INTERNATIONAL_PC.java JBR-4933 macosx-all
 
-jb/javax/swing/JComboBox/ComboBoxTransparentTittleBarTest.java JBR-5432 windows-all
+jb/javax/swing/JComboBox/ComboBoxTransparentTittleBarTest.java JBR-5432,JBR-4875 windows-all,macosx-all
 jb/javax/swing/JDialog/JDialog186.java JBR-5210 windows-all
 jb/javax/swing/JDialog/JDialog392.java JBR-4941 macosx-all,linux-all
 jb/javax/swing/JDialog/JDialog705.java JBR-4934 generic-all
@@ -1176,6 +1176,7 @@ jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-5359 windows-aarch6
 jb/java/awt/CustomTitleBar/FrameNativeControlsTest.java JBR-5359 windows-aarch64
 jb/java/awt/CustomTitleBar/JDialogNativeControlsTest.java JBR-5359 windows-aarch64
 jb/java/awt/CustomTitleBar/ActionListenerTest.java JBR-5597 windows-all
+jb/java/awt/CustomTitleBar/HitTestClientArea.java JBR-5551 windows-all
 jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-5465 windows-all
 jb/java/awt/CustomTitleBar/MinimizingWindowTest.java JBR-5359 windows-aarch64
 jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java JBR-5593 windows-all
