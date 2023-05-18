@@ -29,7 +29,6 @@ import java.util.Locale;
 
 import sun.awt.SunHints;
 import sun.awt.SunToolkit;
-import sun.util.logging.PlatformLogger;
 
 /**
  * Small utility class to manage FontConfig.
@@ -128,7 +127,7 @@ public class FontConfigManager {
         if (FontUtilities.isWindows) {
             return null;
         } else {
-            int hint = getFontConfigAASettings(getFCLocaleStr(), fcFamily);
+            int hint = getFontConfigAASettings(fcFamily);
             if (hint < 0) {
                 return null;
             } else {
@@ -454,6 +453,38 @@ public class FontConfigManager {
         return fcInfo;
     }
 
-    private static native int
-    getFontConfigAASettings(String locale, String fcFamily);
+    private static int
+    getFontConfigAASettings(String fcFamily) {
+        RenderingFontHints renderingFontHints = new RenderingFontHints();
+
+        final int FC_RGBA_UNKNOWN = 0;
+        final int FC_RGBA_RGB = 1;
+        final int FC_RGBA_BGR = 2;
+        final int FC_RGBA_VRGB = 3;
+        final int FC_RGBA_VBGR = 4;
+        final int FC_RGBA_NONE = 5;
+
+        getFontConfigRenderingFontHints(fcFamily, renderingFontHints);
+        if (renderingFontHints.fcAntialias == 0) {
+            return SunHints.INTVAL_ANTIALIAS_OFF;
+        } else if (renderingFontHints.fcRGBA <= FC_RGBA_UNKNOWN || renderingFontHints.fcRGBA >= FC_RGBA_NONE) {
+            return SunHints.INTVAL_ANTIALIAS_ON;
+        } else {
+            return switch (renderingFontHints.fcRGBA) {
+                case FC_RGBA_RGB -> SunHints.INTVAL_TEXT_ANTIALIAS_LCD_HRGB;
+                case FC_RGBA_BGR -> SunHints.INTVAL_TEXT_ANTIALIAS_LCD_HBGR;
+                case FC_RGBA_VRGB -> SunHints.INTVAL_TEXT_ANTIALIAS_LCD_VRGB;
+                case FC_RGBA_VBGR -> SunHints.INTVAL_TEXT_ANTIALIAS_LCD_VBGR;
+                default -> throw new IllegalStateException("Unexpected value: " + renderingFontHints.fcRGBA);
+            };
+        }
+    }
+
+    public static void
+    getFontConfigRenderingFontHints(String fcFamily, RenderingFontHints renderingFontHints) {
+        setupRenderingFontHints(getFCLocaleStr(), fcFamily, renderingFontHints);
+    }
+
+    private static native void
+    setupRenderingFontHints(String locale, String fcFamily, RenderingFontHints renderingFontHints);
 }

@@ -658,9 +658,16 @@ cleanup:
 #define TEXT_AA_LCD_VRGB 6
 #define TEXT_AA_LCD_VBGR 7
 
+static void setRenderingFontHintsField(JNIEnv *env, jclass renderingFontHintsClass, jobject renderingFontHintsObject,
+                                        const char* fieldName, int* value, FcResult status) {
+    jfieldID renderingFontHintsField;
+    CHECK_NULL(renderingFontHintsField = (*env)->GetFieldID(env, renderingFontHintsClass, fieldName, "I"));
+    (*env)->SetIntField(env, renderingFontHintsObject, renderingFontHintsField, (status == FcResultMatch) ? *value : -1);
+}
+
 JNIEXPORT jint JNICALL
-Java_sun_font_FontConfigManager_getFontConfigAASettings
-(JNIEnv *env, jclass obj, jstring localeStr, jstring fcNameStr) {
+Java_sun_font_FontConfigManager_setupRenderingFontHints
+        (JNIEnv *env, jclass obj, jstring localeStr, jstring fcNameStr, jobject renderingFontHintsObject) {
 
     FcNameParseFuncType FcNameParse;
     FcPatternAddStringFuncType FcPatternAddString;
@@ -698,18 +705,18 @@ Java_sun_font_FontConfigManager_getFontConfigAASettings
 
     FcNameParse = (FcNameParseFuncType)dlsym(libfontconfig, "FcNameParse");
     FcPatternAddString =
-        (FcPatternAddStringFuncType)dlsym(libfontconfig, "FcPatternAddString");
+            (FcPatternAddStringFuncType)dlsym(libfontconfig, "FcPatternAddString");
     FcConfigSubstitute =
-        (FcConfigSubstituteFuncType)dlsym(libfontconfig, "FcConfigSubstitute");
+            (FcConfigSubstituteFuncType)dlsym(libfontconfig, "FcConfigSubstitute");
     FcDefaultSubstitute = (FcDefaultSubstituteFuncType)
-        dlsym(libfontconfig, "FcDefaultSubstitute");
+            dlsym(libfontconfig, "FcDefaultSubstitute");
     FcFontMatch = (FcFontMatchFuncType)dlsym(libfontconfig, "FcFontMatch");
     FcPatternGetBool = (FcPatternGetBoolFuncType)
-        dlsym(libfontconfig, "FcPatternGetBool");
+            dlsym(libfontconfig, "FcPatternGetBool");
     FcPatternGetInteger = (FcPatternGetIntegerFuncType)
-        dlsym(libfontconfig, "FcPatternGetInteger");
+            dlsym(libfontconfig, "FcPatternGetInteger");
     FcPatternDestroy =
-        (FcPatternDestroyFuncType)dlsym(libfontconfig, "FcPatternDestroy");
+            (FcPatternDestroyFuncType)dlsym(libfontconfig, "FcPatternDestroy");
 
     if (FcNameParse          == NULL ||
         FcPatternAddString   == NULL ||
@@ -741,8 +748,23 @@ Java_sun_font_FontConfigManager_getFontConfigAASettings
      * any difference in testing.
      */
     if (matchPattern) {
-        (*FcPatternGetBool)(matchPattern, FC_ANTIALIAS, 0, &antialias);
-        (*FcPatternGetInteger)(matchPattern, FC_RGBA, 0, &rgba);
+        jclass renderingFontHintsClass = (*env)->FindClass(env, "sun/font/RenderingFontHints");
+        int  fcHinting, fcHintStyle, fcAntialias, fcAutohint, fcLCDFilter, fcRGBA;
+
+        // Extract values from result
+        setRenderingFontHintsField(env, renderingFontHintsClass, renderingFontHintsObject, "fcHinting", &fcHinting,
+                                  (*FcPatternGetBool)(matchPattern, FC_HINTING, 0, &fcHinting));
+        setRenderingFontHintsField(env, renderingFontHintsClass, renderingFontHintsObject, "fcHintStyle", &fcHintStyle,
+                                  (*FcPatternGetInteger)(matchPattern, FC_HINT_STYLE, 0, &fcHintStyle));
+        setRenderingFontHintsField(env, renderingFontHintsClass, renderingFontHintsObject, "fcAntialias", &fcAntialias,
+                                  (*FcPatternGetBool)(matchPattern, FC_ANTIALIAS, 0, &fcAntialias));
+        setRenderingFontHintsField(env, renderingFontHintsClass, renderingFontHintsObject, "fcAutohint", &fcAutohint,
+                                  (*FcPatternGetBool)(matchPattern, FC_AUTOHINT, 0, &fcAutohint));
+        setRenderingFontHintsField(env, renderingFontHintsClass, renderingFontHintsObject, "fcLCDFilter", &fcLCDFilter,
+                                  (*FcPatternGetInteger)(matchPattern, FC_LCD_FILTER, 0, &fcLCDFilter));
+        setRenderingFontHintsField(env, renderingFontHintsClass, renderingFontHintsObject, "fcRGBA", &fcRGBA,
+                                  (*FcPatternGetInteger)(matchPattern, FC_RGBA, 0, &fcRGBA));
+
         (*FcPatternDestroy)(matchPattern);
     }
     (*FcPatternDestroy)(pattern);
@@ -753,19 +775,7 @@ Java_sun_font_FontConfigManager_getFontConfigAASettings
     }
     closeFontConfig(libfontconfig, JNI_TRUE);
 
-    if (antialias == FcFalse) {
-        return TEXT_AA_OFF;
-    } else if (rgba <= FC_RGBA_UNKNOWN || rgba >= FC_RGBA_NONE) {
-        return TEXT_AA_ON;
-    } else {
-        switch (rgba) {
-        case FC_RGBA_RGB : return TEXT_AA_LCD_HRGB;
-        case FC_RGBA_BGR : return TEXT_AA_LCD_HBGR;
-        case FC_RGBA_VRGB : return TEXT_AA_LCD_VRGB;
-        case FC_RGBA_VBGR : return TEXT_AA_LCD_VBGR;
-        default : return TEXT_AA_LCD_HRGB; // should not get here.
-        }
-    }
+    return 0;
 }
 
 JNIEXPORT jint JNICALL
