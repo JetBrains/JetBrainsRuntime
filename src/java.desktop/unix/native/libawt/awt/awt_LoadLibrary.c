@@ -32,6 +32,8 @@
 #include <jvm.h>
 #include "gdefs.h"
 
+#include "fontconfigmanager.h"
+
 #include <sys/param.h>
 #include <sys/utsname.h>
 
@@ -160,5 +162,6 @@ AWT_OnLoad(JavaVM *vm, void *reserved)
 JNIEXPORT jint JNICALL
 DEF_JNI_OnLoad(JavaVM *vm, void *reserved)
 {
+    openFontConfig();
     return AWT_OnLoad(vm, reserved);
 }
