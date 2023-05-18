@@ -100,10 +100,7 @@
 #define  FT26Dot6ToIntRound(x) (((int)(x + (1 << 5))) >> 6)
 #define  FT26Dot6ToIntCeil(x) (((int)(x - 1 + (1 << 6))) >> 6)
 #define  IntToFT26Dot6(x) (((FT_Fixed)(x)) << 6)
-#define  DEFAULT_DPI 72
-#define  MAX_DPI 1024
 #define  FLOOR_DIV(X, Y) ((X) >= 0 ? (X) / (Y) : ((X) - (Y) + 1) / (Y))
-#define  ADJUST_FONT_SIZE(X, DPI) (((X)*DEFAULT_DPI + ((DPI)>>1))/(DPI))
 
 #ifndef FALSE
 #define FALSE 0
@@ -210,7 +207,6 @@ static jmethodID invalidateScalerMID;
 static jboolean  debugFonts; // Stores the value of FontUtilities.debugFonts()
 static jmethodID getDefaultToolkitMID;
 static jclass tkClass;
-static jmethodID getScreenResolutionMID;
 static jfieldID platNameFID;
 static jfieldID familyNameFID;
 static jmethodID getRenderingFontHintsMID;
@@ -248,8 +244,6 @@ Java_sun_font_FreetypeFontScaler_initIDs(
     getDefaultToolkitMID =
         (*env)->GetStaticMethodID(env, TKClass, "getDefaultToolkit",
                                   "()Ljava/awt/Toolkit;");
-    getScreenResolutionMID =
-        (*env)->GetMethodID(env, TKClass, "getScreenResolution", "()I");
     tkClass = (*env)->NewGlobalRef(env, TKClass);
     platNameFID = (*env)->GetFieldID(env, PFClass, "platName", "Ljava/lang/String;");
     familyNameFID = (*env)->GetFieldID(env, PFClass, "familyName", "Ljava/lang/String;");
@@ -278,46 +272,6 @@ static FT_Error FT_Library_SetLcdFilter_Proxy(FT_Library library, FT_LcdFilter  
     return 0;
 #else
     return FT_Library_SetLcdFilter(library, filter);
-#endif
-}
-
-static int getScreenResolution(JNIEnv *env) {
-/*
- * Actual screen dpi is necessary only for fontconfig requests
- */
-#ifndef DISABLE_FONTCONFIG
-    jthrowable exc;
-    jclass tk = (*env)->CallStaticObjectMethod(
-        env, tkClass, getDefaultToolkitMID);
-    exc = (*env)->ExceptionOccurred(env);
-    if (exc) {
-        (*env)->ExceptionClear(env);
-        return DEFAULT_DPI;
-    }
-    int dpi = (*env)->CallIntMethod(env, tk, getScreenResolutionMID);
-
-    /* Test if there is no exception here (can get java.awt.HeadlessException)
-     * Fallback to default DPI otherwise
-     */
-    exc = (*env)->ExceptionOccurred(env);
-    if (exc) {
-        (*env)->ExceptionClear(env);
-        return DEFAULT_DPI;
-    }
-
-    /* Some configurations report invalid dpi settings */
-    if (dpi > MAX_DPI) {
-        if (logFFS) {
-            fprintf(stderr, "FFS_LOG: Invalid dpi reported (%d) replaced with default (%d)\n", dpi, DEFAULT_DPI);
-        }
-        return DEFAULT_DPI;
-    }
-    if (logFFS) {
-        fprintf(stderr, "FFS_LOG: Screen Resolution (%d) dpi\n", dpi);
-    }
-    return dpi;
-#else
-    return DEFAULT_DPI;
 #endif
 }
 
@@ -844,13 +798,9 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
 
         setupTransform(&matrix, context);
         FT_Set_Transform(scalerInfo->face, &matrix, NULL);
-        FT_UInt dpi = (FT_UInt) getScreenResolution(env);
 
         if (FT_IS_SCALABLE(scalerInfo->face)) { // Standard scalable face
             context->fixedSizeIndex = -1;
-            errCode = FT_Set_Char_Size(scalerInfo->face, 0,
-                                       ADJUST_FONT_SIZE(context->ptsz, dpi),
-                                       dpi, dpi);
         } else { // Non-scalable face (that should only be bitmap faces)
             const int ptsz = context->ptsz;
             // Best size is smallest, but not smaller than requested
@@ -867,14 +817,14 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
                 }
             }
             context->fixedSizeIndex = bestSizeIndex;
-            errCode = FT_Set_Char_Size(scalerInfo->face, 0,
-                                       ADJUST_FONT_SIZE(bestSize, dpi),
-                                       dpi, dpi);
         }
+
+        errCode = FT_Set_Char_Size(scalerInfo->face, 0, context->ptsz, 72, 72);
         if (errCode) return errCode;
 
         errCode = FT_Activate_Size(scalerInfo->face->size);
         if (errCode) return errCode;
+
         if (configureFont) {
             context->renderFlags = FT_RENDER_MODE_NORMAL;
             context->lcdFilter = FT_LCD_FILTER_NONE;
@@ -893,7 +843,7 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
                 (*env)->ReleaseStringUTFChars(env, jfontFamilyName, cfontFamilyName);
             }
 
-            double fcSize = FT26Dot6ToDouble(ADJUST_FONT_SIZE(context->ptsz, dpi));
+            double fcSize = FT26Dot6ToDouble(context->ptsz);
             if (logFC) fprintf(stderr, " size=%f", fcSize);
 
             // Find cached value
