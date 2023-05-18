@@ -32,6 +32,14 @@
 #include <jvm.h>
 #include "gdefs.h"
 
+#if defined(_WIN32) || defined(MACOSX)
+#define DISABLE_FONTCONFIG
+#endif
+
+#ifndef DISABLE_FONTCONFIG
+#include "fontconfigmanager.h"
+#endif
+
 #include <sys/param.h>
 #include <sys/utsname.h>
 
@@ -160,5 +168,8 @@ AWT_OnLoad(JavaVM *vm, void *reserved)
 JNIEXPORT jint JNICALL
 DEF_JNI_OnLoad(JavaVM *vm, void *reserved)
 {
+#ifndef DISABLE_FONTCONFIG
+    openFontConfig();
+#endif
     return AWT_OnLoad(vm, reserved);
 }
