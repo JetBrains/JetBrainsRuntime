@@ -507,10 +507,11 @@ abstract class XDecoratedPeer extends XWindowPeer {
         }
         WindowDimensions newDimensions = new WindowDimensions(dimensions);
         newDimensions.setInsets(getRealInsets());
+        Rectangle client = dimensions.getClientRect();
         dimensions = newDimensions;
         insets_corrected = true;
 
-        if (isMaximized()) {
+        if (isMaximized() || client.width <= 0 || client.height <= 0) {
             return;
         }
 
@@ -1472,12 +1473,16 @@ abstract class XDecoratedPeer extends XWindowPeer {
     @Override
     void syncBounds() {
         Rectangle r = target.getBounds();
+        Insets ins = getRealInsets();
+        if (r.width <= ins.left + ins.right || r.height <= ins.top + ins.bottom) {
+            return;
+        }
         if (syncSizeOnly && dimensions != null) {
             dimensions.setSize(r.width, r.height);
-            dimensions.setInsets(getRealInsets());
+            dimensions.setInsets(ins);
             xSetSize(r.width, r.height);
         } else {
-            dimensions = new WindowDimensions(r, getRealInsets(), false);
+            dimensions = new WindowDimensions(r, ins, false);
             xSetBounds(r.x, r.y, r.width, r.height);
         }
         reconfigureContentWindow(dimensions);
