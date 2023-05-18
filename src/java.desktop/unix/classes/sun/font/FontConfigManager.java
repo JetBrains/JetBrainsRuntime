@@ -128,7 +128,7 @@ public final class FontConfigManager {
         if (FontUtilities.isWindows) {
             return null;
         } else {
-            int hint = getFontConfigAASettings(getFCLocaleStr(), fcFamily);
+            int hint = getFontConfigAASettings(fcFamily);
             if (hint < 0) {
                 return null;
             } else {
@@ -188,7 +188,7 @@ public final class FontConfigManager {
             fontArr[i].jdkName = FontUtilities.mapFcName(fontArr[i].fcFamily);
             fontArr[i].style = i % 4; // depends on array order.
         }
-        getFontConfig(getFCLocaleStr(), fcInfo, fontArr, includeFallbacks);
+        setupFontConfigFonts(getFCLocaleStr(), fcInfo, fontArr, includeFallbacks);
         FontConfigFont anyFont = null;
         /* If don't find anything (eg no libfontconfig), then just return */
         for (int i = 0; i< fontArr.length; i++) {
@@ -432,10 +432,12 @@ public final class FontConfigManager {
         return fontConfigFonts;
     }
 
+    public static native String getFontProperty(String name, String pattern);
+
     /* Return an array of FcCompFont structs describing the primary
      * font located for each of fontconfig/GTK/Pango's logical font names.
      */
-    private static native void getFontConfig(String locale,
+    private static native void setupFontConfigFonts(String locale,
                                              FontConfigInfo fcInfo,
                                              FcCompFont[] fonts,
                                              boolean includeFallbacks);
@@ -454,7 +456,9 @@ public final class FontConfigManager {
         return fcInfo;
     }
 
-    private static native int getFontConfigAASettings(String locale, String fcFamily);
+    private static native int getFontConfigAASettings(String fcFamily, String locale);
 
-    public static native String getFontProperty(String name, String pattern);
+    private static int getFontConfigAASettings(String fcFamily) {
+        return getFontConfigAASettings(fcFamily, getFCLocaleStr());
+    }
 }
