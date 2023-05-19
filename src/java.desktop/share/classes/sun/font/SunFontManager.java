@@ -59,6 +59,7 @@ import sun.awt.FontConfiguration;
 import sun.awt.SunToolkit;
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.FontSupport;
+import sun.security.action.GetPropertyAction;
 import sun.util.logging.PlatformLogger;
 
 /**
@@ -203,7 +204,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     private String defaultFontName;
     private String defaultFontFileName;
     protected HashSet<String> registeredFontFiles = new HashSet<>();
-    private HashMap<String, String> windowsSystemVersion = new HashMap<>();
+    protected static boolean versionCheckEnabled = false;
 
     private ArrayList<String> badFonts;
     /* fontPath is the location of all fonts on the system, excluding the
@@ -289,6 +290,8 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
 
     static {
         initStatic();
+        versionCheckEnabled = !Boolean.parseBoolean(
+                GetPropertyAction.privilegedGetProperty("java2d.font.noVersionCheck", "false"));
     }
 
     @SuppressWarnings("removal")
@@ -310,7 +313,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                 noType1Font = "true".equals(System.getProperty("sun.java2d.noType1Font"));
                 jreLibDirName = System.getProperty("java.home","") + File.separator + "lib";
                 jreFontDirName = jreLibDirName + File.separator + "fonts";
-
+                
                 maxSoftRefCnt = Integer.getInteger("sun.java2d.font.maxSoftRefs", 10);
                 return null;
             }
@@ -360,21 +363,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                     }
                 }
 
-                        /* Here we get the fonts in jre/lib/fonts and register
-                         * them so they are always available and preferred over
-                         * other fonts. This needs to be registered before the
-                         * composite fonts as otherwise some native font that
-                         * corresponds may be found as we don't have a way to
-                         * handle two fonts of the same name, so the JRE one
-                         * must be the first one registered. Pass "true" to
-                         * registerFonts method as on-screen these JRE fonts
-                         * always go through the JDK rasteriser.
-                         */
-                        if (FontUtilities.isLinux) {
-                            /* Linux font configuration uses these fonts */
-                            registerFontDir(jreFontDirName);
-                        }
-                        registerJREFonts();
+                registerJREFonts();
 
                 /* Create the font configuration and get any font path
                  * that might be specified.
@@ -3061,19 +3050,14 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         }
     }
 
-    protected String getSystemFontVersion(TrueTypeFont bundledFont) {
-        if (FontUtilities.isWindows) {
-            return windowsSystemVersion.getOrDefault(bundledFont.getFullName().toLowerCase(), "0");
-        }
-        return "0";
-    }
+    abstract protected String getSystemFontVersion(TrueTypeFont bundledFont);
 
     protected void loadJREFonts(String[] fonts) {
         addDirFonts(fonts, FONTFORMAT_TRUETYPE, true,
                 Font2D.JRE_RANK, true, false);
     }
 
-    private static int fontVersionComparator(String versionFirst, String versionSecond) {
+    protected static int fontVersionComparator(String versionFirst, String versionSecond) {
         String[] versionFirstComponents = versionFirst.split("\\.");
         String[] versionSecondComponents = versionSecond.split("\\.");
         
@@ -3090,26 +3074,13 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         return fontVersionComparator(versionFirst, versionSecond) > 0;
     }
 
-    private void registerJREFonts() {
+    protected void registerJREFonts() {
         List<String> fontsToLoad = new ArrayList<>();
         PlatformLogger logger = FontUtilities.getLogger();
         boolean isLogging = logger != null && FontUtilities.isLogging();
-        boolean versionCheckEnabled = !("true".equals(System.getProperty("java2d.font.noVersionCheck")));
 
         if (!versionCheckEnabled && isLogging) {
             logger.info("Skip version checking in font loading");
-        }
-
-        if (versionCheckEnabled && FontUtilities.isWindows) {
-            HashMap<String, String> fontToFileMap = new HashMap<>(100);
-            populateFontFileNameMap(fontToFileMap, new HashMap<>(), new HashMap<>(), Locale.ENGLISH);
-            for (String key : fontToFileMap.keySet()) {
-                // find maximum observable platform font's version
-                Optional<String> version = Stream.concat(Arrays.stream(getPlatformFontDirs(true)), Stream.of("")).
-                        map((path) -> (getTrueTypeVersion(path + File.separator + fontToFileMap.get(key)))).
-                        max(SunFontManager::fontVersionComparator);
-                windowsSystemVersion.put(key, version.isPresent() ? version.get() : "0");
-            }
         }
 
         for (String fontName : jreBundledFontFiles) {
@@ -3145,9 +3116,6 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         }
 
         loadJREFonts(fontsToLoad.toArray(new String[0]));
-    }
-
-    protected void registerFontDir(String path) {
     }
 
     /**

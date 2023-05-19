@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
 import java.util.Vector;
+import java.util.stream.Stream;
 
 import javax.swing.plaf.FontUIResource;
 import sun.font.MFontConfiguration;
@@ -48,6 +49,8 @@ import sun.font.FcFontConfiguration;
 import sun.font.FontAccess;
 import sun.font.FontUtilities;
 import sun.font.NativeFont;
+
+import static sun.font.SunFontManager.jreFontDirName;
 
 /**
  * The X11 implementation of {@link FontManager}.
@@ -277,8 +280,7 @@ public final class X11FontManager extends FcFontManager {
      * the loadFonts() method does too. So all should be well.
 
      */
-    @Override
-    protected void registerFontDir(String path) {
+    private void registerFontDir(String path) {
         /* fonts.dir file format looks like :-
          * 47
          * Arial.ttf -monotype-arial-regular-r-normal--0-0-0-0-p-0-iso8859-1
@@ -416,6 +418,22 @@ public final class X11FontManager extends FcFontManager {
             }
         } catch (IOException ioe) {
         }
+    }
+
+    @Override
+    protected void registerJREFonts() {
+        /* Here we get the fonts in jre/lib/fonts and register
+         * them so they are always available and preferred over
+         * other fonts. This needs to be registered before the
+         * composite fonts as otherwise some native font that
+         * corresponds may be found as we don't have a way to
+         * handle two fonts of the same name, so the JRE one
+         * must be the first one registered. Pass "true" to
+         * registerFonts method as on-screen these JRE fonts
+         * always go through the JDK rasteriser.
+         */
+        registerFontDir(jreFontDirName);
+        super.registerJREFonts();
     }
 
     @Override
