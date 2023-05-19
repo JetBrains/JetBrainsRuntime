@@ -34,8 +34,11 @@ public class WaylandToolkit {
 
     public static void main(String args[]) {
         Toolkit tk = Toolkit.getDefaultToolkit();
-        if (!"sun.awt.wl.WLToolkit".equals(tk.getClass().getName())) {
-            throw new RuntimeException("WLToolkit not found");
+        System.out.println("Toolkit.getDefaultToolkit(): " + tk);
+        if (!GraphicsEnvironment.isHeadless()) {
+            if (!"sun.awt.wl.WLToolkit".equals(tk.getClass().getName())) {
+                throw new RuntimeException("WLToolkit not found");
+            }
         }
     }
 }
