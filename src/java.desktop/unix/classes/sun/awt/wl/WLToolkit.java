@@ -150,13 +150,15 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             return null;
         });
 
-        Thread toolkitThread = new Thread(this, "AWT-Wayland");
-        toolkitThread.setDaemon(true);
-        toolkitThread.start();
+        if (!GraphicsEnvironment.isHeadless()) {
+            Thread toolkitThread = new Thread(this, "AWT-Wayland");
+            toolkitThread.setDaemon(true);
+            toolkitThread.start();
 
-        final Thread toolkitSystemThread = new Thread(this::dispatchNonDefaultQueues, "AWT-Wayland-system-dispatcher");
-        toolkitSystemThread.setDaemon(true);
-        toolkitSystemThread.start();
+            final Thread toolkitSystemThread = new Thread(this::dispatchNonDefaultQueues, "AWT-Wayland-system-dispatcher");
+            toolkitSystemThread.setDaemon(true);
+            toolkitSystemThread.start();
+        }
     }
 
     @Override
