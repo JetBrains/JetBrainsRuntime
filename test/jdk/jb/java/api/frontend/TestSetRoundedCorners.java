@@ -21,10 +21,6 @@
  * questions.
  */
 
-import sun.font.Font2D;
-import sun.font.FontManager;
-import sun.font.SunFontManager;
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;

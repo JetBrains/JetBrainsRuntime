@@ -39,19 +39,18 @@ import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
 import java.util.TreeMap;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
 
 import javax.swing.plaf.FontUIResource;
 
@@ -3058,16 +3057,8 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     }
 
     protected static int fontVersionComparator(String versionFirst, String versionSecond) {
-        String[] versionFirstComponents = versionFirst.split("\\.");
-        String[] versionSecondComponents = versionSecond.split("\\.");
-        
-        for (int i = 0; i < Math.min(versionFirstComponents.length, versionSecondComponents.length); i++) {
-            int diff = new BigInteger(versionFirstComponents[i]).compareTo(new BigInteger(versionSecondComponents[i]));
-            if (diff != 0) {
-                return diff;
-            }
-        }
-        return 0;
+        return Arrays.compare(versionFirst.split("\\."), versionSecond.split("\\."),
+                Comparator.comparing(BigInteger::new));
     }
 
     private boolean isFontNewer(String versionFirst, String versionSecond) {
