@@ -1697,7 +1697,6 @@ static jlong
             glyphInfo = getNullGlyphImage();
             return ptr_to_jlong(glyphInfo);
         }
-        printf("renderFlags = %d \n", context->renderFlags);
         error = FT_Render_Glyph(ftglyph, context->renderFlags);
         if (error != 0) {
             return ptr_to_jlong(getNullGlyphImage());
