@@ -69,6 +69,8 @@ struct wl_cursor_theme *wl_cursor_theme = NULL;
 uint32_t last_mouse_pressed_serial = 0;
 uint32_t last_pointer_enter_serial = 0;
 
+static uint32_t num_of_outstanding_sync = 0;
+
 // This group of definitions corresponds to declarations from awt.h
 jclass    tkClass = NULL;
 jmethodID awtLockMID = NULL;
@@ -606,6 +608,31 @@ wl_seat_name(void *data, struct wl_seat *wl_seat, const char *name)
     J2dTrace(J2D_TRACE_INFO, "WLToolkit: seat name '%s'\n", name);
 }
 
+static void
+display_sync_callback(void *data,
+                      struct wl_callback *callback,
+                      uint32_t time) {
+    num_of_outstanding_sync--;
+    wl_callback_destroy(callback);
+}
+
+static const struct wl_callback_listener display_sync_listener = {
+        .done = display_sync_callback
+};
+
+static void
+process_new_listener_before_end_of_init() {
+    // "The sync request asks the server to emit the 'done' event on the returned
+    // wl_callback object. Since requests are handled in-order and events
+    // are delivered in-order, this can be used as a barrier to ensure all previous
+    // requests and the resulting events have been handled."
+    struct wl_callback *callback = wl_display_sync(wl_display);
+    wl_callback_add_listener(callback,
+                             &display_sync_listener,
+                             callback);
+    num_of_outstanding_sync++;
+}
+
 static const struct wl_seat_listener wl_seat_listener = {
         .capabilities = wl_seat_capabilities,
         .name = wl_seat_name
@@ -622,11 +649,14 @@ registry_global(void *data, struct wl_registry *wl_registry,
     } else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
         xdg_wm_base = wl_registry_bind(wl_registry, name, &xdg_wm_base_interface, 1);
         xdg_wm_base_add_listener(xdg_wm_base, &xdg_wm_base_listener, NULL);
+        process_new_listener_before_end_of_init();
     } else if (strcmp(interface, wl_seat_interface.name) == 0) {
         wl_seat = wl_registry_bind(wl_registry, name, &wl_seat_interface, 5);
         wl_seat_add_listener(wl_seat, &wl_seat_listener, NULL);
+        process_new_listener_before_end_of_init();
     } else if (strcmp(interface, wl_output_interface.name) == 0) {
         WLOutputRegister(wl_registry, name);
+        process_new_listener_before_end_of_init();
     }
 #ifdef WAKEFIELD_ROBOT
     else if (strcmp(interface, wakefield_interface.name) == 0) {
@@ -824,6 +854,22 @@ initCursors() {
     }
 }
 
+static void
+finalize_init(JNIEnv *env) {
+    // NB: we are NOT on EDT here so shouldn't dispatch EDT-sensitive stuff
+    while (num_of_outstanding_sync > 0) {
+        // There are outstanding events that carry information essential for the toolkit
+        // to be fully operational, such as, for example, the number of outputs.
+        // Those events were subscribed to when handling globals in registry_global().
+        // Now we let the server process those events and signal us that their corresponding
+        // handlers have been executed by calling display_sync_callback() (see).
+        if (wl_display_dispatch(wl_display) < 0) {
+            JNU_ThrowByName(env, "java/awt/AWTError", "wl_display_dispatch() failed");
+            return;
+        }
+    }
+}
+
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLToolkit_initIDs
   (JNIEnv *env, jclass clazz)
@@ -846,10 +892,18 @@ Java_sun_awt_wl_WLToolkit_initIDs
 
     struct wl_registry *wl_registry = wl_display_get_registry(wl_display);
     wl_registry_add_listener(wl_registry, &wl_registry_listener, NULL);
-    wl_display_roundtrip(wl_display);
+    // Process info about Wayland globals here; maybe register more handlers that
+    // will have to be processed later in finalize_init().
+    if (wl_display_roundtrip(wl_display) < 0) {
+        JNU_ThrowByName(env, "java/awt/AWTError", "wl_display_roundtrip() failed");
+        return;
+    }
+
     J2dTrace(J2D_TRACE_INFO, "WLToolkit: Connection to display(%p) established\n", wl_display);
 
     initCursors();
+
+    finalize_init(env);
 }
 
 JNIEXPORT void JNICALL
