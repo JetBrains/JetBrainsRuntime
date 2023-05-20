@@ -26,6 +26,7 @@
 
 package sun.awt.wl;
 
+import jdk.internal.misc.InnocuousThread;
 import sun.awt.AWTAccessor;
 import sun.awt.AppContext;
 import sun.awt.LightweightFrame;
@@ -151,13 +152,15 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         });
 
         if (!GraphicsEnvironment.isHeadless()) {
-            Thread toolkitThread = new Thread(this, "AWT-Wayland");
+            Thread toolkitThread = InnocuousThread.newThread("AWT-Wayland", this);
             toolkitThread.setDaemon(true);
             toolkitThread.start();
 
-            final Thread toolkitSystemThread = new Thread(this::dispatchNonDefaultQueues, "AWT-Wayland-system-dispatcher");
+            final Thread toolkitSystemThread = InnocuousThread.newThread("AWT-Wayland-system-dispatcher", this::dispatchNonDefaultQueues);
             toolkitSystemThread.setDaemon(true);
             toolkitSystemThread.start();
+
+            // Wait here for all display sync events to have been received?
         }
     }
 
