@@ -42,11 +42,6 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
 
     @Override
     protected int getNumScreens() {
-        try {
-            outputHasBeenConfigured.await();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
         synchronized (devices) {
             return devices.size();
         }
@@ -54,11 +49,6 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
 
     @Override
     protected GraphicsDevice makeScreenDevice(int screenNum) {
-        try {
-            outputHasBeenConfigured.await();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
         synchronized (devices) {
             return devices.get(screenNum);
         }
@@ -69,12 +59,12 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
         return true;
     }
 
-    private final CountDownLatch outputHasBeenConfigured = new CountDownLatch(1);
     private final List<WLGraphicsDevice> devices = new ArrayList<>(5);
 
     private void notifyOutputConfigured(String name, int wlID, int x, int y, int width, int height,
                                         int subpixel, int transform, int scale) {
         // Called from native code whenever a new output appears or an existing one changes its properties
+        // NB: initially called during WLToolkit.initIDs() on the main thread; later on EDT.
         synchronized (devices) {
             boolean newOutput = true;
             for (final WLGraphicsDevice gd : devices) {
@@ -87,7 +77,6 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
                 final WLGraphicsDevice gd = new WLGraphicsDevice(wlID);
                 gd.updateConfiguration(name, x, y, width, height, scale);
                 devices.add(gd);
-                outputHasBeenConfigured.countDown();
             }
         }
         displayChanged();
