@@ -876,7 +876,7 @@ endif
 
 ifeq ($(call isTargetOs, windows), true)
     BUILD_HOTSPOT_JTREG_EXECUTABLES_CFLAGS_exeFPRegs := -MT
-    BUILD_HOTSPOT_JTREG_EXCLUDE += exesigtest.c libterminatedThread.c
+    BUILD_HOTSPOT_JTREG_EXCLUDE += exesigtest.c libterminatedThread.c libnativeStack.c
     BUILD_HOTSPOT_JTREG_LIBRARIES_LIBS_libatExit := jvm.lib
     BUILD_HOTSPOT_JTREG_EXECUTABLES_LIBS_exejvm-test-launcher := jvm.lib
 
@@ -1515,6 +1515,7 @@ else
     BUILD_HOTSPOT_JTREG_LIBRARIES_LIBS_libgetphase002 += -lpthread
     BUILD_HOTSPOT_JTREG_LIBRARIES_LIBS_libterminatedThread += -lpthread
     BUILD_HOTSPOT_JTREG_LIBRARIES_LIBS_libatExit += -ljvm
+    BUILD_HOTSPOT_JTREG_LIBRARIES_LIBS_libnativeStack += -lpthread
 endif
 
 $(eval $(call SetupTestFilesCompilation, BUILD_HOTSPOT_JTREG_LIBRARIES, \
