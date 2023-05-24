@@ -1283,7 +1283,7 @@ AllocateSharedMemoryFile(size_t size, const char* baseName) {
     return fd;
 }
 
-struct wl_shm_pool *CreateShmPool(int32_t size, const char *name, void **data) {
+struct wl_shm_pool *CreateShmPool(size_t size, const char *name, void **data) {
     if (size <= 0)
         return NULL;
     int poolFD = AllocateSharedMemoryFile(size, name);
