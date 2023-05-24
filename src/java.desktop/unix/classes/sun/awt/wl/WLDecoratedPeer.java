@@ -129,7 +129,7 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
         if (decoration != null) {
             final Rectangle bounds = decoration.getBounds();
             decoration.markRepaintNeeded();
-            postPaintEvent(getTarget(), bounds.x, bounds.y, bounds.width, bounds.height);
+            postPaintEvent(bounds.x, bounds.y, bounds.width, bounds.height);
         }
     }
 
