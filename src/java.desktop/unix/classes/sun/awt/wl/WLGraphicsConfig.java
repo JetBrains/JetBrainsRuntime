@@ -18,19 +18,19 @@ import sun.java2d.wl.WLVolatileSurfaceManager;
 public class WLGraphicsConfig extends GraphicsConfiguration
         implements SurfaceManager.Factory {
     private final WLGraphicsDevice device;
+    private final int width;
+    private final int height;
+    private final int scale;
 
-    private final Object dataLock = new Object();
-
-    private final Rectangle bounds = new Rectangle(800, 600);
-
-    // This is Wayland scale for the use with wl_buffers only.
-    // From wayland.xml, wl_surface.set_buffer_scale request:
-    // "It is intended that you pick the same buffer scale as the scale of the
-    //	output that the surface is displayed on."
-    private int wlBufferScale = 1;
-
-    public WLGraphicsConfig(WLGraphicsDevice device) {
+    public WLGraphicsConfig(WLGraphicsDevice device, int width, int height, int scale) {
         this.device = device;
+        this.width = width;
+        this.height = height;
+        this.scale = scale;
+    }
+
+    public boolean differsFrom(int width, int height, int scale) {
+        return width != this.width || height != this.height || scale != this.scale;
     }
 
     @Override
@@ -77,9 +77,7 @@ public class WLGraphicsConfig extends GraphicsConfiguration
 
     @Override
     public Rectangle getBounds() {
-        synchronized (dataLock) {
-            return bounds;
-        }
+        return new Rectangle(width, height);
     }
 
     public SurfaceType getSurfaceType() {
@@ -90,17 +88,13 @@ public class WLGraphicsConfig extends GraphicsConfiguration
         return WLSurfaceData.createData(peer);
     }
 
-    int getScale() {
-        synchronized (dataLock) {
-            return wlBufferScale;
-        }
+    public int getScale() {
+        return scale;
     }
 
-    void update(int width, int height, int scale) {
-        synchronized (dataLock) {
-            this.wlBufferScale = scale;
-            bounds.setSize(width, height);
-        }
+    @Override
+    public String toString() {
+        return String.format("WLGraphicsConfig: %dx%d %dx scale", width, height, scale);
     }
 
     @Override
