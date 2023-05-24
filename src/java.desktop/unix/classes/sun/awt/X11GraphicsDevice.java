@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import java.awt.DisplayMode;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.Insets;
 import java.awt.Rectangle;
 import java.awt.Window;
 import java.security.AccessController;
@@ -37,6 +38,7 @@ import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import sun.awt.util.ThreadGroupUtils;
@@ -67,6 +69,8 @@ public final class X11GraphicsDevice extends GraphicsDevice
     private static Boolean xrandrExtSupported;
     private SunDisplayChanger topLevels = new SunDisplayChanger();
     private DisplayMode origDisplayMode;
+    private volatile Rectangle bounds;
+    private volatile Insets insets;
     private boolean shutdownHookRegistered;
     private int scale;
     private final AtomicBoolean isScaleFactorDefault = new AtomicBoolean(false);
@@ -78,6 +82,7 @@ public final class X11GraphicsDevice extends GraphicsDevice
 
     public X11GraphicsDevice(int screennum) {
         this.screen = screennum;
+        this.bounds = getBoundsImpl();
         int scaleFactor = initScaleFactor(-1);
         synchronized (isScaleFactorDefault) {
             isScaleFactorDefault.set(scaleFactor == -1);
@@ -152,13 +157,30 @@ public final class X11GraphicsDevice extends GraphicsDevice
         return Region.clipRound(s + (y - s) / (double)getScaleFactor());
     }
 
-    public Rectangle getBounds() {
+    private Rectangle getBoundsImpl() {
         Rectangle rect = pGetBounds(getScreen());
         if (getScaleFactor() != 1) {
             rect.width = scaleDown(rect.width);
             rect.height = scaleDown(rect.height);
         }
         return rect;
+    }
+
+    public Rectangle getBounds() {
+        return bounds.getBounds();
+    }
+
+    public Insets getInsets() {
+        return insets;
+    }
+
+    public void setInsets(Insets newInsets) {
+        Objects.requireNonNull(newInsets);
+        insets = newInsets;
+    }
+
+    public void resetInsets() {
+        insets = null;
     }
 
     /**
@@ -548,9 +570,8 @@ public final class X11GraphicsDevice extends GraphicsDevice
     public synchronized void displayChanged() {
         xrmXftDpi = getXrmXftDpi(-1);
         scale = initScaleFactor(1);
-
-        if (X11GraphicsEnvironment.useBoundsCache()) resetBoundsCache();
-
+        bounds = getBoundsImpl();
+        insets = null;
         // On X11 the visuals do not change, and therefore we don't need
         // to reset the defaultConfig, config, doubleBufferVisuals,
         // neither do we need to reset the native data.
@@ -595,7 +616,6 @@ public final class X11GraphicsDevice extends GraphicsDevice
                 if (x11gd.isScaleFactorDefault.get() || !uiScaleEnabled) {
                     x11gd.scale = (int)Math.round(xftDpiScale * (uiScaleEnabled ? GDK_SCALE_MULTIPLIER : 1));
                     x11gd.isScaleFactorDefault.set(false);
-                    if (X11GraphicsEnvironment.useBoundsCache()) x11gd.resetBoundsCache();
                 }
             }
         }
