@@ -38,7 +38,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicBoolean;
-import sun.security.action.GetPropertyAction;
 
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.SunGraphicsEnvironment;
@@ -153,35 +152,13 @@ public final class X11GraphicsDevice extends GraphicsDevice
         return Region.clipRound(s + (y - s) / (double)getScaleFactor());
     }
 
-    private Rectangle getBoundsImpl() {
+    public Rectangle getBounds() {
         Rectangle rect = pGetBounds(getScreen());
         if (getScaleFactor() != 1) {
             rect.width = scaleDown(rect.width);
             rect.height = scaleDown(rect.height);
         }
         return rect;
-    }
-
-    private Rectangle boundsCached;
-
-    private synchronized Rectangle getBoundsCached() {
-        if (boundsCached == null) {
-            boundsCached = getBoundsImpl();
-        }
-        return boundsCached;
-    }
-
-    public synchronized void resetBoundsCache() {
-        boundsCached = null;
-    }
-
-    public Rectangle getBounds() {
-        if (X11GraphicsEnvironment.useBoundsCache()) {
-            return getBoundsCached();
-        }
-        else {
-            return getBoundsImpl();
-        }
     }
 
     /**
@@ -681,6 +658,5 @@ public final class X11GraphicsDevice extends GraphicsDevice
         assert XToolkit.isAWTLockHeldByCurrentThread();
 
         screen = device.screen;
-        if (X11GraphicsEnvironment.useBoundsCache()) resetBoundsCache();
     }
 }
