@@ -6,6 +6,7 @@ import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
 import java.awt.image.ColorModel;
 import java.awt.image.Raster;
+import java.util.Objects;
 
 import sun.awt.image.SunVolatileImage;
 import sun.awt.wl.WLComponentPeer;
@@ -18,44 +19,29 @@ public class WLSurfaceData extends SurfaceData {
 
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.wl.WLSurfaceData");
     private final WLComponentPeer peer;
-    private final WLGraphicsConfig graphicsConfig;
-    private final int depth;
 
     public native void assignSurface(long surfacePtr);
 
-    protected native void initOps(int width, int height, int backgroundRGB);
+    protected native void initOps(int width, int height, int scale, int backgroundRGB);
 
-    protected WLSurfaceData(WLComponentPeer peer,
-                            WLGraphicsConfig gc,
-                            SurfaceType sType,
-                            ColorModel cm) {
-        super(sType, cm);
+    protected WLSurfaceData(WLComponentPeer peer) {
+        super(((WLGraphicsConfig)peer.getGraphicsConfiguration()).getSurfaceType(),
+                peer.getGraphicsConfiguration().getColorModel());
         this.peer = peer;
-        this.graphicsConfig = gc;
-        this.depth = cm.getPixelSize();
         final int backgroundRGB = peer.getBackground() != null
                 ? peer.getBackground().getRGB()
                 : 0;
-        initOps(peer.getBufferWidth(), peer.getBufferHeight(), backgroundRGB);
+        final int scale = ((WLGraphicsConfig)peer.getGraphicsConfiguration()).getScale();
+        initOps(peer.getBufferWidth(), peer.getBufferHeight(), scale, backgroundRGB);
     }
 
     /**
      * Method for instantiating a Window SurfaceData
      */
     public static WLSurfaceData createData(WLComponentPeer peer) {
-        WLGraphicsConfig gc = getGC(peer);
-        return new WLSurfaceData(peer, gc, gc.getSurfaceType(), peer.getColorModel());
-    }
+        if (peer == null) throw new UnsupportedOperationException("Surface without the corresponding window peer is not supported");
 
-    public static WLGraphicsConfig getGC(WLComponentPeer peer) {
-        if (peer != null) {
-            return (WLGraphicsConfig) peer.getGraphicsConfiguration();
-        } else {
-            GraphicsEnvironment env =
-                    GraphicsEnvironment.getLocalGraphicsEnvironment();
-            GraphicsDevice gd = env.getDefaultScreenDevice();
-            return (WLGraphicsConfig) gd.getDefaultConfiguration();
-        }
+        return new WLSurfaceData(peer);
     }
 
     @Override
@@ -65,7 +51,7 @@ public class WLSurfaceData extends SurfaceData {
 
     @Override
     public GraphicsConfiguration getDeviceConfiguration() {
-        return graphicsConfig;
+        return peer.getGraphicsConfiguration();
     }
 
     @Override
@@ -95,7 +81,7 @@ public class WLSurfaceData extends SurfaceData {
         throw new UnsupportedOperationException("SurfaceData not associated with a Component is not supported");
     }
 
-    public native void revalidate(int width, int height);
+    public native void revalidate(int width, int height, int scale);
 
     public native void commitToServer();
 }
