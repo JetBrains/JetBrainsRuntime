@@ -107,7 +107,7 @@ Java_sun_java2d_wl_WLSurfaceData_commitToServer(JNIEnv *env, jobject wsd)
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_wl_WLSurfaceData_revalidate(JNIEnv *env, jobject wsd,
-                                             jint width, jint height)
+                                             jint width, jint height, jint scale)
 {
 #ifndef HEADLESS
     J2dTrace(J2D_TRACE_INFO, "WLSurfaceData_revalidate to size %d x %d\n", width, height);
@@ -116,7 +116,7 @@ Java_sun_java2d_wl_WLSurfaceData_revalidate(JNIEnv *env, jobject wsd,
         return;
     }
 
-    WLSBM_SizeChangeTo(wsdo->bufferManager, width, height);
+    WLSBM_SizeChangeTo(wsdo->bufferManager, width, height, scale);
 #endif /* !HEADLESS */
 }
 
@@ -229,6 +229,7 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_wl_WLSurfaceData_initOps(JNIEnv *env, jobject wsd,
                                          jint width,
                                          jint height,
+                                         jint scale,
                                          jint backgroundRGB)
 {
 #ifndef HEADLESS
@@ -251,7 +252,7 @@ Java_sun_java2d_wl_WLSurfaceData_initOps(JNIEnv *env, jobject wsd,
     wsdo->sdOps.Unlock = WLSD_Unlock;
     wsdo->sdOps.GetRasInfo = WLSD_GetRasInfo;
     wsdo->sdOps.Dispose = WLSD_Dispose;
-    wsdo->bufferManager = WLSBM_Create(width, height, backgroundRGB);
+    wsdo->bufferManager = WLSBM_Create(width, height, backgroundRGB, scale);
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
     // Recursive mutex is required because blit can be done with both source
