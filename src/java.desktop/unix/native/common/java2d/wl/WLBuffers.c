@@ -40,7 +40,7 @@
 
 #ifndef HEADLESS
 
-extern struct wl_shm_pool *CreateShmPool(int32_t size, const char *name, void **data); // defined in WLToolkit.c
+extern struct wl_shm_pool *CreateShmPool(size_t size, const char *name, void **data); // defined in WLToolkit.c
 
 static bool
 BufferShowToWayland(WLSurfaceBufferManager * manager);
@@ -245,6 +245,7 @@ struct WLSurfaceBufferManager {
     WLDrawBuffer        bufferForDraw; // only accessed under drawLock
     jint                width;         // only accessed under drawLock
     jint                height;        // only accessed under drawLock
+    jint                scale;         // only accessed under drawLock
     bool                sizeChanged;   // only accessed under drawLock
 };
 
@@ -395,6 +396,7 @@ SendToWayland(WLSurfaceBufferManager * manager)
         manager->bufferForShow.state = WL_BUFFER_LOCKED;
         // wl_buffer_listener will release bufferForShow when Wayland's done with it
         wl_surface_attach(manager->wlSurface, manager->bufferForShow.wlBuffer, 0, 0);
+        wl_surface_set_buffer_scale(manager->wlSurface, manager->scale);
 
         DamageList_SendAll(manager->bufferForShow.damageList, manager->wlSurface);
         DamageList_FreeAll(manager->bufferForShow.damageList);
@@ -533,7 +535,7 @@ SurfaceBufferCreate(WLSurfaceBufferManager * manager, size_t newSize)
         memset(manager->bufferForShow.data, 0, newSize);
     }
 
-    const int32_t stride = manager->width * sizeof(pixel_t);
+    const int32_t stride = (int32_t)(manager->width * sizeof(pixel_t));
     manager->bufferForShow.wlBuffer = wl_shm_pool_create_buffer(manager->bufferForShow.wlPool, 0,
                                                                 manager->width,
                                                                 manager->height,
@@ -604,7 +606,7 @@ DrawBufferDestroy(WLSurfaceBufferManager * manager)
 }
 
 WLSurfaceBufferManager *
-WLSBM_Create(jint width, jint height, jint rgb)
+WLSBM_Create(jint width, jint height, jint scale, jint rgb)
 {
     WLSurfaceBufferManager * manager = calloc(1, sizeof(WLSurfaceBufferManager));
     if (!manager) {
@@ -613,6 +615,7 @@ WLSBM_Create(jint width, jint height, jint rgb)
 
     manager->width = width;
     manager->height = height;
+    manager->scale = scale;
     manager->backgroundRGB = rgb;
 
     pthread_mutex_init(&manager->showLock, NULL);
@@ -754,19 +757,24 @@ WLSB_DataGet(WLDrawBuffer * buffer)
 }
 
 void
-WLSBM_SizeChangeTo(WLSurfaceBufferManager * manager, jint width, jint height)
+WLSBM_SizeChangeTo(WLSurfaceBufferManager * manager, jint width, jint height, jint scale)
 {
     MUTEX_LOCK(manager->drawLock);
 
-    if (manager->width != width || manager->height != height) {
+    const bool size_changed = manager->width != width || manager->height != height;
+    if (size_changed) {
         DrawBufferDestroy(manager);
 
-        manager->width = width;
+        manager->width  = width;
         manager->height = height;
         manager->sizeChanged = true;
 
         DrawBufferCreate(manager);
         ShowFrameNumbers(manager, "WLSBM_SizeChangeTo %dx%d", width, height);
+    }
+
+    if (manager->scale != scale) {
+        manager->scale = scale;
     }
 
     MUTEX_UNLOCK(manager->drawLock);
