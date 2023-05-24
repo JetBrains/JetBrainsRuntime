@@ -44,7 +44,7 @@ struct wl_event_queue *robot_queue;
 
 #ifndef HEADLESS
 static struct wl_buffer*
-allocate_buffer(JNIEnv *env, int width, int height, uint32_t **buffer_data, int* size);
+allocate_buffer(JNIEnv *env, int width, int height, uint32_t **buffer_data, size_t* size);
 #endif
 
 #ifdef WAKEFIELD_ROBOT
@@ -258,7 +258,7 @@ Java_sun_awt_wl_WLRobotPeer_getRGBPixelsImpl
     }
 
     uint32_t *buffer_data;
-    int       buffer_size_in_bytes;
+    size_t    buffer_size_in_bytes;
     struct wl_buffer *buffer = allocate_buffer(env, width, height, &buffer_data, &buffer_size_in_bytes);
     if (!buffer) {
         return NULL;
@@ -377,13 +377,13 @@ struct wakefield_listener wakefield_listener = {
 #ifndef HEADLESS
 
 static struct wl_buffer*
-allocate_buffer(JNIEnv *env, int width, int height, uint32_t **buffer_data, int* size)
+allocate_buffer(JNIEnv *env, int width, int height, uint32_t **buffer_data, size_t* size)
 {
     const int stride = width * 4;
     *size            = height * stride;
     *buffer_data     = NULL;
 
-    if (*size <= 0) {
+    if (*size == 0) {
         JNU_ThrowByName(env, "java/awt/AWTError", "buffer size overflow");
         return NULL;
     }
