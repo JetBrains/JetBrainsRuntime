@@ -492,12 +492,3 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeShowWindowMenu
         xdg_toplevel_show_window_menu(frame->xdg_toplevel, wl_seat, last_mouse_pressed_serial, x, y);
     }
 }
-
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetBufferScale
-        (JNIEnv *env, jobject obj, jlong ptr, jint scale)
-{
-    struct WLFrame *frame = jlong_to_ptr(ptr);
-    if (frame->wl_surface) {
-        wl_surface_set_buffer_scale(frame->wl_surface, scale);
-    }
-}
