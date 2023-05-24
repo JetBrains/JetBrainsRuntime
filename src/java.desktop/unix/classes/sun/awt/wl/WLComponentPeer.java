@@ -28,7 +28,6 @@ package sun.awt.wl;
 
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
-import sun.awt.DisplayChangedListener;
 import sun.awt.PaintEventDispatcher;
 import sun.awt.event.IgnorePaintEvent;
 import sun.awt.image.SunVolatileImage;
@@ -57,8 +56,8 @@ import java.util.ArrayList;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-public class WLComponentPeer implements ComponentPeer,
-        DisplayChangedListener {
+public class WLComponentPeer implements ComponentPeer {
+    private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLComponentPeer");
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.wl.focus.WLComponentPeer");
 
     private static final String appID = System.getProperty("sun.java.command");
@@ -83,7 +82,6 @@ public class WLComponentPeer implements ComponentPeer,
     };
 
     private long nativePtr;
-    private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLComponentPeer");
     protected final Component target;
 
     // Graphics devices this top-level component is visible on
@@ -119,12 +117,12 @@ public class WLComponentPeer implements ComponentPeer,
         y = bounds.y;
         width = bounds.width;
         height = bounds.height;
-        wlBufferScale = ((WLGraphicsConfig)target.getGraphicsConfiguration()).getScale();
-        this.surfaceData = (WLSurfaceData) ((WLGraphicsConfig)target.getGraphicsConfiguration())
-                .createSurfaceData(this);
-        this.nativePtr = nativeCreateFrame();
+        final WLGraphicsConfig config = (WLGraphicsConfig)target.getGraphicsConfiguration();
+        wlBufferScale = config.getScale();
+        surfaceData = (WLSurfaceData) config.createSurfaceData(this);
+        nativePtr = nativeCreateFrame();
         paintArea = new WLRepaintArea();
-        log.info("WLComponentPeer: target=" + target + " x=" + x + " y=" + y +
+        log.fine("WLComponentPeer: target=" + target + " x=" + x + " y=" + y +
                 " width=" + width + " height=" + height);
         // TODO
         // setup parent window for target
@@ -146,7 +144,7 @@ public class WLComponentPeer implements ComponentPeer,
         return background;
     }
 
-    public void postPaintEvent(Component target, int x, int y, int w, int h) {
+    public void postPaintEvent(int x, int y, int w, int h) {
         PaintEvent event = PaintEventDispatcher.getPaintEventDispatcher().
                 createPaintEvent(target, x, y, w, h);
         if (event != null) {
@@ -157,7 +155,7 @@ public class WLComponentPeer implements ComponentPeer,
     void postPaintEvent() {
         if (isVisible()) {
             synchronized (sizeLock) {
-                postPaintEvent(getTarget(), 0, 0, width, height);
+                postPaintEvent(0, 0, width, height);
             }
         }
     }
@@ -248,8 +246,10 @@ public class WLComponentPeer implements ComponentPeer,
 
     void configureWLSurface() {
         synchronized (sizeLock) {
-            surfaceData.revalidate(getBufferWidth(), getBufferHeight());
-            performLocked(() -> nativeSetBufferScale(nativePtr, wlBufferScale));
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine(String.format("%s is configured to %dx%d with %dx scale", this, getBufferWidth(), getBufferHeight(), getBufferScale()));
+            }
+            surfaceData.revalidate(getBufferWidth(), getBufferHeight(), getBufferScale());
         }
     }
 
@@ -340,7 +340,10 @@ public class WLComponentPeer implements ComponentPeer,
             if (sizeChanged) {
                 this.width = width;
                 this.height = height;
-                surfaceData.revalidate(getBufferWidth(), getBufferHeight());
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine(String.format("%s is resizing its buffer to %dx%d with %dx scale", this, getBufferWidth(), getBufferHeight(), getBufferScale()));
+                }
+                surfaceData.revalidate(getBufferWidth(), getBufferHeight(), getBufferScale());
                 updateWindowGeometry();
                 layout();
 
@@ -407,14 +410,14 @@ public class WLComponentPeer implements ComponentPeer,
 
         switch (e.getID()) {
             case PaintEvent.UPDATE -> {
-                if (log.isLoggable(Level.INFO)) {
-                    log.info("WLCP coalescePaintEvent : UPDATE : add : x = " +
+                if (log.isLoggable(Level.FINE)) {
+                    log.fine("WLCP coalescePaintEvent : UPDATE : add : x = " +
                             r.x + ", y = " + r.y + ", width = " + r.width + ",height = " + r.height);
                 }
             }
             case PaintEvent.PAINT -> {
-                if (log.isLoggable(Level.INFO)) {
-                    log.info("WLCP coalescePaintEvent : PAINT : add : x = " +
+                if (log.isLoggable(Level.FINE)) {
+                    log.fine("WLCP coalescePaintEvent : PAINT : add : x = " +
                             r.x + ", y = " + r.y + ", width = " + r.width + ",height = " + r.height);
                 }
             }
@@ -478,7 +481,9 @@ public class WLComponentPeer implements ComponentPeer,
                 paintPending = false;
                 // Fallthrough to next statement
             case PaintEvent.UPDATE:
-                log.info("WLComponentPeer.handleEvent(AWTEvent): UPDATE " + this);
+                if (log.isLoggable(Level.FINE)) {
+                    log.fine("UPDATE " + this);
+                }
                 // Skip all painting while layouting and all UPDATEs
                 // while waiting for native paint
                 if (!isLayouting && !paintPending) {
@@ -529,7 +534,9 @@ public class WLComponentPeer implements ComponentPeer,
     }
 
     public void endLayout() {
-        log.info("WLComponentPeer.endLayout(): paintArea.isEmpty() " + paintArea.isEmpty());
+        if (log.isLoggable(Level.FINE)) {
+            log.fine("WLComponentPeer.endLayout(): paintArea.isEmpty() " + paintArea.isEmpty());
+        }
         if (!paintPending && !paintArea.isEmpty()
                 && !AWTAccessor.getComponentAccessor().getIgnoreRepaint(target)) {
             // if not waiting for native painting repaint damaged area
@@ -723,7 +730,23 @@ public class WLComponentPeer implements ComponentPeer,
 
     @Override
     public boolean updateGraphicsData(GraphicsConfiguration gc) {
-        throw new UnsupportedOperationException();
+        final int newScale = ((WLGraphicsConfig)gc).getScale();
+
+        synchronized (sizeLock) {
+            if (newScale != wlBufferScale) {
+                wlBufferScale = newScale;
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine(String.format("%s is updating buffer to %dx%d with %dx scale", this, getBufferWidth(), getBufferHeight(), wlBufferScale));
+                }
+                surfaceData.revalidate(getBufferWidth(), getBufferHeight(), wlBufferScale);
+                postPaintEvent();
+            }
+        }
+
+        // Not sure what would need to have changed in Wayland's graphics configuration
+        // to warrant destroying the peer and creating a new one from scratch.
+        // So return "never recreate" here.
+        return false;
     }
 
     final void setFrameTitle(String title) {
@@ -783,7 +806,6 @@ public class WLComponentPeer implements ComponentPeer,
     private static native void nativeSetCursor(long pData);
     private static native long nativeGetPredefinedCursor(String name);
     private native void nativeShowWindowMenu(long ptr, int x, int y);
-    private native void nativeSetBufferScale(long ptr, int scale);
 
     static long getParentNativePtr(Component target) {
         Component parent = target.getParent();
@@ -928,6 +950,10 @@ public class WLComponentPeer implements ComponentPeer,
         final long wlSurfacePtr = getWLSurface(nativePtr);
         // TODO: this needs to be done only once after wlSetVisible(true)
         surfaceData.assignSurface(wlSurfacePtr);
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine(String.format("%s configured to %dx%d", this, newWidth, newHeight));
+        }
+
         if (newWidth != 0 && newHeight != 0) performUnlocked(() ->target.setSize(newWidth, newHeight));
         if (newWidth == 0 && newHeight == 0) {
             // From xdg-shell.xml: "If the width or height arguments are zero,
@@ -941,27 +967,22 @@ public class WLComponentPeer implements ComponentPeer,
         }
     }
 
-    @Override
-    public void displayChanged() {
-        updateBufferScale();
-    }
-
-    @Override
-    public void paletteChanged() {
-    }
-
     void notifyEnteredOutput(int wlOutputID) {
         // Called from native code whenever the corresponding wl_surface enters a new output
         synchronized (devices) {
             final WLGraphicsEnvironment ge = (WLGraphicsEnvironment)WLGraphicsEnvironment.getLocalGraphicsEnvironment();
             final WLGraphicsDevice gd = ge.notifySurfaceEnteredOutput(this, wlOutputID);
             if (gd != null) {
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine(this + " has entered " + gd);
+                }
                 devices.add(gd);
-                updateBufferScale();
             } else {
                 log.severe("Entered output " + wlOutputID + " for which WLGraphicsEnvironment has no record");
             }
         }
+
+        checkIfOnNewScreen();
     }
 
     void notifyLeftOutput(int wlOutputID) {
@@ -970,34 +991,47 @@ public class WLComponentPeer implements ComponentPeer,
             final WLGraphicsEnvironment ge = (WLGraphicsEnvironment)WLGraphicsEnvironment.getLocalGraphicsEnvironment();
             final WLGraphicsDevice gd = ge.notifySurfaceLeftOutput(this, wlOutputID);
             if (gd != null) {
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine(this + " has left " + gd);
+                }
                 devices.remove(gd);
-                updateBufferScale();
             } else {
                 log.severe("Left output " + wlOutputID + " for which WLGraphicsEnvironment has no record");
             }
         }
+
+        checkIfOnNewScreen();
     }
 
-    private void updateBufferScale() {
-        if (devices.isEmpty()) return; // no devices, no update
-
-        int newScale = 1;
+    private WLGraphicsDevice getGraphicsDevice() {
+        int scale = 0;
+        WLGraphicsDevice theDevice = null;
         // AFAIK there's no way of knowing which WLGraphicsDevice is displaying
-        // the largest portion of this component, so we can't base scaling on that.
-        // Choose maximum scale simply to be deterministic.
-        for (WLGraphicsDevice gd : devices) {
-            if (gd.getScale() > newScale) {
-                newScale = gd.getScale();
+        // the largest portion of this component, so choose the first in the ordered list
+        // of devices with the maximum scale simply to be deterministic.
+        // NB: devices are added to the end of the list when we enter the corresponding
+        // Wayland's output and are removed as soon as we have left.
+        synchronized (devices) {
+            for (WLGraphicsDevice gd : devices) {
+                if (gd.getScale() > scale) {
+                    scale = gd.getScale();
+                    theDevice = gd;
+                }
             }
         }
 
-        synchronized (sizeLock) {
-            if (newScale != wlBufferScale) {
-                wlBufferScale = newScale;
-                surfaceData.revalidate(getBufferWidth(), getBufferHeight());
-                performLocked(() -> nativeSetBufferScale(nativePtr, wlBufferScale));
-                postPaintEvent();
+        return theDevice;
+    }
+
+    private void checkIfOnNewScreen() {
+        final WLGraphicsDevice newDevice = getGraphicsDevice();
+        if (newDevice != null) { // could be null when screens are being reconfigured
+            final GraphicsConfiguration gc = newDevice.getDefaultConfiguration();
+            if (log.isLoggable(Level.FINE)) {
+                log.fine(this + " is on (possibly) new device " + newDevice);
             }
+            var acc = AWTAccessor.getComponentAccessor();
+            acc.setGraphicsConfiguration(target, gc);
         }
     }
 
