@@ -260,7 +260,7 @@ MTLBlitSwToTextureViaPooledTexture(
 
     id<MTLTexture> dest = bmtlsdOps->pTexture;
 
-    MTLPooledTextureHandle * texHandle = [mtlc.texturePool getTexture:sw height:sh format:MTLPixelFormatBGRA8Unorm];
+    MTLPooledTextureHandle * texHandle = [mtlc.texturePool getTexture:sw height:sh format:SURFACE_PIXEL_FORMAT];
     if (texHandle == nil) {
         J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitSwToTextureViaPooledTexture: can't obtain temporary texture object from pool");
         return;
@@ -815,7 +815,7 @@ MTLBlitLoops_CopyArea(JNIEnv *env,
             MTLPooledTextureHandle * interHandle =
                 [mtlc.texturePool getTexture:texWidth
                                       height:texHeight
-                                      format:MTLPixelFormatBGRA8Unorm];
+                                      format:SURFACE_PIXEL_FORMAT];
             if (interHandle == nil) {
                 J2dTraceLn(J2D_TRACE_ERROR,
                     "MTLBlitLoops_CopyArea: texture handle is null");

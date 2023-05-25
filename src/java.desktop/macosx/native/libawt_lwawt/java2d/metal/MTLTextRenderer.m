@@ -121,7 +121,7 @@ MTLTR_ValidateGlyphCache(MTLContext *mtlc, BMTLSDOps *dstOps, jboolean lcdCache)
                                   height:MTLTR_CACHE_HEIGHT
                                cellWidth:MTLTR_CACHE_CELL_WIDTH
                               cellHeight:MTLTR_CACHE_CELL_HEIGHT
-                             pixelFormat:(lcdCache)?MTLPixelFormatBGRA8Unorm:MTLPixelFormatA8Unorm
+                             pixelFormat:(lcdCache)?SURFACE_PIXEL_FORMAT:MTLPixelFormatA8Unorm
                                     func:MTLVertexCache_FlushGlyphVertexCache])
     {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
@@ -455,7 +455,7 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
     id<MTLRenderCommandEncoder> encoder = nil;
 
     MTLTextureDescriptor *textureDescriptor =
-        [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
+        [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:SURFACE_PIXEL_FORMAT
                                                             width:w
                                                             height:h
                                                             mipmapped:NO];
@@ -554,7 +554,7 @@ MTLTR_DrawColorGlyphNoCache(MTLContext *mtlc,
         EnableColorGlyphPainting(mtlc);
     }
 
-    MTLPooledTextureHandle* texHandle = [mtlc.texturePool getTexture:w height:h format:MTLPixelFormatBGRA8Unorm];
+    MTLPooledTextureHandle* texHandle = [mtlc.texturePool getTexture:w height:h format:SURFACE_PIXEL_FORMAT];
     if (texHandle == nil) {
         J2dTraceLn(J2D_TRACE_ERROR, "MTLTR_DrawColorGlyphNoCache: can't obtain temporary texture object from pool");
         return JNI_FALSE;

@@ -77,7 +77,7 @@ static void initTemplatePipelineDescriptors() {
     templateRenderPipelineDesc = [MTLRenderPipelineDescriptor new];
     templateRenderPipelineDesc.sampleCount = 1;
     templateRenderPipelineDesc.vertexDescriptor = vertDesc;
-    templateRenderPipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+    templateRenderPipelineDesc.colorAttachments[0].pixelFormat = SURFACE_PIXEL_FORMAT;
     templateRenderPipelineDesc.colorAttachments[0].rgbBlendOperation =   MTLBlendOperationAdd;
     templateRenderPipelineDesc.colorAttachments[0].alphaBlendOperation = MTLBlendOperationAdd;
     templateRenderPipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOne;
@@ -104,7 +104,7 @@ static void initTemplatePipelineDescriptors() {
     templateLCDPipelineDesc = [MTLRenderPipelineDescriptor new];
     templateLCDPipelineDesc.sampleCount = 1;
     templateLCDPipelineDesc.vertexDescriptor = vertDesc;
-    templateLCDPipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+    templateLCDPipelineDesc.colorAttachments[0].pixelFormat = SURFACE_PIXEL_FORMAT;
     templateLCDPipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].format = MTLVertexFormatFloat2;
     templateLCDPipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].offset = 2*sizeof(float);
     templateLCDPipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].bufferIndex = MeshVertexBuffer;
@@ -124,7 +124,7 @@ static void initTemplatePipelineDescriptors() {
     templateAAPipelineDesc = [MTLRenderPipelineDescriptor new];
     templateAAPipelineDesc.sampleCount = 1;
     templateAAPipelineDesc.vertexDescriptor = vertDesc;
-    templateAAPipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+    templateAAPipelineDesc.colorAttachments[0].pixelFormat = SURFACE_PIXEL_FORMAT;
     templateAAPipelineDesc.colorAttachments[0].rgbBlendOperation =   MTLBlendOperationAdd;
     templateAAPipelineDesc.colorAttachments[0].alphaBlendOperation = MTLBlendOperationAdd;
     templateAAPipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOne;

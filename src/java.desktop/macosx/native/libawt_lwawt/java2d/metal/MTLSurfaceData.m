@@ -72,7 +72,7 @@ static jboolean MTLSurfaceData_initTexture(BMTLSDOps *bmtlsdo, jboolean isOpaque
             return JNI_FALSE;
         }
 
-        MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatBGRA8Unorm width: width height: height mipmapped: NO];
+        MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: SURFACE_PIXEL_FORMAT width: width height: height mipmapped: NO];
         textureDescriptor.usage = MTLTextureUsageUnknown;
         textureDescriptor.storageMode = MTLStorageModePrivate;
         bmtlsdo->pTexture = [ctx.device newTextureWithDescriptor: textureDescriptor];

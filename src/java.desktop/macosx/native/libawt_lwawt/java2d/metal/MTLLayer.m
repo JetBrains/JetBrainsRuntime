@@ -270,7 +270,7 @@ Java_sun_java2d_metal_MTLLayer_validate
         layer.buffer = &bmtlsdo->pTexture;
         layer.ctx = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->context;
         layer.device = layer.ctx.device;
-        layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
+        layer.pixelFormat = SURFACE_PIXEL_FORMAT;
         layer.drawableSize =
             CGSizeMake((*layer.buffer).width,
                        (*layer.buffer).height);

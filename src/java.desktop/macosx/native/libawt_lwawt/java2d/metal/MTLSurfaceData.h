@@ -31,6 +31,13 @@
 #import "AWTWindow.h"
 #import "MTLLayer.h"
 
+/** define the surface pixel format */
+/* TODO: try using 10bits or RGBA16 to get more precise blending & color conversions */
+//#define SURFACE_PIXEL_FORMAT    MTLPixelFormatBGRA8Unorm
+#define SURFACE_PIXEL_FORMAT    MTLPixelFormatBGRA8Unorm_sRGB
+// MTLPixelFormatBGRA8Unorm_sRGB
+// MTLPixelFormatBGR10_XR
+
 /**
  * The MTLSDOps structure contains the MTL-specific information for a given
  * MTLSurfaceData.  It is referenced by the native MTLSDOps structure.
@@ -41,6 +48,7 @@ typedef struct _MTLSDOps {
     jint              argb[4]; // background clear color
     MTLGraphicsConfigInfo *configInfo;
 } MTLSDOps;
+
 
 // debug-method
 NSString * getSurfaceDescription(const BMTLSDOps * bmtlsdOps);

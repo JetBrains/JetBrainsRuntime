@@ -54,7 +54,7 @@ MTLMaskBlit_MaskBlit(JNIEnv *env, MTLContext *mtlc, BMTLSDOps * dstOps,
     MTLPooledTextureHandle * texHandle = [mtlc.texturePool
                                                   getTexture:width
                                                       height:height
-                                                      format:MTLPixelFormatBGRA8Unorm];
+                                                      format:SURFACE_PIXEL_FORMAT];
     if (texHandle == nil) {
         J2dTraceLn(J2D_TRACE_ERROR, "MTLMaskBlit_MaskBlit: can't obtain temporary texture object from pool");
         return;

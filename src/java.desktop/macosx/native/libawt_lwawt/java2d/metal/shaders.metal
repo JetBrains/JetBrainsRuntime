@@ -351,9 +351,21 @@ fragment half4 frag_txt_col(
     float srcA = uniforms.isSrcOpaque ? 1 : pixelColor.a;
 
     float4 in_col = vert.color;
-    float3 c = mix(pixelColor.rgb, in_col.rgb, srcA);
-    return half4(c.r, c.g, c.b,
-                 (uniforms.isSrcOpaque) ? in_col.a : pixelColor.a * in_col.a);
+
+    // inv-gamma corrected before linear blending
+    in_col.rgb = pow(vert.color.rgb, 2.2);
+
+    // inv-gamma corrected before linear blending
+    float lum = srcA * (in_col.r + in_col.g + in_col.b) / 3.0;
+
+    // adjust constrast:
+    float exp = 1.0 + (1.0 - lum) * 2.0; // [1 - 2.2] <=> [1 .. 0]
+    srcA = pow(srcA, 1.0 / exp);
+
+    srcA *= vert.color.a;
+
+    float3 c = in_col.rgb * srcA;
+    return half4(c.r, c.g, c.b, srcA);
 }
 
 fragment half4 frag_text(
