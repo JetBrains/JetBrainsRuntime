@@ -33,6 +33,7 @@ import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Locale;
+import java.util.Set;
 
 public abstract class Font2D {
 
@@ -118,16 +119,6 @@ public abstract class Font2D {
      * Whether to use weak refs for this font, even if soft refs is the default.
      */
     private boolean useWeak;
-
-    private RenderingFontHints renderingFontHints = null;
-
-    public RenderingFontHints getRenderingFontHints() {
-        if (renderingFontHints == null) {
-            renderingFontHints = new RenderingFontHints();
-            FontConfigManager.getFontConfigRenderingFontHints(familyName, renderingFontHints);
-        }
-        return renderingFontHints;
-    }
 
     void setUseWeakRefs(boolean weak, int maxStrikes) {
         this.useWeak = weak;

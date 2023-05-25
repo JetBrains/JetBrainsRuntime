@@ -29,6 +29,7 @@ import java.util.Locale;
 
 import sun.awt.SunHints;
 import sun.awt.SunToolkit;
+import sun.util.logging.PlatformLogger;
 
 /**
  * Small utility class to manage FontConfig.
@@ -187,7 +188,7 @@ public class FontConfigManager {
             fontArr[i].jdkName = FontUtilities.mapFcName(fontArr[i].fcFamily);
             fontArr[i].style = i % 4; // depends on array order.
         }
-        getFontConfig(getFCLocaleStr(), fcInfo, fontArr, includeFallbacks);
+        setupFontConfigFonts(getFCLocaleStr(), fcInfo, fontArr, includeFallbacks);
         FontConfigFont anyFont = null;
         /* If don't find anything (eg no libfontconfig), then just return */
         for (int i = 0; i< fontArr.length; i++) {
@@ -434,7 +435,7 @@ public class FontConfigManager {
     /* Return an array of FcCompFont structs describing the primary
      * font located for each of fontconfig/GTK/Pango's logical font names.
      */
-    private static native void getFontConfig(String locale,
+    private static native void setupFontConfigFonts(String locale,
                                              FontConfigInfo fcInfo,
                                              FcCompFont[] fonts,
                                              boolean includeFallbacks);
@@ -455,36 +456,9 @@ public class FontConfigManager {
 
     private static int
     getFontConfigAASettings(String fcFamily) {
-        RenderingFontHints renderingFontHints = new RenderingFontHints();
-
-        final int FC_RGBA_UNKNOWN = 0;
-        final int FC_RGBA_RGB = 1;
-        final int FC_RGBA_BGR = 2;
-        final int FC_RGBA_VRGB = 3;
-        final int FC_RGBA_VBGR = 4;
-        final int FC_RGBA_NONE = 5;
-
-        getFontConfigRenderingFontHints(fcFamily, renderingFontHints);
-        if (renderingFontHints.fcAntialias == 0) {
-            return SunHints.INTVAL_ANTIALIAS_OFF;
-        } else if (renderingFontHints.fcRGBA <= FC_RGBA_UNKNOWN || renderingFontHints.fcRGBA >= FC_RGBA_NONE) {
-            return SunHints.INTVAL_ANTIALIAS_ON;
-        } else {
-            return switch (renderingFontHints.fcRGBA) {
-                case FC_RGBA_RGB -> SunHints.INTVAL_TEXT_ANTIALIAS_LCD_HRGB;
-                case FC_RGBA_BGR -> SunHints.INTVAL_TEXT_ANTIALIAS_LCD_HBGR;
-                case FC_RGBA_VRGB -> SunHints.INTVAL_TEXT_ANTIALIAS_LCD_VRGB;
-                case FC_RGBA_VBGR -> SunHints.INTVAL_TEXT_ANTIALIAS_LCD_VBGR;
-                default -> throw new IllegalStateException("Unexpected value: " + renderingFontHints.fcRGBA);
-            };
-        }
+        return getFontConfigAASettings(fcFamily, getFCLocaleStr());
     }
 
-    public static void
-    getFontConfigRenderingFontHints(String fcFamily, RenderingFontHints renderingFontHints) {
-        setupRenderingFontHints(getFCLocaleStr(), fcFamily, renderingFontHints);
-    }
-
-    private static native void
-    setupRenderingFontHints(String locale, String fcFamily, RenderingFontHints renderingFontHints);
+    private static native int
+    getFontConfigAASettings(String fcFamily, String locale);
 }

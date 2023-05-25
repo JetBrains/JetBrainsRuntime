@@ -67,12 +67,8 @@
 #endif
 
 #ifndef DISABLE_FONTCONFIG
-/* Use bundled fontconfig.h for now */
-#include "fontconfig.h"
-#endif
-
-#ifndef FC_LCD_FILTER
-#define FC_LCD_FILTER	"lcdfilter"
+#include "fontconfigmanager.h"
+#include <fontconfig/fontconfig.h>
 #endif
 
 #ifndef FC_LCD_NONE
@@ -209,7 +205,6 @@ static jmethodID getDefaultToolkitMID;
 static jclass tkClass;
 static jfieldID platNameFID;
 static jfieldID familyNameFID;
-static jmethodID getRenderingFontHintsMID;
 
 static jboolean logFC = JNI_FALSE;
 static jboolean logFFS = JNI_FALSE;
@@ -247,8 +242,6 @@ Java_sun_font_FreetypeFontScaler_initIDs(
     tkClass = (*env)->NewGlobalRef(env, TKClass);
     platNameFID = (*env)->GetFieldID(env, PFClass, "platName", "Ljava/lang/String;");
     familyNameFID = (*env)->GetFieldID(env, PFClass, "familyName", "Ljava/lang/String;");
-    getRenderingFontHintsMID =
-            (*env)->GetMethodID(env, PFClass, "getRenderingFontHints", "()Lsun/font/RenderingFontHints;");
 }
 
 typedef FT_Error (*FtLibrarySetLcdFilterPtrType) (FT_Library library, FT_LcdFilter  filter);
@@ -758,7 +751,6 @@ static void setupTransform(FT_Matrix* target, FTScalerContext *context) {
     }
 }
 
-#ifdef DISABLE_FONTCONFIG
 static void setDefaultScalerSettings(FTScalerContext *context) {
     if (context->aaType == TEXT_AA_ON || context->colorFont) {
         context->loadFlags = FT_LOAD_TARGET_NORMAL;
@@ -775,14 +767,11 @@ static void setDefaultScalerSettings(FTScalerContext *context) {
     }
     context->renderFlags = FT_LOAD_TARGET_MODE(context->loadFlags);
 }
-#endif
 
 #ifndef DISABLE_FONTCONFIG
-static FcBool getRenderingSettingsField(JNIEnv *env, jclass renderingFontHintsClass,
-                                      jobject renderingFontHintsObject, int *value, const char* fieldName) {
-    jfieldID renderingFontHintsField = (*env)->GetFieldID(env, renderingFontHintsClass, fieldName, "I");
-    *value = (*env)->GetIntField(env, renderingFontHintsObject, renderingFontHintsField);
-    return (*value != -1) ? FcTrue : FcFalse;
+static FcBool getRenderingSettingsField(int *target, int value) {
+    *target = value;
+    return (value != -1) ? FcTrue : FcFalse;
 }
 #endif
 
@@ -792,7 +781,11 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
     int errCode = 0;
     scalerInfo->env = env;
     scalerInfo->font2D = font2D;
-
+    const char *cfontFamilyName = NULL;
+    const char *cfontPath = NULL;
+    jstring jfontFamilyName = NULL;
+    jstring jfontPath = NULL;
+    
     if (context != NULL) {
         context->colorFont = FT_HAS_COLOR(scalerInfo->face) || !FT_IS_SCALABLE(scalerInfo->face);
 
@@ -831,16 +824,13 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
             context->loadFlags = FT_LOAD_DEFAULT;
 
 #ifndef DISABLE_FONTCONFIG
+            jfontFamilyName = (*env)->GetObjectField(env, font2D, familyNameFID);
+            cfontFamilyName = (*env)->GetStringUTFChars(env, jfontFamilyName, NULL);
+            jfontPath = (*env)->GetObjectField(env, font2D, platNameFID);
+            cfontPath = (*env)->GetStringUTFChars(env, jfontPath, NULL);
+
             if (logFC) {
-                jstring jfontFamilyName = (*env)->GetObjectField(env, font2D, familyNameFID);
-                const char *cfontFamilyName = (*env)->GetStringUTFChars(env, jfontFamilyName, NULL);
-                jstring jfontPath = (*env)->GetObjectField(env, font2D, platNameFID);
-                const char *cfontPath = (char*)(*env)->GetStringUTFChars(env, jfontPath, NULL);
-
                 fprintf(stderr, "FC_LOG: %s %s ", cfontFamilyName, cfontPath);
-
-                (*env)->ReleaseStringUTFChars(env, jfontPath, cfontPath);
-                (*env)->ReleaseStringUTFChars(env, jfontFamilyName, cfontFamilyName);
             }
 
             double fcSize = FT26Dot6ToDouble(context->ptsz);
@@ -857,28 +847,26 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
             }
 
             if (cachedMatch.fcSize == 0) {
-                jclass renderingFontHintsClass = (*env)->FindClass(env, "sun/font/RenderingFontHints");
-                jobject renderingFontHintsObject = (*env)->CallObjectMethod(env, font2D, getRenderingFontHintsMID);
+                RenderingFontHints renderingFontHints;
+                int status = setupRenderingFontHints(cfontFamilyName, NULL, &renderingFontHints);
+                if (status != 0) {
+                    goto default_;
+                }
 
                 cachedMatch.fcSize = fcSize;
 
-                cachedMatch.fcHintingSet = getRenderingSettingsField(env, renderingFontHintsClass, renderingFontHintsObject,
-                                                                     &cachedMatch.fcHinting, "fcHinting");
-
-                cachedMatch.fcHintStyleSet = getRenderingSettingsField(env, renderingFontHintsClass, renderingFontHintsObject,
-                                                                       &cachedMatch.fcHintStyle, "fcHintStyle");
-
-                cachedMatch.fcAntialiasSet = getRenderingSettingsField(env, renderingFontHintsClass, renderingFontHintsObject,
-                                                                       &cachedMatch.fcAntialias, "fcAntialias");
-
-                cachedMatch.fcAutohintSet = getRenderingSettingsField(env, renderingFontHintsClass, renderingFontHintsObject,
-                                                                      &cachedMatch.fcAutohint, "fcAutohint");
-
-                cachedMatch.fcLCDFilterSet = getRenderingSettingsField(env, renderingFontHintsClass, renderingFontHintsObject,
-                                                                      &cachedMatch.fcLCDFilter, "fcLCDFilter");
-
-                cachedMatch.fcRGBASet = getRenderingSettingsField(env, renderingFontHintsClass, renderingFontHintsObject,
-                                                                  &cachedMatch.fcRGBA, "fcRGBA");
+                cachedMatch.fcHintingSet =
+                        getRenderingSettingsField(&cachedMatch.fcHinting, renderingFontHints.fcHinting);
+                cachedMatch.fcHintStyleSet =
+                        getRenderingSettingsField(&cachedMatch.fcHintStyle, renderingFontHints.fcHintStyle);
+                cachedMatch.fcAntialiasSet =
+                        getRenderingSettingsField(&cachedMatch.fcAntialias, renderingFontHints.fcAntialias);
+                cachedMatch.fcAutohintSet =
+                        getRenderingSettingsField(&cachedMatch.fcAutohint, renderingFontHints.fcAutohint);
+                cachedMatch.fcLCDFilterSet =
+                        getRenderingSettingsField(&cachedMatch.fcRGBA, renderingFontHints.fcRGBA);
+                cachedMatch.fcRGBASet =
+                        getRenderingSettingsField(&cachedMatch.fcLCDFilter, renderingFontHints.fcLCDFilter);
 
                 if (NUM_CACHED_VALUES > 0) {
                     int nextCacheIdx = scalerInfo->nextCacheIdx;
@@ -1031,13 +1019,23 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
             }
 
             if (logFC) fprintf(stderr, "\n");
+
 #else
-            setDefaultScalerSettings(context);
-            return 0;
+            goto default_;
 #endif
         }
 
         FT_Library_SetLcdFilter(scalerInfo->library, FT_LCD_FILTER_DEFAULT);
+        return 0;
+
+    default_:
+        if (cfontPath) {
+            (*env)->ReleaseStringUTFChars(env, jfontPath, cfontPath);
+        }
+        if (cfontFamilyName) {
+            (*env)->ReleaseStringUTFChars(env, jfontFamilyName, cfontFamilyName);
+        }
+        setDefaultScalerSettings(context);
     }
 
     return 0;

@@ -49,6 +49,8 @@
 
 #include <unistd.h>
 
+#include "fontconfigmanager.h"
+
 uint32_t awt_NumLockMask = 0;
 Boolean  awt_ModLockIsShiftLock = False;
 
@@ -130,6 +132,7 @@ JNIEXPORT jlong JNICALL Java_sun_awt_X11_XToolkit_getDefaultXColormap
 JNIEXPORT jint JNICALL
 DEF_JNI_OnLoad(JavaVM *vm, void *reserved)
 {
+    openFontConfig();
     jvm_xawt = vm;
 
     //Set the gtk backend to x11 on all the systems
