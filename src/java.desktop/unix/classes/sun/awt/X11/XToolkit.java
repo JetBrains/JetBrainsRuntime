@@ -1203,7 +1203,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
     @Override
     public Insets getScreenInsets(final GraphicsConfiguration gc) {
         if (useCachedInsets) {
-            return (Insets)cachedInsets.computeIfAbsent(gc, this::getScreenInsetsImpl).clone();
+            return cachedInsets.computeIfAbsent(gc, this::getScreenInsetsImpl);
         } else {
             return getScreenInsetsImpl(gc);
         }
