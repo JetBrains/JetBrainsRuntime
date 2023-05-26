@@ -162,23 +162,22 @@ public final class X11GraphicsDevice extends GraphicsDevice
         return rect;
     }
 
-    private volatile Rectangle boundsCached;
+    private Rectangle boundsCached;
+    private final Object boundsCacheLock = new Object();
 
     private Rectangle getBoundsCached() {
-        // A local copy is needed in order to avoid races with other
-        // threads doing resetBoundsCache(). We may not return null.
-        final Rectangle localBoundsCached = boundsCached;
-        if (localBoundsCached == null) {
-            final Rectangle newBounds = getBoundsImpl();
-            boundsCached = newBounds;
-            return newBounds;
-        } else {
-            return localBoundsCached;
+        synchronized (boundsCacheLock) {
+            if (boundsCached == null) {
+                boundsCached = getBoundsImpl();
+            }
+            return boundsCached;
         }
     }
 
     public void resetBoundsCache() {
-        boundsCached = null;
+        synchronized (boundsCacheLock) {
+            boundsCached = null;
+        }
     }
 
     public Rectangle getBounds() {
