@@ -2,6 +2,7 @@
 
 #immediately exit script with an error if a command fails
 set -euo pipefail
+[[ "${SCRIPT_VERBOSE:-}" == "1" ]] && set -x
 
 APP_PATH=$1
 
