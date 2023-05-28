@@ -1,10 +1,16 @@
 #!/bin/bash
 
+#immediately exit script with an error if a command fails
 set -euo pipefail
-set -x
+[[ "${SCRIPT_VERBOSE:-}" == "1" ]] && set -x
+
+if [[ $# -lt 5  ]]; then
+  echo "Usage: $0 AppDirectory AppName BundleId CertificateID InstallerCertificateID"
+  exit 1
+fi
 
 APPLICATION_PATH=$1
-APP_NAME=$2
+PKG_NAME=$2
 BUNDLE_ID=$3
 JB_DEVELOPER_CERT=$4
 JB_INSTALLER_CERT=$5
@@ -22,10 +28,6 @@ else
   PRODUCTSIGN_UTILITY="$SCRIPT_DIR/productsign.sh"
 fi
 
-if [[ -z "$APPLICATION_PATH" ]] || [[ -z "$JB_DEVELOPER_CERT" ]]; then
-  echo "Usage: $0 AppDirectory CertificateID"
-  exit 1
-fi
 if [[ ! -d "$APPLICATION_PATH" ]]; then
   echo "AppDirectory '$APPLICATION_PATH' does not exist or not a directory"
   exit 1
@@ -34,9 +36,6 @@ fi
 function log() {
   echo "$(date '+[%H:%M:%S]') $*"
 }
-
-#immediately exit script with an error if a command fails
-set -euo pipefail
 
 # Cleanup files left from previous sign attempt (if any)
 find "$APPLICATION_PATH" -name '*.cstemp' -exec rm '{}' \;
@@ -98,12 +97,6 @@ for f in \
   fi
 done
 
-#log "Signing executable..."
-#codesign --timestamp \
-#    -v -s "$JB_DEVELOPER_CERT" --options=runtime \
-#    --force \
-#    --entitlements entitlements.xml "$APPLICATION_PATH/Contents/MacOS/idea"
-
 log "Signing whole app..."
 if [ "$JB_SIGN" = true ]; then
   tar -pczvf tmp-to-sign.tar.gz --exclude='man' -C "$(dirname "$APPLICATION_PATH")" "$(basename "$APPLICATION_PATH")"
@@ -123,20 +116,14 @@ fi
 
 BUILD_NAME="$(basename "$APPLICATION_PATH")"
 
-log "Creating $APP_NAME.pkg..."
-rm -rf "$APP_NAME.pkg"
+log "Creating $PKG_NAME..."
+rm -rf "$PKG_NAME"
 
 mkdir -p unsigned
 pkgbuild --identifier $BUNDLE_ID --root $APPLICATION_PATH \
-    --install-location /Library/Java/JavaVirtualMachines/${BUILD_NAME} unsigned/${APP_NAME}.pkg
-log "Signing $APP_NAME.pkg..."
-"$PRODUCTSIGN_UTILITY" --timestamp --sign "$JB_INSTALLER_CERT" unsigned/${APP_NAME}.pkg ${APP_NAME}.pkg
-
-#log "Signing whole app..."
-#codesign --timestamp \
-#  -v -s "$JB_DEVELOPER_CERT" --options=runtime \
-#  --force \
-#  --entitlements entitlements.xml $APP_NAME.pkg
+    --install-location /Library/Java/JavaVirtualMachines/${BUILD_NAME} unsigned/${PKG_NAME}
+log "Signing $PKG_NAME..."
+"$PRODUCTSIGN_UTILITY" --timestamp --sign "$JB_INSTALLER_CERT" unsigned/${PKG_NAME} ${PKG_NAME}
 
 log "Verifying java is not broken"
 find "$APPLICATION_PATH" \
