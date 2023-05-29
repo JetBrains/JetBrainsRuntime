@@ -1,5 +1,4 @@
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java                 8286840 linux-all
-jb/java/awt/Window/ZOrderOnModalDialogActivation.java                               JBR-4494 windows-all,linux-all
 java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java                              JBR-4199 linux-5.4.0-1083-aws
 java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java              JBR-4199 linux-5.4.0-1083-aws
 
