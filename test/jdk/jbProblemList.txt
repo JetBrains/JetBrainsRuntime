@@ -1273,7 +1273,6 @@ jb/java/awt/CustomTitleBar/HitTestClientArea.java JBR-5551 windows-all
 jb/java/awt/CustomTitleBar/HitTestNonClientArea.java JBR-5550 windows-all
 jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-5550 windows-all
 jb/java/awt/CustomTitleBar/MinimizingWindowTest.java JBR-5359 windows-aarch64
-jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java JBR-5577 windows-all
 jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java JBR-5359 windows-aarch64
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java JBR-5359 windows-aarch64
 sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
