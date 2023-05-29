@@ -25,6 +25,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -83,15 +85,32 @@ public class ZOrderOnModalDialogActivation {
     }
 
     private static void launchOtherProcess() throws Exception {
-        otherProcess = Runtime.getRuntime().exec(new String[]{
-                System.getProperty("java.home") + File.separator + "bin" + File.separator + "java",
-                "-cp",
-                System.getProperty("java.class.path"),
-                "ZOrderOnModalDialogActivationChild"
-        });
+        List<String> params = new ArrayList<>();
+        params.add(System.getProperty("java.home") + File.separator + "bin" + File.separator + "java");
+
+        final double uiScale = getUIScale();
+        if (uiScale > 1.0) {
+            params.add("-Dsun.java2d.uiScale.enabled=true");
+            params.add("-Dsun.java2d.uiScale=" + uiScale);
+        }
+
+        params.add("-cp");
+        params.add(System.getProperty("java.class.path"));
+        params.add("ZOrderOnModalDialogActivationChild");
+
+        otherProcess = Runtime.getRuntime().exec(params.toArray(String[]::new));
         if (otherProcess.getInputStream().read() == -1) {
             throw new RuntimeException("Error starting process");
         }
+    }
+
+    private static double getUIScale() {
+        boolean scaleEnabled = "true".equals(System.getProperty("sun.java2d.uiScale.enabled"));
+        double uiScale = 1.0;
+        if (scaleEnabled) {
+            uiScale = Float.parseFloat(System.getProperty("sun.java2d.uiScale"));
+        }
+        return uiScale;
     }
 
     private static void clickAt(int x, int y) {
