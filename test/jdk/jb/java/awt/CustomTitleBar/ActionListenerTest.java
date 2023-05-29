@@ -22,10 +22,7 @@
  */
 
 import com.jetbrains.JBR;
-import util.CommonAPISuite;
-import util.Task;
-import util.TaskResult;
-import util.TestUtils;
+import util.*;
 
 import javax.swing.*;
 import java.awt.*;
@@ -85,11 +82,12 @@ public class ActionListenerTest {
                 actionListenerGotEvent = true;
             });
             window.add(button);
+            window.setAlwaysOnTop(true);
         }
 
         @Override
         public void test() throws AWTException {
-            doClick(button.getLocationOnScreen(), button.getWidth(), button.getHeight());
+            doClick(window, button.getLocationOnScreen(), button.getWidth(), button.getHeight());
 
             if (!actionListenerGotEvent) {
                 err("button didn't get event by action listener");
@@ -121,11 +119,12 @@ public class ActionListenerTest {
                 actionListenerGotEvent = true;
             });
             window.add(button);
+            window.setAlwaysOnTop(true);
         }
 
         @Override
         public void test() throws AWTException {
-            doClick(button.getLocationOnScreen(), button.getWidth(), button.getHeight());
+            doClick(window, button.getLocationOnScreen(), button.getWidth(), button.getHeight());
 
             if (!actionListenerGotEvent) {
                 err("button didn't get event by action listener");
@@ -133,22 +132,19 @@ public class ActionListenerTest {
         }
     };
 
-    private static void doClick(Point location, int w, int h) throws AWTException {
+    private static void doClick(Window window, Point location, int w, int h) throws AWTException {
         Robot robot = new Robot();
         robot.waitForIdle();
         int x = location.x + w / 2;
         int y = location.y + h / 2;
         System.out.println("Click at (" + x + ", " + y + ")");
-        robot.mouseMove(x, y);
+
+        MouseUtils.verifyLocationAndMove(robot, window, x, y);
+        MouseUtils.verifyLocationAndClick(robot, window, x, y, InputEvent.BUTTON1_DOWN_MASK);
         robot.waitForIdle();
-        robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-        robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+        MouseUtils.verifyLocationAndClick(robot, window, x, y, InputEvent.BUTTON1_DOWN_MASK);
         robot.waitForIdle();
-        robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-        robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-        robot.waitForIdle();
-        robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-        robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+        MouseUtils.verifyLocationAndClick(robot, window, x, y, InputEvent.BUTTON1_DOWN_MASK);
         robot.waitForIdle();
     }
 
