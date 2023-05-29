@@ -94,9 +94,9 @@ abstract public class Task {
     }
 
     protected void disposeUI() {
-        cleanup();
         titleBar = null;
         window.dispose();
+        cleanup();
     }
 
     protected void cleanup() {
