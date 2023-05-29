@@ -22,11 +22,9 @@
  */
 
 import com.jetbrains.JBR;
-import util.CommonAPISuite;
-import util.Task;
-import util.TaskResult;
-import util.TestUtils;
+import util.*;
 
+import javax.swing.*;
 import java.awt.AWTException;
 import java.awt.Button;
 import java.awt.Color;
@@ -53,12 +51,24 @@ import java.util.List;
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 HitTestNonClientArea
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 HitTestNonClientArea
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 HitTestNonClientArea
+
  */
 public class HitTestNonClientArea {
 
-    public static void main(String... args) {
-        TaskResult result = CommonAPISuite.runTestSuite(TestUtils.getWindowCreationFunctions(), hitTestNonClientArea);
+    private static final List<Integer> BUTTON_MASKS = List.of(
+            InputEvent.BUTTON1_DOWN_MASK,
+            InputEvent.BUTTON2_DOWN_MASK,
+            InputEvent.BUTTON3_DOWN_MASK
+    );
+    private static final int BUTTON_WIDTH = 80;
+    private static final int BUTTON_HEIGHT = 40;
 
+
+    public static void main(String... args) {
+        TaskResult awtResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createFrameWithCustomTitleBar, TestUtils::createDialogWithCustomTitleBar), hitTestNonClientAreaAWT);
+        TaskResult swingResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createJFrameWithCustomTitleBar, TestUtils::createJFrameWithCustomTitleBar), hitTestNonClientAreaSwing);
+
+        TaskResult result = awtResult.merge(swingResult);
         if (!result.isPassed()) {
             final String message = String.format("%s FAILED. %s", MethodHandles.lookup().lookupClass().getName(), result.getError());
             throw new RuntimeException(message);
@@ -66,15 +76,7 @@ public class HitTestNonClientArea {
     }
 
 
-    private static final Task hitTestNonClientArea = new Task("Hit test non-client area") {
-
-        private static final List<Integer> BUTTON_MASKS = List.of(
-                InputEvent.BUTTON1_DOWN_MASK,
-                InputEvent.BUTTON2_DOWN_MASK,
-                InputEvent.BUTTON3_DOWN_MASK
-        );
-        private static final int BUTTON_WIDTH = 80;
-        private static final int BUTTON_HEIGHT = 40;
+    private static final Task hitTestNonClientAreaAWT = new AWTTask("Hit test non-client area AWT") {
 
         private final boolean[] gotClicks = new boolean[BUTTON_MASKS.size()];
         private Button button;
@@ -126,6 +128,98 @@ public class HitTestNonClientArea {
             panel.setBounds(300, 20, 100, 50);
             panel.add(button);
             window.add(panel);
+        }
+
+        @Override
+        public void test() throws AWTException {
+            Robot robot = new Robot();
+
+            int initialX = button.getLocationOnScreen().x + button.getWidth() / 2;
+            int initialY = button.getLocationOnScreen().y + button.getHeight() / 2;
+
+            for (Integer mask: BUTTON_MASKS) {
+                MouseUtils.verifyLocationAndClick(robot, window, initialX, initialY, mask);
+            }
+
+            Point initialLocation = window.getLocationOnScreen();
+            robot.waitForIdle();
+            MouseUtils.verifyLocationAndMove(robot, window, initialX, initialY);
+            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+            for (int i = 0; i < 10; i++) {
+                initialX += 3;
+                initialY += 3;
+                robot.delay(300);
+                MouseUtils.verifyLocationAndMove(robot, window, initialX, initialY);
+            }
+            robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+            robot.waitForIdle();
+            Point newLocation = window.getLocationOnScreen();
+
+            passed = initialLocation.x < newLocation.x && initialLocation.y < newLocation.y;
+            if (!passed) {
+                System.out.println("Window location was changed");
+            }
+            for (int i = 0; i < BUTTON_MASKS.size(); i++) {
+                if (!gotClicks[i]) {
+                    err("Mouse click to button no " + (i+1) + " was not registered");
+                }
+            }
+        }
+    };
+
+    private static final Task hitTestNonClientAreaSwing = new SwingTask("Hit test non-client area Swing") {
+
+        private final boolean[] gotClicks = new boolean[BUTTON_MASKS.size()];
+        private JButton button;
+
+        @Override
+        protected void cleanup() {
+            Arrays.fill(gotClicks, false);
+            titleBar = null;
+        }
+
+        @Override
+        public void prepareTitleBar() {
+            titleBar = JBR.getWindowDecorations().createCustomTitleBar();
+            titleBar.setHeight(TestUtils.TITLE_BAR_HEIGHT);
+        }
+
+        @Override
+        public void customizeWindow() {
+            button = new JButton();
+            button.setBackground(Color.CYAN);
+            button.setSize(BUTTON_WIDTH, BUTTON_HEIGHT);
+            MouseAdapter adapter = new MouseAdapter() {
+                private void hit() {
+                    titleBar.forceHitTest(false);
+                }
+
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    hit();
+                    if (e.getButton() >= 1 && e.getButton() <= 3) {
+                        gotClicks[e.getButton() - 1] = true;
+                    }
+                }
+
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    hit();
+                }
+
+                @Override
+                public void mouseReleased(MouseEvent e) {
+                    hit();
+                }
+            };
+            button.addMouseListener(adapter);
+            button.addMouseMotionListener(adapter);
+
+            Panel panel = new Panel();
+            panel.setBounds(300, 20, 100, 50);
+            panel.add(button);
+            window.add(panel);
+            window.setAlwaysOnTop(true);
         }
 
         @Override
