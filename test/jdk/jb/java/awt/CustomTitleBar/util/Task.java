@@ -26,11 +26,12 @@ package util;
 import com.jetbrains.WindowDecorations;
 
 import java.awt.*;
+import java.lang.reflect.InvocationTargetException;
 import java.util.function.Function;
 
 abstract public class Task {
 
-    private final String name;
+    protected final String name;
 
     protected WindowDecorations.CustomTitleBar titleBar;
     protected Window window;
@@ -43,7 +44,7 @@ abstract public class Task {
         this.name = name;
     }
 
-    public final TaskResult run(Function<WindowDecorations.CustomTitleBar, Window> windowCreator) {
+    public TaskResult run(Function<WindowDecorations.CustomTitleBar, Window> windowCreator) {
         try {
             robot = new Robot();
         } catch (AWTException e) {
@@ -69,9 +70,7 @@ abstract public class Task {
             passed = false;
         }
 
-        cleanup();
-        titleBar = null;
-        window.dispose();
+        disposeUI();
 
         if (!TestUtils.isBasicTestCase()) {
             boolean isMetConditions = TestUtils.checkScreenSizeConditions(window);
@@ -92,6 +91,12 @@ abstract public class Task {
 
     protected void init() {
 
+    }
+
+    protected void disposeUI() {
+        cleanup();
+        titleBar = null;
+        window.dispose();
     }
 
     protected void cleanup() {
