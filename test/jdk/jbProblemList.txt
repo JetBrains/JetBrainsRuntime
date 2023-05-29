@@ -1179,7 +1179,6 @@ jb/java/awt/CustomTitleBar/ActionListenerTest.java JBR-5597 windows-all
 jb/java/awt/CustomTitleBar/HitTestClientArea.java JBR-5551 windows-all
 jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-5465 windows-all
 jb/java/awt/CustomTitleBar/MinimizingWindowTest.java JBR-5359 windows-aarch64
-jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java JBR-5593 windows-all
 jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java JBR-5359 windows-aarch64
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java JBR-5359 windows-aarch64
 jb/java/awt/CustomTitleBar/WindowResizeTest.java JBR-5592 windows-all
