@@ -22,21 +22,12 @@
  */
 
 import com.jetbrains.JBR;
-import util.CommonAPISuite;
-import util.Task;
-import util.TaskResult;
-import util.TestUtils;
+import util.*;
 
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
-import java.awt.AWTException;
-import java.awt.Color;
-import java.awt.Graphics;
-import java.awt.Panel;
-import java.awt.Point;
-import java.awt.Rectangle;
-import java.awt.Robot;
+import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -57,8 +48,17 @@ import java.util.List;
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 HitTestClientArea
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 HitTestClientArea
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 HitTestClientArea
+
  */
 public class HitTestClientArea {
+
+    private static final List<Integer> BUTTON_MASKS = List.of(
+            InputEvent.BUTTON1_DOWN_MASK,
+            InputEvent.BUTTON2_DOWN_MASK,
+            InputEvent.BUTTON3_DOWN_MASK
+    );
+    private static final int PANEL_WIDTH = 400;
+    private static final int PANEL_HEIGHT = (int) TestUtils.TITLE_BAR_HEIGHT;
 
     public static void main(String... args) {
         TaskResult awtResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createFrameWithCustomTitleBar, TestUtils::createDialogWithCustomTitleBar), hitTestClientAreaAWT);
@@ -71,21 +71,10 @@ public class HitTestClientArea {
         }
     }
 
-    private static final Task hitTestClientAreaAWT = new Task("Hit test client area AWT") {
-
-        private static final List<Integer> BUTTON_MASKS = List.of(
-                InputEvent.BUTTON1_DOWN_MASK,
-                InputEvent.BUTTON2_DOWN_MASK,
-                InputEvent.BUTTON3_DOWN_MASK
-        );
-        private static final int PANEL_WIDTH = 400;
-        private static final int PANEL_HEIGHT = (int) TestUtils.TITLE_BAR_HEIGHT;
-
+    private static final Task hitTestClientAreaAWT = new AWTTask("Hit test client area AWT") {
         private final int[] gotClicks = new int[BUTTON_MASKS.size()];
         private static boolean mousePressed = false;
         private static boolean mouseReleased = false;
-
-        private Panel panel;
 
         @Override
         protected void cleanup() {
@@ -102,7 +91,7 @@ public class HitTestClientArea {
 
         @Override
         protected void customizeWindow() {
-            panel = new Panel(){
+            Panel panel = new Panel() {
                 @Override
                 public void paint(Graphics g) {
                     Rectangle r = g.getClipBounds();
@@ -140,6 +129,7 @@ public class HitTestClientArea {
             });
 
             window.add(panel);
+            window.setAlwaysOnTop(true);
         }
 
         @Override
@@ -151,24 +141,17 @@ public class HitTestClientArea {
 
             window.requestFocus();
             for (Integer mask: BUTTON_MASKS) {
-                robot.waitForIdle();
-
-                robot.mouseMove(initialX, initialY);
-                robot.mousePress(mask);
-                robot.mouseRelease(mask);
-
-                robot.waitForIdle();
+                MouseUtils.verifyLocationAndClick(robot, window, initialX, initialY, mask);
             }
 
             Point initialLocation = window.getLocationOnScreen();
-            robot.waitForIdle();
-            robot.mouseMove(initialX, initialY);
+            MouseUtils.verifyLocationAndMove(robot, window, initialX, initialY);
             robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
             for (int i = 0; i < 10; i++) {
                 initialX += 3;
                 initialY += 3;
                 robot.delay(300);
-                robot.mouseMove(initialX, initialY);
+                MouseUtils.verifyLocationAndMove(robot, window, initialX, initialY);
             }
             robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
             robot.waitForIdle();
@@ -196,20 +179,11 @@ public class HitTestClientArea {
 
     };
 
-    private static final Task hitTestClientAreaSwing = new Task("Hit test client area Swing") {
-        private static final List<Integer> BUTTON_MASKS = List.of(
-                InputEvent.BUTTON1_DOWN_MASK,
-                InputEvent.BUTTON2_DOWN_MASK,
-                InputEvent.BUTTON3_DOWN_MASK
-        );
-        private static final int PANEL_WIDTH = 400;
-        private static final int PANEL_HEIGHT = (int) TestUtils.TITLE_BAR_HEIGHT;
+    private static final Task hitTestClientAreaSwing = new SwingTask("Hit test client area Swing") {
 
         private final int[] gotClicks = new int[BUTTON_MASKS.size()];
         private static boolean mousePressed = false;
         private static boolean mouseReleased = false;
-
-        private JPanel panel;
 
         @Override
         protected void cleanup() {
@@ -227,8 +201,7 @@ public class HitTestClientArea {
 
         @Override
         protected void customizeWindow() {
-
-            panel = new JPanel() {
+            JPanel panel = new JPanel() {
                 @Override
                 protected void paintComponent(Graphics g) {
                     super.paintComponent(g);
@@ -238,14 +211,9 @@ public class HitTestClientArea {
                 }
             };
 
-            if (window.getName().equals("JFrame")) {
-                ((JFrame) window).setContentPane(panel);
-            } else if (window.getName().equals("JDialog")) {
-                ((JDialog) window).setContentPane(panel);
-            }
-
-            panel.setBounds(0, 0, PANEL_WIDTH, PANEL_HEIGHT);
-            panel.setSize(PANEL_WIDTH, PANEL_HEIGHT);
+            final int effectiveWidth = window.getWidth() - window.getInsets().left - window.getInsets().right;
+            panel.setPreferredSize(new Dimension(effectiveWidth, (int) TestUtils.TITLE_BAR_HEIGHT));
+            panel.setBounds(0, 0, effectiveWidth, (int) TestUtils.TITLE_BAR_HEIGHT);
             panel.addMouseListener(new MouseAdapter() {
                 private void hit() {
                     titleBar.forceHitTest(true);
@@ -271,6 +239,9 @@ public class HitTestClientArea {
                     mouseReleased = true;
                 }
             });
+
+            window.add(panel);
+            window.setAlwaysOnTop(true);
         }
 
         @Override
@@ -281,24 +252,18 @@ public class HitTestClientArea {
             int initialY = window.getLocationOnScreen().y + PANEL_HEIGHT / 2;
 
             for (Integer mask: BUTTON_MASKS) {
-                robot.waitForIdle();
-
-                robot.mouseMove(initialX, initialY);
-                robot.mousePress(mask);
-                robot.mouseRelease(mask);
-
-                robot.waitForIdle();
+                MouseUtils.verifyLocationAndClick(robot, window, initialX, initialY, mask);
             }
 
             Point initialLocation = window.getLocationOnScreen();
             robot.waitForIdle();
-            robot.mouseMove(initialX, initialY);
+            MouseUtils.verifyLocationAndMove(robot, window, initialX, initialY);
             robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
             for (int i = 0; i < 10; i++) {
                 initialX += 3;
                 initialY += 3;
                 robot.delay(300);
-                robot.mouseMove(initialX, initialY);
+                MouseUtils.verifyLocationAndMove(robot, window, initialX, initialY);
             }
             robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
             robot.waitForIdle();
