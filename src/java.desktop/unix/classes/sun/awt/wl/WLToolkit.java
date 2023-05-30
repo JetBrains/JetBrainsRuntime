@@ -353,8 +353,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         inputState = newInputState;
         final WLComponentPeer peer = newInputState.getPeer();
         if (peer == null) {
-            // we don't know whom to notify of the event
-            log.severe("Surface doesn't map to any component");
+            // We don't know whom to notify of the event; may happen when
+            // the surface has recently disappeared, in which case
+            // e.getSurface() is likely 0.
         } else {
             peer.dispatchPointerEventInContext(e, oldInputState, newInputState);
         }
@@ -535,6 +536,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     @Override
     public void setDynamicLayout(boolean b) {
         log.info("Not implemented: WLToolkit.setDynamicLayout()");
+    }
+
+    @Override
+    public boolean isRunningOnXWayland() {
+        return false;
     }
 
     @Override
@@ -876,7 +882,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public boolean isAlwaysOnTopSupported() {
-        log.info("Not implemented: WLToolkit.isAlwaysOnTopSupported()");
         return false;
     }
 
