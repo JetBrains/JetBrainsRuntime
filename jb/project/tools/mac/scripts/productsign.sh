@@ -4,7 +4,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" >/dev/null && pwd)"
 source "$SCRIPT_DIR/jetsign-common.sh" || exit 1
 
 function isSigned() {
-  pkgutil --check-signature "$1" && grep -q "signed by a developer certificate" < <(pkgutil --check-signature "$1" 2>&1)
+  pkgutil --check-signature "$1" >/dev/null 2>&1 && grep -q "signed by a developer certificate" < <(pkgutil --check-signature "$1" 2>&1)
 }
 
 # second last argument is a path to be signed
