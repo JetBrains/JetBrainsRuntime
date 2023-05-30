@@ -97,6 +97,38 @@ for f in \
   fi
 done
 
+log "Signing whole frameworks..."
+# shellcheck disable=SC2043
+if [ "$JB_SIGN" = true ]; then for f in \
+  "Contents/Home/Frameworks" "Contents/Frameworks"; do
+  if [ -d "$APPLICATION_PATH/$f" ]; then
+    find "$APPLICATION_PATH/$f" \( -name '*.framework' -o -name '*.app' \) -maxdepth 1 | while read -r line
+      do
+        log "Signing '$line':"
+        tar -pczf tmp-to-sign.tar.gz -C "$(dirname "$line")" "$(basename "$line")"
+        "$SIGN_UTILITY" --timestamp \
+            -v -s "$JB_DEVELOPER_CERT" --options=runtime \
+            --force \
+            --entitlements "$SCRIPT_DIR/entitlements.xml" tmp-to-sign.tar.gz
+        rm -rf "$line"
+        tar -xzf tmp-to-sign.tar.gz --directory "$(dirname "$line")"
+        rm -f tmp-to-sign.tar.gz
+      done
+  fi
+done; fi
+
+log "Checking framework signatures..."
+for f in \
+  "Contents/Home/Frameworks" "Contents/Frameworks"; do
+  if [ -d "$APPLICATION_PATH/$f" ]; then
+    find "$APPLICATION_PATH/$f" -name '*.framework'  -maxdepth 1 | while read -r line
+      do
+        log "Checking '$line':"
+        codesign --verify --deep --strict --verbose=4 "$line"
+      done
+  fi
+done
+
 log "Signing whole app..."
 if [ "$JB_SIGN" = true ]; then
   tar -pczvf tmp-to-sign.tar.gz --exclude='man' -C "$(dirname "$APPLICATION_PATH")" "$(basename "$APPLICATION_PATH")"
