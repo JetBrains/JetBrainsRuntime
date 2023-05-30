@@ -60,7 +60,7 @@ final class XRobotPeer implements RobotPeer {
         boolean isOnWayland = false;
 
         if (Toolkit.getDefaultToolkit() instanceof SunToolkit sunToolkit) {
-            isOnWayland = sunToolkit.isRunningOnWayland();
+            isOnWayland = sunToolkit.isRunningOnXWayland();
         }
 
         screenshotMethod = AccessController.doPrivileged(
