@@ -1268,8 +1268,6 @@ public class RepaintManager
         }
         final Window window = SwingUtilities.getWindowAncestor(paintingComponent);
         if (AWTAccessor.getWindowAccessor().needUpdateWindowAfterPaint(window)) {
-            // TODO: maybe introduce a more general "commitWindow" call instead
-            // of mixing Windows-specific "updateWindow" with Wayland commits.
             AWTAccessor.getWindowAccessor().updateWindow(window);
         }
     }
