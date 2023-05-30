@@ -131,13 +131,13 @@ done
 
 log "Signing whole app..."
 if [ "$JB_SIGN" = true ]; then
-  tar -pczvf tmp-to-sign.tar.gz --exclude='man' -C "$(dirname "$APPLICATION_PATH")" "$(basename "$APPLICATION_PATH")"
+  tar -pczf tmp-to-sign.tar.gz --exclude='man' -C "$(dirname "$APPLICATION_PATH")" "$(basename "$APPLICATION_PATH")"
   "$SIGN_UTILITY" --timestamp \
     -v -s "$JB_DEVELOPER_CERT" --options=runtime \
     --force \
     --entitlements "$SCRIPT_DIR/entitlements.xml" tmp-to-sign.tar.gz
   rm -rf "$APPLICATION_PATH"
-  tar -xzvf tmp-to-sign.tar.gz --directory "$(dirname "$APPLICATION_PATH")"
+  tar -xzf tmp-to-sign.tar.gz --directory "$(dirname "$APPLICATION_PATH")"
   rm -f tmp-to-sign.tar.gz
 else
   "$SIGN_UTILITY" --timestamp \
