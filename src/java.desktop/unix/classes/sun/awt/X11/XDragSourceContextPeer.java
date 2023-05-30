@@ -411,7 +411,7 @@ public final class XDragSourceContextPeer
     private static boolean isXWaylandDndAwareWindow(long window) {
         Toolkit toolkit = Toolkit.getDefaultToolkit();
         if (!(toolkit instanceof SunToolkit)
-                || !((SunToolkit) toolkit).isRunningOnWayland()) {
+                || !((SunToolkit) toolkit).isRunningOnXWayland()) {
             return false;
         }
 
