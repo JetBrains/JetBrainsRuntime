@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,15 @@
 
 /*
  * @test
- * @modules java.desktop/sun.swing:+open
  * @summary Test implementation of accessibility announcing
- * @run main/manual AccessibleAnnouncerTest
+ * @key headful
+ * @modules java.desktop/sun.swing:+open
+ * @run main/othervm/manual -Xcheck:jni AccessibleAnnouncerTest false
+ * @run main/othervm/manual -Xcheck:jni AccessibleAnnouncerTest true
  */
 
 import sun.swing.AccessibleAnnouncer;
+import javax.accessibility.Accessible;
 import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
@@ -46,17 +49,24 @@ import java.lang.Thread;
 
 public class AccessibleAnnouncerTest extends AccessibleComponentTest {
 
+    private final boolean useFrameAsAnnouncer;
+
+    private AccessibleAnnouncerTest(final boolean useFrameAsAnnouncer) {
+        super();
+        this.useFrameAsAnnouncer = useFrameAsAnnouncer;
+    }
+
+
     @java.lang.Override
     public CountDownLatch createCountDownLatch() {
         return new CountDownLatch(1);
     }
 
-    private static void announce(final String str, final int priority) {
+    private static void announce(final Accessible accessible, final String str, final int priority) {
         try {
-            AccessibleAnnouncer.announce(str, priority);
+            AccessibleAnnouncer.announce(accessible, str, priority);
         } catch (final Exception e) {
             e.printStackTrace();
-
         }
     }
 
@@ -77,7 +87,7 @@ public class AccessibleAnnouncerTest extends AccessibleComponentTest {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String str = textField.getText();
-                announce(str, AccessibleAnnouncer.ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT);
+                announce(useFrameAsAnnouncer ? frame : null, str, AccessibleAnnouncer.ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT);
             }
         });
 
@@ -85,7 +95,7 @@ public class AccessibleAnnouncerTest extends AccessibleComponentTest {
         frame.add(textField);
         frame.add(button);
         exceptionString = "Accessible announcer test failed!";
-        super.createUI(frame, "Accessible Anouncer test");
+        super.createUI(frame, "Accessible Anouncer test (useFrameAsAnnouncer=" + useFrameAsAnnouncer + ")");
     }
 
     void createPriorityTest() {
@@ -107,11 +117,11 @@ public class AccessibleAnnouncerTest extends AccessibleComponentTest {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                announce(firstMessage, AccessibleAnnouncer.ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT);
+                announce(useFrameAsAnnouncer ? frame : null, firstMessage, AccessibleAnnouncer.ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT);
                 try {
                     Thread.sleep(3000);
-                    announce("You must not hear this message.", AccessibleAnnouncer.ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT);
-                    announce(secondMessage, AccessibleAnnouncer.ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT);
+                    announce(useFrameAsAnnouncer ? frame : null, "You must not hear this message.", AccessibleAnnouncer.ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT);
+                    announce(useFrameAsAnnouncer ? frame : null, secondMessage, AccessibleAnnouncer.ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT);
                  } catch (Exception ex) {
                     ex.printStackTrace();
                 }
@@ -121,11 +131,12 @@ public class AccessibleAnnouncerTest extends AccessibleComponentTest {
         frame.setLayout(new FlowLayout());
         frame.add(button);
         exceptionString = "Accessible announcer priority test failed!";
-        super.createUI(frame, "Accessible Anouncer test");
+        super.createUI(frame, "Accessible Anouncer test (useFrameAsAnnouncer=" + useFrameAsAnnouncer + ")");
     }
 
     public static void main(String[] args)  throws Exception {
-        AccessibleAnnouncerTest test = new AccessibleAnnouncerTest();
+        final boolean useFrameAsAnnouncer = (args.length > 0) && ("true".equals(args[0]));
+        AccessibleAnnouncerTest test = new AccessibleAnnouncerTest(useFrameAsAnnouncer);
 
         countDownLatch = test.createCountDownLatch();
         SwingUtilities.invokeLater(test::createTest);
