@@ -303,6 +303,9 @@ public final class AWTAccessor {
 
         boolean needUpdateWindow(Window window);
 
+        void setPopupParent(Window window, Component component);
+        Component getPopupParent(Window window);
+
         /** Sets the synchronous status of focus requests on lightweight
          * components in the specified window to the specified value.
          */

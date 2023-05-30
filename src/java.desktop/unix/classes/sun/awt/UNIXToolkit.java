@@ -66,6 +66,7 @@ public abstract class UNIXToolkit extends SunToolkit
     private static final int[] BAND_OFFSETS_ALPHA = { 0, 1, 2, 3 };
     private static final int DEFAULT_DATATRANSFER_TIMEOUT = 10000;
 
+
     // Allowed GTK versions
     public enum GtkVersions {
         ANY(0),
@@ -493,29 +494,31 @@ public abstract class UNIXToolkit extends SunToolkit
         return Boolean.getBoolean("jdk.gtk.verbose");
     }
 
-    private static volatile Boolean isOnWayland = null;
+    private static volatile Boolean isOnXWayland = null;
 
-    public static boolean isOnWayland() {
-        Boolean result = isOnWayland;
+    private static boolean isOnXWayland() {
+        Boolean result = isOnXWayland;
         if (result == null) {
             synchronized (GTK_LOCK) {
-                result = isOnWayland;
+                result = isOnXWayland;
                 if (result == null) {
                     final String display = System.getenv("WAYLAND_DISPLAY");
-                    isOnWayland
-                            = result
-                            = (display != null && !display.trim().isEmpty());
+                    isOnXWayland = result = (display != null && !display.trim().isEmpty());
                 }
             }
         }
         return result;
     }
 
+    public static boolean isOnWayland() {
+        return isOnXWayland;
+    }
+
     private static native int isSystemDarkColorScheme();
 
     @Override
-    public boolean isRunningOnWayland() {
-        return isOnWayland();
+    public boolean isRunningOnXWayland() {
+        return isOnXWayland();
     }
 
     private static final String OS_THEME_IS_DARK = "awt.os.theme.isDark";
@@ -582,7 +585,7 @@ public abstract class UNIXToolkit extends SunToolkit
     }
 
     static {
-        if (isOnWayland()) {
+        if (isOnXWayland()) {
             waylandWindowFocusListener = new WindowAdapter() {
                 @Override
                 public void windowLostFocus(WindowEvent e) {
@@ -636,7 +639,7 @@ public abstract class UNIXToolkit extends SunToolkit
 
     @Override
     public void dismissPopupOnFocusLostIfNeeded(Window invoker) {
-        if (!isOnWayland() || invoker == null) {
+        if (!isRunningOnXWayland() || invoker == null) {
             return;
         }
 
@@ -645,7 +648,7 @@ public abstract class UNIXToolkit extends SunToolkit
 
     @Override
     public void dismissPopupOnFocusLostIfNeededCleanUp(Window invoker) {
-        if (!isOnWayland() || invoker == null) {
+        if (!isRunningOnXWayland() || invoker == null) {
             return;
         }
 
