@@ -38,6 +38,7 @@ import sun.java2d.wl.WLSurfaceData;
 import sun.util.logging.PlatformLogger;
 import sun.util.logging.PlatformLogger.Level;
 
+import javax.swing.SwingUtilities;
 import java.awt.*;
 import java.awt.event.ComponentEvent;
 import java.awt.event.FocusEvent;
@@ -225,9 +226,35 @@ public class WLComponentPeer implements ComponentPeer {
         if (this.visible) {
             final String title = getTitle();
             final boolean isPopup = target instanceof Window window && window.getType() == Window.Type.POPUP;
+            final int thisWidth = getWidth();
+            final int thisHeight = getHeight();
             performLocked(() -> {
-                nativeCreateWLSurface(nativePtr,
-                        getParentNativePtr(target), isPopup, target.getX(), target.getY(), title, appID);
+                if (isPopup) {
+                    Window popup = (Window) target;
+                    final Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
+                    final int parentWidth = popupParent.getWidth();
+                    final int parentHeight = popupParent.getHeight();
+                    final Window toplevel = SwingUtilities.getWindowAncestor(popupParent);
+                    // We need to provide popup "parent" location relative to
+                    // the surface it is painted upon:
+                    final Point toplevelLocation = toplevel == null
+                            ? new Point(popupParent.getX(), popupParent.getY())
+                            : SwingUtilities.convertPoint(popupParent, 0, 0, toplevel);
+                    final int parentX = toplevelLocation.x;
+                    final int parentY = toplevelLocation.y;
+
+                    // Offset must be relative to the top-left corner of the "parent".
+                    final Point offsetFromParent = popup.getLocation();
+                    final int offsetX = offsetFromParent.x;
+                    final int offsetY = offsetFromParent.y;
+                    nativeCreateWLPopup(nativePtr,
+                            getParentNativePtr(target), parentX, parentY, parentWidth, parentHeight,
+                            thisWidth, thisHeight,
+                            offsetX, offsetY);
+                } else {
+                    nativeCreateWLSurface(nativePtr,
+                            getParentNativePtr(target), target.getX(), target.getY(), title, appID);
+                }
                 final long wlSurfacePtr = getWLSurface(nativePtr);
                 WLToolkit.registerWLSurface(wlSurfacePtr, this);
             });
@@ -782,9 +809,15 @@ public class WLComponentPeer implements ComponentPeer {
 
     protected native long nativeCreateFrame();
 
-    protected native void nativeCreateWLSurface(long ptr, long parentPtr, boolean isPopup,
-                                                int x, int y, String title, String appID);
+    protected native void nativeCreateWLSurface(long ptr, long parentPtr,
+                                                int x, int y,
+                                                String title, String appID);
 
+    protected native void nativeCreateWLPopup(long ptr, long parentPtr,
+                                              int parentX, int parentY,
+                                              int parentWidth, int parentHeight,
+                                              int width, int height,
+                                              int offsetX, int offsetY);
     protected native void nativeHideFrame(long ptr);
 
     protected native void nativeDisposeFrame(long ptr);
@@ -954,8 +987,11 @@ public class WLComponentPeer implements ComponentPeer {
             log.fine(String.format("%s configured to %dx%d", this, newWidth, newHeight));
         }
 
+        final boolean isPopup = target instanceof Window window && window.getType() == Window.Type.POPUP;
+
         if (newWidth != 0 && newHeight != 0) performUnlocked(() ->target.setSize(newWidth, newHeight));
-        if (newWidth == 0 && newHeight == 0) {
+
+        if (newWidth == 0 || newHeight == 0 || isPopup) {
             // From xdg-shell.xml: "If the width or height arguments are zero,
             // it means the client should decide its own window dimension".
 
@@ -963,6 +999,10 @@ public class WLComponentPeer implements ComponentPeer {
             // need to post the initial paint event for the window to appear on
             // the screen. In the other case, this paint event is posted
             // by setBounds() eventually called from target.setSize() above.
+
+            // Popups have their initial size communicated to Wayland even before they are shown,
+            // so it is highly likely that they won't get the initial paint event because of
+            // the size change from target.setSize() above.
             postPaintEvent();
         }
     }
