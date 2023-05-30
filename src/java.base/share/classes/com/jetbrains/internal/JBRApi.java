@@ -43,7 +43,7 @@ import static java.lang.invoke.MethodHandles.Lookup;
  * {@link com.jetbrains.JBR jetbrains.api} module. Actual implementation is linked by
  * JBR at runtime by generating {@linkplain Proxy proxy objects}.
  * Mapping between interfaces and implementation code is defined in
- * {@linkplain com.jetbrains.bootstrap.JBRApiBootstrap#MODULES registry classes}.
+ * {@linkplain com.jetbrains.registry.JBRApiRegistry registry class}.
  * <p>
  * This class has most basic methods for working with JBR API and cache of generated proxies.
  * <p>
@@ -66,8 +66,8 @@ import static java.lang.invoke.MethodHandles.Lookup;
  *         }
  *         }</pre></blockquote>
  *     </li>
- *     <li>Register your service in corresponding
- *     {@linkplain com.jetbrains.bootstrap.JBRApiBootstrap#MODULES module registry class}:
+ *     <li>Register your service in corresponding module of the
+ *     {@linkplain com.jetbrains.registry.JBRApiRegistry registry class}:
  *         <blockquote><pre>{@link com.jetbrains.base.JBRApiModule}:{@code
  *         .service("com.jetbrains.StringOptimizer", null)
  *             .withStatic("optimize", "java.lang.String", "optimizeInternal")
@@ -147,7 +147,7 @@ public class JBRApi {
             if (VERBOSE) e.printStackTrace();
         }
         if (VERBOSE) {
-            System.out.println("JBR API init\nKNOWN_SERVICES = " + knownServices + "\nKNOWN_PROXIES = " + knownProxies);
+            System.out.println("JBR API init\n  KNOWN_SERVICES = " + knownServices + "\n  KNOWN_PROXIES = " + knownProxies);
         }
     }
 

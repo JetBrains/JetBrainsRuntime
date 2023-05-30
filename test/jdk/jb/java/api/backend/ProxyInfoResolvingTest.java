@@ -52,17 +52,17 @@ public class ProxyInfoResolvingTest {
         // Service without target class or static method mapping -> null
         r.service(EmptyService.class.getName());
         requireNull(getProxy(EmptyService.class));
-        // Class passed instead of interface for client proxy -> error
-        r.clientProxy(ClientProxyClass.class.getName(), ClientProxyClassImpl.class.getName());
-        mustFail(() -> getProxy(ClientProxyClass.class), RuntimeException.class);
-        // Class passed instead of interface for proxy -> null
-        r.proxy(ProxyClass.class.getName(), ProxyClassImpl.class.getName());
-        requireNull(getProxy(ProxyClass.class));
         // Valid proxy
         r.proxy(ValidApi.class.getName(), ValidApiImpl.class.getName());
         Objects.requireNonNull(getProxy(ValidApi.class));
         // Multiple implementations
         r.proxy(ValidApi2.class.getName(), "MissingClass", ValidApi2Impl.class.getName());
         Objects.requireNonNull(getProxy(ValidApi2.class));
+        // Class instead of interface for proxy
+        r.proxy(ProxyClass.class.getName(), ProxyClassImpl.class.getName());
+        Objects.requireNonNull(getProxy(ProxyClass.class));
+        // Class instead of interface for client proxy
+        r.clientProxy(ClientProxyClass.class.getName(), ClientProxyClassImpl.class.getName());
+        Objects.requireNonNull(getProxy(ClientProxyClass.class));
     }
 }

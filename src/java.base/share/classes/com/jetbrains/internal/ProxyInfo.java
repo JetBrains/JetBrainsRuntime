@@ -69,7 +69,7 @@ class ProxyInfo {
     static ProxyInfo resolve(RegisteredProxyInfo i) {
         ProxyInfo info = new ProxyInfo(i);
         if (info.interFace == null || (info.target == null &&
-                (info.type != Type.SERVICE || info.staticMethods.isEmpty()))) {
+                (!info.type.isService() || info.staticMethods.isEmpty()))) {
             return null;
         }
         Class<? extends Annotation> annotationType = switch (info.type) {
@@ -85,13 +85,6 @@ class ProxyInfo {
                 if (JBRApi.VERBOSE) {
                     System.err.println("Client type " + clientType + " not marked with @" + annotationType.getSimpleName());
                 }
-                return null;
-            }
-        }
-        if (!info.interFace.isInterface()) {
-            if (info.type == Type.CLIENT_PROXY) {
-                throw new RuntimeException("Tried to create client proxy for non-interface: " + info.interFace);
-            } else {
                 return null;
             }
         }

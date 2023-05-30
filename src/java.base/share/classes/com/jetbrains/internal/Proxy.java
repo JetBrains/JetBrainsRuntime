@@ -52,7 +52,7 @@ import java.util.stream.Collectors;
  * if any proxy used by it is unsupported, more about it at {@link ProxyDependencyManager}.
  * <p>
  * Mapping between interfaces and implementation code is defined in
- * {@linkplain com.jetbrains.bootstrap.JBRApiBootstrap#MODULES registry classes}.
+ * {@linkplain com.jetbrains.registry.JBRApiRegistry registry class}.
  * @param <INTERFACE> interface type for this proxy.
  */
 class Proxy<INTERFACE> {

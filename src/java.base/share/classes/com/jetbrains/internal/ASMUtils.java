@@ -58,12 +58,14 @@ class ASMUtils {
         InternalMethodInfo methodInfo = getInternalMethodInfo(interfaceMethod);
         MethodVisitor p = writer.visitMethod(ACC_PUBLIC | ACC_FINAL, methodInfo.name(),
                 methodInfo.descriptor(), methodInfo.genericSignature(), methodInfo.exceptionNames());
+        p.visitCode();
         p.visitTypeInsn(NEW, "java/lang/UnsupportedOperationException");
         p.visitInsn(DUP);
         p.visitLdcInsn("No implementation found for this method");
         p.visitMethodInsn(INVOKESPECIAL, "java/lang/UnsupportedOperationException", "<init>", "(Ljava/lang/String;)V", false);
         p.visitInsn(ATHROW);
-        p.visitMaxs(-1, -1);
+        p.visitMaxs(0, 0);
+        p.visitEnd();
     }
 
     public static void logDeprecated(MethodVisitor writer, String message) {
