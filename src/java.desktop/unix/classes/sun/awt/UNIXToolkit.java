@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2004, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,6 +71,7 @@ public abstract class UNIXToolkit extends SunToolkit
     private static final int[] BAND_OFFSETS = { 0, 1, 2 };
     private static final int[] BAND_OFFSETS_ALPHA = { 0, 1, 2, 3 };
     private static final int DEFAULT_DATATRANSFER_TIMEOUT = 10000;
+
 
     // Allowed GTK versions
     public enum GtkVersions {
@@ -501,7 +502,7 @@ public abstract class UNIXToolkit extends SunToolkit
         @SuppressWarnings("removal")
         String version = AccessController.doPrivileged(
                 new GetPropertyAction("jdk.gtk.version"));
-        if ("3".equals(version)) {
+        if("3".equals(version)) {
             return GtkVersions.GTK3;
         }
         return GtkVersions.ANY;
@@ -517,16 +518,16 @@ public abstract class UNIXToolkit extends SunToolkit
                 -> Boolean.getBoolean("jdk.gtk.verbose"));
     }
 
-    private static volatile Boolean isOnWayland = null;
+    private static volatile Boolean isOnXWayland = null;
 
     @SuppressWarnings("removal")
-    public static boolean isOnWayland() {
-        Boolean result = isOnWayland;
+    private static boolean isOnXWayland() {
+        Boolean result = isOnXWayland;
         if (result == null) {
             synchronized (GTK_LOCK) {
-                result = isOnWayland;
+                result = isOnXWayland;
                 if (result == null) {
-                    isOnWayland
+                    isOnXWayland
                             = result
                             = AccessController.doPrivileged(
                             (PrivilegedAction<Boolean>) () -> {
@@ -546,8 +547,8 @@ public abstract class UNIXToolkit extends SunToolkit
     private static native int isSystemDarkColorScheme();
 
     @Override
-    public boolean isRunningOnWayland() {
-        return isOnWayland();
+    public boolean isRunningOnXWayland() {
+        return isOnXWayland();
     }
 
     // We rely on the X11 input grab mechanism, but for the Wayland session
@@ -601,7 +602,7 @@ public abstract class UNIXToolkit extends SunToolkit
     }
 
     static {
-        if (isOnWayland()) {
+        if (isOnXWayland()) {
             waylandWindowFocusListener = new WindowAdapter() {
                 @Override
                 public void windowLostFocus(WindowEvent e) {
@@ -646,7 +647,7 @@ public abstract class UNIXToolkit extends SunToolkit
 
     @Override
     public void dismissPopupOnFocusLostIfNeeded(Window invoker) {
-        if (!isOnWayland() || invoker == null) {
+        if (!isRunningOnXWayland() || invoker == null) {
             return;
         }
 
@@ -655,7 +656,7 @@ public abstract class UNIXToolkit extends SunToolkit
 
     @Override
     public void dismissPopupOnFocusLostIfNeededCleanUp(Window invoker) {
-        if (!isOnWayland() || invoker == null) {
+        if (!isRunningOnXWayland() || invoker == null) {
             return;
         }
 
