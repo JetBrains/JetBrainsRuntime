@@ -212,7 +212,6 @@ xdg_popup_done(void *data,
                struct xdg_popup *xdg_popup)
 {
     J2dTrace(J2D_TRACE_INFO, "WLComponentPeer: xdg_popup_done(%p)\n", xdg_popup);
-    // TODO
 }
 
 static const struct xdg_toplevel_listener xdg_toplevel_listener = {
@@ -352,8 +351,9 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestUnsetFullScreen
 
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
-  (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr, jboolean isPopup,
-   jint x, jint y, jstring title, jstring appid)
+  (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr,
+   jint x, jint y,
+   jstring title, jstring appid)
 {
     struct WLFrame *frame = (struct WLFrame *) ptr;
     struct WLFrame *parentFrame = (struct WLFrame*) parentPtr;
@@ -363,33 +363,66 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
 
     wl_surface_add_listener(frame->wl_surface, &wl_surface_listener, frame);
     xdg_surface_add_listener(frame->xdg_surface, &xdg_surface_listener, frame);
-    frame->toplevel = !isPopup;
-    if (frame->toplevel) {
-        frame->xdg_toplevel = xdg_surface_get_toplevel(frame->xdg_surface);
-        xdg_toplevel_add_listener(frame->xdg_toplevel, &xdg_toplevel_listener, frame);
-        if (title) {
-            FrameSetTitle(env, frame, title);
-        }
-        if (appid) {
-            FrameSetAppID(env, frame, appid);
-        }
-        if (parentFrame) {
-            xdg_toplevel_set_parent(frame->xdg_toplevel, parentFrame->xdg_toplevel);
-        }
-    } else {
-        assert(parentFrame);
-        struct xdg_positioner *xdg_positioner =
-                xdg_wm_base_create_positioner(xdg_wm_base);
-        xdg_positioner_set_offset(xdg_positioner, x, y);
-        frame->xdg_popup = xdg_surface_get_popup(frame->xdg_surface, parentFrame->xdg_surface, xdg_positioner);
-        xdg_popup_add_listener(frame->xdg_popup, &xdg_popup_listener, frame);
+    frame->toplevel = JNI_TRUE;
+    frame->xdg_toplevel = xdg_surface_get_toplevel(frame->xdg_surface);
+    xdg_toplevel_add_listener(frame->xdg_toplevel, &xdg_toplevel_listener, frame);
+    if (title) {
+        FrameSetTitle(env, frame, title);
     }
+    if (appid) {
+        FrameSetAppID(env, frame, appid);
+    }
+    if (parentFrame) {
+        xdg_toplevel_set_parent(frame->xdg_toplevel, parentFrame->xdg_toplevel);
+    }
+
 #ifdef WAKEFIELD_ROBOT
         if (wakefield) {
             // TODO: this doesn't work quite as expected for some reason
             wakefield_move_surface(wakefield, frame->wl_surface, x, y);
         }
 #endif
+    // From xdg-shell.xml: "After creating a role-specific object and
+    // setting it up, the client must perform an initial commit
+    // without any buffer attached"
+    wl_surface_commit(frame->wl_surface);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLComponentPeer_nativeCreateWLPopup
+        (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr,
+         jint parentX, jint parentY,
+         jint parentWidth, jint parentHeight,
+         jint width, jint height,
+         jint offsetX, jint offsetY)
+{
+    struct WLFrame *frame = (struct WLFrame *) ptr;
+    struct WLFrame *parentFrame = (struct WLFrame*) parentPtr;
+    if (frame->wl_surface) return;
+    frame->wl_surface = wl_compositor_create_surface(wl_compositor);
+    frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, frame->wl_surface);
+
+    wl_surface_add_listener(frame->wl_surface, &wl_surface_listener, frame);
+    xdg_surface_add_listener(frame->xdg_surface, &xdg_surface_listener, frame);
+    frame->toplevel = JNI_FALSE;
+
+    assert(parentFrame);
+    struct xdg_positioner *xdg_positioner =
+            xdg_wm_base_create_positioner(xdg_wm_base);
+    // "For an xdg_positioner object to be considered complete, it must have
+    // a non-zero size set by set_size, and a non-zero anchor rectangle
+    // set by set_anchor_rect."
+    xdg_positioner_set_size(xdg_positioner, width, height);
+    xdg_positioner_set_anchor_rect(xdg_positioner, parentX, parentY, parentWidth, parentHeight);
+    xdg_positioner_set_offset(xdg_positioner, offsetX, offsetY);
+    xdg_positioner_set_anchor(xdg_positioner, XDG_POSITIONER_ANCHOR_TOP_LEFT);
+    xdg_positioner_set_gravity(xdg_positioner, XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
+    xdg_positioner_set_constraint_adjustment(xdg_positioner, XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X |
+                                                             XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y);
+    frame->xdg_popup = xdg_surface_get_popup(frame->xdg_surface, parentFrame->xdg_surface, xdg_positioner);
+    xdg_popup_add_listener(frame->xdg_popup, &xdg_popup_listener, frame);
+    xdg_positioner_destroy(xdg_positioner);
+
     // From xdg-shell.xml: "After creating a role-specific object and
     // setting it up, the client must perform an initial commit
     // without any buffer attached"
