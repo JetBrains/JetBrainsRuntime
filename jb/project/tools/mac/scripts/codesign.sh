@@ -8,7 +8,7 @@ function isMacOsBinary() {
 }
 
 function isSigned() {
-  codesign --verify "$1" && ! grep -q Signature=adhoc < <(codesign --display --verbose "$1" 2>&1)
+  codesign --verify "$1" >/dev/null 2>&1 && ! grep -q Signature=adhoc < <(codesign --display --verbose "$1" 2>&1)
 }
 
 # last argument is a path to be signed
