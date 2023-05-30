@@ -196,6 +196,8 @@ class ClassLoaderData : public CHeapObj<mtClass> {
 
   Dictionary* create_dictionary();
 
+  void demote_strong_roots();
+
   void initialize_name(Handle class_loader);
 
  public:
