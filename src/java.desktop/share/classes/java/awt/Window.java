@@ -391,6 +391,12 @@ public class Window extends Container implements Accessible {
     @SuppressWarnings("serial") // Not statically typed as Serializable
     private Shape shape = null;
 
+    /**
+     * For popup windows, the component that the popup
+     * "must intersect with or be at least partially adjacent to".
+     */
+    private Component popupParent = null;
+
     private static final String base = "win";
     private static int nameCounter = 0;
 
@@ -4330,6 +4336,14 @@ public class Window extends Container implements Accessible {
 
             public boolean needUpdateWindow(Window window) {
                 return window != null && (isWLToolkit || !window.isOpaque());
+            }
+
+            public void setPopupParent(Window window, Component component) {
+                window.popupParent = component;
+            }
+
+            public Component getPopupParent(Window window) {
+                return window.popupParent;
             }
 
             public void setSecurityWarningSize(Window window, int width, int height)
