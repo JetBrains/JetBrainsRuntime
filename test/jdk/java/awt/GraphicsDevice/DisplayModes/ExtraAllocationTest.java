@@ -70,6 +70,8 @@ public class ExtraAllocationTest {
         GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
         GraphicsDevice d = ge.getDefaultScreenDevice();
 
+        final DisplayMode originalDisplayMode = d.getDisplayMode();
+
         if (d.isDisplayChangeSupported()) {
             DisplayMode[] modes = d.getDisplayModes();
             int modesCount = Math.min(modes.length, MAX_MODES);
@@ -80,6 +82,8 @@ public class ExtraAllocationTest {
                     d.setDisplayMode(mode);
                 } catch (IllegalArgumentException e) {
                     e.printStackTrace();
+                } finally {
+                    d.setDisplayMode(originalDisplayMode);
                 }
                 Thread.sleep(2000);
             }
@@ -90,6 +94,7 @@ public class ExtraAllocationTest {
         Path path = Path.of("recording.jfr");
         recording.dump(path);
         recording.close();
+
         for (RecordedEvent event : RecordingFile.readAllEvents(path)) {
             if ("jdk.ObjectAllocationOutsideTLAB".equalsIgnoreCase(event.getEventType().getName())) {
                 for (RecordedFrame recordedFrame :event.getStackTrace().getFrames()) {
