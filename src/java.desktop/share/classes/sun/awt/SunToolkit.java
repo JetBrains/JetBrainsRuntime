@@ -1893,7 +1893,7 @@ public abstract class SunToolkit extends Toolkit
      *
      * @return true if running on Wayland, false otherwise
      */
-    public boolean isRunningOnWayland() {
+    public boolean isRunningOnXWayland() {
         return false;
     }
 
