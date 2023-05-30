@@ -310,6 +310,9 @@ public final class AWTAccessor {
 
         boolean needUpdateWindow(Window window);
 
+        void setPopupParent(Window window, Component component);
+        Component getPopupParent(Window window);
+
         /**
          * Set the size of the security warning.
          */

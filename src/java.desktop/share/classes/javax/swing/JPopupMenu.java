@@ -154,6 +154,13 @@ public class JPopupMenu extends JComponent implements Accessible,MenuElement {
     private static final boolean VERBOSE = false; // show reuse hits/misses
     private static final boolean DEBUG =   false;  // show bad params, misc.
 
+    static {
+        Toolkit toolkit = Toolkit.getDefaultToolkit();
+        if (toolkit != null && "sun.awt.wl.WLToolkit".equals(toolkit.getClass().getName())) {
+            JPopupMenu.setDefaultLightWeightPopupEnabled(false);
+        }
+    }
+
     /**
      *  Sets the default value of the <code>lightWeightPopupEnabled</code>
      *  property.
@@ -342,7 +349,9 @@ public class JPopupMenu extends JComponent implements Accessible,MenuElement {
     Point adjustPopupLocationToFitScreen(int xPosition, int yPosition) {
         Point popupLocation = new Point(xPosition, yPosition);
 
-        if(popupPostionFixDisabled == true || GraphicsEnvironment.isHeadless()) {
+        if(popupPostionFixDisabled
+                || GraphicsEnvironment.isHeadless()
+                || PopupFactory.isPopupPositionedRelatively()) {
             return popupLocation;
         }
 
@@ -977,20 +986,15 @@ public class JPopupMenu extends JComponent implements Accessible,MenuElement {
                 }
             }
         }
-        Point invokerOrigin;
-        if (invoker != null) {
-            invokerOrigin = invoker.getLocationOnScreen();
-
+        if (invoker != null && !PopupFactory.isPopupPositionedRelatively()) {
+            Point invokerOrigin = invoker.getLocationOnScreen();
             // To avoid integer overflow
-            long lx, ly;
-            lx = ((long) invokerOrigin.x) +
-                 ((long) x);
-            ly = ((long) invokerOrigin.y) +
-                 ((long) y);
-            if(lx > Integer.MAX_VALUE) lx = Integer.MAX_VALUE;
-            if(lx < Integer.MIN_VALUE) lx = Integer.MIN_VALUE;
-            if(ly > Integer.MAX_VALUE) ly = Integer.MAX_VALUE;
-            if(ly < Integer.MIN_VALUE) ly = Integer.MIN_VALUE;
+            long lx = ((long) invokerOrigin.x) + x;
+            long ly = ((long) invokerOrigin.y) + y;
+            if (lx > Integer.MAX_VALUE) lx = Integer.MAX_VALUE;
+            if (lx < Integer.MIN_VALUE) lx = Integer.MIN_VALUE;
+            if (ly > Integer.MAX_VALUE) ly = Integer.MAX_VALUE;
+            if (ly < Integer.MIN_VALUE) ly = Integer.MIN_VALUE;
 
             setLocation((int) lx, (int) ly);
         } else {
@@ -1612,4 +1616,5 @@ public class JPopupMenu extends JComponent implements Accessible,MenuElement {
     public boolean isPopupTrigger(MouseEvent e) {
         return getUI().isPopupTrigger(e);
     }
+
 }

@@ -452,16 +452,16 @@ public abstract class UNIXToolkit extends SunToolkit
                 -> Boolean.getBoolean("jdk.gtk.verbose"));
     }
 
-    private static volatile Boolean isOnWayland = null;
+    private static volatile Boolean isOnXWayland = null;
 
     @SuppressWarnings("removal")
-    public static boolean isOnWayland() {
-        Boolean result = isOnWayland;
+    private static boolean isOnXWayland() {
+        Boolean result = isOnXWayland;
         if (result == null) {
             synchronized (GTK_LOCK) {
-                result = isOnWayland;
+                result = isOnXWayland;
                 if (result == null) {
-                    isOnWayland
+                    isOnXWayland
                             = result
                             = AccessController.doPrivileged(
                             (PrivilegedAction<Boolean>) () -> {
@@ -479,8 +479,8 @@ public abstract class UNIXToolkit extends SunToolkit
     }
 
     @Override
-    public boolean isRunningOnWayland() {
-        return isOnWayland();
+    public boolean isRunningOnXWayland() {
+        return isOnXWayland();
     }
 
     // We rely on the X11 input grab mechanism, but for the Wayland session
@@ -497,7 +497,7 @@ public abstract class UNIXToolkit extends SunToolkit
     private static final WindowFocusListener waylandWindowFocusListener;
 
     static {
-        if (isOnWayland()) {
+        if (isOnXWayland()) {
             waylandWindowFocusListener = new WindowAdapter() {
                 @Override
                 public void windowLostFocus(WindowEvent e) {
@@ -518,7 +518,7 @@ public abstract class UNIXToolkit extends SunToolkit
 
     @Override
     public void dismissPopupOnFocusLostIfNeeded(Window invoker) {
-        if (!isOnWayland()
+        if (!isRunningOnXWayland()
                 || invoker == null
                 || Arrays
                     .asList(invoker.getWindowFocusListeners())
@@ -532,7 +532,7 @@ public abstract class UNIXToolkit extends SunToolkit
 
     @Override
     public void dismissPopupOnFocusLostIfNeededCleanUp(Window invoker) {
-        if (!isOnWayland() || invoker == null) {
+        if (!isRunningOnXWayland() || invoker == null) {
             return;
         }
 
