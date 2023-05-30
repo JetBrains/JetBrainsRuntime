@@ -1344,6 +1344,9 @@ SHENANDOAHGC_ONLY(public:)
   bool identical_backtoback_ifs(Node *n);
   bool can_split_if(Node *n_ctrl);
 SHENANDOAHGC_ONLY(private:)
+  bool cannot_split_division(const Node* n, const Node* region) const;
+  static bool is_divisor_counted_loop_phi(const Node* divisor, const Node* loop);
+  bool loop_phi_backedge_type_contains_zero(const Node* phi_divisor, const Type* zero) const;
 
   // Clone loop predicates to slow and fast loop when unswitching a loop
   void clone_predicates_to_unswitched_loop(IdealLoopTree* loop, const Node_List& old_new, ProjNode*& iffast_pred, ProjNode*& ifslow_pred);
