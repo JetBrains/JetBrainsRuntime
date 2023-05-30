@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -105,6 +105,8 @@ public final class ToolTipManager extends MouseAdapter implements MouseMotionLis
 
         postTip = KeyStroke.getKeyStroke(KeyEvent.VK_F1, InputEvent.CTRL_MASK);
         hideTip =  KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0);
+
+        lightWeightPopupEnabled = !ToolTipManager.isTooltipPositionedRelatively();
     }
 
     /**
@@ -220,7 +222,7 @@ public final class ToolTipManager extends MouseAdapter implements MouseMotionLis
     /**
      * Returns the reshow delay property.
      *
-     * @return reshow delay property
+     * @return reshown delay property
      * @see #setReshowDelay
      */
     public int getReshowDelay() {
@@ -259,41 +261,61 @@ public final class ToolTipManager extends MouseAdapter implements MouseMotionLis
             Dimension size;
             Point screenLocation = insideComponent.getLocationOnScreen();
             Point location;
+            Rectangle sBounds = null;
 
-            Point toFind;
-            if (preferredLocation != null) {
-                toFind = new Point(screenLocation.x + preferredLocation.x,
-                        screenLocation.y + preferredLocation.y);
+            boolean isTooltipPositionedAbsolutely = !isTooltipPositionedRelatively();
+            if (isTooltipPositionedAbsolutely) {
+                Point toFind;
+                if (preferredLocation != null) {
+                    toFind = new Point(screenLocation.x + preferredLocation.x,
+                            screenLocation.y + preferredLocation.y);
+                } else {
+                    if (mouseEvent != null) {
+                        toFind = mouseEvent.getLocationOnScreen();
+                    } else {
+                        toFind = screenLocation;
+                    }
+                }
+
+                GraphicsConfiguration gc = getDrawingGC(toFind);
+                if (gc == null) {
+                    if (mouseEvent != null) {
+                        toFind = mouseEvent.getLocationOnScreen();
+                        gc = getDrawingGC(toFind);
+                    }
+                    if (gc == null) {
+                        gc = insideComponent.getGraphicsConfiguration();
+                    }
+                }
+
+                sBounds = gc.getBounds();
+                Insets screenInsets = Toolkit.getDefaultToolkit()
+                        .getScreenInsets(gc);
+                // Take into account screen insets, decrease viewport
+                sBounds.x += screenInsets.left;
+                sBounds.y += screenInsets.top;
+                sBounds.width -= (screenInsets.left + screenInsets.right);
+                sBounds.height -= (screenInsets.top + screenInsets.bottom);
+
+                if (preferredLocation != null) {
+                    location = toFind;
+                } else {
+                    if (mouseEvent != null) {
+                        location = new Point(screenLocation.x + mouseEvent.getX(),
+                                screenLocation.y + mouseEvent.getY() + 20);
+                    } else {
+                        location = screenLocation;
+                    }
+                }
             } else {
                 if (mouseEvent != null) {
-                    toFind = mouseEvent.getLocationOnScreen();
+                    location = new Point(mouseEvent.getX(), mouseEvent.getY() + 20);
                 } else {
-                    toFind = screenLocation;
+                    location = screenLocation;
                 }
             }
-
-            GraphicsConfiguration gc = getDrawingGC(toFind);
-            if (gc == null) {
-                if (mouseEvent != null) {
-                    toFind = mouseEvent.getLocationOnScreen();
-                    gc = getDrawingGC(toFind);
-                }
-                if (gc == null) {
-                    gc = insideComponent.getGraphicsConfiguration();
-                }
-            }
-
-            Rectangle sBounds = gc.getBounds();
-            Insets screenInsets = Toolkit.getDefaultToolkit()
-                                             .getScreenInsets(gc);
-            // Take into account screen insets, decrease viewport
-            sBounds.x += screenInsets.left;
-            sBounds.y += screenInsets.top;
-            sBounds.width -= (screenInsets.left + screenInsets.right);
-            sBounds.height -= (screenInsets.top + screenInsets.bottom);
-        boolean leftToRight
-                = SwingUtilities.isLeftToRight(insideComponent);
-
+            boolean leftToRight
+                    = SwingUtilities.isLeftToRight(insideComponent);
             // Just to be paranoid
             hideTipWindow();
 
@@ -301,82 +323,65 @@ public final class ToolTipManager extends MouseAdapter implements MouseMotionLis
             tip.setTipText(toolTipText);
             size = tip.getPreferredSize();
 
-            if(preferredLocation != null) {
-                location = toFind;
-        if (!leftToRight) {
-            location.x -= size.width;
-        }
-            } else {
-                if (mouseEvent != null) {
-                    location = new Point(screenLocation.x + mouseEvent.getX(),
-                            screenLocation.y + mouseEvent.getY() + 20);
-                } else {
-                    location = screenLocation;
+            if (!leftToRight) {
+                if (location.x - size.width >= 0) {
+                    location.x -= size.width;
                 }
-        if (!leftToRight) {
-            if(location.x - size.width>=0) {
-                location.x -= size.width;
-            }
-        }
-
             }
 
-        // we do not adjust x/y when using awt.Window tips
-        if (popupRect == null){
-        popupRect = new Rectangle();
-        }
-        popupRect.setBounds(location.x,location.y,
-                size.width,size.height);
+            // we do not adjust x/y when using awt.Window tips
+            if (popupRect == null) {
+                popupRect = new Rectangle();
+            }
+            popupRect.setBounds(location.x, location.y,
+                    size.width, size.height);
 
-        // Fit as much of the tooltip on screen as possible
-            if (location.x < sBounds.x) {
-                location.x = sBounds.x;
-            }
-            else if (location.x - sBounds.x + size.width > sBounds.width) {
-                location.x = sBounds.x + Math.max(0, sBounds.width - size.width)
-;
-            }
-            if (location.y < sBounds.y) {
-                location.y = sBounds.y;
-            }
-            else if (location.y - sBounds.y + size.height > sBounds.height) {
-                location.y = sBounds.y + Math.max(0, sBounds.height - size.height);
+            if (isTooltipPositionedAbsolutely) {
+                // Fit as much of the tooltip on screen as possible
+                if (location.x < sBounds.x) {
+                    location.x = sBounds.x;
+                } else if (location.x - sBounds.x + size.width > sBounds.width) {
+                    location.x = sBounds.x + Math.max(0, sBounds.width - size.width);
+                }
+                if (location.y < sBounds.y) {
+                    location.y = sBounds.y;
+                } else if (location.y - sBounds.y + size.height > sBounds.height) {
+                    location.y = sBounds.y + Math.max(0, sBounds.height - size.height);
+                }
             }
 
             PopupFactory popupFactory = PopupFactory.getSharedInstance();
 
             if (lightWeightPopupEnabled) {
-        int y = getPopupFitHeight(popupRect, insideComponent);
-        int x = getPopupFitWidth(popupRect,insideComponent);
-        if (x>0 || y>0) {
-            popupFactory.setPopupType(PopupFactory.MEDIUM_WEIGHT_POPUP);
-        } else {
-            popupFactory.setPopupType(PopupFactory.LIGHT_WEIGHT_POPUP);
-        }
-            }
-            else {
+                int y = getPopupFitHeight(popupRect, insideComponent);
+                int x = getPopupFitWidth(popupRect, insideComponent);
+                if (x > 0 || y > 0) {
+                    popupFactory.setPopupType(PopupFactory.MEDIUM_WEIGHT_POPUP);
+                } else {
+                    popupFactory.setPopupType(PopupFactory.LIGHT_WEIGHT_POPUP);
+                }
+            } else {
                 popupFactory.setPopupType(PopupFactory.MEDIUM_WEIGHT_POPUP);
             }
-        tipWindow = popupFactory.getPopup(insideComponent, tip,
-                          location.x,
-                          location.y);
+            tipWindow = popupFactory.getPopup(insideComponent, tip,
+                    location.x,
+                    location.y);
             popupFactory.setPopupType(PopupFactory.LIGHT_WEIGHT_POPUP);
 
-        tipWindow.show();
+            tipWindow.show();
 
             Window componentWindow = SwingUtilities.windowForComponent(
-                                                    insideComponent);
+                    insideComponent);
 
             window = SwingUtilities.windowForComponent(tip);
             if (window != null && window != componentWindow) {
                 window.addMouseListener(this);
-            }
-            else {
+            } else {
                 window = null;
             }
 
             insideTimer.start();
-        tipShowing = true;
+            tipShowing = true;
         }
     }
 
@@ -950,5 +955,10 @@ public final class ToolTipManager extends MouseAdapter implements MouseMotionLis
 
         @Override
         public void menuKeyReleased(MenuKeyEvent e) {}
+    }
+
+    static boolean isTooltipPositionedRelatively() {
+        final Toolkit toolkit = Toolkit.getDefaultToolkit();
+        return toolkit != null && toolkit.getClass().getName().equals("sun.awt.wl.WLToolkit");
     }
 }
