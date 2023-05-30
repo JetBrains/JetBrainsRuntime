@@ -1364,12 +1364,23 @@ JNIEXPORT void JNICALL Java_sun_swing_AccessibleAnnouncer_nativeAnnounce
 {
     JNI_COCOA_ENTER(env);
 
-    NSString *text = JavaStringToNSString(env, str);
-    NSNumber *javaPriority = [NSNumber numberWithInt:priority];
+    NSString *const text = JavaStringToNSString(env, str);
+    NSNumber *const javaPriority = [NSNumber numberWithInt:priority];
+
+    // From JNI specification:
+    // > Local references are only valid in the thread in which they are created.
+    // > The native code must not pass local references from one thread to another.
+    //
+    // So we have to create a global ref and pass it to the AppKit thread.
+    const jobject jAccessibleGlobalRef = (jAccessible == NULL) ? NULL : (*env)->NewGlobalRef(env, jAccessible);
 
     [ThreadUtilities performOnMainThreadWaiting:YES block:^{
-        nativeAnnounceAppKit(jAccessible, text, javaPriority);
+        nativeAnnounceAppKit(jAccessibleGlobalRef, text, javaPriority);
     }];
+
+    if (jAccessibleGlobalRef != NULL) {
+        (*env)->DeleteGlobalRef(env, jAccessibleGlobalRef);
+    }
 
     JNI_COCOA_EXIT(env);
 }
@@ -1383,25 +1394,34 @@ void nativeAnnounceAppKit(
     assert((text != NULL));
     assert((javaPriority != NULL));
 
-    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    JNIEnv* const env = [ThreadUtilities getJNIEnv];
     if (env == NULL) { // unlikely
         NSLog(@"%s: failed to get JNIEnv instance\n%@\n", __func__, [NSThread callStackSymbols]);
-        return;
+        return; // I believe it's dangerous to go on announcing in that case
     }
 
     id caller = nil;
 
-    DECLARE_CLASS(jc_Accessible, "javax/accessibility/Accessible");
+    // The meaning of this block is the following:
+    //   if jAccessible is an instance of "javax/accessibility/Accessible"
+    //   and sun.lwawt.macosx.CAccessible#getCAccessible(jAccessible) returns a non-null object
+    //   then we obtain its private field sun.lwawt.macosx.CAccessible#ptr
+    //     (which is a pointer to a native "part" of the accessible component)
+    //   and assign it to caller
+    if (jAccessible != NULL) {
+        DECLARE_CLASS(jc_Accessible, "javax/accessibility/Accessible");
 
-    if ( (jAccessible != NULL) && ((*env)->IsInstanceOf(env, jAccessible, jc_Accessible) == JNI_TRUE) ) {
-        GET_CACCESSIBLE_CLASS();
-        DECLARE_FIELD(jf_ptr, sjc_CAccessible, "ptr", "J");
+        if ((*env)->IsInstanceOf(env, jAccessible, jc_Accessible) == JNI_TRUE) {
+            const jobject jCAX = [CommonComponentAccessibility getCAccessible:jAccessible withEnv:env];
 
-        // try to fetch the jCAX from Java, and return autoreleased
-        const jobject jCAX = [CommonComponentAccessibility getCAccessible:jAccessible withEnv:env];
-        if (jCAX != NULL) {
-            caller = (CommonComponentAccessibility*)jlong_to_ptr((*env)->GetLongField(env, jCAX, jf_ptr));
-            (*env)->DeleteLocalRef(env, jCAX);
+            if (jCAX != NULL) {
+                GET_CACCESSIBLE_CLASS();
+                DECLARE_FIELD(jf_ptr, sjc_CAccessible, "ptr", "J");
+
+                caller = (CommonComponentAccessibility*)jlong_to_ptr((*env)->GetLongField(env, jCAX, jf_ptr));
+
+                (*env)->DeleteLocalRef(env, jCAX);
+            }
         }
     }
 
