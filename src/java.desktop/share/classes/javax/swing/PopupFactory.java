@@ -241,6 +241,10 @@ public class PopupFactory {
      */
     private int getPopupType(Component owner, Component contents,
                              int ownerX, int ownerY) {
+        if (PopupFactory.isPopupPositionedRelatively()) {
+            return HEAVY_WEIGHT_POPUP;
+        }
+
         int popupType = getPopupType();
 
         if (owner == null || invokerInHeavyWeightPopup(owner)) {
@@ -1010,5 +1014,10 @@ public class PopupFactory {
                 super(new BorderLayout());
             }
         }
+    }
+
+    static boolean isPopupPositionedRelatively() {
+        final Toolkit toolkit = Toolkit.getDefaultToolkit();
+        return toolkit != null && toolkit.getClass().getName().equals("sun.awt.wl.WLToolkit");
     }
 }
