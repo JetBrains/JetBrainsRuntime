@@ -606,10 +606,8 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
 
     jstring characters = NULL;
-    jstring charactersIgnoringModifiers = NULL;
     if ([event type] != NSFlagsChanged) {
         characters = NSStringToJavaString(env, [event characters]);
-        charactersIgnoringModifiers = NSStringToJavaString(env, [event charactersIgnoringModifiers]);
     }
     jstring jActualCharacters = NULL;
     if (actualCharacters != nil) {
@@ -617,13 +615,12 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     }
 
     DECLARE_CLASS(jc_NSEvent, "sun/lwawt/macosx/NSEvent");
-    DECLARE_METHOD(jctor_NSEvent, jc_NSEvent, "<init>", "(IISLjava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+    DECLARE_METHOD(jctor_NSEvent, jc_NSEvent, "<init>", "(IISLjava/lang/String;Ljava/lang/String;)V");
     jobject jEvent = (*env)->NewObject(env, jc_NSEvent, jctor_NSEvent,
                                        [event type],
                                        [event modifierFlags],
                                        [event keyCode],
                                        characters,
-                                       charactersIgnoringModifiers,
                                        jActualCharacters);
     CHECK_NULL(jEvent);
 
@@ -638,9 +635,6 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     }
     if (characters != NULL) {
         (*env)->DeleteLocalRef(env, characters);
-    }
-    if (charactersIgnoringModifiers != NULL) {
-        (*env)->DeleteLocalRef(env, charactersIgnoringModifiers);
     }
     if (jActualCharacters != NULL) {
         (*env)->DeleteLocalRef(env, jActualCharacters);
@@ -1127,9 +1121,9 @@ static jclass jc_CInputMethod = NULL;
     JNIEnv *env = [ThreadUtilities getJNIEnv];
 
     GET_CIM_CLASS();
-    DECLARE_METHOD(jm_selectPreviousGlyph, jc_CInputMethod, "selectPreviousGlyph", "()V");
     // We need to select the previous glyph so that it is overwritten.
     if (fPAHNeedsToSelect) {
+        DECLARE_METHOD(jm_selectPreviousGlyph, jc_CInputMethod, "selectPreviousGlyph", "()V");
         (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_selectPreviousGlyph);
         CHECK_EXCEPTION();
         fPAHNeedsToSelect = NO;

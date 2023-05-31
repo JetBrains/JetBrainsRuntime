@@ -56,16 +56,14 @@ final class NSEvent {
     // Key event information
     private short keyCode;
     private String characters;
-    private String charactersIgnoringModifiers;
     private String actualCharacters;
 
     // Called from native
-    NSEvent(int type, int modifierFlags, short keyCode, String characters, String charactersIgnoringModifiers, String actualCharacters) {
+    NSEvent(int type, int modifierFlags, short keyCode, String characters, String actualCharacters) {
         this.type = type;
         this.modifierFlags = modifierFlags;
         this.keyCode = keyCode;
         this.characters = characters;
-        this.charactersIgnoringModifiers = charactersIgnoringModifiers;
         this.actualCharacters = actualCharacters;
     }
 
@@ -134,10 +132,6 @@ final class NSEvent {
         return keyCode;
     }
 
-    String getCharactersIgnoringModifiers() {
-        return charactersIgnoringModifiers;
-    }
-
     String getCharacters() {
         return characters;
     }
@@ -151,7 +145,7 @@ final class NSEvent {
         return "NSEvent[" + getType() + " ," + getModifierFlags() + " ,"
                 + getClickCount() + " ," + getButtonNumber() + " ," + getX() + " ,"
                 + getY() + " ," + getAbsX() + " ," + getAbsY()+ " ," + getKeyCode() + " ,"
-                + getCharacters() + " ," + getCharactersIgnoringModifiers() + "]";
+                + getCharacters() + " ," + getActualCharacters() + "]";
     }
 
     /*

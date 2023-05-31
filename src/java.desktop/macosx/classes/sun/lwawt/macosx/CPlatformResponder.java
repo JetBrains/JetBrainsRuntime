@@ -176,15 +176,14 @@ final class CPlatformResponder {
      * @param eventType macOS event type ID: keyDown, keyUp or flagsChanged
      * @param modifierFlags macOS modifier flags mask (NSEventModifierFlags)
      * @param chars NSEvent's characters property
-     * @param charsIgnoringModifiers NSEvent's charactersIgnoringModifiers property
      * @param actualChars If non-null, then this key should generate KEY_TYPED events
      *                    corresponding to characters in this string. Only valid for keyDown events.
      * @param keyCode macOS virtual key code of the key being pressed or released
      * @param needsKeyTyped post KEY_TYPED events?
      * @param needsKeyReleased post KEY_RELEASED events?
      */
-    void handleKeyEvent(int eventType, int modifierFlags, String chars, String charsIgnoringModifiers,
-                        String actualChars, short keyCode, boolean needsKeyTyped, boolean needsKeyReleased) {
+    void handleKeyEvent(int eventType, int modifierFlags, String chars, String actualChars,
+                        short keyCode, boolean needsKeyTyped, boolean needsKeyReleased) {
         boolean isFlagsChangedEvent =
             isNpapiCallback ? (eventType == CocoaConstants.NPCocoaEventFlagsChanged) :
                               (eventType == CocoaConstants.NSFlagsChanged);
@@ -192,7 +191,6 @@ final class CPlatformResponder {
         int jeventType = KeyEvent.KEY_PRESSED;
         int jkeyCode = KeyEvent.VK_UNDEFINED;
         int jkeyLocation = KeyEvent.KEY_LOCATION_UNKNOWN;
-        boolean postsTyped = false;
         boolean spaceKeyTyped = false;
         boolean charsReserved = false;
 
@@ -231,7 +229,6 @@ final class CPlatformResponder {
                 }
 
                 if (!charsReserved) {
-                    postsTyped = true;
                     testChar = ch;
                 }
             }
@@ -249,13 +246,6 @@ final class CPlatformResponder {
 
         char javaChar = (testChar == KeyEvent.CHAR_UNDEFINED) ? KeyEvent.CHAR_UNDEFINED :
                 NSEvent.nsToJavaChar(testChar, modifierFlags, spaceKeyTyped);
-        // If postsTyped && javaChar == CHAR_UNDEFINED that probably means that there's a bug
-        // inside the NSEvent.nsToJavaChar function. This shouldn't happen, unless the user has a _very_ weird
-        // custom key layout installed, like remapping keys to produce characters in the range reserved for function keys.
-        // Since we can't determine which character is supposed to be typed let's just ignore it.
-        if (javaChar == KeyEvent.CHAR_UNDEFINED) {
-            postsTyped = false;
-        }
 
         int jmodifiers = NSEvent.nsToJavaModifiers(modifierFlags);
         long when = System.currentTimeMillis();
@@ -266,16 +256,12 @@ final class CPlatformResponder {
         eventNotifier.notifyKeyEvent(jeventType, when, jmodifiers,
                 jkeyCode, javaChar, jkeyLocation);
 
-        // Current browser may be sending input events, so don't
-        // post the KEY_TYPED here.
-        postsTyped &= needsKeyTyped;
-
         // That's the reaction on the PRESSED (not RELEASED) event as it comes to
         // appear in MacOSX.
         // Modifier keys (shift, etc) don't want to send TYPED events.
         // On the other hand we don't want to generate keyTyped events
         // for clipboard related shortcuts like Meta + [CVX]
-        if (jeventType == KeyEvent.KEY_PRESSED && postsTyped &&
+        if (jeventType == KeyEvent.KEY_PRESSED && needsKeyTyped && javaChar != KeyEvent.CHAR_UNDEFINED &&
                 (jmodifiers & KeyEvent.META_DOWN_MASK) == 0) {
             if (actualChars == null) {
                 // Either macOS didn't send us anything in insertText: to type,

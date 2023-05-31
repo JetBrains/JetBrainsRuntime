@@ -169,7 +169,7 @@ static const struct KeyTableEntry keyTable[] =
     {0x5A, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F20},
     {0x5B, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD8},
     {0x5C, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD9},
-    {0x5D, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_BACK_SLASH}, // This is a combo yen/backslash on JIS keyboards.
+    {0x5D, YES, YES, KL_STANDARD, 0x1000000 + 0x00A5},                    // This is a combo yen/backslash on JIS keyboards.
     {0x5E, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_UNDERSCORE}, // This is the key to the left of Right Shift on JIS keyboards.
     {0x5F, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_COMMA},      // This is a comma on the JIS keypad.
     {0x60, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F5},
@@ -355,22 +355,13 @@ const nsKeyToJavaModifierTable[] =
         java_awt_event_InputEvent_META_DOWN_MASK,
         java_awt_event_InputEvent_META_MASK,
         java_awt_event_KeyEvent_VK_META
-    }, {
-        NX_DEVICERALTKEYMASK,
-        //kCGSFlagsMaskAppleLeftAlternateKey,
-        //kCGSFlagsMaskAppleRightAlternateKey,
-        0,
-        61,
-        java_awt_event_InputEvent_ALT_GRAPH_DOWN_MASK,
-        java_awt_event_InputEvent_ALT_GRAPH_MASK,
-        java_awt_event_KeyEvent_VK_ALT_GRAPH
     },
     {
-        NX_DEVICELALTKEYMASK,
+        NSAlternateKeyMask,
         //kCGSFlagsMaskAppleLeftAlternateKey,
         //kCGSFlagsMaskAppleRightAlternateKey,
         58,
-        0,
+        61,
         java_awt_event_InputEvent_ALT_DOWN_MASK,
         java_awt_event_InputEvent_ALT_MASK,
         java_awt_event_KeyEvent_VK_ALT
@@ -492,7 +483,7 @@ static struct KeyCodeTranslationResult NsTranslateKeyCode(TISInputSourceRef layo
     }
 
     UInt32 deadKeyState = 0;
-    UniCharCount maxStringLength = 255;
+    const UniCharCount maxStringLength = 255;
     UniCharCount actualStringLength = 0;
     UniChar unicodeString[maxStringLength];
 
@@ -662,6 +653,12 @@ NsCharToJavaVirtualKeyCode(unsigned short key, const BOOL useNationalLayouts,
     // Determine the underlying layout.
     // If underlyingLayout is nil then fall back to using the usKey.
 
+    // TISCopyCurrentKeyboardLayoutInputSource() should always return a key layout
+    // that has valid unicode character data for use with the UCKeyTranslate() function.
+    // This is more robust than checking whether the current input source has key layout data
+    // and then falling back to the override input source if it doesn't. This is because some
+    // custom IMEs don't set the override input source properly.
+
     TISInputSourceRef currentLayout = TISCopyCurrentKeyboardLayoutInputSource();
     Boolean currentAscii = currentLayout == nil ? NO :
             CFBooleanGetValue((CFBooleanRef) TISGetInputSourceProperty(currentLayout, kTISPropertyInputSourceIsASCIICapable));
@@ -671,7 +668,7 @@ NsCharToJavaVirtualKeyCode(unsigned short key, const BOOL useNationalLayouts,
     *keyCode = usKey->javaKeyCode;
     *keyLocation = usKey->javaKeyLocation;
 
-    if (underlyingLayout == nil || !keyTable[key].variesBetweenLayouts) {
+    if (underlyingLayout == nil || !usKey->variesBetweenLayouts) {
         return;
     }
 

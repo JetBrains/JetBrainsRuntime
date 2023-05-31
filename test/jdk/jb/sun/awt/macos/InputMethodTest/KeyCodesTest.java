@@ -122,7 +122,7 @@ public class KeyCodesTest implements Runnable {
 
         // test modifier keys
         verify("", VK_ALT, "com.apple.keylayout.ABC", VK_ALT, VK_UNDEFINED, KEY_LOCATION_LEFT, ALT_DOWN_MASK);
-        verify("", VK_ALT_GRAPH, "com.apple.keylayout.ABC", VK_ALT_GRAPH, VK_UNDEFINED, KEY_LOCATION_RIGHT, ALT_GRAPH_DOWN_MASK);
+        verify("", VK_ALT, "com.apple.keylayout.ABC", VK_ALT_GRAPH, VK_UNDEFINED, KEY_LOCATION_RIGHT, ALT_DOWN_MASK);
         verify("", VK_META, "com.apple.keylayout.ABC", VK_META, VK_UNDEFINED, KEY_LOCATION_LEFT, META_DOWN_MASK);
         verify("", VK_META, "com.apple.keylayout.ABC", ROBOT_KEYCODE_RIGHT_COMMAND, VK_UNDEFINED, KEY_LOCATION_RIGHT, META_DOWN_MASK);
         verify("", VK_CONTROL, "com.apple.keylayout.ABC", VK_CONTROL, VK_UNDEFINED, KEY_LOCATION_LEFT, CTRL_DOWN_MASK);
