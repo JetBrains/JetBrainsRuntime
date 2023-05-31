@@ -21,6 +21,7 @@
  * questions.
  */
 
+import java.awt.EventQueue;
 import java.awt.Frame;
 import java.awt.Robot;
 import java.awt.TextField;
@@ -36,29 +37,48 @@ import java.awt.event.KeyEvent;
 
 public class DeadKeySystemAssertionDialog {
 
+    private static Robot robot;
+    private static Frame frame;
+    private static TextField textField;
+
     public static void main(String[] args) throws Exception {
-
-        Frame frame = new Frame();
-        frame.setSize(300, 200);
-
-        TextField textField = new TextField();
-        frame.add(textField);
-
-        Robot robot = new Robot();
+        robot = new Robot();
         robot.setAutoDelay(50);
 
-        frame.setVisible(true);
-        robot.waitForIdle();
+        try {
+            EventQueue.invokeAndWait(DeadKeySystemAssertionDialog::initUI);
 
-        textField.requestFocus();
-        robot.waitForIdle();
+            robot.waitForIdle();
+            textField.requestFocus();
+            robot.waitForIdle();
 
-        // Check that the system assertion dialog does not block Java
-        robot.keyPress(KeyEvent.VK_A);
-        robot.keyRelease(KeyEvent.VK_A);
-        robot.waitForIdle();
+            if (!textField.isFocusOwner()) {
+                throw new RuntimeException("TEST ERROR: Text field isn't a focus owner. Can't continue test");
+            }
 
-        frame.setVisible(false);
-        frame.dispose();
+            // Check that the system assertion dialog does not block Java
+            robot.keyPress(KeyEvent.VK_A);
+            robot.keyRelease(KeyEvent.VK_A);
+            robot.waitForIdle();
+        } finally {
+            EventQueue.invokeAndWait(DeadKeySystemAssertionDialog::disposeUI);
+        }
     }
+
+    private static void initUI() {
+        frame = new Frame();
+        frame.setSize(300, 200);
+
+        textField = new TextField();
+        frame.add(textField);
+
+        frame.setVisible(true);
+    }
+
+    private static void disposeUI() {
+        if (frame != null) {
+            frame.dispose();
+        }
+    }
+
 }
