@@ -132,6 +132,11 @@ public class NegotiatorImpl extends Negotiator {
                         "fallback to other scheme if allowed. Reason:");
                 e.printStackTrace();
             }
+            try {
+                disposeContext();
+            } catch (Exception ex) {
+                //dispose context silently
+            }
             IOException ioe = new IOException("Negotiate support not initiated");
             ioe.initCause(e);
             throw ioe;
@@ -156,6 +161,9 @@ public class NegotiatorImpl extends Negotiator {
     @Override
     public byte[] nextToken(byte[] token) throws IOException {
         try {
+            if (context == null) {
+                throw new IOException("Negotiate support cannot continue. Context is invalidated");
+            }
             return context.initSecContext(token, 0, token.length);
         } catch (GSSException e) {
             if (DEBUG) {
@@ -166,5 +174,27 @@ public class NegotiatorImpl extends Negotiator {
             ioe.initCause(e);
             throw ioe;
         }
+    }
+
+    /**
+     * Releases any system resources and cryptographic information stored in
+     * the context object and invalidates the context.
+     *
+     * @throws IOException containing a reason of failure in the cause
+     */
+    @Override
+    public void disposeContext() throws IOException {
+        try {
+            if (context != null) {
+                context.dispose();
+            }
+        } catch (GSSException e) {
+            if (DEBUG) {
+                System.out.println("Cannot release resources. Reason:");
+                e.printStackTrace();
+            }
+            throw new IOException("Cannot release resources", e);
+        };
+        context = null;
     }
 }
