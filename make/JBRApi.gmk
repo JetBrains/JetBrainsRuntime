@@ -34,7 +34,7 @@ ARTIFACT_NAME := jbr-api-SNAPSHOT
 ifeq ($(call isBuildOsEnv, windows.cygwin windows.msys2), true)
     USER_HOME := $$USERPROFILE
 else ifeq ($(call isBuildOsEnv, windows.wsl1 windows.wsl2), true)
-    USER_HOME := `wslvar USERPROFILE`
+    USER_HOME := `cmd.exe /C "echo %USERPROFILE%" 2> /dev/null`
 else
     USER_HOME := ~
 endif
