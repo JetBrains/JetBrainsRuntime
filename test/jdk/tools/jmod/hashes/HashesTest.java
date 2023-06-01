@@ -368,6 +368,26 @@ public class HashesTest {
         });
     }
 
+    @Test
+    public void upgradeableModule() throws IOException {
+        Path mpath = Paths.get(System.getProperty("java.home"), "jmods");
+        if (!Files.exists(mpath)) {
+            return;
+        }
+
+        makeModule("m1");
+        makeModule("java.compiler", "m1");
+        makeModule("m2", "java.compiler");
+
+        makeJmod("m1");
+        makeJmod("m2");
+        makeJmod("java.compiler",
+                    "--module-path",
+                    lib.toString() + File.pathSeparator + mpath,
+                    "--hash-modules", "java\\.(?!se)|^m.*");
+
+        checkHashes("java.compiler",  Set.of("m2"));
+    }
 
     private void makeModule(String mn, String... deps) throws IOException {
         makeModule(mn, null, deps);
