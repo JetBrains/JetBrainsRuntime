@@ -107,8 +107,8 @@ public class Key {
             put((char) 0x02DA, VK_DEAD_ABOVERING);
             put((char) 0x00B4, VK_DEAD_ACUTE);              // ACUTE ACCENT
             put((char) 0x0384, VK_DEAD_ACUTE);              // GREEK TONOS
-            // TODO No corresponding VK_DEAD constant for this key as it may add either acute or cedilla to the next key
-            //put((char) 0x0027 /* ' */, VK_DEAD_QUOTE);      // APOSTROPHE, QUOTE
+            // This key may either be an acute accent or a cedilla. On Windows, it is reported as DEAD_ACUTE, let's do the same.
+            put((char) 0x0027 /* ' */, VK_DEAD_ACUTE);      // APOSTROPHE, QUOTE
             put((char) 0x02D8, VK_DEAD_BREVE);
             put((char) 0x02C7, VK_DEAD_CARON);
             put((char) 0x00B8, VK_DEAD_CEDILLA);            // CEDILLA
