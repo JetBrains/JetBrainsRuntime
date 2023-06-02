@@ -63,7 +63,7 @@ static BOOL shouldUsePressAndHold() {
     return YES;
 }
 
-extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, NSString * chars);
+extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, int keyCode, NSString * chars);
 
 @implementation AWTView
 
@@ -484,7 +484,7 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
         // Explicitly translating the key code with a proper underlying key layout fixes this.
         struct KeyCodeTranslationResult translationResult = TranslateKeyCodeUsingLayout(GetCurrentUnderlyingLayout(YES), [event keyCode]);
         if (translationResult.isSuccess && translationResult.character) {
-            return isSystemShortcut_NextWindowInApplication(deviceIndependentModifierFlagsMask, [NSString stringWithCharacters:&translationResult.character length:1]) ? YES : NO;
+            return isSystemShortcut_NextWindowInApplication(deviceIndependentModifierFlagsMask, [event keyCode], [NSString stringWithCharacters:&translationResult.character length:1]) ? YES : NO;
         }
     }
 
