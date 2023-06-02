@@ -14,6 +14,13 @@ public class KeyEventProcessing {
             System.getProperty(useNationalLayoutsOption,
                 FontUtilities.isMacOSX ? "true" : "false"));
 
+    // Report dead keys (such as VK_DEAD_GRAVE) as normal keys (such as VK_BACK_QUOTE)
+    public final static String reportDeadKeysAsNormalOption = "com.sun.awt.reportDeadKeysAsNormal";
+    @Native
+    public final static boolean reportDeadKeysAsNormal = "true".equals(
+            System.getProperty(reportDeadKeysAsNormalOption,
+                FontUtilities.isMacOSX ? "true" : "false"));
+
     // Used on windows to emulate latin OEM keys on cyrillic keyboards
     public final static String useLatinNonAlphaNumKeycodesOption = "com.sun.awt.useLatinNonAlphaNumKeycodes";
     @Native
