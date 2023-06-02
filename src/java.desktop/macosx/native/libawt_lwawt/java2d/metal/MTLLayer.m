@@ -186,8 +186,12 @@ BOOL isDisplaySyncEnabled() {
 }
 
 - (void)startRedraw {
-    if (self.ctx != nil) {
-        [self.ctx performSelectorOnMainThread:@selector(startRedraw:) withObject:self waitUntilDone:NO];
+    if (isDisplaySyncEnabled()) {
+        if (self.ctx != nil) {
+            [self.ctx performSelectorOnMainThread:@selector(startRedraw:) withObject:self waitUntilDone:NO];
+        }
+    } else {
+        [self performSelectorOnMainThread:@selector(setNeedsDisplay) withObject:nil waitUntilDone:NO];
     }
 }
 
