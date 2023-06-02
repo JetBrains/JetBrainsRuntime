@@ -99,6 +99,7 @@ import java.util.stream.Collectors;
 public class NationalLayoutTest {
 
     private static final String MANUAL= "manual";
+    private static final String NODEAD = "nodead";
 
     private static final int PAUSE = 2000;
 
@@ -113,6 +114,7 @@ public class NationalLayoutTest {
     private static boolean jbr = true;
     private static boolean autoTest = true;
     private static boolean showKeyCodeHex = false;
+    private static boolean noDeadKeys = false;
 
     private static Frame mainFrame;
 
@@ -145,7 +147,7 @@ public class NationalLayoutTest {
         // Check if program arguments contain known layouts to test
         List<Layout> layoutList = new ArrayList();
         for (String arg : args) {
-            if(!arg.equals(MANUAL)) {
+            if(!arg.equals(MANUAL) && !arg.equals(NODEAD)) {
                 try {
                     layoutList.add(Layout.valueOf(arg));
                 } catch (IllegalArgumentException e) {
@@ -171,6 +173,10 @@ public class NationalLayoutTest {
             System.out.println("WARNING - Manual mode: Press " + KeyEvent.getKeyText(NEXT_MODIFIER)
                     + " to start testing keyboard layout with the modifier set");
             autoTest = false;
+        }
+
+        if (Arrays.asList(args).contains(NODEAD)) {
+            noDeadKeys = true;
         }
 
         String initialLayoutName = null;
@@ -413,7 +419,7 @@ public class NationalLayoutTest {
             Key key = layoutKey.getKey();
 
             // Obtain the key code for the current layout
-            int keyCode = key.getKeyCode();
+            int keyCode = key.getKeyCode(noDeadKeys);
 
             // Append input area with the modifiers + key under test
             if(!modifier.isEmpty()) {
