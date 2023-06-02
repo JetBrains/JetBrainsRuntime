@@ -44,7 +44,7 @@ public class ExtendedKeyCodes {
      // known keyboard layout. For instance, sterling sign is on the primary layer
      // of the Mac Italian layout.
      private static final HashSet<Integer> extendedKeyCodesSet =
-                                                  new HashSet<Integer>(496, 1.0f);
+                                                  new HashSet<>(510, 1.0f);
      public static final int getExtendedKeyCodeForChar( int c ) {
          int uc = Character.toUpperCase( c );
          int lc = Character.toLowerCase( c );
@@ -659,5 +659,21 @@ public class ExtendedKeyCodes {
          extendedKeyCodesSet.add(0x01000000+0x01A1);
          extendedKeyCodesSet.add(0x01000000+0x01B0);
          extendedKeyCodesSet.add(0x01000000+0x20AB);
+
+         // Additional keys discovered on the base layers of macOS ascii-capable keyboards
+         extendedKeyCodesSet.add(0x01000000+0x00A4);
+         extendedKeyCodesSet.add(0x01000000+0x00B8);
+         extendedKeyCodesSet.add(0x01000000+0x0219);
+         extendedKeyCodesSet.add(0x01000000+0x021B);
+         extendedKeyCodesSet.add(0x01000000+0x0254);
+         extendedKeyCodesSet.add(0x01000000+0x025B);
+         extendedKeyCodesSet.add(0x01000000+0x028B);
+         extendedKeyCodesSet.add(0x01000000+0x02BB);
+         extendedKeyCodesSet.add(0x01000000+0x02BC);
+         extendedKeyCodesSet.add(0x01000000+0x02C7);
+         extendedKeyCodesSet.add(0x01000000+0x0301);
+         extendedKeyCodesSet.add(0x01000000+0x0309);
+         extendedKeyCodesSet.add(0x01000000+0x0323);
+         extendedKeyCodesSet.add(0x01000000+0x0331);
      }
 }
