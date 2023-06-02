@@ -445,11 +445,12 @@ void readSystemHotkeysImpl(Visitor visitorBlock) {
     }
 }
 
-bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, NSString * chars) {
+bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, int keyCode, NSString * chars) {
     const int shortcutUid_NextWindowInApplication = 27;
     static NSString * shortcutCharacter = nil;
     static int shortcutMask = 0;
-    if (shortcutCharacter == nil) {
+    static int shortcutKeyCode = -1;
+    if (shortcutCharacter == nil && shortcutKeyCode == -1) {
         readSystemHotkeysImpl(
             ^bool(int vkeyCode, const char * keyCharStr, int jmodifiers, const char * descriptionStr, int hotkeyUid) {
                 if (hotkeyUid != shortcutUid_NextWindowInApplication)
@@ -457,20 +458,32 @@ bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, NSString
 
                 if (keyCharStr != NULL) {
                     shortcutCharacter = [[NSString stringWithFormat:@"%s", keyCharStr] retain];
-                    shortcutMask = javaModifiers2NS(jmodifiers);
                 }
+
+                if (vkeyCode != -1) {
+                    shortcutKeyCode = vkeyCode;
+                }
+
+                shortcutMask = javaModifiers2NS(jmodifiers);
                 return false;
             }
         );
-        if (shortcutCharacter == nil) {
+        if (shortcutCharacter == nil && shortcutKeyCode == -1) {
             shortcutCharacter = @"`";
             shortcutMask = NSCommandKeyMask;
         }
     }
 
-    return ((modifiersMask == shortcutMask)
-        || (modifiersMask == (shortcutMask | NSShiftKeyMask)))
-        && [chars isEqualToString:shortcutCharacter];
+    int ignoredModifiers = NSAlphaShiftKeyMask | NSFunctionKeyMask | NSNumericPadKeyMask | NSHelpKeyMask;
+    // Ignore Shift because of JBR-4899.
+    if (!(shortcutMask & NSShiftKeyMask)) {
+        ignoredModifiers |= NSShiftKeyMask;
+    }
+    if ((modifiersMask & ~ignoredModifiers) == shortcutMask) {
+        return shortcutKeyCode == keyCode || [chars isEqualToString:shortcutCharacter];
+    }
+
+    return false;
 }
 
 JNIEXPORT void JNICALL Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, jobject reader) {
