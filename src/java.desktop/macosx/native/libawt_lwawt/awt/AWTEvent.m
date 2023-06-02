@@ -28,6 +28,7 @@
 #import "LWCToolkit.h"
 
 #import "JNIUtilities.h"
+#import "AWTEvent.h"
 
 #import <sys/time.h>
 #import <Carbon/Carbon.h>
@@ -60,158 +61,165 @@
 #define KL_STANDARD java_awt_event_KeyEvent_KEY_LOCATION_STANDARD
 #define KL_NUMPAD   java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD
 #define KL_UNKNOWN  java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN
+#define KL_LEFT  java_awt_event_KeyEvent_KEY_LOCATION_LEFT
+#define KL_RIGHT  java_awt_event_KeyEvent_KEY_LOCATION_RIGHT
 
 struct KeyTableEntry
 {
     unsigned short keyCode;
-    BOOL postsTyped;
+    unichar character;
     BOOL variesBetweenLayouts;
     jint javaKeyLocation;
     jint javaKeyCode;
 };
 
 static const struct KeyTableEntry unknownKeyEntry = {
-    0xFFFF, NO, NO, KL_UNKNOWN, java_awt_event_KeyEvent_VK_UNDEFINED
+    0xFFFF, 0, NO, KL_UNKNOWN, java_awt_event_KeyEvent_VK_UNDEFINED
 };
 
 static const struct KeyTableEntry keyTable[] =
 {
-    {0x00, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_A},
-    {0x01, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_S},
-    {0x02, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_D},
-    {0x03, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_F},
-    {0x04, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_H},
-    {0x05, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_G},
-    {0x06, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_Z},
-    {0x07, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_X},
-    {0x08, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_C},
-    {0x09, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_V},
-    {0x0A, YES, YES, KL_STANDARD, 0x1000000 + 0x00A7},
-    {0x0B, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_B},
-    {0x0C, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_Q},
-    {0x0D, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_W},
-    {0x0E, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_E},
-    {0x0F, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_R},
-    {0x10, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_Y},
-    {0x11, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_T},
-    {0x12, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_1},
-    {0x13, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_2},
-    {0x14, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_3},
-    {0x15, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_4},
-    {0x16, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_6},
-    {0x17, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_5},
-    {0x18, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_EQUALS},
-    {0x19, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_9},
-    {0x1A, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_7},
-    {0x1B, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_MINUS},
-    {0x1C, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_8},
-    {0x1D, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_0},
-    {0x1E, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_CLOSE_BRACKET},
-    {0x1F, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_O},
-    {0x20, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_U},
-    {0x21, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_OPEN_BRACKET},
-    {0x22, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_I},
-    {0x23, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_P},
-    {0x24, YES, NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_ENTER},
-    {0x25, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_L},
-    {0x26, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_J},
-    {0x27, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_QUOTE},
-    {0x28, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_K},
-    {0x29, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_SEMICOLON},
-    {0x2A, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_BACK_SLASH},
-    {0x2B, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_COMMA},
-    {0x2C, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_SLASH},
-    {0x2D, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_N},
-    {0x2E, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_M},
-    {0x2F, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_PERIOD},
-    {0x30, YES, NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_TAB},
-    {0x31, YES, NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_SPACE},
-    {0x32, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_BACK_QUOTE},
-    {0x33, YES, NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_BACK_SPACE},
-    {0x34, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_ENTER},
-    {0x35, YES, NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_ESCAPE},
-    {0x36, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
-    {0x37, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_META},      // ****
-    {0x38, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_SHIFT},     // ****
-    {0x39, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_CAPS_LOCK},
-    {0x3A, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_ALT},       // ****
-    {0x3B, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_CONTROL},   // ****
-    {0x3C, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
-    {0x3D, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_ALT_GRAPH},
-    {0x3E, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
-    {0x3F, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED}, // the 'fn' key on PowerBooks
-    {0x40, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F17},
-    {0x41, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_DECIMAL},
-    {0x42, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
-    {0x43, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_MULTIPLY},
-    {0x44, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
-    {0x45, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_ADD},
-    {0x46, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
-    {0x47, NO,  NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_CLEAR},
-    {0x48, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
-    {0x49, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
-    {0x4A, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
-    {0x4B, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_DIVIDE},
-    {0x4C, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_ENTER},
-    {0x4D, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
-    {0x4E, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_SUBTRACT},
-    {0x4F, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F18},
-    {0x50, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F19},
-    {0x51, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_EQUALS},
-    {0x52, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD0},
-    {0x53, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD1},
-    {0x54, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD2},
-    {0x55, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD3},
-    {0x56, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD4},
-    {0x57, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD5},
-    {0x58, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD6},
-    {0x59, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD7},
-    {0x5A, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F20},
-    {0x5B, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD8},
-    {0x5C, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD9},
-    {0x5D, YES, YES, KL_STANDARD, 0x1000000 + 0x00A5},                    // This is a combo yen/backslash on JIS keyboards.
-    {0x5E, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_UNDERSCORE}, // This is the key to the left of Right Shift on JIS keyboards.
-    {0x5F, YES, NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_COMMA},      // This is a comma on the JIS keypad.
-    {0x60, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F5},
-    {0x61, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F6},
-    {0x62, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F7},
-    {0x63, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F3},
-    {0x64, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F8},
-    {0x65, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F9},
-    {0x66, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_ALPHANUMERIC},
-    {0x67, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F11},
-    {0x68, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_KATAKANA},
-    {0x69, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F13},
-    {0x6A, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F16},
-    {0x6B, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F14},
-    {0x6C, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
-    {0x6D, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F10},
-    {0x6E, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
-    {0x6F, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F12},
-    {0x70, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
-    {0x71, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F15},
-    {0x72, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_HELP},
-    {0x73, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_HOME},
-    {0x74, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_PAGE_UP},
-    {0x75, YES, NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_DELETE},
-    {0x76, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F4},
-    {0x77, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_END},
-    {0x78, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F2},
-    {0x79, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_PAGE_DOWN},
-    {0x7A, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F1},
-    {0x7B, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_LEFT},
-    {0x7C, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_RIGHT},
-    {0x7D, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_DOWN},
-    {0x7E, NO,  NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_UP},
-    {0x7F, NO,  NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
+    // Do not reorder the key codes! They are in ascending numeric order without gaps (from 0x00 to 0x7F).
+    // Characters in the second column are not the characters that UCKeyTranslate returns with the specified key code.
+    // Instead, they are the NSEvent.characters sent by macOS when pressing the specified key on the US layout.
+    // They are currently only used to determine whether the NextAppWindow shortcut was pressed.
+    // They are not used for KEY_TYPED events or anything of this sort.
+    {kVK_ANSI_A,                            'a',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_A},
+    {kVK_ANSI_S,                            's',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_S},
+    {kVK_ANSI_D,                            'd',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_D},
+    {kVK_ANSI_F,                            'f',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_F},
+    {kVK_ANSI_H,                            'h',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_H},
+    {kVK_ANSI_G,                            'g',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_G},
+    {kVK_ANSI_Z,                            'z',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_Z},
+    {kVK_ANSI_X,                            'x',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_X},
+    {kVK_ANSI_C,                            'c',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_C},
+    {kVK_ANSI_V,                            'v',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_V},
+    {kVK_ISO_Section,                       '\xa7', YES, KL_STANDARD, 0x1000000 + 0x00A7},
+    {kVK_ANSI_B,                            'b',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_B},
+    {kVK_ANSI_Q,                            'q',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_Q},
+    {kVK_ANSI_W,                            'w',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_W},
+    {kVK_ANSI_E,                            'e',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_E},
+    {kVK_ANSI_R,                            'r',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_R},
+    {kVK_ANSI_Y,                            'y',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_Y},
+    {kVK_ANSI_T,                            't',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_T},
+    {kVK_ANSI_1,                            '1',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_1},
+    {kVK_ANSI_2,                            '2',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_2},
+    {kVK_ANSI_3,                            '3',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_3},
+    {kVK_ANSI_4,                            '4',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_4},
+    {kVK_ANSI_6,                            '6',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_6},
+    {kVK_ANSI_5,                            '5',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_5},
+    {kVK_ANSI_Equal,                        '=',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_EQUALS},
+    {kVK_ANSI_9,                            '9',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_9},
+    {kVK_ANSI_7,                            '7',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_7},
+    {kVK_ANSI_Minus,                        '-',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_MINUS},
+    {kVK_ANSI_8,                            '8',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_8},
+    {kVK_ANSI_0,                            '0',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_0},
+    {kVK_ANSI_RightBracket,                 ']',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_CLOSE_BRACKET},
+    {kVK_ANSI_O,                            'o',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_O},
+    {kVK_ANSI_U,                            'u',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_U},
+    {kVK_ANSI_LeftBracket,                  '[',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_OPEN_BRACKET},
+    {kVK_ANSI_I,                            'i',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_I},
+    {kVK_ANSI_P,                            'p',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_P},
+    {kVK_Return, NSCarriageReturnCharacter,         NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_ENTER},
+    {kVK_ANSI_L,                            'l',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_L},
+    {kVK_ANSI_J,                            'j',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_J},
+    {kVK_ANSI_Quote,                        '\'',   YES, KL_STANDARD, java_awt_event_KeyEvent_VK_QUOTE},
+    {kVK_ANSI_K,                            'k',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_K},
+    {kVK_ANSI_Semicolon,                    ';',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_SEMICOLON},
+    {kVK_ANSI_Backslash,                    '\\',   YES, KL_STANDARD, java_awt_event_KeyEvent_VK_BACK_SLASH},
+    {kVK_ANSI_Comma,                        ',',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_COMMA},
+    {kVK_ANSI_Slash,                        '/',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_SLASH},
+    {kVK_ANSI_N,                            'n',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_N},
+    {kVK_ANSI_M,                            'm',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_M},
+    {kVK_ANSI_Period,                       '.',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_PERIOD},
+    {kVK_Tab, NSTabCharacter,                       NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_TAB},
+    {kVK_Space,                             ' ',    NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_SPACE},
+    {kVK_ANSI_Grave,                        '`',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_BACK_QUOTE},
+    {kVK_Delete, NSDeleteCharacter,                 NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_BACK_SPACE},
+    {0x34,                                  0,      NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED}, // undefined
+    {kVK_Escape,                            '\x1b', NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_ESCAPE},
+    {kVK_RightCommand,                      0,      NO,  KL_RIGHT,    java_awt_event_KeyEvent_VK_META},
+    {kVK_Command,                           0,      NO,  KL_LEFT,     java_awt_event_KeyEvent_VK_META},
+    {kVK_Shift,                             0,      NO,  KL_LEFT,     java_awt_event_KeyEvent_VK_SHIFT},
+    {kVK_CapsLock,                          0,      NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_CAPS_LOCK},
+    {kVK_Option,                            0,      NO,  KL_LEFT,     java_awt_event_KeyEvent_VK_ALT},
+    {kVK_Control,                           0,      NO,  KL_LEFT,     java_awt_event_KeyEvent_VK_CONTROL},
+    {kVK_RightShift,                        0,      NO,  KL_RIGHT,    java_awt_event_KeyEvent_VK_SHIFT},
+    {kVK_RightOption,                       0,      NO,  KL_RIGHT,    java_awt_event_KeyEvent_VK_ALT},
+    {kVK_RightControl,                      0,      NO,  KL_RIGHT,    java_awt_event_KeyEvent_VK_CONTROL},
+    {kVK_Function,                          0,      NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
+    {kVK_F17, NSF17FunctionKey,                     NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F17},
+    {kVK_ANSI_KeypadDecimal,                '.',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_DECIMAL},
+    {0x42,                                  0,      NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED}, // undefined
+    {kVK_ANSI_KeypadMultiply,               '*',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_MULTIPLY},
+    {0x44,                                  0,      NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED}, // undefined
+    {kVK_ANSI_KeypadPlus,                   '+',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_ADD},
+    {0x46,                                  0,      NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED}, // undefined
+    {kVK_ANSI_KeypadClear, NSClearLineFunctionKey,  NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_CLEAR},
+    {kVK_VolumeUp,                          0,      NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
+    {kVK_VolumeDown,                        0,      NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
+    {kVK_Mute,                              0,      NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED},
+    {kVK_ANSI_KeypadDivide,                 '/',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_DIVIDE},
+    {kVK_ANSI_KeypadEnter, NSEnterCharacter,        NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_ENTER},
+    {0x4D,                                  0,      NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED}, // undefined
+    {kVK_ANSI_KeypadMinus,                  '-',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_SUBTRACT},
+    {kVK_F18, NSF18FunctionKey,                     NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F18},
+    {kVK_F19, NSF19FunctionKey,                     NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F19},
+    {kVK_ANSI_KeypadEquals,                 '=',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_EQUALS},
+    {kVK_ANSI_Keypad0,                      '0',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD0},
+    {kVK_ANSI_Keypad1,                      '1',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD1},
+    {kVK_ANSI_Keypad2,                      '2',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD2},
+    {kVK_ANSI_Keypad3,                      '3',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD3},
+    {kVK_ANSI_Keypad4,                      '4',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD4},
+    {kVK_ANSI_Keypad5,                      '5',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD5},
+    {kVK_ANSI_Keypad6,                      '6',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD6},
+    {kVK_ANSI_Keypad7,                      '7',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD7},
+    {kVK_F20, NSF20FunctionKey,                     NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F20},
+    {kVK_ANSI_Keypad8,                      '8',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD8},
+    {kVK_ANSI_Keypad9,                      '9',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD9},
+    {kVK_JIS_Yen,                           '\xa5', YES, KL_STANDARD, 0x1000000 + 0x00A5},
+    {kVK_JIS_Underscore,                    '_',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_UNDERSCORE},
+    {kVK_JIS_KeypadComma,                   ',',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_COMMA},
+    {kVK_F5, NSF5FunctionKey,                       NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F5},
+    {kVK_F6, NSF6FunctionKey,                       NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F6},
+    {kVK_F7, NSF7FunctionKey,                       NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F7},
+    {kVK_F3, NSF3FunctionKey,                       NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F3},
+    {kVK_F8, NSF8FunctionKey,                       NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F8},
+    {kVK_F9, NSF9FunctionKey,                       NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F9},
+    {kVK_JIS_Eisu,                          0,      NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_ALPHANUMERIC},
+    {kVK_F11, NSF11FunctionKey,                     NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F11},
+    {kVK_JIS_Kana,                          0,      NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_KATAKANA},
+    {kVK_F13, NSF13FunctionKey,                     NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F13},
+    {kVK_F16, NSF16FunctionKey,                     NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F16},
+    {kVK_F14, NSF14FunctionKey,                     NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F14},
+    {0x6C,                                  0,      NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED}, // undefined
+    {kVK_F10, NSF10FunctionKey,                     NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F10},
+    {0x6E,                                  0,      NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED}, // undefined
+    {kVK_F12, NSF12FunctionKey,                     NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F12},
+    {0x70,                                  0,      NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED}, // undefined
+    {kVK_F15, NSF15FunctionKey,                     NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F15},
+    {kVK_Help, NSHelpFunctionKey,                   NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_HELP},
+    {kVK_Home, NSHomeFunctionKey,                   NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_HOME},
+    {kVK_PageUp, NSPageUpFunctionKey,               NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_PAGE_UP},
+    {kVK_ForwardDelete, NSDeleteFunctionKey,        NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_DELETE},
+    {kVK_F4, NSF4FunctionKey,                       NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F4},
+    {kVK_End, NSEndFunctionKey,                     NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_END},
+    {kVK_F2, NSF2FunctionKey,                       NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F2},
+    {kVK_PageDown, NSPageDownFunctionKey,           NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_PAGE_DOWN},
+    {kVK_F1, NSF1FunctionKey,                       NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F1},
+    {kVK_LeftArrow, NSLeftArrowFunctionKey,         NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_LEFT},
+    {kVK_RightArrow, NSRightArrowFunctionKey,       NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_RIGHT},
+    {kVK_DownArrow, NSDownArrowFunctionKey,         NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_DOWN},
+    {kVK_UpArrow, NSUpArrowFunctionKey,             NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_UP},
+    {0x7F,                                  0,      NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED}, // undefined
 };
 
 static const struct KeyTableEntry keyTableJISOverride[] = {
-    {0x18, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_CIRCUMFLEX},
-    {0x1E, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_OPEN_BRACKET},
-    {0x21, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_AT},
-    {0x27, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_COLON},
-    {0x2A, YES, YES, KL_STANDARD, java_awt_event_KeyEvent_VK_CLOSE_BRACKET},
+    {0x18, '^', YES, KL_STANDARD, java_awt_event_KeyEvent_VK_CIRCUMFLEX},
+    {0x1E, '[', YES, KL_STANDARD, java_awt_event_KeyEvent_VK_OPEN_BRACKET},
+    {0x21, '@', YES, KL_STANDARD, java_awt_event_KeyEvent_VK_AT},
+    {0x27, ':', YES, KL_STANDARD, java_awt_event_KeyEvent_VK_COLON},
+    {0x2A, ']', YES, KL_STANDARD, java_awt_event_KeyEvent_VK_CLOSE_BRACKET},
     // Some other keys are already handled in the previous table, no need to repeat them here
 };
 
@@ -451,14 +459,45 @@ unichar NsCharToJavaChar(unichar nsChar, NSUInteger modifiers, BOOL spaceKeyType
     return nsChar;
 }
 
-struct KeyCodeTranslationResult {
-    unichar character;
-    BOOL isSuccess;
-    BOOL isDead;
-    BOOL isTyped;
-};
+static const struct KeyTableEntry* GetKeyTableEntryForKeyCode(unsigned short keyCode) {
+    static const size_t keyTableSize = sizeof(keyTable) / sizeof(struct KeyTableEntry);
+    static const size_t keyTableJISOverrideSize = sizeof(keyTableJISOverride) / sizeof(struct KeyTableEntry);
+    BOOL isJIS = KBGetLayoutType(LMGetKbdType()) == kKeyboardJIS;
 
-static struct KeyCodeTranslationResult NsTranslateKeyCode(TISInputSourceRef layout, unsigned short keyCode, BOOL useModifiers)
+    const struct KeyTableEntry* usKey = &unknownKeyEntry;
+
+    if (keyCode < keyTableSize) {
+        usKey = &keyTable[keyCode];
+    }
+
+    if (isJIS) {
+        for (int i = 0; i < keyTableJISOverrideSize; ++i) {
+            if (keyTableJISOverride[i].keyCode == keyCode) {
+                usKey = &keyTableJISOverride[i];
+                break;
+            }
+        }
+    }
+
+    return usKey;
+}
+
+TISInputSourceRef GetCurrentUnderlyingLayout(BOOL useNationalLayouts) {
+    // TISCopyCurrentKeyboardLayoutInputSource() should always return a key layout
+    // that has valid unicode character data for use with the UCKeyTranslate() function.
+    // This is more robust than checking whether the current input source has key layout data
+    // and then falling back to the override input source if it doesn't. This is because some
+    // custom IMEs don't set the override input source properly.
+
+    TISInputSourceRef currentLayout = TISCopyCurrentKeyboardLayoutInputSource();
+    Boolean currentAscii = currentLayout == nil ? NO :
+                           CFBooleanGetValue((CFBooleanRef) TISGetInputSourceProperty(currentLayout, kTISPropertyInputSourceIsASCIICapable));
+    TISInputSourceRef underlyingLayout = (!useNationalLayouts || currentAscii) ? currentLayout : nil;
+
+    return underlyingLayout;
+}
+
+struct KeyCodeTranslationResult TranslateKeyCodeUsingLayout(TISInputSourceRef layout, unsigned short keyCode)
 {
     struct KeyCodeTranslationResult result = {
         .character = (unichar)0,
@@ -466,6 +505,31 @@ static struct KeyCodeTranslationResult NsTranslateKeyCode(TISInputSourceRef layo
         .isDead = NO,
         .isTyped = NO
     };
+
+    const struct KeyTableEntry* usKey = GetKeyTableEntryForKeyCode(keyCode);
+
+    if (usKey == &unknownKeyEntry) {
+        return result;
+    }
+
+    if (!usKey->variesBetweenLayouts) {
+        result.isSuccess = YES;
+        result.character = usKey->character;
+        if (result.character != 0 && !(result.character >= NSUpArrowFunctionKey && result.character <= NSModeSwitchFunctionKey)) {
+            result.isTyped = YES;
+        }
+        return result;
+    }
+
+    if (layout == nil) {
+        // use the US layout
+        result.isSuccess = YES;
+        if (usKey->character != 0) {
+            result.character = usKey->character;
+            result.isTyped = YES;
+        }
+        return result;
+    }
 
     CFDataRef uchr = (CFDataRef)TISGetInputSourceProperty(layout, kTISPropertyUnicodeKeyLayoutData);
     if (uchr == nil) {
@@ -477,11 +541,6 @@ static struct KeyCodeTranslationResult NsTranslateKeyCode(TISInputSourceRef layo
     }
 
     UInt32 modifierKeyState = 0;
-    if (useModifiers) {
-        // Carbon modifiers should be used instead of NSEvent modifiers
-        modifierKeyState = (GetCurrentEventKeyModifiers() >> 8) & 0xFF;
-    }
-
     UInt32 deadKeyState = 0;
     const UniCharCount maxStringLength = 255;
     UniCharCount actualStringLength = 0;
@@ -627,42 +686,16 @@ NsCharToJavaVirtualKeyCode(unsigned short key, const BOOL useNationalLayouts,
     // that the user currently uses. I think this approach strikes the right balance between preserving compatibility
     // with OpenJDK where it matters, while at the same time fixing a lot of annoying bugs.
 
-    static const size_t keyTableSize = sizeof(keyTable) / sizeof(struct KeyTableEntry);
-    static const size_t keyTableJISOverrideSize = sizeof(keyTableJISOverride) / sizeof(struct KeyTableEntry);
-    BOOL isJIS = KBGetLayoutType(LMGetKbdType()) == kKeyboardJIS;
-
     // Find out which key does the key code correspond to in the US/ABC key layout.
     // Need to take into account that the same virtual key code may correspond to
     // different keys depending on the physical layout.
 
-    const struct KeyTableEntry* usKey = &unknownKeyEntry;
-
-    if (key < keyTableSize) {
-        usKey = &keyTable[key];
-    }
-
-    if (isJIS) {
-        for (int i = 0; i < keyTableJISOverrideSize; ++i) {
-            if (keyTableJISOverride[i].keyCode == key) {
-                usKey = &keyTableJISOverride[i];
-                break;
-            }
-        }
-    }
+    const struct KeyTableEntry* usKey = GetKeyTableEntryForKeyCode(key);
 
     // Determine the underlying layout.
     // If underlyingLayout is nil then fall back to using the usKey.
 
-    // TISCopyCurrentKeyboardLayoutInputSource() should always return a key layout
-    // that has valid unicode character data for use with the UCKeyTranslate() function.
-    // This is more robust than checking whether the current input source has key layout data
-    // and then falling back to the override input source if it doesn't. This is because some
-    // custom IMEs don't set the override input source properly.
-
-    TISInputSourceRef currentLayout = TISCopyCurrentKeyboardLayoutInputSource();
-    Boolean currentAscii = currentLayout == nil ? NO :
-            CFBooleanGetValue((CFBooleanRef) TISGetInputSourceProperty(currentLayout, kTISPropertyInputSourceIsASCIICapable));
-    TISInputSourceRef underlyingLayout = (!useNationalLayouts || currentAscii) ? currentLayout : nil;
+    TISInputSourceRef underlyingLayout = GetCurrentUnderlyingLayout(useNationalLayouts);
 
     // Default to returning the US key data.
     *keyCode = usKey->javaKeyCode;
@@ -673,7 +706,7 @@ NsCharToJavaVirtualKeyCode(unsigned short key, const BOOL useNationalLayouts,
     }
 
     // Translate the key using the underlying key layout.
-    struct KeyCodeTranslationResult translatedKey = NsTranslateKeyCode(underlyingLayout, key, NO);
+    struct KeyCodeTranslationResult translatedKey = TranslateKeyCodeUsingLayout(underlyingLayout, key);
 
     // Test whether this key is dead.
     if (translatedKey.isDead) {
