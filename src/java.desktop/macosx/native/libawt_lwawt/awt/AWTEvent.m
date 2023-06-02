@@ -606,6 +606,7 @@ struct KeyCodeTranslationResult TranslateKeyCodeUsingLayout(TISInputSourceRef la
  */
 static void
 NsCharToJavaVirtualKeyCode(unsigned short key, const BOOL useNationalLayouts,
+                           const BOOL reportDeadKeysAsNormal,
                            jint *keyCode, jint *keyLocation)
 {
     // This is going to be a lengthy explanation about what it is that we need to achieve in this function.
@@ -708,7 +709,7 @@ NsCharToJavaVirtualKeyCode(unsigned short key, const BOOL useNationalLayouts,
     struct KeyCodeTranslationResult translatedKey = TranslateKeyCodeUsingLayout(underlyingLayout, key);
 
     // Test whether this key is dead.
-    if (translatedKey.isDead) {
+    if (translatedKey.isDead && !reportDeadKeysAsNormal) {
         for (const struct CharToVKEntry *map = charToDeadVKTable; map->c != 0; ++map) {
             if (translatedKey.character == map->c) {
                 *keyCode = map->javaKey;
@@ -735,7 +736,7 @@ NsCharToJavaVirtualKeyCode(unsigned short key, const BOOL useNationalLayouts,
 
     unichar ch = 0;
 
-    if (translatedKey.isTyped) {
+    if (translatedKey.isDead || translatedKey.isTyped) {
         ch = translatedKey.character;
     }
 
@@ -956,12 +957,14 @@ JNI_COCOA_ENTER(env);
     // in  = [keyCode, useNationalLayouts]
     jshort keyCode = (jshort)data[0];
     BOOL useNationalLayouts = (data[1] != 0);
+    BOOL reportDeadKeysAsNormal = (data[2] != 0);
 
     jint jkeyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
     jint jkeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
 
     NsCharToJavaVirtualKeyCode((unsigned short)keyCode,
                                useNationalLayouts,
+                               reportDeadKeysAsNormal,
                                &jkeyCode, &jkeyLocation);
 
     // out = [jkeyCode, jkeyLocation];
