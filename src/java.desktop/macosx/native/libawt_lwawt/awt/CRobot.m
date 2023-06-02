@@ -326,22 +326,29 @@ Java_sun_lwawt_macosx_CRobot_keyEvent
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
         CGEventSourceRef source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
         CGKeyCode keyCode;
-        if (javaKeyCode == 0x1000000 + 0x0060) {
+
+        if (javaKeyCode & 0x2000000) {
             // This is a dirty, dirty hack and is only used in tests.
-            // When receiving this key code, Robot should switch the keyboard type to ISO
-            // and then send the key code corresponding to VK_BACK_QUOTE.
+            // This allows us to send macOS virtual key code directly, without first looking up a Java key code.
+            // It also allows the caller to set the physical keyboard layout directly.
+            // The key code that should be passed to Robot in this case is the following:
+            //   0x2000000 | keyCode | (physicalLayout << 8)
+            // where physicalLayout is:
+            //   0 - ANSI
+            //   1 - ISO
+            //   2 - JIS
 
-            // find an ISO keyboard type...
-            // LMGetKbdType() returns Uint8, why don't we just iterate over all the possible values and find one
-            // that works? It's really sad that macOS doesn't provide a decent API for this sort of thing.
-            for (UInt32 keyboardType = 0; keyboardType < 0x100; ++keyboardType) {
-                if (KBGetLayoutType(keyboardType) == kKeyboardISO) {
-                    CGEventSourceSetKeyboardType(source, keyboardType);
-                    break;
-                }
+            UInt32 physicalLayout = (javaKeyCode >> 8) & 0xff;
+            UInt32 keyboardType;
+            if (physicalLayout == 1) {
+                keyboardType = 41; // ISO
+            } else if (physicalLayout == 2) {
+                keyboardType = 42; // JIS
+            } else {
+                keyboardType = 40; // ANSI
             }
-
-            keyCode = OSX_kVK_ANSI_Grave;
+            CGEventSourceSetKeyboardType(source, keyboardType);
+            keyCode = javaKeyCode & 0xff;
         } else {
             keyCode = GetCGKeyCode(javaKeyCode);
         }
