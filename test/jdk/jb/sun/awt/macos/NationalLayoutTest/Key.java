@@ -60,15 +60,19 @@ public class Key {
     // Key that generates VK_ code when using a US keyboard layout also generates a unique code for other layout.
     // Test firstly determines char mapped to the key on the current layout
     // and then uses KeyEvent.getExtendedKeyCodeForChar(c) to get the key code.
-    int getKeyCode() {
+    int getKeyCode(boolean ignoreDead) {
         KeyChar keyChar = mappedKeyChars.getKeyChar();
         char ch = keyChar.getChar();
-        if (keyChar.isDead() && deadKeyCodesMap.containsKey(ch)) {
+        if (!ignoreDead && keyChar.isDead() && deadKeyCodesMap.containsKey(ch)) {
             // KeyEvent.getExtendedKeyCodeForChar(ch) does not return corresponding VK_ constant for dead keys
             return deadKeyCodesMap.get(ch);
         } else {
             return KeyEvent.getExtendedKeyCodeForChar(ch);
         }
+    }
+
+    int getKeyCode() {
+        return getKeyCode(false);
     }
 
     // Returns key char for the current layout
