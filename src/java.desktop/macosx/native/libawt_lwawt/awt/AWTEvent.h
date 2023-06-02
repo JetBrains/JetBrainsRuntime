@@ -26,13 +26,25 @@
 #ifndef __AWTEVENT_H
 #define __AWTEVENT_H
 
+#import <Carbon/Carbon.h>
+
 jlong UTC(NSEvent *event);
 void DeliverJavaKeyEvent(JNIEnv *env, NSEvent *event, jobject peer);
 void DeliverJavaMouseEvent(JNIEnv *env, NSEvent *event, jobject peer);
 void SendAdditionalJavaEvents(JNIEnv *env, NSEvent *nsEvent, jobject peer);
-jint GetJavaMouseModifiers(NSInteger button, NSUInteger modifierFlags);
+jint GetJavaMouseModifiers(NSUInteger modifierFlags);
 jint NsKeyModifiersToJavaModifiers(NSUInteger nsFlags, BOOL isExtMods);
 NSUInteger JavaModifiersToNsKeyModifiers(jint javaModifiers, BOOL isExtMods);
-unichar NsCharToJavaChar(unichar nsChar, NSUInteger modifiers);
+unichar NsCharToJavaChar(unichar nsChar, NSUInteger modifiers, BOOL spaceKeyTyped);
+
+struct KeyCodeTranslationResult {
+    unichar character;
+    BOOL isSuccess;
+    BOOL isDead;
+    BOOL isTyped;
+};
+
+TISInputSourceRef GetCurrentUnderlyingLayout(BOOL useNationalLayouts);
+struct KeyCodeTranslationResult TranslateKeyCodeUsingLayout(TISInputSourceRef layout, unsigned short keyCode);
 
 #endif /* __AWTEVENT_H */
