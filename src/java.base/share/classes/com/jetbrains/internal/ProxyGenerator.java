@@ -68,7 +68,7 @@ class ProxyGenerator {
     /**
      * Print warnings about usage of deprecated interfaces and methods to {@link System#err}.
      */
-    private static final boolean LOG_DEPRECATED = System.getProperty("jetbrains.api.logDeprecated", String.valueOf(JBRApi.VERBOSE)).equalsIgnoreCase("true");
+    private static final boolean LOG_DEPRECATED = System.getProperty("jetbrains.api.logDeprecated", "true").equalsIgnoreCase("true");
     private static final boolean VERIFY_BYTECODE = Boolean.getBoolean("jetbrains.api.verifyBytecode");
 
     private static final ClassVisitor EMPTY_CLASS_VISITOR = new ClassVisitor(ASM9) {};
@@ -97,6 +97,7 @@ class ProxyGenerator {
     private int bridgeMethodCounter;
     private boolean allMethodsImplemented = true;
     private Lookup generatedHandlesHolder, generatedProxy;
+    private MethodHandle generatedWrapperConstructor, generatedTargetExtractor, generatedServiceConstructor;
 
     /**
      * Creates new proxy generator from given {@link ProxyInfo},
@@ -174,46 +175,25 @@ class ProxyGenerator {
     }
 
     /**
-     * @return method handle to constructor of generated proxy class.
-     * <ul>
-     *     <li>For {@linkplain ProxyInfo.Type#SERVICE services}, constructor is no-arg.</li>
-     *     <li>For non-{@linkplain ProxyInfo.Type#SERVICE services}, constructor is single-arg,
-     *     expecting target object to which it would delegate method calls.</li>
-     * </ul>
+     * @return method handle to constructor of generated service class, or null. Constructor is no-arg.
      */
-    MethodHandle findConstructor() {
-        try {
-            if (info.target == null) {
-                return generatedProxy.findConstructor(generatedProxy.lookupClass(), MethodType.methodType(void.class));
-            } else {
-                MethodHandle c = generatedProxy.findConstructor(generatedProxy.lookupClass(),
-                        MethodType.methodType(void.class, Object.class));
-                if (info.type.isService()) {
-                    try {
-                        return MethodHandles.foldArguments(c, info.target.findConstructor(info.target.lookupClass(),
-                                MethodType.methodType(void.class)).asType(MethodType.methodType(Object.class)));
-                    } catch (NoSuchMethodException | IllegalAccessException e) {
-                        throw new RuntimeException("Service implementation must have no-args constructor: " +
-                                info.target.lookupClass(), e);
-                    }
-                }
-                return c;
-            }
-        } catch (IllegalAccessException | NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        }
+    MethodHandle getServiceConstructor() {
+        return generatedServiceConstructor;
     }
 
     /**
-     * @return method handle that receives proxy and returns its target, or null
+     * @return method handle to wrapper constructor of generated proxy class, or null.
+     * Constructor is single-arg, expecting target object to which it would delegate method calls.
      */
-    MethodHandle findTargetExtractor() {
-        if (info.target == null) return null;
-        try {
-            return generatedProxy.findGetter(generatedProxy.lookupClass(), "target", Object.class);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
+    MethodHandle getWrapperConstructor() {
+        return generatedWrapperConstructor;
+    }
+
+    /**
+     * @return method handle that receives proxy and returns its target, or null.
+     */
+    MethodHandle getTargetExtractor() {
+        return generatedTargetExtractor;
     }
 
     /**
@@ -226,8 +206,32 @@ class ProxyGenerator {
             generatedProxy = info.interFaceLookup.defineHiddenClass(
                     originalProxyWriter.toByteArray(), true, Lookup.ClassOption.STRONG, Lookup.ClassOption.NESTMATE);
             generatedHandlesHolder = generateBridge ? bridge : generatedProxy;
-        } catch (IllegalAccessException e) {
+            findHandles();
+        } catch (IllegalAccessException | NoSuchMethodException | NoSuchFieldException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private void findHandles() throws IllegalAccessException, NoSuchMethodException, NoSuchFieldException {
+        generatedWrapperConstructor = info.target == null ? null :
+                generatedProxy.findConstructor(generatedProxy.lookupClass(),
+                        MethodType.methodType(void.class, Object.class));
+        generatedTargetExtractor = info.target == null ? null :
+                generatedProxy.findGetter(generatedProxy.lookupClass(), "target", Object.class);
+        if (!info.type.isService()) {
+            generatedServiceConstructor = null;
+        } else if (generatedWrapperConstructor != null) {
+            try {
+                generatedServiceConstructor = MethodHandles.foldArguments(generatedWrapperConstructor,
+                        info.target.findConstructor(info.target.lookupClass(),
+                                MethodType.methodType(void.class)).asType(MethodType.methodType(Object.class)));
+            } catch (NoSuchMethodException | IllegalAccessException e) {
+                throw new RuntimeException("Service implementation must have no-args constructor: " +
+                        info.target.lookupClass(), e);
+            }
+        } else {
+            generatedServiceConstructor =
+                    generatedProxy.findConstructor(generatedProxy.lookupClass(), MethodType.methodType(void.class));
         }
     }
 
@@ -316,7 +320,7 @@ class ProxyGenerator {
             if (m.conversion() == TypeConversion.WRAP_INTO_PROXY ||
                     m.conversion() == TypeConversion.DYNAMIC_2_WAY) {
                 Proxy<?> to = m.toProxy();
-                m.metadata.proxyConstructorHandle = addHandle(handleWriter, to::getConstructor);
+                m.metadata.proxyConstructorHandle = addHandle(handleWriter, to::getWrapperConstructor);
                 directProxyDependencies.add(to);
             }
             if (m.conversion() == TypeConversion.DYNAMIC_2_WAY) {

@@ -238,7 +238,7 @@ public class JBRApi {
             ProxyGenerator generator = new ProxyGenerator(info);
             if (!generator.areAllMethodsImplemented()) return null;
             generator.defineClasses();
-            MethodHandle constructor = generator.findConstructor();
+            MethodHandle constructor = generator.getServiceConstructor();
             generator.init();
             try {
                 return constructor.invoke();

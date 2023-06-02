@@ -64,8 +64,9 @@ class Proxy<INTERFACE> {
     private volatile Boolean supported;
 
     private volatile Class<?> proxyClass;
-    private volatile MethodHandle constructor;
+    private volatile MethodHandle wrapperConstructor;
     private volatile MethodHandle targetExtractor;
+    private volatile MethodHandle serviceConstructor;
 
     private volatile boolean instanceInitialized;
     private volatile INTERFACE instance;
@@ -121,12 +122,13 @@ class Proxy<INTERFACE> {
     }
 
     private synchronized void defineClasses() {
-        if (constructor != null) return;
+        if (proxyClass != null) return;
         initGenerator();
         generator.defineClasses();
         proxyClass = generator.getProxyClass();
-        constructor = generator.findConstructor();
-        targetExtractor = generator.findTargetExtractor();
+        wrapperConstructor = generator.getWrapperConstructor();
+        targetExtractor = generator.getTargetExtractor();
+        serviceConstructor = generator.getServiceConstructor();
     }
 
     /**
@@ -141,18 +143,15 @@ class Proxy<INTERFACE> {
     }
 
     /**
-     * @return method handle for the constructor of this proxy.
-     * <ul>
-     *     <li>For {@linkplain ProxyInfo.Type#SERVICE services}, constructor is no-arg.</li>
-     *     <li>For non-{@linkplain ProxyInfo.Type#SERVICE services}, constructor is single-arg,
-     *     expecting target object to which it would delegate method calls.</li>
-     * </ul>
+     * @return method handle for the constructor of this proxy, or null.
+     * Constructor is single-arg, expecting target object to which it would delegate method calls.
      */
-    MethodHandle getConstructor() {
-        if (constructor != null) return constructor;
+    MethodHandle getWrapperConstructor() {
+        // wrapperConstructor may be null, so check proxyClass instead
+        if (proxyClass != null) return wrapperConstructor;
         synchronized (this) {
-            if (constructor == null) defineClasses();
-            return constructor;
+            if (proxyClass == null) defineClasses();
+            return wrapperConstructor;
         }
     }
 
@@ -160,11 +159,23 @@ class Proxy<INTERFACE> {
      * @return method handle for that extracts target object of the proxy, or null.
      */
     MethodHandle getTargetExtractor() {
-        // targetExtractor may be null, so check constructor instead
-        if (constructor != null) return targetExtractor;
+        // targetExtractor may be null, so check proxyClass instead
+        if (proxyClass != null) return targetExtractor;
         synchronized (this) {
-            if (constructor == null) defineClasses();
+            if (proxyClass == null) defineClasses();
             return targetExtractor;
+        }
+    }
+
+    /**
+     * @return method handle for the constructor of this service, or null. Constructor is no-arg.
+     */
+    private MethodHandle getServiceConstructor() {
+        // serviceConstructor may be null, so check proxyClass instead
+        if (proxyClass != null) return serviceConstructor;
+        synchronized (this) {
+            if (proxyClass == null) defineClasses();
+            return serviceConstructor;
         }
     }
 
@@ -210,7 +221,7 @@ class Proxy<INTERFACE> {
             if (instance == null) {
                 initDependencyGraph();
                 try {
-                    instance = (INTERFACE) getConstructor().invoke();
+                    instance = (INTERFACE) getServiceConstructor().invoke();
                 } catch (JBRApi.ServiceNotAvailableException e) {
                     if (JBRApi.VERBOSE) {
                         System.err.println("Service not available: " + info.interFace.getName());
