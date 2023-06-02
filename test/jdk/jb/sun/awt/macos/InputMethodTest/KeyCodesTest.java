@@ -25,7 +25,7 @@
  * @test
  * @summary Regression test for JBR-5173 macOS keyboard support rewrite
  * @modules java.desktop/sun.lwawt.macosx
- * @run main InputMethodTest KeyCodesTest
+ * @run main/othervm -Dcom.sun.awt.reportDeadKeysAsNormal=false InputMethodTest KeyCodesTest
  * @requires (jdk.version.major >= 8 & os.family == "mac")
  */
 
