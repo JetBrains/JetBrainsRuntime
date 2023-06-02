@@ -26,7 +26,8 @@
  * @summary Regression test for IDEA-165950: National keyboard layouts support
  * @requires (jdk.version.major >= 8 & os.family == "mac")
  * @modules java.desktop/sun.lwawt.macosx
- * @run main NationalLayoutTest SPANISH_ISO
+ * @run main/othervm -Dcom.sun.awt.reportDeadKeysAsNormal=false NationalLayoutTest SPANISH_ISO
+ * @run main/othervm -Dcom.sun.awt.reportDeadKeysAsNormal=true NationalLayoutTest nodead SPANISH_ISO
  */
 
 /*
