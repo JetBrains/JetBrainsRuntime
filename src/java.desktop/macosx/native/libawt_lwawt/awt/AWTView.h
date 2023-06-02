@@ -46,7 +46,7 @@
     BOOL fInputMethodInteractionEnabled;
     BOOL fKeyEventsNeeded;
     BOOL fProcessingKeystroke;
-    BOOL fComplexInputNeeded;
+    NSString* actualCharacters;
 
     BOOL fEnablePressAndHold;
     BOOL fInPressAndHold;
