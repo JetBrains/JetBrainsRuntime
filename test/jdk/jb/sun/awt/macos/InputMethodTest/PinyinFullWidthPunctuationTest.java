@@ -24,7 +24,8 @@
 /**
  * @test
  * @summary Regression test for IDEA-221385: Cannot input with half-width punctuation.
- * @run shell Runner.sh --fullwidth PinyinFullWidthPunctuationTest
+ * @modules java.desktop/sun.lwawt.macosx
+ * @run main InputMethodTest PinyinFullWidthPunctuationTest
  * @requires (jdk.version.major >= 8 & os.family == "mac")
  */
 
@@ -34,33 +35,34 @@ public class PinyinFullWidthPunctuationTest implements Runnable {
     @Override
     public void run() {
         InputMethodTest.layout("com.apple.inputmethod.SCIM.ITABC");
+        InputMethodTest.setUseHalfWidthPunctuation(false);
 
         InputMethodTest.section("comma");
         InputMethodTest.type(VK_COMMA, 0);
-        InputMethodTest.expect("\uff0c");
+        InputMethodTest.expectText("\uff0c");
 
         InputMethodTest.section("period");
         InputMethodTest.type(VK_PERIOD, 0);
-        InputMethodTest.expect("\u3002");
+        InputMethodTest.expectText("\u3002");
 
         InputMethodTest.section("question mark");
         InputMethodTest.type(VK_SLASH, SHIFT_DOWN_MASK);
-        InputMethodTest.expect("\uff1f");
+        InputMethodTest.expectText("\uff1f");
 
         InputMethodTest.section("semicolon");
         InputMethodTest.type(VK_SEMICOLON, 0);
-        InputMethodTest.expect("\uff1b");
+        InputMethodTest.expectText("\uff1b");
 
         InputMethodTest.section("colon");
         InputMethodTest.type(VK_SEMICOLON, SHIFT_DOWN_MASK);
-        InputMethodTest.expect("\uff1a");
+        InputMethodTest.expectText("\uff1a");
 
         InputMethodTest.section("left square bracket");
         InputMethodTest.type(VK_OPEN_BRACKET, 0);
-        InputMethodTest.expect("\u3010");
+        InputMethodTest.expectText("\u3010");
 
         InputMethodTest.section("right square bracket");
         InputMethodTest.type(VK_CLOSE_BRACKET, 0);
-        InputMethodTest.expect("\u3011");
+        InputMethodTest.expectText("\u3011");
     }
 }
