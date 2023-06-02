@@ -24,30 +24,47 @@
 /**
  * @test
  * @summary Regression test for JBR-5006 Dead keys exhibit invalid behavior on macOS
- * @run shell Runner.sh DeadKeysTest
+ * @modules java.desktop/sun.lwawt.macosx
+ * @run main InputMethodTest DeadKeysTest
  * @requires (jdk.version.major >= 8 & os.family == "mac")
  */
 
 import static java.awt.event.KeyEvent.*;
 
 public class DeadKeysTest implements Runnable {
+    static private final int VK_SECTION = 0x01000000+0x00A7;
     @Override
     public void run() {
         InputMethodTest.layout("com.apple.keylayout.ABC");
 
-        InputMethodTest.section("Acute accent + vowel");
+        InputMethodTest.section("ABC: Acute accent + vowel");
         InputMethodTest.type(VK_E, ALT_DOWN_MASK);
         InputMethodTest.type(VK_A, 0);
-        InputMethodTest.expect("\u00e1");
+        InputMethodTest.expectText("\u00e1");
 
-        InputMethodTest.section("Acute accent + consonant");
+        InputMethodTest.section("ABC: Acute accent + consonant");
         InputMethodTest.type(VK_E, ALT_DOWN_MASK);
         InputMethodTest.type(VK_S, 0);
-        InputMethodTest.expect("\u00b4s");
+        InputMethodTest.expectText("\u00b4s");
 
-        InputMethodTest.section("Acute accent + space");
+        InputMethodTest.section("ABC: Acute accent + space");
         InputMethodTest.type(VK_E, ALT_DOWN_MASK);
         InputMethodTest.type(VK_SPACE, 0);
-        InputMethodTest.expect("\u00b4");
+        InputMethodTest.expectText("\u00b4");
+
+        InputMethodTest.section("German - Standard: Opt+K, Section = Dead circumflex below");
+        InputMethodTest.layout("com.apple.keylayout.German-DIN-2137");
+        InputMethodTest.type(VK_K, ALT_DOWN_MASK);
+        InputMethodTest.type(VK_SECTION, 0);
+        InputMethodTest.type(VK_D, 0);
+        InputMethodTest.expectText("\u1e13");
+
+        InputMethodTest.section("UnicodeHexInput: U+0041 = A");
+        InputMethodTest.layout("com.apple.keylayout.UnicodeHexInput");
+        InputMethodTest.type(VK_0, ALT_DOWN_MASK);
+        InputMethodTest.type(VK_0, ALT_DOWN_MASK);
+        InputMethodTest.type(VK_4, ALT_DOWN_MASK);
+        InputMethodTest.type(VK_1, ALT_DOWN_MASK);
+        InputMethodTest.expectText("A");
     }
 }
