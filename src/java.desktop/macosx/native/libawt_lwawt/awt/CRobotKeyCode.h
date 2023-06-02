@@ -99,6 +99,7 @@ const static int OSX_kVK_Tab                    = 0x30;
 const static int OSX_kVK_Space                  = 0x31;
 const static int OSX_Delete                     = 0x33;
 const static int OSX_Escape                     = 0x35;
+const static int OSX_RightCommand               = 0x36;
 const static int OSX_Command                    = 0x37;
 const static int OSX_Shift                      = 0x38;
 const static int OSX_CapsLock                   = 0x39;
