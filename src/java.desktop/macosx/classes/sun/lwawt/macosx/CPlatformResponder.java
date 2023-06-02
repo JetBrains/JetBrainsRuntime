@@ -192,7 +192,6 @@ final class CPlatformResponder {
         int jkeyCode = KeyEvent.VK_UNDEFINED;
         int jkeyLocation = KeyEvent.KEY_LOCATION_UNKNOWN;
         boolean spaceKeyTyped = false;
-        boolean charsReserved = false;
 
         char testChar = KeyEvent.CHAR_UNDEFINED;
 
@@ -213,27 +212,15 @@ final class CPlatformResponder {
                 // That field is only guaranteed to be meaningful for KEY_TYPED events, so let's not overthink it.
                 // Please note: this character is NOT used to construct extended key codes, that happens
                 // inside the NSEvent.nsToJavaKeyInfo function.
-                char ch = chars.charAt(chars.length() - 1);
-
-                if (chars.length() == 1) {
-                    // NSEvent.h declares this range of characters to signify various function keys
-                    // This is a subrange of the Unicode private use area.
-                    // No builtin key layouts normally produce any characters within this range, except when
-                    // pressing the corresponding function keys.
-                    charsReserved = ch >= 0xF700 && ch <= 0xF7FF;
-                }
+                testChar = chars.charAt(chars.length() - 1);
 
                 // Check if String chars contains SPACE character.
                 if (chars.trim().isEmpty()) {
                     spaceKeyTyped = true;
                 }
-
-                if (!charsReserved) {
-                    testChar = ch;
-                }
             }
 
-            int[] in = new int[] {keyCode, KeyEventProcessing.useNationalLayouts ? 1 : 0};
+            int[] in = new int[] {keyCode, KeyEventProcessing.useNationalLayouts ? 1 : 0, KeyEventProcessing.reportDeadKeysAsNormal ? 1 : 0};
             int[] out = new int[2]; // [jkeyCode, jkeyLocation]
 
             NSEvent.nsToJavaKeyInfo(in, out);
