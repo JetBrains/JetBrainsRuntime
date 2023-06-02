@@ -48,6 +48,7 @@ public class InputMethodTest {
     private enum TestCases {
         DeadKeysTest (new DeadKeysTest()),
         KeyCodesTest (new KeyCodesTest()),
+        NextAppWinKeyTest (new NextAppWinKeyTest()),
         PinyinCapsLockTest (new PinyinCapsLockTest()),
         PinyinFullWidthPunctuationTest (new PinyinFullWidthPunctuationTest()),
         PinyinHalfWidthPunctuationTest (new PinyinHalfWidthPunctuationTest()),
