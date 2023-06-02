@@ -28,10 +28,11 @@ import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.*;
 import java.util.List;
-import java.util.Set;
+
+import static java.awt.event.KeyEvent.KEY_PRESSED;
+import static java.awt.event.KeyEvent.KEY_RELEASED;
 
 public class InputMethodTest {
     private static JFrame frame;
@@ -42,7 +43,7 @@ public class InputMethodTest {
     private static String initialLayout;
     private static final Set<String> addedLayouts = new HashSet<>();
     private static boolean success = true;
-    private static int lastKeyCode = -1;
+    private static final List<KeyEvent> triggeredEvents = new ArrayList<>();
 
     private enum TestCases {
         DeadKeysTest (new DeadKeysTest()),
@@ -50,7 +51,11 @@ public class InputMethodTest {
         PinyinCapsLockTest (new PinyinCapsLockTest()),
         PinyinFullWidthPunctuationTest (new PinyinFullWidthPunctuationTest()),
         PinyinHalfWidthPunctuationTest (new PinyinHalfWidthPunctuationTest()),
-        PinyinQuotesTest (new PinyinQuotesTest())
+        PinyinQuotesTest (new PinyinQuotesTest()),
+        RomajiYenTest (new RomajiYenTest(false)),
+        RomajiYenBackslashTest (new RomajiYenTest(true)),
+        UnderlyingLayoutQWERTYTest (new UnderlyingLayoutTest(false)),
+        UnderlyingLayoutQWERTZTest (new UnderlyingLayoutTest(true)),
         ;
 
         private Runnable test;
@@ -79,7 +84,11 @@ public class InputMethodTest {
                 } catch (Exception ignored) {}
             }
         }
-        System.exit(success ? 0 : 1);
+        if (success) {
+            System.out.println("TEST PASSED");
+        } else {
+            throw new RuntimeException("TEST FAILED: check output");
+        }
     }
 
     private static void init() {
@@ -101,15 +110,19 @@ public class InputMethodTest {
         textArea = new JTextArea();
         textArea.addKeyListener(new KeyListener() {
             @Override
-            public void keyTyped(KeyEvent keyEvent) {}
-
-            @Override
-            public void keyPressed(KeyEvent keyEvent) {
-                lastKeyCode = keyEvent.getKeyCode();
+            public void keyTyped(KeyEvent keyEvent) {
+                triggeredEvents.add(keyEvent);
             }
 
             @Override
-            public void keyReleased(KeyEvent keyEvent) {}
+            public void keyPressed(KeyEvent keyEvent) {
+                triggeredEvents.add(keyEvent);
+            }
+
+            @Override
+            public void keyReleased(KeyEvent keyEvent) {
+                triggeredEvents.add(keyEvent);
+            }
         });
 
         frame.setLayout(new BorderLayout());
@@ -127,20 +140,49 @@ public class InputMethodTest {
         try {
             TestCases.valueOf(name).run();
         } catch (Exception e) {
-            System.out.printf("Test %s (%s) failed: %s\n", currentTest, currentSection, e);
+            System.out.printf("Test %s (%s) FAILED: %s\n", currentTest, currentSection, e);
             success = false;
         }
     }
 
+    private static String readDefault(String domain, String key) {
+        try {
+            var proc = Runtime.getRuntime().exec(new String[]{"defaults", "read", domain, key});
+            var exitCode = proc.waitFor();
+            if (exitCode == 0) {
+                return new Scanner(proc.getInputStream()).next();
+            }
+        } catch (Exception exc) {
+            exc.printStackTrace();
+            throw new RuntimeException("internal error");
+        }
+
+        return null;
+    }
+
+    private static void writeDefault(String domain, String key, String value) {
+        try {
+            Runtime.getRuntime().exec(new String[]{"defaults", "write", domain, key, value}).waitFor();
+        } catch (Exception exc) {
+            exc.printStackTrace();
+            throw new RuntimeException("internal error");
+        }
+    }
+
     public static void section(String description) {
+        // clear dead key state
+        robot.keyPress(KeyEvent.VK_ESCAPE);
+        robot.keyRelease(KeyEvent.VK_ESCAPE);
+
         currentSection = description;
         textArea.setText("");
         frame.setTitle(currentTest + ": " + description);
+        triggeredEvents.clear();
     }
 
     public static void layout(String name) {
         List<String> layouts = new ArrayList<>();
-        if (name.matches("com\\.apple\\.inputmethod\\.(SCIM|TCIM|TYIM)\\.\\w+")) {
+        if (name.matches("com\\.apple\\.inputmethod\\.(SCIM|TCIM|TYIM|Kotoeri\\.\\w+)\\.\\w+")) {
             layouts.add(name.replaceFirst("\\.\\w+$", ""));
         }
 
@@ -157,8 +199,34 @@ public class InputMethodTest {
         robot.delay(250);
     }
 
+    public static void setUseHalfWidthPunctuation(boolean flag) {
+        writeDefault("com.apple.inputmethod.CoreChineseEngineFramework", "usesHalfwidthPunctuation", flag ? "1" : "0");
+    }
+
+    private static void restartKotoeri() {
+        // Need to kill Kotoeri, since it doesn't reload the config otherwise. This makes me sad.
+        try {
+            Runtime.getRuntime().exec(new String[]{"killall", "-9", "-m", "JapaneseIM"}).waitFor();
+        } catch (Exception exc) {
+            exc.printStackTrace();
+            throw new RuntimeException("internal error");
+        }
+
+        // wait for it to restart...
+        robot.delay(5000);
+    }
+
+    public static void setUseBackslashInsteadOfYen(boolean flag) {
+        writeDefault("com.apple.inputmethod.Kotoeri", "JIMPrefCharacterForYenKey", flag ? "1" : "0");
+        restartKotoeri();
+    }
+
+    public static void setRomajiLayout(String layout) {
+        writeDefault("com.apple.inputmethod.Kotoeri", "JIMPrefRomajiKeyboardLayoutKey", layout);
+        restartKotoeri();
+    }
+
     public static void type(int key, int modifiers) {
-        lastKeyCode = -1;
         List<Integer> modKeys = new ArrayList<>();
 
         if ((modifiers & InputEvent.ALT_DOWN_MASK) != 0) {
@@ -194,22 +262,58 @@ public class InputMethodTest {
         robot.delay(250);
     }
 
-    public static void expect(String expectedValue) {
+    public static List<KeyEvent> getTriggeredEvents() {
+        return Collections.unmodifiableList(triggeredEvents);
+    }
+
+    public static void expectText(String expectedValue) {
         var actualValue = textArea.getText();
         if (actualValue.equals(expectedValue)) {
-            System.out.printf("Test %s (%s) passed, got '%s'\n", currentTest, currentSection, actualValue);
+            System.out.printf("Test %s (%s) passed: got '%s'\n", currentTest, currentSection, actualValue);
         } else {
             success = false;
-            System.out.printf("Test %s (%s) failed, expected '%s', got '%s'\n", currentTest, currentSection, expectedValue, actualValue);
+            System.out.printf("Test %s (%s) FAILED: expected '%s', got '%s'\n", currentTest, currentSection, expectedValue, actualValue);
         }
     }
 
-    public static void expectKeyCode(int keyCode) {
-        if (lastKeyCode == keyCode) {
-            System.out.printf("Test %s (%s) passed, got key code %d\n", currentTest, currentSection, keyCode);
+    public static void expectKeyPress(int vk, int location, int modifiers, boolean strict) {
+        var pressed = triggeredEvents.stream().filter(e -> e.getID() == KEY_PRESSED).toList();
+        var released = triggeredEvents.stream().filter(e -> e.getID() == KEY_RELEASED).toList();
+
+        if (pressed.size() == 1 || (pressed.size() > 1 && !strict)) {
+            var keyCode = pressed.get(pressed.size() - 1).getKeyCode();
+            expectTrue(keyCode == vk, "key press, actual key code: " + keyCode + ", expected: " + vk);
+
+            var keyLocation = pressed.get(pressed.size() - 1).getKeyLocation();
+            expectTrue(keyLocation == location, "key press, actual key location: " + keyLocation + ", expected: " + location);
+
+            var keyModifiers = pressed.get(pressed.size() - 1).getModifiersEx();
+            expectTrue(keyModifiers == modifiers, "key press, actual key modifiers: " + keyModifiers + ", expected: " + modifiers);
         } else {
-            success = false;
-            System.out.printf("Test %s (%s) failed, expected key code %d, got %d\n", currentTest, currentSection, keyCode, lastKeyCode);
+            if (strict) {
+                fail("expected exactly one KEY_PRESSED event, got " + pressed.size());
+            } else {
+                fail("expected at least one KEY_PRESSED event, got none");
+            }
+        }
+
+        if (released.size() == 1 || (released.size() > 1 && !strict)) {
+            var keyCode = released.get(0).getKeyCode();
+            expectTrue(keyCode == vk, "key release, actual key code: " + keyCode + ", expected: " + vk);
+
+            var keyLocation = released.get(0).getKeyLocation();
+            expectTrue(keyLocation == location, "key release, actual key location: " + keyLocation + ", expected: " + location);
+
+            if (strict) {
+                var keyModifiers = released.get(0).getModifiersEx();
+                expectTrue(keyModifiers == 0, "key release, actual key modifiers: " + keyModifiers + ", expected: 0");
+            }
+        } else {
+            if (strict) {
+                fail("expected exactly one KEY_RELEASED event, got " + released.size());
+            } else {
+                fail("expected at least one KEY_RELEASED event, got none");
+            }
         }
     }
 
@@ -218,7 +322,11 @@ public class InputMethodTest {
             System.out.printf("Test %s (%s) passed: %s\n", currentTest, currentSection, comment);
         } else {
             success = false;
-            System.out.printf("Test %s (%s) failed: %s\n", currentTest, currentSection, comment);
+            System.out.printf("Test %s (%s) FAILED: %s\n", currentTest, currentSection, comment);
         }
+    }
+
+    public static void fail(String comment) {
+        expectTrue(false, comment);
     }
 }
