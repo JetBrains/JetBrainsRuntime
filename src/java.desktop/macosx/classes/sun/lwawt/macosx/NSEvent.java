@@ -56,15 +56,15 @@ final class NSEvent {
     // Key event information
     private short keyCode;
     private String characters;
-    private String charactersIgnoringModifiers;
+    private String actualCharacters;
 
     // Called from native
-    NSEvent(int type, int modifierFlags, short keyCode, String characters, String charactersIgnoringModifiers) {
+    NSEvent(int type, int modifierFlags, short keyCode, String characters, String actualCharacters) {
         this.type = type;
         this.modifierFlags = modifierFlags;
         this.keyCode = keyCode;
         this.characters = characters;
-        this.charactersIgnoringModifiers = charactersIgnoringModifiers;
+        this.actualCharacters = actualCharacters;
     }
 
     // Called from native
@@ -132,12 +132,12 @@ final class NSEvent {
         return keyCode;
     }
 
-    String getCharactersIgnoringModifiers() {
-        return charactersIgnoringModifiers;
-    }
-
     String getCharacters() {
         return characters;
+    }
+
+    String getActualCharacters() {
+        return actualCharacters;
     }
 
     @Override
@@ -145,7 +145,7 @@ final class NSEvent {
         return "NSEvent[" + getType() + " ," + getModifierFlags() + " ,"
                 + getClickCount() + " ," + getButtonNumber() + " ," + getX() + " ,"
                 + getY() + " ," + getAbsX() + " ," + getAbsY()+ " ," + getKeyCode() + " ,"
-                + getCharacters() + " ," + getCharactersIgnoringModifiers() + "]";
+                + getCharacters() + " ," + getActualCharacters() + "]";
     }
 
     /*
@@ -256,7 +256,7 @@ final class NSEvent {
     /*
      * Converts NSEvent key info to AWT key info.
      */
-    static native boolean nsToJavaKeyInfo(int[] in, int[] out);
+    static native void nsToJavaKeyInfo(int[] in, int[] out);
 
     /*
      * Converts NSEvent key modifiers to AWT key info.
