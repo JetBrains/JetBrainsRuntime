@@ -26,6 +26,7 @@
 #import "jni_util.h"
 #import "CGLGraphicsConfig.h"
 #import "AWTView.h"
+#import "AWTEvent.h"
 #import "AWTWindow.h"
 #import "a11y/CommonComponentAccessibility.h"
 #import "JavaAccessibilityUtilities.h"
@@ -62,7 +63,7 @@ static BOOL shouldUsePressAndHold() {
     return YES;
 }
 
-extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, NSString * chars);
+extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, int keyCode, NSString * chars);
 
 @implementation AWTView
 
@@ -476,10 +477,18 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     if ([@"true" isCaseInsensitiveLike:captureNextAppWinKey]) {
         NSUInteger deviceIndependentModifierFlagsMask =
             [event modifierFlags] & NSDeviceIndependentModifierFlagsMask;
-        return isSystemShortcut_NextWindowInApplication(deviceIndependentModifierFlagsMask, [event characters]);
-    } else {
-        return NO;
+        // Why translate the key code here and not just use event.characters?
+        // The default macOS shortcut for NextWindowInApplication is Cmd+Backtick. Pressing Cmd+Dead Grave also works
+        // for layouts that have the backtick as a dead key. Unfortunately, some (but notably not all) of these layouts
+        // consider Cmd+Dead Grave to also be a dead key, which means that event.characters will be an empty string.
+        // Explicitly translating the key code with a proper underlying key layout fixes this.
+        struct KeyCodeTranslationResult translationResult = TranslateKeyCodeUsingLayout(GetCurrentUnderlyingLayout(YES), [event keyCode]);
+        if (translationResult.isSuccess && translationResult.character) {
+            return isSystemShortcut_NextWindowInApplication(deviceIndependentModifierFlagsMask, [event keyCode], [NSString stringWithCharacters:&translationResult.character length:1]) ? YES : NO;
+        }
     }
+
+    return NO;
 }
 
 /**
@@ -697,33 +706,6 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     }
 }
 
-<<<<<<< HEAD
--(BOOL) isChineseInputMethod {
-    return ([kbdLayout containsString:@"com.apple.inputmethod.SCIM"] ||
-            [kbdLayout containsString:@"com.apple.inputmethod.TCIM"] ||
-            [kbdLayout containsString:@"com.apple.inputmethod.TYIM"]);
-}
-
--(BOOL) isCodePointInUnicodeBlockNeedingIMEvent: (unichar) codePoint {
-    if ((codePoint == 0x2018 || codePoint == 0x2019 || codePoint == 0x201C || codePoint == 0x201D) && [self isChineseInputMethod]) {
-        // left/right single/double quotation mark
-        return YES;
-    }
-
-    if (((codePoint >= 0x900) && (codePoint <= 0x97F)) ||
-        ((codePoint >= 0x20A3) && (codePoint <= 0x20BF)) ||
-        ((codePoint >= 0x3000) && (codePoint <= 0x303F)) ||
-        ((codePoint >= 0xFF00) && (codePoint <= 0xFFEF))) {
-        // Code point is in 'CJK Symbols and Punctuation' or
-        // 'Halfwidth and Fullwidth Forms' Unicode block or
-        // currency symbols unicode
-        return YES;
-    }
-    return NO;
-}
-
-=======
->>>>>>> 4f0ec281377 (JBR-5558: macOS keyboard rewrite 2)
 -(NSMutableString *) parseString : (id) complexString {
     if ([complexString isKindOfClass:[NSString class]]) {
         return [complexString mutableCopy];
@@ -1141,15 +1123,6 @@ static jclass jc_CInputMethod = NULL;
     NSUInteger utf8Length = [useString lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 
     NSLog(@"insertText kbdlayout %@ ",(NSString *)kbdLayout);
-<<<<<<< HEAD
-#endif // IM_DEBUG
-
-    if ((utf16Length > 2) ||
-        ((utf8Length > 1) && [self isCodePointInUnicodeBlockNeedingIMEvent:codePoint]) ||
-        ((codePoint == 0x5c) && ([(NSString *)kbdLayout containsString:@"Kotoeri"]))) {
-        aStringIsComplex = YES;
-=======
-
     NSLog(@"utf8Length %lu utf16Length %lu", (unsigned long)utf8Length, (unsigned long)utf16Length);
 #endif // IM_DEBUG
 
@@ -1162,7 +1135,6 @@ static jclass jc_CInputMethod = NULL;
         (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_selectPreviousGlyph);
         CHECK_EXCEPTION();
         fPAHNeedsToSelect = NO;
->>>>>>> 4f0ec281377 (JBR-5558: macOS keyboard rewrite 2)
     }
 
     if (usingComplexIM) {
