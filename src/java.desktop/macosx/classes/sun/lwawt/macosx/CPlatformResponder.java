@@ -57,7 +57,6 @@ final class CPlatformResponder {
     private int lastDraggedAbsoluteY;
     private int lastDraggedRelativeX;
     private int lastDraggedRelativeY;
-    private static final Pattern layoutsNeedingCapsLockFix = Pattern.compile("com\\.apple\\.inputmethod\\.(SCIM|TCIM)\\.(Shuangpin|Pinyin|ITABC)");
 
     CPlatformResponder(final PlatformEventNotifier eventNotifier,
                        final boolean isNpapiCallback) {
@@ -177,8 +176,17 @@ final class CPlatformResponder {
 
     /**
      * Handles key events.
+     *
+     * @param eventType macOS event type ID: keyDown, keyUp or flagsChanged
+     * @param modifierFlags macOS modifier flags mask (NSEventModifierFlags)
+     * @param chars NSEvent's characters property
+     * @param actualChars If non-null, then this key should generate KEY_TYPED events
+     *                    corresponding to characters in this string. Only valid for keyDown events.
+     * @param keyCode macOS virtual key code of the key being pressed or released
+     * @param needsKeyTyped post KEY_TYPED events?
+     * @param needsKeyReleased post KEY_RELEASED events?
      */
-    void handleKeyEvent(int eventType, int modifierFlags, String chars, String charsIgnoringModifiers,
+    void handleKeyEvent(int eventType, int modifierFlags, String chars, String actualChars,
                         short keyCode, boolean needsKeyTyped, boolean needsKeyReleased) {
         boolean isFlagsChangedEvent =
             isNpapiCallback ? (eventType == CocoaConstants.NPCocoaEventFlagsChanged) :
@@ -187,11 +195,10 @@ final class CPlatformResponder {
         int jeventType = KeyEvent.KEY_PRESSED;
         int jkeyCode = KeyEvent.VK_UNDEFINED;
         int jkeyLocation = KeyEvent.KEY_LOCATION_UNKNOWN;
-        boolean postsTyped = false;
         boolean spaceKeyTyped = false;
+        boolean charsReserved = false;
 
         char testChar = KeyEvent.CHAR_UNDEFINED;
-        boolean isDeadChar = (chars != null && chars.length() == 0);
 
         if (isFlagsChangedEvent) {
             int[] in = new int[] {modifierFlags, keyCode};
@@ -204,59 +211,36 @@ final class CPlatformResponder {
             jeventType = out[2];
         } else {
             if (chars != null && chars.length() > 0) {
-                // Find a suitable character to report as a keypress.
-                // `chars` might contain more than one character
-                // e.g. when Dead Grave + S were pressed, `chars` will contain "`s"
-                // Since we only really care about the last character, let's use it
-                testChar = chars.charAt(chars.length() - 1);
+                // `chars` might contain more than one character, so why are we using the last one?
+                // It doesn't really matter actually! If the string contains more than one character,
+                // the only way that this character will be used is to construct the keyChar field of the KeyEvent object.
+                // That field is only guaranteed to be meaningful for KEY_TYPED events, so let's not overthink it.
+                // Please note: this character is NOT used to construct extended key codes, that happens
+                // inside the NSEvent.nsToJavaKeyInfo function.
+                char ch = chars.charAt(chars.length() - 1);
 
-                //Check if String chars contains SPACE character.
+                if (chars.length() == 1) {
+                    // NSEvent.h declares this range of characters to signify various function keys
+                    // This is a subrange of the Unicode private use area.
+                    // No builtin key layouts normally produce any characters within this range, except when
+                    // pressing the corresponding function keys.
+                    charsReserved = ch >= 0xF700 && ch <= 0xF7FF;
+                }
+
+                // Check if String chars contains SPACE character.
                 if (chars.trim().isEmpty()) {
                     spaceKeyTyped = true;
                 }
-            }
 
-            char testCharIgnoringModifiers = charsIgnoringModifiers != null && charsIgnoringModifiers.length() > 0 ?
-                    charsIgnoringModifiers.charAt(0) : KeyEvent.CHAR_UNDEFINED;
-
-            int[] in = new int[] {testCharIgnoringModifiers, isDeadChar ? 1 : 0, modifierFlags, keyCode, KeyEventProcessing.useNationalLayouts ? 1 : 0};
-            int[] out = new int[3]; // [jkeyCode, jkeyLocation, deadChar]
-
-            postsTyped = NSEvent.nsToJavaKeyInfo(in, out);
-            if (!postsTyped) {
-                testChar = KeyEvent.CHAR_UNDEFINED;
-            }
-
-            if (isDeadChar) {
-                testChar = (char) out[2];
-                if (testChar == 0) {
-                    // Not abandoning the input event here, since we want to catch dead key presses.
-                    // Consider Option+E on the standard ABC layout. This key combination produces a dead accent.
-                    // The key 'E' by itself is not dead, thus out[2] will be 0, even though isDeadChar is true.
-                    // If we abandon the event there, this key press will never get delivered to the application.
-                    testChar = KeyEvent.CHAR_UNDEFINED;
+                if (!charsReserved) {
+                    testChar = ch;
                 }
             }
 
-            // If a Chinese input method is selected, CAPS_LOCK key is supposed to switch
-            // input to latin letters.
-            // It is necessary to use testCharIgnoringModifiers instead of testChar for event
-            // generation in such case to avoid uppercase letters in text components.
-            // This is only necessary for the following Chinese input methods:
-            //      com.apple.inputmethod.SCIM.ITABC
-            //      com.apple.inputmethod.SCIM.Shuangpin
-            //      com.apple.inputmethod.TCIM.Pinyin
-            //      com.apple.inputmethod.TCIM.Shuangpin
-            // All the other ones work properly without this fix. Zhuyin (Traditional) for example reports
-            // Bopomofo characters in 'charactersIgnoringModifiers', and latin letters in 'characters'.
-            // This means that applying this fix will actually produce invalid behavior in this IM.
-            // Also see test/jdk/jb/sun/awt/macos/InputMethodTest/PinyinCapsLockTest.java
+            int[] in = new int[] {keyCode, KeyEventProcessing.useNationalLayouts ? 1 : 0};
+            int[] out = new int[2]; // [jkeyCode, jkeyLocation]
 
-            if (testChar != KeyEvent.CHAR_UNDEFINED &&
-                Toolkit.getDefaultToolkit().getLockingKeyState(KeyEvent.VK_CAPS_LOCK) &&
-                layoutsNeedingCapsLockFix.matcher(LWCToolkit.getKeyboardLayoutId()).matches()) {
-                testChar = testCharIgnoringModifiers;
-            }
+            NSEvent.nsToJavaKeyInfo(in, out);
 
             jkeyCode = out[0];
             jkeyLocation = out[1];
@@ -266,17 +250,6 @@ final class CPlatformResponder {
 
         char javaChar = (testChar == KeyEvent.CHAR_UNDEFINED) ? KeyEvent.CHAR_UNDEFINED :
                 NSEvent.nsToJavaChar(testChar, modifierFlags, spaceKeyTyped);
-        // Some keys may generate a KEY_TYPED, but we can't determine what that character is.
-        // This may happen during the key combinations that produce dead keys (like Option+E described before),
-        // since we don't care about the dead key for the purposes of keyPressed event, nor do the dead keys
-        // produce input by themselves. In this case we set postsTyped to false, so that the application
-        // doesn't receive unnecessary KEY_TYPED events.
-        //
-        // In cases not involving dead keys combos, having javaChar == CHAR_UNDEFINED is most likely a bug.
-        // Since we can't determine which character is supposed to be typed let's just ignore it.
-        if (javaChar == KeyEvent.CHAR_UNDEFINED) {
-            postsTyped = false;
-        }
 
         int jmodifiers = NSEvent.nsToJavaModifiers(modifierFlags);
         long when = System.currentTimeMillis();
@@ -287,26 +260,28 @@ final class CPlatformResponder {
         eventNotifier.notifyKeyEvent(jeventType, when, jmodifiers,
                 jkeyCode, javaChar, jkeyLocation);
 
-        // Current browser may be sending input events, so don't
-        // post the KEY_TYPED here.
-        postsTyped &= needsKeyTyped;
-
         // That's the reaction on the PRESSED (not RELEASED) event as it comes to
         // appear in MacOSX.
         // Modifier keys (shift, etc) don't want to send TYPED events.
         // On the other hand we don't want to generate keyTyped events
         // for clipboard related shortcuts like Meta + [CVX]
-        if (jeventType == KeyEvent.KEY_PRESSED && postsTyped &&
+        if (jeventType == KeyEvent.KEY_PRESSED && needsKeyTyped && javaChar != KeyEvent.CHAR_UNDEFINED &&
                 (jmodifiers & KeyEvent.META_DOWN_MASK) == 0) {
-            // Enter and Space keys finish the input method processing,
-            // KEY_TYPED and KEY_RELEASED events for them are synthesized in handleInputEvent.
-            if (needsKeyReleased && (jkeyCode == KeyEvent.VK_ENTER || jkeyCode == KeyEvent.VK_SPACE)) {
-                return;
+            if (actualChars == null) {
+                // Either macOS didn't send us anything in insertText: to type,
+                // or this event was not generated in AWTView.m. Let's fall back to using javaChar
+                // since we still need to generate KEY_TYPED events, for instance for Ctrl+ combinations.
+                // javaChar is guaranteed to be a valid character, since postsTyped is true.
+                actualChars = String.valueOf(javaChar);
             }
-            eventNotifier.notifyKeyEvent(KeyEvent.KEY_TYPED, when, jmodifiers,
-                    KeyEvent.VK_UNDEFINED, javaChar,
-                    KeyEvent.KEY_LOCATION_UNKNOWN);
-            //If events come from Firefox, released events should also be generated.
+
+            for (char ch : actualChars.toCharArray()) {
+                eventNotifier.notifyKeyEvent(KeyEvent.KEY_TYPED, when, jmodifiers,
+                        KeyEvent.VK_UNDEFINED, ch,
+                        KeyEvent.KEY_LOCATION_UNKNOWN);
+            }
+
+            // If events come from Firefox, released events should also be generated.
             if (needsKeyReleased) {
                 eventNotifier.notifyKeyEvent(KeyEvent.KEY_RELEASED, when, jmodifiers,
                         jkeyCode, javaChar,
