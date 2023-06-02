@@ -26,7 +26,8 @@
  * @test
  * @summary Regression test for IDEA-271898: Cannot enter Chinese full-corner single and double quotes (IDEA: macOS Intel version)
  * @requires (jdk.version.major >= 8 & os.family == "mac")
- * @run shell Runner.sh PinyinQuotesTest
+ * @modules java.desktop/sun.lwawt.macosx
+ * @run main InputMethodTest PinyinQuotesTest
  */
 
 import static java.awt.event.KeyEvent.*;
@@ -47,7 +48,7 @@ public class PinyinQuotesTest implements Runnable {
         InputMethodTest.type(VK_SPACE, 0);
         InputMethodTest.type(VK_QUOTE, 0);
 
-        InputMethodTest.expect("\u2018 \u2019");
+        InputMethodTest.expectText("\u2018 \u2019");
     }
 
     private void doubleQuotes() {
@@ -58,6 +59,6 @@ public class PinyinQuotesTest implements Runnable {
         InputMethodTest.type(VK_SPACE, 0);
         InputMethodTest.type(VK_QUOTE, SHIFT_DOWN_MASK);
 
-        InputMethodTest.expect("\u201c \u201d");
+        InputMethodTest.expectText("\u201c \u201d");
     }
 }
