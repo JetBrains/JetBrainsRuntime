@@ -2,7 +2,7 @@
 
 #immediately exit script with an error if a command fails
 set -euo pipefail
-[[ "${SCRIPT_VERBOSE:-}" == "1" ]] && set -x
+set -x
 
 export COPY_EXTENDED_ATTRIBUTES_DISABLE=true
 export COPYFILE_DISABLE=true
@@ -45,7 +45,6 @@ fi
 log "$INPUT_FILE extracted and removed"
 
 APP_NAME=$(basename "$INPUT_FILE" | awk -F".tar" '{ print $1 }')
-PKG_NAME="$APP_NAME.pkg"
 APPLICATION_PATH=$EXPLODED/$(ls $EXPLODED)
 
 find "$APPLICATION_PATH/Contents/Home/bin" \
@@ -85,7 +84,7 @@ limit=3
 set +e
 while [[ $attempt -le $limit ]]; do
   log "Signing (attempt $attempt) $APPLICATION_PATH ..."
-  "$SCRIPT_DIR/sign.sh" "$APPLICATION_PATH" "$PKG_NAME" "$BUNDLE_ID" "$CODESIGN_STRING" "$JB_INSTALLER_CERT"
+  "$SCRIPT_DIR/sign.sh" "$APPLICATION_PATH" "$APP_NAME" "$BUNDLE_ID" "$CODESIGN_STRING" "$JB_INSTALLER_CERT"
   ec=$?
   if [[ $ec -ne 0 ]]; then
     ((attempt += 1))
@@ -107,10 +106,10 @@ set -e
 
 if [ "$NOTARIZE" = "yes" ]; then
   log "Notarizing..."
-  "$SCRIPT_DIR/notarize.sh" "$PKG_NAME"
+  "$SCRIPT_DIR/notarize.sh" "$APP_NAME.pkg"
   log "Stapling..."
   xcrun stapler staple "$APPLICATION_PATH" ||:
-  xcrun stapler staple "$PKG_NAME" ||:
+  xcrun stapler staple "$APP_NAME.pkg" ||:
 else
   log "Notarization disabled"
   log "Stapling disabled"
@@ -123,11 +122,7 @@ log "Zipping $BUILD_NAME to $INPUT_FILE ..."
   if test -d $BACKUP_JMODS/jmods; then
     mv $BACKUP_JMODS/jmods $APPLICATION_PATH/Contents/Home
   fi
-  if [[ "$APPLICATION_PATH" != "$EXPLODED/$BUILD_NAME" ]]; then
-    mv $APPLICATION_PATH $EXPLODED/$BUILD_NAME
-  else
-    echo "No move, source == destination: $APPLICATION_PATH"
-  fi
+  mv $APPLICATION_PATH $EXPLODED/$BUILD_NAME
 
   tar -pczvf $INPUT_FILE --exclude='man' -C $EXPLODED $BUILD_NAME
   log "Finished zipping"
