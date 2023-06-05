@@ -57,7 +57,7 @@ dump_keycode_cache(const KeyCodeCache* cache) {
             fprintf(stderr, "0x%02x --", i);
             for(int j = 0; j < cache->syms_per_code; j++) {
                 const int sym_index = (i - cache->min_code)*cache->syms_per_code + j;
-                fprintf(stderr, "%04d - ", cache->symbols[sym_index]);
+                fprintf(stderr, "%04lu - ", cache->symbols[sym_index]);
             }
             fprintf(stderr, "\n");
         }
