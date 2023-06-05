@@ -324,6 +324,7 @@ ifeq ($(call isTargetOs, windows macosx)+$(ENABLE_HEADLESS_ONLY), false+false)
       DISABLED_WARNINGS_gcc_GLXSurfaceData.c := unused-function, \
       DISABLED_WARNINGS_gcc_gtk3_interface.c := parentheses type-limits \
           unused-function, \
+      DISABLED_WARNINGS_gcc_keycode_cache.c := unused-function, \
       DISABLED_WARNINGS_gcc_OGLBufImgOps.c := format-nonliteral, \
       DISABLED_WARNINGS_gcc_OGLPaints.c := format-nonliteral, \
       DISABLED_WARNINGS_gcc_screencast_pipewire.c := undef, \
