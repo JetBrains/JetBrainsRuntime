@@ -34,3 +34,10 @@ jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java                    
 jb/java/awt/CustomTitleBar/WindowResizeTest.java                                    nobug generic-all
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java                             nobug generic-all
 jb/java/awt/CustomTitleBar/WindowVisibilityTest.java                                nobug generic-all
+
+jb/java/awt/Focus/ModalDialogOverSiblingTest.java                                   JBR-5716 windows-all
+jb/java/awt/Focus/RequestFocusInParent.java                                         JBR-5715 windows-all
+jb/java/awt/Window/ZOrderOnModalDialogActivation.java                               JBR-5713 windows-all
+jdk/editpad/EditPadTest.java                                                        JBR-5712 windows-all
+
+security/infra/java/security/cert/CertPathValidator/certification/AmazonCA.java 8309088 generic-all
