@@ -1,28 +1,7 @@
-// Copyright 2023 JetBrains s.r.o.
-// DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
-//
-// This code is free software; you can redistribute it and/or modify it
-// under the terms of the GNU General Public License version 2 only, as
-// published by the Free Software Foundation.  Oracle designates this
-// particular file as subject to the "Classpath" exception as provided
-// by Oracle in the LICENSE file that accompanied this code.
-//
-// This code is distributed in the hope that it will be useful, but WITHOUT
-// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-// version 2 for more details (a copy is included in the LICENSE file that
-// accompanied this code).
-//
-// You should have received a copy of the GNU General Public License version
-// 2 along with this work; if not, write to the Free Software Foundation,
-// Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
-//
-// Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
-// or visit www.oracle.com if you need additional information or have any
-// questions.
-
 /*
- * Copyright (c) 1998, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
+ *
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -120,6 +99,7 @@ typedef void (*FcObjectSetDestroyFuncType)(FcObjectSet *os);
 typedef void (*FcFontSetDestroyFuncType)(FcFontSet *s);
 typedef FcPattern* (*FcNameParseFuncType)(const FcChar8 *name);
 typedef FcBool (*FcPatternAddStringFuncType)(FcPattern *p, const char *object, const FcChar8 *s);
+typedef FcBool (*FcPatternAddDoubleFuncType)(FcPattern *p, const char *object, double v);
 typedef void (*FcDefaultSubstituteFuncType)(FcPattern *p);
 typedef FcBool (*FcConfigSubstituteFuncType)(FcConfig *config, FcPattern *p, FcMatchKind kind);
 typedef FcPattern* (*FcFontMatchFuncType)(FcConfig *config, FcPattern *p, FcResult *result);
@@ -145,6 +125,7 @@ static FcPatternGetBoolFuncType fcPatternGetBool;
 static FcPatternGetIntegerFuncType fcPatternGetInteger;
 static FcNameParseFuncType fcNameParse;
 static FcPatternAddStringFuncType fcPatternAddString;
+static FcPatternAddDoubleFuncType fcPatternAddDouble;
 static FcConfigSubstituteFuncType fcConfigSubstitute;
 static FcDefaultSubstituteFuncType  fcDefaultSubstitute;
 static FcFontMatchFuncType fcFontMatch;
@@ -239,6 +220,7 @@ void openFontConfig() {
     fcPatternGetInteger = (FcPatternGetIntegerFuncType)dlsym(libfontconfig, "FcPatternGetInteger");
     fcNameParse = (FcNameParseFuncType)dlsym(libfontconfig, "FcNameParse");
     fcPatternAddString = (FcPatternAddStringFuncType)dlsym(libfontconfig, "FcPatternAddString");
+    fcPatternAddDouble = (FcPatternAddDoubleFuncType)dlsym(libfontconfig, "FcPatternAddDouble");
     fcConfigSubstitute = (FcConfigSubstituteFuncType)dlsym(libfontconfig, "FcConfigSubstitute");
     fcDefaultSubstitute = (FcDefaultSubstituteFuncType)dlsym(libfontconfig, "FcDefaultSubstitute");
     fcFontMatch = (FcFontMatchFuncType)dlsym(libfontconfig, "FcFontMatch");
@@ -260,7 +242,8 @@ void openFontConfig() {
         fcPatternAddString == NULL || fcConfigSubstitute == NULL || fcDefaultSubstitute == NULL || fcFontMatch == NULL ||
         fcPatternGetString == NULL || fcPatternDestroy == NULL || fcPatternGetCharSet == NULL || fcFontSort == NULL ||
         fcFontSetDestroy == NULL || fcCharSetUnion == NULL || fcCharSetDestroy == NULL || fcCharSetSubtractCount == NULL ||
-        fcGetVersion == NULL || fcConfigGetCacheDirs == NULL || fcStrListNext == NULL || fcStrListDone == NULL) {
+        fcGetVersion == NULL || fcConfigGetCacheDirs == NULL || fcStrListNext == NULL || fcStrListDone == NULL ||
+        fcPatternAddDouble == NULL) {
         closeFontConfig();
     }
 }
@@ -270,7 +253,7 @@ JNI_OnUnload(JavaVM *vm, void *reserved) {
     closeFontConfig();
 }
 
-char **getFontConfigLocations() {
+JNIEXPORT char **getFontConfigLocations() {
 
     char **fontdirs;
     int numdirs = 0;
@@ -351,7 +334,8 @@ static void setRenderingFontHintsField(FcPattern* matchPattern, const char* prop
     }
 }
 
-JNIEXPORT int setupRenderingFontHints(const char* fcName, const char* locale, RenderingFontHints *renderingFontHints) {
+JNIEXPORT int setupRenderingFontHints
+(const char* fcName, const char* locale, double size, RenderingFontHints *renderingFontHints) {
 
     FcPattern *pattern, *matchPattern;
     FcResult result;
@@ -363,6 +347,9 @@ JNIEXPORT int setupRenderingFontHints(const char* fcName, const char* locale, Re
     pattern = (*fcNameParse)((FcChar8 *)fcName);
     if (locale != NULL) {
         (*fcPatternAddString)(pattern, FC_LANG, (unsigned char*)locale);
+    }
+    if (size != 0) {
+        (*fcPatternAddDouble)(pattern, FC_SIZE, size);
     }
     (*fcConfigSubstitute)(NULL, pattern, FcMatchPattern);
     (*fcDefaultSubstitute)(pattern);
@@ -747,7 +734,7 @@ Java_sun_font_FontConfigManager_getFontConfigAASettings
     int status = 0;
     RenderingFontHints renderingFontHints;
     if (fcName && locale) {
-        status = setupRenderingFontHints(fcName, locale, &renderingFontHints);
+        status = setupRenderingFontHints(fcName, locale, 0, &renderingFontHints);
     } else {
         status = -1;
     }

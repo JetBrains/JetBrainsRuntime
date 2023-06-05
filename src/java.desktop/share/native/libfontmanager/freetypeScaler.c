@@ -848,7 +848,7 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
 
             if (cachedMatch.fcSize == 0) {
                 RenderingFontHints renderingFontHints;
-                int status = setupRenderingFontHints(cfontFamilyName, NULL, &renderingFontHints);
+                int status = setupRenderingFontHints(cfontFamilyName, NULL, fcSize, &renderingFontHints);
                 if (status != 0) {
                     goto default_;
                 }
