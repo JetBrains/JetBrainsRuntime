@@ -82,6 +82,8 @@ public class ExtraAllocationTest {
                     d.setDisplayMode(mode);
                 } catch (IllegalArgumentException e) {
                     e.printStackTrace();
+                } finally {
+                    d.setDisplayMode(originalDisplayMode);
                 }
                 Thread.sleep(2000);
             }
@@ -92,9 +94,6 @@ public class ExtraAllocationTest {
         Path path = Path.of("recording.jfr");
         recording.dump(path);
         recording.close();
-
-        d.setDisplayMode(originalDisplayMode);
-        Thread.sleep(2000);
 
         for (RecordedEvent event : RecordingFile.readAllEvents(path)) {
             if ("jdk.ObjectAllocationOutsideTLAB".equalsIgnoreCase(event.getEventType().getName())) {
