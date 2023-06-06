@@ -10,3 +10,7 @@ java/awt/PopupMenu/PopupMenuLocation.java                                       
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      JBR-5071 linux-all
 
 sun/java2d/GdiRendering/ClipShapeRendering.java                                     JBR-5204 linux-all,windows-all
+
+jb/java/awt/Focus/RequestFocusInParent.java                                         JBR-5715 windows-all
+jb/java/awt/Window/ZOrderOnModalDialogActivation.java                               JBR-5713 windows-all
+jdk/editpad/EditPadTest.java                                                        JBR-5712 windows-all
