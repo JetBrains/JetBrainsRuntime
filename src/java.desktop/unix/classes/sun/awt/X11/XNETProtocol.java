@@ -532,6 +532,11 @@ final class XNETProtocol extends XProtocol implements XStateProtocol, XLayerProt
             msg.set_data(3, button);
             msg.set_data(4, 0);
 
+            // Though we already did setGrab(false) before, this may sometimes be not enough.
+            // Presumably pointer may be grabbed automatically by a button press,
+            // so release grabs again here, otherwise it wouldn't work on Xorg.
+            XlibWrapper.XUngrabPointer(XToolkit.getDisplay(), XConstants.CurrentTime);
+            XlibWrapper.XUngrabKeyboard(XToolkit.getDisplay(), XConstants.CurrentTime);
             XlibWrapper.XSendEvent(XToolkit.getDisplay(),
                     XToolkit.getDefaultRootWindow(),
                     false,
