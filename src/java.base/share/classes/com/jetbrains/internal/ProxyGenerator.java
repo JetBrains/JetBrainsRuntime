@@ -261,31 +261,34 @@ class ProxyGenerator {
         for (Method method : interFace.getMethods()) {
             int mod = method.getModifiers();
             if (Modifier.isFinal(mod)) continue;
-            MethodMapping methodMapping = getTargetMethodMapping(method);
+            Exception e1 = null, e2 = null;
+            try {
+                MethodMapping methodMapping = getTargetMethodMapping(method);
 
-            Exception e1 = null;
-            ProxyInfo.StaticMethodMapping mapping = info.staticMethods.get(method.getName());
-            if (mapping != null) {
-                try {
-                    MethodHandle staticHandle =
-                            mapping.lookup().findStatic(mapping.lookup().lookupClass(), mapping.methodName(), methodMapping.type());
-                    generateMethod(method, staticHandle, methodMapping, false);
-                    continue;
-                } catch (NoSuchMethodException | IllegalAccessException e) {
-                    e1 = e;
+                ProxyInfo.StaticMethodMapping mapping = info.staticMethods.get(method.getName());
+                if (mapping != null) {
+                    try {
+                        MethodHandle staticHandle =
+                                mapping.lookup().findStatic(mapping.lookup().lookupClass(), mapping.methodName(), methodMapping.type());
+                        generateMethod(method, staticHandle, methodMapping, false);
+                        continue;
+                    } catch (NoSuchMethodException | IllegalAccessException e) {
+                        e1 = e;
+                    }
                 }
-            }
 
-            Exception e2 = null;
-            if (info.target != null) {
-                try {
-                    MethodHandle handle = info.target.findVirtual(
-                            info.target.lookupClass(), method.getName(), methodMapping.type());
-                    generateMethod(method, handle, methodMapping, true);
-                    continue;
-                } catch (NoSuchMethodException | IllegalAccessException e) {
-                    e2 = e;
+                if (info.target != null) {
+                    try {
+                        MethodHandle handle = info.target.findVirtual(
+                                info.target.lookupClass(), method.getName(), methodMapping.type());
+                        generateMethod(method, handle, methodMapping, true);
+                        continue;
+                    } catch (NoSuchMethodException | IllegalAccessException e) {
+                        e2 = e;
+                    }
                 }
+            } catch (Exception e) {
+                e1 = e;
             }
 
             if (!Modifier.isAbstract(mod)) continue;
@@ -310,22 +313,34 @@ class ProxyGenerator {
         String bridgeOrProxyName = generateBridge ? bridgeName : proxyName;
         boolean noConversions = true;
         for (TypeMapping m : mapping) {
-            if (m.conversion() != TypeConversion.IDENTITY) noConversions = false;
+            if (m.conversion() != TypeConversion.IDENTITY) {
+                noConversions = false;
+                if (m.arrayLevel() > 0) {
+                    m.metadata().createArrayHandle = new String[m.arrayLevel()];
+                    Class<?> t = m.to;
+                    for (int i = 0; i < m.arrayLevel(); i++) {
+                        Class<?> c = t;
+                        m.metadata().createArrayHandle[i] = addHandle(handleWriter,
+                                () -> MethodHandles.arrayConstructor(c));
+                        t = t.componentType();
+                    }
+                }
+            }
             if (m.conversion() == TypeConversion.EXTRACT_TARGET ||
                     m.conversion() == TypeConversion.DYNAMIC_2_WAY) {
                 Proxy<?> from = m.fromProxy();
-                m.metadata.extractTargetHandle = addHandle(handleWriter, from::getTargetExtractor);
+                m.metadata().extractTargetHandle = addHandle(handleWriter, from::getTargetExtractor);
                 directProxyDependencies.add(from);
             }
             if (m.conversion() == TypeConversion.WRAP_INTO_PROXY ||
                     m.conversion() == TypeConversion.DYNAMIC_2_WAY) {
                 Proxy<?> to = m.toProxy();
-                m.metadata.proxyConstructorHandle = addHandle(handleWriter, to::getWrapperConstructor);
+                m.metadata().proxyConstructorHandle = addHandle(handleWriter, to::getWrapperConstructor);
                 directProxyDependencies.add(to);
             }
             if (m.conversion() == TypeConversion.DYNAMIC_2_WAY) {
                 String classField = "c" + classReferences.size();
-                m.metadata.extractableClassField = classField;
+                m.metadata().extractableClassField = classField;
                 classReferences.add(m.fromProxy()::getProxyClass);
                 handleWriter.visitField(ACC_PRIVATE | ACC_STATIC, classField, "Ljava/lang/Class;", null, null);
             }
@@ -414,11 +429,47 @@ class ProxyGenerator {
         return handleName;
     }
 
+    // Stack: from -> to
     private static void convertValue(MethodVisitor m, String handlesHolderName, TypeMapping mapping) {
         if (mapping.conversion() == TypeConversion.IDENTITY) return;
+        // Early null-check
         Label skipConvert = new Label();
         m.visitInsn(DUP);
         m.visitJumpInsn(IFNULL, skipConvert);
+        // Array loops
+        record LoopLabels(Label loopStart, Label skipNull, Label loopEnd) {}
+        LoopLabels[] loopLabels = null;
+        if (mapping.arrayLevel() > 0) {
+            Arrays.setAll(loopLabels = new LoopLabels[mapping.arrayLevel()],
+                    i -> new LoopLabels(new Label(), new Label(), new Label()));
+            for (int i = 0; i < mapping.arrayLevel(); i++) {
+                // Stack: fromArray -> toArray, fromArray, i=length
+                m.visitInsn(DUP);
+                m.visitInsn(ARRAYLENGTH);
+                m.visitFieldInsn(GETSTATIC, handlesHolderName, mapping.metadata.createArrayHandle[i], MH_DESCRIPTOR);
+                m.visitInsn(SWAP);
+                m.visitMethodInsn(INVOKEVIRTUAL, MH_NAME, "invoke", "(I)Ljava/lang/Object;", false);
+                m.visitInsn(SWAP);
+                m.visitInsn(DUP);
+                m.visitInsn(ARRAYLENGTH);
+                // Check loop conditions
+                m.visitLabel(loopLabels[i].loopStart());
+                m.visitInsn(DUP);
+                m.visitJumpInsn(IFLE, loopLabels[i].loopEnd());
+                // Stack: toArray, fromArray, i -> toArray, fromArray, i, toArray, i, from
+                m.visitVarInsn(ISTORE, 0);
+                m.visitInsn(DUP2);
+                m.visitIincInsn(0, -1);
+                m.visitVarInsn(ILOAD, 0);
+                m.visitInsn(DUP_X2);
+                m.visitInsn(DUP_X1);
+                m.visitInsn(AALOAD);
+                // Null-check
+                m.visitInsn(DUP);
+                m.visitJumpInsn(IFNULL, loopLabels[i].skipNull());
+            }
+        }
+        // Stack: from -> to
         switch (mapping.conversion()) {
             case EXTRACT_TARGET ->
                     m.visitFieldInsn(GETSTATIC, handlesHolderName, mapping.metadata.extractTargetHandle, MH_DESCRIPTOR);
@@ -439,6 +490,17 @@ class ProxyGenerator {
         }
         m.visitInsn(SWAP);
         m.visitMethodInsn(INVOKEVIRTUAL, MH_NAME, "invoke", CONVERSION_DESCRIPTOR, false);
+        if (mapping.arrayLevel() > 0) {
+            for (int i = mapping.arrayLevel() - 1; i >= 0; i--) {
+                m.visitLabel(loopLabels[i].skipNull());
+                // Stack: toArray, fromArray, i, toArray, i, to -> toArray, fromArray, i
+                m.visitInsn(AASTORE);
+                m.visitJumpInsn(GOTO, loopLabels[i].loopStart());
+                m.visitLabel(loopLabels[i].loopEnd());
+                // Stack: toArray, fromArray, i -> toArray
+                m.visitInsn(POP2);
+            }
+        }
         m.visitLabel(skipConvert);
     }
 
@@ -454,23 +516,28 @@ class ProxyGenerator {
     }
 
     private static <T> TypeMapping getTargetTypeMapping(Class<T> userType) {
+        if (userType.isArray()) {
+            TypeMapping m = getTargetTypeMapping(userType.componentType());
+            return new TypeMapping(m.from().arrayType(), m.to().arrayType(),
+                    m.conversion(), m.fromProxy(), m.toProxy(), m.arrayLevel() + 1, m.metadata());
+        }
         TypeMappingMetadata m = new TypeMappingMetadata();
         Proxy<T> p = JBRApi.getProxy(userType);
         if (p != null && p.getInfo().target != null) {
             Proxy<?> r = JBRApi.getProxy(p.getInfo().target.lookupClass());
             if (r != null && r.getInfo().target != null) {
-                return new TypeMapping(userType, p.getInfo().target.lookupClass(), TypeConversion.DYNAMIC_2_WAY, p, r, m);
+                return new TypeMapping(userType, p.getInfo().target.lookupClass(), TypeConversion.DYNAMIC_2_WAY, p, r, 0, m);
             }
-            return new TypeMapping(userType, p.getInfo().target.lookupClass(), TypeConversion.EXTRACT_TARGET, p, null, m);
+            return new TypeMapping(userType, p.getInfo().target.lookupClass(), TypeConversion.EXTRACT_TARGET, p, null, 0, m);
         }
         Class<?> interFace = JBRApi.getProxyInterfaceByTargetName(userType.getName());
         if (interFace != null) {
             Proxy<?> r = JBRApi.getProxy(interFace);
             if (r != null) {
-                return new TypeMapping(userType, interFace, TypeConversion.WRAP_INTO_PROXY, null, r, m);
+                return new TypeMapping(userType, interFace, TypeConversion.WRAP_INTO_PROXY, null, r, 0, m);
             }
         }
-        return new TypeMapping(userType, userType, TypeConversion.IDENTITY, null, null, m);
+        return new TypeMapping(userType, userType, TypeConversion.IDENTITY, null, null, 0, m);
     }
 
     private record MethodMapping(MethodType type, TypeMapping returnMapping, TypeMapping[] parameterMapping)
@@ -509,16 +576,17 @@ class ProxyGenerator {
     }
 
     private record TypeMapping(Class<?> from, Class<?> to, TypeConversion conversion,
-                               Proxy<?> fromProxy, Proxy<?> toProxy, TypeMappingMetadata metadata) {
+                               Proxy<?> fromProxy, Proxy<?> toProxy, int arrayLevel, TypeMappingMetadata metadata) {
         TypeMapping inverse() {
             return new TypeMapping(to, from, switch (conversion) {
                 case EXTRACT_TARGET -> TypeConversion.WRAP_INTO_PROXY;
                 case WRAP_INTO_PROXY -> TypeConversion.EXTRACT_TARGET;
                 default -> conversion;
-            }, toProxy, fromProxy, metadata);
+            }, toProxy, fromProxy, arrayLevel, metadata);
         }
         String getBridgeDescriptor() {
             if (conversion == TypeConversion.IDENTITY) return Type.getDescriptor(from);
+            else if (arrayLevel > 0) return "[".repeat(arrayLevel) + "Ljava/lang/Object;";
             else return "Ljava/lang/Object;";
         }
         @Override
@@ -530,6 +598,7 @@ class ProxyGenerator {
 
     private static class TypeMappingMetadata {
         private String extractTargetHandle, proxyConstructorHandle, extractableClassField;
+        private String[] createArrayHandle; // One handle per array level, 0 is the outermost array type.
     }
 
     private enum TypeConversion {
