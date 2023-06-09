@@ -39,6 +39,7 @@
 @property (readwrite, assign) int topInset;
 @property (readwrite, assign) int leftInset;
 @property (readwrite, atomic) int redrawCount;
+@property (readwrite, atomic) NSTimeInterval avgBlitFrameTime;
 
 - (id) initWithJavaLayer:(jobject)layer;
 
