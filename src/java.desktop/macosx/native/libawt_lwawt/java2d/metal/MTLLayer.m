@@ -31,6 +31,8 @@
 #import "MTLSurfaceData.h"
 #import "JNIUtilities.h"
 
+const NSTimeInterval DF_BLIT_FRAME_TIME=1.0/120.0;
+
 extern BOOL isColorMatchingEnabled();
 
 BOOL isDisplaySyncEnabled() {
@@ -83,6 +85,10 @@ BOOL isDisplaySyncEnabled() {
     self.nextDrawableCount = 0;
     self.opaque = YES;
     self.redrawCount = 0;
+    if (@available(macOS 10.13, *)) {
+        self.displaySyncEnabled = isDisplaySyncEnabled();
+    }
+    self.avgBlitFrameTime = DF_BLIT_FRAME_TIME;
     return self;
 }
 
@@ -98,6 +104,9 @@ BOOL isDisplaySyncEnabled() {
     }
 
     if (self.nextDrawableCount != 0) {
+        if (!isDisplaySyncEnabled()) {
+            [self performSelectorOnMainThread:@selector(setNeedsDisplay) withObject:nil waitUntilDone:NO];
+        }
         return;
     }
     [self stopRedraw:NO];
@@ -149,9 +158,25 @@ BOOL isDisplaySyncEnabled() {
             [commandBuf encodeSignalEvent:self.ctx.syncEvent value:self.ctx.syncCount];
         }
 
-        [commandBuf presentDrawable:mtlDrawable];
+        if (isDisplaySyncEnabled()) {
+            [commandBuf presentDrawable:mtlDrawable];
+        } else {
+            if (@available(macOS 10.15.4, *)) {
+                [commandBuf presentDrawable:mtlDrawable afterMinimumDuration:self.avgBlitFrameTime];
+            } else {
+                [commandBuf presentDrawable:mtlDrawable];
+            }
+        }
+
         [self retain];
         [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
+            if (@available(macOS 10.15.4, *)) {
+                if (!isDisplaySyncEnabled()) {
+                    const NSTimeInterval gpuTime = commandBuf.GPUEndTime - commandBuf.GPUStartTime;
+                    const NSTimeInterval a = 0.25;
+                    self.avgBlitFrameTime = gpuTime * a + self.avgBlitFrameTime * (1.0 - a);
+                }
+            }
             self.nextDrawableCount--;
             [self release];
         }];
@@ -217,12 +242,11 @@ BOOL isDisplaySyncEnabled() {
                 [cbwrapper release];
             }];
         } else {
-            __block MTLLayer* layer = self;
-            [layer retain];
+            [self retain];
             [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
                 [cbwrapper release];
-                [layer startRedraw];
-                [layer release];
+                [self startRedraw];
+                [self release];
             }];
        }
        [commandbuf commit];
