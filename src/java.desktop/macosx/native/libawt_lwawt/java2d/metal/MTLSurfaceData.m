@@ -35,7 +35,7 @@
 jboolean MTLSD_InitMTLWindow(JNIEnv *env, BMTLSDOps *bmtlsdo);
 void MTLSD_SetNativeDimensions(JNIEnv *env, BMTLSDOps *bmtlsdo, jint w, jint h);
 
-static jboolean MTLSurfaceData_initTexture(BMTLSDOps *bmtlsdo, jboolean isOpaque, jboolean rtt, jint width, jint height) {
+static jboolean MTLSurfaceData_initTexture(BMTLSDOps *bmtlsdo, jboolean isOpaque, jint sfType, jint width, jint height) {
     @autoreleasepool {
         if (bmtlsdo == NULL) {
             J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSurfaceData_initTexture: ops are null");
@@ -94,11 +94,10 @@ static jboolean MTLSurfaceData_initTexture(BMTLSDOps *bmtlsdo, jboolean isOpaque
         bmtlsdo->isOpaque = isOpaque;
         bmtlsdo->width = width;
         bmtlsdo->height = height;
-        bmtlsdo->drawableType = rtt ? MTLSD_RT_TEXTURE : MTLSD_TEXTURE;
+        bmtlsdo->drawableType = sfType;
 
-        J2dTraceLn(J2D_TRACE_VERBOSE,
-                   "MTLSurfaceData_initTexture: w=%d h=%d bp=%p [tex=%p] opaque=%d rtt=%d",
-                   width, height, bmtlsdo, bmtlsdo->pTexture, isOpaque, rtt);
+        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLSurfaceData_initTexture: w=%d h=%d bp=%p [tex=%p] opaque=%d sfType=%d",
+                   width, height, bmtlsdo, bmtlsdo->pTexture, isOpaque, sfType);
         return JNI_TRUE;
     }
 }
@@ -113,7 +112,7 @@ Java_sun_java2d_metal_MTLSurfaceData_initTexture(
     jlong pData, jboolean isOpaque,
     jint width, jint height
 ) {
-    if (!MTLSurfaceData_initTexture((BMTLSDOps *)pData, isOpaque, JNI_FALSE, width, height))
+    if (!MTLSurfaceData_initTexture((BMTLSDOps *)pData, isOpaque, MTLSD_TEXTURE, width, height))
         return JNI_FALSE;
     MTLSD_SetNativeDimensions(env, (BMTLSDOps *)pData, width, height);
     return JNI_TRUE;
@@ -130,7 +129,16 @@ Java_sun_java2d_metal_MTLSurfaceData_initRTexture
      jlong pData, jboolean isOpaque,
      jint width, jint height)
 {
-    if (!MTLSurfaceData_initTexture((BMTLSDOps *)pData, isOpaque, JNI_TRUE, width, height))
+    if (!MTLSurfaceData_initTexture((BMTLSDOps *)pData, isOpaque, MTLSD_RT_TEXTURE, width, height))
+        return JNI_FALSE;
+    MTLSD_SetNativeDimensions(env, (BMTLSDOps *)pData, width, height);
+    return JNI_TRUE;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_sun_java2d_metal_MTLSurfaceData_initFlipBackbuffer
+    (JNIEnv *env, jobject mtlsd, jlong pData, jboolean isOpaque, jint width, jint height) {
+    if (!MTLSurfaceData_initTexture((BMTLSDOps *)pData, isOpaque, MTLSD_FLIP_BACKBUFFER, width, height))
         return JNI_FALSE;
     MTLSD_SetNativeDimensions(env, (BMTLSDOps *)pData, width, height);
     return JNI_TRUE;
