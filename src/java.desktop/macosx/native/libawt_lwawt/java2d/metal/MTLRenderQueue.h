@@ -57,7 +57,13 @@ enum {
  * These macros now simply delegate to the CheckPreviousOp() method.
  */
 #define CHECK_PREVIOUS_OP(op) MTLRenderQueue_CheckPreviousOp(op)
+#define CHECK_RENDER_OP(op, dst, disp) do {                                     \
+    MTLRenderQueue_CheckPreviousOp(op);                                         \
+    disp = disp || (dst != NULL && dst->drawableType == MTLSD_FLIP_BACKBUFFER); \
+} while(0)
+
 #define RESET_PREVIOUS_OP() {mtlPreviousOp = MTL_OP_INIT;}
+#define CHECK_RENDER_DEST(dst, disp) {disp = disp || (dst != NULL && dst->drawableType == MTLSD_FLIP_BACKBUFFER);}
 
 /*
  * Increments a pointer (buf) by the given number of bytes.

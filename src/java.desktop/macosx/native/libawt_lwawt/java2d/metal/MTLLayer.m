@@ -76,6 +76,7 @@ BOOL isDisplaySyncEnabled() {
     self.nextDrawableCount = 0;
     self.opaque = YES;
     self.redrawCount = 0;
+    self.displaySyncEnabled = isDisplaySyncEnabled();
     return self;
 }
 
@@ -91,6 +92,9 @@ BOOL isDisplaySyncEnabled() {
     }
 
     if (self.nextDrawableCount != 0) {
+        if (!isDisplaySyncEnabled()) {
+            [self performSelectorOnMainThread:@selector(setNeedsDisplay) withObject:nil waitUntilDone:NO];
+        }
         return;
     }
     [self stopRedraw:NO];
@@ -214,12 +218,11 @@ BOOL isDisplaySyncEnabled() {
                 [cbwrapper release];
             }];
         } else {
-            __block MTLLayer* layer = self;
-            [layer retain];
+            [self retain];
             [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
                 [cbwrapper release];
-                [layer startRedraw];
-                [layer release];
+                [self startRedraw];
+                [self release];
             }];
        }
        [commandbuf commit];
