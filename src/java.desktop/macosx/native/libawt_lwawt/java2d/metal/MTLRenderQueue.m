@@ -45,7 +45,7 @@ static MTLContext *mtlc = NULL;
 static BMTLSDOps *dstOps = NULL;
 jint mtlPreviousOp = MTL_OP_INIT;
 
-
+extern BOOL isDisplaySyncEnabled();
 extern void MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo);
 
 void MTLRenderQueue_CheckPreviousOp(jint op) {
@@ -99,7 +99,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
      jlong buf, jint limit)
 {
     unsigned char *b, *end;
-
+    BOOL sync = NO;
     J2dTraceLn1(J2D_TRACE_INFO,
                 "MTLRenderQueue_flushBuffer: limit=%d", limit);
 
@@ -124,7 +124,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 // draw ops
                 case sun_java2d_pipe_BufferedOpCodes_DRAW_LINE:
                 {
-                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                    CHECK_RENDER_OP(MTL_OP_OTHER, dstOps, sync);
 
                     if ([mtlc useXORComposite]) {
                         [mtlc commitCommandBuffer:YES display:NO];
@@ -140,7 +140,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 }
                 case sun_java2d_pipe_BufferedOpCodes_DRAW_RECT:
                 {
-                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                    CHECK_RENDER_OP(MTL_OP_OTHER, dstOps, sync);
 
                     if ([mtlc useXORComposite]) {
 
@@ -157,7 +157,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 }
                 case sun_java2d_pipe_BufferedOpCodes_DRAW_POLY:
                 {
-                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                    CHECK_RENDER_OP(MTL_OP_OTHER, dstOps, sync);
+
                     jint nPoints      = NEXT_INT(b);
                     jboolean isClosed = NEXT_BOOLEAN(b);
                     jint transX       = NEXT_INT(b);
@@ -192,7 +193,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 }
                 case sun_java2d_pipe_BufferedOpCodes_DRAW_PIXEL:
                 {
-                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                    CHECK_RENDER_OP(MTL_OP_OTHER, dstOps, sync);
 
                     if ([mtlc useXORComposite]) {
                         [mtlc commitCommandBuffer:YES display:NO];
@@ -208,7 +209,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 }
                 case sun_java2d_pipe_BufferedOpCodes_DRAW_SCANLINES:
                 {
-                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                    CHECK_RENDER_OP(MTL_OP_OTHER, dstOps, sync);
 
                     if ([mtlc useXORComposite]) {
                         [mtlc commitCommandBuffer:YES display:NO];
@@ -225,7 +226,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 }
                 case sun_java2d_pipe_BufferedOpCodes_DRAW_PARALLELOGRAM:
                 {
-                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                    CHECK_RENDER_OP(MTL_OP_OTHER, dstOps, sync);
 
                     if ([mtlc useXORComposite]) {
                         [mtlc commitCommandBuffer:YES display:NO];
@@ -252,7 +253,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 }
                 case sun_java2d_pipe_BufferedOpCodes_DRAW_AAPARALLELOGRAM:
                 {
-                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                    CHECK_RENDER_OP(MTL_OP_OTHER, dstOps, sync);
+
                     jfloat x11 = NEXT_FLOAT(b);
                     jfloat y11 = NEXT_FLOAT(b);
                     jfloat dx21 = NEXT_FLOAT(b);
@@ -273,7 +275,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 // fill ops
                 case sun_java2d_pipe_BufferedOpCodes_FILL_RECT:
                 {
-                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                    CHECK_RENDER_OP(MTL_OP_OTHER, dstOps, sync);
 
                     if ([mtlc useXORComposite]) {
                         [mtlc commitCommandBuffer:YES display:NO];
@@ -290,7 +292,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 }
                 case sun_java2d_pipe_BufferedOpCodes_FILL_SPANS:
                 {
-                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                    CHECK_RENDER_OP(MTL_OP_OTHER, dstOps, sync);
 
                     if ([mtlc useXORComposite]) {
                         [mtlc commitCommandBuffer:YES display:NO];
@@ -305,7 +307,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 }
                 case sun_java2d_pipe_BufferedOpCodes_FILL_PARALLELOGRAM:
                 {
-                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                    CHECK_RENDER_OP(MTL_OP_OTHER, dstOps, sync);
 
                     if ([mtlc useXORComposite]) {
                         [mtlc commitCommandBuffer:YES display:NO];
@@ -328,7 +330,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 }
                 case sun_java2d_pipe_BufferedOpCodes_FILL_AAPARALLELOGRAM:
                 {
-                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                    CHECK_RENDER_OP(MTL_OP_OTHER, dstOps, sync);
                     jfloat x11 = NEXT_FLOAT(b);
                     jfloat y11 = NEXT_FLOAT(b);
                     jfloat dx21 = NEXT_FLOAT(b);
@@ -345,7 +347,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 // text-related ops
                 case sun_java2d_pipe_BufferedOpCodes_DRAW_GLYPH_LIST:
                 {
-                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                    CHECK_RENDER_OP(MTL_OP_OTHER, dstOps, sync);
 
                     if ([mtlc useXORComposite]) {
                         [mtlc commitCommandBuffer:YES display:NO];
@@ -388,7 +390,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 // copy-related ops
                 case sun_java2d_pipe_BufferedOpCodes_COPY_AREA:
                 {
-                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                    CHECK_RENDER_OP(MTL_OP_OTHER, dstOps, sync);
                     jint x  = NEXT_INT(b);
                     jint y  = NEXT_INT(b);
                     jint w  = NEXT_INT(b);
@@ -420,6 +422,10 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                                                         OFFSET_XFORM);
                     jboolean isoblit  = EXTRACT_BOOLEAN(packedParams,
                                                         OFFSET_ISOBLIT);
+
+                    BMTLSDOps *dst = (BMTLSDOps *)jlong_to_ptr(pDst);
+                    CHECK_RENDER_DEST(dst, sync);
+
                     if (isoblit) {
                         MTLBlitLoops_IsoBlit(env, mtlc, pSrc, pDst,
                                              xform, hint, texture,
@@ -463,7 +469,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     unsigned char *pMask = (masklen > 0) ? b : NULL;
                     if (mtlc == nil)
                         return;
-                    CHECK_PREVIOUS_OP(MTL_OP_MASK_OP);
+                    CHECK_RENDER_OP(MTL_OP_MASK_OP, dstOps, sync);
                     MTLMaskFill_MaskFill(mtlc, dstOps, x, y, w, h,
                                          maskoff, maskscan, masklen, pMask);
                     SKIP_BYTES(b, masklen);
@@ -471,7 +477,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 }
                 case sun_java2d_pipe_BufferedOpCodes_MASK_BLIT:
                 {
-                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                    CHECK_RENDER_OP(MTL_OP_OTHER, dstOps, sync);
                     jint dstx     = NEXT_INT(b);
                     jint dsty     = NEXT_INT(b);
                     jint width    = NEXT_INT(b);
@@ -581,7 +587,12 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     if (mtlc != NULL) {
                         [mtlc.glyphCacheAA free];
                         [mtlc.glyphCacheLCD free];
-                        [mtlc commitCommandBuffer:NO display:NO];
+                        if (isDisplaySyncEnabled() && IS_OUTPUT_DEST(dstOps)) {
+                            [mtlc commitCommandBuffer:YES display:YES];
+                            sync = NO;
+                        } else {
+                            [mtlc commitCommandBuffer:NO display:NO];
+                        }
                     }
                     mtlc = [MTLContext setSurfacesEnv:env src:pSrc dst:pDst];
                     dstOps = (BMTLSDOps *)jlong_to_ptr(pDst);
@@ -651,6 +662,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 case sun_java2d_pipe_BufferedOpCodes_SYNC:
                 {
                     CHECK_PREVIOUS_OP(MTL_OP_SYNC);
+                    sync = YES;
                     break;
                 }
 
@@ -861,7 +873,11 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 MTLVertexCache_DisableMaskCache(mtlc);
             }
 
-            [mtlc commitCommandBuffer:NO display:YES];
+            if (isDisplaySyncEnabled()) {
+                [mtlc commitCommandBuffer:NO display:YES];
+            } else {
+                [mtlc commitCommandBuffer:sync display:YES];
+            }
         }
         RESET_PREVIOUS_OP();
     }
