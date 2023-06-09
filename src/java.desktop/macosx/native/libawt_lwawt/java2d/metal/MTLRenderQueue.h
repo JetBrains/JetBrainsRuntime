@@ -57,6 +57,18 @@ enum {
  * These macros now simply delegate to the CheckPreviousOp() method.
  */
 #define CHECK_PREVIOUS_OP(op) MTLRenderQueue_CheckPreviousOp(op)
+#define IS_OUTPUT_DEST(dstOps) ((dstOps) != NULL && (dstOps)->drawableType == MTLSD_FLIP_BACKBUFFER)
+#define CHECK_RENDER_DEST(dst, disp)        \
+    do {                                    \
+        disp = disp || IS_OUTPUT_DEST(dst); \
+    } while(0)
+
+#define CHECK_RENDER_OP(op, dst, disp)      \
+    do {                                    \
+        MTLRenderQueue_CheckPreviousOp(op); \
+        CHECK_RENDER_DEST(dst, disp);       \
+    } while(0)
+
 #define RESET_PREVIOUS_OP() {mtlPreviousOp = MTL_OP_INIT;}
 
 /*
