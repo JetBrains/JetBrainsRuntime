@@ -7,10 +7,8 @@ javax/imageio/spi/AppletContextTest/BadPluginConfigurationTest.sh nobug generic-
 #
 sun/awt/dnd/8024061/bug8024061.java nobug windows-all
 java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java nobug windows-all
-java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java nobug windows-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java nobug windows-all
 java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java nobug windows-all
-java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.java nobug windows-all
 java/awt/MenuBar/SeparatorsNavigation/SeparatorsNavigation.java nobug windows-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java nobug windows-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java nobug windows-all
