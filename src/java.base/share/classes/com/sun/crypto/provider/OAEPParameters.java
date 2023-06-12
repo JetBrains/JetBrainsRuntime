@@ -55,24 +55,10 @@ public final class OAEPParameters extends AlgorithmParametersSpi {
     private String mdName;
     private MGF1ParameterSpec mgfSpec;
     private byte[] p;
-    private static ObjectIdentifier OID_MGF1;
-    private static ObjectIdentifier OID_PSpecified;
-
-    static {
-        try {
-            OID_MGF1 = new ObjectIdentifier(new int[] {1,2,840,113549,1,1,8});
-        } catch (IOException ioe) {
-            // should not happen
-            OID_MGF1 = null;
-        }
-        try {
-            OID_PSpecified =
-                new ObjectIdentifier(new int[] {1,2,840,113549,1,1,9});
-        } catch (IOException ioe) {
-            // should not happen
-            OID_PSpecified = null;
-        }
-    }
+    private static ObjectIdentifier OID_MGF1 =
+            ObjectIdentifier.of1("1.2.840.113549.1.1.8");
+    private static ObjectIdentifier OID_PSpecified =
+            ObjectIdentifier.of1("1.2.840.113549.1.1.9");
 
     public OAEPParameters() {
     }
