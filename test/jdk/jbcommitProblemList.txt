@@ -8,7 +8,6 @@ javax/imageio/spi/AppletContextTest/BadPluginConfigurationTest.sh nobug generic-
 sun/awt/dnd/8024061/bug8024061.java nobug windows-all
 java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java nobug windows-all
 java/awt/hidpi/SetMaximizedBoundsTest.java nobug windows-all
-java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java nobug windows-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java nobug windows-all
 java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayoutTraversalTest.java nobug windows-all
 java/awt/Focus/KeyEventForBadFocusOwnerTest/KeyEventForBadFocusOwnerTest.java nobug windows-all
@@ -16,14 +15,11 @@ java/awt/Focus/NoAutotransferToDisabledCompTest/NoAutotransferToDisabledCompTest
 java/awt/Focus/ShowFrameCheckForegroundTest/ShowFrameCheckForegroundTest.java nobug windows-all
 java/awt/Focus/TranserFocusToWindow/TranserFocusToWindow.java nobug windows-all,macosx-all,linux-all
 java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java nobug windows-all
-java/awt/Focus/WindowInitialFocusTest/WindowInitialFocusTest.java nobug windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java nobug windows-all
-java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.java nobug windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.java nobug windows-all
 java/awt/MenuBar/SeparatorsNavigation/SeparatorsNavigation.java nobug windows-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java nobug windows-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java nobug windows-all
-java/awt/Mouse/EnterExitEvents/ModalDialogEnterExitEventsTest.java nobug windows-all,linux-all
 java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.java JBR-4354 windows-all,linux-all # linux: JBR-4354
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java nobug windows-all
 java/awt/Paint/PaintNativeOnUpdate.java nobug windows-all
@@ -52,7 +48,6 @@ javax/swing/JEditorPane/8195095/ImageViewTest.java nobug windows-all
 javax/swing/JFrame/8016356/bug8016356.java nobug windows-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java nobug windows-all
 javax/swing/JInternalFrame/5066752/bug5066752.java nobug windows-all
-javax/swing/JInternalFrame/6288609/TestJInternalFrameDispose.java nobug windows-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java nobug windows-all,linux-all
 javax/swing/JInternalFrame/Test6505027.java nobug windows-all
 javax/swing/JLabel/7004134/bug7004134.java nobug linux-all
@@ -93,13 +88,11 @@ javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java 8159131 linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/SetShapeAndClickSwing.java 8013450 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,nobug linux-all,windows-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java nobug windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java 8024627 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentWindowClickSwing.java nobug windows-all
 javax/swing/plaf/nimbus/8057791/bug8057791.java nobug windows-all
 javax/swing/plaf/nimbus/TestNimbusOverride.java nobug linux-all,windows-all
 javax/swing/plaf/windows/6921687/bug6921687.java nobug windows-all
-javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java nobug windows-all
 javax/swing/SwingUtilities/7088744/bug7088744.java nobug windows-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java nobug windows-all
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java nobug windows-all
