@@ -24,6 +24,7 @@
 /*
  * @test
  * @bug 8240903
+ * @key intermittent
  * @summary Test consistency of moduleHashes attribute between builds
  * @library /test/lib
  * @run testng HashesOrderTest
