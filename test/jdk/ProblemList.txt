@@ -625,6 +625,8 @@ javax/sound/sampled/Clip/Drain/ClipDrain.java          7062792 generic-all
 
 # jdk_swing
 
+javax/swing/JComboBox/bug4890345.java JBR-5799 windows-all
+
 javax/swing/plaf/basic/BasicTextUI/8001470/bug8001470.java 8233177 linux-all,windows-all
 javax/swing/plaf/basic/BasicDirectoryModel/LoaderThreadCount.java 8333880 windows-all
 
