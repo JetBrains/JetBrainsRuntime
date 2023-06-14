@@ -112,7 +112,7 @@ import java.util.stream.Collectors;
  *      }
  *
  *      // test methods...
- *      @Test
+ *      {@literal @}Test
  *      void test() {
  *          javadoc(<i>args</i>);
  *          checkExit(Exit.OK);
