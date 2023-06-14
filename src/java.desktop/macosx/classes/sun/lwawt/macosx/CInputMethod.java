@@ -37,13 +37,10 @@ import java.lang.Character.Subset;
 import java.lang.reflect.InvocationTargetException;
 import java.text.AttributedCharacterIterator.Attribute;
 import java.text.*;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.swing.text.JTextComponent;
 
 import sun.awt.AWTAccessor;
-import sun.awt.AppContext;
-import sun.awt.SunToolkit;
 import sun.awt.im.InputMethodAdapter;
 import sun.lwawt.*;
 
@@ -54,6 +51,7 @@ public class CInputMethod extends InputMethodAdapter {
     private volatile Component fAwtFocussedComponent;
     private LWComponentPeer<?, ?> fAwtFocussedComponentPeer;
     private boolean isActive;
+    private boolean isTemporarilyDeactivated;
 
     private static Map<TextAttribute, Integer>[] sHighlightStyles;
 
@@ -238,10 +236,12 @@ public class CInputMethod extends InputMethodAdapter {
      */
     public void activate() {
         isActive = true;
+        isTemporarilyDeactivated = false;
     }
 
     public void deactivate(boolean isTemporary) {
         isActive = false;
+        isTemporarilyDeactivated = isTemporary;
     }
 
     /**
@@ -284,10 +284,10 @@ public class CInputMethod extends InputMethodAdapter {
      * to talk to when responding to key events.
      */
     protected void setAWTFocussedComponent(Component component) {
-        if (component == null || component == fAwtFocussedComponent) {
+        if ((isTemporarilyDeactivated && component == null) || component == fAwtFocussedComponent) {
             // Sometimes input happens for the natively unfocused window
             // (e.g. in case of system emoji picker),
-            // so we don't reset last focused component on focus lost.
+            // so we don't reset last focused component on temporary focus lost.
             return;
         }
 
