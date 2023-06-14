@@ -24,10 +24,10 @@
 # Utilities for shell tests
 
 : ${TESTSRC=.} ${TESTCLASSES=.}
-  java="${TESTJAVA+${TESTJAVA}/bin/}java"
- javac="${TESTJAVA+${TESTJAVA}/bin/}javac"
-   jar="${TESTJAVA+${TESTJAVA}/bin/}jar"
-jimage="${TESTJAVA+${TESTJAVA}/bin/}jimage"
+  java="${TESTJAVA+${TESTJAVA}/bin/}java${EXE_SUFFIX}"
+ javac="${TESTJAVA+${TESTJAVA}/bin/}javac${EXE_SUFFIX}"
+   jar="${TESTJAVA+${TESTJAVA}/bin/}jar${EXE_SUFFIX}"
+jimage="${TESTJAVA+${TESTJAVA}/bin/}jimage${EXE_SUFFIX}"
 
 case `uname -s` in
   Windows*|CYGWIN*|MSYS*|MINGW*)
