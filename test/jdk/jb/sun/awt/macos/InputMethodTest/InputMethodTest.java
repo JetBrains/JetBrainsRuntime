@@ -35,9 +35,9 @@ import static java.awt.event.KeyEvent.KEY_PRESSED;
 import static java.awt.event.KeyEvent.KEY_RELEASED;
 
 public class InputMethodTest {
-    private static JFrame frame;
-    private static JTextArea textArea;
-    private static Robot robot;
+    public static JFrame frame;
+    public static JTextArea textArea;
+    public static Robot robot;
     private static String currentTest = "";
     private static String currentSection = "";
     private static String initialLayout;
@@ -47,6 +47,7 @@ public class InputMethodTest {
 
     private enum TestCases {
         DeadKeysTest (new DeadKeysTest()),
+        FocusMoveUncommitedCharactersTest (new FocusMoveUncommitedCharactersTest()),
         KeyCodesTest (new KeyCodesTest()),
         NextAppWinKeyTestDead (new NextAppWinKeyTest(true)),
         NextAppWinKeyTestNormal (new NextAppWinKeyTest(false)),
@@ -106,7 +107,7 @@ public class InputMethodTest {
 
         frame = new JFrame("InputMethodTest");
         frame.setVisible(true);
-        frame.setSize(300, 300);
+        frame.setSize(600, 300);
         frame.setLocationRelativeTo(null);
 
         textArea = new JTextArea();
@@ -128,7 +129,7 @@ public class InputMethodTest {
         });
 
         frame.setLayout(new BorderLayout());
-        frame.getContentPane().add(textArea, BorderLayout.CENTER);
+        frame.getContentPane().add(textArea, BorderLayout.NORTH);
 
         textArea.grabFocus();
         try {
