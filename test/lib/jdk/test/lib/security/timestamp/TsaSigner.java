@@ -170,7 +170,7 @@ public class TsaSigner {
 
             String policyId = respParam.policyId();
             print("policyId", policyId);
-            tstInfoOut.putOID(new ObjectIdentifier(policyId));
+            tstInfoOut.putOID(ObjectIdentifier.of(policyId));
 
             String digestAlgo = respParam.digestAlgo();
             print("digestAlgo", digestAlgo);
@@ -204,7 +204,7 @@ public class TsaSigner {
             eContentOut.putOctetString(tstInfoSeqData);
 
             ContentInfo eContentInfo = new ContentInfo(
-                    new ObjectIdentifier("1.2.840.113549.1.9.16.1.4"),
+                    ObjectIdentifier.of("1.2.840.113549.1.9.16.1.4"),
                     new DerValue(eContentOut.toByteArray()));
 
             String defaultSigAlgo =  AlgorithmId.getDefaultSigAlgForKey(

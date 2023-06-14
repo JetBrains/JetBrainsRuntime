@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1237,7 +1237,7 @@ class AVAKeyword {
                 return ak.oid;
             }
         } else {
-            return new ObjectIdentifier(oidString);
+            return ObjectIdentifier.of(oidString);
         }
 
         // no keyword found, check if OID string
@@ -1255,7 +1255,7 @@ class AVAKeyword {
         if (number == false) {
             throw new IOException("Invalid keyword \"" + keyword + "\"");
         }
-        return new ObjectIdentifier(keyword);
+        return ObjectIdentifier.of(keyword);
     }
 
     /**

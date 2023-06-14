@@ -112,9 +112,9 @@ public final class KeychainStore extends KeyStoreSpi {
      * PKCS12 bag we get from the Keychain.
      */
     private static ObjectIdentifier PKCS8ShroudedKeyBag_OID =
-            ObjectIdentifier.of1("1.2.840.113549.1.12.10.1.2");
+            ObjectIdentifier.of(KnownOIDs.PKCS8ShroudedKeyBag);
     private static ObjectIdentifier pbeWithSHAAnd3KeyTripleDESCBC_OID =
-            ObjectIdentifier.of1("1.2.840.113549.1.12.1.3");
+            ObjectIdentifier.of(KnownOIDs.PBEWithSHA1AndDESede);
 
     /**
      * Constnats used in PBE decryption.

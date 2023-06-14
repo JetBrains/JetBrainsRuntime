@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,7 @@ import java.security.*;
 import java.util.*;
 import sun.security.rsa.SunRsaSignEntries;
 import static sun.security.util.SecurityConstants.PROVIDER_VER;
-import static sun.security.provider.SunEntries.createAliases;
+import static sun.security.util.SecurityProviderConstants.*;
 
 /**
  * The JSSE provider.
@@ -161,8 +161,8 @@ public abstract class SunJSSE extends java.security.Provider {
     }
 
     private void ps(String type, String algo, String cn,
-            List<String> aliases, HashMap<String, String> attrs) {
-        putService(new Provider.Service(this, type, algo, cn, aliases, attrs));
+            List<String> a, HashMap<String, String> attrs) {
+        putService(new Provider.Service(this, type, algo, cn, a, attrs));
     }
 
     private void doRegister(boolean isfips) {
@@ -180,17 +180,17 @@ public abstract class SunJSSE extends java.security.Provider {
             "sun.security.ssl.KeyManagerFactoryImpl$SunX509", null, null);
         ps("KeyManagerFactory", "NewSunX509",
             "sun.security.ssl.KeyManagerFactoryImpl$X509",
-            createAliases("PKIX"), null);
+            List.of("PKIX"), null);
 
         ps("TrustManagerFactory", "SunX509",
             "sun.security.ssl.TrustManagerFactoryImpl$SimpleFactory", null, null);
         ps("TrustManagerFactory", "PKIX",
             "sun.security.ssl.TrustManagerFactoryImpl$PKIXFactory",
-            createAliases("SunPKIX", "X509", "X.509"), null);
+           List.of("SunPKIX", "X509", "X.509"), null);
 
         ps("SSLContext", "TLSv1",
             "sun.security.ssl.SSLContextImpl$TLS10Context",
-            (isfips? null : createAliases("SSLv3")), null);
+            (isfips? null : List.of("SSLv3")), null);
         ps("SSLContext", "TLSv1.1",
             "sun.security.ssl.SSLContextImpl$TLS11Context", null, null);
         ps("SSLContext", "TLSv1.2",
@@ -199,7 +199,7 @@ public abstract class SunJSSE extends java.security.Provider {
             "sun.security.ssl.SSLContextImpl$TLS13Context", null, null);
         ps("SSLContext", "TLS",
             "sun.security.ssl.SSLContextImpl$TLSContext",
-            (isfips? null : createAliases("SSL")), null);
+            (isfips? null : List.of("SSL")), null);
 
         ps("SSLContext", "DTLSv1.0",
             "sun.security.ssl.SSLContextImpl$DTLS10Context", null, null);

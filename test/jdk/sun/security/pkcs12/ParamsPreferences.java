@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,7 @@ import static sun.security.x509.AlgorithmId.*;
 
 /*
  * @test
- * @bug 8076190 8153005 8266293
+ * @bug 8076190 8242151 8153005 8266293
  * @library /test/lib
  * @modules java.base/sun.security.pkcs
  *          java.base/sun.security.x509

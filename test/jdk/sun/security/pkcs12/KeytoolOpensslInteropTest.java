@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug 8076190 8153005 8266182
+ * @bug 8076190 8242151 8153005 8266182
  * @summary This is java keytool <-> openssl interop test. This test generates
  *          some openssl keystores on the fly, java operates on it and
  *          vice versa.

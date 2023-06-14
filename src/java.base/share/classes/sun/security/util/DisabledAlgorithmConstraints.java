@@ -261,7 +261,7 @@ public class DisabledAlgorithmConstraints extends AbstractAlgorithmConstraints {
         if (key instanceof ECKey) {
             NamedCurve nc = CurveDB.lookup(((ECKey)key).getParams());
             return (nc == null ? List.of()
-                               : Arrays.asList(CurveDB.getNamesByOID(nc.getObjectId())));
+                               : Arrays.asList(nc.getNameAndAliases()));
         } else if (key instanceof XECKey) {
             return List.of(
                 ((NamedParameterSpec)((XECKey)key).getParams()).getName());

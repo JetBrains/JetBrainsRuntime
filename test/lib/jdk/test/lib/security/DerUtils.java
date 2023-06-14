@@ -101,9 +101,9 @@ public class DerUtils {
         if (expected instanceof ObjectIdentifier) {
             oid = (ObjectIdentifier)expected;
         } else if (expected instanceof KnownOIDs) {
-            oid = new ObjectIdentifier(((KnownOIDs) expected).value());
+            oid = ObjectIdentifier.of(((KnownOIDs) expected).value());
         } else if (expected instanceof String) {
-            oid = new ObjectIdentifier(KnownOIDs.findMatch((String)expected).value());
+            oid = ObjectIdentifier.of(KnownOIDs.findMatch((String)expected).value());
         } else {
             throw new IllegalArgumentException(expected.toString());
         }
