@@ -76,7 +76,9 @@ BOOL isDisplaySyncEnabled() {
     self.nextDrawableCount = 0;
     self.opaque = YES;
     self.redrawCount = 0;
-    self.displaySyncEnabled = isDisplaySyncEnabled();
+    if (@available(macOS 10.13, *)) {
+        self.displaySyncEnabled = isDisplaySyncEnabled();
+    }
     return self;
 }
 
