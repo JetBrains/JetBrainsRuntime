@@ -124,7 +124,7 @@ public class Basic {
         /**
          * Test: Enumerate all FileStores
          */
-        if (FileUtils.areFileSystemsAccessible()) {
+        if (FileUtils.areAllMountPointsAccessible()) {
             FileStore prev = null;
             for (FileStore store: FileSystems.getDefault().getFileStores()) {
                 System.out.format("%s (name=%s type=%s)\n", store, store.name(),
