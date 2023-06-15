@@ -2259,10 +2259,11 @@ void VMError::record_oome_stack(const char *message) {
   MutexLocker ml(OOMEStacks_lock);
 
   static char buf[O_BUFLEN];
+  address lastpc = nullptr;
 
   stringStream st(_oome_stacktrace[_oome_free_index], OOME_STACKTRACE_BUFSIZE);
   st.print_cr("OutOfMemoryError(\"%s\"):", message);
-  if (os::platform_print_native_stack(&st, _context, buf, sizeof(buf))) {
+  if (os::platform_print_native_stack(&st, _context, buf, sizeof(buf), lastpc)) {
     // We have printed the native stack in platform-specific code
     // Windows/x64 needs special handling.
   } else {
