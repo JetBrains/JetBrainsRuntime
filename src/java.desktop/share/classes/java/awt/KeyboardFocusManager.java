@@ -26,6 +26,7 @@ package java.awt;
 
 import java.awt.event.FocusEvent;
 import java.awt.event.InputEvent;
+import java.awt.event.InvocationEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
 
@@ -2669,11 +2670,8 @@ public abstract class KeyboardFocusManager
                 if (hwFocusRequest.lightweightRequests.size() > 0) {
                     currentLightweightRequests =
                         hwFocusRequest.lightweightRequests;
-                    EventQueue.invokeLater(new Runnable() {
-                            public void run() {
-                                processCurrentLightweightRequests();
-                            }
-                        });
+                    SunToolkit.postPriorityEvent(new InvocationEvent(source,
+                            KeyboardFocusManager::processCurrentLightweightRequests));
                 }
 
                 // 'opposite' will be fixed by
