@@ -74,7 +74,7 @@ public interface FontExtensions {
         }
     }
 
-    class Features extends TreeMap<FeatureTag, Integer> {
+    final class Features extends TreeMap<FeatureTag, Integer> {
         @Serial
         private static final long serialVersionUID = 1L;
 
