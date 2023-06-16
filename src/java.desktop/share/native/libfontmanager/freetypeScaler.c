@@ -850,7 +850,14 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
                 RenderingFontHints renderingFontHints;
                 int status = setupRenderingFontHints(cfontFamilyName, NULL, fcSize, &renderingFontHints);
                 if (status != 0) {
-                    goto default_;
+                    if (cfontPath) {
+                        (*env)->ReleaseStringUTFChars(env, jfontPath, cfontPath);
+                    }
+                    if (cfontFamilyName) {
+                        (*env)->ReleaseStringUTFChars(env, jfontFamilyName, cfontFamilyName);
+                    }
+                    setDefaultScalerSettings(context);
+                    return 0;
                 }
 
                 cachedMatch.fcSize = fcSize;
@@ -1020,22 +1027,16 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
 
             if (logFC) fprintf(stderr, "\n");
 
-#else
-            goto default_;
+            if (cfontPath) {
+                (*env)->ReleaseStringUTFChars(env, jfontPath, cfontPath);
+            }
+            if (cfontFamilyName) {
+                (*env)->ReleaseStringUTFChars(env, jfontFamilyName, cfontFamilyName);
+            }
 #endif
         }
 
         FT_Library_SetLcdFilter(scalerInfo->library, FT_LCD_FILTER_DEFAULT);
-        return 0;
-
-    default_:
-        if (cfontPath) {
-            (*env)->ReleaseStringUTFChars(env, jfontPath, cfontPath);
-        }
-        if (cfontFamilyName) {
-            (*env)->ReleaseStringUTFChars(env, jfontFamilyName, cfontFamilyName);
-        }
-        setDefaultScalerSettings(context);
     }
 
     return 0;
