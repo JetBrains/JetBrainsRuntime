@@ -4452,6 +4452,7 @@ class LightweightDispatcher implements java.io.Serializable, AWTEventListener {
     private static final PlatformLogger eventLog = PlatformLogger.getLogger("java.awt.event.LightweightDispatcher");
 
     private static final int BUTTONS_DOWN_MASK;
+    private  static final int BUTTONS_COUNT;
 
     static {
         int[] buttonsDownMask = AWTAccessor.getInputEventAccessor().
@@ -4461,6 +4462,7 @@ class LightweightDispatcher implements java.io.Serializable, AWTEventListener {
             mask |= buttonDownMask;
         }
         BUTTONS_DOWN_MASK = mask;
+        BUTTONS_COUNT = buttonsDownMask.length;
     }
 
     LightweightDispatcher(Container nativeContainer) {
@@ -4880,6 +4882,19 @@ class LightweightDispatcher implements java.io.Serializable, AWTEventListener {
             return; // mouse is over another hw component or target is disabled
         }
 
+        int modifiers = e.getModifiersEx();
+        int button = e.getButton();
+        if ((id == MouseEvent.MOUSE_ENTERED || id == MouseEvent.MOUSE_EXITED) &&
+                (button > 0 && button <= BUTTONS_COUNT)) {
+            // generated entered/exited events logically come before the base event (and are dispatched so),
+            // hence we need to adjust the modifiers accordingly
+            if (e.getID() == MouseEvent.MOUSE_PRESSED) {
+                modifiers &= ~InputEvent.getMaskForButton(button);
+            } else if (e.getID() == MouseEvent.MOUSE_RELEASED) {
+                modifiers |= InputEvent.getMaskForButton(button);
+            }
+        }
+
         int x = e.getX(), y = e.getY();
         Component component;
 
@@ -4901,7 +4916,7 @@ class LightweightDispatcher implements java.io.Serializable, AWTEventListener {
                 retargeted = new MouseWheelEvent(target,
                                       id,
                                        e.getWhen(),
-                                       e.getModifiersEx() | e.getModifiers(),
+                                       modifiers,
                                        x,
                                        y,
                                        e.getXOnScreen(),
@@ -4917,14 +4932,14 @@ class LightweightDispatcher implements java.io.Serializable, AWTEventListener {
                 retargeted = new MouseEvent(target,
                                             id,
                                             e.getWhen(),
-                                            e.getModifiersEx() | e.getModifiers(),
+                                            modifiers,
                                             x,
                                             y,
                                             e.getXOnScreen(),
                                             e.getYOnScreen(),
                                             e.getClickCount(),
                                             e.isPopupTrigger(),
-                                            e.getButton());
+                                            button);
                 MouseEventAccessor meAccessor = AWTAccessor.getMouseEventAccessor();
                 meAccessor.setCausedByTouchEvent(retargeted,
                     meAccessor.isCausedByTouchEvent(e));
