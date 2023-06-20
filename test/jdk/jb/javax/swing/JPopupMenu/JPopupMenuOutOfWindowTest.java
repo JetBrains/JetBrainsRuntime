@@ -48,7 +48,19 @@ public class JPopupMenuOutOfWindowTest {
             robot.mouseMove(clickLocation.x, clickLocation.y);
             robot.mousePress(InputEvent.BUTTON3_DOWN_MASK);
             robot.mouseRelease(InputEvent.BUTTON3_DOWN_MASK);
-            robot.delay(1000);
+
+            for (int i = 0; i < 10; i++) {
+                robot.delay(500);
+                System.out.println("Check for menu visibility, it: " + i);
+                if (menu.isVisible()) {
+                    System.out.println("Menu is visible, it: " + i);
+                    break;
+                }
+            }
+
+            if (!menu.isVisible()) {
+                System.out.println("TEST FAILED: menu didn't become visible in 5 seconds");
+            }
 
             for (int i = 0; i < BUTTONS_COUNT; i++) {
                 JMenuItem item = menuItems[i];
@@ -89,9 +101,15 @@ public class JPopupMenuOutOfWindowTest {
         panel.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
+                System.out.println("Mouse pressed. Event: " + e.getButton());
                 if (e.getButton() == 3) {
                     toggleMenu(e);
                 }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                System.out.println("Mouse released. Event: " + e.getButton());
             }
         });
 
@@ -122,6 +140,7 @@ public class JPopupMenuOutOfWindowTest {
      * @param e MouseEvent
      */
     private static void toggleMenu(MouseEvent e) {
+        System.out.println("Menu toggled by event: " + e.toString());
         menu.setLocation(e.getLocationOnScreen().x, e.getLocationOnScreen().y);
         menu.setVisible(!menu.isShowing());
     }
