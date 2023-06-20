@@ -2185,28 +2185,25 @@ void VMError::init() {
 }
 
 void VMError::record_oome_stack(const char *message) {
-  MutexLocker ml(OOMEStacks_lock);
-
-  static char buf[O_BUFLEN];
-  address lastpc = nullptr;
-
-  stringStream st(_oome_stacktrace[_oome_free_index], OOME_STACKTRACE_BUFSIZE);
-  st.print_cr("OutOfMemoryError(\"%s\"):", message);
-  if (os::platform_print_native_stack(&st, _context, buf, sizeof(buf), lastpc)) {
-    // We have printed the native stack in platform-specific code
-    // Windows/x64 needs special handling.
-  } else {
-    print_native_stack(&st, os::current_frame(), Thread::current(), true, -1, buf, sizeof(buf));
-    _print_native_stack_used = true;
+  Thread * thread = Thread::current();
+  if (!thread->is_Java_thread()) {
+    // The following code can't work in non-Java thread.
+    // Besides, it's not a true OOM *exception* if there's no Java on the stack.
+    return;
   }
 
-  st.cr();
+  {
+    MutexLocker ml(OOMEStacks_lock);
+    ResourceMark rm;
 
-  if (Thread::current()->is_Java_thread()) {
-    print_stack_trace(&st, JavaThread::current(), buf, sizeof(buf));
+    stringStream st(_oome_stacktrace[_oome_free_index], OOME_STACKTRACE_BUFSIZE);
+    st.print_cr("OutOfMemoryError(\"%s\") on the thread \"%s\"", message, thread->name());
+    JavaThread::cast(thread)->print_stack_on(&st);
+
+    st.cr();
+
+    _oome_free_index = (_oome_free_index + 1) % OOME_STACKTRACE_COUNT;
   }
-
-  _oome_free_index = (_oome_free_index + 1) % OOME_STACKTRACE_COUNT;
 }
 
 void VMError::print_oome_stacks(outputStream *st) {
