@@ -46,6 +46,7 @@
 #include "utilities/growableArray.hpp"
 #include "utilities/macros.hpp"
 #include "utilities/ostream.hpp"
+#include "utilities/vmError.hpp"
 
 volatile size_t ClassLoaderDataGraph::_num_array_classes = 0;
 volatile size_t ClassLoaderDataGraph::_num_instance_classes = 0;
@@ -186,7 +187,8 @@ ClassLoaderData* ClassLoaderDataGraph::add(Handle loader, bool has_class_mirror_
 inline void assert_is_safepoint_or_gc() {
   assert(SafepointSynchronize::is_at_safepoint() ||
          Thread::current()->is_ConcurrentGC_thread() ||
-         Thread::current()->is_Worker_thread(),
+         Thread::current()->is_Worker_thread() ||
+         VMError::is_error_reported(), // don't crash here again if we have already crashed
          "Must be called by safepoint or GC");
 }
 
