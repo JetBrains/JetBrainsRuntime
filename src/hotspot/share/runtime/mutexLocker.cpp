@@ -361,7 +361,7 @@ void mutex_init() {
   def(JVMCI_lock                   , PaddedMonitor, nonleaf+2,   true,  _safepoint_check_always);
 #endif
 
-  def(OOMEStacks_lock              , PaddedMutex  , safepoint,   true, _safepoint_check_never);
+  def(OOMEStacks_lock              , PaddedMutex  , safepoint,   true, _safepoint_check_always);
 }
 
 GCMutexLocker::GCMutexLocker(Mutex* mutex) {
