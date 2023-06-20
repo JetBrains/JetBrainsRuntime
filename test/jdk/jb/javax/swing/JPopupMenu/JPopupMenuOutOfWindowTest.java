@@ -48,7 +48,19 @@ public class JPopupMenuOutOfWindowTest {
             robot.mouseMove(clickLocation.x, clickLocation.y);
             robot.mousePress(InputEvent.BUTTON3_DOWN_MASK);
             robot.mouseRelease(InputEvent.BUTTON3_DOWN_MASK);
-            robot.delay(1000);
+
+            for (int i = 0; i < 10; i++) {
+                robot.delay(500);
+                System.out.println("Check for menu visibility, it: " + i);
+                if (menu.isVisible()) {
+                    System.out.println("Menu is visible, it: " + i);
+                    break;
+                }
+            }
+
+            if (!menu.isVisible()) {
+                System.out.println("TEST FAILED: menu didn't become visible in 5 seconds");
+            }
 
             for (int i = 0; i < BUTTONS_COUNT; i++) {
                 JMenuItem item = menuItems[i];
