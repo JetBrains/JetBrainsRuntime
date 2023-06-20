@@ -23,12 +23,14 @@
 
 /**
  * @test
+ * @library /test/lib
  * @bug 8179559
  */
 
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.Enumeration;
+import jdk.test.lib.Platform;
 
 public class NetworkInterfaceRetrievalTests {
     public static void main(String[] args) throws Exception {
@@ -39,6 +41,12 @@ public class NetworkInterfaceRetrievalTests {
                     .getNetworkInterfaces();
             while (en.hasMoreElements()) {
                 NetworkInterface ni = en.nextElement();
+
+                //JDK-8230132: Should not test on Windows with Teredo Tunneling Pseudo-Interface
+                String dName = ni.getDisplayName();
+                if (Platform.isWindows() && dName != null && dName.contains("Teredo"))
+                    continue;
+
                 Enumeration<InetAddress> addrs = ni.getInetAddresses();
                 System.out.println("############ Checking network interface + "
                         + ni + " #############");
