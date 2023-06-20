@@ -1125,8 +1125,9 @@ public class TrueTypeFont extends FileFont {
             return "0";
         }
         // removing leading zeros and hex parts from version e.g. 00010.002.0ab12.300.040 -> 10.2.300.40
-        return Arrays.stream(matcher.group().split("\\.")).map(s -> (s.replaceFirst("^0*", ""))).
-                map(s -> s.isEmpty() ? "0" : s).filter(s -> s.matches("\\d+")).collect(Collectors.joining("."));
+        String res = Arrays.stream(matcher.group().split("\\.")).filter(s -> s.matches("\\d+")).
+                map(s -> (s.replaceFirst("^0*", ""))).map(s -> s.isEmpty() ? "0" : s).collect(Collectors.joining("."));
+        return !res.isEmpty() ? res : "0";
     }
 
     public String getVersion() {
