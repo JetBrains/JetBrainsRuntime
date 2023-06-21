@@ -45,7 +45,8 @@ size_t RunningCounters::reserved_words_class() {
 }
 
 size_t RunningCounters::reserved_words_nonclass() {
-  return VirtualSpaceList::vslist_nonclass()->reserved_words();
+  VirtualSpaceList* vs = VirtualSpaceList::vslist_nonclass();
+  return vs != NULL ? vs->reserved_words() : 0;
 }
 
 // Return total committed size, in words, for Metaspace
@@ -59,7 +60,8 @@ size_t RunningCounters::committed_words_class() {
 }
 
 size_t RunningCounters::committed_words_nonclass() {
-  return VirtualSpaceList::vslist_nonclass()->committed_words();
+  VirtualSpaceList* vs = VirtualSpaceList::vslist_nonclass();
+  return vs != NULL ? vs->vslist_nonclass()->committed_words() : 0;
 }
 
 // ---- used chunks -----
