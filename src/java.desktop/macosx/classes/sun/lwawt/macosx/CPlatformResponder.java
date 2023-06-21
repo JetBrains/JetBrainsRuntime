@@ -101,12 +101,16 @@ final class CPlatformResponder {
         }
 
         int jmodifiers = NSEvent.nsToJavaModifiers(modifierFlags);
-        if ((jeventType == MouseEvent.MOUSE_PRESSED) && (jbuttonNumber > MouseEvent.NOBUTTON)) {
-            // 8294426: NSEvent.nsToJavaModifiers returns 0 on M2 MacBooks if the event is generated
-            //  via tapping (not pressing) on a trackpad
-            //  (System Preferences -> Trackpad -> Tap to click must be turned on).
-            // So let's set the modifiers manually.
-            jmodifiers |= MouseEvent.getMaskForButton(jbuttonNumber);
+        if (jbuttonNumber > MouseEvent.NOBUTTON) {
+            if ( (jeventType == MouseEvent.MOUSE_PRESSED) || (Jbr5762Fix.isEnabled && (jeventType == MouseEvent.MOUSE_DRAGGED)) ) {
+                // 8294426: NSEvent.nsToJavaModifiers returns 0 on M2 MacBooks if the event is generated
+                //  via tapping (not pressing) on a trackpad
+                //  (System Preferences -> Trackpad -> Tap to click must be turned on).
+                // So let's set the modifiers manually.
+                //
+                // JBR-5762: enforce modifiers for the pressed button of MOUSE_DRAGGED events as well.
+                jmodifiers |= MouseEvent.getMaskForButton(jbuttonNumber);
+            }
         }
 
         boolean jpopupTrigger = NSEvent.isPopupTrigger(jmodifiers, jeventType);
@@ -374,6 +378,21 @@ final class CPlatformResponder {
             }
 
             return roundDelta;
+        }
+    }
+
+    static class Jbr5762Fix {
+        static final boolean isEnabled;
+
+        static {
+            boolean isEnabledLocal = false;
+
+            try {
+                isEnabledLocal = Boolean.parseBoolean(System.getProperty("awt.mac.enforceMouseModifiersForMouseDragged", "true"));
+            } catch (Exception ignored) {
+            }
+
+            isEnabled = isEnabledLocal;
         }
     }
 }
