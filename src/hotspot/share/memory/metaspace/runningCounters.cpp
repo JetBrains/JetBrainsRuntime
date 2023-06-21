@@ -41,8 +41,8 @@ size_t RunningCounters::reserved_words_class() {
 }
 
 size_t RunningCounters::reserved_words_nonclass() {
-  assert(VirtualSpaceList::vslist_nonclass() != nullptr, "Metaspace not yet initialized");
-  return VirtualSpaceList::vslist_nonclass()->reserved_words();
+  VirtualSpaceList* vs = VirtualSpaceList::vslist_nonclass();
+  return vs != nullptr ? vs->reserved_words() : 0;
 }
 
 // Return total committed size, in words, for Metaspace
