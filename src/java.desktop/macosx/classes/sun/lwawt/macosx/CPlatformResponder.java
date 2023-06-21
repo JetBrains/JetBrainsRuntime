@@ -102,8 +102,10 @@ final class CPlatformResponder {
         }
 
         int jmodifiers = NSEvent.nsToJavaModifiers(modifierFlags);
-        if ((jeventType == MouseEvent.MOUSE_PRESSED) && (jbuttonNumber > MouseEvent.NOBUTTON)) {
-            jmodifiers |= MouseEvent.getMaskForButton(jbuttonNumber);
+        if (jbuttonNumber > MouseEvent.NOBUTTON) {
+            if ( (jeventType == MouseEvent.MOUSE_PRESSED) || (Jbr5762Fix.isEnabled && (jeventType == MouseEvent.MOUSE_DRAGGED)) ) {
+                jmodifiers |= MouseEvent.getMaskForButton(jbuttonNumber);
+            }
         }
 
         boolean jpopupTrigger = NSEvent.isPopupTrigger(jmodifiers);
@@ -328,6 +330,21 @@ final class CPlatformResponder {
             }
 
             return roundDelta;
+        }
+    }
+
+    static class Jbr5762Fix {
+        static final boolean isEnabled;
+
+        static {
+            boolean isEnabledLocal = false;
+
+            try {
+                isEnabledLocal = Boolean.parseBoolean(System.getProperty("awt.mac.enforceMouseModifiersForMouseDragged", "true"));
+            } catch (Exception ignored) {
+            }
+
+            isEnabled = isEnabledLocal;
         }
     }
 }
