@@ -59,19 +59,10 @@ class MacOSXWatchService extends AbstractWatchService {
     private final HashMap<Long, MacOSXWatchKey>   eventStreamToWatchKey = new HashMap<>();
     private final Object                          watchKeysLock         = new Object();
 
-    private final CFRunLoopThread runLoopThread;
+    private long dispatchQueuePtr = 0;
+    private final Object dispatchQueuePtrLock = new Object();
 
-    MacOSXWatchService() throws IOException {
-        runLoopThread = new CFRunLoopThread();
-        runLoopThread.setDaemon(true);
-        runLoopThread.start();
-
-        try {
-            // In order to be able to schedule any FSEventStream's, a reference to a run loop is required.
-            runLoopThread.waitForRunLoopRef();
-        } catch (InterruptedException e) {
-            throw new IOException(e);
-        }
+    MacOSXWatchService() {
     }
 
     @Override
@@ -92,7 +83,7 @@ class MacOSXWatchService extends AbstractWatchService {
                 MacOSXWatchKey watchKey = dirKeyToWatchKey.get(dirKey);
                 final boolean keyForDirAlreadyExists = (watchKey != null);
                 if (keyForDirAlreadyExists) {
-                    eventStreamToWatchKey.remove(watchKey.getEventStreamRef());
+                    eventStreamToWatchKey.remove(watchKey.getNativeDataPtr());
                     watchKey.disable();
                     if (logger.isLoggable(PlatformLogger.Level.FINEST))
                         logger.finest("re-used existing watch key");
@@ -104,104 +95,68 @@ class MacOSXWatchService extends AbstractWatchService {
                 }
                 if (logger.isLoggable(PlatformLogger.Level.FINEST))
                     logger.finest("starting to [re-]populate directory cache with data");
-                watchKey.enable(runLoopThread, eventSet, modifierSet);
-                eventStreamToWatchKey.put(watchKey.getEventStreamRef(), watchKey);
-                watchKeysLock.notify(); // So that run loop gets running again if stopped due to lack of event streams
+                watchKey.enable(eventSet, modifierSet);
+                eventStreamToWatchKey.put(watchKey.getNativeDataPtr(), watchKey);
                 return watchKey;
             }
         }
     }
 
+    private long getDispatchQueuePtr() throws IOException {
+        synchronized (dispatchQueuePtrLock) {
+            if (dispatchQueuePtr == 0) {
+                dispatchQueuePtr = dispatchQueueCreate();
+                if (dispatchQueuePtr == 0)
+                    throw new IOException("Unable to create a dispatch queue for FSEvents");
+            }
+            return dispatchQueuePtr;
+        }
+    }
+
     /**
-     * Invoked on the CFRunLoopThread by the native code to report directories that need to be re-scanned.
+     * Invoked on the dispatch queue created for each WatchKey by the native code to report
+     * directories that need to be re-scanned.
      */
-    private void callback(final long eventStreamRef, final String[] paths, final long eventFlagsPtr) {
+    private void callback(final long stream, final String[] paths, final long eventFlagsPtr) {
         synchronized (watchKeysLock) {
-            final MacOSXWatchKey watchKey = eventStreamToWatchKey.get(eventStreamRef);
+            final MacOSXWatchKey watchKey = eventStreamToWatchKey.get(stream);
             if (watchKey != null) {
                 if (logger.isLoggable(PlatformLogger.Level.FINEST))
                     logger.finest("Callback fired for '" + watchKey.getRealRootPath() + "'");
                 watchKey.handleEvents(paths, eventFlagsPtr);
             } else {
-                if (logger.isLoggable(PlatformLogger.Level.FINEST))
-                    logger.finest("Callback fired for watch key that is no longer there");
+                // It's possible that we've got cancelled at the same moment this callback
+                // has already started working, so the key has already been invalidated and
+                // removed from the table. This means that this callback must dry-fire.
             }
         }
     }
 
-    void cancel(final MacOSXWatchKey watchKey) {
+    void deregister(final MacOSXWatchKey watchKey) {
         synchronized (watchKeysLock) {
             dirKeyToWatchKey.remove(watchKey.getRootPathKey());
-            eventStreamToWatchKey.remove(watchKey.getEventStreamRef());
-        }
-    }
-
-    void waitForEventSource() {
-        synchronized (watchKeysLock) {
-            if (isOpen() && eventStreamToWatchKey.isEmpty()) {
-                try {
-                    watchKeysLock.wait();
-                } catch (InterruptedException ignore) {}
-            }
+            eventStreamToWatchKey.remove(watchKey.getNativeDataPtr());
         }
     }
 
     @Override
     void implClose() {
         synchronized (watchKeysLock) {
-            eventStreamToWatchKey.clear();
             dirKeyToWatchKey.forEach((key, watchKey) -> watchKey.invalidate());
             dirKeyToWatchKey.clear();
-            watchKeysLock.notify(); // Let waitForEventSource() go if it was waiting
-            runLoopThread.runLoopStop(); // Force exit from CFRunLoopRun()
+            eventStreamToWatchKey.clear();
+        }
+
+        synchronized (dispatchQueuePtrLock) {
+            if (dispatchQueuePtr != 0 && dispatchQueuePtr != -1) {
+                dispatchQueueDestroy(dispatchQueuePtr);
+            }
+            dispatchQueuePtr = -1;
         }
     }
 
     private static void traceLine(final String text) {
         logger.finest("NATIVE trace: " + text);
-    }
-
-    private class CFRunLoopThread extends Thread {
-        // Native reference to the CFRunLoop object of the watch service run loop.
-        private long runLoopRef;
-
-        public CFRunLoopThread() {
-            super("FileSystemWatcher");
-        }
-
-        synchronized void waitForRunLoopRef() throws InterruptedException {
-            if (runLoopRef == 0)
-                runLoopThread.wait(); // ...for CFRunLoopRef to become available
-        }
-
-        long getRunLoopRef() {
-            return runLoopRef;
-        }
-
-        synchronized void runLoopStop() {
-            if (runLoopRef != 0) {
-                // The run loop may have stuck in CFRunLoopRun() even though all of its input sources
-                // have been removed. Need to terminate it explicitly so that it can run to completion.
-                MacOSXWatchService.CFRunLoopStop(runLoopRef);
-            }
-        }
-
-        @Override
-        public void run() {
-            synchronized (this) {
-                runLoopRef = CFRunLoopGetCurrent();
-                notify();
-            }
-
-            while (isOpen()) {
-                CFRunLoopRun(MacOSXWatchService.this);
-                waitForEventSource();
-            }
-
-            synchronized (this) {
-                runLoopRef = 0; // CFRunLoopRef is no longer usable when the loop has been terminated
-            }
-        }
     }
 
     private void checkIsOpen() {
@@ -298,11 +253,11 @@ class MacOSXWatchService extends AbstractWatchService {
 
         public static double sensitivityOf(final EnumSet<WatchModifier> modifiers) {
             if (modifiers.contains(SENSITIVITY_HIGH)) {
-                return 0.1;
+                return 0.005;
             } else if (modifiers.contains(SENSITIVITY_LOW)) {
-                return 1;
+                return 0.5;
             } else {
-                return 0.5; // aka SENSITIVITY_MEDIUM
+                return 0.01; // aka SENSITIVITY_MEDIUM
             }
         }
     }
@@ -326,9 +281,11 @@ class MacOSXWatchService extends AbstractWatchService {
         // Should events in directories below realRootPath reported?
         private boolean watchFileTree;
 
-        // Native FSEventStreamRef as returned by FSEventStreamCreate().
-        private long         eventStreamRef;
-        private final Object eventStreamRefLock = new Object();
+        // A pointer to the data maintained by the native code
+        private long nativeDataPtr;
+        // Is the pointer nativeDataPtr valid?
+        private boolean valid;
+        private final Object nativeDataPtrLock = new Object();
 
         private final DirectoryTreeSnapshot directoryTreeSnapshot = new DirectoryTreeSnapshot();
 
@@ -338,29 +295,36 @@ class MacOSXWatchService extends AbstractWatchService {
             this.realRootPath       = dir.toRealPath().normalize();
             this.realRootPathLength = realRootPath.toString().length() + 1;
             this.rootPathKey        = rootPathKey;
+            this.valid              = false;
         }
 
-        synchronized void enable(final CFRunLoopThread runLoopThread,
-                                 final EnumSet<FSEventKind> eventsToWatch,
+        synchronized void enable(final EnumSet<FSEventKind> eventsToWatch,
                                  final EnumSet<WatchModifier> modifierSet) throws IOException {
             assert(!isValid());
+
+            final MacOSXWatchService watchService = (MacOSXWatchService) watcher();
+            final long dispatchQueuePtr = watchService.getDispatchQueuePtr();
 
             this.eventsToWatch = eventsToWatch;
             this.watchFileTree = modifierSet.contains(WatchModifier.FILE_TREE);
 
             directoryTreeSnapshot.build();
 
-            synchronized (eventStreamRefLock) {
-                final int kFSEventStreamCreateFlagWatchRoot  = 0x00000004;
-                eventStreamRef = MacOSXWatchService.eventStreamCreate(
-                        realRootPath.toString(),
-                        WatchModifier.sensitivityOf(modifierSet),
-                        kFSEventStreamCreateFlagWatchRoot);
+            final int kFSEventStreamCreateFlagWatchRoot  = 0x00000004;
+            final long ptr = MacOSXWatchService.eventStreamCreate(
+                    realRootPath.toString(),
+                    WatchModifier.sensitivityOf(modifierSet),
+                    kFSEventStreamCreateFlagWatchRoot);
 
-                if (eventStreamRef == 0)
-                    throw new IOException("Unable to create FSEventStream");
+            if (ptr == 0)
+                throw new IOException("Unable to create FSEventStream");
 
-                MacOSXWatchService.eventStreamSchedule(eventStreamRef, runLoopThread.getRunLoopRef());
+            if (!MacOSXWatchService.eventStreamSchedule(ptr, dispatchQueuePtr))
+                throw new IOException("Unable to schedule FSEventStream on a dispatch queue");
+
+            synchronized (nativeDataPtrLock) {
+                nativeDataPtr = ptr;
+                valid = true;
             }
         }
 
@@ -775,8 +739,8 @@ class MacOSXWatchService extends AbstractWatchService {
 
         @Override
         public boolean isValid() {
-            synchronized (eventStreamRefLock) {
-                return eventStreamRef != 0;
+            synchronized (nativeDataPtrLock) {
+                return valid;
             }
         }
 
@@ -784,26 +748,23 @@ class MacOSXWatchService extends AbstractWatchService {
         public void cancel() {
             if (!isValid()) return;
 
-            // First, must stop the corresponding run loop:
-            ((MacOSXWatchService) watcher()).cancel(this);
-
-            // Next, invalidate the corresponding native FSEventStream.
-            invalidate();
+            invalidate(); // Invalidate the corresponding native FSEventStream.
+            ((MacOSXWatchService) watcher()).deregister(this);
         }
 
         void invalidate() {
-            synchronized (eventStreamRefLock) {
+            synchronized (nativeDataPtrLock) {
                 if (isValid()) {
-                    eventStreamStop(eventStreamRef);
-                    eventStreamRef = 0;
+                    eventStreamDestroy(nativeDataPtr);
+                    valid = false; // nativeDataPtr now points to garbage
                 }
             }
         }
 
-        long getEventStreamRef() {
-            synchronized (eventStreamRefLock) {
+        long getNativeDataPtr() {
+            synchronized (nativeDataPtrLock) {
                 assert (isValid());
-                return eventStreamRef;
+                return nativeDataPtr;
             }
         }
     }
@@ -811,11 +772,10 @@ class MacOSXWatchService extends AbstractWatchService {
     /* native methods */
 
     private static native long eventStreamCreate(String dir, double latencyInSeconds, int flags);
-    private static native void eventStreamSchedule(long eventStreamRef, long runLoopRef);
-    private static native void eventStreamStop(long eventStreamRef);
-    private static native long CFRunLoopGetCurrent();
-    private static native void CFRunLoopRun(final MacOSXWatchService watchService);
-    private static native void CFRunLoopStop(long runLoopRef);
+    private static native boolean eventStreamSchedule(long nativeDataPtr, long dispatchQueuePtr);
+    private static native void eventStreamDestroy(long nativeDataPtr);
+    private native long dispatchQueueCreate();
+    private native void dispatchQueueDestroy(long dispatchQueuePtr);
 
     private static native void initIDs();
 

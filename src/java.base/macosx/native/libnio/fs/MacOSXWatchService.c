@@ -41,23 +41,23 @@ traceLine(JNIEnv* env, const char* fmt, ...) ATTRIBUTE_PRINTF(2, 3);
 
 // Controls exception stack trace output and debug trace.
 // Set by raising the logging level of sun.nio.fs.MacOSXWatchService to or above FINEST.
-static jboolean  tracingEnabled;
+static jboolean tracingEnabled;
 
-static jmethodID        callbackMID;  // MacOSXWatchService.callback()
-static __thread jobject watchService; // The instance of MacOSXWatchService that is associated with this thread
+static jmethodID callbackMID;  // MacOSXWatchService.callback()
 
+static void* watchServiceKey = &watchServiceKey;
 
 JNIEXPORT void JNICALL
-Java_sun_nio_fs_MacOSXWatchService_initIDs(JNIEnv* env, __unused jclass clazz)
+Java_sun_nio_fs_MacOSXWatchService_initIDs(JNIEnv *env, __unused jclass clazz)
 {
-  jfieldID tracingEnabledFieldID = (*env)->GetStaticFieldID(env, clazz, "tracingEnabled", "Z");
-  CHECK_NULL(tracingEnabledFieldID);
-  tracingEnabled = (*env)->GetStaticBooleanField(env, clazz, tracingEnabledFieldID);
-  if ((*env)->ExceptionCheck(env)) {
-    (*env)->ExceptionDescribe(env);
-  }
+    jfieldID tracingEnabledFieldID = (*env)->GetStaticFieldID(env, clazz, "tracingEnabled", "Z");
+    CHECK_NULL(tracingEnabledFieldID);
+    tracingEnabled = (*env)->GetStaticBooleanField(env, clazz, tracingEnabledFieldID);
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionDescribe(env);
+    }
 
-  callbackMID = (*env)->GetMethodID(env, clazz, "callback", "(J[Ljava/lang/String;J)V");
+    callbackMID = (*env)->GetMethodID(env, clazz, "callback", "(J[Ljava/lang/String;J)V");
 }
 
 extern CFStringRef toCFString(JNIEnv *env, jstring javaString);
@@ -80,8 +80,10 @@ traceLine(JNIEnv* env, const char* fmt, ...)
 }
 
 static jboolean
-convertToJavaStringArray(JNIEnv* env, char **eventPaths,
-                         const jsize numEventsToReport, jobjectArray javaEventPathsArray)
+convertToJavaStringArray(JNIEnv* env,
+                         char **eventPaths,
+                         const jsize numEventsToReport,
+                         jobjectArray javaEventPathsArray)
 {
     for (jsize i = 0; i < numEventsToReport; i++) {
         const jstring path = JNU_NewStringPlatform(env, eventPaths[i]);
@@ -93,30 +95,42 @@ convertToJavaStringArray(JNIEnv* env, char **eventPaths,
 }
 
 static void
-callJavaCallback(JNIEnv* env, jlong streamRef, jobjectArray javaEventPathsArray, jlong eventFlags)
+callJavaCallback(JNIEnv* env,
+                 jobject watchService,
+                 jlong nativeDataPtr,
+                 jobjectArray javaEventPathsArray,
+                 jlong eventFlags)
 {
     if (callbackMID != NULL && watchService != NULL) {
-        // We are called on the run loop thread, so it's OK to use the thread-local reference
-        // to the watch service.
-        (*env)->CallVoidMethod(env, watchService, callbackMID, streamRef, javaEventPathsArray, eventFlags);
+        (*env)->CallVoidMethod(env, watchService, callbackMID, nativeDataPtr, javaEventPathsArray, eventFlags);
     }
 }
 
 /**
- * Callback that is invoked on the run loop thread and informs of new file-system events from an FSEventStream.
+ * Callback that is invoked on the dispatch queue and informs of new file-system events from an FSEventStream.
  */
 static void
 callback(__unused ConstFSEventStreamRef streamRef,
-         __unused void *clientCallBackInfo,
+         void *clientCallBackInfo,
          size_t numEventsTotal,
          void *eventPaths,
          const FSEventStreamEventFlags eventFlags[],
          __unused const FSEventStreamEventId eventIds[])
 {
-    JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
-    if (!env) { // Shouldn't happen as run loop starts from Java code
+    JNIEnv* env = NULL;
+    JavaVMAttachArgs args;
+    args.version = JNI_VERSION_1_4;
+    args.name = "FSEvents";
+    args.group = NULL;
+    jint rc = (*jvm)->AttachCurrentThreadAsDaemon(jvm, (void**)&env, &args);
+
+    if (!env || rc != JNI_OK) {
+        traceLine(env, "Couldn't attach dispatch queue thread to JVM");
         return;
     }
+
+    jobject watchServiceObj = dispatch_get_specific(watchServiceKey);
+    jlong nativeDataPtr = ptr_to_jlong(streamRef);
 
     // We can get more events at once than the number of Java array elements,
     // so report them in chunks.
@@ -142,10 +156,19 @@ callback(__unused ConstFSEventStreamRef streamRef,
             success = convertToJavaStringArray(env, &((char**)eventPaths)[eventIndex], numEventsToReport, javaEventPathsArray);
         }
 
-        callJavaCallback(env, (jlong)streamRef, javaEventPathsArray, (jlong)&eventFlags[eventIndex]);
+        callJavaCallback(env,
+                         watchServiceObj,
+                         nativeDataPtr,
+                         javaEventPathsArray,
+                         ptr_to_jlong(&eventFlags[eventIndex]));
 
         if ((*env)->ExceptionCheck(env)) {
-            if (tracingEnabled) (*env)->ExceptionDescribe(env);
+            if (tracingEnabled) {
+                (*env)->ExceptionDescribe(env);
+            }
+            else {
+                (*env)->ExceptionClear(env);
+            }
         }
 
         if (localFramePushed) {
@@ -157,18 +180,20 @@ callback(__unused ConstFSEventStreamRef streamRef,
 }
 
 /**
- * Creates a new FSEventStream and returns FSEventStreamRef for it.
+ * Creates a new FSEventStream and returns an opaque pointer to the corresponding native data for it.
  */
 JNIEXPORT jlong JNICALL
 Java_sun_nio_fs_MacOSXWatchService_eventStreamCreate(JNIEnv* env, __unused jclass clazz,
-                                                     jstring dir, jdouble latencyInSeconds, jint flags)
+                                                     jstring dir,
+                                                     jdouble latencyInSeconds,
+                                                     jint flags)
 {
     const CFStringRef path = toCFString(env, dir);
     CHECK_NULL_RETURN(path, 0);
     const CFArrayRef pathsToWatch = CFArrayCreate(NULL, (const void **) &path, 1, NULL);
     CHECK_NULL_RETURN(pathsToWatch, 0);
 
-    const FSEventStreamRef stream = FSEventStreamCreate(
+    FSEventStreamRef stream = FSEventStreamCreate(
             NULL,
             &callback,
             NULL,
@@ -179,75 +204,91 @@ Java_sun_nio_fs_MacOSXWatchService_eventStreamCreate(JNIEnv* env, __unused jclas
     );
 
     traceLine(env, "created event stream 0x%p", stream);
-
-    return (jlong)stream;
+    return ptr_to_jlong(stream);
 }
 
-
 /**
- * Schedules the given FSEventStream on the run loop of the current thread. Starts the stream
- * so that the run loop can receive events from the stream.
+ * Creates a dispatch queue and schedules the given FSEventStream on it.
+ * Starts the stream so that events from the stream can come and get handled.
  */
-JNIEXPORT void JNICALL
+JNIEXPORT jboolean JNICALL
 Java_sun_nio_fs_MacOSXWatchService_eventStreamSchedule(__unused JNIEnv* env,  __unused jclass clazz,
-                                                     jlong eventStreamRef, jlong runLoopRef)
+                                                       jlong nativeDataPtr,
+                                                       jlong dispatchQueuePtr)
 {
-    const FSEventStreamRef stream  = (FSEventStreamRef)eventStreamRef;
-    const CFRunLoopRef     runLoop = (CFRunLoopRef)runLoopRef;
+    FSEventStreamRef stream = jlong_to_ptr(nativeDataPtr);
+    dispatch_queue_t queue = jlong_to_ptr(dispatchQueuePtr);
 
-    FSEventStreamScheduleWithRunLoop(stream, runLoop, kCFRunLoopDefaultMode);
-    FSEventStreamStart(stream);
+    FSEventStreamSetDispatchQueue(stream, queue);
+    if (!FSEventStreamStart(stream)) {
+        // "FSEventStreamInvalidate() can only be called on the stream after you have called
+        //  FSEventStreamScheduleWithRunLoop() or FSEventStreamSetDispatchQueue()."
+        FSEventStreamInvalidate(stream);
+        FSEventStreamRelease(stream);
+        return JNI_FALSE;
+    }
 
-    traceLine(env, "scheduled stream 0x%p on thread 0x%p", stream, CFRunLoopGetCurrent());
+    traceLine(env, "scheduled stream 0x%p on queue %p", stream, queue);
+    return JNI_TRUE;
 }
 
 /**
- * Performs the steps necessary to dispose of the given FSEventStreamRef.
- * The stream must have been started and scheduled with a run loop.
+ * Performs the steps necessary to dispose of the given stream and the
+ * associated dispatch queue.
+ * The native pointer is no longer valid after return from this method.
  */
 JNIEXPORT void JNICALL
-Java_sun_nio_fs_MacOSXWatchService_eventStreamStop(__unused JNIEnv* env, __unused jclass clazz, jlong eventStreamRef)
+Java_sun_nio_fs_MacOSXWatchService_eventStreamDestroy(__unused JNIEnv* env, __unused jclass clazz,
+                                                      jlong nativeDataPtr)
 {
-    const FSEventStreamRef streamRef = (FSEventStreamRef)eventStreamRef;
+    FSEventStreamRef stream = jlong_to_ptr(nativeDataPtr);
 
-    FSEventStreamStop(streamRef);       // Unregister with the FS Events service. No more callbacks from this stream
-    FSEventStreamInvalidate(streamRef); // Unschedule from any runloops
-    FSEventStreamRelease(streamRef);    // Decrement the stream's refcount
+    // "You must eventually call FSEventStreamInvalidate and it’s an error to call FSEventStreamInvalidate
+    //  without having the stream either scheduled on a runloop or a dispatch queue"
+
+    // Unregister with the FS Events service. No more callbacks from this stream.
+    FSEventStreamStop(stream);
+    FSEventStreamInvalidate(stream); // Unschedule from any queues
+    FSEventStreamRelease(stream);    // Decrement the stream's refcount
 }
 
-/**
- * Returns the CFRunLoop object for the current thread.
- */
+static void
+dispatchQueueDestructor(void * context)
+{
+    JNIEnv* env = NULL;
+    JavaVMAttachArgs args;
+    args.version = JNI_VERSION_1_4;
+    args.name = "FSEvents";
+    args.group = NULL;
+    jint rc = (*jvm)->AttachCurrentThreadAsDaemon(jvm, (void**)&env, &args);
+
+    if (env && rc == JNI_OK) {
+        jobject watchServiceGlobal = (jobject)context;
+        (*env)->DeleteGlobalRef(env, watchServiceGlobal);
+    }
+}
+
 JNIEXPORT jlong JNICALL
-Java_sun_nio_fs_MacOSXWatchService_CFRunLoopGetCurrent(__unused JNIEnv* env, __unused jclass clazz)
+Java_sun_nio_fs_MacOSXWatchService_dispatchQueueCreate(JNIEnv* env, jobject watchService)
 {
-    const CFRunLoopRef currentRunLoop = CFRunLoopGetCurrent();
-    traceLine(env, "get current run loop: 0x%p", currentRunLoop);
-    return (jlong)currentRunLoop;
-}
+    jobject watchServiceGlobal = (*env)->NewGlobalRef(env, watchService);
+    if (watchServiceGlobal == NULL) {
+        return 0;
+    }
 
-/**
- * Simply calls CFRunLoopRun() to run current thread's run loop for as long as there are event sources
- * attached to it.
- */
-JNIEXPORT void JNICALL
-Java_sun_nio_fs_MacOSXWatchService_CFRunLoopRun(__unused JNIEnv* env, __unused jclass clazz, jlong watchServiceObject)
-{
-    traceLine(env, "running run loop on 0x%p", CFRunLoopGetCurrent());
-
-    // Thread-local pointer to the WatchService instance will be used by the callback
-    // on this thread.
-    watchService = (*env)->NewGlobalRef(env, (jobject)watchServiceObject);
-    CFRunLoopRun();
-    (*env)->DeleteGlobalRef(env, (jobject)watchService);
-    watchService = NULL;
-
-    traceLine(env, "run loop done on 0x%p", CFRunLoopGetCurrent());
+    dispatch_queue_t queue = dispatch_queue_create("FSEvents", NULL);
+    if (queue) {
+        dispatch_queue_set_specific(queue, watchServiceKey, (void*)watchServiceGlobal, dispatchQueueDestructor);
+    }
+    return ptr_to_jlong(queue);
 }
 
 JNIEXPORT void JNICALL
-Java_sun_nio_fs_MacOSXWatchService_CFRunLoopStop(__unused JNIEnv* env, __unused jclass clazz, jlong runLoopRef)
+Java_sun_nio_fs_MacOSXWatchService_dispatchQueueDestroy(__unused JNIEnv* env, __unused jclass clazz,
+                                                        jlong dispatchQueuePtr)
 {
-  traceLine(env, "stopping run loop 0x%p", (void*)runLoopRef);
-  CFRunLoopStop((CFRunLoopRef)runLoopRef);
+    dispatch_queue_t queue = jlong_to_ptr(dispatchQueuePtr);
+    dispatch_release(queue); // allow the queue to get deallocated
+    // NB: the global reference to watchService stored with the queue will be deleted
+    // by dispatchQueueDestructor()
 }
