@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
 import java.util.Vector;
-import java.util.stream.Stream;
 
 import javax.swing.plaf.FontUIResource;
 import sun.font.MFontConfiguration;
@@ -50,8 +49,6 @@ import sun.font.FontAccess;
 import sun.font.FontUtilities;
 import sun.font.NativeFont;
 import sun.util.logging.PlatformLogger;
-
-import static sun.font.SunFontManager.jreFontDirName;
 
 /**
  * The X11 implementation of {@link FontManager}.
@@ -281,7 +278,8 @@ public final class X11FontManager extends FcFontManager {
      * the loadFonts() method does too. So all should be well.
 
      */
-    private void registerFontDir(String path) {
+    @Override
+    protected void registerFontDir(String path) {
         /* fonts.dir file format looks like :-
          * 47
          * Arial.ttf -monotype-arial-regular-r-normal--0-0-0-0-p-0-iso8859-1
@@ -428,12 +426,6 @@ public final class X11FontManager extends FcFontManager {
                 }
             }
         }
-    }
-
-    @Override
-    protected void registerJREFonts() {
-        registerFontDir(jreFontDirName);
-        super.registerJREFonts();
     }
 
     @Override
