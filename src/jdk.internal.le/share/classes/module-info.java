@@ -56,8 +56,5 @@ module jdk.internal.le {
     exports jdk.internal.org.jline.terminal.spi to
         jdk.scripting.nashorn.shell,
         jdk.jshell;
-
-    uses jdk.internal.org.jline.terminal.spi.JnaSupport;
-
 }
 
