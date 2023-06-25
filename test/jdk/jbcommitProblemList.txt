@@ -68,7 +68,6 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentWindowClickSwing.java
 javax/swing/plaf/nimbus/8057791/bug8057791.java nobug windows-all
 javax/swing/plaf/nimbus/TestNimbusOverride.java nobug linux-all,windows-all
 javax/swing/plaf/windows/6921687/bug6921687.java nobug windows-all
-javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java nobug windows-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java nobug windows-all
 javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java 8194048 windows-all,linux-all nobug: linux, 8194048 windows
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java nobug windows-all
