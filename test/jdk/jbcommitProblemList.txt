@@ -17,7 +17,6 @@ java/awt/Focus/ShowFrameCheckForegroundTest/ShowFrameCheckForegroundTest.java no
 java/awt/Focus/TranserFocusToWindow/TranserFocusToWindow.java nobug windows-all,macosx-all,linux-all
 java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java nobug windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java nobug windows-all
-java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.java nobug windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.java nobug windows-all
 java/awt/MenuBar/SeparatorsNavigation/SeparatorsNavigation.java nobug windows-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java nobug windows-all
