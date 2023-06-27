@@ -93,7 +93,7 @@ class ProxyInfo {
             try {
                 if (i != 0) clazz += "$";
                 clazz += nestedClasses[i];
-                lookup = MethodHandles.privateLookupIn(Class.forName(clazz, true, lookup.lookupClass().getClassLoader()), lookup);
+                lookup = MethodHandles.privateLookupIn(Class.forName(clazz, false, lookup.lookupClass().getClassLoader()), lookup);
             } catch (ClassNotFoundException | IllegalAccessException ignore) {
                 return null;
             }
