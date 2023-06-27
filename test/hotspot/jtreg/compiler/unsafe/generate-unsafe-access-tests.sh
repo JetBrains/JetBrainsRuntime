@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #
-# Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
 # questions.
 #
 
-javac -d . ../../../../jdk/make/src/classes/build/tools/spp/Spp.java
+javac -d . ../../../../../make/jdk/src/classes/build/tools/spp/Spp.java
 
 SPP=build.tools.spp.Spp
 
@@ -123,8 +123,10 @@ function generate {
       args="$args -Dvalue1=$value1 -Dvalue2=$value2 -Dvalue3=$value3"
 
       echo $args
+      out=${Qualifier}UnsafeAccessTest${Type}.java
+      rm -rf "$out"
       java $SPP -nel -K$Qualifier -Dpackage=$package -DQualifier=$Qualifier -Dmodule=$module \
-          $args -iX-UnsafeAccessTest.java.template -o${Qualifier}UnsafeAccessTest${Type}.java
+          $args -iX-UnsafeAccessTest.java.template -o$out
     done
 }
 
