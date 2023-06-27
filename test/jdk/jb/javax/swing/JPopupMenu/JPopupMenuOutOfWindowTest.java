@@ -101,9 +101,15 @@ public class JPopupMenuOutOfWindowTest {
         panel.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
+                System.out.println("Mouse pressed. Event: " + e.getButton());
                 if (e.getButton() == 3) {
                     toggleMenu(e);
                 }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                System.out.println("Mouse released. Event: " + e.getButton());
             }
         });
 
@@ -134,6 +140,7 @@ public class JPopupMenuOutOfWindowTest {
      * @param e MouseEvent
      */
     private static void toggleMenu(MouseEvent e) {
+        System.out.println("Menu toggled by event: " + e.toString());
         menu.setLocation(e.getLocationOnScreen().x, e.getLocationOnScreen().y);
         menu.setVisible(!menu.isShowing());
     }
