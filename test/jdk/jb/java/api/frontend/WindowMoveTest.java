@@ -25,19 +25,25 @@
  * @test
  * @summary Verifies that WindowMove test service of JBR is supported
  *          on Linux and not supported elsewhere.
- * @key headful
  * @run main WindowMoveTest
+ * @run main/othervm -Djava.awt.headless=true WindowMoveTest
  */
 
 import com.jetbrains.JBR;
+import java.awt.GraphicsEnvironment;
 
 public class WindowMoveTest {
 
     public static void main(String[] args) throws Exception {
         final String os = System.getProperty("os.name");
         if ("linux".equalsIgnoreCase(os)) {
-            if (!JBR.isWindowMoveSupported()) {
-                throw new RuntimeException("JBR.isWindowMoveSupported says it is NOT supported on Linux");
+            final boolean isHeadless = GraphicsEnvironment.getLocalGraphicsEnvironment().isHeadlessInstance();
+            if (JBR.isWindowMoveSupported()) {
+                if (isHeadless)
+                    throw new RuntimeException("JBR.isWindowMoveSupported says it is supported in the headless mode");
+            } else {
+                if (!isHeadless)
+                    throw new RuntimeException("JBR.isWindowMoveSupported says it is NOT supported on Linux");
             }
             // Use: JBR.getWindowMove().startMovingTogetherWithMouse(jframe, MouseEvent.BUTTON1);
         } else {
