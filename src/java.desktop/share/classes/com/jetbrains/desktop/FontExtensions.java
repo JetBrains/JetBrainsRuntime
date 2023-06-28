@@ -36,9 +36,14 @@ import java.util.stream.Collectors;
 public class FontExtensions {
     private interface FontExtension {
         FontExtension INSTANCE = (FontExtension) JBRApi.internalServiceBuilder(MethodHandles.lookup())
-                .withStatic("getFeatures", "getFeatures", "java.awt.Font").build();
+                .withStatic("getFeatures", "getFeatures", "java.awt.Font")
+                .withStatic("isComplexRendering", "isComplexRendering", "java.awt.Font")
+                .withStatic("isKerning", "isKerning", "java.awt.Font")
+                .build();
 
         TreeMap<String, Integer> getFeatures(Font font);
+        boolean isComplexRendering(Font font);
+        boolean isKerning(Font font);
     }
 
     public static String featuresToString(Map<String, Integer> features) {
@@ -48,5 +53,13 @@ public class FontExtensions {
 
     public static TreeMap<String, Integer> getFeatures(Font font) {
         return FontExtension.INSTANCE.getFeatures(font);
+    }
+
+    public static boolean isComplexRendering(Font font) {
+        return FontExtension.INSTANCE.isComplexRendering(font);
+    }
+
+    public static boolean isKerning(Font font) {
+        return FontExtension.INSTANCE.isKerning(font);
     }
 }
