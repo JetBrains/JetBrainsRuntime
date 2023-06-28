@@ -30,18 +30,19 @@ import quality.util.RenderUtil;
 import java.awt.*;
 import java.awt.font.FontRenderContext;
 import java.awt.font.GlyphVector;
+import java.awt.font.TextAttribute;
 import java.awt.font.TextLayout;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
+import java.util.Map;
 
 public class TextMetricsTest {
 
     @Test
     public void testTextBounds() throws Exception {
         final Font font = new Font("Menlo", Font.PLAIN, 22);
-
 
         BufferedImage bi = RenderUtil.capture(120, 120,
                 g2 -> {
@@ -91,5 +92,50 @@ public class TextMetricsTest {
 
         Assert.assertTrue(bnd.getX() == 0.0 && bnd.getY() == 0.0 &&
                 bnd.getWidth() == 0.0 && bnd.getHeight() == 0.0);
+    }
+
+    private static void checkStringWidth(Font font, FontRenderContext frc, String str) {
+        float width = (float) font.getStringBounds(str.toCharArray(), 0, str.length(), frc).getWidth();
+        float standard = new TextLayout(str, font, frc).getAdvance();
+        Assert.assertTrue(Math.abs(width - standard) < 0.1f);
+    }
+
+    private static void checkCalculationStringWidth(Font font, String text) {
+        AffineTransform affineTransform = new AffineTransform();
+        Map<TextAttribute, Object> attributes = null;
+        FontRenderContext frc = new FontRenderContext(affineTransform, true, true);
+        FontRenderContext baseFrc = new FontRenderContext(new AffineTransform(), true, true);
+
+        checkStringWidth(font, frc, text);
+        checkStringWidth(font.deriveFont(affineTransform), frc, text);
+
+        affineTransform.translate(0.5f, 0.0f);
+        checkStringWidth(font, frc, text);
+        checkStringWidth(font.deriveFont(affineTransform), baseFrc, text);
+
+        attributes = Map.of(TextAttribute.TRACKING, 0.5);
+        checkStringWidth(font.deriveFont(attributes), baseFrc, text);
+
+        attributes = Map.of(TextAttribute.KERNING, TextAttribute.KERNING_ON);
+        checkStringWidth(font.deriveFont(attributes), baseFrc, text);
+
+        attributes = Map.of(TextAttribute.LIGATURES, TextAttribute.LIGATURES_ON);
+        checkStringWidth(font.deriveFont(attributes), baseFrc, text);
+    }
+
+    @Test
+    // checking equals of calculation of string's width with two different approach:
+    // fast implementation inside FontDesignMetrics and guaranteed correct implementation in TextLayout
+    public void checkCalculationStringWidth() {
+        final Font font = new Font("Arial", Font.PLAIN, 15);
+
+        checkCalculationStringWidth(font,
+                "AVAVAVAVAVAVAAAAVVAVVAVVVAVAVAVAVAVA !@#$%^&*12345678zc.vbnm.a..s.dfg,hjqwertgyh}{}{}///");
+        checkCalculationStringWidth(font,
+                "a");
+        checkCalculationStringWidth(font,
+                "世丕且且世两上与丑万丣丕且丗丕");
+        checkCalculationStringWidth(font,
+                "\uD83D\uDE06\uD83D\uDE06\uD83D\uDE06\uD83D\uDE06\uD83D\uDE06\uD83D\uDE06\uD83D\uDE06");
     }
 }
