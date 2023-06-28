@@ -2572,33 +2572,20 @@ public class Font implements java.io.Serializable
                                                 (limit - beginIndex));
         }
 
-        // this code should be in textlayout
-        // quick check for simple text, assume GV ok to use if simple
-
-        boolean simple = (values == null ||
-            (values.getKerning() == 0
-             && values.getLigatures() == 0
-             && values.getTracking() == 0
-             && values.getBaselineTransform() == null))
-             && !anyEnabledFeatures();
-        if (simple) {
-            simple = ! FontUtilities.isComplexText(chars, beginIndex, limit);
-        }
-
-        if (simple || ((limit - beginIndex) == 0)) {
-            FontDesignMetrics metrics = FontDesignMetrics.getMetrics(this, frc);
-            return metrics.getSimpleBounds(chars, beginIndex, limit-beginIndex);
-        } else {
-            // need char array constructor on textlayout
-            String str = new String(chars, beginIndex, limit - beginIndex);
-            TextLayout tl = new TextLayout(str, this, frc);
-            return new Rectangle2D.Float(0, -tl.getAscent(), tl.getAdvance(),
-                                         tl.getAscent() + tl.getDescent() +
-                                         tl.getLeading());
-        }
+        FontDesignMetrics metrics = FontDesignMetrics.getMetrics(this, frc);
+        return metrics.charsBounds(chars, beginIndex, limit - beginIndex);
     }
 
-   /**
+    private static boolean isComplexRendering(Font font) {
+        return (font.values != null && (font.values.getLigatures() != 0 || font.values.getTracking() != 0 ||
+                font.values.getBaselineTransform() != null)) || font.anyEnabledFeatures();
+    }
+
+    private static boolean isKerning(Font font) {
+        return font.values != null && (font.values.getKerning() != 0);
+    }
+
+    /**
      * Returns the logical bounds of the characters indexed in the
      * specified {@link CharacterIterator} in the
      * specified {@code FontRenderContext}.  The logical bounds
