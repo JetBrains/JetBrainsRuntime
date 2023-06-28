@@ -38,8 +38,11 @@ import java.io.ObjectOutputStream;
 import java.io.Serial;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.jetbrains.desktop.FontExtensions;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
 
@@ -432,16 +435,13 @@ public final class FontDesignMetrics extends FontMetrics {
         return frc;
     }
 
-    public int charWidth(char ch) {
+    private float preciseCharWidth(char ch) {
         // default metrics for compatibility with legacy code
-        float w;
-        if (ch < 0x100) {
-            w = getLatinCharWidth(ch);
-        }
-        else {
-            w = handleCharWidth(ch);
-        }
-        return (int)(0.5 + w);
+        return (ch < 0x100) ? getLatinCharWidth(ch) : handleCharWidth(ch);
+    }
+
+    public int charWidth(char ch) {
+        return Math.round(preciseCharWidth(ch));
     }
 
     public int charWidth(int ch) {
@@ -451,92 +451,110 @@ public final class FontDesignMetrics extends FontMetrics {
 
         float w = handleCharWidth(ch);
 
-        return (int)(0.5 + w);
+        return Math.round(w);
+    }
+
+    private Rectangle2D.Float textLayoutBounds(Object data, int off, int len) {
+        String str = data instanceof String ? ((String) data).substring(off, off  + len) :
+                new String((char[]) data, off, len);
+        TextLayout tl = new TextLayout(str, font, frc);
+        return new Rectangle2D.Float(0, -tl.getAscent(),
+                tl.getAdvance(), tl.getAscent() + tl.getDescent() + tl.getLeading());
+    }
+
+    private char getChar(Object data, int i) {
+        return data instanceof String ? ((String) data).charAt(i) : ((char[]) data)[i];
+    }
+
+    final int ADVANCES_FAST_KEY_LIMIT = 0x100;
+    private HashMap<Integer, Float> advances = new HashMap<>();
+    private float[] advancesFast = new float[ADVANCES_FAST_KEY_LIMIT * ADVANCES_FAST_KEY_LIMIT];
+
+    private Rectangle2D.Float dataBounds(Object data, int off, int len) {
+
+        assert (data instanceof String || data instanceof char[]);
+        float width = 0;
+
+        if (FontExtensions.isComplexRendering(font) && len > 0) {
+            return textLayoutBounds(data, off, len);
+        }
+
+        float height = ascent + descent + leading;
+
+        if (len == 0 || len == 1 && !FontUtilities.isNonSimpleChar(getChar(data, off))) {
+            width = len > 0 ? preciseCharWidth(getChar(data, off)) : 0f;
+            return new Rectangle2D.Float(0f, -ascent, width, height);
+        }
+
+        boolean isKerning = FontExtensions.isKerning(font);
+        float consecutiveDoubleCharacterWidth = 0f;
+        char prev = 0;
+        for (int i = off; i < off + len; i++) {
+            char cur = getChar(data, i);
+            if (FontUtilities.isNonSimpleChar(cur)) {
+                return textLayoutBounds(data, off, len);
+            } else {
+                // Correct width of string with kerning calculates by text LayoutBounds but it could be slow.
+                // Below is description of optimized algorithm for correct calculating width of text with kerning:
+                // proof:
+                // base: kerningWidth('c1') = plainWidth('c1')
+                // induction: kerningWidth('c1..cN-1cN') =
+                //                                 kerningWidth('c1..cN-1') + kerningWidth('cN-1cN') - plainWidth('cN-1')
+                // final: kerningWidth('c1..cN') = kerningWidth('c1c2') + ... + kerningWidth('cN-1cN')
+                //                                                      - (plainWidth('c2') + ... + plainWidth('cN-1'))
+                // remark: for reducing calculation of kerningWidth('c1c2') using caching
+                if (isKerning && i > off) {
+                    // fast path
+                    if (prev < ADVANCES_FAST_KEY_LIMIT && cur < ADVANCES_FAST_KEY_LIMIT) {
+                        int key = (prev << 8) | cur;
+                        if (advancesFast[key] == 0.0f) {
+                            advancesFast[key] = textLayoutBounds(data, i - 1, 2).width;
+                        }
+                        consecutiveDoubleCharacterWidth += advancesFast[key];
+                    // common solution
+                    } else {
+                        int key = (prev << 16) | (0xffff & cur);
+                        advances.putIfAbsent(key, textLayoutBounds(data, i - 1, 2).width);
+                        consecutiveDoubleCharacterWidth += advances.get(key);
+                    }
+                }
+                width += preciseCharWidth(cur);
+            }
+            prev = cur;
+        }
+
+        if (isKerning) {
+            width = consecutiveDoubleCharacterWidth -
+                    (width - preciseCharWidth(getChar(data, off)) - preciseCharWidth(getChar(data, off + len - 1)));
+        }
+
+        return new Rectangle2D.Float(0f, -ascent, width, height);
+    }
+
+    public Rectangle2D.Float charsBounds(char[] data, int off, int len) {
+        return dataBounds(data, off, len);
+    }
+
+    private int dataWidth(Object data, int off, int len) {
+        return Math.round((float) dataBounds(data, off, len).getWidth());
     }
 
     public int stringWidth(String str) {
 
-        float width = 0;
-        if (font.hasLayoutAttributes()) {
-            /* TextLayout throws IAE for null, so throw NPE explicitly */
-            if (str == null) {
-                throw new NullPointerException("str is null");
-            }
-            if (str.length() == 0) {
-                return 0;
-            }
-            width = new TextLayout(str, font, frc).getAdvance();
-        } else {
-            int length = str.length();
-            for (int i=0; i < length; i++) {
-                char ch = str.charAt(i);
-                if (ch < 0x100) {
-                    width += getLatinCharWidth(ch);
-                } else if (FontUtilities.isNonSimpleChar(ch)) {
-                    width = new TextLayout(str, font, frc).getAdvance();
-                    break;
-                } else {
-                    width += handleCharWidth(ch);
-                }
-            }
+        if (str == null) {
+            throw new NullPointerException("str is null");
         }
-
-        return (int) (0.5 + width);
+        return dataWidth(str, 0, str.length());
     }
 
     public int charsWidth(char[] data, int off, int len) {
 
-        float width = 0;
-        if (font.hasLayoutAttributes()) {
-            if (len == 0) {
-                return 0;
-            }
-            String str = new String(data, off, len);
-            width = new TextLayout(str, font, frc).getAdvance();
-        } else {
-            /* Explicit test needed to satisfy superclass spec */
-            if (len < 0) {
-                throw new IndexOutOfBoundsException("len="+len);
-            }
-            int limit = off + len;
-            for (int i=off; i < limit; i++) {
-                char ch = data[i];
-                if (ch < 0x100) {
-                    width += getLatinCharWidth(ch);
-                } else if (FontUtilities.isNonSimpleChar(ch)) {
-                    String str = new String(data, off, len);
-                    width = new TextLayout(str, font, frc).getAdvance();
-                    break;
-                } else {
-                    width += handleCharWidth(ch);
-                }
-            }
+        /* Explicit test needed to satisfy superclass spec */
+        if (len < 0) {
+            throw new IndexOutOfBoundsException("len="+len);
         }
-
-        return (int) (0.5 + width);
+        return dataWidth(data, off, len);
     }
-
-    /**
-     * This method is called from java.awt.Font only after verifying
-     * the arguments and that the text is simple and there are no
-     * layout attributes, font transform etc.
-     */
-    public Rectangle2D getSimpleBounds(char[] data, int off, int len) {
-
-        float width = 0;
-        int limit = off + len;
-        for (int i=off; i < limit; i++) {
-            char ch = data[i];
-            if (ch < 0x100) {
-                width += getLatinCharWidth(ch);
-            } else {
-                width += handleCharWidth(ch);
-            }
-        }
-
-        float height = ascent + descent + leading;
-        return new Rectangle2D.Float(0f, -ascent, width, height);
-     }
 
     /**
      * Gets the advance widths of the first 256 characters in the
@@ -557,7 +575,7 @@ public final class FontDesignMetrics extends FontMetrics {
             if (w == UNKNOWN_WIDTH) {
                 w = advCache[ch] = handleCharWidth(ch);
             }
-            widths[ch] = (int) (0.5 + w);
+            widths[ch] = Math.round(w);
         }
         return widths;
     }
