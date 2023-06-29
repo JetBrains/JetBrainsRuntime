@@ -123,7 +123,7 @@ class ASMUtils {
         return IRETURN + getOpcodeOffset(c);
     }
 
-    public static int getOpcodeOffset(Class<?> c) {
+    private static int getOpcodeOffset(Class<?> c) {
         if (c.isPrimitive()) {
             if (c == Long.TYPE) {
                 return 1;

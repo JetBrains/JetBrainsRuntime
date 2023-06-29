@@ -34,6 +34,6 @@ import java.lang.invoke.MethodHandles;
  */
 public class JBRApiModule {
     static {
-        JBRApi.linkModule(MethodHandles.lookup(), JBRApiModule.class.getModule()::addExports);
+        JBRApiModule.class.getModule().addExports(JBRApiModule.class.getPackageName(), JBRApi.linkModule(MethodHandles.lookup()));
     }
 }

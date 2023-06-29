@@ -43,8 +43,7 @@ public class JBRApiRegistry {
                     .withStatic("getService", "getService", "com.jetbrains.internal.JBRApi")
                     .withStatic("getImplVersion", "getImplVersion", "com.jetbrains.internal.JBRApi")
                 .service("com.jetbrains.Jstack")
-                    .withStatic("includeInfoFrom", "$$jb$additionalInfoForJstack", "java.lang.Throwable")
-                .service("com.jetbrains.Test", "com.jetbrains.base.JBRApiModule"); // TODO
+                    .withStatic("includeInfoFrom", "$$jb$additionalInfoForJstack", "java.lang.Throwable");
 
         JBRApi.registerModule("com.jetbrains.desktop.JBRApiModule")
                 .service("com.jetbrains.ExtendedGlyphCache")
