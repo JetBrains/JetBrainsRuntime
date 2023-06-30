@@ -79,6 +79,7 @@ public:
   void purge_loader_constraints();
 
   void verify(PlaceholderTable* placeholders);
+  void print() const;
   void print_on(outputStream* st) const;
 };
 

@@ -195,7 +195,7 @@ class DictionaryEntry : public HashtableEntry<InstanceKlass*, mtClass> {
                                 current = current->_next) {
       count++;
     }
-    st->print_cr("pd set count = #%d", count);
+    st->print("pd set count = #%d", count);
   }
 
   void verify();
