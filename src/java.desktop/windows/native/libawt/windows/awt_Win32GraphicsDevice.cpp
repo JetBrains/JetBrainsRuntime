@@ -50,7 +50,6 @@
 #include "img_util_md.h"
 #include "Devices.h"
 #include "systemScale.h"
-#include "DPIScaling.h"
 
 uns_ordered_dither_array img_oda_alpha;
 
@@ -1335,37 +1334,6 @@ Java_sun_awt_Win32GraphicsDevice_configDisplayMode
     }
 
     CATCH_BAD_ALLOC;
-}
-
-/*
- * Class:     sun_awt_Win32GraphicsDevice
- * Method:    setOSScale
- * Signature: (II)V
- */
-JNIEXPORT void JNICALL
-Java_sun_awt_Win32GraphicsDevice_setOSScale
-(JNIEnv* env, jobject graphicsDevice, jint screen, jint scale)
-{
-    if (!DPIScaling::setOSScale(screen, scale)) {
-        JNU_ThrowInternalError(env, "Could not set OS scale");
-    }
-}
-
-/*
- * Class:     sun_awt_Win32GraphicsDevice
- * Method:    getOSScale
- * Signature: (I)I
- */
-JNIEXPORT jint JNICALL
-Java_sun_awt_Win32GraphicsDevice_getOSScale
-(JNIEnv* env, jobject graphicsDevice, jint screen)
-{
-    int scale = DPIScaling::getOSScale(screen);
-    if (scale == 0) {
-        JNU_ThrowInternalError(env, "Could not get OS scale");
-    }
-
-    return scale;
 }
 
 class EnumDisplayModeParam {

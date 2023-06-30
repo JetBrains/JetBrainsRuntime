@@ -458,20 +458,6 @@ public class Win32GraphicsDevice extends GraphicsDevice implements
         }
     }
 
-    /**
-     * Setting OS scale via winapi
-     */
-    public void setOSScale(int scale) {
-        setOSScale(screen, scale);
-    }
-
-    /**
-     * Get OS scale via winapi
-     */
-    public int getOSScale() {
-        return getOSScale(screen);
-    }
-
     @Override
     public boolean isDisplayChangeSupported() {
         return (isFullScreenSupported() && getFullScreenWindow() != null);
@@ -504,8 +490,6 @@ public class Win32GraphicsDevice extends GraphicsDevice implements
     }
 
     protected native DisplayMode getCurrentDisplayMode(int screen);
-    private native void setOSScale(int screen, int scale);
-    private native int getOSScale(int screen);
     protected native void configDisplayMode(int screen, WindowPeer w, int width,
                                           int height, int bitDepth,
                                           int refreshRate);

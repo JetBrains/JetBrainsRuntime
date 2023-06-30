@@ -29,12 +29,8 @@
  * @test
  * @summary checking correctness of redrawing JFrame with Canvas after dragging between monitors with different scales
  * @requires (os.family == "windows")
- * @modules java.desktop/sun.awt:open
- * @modules java.desktop/sun.awt
  * @run main CanvasMovingOnDifferentScaleMonitorTest
  */
-
-import sun.awt.Win32GraphicsDevice;
 
 import javax.swing.*;
 import java.awt.*;
@@ -96,15 +92,9 @@ public class CanvasMovingOnDifferentScaleMonitorTest {
 
     public static void main(String[] args) {
         GraphicsDevice[] graphicsDevices = GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices();
-        if (graphicsDevices.length != 2) {
+        if (graphicsDevices.length < 2) {
             throw new RuntimeException("Failed: incorrect setup");
         }
-        Win32GraphicsDevice zeroScreen = (Win32GraphicsDevice)graphicsDevices[0];
-        Win32GraphicsDevice firstScreen = (Win32GraphicsDevice)graphicsDevices[1];
-        int zeroScreenScale = zeroScreen.getOSScale();
-        int firstScreenScale = firstScreen.getOSScale();
-        zeroScreen.setOSScale(100);
-        firstScreen.setOSScale(200);
 
         JFrameWithCanvas jFrame = new JFrameWithCanvas();
         int baseX = jFrame.getX() + 50;
@@ -130,14 +120,11 @@ public class CanvasMovingOnDifferentScaleMonitorTest {
         } catch (AWTException e) {
             status = "Failed: internal error";
         }
-
         jFrame.dispose();
-        zeroScreen.setOSScale(zeroScreenScale);
-        firstScreen.setOSScale(firstScreenScale);
 
         if (!status.equals("PASSED")) {
             throw new RuntimeException(status);
         }
-        System.out.println("PASSED");
+        System.out.println(status);
     }
 }
