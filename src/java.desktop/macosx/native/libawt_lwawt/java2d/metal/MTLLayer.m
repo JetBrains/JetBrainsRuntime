@@ -316,7 +316,7 @@ Java_sun_java2d_metal_MTLLayer_validate
         if (!isColorMatchingEnabled() && (layer.colorspace != nil)) {
             J2dRlsTraceLn1(J2D_TRACE_VERBOSE,
                           "Java_sun_java2d_metal_MTLLayer_validate: disable color matching (colorspace was '%s')",
-                           [(NSString *)CGColorSpaceGetName(layer.colorspace) UTF8String]);
+                           [(NSString *)CGColorSpaceCopyName(layer.colorspace) UTF8String]);
             // disable color matching:
             layer.colorspace = nil;
         }
