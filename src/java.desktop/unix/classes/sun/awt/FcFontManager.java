@@ -25,7 +25,9 @@
 
 package sun.awt;
 
-import sun.font.*;
+import sun.font.FcFontConfiguration;
+import sun.font.FontConfigManager;
+import sun.font.SunFontManager;
 
 /**
  * A {@link sun.font.FontManager} that uses fontconfig to find system fonts.
@@ -41,13 +43,6 @@ public class FcFontManager extends SunFontManager {
         }
 
         return fcManager;
-    }
-
-    @Override
-    protected String getSystemFontVersion(TrueTypeFont bundledFont) {
-        String query = bundledFont.getTypographicFamilyName() + ":style=" + bundledFont.getTypographicSubfamilyName();
-        String systemFont = FontConfigManager.getFontProperty(query, "%{file}");
-        return systemFont != null ? getTrueTypeVersion(systemFont) : "0";
     }
 
     @Override
