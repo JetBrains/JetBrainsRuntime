@@ -50,7 +50,9 @@ gtest/MetaspaceGtests.java#balanced-no-ccs initial_run generic-all
 gtest/MetaspaceGtests.java#reclaim-aggressive-ndebug initial_run generic-all
 gtest/LargePageGtests.java#use-large-pages initial_run linux-all,windows-all
 
-gtest/NMTGtests.java JBR-5718 generic-all
+gtest/NMTGtests.java#nmt-detail JBR-5718 generic-all
+gtest/NMTGtests.java#nmt-off JBR-5718 generic-all
+gtest/NMTGtests.java#nmt-summary JBR-5718 generic-all
 
 gc/stress/TestReclaimStringsLeaksMemory.java initial_run windows-all
 
