@@ -3092,11 +3092,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         }
     }
 
-    // SunFontManager could be extended outside JBR scope (e.g. IdeFontManager) therefore default implementation of this
-    // method needed for compatibility. Returning of "0" repeats the logic of setting field versionCheckEnabled to false
-    protected String getSystemFontVersion(TrueTypeFont bundledFont) {
-        return "0";
-    }
+    abstract protected String getSystemFontVersion(TrueTypeFont bundledFont);
 
     protected void loadJREFonts(String[] fonts) {
         addDirFonts(fonts, FONTFORMAT_TRUETYPE, true,
