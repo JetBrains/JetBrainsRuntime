@@ -12,7 +12,6 @@ java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java nobug windows-all
 java/awt/MenuBar/SeparatorsNavigation/SeparatorsNavigation.java nobug windows-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java nobug windows-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java nobug windows-all
-java/awt/Mouse/EnterExitEvents/ModalDialogEnterExitEventsTest.java nobug windows-all,linux-all
 java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.java JBR-4354 windows-all,linux-all # linux: JBR-4354
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java nobug windows-all
 java/awt/Paint/PaintNativeOnUpdate.java nobug windows-all
@@ -39,7 +38,6 @@ javax/swing/JEditorPane/8195095/ImageViewTest.java nobug windows-all
 javax/swing/JFrame/8016356/bug8016356.java nobug windows-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java nobug windows-all
 javax/swing/JInternalFrame/5066752/bug5066752.java nobug windows-all
-javax/swing/JInternalFrame/Test6505027.java nobug windows-all
 javax/swing/JMenu/6538132/6538132.java 8197552 windows-all
 javax/swing/JMenu/8072900/WrongSelectionOnMouseOver.java nobug windows-all,linux-all
 javax/swing/JMenuItem/6209975/bug6209975.java JBR-4894 windows-all
@@ -62,12 +60,13 @@ javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java 8159131 linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/SetShapeAndClickSwing.java 8013450 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,nobug linux-all,windows-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java nobug windows-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8233582,nobug linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java 8024627 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentWindowClickSwing.java nobug windows-all
 javax/swing/plaf/nimbus/8057791/bug8057791.java nobug windows-all
 javax/swing/plaf/nimbus/TestNimbusOverride.java nobug linux-all,windows-all
 javax/swing/plaf/windows/6921687/bug6921687.java nobug windows-all
+javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java nobug windows-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java nobug windows-all
 javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java 8194048 windows-all,linux-all nobug: linux, 8194048 windows
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java nobug windows-all
