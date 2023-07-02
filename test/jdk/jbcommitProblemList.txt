@@ -39,7 +39,6 @@ javax/swing/JEditorPane/8195095/ImageViewTest.java nobug windows-all
 javax/swing/JFrame/8016356/bug8016356.java nobug windows-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java nobug windows-all
 javax/swing/JInternalFrame/5066752/bug5066752.java nobug windows-all
-javax/swing/JInternalFrame/Test6505027.java nobug windows-all
 javax/swing/JMenu/6538132/6538132.java 8197552 windows-all
 javax/swing/JMenu/8072900/WrongSelectionOnMouseOver.java nobug windows-all,linux-all
 javax/swing/JMenuItem/6209975/bug6209975.java JBR-4894 windows-all
@@ -62,7 +61,7 @@ javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java 8159131 linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/SetShapeAndClickSwing.java 8013450 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,nobug linux-all,windows-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java nobug windows-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8233582,nobug linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java 8024627 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentWindowClickSwing.java nobug windows-all
 javax/swing/plaf/nimbus/8057791/bug8057791.java nobug windows-all
