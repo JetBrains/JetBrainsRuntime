@@ -1832,7 +1832,7 @@ WB_ENTRY(jboolean, WB_AreOpenArchiveHeapObjectsMapped(JNIEnv* env))
   return MetaspaceShared::open_archive_heap_region_mapped();
 WB_END
 
-WB_ENTRY(jboolean, WB_IsCDSIncludedInVmBuild(JNIEnv* env))
+WB_ENTRY(jboolean, WB_IsCDSIncluded(JNIEnv* env))
 #if INCLUDE_CDS
 # ifdef _LP64
     if (!UseCompressedOops || !UseCompressedClassPointers) {
@@ -1851,7 +1851,7 @@ WB_ENTRY(jboolean, WB_IsJavaHeapArchiveSupported(JNIEnv* env))
 WB_END
 
 
-WB_ENTRY(jboolean, WB_IsJFRIncludedInVmBuild(JNIEnv* env))
+WB_ENTRY(jboolean, WB_IsJFRIncluded(JNIEnv* env))
 #if INCLUDE_JFR
   return true;
 #else
@@ -2282,8 +2282,8 @@ static JNINativeMethod methods[] = {
   {CC"areSharedStringsIgnored",           CC"()Z",    (void*)&WB_AreSharedStringsIgnored },
   {CC"getResolvedReferences", CC"(Ljava/lang/Class;)Ljava/lang/Object;", (void*)&WB_GetResolvedReferences},
   {CC"areOpenArchiveHeapObjectsMapped",   CC"()Z",    (void*)&WB_AreOpenArchiveHeapObjectsMapped},
-  {CC"isCDSIncludedInVmBuild",            CC"()Z",    (void*)&WB_IsCDSIncludedInVmBuild },
-  {CC"isJFRIncludedInVmBuild",            CC"()Z",    (void*)&WB_IsJFRIncludedInVmBuild },
+  {CC"isCDSIncluded",                     CC"()Z",    (void*)&WB_IsCDSIncluded },
+  {CC"isJFRIncluded",                     CC"()Z",    (void*)&WB_IsJFRIncluded },
   {CC"isJavaHeapArchiveSupported",      CC"()Z",      (void*)&WB_IsJavaHeapArchiveSupported },
 
   {CC"clearInlineCaches0",  CC"(Z)V",                 (void*)&WB_ClearInlineCaches },

@@ -324,7 +324,7 @@ public class VMProps implements Callable<Map<String, String>> {
      * support.
      */
     protected String vmHasJFR() {
-        return "" + WB.isJFRIncludedInVmBuild();
+        return "" + WB.isJFRIncluded();
     }
 
     /**
@@ -398,7 +398,7 @@ public class VMProps implements Callable<Map<String, String>> {
      * @return true if CDS is supported by the VM to be tested.
      */
     protected String vmCDS() {
-        return "" + WB.isCDSIncludedInVmBuild();
+        return "" + WB.isCDSIncluded();
     }
 
     /**
