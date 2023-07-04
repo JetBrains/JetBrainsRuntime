@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -165,8 +165,11 @@ AC_DEFUN_ONCE([HOTSPOT_SETUP_DTRACE],
 
   DTRACE_DEP_MISSING=false
 
-  AC_MSG_CHECKING([for dtrace tool])
-  if test "x$DTRACE" != "x" && test -x "$DTRACE"; then
+  AC_MSG_CHECKING([for dtrace tool and platform support])
+  if test "x$OPENJDK_TARGET_CPU_ARCH" = "xppc"; then
+    AC_MSG_RESULT([no, $OPENJDK_TARGET_CPU_ARCH])
+    DTRACE_DEP_MISSING=true
+  elif test "x$DTRACE" != "x" && test -x "$DTRACE"; then
     AC_MSG_RESULT([$DTRACE])
   else
     AC_MSG_RESULT([not found, cannot build dtrace])
