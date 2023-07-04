@@ -22,8 +22,8 @@
  * questions.
  */
 
-/**
- * @test
+/*
+  @test
  * @key headful
  * @summary check that Frame content does appear when the frame becomes visible
  * @requires (os.family == "mac")
@@ -32,45 +32,82 @@
  * @run main/othervm -Dsun.java2d.metal=true -Dsun.java2d.metal.displaySync=false FrameContentAppearanceTest
  */
 
+import java.awt.Color;
+import java.awt.EventQueue;
+import java.awt.Frame;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Point;
+import java.awt.RenderingHints;
+import java.awt.Robot;
+import java.awt.Toolkit;
+import java.awt.image.BufferedImage;
+import java.util.concurrent.CountDownLatch;
 
-import java.awt.*;
-import java.awt.image.*;
 public class FrameContentAppearanceTest extends Frame {
+    interface Painter {
+        void paint(Graphics g);
+    }
+    enum ColorType {PRIM, BG, OTHER}
     static BufferedImage img;
     private static final int SIZE = 200;
-    private static final Color C = Color.BLUE;
-    private static final int COL_TOLERANCE = 6;
+    private static final Color PRIM_COL = Color.BLUE;
+    private static final Color BG_COL = Color.RED;
+    private static final int COL_TOLERANCE = 15;
     private static final int FAIL_TOLERANCE = 10;
     private static final int OGL_FAIL_TOLERANCE = 25;
     private static final int COUNT = 100;
 
+    private static Robot r;
+    protected CountDownLatch latch = new CountDownLatch(1);
+    private final Painter painter;
+    public FrameContentAppearanceTest(Painter painter) {
+        this.painter = painter;
+    }
+
+    @Override
+    public void paint(Graphics g) {
+        super.paint(g);
+        painter.paint(g);
+        latch.countDown();
+    }
+
     private void UI() {
+        setBackground(BG_COL);
         setSize(SIZE, SIZE);
         setResizable(false);
         setLocation(50, 50);
         setVisible(true);
     }
 
-    @Override
-    public void paint(Graphics g) {
-        g.drawImage(img, 0, 0, this);
+    private static ColorType checkColor(Color c1) {
+        if (Math.abs(PRIM_COL.getRed() - c1.getRed()) +
+            Math.abs(PRIM_COL.getGreen() - c1.getGreen()) +
+            Math.abs(PRIM_COL.getBlue() - c1.getBlue()) < COL_TOLERANCE)
+        {
+            return ColorType.PRIM;
+        }
+        if (Math.abs(BG_COL.getRed() - c1.getRed()) +
+            Math.abs(BG_COL.getGreen() - c1.getGreen()) +
+            Math.abs(BG_COL.getBlue() - c1.getBlue()) < COL_TOLERANCE)
+        {
+            return ColorType.BG;
+        }
+        return ColorType.OTHER;
     }
 
-    private static boolean cmpColors(Color c1, Color c2) {
-        return (Math.abs(c2.getRed() - c1.getRed()) +
-                Math.abs(c2.getGreen() - c1.getGreen()) +
-                Math.abs(c2.getBlue() - c1.getBlue()) < COL_TOLERANCE);
-    }
-
-    protected boolean doTest() throws Exception {
-        Robot r = new Robot();
+    protected ColorType doTest() throws Exception {
         r.waitForIdle();
         EventQueue.invokeAndWait(this::UI);
         r.waitForIdle();
+        Toolkit.getDefaultToolkit().sync();
+        latch.await();
+        r.waitForIdle();
         Point loc = getLocationOnScreen();
         Color c = r.getPixelColor(loc.x + SIZE / 2, loc.y + SIZE / 2);
+
         dispose();
-        return cmpColors(c, C);
+        return checkColor(c);
     }
 
     public static void main(String[] args) throws Exception {
@@ -87,54 +124,61 @@ public class FrameContentAppearanceTest extends Frame {
                 rendering += " displaySync=true";
             }
         }
-
+        r = new Robot();
         img = new BufferedImage(SIZE, SIZE, BufferedImage.TYPE_INT_RGB);
-        Graphics g = img.getGraphics();
-        g.setColor(C);
-        g.fillRect(0, 0, SIZE, SIZE);
+        Graphics2D g2 = img.createGraphics();
+        g2.setColor(PRIM_COL);
+        g2.fillRect(0, 0, SIZE, SIZE);
+        g2.dispose();
 
         int imgFailCount = 0;
         int rectFailCount = 0;
         int ovalFailCount = 0;
         int aaOvalFailCount = 0;
+        int noFrameCount = 0;
 
         for (int i = 0; i < COUNT; i++) {
-            imgFailCount += (new FrameContentAppearanceTest().doTest()) ? 0 : 1;
-            rectFailCount += (new FrameContentAppearanceTest() {
-                @Override
-                public void paint(Graphics g) {
-                    g.setColor(Color.BLUE);
-                    g.fillRect(0, 0, SIZE, SIZE);
-                }
-            }.doTest()) ? 0 : 1;
-            ovalFailCount += (new FrameContentAppearanceTest() {
-                @Override
-                public void paint(Graphics g) {
-                    g.setColor(Color.BLUE);
-                    g.fillOval(0, 0, SIZE, SIZE);
-                }
-            }.doTest()) ? 0 : 1;
-            aaOvalFailCount += (new FrameContentAppearanceTest() {
-                @Override
-                public void paint(Graphics g) {
-                    Graphics2D g2d = (Graphics2D) g;
-                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2d.setColor(Color.BLUE);
-                    g.fillOval(0, 0, SIZE, SIZE);
-                }
-            }.doTest()) ? 0 : 1;
+            ColorType imgTestRes = (new FrameContentAppearanceTest((Graphics g) ->
+                    g.drawImage(img, 0, 0, null))).doTest();
+            imgFailCount += imgTestRes == ColorType.BG ? 1 : 0;
+            noFrameCount += imgTestRes == ColorType.OTHER ? 1 : 0;
+
+            ColorType rectTestRes = (new FrameContentAppearanceTest((Graphics g) -> {
+                g.setColor(Color.BLUE);
+                g.fillRect(0, 0, SIZE, SIZE);
+            })).doTest();
+            rectFailCount += rectTestRes == ColorType.BG ? 1 : 0;
+            noFrameCount += rectTestRes == ColorType.OTHER ? 1 : 0;
+
+            ColorType ovalTestRes = (new FrameContentAppearanceTest((Graphics g) -> {
+                g.setColor(Color.BLUE);
+                g.fillOval(0, 0, SIZE, SIZE);
+            })).doTest();
+            ovalFailCount += ovalTestRes == ColorType.BG ? 1 : 0;
+            noFrameCount += ovalTestRes == ColorType.OTHER ? 1 : 0;
+
+            ColorType aaOvalTestRes = (new FrameContentAppearanceTest((Graphics g) -> {
+                Graphics2D g2d = (Graphics2D) g;
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(Color.BLUE);
+                g.fillOval(0, 0, SIZE, SIZE);
+            })).doTest();
+            aaOvalFailCount += aaOvalTestRes == ColorType.BG ? 1 : 0;
+            noFrameCount += aaOvalTestRes == ColorType.OTHER ? 1 : 0;
         }
 
-        if (imgFailCount > 0 || rectFailCount > 0 || ovalFailCount > 0 || aaOvalFailCount > 0) {
+        if (imgFailCount > 0 || rectFailCount > 0 || ovalFailCount > 0 || aaOvalFailCount > 0 || noFrameCount > 0) {
             String report = rendering + "\n" +
                     ((imgFailCount > 0) ? imgFailCount + " image rendering failure(s)\n" : "") +
                     ((rectFailCount > 0) ? rectFailCount + " rect rendering failure(s)\n" : "") +
                     ((ovalFailCount > 0) ? ovalFailCount + " oval rendering failure(s)\n" : "") +
-                    ((aaOvalFailCount > 0) ? aaOvalFailCount + " aa oval rendering failure(s)\n" : "");
+                    ((aaOvalFailCount > 0) ? aaOvalFailCount + " aa oval rendering failure(s)\n" : "") +
+                    ((noFrameCount > 0) ? noFrameCount + " no frame failure(s)\n" : "");
 
             int failTolerance = isOpenGL ? OGL_FAIL_TOLERANCE : FAIL_TOLERANCE;
             if (imgFailCount > failTolerance || rectFailCount > failTolerance ||
-                ovalFailCount > failTolerance || aaOvalFailCount > failTolerance)
+                ovalFailCount > failTolerance || aaOvalFailCount > failTolerance ||
+                noFrameCount > failTolerance)
             {
                 throw new RuntimeException("\nFailed:\n" + report);
             } else {
