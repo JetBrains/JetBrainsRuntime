@@ -172,7 +172,7 @@ public class TestStressArrayCopy {
             for (String className : classNames) {
                 // Start a new job
                 {
-                    ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(true, mix(c, "-Xmx256m", className).toArray(new String[0]));
+                    ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(mix(c, "-Xmx256m", className).toArray(new String[0]));
                     Process p = pb.start();
                     OutputAnalyzer oa = new OutputAnalyzer(p);
                     forks.add(new Fork(p, oa));

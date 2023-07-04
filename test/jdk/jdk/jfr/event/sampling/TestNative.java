@@ -57,7 +57,7 @@ public class TestNative {
 
     public static void main(String[] args) throws Exception {
         String lib = System.getProperty("test.nativepath");
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(true, "-Djava.library.path=" + lib, "jdk.jfr.event.sampling.TestNative$Test");
+        ProcessBuilder pb = ProcessTools.createTestJvm("-Djava.library.path=" + lib, "jdk.jfr.event.sampling.TestNative$Test");
 
         OutputAnalyzer output = ProcessTools.executeProcess(pb);
         output.shouldHaveExitValue(0);

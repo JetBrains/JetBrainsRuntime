@@ -81,7 +81,7 @@ public class SJISMappingPropTest {
     }
 
     private void runTest(String locale, String... cmd) throws Exception {
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(true, cmd);
+        ProcessBuilder pb = ProcessTools.createTestJvm(cmd);
         Map<String, String> env = pb.environment();
         env.put("LC_ALL", locale);
         OutputAnalyzer out = ProcessTools.executeProcess(pb)

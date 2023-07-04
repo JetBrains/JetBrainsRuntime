@@ -28,6 +28,7 @@
  *          options but accumulates --add-module values.
  * @modules java.base/jdk.internal.misc
  * @library /test/lib
+ * @run driver ModuleOptionsTest
  */
 
 import jdk.test.lib.process.OutputAnalyzer;

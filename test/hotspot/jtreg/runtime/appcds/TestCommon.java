@@ -147,7 +147,7 @@ public class TestCommon extends CDSTestUtils {
 
         for (String s : opts.suffix) cmd.add(s);
 
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(true, cmd);
+        ProcessBuilder pb = ProcessTools.createTestJvm(cmd);
         return executeAndLog(pb, "dump");
     }
 
@@ -197,7 +197,7 @@ public class TestCommon extends CDSTestUtils {
             }
         }
 
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(true, cmd);
+        ProcessBuilder pb = ProcessTools.createTestJvm(cmd);
         return executeAndLog(pb, "exec");
     }
 

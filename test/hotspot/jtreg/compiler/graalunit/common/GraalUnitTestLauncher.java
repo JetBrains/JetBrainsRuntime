@@ -112,7 +112,7 @@ public class GraalUnitTestLauncher {
         String classPath = String.join(File.pathSeparator, System.getProperty("java.class.path"),
                 String.join(File.separator, libsDir, MXTOOL_JARFILE));
 
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(false,
+        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
                 "-cp",  classPath,
                 "com.oracle.mxtool.junit.FindClassesByAnnotatedMethods", graalUnitTestFilePath, testAnnotationName);
 
@@ -263,8 +263,7 @@ public class GraalUnitTestLauncher {
 
         javaFlags.add("@"+GENERATED_TESTCLASSES_FILENAME);
 
-        ProcessBuilder javaPB = ProcessTools.createJavaProcessBuilder(true,
-                javaFlags);
+        ProcessBuilder javaPB = ProcessTools.createTestJvm(javaFlags);
         System.out.println("INFO: run command: " + String.join(" ", javaPB.command()));
 
         OutputAnalyzer outputAnalyzer = new OutputAnalyzer(javaPB.start());

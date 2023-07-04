@@ -95,8 +95,7 @@ public class TestLogging {
         Collections.addAll(testOpts, extraFlags);
         testOpts.add(MixedGCProvoker.class.getName());
         System.out.println(testOpts);
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(false,
-                testOpts);
+        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(testOpts);
         return new OutputAnalyzer(pb.start());
     }
 }

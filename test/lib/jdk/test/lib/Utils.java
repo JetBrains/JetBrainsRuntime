@@ -194,6 +194,18 @@ public final class Utils {
     }
 
     /**
+     * Combines given arguments with default JTReg arguments for a jvm running a test.
+     * This is the combination of JTReg arguments test.vm.opts and test.java.opts
+     * @return The combination of JTReg test java options and user args.
+     */
+    public static String[] prependTestJavaOpts(String... userArgs) {
+        List<String> opts = new ArrayList<String>();
+        Collections.addAll(opts, getTestJavaOpts());
+        Collections.addAll(opts, userArgs);
+        return opts.toArray(new String[0]);
+    }
+
+    /**
      * Removes any options specifying which GC to use, for example "-XX:+UseG1GC".
      * Removes any options matching: -XX:(+/-)Use*GC
      * Used when a test need to set its own GC version. Then any
