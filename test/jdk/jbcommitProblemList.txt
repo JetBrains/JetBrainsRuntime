@@ -21,7 +21,6 @@ java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.java nobug windows-a
 java/awt/MenuBar/SeparatorsNavigation/SeparatorsNavigation.java nobug windows-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java nobug windows-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java nobug windows-all
-java/awt/Mouse/EnterExitEvents/ModalDialogEnterExitEventsTest.java nobug windows-all,linux-all
 java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.java JBR-4354 windows-all,linux-all # linux: JBR-4354
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java nobug windows-all
 java/awt/Paint/PaintNativeOnUpdate.java nobug windows-all
