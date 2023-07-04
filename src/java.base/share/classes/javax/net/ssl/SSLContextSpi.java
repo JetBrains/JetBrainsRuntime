@@ -210,10 +210,9 @@ public abstract class SSLContextSpi {
      */
     protected SSLParameters engineGetSupportedSSLParameters() {
         SSLSocket socket = getDefaultSocket();
-        SSLParameters params = new SSLParameters();
+        SSLParameters params = socket.getSSLParameters();
         params.setCipherSuites(socket.getSupportedCipherSuites());
         params.setProtocols(socket.getSupportedProtocols());
         return params;
     }
-
 }
