@@ -1423,6 +1423,8 @@ private:
 
   void ktestql(KRegister dst, KRegister src);
 
+  void kshiftlbl(KRegister dst, KRegister src, int imm8);
+
   void movdl(XMMRegister dst, Register src);
   void movdl(Register dst, XMMRegister src);
   void movdl(XMMRegister dst, Address src);
@@ -1621,6 +1623,7 @@ private:
   void evpcmpuw(KRegister kdst, XMMRegister nds, XMMRegister src, ComparisonPredicate vcc, int vector_len);
   void evpcmpuw(KRegister kdst, KRegister mask, XMMRegister nds, XMMRegister src, ComparisonPredicate of, int vector_len);
   void evpcmpuw(KRegister kdst, XMMRegister nds, Address src, ComparisonPredicate vcc, int vector_len);
+  void evpcmpuq(KRegister kdst, XMMRegister nds, XMMRegister src, ComparisonPredicate vcc, int vector_len);
 
   void pcmpeqw(XMMRegister dst, XMMRegister src);
   void vpcmpeqw(XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len);
@@ -2042,6 +2045,9 @@ private:
   void vpaddw(XMMRegister dst, XMMRegister nds, Address src, int vector_len);
   void vpaddd(XMMRegister dst, XMMRegister nds, Address src, int vector_len);
   void vpaddq(XMMRegister dst, XMMRegister nds, Address src, int vector_len);
+
+  // Leaf level assembler routines for masked operations.
+  void evpaddq(XMMRegister dst, KRegister mask, XMMRegister nds, XMMRegister src, bool merge, int vector_len);
 
   // Sub packed integers
   void psubb(XMMRegister dst, XMMRegister src);

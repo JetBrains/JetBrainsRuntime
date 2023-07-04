@@ -2286,6 +2286,8 @@ public:
   INSN(umullv, 1, 0b110000, false); // accepted arrangements: T8B, T16B, T4H, T8H, T2S, T4S
   INSN(umlalv, 1, 0b100000, false); // accepted arrangements: T8B, T16B, T4H, T8H, T2S, T4S
 
+  INSN(cmhi,   1, 0b001101, true);  // accepted arrangements: T8B, T16B, T4H, T8H, T2S, T4S, T2D
+
 #undef INSN
 
 #define INSN(NAME, opc, opc2, accepted) \
