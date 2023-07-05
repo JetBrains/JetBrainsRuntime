@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -99,6 +99,11 @@ public class Extern {
         final boolean relative;
 
         /**
+         * Indicates that docs use old-form of anchors.
+         */
+        final boolean useOldFormId;
+
+        /**
          * Constructor to build a Extern Item object and map it with the element name.
          * If the same element name is found in the map, then the first mapped
          * Item object or offline location will be retained.
@@ -108,10 +113,11 @@ public class Extern {
          * file is picked.
          * @param relative    True if path is URL, false if directory path.
          */
-        Item(String elementName, DocPath path, boolean relative) {
+        Item(String elementName, DocPath path, boolean relative, boolean useOldFormId) {
             this.elementName = elementName;
             this.path = path;
             this.relative = relative;
+            this.useOldFormId = useOldFormId;
         }
 
         /**
@@ -179,7 +185,7 @@ public class Extern {
         DocPath p = fnd.relative ?
                 relativepath.resolve(fnd.path).resolve(filename) :
                 fnd.path.resolve(filename);
-        return new DocLink(p, "is-external=true", memberName);
+        return new DocLink(p, "is-external=true", fnd.useOldFormId ? getOldFormHtmlName(memberName) : memberName);
     }
 
     /**
@@ -210,6 +216,18 @@ public class Extern {
      */
     public boolean link(String url, String elemlisturl, Reporter reporter) throws DocFileIOException {
         return link(url, elemlisturl, reporter, true);
+    }
+
+    /**
+     * Checks if platform docs for the specified version use old-form anchors.
+     * Old-form anchors are used by Oracle docs for JDKs 8 and 9.
+     * It can be checked on https://docs.oracle.com/javase/<version>/docs/api
+     *
+     * @param version
+     * @return True if docs use old-form anchors
+     */
+    private boolean isOldFormPlatformDocs(int version) {
+        return 8 == version || 9 == version;
     }
 
     /*
@@ -292,7 +310,7 @@ public class Extern {
     private void readElementListFromURL(String urlpath, URL elemlisturlpath) throws Fault {
         try {
             URL link = elemlisturlpath.toURI().resolve(DocPaths.ELEMENT_LIST.getPath()).toURL();
-            readElementList(link.openStream(), urlpath, false);
+            readElementList(link.openStream(), urlpath, false, false);
         } catch (URISyntaxException | MalformedURLException exc) {
             throw new Fault(configuration.getText("doclet.MalformedURL", elemlisturlpath.toString()), exc);
         } catch (IOException exc) {
@@ -309,7 +327,7 @@ public class Extern {
     private void readAlternateURL(String urlpath, URL elemlisturlpath) throws Fault {
         try {
             URL link = elemlisturlpath.toURI().resolve(DocPaths.PACKAGE_LIST.getPath()).toURL();
-            readElementList(link.openStream(), urlpath, false);
+            readElementList(link.openStream(), urlpath, false, true);
         } catch (URISyntaxException | MalformedURLException exc) {
             throw new Fault(configuration.getText("doclet.MalformedURL", elemlisturlpath.toString()), exc);
         } catch (IOException exc) {
@@ -332,27 +350,27 @@ public class Extern {
             file = file.resolveAgainst(DocumentationTool.Location.DOCUMENTATION_OUTPUT);
         }
         if (file.exists()) {
-            readElementList(file, path);
+            readElementList(file, path, false);
         } else {
             DocFile file1 = elemListPath.resolve(DocPaths.PACKAGE_LIST);
             if (!(file1.isAbsolute() || linkoffline)) {
                 file1 = file1.resolveAgainst(DocumentationTool.Location.DOCUMENTATION_OUTPUT);
             }
             if (file1.exists()) {
-                readElementList(file1, path);
+                readElementList(file1, path, true);
             } else {
                 throw new Fault(configuration.getText("doclet.File_error", file.getPath()), null);
             }
         }
     }
 
-    private void readElementList(DocFile file, String path) throws Fault, DocFileIOException {
+    private void readElementList(DocFile file, String path, boolean isOldFormDoc) throws Fault, DocFileIOException {
         try {
             if (file.canRead()) {
                 boolean pathIsRelative
                         = !isUrl(path)
                         && !DocFile.createFileForInput(configuration, path).isAbsolute();
-                readElementList(file.openInputStream(), path, pathIsRelative);
+                readElementList(file.openInputStream(), path, pathIsRelative, isOldFormDoc);
             } else {
                 throw new Fault(configuration.getText("doclet.File_error", file.getPath()), null);
             }
@@ -370,7 +388,7 @@ public class Extern {
      * @param relative Is path relative?
      * @throws IOException if there is a problem reading or closing the stream
      */
-    private void readElementList(InputStream input, String path, boolean relative)
+    private void readElementList(InputStream input, String path, boolean relative, boolean isOldFormDoc)
                          throws IOException {
         try (BufferedReader in = new BufferedReader(new InputStreamReader(input))) {
             String elemname = null;
@@ -382,7 +400,7 @@ public class Extern {
                     elempath = basePath;
                     if (elemname.startsWith(DocletConstants.MODULE_PREFIX)) {
                         moduleName = elemname.replace(DocletConstants.MODULE_PREFIX, "");
-                        Item item = new Item(moduleName, elempath, relative);
+                        Item item = new Item(moduleName, elempath, relative, isOldFormDoc);
                         moduleItems.put(moduleName, item);
                     } else {
                         DocPath pkgPath = DocPath.create(elemname.replace('.', '/'));
@@ -392,7 +410,7 @@ public class Extern {
                             elempath = elempath.resolve(pkgPath);
                         }
                         String actualModuleName = checkLinkCompatibility(elemname, moduleName, path);
-                        Item item = new Item(elemname, elempath, relative);
+                        Item item = new Item(elemname, elempath, relative, isOldFormDoc);
                         packageItems.computeIfAbsent(actualModuleName, k -> new TreeMap<>())
                             .put(elemname, item);
                     }
@@ -454,5 +472,66 @@ public class Extern {
             }
         }
         return moduleName == null ? DocletConstants.DEFAULT_ELEMENT_NAME : moduleName;
+    }
+
+    /**
+     * Converts a name to an old-form HTML name (old-form id).
+     *
+     * @param name the string that needs to be converted to a valid HTML name
+     * @return old-form HTML name
+     */
+    public static String getOldFormHtmlName(String name) {
+        /* The HTML 4 spec at http://www.w3.org/TR/html4/types.html#h-6.2 mentions
+         * that the name/id should begin with a letter followed by other valid characters.
+         * The HTML 5 spec (draft) is more permissive on names/ids where the only restriction
+         * is that it should be at least one character long and should not contain spaces.
+         * The spec draft is @ http://www.w3.org/html/wg/drafts/html/master/dom.html#the-id-attribute.
+         *
+         * For HTML 4, we need to check for non-characters at the beginning of the name and
+         * substitute it accordingly, "_" and "$" can appear at the beginning of a member name.
+         * The method substitutes "$" with "Z:Z:D" and will prefix "_" with "Z:Z".
+         */
+
+        if (null == name)
+            return name;
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < name.length(); i++) {
+            char ch = name.charAt(i);
+            switch (ch) {
+                case '(':
+                case ')':
+                case '<':
+                case '>':
+                case ',':
+                    sb.append('-');
+                    break;
+                case ' ':
+                case '[':
+                    break;
+                case ']':
+                    sb.append(":A");
+                    break;
+                // Any appearance of $ needs to be substituted with ":D" and not with hyphen
+                // since a field name "P$$ and a method P(), both valid member names, can end
+                // up as "P--". A member name beginning with $ needs to be substituted with
+                // "Z:Z:D".
+                case '$':
+                    if (i == 0)
+                        sb.append("Z:Z");
+                    sb.append(":D");
+                    break;
+                // A member name beginning with _ needs to be prefixed with "Z:Z" since valid anchor
+                // names can only begin with a letter.
+                case '_':
+                    if (i == 0)
+                        sb.append("Z:Z");
+                    sb.append(ch);
+                    break;
+                default:
+                    sb.append(ch);
+            }
+        }
+        return sb.toString();
     }
 }

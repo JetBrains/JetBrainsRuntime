@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -85,7 +85,7 @@ public class TestLinkOption extends JavadocTester {
 
         checkOutput("pkg/B.html", true,
                 "<div class=\"block\">A method with html tag the method "
-                + "<a href=\"" + url + "java/lang/ClassLoader.html?is-external=true#getSystemClassLoader()\""
+                + "<a href=\"" + url + "java/lang/ClassLoader.html?is-external=true#getSystemClassLoader--\""
                 + " title=\"class or interface in java.lang\" class=\"externalLink\"><code><tt>getSystemClassLoader()</tt>"
                 + "</code></a> as the parent class loader.</div>",
                 "<div class=\"block\">is equivalent to invoking <code>"

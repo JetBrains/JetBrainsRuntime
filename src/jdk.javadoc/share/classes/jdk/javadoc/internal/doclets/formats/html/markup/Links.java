@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import jdk.javadoc.internal.doclets.formats.html.SectionName;
 import jdk.javadoc.internal.doclets.toolkit.Content;
 import jdk.javadoc.internal.doclets.toolkit.util.DocLink;
 import jdk.javadoc.internal.doclets.toolkit.util.DocPath;
+import jdk.javadoc.internal.doclets.toolkit.util.Extern;
 
 /**
  * Factory for HTML A elements, both links (with a {@code href} attribute)
@@ -334,44 +335,7 @@ public class Links {
             return name.replaceAll(" +", "");
         }
 
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < name.length(); i++) {
-            char ch = name.charAt(i);
-            switch (ch) {
-                case '(':
-                case ')':
-                case '<':
-                case '>':
-                case ',':
-                    sb.append('-');
-                    break;
-                case ' ':
-                case '[':
-                    break;
-                case ']':
-                    sb.append(":A");
-                    break;
-                // Any appearance of $ needs to be substituted with ":D" and not with hyphen
-                // since a field name "P$$ and a method P(), both valid member names, can end
-                // up as "P--". A member name beginning with $ needs to be substituted with
-                // "Z:Z:D".
-                case '$':
-                    if (i == 0)
-                        sb.append("Z:Z");
-                    sb.append(":D");
-                    break;
-                // A member name beginning with _ needs to be prefixed with "Z:Z" since valid anchor
-                // names can only begin with a letter.
-                case '_':
-                    if (i == 0)
-                        sb.append("Z:Z");
-                    sb.append(ch);
-                    break;
-                default:
-                    sb.append(ch);
-            }
-        }
-        return sb.toString();
+        return Extern.getOldFormHtmlName(name);
     }
 
 }
