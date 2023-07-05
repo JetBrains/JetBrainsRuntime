@@ -269,9 +269,8 @@ protected:
   // Both mirrors are on the ClassLoaderData::_handles list already so no
   // barriers are needed.
   void set_java_mirror_handle(OopHandle mirror) { _java_mirror = mirror; }
-  OopHandle java_mirror_handle() const          {
-    return _java_mirror;
-  }
+  OopHandle java_mirror_handle() const          { return _java_mirror;   }
+  void swap_java_mirror_handle(OopHandle& mirror) { _java_mirror.swap(mirror); }
 
   // modifier flags
   jint modifier_flags() const          { return _modifier_flags; }
