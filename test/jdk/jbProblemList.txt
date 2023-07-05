@@ -155,7 +155,7 @@ java/awt/event/KeyEvent/CorrectTime/CorrectTime.java 6626492 generic-all
 java/awt/EventQueue/6980209/bug6980209.java 8198615 macosx-all
 java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.java 8198237 macosx-all
 java/awt/Frame/SetMinimumSizeTest/SetMinimumSizeTest2.java JBR-5210 windows-all
-java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java JBR-5210 windows-all
+java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java JBR-5210,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java 7080150,JBR-4880,8253184  macosx-all,windows-all
 java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java 8169109,JBR-4880 linux-all,windows-all
 java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java 8168646 generic-all
@@ -234,7 +234,7 @@ java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java 8129778 generic-all
 
 java/awt/event/KeyEvent/KeyTyped/CtrlASCII.java JBR-3636,JBR-4880 windows-all
 
-java/awt/event/KeyEvent/KeyTyped/CtrlSpace.java JBR-3817,JBR-3817 windows-all,macosx-all
+java/awt/event/KeyEvent/KeyTyped/CtrlSpace.java JBR-3817 windows-all,macosx-all
 java/awt/event/MouseEvent/MouseButtonsAndKeyMasksTest/MouseButtonsAndKeyMasksTest.java 8129778 generic-all
 
 java/awt/dnd/URIListToFileListBetweenJVMsTest/URIListToFileListBetweenJVMsTest.java 8194947 generic-all
@@ -295,7 +295,7 @@ sun/java2d/DirectX/RenderingToCachedGraphicsTest/RenderingToCachedGraphicsTest.j
 sun/java2d/Disposer/TestDisposerLeak.java 8310877 generic-all
 sun/java2d/SunGraphics2D/DrawImageBilinear.java 8297175 linux-all
 
-java/awt/Graphics2D/CopyAreaOOB.java JBR-5354 macosx-all,windows-all
+java/awt/Graphics2D/CopyAreaOOB.java JBR-5354 macosx-all,windows-all,linux-5.18.2-arch1-1
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5010,JBR-5510 linux-aarch64,linux-5.18.2-arch1-1
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java 8266283 linux-all
 java/awt/Graphics2D/DrawString/TextRenderingTest.java JBR-4260,JBR-5359 macosx-11.7.1,windows-aarch64
@@ -1065,7 +1065,7 @@ jdk/internal/platform/docker/TestDockerBasic.java          JBR-5220 linux-aarch6
 jdk/internal/platform/docker/TestDockerCpuMetrics.java     JBR-5334 linux-aarch64
 jdk/internal/platform/docker/TestDockerMemoryMetrics.java  JBR-5220 linux-aarch64
 jdk/internal/platform/docker/TestGetFreeSwapSpaceSize.java JBR-5220 linux-aarch64
-jdk/internal/platform/docker/TestPidsLimit.java            JBR-5334 linux-aarch64
+jdk/internal/platform/docker/TestPidsLimit.java            JBR-5334,8311539 linux-aarch64,5.19.0-1026-aws
 jdk/internal/platform/docker/TestUseContainerSupport.java  JBR-5334 linux-aarch64
 
 ############################################################################
@@ -1175,6 +1175,7 @@ com/sun/java/swing/plaf/windows/Test8173145.java                                
 com/sun/java/swing/plaf/windows/AltFocusIssueTest.java                              JBR-4197 windows-all
 
 java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java            JBR-4207 windows-all
+jb/java/awt/Focus/TitleBarClickTest.java                                            JBR-3180 linux-5.18.2-arch1-1
 jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java                           JBR-5392 windows-aarch64
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTestLinux.sh                    JBR-4078 linux-all
 jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest4207.java                    JBR-4207 windows-all
