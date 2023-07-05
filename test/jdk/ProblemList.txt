@@ -472,13 +472,6 @@ java/beans/XMLEncoder/Test6570354.java 8015593 macosx-all
 
 ############################################################################
 
-# jdk_foreign
-
-java/foreign/callarranger/TestAarch64CallArranger.java generic-x86
-java/foreign/TestLargeSegmentCopy.java generic-x86
-
-############################################################################
-
 # jdk_lang
 
 java/lang/ProcessHandle/InfoTest.java                           8211847 aix-ppc64
@@ -529,6 +522,8 @@ javax/management/monitor/DerivedGaugeMonitorTest.java           8042211 generic-
 javax/management/remote/mandatory/connection/RMIConnector_NPETest.java 8267887 generic-all
 
 javax/management/remote/mandatory/connection/BrokenConnectionTest.java 8262312 linux-all
+
+javax/management/remote/mandatory/subjectDelegation/SubjectDelegation1Test.java 8149084 linux-aarch64
 
 ############################################################################
 
