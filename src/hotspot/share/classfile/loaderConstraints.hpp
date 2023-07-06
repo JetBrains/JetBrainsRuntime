@@ -46,6 +46,7 @@ public:
   // (DCEVM) update all klasses with newest version
   static void update_after_redefinition();
 
+  static void initialize();
   // Check class loader constraints
   static bool add_entry(Symbol* name, InstanceKlass* klass1, ClassLoaderData* loader1,
                         InstanceKlass* klass2, ClassLoaderData* loader2);
