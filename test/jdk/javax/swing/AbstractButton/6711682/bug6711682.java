@@ -55,10 +55,8 @@ public class bug6711682 {
                 }
             });
             robot.waitForIdle();
-            Point l = table.getLocationOnScreen();
-            int h = table.getRowHeight();
             for (int i = 0; i < 3; i++) {
-                robot.mouseMove(l.x + 5, l.y + 5 + i * h);
+                moveMouseToRow(robot, table, i);
                 robot.mousePress(InputEvent.BUTTON1_MASK);
                 robot.mouseRelease(InputEvent.BUTTON1_MASK);
             }
@@ -75,7 +73,7 @@ public class bug6711682 {
                 }
             }
             for (int i = 2; i >= 0; i--) {
-                robot.mouseMove(l.x + 5, l.y + 5 + i * h);
+                moveMouseToRow(robot, table, i);
                 robot.mousePress(InputEvent.BUTTON1_MASK);
                 robot.mouseRelease(InputEvent.BUTTON1_MASK);
             }
@@ -89,6 +87,17 @@ public class bug6711682 {
         } finally {
             if (f != null) SwingUtilities.invokeAndWait(() -> f.dispose());
         }
+    }
+
+    private static void moveMouseToRow(Robot robot, JTable table, int row) {
+        Point l = table.getLocationOnScreen();
+        Rectangle cellRect = table.getCellRect(row, 0, false);
+        if (cellRect.width == 0 || cellRect.height == 0) {
+            throw new RuntimeException("table.getCellRect() returned unusable data");
+        }
+        int x = l.x + cellRect.x + cellRect.width / 2;
+        int y = l.y + cellRect.y + cellRect.height / 2;
+        robot.mouseMove(x, y);
     }
 
     private static void createAndShowGUI() {
