@@ -53,7 +53,7 @@ BOOL isColorMatchingEnabled() {
         if (env == NULL) return NO;
         NSString *colorMatchingEnabledProp = [PropertiesUtilities javaSystemPropertyForKey:@"sun.java2d.metal.colorMatching"
                                                                                    withEnv:env];
-        colorMatchingEnabled = [@"true" isCaseInsensitiveLike:colorMatchingEnabledProp] ? YES : NO; // false by default
+        colorMatchingEnabled = [@"false" isCaseInsensitiveLike:colorMatchingEnabledProp] ? NO : YES;
         J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLLayer_isColorMatchingEnabled: %d", colorMatchingEnabled);
     }
     return (BOOL)colorMatchingEnabled;

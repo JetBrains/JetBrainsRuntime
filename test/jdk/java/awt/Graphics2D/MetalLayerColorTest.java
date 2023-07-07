@@ -429,7 +429,7 @@ public class MetalLayerColorTest {
         System.out.println("Java2D pipeline: " + (IS_RDR_METAL ? "Metal" : "OpenGL"));
 
         if (IS_RDR_METAL) {
-            IS_RDR_METAL_CM = "true".equalsIgnoreCase(System.getProperty("sun.java2d.metal.colorMatching"));
+            IS_RDR_METAL_CM = !"false".equalsIgnoreCase(System.getProperty("sun.java2d.metal.colorMatching"));
             System.out.println("IS_RDR_METAL_CM: " + IS_RDR_METAL_CM);
         }
 
