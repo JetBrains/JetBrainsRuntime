@@ -64,7 +64,6 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslu
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java 8024627 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentWindowClickSwing.java nobug windows-all
 javax/swing/plaf/nimbus/8057791/bug8057791.java nobug windows-all
-javax/swing/plaf/nimbus/TestNimbusOverride.java nobug linux-all,windows-all
 javax/swing/plaf/windows/6921687/bug6921687.java nobug windows-all
 javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java nobug windows-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java nobug windows-all
