@@ -235,8 +235,8 @@ public class EventQueue {
                 }
 
                 @Override
-                public void dispatchEvent(EventQueue eventQueue) {
-                    eventQueue.dispatchNextEvent();;
+                public void dispatchEvent(EventQueue eventQueue, AWTEvent event) {
+                    eventQueue.dispatchEvent(event);
                 }
             });
     }
@@ -373,10 +373,6 @@ public class EventQueue {
             if (notifyID) {
                 pushPopCond.signalAll();
             }
-        }
-
-        if (fwDispatcher != null) {
-            fwDispatcher.scheduleNativeEvent(this);
         }
     }
 
@@ -562,6 +558,9 @@ public class EventQueue {
      *            if any thread has interrupted this thread
      */
     public AWTEvent getNextEvent() throws InterruptedException {
+        if (fwDispatcher != null && fwDispatcher.canGetEventsFromNativeQueue()) {
+            return fwDispatcher.getNextEventFromNativeQueue(true);
+        }
         do {
             /*
              * SunToolkit.flushPendingEvents must be called outside
@@ -569,11 +568,6 @@ public class EventQueue {
              * event queues are nested with push()/pop().
              */
             SunToolkit.flushPendingEvents(appContext);
-
-            if (fwDispatcher != null) {
-                fwDispatcher.waitForNativeEvent();
-            }
-
             pushPopLock.lock();
             try {
                 AWTEvent event = getNextEventPrivate();
@@ -650,6 +644,9 @@ public class EventQueue {
      * @return the first event
      */
     public AWTEvent peekEvent() {
+        if (fwDispatcher != null && fwDispatcher.canGetEventsFromNativeQueue()) {
+            return fwDispatcher.getNextEventFromNativeQueue(false);
+        }
         pushPopLock.lock();
         try {
             for (int i = NUM_PRIORITIES - 1; i >= 0; i--) {
@@ -736,9 +733,11 @@ public class EventQueue {
                 // In case fwDispatcher is installed and we're already on the
                 // dispatch thread (e.g. performing DefaultKeyboardFocusManager.sendMessage),
                 // dispatch the event straight away.
-                if (fwDispatcher == null || isDispatchThreadImpl()) {
+                // Also, AWTAutoShutdown event should be processed on EDT,
+                // as that event's purpose is to terminate EDT.
+                if (fwDispatcher == null || isDispatchThreadImpl() || src == AWTAutoShutdown.getInstance()) {
                     dispatchEventImpl(event, src);
-                } else {
+                } else if (!fwDispatcher.scheduleEvent(event)) {
                     fwDispatcher.scheduleDispatch(new Runnable() {
                         @Override
                         public void run() {
@@ -1144,9 +1143,7 @@ public class EventQueue {
                         }
                     }
                 );
-                if (fwDispatcher == null || fwDispatcher.startDefaultDispatchThread()) {
-                    dispatchThread.start();
-                }
+                dispatchThread.start();
             }
         } finally {
             pushPopLock.unlock();
@@ -1419,27 +1416,6 @@ public class EventQueue {
             nextQueue.setFwDispatcher(dispatcher);
         } else {
             fwDispatcher = dispatcher;
-        }
-    }
-
-    private void dispatchNextEvent() {
-        try {
-            AWTEvent event;
-            pushPopLock.lock();
-            try {
-                event = getNextEventPrivate();
-                if (event == null || peekEvent() == null) {
-                    AWTAutoShutdown.getInstance().notifyThreadFree(dispatchThread);
-                }
-            } finally {
-                pushPopLock.unlock();
-            }
-            if (event != null) {
-                dispatchEvent(event);
-            }
-        } catch (Throwable t) {
-            Thread thread = Thread.currentThread();
-            thread.getUncaughtExceptionHandler().uncaughtException(thread, t);
         }
     }
 }

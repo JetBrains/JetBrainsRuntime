@@ -494,14 +494,10 @@ public abstract class SunToolkit extends Toolkit
         if (eventContext != null && !eventContext.equals(appContext)) {
             throw new RuntimeException("Event posted on wrong app context : " + event);
         }
-        if (isDispatchingOnMainThread()) {
-            getSystemEventQueueImplPP(appContext).postEvent(event);
-        } else {
-            PostEventQueue postEventQueue =
-                    (PostEventQueue) appContext.get(POST_EVENT_QUEUE_KEY);
-            if (postEventQueue != null) {
-                postEventQueue.postEvent(event);
-            }
+        PostEventQueue postEventQueue =
+            (PostEventQueue)appContext.get(POST_EVENT_QUEUE_KEY);
+        if (postEventQueue != null) {
+            postEventQueue.postEvent(event);
         }
     }
 
@@ -1628,7 +1624,7 @@ public abstract class SunToolkit extends Toolkit
      */
     @SuppressWarnings("serial")
     private final boolean waitForIdle(final long end) {
-        if (timeout(end) <= 0 || isDispatchingOnMainThread() /* syncNativeQueue should be enough in this case */) {
+        if (timeout(end) <= 0) {
             return false;
         }
         flushPendingEvents();

@@ -946,16 +946,24 @@ public final class LWCToolkit extends LWToolkit {
     public static native void performOnMainThreadAndWait(Runnable r);
 
     /**
-     * Schedules the execution of the next AWT event from the event queue on the AppKit thread by creating a custom
-     * native NSEvent object and posting to the application's native event queue.
+     * Schedules event execution on the AppKit thread by wrapping it in native NSEvent object and posting to the
+     * application's native event queue.
      */
-    static native void scheduleEvent(EventQueue eventQueue);
+    static native void scheduleEvent(AWTEvent event);
 
-    static native void waitForNextEvent();
+    /**
+     * Retrieves event from the native application's event queue (and unwrapping it from NSEvent, see
+     * {@link #scheduleEvent(AWTEvent)})
+     */
+    static native AWTEvent getNextEvent(boolean removeFromQueue);
 
     // invoked from native code
-    private static void dispatch(EventQueue eventQueue) {
-        AWTAccessor.getEventQueueAccessor().dispatchEvent(eventQueue);
+    private static void dispatch(AWTEvent event) {
+        try {
+            AWTAccessor.getEventQueueAccessor().dispatchEvent(Toolkit.getDefaultToolkit().getSystemEventQueue(), event);
+        } catch (Throwable t) {
+            APPKIT_THREAD.getUncaughtExceptionHandler().uncaughtException(APPKIT_THREAD, t);
+        }
     }
 
 // DnD support
@@ -1253,22 +1261,19 @@ class MainThreadDispatcher implements FwDispatcher {
     }
 
     @Override
-    public boolean startDefaultDispatchThread() {
-        return false;
+    public boolean scheduleEvent(AWTEvent event) {
+        LWCToolkit.scheduleEvent(event);
+        return true;
     }
 
     @Override
-    public void scheduleNativeEvent(EventQueue eventQueue) {
-        LWCToolkit.scheduleEvent(eventQueue);
+    public boolean canGetEventsFromNativeQueue() {
+        return isDispatchThread();
     }
 
     @Override
-    public void waitForNativeEvent() {
-        if (isDispatchThread()) {
-            LWCToolkit.waitForNextEvent();
-        } else {
-            throw new IllegalStateException("getNextEvent() isn't supported in main thread dispatching mode");
-        }
+    public AWTEvent getNextEventFromNativeQueue(boolean removeFromQueue) {
+        return LWCToolkit.getNextEvent(removeFromQueue);
     }
 }
 
