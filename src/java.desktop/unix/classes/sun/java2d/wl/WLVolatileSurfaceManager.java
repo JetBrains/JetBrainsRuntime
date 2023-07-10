@@ -28,16 +28,25 @@ package sun.java2d.wl;
 
 import java.awt.GraphicsConfiguration;
 import java.awt.ImageCapabilities;
-import java.awt.Transparency;
-import java.awt.image.ColorModel;
-import sun.awt.wl.WLGraphicsConfig;
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.SurfaceData;
+import sun.java2d.vulkan.WLVKGraphicsConfig;
+import sun.java2d.vulkan.WLVKVolatileSurfaceManager;
 
 public class WLVolatileSurfaceManager extends VolatileSurfaceManager {
     public WLVolatileSurfaceManager(SunVolatileImage vImg, Object context) {
         super(vImg, context);
+    }
+
+    public static VolatileSurfaceManager createVolatileManager(SunVolatileImage vImg,
+                                                               Object context) {
+        GraphicsConfiguration gc = vImg.getGraphicsConfig();
+        if (gc instanceof WLVKGraphicsConfig) {
+            return new WLVKVolatileSurfaceManager(vImg, context);
+        } else {
+            return new WLVolatileSurfaceManager(vImg, context);
+        }
     }
 
     protected boolean isAccelerationEnabled() {
