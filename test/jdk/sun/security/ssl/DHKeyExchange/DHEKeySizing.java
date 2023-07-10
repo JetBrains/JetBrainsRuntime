@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,7 @@
 
 /*
  * @test
- * @bug 6956398
+ * @bug 6956398 8301700
  * @summary make ephemeral DH key match the length of the certificate key
  * @run main/othervm
  *      DHEKeySizing TLS_DHE_RSA_WITH_AES_128_CBC_SHA  false 1643 267
@@ -48,7 +48,7 @@
  *      DHEKeySizing SSL_DH_anon_EXPORT_WITH_DES40_CBC_SHA true 233 75
  *
  * @run main/othervm -Djsse.enableFFDHE=false
- *      DHEKeySizing TLS_DHE_RSA_WITH_AES_128_CBC_SHA  false 1387 139
+ *      DHEKeySizing TLS_DHE_RSA_WITH_AES_128_CBC_SHA  false 1643 267
  * @run main/othervm -Djsse.enableFFDHE=false
  *      -Djdk.tls.ephemeralDHKeySize=legacy
  *      DHEKeySizing TLS_DHE_RSA_WITH_AES_128_CBC_SHA  false 1323 107
@@ -60,13 +60,13 @@
  *      DHEKeySizing TLS_DHE_RSA_WITH_AES_128_CBC_SHA  false 1387 139
  *
  * @run main/othervm -Djsse.enableFFDHE=false
- *      DHEKeySizing SSL_DH_anon_WITH_RC4_128_MD5  false 361 139
+ *      DHEKeySizing SSL_DH_anon_WITH_RC4_128_MD5  false 617 267
  * @run main/othervm -Djsse.enableFFDHE=false
  *      -Djdk.tls.ephemeralDHKeySize=legacy
  *      DHEKeySizing SSL_DH_anon_WITH_RC4_128_MD5  false 297 107
  * @run main/othervm -Djsse.enableFFDHE=false
  *      -Djdk.tls.ephemeralDHKeySize=matched
- *      DHEKeySizing SSL_DH_anon_WITH_RC4_128_MD5  false 361 139
+ *      DHEKeySizing SSL_DH_anon_WITH_RC4_128_MD5  false 617 267
  * @run main/othervm -Djsse.enableFFDHE=false
  *      -Djdk.tls.ephemeralDHKeySize=1024
  *      DHEKeySizing SSL_DH_anon_WITH_RC4_128_MD5  false 361 139
@@ -93,7 +93,7 @@
  *        } dh_public;
  *    } ClientDiffieHellmanPublic;
  *
- * Fomr above structures, it is clear that if the DH key size increasing 128
+ * From the above structures, it is clear that if the DH key size increases 128
  * bits (16 bytes), the ServerHello series messages increases 48 bytes
  * (becuase dh_p, dh_g and dh_Ys each increase 16 bytes) and ClientKeyExchange
  * increases 16 bytes (because of the size increasing of dh_Yc).
@@ -104,7 +104,7 @@
  *   512-bit  |          1259 bytes  |           75 bytes |        233 bytes
  *   768-bit  |          1323 bytes  |          107 bytes |        297 bytes
  *  1024-bit  |          1387 bytes  |          139 bytes |        361 bytes
- *  2048-bit  |          1643 bytes  |          267 bytes |        361 bytes
+ *  2048-bit  |          1643 bytes  |          267 bytes |        617 bytes
  */
 
 import javax.net.ssl.*;
