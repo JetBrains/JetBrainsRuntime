@@ -189,7 +189,9 @@ void LoaderConstraintTable::update_after_redefinition() {
       }
     }
   };
-  _loader_constraint_table.iterate_all(update_old);
+  if (_loader_constraint_table != NULL) {
+      _loader_constraint_table->iterate_all(update_old);
+  }
 }
 
 class PurgeUnloadedConstraints : public StackObj {
