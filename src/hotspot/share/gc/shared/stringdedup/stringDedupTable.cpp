@@ -506,6 +506,7 @@ uintx StringDedupTable::unlink_or_oops_do(StringDedupUnlinkOrOopsDoClosure* cl,
     while (*entry != NULL) {
       oop* p = (oop*)(*entry)->obj_addr();
       if (cl->is_alive(*p)) {
+        typeArrayOop value = (typeArrayOop)*p;
         cl->keep_alive(p);
         if (is_resizing()) {
           // We are resizing the table, transfer entry to the new table
@@ -517,7 +518,6 @@ uintx StringDedupTable::unlink_or_oops_do(StringDedupUnlinkOrOopsDoClosure* cl,
             // at this point since we don't have exclusive access to all
             // destination partitions. finish_rehash() will do a single
             // threaded transfer of all entries.
-            typeArrayOop value = (typeArrayOop)*p;
             bool latin1 = (*entry)->latin1();
             unsigned int hash = hash_code(value, latin1);
             (*entry)->set_hash(hash);
