@@ -73,6 +73,8 @@ import sun.java2d.opengl.OGLSurfaceData;
 import sun.java2d.pipe.Region;
 import sun.util.logging.PlatformLogger;
 
+import javax.swing.*;
+
 public abstract class WComponentPeer extends WObjectPeer
     implements ComponentPeer, DropTargetPeer
 {
@@ -707,7 +709,11 @@ public abstract class WComponentPeer extends WObjectPeer
     synchronized native void _setFont(Font f);
     @Override
     public void updateCursorImmediately() {
-        WGlobalCursorManager.getCursorManager().updateCursorImmediately();
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                WGlobalCursorManager.getCursorManager().updateCursorImmediately();
+            }
+        });
     }
 
     // TODO: consider moving it to KeyboardFocusManagerPeerImpl

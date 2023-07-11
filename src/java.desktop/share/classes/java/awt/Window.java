@@ -69,6 +69,7 @@ import javax.accessibility.AccessibleContext;
 import javax.accessibility.AccessibleRole;
 import javax.accessibility.AccessibleState;
 import javax.accessibility.AccessibleStateSet;
+import javax.swing.*;
 
 import com.jetbrains.internal.JBRApi;
 import sun.awt.AWTAccessor;
@@ -4136,7 +4137,11 @@ public class Window extends Container implements Accessible {
         customTitleBar = t;
         if (t != null) t.window = this;
         if (CustomTitleBarPeer.INSTANCE != null) {
-            CustomTitleBarPeer.INSTANCE.update(peer);
+            SwingUtilities.invokeLater(new Runnable() {
+                public void run() {
+                    CustomTitleBarPeer.INSTANCE.update(peer);
+                }
+            });
         }
     }
 

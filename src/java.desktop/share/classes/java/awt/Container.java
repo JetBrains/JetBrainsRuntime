@@ -59,6 +59,7 @@ import java.util.Set;
 import javax.accessibility.Accessible;
 import javax.accessibility.AccessibleComponent;
 import javax.accessibility.AccessibleContext;
+import javax.swing.*;
 
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.MouseEventAccessor;
@@ -1645,32 +1646,35 @@ public class Container extends Component {
      * @see #validateTree
      */
     public void validate() {
-        boolean updateCur = SunToolkit.performWithTreeLock(() -> {
-            if ((!isValid() || descendUnconditionallyWhenValidating)
-                    && peer != null)
-            {
-                ContainerPeer p = null;
-                if (peer instanceof ContainerPeer) {
-                    p = (ContainerPeer) peer;
-                }
-                if (p != null) {
-                    p.beginValidate();
-                }
-                validateTree();
-                if (p != null) {
-                    p.endValidate();
-                    // Avoid updating cursor if this is an internal call.
-                    // See validateUnconditionally() for details.
-                    if (!descendUnconditionallyWhenValidating) {
-                        return isVisible();
-                    }
-                }
-            }
-            return false;
+        SwingUtilities.invokeLater(new Runnable() {
+           public void run() {
+               boolean updateCur = SunToolkit.performWithTreeLock(() -> {
+                   if ((!isValid() || descendUnconditionallyWhenValidating)
+                       && peer != null) {
+                       ContainerPeer p = null;
+                       if (peer instanceof ContainerPeer) {
+                           p = (ContainerPeer)peer;
+                       }
+                       if (p != null) {
+                           p.beginValidate();
+                       }
+                       validateTree();
+                       if (p != null) {
+                           p.endValidate();
+                           // Avoid updating cursor if this is an internal call.
+                           // See validateUnconditionally() for details.
+                           if (!descendUnconditionallyWhenValidating) {
+                               return isVisible();
+                           }
+                       }
+                   }
+                   return false;
+               });
+               if (updateCur) {
+                   updateCursorImmediately();
+               }
+           }
         });
-        if (updateCur) {
-            updateCursorImmediately();
-        }
     }
 
     /**

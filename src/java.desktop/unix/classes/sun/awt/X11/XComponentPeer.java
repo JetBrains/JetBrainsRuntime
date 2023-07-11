@@ -70,6 +70,8 @@ import sun.java2d.BackBufferCapsProvider;
 import sun.java2d.pipe.Region;
 import sun.util.logging.PlatformLogger;
 
+import javax.swing.*;
+
 
 public class XComponentPeer extends XWindow implements ComponentPeer, DropTargetPeer,
     BackBufferCapsProvider
@@ -692,7 +694,11 @@ public class XComponentPeer extends XWindow implements ComponentPeer, DropTarget
     }
 
     public void updateCursorImmediately() {
-        XGlobalCursorManager.getCursorManager().updateCursorImmediately();
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                XGlobalCursorManager.getCursorManager().updateCursorImmediately();
+            }
+        });
     }
 
     public final void pSetCursor(Cursor cursor) {
