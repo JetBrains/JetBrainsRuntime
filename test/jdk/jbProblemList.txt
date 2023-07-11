@@ -329,8 +329,7 @@ java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/RepaintTest.java 8266244,JBR-5786 macosx-aarch64,linux-all
 java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java 8253184 windows-all
-java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java 8157173 generic-all
-java/awt/Modal/FileDialog/FileDialogAppModal1Test.java 7186009,8253184 macosx-all,windows-all
+java/awt/Modal/FileDialog/FileDialogAppModal1Test.java 7186009,8253184,JBR-5827 macosx-all,windows-all,linux-all
 java/awt/Modal/FileDialog/FileDialogAppModal2Test.java 7186009,8253184 macosx-all,windows-all
 java/awt/Modal/FileDialog/FileDialogAppModal3Test.java 7186009,8253184 macosx-all,windows-all
 java/awt/Modal/FileDialog/FileDialogAppModal4Test.java 7186009,8253184 macosx-all,windows-all
@@ -961,7 +960,7 @@ javax/swing/JRootPane/4670486/bug4670486.java 8042381,8197552 macosx-all,windows
 javax/swing/JRootPane/DefaultButtonTest.java 8285635 windows-all,linux-all
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java JBR-5210 windows-all
 javax/swing/text/html/StyleSheet/bug4936917.java 8277816,JBR-899,JBR-5510 windows-all,macosx-aarch64,linux-5.18.2-arch1-1
-javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java JBR-5779 linux-all
+javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id1 JBR-5779 linux-all
 javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java 8277816,8253184,JBR-5510 macosx-aarch64,windows-all,linux-5.18.2-arch1-1
 javax/swing/plaf/synth/7158712/bug7158712.java JBR-125 windows-all
 javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java 8253184,JBR-5510,JBR-803 windows-all,linux-5.18.2-arch1-1,linux-all
@@ -1309,6 +1308,8 @@ javax/swing/JEditorPane/TestBrowserBGColor.java JBR-5359,JBR-5510 windows-aarch6
 javax/swing/JPopupMenu/7156657/bug7156657.java JBR-5359 windows-aarch64
 javax/swing/JRadioButton/8041561/bug8041561.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
 javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
+javax/swing/Popup/TaskbarPositionTest.java 8310689 windows-all,macosx-all
+javax/swing/PopupFactory/6276087/NonOpaquePopupMenuTest.java 8298124 macosx-all
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
 javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
 jb/java/awt/CustomTitleBar/ActionListenerTest.java JBR-5819 macosx-all,windows-all
