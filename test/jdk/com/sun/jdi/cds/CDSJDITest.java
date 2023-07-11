@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,7 +73,7 @@ public class CDSJDITest {
             "-XX:+UnlockDiagnosticVMOptions", "-XX:SharedArchiveFile=./SharedArchiveFile.jsa",
             "-XX:ExtraSharedClassListFile=" + jarClasslistFile.getPath(),
             "-Xshare:dump");
-        OutputAnalyzer outputDump = executeAndLog(pb, "exec");
+        OutputAnalyzer outputDump = executeAndLog(pb, "dump");
         for (String jarClass : jarClasses) {
             outputDump.shouldNotContain("Cannot find " + jarClass);
         }
