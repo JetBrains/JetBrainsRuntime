@@ -1245,12 +1245,14 @@ public:
   void char_array_compress(Register src, Register dst, Register len,
                            FloatRegister tmp1Reg, FloatRegister tmp2Reg,
                            FloatRegister tmp3Reg, FloatRegister tmp4Reg,
+                           FloatRegister tmp5Reg, FloatRegister tmp6Reg,
                            Register result);
 
   void encode_iso_array(Register src, Register dst,
                         Register len, Register result,
                         FloatRegister Vtmp1, FloatRegister Vtmp2,
-                        FloatRegister Vtmp3, FloatRegister Vtmp4);
+                        FloatRegister Vtmp3, FloatRegister Vtmp4,
+                        FloatRegister Vtmp5, FloatRegister Vtmp6);
   void string_indexof(Register str1, Register str2,
                       Register cnt1, Register cnt2,
                       Register tmp1, Register tmp2,

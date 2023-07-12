@@ -971,6 +971,26 @@ reg_class v3_reg(
     V3, V3_H
 );
 
+// Class for 128 bit register v4
+reg_class v4_reg(
+    V4, V4_H
+);
+
+// Class for 128 bit register v5
+reg_class v5_reg(
+    V5, V5_H
+);
+
+// Class for 128 bit register v6
+reg_class v6_reg(
+    V6, V6_H
+);
+
+// Class for 128 bit register v7
+reg_class v7_reg(
+    V7, V7_H
+);
+
 // Singleton class for condition codes
 reg_class int_flags(RFLAGS);
 
@@ -4878,6 +4898,42 @@ operand vRegD_V2()
 operand vRegD_V3()
 %{
   constraint(ALLOC_IN_RC(v3_reg));
+  match(RegD);
+  op_cost(0);
+  format %{ %}
+  interface(REG_INTER);
+%}
+
+operand vRegD_V4()
+%{
+  constraint(ALLOC_IN_RC(v4_reg));
+  match(RegD);
+  op_cost(0);
+  format %{ %}
+  interface(REG_INTER);
+%}
+
+operand vRegD_V5()
+%{
+  constraint(ALLOC_IN_RC(v5_reg));
+  match(RegD);
+  op_cost(0);
+  format %{ %}
+  interface(REG_INTER);
+%}
+
+operand vRegD_V6()
+%{
+  constraint(ALLOC_IN_RC(v6_reg));
+  match(RegD);
+  op_cost(0);
+  format %{ %}
+  interface(REG_INTER);
+%}
+
+operand vRegD_V7()
+%{
+  constraint(ALLOC_IN_RC(v7_reg));
   match(RegD);
   op_cost(0);
   format %{ %}
@@ -15390,14 +15446,17 @@ instruct string_compareLU(iRegP_R1 str1, iRegI_R2 cnt1, iRegP_R3 str2, iRegI_R4 
 %}
 
 instruct string_indexofUU(iRegP_R1 str1, iRegI_R4 cnt1, iRegP_R3 str2, iRegI_R2 cnt2,
-       iRegI_R0 result, iRegINoSp tmp1, iRegINoSp tmp2, iRegINoSp tmp3,
-       iRegINoSp tmp4, iRegINoSp tmp5, iRegINoSp tmp6, rFlagsReg cr)
+                          iRegI_R0 result, iRegINoSp tmp1, iRegINoSp tmp2,
+                          iRegINoSp tmp3, iRegINoSp tmp4, iRegINoSp tmp5, iRegINoSp tmp6,
+                          vRegD_V0 vtmp0, vRegD_V1 vtmp1, rFlagsReg cr)
 %{
   predicate(((StrIndexOfNode*)n)->encoding() == StrIntrinsicNode::UU);
   match(Set result (StrIndexOf (Binary str1 cnt1) (Binary str2 cnt2)));
   effect(USE_KILL str1, USE_KILL str2, USE_KILL cnt1, USE_KILL cnt2,
-         TEMP tmp1, TEMP tmp2, TEMP tmp3, TEMP tmp4, TEMP tmp5, TEMP tmp6, KILL cr);
-  format %{ "String IndexOf $str1,$cnt1,$str2,$cnt2 -> $result (UU)" %}
+         TEMP tmp1, TEMP tmp2, TEMP tmp3, TEMP tmp4, TEMP tmp5, TEMP tmp6,
+         TEMP vtmp0, TEMP vtmp1, KILL cr);
+  format %{ "String IndexOf $str1,$cnt1,$str2,$cnt2 -> $result (UU) "
+            "# KILL $str1 $cnt1 $str2 $cnt2 $tmp1 $tmp2 $tmp3 $tmp4 $tmp5 $tmp6 V0-V1 cr" %}
 
   ins_encode %{
     __ string_indexof($str1$$Register, $str2$$Register,
@@ -15411,14 +15470,17 @@ instruct string_indexofUU(iRegP_R1 str1, iRegI_R4 cnt1, iRegP_R3 str2, iRegI_R2 
 %}
 
 instruct string_indexofLL(iRegP_R1 str1, iRegI_R4 cnt1, iRegP_R3 str2, iRegI_R2 cnt2,
-       iRegI_R0 result, iRegINoSp tmp1, iRegINoSp tmp2, iRegINoSp tmp3,
-       iRegINoSp tmp4, iRegINoSp tmp5, iRegINoSp tmp6, rFlagsReg cr)
+                          iRegI_R0 result, iRegINoSp tmp1, iRegINoSp tmp2, iRegINoSp tmp3,
+                          iRegINoSp tmp4, iRegINoSp tmp5, iRegINoSp tmp6,
+                          vRegD_V0 vtmp0, vRegD_V1 vtmp1, rFlagsReg cr)
 %{
   predicate(((StrIndexOfNode*)n)->encoding() == StrIntrinsicNode::LL);
   match(Set result (StrIndexOf (Binary str1 cnt1) (Binary str2 cnt2)));
   effect(USE_KILL str1, USE_KILL str2, USE_KILL cnt1, USE_KILL cnt2,
-         TEMP tmp1, TEMP tmp2, TEMP tmp3, TEMP tmp4, TEMP tmp5, TEMP tmp6, KILL cr);
-  format %{ "String IndexOf $str1,$cnt1,$str2,$cnt2 -> $result (LL)" %}
+         TEMP tmp1, TEMP tmp2, TEMP tmp3, TEMP tmp4, TEMP tmp5, TEMP tmp6,
+         TEMP vtmp0, TEMP vtmp1, KILL cr);
+  format %{ "String IndexOf $str1,$cnt1,$str2,$cnt2 -> $result (LL) "
+            "# KILL $str1 $cnt1 $str2 $cnt2 $tmp1 $tmp2 $tmp3 $tmp4 $tmp5 $tmp6 V0-V1 cr" %}
 
   ins_encode %{
     __ string_indexof($str1$$Register, $str2$$Register,
@@ -15432,14 +15494,17 @@ instruct string_indexofLL(iRegP_R1 str1, iRegI_R4 cnt1, iRegP_R3 str2, iRegI_R2 
 %}
 
 instruct string_indexofUL(iRegP_R1 str1, iRegI_R4 cnt1, iRegP_R3 str2, iRegI_R2 cnt2,
-       iRegI_R0 result, iRegINoSp tmp1, iRegINoSp tmp2, iRegINoSp tmp3,
-       iRegINoSp tmp4, iRegINoSp tmp5, iRegINoSp tmp6, rFlagsReg cr)
+                          iRegI_R0 result, iRegINoSp tmp1, iRegINoSp tmp2, iRegINoSp tmp3,
+                          iRegINoSp tmp4, iRegINoSp tmp5, iRegINoSp tmp6,
+                          vRegD_V0 vtmp0, vRegD_V1 vtmp1, rFlagsReg cr)
 %{
   predicate(((StrIndexOfNode*)n)->encoding() == StrIntrinsicNode::UL);
   match(Set result (StrIndexOf (Binary str1 cnt1) (Binary str2 cnt2)));
   effect(USE_KILL str1, USE_KILL str2, USE_KILL cnt1, USE_KILL cnt2,
-         TEMP tmp1, TEMP tmp2, TEMP tmp3, TEMP tmp4, TEMP tmp5, TEMP tmp6, KILL cr);
-  format %{ "String IndexOf $str1,$cnt1,$str2,$cnt2 -> $result (UL)" %}
+         TEMP tmp1, TEMP tmp2, TEMP tmp3, TEMP tmp4, TEMP tmp5,
+         TEMP tmp6, TEMP vtmp0, TEMP vtmp1, KILL cr);
+  format %{ "String IndexOf $str1,$cnt1,$str2,$cnt2 -> $result (UL) "
+            "# KILL $str1 cnt1 $str2 $cnt2 $tmp1 $tmp2 $tmp3 $tmp4 $tmp5 $tmp6 V0-V1 cr" %}
 
   ins_encode %{
     __ string_indexof($str1$$Register, $str2$$Register,
@@ -15453,14 +15518,15 @@ instruct string_indexofUL(iRegP_R1 str1, iRegI_R4 cnt1, iRegP_R3 str2, iRegI_R2 
 %}
 
 instruct string_indexof_conUU(iRegP_R1 str1, iRegI_R4 cnt1, iRegP_R3 str2,
-                 immI_le_4 int_cnt2, iRegI_R0 result, iRegINoSp tmp1, iRegINoSp tmp2,
-                 iRegINoSp tmp3, iRegINoSp tmp4, rFlagsReg cr)
+                              immI_le_4 int_cnt2, iRegI_R0 result, iRegINoSp tmp1,
+                              iRegINoSp tmp2, iRegINoSp tmp3, iRegINoSp tmp4, rFlagsReg cr)
 %{
   predicate(((StrIndexOfNode*)n)->encoding() == StrIntrinsicNode::UU);
   match(Set result (StrIndexOf (Binary str1 cnt1) (Binary str2 int_cnt2)));
   effect(USE_KILL str1, USE_KILL str2, USE_KILL cnt1,
          TEMP tmp1, TEMP tmp2, TEMP tmp3, TEMP tmp4, KILL cr);
-  format %{ "String IndexOf $str1,$cnt1,$str2,$int_cnt2 -> $result (UU)" %}
+  format %{ "String IndexOf $str1,$cnt1,$str2,$int_cnt2 -> $result (UU) "
+            "# KILL $str1 $cnt1 $str2 $tmp1 $tmp2 $tmp3 $tmp4 cr" %}
 
   ins_encode %{
     int icnt2 = (int)$int_cnt2$$constant;
@@ -15474,14 +15540,15 @@ instruct string_indexof_conUU(iRegP_R1 str1, iRegI_R4 cnt1, iRegP_R3 str2,
 %}
 
 instruct string_indexof_conLL(iRegP_R1 str1, iRegI_R4 cnt1, iRegP_R3 str2,
-                 immI_le_4 int_cnt2, iRegI_R0 result, iRegINoSp tmp1, iRegINoSp tmp2,
-                 iRegINoSp tmp3, iRegINoSp tmp4, rFlagsReg cr)
+                              immI_le_4 int_cnt2, iRegI_R0 result, iRegINoSp tmp1,
+                              iRegINoSp tmp2, iRegINoSp tmp3, iRegINoSp tmp4, rFlagsReg cr)
 %{
   predicate(((StrIndexOfNode*)n)->encoding() == StrIntrinsicNode::LL);
   match(Set result (StrIndexOf (Binary str1 cnt1) (Binary str2 int_cnt2)));
   effect(USE_KILL str1, USE_KILL str2, USE_KILL cnt1,
          TEMP tmp1, TEMP tmp2, TEMP tmp3, TEMP tmp4, KILL cr);
-  format %{ "String IndexOf $str1,$cnt1,$str2,$int_cnt2 -> $result (LL)" %}
+  format %{ "String IndexOf $str1,$cnt1,$str2,$int_cnt2 -> $result (LL) "
+            "# KILL $str1 $cnt1 $str2 $tmp1 $tmp2 $tmp3 $tmp4 cr" %}
 
   ins_encode %{
     int icnt2 = (int)$int_cnt2$$constant;
@@ -15495,14 +15562,15 @@ instruct string_indexof_conLL(iRegP_R1 str1, iRegI_R4 cnt1, iRegP_R3 str2,
 %}
 
 instruct string_indexof_conUL(iRegP_R1 str1, iRegI_R4 cnt1, iRegP_R3 str2,
-                 immI_1 int_cnt2, iRegI_R0 result, iRegINoSp tmp1, iRegINoSp tmp2,
-                 iRegINoSp tmp3, iRegINoSp tmp4, rFlagsReg cr)
+                              immI_1 int_cnt2, iRegI_R0 result, iRegINoSp tmp1,
+                              iRegINoSp tmp2, iRegINoSp tmp3, iRegINoSp tmp4, rFlagsReg cr)
 %{
   predicate(((StrIndexOfNode*)n)->encoding() == StrIntrinsicNode::UL);
   match(Set result (StrIndexOf (Binary str1 cnt1) (Binary str2 int_cnt2)));
   effect(USE_KILL str1, USE_KILL str2, USE_KILL cnt1,
          TEMP tmp1, TEMP tmp2, TEMP tmp3, TEMP tmp4, KILL cr);
-  format %{ "String IndexOf $str1,$cnt1,$str2,$int_cnt2 -> $result (UL)" %}
+  format %{ "String IndexOf $str1,$cnt1,$str2,$int_cnt2 -> $result (UL) "
+            "# KILL $str1 $cnt1 $str2 $tmp1 $tmp2 $tmp3 $tmp4 cr" %}
 
   ins_encode %{
     int icnt2 = (int)$int_cnt2$$constant;
@@ -15567,13 +15635,17 @@ instruct string_equalsU(iRegP_R1 str1, iRegP_R3 str2, iRegI_R4 cnt,
 
 instruct array_equalsB(iRegP_R1 ary1, iRegP_R2 ary2, iRegI_R0 result,
                        iRegP_R3 tmp1, iRegP_R4 tmp2, iRegP_R5 tmp3,
+                       vRegD_V0 vtmp0, vRegD_V1 vtmp1, vRegD_V2 vtmp2, vRegD_V3 vtmp3,
+                       vRegD_V4 vtmp4, vRegD_V5 vtmp5, vRegD_V6 vtmp6, vRegD_V7 vtmp7,
                        iRegP_R10 tmp, rFlagsReg cr)
 %{
   predicate(((AryEqNode*)n)->encoding() == StrIntrinsicNode::LL);
   match(Set result (AryEq ary1 ary2));
-  effect(KILL tmp, USE_KILL ary1, USE_KILL ary2, TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
+  effect(KILL tmp, USE_KILL ary1, USE_KILL ary2, TEMP tmp1, TEMP tmp2, TEMP tmp3,
+         TEMP vtmp0, TEMP vtmp1, TEMP vtmp2, TEMP vtmp3, TEMP vtmp4, TEMP vtmp5,
+         TEMP vtmp6, TEMP vtmp7, KILL cr);
 
-  format %{ "Array Equals $ary1,ary2 -> $result    // KILL $tmp" %}
+  format %{ "Array Equals $ary1,ary2 -> $result # KILL $ary1 $ary2 $tmp $tmp1 $tmp2 $tmp3 V0-V7 cr" %}
   ins_encode %{
     address tpc = __ arrays_equals($ary1$$Register, $ary2$$Register,
                                    $tmp1$$Register, $tmp2$$Register, $tmp3$$Register,
@@ -15588,13 +15660,17 @@ instruct array_equalsB(iRegP_R1 ary1, iRegP_R2 ary2, iRegI_R0 result,
 
 instruct array_equalsC(iRegP_R1 ary1, iRegP_R2 ary2, iRegI_R0 result,
                        iRegP_R3 tmp1, iRegP_R4 tmp2, iRegP_R5 tmp3,
+                       vRegD_V0 vtmp0, vRegD_V1 vtmp1, vRegD_V2 vtmp2, vRegD_V3 vtmp3,
+                       vRegD_V4 vtmp4, vRegD_V5 vtmp5, vRegD_V6 vtmp6, vRegD_V7 vtmp7,
                        iRegP_R10 tmp, rFlagsReg cr)
 %{
   predicate(((AryEqNode*)n)->encoding() == StrIntrinsicNode::UU);
   match(Set result (AryEq ary1 ary2));
-  effect(KILL tmp, USE_KILL ary1, USE_KILL ary2, TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
+  effect(KILL tmp, USE_KILL ary1, USE_KILL ary2, TEMP tmp1, TEMP tmp2, TEMP tmp3,
+         TEMP vtmp0, TEMP vtmp1, TEMP vtmp2, TEMP vtmp3, TEMP vtmp4, TEMP vtmp5,
+         TEMP vtmp6, TEMP vtmp7, KILL cr);
 
-  format %{ "Array Equals $ary1,ary2 -> $result    // KILL $tmp" %}
+  format %{ "Array Equals $ary1,ary2 -> $result # KILL $ary1 $ary2 $tmp $tmp1 $tmp2 $tmp3 V0-V7 cr" %}
   ins_encode %{
     address tpc = __ arrays_equals($ary1$$Register, $ary2$$Register,
                                    $tmp1$$Register, $tmp2$$Register, $tmp3$$Register,
@@ -15624,35 +15700,40 @@ instruct has_negatives(iRegP_R1 ary1, iRegI_R2 len, iRegI_R0 result, rFlagsReg c
 
 // fast char[] to byte[] compression
 instruct string_compress(iRegP_R2 src, iRegP_R1 dst, iRegI_R3 len,
-                         vRegD_V0 tmp1, vRegD_V1 tmp2,
-                         vRegD_V2 tmp3, vRegD_V3 tmp4,
+                         vRegD_V0 vtmp0, vRegD_V1 vtmp1, vRegD_V2 vtmp2,
+                         vRegD_V3 vtmp3, vRegD_V4 vtmp4, vRegD_V5 vtmp5,
                          iRegI_R0 result, rFlagsReg cr)
 %{
   match(Set result (StrCompressedCopy src (Binary dst len)));
-  effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, TEMP tmp4, USE_KILL src, USE_KILL dst, USE_KILL len, KILL cr);
+  effect(TEMP vtmp0, TEMP vtmp1, TEMP vtmp2, TEMP vtmp3, TEMP vtmp4, TEMP vtmp5,
+         USE_KILL src, USE_KILL dst, USE_KILL len, KILL cr);
 
-  format %{ "String Compress $src,$dst -> $result    // KILL R1, R2, R3, R4" %}
+  format %{ "String Compress $src,$dst -> $result # KILL $src $dst $len V0-V5 cr" %}
   ins_encode %{
     __ char_array_compress($src$$Register, $dst$$Register, $len$$Register,
-                           $tmp1$$FloatRegister, $tmp2$$FloatRegister,
-                           $tmp3$$FloatRegister, $tmp4$$FloatRegister,
+                           $vtmp0$$FloatRegister, $vtmp1$$FloatRegister,
+                           $vtmp2$$FloatRegister, $vtmp3$$FloatRegister,
+                           $vtmp4$$FloatRegister, $vtmp5$$FloatRegister,
                            $result$$Register);
   %}
   ins_pipe( pipe_slow );
 %}
 
 // fast byte[] to char[] inflation
-instruct string_inflate(Universe dummy, iRegP_R0 src, iRegP_R1 dst, iRegI_R2 len,
-                        vRegD_V0 tmp1, vRegD_V1 tmp2, vRegD_V2 tmp3, iRegP_R3 tmp4, rFlagsReg cr)
+instruct string_inflate(Universe dummy, iRegP_R0 src, iRegP_R1 dst, iRegI_R2 len, iRegP_R3 tmp,
+                        vRegD_V0 vtmp0, vRegD_V1 vtmp1, vRegD_V2 vtmp2, vRegD_V3 vtmp3,
+                        vRegD_V4 vtmp4, vRegD_V5 vtmp5, vRegD_V6 vtmp6, rFlagsReg cr)
 %{
   match(Set dummy (StrInflatedCopy src (Binary dst len)));
-  effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, TEMP tmp4, USE_KILL src, USE_KILL dst, USE_KILL len, KILL cr);
+  effect(TEMP vtmp0, TEMP vtmp1, TEMP vtmp2, TEMP vtmp3,
+         TEMP vtmp4, TEMP vtmp5, TEMP vtmp6, TEMP tmp,
+         USE_KILL src, USE_KILL dst, USE_KILL len, KILL cr);
 
-  format %{ "String Inflate $src,$dst    // KILL $tmp1, $tmp2" %}
+  format %{ "String Inflate $src,$dst # KILL $tmp $src $dst $len V0-V6 cr" %}
   ins_encode %{
     address tpc = __ byte_array_inflate($src$$Register, $dst$$Register, $len$$Register,
-                                        $tmp1$$FloatRegister, $tmp2$$FloatRegister,
-                                        $tmp3$$FloatRegister, $tmp4$$Register);
+                                        $vtmp0$$FloatRegister, $vtmp1$$FloatRegister,
+                                        $vtmp2$$FloatRegister, $tmp$$Register);
     if (tpc == NULL) {
       ciEnv::current()->record_failure("CodeCache is full");
       return;
@@ -15663,19 +15744,20 @@ instruct string_inflate(Universe dummy, iRegP_R0 src, iRegP_R1 dst, iRegI_R2 len
 
 // encode char[] to byte[] in ISO_8859_1
 instruct encode_iso_array(iRegP_R2 src, iRegP_R1 dst, iRegI_R3 len,
-                          vRegD_V0 Vtmp1, vRegD_V1 Vtmp2,
-                          vRegD_V2 Vtmp3, vRegD_V3 Vtmp4,
+                          vRegD_V0 vtmp0, vRegD_V1 vtmp1, vRegD_V2 vtmp2,
+                          vRegD_V3 vtmp3, vRegD_V4 vtmp4, vRegD_V5 vtmp5,
                           iRegI_R0 result, rFlagsReg cr)
 %{
   match(Set result (EncodeISOArray src (Binary dst len)));
-  effect(USE_KILL src, USE_KILL dst, USE_KILL len,
-         KILL Vtmp1, KILL Vtmp2, KILL Vtmp3, KILL Vtmp4, KILL cr);
+  effect(USE_KILL src, USE_KILL dst, USE_KILL len, KILL vtmp0, KILL vtmp1,
+         KILL vtmp2, KILL vtmp3, KILL vtmp4, KILL vtmp5, KILL cr);
 
-  format %{ "Encode array $src,$dst,$len -> $result" %}
+  format %{ "Encode array $src,$dst,$len -> $result # KILL $src $dst $len V0-V5 cr" %}
   ins_encode %{
     __ encode_iso_array($src$$Register, $dst$$Register, $len$$Register,
-         $result$$Register, $Vtmp1$$FloatRegister,  $Vtmp2$$FloatRegister,
-         $Vtmp3$$FloatRegister,  $Vtmp4$$FloatRegister);
+                        $result$$Register, $vtmp0$$FloatRegister, $vtmp1$$FloatRegister,
+                        $vtmp2$$FloatRegister, $vtmp3$$FloatRegister,
+                        $vtmp4$$FloatRegister, $vtmp5$$FloatRegister);
   %}
   ins_pipe( pipe_class_memory );
 %}
