@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,7 +71,7 @@ extern "C" {
             break;
 
         case DLL_PROCESS_DETACH:        // A Windows executable unloaded us
-            if (theJavaAccessBridge != (JavaAccessBridge *) 0) {
+            if (theJavaAccessBridge != nullptr) {
                 delete theJavaAccessBridge;
                 DeleteCriticalSection(&receiveMemoryIPCLock);
             }
@@ -164,7 +165,7 @@ extern "C" {
  */
 JavaAccessBridge::JavaAccessBridge(HINSTANCE hInstance) {
     windowsInstance = hInstance;
-    ATs = (AccessBridgeATInstance *) 0;
+    ATs = nullptr;
     initializeFileLogger("java_access_bridge");
     initBroadcastMessageIDs();          // get the unique to us broadcast msg. IDs
 }
@@ -182,10 +183,10 @@ JavaAccessBridge::~JavaAccessBridge() {
 
     // Send a shutdown message for those applications like StarOffice that do
     // send a shutdown message themselves.
-    javaShutdown(NULL, 0);
+    javaShutdown(nullptr, nullptr);
 
     AccessBridgeATInstance *current = ATs;
-    while (current != (AccessBridgeATInstance *) 0) {
+    while (current != nullptr) {
         PrintDebugString("[INFO]:  telling %p we're going away", current->winAccessBridgeWindow);
                 SendMessage(current->winAccessBridgeWindow,
                     AB_DLL_GOING_AWAY, (WPARAM) dialogWindow, (LPARAM) 0);
@@ -219,7 +220,7 @@ JavaAccessBridge::javaRun(JNIEnv *env, jobject obj) {
     }
     PrintDebugString("[INFO]:   -> javaVM = %p", javaVM);
 
-    if (javaVM->AttachCurrentThread((void **) &windowsThreadJNIEnv, NULL) != 0) {
+    if (javaVM->AttachCurrentThread((void **) &windowsThreadJNIEnv, nullptr) != 0) {
         return; // huh!?!?!
     }
     PrintDebugString("[INFO]:  -> windowsThreadJNIEnv = %p", windowsThreadJNIEnv);
@@ -251,7 +252,7 @@ JavaAccessBridge::javaRun(JNIEnv *env, jobject obj) {
         postHelloToWindowsDLLMsg(HWND_BROADCAST);
 
         // do that message loop thing
-        while (GetMessage(&msg, NULL, 0, 0)) {
+        while (GetMessage(&msg, nullptr, 0, 0)) {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
@@ -269,7 +270,7 @@ JavaAccessBridge::javaRun(JNIEnv *env, jobject obj) {
 BOOL
 JavaAccessBridge::initWindow() {
     theDialogWindow = CreateDialog(windowsInstance,
-                                   "ACCESSBRIDGESTATUSWINDOW", NULL,
+                                   "ACCESSBRIDGESTATUSWINDOW", nullptr,
                                    (DLGPROC) AccessBridgeDialogProc);
 
     // If window could not be created, return "failure".
@@ -337,12 +338,12 @@ JavaAccessBridge::sendJavaEventPackage(char *buffer, int bufsize, long type) {
 
     PrintDebugString("[INFO]: JavaAccessBridge::sendJavaEventPackage(), type = %X", type);
 
-    if (ATs == (AccessBridgeATInstance *) 0) {
+    if (ATs == nullptr) {
         PrintDebugString("[ERROR]: ATs == 0! (shouldn't happen here!)");
     }
 
     AccessBridgeATInstance *ati = ATs;
-    while (ati != (AccessBridgeATInstance *) 0) {
+    while (ati != nullptr) {
         ati->sendJavaEventPackage(buffer, bufsize, type);
         ati = ati->nextATInstance;
     }
@@ -357,12 +358,12 @@ JavaAccessBridge::sendAccessibilityEventPackage(char *buffer, int bufsize, long 
 
     PrintDebugString("[INFO]: JavaAccessBridge::sendAccessibilityEventPackage(), type = %X", type);
 
-    if (ATs == (AccessBridgeATInstance *) 0) {
+    if (ATs == nullptr) {
         PrintDebugString("[ERROR] ATs == 0! (shouldn't happen here!)");
     }
 
     AccessBridgeATInstance *ati = ATs;
-    while (ati != (AccessBridgeATInstance *) 0) {
+    while (ati != nullptr) {
         ati->sendAccessibilityEventPackage(buffer, bufsize, type);
         ati = ati->nextATInstance;
     }
@@ -386,12 +387,12 @@ JavaAccessBridge::receiveMemoryPackage(HWND srcWindow, long bufsize) {
     PrintDebugString("[INFO]: JavaAccessBridge::receiveMemoryPackage(%p, %d)", srcWindow, bufsize);
 
     // look-up the appropriate IPCview based on the srcHWND of the Windows AccessBridge DLL
-    if (ATs == (AccessBridgeATInstance *) 0) {
+    if (ATs == nullptr) {
         PrintDebugString("[ERROR]: - ATs == 0 (shouldn't happen in receiveMemoryPackage()!");
         return FALSE;
     }
     AccessBridgeATInstance *ati = ATs->findABATInstanceFromATHWND(srcWindow);
-    if (ati != (AccessBridgeATInstance *) 0) {
+    if (ati != nullptr) {
         IPCview = (char *) ati->memoryMappedView;
 
         // wait for the lock if someone else has it (re-entrancy)
@@ -1529,7 +1530,7 @@ JavaAccessBridge::MemoryMappedFileCreated(HWND ATBridgeDLLWindow, char *filename
 void
 JavaAccessBridge::WindowsATDestroyed(HWND ATBridgeDLLWindow) {
     PrintDebugString("[INFO]: in JavaAccessBridge::WindowsATDestroyed(%p)", ATBridgeDLLWindow);
-    if (ATs == (AccessBridgeATInstance *) 0) {
+    if (ATs == nullptr) {
         PrintDebugString("[ERROR]: -> ATs == 0! (shouldn't happen here)");
         return;
     }
@@ -1544,7 +1545,7 @@ JavaAccessBridge::WindowsATDestroyed(HWND ATBridgeDLLWindow) {
         delete currentAT;
         PrintDebugString("[INFO]:   data structures successfully removed");
     } else {
-        while (currentAT != (AccessBridgeATInstance *) NULL) {
+        while (currentAT != nullptr) {
             if (currentAT->winAccessBridgeWindow == ATBridgeDLLWindow) {
                 previousAT->nextATInstance = currentAT->nextATInstance;
                 delete currentAT;
@@ -1575,7 +1576,7 @@ void
 JavaAccessBridge::releaseJavaObject(jobject object) {
     PrintDebugString("[INFO]: In JavaAccessBridge::releaseJavaObject");
     PrintDebugString("[INFO]:   object X: %p", object);
-    if (windowsThreadJNIEnv != (JNIEnv *) 0) {
+    if (windowsThreadJNIEnv != nullptr) {
         windowsThreadJNIEnv->DeleteGlobalRef(object);
         PrintDebugString("[INFO]:   global reference deleted.", object);
     } else {
@@ -1596,7 +1597,7 @@ JavaAccessBridge::addJavaEventNotification(jlong type, HWND DLLwindow) {
     PrintDebugString("[INFO]:   adding Java event type %016I64X to HWND %p", type, DLLwindow);
     AccessBridgeATInstance *ati = ATs;
     long globalEventMask = 0;
-    while (ati != (AccessBridgeATInstance *) 0) {
+    while (ati != nullptr) {
         if (ati->winAccessBridgeWindow == DLLwindow) {
             ati->javaEventMask |= type;
             PrintDebugString("[INFO]:   found HWND, javaEventMask now is %X", ati->javaEventMask);
@@ -1625,7 +1626,7 @@ JavaAccessBridge::removeJavaEventNotification(jlong type, HWND DLLwindow) {
     PrintDebugString("[INFO]:   removing Java event type %016I64X from HWND %p", type, DLLwindow);
     AccessBridgeATInstance *ati = ATs;
     long globalEventMask = 0;
-    while (ati != (AccessBridgeATInstance *) 0) {
+    while (ati != nullptr) {
         if (ati->winAccessBridgeWindow == DLLwindow) {
             ati->javaEventMask &= (0xFFFFFFFF - type);
             PrintDebugString("[INFO]:   found HWND, javaEventMask now is %X", ati->javaEventMask);
@@ -1655,7 +1656,7 @@ JavaAccessBridge::addAccessibilityEventNotification(jlong type, HWND DLLwindow) 
     PrintDebugString("[INFO]:   adding Accesibility event type %016I64X to HWND %p", type, DLLwindow);
     AccessBridgeATInstance *ati = ATs;
     long globalEventMask = 0;
-    while (ati != (AccessBridgeATInstance *) 0) {
+    while (ati != nullptr) {
         if (ati->winAccessBridgeWindow == DLLwindow) {
             ati->accessibilityEventMask |= type;
             PrintDebugString("[INFO]:   found HWND, accessibilityEventMask now is %X", ati->accessibilityEventMask);
@@ -1684,7 +1685,7 @@ JavaAccessBridge::removeAccessibilityEventNotification(jlong type, HWND DLLwindo
     PrintDebugString("[INFO]:   removing Accesibility event type %016I64X from HWND %p", type, DLLwindow);
     AccessBridgeATInstance *ati = ATs;
     long globalEventMask = 0;
-    while (ati != (AccessBridgeATInstance *) 0) {
+    while (ati != nullptr) {
         if (ati->winAccessBridgeWindow == DLLwindow) {
             ati->accessibilityEventMask &= (0xFFFFFFFF - type);
             PrintDebugString("[INFO]:   found HWND, accessibilityEventMask now is %X", ati->accessibilityEventMask);
@@ -1719,7 +1720,7 @@ JavaAccessBridge::firePropertyCaretChange(JNIEnv *env, jobject callingObj,
                      source, oldValue, newValue);
 
     // sanity check
-    if (ATs == (AccessBridgeATInstance *) 0) {
+    if (ATs == nullptr) {
         PrintDebugString("[ERROR]: ATs == 0! (shouldn't happen here!)");
         return;         // panic!
     }
@@ -1733,7 +1734,7 @@ JavaAccessBridge::firePropertyCaretChange(JNIEnv *env, jobject callingObj,
 
     // make new Global Refs and send events only to those ATs that want 'em
     AccessBridgeATInstance *ati = ATs;
-    while (ati != (AccessBridgeATInstance *) 0) {
+    while (ati != nullptr) {
         if (ati->accessibilityEventMask & cPropertyCaretChangeEvent) {
 
             PrintDebugString("[INFO]:   sending to AT");
@@ -1773,7 +1774,7 @@ JavaAccessBridge::firePropertyDescriptionChange(JNIEnv *env, jobject callingObj,
                      source, oldValue, newValue);
 
     // sanity check
-    if (ATs == (AccessBridgeATInstance *) 0) {
+    if (ATs == nullptr) {
         PrintDebugString("[ERROR]: ATs == 0! (shouldn't happen here!)");
         return;         // panic!
     }
@@ -1788,7 +1789,7 @@ JavaAccessBridge::firePropertyDescriptionChange(JNIEnv *env, jobject callingObj,
 
     // make new Global Refs and send events only to those ATs that want 'em
     AccessBridgeATInstance *ati = ATs;
-    while (ati != (AccessBridgeATInstance *) 0) {
+    while (ati != nullptr) {
         if (ati->accessibilityEventMask & cPropertyCaretChangeEvent) {
 
             PrintDebugString("[INFO]:   sending to AT");
@@ -1804,13 +1805,13 @@ JavaAccessBridge::firePropertyDescriptionChange(JNIEnv *env, jobject callingObj,
                              "  GlobalRef'd Source: %016I64X", pkg->Event, pkg->AccessibleContextSource);
 #endif
 
-            if (oldValue != (jstring) 0) {
-                stringBytes = (const wchar_t *) env->GetStringChars(oldValue, 0);
-                if (stringBytes == NULL) {
+            if (oldValue != nullptr) {
+                stringBytes = (const wchar_t *) env->GetStringChars(oldValue, nullptr);
+                if (stringBytes == nullptr) {
                     if (!env->ExceptionCheck()) {
                         jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != NULL) {
-                            env->ThrowNew(cls, NULL);
+                        if (cls != nullptr) {
+                            env->ThrowNew(cls, nullptr);
                         }
                     }
                     return;
@@ -1821,13 +1822,13 @@ JavaAccessBridge::firePropertyDescriptionChange(JNIEnv *env, jobject callingObj,
                 wcsncpy(pkg->oldDescription, L"(null)", (sizeof(pkg->oldDescription) / sizeof(wchar_t)));
             }
 
-            if (newValue != (jstring) 0) {
-                stringBytes = (const wchar_t *) env->GetStringChars(newValue, 0);
-                if (stringBytes == NULL) {
+            if (newValue != nullptr) {
+                stringBytes = (const wchar_t *) env->GetStringChars(newValue, nullptr);
+                if (stringBytes == nullptr) {
                    if (!env->ExceptionCheck()) {
                         jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != NULL) {
-                            env->ThrowNew(cls, NULL);
+                        if (cls != nullptr) {
+                            env->ThrowNew(cls, nullptr);
                         }
                     }
                     return;
@@ -1859,7 +1860,7 @@ JavaAccessBridge::firePropertyNameChange(JNIEnv *env, jobject callingObj,
                      source, oldValue, newValue);
 
     // sanity check
-    if (ATs == (AccessBridgeATInstance *) 0) {
+    if (ATs == nullptr) {
         PrintDebugString("[ERROR]: ATs == 0! (shouldn't happen here!)");
         return;         // panic!
     }
@@ -1874,7 +1875,7 @@ JavaAccessBridge::firePropertyNameChange(JNIEnv *env, jobject callingObj,
 
     // make new Global Refs and send events only to those ATs that want 'em
     AccessBridgeATInstance *ati = ATs;
-    while (ati != (AccessBridgeATInstance *) 0) {
+    while (ati != nullptr) {
         if (ati->accessibilityEventMask & cPropertyNameChangeEvent) {
 
             PrintDebugString("[INFO]:   sending to AT");
@@ -1890,13 +1891,13 @@ JavaAccessBridge::firePropertyNameChange(JNIEnv *env, jobject callingObj,
                              "         GlobalRef'd Source: %016I64X", pkg->Event, pkg->AccessibleContextSource);
 #endif
 
-            if (oldValue != (jstring) 0) {
-                stringBytes = (const wchar_t *) env->GetStringChars(oldValue, 0);
-                if (stringBytes == NULL) {
+            if (oldValue != nullptr) {
+                stringBytes = (const wchar_t *) env->GetStringChars(oldValue, nullptr);
+                if (stringBytes == nullptr) {
                     if (!env->ExceptionCheck()) {
                         jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != NULL) {
-                            env->ThrowNew(cls, NULL);
+                        if (cls != nullptr) {
+                            env->ThrowNew(cls, nullptr);
                         }
                     }
                     return;
@@ -1907,13 +1908,13 @@ JavaAccessBridge::firePropertyNameChange(JNIEnv *env, jobject callingObj,
                 wcsncpy(pkg->oldName, L"(null)", (sizeof(pkg->oldName) / sizeof(wchar_t)));
             }
 
-            if (newValue != (jstring) 0) {
-                stringBytes = (const wchar_t *) env->GetStringChars(newValue, 0);
-                if (stringBytes == NULL) {
+            if (newValue != nullptr) {
+                stringBytes = (const wchar_t *) env->GetStringChars(newValue, nullptr);
+                if (stringBytes == nullptr) {
                     if (!env->ExceptionCheck()) {
                         jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != NULL) {
-                            env->ThrowNew(cls, NULL);
+                        if (cls != nullptr) {
+                            env->ThrowNew(cls, nullptr);
                         }
                     }
                     return;
@@ -1944,7 +1945,7 @@ JavaAccessBridge::firePropertySelectionChange(JNIEnv *env, jobject callingObj,
                      env, callingObj, event, source);
 
     // sanity check
-    if (ATs == (AccessBridgeATInstance *) 0) {
+    if (ATs == nullptr) {
         PrintDebugString("[ERROR]: ATs == 0! (shouldn't happen here!)");
         return;         // panic!
     }
@@ -1958,7 +1959,7 @@ JavaAccessBridge::firePropertySelectionChange(JNIEnv *env, jobject callingObj,
 
     // make new Global Refs and send events only to those ATs that want 'em
     AccessBridgeATInstance *ati = ATs;
-    while (ati != (AccessBridgeATInstance *) 0) {
+    while (ati != nullptr) {
         if (ati->accessibilityEventMask & cPropertySelectionChangeEvent) {
 
             PrintDebugString("[INFO]:   sending to AT");
@@ -1996,7 +1997,7 @@ JavaAccessBridge::firePropertyStateChange(JNIEnv *env, jobject callingObj,
                      source, oldValue, newValue);
 
     // sanity check
-    if (ATs == (AccessBridgeATInstance *) 0) {
+    if (ATs == nullptr) {
         PrintDebugString("[ERROR]: ATs == 0! (shouldn't happen here!)");
         return;         // panic!
     }
@@ -2011,7 +2012,7 @@ JavaAccessBridge::firePropertyStateChange(JNIEnv *env, jobject callingObj,
 
     // make new Global Refs and send events only to those ATs that want 'em
     AccessBridgeATInstance *ati = ATs;
-    while (ati != (AccessBridgeATInstance *) 0) {
+    while (ati != nullptr) {
         if (ati->accessibilityEventMask & cPropertyStateChangeEvent) {
 
             PrintDebugString("[INFO]:   sending to AT");
@@ -2027,13 +2028,13 @@ JavaAccessBridge::firePropertyStateChange(JNIEnv *env, jobject callingObj,
                              "  GlobalRef'd Source: %016I64X", pkg->Event, pkg->AccessibleContextSource);
 #endif
 
-            if (oldValue != (jstring) 0) {
-                stringBytes = (const wchar_t *) env->GetStringChars(oldValue, 0);
-                if (stringBytes == NULL) {
+            if (oldValue != nullptr) {
+                stringBytes = (const wchar_t *) env->GetStringChars(oldValue, nullptr);
+                if (stringBytes == nullptr) {
                     if (!env->ExceptionCheck()) {
                         jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != NULL) {
-                            env->ThrowNew(cls, NULL);
+                        if (cls != nullptr) {
+                            env->ThrowNew(cls, nullptr);
                         }
                     }
                     return;
@@ -2044,13 +2045,13 @@ JavaAccessBridge::firePropertyStateChange(JNIEnv *env, jobject callingObj,
                 wcsncpy(pkg->oldState, L"(null)", (sizeof(pkg->oldState) / sizeof(wchar_t)));
             }
 
-            if (newValue != (jstring) 0) {
-                stringBytes = (const wchar_t *) env->GetStringChars(newValue, 0);
-                if (stringBytes == NULL) {
+            if (newValue != nullptr) {
+                stringBytes = (const wchar_t *) env->GetStringChars(newValue, nullptr);
+                if (stringBytes == nullptr) {
                     if (!env->ExceptionCheck()) {
                         jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != NULL) {
-                            env->ThrowNew(cls, NULL);
+                        if (cls != nullptr) {
+                            env->ThrowNew(cls, nullptr);
                         }
                     }
                     return;
@@ -2081,7 +2082,7 @@ JavaAccessBridge::firePropertyTextChange(JNIEnv *env, jobject callingObj,
                      env, callingObj, event, source);
 
     // sanity check
-    if (ATs == (AccessBridgeATInstance *) 0) {
+    if (ATs == nullptr) {
         PrintDebugString("[ERROR]: ATs == 0! (shouldn't happen here!)");
         return;         // panic!
     }
@@ -2095,7 +2096,7 @@ JavaAccessBridge::firePropertyTextChange(JNIEnv *env, jobject callingObj,
 
     // make new Global Refs and send events only to those ATs that want 'em
     AccessBridgeATInstance *ati = ATs;
-    while (ati != (AccessBridgeATInstance *) 0) {
+    while (ati != nullptr) {
         if (ati->accessibilityEventMask & cPropertyTextChangeEvent) {
 
             PrintDebugString("[INFO]:   sending to AT");
@@ -2133,7 +2134,7 @@ JavaAccessBridge::firePropertyValueChange(JNIEnv *env, jobject callingObj,
                      source, oldValue, newValue);
 
     // sanity check
-    if (ATs == (AccessBridgeATInstance *) 0) {
+    if (ATs == nullptr) {
         PrintDebugString("[ERROR]: ATs == 0! (shouldn't happen here!)");
         return;         // panic!
     }
@@ -2148,7 +2149,7 @@ JavaAccessBridge::firePropertyValueChange(JNIEnv *env, jobject callingObj,
 
     // make new Global Refs and send events only to those ATs that want 'em
     AccessBridgeATInstance *ati = ATs;
-    while (ati != (AccessBridgeATInstance *) 0) {
+    while (ati != nullptr) {
         if (ati->accessibilityEventMask & cPropertyValueChangeEvent) {
 
             PrintDebugString("[INFO]:   sending to AT");
@@ -2164,13 +2165,13 @@ JavaAccessBridge::firePropertyValueChange(JNIEnv *env, jobject callingObj,
                              "  GlobalRef'd Source: %016I64X", pkg->Event, pkg->AccessibleContextSource);
 #endif
 
-            if (oldValue != (jstring) 0) {
-                stringBytes = (const wchar_t *) env->GetStringChars(oldValue, 0);
-                if (stringBytes == NULL) {
+            if (oldValue != nullptr) {
+                stringBytes = (const wchar_t *) env->GetStringChars(oldValue, nullptr);
+                if (stringBytes == nullptr) {
                     if (!env->ExceptionCheck()) {
                         jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != NULL) {
-                            env->ThrowNew(cls, NULL);
+                        if (cls != nullptr) {
+                            env->ThrowNew(cls, nullptr);
                         }
                     }
                     return;
@@ -2181,13 +2182,13 @@ JavaAccessBridge::firePropertyValueChange(JNIEnv *env, jobject callingObj,
                 wcsncpy(pkg->oldValue, L"(null)", (sizeof(pkg->oldValue) / sizeof(wchar_t)));
             }
 
-            if (newValue != (jstring) 0) {
-                stringBytes = (const wchar_t *) env->GetStringChars(newValue, 0);
-                if (stringBytes == NULL) {
+            if (newValue != nullptr) {
+                stringBytes = (const wchar_t *) env->GetStringChars(newValue, nullptr);
+                if (stringBytes == nullptr) {
                     if (!env->ExceptionCheck()) {
                         jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != NULL) {
-                            env->ThrowNew(cls, NULL);
+                        if (cls != nullptr) {
+                            env->ThrowNew(cls, nullptr);
                         }
                     }
                     return;
@@ -2217,7 +2218,7 @@ JavaAccessBridge::firePropertyVisibleDataChange(JNIEnv *env, jobject callingObj,
                      env, callingObj, event, source);
 
     // sanity check
-    if (ATs == (AccessBridgeATInstance *) 0) {
+    if (ATs == nullptr) {
         PrintDebugString("[ERROR]: ATs == 0! (shouldn't happen here!)");
         return;         // panic!
     }
@@ -2231,7 +2232,7 @@ JavaAccessBridge::firePropertyVisibleDataChange(JNIEnv *env, jobject callingObj,
 
     // make new Global Refs and send events only to those ATs that want 'em
     AccessBridgeATInstance *ati = ATs;
-    while (ati != (AccessBridgeATInstance *) 0) {
+    while (ati != nullptr) {
         if (ati->accessibilityEventMask & cPropertyVisibleDataChangeEvent) {
 
             PrintDebugString("[INFO]:   sending to AT");
@@ -2269,7 +2270,7 @@ JavaAccessBridge::firePropertyChildChange(JNIEnv *env, jobject callingObj,
                      source, oldValue, newValue);
 
     // sanity check
-    if (ATs == (AccessBridgeATInstance *) 0) {
+    if (ATs == nullptr) {
         PrintDebugString("[ERROR]: ATs == 0! (shouldn't happen here!)");
         return;         // panic!
     }
@@ -2283,7 +2284,7 @@ JavaAccessBridge::firePropertyChildChange(JNIEnv *env, jobject callingObj,
 
     // make new Global Refs and send events only to those ATs that want 'em
     AccessBridgeATInstance *ati = ATs;
-    while (ati != (AccessBridgeATInstance *) 0) {
+    while (ati != nullptr) {
         if (ati->accessibilityEventMask & cPropertyChildChangeEvent) {
 
             PrintDebugString("[INFO]:  sending to AT");
@@ -2329,7 +2330,7 @@ JavaAccessBridge::firePropertyActiveDescendentChange(JNIEnv *env, jobject callin
                      source, oldValue, newValue);
 
     // sanity check
-    if (ATs == (AccessBridgeATInstance *) 0) {
+    if (ATs == nullptr) {
         PrintDebugString("[ERROR]: ATs == 0! (shouldn't happen here!)");
         return;         // panic!
     }
@@ -2343,7 +2344,7 @@ JavaAccessBridge::firePropertyActiveDescendentChange(JNIEnv *env, jobject callin
 
     // make new Global Refs and send events only to those ATs that want 'em
     AccessBridgeATInstance *ati = ATs;
-    while (ati != (AccessBridgeATInstance *) 0) {
+    while (ati != nullptr) {
         if (ati->accessibilityEventMask & cPropertyActiveDescendentChangeEvent) {
 
             PrintDebugString("[INFO]:   sending to AT");
@@ -2388,7 +2389,7 @@ JavaAccessBridge::firePropertyTableModelChange(JNIEnv *env, jobject callingObj,
                      source, oldValue, newValue);
 
     // sanity check
-    if (ATs == (AccessBridgeATInstance *) 0) {
+    if (ATs == nullptr) {
         PrintDebugString("[ERROR]: ATs == 0! (shouldn't happen here!)");
         return;         // panic!
     }
@@ -2403,7 +2404,7 @@ JavaAccessBridge::firePropertyTableModelChange(JNIEnv *env, jobject callingObj,
 
     // make new Global Refs and send events only to those ATs that want 'em
     AccessBridgeATInstance *ati = ATs;
-    while (ati != (AccessBridgeATInstance *) 0) {
+    while (ati != nullptr) {
         if (ati->accessibilityEventMask & cPropertyTableModelChangeEvent) {
 
             PrintDebugString("  sending to AT");
@@ -2419,13 +2420,13 @@ JavaAccessBridge::firePropertyTableModelChange(JNIEnv *env, jobject callingObj,
                              "          GlobalRef'd Source: %016I64X", pkg->Event, pkg->AccessibleContextSource);
 #endif
 
-            if (oldValue != (jstring) 0) {
-                stringBytes = (const wchar_t *) env->GetStringChars(oldValue, 0);
-                if (stringBytes == NULL) {
+            if (oldValue != nullptr) {
+                stringBytes = (const wchar_t *) env->GetStringChars(oldValue, nullptr);
+                if (stringBytes == nullptr) {
                     if (!env->ExceptionCheck()) {
                         jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != NULL) {
-                            env->ThrowNew(cls, NULL);
+                        if (cls != nullptr) {
+                            env->ThrowNew(cls, nullptr);
                         }
                     }
                     return;
@@ -2436,13 +2437,13 @@ JavaAccessBridge::firePropertyTableModelChange(JNIEnv *env, jobject callingObj,
                 wcsncpy(pkg->oldValue, L"(null)", (sizeof(pkg->oldValue) / sizeof(wchar_t)));
             }
 
-            if (newValue != (jstring) 0) {
-                stringBytes = (const wchar_t *) env->GetStringChars(newValue, 0);
-                if (stringBytes == NULL) {
+            if (newValue != nullptr) {
+                stringBytes = (const wchar_t *) env->GetStringChars(newValue, nullptr);
+                if (stringBytes == nullptr) {
                     if (!env->ExceptionCheck()) {
                         jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != NULL) {
-                            env->ThrowNew(cls, NULL);
+                        if (cls != nullptr) {
+                            env->ThrowNew(cls, nullptr);
                         }
                     }
                     return;
@@ -2518,7 +2519,7 @@ JavaAccessBridge::firePropertyTableModelChange(JNIEnv *env, jobject callingObj,
                          cJavaShutdownEvent, env, callingObj, dialogWindow);
 
         /* sanity check */
-        if (ATs == (AccessBridgeATInstance *) 0) {
+        if (ATs == nullptr) {
             PrintDebugString("[ERROR]: ATs == 0! (shouldn't happen here!)");
             return;             /* panic! */
         }
@@ -2532,7 +2533,7 @@ JavaAccessBridge::firePropertyTableModelChange(JNIEnv *env, jobject callingObj,
 
         /* make new Global Refs, send events only to those ATs that want 'em */
         AccessBridgeATInstance *ati = ATs;
-        while (ati != (AccessBridgeATInstance *) 0) {
+        while (ati != nullptr) {
             if (ati->javaEventMask & cJavaShutdownEvent) {
                 PrintDebugString("[INFO]:   sending to AT");
                 ati->sendJavaEventPackage(buffer, sizeof(buffer), cJavaShutdownEvent);
@@ -2567,12 +2568,12 @@ extern "C" {        // event stuff from AccessBridge.h, generated by JNI
     Java_com_sun_java_accessibility_internal_AccessBridge_sendDebugString(JNIEnv *env, jobject callingObj, jstring debugStr) {
 
         const wchar_t *stringBytes;
-        stringBytes = (const wchar_t *) env->GetStringChars(debugStr, 0);
-        if (stringBytes == NULL) {
+        stringBytes = (const wchar_t *) env->GetStringChars(debugStr, nullptr);
+        if (stringBytes == nullptr) {
             if (!env->ExceptionCheck()) {
                 jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                if (cls != NULL) {
-                    env->ThrowNew(cls, NULL);
+                if (cls != nullptr) {
+                    env->ThrowNew(cls, nullptr);
                 }
             }
             return;
@@ -2716,13 +2717,13 @@ extern "C" {        // event stuff from AccessBridge.h, generated by JNI
 
     JAWT awt;
     jboolean result;
-    jobject component = (jobject)0;
+    jobject component = nullptr;
 
     // Get the AWT
     awt.version = JAWT_VERSION_1_4;
     result = JAWT_GetAWT(env, &awt);
     if (result == JNI_FALSE) {
-        return (jobject)0;
+        return nullptr;
     }
 
     // Get the component
@@ -2758,7 +2759,7 @@ extern "C" {        // event stuff from AccessBridge.h, generated by JNI
 
         // Get the drawing surface
         ds = awt.GetDrawingSurface(env, component);
-        if (ds == NULL) {
+        if (ds == nullptr) {
             return -1;
         }
 
