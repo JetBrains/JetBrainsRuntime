@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2005, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +26,7 @@
 
 /*
  * A DLL which is loaded by Java applications to handle communication
- * between Java VMs purposes of Accessbility.
+ * between Java VMs purposes of accessibility.
  */
 
 #include <windows.h>
@@ -40,11 +41,9 @@
 
 
 extern "C" {
-        BOOL WINAPI DllMain(HINSTANCE hinstDll, DWORD fdwReason,
-                            LPVOID lpvReserved);
-        void AppendToCallOutput(char *s);
-        BOOL APIENTRY AccessBridgeDialogProc(HWND hDlg, UINT message,
-                                             WPARAM wParam, LPARAM lParam);
+    BOOL WINAPI DllMain(HINSTANCE hinstDll, DWORD fdwReason, LPVOID lpvReserved);
+    void AppendToCallOutput(char *s);
+    BOOL APIENTRY AccessBridgeDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 }
 
 /**
