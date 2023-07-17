@@ -117,6 +117,11 @@ extern "C" {
                 PrintDebugString("[INFO]: In AccessBridgeDialog - Got WM_COPYDATA from HWND %p", wParam);
 
                 sentToUs = (COPYDATASTRUCT *) lParam;
+                if (sentToUs == nullptr) {
+                    PrintDebugString("[ERROR]: In AccessBridgeDialog - no package is received (sentToUs = NULL)");
+                    break;
+                }
+
                 package = (char *) sentToUs->lpData;
                 theJavaAccessBridge->processPackage(package, sentToUs->cbData);
             }
@@ -203,6 +208,7 @@ JavaAccessBridge::~JavaAccessBridge() {
     }
 
     delete ATs;
+    ATs = nullptr;
 
     PrintDebugString("[INFO]:   finished deleting ATs");
     PrintDebugString("[INFO]: GOODBYE CRUEL WORLD...");
@@ -215,13 +221,28 @@ void
 JavaAccessBridge::javaRun(JNIEnv *env, jobject obj) {
     PrintDebugString("[INFO]: JavaAccessBridge::javaRun(%p, %p) called", env, obj);
 
-    if (env->GetJavaVM(&javaVM) != 0) {
-        return; // huh!?!?!
+    if ((env == nullptr) || (obj == nullptr)) {
+        PrintDebugString("[ERROR]:   wrong parameters (either env or obj is null).");
+        return;
+    }
+
+    {
+        const jint returnCode = env->GetJavaVM(&javaVM);
+        if (returnCode != 0) {
+            PrintDebugString("[ERROR]:   failed to obtain an instance of Java VM (GetJavaVM returned %lld)",
+                             static_cast<long long>(returnCode));
+            return; // huh!?!?!
+        }
     }
     PrintDebugString("[INFO]:   -> javaVM = %p", javaVM);
 
-    if (javaVM->AttachCurrentThread((void **) &windowsThreadJNIEnv, nullptr) != 0) {
-        return; // huh!?!?!
+    {
+        const jint returnCode = javaVM->AttachCurrentThread((void **) &windowsThreadJNIEnv, nullptr);
+        if (returnCode != 0) {
+            PrintDebugString("[ERROR]:   failed to attach current thread to the VM (AttachCurrentThread returned %lld)",
+                             static_cast<long long>(returnCode));
+            return; // huh!?!?!
+        }
     }
     PrintDebugString("[INFO]:   -> windowsThreadJNIEnv = %p", windowsThreadJNIEnv);
 
@@ -231,6 +252,7 @@ JavaAccessBridge::javaRun(JNIEnv *env, jobject obj) {
     // initialize the Java thread AccessBridge entry points
     javaThreadEntryPoints = new AccessBridgeJavaEntryPoints(env, javaThreadABObject);
     if (javaThreadEntryPoints->BuildJavaEntryPoints() == FALSE) {
+        PrintDebugString("[ERROR]:   failed to build the Java thread entry points.");
         return;         // couldn't build our entry points; let's get out of here!
     }
     PrintDebugString("[INFO]:   all Java thread entry points successfully found.");
@@ -239,6 +261,7 @@ JavaAccessBridge::javaRun(JNIEnv *env, jobject obj) {
     windowsThreadEntryPoints = new AccessBridgeJavaEntryPoints(windowsThreadJNIEnv,
                                                                windowsThreadABObject);
     if (windowsThreadEntryPoints->BuildJavaEntryPoints() == FALSE) {
+        PrintDebugString("[ERROR]:   failed to build the Windows thread entry points.");
         return;         // couldn't build our entry points; let's get out of here!
     }
     PrintDebugString("[INFO]:   all Windows thread entry points successfully found.");
@@ -339,6 +362,11 @@ JavaAccessBridge::sendJavaEventPackage(char *buffer, int bufsize, long type) {
 
     PrintDebugString("[INFO]: JavaAccessBridge::sendJavaEventPackage(), type = %ld", type);
 
+    if ((buffer == nullptr) && (bufsize > 0)) {
+        PrintDebugString("[ERROR]:   bufsize > 0, but the buffer is null.");
+        return;
+    }
+
     if (ATs == nullptr) {
         PrintDebugString("[ERROR]:   ATs == 0! (shouldn't happen here!)");
     }
@@ -358,6 +386,11 @@ void
 JavaAccessBridge::sendAccessibilityEventPackage(char *buffer, int bufsize, long type) {
 
     PrintDebugString("[INFO]: JavaAccessBridge::sendAccessibilityEventPackage(), type = %ld", type);
+
+    if ((buffer == nullptr) && (bufsize > 0)) {
+        PrintDebugString("[ERROR]:   bufsize > 0, but the buffer is null.");
+        return;
+    }
 
     if (ATs == nullptr) {
         PrintDebugString("[ERROR]: ATs == 0! (shouldn't happen here!)");
@@ -425,11 +458,15 @@ LRESULT
 JavaAccessBridge::processPackage(char *buffer, int bufsize) {
     PrintDebugString("[INFO]: Processing package sent from Windows, bufsize = %d", bufsize);
 
-    LRESULT returnVal = 0;
-    PrintDebugString("[INFO]:   PackageType = %X", *type);
-    jobject rAC;
+    if ((buffer == nullptr) || (bufsize < 1)) {
+        PrintDebugString("[ERROR]:   the buffer is null or bufsize < 1.");
+        return -1;
+    }
+
     PackageType * const type = reinterpret_cast<PackageType*>(buffer);
     PrintDebugString("[INFO]:   PackageType = %X", *type);
+    LRESULT returnVal = 0;
+    jobject rAC;
 
     switch (*type) {
 
@@ -1648,7 +1685,11 @@ JavaAccessBridge::addJavaEventNotification(jlong type, HWND DLLwindow) {
         // no other ATs wanted this event;
         // start getting them from Java
         PrintDebugString("[INFO]:   no other AT wanted this Java event (so not registered); adding to AccessBridge.java");
-        windowsThreadEntryPoints->addJavaEventNotification(type);
+        if (windowsThreadEntryPoints == nullptr) {
+            PrintDebugString("[ERROR]:   can't add the event type because windowsThreadEntryPoints is null.");
+        } else {
+            windowsThreadEntryPoints->addJavaEventNotification(type);
+        }
     }
 }
 
@@ -1677,7 +1718,11 @@ JavaAccessBridge::removeJavaEventNotification(jlong type, HWND DLLwindow) {
         // no other ATs wanted this event;
         // stop getting them from Java
         PrintDebugString("[INFO]:   no other AT wanted this Java event (so can remove); removing from AccessBridge.java");
-        windowsThreadEntryPoints->removeJavaEventNotification(type);
+        if (windowsThreadEntryPoints == nullptr) {
+            PrintDebugString("[ERROR]:   can't remove the event type because windowsThreadEntryPoints is null.");
+        } else {
+            windowsThreadEntryPoints->removeJavaEventNotification(type);
+        }
     }
 }
 
@@ -1707,7 +1752,11 @@ JavaAccessBridge::addAccessibilityEventNotification(jlong type, HWND DLLwindow) 
         // no other ATs wanted this event;
         // start getting them from Java
         PrintDebugString("[INFO]:   no other AT wanted this accessibility event (so not registered); adding to AccessBridge.java");
-        windowsThreadEntryPoints->addAccessibilityEventNotification(type);
+        if (windowsThreadEntryPoints == nullptr) {
+            PrintDebugString("[ERROR]:   can't add the event type because windowsThreadEntryPoints is null.");
+        } else {
+            windowsThreadEntryPoints->addAccessibilityEventNotification(type);
+        }
     }
 }
 
@@ -1768,9 +1817,9 @@ JavaAccessBridge::firePropertyCaretChange(JNIEnv *env, jobject callingObj,
     }
 
     // common setup
-    char buffer[sizeof(PackageType) + sizeof(PropertyCaretChangePackage)];
-    PackageType *type = (PackageType *) buffer;
-    PropertyCaretChangePackage *pkg = (PropertyCaretChangePackage *) (buffer + sizeof(PackageType));
+    char buffer[sizeof(PackageType) + sizeof(PropertyCaretChangePackage)] = { 0 };
+    PackageType * const type = (PackageType *) buffer;
+    PropertyCaretChangePackage * const pkg = (PropertyCaretChangePackage *) (buffer + sizeof(PackageType));
     *type = cPropertyCaretChangePackage;
     pkg->vmID = (long) dialogWindow;
 
@@ -1822,8 +1871,7 @@ JavaAccessBridge::firePropertyDescriptionChange(JNIEnv *env, jobject callingObj,
     }
 
     // common setup
-    const wchar_t *stringBytes;
-    char buffer[sizeof(PackageType) + sizeof(PropertyDescriptionChangePackage)];
+    char buffer[sizeof(PackageType) + sizeof(PropertyDescriptionChangePackage)] = { 0 };
     PackageType *type = (PackageType *) buffer;
     PropertyDescriptionChangePackage *pkg = (PropertyDescriptionChangePackage *) (buffer + sizeof(PackageType));
     *type = cPropertyDescriptionChangePackage;
