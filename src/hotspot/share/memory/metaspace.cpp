@@ -758,6 +758,7 @@ void MetaspaceUtils::print_report(outputStream* out, size_t scale, int flags) {
       out->print_cr("   Non-Class:");
     }
     Metaspace::space_list()->print_on(out, scale);
+    out->cr();
     if (Metaspace::using_class_space()) {
       out->print_cr("       Class:");
       Metaspace::class_space_list()->print_on(out, scale);
