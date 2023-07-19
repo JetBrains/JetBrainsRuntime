@@ -154,6 +154,7 @@ gc/stress/gcold/TestGCOldWithCMS.java 8272195 generic-i586
 
 # :hotspot_runtime
 
+runtime/CompressedOops/CompressedClassPointers.java 8305765 generic-all
 runtime/CompressedOops/UseCompressedOops.java 8079353 generic-all
 runtime/handshake/HandshakeWalkSuspendExitTest.java 8214174 generic-all
 runtime/SharedArchiveFile/SASymbolTableTest.java 8193639 solaris-all
