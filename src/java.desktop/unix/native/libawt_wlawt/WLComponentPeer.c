@@ -30,7 +30,7 @@
 #include <assert.h>
 #include <gtk-shell1-client-protocol.h>
 
-#include "jni_util.h"
+#include "JNIUtilities.h"
 #include "WLToolkit.h"
 #include "WLRobotPeer.h"
 #include "WLGraphicsEnvironment.h"
