@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2003, 2004, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,25 +23,36 @@
  * questions.
  */
 
-#include <wayland-client.h>
-#include <wayland-cursor.h>
-#include "xdg-shell-client-protocol.h"
-#include "primary-selection-client-protocol.h"
+package sun.awt.wl;
 
-extern struct wl_seat *wl_seat;
-extern struct wl_display *wl_display;
-extern struct wl_pointer *wl_pointer;
-extern struct wl_compositor *wl_compositor;
-extern struct xdg_wm_base *xdg_wm_base;
-extern struct wl_cursor_theme *wl_cursor_theme;
-extern struct wl_data_device_manager *wl_ddm;
-extern struct zwp_primary_selection_device_manager_v1 *zwp_selection_dm;
+import sun.awt.datatransfer.ToolkitThreadBlockedHandler;
 
-extern uint32_t last_mouse_pressed_serial;
-extern uint32_t last_pointer_enter_serial;
+// TODO: this class is essentially unused; not sure if it even has to be here
+final class WLToolkitThreadBlockedHandler implements
+        ToolkitThreadBlockedHandler {
+    private static final ToolkitThreadBlockedHandler privilegedLock = new WLToolkitThreadBlockedHandler();
+    private static final WLToolkit tk = (WLToolkit) java.awt.Toolkit.getDefaultToolkit();
 
-JNIEnv *getEnv();
+    private WLToolkitThreadBlockedHandler() {
+    }
 
-int wlFlushToServer(JNIEnv* env);
+    static ToolkitThreadBlockedHandler getToolkitThreadBlockedHandler() {
+        return privilegedLock;
+    }
 
-struct wl_shm_pool *CreateShmPool(size_t size, const char *name, void **data);
+    public void lock() {
+        throw new UnsupportedOperationException();
+    }
+
+    public void unlock() {
+        throw new UnsupportedOperationException();
+    }
+
+    public void enter() {
+        throw new UnsupportedOperationException();
+    }
+
+    public void exit() {
+        throw new UnsupportedOperationException();
+    }
+}

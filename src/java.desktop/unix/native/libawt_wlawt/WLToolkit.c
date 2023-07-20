@@ -40,7 +40,7 @@
 #include <time.h>
 
 #include "jvm_md.h"
-#include "jni_util.h"
+#include "JNIUtilities.h"
 #include "awt.h"
 #include "sun_awt_wl_WLToolkit.h"
 #include "WLToolkit.h"
@@ -64,6 +64,9 @@ struct wl_keyboard *wl_keyboard;
 struct wl_pointer  *wl_pointer;
 
 struct wl_cursor_theme *wl_cursor_theme = NULL;
+
+struct wl_data_device_manager *wl_ddm = NULL;
+struct zwp_primary_selection_device_manager_v1 *zwp_selection_dm = NULL;
 
 uint32_t last_mouse_pressed_serial = 0;
 uint32_t last_pointer_enter_serial = 0;
@@ -656,7 +659,12 @@ registry_global(void *data, struct wl_registry *wl_registry,
     } else if (strcmp(interface, wl_output_interface.name) == 0) {
         WLOutputRegister(wl_registry, name);
         process_new_listener_before_end_of_init();
+    } else if (strcmp(interface, wl_data_device_manager_interface.name) == 0) {
+      wl_ddm = wl_registry_bind(wl_registry, name,&wl_data_device_manager_interface, 3);
+    } else if (strcmp(interface, zwp_primary_selection_device_manager_v1_interface.name) == 0) {
+        zwp_selection_dm = wl_registry_bind(wl_registry, name,&zwp_primary_selection_device_manager_v1_interface, 1);
     }
+
 #ifdef WAKEFIELD_ROBOT
     else if (strcmp(interface, wakefield_interface.name) == 0) {
         wakefield = wl_registry_bind(wl_registry, name, &wakefield_interface, 1);

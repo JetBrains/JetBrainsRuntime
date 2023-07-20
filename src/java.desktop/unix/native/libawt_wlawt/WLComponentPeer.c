@@ -29,7 +29,7 @@
 #include <Trace.h>
 #include <assert.h>
 
-#include "jni_util.h"
+#include "JNIUtilities.h"
 #include "WLToolkit.h"
 #include "WLRobotPeer.h"
 #include "WLGraphicsEnvironment.h"
