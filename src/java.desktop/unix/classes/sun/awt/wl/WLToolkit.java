@@ -29,6 +29,7 @@ package sun.awt.wl;
 import jdk.internal.misc.InnocuousThread;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAutoShutdown;
+import sun.awt.AWTPermissions;
 import sun.awt.AppContext;
 import sun.awt.LightweightFrame;
 import sun.awt.PeerEvent;
@@ -86,6 +87,7 @@ import java.security.PrivilegedAction;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -138,6 +140,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     private static final int NUM_LOCK_MASK = 0x02;
 
     private static boolean initialized = false;
+    private static Thread toolkitThread;
+    private final WLClipboard clipboard;
+    private final WLClipboard selection;
 
     private static native void initIDs();
 
@@ -159,7 +164,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         });
 
         if (!GraphicsEnvironment.isHeadless()) {
-            Thread toolkitThread = InnocuousThread.newThread("AWT-Wayland", this);
+            toolkitThread = InnocuousThread.newThread("AWT-Wayland", this);
             toolkitThread.setDaemon(true);
             toolkitThread.start();
 
@@ -169,6 +174,19 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
             // Wait here for all display sync events to have been received?
         }
+
+        WLClipboard selectionClipboard = null;
+        try {
+            selectionClipboard = new WLClipboard("Selection", true);
+        } catch (UnsupportedOperationException ignored) {
+        }
+
+        clipboard = new WLClipboard("System", false);
+        selection = selectionClipboard;
+    }
+
+    public static boolean isToolkitThread() {
+        return Thread.currentThread() == toolkitThread;
     }
 
     @Override
@@ -751,8 +769,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public DataTransferer getDataTransferer() {
-        log.info("Not implemented: WLToolkit.getDataTransferer()");
-        return null;
+        return WLDataTransferer.getInstanceImpl();
     }
 
     @Override
@@ -784,14 +801,23 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public  Clipboard getSystemClipboard() {
-        log.info("Not implemented: WLToolkit.getSystemClipboard()");
-        return null;
+        @SuppressWarnings("removal")
+        SecurityManager security = System.getSecurityManager();
+        if (security != null) {
+            security.checkPermission(AWTPermissions.ACCESS_CLIPBOARD_PERMISSION);
+        }
+
+        return clipboard;
     }
 
     @Override
     public Clipboard getSystemSelection() {
-        log.info("Not implemented: WLToolkit.getSystemSelection()");
-        return null;
+        @SuppressWarnings("removal")
+        SecurityManager security = System.getSecurityManager();
+        if (security != null) {
+            security.checkPermission(AWTPermissions.ACCESS_CLIPBOARD_PERMISSION);
+        }
+        return selection;
     }
 
     @Override
