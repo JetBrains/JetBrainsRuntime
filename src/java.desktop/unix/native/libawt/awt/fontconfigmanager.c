@@ -25,9 +25,24 @@
  * questions.
  */
 
+#include <jni.h>
+#include <jni_util.h>
+#include <jvm_md.h>
+#include <sizecalc.h>
+
+#if defined(MACOSX)
+#define DISABLE_FONTCONFIG
+#endif
+
+#ifndef DISABLE_FONTCONFIG
+
 #if defined(__linux__)
 #include <string.h>
 #endif /* __linux__ */
+
+#include <dlfcn.h>
+#include <fontconfig/fontconfig.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
@@ -39,10 +54,6 @@
 
 #include "fontconfigmanager.h"
 
-#include <jni.h>
-#include <jni_util.h>
-#include <jvm_md.h>
-#include <sizecalc.h>
 #ifndef HEADLESS
 #include <awt.h>
 #else
@@ -81,9 +92,6 @@ static char *fullAixFontPath[] = {
     NULL, /* terminates the list */
 };
 #endif
-
-#include <dlfcn.h>
-#include <fontconfig/fontconfig.h>
 
 typedef FcConfig* (*FcInitLoadConfigFuncType)();
 typedef FcPattern* (*FcPatternBuildFuncType)(FcPattern *orig, ...);
@@ -253,12 +261,81 @@ void openFontConfig() {
     }
 }
 
+static bool usingFontConfig() {
+    return (libfontconfig != NULL) ? true : false;
+}
+
 JNIEXPORT void JNICALL
 JNI_OnUnload(JavaVM *vm, void *reserved) {
     closeFontConfig();
 }
 
+/* These are copied from sun.awt.SunHints.
+ * Consider initialising them as ints using JNI for more robustness.
+ */
+#define TEXT_AA_OFF 1
+#define TEXT_AA_ON  2
+#define TEXT_AA_LCD_HRGB 4
+#define TEXT_AA_LCD_HBGR 5
+#define TEXT_AA_LCD_VRGB 6
+#define TEXT_AA_LCD_VBGR 7
+
+static void setRenderingFontHintsField(FcPattern* matchPattern, const char* property, int* value) {
+    if (FcResultMatch != (*fcPatternGetBool)(matchPattern, property, 0, value)) {
+        *value = -1;
+    }
+}
+
+JNIEXPORT int setupRenderingFontHints
+(const char* fcName, const char* locale, double size, RenderingFontHints *renderingFontHints) {
+
+    FcPattern *pattern, *matchPattern;
+    FcResult result;
+
+    if (fcName == NULL) {
+        return -1;
+    }
+
+    pattern = (*fcNameParse)((FcChar8 *)fcName);
+    if (locale != NULL) {
+        (*fcPatternAddString)(pattern, FC_LANG, (unsigned char*)locale);
+    }
+    if (size != 0) {
+        (*fcPatternAddDouble)(pattern, FC_SIZE, size);
+    }
+    (*fcConfigSubstitute)(NULL, pattern, FcMatchPattern);
+    (*fcDefaultSubstitute)(pattern);
+    matchPattern = (*fcFontMatch)(NULL, pattern, &result);
+    /* Perhaps should call FcFontRenderPrepare() here as some pattern
+     * elements might change as a result of that call, but I'm not seeing
+     * any difference in testing.
+     */
+    if (matchPattern) {
+        // Extract values from result
+        setRenderingFontHintsField(matchPattern, FC_HINTING, &renderingFontHints->fcHinting);
+        setRenderingFontHintsField(matchPattern, FC_HINT_STYLE, &renderingFontHints->fcHintStyle);
+        setRenderingFontHintsField(matchPattern, FC_ANTIALIAS, &renderingFontHints->fcAntialias);
+        setRenderingFontHintsField(matchPattern, FC_AUTOHINT, &renderingFontHints->fcAutohint);
+        setRenderingFontHintsField(matchPattern, FC_LCD_FILTER, &renderingFontHints->fcRGBA);
+        setRenderingFontHintsField(matchPattern, FC_RGBA, &renderingFontHints->fcLCDFilter);
+
+        (*fcPatternDestroy)(matchPattern);
+    }
+    (*fcPatternDestroy)(pattern);
+
+    return 0;
+}
+
+#endif
+
 JNIEXPORT char **getFontConfigLocations() {
+
+#ifdef DISABLE_FONTCONFIG
+    return NULL;
+#else
+    if (usingFontConfig() == false) {
+        return NULL;
+    }
 
     char **fontdirs;
     int numdirs = 0;
@@ -321,75 +398,35 @@ JNIEXPORT char **getFontConfigLocations() {
     (*fcObjectSetDestroy)(objset);
     (*fcPatternDestroy)(pattern);
     return fontdirs;
-}
-
-/* These are copied from sun.awt.SunHints.
- * Consider initialising them as ints using JNI for more robustness.
- */
-#define TEXT_AA_OFF 1
-#define TEXT_AA_ON  2
-#define TEXT_AA_LCD_HRGB 4
-#define TEXT_AA_LCD_HBGR 5
-#define TEXT_AA_LCD_VRGB 6
-#define TEXT_AA_LCD_VBGR 7
-
-static void setRenderingFontHintsField(FcPattern* matchPattern, const char* property, int* value) {
-    if (FcResultMatch != (*fcPatternGetBool)(matchPattern, property, 0, value)) {
-        *value = -1;
-    }
-}
-
-JNIEXPORT int setupRenderingFontHints
-(const char* fcName, const char* locale, double size, RenderingFontHints *renderingFontHints) {
-
-    FcPattern *pattern, *matchPattern;
-    FcResult result;
-
-    if (fcName == NULL) {
-        return -1;
-    }
-
-    pattern = (*fcNameParse)((FcChar8 *)fcName);
-    if (locale != NULL) {
-        (*fcPatternAddString)(pattern, FC_LANG, (unsigned char*)locale);
-    }
-    if (size != 0) {
-        (*fcPatternAddDouble)(pattern, FC_SIZE, size);
-    }
-    (*fcConfigSubstitute)(NULL, pattern, FcMatchPattern);
-    (*fcDefaultSubstitute)(pattern);
-    matchPattern = (*fcFontMatch)(NULL, pattern, &result);
-    /* Perhaps should call FcFontRenderPrepare() here as some pattern
-     * elements might change as a result of that call, but I'm not seeing
-     * any difference in testing.
-     */
-    if (matchPattern) {
-        // Extract values from result
-        setRenderingFontHintsField(matchPattern, FC_HINTING, &renderingFontHints->fcHinting);
-        setRenderingFontHintsField(matchPattern, FC_HINT_STYLE, &renderingFontHints->fcHintStyle);
-        setRenderingFontHintsField(matchPattern, FC_ANTIALIAS, &renderingFontHints->fcAntialias);
-        setRenderingFontHintsField(matchPattern, FC_AUTOHINT, &renderingFontHints->fcAutohint);
-        setRenderingFontHintsField(matchPattern, FC_LCD_FILTER, &renderingFontHints->fcRGBA);
-        setRenderingFontHintsField(matchPattern, FC_RGBA, &renderingFontHints->fcLCDFilter);
-
-        (*fcPatternDestroy)(matchPattern);
-    }
-    (*fcPatternDestroy)(pattern);
-
-    return 0;
+#endif
 }
 
 JNIEXPORT jint JNICALL
 Java_sun_font_FontConfigManager_getFontConfigVersion
         (JNIEnv *env, jclass obj) {
 
+#ifdef DISABLE_FONTCONFIG
+    return 0;
+#else
+    if (usingFontConfig() == false) {
+        return 0;
+    }
+
     return (*fcGetVersion)();
+#endif
 }
 
 JNIEXPORT void JNICALL
 Java_sun_font_FontConfigManager_setupFontConfigFonts
 (JNIEnv *env, jclass obj, jstring localeStr, jobject fcInfoObj,
  jobjectArray fcCompFontArray,  jboolean includeFallbacks) {
+
+#ifdef DISABLE_FONTCONFIG
+    return;
+#else
+    if (usingFontConfig() == false) {
+        return;
+    }
 
     int i, arrlen;
     jobject fcCompFontObj;
@@ -408,14 +445,9 @@ Java_sun_font_FontConfigManager_setupFontConfigFonts
     CHECK_NULL(fcInfoObj);
     CHECK_NULL(fcCompFontArray);
 
-    fcInfoClass = (*env)->FindClass(env, "sun/font/FontConfigManager$FontConfigInfo");
-    CHECK_NULL(fcInfoClass);
-    fcCompFontClass = (*env)->FindClass(env, "sun/font/FontConfigManager$FcCompFont");
-    CHECK_NULL(fcCompFontClass);
-    fcFontClass = (*env)->FindClass(env, "sun/font/FontConfigManager$FontConfigFont");
-    CHECK_NULL(fcFontClass);
-
-
+    CHECK_NULL(fcInfoClass = (*env)->FindClass(env, "sun/font/FontConfigManager$FontConfigInfo"));
+    CHECK_NULL(fcCompFontClass = (*env)->FindClass(env, "sun/font/FontConfigManager$FcCompFont"));
+    CHECK_NULL(fcFontClass = (*env)->FindClass(env, "sun/font/FontConfigManager$FontConfigFont"));
     CHECK_NULL(fcVersionID = (*env)->GetFieldID(env, fcInfoClass, "fcVersion", "I"));
     CHECK_NULL(fcCacheDirsID = (*env)->GetFieldID(env, fcInfoClass, "cacheDirs", "[Ljava/lang/String;"));
     CHECK_NULL(fcNameID = (*env)->GetFieldID(env, fcCompFontClass, "fcName", "Ljava/lang/String;"));
@@ -721,11 +753,19 @@ Java_sun_font_FontConfigManager_setupFontConfigFonts
     if (locale) {
         (*env)->ReleaseStringUTFChars(env, localeStr, (const char*)locale);
     }
+#endif
 }
 
 JNIEXPORT jint JNICALL
 Java_sun_font_FontConfigManager_getFontConfigAASettings
         (JNIEnv *env, jclass obj, jstring fcNameStr, jstring localeStr) {
+
+#ifdef DISABLE_FONTCONFIG
+    return -1;
+#else
+    if (usingFontConfig() == false) {
+        return -1;
+    }
 
     int rgba = 0;
     const char *locale=NULL, *fcName=NULL;
@@ -768,11 +808,19 @@ Java_sun_font_FontConfigManager_getFontConfigAASettings
             default : return TEXT_AA_LCD_HRGB; // should not get here.
         }
     }
+#endif
 }
 
 JNIEXPORT jstring JNICALL
 Java_sun_font_FontConfigManager_getFontProperty
         (JNIEnv *env, jclass obj, jstring query, jstring property) {
+
+#ifdef DISABLE_FONTCONFIG
+    return NULL;
+#else
+    if (usingFontConfig() == false) {
+        return NULL;
+    }
 
     const char *queryPtr = NULL;
     const char *propertyPtr = NULL;
@@ -832,4 +880,5 @@ cleanup:
     }
 
     return res;
+#endif
 }
