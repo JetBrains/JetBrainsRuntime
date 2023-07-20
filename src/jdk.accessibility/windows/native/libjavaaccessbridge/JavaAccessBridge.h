@@ -153,13 +153,60 @@ public:
     void firePropertyChildChange(JNIEnv *env, jobject callingObj,
                                  jobject event, jobject source,
                                  jobject oldValue, jobject newValue);
-   void firePropertyActiveDescendentChange(JNIEnv *env, jobject callingObj,
-                                           jobject event, jobject source,
-                                           jobject oldValue, jobject newValue);
 
-   void firePropertyTableModelChange(JNIEnv *env, jobject callingObj,
-                                     jobject event, jobject source,
-                                     jstring oldValue, jstring newValue);
+    void firePropertyActiveDescendentChange(JNIEnv *env, jobject callingObj,
+                                            jobject event, jobject source,
+                                            jobject oldValue, jobject newValue);
+
+    void firePropertyTableModelChange(JNIEnv *env, jobject callingObj,
+                                      jobject event, jobject source,
+                                      jstring oldValue, jstring newValue);
+
+private:
+    template<typename PackageTypeTag, PackageType PkgType, jlong EventType>
+    void handleFirePropertyChangeNoValues(
+        const char* propertyChangeEventName,
+        JNIEnv *env,
+        jobject callingObj,
+        jobject event,
+        jobject source
+    );
+
+    template<
+        typename PackageTypeTag,
+        PackageType PkgType,
+        jlong EventType,
+        wchar_t (PackageTypeTag::*PackageOldValueMember)[SHORT_STRING_SIZE],
+        wchar_t (PackageTypeTag::*PackageNewValueMember)[SHORT_STRING_SIZE]
+    >
+    void handleFirePropertyChangeJString(
+        const char* propertyChangeEventName,
+        JNIEnv *env,
+        jobject callingObj,
+        jobject event,
+        jobject source,
+        jstring oldValue,
+        jstring newValue
+    );
+
+    template<
+        typename PackageTypeTag,
+        PackageType PkgType,
+        jlong EventType,
+        JOBJECT64 PackageTypeTag::*PackageOldValueMember,
+        JOBJECT64 PackageTypeTag::*PackageNewValueMember
+    >
+    void handleFirePropertyChangeJObject(
+        const char* propertyChangeEventName,
+        JNIEnv *env,
+        jobject callingObj,
+        jobject event,
+        jobject source,
+        jobject oldValue,
+        jobject newValue,
+        const char* packageOldFieldLoggingName,
+        const char* packageNewFieldLoggingName
+    );
 };
 
 

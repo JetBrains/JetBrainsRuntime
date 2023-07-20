@@ -163,6 +163,49 @@ extern "C" {
 
 
 // -----------------------------
+namespace utils {
+    template<typename T>
+    static constexpr T (min)(T a, T b) {
+        return (a < b) ? a : b;
+    }
+
+    template<typename T>
+    static constexpr T (max)(T a, T b) {
+        return (a < b) ? b : a;
+    }
+
+    /**
+     * Copies min( len(javaString), WCharBufferLength ) jchars from javaString to wCharBuffer
+     *
+     * @return a negative value if javaString is nullptr or (env.ExceptionCheck() == JNI_TRUE) ; a number of copied jchars otherwise
+     */
+    template<jsize WCharBufferLength>
+    static jsize copyJavaStringToWCharBuffer(JNIEnv& env, jstring javaString, wchar_t (&wCharBuffer)[WCharBufferLength]) {
+        if (javaString == nullptr) {
+            return -1;
+        }
+
+        const jsize javaStringLength = (utils::max<jsize>)(env.GetStringLength(javaString), 0);
+        const jsize countToCopy = (utils::min)(javaStringLength, WCharBufferLength);
+
+        static_assert(sizeof(wchar_t) == sizeof(jchar), "sizeof(jchar) must be equal to sizeof(wchar_t) to be able to copy the content of javaString");
+
+        if (countToCopy > 0) {
+            env.GetStringRegion(javaString, 0, countToCopy, reinterpret_cast<jchar *>(&wCharBuffer[0]));
+        }
+
+        if (env.ExceptionCheck() == JNI_TRUE) {
+            return -2;
+        }
+
+        return countToCopy;
+    }
+
+    using LongLongInt = long long int;
+}
+
+
+// -----------------------------
 
 
 /**
@@ -1798,6 +1841,352 @@ JavaAccessBridge::removeAccessibilityEventNotification(jlong type, HWND DLLwindo
 
 
 /**
+ * Implementation for the methods fireProperty...Change(JNIEnv *env, jobject callingObj, jobject event, jobject source)
+ */
+template<typename PackageTypeTag, PackageType PkgType, jlong EventType>
+void JavaAccessBridge::handleFirePropertyChangeNoValues(
+    const char * const propertyChangeEventName,
+    JNIEnv * const env,
+    const jobject callingObj,
+    const jobject event,
+    const jobject source
+) {
+    PrintDebugString(
+        "[INFO]: Java_com_sun_java_accessibility_internal_AccessBridge_%sd(%p, %p, %p, %p)",
+        propertyChangeEventName, env, callingObj, event, source
+    );
+
+    // sanity check
+    if (ATs == nullptr) {
+        PrintDebugString("[ERROR]:   ATs == 0! (shouldn't happen here!)");
+        return;         // panic!
+    }
+
+    // common setup
+    char buffer[sizeof(PackageType) + sizeof(PackageTypeTag)] = { 0 };
+    PackageType * const type = reinterpret_cast<PackageType*>(&buffer[0]);
+    PackageTypeTag * const pkg = reinterpret_cast<PackageTypeTag*>(&buffer[0] + sizeof(PackageType));
+
+    *type = PkgType;
+    pkg->vmID = (long) dialogWindow;
+
+    // make new Global Refs and send events only to those ATs that want 'em
+    AccessBridgeATInstance *ati = ATs;
+    while (ati != nullptr) {
+        if (ati->accessibilityEventMask & EventType) {
+            PrintDebugString("[INFO]:   sending to AT %p", ati);
+
+            // make new GlobalRefs for this AT
+            const jobject eventNewGlobalRef = env->NewGlobalRef(event);
+            const jobject sourceNewGlobalRef = env->NewGlobalRef(source);
+
+            if (env->ExceptionCheck() == JNI_TRUE) {
+                PrintDebugString("[ERROR]:   a java exception occurred ; going out...");
+
+                if (eventNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(eventNewGlobalRef);
+                }
+                if (sourceNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(sourceNewGlobalRef);
+                }
+
+                return;
+            }
+
+            static_assert(sizeof(JOBJECT64) >= sizeof(jobject),
+                          "sizeof(JOBJECT64) must be >= sizeof(jobject) to be able to perform a cast safely");
+
+            pkg->Event                   = reinterpret_cast<JOBJECT64>(eventNewGlobalRef);
+            pkg->AccessibleContextSource = reinterpret_cast<JOBJECT64>(sourceNewGlobalRef);
+
+#ifdef ACCESSBRIDGE_ARCH_LEGACY // JOBJECT64 is jobject (32 bit pointer)
+            PrintDebugString("[INFO]:   GlobalRef'd Event: %p"\
+                                     "  GlobalRef'd Source: %p", pkg->Event, pkg->AccessibleContextSource);
+#else // JOBJECT64 is jlong (64 bit)
+            PrintDebugString("[INFO]:   GlobalRef'd Event: %016I64X"\
+                                     "  GlobalRef'd Source: %016I64X", pkg->Event, pkg->AccessibleContextSource);
+#endif
+
+            const auto sendingResult = ati->sendAccessibilityEventPackage(buffer, sizeof(buffer), EventType);
+            if (sendingResult != 0) {
+                // the package hasn't been sent, so we have to delete the new global refs
+
+                PrintDebugString("[ERROR]:   failed to send the package to AT %p (sendingResult=%lld)",
+                                 ati, utils::LongLongInt{sendingResult});
+
+                if (eventNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(eventNewGlobalRef);
+                }
+                if (sourceNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(sourceNewGlobalRef);
+                }
+            }
+        }
+
+        ati = ati->nextATInstance;
+    }
+
+    PrintDebugString("[INFO]:   done with %s event", propertyChangeEventName);
+}
+
+
+/**
+ * Implementation for the methods
+ *   fireProperty...Change(JNIEnv *env, jobject callingObj, jobject event, jobject source, jstring oldValue, jstring newValue)
+ */
+template<
+    typename PackageTypeTag,
+    PackageType PkgType,
+    jlong EventType,
+    wchar_t (PackageTypeTag::*PackageOldValueMember)[SHORT_STRING_SIZE],
+    wchar_t (PackageTypeTag::*PackageNewValueMember)[SHORT_STRING_SIZE]
+>
+void JavaAccessBridge::handleFirePropertyChangeJString(
+    const char* propertyChangeEventName,
+    JNIEnv *env,
+    jobject callingObj,
+    jobject event,
+    jobject source,
+    jstring oldValue,
+    jstring newValue
+) {
+    PrintDebugString(
+        "[INFO]: Java_com_sun_java_accessibility_internal_AccessBridge_%sd(%p, %p, %p, %p, %p, %p)",
+        propertyChangeEventName, env, callingObj, event, source, oldValue, newValue
+    );
+
+    // sanity check
+    if (ATs == nullptr) {
+        PrintDebugString("[ERROR]:   ATs == 0! (shouldn't happen here!)");
+        return;         // panic!
+    }
+
+    // common setup
+    char buffer[sizeof(PackageType) + sizeof(PackageTypeTag)] = { 0 };
+    PackageType * const type = reinterpret_cast<PackageType*>(&buffer[0]);
+    PackageTypeTag * const pkg = reinterpret_cast<PackageTypeTag*>(&buffer[0] + sizeof(PackageType));
+    *type = PkgType;
+    pkg->vmID = (long) dialogWindow;
+
+    // make new Global Refs and send events only to those ATs that want 'em
+    AccessBridgeATInstance *ati = ATs;
+    while (ati != nullptr) {
+        if (ati->accessibilityEventMask & EventType) {
+
+            PrintDebugString("[INFO]:   sending to AT %p", ati);
+
+            // make new GlobalRefs for this AT
+            const jobject eventNewGlobalRef = env->NewGlobalRef(event);
+            const jobject sourceNewGlobalRef = env->NewGlobalRef(source);
+
+            if (env->ExceptionCheck() == JNI_TRUE) {
+                PrintDebugString("[ERROR]:   a java exception occurred ; going out...");
+
+                if (eventNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(eventNewGlobalRef);
+                }
+                if (sourceNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(sourceNewGlobalRef);
+                }
+
+                return;
+            }
+
+            static_assert(sizeof(JOBJECT64) >= sizeof(jobject),
+                          "sizeof(JOBJECT64) must be >= sizeof(jobject) to be able to perform a cast safely");
+
+            pkg->Event                   = reinterpret_cast<JOBJECT64>(eventNewGlobalRef);
+            pkg->AccessibleContextSource = reinterpret_cast<JOBJECT64>(sourceNewGlobalRef);
+
+#ifdef ACCESSBRIDGE_ARCH_LEGACY // JOBJECT64 is jobject (32 bit pointer)
+            PrintDebugString("[INFO]:   GlobalRef'd Event: %p"\
+                                     "  GlobalRef'd Source: %p", pkg->Event, pkg->AccessibleContextSource);
+#else // JOBJECT64 is jlong (64 bit)
+            PrintDebugString("[INFO]:   GlobalRef'd Event: %016I64X"\
+                                     "  GlobalRef'd Source: %016I64X", pkg->Event, pkg->AccessibleContextSource);
+#endif
+
+            if (oldValue == nullptr) {
+                wcsncpy(pkg->*PackageOldValueMember, L"(null)", sizeof(pkg->*PackageOldValueMember) / sizeof(wchar_t));
+            } else {
+                utils::copyJavaStringToWCharBuffer(*env, oldValue, pkg->*PackageOldValueMember);
+            }
+
+            if (newValue == nullptr) {
+                wcsncpy(pkg->*PackageNewValueMember, L"(null)", sizeof(pkg->*PackageNewValueMember) / sizeof(wchar_t));
+            } else {
+                utils::copyJavaStringToWCharBuffer(*env, newValue, pkg->*PackageNewValueMember);
+            }
+
+            if (env->ExceptionCheck() == JNI_TRUE) {
+                PrintDebugString("[ERROR]:   a java exception occurred ; going out...");
+
+                if (eventNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(eventNewGlobalRef);
+                }
+                if (sourceNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(sourceNewGlobalRef);
+                }
+
+                return;
+            }
+
+            const auto sendingResult = ati->sendAccessibilityEventPackage(buffer, sizeof(buffer), EventType);
+            if (sendingResult != 0) {
+                // the package hasn't been sent, so we have to delete the new global refs
+
+                PrintDebugString("[ERROR]:   failed to send the package to AT %p (sendingResult=%lld)",
+                                 ati, utils::LongLongInt{sendingResult});
+
+                if (eventNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(eventNewGlobalRef);
+                }
+                if (sourceNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(sourceNewGlobalRef);
+                }
+            }
+        }
+
+        ati = ati->nextATInstance;
+    }
+
+    PrintDebugString("[INFO]:   done with %s event", propertyChangeEventName);
+}
+
+
+/**
+ * Implementation for the methods
+ *   fireProperty...Change(JNIEnv *env, jobject callingObj, jobject event, jobject source, jobject oldValue, jobject newValue)
+ */
+template<
+    typename PackageTypeTag,
+    PackageType PkgType,
+    jlong EventType,
+    JOBJECT64 PackageTypeTag::*PackageOldValueMember,
+    JOBJECT64 PackageTypeTag::*PackageNewValueMember
+>
+void JavaAccessBridge::handleFirePropertyChangeJObject(
+    const char* propertyChangeEventName,
+    JNIEnv *env,
+    jobject callingObj,
+    jobject event,
+    jobject source,
+    jobject oldValue,
+    jobject newValue,
+    const char* packageOldFieldLoggingName,
+    const char* packageNewFieldLoggingName
+) {
+    PrintDebugString(
+        "[INFO]: Java_com_sun_java_accessibility_internal_AccessBridge_%sd(%p, %p, %p, %p, %p, %p)",
+        propertyChangeEventName, env, callingObj, event, source, oldValue, newValue
+    );
+
+    // sanity check
+    if (ATs == nullptr) {
+        PrintDebugString("[ERROR]:   ATs == 0! (shouldn't happen here!)");
+        return;         // panic!
+    }
+
+    // common setup
+    char buffer[sizeof(PackageType) + sizeof(PackageTypeTag)] = { 0 };
+    PackageType * const type = reinterpret_cast<PackageType*>(&buffer[0]);
+    PackageTypeTag * const pkg = reinterpret_cast<PackageTypeTag*>(&buffer[0] + sizeof(PackageType));
+    *type = PkgType;
+    pkg->vmID = (long) dialogWindow;
+
+    // make new Global Refs and send events only to those ATs that want 'em
+    AccessBridgeATInstance *ati = ATs;
+    while (ati != nullptr) {
+        if (ati->accessibilityEventMask & EventType) {
+
+            PrintDebugString("[INFO]:   sending to AT %p", ati);
+
+            // make new GlobalRefs for this AT
+
+            const jobject eventNewGlobalRef    = env->NewGlobalRef(event);
+            const jobject sourceNewGlobalRef   = env->NewGlobalRef(source);
+            const jobject oldValueNewGlobalRef = env->NewGlobalRef(oldValue);
+            const jobject newValueNewGlobalRef = env->NewGlobalRef(newValue);
+
+            if (env->ExceptionCheck() == JNI_TRUE) {
+                PrintDebugString("[ERROR]:   a java exception occurred ; going out...");
+
+                if (eventNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(eventNewGlobalRef);
+                }
+                if (sourceNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(sourceNewGlobalRef);
+                }
+                if (oldValueNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(oldValueNewGlobalRef);
+                }
+                if (newValueNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(newValueNewGlobalRef);
+                }
+
+                return;
+            }
+
+            pkg->Event                   = reinterpret_cast<JOBJECT64>(eventNewGlobalRef);
+            pkg->AccessibleContextSource = reinterpret_cast<JOBJECT64>(sourceNewGlobalRef);
+            pkg->*PackageOldValueMember  = reinterpret_cast<JOBJECT64>(oldValueNewGlobalRef);
+            pkg->*PackageNewValueMember  = reinterpret_cast<JOBJECT64>(newValueNewGlobalRef);
+
+#ifdef ACCESSBRIDGE_ARCH_LEGACY // JOBJECT64 is jobject (32 bit pointer)
+            PrintDebugString(
+                "[INFO]:   GlobalRef'd Event: %p"   \
+                        "  GlobalRef'd Source: %p"  \
+                        "  GlobalRef'd %s: %p"      \
+                        "  GlobalRef'd %s: %p",
+                pkg->Event,
+                pkg->AccessibleContextSource,
+                packageOldFieldLoggingName, pkg->*PackageOldValueMember,
+                packageNewFieldLoggingName, pkg->*PackageNewValueMember
+            );
+#else // JOBJECT64 is jlong (64 bit)
+            PrintDebugString(
+                "[INFO]:   GlobalRef'd Event: %016I64X"     \
+                        "  GlobalRef'd Source: %016I64X"    \
+                        "  GlobalRef'd %s: %016I64X"        \
+                        "  GlobalRef'd %s: %016I64X",
+                pkg->Event,
+                pkg->AccessibleContextSource,
+                packageOldFieldLoggingName, pkg->*PackageOldValueMember,
+                packageNewFieldLoggingName, pkg->*PackageNewValueMember
+            );
+#endif
+
+            const auto sendingResult = ati->sendAccessibilityEventPackage(buffer, sizeof(buffer), EventType);
+            if (sendingResult != 0) {
+                // the package hasn't been sent, so we have to delete the new global refs
+
+                PrintDebugString("[ERROR]:   failed to send the package to AT %p (sendingResult=%lld)",
+                                 ati, utils::LongLongInt{sendingResult});
+
+                if (eventNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(eventNewGlobalRef);
+                }
+                if (sourceNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(sourceNewGlobalRef);
+                }
+                if (oldValueNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(oldValueNewGlobalRef);
+                }
+                if (newValueNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(newValueNewGlobalRef);
+                }
+            }
+        }
+
+        ati = ati->nextATInstance;
+    }
+
+    PrintDebugString("[INFO]:   done with %s event", propertyChangeEventName);
+}
+
+
+
+/**
  * firePropertyCaretChange
  *
  */
@@ -1806,9 +2195,10 @@ JavaAccessBridge::firePropertyCaretChange(JNIEnv *env, jobject callingObj,
                                           jobject event, jobject source,
                                           jint oldValue, jint newValue) {
 
-    PrintDebugString("[INFO]: Java_com_sun_java_accessibility_internal_AccessBridge_propertyCaretChanged(%p, %p, %p, %p, %ld, %ld)",
-                     env, callingObj, event,
-                     source, long{oldValue}, long{newValue});
+    PrintDebugString(
+        "[INFO]: Java_com_sun_java_accessibility_internal_AccessBridge_propertyCaretChanged(%p, %p, %p, %p, %ld, %ld)",
+        env, callingObj, event, source, long{oldValue}, long{newValue}
+    );
 
     // sanity check
     if (ATs == nullptr) {
@@ -1823,16 +2213,36 @@ JavaAccessBridge::firePropertyCaretChange(JNIEnv *env, jobject callingObj,
     *type = cPropertyCaretChangePackage;
     pkg->vmID = (long) dialogWindow;
 
+    constexpr auto eventType = cPropertyCaretChangeEvent;
+
     // make new Global Refs and send events only to those ATs that want 'em
     AccessBridgeATInstance *ati = ATs;
     while (ati != nullptr) {
-        if (ati->accessibilityEventMask & cPropertyCaretChangeEvent) {
+        if (ati->accessibilityEventMask & eventType) {
 
-            PrintDebugString("[INFO]:   sending to AT");
+            PrintDebugString("[INFO]:   sending to AT %p", ati);
 
             // make new GlobalRefs for this AT
-            pkg->Event = (JOBJECT64)env->NewGlobalRef(event);
-            pkg->AccessibleContextSource = (JOBJECT64)env->NewGlobalRef(source);
+
+            const jobject eventNewGlobalRef  = env->NewGlobalRef(event);
+            const jobject sourceNewGlobalRef = env->NewGlobalRef(source);
+
+            if (env->ExceptionCheck() == JNI_TRUE) {
+                PrintDebugString("[ERROR]:   a java exception occurred ; going out...");
+
+                if (eventNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(eventNewGlobalRef);
+                }
+                if (sourceNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(sourceNewGlobalRef);
+                }
+
+                return;
+            }
+
+            pkg->Event                   = (JOBJECT64)eventNewGlobalRef;
+            pkg->AccessibleContextSource = (JOBJECT64)sourceNewGlobalRef;
+
 #ifdef ACCESSBRIDGE_ARCH_LEGACY // JOBJECT64 is jobject (32 bit pointer)
             PrintDebugString("[INFO]:   GlobalRef'd Event: %p"\
                                      "  GlobalRef'd Source: %p", pkg->Event, pkg->AccessibleContextSource);
@@ -1844,10 +2254,25 @@ JavaAccessBridge::firePropertyCaretChange(JNIEnv *env, jobject callingObj,
             pkg->oldPosition = oldValue;
             pkg->newPosition = newValue;
 
-            ati->sendAccessibilityEventPackage(buffer, sizeof(buffer), cPropertyCaretChangeEvent);
+            const auto sendingResult = ati->sendAccessibilityEventPackage(buffer, sizeof(buffer), eventType);
+            if (sendingResult != 0) {
+                // the package hasn't been sent, so we have to delete the new global refs
+
+                PrintDebugString("[ERROR]:   failed to send the package to AT %p (sendingResult=%lld)",
+                                 ati, utils::LongLongInt{sendingResult});
+
+                if (eventNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(eventNewGlobalRef);
+                }
+                if (sourceNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(sourceNewGlobalRef);
+                }
+            }
         }
+
         ati = ati->nextATInstance;
     }
+
     PrintDebugString("[INFO]:   done with propertyCaretChange event");
 }
 
@@ -1858,84 +2283,23 @@ JavaAccessBridge::firePropertyCaretChange(JNIEnv *env, jobject callingObj,
 void
 JavaAccessBridge::firePropertyDescriptionChange(JNIEnv *env, jobject callingObj,
                                                 jobject event, jobject source,
-                                                jstring oldValue, jstring newValue){
+                                                jstring oldValue, jstring newValue) {
 
-    PrintDebugString("[INFO]: Java_com_sun_java_accessibility_internal_AccessBridge_propertyDescriptionChanged(%p, %p, %p, %p, %p, %p)",
-                     env, callingObj, event,
-                     source, oldValue, newValue);
-
-    // sanity check
-    if (ATs == nullptr) {
-        PrintDebugString("[ERROR]:   ATs == 0! (shouldn't happen here!)");
-        return;         // panic!
-    }
-
-    // common setup
-    char buffer[sizeof(PackageType) + sizeof(PropertyDescriptionChangePackage)] = { 0 };
-    PackageType *type = (PackageType *) buffer;
-    PropertyDescriptionChangePackage *pkg = (PropertyDescriptionChangePackage *) (buffer + sizeof(PackageType));
-    *type = cPropertyDescriptionChangePackage;
-    pkg->vmID = (long) dialogWindow;
-
-    // make new Global Refs and send events only to those ATs that want 'em
-    AccessBridgeATInstance *ati = ATs;
-    while (ati != nullptr) {
-        if (ati->accessibilityEventMask & cPropertyCaretChangeEvent) {
-
-            PrintDebugString("[INFO]:   sending to AT");
-
-            // make new GlobalRefs for this AT
-            pkg->Event = (JOBJECT64)env->NewGlobalRef(event);
-            pkg->AccessibleContextSource = (JOBJECT64)env->NewGlobalRef(source);
-#ifdef ACCESSBRIDGE_ARCH_LEGACY // JOBJECT64 is jobject (32 bit pointer)
-            PrintDebugString("[INFO]:   GlobalRef'd Event: %p"\
-                                     "  GlobalRef'd Source: %p", pkg->Event, pkg->AccessibleContextSource);
-#else // JOBJECT64 is jlong (64 bit)
-            PrintDebugString("[INFO]:  GlobalRef'd Event: %016I64X"\
-                                    "  GlobalRef'd Source: %016I64X", pkg->Event, pkg->AccessibleContextSource);
-#endif
-
-            if (oldValue != nullptr) {
-                stringBytes = (const wchar_t *) env->GetStringChars(oldValue, nullptr);
-                if (stringBytes == nullptr) {
-                    if (!env->ExceptionCheck()) {
-                        jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != nullptr) {
-                            env->ThrowNew(cls, nullptr);
-                        }
-                    }
-                    return;
-                }
-                wcsncpy(pkg->oldDescription, stringBytes, (sizeof(pkg->oldDescription) / sizeof(wchar_t)));
-                env->ReleaseStringChars(oldValue, stringBytes);
-            } else {
-                wcsncpy(pkg->oldDescription, L"(null)", (sizeof(pkg->oldDescription) / sizeof(wchar_t)));
-            }
-
-            if (newValue != nullptr) {
-                stringBytes = (const wchar_t *) env->GetStringChars(newValue, nullptr);
-                if (stringBytes == nullptr) {
-                   if (!env->ExceptionCheck()) {
-                        jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != nullptr) {
-                            env->ThrowNew(cls, nullptr);
-                        }
-                    }
-                    return;
-                }
-                wcsncpy(pkg->newDescription, stringBytes, (sizeof(pkg->newDescription) / sizeof(wchar_t)));
-                env->ReleaseStringChars(newValue, stringBytes);
-            } else {
-                wcsncpy(pkg->newDescription, L"(null)", (sizeof(pkg->newDescription) / sizeof(wchar_t)));
-            }
-
-            ati->sendAccessibilityEventPackage(buffer, sizeof(buffer), cPropertyDescriptionChangeEvent);
-        }
-
-        ati = ati->nextATInstance;
-    }
-
-    PrintDebugString("[INFO]:   done with propertyDescriptionChange event");
+    handleFirePropertyChangeJString<
+        PropertyDescriptionChangePackage,
+        cPropertyDescriptionChangePackage,
+        cPropertyDescriptionChangeEvent,
+        &PropertyDescriptionChangePackage::oldDescription,
+        &PropertyDescriptionChangePackage::newDescription
+    > (
+        "propertyDescriptionChange",
+        env,
+        callingObj,
+        event,
+        source,
+        oldValue,
+        newValue
+    );
 }
 
 /**
@@ -1947,81 +2311,21 @@ JavaAccessBridge::firePropertyNameChange(JNIEnv *env, jobject callingObj,
                                          jobject event, jobject source,
                                          jstring oldValue, jstring newValue){
 
-    PrintDebugString("[INFO]: Java_com_sun_java_accessibility_internal_AccessBridge_propertyNameChanged(%p, %p, %p, %p, %p, %p)",
-                     env, callingObj, event,
-                     source, oldValue, newValue);
-
-    // sanity check
-    if (ATs == nullptr) {
-        PrintDebugString("[ERROR]:   ATs == 0! (shouldn't happen here!)");
-        return;         // panic!
-    }
-
-    // common setup
-    const wchar_t *stringBytes;
-    char buffer[sizeof(PackageType) + sizeof(PropertyNameChangePackage)];
-    PackageType *type = (PackageType *) buffer;
-    PropertyNameChangePackage *pkg = (PropertyNameChangePackage *) (buffer + sizeof(PackageType));
-    *type = cPropertyNameChangePackage;
-    pkg->vmID = (long) dialogWindow;
-
-    // make new Global Refs and send events only to those ATs that want 'em
-    AccessBridgeATInstance *ati = ATs;
-    while (ati != nullptr) {
-        if (ati->accessibilityEventMask & cPropertyNameChangeEvent) {
-
-            PrintDebugString("[INFO]:   sending to AT");
-
-            // make new GlobalRefs for this AT
-            pkg->Event = (JOBJECT64)env->NewGlobalRef(event);
-            pkg->AccessibleContextSource = (JOBJECT64)env->NewGlobalRef(source);
-#ifdef ACCESSBRIDGE_ARCH_LEGACY // JOBJECT64 is jobject (32 bit pointer)
-            PrintDebugString("[INFO]:   GlobalRef'd Event: %p"\
-                                     "  GlobalRef'd Source: %p", pkg->Event, pkg->AccessibleContextSource);
-#else // JOBJECT64 is jlong (64 bit)
-            PrintDebugString("[INFO]:  GlobalRef'd Event: %016I64X"\
-                                    "  GlobalRef'd Source: %016I64X", pkg->Event, pkg->AccessibleContextSource);
-#endif
-
-            if (oldValue != nullptr) {
-                stringBytes = (const wchar_t *) env->GetStringChars(oldValue, nullptr);
-                if (stringBytes == nullptr) {
-                    if (!env->ExceptionCheck()) {
-                        jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != nullptr) {
-                            env->ThrowNew(cls, nullptr);
-                        }
-                    }
-                    return;
-                }
-                wcsncpy(pkg->oldName, stringBytes, (sizeof(pkg->oldName) / sizeof(wchar_t)));
-                env->ReleaseStringChars(oldValue, stringBytes);
-            } else {
-                wcsncpy(pkg->oldName, L"(null)", (sizeof(pkg->oldName) / sizeof(wchar_t)));
-            }
-
-            if (newValue != nullptr) {
-                stringBytes = (const wchar_t *) env->GetStringChars(newValue, nullptr);
-                if (stringBytes == nullptr) {
-                    if (!env->ExceptionCheck()) {
-                        jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != nullptr) {
-                            env->ThrowNew(cls, nullptr);
-                        }
-                    }
-                    return;
-                }
-                wcsncpy(pkg->newName, stringBytes, (sizeof(pkg->newName) / sizeof(wchar_t)));
-                env->ReleaseStringChars(newValue, stringBytes);
-            } else {
-                wcsncpy(pkg->newName, L"(null)", (sizeof(pkg->newName) / sizeof(wchar_t)));
-            }
-
-            ati->sendAccessibilityEventPackage(buffer, sizeof(buffer), cPropertyNameChangeEvent);
-        }
-        ati = ati->nextATInstance;
-    }
-    PrintDebugString("[INFO]:   done with propertyNameChange event");
+    handleFirePropertyChangeJString<
+        PropertyNameChangePackage,
+        cPropertyNameChangePackage,
+        cPropertyNameChangeEvent,
+        &PropertyNameChangePackage::oldName,
+        &PropertyNameChangePackage::newName
+    > (
+        "propertyNameChange",
+        env,
+        callingObj,
+        event,
+        source,
+        oldValue,
+        newValue
+    );
 }
 
 
@@ -2033,45 +2337,17 @@ void
 JavaAccessBridge::firePropertySelectionChange(JNIEnv *env, jobject callingObj,
                                               jobject event, jobject source) {
 
-    PrintDebugString("[INFO]: Java_com_sun_java_accessibility_internal_AccessBridge_propertySelectionChanged(%p, %p, %p, %p)",
-                     env, callingObj, event, source);
-
-    // sanity check
-    if (ATs == nullptr) {
-        PrintDebugString("[ERROR]:   ATs == 0! (shouldn't happen here!)");
-        return;         // panic!
-    }
-
-    // common setup
-    char buffer[sizeof(PackageType) + sizeof(PropertySelectionChangePackage)];
-    PackageType *type = (PackageType *) buffer;
-    PropertySelectionChangePackage *pkg = (PropertySelectionChangePackage *) (buffer + sizeof(PackageType));
-    *type = cPropertySelectionChangePackage;
-    pkg->vmID = (long) dialogWindow;
-
-    // make new Global Refs and send events only to those ATs that want 'em
-    AccessBridgeATInstance *ati = ATs;
-    while (ati != nullptr) {
-        if (ati->accessibilityEventMask & cPropertySelectionChangeEvent) {
-
-            PrintDebugString("[INFO]:   sending to AT");
-
-            // make new GlobalRefs for this AT
-            pkg->Event = (JOBJECT64)env->NewGlobalRef(event);
-            pkg->AccessibleContextSource = (JOBJECT64)env->NewGlobalRef(source);
-#ifdef ACCESSBRIDGE_ARCH_LEGACY // JOBJECT64 is jobject (32 bit pointer)
-            PrintDebugString("[INFO]:   GlobalRef'd Event: %p"\
-                                     "  GlobalRef'd Source: %p", pkg->Event, pkg->AccessibleContextSource);
-#else // JOBJECT64 is jlong (64 bit)
-            PrintDebugString("[INFO]:   GlobalRef'd Event: %016I64X"\
-                                     "  GlobalRef'd Source: %016I64X", pkg->Event, pkg->AccessibleContextSource);
-#endif
-
-            ati->sendAccessibilityEventPackage(buffer, sizeof(buffer), cPropertySelectionChangeEvent);
-        }
-        ati = ati->nextATInstance;
-    }
-    PrintDebugString("[INFO]:   done with propertySelectionChange event");
+    handleFirePropertyChangeNoValues<
+        PropertySelectionChangePackage,
+        cPropertySelectionChangePackage,
+        cPropertySelectionChangeEvent
+    > (
+        "propertySelectionChange",
+        env,
+        callingObj,
+        event,
+        source
+    );
 }
 
 
@@ -2082,83 +2358,23 @@ JavaAccessBridge::firePropertySelectionChange(JNIEnv *env, jobject callingObj,
 void
 JavaAccessBridge::firePropertyStateChange(JNIEnv *env, jobject callingObj,
                                           jobject event, jobject source,
-                                          jstring oldValue, jstring newValue){
+                                          jstring oldValue, jstring newValue) {
 
-    PrintDebugString("[INFO]: Java_com_sun_java_accessibility_internal_AccessBridge_propertyStateChanged(%p, %p, %p, %p, %p, %p)",
-                     env, callingObj, event,
-                     source, oldValue, newValue);
-
-    // sanity check
-    if (ATs == nullptr) {
-        PrintDebugString("[ERROR]:   ATs == 0! (shouldn't happen here!)");
-        return;         // panic!
-    }
-
-    // common setup
-    const wchar_t *stringBytes;
-    char buffer[sizeof(PackageType) + sizeof(PropertyStateChangePackage)];
-    PackageType *type = (PackageType *) buffer;
-    PropertyStateChangePackage *pkg = (PropertyStateChangePackage *) (buffer + sizeof(PackageType));
-    *type = cPropertyStateChangePackage;
-    pkg->vmID = (long) dialogWindow;
-
-    // make new Global Refs and send events only to those ATs that want 'em
-    AccessBridgeATInstance *ati = ATs;
-    while (ati != nullptr) {
-        if (ati->accessibilityEventMask & cPropertyStateChangeEvent) {
-
-            PrintDebugString("[INFO]:   sending to AT");
-
-            // make new GlobalRefs for this AT
-            pkg->Event = (JOBJECT64)env->NewGlobalRef(event);
-            pkg->AccessibleContextSource = (JOBJECT64)env->NewGlobalRef(source);
-#ifdef ACCESSBRIDGE_ARCH_LEGACY // JOBJECT64 is jobject (32 bit pointer)
-            PrintDebugString("[INFO]:   GlobalRef'd Event: %p"\
-                                     "  GlobalRef'd Source: %p", pkg->Event, pkg->AccessibleContextSource);
-#else // JOBJECT64 is jlong (64 bit)
-            PrintDebugString("[INFO]:  GlobalRef'd Event: %016I64X"\
-                                    "  GlobalRef'd Source: %016I64X", pkg->Event, pkg->AccessibleContextSource);
-#endif
-
-            if (oldValue != nullptr) {
-                stringBytes = (const wchar_t *) env->GetStringChars(oldValue, nullptr);
-                if (stringBytes == nullptr) {
-                    if (!env->ExceptionCheck()) {
-                        jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != nullptr) {
-                            env->ThrowNew(cls, nullptr);
-                        }
-                    }
-                    return;
-                }
-                wcsncpy(pkg->oldState, stringBytes, (sizeof(pkg->oldState) / sizeof(wchar_t)));
-                env->ReleaseStringChars(oldValue, stringBytes);
-            } else {
-                wcsncpy(pkg->oldState, L"(null)", (sizeof(pkg->oldState) / sizeof(wchar_t)));
-            }
-
-            if (newValue != nullptr) {
-                stringBytes = (const wchar_t *) env->GetStringChars(newValue, nullptr);
-                if (stringBytes == nullptr) {
-                    if (!env->ExceptionCheck()) {
-                        jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != nullptr) {
-                            env->ThrowNew(cls, nullptr);
-                        }
-                    }
-                    return;
-                }
-                wcsncpy(pkg->newState, stringBytes, (sizeof(pkg->newState) / sizeof(wchar_t)));
-                env->ReleaseStringChars(newValue, stringBytes);
-            } else {
-                wcsncpy(pkg->newState, L"(null)", (sizeof(pkg->newState) / sizeof(wchar_t)));
-            }
-
-            ati->sendAccessibilityEventPackage(buffer, sizeof(buffer), cPropertyStateChangeEvent);
-        }
-        ati = ati->nextATInstance;
-    }
-    PrintDebugString("[INFO]:   done with propertyStateChange event");
+    handleFirePropertyChangeJString<
+        PropertyStateChangePackage,
+        cPropertyStateChangePackage,
+        cPropertyStateChangeEvent,
+        &PropertyStateChangePackage::oldState,
+        &PropertyStateChangePackage::newState
+    > (
+        "propertyStateChange",
+        env,
+        callingObj,
+        event,
+        source,
+        oldValue,
+        newValue
+    );
 }
 
 
@@ -2170,45 +2386,17 @@ void
 JavaAccessBridge::firePropertyTextChange(JNIEnv *env, jobject callingObj,
                                          jobject event, jobject source) {
 
-    PrintDebugString("[INFO]: Java_com_sun_java_accessibility_internal_AccessBridge_propertyTextChanged(%p, %p, %p, %p)",
-                     env, callingObj, event, source);
-
-    // sanity check
-    if (ATs == nullptr) {
-        PrintDebugString("[ERROR]:   ATs == 0! (shouldn't happen here!)");
-        return;         // panic!
-    }
-
-    // common setup
-    char buffer[sizeof(PackageType) + sizeof(PropertyTextChangePackage)];
-    PackageType *type = (PackageType *) buffer;
-    PropertyTextChangePackage *pkg = (PropertyTextChangePackage *) (buffer + sizeof(PackageType));
-    *type = cPropertyTextChangePackage;
-    pkg->vmID = (long) dialogWindow;
-
-    // make new Global Refs and send events only to those ATs that want 'em
-    AccessBridgeATInstance *ati = ATs;
-    while (ati != nullptr) {
-        if (ati->accessibilityEventMask & cPropertyTextChangeEvent) {
-
-            PrintDebugString("[INFO]:   sending to AT");
-
-            // make new GlobalRefs for this AT
-            pkg->Event = (JOBJECT64)env->NewGlobalRef(event);
-            pkg->AccessibleContextSource = (JOBJECT64)env->NewGlobalRef(source);
-#ifdef ACCESSBRIDGE_ARCH_LEGACY // JOBJECT64 is jobject (32 bit pointer)
-            PrintDebugString("[INFO]:   GlobalRef'd Event: %p"\
-                             "          GlobalRef'd Source: %p",pkg->Event, pkg->AccessibleContextSource);
-#else // JOBJECT64 is jlong (64 bit)
-            PrintDebugString("[INFO]:   GlobalRef'd Event: %016I64X"\
-                                     "  GlobalRef'd Source: %016I64X", pkg->Event, pkg->AccessibleContextSource);
-#endif
-
-            ati->sendAccessibilityEventPackage(buffer, sizeof(buffer), cPropertyTextChangeEvent);
-        }
-        ati = ati->nextATInstance;
-    }
-    PrintDebugString("[INFO]:   done with propertyTextChange event");
+    handleFirePropertyChangeNoValues<
+        PropertyTextChangePackage,
+        cPropertyTextChangePackage,
+        cPropertyTextChangeEvent
+    > (
+        "propertyTextChange",
+        env,
+        callingObj,
+        event,
+        source
+    );
 }
 
 
@@ -2219,83 +2407,23 @@ JavaAccessBridge::firePropertyTextChange(JNIEnv *env, jobject callingObj,
 void
 JavaAccessBridge::firePropertyValueChange(JNIEnv *env, jobject callingObj,
                                           jobject event, jobject source,
-                                          jstring oldValue, jstring newValue){
+                                          jstring oldValue, jstring newValue) {
 
-    PrintDebugString("[INFO]: Java_com_sun_java_accessibility_internal_AccessBridge_propertyValueChanged(%p, %p, %p, %p, %p, %p)",
-                     env, callingObj, event,
-                     source, oldValue, newValue);
-
-    // sanity check
-    if (ATs == nullptr) {
-        PrintDebugString("[ERROR]:   ATs == 0! (shouldn't happen here!)");
-        return;         // panic!
-    }
-
-    // common setup
-    const wchar_t *stringBytes;
-    char buffer[sizeof(PackageType) + sizeof(PropertyValueChangePackage)];
-    PackageType *type = (PackageType *) buffer;
-    PropertyValueChangePackage *pkg = (PropertyValueChangePackage *) (buffer + sizeof(PackageType));
-    *type = cPropertyValueChangePackage;
-    pkg->vmID = (long) dialogWindow;
-
-    // make new Global Refs and send events only to those ATs that want 'em
-    AccessBridgeATInstance *ati = ATs;
-    while (ati != nullptr) {
-        if (ati->accessibilityEventMask & cPropertyValueChangeEvent) {
-
-            PrintDebugString("[INFO]:   sending to AT");
-
-            // make new GlobalRefs for this AT
-            pkg->Event = (JOBJECT64)env->NewGlobalRef(event);
-            pkg->AccessibleContextSource = (JOBJECT64)env->NewGlobalRef(source);
-#ifdef ACCESSBRIDGE_ARCH_LEGACY // JOBJECT64 is jobject (32 bit pointer)
-            PrintDebugString("[INFO]:   GlobalRef'd Event: %p"\
-                                     "  GlobalRef'd Source: %p", pkg->Event, pkg->AccessibleContextSource);
-#else // JOBJECT64 is jlong (64 bit)
-            PrintDebugString("[INFO]:   GlobalRef'd Event: %016I64X"\
-                                     "  GlobalRef'd Source: %016I64X", pkg->Event, pkg->AccessibleContextSource);
-#endif
-
-            if (oldValue != nullptr) {
-                stringBytes = (const wchar_t *) env->GetStringChars(oldValue, nullptr);
-                if (stringBytes == nullptr) {
-                    if (!env->ExceptionCheck()) {
-                        jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != nullptr) {
-                            env->ThrowNew(cls, nullptr);
-                        }
-                    }
-                    return;
-                }
-                wcsncpy(pkg->oldValue, stringBytes, (sizeof(pkg->oldValue) / sizeof(wchar_t)));
-                env->ReleaseStringChars(oldValue, stringBytes);
-            } else {
-                wcsncpy(pkg->oldValue, L"(null)", (sizeof(pkg->oldValue) / sizeof(wchar_t)));
-            }
-
-            if (newValue != nullptr) {
-                stringBytes = (const wchar_t *) env->GetStringChars(newValue, nullptr);
-                if (stringBytes == nullptr) {
-                    if (!env->ExceptionCheck()) {
-                        jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != nullptr) {
-                            env->ThrowNew(cls, nullptr);
-                        }
-                    }
-                    return;
-                }
-                wcsncpy(pkg->newValue, stringBytes, (sizeof(pkg->newValue) / sizeof(wchar_t)));
-                env->ReleaseStringChars(newValue, stringBytes);
-            } else {
-                wcsncpy(pkg->newValue, L"(null)", (sizeof(pkg->newValue) / sizeof(wchar_t)));
-            }
-
-            ati->sendAccessibilityEventPackage(buffer, sizeof(buffer), cPropertyValueChangeEvent);
-        }
-        ati = ati->nextATInstance;
-    }
-    PrintDebugString("[INFO]:   done with propertyValueChange event");
+    handleFirePropertyChangeJString<
+        PropertyValueChangePackage,
+        cPropertyValueChangePackage,
+        cPropertyValueChangeEvent,
+        &PropertyValueChangePackage::oldValue,
+        &PropertyValueChangePackage::newValue
+    > (
+        "propertyValueChange",
+        env,
+        callingObj,
+        event,
+        source,
+        oldValue,
+        newValue
+    );
 }
 
 /**
@@ -2305,46 +2433,17 @@ JavaAccessBridge::firePropertyValueChange(JNIEnv *env, jobject callingObj,
 void
 JavaAccessBridge::firePropertyVisibleDataChange(JNIEnv *env, jobject callingObj,
                                                 jobject event, jobject source) {
-
-    PrintDebugString("[INFO]: Java_com_sun_java_accessibility_internal_AccessBridge_propertyVisibleDataChanged(%p, %p, %p, %p)",
-                     env, callingObj, event, source);
-
-    // sanity check
-    if (ATs == nullptr) {
-        PrintDebugString("[ERROR]:   ATs == 0! (shouldn't happen here!)");
-        return;         // panic!
-    }
-
-    // common setup
-    char buffer[sizeof(PackageType) + sizeof(PropertyVisibleDataChangePackage)];
-    PackageType *type = (PackageType *) buffer;
-    PropertyVisibleDataChangePackage *pkg = (PropertyVisibleDataChangePackage *) (buffer + sizeof(PackageType));
-    *type = cPropertyVisibleDataChangePackage;
-    pkg->vmID = (long) dialogWindow;
-
-    // make new Global Refs and send events only to those ATs that want 'em
-    AccessBridgeATInstance *ati = ATs;
-    while (ati != nullptr) {
-        if (ati->accessibilityEventMask & cPropertyVisibleDataChangeEvent) {
-
-            PrintDebugString("[INFO]:   sending to AT");
-
-            // make new GlobalRefs for this AT
-            pkg->Event = (JOBJECT64)env->NewGlobalRef(event);
-            pkg->AccessibleContextSource = (JOBJECT64)env->NewGlobalRef(source);
-#ifdef ACCESSBRIDGE_ARCH_LEGACY // JOBJECT64 is jobject (32 bit pointer)
-            PrintDebugString("[INFO]:   GlobalRef'd Event: %p"\
-                                     "  GlobalRef'd Source: %p", pkg->Event, pkg->AccessibleContextSource);
-#else // JOBJECT64 is jlong (64 bit)
-            PrintDebugString("[INFO]:   GlobalRef'd Event: %016I64X"\
-                                     "  GlobalRef'd Source: %016I64X", pkg->Event, pkg->AccessibleContextSource);
-#endif
-
-            ati->sendAccessibilityEventPackage(buffer, sizeof(buffer), cPropertyVisibleDataChangeEvent);
-        }
-        ati = ati->nextATInstance;
-    }
-    PrintDebugString("[INFO]:   done with propertyVisibleDataChange event");
+    handleFirePropertyChangeNoValues<
+        PropertyVisibleDataChangePackage,
+        cPropertyVisibleDataChangePackage,
+        cPropertyVisibleDataChangeEvent
+    > (
+        "propertyVisibleDataChange",
+        env,
+        callingObj,
+        event,
+        source
+    );
 }
 
 
@@ -2357,54 +2456,23 @@ JavaAccessBridge::firePropertyChildChange(JNIEnv *env, jobject callingObj,
                                           jobject event, jobject source,
                                           jobject oldValue, jobject newValue){
 
-    PrintDebugString("[INFO]: Java_com_sun_java_accessibility_internal_AccessBridge_propertyChildPropertyChanged(%p, %p, %p, %p, %p, %p)",
-                     env, callingObj, event,
-                     source, oldValue, newValue);
-
-    // sanity check
-    if (ATs == nullptr) {
-        PrintDebugString("[ERROR]:   ATs == 0! (shouldn't happen here!)");
-        return;         // panic!
-    }
-
-    // common setup
-    char buffer[sizeof(PackageType) + sizeof(PropertyChildChangePackage)];
-    PackageType *type = (PackageType *) buffer;
-    PropertyChildChangePackage *pkg = (PropertyChildChangePackage *) (buffer + sizeof(PackageType));
-    *type = cPropertyChildChangePackage;
-    pkg->vmID = (long) dialogWindow;
-
-    // make new Global Refs and send events only to those ATs that want 'em
-    AccessBridgeATInstance *ati = ATs;
-    while (ati != nullptr) {
-        if (ati->accessibilityEventMask & cPropertyChildChangeEvent) {
-
-            PrintDebugString("[INFO]:   sending to AT");
-
-            // make new GlobalRefs for this AT
-            pkg->Event = (JOBJECT64)env->NewGlobalRef(event);
-            pkg->AccessibleContextSource = (JOBJECT64)env->NewGlobalRef(source);
-            pkg->oldChildAccessibleContext = (JOBJECT64)env->NewGlobalRef(oldValue);
-            pkg->newChildAccessibleContext = (JOBJECT64)env->NewGlobalRef(newValue);
-#ifdef ACCESSBRIDGE_ARCH_LEGACY // JOBJECT64 is jobject (32 bit pointer)
-            PrintDebugString("[INFO]:   GlobalRef'd Event: %p"\
-                                     "  GlobalRef'd Source: %p"\
-                                     "  GlobalRef'd OldChildAC: %p"\
-                                     "  GlobalRef'd NewChildAC: %p"\
-                            , pkg->Event, pkg->AccessibleContextSource, pkg->oldChildAccessibleContext, pkg->newChildAccessibleContext);
-#else // JOBJECT64 is jlong (64 bit)
-            PrintDebugString("[INFO]:   GlobalRef'd Event: %016I64X"\
-                                     "  GlobalRef'd Source: %016I64X"\
-                                     "  GlobalRef'd OldChildAC: %016I64X"\
-                                     "  GlobalRef'd NewChildAC: %016I64X"\
-                             , pkg->Event, pkg->AccessibleContextSource, pkg->oldChildAccessibleContext, pkg->newChildAccessibleContext);
-#endif
-
-            ati->sendAccessibilityEventPackage(buffer, sizeof(buffer), cPropertyChildChangeEvent);
-        }
-        ati = ati->nextATInstance;
-    }
-    PrintDebugString("[INFO]:   done with propertyChildChange event");
+    handleFirePropertyChangeJObject<
+        PropertyChildChangePackage,
+        cPropertyChildChangePackage,
+        cPropertyChildChangeEvent,
+        &PropertyChildChangePackage::oldChildAccessibleContext,
+        &PropertyChildChangePackage::newChildAccessibleContext
+    > (
+        "propertyChildPropertyChange",
+        env,
+        callingObj,
+        event,
+        source,
+        oldValue,
+        newValue,
+        "OldChildAC",
+        "NewChildAC"
+    );
 }
 
 
@@ -2417,54 +2485,23 @@ JavaAccessBridge::firePropertyActiveDescendentChange(JNIEnv *env, jobject callin
                                                      jobject event, jobject source,
                                                      jobject oldValue, jobject newValue){
 
-    PrintDebugString("[INFO]: Java_com_sun_java_accessibility_internal_AccessBridge_propertyActiveDescendentPropertyChanged(%p, %p, %p, %p, %p, %p)",
-                     env, callingObj, event,
-                     source, oldValue, newValue);
-
-    // sanity check
-    if (ATs == nullptr) {
-        PrintDebugString("[ERROR]:   ATs == 0! (shouldn't happen here!)");
-        return;         // panic!
-    }
-
-    // common setup
-    char buffer[sizeof(PackageType) + sizeof(PropertyActiveDescendentChangePackage)];
-    PackageType *type = (PackageType *) buffer;
-    PropertyActiveDescendentChangePackage *pkg = (PropertyActiveDescendentChangePackage *) (buffer + sizeof(PackageType));
-    *type = cPropertyActiveDescendentChangePackage;
-    pkg->vmID = (long) dialogWindow;
-
-    // make new Global Refs and send events only to those ATs that want 'em
-    AccessBridgeATInstance *ati = ATs;
-    while (ati != nullptr) {
-        if (ati->accessibilityEventMask & cPropertyActiveDescendentChangeEvent) {
-
-            PrintDebugString("[INFO]:   sending to AT");
-
-            // make new GlobalRefs for this AT
-            pkg->Event = (JOBJECT64)env->NewGlobalRef(event);
-            pkg->AccessibleContextSource = (JOBJECT64)env->NewGlobalRef(source);
-            pkg->oldActiveDescendentAccessibleContext = (JOBJECT64)env->NewGlobalRef(oldValue);
-            pkg->newActiveDescendentAccessibleContext = (JOBJECT64)env->NewGlobalRef(newValue);
-#ifdef ACCESSBRIDGE_ARCH_LEGACY // JOBJECT64 is jobject (32 bit pointer)
-            PrintDebugString("[INFO]:   GlobalRef'd Event: %p"\
-                                     "  GlobalRef'd Source: %p"\
-                                     "  GlobalRef'd OldActiveDescendentAC: %p"\
-                                     "  GlobalRef'd NewActiveDescendentAC: %p"\
-                             , pkg->Event, pkg->AccessibleContextSource, pkg->oldActiveDescendentAccessibleContext, pkg->newActiveDescendentAccessibleContext);
-#else // JOBJECT64 is jlong (64 bit)
-            PrintDebugString("[INFO]:   GlobalRef'd Event: %016I64X"\
-                                     "  GlobalRef'd Source: %016I64X"\
-                                     "  GlobalRef'd OldActiveDescendentAC: %016I64X"\
-                                     "  GlobalRef'd NewActiveDescendentAC: %016I64X"\
-            , pkg->Event, pkg->AccessibleContextSource, pkg->oldActiveDescendentAccessibleContext, pkg->newActiveDescendentAccessibleContext);
-#endif
-
-            ati->sendAccessibilityEventPackage(buffer, sizeof(buffer), cPropertyActiveDescendentChangeEvent);
-        }
-        ati = ati->nextATInstance;
-    }
-    PrintDebugString("[INFO]:   done with propertyActiveChange event");
+    handleFirePropertyChangeJObject<
+        PropertyActiveDescendentChangePackage,
+        cPropertyActiveDescendentChangePackage,
+        cPropertyActiveDescendentChangeEvent,
+        &PropertyActiveDescendentChangePackage::oldActiveDescendentAccessibleContext,
+        &PropertyActiveDescendentChangePackage::newActiveDescendentAccessibleContext
+    > (
+        "propertyActiveDescendentPropertyChange",
+        env,
+        callingObj,
+        event,
+        source,
+        oldValue,
+        newValue,
+        "OldActiveDescendentAC",
+        "NewActiveDescendentAC"
+    );
 }
 
 /**
@@ -2476,81 +2513,21 @@ JavaAccessBridge::firePropertyTableModelChange(JNIEnv *env, jobject callingObj,
                                                jobject event, jobject source,
                                                jstring oldValue, jstring newValue){
 
-    PrintDebugString("[INFO]: Java_com_sun_java_accessibility_internal_AccessBridge_propertyTableModelChange(%p, %p, %p, %p, %p, %p)",
-                     env, callingObj, event,
-                     source, oldValue, newValue);
-
-    // sanity check
-    if (ATs == nullptr) {
-        PrintDebugString("[ERROR]:   ATs == 0! (shouldn't happen here!)");
-        return;         // panic!
-    }
-
-    // common setup
-    const wchar_t *stringBytes;
-    char buffer[sizeof(PackageType) + sizeof(PropertyTableModelChangePackage)];
-    PackageType *type = (PackageType *) buffer;
-    PropertyTableModelChangePackage *pkg = (PropertyTableModelChangePackage *) (buffer + sizeof(PackageType));
-    *type = cPropertyTableModelChangePackage;
-    pkg->vmID = (long) dialogWindow;
-
-    // make new Global Refs and send events only to those ATs that want 'em
-    AccessBridgeATInstance *ati = ATs;
-    while (ati != nullptr) {
-        if (ati->accessibilityEventMask & cPropertyTableModelChangeEvent) {
-
-            PrintDebugString("  sending to AT");
-
-            // make new GlobalRefs for this AT
-            pkg->Event = (JOBJECT64)env->NewGlobalRef(event);
-            pkg->AccessibleContextSource = (JOBJECT64)env->NewGlobalRef(source);
-#ifdef ACCESSBRIDGE_ARCH_LEGACY // JOBJECT64 is jobject (32 bit pointer)
-            PrintDebugString("[INFO]:   GlobalRef'd Event: %p"\
-                                     "  GlobalRef'd Source: %p", pkg->Event, pkg->AccessibleContextSource);
-#else // JOBJECT64 is jlong (64 bit)
-            PrintDebugString("[INFO]:   GlobalRef'd Event: %016I64X"\
-                                     "  GlobalRef'd Source: %016I64X", pkg->Event, pkg->AccessibleContextSource);
-#endif
-
-            if (oldValue != nullptr) {
-                stringBytes = (const wchar_t *) env->GetStringChars(oldValue, nullptr);
-                if (stringBytes == nullptr) {
-                    if (!env->ExceptionCheck()) {
-                        jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != nullptr) {
-                            env->ThrowNew(cls, nullptr);
-                        }
-                    }
-                    return;
-                }
-                wcsncpy(pkg->oldValue, stringBytes, (sizeof(pkg->oldValue) / sizeof(wchar_t)));
-                env->ReleaseStringChars(oldValue, stringBytes);
-            } else {
-                wcsncpy(pkg->oldValue, L"(null)", (sizeof(pkg->oldValue) / sizeof(wchar_t)));
-            }
-
-            if (newValue != nullptr) {
-                stringBytes = (const wchar_t *) env->GetStringChars(newValue, nullptr);
-                if (stringBytes == nullptr) {
-                    if (!env->ExceptionCheck()) {
-                        jclass cls = env->FindClass("java/lang/OutOfMemoryError");
-                        if (cls != nullptr) {
-                            env->ThrowNew(cls, nullptr);
-                        }
-                    }
-                    return;
-                }
-                wcsncpy(pkg->newValue, stringBytes, (sizeof(pkg->newValue) / sizeof(wchar_t)));
-                env->ReleaseStringChars(newValue, stringBytes);
-            } else {
-                wcsncpy(pkg->newValue, L"(null)", (sizeof(pkg->newValue) / sizeof(wchar_t)));
-            }
-
-            ati->sendAccessibilityEventPackage(buffer, sizeof(buffer), cPropertyTableModelChangeEvent);
-        }
-        ati = ati->nextATInstance;
-    }
-    PrintDebugString("[INFO]:   done with propertyTableModelChange event");
+    handleFirePropertyChangeJString<
+        PropertyTableModelChangePackage,
+        cPropertyTableModelChangePackage,
+        cPropertyTableModelChangeEvent,
+        &PropertyTableModelChangePackage::oldValue,
+        &PropertyTableModelChangePackage::newValue
+    > (
+        "propertyTableModelChange",
+        env,
+        callingObj,
+        event,
+        source,
+        oldValue,
+        newValue
+    );
 }
 
 
