@@ -84,6 +84,7 @@ static char *fullAixFontPath[] = {
 
 #include <dlfcn.h>
 #include <fontconfig/fontconfig.h>
+#include <stdbool.h>
 
 typedef FcConfig* (*FcInitLoadConfigFuncType)();
 typedef FcPattern* (*FcPatternBuildFuncType)(FcPattern *orig, ...);
@@ -253,12 +254,20 @@ void openFontConfig() {
     }
 }
 
+static bool usingFontConfig() {
+    return (libfontconfig != NULL) ? true : false;
+}
+
 JNIEXPORT void JNICALL
 JNI_OnUnload(JavaVM *vm, void *reserved) {
     closeFontConfig();
 }
 
 JNIEXPORT char **getFontConfigLocations() {
+
+    if (usingFontConfig() == false) {
+        return NULL;
+    }
 
     char **fontdirs;
     int numdirs = 0;
@@ -383,6 +392,10 @@ JNIEXPORT jint JNICALL
 Java_sun_font_FontConfigManager_getFontConfigVersion
         (JNIEnv *env, jclass obj) {
 
+    if (usingFontConfig() == false) {
+        return 0;
+    }
+
     return (*fcGetVersion)();
 }
 
@@ -390,6 +403,10 @@ JNIEXPORT void JNICALL
 Java_sun_font_FontConfigManager_setupFontConfigFonts
 (JNIEnv *env, jclass obj, jstring localeStr, jobject fcInfoObj,
  jobjectArray fcCompFontArray,  jboolean includeFallbacks) {
+
+    if (usingFontConfig() == false) {
+        return;
+    }
 
     int i, arrlen;
     jobject fcCompFontObj;
@@ -408,14 +425,9 @@ Java_sun_font_FontConfigManager_setupFontConfigFonts
     CHECK_NULL(fcInfoObj);
     CHECK_NULL(fcCompFontArray);
 
-    fcInfoClass = (*env)->FindClass(env, "sun/font/FontConfigManager$FontConfigInfo");
-    CHECK_NULL(fcInfoClass);
-    fcCompFontClass = (*env)->FindClass(env, "sun/font/FontConfigManager$FcCompFont");
-    CHECK_NULL(fcCompFontClass);
-    fcFontClass = (*env)->FindClass(env, "sun/font/FontConfigManager$FontConfigFont");
-    CHECK_NULL(fcFontClass);
-
-
+    CHECK_NULL(fcInfoClass = (*env)->FindClass(env, "sun/font/FontConfigManager$FontConfigInfo"));
+    CHECK_NULL(fcCompFontClass = (*env)->FindClass(env, "sun/font/FontConfigManager$FcCompFont"));
+    CHECK_NULL(fcFontClass = (*env)->FindClass(env, "sun/font/FontConfigManager$FontConfigFont"));
     CHECK_NULL(fcVersionID = (*env)->GetFieldID(env, fcInfoClass, "fcVersion", "I"));
     CHECK_NULL(fcCacheDirsID = (*env)->GetFieldID(env, fcInfoClass, "cacheDirs", "[Ljava/lang/String;"));
     CHECK_NULL(fcNameID = (*env)->GetFieldID(env, fcCompFontClass, "fcName", "Ljava/lang/String;"));
@@ -727,6 +739,10 @@ JNIEXPORT jint JNICALL
 Java_sun_font_FontConfigManager_getFontConfigAASettings
         (JNIEnv *env, jclass obj, jstring fcNameStr, jstring localeStr) {
 
+    if (usingFontConfig() == false) {
+        return -1;
+    }
+
     int rgba = 0;
     const char *locale=NULL, *fcName=NULL;
 
@@ -773,6 +789,10 @@ Java_sun_font_FontConfigManager_getFontConfigAASettings
 JNIEXPORT jstring JNICALL
 Java_sun_font_FontConfigManager_getFontProperty
         (JNIEnv *env, jclass obj, jstring query, jstring property) {
+
+    if (usingFontConfig() == false) {
+        return NULL;
+    }
 
     const char *queryPtr = NULL;
     const char *propertyPtr = NULL;
