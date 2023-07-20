@@ -27,6 +27,7 @@
 #include <wayland-cursor.h>
 #include "xdg-shell-client-protocol.h"
 #include "xdg-activation-v1-client-protocol.h"
+#include "primary-selection-client-protocol.h"
 
 #define CHECK_NULL_THROW_OOME_RETURN(env, x, msg, z)\
     do {                                        \
@@ -51,6 +52,8 @@ extern struct wl_compositor *wl_compositor;
 extern struct xdg_wm_base *xdg_wm_base;
 extern struct xdg_activation_v1 *xdg_activation_v1;
 extern struct wl_cursor_theme *wl_cursor_theme;
+extern struct wl_data_device_manager *wl_ddm;
+extern struct zwp_primary_selection_device_manager_v1 *zwp_selection_dm;
 
 extern struct wl_surface *wl_surface_in_focus;
 
