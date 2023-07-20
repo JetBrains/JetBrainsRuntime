@@ -29,7 +29,7 @@
 #include <stdlib.h>
 #include <Trace.h>
 
-#include "jni_util.h"
+#include "JNIUtilities.h"
 #include "WLToolkit.h"
 #include "VKBase.h"
 
