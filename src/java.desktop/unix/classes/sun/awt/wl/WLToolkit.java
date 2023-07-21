@@ -696,8 +696,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public synchronized MouseInfoPeer getMouseInfoPeer() {
-        log.info("Not implemented: WLToolkit.getMouseInfoPeer()");
-        return null;
+        return WLMouseInfoPeer.getInstance();
     }
 
     @Override
@@ -967,6 +966,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     @Override
     public boolean isTranslucencyCapable(GraphicsConfiguration gc) {
         log.info("Not implemented: WLToolkit.isWindowTranslucencySupported()");
+        return false;
+    }
+
+    @Override
+    public boolean isNativeGTKAvailable() {
         return false;
     }
 
