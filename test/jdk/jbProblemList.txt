@@ -154,6 +154,7 @@ java/awt/Focus/KeyEventForBadFocusOwnerTest/KeyEventForBadFocusOwnerTest.java JB
 java/awt/Focus/MouseClickRequestFocusRaceTest/MouseClickRequestFocusRaceTest.java 8194753 linux-all,macosx-all
 java/awt/Focus/NoAutotransferToDisabledCompTest/NoAutotransferToDisabledCompTest.java 7152980,JBR-5210 macosx-all,windows-all
 java/awt/Focus/ToFrontFocusTest/ToFrontFocus.java 7156130 linux-all
+java/awt/Focus/TypeAhead/TestFocusFreeze.java JBR-5856 windows-all
 java/awt/Focus/WindowInitialFocusTest/WindowInitialFocusTest.java JBR-69 windows-all
 java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java 8169096,JBR-4880,JBR-5387 macosx-all,windows-all,linux-all
 java/awt/EventQueue/6980209/bug6980209.java 8198615 macosx-all
@@ -242,6 +243,7 @@ java/awt/event/KeyEvent/KeyTyped/CtrlSpace.java JBR-3817 windows-all,macosx-all
 
 java/awt/dnd/BadSerializationTest/BadSerializationTest.java linux-x64,windows-x64
 java/awt/dnd/Button2DragTest/Button2DragTest.java 8310490 linux-all
+java/awt/dnd/RejectDragDropActionTest.java JBR-5858 windows-10.0
 java/awt/dnd/URIListToFileListBetweenJVMsTest/URIListToFileListBetweenJVMsTest.java 8194947 generic-all
 java/awt/Frame/FramesGC/FramesGC.java 8079069 macosx-all
 java/awt/ScrollPane/ScrollPanePreferredSize/ScrollPanePreferredSize.java 8253184 windows-all
@@ -898,6 +900,14 @@ javax/swing/JMenuItem/4654927/bug4654927.java JBR-164,JBR-4337 windows-all,linux
 javax/swing/JMenuItem/6209975/bug6209975.java 8253184 windows-all
 javax/swing/JRadioButton/8075609/bug8075609.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JMenuItem/8158566/CloseOnMouseClickPropertyTest.java JBR-5510,JBR-5545 linux-all,windows-all
+javax/swing/JMenuItem/6249972/bug6249972.java 8197552 windows-all
+javax/swing/JOptionPane/7138665/bug7138665.java JBR-5799 windows-all
+javax/swing/JPopupMenu/6415145/bug6415145.java 8197552 windows-all
+javax/swing/JPopupMenu/6515446/bug6515446.java 8197552 windows-all
+javax/swing/JRadioButton/8033699/bug8033699.java 8197552 windows-all
+javax/swing/JRadioButton/8075609/bug8075609.java 8197552,8266085,JBR-5510 windows-all,linux-5.18.2-arch1-1
+javax/swing/JRadioButton/ButtonGroupFocus/ButtonGroupFocusTest.java 8197552,8266085 windows-all
+javax/swing/JRadioButton/FocusTraversal/FocusTraversal.java 8266085 windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8233582 linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582 linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
@@ -909,6 +919,7 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentWindowClickSwing.java
 javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java 8159131 linux-all
 javax/swing/JTree/4330357/bug4330357.java 8253184 windows-all
 javax/swing/JTree/4633594/JTreeFocusTest.java 7105441,8173125,JBR-5210 macosx-all,windows-all
+javax/swing/JTree/4908142/bug4908142.java 8197552,JBR-151 windows-all
 javax/swing/AbstractButton/6711682/bug6711682.java 8060765 windows-all,macosx-all,linux-5.15.0-39-generic,linux-5.15.0-33-generic,linux-5.19.0-1025-aws
 javax/swing/Action/8133039/bug8133039.java JBR-5210 windows-all
 javax/swing/ButtonGroup/TestButtonGroupFocusTraversal.java JBR-5210 windows-all
