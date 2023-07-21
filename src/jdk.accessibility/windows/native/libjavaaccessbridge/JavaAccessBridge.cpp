@@ -2751,35 +2751,43 @@ JavaAccessBridge::firePropertyTableModelChange(JNIEnv *env, jobject callingObj,
 }
 
 
-    void JavaAccessBridge::javaShutdown(JNIEnv *env, jobject callingObj) {
+void JavaAccessBridge::javaShutdown(JNIEnv *env, jobject callingObj) {
+    constexpr auto eventType = cJavaShutdownEvent;
 
-        PrintDebugString("[INFO]: Firing event id = %lld(%p, %p); vmID = %p",
-                         (long long){cJavaShutdownEvent}, env, callingObj, dialogWindow);
+    PrintDebugString("[INFO]: Firing event id=%lld(%p, %p); vmID=%p",
+                     utils::LongLongInt{eventType}, env, callingObj, dialogWindow);
 
-        /* sanity check */
-        if (ATs == nullptr) {
-            PrintDebugString("[ERROR]:  ATs == 0! (shouldn't happen here!)");
-            return;             /* panic! */
-        }
-
-        /* common setup */
-        char buffer[sizeof(PackageType) + sizeof(JavaShutdownPackage)];
-        PackageType *type = (PackageType *) buffer;
-        JavaShutdownPackage *pkg = (JavaShutdownPackage *) (buffer + sizeof(PackageType));
-        *type = cJavaShutdownPackage;
-        pkg->vmID = (long) dialogWindow;
-
-        /* make new Global Refs, send events only to those ATs that want 'em */
-        AccessBridgeATInstance *ati = ATs;
-        while (ati != nullptr) {
-            if (ati->javaEventMask & cJavaShutdownEvent) {
-                PrintDebugString("[INFO]:   sending to AT");
-                ati->sendJavaEventPackage(buffer, sizeof(buffer), cJavaShutdownEvent);
-            }
-            ati = ati->nextATInstance;
-        }
-        PrintDebugString("[INFO]:   done with firing AWT event");
+    /* sanity check */
+    if (ATs == nullptr) {
+        PrintDebugString("[ERROR]:   ATs == 0! (shouldn't happen here!)");
+        return;             /* panic! */
     }
+
+    /* common setup */
+    char buffer[sizeof(PackageType) + sizeof(JavaShutdownPackage)] = { 0 };
+    PackageType * const type = reinterpret_cast<PackageType*>(&buffer[0]);
+    JavaShutdownPackage * const pkg = reinterpret_cast<JavaShutdownPackage*>(&buffer[0] + sizeof(PackageType));
+    *type = cJavaShutdownPackage;
+    pkg->vmID = (long) dialogWindow;
+
+    /* make new Global Refs, send events only to those ATs that want 'em */
+    AccessBridgeATInstance *ati = ATs;
+    while (ati != nullptr) {
+        if (ati->javaEventMask & eventType) {
+            PrintDebugString("[INFO]:   sending to AT %p", ati);
+
+            const auto sendingResult = ati->sendJavaEventPackage(buffer, sizeof(buffer), eventType);
+            if (sendingResult != 0) {
+                PrintDebugString("[ERROR]:   failed to send the package to AT %p (sendingResult=%lld)",
+                                 ati, utils::LongLongInt{sendingResult});
+            }
+        }
+
+        ati = ati->nextATInstance;
+    }
+
+    PrintDebugString("[INFO]:   done with firing AWT event id=%lld", utils::LongLongInt{eventType});
+}
 
 
     // -----------------------------
