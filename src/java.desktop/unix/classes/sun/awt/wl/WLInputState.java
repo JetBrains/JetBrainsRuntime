@@ -45,7 +45,8 @@ record WLInputState(WLPointerEvent eventWithSurface,
                     WLPointerEvent eventWithCoordinates,
                     PointerButtonEvent pointerButtonPressedEvent,
                     int modifiers,
-                    long surfaceForKeyboardInput) {
+                    long surfaceForKeyboardInput,
+                    boolean isPointerOverSurface) {
     /**
      * Groups together information about a mouse pointer button event.
      * @param surface 'struct wl_surface*' the button was pressed over
@@ -59,7 +60,7 @@ record WLInputState(WLPointerEvent eventWithSurface,
 
     static WLInputState initialState() {
         return new WLInputState(null, null, null, null,
-                null, 0, 0);
+                null, 0, 0, false);
     }
 
     /**
@@ -80,6 +81,9 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 newEventWithTimestamp);
         final int newModifiers = getNewModifiers(pointerEvent);
 
+        boolean newPointerOverSurface = (pointerEvent.hasEnterEvent() || isPointerOverSurface)
+                && !pointerEvent.hasLeaveEvent();
+
         return new WLInputState(
                 newEventWithSurface,
                 newEventWithSerial,
@@ -87,7 +91,8 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 newEventWithCoordinates,
                 newPointerButtonEvent,
                 newModifiers,
-                surfaceForKeyboardInput);
+                surfaceForKeyboardInput,
+                newPointerOverSurface);
     }
 
     public WLInputState updatedFromKeyboardEnterEvent(long serial, long surfacePtr) {
@@ -99,7 +104,8 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 eventWithCoordinates,
                 pointerButtonPressedEvent,
                 modifiers,
-                surfacePtr);
+                surfacePtr,
+                isPointerOverSurface);
     }
 
     public WLInputState updatedFromKeyboardModifiersEvent(long serial, int keyboardModifiers) {
@@ -113,7 +119,8 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 eventWithCoordinates,
                 pointerButtonPressedEvent,
                 newModifiers,
-                surfaceForKeyboardInput);
+                surfaceForKeyboardInput,
+                isPointerOverSurface);
     }
 
     public WLInputState updatedFromKeyboardLeaveEvent(long serial, long surfacePtr) {
@@ -127,7 +134,8 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 eventWithCoordinates,
                 pointerButtonPressedEvent,
                 newModifiers,
-                0);
+                0,
+                isPointerOverSurface);
     }
 
     public WLInputState resetPointerState() {
@@ -138,7 +146,8 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 eventWithCoordinates,
                 pointerButtonPressedEvent,
                 0,
-                surfaceForKeyboardInput);
+                surfaceForKeyboardInput,
+                false);
     }
 
     private PointerButtonEvent getNewPointerButtonEvent(WLPointerEvent pointerEvent,
@@ -217,6 +226,24 @@ record WLInputState(WLPointerEvent eventWithSurface,
         return eventWithSurface != null
                 ? WLToolkit.componentPeerFromSurface(eventWithSurface.getSurface())
                 : null;
+    }
+
+    /**
+     * @return true if pointer has entered the associated peer and has not left its bounds.
+     */
+    public boolean isPointerOverPeer() {
+        if (isPointerOverSurface && eventWithCoordinates != null) {
+            int x = eventWithCoordinates.getSurfaceX();
+            int y = eventWithCoordinates.getSurfaceY();
+            WLComponentPeer peer = getPeer();
+            if (peer != null) {
+                return x >= 0
+                        && x < peer.getWidth()
+                        && y >= 0
+                        && y < peer.getHeight();
+            }
+        }
+        return true;
     }
 
     public long getTimestamp() {
