@@ -1839,6 +1839,226 @@ JavaAccessBridge::removeAccessibilityEventNotification(jlong type, HWND DLLwindo
 
 
 
+/**
+ * Implementation for the methods fire...(JNIEnv *env, jobject callingObj, jobject event, jobject source)
+ */
+template<typename PackageTypeTag, PackageType PkgType, jlong EventType>
+void JavaAccessBridge::handleFireEvent(
+    JNIEnv *env,
+    jobject callingObj,
+    jobject eventObj,
+    jobject source
+) {
+    PrintDebugString(
+        "[INFO]:   Firing event id=%d(%p, %p, %p, %p); vmID=%lX",
+        int{EventType}, env, callingObj, eventObj, source, dialogWindow
+    );
+
+    /* sanity check */
+    if (ATs == nullptr) {
+        PrintDebugString("[ERROR]:   ATs == 0! (shouldn't happen here!)");
+        return;         /* panic! */
+    }
+
+    /* common setup */
+    char buffer[sizeof(PackageType) + sizeof(PackageTypeTag)] = { 0 };
+    PackageType * const type = reinterpret_cast<PackageType*>(&buffer[0]);
+    PackageTypeTag * const pkg = reinterpret_cast<PackageTypeTag*>(&buffer[0] + sizeof(PackageType));
+    *type = PkgType;
+    pkg->vmID = (long) dialogWindow;
+
+    /* make new Global Refs, send events only to those ATs that want 'em */
+    AccessBridgeATInstance *ati = ATs;
+    while (ati != nullptr) {
+        PrintDebugString(
+            "[INFO]:   javaEventMask=%lX eventConstant=%d pkg->vmID=%lX",
+            ati->javaEventMask, int{EventType}, pkg->vmID
+        );
+
+        if (ati->javaEventMask & EventType) {
+            PrintDebugString("[INFO]:   sending to AT %p", ati);
+
+            /* make new GlobalRefs for this AT */
+            const jobject eventObjNewGlobalRef = env->NewGlobalRef(eventObj);
+            const jobject sourceNewGlobalRef   = env->NewGlobalRef(source);
+
+            if (env->ExceptionCheck() == JNI_TRUE) {
+                PrintDebugString("[ERROR]:   a java exception occurred ; going out...");
+
+                if (eventObjNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(eventObjNewGlobalRef);
+                }
+                if (sourceNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(sourceNewGlobalRef);
+                }
+
+                return;
+            }
+
+            static_assert(sizeof(JOBJECT64) >= sizeof(jobject),
+                          "sizeof(JOBJECT64) must be >= sizeof(jobject) to be able to perform a cast safely");
+
+            pkg->Event                   = reinterpret_cast<JOBJECT64>(eventObjNewGlobalRef);
+            pkg->AccessibleContextSource = reinterpret_cast<JOBJECT64>(sourceNewGlobalRef);
+
+#ifdef ACCESSBRIDGE_ARCH_LEGACY // JOBJECT64 is jobject (32 bit pointer)
+            PrintDebugString("[INFO]:   GlobalRef'd Event: %p"\
+                                     "  GlobalRef'd Source: %p", pkg->Event, pkg->AccessibleContextSource);
+#else // JOBJECT64 is jlong (64 bit)
+            PrintDebugString("[INFO]:   GlobalRef'd Event: %016I64X"\
+                                     "  GlobalRef'd Source: %016I64X", pkg->Event, pkg->AccessibleContextSource);
+#endif
+
+            const auto sendingResult = ati->sendJavaEventPackage(buffer, sizeof(buffer), EventType);
+            if (sendingResult != 0) {
+                PrintDebugString("[ERROR]:   failed to send the package to AT %p (sendingResult=%lld)",
+                                 ati, utils::LongLongInt{sendingResult});
+
+                if (eventObjNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(eventObjNewGlobalRef);
+                }
+                if (sourceNewGlobalRef != nullptr) {
+                    env->DeleteGlobalRef(sourceNewGlobalRef);
+                }
+            }
+        }
+
+        ati = ati->nextATInstance;
+    }
+
+    PrintDebugString("[INFO]:   done with firing AWT event id=%d", int{EventType});
+}
+
+
+void
+JavaAccessBridge::fireFocusGained(JNIEnv *env, jobject callingObj, jobject focusEvent, jobject source) {
+    handleFireEvent<FocusGainedPackage, cFocusGainedPackage, cFocusGainedEvent>(env, callingObj, focusEvent, source);
+}
+
+void
+JavaAccessBridge::fireFocusLost(JNIEnv *env, jobject callingObj, jobject focusEvent,jobject source) {
+    handleFireEvent<FocusLostPackage, cFocusLostPackage, cFocusLostEvent>(env, callingObj, focusEvent, source);
+}
+
+void
+JavaAccessBridge::fireCaretUpdate(JNIEnv *env, jobject callingObj, jobject caretEvent, jobject source) {
+    handleFireEvent<CaretUpdatePackage, cCaretUpdatePackage, cCaretUpdateEvent>(env, callingObj, caretEvent, source);
+}
+
+void
+JavaAccessBridge::fireMouseClicked(JNIEnv *env, jobject callingObj, jobject mouseEvent, jobject source) {
+    handleFireEvent<MouseClickedPackage, cMouseClickedPackage, cMouseClickedEvent>(
+        env,
+        callingObj,
+        mouseEvent,
+        source
+    );
+}
+
+void
+JavaAccessBridge::fireMouseEntered(JNIEnv *env, jobject callingObj, jobject mouseEvent, jobject source) {
+    handleFireEvent<MouseEnteredPackage, cMouseEnteredPackage, cMouseEnteredEvent>(
+        env,
+        callingObj,
+        mouseEvent,
+        source
+    );
+}
+
+void
+JavaAccessBridge::fireMouseExited(JNIEnv *env, jobject callingObj, jobject mouseEvent, jobject source) {
+    handleFireEvent<MouseExitedPackage, cMouseExitedPackage, cMouseExitedEvent>(env, callingObj, mouseEvent, source);
+}
+
+void
+JavaAccessBridge::fireMousePressed(JNIEnv *env, jobject callingObj, jobject mouseEvent, jobject source) {
+    handleFireEvent<MousePressedPackage, cMousePressedPackage, cMousePressedEvent>(
+        env,
+        callingObj,
+        mouseEvent,
+        source
+    );
+}
+
+void
+JavaAccessBridge::fireMouseReleased(JNIEnv *env, jobject callingObj, jobject mouseEvent, jobject source) {
+    handleFireEvent<MouseReleasedPackage, cMouseReleasedPackage, cMouseReleasedEvent>(
+        env,
+        callingObj,
+        mouseEvent,
+        source
+    );
+}
+
+void
+JavaAccessBridge::fireMenuCanceled(JNIEnv *env, jobject callingObj, jobject menuEvent, jobject source) {
+    handleFireEvent<MenuCanceledPackage, cMenuCanceledPackage, cMenuCanceledEvent>(
+        env,
+        callingObj,
+        menuEvent,
+        source
+    );
+}
+
+void
+JavaAccessBridge::fireMenuDeselected(JNIEnv *env, jobject callingObj, jobject menuEvent, jobject source) {
+    handleFireEvent<MenuDeselectedPackage, cMenuDeselectedPackage, cMenuDeselectedEvent>(
+        env,
+        callingObj,
+        menuEvent,
+        source
+    );
+}
+
+void
+JavaAccessBridge::fireMenuSelected(JNIEnv *env, jobject callingObj, jobject menuEvent, jobject source) {
+    handleFireEvent<MenuSelectedPackage, cMenuSelectedPackage, cMenuSelectedEvent>(
+        env,
+        callingObj,
+        menuEvent,
+        source
+    );
+}
+
+void
+JavaAccessBridge::firePopupMenuCanceled(JNIEnv *env, jobject callingObj, jobject popupMenuEvent, jobject source) {
+    handleFireEvent<PopupMenuCanceledPackage, cPopupMenuCanceledPackage, cPopupMenuCanceledEvent>(
+        env,
+        callingObj,
+        popupMenuEvent,
+        source
+    );
+}
+
+void
+JavaAccessBridge::firePopupMenuWillBecomeInvisible(JNIEnv *env, jobject callingObj, jobject popupMenuEvent, jobject source) {
+    handleFireEvent<
+        PopupMenuWillBecomeInvisiblePackage,
+        cPopupMenuWillBecomeInvisiblePackage,
+        cPopupMenuWillBecomeInvisibleEvent
+    > (
+        env,
+        callingObj,
+        popupMenuEvent,
+        source
+    );
+}
+
+void
+JavaAccessBridge::firePopupMenuWillBecomeVisible(JNIEnv *env, jobject callingObj, jobject popupMenuEvent, jobject source) {
+    handleFireEvent<
+        PopupMenuWillBecomeVisiblePackage,
+        cPopupMenuWillBecomeVisiblePackage,
+        cPopupMenuWillBecomeVisibleEvent
+    > (
+        env,
+        callingObj,
+        popupMenuEvent,
+        source
+    );
+}
+
+
 
 /**
  * Implementation for the methods fireProperty...Change(JNIEnv *env, jobject callingObj, jobject event, jobject source)
@@ -2531,57 +2751,6 @@ JavaAccessBridge::firePropertyTableModelChange(JNIEnv *env, jobject callingObj,
 }
 
 
-
-#ifdef ACCESSBRIDGE_ARCH_LEGACY // JOBJECT64 is jobject (32 bit pointer)
-#define PRINT_GLOBALREFS() \
-    PrintDebugString("[INFO]:   GlobalRef'd Event: %p"\
-                             "  GlobalRef'd Source: %p", pkg->Event, pkg->AccessibleContextSource);
-#else // JOBJECT64 is jlong (64 bit)
-#define PRINT_GLOBALREFS() \
-    PrintDebugString("[INFO]:   GlobalRef'd Event: %016I64X"\
-                             "  GlobalRef'd Source: %016I64X", pkg->Event, pkg->AccessibleContextSource);
-#endif
-
-#define FIRE_EVENT(function, packageStruct, packageConstant, eventConstant)                 \
-    void JavaAccessBridge::function(JNIEnv *env, jobject callingObj,                        \
-                                    jobject eventObj, jobject source) {                     \
-                                                                                            \
-        PrintDebugString("[INFO]:   Firing event id = %d(%p, %p, %p, %p); vmID = %X",       \
-                        eventConstant, env, callingObj, eventObj, source, dialogWindow);    \
-                                                                                            \
-        /* sanity check */                                                                  \
-        if (ATs == (AccessBridgeATInstance *) 0) {                                          \
-            PrintDebugString("[ERROR]:   ATs == 0! (shouldn't happen here!)");              \
-            return;         /* panic! */                                                    \
-        }                                                                                   \
-                                                                                            \
-        /* common setup */                                                                  \
-        char buffer[sizeof(PackageType) + sizeof(packageStruct)];                           \
-        PackageType *type = (PackageType *) buffer;                                         \
-        packageStruct *pkg = (packageStruct *) (buffer + sizeof(PackageType));              \
-        *type = packageConstant;                                                            \
-        pkg->vmID = (long) dialogWindow;                                                    \
-                                                                                            \
-        /* make new Global Refs, send events only to those ATs that want 'em */             \
-        AccessBridgeATInstance *ati = ATs;                                                  \
-        while (ati != (AccessBridgeATInstance *) 0) {                                       \
-            PrintDebugString("[INFO]:   javaEventMask = %X eventConstant=%d pkg->vmID=%X",  \
-                             ati->javaEventMask, eventConstant, pkg->vmID );                \
-            if (ati->javaEventMask & eventConstant) {                                       \
-                                                                                            \
-                PrintDebugString("[INFO]:   sending to AT");                                \
-                /* make new GlobalRefs for this AT */                                       \
-                pkg->Event = (JOBJECT64)env->NewGlobalRef(eventObj);                        \
-                pkg->AccessibleContextSource = (JOBJECT64)env->NewGlobalRef(source);        \
-                PRINT_GLOBALREFS()                                                          \
-                                                                                            \
-                ati->sendJavaEventPackage(buffer, sizeof(buffer), eventConstant);           \
-            }                                                                               \
-            ati = ati->nextATInstance;                                                      \
-        }                                                                                   \
-        PrintDebugString("[INFO]:   done with firing AWT event");                           \
-    }
-
     void JavaAccessBridge::javaShutdown(JNIEnv *env, jobject callingObj) {
 
         PrintDebugString("[INFO]: Firing event id = %lld(%p, %p); vmID = %p",
@@ -2611,21 +2780,6 @@ JavaAccessBridge::firePropertyTableModelChange(JNIEnv *env, jobject callingObj,
         }
         PrintDebugString("[INFO]:   done with firing AWT event");
     }
-
-    FIRE_EVENT(fireFocusGained, FocusGainedPackage, cFocusGainedPackage, cFocusGainedEvent)
-    FIRE_EVENT(fireFocusLost, FocusLostPackage, cFocusLostPackage, cFocusLostEvent)
-    FIRE_EVENT(fireCaretUpdate, CaretUpdatePackage, cCaretUpdatePackage, cCaretUpdateEvent)
-    FIRE_EVENT(fireMouseClicked, MouseClickedPackage, cMouseClickedPackage, cMouseClickedEvent)
-    FIRE_EVENT(fireMouseEntered, MouseEnteredPackage, cMouseEnteredPackage, cMouseEnteredEvent)
-    FIRE_EVENT(fireMouseExited, MouseExitedPackage, cMouseExitedPackage, cMouseExitedEvent)
-    FIRE_EVENT(fireMousePressed, MousePressedPackage, cMousePressedPackage, cMousePressedEvent)
-    FIRE_EVENT(fireMouseReleased, MouseReleasedPackage, cMouseReleasedPackage, cMouseReleasedEvent)
-    FIRE_EVENT(fireMenuCanceled, MenuCanceledPackage, cMenuCanceledPackage, cMenuCanceledEvent)
-    FIRE_EVENT(fireMenuDeselected, MenuDeselectedPackage, cMenuDeselectedPackage, cMenuDeselectedEvent)
-    FIRE_EVENT(fireMenuSelected, MenuSelectedPackage, cMenuSelectedPackage, cMenuSelectedEvent)
-    FIRE_EVENT(firePopupMenuCanceled, PopupMenuCanceledPackage, cPopupMenuCanceledPackage, cPopupMenuCanceledEvent)
-    FIRE_EVENT(firePopupMenuWillBecomeInvisible, PopupMenuWillBecomeInvisiblePackage, cPopupMenuWillBecomeInvisiblePackage, cPopupMenuWillBecomeInvisibleEvent)
-    FIRE_EVENT(firePopupMenuWillBecomeVisible, PopupMenuWillBecomeVisiblePackage, cPopupMenuWillBecomeVisiblePackage, cPopupMenuWillBecomeVisibleEvent)
 
 
     // -----------------------------

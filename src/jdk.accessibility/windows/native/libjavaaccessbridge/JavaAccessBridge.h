@@ -164,6 +164,14 @@ public:
 
 private:
     template<typename PackageTypeTag, PackageType PkgType, jlong EventType>
+    void handleFireEvent(
+        JNIEnv *env,
+        jobject callingObj,
+        jobject eventObj,
+        jobject source
+    );
+
+    template<typename PackageTypeTag, PackageType PkgType, jlong EventType>
     void handleFirePropertyChangeNoValues(
         const char* propertyChangeEventName,
         JNIEnv *env,
