@@ -1340,6 +1340,7 @@ jb/java/awt/CustomTitleBar/JDialogNativeControlsTest.java JBR-5359,JBR-5345 wind
 jb/java/awt/CustomTitleBar/HitTestClientArea.java JBR-5551 windows-all
 jb/java/awt/CustomTitleBar/HitTestNonClientArea.java JBR-5465,JBR-5550 windows-all
 jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-5465,JBR-5550 windows-all
+jb/java/awt/CustomTitleBar/MaximizedWindowFocusTest.java JBR-5828 windows-all
 jb/java/awt/CustomTitleBar/MinimizingWindowTest.java JBR-5359,JBR-5345 windows-aarch64,windows-x64
 jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java JBR-5359,JBR-5345 windows-aarch64,windows-x64
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java JBR-5359,JBR-5345 windows-aarch64,windows-x64
