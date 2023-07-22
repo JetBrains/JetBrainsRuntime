@@ -50,10 +50,6 @@
 #define AWT_UNLOCK()
 #endif /* !HEADLESS */
 
-#if defined(__linux__) && !defined(MAP_FAILED)
-#define MAP_FAILED ((caddr_t)-1)
-#endif
-
 #ifndef HEADLESS
 extern Display *awt_display;
 #endif /* !HEADLESS */
@@ -104,7 +100,6 @@ typedef struct {
 jboolean isDisplayLocal(JNIEnv *env) {
     static jboolean isLocal = False;
     static jboolean isLocalSet = False;
-    jboolean ret;
 
     if (! isLocalSet) {
       jclass geCls = (*env)->FindClass(env, "java/awt/GraphicsEnvironment");
@@ -138,7 +133,7 @@ jboolean isDisplayLocal(JNIEnv *env) {
 static char **getX11FontPath ()
 {
     char **x11Path, **fontdirs;
-    int i, pos, slen, nPaths, numDirs;
+    int i, pos, slen, nPaths;
 
     x11Path = XGetFontPath (awt_display, &nPaths);
 
