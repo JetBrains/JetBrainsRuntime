@@ -86,7 +86,6 @@ static char *fullAixFontPath[] = {
 #include <fontconfig/fontconfig.h>
 #include <stdbool.h>
 
-typedef FcConfig* (*FcInitLoadConfigFuncType)();
 typedef FcPattern* (*FcPatternBuildFuncType)(FcPattern *orig, ...);
 typedef FcObjectSet* (*FcObjectSetFuncType)(const char *first, ...);
 typedef FcFontSet* (*FcFontListFuncType)(FcConfig *config, FcPattern *p, FcObjectSet *os);
@@ -117,7 +116,6 @@ typedef FcChar8* (*FcStrListDoneFuncType)(FcStrList *list);
 typedef FcChar8* (*FcPatternFormatFuncType)(FcPattern *pat, const FcChar8 *format);
 typedef void (*FcStrFreeFuncType)(FcChar8 *str);
 
-static FcInitLoadConfigFuncType fcInitLoadConfig;
 static FcPatternBuildFuncType fcPatternBuild;
 static FcObjectSetFuncType fcObjectSetBuild;
 static FcFontListFuncType fcFontList;
