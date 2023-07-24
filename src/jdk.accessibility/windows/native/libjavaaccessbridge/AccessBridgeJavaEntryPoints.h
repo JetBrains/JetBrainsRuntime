@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2005, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -253,12 +254,12 @@ public:
 
     /* ===== utility methods ===== */
     BOOL isSameObject(jobject obj1, jobject obj2);
-    BOOL setTextContents(const jobject accessibleContext, const wchar_t *text);
-    jobject getParentWithRole (const jobject accessibleContext, const wchar_t *role);
-    jobject getTopLevelObject (const jobject accessibleContext);
-    jobject getParentWithRoleElseRoot (const jobject accessibleContext, const wchar_t *role);
-    jint getObjectDepth (const jobject accessibleContext);
-    jobject getActiveDescendent (const jobject accessibleContext);
+    BOOL setTextContents(jobject accessibleContext, const wchar_t *text);
+    jobject getParentWithRole(jobject accessibleContext, const wchar_t *role);
+    jobject getTopLevelObject(jobject accessibleContext);
+    jobject getParentWithRoleElseRoot(jobject accessibleContext, const wchar_t *role);
+    jint getObjectDepth(jobject accessibleContext);
+    jobject getActiveDescendent(jobject accessibleContext);
 
     // Accessible Context methods
     jobject getAccessibleContextAt(jint x, jint y, jobject AccessibleContext);
@@ -300,14 +301,11 @@ public:
 
     BOOL activateAccessibleHyperlink(jobject accessibleContext, jobject accessibleHyperlink);
 
-    BOOL getAccessibleHypertextExt(const jobject accessibleContext,
-                                   const jint nStartIndex,
+    BOOL getAccessibleHypertextExt(jobject accessibleContext, jint nStartIndex,
                                    /* OUT */ AccessibleHypertextInfo *hypertext);
-    jint getAccessibleHyperlinkCount(const jobject accessibleContext);
-    jint getAccessibleHypertextLinkIndex(const jobject accessibleContext,
-                                         const jint nIndex);
-    BOOL getAccessibleHyperlink(const jobject accessibleContext,
-                                const jint nIndex,
+    jint getAccessibleHyperlinkCount(jobject accessibleContext);
+    jint getAccessibleHypertextLinkIndex(jobject accessibleContext, jint nIndex);
+    BOOL getAccessibleHyperlink(jobject accessibleContext, jint nIndex,
                                 /* OUT */ AccessibleHyperlinkInfo *hyperlinkInfo);
 
     // Accessible Keybinding methods
@@ -360,14 +358,14 @@ public:
      *
      * Bug ID 4916682 - Implement JAWS AccessibleName policy
      */
-    BOOL getVirtualAccessibleName(const jobject accessibleContext, wchar_t *name, int len);
+    BOOL getVirtualAccessibleName(jobject accessibleContext, wchar_t *name, int len);
 
     /**
      * Request focus for a component. Returns whether successful;
      *
      * Bug ID 4944757 - requestFocus method needed
      */
-    BOOL requestFocus(const jobject accessibleContext);
+    BOOL requestFocus(jobject accessibleContext);
 
     /**
      * Selects text between two indices.  Selection includes the text at the start index
@@ -375,7 +373,7 @@ public:
      *
      * Bug ID 4944758 - selectTextRange method needed
      */
-    BOOL selectTextRange(const jobject accessibleContext, int startIndex, int endIndex);
+    BOOL selectTextRange(jobject accessibleContext, int startIndex, int endIndex);
 
     /**
      * Get text attributes between two indices.  The attribute list includes the text at the
@@ -383,7 +381,7 @@ public:
      *
      * Bug ID 4944761 - getTextAttributes between two indices method needed
      */
-    BOOL getTextAttributesInRange(const jobject accessibleContext, int startIndex, int endIndex,
+    BOOL getTextAttributesInRange(jobject accessibleContext, int startIndex, int endIndex,
                                   AccessibleTextAttributesInfo *attributes, short *len);
 
     /**
@@ -391,14 +389,14 @@ public:
      *
      * Bug ID 4944762- getVisibleChildren for list-like components needed
      */
-    int getVisibleChildrenCount(const jobject accessibleContext);
+    int getVisibleChildrenCount(jobject accessibleContext);
 
     /**
      * Gets the visible children of an AccessibleContext. Returns whether successful;
      *
      * Bug ID 4944762- getVisibleChildren for list-like components needed
      */
-    BOOL getVisibleChildren(const jobject accessibleContext, const int startIndex,
+    BOOL getVisibleChildren(jobject accessibleContext, int startIndex,
                             VisibleChildrenInfo *visibleChildrenInfo);
 
     /**
@@ -406,13 +404,12 @@ public:
      *
      * Bug ID 4944770 - setCaretPosition method needed
      */
-    BOOL setCaretPosition(const jobject accessibleContext, int position);
+    BOOL setCaretPosition(jobject accessibleContext, int position);
 
     /**
      * Gets the bounding rectangle for the text caret
      */
     BOOL getCaretLocation(jobject AccessibleContext, AccessibleTextRectInfo *rectInfo, jint index);
-
 };
 
 #endif
