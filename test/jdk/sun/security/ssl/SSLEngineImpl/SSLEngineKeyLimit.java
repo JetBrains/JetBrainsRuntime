@@ -126,14 +126,9 @@ public class SSLEngineKeyLimit {
             System.out.println("test.java.opts: " +
                     System.getProperty("test.java.opts"));
 
-<<<<<<< HEAD
             ProcessBuilder pb = ProcessTools.createTestJvm(
-                    Utils.addTestJavaOpts("SSLEngineKeyLimit", "p", args[1]));
-=======
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(true,
                     Utils.addTestJavaOpts("SSLEngineKeyLimit", "p", args[1],
                             args[2]));
->>>>>>> a829804de566fb89ad0fe45d242a09db24a5867c
 
             OutputAnalyzer output = ProcessTools.executeProcess(pb);
             try {
