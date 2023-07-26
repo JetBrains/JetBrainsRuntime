@@ -302,9 +302,13 @@ JVM_ENTRY_NO_ENV(jobject, jfr_new_event_writer(JNIEnv* env, jclass cls))
   return JfrJavaEventWriter::new_event_writer(thread);
 JVM_END
 
-JVM_ENTRY_NO_ENV(jboolean, jfr_event_writer_flush(JNIEnv* env, jclass cls, jobject writer, jint used_size, jint requested_size))
-  return JfrJavaEventWriter::flush(writer, used_size, requested_size, thread);
-JVM_END
+NO_TRANSITION(void, jfr_event_writer_flush(JNIEnv* env, jclass jvm, jobject writer, jint used_size, jint requested_size))
+  JfrJavaEventWriter::flush(writer, used_size, requested_size, JavaThread::current());
+NO_TRANSITION_END
+
+NO_TRANSITION(jlong, jfr_commit(JNIEnv* env, jclass jvm, jlong next_position))
+  return JfrJavaEventWriter::commit(next_position);
+NO_TRANSITION_END
 
 JVM_ENTRY_NO_ENV(void, jfr_flush(JNIEnv* env, jobject jvm))
   JfrRepository::flush(thread);
@@ -400,4 +404,8 @@ JVM_ENTRY_NO_ENV(jlong, jfr_host_total_memory(JNIEnv* env, jobject jvm))
 #else
   return os::physical_memory();
 #endif
+JVM_END
+
+JVM_ENTRY_NO_ENV(void, jfr_emit_data_loss(JNIEnv* env, jclass jvm, jlong bytes))
+  EventDataLoss::commit(bytes, min_jlong);
 JVM_END
