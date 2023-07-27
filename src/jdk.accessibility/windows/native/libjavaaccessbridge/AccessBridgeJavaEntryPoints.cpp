@@ -2804,7 +2804,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTableRow(jobject accessibleTable, jint
         const jint result = jniEnv->CallIntMethod(accessBridgeObject,
                                                   getAccessibleTableRowMethod,
                                                   accessibleTable, index);
-        EXCEPTION_CHECK("Getting AccessibleTableRow - call to CallIntMethod()", 0);
+        EXCEPTION_CHECK("Getting AccessibleTableRow - call to CallIntMethod()", -1);
 
         PrintDebugString("[INFO]:   table row = %ld", long{ result });
         return result;
@@ -2828,7 +2828,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTableColumn(jobject accessibleTable, j
         const jint result = jniEnv->CallIntMethod(accessBridgeObject,
                                                   getAccessibleTableColumnMethod,
                                                   accessibleTable, index);
-        EXCEPTION_CHECK("Getting AccessibleTableColumn - call to CallIntMethod()", 0);
+        EXCEPTION_CHECK("Getting AccessibleTableColumn - call to CallIntMethod()", -1);
 
         PrintDebugString("[INFO]:   table column = %ld", long{ result });
         return result;
@@ -2852,7 +2852,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTableIndex(jobject accessibleTable, ji
         const jint result = jniEnv->CallIntMethod(accessBridgeObject,
                                                   getAccessibleTableIndexMethod,
                                                   accessibleTable, row, column);
-        EXCEPTION_CHECK("Getting getAccessibleTableIndex - call to CallIntMethod()", 0);
+        EXCEPTION_CHECK("Getting getAccessibleTableIndex - call to CallIntMethod()", -1);
 
         PrintDebugString("[INFO]:   table index = %ld", long{ result });
         return result;
