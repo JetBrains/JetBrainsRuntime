@@ -3387,7 +3387,7 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleKeyBindings(jobject accessibleCon
         PrintDebugString("[INFO]:   key binding modifiers = %lx", long{ keyBindings->keyBindingInfo[i].modifiers });
     }
 
-    return FALSE;
+    return TRUE;
 }
 
 // AccessibleIcon methods
@@ -3474,7 +3474,7 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleIcons(jobject accessibleContext,
         PrintDebugString("[INFO]:   icon width = %d", icons->iconInfo[i].width);
     }
 
-    return FALSE;
+    return TRUE;
 }
 
 // AccessibleActionMethods
@@ -3539,7 +3539,8 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleActions(jobject accessibleContext
             actions->actionInfo[i].name [0] = wchar_t{ 0 };
         }
     }
-    return FALSE;
+
+    return TRUE;
 }
 
 BOOL AccessBridgeJavaEntryPoints::doAccessibleActions(jobject accessibleContext,
