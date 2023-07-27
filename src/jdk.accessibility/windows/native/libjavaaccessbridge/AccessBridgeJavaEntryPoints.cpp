@@ -57,13 +57,13 @@ AccessBridgeJavaEntryPoints::~AccessBridgeJavaEntryPoints() {
 #define FIND_CLASS(classRef, className) \
     localClassRef = jniEnv->FindClass(className); \
     if (localClassRef == nullptr) { \
-        PrintDebugString("[ERROR]:  FindClass(%s) failed! -> jniEnv = %p", className, jniEnv); \
+        PrintDebugString("[ERROR]:   FindClass(%s) failed! -> jniEnv = %p", className, jniEnv); \
         return FALSE; \
     } \
     classRef = (jclass) jniEnv->NewGlobalRef(localClassRef); \
     jniEnv->DeleteLocalRef(localClassRef); \
     if (classRef == nullptr) { \
-        PrintDebugString("[ERROR]: FindClass(%s) failed! ->  (ran out of RAM)", className); \
+        PrintDebugString("[ERROR]:   FindClass(%s) failed! -> (ran out of RAM)", className); \
         return FALSE; \
     }
 
@@ -71,13 +71,13 @@ AccessBridgeJavaEntryPoints::~AccessBridgeJavaEntryPoints() {
 #define FIND_METHOD(methodID, classRef, methodString, methodSignature); \
     methodID = jniEnv->GetMethodID(classRef, methodString, methodSignature); \
     if (methodID == nullptr) { \
-        PrintDebugString("[ERROR]: GetMethodID(%s) failed! -> jniEnv = %p; classRef = %p", methodString, jniEnv, classRef); \
+        PrintDebugString("[ERROR]:   GetMethodID(\"%s\") failed! -> jniEnv = %p; classRef = %p", methodString, jniEnv, classRef); \
         return FALSE; \
     }
 
 #define EXCEPTION_CHECK(situationDescription, returnVal)                                        \
     if (exception = jniEnv->ExceptionOccurred()) {                                              \
-        PrintDebugString("[ERROR]: *** Exception occurred while doing: %s; returning %d", situationDescription, returnVal); \
+        PrintDebugString("[ERROR]:   Exception occurred while doing: %s; returning %d", situationDescription, returnVal); \
         jniEnv->ExceptionDescribe();                                                            \
         jniEnv->ExceptionClear();                                                               \
         return (returnVal);                                                                     \
@@ -85,7 +85,7 @@ AccessBridgeJavaEntryPoints::~AccessBridgeJavaEntryPoints() {
 
 #define EXCEPTION_CHECK_VOID(situationDescription)                                              \
     if (exception = jniEnv->ExceptionOccurred()) {                                              \
-        PrintDebugString("[ERROR]: *** Exception occurred while doing: %s", situationDescription);   \
+        PrintDebugString("[ERROR]:   Exception occurred while doing: %s", situationDescription);   \
         jniEnv->ExceptionDescribe();                                                            \
         jniEnv->ExceptionClear();                                                               \
         return;                                                                                 \
@@ -99,7 +99,7 @@ BOOL
 AccessBridgeJavaEntryPoints::BuildJavaEntryPoints() {
     jclass localClassRef;
 
-    PrintDebugString("[INFO]: Calling BuildJavaEntryPoints():");
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::BuildJavaEntryPoints():");
 
     FIND_CLASS(bridgeClass, "com/sun/java/accessibility/internal/AccessBridge");
 
@@ -877,14 +877,14 @@ BOOL
 AccessBridgeJavaEntryPoints::isJavaWindow(jint window) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::isJavaWindow(%X):", window);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::isJavaWindow(%lX):", long{ window });
 
     if (isJavaWindowMethod != nullptr) {
         const jboolean returnVal = jniEnv->CallBooleanMethod(accessBridgeObject, isJavaWindowMethod, window);
         EXCEPTION_CHECK("Getting isJavaWindow - call to CallBooleanMethod()", FALSE);
         return (returnVal == JNI_TRUE) ? TRUE : FALSE;
     } else {
-        PrintDebugString("[ERROR]: either jniEnv == 0 or isJavaWindowMethod == 0");
+        PrintDebugString("[ERROR]:   either jniEnv == 0 or isJavaWindowMethod == 0");
         return FALSE;
     }
 }
@@ -899,12 +899,12 @@ BOOL
 AccessBridgeJavaEntryPoints::isSameObject(jobject obj1, jobject obj2) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::isSameObject(%p %p):", obj1, obj2);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::isSameObject(%p, %p):", obj1, obj2);
 
     const jboolean returnVal = jniEnv->IsSameObject(obj1, obj2);
-    EXCEPTION_CHECK("Calling IsSameObject", FALSE);
+    EXCEPTION_CHECK("IsSameObject", FALSE);
 
-    PrintDebugString("[INFO]:   isSameObject returning %d", returnVal);
+    PrintDebugString("[INFO]:   isSameObject returning %d", int{ returnVal });
 
     return (returnVal == JNI_TRUE) ? TRUE : FALSE;
 }
@@ -919,7 +919,7 @@ jobject
 AccessBridgeJavaEntryPoints::getAccessibleContextFromHWND(jint window) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleContextFromHWND(%X):", window);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleContextFromHWND(%lX):", long{ window });
 
     if (getAccessibleContextFromHWNDMethod != nullptr) {
         const jobject returnedAccessibleContext =
@@ -927,11 +927,11 @@ AccessBridgeJavaEntryPoints::getAccessibleContextFromHWND(jint window) {
         EXCEPTION_CHECK("Getting AccessibleContextFromHWND - call to CallObjectMethod()", NULL);
 
         const jobject globalRef = jniEnv->NewGlobalRef(returnedAccessibleContext);
-        EXCEPTION_CHECK("Getting AccessibleContextFromHWND - call to CallObjectMethod()", NULL);
+        EXCEPTION_CHECK("Getting AccessibleContextFromHWND - call to NewGlobalRef()", NULL);
 
         return globalRef;
     } else {
-        PrintDebugString("[ERROR]:  either jniEnv == 0 or getAccessibleContextFromHWNDMethod == 0");
+        PrintDebugString("[ERROR]:   either jniEnv == 0 or getAccessibleContextFromHWNDMethod == 0");
         return nullptr;
     }
 }
@@ -946,19 +946,18 @@ HWND
 AccessBridgeJavaEntryPoints::getHWNDFromAccessibleContext(jobject accessibleContext) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getHWNDFromAccessibleContext(%X):",
-                     accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getHWNDFromAccessibleContext(%p):", accessibleContext);
 
     if (getHWNDFromAccessibleContextMethod != nullptr) {
         const HWND rHWND = (HWND)jniEnv->CallIntMethod(accessBridgeObject, getHWNDFromAccessibleContextMethod,
                                                        accessibleContext);
         EXCEPTION_CHECK("Getting HWNDFromAccessibleContext - call to CallIntMethod()", NULL);
 
-        PrintDebugString("[INFO]: rHWND = %X", rHWND);
+        PrintDebugString("[INFO]:   rHWND = %p", rHWND);
 
         return rHWND;
     } else {
-        PrintDebugString("[ERROR]: either jniEnv == 0 or getHWNDFromAccessibleContextMethod == 0");
+        PrintDebugString("[ERROR]:   either jniEnv == 0 or getHWNDFromAccessibleContextMethod == 0");
         return nullptr;
     }
 }
@@ -973,14 +972,14 @@ BOOL
 AccessBridgeJavaEntryPoints::setTextContents(const jobject accessibleContext, const wchar_t *text) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::setTextContents(%p, %ls):",
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::setTextContents(%p, \"%ls\"):",
                      accessibleContext, text);
 
     if (setTextContentsMethod != nullptr) {
         // create a Java String for the text
         jstring textString = jniEnv->NewString(text, (jsize)wcslen(text));
         if (textString == nullptr) {
-            PrintDebugString("[ERROR]:    NewString failed");
+            PrintDebugString("[ERROR]:   NewString failed");
             return FALSE;
         }
 
@@ -988,11 +987,11 @@ AccessBridgeJavaEntryPoints::setTextContents(const jobject accessibleContext, co
                                                                 accessibleContext, textString);
         EXCEPTION_CHECK("setTextContents - call to CallBooleanMethod()", FALSE);
 
-        PrintDebugString("[INFO]:     result = %d", result);
+        PrintDebugString("[INFO]:   result = %d", int{ result });
 
         return (result == JNI_TRUE) ? TRUE : FALSE;
     } else {
-        PrintDebugString("[ERROR]: either jniEnv == 0 or setTextContentsMethod == 0");
+        PrintDebugString("[ERROR]:   either jniEnv == 0 or setTextContentsMethod == 0");
         return FALSE;
     }
 }
@@ -1009,13 +1008,13 @@ jobject
 AccessBridgeJavaEntryPoints::getParentWithRole(const jobject accessibleContext, const wchar_t *role) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getParentWithRole(%p):", accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getParentWithRole(%p, %p):", accessibleContext, role);
 
     if (getParentWithRoleMethod != nullptr) {
         // create a Java String for the role
         jstring roleName = jniEnv->NewString(role, (jsize)wcslen(role));
         if (roleName == nullptr) {
-            PrintDebugString("[ERROR]:     NewString failed");
+            PrintDebugString("[ERROR]:   NewString failed");
             return FALSE;
         }
 
@@ -1023,7 +1022,7 @@ AccessBridgeJavaEntryPoints::getParentWithRole(const jobject accessibleContext, 
                                                                     accessibleContext, roleName);
         EXCEPTION_CHECK("Getting ParentWithRole - call to CallObjectMethod()", NULL);
 
-        PrintDebugString("[INFO]:     rAccessibleContext = %p", rAccessibleContext);
+        PrintDebugString("[INFO]:   rAccessibleContext = %p", rAccessibleContext);
 
         const jobject globalRef = jniEnv->NewGlobalRef(rAccessibleContext);
         EXCEPTION_CHECK("Getting ParentWithRole - call to NewGlobalRef()", FALSE);
@@ -1032,7 +1031,7 @@ AccessBridgeJavaEntryPoints::getParentWithRole(const jobject accessibleContext, 
                          rAccessibleContext, globalRef);
         return globalRef;
     } else {
-        PrintDebugString("[ERROR]: either jniEnv == 0 or getParentWithRoleMethod == 0");
+        PrintDebugString("[ERROR]:   either jniEnv == 0 or getParentWithRoleMethod == 0");
         return nullptr;
     }
 }
@@ -1056,7 +1055,7 @@ AccessBridgeJavaEntryPoints::getTopLevelObject(const jobject accessibleContext) 
                                                                     accessibleContext);
         EXCEPTION_CHECK("Getting TopLevelObject - call to CallObjectMethod()", FALSE);
 
-        PrintDebugString("[INFO]:  rAccessibleContext = %p", rAccessibleContext);
+        PrintDebugString("[INFO]:   rAccessibleContext = %p", rAccessibleContext);
 
         const jobject globalRef = jniEnv->NewGlobalRef(rAccessibleContext);
         EXCEPTION_CHECK("Getting TopLevelObject - call to NewGlobalRef()", FALSE);
@@ -1065,7 +1064,7 @@ AccessBridgeJavaEntryPoints::getTopLevelObject(const jobject accessibleContext) 
                          rAccessibleContext, globalRef);
         return globalRef;
     } else {
-        PrintDebugString("[ERROR]: either jniEnv == 0 or getTopLevelObjectMethod == 0");
+        PrintDebugString("[ERROR]:   either jniEnv == 0 or getTopLevelObjectMethod == 0");
         return nullptr;
     }
 }
@@ -1081,15 +1080,15 @@ jobject
 AccessBridgeJavaEntryPoints::getParentWithRoleElseRoot(const jobject accessibleContext, const wchar_t *role) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getParentWithRoleElseRoot(%p):",
-                     accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getParentWithRoleElseRoot(%p, %p):",
+                     accessibleContext, role);
 
     if (getParentWithRoleElseRootMethod != nullptr) {
 
         // create a Java String for the role
         jstring roleName = jniEnv->NewString(role, (jsize)wcslen(role));
         if (roleName == nullptr) {
-            PrintDebugString("[ERROR]:     NewString failed");
+            PrintDebugString("[ERROR]:   NewString failed");
             return nullptr;
         }
 
@@ -1098,7 +1097,7 @@ AccessBridgeJavaEntryPoints::getParentWithRoleElseRoot(const jobject accessibleC
                                                                     accessibleContext, roleName);
         EXCEPTION_CHECK("Getting ParentWithRoleElseRoot - call to CallObjectMethod()", NULL);
 
-        PrintDebugString("[INFO]:     rAccessibleContext = %p", rAccessibleContext);
+        PrintDebugString("[INFO]:   rAccessibleContext = %p", rAccessibleContext);
 
         const jobject globalRef = jniEnv->NewGlobalRef(rAccessibleContext);
         EXCEPTION_CHECK("Getting ParentWithRoleElseRoot - call to NewGlobalRef()", FALSE);
@@ -1107,7 +1106,7 @@ AccessBridgeJavaEntryPoints::getParentWithRoleElseRoot(const jobject accessibleC
                          rAccessibleContext, globalRef);
         return globalRef;
     } else {
-        PrintDebugString("[ERROR]:  either jniEnv == 0 or getParentWithRoleElseRootMethod == 0");
+        PrintDebugString("[ERROR]:   either jniEnv == 0 or getParentWithRoleElseRootMethod == 0");
         return nullptr;
     }
 }
@@ -1130,10 +1129,10 @@ AccessBridgeJavaEntryPoints::getObjectDepth(const jobject accessibleContext) {
                                                    accessibleContext);
         EXCEPTION_CHECK("Getting ObjectDepth - call to CallIntMethod()", -1);
 
-        PrintDebugString("[INFO]:     rResult = %d", rResult);
+        PrintDebugString("[INFO]:   rResult = %d", rResult);
         return rResult;
     } else {
-        PrintDebugString("[ERROR]: either jniEnv == 0 or getObjectDepthMethod == 0");
+        PrintDebugString("[ERROR]:   either jniEnv == 0 or getObjectDepthMethod == 0");
         return -1;
     }
 }
@@ -1157,7 +1156,7 @@ AccessBridgeJavaEntryPoints::getActiveDescendent(const jobject accessibleContext
                                                                     accessibleContext);
         EXCEPTION_CHECK("Getting ActiveDescendent - call to CallObjectMethod()", NULL);
 
-        PrintDebugString("[INFO]:     rAccessibleContext = %p", rAccessibleContext);
+        PrintDebugString("[INFO]:   rAccessibleContext = %p", rAccessibleContext);
 
         const jobject globalRef = jniEnv->NewGlobalRef(rAccessibleContext);
         EXCEPTION_CHECK("Getting ActiveDescendant - call to NewGlobalRef()", FALSE);
@@ -1166,7 +1165,7 @@ AccessBridgeJavaEntryPoints::getActiveDescendent(const jobject accessibleContext
                          rAccessibleContext, globalRef);
         return globalRef;
     } else {
-        PrintDebugString("[ERROR]: either jniEnv == 0 or getActiveDescendentMethod == 0");
+        PrintDebugString("[ERROR]:   either jniEnv == 0 or getActiveDescendentMethod == 0");
         return nullptr;
     }
 }
@@ -1188,6 +1187,9 @@ AccessBridgeJavaEntryPoints::getVirtualAccessibleName (
     OUT wchar_t * const name,
     IN const int nameSize)
 {
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getVirtualAccessibleName(%p, %p, %d):",
+                     object, name, nameSize);
+
     // Parameter validation
     if ((name == nullptr) || (nameSize == 0)) {
         return FALSE;
@@ -1201,7 +1203,6 @@ AccessBridgeJavaEntryPoints::getVirtualAccessibleName (
 
     jthrowable exception = nullptr;
 
-    PrintDebugString("[INFO]:  getVirtualAccessibleName called.");
     if (getVirtualAccessibleNameFromContextMethod != nullptr) {
         const jstring js = (jstring) jniEnv->CallObjectMethod(accessBridgeObject,
                                                               getVirtualAccessibleNameFromContextMethod,
@@ -1224,7 +1225,7 @@ AccessBridgeJavaEntryPoints::getVirtualAccessibleName (
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleName - call to CallVoidMethod()", FALSE);
 
-            wPrintDebugString(L"  Accessible Name = %ls", name);
+            wPrintDebugString(L"[INFO]:   Accessible Name = \"%ls\"", name);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting AccessibleName - call to DeleteLocalRef()", FALSE);
@@ -1232,7 +1233,7 @@ AccessBridgeJavaEntryPoints::getVirtualAccessibleName (
             PrintDebugString("[INFO]:   Accessible Name is null.");
         }
     } else {
-        PrintDebugString("[INFO]: either jniEnv == 0 or getVirtualAccessibleNameFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either jniEnv == 0 or getVirtualAccessibleNameFromContextMethod == 0");
         return FALSE;
     }
 
@@ -1262,11 +1263,11 @@ AccessBridgeJavaEntryPoints::requestFocus(const jobject accessibleContext) {
                                                           accessibleContext);
         EXCEPTION_CHECK("requestFocus - call to CallBooleanMethod()", FALSE);
 
-        PrintDebugString("[INFO]:    result = %d", result);
+        PrintDebugString("[INFO]:   result = %d", int{ result });
 
         return (result == JNI_TRUE) ? TRUE : FALSE;
     } else {
-        PrintDebugString("[ERROR]: either jniEnv == 0 or requestFocusMethod == 0");
+        PrintDebugString("[ERROR]:   either jniEnv == 0 or requestFocusMethod == 0");
         return FALSE;
     }
 }
@@ -1291,10 +1292,10 @@ AccessBridgeJavaEntryPoints::selectTextRange(const jobject accessibleContext, in
                                                           startIndex, endIndex);
         EXCEPTION_CHECK("selectTextRange - call to CallBooleanMethod()", FALSE);
 
-        PrintDebugString("[INFO]:     result = %d", result);
+        PrintDebugString("[INFO]:   result = %d", result);
         return (result == JNI_TRUE) ? TRUE : FALSE;
     } else {
-        PrintDebugString("[ERROR]: either jniEnv == 0 or selectTextRangeMethod == 0");
+        PrintDebugString("[ERROR]:   either jniEnv == 0 or selectTextRangeMethod == 0");
         return FALSE;
     }
 }
@@ -1351,8 +1352,8 @@ AccessBridgeJavaEntryPoints::getTextAttributesInRange(
     jthrowable exception;
     BOOL result = FALSE;
 
-    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getTextAttributesInRange(%p start = %d end = %d):",
-                     accessibleContext, startIndex, endIndex);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getTextAttributesInRange(%p, start=%d, end=%d, %p, %p):",
+                     accessibleContext, startIndex, endIndex, attributes, len);
 
     *len = 0;
 
@@ -1368,7 +1369,7 @@ AccessBridgeJavaEntryPoints::getTextAttributesInRange(
 
         // Get the full test_attributes string at i
         if (getAccessibleAttributesAtIndexFromContextMethod != nullptr) {
-            PrintDebugString("[INFO]:  Getting full test_attributes string from Context...");
+            PrintDebugString("[INFO]:   getting full test_attributes string from Context...");
 
             const jstring js = (jstring)jniEnv->CallObjectMethod(accessBridgeObject,
                                                                  getAccessibleAttributesAtIndexFromContextMethod,
@@ -1396,7 +1397,7 @@ AccessBridgeJavaEntryPoints::getTextAttributesInRange(
                 jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
                 EXCEPTION_CHECK("Getting AccessibleAttributesAtIndex - call to CallVoidMethod()", FALSE);
 
-                wPrintDebugString(L"[INFO]:  Accessible Text attributes = %ls", test_attributes.fullAttributesString);
+                wPrintDebugString(L"[INFO]:   Accessible Text attributes = \"%ls\"", test_attributes.fullAttributesString);
 
                 jniEnv->DeleteLocalRef(js);
                 EXCEPTION_CHECK("Getting AccessibleAttributesAtIndex - call to DeleteLocalRef()", FALSE);
@@ -1406,7 +1407,7 @@ AccessBridgeJavaEntryPoints::getTextAttributesInRange(
                 return FALSE;
             }
         } else {
-            PrintDebugString("[ERROR]: either env == 0 or getAccessibleAttributesAtIndexFromContextMethod == 0");
+            PrintDebugString("[ERROR]:   either env == 0 or getAccessibleAttributesAtIndexFromContextMethod == 0");
             return FALSE;
         }
 
@@ -1430,15 +1431,15 @@ AccessBridgeJavaEntryPoints::getTextAttributesInRange(
 int
 AccessBridgeJavaEntryPoints::getVisibleChildrenCount(const jobject accessibleContext) {
     jthrowable exception;
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::getVisibleChildrenCount(%p)",
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getVisibleChildrenCount(%p)",
                      accessibleContext);
 
     // get the visible children count
     const int numChildren = jniEnv->CallIntMethod(accessBridgeObject, getVisibleChildrenCountMethod,
                                                   accessibleContext);
-    EXCEPTION_CHECK("##### Getting visible children count - call to CallIntMethod()", FALSE);
+    EXCEPTION_CHECK("Getting visible children count - call to CallIntMethod()", FALSE);
 
-    PrintDebugString("[INFO]:   ##### visible children count = %d", numChildren);
+    PrintDebugString("[INFO]:   visible children count = %d", numChildren);
 
     return numChildren;
 }
@@ -1457,14 +1458,14 @@ BOOL AccessBridgeJavaEntryPoints::getVisibleChildren(const jobject accessibleCon
                                                      /* OUT */ VisibleChildrenInfo * const visibleChildrenInfo) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::getVisibleChildren(%p, startIndex = %d)",
-                     accessibleContext, nStartIndex);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getVisibleChildren(%p, startIndex=%d, %p)",
+                     accessibleContext, nStartIndex, visibleChildrenInfo);
 
     // get the visible children count
     const int numChildren = jniEnv->CallIntMethod(accessBridgeObject, getVisibleChildrenCountMethod, accessibleContext);
-    EXCEPTION_CHECK("##### Getting visible children count - call to CallIntMethod()", FALSE);
+    EXCEPTION_CHECK("Getting visible children count - call to CallIntMethod()", FALSE);
 
-    PrintDebugString("[INFO]:   ##### visible children count = %d", numChildren);
+    PrintDebugString("[INFO]:   visible children count = %d", numChildren);
 
     if (nStartIndex >= numChildren) {
         return FALSE;
@@ -1473,24 +1474,24 @@ BOOL AccessBridgeJavaEntryPoints::getVisibleChildren(const jobject accessibleCon
     // get the visible children
     int bufIndex = 0;
     for (int i = nStartIndex; (i < numChildren) && (i < nStartIndex + MAX_VISIBLE_CHILDREN); i++) {
-        PrintDebugString("[INFO]:   getting visible child %d ...", i);
+        PrintDebugString("[INFO]:   getting visible child %d...", i);
 
         // get the visible child at index i
         const jobject ac = jniEnv->CallObjectMethod(accessBridgeObject, getVisibleChildMethod,
                                                     accessibleContext, i);
-        EXCEPTION_CHECK("##### getVisibleChildMethod - call to CallObjectMethod()", FALSE);
+        EXCEPTION_CHECK("getVisibleChildMethod - call to CallObjectMethod()", FALSE);
 
         const jobject globalRef = jniEnv->NewGlobalRef(ac);
-        EXCEPTION_CHECK("##### getVisibleChildMethod - call to NewGlobalRef()", FALSE);
+        EXCEPTION_CHECK("getVisibleChildMethod - call to NewGlobalRef()", FALSE);
 
         visibleChildrenInfo->children[bufIndex] = (JOBJECT64)globalRef;
-        PrintDebugString("[INFO]:   ##### visible child = %p", globalRef);
+        PrintDebugString("[INFO]:   visible child = %p", globalRef);
 
         bufIndex++;
     }
     visibleChildrenInfo->returnedChildrenCount = bufIndex;
 
-    PrintDebugString("[INFO]:   ##### AccessBridgeJavaEntryPoints::getVisibleChildren succeeded");
+    PrintDebugString("[INFO]:   AccessBridgeJavaEntryPoints::getVisibleChildren succeeded");
 
     return TRUE;
 }
@@ -1504,20 +1505,20 @@ BOOL
 AccessBridgeJavaEntryPoints::setCaretPosition(const jobject accessibleContext, int position) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::setCaretPostion(%p position = %d):",
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::setCaretPosition(%p, position=%d):",
                      accessibleContext, position);
 
     if (setCaretPositionMethod != nullptr) {
         const jboolean result = jniEnv->CallBooleanMethod(accessBridgeObject,
                                                           setCaretPositionMethod,
                                                           accessibleContext, position);
-        EXCEPTION_CHECK("setCaretPostion - call to CallBooleanMethod()", FALSE);
+        EXCEPTION_CHECK("setCaretPosition - call to CallBooleanMethod()", FALSE);
 
-        PrintDebugString("[ERROR]:     result = %d", result);
+        PrintDebugString("[INFO]:   result = %d", int{ result });
 
         return (result == JNI_TRUE) ? TRUE : FALSE;
     } else {
-        PrintDebugString("[ERROR]: either jniEnv == 0 or setCaretPositionMethod == 0");
+        PrintDebugString("[ERROR]:   either jniEnv == 0 or setCaretPositionMethod == 0");
         return FALSE;
     }
 }
@@ -1534,7 +1535,7 @@ BOOL
 AccessBridgeJavaEntryPoints::getVersionInfo(AccessBridgeVersionInfo *info) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::getVersionInfo():");
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getVersionInfo(%p):", info);
 
     if (getJavaVersionPropertyMethod != nullptr) {
         const jstring js = (jstring) jniEnv->CallObjectMethod(accessBridgeObject, getJavaVersionPropertyMethod);
@@ -1547,7 +1548,7 @@ AccessBridgeJavaEntryPoints::getVersionInfo(AccessBridgeVersionInfo *info) {
             const wchar_t *stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
             if (stringBytes == nullptr) {
                 if (!jniEnv->ExceptionCheck()) {
-                    PrintDebugString("[ERROR]:  *** Exception when getting JavaVersionProperty - call to GetStringChars");
+                    PrintDebugString("[ERROR]:   Exception when getting JavaVersionProperty - call to GetStringChars");
                     jniEnv->ExceptionDescribe();
                     jniEnv->ExceptionClear();
                 }
@@ -1580,7 +1581,7 @@ AccessBridgeJavaEntryPoints::getVersionInfo(AccessBridgeVersionInfo *info) {
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting JavaVersionProperty - call to CallVoidMethod()", FALSE);
 
-            wPrintDebugString(L"  Java version = %ls", info->VMversion);
+            wPrintDebugString(L"[INFO]:   Java version = \"%ls\"", info->VMversion);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting JavaVersionProperty - call to DeleteLocalRef()", FALSE);
@@ -1590,7 +1591,7 @@ AccessBridgeJavaEntryPoints::getVersionInfo(AccessBridgeVersionInfo *info) {
             return FALSE;
         }
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getJavaVersionPropertyMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getJavaVersionPropertyMethod == 0");
         return FALSE;
     }
 
@@ -1607,15 +1608,15 @@ BOOL AccessBridgeJavaEntryPoints::verifyAccessibleText(jobject obj) {
     BOOL retval = FALSE;
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::verifyAccessibleText");
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::verifyAccessibleText");
 
     if (jniEnv->GetJavaVM(&vm) != 0) {
-        PrintDebugString("[ERROR]:  No Java VM");
+        PrintDebugString("[ERROR]:   No Java VM");
         return FALSE;
     }
 
     if (obj == nullptr) {
-        PrintDebugString("[ERROR]:  Null jobject");
+        PrintDebugString("[ERROR]:   Null jobject");
         return FALSE;
     }
 
@@ -1633,12 +1634,12 @@ BOOL AccessBridgeJavaEntryPoints::verifyAccessibleText(jobject obj) {
         jniEnv->DeleteLocalRef(returnedJobject);
         EXCEPTION_CHECK("Getting AccessibleText - call to DeleteLocalRef()", FALSE);
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleTextFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTextFromContextMethod == 0");
         return FALSE;
     }
 
     if (retval == FALSE) {
-        PrintDebugString("[ERROR]:  jobject is not an AccessibleText");
+        PrintDebugString("[ERROR]:   jobject is not an AccessibleText");
     }
 
     return retval;
@@ -1662,7 +1663,7 @@ jobject
 AccessBridgeJavaEntryPoints::getAccessibleContextAt(jint x, jint y, jobject accessibleContext) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::getAccessibleContextAt(%d, %d, %p):",
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleContextAt(%d, %d, %p):",
                      x, y, accessibleContext);
 
     if (getAccessibleContextAtMethod != nullptr) {
@@ -1678,7 +1679,7 @@ AccessBridgeJavaEntryPoints::getAccessibleContextAt(jint x, jint y, jobject acce
                          returnedAccessibleContext, globalRef);
         return globalRef;
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleContextAtMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleContextAtMethod == 0");
         return nullptr;
     }
 }
@@ -1697,7 +1698,7 @@ jobject
 AccessBridgeJavaEntryPoints::getAccessibleContextWithFocus() {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::getAccessibleContextWithFocus()");
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleContextWithFocus()");
 
     if (getAccessibleContextWithFocusMethod != nullptr) {
         const jobject returnedAccessibleContext = jniEnv->CallObjectMethod(accessBridgeObject,
@@ -1711,7 +1712,7 @@ AccessBridgeJavaEntryPoints::getAccessibleContextWithFocus() {
                          returnedAccessibleContext, globalRef);
         return globalRef;
     } else {
-        PrintDebugString("[ERROR]:  either jniEnv == 0 or getAccessibleContextWithFocusMethod == 0");
+        PrintDebugString("[ERROR]:   either jniEnv == 0 or getAccessibleContextWithFocusMethod == 0");
         return nullptr;
     }
 }
@@ -1732,12 +1733,12 @@ BOOL
 AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext, AccessibleContextInfo *info) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### Calling AccessBridgeJavaEntryPoints::getAccessibleContextInfo(%p):", accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleContextInfo(%p):", accessibleContext);
 
     ZeroMemory(info, sizeof(AccessibleContextInfo));
 
     if (accessibleContext == nullptr) {
-        PrintDebugString("[WARN]:  passed in AccessibleContext == null! (oops)");
+        PrintDebugString("[ERROR]:   passed in AccessibleContext == null!");
         return FALSE;
     }
 
@@ -1766,7 +1767,7 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleName - call to CallVoidMethod()", FALSE);
 
-            wPrintDebugString(L"[INFO]:   Accessible Name = %ls", info->name);
+            wPrintDebugString(L"[INFO]:   Accessible Name = \"%ls\"", info->name);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting AccessibleName - call to DeleteLocalRef()", FALSE);
@@ -1775,7 +1776,7 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
             info->name[0] = wchar_t{ 0 };
         }
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleNameFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleNameFromContextMethod == 0");
         return FALSE;
     }
 
@@ -1804,7 +1805,7 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleName - call to CallVoidMethod()", FALSE);
 
-            wPrintDebugString(L"[INFO]:   Accessible Description = %ls", info->description);
+            wPrintDebugString(L"[INFO]:   Accessible Description = \"%ls\"", info->description);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting AccessibleName - call to DeleteLocalRef()", FALSE);
@@ -1813,7 +1814,7 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
             info->description[0] = wchar_t{ 0 };
         }
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleDescriptionFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleDescriptionFromContextMethod == 0");
         return FALSE;
     }
 
@@ -1841,7 +1842,7 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleRole - call to CallVoidMethod()", FALSE);
 
-            wPrintDebugString(L"[INFO]:   Accessible Role = %ls", info->role);
+            wPrintDebugString(L"[INFO]:   Accessible Role = \"%ls\"", info->role);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting AccessibleRole - call to DeleteLocalRef()", FALSE);
@@ -1850,7 +1851,7 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
             info->role[0] = wchar_t{ 0 };
         }
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleRoleStringFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleRoleStringFromContextMethod == 0");
         return FALSE;
     }
 
@@ -1878,7 +1879,7 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleRole_en_US - call to CallVoidMethod()", FALSE);
 
-            wPrintDebugString(L"[INFO]:   Accessible Role en_US = %ls", info->role_en_US);
+            wPrintDebugString(L"[INFO]:   Accessible Role en_US = \"%ls\"", info->role_en_US);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting AccessibleRole_en_US - call to DeleteLocalRef()", FALSE);
@@ -1887,7 +1888,7 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
             info->role[0] = wchar_t{ 0 };
         }
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleRoleStringFromContext_en_USMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleRoleStringFromContext_en_USMethod == 0");
         return FALSE;
     }
 
@@ -1916,7 +1917,7 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleState - call to CallVoidMethod()", FALSE);
 
-            wPrintDebugString(L"[INFO]:   Accessible States = %ls", info->states);
+            wPrintDebugString(L"[INFO]:   Accessible States = \"%ls\"", info->states);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting AccessibleState - call to DeleteLocalRef()", FALSE);
@@ -1925,7 +1926,7 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
             info->states[0] = wchar_t{ 0 };
         }
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleStatesStringFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleStatesStringFromContextMethod == 0");
         return FALSE;
     }
 
@@ -1954,7 +1955,7 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleState_en_US - call to CallVoidMethod()", FALSE);
 
-            wPrintDebugString(L"[INFO]:   Accessible States en_US = %ls", info->states_en_US);
+            wPrintDebugString(L"[INFO]:   Accessible States en_US = \"%ls\"", info->states_en_US);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting AccessibleState_en_US - call to DeleteLocalRef()", FALSE);
@@ -1963,7 +1964,7 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
             info->states[0] = wchar_t{ 0 };
         }
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleStatesStringFromContext_en_USMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleStatesStringFromContext_en_USMethod == 0");
         return FALSE;
     }
 
@@ -1974,13 +1975,13 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
                                                     accessibleContext);
         EXCEPTION_CHECK("Getting AccessibleIndexInParent - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   Index in Parent = %d", info->indexInParent);
+        PrintDebugString("[INFO]:   Index in Parent = %ld", long{ info->indexInParent });
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleIndexInParentFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleIndexInParentFromContextMethod == 0");
         return FALSE;
     }
 
-    PrintDebugString("[INFO]: *** jniEnv: %p; accessBridgeObject: %p; AccessibleContext: %p ***",
+    PrintDebugString("[INFO]:   jniEnv = %p; accessBridgeObject = %p; AccessibleContext = %p",
                      jniEnv, accessBridgeObject, accessibleContext);
 
     // Get the children count
@@ -1990,13 +1991,13 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
                                                     accessibleContext);
         EXCEPTION_CHECK("Getting AccessibleChildrenCount - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   Children count = %d", info->childrenCount);
+        PrintDebugString("[INFO]:   Children count = %ld", long{ info->childrenCount });
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleChildrenCountFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleChildrenCountFromContextMethod == 0");
         return FALSE;
     }
 
-    PrintDebugString("[INFO]: *** jniEnv: %p; accessBridgeObject: %p; AccessibleContext: %X ***",
+    PrintDebugString("[INFO]:   jniEnv = %p; accessBridgeObject = %p; AccessibleContext = %p",
                      jniEnv, accessBridgeObject, accessibleContext);
 
     // Get the x coord
@@ -2006,13 +2007,13 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
                                         accessibleContext);
         EXCEPTION_CHECK("Getting AccessibleXcoord - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   X coord = %d", info->x);
+        PrintDebugString("[INFO]:   X coord = %ld", long{ info->x });
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleXcoordFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleXcoordFromContextMethod == 0");
         return FALSE;
     }
 
-    PrintDebugString("[INFO]: *** jniEnv: %X; accessBridgeObject: %X; AccessibleContext: %p ***",
+    PrintDebugString("[INFO]:   jniEnv = %X; accessBridgeObject = %X; AccessibleContext = %p",
                      jniEnv, accessBridgeObject, accessibleContext);
 
     // Get the y coord
@@ -2022,9 +2023,9 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
                                         accessibleContext);
         EXCEPTION_CHECK("Getting AccessibleYcoord - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   Y coord = %d", info->y);
+        PrintDebugString("[INFO]:   Y coord = %ld", long{ info->y });
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleYcoordFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleYcoordFromContextMethod == 0");
         return FALSE;
     }
 
@@ -2035,9 +2036,9 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
                                             accessibleContext);
         EXCEPTION_CHECK("Getting AccessibleWidth - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   Width = %d", info->width);
+        PrintDebugString("[INFO]:   Width = %ld", long{ info->width });
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleWidthFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleWidthFromContextMethod == 0");
         return FALSE;
     }
 
@@ -2048,9 +2049,9 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
                                              accessibleContext);
         EXCEPTION_CHECK("Getting AccessibleHeight - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   Height = %d", info->height);
+        PrintDebugString("[INFO]:   Height = %ld", long{ info->height });
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleHeightFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleHeightFromContextMethod == 0");
         return FALSE;
     }
 
@@ -2068,7 +2069,7 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
         jniEnv->DeleteLocalRef(returnedJobject);
         EXCEPTION_CHECK("Getting AccessibleComponent - call to DeleteLocalRef()", FALSE);
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleComponentFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleComponentFromContextMethod == 0");
         return FALSE;
     }
 
@@ -2086,7 +2087,7 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
         jniEnv->DeleteLocalRef(returnedJobject);
         EXCEPTION_CHECK("Getting AccessibleAction - call to DeleteLocalRef()", FALSE);
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleActionFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleActionFromContextMethod == 0");
         return FALSE;
     }
 
@@ -2104,41 +2105,41 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
         jniEnv->DeleteLocalRef(returnedJobject);
         EXCEPTION_CHECK("Getting AccessibleSelection - call to DeleteLocalRef()", FALSE);
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleSelectionFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleSelectionFromContextMethod == 0");
         return FALSE;
     }
 
     // Get the AccessibleTable
     if (getAccessibleTableFromContextMethod != nullptr) {
-        PrintDebugString("[INFO]: ##### Calling getAccessibleTableFromContextMethod ...");
+        PrintDebugString("[INFO]:   calling getAccessibleTableFromContextMethod ...");
 
         const jobject returnedJobject = jniEnv->CallObjectMethod(accessBridgeObject,
                                                                  getAccessibleTableFromContextMethod,
                                                                  accessibleContext);
-        PrintDebugString("[INFO]: ##### ... Returned from getAccessibleTableFromContextMethod");
-        EXCEPTION_CHECK("##### Getting AccessibleTable - call to CallObjectMethod()", FALSE);
+        PrintDebugString("[INFO]:   returned from getAccessibleTableFromContextMethod");
+        EXCEPTION_CHECK("Getting AccessibleTable - call to CallObjectMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### AccessibleTable = %p", returnedJobject);
+        PrintDebugString("[INFO]:   AccessibleTable = %p", returnedJobject);
 
         if (returnedJobject != nullptr) {
             info->accessibleInterfaces |= cAccessibleTableInterface;
         }
 
         jniEnv->DeleteLocalRef(returnedJobject);
-        EXCEPTION_CHECK("##### Getting AccessibleTable - call to DeleteLocalRef()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleTable - call to DeleteLocalRef()", FALSE);
 
         /*
           returnedJobject = jniEnv->CallObjectMethod(accessBridgeObject,
           getAccessibleTableFromContextMethod,
           AccessibleContext);
-          PrintDebugString("##### ... Returned from getAccessibleTableFromContextMethod");
-          EXCEPTION_CHECK("##### Getting AccessibleTable - call to CallObjectMethod()", FALSE);
-          PrintDebugString("  ##### AccessibleTable = %X", returnedJobject);
+          PrintDebugString("[INFO]:   returned from getAccessibleTableFromContextMethod");
+          EXCEPTION_CHECK("Getting AccessibleTable - call to CallObjectMethod()", FALSE);
+          PrintDebugString("[INFO]:   AccessibleTable = %p", returnedJobject);
           info->accessibleTable = returnedJobject;
         */
 
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTableFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTableFromContextMethod == 0");
         return FALSE;
     }
 
@@ -2156,7 +2157,7 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
         jniEnv->DeleteLocalRef(returnedJobject);
         EXCEPTION_CHECK("Getting AccessibleText - call to DeleteLocalRef()", FALSE);
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleTextFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTextFromContextMethod == 0");
         return FALSE;
     }
 
@@ -2176,7 +2177,7 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
         jniEnv->DeleteLocalRef(returnedJobject);
         EXCEPTION_CHECK("Getting AccessibleValue - call to DeleteLocalRef()", FALSE);
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleValueFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleValueFromContextMethod == 0");
         return FALSE;
     }
 
@@ -2233,8 +2234,8 @@ jobject
 AccessBridgeJavaEntryPoints::getAccessibleChildFromContext(jobject accessibleContext, jint childIndex) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::getAccessibleChildContext(%p, %d):",
-                     accessibleContext, childIndex);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleChildContext(%p, %ld):",
+                     accessibleContext, long{ childIndex });
 
     if (getAccessibleChildFromContextMethod != nullptr) {
         const jobject returnedAccessibleContext = jniEnv->CallObjectMethod(accessBridgeObject,
@@ -2252,7 +2253,7 @@ AccessBridgeJavaEntryPoints::getAccessibleChildFromContext(jobject accessibleCon
                          returnedAccessibleContext, globalRef);
         return globalRef;
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleChildContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleChildContextMethod == 0");
         return nullptr;
     }
 }
@@ -2266,7 +2267,7 @@ AccessBridgeJavaEntryPoints::getAccessibleParentFromContext(jobject accessibleCo
 {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::getAccessibleParentFromContext(%p):", accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleParentFromContext(%p):", accessibleContext);
 
     if (getAccessibleParentFromContextMethod != nullptr) {
         const jobject returnedAccessibleContext = jniEnv->CallObjectMethod(accessBridgeObject,
@@ -2284,7 +2285,7 @@ AccessBridgeJavaEntryPoints::getAccessibleParentFromContext(jobject accessibleCo
                          returnedAccessibleContext, globalRef);
         return globalRef;
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleParentFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleParentFromContextMethod == 0");
         return nullptr;
     }
 }
@@ -2298,7 +2299,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTableInfo(jobject accessibleContext,
 
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### Calling AccessBridgeJavaEntryPoints::getAccessibleTableInfo(%p):",
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTableInfo(%p):",
                      accessibleContext);
 
     // get the table row count
@@ -2306,11 +2307,11 @@ AccessBridgeJavaEntryPoints::getAccessibleTableInfo(jobject accessibleContext,
         tableInfo->rowCount = jniEnv->CallIntMethod(accessBridgeObject,
                                                     getAccessibleTableRowCountMethod,
                                                     accessibleContext);
-        EXCEPTION_CHECK("##### Getting AccessibleTableRowCount - call to CallIntMethod()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleTableRowCount - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### table row count = %d", tableInfo->rowCount);
+        PrintDebugString("[INFO]:   table row count = %ld", long{ tableInfo->rowCount });
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleRowCountMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleRowCountMethod == 0");
         return FALSE;
     }
 
@@ -2321,51 +2322,51 @@ AccessBridgeJavaEntryPoints::getAccessibleTableInfo(jobject accessibleContext,
                                                        accessibleContext);
         EXCEPTION_CHECK("Getting AccessibleTableColumnCount - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### table column count = %d", tableInfo->columnCount);
+        PrintDebugString("[INFO]:   table column count = %ld", long{ tableInfo->columnCount });
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTableColumnCountMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTableColumnCountMethod == 0");
         return FALSE;
     }
 
     // get the AccessibleTable
     if (getAccessibleTableFromContextMethod != nullptr) {
-        PrintDebugString("[INFO]: ##### Calling getAccessibleTableFromContextMethod ...");
+        PrintDebugString("[INFO]:   calling getAccessibleTableFromContextMethod ...");
 
         const jobject accTable = jniEnv->CallObjectMethod(accessBridgeObject,
                                                           getAccessibleTableFromContextMethod,
                                                           accessibleContext);
-        PrintDebugString("[INFO]: ##### ... Returned from getAccessibleTableFromContextMethod");
-        EXCEPTION_CHECK("##### Getting AccessibleTable - call to CallObjectMethod()", FALSE);
+        PrintDebugString("[INFO]:   returned from getAccessibleTableFromContextMethod");
+        EXCEPTION_CHECK("Getting AccessibleTable - call to CallObjectMethod()", FALSE);
 
         const jobject globalRef = jniEnv->NewGlobalRef(accTable);
-        EXCEPTION_CHECK("##### Getting AccessibleTable - call to NewGlobalRef()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleTable - call to NewGlobalRef()", FALSE);
 
         tableInfo->accessibleTable = (JOBJECT64)globalRef;
 
-        PrintDebugString("[INFO]:   ##### accessibleTable = %p", globalRef);
+        PrintDebugString("[INFO]:   accessibleTable = %p", globalRef);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTableFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTableFromContextMethod == 0");
         return FALSE;
     }
 
     // cache the AccessibleContext
     if (getContextFromAccessibleTableMethod != nullptr) {
-        PrintDebugString("[INFO]: ##### Calling getContextFromAccessibleTable Method ...");
+        PrintDebugString("[INFO]:   calling getContextFromAccessibleTable Method ...");
 
         const jobject ac = jniEnv->CallObjectMethod(accessBridgeObject,
                                                     getContextFromAccessibleTableMethod,
                                                     accessibleContext);
-        PrintDebugString("[INFO]: ##### ... Returned from getContextFromAccessibleTable Method");
-        EXCEPTION_CHECK("##### Getting AccessibleTable - call to CallObjectMethod()", FALSE);
+        PrintDebugString("[INFO]:   returned from getContextFromAccessibleTable Method");
+        EXCEPTION_CHECK("Getting AccessibleTable - call to CallObjectMethod()", FALSE);
 
         const jobject globalRef = jniEnv->NewGlobalRef(ac);
-        EXCEPTION_CHECK("##### Getting AccessibleTable - call to NewGlobalRef()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleTable - call to NewGlobalRef()", FALSE);
 
         tableInfo->accessibleContext = (JOBJECT64)globalRef;
 
-        PrintDebugString("[INFO]:   ##### accessibleContext = %p", globalRef);
+        PrintDebugString("[INFO]:   accessibleContext = %p", globalRef);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getContextFromAccessibleTable Method == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getContextFromAccessibleTable Method == 0");
         return FALSE;
     }
 
@@ -2373,7 +2374,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTableInfo(jobject accessibleContext,
     tableInfo->caption = NULL;
     tableInfo->summary = NULL;
 
-    PrintDebugString("[INFO]: ##### Calling AccessBridgeJavaEntryPoints::getAccessibleTableInfo succeeded");
+    PrintDebugString("[INFO]:   AccessBridgeJavaEntryPoints::getAccessibleTableInfo succeeded");
     return TRUE;
 }
 
@@ -2383,7 +2384,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTableCellInfo(jobject accessibleTable,
 
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### Calling AccessBridgeJavaEntryPoints::getAccessibleTableCellInfo(%p): row=%d, column=%d",
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTableCellInfo(%p): row=%d, column=%d",
                      accessibleTable, row, column);
 
     ZeroMemory(tableCellInfo, sizeof(AccessibleTableCellInfo));
@@ -2395,11 +2396,11 @@ AccessBridgeJavaEntryPoints::getAccessibleTableCellInfo(jobject accessibleTable,
         tableCellInfo->index = jniEnv->CallIntMethod(accessBridgeObject,
                                                      getAccessibleTableCellIndexMethod,
                                                      accessibleTable, row, column);
-        EXCEPTION_CHECK("##### Getting AccessibleTableCellIndex - call to CallIntMethod()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleTableCellIndex - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### table cell index = %d", tableCellInfo->index);
+        PrintDebugString("[INFO]:   table cell index = %ld", long{ tableCellInfo->index });
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTableCellIndexMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTableCellIndexMethod == 0");
         return FALSE;
     }
 
@@ -2408,11 +2409,11 @@ AccessBridgeJavaEntryPoints::getAccessibleTableCellInfo(jobject accessibleTable,
         tableCellInfo->rowExtent = jniEnv->CallIntMethod(accessBridgeObject,
                                                          getAccessibleTableCellRowExtentMethod,
                                                          accessibleTable, row, column);
-        EXCEPTION_CHECK("##### Getting AccessibleTableCellRowExtentCount - call to CallIntMethod()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleTableCellRowExtentCount - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### table cell row extent = %d", tableCellInfo->rowExtent);
+        PrintDebugString("[INFO]:   table cell row extent = %ld", long{ tableCellInfo->rowExtent });
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTableCellRowExtentMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTableCellRowExtentMethod == 0");
         return FALSE;
     }
 
@@ -2421,11 +2422,11 @@ AccessBridgeJavaEntryPoints::getAccessibleTableCellInfo(jobject accessibleTable,
         tableCellInfo->columnExtent = jniEnv->CallIntMethod(accessBridgeObject,
                                                             getAccessibleTableCellColumnExtentMethod,
                                                             accessibleTable, row, column);
-        EXCEPTION_CHECK("##### Getting AccessibleTableCellColumnExtentCount - call to CallIntMethod()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleTableCellColumnExtentCount - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:  ##### table cell column extent = %d", tableCellInfo->columnExtent);
+        PrintDebugString("[INFO]:   table cell column extent = %d", long{ tableCellInfo->columnExtent });
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTableCellColumnExtentMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTableCellColumnExtentMethod == 0");
         return FALSE;
     }
 
@@ -2434,11 +2435,11 @@ AccessBridgeJavaEntryPoints::getAccessibleTableCellInfo(jobject accessibleTable,
         tableCellInfo->isSelected = jniEnv->CallBooleanMethod(accessBridgeObject,
                                                               isAccessibleTableCellSelectedMethod,
                                                               accessibleTable, row, column);
-        EXCEPTION_CHECK("##### Getting isAccessibleTableCellSelected - call to CallBooleanMethod()", FALSE);
+        EXCEPTION_CHECK("Getting isAccessibleTableCellSelected - call to CallBooleanMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### table cell isSelected = %d", tableCellInfo->isSelected);
+        PrintDebugString("[INFO]:   table cell isSelected = %d", int{ tableCellInfo->isSelected });
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or isAccessibleTableCellSelectedMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or isAccessibleTableCellSelectedMethod == 0");
         return FALSE;
     }
 
@@ -2447,20 +2448,20 @@ AccessBridgeJavaEntryPoints::getAccessibleTableCellInfo(jobject accessibleTable,
         const jobject tableCellAC = jniEnv->CallObjectMethod(accessBridgeObject,
                                                              getAccessibleTableCellAccessibleContextMethod,
                                                              accessibleTable, row, column);
-        EXCEPTION_CHECK("##### Getting AccessibleTableCellAccessibleContext - call to CallObjectMethod()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleTableCellAccessibleContext - call to CallObjectMethod()", FALSE);
 
         const jobject globalRef = jniEnv->NewGlobalRef(tableCellAC);
-        EXCEPTION_CHECK("##### Getting AccessibleTableCellAccessibleContext - call to NewGlobalRef()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleTableCellAccessibleContext - call to NewGlobalRef()", FALSE);
 
         tableCellInfo->accessibleContext = (JOBJECT64)globalRef;
 
-        PrintDebugString("[INFO]:   ##### table cell AccessibleContext = %p", globalRef);
+        PrintDebugString("[INFO]:   table cell AccessibleContext = %p", globalRef);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTableCellAccessibleContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTableCellAccessibleContextMethod == 0");
         return FALSE;
     }
 
-    PrintDebugString("[INFO]:  ##### Calling AccessBridgeJavaEntryPoints::getAccessibleTableCellInfo succeeded");
+    PrintDebugString("[INFO]:   AccessBridgeJavaEntryPoints::getAccessibleTableCellInfo succeeded");
     return TRUE;
 }
 
@@ -2469,19 +2470,19 @@ AccessBridgeJavaEntryPoints::getAccessibleTableRowHeader(jobject acParent, Acces
 
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### Calling AccessBridgeJavaEntryPoints::getAccessibleTableRowHeader(%p):",
-                     acParent);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTableRowHeader(%p, %p):",
+                     acParent, tableInfo);
 
     // get the header row count
     if (getAccessibleTableRowHeaderRowCountMethod != nullptr) {
         tableInfo->rowCount = jniEnv->CallIntMethod(accessBridgeObject,
                                                     getAccessibleTableRowHeaderRowCountMethod,
                                                     acParent);
-        EXCEPTION_CHECK("##### Getting AccessibleTableRowHeaderRowCount - call to CallIntMethod()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleTableRowHeaderRowCount - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### table row count = %d", tableInfo->rowCount);
+        PrintDebugString("[INFO]:   table row count = %ld", long{ tableInfo->rowCount });
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleRowHeaderRowCountMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleRowHeaderRowCountMethod == 0");
         return FALSE;
     }
 
@@ -2492,9 +2493,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTableRowHeader(jobject acParent, Acces
                                                        acParent);
         EXCEPTION_CHECK("Getting AccessibleTableRowHeaderColumnCount - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### table column count = %d", tableInfo->columnCount);
+        PrintDebugString("[INFO]:   table column count = %ld", long{ tableInfo->columnCount });
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTableRowHeaderColumnCountMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTableRowHeaderColumnCountMethod == 0");
         return FALSE;
     }
 
@@ -2503,15 +2504,15 @@ AccessBridgeJavaEntryPoints::getAccessibleTableRowHeader(jobject acParent, Acces
         const jobject accTable = jniEnv->CallObjectMethod(accessBridgeObject,
                                                           getAccessibleTableRowHeaderMethod,
                                                           acParent);
-        EXCEPTION_CHECK("##### Getting AccessibleTableRowHeader - call to CallObjectMethod()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleTableRowHeader - call to CallObjectMethod()", FALSE);
 
         const jobject globalRef = jniEnv->NewGlobalRef(accTable);
-        EXCEPTION_CHECK("##### Getting AccessibleTableRowHeader - call to NewGlobalRef()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleTableRowHeader - call to NewGlobalRef()", FALSE);
 
         tableInfo->accessibleTable = (JOBJECT64)globalRef;
-        PrintDebugString("[INFO]:   ##### row header AccessibleTable = %p", globalRef);
+        PrintDebugString("[INFO]:   row header AccessibleTable = %p", globalRef);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTableRowHeaderMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTableRowHeaderMethod == 0");
         return FALSE;
     }
 
@@ -2520,7 +2521,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTableRowHeader(jobject acParent, Acces
     tableInfo->summary = NULL;
     tableInfo->accessibleContext = NULL;
 
-    PrintDebugString("[INFO]:   ##### Calling AccessBridgeJavaEntryPoints::getAccessibleTableRowHeader succeeded");
+    PrintDebugString("[INFO]:   AccessBridgeJavaEntryPoints::getAccessibleTableRowHeader succeeded");
     return TRUE;
 }
 
@@ -2528,19 +2529,19 @@ BOOL
 AccessBridgeJavaEntryPoints::getAccessibleTableColumnHeader(jobject acParent, AccessibleTableInfo *tableInfo) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### Calling AccessBridgeJavaEntryPoints::getAccessibleTableColumnHeader(%p):",
-                     acParent);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTableColumnHeader(%p, %p):",
+                     acParent, tableInfo);
 
     // get the header row count
     if (getAccessibleTableColumnHeaderRowCountMethod != nullptr) {
         tableInfo->rowCount = jniEnv->CallIntMethod(accessBridgeObject,
                                                     getAccessibleTableColumnHeaderRowCountMethod,
                                                     acParent);
-        EXCEPTION_CHECK("##### Getting AccessibleTableColumnHeaderRowCount - call to CallIntMethod()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleTableColumnHeaderRowCount - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### table row count = %d", tableInfo->rowCount);
+        PrintDebugString("[INFO]:   table row count = %ld", long{ tableInfo->rowCount });
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleColumnHeaderRowCountMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleColumnHeaderRowCountMethod == 0");
         return FALSE;
     }
 
@@ -2551,9 +2552,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTableColumnHeader(jobject acParent, Ac
                                                        acParent);
         EXCEPTION_CHECK("Getting AccessibleTableColumnHeaderColumnCount - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### table column count = %d", tableInfo->columnCount);
+        PrintDebugString("[INFO]:   table column count = %ld", long{ tableInfo->columnCount });
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTableColumnHeaderColumnCountMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTableColumnHeaderColumnCountMethod == 0");
         return FALSE;
     }
     // get the header AccessibleTable
@@ -2561,15 +2562,15 @@ AccessBridgeJavaEntryPoints::getAccessibleTableColumnHeader(jobject acParent, Ac
         const jobject accTable = jniEnv->CallObjectMethod(accessBridgeObject,
                                                           getAccessibleTableColumnHeaderMethod,
                                                           acParent);
-        EXCEPTION_CHECK("##### Getting AccessibleTableColumnHeader - call to CallObjectMethod()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleTableColumnHeader - call to CallObjectMethod()", FALSE);
 
         const jobject globalRef = jniEnv->NewGlobalRef(accTable);
-        EXCEPTION_CHECK("##### Getting AccessibleTableColumnHeader - call to NewGlobalRef()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleTableColumnHeader - call to NewGlobalRef()", FALSE);
 
         tableInfo->accessibleTable = (JOBJECT64)globalRef;
-        PrintDebugString("[INFO]:   ##### column header AccessibleTable = %p", globalRef);
+        PrintDebugString("[INFO]:   column header AccessibleTable = %p", globalRef);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTableColumnHeaderMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTableColumnHeaderMethod == 0");
         return FALSE;
     }
 
@@ -2578,7 +2579,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTableColumnHeader(jobject acParent, Ac
     tableInfo->summary = NULL;
     tableInfo->accessibleContext = NULL;
 
-    PrintDebugString("[INFO]:   ##### Calling AccessBridgeJavaEntryPoints::getAccessibleTableColumnHeader succeeded");
+    PrintDebugString("[INFO]:   AccessBridgeJavaEntryPoints::getAccessibleTableColumnHeader succeeded");
     return TRUE;
 }
 
@@ -2589,8 +2590,8 @@ AccessBridgeJavaEntryPoints::getAccessibleTableRowDescription(jobject acParent, 
     jobject globalRef;
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### Calling AccessBridgeJavaEntryPoints::getAccessibleTableRowDescription(%p):",
-                     acParent);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTableRowDescription(%p, %ld):",
+                     acParent, long{ row });
 
     if (getAccessibleTableRowDescriptionMethod != nullptr) {
         returnedAccessibleContext = jniEnv->CallObjectMethod(accessBridgeObject,
@@ -2605,7 +2606,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTableRowDescription(jobject acParent, 
                          returnedAccessibleContext, globalRef);
         return globalRef;
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTableRowDescriptionMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTableRowDescriptionMethod == 0");
         return nullptr;
     }
 }
@@ -2614,8 +2615,8 @@ jobject
 AccessBridgeJavaEntryPoints::getAccessibleTableColumnDescription(jobject acParent, jint column) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### Calling AccessBridgeJavaEntryPoints::getAccessibleTableColumnDescription(%p):",
-                     acParent);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTableColumnDescription(%p, %ld):",
+                     acParent, long{ column });
 
     if (getAccessibleTableColumnDescriptionMethod != nullptr) {
         const jobject returnedAccessibleContext = jniEnv->CallObjectMethod(accessBridgeObject,
@@ -2633,7 +2634,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTableColumnDescription(jobject acParen
                          returnedAccessibleContext, globalRef);
         return globalRef;
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTableColumnDescriptionMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTableColumnDescriptionMethod == 0");
         return nullptr;
     }
 }
@@ -2642,7 +2643,7 @@ jint
 AccessBridgeJavaEntryPoints::getAccessibleTableRowSelectionCount(jobject accessibleTable) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::getAccessibleTableRowSelectionCount(%p)",
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTableRowSelectionCount(%p):",
                      accessibleTable);
 
     // Get the table row selection count
@@ -2650,16 +2651,16 @@ AccessBridgeJavaEntryPoints::getAccessibleTableRowSelectionCount(jobject accessi
         const jint count = jniEnv->CallIntMethod(accessBridgeObject,
                                                  getAccessibleTableRowSelectionCountMethod,
                                                  accessibleTable);
-        EXCEPTION_CHECK("##### Getting AccessibleTableRowSelectionCount - call to CallIntMethod()", 0);
+        EXCEPTION_CHECK("Getting AccessibleTableRowSelectionCount - call to CallIntMethod()", 0);
 
-        PrintDebugString("[INFO]:   ##### table row selection count = %d", count);
+        PrintDebugString("[INFO]:   table row selection count = %ld", long{ count });
         return count;
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTableRowSelectionCountMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTableRowSelectionCountMethod == 0");
         return 0;
     }
 
-    PrintDebugString("[ERROR]:   ##### AccessBridgeJavaEntryPoints::getAccessibleTableRowSelectionCount failed");
+    PrintDebugString("[ERROR]:   AccessBridgeJavaEntryPoints::getAccessibleTableRowSelectionCount failed");
     return 0;
 }
 
@@ -2667,23 +2668,23 @@ BOOL
 AccessBridgeJavaEntryPoints::isAccessibleTableRowSelected(jobject accessibleTable, jint row) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::isAccessibleTableRowSelected(%p, %d)",
-                     accessibleTable, row);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::isAccessibleTableRowSelected(%p, %ld):",
+                     accessibleTable, long{ row });
 
     if (isAccessibleTableRowSelectedMethod != nullptr) {
         const jboolean result = jniEnv->CallBooleanMethod(accessBridgeObject,
                                                           isAccessibleTableRowSelectedMethod,
                                                           accessibleTable, row);
-        EXCEPTION_CHECK("##### Getting isAccessibleTableRowSelected - call to CallBooleanMethod()", FALSE);
+        EXCEPTION_CHECK("Getting isAccessibleTableRowSelected - call to CallBooleanMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### table row isSelected = %d", result);
+        PrintDebugString("[INFO]:   table row isSelected = %d", int{ result });
         return (result == JNI_TRUE) ? TRUE : FALSE;
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or isAccessibleTableRowSelectedMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or isAccessibleTableRowSelectedMethod == 0");
         return FALSE;
     }
 
-    PrintDebugString("[ERROR]:  AccessBridgeJavaEntryPoints::isAccessibleTableRowSelected failed");
+    PrintDebugString("[ERROR]:   AccessBridgeJavaEntryPoints::isAccessibleTableRowSelected failed");
     return FALSE;
 }
 
@@ -2692,8 +2693,8 @@ AccessBridgeJavaEntryPoints::getAccessibleTableRowSelections(jobject accessibleT
                                                              jint *selections) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::getAccessibleTableRowSelections(%p, %d %p)",
-                     accessibleTable, count, selections);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTableRowSelections(%p, %ld, %p):",
+                     accessibleTable, long{ count }, selections);
 
     if (getAccessibleTableRowSelectionsMethod == nullptr) {
         return FALSE;
@@ -2705,12 +2706,12 @@ AccessBridgeJavaEntryPoints::getAccessibleTableRowSelections(jobject accessibleT
                                               getAccessibleTableRowSelectionsMethod,
                                               accessibleTable,
                                               i);
-        EXCEPTION_CHECK("##### Getting AccessibleTableRowSelections - call to CallIntMethod()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleTableRowSelections - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### table row selection[%d] = %d", i, selections[i]);
+        PrintDebugString("[INFO]:   table row selection[%d] = %ld", i, long{ selections[i] });
     }
 
-    PrintDebugString("[INFO]:   ##### AccessBridgeJavaEntryPoints::getAccessibleTableRowSelections succeeded");
+    PrintDebugString("[INFO]:   AccessBridgeJavaEntryPoints::getAccessibleTableRowSelections succeeded");
     return TRUE;
 }
 
@@ -2719,7 +2720,7 @@ jint
 AccessBridgeJavaEntryPoints::getAccessibleTableColumnSelectionCount(jobject accessibleTable) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::getAccessibleTableColumnSelectionCount(%p)",
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTableColumnSelectionCount(%p):",
                      accessibleTable);
 
     // Get the table column selection count
@@ -2727,16 +2728,16 @@ AccessBridgeJavaEntryPoints::getAccessibleTableColumnSelectionCount(jobject acce
         const jint count = jniEnv->CallIntMethod(accessBridgeObject,
                                                  getAccessibleTableColumnSelectionCountMethod,
                                                  accessibleTable);
-        EXCEPTION_CHECK("##### Getting AccessibleTableColumnSelectionCount - call to CallIntMethod()", 0);
+        EXCEPTION_CHECK("Getting AccessibleTableColumnSelectionCount - call to CallIntMethod()", 0);
 
-        PrintDebugString("[INFO]:   ##### table column selection count = %d", count);
+        PrintDebugString("[INFO]:   table column selection count = %d", count);
         return count;
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleRowCountMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleRowCountMethod == 0");
         return 0;
     }
 
-    PrintDebugString("[ERROR]:   ##### AccessBridgeJavaEntryPoints::getAccessibleTableColumnSelectionCount failed");
+    PrintDebugString("[ERROR]:   AccessBridgeJavaEntryPoints::getAccessibleTableColumnSelectionCount failed");
     return 0;
 }
 
@@ -2744,23 +2745,23 @@ BOOL
 AccessBridgeJavaEntryPoints::isAccessibleTableColumnSelected(jobject accessibleTable, jint column) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::isAccessibleTableColumnSelected(%p, %d)",
-                     accessibleTable, column);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::isAccessibleTableColumnSelected(%p, %ld):",
+                     accessibleTable, long{ column });
 
     if (isAccessibleTableColumnSelectedMethod != nullptr) {
         const jboolean result = jniEnv->CallBooleanMethod(accessBridgeObject,
                                                           isAccessibleTableColumnSelectedMethod,
                                                           accessibleTable, column);
-        EXCEPTION_CHECK("##### Getting isAccessibleTableColumnSelected - call to CallBooleanMethod()", FALSE);
+        EXCEPTION_CHECK("Getting isAccessibleTableColumnSelected - call to CallBooleanMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### table column isSelected = %d", result);
+        PrintDebugString("[INFO]:   table column isSelected = %d", int{ result });
         return (result == JNI_TRUE) ? TRUE : FALSE;
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or isAccessibleTableColumnSelectedMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or isAccessibleTableColumnSelectedMethod == 0");
         return FALSE;
     }
 
-    PrintDebugString("[ERROR]:   ##### AccessBridgeJavaEntryPoints::isAccessibleTableColumnSelected failed");
+    PrintDebugString("[ERROR]:   AccessBridgeJavaEntryPoints::isAccessibleTableColumnSelected failed");
     return FALSE;
 }
 
@@ -2769,8 +2770,8 @@ AccessBridgeJavaEntryPoints::getAccessibleTableColumnSelections(jobject accessib
                                                                 jint *selections) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::getAccessibleTableColumnSelections(%p, %d, %p)",
-                     accessibleTable, count, selections);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTableColumnSelections(%p, %ld, %p):",
+                     accessibleTable, long{ count }, selections);
 
     if (getAccessibleTableColumnSelectionsMethod == nullptr) {
         return FALSE;
@@ -2782,12 +2783,12 @@ AccessBridgeJavaEntryPoints::getAccessibleTableColumnSelections(jobject accessib
                                               getAccessibleTableColumnSelectionsMethod,
                                               accessibleTable,
                                               i);
-        EXCEPTION_CHECK("##### Getting AccessibleTableColumnSelections - call to CallIntMethod()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleTableColumnSelections - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### table Column selection[%d] = %d", i, selections[i]);
+        PrintDebugString("[INFO]:   table Column selection[%d] = %ld", i, long{ selections[i] });
     }
 
-    PrintDebugString("[INFO]:   ##### AccessBridgeJavaEntryPoints::getAccessibleTableColumnSelections succeeded");
+    PrintDebugString("[INFO]:   AccessBridgeJavaEntryPoints::getAccessibleTableColumnSelections succeeded");
     return TRUE;
 }
 
@@ -2796,23 +2797,23 @@ jint
 AccessBridgeJavaEntryPoints::getAccessibleTableRow(jobject accessibleTable, jint index) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::getAccessibleTableRow(%p, index=%d)",
-                     accessibleTable, index);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTableRow(%p, index=%ld):",
+                     accessibleTable, long{ index });
 
     if (getAccessibleTableRowMethod != nullptr) {
         const jint result = jniEnv->CallIntMethod(accessBridgeObject,
                                                   getAccessibleTableRowMethod,
                                                   accessibleTable, index);
-        EXCEPTION_CHECK("##### Getting AccessibleTableRow - call to CallIntMethod()", 0);
+        EXCEPTION_CHECK("Getting AccessibleTableRow - call to CallIntMethod()", 0);
 
-        PrintDebugString("[INFO]:   ##### table row = %d", result);
+        PrintDebugString("[INFO]:   table row = %ld", long{ result });
         return result;
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTableRowMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTableRowMethod == 0");
         return -1;
     }
 
-    PrintDebugString("[ERROR]:   ##### AccessBridgeJavaEntryPoints::getAccessibleTableRow failed");
+    PrintDebugString("[ERROR]:   AccessBridgeJavaEntryPoints::getAccessibleTableRow failed");
     return -1;
 }
 
@@ -2820,23 +2821,23 @@ jint
 AccessBridgeJavaEntryPoints::getAccessibleTableColumn(jobject accessibleTable, jint index) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::getAccessibleTableColumn(%p, index=%d)",
-                     accessibleTable, index);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTableColumn(%p, index=%ld):",
+                     accessibleTable, long{ index });
 
     if (getAccessibleTableColumnMethod != nullptr) {
         const jint result = jniEnv->CallIntMethod(accessBridgeObject,
                                                   getAccessibleTableColumnMethod,
                                                   accessibleTable, index);
-        EXCEPTION_CHECK("##### Getting AccessibleTableColumn - call to CallIntMethod()", 0);
+        EXCEPTION_CHECK("Getting AccessibleTableColumn - call to CallIntMethod()", 0);
 
-        PrintDebugString("[INFO]:   ##### table column = %d", result);
+        PrintDebugString("[INFO]:   table column = %ld", long{ result });
         return result;
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTableColumnMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTableColumnMethod == 0");
         return -1;
     }
 
-    PrintDebugString("[ERROR]:   ##### AccessBridgeJavaEntryPoints::getAccessibleTableColumn failed");
+    PrintDebugString("[ERROR]:   AccessBridgeJavaEntryPoints::getAccessibleTableColumn failed");
     return -1;
 }
 
@@ -2844,23 +2845,23 @@ jint
 AccessBridgeJavaEntryPoints::getAccessibleTableIndex(jobject accessibleTable, jint row, jint column) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::getAccessibleTableIndex(%p, row=%d, col=%d)",
-                     accessibleTable, row, column);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTableIndex(%p, row=%ld, col=%ld):",
+                     accessibleTable, long{ row }, long{ column });
 
     if (getAccessibleTableIndexMethod != nullptr) {
         const jint result = jniEnv->CallIntMethod(accessBridgeObject,
                                                   getAccessibleTableIndexMethod,
                                                   accessibleTable, row, column);
-        EXCEPTION_CHECK("##### Getting getAccessibleTableIndex - call to CallIntMethod()", 0);
+        EXCEPTION_CHECK("Getting getAccessibleTableIndex - call to CallIntMethod()", 0);
 
-        PrintDebugString("[INFO]:   ##### table index = %d", result);
+        PrintDebugString("[INFO]:   table index = %ld", long{ result });
         return result;
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTableIndexMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTableIndexMethod == 0");
         return -1;
     }
 
-    PrintDebugString("[ERROR]:   ##### AccessBridgeJavaEntryPoints::getAccessibleTableIndex failed");
+    PrintDebugString("[ERROR]:   AccessBridgeJavaEntryPoints::getAccessibleTableIndex failed");
     return -1;
 }
 
@@ -2874,7 +2875,7 @@ AccessBridgeJavaEntryPoints::getAccessibleRelationSet(jobject accessibleContext,
                                                       AccessibleRelationSetInfo *relationSet) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::getAccessibleRelationSet(%p, %p)",
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleRelationSet(%p, %p):",
                      accessibleContext, relationSet);
 
     if (getAccessibleRelationCountMethod       == nullptr ||
@@ -2888,9 +2889,9 @@ AccessBridgeJavaEntryPoints::getAccessibleRelationSet(jobject accessibleContext,
     relationSet->relationCount = jniEnv->CallIntMethod(accessBridgeObject,
                                                        getAccessibleRelationCountMethod,
                                                        accessibleContext);
-    EXCEPTION_CHECK("##### Getting AccessibleRelationCount - call to CallIntMethod()", FALSE);
+    EXCEPTION_CHECK("Getting AccessibleRelationCount - call to CallIntMethod()", FALSE);
 
-    PrintDebugString("[INFO]:   ##### AccessibleRelation count = %d", relationSet->relationCount);
+    PrintDebugString("[INFO]:   AccessibleRelation count = %ld", long{ relationSet->relationCount });
 
     // Get the relation set
     for (int i = 0; i < relationSet->relationCount && i < MAX_RELATIONS; i++) {
@@ -2921,7 +2922,7 @@ AccessBridgeJavaEntryPoints::getAccessibleRelationSet(jobject accessibleContext,
             //                        decrementReferenceMethod, js);
             //EXCEPTION_CHECK("Getting AccessibleRelation key - call to CallVoidMethod()", FALSE);
 
-            PrintDebugString("[INFO]: ##### AccessibleRelation key = %ls", relationSet->relations[i].key );
+            PrintDebugString("[INFO]:   AccessibleRelation key = \"%ls\"", relationSet->relations[i].key );
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting AccessibleRelation key - call to DeleteLocalRef()", FALSE);
@@ -2948,7 +2949,7 @@ AccessBridgeJavaEntryPoints::getAccessibleRelationSet(jobject accessibleContext,
         }
     }
 
-    PrintDebugString("[INFO]:   ##### AccessBridgeJavaEntryPoints::getAccessibleRelationSet succeeded");
+    PrintDebugString("[INFO]:   AccessBridgeJavaEntryPoints::getAccessibleRelationSet succeeded");
     return TRUE;
 }
 
@@ -2964,23 +2965,23 @@ AccessBridgeJavaEntryPoints::getAccessibleHypertext(jobject accessibleContext,
     jthrowable exception;
     jsize length;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::getAccessibleHypertext(%p, %p)",
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleHypertext(%p, %p):",
                      accessibleContext, hypertext);
 
     // get the AccessibleHypertext
     const jobject ht = jniEnv->CallObjectMethod(accessBridgeObject,
                                                 getAccessibleHypertextMethod,
                                                 accessibleContext);
-    EXCEPTION_CHECK("##### Getting AccessibleHypertext - call to CallObjectMethod()", FALSE);
+    EXCEPTION_CHECK("Getting AccessibleHypertext - call to CallObjectMethod()", FALSE);
 
     const jobject globalRef = jniEnv->NewGlobalRef(ht);
-    EXCEPTION_CHECK("##### Getting AccessibleHypertext - call to NewGlobalRef()", FALSE);
+    EXCEPTION_CHECK("Getting AccessibleHypertext - call to NewGlobalRef()", FALSE);
 
     hypertext->accessibleHypertext = (JOBJECT64)globalRef;
-    PrintDebugString("[INFO]:   ##### AccessibleHypertext = %p", globalRef);
+    PrintDebugString("[INFO]:   AccessibleHypertext = %p", globalRef);
 
     if (hypertext->accessibleHypertext == 0) {
-        PrintDebugString("[WARN]:   ##### null AccessibleHypertext; returning FALSE");
+        PrintDebugString("[WARN]:   null AccessibleHypertext; returning FALSE");
         return false;
     }
 
@@ -2988,8 +2989,8 @@ AccessBridgeJavaEntryPoints::getAccessibleHypertext(jobject accessibleContext,
     hypertext->linkCount = jniEnv->CallIntMethod(accessBridgeObject,
                                                  getAccessibleHyperlinkCountMethod,accessibleContext);
 
-    EXCEPTION_CHECK("##### Getting hyperlink count - call to CallIntMethod()", FALSE);
-    PrintDebugString("[INFO]:   ##### hyperlink count = %d", hypertext->linkCount);
+    EXCEPTION_CHECK("Getting hyperlink count - call to CallIntMethod()", FALSE);
+    PrintDebugString("[INFO]:   hyperlink count = %ld", long{ hypertext->linkCount });
 
     // get the hypertext links
     for (int i = 0; i < hypertext->linkCount && i < MAX_HYPERLINKS; i++) {
@@ -2998,13 +2999,13 @@ AccessBridgeJavaEntryPoints::getAccessibleHypertext(jobject accessibleContext,
                                                     getAccessibleHyperlinkMethod,
                                                     accessibleContext,
                                                     i);
-        EXCEPTION_CHECK("##### Getting AccessibleHyperlink - call to CallObjectMethod()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleHyperlink - call to CallObjectMethod()", FALSE);
 
         const jobject globalRef = jniEnv->NewGlobalRef(hl);
-        EXCEPTION_CHECK("##### Getting AccessibleHyperlink - call to NewGlobalRef()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleHyperlink - call to NewGlobalRef()", FALSE);
 
         hypertext->links[i].accessibleHyperlink = (JOBJECT64)globalRef;
-        PrintDebugString("[INFO]:   ##### AccessibleHyperlink = %p", globalRef);
+        PrintDebugString("[INFO]:   AccessibleHyperlink = %p", globalRef);
 
         // get the hyperlink text
         const jstring js = (jstring)jniEnv->CallObjectMethod(accessBridgeObject,
@@ -3034,7 +3035,7 @@ AccessBridgeJavaEntryPoints::getAccessibleHypertext(jobject accessibleContext,
             //                                     decrementReferenceMethod, js);
             //EXCEPTION_CHECK("Getting AccessibleHyperlink text - call to CallVoidMethod()", FALSE);
 
-            PrintDebugString("[INFO]: ##### AccessibleHyperlink text = %ls", hypertext->links[i].text);
+            PrintDebugString("[INFO]:   AccessibleHyperlink text = \"%ls\"", hypertext->links[i].text);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting AccessibleHyperlink text - call to DeleteLocalRef()", FALSE);
@@ -3047,20 +3048,20 @@ AccessBridgeJavaEntryPoints::getAccessibleHypertext(jobject accessibleContext,
                                                                getAccessibleHyperlinkStartIndexMethod,
                                                                hypertext->links[i].accessibleHyperlink,
                                                                i);
-        EXCEPTION_CHECK("##### Getting hyperlink start index - call to CallIntMethod()", FALSE);
+        EXCEPTION_CHECK("Getting hyperlink start index - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### hyperlink start index = %d", hypertext->links[i].startIndex);
+        PrintDebugString("[INFO]:   hyperlink start index = %ld", long{ hypertext->links[i].startIndex });
 
         hypertext->links[i].endIndex = jniEnv->CallIntMethod(accessBridgeObject,
                                                              getAccessibleHyperlinkEndIndexMethod,
                                                              hypertext->links[i].accessibleHyperlink,
                                                              i);
-        EXCEPTION_CHECK("##### Getting hyperlink end index - call to CallIntMethod()", FALSE);
+        EXCEPTION_CHECK("Getting hyperlink end index - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### hyperlink end index = %d", hypertext->links[i].endIndex);
+        PrintDebugString("[INFO]:   hyperlink end index = %ld", long{ hypertext->links[i].endIndex });
     }
 
-    PrintDebugString("[INFO]:   ##### AccessBridgeJavaEntryPoints::getAccessibleHypertext succeeded");
+    PrintDebugString("[INFO]:   AccessBridgeJavaEntryPoints::getAccessibleHypertext succeeded");
     return TRUE;
 }
 
@@ -3073,7 +3074,7 @@ AccessBridgeJavaEntryPoints::activateAccessibleHyperlink(jobject accessibleConte
 
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::activateAccessibleHyperlink(%p, %p):",
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::activateAccessibleHyperlink(%p, %p):",
                      accessibleContext, accessibleHyperlink);
 
     if (activateAccessibleHyperlinkMethod != nullptr) {
@@ -3081,9 +3082,11 @@ AccessBridgeJavaEntryPoints::activateAccessibleHyperlink(jobject accessibleConte
                                                              accessibleContext, accessibleHyperlink);
         EXCEPTION_CHECK("activateAccessibleHyperlink - call to CallBooleanMethod()", FALSE);
 
+        PrintDebugString("[INFO]:   returning %d", int{ returnVal });
+
         return (returnVal == JNI_TRUE) ? TRUE : FALSE;
     } else {
-        PrintDebugString("[ERROR]: either jniEnv == 0 or activateAccessibleHyperlinkMethod == 0");
+        PrintDebugString("[ERROR]:   either jniEnv == 0 or activateAccessibleHyperlinkMethod == 0");
         return FALSE;
     }
 }
@@ -3102,31 +3105,31 @@ AccessBridgeJavaEntryPoints::getAccessibleHypertextExt(const jobject accessibleC
                                                        /* OUT */ AccessibleHypertextInfo *hypertext) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::getAccessibleHypertextExt(%p, %p, startIndex = %d)",
-                     accessibleContext, hypertext, nStartIndex);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleHypertextExt(%p, startIndex=%ld, %p):",
+                     accessibleContext, long{ nStartIndex }, hypertext);
 
     // get the AccessibleHypertext
     const jobject ht = jniEnv->CallObjectMethod(accessBridgeObject, getAccessibleHypertextMethod, accessibleContext);
-    EXCEPTION_CHECK("##### Getting AccessibleHypertext - call to CallObjectMethod()", FALSE);
+    EXCEPTION_CHECK("Getting AccessibleHypertext - call to CallObjectMethod()", FALSE);
 
     const jobject globalRef = jniEnv->NewGlobalRef(ht);
-    EXCEPTION_CHECK("##### Getting AccessibleHypertext - call to NewGlobalRef()", FALSE);
+    EXCEPTION_CHECK("Getting AccessibleHypertext - call to NewGlobalRef()", FALSE);
 
     hypertext->accessibleHypertext = (JOBJECT64)globalRef;
 
-    PrintDebugString("[INFO]:   ##### AccessibleHypertext = %p", globalRef);
+    PrintDebugString("[INFO]:   AccessibleHypertext = %p", globalRef);
 
     if (hypertext->accessibleHypertext == NULL) {
-        PrintDebugString("[WARN]:   ##### null AccessibleHypertext; returning FALSE");
+        PrintDebugString("[WARN]:   null AccessibleHypertext; returning FALSE");
         return FALSE;
     }
 
     // get the hyperlink count
     hypertext->linkCount = jniEnv->CallIntMethod(accessBridgeObject, getAccessibleHyperlinkCountMethod,
                                                  accessibleContext);
-    EXCEPTION_CHECK("##### Getting hyperlink count - call to CallIntMethod()", FALSE);
+    EXCEPTION_CHECK("Getting hyperlink count - call to CallIntMethod()", FALSE);
 
-    PrintDebugString("[INFO]:   ##### hyperlink count = %d", hypertext->linkCount);
+    PrintDebugString("[INFO]:   hyperlink count = %ld", long{ hypertext->linkCount });
 
     if (nStartIndex >= hypertext->linkCount) {
         return FALSE;
@@ -3145,13 +3148,13 @@ AccessBridgeJavaEntryPoints::getAccessibleHypertextExt(const jobject accessibleC
                                                     getAccessibleHyperlinkMethod,
                                                     hypertext->accessibleHypertext,
                                                     i);
-        EXCEPTION_CHECK("##### Getting AccessibleHyperlink - call to CallObjectMethod()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleHyperlink - call to CallObjectMethod()", FALSE);
 
         const jobject globalRef = jniEnv->NewGlobalRef(hl);
-        EXCEPTION_CHECK("##### Getting AccessibleHyperlink - call to NewGlobalRef()", FALSE);
+        EXCEPTION_CHECK("Getting AccessibleHyperlink - call to NewGlobalRef()", FALSE);
 
         hypertext->links[bufIndex].accessibleHyperlink = (JOBJECT64)globalRef;
-        PrintDebugString("[INFO]:   ##### AccessibleHyperlink = %p", globalRef);
+        PrintDebugString("[INFO]:   AccessibleHyperlink = %p", globalRef);
 
         // get the hyperlink text
         const jstring js = (jstring)jniEnv->CallObjectMethod(accessBridgeObject,
@@ -3183,7 +3186,7 @@ AccessBridgeJavaEntryPoints::getAccessibleHypertextExt(const jobject accessibleC
             //                        decrementReferenceMethod, js);
             //EXCEPTION_CHECK("Getting AccessibleHyperlink text - call to CallVoidMethod()", FALSE);
 
-            PrintDebugString("[INFO]: ##### AccessibleHyperlink text = %ls", hypertext->links[bufIndex].text);
+            PrintDebugString("[INFO]:   AccessibleHyperlink text = \"%ls\"", hypertext->links[bufIndex].text);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting AccessibleHyperlink text - call to DeleteLocalRef()", FALSE);
@@ -3197,28 +3200,28 @@ AccessBridgeJavaEntryPoints::getAccessibleHypertextExt(const jobject accessibleC
                                                                       getAccessibleHyperlinkStartIndexMethod,
                                                                       hypertext->links[bufIndex].accessibleHyperlink,
                                                                       i);
-        EXCEPTION_CHECK("##### Getting hyperlink start index - call to CallIntMethod()", FALSE);
+        EXCEPTION_CHECK("Getting hyperlink start index - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### hyperlink start index = %d", hypertext->links[bufIndex].startIndex);
+        PrintDebugString("[INFO]:   hyperlink start index = %ld", long{ hypertext->links[bufIndex].startIndex });
 
         hypertext->links[bufIndex].endIndex = jniEnv->CallIntMethod(accessBridgeObject,
                                                                     getAccessibleHyperlinkEndIndexMethod,
                                                                     hypertext->links[bufIndex].accessibleHyperlink,
                                                                     i);
-        EXCEPTION_CHECK("##### Getting hyperlink end index - call to CallIntMethod()", FALSE);
-        PrintDebugString("[INFO]:   ##### hyperlink end index = %d", hypertext->links[bufIndex].endIndex);
+        EXCEPTION_CHECK("Getting hyperlink end index - call to CallIntMethod()", FALSE);
+        PrintDebugString("[INFO]:   hyperlink end index = %ld", long{ hypertext->links[bufIndex].endIndex });
 
         bufIndex++;
     }
 
-    PrintDebugString("[INFO]:   ##### AccessBridgeJavaEntryPoints::getAccessibleHypertextExt succeeded");
+    PrintDebugString("[INFO]:   AccessBridgeJavaEntryPoints::getAccessibleHypertextExt succeeded");
     return TRUE;
 }
 
 jint AccessBridgeJavaEntryPoints::getAccessibleHyperlinkCount(const jobject accessibleContext) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::getAccessibleHyperlinkCount(%X)",
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleHyperlinkCount(%p)",
                      accessibleContext);
 
     if (getAccessibleHyperlinkCountMethod == nullptr) {
@@ -3228,9 +3231,9 @@ jint AccessBridgeJavaEntryPoints::getAccessibleHyperlinkCount(const jobject acce
     // get the hyperlink count
     jint linkCount = jniEnv->CallIntMethod(accessBridgeObject, getAccessibleHyperlinkCountMethod,
                                            accessibleContext);
-    EXCEPTION_CHECK("##### Getting hyperlink count - call to CallIntMethod()", -1);
+    EXCEPTION_CHECK("Getting hyperlink count - call to CallIntMethod()", -1);
 
-    PrintDebugString("[INFO]:   ##### hyperlink count = %d", linkCount);
+    PrintDebugString("[INFO]:   hyperlink count = %ld", long{ linkCount });
 
     return linkCount;
 }
@@ -3240,8 +3243,8 @@ jint AccessBridgeJavaEntryPoints::getAccessibleHypertextLinkIndex(const jobject 
                                                                   const jint nIndex) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::getAccessibleHypertextLinkIndex(%p, index = %d)",
-                     hypertext, nIndex);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleHypertextLinkIndex(%p, index=%ld)",
+                     hypertext, long{ nIndex });
 
     if (getAccessibleHypertextLinkIndexMethod == nullptr) {
         return -1;
@@ -3250,9 +3253,9 @@ jint AccessBridgeJavaEntryPoints::getAccessibleHypertextLinkIndex(const jobject 
     // get the hyperlink index
     jint index = jniEnv->CallIntMethod(accessBridgeObject, getAccessibleHypertextLinkIndexMethod,
                                        hypertext, nIndex);
-    EXCEPTION_CHECK("##### Getting hyperlink index - call to CallIntMethod()", -1);
+    EXCEPTION_CHECK("Getting hyperlink index - call to CallIntMethod()", -1);
 
-    PrintDebugString("[INFO]:   ##### hyperlink index = %d", index);
+    PrintDebugString("[INFO]:   hyperlink index = %ld", long{ index });
 
     return index;
 }
@@ -3263,21 +3266,21 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleHyperlink(jobject hypertext,
     jthrowable exception;
     jsize length;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::getAccessibleHyperlink(%p, index = %d)",
-                     hypertext, index);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleHyperlink(%p, index=%ld, %p)",
+                     hypertext, long{ index }, info);
 
     // get the hyperlink
     const jobject hl = jniEnv->CallObjectMethod(accessBridgeObject,
                                                 getAccessibleHyperlinkMethod,
                                                 hypertext,
                                                 index);
-    EXCEPTION_CHECK("##### Getting AccessibleHyperlink - call to CallObjectMethod()", FALSE);
+    EXCEPTION_CHECK("Getting AccessibleHyperlink - call to CallObjectMethod()", FALSE);
 
     const jobject globalRef = jniEnv->NewGlobalRef(hl);
-    EXCEPTION_CHECK("##### Getting AccessibleHyperlink - call to NewGlobalRef()", FALSE);
+    EXCEPTION_CHECK("Getting AccessibleHyperlink - call to NewGlobalRef()", FALSE);
 
     info->accessibleHyperlink = (JOBJECT64)globalRef;
-    PrintDebugString("[INFO]:   ##### AccessibleHyperlink = %p", globalRef);
+    PrintDebugString("[INFO]:   AccessibleHyperlink = %p", globalRef);
 
     // get the hyperlink text
     const jstring js = (jstring)jniEnv->CallObjectMethod(accessBridgeObject,
@@ -3308,7 +3311,7 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleHyperlink(jobject hypertext,
         //                        decrementReferenceMethod, js);
         //EXCEPTION_CHECK("Getting AccessibleHyperlink text - call to CallVoidMethod()", FALSE);
 
-        PrintDebugString("[INFO]: ##### AccessibleHyperlink text = %ls", info->text);
+        PrintDebugString("[INFO]:   AccessibleHyperlink text = \"%ls\"", info->text);
 
         jniEnv->DeleteLocalRef(js);
         EXCEPTION_CHECK("Getting AccessibleHyperlink text - call to DeleteLocalRef()", FALSE);
@@ -3322,17 +3325,17 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleHyperlink(jobject hypertext,
                                              getAccessibleHyperlinkStartIndexMethod,
                                              info->accessibleHyperlink,
                                              index);
-    EXCEPTION_CHECK("##### Getting hyperlink start index - call to CallIntMethod()", FALSE);
+    EXCEPTION_CHECK("Getting hyperlink start index - call to CallIntMethod()", FALSE);
 
-    PrintDebugString("[INFO]:   ##### hyperlink start index = %d", info->startIndex);
+    PrintDebugString("[INFO]:   hyperlink start index = %ld", long{ info->startIndex });
 
     info->endIndex = jniEnv->CallIntMethod(accessBridgeObject,
                                            getAccessibleHyperlinkEndIndexMethod,
                                            info->accessibleHyperlink,
                                            index);
-    EXCEPTION_CHECK("##### Getting hyperlink end index - call to CallIntMethod()", FALSE);
+    EXCEPTION_CHECK("Getting hyperlink end index - call to CallIntMethod()", FALSE);
 
-    PrintDebugString("[INFO]:   ##### hyperlink end index = %d", info->endIndex);
+    PrintDebugString("[INFO]:   hyperlink end index = %ld", long{ info->endIndex });
 
     return TRUE;
 }
@@ -3345,7 +3348,7 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleKeyBindings(jobject accessibleCon
                                                            AccessibleKeyBindings *keyBindings) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::getAccessibleKeyBindings(%p, %p)",
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleKeyBindings(%p, %p):",
                      accessibleContext, keyBindings);
 
     if (getAccessibleKeyBindingsCountMethod    == nullptr ||
@@ -3357,9 +3360,9 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleKeyBindings(jobject accessibleCon
     // get the key binding count
     keyBindings->keyBindingsCount = jniEnv->CallIntMethod(accessBridgeObject,
                                                           getAccessibleKeyBindingsCountMethod, accessibleContext);
-    EXCEPTION_CHECK("##### Getting key bindings count - call to CallIntMethod()", FALSE);
+    EXCEPTION_CHECK("Getting key bindings count - call to CallIntMethod()", FALSE);
 
-    PrintDebugString("[INFO]:   ##### key bindings count = %d", keyBindings->keyBindingsCount);
+    PrintDebugString("[INFO]:   key bindings count = %d", keyBindings->keyBindingsCount);
 
     // get the key bindings
     for (int i = 0; i < keyBindings->keyBindingsCount && i < MAX_KEY_BINDINGS; i++) {
@@ -3368,20 +3371,20 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleKeyBindings(jobject accessibleCon
                                                                           getAccessibleKeyBindingCharMethod,
                                                                           accessibleContext,
                                                                           i);
-        EXCEPTION_CHECK("##### Getting key binding character - call to CallCharMethod()", FALSE);
+        EXCEPTION_CHECK("Getting key binding character - call to CallCharMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### key binding character = %c"\
-                         "          ##### key binding character in hex = %hx"\
-                         , keyBindings->keyBindingInfo[i].character, keyBindings->keyBindingInfo[i].character);
+        PrintDebugString("[INFO]:   key binding character = '%c'"\
+                                 "; key binding character in hex = %x"\
+                         , int{ keyBindings->keyBindingInfo[i].character }, unsigned{ keyBindings->keyBindingInfo[i].character });
 
         // get the key binding modifiers
         keyBindings->keyBindingInfo[i].modifiers = jniEnv->CallIntMethod(accessBridgeObject,
                                                                          getAccessibleKeyBindingModifiersMethod,
                                                                          accessibleContext,
                                                                          i);
-        EXCEPTION_CHECK("##### Getting key binding modifiers - call to CallIntMethod()", FALSE);
+        EXCEPTION_CHECK("Getting key binding modifiers - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:  ##### key binding modifiers = %x", keyBindings->keyBindingInfo[i].modifiers);
+        PrintDebugString("[INFO]:   key binding modifiers = %lx", long{ keyBindings->keyBindingInfo[i].modifiers });
     }
 
     return FALSE;
@@ -3392,14 +3395,14 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleIcons(jobject accessibleContext,
                                                      AccessibleIcons *icons) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::getAccessibleIcons(%p, %p)",
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleIcons(%p, %p):",
                      accessibleContext, icons);
 
     if (getAccessibleIconsCountMethod      == nullptr ||
         getAccessibleIconDescriptionMethod == nullptr ||
         getAccessibleIconHeightMethod      == nullptr ||
         getAccessibleIconWidthMethod       == nullptr) {
-        PrintDebugString("[WARN]:   ##### missing method(s) !!!");
+        PrintDebugString("[ERROR]:   missing method(s) !!!");
         return FALSE;
     }
 
@@ -3407,9 +3410,9 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleIcons(jobject accessibleContext,
     // get the icons count
     icons->iconsCount = jniEnv->CallIntMethod(accessBridgeObject,
                                               getAccessibleIconsCountMethod, accessibleContext);
-    EXCEPTION_CHECK("##### Getting icons count - call to CallIntMethod()", FALSE);
+    EXCEPTION_CHECK("Getting icons count - call to CallIntMethod()", FALSE);
 
-    PrintDebugString("[INFO]:   ##### icons count = %d", icons->iconsCount);
+    PrintDebugString("[INFO]:   icons count = %ld", long{ icons->iconsCount });
 
     // get the icons
     for (int i = 0; i < icons->iconsCount && i < MAX_ICON_INFO; i++) {
@@ -3443,7 +3446,7 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleIcons(jobject accessibleContext,
             //                        decrementReferenceMethod, js);
             //EXCEPTION_CHECK("Getting AccessibleIcon description - call to CallVoidMethod()", FALSE);
 
-            PrintDebugString("[INFO]: ##### AccessibleIcon description = %ls", icons->iconInfo[i].description );
+            PrintDebugString("[INFO]:   AccessibleIcon description = \"%ls\"", icons->iconInfo[i].description);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting AccessibleIcon description - call to DeleteLocalRef()", FALSE);
@@ -3457,18 +3460,18 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleIcons(jobject accessibleContext,
                                                           getAccessibleIconHeightMethod,
                                                           accessibleContext,
                                                           i);
-        EXCEPTION_CHECK("##### Getting icon height - call to CallIntMethod()", FALSE);
+        EXCEPTION_CHECK("Getting icon height - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### icon height = %d", icons->iconInfo[i].height);
+        PrintDebugString("[INFO]:   icon height = %d", icons->iconInfo[i].height);
 
         // get the icon width
         icons->iconInfo[i].width = jniEnv->CallIntMethod(accessBridgeObject,
                                                          getAccessibleIconWidthMethod,
                                                          accessibleContext,
                                                          i);
-        EXCEPTION_CHECK("##### Getting icon width - call to CallIntMethod()", FALSE);
+        EXCEPTION_CHECK("Getting icon width - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   ##### icon width = %d", icons->iconInfo[i].width);
+        PrintDebugString("[INFO]:   icon width = %d", icons->iconInfo[i].width);
     }
 
     return FALSE;
@@ -3480,12 +3483,12 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleActions(jobject accessibleContext
     jthrowable exception;
     jsize length;
 
-    PrintDebugString("[INFO]: ##### AccessBridgeJavaEntryPoints::getAccessibleIcons(%p, %p)",
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleIcons(%p, %p):",
                      accessibleContext, actions);
 
     if (getAccessibleActionsCountMethod == nullptr ||
         getAccessibleActionNameMethod   == nullptr) {
-        PrintDebugString("[WARN]:   ##### missing method(s) !!!");
+        PrintDebugString("[ERROR]:   missing method(s) !!!");
         return FALSE;
     }
 
@@ -3493,9 +3496,9 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleActions(jobject accessibleContext
     // get the icons count
     actions->actionsCount = jniEnv->CallIntMethod(accessBridgeObject,
                                                   getAccessibleActionsCountMethod,accessibleContext);
-    EXCEPTION_CHECK("##### Getting actions count - call to CallIntMethod()", FALSE);
+    EXCEPTION_CHECK("Getting actions count - call to CallIntMethod()", FALSE);
 
-    PrintDebugString("[INFO]:   ##### key actions count = %d", actions->actionsCount);
+    PrintDebugString("[INFO]:   key actions count = %ld", long{ actions->actionsCount });
 
     // get the actions
     for (int i = 0; i < actions->actionsCount && i < MAX_ACTION_INFO; i++) {
@@ -3527,7 +3530,7 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleActions(jobject accessibleContext
             //                        decrementReferenceMethod, js);
             //EXCEPTION_CHECK("Getting AccessibleAction name  - call to CallVoidMethod()", FALSE);
 
-            PrintDebugString("[INFO]: ##### AccessibleAction name  = %ls", actions->actionInfo[i].name);
+            PrintDebugString("[INFO]:   AccessibleAction name  = \"%ls\"", actions->actionInfo[i].name);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting AccessibleAction name  - call to DeleteLocalRef()", FALSE);
@@ -3544,9 +3547,9 @@ BOOL AccessBridgeJavaEntryPoints::doAccessibleActions(jobject accessibleContext,
                                                       jint *failure) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::doAccessibleActions(%p, #actions %d %s):",
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::doAccessibleActions(%p, #actions %ld \"%ls\"):",
                      accessibleContext,
-                     actionsToDo->actionsCount,
+                     long{ actionsToDo->actionsCount },
                      actionsToDo->actions[0].name);
 
     if (doAccessibleActionsMethod == nullptr) {
@@ -3554,15 +3557,15 @@ BOOL AccessBridgeJavaEntryPoints::doAccessibleActions(jobject accessibleContext,
         return FALSE;
     }
 
-    PrintDebugString("[INFO]:     doing %d actions ...", actionsToDo->actionsCount);
+    PrintDebugString("[INFO]:   doing %ld actions ...", long{ actionsToDo->actionsCount });
     for (int i = 0; i < actionsToDo->actionsCount && i < MAX_ACTIONS_TO_DO; i++) {
-        PrintDebugString("[INFO]:     doing action %d: %s ...", i, actionsToDo->actions[i].name);
+        PrintDebugString("[INFO]:   doing action %d: \"%ls\" ...", i, actionsToDo->actions[i].name);
 
         // create a Java String for the action name
         wchar_t * const actionName = (wchar_t *)actionsToDo->actions[i].name;
         const jstring javaName = jniEnv->NewString(actionName, (jsize)wcslen(actionName));
         if (javaName == nullptr) {
-            PrintDebugString("[ERROR]:     NewString failed");
+            PrintDebugString("[ERROR]:   NewString failed");
             *failure = i;
             return FALSE;
         }
@@ -3575,7 +3578,7 @@ BOOL AccessBridgeJavaEntryPoints::doAccessibleActions(jobject accessibleContext,
         EXCEPTION_CHECK("doAccessibleActions - call to CallBooleanMethod()", FALSE);
 
         if (returnVal != JNI_TRUE) {
-            PrintDebugString("[ERROR]:     Action %d failed", i);
+            PrintDebugString("[ERROR]:   Action %d failed", i);
             *failure = i;
             return FALSE;
         }
@@ -3594,14 +3597,15 @@ AccessBridgeJavaEntryPoints::getAccessibleTextInfo(jobject accessibleContext,
                                                    jint x, jint y) {
     jthrowable exception;
 
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTextInfo(%p, %p, %ld, %ld):",
+                     accessibleContext, textInfo, long{ x }, long{ y });
+
     // Verify the Java VM still exists and AccessibleContext is
     // an instance of AccessibleText
     if (verifyAccessibleText(accessibleContext) == FALSE) {
+        PrintDebugString("[ERROR]:   verifyAccessibleText(accessibleContext) == FALSE.");
         return FALSE;
     }
-
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::getAccessibleTextInfo(%p, %d, %d):",
-                     accessibleContext, x, y);
 
     // Get the character count
     if (getAccessibleCharCountFromContextMethod != nullptr) {
@@ -3610,9 +3614,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTextInfo(jobject accessibleContext,
                                                     accessibleContext);
         EXCEPTION_CHECK("Getting AccessibleCharCount - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   Char count = %d", textInfo->charCount);
+        PrintDebugString("[INFO]:   char count = %ld", long{ textInfo->charCount });
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleCharCountFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleCharCountFromContextMethod == 0");
         return FALSE;
     }
 
@@ -3623,9 +3627,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTextInfo(jobject accessibleContext,
                                                      accessibleContext);
         EXCEPTION_CHECK("Getting AccessibleCaretPosition - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   Index at caret = %d", textInfo->caretIndex);
+        PrintDebugString("[INFO]:   index at caret = %ld", long{ textInfo->caretIndex });
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleCaretPositionFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleCaretPositionFromContextMethod == 0");
         return FALSE;
     }
 
@@ -3640,9 +3644,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTextInfo(jobject accessibleContext,
                                                            accessibleContext, x, y);
             EXCEPTION_CHECK("Getting AccessibleIndexAtPoint - call to CallIntMethod()", FALSE);
         }
-        PrintDebugString("[INFO]:   Index at point = %d", textInfo->indexAtPoint);
+        PrintDebugString("[INFO]:   index at point = %ld", long{ textInfo->indexAtPoint });
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleIndexAtPointFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleIndexAtPointFromContextMethod == 0");
         return FALSE;
     }
 
@@ -3654,7 +3658,8 @@ AccessBridgeJavaEntryPoints::getAccessibleTextItems(jobject accessibleContext,
                                                     AccessibleTextItemsInfo *textItems, jint index) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::getAccessibleTextItems(%p):", accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTextItems(%p, %p, index=%ld):",
+                     accessibleContext, textItems, long{ index });
 
     // Verify the Java VM still exists and AccessibleContext is
     // an instance of AccessibleText
@@ -3682,7 +3687,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextItems(jobject accessibleContext,
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleLetterAtIndex - call to CallVoidMethod()", FALSE);
 
-            PrintDebugString("[INFO]:   Accessible Text letter = %c", textItems->letter);
+            PrintDebugString("[INFO]:   Accessible Text letter = '%c'", int{ textItems->letter });
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting AccessibleLetterAtIndex - call to DeleteLocalRef()", FALSE);
@@ -3691,7 +3696,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextItems(jobject accessibleContext,
             textItems->letter = wchar_t{ 0 };
         }
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleLetterAtIndexFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleLetterAtIndexFromContextMethod == 0");
         return FALSE;
     }
 
@@ -3721,7 +3726,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextItems(jobject accessibleContext,
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleWordAtIndex - call to CallVoidMethod()", FALSE);
 
-            wPrintDebugString(L"[INFO]:   Accessible Text word = %ls", textItems->word);
+            wPrintDebugString(L"[INFO]:   Accessible Text word = \"%ls\"", textItems->word);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting AccessibleWordAtIndex - call to DeleteLocalRef()", FALSE);
@@ -3730,7 +3735,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextItems(jobject accessibleContext,
             textItems->word[0] = wchar_t{ 0 };
         }
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleWordAtIndexFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleWordAtIndexFromContextMethod == 0");
         return FALSE;
     }
 
@@ -3764,7 +3769,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextItems(jobject accessibleContext,
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleSentenceAtIndex - call to CallVoidMethod()", FALSE);
 
-            wPrintDebugString(L"[INFO]:   Accessible Text sentence = %ls", textItems->sentence);
+            wPrintDebugString(L"[INFO]:   Accessible Text sentence = \"%ls\"", textItems->sentence);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting AccessibleSentenceAtIndex - call to DeleteLocalRef()", FALSE);
@@ -3773,7 +3778,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextItems(jobject accessibleContext,
             textItems->sentence[0] = wchar_t{ 0 };
         }
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleSentenceAtIndexFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleSentenceAtIndexFromContextMethod == 0");
         return FALSE;
     }
 
@@ -3785,8 +3790,8 @@ AccessBridgeJavaEntryPoints::getAccessibleTextSelectionInfo(jobject accessibleCo
                                                             AccessibleTextSelectionInfo *selectionInfo) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::getAccessibleTextSelectionInfo(%p):",
-                     accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTextSelectionInfo(%p, %p):",
+                     accessibleContext, selectionInfo);
 
     // Verify the Java VM still exists and AccessibleContext is
     // an instance of AccessibleText
@@ -3801,9 +3806,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTextSelectionInfo(jobject accessibleCo
                                                                    accessibleContext);
         EXCEPTION_CHECK("Getting AccessibleTextSelectionStart - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   Selection start = %d", selectionInfo->selectionStartIndex);
+        PrintDebugString("[INFO]:   Selection start = %ld", long{ selectionInfo->selectionStartIndex });
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleTextSelectionStartFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTextSelectionStartFromContextMethod == 0");
         return FALSE;
     }
 
@@ -3814,9 +3819,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTextSelectionInfo(jobject accessibleCo
                                                                  accessibleContext);
         EXCEPTION_CHECK("Getting AccessibleTextSelectionEnd - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   Selection end = %d", selectionInfo->selectionEndIndex);
+        PrintDebugString("[INFO]:   Selection end = %ld", long{ selectionInfo->selectionEndIndex });
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTextSelectionEndFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTextSelectionEndFromContextMethod == 0");
         return FALSE;
     }
 
@@ -3846,7 +3851,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextSelectionInfo(jobject accessibleCo
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleTextSelectedText - call to CallVoidMethod()", FALSE);
 
-            PrintDebugString("[INFO]:   Accessible's selected text = %s", selectionInfo->selectedText);
+            PrintDebugString("[INFO]:   Accessible's selected text = \"%ls\"", selectionInfo->selectedText);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting AccessibleTextSelectedText - call to DeleteLocalRef()", FALSE);
@@ -3855,7 +3860,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextSelectionInfo(jobject accessibleCo
             selectionInfo->selectedText[0] = wchar_t{ 0 };
         }
     } else {
-        PrintDebugString("[WARN]: either env == 0 or getAccessibleTextSelectedTextFromContextMethod == 0");
+        PrintDebugString("[WARN]:   either env == 0 or getAccessibleTextSelectedTextFromContextMethod == 0");
         return FALSE;
     }
 
@@ -3869,7 +3874,8 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
     jthrowable exception;
     //jsize length;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(%p):", accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(%p, index=%ld, %p):",
+                     accessibleContext, long{ index }, attributes);
 
     // Verify the Java VM still exists and AccessibleContext is
     // an instance of AccessibleText
@@ -3878,7 +3884,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
     }
 
     if (accessibleContext == nullptr) {
-        PrintDebugString("[WARN]:  passed in AccessibleContext == null! (oops)");
+        PrintDebugString("[WARN]:   passed in AccessibleContext == null! (oops)");
 
         attributes->bold = FALSE;
         attributes->italic = FALSE;
@@ -3907,19 +3913,19 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the AttributeSet
     if (getAccessibleAttributeSetAtIndexFromContextMethod != nullptr) {
-        PrintDebugString("[INFO]:  Getting AttributeSet at index...");
+        PrintDebugString("[INFO]:   Getting AttributeSet at index...");
         AttributeSet = jniEnv->CallObjectMethod(accessBridgeObject,
                                                 getAccessibleAttributeSetAtIndexFromContextMethod,
                                                 accessibleContext, index);
         EXCEPTION_CHECK("Getting AccessibleAttributeSetAtIndex - call to CallObjectMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleAttributeSetAtIndexFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleAttributeSetAtIndexFromContextMethod == 0");
         return FALSE;
     }
 
     // It is legal for the AttributeSet object to be null, in which case we return false!
     if (AttributeSet == nullptr) {
-        PrintDebugString("[WARN]:  AttributeSet returned at index is null (this is legal! - see AWT in J2SE 1.3");
+        PrintDebugString("[WARN]:   AttributeSet returned at index is null (this is legal! - see AWT in J2SE 1.3");
 
         attributes->bold = FALSE;
         attributes->italic = FALSE;
@@ -3946,14 +3952,14 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the bold setting
     if (getBoldFromAttributeSetMethod != nullptr) {
-        PrintDebugString("[INFO]:  Getting bold from AttributeSet...");
+        PrintDebugString("[INFO]:   Getting bold from AttributeSet...");
 
         attributes->bold = (jniEnv->CallBooleanMethod(accessBridgeObject,
                                                       getBoldFromAttributeSetMethod,
                                                       AttributeSet) == JNI_TRUE) ? TRUE : FALSE;
         EXCEPTION_CHECK("Getting BoldFromAttributeSet - call to CallBooleanMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getBoldFromAttributeSetMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getBoldFromAttributeSetMethod == 0");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Getting BoldFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -3966,14 +3972,14 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the italic setting
     if (getItalicFromAttributeSetMethod != nullptr) {
-        PrintDebugString("[INFO]:  Getting italic from AttributeSet...");
+        PrintDebugString("[INFO]:   Getting italic from AttributeSet...");
 
         attributes->italic = (jniEnv->CallBooleanMethod(accessBridgeObject,
                                                         getItalicFromAttributeSetMethod,
                                                         AttributeSet) == JNI_TRUE) ? TRUE : FALSE;
         EXCEPTION_CHECK("Getting ItalicFromAttributeSet - call to CallBooleanMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getItalicdFromAttributeSetMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getItalicFromAttributeSetMethod == 0");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Getting ItalicFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -3986,14 +3992,14 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the underline setting
     if (getUnderlineFromAttributeSetMethod != nullptr) {
-        PrintDebugString("[INFO]:  Getting underline from AttributeSet...");
+        PrintDebugString("[INFO]:   Getting underline from AttributeSet...");
 
         attributes->underline = (jniEnv->CallBooleanMethod(accessBridgeObject,
                                                            getUnderlineFromAttributeSetMethod,
                                                            AttributeSet) == JNI_TRUE) ? TRUE : FALSE;
         EXCEPTION_CHECK("Getting UnderlineFromAttributeSet - call to CallBooleanMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getUnderlineFromAttributeSetMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getUnderlineFromAttributeSetMethod == 0");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Getting UnderlineFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4006,14 +4012,14 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the strikethrough setting
     if (getStrikethroughFromAttributeSetMethod != nullptr) {
-        PrintDebugString("[INFO]:  Getting strikethrough from AttributeSet...");
+        PrintDebugString("[INFO]:   Getting strikethrough from AttributeSet...");
 
         attributes->strikethrough = (jniEnv->CallBooleanMethod(accessBridgeObject,
                                                                getStrikethroughFromAttributeSetMethod,
                                                                AttributeSet) == JNI_TRUE) ? TRUE : FALSE;
         EXCEPTION_CHECK("Getting StrikethroughFromAttributeSet - call to CallBooleanMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getStrikethroughFromAttributeSetMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getStrikethroughFromAttributeSetMethod == 0");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Getting StrikethroughFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4026,14 +4032,14 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the superscript setting
     if (getSuperscriptFromAttributeSetMethod != nullptr) {
-        PrintDebugString("[INFO]:  Getting superscript from AttributeSet...");
+        PrintDebugString("[INFO]:   Getting superscript from AttributeSet...");
 
         attributes->superscript = (jniEnv->CallBooleanMethod(accessBridgeObject,
                                                              getSuperscriptFromAttributeSetMethod,
                                                              AttributeSet) == JNI_TRUE) ? TRUE : FALSE;
         EXCEPTION_CHECK("Getting SuperscriptFromAttributeSet - call to CallBooleanMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getSuperscripteFromAttributeSetMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getSuperscriptFromAttributeSetMethod == 0");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Getting SuperscriptFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4046,14 +4052,14 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the subscript setting
     if (getSubscriptFromAttributeSetMethod != nullptr) {
-        PrintDebugString("[INFO]:  Getting subscript from AttributeSet...");
+        PrintDebugString("[INFO]:   Getting subscript from AttributeSet...");
 
         attributes->subscript = (jniEnv->CallBooleanMethod(accessBridgeObject,
                                                            getSubscriptFromAttributeSetMethod,
                                                            AttributeSet) == JNI_TRUE) ? TRUE : FALSE;
         EXCEPTION_CHECK("Getting SubscriptFromAttributeSet - call to CallBooleanMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getSubscriptFromAttributeSetMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getSubscriptFromAttributeSetMethod == 0");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Getting SubscriptFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4066,7 +4072,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the backgroundColor setting
     if (getBackgroundColorFromAttributeSetMethod != nullptr) {
-        PrintDebugString("[INFO]:  Getting backgroundColor from AttributeSet...");
+        PrintDebugString("[INFO]:   Getting backgroundColor from AttributeSet...");
 
         const jstring js = (jstring) jniEnv->CallObjectMethod(accessBridgeObject,
                                                               getBackgroundColorFromAttributeSetMethod,
@@ -4091,7 +4097,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting BackgroundColorFromAttributeSet - call to CallVoidMethod()", FALSE);
 
-            wPrintDebugString(L"[INFO]:   AttributeSet's background color = %ls", attributes->backgroundColor);
+            wPrintDebugString(L"[INFO]:   AttributeSet's background color = \"%ls\"", attributes->backgroundColor);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting BackgroundColorFromAttributeSet - call to DeleteLocalRef()", FALSE);
@@ -4100,7 +4106,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
             attributes->backgroundColor[0] = wchar_t{ 0 };
         }
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getBackgroundColorFromAttributeSetMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getBackgroundColorFromAttributeSetMethod == 0");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Getting BackgroundColorFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4113,7 +4119,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the foregroundColor setting
     if (getForegroundColorFromAttributeSetMethod != nullptr) {
-        PrintDebugString("[INFO]:  Getting foregroundColor from AttributeSet...");
+        PrintDebugString("[INFO]:   Getting foregroundColor from AttributeSet...");
 
         const jstring js = (jstring)jniEnv->CallObjectMethod(accessBridgeObject,
                                                              getForegroundColorFromAttributeSetMethod,
@@ -4138,7 +4144,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting ForegroundColorFromAttributeSet - call to CallVoidMethod()", FALSE);
 
-            wPrintDebugString(L"[INFO]:   AttributeSet's foreground color = %ls", attributes->foregroundColor);
+            wPrintDebugString(L"[INFO]:   AttributeSet's foreground color = \"%ls\"", attributes->foregroundColor);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting ForegroundColorFromAttributeSet - call to DeleteLocalRef()", FALSE);
@@ -4147,7 +4153,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
             attributes->foregroundColor[0] = wchar_t{ 0 };
         }
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getForegroundColorFromAttributeSetMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getForegroundColorFromAttributeSetMethod == 0");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Getting ForegroundColorFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4160,7 +4166,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the fontFamily setting
     if (getFontFamilyFromAttributeSetMethod != nullptr) {
-        PrintDebugString("[INFO]:  Getting fontFamily from AttributeSet...");
+        PrintDebugString("[INFO]:   Getting fontFamily from AttributeSet...");
 
         const jstring js = (jstring)jniEnv->CallObjectMethod(accessBridgeObject,
                                                              getFontFamilyFromAttributeSetMethod,
@@ -4184,7 +4190,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting FontFamilyFromAttributeSet - call to CallVoidMethod()", FALSE);
 
-            wPrintDebugString(L"[INFO]:   AttributeSet's fontFamily = %ls", attributes->fontFamily);
+            wPrintDebugString(L"[INFO]:   AttributeSet's fontFamily = \"%ls\"", attributes->fontFamily);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting FontFamilyFromAttributeSet - call to DeleteLocalRef()", FALSE);
@@ -4193,7 +4199,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
             attributes->backgroundColor[0] = wchar_t{ 0 };
         }
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getFontFamilyFromAttributeSetMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getFontFamilyFromAttributeSetMethod == 0");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Getting FontFamilyFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4206,16 +4212,16 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the font size
     if (getFontSizeFromAttributeSetMethod != nullptr) {
-        PrintDebugString("[INFO]:  Getting font size from AttributeSet...");
+        PrintDebugString("[INFO]:   Getting font size from AttributeSet...");
 
         attributes->fontSize = jniEnv->CallIntMethod(accessBridgeObject,
                                                      getFontSizeFromAttributeSetMethod,
                                                      AttributeSet);
         EXCEPTION_CHECK("Getting FontSizeFromAttributeSet - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   AttributeSet's font size = %d", attributes->fontSize);
+        PrintDebugString("[INFO]:   AttributeSet's font size = %ld", long{ attributes->fontSize });
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAlignmentFromAttributeSetMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAlignmentFromAttributeSetMethod == 0");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Getting FontSizeFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4228,14 +4234,14 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the alignment setting
     if (getAlignmentFromAttributeSetMethod != nullptr) {
-        PrintDebugString(" Getting alignment from AttributeSet...");
+        PrintDebugString("[INFO]:   Getting alignment from AttributeSet...");
 
         attributes->alignment = jniEnv->CallIntMethod(accessBridgeObject,
                                                       getAlignmentFromAttributeSetMethod,
                                                       AttributeSet);
         EXCEPTION_CHECK("Getting AlignmentFromAttributeSet - call to CallIntMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAlignmentFromAttributeSetMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAlignmentFromAttributeSetMethod == 0");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Getting AlignmentFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4248,14 +4254,14 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the bidiLevel setting
     if (getBidiLevelFromAttributeSetMethod != nullptr) {
-        PrintDebugString("[INFO]:  Getting bidiLevel from AttributeSet...");
+        PrintDebugString("[INFO]:   Getting bidiLevel from AttributeSet...");
 
         attributes->bidiLevel = jniEnv->CallIntMethod(accessBridgeObject,
                                                       getBidiLevelFromAttributeSetMethod,
                                                       AttributeSet);
         EXCEPTION_CHECK("Getting BidiLevelFromAttributeSet - call to CallIntMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getBidiLevelFromAttributeSetMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getBidiLevelFromAttributeSetMethod == 0");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Getting BidiLevelFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4268,14 +4274,14 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the firstLineIndent setting
     if (getFirstLineIndentFromAttributeSetMethod != nullptr) {
-        PrintDebugString("[ERROR]:  Getting firstLineIndent from AttributeSet...");
+        PrintDebugString("[ERROR]:   Getting firstLineIndent from AttributeSet...");
 
         attributes->firstLineIndent = jniEnv->CallFloatMethod(accessBridgeObject,
                                                               getFirstLineIndentFromAttributeSetMethod,
                                                               AttributeSet);
         EXCEPTION_CHECK("Getting FirstLineIndentFromAttributeSet - call to CallIntMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getFirstLineIndentFromAttributeSetMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getFirstLineIndentFromAttributeSetMethod == 0");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Getting FirstLineIndentFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4288,14 +4294,14 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the leftIndent setting
     if (getLeftIndentFromAttributeSetMethod != nullptr) {
-        PrintDebugString("[INFO]:  Getting leftIndent from AttributeSet...");
+        PrintDebugString("[INFO]:   Getting leftIndent from AttributeSet...");
 
         attributes->leftIndent = jniEnv->CallFloatMethod(accessBridgeObject,
                                                          getLeftIndentFromAttributeSetMethod,
                                                          AttributeSet);
         EXCEPTION_CHECK("Getting LeftIndentFromAttributeSet - call to CallIntMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getLeftIndentFromAttributeSetMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getLeftIndentFromAttributeSetMethod == 0");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Getting LeftIndentFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4308,14 +4314,14 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the rightIndent setting
     if (getRightIndentFromAttributeSetMethod != nullptr) {
-        PrintDebugString("[INFO]:  Getting rightIndent from AttributeSet...");
+        PrintDebugString("[INFO]:   Getting rightIndent from AttributeSet...");
 
         attributes->rightIndent = jniEnv->CallFloatMethod(accessBridgeObject,
                                                           getRightIndentFromAttributeSetMethod,
                                                           AttributeSet);
         EXCEPTION_CHECK("Getting RightIndentFromAttributeSet - call to CallIntMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getRightIndentFromAttributeSetMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getRightIndentFromAttributeSetMethod == 0");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Getting RightIndentFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4328,14 +4334,14 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the lineSpacing setting
     if (getLineSpacingFromAttributeSetMethod != nullptr) {
-        PrintDebugString("[INFO]:  Getting lineSpacing from AttributeSet...");
+        PrintDebugString("[INFO]:   Getting lineSpacing from AttributeSet...");
 
         attributes->lineSpacing = jniEnv->CallFloatMethod(accessBridgeObject,
                                                           getLineSpacingFromAttributeSetMethod,
                                                           AttributeSet);
         EXCEPTION_CHECK("Getting LineSpacingFromAttributeSet - call to CallIntMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getLineSpacingFromAttributeSetMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getLineSpacingFromAttributeSetMethod == 0");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Getting LineSpacingFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4348,14 +4354,14 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the spaceAbove setting
     if (getSpaceAboveFromAttributeSetMethod != nullptr) {
-        PrintDebugString("[INFO]:  Getting spaceAbove from AttributeSet...");
+        PrintDebugString("[INFO]:   Getting spaceAbove from AttributeSet...");
 
         attributes->spaceAbove = jniEnv->CallFloatMethod(accessBridgeObject,
                                                          getSpaceAboveFromAttributeSetMethod,
                                                          AttributeSet);
         EXCEPTION_CHECK("Getting SpaceAboveFromAttributeSet - call to CallIntMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getSpaceAboveFromAttributeSetMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getSpaceAboveFromAttributeSetMethod == 0");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Getting SpaceAboveFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4368,14 +4374,14 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the spaceBelow setting
     if (getSpaceBelowFromAttributeSetMethod != nullptr) {
-        PrintDebugString("[INFO]:  Getting spaceBelow from AttributeSet...");
+        PrintDebugString("[INFO]:   Getting spaceBelow from AttributeSet...");
 
         attributes->spaceBelow = jniEnv->CallFloatMethod(accessBridgeObject,
                                                          getSpaceBelowFromAttributeSetMethod,
                                                          AttributeSet);
         EXCEPTION_CHECK("Getting SpaceBelowFromAttributeSet - call to CallIntMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getSpaceBelowFromAttributeSetMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getSpaceBelowFromAttributeSetMethod == 0");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Getting SpaceBelowFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4388,12 +4394,12 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Release the AttributeSet object
     if (decrementReferenceMethod != nullptr) {
-        PrintDebugString("[INFO]:  Decrementing reference to AttributeSet...");
+        PrintDebugString("[INFO]:   Decrementing reference to AttributeSet...");
 
         jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, AttributeSet);
         EXCEPTION_CHECK("Releasing AttributeSet object - call to CallVoidMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or accessBridgeObject == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or accessBridgeObject == 0");
 
         jniEnv->DeleteLocalRef(AttributeSet);
         EXCEPTION_CHECK("Releasing AttributeSet object - call to DeleteLocalRef()", FALSE);
@@ -4403,14 +4409,14 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
 
     // Get the full attributes string at index
     if (getAccessibleAttributesAtIndexFromContextMethod != nullptr) {
-        PrintDebugString("[INFO]:  Getting full attributes string from Context...");
+        PrintDebugString("[INFO]:   Getting full attributes string from Context...");
 
         const jstring js = (jstring)jniEnv->CallObjectMethod(accessBridgeObject,
                                                              getAccessibleAttributesAtIndexFromContextMethod,
                                                              accessibleContext, index);
         EXCEPTION_CHECK("Getting AccessibleAttributesAtIndex - call to CallObjectMethod()", FALSE);
 
-        PrintDebugString("[INFO]:  returned from CallObjectMethod(), js = %p", js);
+        PrintDebugString("[INFO]:   returned from CallObjectMethod(), js = %p", js);
 
         if (js != nullptr) {
             const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
@@ -4430,7 +4436,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleAttributesAtIndex - call to CallVoidMethod()", FALSE);
 
-            wPrintDebugString(L"[INFO]:   Accessible Text attributes = %ls", attributes->fullAttributesString);
+            wPrintDebugString(L"[INFO]:   Accessible Text attributes = \"%ls\"", attributes->fullAttributesString);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting AccessibleAttributesAtIndex - call to DeleteLocalRef()", FALSE);
@@ -4445,7 +4451,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
             return FALSE;
         }
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleAttributesAtIndexFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleAttributesAtIndexFromContextMethod == 0");
 
         jniEnv->DeleteLocalRef(AttributeSet);
         return FALSE;
@@ -4461,8 +4467,8 @@ BOOL
 AccessBridgeJavaEntryPoints::getAccessibleTextRect(jobject accessibleContext, AccessibleTextRectInfo *rectInfo, jint index) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::getAccessibleTextRect(%p), index = %d",
-                     accessibleContext, index);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTextRect(%p, %p, index=%ld):",
+                     accessibleContext, rectInfo, long{ index });
 
     // Verify the Java VM still exists and AccessibleContext is
     // an instance of AccessibleText
@@ -4477,9 +4483,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTextRect(jobject accessibleContext, Ac
                                             accessibleContext, index);
         EXCEPTION_CHECK("Getting AccessibleXcoordTextRect - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:  X coord = %d", rectInfo->x);
+        PrintDebugString("[INFO]:   x coord = %ld", long{ rectInfo->x });
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleXcoordTextRectAtIndexFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleXcoordTextRectAtIndexFromContextMethod == 0");
         return FALSE;
     }
 
@@ -4490,9 +4496,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTextRect(jobject accessibleContext, Ac
                                             accessibleContext, index);
         EXCEPTION_CHECK("Getting AccessibleYcoordTextRect - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   Y coord = %d", rectInfo->y);
+        PrintDebugString("[INFO]:   y coord = %ld", long{ rectInfo->y });
     } else {
-        PrintDebugString("[INFO]:  either env == 0 or getAccessibleYcoordTextRectAtIndexFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleYcoordTextRectAtIndexFromContextMethod == 0");
         return FALSE;
     }
 
@@ -4503,9 +4509,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTextRect(jobject accessibleContext, Ac
                                                 accessibleContext, index);
         EXCEPTION_CHECK("Getting AccessibleWidthTextRect - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]: Width = %d", rectInfo->width);
+        PrintDebugString("[INFO]:   width = %ld", long{ rectInfo->width });
     } else {
-        PrintDebugString("[INFO]: either env == 0 or getAccessibleWidthTextRectAtIndexFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleWidthTextRectAtIndexFromContextMethod == 0");
         return FALSE;
     }
 
@@ -4516,9 +4522,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTextRect(jobject accessibleContext, Ac
                                                  accessibleContext, index);
         EXCEPTION_CHECK("Getting AccessibleHeightTextRect - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]: Height = %d", rectInfo->height);
+        PrintDebugString("[INFO]:   height = %ld", long{ rectInfo->height });
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleHeightTextRectAtIndexFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleHeightTextRectAtIndexFromContextMethod == 0");
         return FALSE;
     }
 
@@ -4534,8 +4540,8 @@ BOOL
 AccessBridgeJavaEntryPoints::getCaretLocation(jobject accessibleContext, AccessibleTextRectInfo *rectInfo, jint index) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::getCaretLocation(%p), index = %d",
-                     accessibleContext, index);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getCaretLocation(%p, %p, index=%ld):",
+                     accessibleContext, rectInfo, long{ index });
 
     // Verify the Java VM still exists and AccessibleContext is
     // an instance of AccessibleText
@@ -4550,9 +4556,9 @@ AccessBridgeJavaEntryPoints::getCaretLocation(jobject accessibleContext, Accessi
                                             accessibleContext, index);
         EXCEPTION_CHECK("Getting caret X coordinate - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   X coord = %d", rectInfo->x);
+        PrintDebugString("[INFO]:   x coord = %ld", long{ rectInfo->x });
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getCaretLocationXMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getCaretLocationXMethod == 0");
         return FALSE;
     }
 
@@ -4563,9 +4569,9 @@ AccessBridgeJavaEntryPoints::getCaretLocation(jobject accessibleContext, Accessi
                                             accessibleContext, index);
         EXCEPTION_CHECK("Getting caret Y coordinate - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   Y coord = %d", rectInfo->y);
+        PrintDebugString("[INFO]:   y coord = %ld", long{ rectInfo->y });
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getCaretLocationYMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getCaretLocationYMethod == 0");
         return FALSE;
     }
 
@@ -4576,9 +4582,9 @@ AccessBridgeJavaEntryPoints::getCaretLocation(jobject accessibleContext, Accessi
                                                 accessibleContext, index);
         EXCEPTION_CHECK("Getting caret width - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   Width = %d", rectInfo->width);
+        PrintDebugString("[INFO]:   width = %ld", long{ rectInfo->width });
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getCaretLocationWidthMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getCaretLocationWidthMethod == 0");
         return FALSE;
     }
 
@@ -4589,9 +4595,9 @@ AccessBridgeJavaEntryPoints::getCaretLocation(jobject accessibleContext, Accessi
                                                  accessibleContext, index);
         EXCEPTION_CHECK("Getting caret height - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   Height = %d", rectInfo->height);
+        PrintDebugString("[INFO]:   height = %ld", long{ rectInfo->height });
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getCaretLocationHeightMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getCaretLocationHeightMethod == 0");
         return FALSE;
     }
 
@@ -4605,7 +4611,8 @@ AccessBridgeJavaEntryPoints::getAccessibleTextLineBounds(jobject accessibleConte
 
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::getAccessibleTextLineBounds(%p):", accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTextLineBounds(%p, index=%ld, %p, %p):",
+                     accessibleContext, long{ index }, startIndex, endIndex);
 
     // Verify the Java VM still exists and AccessibleContext is
     // an instance of AccessibleText
@@ -4620,9 +4627,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTextLineBounds(jobject accessibleConte
                                             accessibleContext, index);
         EXCEPTION_CHECK("Getting AccessibleTextLineLeftBounds - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   startIndex = %d", *startIndex);
+        PrintDebugString("[INFO]:   startIndex = %ld", long{ *startIndex });
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleTextLineLeftBoundsFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTextLineLeftBoundsFromContextMethod == 0");
         return FALSE;
     }
 
@@ -4633,9 +4640,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTextLineBounds(jobject accessibleConte
                                           accessibleContext, index);
         EXCEPTION_CHECK("Getting AccessibleTextLineRightBounds - call to CallIntMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   endIndex = %d", *endIndex);
+        PrintDebugString("[INFO]:   endIndex = %ld", long{ *endIndex });
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getAccessibleTextLineRightBoundsFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTextLineRightBoundsFromContextMethod == 0");
         return FALSE;
     }
 
@@ -4647,7 +4654,8 @@ AccessBridgeJavaEntryPoints::getAccessibleTextRange(jobject accessibleContext,
                                                     jint start, jint end, wchar_t *text, short len) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::getAccessibleTextRange(%p, %d, %d, *text, %d):", accessibleContext, start, end, len);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleTextRange(%p, start=%ld, end=%ld, %p, %hd):",
+                     accessibleContext, long{ start }, long{ end }, text, len);
 
     // Verify the Java VM still exists and AccessibleContext is
     // an instance of AccessibleText
@@ -4657,7 +4665,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextRange(jobject accessibleContext,
 
     // range is inclusive
     if (end < start) {
-        PrintDebugString("[ERROR]:  end < start!");
+        PrintDebugString("[ERROR]:   end < start!");
         text[0] = wchar_t{ 0 };
         return FALSE;
     }
@@ -4674,14 +4682,15 @@ AccessBridgeJavaEntryPoints::getAccessibleTextRange(jobject accessibleContext,
             const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
             EXCEPTION_CHECK("Getting AccessibleTextRange - call to GetStringChars()", FALSE);
 
-            wPrintDebugString(L"[INFO]:   Accessible Text stringBytes returned from Java = %ls", stringBytes);
+            wPrintDebugString(L"[INFO]:   Accessible Text stringBytes returned from Java = \"%ls\"", stringBytes);
 
             wcsncpy(text, stringBytes, len);
             const jsize length = jniEnv->GetStringLength(js);
-            PrintDebugString("[INFO]:  Accessible Text stringBytes length = %d", length);
+            using LongLong = long long;
+            PrintDebugString("[INFO]:   Accessible Text stringBytes length = %lld", LongLong{ length });
             text[length < len ? length : len - 2] = wchar_t{ 0 };
 
-            wPrintDebugString(L"[INFO]:   Accessible Text 'text' after null termination = %ls", text);
+            wPrintDebugString(L"[INFO]:   Accessible Text 'text' after null termination = \"%ls\"", text);
 
             EXCEPTION_CHECK("Getting AccessibleTextRange - call to GetStringLength()", FALSE);
 
@@ -4691,7 +4700,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextRange(jobject accessibleContext,
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleTextRange - call to CallVoidMethod()", FALSE);
 
-            wPrintDebugString(L"[INFO]:   Accessible Text range = %ls", text);
+            wPrintDebugString(L"[INFO]:   Accessible Text range = \"%ls\"", text);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting AccessibleTextRange - call to DeleteLocalRef()", FALSE);
@@ -4703,7 +4712,7 @@ AccessBridgeJavaEntryPoints::getAccessibleTextRange(jobject accessibleContext,
             return FALSE;
         }
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleTextRangeFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleTextRangeFromContextMethod == 0");
         return FALSE;
     }
 
@@ -4716,7 +4725,8 @@ BOOL
 AccessBridgeJavaEntryPoints::getCurrentAccessibleValueFromContext(jobject accessibleContext, wchar_t *value, short len) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::getCurrentAccessibleValueFromContext(%p):", accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getCurrentAccessibleValueFromContext(%p, %p, len=%hd):",
+                     accessibleContext, value, len);
 
     // Get the current Accessible Value
     if (getCurrentAccessibleValueFromContextMethod != nullptr) {
@@ -4743,7 +4753,7 @@ AccessBridgeJavaEntryPoints::getCurrentAccessibleValueFromContext(jobject access
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting CurrentAccessibleValue - call to CallVoidMethod()", FALSE);
 
-            PrintDebugString("[INFO]:   current Accessible Value = %s", value);
+            wPrintDebugString(L"[INFO]:   current Accessible Value = \"%ls\"", value);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting CurrentAccessibleValue - call to DeleteLocalRef()", FALSE);
@@ -4755,7 +4765,7 @@ AccessBridgeJavaEntryPoints::getCurrentAccessibleValueFromContext(jobject access
             return FALSE;
         }
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or getCurrentAccessibleValueFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getCurrentAccessibleValueFromContextMethod == 0");
         return FALSE;
     }
 
@@ -4766,7 +4776,8 @@ BOOL
 AccessBridgeJavaEntryPoints::getMaximumAccessibleValueFromContext(jobject accessibleContext, wchar_t *value, short len) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::getMaximumAccessibleValueFromContext(%p):", accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getMaximumAccessibleValueFromContext(%p, %p, len=%hd):",
+                     accessibleContext, value, len);
 
     // Get the maximum Accessible Value
     if (getMaximumAccessibleValueFromContextMethod != nullptr) {
@@ -4793,7 +4804,7 @@ AccessBridgeJavaEntryPoints::getMaximumAccessibleValueFromContext(jobject access
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting MaximumAccessibleValue - call to CallVoidMethod()", FALSE);
 
-            PrintDebugString("[INFO]:   maximum Accessible Value = %s", value);
+            wPrintDebugString(L"[INFO]:   maximum Accessible Value = \"%ls\"", value);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting MaximumAccessibleValue - call to DeleteLocalRef()", FALSE);
@@ -4805,7 +4816,7 @@ AccessBridgeJavaEntryPoints::getMaximumAccessibleValueFromContext(jobject access
             return FALSE;
         }
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getMaximumAccessibleValueFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getMaximumAccessibleValueFromContextMethod == 0");
         return FALSE;
     }
 
@@ -4816,7 +4827,8 @@ BOOL
 AccessBridgeJavaEntryPoints::getMinimumAccessibleValueFromContext(jobject accessibleContext, wchar_t *value, short len) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::getMinimumAccessibleValueFromContext(%p):", accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getMinimumAccessibleValueFromContext(%p, %p, %hd):",
+                     accessibleContext, value, len);
 
     // Get the minimum Accessible Value
     if (getMinimumAccessibleValueFromContextMethod != nullptr) {
@@ -4843,18 +4855,18 @@ AccessBridgeJavaEntryPoints::getMinimumAccessibleValueFromContext(jobject access
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting MinimumAccessibleValue - call to CallVoidMethod()", FALSE);
 
-            PrintDebugString("[INFO]:   mimimum Accessible Value = %s", value);
+            wPrintDebugString(L"[INFO]:   minimum Accessible Value = \"%ls\"", value);
 
             jniEnv->DeleteLocalRef(js);
             EXCEPTION_CHECK("Getting MinimumAccessibleValue - call to DeleteLocalRef()", FALSE);
         } else {
-            PrintDebugString("[WARN]:   mimimum Accessible Value is null.");
+            PrintDebugString("[WARN]:   minimum Accessible Value is null.");
             value[0] = wchar_t{ 0 };
 
             return FALSE;
         }
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getMinimumAccessibleValueFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getMinimumAccessibleValueFromContextMethod == 0");
         return FALSE;
     }
 
@@ -4868,7 +4880,8 @@ void
 AccessBridgeJavaEntryPoints::addAccessibleSelectionFromContext(jobject accessibleContext, int i) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::addAccessibleSelectionFromContext(%p):", accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::addAccessibleSelectionFromContext(%p, i=%d):",
+                     accessibleContext, i);
 
     // Add the child to the AccessibleSelection
     if (addAccessibleSelectionFromContextMethod != nullptr) {
@@ -4879,7 +4892,7 @@ AccessBridgeJavaEntryPoints::addAccessibleSelectionFromContext(jobject accessibl
 
         PrintDebugString("[INFO]:   returned from CallObjectMethod()");
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or addAccessibleSelectionFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or addAccessibleSelectionFromContextMethod == 0");
     }
 }
 
@@ -4887,7 +4900,7 @@ void
 AccessBridgeJavaEntryPoints::clearAccessibleSelectionFromContext(jobject accessibleContext) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::clearAccessibleSelectionFromContext(%p):", accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::clearAccessibleSelectionFromContext(%p):", accessibleContext);
 
     // Clearing the Selection of the AccessibleSelection
     if (clearAccessibleSelectionFromContextMethod != nullptr) {
@@ -4898,7 +4911,7 @@ AccessBridgeJavaEntryPoints::clearAccessibleSelectionFromContext(jobject accessi
 
         PrintDebugString("[INFO]:   returned from CallObjectMethod()");
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or clearAccessibleSelectionFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or clearAccessibleSelectionFromContextMethod == 0");
     }
 }
 
@@ -4906,7 +4919,8 @@ jobject
 AccessBridgeJavaEntryPoints::getAccessibleSelectionFromContext(jobject accessibleContext, int i) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::getAccessibleSelectionFromContext(%p):", accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleSelectionFromContext(%p, i=%d):",
+                     accessibleContext, i);
 
     if (getAccessibleSelectionContextFromContextMethod != nullptr) {
         const jobject returnedAccessibleContext = jniEnv->CallObjectMethod(
@@ -4924,7 +4938,7 @@ AccessBridgeJavaEntryPoints::getAccessibleSelectionFromContext(jobject accessibl
                          returnedAccessibleContext, globalRef);
         return globalRef;
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleSelectionContextFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleSelectionContextFromContextMethod == 0");
         return nullptr;
     }
 }
@@ -4933,7 +4947,7 @@ int
 AccessBridgeJavaEntryPoints::getAccessibleSelectionCountFromContext(jobject accessibleContext) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::getAccessibleSelectionCountFromContext(%p):", accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::getAccessibleSelectionCountFromContext(%p):", accessibleContext);
 
     // Get (& return) the # of items selected in the AccessibleSelection
     if (getAccessibleSelectionCountFromContextMethod != nullptr) {
@@ -4946,7 +4960,7 @@ AccessBridgeJavaEntryPoints::getAccessibleSelectionCountFromContext(jobject acce
 
         return (int)count;
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or getAccessibleSelectionCountFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or getAccessibleSelectionCountFromContextMethod == 0");
         return -1;
     }
 }
@@ -4955,7 +4969,8 @@ BOOL
 AccessBridgeJavaEntryPoints::isAccessibleChildSelectedFromContext(jobject accessibleContext, int i) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::isAccessibleChildSelectedFromContext(%p):", accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::isAccessibleChildSelectedFromContext(%p, i=%d):",
+                     accessibleContext, i);
 
     // Get (& return) the # of items selected in the AccessibleSelection
     if (isAccessibleChildSelectedFromContextMethod != nullptr) {
@@ -4964,13 +4979,13 @@ AccessBridgeJavaEntryPoints::isAccessibleChildSelectedFromContext(jobject access
                                                           accessibleContext, i);
         EXCEPTION_CHECK("Doing isAccessibleChildSelected - call to CallBooleanMethod()", FALSE);
 
-        PrintDebugString("[INFO]:   returned from CallObjectMethod()");
+        PrintDebugString("[INFO]:   returned from CallObjectMethod(), result=%d", int{ result });
 
         if (result == JNI_TRUE) {
             return TRUE;
         }
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or isAccessibleChildSelectedFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or isAccessibleChildSelectedFromContextMethod == 0");
     }
 
     return FALSE;
@@ -4981,7 +4996,8 @@ void
 AccessBridgeJavaEntryPoints::removeAccessibleSelectionFromContext(jobject accessibleContext, int i) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::removeAccessibleSelectionFromContext(%p):", accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::removeAccessibleSelectionFromContext(%p, i=%d):",
+                     accessibleContext, i);
 
     // Remove the i-th child from the AccessibleSelection
     if (removeAccessibleSelectionFromContextMethod != nullptr) {
@@ -4992,7 +5008,7 @@ AccessBridgeJavaEntryPoints::removeAccessibleSelectionFromContext(jobject access
 
         PrintDebugString("[INFO]:   returned from CallObjectMethod()");
     } else {
-        PrintDebugString("[ERROR]:  either env == 0 or removeAccessibleSelectionFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or removeAccessibleSelectionFromContextMethod == 0");
     }
 }
 
@@ -5000,7 +5016,7 @@ void
 AccessBridgeJavaEntryPoints::selectAllAccessibleSelectionFromContext(jobject accessibleContext) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]: Calling AccessBridgeJavaEntryPoints::selectAllAccessibleSelectionFromContext(%p):", accessibleContext);
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::selectAllAccessibleSelectionFromContext(%p):", accessibleContext);
 
     // Select all children (if possible) of the AccessibleSelection
     if (selectAllAccessibleSelectionFromContextMethod != nullptr) {
@@ -5011,7 +5027,7 @@ AccessBridgeJavaEntryPoints::selectAllAccessibleSelectionFromContext(jobject acc
 
         PrintDebugString("[INFO]:   returned from CallObjectMethod()");
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or selectAllAccessibleSelectionFromContextMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or selectAllAccessibleSelectionFromContextMethod == 0");
     }
 }
 
@@ -5022,7 +5038,8 @@ BOOL
 AccessBridgeJavaEntryPoints::addJavaEventNotification(jlong type) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]:   in AccessBridgeJavaEntryPoints::addJavaEventNotification(%016I64X);", type);
+    using LongLong = long long;
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::addJavaEventNotification(%llX);", LongLong{ type });
 
     // Let AccessBridge know we want to add an event type
     if (addJavaEventNotificationMethod != nullptr) {
@@ -5030,9 +5047,11 @@ AccessBridgeJavaEntryPoints::addJavaEventNotification(jlong type) {
                                addJavaEventNotificationMethod, type);
         EXCEPTION_CHECK("Doing addJavaEventNotification - call to CallVoidMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or addJavaEventNotificationMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or addJavaEventNotificationMethod == 0");
         return FALSE;
     }
+
+    PrintDebugString("[INFO]:   AccessBridgeJavaEntryPoints::addJavaEventNotification: returning true.");
 
     return TRUE;
 }
@@ -5041,7 +5060,8 @@ BOOL
 AccessBridgeJavaEntryPoints::removeJavaEventNotification(jlong type) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]:  in AccessBridgeJavaEntryPoints::removeJavaEventNotification(%016I64X):", type);
+    using LongLong = long long;
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::removeJavaEventNotification(%llX):", LongLong{ type });
 
     // Let AccessBridge know we want to remove an event type
     if (removeJavaEventNotificationMethod != nullptr) {
@@ -5049,9 +5069,11 @@ AccessBridgeJavaEntryPoints::removeJavaEventNotification(jlong type) {
                                removeJavaEventNotificationMethod, type);
         EXCEPTION_CHECK("Doing removeJavaEventNotification - call to CallVoidMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or removeJavaEventNotificationMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or removeJavaEventNotificationMethod == 0");
         return FALSE;
     }
+
+    PrintDebugString("[INFO]:   AccessBridgeJavaEntryPoints::removeJavaEventNotification: returning true.");
 
     return TRUE;
 }
@@ -5060,20 +5082,23 @@ BOOL
 AccessBridgeJavaEntryPoints::addAccessibilityEventNotification(jlong type) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]:   in AccessBridgeJavaEntryPoints::addAccessibilityEventNotification(%016I64X);", type);
+    using LongLong = long long;
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::addAccessibilityEventNotification(%llX);",
+                     LongLong{ type });
 
     // Let AccessBridge know we want to add an event type
     if (addAccessibilityEventNotificationMethod != nullptr) {
-        PrintDebugString("[INFO]:    addAccessibilityEventNotification: calling void method: accessBridgeObject = %p", accessBridgeObject);
+        PrintDebugString("[INFO]:   addAccessibilityEventNotification: In void method: accessBridgeObject = %p",
+                         accessBridgeObject);
 
         jniEnv->CallVoidMethod(accessBridgeObject,addAccessibilityEventNotificationMethod, type);
         EXCEPTION_CHECK("Doing addAccessibilityEvent - call to CallVoidMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or addAccessibilityEventNotificationMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or addAccessibilityEventNotificationMethod == 0");
         return FALSE;
     }
 
-    PrintDebugString("[INFO]:     addAccessibilityEventNotification: just returning true");
+    PrintDebugString("[INFO]:   AccessBridgeJavaEntryPoints::addAccessibilityEventNotification: returning true.");
 
     return TRUE;
 }
@@ -5082,16 +5107,20 @@ BOOL
 AccessBridgeJavaEntryPoints::removeAccessibilityEventNotification(jlong type) {
     jthrowable exception;
 
-    PrintDebugString("[INFO]:  in AccessBridgeJavaEntryPoints::removeAccessibilityEventNotification(%016I64X):", type);
+    using LongLong = long long;
+    PrintDebugString("[INFO]: In AccessBridgeJavaEntryPoints::removeAccessibilityEventNotification(%llX):",
+                     LongLong{ type });
 
     // Let AccessBridge know we want to remove an event type
     if (removeAccessibilityEventNotificationMethod != nullptr) {
         jniEnv->CallVoidMethod(accessBridgeObject, removeAccessibilityEventNotificationMethod, type);
         EXCEPTION_CHECK("Doing removeAccessibilityEvent - call to CallVoidMethod()", FALSE);
     } else {
-        PrintDebugString("[ERROR]: either env == 0 or removeAccessibilityEventNotificationMethod == 0");
+        PrintDebugString("[ERROR]:   either env == 0 or removeAccessibilityEventNotificationMethod == 0");
         return FALSE;
     }
+
+    PrintDebugString("[INFO]:   AccessBridgeJavaEntryPoints::removeAccessibilityEventNotification: returning true.");
 
     return TRUE;
 }
