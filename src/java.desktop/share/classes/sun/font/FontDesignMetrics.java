@@ -441,7 +441,7 @@ public final class FontDesignMetrics extends FontMetrics {
     }
 
     public int charWidth(char ch) {
-        return (int)(0.5 + preciseCharWidth(ch));
+        return Math.round(preciseCharWidth(ch));
     }
 
     public int charWidth(int ch) {
@@ -451,7 +451,7 @@ public final class FontDesignMetrics extends FontMetrics {
 
         float w = handleCharWidth(ch);
 
-        return (int)(0.5 + w);
+        return Math.round(w);
     }
 
     private Rectangle2D.Float textLayoutBounds(Object data, int off, int len) {
@@ -466,8 +466,9 @@ public final class FontDesignMetrics extends FontMetrics {
         return data instanceof String ? ((String) data).charAt(i) : ((char[]) data)[i];
     }
 
+    final int ADVANCES_FAST_KEY_LIMIT = 0x100;
     private HashMap<Integer, Float> advances = new HashMap<>();
-    private float[] advancesFast = new float[0x10000];
+    private float[] advancesFast = new float[ADVANCES_FAST_KEY_LIMIT * ADVANCES_FAST_KEY_LIMIT];
 
     private Rectangle2D.Float dataBounds(Object data, int off, int len) {
 
@@ -504,7 +505,7 @@ public final class FontDesignMetrics extends FontMetrics {
                 // remark: for reducing calculation of kerningWidth('c1c2') using caching
                 if (isKerning && i > off) {
                     // fast path
-                    if (prev < 0x100 && cur < 0x100) {
+                    if (prev < ADVANCES_FAST_KEY_LIMIT && cur < ADVANCES_FAST_KEY_LIMIT) {
                         int key = (prev << 8) | cur;
                         if (advancesFast[key] == 0.0f) {
                             advancesFast[key] = textLayoutBounds(data, i - 1, 2).width;
@@ -512,7 +513,7 @@ public final class FontDesignMetrics extends FontMetrics {
                         consecutiveDoubleCharacterWidth += advancesFast[key];
                     // common solution
                     } else {
-                        int key = (prev << 16) | ((0x10000 - 1) & cur);
+                        int key = (prev << 16) | (0xffff & cur);
                         advances.putIfAbsent(key, textLayoutBounds(data, i - 1, 2).width);
                         consecutiveDoubleCharacterWidth += advances.get(key);
                     }
@@ -535,7 +536,7 @@ public final class FontDesignMetrics extends FontMetrics {
     }
 
     private int dataWidth(Object data, int off, int len) {
-        return (int) (0.5 + dataBounds(data, off, len).getWidth());
+        return Math.round((float) dataBounds(data, off, len).getWidth());
     }
 
     public int stringWidth(String str) {
@@ -574,7 +575,7 @@ public final class FontDesignMetrics extends FontMetrics {
             if (w == UNKNOWN_WIDTH) {
                 w = advCache[ch] = handleCharWidth(ch);
             }
-            widths[ch] = (int) (0.5 + w);
+            widths[ch] = Math.round(w);
         }
         return widths;
     }
