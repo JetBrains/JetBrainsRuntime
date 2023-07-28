@@ -35,6 +35,7 @@
 #include "accessBridgeResource.h"
 #include "accessBridgeCallbacks.h"
 #include "AccessBridgeMessages.h"
+#include "AccessBridgeUtils.h"  // AccessBridgeUtils::CopyJavaStringToWCharBuffer
 
 
 #include <windows.h>
@@ -160,50 +161,6 @@ extern "C" {
     }
 
 }
-
-
-// -----------------------------
-namespace utils {
-    template<typename T>
-    static constexpr T (min)(T a, T b) {
-        return (a < b) ? a : b;
-    }
-
-    template<typename T>
-    static constexpr T (max)(T a, T b) {
-        return (a < b) ? b : a;
-    }
-
-    /**
-     * Copies min( len(javaString), WCharBufferLength ) jchars from javaString to wCharBuffer
-     *
-     * @return a negative value if javaString is nullptr or (env.ExceptionCheck() == JNI_TRUE) ; a number of copied jchars otherwise
-     */
-    template<jsize WCharBufferLength>
-    static jsize copyJavaStringToWCharBuffer(JNIEnv& env, jstring javaString, wchar_t (&wCharBuffer)[WCharBufferLength]) {
-        if (javaString == nullptr) {
-            return -1;
-        }
-
-        const jsize javaStringLength = (utils::max<jsize>)(env.GetStringLength(javaString), 0);
-        const jsize countToCopy = (utils::min)(javaStringLength, WCharBufferLength);
-
-        static_assert(sizeof(wchar_t) == sizeof(jchar), "sizeof(jchar) must be equal to sizeof(wchar_t) to be able to copy the content of javaString");
-
-        if (countToCopy > 0) {
-            env.GetStringRegion(javaString, 0, countToCopy, reinterpret_cast<jchar *>(&wCharBuffer[0]));
-        }
-
-        if (env.ExceptionCheck() == JNI_TRUE) {
-            return -2;
-        }
-
-        return countToCopy;
-    }
-
-    using LongLongInt = long long int;
-}
-
 
 // -----------------------------
 
@@ -1911,8 +1868,9 @@ void JavaAccessBridge::handleFireEvent(
 
             const auto sendingResult = ati->sendJavaEventPackage(buffer, sizeof(buffer), EventType);
             if (sendingResult != 0) {
+                using LongLongInt = long long int;
                 PrintDebugString("[ERROR]:   failed to send the package to AT %p (sendingResult=%lld)",
-                                 ati, utils::LongLongInt{sendingResult});
+                                 ati, LongLongInt{sendingResult});
 
                 if (eventObjNewGlobalRef != nullptr) {
                     env->DeleteGlobalRef(eventObjNewGlobalRef);
@@ -2131,8 +2089,9 @@ void JavaAccessBridge::handleFirePropertyChangeNoValues(
             if (sendingResult != 0) {
                 // the package hasn't been sent, so we have to delete the new global refs
 
+                using LongLongInt = long long int;
                 PrintDebugString("[ERROR]:   failed to send the package to AT %p (sendingResult=%lld)",
-                                 ati, utils::LongLongInt{sendingResult});
+                                 ati, LongLongInt{sendingResult});
 
                 if (eventNewGlobalRef != nullptr) {
                     env->DeleteGlobalRef(eventNewGlobalRef);
@@ -2229,13 +2188,13 @@ void JavaAccessBridge::handleFirePropertyChangeJString(
             if (oldValue == nullptr) {
                 wcsncpy(pkg->*PackageOldValueMember, L"(null)", sizeof(pkg->*PackageOldValueMember) / sizeof(wchar_t));
             } else {
-                utils::copyJavaStringToWCharBuffer(*env, oldValue, pkg->*PackageOldValueMember);
+                (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*env, oldValue, pkg->*PackageOldValueMember);
             }
 
             if (newValue == nullptr) {
                 wcsncpy(pkg->*PackageNewValueMember, L"(null)", sizeof(pkg->*PackageNewValueMember) / sizeof(wchar_t));
             } else {
-                utils::copyJavaStringToWCharBuffer(*env, newValue, pkg->*PackageNewValueMember);
+                (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*env, newValue, pkg->*PackageNewValueMember);
             }
 
             if (env->ExceptionCheck() == JNI_TRUE) {
@@ -2255,8 +2214,9 @@ void JavaAccessBridge::handleFirePropertyChangeJString(
             if (sendingResult != 0) {
                 // the package hasn't been sent, so we have to delete the new global refs
 
+                using LongLongInt = long long int;
                 PrintDebugString("[ERROR]:   failed to send the package to AT %p (sendingResult=%lld)",
-                                 ati, utils::LongLongInt{sendingResult});
+                                 ati, LongLongInt{sendingResult});
 
                 if (eventNewGlobalRef != nullptr) {
                     env->DeleteGlobalRef(eventNewGlobalRef);
@@ -2380,8 +2340,9 @@ void JavaAccessBridge::handleFirePropertyChangeJObject(
             if (sendingResult != 0) {
                 // the package hasn't been sent, so we have to delete the new global refs
 
+                using LongLongInt = long long int;
                 PrintDebugString("[ERROR]:   failed to send the package to AT %p (sendingResult=%lld)",
-                                 ati, utils::LongLongInt{sendingResult});
+                                 ati, LongLongInt{sendingResult});
 
                 if (eventNewGlobalRef != nullptr) {
                     env->DeleteGlobalRef(eventNewGlobalRef);
@@ -2478,8 +2439,9 @@ JavaAccessBridge::firePropertyCaretChange(JNIEnv *env, jobject callingObj,
             if (sendingResult != 0) {
                 // the package hasn't been sent, so we have to delete the new global refs
 
+                using LongLongInt = long long int;
                 PrintDebugString("[ERROR]:   failed to send the package to AT %p (sendingResult=%lld)",
-                                 ati, utils::LongLongInt{sendingResult});
+                                 ati, LongLongInt{sendingResult});
 
                 if (eventNewGlobalRef != nullptr) {
                     env->DeleteGlobalRef(eventNewGlobalRef);
@@ -2754,8 +2716,9 @@ JavaAccessBridge::firePropertyTableModelChange(JNIEnv *env, jobject callingObj,
 void JavaAccessBridge::javaShutdown(JNIEnv *env, jobject callingObj) {
     constexpr auto eventType = cJavaShutdownEvent;
 
+    using LongLongInt = long long int;
     PrintDebugString("[INFO]: Firing event id=%lld(%p, %p); vmID=%p",
-                     utils::LongLongInt{eventType}, env, callingObj, dialogWindow);
+                     LongLongInt{eventType}, env, callingObj, dialogWindow);
 
     /* sanity check */
     if (ATs == nullptr) {
@@ -2779,14 +2742,14 @@ void JavaAccessBridge::javaShutdown(JNIEnv *env, jobject callingObj) {
             const auto sendingResult = ati->sendJavaEventPackage(buffer, sizeof(buffer), eventType);
             if (sendingResult != 0) {
                 PrintDebugString("[ERROR]:   failed to send the package to AT %p (sendingResult=%lld)",
-                                 ati, utils::LongLongInt{sendingResult});
+                                 ati, LongLongInt{sendingResult});
             }
         }
 
         ati = ati->nextATInstance;
     }
 
-    PrintDebugString("[INFO]:   done with firing AWT event id=%lld", utils::LongLongInt{eventType});
+    PrintDebugString("[INFO]:   done with firing AWT event id=%lld", LongLongInt{eventType});
 }
 
 

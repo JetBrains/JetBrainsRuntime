@@ -30,7 +30,7 @@
 
 #include "AccessBridgeJavaEntryPoints.h"
 #include "AccessBridgeDebug.h"
-
+#include "AccessBridgeUtils.h"
 
 
 /**
@@ -1189,16 +1189,8 @@ AccessBridgeJavaEntryPoints::getVirtualAccessibleName (
 
         if (js != nullptr)
         {
-            const wchar_t * stringBytes = (const wchar_t *)jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting AccessibleName - call to GetStringChars()", FALSE);
-
-            wcsncpy(name, stringBytes, nameSize - 1);
-
-            const jsize length = jniEnv->GetStringLength(js);
-            EXCEPTION_CHECK("Getting AccessibleName - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting AccessibleName - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, name, nameSize);
+            EXCEPTION_CHECK("Getting AccessibleName - attempt to copy the java string content", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleName - call to CallVoidMethod()", FALSE);
@@ -1349,21 +1341,8 @@ AccessBridgeJavaEntryPoints::getTextAttributesInRange(
             PrintDebugString("[INFO]:   returned from CallObjectMethod(), js = %p", js);
 
             if (js != nullptr) {
-                const wchar_t *stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-                EXCEPTION_CHECK("Getting AccessibleAttributesAtIndex - call to GetStringChars()", FALSE);
-
-                enum { fullAttributesStringCapacity = (sizeof(test_attributes.fullAttributesString) / sizeof(wchar_t)) };
-
-                wcsncpy(test_attributes.fullAttributesString, stringBytes, fullAttributesStringCapacity);
-
-                const jsize length = jniEnv->GetStringLength(js);
-                EXCEPTION_CHECK("Getting AccessibleAttributesAtIndex - call to GetStringLength()", FALSE);
-
-                test_attributes.fullAttributesString[length < fullAttributesStringCapacity ?
-                                                     length : fullAttributesStringCapacity - 2] = wchar_t{ 0 };
-
-                jniEnv->ReleaseStringChars(js, stringBytes);
-                EXCEPTION_CHECK("Getting AccessibleAttributesAtIndex - call to ReleaseStringChars()", FALSE);
+                (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, test_attributes.fullAttributesString);
+                EXCEPTION_CHECK("Getting AccessibleAttributesAtIndex - attempt to copy the java string content", FALSE);
 
                 jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
                 EXCEPTION_CHECK("Getting AccessibleAttributesAtIndex - call to CallVoidMethod()", FALSE);
@@ -1508,39 +1487,17 @@ AccessBridgeJavaEntryPoints::getVersionInfo(AccessBridgeVersionInfo *info) {
         PrintDebugString("[INFO]:   returned from CallObjectMethod(), js = %p", js);
 
         if (js != nullptr) {
-            const jsize length = jniEnv->GetStringLength(js);
-            const wchar_t *stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            if (stringBytes == nullptr) {
-                if (!jniEnv->ExceptionCheck()) {
-                    PrintDebugString("[ERROR]:   Exception when getting JavaVersionProperty - call to GetStringChars");
-                    jniEnv->ExceptionDescribe();
-                    jniEnv->ExceptionClear();
-                }
-                return FALSE;
-            }
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, info->bridgeJavaDLLVersion);
+            EXCEPTION_CHECK("Getting JavaVersionProperty - attempt to copy the java string content (to bridgeJavaDLLVersion)", FALSE);
 
-            enum { bridgeJavaDLLVersionStringCapacity = (sizeof(info->bridgeJavaDLLVersion) / sizeof(wchar_t)) };
-            wcsncpy(info->bridgeJavaDLLVersion, stringBytes, bridgeJavaDLLVersionStringCapacity);
-            info->bridgeJavaDLLVersion[length < bridgeJavaDLLVersionStringCapacity ?
-                                       length : bridgeJavaDLLVersionStringCapacity - 2] = wchar_t{ 0 };
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, info->VMversion);
+            EXCEPTION_CHECK("Getting JavaVersionProperty - attempt to copy the java string content (to VMversion)", FALSE);
 
-            enum { VMversionStringCapacity = (sizeof(info->VMversion) / sizeof(wchar_t)) };
-            wcsncpy(info->VMversion, stringBytes, VMversionStringCapacity);
-            info->VMversion[length < VMversionStringCapacity ?
-                            length : VMversionStringCapacity - 2] = wchar_t{ 0 };
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, info->bridgeJavaClassVersion);
+            EXCEPTION_CHECK("Getting JavaVersionProperty - attempt to copy the java string content (to bridgeJavaClassVersion)", FALSE);
 
-            enum { bridgeJavaClassVersionStringCapacity = (sizeof(info->bridgeJavaClassVersion) / sizeof(wchar_t)) };
-            wcsncpy(info->bridgeJavaClassVersion, stringBytes, bridgeJavaClassVersionStringCapacity);
-            info->bridgeJavaClassVersion[length < bridgeJavaClassVersionStringCapacity ?
-                                         length : bridgeJavaClassVersionStringCapacity - 2] = wchar_t{ 0 };
-
-            enum { bridgeWinDLLVersionStringCapacity = (sizeof(info->bridgeWinDLLVersion) / sizeof(wchar_t)) };
-            wcsncpy(info->bridgeWinDLLVersion, stringBytes, bridgeWinDLLVersionStringCapacity);
-            info->bridgeWinDLLVersion[length < bridgeWinDLLVersionStringCapacity ?
-                                      length : bridgeWinDLLVersionStringCapacity - 2] = wchar_t{ 0 };
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting JavaVersionProperty - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, info->bridgeWinDLLVersion);
+            EXCEPTION_CHECK("Getting JavaVersionProperty - attempt to copy the java string content (to bridgeWinDLLVersion)", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting JavaVersionProperty - call to CallVoidMethod()", FALSE);
@@ -1707,19 +1664,8 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
         EXCEPTION_CHECK("Getting AccessibleName - call to CallObjectMethod()", FALSE);
 
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *)jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting AccessibleName - call to GetStringChars()", FALSE);
-
-            enum { infoNameStringCapacity = (sizeof(info->name) / sizeof(wchar_t)) };
-            wcsncpy(info->name, stringBytes, infoNameStringCapacity);
-            const jsize length = jniEnv->GetStringLength(js);
-            info->name[(length < infoNameStringCapacity) ?
-                       length : infoNameStringCapacity - 2] = wchar_t{ 0 };
-
-            EXCEPTION_CHECK("Getting AccessibleName - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting AccessibleName - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, info->name);
+            EXCEPTION_CHECK("Getting AccessibleName - attempt to copy the java string content", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleName - call to CallVoidMethod()", FALSE);
@@ -1745,19 +1691,8 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
         EXCEPTION_CHECK("Getting AccessibleDescription - call to CallObjectMethod()", FALSE);
 
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting AccessibleName - call to GetStringChars()", FALSE);
-
-            enum { infoDescriptionStringCapacity = (sizeof(info->description) / sizeof(wchar_t)) };
-            wcsncpy(info->description, stringBytes, infoDescriptionStringCapacity);
-            const jsize length = jniEnv->GetStringLength(js);
-            info->description[(length < infoDescriptionStringCapacity) ?
-                              length : infoDescriptionStringCapacity - 2] = wchar_t{ 0 };
-
-            EXCEPTION_CHECK("Getting AccessibleName - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting AccessibleName - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, info->description);
+            EXCEPTION_CHECK("Getting AccessibleName - attempt to copy the java string content", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleName - call to CallVoidMethod()", FALSE);
@@ -1783,18 +1718,8 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
         EXCEPTION_CHECK("Getting AccessibleRole - call to CallObjectMethod()", FALSE);
 
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting AccessibleRole - call to GetStringChars()", FALSE);
-
-            enum { infoRoleStringCapacity = (sizeof(info->role) / sizeof(wchar_t)) };
-            wcsncpy(info->role, stringBytes, infoRoleStringCapacity);
-            const jsize length = jniEnv->GetStringLength(js);
-            info->role[(length < infoRoleStringCapacity) ?
-                       length : infoRoleStringCapacity - 2] = wchar_t{ 0 };
-            EXCEPTION_CHECK("Getting AccessibleRole - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting AccessibleRole - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, info->role);
+            EXCEPTION_CHECK("Getting AccessibleRole - attempt to copy the java string content", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleRole - call to CallVoidMethod()", FALSE);
@@ -1820,18 +1745,8 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
         EXCEPTION_CHECK("Getting AccessibleRole_en_US - call to CallObjectMethod()", FALSE);
 
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *)jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting AccessibleRole_en_US - call to GetStringChars()", FALSE);
-
-            enum { infoRoleEnUsStringCapacity = (sizeof(info->role_en_US) / sizeof(wchar_t)) };
-            wcsncpy(info->role_en_US, stringBytes, infoRoleEnUsStringCapacity);
-            const jsize length = jniEnv->GetStringLength(js);
-            info->role_en_US[(length < infoRoleEnUsStringCapacity) ?
-                             length : infoRoleEnUsStringCapacity - 2] = wchar_t{ 0 };
-            EXCEPTION_CHECK("Getting AccessibleRole_en_US - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting AccessibleRole_en_US - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, info->role_en_US);
+            EXCEPTION_CHECK("Getting AccessibleRole_en_US - attempt to copy the java string content", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleRole_en_US - call to CallVoidMethod()", FALSE);
@@ -1857,19 +1772,8 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
         EXCEPTION_CHECK("Getting AccessibleState - call to CallObjectMethod()", FALSE);
 
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting AccessibleState - call to GetStringChars()", FALSE);
-
-            enum { infoStatesStringCapacity = (sizeof(info->states) / sizeof(wchar_t)) };
-            wcsncpy(info->states, stringBytes, infoStatesStringCapacity);
-            const jsize length = jniEnv->GetStringLength(js);
-            info->states[(length < infoStatesStringCapacity) ?
-                         length : infoStatesStringCapacity - 2] = wchar_t{ 0 };
-
-            EXCEPTION_CHECK("Getting AccessibleState - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting AccessibleState - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, info->states);
+            EXCEPTION_CHECK("Getting AccessibleState - attempt to copy the java string content", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleState - call to CallVoidMethod()", FALSE);
@@ -1895,19 +1799,8 @@ AccessBridgeJavaEntryPoints::getAccessibleContextInfo(jobject accessibleContext,
         EXCEPTION_CHECK("Getting AccessibleState_en_US - call to CallObjectMethod()", FALSE);
 
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting AccessibleState_en_US - call to GetStringChars()", FALSE);
-
-            enum { infoStatesEnUsStringCapacity = (sizeof(info->states_en_US) / sizeof(wchar_t)) };
-            wcsncpy(info->states_en_US, stringBytes, infoStatesEnUsStringCapacity);
-            const jsize length = jniEnv->GetStringLength(js);
-            info->states_en_US[(length < infoStatesEnUsStringCapacity) ?
-                               length : infoStatesEnUsStringCapacity - 2] = wchar_t{ 0 };
-
-            EXCEPTION_CHECK("Getting AccessibleState_en_US - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting AccessibleState_en_US - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, info->states_en_US);
+            EXCEPTION_CHECK("Getting AccessibleState_en_US - attempt to copy the java string content", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleState_en_US - call to CallVoidMethod()", FALSE);
@@ -2818,21 +2711,8 @@ AccessBridgeJavaEntryPoints::getAccessibleRelationSet(jobject accessibleContext,
 
         EXCEPTION_CHECK("Getting AccessibleRelationKey - call to CallObjectMethod()", FALSE);
         if (js != nullptr) {
-            const wchar_t *stringBytes = (const wchar_t *)jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting AccessibleRelation key - call to GetStringChars()", FALSE);
-
-            enum { relationsKeyStringCapacity = (sizeof(relationSet->relations[i].key ) / sizeof(wchar_t)) };
-
-            wcsncpy(relationSet->relations[i].key, stringBytes, relationsKeyStringCapacity);
-            const jsize length = jniEnv->GetStringLength(js);
-
-            relationSet->relations[i].key [length < relationsKeyStringCapacity ?
-                                           length : relationsKeyStringCapacity - 2] = wchar_t{ 0 };
-
-            EXCEPTION_CHECK("Getting AccessibleRelation key - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting AccessibleRelation key - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, relationSet->relations[i].key);
+            EXCEPTION_CHECK("Getting AccessibleRelation key - attempt to copy the java string content", FALSE);
 
             // jniEnv->CallVoidMethod(accessBridgeObject,
             //                        decrementReferenceMethod, js);
@@ -2928,21 +2808,8 @@ AccessBridgeJavaEntryPoints::getAccessibleHypertext(jobject accessibleContext,
         EXCEPTION_CHECK("Getting hyperlink text - call to CallObjectMethod()", FALSE);
 
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting AccessibleHyperlink text - call to GetStringChars()", FALSE);
-
-            enum { hypertextLinksTextStringCapacity = (sizeof(hypertext->links[i].text) / sizeof(wchar_t)) };
-
-            wcsncpy(hypertext->links[i].text, stringBytes, hypertextLinksTextStringCapacity);
-            jsize length = jniEnv->GetStringLength(js);
-            if (length >= hypertextLinksTextStringCapacity) {
-                length = hypertextLinksTextStringCapacity - 2;
-            }
-            hypertext->links[i].text[length] = wchar_t{ 0 };
-            EXCEPTION_CHECK("Getting AccessibleHyperlink text - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting AccessibleHyperlink text - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, hypertext->links[i].text);
+            EXCEPTION_CHECK("Getting AccessibleHyperlink text - attempt to copy the java string content", FALSE);
 
             // jniEnv->CallVoidMethod(accessBridgeObject,
             //                                     decrementReferenceMethod, js);
@@ -3073,23 +2940,8 @@ AccessBridgeJavaEntryPoints::getAccessibleHypertextExt(const jobject accessibleC
         EXCEPTION_CHECK("Getting hyperlink text - call to CallObjectMethod()", FALSE);
 
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *)jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting AccessibleHyperlink text - call to GetStringChars()", FALSE);
-
-            enum { hypertextLinksTextStringCapacity = (sizeof(hypertext->links[bufIndex].text) / sizeof(wchar_t)) };
-
-            wcsncpy(hypertext->links[bufIndex].text, stringBytes, hypertextLinksTextStringCapacity);
-
-            jsize length = jniEnv->GetStringLength(js);
-            if (length >= hypertextLinksTextStringCapacity) {
-                length = hypertextLinksTextStringCapacity - 2;
-            }
-            hypertext->links[bufIndex].text[length] = wchar_t{ 0 };
-
-            EXCEPTION_CHECK("Getting AccessibleHyperlink text - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting AccessibleHyperlink text - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, hypertext->links[bufIndex].text);
+            EXCEPTION_CHECK("Getting AccessibleHyperlink text - attempt to copy the java string content", FALSE);
 
             // jniEnv->CallVoidMethod(accessBridgeObject,
             //                        decrementReferenceMethod, js);
@@ -3192,22 +3044,8 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleHyperlink(jobject hypertext,
     EXCEPTION_CHECK("Getting hyperlink text - call to CallObjectMethod()", FALSE);
 
     if (js != nullptr) {
-        const wchar_t * const stringBytes = (const wchar_t *)jniEnv->GetStringChars(js, nullptr);
-        EXCEPTION_CHECK("Getting AccessibleHyperlink text - call to GetStringChars()", FALSE);
-
-        enum { infoTextStringCapacity = (sizeof(info->text) / sizeof(wchar_t)) };
-
-        wcsncpy(info->text, stringBytes, infoTextStringCapacity);
-        jsize length = jniEnv->GetStringLength(js);
-        if (length >= infoTextStringCapacity) {
-            length = infoTextStringCapacity - 2;
-        }
-        info->text[length] = wchar_t{ 0 };
-
-        EXCEPTION_CHECK("Getting AccessibleHyperlink text - call to GetStringLength()", FALSE);
-
-        jniEnv->ReleaseStringChars(js, stringBytes);
-        EXCEPTION_CHECK("Getting AccessibleHyperlink text - call to ReleaseStringChars()", FALSE);
+        (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, info->text);
+        EXCEPTION_CHECK("Getting AccessibleHyperlink text - attempt to copy the java string content", FALSE);
 
         // jniEnv->CallVoidMethod(accessBridgeObject,
         //                        decrementReferenceMethod, js);
@@ -3323,22 +3161,8 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleIcons(jobject accessibleContext,
 
         EXCEPTION_CHECK("Getting icon description - call to CallObjectMethod()", FALSE);
         if (js != nullptr) {
-            const wchar_t *stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting AccessibleIcon description - call to GetStringChars()", FALSE);
-
-            enum { iconInfoDescriptionStringCapacity = (sizeof(icons->iconInfo[i].description) / sizeof(wchar_t)) };
-
-            wcsncpy(icons->iconInfo[i].description, stringBytes, iconInfoDescriptionStringCapacity);
-            jsize length = jniEnv->GetStringLength(js);
-            if (length >= iconInfoDescriptionStringCapacity) {
-                length = iconInfoDescriptionStringCapacity - 2;
-            }
-            icons->iconInfo[i].description[length] = wchar_t{ 0 };
-
-            EXCEPTION_CHECK("Getting AccessibleIcon description - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting AccessibleIcon description - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, icons->iconInfo[i].description);
+            EXCEPTION_CHECK("Getting AccessibleIcon description - attempt to copy the java string content", FALSE);
 
             // jniEnv->CallVoidMethod(accessBridgeObject,
             //                        decrementReferenceMethod, js);
@@ -3405,21 +3229,8 @@ BOOL AccessBridgeJavaEntryPoints::getAccessibleActions(jobject accessibleContext
         EXCEPTION_CHECK("Getting Action Name  - call to CallObjectMethod()", FALSE);
 
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting AccessibleAction Name  - call to GetStringChars()", FALSE);
-
-            enum { actionInfoNameStringCapacity = (sizeof(actions->actionInfo[i].name ) / sizeof(wchar_t)) };
-            wcsncpy(actions->actionInfo[i].name , stringBytes, actionInfoNameStringCapacity);
-            jsize length = jniEnv->GetStringLength(js);
-            if (length >= actionInfoNameStringCapacity) {
-                length = actionInfoNameStringCapacity - 2;
-            }
-            actions->actionInfo[i].name [length] = wchar_t{ 0 };
-
-            EXCEPTION_CHECK("Getting AccessibleAction name  - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting AccessibleAction name  - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, actions->actionInfo[i].name);
+            EXCEPTION_CHECK("Getting AccessibleAction Name  - attempt to copy the java string content", FALSE);
 
             // jniEnv->CallVoidMethod(accessBridgeObject,
             //                        decrementReferenceMethod, js);
@@ -3566,13 +3377,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTextItems(jobject accessibleContext,
 
         PrintDebugString("[INFO]:   returned from CallObjectMethod(), js = %p", js);
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting AccessibleLetterAtIndex - call to GetStringChars()", FALSE);
-
-            textItems->letter = stringBytes[0];
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting AccessibleLetterAtIndex - call to ReleaseStringChars()", FALSE);
+            // it's like "textItems->letter = js[0];"
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, &textItems->letter, 1, false);
+            EXCEPTION_CHECK("Getting AccessibleLetterAtIndex - attempt to copy the java string content (textItems->letter)", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleLetterAtIndex - call to CallVoidMethod()", FALSE);
@@ -3599,19 +3406,8 @@ AccessBridgeJavaEntryPoints::getAccessibleTextItems(jobject accessibleContext,
 
         PrintDebugString("[INFO]:   returned from CallObjectMethod(), js = %p", js);
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting AccessibleWordAtIndex - call to GetStringChars()", FALSE);
-
-            enum { textItemsWordStringCapacity = (sizeof(textItems->word) / sizeof(wchar_t)) };
-            wcsncpy(textItems->word, stringBytes, textItemsWordStringCapacity);
-            const jsize length = jniEnv->GetStringLength(js);
-            textItems->word[(length < textItemsWordStringCapacity) ?
-                            length : textItemsWordStringCapacity - 2] = wchar_t{ 0 };
-
-            EXCEPTION_CHECK("Getting AccessibleWordAtIndex - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting AccessibleWordAtIndex - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, textItems->word);
+            EXCEPTION_CHECK("Getting AccessibleWordAtIndex - attempt to copy the java string content (textItems->word)", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleWordAtIndex - call to CallVoidMethod()", FALSE);
@@ -3638,23 +3434,8 @@ AccessBridgeJavaEntryPoints::getAccessibleTextItems(jobject accessibleContext,
 
         PrintDebugString("[INFO]:   returned from CallObjectMethod(), js = %p", js);
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting AccessibleSentenceAtIndex - call to GetStringChars()", FALSE);
-
-            enum { textItemsSentenceStringCapacity = (sizeof(textItems->sentence) / sizeof(wchar_t)) };
-            wcsncpy(textItems->sentence, stringBytes, textItemsSentenceStringCapacity - 2);
-            const jsize length = jniEnv->GetStringLength(js);
-
-            if (length < textItemsSentenceStringCapacity) {
-                textItems->sentence[length] = wchar_t{ 0 };
-            } else {
-                textItems->sentence[textItemsSentenceStringCapacity - 2] = wchar_t{ 0 };
-            }
-
-            EXCEPTION_CHECK("Getting AccessibleSentenceAtIndex - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting AccessibleSentenceAtIndex - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, textItems->sentence);
+            EXCEPTION_CHECK("Getting AccessibleSentenceAtIndex - attempt to copy the java string content (textItems->sentence)", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleSentenceAtIndex - call to CallVoidMethod()", FALSE);
@@ -3722,19 +3503,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTextSelectionInfo(jobject accessibleCo
 
         PrintDebugString("[INFO]:   returned from CallObjectMethod(), js = %p", js);
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting AccessibleTextSelectedText - call to GetStringChars()", FALSE);
-
-            enum { selectionInfoSelectedTextStringCapacity = (sizeof(selectionInfo->selectedText) / sizeof(wchar_t)) };
-            wcsncpy(selectionInfo->selectedText, stringBytes, selectionInfoSelectedTextStringCapacity);
-            const jsize length = jniEnv->GetStringLength(js);
-            selectionInfo->selectedText[(length < selectionInfoSelectedTextStringCapacity) ?
-                                        length : selectionInfoSelectedTextStringCapacity - 2] = wchar_t{ 0 };
-
-            EXCEPTION_CHECK("Getting AccessibleTextSelectedText - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting AccessibleTextSelectedText - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, selectionInfo->selectedText);
+            EXCEPTION_CHECK("Getting AccessibleTextSelectedText - attempt to copy the java string content"
+                            " (selectionInfo->selectedText)", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleTextSelectedText - call to CallVoidMethod()", FALSE);
@@ -3963,19 +3734,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
         EXCEPTION_CHECK("Getting BackgroundColorFromAttributeSet - call to CallObjectMethod()", FALSE);
 
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting BackgroundColorFromAttributeSet - call to GetStringChars()", FALSE);
-
-            enum { attributesBackgroundColorStringCapacity = (sizeof(attributes->backgroundColor) / sizeof(wchar_t)) };
-            wcsncpy(attributes->backgroundColor, stringBytes, attributesBackgroundColorStringCapacity);
-            const jsize length = jniEnv->GetStringLength(js);
-            attributes->backgroundColor[length < attributesBackgroundColorStringCapacity ?
-                                        length : attributesBackgroundColorStringCapacity - 2] = wchar_t{ 0 };
-
-            EXCEPTION_CHECK("Getting BackgroundColorFromAttributeSet - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting BackgroundColorFromAttributeSet - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, attributes->backgroundColor);
+            EXCEPTION_CHECK("Getting BackgroundColorFromAttributeSet - attempt to copy the java string content"
+                            " (attributes->backgroundColor)", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting BackgroundColorFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4010,19 +3771,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
         EXCEPTION_CHECK("Getting ForegroundColorFromAttributeSet - call to CallObjectMethod()", FALSE);
 
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting ForegroundColorFromAttributeSet - call to GetStringChars()", FALSE);
-
-            enum { attributesForegroundColorStringCapacity = (sizeof(attributes->foregroundColor) / sizeof(wchar_t)) };
-            wcsncpy(attributes->foregroundColor, stringBytes, attributesForegroundColorStringCapacity);
-            const jsize length = jniEnv->GetStringLength(js);
-            attributes->foregroundColor[(length < attributesForegroundColorStringCapacity) ?
-                                        length : attributesForegroundColorStringCapacity - 2] = wchar_t{ 0 };
-
-            EXCEPTION_CHECK("Getting ForegroundColorFromAttributeSet - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting ForegroundColorFromAttributeSet - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, attributes->foregroundColor);
+            EXCEPTION_CHECK("Getting ForegroundColorFromAttributeSet - attempt to copy the java string content"
+                            " (attributes->foregroundColor)", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting ForegroundColorFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4057,18 +3808,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
         EXCEPTION_CHECK("Getting FontFamilyFromAttributeSet - call to CallObjectMethod()", FALSE);
 
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting FontFamilyFromAttributeSet - call to GetStringChars()", FALSE);
-
-            enum { attributesFamilyStringCapacity = (sizeof(attributes->fontFamily) / sizeof(wchar_t)) };
-            wcsncpy(attributes->fontFamily, stringBytes, attributesFamilyStringCapacity);
-            const jsize length = jniEnv->GetStringLength(js);
-            attributes->fontFamily[(length < attributesFamilyStringCapacity) ?
-                                   length : attributesFamilyStringCapacity - 2] = wchar_t{ 0 };
-            EXCEPTION_CHECK("Getting FontFamilyFromAttributeSet - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting FontFamilyFromAttributeSet - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, attributes->fontFamily);
+            EXCEPTION_CHECK("Getting FontFamilyFromAttributeSet - attempt to copy the java string content"
+                            " (attributes->fontFamily)", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting FontFamilyFromAttributeSet - call to CallVoidMethod()", FALSE);
@@ -4302,19 +4044,9 @@ AccessBridgeJavaEntryPoints::getAccessibleTextAttributes(jobject accessibleConte
         PrintDebugString("[INFO]:   returned from CallObjectMethod(), js = %p", js);
 
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting AccessibleAttributesAtIndex - call to GetStringChars()", FALSE);
-
-            enum { fullAttributesStringCapacity = (sizeof(attributes->fullAttributesString) / sizeof(wchar_t)) };
-            wcsncpy(attributes->fullAttributesString, stringBytes, fullAttributesStringCapacity);
-            const jsize length = jniEnv->GetStringLength(js);
-            attributes->fullAttributesString[(length < fullAttributesStringCapacity) ?
-                                             length : fullAttributesStringCapacity - 2] = wchar_t{ 0 };
-
-            EXCEPTION_CHECK("Getting AccessibleAttributesAtIndex - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting AccessibleAttributesAtIndex - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, attributes->fullAttributesString);
+            EXCEPTION_CHECK("Getting AccessibleAttributesAtIndex - attempt to copy the java string content"
+                            " (attributes->fullAttributesString)", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleAttributesAtIndex - call to CallVoidMethod()", FALSE);
@@ -4553,23 +4285,8 @@ AccessBridgeJavaEntryPoints::getAccessibleTextRange(jobject accessibleContext,
 
         PrintDebugString("[INFO]:   returned from CallObjectMethod(), js = %p", js);
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting AccessibleTextRange - call to GetStringChars()", FALSE);
-
-            wPrintDebugString(L"[INFO]:   Accessible Text stringBytes returned from Java = \"%ls\"", stringBytes);
-
-            wcsncpy(text, stringBytes, len);
-            const jsize length = jniEnv->GetStringLength(js);
-            using LongLong = long long;
-            PrintDebugString("[INFO]:   Accessible Text stringBytes length = %lld", LongLong{ length });
-            text[length < len ? length : len - 2] = wchar_t{ 0 };
-
-            wPrintDebugString(L"[INFO]:   Accessible Text 'text' after null termination = \"%ls\"", text);
-
-            EXCEPTION_CHECK("Getting AccessibleTextRange - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting AccessibleTextRange - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, text, (len < 0) ? 0 : len);
+            EXCEPTION_CHECK("Getting AccessibleTextRange - attempt to copy the java string content", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting AccessibleTextRange - call to CallVoidMethod()", FALSE);
@@ -4610,17 +4327,8 @@ AccessBridgeJavaEntryPoints::getCurrentAccessibleValueFromContext(jobject access
         PrintDebugString("[INFO]:   returned from CallObjectMethod(), js = %p", js);
 
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting CurrentAccessibleValue - call to GetStringChars()", FALSE);
-
-            wcsncpy(value, stringBytes, len);
-            const jsize length = jniEnv->GetStringLength(js);
-            value[length < len ? length : len - 2] = wchar_t{ 0 };
-
-            EXCEPTION_CHECK("Getting CurrentAccessibleValue - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting CurrentAccessibleValue - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, value, (len < 0) ? 0 : len);
+            EXCEPTION_CHECK("Getting CurrentAccessibleValue - attempt to copy the java string content", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting CurrentAccessibleValue - call to CallVoidMethod()", FALSE);
@@ -4659,17 +4367,8 @@ AccessBridgeJavaEntryPoints::getMaximumAccessibleValueFromContext(jobject access
         PrintDebugString("[INFO]:   returned from CallObjectMethod(), js = %p", js);
 
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting MaximumAccessibleValue - call to GetStringChars()", FALSE);
-
-            wcsncpy(value, stringBytes, len);
-            const jsize length = jniEnv->GetStringLength(js);
-            value[length < len ? length : len - 2] = wchar_t{ 0 };
-
-            EXCEPTION_CHECK("Getting MaximumAccessibleValue - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting MaximumAccessibleValue - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, value, (len < 0) ? 0 : len);
+            EXCEPTION_CHECK("Getting MaximumAccessibleValue - attempt to copy the java string content", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting MaximumAccessibleValue - call to CallVoidMethod()", FALSE);
@@ -4708,17 +4407,8 @@ AccessBridgeJavaEntryPoints::getMinimumAccessibleValueFromContext(jobject access
         PrintDebugString("[INFO]:   returned from CallObjectMethod(), js = %p", js);
 
         if (js != nullptr) {
-            const wchar_t * const stringBytes = (const wchar_t *) jniEnv->GetStringChars(js, nullptr);
-            EXCEPTION_CHECK("Getting MinimumAccessibleValue - call to GetStringChars()", FALSE);
-
-            wcsncpy(value, stringBytes, len);
-            const jsize length = jniEnv->GetStringLength(js);
-            value[length < len ? length : len - 2] = wchar_t{ 0 };
-
-            EXCEPTION_CHECK("Getting MinimumAccessibleValue - call to GetStringLength()", FALSE);
-
-            jniEnv->ReleaseStringChars(js, stringBytes);
-            EXCEPTION_CHECK("Getting MinimumAccessibleValue - call to ReleaseStringChars()", FALSE);
+            (void)AccessBridgeUtils::CopyJavaStringToWCharBuffer(*jniEnv, js, value, (len < 0) ? 0 : len);
+            EXCEPTION_CHECK("Getting MinimumAccessibleValue - attempt to copy the java string content", FALSE);
 
             jniEnv->CallVoidMethod(accessBridgeObject, decrementReferenceMethod, js);
             EXCEPTION_CHECK("Getting MinimumAccessibleValue - call to CallVoidMethod()", FALSE);
