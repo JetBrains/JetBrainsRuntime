@@ -607,12 +607,10 @@ ifeq ($(call isTargetOs, windows), true)
 else ifeq ($(call isTargetOs, macosx), true)
   LIBFONTMANAGER_EXCLUDE_FILES += X11FontScaler.c \
       X11TextRenderer.c \
-      fontpath.c \
       lcdglyph.c \
       lcdglyphDW.cpp
 else
-  LIBFONTMANAGER_EXCLUDE_FILES += fontpath.c \
-      lcdglyph.c \
+  LIBFONTMANAGER_EXCLUDE_FILES += lcdglyph.c \
       lcdglyphDW.cpp
 endif
 
