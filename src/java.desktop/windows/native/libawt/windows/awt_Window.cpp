@@ -1883,6 +1883,7 @@ void AwtWindow::WmDPIChanged(const LPARAM &lParam) {
     RECT *r = (RECT *) lParam;
     ReshapeNoScale(r->left, r->top, r->right - r->left, r->bottom - r->top);
     CheckIfOnNewScreen(true);
+    WmSize(SIZENORMAL, r->right - r->left, r->bottom - r->top);
 }
 
 MsgRouting AwtWindow::WmEraseBkgnd(HDC hDC, BOOL& didErase)
@@ -2043,8 +2044,13 @@ MsgRouting AwtWindow::WmSize(UINT type, int w, int h)
         UpdateSecurityWarningVisibility();
         return mrDoDefault;
     }
+
+    if (CheckIfOnNewScreenWithDifferentScale()) { // postpone if different DPI
+        return mrDoDefault;
+    }
+
     // Check for the new screen and update the java peer
-    CheckIfOnNewScreen(false); // postpone if different DPI
+    CheckIfOnNewScreen(false);
 
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
     if (env->EnsureLocalCapacity(1) < 0)
@@ -2293,10 +2299,9 @@ int AwtWindow::GetScreenImOn() {
 }
 
 /*
- * Check to see if we've been moved onto another screen.
- * If so, update internal data, surfaces, etc.
+ * Check to see if we've been moved onto another screen with different scale.
  */
-BOOL AwtWindow::CheckIfOnNewScreen(BOOL force) {
+BOOL AwtWindow::CheckIfOnNewScreenWithDifferentScale() {
     int curScrn = GetScreenImOn();
 
     if (curScrn != m_screenNum) {  // we've been moved
@@ -2306,12 +2311,28 @@ BOOL AwtWindow::CheckIfOnNewScreen(BOOL force) {
         Devices::InstanceAccess devices;
         AwtWin32GraphicsDevice* oldDevice = devices->GetDevice(m_screenNum);
         AwtWin32GraphicsDevice* newDevice = devices->GetDevice(curScrn);
-        if (!force && m_winSizeMove && oldDevice && newDevice) {
+        if (m_winSizeMove && oldDevice && newDevice) {
             if (oldDevice->GetScaleX() != newDevice->GetScaleX()
-                    || oldDevice->GetScaleY() != newDevice->GetScaleY()) {
+                || oldDevice->GetScaleY() != newDevice->GetScaleY()) {
                 // scales are different, wait for WM_DPICHANGED
                 return TRUE;
             }
+        }
+    }
+    return FALSE;
+}
+
+/*
+ * Check to see if we've been moved onto another screen.
+ * If so, update internal data, surfaces, etc.
+ */
+BOOL AwtWindow::CheckIfOnNewScreen(BOOL force) {
+    int curScrn = GetScreenImOn();
+
+    if (curScrn != m_screenNum) {  // we've been moved
+        if (!force && CheckIfOnNewScreenWithDifferentScale()) {
+            // scales are different, wait for WM_DPICHANGED
+            return TRUE;
         }
 
         JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
