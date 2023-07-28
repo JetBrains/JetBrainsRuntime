@@ -41,200 +41,200 @@ class AccessBridgeJavaEntryPoints {
 
     jobject accessBridgeObject;
 
-    jclass bridgeClass;
-    jclass eventHandlerClass;
+    jclass bridgeClass                                            = nullptr;
+    jclass eventHandlerClass                                      = nullptr;
 
-    jmethodID decrementReferenceMethod;
-    jmethodID getJavaVersionPropertyMethod;
+    jmethodID decrementReferenceMethod                            = nullptr;
+    jmethodID getJavaVersionPropertyMethod                        = nullptr;
 
-    jmethodID isJavaWindowMethod;
-    jmethodID isSameObjectMethod;
-    jmethodID getAccessibleContextFromHWNDMethod;
-    jmethodID getHWNDFromAccessibleContextMethod;
+    jmethodID isJavaWindowMethod                                  = nullptr;
+    jmethodID isSameObjectMethod                                  = nullptr;
+    jmethodID getAccessibleContextFromHWNDMethod                  = nullptr;
+    jmethodID getHWNDFromAccessibleContextMethod                  = nullptr;
 
-    jmethodID getAccessibleContextAtMethod;
-    jmethodID getAccessibleContextWithFocusMethod;
+    jmethodID getAccessibleContextAtMethod                        = nullptr;
+    jmethodID getAccessibleContextWithFocusMethod                 = nullptr;
 
-    jmethodID getAccessibleNameFromContextMethod;
-    jmethodID getAccessibleDescriptionFromContextMethod;
-    jmethodID getAccessibleRoleStringFromContextMethod;
-    jmethodID getAccessibleRoleStringFromContext_en_USMethod;
-    jmethodID getAccessibleStatesStringFromContextMethod;
-    jmethodID getAccessibleStatesStringFromContext_en_USMethod;
-    jmethodID getAccessibleParentFromContextMethod;
-    jmethodID getAccessibleIndexInParentFromContextMethod;
-    jmethodID getAccessibleChildrenCountFromContextMethod;
-    jmethodID getAccessibleChildFromContextMethod;
-    jmethodID getAccessibleBoundsOnScreenFromContextMethod;
-    jmethodID getAccessibleXcoordFromContextMethod;
-    jmethodID getAccessibleYcoordFromContextMethod;
-    jmethodID getAccessibleHeightFromContextMethod;
-    jmethodID getAccessibleWidthFromContextMethod;
+    jmethodID getAccessibleNameFromContextMethod                  = nullptr;
+    jmethodID getAccessibleDescriptionFromContextMethod           = nullptr;
+    jmethodID getAccessibleRoleStringFromContextMethod            = nullptr;
+    jmethodID getAccessibleRoleStringFromContext_en_USMethod      = nullptr;
+    jmethodID getAccessibleStatesStringFromContextMethod          = nullptr;
+    jmethodID getAccessibleStatesStringFromContext_en_USMethod    = nullptr;
+    jmethodID getAccessibleParentFromContextMethod                = nullptr;
+    jmethodID getAccessibleIndexInParentFromContextMethod         = nullptr;
+    jmethodID getAccessibleChildrenCountFromContextMethod         = nullptr;
+    jmethodID getAccessibleChildFromContextMethod                 = nullptr;
+    jmethodID getAccessibleBoundsOnScreenFromContextMethod        = nullptr;
+    jmethodID getAccessibleXcoordFromContextMethod                = nullptr;
+    jmethodID getAccessibleYcoordFromContextMethod                = nullptr;
+    jmethodID getAccessibleHeightFromContextMethod                = nullptr;
+    jmethodID getAccessibleWidthFromContextMethod                 = nullptr;
 
-    jmethodID getAccessibleComponentFromContextMethod;
-    jmethodID getAccessibleActionFromContextMethod;
-    jmethodID getAccessibleSelectionFromContextMethod;
-    jmethodID getAccessibleTextFromContextMethod;
-    jmethodID getAccessibleValueFromContextMethod;
+    jmethodID getAccessibleComponentFromContextMethod             = nullptr;
+    jmethodID getAccessibleActionFromContextMethod                = nullptr;
+    jmethodID getAccessibleSelectionFromContextMethod             = nullptr;
+    jmethodID getAccessibleTextFromContextMethod                  = nullptr;
+    jmethodID getAccessibleValueFromContextMethod                 = nullptr;
 
     /* begin AccessibleTable */
-    jmethodID getAccessibleTableFromContextMethod;
-    jmethodID getAccessibleTableRowHeaderMethod;
-    jmethodID getAccessibleTableColumnHeaderMethod;
-    jmethodID getAccessibleTableRowCountMethod;
-    jmethodID getAccessibleTableColumnCountMethod;
-    jmethodID getAccessibleTableCaptionMethod;
-    jmethodID getAccessibleTableSummaryMethod;
+    jmethodID getAccessibleTableFromContextMethod                 = nullptr;
+    jmethodID getAccessibleTableRowHeaderMethod                   = nullptr;
+    jmethodID getAccessibleTableColumnHeaderMethod                = nullptr;
+    jmethodID getAccessibleTableRowCountMethod                    = nullptr;
+    jmethodID getAccessibleTableColumnCountMethod                 = nullptr;
+    jmethodID getAccessibleTableCaptionMethod                     = nullptr;
+    jmethodID getAccessibleTableSummaryMethod                     = nullptr;
 
-    jmethodID getContextFromAccessibleTableMethod;
-    jmethodID getAccessibleTableCellAccessibleContextMethod;
-    jmethodID getAccessibleTableCellIndexMethod;
-    jmethodID getAccessibleTableCellRowExtentMethod;
-    jmethodID getAccessibleTableCellColumnExtentMethod;
-    jmethodID isAccessibleTableCellSelectedMethod;
+    jmethodID getContextFromAccessibleTableMethod                 = nullptr;
+    jmethodID getAccessibleTableCellAccessibleContextMethod       = nullptr;
+    jmethodID getAccessibleTableCellIndexMethod                   = nullptr;
+    jmethodID getAccessibleTableCellRowExtentMethod               = nullptr;
+    jmethodID getAccessibleTableCellColumnExtentMethod            = nullptr;
+    jmethodID isAccessibleTableCellSelectedMethod                 = nullptr;
 
-    jmethodID getAccessibleTableRowHeaderRowCountMethod;
-    jmethodID getAccessibleTableColumnHeaderRowCountMethod;
+    jmethodID getAccessibleTableRowHeaderRowCountMethod           = nullptr;
+    jmethodID getAccessibleTableColumnHeaderRowCountMethod        = nullptr;
 
-    jmethodID getAccessibleTableRowHeaderColumnCountMethod;
-    jmethodID getAccessibleTableColumnHeaderColumnCountMethod;
+    jmethodID getAccessibleTableRowHeaderColumnCountMethod        = nullptr;
+    jmethodID getAccessibleTableColumnHeaderColumnCountMethod     = nullptr;
 
-    jmethodID getAccessibleTableRowDescriptionMethod;
-    jmethodID getAccessibleTableColumnDescriptionMethod;
+    jmethodID getAccessibleTableRowDescriptionMethod              = nullptr;
+    jmethodID getAccessibleTableColumnDescriptionMethod           = nullptr;
 
-    jmethodID getAccessibleTableRowSelectionCountMethod;
-    jmethodID isAccessibleTableRowSelectedMethod;
-    jmethodID getAccessibleTableRowSelectionsMethod;
+    jmethodID getAccessibleTableRowSelectionCountMethod           = nullptr;
+    jmethodID isAccessibleTableRowSelectedMethod                  = nullptr;
+    jmethodID getAccessibleTableRowSelectionsMethod               = nullptr;
 
-    jmethodID getAccessibleTableColumnSelectionCountMethod;
-    jmethodID isAccessibleTableColumnSelectedMethod;
-    jmethodID getAccessibleTableColumnSelectionsMethod;
+    jmethodID getAccessibleTableColumnSelectionCountMethod        = nullptr;
+    jmethodID isAccessibleTableColumnSelectedMethod               = nullptr;
+    jmethodID getAccessibleTableColumnSelectionsMethod            = nullptr;
 
-    jmethodID getAccessibleTableRowMethod;
-    jmethodID getAccessibleTableColumnMethod;
-    jmethodID getAccessibleTableIndexMethod;
+    jmethodID getAccessibleTableRowMethod                         = nullptr;
+    jmethodID getAccessibleTableColumnMethod                      = nullptr;
+    jmethodID getAccessibleTableIndexMethod                       = nullptr;
 
     /* end AccessibleTable */
 
     /* begin AccessibleRelationSet */
 
-    jmethodID getAccessibleRelationSetMethod;
-    jmethodID getAccessibleRelationCountMethod;
-    jmethodID getAccessibleRelationKeyMethod;
-    jmethodID getAccessibleRelationTargetCountMethod;
-    jmethodID getAccessibleRelationTargetMethod;
+    jmethodID getAccessibleRelationSetMethod                      = nullptr;
+    jmethodID getAccessibleRelationCountMethod                    = nullptr;
+    jmethodID getAccessibleRelationKeyMethod                      = nullptr;
+    jmethodID getAccessibleRelationTargetCountMethod              = nullptr;
+    jmethodID getAccessibleRelationTargetMethod                   = nullptr;
 
     /* end AccessibleRelationSet */
 
     // AccessibleHypertext methods
-    jmethodID getAccessibleHypertextMethod;
-    jmethodID getAccessibleHyperlinkCountMethod;
-    jmethodID getAccessibleHyperlinkTextMethod;
-    jmethodID getAccessibleHyperlinkURLMethod;
-    jmethodID getAccessibleHyperlinkStartIndexMethod;
-    jmethodID getAccessibleHyperlinkEndIndexMethod;
-    jmethodID getAccessibleHypertextLinkIndexMethod;
-    jmethodID getAccessibleHyperlinkMethod;
-    jmethodID activateAccessibleHyperlinkMethod;
+    jmethodID getAccessibleHypertextMethod                        = nullptr;
+    jmethodID getAccessibleHyperlinkCountMethod                   = nullptr;
+    jmethodID getAccessibleHyperlinkTextMethod                    = nullptr;
+    jmethodID getAccessibleHyperlinkURLMethod                     = nullptr;
+    jmethodID getAccessibleHyperlinkStartIndexMethod              = nullptr;
+    jmethodID getAccessibleHyperlinkEndIndexMethod                = nullptr;
+    jmethodID getAccessibleHypertextLinkIndexMethod               = nullptr;
+    jmethodID getAccessibleHyperlinkMethod                        = nullptr;
+    jmethodID activateAccessibleHyperlinkMethod                   = nullptr;
 
     // AccessibleKeyBinding
-    jmethodID getAccessibleKeyBindingsCountMethod;
-    jmethodID getAccessibleKeyBindingCharMethod;
-    jmethodID getAccessibleKeyBindingModifiersMethod;
+    jmethodID getAccessibleKeyBindingsCountMethod                 = nullptr;
+    jmethodID getAccessibleKeyBindingCharMethod                   = nullptr;
+    jmethodID getAccessibleKeyBindingModifiersMethod              = nullptr;
 
     // AccessibleIcon
-    jmethodID getAccessibleIconsCountMethod;
-    jmethodID getAccessibleIconDescriptionMethod;
-    jmethodID getAccessibleIconHeightMethod;
-    jmethodID getAccessibleIconWidthMethod;
+    jmethodID getAccessibleIconsCountMethod                       = nullptr;
+    jmethodID getAccessibleIconDescriptionMethod                  = nullptr;
+    jmethodID getAccessibleIconHeightMethod                       = nullptr;
+    jmethodID getAccessibleIconWidthMethod                        = nullptr;
 
     // AccessibleAction
-    jmethodID getAccessibleActionsCountMethod;
-    jmethodID getAccessibleActionNameMethod;
-    jmethodID doAccessibleActionsMethod;
+    jmethodID getAccessibleActionsCountMethod                     = nullptr;
+    jmethodID getAccessibleActionNameMethod                       = nullptr;
+    jmethodID doAccessibleActionsMethod                           = nullptr;
 
     // AccessibleText
-    jmethodID getAccessibleCharCountFromContextMethod;
-    jmethodID getAccessibleCaretPositionFromContextMethod;
-    jmethodID getAccessibleIndexAtPointFromContextMethod;
+    jmethodID getAccessibleCharCountFromContextMethod             = nullptr;
+    jmethodID getAccessibleCaretPositionFromContextMethod         = nullptr;
+    jmethodID getAccessibleIndexAtPointFromContextMethod          = nullptr;
 
-    jmethodID getAccessibleLetterAtIndexFromContextMethod;
-    jmethodID getAccessibleWordAtIndexFromContextMethod;
-    jmethodID getAccessibleSentenceAtIndexFromContextMethod;
+    jmethodID getAccessibleLetterAtIndexFromContextMethod         = nullptr;
+    jmethodID getAccessibleWordAtIndexFromContextMethod           = nullptr;
+    jmethodID getAccessibleSentenceAtIndexFromContextMethod       = nullptr;
 
-    jmethodID getAccessibleTextSelectionStartFromContextMethod;
-    jmethodID getAccessibleTextSelectionEndFromContextMethod;
-    jmethodID getAccessibleTextSelectedTextFromContextMethod;
-    jmethodID getAccessibleAttributesAtIndexFromContextMethod;
-    jmethodID getAccessibleAttributeSetAtIndexFromContextMethod;
-    jmethodID getAccessibleTextRectAtIndexFromContextMethod;
-    jmethodID getAccessibleXcoordTextRectAtIndexFromContextMethod;
-    jmethodID getAccessibleYcoordTextRectAtIndexFromContextMethod;
-    jmethodID getAccessibleHeightTextRectAtIndexFromContextMethod;
-    jmethodID getAccessibleWidthTextRectAtIndexFromContextMethod;
-    jmethodID getAccessibleTextLineLeftBoundsFromContextMethod;
-    jmethodID getAccessibleTextLineRightBoundsFromContextMethod;
-    jmethodID getAccessibleTextRangeFromContextMethod;
+    jmethodID getAccessibleTextSelectionStartFromContextMethod    = nullptr;
+    jmethodID getAccessibleTextSelectionEndFromContextMethod      = nullptr;
+    jmethodID getAccessibleTextSelectedTextFromContextMethod      = nullptr;
+    jmethodID getAccessibleAttributesAtIndexFromContextMethod     = nullptr;
+    jmethodID getAccessibleAttributeSetAtIndexFromContextMethod   = nullptr;
+    jmethodID getAccessibleTextRectAtIndexFromContextMethod       = nullptr;
+    jmethodID getAccessibleXcoordTextRectAtIndexFromContextMethod = nullptr;
+    jmethodID getAccessibleYcoordTextRectAtIndexFromContextMethod = nullptr;
+    jmethodID getAccessibleHeightTextRectAtIndexFromContextMethod = nullptr;
+    jmethodID getAccessibleWidthTextRectAtIndexFromContextMethod  = nullptr;
+    jmethodID getAccessibleTextLineLeftBoundsFromContextMethod    = nullptr;
+    jmethodID getAccessibleTextLineRightBoundsFromContextMethod   = nullptr;
+    jmethodID getAccessibleTextRangeFromContextMethod             = nullptr;
 
-    jmethodID getCurrentAccessibleValueFromContextMethod;
-    jmethodID getMaximumAccessibleValueFromContextMethod;
-    jmethodID getMinimumAccessibleValueFromContextMethod;
+    jmethodID getCurrentAccessibleValueFromContextMethod          = nullptr;
+    jmethodID getMaximumAccessibleValueFromContextMethod          = nullptr;
+    jmethodID getMinimumAccessibleValueFromContextMethod          = nullptr;
 
-    jmethodID addAccessibleSelectionFromContextMethod;
-    jmethodID clearAccessibleSelectionFromContextMethod;
-    jmethodID getAccessibleSelectionContextFromContextMethod;
-    jmethodID getAccessibleSelectionCountFromContextMethod;
-    jmethodID isAccessibleChildSelectedFromContextMethod;
-    jmethodID removeAccessibleSelectionFromContextMethod;
-    jmethodID selectAllAccessibleSelectionFromContextMethod;
+    jmethodID addAccessibleSelectionFromContextMethod             = nullptr;
+    jmethodID clearAccessibleSelectionFromContextMethod           = nullptr;
+    jmethodID getAccessibleSelectionContextFromContextMethod      = nullptr;
+    jmethodID getAccessibleSelectionCountFromContextMethod        = nullptr;
+    jmethodID isAccessibleChildSelectedFromContextMethod          = nullptr;
+    jmethodID removeAccessibleSelectionFromContextMethod          = nullptr;
+    jmethodID selectAllAccessibleSelectionFromContextMethod       = nullptr;
 
-    jmethodID addJavaEventNotificationMethod;
-    jmethodID removeJavaEventNotificationMethod;
-    jmethodID addAccessibilityEventNotificationMethod;
-    jmethodID removeAccessibilityEventNotificationMethod;
+    jmethodID addJavaEventNotificationMethod                      = nullptr;
+    jmethodID removeJavaEventNotificationMethod                   = nullptr;
+    jmethodID addAccessibilityEventNotificationMethod             = nullptr;
+    jmethodID removeAccessibilityEventNotificationMethod          = nullptr;
 
-    jmethodID getBoldFromAttributeSetMethod;
-    jmethodID getItalicFromAttributeSetMethod;
-    jmethodID getUnderlineFromAttributeSetMethod;
-    jmethodID getStrikethroughFromAttributeSetMethod;
-    jmethodID getSuperscriptFromAttributeSetMethod;
-    jmethodID getSubscriptFromAttributeSetMethod;
-    jmethodID getBackgroundColorFromAttributeSetMethod;
-    jmethodID getForegroundColorFromAttributeSetMethod;
-    jmethodID getFontFamilyFromAttributeSetMethod;
-    jmethodID getFontSizeFromAttributeSetMethod;
-    jmethodID getAlignmentFromAttributeSetMethod;
-    jmethodID getBidiLevelFromAttributeSetMethod;
-    jmethodID getFirstLineIndentFromAttributeSetMethod;
-    jmethodID getLeftIndentFromAttributeSetMethod;
-    jmethodID getRightIndentFromAttributeSetMethod;
-    jmethodID getLineSpacingFromAttributeSetMethod;
-    jmethodID getSpaceAboveFromAttributeSetMethod;
-    jmethodID getSpaceBelowFromAttributeSetMethod;
+    jmethodID getBoldFromAttributeSetMethod                       = nullptr;
+    jmethodID getItalicFromAttributeSetMethod                     = nullptr;
+    jmethodID getUnderlineFromAttributeSetMethod                  = nullptr;
+    jmethodID getStrikethroughFromAttributeSetMethod              = nullptr;
+    jmethodID getSuperscriptFromAttributeSetMethod                = nullptr;
+    jmethodID getSubscriptFromAttributeSetMethod                  = nullptr;
+    jmethodID getBackgroundColorFromAttributeSetMethod            = nullptr;
+    jmethodID getForegroundColorFromAttributeSetMethod            = nullptr;
+    jmethodID getFontFamilyFromAttributeSetMethod                 = nullptr;
+    jmethodID getFontSizeFromAttributeSetMethod                   = nullptr;
+    jmethodID getAlignmentFromAttributeSetMethod                  = nullptr;
+    jmethodID getBidiLevelFromAttributeSetMethod                  = nullptr;
+    jmethodID getFirstLineIndentFromAttributeSetMethod            = nullptr;
+    jmethodID getLeftIndentFromAttributeSetMethod                 = nullptr;
+    jmethodID getRightIndentFromAttributeSetMethod                = nullptr;
+    jmethodID getLineSpacingFromAttributeSetMethod                = nullptr;
+    jmethodID getSpaceAboveFromAttributeSetMethod                 = nullptr;
+    jmethodID getSpaceBelowFromAttributeSetMethod                 = nullptr;
 
-    jmethodID setTextContentsMethod;
-    jmethodID getParentWithRoleMethod;
-    jmethodID getTopLevelObjectMethod;
-    jmethodID getParentWithRoleElseRootMethod;
-    jmethodID getObjectDepthMethod;
-    jmethodID getActiveDescendentMethod;
+    jmethodID setTextContentsMethod                               = nullptr;
+    jmethodID getParentWithRoleMethod                             = nullptr;
+    jmethodID getTopLevelObjectMethod                             = nullptr;
+    jmethodID getParentWithRoleElseRootMethod                     = nullptr;
+    jmethodID getObjectDepthMethod                                = nullptr;
+    jmethodID getActiveDescendentMethod                           = nullptr;
 
     /**
      * Additional methods for Teton
      */
-    jmethodID getVirtualAccessibleNameFromContextMethod; // Ben Key
-    jmethodID requestFocusMethod;
-    jmethodID selectTextRangeMethod;
-    jmethodID getTextAttributesInRangeMethod;
-    jmethodID getVisibleChildrenCountMethod;
-    jmethodID getVisibleChildMethod;
-    jmethodID setCaretPositionMethod;
+    jmethodID getVirtualAccessibleNameFromContextMethod           = nullptr; // Ben Key
+    jmethodID requestFocusMethod                                  = nullptr;
+    jmethodID selectTextRangeMethod                               = nullptr;
+    jmethodID getTextAttributesInRangeMethod                      = nullptr;
+    jmethodID getVisibleChildrenCountMethod                       = nullptr;
+    jmethodID getVisibleChildMethod                               = nullptr;
+    jmethodID setCaretPositionMethod                              = nullptr;
 
-    jmethodID getCaretLocationMethod;
-    jmethodID getCaretLocationXMethod;
-    jmethodID getCaretLocationYMethod;
-    jmethodID getCaretLocationHeightMethod;
-    jmethodID getCaretLocationWidthMethod;
+    jmethodID getCaretLocationMethod                              = nullptr;
+    jmethodID getCaretLocationXMethod                             = nullptr;
+    jmethodID getCaretLocationYMethod                             = nullptr;
+    jmethodID getCaretLocationHeightMethod                        = nullptr;
+    jmethodID getCaretLocationWidthMethod                         = nullptr;
 
 public:
     AccessBridgeJavaEntryPoints(JNIEnv *jniEnvironment, jobject bridgeObject);
