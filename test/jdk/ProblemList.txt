@@ -472,7 +472,7 @@ java/awt/MenuBar/8007006/bug8007006.java 8213122 windows-all
 # below test fails only on Win 7
 java/awt/font/FontNames/LocaleFamilyNames.java 8213129 windows-all
 
-java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java 7099223 linux-all,solaris-all,windows-all
+java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java 7099223,8274106 macosx-aarch64,linux-all,solaris-all,windows-all
 java/awt/keyboard/AllKeyCode/AllKeyCode.java 8242930 macosx-all
 java/awt/FullScreen/8013581/bug8013581.java 8169471 macosx-all
 java/awt/event/MouseEvent/RobotLWTest/RobotLWTest.java 8233568 macosx-all
@@ -736,7 +736,6 @@ java/awt/Robot/HiDPIScreenCapture/ScreenCaptureGtkTest.java 8282270 linux-all
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8282270 windows-all
 
 # Several tests which fail on some hidpi systems
-java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java 8274106 macosx-aarch64
 java/awt/Window/8159168/SetShapeTest.java 8274106 macosx-aarch64
 java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java 8274106 macosx-aarch64
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java 8274106 macosx-aarch64
