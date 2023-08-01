@@ -53,7 +53,7 @@ static jmethodID sjm_getAccessibleName = NULL;
         [value release];
         value = nil;
     }
-    value = [CommonComponentAccessibility createWithAccessible:axSelectedChild withEnv:env withView:fView];
+    value = [[CommonComponentAccessibility createWithAccessible:axSelectedChild withEnv:env withView:fView] retain];
     return value;
 }
 
