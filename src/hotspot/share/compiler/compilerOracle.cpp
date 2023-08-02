@@ -1050,21 +1050,10 @@ void CompilerOracle::parse_compile_only(char* line) {
       }
     }
 
-    if (*line == method_sep) {
-      if (className == nullptr) {
-        className = "";
-        c_match = MethodMatcher::Any;
-      }
-    } else {
-      // got foo or foo/bar
-      if (className == nullptr) {
-        ShouldNotReachHere();
-      } else {
-        // missing class name handled as "Any" class match
-        if (className[0] == '\0') {
-          c_match = MethodMatcher::Any;
-        }
-      }
+    if (className == nullptr || className[0] == '\0') {
+      // missing class name handled as "Any" class match
+      className = "";
+      c_match = MethodMatcher::Any;
     }
 
     // each directive is terminated by , or NUL or . followed by NUL
