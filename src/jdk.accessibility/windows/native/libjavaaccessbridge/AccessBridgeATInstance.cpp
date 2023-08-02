@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2005, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,17 +54,17 @@ AccessBridgeATInstance::AccessBridgeATInstance(HWND ourABWindow, HWND winABWindo
  * AccessBridgeATInstance descructor
  */
 AccessBridgeATInstance::~AccessBridgeATInstance() {
-    PrintDebugString("[INFO]: in AccessBridgeATInstance::~AccessBridgeATInstance");
+    PrintDebugString(" [INFO]: in AccessBridgeATInstance::~AccessBridgeATInstance");
 
     // if IPC memory mapped file view is valid, unmap it
     if (memoryMappedView != (char *) 0) {
-        PrintDebugString("[INFO]:   unmapping memoryMappedView; view = %p", memoryMappedView);
+        PrintDebugString(" [INFO]:   unmapping memoryMappedView; view = %p", memoryMappedView);
         UnmapViewOfFile(memoryMappedView);
         memoryMappedView = (char *) 0;
     }
     // if IPC memory mapped file handle map is open, close it
     if (memoryMappedFileMapHandle != (HANDLE) 0) {
-        PrintDebugString("[INFO]:   closing memoryMappedFileMapHandle; handle = %p", memoryMappedFileMapHandle);
+        PrintDebugString(" [INFO]:   closing memoryMappedFileMapHandle; handle = %p", memoryMappedFileMapHandle);
         CloseHandle(memoryMappedFileMapHandle);
         memoryMappedFileMapHandle = (HANDLE) 0;
     }
@@ -87,7 +88,7 @@ LRESULT
 AccessBridgeATInstance::initiateIPC() {
     DWORD errorCode;
 
-    PrintDebugString("[INFO]: In AccessBridgeATInstance::initiateIPC()");
+    PrintDebugString(" [INFO]: In AccessBridgeATInstance::initiateIPC()");
 
     // open Windows-initiated IPC filemap & map it to a ptr
 
@@ -98,7 +99,7 @@ AccessBridgeATInstance::initiateIPC() {
         PrintDebugString("[ERROR]:   Failed to CreateFileMapping for %s, error: %X", memoryMappedFileName, errorCode);
         return errorCode;
     } else {
-        PrintDebugString("[INFO]:   CreateFileMapping worked - filename: %s", memoryMappedFileName);
+        PrintDebugString(" [INFO]:   CreateFileMapping worked - filename: %s", memoryMappedFileName);
     }
 
     memoryMappedView = (char *) MapViewOfFile(memoryMappedFileMapHandle,
@@ -109,7 +110,7 @@ AccessBridgeATInstance::initiateIPC() {
         PrintDebugString("[ERROR]:   Failed to MapViewOfFile for %s, error: %X", memoryMappedFileName, errorCode);
         return errorCode;
     } else {
-        PrintDebugString("[INFO]:   MapViewOfFile worked - view: %p", memoryMappedView);
+        PrintDebugString(" [INFO]:   MapViewOfFile worked - view: %p", memoryMappedView);
     }
 
 
@@ -119,7 +120,7 @@ AccessBridgeATInstance::initiateIPC() {
                          memoryMappedFileName);
         return -1;
     } else {
-        PrintDebugString("[INFO]:   JavaVM successfully wrote to file!");
+        PrintDebugString(" [INFO]:   JavaVM successfully wrote to file!");
     }
 
 
@@ -213,8 +214,8 @@ static void do_event(char *buffer, int bufsize,HWND ourAccessBridgeWindow,HWND w
 LRESULT
 AccessBridgeATInstance::sendJavaEventPackage(char *buffer, int bufsize, long eventID) {
 
-    PrintDebugString("[INFO]: AccessBridgeATInstance::sendJavaEventPackage() eventID = %X", eventID);
-    PrintDebugString("[INFO]: AccessBridgeATInstance::sendJavaEventPackage() (using PostMessage) eventID = %X", eventID);
+    PrintDebugString(" [INFO]: AccessBridgeATInstance::sendJavaEventPackage() eventID = %X", eventID);
+    PrintDebugString(" [INFO]: AccessBridgeATInstance::sendJavaEventPackage() (using PostMessage) eventID = %X", eventID);
 
     if (eventID & javaEventMask) {
         do_event(buffer,bufsize,ourAccessBridgeWindow,winAccessBridgeWindow);
@@ -234,7 +235,7 @@ AccessBridgeATInstance::sendJavaEventPackage(char *buffer, int bufsize, long eve
 LRESULT
 AccessBridgeATInstance::sendAccessibilityEventPackage(char *buffer, int bufsize, long eventID) {
 
-    PrintDebugString("[INFO]: AccessBridgeATInstance::sendAccessibilityEventPackage() eventID = %X", eventID);
+    PrintDebugString(" [INFO]: AccessBridgeATInstance::sendAccessibilityEventPackage() eventID = %X", eventID);
 
     if (eventID & accessibilityEventMask) {
         do_event(buffer,bufsize,ourAccessBridgeWindow,winAccessBridgeWindow);

@@ -35,13 +35,13 @@ std::size_t AccessBridgeUtils::CopyJavaStringToWCharBuffer(
 ) {
     using ULL = unsigned long long;
     PrintDebugString(
-        "[INFO]: In AccessBridgeUtils::CopyJavaStringToWCharBuffer"
+        " [INFO]: In AccessBridgeUtils::CopyJavaStringToWCharBuffer"
         "(env=%p, javaString=%p, buffer=%p, bufferCapacityInWChars=%llu, replaceLastCharWith0IfNoSpace=%s):",
         &env, javaString, buffer, ULL{ bufferCapacityInWChars }, replaceLastCharWith0IfNoSpace ? "true" : "false"
     );
 
     if (bufferCapacityInWChars < 1) {
-        PrintDebugString("[WARN]:   bufferCapacityInWChars < 1 ; returning.");
+        PrintDebugString(" [WARN]:   bufferCapacityInWChars < 1 ; returning.");
         return 0;
     }
     if (buffer == nullptr) {
@@ -58,7 +58,7 @@ std::size_t AccessBridgeUtils::CopyJavaStringToWCharBuffer(
         if (env.ExceptionCheck() == JNI_TRUE) {
             PrintDebugString("[ERROR]:   a java exception occurred while getting the length of javaString.");
         } else if (javaStringLength < 1) {
-            PrintDebugString("[WARN]:   the length of javaString (%ld) < 1.", long{javaStringLength});
+            PrintDebugString(" [WARN]:   the length of javaString (%ld) < 1.", long{javaStringLength});
         } else {
             const std::size_t jsl = (std::size_t)javaStringLength;
             const jsize jCharsToCopy = (jsize)( (bufferCapacityInWChars < jsl) ? bufferCapacityInWChars : jsl );
