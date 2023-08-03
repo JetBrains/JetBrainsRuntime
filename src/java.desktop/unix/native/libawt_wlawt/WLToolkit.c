@@ -985,21 +985,31 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLToolkit_dispatchNonDefaultQueuesImpl
   (JNIEnv *env, jobject obj)
 {
-    int rc = 0;
-    while (rc != -1) {
 #ifdef WAKEFIELD_ROBOT
-        if (robot_queue) {
-            rc = wl_display_dispatch_queue(wl_display, robot_queue);
-        } else {
+    if (!robot_queue) {
+        return;
+    }
+
+    int rc = 0;
+
+    while (rc >= 0) {
+        // Dispatch pending events on the wakefield queue
+        while (wl_display_prepare_read_queue(wl_display, robot_queue) != 0 && rc >= 0) {
+            rc = wl_display_dispatch_queue_pending(wl_display, robot_queue);
+        }
+        if (rc < 0) {
+            wl_display_cancel_read(wl_display);
             break;
         }
-#else
-    break;
-#endif
+
+        // Wait for new events, wl_display_read_events is a synchronization point between all threads reading events.
+        rc = wl_display_read_events(wl_display);
     }
+
     // Simply return in case of any error; the actual error reporting (exception)
     // and/or shutdown will happen on the "main" toolkit thread AWT-Wayland,
     // see readEvents() below.
+#endif
 }
 
 JNIEXPORT jint JNICALL
