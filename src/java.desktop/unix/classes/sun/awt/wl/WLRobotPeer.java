@@ -62,12 +62,20 @@ public class WLRobotPeer implements RobotPeer {
 
     @Override
     public void keyPress(int keycode) {
-        throw new UnsupportedOperationException("Not implemented: WLRobotPeer.keyPress()");
+        checkExtensionPresent();
+
+        synchronized (WLRobotPeer.class) {
+            sendJavaKeyImpl(keycode, true);
+        }
     }
 
     @Override
     public void keyRelease(int keycode) {
-        throw new UnsupportedOperationException("Not implemented: WLRobotPeer.keyRelease()");
+        checkExtensionPresent();
+
+        synchronized (WLRobotPeer.class) {
+            sendJavaKeyImpl(keycode, false);
+        }
     }
 
     @Override
@@ -139,4 +147,5 @@ public class WLRobotPeer implements RobotPeer {
     private static native int[]   getRGBPixelsImpl(int x, int y, int width, int height);
     private static native Point   getLocationOfWLSurfaceImpl(long wlSurfacePtr);
     private static native void    setLocationOfWLSurfaceImpl(long wlSurfacePtr, int x, int y);
+    private static native void    sendJavaKeyImpl(int javaKeyCode, boolean pressed);
 }

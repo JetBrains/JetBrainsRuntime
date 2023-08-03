@@ -44,6 +44,13 @@ struct wakefield {
     struct weston_log_scope *log;
 };
 
+
+// This function is a part of Weston's private backend API
+void
+notify_key(struct weston_seat *seat, const struct timespec *time, uint32_t key,
+           enum wl_keyboard_key_state state,
+           enum weston_key_state_update update_state);
+
 static struct weston_output*
 get_output_for_point(struct wakefield* wakefield, int32_t x, int32_t y)
 {
@@ -482,11 +489,32 @@ wakefield_capture_create(struct wl_client *client,
     wakefield_send_capture_ready(resource, buffer_resource, WAKEFIELD_ERROR_NO_ERROR);
 }
 
+static void
+wakefield_send_key(struct wl_client *client,
+                   struct wl_resource *resource,
+                   uint32_t key,
+                   uint32_t state) {
+    struct wakefield *wakefield = wl_resource_get_user_data(resource);
+    struct weston_compositor *compositor = wakefield->compositor;
+
+    struct timespec time;
+    weston_compositor_get_time(&time);
+
+    struct weston_seat *seat;
+    wl_list_for_each(seat, &compositor->seat_list, link) {
+        notify_key(seat, &time, key,
+                   state ? WL_KEYBOARD_KEY_STATE_PRESSED : WL_KEYBOARD_KEY_STATE_RELEASED,
+                   STATE_UPDATE_AUTOMATIC);
+
+    }
+}
+
 static const struct wakefield_interface wakefield_implementation = {
         .get_surface_location = wakefield_get_surface_location,
         .move_surface = wakefield_move_surface,
         .get_pixel_color = wakefield_get_pixel_color,
-        .capture_create = wakefield_capture_create
+        .capture_create = wakefield_capture_create,
+        .send_key = wakefield_send_key
 };
 
 static void
