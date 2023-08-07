@@ -1628,7 +1628,8 @@ public class HtmlDocletWriter {
         if (!(lower.startsWith("mailto:")
                 || lower.startsWith("http:")
                 || lower.startsWith("https:")
-                || lower.startsWith("file:"))) {
+                || lower.startsWith("file:")
+                || lower.startsWith("ftp:"))) {
             text = "{@" + (new DocRootTaglet()).getName() + "}/"
                     + redirectPathFromRoot.resolve(text).getPath();
             text = replaceDocRootDir(text);
