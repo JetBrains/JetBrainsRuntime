@@ -121,6 +121,9 @@ public class FileMapInfo {
     }
 
     public boolean inCopiedVtableSpace(Address vptrAddress) {
+      if (vptrAddress == null) {
+        return false;
+      }
       if (vptrAddress.greaterThan(mdRegionBaseAddress) &&
           vptrAddress.lessThanOrEqual(mdRegionEndAddress)) {
         return true;
