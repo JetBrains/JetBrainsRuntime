@@ -478,6 +478,16 @@ public class JMenu extends JMenuItem implements Accessible,MenuElement
                 y = 0 - yOffset - pmSize.height;   // Otherwise drop 'up'
             }
         }
+        // Note that the y position may be later adjusted to fit the menu into the screen if possible.
+        // However, the code that does it (JPopupMenu.adjustPopupLocationToFitScreen) has no idea which screen
+        // to fit into, and determines it by the position calculated here, so we need to make sure it's on
+        // the correct screen, otherwise the menu may appear on the wrong screen (JDK-6415065).
+        if (position.y + y < screenBounds.y) { // Above the current screen?
+            y = screenBounds.y - position.y; // Fit into the screen, relative to our origin.
+        }
+        if (position.y + y >= screenBounds.y + screenBounds.height) { // Below the current screen?
+            y = screenBounds.y + screenBounds.height - 1 - position.y; // Fit into the screen, relative to our origin.
+        }
         return new Point(x,y);
     }
 
