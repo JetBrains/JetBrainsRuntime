@@ -99,6 +99,9 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
     AC_ARG_WITH(vulkan-include, [AS_HELP_STRING([--with-vulkan-include],
       [specify directory for the vulkan include files])])
 
+    AC_ARG_WITH(vulkan-shader-compiler, [AS_HELP_STRING([--with-vulkan-shader-compiler],
+      [specify which shader compiler to use: glslc/glslangValidator])])
+
     if test "x$SUPPORTS_LIB_VULKAN" = xfalse; then
 
       if (test "x${with_vulkan}" != x && test "x${with_vulkan}" != xno) || \
@@ -120,7 +123,6 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
           AC_CHECK_HEADERS([${with_vulkan_include}/include/vulkan/vulkan.h],
             [ VULKAN_FOUND=yes
               VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -I${with_vulkan_include}/include -DVULKAN_ENABLED"
-              VULKAN_ENABLED=true
             ],
             [ AC_MSG_ERROR([Can't find 'vulkan/vulkan.h' under '${with_vulkan_include}']) ]
           )
@@ -131,7 +133,6 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
           AC_CHECK_HEADERS([$VULKAN_SDK/include/vulkan/vulkan.h],
             [ VULKAN_FOUND=yes
               VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -I${VULKAN_SDK}/include -DVULKAN_ENABLED"
-              VULKAN_ENABLED=true
             ],
             [ VULKAN_FOUND=no; break ]
           )
@@ -142,7 +143,6 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
           AC_CHECK_HEADERS([vulkan/vulkan.h],
             [ VULKAN_FOUND=yes
               VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -DVULKAN_ENABLED"
-              VULKAN_ENABLED=true
             ],
             [ VULKAN_FOUND=no; break ]
           )
@@ -151,11 +151,32 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
         if test "x$VULKAN_FOUND" = xno; then
           HELP_MSG_MISSING_DEPENDENCY([vulkan])
           AC_MSG_ERROR([Could not find vulkan! $HELP_MSG ])
+        else
+          # Find shader compiler - glslc or glslangValidator
+          if (test "x${with_vulkan_shader_compiler}" = x || test "x${with_vulkan_shader_compiler}" = xglslc); then
+            UTIL_LOOKUP_PROGS(GLSLC, glslc)
+            SHADER_COMPILER="$GLSLC"
+            VULKAN_SHADER_COMPILER="glslc --target-env=vulkan1.2 -mfmt=num -o"
+          fi
+
+          if (test "x${with_vulkan_shader_compiler}" = x || test "x${with_vulkan_shader_compiler}" = xglslangValidator) && \
+              test "x$SHADER_COMPILER" = x; then
+            UTIL_LOOKUP_PROGS(GLSLANG, glslangValidator)
+            SHADER_COMPILER="$GLSLANG"
+            VULKAN_SHADER_COMPILER="glslangValidator --target-env vulkan1.2 -x -o"
+          fi
+
+          if test "x$SHADER_COMPILER" != x; then
+            VULKAN_ENABLED=true
+          else
+            AC_MSG_ERROR([Can't find shader compiler])
+          fi
         fi
       fi
     fi
   fi
   AC_SUBST(VULKAN_FLAGS)
+  AC_SUBST(VULKAN_SHADER_COMPILER)
   AC_SUBST(VULKAN_ENABLED)
   AC_SUBST(WAYLAND_CFLAGS)
   AC_SUBST(WAYLAND_LIBS)
