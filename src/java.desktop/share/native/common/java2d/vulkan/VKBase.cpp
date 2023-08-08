@@ -170,12 +170,6 @@ public:
         vk::PhysicalDevice handle = **this;
         return handle && _supported;
     }
-
-    uint32_t getMaxImageDimension2D() {
-        const auto& properties = getProperties();
-        return properties.limits.maxImageDimension2D;
-    }
-
 };
 
 VKGraphicsEnvironment *VKGraphicsEnvironment::graphics_environment() {
@@ -307,10 +301,6 @@ VKGraphicsEnvironment::VKGraphicsEnvironment() :
     _default_device = 0;
 }
 
-uint32_t VKGraphicsEnvironment::max_texture_size() {
-    return _physical_devices[_default_physical_device].getMaxImageDimension2D();
-}
-
 vk::raii::Instance& VKGraphicsEnvironment::vk_instance() {
     return _vk_instance;
 }
@@ -341,10 +331,6 @@ VKDevice::VKDevice(PhysicalDevice& physicalDevice) : vk::raii::Device(nullptr), 
     *((vk::raii::Device*) this) = {physicalDevice, deviceCreateInfo};
     this->_queue_family =  physicalDevice.queue_family();
     J2dRlsTrace(J2D_TRACE_INFO, "Vulkan: Device created\n"); // TODO which one?
-}
-
-extern "C" jint VK_MaxTextureSize() {
-    return (jint)VKGraphicsEnvironment::graphics_environment()->max_texture_size();
 }
 
 extern "C" jboolean VK_Init() {

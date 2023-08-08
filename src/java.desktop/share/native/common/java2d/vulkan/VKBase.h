@@ -102,15 +102,12 @@ public:
     static void dispose();
     VKDevice& default_device();
     vk::raii::Instance& vk_instance();
-    uint32_t max_texture_size();
 };
 
 extern "C" {
 #endif //__cplusplus
 
 jboolean VK_Init();
-
-jint VK_MaxTextureSize();
 
 #ifdef __cplusplus
 }
