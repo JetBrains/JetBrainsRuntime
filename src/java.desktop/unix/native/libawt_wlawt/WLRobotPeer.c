@@ -32,6 +32,7 @@
 #include <Trace.h>
 #include <jni_util.h>
 #include <java_awt_event_KeyEvent.h>
+#include <java_awt_event_InputEvent.h>
 
 #include "sun_awt_wl_WLRobotPeer.h"
 #include "WLToolkit.h"
@@ -257,6 +258,18 @@ struct wayland_keycode_map_item wayland_keycode_map[] = {
         { java_awt_event_KeyEvent_VK_F24, 194 },
         { java_awt_event_KeyEvent_VK_UNDEFINED, -1 }
 };
+
+struct wayland_button_map_item {
+    int java_button_mask;
+    int wayland_button_code;
+};
+
+struct wayland_button_map_item wayland_button_map[] = {
+        { java_awt_event_InputEvent_BUTTON1_DOWN_MASK | java_awt_event_InputEvent_BUTTON1_MASK, 0x110 },
+        { java_awt_event_InputEvent_BUTTON2_DOWN_MASK | java_awt_event_InputEvent_BUTTON2_MASK, 0x112 },
+        { java_awt_event_InputEvent_BUTTON3_DOWN_MASK | java_awt_event_InputEvent_BUTTON3_MASK, 0x111 },
+        { -1, -1 },
+};
 #endif
 
 static jclass    pointClass;          // java.awt.Point
@@ -463,6 +476,52 @@ Java_sun_awt_wl_WLRobotPeer_sendJavaKeyImpl
     }
 
     wakefield_send_key(wakefield, key, pressed ? 1 : 0);
+#endif
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLRobotPeer_mouseMoveImpl
+        (JNIEnv *env, jclass clazz, jint x, jint y)
+{
+#ifdef WAKEFIELD_ROBOT
+    if (!wakefield) {
+        JNU_ThrowByName(env, "java/awt/AWTError", "no 'wakefield' protocol extension");
+        return;
+    }
+
+    wakefield_send_cursor(wakefield, x, y);
+#endif
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLRobotPeer_sendMouseButtonImpl
+        (JNIEnv *env, jclass clazz, jint buttons, jboolean pressed)
+{
+#ifdef WAKEFIELD_ROBOT
+    if (!wakefield) {
+        JNU_ThrowByName(env, "java/awt/AWTError", "no 'wakefield' protocol extension");
+        return;
+    }
+
+    for (struct wayland_button_map_item* item = wayland_button_map; item->wayland_button_code != -1; ++item) {
+        if (item->java_button_mask & buttons) {
+            wakefield_send_button(wakefield, item->wayland_button_code, pressed ? 1 : 0);
+        }
+    }
+#endif
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLRobotPeer_mouseWheelImpl
+        (JNIEnv *env, jclass clazz, jint amount)
+{
+#ifdef WAKEFIELD_ROBOT
+    if (!wakefield) {
+        JNU_ThrowByName(env, "java/awt/AWTError", "no 'wakefield' protocol extension");
+        return;
+    }
+
+    wakefield_send_wheel(wakefield, amount);
 #endif
 }
 

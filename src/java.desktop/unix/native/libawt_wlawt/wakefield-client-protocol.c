@@ -67,6 +67,9 @@ static const struct wl_message wakefield_requests[] = {
 	{ "get_surface_location", "o", wakefield_types + 7 },
 	{ "get_pixel_color", "ii", wakefield_types + 0 },
 	{ "send_key", "uu", wakefield_types + 0 },
+	{ "send_cursor", "ii", wakefield_types + 0 },
+	{ "send_button", "uu", wakefield_types + 0 },
+	{ "send_wheel", "i", wakefield_types + 0 },
 	{ "capture_create", "oii", wakefield_types + 8 },
 };
 
@@ -78,7 +81,7 @@ static const struct wl_message wakefield_events[] = {
 
 WL_PRIVATE const struct wl_interface wakefield_interface = {
 	"wakefield", 1,
-	6, wakefield_requests,
+	9, wakefield_requests,
 	3, wakefield_events,
 };
 

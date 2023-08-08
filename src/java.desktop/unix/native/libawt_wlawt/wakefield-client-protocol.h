@@ -143,7 +143,10 @@ wakefield_add_listener(struct wakefield *wakefield,
 #define WAKEFIELD_GET_SURFACE_LOCATION 2
 #define WAKEFIELD_GET_PIXEL_COLOR 3
 #define WAKEFIELD_SEND_KEY 4
-#define WAKEFIELD_CAPTURE_CREATE 5
+#define WAKEFIELD_SEND_CURSOR 5
+#define WAKEFIELD_SEND_BUTTON 6
+#define WAKEFIELD_SEND_WHEEL 7
+#define WAKEFIELD_CAPTURE_CREATE 8
 
 /**
  * @ingroup iface_wakefield
@@ -178,6 +181,18 @@ wakefield_add_listener(struct wakefield *wakefield,
  * @ingroup iface_wakefield
  */
 #define WAKEFIELD_SEND_KEY_SINCE_VERSION 1
+/**
+ * @ingroup iface_wakefield
+ */
+#define WAKEFIELD_SEND_CURSOR_SINCE_VERSION 1
+/**
+ * @ingroup iface_wakefield
+ */
+#define WAKEFIELD_SEND_BUTTON_SINCE_VERSION 1
+/**
+ * @ingroup iface_wakefield
+ */
+#define WAKEFIELD_SEND_WHEEL_SINCE_VERSION 1
 /**
  * @ingroup iface_wakefield
  */
@@ -262,6 +277,42 @@ wakefield_send_key(struct wakefield *wakefield, uint32_t key, uint32_t state)
 {
 	wl_proxy_marshal_flags((struct wl_proxy *) wakefield,
 			 WAKEFIELD_SEND_KEY, NULL, wl_proxy_get_version((struct wl_proxy *) wakefield), 0, key, state);
+}
+
+/**
+ * @ingroup iface_wakefield
+ *
+ * This requests an emulation of the mouse cursor being moved to the specified screen coordinates.
+ */
+static inline void
+wakefield_send_cursor(struct wakefield *wakefield, int32_t x, int32_t y)
+{
+	wl_proxy_marshal_flags((struct wl_proxy *) wakefield,
+			 WAKEFIELD_SEND_CURSOR, NULL, wl_proxy_get_version((struct wl_proxy *) wakefield), 0, x, y);
+}
+
+/**
+ * @ingroup iface_wakefield
+ *
+ * This requests an emulation of a mouse button press by its Linux event code.
+ */
+static inline void
+wakefield_send_button(struct wakefield *wakefield, uint32_t button, uint32_t state)
+{
+	wl_proxy_marshal_flags((struct wl_proxy *) wakefield,
+			 WAKEFIELD_SEND_BUTTON, NULL, wl_proxy_get_version((struct wl_proxy *) wakefield), 0, button, state);
+}
+
+/**
+ * @ingroup iface_wakefield
+ *
+ * This requests an emulation of a rotation of a mouse scroll wheel.
+ */
+static inline void
+wakefield_send_wheel(struct wakefield *wakefield, int32_t amount)
+{
+	wl_proxy_marshal_flags((struct wl_proxy *) wakefield,
+			 WAKEFIELD_SEND_WHEEL, NULL, wl_proxy_get_version((struct wl_proxy *) wakefield), 0, amount);
 }
 
 /**
