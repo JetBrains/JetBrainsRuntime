@@ -628,6 +628,28 @@ ReservedSpace Metaspace::reserve_address_space_for_compressed_classes(size_t siz
       a +=  search_ranges[i].increment;
     }
   }
+
+  int len = list.length();
+  int r = 0;
+  if (!DumpSharedSpaces) {
+    // Starting from a random position in the list. If the address cannot be reserved
+    // (the OS already assigned it for something else), go to the next position, wrapping
+    // around if necessary, until we exhaust all the items.
+    os::init_random((int)os::javaTimeNanos());
+    r = ABS(os::random() % len);
+    log_info(metaspace)("Randomizing compressed class space: start from %d out of %d locations",
+                        r % len, len);
+  }
+  for (int i = 0; i < len; i++) {
+    assert((i + r) >= 0, "should never underflow because len is small integer");
+    address a = list.at((i + r) % len);
+    ReservedSpace rs(size, Metaspace::reserve_alignment(),
+                     os::vm_page_size(), (char*)a);
+    if (rs.is_reserved()) {
+      assert(a == (address)rs.base(), "Sanity");
+      return rs;
+    }
+  }
 #endif // defined(AARCH64) || defined(PPC64)
 
 #ifdef AARCH64
