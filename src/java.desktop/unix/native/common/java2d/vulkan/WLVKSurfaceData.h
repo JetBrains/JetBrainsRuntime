@@ -27,44 +27,17 @@
 #ifndef WLVKSurfaceData_h_Included
 #define WLVKSurfaceData_h_Included
 
-#include <cstdlib>
-#include <vulkan/vulkan.h>
-#include <SurfaceData.h>
-#include <VKBase.h>
+#include "VKSurfaceData.h"
 
-#ifdef HEADLESS
-#define WLVKSDOps void
-#else /* HEADLESS */
+#ifndef HEADLESS
 
-class WLVKSurfaceData : public VKSurfaceData {
-    wl_surface*            _wl_surface;
-    vk::raii::SurfaceKHR   _surface_khr;
-    vk::raii::SwapchainKHR _swapchain_khr;
+class WLVKSurfaceData : public VKSwapchainSurfaceData {
+    wl_surface* _wl_surface;
 public:
-    WLVKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc);
+    WLVKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
+            : VKSwapchainSurfaceData(w, h, s, bgc), _wl_surface(nullptr) {}
     void validate(wl_surface* wls);
-    void revalidate(uint32_t w, uint32_t h, uint32_t s);
-    void set_bg_color(uint32_t bgc);
-    void update();
 };
-
-/**
- * The WLVKSDOps structure contains the WLVK-specific information for a given
- * WLVKSurfaceData.  It is referenced by the native OGLSDOps structure.
- *
- *     wl_surface* wlSurface;
- * For onscreen windows, we maintain a reference to that window's associated
- * wl_surface handle here.  Offscreen surfaces have no associated Window, so for
- * those surfaces, this value will simply be zero.
- *
- *     VkSurfaceKHR* surface;
- * Vulkan surface associated with this surface.
- */
-typedef struct _WLVKSDOps {
-    SurfaceDataOps      sdOps;
-    WLVKSurfaceData*    wlvkSD;
-    pthread_mutex_t     lock;
-} WLVKSDOps;
 
 #endif /* HEADLESS */
 
