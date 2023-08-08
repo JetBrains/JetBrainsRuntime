@@ -205,6 +205,34 @@ ifeq ($(call isTargetOs, windows)+$(ENABLE_HEADLESS_ONLY)+$(A11Y_NVDA_ANNOUNCING
   TARGETS += $(COPY_NVDA_DEPENDENCIES)
 endif
 
+# Compile Vulkan shaders
+define compile-spirv
+  $(call MakeTargetDir)
+  $(VULKAN_SHADER_COMPILER) '$(call DecodeSpace, $@)' '$(call DecodeSpace, $<)'
+endef
+spirv-name = $(strip $1).h
+
+ifeq ($(VULKAN_ENABLED), true)
+  $(eval $(call SetupCopyFiles, COMPILE_VULKAN_SHADERS, \
+      SRC := $(TOPDIR)/src/$(MODULE)/share/glsl/vulkan, \
+      FILES := $(call FindFiles, $(TOPDIR)/src/$(MODULE)/share/glsl/vulkan), \
+      DEST := $(SUPPORT_OUTPUTDIR)/headers/java.desktop/vulkan/spirv, \
+      MACRO := compile-spirv, \
+      NAME_MACRO := spirv-name, \
+  ))
+  VULKAN_SHADER_LIST = $(SUPPORT_OUTPUTDIR)/headers/java.desktop/vulkan/shader_list.h
+  $(VULKAN_SHADER_LIST): $(COMPILE_VULKAN_SHADERS)
+	> $(VULKAN_SHADER_LIST) $(NEWLINE) \
+	$(foreach f, $(patsubst $(TOPDIR)/src/$(MODULE)/share/glsl/vulkan/%,%,$(call FindFiles, $(TOPDIR)/src/$(MODULE)/share/glsl/vulkan)), \
+	$(ECHO) SHADER_ENTRY\($(subst .,$(COMMA),$(subst /,_,$f))\) >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
+	$(ECHO) '#ifdef INCLUDE_BYTECODE' >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
+	$(ECHO) '#include "spirv/$f.h"' >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
+	$(ECHO) BYTECODE_END >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
+	$(ECHO) '#endif' >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
+)
+  $(BUILD_LIBAWT): $(VULKAN_SHADER_LIST)
+endif
+
 TARGETS += $(BUILD_LIBAWT)
 
 # Mac and Windows only use the native AWT lib, do not build libawt_headless
@@ -406,6 +434,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/java2d/vulkan \
         java.base:libjvm \
         java.base:libjava \
+        libvmahpp \
         #
 
     # Enable 'wakefield' extension for java.awt.Robot support
@@ -449,8 +478,12 @@ ifeq ($(call isTargetOs, windows macosx), false)
             logical-op-parentheses format-nonliteral int-conversion, \
         DISABLED_WARNINGS_gcc_awt_InputMethod.c := unused-label, \
         DISABLED_WARNINGS_gcc_CUPSfuncs.c := unused-variable, \
+        DISABLED_WARNINGS_gcc_VKMemory.cpp := missing-field-initializers implicit-fallthrough parentheses, \
+        DISABLED_WARNINGS_gcc_VKRenderQueue.c := unused-variable unused-but-set-variable, \
         DISABLED_WARNINGS_clang_awt_InputMethod.c := unused-label, \
         DISABLED_WARNINGS_clang_CUPSfuncs.c := unused-variable, \
+        DISABLED_WARNINGS_clang_VKMemory.cpp := missing-field-initializers implicit-fallthrough parentheses, \
+        DISABLED_WARNINGS_clang_VKRenderQueue.c := unused-variable unused-but-set-variable, \
         JDK_LIBS := libawt java.base:libjava java.base:libjvm, \
         LIBS := $(WAYLAND_LIBS), \
         LIBS_unix := $(LIBDL) $(LIBM), \
