@@ -27,12 +27,4 @@
 #include "jni.h"
 #include "VKBase.h"
 
-/*
- * Class:     sun_java2d_vulkan_WLVKGraphicsConfig
- * Method:    nativeGetMaxTextureSize
- * Signature: ()I
- */
-extern "C" JNIEXPORT jint JNICALL Java_sun_java2d_vulkan_WLVKGraphicsConfig_nativeGetMaxTextureSize
-        (JNIEnv *env, jclass vkgc) {
-    return VK_MaxTextureSize();
-}
+// TODO ?
