@@ -31,70 +31,111 @@
 
 #define VK_NO_PROTOTYPES
 #define VULKAN_HPP_NO_DEFAULT_DISPATCHER
+#include <queue>
 #include <vulkan/vulkan_raii.hpp>
 #include "jni.h"
+#include "VKMemory.h"
+#include "VKPipeline.h"
 
-class PhysicalDevice;
-class VKGraphicsEnvironment;
-
-class VKDevice : public vk::raii::Device {
+class VKDevice : public vk::raii::Device, public vk::raii::PhysicalDevice {
     friend class VKGraphicsEnvironment;
-    vk::raii::CommandPool  _command_pool;
-    int                    _queue_family = -1;
-    VKDevice(PhysicalDevice& physicalDevice);
+
+    vk::Instance             _instance;
+    std::string              _name;
+    std::vector<const char*> _enabled_layers, _enabled_extensions;
+    bool                     _ext_memory_budget, _khr_synchronization2, _khr_dynamic_rendering;
+    int                      _queue_family = -1;
+
+    // Logical device state
+    VKMemory                 _memory;
+    VKPipelines              _pipelines;
+    vk::raii::Queue          _queue = nullptr;
+    vk::raii::CommandPool    _commandPool = nullptr;
+    vk::raii::Semaphore      _timelineSemaphore = nullptr;
+    uint64_t                 _timelineCounter = 0;
+    uint64_t                 _lastReadTimelineCounter = 0;
+
+    template <typename T> struct Pending {
+        T        resource;
+        uint64_t counter;
+        using Queue = std::queue<Pending<T>>;
+    };
+    Pending<vk::raii::CommandBuffer>::Queue _pendingPrimaryBuffers, _pendingSecondaryBuffers;
+    Pending<VKBuffer>::Queue                _pendingVertexBuffers;
+
+    template <typename T> T popPending(typename Pending<T>::Queue& queue) {
+        if (!queue.empty()) {
+            auto& f = queue.front();
+            if (_lastReadTimelineCounter >= f.counter ||
+                (_lastReadTimelineCounter = _timelineSemaphore.getCounterValue()) >= f.counter) {
+                T resource = std::move(f.resource);
+                queue.pop();
+                return resource;
+            }
+        }
+        return T(nullptr);
+    }
+    template <typename T> void pushPending(typename Pending<T>::Queue& queue, T&& resource) {
+        queue.push({std::move(resource), _timelineCounter});
+    }
+    template <typename T> void pushPending(typename Pending<T>::Queue& queue, std::vector<T>& resources) {
+        for (T& r : resources) {
+            pushPending(queue, std::move(r));
+        }
+        resources.clear();
+    }
+
+    explicit VKDevice(vk::Instance instance, vk::raii::PhysicalDevice&& handle);
 public:
-    int queue_family() const {
-        return _queue_family;
+
+    bool synchronization2() {
+        return _khr_synchronization2;
+    }
+
+    bool dynamicRendering() {
+        return _khr_dynamic_rendering;
+    }
+
+    VKPipelines& pipelines() {
+        return _pipelines;
+    }
+
+    uint32_t queue_family() const {
+        return (uint32_t) _queue_family;
+    }
+
+    const vk::raii::Queue& queue() const {
+        return _queue;
+    }
+
+    void init(); // Creates actual logical device
+
+    VKBuffer getVertexBuffer();
+    vk::raii::CommandBuffer getCommandBuffer(vk::CommandBufferLevel level);
+    void submitCommandBuffer(vk::raii::CommandBuffer&& primary,
+                             std::vector<vk::raii::CommandBuffer>& secondary,
+                             std::vector<VKBuffer>& vertexBuffers,
+                             std::vector<vk::Semaphore>& waitSemaphores,
+                             std::vector<vk::PipelineStageFlags>& waitStages,
+                             std::vector<vk::Semaphore>& signalSemaphores);
+
+    bool supported() const { // Supported or not
+        return *((const vk::raii::PhysicalDevice&) *this);
+    }
+
+    explicit operator bool() const { // Initialized or not
+        return *((const vk::raii::Device&) *this);
     }
 };
-
-class VKSurfaceData {
-    uint32_t               _width;
-    uint32_t               _height;
-    uint32_t               _scale;
-    uint32_t               _bg_color;
-public:
-    VKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
-        : _width(w), _height(h), _scale(s), _bg_color(bgc) {};
-
-    uint32_t width() const {
-        return _width;
-    }
-
-    uint32_t height() const {
-        return _height;
-    }
-
-    uint32_t scale() const {
-        return _scale;
-    }
-
-    uint32_t bg_color() const {
-        return _bg_color;
-    }
-
-    virtual void set_bg_color(uint32_t bg_color) {
-        _bg_color = bg_color;
-    }
-
-    virtual ~VKSurfaceData() = default;
-
-    virtual void revalidate(uint32_t w, uint32_t h, uint32_t s)
-    {
-        _width = w;
-        _height = h;
-        _scale = s;
-    }
-};
-
 
 class VKGraphicsEnvironment {
-    vk::raii::Context             _vk_context;
-    vk::raii::Instance            _vk_instance;
-    std::vector<PhysicalDevice>   _physical_devices;
-    std::vector<VKDevice>         _devices;
-    int                           _default_physical_device;
-    int                           _default_device;
+    vk::raii::Context                      _vk_context;
+    vk::raii::Instance                     _vk_instance;
+#if defined(DEBUG)
+    vk::raii::DebugUtilsMessengerEXT       _debugMessenger = nullptr;
+#endif
+    std::vector<std::unique_ptr<VKDevice>> _devices;
+    VKDevice*                              _default_device;
     static std::unique_ptr<VKGraphicsEnvironment> _ge_instance;
     VKGraphicsEnvironment();
 public:
@@ -102,15 +143,12 @@ public:
     static void dispose();
     VKDevice& default_device();
     vk::raii::Instance& vk_instance();
-    uint32_t max_texture_size();
 };
 
 extern "C" {
 #endif //__cplusplus
 
 jboolean VK_Init();
-
-jint VK_MaxTextureSize();
 
 #ifdef __cplusplus
 }
