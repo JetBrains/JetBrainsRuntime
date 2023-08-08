@@ -24,12 +24,46 @@
  * questions.
  */
 
-// These are stubs in case we were built with Vulkan disabled.
-#ifndef VULKAN_ENABLED
-#include "jni.h"
+#ifndef VKMemory_h_Included
+#define VKMemory_h_Included
 
-jboolean VK_Init() {
-    return 0;
-}
+#define VK_NO_PROTOTYPES
+#define VULKAN_HPP_NO_DEFAULT_DISPATCHER
+#include <vulkan/vulkan_raii.hpp>
+#include <vk_mem_alloc.hpp>
 
-#endif
+class VKBuffer {
+    friend class VKMemory;
+    vma::UniqueBuffer     _buffer;
+    vma::UniqueAllocation _allocation;
+    vma::AllocationInfo   _allocationInfo;
+    uint32_t              _size = 0;
+    uint32_t              _position = 0;
+public:
+    VKBuffer(nullptr_t) {}
+    vk::Buffer operator*() const {
+        return *_buffer;
+    }
+    uint32_t size() const {
+        return _size;
+    }
+    uint32_t& position() {
+        return _position;
+    }
+    void* data() {
+        return _allocationInfo.pMappedData;
+    }
+};
+
+class VKMemory : vma::Allocator {
+    vma::UniqueAllocator _allocator;
+
+public:
+    void init(vk::Instance instance, const vk::raii::PhysicalDevice& physicalDevice,
+              const vk::raii::Device& device, uint32_t apiVersion, bool extMemoryBudget);
+
+    VKBuffer allocateBuffer(uint32_t size, vk::BufferUsageFlags usage,
+                            vma::AllocationCreateFlags flags, vma::MemoryUsage memoryUsage);
+};
+
+#endif //VKMemory_h_Included
