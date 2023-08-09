@@ -237,6 +237,7 @@ VKDevice::VKDevice(vk::raii::PhysicalDevice&& handle) : vk::raii::Device(nullptr
     const auto& properties10 = handle.getProperties();
     const auto& queueFamilies = handle.getQueueFamilyProperties();
 
+    _name = (const char*) properties10.deviceName;
     J2dRlsTrace5(J2D_TRACE_INFO, "Vulkan: Found device %s (%d.%d.%d, %s)\n",
                  (const char*) properties10.deviceName,
                  VK_API_VERSION_MAJOR(properties10.apiVersion),
@@ -341,7 +342,7 @@ void VKDevice::init() {
     };
     ((vk::raii::Device&) *this) = {*this, deviceCreateInfo};
     _queue = getQueue(_queue_family, 0);
-    J2dRlsTrace(J2D_TRACE_INFO, "Vulkan: Device created\n"); // TODO which one?
+    J2dRlsTrace1(J2D_TRACE_INFO, "Vulkan: Device created %s\n", _name.c_str());
 }
 
 extern "C" jboolean VK_Init() {

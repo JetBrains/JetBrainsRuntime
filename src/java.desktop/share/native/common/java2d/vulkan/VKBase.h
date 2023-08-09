@@ -37,9 +37,10 @@
 class VKDevice : public vk::raii::Device, public vk::raii::PhysicalDevice {
     friend class VKGraphicsEnvironment;
 
+    std::string              _name;
     std::vector<const char*> _enabled_layers, _enabled_extensions;
-    int _queue_family = -1;
-    vk::raii::Queue _queue;
+    int                      _queue_family = -1;
+    vk::raii::Queue          _queue;
 
     explicit VKDevice(vk::raii::PhysicalDevice&& handle);
 public:
