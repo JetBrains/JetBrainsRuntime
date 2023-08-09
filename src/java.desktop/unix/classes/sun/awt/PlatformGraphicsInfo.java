@@ -162,4 +162,11 @@ public class PlatformGraphicsInfo {
         }
         return "splashscreen";
     }
+
+    public static String getSplashScreenLib() {
+        if (PlatformGraphicsInfo.getToolkitID() == PlatformGraphicsInfo.TK_WAYLAND) {
+            return "wlsplashscreen";
+        }
+        return "splashscreen";
+    }
 }
