@@ -127,7 +127,7 @@ SplashIsStillLooping(Splash * splash)
 }
 
 void
-SplashUpdateScreenData(Splash * splash)
+SplashUpdateScreenData(Splash * splash, bool reuseScreenData)
 {
     ImageRect srcRect, dstRect;
     if (splash->currentFrame < 0) {
@@ -137,7 +137,7 @@ SplashUpdateScreenData(Splash * splash)
     initRect(&srcRect, 0, 0, splash->width, splash->height, 1,
         splash->width * sizeof(rgbquad_t),
         splash->frames[splash->currentFrame].bitmapBits, &splash->imageFormat);
-    if (splash->screenData) {
+    if (splash->screenData && !reuseScreenData) {
         free(splash->screenData);
     }
     splash->screenStride = splash->width * splash->screenFormat.depthBytes;
@@ -146,7 +146,9 @@ SplashUpdateScreenData(Splash * splash)
             (splash->screenStride + splash->byteAlignment - 1) &
             ~(splash->byteAlignment - 1);
     }
-    splash->screenData = malloc(splash->height * splash->screenStride);
+    if (!reuseScreenData) {
+        splash->screenData = malloc(splash->height * splash->screenStride);
+    }
     initRect(&dstRect, 0, 0, splash->width, splash->height, 1,
         splash->screenStride, splash->screenData, &splash->screenFormat);
     if (splash->overlayData) {
