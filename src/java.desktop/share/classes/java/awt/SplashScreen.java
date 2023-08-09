@@ -29,6 +29,7 @@ import java.awt.image.*;
 import java.net.URL;
 import java.net.URLConnection;
 import java.io.File;
+import sun.awt.PlatformGraphicsInfo;
 import sun.util.logging.PlatformLogger;
 import sun.awt.image.SunWritableRaster;
 
@@ -129,7 +130,7 @@ public final class SplashScreen {
             }
             // SplashScreen class is now a singleton
             if (!wasClosed && theInstance == null) {
-                System.loadLibrary("splashscreen");
+                System.loadLibrary(PlatformGraphicsInfo.getSplashScreenLib());
                 long ptr = _getInstance();
                 if (ptr != 0 && _isVisible(ptr)) {
                     theInstance = new SplashScreen(ptr);
