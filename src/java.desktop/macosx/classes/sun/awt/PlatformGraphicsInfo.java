@@ -65,4 +65,7 @@ public final class PlatformGraphicsInfo {
             "but this program performed an operation which requires it.";
     }
 
+    public static String getSplashScreenLib() {
+        return "splashscreen";
+    }
 }
