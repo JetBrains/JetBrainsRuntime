@@ -39,7 +39,6 @@ std::unique_ptr<VKGraphicsEnvironment> VKGraphicsEnvironment::_ge_instance = nul
 // ========== Graphics environment ==========
 
 #if defined(DEBUG)
-static vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
 
 static VkBool32 debugCallback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -161,7 +160,7 @@ VKGraphicsEnvironment::VKGraphicsEnvironment() :
     // Create debug messenger
 #if defined(DEBUG)
     if (pNext) {
-        debugMessenger = vk::raii::DebugUtilsMessengerEXT(_vk_instance, vk::DebugUtilsMessengerCreateInfoEXT {
+        _debugMessenger = vk::raii::DebugUtilsMessengerEXT(_vk_instance, vk::DebugUtilsMessengerCreateInfoEXT {
                 /*flags*/           {},
                 /*messageSeverity*/ vk::DebugUtilsMessageSeverityFlagBitsEXT::eError |
                                     vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
@@ -351,8 +350,5 @@ extern "C" jboolean VK_Init() {
         return true;
     }
 
-#if defined(DEBUG)
-    debugMessenger = nullptr;
-#endif
     return false;
 }

@@ -67,6 +67,9 @@ public:
 class VKGraphicsEnvironment {
     vk::raii::Context                      _vk_context;
     vk::raii::Instance                     _vk_instance;
+#if defined(DEBUG)
+    vk::raii::DebugUtilsMessengerEXT       _debugMessenger = nullptr;
+#endif
     std::vector<std::unique_ptr<VKDevice>> _devices;
     VKDevice*                              _default_device;
     static std::unique_ptr<VKGraphicsEnvironment> _ge_instance;
