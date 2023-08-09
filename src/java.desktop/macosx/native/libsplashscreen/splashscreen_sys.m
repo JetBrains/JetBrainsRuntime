@@ -292,7 +292,7 @@ SplashRedrawWindow(Splash * splash) {
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
         // drop the reference to the old view and image
         [splash->window setContentView: nil];
-        SplashUpdateScreenData(splash);
+        SplashUpdateScreenData(splash, false);
 
         // NSDeviceRGBColorSpace vs. NSCalibratedRGBColorSpace ?
         NSBitmapImageRep * rep = [[NSBitmapImageRep alloc]
