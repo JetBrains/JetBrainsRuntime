@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,39 +23,19 @@
  * questions.
  */
 
-package sun.awt;
+/* platform-dependent definitions */
 
-import java.awt.GraphicsEnvironment;
-import java.awt.Toolkit;
+#ifndef SPLASHSCREEN_CONFIG_H
+#define SPLASHSCREEN_CONFIG_H
 
-public class PlatformGraphicsInfo {
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
 
-    public static GraphicsEnvironment createGE() {
-        return new Win32GraphicsEnvironment();
-    }
+typedef XRectangle RECT_T;
 
-    public static Toolkit createToolkit() {
-        return new sun.awt.windows.WToolkit();
-    }
+#define RECT_EQ_X(r1,r2)        ((r1).x==(r2).x && (r1).width==(r2).width)
+#define RECT_SET(r,xx,yy,ww,hh) (r).x=(xx), (r).y=(yy); (r).width=(ww); \
+                                      (r).height=(hh);
+#define RECT_INC_HEIGHT(r)      (r).height++;
 
-    public static boolean getDefaultHeadlessProperty() {
-        // On Windows, we assume we can always create headful apps.
-        // Here is where we can add code that would actually check.
-        return false;
-    }
-
-    /*
-     * Called from java.awt.GraphicsEnvironment when
-     * getDefaultHeadlessProperty() has returned true, and
-     * the application has called an API that requires headful.
-     */
-    public static String getDefaultHeadlessMessage() {
-        return
-            "\nThe application does not have desktop access,\n" +
-            "but this program performed an operation which requires it.";
-    }
-
-    public static String getSplashScreenLib() {
-        return "splashscreen";
-    }
-}
+#endif
