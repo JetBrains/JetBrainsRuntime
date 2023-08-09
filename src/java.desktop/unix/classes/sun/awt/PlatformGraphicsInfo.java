@@ -47,7 +47,7 @@ public class PlatformGraphicsInfo {
 
     private static int toolkitID = TK_UNDEF;
 
-    private static int getToolkitID() {
+    public static int getToolkitID() {
         if (toolkitID == TK_UNDEF) {
             @SuppressWarnings("removal")
             String name = AccessController.doPrivileged(

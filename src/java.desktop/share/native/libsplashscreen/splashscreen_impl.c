@@ -132,7 +132,7 @@ SplashIsStillLooping(Splash * splash)
 }
 
 void
-SplashUpdateScreenData(Splash * splash)
+SplashUpdateScreenData(Splash * splash, void *data)
 {
     ImageRect srcRect, dstRect;
     if (splash->currentFrame < 0) {
@@ -151,9 +151,11 @@ SplashUpdateScreenData(Splash * splash)
             (splash->screenStride + splash->byteAlignment - 1) &
             ~(splash->byteAlignment - 1);
     }
-    splash->screenData = malloc(splash->height * splash->screenStride);
+    if (data == NULL) {
+        splash->screenData = malloc(splash->height * splash->screenStride);
+    }
     initRect(&dstRect, 0, 0, splash->width, splash->height, 1,
-        splash->screenStride, splash->screenData, &splash->screenFormat);
+        splash->screenStride, data != NULL ? data : splash->screenData, &splash->screenFormat);
     if (splash->overlayData) {
         convertRect2(&srcRect, &dstRect, CVT_BLEND, &splash->overlayRect);
     }

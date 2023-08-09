@@ -646,7 +646,7 @@ SetExecname(char **argv)
 }
 
 /* --- Splash Screen shared library support --- */
-static const char* SPLASHSCREEN_SO = JNI_LIB_NAME("splashscreen");
+extern const char* SPLASHSCREEN_SO;
 static void* hSplashLib = NULL;
 
 void* SplashProcAddress(const char* name) {

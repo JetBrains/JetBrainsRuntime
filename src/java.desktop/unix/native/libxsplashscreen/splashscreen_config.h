@@ -41,20 +41,11 @@
 #include <stdio.h>
 #include "systemScale.h"
 
-typedef uint32_t rgbquad_t;
-typedef uint16_t word_t;
-typedef uint8_t byte_t;
 typedef XRectangle RECT_T;
 
 #define RECT_EQ_X(r1,r2)        ((r1).x==(r2).x && (r1).width==(r2).width)
 #define RECT_SET(r,xx,yy,ww,hh) (r).x=(xx), (r).y=(yy); (r).width=(ww); \
                                       (r).height=(hh);
 #define RECT_INC_HEIGHT(r)      (r).height++;
-
-#define SPLASHCTL_QUIT          'Q'
-#define SPLASHCTL_UPDATE        'U'
-#define SPLASHCTL_RECONFIGURE   'R'
-
-#define INLINE static
 
 #endif

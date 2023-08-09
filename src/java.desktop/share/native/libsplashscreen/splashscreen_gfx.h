@@ -29,6 +29,7 @@
 /*  splashscreen_gfx is a general purpose code for converting pixmaps between various visuals
     it is not very effective, but is universal and concise */
 
+#include "splashscreen_config_common.h"
 #include "splashscreen_config.h"
 
 enum
