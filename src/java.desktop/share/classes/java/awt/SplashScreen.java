@@ -29,6 +29,8 @@ import java.awt.image.*;
 import java.net.URL;
 import java.net.URLConnection;
 import java.io.File;
+
+import sun.awt.PlatformGraphicsInfo;
 import sun.util.logging.PlatformLogger;
 import sun.awt.image.SunWritableRaster;
 
@@ -132,7 +134,7 @@ public final class SplashScreen {
                 java.security.AccessController.doPrivileged(
                     new java.security.PrivilegedAction<Void>() {
                         public Void run() {
-                            System.loadLibrary("splashscreen");
+                            System.loadLibrary(PlatformGraphicsInfo.getSplashScreenLib());
                             return null;
                         }
                     });

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,39 +23,29 @@
  * questions.
  */
 
-package sun.awt;
+/* platform-dependent definitions */
 
-import java.awt.GraphicsEnvironment;
-import java.awt.Toolkit;
+#ifndef SPLASHSCREEN_CONFIG_COMMON_H
+#define SPLASHSCREEN_CONFIG_COMMON_H
 
-public class PlatformGraphicsInfo {
+#include <sys/types.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <signal.h>
+#include <inttypes.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include "systemScale.h"
 
-    public static GraphicsEnvironment createGE() {
-        return new Win32GraphicsEnvironment();
-    }
+typedef uint32_t rgbquad_t;
+typedef uint16_t word_t;
+typedef uint8_t byte_t;
 
-    public static Toolkit createToolkit() {
-        return new sun.awt.windows.WToolkit();
-    }
+#define SPLASHCTL_QUIT          'Q'
+#define SPLASHCTL_UPDATE        'U'
+#define SPLASHCTL_RECONFIGURE   'R'
 
-    public static boolean getDefaultHeadlessProperty() {
-        // On Windows, we assume we can always create headful apps.
-        // Here is where we can add code that would actually check.
-        return false;
-    }
+#define INLINE static
 
-    /*
-     * Called from java.awt.GraphicsEnvironment when
-     * getDefaultHeadlessProperty() has returned true, and
-     * the application has called an API that requires headful.
-     */
-    public static String getDefaultHeadlessMessage() {
-        return
-            "\nThe application does not have desktop access,\n" +
-            "but this program performed an operation which requires it.";
-    }
-
-    public static String getSplashScreenLib() {
-        return "splashscreen";
-    }
-}
+#endif
