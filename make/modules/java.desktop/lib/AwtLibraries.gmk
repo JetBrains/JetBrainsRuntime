@@ -412,6 +412,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/awt \
         common/java2d \
         common/font \
+        common/wayland \
         #
 
     LIBAWT_WLAWT_EXCLUDES := medialib debug opengl x11
@@ -432,6 +433,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/font \
         common/java2d/wl \
         common/java2d/vulkan \
+        common/wayland \
         java.base:libjvm \
         java.base:libjava \
         libvmahpp \
