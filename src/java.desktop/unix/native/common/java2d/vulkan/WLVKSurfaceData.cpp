@@ -196,7 +196,7 @@ JNI_OnUnload(JavaVM *vm, void *reserved) {
 
 
 WLVKSurfaceData::WLVKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
-        :VKSurfaceData(w, h, s, bgc), _wl_surface(nullptr), _surface_khr(nullptr), _swapchain_khr(nullptr)
+        :VKSurfaceData(w, h, s, bgc), _wl_surface(nullptr), _surface(nullptr), _swapchain(nullptr)
 {
     J2dTrace3(J2D_TRACE_INFO, "Create WLVKSurfaceData with size %d x %d and scale %d\n", w, h, s);
 }
@@ -209,13 +209,8 @@ void WLVKSurfaceData::validate(wl_surface* wls)
 
     _wl_surface = wls;
 
-    vk::WaylandSurfaceCreateInfoKHR createInfoKhr = {
-            {}, wl_display, _wl_surface
-    };
-
-    _surface_khr =
-            VKGraphicsEnvironment::graphics_environment()->vk_instance().createWaylandSurfaceKHR(
-                    createInfoKhr);
+    _surface = VKGraphicsEnvironment::graphics_environment()->vk_instance()
+            .createWaylandSurfaceKHR({{}, wl_display, _wl_surface});
     revalidate(width(), height(), scale());
     update();
 }
@@ -223,25 +218,31 @@ void WLVKSurfaceData::validate(wl_surface* wls)
 void WLVKSurfaceData::revalidate(uint32_t w, uint32_t h, uint32_t s)
 {
     if (s == scale() && w == width() && h == height() ) {
-        if (!*_surface_khr || *_swapchain_khr) {
+        if (!*_surface || *_swapchain) {
             J2dTraceLn2(J2D_TRACE_INFO,
                         "WLVKSurfaceData_revalidate is skipped: surface_khr(%p) swapchain_khr(%p)",
-                        *_surface_khr, *_swapchain_khr);
+                        *_surface, *_swapchain);
             return;
         }
     } else {
         VKSurfaceData::revalidate(w, h, s);
-        if (!*_surface_khr) {
+        if (!*_surface) {
             J2dTraceLn1(J2D_TRACE_INFO,"WLVKSurfaceData_revalidate is skipped: surface_khr(%p)",
-                        *_surface_khr);
+                        *_surface);
             return;
         }
     }
 
-    vk::SwapchainCreateInfoKHR swapchainCreateInfoKhr{
+    _device = &VKGraphicsEnvironment::graphics_environment()->default_device();
+
+    vk::SurfaceCapabilitiesKHR surfaceCapabilities = _device->getSurfaceCapabilitiesKHR(*_surface);
+
+    // TODO all these parameters must be checked against device & surface capabilities
+    vk::SwapchainCreateInfoKHR swapchainCreateInfo{
             {},
-            *_surface_khr,
-            1, vk::Format::eB8G8R8A8Unorm,
+            *_surface,
+            surfaceCapabilities.minImageCount,
+            vk::Format::eB8G8R8A8Unorm,
             vk::ColorSpaceKHR::eVkColorspaceSrgbNonlinear,
             {width()/scale(), height()/scale()},
             1,
@@ -252,11 +253,11 @@ void WLVKSurfaceData::revalidate(uint32_t w, uint32_t h, uint32_t s)
             vk::SurfaceTransformFlagBitsKHR::eIdentity,
             vk::CompositeAlphaFlagBitsKHR::eOpaque,
             vk::PresentModeKHR::eImmediate,
-            false, *_swapchain_khr
+            false, *_swapchain
     };
 
-    auto& device = VKGraphicsEnvironment::graphics_environment()->default_device();
-    _swapchain_khr = device.createSwapchainKHR(swapchainCreateInfoKhr);
+    _swapchain = _device->createSwapchainKHR(swapchainCreateInfo);
+    _images = _swapchain.getImages();
 }
 
 void WLVKSurfaceData::set_bg_color(uint32_t bgc)
@@ -270,37 +271,24 @@ void WLVKSurfaceData::set_bg_color(uint32_t bgc)
 
 void WLVKSurfaceData::update()
 {
-    if (!*_swapchain_khr) {
+    if (!*_swapchain) {
         return;
     }
-    auto& device = VKGraphicsEnvironment::graphics_environment()->default_device();
-    vk::SemaphoreCreateInfo semInfo = {};
-    vk::raii::Semaphore presentCompleteSem = device.createSemaphore(semInfo);
+    vk::raii::Semaphore acquireImageSemaphore = _device->createSemaphore({});
+    vk::raii::Semaphore clearImageSemaphore = _device->createSemaphore({});
 
-    std::pair<vk::Result, uint32_t> img = _swapchain_khr.acquireNextImage(0, *presentCompleteSem, nullptr);
-    if (img.first!=vk::Result::eSuccess) {
-        J2dRlsTraceLn(J2D_TRACE_INFO, "failed to get image");
-    }
-    else {
-        J2dRlsTraceLn(J2D_TRACE_INFO, "obtained image");
-    }
-    auto images = _swapchain_khr.getImages();
+    auto img = _swapchain.acquireNextImage(-1, *acquireImageSemaphore, nullptr);
+    vk::resultCheck(img.first, "vk::SwapchainKHR::acquireNextImage");
 
-    vk::CommandPoolCreateInfo poolInfo{
-            {vk::CommandPoolCreateFlagBits::eResetCommandBuffer},
-            static_cast<uint32_t>(device.queue_family())
+    vk::CommandPoolCreateInfo poolInfo{ // TODO do not create pools in performance-sensitive places
+            {}, static_cast<uint32_t>(_device->queue_family())
     };
-
-    auto pool = device.createCommandPool(poolInfo);
+    auto pool = _device->createCommandPool(poolInfo);
 
     vk::CommandBufferAllocateInfo buffInfo{
             *pool, vk::CommandBufferLevel::ePrimary, (uint32_t) 1, nullptr
     };
-
-    auto buffers = device.allocateCommandBuffers(buffInfo);
-
-    vk::CommandBufferBeginInfo begInfo{
-    };
+    auto buffers = _device->allocateCommandBuffers(buffInfo);
 
     uint32_t alpha = (bg_color() >> 24) & 0xFF;
     uint32_t red = (bg_color() >> 16) & 0xFF;
@@ -313,27 +301,31 @@ void WLVKSurfaceData::update()
             static_cast<float>(alpha)/255.0f
     };
 
-    std::vector<vk::ImageSubresourceRange> range = {{
-                                                            vk::ImageAspectFlagBits::eColor,
-                                                            0, 1, 0, 1}};
-    buffers[0].begin(begInfo);
-    buffers[0].clearColorImage(images[img.second], vk::ImageLayout::eSharedPresentKHR, color, range);
+    buffers[0].begin({});
+    buffers[0].pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, {vk::ImageMemoryBarrier {
+            {}, vk::AccessFlagBits::eTransferWrite,
+            vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
+            VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
+            _images[img.second], vk::ImageSubresourceRange {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}
+    }});
+    buffers[0].clearColorImage(_images[img.second], vk::ImageLayout::eTransferDstOptimal, color,
+                               vk::ImageSubresourceRange {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
+    buffers[0].pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eBottomOfPipe, {}, {}, {}, {vk::ImageMemoryBarrier {
+            vk::AccessFlagBits::eTransferWrite, {},
+            vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::ePresentSrcKHR,
+            VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
+            _images[img.second], vk::ImageSubresourceRange {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}
+    }});
     buffers[0].end();
 
+    vk::PipelineStageFlags transferStage = vk::PipelineStageFlagBits::eTransfer;
     vk::SubmitInfo submitInfo{
-            nullptr, nullptr, *buffers[0], nullptr
+            *acquireImageSemaphore, transferStage, *buffers[0], *clearImageSemaphore
     };
 
-    auto queue = device.getQueue(device.queue_family(), 0);
-
-    queue.submit(submitInfo, nullptr);
-    queue.waitIdle();
-    vk::PresentInfoKHR presentInfo;
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = &*_swapchain_khr;
-    presentInfo.pImageIndices = &(img.second);
-
-    queue.presentKHR(presentInfo);
-    queue.waitIdle();
-    device.waitIdle();
+    _device->queue().submit(submitInfo, nullptr);
+    _device->queue().presentKHR(vk::PresentInfoKHR {
+        *clearImageSemaphore, *_swapchain, img.second
+    });
+    _device->waitIdle();
 }

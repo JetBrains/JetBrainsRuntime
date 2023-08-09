@@ -33,6 +33,45 @@
 #include "SurfaceData.h"
 #include "Trace.h"
 
+class VKSurfaceData {
+    uint32_t               _width;
+    uint32_t               _height;
+    uint32_t               _scale;
+    uint32_t               _bg_color;
+public:
+    VKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
+            : _width(w), _height(h), _scale(s), _bg_color(bgc) {};
+
+    uint32_t width() const {
+        return _width;
+    }
+
+    uint32_t height() const {
+        return _height;
+    }
+
+    uint32_t scale() const {
+        return _scale;
+    }
+
+    uint32_t bg_color() const {
+        return _bg_color;
+    }
+
+    virtual void set_bg_color(uint32_t bg_color) {
+        _bg_color = bg_color;
+    }
+
+    virtual ~VKSurfaceData() = default;
+
+    virtual void revalidate(uint32_t w, uint32_t h, uint32_t s)
+    {
+        _width = w;
+        _height = h;
+        _scale = s;
+    }
+};
+
 /**
  * The VKSDOps structure describes a native Vulkan surface and contains all
  * information pertaining to the native surface.  Some information about

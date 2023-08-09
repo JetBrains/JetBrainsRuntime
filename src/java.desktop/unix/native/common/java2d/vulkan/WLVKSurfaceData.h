@@ -28,9 +28,9 @@
 #define WLVKSurfaceData_h_Included
 
 #include <cstdlib>
-#include <vulkan/vulkan.h>
 #include <SurfaceData.h>
 #include <VKBase.h>
+#include <VKSurfaceData.h>
 
 #ifdef HEADLESS
 #define WLVKSDOps void
@@ -38,8 +38,10 @@
 
 class WLVKSurfaceData : public VKSurfaceData {
     wl_surface*            _wl_surface;
-    vk::raii::SurfaceKHR   _surface_khr;
-    vk::raii::SwapchainKHR _swapchain_khr;
+    VKDevice*      _device;
+    vk::raii::SurfaceKHR   _surface;
+    vk::raii::SwapchainKHR _swapchain;
+    std::vector<vk::Image> _images;
 public:
     WLVKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc);
     void validate(wl_surface* wls);

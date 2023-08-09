@@ -34,67 +34,40 @@
 #include <vulkan/vulkan_raii.hpp>
 #include "jni.h"
 
-class PhysicalDevice;
-class VKGraphicsEnvironment;
-
-class VKDevice : public vk::raii::Device {
+class VKDevice : public vk::raii::Device, public vk::raii::PhysicalDevice {
     friend class VKGraphicsEnvironment;
-    vk::raii::CommandPool  _command_pool;
-    int                    _queue_family = -1;
-    VKDevice(PhysicalDevice& physicalDevice);
+
+    std::vector<const char*> _enabled_layers, _enabled_extensions;
+    int _queue_family = -1;
+    vk::raii::Queue _queue;
+
+    explicit VKDevice(vk::raii::PhysicalDevice&& handle);
 public:
+
     int queue_family() const {
         return _queue_family;
     }
-};
 
-class VKSurfaceData {
-    uint32_t               _width;
-    uint32_t               _height;
-    uint32_t               _scale;
-    uint32_t               _bg_color;
-public:
-    VKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
-        : _width(w), _height(h), _scale(s), _bg_color(bgc) {};
-
-    uint32_t width() const {
-        return _width;
+    const vk::raii::Queue& queue() const {
+        return _queue;
     }
 
-    uint32_t height() const {
-        return _height;
+    void init(); // Creates actual logical device
+
+    bool supported() const { // Supported or not
+        return *((const vk::raii::PhysicalDevice&) *this);
     }
 
-    uint32_t scale() const {
-        return _scale;
-    }
-
-    uint32_t bg_color() const {
-        return _bg_color;
-    }
-
-    virtual void set_bg_color(uint32_t bg_color) {
-        _bg_color = bg_color;
-    }
-
-    virtual ~VKSurfaceData() = default;
-
-    virtual void revalidate(uint32_t w, uint32_t h, uint32_t s)
-    {
-        _width = w;
-        _height = h;
-        _scale = s;
+    explicit operator bool() const { // Initialized or not
+        return *((const vk::raii::Device&) *this);
     }
 };
-
 
 class VKGraphicsEnvironment {
-    vk::raii::Context             _vk_context;
-    vk::raii::Instance            _vk_instance;
-    std::vector<PhysicalDevice>   _physical_devices;
-    std::vector<VKDevice>         _devices;
-    int                           _default_physical_device;
-    int                           _default_device;
+    vk::raii::Context                      _vk_context;
+    vk::raii::Instance                     _vk_instance;
+    std::vector<std::unique_ptr<VKDevice>> _devices;
+    VKDevice*                              _default_device;
     static std::unique_ptr<VKGraphicsEnvironment> _ge_instance;
     VKGraphicsEnvironment();
 public:
