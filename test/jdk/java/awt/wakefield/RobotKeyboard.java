@@ -175,29 +175,32 @@ public class RobotKeyboard {
     };
 
     private static Robot robot;
+    private static JFrame frame;
     private static JTextArea textArea;
     private static final List<KeyEvent> events = new ArrayList<>();
 
     public static void main(String[] args) throws Exception {
-        var frame = new JFrame("test");
+        SwingUtilities.invokeAndWait(() -> {
+            frame = new JFrame("test");
 
-        textArea = new JTextArea("");
-        textArea.setEditable(false);
-        frame.add(new JScrollPane(textArea));
-        frame.setSize(500, 500);
-        frame.setVisible(true);
+            textArea = new JTextArea("");
+            textArea.setEditable(false);
+            frame.add(new JScrollPane(textArea));
+            frame.setSize(500, 500);
+            frame.setVisible(true);
 
-        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(
-                new KeyEventDispatcher() {
-                    @Override
-                    public boolean dispatchKeyEvent(KeyEvent e) {
-                        if (e.getID() == KeyEvent.KEY_PRESSED || e.getID() == KeyEvent.KEY_RELEASED) {
-                            events.add(e);
+            KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(
+                    new KeyEventDispatcher() {
+                        @Override
+                        public boolean dispatchKeyEvent(KeyEvent e) {
+                            if (e.getID() == KeyEvent.KEY_PRESSED || e.getID() == KeyEvent.KEY_RELEASED) {
+                                events.add(e);
+                            }
+                            return false;
                         }
-                        return false;
                     }
-                }
-        );
+            );
+        });
 
         robot = new Robot();
         robot.setAutoDelay(50);
@@ -224,6 +227,10 @@ public class RobotKeyboard {
         System.err.println("===== FULL LOG =====");
         System.err.println(textArea.getText());
 
+        frame.dispose();
+
+        // Due to some reason that probably has something to do with the implementation
+        // of the test driver, it's necessary to manually call System.exit() here
         System.exit(ok ? 0 : 1);
     }
 

@@ -126,7 +126,7 @@ struct wayland_keycode_map_item {
 
 // Key codes correspond to the Linux event codes:
 // https://github.com/torvalds/linux/blob/master/include/uapi/linux/input-event-codes.h
-struct wayland_keycode_map_item wayland_keycode_map[] = {
+static struct wayland_keycode_map_item wayland_keycode_map[] = {
         { java_awt_event_KeyEvent_VK_ESCAPE, 1 },
         { java_awt_event_KeyEvent_VK_1, 2 },
         { java_awt_event_KeyEvent_VK_2, 3 },
@@ -264,7 +264,7 @@ struct wayland_button_map_item {
     int wayland_button_code;
 };
 
-struct wayland_button_map_item wayland_button_map[] = {
+static struct wayland_button_map_item wayland_button_map[] = {
         { java_awt_event_InputEvent_BUTTON1_DOWN_MASK | java_awt_event_InputEvent_BUTTON1_MASK, 0x110 },
         { java_awt_event_InputEvent_BUTTON2_DOWN_MASK | java_awt_event_InputEvent_BUTTON2_MASK, 0x112 },
         { java_awt_event_InputEvent_BUTTON3_DOWN_MASK | java_awt_event_InputEvent_BUTTON3_MASK, 0x111 },
