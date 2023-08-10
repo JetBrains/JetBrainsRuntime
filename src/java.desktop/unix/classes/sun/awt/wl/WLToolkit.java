@@ -133,12 +133,15 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     private static final int MOUSE_BUTTONS_COUNT = 3;
     private static final int AWT_MULTICLICK_DEFAULT_TIME_MS = 500;
 
+    private static boolean initialized = false;
+
     private static native void initIDs();
 
     static {
         if (!GraphicsEnvironment.isHeadless()) {
             initIDs();
         }
+        initialized = true;
     }
 
     @SuppressWarnings("removal")
@@ -1004,5 +1007,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     // this emulates pointer leave event, which isn't sent sometimes by compositor
     static void resetPointerInputState() {
         inputState = inputState.resetPointerState();
+    }
+
+    static boolean isInitialized() {
+        return initialized;
     }
 }
