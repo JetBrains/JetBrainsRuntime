@@ -137,7 +137,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
         }
 
         // Skip notification during the initial configuration events
-        if (EventQueue.isDispatchThread()) {
+        if (WLToolkit.isInitialized()) {
             displayChanged();
         }
     }
