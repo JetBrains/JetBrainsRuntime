@@ -36,18 +36,11 @@
 #define WLVKSDOps void
 #else /* HEADLESS */
 
-class WLVKSurfaceData : public VKSurfaceData {
-    wl_surface*            _wl_surface;
-    VKDevice*      _device;
-    vk::raii::SurfaceKHR   _surface;
-    vk::raii::SwapchainKHR _swapchain;
-    std::vector<vk::Image> _images;
+class WLVKSurfaceData : public VKSwapchainSurfaceData {
+    wl_surface* _wl_surface;
 public:
     WLVKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc);
     void validate(wl_surface* wls);
-    void revalidate(uint32_t w, uint32_t h, uint32_t s);
-    void set_bg_color(uint32_t bgc);
-    void update();
 };
 
 /**

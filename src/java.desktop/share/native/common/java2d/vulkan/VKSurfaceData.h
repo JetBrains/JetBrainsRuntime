@@ -27,20 +27,23 @@
 #ifndef VKSurfaceData_h_Included
 #define VKSurfaceData_h_Included
 
-#include "java_awt_image_AffineTransformOp.h"
-#include "sun_java2d_pipe_hw_AccelSurface.h"
-
 #include "SurfaceData.h"
-#include "Trace.h"
+#include "VKBase.h"
 
 class VKSurfaceData {
     uint32_t               _width;
     uint32_t               _height;
     uint32_t               _scale;
     uint32_t               _bg_color;
+protected:
+    VKDevice*              _device;
 public:
     VKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
-            : _width(w), _height(h), _scale(s), _bg_color(bgc) {};
+            : _width(w), _height(h), _scale(s), _bg_color(bgc), _device(nullptr) {};
+
+    const VKDevice& device() const {
+        return *_device;
+    }
 
     uint32_t width() const {
         return _width;
@@ -58,18 +61,54 @@ public:
         return _bg_color;
     }
 
-    virtual void set_bg_color(uint32_t bg_color) {
-        _bg_color = bg_color;
+    void set_bg_color(uint32_t bg_color) {
+        if (_bg_color != bg_color) {
+            _bg_color = bg_color;
+            update();
+        }
     }
 
     virtual ~VKSurfaceData() = default;
 
-    virtual void revalidate(uint32_t w, uint32_t h, uint32_t s)
-    {
+    virtual void revalidate(uint32_t w, uint32_t h, uint32_t s) {
         _width = w;
         _height = h;
         _scale = s;
     }
+
+    virtual void update() = 0;
+};
+
+class VKSwapchainSurfaceData : public VKSurfaceData {
+    vk::raii::SurfaceKHR   _surface;
+    vk::raii::SwapchainKHR _swapchain;
+    std::vector<vk::Image> _images;
+protected:
+    void reset(VKDevice& device, vk::raii::SurfaceKHR surface) {
+        _images.clear();
+        _swapchain = nullptr;
+        _surface = std::move(surface);
+        _device = &device;
+    }
+public:
+    VKSwapchainSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
+            : VKSurfaceData(w, h, s, bgc), _surface(nullptr), _swapchain(nullptr) {};
+
+    const vk::raii::SurfaceKHR& surface() const {
+        return _surface;
+    }
+
+    const vk::raii::SwapchainKHR& swapchain() const {
+        return _swapchain;
+    }
+
+    const std::vector<vk::Image>& images() const {
+        return _images;
+    }
+
+    virtual void revalidate(uint32_t w, uint32_t h, uint32_t s);
+
+    virtual void update();
 };
 
 /**
