@@ -927,26 +927,6 @@ wl_display_poll(struct wl_display *display, int events, int poll_timeout)
     return rc;
 }
 
-static void
-dispatch_nondefault_queues(JNIEnv *env)
-{
-    // The handlers of the events on these queues will be called from here, i.e. on
-    // the 'AWT-Wayland' (toolkit) thread. The handlers must *not* execute any
-    // arbitrary user code that can block.
-    int rc = 0;
-
-#ifdef WAKEFIELD_ROBOT
-    if (robot_queue) {
-        rc = wl_display_dispatch_queue_pending(wl_display, robot_queue);
-    }
-#endif
-
-    if (rc < 0) {
-        JNU_ThrowByName(env, "java/awt/AWTError", "Wayland error during events processing");
-        return;
-    }
-}
-
 int
 wl_flush_to_server(JNIEnv *env)
 {
