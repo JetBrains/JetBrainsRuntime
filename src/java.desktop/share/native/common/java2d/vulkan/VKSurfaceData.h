@@ -27,10 +27,22 @@
 #ifndef VKSurfaceData_h_Included
 #define VKSurfaceData_h_Included
 
+#include <mutex>
+#include "jni.h"
 #include "SurfaceData.h"
 #include "VKBase.h"
 
-class VKSurfaceData {
+/**
+ * These are shorthand names for the surface type constants defined in
+ * VKSurfaceData.java.
+ */
+#define VKSD_UNDEFINED       sun_java2d_pipe_hw_AccelSurface_UNDEFINED
+#define VKSD_WINDOW          sun_java2d_pipe_hw_AccelSurface_WINDOW
+#define VKSD_TEXTURE         sun_java2d_pipe_hw_AccelSurface_TEXTURE
+#define VKSD_RT_TEXTURE      sun_java2d_pipe_hw_AccelSurface_RT_TEXTURE
+
+class VKSurfaceData : private SurfaceDataOps {
+    std::recursive_mutex   _mutex;
     uint32_t               _width;
     uint32_t               _height;
     uint32_t               _scale;
@@ -38,8 +50,10 @@ class VKSurfaceData {
 protected:
     VKDevice*              _device;
 public:
-    VKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
-            : _width(w), _height(h), _scale(s), _bg_color(bgc), _device(nullptr) {};
+    VKSurfaceData(JNIEnv *env, jobject javaSurfaceData, uint32_t w, uint32_t h, uint32_t s, uint32_t bgc);
+    // No need to move, as object must only be created with "new".
+    VKSurfaceData(VKSurfaceData&&) = delete;
+    VKSurfaceData& operator=(VKSurfaceData&&) = delete;
 
     const VKDevice& device() const {
         return *_device;
@@ -91,8 +105,8 @@ protected:
         _device = &device;
     }
 public:
-    VKSwapchainSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
-            : VKSurfaceData(w, h, s, bgc), _surface(nullptr), _swapchain(nullptr) {};
+    VKSwapchainSurfaceData(JNIEnv *env, jobject javaSurfaceData, uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
+            : VKSurfaceData(env, javaSurfaceData, w, h, s, bgc), _surface(nullptr), _swapchain(nullptr) {};
 
     const vk::raii::SurfaceKHR& surface() const {
         return _surface;
@@ -111,63 +125,4 @@ public:
     virtual void update();
 };
 
-/**
- * The VKSDOps structure describes a native Vulkan surface and contains all
- * information pertaining to the native surface.  Some information about
- * the more important/different fields:
- *
- *     void *privOps;
- * Pointer to native-specific SurfaceData info, such as the
- * native Drawable handle and GraphicsConfig data.
- *
- *     jobject graphicsConfig;
- * Strong reference to the VKGraphicsConfig used by this VKSurfaceData.
- *
- *     jint drawableType;
- * The surface type; can be any one of the surface type constants defined
- * below (VK_WINDOW, VK_TEXTURE, etc).
- *
- *     jboolean isOpaque;
- * If true, the surface should be treated as being fully opaque.
- *
- *     jboolean needsInit;
- * If true, the surface requires some one-time initialization, which should
- * be performed after a context has been made current to the surface for
- * the first time.
- *
- *     jint x/yOffset
- * The offset in pixels of the Vulkan viewport origin from the lower-left
- * corner of the heavyweight drawable.
- *
- *     jint width/height;
- * The cached surface bounds.  For offscreen surface types (VK_RT_TEXTURE,
- * VK_TEXTURE, etc.) these values must remain constant.  Onscreen window
- * surfaces (VK_WINDOW, etc.) may have their
- * bounds changed in response to a programmatic or user-initiated event, so
- * these values represent the last known dimensions.  To determine the true
- * current bounds of this surface, query the native Drawable through the
- * privOps field.
- *
- */
-typedef struct _VKSDOps {
-    SurfaceDataOps               sdOps;
-    void                         *privOps;
-    jobject                      graphicsConfig;
-    jint                         drawableType;
-    jboolean                     isOpaque;
-    jboolean                     needsInit;
-    jint                         xOffset;
-    jint                         yOffset;
-    jint                         width;
-    jint                         height;
-  } VKSDOps;
-
-/**
- * These are shorthand names for the surface type constants defined in
- * VKSurfaceData.java.
- */
-#define VKSD_UNDEFINED       sun_java2d_pipe_hw_AccelSurface_UNDEFINED
-#define VKSD_WINDOW          sun_java2d_pipe_hw_AccelSurface_WINDOW
-#define VKSD_TEXTURE         sun_java2d_pipe_hw_AccelSurface_TEXTURE
-#define VKSD_RT_TEXTURE      sun_java2d_pipe_hw_AccelSurface_RT_TEXTURE
 #endif /* VKSurfaceData_h_Included */

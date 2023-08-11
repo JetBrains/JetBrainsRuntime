@@ -87,7 +87,7 @@ Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
     while (b < end) {
         jint opcode = NEXT_INT(b);
 
-        J2dRlsTraceLn2(J2D_TRACE_VERBOSE,
+        J2dRlsTraceLn2(J2D_TRACE_VERBOSE2,
                     "VKRenderQueue_flushBuffer: opcode=%d, rem=%d",
                     opcode, (end-b));
 
@@ -469,6 +469,10 @@ Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
 
         // special no-op (mainly used for achieving 8-byte alignment)
         case sun_java2d_pipe_BufferedOpCodes_NOOP:
+            {
+                J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+                              "VKRenderQueue_flushBuffer: NOOP");
+            }
             break;
 
         // paint-related ops

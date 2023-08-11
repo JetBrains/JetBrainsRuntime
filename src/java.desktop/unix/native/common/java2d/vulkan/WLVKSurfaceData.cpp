@@ -36,121 +36,29 @@
 
 extern struct wl_display *wl_display;
 
-/**
- * This is the implementation of the general surface LockFunc defined in
- * SurfaceData.h.
- */
-jint
-WLVKSD_Lock(JNIEnv *env,
-          SurfaceDataOps *ops,
-          SurfaceDataRasInfo *pRasInfo,
-          jint lockflags)
-{
-#ifndef HEADLESS
-    VKSDOps *vsdo = (VKSDOps*)ops;
-    J2dTrace1(J2D_TRACE_INFO, "WLVKSD_Unlock: %p\n", ops);
-    pthread_mutex_lock(&((WLVKSDOps*)vsdo->privOps)->lock);
-#endif
-    return SD_SUCCESS;
-}
-
-
-static void
-WLVKSD_GetRasInfo(JNIEnv *env,
-                SurfaceDataOps *ops,
-                SurfaceDataRasInfo *pRasInfo)
-{
-#ifndef HEADLESS
-    VKSDOps *vsdo = (VKSDOps*)ops;
-#endif
-}
-
-static void
-WLVKSD_Unlock(JNIEnv *env,
-            SurfaceDataOps *ops,
-            SurfaceDataRasInfo *pRasInfo)
-{
-#ifndef HEADLESS
-    VKSDOps *vsdo = (VKSDOps*)ops;
-    J2dTrace1(J2D_TRACE_INFO, "WLVKSD_Unlock: %p\n", ops);
-    pthread_mutex_unlock(&((WLVKSDOps*)vsdo->privOps)->lock);
-#endif
-}
-
-static void
-WLVKSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
-{
-#ifndef HEADLESS
-    /* ops is assumed non-null as it is checked in SurfaceData_DisposeOps */
-    VKSDOps *vsdo = (VKSDOps*)ops;
-    J2dTrace1(J2D_TRACE_INFO, "WLSD_Dispose %p\n", ops);
-    WLVKSDOps *wlvksdOps = (WLVKSDOps*)vsdo->privOps;
-    pthread_mutex_destroy(&wlvksdOps->lock);
-    if (wlvksdOps->wlvkSD !=nullptr) {
-        delete wlvksdOps->wlvkSD;
-        wlvksdOps->wlvkSD = nullptr;
-    }
-#endif
-}
 extern "C" JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_initOps
-        (JNIEnv *env, jclass vksd, jint width, jint height, jint scale, jint backgroundRGB) {
+        (JNIEnv *env, jobject vksd, jint width, jint height, jint scale, jint backgroundRGB) {
 #ifndef HEADLESS
-    VKSDOps *vsdo = (VKSDOps*)SurfaceData_InitOps(env, vksd, sizeof(VKSDOps));
-    J2dRlsTraceLn1(J2D_TRACE_INFO, "WLVKSurfaceData_initOps: %p", vsdo);
-    jboolean hasException;
-    if (vsdo == NULL) {
-        JNU_ThrowOutOfMemoryError(env, "Initialization of SurfaceData failed.");
-        return;
-    }
-
-    if (width <= 0) {
-        width = 1;
-    }
-    if (height <= 0) {
-        height = 1;
-    }
-
-    WLVKSDOps *wlvksdOps = (WLVKSDOps *)malloc(sizeof(WLVKSDOps));
-
-    if (wlvksdOps == NULL) {
-        JNU_ThrowOutOfMemoryError(env, "creating native WLVK ops");
-        return;
-    }
-
-    vsdo->privOps = wlvksdOps;
-    vsdo->sdOps.Lock = WLVKSD_Lock;
-    vsdo->sdOps.Unlock = WLVKSD_Unlock;
-    vsdo->sdOps.GetRasInfo = WLVKSD_GetRasInfo;
-    vsdo->sdOps.Dispose = WLVKSD_Dispose;
-    pthread_mutexattr_t attr;
-    pthread_mutexattr_init(&attr);
-    // Recursive mutex is required because blit can be done with both source
-    // and destination being the same surface (during scrolling, for example).
-    // So WLSD_Lock() should be able to lock the same surface twice in a row.
-    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP);
-    pthread_mutex_init(&wlvksdOps->lock, &attr);
-    wlvksdOps->wlvkSD = new WLVKSurfaceData(width, height, scale, backgroundRGB);
+    J2dTrace3(J2D_TRACE_INFO, "Create WLVKSurfaceData with size %d x %d and scale %d\n", width, height, scale);
+    new WLVKSurfaceData(env, vksd, width, height, scale, backgroundRGB);
 #endif /* !HEADLESS */
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_sun_java2d_vulkan_WLVKSurfaceData_assignSurface(JNIEnv *env, jobject wsd,
-                                             jlong wlSurfacePtr)
+Java_sun_java2d_vulkan_WLVKSurfaceData_assignSurface(JNIEnv *env, jobject wsd, jlong wlSurfacePtr)
 {
 #ifndef HEADLESS
-    VKSDOps *vsdo = (VKSDOps*)SurfaceData_GetOps(env, wsd);
-    if (vsdo == NULL) {
+    auto sd = (WLVKSurfaceData*)SurfaceData_GetOps(env, wsd);
+    if (sd == nullptr) {
         return;
     }
 
-    WLVKSDOps *wlvksdOps = (WLVKSDOps*)vsdo->privOps;
-
-    wl_surface* wlSurface = (struct wl_surface*)jlong_to_ptr(wlSurfacePtr);
+    auto wlSurface = (struct wl_surface*)jlong_to_ptr(wlSurfacePtr);
     J2dTraceLn2(J2D_TRACE_INFO, "WLVKSurfaceData_assignSurface wl_surface(%p) wl_display(%p)",
                    wlSurface, wl_display);
 
     try {
-        wlvksdOps->wlvkSD->validate(wlSurface);
+        sd->validate(wlSurface);
     } catch (std::exception& e) {
         J2dRlsTrace1(J2D_TRACE_ERROR, "WLVKSurfaceData_assignSurface: %s\n", e.what());
     }
@@ -162,6 +70,7 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_flush(JNIEnv *env, jobject wsd)
 {
 #ifndef HEADLESS
     J2dTrace(J2D_TRACE_INFO, "WLVKSurfaceData_flush\n");
+    // TODO?
 #endif /* !HEADLESS */
 }
 
@@ -170,35 +79,20 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_revalidate(JNIEnv *env, jobject wsd,
                                              jint width, jint height, jint scale)
 {
 #ifndef HEADLESS
-    VKSDOps *vsdo = (VKSDOps*)SurfaceData_GetOps(env, wsd);
-    if (vsdo == NULL) {
+    auto sd = (WLVKSurfaceData*)SurfaceData_GetOps(env, wsd);
+    if (sd == nullptr) {
         return;
     }
     J2dTrace3(J2D_TRACE_INFO, "WLVKSurfaceData_revalidate to size %d x %d and scale %d\n", width, height, scale);
 
-    WLVKSDOps *wlvksdOps = (WLVKSDOps*)vsdo->privOps;
     try {
-        wlvksdOps->wlvkSD->revalidate(width, height, scale);
-        wlvksdOps->wlvkSD->update();
+        sd->revalidate(width, height, scale);
+        sd->update();
     } catch (std::exception& e) {
         J2dRlsTrace1(J2D_TRACE_ERROR, "WLVKSurfaceData_revalidate: %s\n", e.what());
     }
 
 #endif /* !HEADLESS */
-}
-
-extern "C" JNIEXPORT void JNICALL
-JNI_OnUnload(JavaVM *vm, void *reserved) {
-#ifndef HEADLESS
-    VKGraphicsEnvironment::dispose();
-#endif /* !HEADLESS */
-}
-
-
-WLVKSurfaceData::WLVKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
-        : VKSwapchainSurfaceData(w, h, s, bgc), _wl_surface(nullptr)
-{
-    J2dTrace3(J2D_TRACE_INFO, "Create WLVKSurfaceData with size %d x %d and scale %d\n", w, h, s);
 }
 
 void WLVKSurfaceData::validate(wl_surface* wls)

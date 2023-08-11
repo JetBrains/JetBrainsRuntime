@@ -352,3 +352,7 @@ extern "C" jboolean VK_Init() {
 
     return false;
 }
+
+extern "C" JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved) {
+    VKGraphicsEnvironment::dispose();
+}

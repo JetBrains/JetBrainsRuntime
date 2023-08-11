@@ -24,8 +24,27 @@
  * questions.
  */
 
-#include <Trace.h>
+#include "Trace.h"
 #include "VKSurfaceData.h"
+
+VKSurfaceData::VKSurfaceData(JNIEnv *env, jobject javaSurfaceData, uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
+        : SurfaceDataOps(), _width(w), _height(h), _scale(s), _bg_color(bgc), _device(nullptr) {
+    SurfaceData_SetOps(env, javaSurfaceData, this);
+    if (env->ExceptionCheck()) {
+        throw std::runtime_error("VKSurfaceData creation error");
+    }
+    sdObject = env->NewWeakGlobalRef(javaSurfaceData);
+    Lock = [](JNIEnv *env, SurfaceDataOps *ops, SurfaceDataRasInfo *rasInfo, jint lockFlags) {
+        ((VKSurfaceData*) ops)->_mutex.lock();
+        return SD_SUCCESS;
+    };
+    Unlock = [](JNIEnv *env, SurfaceDataOps *ops, SurfaceDataRasInfo *rasInfo) {
+        ((VKSurfaceData*) ops)->_mutex.unlock();
+    };
+    Dispose = [](JNIEnv *env, SurfaceDataOps *ops) {
+        delete (VKSurfaceData*) ops;
+    };
+}
 
 void VKSwapchainSurfaceData::revalidate(uint32_t w, uint32_t h, uint32_t s) {
     if (*swapchain() && s == scale() && w == width() && h == height() ) {
