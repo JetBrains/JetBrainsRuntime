@@ -89,6 +89,7 @@ import java.util.Vector;
 import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -164,6 +165,8 @@ public abstract class SunToolkit extends Toolkit
      * One more bit is reserved for FIRST_HIGH_BIT.
      */
     public static final int MAX_BUTTONS_SUPPORTED = 20;
+
+    private static final AtomicLong postEventCounter = new AtomicLong();
 
     /**
      * Creates and initializes EventQueue instance for the specified
@@ -501,6 +504,7 @@ public abstract class SunToolkit extends Toolkit
                     (PostEventQueue) appContext.get(POST_EVENT_QUEUE_KEY);
             if (postEventQueue != null) {
                 postEventQueue.postEvent(event);
+                postEventCounter.incrementAndGet();
             }
         }
     }
