@@ -593,6 +593,7 @@ java/awt/Modal/OnTop/OnTopTKModal3Test.java 8198666,8253184 macosx-all,windows-a
 java/awt/Modal/OnTop/OnTopTKModal4Test.java 8198666,8253184 macosx-all,windows-all
 java/awt/Modal/OnTop/OnTopTKModal5Test.java 8198666,8253184 macosx-all,windows-all
 java/awt/Modal/OnTop/OnTopTKModal6Test.java 8198666,8253184 macosx-all,windows-all
+java/awt/List/ActionEventTest/ActionEventTest.java JBR-5799 windows-x64
 java/awt/List/EmptyListEventTest/EmptyListEventTest.java JBR-5387 linux-all
 java/awt/List/FirstItemRemoveTest/FirstItemRemoveTest.java JBR-86 windows-all
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5711 linux-all
@@ -937,6 +938,7 @@ javax/swing/JPopupMenu/6580930/bug6580930.java 7124313 macosx-all
 javax/swing/JPopupMenu/6800513/bug6800513.java 7184956 macosx-all
 javax/swing/JScrollPane/HorizontalMouseWheelOnShiftPressed/HorizontalMouseWheelOnShiftPressed.java 8197552 windows-all
 javax/swing/JSplitPane/4885629/bug4885629.java 8019935,JBR-5359,JBR-5510 macosx-all,windows-aarch64,linux-5.18.2-arch1-1
+javax/swing/JTabbedPane/4361477/bug4361477.java JBR-5932 linux-all
 javax/swing/JTabbedPane/8007563/Test8007563.java 8051591 generic-all
 javax/swing/JTabbedPane/4624207/bug4624207.java 8064922,8197552 macosx-all,windows-all 8064922:macosx-all, 8197552:windows-all
 javax/swing/JTabbedPane/TestBackgroundScrollPolicy.java 8253184,windows-all
