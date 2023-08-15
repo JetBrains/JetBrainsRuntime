@@ -84,6 +84,37 @@
             <arg name="error_code" type="uint" enum="error"/>
         </event>
 
+        <request name="send_key">
+            <description summary="facilitates implementation of Robot.keyPress/Robot.keyRelease">
+                This requests an emulation of a key press by its Linux event key code.
+            </description>
+            <arg name="key" type="uint" />
+            <arg name="state" type="uint" />
+        </request>
+
+        <request name="send_cursor">
+            <description summary="facilitates implementation of Robot.mouseMove">
+                This requests an emulation of the mouse cursor being moved to the specified screen coordinates.
+            </description>
+            <arg name="x" type="int" />
+            <arg name="y" type="int" />
+        </request>
+
+        <request name="send_button">
+            <description summary="facilitates implementation of Robot.mousePress/Robot.mouseRelease">
+                This requests an emulation of a mouse button press by its Linux event code.
+            </description>
+            <arg name="button" type="uint" />
+            <arg name="state" type="uint" />
+        </request>
+
+        <request name="send_wheel">
+            <description summary="facilitates implementation of Robot.mouseWheel">
+                This requests an emulation of a rotation of a mouse scroll wheel.
+            </description>
+            <arg name="amount" type="int" />
+        </request>
+
         <enum name="error">
             <entry name="no_error" value="0" summary="error code 0 reserved for the absence of error"/>
             <entry name="invalid_coordinates" value="1" summary="supplied absolute coordinates point
