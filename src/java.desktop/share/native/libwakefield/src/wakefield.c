@@ -44,6 +44,37 @@ struct wakefield {
     struct weston_log_scope *log;
 };
 
+#define DEFAULT_AXIS_STEP_DISTANCE 10
+
+// These functions are part of Weston's private backend API (libweston/backend.h)
+void
+notify_axis(struct weston_seat *seat, const struct timespec *time,
+            struct weston_pointer_axis_event *event);
+
+void
+notify_axis_source(struct weston_seat *seat, uint32_t source);
+
+void
+notify_button(struct weston_seat *seat, const struct timespec *time,
+              int32_t button, enum wl_pointer_button_state state);
+
+void
+notify_key(struct weston_seat *seat, const struct timespec *time, uint32_t key,
+           enum wl_keyboard_key_state state,
+           enum weston_key_state_update update_state);
+
+void
+notify_motion(struct weston_seat *seat, const struct timespec *time,
+              struct weston_pointer_motion_event *event);
+
+void
+notify_motion_absolute(struct weston_seat *seat, const struct timespec *time,
+                       double x, double y);
+
+void
+notify_pointer_frame(struct weston_seat *seat);
+
+
 static struct weston_output*
 get_output_for_point(struct wakefield* wakefield, int32_t x, int32_t y)
 {
@@ -482,11 +513,96 @@ wakefield_capture_create(struct wl_client *client,
     wakefield_send_capture_ready(resource, buffer_resource, WAKEFIELD_ERROR_NO_ERROR);
 }
 
+static void
+wakefield_send_key(struct wl_client *client,
+                   struct wl_resource *resource,
+                   uint32_t key,
+                   uint32_t state)
+{
+    struct wakefield *wakefield = wl_resource_get_user_data(resource);
+    struct weston_compositor *compositor = wakefield->compositor;
+
+    struct timespec time;
+    weston_compositor_get_time(&time);
+
+    struct weston_seat *seat;
+    wl_list_for_each(seat, &compositor->seat_list, link) {
+        notify_key(seat, &time, key,
+                   state ? WL_KEYBOARD_KEY_STATE_PRESSED : WL_KEYBOARD_KEY_STATE_RELEASED,
+                   STATE_UPDATE_AUTOMATIC);
+
+    }
+}
+
+static void wakefield_send_cursor(struct wl_client* client,
+                                  struct wl_resource* resource,
+                                  int32_t x, int32_t y)
+{
+    struct wakefield *wakefield = wl_resource_get_user_data(resource);
+    struct weston_compositor *compositor = wakefield->compositor;
+
+    struct timespec time;
+    weston_compositor_get_time(&time);
+
+    struct weston_seat *seat;
+    wl_list_for_each(seat, &compositor->seat_list, link) {
+        notify_motion_absolute(seat, &time, (double)x, (double)y);
+        notify_pointer_frame(seat);
+    }
+}
+
+static void wakefield_send_button(struct wl_client* client,
+                                  struct wl_resource* resource,
+                                  uint32_t button,
+                                  uint32_t state)
+{
+    struct wakefield *wakefield = wl_resource_get_user_data(resource);
+    struct weston_compositor *compositor = wakefield->compositor;
+
+    struct timespec time;
+    weston_compositor_get_time(&time);
+
+    struct weston_seat *seat;
+    wl_list_for_each(seat, &compositor->seat_list, link) {
+        notify_button(seat, &time, (int32_t)button,
+                      state ? WL_POINTER_BUTTON_STATE_PRESSED : WL_POINTER_BUTTON_STATE_RELEASED);
+        notify_pointer_frame(seat);
+    }
+}
+
+static void wakefield_send_wheel(struct wl_client* client,
+                                 struct wl_resource* resource,
+                                 int32_t amount)
+{
+    struct wakefield *wakefield = wl_resource_get_user_data(resource);
+    struct weston_compositor *compositor = wakefield->compositor;
+
+    struct timespec time;
+    weston_compositor_get_time(&time);
+
+    struct weston_pointer_axis_event event = {
+            .axis = WL_POINTER_AXIS_VERTICAL_SCROLL,
+            .value = DEFAULT_AXIS_STEP_DISTANCE * amount,
+            .has_discrete = true,
+            .discrete = amount
+    };
+
+    struct weston_seat *seat;
+    wl_list_for_each(seat, &compositor->seat_list, link) {
+        notify_axis(seat, &time, &event);
+        notify_pointer_frame(seat);
+    }
+}
+
 static const struct wakefield_interface wakefield_implementation = {
         .get_surface_location = wakefield_get_surface_location,
         .move_surface = wakefield_move_surface,
         .get_pixel_color = wakefield_get_pixel_color,
-        .capture_create = wakefield_capture_create
+        .capture_create = wakefield_capture_create,
+        .send_key = wakefield_send_key,
+        .send_cursor = wakefield_send_cursor,
+        .send_button = wakefield_send_button,
+        .send_wheel = wakefield_send_wheel,
 };
 
 static void
