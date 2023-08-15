@@ -121,17 +121,31 @@ public class Clipboard {
      * @see java.awt.Toolkit#getSystemClipboard
      */
     public synchronized void setContents(Transferable contents, ClipboardOwner owner) {
-        final ClipboardOwner oldOwner = this.owner;
-        final Transferable oldContents = this.contents;
+        logInfo("-> java.awt.datatransfer.Clipboard#setContents(contents={0}, owner={1})...", contents, owner);
 
-        this.owner = owner;
-        this.contents = contents;
+        try {
+            final ClipboardOwner oldOwner = this.owner;
+            final Transferable oldContents = this.contents;
 
-        if (oldOwner != null && oldOwner != owner) {
-            DataFlavorUtil.getDesktopService().invokeOnEventThread(() ->
-                    oldOwner.lostOwnership(Clipboard.this, oldContents));
+            this.owner = owner;
+            this.contents = contents;
+
+            if (oldOwner != null && oldOwner != owner) {
+                logInfo("     oldOwner={0}.", oldOwner);
+
+                DataFlavorUtil.getDesktopService().invokeOnEventThread(() ->
+                        oldOwner.lostOwnership(Clipboard.this, oldContents));
+            }
+            fireFlavorsChanged();
+
+            logInfo("<- java.awt.datatransfer.Clipboard#setContents(contents={0}, owner={1}).", contents, owner);
+        } catch (Throwable err) {
+            logSevere(
+                "<- java.awt.datatransfer.Clipboard#setContents(contents=%s, owner=%s): an exception occurred.".formatted(contents, owner),
+                err
+            );
+            throw err;
         }
-        fireFlavorsChanged();
     }
 
     /**
@@ -148,6 +162,12 @@ public class Clipboard {
      * @see java.awt.Toolkit#getSystemClipboard
      */
     public synchronized Transferable getContents(Object requestor) {
+        logInfo("-> java.awt.datatransfer.Clipboard#getContents(requestor={0})...", requestor);
+
+        final var contents = this.contents;
+
+        logInfo("<- java.awt.datatransfer.Clipboard#getContents(requestor={0}): returning {1}.", requestor, contents);
+
         return contents;
     }
 
@@ -162,11 +182,26 @@ public class Clipboard {
      * @since 1.5
      */
     public DataFlavor[] getAvailableDataFlavors() {
-        Transferable cntnts = getContents(null);
-        if (cntnts == null) {
-            return new DataFlavor[0];
+        logInfo("-> java.awt.datatransfer.Clipboard#getAvailableDataFlavors()...");
+
+        try {
+            final Transferable cntnts = getContents(null);
+            if (cntnts == null) {
+                logWarning("     cntnts=null");
+                logInfo("<- java.awt.datatransfer.Clipboard#getAvailableDataFlavors(): returning new DataFlavor[0].");
+                return new DataFlavor[0];
+            }
+
+            final DataFlavor[] result = cntnts.getTransferDataFlavors();
+
+            logInfo("<- java.awt.datatransfer.Clipboard#getAvailableDataFlavors(): returning {0}.",
+                    logFormatArray(result));
+
+            return result;
+        } catch (Throwable err) {
+            logSevere("<- java.awt.datatransfer.Clipboard#getAvailableDataFlavors(): an exception occurred.", err);
+            throw err;
         }
-        return cntnts.getTransferDataFlavors();
     }
 
     /**
@@ -182,15 +217,32 @@ public class Clipboard {
      * @since 1.5
      */
     public boolean isDataFlavorAvailable(DataFlavor flavor) {
-        if (flavor == null) {
-            throw new NullPointerException("flavor");
-        }
+        logInfo("-> java.awt.datatransfer.Clipboard#isDataFlavorAvailable(flavor={0})...", flavor);
 
-        Transferable cntnts = getContents(null);
-        if (cntnts == null) {
-            return false;
+        try {
+            if (flavor == null) {
+                throw new NullPointerException("flavor");
+            }
+
+            Transferable cntnts = getContents(null);
+            if (cntnts == null) {
+                logWarning("     cntnts=null.");
+                logInfo("<- java.awt.datatransfer.Clipboard#isDataFlavorAvailable(flavor={0}): returning false.", flavor);
+                return false;
+            }
+
+            final boolean result = cntnts.isDataFlavorSupported(flavor);
+
+            logInfo("<- java.awt.datatransfer.Clipboard#isDataFlavorAvailable(flavor={0}): returning {1}.", flavor, result);
+
+            return result;
+        } catch (Throwable err) {
+            logSevere(
+                "<- java.awt.datatransfer.Clipboard#isDataFlavorAvailable(flavor=%s): an exception occurred.".formatted(flavor),
+                err
+            );
+            throw err;
         }
-        return cntnts.isDataFlavorSupported(flavor);
     }
 
     /**
@@ -212,15 +264,32 @@ public class Clipboard {
      */
     public Object getData(DataFlavor flavor)
         throws UnsupportedFlavorException, IOException {
-        if (flavor == null) {
-            throw new NullPointerException("flavor");
-        }
 
-        Transferable cntnts = getContents(null);
-        if (cntnts == null) {
-            throw new UnsupportedFlavorException(flavor);
+        logInfo("-> java.awt.datatransfer.Clipboard#getData(flavor={0})...", flavor);
+
+        try {
+            if (flavor == null) {
+                throw new NullPointerException("flavor");
+            }
+
+            Transferable cntnts = getContents(null);
+            if (cntnts == null) {
+                logWarning("     cntnts=null.");
+                throw new UnsupportedFlavorException(flavor);
+            }
+
+            final var result = cntnts.getTransferData(flavor);
+
+            logInfo("<- java.awt.datatransfer.Clipboard#getData(flavor={0}): returning {1}.", flavor, result);
+
+            return result;
+        } catch (Throwable err) {
+            logSevere(
+                "<- java.awt.datatransfer.Clipboard#getData(flavor=%s): an exception occurred.".formatted(flavor),
+                err
+            );
+            throw err;
         }
-        return cntnts.getTransferData(flavor);
     }
 
     /**
@@ -236,16 +305,32 @@ public class Clipboard {
      * @since 1.5
      */
     public synchronized void addFlavorListener(FlavorListener listener) {
-        if (listener == null) {
-            return;
-        }
+        logInfo("-> java.awt.datatransfer.Clipboard#addFlavorListener(listener={0})...", listener);
 
-        if (flavorListeners == null) {
-            flavorListeners = new HashSet<>();
-            currentDataFlavors = getAvailableDataFlavorSet();
-        }
+        try {
+            if (listener == null) {
+                logWarning("     listener=null.");
+                logInfo("<- java.awt.datatransfer.Clipboard#addFlavorListener(listener=null).");
+                return;
+            }
 
-        flavorListeners.add(listener);
+            if (flavorListeners == null) {
+                flavorListeners = new HashSet<>();
+                currentDataFlavors = getAvailableDataFlavorSet();
+            }
+
+            flavorListeners.add(listener);
+
+            logInfo("     this.flavorListeners={0}.", flavorListeners);
+
+            logInfo("<- java.awt.datatransfer.Clipboard#addFlavorListener(listener={0}).", listener);
+        } catch (Throwable err) {
+            logSevere(
+                "<- java.awt.datatransfer.Clipboard#addFlavorListener(listener=%s): an exception occurred.".formatted(listener),
+                err
+            );
+            throw err;
+        }
     }
 
     /**
@@ -264,10 +349,27 @@ public class Clipboard {
      * @since 1.5
      */
     public synchronized void removeFlavorListener(FlavorListener listener) {
-        if (listener == null || flavorListeners == null) {
-            return;
+        logInfo("-> java.awt.datatransfer.Clipboard#removeFlavorListener(listener={0})...", listener);
+
+        try {
+            if (listener == null || flavorListeners == null) {
+                logWarning("    listener == null || this.flavorListeners == null.");
+                logInfo("<- java.awt.datatransfer.Clipboard#removeFlavorListener(listener={0}).", listener);
+                return;
+            }
+
+            flavorListeners.remove(listener);
+
+            logInfo("     this.flavorListeners={0}.", flavorListeners);
+
+            logInfo("<- java.awt.datatransfer.Clipboard#removeFlavorListener(listener={0}).", listener);
+        } catch (Throwable err) {
+            logSevere(
+                "<- java.awt.datatransfer.Clipboard#removeFlavorListener(listener=%s): an exception occurred.".formatted(listener),
+                err
+            );
+            throw err;
         }
-        flavorListeners.remove(listener);
     }
 
     /**
@@ -283,8 +385,19 @@ public class Clipboard {
      * @since 1.5
      */
     public synchronized FlavorListener[] getFlavorListeners() {
-        return flavorListeners == null ? new FlavorListener[0] :
-            flavorListeners.toArray(new FlavorListener[flavorListeners.size()]);
+        logInfo("-> java.awt.datatransfer.Clipboard#getFlavorListeners()...");
+
+        try {
+            final var result = flavorListeners == null ? new FlavorListener[0] :
+                    flavorListeners.toArray(new FlavorListener[flavorListeners.size()]);
+
+            logInfo("<- java.awt.datatransfer.Clipboard#getFlavorListeners(): returning {0}.", logFormatArray(result));
+
+            return result;
+        } catch (Throwable err) {
+            logSevere("<- java.awt.datatransfer.Clipboard#getFlavorListeners(): an exception occurred.", err);
+            throw err;
+        }
     }
 
 
@@ -478,18 +591,35 @@ public class Clipboard {
      * @since 1.5
      */
     private void fireFlavorsChanged() {
-        if (flavorListeners == null) {
-            return;
-        }
+        logInfo("-> java.awt.datatransfer.Clipboard#fireFlavorsChanged()...");
 
-        Set<DataFlavor> prevDataFlavors = currentDataFlavors;
-        currentDataFlavors = getAvailableDataFlavorSet();
-        if (Objects.equals(prevDataFlavors, currentDataFlavors)) {
-            return;
+        try {
+            if (flavorListeners == null) {
+                logWarning("    this.flavorsListeners=null.");
+                logInfo("<- java.awt.datatransfer.Clipboard#fireFlavorsChanged().");
+                return;
+            }
+
+            Set<DataFlavor> prevDataFlavors = currentDataFlavors;
+            logInfo("     prevDataFlavors={0}.", prevDataFlavors);
+
+            currentDataFlavors = getAvailableDataFlavorSet();
+            logInfo("     this.currentDataFlavors={0}.", this.currentDataFlavors);
+
+            if (Objects.equals(prevDataFlavors, currentDataFlavors)) {
+                logInfo("     prevDataFlavors equals to this.currentDataFlavors.");
+                logInfo("<- java.awt.datatransfer.Clipboard#fireFlavorsChanged().");
+                return;
+            }
+            flavorListeners.forEach(listener ->
+                    DataFlavorUtil.getDesktopService().invokeOnEventThread(() ->
+                            listener.flavorsChanged(new FlavorEvent(Clipboard.this))));
+
+            logInfo("<- java.awt.datatransfer.Clipboard#fireFlavorsChanged().");
+        } catch (Throwable err) {
+            logSevere("<- java.awt.datatransfer.Clipboard#fireFlavorsChanged(): an exception occurred.", err);
+            throw err;
         }
-        flavorListeners.forEach(listener ->
-                DataFlavorUtil.getDesktopService().invokeOnEventThread(() ->
-                        listener.flavorsChanged(new FlavorEvent(Clipboard.this))));
     }
 
     /**
@@ -501,14 +631,27 @@ public class Clipboard {
      * @since 1.5
      */
     private Set<DataFlavor> getAvailableDataFlavorSet() {
-        Set<DataFlavor> set = new HashSet<>();
-        Transferable contents = getContents(null);
-        if (contents != null) {
-            DataFlavor[] flavors = contents.getTransferDataFlavors();
-            if (flavors != null) {
-                set.addAll(Arrays.asList(flavors));
+        logInfo("-> java.awt.datatransfer.Clipboard#getAvailableDataFlavorSet()...");
+
+        try {
+            Set<DataFlavor> set = new HashSet<>();
+            Transferable contents = getContents(null);
+
+            logInfo("     contents={0}.", contents);
+
+            if (contents != null) {
+                DataFlavor[] flavors = contents.getTransferDataFlavors();
+                logInfo("     flavors={0}.", logFormatArray(flavors));
+                if (flavors != null) {
+                    set.addAll(Arrays.asList(flavors));
+                }
             }
+
+            logInfo("<- java.awt.datatransfer.Clipboard#getAvailableDataFlavorSet(): returning {0}.", set);
+            return set;
+        } catch (Throwable err) {
+            logSevere("<- java.awt.datatransfer.Clipboard#getAvailableDataFlavorSet(): an exception occurred.", err);
+            throw err;
         }
-        return set;
     }
 }
