@@ -40,8 +40,8 @@ import java.io.IOException;
  * @requires (os.family == "linux")
  * @library /test/lib
  * @build ScreenCapture
- * @run driver WakefieldTestDriver 1x1400x800 ScreenCapture
- * @run driver WakefieldTestDriver 2x830x800 ScreenCapture
+ * @run driver WakefieldTestDriver -resolution 1x1400x800 ScreenCapture
+ * @run driver WakefieldTestDriver -resolution 2x830x800 ScreenCapture
  */
 
 public class ScreenCapture {
