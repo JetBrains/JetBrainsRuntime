@@ -287,6 +287,189 @@ public class Clipboard {
             flavorListeners.toArray(new FlavorListener[flavorListeners.size()]);
     }
 
+
+    // ================= IDEA-316996 AWT clipboard extra logging facilities =================
+
+    // The methods are supposed to be implemented by direct bridging to an instance of sun.util.logging.PlatformLogger.
+    // NB: any of the methods below can be called from native AWT code.
+
+    // All the methods below are better to be abstract, but I don't want
+    // to make the class abstract breaking the public API.
+
+    /**
+     * Renders an array to string in the following format: {@code [byteArray[0], byteArray[1], ...]}.
+     * @param byteArray an array to be rendered to a string
+     * @return an object that lazily renders {@code byteArray} to string only when
+     *         the {@link java.lang.Object#toString()} method is called.
+     */
+    protected final Object logFormatArray(final byte[] byteArray) {
+        return new Object() {
+            private String toStringResult = null;
+
+            @Override
+            public String toString() {
+                if (toStringResult != null) {
+                    return toStringResult;
+                }
+
+                if ((byteArray == null) || (byteArray.length < 33)) {
+                    toStringResult = Arrays.toString(byteArray);
+                } else {
+                    final StringBuilder sb = new StringBuilder(256).append("[");
+                    for (int i = 0; i < 32; ++i) {
+                        sb.append(byteArray[i]).append(", ");
+                    }
+                    sb.append("...]");
+
+                    toStringResult = sb.toString();
+                }
+
+                return toStringResult;
+            }
+        };
+    }
+
+    /**
+     * Renders an array to string in the following format: {@code [longArray[0], longArray[1], ...]}.
+     * @param longArray an array to be rendered to a string
+     * @return an object that lazily renders {@code longArray} to string only when
+     *         the {@link java.lang.Object#toString()} method is called.
+     */
+    protected final Object logFormatArray(final long[] longArray) {
+        return new Object() {
+            private String toStringResult = null;
+
+            @Override
+            public String toString() {
+                if (toStringResult != null) {
+                    return toStringResult;
+                }
+
+                if ((longArray == null) || (longArray.length < 33)) {
+                    toStringResult = Arrays.toString(longArray);
+                } else {
+                    final StringBuilder sb = new StringBuilder(384).append("[");
+                    for (int i = 0; i < 32; ++i) {
+                        sb.append(longArray[i]).append(", ");
+                    }
+                    sb.append("...]");
+
+                    toStringResult = sb.toString();
+                }
+
+                return toStringResult;
+            }
+        };
+    }
+
+    /**
+     * Renders an array to string in the following format: {@code [objectArray[0], objectArray[1], ...]}.
+     * @param <T> any type
+     * @param objectArray an array to be rendered to a string
+     * @return an object that lazily renders {@code objectArray} to string only when
+     *         the {@link java.lang.Object#toString()} method is called.
+     */
+    protected final <T> Object logFormatArray(final T[] objectArray) {
+        return new Object() {
+            private String toStringResult = null;
+
+            @Override
+            public String toString() {
+                if (toStringResult != null) {
+                    return toStringResult;
+                }
+
+                if ((objectArray == null) || (objectArray.length < 33)) {
+                    toStringResult = Arrays.toString(objectArray);
+                } else {
+                    final StringBuilder sb = new StringBuilder(512).append("[");
+                    for (int i = 0; i < 32; ++i) {
+                        sb.append(objectArray[i]).append(", ");
+                    }
+                    sb.append("...]");
+
+                    toStringResult = sb.toString();
+                }
+
+                return toStringResult;
+            }
+        };
+    }
+
+    /**
+     * A comment to avoid build-time warnings
+     * @param message see {@link sun.util.logging.PlatformLogger#severe(String, Object...)}
+     * @param params see {@link sun.util.logging.PlatformLogger#severe(String, Object...)}
+     */
+    protected void logSevere(String message, Object... params) {}
+    /**
+     * A comment to avoid build-time warnings
+     * @param message see {@link sun.util.logging.PlatformLogger#severe(String, Throwable)}
+     * @param exception see {@link sun.util.logging.PlatformLogger#severe(String, Throwable)}
+     */
+    protected void logSevere(String message, Throwable exception) {}
+    /**
+     * A comment to avoid build-time warnings
+     * @param message see {@link sun.util.logging.PlatformLogger#severe(String)}
+     */
+    protected void logSevere(String message) {}
+
+    /**
+     * A comment to avoid build-time warnings
+     * @param message see {@link sun.util.logging.PlatformLogger#warning(String, Object...)}
+     * @param params see {@link sun.util.logging.PlatformLogger#warning(String, Object...)}
+     */
+    protected void logWarning(String message, Object... params) {}
+    /**
+     * A comment to avoid build-time warnings
+     * @param message see {@link sun.util.logging.PlatformLogger#warning(String, Throwable)}
+     * @param exception see {@link sun.util.logging.PlatformLogger#warning(String, Throwable)}
+     */
+    protected void logWarning(String message, Throwable exception) {}
+    /**
+     * A comment to avoid build-time warnings
+     * @param message see {@link sun.util.logging.PlatformLogger#warning(String)}
+     */
+    protected void logWarning(String message) {}
+
+    /**
+     * A comment to avoid build-time warnings
+     * @param message see {@link sun.util.logging.PlatformLogger#info(String, Object...)}
+     * @param params see {@link sun.util.logging.PlatformLogger#info(String, Object...)}
+     */
+    protected void logInfo(String message, Object... params) {}
+    /**
+     * A comment to avoid build-time warnings
+     * @param message see {@link sun.util.logging.PlatformLogger#info(String, Throwable)}
+     * @param exception see {@link sun.util.logging.PlatformLogger#info(String, Throwable)}
+     */
+    protected void logInfo(String message, Throwable exception) {}
+    /**
+     * A comment to avoid build-time warnings
+     * @param message see {@link sun.util.logging.PlatformLogger#info(String)}
+     */
+    protected void logInfo(String message) {}
+
+    /**
+     * A comment to avoid build-time warnings
+     * @param message see {@link sun.util.logging.PlatformLogger#fine(String, Object...)}
+     * @param params see {@link sun.util.logging.PlatformLogger#fine(String, Object...)}
+     */
+    protected void logFine(String message, Object... params) {}
+    /**
+     * A comment to avoid build-time warnings
+     * @param message see {@link sun.util.logging.PlatformLogger#fine(String, Throwable)}
+     * @param exception see {@link sun.util.logging.PlatformLogger#fine(String, Throwable)}
+     */
+    protected void logFine(String message, Throwable exception) {}
+    /**
+     * A comment to avoid build-time warnings
+     * @param message see {@link sun.util.logging.PlatformLogger#fine(String)}
+     */
+    protected void logFine(String message) {}
+    // ======================================================================================
+
+
     /**
      * Checks change of the {@code DataFlavor}s and, if necessary, notifies all
      * listeners that have registered interest for notification on

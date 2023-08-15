@@ -33,6 +33,7 @@ import java.util.Map;
 
 import sun.awt.datatransfer.DataTransferer;
 import sun.awt.datatransfer.SunClipboard;
+import sun.util.logging.PlatformLogger;
 
 
 /**
@@ -48,6 +49,8 @@ import sun.awt.datatransfer.SunClipboard;
  * @since 1.1
  */
 final class WClipboard extends SunClipboard {
+
+    private static final PlatformLogger LOG;
 
     private boolean isClipboardViewerRegistered;
 
@@ -129,6 +132,7 @@ final class WClipboard extends SunClipboard {
 
     private static native void init();
     static {
+        LOG = PlatformLogger.getLogger("sun.awt.windows.WClipboard");
         init();
     }
 
@@ -220,4 +224,157 @@ final class WClipboard extends SunClipboard {
                 }
             };
     }
+
+
+    // ================= IDEA-316996 AWT clipboard extra logging facilities =================
+
+    // Below is the implementations of the methods java.awt.datatransfer.Clipboard#log...
+
+    @Override
+    protected void logSevere(String message, Object... params) {
+        logSevereImpl(message, params);
+    }
+
+    @Override
+    protected void logSevere(String message, Throwable exception) {
+        logSevereImpl(message, exception);
+    }
+
+    @Override
+    protected void logSevere(String message) {
+        logSevereImpl(message);
+    }
+
+    // Can be accessed from native
+    private static void logSevereImpl(String message, Object... params) {
+        if (LOG.isLoggable(PlatformLogger.Level.SEVERE)) {
+            LOG.severe(message, params);
+        }
+    }
+
+    // Can be accessed from native
+    private static void logSevereImpl(String message, Throwable exception) {
+        if (LOG.isLoggable(PlatformLogger.Level.SEVERE)) {
+            LOG.severe(message, exception);
+        }
+    }
+
+    // Can be accessed from native
+    private static void logSevereImpl(String message) {
+        if (LOG.isLoggable(PlatformLogger.Level.SEVERE)) {
+            LOG.severe(message);
+        }
+    }
+
+
+    @Override
+    protected void logWarning(String message, Object... params) {
+        logWarningImpl(message, params);
+    }
+
+    @Override
+    protected void logWarning(String message, Throwable exception) {
+        logWarningImpl(message, exception);
+    }
+
+    @Override
+    protected void logWarning(String message) {
+        logWarningImpl(message);
+    }
+
+    // Can be accessed from native
+    private static void logWarningImpl(String message, Object... params) {
+        if (LOG.isLoggable(PlatformLogger.Level.WARNING)) {
+            LOG.warning(message, params);
+        }
+    }
+
+    // Can be accessed from native
+    private static void logWarningImpl(String message, Throwable exception) {
+        if (LOG.isLoggable(PlatformLogger.Level.WARNING)) {
+            LOG.warning(message, exception);
+        }
+    }
+
+    // Can be accessed from native
+    private static void logWarningImpl(String message) {
+        if (LOG.isLoggable(PlatformLogger.Level.WARNING)) {
+            LOG.warning(message);
+        }
+    }
+
+
+    @Override
+    protected void logInfo(String message, Object... params) {
+        logInfoImpl(message, params);
+    }
+
+    @Override
+    protected void logInfo(String message, Throwable exception) {
+        logInfoImpl(message, exception);
+    }
+
+    @Override
+    protected void logInfo(String message) {
+        logInfoImpl(message);
+    }
+
+    // Can be accessed from native
+    private static void logInfoImpl(String message, Object... params) {
+        if (LOG.isLoggable(PlatformLogger.Level.INFO)) {
+            LOG.info(message, params);
+        }
+    }
+
+    // Can be accessed from native
+    private static void logInfoImpl(String message, Throwable exception) {
+        if (LOG.isLoggable(PlatformLogger.Level.INFO)) {
+            LOG.info(message, exception);
+        }
+    }
+
+    // Can be accessed from native
+    private static void logInfoImpl(String message) {
+        if (LOG.isLoggable(PlatformLogger.Level.INFO)) {
+            LOG.info(message);
+        }
+    }
+
+
+    @Override
+    protected void logFine(String message, Object... params) {
+        logFineImpl(message, params);
+    }
+
+    @Override
+    protected void logFine(String message, Throwable exception) {
+        logFineImpl(message, exception);
+    }
+
+    @Override
+    protected void logFine(String message) {
+        logFineImpl(message);
+    }
+
+    // Can be accessed from native
+    private static void logFineImpl(String message, Object... params) {
+        if (LOG.isLoggable(PlatformLogger.Level.FINE)) {
+            LOG.fine(message, params);
+        }
+    }
+
+    // Can be accessed from native
+    private static void logFineImpl(String message, Throwable exception) {
+        if (LOG.isLoggable(PlatformLogger.Level.FINE)) {
+            LOG.fine(message, exception);
+        }
+    }
+
+    // Can be accessed from native
+    private static void logFineImpl(String message) {
+        if (LOG.isLoggable(PlatformLogger.Level.FINE)) {
+            LOG.fine(message);
+        }
+    }
+    // ======================================================================================
 }
