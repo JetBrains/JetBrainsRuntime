@@ -71,7 +71,7 @@ public:
     VKSurfaceData(VKSurfaceData&&) = delete;
     VKSurfaceData& operator=(VKSurfaceData&&) = delete;
 
-    const VKDevice& device() const {
+    VKDevice& device() const {
         return *_device;
     }
 

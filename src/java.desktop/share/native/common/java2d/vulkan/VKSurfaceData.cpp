@@ -136,9 +136,6 @@ VKSurfaceImage VKSwapchainSurfaceData::access(VKRecorder& recorder,
         _currentImage = (int) img.second;
         std::swap(_images[_currentImage].semaphore, _freeSemaphore);
         semaphorePending = true;
-        if (*_freeSemaphore) {
-            // TODO release resources previously associated with that frame?
-        }
     }
     // Insert barrier & semaphore
     auto& current = _images[_currentImage];

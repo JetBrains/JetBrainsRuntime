@@ -31,6 +31,7 @@
 
 #define VK_NO_PROTOTYPES
 #define VULKAN_HPP_NO_DEFAULT_DISPATCHER
+#include <queue>
 #include <vulkan/vulkan_raii.hpp>
 #include "jni.h"
 
@@ -44,6 +45,15 @@ class VKDevice : public vk::raii::Device, public vk::raii::PhysicalDevice {
     // Logical device state
     vk::raii::Queue          _queue = nullptr;
     vk::raii::CommandPool    _commandPool = nullptr;
+    vk::raii::Semaphore      _timelineSemaphore = nullptr;
+    uint64_t                 _timelineCounter = 0;
+    uint64_t                 _lastReadTimelineCounter = 0;
+
+    struct PendingBuffer {
+        vk::raii::CommandBuffer buffer;
+        uint64_t                counter;
+    };
+    std::queue<PendingBuffer> _pendingBuffers;
 
     explicit VKDevice(vk::raii::PhysicalDevice&& handle);
 public:
@@ -56,11 +66,13 @@ public:
         return _queue;
     }
 
-    const vk::raii::CommandPool& commandPool() const {
-        return _commandPool;
-    }
-
     void init(); // Creates actual logical device
+
+    vk::raii::CommandBuffer getCommandBuffer();
+    void submitCommandBuffer(vk::raii::CommandBuffer&& buffer,
+                             std::vector<vk::Semaphore>& waitSemaphores,
+                             std::vector<vk::PipelineStageFlags>& waitStages,
+                             std::vector<vk::Semaphore>& signalSemaphores);
 
     bool supported() const { // Supported or not
         return *((const vk::raii::PhysicalDevice&) *this);

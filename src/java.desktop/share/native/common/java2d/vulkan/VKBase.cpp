@@ -248,6 +248,10 @@ VKDevice::VKDevice(vk::raii::PhysicalDevice&& handle) : vk::raii::Device(nullptr
     }
 
     // Check supported features.
+    if (!features12.timelineSemaphore) {
+        J2dRlsTrace(J2D_TRACE_INFO, "    Timeline semaphore not supported\n");
+        return;
+    }
     if (!features13.synchronization2) {
         J2dRlsTrace(J2D_TRACE_INFO, "    Synchronization2 not supported\n");
         return;
@@ -327,7 +331,10 @@ void VKDevice::init() {
             {}, queue_family(), 1, &queuePriorities[0]
     });
 
+    vk::PhysicalDeviceVulkan12Features features12;
+    features12.timelineSemaphore = true;
     vk::PhysicalDeviceVulkan13Features features13;
+    features13.pNext = &features12;
     features13.synchronization2 = true;
     features13.dynamicRendering = true;
 
@@ -345,7 +352,39 @@ void VKDevice::init() {
         vk::CommandPoolCreateFlagBits::eTransient | vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
         queue_family()
     });
+    vk::SemaphoreTypeCreateInfo semaphoreTypeCreateInfo { vk::SemaphoreType::eTimeline, 0 };
+    _timelineSemaphore = createSemaphore(vk::SemaphoreCreateInfo {{}, &semaphoreTypeCreateInfo});
+    _timelineCounter = 0;
     J2dRlsTrace1(J2D_TRACE_INFO, "Vulkan: Device created %s\n", _name.c_str());
+}
+
+vk::raii::CommandBuffer VKDevice::getCommandBuffer() {
+    if (!_pendingBuffers.empty()) {
+        auto& f = _pendingBuffers.front();
+        if (_lastReadTimelineCounter >= f.counter ||
+            (_lastReadTimelineCounter = _timelineSemaphore.getCounterValue()) >= f.counter) {
+            vk::raii::CommandBuffer b = std::move(f.buffer);
+            b.reset({});
+            _pendingBuffers.pop();
+            return b;
+        }
+    }
+    return std::move(allocateCommandBuffers({
+        *_commandPool, vk::CommandBufferLevel::ePrimary, 1
+    })[0]);
+}
+
+void VKDevice::submitCommandBuffer(vk::raii::CommandBuffer&& buffer,
+                                   std::vector<vk::Semaphore>& waitSemaphores,
+                                   std::vector<vk::PipelineStageFlags>& waitStages,
+                                   std::vector<vk::Semaphore>& signalSemaphores) {
+    _timelineCounter++;
+    signalSemaphores.insert(signalSemaphores.begin(), *_timelineSemaphore);
+    vk::TimelineSemaphoreSubmitInfo timelineInfo { 0, nullptr, (uint32_t) signalSemaphores.size(), &_timelineCounter };
+    queue().submit(vk::SubmitInfo {
+            waitSemaphores, waitStages, *buffer, signalSemaphores, &timelineInfo
+    }, nullptr);
+    _pendingBuffers.push({std::move(buffer), _timelineCounter});
 }
 
 extern "C" jboolean VK_Init() {
