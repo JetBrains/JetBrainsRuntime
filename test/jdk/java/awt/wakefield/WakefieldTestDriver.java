@@ -37,11 +37,11 @@ public class WakefieldTestDriver {
     final static int DEFAULT_NUMBER_OF_SCREENS = 1;
     final static int DEFAULT_SCREEN_WIDTH      = 1280;
     final static int DEFAULT_SCREEN_HEIGHT     = 800;
-    final static int TEST_TIMEOUT_SECONDS      = 10;
+    static int testTimeoutSeconds = 10;
     static void usage() {
         System.out.println(
                 """
-                WakefieldTestDriver [NxWxH] ClassName [args]
+                WakefieldTestDriver [-resolution NxWxH] [-timeout SECONDS] ClassName [args]
                 where
                 N         - number of Weston outputs (screens); defaults to 1
                 W         - width of each screen in pixels; defaults to 1280
@@ -65,24 +65,37 @@ public class WakefieldTestDriver {
         int nScreens     = DEFAULT_NUMBER_OF_SCREENS;
         int screenWidth  = DEFAULT_SCREEN_WIDTH;
         int screenHeight = DEFAULT_SCREEN_HEIGHT;
-        final String firstArg = args[0];
-        if (Character.isDigit(firstArg.charAt(0))) {
-            try {
-                final int firstXIndex = firstArg.indexOf("x", 0);
-                final int secondXIndex = firstArg.indexOf("x", firstXIndex + 1);
-                nScreens = Integer.valueOf(firstArg.substring(0, firstXIndex));
-                screenWidth = Integer.valueOf(firstArg.substring(firstXIndex + 1, secondXIndex));
-                screenHeight = Integer.valueOf(firstArg.substring(secondXIndex + 1, firstArg.length()));
 
-                for (int i = 1; i < args.length; ++i) {
-                    jvmArgs.add(args[i]);
+        for (int i = 0; i < args.length; ++i) {
+            if (args[i].equals("-resolution") && i + 1 < args.length) {
+                final String arg = args[i + 1];
+                if (Character.isDigit(arg.charAt(0))) {
+                    try {
+                        final int firstXIndex = arg.indexOf("x", 0);
+                        final int secondXIndex = arg.indexOf("x", firstXIndex + 1);
+                        nScreens = Integer.valueOf(arg.substring(0, firstXIndex));
+                        screenWidth = Integer.valueOf(arg.substring(firstXIndex + 1, secondXIndex));
+                        screenHeight = Integer.valueOf(arg.substring(secondXIndex + 1, arg.length()));
+                    } catch (IndexOutOfBoundsException | NumberFormatException ignored) {
+                        usage();
+                        throw new RuntimeException("Error parsing the first argument of the test driver");
+                    }
                 }
-            } catch (IndexOutOfBoundsException | NumberFormatException ignored) {
-                usage();
-                throw new RuntimeException("Error parsing the first argument of the test driver");
+                ++i;
+                continue;
             }
-        } else {
-            jvmArgs.addAll(Arrays.asList(args));
+
+            if (args[i].equals("-timeout") && i + 1 < args.length) {
+                final String arg = args[i + 1];
+                testTimeoutSeconds = Integer.valueOf(arg);
+                ++i;
+                continue;
+            }
+
+            for (int j = i; j < args.length; ++j) {
+                jvmArgs.add(args[j]);
+            }
+            break;
         }
 
         final String socketName = SOCKET_NAME_PREFIX + ProcessHandle.current().pid();
@@ -95,13 +108,13 @@ public class WakefieldTestDriver {
 
             final Process p = pb.start();
             final OutputAnalyzer output = new OutputAnalyzer(p);
-            final boolean exited = p.waitFor(TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            final boolean exited = p.waitFor(testTimeoutSeconds, TimeUnit.SECONDS);
             if (!exited) p.destroy();
             System.out.println("Test finished. Output: [[[");
             System.out.println(output.getOutput());
             System.out.println("]]]");
             if (!exited) {
-                throw new RuntimeException("Test timed out after " + TEST_TIMEOUT_SECONDS + " seconds");
+                throw new RuntimeException("Test timed out after " + testTimeoutSeconds + " seconds");
             }
 
             if (exited && output.getExitValue() != 0) {
