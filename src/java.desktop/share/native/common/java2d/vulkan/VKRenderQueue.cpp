@@ -35,6 +35,7 @@
 #include "Trace.h"
 #include "jlong.h"
 #include "VKRenderQueue.h"
+#include "VKRenderer.h"
 
 #define BYTES_PER_POLY_POINT \
     sun_java2d_pipe_BufferedRenderPipe_BYTES_PER_POLY_POINT
@@ -61,6 +62,8 @@
 #define OFFSET_RTT     sun_java2d_vulkan_VKBlitLoops_OFFSET_RTT
 #define OFFSET_XFORM   sun_java2d_vulkan_VKBlitLoops_OFFSET_XFORM
 #define OFFSET_ISOBLIT sun_java2d_vulkan_VKBlitLoops_OFFSET_ISOBLIT
+
+static VKRenderer renderer;
 
 extern "C" JNIEXPORT void JNICALL
 Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
@@ -183,6 +186,7 @@ Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint h = NEXT_INT(b);
                 J2dRlsTraceLn4(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: FILL_RECT(%d, %d, %d, %d)", x, y, w, h);
+                renderer.fillRect(x, y, w, h);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_FILL_SPANS:
@@ -204,6 +208,7 @@ Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 J2dRlsTraceLn6(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: FILL_PARALLELOGRAM(%f, %f, %f, %f, %f, %f)",
                     x11, y11, dx21, dy21, dx12, dy12);
+                renderer.fillParalellogram(x11, y11, dx21, dy21, dx12, dy12);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_FILL_AAPARALLELOGRAM:
@@ -411,10 +416,11 @@ Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
         // context-related ops
         case sun_java2d_pipe_BufferedOpCodes_SET_SURFACES:
             {
-                jlong pSrc = NEXT_LONG(b);
-                jlong pDst = NEXT_LONG(b);
+                VKSurfaceData* src = NEXT_SURFACE(b);
+                VKSurfaceData* dst = NEXT_SURFACE(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: SET_SURFACES");
+                renderer.setSurfaces(*src, *dst);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_SCRATCH_SURFACE:
@@ -426,16 +432,17 @@ Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_FLUSH_SURFACE:
             {
-                jlong pData = NEXT_LONG(b);
+                VKSurfaceData* surface = NEXT_SURFACE(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: FLUSH_SURFACE");
+                renderer.flushSurface(*surface);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DISPOSE_SURFACE:
             {
                 jlong pData = NEXT_LONG(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
-                    "VKRenderQueue_flushBuffer: FLUSH_SURFACE");
+                    "VKRenderQueue_flushBuffer: DISPOSE_SURFACE");
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DISPOSE_CONFIG:
@@ -487,6 +494,7 @@ Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint pixel = NEXT_INT(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: SET_COLOR");
+                renderer.setColor((uint32_t) pixel);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_GRADIENT_PAINT:

@@ -41,14 +41,30 @@
 #define VKSD_TEXTURE         sun_java2d_pipe_hw_AccelSurface_TEXTURE
 #define VKSD_RT_TEXTURE      sun_java2d_pipe_hw_AccelSurface_RT_TEXTURE
 
+class VKRecorder;
+
+struct VKSurfaceImage {
+    vk::Image     image;
+    vk::ImageView view;
+};
+
 class VKSurfaceData : private SurfaceDataOps {
     std::recursive_mutex   _mutex;
     uint32_t               _width;
     uint32_t               _height;
-    uint32_t               _scale;
+    uint32_t               _scale; // TODO Is it needed there at all?
     uint32_t               _bg_color;
 protected:
     VKDevice*              _device;
+
+    vk::ImageLayout         _layout = vk::ImageLayout::eUndefined;
+    // We track any access and write access separately, as read-read access does not need synchronization.
+    vk::PipelineStageFlags2 _lastStage = {}, _lastWriteStage = {};
+    vk::AccessFlags2        _lastAccess = {}, _lastWriteAccess = {};
+
+    /// Insert barrier if needed for given access and layout.
+    bool barrier(VKRecorder& recorder, vk::Image image,
+                 vk::PipelineStageFlags2 stage, vk::AccessFlags2 access, vk::ImageLayout layout);
 public:
     VKSurfaceData(JNIEnv *env, jobject javaSurfaceData, uint32_t w, uint32_t h, uint32_t s, uint32_t bgc);
     // No need to move, as object must only be created with "new".
@@ -78,7 +94,7 @@ public:
     void set_bg_color(uint32_t bg_color) {
         if (_bg_color != bg_color) {
             _bg_color = bg_color;
-            update();
+            // TODO now we need to repaint the surface???
         }
     }
 
@@ -90,13 +106,28 @@ public:
         _scale = s;
     }
 
-    virtual void update() = 0;
+    /// Prepare image for access (necessary barriers & layout transitions).
+    virtual VKSurfaceImage access(VKRecorder& recorder,
+                                  vk::PipelineStageFlags2 stage,
+                                  vk::AccessFlags2 access,
+                                  vk::ImageLayout layout) = 0;
+    /// Flush all pending changes to the surface, including screen presentation for on-screen surfaces.
+    virtual void flush(VKRecorder& recorder) = 0;
 };
 
 class VKSwapchainSurfaceData : public VKSurfaceData {
-    vk::raii::SurfaceKHR   _surface;
-    vk::raii::SwapchainKHR _swapchain;
-    std::vector<vk::Image> _images;
+    struct Image {
+        vk::Image               image;
+        vk::raii::ImageView     view;
+        vk::raii::Semaphore     semaphore = nullptr;
+    };
+
+    vk::raii::SurfaceKHR   _surface = nullptr;
+    vk::raii::SwapchainKHR _swapchain = nullptr;
+    std::vector<Image>     _images;
+    uint32_t               _currentImage = (uint32_t) -1;
+    vk::raii::Semaphore    _freeSemaphore = nullptr;
+
 protected:
     void reset(VKDevice& device, vk::raii::SurfaceKHR surface) {
         _images.clear();
@@ -106,23 +137,15 @@ protected:
     }
 public:
     VKSwapchainSurfaceData(JNIEnv *env, jobject javaSurfaceData, uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
-            : VKSurfaceData(env, javaSurfaceData, w, h, s, bgc), _surface(nullptr), _swapchain(nullptr) {};
-
-    const vk::raii::SurfaceKHR& surface() const {
-        return _surface;
-    }
-
-    const vk::raii::SwapchainKHR& swapchain() const {
-        return _swapchain;
-    }
-
-    const std::vector<vk::Image>& images() const {
-        return _images;
-    }
+            : VKSurfaceData(env, javaSurfaceData, w, h, s, bgc) {};
 
     virtual void revalidate(uint32_t w, uint32_t h, uint32_t s);
 
-    virtual void update();
+    virtual VKSurfaceImage access(VKRecorder& recorder,
+                                  vk::PipelineStageFlags2 stage,
+                                  vk::AccessFlags2 access,
+                                  vk::ImageLayout layout);
+    virtual void flush(VKRecorder& recorder);
 };
 
 #endif /* VKSurfaceData_h_Included */

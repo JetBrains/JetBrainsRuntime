@@ -32,7 +32,7 @@
 #endif
 
 #define VALIDATION_LAYER_NAME "VK_LAYER_KHRONOS_validation"
-static const uint32_t REQUIRED_VULKAN_VERSION = VK_MAKE_API_VERSION(0, 1, 0, 0);
+static const uint32_t REQUIRED_VULKAN_VERSION = VK_MAKE_API_VERSION(0, 1, 3, 0);
 
 std::unique_ptr<VKGraphicsEnvironment> VKGraphicsEnvironment::_ge_instance = nullptr;
 
@@ -212,28 +212,25 @@ VKDevice& VKGraphicsEnvironment::default_device() {
 extern struct wl_display *wl_display;
 #endif
 
-VKDevice::VKDevice(vk::raii::PhysicalDevice&& handle) : vk::raii::Device(nullptr), vk::raii::PhysicalDevice(nullptr),
-                                                        _queue(nullptr) {
-    // TODO Use chained structures in case we need Vulkan 1.1+ functionality
-//    auto featuresChain = handle.getFeatures2<vk::PhysicalDeviceFeatures2,
-//                                             vk::PhysicalDeviceVulkan11Features,
-//                                             vk::PhysicalDeviceVulkan12Features,
-//                                             vk::PhysicalDeviceVulkan13Features>();
-//    const auto& features10 = featuresChain.get<vk::PhysicalDeviceFeatures2>().features;
-//    const auto& features11 = featuresChain.get<vk::PhysicalDeviceVulkan11Features>();
-//    const auto& features12 = featuresChain.get<vk::PhysicalDeviceVulkan12Features>();
-//    const auto& features13 = featuresChain.get<vk::PhysicalDeviceVulkan13Features>();
-//
-//    auto propertiesChain = handle.getProperties2<vk::PhysicalDeviceProperties2,
-//                                               vk::PhysicalDeviceVulkan11Properties,
-//                                               vk::PhysicalDeviceVulkan12Properties,
-//                                               vk::PhysicalDeviceVulkan13Properties>();
-//    const auto& properties10 = propertiesChain.get<vk::PhysicalDeviceProperties2>().properties;
-//    const auto& properties11 = propertiesChain.get<vk::PhysicalDeviceVulkan11Properties>();
-//    const auto& properties12 = propertiesChain.get<vk::PhysicalDeviceVulkan12Properties>();
-//    const auto& properties13 = propertiesChain.get<vk::PhysicalDeviceVulkan13Properties>();
+VKDevice::VKDevice(vk::raii::PhysicalDevice&& handle) : vk::raii::Device(nullptr), vk::raii::PhysicalDevice(nullptr) {
+    auto featuresChain = handle.getFeatures2<vk::PhysicalDeviceFeatures2,
+                                             vk::PhysicalDeviceVulkan11Features,
+                                             vk::PhysicalDeviceVulkan12Features,
+                                             vk::PhysicalDeviceVulkan13Features>();
+    const auto& features10 = featuresChain.get<vk::PhysicalDeviceFeatures2>().features;
+    const auto& features11 = featuresChain.get<vk::PhysicalDeviceVulkan11Features>();
+    const auto& features12 = featuresChain.get<vk::PhysicalDeviceVulkan12Features>();
+    const auto& features13 = featuresChain.get<vk::PhysicalDeviceVulkan13Features>();
 
-    const auto& properties10 = handle.getProperties();
+    auto propertiesChain = handle.getProperties2<vk::PhysicalDeviceProperties2,
+                                               vk::PhysicalDeviceVulkan11Properties,
+                                               vk::PhysicalDeviceVulkan12Properties,
+                                               vk::PhysicalDeviceVulkan13Properties>();
+    const auto& properties10 = propertiesChain.get<vk::PhysicalDeviceProperties2>().properties;
+    const auto& properties11 = propertiesChain.get<vk::PhysicalDeviceVulkan11Properties>();
+    const auto& properties12 = propertiesChain.get<vk::PhysicalDeviceVulkan12Properties>();
+    const auto& properties13 = propertiesChain.get<vk::PhysicalDeviceVulkan13Properties>();
+
     const auto& queueFamilies = handle.getQueueFamilyProperties();
 
     _name = (const char*) properties10.deviceName;
@@ -250,12 +247,15 @@ VKDevice::VKDevice(vk::raii::PhysicalDevice&& handle) : vk::raii::Device(nullptr
         return;
     }
 
-    // TODO use synchronization2 if we require Vulkan 1.3 anyway
-//    // Check supported features.
-//    if (!features13.synchronization2) {
-//        J2dRlsTrace(J2D_TRACE_INFO, "    Synchronization2 not supported\n");
-//        return;
-//    }
+    // Check supported features.
+    if (!features13.synchronization2) {
+        J2dRlsTrace(J2D_TRACE_INFO, "    Synchronization2 not supported\n");
+        return;
+    }
+    if (!features13.dynamicRendering) {
+        J2dRlsTrace(J2D_TRACE_INFO, "    Dynamic rendering not supported\n");
+        return;
+    }
 
     // Check supported queue families.
     for (unsigned int i = 0; i < queueFamilies.size(); i++) {
@@ -324,12 +324,12 @@ void VKDevice::init() {
     float queuePriorities[1] {1.0f}; // We only use one queue for now
     std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
     queueCreateInfos.push_back(vk::DeviceQueueCreateInfo {
-            {}, (uint32_t) _queue_family, 1, &queuePriorities[0]
+            {}, queue_family(), 1, &queuePriorities[0]
     });
 
-    // TODO use synchronization2 if we require Vulkan 1.3 anyway
-//    vk::PhysicalDeviceVulkan13Features features13;
-//    features13.synchronization2 = true;
+    vk::PhysicalDeviceVulkan13Features features13;
+    features13.synchronization2 = true;
+    features13.dynamicRendering = true;
 
     vk::DeviceCreateInfo deviceCreateInfo {
             /*flags*/                   {},
@@ -337,10 +337,14 @@ void VKDevice::init() {
             /*ppEnabledLayerNames*/     _enabled_layers,
             /*ppEnabledExtensionNames*/ _enabled_extensions,
             /*pEnabledFeatures*/        nullptr,
-//            /*pNext*/                   &features13
+            /*pNext*/                   &features13
     };
     ((vk::raii::Device&) *this) = {*this, deviceCreateInfo};
-    _queue = getQueue(_queue_family, 0);
+    _queue = getQueue(queue_family(), 0);
+    _commandPool = createCommandPool(vk::CommandPoolCreateInfo {
+        vk::CommandPoolCreateFlagBits::eTransient | vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+        queue_family()
+    });
     J2dRlsTrace1(J2D_TRACE_INFO, "Vulkan: Device created %s\n", _name.c_str());
 }
 

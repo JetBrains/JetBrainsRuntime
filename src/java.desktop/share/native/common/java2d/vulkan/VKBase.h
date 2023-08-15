@@ -40,17 +40,24 @@ class VKDevice : public vk::raii::Device, public vk::raii::PhysicalDevice {
     std::string              _name;
     std::vector<const char*> _enabled_layers, _enabled_extensions;
     int                      _queue_family = -1;
-    vk::raii::Queue          _queue;
+
+    // Logical device state
+    vk::raii::Queue          _queue = nullptr;
+    vk::raii::CommandPool    _commandPool = nullptr;
 
     explicit VKDevice(vk::raii::PhysicalDevice&& handle);
 public:
 
-    int queue_family() const {
-        return _queue_family;
+    uint32_t queue_family() const {
+        return (uint32_t) _queue_family;
     }
 
     const vk::raii::Queue& queue() const {
         return _queue;
+    }
+
+    const vk::raii::CommandPool& commandPool() const {
+        return _commandPool;
     }
 
     void init(); // Creates actual logical device

@@ -40,6 +40,8 @@ extern "C" JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_initOps
         (JNIEnv *env, jobject vksd, jint width, jint height, jint scale, jint backgroundRGB) {
 #ifndef HEADLESS
     J2dTrace3(J2D_TRACE_INFO, "Create WLVKSurfaceData with size %d x %d and scale %d\n", width, height, scale);
+    width /= scale; // TODO This is incorrect, but we'll deal with this later, we probably need to do something on Wayland side for app-controlled scaling
+    height /= scale; // TODO This is incorrect, but we'll deal with this later, we probably need to do something on Wayland side for app-controlled scaling
     new WLVKSurfaceData(env, vksd, width, height, scale, backgroundRGB);
 #endif /* !HEADLESS */
 }
@@ -78,6 +80,8 @@ extern "C" JNIEXPORT void JNICALL
 Java_sun_java2d_vulkan_WLVKSurfaceData_revalidate(JNIEnv *env, jobject wsd,
                                              jint width, jint height, jint scale)
 {
+    width /= scale; // TODO This is incorrect, but we'll deal with this later, we probably need to do something on Wayland side for app-controlled scaling
+    height /= scale; // TODO This is incorrect, but we'll deal with this later, we probably need to do something on Wayland side for app-controlled scaling
 #ifndef HEADLESS
     auto sd = (WLVKSurfaceData*)SurfaceData_GetOps(env, wsd);
     if (sd == nullptr) {
@@ -87,7 +91,6 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_revalidate(JNIEnv *env, jobject wsd,
 
     try {
         sd->revalidate(width, height, scale);
-        sd->update();
     } catch (std::exception& e) {
         J2dRlsTrace1(J2D_TRACE_ERROR, "WLVKSurfaceData_revalidate: %s\n", e.what());
     }
@@ -109,5 +112,4 @@ void WLVKSurfaceData::validate(wl_surface* wls)
     _wl_surface = wls;
     reset(device, std::move(surface));
     revalidate(width(), height(), scale());
-    update();
 }
