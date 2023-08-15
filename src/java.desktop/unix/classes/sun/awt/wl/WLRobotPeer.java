@@ -42,32 +42,56 @@ public class WLRobotPeer implements RobotPeer {
 
     @Override
     public void mouseMove(int x, int y) {
-        throw new UnsupportedOperationException("Not implemented: WLRobotPeer.mouseMove()");
+        checkExtensionPresent();
+
+        synchronized (WLRobotPeer.class) {
+            mouseMoveImpl(x, y);
+        }
     }
 
     @Override
     public void mousePress(int buttons) {
-        throw new UnsupportedOperationException("Not implemented: WLRobotPeer.mousePress()");
+        checkExtensionPresent();
+
+        synchronized (WLRobotPeer.class) {
+            sendMouseButtonImpl(buttons, true);
+        }
     }
 
     @Override
     public void mouseRelease(int buttons) {
-        throw new UnsupportedOperationException("Not implemented: WLRobotPeer.mouseRelease()");
+        checkExtensionPresent();
+
+        synchronized (WLRobotPeer.class) {
+            sendMouseButtonImpl(buttons, false);
+        }
     }
 
     @Override
     public void mouseWheel(int wheelAmt) {
-        throw new UnsupportedOperationException("Not implemented: WLRobotPeer.mouseWheel()");
+        checkExtensionPresent();
+
+        synchronized (WLRobotPeer.class) {
+            mouseWheelImpl(wheelAmt);
+        }
     }
 
     @Override
     public void keyPress(int keycode) {
-        throw new UnsupportedOperationException("Not implemented: WLRobotPeer.keyPress()");
+        checkExtensionPresent();
+
+        synchronized (WLRobotPeer.class) {
+            sendJavaKeyImpl(keycode, true);
+        }
     }
 
     @Override
     public void keyRelease(int keycode) {
-        throw new UnsupportedOperationException("Not implemented: WLRobotPeer.keyRelease()");
+        checkExtensionPresent();
+
+        synchronized (WLRobotPeer.class) {
+            sendJavaKeyImpl(keycode, false);
+        }
     }
 
     @Override
@@ -139,4 +163,8 @@ public class WLRobotPeer implements RobotPeer {
     private static native int[]   getRGBPixelsImpl(int x, int y, int width, int height);
     private static native Point   getLocationOfWLSurfaceImpl(long wlSurfacePtr);
     private static native void    setLocationOfWLSurfaceImpl(long wlSurfacePtr, int x, int y);
+    private static native void    sendJavaKeyImpl(int javaKeyCode, boolean pressed);
+    private static native void    mouseMoveImpl(int x, int y);
+    private static native void    sendMouseButtonImpl(int buttons, boolean pressed);
+    private static native void    mouseWheelImpl(int amount);
 }
