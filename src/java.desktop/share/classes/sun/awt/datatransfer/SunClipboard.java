@@ -87,55 +87,104 @@ public abstract class SunClipboard extends Clipboard
 
     public synchronized void setContents(Transferable contents,
                                          ClipboardOwner owner) {
-        // 4378007 : Toolkit.getSystemClipboard().setContents(null, null)
-        // should throw NPE
-        if (contents == null) {
-            throw new NullPointerException("contents");
-        }
-
-        initContext();
-
-        final ClipboardOwner oldOwner = this.owner;
-        final Transferable oldContents = this.contents;
+        logInfo("-> sun.awt.datatransfer.SunClipboard#setContents(contents={0}, owner={1})...", contents, owner);
 
         try {
-            this.owner = owner;
-            this.contents = new TransferableProxy(contents, true);
-
-            setContentsNative(contents);
-        } finally {
-            if (oldOwner != null && oldOwner != owner) {
-                EventQueue.invokeLater(() -> oldOwner.lostOwnership(SunClipboard.this, oldContents));
+            // 4378007 : Toolkit.getSystemClipboard().setContents(null, null)
+            // should throw NPE
+            if (contents == null) {
+                throw new NullPointerException("contents");
             }
+
+            initContext();
+
+            final ClipboardOwner oldOwner = this.owner;
+            final Transferable oldContents = this.contents;
+
+            logInfo("     oldOwner={0} ; oldContents={1}.", oldOwner, oldContents);
+
+            try {
+                this.owner = owner;
+                this.contents = new TransferableProxy(contents, true);
+
+                setContentsNative(contents);
+            } finally {
+                if (oldOwner != null && oldOwner != owner) {
+                    logInfo("     oldOwner != null && oldOwner != owner.");
+                    EventQueue.invokeLater(() -> oldOwner.lostOwnership(SunClipboard.this, oldContents));
+                }
+            }
+
+            logInfo("<- sun.awt.datatransfer.SunClipboard#setContents(contents={0}, owner={1}).", contents, owner);
+        } catch (Throwable err) {
+            logSevere(
+                "<- sun.awt.datatransfer.SunClipboard#setContents(contents=%s, owner=%s): an exception occurred.".formatted(contents, owner),
+                err
+            );
+            throw err;
         }
     }
 
     private synchronized void initContext() {
-        final AppContext context = AppContext.getAppContext();
+        logInfo("-> sun.awt.datatransfer.SunClipboard#initContext()...");
 
-        if (contentsContext != context) {
-            // Need to synchronize on the AppContext to guarantee that it cannot
-            // be disposed after the check, but before the listener is added.
-            synchronized (context) {
-                if (context.isDisposed()) {
-                    throw new IllegalStateException("Can't set contents from disposed AppContext");
+        try {
+            final AppContext context = AppContext.getAppContext();
+
+            logInfo("     this.contentsContext={0}.", this.contentsContext);
+            logInfo("     context={0}.", context);
+
+            if (contentsContext != context) {
+                logInfo("     contentsContext != context.");
+
+                // Need to synchronize on the AppContext to guarantee that it cannot
+                // be disposed after the check, but before the listener is added.
+                synchronized (context) {
+                    if (context.isDisposed()) {
+                        throw new IllegalStateException("Can't set contents from disposed AppContext");
+                    }
+                    context.addPropertyChangeListener
+                            (AppContext.DISPOSED_PROPERTY_NAME, this);
                 }
-                context.addPropertyChangeListener
-                    (AppContext.DISPOSED_PROPERTY_NAME, this);
+                if (contentsContext != null) {
+                    contentsContext.removePropertyChangeListener
+                            (AppContext.DISPOSED_PROPERTY_NAME, this);
+                }
+                contentsContext = context;
             }
-            if (contentsContext != null) {
-                contentsContext.removePropertyChangeListener
-                    (AppContext.DISPOSED_PROPERTY_NAME, this);
-            }
-            contentsContext = context;
+
+            logInfo("<- sun.awt.datatransfer.SunClipboard#initContext().");
+        } catch (Throwable err) {
+            logSevere("<- sun.awt.datatransfer.SunClipboard#initContext(): an exception occurred.", err);
+            throw err;
         }
     }
 
     public synchronized Transferable getContents(Object requestor) {
-        if (contents != null) {
-            return contents;
+        logInfo("-> sun.awt.datatransfer.SunClipboard#getContents(requestor={0})...", requestor);
+
+        try {
+            logInfo("     this.contents={0}.", this.contents);
+
+            if (contents != null) {
+                logInfo("<- sun.awt.datatransfer.SunClipboard#getContents(requestor={0}): returning {1}.",
+                        requestor, contents);
+                return contents;
+            }
+
+            final var result = new ClipboardTransferable(this);
+
+            logInfo("<- sun.awt.datatransfer.SunClipboard#getContents(requestor={0}): returning {1}.",
+                    requestor, result);
+
+            return result;
+        } catch (Throwable err) {
+            logSevere(
+                "<- sun.awt.datatransfer.SunClipboard#getContents(requestor=%s): an exception occurred.".formatted(requestor),
+                err
+            );
+            throw err;
         }
-        return new ClipboardTransferable(this);
     }
 
 
@@ -145,8 +194,20 @@ public abstract class SunClipboard extends Clipboard
      * @since 1.5
      */
     protected synchronized Transferable getContextContents() {
-        AppContext context = AppContext.getAppContext();
-        return (context == contentsContext) ? contents : null;
+        logInfo("-> sun.awt.datatransfer.SunClipboard#getContextContents()...");
+
+        try {
+            AppContext context = AppContext.getAppContext();
+            logInfo("     context={0}.", context);
+
+            final var result = (context == contentsContext) ? contents : null;
+
+            logInfo("<- sun.awt.datatransfer.SunClipboard#getContextContents(): returning {0}.", result);
+            return result;
+        } catch (Throwable err) {
+            logSevere("<- sun.awt.datatransfer.SunClipboard#getContextContents(): an exception occurred.", err);
+            throw err;
+        }
     }
 
 
@@ -155,15 +216,32 @@ public abstract class SunClipboard extends Clipboard
      * @since 1.5
      */
     public DataFlavor[] getAvailableDataFlavors() {
-        Transferable cntnts = getContextContents();
-        if (cntnts != null) {
-            return cntnts.getTransferDataFlavors();
+        logInfo("-> sun.awt.datatransfer.SunClipboard#getAvailableDataFlavors()...");
+
+        try {
+            Transferable cntnts = getContextContents();
+            logInfo("     cntnts={0}.", cntnts);
+
+            if (cntnts != null) {
+                final DataFlavor[] result = cntnts.getTransferDataFlavors();
+
+                logInfo("<- sun.awt.datatransfer.SunClipboard#getAvailableDataFlavors(): returning {0}.",
+                        logFormatArray(result));
+                return result;
+            }
+
+            long[] formats = getClipboardFormatsOpenClose();
+            logInfo("     formats={0}.", logFormatArray(formats));
+
+            final var result = DataTransferer.getInstance().getFlavorsForFormatsAsArray(formats, getDefaultFlavorTable());
+
+            logInfo("<- sun.awt.datatransfer.SunClipboard#getAvailableDataFlavors(): returning {0}.",
+                    logFormatArray(result));
+            return result;
+        } catch (Throwable err) {
+            logSevere("<- sun.awt.datatransfer.SunClipboard#getAvailableDataFlavors(): an exception occurred.", err);
+            throw err;
         }
-
-        long[] formats = getClipboardFormatsOpenClose();
-
-        return DataTransferer.getInstance().
-            getFlavorsForFormatsAsArray(formats, getDefaultFlavorTable());
     }
 
     /**
@@ -171,18 +249,39 @@ public abstract class SunClipboard extends Clipboard
      * @since 1.5
      */
     public boolean isDataFlavorAvailable(DataFlavor flavor) {
-        if (flavor == null) {
-            throw new NullPointerException("flavor");
+        logInfo("-> sun.awt.datatransfer.SunClipboard#isDataFlavorAvailable(flavor={0})...", flavor);
+
+        try {
+            if (flavor == null) {
+                throw new NullPointerException("flavor");
+            }
+
+            Transferable cntnts = getContextContents();
+            logInfo("     cntnts={0}.", cntnts);
+
+            if (cntnts != null) {
+                final var result = cntnts.isDataFlavorSupported(flavor);
+
+                logInfo("<- sun.awt.datatransfer.SunClipboard#isDataFlavorAvailable(flavor={0}): returning {1}.",
+                        flavor, result);
+                return result;
+            }
+
+            long[] formats = getClipboardFormatsOpenClose();
+            logInfo("     formats={0}.", logFormatArray(formats));
+
+            final var result = formatArrayAsDataFlavorSet(formats).contains(flavor);
+
+            logInfo("<- sun.awt.datatransfer.SunClipboard#isDataFlavorAvailable(flavor={0}): returning {1}.",
+                    flavor, result);
+            return result;
+        } catch (Throwable err) {
+            logSevere(
+                "<- sun.awt.datatransfer.SunClipboard#isDataFlavorAvailable(flavor=%s): an exception occurred.".formatted(flavor),
+                err
+            );
+            throw err;
         }
-
-        Transferable cntnts = getContextContents();
-        if (cntnts != null) {
-            return cntnts.isDataFlavorSupported(flavor);
-        }
-
-        long[] formats = getClipboardFormatsOpenClose();
-
-        return formatArrayAsDataFlavorSet(formats).contains(flavor);
     }
 
     /**
@@ -191,43 +290,66 @@ public abstract class SunClipboard extends Clipboard
      */
     public Object getData(DataFlavor flavor)
         throws UnsupportedFlavorException, IOException {
-        if (flavor == null) {
-            throw new NullPointerException("flavor");
-        }
 
-        Transferable cntnts = getContextContents();
-        if (cntnts != null) {
-            return cntnts.getTransferData(flavor);
-        }
-
-        long format = 0;
-        byte[] data = null;
-        Transferable localeTransferable = null;
+        logInfo("-> sun.awt.datatransfer.SunClipboard#getData(flavor={0})...", flavor);
 
         try {
-            openClipboard(null);
-
-            long[] formats = getClipboardFormats();
-            Long lFormat = DataTransferer.getInstance().
-                    getFlavorsForFormats(formats, getDefaultFlavorTable()).get(flavor);
-
-            if (lFormat == null) {
-                throw new UnsupportedFlavorException(flavor);
+            if (flavor == null) {
+                throw new NullPointerException("flavor");
             }
 
-            format = lFormat.longValue();
-            data = getClipboardData(format);
+            Transferable cntnts = getContextContents();
+            logInfo("     cntnts={0}.", cntnts);
 
-            if (DataTransferer.getInstance().isLocaleDependentTextFormat(format)) {
-                localeTransferable = createLocaleTransferable(formats);
+            if (cntnts != null) {
+                final var result = cntnts.getTransferData(flavor);
+                logInfo("<- sun.awt.datatransfer.SunClipboard#getData(flavor={0}): returning {1}.", flavor, result);
+                return result;
             }
 
-        } finally {
-            closeClipboard();
+            long format = 0;
+            byte[] data = null;
+            Transferable localeTransferable = null;
+
+            try {
+                openClipboard(null);
+
+                long[] formats = getClipboardFormats();
+                logInfo("     formats={0}.", logFormatArray(formats));
+
+                Long lFormat = DataTransferer.getInstance().
+                        getFlavorsForFormats(formats, getDefaultFlavorTable()).get(flavor);
+                logInfo("     lFormat={0}.", lFormat);
+
+                if (lFormat == null) {
+                    throw new UnsupportedFlavorException(flavor);
+                }
+
+                format = lFormat.longValue();
+                logInfo("     format={0}.", format);
+
+                data = getClipboardData(format);
+                logInfo("     data={0}.", logFormatArray(data));
+
+                if (DataTransferer.getInstance().isLocaleDependentTextFormat(format)) {
+                    localeTransferable = createLocaleTransferable(formats);
+                }
+                logInfo("     localeTransferable={0}.", localeTransferable);
+            } finally {
+                closeClipboard();
+            }
+
+            final var result = DataTransferer.getInstance().translateBytes(data, flavor, format, localeTransferable);
+
+            logInfo("<- sun.awt.datatransfer.SunClipboard#getData(flavor={0}): returning {1}.", flavor, result);
+            return result;
+        } catch (Throwable err) {
+            logSevere(
+                "<- sun.awt.datatransfer.SunClipboard#getData(flavor=%s): an exception occurred.".formatted(flavor),
+                err
+            );
+            throw err;
         }
-
-        return DataTransferer.getInstance().
-                translateBytes(data, flavor, format, localeTransferable);
     }
 
     /**
@@ -236,27 +358,71 @@ public abstract class SunClipboard extends Clipboard
      * @since 1.5
      */
     protected Transferable createLocaleTransferable(long[] formats) throws IOException {
+        logWarning("-> sun.awt.datatransfer.SunClipboard#createLocaleTransferable(formats={0})...",
+                   logFormatArray(formats));
+
+        logWarning("     This method does nothing, has it been called by mistake?");
+
+        logInfo("<- sun.awt.datatransfer.SunClipboard#createLocaleTransferable(formats={0}): returning null.",
+                logFormatArray(formats));
         return null;
     }
 
     /**
      * @throws IllegalStateException if the clipboard has not been opened
      */
-    public void openClipboard(SunClipboard newOwner) {}
-    public void closeClipboard() {}
+    public void openClipboard(SunClipboard newOwner) {
+        logWarning("-> sun.awt.datatransfer.SunClipboard#openClipboard(newOwner={0})...",
+                    newOwner);
+
+        logWarning("     This method does nothing, has it been called by mistake?");
+
+        logInfo("<- sun.awt.datatransfer.SunClipboard#openClipboard(newOwner={0}).", newOwner);
+    }
+    public void closeClipboard() {
+        logWarning("-> sun.awt.datatransfer.SunClipboard#closeClipboard()...");
+
+        logWarning("     This method does nothing, has it been called by mistake?");
+
+        logInfo("<- sun.awt.datatransfer.SunClipboard#closeClipboard().");
+    }
 
     public abstract long getID();
 
     public void propertyChange(PropertyChangeEvent evt) {
-        if (AppContext.DISPOSED_PROPERTY_NAME.equals(evt.getPropertyName()) &&
-            Boolean.TRUE.equals(evt.getNewValue())) {
-            final AppContext disposedContext = (AppContext)evt.getSource();
-            lostOwnershipLater(disposedContext);
+        logInfo("-> sun.awt.datatransfer.SunClipboard#propertyChange(evt={0})...", evt);
+
+        try {
+            if (AppContext.DISPOSED_PROPERTY_NAME.equals(evt.getPropertyName()) &&
+                    Boolean.TRUE.equals(evt.getNewValue())) {
+                logInfo("     AppContext.DISPOSED_PROPERTY_NAME.equals(evt.getPropertyName()) && Boolean.TRUE.equals(evt.getNewValue()).");
+
+                final AppContext disposedContext = (AppContext) evt.getSource();
+                logInfo("     disposedContext={0}.", disposedContext);
+
+                lostOwnershipLater(disposedContext);
+            }
+
+            logInfo("<- sun.awt.datatransfer.SunClipboard#propertyChange(evt={0}).", evt);
+        } catch (Throwable err) {
+            logSevere(
+                "<- sun.awt.datatransfer.SunClipboard#propertyChange(evt=%s): an exception occurred.".formatted(evt),
+                err
+            );
+            throw err;
         }
     }
 
     protected void lostOwnershipImpl() {
-        lostOwnershipLater(null);
+        logInfo("-> sun.awt.datatransfer.SunClipboard#lostOwnershipImpl()...");
+
+        try {
+            lostOwnershipLater(null);
+            logInfo("<- sun.awt.datatransfer.SunClipboard#lostOwnershipImpl().");
+        } catch (Throwable err) {
+            logSevere("<- sun.awt.datatransfer.SunClipboard#lostOwnershipImpl(): an exception occurred.", err);
+            throw err;
+        }
     }
 
     /**
@@ -270,42 +436,83 @@ public abstract class SunClipboard extends Clipboard
      *        application acquired ownership.
      */
     protected void lostOwnershipLater(final AppContext disposedContext) {
-        final AppContext context = this.contentsContext;
-        if (context == null) {
-            return;
-        }
+        logInfo("-> sun.awt.datatransfer.SunClipboard#lostOwnershipLater(disposedContext={0})...", disposedContext);
 
-        SunToolkit.postEvent(context, new PeerEvent(this, () -> lostOwnershipNow(disposedContext),
-                                                    PeerEvent.PRIORITY_EVENT));
+        try {
+            final AppContext context = this.contentsContext;
+            logInfo("     context={0}.", context);
+
+            if (context == null) {
+                logInfo("<- sun.awt.datatransfer.SunClipboard#lostOwnershipLater(disposedContext={0}).", disposedContext);
+                return;
+            }
+
+            SunToolkit.postEvent(context, new PeerEvent(this, () -> lostOwnershipNow(disposedContext),
+                    PeerEvent.PRIORITY_EVENT));
+
+            logInfo("<- sun.awt.datatransfer.SunClipboard#lostOwnershipLater(disposedContext={0}).", disposedContext);
+        } catch (Throwable err) {
+            logSevere(
+                "<- sun.awt.datatransfer.SunClipboard#lostOwnershipLater(disposedContext=%s): an exception occurred.".formatted(disposedContext),
+                err
+            );
+            throw err;
+        }
     }
 
     protected void lostOwnershipNow(final AppContext disposedContext) {
-        final SunClipboard sunClipboard = SunClipboard.this;
-        ClipboardOwner owner = null;
-        Transferable contents = null;
+        logInfo("-> sun.awt.datatransfer.SunClipboard#lostOwnershipNow(disposedContext={0})...", disposedContext);
 
-        synchronized (sunClipboard) {
-            final AppContext context = sunClipboard.contentsContext;
+        try {
+            final SunClipboard sunClipboard = SunClipboard.this;
+            logInfo("     sunClipboard={0}.", sunClipboard);
 
-            if (context == null) {
-                return;
+            ClipboardOwner owner = null;
+            Transferable contents = null;
+
+            synchronized (sunClipboard) {
+                final AppContext context = sunClipboard.contentsContext;
+                logInfo("     context={0}.", context);
+
+                if (context == null) {
+                    logInfo("     context == null.");
+                    logInfo("<- sun.awt.datatransfer.SunClipboard#lostOwnershipNow(disposedContext={0}).", disposedContext);
+                    return;
+                }
+
+                if (disposedContext == null || context == disposedContext) {
+                    logInfo("     disposedContext == null || context == disposedContext.");
+
+                    owner = sunClipboard.owner;
+                    logInfo("     owner={0}.", owner);
+
+                    contents = sunClipboard.contents;
+                    logInfo("     contents={0}.", contents);
+
+                    sunClipboard.contentsContext = null;
+                    sunClipboard.owner = null;
+                    sunClipboard.contents = null;
+                    sunClipboard.clearNativeContext();
+                    context.removePropertyChangeListener
+                            (AppContext.DISPOSED_PROPERTY_NAME, sunClipboard);
+                } else {
+                    logInfo("     disposedContext != null && context != disposedContext.");
+                    logInfo("<- sun.awt.datatransfer.SunClipboard#lostOwnershipNow(disposedContext={0}).", disposedContext);
+                    return;
+                }
+            }
+            if (owner != null) {
+                logInfo("     owner != null.");
+                owner.lostOwnership(sunClipboard, contents);
             }
 
-            if (disposedContext == null || context == disposedContext) {
-                owner = sunClipboard.owner;
-                contents = sunClipboard.contents;
-                sunClipboard.contentsContext = null;
-                sunClipboard.owner = null;
-                sunClipboard.contents = null;
-                sunClipboard.clearNativeContext();
-                context.removePropertyChangeListener
-                        (AppContext.DISPOSED_PROPERTY_NAME, sunClipboard);
-            } else {
-                return;
-            }
-        }
-        if (owner != null) {
-            owner.lostOwnership(sunClipboard, contents);
+            logInfo("<- sun.awt.datatransfer.SunClipboard#lostOwnershipNow(disposedContext={0}).", disposedContext);
+        } catch (Throwable err) {
+            logSevere(
+                "<- sun.awt.datatransfer.SunClipboard#lostOwnershipNow(disposedContext=%s): an exception occurred.".formatted(disposedContext),
+                err
+            );
+            throw err;
         }
     }
 
@@ -318,11 +525,23 @@ public abstract class SunClipboard extends Clipboard
      * @since 1.5
      */
     protected long[] getClipboardFormatsOpenClose() {
+        logInfo("-> sun.awt.datatransfer.SunClipboard#getClipboardFormatsOpenClose()...");
+
         try {
-            openClipboard(null);
-            return getClipboardFormats();
-        } finally {
-            closeClipboard();
+            try {
+                openClipboard(null);
+
+                final var result = getClipboardFormats();
+
+                logInfo("<- sun.awt.datatransfer.SunClipboard#getClipboardFormatsOpenClose(): returning {0}.",
+                        logFormatArray(result));
+                return result;
+            } finally {
+                closeClipboard();
+            }
+        } catch (Throwable err) {
+            logSevere("<- sun.awt.datatransfer.SunClipboard#getClipboardFormatsOpenClose(): an exception occurred.", err);
+            throw err;
         }
     }
 
@@ -344,60 +563,132 @@ public abstract class SunClipboard extends Clipboard
 
 
     public synchronized void addFlavorListener(FlavorListener listener) {
-        if (listener == null) {
-            return;
-        }
-        AppContext appContext = AppContext.getAppContext();
-        Set<FlavorListener> flavorListeners = getFlavorListeners(appContext);
-        if (flavorListeners == null) {
-            flavorListeners = new HashSet<>();
-            appContext.put(CLIPBOARD_FLAVOR_LISTENER_KEY, flavorListeners);
-        }
-        flavorListeners.add(listener);
+        logInfo("-> sun.awt.datatransfer.SunClipboard#addFlavorListener(listener={0})...", listener);
 
-        if (numberOfFlavorListeners++ == 0) {
-            long[] currentFormats = null;
-            try {
-                openClipboard(null);
-                currentFormats = getClipboardFormats();
-            } catch (final IllegalStateException ignored) {
-            } finally {
-                closeClipboard();
+        try {
+            if (listener == null) {
+                logInfo("     listener=null.");
+                logInfo("<- sun.awt.datatransfer.SunClipboard#addFlavorListener(listener=null)...");
+                return;
             }
-            this.currentFormats = currentFormats;
+            AppContext appContext = AppContext.getAppContext();
+            logInfo("     appContext={0}.", appContext);
 
-            registerClipboardViewerChecked();
+            Set<FlavorListener> flavorListeners = getFlavorListeners(appContext);
+            if (flavorListeners == null) {
+                logInfo("     flavorListeners=null.");
+                flavorListeners = new HashSet<>();
+                appContext.put(CLIPBOARD_FLAVOR_LISTENER_KEY, flavorListeners);
+            }
+            flavorListeners.add(listener);
+
+            logInfo("     flavorListeners={0}.", flavorListeners);
+
+            if (numberOfFlavorListeners++ == 0) {
+                logInfo("     numberOfFlavorListeners++ == 0.");
+                long[] currentFormats = null;
+                try {
+                    openClipboard(null);
+                    currentFormats = getClipboardFormats();
+                } catch (final IllegalStateException ignored) {
+                } finally {
+                    closeClipboard();
+                }
+                this.currentFormats = currentFormats;
+                logInfo("     this.currentFormats={0}.", logFormatArray(this.currentFormats));
+
+                registerClipboardViewerChecked();
+            }
+
+            logInfo("<- sun.awt.datatransfer.SunClipboard#addFlavorListener(listener={0}).", listener);
+        } catch (Throwable err) {
+            logSevere(
+                "<- sun.awt.datatransfer.SunClipboard#addFlavorListener(listener=%s): an exception occurred.".formatted(listener),
+                err
+            );
+            throw err;
         }
     }
 
     public synchronized void removeFlavorListener(FlavorListener listener) {
-        if (listener == null) {
-            return;
-        }
-        Set<FlavorListener> flavorListeners = getFlavorListeners(AppContext.getAppContext());
-        if (flavorListeners == null){
-            //else we throw NullPointerException, but it is forbidden
-            return;
-        }
-        if (flavorListeners.remove(listener) && --numberOfFlavorListeners == 0) {
-            unregisterClipboardViewerChecked();
-            currentFormats = null;
+        logInfo("-> sun.awt.datatransfer.SunClipboard#removeFlavorListener(listener={0})...", listener);
+
+        try {
+            if (listener == null) {
+                logInfo("<- sun.awt.datatransfer.SunClipboard#removeFlavorListener(listener=null).");
+                return;
+            }
+
+            Set<FlavorListener> flavorListeners = getFlavorListeners(AppContext.getAppContext());
+            logInfo("     flavorListeners={0}.", flavorListeners);
+            if (flavorListeners == null) {
+                //else we throw NullPointerException, but it is forbidden
+                logInfo("<- sun.awt.datatransfer.SunClipboard#removeFlavorListener(listener={0}).", listener);
+                return;
+            }
+            if (flavorListeners.remove(listener) && --numberOfFlavorListeners == 0) {
+                logInfo("     flavorListeners.remove(listener) && --numberOfFlavorListeners == 0.");
+                unregisterClipboardViewerChecked();
+                currentFormats = null;
+            }
+
+            logInfo("<- sun.awt.datatransfer.SunClipboard#removeFlavorListener(listener={0}).", listener);
+        } catch (Throwable err) {
+            logSevere(
+                "<- sun.awt.datatransfer.SunClipboard#removeFlavorListener(listener=%s): an exception occurred.".formatted(listener),
+                err
+            );
+            throw err;
         }
     }
 
     @SuppressWarnings("unchecked")
     private Set<FlavorListener> getFlavorListeners(AppContext appContext) {
-        return (Set<FlavorListener>)appContext.get(CLIPBOARD_FLAVOR_LISTENER_KEY);
+        logInfo("-> sun.awt.datatransfer.SunClipboard#getFlavorListeners(appContext={0})...", appContext);
+
+        try {
+            final var result = (Set<FlavorListener>) appContext.get(CLIPBOARD_FLAVOR_LISTENER_KEY);
+
+            logInfo("<- sun.awt.datatransfer.SunClipboard#getFlavorListeners(appContext={0}): returning {1}.",
+                    appContext, result);
+            return result;
+        } catch (Throwable err) {
+            logSevere(
+                "<- sun.awt.datatransfer.SunClipboard#getFlavorListeners(appContext=%s): an exception occurred.".formatted(appContext),
+                err
+            );
+            throw err;
+        }
     }
 
     public synchronized FlavorListener[] getFlavorListeners() {
-        Set<FlavorListener> flavorListeners = getFlavorListeners(AppContext.getAppContext());
-        return flavorListeners == null ? new FlavorListener[0]
-                : flavorListeners.toArray(new FlavorListener[flavorListeners.size()]);
+        logInfo("-> sun.awt.datatransfer.SunClipboard#getFlavorListeners()...");
+
+        try {
+            Set<FlavorListener> flavorListeners = getFlavorListeners(AppContext.getAppContext());
+            logInfo("     flavorListeners={0}.", flavorListeners);
+
+            final var result = flavorListeners == null ? new FlavorListener[0]
+                               : flavorListeners.toArray(new FlavorListener[flavorListeners.size()]);
+
+            logInfo("<- sun.awt.datatransfer.SunClipboard#getFlavorListeners(): returning {0}.",
+                    logFormatArray(result));
+            return result;
+        } catch (Throwable err) {
+            logSevere("<- sun.awt.datatransfer.SunClipboard#getFlavorListeners(): an exception occurred.", err);
+            throw err;
+        }
     }
 
     public boolean areFlavorListenersRegistered() {
-        return (numberOfFlavorListeners > 0);
+        logInfo("-> sun.awt.datatransfer.SunClipboard#areFlavorListenersRegistered()...");
+
+        logInfo("     this.numberOfFlavorListeners={0}.", this.numberOfFlavorListeners);
+
+        final var result = (numberOfFlavorListeners > 0);
+
+        logInfo("<- sun.awt.datatransfer.SunClipboard#areFlavorListenersRegistered(): returning {0}.", result);
+        return result;
     }
 
     protected abstract void registerClipboardViewerChecked();
@@ -415,29 +706,49 @@ public abstract class SunClipboard extends Clipboard
      *        this clipboard
      */
     protected final void checkChange(final long[] formats) {
-        if (Arrays.equals(formats, currentFormats)) {
-            // we've been able to successfully get available on the clipboard
-            // DataFlavors this and previous time and they are coincident;
-            // don't notify
-            return;
-        }
-        currentFormats = formats;
+        final var formatsStr = logFormatArray(formats);
+        logInfo("-> sun.awt.datatransfer.SunClipboard#checkChange(formats={0})...", formatsStr);
 
-        for (final AppContext appContext : AppContext.getAppContexts()) {
-            if (appContext == null || appContext.isDisposed()) {
-                continue;
+        try {
+            logInfo("     this.currentFormats={0}.", logFormatArray(this.currentFormats));
+
+            if (Arrays.equals(formats, currentFormats)) {
+                // we've been able to successfully get available on the clipboard
+                // DataFlavors this and previous time and they are coincident;
+                // don't notify
+                logInfo("     Arrays.equals(formats, currentFormats)");
+                logInfo("<- sun.awt.datatransfer.SunClipboard#checkChange(formats={0}).", formatsStr);
+                return;
             }
-            Set<FlavorListener> flavorListeners = getFlavorListeners(appContext);
-            if (flavorListeners != null) {
-                for (FlavorListener listener : flavorListeners) {
-                    if (listener != null) {
-                        PeerEvent peerEvent = new PeerEvent(this,
-                                () -> listener.flavorsChanged(new FlavorEvent(SunClipboard.this)),
-                                PeerEvent.PRIORITY_EVENT);
-                        SunToolkit.postEvent(appContext, peerEvent);
+            currentFormats = formats;
+
+            final var appContexts = AppContext.getAppContexts();
+            logInfo("     appContexts={0}.", appContexts);
+
+            for (final AppContext appContext : appContexts) {
+                if (appContext == null || appContext.isDisposed()) {
+                    continue;
+                }
+                Set<FlavorListener> flavorListeners = getFlavorListeners(appContext);
+                if (flavorListeners != null) {
+                    for (FlavorListener listener : flavorListeners) {
+                        if (listener != null) {
+                            PeerEvent peerEvent = new PeerEvent(this,
+                                    () -> listener.flavorsChanged(new FlavorEvent(SunClipboard.this)),
+                                    PeerEvent.PRIORITY_EVENT);
+                            SunToolkit.postEvent(appContext, peerEvent);
+                        }
                     }
                 }
             }
+
+            logInfo("<- sun.awt.datatransfer.SunClipboard#checkChange(formats={0}).", formatsStr);
+        } catch (Throwable err) {
+            logSevere(
+                "<- sun.awt.datatransfer.SunClipboard#checkChange(formats=%s): an exception occurred.".formatted(formatsStr),
+                err
+            );
+            throw err;
         }
     }
 
