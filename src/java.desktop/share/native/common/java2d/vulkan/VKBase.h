@@ -53,7 +53,7 @@ class VKDevice : public vk::raii::Device, public vk::raii::PhysicalDevice {
         vk::raii::CommandBuffer buffer;
         uint64_t                counter;
     };
-    std::queue<PendingBuffer> _pendingBuffers;
+    std::queue<PendingBuffer> _pendingPrimaryBuffers, _pendingSecondaryBuffers;
 
     explicit VKDevice(vk::raii::PhysicalDevice&& handle);
 public:
@@ -68,8 +68,9 @@ public:
 
     void init(); // Creates actual logical device
 
-    vk::raii::CommandBuffer getCommandBuffer();
-    void submitCommandBuffer(vk::raii::CommandBuffer&& buffer,
+    vk::raii::CommandBuffer getCommandBuffer(vk::CommandBufferLevel level);
+    void submitCommandBuffer(vk::raii::CommandBuffer&& primary,
+                             std::vector<vk::raii::CommandBuffer>& secondary,
                              std::vector<vk::Semaphore>& waitSemaphores,
                              std::vector<vk::PipelineStageFlags>& waitStages,
                              std::vector<vk::Semaphore>& signalSemaphores);

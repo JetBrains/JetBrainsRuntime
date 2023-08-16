@@ -663,6 +663,7 @@ Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
             return;
         }
     }
+    renderer.flush();
 }
 
 #endif /* !HEADLESS */

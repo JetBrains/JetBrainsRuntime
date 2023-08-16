@@ -58,7 +58,7 @@ bool VKSurfaceData::barrier(VKRecorder& recorder, vk::Image image,
                 VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
                 image, vk::ImageSubresourceRange {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}
         };
-        recorder.record().pipelineBarrier2(vk::DependencyInfo {{}, {}, {}, barrier});
+        recorder.record(false).pipelineBarrier2(vk::DependencyInfo {{}, {}, {}, barrier});
         _lastStage = stage;
         _lastAccess = access;
         _layout = layout;
@@ -83,14 +83,14 @@ void VKSwapchainSurfaceData::revalidate(uint32_t w, uint32_t h, uint32_t s) {
     }
 
     vk::SurfaceCapabilitiesKHR surfaceCapabilities = device().getSurfaceCapabilitiesKHR(*_surface);
-    vk::Format format = vk::Format::eB8G8R8A8Unorm; // TODO?
+    _format = vk::Format::eB8G8R8A8Unorm; // TODO?
 
     // TODO all these parameters must be checked against device & surface capabilities
     vk::SwapchainCreateInfoKHR swapchainCreateInfo{
             {},
             *_surface,
             surfaceCapabilities.minImageCount,
-            format,
+            format(),
             vk::ColorSpaceKHR::eVkColorspaceSrgbNonlinear,
             {width(), height()}, // TODO According to spec we need to use surfaceCapabilities.currentExtent, which is not available at this point (it gives -1)... We'll figure this out later
             1,
@@ -109,7 +109,7 @@ void VKSwapchainSurfaceData::revalidate(uint32_t w, uint32_t h, uint32_t s) {
     _swapchain = device().createSwapchainKHR(swapchainCreateInfo);
     for (vk::Image image : _swapchain.getImages()) {
         _images.push_back({image, device().createImageView(vk::ImageViewCreateInfo {
-                {}, image, vk::ImageViewType::e2D, format, {},
+                {}, image, vk::ImageViewType::e2D, format(), {},
                 vk::ImageSubresourceRange {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}
         })});
     }

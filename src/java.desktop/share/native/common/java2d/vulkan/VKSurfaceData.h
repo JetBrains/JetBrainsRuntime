@@ -56,6 +56,7 @@ class VKSurfaceData : private SurfaceDataOps {
     uint32_t               _bg_color;
 protected:
     VKDevice*              _device;
+    vk::Format             _format;
 
     vk::ImageLayout         _layout = vk::ImageLayout::eUndefined;
     // We track any access and write access separately, as read-read access does not need synchronization.
@@ -73,6 +74,10 @@ public:
 
     VKDevice& device() const {
         return *_device;
+    }
+
+    vk::Format format() const {
+        return _format;
     }
 
     uint32_t width() const {

@@ -32,13 +32,18 @@
 #include "VKSurfaceData.h"
 
 class VKRecorder{
-    VKDevice                           *_device;
-    vk::raii::CommandBuffer             _commandBuffer = nullptr;
-    std::vector<vk::Semaphore>          _waitSemaphores, _signalSemaphores;
-    std::vector<vk::PipelineStageFlags> _waitSemaphoreStages;
-    VKSurfaceData                      *_currentlyRendering = nullptr;
-
-    const vk::raii::CommandBuffer& getCommandBuffer();
+    VKDevice                            *_device;
+    vk::raii::CommandBuffer              _commandBuffer = nullptr;
+    std::vector<vk::raii::CommandBuffer> _secondaryBuffers;
+    std::vector<vk::Semaphore>           _waitSemaphores, _signalSemaphores;
+    std::vector<vk::PipelineStageFlags>  _waitSemaphoreStages;
+    struct RenderPass {
+        vk::raii::CommandBuffer *commandBuffer = nullptr;
+        VKSurfaceData           *surface = nullptr;
+        vk::ImageView            surfaceView;
+        vk::AttachmentLoadOp     attachmentLoadOp;
+        vk::ClearValue           clearValue;
+    } _renderPass {};
 
 protected:
     VKDevice* setDevice(VKDevice *device);
@@ -48,7 +53,7 @@ public:
 
     void signalSemaphore(vk::Semaphore semaphore);
 
-    const vk::raii::CommandBuffer& record(); // Prepare for ordinary commands
+    const vk::raii::CommandBuffer& record(bool flushRenderPass = true); // Prepare for ordinary commands
 
     const vk::raii::CommandBuffer& render(VKSurfaceData& surface,
                                           vk::ClearColorValue* clear = nullptr); // Prepare for render pass commands
@@ -70,9 +75,11 @@ class VKRenderer : private VKRecorder{
         operator vk::ClearValue() const {
             return vk::ClearColorValue {r, g, b, a};
         }
-    } color;
+    } _color;
 
 public:
+    using VKRecorder::flush;
+
     // draw ops
     void drawLine(jint x1, jint y1, jint x2, jint y2);
     void drawRect(jint x, jint y, jint w, jint h);

@@ -45,60 +45,77 @@ void VKRecorder::signalSemaphore(vk::Semaphore semaphore) {
     _signalSemaphores.push_back(semaphore);
 }
 
-const vk::raii::CommandBuffer& VKRecorder::getCommandBuffer() {
+const vk::raii::CommandBuffer& VKRecorder::record(bool flushRenderPass) {
     if (!*_commandBuffer) {
-        _commandBuffer = _device->getCommandBuffer();
-        _commandBuffer.begin({ vk::CommandBufferUsageFlagBits::eOneTimeSubmit });
+        _commandBuffer = _device->getCommandBuffer(vk::CommandBufferLevel::ePrimary);
+        _commandBuffer.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit });
+    }
+    if (flushRenderPass && _renderPass.commandBuffer != nullptr) {
+        _renderPass.commandBuffer->end();
+        vk::RenderingAttachmentInfo colorAttachmentInfo {
+                _renderPass.surfaceView, vk::ImageLayout::eColorAttachmentOptimal,
+                vk::ResolveModeFlagBits::eNone, {}, {},
+                _renderPass.attachmentLoadOp, vk::AttachmentStoreOp::eStore,
+                _renderPass.clearValue
+        };
+        _commandBuffer.beginRendering(vk::RenderingInfo{
+                vk::RenderingFlagBits::eContentsSecondaryCommandBuffers,
+                vk::Rect2D{{0, 0}, {_renderPass.surface->width(), _renderPass.surface->height()}},
+                1, 0, colorAttachmentInfo, {}, {}
+        });
+        _commandBuffer.executeCommands(**_renderPass.commandBuffer);
+        _commandBuffer.endRendering();
+        _renderPass.commandBuffer = nullptr;
+        _renderPass.surface = nullptr;
     }
     return _commandBuffer;
 }
 
-const vk::raii::CommandBuffer& VKRecorder::record() {
-    if (_currentlyRendering != nullptr) {
-        _commandBuffer.endRendering();
-        _currentlyRendering = nullptr;
-        return _commandBuffer;
-    } else return getCommandBuffer();
-}
-
 const vk::raii::CommandBuffer& VKRecorder::render(VKSurfaceData& surface, vk::ClearColorValue* clear) {
-    if (_currentlyRendering != &surface) {
-        const vk::raii::CommandBuffer& cb = record();
+    if (_renderPass.surface != &surface) {
+        if (_renderPass.commandBuffer != nullptr) {
+            record(true); // Flush current render pass
+        }
         VKSurfaceImage i = surface.access(*this,
                                           vk::PipelineStageFlagBits2::eColorAttachmentOutput,
                                           vk::AccessFlagBits2::eColorAttachmentWrite,
                                           vk::ImageLayout::eColorAttachmentOptimal);
-        vk::RenderingAttachmentInfo colorAttachmentInfo {
-                i.view, vk::ImageLayout::eColorAttachmentOptimal,
-                vk::ResolveModeFlagBits::eNone, {}, {},
-                clear != nullptr ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eLoad,
-                vk::AttachmentStoreOp::eStore, clear != nullptr ? *clear : vk::ClearColorValue()
-        };
-        cb.beginRendering(vk::RenderingInfo {
-                {}, vk::Rect2D {{0, 0}, {surface.width(), surface.height()}},
-                1, 0, colorAttachmentInfo, {}, {}
-        });
-        _currentlyRendering = &surface;
-        return cb;
-    } else {
-        const vk::raii::CommandBuffer& cb = getCommandBuffer();
-        if (clear != nullptr) {
-            cb.clearAttachments(vk::ClearAttachment {vk::ImageAspectFlagBits::eColor, 0, *clear},
-                                vk::ClearRect {vk::Rect2D {{0, 0}, {surface.width(), surface.height()}}, 0, 1});
-        }
-        return cb;
+        _renderPass.surface = &surface;
+        _renderPass.surfaceView = i.view;
+        _renderPass.attachmentLoadOp = vk::AttachmentLoadOp::eLoad;
     }
+    if (clear != nullptr) {
+        _renderPass.clearValue = *clear;
+        _renderPass.attachmentLoadOp = vk::AttachmentLoadOp::eClear;
+    }
+    if (_renderPass.commandBuffer == nullptr || clear != nullptr) {
+        if (_renderPass.commandBuffer == nullptr) {
+            _secondaryBuffers.push_back(_device->getCommandBuffer(vk::CommandBufferLevel::eSecondary));
+            _renderPass.commandBuffer = &_secondaryBuffers.back();
+        } else {
+            // We already recorded some rendering commands, but it doesn't matter, as we'll clear the surface anyway.
+            _renderPass.commandBuffer->reset({});
+        }
+        vk::Format format = surface.format();
+        vk::CommandBufferInheritanceRenderingInfo inheritanceRenderingInfo {
+                vk::RenderingFlagBits::eContentsSecondaryCommandBuffers,
+                0, format
+        };
+        vk::CommandBufferInheritanceInfo inheritanceInfo;
+        inheritanceInfo.pNext = &inheritanceRenderingInfo;
+        _renderPass.commandBuffer->begin({ vk::CommandBufferUsageFlagBits::eOneTimeSubmit |
+                                           vk::CommandBufferUsageFlagBits::eRenderPassContinue, &inheritanceInfo });
+    }
+    return *_renderPass.commandBuffer;
 }
 
 void VKRecorder::flush() {
-    if (!*_commandBuffer) {
+    if (!*_commandBuffer && _renderPass.commandBuffer == nullptr) {
         return;
     }
-    record().end();
-    _device->submitCommandBuffer(std::move(_commandBuffer), _waitSemaphores, _waitSemaphoreStages, _signalSemaphores);
-    _signalSemaphores.clear();
-    _waitSemaphores.clear();
-    _waitSemaphoreStages.clear();
+    record(true).end();
+    _device->submitCommandBuffer(std::move(_commandBuffer), _secondaryBuffers,
+                                 _waitSemaphores, _waitSemaphoreStages, _signalSemaphores);
 }
 
 // draw ops
@@ -122,7 +139,7 @@ void VKRenderer::drawAAParallelogram(jfloat x11, jfloat y11,
 void VKRenderer::fillRect(jint x, jint y, jint w, jint h) {
     // TODO
     auto& cb = render(*_dstSurface);
-    cb.clearAttachments(vk::ClearAttachment {vk::ImageAspectFlagBits::eColor, 0, color},
+    cb.clearAttachments(vk::ClearAttachment {vk::ImageAspectFlagBits::eColor, 0, _color},
                         vk::ClearRect {vk::Rect2D {{x, y}, {(uint32_t) w, (uint32_t) h}}, 0, 1});
 }
 void VKRenderer::fillSpans(/*TODO*/) {/*TODO*/}
@@ -189,7 +206,7 @@ void VKRenderer::swapBuffers(/*TODO*/) {/*TODO*/}
 
 void VKRenderer::resetPaint() {/*TODO*/}
 void VKRenderer::setColor(uint32_t pixel) {
-    color = pixel;
+    _color = pixel;
 }
 void VKRenderer::setGradientPaint(/*TODO*/) {/*TODO*/}
 void VKRenderer::setLinearGradientPaint(/*TODO*/) {/*TODO*/}
