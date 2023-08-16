@@ -65,43 +65,64 @@ final class WClipboard extends SunClipboard {
 
     @Override
     protected void setContentsNative(Transferable contents) {
-        // Don't use delayed Clipboard rendering for the Transferable's data.
-        // If we did that, we would call Transferable.getTransferData on
-        // the Toolkit thread, which is a security hole.
-        //
-        // Get all of the target formats into which the Transferable can be
-        // translated. Then, for each format, translate the data and post
-        // it to the Clipboard.
-        Map <Long, DataFlavor> formatMap = WDataTransferer.getInstance().
-            getFormatsForTransferable(contents, getDefaultFlavorTable());
-
-        openClipboard(this);
+        logInfo("-> sun.awt.windows.WClipboard#setContentsNative(contents={0})...", contents);
 
         try {
-            for (Long format : formatMap.keySet()) {
-                DataFlavor flavor = formatMap.get(format);
+            // Don't use delayed Clipboard rendering for the Transferable's data.
+            // If we did that, we would call Transferable.getTransferData on
+            // the Toolkit thread, which is a security hole.
+            //
+            // Get all of the target formats into which the Transferable can be
+            // translated. Then, for each format, translate the data and post
+            // it to the Clipboard.
+            Map<Long, DataFlavor> formatMap = WDataTransferer.getInstance().
+                    getFormatsForTransferable(contents, getDefaultFlavorTable());
+            logInfo("     formatMap={0}.", formatMap);
 
-                try {
-                    byte[] bytes = WDataTransferer.getInstance().
-                        translateTransferable(contents, flavor, format);
-                    publishClipboardData(format, bytes);
-                } catch (IOException e) {
-                    // Fix 4696186: don't print exception if data with
-                    // javaJVMLocalObjectMimeType failed to serialize.
-                    // May remove this if-check when 5078787 is fixed.
-                    if (!(flavor.isMimeTypeEqual(DataFlavor.javaJVMLocalObjectMimeType) &&
-                          e instanceof java.io.NotSerializableException)) {
-                        e.printStackTrace();
+            openClipboard(this);
+
+            try {
+                for (Long format : formatMap.keySet()) {
+                    DataFlavor flavor = formatMap.get(format);
+
+                    try {
+                        byte[] bytes = WDataTransferer.getInstance().
+                                translateTransferable(contents, flavor, format);
+                        publishClipboardData(format, bytes);
+                    } catch (IOException e) {
+                        // Fix 4696186: don't print exception if data with
+                        // javaJVMLocalObjectMimeType failed to serialize.
+                        // May remove this if-check when 5078787 is fixed.
+                        if (!(flavor.isMimeTypeEqual(DataFlavor.javaJVMLocalObjectMimeType) &&
+                                e instanceof java.io.NotSerializableException)) {
+                            e.printStackTrace();
+                        }
                     }
                 }
+            } finally {
+                closeClipboard();
             }
-        } finally {
-            closeClipboard();
+
+            logInfo("<- sun.awt.windows.WClipboard#setContentsNative(contents={0}).", contents);
+        } catch (Throwable err) {
+            logSevere(
+                "<- sun.awt.windows.WClipboard#setContentsNative(contents=%s): an exception occurred.".formatted(contents),
+                err
+            );
+            throw err;
         }
     }
 
     private void lostSelectionOwnershipImpl() {
-        lostOwnershipImpl();
+        logInfo("-> sun.awt.windows.WClipboard#lostSelectionOwnershipImpl()...");
+
+        try {
+            lostOwnershipImpl();
+            logInfo("<- sun.awt.windows.WClipboard#lostSelectionOwnershipImpl().");
+        } catch (Throwable err) {
+            logSevere("<- sun.awt.windows.WClipboard#lostSelectionOwnershipImpl(): an exception occurred.", err);
+            throw err;
+        }
     }
 
     /**
@@ -109,7 +130,11 @@ final class WClipboard extends SunClipboard {
      * so there is no native context to clear.
      */
     @Override
-    protected void clearNativeContext() {}
+    protected void clearNativeContext() {
+        logInfo("-> sun.awt.windows.WClipboard#clearNativeContext()...");
+        logWarning("     sun.awt.windows.WClipboard#clearNativeContext() does nothing in the current implementation.");
+        logInfo("<- sun.awt.windows.WClipboard#clearNativeContext().");
+    }
 
     /**
      * Call the Win32 OpenClipboard function. If newOwner is non-null,
@@ -143,9 +168,20 @@ final class WClipboard extends SunClipboard {
 
     @Override
     protected void registerClipboardViewerChecked() {
-        if (!isClipboardViewerRegistered) {
-            registerClipboardViewer();
-            isClipboardViewerRegistered = true;
+        logInfo("-> sun.awt.windows.WClipboard#registerClipboardViewerChecked()...");
+
+        try {
+            logInfo("     this.isClipboardViewerRegistered={0}.", this.isClipboardViewerRegistered);
+
+            if (!isClipboardViewerRegistered) {
+                registerClipboardViewer();
+                isClipboardViewerRegistered = true;
+            }
+
+            logInfo("<- sun.awt.windows.WClipboard#registerClipboardViewerChecked().");
+        } catch (Throwable err) {
+            logSevere("<- sun.awt.windows.WClipboard#registerClipboardViewerChecked(): an exception occurred.", err);
+            throw err;
         }
     }
 
@@ -157,26 +193,43 @@ final class WClipboard extends SunClipboard {
      * the window from the clipboard viewer chain just before it is destroyed.
      */
     @Override
-    protected void unregisterClipboardViewerChecked() {}
+    protected void unregisterClipboardViewerChecked() {
+        logInfo("-> sun.awt.windows.WClipboard#unregisterClipboardViewerChecked()...");
+        logWarning("     sun.awt.windows.WClipboard#unregisterClipboardViewerChecked() does nothing in the current implementation.");
+        logInfo("<- sun.awt.windows.WClipboard#unregisterClipboardViewerChecked().");
+    }
 
     /**
      * Upcall from native code.
      */
     private void handleContentsChanged() {
-        if (!areFlavorListenersRegistered()) {
-            return;
-        }
+        logInfo("-> sun.awt.windows.WClipboard#handleContentsChanged()...");
 
-        long[] formats = null;
         try {
-            openClipboard(null);
-            formats = getClipboardFormats();
-        } catch (IllegalStateException exc) {
-            // do nothing to handle the exception, call checkChange(null)
-        } finally {
-            closeClipboard();
+            if (!areFlavorListenersRegistered()) {
+                logInfo("     !areFlavorListenersRegistered().");
+                logInfo("<- sun.awt.windows.WClipboard#handleContentsChanged().");
+                return;
+            }
+
+            long[] formats = null;
+            try {
+                openClipboard(null);
+                formats = getClipboardFormats();
+            } catch (IllegalStateException exc) {
+                // do nothing to handle the exception, call checkChange(null)
+            } finally {
+                closeClipboard();
+            }
+            logInfo("     formats={0}.", logFormatArray(formats));
+
+            checkChange(formats);
+
+            logInfo("<- sun.awt.windows.WClipboard#handleContentsChanged().");
+        } catch (Throwable err) {
+            logSevere("<- sun.awt.windows.WClipboard#handleContentsChanged(): an exception occurred.", err);
+            throw err;
         }
-        checkChange(formats);
     }
 
     /**
@@ -186,35 +239,50 @@ final class WClipboard extends SunClipboard {
      */
     @Override
     protected Transferable createLocaleTransferable(long[] formats) throws IOException {
-        boolean found = false;
-        for (int i = 0; i < formats.length; i++) {
-            if (formats[i] == WDataTransferer.CF_LOCALE) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            return null;
-        }
+        final var formatsStr = logFormatArray(formats);
+        logInfo("-> sun.awt.windows.WClipboard#createLocaleTransferable(formats={0})...", formatsStr);
 
-        byte[] localeData = null;
         try {
-            localeData = getClipboardData(WDataTransferer.CF_LOCALE);
-        } catch (IOException ioexc) {
-            return null;
-        }
+            boolean found = false;
+            for (int i = 0; i < formats.length; i++) {
+                if (formats[i] == WDataTransferer.CF_LOCALE) {
+                    found = true;
+                    break;
+                }
+            }
+            logInfo("     found={0}.", found);
 
-        final byte[] localeDataFinal = localeData;
+            if (!found) {
+                logInfo("<- sun.awt.windows.WClipboard#createLocaleTransferable(formats={0}): returning null.",
+                        formatsStr);
+                return null;
+            }
 
-        return new Transferable() {
+            byte[] localeData = null;
+            try {
+                localeData = getClipboardData(WDataTransferer.CF_LOCALE);
+            } catch (IOException ioexc) {
+                logSevere("     an IOException occurred.", ioexc);
+                logInfo("<- sun.awt.windows.WClipboard#createLocaleTransferable(formats={0}): returning null.",
+                        formatsStr);
+                return null;
+            }
+
+            final byte[] localeDataFinal = localeData;
+
+            logInfo("     localeData={0}.", logFormatArray(localeDataFinal));
+
+            final var result = new Transferable() {
                 @Override
                 public DataFlavor[] getTransferDataFlavors() {
-                    return new DataFlavor[] { DataTransferer.javaTextEncodingFlavor };
+                    return new DataFlavor[]{DataTransferer.javaTextEncodingFlavor};
                 }
+
                 @Override
                 public boolean isDataFlavorSupported(DataFlavor flavor) {
                     return flavor.equals(DataTransferer.javaTextEncodingFlavor);
                 }
+
                 @Override
                 public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException {
                     if (isDataFlavorSupported(flavor)) {
@@ -223,12 +291,23 @@ final class WClipboard extends SunClipboard {
                     throw new UnsupportedFlavorException(flavor);
                 }
             };
+
+            logInfo("<- sun.awt.windows.WClipboard#createLocaleTransferable(formats={0}): returning {1}.",
+                    formatsStr, result);
+            return result;
+        } catch (Throwable err) {
+            logSevere(
+                "<- sun.awt.windows.WClipboard#createLocaleTransferable(formats=%s): an exception occurred.".formatted(formatsStr),
+                err
+            );
+            throw err;
+        }
     }
 
 
     // ================= IDEA-316996 AWT clipboard extra logging facilities =================
 
-    // Below is the implementations of the methods java.awt.datatransfer.Clipboard#log...
+    // Below are the implementations of the methods java.awt.datatransfer.Clipboard#log...
 
     @Override
     protected void logSevere(String message, Object... params) {
