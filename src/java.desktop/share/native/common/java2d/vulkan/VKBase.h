@@ -34,6 +34,7 @@
 #include <queue>
 #include <vulkan/vulkan_raii.hpp>
 #include "jni.h"
+#include "VKPipeline.h"
 
 class VKDevice : public vk::raii::Device, public vk::raii::PhysicalDevice {
     friend class VKGraphicsEnvironment;
@@ -43,6 +44,7 @@ class VKDevice : public vk::raii::Device, public vk::raii::PhysicalDevice {
     int                      _queue_family = -1;
 
     // Logical device state
+    VKPipelines              _pipelines;
     vk::raii::Queue          _queue = nullptr;
     vk::raii::CommandPool    _commandPool = nullptr;
     vk::raii::Semaphore      _timelineSemaphore = nullptr;
@@ -57,6 +59,10 @@ class VKDevice : public vk::raii::Device, public vk::raii::PhysicalDevice {
 
     explicit VKDevice(vk::raii::PhysicalDevice&& handle);
 public:
+
+    VKPipelines& pipelines() {
+        return _pipelines;
+    }
 
     uint32_t queue_family() const {
         return (uint32_t) _queue_family;

@@ -47,7 +47,7 @@ void VKRecorder::signalSemaphore(vk::Semaphore semaphore) {
 
 const vk::raii::CommandBuffer& VKRecorder::record(bool flushRenderPass) {
     if (!*_commandBuffer) {
-        _commandBuffer = _device->getCommandBuffer(vk::CommandBufferLevel::ePrimary);
+        _commandBuffer = device().getCommandBuffer(vk::CommandBufferLevel::ePrimary);
         _commandBuffer.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit });
     }
     if (flushRenderPass && _renderPass.commandBuffer != nullptr) {
@@ -90,7 +90,7 @@ const vk::raii::CommandBuffer& VKRecorder::render(VKSurfaceData& surface, vk::Cl
     }
     if (_renderPass.commandBuffer == nullptr || clear != nullptr) {
         if (_renderPass.commandBuffer == nullptr) {
-            _secondaryBuffers.push_back(_device->getCommandBuffer(vk::CommandBufferLevel::eSecondary));
+            _secondaryBuffers.push_back(device().getCommandBuffer(vk::CommandBufferLevel::eSecondary));
             _renderPass.commandBuffer = &_secondaryBuffers.back();
         } else {
             // We already recorded some rendering commands, but it doesn't matter, as we'll clear the surface anyway.
@@ -114,7 +114,7 @@ void VKRecorder::flush() {
         return;
     }
     record(true).end();
-    _device->submitCommandBuffer(std::move(_commandBuffer), _secondaryBuffers,
+    device().submitCommandBuffer(std::move(_commandBuffer), _secondaryBuffers,
                                  _waitSemaphores, _waitSemaphoreStages, _signalSemaphores);
 }
 
@@ -141,6 +141,12 @@ void VKRenderer::fillRect(jint x, jint y, jint w, jint h) {
     auto& cb = render(*_dstSurface);
     cb.clearAttachments(vk::ClearAttachment {vk::ImageAspectFlagBits::eColor, 0, _color},
                         vk::ClearRect {vk::Rect2D {{x, y}, {(uint32_t) w, (uint32_t) h}}, 0, 1});
+    cb.bindPipeline(vk::PipelineBindPoint::eGraphics, *device().pipelines().test);
+    vk::Viewport viewport {0, 0, (float) _dstSurface->width(), (float) _dstSurface->height(), 0, 1};
+    cb.setViewport(0, viewport);
+    vk::Rect2D scissor {{0, 0}, {_dstSurface->width(), _dstSurface->height()}};
+    cb.setScissor(0, scissor);
+    cb.draw(3, 1, 0, 0);
 }
 void VKRenderer::fillSpans(/*TODO*/) {/*TODO*/}
 void VKRenderer::fillParallelogram(jfloat x11, jfloat y11,

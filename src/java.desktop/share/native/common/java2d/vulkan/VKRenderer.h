@@ -46,6 +46,9 @@ class VKRecorder{
     } _renderPass {};
 
 protected:
+    VKDevice& device() {
+        return *_device;
+    }
     VKDevice* setDevice(VKDevice *device);
 
 public:

@@ -347,6 +347,7 @@ void VKDevice::init() {
             /*pNext*/                   &features13
     };
     ((vk::raii::Device&) *this) = {*this, deviceCreateInfo};
+    _pipelines.init((vk::raii::Device&) *this);
     _queue = getQueue(queue_family(), 0);
     _commandPool = createCommandPool(vk::CommandPoolCreateInfo {
         vk::CommandPoolCreateFlagBits::eTransient | vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
