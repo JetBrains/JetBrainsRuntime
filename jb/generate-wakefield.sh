@@ -1,6 +1,12 @@
 #!/bin/bash
 
+if [[ -z "$1" ]]; then
+	SCANNER=wayland-scanner
+else
+	SCANNER="$1"
+fi
+
 set -ex
 
-wayland-scanner client-header src/java.desktop/share/native/libwakefield/protocol/wakefield.xml src/java.desktop/unix/native/libawt_wlawt/wakefield-client-protocol.h
-wayland-scanner private-code src/java.desktop/share/native/libwakefield/protocol/wakefield.xml src/java.desktop/unix/native/libawt_wlawt/wakefield-client-protocol.c
+"$SCANNER" client-header src/java.desktop/share/native/libwakefield/protocol/wakefield.xml src/java.desktop/unix/native/libawt_wlawt/wakefield-client-protocol.h
+"$SCANNER" private-code src/java.desktop/share/native/libwakefield/protocol/wakefield.xml src/java.desktop/unix/native/libawt_wlawt/wakefield-client-protocol.c
