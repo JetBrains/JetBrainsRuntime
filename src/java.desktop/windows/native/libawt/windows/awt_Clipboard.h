@@ -79,26 +79,27 @@ public:
 
 public:
     template<typename Arg1, typename... Args>
-    static void logSevere(const Arg1& arg1, const Args&... args);
+    static void logSevere(JNIEnv* jniEnv, const Arg1& arg1, const Args&... args);
 
     template<size_t WCharsCapacity>
-    static void logSevere(const FixedString<WCharsCapacity>& completedString);
+    static void logSevere(JNIEnv* jniEnv, const FixedString<WCharsCapacity>& completedString);
 
 
     template<typename Arg1, typename... Args>
-    static void logWarning(const Arg1& arg1, const Args&... args);
+    static void logWarning(JNIEnv* jniEnv, const Arg1& arg1, const Args&... args);
 
     template<size_t WCharsCapacity>
-    static void logWarning(const FixedString<WCharsCapacity>& completedString);
+    static void logWarning(JNIEnv* jniEnv, const FixedString<WCharsCapacity>& completedString);
 
 
     template<typename Arg1, typename... Args>
-    static void logInfo(const Arg1& arg1, const Args&... args);
+    static void logInfo(JNIEnv* jniEnv, const Arg1& arg1, const Args&... args);
 
     template<size_t WCharsCapacity>
-    static void logInfo(const FixedString<WCharsCapacity>& completedString);
+    static void logInfo(JNIEnv* jniEnv, const FixedString<WCharsCapacity>& completedString);
 
 private:
+    static volatile jclass WClipboardCID;
     static volatile jmethodID logSevereMID;
     static volatile jmethodID logWarningMID;
     static volatile jmethodID logInfoMID;
