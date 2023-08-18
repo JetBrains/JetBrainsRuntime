@@ -62,6 +62,7 @@ public class AquaCaret extends DefaultCaret
     public void deinstall(final JTextComponent c) {
         c.removePropertyChangeListener(this);
         super.deinstall(c);
+        mFocused = false;
     }
 
     @Override
