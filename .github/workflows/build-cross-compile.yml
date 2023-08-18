@@ -32,14 +32,6 @@ on:
         required: false
         type: string
         default: '10'
-      apt-gcc-version:
-        required: false
-        type: string
-        default: '10.3.0-1ubuntu1~20.04'
-      apt-gcc-cross-suffix:
-        required: false
-        type: string
-        default: 'cross1'
 
 jobs:
   build-cross-compile:
@@ -93,10 +85,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install --only-upgrade apt
           sudo apt-get install \
-              gcc-${{ inputs.gcc-major-version }}=${{ inputs.apt-gcc-version }} \
-              g++-${{ inputs.gcc-major-version }}=${{ inputs.apt-gcc-version }} \
-              gcc-${{ inputs.gcc-major-version }}-${{ matrix.gnu-arch }}-linux-gnu${{ matrix.gnu-abi}}=${{ inputs.apt-gcc-version }}${{ inputs.apt-gcc-cross-suffix }} \
-              g++-${{ inputs.gcc-major-version }}-${{ matrix.gnu-arch }}-linux-gnu${{ matrix.gnu-abi}}=${{ inputs.apt-gcc-version }}${{ inputs.apt-gcc-cross-suffix }} \
+              gcc-${{ inputs.gcc-major-version }} \
+              g++-${{ inputs.gcc-major-version }} \
+              gcc-${{ inputs.gcc-major-version }}-${{ matrix.gnu-arch }}-linux-gnu${{ matrix.gnu-abi}} \
+              g++-${{ inputs.gcc-major-version }}-${{ matrix.gnu-arch }}-linux-gnu${{ matrix.gnu-abi}} \
               libxrandr-dev libxtst-dev libcups2-dev libasound2-dev
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ inputs.gcc-major-version }} 100 --slave /usr/bin/g++ g++ /usr/bin/g++-${{ inputs.gcc-major-version }}
 
