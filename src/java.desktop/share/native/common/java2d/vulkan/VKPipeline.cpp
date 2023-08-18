@@ -44,7 +44,7 @@ void VKPipelines::init(const vk::raii::Device& device) {
     vk::PipelineMultisampleStateCreateInfo multisampleStateCreateInfo {};
     vk::PipelineColorBlendAttachmentState colorBlendAttachmentState {false}; // TODO No blending yet
     colorBlendAttachmentState.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
-    vk::PipelineColorBlendStateCreateInfo colorBlendStateCreateInfo {{}, false, vk::LogicOp::eEquivalent, colorBlendAttachmentState};
+    vk::PipelineColorBlendStateCreateInfo colorBlendStateCreateInfo {{}, false, vk::LogicOp::eXor, colorBlendAttachmentState};
     std::array<vk::DynamicState, 2> dynamicStates {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
     vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo {{}, dynamicStates};
     vk::Format format = vk::Format::eB8G8R8A8Unorm; // TODO

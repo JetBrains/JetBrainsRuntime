@@ -248,6 +248,10 @@ VKDevice::VKDevice(vk::raii::PhysicalDevice&& handle) : vk::raii::Device(nullptr
     }
 
     // Check supported features.
+    if (!features10.logicOp) {
+        J2dRlsTrace(J2D_TRACE_INFO, "    Logic op not supported\n");
+        return;
+    }
     if (!features12.timelineSemaphore) {
         J2dRlsTrace(J2D_TRACE_INFO, "    Timeline semaphore not supported\n");
         return;
@@ -331,6 +335,8 @@ void VKDevice::init() {
             {}, queue_family(), 1, &queuePriorities[0]
     });
 
+    vk::PhysicalDeviceFeatures features10;
+    features10.logicOp = true;
     vk::PhysicalDeviceVulkan12Features features12;
     features12.timelineSemaphore = true;
     vk::PhysicalDeviceVulkan13Features features13;
@@ -343,7 +349,7 @@ void VKDevice::init() {
             /*pQueueCreateInfos*/       queueCreateInfos,
             /*ppEnabledLayerNames*/     _enabled_layers,
             /*ppEnabledExtensionNames*/ _enabled_extensions,
-            /*pEnabledFeatures*/        nullptr,
+            /*pEnabledFeatures*/        &features10,
             /*pNext*/                   &features13
     };
     ((vk::raii::Device&) *this) = {*this, deviceCreateInfo};
