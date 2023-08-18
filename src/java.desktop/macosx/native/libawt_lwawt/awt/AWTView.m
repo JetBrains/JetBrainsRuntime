@@ -338,7 +338,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
                 case kVK_End:
                     // Abandon input to reset IM and unblock input after
                     // canceling input accented symbols
-                    [self abandonInput];
+                    [self abandonInput:nil];
                     break;
             }
         }
@@ -1146,7 +1146,7 @@ static jclass jc_CInputMethod = NULL;
     // Abandon input to reset IM and unblock input after entering accented
     // symbols
 
-    [self abandonInput];
+    [self abandonInput:nil];
 }
 
 + (void)keyboardInputSourceChanged:(NSNotification *)notification
@@ -1240,7 +1240,11 @@ static jclass jc_CInputMethod = NULL;
     }
 }
 
-- (void) unmarkText
+- (void) unmarkText {
+    [self unmarkText:nil];
+}
+
+- (void) unmarkText:(jobject) component
 {
 #ifdef IM_DEBUG
     fprintf(stderr, "AWTView InputMethod Selector Called : [unmarkText]\n");
@@ -1253,8 +1257,8 @@ static jclass jc_CInputMethod = NULL;
     // unmarkText cancels any input in progress and commits it to the text field.
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CIM_CLASS();
-    DECLARE_METHOD(jm_unmarkText, jc_CInputMethod, "unmarkText", "()V");
-    (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_unmarkText);
+    DECLARE_METHOD(jm_unmarkText, jc_CInputMethod, "unmarkText", "(Ljava/awt/Component;)V");
+    (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_unmarkText, component);
     CHECK_EXCEPTION();
 }
 
@@ -1515,14 +1519,14 @@ static jclass jc_CInputMethod = NULL;
                                              object:nil];
 }
 
-- (void)abandonInput
+- (void)abandonInput:(jobject) component
 {
 #ifdef IM_DEBUG
     fprintf(stderr, "AWTView InputMethod Selector Called : [abandonInput]\n");
 #endif // IM_DEBUG
 
     [ThreadUtilities performOnMainThread:@selector(markedTextAbandoned:) on:[NSInputManager currentInputManager] withObject:self waitUntilDone:YES];
-    [self unmarkText];
+    [self unmarkText:component];
 }
 
 /********************************   END NSTextInputClient Protocol   ********************************/
