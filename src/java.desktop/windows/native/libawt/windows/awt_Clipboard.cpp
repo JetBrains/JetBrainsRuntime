@@ -30,6 +30,111 @@
 #include <sun_awt_windows_WClipboard.h>
 
 
+// ================= IDEA-316996 AWT clipboard extra logging facilities =================
+
+volatile jmethodID AwtClipboard::logSevereMID = nullptr;
+volatile jmethodID AwtClipboard::logWarningMID = nullptr;
+volatile jmethodID AwtClipboard::logInfoMID = nullptr;
+
+
+template<size_t WCharsCapacity>
+class AwtClipboard::FixedString
+{
+public:
+    using RawType = wchar_t[WCharsCapacity];
+
+public: // ctors/dtor
+    FixedString() noexcept = default;
+
+    FixedString(const FixedString& other) noexcept = default;
+    FixedString(FixedString&& other) noexcept = default;
+
+    FixedString(const wchar_t* cStr) noexcept;
+
+    ~FixedString() noexcept = default;
+
+public: // assignments
+    FixedString& operator=(const FixedString& other) noexcept = default;
+    FixedString& operator=(FixedString&& other) noexcept = default;
+
+public: // getters
+    static constexpr size_t GetCapacity() noexcept { return WCharsCapacity; }
+    size_t GetLength() const noexcept { return length_; }
+
+    const RawType& GetRaw() const noexcept { return data_; }
+    const wchar_t* GetCStr() const noexcept { return data_; }
+
+public:
+    FixedString& clear() noexcept;
+
+public: // appenders
+    FixedString& append(bool val) noexcept;
+
+    FixedString& append(char ch) noexcept;
+    //FixedString& append(wchar_t ch) noexcept;
+
+    FixedString& append(unsigned char val) noexcept;
+    FixedString& append(signed char val) noexcept;
+
+    FixedString& append(unsigned short val) noexcept;
+    FixedString& append(short val) noexcept;
+
+    FixedString& append(unsigned int val) noexcept;
+    FixedString& append(int val) noexcept;
+
+    FixedString& append(unsigned long int val) noexcept;
+    FixedString& append(long int val) noexcept;
+
+    FixedString& append(unsigned long long int val) noexcept;
+    FixedString& append(long long int val) noexcept;
+
+    FixedString& append(float val) noexcept;
+    FixedString& append(double val) noexcept;
+    FixedString& append(long double val) noexcept;
+
+    template<size_t StringLength>
+    FixedString& append(const char (&str)[StringLength]) noexcept;
+
+    template<size_t StringLength>
+    FixedString& append(const wchar_t (&str)[StringLength]) noexcept;
+
+    FixedString& append(const void* ptr) noexcept;
+
+    template<typename Val1, typename Val2, typename... Vals>
+    FixedString& append(const Val1& val1, const Val2& val2, const Vals&... vals) noexcept;
+
+private:
+    RawType data_ = { 0 };
+    size_t length_ = 0;
+};
+
+
+// TODO: append '.' at the end (if it isn't ended by it)
+// TODO: to log DASSERTs?
+
+/*template<typename Arg1, typename... Args>
+void AwtClipboard::logSevere(const Arg1& arg1, const Args&... args);
+
+template<size_t WCharsCapacity>
+void AwtClipboard::logSevere(const FixedString<WCharsCapacity>& completedString);
+
+
+template<typename Arg1, typename... Args>
+void AwtClipboard::logWarning(const Arg1& arg1, const Args&... args);
+
+template<size_t WCharsCapacity>
+void AwtClipboard::logWarning(const FixedString<WCharsCapacity>& completedString);
+
+
+template<typename Arg1, typename... Args>
+void AwtClipboard::logInfo(const Arg1& arg1, const Args&... args);
+
+template<size_t WCharsCapacity>
+void AwtClipboard::logInfo(const FixedString<WCharsCapacity>& completedString);*/
+
+// ======================================================================================
+
+
 /************************************************************************
  * AwtClipboard fields
  */

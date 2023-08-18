@@ -57,6 +57,52 @@ public:
     static void WmClipboardUpdate(JNIEnv *env);
     static void RegisterClipboardViewer(JNIEnv *env, jobject jclipboard);
     static void UnregisterClipboardViewer(JNIEnv *env);
+
+    // ================= IDEA-316996 AWT clipboard extra logging facilities =================
+public:
+    template<size_t WCharsCapacity>
+    class FixedString;
+
+    template<typename T>
+    struct FormatArray
+    {
+        const T* const arr;
+        const size_t arrLength;
+    };
+
+public:
+    static void initializeLogging(JNIEnv* env, jclass WClipboardCls);
+
+public:
+    template<typename T>
+    static FormatArray<T> fmtArr(const T* arr, size_t arrLength) { return {arr, arrLength}; }
+
+public:
+    template<typename Arg1, typename... Args>
+    static void logSevere(const Arg1& arg1, const Args&... args);
+
+    template<size_t WCharsCapacity>
+    static void logSevere(const FixedString<WCharsCapacity>& completedString);
+
+
+    template<typename Arg1, typename... Args>
+    static void logWarning(const Arg1& arg1, const Args&... args);
+
+    template<size_t WCharsCapacity>
+    static void logWarning(const FixedString<WCharsCapacity>& completedString);
+
+
+    template<typename Arg1, typename... Args>
+    static void logInfo(const Arg1& arg1, const Args&... args);
+
+    template<size_t WCharsCapacity>
+    static void logInfo(const FixedString<WCharsCapacity>& completedString);
+
+private:
+    static volatile jmethodID logSevereMID;
+    static volatile jmethodID logWarningMID;
+    static volatile jmethodID logInfoMID;
+    // ======================================================================================
 };
 
 #endif /* AWT_CLIPBOARD_H */
