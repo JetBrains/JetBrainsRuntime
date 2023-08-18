@@ -177,7 +177,7 @@ VKGraphicsEnvironment::VKGraphicsEnvironment() :
 
     // Find suitable devices.
     for (auto &handle: _vk_instance.enumeratePhysicalDevices()) {
-        VKDevice device {std::move(handle)};
+        VKDevice device {*_vk_instance, std::move(handle)};
         if (device.supported()) {
             _devices.push_back(std::make_unique<VKDevice>(std::move(device)));
         }
@@ -212,7 +212,8 @@ VKDevice& VKGraphicsEnvironment::default_device() {
 extern struct wl_display *wl_display;
 #endif
 
-VKDevice::VKDevice(vk::raii::PhysicalDevice&& handle) : vk::raii::Device(nullptr), vk::raii::PhysicalDevice(nullptr) {
+VKDevice::VKDevice(vk::Instance instance, vk::raii::PhysicalDevice&& handle) :
+        vk::raii::Device(nullptr), vk::raii::PhysicalDevice(nullptr), _instance(instance) {
     auto featuresChain = handle.getFeatures2<vk::PhysicalDeviceFeatures2,
                                              vk::PhysicalDeviceVulkan11Features,
                                              vk::PhysicalDeviceVulkan12Features,
@@ -314,6 +315,8 @@ VKDevice::VKDevice(vk::raii::PhysicalDevice&& handle) : vk::raii::Device(nullptr
         }
     }
     if (requiredNotFound) return;
+    _ext_memory_budget = extensions.find(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME) != extensions.end();
+    if (_ext_memory_budget) _enabled_extensions.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
 
     // Validation layer
 #ifdef DEBUG
@@ -353,6 +356,7 @@ void VKDevice::init() {
             /*pNext*/                   &features13
     };
     ((vk::raii::Device&) *this) = {*this, deviceCreateInfo};
+    _memory.init(_instance, *this, *this, REQUIRED_VULKAN_VERSION, _ext_memory_budget);
     _pipelines.init((vk::raii::Device&) *this);
     _queue = getQueue(queue_family(), 0);
     _commandPool = createCommandPool(vk::CommandPoolCreateInfo {
@@ -365,26 +369,32 @@ void VKDevice::init() {
     J2dRlsTrace1(J2D_TRACE_INFO, "Vulkan: Device created %s\n", _name.c_str());
 }
 
-vk::raii::CommandBuffer VKDevice::getCommandBuffer(vk::CommandBufferLevel level) {
-    std::queue<PendingBuffer>& pending = level == vk::CommandBufferLevel::ePrimary ?
-            _pendingPrimaryBuffers : _pendingSecondaryBuffers;
-    if (!pending.empty()) {
-        auto& f = pending.front();
-        if (_lastReadTimelineCounter >= f.counter ||
-            (_lastReadTimelineCounter = _timelineSemaphore.getCounterValue()) >= f.counter) {
-            vk::raii::CommandBuffer b = std::move(f.buffer);
-            b.reset({});
-            pending.pop();
-            return b;
-        }
+VKBuffer VKDevice::getVertexBuffer() {
+    auto b = popPending<VKBuffer>(_pendingVertexBuffers);
+    if (*b) {
+        b.position() = 0;
+        return b;
+    } else {
+        return _memory.allocateBuffer(64 * 1024, vk::BufferUsageFlagBits::eVertexBuffer,
+                                      vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessSequentialWrite,
+                                      vma::MemoryUsage::eAutoPreferHost);
     }
-    return std::move(allocateCommandBuffers({
-        *_commandPool, level, 1
-    })[0]);
+}
+
+vk::raii::CommandBuffer VKDevice::getCommandBuffer(vk::CommandBufferLevel level) {
+    auto b = popPending<vk::raii::CommandBuffer>(level == vk::CommandBufferLevel::ePrimary ?
+                                                 _pendingPrimaryBuffers : _pendingSecondaryBuffers);
+    if (*b) {
+        b.reset({});
+        return b;
+    } else {
+        return std::move(allocateCommandBuffers({*_commandPool, level, 1})[0]);
+    }
 }
 
 void VKDevice::submitCommandBuffer(vk::raii::CommandBuffer&& primary,
                                    std::vector<vk::raii::CommandBuffer>& secondary,
+                                   std::vector<VKBuffer>& vertexBuffers,
                                    std::vector<vk::Semaphore>& waitSemaphores,
                                    std::vector<vk::PipelineStageFlags>& waitStages,
                                    std::vector<vk::Semaphore>& signalSemaphores) {
@@ -394,11 +404,9 @@ void VKDevice::submitCommandBuffer(vk::raii::CommandBuffer&& primary,
     queue().submit(vk::SubmitInfo {
             waitSemaphores, waitStages, *primary, signalSemaphores, &timelineInfo
     }, nullptr);
-    _pendingPrimaryBuffers.push({std::move(primary), _timelineCounter});
-    for (vk::raii::CommandBuffer& cb : secondary) {
-        _pendingSecondaryBuffers.push({std::move(cb), _timelineCounter});
-    }
-    secondary.clear();
+    pushPending(_pendingPrimaryBuffers, std::move(primary));
+    pushPending(_pendingSecondaryBuffers, secondary);
+    pushPending(_pendingVertexBuffers, vertexBuffers);
     signalSemaphores.clear();
     waitSemaphores.clear();
     waitStages.clear();

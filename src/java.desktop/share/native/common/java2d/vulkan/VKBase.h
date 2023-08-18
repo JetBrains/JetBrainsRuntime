@@ -34,16 +34,20 @@
 #include <queue>
 #include <vulkan/vulkan_raii.hpp>
 #include "jni.h"
+#include "VKMemory.h"
 #include "VKPipeline.h"
 
 class VKDevice : public vk::raii::Device, public vk::raii::PhysicalDevice {
     friend class VKGraphicsEnvironment;
 
+    vk::Instance             _instance;
     std::string              _name;
     std::vector<const char*> _enabled_layers, _enabled_extensions;
+    bool                     _ext_memory_budget;
     int                      _queue_family = -1;
 
     // Logical device state
+    VKMemory                 _memory;
     VKPipelines              _pipelines;
     vk::raii::Queue          _queue = nullptr;
     vk::raii::CommandPool    _commandPool = nullptr;
@@ -51,13 +55,37 @@ class VKDevice : public vk::raii::Device, public vk::raii::PhysicalDevice {
     uint64_t                 _timelineCounter = 0;
     uint64_t                 _lastReadTimelineCounter = 0;
 
-    struct PendingBuffer {
-        vk::raii::CommandBuffer buffer;
-        uint64_t                counter;
+    template <typename T> struct Pending {
+        T        resource;
+        uint64_t counter;
+        using Queue = std::queue<Pending<T>>;
     };
-    std::queue<PendingBuffer> _pendingPrimaryBuffers, _pendingSecondaryBuffers;
+    Pending<vk::raii::CommandBuffer>::Queue _pendingPrimaryBuffers, _pendingSecondaryBuffers;
+    Pending<VKBuffer>::Queue                _pendingVertexBuffers;
 
-    explicit VKDevice(vk::raii::PhysicalDevice&& handle);
+    template <typename T> T popPending(typename Pending<T>::Queue& queue) {
+        if (!queue.empty()) {
+            auto& f = queue.front();
+            if (_lastReadTimelineCounter >= f.counter ||
+                (_lastReadTimelineCounter = _timelineSemaphore.getCounterValue()) >= f.counter) {
+                T resource = std::move(f.resource);
+                queue.pop();
+                return resource;
+            }
+        }
+        return T(nullptr);
+    }
+    template <typename T> void pushPending(typename Pending<T>::Queue& queue, T&& resource) {
+        queue.push({std::move(resource), _timelineCounter});
+    }
+    template <typename T> void pushPending(typename Pending<T>::Queue& queue, std::vector<T>& resources) {
+        for (T& r : resources) {
+            pushPending(queue, std::move(r));
+        }
+        resources.clear();
+    }
+
+    explicit VKDevice(vk::Instance instance, vk::raii::PhysicalDevice&& handle);
 public:
 
     VKPipelines& pipelines() {
@@ -74,9 +102,11 @@ public:
 
     void init(); // Creates actual logical device
 
+    VKBuffer getVertexBuffer();
     vk::raii::CommandBuffer getCommandBuffer(vk::CommandBufferLevel level);
     void submitCommandBuffer(vk::raii::CommandBuffer&& primary,
                              std::vector<vk::raii::CommandBuffer>& secondary,
+                             std::vector<VKBuffer>& vertexBuffers,
                              std::vector<vk::Semaphore>& waitSemaphores,
                              std::vector<vk::PipelineStageFlags>& waitStages,
                              std::vector<vk::Semaphore>& signalSemaphores);

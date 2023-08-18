@@ -37,15 +37,23 @@ class VKRecorder{
     std::vector<vk::raii::CommandBuffer> _secondaryBuffers;
     std::vector<vk::Semaphore>           _waitSemaphores, _signalSemaphores;
     std::vector<vk::PipelineStageFlags>  _waitSemaphoreStages;
+    std::vector<VKBuffer>                _vertexBuffers;
     struct RenderPass {
         vk::raii::CommandBuffer *commandBuffer = nullptr;
         VKSurfaceData           *surface = nullptr;
+        VKBuffer                *vertexBuffer = nullptr;
         vk::ImageView            surfaceView;
         vk::AttachmentLoadOp     attachmentLoadOp;
         vk::ClearValue           clearValue;
     } _renderPass {};
 
 protected:
+    struct Vertex {
+        float x, y;
+    };
+
+    Vertex* draw(uint32_t numVertices);
+
     VKDevice& device() {
         return *_device;
     }

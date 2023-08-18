@@ -29,11 +29,14 @@
 void VKPipelines::init(const vk::raii::Device& device) {
     shaders.init(device);
 
-    testLayout = device.createPipelineLayout(vk::PipelineLayoutCreateInfo {{}, {}, {}});
+    vk::PushConstantRange pushConstantRange {vk::ShaderStageFlagBits::eVertex, 0, sizeof(float) * 2};
+    testLayout = device.createPipelineLayout(vk::PipelineLayoutCreateInfo {{}, {}, pushConstantRange});
 
     std::array<vk::PipelineShaderStageCreateInfo, 2> testStages {shaders.test_vert.stage(), shaders.test_frag.stage()};
-    vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo {{}, {}, {}};
-    vk::PipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo {{}, vk::PrimitiveTopology::eTriangleList, false};
+    vk::VertexInputBindingDescription vertexInputBindingDescription {0, 8, vk::VertexInputRate::eVertex};
+    vk::VertexInputAttributeDescription vertexInputAttributeDescription {0, 0, vk::Format::eR32G32Sfloat, 0};
+    vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo {{}, vertexInputBindingDescription, vertexInputAttributeDescription};
+    vk::PipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo {{}, vk::PrimitiveTopology::eTriangleFan, false};
     vk::Viewport viewport;
     vk::Rect2D scissor;
     vk::PipelineViewportStateCreateInfo viewportStateCreateInfo {{}, viewport, scissor};

@@ -26,6 +26,25 @@
 
 #include "VKRenderer.h"
 
+VKRecorder::Vertex* VKRecorder::draw(uint32_t numVertices) {
+    uint32_t bytes = numVertices * sizeof(VKRecorder::Vertex);
+    if (_renderPass.vertexBuffer == nullptr && !_vertexBuffers.empty()) {
+        _renderPass.vertexBuffer = &_vertexBuffers.back();
+        _renderPass.commandBuffer->bindVertexBuffers(0, **_renderPass.vertexBuffer, vk::DeviceSize(0));
+    }
+    if (_renderPass.vertexBuffer == nullptr ||
+        _renderPass.vertexBuffer->position() + bytes > _renderPass.vertexBuffer->size()) {
+        _vertexBuffers.push_back(device().getVertexBuffer());
+        _renderPass.vertexBuffer = &_vertexBuffers.back(); // TODO check that our number of vertices fit into single buffer at all
+        _renderPass.commandBuffer->bindVertexBuffers(0, **_renderPass.vertexBuffer, vk::DeviceSize(0));
+    }
+    auto data = (uintptr_t) _renderPass.vertexBuffer->data() + _renderPass.vertexBuffer->position();
+    uint32_t firstVertex = _renderPass.vertexBuffer->position() / sizeof(VKRecorder::Vertex);
+    _renderPass.vertexBuffer->position() += bytes;
+    _renderPass.commandBuffer->draw(numVertices, 1, firstVertex, 0);
+    return (VKRecorder::Vertex*) data;
+}
+
 VKDevice* VKRecorder::setDevice(VKDevice *device) {
     if (device != _device) {
         if (_device != nullptr) {
@@ -65,8 +84,7 @@ const vk::raii::CommandBuffer& VKRecorder::record(bool flushRenderPass) {
         });
         _commandBuffer.executeCommands(**_renderPass.commandBuffer);
         _commandBuffer.endRendering();
-        _renderPass.commandBuffer = nullptr;
-        _renderPass.surface = nullptr;
+        _renderPass = {};
     }
     return _commandBuffer;
 }
@@ -114,7 +132,7 @@ void VKRecorder::flush() {
         return;
     }
     record(true).end();
-    device().submitCommandBuffer(std::move(_commandBuffer), _secondaryBuffers,
+    device().submitCommandBuffer(std::move(_commandBuffer), _secondaryBuffers, _vertexBuffers,
                                  _waitSemaphores, _waitSemaphoreStages, _signalSemaphores);
 }
 
@@ -136,17 +154,25 @@ void VKRenderer::drawAAParallelogram(jfloat x11, jfloat y11,
 
 // fill ops
 
-void VKRenderer::fillRect(jint x, jint y, jint w, jint h) {
+void VKRenderer::fillRect(jint xi, jint yi, jint wi, jint hi) {
     // TODO
     auto& cb = render(*_dstSurface);
-    cb.clearAttachments(vk::ClearAttachment {vk::ImageAspectFlagBits::eColor, 0, _color},
-                        vk::ClearRect {vk::Rect2D {{x, y}, {(uint32_t) w, (uint32_t) h}}, 0, 1});
+//    cb.clearAttachments(vk::ClearAttachment {vk::ImageAspectFlagBits::eColor, 0, _color},
+//                        vk::ClearRect {vk::Rect2D {{x, y}, {(uint32_t) w, (uint32_t) h}}, 0, 1});
     cb.bindPipeline(vk::PipelineBindPoint::eGraphics, *device().pipelines().test);
+    cb.pushConstants<float>(*device().pipelines().testLayout, vk::ShaderStageFlagBits::eVertex, 0, {
+        2.0f/(float)_dstSurface->width(), 2.0f/(float)_dstSurface->height()
+    });
     vk::Viewport viewport {0, 0, (float) _dstSurface->width(), (float) _dstSurface->height(), 0, 1};
     cb.setViewport(0, viewport);
     vk::Rect2D scissor {{0, 0}, {_dstSurface->width(), _dstSurface->height()}};
     cb.setScissor(0, scissor);
-    cb.draw(3, 1, 0, 0);
+    auto x = (float) xi, y = (float) yi, w = (float) wi, h = (float) hi;
+    auto v = draw(4);
+    v[0] = {x, y};
+    v[1] = {x+w, y};
+    v[2] = {x+w, y+h};
+    v[3] = {x, y+h};
 }
 void VKRenderer::fillSpans(/*TODO*/) {/*TODO*/}
 void VKRenderer::fillParallelogram(jfloat x11, jfloat y11,
