@@ -280,7 +280,7 @@ public final class CInputMethod extends InputMethodAdapter {
     public void removeNotify() {
         if (fAwtFocussedComponentPeer != null) {
             long modelPtr = getNativeViewPtr(fAwtFocussedComponentPeer);
-            nativeEndComposition(modelPtr);
+            nativeEndComposition(modelPtr, fAwtFocussedComponent);
             nativeNotifyPeer(modelPtr, null);
         }
 
@@ -368,7 +368,7 @@ public final class CInputMethod extends InputMethodAdapter {
     @Override
     public void endComposition() {
         if (fAwtFocussedComponentPeer != null)
-            nativeEndComposition(getNativeViewPtr(fAwtFocussedComponentPeer));
+            nativeEndComposition(getNativeViewPtr(fAwtFocussedComponentPeer), fAwtFocussedComponent);
     }
 
     /**
@@ -578,18 +578,21 @@ public final class CInputMethod extends InputMethodAdapter {
     /**
      * Frequent callbacks from NSTextInput.  I think we're supposed to commit it here?
      */
-    private synchronized void unmarkText() {
-        if (fCurrentText == null || fAwtFocussedComponent == null) return;
+    private synchronized void unmarkText(Component component) {
+        if (component == null) {
+            component = fAwtFocussedComponent;
+        }
+        if (fCurrentText == null || component == null) return;
 
         TextHitInfo theCaret = TextHitInfo.afterOffset(fCurrentTextLength);
         TextHitInfo visiblePosition = theCaret;
-        InputMethodEvent event = new InputMethodEvent(fAwtFocussedComponent,
+        InputMethodEvent event = new InputMethodEvent(component,
                                                       InputMethodEvent.INPUT_METHOD_TEXT_CHANGED,
                                                       fCurrentText.getIterator(),
                                                       fCurrentTextLength,
                                                       theCaret,
                                                       visiblePosition);
-        LWCToolkit.postEvent(LWCToolkit.targetToAppContext(fAwtFocussedComponent), event);
+        LWCToolkit.postEvent(LWCToolkit.targetToAppContext(component), event);
         fCurrentText = null;
         fCurrentTextAsString = null;
         fCurrentTextLength = 0;
@@ -824,7 +827,7 @@ public final class CInputMethod extends InputMethodAdapter {
     // Note that if nativePeer isn't something that normally accepts keystrokes (i.e., a CPanel)
     // these calls will be ignored.
     private native void nativeNotifyPeer(long nativePeer, CInputMethod imInstance);
-    private native void nativeEndComposition(long nativePeer);
+    private native void nativeEndComposition(long nativePeer, Component component);
     private native void nativeHandleEvent(LWComponentPeer<?, ?> peer, AWTEvent event);
 
     // Returns the locale of the active input method.
