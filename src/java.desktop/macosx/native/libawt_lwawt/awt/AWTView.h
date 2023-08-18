@@ -67,6 +67,6 @@
 
 // Input method-related events
 - (void)setInputMethod:(jobject)inputMethod;
-- (void)abandonInput;
+- (void)abandonInput:(jobject) component;
 
 @end
