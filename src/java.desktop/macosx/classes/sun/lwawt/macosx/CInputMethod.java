@@ -51,7 +51,6 @@ public class CInputMethod extends InputMethodAdapter {
     private volatile Component fAwtFocussedComponent;
     private LWComponentPeer<?, ?> fAwtFocussedComponentPeer;
     private boolean isActive;
-    private boolean isTemporarilyDeactivated;
 
     private static Map<TextAttribute, Integer>[] sHighlightStyles;
 
@@ -236,12 +235,10 @@ public class CInputMethod extends InputMethodAdapter {
      */
     public void activate() {
         isActive = true;
-        isTemporarilyDeactivated = false;
     }
 
     public void deactivate(boolean isTemporary) {
         isActive = false;
-        isTemporarilyDeactivated = isTemporary;
     }
 
     /**
@@ -269,7 +266,7 @@ public class CInputMethod extends InputMethodAdapter {
     public void removeNotify() {
         if (fAwtFocussedComponentPeer != null) {
             long modelPtr = getNativeViewPtr(fAwtFocussedComponentPeer);
-            nativeEndComposition(modelPtr);
+            nativeEndComposition(modelPtr, fAwtFocussedComponent);
             nativeNotifyPeer(modelPtr, null);
         }
 
@@ -284,10 +281,10 @@ public class CInputMethod extends InputMethodAdapter {
      * to talk to when responding to key events.
      */
     protected void setAWTFocussedComponent(Component component) {
-        if ((isTemporarilyDeactivated && component == null) || component == fAwtFocussedComponent) {
+        if (component == null || component == fAwtFocussedComponent) {
             // Sometimes input happens for the natively unfocused window
             // (e.g. in case of system emoji picker),
-            // so we don't reset last focused component on temporary focus lost.
+            // so we don't reset last focused component on focus lost.
             return;
         }
 
@@ -355,7 +352,7 @@ public class CInputMethod extends InputMethodAdapter {
      */
     public void endComposition() {
         if (fAwtFocussedComponentPeer != null)
-            nativeEndComposition(getNativeViewPtr(fAwtFocussedComponentPeer));
+            nativeEndComposition(getNativeViewPtr(fAwtFocussedComponentPeer), fAwtFocussedComponent);
     }
 
     /**
@@ -563,18 +560,21 @@ public class CInputMethod extends InputMethodAdapter {
     /**
      * Frequent callbacks from NSTextInput.  I think we're supposed to commit it here?
      */
-    private synchronized void unmarkText() {
-        if (fCurrentText == null || fAwtFocussedComponent == null) return;
+    private synchronized void unmarkText(Component component) {
+        if (component == null) {
+            component = fAwtFocussedComponent;
+        }
+        if (fCurrentText == null || component == null) return;
 
         TextHitInfo theCaret = TextHitInfo.afterOffset(fCurrentTextLength);
         TextHitInfo visiblePosition = theCaret;
-        InputMethodEvent event = new InputMethodEvent(fAwtFocussedComponent,
+        InputMethodEvent event = new InputMethodEvent(component,
                                                       InputMethodEvent.INPUT_METHOD_TEXT_CHANGED,
                                                       fCurrentText.getIterator(),
                                                       fCurrentTextLength,
                                                       theCaret,
                                                       visiblePosition);
-        LWCToolkit.postEvent(LWCToolkit.targetToAppContext(fAwtFocussedComponent), event);
+        LWCToolkit.postEvent(LWCToolkit.targetToAppContext(component), event);
         fCurrentText = null;
         fCurrentTextAsString = null;
         fCurrentTextLength = 0;
@@ -807,7 +807,7 @@ public class CInputMethod extends InputMethodAdapter {
     // Note that if nativePeer isn't something that normally accepts keystrokes (i.e., a CPanel)
     // these calls will be ignored.
     private native void nativeNotifyPeer(long nativePeer, CInputMethod imInstance);
-    private native void nativeEndComposition(long nativePeer);
+    private native void nativeEndComposition(long nativePeer, Component component);
     private native void nativeHandleEvent(LWComponentPeer<?, ?> peer, AWTEvent event);
 
     // Returns the locale of the active input method.
