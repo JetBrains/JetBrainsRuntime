@@ -142,7 +142,7 @@ java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_2.java 820420
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_4.java 8204200 windows-all,macosx-all,linux-all
 java/awt/dnd/DropTargetEnterExitTest/ExtraDragEnterTest.java 8029680 generic-all
 java/awt/dnd/DropTargetEnterExitTest/MissedDragExitTest.java JBR-5730 linux-all
-java/awt/dnd/MissingDragExitEventTest/MissingDragExitEventTest.java JBR-5727 linux-all
+java/awt/dnd/MissingDragExitEventTest/MissingDragExitEventTest.java 8288839,JBR-5727,JBR-5959 windows-x64,linux-all, windows-aarch64
 java/awt/dnd/URIListBetweenJVMsTest/URIListBetweenJVMsTest.java 8171510,JBR-881 macosx-all,linux-all
 javax/swing/dnd/7171812/bug7171812.java 8041447,8253184 macosx-all,windows-all
 java/awt/Focus/ChildWindowFocusTest/ChildWindowFocusTest.java JBR-5545 linux-all,windows-all
@@ -867,7 +867,7 @@ javax/sound/sampled/Clip/ClipIsRunningAfterStop.java 8307574,JBR-4455 linux-x64,
 
 ############################################################################
 
-javax/imageio/plugins/external_plugin_tests/TestClassPathPlugin.sh JBR-5363 window-all
+javax/imageio/plugins/external_plugin_tests/TestClassPathPlugin.sh JBR-5363 windows-all
 
 # jdk_swing
 
