@@ -357,13 +357,13 @@ wl_pointer_axis_discrete(void *data, struct wl_pointer *wl_pointer,
 }
 
 static inline void
-reset_pointer_event(struct pointer_event_cumulative *e)
+resetPointerEvent(struct pointer_event_cumulative *e)
 {
     memset(e, 0, sizeof(struct pointer_event_cumulative));
 }
 
 static void
-fill_java_pointer_event(JNIEnv* env, jobject pointerEventRef)
+fillJavaPointerEvent(JNIEnv* env, jobject pointerEventRef)
 {
     (*env)->SetBooleanField(env, pointerEventRef, hasEnterEventFID, pointer_event.has_enter_event);
     (*env)->SetBooleanField(env, pointerEventRef, hasLeaveEventFID, pointer_event.has_leave_event);
@@ -397,14 +397,14 @@ wl_pointer_frame(void *data, struct wl_pointer *wl_pointer)
                                                              pointerEventFactoryMID);
     JNU_CHECK_EXCEPTION(env);
 
-    fill_java_pointer_event(env, pointerEventRef);
+    fillJavaPointerEvent(env, pointerEventRef);
     (*env)->CallStaticVoidMethod(env,
                                  tkClass,
                                  dispatchPointerEventMID,
                                  pointerEventRef);
     JNU_CHECK_EXCEPTION(env);
 
-    reset_pointer_event(&pointer_event);
+    resetPointerEvent(&pointer_event);
 }
 
 static const struct wl_pointer_listener wl_pointer_listener = {
@@ -855,7 +855,7 @@ initCursors() {
 }
 
 static void
-finalize_init(JNIEnv *env) {
+finalizeInit(JNIEnv *env) {
     // NB: we are NOT on EDT here so shouldn't dispatch EDT-sensitive stuff
     while (num_of_outstanding_sync > 0) {
         // There are outstanding events that carry information essential for the toolkit
@@ -903,7 +903,7 @@ Java_sun_awt_wl_WLToolkit_initIDs
 
     initCursors();
 
-    finalize_init(env);
+    finalizeInit(env);
 }
 
 JNIEXPORT void JNICALL
@@ -916,8 +916,12 @@ Java_sun_awt_wl_WLToolkit_dispatchEventsOnEDT
     wl_display_dispatch_pending(wl_display);
 }
 
+/**
+ * Waits for poll_timeout ms for an event on the Wayland server socket.
+ * Returns -1 in case of error and 'revents' (see poll(2)) otherwise.
+ */
 static int
-wl_display_poll(struct wl_display *display, int events, int poll_timeout)
+wlDisplayPoll(struct wl_display *display, int events, int poll_timeout)
 {
     int rc = 0;
     struct pollfd pfd[1] = { {.fd = wl_display_get_fd(display), .events = events} };
@@ -925,11 +929,12 @@ wl_display_poll(struct wl_display *display, int events, int poll_timeout)
         errno = 0;
         rc = poll(pfd, 1, poll_timeout);
     } while (rc == -1 && errno == EINTR);
-    return rc;
+
+    return rc == -1 ? -1 : (pfd[0].revents & 0xffff);
 }
 
 int
-wl_flush_to_server(JNIEnv *env)
+wlFlushToServer(JNIEnv *env)
 {
     int rc = 0;
 
@@ -940,7 +945,7 @@ wl_flush_to_server(JNIEnv *env)
             break;
         }
 
-        rc = wl_display_poll(wl_display, POLLOUT, -1);
+        rc = wlDisplayPoll(wl_display, POLLOUT, -1);
         if (rc == -1) {
             JNU_ThrowByName(env, "java/awt/AWTError", "Wayland display error polling out to the server");
             return sun_awt_wl_WLToolkit_READ_RESULT_ERROR;
@@ -959,7 +964,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLToolkit_flushImpl
   (JNIEnv *env, jobject obj)
 {
-    (void) wl_flush_to_server(env);
+    (void) wlFlushToServer(env);
 }
 
 JNIEXPORT void JNICALL
@@ -975,16 +980,7 @@ Java_sun_awt_wl_WLToolkit_dispatchNonDefaultQueuesImpl
 
     while (rc >= 0) {
         // Dispatch pending events on the wakefield queue
-        while (wl_display_prepare_read_queue(wl_display, robot_queue) != 0 && rc >= 0) {
-            rc = wl_display_dispatch_queue_pending(wl_display, robot_queue);
-        }
-        if (rc < 0) {
-            wl_display_cancel_read(wl_display);
-            break;
-        }
-
-        // Wait for new events, wl_display_read_events is a synchronization point between all threads reading events.
-        rc = wl_display_read_events(wl_display);
+        rc = wl_display_dispatch_queue(wl_display, robot_queue);
     }
 
     // Simply return in case of any error; the actual error reporting (exception)
@@ -1008,7 +1004,7 @@ Java_sun_awt_wl_WLToolkit_readEvents
         return sun_awt_wl_WLToolkit_READ_RESULT_FINISHED_WITH_EVENTS;
     }
 
-    rc = wl_flush_to_server(env);
+    rc = wlFlushToServer(env);
     if (rc != 0) {
         wl_display_cancel_read(wl_display);
         return sun_awt_wl_WLToolkit_READ_RESULT_ERROR;
@@ -1017,7 +1013,7 @@ Java_sun_awt_wl_WLToolkit_readEvents
     // Wait for new data *from* the server.
     // Specify some timeout because otherwise 'flush' above that sends data
     // to the server will have to wait too long.
-    rc = wl_display_poll(wl_display, POLLIN,
+    rc = wlDisplayPoll(wl_display, POLLIN,
                          sun_awt_wl_WLToolkit_WAYLAND_DISPLAY_INTERACTION_TIMEOUT_MS);
     if (rc == -1) {
         wl_display_cancel_read(wl_display);
@@ -1025,7 +1021,14 @@ Java_sun_awt_wl_WLToolkit_readEvents
         return sun_awt_wl_WLToolkit_READ_RESULT_ERROR;
     }
 
-    // Transform the data read by the above call into events on the corresponding queues of the display.
+    const bool hasMoreData = (rc & POLLIN);
+    if (!hasMoreData) {
+        wl_display_cancel_read(wl_display);
+        return sun_awt_wl_WLToolkit_READ_RESULT_FINISHED_NO_EVENTS;
+    }
+
+    // Read new data from Wayland and transform them into events
+    // on the corresponding queues of the display.
     rc = wl_display_read_events(wl_display);
     if (rc == -1) { // display disconnect has likely happened
         return sun_awt_wl_WLToolkit_READ_RESULT_ERROR;
@@ -1217,7 +1220,7 @@ Java_sun_awt_SunToolkit_closeSplashScreen(JNIEnv *env, jclass cls)
 
 void awt_output_flush()
 {
-    wl_flush_to_server(getEnv());
+    wlFlushToServer(getEnv());
 }
 
 static void
