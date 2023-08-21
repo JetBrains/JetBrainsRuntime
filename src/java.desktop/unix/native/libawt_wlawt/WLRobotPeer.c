@@ -331,7 +331,7 @@ Java_sun_awt_wl_WLRobotPeer_getRGBPixelImpl(JNIEnv *env, jclass clazz, jint x, j
     WAKEFIELD_REQUEST_INIT(pixel_color_request);
 
     wakefield_get_pixel_color(wakefield, x, y);
-    wl_flush_to_server(env); // the event will be delivered on a dedicated thread, see wakefield_pixel_color()
+    wlFlushToServer(env); // the event will be delivered on a dedicated thread, see wakefield_pixel_color()
 
     WAKEFIELD_REQUEST_WAIT_START(pixel_color_request);
     const uint32_t error_code = pixel_color_request.error_code;
@@ -362,7 +362,7 @@ Java_sun_awt_wl_WLRobotPeer_getLocationOfWLSurfaceImpl
 
     struct wl_surface * const surface = (struct wl_surface*) wlSurfacePtr;
     wakefield_get_surface_location(wakefield, surface);
-    wl_flush_to_server(env); // the event will be delivered on a dedicated thread, see wakefield_surface_location()
+    wlFlushToServer(env); // the event will be delivered on a dedicated thread, see wakefield_surface_location()
 
     WAKEFIELD_REQUEST_WAIT_START(surface_location_request);
     const uint32_t error_code = surface_location_request.error_code;
@@ -397,7 +397,7 @@ Java_sun_awt_wl_WLRobotPeer_setLocationOfWLSurfaceImpl
     struct wl_surface * const surface = (struct wl_surface*) wlSurfacePtr;
     wakefield_move_surface(wakefield, surface, x, y);
     wl_surface_commit(surface);
-    wl_flush_to_server(env);
+    wlFlushToServer(env);
 #endif
 }
 
