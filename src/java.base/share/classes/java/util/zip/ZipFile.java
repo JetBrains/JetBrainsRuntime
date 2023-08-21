@@ -66,7 +66,7 @@ import jdk.internal.perf.PerfCounter;
 import jdk.internal.ref.CleanerFactory;
 import jdk.internal.vm.annotation.Stable;
 import sun.nio.cs.UTF_8;
-import sun.security.action.GetBooleanAction;
+import sun.security.action.GetPropertyAction;
 import java.security.AccessController;
 
 import static java.util.zip.ZipConstants64.*;
@@ -120,12 +120,12 @@ class ZipFile implements ZipConstants, Closeable {
     public static final int OPEN_READ = 0x1;
 
     /**
-     * Flag which specifies whether the validation of the Zip64 extra
-     * fields should be disabled
+     * Flag to specify whether the Extra ZIP64 validation should be
+     * disabled.
      */
-    private static final boolean disableZip64ExtraFieldValidation =
-        AccessController.doPrivileged
-                        (new GetBooleanAction("jdk.util.zip.disableZip64ExtraFieldValidation"));
+    private static final boolean DISABLE_ZIP64_EXTRA_VALIDATION =
+            getDisableZip64ExtraFieldValidation();
+
     /**
      * Mode flag to open a zip file and mark it for deletion.  The file will be
      * deleted some time between the moment that it is opened and the moment
@@ -1131,6 +1131,22 @@ class ZipFile implements ZipConstants, Closeable {
     private static boolean isWindows;
     private static final JavaLangAccess JLA;
 
+    /**
+     * Returns the value of the System property which indicates whether the
+     * Extra ZIP64 validation should be disabled.
+     */
+    static boolean getDisableZip64ExtraFieldValidation() {
+        boolean result;
+        String value = GetPropertyAction.privilegedGetProperty(
+                "jdk.util.zip.disableZip64ExtraFieldValidation");
+        if (value == null) {
+            result = false;
+        } else {
+            result = value.isEmpty() || value.equalsIgnoreCase("true");
+        }
+        return result;
+    }
+
     static {
         SharedSecrets.setJavaUtilZipFileAccess(
             new JavaUtilZipFileAccess() {
@@ -1241,25 +1257,32 @@ class ZipFile implements ZipConstants, Closeable {
                 zerror("Invalid CEN header (extra data field size too long)");
             }
             int currentOffset = startingOffset;
-            while (currentOffset < extraEndOffset) {
+            // Walk through each Extra Header. Each Extra Header Must consist of:
+            //       Header ID - 2 bytes
+            //       Data Size - 2 bytes:
+            while (currentOffset + Integer.BYTES <= extraEndOffset) {
                 int tag = get16(cen, currentOffset);
                 currentOffset += Short.BYTES;
 
                 int tagBlockSize = get16(cen, currentOffset);
+                currentOffset += Short.BYTES;
                 int tagBlockEndingOffset = currentOffset + tagBlockSize;
 
                 //  The ending offset for this tag block should not go past the
                 //  offset for the end of the extra field
                 if (tagBlockEndingOffset > extraEndOffset) {
-                    zerror("Invalid CEN header (invalid zip64 extra data field size)");
+                    zerror(String.format(
+                            "Invalid CEN header (invalid extra data field size for " +
+                                    "tag: 0x%04x at %d)",
+                            tag, cenPos));
                 }
-                currentOffset += Short.BYTES;
 
                 if (tag == ZIP64_EXTID) {
                     // Get the compressed size;
                     long csize = CENSIZ(cen, cenPos);
                     // Get the uncompressed size;
                     long size = CENLEN(cen, cenPos);
+
                     checkZip64ExtraFieldValues(currentOffset, tagBlockSize,
                             csize, size);
                 }
@@ -1283,6 +1306,16 @@ class ZipFile implements ZipConstants, Closeable {
                                                 long size)
                 throws ZipException {
             byte[] cen = this.cen;
+            // if ZIP64_EXTID blocksize == 0, which may occur with some older
+            // versions of Apache Ant and Commons Compress, validate csize and size
+            // to make sure neither field == ZIP64_MAGICVAL
+            if (blockSize == 0) {
+                if (csize == ZIP64_MAGICVAL || size == ZIP64_MAGICVAL) {
+                    zerror("Invalid CEN header (invalid zip64 extra data field size)");
+                }
+                // Only validate the ZIP64_EXTID data if the block size > 0
+                return;
+            }
             // Validate the Zip64 Extended Information Extra Field (0x0001)
             // length.
             if (!isZip64ExtBlockSizeValid(blockSize)) {
@@ -1693,7 +1726,7 @@ class ZipFile implements ZipConstants, Closeable {
                 } else {
                     checkEncoding(zc, cen, pos + CENHDR, nlen);
                 }
-                if (elen > 0 && !disableZip64ExtraFieldValidation) {
+                if (elen > 0 && !DISABLE_ZIP64_EXTRA_VALIDATION) {
                     long extraStartingOffset = pos + CENHDR + nlen;
                     if ((int)extraStartingOffset != extraStartingOffset) {
                         zerror("invalid CEN header (bad extra offset)");
