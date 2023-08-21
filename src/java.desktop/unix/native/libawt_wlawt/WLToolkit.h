@@ -55,6 +55,6 @@ extern uint32_t last_pointer_enter_serial;
 
 JNIEnv *getEnv();
 
-int wl_flush_to_server(JNIEnv* env);
+int wlFlushToServer(JNIEnv* env);
 
 struct wl_shm_pool *CreateShmPool(size_t size, const char *name, void **data);
