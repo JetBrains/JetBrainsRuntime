@@ -1077,6 +1077,8 @@ public abstract class RasterPrinterJob extends PrinterJob {
             return false;
         }
 
+        this.attributes = attributes;
+
         if (!service.equals(newService)) {
             try {
                 setPrintService(newService);
