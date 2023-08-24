@@ -133,6 +133,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     private static final int MOUSE_BUTTONS_COUNT = 3;
     private static final int AWT_MULTICLICK_DEFAULT_TIME_MS = 500;
 
+    private static final int CAPS_LOCK_MASK = 0x01;
+    private static final int NUM_LOCK_MASK = 0x02;
+
     private static boolean initialized = false;
 
     private static native void initIDs();
@@ -451,7 +454,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                                                        boolean isShiftActive,
                                                        boolean isAltActive,
                                                        boolean isCtrlActive,
-                                                       boolean isMetaActive) {
+                                                       boolean isMetaActive,
+                                                       boolean isCapsActive,
+                                                       boolean isNumActive) {
         // Invoked from the native code
         assert EventQueue.isDispatchThread();
 
@@ -460,12 +465,17 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                 | (isAltActive   ? InputEvent.ALT_DOWN_MASK   : 0)
                 | (isCtrlActive  ? InputEvent.CTRL_DOWN_MASK  : 0)
                 | (isMetaActive  ? InputEvent.META_DOWN_MASK  : 0);
+
+        final int newLockingKeyState =
+                  (isCapsActive ? CAPS_LOCK_MASK : 0)
+                | (isNumActive ? NUM_LOCK_MASK : 0);
+
         if (logKeys.isLoggable(PlatformLogger.Level.FINE)) {
             logKeys.fine("dispatchKeyboardModifiersEvent: new modifiers 0x"
                     + Integer.toHexString(newModifiers));
         }
 
-        inputState = inputState.updatedFromKeyboardModifiersEvent(serial, newModifiers);
+        inputState = inputState.updatedFromKeyboardModifiersEvent(serial, newModifiers, newLockingKeyState);
     }
 
     private static void dispatchKeyboardEnterEvent(long serial, long surfacePtr) {
@@ -760,8 +770,13 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     }
     @Override
     public boolean getLockingKeyState(int key) {
-        log.info("Not implemented: WLToolkit.getLockingKeyState()");
-        return false;
+        return switch (key) {
+            case KeyEvent.VK_CAPS_LOCK -> (inputState.lockingKeyState() & CAPS_LOCK_MASK) != 0;
+            case KeyEvent.VK_NUM_LOCK -> (inputState.lockingKeyState() & NUM_LOCK_MASK) != 0;
+            case KeyEvent.VK_SCROLL_LOCK, KeyEvent.VK_KANA_LOCK ->
+                    throw new UnsupportedOperationException("getting locking key state is not supported for this key");
+            default -> throw new IllegalArgumentException("invalid key for Toolkit.getLockingKeyState");
+        };
     }
 
     @Override
