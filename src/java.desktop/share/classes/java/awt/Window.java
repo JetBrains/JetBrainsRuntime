@@ -59,6 +59,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.Vector;
@@ -4254,6 +4255,67 @@ public class Window extends Container implements Accessible {
                 if (System.getProperty("os.name").toLowerCase().contains("win")) t.putProperty("controls.visible", false);
                 window.setCustomTitleBar(t);
             }
+        }
+    }
+
+    private interface WindowMovePeer {
+        void startMovingWindowTogetherWithMouse(Window window, int mouseButton);
+    }
+
+    private interface WindowMovePeerX11 extends WindowMovePeer {
+        WindowMovePeerX11 INSTANCE = (WindowMovePeerX11) JBRApi.internalServiceBuilder(MethodHandles.lookup())
+                .withStatic("startMovingWindowTogetherWithMouse",
+                        "startMovingWindowTogetherWithMouse",
+                        "sun.awt.X11.XWindowPeer")
+                .build();
+    }
+
+    private interface WindowMovePeerWayland extends WindowMovePeer {
+        WindowMovePeerWayland INSTANCE = (WindowMovePeerWayland) JBRApi.internalServiceBuilder(MethodHandles.lookup())
+                .withStatic("startMovingWindowTogetherWithMouse",
+                        "startMovingWindowTogetherWithMouse",
+                        "sun.awt.wl.WLComponentPeer")
+                .build();
+    }
+
+    private static class WindowMoveService {
+        WindowMovePeer windowMovePeer;
+
+        WindowMoveService() {
+            var toolkit = Toolkit.getDefaultToolkit();
+            var ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+            if (toolkit == null || ge == null) {
+                throw new JBRApi.ServiceNotAvailableException("Supported only with a Toolkit present");
+            }
+
+            boolean isWayland = objectIsInstanceOf(toolkit, "sun.awt.wl.WLToolkit");
+            if (isWayland) {
+                if (!objectIsInstanceOf(ge,"sun.awt.wl.WLGraphicsEnvironment")) {
+                    throw new JBRApi.ServiceNotAvailableException("On Wayland, supported only with WLGraphicsEnvironment");
+                }
+            } else {
+                if (!objectIsInstanceOf(toolkit, "sun.awt.X11.XToolkit")
+                        || !objectIsInstanceOf(ge, "sun.awt.X11GraphicsEnvironment")) {
+                    throw new JBRApi.ServiceNotAvailableException("Supported only with XToolkit and X11GraphicsEnvironment");
+                }
+            }
+
+            if (isWayland) {
+                windowMovePeer = WindowMovePeerWayland.INSTANCE;
+            } else {
+                // This will throw if the service is not supported by the underlying WM
+                windowMovePeer = WindowMovePeerX11.INSTANCE;
+            }
+        }
+
+        boolean objectIsInstanceOf(Object o, String className) {
+            Objects.requireNonNull(o);
+            return o.getClass().getName().equals(className);
+        }
+
+        void startMovingTogetherWithMouse(Window window, int mouseButton) {
+            Objects.requireNonNull(window);
+            windowMovePeer.startMovingWindowTogetherWithMouse(window, mouseButton);
         }
     }
 

@@ -62,7 +62,7 @@ public class JBRApiModule {
                     .withStatic("deriveFontWithFeatures", "deriveFont", "java.awt.Font")
                     .withStatic("getFeaturesAsString", "getFeaturesAsString", "com.jetbrains.desktop.FontExtensions")
                 .clientProxy("java.awt.Font$Features", "com.jetbrains.FontExtensions$Features")
-                .service("com.jetbrains.WindowMove", "sun.awt.X11.XWindowPeer$WindowMoveService")
+                .service("com.jetbrains.WindowMove", "java.awt.Window$WindowMoveService")
         ;
     }
 }

@@ -1132,4 +1132,15 @@ public class WLComponentPeer implements ComponentPeer {
             WLToolkit.awtLock();
         }
     }
+
+    private static void startMovingWindowTogetherWithMouse(Window window, int mouseButton)
+    {
+        final AWTAccessor.ComponentAccessor acc = AWTAccessor.getComponentAccessor();
+        ComponentPeer peer = acc.getPeer(window);
+        if (peer instanceof WLComponentPeer wlComponentPeer) {
+            wlComponentPeer.startDrag();
+        } else {
+            throw new IllegalArgumentException("AWT window must have WLComponentPeer as its peer");
+        }
+    }
 }
