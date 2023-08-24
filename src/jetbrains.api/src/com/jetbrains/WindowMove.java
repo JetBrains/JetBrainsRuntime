@@ -33,7 +33,9 @@ public interface WindowMove {
      * The intended use is to facilitate the implementation of window management similar to the way
      * it is done natively on the platform.
      *
-     * Preconditions for calling this method:
+     * The service is implemented both for X11 and Wayland toolkits.
+     *
+     * Preconditions for calling this method with the X11 toolkit:
      * <ul>
      * <li>WM supports _NET_WM_MOVE_RESIZE (this is checked automatically when an implementation
      *     of this interface is obtained).</li>
@@ -41,13 +43,20 @@ public interface WindowMove {
      * <li>The mouse button specified by {@code mouseButton} is pressed.</li>
      * </ul>
      *
+     * Preconditions for calling this method with the Wayland toolkit:
+     * <ul>
+     * <li>Mouse pointer is within this window's bounds.</li>
+     * </ul>
+     * The {@code mouseButton} is ignored for Wayland; the latest mouse press event is used
+     * automatically; this is enforced by the Wayland protocol.
+     *
      * Calling this method will make the window start moving together with the mouse pointer until
      * the specified mouse button is released or Esc is pressed. The conditions for cancelling
      * the move may differ between WMs.
      *
      * @param mouseButton indicates the mouse button that was pressed to start moving the window;
      *                   must be one of {@code MouseEvent.BUTTON1}, {@code MouseEvent.BUTTON2},
-     *                   or {@code MouseEvent.BUTTON3}.
+     *                   or {@code MouseEvent.BUTTON3}. This argument is ignored for Wayland.
      */
     void startMovingTogetherWithMouse(Window window, int mouseButton);
 }
