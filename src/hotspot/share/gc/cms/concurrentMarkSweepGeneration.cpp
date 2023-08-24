@@ -5788,6 +5788,9 @@ void CMSMarkStack::expand() {
     if (!_virtual_space.initialize(rs, rs.size())) {
       fatal("Not enough swap for expanded marking stack");
     }
+    // Record NMT memory type
+    MemTracker::record_virtual_memory_type(rs.base(), mtGC);
+
     _base = (oop*)(_virtual_space.low());
     _index = 0;
     _capacity = new_capacity;
