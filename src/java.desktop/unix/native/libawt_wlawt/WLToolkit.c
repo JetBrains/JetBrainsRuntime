@@ -547,6 +547,16 @@ wl_keyboard_modifiers(void *data, struct wl_keyboard *wl_keyboard,
                                                XKB_MOD_NAME_LOGO,
                                                XKB_STATE_MODS_EFFECTIVE);
 
+    const bool is_caps_active
+        = xkb_ifs.xkb_state_mod_name_is_active(xkb_state,
+                                               XKB_MOD_NAME_CAPS,
+                                               XKB_STATE_MODS_EFFECTIVE);
+
+    const bool is_num_active
+            = xkb_ifs.xkb_state_mod_name_is_active(xkb_state,
+                                                   XKB_MOD_NAME_NUM,
+                                                   XKB_STATE_MODS_EFFECTIVE);
+
     (*env)->CallStaticVoidMethod(env,
                                  tkClass,
                                  dispatchKeyboardModifiersEventMID,
@@ -554,7 +564,9 @@ wl_keyboard_modifiers(void *data, struct wl_keyboard *wl_keyboard,
                                  is_shift_active,
                                  is_alt_active,
                                  is_ctrl_active,
-                                 is_meta_active);
+                                 is_meta_active,
+                                 is_caps_active,
+                                 is_num_active);
     JNU_CHECK_EXCEPTION(env);
 }
 
@@ -777,7 +789,7 @@ initJavaRefs(JNIEnv *env, jclass clazz)
                       JNI_FALSE);
     CHECK_NULL_RETURN(dispatchKeyboardModifiersEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                     "dispatchKeyboardModifiersEvent",
-                                                                                    "(JZZZZ)V"),
+                                                                                    "(JZZZZZZ)V"),
                       JNI_FALSE);
 
     CHECK_NULL_RETURN(keyRepeatRateFID = (*env)->GetStaticFieldID(env, tkClass,
