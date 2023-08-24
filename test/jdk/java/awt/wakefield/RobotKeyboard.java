@@ -67,7 +67,6 @@ public class RobotKeyboard {
             "VK_CONTROL",
             "VK_D",
             "VK_DECIMAL",
-            "VK_DECIMAL",
             "VK_DELETE",
             "VK_DIVIDE",
             "VK_DOWN",
@@ -205,6 +204,18 @@ public class RobotKeyboard {
         robot = new Robot();
         robot.setAutoDelay(50);
         robot.delay(500);
+
+        if (Toolkit.getDefaultToolkit().getLockingKeyState(KeyEvent.VK_CAPS_LOCK)) {
+            // Disable caps lock
+            robot.keyPress(KeyEvent.VK_CAPS_LOCK);
+            robot.keyRelease(KeyEvent.VK_CAPS_LOCK);
+        }
+
+        if (!Toolkit.getDefaultToolkit().getLockingKeyState(KeyEvent.VK_NUM_LOCK)) {
+            // Enable num lock
+            robot.keyPress(KeyEvent.VK_NUM_LOCK);
+            robot.keyRelease(KeyEvent.VK_NUM_LOCK);
+        }
 
         boolean ok = true;
 
