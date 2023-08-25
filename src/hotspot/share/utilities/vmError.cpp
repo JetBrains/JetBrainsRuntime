@@ -53,6 +53,7 @@
 #include "runtime/stackFrameStream.inline.hpp"
 #include "runtime/thread.inline.hpp"
 #include "runtime/threadSMR.hpp"
+#include "runtime/trimNativeHeap.hpp"
 #include "runtime/vmThread.hpp"
 #include "runtime/vmOperations.hpp"
 #include "runtime/vm_version.hpp"
@@ -1206,6 +1207,14 @@ void VMError::report(outputStream* st, bool _verbose) {
   STEP("Native Memory Tracking")
      if (_verbose) {
        MemTracker::error_report(st);
+       st->cr();
+     }
+
+  STEP("printing periodic trim state")
+
+     if (_verbose) {
+       NativeHeapTrimmer::print_state(st);
+       st->cr();
      }
 
   STEP("JNI global references")
@@ -1407,10 +1416,14 @@ void VMError::print_vm_info(outputStream* st) {
   // STEP("Native Memory Tracking")
 
   MemTracker::error_report(st);
+  st->cr();
+
+  // STEP("printing periodic trim state")
+  NativeHeapTrimmer::print_state(st);
+  st->cr();
+
 
   // STEP("printing system")
-
-  st->cr();
   st->print_cr("---------------  S Y S T E M  ---------------");
   st->cr();
 

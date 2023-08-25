@@ -2105,7 +2105,14 @@ const intx ObjectAlignmentInBytes = 8;
           "core: core HA. Use integrated hotswap-agent-core.jar"            \
           "external: external HA. use external HA, open required JDK "      \
           "modules.")                                                       \
-          constraint(HotswapAgentConstraintFunc, AfterErgo)
+          constraint(HotswapAgentConstraintFunc, AfterErgo)                 \
+                                                                            \
+  product(uint, TrimNativeHeapInterval, 0, EXPERIMENTAL,                    \
+          "Interval, in ms, at which the JVM will trim the native heap if " \
+          "the platform supports that. Lower values will reclaim memory "   \
+          "more eagerly at the cost of higher overhead. A value of 0 "      \
+          "(default) disables native heap trimming.")                       \
+          range(0, UINT_MAX)                                                \
 
 // end of RUNTIME_FLAGS
 
