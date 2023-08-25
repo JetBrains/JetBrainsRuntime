@@ -527,6 +527,7 @@ else
          E_END_OF_LOOP_CODE_NOT_REACHED, \
       DISABLED_WARNINGS_microsoft := 4018 4267 4244 4312 4819, \
       DISABLED_WARNINGS_gcc := implicit-fallthrough cast-function-type bad-function-cast, \
+      DISABLED_WARNINGS_clang := missing-declarations, \
       LDFLAGS := $(LDFLAGS_JDKLIB) \
           $(call SET_SHARED_LIBRARY_ORIGIN), \
   ))
