@@ -765,8 +765,6 @@ jdk/jfr/tool/TestView.java                                      8309238 macosx-x
 
 # jdk_foreign
 
-java/foreign/TestByteBuffer.java 8309475 aix-ppc64
-
 ############################################################################
 # Client manual tests
 
