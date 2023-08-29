@@ -71,19 +71,19 @@ const vk::raii::CommandBuffer& VKRecorder::record(bool flushRenderPass) {
     }
     if (flushRenderPass && _renderPass.commandBuffer != nullptr) {
         _renderPass.commandBuffer->end();
-        vk::RenderingAttachmentInfo colorAttachmentInfo {
+        vk::RenderingAttachmentInfoKHR colorAttachmentInfo {
                 _renderPass.surfaceView, vk::ImageLayout::eColorAttachmentOptimal,
                 vk::ResolveModeFlagBits::eNone, {}, {},
                 _renderPass.attachmentLoadOp, vk::AttachmentStoreOp::eStore,
                 _renderPass.clearValue
         };
-        _commandBuffer.beginRendering(vk::RenderingInfo{
-                vk::RenderingFlagBits::eContentsSecondaryCommandBuffers,
+        _commandBuffer.beginRenderingKHR(vk::RenderingInfoKHR{
+                vk::RenderingFlagBitsKHR::eContentsSecondaryCommandBuffers,
                 vk::Rect2D{{0, 0}, {_renderPass.surface->width(), _renderPass.surface->height()}},
                 1, 0, colorAttachmentInfo, {}, {}
         });
         _commandBuffer.executeCommands(**_renderPass.commandBuffer);
-        _commandBuffer.endRendering();
+        _commandBuffer.endRenderingKHR();
         _renderPass = {};
     }
     return _commandBuffer;
@@ -115,8 +115,8 @@ const vk::raii::CommandBuffer& VKRecorder::render(VKSurfaceData& surface, vk::Cl
             _renderPass.commandBuffer->reset({});
         }
         vk::Format format = surface.format();
-        vk::CommandBufferInheritanceRenderingInfo inheritanceRenderingInfo {
-                vk::RenderingFlagBits::eContentsSecondaryCommandBuffers,
+        vk::CommandBufferInheritanceRenderingInfoKHR inheritanceRenderingInfo {
+                vk::RenderingFlagBitsKHR::eContentsSecondaryCommandBuffers,
                 0, format
         };
         vk::CommandBufferInheritanceInfo inheritanceInfo;

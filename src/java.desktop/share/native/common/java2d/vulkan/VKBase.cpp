@@ -32,7 +32,7 @@
 #endif
 
 #define VALIDATION_LAYER_NAME "VK_LAYER_KHRONOS_validation"
-static const uint32_t REQUIRED_VULKAN_VERSION = VK_MAKE_API_VERSION(0, 1, 3, 0);
+static const uint32_t REQUIRED_VULKAN_VERSION = VK_MAKE_API_VERSION(0, 1, 2, 0);
 
 std::unique_ptr<VKGraphicsEnvironment> VKGraphicsEnvironment::_ge_instance = nullptr;
 
@@ -216,21 +216,17 @@ VKDevice::VKDevice(vk::Instance instance, vk::raii::PhysicalDevice&& handle) :
         vk::raii::Device(nullptr), vk::raii::PhysicalDevice(nullptr), _instance(instance) {
     auto featuresChain = handle.getFeatures2<vk::PhysicalDeviceFeatures2,
                                              vk::PhysicalDeviceVulkan11Features,
-                                             vk::PhysicalDeviceVulkan12Features,
-                                             vk::PhysicalDeviceVulkan13Features>();
+                                             vk::PhysicalDeviceVulkan12Features>();
     const auto& features10 = featuresChain.get<vk::PhysicalDeviceFeatures2>().features;
     const auto& features11 = featuresChain.get<vk::PhysicalDeviceVulkan11Features>();
     const auto& features12 = featuresChain.get<vk::PhysicalDeviceVulkan12Features>();
-    const auto& features13 = featuresChain.get<vk::PhysicalDeviceVulkan13Features>();
 
     auto propertiesChain = handle.getProperties2<vk::PhysicalDeviceProperties2,
                                                vk::PhysicalDeviceVulkan11Properties,
-                                               vk::PhysicalDeviceVulkan12Properties,
-                                               vk::PhysicalDeviceVulkan13Properties>();
+                                               vk::PhysicalDeviceVulkan12Properties>();
     const auto& properties10 = propertiesChain.get<vk::PhysicalDeviceProperties2>().properties;
     const auto& properties11 = propertiesChain.get<vk::PhysicalDeviceVulkan11Properties>();
     const auto& properties12 = propertiesChain.get<vk::PhysicalDeviceVulkan12Properties>();
-    const auto& properties13 = propertiesChain.get<vk::PhysicalDeviceVulkan13Properties>();
 
     const auto& queueFamilies = handle.getQueueFamilyProperties();
 
@@ -255,10 +251,6 @@ VKDevice::VKDevice(vk::Instance instance, vk::raii::PhysicalDevice&& handle) :
     }
     if (!features12.timelineSemaphore) {
         J2dRlsTrace(J2D_TRACE_INFO, "    Timeline semaphore not supported\n");
-        return;
-    }
-    if (!features13.dynamicRendering) {
-        J2dRlsTrace(J2D_TRACE_INFO, "    Dynamic rendering not supported\n");
         return;
     }
 
@@ -303,6 +295,7 @@ VKDevice::VKDevice(vk::Instance instance, vk::raii::PhysicalDevice&& handle) :
 
     // Check required layers & extensions.
     _enabled_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    _enabled_extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME); _khr_dynamic_rendering = true; // TODO make this extension optional.
     bool requiredNotFound = false;
     for (auto e : _enabled_extensions) {
         if (extensions.find(e) == extensions.end()) {
@@ -340,19 +333,20 @@ void VKDevice::init() {
     features10.logicOp = true;
     vk::PhysicalDeviceVulkan12Features features12;
     features12.timelineSemaphore = true;
-    vk::PhysicalDeviceVulkan13Features features13;
-    features13.pNext = &features12;
-    features13.synchronization2 = true;
-    features13.dynamicRendering = true;
 
-    void *pNext = &features13;
-    // TODO use extension when we lower the Vulkan version
-//    vk::PhysicalDeviceSynchronization2FeaturesKHR synchronization2Features;
-//    if (_khr_synchronization2) {
-//        synchronization2Features.synchronization2 = true;
-//        synchronization2Features.pNext = pNext;
-//        pNext = &synchronization2Features;
-//    }
+    void *pNext = &features12;
+    vk::PhysicalDeviceSynchronization2FeaturesKHR synchronization2Features;
+    if (_khr_synchronization2) {
+        synchronization2Features.synchronization2 = true;
+        synchronization2Features.pNext = pNext;
+        pNext = &synchronization2Features;
+    }
+    vk::PhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures;
+    if (_khr_dynamic_rendering) {
+        dynamicRenderingFeatures.dynamicRendering = true;
+        dynamicRenderingFeatures.pNext = pNext;
+        pNext = &dynamicRenderingFeatures;
+    }
 
     vk::DeviceCreateInfo deviceCreateInfo {
             /*flags*/                   {},

@@ -51,7 +51,7 @@ void VKPipelines::init(const vk::raii::Device& device) {
     std::array<vk::DynamicState, 2> dynamicStates {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
     vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo {{}, dynamicStates};
     vk::Format format = vk::Format::eB8G8R8A8Unorm; // TODO
-    vk::PipelineRenderingCreateInfo renderingCreateInfo {0, format};
+    vk::PipelineRenderingCreateInfoKHR renderingCreateInfo {0, format};
     auto pipelines = device.createGraphicsPipelines(nullptr, {
         vk::GraphicsPipelineCreateInfo {
                 {}, testStages,
