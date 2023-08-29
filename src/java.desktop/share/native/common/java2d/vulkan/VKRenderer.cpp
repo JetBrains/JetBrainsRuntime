@@ -95,8 +95,8 @@ const vk::raii::CommandBuffer& VKRecorder::render(VKSurfaceData& surface, vk::Cl
             record(true); // Flush current render pass
         }
         VKSurfaceImage i = surface.access(*this,
-                                          vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                                          vk::AccessFlagBits2::eColorAttachmentWrite,
+                                          vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                                          vk::AccessFlagBits::eColorAttachmentWrite,
                                           vk::ImageLayout::eColorAttachmentOptimal);
         _renderPass.surface = &surface;
         _renderPass.surfaceView = i.view;

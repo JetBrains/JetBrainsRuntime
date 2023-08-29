@@ -60,12 +60,14 @@ protected:
 
     vk::ImageLayout         _layout = vk::ImageLayout::eUndefined;
     // We track any access and write access separately, as read-read access does not need synchronization.
-    vk::PipelineStageFlags2 _lastStage = {}, _lastWriteStage = {};
-    vk::AccessFlags2        _lastAccess = {}, _lastWriteAccess = {};
+    vk::PipelineStageFlags _lastStage = vk::PipelineStageFlagBits::eTopOfPipe;
+    vk::PipelineStageFlags _lastWriteStage = vk::PipelineStageFlagBits::eTopOfPipe;
+    vk::AccessFlags        _lastAccess = {};
+    vk::AccessFlags        _lastWriteAccess = {};
 
     /// Insert barrier if needed for given access and layout.
     bool barrier(VKRecorder& recorder, vk::Image image,
-                 vk::PipelineStageFlags2 stage, vk::AccessFlags2 access, vk::ImageLayout layout);
+                 vk::PipelineStageFlags stage, vk::AccessFlags access, vk::ImageLayout layout);
 public:
     VKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc);
     // No need to move, as object must only be created with "new".
@@ -115,8 +117,8 @@ public:
 
     /// Prepare image for access (necessary barriers & layout transitions).
     virtual VKSurfaceImage access(VKRecorder& recorder,
-                                  vk::PipelineStageFlags2 stage,
-                                  vk::AccessFlags2 access,
+                                  vk::PipelineStageFlags stage,
+                                  vk::AccessFlags access,
                                   vk::ImageLayout layout) = 0;
     /// Flush all pending changes to the surface, including screen presentation for on-screen surfaces.
     virtual void flush(VKRecorder& recorder) = 0;
@@ -149,8 +151,8 @@ public:
     virtual void revalidate(uint32_t w, uint32_t h, uint32_t s);
 
     virtual VKSurfaceImage access(VKRecorder& recorder,
-                                  vk::PipelineStageFlags2 stage,
-                                  vk::AccessFlags2 access,
+                                  vk::PipelineStageFlags stage,
+                                  vk::AccessFlags access,
                                   vk::ImageLayout layout);
     virtual void flush(VKRecorder& recorder);
 };

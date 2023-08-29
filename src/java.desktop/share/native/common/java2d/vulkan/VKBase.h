@@ -43,7 +43,7 @@ class VKDevice : public vk::raii::Device, public vk::raii::PhysicalDevice {
     vk::Instance             _instance;
     std::string              _name;
     std::vector<const char*> _enabled_layers, _enabled_extensions;
-    bool                     _ext_memory_budget;
+    bool                     _ext_memory_budget, _khr_synchronization2;
     int                      _queue_family = -1;
 
     // Logical device state
@@ -87,6 +87,10 @@ class VKDevice : public vk::raii::Device, public vk::raii::PhysicalDevice {
 
     explicit VKDevice(vk::Instance instance, vk::raii::PhysicalDevice&& handle);
 public:
+
+    bool synchronization2() {
+        return _khr_synchronization2;
+    }
 
     VKPipelines& pipelines() {
         return _pipelines;

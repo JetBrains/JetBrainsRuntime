@@ -257,10 +257,6 @@ VKDevice::VKDevice(vk::Instance instance, vk::raii::PhysicalDevice&& handle) :
         J2dRlsTrace(J2D_TRACE_INFO, "    Timeline semaphore not supported\n");
         return;
     }
-    if (!features13.synchronization2) {
-        J2dRlsTrace(J2D_TRACE_INFO, "    Synchronization2 not supported\n");
-        return;
-    }
     if (!features13.dynamicRendering) {
         J2dRlsTrace(J2D_TRACE_INFO, "    Dynamic rendering not supported\n");
         return;
@@ -317,6 +313,8 @@ VKDevice::VKDevice(vk::Instance instance, vk::raii::PhysicalDevice&& handle) :
     if (requiredNotFound) return;
     _ext_memory_budget = extensions.find(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME) != extensions.end();
     if (_ext_memory_budget) _enabled_extensions.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
+    _khr_synchronization2 = extensions.find(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME) != extensions.end();
+    if (_khr_synchronization2) _enabled_extensions.push_back(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
 
     // Validation layer
 #ifdef DEBUG
@@ -347,13 +345,22 @@ void VKDevice::init() {
     features13.synchronization2 = true;
     features13.dynamicRendering = true;
 
+    void *pNext = &features13;
+    // TODO use extension when we lower the Vulkan version
+//    vk::PhysicalDeviceSynchronization2FeaturesKHR synchronization2Features;
+//    if (_khr_synchronization2) {
+//        synchronization2Features.synchronization2 = true;
+//        synchronization2Features.pNext = pNext;
+//        pNext = &synchronization2Features;
+//    }
+
     vk::DeviceCreateInfo deviceCreateInfo {
             /*flags*/                   {},
             /*pQueueCreateInfos*/       queueCreateInfos,
             /*ppEnabledLayerNames*/     _enabled_layers,
             /*ppEnabledExtensionNames*/ _enabled_extensions,
             /*pEnabledFeatures*/        &features10,
-            /*pNext*/                   &features13
+            /*pNext*/                   pNext
     };
     ((vk::raii::Device&) *this) = {*this, deviceCreateInfo};
     _memory.init(_instance, *this, *this, REQUIRED_VULKAN_VERSION, _ext_memory_budget);

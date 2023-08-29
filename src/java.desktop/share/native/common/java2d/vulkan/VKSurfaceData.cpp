@@ -73,17 +73,29 @@ VKSurfaceData::VKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
 }
 
 bool VKSurfaceData::barrier(VKRecorder& recorder, vk::Image image,
-                            vk::PipelineStageFlags2 stage, vk::AccessFlags2 access, vk::ImageLayout layout) {
+                            vk::PipelineStageFlags stage, vk::AccessFlags access, vk::ImageLayout layout) {
     // TODO consider write/read access
     if (_lastStage != stage || _lastAccess != access || _layout != layout) {
-        vk::ImageMemoryBarrier2 barrier {
-                _lastStage, _lastAccess,
-                stage, access,
-                _layout, layout,
-                VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
-                image, vk::ImageSubresourceRange {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}
-        };
-        recorder.record(false).pipelineBarrier2(vk::DependencyInfo {{}, {}, {}, barrier});
+        if (_device->synchronization2()) {
+            vk::ImageMemoryBarrier2KHR barrier {
+                    (vk::PipelineStageFlags2KHR) (VkFlags) _lastStage,
+                    (vk::AccessFlags2KHR) (VkFlags) _lastAccess,
+                    (vk::PipelineStageFlags2KHR) (VkFlags) stage,
+                    (vk::AccessFlags2KHR) (VkFlags) access,
+                    _layout, layout,
+                    VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
+                    image, vk::ImageSubresourceRange {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}
+            };
+            recorder.record(false).pipelineBarrier2KHR(vk::DependencyInfoKHR {{}, {}, {}, barrier});
+        } else {
+            vk::ImageMemoryBarrier barrier {
+                    _lastAccess, access,
+                    _layout, layout,
+                    VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
+                    image, vk::ImageSubresourceRange {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}
+            };
+            recorder.record(false).pipelineBarrier(_lastStage, stage, {}, {}, {}, barrier);
+        }
         _lastStage = stage;
         _lastAccess = access;
         _layout = layout;
@@ -144,8 +156,8 @@ void VKSwapchainSurfaceData::revalidate(uint32_t w, uint32_t h, uint32_t s) {
 }
 
 VKSurfaceImage VKSwapchainSurfaceData::access(VKRecorder& recorder,
-                                              vk::PipelineStageFlags2 stage,
-                                              vk::AccessFlags2 access,
+                                              vk::PipelineStageFlags stage,
+                                              vk::AccessFlags access,
                                               vk::ImageLayout layout) {
     // Acquire image
     bool semaphorePending = false;
@@ -156,7 +168,7 @@ VKSurfaceImage VKSwapchainSurfaceData::access(VKRecorder& recorder,
         auto img = _swapchain.acquireNextImage(-1, *_freeSemaphore, nullptr);
         vk::resultCheck(img.first, "vk::SwapchainKHR::acquireNextImage");
         _layout = vk::ImageLayout::eUndefined;
-        _lastStage = _lastWriteStage = {};
+        _lastStage = _lastWriteStage = vk::PipelineStageFlagBits::eTopOfPipe;
         _lastAccess = _lastWriteAccess = {};
         _currentImage = (int) img.second;
         std::swap(_images[_currentImage].semaphore, _freeSemaphore);
@@ -176,7 +188,8 @@ void VKSwapchainSurfaceData::flush(VKRecorder& recorder) {
     if (_currentImage == (uint32_t) -1) {
         return; // Nothing to flush
     }
-    access(recorder, {}, {}, vk::ImageLayout::ePresentSrcKHR);
+    recorder.record(true); // Force flush current render pass before accessing image with present layout.
+    access(recorder, vk::PipelineStageFlagBits::eTopOfPipe, {}, vk::ImageLayout::ePresentSrcKHR);
     auto& current = _images[_currentImage];
     recorder.signalSemaphore(*current.semaphore);
     recorder.flush();
