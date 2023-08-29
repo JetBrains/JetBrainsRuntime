@@ -67,10 +67,12 @@ protected:
     bool barrier(VKRecorder& recorder, vk::Image image,
                  vk::PipelineStageFlags2 stage, vk::AccessFlags2 access, vk::ImageLayout layout);
 public:
-    VKSurfaceData(JNIEnv *env, jobject javaSurfaceData, uint32_t w, uint32_t h, uint32_t s, uint32_t bgc);
+    VKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc);
     // No need to move, as object must only be created with "new".
     VKSurfaceData(VKSurfaceData&&) = delete;
     VKSurfaceData& operator=(VKSurfaceData&&) = delete;
+
+    void attachToJavaSurface(JNIEnv *env, jobject javaSurfaceData);
 
     VKDevice& device() const {
         return *_device;
@@ -141,8 +143,8 @@ protected:
         _device = &device;
     }
 public:
-    VKSwapchainSurfaceData(JNIEnv *env, jobject javaSurfaceData, uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
-            : VKSurfaceData(env, javaSurfaceData, w, h, s, bgc) {};
+    VKSwapchainSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
+            : VKSurfaceData(w, h, s, bgc) {};
 
     virtual void revalidate(uint32_t w, uint32_t h, uint32_t s);
 

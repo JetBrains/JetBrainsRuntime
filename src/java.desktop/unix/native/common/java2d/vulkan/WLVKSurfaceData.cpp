@@ -42,7 +42,8 @@ extern "C" JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_initOps
     J2dTrace3(J2D_TRACE_INFO, "Create WLVKSurfaceData with size %d x %d and scale %d\n", width, height, scale);
     width /= scale; // TODO This is incorrect, but we'll deal with this later, we probably need to do something on Wayland side for app-controlled scaling
     height /= scale; // TODO This is incorrect, but we'll deal with this later, we probably need to do something on Wayland side for app-controlled scaling
-    new WLVKSurfaceData(env, vksd, width, height, scale, backgroundRGB);
+    auto *sd = new WLVKSurfaceData(width, height, scale, backgroundRGB);
+    sd->attachToJavaSurface(env, vksd);
 #endif /* !HEADLESS */
 }
 

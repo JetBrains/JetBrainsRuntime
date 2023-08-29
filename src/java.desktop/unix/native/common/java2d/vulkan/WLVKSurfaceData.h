@@ -34,8 +34,8 @@
 class WLVKSurfaceData : public VKSwapchainSurfaceData {
     wl_surface* _wl_surface;
 public:
-    WLVKSurfaceData(JNIEnv *env, jobject javaSurfaceData, uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
-            : VKSwapchainSurfaceData(env, javaSurfaceData, w, h, s, bgc), _wl_surface(nullptr) {}
+    WLVKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
+            : VKSwapchainSurfaceData(w, h, s, bgc), _wl_surface(nullptr) {}
     void validate(wl_surface* wls);
 };
 

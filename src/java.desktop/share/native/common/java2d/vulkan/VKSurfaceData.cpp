@@ -24,17 +24,42 @@
  * questions.
  */
 
+#include "jni_util.h"
+#include "Disposer.h"
 #include "Trace.h"
 #include "VKSurfaceData.h"
 #include "VKRenderer.h"
 
-VKSurfaceData::VKSurfaceData(JNIEnv *env, jobject javaSurfaceData, uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
-        : SurfaceDataOps(), _width(w), _height(h), _scale(s), _bg_color(bgc), _device(nullptr) {
-    SurfaceData_SetOps(env, javaSurfaceData, this);
-    if (env->ExceptionCheck()) {
-        throw std::runtime_error("VKSurfaceData creation error");
+void VKSurfaceData::attachToJavaSurface(JNIEnv *env, jobject javaSurfaceData) {
+    // SurfaceData utility functions operate on C structures and malloc/free,
+    // But we are using C++ classes, so set up the disposer manually.
+    // This is a C++ analogue of SurfaceData_InitOps / SurfaceData_SetOps.
+    jboolean exception = false;
+    if (JNU_GetFieldByName(env, &exception, javaSurfaceData, "pData", "J").j == 0 && !exception) {
+        jlong ptr = ptr_to_jlong((SurfaceDataOps*) this);
+        JNU_SetFieldByName(env, &exception, javaSurfaceData, "pData", "J", ptr);
+        /* Register the data for disposal */
+        Disposer_AddRecord(env, javaSurfaceData, [](JNIEnv *env, jlong ops) {
+            if (ops != 0) {
+                auto sd = (SurfaceDataOps*)jlong_to_ptr(ops);
+                jobject sdObject = sd->sdObject;
+                sd->Dispose(env, sd);
+                if (sdObject != nullptr) {
+                    env->DeleteWeakGlobalRef(sdObject);
+                }
+            }
+        }, ptr);
+    } else if (!exception) {
+        throw std::runtime_error("Attempting to set SurfaceData ops twice");
+    }
+    if (exception) {
+        throw std::runtime_error("VKSurfaceData::attachToJavaSurface error");
     }
     sdObject = env->NewWeakGlobalRef(javaSurfaceData);
+}
+
+VKSurfaceData::VKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
+        : SurfaceDataOps(), _width(w), _height(h), _scale(s), _bg_color(bgc), _device(nullptr) {
     Lock = [](JNIEnv *env, SurfaceDataOps *ops, SurfaceDataRasInfo *rasInfo, jint lockFlags) {
         ((VKSurfaceData*) ops)->_mutex.lock();
         return SD_SUCCESS;
