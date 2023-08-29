@@ -149,6 +149,17 @@ void VKSwapchainSurfaceData::revalidate(uint32_t w, uint32_t h, uint32_t s) {
                 {}, image, vk::ImageViewType::e2D, format(), {},
                 vk::ImageSubresourceRange {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}
         })});
+        if (!device().dynamicRendering()) {
+            _images.back().framebuffer = device().createFramebuffer(vk::FramebufferCreateInfo{
+                    /*flags*/           {},
+                    /*renderPass*/      *device().pipelines().renderPass,
+                    /*attachmentCount*/ 1,
+                    /*pAttachments*/    &*_images.back().view,
+                    /*width*/           width(),
+                    /*height*/          height(),
+                    /*layers*/          1
+            });
+        }
     }
     _currentImage = (uint32_t) -1;
     _freeSemaphore = nullptr;
@@ -181,7 +192,7 @@ VKSurfaceImage VKSwapchainSurfaceData::access(VKRecorder& recorder,
         recorder.waitSemaphore(*current.semaphore,
                                vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eTransfer);
     }
-    return {current.image, *current.view};
+    return {current.image, *current.view, *current.framebuffer};
 }
 
 void VKSwapchainSurfaceData::flush(VKRecorder& recorder) {

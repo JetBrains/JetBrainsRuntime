@@ -44,8 +44,9 @@
 class VKRecorder;
 
 struct VKSurfaceImage {
-    vk::Image     image;
-    vk::ImageView view;
+    vk::Image       image;
+    vk::ImageView   view;
+    vk::Framebuffer framebuffer; // Only if dynamic rendering is off.
 };
 
 class VKSurfaceData : private SurfaceDataOps {
@@ -126,9 +127,10 @@ public:
 
 class VKSwapchainSurfaceData : public VKSurfaceData {
     struct Image {
-        vk::Image               image;
-        vk::raii::ImageView     view;
-        vk::raii::Semaphore     semaphore = nullptr;
+        vk::Image             image;
+        vk::raii::ImageView   view;
+        vk::raii::Framebuffer framebuffer = nullptr; // Only if dynamic rendering is off.
+        vk::raii::Semaphore   semaphore = nullptr;
     };
 
     vk::raii::SurfaceKHR   _surface = nullptr;

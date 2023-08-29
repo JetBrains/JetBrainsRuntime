@@ -43,6 +43,7 @@ class VKRecorder{
         VKSurfaceData           *surface = nullptr;
         VKBuffer                *vertexBuffer = nullptr;
         vk::ImageView            surfaceView;
+        vk::Framebuffer          surfaceFramebuffer; // Only if dynamic rendering is off.
         vk::AttachmentLoadOp     attachmentLoadOp;
         vk::ClearValue           clearValue;
     } _renderPass {};

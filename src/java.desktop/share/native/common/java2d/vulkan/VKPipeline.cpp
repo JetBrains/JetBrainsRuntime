@@ -26,8 +26,62 @@
 
 #include "VKPipeline.h"
 
-void VKPipelines::init(const vk::raii::Device& device) {
+void VKPipelines::init(const vk::raii::Device& device, bool dynamicRendering) {
     shaders.init(device);
+
+    vk::Format format = vk::Format::eB8G8R8A8Unorm; // TODO
+
+    if (!dynamicRendering) {
+        vk::AttachmentDescription attachmentDescription {
+                /*flags*/          {},
+                /*format*/         format,
+                /*samples*/        vk::SampleCountFlagBits::e1,
+                /*loadOp*/         vk::AttachmentLoadOp::eLoad,
+                /*storeOp*/        vk::AttachmentStoreOp::eStore,
+                /*stencilLoadOp*/  vk::AttachmentLoadOp::eDontCare,
+                /*stencilStoreOp*/ vk::AttachmentStoreOp::eDontCare,
+                /*initialLayout*/  vk::ImageLayout::eColorAttachmentOptimal,
+                /*finalLayout*/    vk::ImageLayout::eColorAttachmentOptimal
+        };
+        vk::AttachmentReference attachmentReference { 0, vk::ImageLayout::eColorAttachmentOptimal };
+        vk::SubpassDescription subpassDescription {
+                /*flags*/                   {},
+                /*pipelineBindPoint*/       vk::PipelineBindPoint::eGraphics,
+                /*inputAttachmentCount*/    0,
+                /*pInputAttachments*/       nullptr,
+                /*colorAttachmentCount*/    1,
+                /*pColorAttachments*/       &attachmentReference,
+                /*pResolveAttachments*/     nullptr,
+                /*pDepthStencilAttachment*/ nullptr,
+                /*preserveAttachmentCount*/ 0,
+                /*pPreserveAttachments*/    nullptr,
+        };
+        // We don't know in advance, which operations to synchronize
+        // with before and after the render pass, so do a full sync.
+        std::array<vk::SubpassDependency, 2> subpassDependencies {vk::SubpassDependency{
+                /*srcSubpass*/      VK_SUBPASS_EXTERNAL,
+                /*dstSubpass*/      0,
+                /*srcStageMask*/    vk::PipelineStageFlagBits::eBottomOfPipe,
+                /*dstStageMask*/    vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                /*srcAccessMask*/   {},
+                /*dstAccessMask*/   vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
+                /*dependencyFlags*/ {},
+        }, vk::SubpassDependency{
+                /*srcSubpass*/      0,
+                /*dstSubpass*/      VK_SUBPASS_EXTERNAL,
+                /*srcStageMask*/    vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                /*dstStageMask*/    vk::PipelineStageFlagBits::eTopOfPipe,
+                /*srcAccessMask*/   vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
+                /*dstAccessMask*/   {},
+                /*dependencyFlags*/ {},
+        }};
+        renderPass = device.createRenderPass(vk::RenderPassCreateInfo{
+                /*flags*/           {},
+                /*pAttachments*/    attachmentDescription,
+                /*pSubpasses*/      subpassDescription,
+                /*pDependencies*/   subpassDependencies
+        });
+    }
 
     vk::PushConstantRange pushConstantRange {vk::ShaderStageFlagBits::eVertex, 0, sizeof(float) * 2};
     testLayout = device.createPipelineLayout(vk::PipelineLayoutCreateInfo {{}, {}, pushConstantRange});
@@ -50,7 +104,6 @@ void VKPipelines::init(const vk::raii::Device& device) {
     vk::PipelineColorBlendStateCreateInfo colorBlendStateCreateInfo {{}, false, vk::LogicOp::eXor, colorBlendAttachmentState};
     std::array<vk::DynamicState, 2> dynamicStates {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
     vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo {{}, dynamicStates};
-    vk::Format format = vk::Format::eB8G8R8A8Unorm; // TODO
     vk::PipelineRenderingCreateInfoKHR renderingCreateInfo {0, format};
     auto pipelines = device.createGraphicsPipelines(nullptr, {
         vk::GraphicsPipelineCreateInfo {
@@ -65,8 +118,8 @@ void VKPipelines::init(const vk::raii::Device& device) {
                 &colorBlendStateCreateInfo,
                 &dynamicStateCreateInfo,
                 *testLayout,
-                nullptr, 0, nullptr, 0,
-                &renderingCreateInfo
+                *renderPass, 0, nullptr, 0,
+                dynamicRendering ? &renderingCreateInfo : nullptr
         }
     });
     // TODO pipeline cache

@@ -71,19 +71,33 @@ const vk::raii::CommandBuffer& VKRecorder::record(bool flushRenderPass) {
     }
     if (flushRenderPass && _renderPass.commandBuffer != nullptr) {
         _renderPass.commandBuffer->end();
-        vk::RenderingAttachmentInfoKHR colorAttachmentInfo {
-                _renderPass.surfaceView, vk::ImageLayout::eColorAttachmentOptimal,
-                vk::ResolveModeFlagBits::eNone, {}, {},
-                _renderPass.attachmentLoadOp, vk::AttachmentStoreOp::eStore,
-                _renderPass.clearValue
-        };
-        _commandBuffer.beginRenderingKHR(vk::RenderingInfoKHR{
-                vk::RenderingFlagBitsKHR::eContentsSecondaryCommandBuffers,
-                vk::Rect2D{{0, 0}, {_renderPass.surface->width(), _renderPass.surface->height()}},
-                1, 0, colorAttachmentInfo, {}, {}
-        });
+        vk::Rect2D renderArea {{0, 0}, {_renderPass.surface->width(), _renderPass.surface->height()}};
+        if (device().dynamicRendering()) {
+            vk::RenderingAttachmentInfoKHR colorAttachmentInfo {
+                    _renderPass.surfaceView, vk::ImageLayout::eColorAttachmentOptimal,
+                    vk::ResolveModeFlagBits::eNone, {}, {},
+                    _renderPass.attachmentLoadOp, vk::AttachmentStoreOp::eStore,
+                    _renderPass.clearValue
+            };
+            _commandBuffer.beginRenderingKHR(vk::RenderingInfoKHR{
+                    vk::RenderingFlagBitsKHR::eContentsSecondaryCommandBuffers,
+                    renderArea, 1, 0, colorAttachmentInfo, {}, {}
+            });
+        } else {
+            _commandBuffer.beginRenderPass(vk::RenderPassBeginInfo{
+                    /*renderPass*/      *device().pipelines().renderPass,
+                    /*framebuffer*/     _renderPass.surfaceFramebuffer,
+                    /*renderArea*/      renderArea,
+                    /*clearValueCount*/ 0,
+                    /*pClearValues*/    nullptr
+            }, vk::SubpassContents::eSecondaryCommandBuffers);
+        }
         _commandBuffer.executeCommands(**_renderPass.commandBuffer);
-        _commandBuffer.endRenderingKHR();
+        if (device().dynamicRendering()) {
+            _commandBuffer.endRenderingKHR();
+        } else {
+            _commandBuffer.endRenderPass();
+        }
         _renderPass = {};
     }
     return _commandBuffer;
@@ -100,6 +114,7 @@ const vk::raii::CommandBuffer& VKRecorder::render(VKSurfaceData& surface, vk::Cl
                                           vk::ImageLayout::eColorAttachmentOptimal);
         _renderPass.surface = &surface;
         _renderPass.surfaceView = i.view;
+        _renderPass.surfaceFramebuffer = i.framebuffer;
         _renderPass.attachmentLoadOp = vk::AttachmentLoadOp::eLoad;
     }
     if (clear != nullptr) {
@@ -120,9 +135,21 @@ const vk::raii::CommandBuffer& VKRecorder::render(VKSurfaceData& surface, vk::Cl
                 0, format
         };
         vk::CommandBufferInheritanceInfo inheritanceInfo;
-        inheritanceInfo.pNext = &inheritanceRenderingInfo;
+        if (device().dynamicRendering()) {
+            inheritanceInfo.pNext = &inheritanceRenderingInfo;
+        } else {
+            inheritanceInfo.renderPass = *device().pipelines().renderPass;
+            inheritanceInfo.subpass = 0;
+            inheritanceInfo.framebuffer = _renderPass.surfaceFramebuffer;
+        }
         _renderPass.commandBuffer->begin({ vk::CommandBufferUsageFlagBits::eOneTimeSubmit |
                                            vk::CommandBufferUsageFlagBits::eRenderPassContinue, &inheritanceInfo });
+        if (clear != nullptr && !device().dynamicRendering()) {
+            // Our static render pass uses loadOp=LOAD, so clear attachment manually.
+            _renderPass.commandBuffer->clearAttachments(vk::ClearAttachment {
+                    vk::ImageAspectFlagBits::eColor, 0, _renderPass.clearValue
+            }, vk::ClearRect {vk::Rect2D{{0, 0}, {_renderPass.surface->width(), _renderPass.surface->height()}}, 0, 1});
+        }
     }
     return *_renderPass.commandBuffer;
 }

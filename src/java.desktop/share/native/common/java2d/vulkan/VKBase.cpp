@@ -295,7 +295,6 @@ VKDevice::VKDevice(vk::Instance instance, vk::raii::PhysicalDevice&& handle) :
 
     // Check required layers & extensions.
     _enabled_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-    _enabled_extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME); _khr_dynamic_rendering = true; // TODO make this extension optional.
     bool requiredNotFound = false;
     for (auto e : _enabled_extensions) {
         if (extensions.find(e) == extensions.end()) {
@@ -308,6 +307,8 @@ VKDevice::VKDevice(vk::Instance instance, vk::raii::PhysicalDevice&& handle) :
     if (_ext_memory_budget) _enabled_extensions.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
     _khr_synchronization2 = extensions.find(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME) != extensions.end();
     if (_khr_synchronization2) _enabled_extensions.push_back(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
+    _khr_dynamic_rendering = extensions.find(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME) != extensions.end();
+    if (_khr_dynamic_rendering) _enabled_extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
 
     // Validation layer
 #ifdef DEBUG
@@ -358,7 +359,7 @@ void VKDevice::init() {
     };
     ((vk::raii::Device&) *this) = {*this, deviceCreateInfo};
     _memory.init(_instance, *this, *this, REQUIRED_VULKAN_VERSION, _ext_memory_budget);
-    _pipelines.init((vk::raii::Device&) *this);
+    _pipelines.init((vk::raii::Device&) *this, _khr_dynamic_rendering);
     _queue = getQueue(queue_family(), 0);
     _commandPool = createCommandPool(vk::CommandPoolCreateInfo {
         vk::CommandPoolCreateFlagBits::eTransient | vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
