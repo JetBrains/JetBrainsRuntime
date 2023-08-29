@@ -2655,6 +2655,16 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         XWM.getWM().startMovingWindowTogetherWithMouse(getParentTopLevel().getWindow(), getLastButtonPressAbsLocation(), mouseButton);
     }
 
+    private static void startMovingWindowTogetherWithMouse(Window window, int mouseButton) {
+        final AWTAccessor.ComponentAccessor acc = AWTAccessor.getComponentAccessor();
+        ComponentPeer peer = acc.getPeer(window);
+        if (peer instanceof XWindowPeer xWindowPeer) {
+            xWindowPeer.startMovingTogetherWithMouse(mouseButton);
+        } else {
+            throw new IllegalArgumentException("AWT window must have XWindowPeer as its peer");
+        }
+    }
+
     private static class WindowMoveService {
         WindowMoveService() {
             final var toolkit = Toolkit.getDefaultToolkit();
