@@ -112,6 +112,8 @@ gc/stress/gcold/TestGCOldWithShenandoah.java initial_run windows-all
 
 # :hotspot_runtime
 
+runtime/CompressedOops/CompressedClassPointers.java 8262895 generic-aarch64
+
 runtime/cds/appcds/jigsaw/modulepath/ModulePathAndCP_JFR.java 8253437 windows-x64
 runtime/cds/CheckDefaultArchiveFile.java JBR-4227 generic-all
 runtime/cds/DeterministicDump.java 8253495 generic-all
