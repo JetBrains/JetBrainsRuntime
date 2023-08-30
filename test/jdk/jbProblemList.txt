@@ -884,7 +884,7 @@ javax/swing/plaf/basic/BasicTreeUI/8023474/bug8023474.java 8253184 linux-all,win
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/plaf/nimbus/TestNimbusBGColor.java JBR-5359 windows-aarch64
-javax/swing/plaf/nimbus/TestNimbusOverride.java 8253184, JBR-5829 windows-all,linux-all
+javax/swing/plaf/nimbus/TestNimbusOverride.java 8253184,JBR-5829 windows-all,linux-all
 javax/swing/plaf/windows/6921687/bug6921687.java 8253184 windows-all
 javax/swing/plaf/windows/WindowsRootPaneUI/WrongAltProcessing/WrongAltProcessing.java JBR-4372 windows-all
 
