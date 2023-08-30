@@ -110,7 +110,7 @@ public class ChildAlwaysOnTopTest {
         System.out.println("CASE 3 Completed");
         System.out.println();
 
-        if (errorLog.length() == 0)
+        if (errorLog.length() == 0) {
             System.out.println("All three cases passed !!");
         }
         else {
