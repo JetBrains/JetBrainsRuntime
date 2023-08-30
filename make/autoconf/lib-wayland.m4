@@ -156,14 +156,14 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
           if (test "x${with_vulkan_shader_compiler}" = x || test "x${with_vulkan_shader_compiler}" = xglslc); then
             UTIL_LOOKUP_PROGS(GLSLC, glslc)
             SHADER_COMPILER="$GLSLC"
-            VULKAN_SHADER_COMPILER="glslc --target-env=vulkan1.3 -mfmt=num -o"
+            VULKAN_SHADER_COMPILER="glslc --target-env=vulkan1.2 -mfmt=num -o"
           fi
 
           if (test "x${with_vulkan_shader_compiler}" = x || test "x${with_vulkan_shader_compiler}" = xglslangValidator) && \
               test "x$SHADER_COMPILER" = x; then
             UTIL_LOOKUP_PROGS(GLSLANG, glslangValidator)
             SHADER_COMPILER="$GLSLANG"
-            VULKAN_SHADER_COMPILER="glslangValidator --target-env vulkan1.3 -x -o"
+            VULKAN_SHADER_COMPILER="glslangValidator --target-env vulkan1.2 -x -o"
           fi
 
           if test "x$SHADER_COMPILER" != x; then
