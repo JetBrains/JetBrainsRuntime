@@ -34,6 +34,7 @@
 #import "JNIUtilities.h"
 #import "jni_util.h"
 #import "PropertiesUtilities.h"
+#import "sun_lwawt_macosx_CPlatformWindow.h"
 
 #import <Carbon/Carbon.h>
 
@@ -1069,6 +1070,43 @@ static jclass jc_CInputMethod = NULL;
 
 #define GET_CIM_CLASS_RETURN(ret) \
     GET_CLASS_RETURN(jc_CInputMethod, "sun/lwawt/macosx/CInputMethod", ret);
+
+- (NSInteger) windowLevel
+{
+#ifdef IM_DEBUG
+    fprintf(stderr, "AWTView InputMethod Selector Called : [windowLevel]\n");
+#endif // IM_DEBUG
+
+    NSWindow* const ownerWindow = [self window];
+    if (ownerWindow == nil) {
+        return NSNormalWindowLevel;
+    }
+
+    const NSWindowLevel ownerWindowLevel = [ownerWindow level];
+    if ( (ownerWindowLevel != NSNormalWindowLevel) && (ownerWindowLevel != NSFloatingWindowLevel) ) {
+        // the window level has been overridden, let's believe it
+        return ownerWindowLevel;
+    }
+
+    AWTWindow* const delegate = (AWTWindow*)[ownerWindow delegate];
+    if (delegate == nil) {
+        return ownerWindowLevel;
+    }
+
+    const jint styleBits = [delegate styleBits];
+
+    const BOOL isPopup = ( (styleBits & sun_lwawt_macosx_CPlatformWindow_IS_POPUP) != 0 );
+    if (isPopup) {
+        return NSPopUpMenuWindowLevel;
+    }
+
+    const BOOL isModal = ( (styleBits & sun_lwawt_macosx_CPlatformWindow_IS_MODAL) != 0 );
+    if (isModal) {
+        return NSFloatingWindowLevel;
+    }
+
+    return ownerWindowLevel;
+}
 
 - (void) insertText:(id)aString replacementRange:(NSRange)replacementRange
 {
