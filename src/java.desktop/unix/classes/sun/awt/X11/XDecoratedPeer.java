@@ -1423,7 +1423,14 @@ abstract class XDecoratedPeer extends XWindowPeer {
         if (syncSizeOnly && dimensions != null) {
             dimensions.setSize(r.width, r.height);
             dimensions.setInsets(ins);
-            xSetSize(r.width, r.height);
+            boolean isMaximized = target instanceof Frame f && (f.getExtendedState() & Frame.MAXIMIZED_BOTH) != 0;
+            // When a window is maximized, affirming its size through an explicit request to the X server
+            // may make the window fullscreen, which has undesirable consequences. Also, when a window
+            // already has the maximized attributes, it is already properly sized, so no need to
+            // resize explicitly.
+            if (!isMaximized) {
+                xSetSize(r.width, r.height);
+            }
         } else {
             dimensions = new WindowDimensions(r, ins, false);
             xSetBounds(r.x, r.y, r.width, r.height);
