@@ -56,18 +56,26 @@ jobs:
           - ppc64le
         include:
           - target-cpu: aarch64
-            debian-arch: arm64
             gnu-arch: aarch64
+            debian-arch: arm64
+            debian-repository: https://httpredir.debian.org/debian/
+            debian-version: bullseye
           - target-cpu: arm
-            debian-arch: armhf
             gnu-arch: arm
+            debian-arch: armhf
+            debian-repository: https://httpredir.debian.org/debian/
+            debian-version: bullseye
             gnu-abi: eabihf
           - target-cpu: s390x
-            debian-arch: s390x
             gnu-arch: s390x
+            debian-arch: s390x
+            debian-repository: https://httpredir.debian.org/debian/
+            debian-version: bullseye
           - target-cpu: ppc64le
-            debian-arch: ppc64el
             gnu-arch: powerpc64le
+            debian-arch: ppc64el
+            debian-repository: https://httpredir.debian.org/debian/
+            debian-version: bullseye
 
     steps:
       - name: 'Checkout the JDK source'
@@ -118,9 +126,9 @@ jobs:
           --verbose
           --include=fakeroot,symlinks,build-essential,libx11-dev,libxext-dev,libxrender-dev,libxrandr-dev,libxtst-dev,libxt-dev,libcups2-dev,libfontconfig1-dev,libasound2-dev,libfreetype6-dev,libpng-dev
           --resolve-deps
-          bullseye
+          ${{ matrix.debian-version }}
           sysroot
-          https://httpredir.debian.org/debian/
+          ${{ matrix.debian-repository }}
         if: steps.get-cached-sysroot.outputs.cache-hit != 'true'
 
       - name: 'Prepare sysroot'
