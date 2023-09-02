@@ -965,25 +965,24 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public boolean isWindowOpacitySupported() {
-        log.info("Not implemented: WLToolkit.isWindowOpacitySupported()");
         return false;
     }
 
     @Override
     public boolean isWindowShapingSupported() {
-        log.info("Not implemented: WLToolkit.isWindowShapingSupported()");
         return false;
     }
 
     @Override
     public boolean isWindowTranslucencySupported() {
-        log.info("Not implemented: WLToolkit.isWindowTranslucencySupported()");
-        return false;
+        return true;
     }
 
     @Override
     public boolean isTranslucencyCapable(GraphicsConfiguration gc) {
-        log.info("Not implemented: WLToolkit.isWindowTranslucencySupported()");
+        if (gc instanceof WLGraphicsConfig wlGraphicsConfig) {
+            return wlGraphicsConfig.isTranslucencyCapable();
+        }
         return false;
     }
 
