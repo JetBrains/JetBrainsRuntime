@@ -50,10 +50,10 @@ typedef uint32_t pixel_t;
 
 /**
  * Create a WayLand Surface Buffer Manager for a surface of size width x height
- * pixels with the background color rgb.
+ * pixels with the given background 32-bit pixel value and wl_shm_format.
  *
  * At least two buffers are associated with the manager:
- * - a drawing buffer that SurfaceDataOps operate with (see WLSurfaceData.c) and
+ * - a drawing buffer that SurfaceDataOps operate with (see WLSMSurfaceData.c) and
  * - a displaying buffer that is essentially wl_buffer attached to wl_surface.
  *
  * Wayland displays pixels from the displaying buffer and we draw pixels to
@@ -61,7 +61,7 @@ typedef uint32_t pixel_t;
  * the drawing to displaying buffer, synchronization, and sending
  * the appropriate notifications to Wayland.
  */
-WLSurfaceBufferManager * WLSBM_Create(jint width, jint height, jint scale, jint rgb);
+WLSurfaceBufferManager * WLSBM_Create(jint width, jint height, jint scale, jint bgPixel, jint wlShmFormat);
 
 /**
  * Free all resources allocated for the WayLand Surface Buffer Manager,
