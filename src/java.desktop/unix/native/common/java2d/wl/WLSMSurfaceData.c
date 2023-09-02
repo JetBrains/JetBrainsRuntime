@@ -30,10 +30,11 @@
 
 #include "jni.h"
 #include "jni_util.h"
+#include "SurfaceData.h"
 
 #include "awt.h"
 #include "Trace.h"
-#include "WLSurfaceData.h"
+#include "WLSMSurfaceData.h"
 #include "WLBuffers.h"
 
 struct WLSDOps {
@@ -42,7 +43,7 @@ struct WLSDOps {
     pthread_mutex_t     lock;
 };
 
-void
+static void
 logWSDOp(char* str, void* p, jint lockFlags)
 {
     J2dTrace(J2D_TRACE_INFO, "%s: %p, ", str, p);
@@ -63,25 +64,25 @@ typedef struct WLSDPrivate {
 } WLSDPrivate;
 
 JNIEXPORT WLSDOps * JNICALL
-WLSurfaceData_GetOps(JNIEnv *env, jobject sData)
+WLSMSurfaceData_GetOps(JNIEnv *env, jobject sData)
 {
 #ifdef HEADLESS
     return NULL;
 #else
     SurfaceDataOps *ops = SurfaceData_GetOps(env, sData);
     if (ops == NULL) {
-        SurfaceData_ThrowInvalidPipeException(env, "not an valid WLSurfaceData");
+        SurfaceData_ThrowInvalidPipeException(env, "not a valid WLSMSurfaceData");
     }
     return (WLSDOps *) ops;
 #endif /* !HEADLESS */
 }
 
 JNIEXPORT void JNICALL
-Java_sun_java2d_wl_WLSurfaceData_assignSurface(JNIEnv *env, jobject wsd,
-                                             jlong wlSurfacePtr)
+Java_sun_java2d_wl_WLSMSurfaceData_assignSurface(JNIEnv *env, jobject wsd,
+                                                 jlong wlSurfacePtr)
 {
 #ifndef HEADLESS
-    J2dTrace(J2D_TRACE_INFO, "WLSurfaceData_assignSurface\n");
+    J2dTrace(J2D_TRACE_INFO, "WLSMSurfaceData_assignSurface\n");
     WLSDOps *wsdo = (WLSDOps*)SurfaceData_GetOps(env, wsd);
     if (wsdo == NULL) {
         return;
@@ -92,10 +93,10 @@ Java_sun_java2d_wl_WLSurfaceData_assignSurface(JNIEnv *env, jobject wsd,
 }
 
 JNIEXPORT void JNICALL
-Java_sun_java2d_wl_WLSurfaceData_flush(JNIEnv *env, jobject wsd)
+Java_sun_java2d_wl_WLSMSurfaceData_flush(JNIEnv *env, jobject wsd)
 {
 #ifndef HEADLESS
-    J2dTrace(J2D_TRACE_INFO, "WLSurfaceData_flush\n");
+    J2dTrace(J2D_TRACE_INFO, "WLSMSurfaceData_flush\n");
     WLSDOps *wsdo = (WLSDOps*)SurfaceData_GetOps(env, wsd);
     if (wsdo == NULL) {
         return;
@@ -106,11 +107,11 @@ Java_sun_java2d_wl_WLSurfaceData_flush(JNIEnv *env, jobject wsd)
 }
 
 JNIEXPORT void JNICALL
-Java_sun_java2d_wl_WLSurfaceData_revalidate(JNIEnv *env, jobject wsd,
-                                             jint width, jint height, jint scale)
+Java_sun_java2d_wl_WLSMSurfaceData_revalidate(JNIEnv *env, jobject wsd,
+                                              jint width, jint height, jint scale)
 {
 #ifndef HEADLESS
-    J2dTrace(J2D_TRACE_INFO, "WLSurfaceData_revalidate to size %d x %d\n", width, height);
+    J2dTrace(J2D_TRACE_INFO, "WLSMSurfaceData_revalidate to size %d x %d\n", width, height);
     WLSDOps *wsdo = (WLSDOps*)SurfaceData_GetOps(env, wsd);
     if (wsdo == NULL) {
         return;
@@ -221,21 +222,22 @@ WLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
 }
 
 /*
- * Class:     sun_java2d_wl_WLSurfaceData
+ * Class:     sun_java2d_wl_WLSMSurfaceData
  * Method:    initOps
  * Signature: (Ljava/lang/Object;Ljava/lang/Object;I)V
  */
 JNIEXPORT void JNICALL
-Java_sun_java2d_wl_WLSurfaceData_initOps(JNIEnv *env, jobject wsd,
-                                         jint width,
-                                         jint height,
-                                         jint scale,
-                                         jint backgroundRGB)
+Java_sun_java2d_wl_WLSMSurfaceData_initOps(JNIEnv *env, jobject wsd,
+                                           jint width,
+                                           jint height,
+                                           jint scale,
+                                           jint backgroundRGB,
+                                           jint wlShmFormat)
 {
 #ifndef HEADLESS
 
     WLSDOps *wsdo = (WLSDOps*)SurfaceData_InitOps(env, wsd, sizeof(WLSDOps));
-    J2dTrace(J2D_TRACE_INFO, "WLSurfaceData_initOps: %p\n", wsdo);
+    J2dTrace(J2D_TRACE_INFO, "WLSMSurfaceData_initOps: %p\n", wsdo);
     if (wsdo == NULL) {
         JNU_ThrowOutOfMemoryError(env, "Initialization of SurfaceData failed.");
         return;
@@ -252,7 +254,7 @@ Java_sun_java2d_wl_WLSurfaceData_initOps(JNIEnv *env, jobject wsd,
     wsdo->sdOps.Unlock = WLSD_Unlock;
     wsdo->sdOps.GetRasInfo = WLSD_GetRasInfo;
     wsdo->sdOps.Dispose = WLSD_Dispose;
-    wsdo->bufferManager = WLSBM_Create(width, height, backgroundRGB, scale);
+    wsdo->bufferManager = WLSBM_Create(width, height, scale, backgroundRGB, wlShmFormat);
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
     // Recursive mutex is required because blit can be done with both source
