@@ -137,7 +137,7 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
     @Override
     public void setOpaque(boolean isOpaque) {
         if (!isOpaque) {
-            throw new UnsupportedOperationException();
+            throw new UnsupportedOperationException("Transparent windows are not supported");
         }
     }
 
