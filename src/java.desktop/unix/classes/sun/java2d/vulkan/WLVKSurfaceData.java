@@ -36,7 +36,6 @@ import sun.awt.wl.WLGraphicsConfig;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.SurfaceType;
 import sun.java2d.pipe.BufferedContext;
-import sun.java2d.wl.WLSurfaceData;
 import sun.java2d.wl.WLSurfaceDataExt;
 import sun.util.logging.PlatformLogger;
 
@@ -103,7 +102,7 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
         }
 
         public SurfaceData getReplacement() {
-            return WLSurfaceData.createData(peer);
+            throw new UnsupportedOperationException("Not supported yet");
         }
 
         @Override
