@@ -53,6 +53,7 @@ import sun.awt.wl.WLGraphicsConfig;
 import sun.awt.wl.WLGraphicsDevice;
 import sun.java2d.Surface;
 import sun.java2d.SurfaceData;
+import sun.java2d.loops.SurfaceType;
 import sun.java2d.pipe.hw.AccelGraphicsConfig;
 import sun.java2d.pipe.hw.AccelSurface;
 import sun.java2d.pipe.hw.AccelTypedVolatileImage;
@@ -148,13 +149,19 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
         }
     }
 
+    @Override
+    public ColorModel getColorModel() {
+        return getColorModel(Transparency.TRANSLUCENT);
+    }
+
+
     public boolean isDoubleBuffered() {
         return true;
     }
 
     @Override
     public String toString() {
-        return ("VKGraphicsConfig[" + getDevice().getIDstring() + "]");
+        return ("VKGraphicsConfig[" + getDevice().getIDstring() + "] " + super.toString());
     }
 
 
@@ -222,5 +229,14 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
     @Override
     public ContextCapabilities getContextCapabilities() {
         return vkCaps;
+    }
+
+    public SurfaceType getSurfaceType() {
+        return SurfaceType.IntArgb;
+    }
+
+    @Override
+    public boolean isTranslucencyCapable() {
+        return true;
     }
 }
