@@ -239,7 +239,8 @@ struct WLDrawBuffer {
  */
 struct WLSurfaceBufferManager {
     struct wl_surface * wlSurface;      // only accessed under showLock
-    int                 backgroundRGB;
+    int                 bgPixel;
+    int                 format;         // one of enum wl_shm_format
 
     /**
      * ID of the "drawing" frame to be sent to Wayland.
@@ -409,7 +410,7 @@ SurfaceBufferCreate(WLSurfaceBufferManager * manager)
                                                  buffer->width,
                                                  buffer->height,
                                                  stride,
-                                                 WL_SHM_FORMAT_XRGB8888);
+                                                 manager->format);
     wl_buffer_add_listener(buffer->wlBuffer,
                            &wl_buffer_listener,
                            manager);
@@ -737,7 +738,7 @@ DrawBufferCreate(WLSurfaceBufferManager * manager)
     manager->bufferForDraw.data = malloc(DrawBufferSizeInBytes(manager));
 
     for (jint i = 0; i < DrawBufferSizeInPixels(manager); ++i) {
-        manager->bufferForDraw.data[i] = manager->backgroundRGB;
+        manager->bufferForDraw.data[i] = manager->bgPixel;
     }
 }
 
@@ -751,7 +752,7 @@ DrawBufferDestroy(WLSurfaceBufferManager * manager)
 }
 
 WLSurfaceBufferManager *
-WLSBM_Create(jint width, jint height, jint scale, jint rgb)
+WLSBM_Create(jint width, jint height, jint scale, jint bgPixel, jint wlShmFormat)
 {
     WLSurfaceBufferManager * manager = calloc(1, sizeof(WLSurfaceBufferManager));
     if (!manager) {
@@ -761,7 +762,8 @@ WLSBM_Create(jint width, jint height, jint scale, jint rgb)
     manager->bufferForDraw.width = width;
     manager->bufferForDraw.height = height;
     manager->scale = scale;
-    manager->backgroundRGB = rgb;
+    manager->bgPixel = bgPixel;
+    manager->format = wlShmFormat;
 
     pthread_mutex_init(&manager->showLock, NULL);
 
