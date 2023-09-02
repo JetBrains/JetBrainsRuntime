@@ -24,15 +24,13 @@
  * questions.
  */
 
-#include "SurfaceData.h"
-
 typedef struct WLSDOps WLSDOps;
 
 /*
  * This function returns a pointer to a native WLSDOps structure
  * for accessing the indicated WL SurfaceData Java object. It
  * verifies that the indicated SurfaceData object is an instance
- * of WLSurfaceData before returning and will return NULL if the
+ * of WLSMSurfaceData before returning and will return NULL if the
  * wrong SurfaceData object is being accessed.  This function will
  * throw the appropriate Java exception if it returns NULL so that
  * the caller can simply return.
@@ -47,4 +45,4 @@ typedef struct WLSDOps WLSDOps;
  *      JNI Critical locks unreleased.
  */
 JNIEXPORT WLSDOps * JNICALL
-WLSurfaceData_GetOps(JNIEnv *env, jobject sData);
+WLSMSurfaceData_GetOps(JNIEnv *env, jobject sData);
