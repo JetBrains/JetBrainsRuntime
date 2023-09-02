@@ -1,56 +1,60 @@
+/*
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright 2023 JetBrains s.r.o.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
 package sun.awt.wl;
 
 import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.awt.image.ColorModel;
-import java.awt.image.DirectColorModel;
 import java.awt.image.WritableRaster;
 
 import sun.awt.image.OffScreenImage;
-import sun.awt.image.SunVolatileImage;
-import sun.awt.image.SurfaceManager;
-import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.SurfaceType;
-import sun.java2d.wl.WLSurfaceData;
-import sun.java2d.wl.WLVolatileSurfaceManager;
 
-public class WLGraphicsConfig extends GraphicsConfiguration
-        implements SurfaceManager.Factory {
+public abstract class WLGraphicsConfig extends GraphicsConfiguration {
     private final WLGraphicsDevice device;
     private final int width;
     private final int height;
     private final int scale;
 
-    public WLGraphicsConfig(WLGraphicsDevice device, int width, int height, int scale) {
+    protected WLGraphicsConfig(WLGraphicsDevice device, int width, int height, int scale) {
         this.device = device;
         this.width = width;
         this.height = height;
         this.scale = scale;
     }
 
-    public boolean differsFrom(int width, int height, int scale) {
+    boolean differsFrom(int width, int height, int scale) {
         return width != this.width || height != this.height || scale != this.scale;
     }
 
     @Override
     public WLGraphicsDevice getDevice() {
         return device;
-    }
-
-    @Override
-    public ColorModel getColorModel() {
-        return new DirectColorModel(24, 0xff0000, 0xff00, 0xff);
-    }
-
-    @Override
-    public ColorModel getColorModel(int transparency) {
-        return switch (transparency) {
-            case Transparency.OPAQUE -> getColorModel();
-            case Transparency.BITMASK -> new DirectColorModel(25, 0xff0000, 0xff00, 0xff, 0x1000000);
-            case Transparency.TRANSLUCENT -> new DirectColorModel(32, 0xff0000, 0xff00, 0xff, 0xff000000);
-            default -> null;
-        };
     }
 
     public Image createAcceleratedImage(Component target,
@@ -80,26 +84,15 @@ public class WLGraphicsConfig extends GraphicsConfiguration
         return new Rectangle(width, height);
     }
 
-    public SurfaceType getSurfaceType() {
-        return SurfaceType.IntArgb;
-    }
-
-    public SurfaceData createSurfaceData(WLComponentPeer peer) {
-        return WLSurfaceData.createData(peer);
-    }
-
     public int getScale() {
         return scale;
     }
 
-    @Override
-    public String toString() {
-        return String.format("WLGraphicsConfig: %dx%d %dx scale", width, height, scale);
-    }
+    public abstract SurfaceType getSurfaceType();
+    public abstract SurfaceData createSurfaceData(WLComponentPeer peer);
 
     @Override
-    public VolatileSurfaceManager createVolatileManager(SunVolatileImage image,
-                                                        Object context) {
-        return new WLVolatileSurfaceManager(image, context);
+    public String toString() {
+        return String.format("%dx%d %dx scale", width, height, scale);
     }
 }
