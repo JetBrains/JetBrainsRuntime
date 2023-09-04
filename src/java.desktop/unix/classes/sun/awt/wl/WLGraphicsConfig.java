@@ -73,10 +73,9 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
 
     @Override
     public AffineTransform getNormalizingTransform() {
-        // TODO: may not be able to implement this fully, but we can try
-        // obtaining physical width/height from wl_output.geometry event.
-        // Those may be 0, of course.
-        return getDefaultTransform();
+        double xScale = device.getResolutionX(this) / 72.0;
+        double yScale = device.getResolutionY(this) / 72.0;
+        return new AffineTransform(xScale, 0.0, 0.0, yScale, 0.0, 0.0);
     }
 
     @Override
