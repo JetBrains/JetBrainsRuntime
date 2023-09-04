@@ -383,23 +383,24 @@ public class WLComponentPeer implements ComponentPeer {
             WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_MOVED));
         }
 
-        synchronized(sizeLock) {
-            final boolean sizeChanged = this.width != width || this.height != height;
-            if (sizeChanged) {
+        Rectangle oldBounds = getVisibleBounds();
+        final boolean sizeChanged = oldBounds.width != width || oldBounds.height != height;
+        if (sizeChanged) {
+            synchronized (sizeLock) {
                 this.width = width;
                 this.height = height;
-                if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                    log.fine(String.format("%s is resizing its buffer to %dx%d with %dx scale", this, getBufferWidth(), getBufferHeight(), getBufferScale()));
-                }
-                SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
-                        getBufferWidth(), getBufferHeight(), getBufferScale());
-                updateWindowGeometry();
-                layout();
-
-                WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_RESIZED));
             }
-            postPaintEvent();
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine(String.format("%s is resizing its buffer to %dx%d with %dx scale", this, getBufferWidth(), getBufferHeight(), getBufferScale()));
+            }
+            SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
+                    getBufferWidth(), getBufferHeight(), getBufferScale());
+            updateWindowGeometry();
+            layout();
+
+            WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_RESIZED));
         }
+        postPaintEvent();
     }
 
     public Rectangle getVisibleBounds() {
