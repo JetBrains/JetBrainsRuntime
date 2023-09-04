@@ -35,8 +35,10 @@ jb/java/awt/CustomTitleBar/WindowResizeTest.java                                
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java                             nobug generic-all
 jb/java/awt/CustomTitleBar/WindowVisibilityTest.java                                nobug generic-all
 
+java/awt/Focus/6378278/InputVerifierTest.java                                       JBR-5799 windows-all
 jb/java/awt/Focus/ModalDialogOverSiblingTest.java                                   JBR-5716 windows-all
 jb/java/awt/Focus/RequestFocusInParent.java                                         JBR-5715 windows-all
+java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java          JBR-5513 linux-all
 jb/java/awt/Window/ZOrderOnModalDialogActivation.java                               JBR-5713 windows-all
 jdk/editpad/EditPadTest.java                                                        JBR-5712 windows-all
 
