@@ -234,7 +234,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      * the next click is considered separate and not part of multi-click event.
      * @return maximum milliseconds between same mouse button clicks for them to be a multiclick
      */
-    static long getMulticlickTime() {
+    static int getMulticlickTime() {
         /* TODO: get from the system somehow */
         return AWT_MULTICLICK_DEFAULT_TIME_MS;
     }
@@ -814,8 +814,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public int getScreenResolution() {
-        // TODO
-        return 150;
+        var defaultScreen = (WLGraphicsDevice)WLGraphicsEnvironment.getSingleInstance().getDefaultScreenDevice();
+        return defaultScreen.getResolution();
     }
 
     /**
@@ -855,8 +855,14 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     protected void initializeDesktopProperties() {
         super.initializeDesktopProperties();
 
+        desktopProperties.put("DnD.Autoscroll.initialDelay", 50);
+        desktopProperties.put("DnD.Autoscroll.interval", 50);
+        desktopProperties.put("DnD.Autoscroll.cursorHysteresis", 5);
+        desktopProperties.put("Shell.shellFolderManager", "sun.awt.shell.ShellFolderManager");
+
         if (!GraphicsEnvironment.isHeadless()) {
-            desktopProperties.put("awt.mouse.numButtons", MOUSE_BUTTONS_COUNT);
+            desktopProperties.put("awt.multiClickInterval", getMulticlickTime());
+            desktopProperties.put("awt.mouse.numButtons", getNumberOfButtons());
         }
     }
 
@@ -994,6 +1000,17 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     @Override
     public void sync() {
         flushImpl();
+    }
+
+    @Override
+    public Insets getScreenInsets(final GraphicsConfiguration gc) {
+        final GraphicsDevice gd = gc.getDevice();
+        if (gd instanceof WLGraphicsDevice device) {
+            Insets insets = device.getInsets();
+            return (Insets) insets.clone();
+        } else {
+            return super.getScreenInsets(gc);
+        }
     }
 
     private native int readEvents();
