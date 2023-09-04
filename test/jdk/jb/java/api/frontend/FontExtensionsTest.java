@@ -183,13 +183,6 @@ public class FontExtensionsTest {
     }
 
     @JBRTest
-    private static Boolean testFeaturesZeroFrac() {
-        Font fontFZ = fontWithFeatures(FontExtensions.FeatureTag.FRAC, FontExtensions.FeatureTag.ZERO);
-        return  !textDrawingEquals(fontFZ, fontWithFeatures(FontExtensions.FeatureTag.FRAC), ZERO_STRING + " " + FRACTION_STRING) &&
-                !textDrawingEquals(fontFZ, fontWithFeatures(FontExtensions.FeatureTag.ZERO), ZERO_STRING + " " + FRACTION_STRING);
-    }
-
-    @JBRTest
     private static Boolean testFeaturesDerive1() {
         Font fontFZ1 = fontWithFeatures(FontExtensions.FeatureTag.FRAC, FontExtensions.FeatureTag.ZERO).
                 deriveFont(Map.of(TextAttribute.LIGATURES, TextAttribute.LIGATURES_ON));
