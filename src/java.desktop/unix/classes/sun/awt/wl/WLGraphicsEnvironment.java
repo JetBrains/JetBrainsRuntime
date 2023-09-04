@@ -77,6 +77,9 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
         if (log.isLoggable(Level.FINE)) {
             log.fine("Vulkan rendering enabled: " + (vulkanEnabled?"YES":"NO"));
         }
+
+        // Make sure the toolkit is loaded because otherwise this GE is going to be empty
+        WLToolkit.isInitialized();
     }
 
     private static native boolean initVKWL(boolean verbose, int deviceNumber);
@@ -118,7 +121,8 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
 
     private final List<WLGraphicsDevice> devices = new ArrayList<>(5);
 
-    private void notifyOutputConfigured(String name, int wlID, int x, int y, int width, int height,
+    private void notifyOutputConfigured(String name, String make, String model, int wlID,
+                                        int x, int y, int width, int height, int widthMm, int heightMm,
                                         int subpixel, int transform, int scale) {
         // Called from native code whenever a new output appears or an existing one changes its properties
         // NB: initially called during WLToolkit.initIDs() on the main thread; later on EDT.
@@ -126,6 +130,10 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
             log.fine(String.format("Output configured id=%d at (%d, %d) %dx%d %dx scale", wlID, x, y, width, height, scale));
         }
 
+        String humanID =
+                (name != null ? name + " " : "")
+                + (make != null ? make + " " : "")
+                + (model != null ? model : "");
         synchronized (devices) {
             boolean newOutput = true;
             for (int i = 0; i < devices.size(); i++) {
@@ -133,9 +141,10 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
                 if (gd.getID() == wlID) {
                     newOutput = false;
                     if (gd.isSameDeviceAs(wlID, x, y)) {
-                        gd.updateConfiguration(name, width, height, scale);
+                        gd.updateConfiguration(humanID, width, height, scale);
                     } else {
-                        final WLGraphicsDevice updatedDevice = WLGraphicsDevice.createWithConfiguration(wlID, name, x, y, width, height, scale);
+                        final WLGraphicsDevice updatedDevice = WLGraphicsDevice.createWithConfiguration(wlID, humanID,
+                                x, y, width, height, widthMm, heightMm, scale);
                         devices.set(i, updatedDevice);
                         gd.invalidate(updatedDevice);
                     }
@@ -143,7 +152,8 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
                 }
             }
             if (newOutput) {
-                final WLGraphicsDevice gd = WLGraphicsDevice.createWithConfiguration(wlID, name, x, y, width, height, scale);
+                final WLGraphicsDevice gd = WLGraphicsDevice.createWithConfiguration(wlID, humanID, x, y,
+                        width, height, widthMm, heightMm, scale);
                 devices.add(gd);
             }
         }
