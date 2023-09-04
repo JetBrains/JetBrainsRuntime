@@ -43,11 +43,15 @@ typedef struct WLOutput {
     int32_t y;
     int32_t width;
     int32_t height;
+    int32_t width_mm;
+    int32_t height_mm;
 
     uint32_t subpixel;
     uint32_t transform;
     uint32_t scale;
 
+    char *   make;
+    char *   model;
     char *   name;
 } WLOutput;
 
@@ -79,6 +83,10 @@ wl_output_geometry(
     output->y = y;
     output->subpixel = subpixel;
     output->transform = transform;
+    output->width_mm = physical_width;
+    output->height_mm = physical_height;
+    output->make = make != NULL ? strdup(make) : NULL;
+    output->model = model != NULL ? strdup(model) : NULL;
 }
 
 static void
@@ -138,16 +146,23 @@ wl_output_done(
 
     JNIEnv *env = getEnv();
     jobject obj = (*env)->CallStaticObjectMethod(env, geClass, getSingleInstanceMID);
+    JNU_CHECK_EXCEPTION(env);
     CHECK_NULL_THROW_IE(env, obj, "WLGraphicsEnvironment.getSingleInstance() returned null");
-    jstring outputName = output->name ? JNU_NewStringPlatform(env, output->name) : NULL;
+    jstring name = output->name ? JNU_NewStringPlatform(env, output->name) : NULL;
+    jstring make = output->make ? JNU_NewStringPlatform(env, output->make) : NULL;
+    jstring model = output->model ? JNU_NewStringPlatform(env, output->model) : NULL;
     JNU_CHECK_EXCEPTION(env);
     (*env)->CallVoidMethod(env, obj, notifyOutputConfiguredMID,
-                           outputName,
+                           name,
+                           make,
+                           model,
                            output->id,
                            output->x,
                            output->y,
                            output->width,
                            output->height,
+                           output->width_mm,
+                           output->height_mm,
                            (jint)output->subpixel,
                            (jint)output->transform,
                            (jint)output->scale);
@@ -182,7 +197,7 @@ WLGraphicsEnvironment_initIDs
     CHECK_NULL_RETURN(
                     notifyOutputConfiguredMID = (*env)->GetMethodID(env, clazz,
                                                                     "notifyOutputConfigured",
-                                                                    "(Ljava/lang/String;IIIIIIII)V"),
+                                                                    "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IIIIIIIIII)V"),
                     JNI_FALSE);
     CHECK_NULL_RETURN(
                     notifyOutputDestroyedMID = (*env)->GetMethodID(env, clazz,
@@ -221,6 +236,8 @@ WLOutputDeregister(struct wl_registry *wl_registry, uint32_t id)
             wl_output_destroy(cur->wl_output);
             WLOutput * next = cur->next;
             free(cur->name);
+            free(cur->make);
+            free(cur->model);
             free(cur);
             cur = next;
         } else {
