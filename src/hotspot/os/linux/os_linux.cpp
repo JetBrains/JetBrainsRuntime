@@ -936,7 +936,7 @@ bool os::create_thread(Thread* thread, ThreadType thr_type,
   }
   assert(is_aligned(stack_size, os::vm_page_size()), "stack_size not aligned");
 
-  if (!DisableTHPStackMitigation) {
+  if (THPStackMitigation) {
     // In addition to the glibc guard page that prevents inter-thread-stack hugepage
     // coalescing (see comment in os::Linux::default_guard_size()), we also make
     // sure the stack size itself is not huge-page-size aligned; that makes it much
@@ -1727,11 +1727,11 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen) {
   static  Elf32_Half running_arch_code=EM_SH;
 #elif  (defined RISCV)
   static  Elf32_Half running_arch_code=EM_RISCV;
-#elif  (defined LOONGARCH)
+#elif  (defined LOONGARCH64)
   static  Elf32_Half running_arch_code=EM_LOONGARCH;
 #else
     #error Method os::dll_load requires that one of following is defined:\
-        AARCH64, ALPHA, ARM, AMD64, IA32, IA64, LOONGARCH, M68K, MIPS, MIPSEL, PARISC, __powerpc__, __powerpc64__, RISCV, S390, SH, __sparc
+        AARCH64, ALPHA, ARM, AMD64, IA32, IA64, LOONGARCH64, M68K, MIPS, MIPSEL, PARISC, __powerpc__, __powerpc64__, RISCV, S390, SH, __sparc
 #endif
 
   // Identify compatibility class for VM's architecture and library's architecture
@@ -3086,7 +3086,7 @@ bool os::Linux::libnuma_init() {
 
 size_t os::Linux::default_guard_size(os::ThreadType thr_type) {
 
-  if (!DisableTHPStackMitigation) {
+  if (THPStackMitigation) {
     // If THPs are unconditionally enabled, the following scenario can lead to huge RSS
     // - parent thread spawns, in quick succession, multiple child threads
     // - child threads are slow to start
@@ -3773,15 +3773,15 @@ void os::large_page_init() {
   // coalesce small pages in thread stacks to huge pages. That costs a lot of memory and
   // is usually unwanted for thread stacks. Therefore we attempt to prevent THP formation in
   // thread stacks unless the user explicitly allowed THP formation by manually disabling
-  // -XX:+DisableTHPStackMitigation.
+  // -XX:-THPStackMitigation.
   if (HugePages::thp_mode() == THPMode::always) {
-    if (DisableTHPStackMitigation) {
-      log_info(pagesize)("JVM will *not* prevent THPs in thread stacks. This may cause high RSS.");
-    } else {
+    if (THPStackMitigation) {
       log_info(pagesize)("JVM will attempt to prevent THPs in thread stacks.");
+    } else {
+      log_info(pagesize)("JVM will *not* prevent THPs in thread stacks. This may cause high RSS.");
     }
   } else {
-    FLAG_SET_ERGO(DisableTHPStackMitigation, true); // Mitigation not needed
+    FLAG_SET_ERGO(THPStackMitigation, false); // Mitigation not needed
   }
 
   // 1) Handle the case where we do not want to use huge pages
