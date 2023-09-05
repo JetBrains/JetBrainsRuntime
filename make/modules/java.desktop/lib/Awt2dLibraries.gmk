@@ -334,6 +334,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/awt \
         common/java2d \
         common/font \
+	common/wayland \
         #
 
     LIBAWT_WLAWT_EXCLUDES := medialib debug opengl x11
@@ -354,6 +355,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/font \
         common/java2d/wl \
         common/java2d/vulkan \
+        common/wayland \
         #
 
     # Enable 'wakefield' extension for java.awt.Robot support
@@ -967,6 +969,8 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
   LIBSPLASHSCREEN_DISABLED_WARNINGS_gcc := sign-compare implicit-fallthrough shift-negative-value maybe-uninitialized unused-function type-limits unused-result
   LIBSPLASHSCREEN_DISABLED_WARNINGS_clang := deprecated-non-prototype format-nonliteral sign-compare incompatible-pointer-types deprecated-declarations
   LIBSPLASHSCREEN_DISABLED_WARNINGS_microsoft := 4018 4267 4244
+  LIBWLSPLASHSCREEN_HEADER_DIRS := common/wayland
+  LIBWLSPLASHSCREEN_EXTRA_SRC := common/wayland
 
   $(eval $(call SetupJdkLibrary, BUILD_LIBSPLASHSCREEN, \
       NAME := splashscreen, \
@@ -989,7 +993,7 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
 
   $(eval $(call SetupJdkLibrary, BUILD_LIBWLSPLASHSCREEN, \
       NAME := wlsplashscreen, \
-      EXTRA_SRC := $(LIBSPLASHSCREEN_EXTRA_SRC) libwlsplashscreen libsplashscreen, \
+      EXTRA_SRC := $(LIBSPLASHSCREEN_EXTRA_SRC) $(LIBWLSPLASHSCREEN_EXTRA_SRC) libwlsplashscreen libsplashscreen , \
       EXCLUDE_SRC_PATTERNS := $(LIBSPLASHSCREEN_EXCLUDE_SRC_PATTERNS), \
       DISABLED_WARNINGS_gcc := $(LIBSPLASHSCREEN_DISABLED_WARNINGS_gcc), \
       DISABLED_WARNINGS_clang := $(LIBSPLASHSCREEN_DISABLED_WARNINGS_clang), \
@@ -998,7 +1002,7 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
       EXCLUDES := $(LIBSPLASHSCREEN_EXCLUDES), \
       OPTIMIZATION := LOW, \
       CFLAGS := $(LIBWLSPLASHSCREEN_CFLAGS), \
-      EXTRA_HEADER_DIRS := libwlsplashscreen $(LIBSPLASHSCREEN_HEADER_DIRS), \
+      EXTRA_HEADER_DIRS := $(LIBSPLASHSCREEN_HEADER_DIRS) $(LIBWLSPLASHSCREEN_HEADER_DIRS) libwlsplashscreen, \
       LDFLAGS := $(LIBSPLASHSCREEN_LDFLAGS), \
       LDFLAGS_macosx := -L$(INSTALL_LIBRARIES_HERE), \
       LDFLAGS_windows := -delayload:user32.dll, \

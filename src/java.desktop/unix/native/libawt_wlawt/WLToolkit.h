@@ -25,7 +25,7 @@
 
 #include <wayland-client.h>
 #include <wayland-cursor.h>
-#include "xdg-shell-client-protocol.h"
+#include "../common/wayland/xdg-shell-client-protocol.h"
 
 #define CHECK_NULL_THROW_OOME_RETURN(env, x, msg, z)\
     do {                                        \

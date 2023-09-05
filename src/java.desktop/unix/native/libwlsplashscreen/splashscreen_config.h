@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright 2000-2023 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,28 +23,26 @@
  * questions.
  */
 
-/* platform-dependent definitions */
-
 #ifndef SPLASHSCREEN_CONFIG_H
 #define SPLASHSCREEN_CONFIG_H
 
 #include <unistd.h>
 #include <pthread.h>
-#include <signal.h>
-#include <inttypes.h>
-#include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#include "systemScale.h"
-
-#include <string.h>
+#include <stdbool.h>
 #include <sys/mman.h>
-#include <time.h>
-#include <unistd.h>
 #include <wayland-client.h>
-#include <stdio.h>
 #include <wayland-cursor.h>
+
+#include "systemScale.h"
 #include "xdg-shell-client-protocol.h"
+
+typedef struct Buffer {
+    void *data;
+    int size;
+    struct wl_buffer *wl_buffer;
+    bool available;
+} Buffer;
 
 typedef struct wayland_state {
     struct wl_display *wl_display;

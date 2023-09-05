@@ -71,13 +71,6 @@ typedef struct SplashImage
 
 #define SPLASH_COLOR_MAP_SIZE 0x100
 
-typedef struct Buffer {
-    void *data;
-    int size;
-    struct wl_buffer *wl_buffer;
-    bool available;
-} Buffer;
-
 typedef struct Splash
 {
     ImageFormat screenFormat;   /* must be preset before image decoding */

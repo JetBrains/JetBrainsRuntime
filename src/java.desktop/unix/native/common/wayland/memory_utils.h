@@ -1,7 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
- *
+ * Copyright 2000-2023 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,19 +23,12 @@
  * questions.
  */
 
-#ifndef SPLASHSCREEN_CONFIG_COMMON_H
-#define SPLASHSCREEN_CONFIG_COMMON_H
+#ifndef MEMORY_UTILS_H
+#define MEMORY_UTILS_H
 
-#include <inttypes.h>
+#include <stdlib.h>
 
-typedef uint32_t rgbquad_t;
-typedef uint16_t word_t;
-typedef uint8_t byte_t;
+int
+AllocateSharedMemoryFile(size_t size, const char* baseName);
 
-#define SPLASHCTL_QUIT          'Q'
-#define SPLASHCTL_UPDATE        'U'
-#define SPLASHCTL_RECONFIGURE   'R'
-
-#define INLINE static
-
-#endif
+#endif // MEMORY_UTILS_H

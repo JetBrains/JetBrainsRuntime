@@ -24,23 +24,15 @@
  */
 
 #include "splashscreen_impl.h"
+
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/shape.h>
 #include <X11/Xmd.h>
 #include <X11/Xatom.h>
 #include <X11/cursorfont.h>
-#include <sys/types.h>
 #include <pthread.h>
-#include <signal.h>
-#include <unistd.h>
-#include <sys/time.h>
-#include <errno.h>
 #include <iconv.h>
-#include <langinfo.h>
-#include <locale.h>
-#include <fcntl.h>
-#include <poll.h>
 #include <sizecalc.h>
 #include "jni.h"
 

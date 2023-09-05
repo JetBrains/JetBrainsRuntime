@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright 2000-2023 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,76 +24,26 @@
  */
 
 #include "splashscreen_impl.h"
-#include <sys/types.h>
-#include <pthread.h>
-#include <signal.h>
+
 #include <unistd.h>
-#include <sys/time.h>
 #include <errno.h>
-#include <iconv.h>
-#include <langinfo.h>
-#include <locale.h>
 #include <fcntl.h>
-#include <poll.h>
-#include <sizecalc.h>
+
 #include "jni.h"
+#include "memory_utils.h"
 
-const int BUFFERS_COUNT = 3;
-
+static const int BUFFERS_COUNT = 3;
 static bool is_cursor_animated = false;
 
-#define NULL_CHECK(val, message)  if (val == NULL) { fprintf(stderr, message); return false; }
+#define NULL_CHECK(val, message)  if (val == NULL) { fprintf(stderr, "%s\n", message); return false; }
 
 void SplashReconfigureNow(Splash * splash);
 void SplashRedrawWindow(Splash * splash);
 
-static void
-randname(char *buf) {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    long r = ts.tv_nsec;
-    for (int i = 0; i < 6; ++i) {
-        buf[i] = 'A'+(r&15)+(r&16)*2;
-        r >>= 5;
-    }
-}
-
-static int
-create_shm_file(void) {
-    int retries = 100;
-    do {
-        char name[] = "/wl_shm-XXXXXX";
-        randname(name + sizeof(name) - 7);
-        --retries;
-        int fd = shm_open(name, O_RDWR | O_CREAT | O_EXCL, 0600);
-        if (fd >= 0) {
-            shm_unlink(name);
-            return fd;
-        }
-    } while (retries > 0 && errno == EEXIST);
-    return -1;
-}
-
-static int
-allocate_shm_file(size_t size) {
-    int fd = create_shm_file();
-    if (fd < 0)
-        return -1;
-    int ret;
-    do {
-        ret = ftruncate(fd, size);
-    } while (ret < 0 && errno == EINTR);
-    if (ret < 0) {
-        close(fd);
-        return -1;
-    }
-    return fd;
-}
-
 static bool
 alloc_buffer(int width, int height, struct wl_shm *wl_shm, Buffer *buffer, int format, int format_size) {
     int size = width * height * format_size;
-    int fd = allocate_shm_file(size);
+    int fd = AllocateSharedMemoryFile(size, "splashscreen");
     buffer->size = size;
     if (fd == -1) {
         return false;
@@ -246,7 +196,7 @@ SplashCreateWindow(Splash * splash) {
 
     splash->native_scale = getNativeScaleFactor(NULL, 1);
     if (splash->native_scale == -1.0) {
-        fprintf(stderr, "Cannot get native scale\n");
+        fprintf(stderr, "%s\n", "Cannot get native scale");
         return false;
     }
 
@@ -279,7 +229,7 @@ SplashCreateWindow(Splash * splash) {
     for (int i = 0; i < BUFFERS_COUNT; i++) {
         if (!alloc_buffer(splash->width, splash->height,
                      splash->state->wl_shm, &splash->buffers[i], WL_SHM_FORMAT_XRGB8888, 4)) {
-            fprintf(stderr, "Cannot allocate enough memory\n");
+            fprintf(stderr, "%s\n", "Cannot allocate enough memory");
             return false;
         }
         wl_buffer_add_listener(splash->buffers[i].wl_buffer, &wl_buffer_listener, &splash->buffers[i]);
@@ -436,12 +386,12 @@ SplashDonePlatform(Splash * splash) {
     }
 
     xdg_surface_destroy(splash->state->xdg_surface);
+    wl_surface_destroy(splash->state->wl_surface);
     wl_shm_destroy(splash->state->wl_shm);
     xdg_wm_base_destroy(splash->state->xdg_wm_base);
-    wl_compositor_destroy(splash->state->wl_compositor);
     wl_subcompositor_destroy(splash->state->wl_subcompositor);
+    wl_compositor_destroy(splash->state->wl_compositor);
     wl_registry_destroy(splash->state->wl_registry);
-    wl_surface_destroy(splash->state->wl_surface);
 
     wl_display_flush(splash->state->wl_display);
     wl_display_disconnect(splash->state->wl_display);

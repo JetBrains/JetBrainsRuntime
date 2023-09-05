@@ -1,5 +1,7 @@
 /*
- * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
+ *
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,21 +27,13 @@
 
 #include "splashscreen_impl.h"
 
-#include <sys/types.h>
-#include <pthread.h>
-#include <signal.h>
-#include <unistd.h>
 #include <sys/time.h>
-#include <errno.h>
 #include <iconv.h>
 #include <langinfo.h>
 #include <locale.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <sizecalc.h>
-#include <stdbool.h>
-
-#include "jni.h"
 
 const int POLL_EVENT_TIMEOUT = 50;
 
