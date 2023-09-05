@@ -94,6 +94,7 @@ public class WLComponentPeer implements ComponentPeer {
     boolean paintPending = false;
     boolean isLayouting = false;
     boolean visible = false;
+    boolean surfaceAssigned = false;
 
     int x;
     int y;
@@ -146,6 +147,11 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     public void postPaintEvent(int x, int y, int w, int h) {
+        if (!hasSurface()) {
+           log.warning("WLComponentPeer: No surface. Skipping paint request x=" + x + " y=" + y +
+                        " width=" + w + " height=" + h);
+            return;
+        }
         PaintEvent event = PaintEventDispatcher.getPaintEventDispatcher().
                 createPaintEvent(target, x, y, w, h);
         if (event != null) {
@@ -165,6 +171,9 @@ public class WLComponentPeer implements ComponentPeer {
         return visible;
     }
 
+    boolean hasSurface() {
+        return surfaceAssigned;
+    }
 
     @Override
     public void reparent(ContainerPeer newContainer) {
@@ -266,6 +275,7 @@ public class WLComponentPeer implements ComponentPeer {
             performLocked(() -> {
                 WLToolkit.unregisterWLSurface(getWLSurface(nativePtr));
                 SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(0);
+                surfaceAssigned = false;
                 nativeHideFrame(nativePtr);
             });
         }
@@ -987,6 +997,7 @@ public class WLComponentPeer implements ComponentPeer {
         final long wlSurfacePtr = getWLSurface(nativePtr);
         // TODO: this needs to be done only once after wlSetVisible(true)
         SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(wlSurfacePtr);
+        surfaceAssigned = true;
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine(String.format("%s configured to %dx%d", this, newWidth, newHeight));
         }
