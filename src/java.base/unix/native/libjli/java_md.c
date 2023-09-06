@@ -660,7 +660,7 @@ void* SplashProcAddress(const char* name) {
             return NULL;
         }
         ret = JLI_Snprintf(splashPath, sizeof(splashPath), "%s/lib/%s",
-                     jrePath, SPLASHSCREEN_SO);
+                     jrePath, JNI_LIB_NAME(SPLASHSCREEN_SO));
 
         if (ret >= (int) sizeof(splashPath)) {
             JLI_ReportErrorMessage(JRE_ERROR11);

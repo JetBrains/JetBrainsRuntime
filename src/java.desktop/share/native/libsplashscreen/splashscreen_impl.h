@@ -26,7 +26,10 @@
 #ifndef SPLASHSCREEN_IMPL_H
 #define SPLASHSCREEN_IMPL_H
 
+#if !defined(WITH_WIN32)
 #include "splashscreen_config_common.h"
+#endif
+
 #include "splashscreen_config.h"
 #include "splashscreen_gfx.h"
 #include "jni.h"

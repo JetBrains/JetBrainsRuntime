@@ -176,7 +176,7 @@ static int  KnownVMIndex(const char* name);
 static void FreeKnownVMs();
 static jboolean IsWildCardEnabled();
 
-const char* SPLASHSCREEN_SO = JNI_LIB_NAME("splashscreen");
+const char* SPLASHSCREEN_SO = "splashscreen";
 
 #define SOURCE_LAUNCHER_MAIN_ENTRY "jdk.compiler/com.sun.tools.javac.launcher.Main"
 
@@ -1082,7 +1082,7 @@ SelectVersion(int argc, char **argv, char **main_class)
             } else if (JLI_StrCCmp(arg, "-Djava.awt.headless=") == 0) {
                 headlessflag = 0;
             } else if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=WLToolkit") == 0) {
-                SPLASHSCREEN_SO = JNI_LIB_NAME("wlsplashscreen");
+                SPLASHSCREEN_SO = "wlsplashscreen";
             } else if (JLI_StrCCmp(arg, "-splash:") == 0) {
                 splash_file_name = arg+8;
             }
