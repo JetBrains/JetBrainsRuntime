@@ -29,6 +29,8 @@
  * @requires (jdk.version.major >= 8 & os.family == "mac")
  */
 
+import sun.lwawt.macosx.LWCToolkit;
+
 import static java.awt.event.KeyEvent.*;
 
 public class KeyCodesTest implements Runnable {
@@ -140,6 +142,10 @@ public class KeyCodesTest implements Runnable {
     }
 
     private void verify(String typed, int vk, String layout, int key, int charKeyCode, int location, int modifiers) {
+        if (!LWCToolkit.isKeyboardLayoutInstalled(layout)) {
+            System.out.printf("WARNING: Skipping key code test, vk = %d, layout = %s: this layout is not installed", vk, layout);
+            return;
+        }
         char ch = (typed.length() == 1) ? typed.charAt(0) : 0;
         InputMethodTest.section("Key code test: " + vk + ", layout: " + layout + ", char: " + String.format("U+%04X", (int)ch));
         InputMethodTest.layout(layout);
