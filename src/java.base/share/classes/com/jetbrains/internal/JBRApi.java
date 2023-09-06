@@ -25,9 +25,13 @@
 
 package com.jetbrains.internal;
 
+import sun.security.action.GetBooleanAction;
+
 import java.io.Serial;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -97,7 +101,8 @@ import static java.lang.invoke.MethodHandles.Lookup;
  * user to directly create proxy object.
  */
 public class JBRApi {
-    static final boolean VERBOSE = Boolean.getBoolean("jetbrains.api.verbose");
+    @SuppressWarnings("removal")
+    static final boolean VERBOSE = AccessController.doPrivileged(new GetBooleanAction("jetbrains.api.verbose"));
 
     private static final Map<String, RegisteredProxyInfo> registeredProxyInfoByInterfaceName = new HashMap<>();
     private static final Map<String, RegisteredProxyInfo> registeredProxyInfoByTargetName = new HashMap<>();
@@ -205,19 +210,22 @@ public class JBRApi {
             return this;
         }
 
+        @SuppressWarnings("removal")
         public Object build() {
-            ProxyInfo info = ProxyInfo.resolve(this.info);
-            if (info == null) return null;
-            ProxyGenerator generator = new ProxyGenerator(info);
-            if (!generator.areAllMethodsImplemented()) return null;
-            generator.defineClasses();
-            MethodHandle constructor = generator.findConstructor();
-            generator.init();
-            try {
-                return constructor.invoke();
-            } catch (Throwable e) {
-                throw new RuntimeException(e);
-            }
+            return AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
+                ProxyInfo info = ProxyInfo.resolve(this.info);
+                if (info == null) return null;
+                ProxyGenerator generator = new ProxyGenerator(info);
+                if (!generator.areAllMethodsImplemented()) return null;
+                generator.defineClasses();
+                MethodHandle constructor = generator.findConstructor();
+                generator.init();
+                try {
+                    return constructor.invoke();
+                } catch (Throwable e) {
+                    throw new RuntimeException(e);
+                }
+            });
         }
     }
 
