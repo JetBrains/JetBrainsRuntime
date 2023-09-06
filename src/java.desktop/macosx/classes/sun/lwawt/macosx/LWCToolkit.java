@@ -190,6 +190,10 @@ public final class LWCToolkit extends LWToolkit {
         return getKeyboardLayoutList(false).contains(layoutName);
     }
 
+    public static boolean isKeyboardLayoutInstalled(String layoutName) {
+        return getKeyboardLayoutList(true).contains(layoutName);
+    }
+
     // Listens to EDT state in invokeAndWait() and disposes the invocation event
     // when EDT becomes free but the invocation event is not yet dispatched (considered lost).
     // This prevents a deadlock and makes the invocation return some default result.
