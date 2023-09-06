@@ -83,6 +83,7 @@ public class WLComponentPeer implements ComponentPeer {
     };
 
     private long nativePtr;
+    private volatile boolean surfaceAssigned = false;
     protected final Component target;
 
     // Graphics devices this top-level component is visible on
@@ -94,7 +95,6 @@ public class WLComponentPeer implements ComponentPeer {
     boolean paintPending = false;
     boolean isLayouting = false;
     boolean visible = false;
-    boolean surfaceAssigned = false;
 
     int x;
     int y;
