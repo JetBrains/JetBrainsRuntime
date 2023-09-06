@@ -19,6 +19,7 @@ java/awt/Window/SlowMotion/SlowMotion.java JBR-5442 linux-all
 java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5442 linux-all
 
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java JBR-5442 linux-all
+javax/swing/system/6799345/TestShutdown.java JBR-6020 windows-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-4379 windows-all
 
 jb/java/awt/dnd/DnDScalingWithHIDPI/DnDScalingWithHIDPITest.java JBR-5442 linux-all

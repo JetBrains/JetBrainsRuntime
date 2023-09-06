@@ -1,7 +1,10 @@
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java      JBR-5538 windows-all
+java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java                  JBR-6027 windows-all
+java/awt/Focus/6378278/InputVerifierTest.java                                       JBR-5799 windows-all
+java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java         JBR-6031 windows-all
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java                 8286840 linux-all
-java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java                              JBR-4199 linux-5.4.0-1083-aws
-java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java              JBR-4199 linux-5.4.0-1083-aws
+java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java                              JBR-4199 linux-5.4.0-1083-aws,linux-5.4.0-1103-aws
+java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java              JBR-4199 linux-5.4.0-1083-aws,linux-5.4.0-1103-aws
 
 java/awt/Graphics/LineClipTest.java                                                 JBR-5071 linux-all
 java/awt/image/VolatileImage/DrawHugeImageTest.java                                 JBR-5071 linux-all
@@ -37,6 +40,7 @@ jb/java/awt/CustomTitleBar/WindowVisibilityTest.java                            
 
 jb/java/awt/Focus/ModalDialogOverSiblingTest.java                                   JBR-5716 windows-all
 jb/java/awt/Focus/RequestFocusInParent.java                                         JBR-5715 windows-all
+java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java          JBR-5513 linux-all
 jb/java/awt/Window/ZOrderOnModalDialogActivation.java                               JBR-5713 windows-all
 jdk/editpad/EditPadTest.java                                                        JBR-5712 windows-all
 
