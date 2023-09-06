@@ -646,7 +646,6 @@ SetExecname(char **argv)
 }
 
 /* --- Splash Screen shared library support --- */
-extern const char* SPLASHSCREEN_SO;
 static void* hSplashLib = NULL;
 
 void* SplashProcAddress(const char* name) {
@@ -659,8 +658,10 @@ void* SplashProcAddress(const char* name) {
             JLI_ReportErrorMessage(JRE_ERROR1);
             return NULL;
         }
+        const char* splash_screen_so = get_awt_toolkit() == TK_X11 ?
+                                      JNI_LIB_NAME("splashscreen") : JNI_LIB_NAME("wlsplashscreen");
         ret = JLI_Snprintf(splashPath, sizeof(splashPath), "%s/lib/%s",
-                     jrePath, JNI_LIB_NAME(SPLASHSCREEN_SO));
+                     jrePath, splash_screen_so);
 
         if (ret >= (int) sizeof(splashPath)) {
             JLI_ReportErrorMessage(JRE_ERROR11);

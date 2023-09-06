@@ -86,6 +86,12 @@ static jboolean _have_classpath = JNI_FALSE;
 static const char *_fVersion;
 static jboolean _wc_enabled = JNI_FALSE;
 
+static awt_toolkit _awt_toolkit = TK_X11; // default toolkit is X11
+
+awt_toolkit get_awt_toolkit() {
+    return _awt_toolkit;
+}
+
 /*
  * Entries for splash screen environment variables.
  * putenv is performed in SelectVersion. We need
@@ -126,6 +132,7 @@ static void SetApplicationClassPath(const char**);
 static void PrintJavaVersion(JNIEnv *env);
 static void PrintUsage(JNIEnv* env, jboolean doXUsage);
 static void ShowSettings(JNIEnv* env, char *optString);
+static void SetAwtToolkitName(JNIEnv *env, char *toolkit);
 static void ShowResolvedModules(JNIEnv* env);
 static void ListModules(JNIEnv* env);
 static void DescribeModule(JNIEnv* env, char* optString);
@@ -175,8 +182,6 @@ static void GrowKnownVMs(int minimum);
 static int  KnownVMIndex(const char* name);
 static void FreeKnownVMs();
 static jboolean IsWildCardEnabled();
-
-const char* SPLASHSCREEN_SO = "splashscreen";
 
 #define SOURCE_LAUNCHER_MAIN_ENTRY "jdk.compiler/com.sun.tools.javac.launcher.Main"
 
@@ -418,6 +423,10 @@ JavaMain(void* _args)
         exit(1);
     }
 
+    if (get_awt_toolkit() != TK_NONE) {
+        SetAwtToolkitName(env, get_awt_toolkit() == TK_X11 ? "XToolkit" : "WLToolkit");
+    }
+
     if (showSettings != NULL) {
         ShowSettings(env, showSettings);
         CHECK_EXCEPTION_LEAVE(1);
@@ -546,6 +555,7 @@ JavaMain(void* _args)
 #define MAIN_NONSTATIC 2
 
     jclass helperClass = GetLauncherHelperClass(env);
+
     jmethodID getMainType = (*env)->GetStaticMethodID(env, helperClass,
                                                       "getMainType",
                                                       "()I");
@@ -1082,7 +1092,9 @@ SelectVersion(int argc, char **argv, char **main_class)
             } else if (JLI_StrCCmp(arg, "-Djava.awt.headless=") == 0) {
                 headlessflag = 0;
             } else if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=WLToolkit") == 0) {
-                SPLASHSCREEN_SO = "wlsplashscreen";
+                _awt_toolkit = TK_WAYLAND;
+            } else if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=None") == 0) {
+                _awt_toolkit = TK_NONE;
             } else if (JLI_StrCCmp(arg, "-splash:") == 0) {
                 splash_file_name = arg+8;
             }
@@ -1868,6 +1880,22 @@ PrintJavaVersion(JNIEnv *env)
               );
 
     (*env)->CallStaticVoidMethod(env, ver, print, printTo);
+}
+
+/*
+ * Set manually awt.toolkit.name property
+ */
+static void
+SetAwtToolkitName(JNIEnv *env, char *toolkit)
+{
+    jmethodID setToolkit;
+    jstring jtoolkit;
+    jclass graphicInfoClass;
+
+    NULL_CHECK(graphicInfoClass = FindBootStrapClass(env, "sun/awt/PlatformGraphicsInfo"));
+    NULL_CHECK(jtoolkit = NewPlatformString(env, toolkit));
+    NULL_CHECK(setToolkit = (*env)->GetStaticMethodID(env, graphicInfoClass, "setToolkitID", "(Ljava/lang/String;)V"));
+    (*env)->CallStaticVoidMethod(env, graphicInfoClass, setToolkit, jtoolkit);
 }
 
 /*

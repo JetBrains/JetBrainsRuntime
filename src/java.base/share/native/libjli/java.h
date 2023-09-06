@@ -242,6 +242,14 @@ typedef struct {
     InvocationFunctions ifn;
 } JavaMainArgs;
 
+typedef enum awt_toolkit {
+    TK_NONE = 0,
+    TK_X11 = 1,
+    TK_WAYLAND = 2
+} awt_toolkit;
+
+awt_toolkit get_awt_toolkit();
+
 #define NULL_CHECK_RETURN_VALUE(NCRV_check_pointer, NCRV_return_value) \
     do { \
         if ((NCRV_check_pointer) == NULL) { \
