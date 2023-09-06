@@ -234,11 +234,11 @@ public class WLComponentPeer implements ComponentPeer {
         this.visible = v;
         if (this.visible) {
             final String title = getTitle();
-            final boolean isPopup = target instanceof Window window && window.getType() == Window.Type.POPUP;
+            final boolean isWlPopup = targetIsWlPopup();
             final int thisWidth = getWidth();
             final int thisHeight = getHeight();
             performLocked(() -> {
-                if (isPopup) {
+                if (isWlPopup) {
                     Window popup = (Window) target;
                     final Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
                     final int parentWidth = popupParent.getWidth();
@@ -279,6 +279,16 @@ public class WLComponentPeer implements ComponentPeer {
                 nativeHideFrame(nativePtr);
             });
         }
+    }
+
+    /**
+     * Returns true if our target should be treated as a popup in Wayland's sense,
+     * i.e. it has to have a parent to position relative to.
+     */
+    private boolean targetIsWlPopup() {
+        return target instanceof Window window
+                && window.getType() == Window.Type.POPUP
+                && AWTAccessor.getWindowAccessor().getPopupParent(window) != null;
     }
 
     void configureWLSurface() {
@@ -1002,11 +1012,11 @@ public class WLComponentPeer implements ComponentPeer {
             log.fine(String.format("%s configured to %dx%d", this, newWidth, newHeight));
         }
 
-        final boolean isPopup = target instanceof Window window && window.getType() == Window.Type.POPUP;
+        boolean isWlPopup = targetIsWlPopup();
 
         if (newWidth != 0 && newHeight != 0) performUnlocked(() ->target.setSize(newWidth, newHeight));
 
-        if (newWidth == 0 || newHeight == 0 || isPopup) {
+        if (newWidth == 0 || newHeight == 0 || isWlPopup) {
             // From xdg-shell.xml: "If the width or height arguments are zero,
             // it means the client should decide its own window dimension".
 
