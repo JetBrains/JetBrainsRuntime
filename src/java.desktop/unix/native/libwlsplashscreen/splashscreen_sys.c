@@ -25,8 +25,6 @@
 
 #include "splashscreen_impl.h"
 
-#include <unistd.h>
-#include <errno.h>
 #include <fcntl.h>
 
 #include "jni.h"

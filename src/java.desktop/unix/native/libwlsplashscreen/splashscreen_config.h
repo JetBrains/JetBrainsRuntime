@@ -26,7 +26,6 @@
 #ifndef SPLASHSCREEN_CONFIG_H
 #define SPLASHSCREEN_CONFIG_H
 
-#include <unistd.h>
 #include <pthread.h>
 #include <string.h>
 #include <stdbool.h>
