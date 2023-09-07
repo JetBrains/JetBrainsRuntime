@@ -86,10 +86,10 @@ static jboolean _have_classpath = JNI_FALSE;
 static const char *_fVersion;
 static jboolean _wc_enabled = JNI_FALSE;
 
-static awt_toolkit _awt_toolkit = TK_X11; // default toolkit is X11
+static awt_toolkit _linux_awt_toolkit = TK_X11; // default toolkit for linux is X11
 
-awt_toolkit get_awt_toolkit() {
-    return _awt_toolkit;
+awt_toolkit get_linux_awt_toolkit() {
+    return _linux_awt_toolkit;
 }
 
 /*
@@ -424,8 +424,8 @@ JavaMain(void* _args)
     }
 
 #ifdef __linux__
-    if (get_awt_toolkit() != TK_NONE) {
-        SetAwtToolkitName(env, get_awt_toolkit() == TK_X11 ? "XToolkit" : "WLToolkit");
+    if (get_linux_awt_toolkit() != TK_NONE) {
+        SetAwtToolkitName(env, get_linux_awt_toolkit() == TK_X11 ? "XToolkit" : "WLToolkit");
     }
 #endif
 
@@ -557,7 +557,6 @@ JavaMain(void* _args)
 #define MAIN_NONSTATIC 2
 
     jclass helperClass = GetLauncherHelperClass(env);
-
     jmethodID getMainType = (*env)->GetStaticMethodID(env, helperClass,
                                                       "getMainType",
                                                       "()I");
@@ -1094,9 +1093,9 @@ SelectVersion(int argc, char **argv, char **main_class)
             } else if (JLI_StrCCmp(arg, "-Djava.awt.headless=") == 0) {
                 headlessflag = 0;
             } else if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=WLToolkit") == 0) {
-                _awt_toolkit = TK_WAYLAND;
+                _linux_awt_toolkit = TK_WAYLAND;
             } else if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=None") == 0) {
-                _awt_toolkit = TK_NONE;
+                _linux_awt_toolkit = TK_NONE;
             } else if (JLI_StrCCmp(arg, "-splash:") == 0) {
                 splash_file_name = arg+8;
             }

@@ -248,7 +248,7 @@ typedef enum awt_toolkit {
     TK_WAYLAND = 2
 } awt_toolkit;
 
-awt_toolkit get_awt_toolkit();
+awt_toolkit get_linux_awt_toolkit();
 
 #define NULL_CHECK_RETURN_VALUE(NCRV_check_pointer, NCRV_return_value) \
     do { \

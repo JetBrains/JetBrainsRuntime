@@ -658,8 +658,13 @@ void* SplashProcAddress(const char* name) {
             JLI_ReportErrorMessage(JRE_ERROR1);
             return NULL;
         }
-        const char* splash_screen_so = get_awt_toolkit() == TK_X11 ?
-                                      JNI_LIB_NAME("splashscreen") : JNI_LIB_NAME("wlsplashscreen");
+
+#if defined(__linux__)
+        const char* splash_screen_so = get_linux_awt_toolkit() == TK_WAYLAND ?
+                                      JNI_LIB_NAME("wlsplashscreen") : JNI_LIB_NAME("splashscreen");
+#else
+        const char* splash_screen_so = JNI_LIB_NAME("splashscreen");
+#endif
         ret = JLI_Snprintf(splashPath, sizeof(splashPath), "%s/lib/%s",
                      jrePath, splash_screen_so);
 
