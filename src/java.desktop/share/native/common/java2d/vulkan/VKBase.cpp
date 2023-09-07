@@ -34,6 +34,8 @@
 #define VALIDATION_LAYER_NAME "VK_LAYER_KHRONOS_validation"
 static const uint32_t REQUIRED_VULKAN_VERSION = VK_MAKE_API_VERSION(0, 1, 2, 0);
 
+bool VKGraphicsEnvironment::_verbose = false;
+int VKGraphicsEnvironment::_requested_device_number = -1;
 std::unique_ptr<VKGraphicsEnvironment> VKGraphicsEnvironment::_ge_instance = nullptr;
 
 // ========== Graphics environment ==========
@@ -187,11 +189,33 @@ VKGraphicsEnvironment::VKGraphicsEnvironment() :
         throw std::runtime_error("Vulkan: No suitable device found");
     }
     // Create virtual device for a physical device.
-    // TODO system property for manual choice of GPU
     // TODO integrated/discrete presets
     // TODO performance/power saving mode switch on the fly?
-    _default_device = &*_devices[0]; // TODO pick first just to check hat virtual device creation works
+    int _default_device_number = 0; // TODO pick first just to check that virtual device creation works
+
+    if (_verbose) {
+        fprintf(stderr, "Vulkan graphics devices:\n");
+    }
+
+    _requested_device_number = (_requested_device_number == -1) ? 0 : _requested_device_number;
+    if (_requested_device_number < 0 || _requested_device_number >= static_cast<int>(_devices.size())) {
+        if (_verbose) {
+            fprintf(stderr, "  Requested device number (%d) not found, fallback to 0\n", _requested_device_number);
+        }
+        _requested_device_number = 0;
+    }
+    _default_device_number = _requested_device_number;
+    if (_verbose) {
+        for (auto devIter = _devices.begin(); devIter != _devices.end(); devIter++) {
+            auto devNum = std::distance(begin(_devices), devIter);
+            fprintf(stderr, " %c%ld: %s\n", devNum == _default_device_number ? '*' : ' ',
+                    devNum, (*devIter)->name().c_str());
+        }
+    }
+    fprintf(stderr, "\n");
+    _default_device = &*_devices[_default_device_number]; // TODO pick first just to check hat virtual device creation works
     _default_device->init();
+
 }
 
 vk::raii::Instance& VKGraphicsEnvironment::vk_instance() {
@@ -414,8 +438,9 @@ void VKDevice::submitCommandBuffer(vk::raii::CommandBuffer&& primary,
     waitStages.clear();
 }
 
-extern "C" jboolean VK_Init() {
-
+extern "C" jboolean VK_Init(jboolean verbose, jint requestedDevice) {
+    VKGraphicsEnvironment::set_verbose(verbose);
+    VKGraphicsEnvironment::set_requested_device(requestedDevice);
     if (VKGraphicsEnvironment::graphics_environment() != nullptr) {
         return true;
     }
