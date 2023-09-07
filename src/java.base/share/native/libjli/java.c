@@ -423,9 +423,11 @@ JavaMain(void* _args)
         exit(1);
     }
 
+#ifdef __linux__
     if (get_awt_toolkit() != TK_NONE) {
         SetAwtToolkitName(env, get_awt_toolkit() == TK_X11 ? "XToolkit" : "WLToolkit");
     }
+#endif
 
     if (showSettings != NULL) {
         ShowSettings(env, showSettings);
