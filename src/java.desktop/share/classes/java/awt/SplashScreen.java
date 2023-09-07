@@ -29,7 +29,6 @@ import java.awt.image.*;
 import java.net.URL;
 import java.net.URLConnection;
 import java.io.File;
-
 import sun.awt.PlatformGraphicsInfo;
 import sun.util.logging.PlatformLogger;
 import sun.awt.image.SunWritableRaster;

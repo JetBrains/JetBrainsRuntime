@@ -334,7 +334,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/awt \
         common/java2d \
         common/font \
-	common/wayland \
+        common/wayland \
         #
 
     LIBAWT_WLAWT_EXCLUDES := medialib debug opengl x11
