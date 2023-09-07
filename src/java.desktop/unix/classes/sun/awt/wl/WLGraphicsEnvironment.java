@@ -43,11 +43,18 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLGraphicsEnvironment");
 
     private static boolean vulkanEnabled = false;
+    private static boolean verboseVulkanStatus = false;
+    private static boolean vulkanRequested = false;
+    private static int vulkanRequestedDeviceNumber = -1;
     @SuppressWarnings("removal")
-    private static boolean vulkanRequested =
+    private static String vulkanOption =
             AccessController.doPrivileged(
-                    (PrivilegedAction<Boolean>) () ->
-                            "true".equals(System.getProperty("sun.java2d.vulkan")));
+                    (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan", ""));
+
+    @SuppressWarnings("removal")
+    private static String vulkanOptionDeviceNumber =
+            AccessController.doPrivileged(
+                    (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan.deviceNumber", "0"));
 
     @SuppressWarnings("restricted")
     private static void loadAwt() {
@@ -55,16 +62,24 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
     }
 
     static {
+        vulkanRequested = "true".equalsIgnoreCase(vulkanOption);
+        try {
+            vulkanRequestedDeviceNumber = Integer.parseInt(vulkanOptionDeviceNumber);
+        } catch (NumberFormatException e) {
+            log.warning("Invalid Vulkan device number:" + vulkanOptionDeviceNumber);
+        }
+        verboseVulkanStatus = "True".equals(vulkanOption);
+
         loadAwt();
         if (vulkanRequested) {
-            vulkanEnabled = initVKWL();
+            vulkanEnabled = initVKWL(verboseVulkanStatus, vulkanRequestedDeviceNumber);
         }
         if (log.isLoggable(Level.FINE)) {
             log.fine("Vulkan rendering enabled: " + (vulkanEnabled?"YES":"NO"));
         }
     }
 
-    private static native boolean initVKWL();
+    private static native boolean initVKWL(boolean verbose, int deviceNumber);
 
     private WLGraphicsEnvironment() {
     }
