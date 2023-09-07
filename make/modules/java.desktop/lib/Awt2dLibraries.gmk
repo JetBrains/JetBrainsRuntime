@@ -993,19 +993,16 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
 
   $(eval $(call SetupJdkLibrary, BUILD_LIBWLSPLASHSCREEN, \
       NAME := wlsplashscreen, \
-      EXTRA_SRC := $(LIBSPLASHSCREEN_EXTRA_SRC) $(LIBWLSPLASHSCREEN_EXTRA_SRC) libwlsplashscreen libsplashscreen , \
+      EXTRA_SRC := $(LIBSPLASHSCREEN_EXTRA_SRC) $(LIBWLSPLASHSCREEN_EXTRA_SRC) libwlsplashscreen libsplashscreen, \
       EXCLUDE_SRC_PATTERNS := $(LIBSPLASHSCREEN_EXCLUDE_SRC_PATTERNS), \
       DISABLED_WARNINGS_gcc := $(LIBSPLASHSCREEN_DISABLED_WARNINGS_gcc), \
       DISABLED_WARNINGS_clang := $(LIBSPLASHSCREEN_DISABLED_WARNINGS_clang), \
-      DISABLED_WARNINGS_microsoft := $(LIBSPLASHSCREEN_DISABLED_WARNINGS_microsoft), \
       EXCLUDE_FILES := $(LIBSPLASHSCREEN_EXCLUDE_FILES), \
       EXCLUDES := $(LIBSPLASHSCREEN_EXCLUDES), \
       OPTIMIZATION := LOW, \
       CFLAGS := $(LIBWLSPLASHSCREEN_CFLAGS), \
       EXTRA_HEADER_DIRS := $(LIBSPLASHSCREEN_HEADER_DIRS) $(LIBWLSPLASHSCREEN_HEADER_DIRS) libwlsplashscreen, \
       LDFLAGS := $(LIBSPLASHSCREEN_LDFLAGS), \
-      LDFLAGS_macosx := -L$(INSTALL_LIBRARIES_HERE), \
-      LDFLAGS_windows := -delayload:user32.dll, \
       LIBS := -lwayland-client -lwayland-cursor $(LIBSPLASHSCREEN_LIBS), \
       LIBS_aix := -liconv, \
   ))
