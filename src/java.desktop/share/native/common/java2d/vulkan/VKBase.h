@@ -126,6 +126,10 @@ public:
     explicit operator bool() const { // Initialized or not
         return *((const vk::raii::Device&) *this);
     }
+
+    std::string& name() {
+        return _name;
+    }
 };
 
 class VKGraphicsEnvironment {
@@ -136,9 +140,13 @@ class VKGraphicsEnvironment {
 #endif
     std::vector<std::unique_ptr<VKDevice>> _devices;
     VKDevice*                              _default_device;
+    static bool                   _verbose;
+    static int                    _requested_device_number;
     static std::unique_ptr<VKGraphicsEnvironment> _ge_instance;
     VKGraphicsEnvironment();
 public:
+    static void set_verbose(bool verbose) { _verbose = verbose; }
+    static void set_requested_device(int requested_device) { _requested_device_number = requested_device; }
     static VKGraphicsEnvironment* graphics_environment();
     static void dispose();
     VKDevice& default_device();
@@ -148,7 +156,7 @@ public:
 extern "C" {
 #endif //__cplusplus
 
-jboolean VK_Init();
+jboolean VK_Init(jboolean verbose, jint requestedDevice);
 
 #ifdef __cplusplus
 }
