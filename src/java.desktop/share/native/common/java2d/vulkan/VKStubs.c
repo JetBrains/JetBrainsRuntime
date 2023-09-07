@@ -28,7 +28,7 @@
 #ifndef VULKAN_ENABLED
 #include "jni.h"
 
-jboolean VK_Init() {
+jboolean VK_Init(jboolean verbose, jint requestedDevice) {
     return 0;
 }
 
