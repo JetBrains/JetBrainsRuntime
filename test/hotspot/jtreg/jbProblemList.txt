@@ -53,7 +53,9 @@ gtest/MetaspaceGtests.java#balanced-no-ccs initial_run generic-all
 gtest/MetaspaceGtests.java#reclaim-aggressive-ndebug initial_run generic-all
 gtest/LargePageGtests.java#use-large-pages initial_run linux-all,windows-all
 
-gtest/NMTGtests.java JBR-5718 generic-all
+gtest/NMTGtests.java#nmt-detail JBR-5718 generic-all
+gtest/NMTGtests.java#nmt-off JBR-5718 generic-all
+gtest/NMTGtests.java#nmt-summary JBR-5718 generic-all
 
 gc/stress/TestReclaimStringsLeaksMemory.java initial_run windows-all
 
@@ -256,13 +258,11 @@ vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi005/TestDescription
 
 gc/shenandoah/mxbeans/TestChurnNotifications.java#aggressive NO_BUG macosx_all
 
-runtime/cds/appcds/TestDumpClassListSource.java NO_BUG generic_all
 runtime/cds/appcds/CommandLineFlagCombo.java NO_BUG generic_all
+runtime/cds/appcds/TestDumpClassListSource.java NO_BUG generic_all
 runtime/cds/appcds/dynamicArchive/TestAutoCreateSharedArchiveNoDefaultArchive.java NO_BUG generic_all
 runtime/cds/appcds/dynamicArchive/TestAutoCreateSharedArchiveUpgrade.java NO_BUG generic_all
-runtime/cds/CheckDefaultArchiveFile.java NO_BUG generic_all
 
-serviceability/jvmti/SetBreakpoint/TestManyBreakpoints.java NO_BUG linux_aarch64
 vmTestbase/nsk/stress/thread/thread008.java initial_run windows-all
 compiler/vectorapi/VectorRebracket128Test.java NO_BUG linux_aarch64
 
