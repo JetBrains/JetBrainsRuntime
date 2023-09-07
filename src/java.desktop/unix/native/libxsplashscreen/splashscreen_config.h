@@ -30,16 +30,6 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-#include <X11/extensions/shape.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <pthread.h>
-#include <signal.h>
-#include <inttypes.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include "systemScale.h"
 
 typedef XRectangle RECT_T;
 

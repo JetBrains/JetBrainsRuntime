@@ -26,8 +26,11 @@
 #include "splashscreen_impl.h"
 
 #include <fcntl.h>
+#include <wayland-client.h>
+#include <wayland-cursor.h>
+#include <pthread.h>
+#include <sys/mman.h>
 
-#include "jni.h"
 #include "memory_utils.h"
 
 static const int BUFFERS_COUNT = 3;

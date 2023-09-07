@@ -34,7 +34,9 @@
 #include <pthread.h>
 #include <iconv.h>
 #include <sizecalc.h>
-#include "jni.h"
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 
 static Bool shapeSupported;
 static int shapeEventBase, shapeErrorBase;

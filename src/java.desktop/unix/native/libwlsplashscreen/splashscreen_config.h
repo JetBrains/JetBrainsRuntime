@@ -26,14 +26,8 @@
 #ifndef SPLASHSCREEN_CONFIG_H
 #define SPLASHSCREEN_CONFIG_H
 
-#include <pthread.h>
-#include <string.h>
 #include <stdbool.h>
-#include <sys/mman.h>
-#include <wayland-client.h>
-#include <wayland-cursor.h>
 
-#include "systemScale.h"
 #include "xdg-shell-client-protocol.h"
 
 typedef struct Buffer {

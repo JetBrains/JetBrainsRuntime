@@ -28,12 +28,14 @@
 
 #if !defined(WITH_WIN32)
 #include "splashscreen_config_common.h"
+#include "systemScale.h"
 #endif
 
 #include "splashscreen_config.h"
 #include "splashscreen_gfx.h"
 #include "jni.h"
 
+#include <string.h>
 #include <stdbool.h>
 
 JNIEXPORT int
