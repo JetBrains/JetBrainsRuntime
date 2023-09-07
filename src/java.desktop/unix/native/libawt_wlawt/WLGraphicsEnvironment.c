@@ -266,7 +266,7 @@ WLOutputByID(uint32_t id)
  * Signature: ()Z
  */
 JNIEXPORT jboolean JNICALL
-Java_sun_awt_wl_WLGraphicsEnvironment_initVKWL(JNIEnv *env, jclass wlge)
+Java_sun_awt_wl_WLGraphicsEnvironment_initVKWL(JNIEnv *env, jclass wlge, jboolean verbose, jint requestedDevice)
 {
     jboolean vkwlAvailable = JNI_FALSE;
     /* TODO: The following sequence lead to uninitialized awt lock
@@ -278,7 +278,7 @@ Java_sun_awt_wl_WLGraphicsEnvironment_initVKWL(JNIEnv *env, jclass wlge)
        WLGraphicsEnvironment.initVKWL()
     */
     //AWT_LOCK();
-    vkwlAvailable = VK_Init();
+    vkwlAvailable = VK_Init(verbose, requestedDevice);
     //AWT_UNLOCK();
     return vkwlAvailable;
 }
