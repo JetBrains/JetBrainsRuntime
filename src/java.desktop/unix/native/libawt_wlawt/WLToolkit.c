@@ -59,6 +59,7 @@ struct wl_display *wl_display = NULL;
 struct wl_shm *wl_shm = NULL;
 struct wl_compositor *wl_compositor = NULL;
 struct xdg_wm_base *xdg_wm_base = NULL;
+struct xdg_activation_v1 *xdg_activation_v1 = NULL;
 struct wl_seat     *wl_seat = NULL;
 
 struct wl_keyboard *wl_keyboard;
@@ -66,8 +67,11 @@ struct wl_pointer  *wl_pointer;
 
 struct wl_cursor_theme *wl_cursor_theme = NULL;
 
+struct wl_surface *wl_surface_in_focus = NULL;
+
 uint32_t last_mouse_pressed_serial = 0;
 uint32_t last_pointer_enter_serial = 0;
+uint32_t last_input_or_focus_serial = 0;
 
 static uint32_t num_of_outstanding_sync = 0;
 
@@ -312,6 +316,7 @@ wl_pointer_button(void *data, struct wl_pointer *wl_pointer, uint32_t serial,
     pointer_event.button           = button,
     pointer_event.state            = state;
     if (state) {
+        last_input_or_focus_serial = serial;
         last_mouse_pressed_serial = serial;
     }
 }
@@ -453,6 +458,9 @@ static void
 wl_keyboard_enter(void *data, struct wl_keyboard *wl_keyboard,
                   uint32_t serial, struct wl_surface *surface, struct wl_array *keys)
 {
+    wl_surface_in_focus = surface;
+    last_input_or_focus_serial = serial;
+
     JNIEnv* env = getEnv();
     (*env)->CallStaticVoidMethod(env,
                                  tkClass,
@@ -482,6 +490,8 @@ static void
 wl_keyboard_key(void *data, struct wl_keyboard *wl_keyboard,
                 uint32_t serial, uint32_t time, uint32_t evdev_key, uint32_t state)
 {
+    last_input_or_focus_serial = serial;
+
     const uint32_t scancode = evdev_key + 8;
     const uint32_t keychar32 = xkb_ifs.xkb_state_key_get_utf32(xkb_state, scancode);
     const xkb_keysym_t keysym = xkb_ifs.xkb_state_key_get_one_sym(xkb_state, scancode);
@@ -504,6 +514,8 @@ static void
 wl_keyboard_leave(void *data, struct wl_keyboard *wl_keyboard,
                   uint32_t serial, struct wl_surface *surface)
 {
+    wl_surface_in_focus = NULL;
+
     JNIEnv* env = getEnv();
     (*env)->CallStaticVoidMethod(env,
                                  tkClass,
@@ -519,6 +531,8 @@ wl_keyboard_modifiers(void *data, struct wl_keyboard *wl_keyboard,
                       uint32_t mods_latched, uint32_t mods_locked,
                       uint32_t group)
 {
+    last_input_or_focus_serial = serial;
+
     xkb_ifs.xkb_state_update_mask(xkb_state,
                                   mods_depressed,
                                   mods_latched,
@@ -669,6 +683,8 @@ registry_global(void *data, struct wl_registry *wl_registry,
     } else if (strcmp(interface, wl_output_interface.name) == 0) {
         WLOutputRegister(wl_registry, name);
         process_new_listener_before_end_of_init();
+    } else if (strcmp(interface, xdg_activation_v1_interface.name) == 0) {
+        xdg_activation_v1 = wl_registry_bind(wl_registry, name, &xdg_activation_v1_interface, 1);
     }
 #ifdef WAKEFIELD_ROBOT
     else if (strcmp(interface, wakefield_interface.name) == 0) {
