@@ -211,8 +211,8 @@ VKGraphicsEnvironment::VKGraphicsEnvironment() :
             fprintf(stderr, " %c%ld: %s\n", devNum == _default_device_number ? '*' : ' ',
                     devNum, (*devIter)->name().c_str());
         }
+        fprintf(stderr, "\n");
     }
-    fprintf(stderr, "\n");
     _default_device = &*_devices[_default_device_number]; // TODO pick first just to check hat virtual device creation works
     _default_device->init();
 
