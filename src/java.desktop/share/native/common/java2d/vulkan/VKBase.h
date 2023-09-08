@@ -127,7 +127,7 @@ public:
         return *((const vk::raii::Device&) *this);
     }
 
-    std::string& name() {
+    const std::string& name() {
         return _name;
     }
 };
