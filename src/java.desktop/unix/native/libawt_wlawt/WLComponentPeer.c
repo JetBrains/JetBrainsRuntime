@@ -44,12 +44,53 @@ static jmethodID notifyConfiguredMID;
 static jmethodID notifyEnteredOutputMID;
 static jmethodID notifyLeftOutputMID;
 
+struct activation_token_list_item {
+    struct xdg_activation_token_v1 *token;
+    struct activation_token_list_item *next_item;
+};
+
+static struct activation_token_list_item *add_token(struct activation_token_list_item *list,
+                                                    struct xdg_activation_token_v1 *token_to_add) {
+    struct activation_token_list_item *new_item =
+        (struct activation_token_list_item *) calloc(1, sizeof(struct activation_token_list_item));
+    new_item->token = token_to_add;
+    new_item->next_item = list;
+    return new_item;
+}
+
+static struct activation_token_list_item *delete_last_token(struct activation_token_list_item *list) {
+    assert(list);
+    xdg_activation_token_v1_destroy(list->token);
+    struct activation_token_list_item *next_item = list->next_item;
+    free(list);
+    return next_item;
+}
+
+static struct activation_token_list_item *delete_token(struct activation_token_list_item *list,
+                                                       struct xdg_activation_token_v1 *token_to_delete) {
+    if (list == NULL) {
+        return NULL;
+    } else if (list->token == token_to_delete) {
+        return delete_last_token(list);
+    } else {
+        list->next_item = delete_token(list->next_item, token_to_delete);
+        return list;
+    }
+}
+
+static void delete_all_tokens(struct activation_token_list_item *list) {
+    while (list) {
+        list = delete_last_token(list);
+    }
+}
+
 struct WLFrame {
     jobject nativeFramePeer; // weak reference
     struct wl_surface *wl_surface;
     struct xdg_surface *xdg_surface;
     struct WLFrame *parent;
     struct xdg_positioner *xdg_positioner;
+    struct activation_token_list_item *activation_token_list;
     jboolean toplevel;
     union {
         struct xdg_toplevel *xdg_toplevel;
@@ -222,6 +263,22 @@ static const struct xdg_toplevel_listener xdg_toplevel_listener = {
 static const struct xdg_popup_listener xdg_popup_listener = {
         .configure = xdg_popup_configure,
         .popup_done = xdg_popup_done,
+};
+
+static void
+xdg_activation_token_v1_done(void *data,
+		                     struct xdg_activation_token_v1 *xdg_activation_token_v1,
+		                     const char *token) {
+	struct WLFrame *frame = (struct WLFrame *) data;
+	assert(wlFrame);
+	struct wl_surface *surface = frame->wl_surface;
+    assert(surface);
+    xdg_activation_v1_activate(xdg_activation_v1, token, surface);
+    frame->activation_token_list = delete_token(frame->activation_token_list, xdg_activation_token_v1);
+}
+
+static const struct xdg_activation_token_v1_listener xdg_activation_token_v1_listener = {
+        .done = xdg_activation_token_v1_done,
 };
 
 JNIEXPORT void JNICALL
@@ -440,6 +497,8 @@ DoHide(struct WLFrame *frame)
         }
         xdg_surface_destroy(frame->xdg_surface);
         wl_surface_destroy(frame->wl_surface);
+        delete_all_tokens(frame->activation_token_list);
+        frame->activation_token_list = NULL;
         frame->wl_surface = NULL;
         frame->xdg_surface = NULL;
         frame->xdg_toplevel = NULL;
@@ -523,5 +582,22 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeShowWindowMenu
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel) {
         xdg_toplevel_show_window_menu(frame->xdg_toplevel, wl_seat, last_mouse_pressed_serial, x, y);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLComponentPeer_nativeActivate
+        (JNIEnv *env, jobject obj, jlong ptr)
+{
+    struct WLFrame *frame = jlong_to_ptr(ptr);
+    if (frame->wl_surface && xdg_activation_v1 && wl_seat) {
+        struct xdg_activation_token_v1 *token = xdg_activation_v1_get_activation_token(xdg_activation_v1);
+        xdg_activation_token_v1_add_listener(token, &xdg_activation_token_v1_listener, frame);
+        xdg_activation_token_v1_set_serial(token, last_input_or_focus_serial, wl_seat);
+        if (wl_surface_in_focus) {
+            xdg_activation_token_v1_set_surface(token, wl_surface_in_focus);
+        }
+        xdg_activation_token_v1_commit(token);
+        frame->activation_token_list = add_token(frame->activation_token_list, token);
     }
 }

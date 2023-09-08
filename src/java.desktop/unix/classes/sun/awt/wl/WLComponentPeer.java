@@ -830,6 +830,10 @@ public class WLComponentPeer implements ComponentPeer {
         performLocked(() -> nativeRequestUnsetFullScreen(nativePtr));
     }
 
+    final void activate() {
+        performLocked(() -> nativeActivate(nativePtr));
+    }
+
     private static native void initIDs();
 
     protected native long nativeCreateFrame();
@@ -864,6 +868,7 @@ public class WLComponentPeer implements ComponentPeer {
     private static native void nativeSetCursor(long pData);
     private static native long nativeGetPredefinedCursor(String name);
     private native void nativeShowWindowMenu(long ptr, int x, int y);
+    private native void nativeActivate(long ptr);
 
     static long getParentNativePtr(Component target) {
         Component parent = target.getParent();
