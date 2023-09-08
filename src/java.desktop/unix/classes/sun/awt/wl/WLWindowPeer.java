@@ -89,7 +89,7 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
 
     @Override
     public void toFront() {
-        // TODO
+        activate();
     }
 
     @Override
