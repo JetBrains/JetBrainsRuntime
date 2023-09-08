@@ -128,11 +128,6 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
     }
 
     @Override
-    public void toFront() {
-        //throw new UnsupportedOperationException();
-    }
-
-    @Override
     public void toBack() {
         throw new UnsupportedOperationException();
     }
