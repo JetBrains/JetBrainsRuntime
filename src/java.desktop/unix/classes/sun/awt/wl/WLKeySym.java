@@ -725,11 +725,7 @@ class WLKeySym {
         xkbKeymap.put( Long.valueOf(XK_Return),     new KeyDescriptor(java.awt.event.KeyEvent.VK_ENTER, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
         xkbKeymap.put( Long.valueOf(XK_Linefeed),     new KeyDescriptor(java.awt.event.KeyEvent.VK_ENTER, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
         xkbKeymap.put( Long.valueOf(XK_Pause),     new KeyDescriptor(java.awt.event.KeyEvent.VK_PAUSE, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
-        xkbKeymap.put( Long.valueOf(XK_F21),     new KeyDescriptor(java.awt.event.KeyEvent.VK_PAUSE, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
-        xkbKeymap.put( Long.valueOf(XK_R1),     new KeyDescriptor(java.awt.event.KeyEvent.VK_PAUSE, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
         xkbKeymap.put( Long.valueOf(XK_Scroll_Lock),     new KeyDescriptor(java.awt.event.KeyEvent.VK_SCROLL_LOCK, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
-        xkbKeymap.put( Long.valueOf(XK_F23),     new KeyDescriptor(java.awt.event.KeyEvent.VK_SCROLL_LOCK, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
-        xkbKeymap.put( Long.valueOf(XK_R3),     new KeyDescriptor(java.awt.event.KeyEvent.VK_SCROLL_LOCK, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
         xkbKeymap.put( Long.valueOf(XK_Escape),     new KeyDescriptor(java.awt.event.KeyEvent.VK_ESCAPE, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
 
         /* Other vendor-specific versions of TTY Function keys */
@@ -751,8 +747,6 @@ class WLKeySym {
 
         /* Misc Functions */
         xkbKeymap.put( Long.valueOf(XK_Print),     new KeyDescriptor(java.awt.event.KeyEvent.VK_PRINTSCREEN, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
-        xkbKeymap.put( Long.valueOf(XK_F22),     new KeyDescriptor(java.awt.event.KeyEvent.VK_PRINTSCREEN, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
-        xkbKeymap.put( Long.valueOf(XK_R2),     new KeyDescriptor(java.awt.event.KeyEvent.VK_PRINTSCREEN, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
         xkbKeymap.put( Long.valueOf(XK_Cancel),     new KeyDescriptor(java.awt.event.KeyEvent.VK_CANCEL, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
         xkbKeymap.put( Long.valueOf(XK_Help),     new KeyDescriptor(java.awt.event.KeyEvent.VK_HELP, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
         xkbKeymap.put( Long.valueOf(XK_Num_Lock),     new KeyDescriptor(java.awt.event.KeyEvent.VK_NUM_LOCK, java.awt.event.KeyEvent.KEY_LOCATION_NUMPAD));
@@ -881,14 +875,12 @@ class WLKeySym {
         xkbKeymap.put( Long.valueOf(XK_KP_Tab),     new KeyDescriptor(java.awt.event.KeyEvent.VK_TAB, java.awt.event.KeyEvent.KEY_LOCATION_NUMPAD));
         xkbKeymap.put( Long.valueOf(XK_KP_Enter),     new KeyDescriptor(java.awt.event.KeyEvent.VK_ENTER, java.awt.event.KeyEvent.KEY_LOCATION_NUMPAD));
         xkbKeymap.put( Long.valueOf(XK_KP_Equal),     new KeyDescriptor(java.awt.event.KeyEvent.VK_EQUALS, java.awt.event.KeyEvent.KEY_LOCATION_NUMPAD));
-        xkbKeymap.put( Long.valueOf(XK_R4),     new KeyDescriptor(java.awt.event.KeyEvent.VK_EQUALS, java.awt.event.KeyEvent.KEY_LOCATION_NUMPAD));
         xkbKeymap.put( Long.valueOf(XK_KP_Multiply),     new KeyDescriptor(java.awt.event.KeyEvent.VK_MULTIPLY, java.awt.event.KeyEvent.KEY_LOCATION_NUMPAD));
         xkbKeymap.put( Long.valueOf(XK_F26),     new KeyDescriptor(java.awt.event.KeyEvent.VK_MULTIPLY, java.awt.event.KeyEvent.KEY_LOCATION_NUMPAD));
         xkbKeymap.put( Long.valueOf(XK_R6),     new KeyDescriptor(java.awt.event.KeyEvent.VK_MULTIPLY, java.awt.event.KeyEvent.KEY_LOCATION_NUMPAD));
         xkbKeymap.put( Long.valueOf(XK_KP_Add),     new KeyDescriptor(java.awt.event.KeyEvent.VK_ADD, java.awt.event.KeyEvent.KEY_LOCATION_NUMPAD));
         xkbKeymap.put( Long.valueOf(XK_KP_Separator),     new KeyDescriptor(java.awt.event.KeyEvent.VK_SEPARATOR, java.awt.event.KeyEvent.KEY_LOCATION_NUMPAD));
         xkbKeymap.put( Long.valueOf(XK_KP_Subtract),     new KeyDescriptor(java.awt.event.KeyEvent.VK_SUBTRACT, java.awt.event.KeyEvent.KEY_LOCATION_NUMPAD));
-        xkbKeymap.put( Long.valueOf(XK_F24),     new KeyDescriptor(java.awt.event.KeyEvent.VK_SUBTRACT, java.awt.event.KeyEvent.KEY_LOCATION_NUMPAD));
         xkbKeymap.put( Long.valueOf(XK_KP_Decimal),     new KeyDescriptor(java.awt.event.KeyEvent.VK_DECIMAL, java.awt.event.KeyEvent.KEY_LOCATION_NUMPAD));
         xkbKeymap.put( Long.valueOf(XK_KP_Divide),     new KeyDescriptor(java.awt.event.KeyEvent.VK_DIVIDE, java.awt.event.KeyEvent.KEY_LOCATION_NUMPAD));
         xkbKeymap.put( Long.valueOf(XK_F25),     new KeyDescriptor(java.awt.event.KeyEvent.VK_DIVIDE, java.awt.event.KeyEvent.KEY_LOCATION_NUMPAD));
@@ -907,6 +899,18 @@ class WLKeySym {
         xkbKeymap.put( Long.valueOf(XK_F10),     new KeyDescriptor(java.awt.event.KeyEvent.VK_F10, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
         xkbKeymap.put( Long.valueOf(XK_F11),     new KeyDescriptor(java.awt.event.KeyEvent.VK_F11, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
         xkbKeymap.put( Long.valueOf(XK_F12),     new KeyDescriptor(java.awt.event.KeyEvent.VK_F12, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
+        xkbKeymap.put( Long.valueOf(XK_F13),     new KeyDescriptor(java.awt.event.KeyEvent.VK_F13, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
+        xkbKeymap.put( Long.valueOf(XK_F14),     new KeyDescriptor(java.awt.event.KeyEvent.VK_F14, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
+        xkbKeymap.put( Long.valueOf(XK_F15),     new KeyDescriptor(java.awt.event.KeyEvent.VK_F15, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
+        xkbKeymap.put( Long.valueOf(XK_F16),     new KeyDescriptor(java.awt.event.KeyEvent.VK_F16, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
+        xkbKeymap.put( Long.valueOf(XK_F17),     new KeyDescriptor(java.awt.event.KeyEvent.VK_F17, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
+        xkbKeymap.put( Long.valueOf(XK_F18),     new KeyDescriptor(java.awt.event.KeyEvent.VK_F18, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
+        xkbKeymap.put( Long.valueOf(XK_F19),     new KeyDescriptor(java.awt.event.KeyEvent.VK_F19, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
+        xkbKeymap.put( Long.valueOf(XK_F20),     new KeyDescriptor(java.awt.event.KeyEvent.VK_F20, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
+        xkbKeymap.put( Long.valueOf(XK_F21),     new KeyDescriptor(java.awt.event.KeyEvent.VK_F21, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
+        xkbKeymap.put( Long.valueOf(XK_F22),     new KeyDescriptor(java.awt.event.KeyEvent.VK_F22, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
+        xkbKeymap.put( Long.valueOf(XK_F23),     new KeyDescriptor(java.awt.event.KeyEvent.VK_F23, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
+        xkbKeymap.put( Long.valueOf(XK_F24),     new KeyDescriptor(java.awt.event.KeyEvent.VK_F24, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
 
         /* Sun vendor-specific version of F11 and F12 */
         xkbKeymap.put( Long.valueOf(SunXK_F36),     new KeyDescriptor(java.awt.event.KeyEvent.VK_F11, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
@@ -947,20 +951,8 @@ class WLKeySym {
 
         /* Editing block */
         xkbKeymap.put( Long.valueOf(XK_Redo),     new KeyDescriptor(java.awt.event.KeyEvent.VK_AGAIN, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
-        // XXX XK_L2 == F12; TODO: add code to use only one of them depending on the keyboard type. For now, restore
-        // good PC behavior and bad but old Sparc behavior.
-        // keysym2JavaKeycodeHash.put( Long.valueOf(XK_L2),     new Keysym2JavaKeycode(java.awt.event.KeyEvent.VK_AGAIN, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
         xkbKeymap.put( Long.valueOf(XK_Undo),     new KeyDescriptor(java.awt.event.KeyEvent.VK_UNDO, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
-        xkbKeymap.put( Long.valueOf(XK_L4),     new KeyDescriptor(java.awt.event.KeyEvent.VK_UNDO, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
-        xkbKeymap.put( Long.valueOf(XK_L6),     new KeyDescriptor(java.awt.event.KeyEvent.VK_COPY, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
-        xkbKeymap.put( Long.valueOf(XK_L8),     new KeyDescriptor(java.awt.event.KeyEvent.VK_PASTE, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
-        xkbKeymap.put( Long.valueOf(XK_L10),     new KeyDescriptor(java.awt.event.KeyEvent.VK_CUT, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
         xkbKeymap.put( Long.valueOf(XK_Find),     new KeyDescriptor(java.awt.event.KeyEvent.VK_FIND, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
-        xkbKeymap.put( Long.valueOf(XK_L9),     new KeyDescriptor(java.awt.event.KeyEvent.VK_FIND, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
-        xkbKeymap.put( Long.valueOf(XK_L3),     new KeyDescriptor(java.awt.event.KeyEvent.VK_PROPS, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
-        // XXX XK_L1 == F11; TODO: add code to use only one of them depending on the keyboard type. For now, restore
-        // good PC behavior and bad but old Sparc behavior.
-        // keysym2JavaKeycodeHash.put( Long.valueOf(XK_L1),     new Keysym2JavaKeycode(java.awt.event.KeyEvent.VK_STOP, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
 
         /* Sun vendor-specific versions for editing block */
         xkbKeymap.put( Long.valueOf(SunXK_Again),     new KeyDescriptor(java.awt.event.KeyEvent.VK_AGAIN, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));

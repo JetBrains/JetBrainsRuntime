@@ -154,8 +154,8 @@ public class WakefieldTestDriver {
 
     static Process launchWeston(int nScreens, int width, int height, String socketName) throws IOException {
         final List<String> args = new ArrayList<String>();
-        args.add("weston");
-        args.add("--backend=x11-backend.so");
+        args.add("/usr/local/bin/weston");
+        args.add("--backend=wayland-backend.so");
         args.add("--socket=" + socketName);
         args.add("--output-count=" + nScreens);
         args.add("--width=" + width);
