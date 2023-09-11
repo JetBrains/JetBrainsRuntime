@@ -280,8 +280,11 @@ JNI_OnUnload(JavaVM *vm, void *reserved) {
 #define TEXT_AA_LCD_VRGB 6
 #define TEXT_AA_LCD_VBGR 7
 
-static void setRenderingFontHintsField(FcPattern* matchPattern, const char* property, int* value) {
-    if (FcResultMatch != (*fcPatternGetBool)(matchPattern, property, 0, value)) {
+typedef FcResult (*FcPatternGetValueFuncType)(const FcPattern *p, const char *object, int n, void *b);
+
+static void setRenderingFontHintsField(FcPatternGetValueFuncType fcPatternGetValue, FcPattern* matchPattern,
+                                       const char* property, int* value) {
+    if (FcResultMatch != (*fcPatternGetValue)(matchPattern, property, 0, value)) {
         *value = -1;
     }
 }
@@ -312,13 +315,19 @@ JNIEXPORT int setupRenderingFontHints
      */
     if (matchPattern) {
         // Extract values from result
-        setRenderingFontHintsField(matchPattern, FC_HINTING, &renderingFontHints->fcHinting);
-        setRenderingFontHintsField(matchPattern, FC_HINT_STYLE, &renderingFontHints->fcHintStyle);
-        setRenderingFontHintsField(matchPattern, FC_ANTIALIAS, &renderingFontHints->fcAntialias);
-        setRenderingFontHintsField(matchPattern, FC_AUTOHINT, &renderingFontHints->fcAutohint);
-        setRenderingFontHintsField(matchPattern, FC_LCD_FILTER, &renderingFontHints->fcRGBA);
-        setRenderingFontHintsField(matchPattern, FC_RGBA, &renderingFontHints->fcLCDFilter);
-
+        setRenderingFontHintsField((FcPatternGetValueFuncType)(fcPatternGetBool), matchPattern, FC_HINTING,
+                                   &renderingFontHints->fcHinting);
+        setRenderingFontHintsField((FcPatternGetValueFuncType)(fcPatternGetInteger), matchPattern, FC_HINT_STYLE,
+                                   &renderingFontHints->fcHintStyle);
+        setRenderingFontHintsField((FcPatternGetValueFuncType)(fcPatternGetBool), matchPattern, FC_ANTIALIAS,
+                                   &renderingFontHints->fcAntialias);
+        setRenderingFontHintsField((FcPatternGetValueFuncType)(fcPatternGetBool), matchPattern, FC_AUTOHINT,
+                                   &renderingFontHints->fcAutohint);
+        setRenderingFontHintsField((FcPatternGetValueFuncType)(fcPatternGetInteger), matchPattern, FC_RGBA,
+                                   &renderingFontHints->fcRGBA);
+        setRenderingFontHintsField((FcPatternGetValueFuncType)(fcPatternGetInteger), matchPattern, FC_LCD_FILTER,
+                                   &renderingFontHints->fcLCDFilter);
+        
         (*fcPatternDestroy)(matchPattern);
     }
     (*fcPatternDestroy)(pattern);
