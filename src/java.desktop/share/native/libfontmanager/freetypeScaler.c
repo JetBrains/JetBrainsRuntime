@@ -794,7 +794,6 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
 
         if (FT_IS_SCALABLE(scalerInfo->face)) { // Standard scalable face
             context->fixedSizeIndex = -1;
-            errCode = FT_Set_Char_Size(scalerInfo->face, 0, context->ptsz, 72, 72);
         } else { // Non-scalable face (that should only be bitmap faces)
             const int ptsz = context->ptsz;
             // Best size is smallest, but not smaller than requested
@@ -811,9 +810,9 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
                 }
             }
             context->fixedSizeIndex = bestSizeIndex;
-            errCode = FT_Set_Char_Size(scalerInfo->face, 0, bestSize, 72, 72);
         }
 
+        errCode = FT_Set_Char_Size(scalerInfo->face, 0, context->ptsz, 72, 72);
         if (errCode) return errCode;
 
         errCode = FT_Activate_Size(scalerInfo->face->size);
@@ -824,10 +823,7 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
             context->lcdFilter = FT_LCD_FILTER_NONE;
             context->loadFlags = FT_LOAD_DEFAULT;
 
-#ifdef DISABLE_FONTCONFIG
-            setDefaultScalerSettings(context);
-            return 0;
-#else
+#ifndef DISABLE_FONTCONFIG
             jfontFamilyName = (*env)->GetObjectField(env, font2D, familyNameFID);
             cfontFamilyName = (*env)->GetStringUTFChars(env, jfontFamilyName, NULL);
             jfontPath = (*env)->GetObjectField(env, font2D, platNameFID);
