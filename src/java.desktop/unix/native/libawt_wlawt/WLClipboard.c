@@ -82,7 +82,7 @@ DataOfferPayload_Create(jobject clipboard)
 
 // Clipboard "devices", one for the actual clipboard and one for the selection clipboard.
 // Implicitly assumed that WLClipboard can only create once instance of each.
-static struct wl_data_device *wl_data_device;
+struct wl_data_device *wl_data_device;
 static struct zwp_primary_selection_device_v1 *zwp_selection_device;
 
 static void data_device_handle_data_offer(
@@ -103,15 +103,16 @@ data_device_handle_enter(
     struct wl_surface *surface,
     wl_fixed_t x,
     wl_fixed_t y,
-    struct wl_data_offer *id)
+    struct wl_data_offer *offer)
 {
-    // TODO
+    printf("DnD: enter\n");
+    wl_data_offer_set_actions(offer, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY);
 }
 
 static void
 data_device_handle_leave(void *data, struct wl_data_device *wl_data_device)
 {
-    // TODO
+    printf("DnD: leave\n");
 }
 
 static void
@@ -122,13 +123,13 @@ data_device_handle_motion(
     wl_fixed_t x,
     wl_fixed_t y)
 {
-    // TODO
+    printf("DnD: motion\n");
 }
 
 static void
 data_device_handle_drop(void *data, struct wl_data_device *wl_data_device)
 {
-    // TODO
+    printf("DnD: drop\n");
 }
 
 static const struct wl_data_device_listener wl_data_device_listener = {
@@ -136,7 +137,8 @@ static const struct wl_data_device_listener wl_data_device_listener = {
         .selection = data_device_handle_selection,
         .enter = data_device_handle_enter,
         .leave = data_device_handle_leave,
-        .motion = data_device_handle_motion
+        .motion = data_device_handle_motion,
+        .drop = data_device_handle_drop
 };
 
 static void
@@ -199,22 +201,28 @@ static const struct zwp_primary_selection_device_v1_listener zwp_selection_devic
 };
 
 static void
-wl_action(void *data, struct wl_data_offer *wl_data_offer, uint32_t dnd_action)
+wl_action(void *data, struct wl_data_offer *offer, uint32_t dnd_action)
 {
-    // TODO: this is for DnD
+    printf("DnD: selected action: %d\n", dnd_action);
 }
 
 static void
 wl_offer(void *data, struct wl_data_offer *offer, const char *mime_type)
 {
     assert (data != NULL);
+    printf("Offer with MIME %s\n", mime_type);
     RegisterDataOfferWithMimeType(data, offer, mime_type);
 }
 
 static void
-wl_source_actions(void *data, struct wl_data_offer *wl_data_offer, uint32_t source_actions)
+wl_source_actions(void *data, struct wl_data_offer *offer, uint32_t actions)
 {
-    // TODO: this is for DnD
+    if (actions & WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE) {
+        printf("Drag supports the move action\n");
+    }
+    if (actions & WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY) {
+        printf("Drag supports the copy action\n");
+    }
 }
 
 static const struct wl_data_offer_listener wl_data_offer_listener = {

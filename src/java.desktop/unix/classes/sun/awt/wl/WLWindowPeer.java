@@ -25,6 +25,7 @@
 package sun.awt.wl;
 
 import sun.awt.AWTAccessor;
+
 import java.awt.*;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.WindowPeer;
@@ -149,5 +150,35 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
     @Override
     public void repositionSecurityWarning() {
         throw new UnsupportedOperationException();
+    }
+
+    private int dropTargetCount = 0; // guarded by WLToolkit.awtLock()
+
+    public void addDropTarget() {
+        performLocked(() -> {
+            if (dropTargetCount == 0) {
+                /*long window = getWindow();
+                if (window != 0) {
+                    XDropTargetRegistry.getRegistry().registerDropSite(window);
+                }
+
+                 */
+            }
+            dropTargetCount++;
+        });
+    }
+
+    public void removeDropTarget() {
+        performLocked(() -> {
+            dropTargetCount--;
+            if (dropTargetCount == 0) {
+                /*long window = getWindow();
+                if (window != 0) {
+                    XDropTargetRegistry.getRegistry().unregisterDropSite(window);
+                }
+
+                 */
+            }
+        });
     }
 }

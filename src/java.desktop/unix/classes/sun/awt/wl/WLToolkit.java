@@ -44,6 +44,7 @@ import java.awt.dnd.DragGestureListener;
 import java.awt.dnd.DragGestureRecognizer;
 import java.awt.dnd.DragSource;
 import java.awt.dnd.InvalidDnDOperationException;
+import java.awt.dnd.MouseDragGestureRecognizer;
 import java.awt.dnd.peer.DragSourceContextPeer;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
@@ -161,6 +162,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             System.setProperty(extraButtons, String.valueOf(areExtraMouseButtonsEnabled));
             return null;
         });
+
+        Integer dragThreshold = 5; // TODO: read desktop settings (if they even exist)
+        setDesktopProperty("DnD.gestureMotionThreshold", dragThreshold);
 
         if (!GraphicsEnvironment.isHeadless()) {
             toolkitThread = InnocuousThread.newThread("AWT-Wayland", this);
@@ -598,11 +602,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public DragSourceContextPeer createDragSourceContextPeer(DragGestureEvent dge) throws InvalidDnDOperationException {
-        log.info("Not implemented: WLToolkit.createDragSourceContextPeer()");
-        return null;
+        return WLDragSourceContextPeer.createDragSourceContextPeer(dge);
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T extends DragGestureRecognizer> T
     createDragGestureRecognizer(Class<T> recognizerClass,
                     DragSource ds,
@@ -610,8 +614,13 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                     int srcActions,
                     DragGestureListener dgl)
     {
-        log.info("Not implemented: WLToolkit.createDragGestureRecognizer()");
-        return null;
+        DragGestureRecognizer dgr = null;
+
+        // Create a new mouse drag gesture recognizer if we have a class match:
+        if (MouseDragGestureRecognizer.class.equals(recognizerClass))
+            dgr = new WLMouseDragGestureRecognizer(ds, c, srcActions, dgl);
+
+        return (T)dgr;
     }
 
     @Override

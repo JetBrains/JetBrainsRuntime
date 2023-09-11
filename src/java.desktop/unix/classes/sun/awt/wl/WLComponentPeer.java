@@ -40,6 +40,8 @@ import sun.util.logging.PlatformLogger.Level;
 
 import javax.swing.SwingUtilities;
 import java.awt.*;
+import java.awt.dnd.DropTarget;
+import java.awt.dnd.peer.DropTargetPeer;
 import java.awt.event.ComponentEvent;
 import java.awt.event.FocusEvent;
 import java.awt.event.InputEvent;
@@ -57,7 +59,7 @@ import java.util.ArrayList;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-public class WLComponentPeer implements ComponentPeer {
+public class WLComponentPeer implements ComponentPeer, DropTargetPeer {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLComponentPeer");
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.wl.focus.WLComponentPeer");
 
@@ -880,6 +882,14 @@ public class WLComponentPeer implements ComponentPeer {
         return ((WLComponentPeer)peer).nativePtr;
     }
 
+    static long getParentWindowNativePtr(Component target) {
+        Component parentWindow = SwingUtilities.windowForComponent(target);
+        if (parentWindow == null) return 0;
+        final ComponentAccessor acc = AWTAccessor.getComponentAccessor();
+        ComponentPeer peer = acc.getPeer(parentWindow);
+        return ((WLComponentPeer)peer).nativePtr;
+    }
+
     private final Object state_lock = new Object();
     /**
      * This lock object is used to protect instance data from concurrent access
@@ -1168,6 +1178,40 @@ public class WLComponentPeer implements ComponentPeer {
             wlComponentPeer.startDrag();
         } else {
             throw new IllegalArgumentException("AWT window must have WLComponentPeer as its peer");
+        }
+    }
+
+
+    Component getParentWindow() {
+        Component comp = target;
+        while(!(comp == null || comp instanceof Window)) {
+            comp = comp.getParent();
+        }
+        return comp;
+    }
+
+    @Override
+    public void addDropTarget(DropTarget dt) {
+        Component comp = getParentWindow();
+
+        if (comp instanceof Window) {
+            WLWindowPeer wpeer = AWTAccessor.getComponentAccessor().getPeer(comp);
+            if (wpeer != null) {
+                wpeer.addDropTarget();
+            }
+        }
+    }
+
+
+    @Override
+    public void removeDropTarget(DropTarget dt) {
+        Component comp = getParentWindow();
+
+        if (comp instanceof Window) {
+            WLWindowPeer wpeer = AWTAccessor.getComponentAccessor().getPeer(comp);
+            if (wpeer != null) {
+                wpeer.removeDropTarget();
+            }
         }
     }
 }
