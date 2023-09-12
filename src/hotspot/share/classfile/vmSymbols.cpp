@@ -716,6 +716,7 @@ bool vmIntrinsics::is_disabled_by_flags(vmIntrinsics::ID id) {
   case vmIntrinsics::_compareAndExchangeObject:
   case vmIntrinsics::_compareAndExchangeObjectAcquire:
   case vmIntrinsics::_compareAndExchangeObjectRelease:
+  case vmIntrinsics::_allocateInstance:
     if (!InlineUnsafeOps) return true;
     break;
   case vmIntrinsics::_getShortUnaligned:
@@ -726,7 +727,6 @@ bool vmIntrinsics::is_disabled_by_flags(vmIntrinsics::ID id) {
   case vmIntrinsics::_putCharUnaligned:
   case vmIntrinsics::_putIntUnaligned:
   case vmIntrinsics::_putLongUnaligned:
-  case vmIntrinsics::_allocateInstance:
     if (!InlineUnsafeOps || !UseUnalignedAccesses) return true;
     break;
   case vmIntrinsics::_hashCode:
