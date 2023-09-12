@@ -35,6 +35,7 @@
 #include <java_awt_event_KeyEvent.h>
 #include <jvm_md.h>
 #include <jni_util.h>
+#include <stdlib.h>
 
 JNIEnv *getEnv();
 
@@ -141,6 +142,19 @@ enum xkb_compose_state_flags {
     XKB_COMPOSE_STATE_NO_FLAGS = 0
 };
 
+enum xkb_compose_status {
+    XKB_COMPOSE_NOTHING,
+    XKB_COMPOSE_COMPOSING,
+    XKB_COMPOSE_COMPOSED,
+    XKB_COMPOSE_CANCELLED
+};
+
+enum xkb_compose_feed_result {
+    XKB_COMPOSE_FEED_IGNORED,
+    XKB_COMPOSE_FEED_ACCEPTED
+};
+
+
 struct xkb_context;
 struct xkb_keymap;
 struct xkb_state;
@@ -185,6 +199,9 @@ static struct WLKeyboardState {
     struct xkb_keymap  *keymap;
 
     struct xkb_keymap  *qwertyKeymap;
+
+    struct xkb_compose_table *composeTable;
+    struct xkb_compose_state *composeState;
 
     bool asciiCapable;
 
@@ -874,6 +891,25 @@ getKeyboardLayoutIndex(void)
     return 0;
 }
 
+static const char*
+getComposeLocale() {
+    const char *locale = getenv("LC_ALL");
+
+    if (!locale || !*locale) {
+        locale = getenv("LC_CTYPE");
+    }
+
+    if (!locale || !*locale) {
+        locale = getenv("LANG");
+    }
+
+    if (!locale || !*locale) {
+        locale = "C";
+    }
+
+    return locale;
+}
+
 static void
 onKeyboardLayoutChanged(void)
 {
@@ -1052,6 +1088,47 @@ postKeyTypedEvents(const char* string)
 }
 
 static void
+handleKeyTypeNoCompose(xkb_keycode_t xkbKeycode)
+{
+    int bufSize = xkb.state_key_get_utf8(keyboard.state, xkbKeycode, NULL, 0) + 1;
+    char buf[bufSize];
+    xkb.state_key_get_utf8(keyboard.state, xkbKeycode, buf, bufSize);
+    postKeyTypedEvents(buf);
+}
+
+static void
+handleKeyType(xkb_keycode_t xkbKeycode)
+{
+    xkb_keysym_t keysym = xkb.state_key_get_one_sym(keyboard.state, xkbKeycode);
+
+    if (!keyboard.composeState ||
+        (xkb.compose_state_feed(keyboard.composeState, keysym) == XKB_COMPOSE_FEED_IGNORED)) {
+        handleKeyTypeNoCompose(xkbKeycode);
+        return;
+    }
+
+    switch (xkb.compose_state_get_status(keyboard.composeState)) {
+        case XKB_COMPOSE_NOTHING:
+            xkb.compose_state_reset(keyboard.composeState);
+            handleKeyTypeNoCompose(xkbKeycode);
+            break;
+        case XKB_COMPOSE_COMPOSING:
+            break;
+        case XKB_COMPOSE_COMPOSED: {
+            int bufSize = xkb.compose_state_get_utf8(keyboard.composeState, NULL, 0) + 1;
+            char buf[bufSize];
+            xkb.compose_state_get_utf8(keyboard.composeState, buf, bufSize);
+            postKeyTypedEvents(buf);
+            xkb.compose_state_reset(keyboard.composeState);
+            break;
+        }
+        case XKB_COMPOSE_CANCELLED:
+            xkb.compose_state_reset(keyboard.composeState);
+            break;
+    }
+}
+
+static void
 handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat)
 {
     JNIEnv *env = getEnv();
@@ -1097,9 +1174,7 @@ handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat)
     wlPostKeyEvent(&event);
 
     if (isPressed) {
-        char buf[256];
-        xkb.state_key_get_utf8(keyboard.state, xkbKeycode, buf, sizeof buf);
-        postKeyTypedEvents(buf);
+        handleKeyType(xkbKeycode);
 
         if (!isRepeat && xkb.keymap_key_repeats(keyboard.keymap, xkbKeycode)) {
             (*env)->CallVoidMethod(env, keyboard.keyRepeatManager, startRepeatMID, timestamp, keycode);
@@ -1135,15 +1210,18 @@ Java_sun_awt_wl_WLKeyboard_initialize(JNIEnv* env, jobject instance, jobject key
     keyboard.useNationalLayouts = true;
     keyboard.remapExtraKeycodes = true;
 
-    if (keyboard.useNationalLayouts) {
-        struct xkb_rule_names rule_names = {
-                .rules = "evdev",
-                .model = "pc105",
-                .layout = "us",
-                .variant = "",
-                .options = ""
-        };
-        keyboard.qwertyKeymap = xkb.keymap_new_from_names(keyboard.context, &rule_names, 0);
+    struct xkb_rule_names qwertyRuleNames = {
+            .rules = "evdev",
+            .model = "pc105",
+            .layout = "us",
+            .variant = "",
+            .options = ""
+    };
+    keyboard.qwertyKeymap = xkb.keymap_new_from_names(keyboard.context, &qwertyRuleNames, 0);
+
+    keyboard.composeTable = xkb.compose_table_new_from_locale(keyboard.context, getComposeLocale(), XKB_COMPOSE_COMPILE_NO_FLAGS);
+    if (keyboard.composeTable) {
+        keyboard.composeState = xkb.compose_state_new(keyboard.composeTable, XKB_COMPOSE_STATE_NO_FLAGS);
     }
 }
 
@@ -1151,6 +1229,14 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLKeyboard_handleKeyPress(JNIEnv* env, jobject instance, jlong timestamp, jint keycode, jboolean isRepeat)
 {
     handleKey(timestamp, keycode, true, isRepeat);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLKeyboard_cancelCompose(JNIEnv* env, jobject instance)
+{
+    if (keyboard.composeState) {
+        xkb.compose_state_reset(keyboard.composeState);
+    }
 }
 
 void

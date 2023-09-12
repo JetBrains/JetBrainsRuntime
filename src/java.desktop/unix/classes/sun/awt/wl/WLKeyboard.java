@@ -134,7 +134,10 @@ class WLKeyboard {
 
     public void onLostFocus() {
         keyRepeatManager.cancelRepeat();
+        cancelCompose();
     }
 
     private native void handleKeyPress(long timestamp, int keycode, boolean isRepeat);
+
+    private native void cancelCompose();
 }
