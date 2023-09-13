@@ -2,8 +2,9 @@ java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java 8202931,JBR-5398 ma
 java/awt/Debug/X11Trace.java JBR-5442 linux-all
 java/awt/EmbeddedFrame/GraphicsConfigTest/GraphicsConfigTest.java 8305515
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java 8311535 windows-all
-java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java 8292588 macosx-all
+java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java 8292588,JBR-6058 macosx-all windows-all
 java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.java JBR-5531 macosx-all
+java/awt/Frame/FramesGC/FramesGC.java JBR-6057 windows-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117 linux-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenSmall.java JBR-4379 windows-all
 java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java JBR-4379 windows-all

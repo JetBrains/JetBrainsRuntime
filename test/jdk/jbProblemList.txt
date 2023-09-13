@@ -889,7 +889,7 @@ javax/swing/JMenu/4515762/bug4515762.java 8197552 windows-all
 javax/swing/JMenu/4692443/bug4692443.java 8197552 windows-all
 javax/swing/JMenu/6470128/bug6470128.java 8050988,8253184 generic-all
 javax/swing/JMenu/6538132/bug6538132.java JBR-894 windows-all
-javax/swing/JMenu/PopupReferenceMemoryLeak.java JBR-5890 windows-aarch64
+javax/swing/JMenu/PopupReferenceMemoryLeak.java JBR-5890,JBR-6056 windows-aarch64,windows-x64
 javax/swing/JMenuBar/4750590/bug4750590.java 8197552 windows-all
 javax/swing/JMenuItem/4171437/bug4171437.java 8197552 windows-all
 javax/swing/JMenuItem/4654927/bug4654927.java JBR-164,JBR-4337 windows-all,linux-all
@@ -932,7 +932,7 @@ javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest_i18n.jav
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest.java JBR-912 windows-all
 javax/swing/JFileChooser/8021253/bug8021253.java JBR-107 windows-all
 javax/swing/JFileChooser/8041694/bug8041694.java JBR-5210 windows-all
-javax/swing/JFileChooser/8062561/bug8062561.java JBR-5808 windows-aarch64
+javax/swing/JFileChooser/8062561/bug8062561.java JBR-5808 windows-all
 javax/swing/JFileChooser/4524490/bug4524490.java 8042380 generic-all
 javax/swing/JFileChooser/6396844/TwentyThousandTest.java 8198003 generic-all
 javax/swing/JFileChooser/6520101/bug6520101.java JBR-5703 linux-5.8.0-1032-raspi
@@ -1013,7 +1013,7 @@ sanity/client/SwingSet/src/DialogDemoTest.java 8253184 windows-all
 sanity/client/SwingSet/src/FrameDemoTest.java 8253184 windows-all
 sanity/client/SwingSet/src/InternalFrameDemoTest.java 8253184 windows-all
 sanity/client/SwingSet/src/GridBagLayoutDemoTest.java 8253184 windows-all
-sanity/client/SwingSet/src/TextFieldDemoTest.java JBR-5061 linux-5.15.0-39-generic,linux-5.19.0-1028-aws Ubuntu-22.04
+sanity/client/SwingSet/src/TextFieldDemoTest.java JBR-5061 linux-all
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8225012 windows-all,macosx-all
 sanity/client/SwingSet/src/ScrollPaneDemoTest.java 8225013 linux-all
 sanity/client/SwingSet/src/SliderDemoTest.java 8253184 windows-all
@@ -1114,6 +1114,7 @@ sun/jvmstat/monitor/MonitoredVm/MonitorVmStartTerminate.java 8209595 generic-all
 
 java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter_1.java 7131438,8022539 generic-all
 java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter_2.java 7131438,8022539 generic-all
+java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter_3.java 6854300 generic-all
 java/awt/Modal/WsDisabledStyle/CloseBlocker/CloseBlocker.java 7187741 linux-all,macosx-all
 java/awt/xembed/server/TestXEmbedServerJava.java 8001150,8004031 generic-all
 javax/swing/JFileChooser/6698013/bug6698013.java 8024419 macosx-all
@@ -1308,6 +1309,7 @@ javax/sound/sampled/Mixers/BogusMixers.java JBR-4455 linux-aarch64
 
 java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java JBR-5359,JBR-5510,8310487 windows-aarch64,linux-5.18.2-arch1-1,linux-all
 java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java JBR-5359,JBR-5510,JBR-5905 windows-aarch64,linux-5.18.2-arch1-1,linux-all
+java/awt/Choice/SelectNewItemTest/SelectNewItemTest.java 8315733 macosx-all
 java/awt/ColorClass/XRenderTranslucentColorDrawTest.java JBR-5359 windows-aarch64
 java/awt/Frame/InvisibleOwner/InvisibleOwner.java JBR-5359,JBR-5510,8285094 windows-aarch64,linux-all
 java/awt/Graphics/CopyScaledArea/CopyScaledAreaTest.java JBR-5359 windows-aarch64
