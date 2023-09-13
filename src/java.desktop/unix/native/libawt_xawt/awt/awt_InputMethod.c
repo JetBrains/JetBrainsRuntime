@@ -128,6 +128,11 @@ typedef struct jbNewXimClient_ExtendedInputContext {
     XIC xic;
 
     /**
+     * The input style (XNInputStyle) used to create the XIC.
+     */
+    XIMStyle inputStyle;
+
+    /**
      * The display of XIM used to create the XIC and the fontsets.
      * Mustn't be NULL if xic isn't NULL.
      */
@@ -169,6 +174,7 @@ static inline void jbNewXimClient_setInputContextFields(
     jbNewXimClient_ExtendedInputContext *context,
     // Nullable
     XIC xic,
+    XIMStyle inputStyle,
     // Nullable
     Display *xicDisplay,
     // Nullable
@@ -423,7 +429,7 @@ destroyXInputContexts(X11InputMethodData *pX11IMData) {
     if (pX11IMData->ic_active.xic != (XIC)0) {
         if (pX11IMData->ic_passive.xic == pX11IMData->ic_active.xic) {
             // To avoid double-free
-            jbNewXimClient_setInputContextFields(&pX11IMData->ic_passive, NULL, NULL, NULL, NULL, NULL);
+            jbNewXimClient_setInputContextFields(&pX11IMData->ic_passive, NULL, 0, NULL, NULL, NULL, NULL);
         }
 
         XUnsetICFocus(pX11IMData->ic_active.xic);
@@ -1052,8 +1058,8 @@ createXIC(JNIEnv * env, X11InputMethodData *pX11IMData, Window w, Bool preferBel
         }
     }
 
-    jbNewXimClient_setInputContextFields(&pX11IMData->ic_active, NULL, NULL, NULL, NULL, NULL);
-    jbNewXimClient_setInputContextFields(&pX11IMData->ic_passive, NULL, NULL, NULL, NULL, NULL);
+    jbNewXimClient_setInputContextFields(&pX11IMData->ic_active, NULL, 0, NULL, NULL, NULL, NULL);
+    jbNewXimClient_setInputContextFields(&pX11IMData->ic_passive, NULL, 0, NULL, NULL, NULL, NULL);
 
     if (active_styles == on_the_spot_styles) {
         pX11IMData->ic_passive.xic = XCreateIC(X11im,
@@ -1061,6 +1067,7 @@ createXIC(JNIEnv * env, X11InputMethodData *pX11IMData, Window w, Bool preferBel
                                    XNFocusWindow, w,
                                    XNInputStyle, passive_styles,
                                    NULL);
+        pX11IMData->ic_passive.inputStyle = passive_styles;
 
         callbacks = (XIMCallback *)malloc(sizeof(XIMCallback) * NCALLBACKS);
         if (callbacks == (XIMCallback *)NULL)
@@ -1100,6 +1107,7 @@ createXIC(JNIEnv * env, X11InputMethodData *pX11IMData, Window w, Bool preferBel
                                               XNPreeditAttributes, preedit,
                                               XNStatusAttributes, status,
                                               NULL);
+            pX11IMData->ic_active.inputStyle = active_styles;
             XFree((void *)status);
             XFree((void *)preedit);
         }
@@ -1110,6 +1118,7 @@ createXIC(JNIEnv * env, X11InputMethodData *pX11IMData, Window w, Bool preferBel
                                           XNInputStyle, active_styles,
                                           XNPreeditAttributes, preedit,
                                           NULL);
+        pX11IMData->ic_active.inputStyle = active_styles;
         XFree((void *)preedit);
 #endif /* __linux__ */
     } else {
@@ -1118,6 +1127,7 @@ createXIC(JNIEnv * env, X11InputMethodData *pX11IMData, Window w, Bool preferBel
                                           XNFocusWindow, w,
                                           XNInputStyle, active_styles,
                                           NULL);
+        pX11IMData->ic_active.inputStyle = active_styles;
         pX11IMData->ic_passive = pX11IMData->ic_active;
     }
 
@@ -2028,6 +2038,45 @@ JNIEXPORT void JNICALL Java_sun_awt_X11_XInputMethod_adjustStatusWindow
 }
 
 
+JNIEXPORT jboolean JNICALL Java_sun_awt_X11_XInputMethod_doesFocusedXICSupportMovingCandidatesNativeWindow
+  (JNIEnv *env, jobject this)
+{
+    X11InputMethodData *pX11IMData = NULL;
+    jboolean result = JNI_FALSE;
+
+    if ((env == NULL) || (this == NULL)) {
+        return JNI_FALSE;
+    }
+
+    AWT_LOCK();
+
+    pX11IMData = getX11InputMethodData(env, this);
+    if (pX11IMData == NULL) {
+        goto finally;
+    }
+
+    if (pX11IMData->current_ic == NULL) {
+        goto finally;
+    }
+
+    if (pX11IMData->current_ic == pX11IMData->ic_active.xic) {
+        if ( (pX11IMData->ic_active.inputStyle & XIMPreeditPosition) == XIMPreeditPosition ) {
+            result = JNI_TRUE;
+        }
+    } else {
+        assert( (pX11IMData->current_ic == pX11IMData->ic_passive.xic) );
+        if ( (pX11IMData->ic_passive.inputStyle & XIMPreeditPosition) == XIMPreeditPosition ) {
+            result = JNI_TRUE;
+        }
+    }
+
+finally:
+    AWT_UNLOCK();
+
+    return result;
+}
+
+
 static void jbNewXimClient_moveImCandidatesWindow(XIC ic, XPoint newLocation);
 
 JNIEXPORT void JNICALL Java_sun_awt_X11_XInputMethod_adjustCandidatesNativeWindowPosition
@@ -2279,12 +2328,12 @@ static Bool jbNewXimClient_initializeXICs(
     jbNewXimClient_PrioritizedStyles inputStylesToTry = { 0 };
 
     jbNewXimClient_ExtendedInputContext activeClientIc;
-    jbNewXimClient_setInputContextFields(&activeClientIc, NULL, NULL, NULL, NULL, NULL);
-
     jbNewXimClient_ExtendedInputContext passiveClientIc;
-    jbNewXimClient_setInputContextFields(&passiveClientIc, NULL, NULL, NULL, NULL, NULL);
 
     unsigned int i = 0;
+
+    jbNewXimClient_setInputContextFields(&activeClientIc, NULL, 0, NULL, NULL, NULL, NULL);
+    jbNewXimClient_setInputContextFields(&passiveClientIc, NULL, 0, NULL, NULL, NULL, NULL);
 
     // Required IC values for XCreateIC by the X protocol:
     // * XNInputStyle
@@ -2615,7 +2664,7 @@ static jbNewXimClient_ExtendedInputContext jbNewXimClient_createInputContextOfSt
     const jbNewXimClient_XIMFeatures *allXimSupportedFeatures
 ) {
     jbNewXimClient_ExtendedInputContext result;
-    jbNewXimClient_setInputContextFields(&result, NULL, NULL, NULL, NULL, NULL);
+    jbNewXimClient_setInputContextFields(&result, NULL, 0, NULL, NULL, NULL, NULL);
 
     switch (style) {
         case JBNEWXIMCLIENT_SUPPORTED_INPUT_STYLE_BELOW_THE_SPOT_1:
@@ -2666,7 +2715,7 @@ static jbNewXimClient_ExtendedInputContext jbNewXimClient_createInputContextOfPr
     XIC xic = NULL;
     char *unsupportedIMValue = NULL;
 
-    jbNewXimClient_setInputContextFields(&result, NULL, NULL, NULL, NULL, NULL);
+    jbNewXimClient_setInputContextFields(&result, NULL, 0, NULL, NULL, NULL, NULL);
 
     if ((jEnv == NULL) || (x11inputmethod == NULL) || (xInputMethodConnection == NULL) || (allXimSupportedFeatures == NULL)) {
         return result;
@@ -2774,6 +2823,7 @@ static jbNewXimClient_ExtendedInputContext jbNewXimClient_createInputContextOfPr
     }
 
     result.xic = xic;
+    result.inputStyle = XIMPreeditPosition | XIMStatusNothing;
     result.xicDisplay = xicDisplay;
     result.preeditCustomFontSet = preeditFontSet;
 
@@ -2811,7 +2861,7 @@ static jbNewXimClient_ExtendedInputContext jbNewXimClient_createInputContextOfPr
     XIC xic = NULL;
     char *unsupportedIMValue = NULL;
 
-    jbNewXimClient_setInputContextFields(&result, NULL, NULL, NULL, NULL, NULL);
+    jbNewXimClient_setInputContextFields(&result, NULL, 0, NULL, NULL, NULL, NULL);
 
     if ((jEnv == NULL) || (x11inputmethod == NULL) || (xInputMethodConnection == NULL) || (allXimSupportedFeatures == NULL)) {
         return result;
@@ -2884,6 +2934,7 @@ static jbNewXimClient_ExtendedInputContext jbNewXimClient_createInputContextOfPr
     }
 
     result.xic = xic;
+    result.inputStyle = XIMPreeditNothing | XIMStatusNothing;
     result.xicDisplay = xicDisplay;
 
 finally:
@@ -2920,6 +2971,7 @@ static inline void jbNewXimClient_setInputContextFields(
     jbNewXimClient_ExtendedInputContext * const context,
     // Nullable
     const XIC xic,
+    XIMStyle inputStyle,
     // Nullable
     Display * const xicDisplay,
     // Nullable
@@ -2934,6 +2986,7 @@ static inline void jbNewXimClient_setInputContextFields(
     }
 
     context->xic = xic;
+    context->inputStyle = inputStyle;
     context->xicDisplay = xicDisplay;
     context->preeditCustomFontSet = preeditCustomFontSet;
     context->statusCustomFontSet = statusCustomFontSet;
@@ -2947,7 +3000,7 @@ static void jbNewXimClient_destroyInputContext(jbNewXimClient_ExtendedInputConte
     }
 
     jbNewXimClient_ExtendedInputContext localContext = *context;
-    jbNewXimClient_setInputContextFields(context, NULL, NULL, NULL, NULL, NULL);
+    jbNewXimClient_setInputContextFields(context, NULL, 0, NULL, NULL, NULL, NULL);
 
     if (localContext.xic != NULL) {
         XDestroyIC(localContext.xic);

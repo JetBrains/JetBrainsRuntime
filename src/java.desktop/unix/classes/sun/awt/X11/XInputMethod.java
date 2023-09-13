@@ -26,17 +26,22 @@
 
 package sun.awt.X11;
 
-import java.awt.AWTException;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.Rectangle;
+import java.awt.*;
+import java.awt.event.*;
+import java.awt.im.InputMethodRequests;
 import java.awt.im.spi.InputMethodContext;
 import java.awt.peer.ComponentPeer;
+import java.lang.ref.WeakReference;
 
 import sun.awt.AWTAccessor;
 import sun.awt.X11InputMethod;
 
 import sun.util.logging.PlatformLogger;
+
+import javax.swing.*;
+import javax.swing.event.CaretEvent;
+import javax.swing.event.CaretListener;
+import javax.swing.text.JTextComponent;
 
 /**
  * Input Method Adapter for XIM (without Motif)
@@ -48,6 +53,7 @@ public class XInputMethod extends X11InputMethod {
 
     public XInputMethod() throws AWTException {
         super();
+        clientComponentCaretPositionTracker = new ClientComponentCaretPositionTracker(this);
     }
 
     public void setInputMethodContext(InputMethodContext context) {
@@ -59,6 +65,34 @@ public class XInputMethod extends X11InputMethod {
         if (peer != null) {
             adjustStatusWindow(peer.getContentWindow());
         }
+
+        if (doesSupportMovingCandidatesNativeWindow) {
+            clientComponentCaretPositionTracker.onNotifyClientWindowChange(location);
+        }
+    }
+
+    @Override
+    public synchronized void activate() {
+        super.activate();
+
+        if (doesSupportMovingCandidatesNativeWindow) {
+            updateCandidatesNativeWindowPosition(true);
+            clientComponentCaretPositionTracker.startTracking(getClientComponent());
+        }
+    }
+
+    @Override
+    public synchronized void deactivate(boolean isTemporary) {
+        clientComponentCaretPositionTracker.stopTrackingCurrentComponent();
+        super.deactivate(isTemporary);
+    }
+
+    @Override
+    public void dispatchEvent(AWTEvent e) {
+        if (doesSupportMovingCandidatesNativeWindow) {
+            clientComponentCaretPositionTracker.onDispatchEvent(e);
+        }
+        super.dispatchEvent(e);
     }
 
 
@@ -120,8 +154,7 @@ public class XInputMethod extends X11InputMethod {
 
     private static volatile long xicFocus = 0;
 
-    protected void setXICFocus(ComponentPeer peer,
-                                    boolean value, boolean active) {
+    protected void setXICFocus(ComponentPeer peer, boolean value, boolean active) {
         if (peer == null) {
             return;
         }
@@ -129,15 +162,17 @@ public class XInputMethod extends X11InputMethod {
         setXICFocusNative(((XComponentPeer)peer).getContentWindow(),
                           value,
                           active);
+
+        doesSupportMovingCandidatesNativeWindow = value && doesFocusedXICSupportMovingCandidatesNativeWindow();
     }
 
     public static long getXICFocus() {
         return xicFocus;
     }
 
-/* XAWT_HACK  FIX ME!
-   do NOT call client code!
-*/
+    /* XAWT_HACK  FIX ME!
+       do NOT call client code!
+    */
     protected Container getParent(Component client) {
         return client.getParent();
     }
@@ -280,10 +315,15 @@ public class XInputMethod extends X11InputMethod {
 
 
     // JBR-2460
+    private volatile boolean doesSupportMovingCandidatesNativeWindow = false;
     private Point lastKnownCandidatesNativeWindowAbsolutePosition = null;
 
     private void updateCandidatesNativeWindowPosition(final boolean forceUpdate) {
         assert(SwingUtilities.isEventDispatchThread());
+
+        if (!doesSupportMovingCandidatesNativeWindow) {
+            return;
+        }
 
         final Component clientComponent = getClientComponent();
         if (clientComponent == null) {
@@ -359,9 +399,177 @@ public class XInputMethod extends X11InputMethod {
     private native boolean createXICNative(long window, boolean preferBelowTheSpot);
     private native boolean recreateXICNative(long window, long px11data, int ctxid, boolean preferBelowTheSpot);
     private native int releaseXICNative(long px11data);
-    private native void setXICFocusNative(long window,
-                                    boolean value, boolean active);
+    private native void setXICFocusNative(long window, boolean value, boolean active);
     private native void adjustStatusWindow(long window);
 
+    private native boolean doesFocusedXICSupportMovingCandidatesNativeWindow();
+
     private native void adjustCandidatesNativeWindowPosition(int x, int y);
+
+
+    /**
+     * This class tries to track all the cases when the position of the parent XInputMethod's candidate window has
+     * to be updated. Here are the examples of such cases:
+     * <ul>
+     * <li>The caret position has changed ;
+     * <li>The component has been moved/resized ;
+     * <li>The component's window has been moved/resized ;
+     * <li>The component's text has been changed ;
+     * </ul>
+     * Tracking makes sense only when the parent XIM is in a mode allowing to move a native candidates window.
+     * This is controlled by a flag {@link XInputMethod#doesSupportMovingCandidatesNativeWindow}.
+     * Thus, the tracking gets enabled (via {@link #startTracking(Component)}) only when the flag is evaluated to true.
+     */
+    private static class ClientComponentCaretPositionTracker implements ComponentListener, CaretListener, TextListener
+    {
+        public ClientComponentCaretPositionTracker(XInputMethod owner) {
+            this.owner = new WeakReference<>(owner);
+        }
+
+
+        public void startTracking(final Component component) {
+            stopTrackingCurrentComponent();
+
+            if (component == null) {
+                return;
+            }
+
+            trackedComponent = new WeakReference<>(component);
+
+            // Moving and changing the size causes a possible change of caret position
+            component.addComponentListener(this);
+
+            if (component instanceof JTextComponent jtc) {
+                jtc.addCaretListener(this);
+                isCaretListenerInstalled = true;
+            } else if (component instanceof TextComponent tc) {
+                tc.addTextListener(this);
+                isTextListenerInstalled = true;
+            }
+        }
+
+        public void stopTrackingCurrentComponent() {
+            final Component trackedComponentStrong;
+            if (trackedComponent == null) {
+                trackedComponentStrong = null;
+            } else {
+                trackedComponentStrong = trackedComponent.get();
+                trackedComponent.clear();
+                trackedComponent = null;
+            }
+
+            if (trackedComponentStrong == null) {
+                isCaretListenerInstalled = false;
+                isTextListenerInstalled = false;
+                return;
+            }
+
+            if (isTextListenerInstalled) {
+                isTextListenerInstalled = false;
+                ((TextComponent)trackedComponentStrong).removeTextListener(this);
+            }
+
+            if (isCaretListenerInstalled) {
+                isCaretListenerInstalled = false;
+                ((JTextComponent)trackedComponentStrong).removeCaretListener(this);
+            }
+
+            trackedComponentStrong.removeComponentListener(this);
+        }
+
+        /* Listening callbacks */
+
+        public void onDispatchEvent(AWTEvent event) {
+            if (isCaretListenerInstalled) {
+                return;
+            }
+
+            final int eventId = event.getID();
+
+            if ( (eventId >= MouseEvent.MOUSE_FIRST) && (eventId <= MouseEvent.MOUSE_LAST) ) {
+                // The event hasn't been dispatched yet, so the caret position couldn't be changed.
+                // Hence, we have to postpone the updating request.
+                SwingUtilities.invokeLater(() -> updateImCandidatesNativeWindowPosition(false));
+                return;
+            }
+
+            if ( !isTextListenerInstalled && (eventId >= KeyEvent.KEY_FIRST) && (eventId <= KeyEvent.KEY_LAST) ) {
+                // The event hasn't been dispatched yet, so the caret position couldn't be changed.
+                // Hence, we have to postpone the updating request.
+                SwingUtilities.invokeLater(() -> updateImCandidatesNativeWindowPosition(false));
+            }
+        }
+
+        public void onNotifyClientWindowChange(Rectangle location) {
+            if (location != null) {
+                updateImCandidatesNativeWindowPosition(lastKnownClientWindowBounds == null);
+            }
+            lastKnownClientWindowBounds = location;
+        }
+
+        // ComponentListener
+
+        @Override
+        public void componentHidden(ComponentEvent e) {}
+
+        @Override
+        public void componentMoved(ComponentEvent e) {
+            updateImCandidatesNativeWindowPosition(false);
+        }
+
+        @Override
+        public void componentResized(ComponentEvent e) {
+            updateImCandidatesNativeWindowPosition(false);
+        }
+
+        @Override
+        public void componentShown(ComponentEvent e) {
+            updateImCandidatesNativeWindowPosition(false);
+        }
+
+        // CaretListener
+
+        @Override
+        public void caretUpdate(CaretEvent e) {
+            updateImCandidatesNativeWindowPosition(false);
+        }
+
+        // TextListener
+
+        @Override
+        public void textValueChanged(TextEvent e) {
+            updateImCandidatesNativeWindowPosition(false);
+        }
+
+        /* Private parts */
+
+        private final WeakReference<XInputMethod> owner;
+        private WeakReference<Component> trackedComponent = null;
+        private boolean isCaretListenerInstalled = false;
+        private boolean isTextListenerInstalled = false;
+        private Rectangle lastKnownClientWindowBounds = null;
+
+
+        private void updateImCandidatesNativeWindowPosition(boolean forceUpdate) {
+            final XInputMethod ownerStrong = owner.get();
+
+            if ((ownerStrong == null) || (ownerStrong.isDisposed())) {
+                // The owning XInputMethod instance is no longer valid
+
+                stopTrackingCurrentComponent();
+                owner.clear();
+
+                return;
+            }
+
+            if (!ownerStrong.isActive) {
+                stopTrackingCurrentComponent(); // will start tracking back when the owner gets active back
+                return;
+            }
+
+            ownerStrong.updateCandidatesNativeWindowPosition(forceUpdate);
+        }
+    }
+
+    final ClientComponentCaretPositionTracker clientComponentCaretPositionTracker;
 }
