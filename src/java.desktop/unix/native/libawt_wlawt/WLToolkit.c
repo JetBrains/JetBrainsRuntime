@@ -352,11 +352,11 @@ wl_keyboard_enter(void *data, struct wl_keyboard *wl_keyboard,
                                  serial, jlong_to_ptr(surface));
     JNU_CHECK_EXCEPTION(env);
 
-    uint32_t *key;
-    wl_array_for_each(key, keys) {
-        wlSetKeyState(0, *key, true);
-        JNU_CHECK_EXCEPTION(env);
-    }
+//    uint32_t *key;
+//    wl_array_for_each(key, keys) {
+//        wlSetKeyState(0, *key, true);
+//        JNU_CHECK_EXCEPTION(env);
+//    }
 }
 
 static void
