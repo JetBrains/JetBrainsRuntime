@@ -202,12 +202,14 @@ static struct WLKeyboardState {
 
     struct xkb_compose_table *composeTable;
     struct xkb_compose_state *composeState;
+    struct xkb_compose_state *tmpComposeState;
 
     bool asciiCapable;
 
     bool remapExtraKeycodes;
     bool useNationalLayouts;
     bool reportDeadKeysAsNormal;
+    bool reportKeyCodeAsExtended;
 } keyboard;
 
 
@@ -945,6 +947,30 @@ onKeyboardLayoutChanged(void)
     keyboard.asciiCapable = latin_letters_seen_count >= 20;
 }
 
+enum ConvertDeadKeyType {
+    CONVERT_TO_NON_COMBINING,
+    CONVERT_TO_COMBINING
+};
+
+static xkb_keysym_t
+convertDeadKey(xkb_keysym_t keysym, enum ConvertDeadKeyType type) {
+    if (!keyboard.tmpComposeState) {
+        return 0;
+    }
+
+    xkb_keysym_t next = (type == CONVERT_TO_COMBINING) ?
+        0x00A0 /* XKB_KEY_nobreakspace */ : keysym;
+
+    xkb.compose_state_reset(keyboard.tmpComposeState);
+    xkb.compose_state_feed(keyboard.tmpComposeState, keysym);
+    xkb.compose_state_feed(keyboard.tmpComposeState, next);
+
+    if (xkb.compose_state_get_status(keyboard.tmpComposeState) == XKB_COMPOSE_COMPOSED) {
+        return xkb.compose_state_get_one_sym(keyboard.tmpComposeState);
+    } else {
+        return 0;
+    }
+}
 
 static xkb_keysym_t
 translateKeycodeToKeysym(uint32_t keycode, bool useQWERTY)
@@ -1039,7 +1065,7 @@ postKeyTypedCodepoint(uint32_t codePoint)
         codePoint -= 0x10000;
 
         uint16_t highSurrogate = (uint16_t)(0xD800 + ((codePoint >> 10) & 0x3ff));
-        uint16_t lowSurrogate = (uint16_t)(0xDC00 + codePoint & 0x3ff);
+        uint16_t lowSurrogate = (uint16_t)(0xDC00 + (codePoint & 0x3ff));
 
         postKeyTypedJavaChar(highSurrogate);
         postKeyTypedJavaChar(lowSurrogate);
@@ -1153,7 +1179,15 @@ handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat)
         lookupKeysym(qwertyKeysym, &javaKeyCode, &javaKeyLocation);
         javaExtendedKeyCode = javaKeyCode;
     } else {
-        lookupKeysym(keysym, &javaExtendedKeyCode, &javaKeyLocation);
+        xkb_keysym_t report = keysym;
+        if (keyboard.reportDeadKeysAsNormal) {
+            xkb_keysym_t converted = convertDeadKey(keysym, CONVERT_TO_NON_COMBINING);
+            if (converted != 0) {
+                report = converted;
+            }
+        }
+
+        lookupKeysym(report, &javaExtendedKeyCode, &javaKeyLocation);
         if (javaExtendedKeyCode >= 0x1000000) {
             lookupKeysym(qwertyKeysym, &javaKeyCode, NULL);
         } else {
@@ -1209,6 +1243,7 @@ Java_sun_awt_wl_WLKeyboard_initialize(JNIEnv* env, jobject instance, jobject key
     keyboard.context = xkb.context_new(XKB_CONTEXT_NO_FLAGS);
     keyboard.useNationalLayouts = true;
     keyboard.remapExtraKeycodes = true;
+    keyboard.reportDeadKeysAsNormal = true;
 
     struct xkb_rule_names qwertyRuleNames = {
             .rules = "evdev",
@@ -1222,6 +1257,7 @@ Java_sun_awt_wl_WLKeyboard_initialize(JNIEnv* env, jobject instance, jobject key
     keyboard.composeTable = xkb.compose_table_new_from_locale(keyboard.context, getComposeLocale(), XKB_COMPOSE_COMPILE_NO_FLAGS);
     if (keyboard.composeTable) {
         keyboard.composeState = xkb.compose_state_new(keyboard.composeTable, XKB_COMPOSE_STATE_NO_FLAGS);
+        keyboard.tmpComposeState = xkb.compose_state_new(keyboard.composeTable, XKB_COMPOSE_STATE_NO_FLAGS);
     }
 }
 
