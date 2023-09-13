@@ -45,7 +45,7 @@ class WLKeyboard {
 
         void setRepeatInfo(int charsPerSecond, int delayMillis) {
             this.delayBeforeRepeatMillis = delayMillis;
-            this.delayBetweenRepeatMillis = (int)(1000.0 / charsPerSecond);
+            this.delayBetweenRepeatMillis = (int) (1000.0 / charsPerSecond);
         }
 
         void cancelRepeat() {
@@ -89,35 +89,27 @@ class WLKeyboard {
     public static final int XKB_META_MASK = 1 << 6;
     public static final int XKB_MOD5_MASK = 1 << 7;
 
-    private int xkbModifiersMask = 0;
     private final KeyRepeatManager keyRepeatManager;
 
     private native void initialize(KeyRepeatManager keyRepeatManager);
 
-    public void setXKBModifiersMask(int mask) {
-        xkbModifiersMask = mask;
-    }
-
-    public int getXKBModifiersMask() {
-        return xkbModifiersMask;
-    }
-
     public int getModifiers() {
         int result = 0;
+        int mask = getXKBModifiersMask();
 
-        if ((xkbModifiersMask & XKB_SHIFT_MASK) != 0) {
+        if ((mask & XKB_SHIFT_MASK) != 0) {
             result |= InputEvent.SHIFT_DOWN_MASK;
         }
 
-        if ((xkbModifiersMask & XKB_CTRL_MASK) != 0) {
+        if ((mask & XKB_CTRL_MASK) != 0) {
             result |= InputEvent.CTRL_DOWN_MASK;
         }
 
-        if ((xkbModifiersMask & XKB_ALT_MASK) != 0) {
+        if ((mask & XKB_ALT_MASK) != 0) {
             result |= InputEvent.ALT_DOWN_MASK;
         }
 
-        if ((xkbModifiersMask & XKB_META_MASK) != 0) {
+        if ((mask & XKB_META_MASK) != 0) {
             result |= InputEvent.META_DOWN_MASK;
         }
 
@@ -125,11 +117,11 @@ class WLKeyboard {
     }
 
     public boolean isCapsLockPressed() {
-        return (xkbModifiersMask & XKB_CAPS_LOCK_MASK) != 0;
+        return (getXKBModifiersMask() & XKB_CAPS_LOCK_MASK) != 0;
     }
 
     public boolean isNumLockPressed() {
-        return (xkbModifiersMask & XKB_NUM_LOCK_MASK) != 0;
+        return (getXKBModifiersMask() & XKB_NUM_LOCK_MASK) != 0;
     }
 
     public void onLostFocus() {
@@ -140,4 +132,6 @@ class WLKeyboard {
     private native void handleKeyPress(long timestamp, int keycode, boolean isRepeat);
 
     private native void cancelCompose();
+
+    private native int getXKBModifiersMask();
 }

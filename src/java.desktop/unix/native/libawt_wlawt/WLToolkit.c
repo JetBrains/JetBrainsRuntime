@@ -391,13 +391,10 @@ wl_keyboard_modifiers(void *data, struct wl_keyboard *wl_keyboard,
 
     JNIEnv* env = getEnv();
 
-    uint32_t mods = (mods_depressed | mods_latched | mods_locked) & 0xff;
-
     (*env)->CallStaticVoidMethod(env,
                                  tkClass,
                                  dispatchKeyboardModifiersEventMID,
-                                 serial,
-                                 mods);
+                                 serial);
     JNU_CHECK_EXCEPTION(env);
 }
 
@@ -644,7 +641,7 @@ initJavaRefs(JNIEnv *env, jclass clazz)
                       JNI_FALSE);
     CHECK_NULL_RETURN(dispatchKeyboardModifiersEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                     "dispatchKeyboardModifiersEvent",
-                                                                                    "(JI)V"),
+                                                                                    "(J)V"),
                       JNI_FALSE);
 
     jclass wlgeClass = (*env)->FindClass(env, "sun/awt/wl/WLGraphicsEnvironment");

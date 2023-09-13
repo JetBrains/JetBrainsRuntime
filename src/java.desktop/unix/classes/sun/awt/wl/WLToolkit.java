@@ -342,16 +342,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         postEvent(keyEvent);
     }
 
-    private static void dispatchKeyboardModifiersEvent(long serial, int xkbModifiers) {
-        // Invoked from the native code
+    private static void dispatchKeyboardModifiersEvent(long serial) {
         assert EventQueue.isDispatchThread();
-
-        if (logKeys.isLoggable(PlatformLogger.Level.FINE)) {
-            logKeys.fine("dispatchKeyboardModifiersEvent: xkb modifiers 0x"
-                    + Integer.toHexString(xkbModifiers));
-        }
-
-        keyboard.setXKBModifiersMask(xkbModifiers);
         inputState = inputState.updatedFromKeyboardModifiersEvent(serial, keyboard.getModifiers());
     }
 

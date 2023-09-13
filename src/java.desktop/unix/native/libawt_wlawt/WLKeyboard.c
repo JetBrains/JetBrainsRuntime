@@ -1239,6 +1239,13 @@ Java_sun_awt_wl_WLKeyboard_cancelCompose(JNIEnv* env, jobject instance)
     }
 }
 
+JNIEXPORT jint JNICALL
+Java_sun_awt_wl_WLKeyboard_getXKBModifiersMask(JNIEnv* env, jobject instance)
+{
+    xkb_mod_mask_t mods = xkb.state_serialize_mods(keyboard.state, XKB_STATE_MODS_EFFECTIVE);
+    return (jint)mods;
+}
+
 void
 wlSetKeymap(const char* serializedKeymap)
 {
