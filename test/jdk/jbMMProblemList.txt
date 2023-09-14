@@ -1,6 +1,26 @@
+java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java 8202931,JBR-5398 macosx-all,linux-all,windows-all
 java/awt/FullScreen/CurrentDisplayModeTest/CurrentDisplayModeTest.java JBR-5059 linux-all
+java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-4379 windows-all
 java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java JBR-5062 linux-all
 java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5.15.0-46-generic Ubuntu 20.04
+java/awt/Frame/FramesGC/FramesGC.java JBR-6057 windows-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117 linux-all
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java 8311535 windows-all
 java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.java JBR-5531 macosx-all
+java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390 macosx-all,linux-all
+java/awt/Toolkit/AWTEventListenerProxyTest/AWTEventListenerProxyTest.java JBR-6065 windows-all
+java/awt/im/memoryleak/InputContextMemoryLeakTest.java JBR-6065 windows-all
+
+javax/swing/JInternalFrame/Test6325652.java JBR-6065 windows-all
+javax/swing/JMenu/4692443/bug4692443.java JBR-6065 windows-all
+javax/swing/JMenuBar/4750590/bug4750590.java JBR-6065 windows-all
+javax/swing/JMenuItem/4171437/bug4171437.java JBR-6065 windows-all
+javax/swing/JTextField/8036819/bug8036819.java JBR-6065 windows-all
+javax/swing/JTree/4927934/bug4927934.java JBR-6065 windows-all
+
+
+
+
+
+
+
