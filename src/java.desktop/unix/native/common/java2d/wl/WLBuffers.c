@@ -85,22 +85,9 @@ ReportFatalError(const char* file, int line, const char *msg)
     assert(0);
 }
 
-static inline void
-AssertCalledOnEDT(const char* file, int line)
-{
-    char threadName[16];
-    pthread_getname_np(pthread_self(), threadName, sizeof(threadName));
-    if (strncmp(threadName, "AWT-EventQueue", 14) != 0) {
-        fprintf(stderr, "Assert failed (called on %s instead of EDT) at %s:%d\n", threadName, file, line);
-        fflush(stderr);
-        assert(0);
-    }
-}
-
 static void
 AssertDrawLockIsHeld(WLSurfaceBufferManager* manager, const char * file, int line);
 
-#define ASSERT_ON_EDT() AssertCalledOnEDT(__FILE__, __LINE__)
 #define WL_FATAL_ERROR(msg) ReportFatalError(__FILE__, __LINE__, msg)
 #define ASSERT_DRAW_LOCK_IS_HELD(manager) AssertDrawLockIsHeld(manager, __FILE__, __LINE__)
 #define ASSERT_SHOW_LOCK_IS_HELD(manager) AssertShowLockIsHeld(manager, __FILE__, __LINE__)
@@ -773,7 +760,7 @@ WLSBM_Create(jint width, jint height, jint scale, jint bgPixel, jint wlShmFormat
     // both read from and written to (when scrolling, for instance).
     // So it needs to be able to be "locked" twice: once for writing and
     // once for reading.
-    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP);
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
     pthread_mutex_init(&manager->drawLock, &attr);
     DrawBufferCreate(manager);
     ShowBufferCreate(manager);
