@@ -566,6 +566,8 @@ AC_DEFUN([PLATFORM_SETUP_LEGACY_VARS_HELPER],
     HOTSPOT_$1_CPU_DEFINE=S390
   elif test "x$OPENJDK_$1_CPU" = xriscv64; then
     HOTSPOT_$1_CPU_DEFINE=RISCV
+  elif test "x$OPENJDK_$1_CPU" = xloongarch64; then
+    HOTSPOT_$1_CPU_DEFINE=LOONGARCH64
   elif test "x$OPENJDK_$1_CPU" != x; then
     HOTSPOT_$1_CPU_DEFINE=$(echo $OPENJDK_$1_CPU | tr a-z A-Z)
   fi
