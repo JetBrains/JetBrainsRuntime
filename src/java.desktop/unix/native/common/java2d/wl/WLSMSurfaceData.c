@@ -260,7 +260,7 @@ Java_sun_java2d_wl_WLSMSurfaceData_initOps(JNIEnv *env, jobject wsd,
     // Recursive mutex is required because blit can be done with both source
     // and destination being the same surface (during scrolling, for example).
     // So WLSD_Lock() should be able to lock the same surface twice in a row.
-    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP);
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
     pthread_mutex_init(&wsdo->lock, &attr);
 #endif /* !HEADLESS */
 }
