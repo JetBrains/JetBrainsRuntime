@@ -270,7 +270,7 @@ xdg_activation_token_v1_done(void *data,
 		                     struct xdg_activation_token_v1 *xdg_activation_token_v1,
 		                     const char *token) {
 	struct WLFrame *frame = (struct WLFrame *) data;
-	assert(wlFrame);
+	assert(frame);
 	struct wl_surface *surface = frame->wl_surface;
     assert(surface);
     xdg_activation_v1_activate(xdg_activation_v1, token, surface);
