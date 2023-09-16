@@ -120,6 +120,19 @@ public class XInputMethod extends X11InputMethod {
 
     protected boolean preferXBelowTheSpot() {
         try {
+            if (BrokenImDetectionContext.EATEN_EVENTS_THRESHOLD > 0) {
+                // The fix of JBR-1573,
+                //   which is incompatible with the implementation of the native below-the-spot mode (a.k.a. X over-the-spot),
+                //   is explicitly enabled.
+                // So let's disable this mode in favor of that fix.
+
+                if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                    log.warning("The property \"jb.awt.newXimClient.preferBelowTheSpot\" is ignored in favor of the explicitly enabled \"recreate.x11.input.method\"");
+                }
+
+                return false;
+            }
+
             final String strVal = System.getProperty("jb.awt.newXimClient.preferBelowTheSpot");
             final boolean defVal = true;
 
@@ -297,12 +310,12 @@ public class XInputMethod extends X11InputMethod {
 
 
         static {
-            int eatenEventsThresholdInitializer = 7;
-            final String eventsThresholdMode = System.getProperty("recreate.x11.input.method", "true");
+            int eatenEventsThresholdInitializer = 0;
+            final String eventsThresholdMode = System.getProperty("recreate.x11.input.method", "false");
 
-            if ("false".equals(eventsThresholdMode)) {
-                eatenEventsThresholdInitializer = 0;
-            } else if (!"true".equals(eventsThresholdMode)) {
+            if ("true".equalsIgnoreCase(eventsThresholdMode)) {
+                eatenEventsThresholdInitializer = 7;
+            } else if (!"false".equalsIgnoreCase(eventsThresholdMode)) {
                 try {
                     eatenEventsThresholdInitializer = Integer.parseInt(eventsThresholdMode);
                 } catch (NumberFormatException err) {
