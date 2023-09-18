@@ -882,7 +882,7 @@ static void adjustStatusWindow(Window shell) {
  * fallback to None styles.
  */
 static Bool
-createXIC(JNIEnv * env, X11InputMethodData *pX11IMData, Window w)
+createXIC(JNIEnv * env, X11InputMethodData *pX11IMData, Window w, Bool preferBelowTheSpot)
 {
     XVaNestedList preedit = NULL;
     XVaNestedList status = NULL;
@@ -1435,7 +1435,8 @@ Java_sun_awt_X11_XInputMethod_openXIMNative(JNIEnv *env,
 JNIEXPORT jboolean JNICALL
 Java_sun_awt_X11_XInputMethod_createXICNative(JNIEnv *env,
                                               jobject this,
-                                              jlong window)
+                                              jlong window,
+                                              jboolean preferBelowTheSpot)
 {
     X11InputMethodData *pX11IMData;
     jobject globalRef;
@@ -1465,7 +1466,7 @@ Java_sun_awt_X11_XInputMethod_createXICNative(JNIEnv *env,
     pX11IMData->lookup_buf = 0;
     pX11IMData->lookup_buf_len = 0;
 
-    if (createXIC(env, pX11IMData, (Window)window) == False) {
+    if (createXIC(env, pX11IMData, (Window)window, (preferBelowTheSpot == JNI_TRUE) ? True : False) == False) {
         destroyX11InputMethodData((JNIEnv *) NULL, pX11IMData);
         pX11IMData = (X11InputMethodData *) NULL;
         if ((*env)->ExceptionCheck(env)) {
@@ -1483,11 +1484,12 @@ finally:
 JNIEXPORT jboolean JNICALL
 Java_sun_awt_X11_XInputMethod_recreateXICNative(JNIEnv *env,
                                               jobject this,
-                                              jlong window, jlong pData, jint ctxid)
+                                              jlong window, jlong pData, jint ctxid,
+                                              jboolean preferBelowTheSpot)
 {
     // NOTE: must be called under AWT_LOCK
     X11InputMethodData * pX11IMData = (X11InputMethodData *)pData;
-    jboolean result = createXIC(env, pX11IMData, window);
+    jboolean result = createXIC(env, pX11IMData, window, (preferBelowTheSpot == JNI_TRUE) ? True : False);
     if (result) {
         if (ctxid == 1)
             pX11IMData->current_ic = pX11IMData->ic_active;
