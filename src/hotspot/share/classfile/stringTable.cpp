@@ -53,6 +53,7 @@
 #include "runtime/mutexLocker.hpp"
 #include "runtime/safepointVerifiers.hpp"
 #include "runtime/timerTrace.hpp"
+#include "runtime/trimNativeHeap.hpp"
 #include "services/diagnosticCommand.hpp"
 #include "utilities/concurrentHashTable.inline.hpp"
 #include "utilities/concurrentHashTableTasks.inline.hpp"
@@ -175,11 +176,9 @@ class StringTableLookupJchar : StackObj {
   uintx get_hash() const {
     return _hash;
   }
-  bool equals(WeakHandle* value, bool* is_dead) {
+  bool equals(WeakHandle* value) {
     oop val_oop = value->peek();
     if (val_oop == nullptr) {
-      // dead oop, mark this hash dead for cleaning
-      *is_dead = true;
       return false;
     }
     bool equals = java_lang_String::equals(val_oop, _str, _len);
@@ -189,6 +188,10 @@ class StringTableLookupJchar : StackObj {
     // Need to resolve weak handle and Handleize through possible safepoint.
      _found = Handle(_thread, value->resolve());
     return true;
+  }
+  bool is_dead(WeakHandle* value) {
+    oop val_oop = value->peek();
+    return val_oop == nullptr;
   }
 };
 
@@ -207,11 +210,9 @@ class StringTableLookupOop : public StackObj {
     return _hash;
   }
 
-  bool equals(WeakHandle* value, bool* is_dead) {
+  bool equals(WeakHandle* value) {
     oop val_oop = value->peek();
     if (val_oop == nullptr) {
-      // dead oop, mark this hash dead for cleaning
-      *is_dead = true;
       return false;
     }
     bool equals = java_lang_String::equals(_find(), val_oop);
@@ -221,6 +222,11 @@ class StringTableLookupOop : public StackObj {
     // Need to resolve weak handle and Handleize through possible safepoint.
     _found = Handle(_thread, value->resolve());
     return true;
+  }
+
+  bool is_dead(WeakHandle* value) {
+    oop val_oop = value->peek();
+    return val_oop == nullptr;
   }
 };
 
@@ -456,6 +462,7 @@ void StringTable::clean_dead_entries(JavaThread* jt) {
 
   StringTableDeleteCheck stdc;
   StringTableDoDelete stdd;
+  NativeHeapTrimmer::SuspendMark sm("stringtable");
   {
     TraceTime timer("Clean", TRACETIME_LOG(Debug, stringtable, perf));
     while(bdt.do_task(jt, stdc, stdd)) {

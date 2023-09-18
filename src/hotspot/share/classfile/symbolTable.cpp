@@ -37,6 +37,7 @@
 #include "runtime/atomic.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/timerTrace.hpp"
+#include "runtime/trimNativeHeap.hpp"
 #include "services/diagnosticCommand.hpp"
 #include "utilities/concurrentHashTable.inline.hpp"
 #include "utilities/concurrentHashTableTasks.inline.hpp"
@@ -337,6 +338,7 @@ Symbol* SymbolTable::lookup_common(const char* name,
 }
 
 Symbol* SymbolTable::new_symbol(const char* name, int len) {
+  assert(len <= Symbol::max_length(), "sanity");
   unsigned int hash = hash_symbol(name, len, _alt_hash);
   Symbol* sym = lookup_common(name, len, hash);
   if (sym == nullptr) {
@@ -352,6 +354,7 @@ Symbol* SymbolTable::new_symbol(const Symbol* sym, int begin, int end) {
   assert(sym->refcount() != 0, "require a valid symbol");
   const char* name = (const char*)sym->base() + begin;
   int len = end - begin;
+  assert(len <= Symbol::max_length(), "sanity");
   unsigned int hash = hash_symbol(name, len, _alt_hash);
   Symbol* found = lookup_common(name, len, hash);
   if (found == nullptr) {
@@ -371,7 +374,11 @@ public:
   uintx get_hash() const {
     return _hash;
   }
-  bool equals(Symbol* value, bool* is_dead) {
+  // Note: When equals() returns "true", the symbol's refcount is incremented. This is
+  // needed to ensure that the symbol is kept alive before equals() returns to the caller,
+  // so that another thread cannot clean the symbol up concurrently. The caller is
+  // responsible for decrementing the refcount, when the symbol is no longer needed.
+  bool equals(Symbol* value) {
     assert(value != nullptr, "expected valid value");
     Symbol *sym = value;
     if (sym->equals(_str, _len)) {
@@ -380,13 +387,14 @@ public:
         return true;
       } else {
         assert(sym->refcount() == 0, "expected dead symbol");
-        *is_dead = true;
         return false;
       }
     } else {
-      *is_dead = (sym->refcount() == 0);
       return false;
     }
+  }
+  bool is_dead(Symbol* value) {
+    return value->refcount() == 0;
   }
 };
 
@@ -737,6 +745,7 @@ void SymbolTable::clean_dead_entries(JavaThread* jt) {
 
   SymbolTableDeleteCheck stdc;
   SymbolTableDoDelete stdd;
+  NativeHeapTrimmer::SuspendMark sm("symboltable");
   {
     TraceTime timer("Clean", TRACETIME_LOG(Debug, symboltable, perf));
     while (bdt.do_task(jt, stdc, stdd)) {

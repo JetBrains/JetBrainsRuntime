@@ -480,8 +480,6 @@ java/lang/invoke/LFCaching/LFGarbageCollectedTest.java          8078602 generic-
 java/lang/invoke/lambda/LambdaFileEncodingSerialization.java    8249079 linux-x64
 java/lang/invoke/RicochetTest.java                              8251969 generic-all
 
-java/lang/ScopedValue/StressStackOverflow.java                  8303498 linux-s390x
-
 ############################################################################
 
 # jdk_instrument
@@ -507,9 +505,10 @@ java/lang/management/MemoryMXBean/Pending.java                  8158837 generic-
 java/lang/management/MemoryMXBean/PendingAllGC.sh               8158837 generic-all
 java/lang/management/ThreadMXBean/ThreadMXBeanStateTest.java    8247426 generic-all
 
-sun/management/jdp/JdpDefaultsTest.java                         8241865 linux-aarch64,macosx-all
-sun/management/jdp/JdpJmxRemoteDynamicPortTest.java             8241865 macosx-all
-sun/management/jdp/JdpSpecificAddressTest.java                  8241865 macosx-all
+sun/management/jdp/JdpDefaultsTest.java                         8241865,8308807 linux-aarch64,macosx-all,aix-ppc64
+sun/management/jdp/JdpJmxRemoteDynamicPortTest.java             8241865,8308807 macosx-all,aix-ppc64
+sun/management/jdp/JdpSpecificAddressTest.java                  8241865,8308807 macosx-all,aix-ppc64
+sun/management/jdp/JdpOffTest.java                              8308807 aix-ppc64
 
 ############################################################################
 
@@ -529,12 +528,15 @@ javax/management/remote/mandatory/subjectDelegation/SubjectDelegation1Test.java 
 
 # jdk_net
 
-java/net/MulticastSocket/NoLoopbackPackets.java                 7122846 macosx-all
-java/net/MulticastSocket/SetLoopbackMode.java                   7122846 macosx-all
+java/net/MulticastSocket/NoLoopbackPackets.java                 7122846,8308807 macosx-all,aix-ppc64
+java/net/MulticastSocket/SetLoopbackMode.java                   7122846,8308807 macosx-all,aix-ppc64
 
-java/net/MulticastSocket/Test.java                              7145658 macosx-all
+java/net/MulticastSocket/Test.java                              7145658,8308807 macosx-all,aix-ppc64
 
 java/net/ServerSocket/AcceptInheritHandle.java                  8211854 aix-ppc64
+
+java/net/MulticastSocket/B6427403.java                          8308807 aix-ppc64
+java/net/MulticastSocket/SetOutgoingIf.java                     8308807 aix-ppc64
 
 ############################################################################
 
@@ -547,6 +549,8 @@ java/nio/channels/DatagramChannel/ManySourcesAndTargets.java    8264385 macosx-a
 java/nio/channels/DatagramChannel/Unref.java                    8233437 generic-all
 
 jdk/nio/zipfs/TestLocOffsetFromZip64EF.java                     8301183 linux-all
+
+java/nio/channels/DatagramChannel/AfterDisconnect.java          8308807 aix-ppc64
 
 ############################################################################
 
@@ -578,8 +582,6 @@ com/sun/nio/sctp/SctpChannel/SocketOptionTests.java             8141694 linux-al
 # jdk_security
 
 sun/security/pkcs11/sslecc/ClientJSSEServerJSSE.java            8161536 generic-all
-
-sun/security/tools/keytool/ListKeychainStore.sh                 8156889 macosx-all
 
 sun/security/smartcardio/TestChannel.java                       8039280 generic-all
 sun/security/smartcardio/TestConnect.java                       8039280 generic-all
@@ -710,6 +712,7 @@ java/util/Locale/LocaleProvidersRun.java                        8268379 macosx-x
 sun/util/locale/provider/CalendarDataRegression.java            8268379 macosx-x64
 java/util/concurrent/forkjoin/AsyncShutdownNow.java             8286352 linux-all,windows-x64
 java/util/concurrent/ExecutorService/CloseTest.java             8288899 macosx-aarch64
+java/util/concurrent/SynchronousQueue/Fairness.java             8300663 generic-x64
 
 ############################################################################
 
@@ -748,6 +751,7 @@ jdk/jfr/startupargs/TestStartName.java                          8214685 windows-
 jdk/jfr/startupargs/TestStartDuration.java                      8214685 windows-x64
 jdk/jfr/jvm/TestWaste.java                                      8282427 generic-all
 jdk/jfr/api/consumer/recordingstream/TestOnEvent.java           8255404 linux-x64
+jdk/jfr/tool/TestView.java                                      8309238 macosx-x64
 
 ############################################################################
 
@@ -756,6 +760,10 @@ jdk/jfr/api/consumer/recordingstream/TestOnEvent.java           8255404 linux-x6
 ############################################################################
 
 # jdk_jpackage
+
+############################################################################
+
+# jdk_foreign
 
 ############################################################################
 # Client manual tests

@@ -121,8 +121,11 @@ jobject JNICALL jfr_new_event_writer(JNIEnv* env, jclass cls);
 
 jboolean JNICALL jfr_event_writer_flush(JNIEnv* env, jclass cls, jobject writer, jint used_size, jint requested_size);
 
-void JNICALL jfr_flush(JNIEnv* env, jobject jvm);
-void JNICALL jfr_abort(JNIEnv* env, jobject jvm, jstring errorMsg);
+jlong JNICALL jfr_commit(JNIEnv* env, jclass cls, jlong next_position);
+
+void JNICALL jfr_flush(JNIEnv* env, jclass jvm);
+
+void JNICALL jfr_abort(JNIEnv* env, jclass jvm, jstring errorMsg);
 
 jboolean JNICALL jfr_add_string_constant(JNIEnv* env, jclass jvm, jlong id, jstring string);
 
@@ -161,6 +164,8 @@ jboolean JNICALL jfr_is_class_instrumented(JNIEnv* env, jobject jvm, jclass claz
 jboolean JNICALL jfr_is_containerized(JNIEnv* env, jobject jvm);
 
 jlong JNICALL jfr_host_total_memory(JNIEnv* env, jobject jvm);
+
+void JNICALL jfr_emit_data_loss(JNIEnv* env, jclass jvm, jlong bytes);
 
 #ifdef __cplusplus
 }

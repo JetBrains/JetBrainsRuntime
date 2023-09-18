@@ -104,6 +104,7 @@ runtime/ErrorHandling/CreateCoredumpOnCrash.java 8267433 macosx-x64
 runtime/CompressedOops/CompressedClassPointers.java 8305765 generic-all
 runtime/StackGuardPages/TestStackGuardPagesNative.java 8303612 linux-all
 runtime/ErrorHandling/TestDwarf.java 8305489 linux-all
+runtime/ErrorHandling/MachCodeFramesInErrorFile.java 8313315 linux-ppc64le
 
 applications/jcstress/copy.java 8229852 linux-all
 
@@ -173,5 +174,3 @@ vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manySame_b/TestDescription.java 
 vmTestbase/nsk/jdwp/ThreadReference/ForceEarlyReturn/forceEarlyReturn001/forceEarlyReturn001.java 7199837 generic-all
 
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi005/TestDescription.java 8076494 windows-x64
-
-vmTestbase/nsk/jdb/interrupt/interrupt001/interrupt001.java 8310551 linux-all
