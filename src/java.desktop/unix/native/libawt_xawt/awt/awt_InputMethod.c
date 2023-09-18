@@ -940,6 +940,31 @@ static void adjustStatusWindow(Window shell) {
 }
 #endif  /* __linux__ */
 
+
+// ===================================================== JBR-2460 =====================================================
+
+/**
+ * Checks whether the client's new implementation is enabled.
+ *
+ * @return True if the client's new implementation is enabled ; False otherwise.
+ */
+static Bool jbNewXimClient_isEnabled();
+
+/**
+ * A successor of createXIC(JNIEnv*, X11InputMethodData*, Window).
+ */
+static Bool jbNewXimClient_initializeXICs(
+    JNIEnv *env,
+    XIM xInputMethodConnection,
+    X11InputMethodData *pX11IMData,
+    Window window,
+    Bool preferBelowTheSpot
+);
+
+// ====================================================================================================================
+
+
+// TODO: update the docs
 /*
  * Creates two XICs, one for active clients and the other for passive
  * clients. All information on those XICs are stored in the
@@ -957,6 +982,10 @@ static void adjustStatusWindow(Window shell) {
 static Bool
 createXIC(JNIEnv * env, X11InputMethodData *pX11IMData, Window w, Bool preferBelowTheSpot)
 {
+    if (jbNewXimClient_isEnabled() && jbNewXimClient_initializeXICs(env, X11im, pX11IMData, w, preferBelowTheSpot)) {
+        return True;
+    }
+
     XVaNestedList preedit = NULL;
     XVaNestedList status = NULL;
     XIMStyle on_the_spot_styles = XIMPreeditCallbacks,
@@ -2043,14 +2072,6 @@ Java_sun_awt_X11InputMethod_recreateX11InputMethod(JNIEnv *env, jclass cls)
 // ====================================================================================================================
 
 /**
- * Checks whether the client's new implementation is enabled.
- *
- * @return True if the client's new implementation is enabled ; False otherwise.
- */
-static Bool jbNewXimClient_isEnabled();
-
-
-/**
  * Optional features
  */
 typedef struct {
@@ -2154,10 +2175,6 @@ static jbNewXimClient_ExtendedInputContext jbNewXimClient_createInputContextOfSt
 );
 
 
-
-/**
- * A successor of createXIC(JNIEnv*, X11InputMethodData*, Window).
- */
 static Bool jbNewXimClient_initializeXICs(
     JNIEnv* const env,
     const XIM xInputMethodConnection,
