@@ -295,10 +295,13 @@ JNIEXPORT int setupRenderingFontHints
     FcPattern *pattern, *matchPattern;
     FcResult result;
 
-    if (fcName == NULL) {
+    if (usingFontConfig() == false) {
         return -1;
     }
 
+    if (fcName == NULL) {
+        return -1;
+    }
     pattern = (*fcNameParse)((FcChar8 *)fcName);
     if (locale != NULL) {
         (*fcPatternAddString)(pattern, FC_LANG, (unsigned char*)locale);
