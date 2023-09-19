@@ -20,11 +20,9 @@ java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java nobug windows
 java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.java nobug windows-all
 java/awt/MenuBar/SeparatorsNavigation/SeparatorsNavigation.java nobug windows-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java nobug windows-all
-java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java nobug windows-all
 java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.java JBR-4354 windows-all,linux-all # linux: JBR-4354
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java nobug windows-all
 java/awt/Paint/PaintNativeOnUpdate.java nobug windows-all
-java/awt/Robot/CheckCommonColors/CheckCommonColors.java nobug windows-all
 java/awt/TextArea/OverScrollTest/OverScrollTest.java nobug windows-all
 java/awt/TextField/OverScrollTest/OverScrollTest.java nobug windows-all
 java/awt/Window/8159168/SetShapeTest.java nobug windows-all
@@ -50,15 +48,10 @@ javax/swing/JInternalFrame/5066752/bug5066752.java nobug windows-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java nobug windows-all,linux-all
 javax/swing/JInternalFrame/Test6505027.java nobug windows-all
 javax/swing/JLabel/7004134/bug7004134.java nobug linux-all
-javax/swing/JMenu/4213634/bug4213634.java nobug windows-all
-javax/swing/JMenu/4692443/bug4692443.java nobug windows-all
 javax/swing/JMenu/8072900/WrongSelectionOnMouseOver.java nobug windows-all,linux-all
-javax/swing/JMenuBar/4750590/bug4750590.java nobug windows-all
-javax/swing/JMenuItem/4171437/bug4171437.java nobug windows-all
 javax/swing/JMenuItem/4654927/bug4654927.java nobug windows-all,linux-all
 javax/swing/JMenuItem/6209975/bug6209975.java JBR-4894 windows-all
 javax/swing/JMenuItem/6249972/bug6249972.java JBR-4894 windows-all
-javax/swing/JMenuItem/8158566/CloseOnMouseClickPropertyTest.java nobug windows-all,linux-all
 javax/swing/JPopupMenu/4634626/bug4634626.java nobug windows-all
 javax/swing/JPopupMenu/4760494/bug4760494.java JBR-4894 windows-all
 javax/swing/JPopupMenu/6415145/bug6415145.java nobug windows-all
@@ -77,12 +70,9 @@ javax/swing/JSpinner/TestJSpinnerFocusLost.java nobug windows-all
 javax/swing/JTabbedPane/4624207/bug4624207.java 8064922,8197552 macosx-all,windows-all,linux-all 8064922:macosx-all, 8197552:windows-all
 javax/swing/JTabbedPane/TestBackgroundScrollPolicy.java nobug windows-all
 javax/swing/JTable/7124218/SelectEditTableCell.java JBR-4894 windows-all
-javax/swing/JTextArea/8149849/DNDTextToScaledArea.java nobug windows-all
-javax/swing/JTextField/8036819/bug8036819.java nobug windows-all
 javax/swing/JToolTip/4846413/bug4846413.java nobug windows-all
 javax/swing/JToolTip/6219960/bug6219960.java nobug windows-all
 javax/swing/JTree/4633594/JTreeFocusTest.java 8173125 macosx-all,windows-all
-javax/swing/JTree/4927934/bug4927934.java nobug windows-all
 javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java 8159131 linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/SetShapeAndClickSwing.java 8013450 macosx-all,windows-all
@@ -99,4 +89,3 @@ javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java nobug windows-all
 javax/swing/text/JTextComponent/6361367/bug6361367.java nobug windows-all
 javax/swing/text/View/8014863/bug8014863.java nobug windows-all
 javax/swing/text/View/8156217/FPMethodCalledTest.java nobug linux-all
-javax/swing/ToolTipManager/Test6256140.java nobug windows-all

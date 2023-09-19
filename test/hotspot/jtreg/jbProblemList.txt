@@ -259,7 +259,7 @@ vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi005/TestDescription
 gc/shenandoah/mxbeans/TestChurnNotifications.java#aggressive NO_BUG macosx_all
 
 runtime/cds/appcds/CommandLineFlagCombo.java NO_BUG generic_all
-runtime/cds/appcds/TestDumpClassListSource.java NO_BUG generic_all
+runtime/cds/appcds/TestDumpClassListSource.java JBR-6099 generic_all
 runtime/cds/appcds/dynamicArchive/TestAutoCreateSharedArchiveNoDefaultArchive.java NO_BUG generic_all
 runtime/cds/appcds/dynamicArchive/TestAutoCreateSharedArchiveUpgrade.java NO_BUG generic_all
 
