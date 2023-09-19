@@ -86,12 +86,6 @@ static jboolean _have_classpath = JNI_FALSE;
 static const char *_fVersion;
 static jboolean _wc_enabled = JNI_FALSE;
 
-static awt_toolkit _linux_awt_toolkit = TK_X11; // default toolkit for linux is X11
-
-awt_toolkit get_linux_awt_toolkit() {
-    return _linux_awt_toolkit;
-}
-
 /*
  * Entries for splash screen environment variables.
  * putenv is performed in SelectVersion. We need
@@ -121,7 +115,6 @@ static jboolean ParseArguments(int *pargc, char ***pargv,
                                int *pret, const char *jrepath);
 static jboolean InitializeJVM(JavaVM **pvm, JNIEnv **penv,
                               InvocationFunctions *ifn);
-static jstring NewPlatformString(JNIEnv *env, char *s);
 static jclass LoadMainClass(JNIEnv *env, int mode, char *name);
 static jclass GetApplicationClass(JNIEnv *env);
 
@@ -132,7 +125,6 @@ static void SetApplicationClassPath(const char**);
 static void PrintJavaVersion(JNIEnv *env);
 static void PrintUsage(JNIEnv* env, jboolean doXUsage);
 static void ShowSettings(JNIEnv* env, char *optString);
-static void SetAwtToolkitName(JNIEnv *env, char *toolkit);
 static void ShowResolvedModules(JNIEnv* env);
 static void ListModules(JNIEnv* env);
 static void DescribeModule(JNIEnv* env, char* optString);
@@ -422,12 +414,6 @@ JavaMain(void* _args)
         JLI_ReportErrorMessage(JVM_ERROR1);
         exit(1);
     }
-
-#ifdef __linux__
-    if (get_linux_awt_toolkit() != TK_NONE) {
-        SetAwtToolkitName(env, get_linux_awt_toolkit() == TK_X11 ? "XToolkit" : "WLToolkit");
-    }
-#endif
 
     if (showSettings != NULL) {
         ShowSettings(env, showSettings);
@@ -1092,10 +1078,6 @@ SelectVersion(int argc, char **argv, char **main_class)
                 headlessflag = 1;
             } else if (JLI_StrCCmp(arg, "-Djava.awt.headless=") == 0) {
                 headlessflag = 0;
-            } else if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=WLToolkit") == 0) {
-                _linux_awt_toolkit = TK_WAYLAND;
-            } else if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=None") == 0) {
-                _linux_awt_toolkit = TK_NONE;
             } else if (JLI_StrCCmp(arg, "-splash:") == 0) {
                 splash_file_name = arg+8;
             }
@@ -1540,7 +1522,7 @@ static jmethodID makePlatformStringMID = NULL;
 /*
  * Returns a new Java string object for the specified platform string.
  */
-static jstring
+jstring
 NewPlatformString(JNIEnv *env, char *s)
 {
     int len = (int)JLI_StrLen(s);
@@ -1881,22 +1863,6 @@ PrintJavaVersion(JNIEnv *env)
               );
 
     (*env)->CallStaticVoidMethod(env, ver, print, printTo);
-}
-
-/*
- * Set manually awt.toolkit.name property
- */
-static void
-SetAwtToolkitName(JNIEnv *env, char *toolkit)
-{
-    jmethodID setToolkit;
-    jstring jtoolkit;
-    jclass graphicInfoClass;
-
-    NULL_CHECK(graphicInfoClass = FindBootStrapClass(env, "sun/awt/PlatformGraphicsInfo"));
-    NULL_CHECK(jtoolkit = NewPlatformString(env, toolkit));
-    NULL_CHECK(setToolkit = (*env)->GetStaticMethodID(env, graphicInfoClass, "setToolkitID", "(Ljava/lang/String;)V"));
-    (*env)->CallStaticVoidMethod(env, graphicInfoClass, setToolkit, jtoolkit);
 }
 
 /*

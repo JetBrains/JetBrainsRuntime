@@ -216,6 +216,7 @@ jclass FindBootStrapClass(JNIEnv *env, const char *classname);
 
 jobjectArray CreateApplicationArgs(JNIEnv *env, char **strv, int argc);
 jobjectArray NewPlatformStringArray(JNIEnv *env, char **strv, int strc);
+jstring NewPlatformString(JNIEnv *env, char *s);
 jclass GetLauncherHelperClass(JNIEnv *env);
 
 /*
@@ -241,14 +242,6 @@ typedef struct {
     char  *what;
     InvocationFunctions ifn;
 } JavaMainArgs;
-
-typedef enum awt_toolkit {
-    TK_NONE = 0,
-    TK_X11 = 1,
-    TK_WAYLAND = 2
-} awt_toolkit;
-
-awt_toolkit get_linux_awt_toolkit();
 
 #define NULL_CHECK_RETURN_VALUE(NCRV_check_pointer, NCRV_return_value) \
     do { \

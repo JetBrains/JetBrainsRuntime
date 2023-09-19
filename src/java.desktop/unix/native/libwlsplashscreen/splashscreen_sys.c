@@ -197,8 +197,7 @@ SplashCreateWindow(Splash * splash) {
 
     splash->native_scale = getNativeScaleFactor(NULL, 1);
     if (splash->native_scale == -1.0) {
-        fprintf(stderr, "%s\n", "Cannot get native scale");
-        return false;
+        splash->native_scale = 1.0;
     }
 
     splash->state->wl_surface = wl_compositor_create_surface(splash->state->wl_compositor);
@@ -216,7 +215,7 @@ SplashCreateWindow(Splash * splash) {
     splash->state->xdg_toplevel = xdg_surface_get_toplevel(splash->state->xdg_surface);
     NULL_CHECK(splash->state->xdg_toplevel, "Cannot get xdg_toplevel\n")
     xdg_toplevel_set_maximized(splash->state->xdg_toplevel);
-    xdg_toplevel_add_listener(splash->state->xdg_toplevel,&xdg_toplevel_listener, splash);
+    xdg_toplevel_add_listener(splash->state->xdg_toplevel, &xdg_toplevel_listener, splash);
 
     splash->state->cursor_surface = wl_compositor_create_surface(splash->state->wl_compositor);
     NULL_CHECK(splash->state->cursor_surface, "Cannot get cursor_surface\n")
@@ -256,12 +255,16 @@ SplashInitPlatform(Splash * splash) {
     splash->state = malloc(sizeof(wayland_state));
     NULL_CHECK(splash->state, "Cannot allocate enough memory\n")
     splash->buffers = malloc(sizeof(Buffer) * BUFFERS_COUNT);
-    NULL_CHECK(splash->state, "Cannot allocate enough memory\n")
-    
+    if (splash->buffers == NULL) {
+        free(splash->state);
+        fprintf(stderr, "%s\n", "Cannot allocate enough memory");
+        return false;
+    }
+
     splash->byteAlignment = 1;
     splash->maskRequired = 0;
     initFormat(&splash->screenFormat, 0xff0000, 0xff00, 0xff, 0xff000000);
-    splash->screenFormat.byteOrder = 1 ?  BYTE_ORDER_LSBFIRST : BYTE_ORDER_MSBFIRST;
+    splash->screenFormat.byteOrder = BYTE_ORDER_LSBFIRST;
     splash->screenFormat.depthBytes = 4;
 
     splash->state->wl_display = wl_display_connect(NULL);
@@ -322,22 +325,19 @@ SplashRedrawWindow(Splash * splash) {
             wl_surface_damage(splash->state->wl_subsurfaces_surface, 0, 0, splash->window_width, splash->window_height);
             wl_surface_commit(splash->state->wl_subsurfaces_surface);
             splash->buffers[i].available = false;
+            break;
         }
     }
 }
 
 bool
 FlushEvents(Splash * splash) {
-    if (wl_display_dispatch_pending(splash->state->wl_display) == -1)
-        return false;
-    if (wl_display_flush(splash->state->wl_display) == -1)
-        return false;
-    return true;
+    return wl_display_flush(splash->state->wl_display) != -1;
 }
 
 bool
 DispatchEvents(Splash * splash) {
-    return (wl_display_dispatch(splash->state->wl_display) != -1);
+    return wl_display_dispatch(splash->state->wl_display) != -1;
 }
 
 int

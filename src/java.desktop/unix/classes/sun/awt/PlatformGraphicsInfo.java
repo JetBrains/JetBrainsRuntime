@@ -63,7 +63,7 @@ public class PlatformGraphicsInfo {
         return toolkitID;
     }
 
-    public static void setToolkitID(String toolkit) {
+    public static void setToolkitName(String toolkit) {
         System.setProperty("awt.toolkit.name", toolkit);
     }
 

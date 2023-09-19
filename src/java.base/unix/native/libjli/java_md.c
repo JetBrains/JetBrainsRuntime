@@ -154,6 +154,14 @@
 /* Store the name of the executable once computed */
 static char *execname = NULL;
 
+typedef enum awt_toolkit {
+    TK_X11 = 0,
+    TK_WAYLAND = 1
+} awt_toolkit;
+
+/* default toolkit for linux is X11 */
+static awt_toolkit _awt_toolkit = TK_X11;
+
 /*
  * execname accessor from other parts of platform dependent logic
  */
@@ -660,7 +668,7 @@ void* SplashProcAddress(const char* name) {
         }
 
 #if defined(__linux__)
-        const char* splash_screen_so = get_linux_awt_toolkit() == TK_WAYLAND ?
+        const char* splash_screen_so = _awt_toolkit == TK_WAYLAND ?
                                       JNI_LIB_NAME("wlsplashscreen") : JNI_LIB_NAME("splashscreen");
 #else
         const char* splash_screen_so = JNI_LIB_NAME("splashscreen");
@@ -762,10 +770,32 @@ JVMInit(InvocationFunctions* ifn, jlong threadStackSize,
     return ContinueInNewThread(ifn, threadStackSize, argc, argv, mode, what, ret);
 }
 
+/*
+ * Set manually awt.toolkit.name property
+ */
+static void
+SetAwtToolkitName(JNIEnv *env, char *toolkit)
+{
+    jmethodID setToolkit;
+    jstring jtoolkit;
+    jclass graphicInfoClass;
+
+    graphicInfoClass = FindBootStrapClass(env, "sun/awt/PlatformGraphicsInfo");
+    if (graphicInfoClass == NULL) {
+        return;
+    }
+    NULL_CHECK(jtoolkit = NewPlatformString(env, toolkit));
+    NULL_CHECK(setToolkit = (*env)->GetStaticMethodID(env, graphicInfoClass, "setToolkitName", "(Ljava/lang/String;)V"));
+
+    (*env)->CallStaticVoidMethod(env, graphicInfoClass, setToolkit, jtoolkit);
+}
+
 void
 PostJVMInit(JNIEnv *env, jclass mainClass, JavaVM *vm)
 {
-    // stubbed out for windows and *nixes.
+#if defined(__linux__)
+    SetAwtToolkitName(env, _awt_toolkit == TK_X11 ? "XToolkit" : "WLToolkit");
+#endif
 }
 
 void
@@ -774,11 +804,13 @@ RegisterThread()
     // stubbed out for windows and *nixes.
 }
 
-/*
- * on unix, we return a false to indicate this option is not applicable
- */
 jboolean
 ProcessPlatformOption(const char *arg)
 {
+    if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=WLToolkit") == 0) {
+        _awt_toolkit = TK_WAYLAND;
+        return JNI_TRUE;
+    }
+
     return JNI_FALSE;
 }
