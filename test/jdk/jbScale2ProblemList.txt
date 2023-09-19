@@ -1,14 +1,25 @@
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java      JBR-5538 windows-all
+java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java                  JBR-6027 windows-all
+java/awt/Focus/6378278/InputVerifierTest.java                                       JBR-5799 windows-all
+java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java         JBR-6031 windows-all
+java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenSmall.java        JBR-6090 windows-all
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java                 8286840 linux-all
-java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java                              JBR-4199 linux-5.4.0-1083-aws
-java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java              JBR-4199 linux-5.4.0-1083-aws
+java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java                           JBR-6090 windows-all
+java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java                              JBR-4199,JBR-6090 linux-5.4.0-1083-aws,linux-5.4.0-1103-aws,windows-all
+java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java              JBR-4199,JBR-6090 linux-5.4.0-1083-aws,linux-5.4.0-1103-aws,windows-all
 
 java/awt/Graphics/LineClipTest.java                                                 JBR-5071 linux-all
 java/awt/image/VolatileImage/DrawHugeImageTest.java                                 JBR-5071 linux-all
 java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252,JBR-5050,JBR-5071 windows-all,macosx-all,linux-all
+java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java JBR-6134 windows-x64
+java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-6134 windows-x64
+java/awt/Modal/BlockedMouseInputTest2.java                                          JBR-6090 windows-all
 java/awt/PopupMenu/PopupMenuLocation.java                                           8238720,8288415,JBR-5071 windows-all,macosx-all,linux-all
+javax/swing/JComponent/7154030/bug7154030.java JBR-6134 windows-x64
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      7124313,JBR-5071 macosx-all,linux-all
-javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java                        8274106 macosx-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java JBR-6090 windows-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java JBR-6090 windows-all
+javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java                        8274106,JBR-6090 macosx-all,windows-all
 
 sun/java2d/GdiRendering/ClipShapeRendering.java                                     JBR-5204 linux-all,windows-all
 
@@ -35,11 +46,12 @@ jb/java/awt/CustomTitleBar/WindowResizeTest.java                                
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java                             nobug generic-all
 jb/java/awt/CustomTitleBar/WindowVisibilityTest.java                                nobug generic-all
 
-java/awt/Focus/6378278/InputVerifierTest.java                                       JBR-5799 windows-all
 jb/java/awt/Focus/ModalDialogOverSiblingTest.java                                   JBR-5716 windows-all
 jb/java/awt/Focus/RequestFocusInParent.java                                         JBR-5715 windows-all
+jb/java/awt/Focus/SecondLevelPopupTest.java                                         JBR-6090 windows-all
+jb/java/awt/Window/UndecoratedDialogInTransientsChain.java                          JBR-6090 windows-all
+java/awt/Focus/SimpleWindowActivationTest/SimpleWindowActivationTest.java           JBR-6089 windows-all
+java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java       JBR-6089 windows-all
 java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java          JBR-5513 linux-all
 jb/java/awt/Window/ZOrderOnModalDialogActivation.java                               JBR-5713 windows-all
 jdk/editpad/EditPadTest.java                                                        JBR-5712 windows-all
-
-security/infra/java/security/cert/CertPathValidator/certification/AmazonCA.java 8309088 generic-all

@@ -32,7 +32,6 @@ javax/swing/JComboBox/8033069/bug8033069NoScrollBar.java nobug windows-all
 javax/swing/JComboBox/8033069/bug8033069ScrollBar.java nobug windows-all
 javax/swing/JComboBox/8136998/bug8136998.java nobug windows-all
 javax/swing/JComboBox/8182031/ComboPopupTest.java nobug windows-all
-javax/swing/JComponent/7154030/bug7154030.java nobug windows-all
 javax/swing/JEditorPane/6917744/bug6917744.java 8213124 macosx-all,windows-all
 javax/swing/JEditorPane/8195095/ImageViewTest.java nobug windows-all
 javax/swing/JFrame/8016356/bug8016356.java nobug windows-all
@@ -64,7 +63,6 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslu
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java 8024627 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentWindowClickSwing.java nobug windows-all
 javax/swing/plaf/nimbus/8057791/bug8057791.java nobug windows-all
-javax/swing/plaf/nimbus/TestNimbusOverride.java nobug linux-all,windows-all
 javax/swing/plaf/windows/6921687/bug6921687.java nobug windows-all
 javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java nobug windows-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java nobug windows-all
