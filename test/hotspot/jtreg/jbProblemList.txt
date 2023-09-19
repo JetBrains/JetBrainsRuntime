@@ -220,7 +220,7 @@ vmTestbase/vm/mlvm/indy/func/jvmti/redefineClassInBootstrap/TestDescription.java
 vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2none_a/TestDescription.java 8013267 generic-all
 vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manyDiff_b/TestDescription.java 8013267 generic-all
 vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manySame_b/TestDescription.java 8013267 generic-all
-vmTestbase/vm/mlvm/meth/stress/compiler/deoptimize/Test.java#id initial_run macos-aarch64
+vmTestbase/vm/mlvm/meth/stress/compiler/deoptimize/Test.java#id0 8269393 macos-aarch64
 
 
 vmTestbase/nsk/jdwp/ThreadReference/ForceEarlyReturn/forceEarlyReturn001/forceEarlyReturn001.java 7199837 generic-all
@@ -289,3 +289,5 @@ vmTestbase/nsk/sysdict/vm/stress/btree/btree009/btree009.java initial_run window
 resourcehogs/serviceability/sa/TestHeapDumpForLargeArray.java 8220624   generic-all
 
 testlibrary_tests/ir_framework/tests/TestDTestAndExclude.java initial_run windows-all
+
+jb/applications/ctw/plugins_cucumber_java_lib_cucumber_java.java JBR-6084 windows-all
