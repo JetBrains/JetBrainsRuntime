@@ -32,6 +32,7 @@
 #include <sys/mman.h>
 
 #include "memory_utils.h"
+#include "xdg-shell-client-protocol.h"
 
 static const int BUFFERS_COUNT = 3;
 static bool is_cursor_animated = false;

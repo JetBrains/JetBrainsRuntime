@@ -28,8 +28,6 @@
 
 #include <stdbool.h>
 
-#include "xdg-shell-client-protocol.h"
-
 typedef struct Buffer {
     void *data;
     int size;
