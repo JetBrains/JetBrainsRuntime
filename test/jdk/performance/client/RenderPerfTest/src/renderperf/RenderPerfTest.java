@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -25,6 +25,7 @@
 package renderperf;
 
 import java.awt.AlphaComposite;
+import java.awt.AWTException;
 import java.awt.Color;
 import java.awt.Composite;
 import java.awt.Dimension;
@@ -33,14 +34,21 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
 import java.awt.Image;
+import java.awt.Insets;
 import java.awt.LinearGradientPaint;
+import java.awt.Point;
 import java.awt.RadialGradientPaint;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Robot;
-
+import java.awt.Toolkit;
 import java.awt.Transparency;
+
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Point2D;
@@ -51,50 +59,88 @@ import java.awt.image.DataBuffer;
 import java.awt.image.DataBufferByte;
 import java.awt.image.DataBufferInt;
 import java.awt.image.DataBufferShort;
-
 import java.awt.image.VolatileImage;
+
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
-import java.util.concurrent.CountDownLatch;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
 import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
-import java.util.Locale;
 
-public class RenderPerfTest {
+
+public final class RenderPerfTest {
+
+    private final static String VERSION = "RenderPerfTest 2023.09";
     private static HashSet<String> ignoredTests = new HashSet<>();
 
     static {
-       // add ignored tests here
-       // ignoredTests.add("testMyIgnoredTest");
+        // add ignored tests here
+        // ignoredTests.add("testMyIgnoredTest");
+        ignoredTests.add("testCalibration"); // not from command line
     }
 
-    private final static int N = 1000;
+    private final static String EXEC_MODE_ROBOT = "robot";
+    private final static String EXEC_MODE_BUFFER = "buffer";
+    private final static String EXEC_MODE_VOLATILE = "volatile";
+    private final static String EXEC_MODE_DEFAULT = EXEC_MODE_ROBOT;
+
+    public final static List<String> EXEC_MODES = Arrays.asList(new String[]{
+            EXEC_MODE_ROBOT, EXEC_MODE_BUFFER, EXEC_MODE_VOLATILE
+    });
+
+    private static String EXEC_MODE = EXEC_MODE_DEFAULT;
+
+    private final static boolean CALIBRATION = "true".equalsIgnoreCase(System.getProperty("CALIBRATION", "false"));
+    private final static boolean TRACE = "true".equalsIgnoreCase(System.getProperty("TRACE", "false"));
+
+    private static boolean VERBOSE = false;
+    private static int REPEATS = 1;
+
+    private static boolean USE_FPS = true;
+
+    private final static int N_DEFAULT = 1000;
+    private static int N = N_DEFAULT;
     private final static float WIDTH = 800;
     private final static float HEIGHT = 800;
     private final static float R = 25;
     private final static int BW = 50;
     private final static int BH = 50;
+    private final static int IMAGE_W = (int) (WIDTH + BW);
+    private final static int IMAGE_H = (int) (HEIGHT + BH);
+
     private final static int COUNT = 600;
-    private final static int CYCLE_DELAY = 3;
+    private final static int MIN_COUNT = 20;
+    private final static int WARMUP_COUNT = MIN_COUNT;
+
+    private final static int DELAY = 1;
+    private final static int CYCLE_DELAY = DELAY;
+
+    private final static int MIN_MEASURE_TIME_MS = 1000;
+    private final static int MAX_MEASURE_TIME_MS = 6000;
     private final static int MAX_FRAME_CYCLES = 3000/CYCLE_DELAY;
+    private final static int MAX_MEASURE_CYCLES = MAX_MEASURE_TIME_MS/CYCLE_DELAY;
 
     private final static int COLOR_TOLERANCE = 10;
-    private final static int MAX_MEASURE_CYCLES = 6000/CYCLE_DELAY;
 
-    private final static Color[] marker = {Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW, Color.ORANGE, Color.MAGENTA};
+    private final static Color[] marker = {Color.RED, Color.BLUE, Color.GREEN};
 
-    private final static boolean useMean = "true".equalsIgnoreCase(System.getProperty("useMean"));
+    private final static Toolkit TOOLKIT = Toolkit.getDefaultToolkit();
 
     interface Configurable {
         void configure(Graphics2D g2d);
@@ -158,20 +204,17 @@ public class RenderPerfTest {
     }
 
     ParticleRenderable createPR(ParticleRenderer renderer) {
-        return new ParticleRenderable(renderer);
+        return new ParticleRenderable(balls, renderer);
     }
 
-    static class ParticleRenderable implements Renderable {
-        ParticleRenderer renderer;
-        Configurable configure;
+    static final class ParticleRenderable implements Renderable {
+        final Particles balls;
+        final ParticleRenderer renderer;
+        Configurable configure = null;
 
-        ParticleRenderable(ParticleRenderer renderer, Configurable configure) {
+        ParticleRenderable(final Particles balls, ParticleRenderer renderer) {
+            this.balls = balls;
             this.renderer = renderer;
-            this.configure = configure;
-        }
-
-        ParticleRenderable(ParticleRenderer renderer) {
-            this(renderer, null);
         }
 
         @Override
@@ -198,6 +241,17 @@ public class RenderPerfTest {
     interface ParticleRenderer {
         void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy);
 
+    }
+
+    static class CalibrationParticleRenderer implements ParticleRenderer {
+
+        CalibrationParticleRenderer() {
+        }
+
+        @Override
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
+            // no-op
+        }
     }
 
     static class FlatParticleRenderer implements ParticleRenderer {
@@ -364,11 +418,11 @@ public class RenderPerfTest {
             Point2D end = new Point2D.Double( 2 * r, r);
             float[] dist = {0.0f, 0.5f, 1.0f};
             Color[] cls = {
-                colors[id %colors.length],
-                colors[(colors.length - id) %colors.length],
-                colors[(id*5) %colors.length]};
+                    colors[id %colors.length],
+                    colors[(colors.length - id) %colors.length],
+                    colors[(id*5) %colors.length]};
             LinearGradientPaint p =
-                new LinearGradientPaint(start, end, dist, cls);
+                    new LinearGradientPaint(start, end, dist, cls);
             g2d.setPaint(p);
         }
     }
@@ -385,11 +439,11 @@ public class RenderPerfTest {
             Point2D start = new Point2D.Double();
             float[] dist = {0.0f, 0.5f, 1.0f};
             Color[] cls = {
-                colors[id %colors.length],
-                colors[(colors.length - id) %colors.length],
-                colors[(id*5) %colors.length]};
+                    colors[id %colors.length],
+                    colors[(colors.length - id) %colors.length],
+                    colors[(id*5) %colors.length]};
             RadialGradientPaint p =
-                new RadialGradientPaint(start, r, dist, cls);
+                    new RadialGradientPaint(start, r, dist, cls);
             g2d.setPaint(p);
         }
     }
@@ -648,191 +702,528 @@ public class RenderPerfTest {
         }
     }
 
-    static class PerfMeter {
-        private String name;
+    static final class PerfMeter {
 
-
-        private JPanel panel;
-        ArrayList<Double> execTime = new ArrayList<>(COUNT);
-        private AtomicInteger markerIdx = new AtomicInteger(0);
-        private int renderedMarkerIdx = -1;
-        private AtomicLong markerPaintTime = new AtomicLong(0);
-
-        private double fps;
-        private int skippedFrame = 0;
+        private final String name;
+        private final PerfMeterExecutor executor;
 
         PerfMeter(String name) {
             this.name = name;
+            executor = getExecutor();
         }
 
         PerfMeter exec(final Renderable renderable) throws Exception {
-            final CountDownLatch latchFrame = new CountDownLatch(1);
+            executor.exec(name, renderable);
+            return this;
+        }
 
-            final JFrame f = new JFrame();
-            f.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosed(WindowEvent e) {
-                    latchFrame.countDown();
-                }
-            });
+        private void report() {
+            System.err.println(name + " : " + executor.getResults());
+        }
+
+        private PerfMeterExecutor getExecutor() {
+            switch (EXEC_MODE) {
+                default:
+                case EXEC_MODE_ROBOT:
+                    return new PerfMeterRobot();
+                case EXEC_MODE_BUFFER:
+                    return new PerfMeterImageProvider(ImageProvider.INSTANCE_BUFFERED_IMAGE);
+                case EXEC_MODE_VOLATILE:
+                    return new PerfMeterImageProvider(ImageProvider.INSTANCE_VOLATILE_IMAGE);
+            }
+        }
+    }
+    public final static void paintTest(final Renderable renderable, final Graphics2D g2d, final Color markerColor) {
+        // clear background:
+        g2d.setColor(Color.BLACK);
+        g2d.fillRect(0, 0, IMAGE_W, IMAGE_H);
+
+        // test:
+        renderable.setup(g2d);
+        renderable.render(g2d);
+
+        // draw marker:
+        g2d.setClip(null);
+        g2d.setPaintMode();
+        g2d.setColor(markerColor);
+        g2d.fillRect(0, 0, BW, BH);
+
+        // synchronize toolkit:
+        TOOLKIT.sync();
+    }
+
+    static abstract class PerfMeterExecutor {
+        protected JFrame f = null;
+
+        protected final AtomicInteger markerIdx = new AtomicInteger(0);
+        protected final AtomicLong markerPaintTime = new AtomicLong(0);
+
+        protected int skippedFrame = 0;
+        protected final ArrayList<Long> execTime = new ArrayList<>(COUNT);
+
+        protected final double[] scores = new double[3];
+        protected final double[] results = new double[4];
+        private int nData = 0;
+
+        protected void beforeExec() {}
+        protected void afterExec() {}
+
+        protected void reset() {
+            markerIdx.set(0);
+            markerPaintTime.set(0);
+        }
+
+        protected final void exec(final String name, final Renderable renderable) throws Exception {
+            if (TRACE) System.out.print("\n!");
+
+            final CountDownLatch latchShownFrame = new CountDownLatch(1);
+            final CountDownLatch latchClosedFrame = new CountDownLatch(1);
 
             SwingUtilities.invokeAndWait(new Runnable() {
                 @Override
                 public void run() {
+                    f = new JFrame(name);
+                    // call beforeExec() after frame is created:
+                    beforeExec();
 
-                    panel = new JPanel() {
+                    f.addComponentListener(new ComponentAdapter() {
+                        @Override
+                        public void componentShown(ComponentEvent e) {
+                            latchShownFrame.countDown();
+                        }
+                    });
+                    f.addWindowListener(new WindowAdapter() {
+                        @Override
+                        public void windowClosed(WindowEvent e) {
+                            latchClosedFrame.countDown();
+                        }
+                    });
+
+                    JPanel panel = new JPanel() {
                         @Override
                         protected void paintComponent(Graphics g) {
-                            super.paintComponent(g);
-                            int idx = markerIdx.get();
-                            if (idx != renderedMarkerIdx) {
-                                markerPaintTime.set(System.nanoTime());
-                            }
-
-                            Graphics2D g2d = (Graphics2D) g.create();
-                            renderable.setup(g2d);
-                            renderable.render(g2d);
-                            g2d.setClip(null);
-                            g2d.setPaintMode();
-                            g2d.setColor(marker[idx]);
-                            g2d.fillRect(0, 0, BW, BH);
-                            renderedMarkerIdx = idx;
+                            if (TRACE) System.out.print("P");
+                            paintPanel(renderable, g);
+                            if (TRACE) System.out.print("Q");
                         }
                     };
 
-                    panel.setPreferredSize(new Dimension((int) (WIDTH + BW), (int) (HEIGHT + BH)));
+                    panel.setPreferredSize(new Dimension(IMAGE_W, IMAGE_H));
                     panel.setBackground(Color.BLACK);
                     f.add(panel);
                     f.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
                     f.pack();
                     f.setVisible(true);
+                    if (TRACE) System.out.print(">>");
                 }
             });
 
-            Robot robot = new Robot();
+            // Wait frame to be shown:
+            latchShownFrame.await();
+
+            if (TRACE) System.out.print(":");
+
+            // Reset before warmup:
+            reset();
+
+            // Warmup to prepare frame synchronization:
+            for (int i = 0; i < WARMUP_COUNT; i++) {
+                markerIdx.accumulateAndGet(marker.length, (x, y) -> (x + 1) % y);
+                renderable.update();
+                repaint();
+                sleep(10);
+                while (markerPaintTime.get() == 0) {
+                    if (TRACE) System.out.print("-");
+                    sleep(1);
+                }
+                markerPaintTime.set(0);
+            }
+            // Reset before measurements:
+            reset();
+            if (TRACE) System.out.print(":>>");
+
+            final long startTime = System.currentTimeMillis();
+            final long minTime = startTime + MIN_MEASURE_TIME_MS;
+            final long endTime = startTime + MAX_MEASURE_TIME_MS;
+
+            // Start 1st measurement:
+            repaint();
+
             int cycle = 0;
             int frame = 0;
             long paintTime = 0;
-            int maxFrameCycle = -1;
-            while (frame < COUNT) {
+
+            for (;;) {
                 long t;
                 if ((t = markerPaintTime.getAndSet(0)) > 0) {
                     paintTime = t;
-                    maxFrameCycle = cycle + MAX_FRAME_CYCLES;
+                    if (TRACE) System.out.print("|");
                 }
 
                 if (paintTime > 0) {
-                    Color c = robot.getPixelColor(
-                            panel.getTopLevelAncestor().getX() + panel.getTopLevelAncestor().getInsets().left + BW / 2,
-                            panel.getTopLevelAncestor().getY() + panel.getTopLevelAncestor().getInsets().top + BW / 2);
+                    if (TRACE) System.out.print(".");
+
+                    final Color c = getMarkerColor();
 
                     if (isAlmostEqual(c, marker[markerIdx.get()])) {
-                        execTime.add((double) (System.nanoTime() - paintTime));
+                        execTime.add(getElapsedTime(paintTime));
+                        if (TRACE) System.out.print("R");
                         frame++;
                         paintTime = 0;
-                        maxFrameCycle = -1;
+                        cycle = 0;
                         markerIdx.accumulateAndGet(marker.length, (x, y) -> (x + 1) % y);
                         renderable.update();
-                        panel.getParent().repaint();
-                    } else if (cycle >= maxFrameCycle) {
+                        repaint();
+                    } else if (cycle >= MAX_FRAME_CYCLES) {
+                        if (TRACE) System.out.print("M");
                         skippedFrame++;
                         paintTime = 0;
-                        maxFrameCycle = -1;
+                        cycle = 0;
                         markerIdx.accumulateAndGet(marker.length, (x, y) -> (x + 1) % y);
-                        panel.getParent().repaint();
+                        repaint();
+                    } else {
+                        if (TRACE) System.out.print("-");
                     }
                 }
-                try {
-                    Thread.sleep(CYCLE_DELAY);
-                } catch (InterruptedException ex) {
-                    ex.printStackTrace();
-                }
-                if (cycle >= MAX_MEASURE_CYCLES) {
+                final long currentTime = System.currentTimeMillis();
+                if ((frame >= MIN_COUNT) && (currentTime >= endTime)) {
                     break;
                 }
+                if ((frame >= COUNT) && (currentTime >= minTime)) {
+                    break;
+                }
+                sleep(CYCLE_DELAY);
                 cycle++;
-            }
+            } // end measurements
+
             SwingUtilities.invokeAndWait(() -> {
                 f.setVisible(false);
                 f.dispose();
             });
 
-            latchFrame.await();
-            if (!execTime.isEmpty() && frame != 0) {
-                if (useMean) {
-                    double meanTime = execTime.stream().reduce(0.0, (a, b) -> a + b) / frame;
-                    fps = 1e9 / meanTime;
-                } else {
-                    double medianTime = execTime.stream().sorted().toList().get(execTime.size() / 2);
-                    fps = 1e9 / medianTime;
-                }
-            } else {
-                fps = 0;
+            latchClosedFrame.await();
+            if (!execTime.isEmpty()) {
+                processTimes();
             }
-
-            return this;
+            if (TRACE) System.out.print("<<\n");
+            afterExec();
         }
 
-        private void report() {
+        protected abstract void paintPanel(final Renderable renderable, final Graphics g);
+
+        protected abstract long getElapsedTime(long paintTime);
+
+        protected abstract Color getMarkerColor() throws Exception;
+
+        protected void repaint() throws Exception {
+            SwingUtilities.invokeAndWait(new Runnable() {
+                @Override
+                public void run() {
+                    f.repaint();
+                }
+            });
+        }
+
+        protected void sleep(long millis) {
+            try {
+                Thread.sleep(millis);
+            } catch (InterruptedException ie) {
+                ie.printStackTrace(System.err);
+            }
+        }
+
+        protected boolean isAlmostEqual(Color c1, Color c2) {
+            return (Math.abs(c1.getRed() - c2.getRed()) < COLOR_TOLERANCE) &&
+                    (Math.abs(c1.getGreen() - c2.getGreen()) < COLOR_TOLERANCE) &&
+                    (Math.abs(c1.getBlue() - c2.getBlue()) < COLOR_TOLERANCE);
+        }
+
+        protected void processTimes() {
+            nData = execTime.size();
+
+            if (!execTime.isEmpty()) {
+                // Ignore first 10% (warmup at the beginning):
+                final int thIdx = (int)Math.ceil(execTime.size() * 0.10);
+
+                final ArrayList<Long> times = new ArrayList<>(nData - thIdx);
+                for (int i = thIdx; i < nData; i++) {
+                    times.add(execTime.get(i));
+                }
+
+                // Sort values to get percentiles:
+                Collections.sort(times);
+                final int last = times.size() - 1;
+
+                if (USE_FPS) {
+                    scores[0] = fps(times.get(pctIndex(last, 0.5000))); //    50% (median)
+
+                    results[3] = fps(times.get(0)); // 0.0 (min)
+                    results[2] = fps(times.get(pctIndex(last, 0.1587))); // 15.87% (-1 stddev)
+                    results[1] = fps(times.get(pctIndex(last, 0.8413))); // 84.13% (+1 stddev)
+                    results[0] = fps(times.get(pctIndex(last, 1.0000))); // 100% (max)
+
+                    scores[1] = (results[2] - results[1]) / 2.0;
+                    scores[2] = millis(times.get(pctIndex(last, 0.5000))); //    50% (median)
+                } else {
+                    scores[0] = millis(times.get(pctIndex(last, 0.5000))); //    50% (median)
+
+                    results[0] = millis(times.get(0)); // 0.0 (min)
+                    results[1] = millis(times.get(pctIndex(last, 0.1587))); // 15.87% (-1 stddev)
+                    results[2] = millis(times.get(pctIndex(last, 0.8413))); // 84.13% (+1 stddev)
+                    results[3] = millis(times.get(pctIndex(last, 1.0000))); // 100% (max)
+
+                    scores[1] = (results[2] - results[1]) / 2.0;
+                    scores[2] = fps(times.get(pctIndex(last, 0.5000))); //    50% (median)
+                }
+            }
+        }
+
+        protected String getResults() {
             if (skippedFrame > 0) {
                 System.err.println(skippedFrame + " frame(s) skipped");
             }
-            System.err.println(name + " : " + String.format(Locale.UK, "%.2f FPS", fps));
+            if (VERBOSE) {
+                return String.format("%.3f (%.3f) %s [%.3f %s] (p00: %.3f p15: %.3f p50: %.3f p85: %.3f p100: %.3f %s) (%d frames)",
+                        scores[0], scores[1], (USE_FPS ? "FPS" : "ms"),
+                        scores[2], (USE_FPS ? "ms" : "FPS"),
+                        results[0], results[1], scores[0], results[2], results[3],
+                        (USE_FPS ? "FPS" : "ms"),
+                        nData);
+            }
+            return String.format("%.3f (%.3f) %s", scores[0], scores[1], (USE_FPS ? "FPS" : "ms"));
         }
 
-        private boolean isAlmostEqual(Color c1, Color c2) {
-            return Math.abs(c1.getRed() - c2.getRed()) < COLOR_TOLERANCE &&
-                    Math.abs(c1.getGreen() - c2.getGreen()) < COLOR_TOLERANCE &&
-                    Math.abs(c1.getBlue() - c2.getBlue()) < COLOR_TOLERANCE;
+        protected double fps(long timeNs) {
+            return 1e9 / timeNs;
+        }
+        protected double millis(long timeNs) {
+            return 1e-6 * timeNs;
+        }
 
+        protected int pctIndex(final int last, final double pct) {
+            return (int) Math.round(last * pct);
         }
     }
 
-    private static final Particles balls = new Particles(N, R, BW, BH, WIDTH, HEIGHT);
-    private static final ParticleRenderer flatRenderer = new FlatParticleRenderer(N, R);
-    private static final ParticleRenderer clipFlatRenderer = new ClipFlatParticleRenderer(N, R);
-    private static final ParticleRenderer flatOvalRotRenderer = new FlatOvalRotParticleRenderer(N, R);
-    private static final ParticleRenderer flatBoxRenderer = new FlatBoxParticleRenderer(N, R);
-    private static final ParticleRenderer clipFlatBoxParticleRenderer = new ClipFlatBoxParticleRenderer(N, R);
-    private static final ParticleRenderer flatBoxRotRenderer = new FlatBoxRotParticleRenderer(N, R);
-    private static final ParticleRenderer linGradOvalRotRenderer = new LinGradOvalRotParticleRenderer(N, R);
-    private static final ParticleRenderer linGrad3OvalRotRenderer = new LinGrad3OvalRotParticleRenderer(N, R);
-    private static final ParticleRenderer radGrad3OvalRotRenderer = new RadGrad3OvalRotParticleRenderer(N, R);
-    private static final ParticleRenderer wiredRenderer = new WiredParticleRenderer(N, R);
-    private static final ParticleRenderer wiredBoxRenderer = new WiredBoxParticleRenderer(N, R);
-    private static final ParticleRenderer segRenderer = new SegParticleRenderer(N, R);
-    private static final ParticleRenderer flatQuadRenderer = new FlatQuadParticleRenderer(N, R);
-    private static final ParticleRenderer wiredQuadRenderer = new WiredQuadParticleRenderer(N, R);
-    private static final ParticleRenderer imgRenderer = new ImgParticleRenderer(N, R);
-    private static final ParticleRenderer volImgRenderer = new VolImgParticleRenderer(N, R);
-    private static final ParticleRenderer textRenderer = new TextParticleRenderer(N, R);
-    private static final ParticleRenderer largeTextRenderer = new LargeTextParticleRenderer(N, R);
-    private static final ParticleRenderer whiteTextRenderer = new WhiteTextParticleRenderer(R);
-    private static final ParticleRenderer argbSwBlitImageRenderer = new SwBlitImageParticleRenderer(N, R, BufferedImage.TYPE_INT_ARGB);
-    private static final ParticleRenderer bgrSwBlitImageRenderer = new SwBlitImageParticleRenderer(N, R, BufferedImage.TYPE_INT_BGR);
-    private static final ParticleRenderer argbSurfaceBlitImageRenderer = new SurfaceBlitImageParticleRenderer(N, R, BufferedImage.TYPE_INT_ARGB);
-    private static final ParticleRenderer bgrSurfaceBlitImageRenderer = new SurfaceBlitImageParticleRenderer(N, R, BufferedImage.TYPE_INT_BGR);
+    static final class PerfMeterRobot extends PerfMeterExecutor {
+        private static boolean CALIBRATE = VERBOSE;
+
+        private final ArrayList<Long> robotTime = (CALIBRATE) ? new ArrayList<>(COUNT) : null;
+
+        private int renderedMarkerIdx = -1;
+
+        private Robot robot = null;
+
+        private int capture = 0;
+
+        protected void beforeExec() {
+            try {
+                robot = new Robot();
+            } catch (AWTException ae) {
+                throw new RuntimeException(ae);
+            }
+        }
+
+        protected void reset() {
+            super.reset();
+            renderedMarkerIdx = -1;
+        }
+
+        protected void paintPanel(final Renderable renderable, final Graphics g) {
+            final int idx = markerIdx.get();
+            final long start = System.nanoTime();
+
+            final Graphics2D g2d = (Graphics2D) g.create();
+            try {
+                paintTest(renderable, g2d, marker[idx]);
+            } finally {
+                g2d.dispose();
+            }
+
+            // publish start time:
+            if (idx != renderedMarkerIdx) {
+                renderedMarkerIdx = idx;
+                markerPaintTime.set(start);
+            }
+        }
+
+        protected long getElapsedTime(long paintTime) {
+            return System.nanoTime() - paintTime;
+        }
+
+        protected Color getMarkerColor() throws Exception {
+            final Point frameOffset = f.getLocationOnScreen();
+            final Insets insets = f.getInsets();
+            final int px = frameOffset.x + insets.left + BW / 2;
+            final int py = frameOffset.y + insets.top  + BH / 2;
+
+            final long beforeRobot = (CALIBRATE) ? System.nanoTime() : 0L;
+
+            final Color c = robot.getPixelColor(px, py);
+
+            if (CALIBRATE) {
+                robotTime.add((System.nanoTime() - beforeRobot));
+            }
+            return c;
+        }
+
+        protected String getResults() {
+            if (CALIBRATE && !robotTime.isEmpty()) {
+                CALIBRATE = false; // only first time
+
+                Collections.sort(robotTime);
+                final int last = robotTime.size() - 1;
+
+                final double[] robotStats = new double[5];
+                robotStats[0] = millis(robotTime.get(0)); // 0.0 (min)
+                robotStats[1] = millis(robotTime.get(pctIndex(last, 0.1587))); // 15.87% (-1 stddev)
+                robotStats[2] = millis(robotTime.get(pctIndex(last, 0.5000))); //    50% (median)
+                robotStats[3] = millis(robotTime.get(pctIndex(last, 0.8413))); // 84.13% (+1 stddev)
+                robotStats[4] = millis(robotTime.get(pctIndex(last, 1.0000))); //   100% (max)
+
+                System.err.println(String.format("Robot: %.3f ms (p00: %.3f p15: %.3f p50: %.3f p85: %.3f p100: %.3f ms) (%d times)",
+                        robotStats[2], robotStats[0], robotStats[1], robotStats[2], robotStats[3], robotStats[4], last + 1));
+            }
+            return super.getResults();
+        }
+    }
+
+    static final class PerfMeterImageProvider extends PerfMeterExecutor {
+        private final ImageProvider imageProvider;
+
+        PerfMeterImageProvider(final ImageProvider imageProvider) {
+            this.imageProvider = imageProvider;
+        }
+
+        protected void beforeExec() {
+            imageProvider.create(f.getGraphicsConfiguration(), IMAGE_W, IMAGE_H);
+        }
+
+        protected void afterExec() {
+            imageProvider.reset();
+        }
+
+        protected void paintPanel(final Renderable renderable, final Graphics g) {
+            // TODO: check image provider is ready ?
+            final int idx = markerIdx.get();
+            long start = System.nanoTime();
+
+            // Get Graphics from image provider:
+            final Graphics2D g2d = imageProvider.createGraphics();
+            try {
+                paintTest(renderable, g2d, marker[idx]);
+            } finally {
+                g2d.dispose();
+            }
+
+            // publish elapsed time:
+            markerPaintTime.set(System.nanoTime() - start);
+
+            // Draw image on screen:
+            g.drawImage(imageProvider.getImage(), 0, 0, null);
+        }
+
+        protected long getElapsedTime(long paintTime) {
+            return paintTime;
+        }
+
+        protected Color getMarkerColor() throws Exception {
+            final int px = BW / 2;
+            final int py = BH / 2;
+
+            return new Color(imageProvider.getSnapshot().getRGB(px, py));
+        }
+    }
+
+    private final static class ImageProvider {
+        private final static int TRANSPARENCY = Transparency.TRANSLUCENT;
+
+        final static ImageProvider INSTANCE_BUFFERED_IMAGE =  new ImageProvider(false);
+        final static ImageProvider INSTANCE_VOLATILE_IMAGE =  new ImageProvider(true);
+
+        private final boolean useVolatile;
+        private Image image = null;
+
+        private ImageProvider(boolean useVolatile) {
+            this.useVolatile = useVolatile;
+        }
+
+        void create(GraphicsConfiguration gc, int width, int height) {
+            this.image = (useVolatile) ? gc.createCompatibleVolatileImage(width, height, TRANSPARENCY)
+                    : gc.createCompatibleImage(width, height, TRANSPARENCY);
+        }
+
+        public void reset() {
+            image = null;
+        }
+
+        public Image getImage() {
+            return image;
+        }
+
+        public Graphics2D createGraphics() {
+            return (useVolatile) ? ((VolatileImage) image).createGraphics()
+                    : ((BufferedImage) image).createGraphics();
+        }
+
+        public BufferedImage getSnapshot() {
+            return (useVolatile) ? ((VolatileImage)image).getSnapshot()
+                    : (BufferedImage)image;
+        }
+    }
+
+
+    // Tests:
+    private final Particles balls = new Particles(N, R, BW, BH, WIDTH, HEIGHT);
+
+    private final ParticleRenderer calibRenderer = new CalibrationParticleRenderer();
+    private final ParticleRenderer flatRenderer = new FlatParticleRenderer(N, R);
+    private final ParticleRenderer clipFlatRenderer = new ClipFlatParticleRenderer(N, R);
+    private final ParticleRenderer flatOvalRotRenderer = new FlatOvalRotParticleRenderer(N, R);
+    private final ParticleRenderer flatBoxRenderer = new FlatBoxParticleRenderer(N, R);
+    private final ParticleRenderer clipFlatBoxParticleRenderer = new ClipFlatBoxParticleRenderer(N, R);
+    private final ParticleRenderer flatBoxRotRenderer = new FlatBoxRotParticleRenderer(N, R);
+    private final ParticleRenderer linGradOvalRotRenderer = new LinGradOvalRotParticleRenderer(N, R);
+    private final ParticleRenderer linGrad3OvalRotRenderer = new LinGrad3OvalRotParticleRenderer(N, R);
+    private final ParticleRenderer radGrad3OvalRotRenderer = new RadGrad3OvalRotParticleRenderer(N, R);
+    private final ParticleRenderer wiredRenderer = new WiredParticleRenderer(N, R);
+    private final ParticleRenderer wiredBoxRenderer = new WiredBoxParticleRenderer(N, R);
+    private final ParticleRenderer segRenderer = new SegParticleRenderer(N, R);
+    private final ParticleRenderer flatQuadRenderer = new FlatQuadParticleRenderer(N, R);
+    private final ParticleRenderer wiredQuadRenderer = new WiredQuadParticleRenderer(N, R);
+    private final ParticleRenderer imgRenderer = new ImgParticleRenderer(N, R);
+    private final ParticleRenderer volImgRenderer = new VolImgParticleRenderer(N, R);
+    private final ParticleRenderer textRenderer = new TextParticleRenderer(N, R);
+    private final ParticleRenderer largeTextRenderer = new LargeTextParticleRenderer(N, R);
+    private final ParticleRenderer whiteTextRenderer = new WhiteTextParticleRenderer(R);
+    private final ParticleRenderer argbSwBlitImageRenderer = new SwBlitImageParticleRenderer(N, R, BufferedImage.TYPE_INT_ARGB);
+    private final ParticleRenderer bgrSwBlitImageRenderer = new SwBlitImageParticleRenderer(N, R, BufferedImage.TYPE_INT_BGR);
+    private final ParticleRenderer argbSurfaceBlitImageRenderer = new SurfaceBlitImageParticleRenderer(N, R, BufferedImage.TYPE_INT_ARGB);
+    private final ParticleRenderer bgrSurfaceBlitImageRenderer = new SurfaceBlitImageParticleRenderer(N, R, BufferedImage.TYPE_INT_BGR);
 
     private static final Configurable AA = (Graphics2D g2d) ->
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-            RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON);
 
     private static final Configurable TextLCD = (Graphics2D g2d) ->
-        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
-                RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
+            g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                    RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
 
     private static final Configurable TextAA = (Graphics2D g2d) ->
-        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
-                RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                    RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
     private static final Configurable XORMode = (Graphics2D g2d) ->
-        {g2d.setXORMode(Color.WHITE);};
+    {g2d.setXORMode(Color.WHITE);};
 
     private static final Configurable XORModeLCDText = (Graphics2D g2d) ->
-        {g2d.setXORMode(Color.WHITE);
-         g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
-         RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);};
+    {g2d.setXORMode(Color.WHITE);
+        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);};
 
+    public void testCalibration() throws Exception {
+        (new PerfMeter("Calibration")).exec(createPR(calibRenderer)).report();
+    }
 
     public void testFlatOval() throws Exception {
         (new PerfMeter("FlatOval")).exec(createPR(flatRenderer)).report();
@@ -1005,7 +1396,7 @@ public class RenderPerfTest {
     }
 
     public void testArgbSurfaceBlitImage() throws Exception {
-        (new PerfMeter("ArgbSurfaceBlitImageRenderer")).exec(createPR(argbSurfaceBlitImageRenderer)).report();
+        (new PerfMeter("ArgbSurfaceBlitImage")).exec(createPR(argbSurfaceBlitImageRenderer)).report();
     }
 
     public void testBgrSurfaceBlitImage() throws Exception {
@@ -1036,30 +1427,138 @@ public class RenderPerfTest {
         (new PerfMeter("TextLCD_XOR")).exec(createPR(textRenderer).configure(XORModeLCDText)).report();
     }
 
-    public static void main(String[] args)
-            throws InvocationTargetException, IllegalAccessException, NoSuchMethodException
-    {
-        RenderPerfTest test = new RenderPerfTest();
-        ArrayList<Method> testCases = new ArrayList<>();
+    private static void help() {
+        if (!VERBOSE) {
+            System.out.printf("##############################################################\n");
+            System.out.printf("# %s\n", VERSION);
+            System.out.printf("##############################################################\n");
+            System.out.println("# java ... RenderPerfTest <args>");
+            System.out.println("#");
+            System.out.println("# Supported Arguments <args>:");
+            System.out.println("#");
+            System.out.println("# -h         : display this help");
+            System.out.println("# -v         : set verbose outputs");
+            System.out.println("# -e<mode>   : set execution mode (default: " + EXEC_MODE_DEFAULT + ") among " + EXEC_MODES);
+            System.out.println("#");
+            System.out.println("# -f         : use FPS unit (default)");
+            System.out.println("# -t         : use TIME(ms) unit");
+            System.out.println("#");
+            System.out.println("# -n<number> : set number of primitives (default: " + N_DEFAULT + ")");
+            System.out.println("# -r<number> : set number of test repeats (default: 1)");
+            System.out.println("#");
+            System.out.print("# Test arguments: ");
 
-        if (args.length > 0) {
-            for (String testCase : args) {
-                Method m = RenderPerfTest.class.getDeclaredMethod("test" + testCase);
-                testCases.add(m);
-            }
-        } else {
-            Method[] methods = RenderPerfTest.class.getDeclaredMethods();
-            for (Method m : methods) {
+            final ArrayList<Method> testCases = new ArrayList<>();
+            for (Method m : RenderPerfTest.class.getDeclaredMethods()) {
                 if (m.getName().startsWith("test") && !ignoredTests.contains(m.getName())) {
                     testCases.add(m);
                 }
             }
+            testCases.sort(Comparator.comparing(Method::getName));
+            for (Method m : testCases) {
+                System.out.print(m.getName().substring(4));
+                System.out.print(" ");
+            }
+            System.out.println();
+        }
+    }
 
+    public static void main(String[] args)
+            throws InvocationTargetException, IllegalAccessException, NoSuchMethodException, NumberFormatException
+    {
+        // Set the default locale to en-US locale (for Numerical Fields "." ",")
+        Locale.setDefault(Locale.US);
+
+        boolean help = false;
+        final ArrayList<Method> testCases = new ArrayList<>();
+
+        if (args.length > 0) {
+            for (String arg : args) {
+                if (arg.length() >= 2) {
+                    if (arg.startsWith("-")) {
+                        switch (arg.substring(1, 2)) {
+                            case "e":
+                                EXEC_MODE = arg.substring(2).toLowerCase();
+                                break;
+                            case "f":
+                                USE_FPS = true;
+                                break;
+                            case "h":
+                                help = true;
+                                break;
+                            case "t":
+                                USE_FPS = false;
+                                break;
+                            case "n":
+                                N = Integer.parseInt(arg.substring(2));
+                                break;
+                            case "r":
+                                REPEATS = Integer.parseInt(arg.substring(2));
+                                break;
+                            case "v":
+                                VERBOSE = true;
+                                break;
+                            default:
+                                System.err.println("Unsupported argument '" + arg + "' !");
+                                help = true;
+                        }
+                    } else {
+                        Method m = RenderPerfTest.class.getDeclaredMethod("test" + arg);
+                        testCases.add(m);
+                    }
+                }
+            }
+        }
+        if (testCases.isEmpty()) {
+            for (Method m : RenderPerfTest.class.getDeclaredMethods()) {
+                if (m.getName().startsWith("test") && !ignoredTests.contains(m.getName())) {
+                    testCases.add(m);
+                }
+            }
             testCases.sort(Comparator.comparing(Method::getName));
         }
 
-        for (Method m : testCases) {
-            m.invoke(test);
+        if (CALIBRATION) {
+            Method m = RenderPerfTest.class.getDeclaredMethod("testCalibration");
+            testCases.add(0, m); // first
+        }
+
+        if (VERBOSE) {
+            System.out.printf("##############################################################\n");
+            System.out.printf("# %s\n", VERSION);
+            System.out.printf("##############################################################\n");
+            System.out.printf("# Java: %s\n", System.getProperty("java.runtime.version"));
+            System.out.printf("#   VM: %s %s (%s)\n", System.getProperty("java.vm.name"), System.getProperty("java.vm.version"), System.getProperty("java.vm.info"));
+            System.out.printf("#   OS: %s %s (%s)\n", System.getProperty("os.name"), System.getProperty("os.version"), System.getProperty("os.arch"));
+            System.out.printf("# CPUs: %d (virtual)\n", Runtime.getRuntime().availableProcessors());
+            System.out.printf("##############################################################\n");
+            System.out.printf("# AWT Toolkit   : %s \n", TOOLKIT.getClass().getSimpleName());
+            System.out.printf("# Execution mode: %s\n", EXEC_MODE);
+            System.out.printf("# Repeats: %d\n", REPEATS);
+            System.out.printf("# N:       %d\n", N);
+            System.out.printf("# Unit:    %s\n", USE_FPS ? "FPS" : "TIME(ms)");
+            System.out.printf("##############################################################\n");
+        }
+
+        int retCode = 0;
+        try {
+            if (help) {
+                help();
+            } else {
+                final RenderPerfTest test = new RenderPerfTest();
+                for (Method m : testCases) {
+                    for (int i = 0; i < REPEATS; i++) {
+                        m.invoke(test);
+                    }
+                }
+            }
+        } catch (Throwable th) {
+            System.err.println("Exception occured:");
+            th.printStackTrace(System.err);
+            retCode = 1;
+        } finally {
+            // ensure jvm shutdown now (wayland)
+            System.exit(retCode);
         }
     }
 }
