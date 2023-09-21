@@ -48,7 +48,7 @@ java/awt/Mixing/OverlappingButtons.java JBR-5707,JBR-6090 linux-all,windows-all
 java/awt/Mixing/Validating.java JBR-5908,JBR-6090 linux-all,windows-all
 java/awt/Modal/BlockedMouseInputTest2.java JBR-6090 windows-all
 java/awt/Modal/BlockedMouseInputTest3.java JBR-6134 windows-x64
-java/awt/PopupMenu/PopupMenuLocation.java                                           8238720,JBR-5071 windows-all,macosx-all,linux-all
+java/awt/PopupMenu/PopupMenuLocation.java 8238720,JBR-5071 windows-all,macosx-all,linux-all
 java/awt/Window/AlwaysOnTop/SyncAlwaysOnTopFieldTest.java JBR-6845 linux-all
 java/awt/Window/TopLevelLocation/TopLevelLocation.java JBR-5799 windows-all
 java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5513 linux-all
