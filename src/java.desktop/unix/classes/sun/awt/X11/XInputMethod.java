@@ -34,6 +34,7 @@ import java.awt.peer.ComponentPeer;
 import java.lang.ref.WeakReference;
 
 import sun.awt.AWTAccessor;
+import sun.awt.X11GraphicsDevice;
 import sun.awt.X11InputMethod;
 
 import sun.util.logging.PlatformLogger;
@@ -356,17 +357,14 @@ public class XInputMethod extends X11InputMethod {
             return;
         }
 
-        final Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        if (screenSize == null) {
-            return;
-        }
-
-        final Point clientComponentPos = clientComponent.getLocationOnScreen();
+        final Point clientComponentAbsolutePos = clientComponent.getLocationOnScreen();
+        final int clientComponentAbsoluteMaxX = clientComponentAbsolutePos.x + clientComponent.getWidth();
+        final int clientComponentAbsoluteMaxY = clientComponentAbsolutePos.y + clientComponent.getHeight();
 
         // Initial values are the fallback which is the bottom-left corner of the component
-        final Point expectedCandidatesNativeWindowAbsolutePosition = new Point(
-            clientComponentPos.x,
-            clientComponentPos.y + clientComponent.getHeight()
+        final Point expectedCandidatesNativeWindowAbsolutePos = new Point(
+            clientComponentAbsolutePos.x,
+            clientComponentAbsoluteMaxY
         );
 
         final InputMethodRequests clientImr = clientComponent.getInputMethodRequests();
@@ -375,33 +373,61 @@ public class XInputMethod extends X11InputMethod {
 
             final Rectangle caretRect = clientImr.getTextLocation(null);
             if (caretRect != null) {
-                expectedCandidatesNativeWindowAbsolutePosition.x = caretRect.x;
-                expectedCandidatesNativeWindowAbsolutePosition.y = caretRect.y + caretRect.height;
+                expectedCandidatesNativeWindowAbsolutePos.x = caretRect.x;
+                expectedCandidatesNativeWindowAbsolutePos.y = caretRect.y + caretRect.height;
             }
         }
 
-        // Clamping to the screen's size
-        expectedCandidatesNativeWindowAbsolutePosition.x =
-            Math.max(0, Math.min(screenSize.width, expectedCandidatesNativeWindowAbsolutePosition.x));
-        expectedCandidatesNativeWindowAbsolutePosition.y =
-            Math.max(0, Math.min(screenSize.height, expectedCandidatesNativeWindowAbsolutePosition.y));
+        // Clamping within the client component's bounds
+        expectedCandidatesNativeWindowAbsolutePos.x =
+            Math.max(clientComponentAbsolutePos.x, Math.min(expectedCandidatesNativeWindowAbsolutePos.x, clientComponentAbsoluteMaxX));
+        expectedCandidatesNativeWindowAbsolutePos.y =
+            Math.max(clientComponentAbsolutePos.y, Math.min(expectedCandidatesNativeWindowAbsolutePos.y, clientComponentAbsoluteMaxY));
 
-        if (forceUpdate || !expectedCandidatesNativeWindowAbsolutePosition.equals(lastKnownCandidatesNativeWindowAbsolutePosition)) {
-            final Point clientWindowPos = clientComponentWindow.getLocationOnScreen();
+        // Scaling the coordinates according to the screen's current scaling settings.
+        // To do it properly, we have to know the screen which the point is on.
+        // The code below supposes this is the one which clientComponent belongs to, because we've clamped
+        //   the point coordinates within the component's bounds above.
+        final X11GraphicsDevice candidatesNativeWindowDevice = getComponentX11Device(clientComponent);
+        if (candidatesNativeWindowDevice != null) {
+            expectedCandidatesNativeWindowAbsolutePos.x =
+                candidatesNativeWindowDevice.scaleUpX(expectedCandidatesNativeWindowAbsolutePos.x);
+            expectedCandidatesNativeWindowAbsolutePos.y =
+                candidatesNativeWindowDevice.scaleUpY(expectedCandidatesNativeWindowAbsolutePos.y);
+        }
 
-            final int relativeX =
-                Math.max(0, Math.min(screenSize.width, expectedCandidatesNativeWindowAbsolutePosition.x - clientWindowPos.x));
-            final int relativeY =
-                Math.max(0, Math.min(screenSize.height, expectedCandidatesNativeWindowAbsolutePosition.y - clientWindowPos.y));
+        if (forceUpdate || !expectedCandidatesNativeWindowAbsolutePos.equals(lastKnownCandidatesNativeWindowAbsolutePosition)) {
+            // adjustCandidatesNativeWindowPosition expects coordinates relative to the client window
+            final Point clientComponentWindowAbsolutePos = clientComponentWindow.getLocationOnScreen();
+            final X11GraphicsDevice clientComponentWindowDevice = getComponentX11Device(clientComponentWindow);
+            if (clientComponentWindowDevice != null) {
+                clientComponentWindowAbsolutePos.x =
+                    clientComponentWindowDevice.scaleUpX(clientComponentWindowAbsolutePos.x);
+                clientComponentWindowAbsolutePos.y =
+                    clientComponentWindowDevice.scaleUpY(clientComponentWindowAbsolutePos.y);
+            }
 
-            lastKnownCandidatesNativeWindowAbsolutePosition = expectedCandidatesNativeWindowAbsolutePosition;
+            final int relativeX = expectedCandidatesNativeWindowAbsolutePos.x - clientComponentWindowAbsolutePos.x;
+            final int relativeY = expectedCandidatesNativeWindowAbsolutePos.y - clientComponentWindowAbsolutePos.y;
+
             awtLock();
             try {
                 adjustCandidatesNativeWindowPosition(relativeX, relativeY);
             } finally {
                 awtUnlock();
             }
+
+            lastKnownCandidatesNativeWindowAbsolutePosition = expectedCandidatesNativeWindowAbsolutePos;
         }
+    }
+
+    private static X11GraphicsDevice getComponentX11Device(final Component component) {
+        if (component == null) return null;
+
+        final var componentGc = component.getGraphicsConfiguration();
+        if (componentGc == null) return null;
+
+        return (componentGc.getDevice() instanceof X11GraphicsDevice result) ? result : null;
     }
 
 
