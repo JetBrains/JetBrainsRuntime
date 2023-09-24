@@ -61,6 +61,7 @@ public class WakefieldTestDriver {
         final List<String> jvmArgs = new ArrayList<String>();
         jvmArgs.add("-Dawt.toolkit.name=WLToolkit");
         jvmArgs.add("-Xcheck:jni");
+        jvmArgs.add("--add-exports=java.desktop/sun.awt.wl=ALL-UNNAMED");
 
         int nScreens     = DEFAULT_NUMBER_OF_SCREENS;
         int screenWidth  = DEFAULT_SCREEN_WIDTH;

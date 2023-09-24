@@ -196,9 +196,11 @@ static struct WLKeyboardState {
 
     struct xkb_context *context;
     struct xkb_state   *state;
+    struct xkb_state   *tmpState;
     struct xkb_keymap  *keymap;
 
     struct xkb_keymap  *qwertyKeymap;
+    struct xkb_state   *tmpQwertyState;
 
     struct xkb_compose_table *composeTable;
     struct xkb_compose_state *composeState;
@@ -986,23 +988,23 @@ translateKeycodeToKeysym(uint32_t keycode, bool useQWERTY)
     const uint32_t xkbKeycode = keycode + 8;
 
     struct xkb_keymap* keymap;
+    struct xkb_state* state;
     xkb_layout_index_t group;
 
     if (keyboard.qwertyKeymap && useQWERTY) {
         keymap = keyboard.qwertyKeymap;
+        state = keyboard.tmpQwertyState;
         group = 0;
     } else {
         keymap = keyboard.keymap;
+        state = keyboard.tmpState;
         group = getKeyboardLayoutIndex();
     }
 
-    const xkb_keysym_t* syms;
-    int numSyms = xkb.keymap_key_get_syms_by_level(keymap, xkbKeycode, group, 0, &syms);
-    if (numSyms >= 1) {
-        return syms[0];
-    }
+    bool numLock = xkb.state_mod_name_is_active(keyboard.state, XKB_MOD_NAME_NUM, XKB_STATE_MODS_EFFECTIVE) == 1;
+    xkb.state_update_mask(state, 0, 0, numLock ? sun_awt_wl_WLKeyboard_XKB_NUM_LOCK_MASK : 0, 0, 0, group);
 
-    return 0;
+    return xkb.state_key_get_one_sym(state, xkbKeycode);
 }
 
 static void
@@ -1253,6 +1255,11 @@ Java_sun_awt_wl_WLKeyboard_initialize(JNIEnv* env, jobject instance, jobject key
             .options = ""
     };
     keyboard.qwertyKeymap = xkb.keymap_new_from_names(keyboard.context, &qwertyRuleNames, 0);
+    if (!keyboard.qwertyKeymap) {
+        JNU_ThrowInternalError(getEnv(),
+                               "xkb layout 'us' not found");
+    }
+    keyboard.tmpQwertyState = xkb.state_new(keyboard.qwertyKeymap);
 
     keyboard.composeTable = xkb.compose_table_new_from_locale(keyboard.context, getComposeLocale(), XKB_COMPOSE_COMPILE_NO_FLAGS);
     if (keyboard.composeTable) {
@@ -1290,8 +1297,10 @@ wlSetKeymap(const char* serializedKeymap)
 
     xkb.keymap_unref(keyboard.keymap);
     xkb.state_unref(keyboard.state);
+    xkb.state_unref(keyboard.tmpState);
 
     keyboard.state = xkb.state_new(new_xkb_keymap);
+    keyboard.tmpState = xkb.state_new(new_xkb_keymap);
     keyboard.keymap = new_xkb_keymap;
     onKeyboardLayoutChanged();
 }

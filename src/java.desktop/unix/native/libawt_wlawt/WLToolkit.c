@@ -48,7 +48,6 @@
 #include "JNIUtilities.h"
 #include "awt.h"
 #include "sun_awt_wl_WLToolkit.h"
-#include "WLToolkit.h"
 #include "WLRobotPeer.h"
 #include "WLGraphicsEnvironment.h"
 #include "java_awt_event_KeyEvent.h"
