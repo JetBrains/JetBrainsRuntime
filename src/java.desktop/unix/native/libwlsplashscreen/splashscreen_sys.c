@@ -37,7 +37,9 @@
 static const int BUFFERS_COUNT = 3;
 static bool is_cursor_animated = false;
 
+#define NULL_CHECK_CLEANUP(val, message)  if (val == NULL) { fprintf(stderr, "%s\n", message); goto cleanup; }
 #define NULL_CHECK(val, message)  if (val == NULL) { fprintf(stderr, "%s\n", message); return false; }
+#define DESTROY_NOT_NULL(val, destructor)  if (val != NULL) { destructor(val); }
 
 void SplashReconfigureNow(Splash * splash);
 void SplashRedrawWindow(Splash * splash);
@@ -59,10 +61,23 @@ alloc_buffer(int width, int height, struct wl_shm *wl_shm, Buffer *buffer, int f
 
     struct wl_shm_pool *pool = wl_shm_create_pool(wl_shm, fd, size);
     buffer->wl_buffer = wl_shm_pool_create_buffer(pool, 0, width, height, width * format_size, format);
+    if (buffer->wl_buffer == NULL) {
+        return false;
+    }
     wl_shm_pool_destroy(pool);
     close(fd);
 
     return true;
+}
+
+static void
+destroy_buffer(Buffer *buffer) {
+    if (buffer->data != MAP_FAILED && buffer->data != NULL) {
+        munmap(buffer->data, buffer->size);
+    }
+    if (buffer->wl_buffer) {
+        wl_buffer_destroy(buffer->wl_buffer);
+    }
 }
 
 static void
@@ -192,10 +207,6 @@ static const struct xdg_wm_base_listener xdg_wm_base_listener = {
 
 bool
 SplashCreateWindow(Splash * splash) {
-    splash->state->pointer = NULL;
-    splash->window_width = 0;
-    splash->window_height = 0;
-
     splash->native_scale = getNativeScaleFactor(NULL, 1);
     if (splash->native_scale == -1.0) {
         splash->native_scale = 1.0;
@@ -210,7 +221,7 @@ SplashCreateWindow(Splash * splash) {
 
     xdg_wm_base_add_listener(splash->state->xdg_wm_base, &xdg_wm_base_listener, splash->state);
     splash->state->xdg_surface = xdg_wm_base_get_xdg_surface(splash->state->xdg_wm_base, splash->state->wl_surface);
-    NULL_CHECK(splash->state->wl_subsurfaces_surface, "Cannot get xdg_surface\n")
+    NULL_CHECK(splash->state->xdg_surface, "Cannot get xdg_surface\n")
     xdg_surface_add_listener(splash->state->xdg_surface, &xdg_surface_listener, splash);
 
     splash->state->xdg_toplevel = xdg_surface_get_toplevel(splash->state->xdg_surface);
@@ -240,7 +251,7 @@ SplashCreateWindow(Splash * splash) {
     splash->state->cursor_theme = wl_cursor_theme_load(NULL, 32, splash->state->wl_shm);
     NULL_CHECK(splash->state->cursor_theme, "unable to load default theme\n")
     splash->state->default_cursor = wl_cursor_theme_get_cursor(splash->state->cursor_theme, "watch");
-    NULL_CHECK(splash->state->cursor_theme, "unable to load pointer\n")
+    NULL_CHECK(splash->state->default_cursor, "unable to load pointer\n")
 
     return true;
 }
@@ -253,13 +264,36 @@ SplashInitPlatform(Splash * splash) {
 
     pthread_mutex_init(&splash->lock, NULL);
 
+    splash->buffers = 0;
+    splash->window_width = 0;
+    splash->window_height = 0;
     splash->state = malloc(sizeof(wayland_state));
-    NULL_CHECK(splash->state, "Cannot allocate enough memory\n")
+    NULL_CHECK_CLEANUP(splash->state, "Cannot allocate enough memory\n")
     splash->buffers = malloc(sizeof(Buffer) * BUFFERS_COUNT);
-    if (splash->buffers == NULL) {
-        free(splash->state);
-        fprintf(stderr, "%s\n", "Cannot allocate enough memory");
-        return false;
+    NULL_CHECK_CLEANUP(splash->buffers, "Cannot allocate enough memory\n")
+
+    splash->state->wl_display = NULL;
+    splash->state->wl_registry = NULL;
+
+    splash->state->wl_shm = NULL;
+    splash->state->wl_compositor = NULL;
+    splash->state->wl_subcompositor = NULL;
+    splash->state->wl_seat = NULL;
+    splash->state->xdg_wm_base = NULL;
+    splash->state->wl_subsurfaces_subsurface = NULL;
+
+    splash->state->wl_surface = NULL;
+    splash->state->wl_subsurfaces_surface = NULL;
+    splash->state->xdg_surface = NULL;
+    splash->state->xdg_toplevel = NULL;
+    splash->state->pointer = NULL;
+    splash->state->cursor_surface = NULL;
+
+    splash->main_buffer.wl_buffer = NULL;
+    splash->main_buffer.data = NULL;
+    for (int i = 0; i < BUFFERS_COUNT; i++) {
+        splash->buffers[i].wl_buffer = NULL;
+        splash->buffers[i].data = NULL;
     }
 
     splash->byteAlignment = 1;
@@ -269,26 +303,23 @@ SplashInitPlatform(Splash * splash) {
     splash->screenFormat.depthBytes = 4;
 
     splash->state->wl_display = wl_display_connect(NULL);
-    NULL_CHECK(splash->state->wl_display, "Cannot connect to display\n")
-
-    splash->state->wl_shm = NULL;
-    splash->state->wl_compositor = NULL;
-    splash->state->wl_subcompositor = NULL;
-    splash->state->wl_seat = NULL;
-    splash->state->xdg_wm_base = NULL;
+    NULL_CHECK_CLEANUP(splash->state->wl_display, "Cannot connect to display\n")
 
     splash->state->wl_registry = wl_display_get_registry(splash->state->wl_display);
-    NULL_CHECK(splash->state->wl_registry, "Cannot get display's registry\n")
+    NULL_CHECK_CLEANUP(splash->state->wl_registry, "Cannot get display's registry\n")
     wl_registry_add_listener(splash->state->wl_registry, &wl_registry_listener, splash->state);
     wl_display_roundtrip(splash->state->wl_display);
 
-    NULL_CHECK(splash->state->wl_shm, "wl_shm not initialized\n")
-    NULL_CHECK(splash->state->wl_compositor, "wl_compositor not initialized\n")
-    NULL_CHECK(splash->state->wl_subcompositor, "wl_subcompositor not initialized\n")
-    NULL_CHECK(splash->state->wl_seat, "wl_seat not initialized\n")
-    NULL_CHECK(splash->state->xdg_wm_base, "xdg_wm_base not initialized\n")
+    NULL_CHECK_CLEANUP(splash->state->wl_shm, "wl_shm not initialized\n")
+    NULL_CHECK_CLEANUP(splash->state->wl_compositor, "wl_compositor not initialized\n")
+    NULL_CHECK_CLEANUP(splash->state->wl_subcompositor, "wl_subcompositor not initialized\n")
+    NULL_CHECK_CLEANUP(splash->state->wl_seat, "wl_seat not initialized\n")
+    NULL_CHECK_CLEANUP(splash->state->xdg_wm_base, "xdg_wm_base not initialized\n")
 
     return true;
+cleanup:
+    SplashDonePlatform(splash);
+    return false;
 }
 
 void
@@ -372,33 +403,43 @@ SplashUpdateCursor(Splash * splash) {
 
 void
 SplashCleanupPlatform(Splash * splash) {
-    munmap(splash->main_buffer.data, splash->main_buffer.size);
-    for (int i = 0; i < BUFFERS_COUNT; i++) {
-        munmap(splash->buffers[i].data, splash->buffers[i].size);
-    }
 }
 
 void
 SplashDonePlatform(Splash * splash) {
     pthread_mutex_destroy(&splash->lock);
 
-    wl_buffer_destroy(splash->main_buffer.wl_buffer);
-    for (int i = 0; i < BUFFERS_COUNT; i++) {
-        wl_buffer_destroy(splash->buffers[i].wl_buffer);
+    if (splash == NULL) {
+        return;
     }
 
-    xdg_surface_destroy(splash->state->xdg_surface);
-    wl_surface_destroy(splash->state->wl_surface);
-    wl_shm_destroy(splash->state->wl_shm);
-    xdg_wm_base_destroy(splash->state->xdg_wm_base);
-    wl_subcompositor_destroy(splash->state->wl_subcompositor);
-    wl_compositor_destroy(splash->state->wl_compositor);
-    wl_registry_destroy(splash->state->wl_registry);
+    DESTROY_NOT_NULL(splash->state->wl_shm, wl_shm_destroy)
+    DESTROY_NOT_NULL(splash->state->wl_compositor, wl_compositor_destroy)
+    DESTROY_NOT_NULL(splash->state->wl_subcompositor, wl_subcompositor_destroy)
+    DESTROY_NOT_NULL(splash->state->wl_seat, wl_seat_destroy)
+    DESTROY_NOT_NULL(splash->state->xdg_wm_base, xdg_wm_base_destroy)
+    DESTROY_NOT_NULL(splash->state->wl_subsurfaces_subsurface, wl_subsurface_destroy)
 
-    wl_display_flush(splash->state->wl_display);
-    wl_display_disconnect(splash->state->wl_display);
+    DESTROY_NOT_NULL(splash->state->wl_surface, wl_surface_destroy)
+    DESTROY_NOT_NULL(splash->state->wl_subsurfaces_surface, wl_surface_destroy)
+    DESTROY_NOT_NULL(splash->state->xdg_surface, xdg_surface_destroy)
+    DESTROY_NOT_NULL(splash->state->xdg_toplevel, xdg_toplevel_destroy)
+    DESTROY_NOT_NULL(splash->state->pointer, wl_pointer_destroy)
+    DESTROY_NOT_NULL(splash->state->cursor_surface, wl_surface_destroy)
 
-    free(splash->buffers);
+    destroy_buffer(&splash->main_buffer);
+    if (splash->buffers) {
+        for (int i = 0; i < BUFFERS_COUNT; i++) {
+            destroy_buffer(&splash->buffers[i]);
+        }
+        free(splash->buffers);
+    }
+
+    if (splash->state->wl_display) {
+        wl_display_flush(splash->state->wl_display);
+        wl_display_disconnect(splash->state->wl_display);
+    }
+
     free(splash->state);
 }
 
