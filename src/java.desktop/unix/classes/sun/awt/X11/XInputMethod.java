@@ -32,6 +32,11 @@ import java.awt.im.InputMethodRequests;
 import java.awt.im.spi.InputMethodContext;
 import java.awt.peer.ComponentPeer;
 import java.lang.ref.WeakReference;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.Objects;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import sun.awt.AWTAccessor;
 import sun.awt.X11GraphicsDevice;
@@ -378,11 +383,24 @@ public class XInputMethod extends X11InputMethod {
             }
         }
 
-        // Clamping within the client component's bounds
-        expectedCandidatesNativeWindowAbsolutePos.x =
-            Math.max(clientComponentAbsolutePos.x, Math.min(expectedCandidatesNativeWindowAbsolutePos.x, clientComponentAbsoluteMaxX));
-        expectedCandidatesNativeWindowAbsolutePos.y =
-            Math.max(clientComponentAbsolutePos.y, Math.min(expectedCandidatesNativeWindowAbsolutePos.y, clientComponentAbsoluteMaxY));
+        // Clamping within the client component's visible rect (if available and not empty) or just its bounds
+        final var clientComponentVisibleRect = getJComponentVisibleRectIfNotEmpty(clientComponent);
+        if (clientComponentVisibleRect == null) {
+            expectedCandidatesNativeWindowAbsolutePos.x =
+                Math.max(clientComponentAbsolutePos.x, Math.min(expectedCandidatesNativeWindowAbsolutePos.x, clientComponentAbsoluteMaxX - 1));
+            expectedCandidatesNativeWindowAbsolutePos.y =
+                Math.max(clientComponentAbsolutePos.y, Math.min(expectedCandidatesNativeWindowAbsolutePos.y, clientComponentAbsoluteMaxY - 1));
+        } else {
+            final int visibleBoundsAbsoluteMinX = clientComponentAbsolutePos.x + clientComponentVisibleRect.x;
+            final int visibleBoundsAbsoluteMaxX = visibleBoundsAbsoluteMinX + clientComponentVisibleRect.width;
+            final int visibleBoundsAbsoluteMinY = clientComponentAbsolutePos.y + clientComponentVisibleRect.y;
+            final int visibleBoundsAbsoluteMaxY = visibleBoundsAbsoluteMinY + clientComponentVisibleRect.height;
+
+            expectedCandidatesNativeWindowAbsolutePos.x =
+                Math.max(visibleBoundsAbsoluteMinX, Math.min(expectedCandidatesNativeWindowAbsolutePos.x, visibleBoundsAbsoluteMaxX - 1));
+            expectedCandidatesNativeWindowAbsolutePos.y =
+                Math.max(visibleBoundsAbsoluteMinY, Math.min(expectedCandidatesNativeWindowAbsolutePos.y, visibleBoundsAbsoluteMaxY - 1));
+        }
 
         // Scaling the coordinates according to the screen's current scaling settings.
         // To do it properly, we have to know the screen which the point is on.
@@ -394,6 +412,23 @@ public class XInputMethod extends X11InputMethod {
                 candidatesNativeWindowDevice.scaleUpX(expectedCandidatesNativeWindowAbsolutePos.x);
             expectedCandidatesNativeWindowAbsolutePos.y =
                 candidatesNativeWindowDevice.scaleUpY(expectedCandidatesNativeWindowAbsolutePos.y);
+        }
+
+        // Clamping within screen bounds (to avoid the input candidates window to appear outside a screen).
+        final Rectangle closestScreenScaledBounds = new Rectangle();
+        final X11GraphicsDevice candidatesNativeWindowClosestScreen = findClosestScreenToPoint(
+            closestScreenScaledBounds,
+            expectedCandidatesNativeWindowAbsolutePos,
+            candidatesNativeWindowDevice
+        );
+        if (candidatesNativeWindowClosestScreen != null) {
+            final int screenScaledBoundsXMax = closestScreenScaledBounds.x + closestScreenScaledBounds.width - 1;
+            final int screenScaledBoundsYMax = closestScreenScaledBounds.y + closestScreenScaledBounds.height - 1;
+
+            expectedCandidatesNativeWindowAbsolutePos.x =
+                Math.max(closestScreenScaledBounds.x, Math.min(expectedCandidatesNativeWindowAbsolutePos.x, screenScaledBoundsXMax));
+            expectedCandidatesNativeWindowAbsolutePos.y =
+                    Math.max(closestScreenScaledBounds.y, Math.min(expectedCandidatesNativeWindowAbsolutePos.y, screenScaledBoundsYMax));
         }
 
         if (forceUpdate || !expectedCandidatesNativeWindowAbsolutePos.equals(lastKnownCandidatesNativeWindowAbsolutePosition)) {
@@ -421,6 +456,16 @@ public class XInputMethod extends X11InputMethod {
         }
     }
 
+    private static Rectangle getJComponentVisibleRectIfNotEmpty(final Component component) {
+        if (component instanceof JComponent jComponent) {
+            final Rectangle result = jComponent.getVisibleRect();
+            if ((result != null) && (result.width > 0) && (result.height > 0)) {
+                return result;
+            }
+        }
+        return null;
+    }
+
     private static X11GraphicsDevice getComponentX11Device(final Component component) {
         if (component == null) return null;
 
@@ -428,6 +473,76 @@ public class XInputMethod extends X11InputMethod {
         if (componentGc == null) return null;
 
         return (componentGc.getDevice() instanceof X11GraphicsDevice result) ? result : null;
+    }
+
+    private static X11GraphicsDevice findClosestScreenToPoint(
+        final Rectangle outScreenScaledBounds,
+        final Point absolutePointScaled,
+        final X11GraphicsDevice... screensToCheckFirst
+    ) {
+        assert(outScreenScaledBounds != null);
+
+        if (absolutePointScaled == null) {
+            return null;
+        }
+
+        final Iterator<X11GraphicsDevice> screensToCheck =
+            Stream.concat( // screensToCheckFirst + GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()
+                Arrays.stream(screensToCheckFirst),
+                Stream.<Supplier<GraphicsDevice[]>>of(() -> {
+                    final var localGe = GraphicsEnvironment.getLocalGraphicsEnvironment();
+                    if (localGe != null) {
+                        return localGe.getScreenDevices();
+                    }
+                    return null;
+                }).flatMap(supplier -> Stream.of(supplier.get()))
+            ).map(device -> (device instanceof X11GraphicsDevice screen) ? screen : null)
+             .filter(Objects::nonNull)
+             .iterator();
+
+        int closestScreenMinDistance = Integer.MAX_VALUE;
+        X11GraphicsDevice result = null;
+        while (screensToCheck.hasNext()) {
+            final X11GraphicsDevice screen = screensToCheck.next();
+
+            final Rectangle screenBoundsScaled = screen.getBounds();
+            if (screenBoundsScaled == null) {
+                continue;
+            }
+            screenBoundsScaled.width = screen.scaleUp(screenBoundsScaled.width);
+            screenBoundsScaled.height = screen.scaleUp(screenBoundsScaled.height);
+
+            final int distance = obtainDistanceBetween(screenBoundsScaled, absolutePointScaled);
+            if (distance < closestScreenMinDistance) {
+                result = screen;
+                closestScreenMinDistance = distance;
+
+                outScreenScaledBounds.x = screenBoundsScaled.x;
+                outScreenScaledBounds.y = screenBoundsScaled.y;
+                outScreenScaledBounds.width = screenBoundsScaled.width;
+                outScreenScaledBounds.height = screenBoundsScaled.height;
+
+                if (distance < 1) {
+                    break;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private static int obtainDistanceBetween(final Rectangle rectangle, final Point absolutePointScaled) {
+        if ((rectangle.width < 1) || (rectangle.height < 1)) {
+            return Integer.MAX_VALUE;
+        }
+
+        final int screenBoundsScaledXMax = rectangle.x + rectangle.width - 1;
+        final int screenBoundsScaledYMax = rectangle.y + rectangle.height - 1;
+
+        final int dx = Math.max(0, Math.max(rectangle.x - absolutePointScaled.x, absolutePointScaled.x - screenBoundsScaledXMax));
+        final int dy = Math.max(0, Math.max(rectangle.y - absolutePointScaled.y, absolutePointScaled.y - screenBoundsScaledYMax));
+
+        return dx + dy; // just sum is enough for our purposes
     }
 
 
