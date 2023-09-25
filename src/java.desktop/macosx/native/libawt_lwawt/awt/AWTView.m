@@ -850,7 +850,7 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
 - (BOOL)replaceAccessibleTextSelection:(NSString *)text
 {
     id focused = [self accessibilityFocusedUIElement];
-    if (![focused respondsToSelector:@selector(setAccessibilitySelectedText)]) return NO;
+    if (![focused respondsToSelector:@selector(setAccessibilitySelectedText:)]) return NO;
     [focused setAccessibilitySelectedText:text];
     return YES;
 }
