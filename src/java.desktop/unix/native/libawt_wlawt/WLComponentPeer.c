@@ -495,6 +495,9 @@ DoHide(struct WLFrame *frame)
         } else {
             xdg_popup_destroy(frame->xdg_popup);
         }
+        if (wl_surface_in_focus == frame->wl_surface) {
+            wl_surface_in_focus = NULL;
+        }
         xdg_surface_destroy(frame->xdg_surface);
         wl_surface_destroy(frame->wl_surface);
         delete_all_tokens(frame->activation_token_list);
