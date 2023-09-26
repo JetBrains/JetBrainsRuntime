@@ -144,6 +144,7 @@ public class RowToleranceTransitivityTest {
         if (!setFocusOn(cb, new Runnable() {
             public void run() {
                 robot.keyPress(KeyEvent.VK_TAB);
+                robot.keyRelease(KeyEvent.VK_TAB);
             }
             })) {
             System.out.println("Focus got stuck while traversing.");
