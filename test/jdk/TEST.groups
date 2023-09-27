@@ -815,6 +815,7 @@ jdk_since_checks = \
 # Wayland tests to be executed with -Dawt.toolkit.name=WLToolkit
 jdk_awt_wayland = \
     :jdk_awt \
+    jb/java/awt/wayland \
     -com/apple/eawt \
     -com/apple/laf \
     -sun/awt \
