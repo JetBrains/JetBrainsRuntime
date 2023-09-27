@@ -653,6 +653,12 @@ public class WLComponentPeer implements ComponentPeer {
 
     @Override
     public void dispose() {
+        SurfaceData oldData = surfaceData;
+        surfaceData = null;
+        if (oldData != null) {
+            oldData.invalidate();
+        }
+        WLToolkit.targetDisposedPeer(target, this);
         performLocked(() -> {
             assert(!isVisible());
             nativeDisposeFrame(nativePtr);
