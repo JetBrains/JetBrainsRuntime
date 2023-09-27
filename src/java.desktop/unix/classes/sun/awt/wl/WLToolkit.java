@@ -28,6 +28,7 @@ package sun.awt.wl;
 
 import jdk.internal.misc.InnocuousThread;
 import sun.awt.AWTAccessor;
+import sun.awt.AWTAutoShutdown;
 import sun.awt.AppContext;
 import sun.awt.LightweightFrame;
 import sun.awt.PeerEvent;
@@ -204,12 +205,14 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     @Override
     public void run() {
         while(true) {
+            AWTAutoShutdown.notifyToolkitThreadFree(); // will now wait for events
             int result = readEvents();
             if (result == READ_RESULT_ERROR) {
                 log.severe("Wayland protocol I/O error");
                 // TODO: display disconnect handling here?
                 break;
             } else if (result == READ_RESULT_FINISHED_WITH_EVENTS) {
+                AWTAutoShutdown.notifyToolkitThreadBusy(); // busy processing events
                 SunToolkit.postEvent(AppContext.getAppContext(), new PeerEvent(this, () -> {
                     WLToolkit.awtLock();
                     try {
