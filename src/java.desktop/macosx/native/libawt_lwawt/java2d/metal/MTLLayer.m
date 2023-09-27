@@ -87,7 +87,11 @@ BOOL isColorMatchingEnabled() {
     [actions release];
     self.topInset = 0;
     self.leftInset = 0;
-    self.framebufferOnly = YES;
+
+    // Validation with MTL_DEBUG_LAYER=1 environment variable
+    // prohibits blit operations on to the drawable texture
+    // obtained from a MTLLayer with framebufferOnly=YES
+    self.framebufferOnly = NO;
     self.nextDrawableCount = 0;
     self.opaque = YES;
     self.redrawCount = 0;
