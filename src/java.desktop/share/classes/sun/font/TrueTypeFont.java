@@ -1050,8 +1050,12 @@ public class TrueTypeFont extends FileFont {
         metrics[offset+3] = ulSize * pointSize;
     }
 
-    private String makeString(byte[] bytes, int len,
+    private String makeString(ByteBuffer buffer, int bufferPtr, int len,
                              short platformID, short encoding) {
+
+        buffer.position(bufferPtr);
+        byte[] bytes = new byte[len];
+        buffer.get(bytes, 0, len);
 
         if (platformID == MAC_PLATFORM_ID) {
             encoding = -1; // hack so we can re-use the code below.
@@ -1118,7 +1122,6 @@ public class TrueTypeFont extends FileFont {
 
     protected void initNames() {
 
-        byte[] name = new byte[256];
         ByteBuffer buffer = getTableBuffer(nameTag);
 
         if (buffer != null) {
@@ -1169,9 +1172,7 @@ public class TrueTypeFont extends FileFont {
                         (localeFamilyName == null &&
                          (compatible = isLanguageCompatible(langID))))
                     {
-                        buffer.position(namePtr);
-                        buffer.get(name, 0, nameLen);
-                        tmpName = makeString(name, nameLen, platformID, encodingID);
+                        tmpName = makeString(buffer, namePtr, nameLen, platformID, encodingID);
                         if (familyName == null || langID == ENGLISH_LOCALE_ID){
                             familyName = tmpName;
                         }
@@ -1202,9 +1203,7 @@ public class TrueTypeFont extends FileFont {
                         (localeFullName == null &&
                          (compatible = isLanguageCompatible(langID))))
                     {
-                        buffer.position(namePtr);
-                        buffer.get(name, 0, nameLen);
-                        tmpName = makeString(name, nameLen, platformID, encodingID);
+                        tmpName = makeString(buffer, namePtr, nameLen, platformID, encodingID);
 
                         if (fullName == null || langID == ENGLISH_LOCALE_ID) {
                             fullName = tmpName;
@@ -1219,41 +1218,31 @@ public class TrueTypeFont extends FileFont {
 
                case SUBFAMILY_NAME_ID:
                     if (subfamilyName == null || langID == ENGLISH_LOCALE_ID) {
-                        buffer.position(namePtr);
-                        buffer.get(name, 0, nameLen);
-                        subfamilyName = makeString(name, nameLen, platformID, encodingID);
+                        subfamilyName = makeString(buffer, namePtr, nameLen, platformID, encodingID);
                     }
                     break;
 
                 case VERSION_NAME_ID:
                     if (version == null || langID == ENGLISH_LOCALE_ID) {
-                        buffer.position(namePtr);
-                        buffer.get(name, 0, nameLen);
-                        version = parseVersion(makeString(name, nameLen, platformID, encodingID));
+                        version = parseVersion(makeString(buffer, namePtr, nameLen, platformID, encodingID));
                     }
                     break;
 
                 case POSTSCRIPT_NAME_ID:
                     if (postScriptName == null || langID == ENGLISH_LOCALE_ID) {
-                        buffer.position(namePtr);
-                        buffer.get(name, 0, nameLen);
-                        postScriptName = makeString(name, nameLen, platformID, encodingID);
+                        postScriptName = makeString(buffer, namePtr, nameLen, platformID, encodingID);
                     }
                     break;
 
                 case TYPOGRAPHIC_FAMILY_NAME_ID:
                     if (typographicFamilyName == null || langID == ENGLISH_LOCALE_ID) {
-                        buffer.position(namePtr);
-                        buffer.get(name, 0, nameLen);
-                        typographicFamilyName = makeString(name, nameLen, platformID, encodingID);
+                        typographicFamilyName = makeString(buffer, namePtr, nameLen, platformID, encodingID);
                     }
                     break;
 
                 case TYPOGRAPHIC_SUBFAMILY_NAME_ID:
                     if (typographicSubfamilyName == null || langID == ENGLISH_LOCALE_ID) {
-                        buffer.position(namePtr);
-                        buffer.get(name, 0, nameLen);
-                        typographicSubfamilyName = makeString(name, nameLen, platformID, encodingID);
+                        typographicSubfamilyName = makeString(buffer, namePtr, nameLen, platformID, encodingID);
                     }
                     break;
                 }
@@ -1312,9 +1301,7 @@ public class TrueTypeFont extends FileFont {
                 if (nameID == findNameID &&
                     ((foundName == null && langID == ENGLISH_LOCALE_ID)
                      || langID == findLocaleID)) {
-                    buffer.position(namePtr);
-                    buffer.get(name, 0, nameLen);
-                    foundName = makeString(name, nameLen, platformID, encodingID);
+                    foundName = makeString(buffer, namePtr, nameLen, platformID, encodingID);
                     if (langID == findLocaleID) {
                         return foundName;
                     }
@@ -1653,9 +1640,7 @@ public class TrueTypeFont extends FileFont {
                 int   namePtr    = (((int) sbuffer.get()) & 0xffff) + stringPtr;
 
                 if (nameID == requestedID) {
-                    buffer.position(namePtr);
-                    buffer.get(name, 0, nameLen);
-                    names.add(makeString(name, nameLen, platformID, encodingID));
+                    names.add(makeString(buffer, namePtr, nameLen, platformID, encodingID));
                 }
             }
         }
