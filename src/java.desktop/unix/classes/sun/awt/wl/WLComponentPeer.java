@@ -82,7 +82,7 @@ public class WLComponentPeer implements ComponentPeer {
             {"move"}, // MOVE_CURSOR
     };
 
-    private long nativePtr;
+    private long nativePtr;  // protected by WLToolkit.awtLock()
     private volatile boolean surfaceAssigned = false;
     protected final Component target;
 
@@ -96,8 +96,8 @@ public class WLComponentPeer implements ComponentPeer {
     boolean isLayouting = false;
     boolean visible = false;
 
-    int x;
-    int y;
+    int x;  // protected by WLToolkit.awtLock()
+    int y;  // protected by WLToolkit.awtLock()
 
     private final Object sizeLock = new Object();
     int width;  // protected by sizeLock
@@ -372,15 +372,14 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     public void setBounds(int x, int y, int width, int height, int op) {
-        final boolean positionChanged = this.x != x || this.y != y;
-        if (positionChanged) {
-            performLocked(() -> WLRobotPeer.setLocationOfWLSurface(getWLSurface(nativePtr), x, y));
-        }
-        this.x = x;
-        this.y = y;
-
-        if (positionChanged) {
-            WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_MOVED));
+        final boolean locationChanged = this.x != x || this.y != y;
+        if (locationChanged) {
+            performLocked(() -> {
+                this.x = x;
+                this.y = y;
+                WLRobotPeer.setLocationOfWLSurface(getWLSurface(nativePtr), x, y);
+                notifyLocationChanged();
+            });
         }
 
         Rectangle oldBounds = getVisibleBounds();
@@ -1015,6 +1014,31 @@ public class WLComponentPeer implements ComponentPeer {
         performLocked(() -> nativeStartResize(nativePtr, edges));
     }
 
+    /**
+     * Updates the x, y coordinates of this top-level component (both this peer and its target)
+     * as long as the coordinates are provided by WLRobotPeer
+     */
+    private void updateLocation() {
+        assert WLToolkit.isAWTLockHeldByCurrentThread(); // need to access this.x and this.y
+
+        long wlSurfacePtr = getWLSurface(nativePtr);
+        try {
+            Point loc = WLRobotPeer.getLocationOfWLSurface(wlSurfacePtr);
+            if (x != loc.x || y != loc.y) {
+                x = loc.x;
+                y = loc.y;
+                notifyLocationChanged();
+            }
+        } catch (UnsupportedOperationException ignore) { }
+    }
+
+    private void notifyLocationChanged() {
+        assert WLToolkit.isAWTLockHeldByCurrentThread();
+
+        AWTAccessor.getComponentAccessor().setLocation(target, x, y);
+        WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_MOVED));
+    }
+
     void notifyConfigured(int newWidth, int newHeight, boolean active, boolean maximized) {
         final long wlSurfacePtr = getWLSurface(nativePtr);
         // TODO: this needs to be done only once after wlSetVisible(true)
@@ -1024,9 +1048,11 @@ public class WLComponentPeer implements ComponentPeer {
             log.fine(String.format("%s configured to %dx%d", this, newWidth, newHeight));
         }
 
+        updateLocation();
+
         boolean isWlPopup = targetIsWlPopup();
 
-        if (newWidth != 0 && newHeight != 0) performUnlocked(() ->target.setSize(newWidth, newHeight));
+        if (newWidth != 0 && newHeight != 0) performUnlocked(() -> target.setSize(newWidth, newHeight));
 
         if (newWidth == 0 || newHeight == 0 || isWlPopup) {
             // From xdg-shell.xml: "If the width or height arguments are zero,
@@ -1101,6 +1127,7 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     private void checkIfOnNewScreen() {
+        updateLocation();
         final WLGraphicsDevice newDevice = getGraphicsDevice();
         if (newDevice != null) { // could be null when screens are being reconfigured
             final GraphicsConfiguration gc = newDevice.getDefaultConfiguration();
