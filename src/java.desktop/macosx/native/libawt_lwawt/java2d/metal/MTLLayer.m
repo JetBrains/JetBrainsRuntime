@@ -87,7 +87,10 @@ BOOL isColorMatchingEnabled() {
     [actions release];
     self.topInset = 0;
     self.leftInset = 0;
-    self.framebufferOnly = YES;
+
+    // Blit operation should not be performed on textures with MTLTextureUsageRenderTarget only
+    // (Drawable textures configured this way for framebufferOnly=YES)
+    self.framebufferOnly = NO;
     self.nextDrawableCount = 0;
     self.opaque = YES;
     self.redrawCount = 0;
