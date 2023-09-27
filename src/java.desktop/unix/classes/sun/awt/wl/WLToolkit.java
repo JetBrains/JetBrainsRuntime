@@ -204,12 +204,14 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     @Override
     public void run() {
         while(true) {
+            AWTAutoShutdown.notifyToolkitThreadFree(); // will now wait for events
             int result = readEvents();
             if (result == READ_RESULT_ERROR) {
                 log.severe("Wayland protocol I/O error");
                 // TODO: display disconnect handling here?
                 break;
             } else if (result == READ_RESULT_FINISHED_WITH_EVENTS) {
+                AWTAutoShutdown.notifyToolkitThreadBusy(); // busy processing events
                 SunToolkit.postEvent(new PeerEvent(this, () -> {
                     WLToolkit.awtLock();
                     try {
