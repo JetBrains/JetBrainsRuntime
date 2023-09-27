@@ -155,12 +155,12 @@
 static char *execname = NULL;
 
 typedef enum awt_toolkit {
-    TK_X11 = 0,
-    TK_WAYLAND = 1
+    TK_UNKNOWN = 0,
+    TK_X11 = 1,
+    TK_WAYLAND = 2
 } awt_toolkit;
 
-/* default toolkit for linux is X11 */
-static awt_toolkit _awt_toolkit = TK_X11;
+static awt_toolkit _awt_toolkit = TK_UNKNOWN;
 
 /*
  * execname accessor from other parts of platform dependent logic
@@ -761,41 +761,42 @@ CallJavaMainInNewThread(jlong stack_size, void* args) {
 /* Coarse estimation of number of digits assuming the worst case is a 64-bit pid. */
 #define MAX_PID_STR_SZ   20
 
+static char*
+getToolkitNameByEnv() {
+    if (_awt_toolkit == TK_UNKNOWN) {
+        char *xdg_session_type = getenv("XDG_SESSION_TYPE");
+        if (xdg_session_type) {
+            if (strcmp(xdg_session_type, "wayland") == 0) {
+                _awt_toolkit = TK_WAYLAND;
+            } else if (strcmp(xdg_session_type, "x11") == 0) {
+                _awt_toolkit = TK_X11;
+            } else if (getenv("WAYLAND_DISPLAY") != NULL) {
+                _awt_toolkit = TK_WAYLAND;
+            } else if (getenv("DISPLAY") != NULL) {
+                _awt_toolkit = TK_X11;
+            }
+        }
+    }
+    return _awt_toolkit == TK_WAYLAND ? "WLToolkit" : "XToolkit";
+}
+
 int
 JVMInit(InvocationFunctions* ifn, jlong threadStackSize,
         int argc, char **argv,
         int mode, char *what, int ret)
 {
+    static char toolkit[255];
+    sprintf(toolkit, "-Dawt.toolkit.name=%s", getToolkitNameByEnv());
+    AddOption(toolkit, NULL);
+
     ShowSplashScreen();
     return ContinueInNewThread(ifn, threadStackSize, argc, argv, mode, what, ret);
-}
-
-/*
- * Set manually awt.toolkit.name property
- */
-static void
-SetAwtToolkitName(JNIEnv *env, char *toolkit)
-{
-    jmethodID setToolkit;
-    jstring jtoolkit;
-    jclass graphicInfoClass;
-
-    graphicInfoClass = FindBootStrapClass(env, "sun/awt/PlatformGraphicsInfo");
-    if (graphicInfoClass == NULL) {
-        return;
-    }
-    NULL_CHECK(jtoolkit = NewPlatformString(env, toolkit));
-    NULL_CHECK(setToolkit = (*env)->GetStaticMethodID(env, graphicInfoClass, "setToolkitName", "(Ljava/lang/String;)V"));
-
-    (*env)->CallStaticVoidMethod(env, graphicInfoClass, setToolkit, jtoolkit);
 }
 
 void
 PostJVMInit(JNIEnv *env, jclass mainClass, JavaVM *vm)
 {
-#if defined(__linux__)
-    SetAwtToolkitName(env, _awt_toolkit == TK_X11 ? "XToolkit" : "WLToolkit");
-#endif
+    // stubbed out for windows and *nixes.
 }
 
 void
@@ -809,6 +810,9 @@ ProcessPlatformOption(const char *arg)
 {
     if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=WLToolkit") == 0) {
         _awt_toolkit = TK_WAYLAND;
+        return JNI_TRUE;
+    } else if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=XToolkit") == 0) {
+        _awt_toolkit = TK_X11;
         return JNI_TRUE;
     }
 

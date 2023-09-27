@@ -63,10 +63,6 @@ public class PlatformGraphicsInfo {
         return toolkitID;
     }
 
-    public static void setToolkitName(String toolkit) {
-        System.setProperty("awt.toolkit.name", toolkit);
-    }
-
     public static GraphicsEnvironment createGE() {
         return (getToolkitID() == TK_X11)?
                 new X11GraphicsEnvironment() :

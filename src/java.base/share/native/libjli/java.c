@@ -115,6 +115,7 @@ static jboolean ParseArguments(int *pargc, char ***pargv,
                                int *pret, const char *jrepath);
 static jboolean InitializeJVM(JavaVM **pvm, JNIEnv **penv,
                               InvocationFunctions *ifn);
+static jstring NewPlatformString(JNIEnv *env, char *s);
 static jclass LoadMainClass(JNIEnv *env, int mode, char *name);
 static jclass GetApplicationClass(JNIEnv *env);
 
@@ -174,6 +175,7 @@ static void GrowKnownVMs(int minimum);
 static int  KnownVMIndex(const char* name);
 static void FreeKnownVMs();
 static jboolean IsWildCardEnabled();
+
 
 #define SOURCE_LAUNCHER_MAIN_ENTRY "jdk.compiler/com.sun.tools.javac.launcher.Main"
 
@@ -1522,7 +1524,7 @@ static jmethodID makePlatformStringMID = NULL;
 /*
  * Returns a new Java string object for the specified platform string.
  */
-jstring
+static jstring
 NewPlatformString(JNIEnv *env, char *s)
 {
     int len = (int)JLI_StrLen(s);

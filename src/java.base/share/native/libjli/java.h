@@ -216,7 +216,6 @@ jclass FindBootStrapClass(JNIEnv *env, const char *classname);
 
 jobjectArray CreateApplicationArgs(JNIEnv *env, char **strv, int argc);
 jobjectArray NewPlatformStringArray(JNIEnv *env, char **strv, int strc);
-jstring NewPlatformString(JNIEnv *env, char *s);
 jclass GetLauncherHelperClass(JNIEnv *env);
 
 /*
