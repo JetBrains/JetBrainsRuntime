@@ -765,16 +765,14 @@ static char*
 getToolkitNameByEnv() {
     if (_awt_toolkit == TK_UNKNOWN) {
         char *xdg_session_type = getenv("XDG_SESSION_TYPE");
-        if (xdg_session_type) {
-            if (strcmp(xdg_session_type, "wayland") == 0) {
-                _awt_toolkit = TK_WAYLAND;
-            } else if (strcmp(xdg_session_type, "x11") == 0) {
-                _awt_toolkit = TK_X11;
-            } else if (getenv("WAYLAND_DISPLAY") != NULL) {
-                _awt_toolkit = TK_WAYLAND;
-            } else if (getenv("DISPLAY") != NULL) {
-                _awt_toolkit = TK_X11;
-            }
+        if (xdg_session_type != NULL && strcmp(xdg_session_type, "wayland") == 0) {
+            _awt_toolkit = TK_WAYLAND;
+        } else if (xdg_session_type != NULL && strcmp(xdg_session_type, "x11") == 0) {
+            _awt_toolkit = TK_X11;
+        } else if (getenv("DISPLAY") != NULL) {
+            _awt_toolkit = TK_X11;
+        } else if (getenv("WAYLAND_DISPLAY") != NULL) {
+            _awt_toolkit = TK_WAYLAND;
         }
     }
     return _awt_toolkit == TK_WAYLAND ? "WLToolkit" : "XToolkit";
@@ -785,9 +783,11 @@ JVMInit(InvocationFunctions* ifn, jlong threadStackSize,
         int argc, char **argv,
         int mode, char *what, int ret)
 {
-    static char toolkit[255];
-    sprintf(toolkit, "-Dawt.toolkit.name=%s", getToolkitNameByEnv());
-    AddOption(toolkit, NULL);
+    char *toolkit_name = getToolkitNameByEnv();
+    size_t toolkit_name_size = JLI_StrLen("-Dawt.toolkit.name=") + JLI_StrLen(toolkit_name) + 1;
+    char *toolkit_option = (char *)JLI_MemAlloc(toolkit_name_size);
+    snprintf(toolkit_option, toolkit_name_size, "-Dawt.toolkit.name=%s", toolkit_name);
+    AddOption(toolkit_option, NULL);
 
     ShowSplashScreen();
     return ContinueInNewThread(ifn, threadStackSize, argc, argv, mode, what, ret);
