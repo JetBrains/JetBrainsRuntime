@@ -28,6 +28,7 @@
 #include <jni.h>
 #include <Trace.h>
 #include <assert.h>
+#include <gtk-shell1-client-protocol.h>
 
 #include "jni_util.h"
 #include "WLToolkit.h"
@@ -88,6 +89,7 @@ struct WLFrame {
     jobject nativeFramePeer; // weak reference
     struct wl_surface *wl_surface;
     struct xdg_surface *xdg_surface;
+    struct gtk_surface1 *gtk_surface;
     struct WLFrame *parent;
     struct xdg_positioner *xdg_positioner;
     struct activation_token_list_item *activation_token_list;
@@ -409,7 +411,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestUnsetFullScreen
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
   (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr,
-   jint x, jint y,
+   jint x, jint y, jboolean isModal,
    jstring title, jstring appid)
 {
     struct WLFrame *frame = (struct WLFrame *) ptr;
@@ -417,6 +419,9 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
     if (frame->wl_surface) return;
     frame->wl_surface = wl_compositor_create_surface(wl_compositor);
     frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, frame->wl_surface);
+    if (gtk_shell1 != NULL) {
+        frame->gtk_surface = gtk_shell1_get_gtk_surface(gtk_shell1, frame->wl_surface);
+    }
 
     wl_surface_add_listener(frame->wl_surface, &wl_surface_listener, frame);
     xdg_surface_add_listener(frame->xdg_surface, &xdg_surface_listener, frame);
@@ -431,6 +436,10 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
     }
     if (parentFrame) {
         xdg_toplevel_set_parent(frame->xdg_toplevel, parentFrame->xdg_toplevel);
+    }
+
+    if (isModal && frame->gtk_surface != NULL) {
+        gtk_surface1_set_modal(frame->gtk_surface);
     }
 
 #ifdef WAKEFIELD_ROBOT
@@ -497,6 +506,9 @@ DoHide(struct WLFrame *frame)
         }
         if (wl_surface_in_focus == frame->wl_surface) {
             wl_surface_in_focus = NULL;
+        }
+        if (frame->gtk_surface != NULL) {
+            gtk_surface1_destroy(frame->gtk_surface);
         }
         xdg_surface_destroy(frame->xdg_surface);
         wl_surface_destroy(frame->wl_surface);
