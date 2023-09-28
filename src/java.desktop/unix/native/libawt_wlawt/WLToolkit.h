@@ -44,12 +44,16 @@
         }                                       \
     } while(0)                                  \
 
+struct gtk_shell1;
+
 extern struct wl_seat *wl_seat;
 extern struct wl_display *wl_display;
 extern struct wl_pointer *wl_pointer;
 extern struct wl_compositor *wl_compositor;
 extern struct xdg_wm_base *xdg_wm_base;
 extern struct xdg_activation_v1 *xdg_activation_v1;
+extern struct gtk_shell1* gtk_shell1; // optional, check for NULL before use
+
 extern struct wl_cursor_theme *wl_cursor_theme;
 
 extern struct wl_surface *wl_surface_in_focus;
