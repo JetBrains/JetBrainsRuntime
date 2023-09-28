@@ -40,6 +40,8 @@
 #include <unistd.h>
 #include <time.h>
 
+#include "gtk-shell1-client-protocol.h"
+
 #include "jvm_md.h"
 #include "jni_util.h"
 #include "awt.h"
@@ -60,6 +62,7 @@ struct wl_shm *wl_shm = NULL;
 struct wl_compositor *wl_compositor = NULL;
 struct xdg_wm_base *xdg_wm_base = NULL;
 struct xdg_activation_v1 *xdg_activation_v1 = NULL;
+struct gtk_shell1* gtk_shell1 = NULL;
 struct wl_seat     *wl_seat = NULL;
 
 struct wl_keyboard *wl_keyboard;
@@ -685,6 +688,8 @@ registry_global(void *data, struct wl_registry *wl_registry,
         process_new_listener_before_end_of_init();
     } else if (strcmp(interface, xdg_activation_v1_interface.name) == 0) {
         xdg_activation_v1 = wl_registry_bind(wl_registry, name, &xdg_activation_v1_interface, 1);
+    } else if (strcmp(interface, gtk_shell1_interface.name) == 0) {
+        gtk_shell1 = wl_registry_bind(wl_registry, name, &gtk_shell1_interface, 1);
     }
 #ifdef WAKEFIELD_ROBOT
     else if (strcmp(interface, wakefield_interface.name) == 0) {
