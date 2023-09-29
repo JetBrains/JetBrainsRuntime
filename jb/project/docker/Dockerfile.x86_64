@@ -34,3 +34,39 @@ RUN mkdir .git && \
 ENV LD_LIBRARY_PATH="/opt/rh/devtoolset-10/root/usr/lib64:/opt/rh/devtoolset-10/root/usr/lib:/opt/rh/devtoolset-10/root/usr/lib64/dyninst:/opt/rh/devtoolset-10/root/usr/lib/dyninst:/opt/rh/devtoolset-10/root/usr/lib64:/opt/rh/devtoolset-10/root/usr/lib"
 ENV PATH="/opt/rh/devtoolset-10/root/usr/bin::${PATH}"
 ENV PKG_CONFIG_PATH="/opt/rh/devtoolset-10/root/usr/lib64/pkgconfig"
+
+# Build GLSLC
+RUN curl -OL https://github.com/Kitware/CMake/releases/download/v3.27.5/cmake-3.27.5-linux-x86_64.tar.gz \
+  && echo 138c68addae825b16ed78d792dafef5e0960194833f48bd77e7e0429c6bc081c *cmake-3.27.5-linux-x86_64.tar.gz | sha256sum -c - \
+  && tar -xzf cmake-3.27.5-linux-x86_64.tar.gz \
+  && rm cmake-3.27.5-linux-x86_64.tar.gz \
+  && git clone https://github.com/google/shaderc --branch v2023.6 \
+  && cd shaderc \
+  && ./utils/git-sync-deps \
+  && mkdir build \
+  && cd build \
+  && /cmake-3.27.5-linux-x86_64/bin/cmake \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DSHADERC_SKIP_TESTS=ON \
+    -DSHADERC_SKIP_EXAMPLES=ON \
+    -DSHADERC_SKIP_COPYRIGHT_CHECK=ON \
+    .. \
+  && make install
+ENV PATH="/cmake-3.27.5-linux-x86_64/bin::${PATH}"
+
+# Checkout Vulkan headers
+RUN mkdir /vulkan \
+  && cd /vulkan \
+  && git init \
+  && git remote add -f origin https://github.com/KhronosGroup/Vulkan-Headers.git \
+  && git fetch origin \
+  && git checkout v1.3.265 -- include \
+  && rm -r .git \
+  && mkdir /vulkan_hpp \
+  && cd /vulkan_hpp \
+  && git init \
+  && git remote add -f origin https://github.com/KhronosGroup/Vulkan-Hpp.git \
+  && git fetch origin \
+  && git checkout v1.3.265 -- vulkan \
+  && rm -r .git
