@@ -55,3 +55,19 @@ RUN curl -OL https://github.com/Kitware/CMake/releases/download/v3.27.5/cmake-3.
     .. \
   && make install
 ENV PATH="/cmake-3.27.5-linux-x86_64/bin::${PATH}"
+
+# Checkout Vulkan headers
+RUN mkdir /vulkan \
+  && cd /vulkan \
+  && git init \
+  && git remote add -f origin https://github.com/KhronosGroup/Vulkan-Headers.git \
+  && git fetch origin \
+  && git checkout v1.3.265 -- include \
+  && rm -r .git \
+  && mkdir /vulkan_hpp \
+  && cd /vulkan_hpp \
+  && git init \
+  && git remote add -f origin https://github.com/KhronosGroup/Vulkan-Hpp.git \
+  && git fetch origin \
+  && git checkout v1.3.265 -- vulkan \
+  && rm -r .git
