@@ -206,20 +206,17 @@ public class WLComponentPeer implements ComponentPeer {
     public boolean requestFocus(Component lightweightChild, boolean temporary,
                                 boolean focusedWindowChangeAllowed, long time,
                                 FocusEvent.Cause cause) {
-        final Component currentlyFocused = WLKeyboardFocusManagerPeer.getInstance().getCurrentFocusOwner();
-        if (currentlyFocused == null)
+        final Window currentlyFocusedWindow = WLKeyboardFocusManagerPeer.getInstance().getCurrentFocusedWindow();
+        if (currentlyFocusedWindow == null)
             return false;
 
-        WLComponentPeer peer = AWTAccessor.getComponentAccessor().getPeer(currentlyFocused);
-        if (peer == null)
-            return false;
-
-        if (this == peer) {
+        Window targetDecoratedWindow = getNativelyFocusableOwnerOrSelf(target);
+        if (currentlyFocusedWindow == targetDecoratedWindow) {
             WLKeyboardFocusManagerPeer.deliverFocus(lightweightChild,
-                    target,
+                    null,
                     true,
                     cause,
-                    WLKeyboardFocusManagerPeer.getInstance().getCurrentFocusOwner());
+                    null);
         } else {
             return false;
         }
@@ -286,9 +283,12 @@ public class WLComponentPeer implements ComponentPeer {
      * Returns true if our target should be treated as a popup in Wayland's sense,
      * i.e. it has to have a parent to position relative to.
      */
-    private boolean targetIsWlPopup() {
-        return target instanceof Window window
-                && window.getType() == Window.Type.POPUP
+    protected boolean targetIsWlPopup() {
+        return target instanceof Window window && isWlPopup(window);
+    }
+
+    static boolean isWlPopup(Window window) {
+        return window.getType() == Window.Type.POPUP
                 && AWTAccessor.getWindowAccessor().getPopupParent(window) != null;
     }
 
@@ -1172,5 +1172,24 @@ public class WLComponentPeer implements ComponentPeer {
         } finally {
             WLToolkit.awtLock();
         }
+    }
+
+    private static void startMovingWindowTogetherWithMouse(Window window, int mouseButton)
+    {
+        final AWTAccessor.ComponentAccessor acc = AWTAccessor.getComponentAccessor();
+        ComponentPeer peer = acc.getPeer(window);
+        if (peer instanceof WLComponentPeer wlComponentPeer) {
+            wlComponentPeer.startDrag();
+        } else {
+            throw new IllegalArgumentException("AWT window must have WLComponentPeer as its peer");
+        }
+    }
+
+    static Window getNativelyFocusableOwnerOrSelf(Component component) {
+        Window result = component instanceof Window window ? window : SwingUtilities.getWindowAncestor(component);
+        while (result != null && isWlPopup(result)) {
+            result = result.getOwner();
+        }
+        return result;
     }
 }
