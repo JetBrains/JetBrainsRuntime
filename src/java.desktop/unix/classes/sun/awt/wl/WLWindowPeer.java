@@ -26,11 +26,13 @@ package sun.awt.wl;
 
 import sun.awt.AWTAccessor;
 import java.awt.*;
+import java.awt.event.WindowEvent;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.WindowPeer;
 
 public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
     private static Font defaultFont;
+    private Dialog blocker;
 
     static synchronized Font getDefaultFont() {
         if (null == defaultFont) {
@@ -55,12 +57,27 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
 
     @Override
     protected void wlSetVisible(boolean v) {
+        if (v && targetIsWlPopup() && shouldBeFocusedOnShowing()) {
+            requestWindowFocus();
+        }
         super.wlSetVisible(v);
         final AWTAccessor.ComponentAccessor acc = AWTAccessor.getComponentAccessor();
-        for (Component c : ((Window)target).getComponents()) {
+        for (Component c : getWindow().getComponents()) {
             ComponentPeer cPeer = acc.getPeer(c);
             if (cPeer instanceof WLComponentPeer) {
                 ((WLComponentPeer) cPeer).wlSetVisible(v);
+            }
+        }
+        if (!v && targetIsWlPopup() && getWindow().isFocused()) {
+            Window targetOwner = getWindow().getOwner();
+            while (targetOwner != null && (targetOwner.getOwner() != null && !targetOwner.isFocusableWindow())) {
+                targetOwner = targetOwner.getOwner();
+            }
+            if (targetOwner != null) {
+                WLWindowPeer wndpeer = AWTAccessor.getComponentAccessor().getPeer(targetOwner);
+                if (wndpeer != null) {
+                    wndpeer.requestWindowFocus();
+                }
             }
         }
     }
@@ -109,7 +126,7 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
 
     @Override
     public void setModalBlocked(Dialog blocker, boolean blocked) {
-
+        this.blocker = blocked ? blocker : null;
     }
 
     @Override
@@ -148,8 +165,28 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
 
     @Override
     public GraphicsConfiguration getAppropriateGraphicsConfiguration(
-            GraphicsConfiguration gc)
-    {
+            GraphicsConfiguration gc) {
         return gc;
+    }
+
+    private Window getWindow() {
+        return (Window) target;
+    }
+
+    private boolean shouldBeFocusedOnShowing() {
+        Window window = getWindow();
+        return window.isFocusableWindow() &&
+                window.isAutoRequestFocus() &&
+                blocker == null;
+    }
+
+    // supporting only 'synthetic' focus transfers for now (when natively focused window stays the same)
+    private void requestWindowFocus() {
+        Window window = getWindow();
+        Window nativeFocusTarget = getNativelyFocusableOwnerOrSelf(window);
+        if (nativeFocusTarget != null &&
+                WLKeyboardFocusManagerPeer.getInstance().getCurrentFocusedWindow() == nativeFocusTarget) {
+            WLToolkit.postEvent(new WindowEvent(window, WindowEvent.WINDOW_GAINED_FOCUS));
+        }
     }
 }
