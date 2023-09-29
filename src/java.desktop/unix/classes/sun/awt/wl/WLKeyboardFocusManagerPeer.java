@@ -35,7 +35,8 @@ public class WLKeyboardFocusManagerPeer extends KeyboardFocusManagerPeerImpl {
 
     @Override
     public void setCurrentFocusOwner(Component comp) {
-        if (comp != null && comp != currentFocusedWindow) {
+        if (comp != null && (!(comp instanceof Window window) ||
+                WLComponentPeer.getNativelyFocusableOwnerOrSelf(window) != currentFocusedWindow)) {
             // In Wayland, only Window can be focused, not any widget in it.
             focusLog.severe("Unexpected focus owner set in a Window: " + comp);
         }
