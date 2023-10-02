@@ -42,9 +42,11 @@ import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -557,6 +559,26 @@ public class TrueTypeFont extends FileFont {
         ByteBuffer os2_Table = getTableBuffer(os_2Tag);
         setStyle(os2_Table);
         setCJKSupport(os2_Table);
+
+        if (!typographicSubfamilyName.equals(super.getTypographicSubfamilyName())) {
+            List<String> postfixSubfamilyNameWords = Arrays.asList(typographicSubfamilyName.split(" ")).stream().filter((
+                    word -> !((word.equals(super.getTypographicSubfamilyName()) || word.equals("Regular"))))).toList();
+            HashSet<String> familyNameWords = new HashSet<>(List.of(familyName.split(" ")));
+            ArrayList<String> postfixList = new ArrayList<>();
+
+            for (String word : postfixSubfamilyNameWords) {
+                if (!familyNameWords.contains(word)) {
+                    postfixList.add(word);
+                }
+            }
+            if (postfixList.size() > 0) {
+                String postfix = " " + String.join(" ", postfixList);
+                familyName += postfix;
+                localeFamilyName += postfix;
+                typographicFamilyName += postfix;
+            }
+            typographicSubfamilyName = super.getTypographicSubfamilyName();
+        }
     }
 
     /* The array index corresponds to a bit offset in the TrueType
