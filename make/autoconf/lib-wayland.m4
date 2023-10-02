@@ -34,6 +34,9 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
       (expecting the headers under PATH/include)])])
   AC_ARG_WITH(wayland-include, [AS_HELP_STRING([--with-wayland-include],
       [specify directory for the wayland include files])])
+  AC_ARG_WITH(wayland-lib, [AS_HELP_STRING([--with-wayland-lib],
+      [specify directory for the wayland library files])])
+
 
   if test "x$NEEDS_LIB_WAYLAND" = xfalse; then
     if (test "x${with_wayland}" != x && test "x${with_wayland}" != xno) || \
@@ -73,6 +76,10 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
         AC_MSG_ERROR([Can't find 'wayland-client.h' and 'wayland-cursor.h' under ${with_wayland_include} given with the --with-wayland-include option.])
       fi
     fi
+    if test "x${with_wayland_lib}" != x; then
+      WAYLAND_LIBS="-L${with_wayland_lib} -lwayland-client -lwayland-cursor"
+    fi
+ 
     if test "x$WAYLAND_FOUND" = xno; then
       # Are the wayland headers installed in the default /usr/include location?
       AC_CHECK_HEADERS([wayland-client.h wayland-cursor.h],
