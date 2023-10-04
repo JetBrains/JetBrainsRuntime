@@ -240,6 +240,23 @@ replaceTextureRegion(MTLContext *mtlc, id<MTLTexture> dest, const SurfaceDataRas
     }
 }
 
+void replaceTexture(MTLContext *mtlc, id<MTLTexture> dest, void* pRaster, int width, int height, int dx1, int dy1, int dx2, int dy2) {
+    MTLRasterFormatInfo rfi = RasterFormatInfos[0];
+
+    SurfaceDataRasInfo srcInfo;
+    memset(&srcInfo, 0, sizeof(SurfaceDataRasInfo));
+    srcInfo.bounds.x1 = dx1;
+    srcInfo.bounds.y1 = dy1;
+    srcInfo.bounds.x2 = dx2;
+    srcInfo.bounds.y2 = dy2;
+    srcInfo.scanStride = width*4;
+    srcInfo.pixelStride = 4;
+    srcInfo.rasBase = pRaster;
+    srcInfo.pixelBitOffset = 0;
+
+    replaceTextureRegion(mtlc, dest, &srcInfo, &rfi, dx1, dy1, dx2, dy2);
+}
+
 /**
  * Inner loop used for copying a source system memory ("Sw") surface to a
  * destination MTL "Surface".  This method is invoked from
