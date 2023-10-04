@@ -238,6 +238,44 @@ OGLBlitSwToSurface(OGLContext *oglc, SurfaceDataRasInfo *srcInfo,
     }
 }
 
+void OGLBlitRasterToSurface(OGLSDOps *dstOps, jlong pRaster, jint width, jint height,
+                        OGLPixelFormat *pf,
+                        jint sx1, jint sy1, jint sx2, jint sy2,
+                        jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2) {
+    SurfaceDataRasInfo srcInfo;
+    memset(&srcInfo, 0, sizeof(SurfaceDataRasInfo));
+    srcInfo.bounds.x1 = 0;
+    srcInfo.bounds.y1 = 0;
+    srcInfo.bounds.x2 = width;
+    srcInfo.bounds.y2 = height;
+    srcInfo.scanStride = width*4;
+    srcInfo.pixelStride = 4;
+    srcInfo.rasBase = (void*)pRaster;
+    srcInfo.pixelBitOffset = 0;
+
+    unsigned char * r = (unsigned char *)pRaster;
+    //fprintf(stderr, "OGLBlitRasterToSurface:%d,%d,%d,%d,%d,%d,%d,%d....\n", r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7]);
+
+    if (dstOps->drawableType == OGLSD_FBOBJECT) {
+        // Note that we unbind the currently bound texture first; this is
+        // recommended procedure when binding an fbobject
+        j2d_glBindTexture(dstOps->textureTarget, 0);
+        j2d_glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, dstOps->fbobjectID);
+    } else {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Unsupported drawable type %d.", dstOps->drawableType);
+    }
+
+    j2d_glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+    j2d_glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+    j2d_glPixelStorei(GL_UNPACK_ROW_LENGTH, srcInfo.scanStride / srcInfo.pixelStride);
+    j2d_glPixelStorei(GL_UNPACK_ALIGNMENT, pf->alignment);
+
+    OGLBlitSwToSurface(OGLRenderQueue_GetCurrentContext(), &srcInfo, pf, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+
+    j2d_glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    j2d_glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+}
+
 /**
  * Inner loop used for copying a source system memory ("Sw") surface or
  * OpenGL "Surface" to a destination OpenGL "Surface", using an OpenGL texture
