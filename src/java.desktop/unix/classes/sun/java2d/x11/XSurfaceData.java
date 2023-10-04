@@ -61,4 +61,6 @@ public abstract class XSurfaceData extends SurfaceData {
     protected native void setInvalid();
 
     protected static native void XSetGraphicsExposures(long xgc, boolean needExposures);
+
+    protected static native boolean loadNativeRasterWithRects(long sdops, long pRaster, int width, int height, long pRects, int rectsCount);
 }

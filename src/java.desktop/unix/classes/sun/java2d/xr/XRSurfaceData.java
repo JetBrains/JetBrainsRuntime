@@ -761,4 +761,9 @@ public abstract class XRSurfaceData extends XSurfaceData {
     public void setStaticSrcTx(AffineTransform staticSrcTx) {
         this.staticSrcTx = staticSrcTx;
     }
+
+    @Override
+    protected void loadNativeRaster(long pRaster, int width, int height, long pRects, int rectsCount) {
+        loadNativeRasterWithRects(getNativeOps(), pRaster, width, height, pRects, rectsCount);
+    }
 }

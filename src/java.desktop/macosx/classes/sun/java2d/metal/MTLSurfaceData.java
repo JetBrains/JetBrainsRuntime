@@ -640,4 +640,19 @@ public abstract class MTLSurfaceData extends SurfaceData
             rq.unlock();
         }
     }
+
+    @Override
+    protected void loadNativeRaster(long pRaster, int width, int height, long pRects, int rectsCount) {
+        MTLRenderQueue rq = MTLRenderQueue.getInstance();
+        rq.lock();
+        try {
+            MTLContext.setScratchSurface(getMTLGraphicsConfig());
+            rq.flushAndInvokeNow(() -> loadNativeRasterWithRects(getNativeOps(), pRaster, width, height, pRects, rectsCount));
+        } finally {
+            rq.unlock();
+        }
+        markDirty();
+    }
+
+    private static native boolean loadNativeRasterWithRects(long sdops, long pRaster, int width, int height, long pRects, int rectsCount);
 }

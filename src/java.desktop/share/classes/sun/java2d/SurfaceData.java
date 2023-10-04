@@ -1091,4 +1091,8 @@ public abstract class SurfaceData
     public double getDefaultScaleY() {
         return 1;
     }
+
+    protected void loadNativeRaster(long pRaster, int width, int height, long pRects, int rectsCount) {
+        System.err.println("ERROR: loadNativeRaster must be overriden.");
+    }
 }

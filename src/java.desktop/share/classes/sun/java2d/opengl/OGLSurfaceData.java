@@ -654,4 +654,19 @@ public abstract class OGLSurfaceData extends SurfaceData
     boolean isOnScreen() {
         return getType() == WINDOW;
     }
+
+    @Override
+    protected void loadNativeRaster(long pRaster, int width, int height, long pRects, int rectsCount) {
+        OGLRenderQueue rq = OGLRenderQueue.getInstance();
+        rq.lock();
+        try {
+            OGLContext.setScratchSurface(getOGLGraphicsConfig());
+            rq.flushAndInvokeNow(() -> loadNativeRasterWithRects(getNativeOps(), pRaster, width, height, pRects, rectsCount));
+        } finally {
+            rq.unlock();
+        }
+        markDirty();
+    }
+
+    private static native boolean loadNativeRasterWithRects(long sdops, long pRaster, int width, int height, long pRects, int rectsCount);
 }
