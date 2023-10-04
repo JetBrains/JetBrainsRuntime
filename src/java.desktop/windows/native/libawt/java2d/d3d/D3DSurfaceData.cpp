@@ -25,6 +25,7 @@
 
 #include "D3DPipeline.h"
 #include <jlong.h>
+#include <cstdint>
 #include "D3DSurfaceData.h"
 #include "D3DPipelineManager.h"
 #include "Trace.h"
@@ -32,7 +33,18 @@
 #include "awt_Window.h"
 #include "awt_BitmapUtil.h"
 #include "D3DRenderQueue.h"
+#include "D3DBlitLoops.h"
 
+#include "GraphicsPrimitiveMgr.h"
+#include "IntArgb.h"
+#include "IntArgbPre.h"
+#include "IntRgb.h"
+#include "IntBgr.h"
+
+extern "C" BlitFunc IntArgbToIntArgbPreConvert;
+extern "C" BlitFunc IntArgbPreToIntArgbConvert;
+extern "C" BlitFunc IntArgbBmToIntArgbConvert;
+extern "C" BlitFunc IntRgbToIntArgbConvert;
 
 // REMIND: move to awt_Component.h
 extern "C" HWND AwtComponent_GetHWnd(JNIEnv *env, jlong pData);
@@ -161,6 +173,134 @@ D3DSD_Unlock(JNIEnv *env,
              SurfaceDataRasInfo *pRasInfo)
 {
     JNU_ThrowInternalError(env, "D3DSD_Unlock not implemented!");
+}
+
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
+jboolean loadNativeRasterWithRectsImpl(
+    D3DSDOps * d3dsdo, jlong pRaster, jint width, jint height,
+    jlong pRects, jint rectsCount
+) {
+    D3DPipelineManager * pMgr = D3DPipelineManager::GetInstance();
+    if (d3dsdo == NULL || d3dsdo->pResource == NULL || pMgr == NULL || pRaster == NULL) {
+        J2dTraceLn(J2D_TRACE_ERROR, "D3DSurfaceData_loadNativeRasterWithRects: null param.");
+        return JNI_FALSE;
+    }
+
+    J2dTraceLn(J2D_TRACE_VERBOSE, "D3DSurfaceData_loadNativeRasterWithRects: ops=%p r=%p rCount=%d\n", (void*)d3dsdo, (void*)pRaster, rectsCount);
+
+    HRESULT res;
+    D3DContext *pCtx;
+    if (FAILED(res = pMgr->GetD3DContext(d3dsdo->adapter, &pCtx))) {
+        J2dTraceLn(J2D_TRACE_ERROR, "D3DSurfaceData_loadNativeRasterWithRects: failed GetD3DContext.");
+        return JNI_FALSE;
+    }
+
+    //
+    // Blit via tiles
+    //
+
+    D3DResource *pBlitTextureRes = NULL;
+    res = pCtx->GetResourceManager()->GetBlitTexture(&pBlitTextureRes);
+    if (FAILED(res)) {
+        J2dTraceLn(J2D_TRACE_ERROR, "D3DSurfaceData_loadNativeRasterWithRects: failed GetBlitTexture.");
+        return JNI_FALSE;
+    }
+
+    IDirect3DSurface9 *pBlitSurface = pBlitTextureRes->GetSurface();
+    IDirect3DTexture9 *pBlitTexture = pBlitTextureRes->GetTexture();
+    D3DSURFACE_DESC *pBlitDesc = pBlitTextureRes->GetDesc();
+
+    res = pCtx->BeginScene(STATE_TEXTUREOP);
+    if (FAILED(res)) {
+        J2dTraceLn(J2D_TRACE_ERROR, "D3DSurfaceData_loadNativeRasterWithRects: failed BeginScene.");
+        return JNI_FALSE;
+    }
+    res = pCtx->SetTexture(pBlitTexture);
+    if (FAILED(res)) {
+        J2dTraceLn(J2D_TRACE_ERROR, "D3DSurfaceData_loadNativeRasterWithRects: failed SetTexture.");
+        return JNI_FALSE;
+    }
+
+    IDirect3DDevice9 *pd3dDevice = pCtx->Get3DDevice();
+    pd3dDevice->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_NONE);
+    pd3dDevice->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_NONE);
+    pd3dDevice->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+    pd3dDevice->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+
+    SurfaceDataRasInfo srcInfo;
+    ZeroMemory(&srcInfo, sizeof(SurfaceDataRasInfo));
+    srcInfo.bounds.x1 = 0;
+    srcInfo.bounds.y1 = 0;
+    srcInfo.bounds.x2 = width;
+    srcInfo.bounds.y2 = height;
+    srcInfo.scanStride = width*4;
+    srcInfo.pixelStride = 4;
+    srcInfo.rasBase = (void*)pRaster;
+    srcInfo.pixelBitOffset = 0;
+
+    const jint tw = pBlitDesc->Width;
+    const jint th = pBlitDesc->Height;
+    jint sy, dy;
+    jint sx, dx;
+    for (sy = 0, dy = 0; sy < height; sy += th, dy += th) {
+        jint sh = ((sy + th) > height) ? (height - sy) : th;
+        jint dh = ((dy + th) > height) ? (height - dy) : th;
+
+        for (sx = 0, dx = 0; sx < width; sx += tw, dx += tw) {
+            jint sw = ((sx + tw) > width) ? (width - sx) : tw;
+            jint dw = ((dx + tw) > width) ? (width - dx) : tw;
+
+            if (pRects == 0 || rectsCount < 1) {
+                //fprintf(stderr, "D3D_loadNativeRasterWithRects: do full copy of tile\n");
+                D3DBL_CopyImageToIntXrgbSurface(&srcInfo, ST_INT_ARGB, pBlitTextureRes, sx, sy, sw, sh, 0, 0);
+                const double tx1 = ((double)sw) / tw;
+                const double ty1 = ((double)sh) / th;
+                res = pCtx->pVCacher->DrawTexture((float)dx, (float)dy, (float)(dx+dw), (float)(dy+dh),
+                                                  0.0f, 0.0f, (float)tx1, (float)ty1);
+            } else {
+                int32_t *pr = (int32_t *) pRects;
+                for (int c = 0; c < rectsCount; ++c) {
+                    const int32_t rx = *(pr++);
+                    const int32_t ry = *(pr++);
+                    const int32_t rw = *(pr++);
+                    const int32_t rh = *(pr++);
+                    // Check intersection with tile.
+                    if (sx + sw <= rx || sy + sh <= ry || rx + rw <= sx || rx + rw <= sx)
+                        continue;
+
+                    // Calc intersection rect.
+                    const int32_t rcX0 = MAX(sx, rx);
+                    const int32_t rcY0 = MAX(sy, ry);
+                    const int32_t rcX1 = MIN(sx + sw, rx + rw);
+                    const int32_t rcY1 = MIN(sy + sh, ry + rh);
+                    const int32_t rectW = rcX1 - rcX0;
+                    const int32_t rectH = rcY1 - rcY0;
+                    const int32_t relX0 = rcX0 - sx;
+                    const int32_t relY0 = rcY0 - sy;
+                    const int32_t relX1 = rcX1 - sx;
+                    const int32_t relY1 = rcY1 - sy;
+
+                    // Blit.
+                    D3DBL_CopyImageToIntXrgbSurface(&srcInfo, ST_INT_ARGB, pBlitTextureRes, rcX0, rcY0, rectW, rectH, relX0, relY0);
+
+                    // Render.
+                    const double tx0 = ((double)relX0) / tw;
+                    const double ty0 = ((double)relY0) / th;
+                    const double tx1 = ((double)relX1) / tw;
+                    const double ty1 = ((double)relY1) / th;
+                    res = pCtx->pVCacher->DrawTexture(
+                            (float)dx + relX0, (float)dy + relY0, (float)(dx + relX1), (float)(dy + relY1),
+                            (float)tx0, (float)ty0, (float)tx1, (float)ty1);
+                }
+            }
+
+            res = pCtx->pVCacher->Render();
+        }
+    }
+
+    return JNI_TRUE;
 }
 
 // ------------ D3DSurfaceData's JNI methods ----------------
@@ -636,4 +776,17 @@ JNICALL Java_sun_java2d_d3d_D3DSurfaceData_updateWindowAccelImpl
 
     return JNI_TRUE;
 }
+
+
+/*
+ * Class:     sun_java2d_d3d_D3DSurfaceData
+ * Method:    loadNativeRasterWithRects
+ * Signature:
+ */
+JNIEXPORT
+jboolean JNICALL Java_sun_java2d_d3d_D3DSurfaceData_loadNativeRasterWithRects
+        (JNIEnv *env, jclass clazz, jlong pData, jlong pRaster, jint width, jint height, jlong pRects,
+         jint rectsCount) {
+    return loadNativeRasterWithRectsImpl((D3DSDOps *) jlong_to_ptr(pData), pRaster, width, height, pRects, rectsCount);
 }
+} // namespace extern C
