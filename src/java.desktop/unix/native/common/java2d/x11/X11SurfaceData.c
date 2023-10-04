@@ -1716,3 +1716,90 @@ Java_sun_java2d_x11_XSurfaceData_XSetGraphicsExposures
     XSetGraphicsExposures(awt_display, (GC) xgc, needExposures ? True : False);
 #endif /* !HEADLESS */
 }
+
+/*
+ * Class:     sun_java2d_x11_X11SurfaceData
+ * Method:    loadNativeRasterWithRects
+ * Signature:
+ */
+JNIEXPORT jboolean JNICALL
+Java_sun_java2d_x11_XSurfaceData_loadNativeRasterWithRects
+    (JNIEnv *env, jclass clazz,
+     jlong sdops, jlong pRaster, jint width, jint height, jlong pRects, jint rectsCount)
+{
+    SurfaceDataOps *dstOps = (SurfaceDataOps *)jlong_to_ptr(sdops);
+    if (dstOps == NULL || pRaster == 0) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "XSurfaceData_loadNativeRasterWithRects: params are null");
+        return JNI_FALSE;
+    }
+
+    if (pRects == 0 || rectsCount < 1) {
+        SurfaceDataRasInfo dstInfo;
+        memset(&dstInfo, 0, sizeof(SurfaceDataRasInfo));
+        dstInfo.bounds.x1 = 0;
+        dstInfo.bounds.y1 = 0;
+        dstInfo.bounds.x2 = width;
+        dstInfo.bounds.y2 = height;
+
+        if (dstOps->Lock(env, dstOps, &dstInfo, SD_LOCK_WRITE) != SD_SUCCESS) {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "XSurfaceData_loadNativeRasterWithRects: can't lock dest.");
+            return JNI_FALSE;
+        }
+
+        dstOps->GetRasInfo(env, dstOps, &dstInfo);
+        if (dstInfo.rasBase) {
+            J2dTraceLn(J2D_TRACE_VERBOSE, "XSurfaceData_loadNativeRasterWithRects: copy whole memory.");
+            memcpy(dstInfo.rasBase, (void *)jlong_to_ptr(pRaster), width * height * 4);
+        } else {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "XSurfaceData_loadNativeRasterWithRects: can't get pointer of dest raster.");
+        }
+
+        SurfaceData_InvokeRelease(env, dstOps, &dstInfo);
+        SurfaceData_InvokeUnlock(env, dstOps, &dstInfo);
+    } else {
+        int32_t *pr = (int32_t *)jlong_to_ptr(pRects);
+        for (int c = 0; c < rectsCount; ++c) {
+            int32_t x = *(pr++);
+            int32_t y = *(pr++);
+            int32_t w = *(pr++);
+            int32_t h = *(pr++);
+
+            SurfaceDataRasInfo dstInfo;
+            memset(&dstInfo, 0, sizeof(SurfaceDataRasInfo));
+            dstInfo.bounds.x1 = x;
+            dstInfo.bounds.y1 = y;
+            dstInfo.bounds.x2 = x + w;
+            dstInfo.bounds.y2 = y + h;
+
+            if (dstOps->Lock(env, dstOps, &dstInfo, SD_LOCK_WRITE) != SD_SUCCESS) {
+                J2dRlsTraceLn(J2D_TRACE_ERROR, "XSurfaceData_loadNativeRasterWithRects: can't lock dest rect.");
+                return JNI_FALSE;
+            }
+
+            dstOps->GetRasInfo(env, dstOps, &dstInfo);
+            if (dstInfo.rasBase) {
+                char* pSrc = (char*)PtrCoord(pRaster, x, 4, y, width*4);
+                char* pDst = (char*)PtrCoord(dstInfo.rasBase, x, dstInfo.pixelStride, y, dstInfo.scanStride);
+                if (dstInfo.scanStride == width*4) {
+                    J2dTraceLn(J2D_TRACE_VERBOSE, "XSurfaceData_loadNativeRasterWithRects: copy rect %d,%d - %d,%d [FAST]", x, y, w, h);
+                    memcpy(pDst, pSrc, width*h*4);
+                } else {
+                    J2dTraceLn(J2D_TRACE_VERBOSE, "XSurfaceData_loadNativeRasterWithRects: copy rect %d,%d - %d,%d [line by line]", x, y, w, h);
+                    for (int line = 0; line < h; ++line) {
+                        memcpy(pDst, pSrc, w*4);
+                        pSrc += width*4;
+                        pDst += dstInfo.scanStride;
+                    }
+                }
+                SurfaceData_InvokeRelease(env, dstOps, &dstInfo);
+            } else {
+                J2dRlsTraceLn(J2D_TRACE_ERROR, "XSurfaceData_loadNativeRasterWithRects: can't get pointer of dest raster (rect).");
+            }
+
+            SurfaceData_InvokeUnlock(env, dstOps, &dstInfo);
+        }
+    }
+
+    return JNI_TRUE;
+}
+
