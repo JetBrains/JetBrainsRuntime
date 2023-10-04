@@ -41,6 +41,10 @@ extern jboolean OGLSD_InitOGLWindow(JNIEnv *env, OGLSDOps *oglsdo);
 extern void OGLSD_DestroyOGLSurface(JNIEnv *env, OGLSDOps *oglsdo);
 
 void OGLSD_SetNativeDimensions(JNIEnv *env, OGLSDOps *oglsdo, jint w, jint h);
+extern void OGLBlitRasterToSurface(OGLSDOps *dstOps, jlong pRaster, jint width, jint height,
+                   OGLPixelFormat *pf,
+                   jint sx1, jint sy1, jint sx2, jint sy2,
+                   jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2);
 
 /**
  * This table contains the "pixel formats" for all system memory surfaces
@@ -524,6 +528,74 @@ Java_sun_java2d_opengl_OGLSurfaceData_getTextureID
 
     return (jint)oglsdo->textureID;
 }
+
+JNIEXPORT jboolean JNICALL
+Java_sun_java2d_opengl_OGLSurfaceData_loadNativeRasterWithRects
+        (JNIEnv *env, jclass clazz,
+         jlong sdops, jlong pRaster, jint width, jint height, jlong pRects, jint rectsCount)
+{
+    OGLSDOps *oglsdo = (OGLSDOps *)jlong_to_ptr(sdops);
+    if (oglsdo == NULL || pRaster == 0) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "OGLSurfaceData_loadNativeRasterWithRects: params are null");
+        return JNI_FALSE;
+    }
+    //fprintf(stderr, "OGLSurfaceData_loadNativeRasterWithRects: ops=%p r=%p rCount=%d tt=%d texId=%d\n", (void*)sdops, (void*)pRaster, rectsCount, oglsdo->textureTarget, oglsdo->textureID);
+
+    // Set state.
+    OGLPixelFormat pf = PixelFormats[1];
+    const int viaTexSubImage = oglsdo->drawableType != OGLSD_FBOBJECT;
+    // NOTE: both types works correctly under OSX (probably need to choose the fastest one)
+    if (viaTexSubImage) {
+        J2dTraceLn(J2D_TRACE_VERBOSE, "OGLSurfaceData_loadNativeRasterWithRects: via glTexSubImage2D");
+        j2d_glEnable(GL_TEXTURE_2D);
+        j2d_glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+        j2d_glBindTexture(GL_TEXTURE_2D, oglsdo->textureID);
+    } else {
+        J2dTraceLn(J2D_TRACE_VERBOSE, "OGLSurfaceData_loadNativeRasterWithRects: via glDrawPix (i.e. OGLBlitSwToSurface)");
+    }
+
+    // Render.
+    if (pRects == 0 || rectsCount < 1) {
+        J2dTraceLn(J2D_TRACE_VERBOSE, "OGLSurfaceData_loadNativeRasterWithRects: do full copy of raster:");
+        //unsigned char * r = (unsigned char *)pRaster;
+        //fprintf(stderr, "\t %d,%d,%d,%d,%d,%d,%d,%d....\n", r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7]);
+        if (viaTexSubImage) {
+            j2d_glTexSubImage2D(oglsdo->textureTarget, 0,
+                                0, 0, width, height,
+                                pf.format, pf.type, (GLvoid*)pRaster);
+        } else {
+            OGLBlitRasterToSurface(oglsdo, pRaster, width, height, &pf,
+                               0, 0, width, height,
+                               0, 0, width, height);        }
+    } else {
+        int32_t *pr = (int32_t *) pRects;
+        for (int c = 0; c < rectsCount; ++c) {
+            int32_t x = *(pr++);
+            int32_t y = *(pr++);
+            int32_t w = *(pr++);
+            int32_t h = *(pr++);
+            if (viaTexSubImage) {
+                const GLvoid *srcBytes = (char *)pRaster + y*width*4 + x*4;
+                //fprintf(stderr, "\t[%d, %d, %d, %d] %d\n", x, y, w, h, (int)((char*)srcBytes - (char*)pRaster));
+                j2d_glTexSubImage2D(oglsdo->textureTarget, 0,
+                                    x, y, w, h,
+                                    pf.format, pf.type, srcBytes);
+            } else {
+                OGLBlitRasterToSurface(oglsdo, pRaster, width, height, &pf,
+                                       x, y, x + w, y + h,
+                                       x, y, x + w, y + h);
+            }
+        }
+    }
+
+    // Restore state.
+    if (viaTexSubImage) {
+        j2d_glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    }
+
+    return JNI_TRUE;
+}
+
 
 /**
  * Initializes nativeWidth/Height fields of the surfaceData object with
