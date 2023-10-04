@@ -104,6 +104,9 @@ abstract class XDecoratedPeer extends XWindowPeer {
     void postInit(XCreateWindowParams params) {
         // The size hints must be set BEFORE mapping the window (see 6895647)
         updateSizeHints(dimensions);
+        if (isTargetUndecorated()) {
+            XWM.setGtkFrameExtents(window);
+        }
 
         // The super method maps the window if it's visible on the shared level
         super.postInit(params);
