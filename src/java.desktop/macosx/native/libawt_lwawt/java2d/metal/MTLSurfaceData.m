@@ -359,6 +359,8 @@ Java_sun_java2d_metal_MTLSurfaceData_initOps
     }
 }
 
+extern void replaceTexture(MTLContext *mtlc, id<MTLTexture> dest, void* pRaster, int width, int height, int dx1, int dy1, int dx2, int dy2);
+
 JNIEXPORT void JNICALL
 Java_sun_java2d_metal_MTLSurfaceData_clearWindow
 (JNIEnv *env, jobject mtlsd)
@@ -370,6 +372,43 @@ Java_sun_java2d_metal_MTLSurfaceData_clearWindow
 
     mtlsdo->peerData = NULL;
     mtlsdo->layer = NULL;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_sun_java2d_metal_MTLSurfaceData_loadNativeRasterWithRects
+        (JNIEnv *env, jclass clazz,
+         jlong sdops, jlong pRaster, jint width, jint height, jlong pRects, jint rectsCount)
+{
+    BMTLSDOps *dstOps = (BMTLSDOps *)jlong_to_ptr(sdops);
+    if (dstOps == NULL || pRaster == 0) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSurfaceData_loadNativeRasterWithRects: params are null");
+        return JNI_FALSE;
+    }
+
+    id<MTLTexture> dest = dstOps->pTexture;
+    if (dest == NULL) {
+        J2dTraceLn(J2D_TRACE_ERROR, "MTLSurfaceData_loadNativeRasterWithRects: dest is null");
+        return JNI_FALSE;
+    }
+
+    MTLSDOps *dstMTLOps = (MTLSDOps *)dstOps->privOps;
+    MTLContext *ctx = dstMTLOps->configInfo->context;
+    if (pRects == 0 || rectsCount < 1) {
+        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLSurfaceData_loadNativeRasterWithRects: do full copy of raster:");
+        replaceTexture(ctx, dest, (void*)pRaster, (int)width, (int)height, 0, 0, (int)width, (int)height);
+    } else {
+        int32_t *pr = (int32_t *) pRects;
+        for (int c = 0; c < rectsCount; ++c) {
+            int32_t x = *(pr++);
+            int32_t y = *(pr++);
+            int32_t w = *(pr++);
+            int32_t h = *(pr++);
+            //fprintf(stderr, "MTLSurfaceData_loadNativeRasterWithRects: process rect %d %d %d %d\n", x, y, w, h);
+            replaceTexture(ctx, dest, (void*)pRaster, (int)width, (int)height, x, y, x + w, y + h);
+        }
+    }
+
+    return JNI_TRUE;
 }
 
 NSString * getSurfaceDescription(const BMTLSDOps * bmtlsdOps) {
