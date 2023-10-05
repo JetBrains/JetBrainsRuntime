@@ -42,10 +42,11 @@
 // Amount of blit operations per update to make sure that everything is
 // rendered into the window drawable. It does not slow things down as we
 // use separate command queue for blitting.
-#define REDRAW_INC 1
+#define REDRAW_INC 2
 
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern BOOL isDisplaySyncEnabled();
+extern BOOL MTLLayer_isExtraRedrawEnabled();
 
 static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
         {{-1.0, 1.0}, {0.0, 0.0}},
@@ -612,8 +613,10 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
     J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_startRedraw: ctx=%p layer=%p", self, layer);
     _displayLinkCount = KEEP_ALIVE_COUNT;
     [_layers addObject:layer];
-    // Request for redraw before starting display link to avoid rendering problem on M2 processor
-    [layer setNeedsDisplay];
+    if (MTLLayer_isExtraRedrawEnabled()) {
+        // Request for redraw before starting display link to avoid rendering problem on M2 processor
+        [layer setNeedsDisplay];
+    }
     if (_displayLink != NULL && !CVDisplayLinkIsRunning(_displayLink)) {
         CVDisplayLinkStart(_displayLink);
         J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStart: ctx=%p", self);
