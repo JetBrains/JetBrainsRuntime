@@ -4261,11 +4261,7 @@ public class Window extends Container implements Accessible {
     }
 
     private interface WindowMovePeerX11 extends WindowMovePeer {
-        WindowMovePeerX11 INSTANCE = (WindowMovePeerX11) JBRApi.internalServiceBuilder(MethodHandles.lookup())
-                .withStatic("startMovingWindowTogetherWithMouse",
-                        "startMovingWindowTogetherWithMouse",
-                        "sun.awt.X11.XWindowPeer")
-                .build();
+        WindowMovePeerX11 INSTANCE = null;
     }
 
     private static class WindowMoveService {
@@ -4294,7 +4290,9 @@ public class Window extends Container implements Accessible {
 
         void startMovingTogetherWithMouse(Window window, int mouseButton) {
             Objects.requireNonNull(window);
-            windowMovePeer.startMovingWindowTogetherWithMouse(window, mouseButton);
+            if (windowMovePeer != null) {
+                windowMovePeer.startMovingWindowTogetherWithMouse(window, mouseButton);
+            }
         }
     }
 
