@@ -630,10 +630,8 @@ final class VirtualThread extends BaseVirtualThread {
 
             // park on carrier thread for remaining time when pinned
             if (!yielded) {
-                long deadline = startTime + nanos;
-                if (deadline < 0L)
-                    deadline = Long.MAX_VALUE;
-                parkOnCarrierThread(true, deadline - System.nanoTime());
+                long remainingNanos = nanos - (System.nanoTime() - startTime);
+                parkOnCarrierThread(true, remainingNanos);
             }
         }
     }
@@ -864,13 +862,14 @@ final class VirtualThread extends BaseVirtualThread {
     @Override
     boolean getAndClearInterrupt() {
         assert Thread.currentThread() == this;
-        synchronized (interruptLock) {
-            boolean oldValue = interrupted;
-            if (oldValue)
+        boolean oldValue = interrupted;
+        if (oldValue) {
+            synchronized (interruptLock) {
                 interrupted = false;
-            carrierThread.clearInterrupt();
-            return oldValue;
+                carrierThread.clearInterrupt();
+            }
         }
+        return oldValue;
     }
 
     @Override
