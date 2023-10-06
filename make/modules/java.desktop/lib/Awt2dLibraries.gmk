@@ -944,6 +944,7 @@ ifeq ($(call isTargetOs, macosx), true)
       DISABLED_WARNINGS_clang_MTLBlitLoops.m := pointer-arith, \
       DISABLED_WARNINGS_clang_MTLPipelineStatesStorage.m := semicolon-before-method-body, \
       DISABLED_WARNINGS_clang_MTLRenderer.m := gnu-folding-constant, \
+      DISABLED_WARNINGS_clang_MTLRenderQueue.m := format-nonliteral, \
       DISABLED_WARNINGS_clang_MTLVertexCache.m := pointer-arith, \
       DISABLED_WARNINGS_clang_OGLBufImgOps.c := format-nonliteral, \
       DISABLED_WARNINGS_clang_OGLPaints.c := format-nonliteral, \

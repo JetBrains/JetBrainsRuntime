@@ -24,10 +24,12 @@
  */
 
 #include <stdlib.h>
+#import <sys/time.h>
 
 #include "sun_java2d_pipe_BufferedOpCodes.h"
 
 #include "jlong.h"
+#include <jni.h>
 #include "MTLBlitLoops.h"
 #include "MTLBufImgOps.h"
 #include "MTLMaskBlit.h"
@@ -36,7 +38,43 @@
 #include "MTLRenderQueue.h"
 #include "MTLRenderer.h"
 #include "MTLTextRenderer.h"
+#import "PropertiesUtilities.h"
 #import "ThreadUtilities.h"
+
+/* PlatformLogger wrapper */
+enum LOG_LEVEL {
+    LL_TRACE,
+    LL_DEBUG,
+    LL_INFO,
+    LL_WARNING,
+    LL_ERROR
+};
+void rq_plog(JNIEnv* env, int logLevel, const char *formatMsg, ...);
+
+#define DO_STATS        true
+#define STATS_INTERVAL  1000
+
+/* Debugging */
+#define DO_TRACE_OP     false
+
+const static uint32 STATS_LEN = sun_java2d_pipe_BufferedOpCodes_DISABLE_LOOKUP_OP + 1;
+
+static const char* toStr(uint opcode);
+static const char* mtlOpToStr(uint op);
+static long rqCurrentTimeMillis();
+
+BOOL isStatsEnabled() {
+    static int statsEnabled = -1;
+    if (statsEnabled == -1) {
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        if (env == NULL) return NO;
+        NSString *statsEnabledProp = [PropertiesUtilities javaSystemPropertyForKey:@"sun.java2d.rq.stats"
+                                                                          withEnv:env];
+        statsEnabled = [@"true" isCaseInsensitiveLike:statsEnabledProp] ? YES : NO;
+        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLRenderQueue_isStatsEnabled: %d", statsEnabled);
+    }
+    return (BOOL)statsEnabled;
+}
 
 /**
  * References to the "current" context and destination surface.
@@ -66,8 +104,12 @@ void MTLRenderQueue_CheckPreviousOp(jint op) {
         return;
     }
 
-    J2dTraceLn1(J2D_TRACE_VERBOSE,
-                "MTLRenderQueue_CheckPreviousOp: new op=%d", op);
+    if (DO_TRACE_OP) {
+        J2dRlsTraceLn2(J2D_TRACE_INFO, "MTLRenderQueue_CheckPreviousOp: op=%s\tnew op=%s",
+                    mtlOpToStr(mtlPreviousOp), mtlOpToStr(op));
+    } else {
+        J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLRenderQueue_CheckPreviousOp: new op=%d", op);
+    }
 
     switch (mtlPreviousOp) {
         case MTL_OP_INIT :
@@ -112,6 +154,22 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
 
     end = b + limit;
     @autoreleasepool {
+        const BOOL isStats = isStatsEnabled();
+        int statsLevel = -1;
+        static jint* statsOpsPtr = NULL;
+
+        if (DO_STATS && isStats) {
+            statsLevel = LL_INFO;
+
+            if (statsOpsPtr == NULL) {
+                statsOpsPtr = malloc(sizeof(jint) * STATS_LEN); // leak, no-free
+                for (uint32 i = 0; i < STATS_LEN; i++) {
+                    statsOpsPtr[i] = 0;
+                }
+            }
+            rq_plog(env, LL_DEBUG, "Java_sun_java2d_metal_MTLRenderQueue_flushBuffer(%d bytes): start", limit);
+        }
+
         while (b < end) {
             jint opcode = NEXT_INT(b);
 
@@ -866,7 +924,10 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                         "MTLRenderQueue_flushBuffer: invalid opcode=%d", opcode);
                     return;
             }
-        }
+            if (DO_STATS && isStats) {
+                statsOpsPtr[opcode]++;
+            }
+        } // buffer loop
 
         if (mtlc != NULL) {
             if (mtlPreviousOp == MTL_OP_MASK_OP) {
@@ -880,6 +941,28 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             }
         }
         RESET_PREVIOUS_OP();
+
+        if (DO_STATS && isStats) {
+            static long lastTimeMs = -1;
+            const long timeMs = rqCurrentTimeMillis();
+
+            if (lastTimeMs == -1) {
+                lastTimeMs = timeMs;
+            } else if ((timeMs - lastTimeMs) > STATS_INTERVAL) {
+                rq_plog(env, statsLevel, "Java_sun_java2d_metal_MTLRenderQueue_flushBuffer stats since (%ld ms) {",
+                        (timeMs - lastTimeMs));
+                lastTimeMs = timeMs;
+
+                for (uint32 i = 0; i < STATS_LEN; i++) {
+                    if (statsOpsPtr[i] != 0) {
+                        rq_plog(env, statsLevel, "%30s: %d", toStr(i), statsOpsPtr[i]);
+                        // reset:
+                        statsOpsPtr[i] = 0;
+                    }
+                }
+                rq_plog(env, statsLevel, "}");
+            }
+        }
     }
 }
 
@@ -901,4 +984,171 @@ BMTLSDOps *
 MTLRenderQueue_GetCurrentDestination()
 {
     return dstOps;
+}
+
+#define CASE_MTL_OP(X) \
+    case MTL_OP_##X:   \
+    return #X;
+
+static const char* mtlOpToStr(uint op) {
+    switch (op) {
+        CASE_MTL_OP(INIT)
+        CASE_MTL_OP(AA)
+        CASE_MTL_OP(SET_COLOR)
+        CASE_MTL_OP(RESET_PAINT)
+        CASE_MTL_OP(SYNC)
+        CASE_MTL_OP(SHAPE_CLIP_SPANS)
+        CASE_MTL_OP(MASK_OP)
+        CASE_MTL_OP(OTHER)
+        default:
+            return "";
+    }
+}
+
+
+#define CASE_BUF_OP(X) \
+    case sun_java2d_pipe_BufferedOpCodes_##X:   \
+    return #X;
+
+static const char* toStr(uint opcode) {
+    switch (opcode) {
+        // draw ops
+        CASE_BUF_OP(DRAW_LINE)
+        CASE_BUF_OP(DRAW_RECT)
+        CASE_BUF_OP(DRAW_POLY)
+        CASE_BUF_OP(DRAW_PIXEL)
+        CASE_BUF_OP(DRAW_SCANLINES)
+        CASE_BUF_OP(DRAW_PARALLELOGRAM)
+        CASE_BUF_OP(DRAW_AAPARALLELOGRAM)
+
+        // fill ops
+        CASE_BUF_OP(FILL_RECT)
+        CASE_BUF_OP(FILL_SPANS)
+        CASE_BUF_OP(FILL_PARALLELOGRAM)
+        CASE_BUF_OP(FILL_AAPARALLELOGRAM)
+
+        // copy-related ops
+        CASE_BUF_OP(COPY_AREA)
+        CASE_BUF_OP(BLIT)
+        CASE_BUF_OP(MASK_FILL)
+        CASE_BUF_OP(MASK_BLIT)
+        CASE_BUF_OP(SURFACE_TO_SW_BLIT)
+
+        // text-related ops
+        CASE_BUF_OP(DRAW_GLYPH_LIST)
+
+        // state-related ops
+        CASE_BUF_OP(SET_RECT_CLIP)
+        CASE_BUF_OP(BEGIN_SHAPE_CLIP)
+        CASE_BUF_OP(SET_SHAPE_CLIP_SPANS)
+        CASE_BUF_OP(END_SHAPE_CLIP)
+        CASE_BUF_OP(RESET_CLIP)
+        CASE_BUF_OP(SET_ALPHA_COMPOSITE)
+        CASE_BUF_OP(SET_XOR_COMPOSITE)
+        CASE_BUF_OP(RESET_COMPOSITE)
+        CASE_BUF_OP(SET_TRANSFORM)
+        CASE_BUF_OP(RESET_TRANSFORM)
+
+        // context-related ops
+        CASE_BUF_OP(SET_SURFACES)
+        CASE_BUF_OP(SET_SCRATCH_SURFACE)
+        CASE_BUF_OP(FLUSH_SURFACE)
+        CASE_BUF_OP(DISPOSE_SURFACE)
+        CASE_BUF_OP(DISPOSE_CONFIG)
+        CASE_BUF_OP(INVALIDATE_CONTEXT)
+        CASE_BUF_OP(SYNC)
+        CASE_BUF_OP(RESTORE_DEVICES)
+
+        CASE_BUF_OP(SWAP_BUFFERS)
+
+        // special no-op (mainly used for achieving 8-byte alignment)
+        CASE_BUF_OP(NOOP)
+
+        // paint-related ops
+        CASE_BUF_OP(RESET_PAINT)
+        CASE_BUF_OP(SET_COLOR)
+        CASE_BUF_OP(SET_GRADIENT_PAINT)
+        CASE_BUF_OP(SET_LINEAR_GRADIENT_PAINT)
+        CASE_BUF_OP(SET_RADIAL_GRADIENT_PAINT)
+        CASE_BUF_OP(SET_TEXTURE_PAINT)
+
+        // BufferedImageOp-related ops
+        CASE_BUF_OP(ENABLE_CONVOLVE_OP)
+        CASE_BUF_OP(DISABLE_CONVOLVE_OP)
+        CASE_BUF_OP(ENABLE_RESCALE_OP)
+        CASE_BUF_OP(DISABLE_RESCALE_OP)
+        CASE_BUF_OP(ENABLE_LOOKUP_OP)
+        CASE_BUF_OP(DISABLE_LOOKUP_OP)
+        default:
+            return "";
+    }
+}
+
+void rq_plog(JNIEnv* env, int logLevel, const char *formatMsg, ...) {
+    if (logLevel < LL_TRACE || logLevel > LL_ERROR || formatMsg == NULL)
+        return;
+
+    // TODO: check whether current logLevel is enabled in PlatformLogger
+    static jobject loggerObject = NULL;
+    static jclass clazz = NULL;
+    static jmethodID midTrace = NULL, midDebug = NULL, midInfo = NULL, midWarn = NULL, midError = NULL;
+
+    if (loggerObject == NULL) {
+        jclass shkClass = (*env)->FindClass(env, "sun/java2d/pipe/RenderQueue");
+        if (shkClass == NULL)
+            return;
+        jfieldID fieldId = (*env)->GetStaticFieldID(env, shkClass, "rqLog", "Lsun/util/logging/PlatformLogger;");
+        if (fieldId == NULL)
+            return;
+        loggerObject = (*env)->GetStaticObjectField(env, shkClass, fieldId);
+        loggerObject = (*env)->NewGlobalRef(env, loggerObject);
+
+        clazz = (*env)->GetObjectClass(env, loggerObject);
+        if (clazz == NULL) {
+            NSLog(@"plogImpl: can't find PlatformLogger class");
+            return;
+        }
+
+        midTrace = (*env)->GetMethodID(env, clazz, "finest", "(Ljava/lang/String;)V");
+        midDebug = (*env)->GetMethodID(env, clazz, "fine", "(Ljava/lang/String;)V");
+        midInfo = (*env)->GetMethodID(env, clazz, "info", "(Ljava/lang/String;)V");
+        midWarn = (*env)->GetMethodID(env, clazz, "warning", "(Ljava/lang/String;)V");
+        midError = (*env)->GetMethodID(env, clazz, "severe", "(Ljava/lang/String;)V");
+    }
+
+    jmethodID mid;
+    switch (logLevel) {
+        case LL_DEBUG: mid = midDebug; break;
+        case LL_INFO: mid = midInfo; break;
+        case LL_WARNING: mid = midWarn; break;
+        case LL_ERROR: mid = midError; break;
+        default:
+            mid = midTrace;
+    }
+    if (mid == NULL) {
+        NSLog(@"plogImpl: undefined log-method for level %d", logLevel);
+        return;
+    }
+
+    va_list args;
+    va_start(args, formatMsg);
+    const int bufSize = 512;
+    char buf[bufSize];
+    vsnprintf(buf, bufSize, formatMsg, args);
+    va_end(args);
+
+    jstring jstr = (*env)->NewStringUTF(env, buf);
+
+    (*env)->CallVoidMethod(env, loggerObject, mid, jstr);
+    (*env)->DeleteLocalRef(env, jstr);
+}
+
+static const char * toCString(id obj) {
+    return obj == nil ? "nil" : [NSString stringWithFormat:@"%@", obj].UTF8String;
+}
+
+static long rqCurrentTimeMillis() {
+    struct timeval t;
+    gettimeofday(&t, 0);
+    return ((long)t.tv_sec) * 1000 + (long)(t.tv_usec/1000);
 }

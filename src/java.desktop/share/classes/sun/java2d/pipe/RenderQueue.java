@@ -28,6 +28,7 @@ package sun.java2d.pipe;
 import java.util.HashSet;
 import java.util.Set;
 import sun.awt.SunToolkit;
+import sun.util.logging.PlatformLogger;
 
 /**
  * The RenderQueue class encapsulates a RenderBuffer on which rendering
@@ -71,6 +72,10 @@ import sun.awt.SunToolkit;
  */
 public abstract class RenderQueue {
 
+    private static final boolean DO_STATS = "true".equalsIgnoreCase(System.getProperty("sun.java2d.rq.stats", "false"));
+
+    private static final PlatformLogger rqLog = PlatformLogger.getLogger(RenderQueue.class.getName());
+
     /** The size of the underlying buffer, in bytes. */
     private static final int BUFFER_SIZE = 6400000;
 
@@ -86,6 +91,17 @@ public abstract class RenderQueue {
     protected RenderQueue() {
         refSet = new HashSet<>();
         buf = RenderBuffer.allocate(BUFFER_SIZE);
+
+        System.out.println("DO_STATS: "+DO_STATS);
+
+        /*
+        if (DO_STATS) {
+            rqLog.setLevel(PlatformLogger.Level.INFO);
+        }
+*/
+        if (rqLog.isLoggable(PlatformLogger.Level.INFO)) {
+            rqLog.info("RenderQueue: buffer size = " + (BUFFER_SIZE / 1024) + " Kb");
+        }
     }
 
     /**
