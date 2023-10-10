@@ -171,17 +171,18 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             toolkitSystemThread.setDaemon(true);
             toolkitSystemThread.start();
 
-            // Wait here for all display sync events to have been received?
-        }
+            WLClipboard selectionClipboard = null;
+            try {
+                selectionClipboard = new WLClipboard("Selection", true);
+            } catch (UnsupportedOperationException ignored) {
+            }
 
-        WLClipboard selectionClipboard = null;
-        try {
-            selectionClipboard = new WLClipboard("Selection", true);
-        } catch (UnsupportedOperationException ignored) {
+            clipboard = new WLClipboard("System", false);
+            selection = selectionClipboard;
+        } else {
+            clipboard = null;
+            selection = null;
         }
-
-        clipboard = new WLClipboard("System", false);
-        selection = selectionClipboard;
     }
 
     public static boolean isToolkitThread() {
