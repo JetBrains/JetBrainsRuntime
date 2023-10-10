@@ -38,6 +38,7 @@ function do_configure {
     $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
     $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
+    $WITH_BUNDLED_FREETYPE \
     || do_exit $?
 }
 
@@ -99,6 +100,8 @@ function create_image_bundle {
 
 WITH_DEBUG_LEVEL="--with-debug-level=release"
 RELEASE_NAME=linux-aarch64-server-release
+
+jbr_name_postfix=""
 
 case "$bundle_type" in
   "jcef")

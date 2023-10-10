@@ -5,7 +5,7 @@ set -x
 
 function check_bundle_type_maketest() {
   # check whether last char is 't', if so remove it
-  if [ "${bundle_type: -1}" == "t" ]; then
+  if [ "${bundle_type: -1}" == "t" && "${bundle_type: -2}" == "ft" ]; then
     bundle_type="${bundle_type%?}"
     do_maketest=1
   else
@@ -93,6 +93,12 @@ case "$OS_NAME" in
 esac
 
 WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS="--with-native-debug-symbols=zipped"
+
+if [ "$bundle_type" == "nomodft" ]; then
+  WITH_BUNDLED_FREETYPE="--with-freetype=bundled"
+else
+  WITH_BUNDLED_FREETYPE=""
+fi
 
 REPRODUCIBLE_BUILD_OPTS="--with-source-date=$SOURCE_DATE_EPOCH
   --with-hotspot-build-time=$BUILD_TIME
