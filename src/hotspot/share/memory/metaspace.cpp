@@ -623,12 +623,7 @@ ReservedSpace Metaspace::reserve_address_space_for_compressed_classes(size_t siz
     address a = search_ranges[i].from;
     assert(CompressedKlassPointers::is_valid_base(a), "Sanity");
     while (a < search_ranges[i].to) {
-      ReservedSpace rs(size, Metaspace::reserve_alignment(),
-                       os::vm_page_size(), (char*)a);
-      if (rs.is_reserved()) {
-        assert(a == (address)rs.base(), "Sanity");
-        return rs;
-      }
+      list.append(a);
       a +=  search_ranges[i].increment;
     }
   }
