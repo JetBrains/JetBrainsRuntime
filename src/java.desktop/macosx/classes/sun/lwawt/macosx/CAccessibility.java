@@ -60,6 +60,7 @@ import javax.accessibility.AccessibleTable;
 import javax.accessibility.AccessibleText;
 import javax.accessibility.AccessibleValue;
 import javax.swing.Icon;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JEditorPane;
 import javax.swing.JLabel;
@@ -1160,6 +1161,20 @@ class CAccessibility implements PropertyChangeListener {
         return invokeAndWait(() -> {
             AccessibleContext ac = a.getAccessibleContext();
             return ac == null ? null : AccessibleComponentAccessor.getAccessible(ac);
+        }, c);
+    }
+
+    private static boolean isComboBoxEditable(Accessible a, Component c) {
+        if (a == null) return false;
+
+        return invokeAndWait(new Callable<Boolean>() {
+            public Boolean call() throws Exception {
+                Accessible sa = CAccessible.getSwingAccessible(a);
+                if (sa instanceof JComboBox<?> comboBox) {
+                    return comboBox.isEditable();
+                }
+                return false;
+            }
         }, c);
     }
 }
