@@ -631,6 +631,27 @@ abstract class XDecoratedPeer extends XWindowPeer {
             updateSizeHints(dimensions);
             Rectangle client = dimensions.getClientRect();
             checkShellRect(client);
+
+            if (isTargetUndecorated() && this instanceof XFramePeer framePeer) {
+                if (isMaximized()) {
+                    // Under Xorg, if an undecorated (read: client-side decorated)
+                    // window has been maximized (either vertically or horizontally),
+                    // it cannot change its size programmatically until both maximized
+                    // states have been cleared. And since the window is undecorated, it also
+                    // cannot change its size with the user's help because
+                    // "undecorated" means "no borders" and that, perhaps incorrectly, implies
+                    // that there's nothing to grab on in order to resize interactively.
+                    // To exit this viscous circle, drop the maximized state. This does have
+                    // unpleasant side effects (such as an animation played by the WM), but
+                    // those seem to be a lesser evil than the total inability to resize.
+                    int state = framePeer.getState();
+                    if ((state & Frame.MAXIMIZED_BOTH) != Frame.MAXIMIZED_BOTH) {
+                        state &= ~Frame.MAXIMIZED_BOTH;
+                        framePeer.setExtendedState(state);
+                    }
+                }
+            }
+
             setShellBounds(client);
             if (content != null &&
                 !content.getSize().equals(newDimensions.getSize()))
