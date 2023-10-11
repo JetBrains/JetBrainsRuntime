@@ -51,6 +51,18 @@ DECLARE_CLASS_ONLY(sjc_CAccessibility);
     return value;
 }
 
+- (BOOL)isEditable
+{
+    JNIEnv* env = [ThreadUtilities getJNIEnv];
+    GET_CACCESSIBILITY_CLASS_RETURN(NO);
+    DECLARE_STATIC_METHOD_RETURN(sjm_isComboBoxEditable, sjc_CAccessibility, "isComboBoxEditable", "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Z", NO);
+
+    BOOL isEditable = (*env)->CallStaticBooleanMethod(env, sjc_CAccessibility, sjm_isComboBoxEditable, fAccessible, fComponent);
+    CHECK_EXCEPTION();
+
+    return isEditable;
+}
+
 // NSAccessibilityElement protocol methods
 
 - (id)accessibilityValue
@@ -60,17 +72,22 @@ DECLARE_CLASS_ONLY(sjc_CAccessibility);
     if (expanded) {
         return nil;
     }
-    if (!expanded &&
-        (value == nil)) {
-        [self accessibleSelection];
-    }
 
-    return [value accessibilityLabel];
+    [self accessibleSelection];
+
+    return value != nil ? [value accessibilityLabel] : nil;
 }
 
 - (NSArray *)accessibilitySelectedChildren
 {
     return [NSArray arrayWithObject:[self accessibleSelection]];
+}
+
+- (NSAccessibilityRole)accessibilityRole
+{
+    return [self isEditable]
+           ? NSAccessibilityComboBoxRole
+           : NSAccessibilityPopUpButtonRole;
 }
 
 - (void)dealloc
