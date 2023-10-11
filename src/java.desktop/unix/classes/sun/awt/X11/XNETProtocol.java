@@ -84,15 +84,11 @@ final class XNETProtocol extends XProtocol implements XStateProtocol, XLayerProt
     }
 
     private void requestState(XWindowPeer window, int state) {
-        /*
-         * We have to use toggle for maximization because of transitions
-         * from maximization in one direction only to maximization in the
-         * other direction only.
-         */
         int old_net_state = getState(window);
         int max_changed = (state ^ old_net_state) & (Frame.MAXIMIZED_BOTH);
 
         XClientMessageEvent req = new XClientMessageEvent();
+        int action = 0;
         try {
             switch(max_changed) {
               case 0:
@@ -100,14 +96,22 @@ final class XNETProtocol extends XProtocol implements XStateProtocol, XLayerProt
               case Frame.MAXIMIZED_HORIZ:
                   req.set_data(1, XA_NET_WM_STATE_MAXIMIZED_HORZ.getAtom());
                   req.set_data(2, 0);
+                  action = ((state & Frame.MAXIMIZED_HORIZ) == Frame.MAXIMIZED_HORIZ)
+                          ? _NET_WM_STATE_ADD
+                          : _NET_WM_STATE_REMOVE;
                   break;
               case Frame.MAXIMIZED_VERT:
                   req.set_data(1, XA_NET_WM_STATE_MAXIMIZED_VERT.getAtom());
                   req.set_data(2, 0);
+                  action = ((state & Frame.MAXIMIZED_VERT) == Frame.MAXIMIZED_VERT)
+                          ? _NET_WM_STATE_ADD
+                          : _NET_WM_STATE_REMOVE;
                   break;
               case Frame.MAXIMIZED_BOTH:
+                  // Somehow this doesn't work when changing HORZ->VERT, but works VERT->HORZ
                   req.set_data(1, XA_NET_WM_STATE_MAXIMIZED_HORZ.getAtom());
                   req.set_data(2, XA_NET_WM_STATE_MAXIMIZED_VERT.getAtom());
+                  action = _NET_WM_STATE_TOGGLE;
                   break;
               default:
                   return;
@@ -119,7 +123,7 @@ final class XNETProtocol extends XProtocol implements XStateProtocol, XLayerProt
             req.set_window(window.getWindow());
             req.set_message_type(XA_NET_WM_STATE.getAtom());
             req.set_format(32);
-            req.set_data(0, _NET_WM_STATE_TOGGLE);
+            req.set_data(0, action);
             XToolkit.awtLock();
             try {
                 XlibWrapper.XSendEvent(XToolkit.getDisplay(),
