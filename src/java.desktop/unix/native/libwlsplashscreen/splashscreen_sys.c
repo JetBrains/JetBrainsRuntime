@@ -43,8 +43,9 @@ static bool is_cursor_animated = false;
 #define NULL_CHECK(val, message)  if (val == NULL) { fprintf(stderr, "%s\n", message); return false; }
 #define DESTROY_NOT_NULL(val, destructor)  if (val != NULL) { destructor(val); }
 
-void SplashReconfigureNow(Splash * splash);
+bool SplashReconfigureNow(Splash * splash);
 void SplashRedrawWindow(Splash * splash);
+void SplashReconfigure(Splash * splash);
 
 static bool
 alloc_buffer(int width, int height, struct wl_shm *wl_shm, Buffer *buffer, int format, int format_size) {
@@ -101,6 +102,9 @@ registry_global(void *data, struct wl_registry *wl_registry, uint32_t name, cons
     } else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
         state->xdg_wm_base = wl_registry_bind(
                 wl_registry, name, &xdg_wm_base_interface, 1);
+    } else if (strcmp(interface, wl_output_interface.name) == 0) {
+        state->wl_output = wl_registry_bind(
+                wl_registry, name, &wl_output_interface, 2);
     }
 }
 
@@ -123,12 +127,67 @@ static const struct wl_buffer_listener wl_buffer_listener = {
     .release = wl_buffer_release,
 };
 
+static void
+wl_output_geometry(void *data, struct wl_output * wl_output, int32_t x, int32_t y, int32_t physical_width,
+        int32_t physical_height, int32_t subpixel, const char *make, const char *model, int32_t transform) {
+}
+
+static void
+wl_output_scale(void *data, struct wl_output *wl_output, int32_t factor) {
+    ScreenInfo *output = data;
+
+    output->scale = factor;
+}
+
+static void
+wl_output_mode(
+        void *data,
+        struct wl_output *wl_output,
+        uint32_t flags,
+        int32_t width,
+        int32_t height,
+        int32_t refresh) {
+    ScreenInfo *output = data;
+
+    output->width = width;
+    output->height = height;
+}
+
+static void
+wl_output_name(
+        void *data,
+        struct wl_output *wl_output,
+        const char *name) {
+}
+
+static void
+wl_output_description(
+        void *data,
+        struct wl_output *wl_output,
+        const char *description) {
+}
+
+static void
+wl_output_done(
+        void *data,
+        struct wl_output *wl_output) {
+}
+
+struct wl_output_listener wl_output_listener = {
+    .geometry = &wl_output_geometry,
+    .mode = &wl_output_mode,
+    .name = &wl_output_name,
+    .description = &wl_output_description,
+    .done = &wl_output_done,
+    .scale = &wl_output_scale
+};
+
 void
 xdg_surface_configure(void *data, struct xdg_surface *xdg_surface, uint32_t serial) {
     struct Splash *splash = data;
 
     xdg_surface_ack_configure(xdg_surface, serial);
-    SplashReconfigureNow(splash);
+    SplashReconfigure(splash);
 }
 
 static const struct xdg_surface_listener xdg_surface_listener = {
@@ -144,6 +203,8 @@ handle_toplevel_configure(void *data, struct xdg_toplevel *toplevel, int32_t wid
         splash->window_width = width;
         splash->window_height = height;
     }
+
+    SplashReconfigure(splash);
 }
 
 static const struct xdg_toplevel_listener xdg_toplevel_listener = {
@@ -214,6 +275,8 @@ SplashCreateWindow(Splash * splash) {
         splash->native_scale = 1.0;
     }
 
+    wl_output_add_listener(splash->state->wl_output, &wl_output_listener, &splash->screenInfo);
+
     splash->state->wl_surface = wl_compositor_create_surface(splash->state->wl_compositor);
     NULL_CHECK(splash->state->wl_surface, "Cannot create surface\n")
     splash->state->wl_subsurfaces_surface = wl_compositor_create_surface(splash->state->wl_compositor);
@@ -239,16 +302,6 @@ SplashCreateWindow(Splash * splash) {
             splash->state->wl_subcompositor, splash->state->wl_subsurfaces_surface, splash->state->wl_surface);
     NULL_CHECK(splash->state->wl_subsurfaces_subsurface, "Cannot create subsurface\n")
     wl_subsurface_set_desync(splash->state->wl_subsurfaces_subsurface);
-
-    for (int i = 0; i < BUFFERS_COUNT; i++) {
-        if (!alloc_buffer(splash->width, splash->height,
-                     splash->state->wl_shm, &splash->buffers[i], WL_SHM_FORMAT_XRGB8888, 4)) {
-            fprintf(stderr, "%s\n", "Cannot allocate enough memory");
-            return false;
-        }
-        wl_buffer_add_listener(splash->buffers[i].wl_buffer, &wl_buffer_listener, &splash->buffers[i]);
-        splash->buffers[i].available = true;
-    }
 
     splash->state->cursor_theme = wl_cursor_theme_load(NULL, 32, splash->state->wl_shm);
     NULL_CHECK(splash->state->cursor_theme, "unable to load default theme\n")
@@ -296,6 +349,7 @@ SplashInitPlatform(Splash * splash) {
     for (int i = 0; i < BUFFERS_COUNT; i++) {
         splash->buffers[i].wl_buffer = NULL;
         splash->buffers[i].data = NULL;
+        splash->buffers[i].available = false;
     }
 
     splash->byteAlignment = 1;
@@ -317,6 +371,7 @@ SplashInitPlatform(Splash * splash) {
     NULL_CHECK_CLEANUP(splash->state->wl_subcompositor, "wl_subcompositor not initialized\n")
     NULL_CHECK_CLEANUP(splash->state->wl_seat, "wl_seat not initialized\n")
     NULL_CHECK_CLEANUP(splash->state->xdg_wm_base, "xdg_wm_base not initialized\n")
+    NULL_CHECK_CLEANUP(splash->state->wl_output, "wl_output not initialized\n")
 
     return true;
 cleanup:
@@ -324,29 +379,54 @@ cleanup:
     return false;
 }
 
-void
+bool
 SplashReconfigureNow(Splash * splash) {
     int scale = (int) splash->scaleFactor;
 
-    splash->x = ((splash->window_width - splash->width / scale) / 2);
-    splash->y = ((splash->window_height - splash->height / scale) / 2);
-    wl_subsurface_set_position(splash->state->wl_subsurfaces_subsurface, splash->x, splash->y);
+    int offsetX = splash->screenInfo.width - splash->window_width * splash->screenInfo.scale;
+    int offsetY = splash->screenInfo.height - splash->window_height * splash->screenInfo.scale;
+    splash->x = (splash->screenInfo.width - splash->width / scale) / 2;
+    splash->y = (splash->screenInfo.height - splash->height / scale) / 2;
+    int localX = (splash->x - offsetX) / splash->screenInfo.scale;
+    int localY = (splash->y - offsetY) / splash->screenInfo.scale;
+    wl_subsurface_set_position(splash->state->wl_subsurfaces_subsurface, localX, localY);
+
+    destroy_buffer(&splash->main_buffer);
+    for (int i = 0; i < BUFFERS_COUNT; i++) {
+        destroy_buffer(&splash->buffers[i]);
+        splash->buffers[i].available = false;
+    }
 
     struct wl_region *region = wl_compositor_create_region(splash->state->wl_compositor);
     wl_region_subtract(region, 0, 0, splash->window_width, splash->window_height);
-    wl_region_add(region, splash->x, splash->y, splash->width / scale, splash->height / scale);
+    wl_region_add(region, localX, localY, splash->width / scale, splash->height / scale);
     wl_surface_set_input_region(splash->state->wl_surface, region);
     wl_surface_set_opaque_region(splash->state->wl_surface, region);
     wl_region_destroy(region);
 
-    alloc_buffer(splash->window_width * splash->native_scale, splash->window_height * splash->native_scale,
-                 splash->state->wl_shm, &splash->main_buffer, WL_SHM_FORMAT_ARGB8888, 4);
+    for (int i = 0; i < BUFFERS_COUNT; i++) {
+        if (!alloc_buffer(splash->width, splash->height, splash->state->wl_shm, &splash->buffers[i],
+                          WL_SHM_FORMAT_XRGB8888, 4)) {
+            fprintf(stderr, "%s\n", "Cannot allocate enough memory");
+            return false;
+        }
+        wl_buffer_add_listener(splash->buffers[i].wl_buffer, &wl_buffer_listener, &splash->buffers[i]);
+        splash->buffers[i].available = true;
+    }
+
+    if (!alloc_buffer(splash->window_width * splash->native_scale, splash->window_height * splash->native_scale,
+                      splash->state->wl_shm, &splash->main_buffer, WL_SHM_FORMAT_ARGB8888, 4)) {
+        fprintf(stderr, "%s\n", "Cannot allocate enough memory");
+        return false;
+    }
     memset(splash->main_buffer.data, 0, splash->window_width * splash->window_height * 4);
     wl_surface_attach(splash->state->wl_surface, splash->main_buffer.wl_buffer, 0, 0);
-
     wl_surface_damage(splash->state->wl_surface, 0, 0, splash->window_width, splash->window_height);
     wl_surface_commit(splash->state->wl_surface);
+
     SplashRedrawWindow(splash);
+
+    return true;
 }
 
 void
@@ -381,7 +461,6 @@ GetDisplayFD(Splash * splash) {
 
 void
 SplashUpdateCursor(Splash * splash) {
-    const int EVENTS_PER_FRAME = 2;
     static int index = 0;
 
     if (is_cursor_animated) {
@@ -391,8 +470,8 @@ SplashUpdateCursor(Splash * splash) {
         struct wl_cursor_image *image;
 
         if (cursor) {
-            image = state->default_cursor->images[index / EVENTS_PER_FRAME];
-            index = (index + 1) % (state->default_cursor->image_count * EVENTS_PER_FRAME);
+            image = state->default_cursor->images[index];
+            index = (index + 1) % (state->default_cursor->image_count);
             buffer = wl_cursor_image_get_buffer(image);
             if (!buffer)
                 return;

@@ -76,6 +76,12 @@ typedef struct SplashImage
 
 #define SPLASH_COLOR_MAP_SIZE 0x100
 
+typedef struct ScreenInfo {
+    int width;
+    int height;
+    int scale;
+} ScreenInfo;
+
 typedef struct Splash
 {
     ImageFormat screenFormat;   /* must be preset before image decoding */
@@ -94,6 +100,7 @@ typedef struct Splash
     ImageFormat overlayFormat;
     void *screenData;
     int screenStride;           /* stored scanline length in bytes */
+    ScreenInfo screenInfo;
     int currentFrame;           // currentFrame==-1 means image is not loaded
     int loopCount;
     int x, y;

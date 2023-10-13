@@ -43,6 +43,7 @@ typedef struct wayland_state {
     struct wl_shm *wl_shm;
     struct wl_compositor *wl_compositor;
     struct wl_subcompositor *wl_subcompositor;
+    struct wl_output *wl_output;
     struct wl_seat *wl_seat;
     struct wl_pointer *pointer;
     struct xdg_wm_base *xdg_wm_base;

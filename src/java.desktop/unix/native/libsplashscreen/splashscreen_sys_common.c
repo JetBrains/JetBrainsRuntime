@@ -44,7 +44,7 @@ void SplashRedrawWindow(Splash * splash);
 void SplashUpdateCursor(Splash * splash);
 void SplashSetup(Splash * splash);
 void SplashUpdateShape(Splash * splash);
-void SplashReconfigureNow(Splash * splash);
+bool SplashReconfigureNow(Splash * splash);
 
 bool FlushEvents(Splash * splash);
 bool DispatchEvents(Splash * splash);
@@ -108,6 +108,7 @@ void
 SplashEventLoop(Splash * splash) {
     struct pollfd pfd[2];
     int rc;
+    unsigned lastCursorUpdate;
 
     pfd[0].fd = splash->controlpipe[0];
     pfd[0].events = POLLIN | POLLPRI;
@@ -116,6 +117,8 @@ SplashEventLoop(Splash * splash) {
     pfd[1].fd = GetDisplayFD(splash);
     pfd[1].events = POLLIN | POLLPRI;
     pfd[1].revents = 0;
+
+    lastCursorUpdate = SplashTime();
 
     while (true) {
         if (!FlushEvents(splash)) {
@@ -133,7 +136,10 @@ SplashEventLoop(Splash * splash) {
         rc = poll(pfd, 2, POLL_EVENT_TIMEOUT);
         SplashLock(splash);
 
-        SplashUpdateCursor(splash);
+        if (SplashTime() - lastCursorUpdate > 100) {
+            SplashUpdateCursor(splash);
+            lastCursorUpdate = SplashTime();
+        }
 
         if (rc <= 0) {
             continue;
@@ -156,7 +162,9 @@ SplashEventLoop(Splash * splash) {
                         break;
                     case SPLASHCTL_RECONFIGURE:
                         if (splash->isVisible > 0) {
-                            SplashReconfigureNow(splash);
+                            if (!SplashReconfigureNow(splash)) {
+                                return;
+                            }
                         }
                         break;
                     case SPLASHCTL_QUIT:
