@@ -5,7 +5,7 @@ set -x
 
 function check_bundle_type_maketest() {
   # check whether last char is 't', if so remove it
-  if [ "${bundle_type: -1}" == "t" && "${bundle_type: -2}" == "ft" ]; then
+  if [ "${bundle_type: -1}" == "t" ] && [ "${bundle_type: -2}" == "ft" ]; then
     bundle_type="${bundle_type%?}"
     do_maketest=1
   else
