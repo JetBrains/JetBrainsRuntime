@@ -66,7 +66,6 @@ function create_image_bundle {
   JBR=${__bundle_name}-${JBSDK_VERSION}-linux-${libc_type_suffix}aarch64-${fastdebug_infix}b${build_number}
   __root_dir=${__bundle_name}-${JBSDK_VERSION}-linux-${libc_type_suffix}aarch64-${fastdebug_infix:-}b${build_number}
 
-
   echo Running jlink....
   [ -d "$IMAGES_DIR"/"$__root_dir" ] && rm -rf "${IMAGES_DIR:?}"/"$__root_dir"
   $JSDK/bin/jlink \
@@ -106,13 +105,18 @@ jbr_name_postfix=""
 case "$bundle_type" in
   "jcef")
     do_reset_changes=1
+    jbr_name_postfix="_${bundle_type}"
     do_maketest=1
     ;;
   "nomod" | "")
     bundle_type=""
     ;;
+  "nomodft" | "")
+    jbr_name_postfix="_ft"
+    ;;
   "fd")
     do_reset_changes=1
+    jbr_name_postfix="_${bundle_type}"
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     RELEASE_NAME=linux-aarch64-server-fastdebug
     ;;
@@ -136,11 +140,7 @@ if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
   git apply -p0 < jb/project/tools/patches/add_jcef_module_aarch64.patch || do_exit $?
   update_jsdk_mods $JSDK $JCEF_PATH/jmods $JSDK/jmods $JSDK_MODS_DIR || do_exit $?
   cp $JCEF_PATH/jmods/* $JSDK_MODS_DIR # $JSDK/jmods is not changed
-
-  jbr_name_postfix="_${bundle_type}"
   cat $JCEF_PATH/jcef.version >> $JSDK/release
-else
-  jbr_name_postfix=""
 fi
 
 # create runtime image bundle
