@@ -422,6 +422,7 @@ wlPostKeyEvent(const struct WLKeyEvent* event)
             event->extendedKeyCode,
             event->keyChar
     );
+    JNU_CHECK_EXCEPTION(env);
 }
 
 static const struct wl_keyboard_listener wl_keyboard_listener = {

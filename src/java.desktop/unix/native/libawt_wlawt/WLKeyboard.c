@@ -37,6 +37,8 @@
 #include <jni_util.h>
 #include <stdlib.h>
 
+#define WL_KEYBOARD_DEBUG
+
 JNIEnv *getEnv();
 
 #define XKB_KEYCODE_INVALID (0xffffffff)
@@ -180,11 +182,11 @@ static jmethodID startRepeatMID;
 static jmethodID cancelRepeatMID;
 
 static bool
-initJavaRefs(JNIEnv *env)
-{
+initJavaRefs(JNIEnv *env) {
     CHECK_NULL_RETURN(keyboardClass = (*env)->FindClass(env, "sun/awt/wl/WLKeyboard"), false);
     CHECK_NULL_RETURN(keyRepeatManagerClass = (*env)->FindClass(env, "sun/awt/wl/WLKeyboard$KeyRepeatManager"), false);
-    CHECK_NULL_RETURN(setRepeatInfoMID = (*env)->GetMethodID(env, keyRepeatManagerClass, "setRepeatInfo", "(II)V"), false);
+    CHECK_NULL_RETURN(setRepeatInfoMID = (*env)->GetMethodID(env, keyRepeatManagerClass, "setRepeatInfo", "(II)V"),
+                      false);
     CHECK_NULL_RETURN(startRepeatMID = (*env)->GetMethodID(env, keyRepeatManagerClass, "startRepeat", "(JI)V"), false);
     CHECK_NULL_RETURN(cancelRepeatMID = (*env)->GetMethodID(env, keyRepeatManagerClass, "cancelRepeat", "()V"), false);
     return true;
@@ -195,16 +197,15 @@ static struct WLKeyboardState {
     jobject keyRepeatManager;
 
     struct xkb_context *context;
-    struct xkb_state   *state;
-    struct xkb_state   *tmpState;
-    struct xkb_keymap  *keymap;
+    struct xkb_state *state;
+    struct xkb_state *tmpState;
+    struct xkb_keymap *keymap;
 
-    struct xkb_keymap  *qwertyKeymap;
-    struct xkb_state   *tmpQwertyState;
+    struct xkb_keymap *qwertyKeymap;
+    struct xkb_state *tmpQwertyState;
 
     struct xkb_compose_table *composeTable;
     struct xkb_compose_state *composeState;
-    struct xkb_compose_state *tmpComposeState;
 
     bool asciiCapable;
 
@@ -470,16 +471,14 @@ static struct {
 } xkb;
 
 static inline void
-clearDLError(void)
-{
-    (void)dlerror();
+clearDLError(void) {
+    (void) dlerror();
 }
 
 static void *
-xkbcommonBindSym(JNIEnv *env, void* handle, const char* sym_name)
-{
+xkbcommonBindSym(JNIEnv *env, void *handle, const char *sym_name) {
     clearDLError();
-    void* addr = dlsym(handle, sym_name);
+    void *addr = dlsym(handle, sym_name);
     if (!addr) {
         const char *errorMessage = dlerror();
         JNU_ThrowByName(env, "java/lang/UnsatisfiedLinkError", errorMessage);
@@ -495,9 +494,8 @@ xkbcommonBindSym(JNIEnv *env, void* handle, const char* sym_name)
     } while (0)
 
 static bool
-xkbcommonLoad(JNIEnv *env)
-{
-    void * handle = dlopen(JNI_LIB_NAME("xkbcommon"), RTLD_LAZY | RTLD_LOCAL);
+xkbcommonLoad(JNIEnv *env) {
+    void *handle = dlopen(JNI_LIB_NAME("xkbcommon"), RTLD_LAZY | RTLD_LOCAL);
     if (!handle) {
         handle = dlopen(VERSIONED_JNI_LIB_NAME("xkbcommon", "0"), RTLD_LAZY | RTLD_LOCAL);
     }
@@ -610,256 +608,256 @@ static const struct KeysymToJavaKeycodeMapItem {
     int keycode;
     int location;
 } keysymtoJavaKeycodeMap[] = {
-    { 0x0020 /* XKB_KEY_space */, java_awt_event_KeyEvent_VK_SPACE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0021 /* XKB_KEY_exclam */, java_awt_event_KeyEvent_VK_EXCLAMATION_MARK, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0022 /* XKB_KEY_quotedbl */, java_awt_event_KeyEvent_VK_QUOTEDBL, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0023 /* XKB_KEY_numbersign */, java_awt_event_KeyEvent_VK_NUMBER_SIGN, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0024 /* XKB_KEY_dollar */, java_awt_event_KeyEvent_VK_DOLLAR, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0026 /* XKB_KEY_ampersand */, java_awt_event_KeyEvent_VK_AMPERSAND, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0027 /* XKB_KEY_apostrophe */, java_awt_event_KeyEvent_VK_QUOTE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0028 /* XKB_KEY_parenleft */, java_awt_event_KeyEvent_VK_LEFT_PARENTHESIS, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0029 /* XKB_KEY_parenright */, java_awt_event_KeyEvent_VK_RIGHT_PARENTHESIS, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x002a /* XKB_KEY_asterisk */, java_awt_event_KeyEvent_VK_ASTERISK, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x002b /* XKB_KEY_plus */, java_awt_event_KeyEvent_VK_PLUS, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x002c /* XKB_KEY_comma */, java_awt_event_KeyEvent_VK_COMMA, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x002d /* XKB_KEY_minus */, java_awt_event_KeyEvent_VK_MINUS, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x002e /* XKB_KEY_period */, java_awt_event_KeyEvent_VK_PERIOD, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x002f /* XKB_KEY_slash */, java_awt_event_KeyEvent_VK_SLASH, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0030 /* XKB_KEY_0 */, java_awt_event_KeyEvent_VK_0, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0031 /* XKB_KEY_1 */, java_awt_event_KeyEvent_VK_1, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0032 /* XKB_KEY_2 */, java_awt_event_KeyEvent_VK_2, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0033 /* XKB_KEY_3 */, java_awt_event_KeyEvent_VK_3, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0034 /* XKB_KEY_4 */, java_awt_event_KeyEvent_VK_4, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0035 /* XKB_KEY_5 */, java_awt_event_KeyEvent_VK_5, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0036 /* XKB_KEY_6 */, java_awt_event_KeyEvent_VK_6, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0037 /* XKB_KEY_7 */, java_awt_event_KeyEvent_VK_7, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0038 /* XKB_KEY_8 */, java_awt_event_KeyEvent_VK_8, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0039 /* XKB_KEY_9 */, java_awt_event_KeyEvent_VK_9, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x003a /* XKB_KEY_colon */, java_awt_event_KeyEvent_VK_COLON, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x003b /* XKB_KEY_semicolon */, java_awt_event_KeyEvent_VK_SEMICOLON, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x003c /* XKB_KEY_less */, java_awt_event_KeyEvent_VK_LESS, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x003d /* XKB_KEY_equal */, java_awt_event_KeyEvent_VK_EQUALS, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x003e /* XKB_KEY_greater */, java_awt_event_KeyEvent_VK_GREATER, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0040 /* XKB_KEY_at */, java_awt_event_KeyEvent_VK_AT, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x005b /* XKB_KEY_bracketleft */, java_awt_event_KeyEvent_VK_OPEN_BRACKET, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x005c /* XKB_KEY_backslash */, java_awt_event_KeyEvent_VK_BACK_SLASH, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x005d /* XKB_KEY_bracketright */, java_awt_event_KeyEvent_VK_CLOSE_BRACKET, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x005e /* XKB_KEY_asciicircum */, java_awt_event_KeyEvent_VK_CIRCUMFLEX, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x005f /* XKB_KEY_underscore */, java_awt_event_KeyEvent_VK_UNDERSCORE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0060 /* XKB_KEY_grave */, java_awt_event_KeyEvent_VK_BACK_QUOTE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0061 /* XKB_KEY_a */, java_awt_event_KeyEvent_VK_A, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0062 /* XKB_KEY_b */, java_awt_event_KeyEvent_VK_B, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0063 /* XKB_KEY_c */, java_awt_event_KeyEvent_VK_C, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0064 /* XKB_KEY_d */, java_awt_event_KeyEvent_VK_D, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0065 /* XKB_KEY_e */, java_awt_event_KeyEvent_VK_E, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0066 /* XKB_KEY_f */, java_awt_event_KeyEvent_VK_F, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0067 /* XKB_KEY_g */, java_awt_event_KeyEvent_VK_G, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0068 /* XKB_KEY_h */, java_awt_event_KeyEvent_VK_H, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0069 /* XKB_KEY_i */, java_awt_event_KeyEvent_VK_I, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x006a /* XKB_KEY_j */, java_awt_event_KeyEvent_VK_J, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x006b /* XKB_KEY_k */, java_awt_event_KeyEvent_VK_K, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x006c /* XKB_KEY_l */, java_awt_event_KeyEvent_VK_L, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x006d /* XKB_KEY_m */, java_awt_event_KeyEvent_VK_M, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x006e /* XKB_KEY_n */, java_awt_event_KeyEvent_VK_N, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x006f /* XKB_KEY_o */, java_awt_event_KeyEvent_VK_O, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0070 /* XKB_KEY_p */, java_awt_event_KeyEvent_VK_P, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0071 /* XKB_KEY_q */, java_awt_event_KeyEvent_VK_Q, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0072 /* XKB_KEY_r */, java_awt_event_KeyEvent_VK_R, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0073 /* XKB_KEY_s */, java_awt_event_KeyEvent_VK_S, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0074 /* XKB_KEY_t */, java_awt_event_KeyEvent_VK_T, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0075 /* XKB_KEY_u */, java_awt_event_KeyEvent_VK_U, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0076 /* XKB_KEY_v */, java_awt_event_KeyEvent_VK_V, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0077 /* XKB_KEY_w */, java_awt_event_KeyEvent_VK_W, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0078 /* XKB_KEY_x */, java_awt_event_KeyEvent_VK_X, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x0079 /* XKB_KEY_y */, java_awt_event_KeyEvent_VK_Y, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x007a /* XKB_KEY_z */, java_awt_event_KeyEvent_VK_Z, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x007b /* XKB_KEY_braceleft */, java_awt_event_KeyEvent_VK_BRACELEFT, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x007d /* XKB_KEY_braceright */, java_awt_event_KeyEvent_VK_BRACERIGHT, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x00a1 /* XKB_KEY_exclamdown */, java_awt_event_KeyEvent_VK_INVERTED_EXCLAMATION_MARK, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xfe03 /* XKB_KEY_ISO_Level3_Shift */, java_awt_event_KeyEvent_VK_ALT_GRAPH, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xfe20 /* XKB_KEY_ISO_Left_Tab */, java_awt_event_KeyEvent_VK_TAB, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xfe50 /* XKB_KEY_dead_grave */, java_awt_event_KeyEvent_VK_DEAD_GRAVE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xfe51 /* XKB_KEY_dead_acute */, java_awt_event_KeyEvent_VK_DEAD_ACUTE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xfe52 /* XKB_KEY_dead_circumflex */, java_awt_event_KeyEvent_VK_DEAD_CIRCUMFLEX, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xfe53 /* XKB_KEY_dead_tilde */, java_awt_event_KeyEvent_VK_DEAD_TILDE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xfe54 /* XKB_KEY_dead_macron */, java_awt_event_KeyEvent_VK_DEAD_MACRON, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xfe55 /* XKB_KEY_dead_breve */, java_awt_event_KeyEvent_VK_DEAD_BREVE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xfe56 /* XKB_KEY_dead_abovedot */, java_awt_event_KeyEvent_VK_DEAD_ABOVEDOT, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xfe57 /* XKB_KEY_dead_diaeresis */, java_awt_event_KeyEvent_VK_DEAD_DIAERESIS, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xfe58 /* XKB_KEY_dead_abovering */, java_awt_event_KeyEvent_VK_DEAD_ABOVERING, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xfe59 /* XKB_KEY_dead_doubleacute */, java_awt_event_KeyEvent_VK_DEAD_DOUBLEACUTE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xfe5a /* XKB_KEY_dead_caron */, java_awt_event_KeyEvent_VK_DEAD_CARON, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xfe5b /* XKB_KEY_dead_cedilla */, java_awt_event_KeyEvent_VK_DEAD_CEDILLA, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xfe5c /* XKB_KEY_dead_ogonek */, java_awt_event_KeyEvent_VK_DEAD_OGONEK, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xfe5d /* XKB_KEY_dead_iota */, java_awt_event_KeyEvent_VK_DEAD_IOTA, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xfe5e /* XKB_KEY_dead_voiced_sound */, java_awt_event_KeyEvent_VK_DEAD_VOICED_SOUND, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xfe5f /* XKB_KEY_dead_semivoiced_sound */, java_awt_event_KeyEvent_VK_DEAD_SEMIVOICED_SOUND, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff08 /* XKB_KEY_BackSpace */, java_awt_event_KeyEvent_VK_BACK_SPACE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff09 /* XKB_KEY_Tab */, java_awt_event_KeyEvent_VK_TAB, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff0a /* XKB_KEY_Linefeed */, java_awt_event_KeyEvent_VK_ENTER, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff0b /* XKB_KEY_Clear */, java_awt_event_KeyEvent_VK_CLEAR, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff0d /* XKB_KEY_Return */, java_awt_event_KeyEvent_VK_ENTER, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff13 /* XKB_KEY_Pause */, java_awt_event_KeyEvent_VK_PAUSE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff14 /* XKB_KEY_Scroll_Lock */, java_awt_event_KeyEvent_VK_SCROLL_LOCK, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff1b /* XKB_KEY_Escape */, java_awt_event_KeyEvent_VK_ESCAPE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff20 /* XKB_KEY_Multi_key */, java_awt_event_KeyEvent_VK_COMPOSE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff21 /* XKB_KEY_Kanji */, java_awt_event_KeyEvent_VK_CONVERT, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff22 /* XKB_KEY_Muhenkan */, java_awt_event_KeyEvent_VK_NONCONVERT, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff23 /* XKB_KEY_Henkan_Mode */, java_awt_event_KeyEvent_VK_INPUT_METHOD_ON_OFF, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff24 /* XKB_KEY_Romaji */, java_awt_event_KeyEvent_VK_JAPANESE_ROMAN, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff25 /* XKB_KEY_Hiragana */, java_awt_event_KeyEvent_VK_HIRAGANA, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff26 /* XKB_KEY_Katakana */, java_awt_event_KeyEvent_VK_KATAKANA, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff28 /* XKB_KEY_Zenkaku */, java_awt_event_KeyEvent_VK_FULL_WIDTH, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff29 /* XKB_KEY_Hankaku */, java_awt_event_KeyEvent_VK_HALF_WIDTH, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff2d /* XKB_KEY_Kana_Lock */, java_awt_event_KeyEvent_VK_KANA_LOCK, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff2e /* XKB_KEY_Kana_Shift */, java_awt_event_KeyEvent_VK_KANA, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff2f /* XKB_KEY_Eisu_Shift */, java_awt_event_KeyEvent_VK_ALPHANUMERIC, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff30 /* XKB_KEY_Eisu_toggle */, java_awt_event_KeyEvent_VK_ALPHANUMERIC, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff37 /* XKB_KEY_Kanji_Bangou */, java_awt_event_KeyEvent_VK_CODE_INPUT, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff3d /* XKB_KEY_Zen_Koho */, java_awt_event_KeyEvent_VK_ALL_CANDIDATES, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff3e /* XKB_KEY_Mae_Koho */, java_awt_event_KeyEvent_VK_PREVIOUS_CANDIDATE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff50 /* XKB_KEY_Home */, java_awt_event_KeyEvent_VK_HOME, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff51 /* XKB_KEY_Left */, java_awt_event_KeyEvent_VK_LEFT, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff52 /* XKB_KEY_Up */, java_awt_event_KeyEvent_VK_UP, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff53 /* XKB_KEY_Right */, java_awt_event_KeyEvent_VK_RIGHT, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff54 /* XKB_KEY_Down */, java_awt_event_KeyEvent_VK_DOWN, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff55 /* XKB_KEY_Page_Up */, java_awt_event_KeyEvent_VK_PAGE_UP, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff56 /* XKB_KEY_Page_Down */, java_awt_event_KeyEvent_VK_PAGE_DOWN, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff57 /* XKB_KEY_End */, java_awt_event_KeyEvent_VK_END, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff58 /* XKB_KEY_Begin */, java_awt_event_KeyEvent_VK_BEGIN, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff61 /* XKB_KEY_Print */, java_awt_event_KeyEvent_VK_PRINTSCREEN, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff62 /* XKB_KEY_Execute */, java_awt_event_KeyEvent_VK_ACCEPT, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff63 /* XKB_KEY_Insert */, java_awt_event_KeyEvent_VK_INSERT, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff65 /* XKB_KEY_Undo */, java_awt_event_KeyEvent_VK_UNDO, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff66 /* XKB_KEY_Redo */, java_awt_event_KeyEvent_VK_AGAIN, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff67 /* XKB_KEY_Menu */, java_awt_event_KeyEvent_VK_CONTEXT_MENU, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff68 /* XKB_KEY_Find */, java_awt_event_KeyEvent_VK_FIND, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff69 /* XKB_KEY_Cancel */, java_awt_event_KeyEvent_VK_CANCEL, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff6a /* XKB_KEY_Help */, java_awt_event_KeyEvent_VK_HELP, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff7e /* XKB_KEY_Mode_switch */, java_awt_event_KeyEvent_VK_ALT_GRAPH, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xff7f /* XKB_KEY_Num_Lock */, java_awt_event_KeyEvent_VK_NUM_LOCK, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xff80 /* XKB_KEY_KP_Space */, java_awt_event_KeyEvent_VK_SPACE, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xff89 /* XKB_KEY_KP_Tab */, java_awt_event_KeyEvent_VK_TAB, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xff8d /* XKB_KEY_KP_Enter */, java_awt_event_KeyEvent_VK_ENTER, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xff95 /* XKB_KEY_KP_Home */, java_awt_event_KeyEvent_VK_HOME, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xff96 /* XKB_KEY_KP_Left */, java_awt_event_KeyEvent_VK_KP_LEFT, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xff97 /* XKB_KEY_KP_Up */, java_awt_event_KeyEvent_VK_KP_UP, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xff98 /* XKB_KEY_KP_Right */, java_awt_event_KeyEvent_VK_KP_RIGHT, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xff99 /* XKB_KEY_KP_Down */, java_awt_event_KeyEvent_VK_KP_DOWN, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xff9a /* XKB_KEY_KP_Page_Up */, java_awt_event_KeyEvent_VK_PAGE_UP, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xff9b /* XKB_KEY_KP_Page_Down */, java_awt_event_KeyEvent_VK_PAGE_DOWN, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xff9c /* XKB_KEY_KP_End */, java_awt_event_KeyEvent_VK_END, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xff9d /* XKB_KEY_KP_Begin */, java_awt_event_KeyEvent_VK_BEGIN, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xff9e /* XKB_KEY_KP_Insert */, java_awt_event_KeyEvent_VK_INSERT, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xff9f /* XKB_KEY_KP_Delete */, java_awt_event_KeyEvent_VK_DELETE, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffaa /* XKB_KEY_KP_Multiply */, java_awt_event_KeyEvent_VK_MULTIPLY, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffab /* XKB_KEY_KP_Add */, java_awt_event_KeyEvent_VK_ADD, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffac /* XKB_KEY_KP_Separator */, java_awt_event_KeyEvent_VK_SEPARATOR, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffad /* XKB_KEY_KP_Subtract */, java_awt_event_KeyEvent_VK_SUBTRACT, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffae /* XKB_KEY_KP_Decimal */, java_awt_event_KeyEvent_VK_DECIMAL, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffaf /* XKB_KEY_KP_Divide */, java_awt_event_KeyEvent_VK_DIVIDE, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffb0 /* XKB_KEY_KP_0 */, java_awt_event_KeyEvent_VK_NUMPAD0, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffb1 /* XKB_KEY_KP_1 */, java_awt_event_KeyEvent_VK_NUMPAD1, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffb2 /* XKB_KEY_KP_2 */, java_awt_event_KeyEvent_VK_NUMPAD2, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffb3 /* XKB_KEY_KP_3 */, java_awt_event_KeyEvent_VK_NUMPAD3, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffb4 /* XKB_KEY_KP_4 */, java_awt_event_KeyEvent_VK_NUMPAD4, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffb5 /* XKB_KEY_KP_5 */, java_awt_event_KeyEvent_VK_NUMPAD5, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffb6 /* XKB_KEY_KP_6 */, java_awt_event_KeyEvent_VK_NUMPAD6, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffb7 /* XKB_KEY_KP_7 */, java_awt_event_KeyEvent_VK_NUMPAD7, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffb8 /* XKB_KEY_KP_8 */, java_awt_event_KeyEvent_VK_NUMPAD8, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffb9 /* XKB_KEY_KP_9 */, java_awt_event_KeyEvent_VK_NUMPAD9, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffbd /* XKB_KEY_KP_Equal */, java_awt_event_KeyEvent_VK_EQUALS, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffbe /* XKB_KEY_F1 */, java_awt_event_KeyEvent_VK_F1, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffbf /* XKB_KEY_F2 */, java_awt_event_KeyEvent_VK_F2, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffc0 /* XKB_KEY_F3 */, java_awt_event_KeyEvent_VK_F3, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffc1 /* XKB_KEY_F4 */, java_awt_event_KeyEvent_VK_F4, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffc2 /* XKB_KEY_F5 */, java_awt_event_KeyEvent_VK_F5, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffc3 /* XKB_KEY_F6 */, java_awt_event_KeyEvent_VK_F6, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffc4 /* XKB_KEY_F7 */, java_awt_event_KeyEvent_VK_F7, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffc5 /* XKB_KEY_F8 */, java_awt_event_KeyEvent_VK_F8, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffc6 /* XKB_KEY_F9 */, java_awt_event_KeyEvent_VK_F9, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffc7 /* XKB_KEY_F10 */, java_awt_event_KeyEvent_VK_F10, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffc8 /* XKB_KEY_F11 */, java_awt_event_KeyEvent_VK_F11, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffc9 /* XKB_KEY_F12 */, java_awt_event_KeyEvent_VK_F12, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffca /* XKB_KEY_F13 */, java_awt_event_KeyEvent_VK_F13, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffcb /* XKB_KEY_F14 */, java_awt_event_KeyEvent_VK_F14, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffcc /* XKB_KEY_F15 */, java_awt_event_KeyEvent_VK_F15, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffcd /* XKB_KEY_F16 */, java_awt_event_KeyEvent_VK_F16, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffce /* XKB_KEY_F17 */, java_awt_event_KeyEvent_VK_F17, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffcf /* XKB_KEY_F18 */, java_awt_event_KeyEvent_VK_F18, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffd0 /* XKB_KEY_F19 */, java_awt_event_KeyEvent_VK_F19, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffd1 /* XKB_KEY_F20 */, java_awt_event_KeyEvent_VK_F20, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffd2 /* XKB_KEY_F21 */, java_awt_event_KeyEvent_VK_F21, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffd3 /* XKB_KEY_F22 */, java_awt_event_KeyEvent_VK_F22, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffd4 /* XKB_KEY_F23 */, java_awt_event_KeyEvent_VK_F23, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffd5 /* XKB_KEY_F24 */, java_awt_event_KeyEvent_VK_F24, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffd6 /* XKB_KEY_F25 */, java_awt_event_KeyEvent_VK_DIVIDE, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffd7 /* XKB_KEY_F26 */, java_awt_event_KeyEvent_VK_MULTIPLY, java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD },
-    { 0xffd8 /* XKB_KEY_R7 */, java_awt_event_KeyEvent_VK_HOME, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffda /* XKB_KEY_R9 */, java_awt_event_KeyEvent_VK_PAGE_UP, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffde /* XKB_KEY_R13 */, java_awt_event_KeyEvent_VK_END, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffe0 /* XKB_KEY_R15 */, java_awt_event_KeyEvent_VK_PAGE_DOWN, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffe1 /* XKB_KEY_Shift_L */, java_awt_event_KeyEvent_VK_SHIFT, java_awt_event_KeyEvent_KEY_LOCATION_LEFT },
-    { 0xffe2 /* XKB_KEY_Shift_R */, java_awt_event_KeyEvent_VK_SHIFT, java_awt_event_KeyEvent_KEY_LOCATION_RIGHT },
-    { 0xffe3 /* XKB_KEY_Control_L */, java_awt_event_KeyEvent_VK_CONTROL, java_awt_event_KeyEvent_KEY_LOCATION_LEFT },
-    { 0xffe4 /* XKB_KEY_Control_R */, java_awt_event_KeyEvent_VK_CONTROL, java_awt_event_KeyEvent_KEY_LOCATION_RIGHT },
-    { 0xffe5 /* XKB_KEY_Caps_Lock */, java_awt_event_KeyEvent_VK_CAPS_LOCK, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffe6 /* XKB_KEY_Shift_Lock */, java_awt_event_KeyEvent_VK_CAPS_LOCK, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffe7 /* XKB_KEY_Meta_L */, java_awt_event_KeyEvent_VK_META, java_awt_event_KeyEvent_KEY_LOCATION_LEFT },
-    { 0xffe8 /* XKB_KEY_Meta_R */, java_awt_event_KeyEvent_VK_META, java_awt_event_KeyEvent_KEY_LOCATION_RIGHT },
-    { 0xffe9 /* XKB_KEY_Alt_L */, java_awt_event_KeyEvent_VK_ALT, java_awt_event_KeyEvent_KEY_LOCATION_LEFT },
-    { 0xffea /* XKB_KEY_Alt_R */, java_awt_event_KeyEvent_VK_ALT, java_awt_event_KeyEvent_KEY_LOCATION_RIGHT },
-    { 0xffeb /* XKB_KEY_Super_L */, java_awt_event_KeyEvent_VK_WINDOWS, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffec /* XKB_KEY_Super_R */, java_awt_event_KeyEvent_VK_WINDOWS, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0xffff /* XKB_KEY_Delete */, java_awt_event_KeyEvent_VK_DELETE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x100000a8 /* XKB_KEY_hpmute_acute */, java_awt_event_KeyEvent_VK_DEAD_ACUTE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x100000a9 /* XKB_KEY_hpmute_grave */, java_awt_event_KeyEvent_VK_DEAD_GRAVE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x100000aa /* XKB_KEY_hpmute_asciicircum */, java_awt_event_KeyEvent_VK_DEAD_CIRCUMFLEX, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x100000ab /* XKB_KEY_hpmute_diaeresis */, java_awt_event_KeyEvent_VK_DEAD_DIAERESIS, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x100000ac /* XKB_KEY_hpmute_asciitilde */, java_awt_event_KeyEvent_VK_DEAD_TILDE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1000fe22 /* XKB_KEY_Ddiaeresis */, java_awt_event_KeyEvent_VK_DEAD_DIAERESIS, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1000fe27 /* XKB_KEY_Dacute_accent */, java_awt_event_KeyEvent_VK_DEAD_ACUTE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1000fe2c /* XKB_KEY_Dcedilla_accent */, java_awt_event_KeyEvent_VK_DEAD_CEDILLA, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1000fe5e /* XKB_KEY_Dcircumflex_accent */, java_awt_event_KeyEvent_VK_DEAD_CIRCUMFLEX, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1000fe60 /* XKB_KEY_Dgrave_accent */, java_awt_event_KeyEvent_VK_DEAD_GRAVE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1000fe7e /* XKB_KEY_Dtilde */, java_awt_event_KeyEvent_VK_DEAD_TILDE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1000feb0 /* XKB_KEY_Dring_accent */, java_awt_event_KeyEvent_VK_DEAD_ABOVERING, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1000ff02 /* XKB_KEY_apCopy */, java_awt_event_KeyEvent_VK_COPY, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1000ff03 /* XKB_KEY_apCut */, java_awt_event_KeyEvent_VK_CUT, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1000ff04 /* XKB_KEY_apPaste */, java_awt_event_KeyEvent_VK_PASTE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff02 /* XKB_KEY_osfCopy */, java_awt_event_KeyEvent_VK_COPY, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff03 /* XKB_KEY_osfCut */, java_awt_event_KeyEvent_VK_CUT, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff04 /* XKB_KEY_osfPaste */, java_awt_event_KeyEvent_VK_PASTE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff08 /* XKB_KEY_osfBackSpace */, java_awt_event_KeyEvent_VK_BACK_SPACE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff0b /* XKB_KEY_osfClear */, java_awt_event_KeyEvent_VK_CLEAR, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff1b /* XKB_KEY_osfEscape */, java_awt_event_KeyEvent_VK_ESCAPE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff41 /* XKB_KEY_osfPageUp */, java_awt_event_KeyEvent_VK_PAGE_UP, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff42 /* XKB_KEY_osfPageDown */, java_awt_event_KeyEvent_VK_PAGE_DOWN, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff51 /* XKB_KEY_osfLeft */, java_awt_event_KeyEvent_VK_LEFT, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff52 /* XKB_KEY_osfUp */, java_awt_event_KeyEvent_VK_UP, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff53 /* XKB_KEY_osfRight */, java_awt_event_KeyEvent_VK_RIGHT, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff54 /* XKB_KEY_osfDown */, java_awt_event_KeyEvent_VK_DOWN, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff55 /* XKB_KEY_osfPrior */, java_awt_event_KeyEvent_VK_PAGE_UP, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff56 /* XKB_KEY_osfNext */, java_awt_event_KeyEvent_VK_PAGE_DOWN, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff57 /* XKB_KEY_osfEndLine */, java_awt_event_KeyEvent_VK_END, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff63 /* XKB_KEY_osfInsert */, java_awt_event_KeyEvent_VK_INSERT, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff65 /* XKB_KEY_osfUndo */, java_awt_event_KeyEvent_VK_UNDO, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff69 /* XKB_KEY_osfCancel */, java_awt_event_KeyEvent_VK_CANCEL, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ff6a /* XKB_KEY_osfHelp */, java_awt_event_KeyEvent_VK_HELP, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1004ffff /* XKB_KEY_osfDelete */, java_awt_event_KeyEvent_VK_DELETE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1005ff00 /* XKB_KEY_SunFA_Grave */, java_awt_event_KeyEvent_VK_DEAD_GRAVE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1005ff01 /* XKB_KEY_SunFA_Circum */, java_awt_event_KeyEvent_VK_DEAD_CIRCUMFLEX, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1005ff02 /* XKB_KEY_SunFA_Tilde */, java_awt_event_KeyEvent_VK_DEAD_TILDE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1005ff03 /* XKB_KEY_SunFA_Acute */, java_awt_event_KeyEvent_VK_DEAD_ACUTE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1005ff04 /* XKB_KEY_SunFA_Diaeresis */, java_awt_event_KeyEvent_VK_DEAD_DIAERESIS, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1005ff05 /* XKB_KEY_SunFA_Cedilla */, java_awt_event_KeyEvent_VK_DEAD_CEDILLA, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1005ff10 /* XKB_KEY_SunF36 */, java_awt_event_KeyEvent_VK_F11, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1005ff11 /* XKB_KEY_SunF37 */, java_awt_event_KeyEvent_VK_F12, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1005ff70 /* XKB_KEY_SunProps */, java_awt_event_KeyEvent_VK_PROPS, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1005ff72 /* XKB_KEY_SunCopy */, java_awt_event_KeyEvent_VK_COPY, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1005ff74 /* XKB_KEY_SunPaste */, java_awt_event_KeyEvent_VK_PASTE, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0x1005ff75 /* XKB_KEY_SunCut */, java_awt_event_KeyEvent_VK_CUT, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD },
-    { 0, 0, 0 }
+        {0x0020 /* XKB_KEY_space */,                  java_awt_event_KeyEvent_VK_SPACE,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0021 /* XKB_KEY_exclam */,                 java_awt_event_KeyEvent_VK_EXCLAMATION_MARK,          java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0022 /* XKB_KEY_quotedbl */,               java_awt_event_KeyEvent_VK_QUOTEDBL,                  java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0023 /* XKB_KEY_numbersign */,             java_awt_event_KeyEvent_VK_NUMBER_SIGN,               java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0024 /* XKB_KEY_dollar */,                 java_awt_event_KeyEvent_VK_DOLLAR,                    java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0026 /* XKB_KEY_ampersand */,              java_awt_event_KeyEvent_VK_AMPERSAND,                 java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0027 /* XKB_KEY_apostrophe */,             java_awt_event_KeyEvent_VK_QUOTE,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0028 /* XKB_KEY_parenleft */,              java_awt_event_KeyEvent_VK_LEFT_PARENTHESIS,          java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0029 /* XKB_KEY_parenright */,             java_awt_event_KeyEvent_VK_RIGHT_PARENTHESIS,         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x002a /* XKB_KEY_asterisk */,               java_awt_event_KeyEvent_VK_ASTERISK,                  java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x002b /* XKB_KEY_plus */,                   java_awt_event_KeyEvent_VK_PLUS,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x002c /* XKB_KEY_comma */,                  java_awt_event_KeyEvent_VK_COMMA,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x002d /* XKB_KEY_minus */,                  java_awt_event_KeyEvent_VK_MINUS,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x002e /* XKB_KEY_period */,                 java_awt_event_KeyEvent_VK_PERIOD,                    java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x002f /* XKB_KEY_slash */,                  java_awt_event_KeyEvent_VK_SLASH,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0030 /* XKB_KEY_0 */,                      java_awt_event_KeyEvent_VK_0,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0031 /* XKB_KEY_1 */,                      java_awt_event_KeyEvent_VK_1,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0032 /* XKB_KEY_2 */,                      java_awt_event_KeyEvent_VK_2,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0033 /* XKB_KEY_3 */,                      java_awt_event_KeyEvent_VK_3,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0034 /* XKB_KEY_4 */,                      java_awt_event_KeyEvent_VK_4,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0035 /* XKB_KEY_5 */,                      java_awt_event_KeyEvent_VK_5,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0036 /* XKB_KEY_6 */,                      java_awt_event_KeyEvent_VK_6,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0037 /* XKB_KEY_7 */,                      java_awt_event_KeyEvent_VK_7,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0038 /* XKB_KEY_8 */,                      java_awt_event_KeyEvent_VK_8,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0039 /* XKB_KEY_9 */,                      java_awt_event_KeyEvent_VK_9,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x003a /* XKB_KEY_colon */,                  java_awt_event_KeyEvent_VK_COLON,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x003b /* XKB_KEY_semicolon */,              java_awt_event_KeyEvent_VK_SEMICOLON,                 java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x003c /* XKB_KEY_less */,                   java_awt_event_KeyEvent_VK_LESS,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x003d /* XKB_KEY_equal */,                  java_awt_event_KeyEvent_VK_EQUALS,                    java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x003e /* XKB_KEY_greater */,                java_awt_event_KeyEvent_VK_GREATER,                   java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0040 /* XKB_KEY_at */,                     java_awt_event_KeyEvent_VK_AT,                        java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x005b /* XKB_KEY_bracketleft */,            java_awt_event_KeyEvent_VK_OPEN_BRACKET,              java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x005c /* XKB_KEY_backslash */,              java_awt_event_KeyEvent_VK_BACK_SLASH,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x005d /* XKB_KEY_bracketright */,           java_awt_event_KeyEvent_VK_CLOSE_BRACKET,             java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x005e /* XKB_KEY_asciicircum */,            java_awt_event_KeyEvent_VK_CIRCUMFLEX,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x005f /* XKB_KEY_underscore */,             java_awt_event_KeyEvent_VK_UNDERSCORE,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0060 /* XKB_KEY_grave */,                  java_awt_event_KeyEvent_VK_BACK_QUOTE,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0061 /* XKB_KEY_a */,                      java_awt_event_KeyEvent_VK_A,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0062 /* XKB_KEY_b */,                      java_awt_event_KeyEvent_VK_B,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0063 /* XKB_KEY_c */,                      java_awt_event_KeyEvent_VK_C,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0064 /* XKB_KEY_d */,                      java_awt_event_KeyEvent_VK_D,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0065 /* XKB_KEY_e */,                      java_awt_event_KeyEvent_VK_E,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0066 /* XKB_KEY_f */,                      java_awt_event_KeyEvent_VK_F,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0067 /* XKB_KEY_g */,                      java_awt_event_KeyEvent_VK_G,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0068 /* XKB_KEY_h */,                      java_awt_event_KeyEvent_VK_H,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0069 /* XKB_KEY_i */,                      java_awt_event_KeyEvent_VK_I,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x006a /* XKB_KEY_j */,                      java_awt_event_KeyEvent_VK_J,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x006b /* XKB_KEY_k */,                      java_awt_event_KeyEvent_VK_K,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x006c /* XKB_KEY_l */,                      java_awt_event_KeyEvent_VK_L,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x006d /* XKB_KEY_m */,                      java_awt_event_KeyEvent_VK_M,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x006e /* XKB_KEY_n */,                      java_awt_event_KeyEvent_VK_N,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x006f /* XKB_KEY_o */,                      java_awt_event_KeyEvent_VK_O,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0070 /* XKB_KEY_p */,                      java_awt_event_KeyEvent_VK_P,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0071 /* XKB_KEY_q */,                      java_awt_event_KeyEvent_VK_Q,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0072 /* XKB_KEY_r */,                      java_awt_event_KeyEvent_VK_R,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0073 /* XKB_KEY_s */,                      java_awt_event_KeyEvent_VK_S,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0074 /* XKB_KEY_t */,                      java_awt_event_KeyEvent_VK_T,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0075 /* XKB_KEY_u */,                      java_awt_event_KeyEvent_VK_U,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0076 /* XKB_KEY_v */,                      java_awt_event_KeyEvent_VK_V,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0077 /* XKB_KEY_w */,                      java_awt_event_KeyEvent_VK_W,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0078 /* XKB_KEY_x */,                      java_awt_event_KeyEvent_VK_X,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x0079 /* XKB_KEY_y */,                      java_awt_event_KeyEvent_VK_Y,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x007a /* XKB_KEY_z */,                      java_awt_event_KeyEvent_VK_Z,                         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x007b /* XKB_KEY_braceleft */,              java_awt_event_KeyEvent_VK_BRACELEFT,                 java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x007d /* XKB_KEY_braceright */,             java_awt_event_KeyEvent_VK_BRACERIGHT,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x00a1 /* XKB_KEY_exclamdown */,             java_awt_event_KeyEvent_VK_INVERTED_EXCLAMATION_MARK, java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xfe03 /* XKB_KEY_ISO_Level3_Shift */,       java_awt_event_KeyEvent_VK_ALT_GRAPH,                 java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xfe20 /* XKB_KEY_ISO_Left_Tab */,           java_awt_event_KeyEvent_VK_TAB,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xfe50 /* XKB_KEY_dead_grave */,             java_awt_event_KeyEvent_VK_DEAD_GRAVE,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xfe51 /* XKB_KEY_dead_acute */,             java_awt_event_KeyEvent_VK_DEAD_ACUTE,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xfe52 /* XKB_KEY_dead_circumflex */,        java_awt_event_KeyEvent_VK_DEAD_CIRCUMFLEX,           java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xfe53 /* XKB_KEY_dead_tilde */,             java_awt_event_KeyEvent_VK_DEAD_TILDE,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xfe54 /* XKB_KEY_dead_macron */,            java_awt_event_KeyEvent_VK_DEAD_MACRON,               java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xfe55 /* XKB_KEY_dead_breve */,             java_awt_event_KeyEvent_VK_DEAD_BREVE,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xfe56 /* XKB_KEY_dead_abovedot */,          java_awt_event_KeyEvent_VK_DEAD_ABOVEDOT,             java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xfe57 /* XKB_KEY_dead_diaeresis */,         java_awt_event_KeyEvent_VK_DEAD_DIAERESIS,            java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xfe58 /* XKB_KEY_dead_abovering */,         java_awt_event_KeyEvent_VK_DEAD_ABOVERING,            java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xfe59 /* XKB_KEY_dead_doubleacute */,       java_awt_event_KeyEvent_VK_DEAD_DOUBLEACUTE,          java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xfe5a /* XKB_KEY_dead_caron */,             java_awt_event_KeyEvent_VK_DEAD_CARON,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xfe5b /* XKB_KEY_dead_cedilla */,           java_awt_event_KeyEvent_VK_DEAD_CEDILLA,              java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xfe5c /* XKB_KEY_dead_ogonek */,            java_awt_event_KeyEvent_VK_DEAD_OGONEK,               java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xfe5d /* XKB_KEY_dead_iota */,              java_awt_event_KeyEvent_VK_DEAD_IOTA,                 java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xfe5e /* XKB_KEY_dead_voiced_sound */,      java_awt_event_KeyEvent_VK_DEAD_VOICED_SOUND,         java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xfe5f /* XKB_KEY_dead_semivoiced_sound */,  java_awt_event_KeyEvent_VK_DEAD_SEMIVOICED_SOUND,     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff08 /* XKB_KEY_BackSpace */,              java_awt_event_KeyEvent_VK_BACK_SPACE,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff09 /* XKB_KEY_Tab */,                    java_awt_event_KeyEvent_VK_TAB,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff0a /* XKB_KEY_Linefeed */,               java_awt_event_KeyEvent_VK_ENTER,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff0b /* XKB_KEY_Clear */,                  java_awt_event_KeyEvent_VK_CLEAR,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff0d /* XKB_KEY_Return */,                 java_awt_event_KeyEvent_VK_ENTER,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff13 /* XKB_KEY_Pause */,                  java_awt_event_KeyEvent_VK_PAUSE,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff14 /* XKB_KEY_Scroll_Lock */,            java_awt_event_KeyEvent_VK_SCROLL_LOCK,               java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff1b /* XKB_KEY_Escape */,                 java_awt_event_KeyEvent_VK_ESCAPE,                    java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff20 /* XKB_KEY_Multi_key */,              java_awt_event_KeyEvent_VK_COMPOSE,                   java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff21 /* XKB_KEY_Kanji */,                  java_awt_event_KeyEvent_VK_CONVERT,                   java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff22 /* XKB_KEY_Muhenkan */,               java_awt_event_KeyEvent_VK_NONCONVERT,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff23 /* XKB_KEY_Henkan_Mode */,            java_awt_event_KeyEvent_VK_INPUT_METHOD_ON_OFF,       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff24 /* XKB_KEY_Romaji */,                 java_awt_event_KeyEvent_VK_JAPANESE_ROMAN,            java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff25 /* XKB_KEY_Hiragana */,               java_awt_event_KeyEvent_VK_HIRAGANA,                  java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff26 /* XKB_KEY_Katakana */,               java_awt_event_KeyEvent_VK_KATAKANA,                  java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff28 /* XKB_KEY_Zenkaku */,                java_awt_event_KeyEvent_VK_FULL_WIDTH,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff29 /* XKB_KEY_Hankaku */,                java_awt_event_KeyEvent_VK_HALF_WIDTH,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff2d /* XKB_KEY_Kana_Lock */,              java_awt_event_KeyEvent_VK_KANA_LOCK,                 java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff2e /* XKB_KEY_Kana_Shift */,             java_awt_event_KeyEvent_VK_KANA,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff2f /* XKB_KEY_Eisu_Shift */,             java_awt_event_KeyEvent_VK_ALPHANUMERIC,              java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff30 /* XKB_KEY_Eisu_toggle */,            java_awt_event_KeyEvent_VK_ALPHANUMERIC,              java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff37 /* XKB_KEY_Kanji_Bangou */,           java_awt_event_KeyEvent_VK_CODE_INPUT,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff3d /* XKB_KEY_Zen_Koho */,               java_awt_event_KeyEvent_VK_ALL_CANDIDATES,            java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff3e /* XKB_KEY_Mae_Koho */,               java_awt_event_KeyEvent_VK_PREVIOUS_CANDIDATE,        java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff50 /* XKB_KEY_Home */,                   java_awt_event_KeyEvent_VK_HOME,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff51 /* XKB_KEY_Left */,                   java_awt_event_KeyEvent_VK_LEFT,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff52 /* XKB_KEY_Up */,                     java_awt_event_KeyEvent_VK_UP,                        java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff53 /* XKB_KEY_Right */,                  java_awt_event_KeyEvent_VK_RIGHT,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff54 /* XKB_KEY_Down */,                   java_awt_event_KeyEvent_VK_DOWN,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff55 /* XKB_KEY_Page_Up */,                java_awt_event_KeyEvent_VK_PAGE_UP,                   java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff56 /* XKB_KEY_Page_Down */,              java_awt_event_KeyEvent_VK_PAGE_DOWN,                 java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff57 /* XKB_KEY_End */,                    java_awt_event_KeyEvent_VK_END,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff58 /* XKB_KEY_Begin */,                  java_awt_event_KeyEvent_VK_BEGIN,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff61 /* XKB_KEY_Print */,                  java_awt_event_KeyEvent_VK_PRINTSCREEN,               java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff62 /* XKB_KEY_Execute */,                java_awt_event_KeyEvent_VK_ACCEPT,                    java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff63 /* XKB_KEY_Insert */,                 java_awt_event_KeyEvent_VK_INSERT,                    java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff65 /* XKB_KEY_Undo */,                   java_awt_event_KeyEvent_VK_UNDO,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff66 /* XKB_KEY_Redo */,                   java_awt_event_KeyEvent_VK_AGAIN,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff67 /* XKB_KEY_Menu */,                   java_awt_event_KeyEvent_VK_CONTEXT_MENU,              java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff68 /* XKB_KEY_Find */,                   java_awt_event_KeyEvent_VK_FIND,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff69 /* XKB_KEY_Cancel */,                 java_awt_event_KeyEvent_VK_CANCEL,                    java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff6a /* XKB_KEY_Help */,                   java_awt_event_KeyEvent_VK_HELP,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff7e /* XKB_KEY_Mode_switch */,            java_awt_event_KeyEvent_VK_ALT_GRAPH,                 java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xff7f /* XKB_KEY_Num_Lock */,               java_awt_event_KeyEvent_VK_NUM_LOCK,                  java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xff80 /* XKB_KEY_KP_Space */,               java_awt_event_KeyEvent_VK_SPACE,                     java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xff89 /* XKB_KEY_KP_Tab */,                 java_awt_event_KeyEvent_VK_TAB,                       java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xff8d /* XKB_KEY_KP_Enter */,               java_awt_event_KeyEvent_VK_ENTER,                     java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xff95 /* XKB_KEY_KP_Home */,                java_awt_event_KeyEvent_VK_HOME,                      java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xff96 /* XKB_KEY_KP_Left */,                java_awt_event_KeyEvent_VK_KP_LEFT,                   java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xff97 /* XKB_KEY_KP_Up */,                  java_awt_event_KeyEvent_VK_KP_UP,                     java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xff98 /* XKB_KEY_KP_Right */,               java_awt_event_KeyEvent_VK_KP_RIGHT,                  java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xff99 /* XKB_KEY_KP_Down */,                java_awt_event_KeyEvent_VK_KP_DOWN,                   java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xff9a /* XKB_KEY_KP_Page_Up */,             java_awt_event_KeyEvent_VK_PAGE_UP,                   java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xff9b /* XKB_KEY_KP_Page_Down */,           java_awt_event_KeyEvent_VK_PAGE_DOWN,                 java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xff9c /* XKB_KEY_KP_End */,                 java_awt_event_KeyEvent_VK_END,                       java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xff9d /* XKB_KEY_KP_Begin */,               java_awt_event_KeyEvent_VK_BEGIN,                     java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xff9e /* XKB_KEY_KP_Insert */,              java_awt_event_KeyEvent_VK_INSERT,                    java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xff9f /* XKB_KEY_KP_Delete */,              java_awt_event_KeyEvent_VK_DELETE,                    java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffaa /* XKB_KEY_KP_Multiply */,            java_awt_event_KeyEvent_VK_MULTIPLY,                  java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffab /* XKB_KEY_KP_Add */,                 java_awt_event_KeyEvent_VK_ADD,                       java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffac /* XKB_KEY_KP_Separator */,           java_awt_event_KeyEvent_VK_SEPARATOR,                 java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffad /* XKB_KEY_KP_Subtract */,            java_awt_event_KeyEvent_VK_SUBTRACT,                  java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffae /* XKB_KEY_KP_Decimal */,             java_awt_event_KeyEvent_VK_DECIMAL,                   java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffaf /* XKB_KEY_KP_Divide */,              java_awt_event_KeyEvent_VK_DIVIDE,                    java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffb0 /* XKB_KEY_KP_0 */,                   java_awt_event_KeyEvent_VK_NUMPAD0,                   java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffb1 /* XKB_KEY_KP_1 */,                   java_awt_event_KeyEvent_VK_NUMPAD1,                   java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffb2 /* XKB_KEY_KP_2 */,                   java_awt_event_KeyEvent_VK_NUMPAD2,                   java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffb3 /* XKB_KEY_KP_3 */,                   java_awt_event_KeyEvent_VK_NUMPAD3,                   java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffb4 /* XKB_KEY_KP_4 */,                   java_awt_event_KeyEvent_VK_NUMPAD4,                   java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffb5 /* XKB_KEY_KP_5 */,                   java_awt_event_KeyEvent_VK_NUMPAD5,                   java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffb6 /* XKB_KEY_KP_6 */,                   java_awt_event_KeyEvent_VK_NUMPAD6,                   java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffb7 /* XKB_KEY_KP_7 */,                   java_awt_event_KeyEvent_VK_NUMPAD7,                   java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffb8 /* XKB_KEY_KP_8 */,                   java_awt_event_KeyEvent_VK_NUMPAD8,                   java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffb9 /* XKB_KEY_KP_9 */,                   java_awt_event_KeyEvent_VK_NUMPAD9,                   java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffbd /* XKB_KEY_KP_Equal */,               java_awt_event_KeyEvent_VK_EQUALS,                    java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffbe /* XKB_KEY_F1 */,                     java_awt_event_KeyEvent_VK_F1,                        java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffbf /* XKB_KEY_F2 */,                     java_awt_event_KeyEvent_VK_F2,                        java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffc0 /* XKB_KEY_F3 */,                     java_awt_event_KeyEvent_VK_F3,                        java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffc1 /* XKB_KEY_F4 */,                     java_awt_event_KeyEvent_VK_F4,                        java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffc2 /* XKB_KEY_F5 */,                     java_awt_event_KeyEvent_VK_F5,                        java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffc3 /* XKB_KEY_F6 */,                     java_awt_event_KeyEvent_VK_F6,                        java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffc4 /* XKB_KEY_F7 */,                     java_awt_event_KeyEvent_VK_F7,                        java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffc5 /* XKB_KEY_F8 */,                     java_awt_event_KeyEvent_VK_F8,                        java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffc6 /* XKB_KEY_F9 */,                     java_awt_event_KeyEvent_VK_F9,                        java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffc7 /* XKB_KEY_F10 */,                    java_awt_event_KeyEvent_VK_F10,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffc8 /* XKB_KEY_F11 */,                    java_awt_event_KeyEvent_VK_F11,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffc9 /* XKB_KEY_F12 */,                    java_awt_event_KeyEvent_VK_F12,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffca /* XKB_KEY_F13 */,                    java_awt_event_KeyEvent_VK_F13,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffcb /* XKB_KEY_F14 */,                    java_awt_event_KeyEvent_VK_F14,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffcc /* XKB_KEY_F15 */,                    java_awt_event_KeyEvent_VK_F15,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffcd /* XKB_KEY_F16 */,                    java_awt_event_KeyEvent_VK_F16,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffce /* XKB_KEY_F17 */,                    java_awt_event_KeyEvent_VK_F17,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffcf /* XKB_KEY_F18 */,                    java_awt_event_KeyEvent_VK_F18,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffd0 /* XKB_KEY_F19 */,                    java_awt_event_KeyEvent_VK_F19,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffd1 /* XKB_KEY_F20 */,                    java_awt_event_KeyEvent_VK_F20,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffd2 /* XKB_KEY_F21 */,                    java_awt_event_KeyEvent_VK_F21,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffd3 /* XKB_KEY_F22 */,                    java_awt_event_KeyEvent_VK_F22,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffd4 /* XKB_KEY_F23 */,                    java_awt_event_KeyEvent_VK_F23,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffd5 /* XKB_KEY_F24 */,                    java_awt_event_KeyEvent_VK_F24,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffd6 /* XKB_KEY_F25 */,                    java_awt_event_KeyEvent_VK_DIVIDE,                    java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffd7 /* XKB_KEY_F26 */,                    java_awt_event_KeyEvent_VK_MULTIPLY,                  java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD},
+        {0xffd8 /* XKB_KEY_R7 */,                     java_awt_event_KeyEvent_VK_HOME,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffda /* XKB_KEY_R9 */,                     java_awt_event_KeyEvent_VK_PAGE_UP,                   java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffde /* XKB_KEY_R13 */,                    java_awt_event_KeyEvent_VK_END,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffe0 /* XKB_KEY_R15 */,                    java_awt_event_KeyEvent_VK_PAGE_DOWN,                 java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffe1 /* XKB_KEY_Shift_L */,                java_awt_event_KeyEvent_VK_SHIFT,                     java_awt_event_KeyEvent_KEY_LOCATION_LEFT},
+        {0xffe2 /* XKB_KEY_Shift_R */,                java_awt_event_KeyEvent_VK_SHIFT,                     java_awt_event_KeyEvent_KEY_LOCATION_RIGHT},
+        {0xffe3 /* XKB_KEY_Control_L */,              java_awt_event_KeyEvent_VK_CONTROL,                   java_awt_event_KeyEvent_KEY_LOCATION_LEFT},
+        {0xffe4 /* XKB_KEY_Control_R */,              java_awt_event_KeyEvent_VK_CONTROL,                   java_awt_event_KeyEvent_KEY_LOCATION_RIGHT},
+        {0xffe5 /* XKB_KEY_Caps_Lock */,              java_awt_event_KeyEvent_VK_CAPS_LOCK,                 java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffe6 /* XKB_KEY_Shift_Lock */,             java_awt_event_KeyEvent_VK_CAPS_LOCK,                 java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffe7 /* XKB_KEY_Meta_L */,                 java_awt_event_KeyEvent_VK_META,                      java_awt_event_KeyEvent_KEY_LOCATION_LEFT},
+        {0xffe8 /* XKB_KEY_Meta_R */,                 java_awt_event_KeyEvent_VK_META,                      java_awt_event_KeyEvent_KEY_LOCATION_RIGHT},
+        {0xffe9 /* XKB_KEY_Alt_L */,                  java_awt_event_KeyEvent_VK_ALT,                       java_awt_event_KeyEvent_KEY_LOCATION_LEFT},
+        {0xffea /* XKB_KEY_Alt_R */,                  java_awt_event_KeyEvent_VK_ALT,                       java_awt_event_KeyEvent_KEY_LOCATION_RIGHT},
+        {0xffeb /* XKB_KEY_Super_L */,                java_awt_event_KeyEvent_VK_WINDOWS,                   java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffec /* XKB_KEY_Super_R */,                java_awt_event_KeyEvent_VK_WINDOWS,                   java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0xffff /* XKB_KEY_Delete */,                 java_awt_event_KeyEvent_VK_DELETE,                    java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x100000a8 /* XKB_KEY_hpmute_acute */,       java_awt_event_KeyEvent_VK_DEAD_ACUTE,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x100000a9 /* XKB_KEY_hpmute_grave */,       java_awt_event_KeyEvent_VK_DEAD_GRAVE,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x100000aa /* XKB_KEY_hpmute_asciicircum */, java_awt_event_KeyEvent_VK_DEAD_CIRCUMFLEX,           java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x100000ab /* XKB_KEY_hpmute_diaeresis */,   java_awt_event_KeyEvent_VK_DEAD_DIAERESIS,            java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x100000ac /* XKB_KEY_hpmute_asciitilde */,  java_awt_event_KeyEvent_VK_DEAD_TILDE,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1000fe22 /* XKB_KEY_Ddiaeresis */,         java_awt_event_KeyEvent_VK_DEAD_DIAERESIS,            java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1000fe27 /* XKB_KEY_Dacute_accent */,      java_awt_event_KeyEvent_VK_DEAD_ACUTE,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1000fe2c /* XKB_KEY_Dcedilla_accent */,    java_awt_event_KeyEvent_VK_DEAD_CEDILLA,              java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1000fe5e /* XKB_KEY_Dcircumflex_accent */, java_awt_event_KeyEvent_VK_DEAD_CIRCUMFLEX,           java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1000fe60 /* XKB_KEY_Dgrave_accent */,      java_awt_event_KeyEvent_VK_DEAD_GRAVE,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1000fe7e /* XKB_KEY_Dtilde */,             java_awt_event_KeyEvent_VK_DEAD_TILDE,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1000feb0 /* XKB_KEY_Dring_accent */,       java_awt_event_KeyEvent_VK_DEAD_ABOVERING,            java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1000ff02 /* XKB_KEY_apCopy */,             java_awt_event_KeyEvent_VK_COPY,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1000ff03 /* XKB_KEY_apCut */,              java_awt_event_KeyEvent_VK_CUT,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1000ff04 /* XKB_KEY_apPaste */,            java_awt_event_KeyEvent_VK_PASTE,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff02 /* XKB_KEY_osfCopy */,            java_awt_event_KeyEvent_VK_COPY,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff03 /* XKB_KEY_osfCut */,             java_awt_event_KeyEvent_VK_CUT,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff04 /* XKB_KEY_osfPaste */,           java_awt_event_KeyEvent_VK_PASTE,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff08 /* XKB_KEY_osfBackSpace */,       java_awt_event_KeyEvent_VK_BACK_SPACE,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff0b /* XKB_KEY_osfClear */,           java_awt_event_KeyEvent_VK_CLEAR,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff1b /* XKB_KEY_osfEscape */,          java_awt_event_KeyEvent_VK_ESCAPE,                    java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff41 /* XKB_KEY_osfPageUp */,          java_awt_event_KeyEvent_VK_PAGE_UP,                   java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff42 /* XKB_KEY_osfPageDown */,        java_awt_event_KeyEvent_VK_PAGE_DOWN,                 java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff51 /* XKB_KEY_osfLeft */,            java_awt_event_KeyEvent_VK_LEFT,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff52 /* XKB_KEY_osfUp */,              java_awt_event_KeyEvent_VK_UP,                        java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff53 /* XKB_KEY_osfRight */,           java_awt_event_KeyEvent_VK_RIGHT,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff54 /* XKB_KEY_osfDown */,            java_awt_event_KeyEvent_VK_DOWN,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff55 /* XKB_KEY_osfPrior */,           java_awt_event_KeyEvent_VK_PAGE_UP,                   java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff56 /* XKB_KEY_osfNext */,            java_awt_event_KeyEvent_VK_PAGE_DOWN,                 java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff57 /* XKB_KEY_osfEndLine */,         java_awt_event_KeyEvent_VK_END,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff63 /* XKB_KEY_osfInsert */,          java_awt_event_KeyEvent_VK_INSERT,                    java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff65 /* XKB_KEY_osfUndo */,            java_awt_event_KeyEvent_VK_UNDO,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff69 /* XKB_KEY_osfCancel */,          java_awt_event_KeyEvent_VK_CANCEL,                    java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ff6a /* XKB_KEY_osfHelp */,            java_awt_event_KeyEvent_VK_HELP,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1004ffff /* XKB_KEY_osfDelete */,          java_awt_event_KeyEvent_VK_DELETE,                    java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1005ff00 /* XKB_KEY_SunFA_Grave */,        java_awt_event_KeyEvent_VK_DEAD_GRAVE,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1005ff01 /* XKB_KEY_SunFA_Circum */,       java_awt_event_KeyEvent_VK_DEAD_CIRCUMFLEX,           java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1005ff02 /* XKB_KEY_SunFA_Tilde */,        java_awt_event_KeyEvent_VK_DEAD_TILDE,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1005ff03 /* XKB_KEY_SunFA_Acute */,        java_awt_event_KeyEvent_VK_DEAD_ACUTE,                java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1005ff04 /* XKB_KEY_SunFA_Diaeresis */,    java_awt_event_KeyEvent_VK_DEAD_DIAERESIS,            java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1005ff05 /* XKB_KEY_SunFA_Cedilla */,      java_awt_event_KeyEvent_VK_DEAD_CEDILLA,              java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1005ff10 /* XKB_KEY_SunF36 */,             java_awt_event_KeyEvent_VK_F11,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1005ff11 /* XKB_KEY_SunF37 */,             java_awt_event_KeyEvent_VK_F12,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1005ff70 /* XKB_KEY_SunProps */,           java_awt_event_KeyEvent_VK_PROPS,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1005ff72 /* XKB_KEY_SunCopy */,            java_awt_event_KeyEvent_VK_COPY,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1005ff74 /* XKB_KEY_SunPaste */,           java_awt_event_KeyEvent_VK_PASTE,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1005ff75 /* XKB_KEY_SunCut */,             java_awt_event_KeyEvent_VK_CUT,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0, 0, 0}
 };
 
 
@@ -867,24 +865,64 @@ static const struct ExtraKeycodeToKeysymMapItem {
     xkb_keycode_t keycode;
     xkb_keysym_t keysym;
 } extraKeycodeToKeysymMap[] = {
-    { 183 /* KEY_F13 */, 0xffca /* XKB_KEY_F13 */ },
-    { 184 /* KEY_F14 */, 0xffcb /* XKB_KEY_F14 */ },
-    { 185 /* KEY_F15 */, 0xffcc /* XKB_KEY_F15 */ },
-    { 186 /* KEY_F16 */, 0xffcd /* XKB_KEY_F16 */ },
-    { 187 /* KEY_F17 */, 0xffce /* XKB_KEY_F17 */ },
-    { 188 /* KEY_F18 */, 0xffcf /* XKB_KEY_F18 */ },
-    { 189 /* KEY_F19 */, 0xffd0 /* XKB_KEY_F19 */ },
-    { 190 /* KEY_F20 */, 0xffd1 /* XKB_KEY_F20 */ },
-    { 191 /* KEY_F21 */, 0xffd2 /* XKB_KEY_F21 */ },
-    { 192 /* KEY_F22 */, 0xffd3 /* XKB_KEY_F22 */ },
-    { 193 /* KEY_F23 */, 0xffd4 /* XKB_KEY_F23 */},
-    { 194 /* KEY_F24 */, 0xffd5 /* XKB_KEY_F24 */ },
-    { 0, 0 }
+        {183 /* KEY_F13 */, 0xffca /* XKB_KEY_F13 */ },
+        {184 /* KEY_F14 */, 0xffcb /* XKB_KEY_F14 */ },
+        {185 /* KEY_F15 */, 0xffcc /* XKB_KEY_F15 */ },
+        {186 /* KEY_F16 */, 0xffcd /* XKB_KEY_F16 */ },
+        {187 /* KEY_F17 */, 0xffce /* XKB_KEY_F17 */ },
+        {188 /* KEY_F18 */, 0xffcf /* XKB_KEY_F18 */ },
+        {189 /* KEY_F19 */, 0xffd0 /* XKB_KEY_F19 */ },
+        {190 /* KEY_F20 */, 0xffd1 /* XKB_KEY_F20 */ },
+        {191 /* KEY_F21 */, 0xffd2 /* XKB_KEY_F21 */ },
+        {192 /* KEY_F22 */, 0xffd3 /* XKB_KEY_F22 */ },
+        {193 /* KEY_F23 */, 0xffd4 /* XKB_KEY_F23 */},
+        {194 /* KEY_F24 */, 0xffd5 /* XKB_KEY_F24 */ },
+        {0,                 0}
+};
+
+static const struct DeadKeysymValuesMapItem {
+    xkb_keysym_t keysym;
+    uint16_t noncombining;
+    uint16_t combining;
+} deadKeysymValuesMap[] = {
+        {0xfe50 /* XKB_KEY_dead_grave */,            0x0060 /* GRAVE ACCENT */,        0x0300 /* COMBINING GRAVE ACCENT */ },
+        {0xfe51 /* XKB_KEY_dead_acute */,            0x0027 /* APOSTROPHE */,          0x0301 /* COMBINING ACUTE ACCENT */ },
+        {0xfe52 /* XKB_KEY_dead_circumflex */,       0x005e /* CIRCUMFLEX ACCENT */,   0x0302 /* COMBINING CIRCUMFLEX ACCENT */ },
+        {0xfe53 /* XKB_KEY_dead_tilde */,            0x007e /* TILDE */,               0x0303 /* COMBINING TILDE */ },
+        {0xfe54 /* XKB_KEY_dead_macron */,           0x00af /* MACRON */,              0x0304 /* COMBINING MACRON */ },
+        {0xfe55 /* XKB_KEY_dead_breve */,            0x02d8 /* BREVE */,               0x0306 /* COMBINING BREVE */ },
+        {0xfe56 /* XKB_KEY_dead_abovedot */,         0x02d9 /* DOT ABOVE */,           0x0307 /* COMBINING DOT ABOVE */ },
+        {0xfe57 /* XKB_KEY_dead_diaeresis */,        0x0022 /* QUOTATION MARK */,      0x0308 /* COMBINING DIAERESIS */ },
+        {0xfe58 /* XKB_KEY_dead_abovering */,        0x00b0 /* DEGREE SIGN */,         0x030a /* COMBINING RING ABOVE */ },
+        {0xfe59 /* XKB_KEY_dead_doubleacute */,      0x02dd /* DOUBLE ACUTE ACCENT */, 0x030b /* COMBINING DOUBLE ACUTE ACCENT */ },
+        {0xfe5a /* XKB_KEY_dead_caron */,            0x02c7 /* CARON */,               0x030c /* COMBINING CARON */ },
+        {0xfe5b /* XKB_KEY_dead_cedilla */,          0x00b8 /* CEDILLA */,             0x0327 /* COMBINING CEDILLA */ },
+        {0xfe5c /* XKB_KEY_dead_ogonek */,           0x02db /* OGONEK */,              0x0328 /* COMBINING OGONEK */ },
+        {0xfe5d /* XKB_KEY_dead_iota */,             0x037a /* GREEK YPOGEGRAMMENI */, 0x0345 /* COMBINING GREEK YPOGEGRAMMENI */ },
+        {0xfe5e /* XKB_KEY_dead_voiced_sound */,     0,                                0x3099 /* COMBINING KATAKANA-HIRAGANA VOICED SOUND MARK */ },
+        {0xfe5f /* XKB_KEY_dead_semivoiced_sound */, 0,                                0x309a /* COMBINING KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK */ },
+        {0xfe60 /* XKB_KEY_dead_belowdot */,         0,                                0x0323 /* COMBINING DOT BELOW */ },
+        {0xfe61 /* XKB_KEY_dead_hook */,             0,                                0x0309 /* COMBINING HOOK ABOVE */ },
+        {0xfe62 /* XKB_KEY_dead_horn */,             0,                                0x031b /* COMBINING HORN */ },
+        {0xfe63 /* XKB_KEY_dead_stroke */,           0x002f /* SOLIDUS */,             0x0338 /* COMBINING LONG SOLIDUS OVERLAY */ },
+        {0xfe64 /* XKB_KEY_dead_psili */,            0,                                0x0313 /* COMBINING COMMA ABOVE */ },
+        {0xfe65 /* XKB_KEY_dead_dasia */,            0,                                0x0314 /* COMBINING REVERSED COMMA ABOVE */ },
+        {0xfe66 /* XKB_KEY_dead_doublegrave */,      0,                                0x030f /* COMBINING DOUBLE GRAVE ACCENT */ },
+        {0xfe67 /* XKB_KEY_dead_belowring */,        0,                                0x0325 /* COMBINING RING BELOW */ },
+        {0xfe68 /* XKB_KEY_dead_belowmacron */,      0,                                0x0331 /* COMBINING MACRON BELOW */ },
+        {0xfe69 /* XKB_KEY_dead_belowcircumflex */,  0,                                0x032d /* COMBINING CIRCUMFLEX ACCENT BELOW */ },
+        {0xfe6a /* XKB_KEY_dead_belowtilde */,       0,                                0x0330 /* COMBINING TILDE BELOW */ },
+        {0xfe6b /* XKB_KEY_dead_belowbreve */,       0,                                0x032e /* COMBINING BREVE BELOW */ },
+        {0xfe6c /* XKB_KEY_dead_belowdiaeresis */,   0,                                0x0324 /* COMBINING DIAERESIS BELOW */ },
+        {0xfe6d /* XKB_KEY_dead_invertedbreve */,    0,                                0x0311 /* COMBINING INVERTED BREVE */ },
+        {0xfe6e /* XKB_KEY_dead_belowcomma */,       0x002c /* COMMA */,               0x0326 /* COMBINING COMMA BELOW */ },
+        {0xfe6f /* XKB_KEY_dead_currency */,         0,                                0x00a4 /* CURRENCY SIGN */ },
+        {0xfe8c /* XKB_KEY_dead_greek */,            0,                                0x00b5 /* MICRO SIGN */ },
+        {0,                                          0,                                0}
 };
 
 static xkb_layout_index_t
-getKeyboardLayoutIndex(void)
-{
+getKeyboardLayoutIndex(void) {
     xkb_layout_index_t num = xkb.keymap_num_layouts(keyboard.keymap);
     for (xkb_layout_index_t i = 0; i < num; ++i) {
         if (xkb.state_layout_index_is_active(keyboard.state, i, XKB_STATE_LAYOUT_EFFECTIVE)) {
@@ -895,7 +933,7 @@ getKeyboardLayoutIndex(void)
     return 0;
 }
 
-static const char*
+static const char *
 getComposeLocale() {
     const char *locale = getenv("LC_ALL");
 
@@ -915,13 +953,16 @@ getComposeLocale() {
 }
 
 static void
-onKeyboardLayoutChanged(void)
-{
+onKeyboardLayoutChanged(void) {
     // Determine, whether the current keyboard layout is ASCII-capable.
     // To do this, create a state, configure it to use the current layout
     // and iterate over all the keys to check for latin keysyms
 
     xkb_layout_index_t layoutIndex = getKeyboardLayoutIndex();
+
+#ifdef WL_KEYBOARD_DEBUG
+    fprintf(stderr, "onKeyboardLayoutChanged: %s\n", xkb.keymap_layout_get_name(keyboard.keymap, layoutIndex));
+#endif
 
     // bitmask of the latin letters encountered in the layout
     uint32_t latin_letters_seen = 0;
@@ -932,10 +973,10 @@ onKeyboardLayoutChanged(void)
         uint32_t num_levels = xkb.keymap_num_levels_for_key(keyboard.keymap, keycode, layoutIndex);
 
         for (uint32_t lvl = 0; lvl < num_levels; ++lvl) {
-            const xkb_keysym_t* syms;
+            const xkb_keysym_t *syms;
             int n_syms = xkb.keymap_key_get_syms_by_level(keyboard.keymap, keycode, layoutIndex, lvl, &syms);
             if (n_syms == 1 && syms[0] >= 'a' && syms[0] <= 'z') {
-                int idx = (int)syms[0] - 'a';
+                int idx = (int) syms[0] - 'a';
                 if (!(latin_letters_seen & (1 << idx))) {
                     latin_letters_seen |= 1 << idx;
                     ++latin_letters_seen_count;
@@ -947,6 +988,10 @@ onKeyboardLayoutChanged(void)
     // some keyboard layouts are considered ascii-capable by default, even though not all the
     // latin letters can be typed without using modifiers
     keyboard.asciiCapable = latin_letters_seen_count >= 20;
+
+#ifdef WL_KEYBOARD_DEBUG
+    fprintf(stderr, "asciiCapable: %s\n", keyboard.asciiCapable ? "true" : "false");
+#endif
 }
 
 enum ConvertDeadKeyType {
@@ -956,29 +1001,23 @@ enum ConvertDeadKeyType {
 
 static xkb_keysym_t
 convertDeadKey(xkb_keysym_t keysym, enum ConvertDeadKeyType type) {
-    if (!keyboard.tmpComposeState) {
-        return 0;
+    for (const struct DeadKeysymValuesMapItem* item = deadKeysymValuesMap; item->keysym; ++item) {
+        if (item->keysym == keysym) {
+            if (type == CONVERT_TO_NON_COMBINING && item->noncombining != 0) {
+                return item->noncombining;
+            } else {
+                return item->combining;
+            }
+        }
     }
 
-    xkb_keysym_t next = (type == CONVERT_TO_COMBINING) ?
-        0x00A0 /* XKB_KEY_nobreakspace */ : keysym;
-
-    xkb.compose_state_reset(keyboard.tmpComposeState);
-    xkb.compose_state_feed(keyboard.tmpComposeState, keysym);
-    xkb.compose_state_feed(keyboard.tmpComposeState, next);
-
-    if (xkb.compose_state_get_status(keyboard.tmpComposeState) == XKB_COMPOSE_COMPOSED) {
-        return xkb.compose_state_get_one_sym(keyboard.tmpComposeState);
-    } else {
-        return 0;
-    }
+    return 0;
 }
 
 static xkb_keysym_t
-translateKeycodeToKeysym(uint32_t keycode, bool useQWERTY)
-{
+translateKeycodeToKeysym(uint32_t keycode, bool useQWERTY) {
     if (keyboard.remapExtraKeycodes) {
-        for (const struct ExtraKeycodeToKeysymMapItem* item = extraKeycodeToKeysymMap; item->keysym; ++item) {
+        for (const struct ExtraKeycodeToKeysymMapItem *item = extraKeycodeToKeysymMap; item->keysym; ++item) {
             if (item->keycode == keycode) {
                 return item->keysym;
             }
@@ -987,8 +1026,8 @@ translateKeycodeToKeysym(uint32_t keycode, bool useQWERTY)
 
     const uint32_t xkbKeycode = keycode + 8;
 
-    struct xkb_keymap* keymap;
-    struct xkb_state* state;
+    struct xkb_keymap *keymap;
+    struct xkb_state *state;
     xkb_layout_index_t group;
 
     if (keyboard.qwertyKeymap && useQWERTY) {
@@ -1008,7 +1047,7 @@ translateKeycodeToKeysym(uint32_t keycode, bool useQWERTY)
 }
 
 static void
-lookupKeysym(xkb_keysym_t keysym, int* javaKeyCode, int* javaKeyLocation) {
+lookupKeysym(xkb_keysym_t keysym, int *javaKeyCode, int *javaKeyLocation) {
     if (javaKeyCode) {
         *javaKeyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
     }
@@ -1044,45 +1083,61 @@ lookupKeysym(xkb_keysym_t keysym, int* javaKeyCode, int* javaKeyLocation) {
 }
 
 static void
-postKeyTypedJavaChar(uint16_t javaChar)
-{
+postKeyTypedJavaChar(uint16_t javaChar) {
+#ifdef WL_KEYBOARD_DEBUG
+    fprintf(stderr, "postKeyTypedJavaChar(0x%04x)\n", (int) javaChar);
+#endif
+
     struct WLKeyEvent event = {
-        .id = java_awt_event_KeyEvent_KEY_TYPED,
-        .keyCode = java_awt_event_KeyEvent_VK_UNDEFINED,
-        .keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN,
-        .rawCode = 0,
-        .extendedKeyCode = 0,
-        .keyChar = javaChar
+            .id = java_awt_event_KeyEvent_KEY_TYPED,
+            .keyCode = java_awt_event_KeyEvent_VK_UNDEFINED,
+            .keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN,
+            .rawCode = 0,
+            .extendedKeyCode = 0,
+            .keyChar = javaChar
     };
 
     wlPostKeyEvent(&event);
 }
 
 static void
-postKeyTypedCodepoint(uint32_t codePoint)
-{
+postKeyTypedCodepoint(uint32_t codePoint) {
     if (codePoint >= 0x10000) {
         // break the codepoint into surrogates
 
         codePoint -= 0x10000;
 
-        uint16_t highSurrogate = (uint16_t)(0xD800 + ((codePoint >> 10) & 0x3ff));
-        uint16_t lowSurrogate = (uint16_t)(0xDC00 + (codePoint & 0x3ff));
+        uint16_t highSurrogate = (uint16_t) (0xD800 + ((codePoint >> 10) & 0x3ff));
+        uint16_t lowSurrogate = (uint16_t) (0xDC00 + (codePoint & 0x3ff));
 
         postKeyTypedJavaChar(highSurrogate);
         postKeyTypedJavaChar(lowSurrogate);
     } else {
-        postKeyTypedJavaChar((uint16_t)codePoint);
+        postKeyTypedJavaChar((uint16_t) codePoint);
     }
 }
 
 static void
-postKeyTypedEvents(const char* string)
-{
-    const uint8_t *utf8 = (const uint8_t*)string;
+postKeyTypedEvents(const char *string) {
+#ifdef WL_KEYBOARD_DEBUG
+    fprintf(stderr, "postKeyTypedEvents(b\"");
+    for (const char *c = string; *c; ++c) {
+        uint8_t byte = (uint8_t) *c;
+        if (byte < 0x20 || byte >= 0x80) {
+            fprintf(stderr, "\\x%02x", byte);
+        } else if (byte == '\\' || byte == '"') {
+            fprintf(stderr, "\\%c", byte);
+        } else {
+            fprintf(stderr, "%c", byte);
+        }
+    }
+    fprintf(stderr, "\")\n");
+#endif
+
+    const uint8_t *utf8 = (const uint8_t *) string;
     uint32_t curCodePoint = 0;
     int remaining = 0;
-    for (const uint8_t* ptr = utf8; *ptr; ++ptr) {
+    for (const uint8_t *ptr = utf8; *ptr; ++ptr) {
         if ((*ptr & 0xf8) == 0xf0) {
             // start of sequence of length 4
             remaining = 3;
@@ -1102,7 +1157,7 @@ postKeyTypedEvents(const char* string)
             postKeyTypedCodepoint(*ptr & 0x7f);
         } else if ((*ptr & 0xc0) == 0x80) {
             // continuation byte
-            curCodePoint = (curCodePoint << 6u) | (uint32_t)(*ptr & 0x3f);
+            curCodePoint = (curCodePoint << 6u) | (uint32_t) (*ptr & 0x3f);
             --remaining;
             if (remaining == 0) {
                 postKeyTypedCodepoint(curCodePoint);
@@ -1116,8 +1171,7 @@ postKeyTypedEvents(const char* string)
 }
 
 static void
-handleKeyTypeNoCompose(xkb_keycode_t xkbKeycode)
-{
+handleKeyTypeNoCompose(xkb_keycode_t xkbKeycode) {
     int bufSize = xkb.state_key_get_utf8(keyboard.state, xkbKeycode, NULL, 0) + 1;
     char buf[bufSize];
     xkb.state_key_get_utf8(keyboard.state, xkbKeycode, buf, bufSize);
@@ -1125,8 +1179,7 @@ handleKeyTypeNoCompose(xkb_keycode_t xkbKeycode)
 }
 
 static void
-handleKeyType(xkb_keycode_t xkbKeycode)
-{
+handleKeyType(xkb_keycode_t xkbKeycode) {
     xkb_keysym_t keysym = xkb.state_key_get_one_sym(keyboard.state, xkbKeycode);
 
     if (!keyboard.composeState ||
@@ -1157,8 +1210,7 @@ handleKeyType(xkb_keycode_t xkbKeycode)
 }
 
 static void
-handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat)
-{
+handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat) {
     JNIEnv *env = getEnv();
 
     xkb_keycode_t xkbKeycode = keycode + 8;
@@ -1175,9 +1227,9 @@ handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat)
     // XKB options that the user's layout has selected. For instance, if the user
     // has swapped their Left Ctrl and Caps Lock keys using ctrl:swapcaps, then this
     // swap will be lost when attempting to translate what they're typing on the non-ascii-capable
-    // layout to the QWERTY key map. Hence, the 'qwertyKeysym <= 0xff' check.
+    // layout to the QWERTY key map. Hence, the 'qwertyKeysym <= 0x7f' check.
 
-    if (keyboard.useNationalLayouts && !keyboard.asciiCapable && qwertyKeysym <= 0xff) {
+    if (keyboard.useNationalLayouts && !keyboard.asciiCapable && qwertyKeysym <= 0x7f) {
         lookupKeysym(qwertyKeysym, &javaKeyCode, &javaKeyLocation);
         javaExtendedKeyCode = javaKeyCode;
     } else {
@@ -1190,7 +1242,7 @@ handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat)
         }
 
         lookupKeysym(report, &javaExtendedKeyCode, &javaKeyLocation);
-        if (javaExtendedKeyCode >= 0x1000000) {
+        if (javaExtendedKeyCode >= 0x1000000 && !keyboard.reportKeyCodeAsExtended) {
             lookupKeysym(qwertyKeysym, &javaKeyCode, NULL);
         } else {
             javaKeyCode = javaExtendedKeyCode;
@@ -1198,13 +1250,13 @@ handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat)
     }
 
     struct WLKeyEvent event = {
-        .timestamp = timestamp,
-        .id = isPressed ? java_awt_event_KeyEvent_KEY_PRESSED : java_awt_event_KeyEvent_KEY_RELEASED,
-        .keyCode = javaKeyCode,
-        .keyLocation = javaKeyLocation,
-        .rawCode = keycode,
-        .extendedKeyCode = javaExtendedKeyCode,
-        .keyChar = java_awt_event_KeyEvent_CHAR_UNDEFINED,
+            .timestamp = timestamp,
+            .id = isPressed ? java_awt_event_KeyEvent_KEY_PRESSED : java_awt_event_KeyEvent_KEY_RELEASED,
+            .keyCode = javaKeyCode,
+            .keyLocation = javaKeyLocation,
+            .rawCode = keycode,
+            .extendedKeyCode = javaExtendedKeyCode,
+            .keyChar = java_awt_event_KeyEvent_CHAR_UNDEFINED,
     };
 
     wlPostKeyEvent(&event);
@@ -1214,15 +1266,16 @@ handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat)
 
         if (!isRepeat && xkb.keymap_key_repeats(keyboard.keymap, xkbKeycode)) {
             (*env)->CallVoidMethod(env, keyboard.keyRepeatManager, startRepeatMID, timestamp, keycode);
+            JNU_CHECK_EXCEPTION(env);
         }
     } else {
         (*env)->CallVoidMethod(env, keyboard.keyRepeatManager, cancelRepeatMID);
+        JNU_CHECK_EXCEPTION(env);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLKeyboard_initialize(JNIEnv* env, jobject instance, jobject keyRepeatManager)
-{
+Java_sun_awt_wl_WLKeyboard_initialize(JNIEnv *env, jobject instance, jobject keyRepeatManager) {
     if (keyboard.instance != NULL) {
         JNU_ThrowInternalError(getEnv(),
                                "WLKeyboard.initialize called twice");
@@ -1245,7 +1298,8 @@ Java_sun_awt_wl_WLKeyboard_initialize(JNIEnv* env, jobject instance, jobject key
     keyboard.context = xkb.context_new(XKB_CONTEXT_NO_FLAGS);
     keyboard.useNationalLayouts = true;
     keyboard.remapExtraKeycodes = true;
-    keyboard.reportDeadKeysAsNormal = true;
+    keyboard.reportDeadKeysAsNormal = false;
+    keyboard.reportKeyCodeAsExtended = true;
 
     struct xkb_rule_names qwertyRuleNames = {
             .rules = "evdev",
@@ -1261,37 +1315,34 @@ Java_sun_awt_wl_WLKeyboard_initialize(JNIEnv* env, jobject instance, jobject key
     }
     keyboard.tmpQwertyState = xkb.state_new(keyboard.qwertyKeymap);
 
-    keyboard.composeTable = xkb.compose_table_new_from_locale(keyboard.context, getComposeLocale(), XKB_COMPOSE_COMPILE_NO_FLAGS);
+    keyboard.composeTable = xkb.compose_table_new_from_locale(keyboard.context, getComposeLocale(),
+                                                              XKB_COMPOSE_COMPILE_NO_FLAGS);
     if (keyboard.composeTable) {
         keyboard.composeState = xkb.compose_state_new(keyboard.composeTable, XKB_COMPOSE_STATE_NO_FLAGS);
-        keyboard.tmpComposeState = xkb.compose_state_new(keyboard.composeTable, XKB_COMPOSE_STATE_NO_FLAGS);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLKeyboard_handleKeyPress(JNIEnv* env, jobject instance, jlong timestamp, jint keycode, jboolean isRepeat)
-{
+Java_sun_awt_wl_WLKeyboard_handleKeyPress(JNIEnv *env, jobject instance, jlong timestamp, jint keycode,
+                                          jboolean isRepeat) {
     handleKey(timestamp, keycode, true, isRepeat);
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLKeyboard_cancelCompose(JNIEnv* env, jobject instance)
-{
+Java_sun_awt_wl_WLKeyboard_cancelCompose(JNIEnv *env, jobject instance) {
     if (keyboard.composeState) {
         xkb.compose_state_reset(keyboard.composeState);
     }
 }
 
 JNIEXPORT jint JNICALL
-Java_sun_awt_wl_WLKeyboard_getXKBModifiersMask(JNIEnv* env, jobject instance)
-{
+Java_sun_awt_wl_WLKeyboard_getXKBModifiersMask(JNIEnv *env, jobject instance) {
     xkb_mod_mask_t mods = xkb.state_serialize_mods(keyboard.state, XKB_STATE_MODS_EFFECTIVE);
-    return (jint)mods;
+    return (jint) mods;
 }
 
 void
-wlSetKeymap(const char* serializedKeymap)
-{
+wlSetKeymap(const char *serializedKeymap) {
     struct xkb_keymap *new_xkb_keymap = xkb.keymap_new_from_string(
             keyboard.context, serializedKeymap, XKB_KEYMAP_FORMAT_TEXT_V1, 0);
 
@@ -1306,21 +1357,19 @@ wlSetKeymap(const char* serializedKeymap)
 }
 
 void
-wlSetKeyState(long timestamp, uint32_t keycode, bool isPressed)
-{
+wlSetKeyState(long timestamp, uint32_t keycode, bool isPressed) {
     handleKey(timestamp, keycode, isPressed, false);
 }
 
 void
-wlSetRepeatInfo(int charsPerSecond, int delayMillis)
-{
-    JNIEnv* env = getEnv();
+wlSetRepeatInfo(int charsPerSecond, int delayMillis) {
+    JNIEnv *env = getEnv();
     (*env)->CallVoidMethod(env, keyboard.keyRepeatManager, setRepeatInfoMID, charsPerSecond, delayMillis);
+    JNU_CHECK_EXCEPTION(env);
 }
 
 void
-wlSetModifiers(uint32_t depressed, uint32_t latched, uint32_t locked, uint32_t group)
-{
+wlSetModifiers(uint32_t depressed, uint32_t latched, uint32_t locked, uint32_t group) {
     xkb_layout_index_t oldLayoutIndex = getKeyboardLayoutIndex();
 
     xkb.state_update_mask(keyboard.state, depressed, latched, locked, 0, 0, group);

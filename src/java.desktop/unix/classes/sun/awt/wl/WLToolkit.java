@@ -302,7 +302,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         if (peer != null) {
             if (extendedKeyCode >= 0x1000000) {
                 int ch = extendedKeyCode - 0x1000000;
-                extendedKeyCode = KeyEvent.getExtendedKeyCodeForChar(ch);
+                int correctCode = KeyEvent.getExtendedKeyCodeForChar(ch);
+                if (extendedKeyCode == keyCode) {
+                    keyCode = correctCode;
+                }
+                extendedKeyCode = correctCode;
             }
 
             postKeyEvent(
@@ -797,7 +801,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      */
     @Override
     protected boolean syncNativeQueue(long timeout) {
-        log.info("Not implemented: WLToolkit.syncNativeQueue()");
+//        log.info("Not implemented: WLToolkit.syncNativeQueue()");
         return false;
     }
 

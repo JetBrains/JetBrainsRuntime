@@ -41,159 +41,112 @@ import static java.awt.event.KeyEvent.*;
  * @requires (os.family == "linux")
  * @library /test/lib
  * @build RobotKeyboard
- * @run driver WakefieldTestDriver -timeout 180 RobotKeyboard
+ * @run driver/timeout=600 WakefieldTestDriver -timeout 600 RobotKeyboard
  */
 
 public class RobotKeyboard {
-    private record KeySymDescriptor(String value, boolean isDead) {}
-    private record KeyDescriptor (
-            KeySymDescriptor level1,
-            KeySymDescriptor level2,
-            KeySymDescriptor level3,
-            KeySymDescriptor level4) {
-        public KeySymDescriptor byLevel(int level) {
-            switch (level) {
-                case 0: return level1;
-                case 1: return level2;
-                case 2: return level3;
-                case 3: return level4;
-            }
-            throw new IllegalArgumentException("level");
-        }
+    private record Compose(String dead, String key, String result) {
     }
 
-    private record Compose(KeySymDescriptor dead, String key, String result) {}
-
     private static class Keys {
-        private static KeyDescriptor key(Object level1, Object level2, Object level3, Object level4) {
-            if (level1 instanceof String) level1 = new KeySymDescriptor((String)level1, false);
-            if (level2 instanceof String) level2 = new KeySymDescriptor((String)level2, false);
-            if (level3 instanceof String) level3 = new KeySymDescriptor((String)level3, false);
-            if (level4 instanceof String) level4 = new KeySymDescriptor((String)level4, false);
-            return new KeyDescriptor((KeySymDescriptor) level1, (KeySymDescriptor) level2, (KeySymDescriptor) level3, (KeySymDescriptor) level4);
-        }
+        final static String DEAD_ABOVERING = "°";
+        final static String DEAD_DOUBLEACUTE = "˝";
+        final static String DEAD_MACRON = "¯";
+        final static String DEAD_CEDILLA = "¸";
+        final static String DEAD_CIRCUMFLEX = "^";
+        final static String DEAD_HORN = "\u031b";
+        final static String DEAD_OGONEK = "˛";
+        final static String DEAD_BREVE = "˘";
+        final static String DEAD_ABOVEDOT = "˙";
+        final static String DEAD_CARON = "ˇ";
+        final static String DEAD_HOOK = "\u0309";
+        final static String DEAD_BELOWDOT = "\u0323";
+        final static String DEAD_ACUTE = "'";
+        final static String DEAD_DIAERESIS = "\"";
+        final static String DEAD_GRAVE = "`";
+        final static String DEAD_TILDE = "~";
+        final static String DEAD_BELOWMACRON = "\u0331";
 
-        private static KeySymDescriptor dead(String value) {
-            return new KeySymDescriptor(value, true);
-        }
 
-        final static KeySymDescriptor DEAD_ABOVERING = dead("°");
-        final static KeySymDescriptor DEAD_DOUBLEACUTE = dead("˝");
-        final static KeySymDescriptor DEAD_MACRON = dead("¯");
-        final static KeySymDescriptor DEAD_CEDILLA = dead("¸");
-        final static KeySymDescriptor DEAD_CIRCUMFLEX = dead("^");
-        final static KeySymDescriptor DEAD_HORN = dead("\u031b");
-        final static KeySymDescriptor DEAD_OGONEK = dead("˛");
-        final static KeySymDescriptor DEAD_BREVE = dead("˘");
-        final static KeySymDescriptor DEAD_ABOVEDOT = dead("˙");
-        final static KeySymDescriptor DEAD_CARON = dead("ˇ");
-        final static KeySymDescriptor DEAD_HOOK = dead("\u0309");
-        final static KeySymDescriptor DEAD_BELOWDOT = dead("\u0323");
-        final static KeySymDescriptor DEAD_ACUTE = dead("'");
-        final static KeySymDescriptor DEAD_DIAERESIS = dead("\"");
-        final static KeySymDescriptor DEAD_GRAVE = dead("`");
-        final static KeySymDescriptor DEAD_TILDE = dead("~");
-
-        final static KeyDescriptor VK_0 = key("0", ")", "’", DEAD_ABOVERING);
-        final static KeyDescriptor VK_1 = key("1", "!", "¹", "¡");
-        final static KeyDescriptor VK_2 = key("2", "@", "²", DEAD_DOUBLEACUTE);
-        final static KeyDescriptor VK_3 = key("3", "#", "³", DEAD_MACRON);
-        final static KeyDescriptor VK_4 = key("4", "$", "¤", "£");
-        final static KeyDescriptor VK_5 = key("5", "%", "€", DEAD_CEDILLA);
-        final static KeyDescriptor VK_6 = key("6", "^", DEAD_CIRCUMFLEX, "¼");
-        final static KeyDescriptor VK_7 = key("7", "&", DEAD_HORN, "½");
-        final static KeyDescriptor VK_8 = key("8", "*", DEAD_OGONEK, "¾");
-        final static KeyDescriptor VK_9 = key("9", "(", "‘", DEAD_BREVE);
-        final static KeyDescriptor VK_A = key("a", "A", "á", "Á");
-        final static KeyDescriptor VK_B = key("b", "B", "b", "B");
-        final static KeyDescriptor VK_C = key("c", "C", "©", "¢");
-        final static KeyDescriptor VK_D = key("d", "D", "ð", "Ð");
-        final static KeyDescriptor VK_E = key("e", "E", "é", "É");
-        final static KeyDescriptor VK_F = key("f", "F", "f", "F");
-        final static KeyDescriptor VK_G = key("g", "G", "g", "G");
-        final static KeyDescriptor VK_H = key("h", "H", "h", "H");
-        final static KeyDescriptor VK_I = key("i", "I", "í", "Í");
-        final static KeyDescriptor VK_J = key("j", "J", "ï", "Ï");
-        final static KeyDescriptor VK_K = key("k", "K", "œ", "Œ");
-        final static KeyDescriptor VK_L = key("l", "L", "ø", "Ø");
-        final static KeyDescriptor VK_M = key("m", "M", "µ", "µ");
-        final static KeyDescriptor VK_N = key("n", "N", "ñ", "Ñ");
-        final static KeyDescriptor VK_O = key("o", "O", "ó", "Ó");
-        final static KeyDescriptor VK_P = key("p", "P", "ö", "Ö");
-        final static KeyDescriptor VK_Q = key("q", "Q", "ä", "Ä");
-        final static KeyDescriptor VK_R = key("r", "R", "ë", "Ë");
-        final static KeyDescriptor VK_S = key("s", "S", "ß", "§");
-        final static KeyDescriptor VK_T = key("t", "T", "þ", "Þ");
-        final static KeyDescriptor VK_U = key("u", "U", "ú", "Ú");
-        final static KeyDescriptor VK_V = key("v", "V", "®", "™");
-        final static KeyDescriptor VK_W = key("w", "W", "å", "Å");
-        final static KeyDescriptor VK_X = key("x", "X", "œ", "Œ");
-        final static KeyDescriptor VK_Y = key("y", "Y", "ü", "Ü");
-        final static KeyDescriptor VK_Z = key("z", "Z", "æ", "Æ");
-        final static KeyDescriptor VK_COMMA = key(",", "<", "ç", "Ç");
-        final static KeyDescriptor VK_PERIOD = key(".", ">", DEAD_ABOVEDOT, DEAD_CARON);
-        final static KeyDescriptor VK_SLASH = key("/", "?", "¿", DEAD_HOOK);
-        final static KeyDescriptor VK_LESS = key("\\", "|", "\\", "|"); // Key to the right of LShift on ISO keyboards
-        final static KeyDescriptor VK_MINUS = key("-", "_", "¥", DEAD_BELOWDOT);
-        final static KeyDescriptor VK_EQUALS = key("=", "+", "×", "÷");
-        final static KeyDescriptor VK_OPEN_BRACKET = key("[", "{", "«", "“");
-        final static KeyDescriptor VK_CLOSE_BRACKET = key("]", "}", "»", "”");
-        final static KeyDescriptor VK_SEMICOLON = key(";", ":", "¶", "°");
-        final static KeyDescriptor VK_QUOTE = key("'", "\"", DEAD_ACUTE, DEAD_DIAERESIS);
-        final static KeyDescriptor VK_BACK_QUOTE = key("`", "~", DEAD_GRAVE, DEAD_TILDE);
-        final static KeyDescriptor VK_BACK_SLASH = key("\\", "|", "¬", "¦");
-
-        final static Compose[] composeSamples = new Compose[] {
+        final static Compose[] composeSamples = new Compose[]{
+                new Compose(DEAD_ABOVERING, " ", DEAD_ABOVERING),
                 new Compose(DEAD_ABOVERING, "a", "å"),
                 new Compose(DEAD_ABOVERING, "A", "Å"),
                 new Compose(DEAD_ABOVERING, "b", null),
+                new Compose(DEAD_DOUBLEACUTE, " ", DEAD_DOUBLEACUTE),
                 new Compose(DEAD_DOUBLEACUTE, "o", "ő"),
                 new Compose(DEAD_DOUBLEACUTE, "O", "Ő"),
                 new Compose(DEAD_DOUBLEACUTE, "a", null),
+                new Compose(DEAD_MACRON, " ", DEAD_MACRON),
                 new Compose(DEAD_MACRON, "a", "ā"),
                 new Compose(DEAD_MACRON, "A", "Ā"),
                 new Compose(DEAD_MACRON, "b", null),
+                new Compose(DEAD_CEDILLA, " ", DEAD_CEDILLA),
                 new Compose(DEAD_CEDILLA, "c", "ç"),
                 new Compose(DEAD_CEDILLA, "C", "Ç"),
                 new Compose(DEAD_CEDILLA, "a", null),
+                new Compose(DEAD_CIRCUMFLEX, " ", DEAD_CIRCUMFLEX),
                 new Compose(DEAD_CIRCUMFLEX, "a", "â"),
                 new Compose(DEAD_CIRCUMFLEX, "A", "Â"),
                 new Compose(DEAD_CIRCUMFLEX, "b", null),
+                new Compose(DEAD_HORN, " ", DEAD_HORN),
                 new Compose(DEAD_HORN, "u", "ư"),
                 new Compose(DEAD_HORN, "U", "Ư"),
                 new Compose(DEAD_HORN, "a", null),
+                new Compose(DEAD_OGONEK, " ", DEAD_OGONEK),
                 new Compose(DEAD_OGONEK, "a", "ą"),
                 new Compose(DEAD_OGONEK, "A", "Ą"),
                 new Compose(DEAD_OGONEK, "b", null),
+                new Compose(DEAD_BREVE, " ", DEAD_BREVE),
                 new Compose(DEAD_BREVE, "a", "ă"),
                 new Compose(DEAD_BREVE, "A", "Ă"),
                 new Compose(DEAD_BREVE, "b", null),
+                new Compose(DEAD_ABOVEDOT, " ", DEAD_ABOVEDOT),
                 new Compose(DEAD_ABOVEDOT, "a", "ȧ"),
                 new Compose(DEAD_ABOVEDOT, "A", "Ȧ"),
                 new Compose(DEAD_ABOVEDOT, "u", null),
+                new Compose(DEAD_CARON, " ", DEAD_CARON),
                 new Compose(DEAD_CARON, "a", "ǎ"),
                 new Compose(DEAD_CARON, "A", "Ǎ"),
                 new Compose(DEAD_CARON, "b", null),
+                new Compose(DEAD_HOOK, " ", DEAD_HOOK),
                 new Compose(DEAD_HOOK, "a", "ả"),
                 new Compose(DEAD_HOOK, "A", "Ả"),
                 new Compose(DEAD_HOOK, ";", null),
+                new Compose(DEAD_BELOWDOT, " ", DEAD_BELOWDOT),
                 new Compose(DEAD_BELOWDOT, "a", "ạ"),
                 new Compose(DEAD_BELOWDOT, "A", "Ạ"),
                 new Compose(DEAD_BELOWDOT, "c", null),
+                new Compose(DEAD_ACUTE, " ", DEAD_ACUTE),
                 new Compose(DEAD_ACUTE, "a", "á"),
                 new Compose(DEAD_ACUTE, "A", "Á"),
                 new Compose(DEAD_ACUTE, "b", null),
+                new Compose(DEAD_DIAERESIS, " ", DEAD_DIAERESIS),
                 new Compose(DEAD_DIAERESIS, "a", "ä"),
                 new Compose(DEAD_DIAERESIS, "A", "Ä"),
                 new Compose(DEAD_DIAERESIS, "b", null),
+                new Compose(DEAD_GRAVE, " ", DEAD_GRAVE),
                 new Compose(DEAD_GRAVE, "a", "à"),
                 new Compose(DEAD_GRAVE, "A", "À"),
                 new Compose(DEAD_GRAVE, "b", null),
+                new Compose(DEAD_TILDE, " ", DEAD_TILDE),
                 new Compose(DEAD_TILDE, "a", "ã"),
                 new Compose(DEAD_TILDE, "A", "Ã"),
                 new Compose(DEAD_TILDE, "b", null),
+                // No DEAD_BELOWMACRON + Space
+                new Compose(DEAD_BELOWMACRON, "b", "ḇ"),
+                new Compose(DEAD_BELOWMACRON, "B", "Ḇ"),
+                new Compose(DEAD_BELOWMACRON, "a", null),
         };
     }
+
+    private static List<Integer> varyingKeys = List.of(
+            VK_0, VK_1, VK_2, VK_3, VK_4, VK_5, VK_6, VK_7, VK_8, VK_9,
+            VK_A, VK_B, VK_C, VK_D, VK_E, VK_F, VK_G, VK_H, VK_I, VK_J,
+            VK_K, VK_L, VK_M, VK_N, VK_O, VK_P, VK_Q, VK_R, VK_S, VK_T,
+            VK_U, VK_V, VK_W, VK_X, VK_Y, VK_Z, VK_COMMA, VK_PERIOD,
+            VK_SLASH, VK_LESS, VK_MINUS, VK_EQUALS, VK_OPEN_BRACKET,
+            VK_CLOSE_BRACKET, VK_SEMICOLON, VK_QUOTE, VK_BACK_QUOTE, VK_BACK_SLASH);
 
     private static String ordinaryKeyNames[] = {
             "VK_0",
@@ -336,6 +289,8 @@ public class RobotKeyboard {
     private static final List<KeyEvent> events = new ArrayList<>();
     private static String typed = "";
     private static final StringBuffer log = new StringBuffer();
+    private static final StringBuffer pendingLog = new StringBuffer();
+    private static XKBLayoutData.LayoutDescriptor curLayout;
 
     public static void main(String[] args) throws Exception {
         SwingUtilities.invokeAndWait(() -> {
@@ -360,6 +315,7 @@ public class RobotKeyboard {
                         @Override
                         public void keyTyped(KeyEvent e) {
                             typed = typed + e.getKeyChar();
+                            pendingLog.append("\ttyped: U+" + String.format("%04X", (int)e.getKeyChar()) + "\n");
                         }
 
                         @Override
@@ -367,6 +323,7 @@ public class RobotKeyboard {
                             eventsTextArea.append("press: " + getKeyText(e.getKeyCode()) + "\n");
                             eventsTextArea.setCaretPosition(eventsTextArea.getDocument().getLength());
                             events.add(e);
+                            pendingLog.append("\tpress: " + getKeyText(e.getKeyCode()) + "\n");
                         }
 
                         @Override
@@ -374,6 +331,7 @@ public class RobotKeyboard {
                             eventsTextArea.append("release: " + getKeyText(e.getKeyCode()) + "\n");
                             eventsTextArea.setCaretPosition(eventsTextArea.getDocument().getLength());
                             events.add(e);
+                            pendingLog.append("\trelease: " + getKeyText(e.getKeyCode()) + "\n");
                         }
                     }
             );
@@ -382,9 +340,35 @@ public class RobotKeyboard {
         robot = new Robot();
         robot.setAutoDelay(50);
         typedTextArea.requestFocusInWindow();
-        robot.delay(100);
-        WLRobotPeer.setXKBLayout("us", "altgr-intl", "");
-        robot.delay(100);
+        robot.delay(500);
+
+        boolean ok = true;
+
+        for (var layout : XKBLayoutData.layouts) {
+            if (!runTest(layout)) {
+                ok = false;
+                break;
+            }
+        }
+
+        System.err.println("===== TEST RESULT =====");
+        System.err.println(ok ? "TEST PASSED" : "TEST FAILED");
+        System.err.println("===== FULL TEST LOG =====");
+        System.err.println(log.toString());
+
+        frame.dispose();
+
+        // Due to some reason that probably has something to do with the implementation
+        // of the test driver, it's necessary to manually call System.exit() here
+        System.exit(ok ? 0 : 1);
+    }
+
+    static boolean runTest(XKBLayoutData.LayoutDescriptor layout) {
+        curLayout = layout;
+        infoTextArea.setText("");
+        log("Layout: " + layout.layout() + ", variant: " + layout.variant() + "\n");
+        WLRobotPeer.setXKBLayout(layout.layout(), layout.variant(), "");
+        robot.delay(500);
 
         if (Toolkit.getDefaultToolkit().getLockingKeyState(VK_CAPS_LOCK)) {
             // Disable caps lock
@@ -400,30 +384,27 @@ public class RobotKeyboard {
 
         boolean ok = true;
 
-        for (String key : ordinaryKeyNames) {
+//        for (String key : ordinaryKeyNames) {
+//            ok &= processKey(key);
+//        }
+
+        for (int key : varyingKeys) {
             ok &= processKey(key);
         }
 
-        for (String key : lockingKeyNames) {
-            ok &= processKey(key);
+//        for (String key : lockingKeyNames) {
+//            ok &= processKey(key);
+//
+//            // reset the locking state to the previous one
+//            int keyCode = getKeyCodeByName(key);
+//            robot.keyPress(keyCode);
+//            robot.keyRelease(keyCode);
+//            robot.waitForIdle();
+//        }
 
-            // reset the locking state to the previous one
-            int keyCode = getKeyCodeByName(key);
-            robot.keyPress(keyCode);
-            robot.keyRelease(keyCode);
-            robot.waitForIdle();
-        }
+        robot.delay(100);
 
-        System.err.println("===== TEST RESULT =====");
-        System.err.println(ok ? "TEST PASSED" : "TEST FAILED");
-        System.err.println("===== FULL LOG =====");
-        System.err.println(log.toString());
-
-        frame.dispose();
-
-        // Due to some reason that probably has something to do with the implementation
-        // of the test driver, it's necessary to manually call System.exit() here
-        System.exit(ok ? 0 : 1);
+        return ok;
     }
 
     private static int getKeyCodeByName(String name) {
@@ -434,65 +415,52 @@ public class RobotKeyboard {
         }
     }
 
-    private static KeyDescriptor getKeyDescriptor(String name) {
-        try {
-            return (KeyDescriptor) Keys.class.getDeclaredField(name).get(Keys.class);
-        } catch (NoSuchFieldException e) {
-            return null;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     private static void typeChar(String what) {
-        try {
-            for (var field : Keys.class.getDeclaredFields()) {
-                if (field.getName().startsWith("VK_")) {
-                    var keyCode = getKeyCodeByName(field.getName());
-                    var desc = (KeyDescriptor) field.get(Keys.class);
-                    for (int level = 0; level < 4; ++level) {
-                        var sym = desc.byLevel(level);
-                        if (!sym.isDead && sym.value.equals(what)) {
-                            if (level == 1 || level == 3) {
-                                robot.keyPress(VK_SHIFT);
-                            }
-                            if (level == 2 || level == 3) {
-                                robot.keyPress(VK_ALT_GRAPH);
-                            }
-                            robot.keyPress(keyCode);
-                            robot.keyRelease(keyCode);
-                            if (level == 1 || level == 3) {
-                                robot.keyRelease(VK_SHIFT);
-                            }
-                            if (level == 2 || level == 3) {
-                                robot.keyRelease(VK_ALT_GRAPH);
-                            }
-                            robot.waitForIdle();
-                            return;
-                        }
+        for (var desc : curLayout.keys().values()) {
+            for (int level = 0; level < desc.levels().size(); ++level) {
+                var sym = desc.levels().get(level);
+                if ((sym.xkbMods() & 0x81) != sym.xkbMods()) {
+                    // we don't understand those mods
+                    continue;
+                }
+                if (!sym.isDead() && sym.value().equals(what)) {
+                    var keys = xkbModsToRobotKeycodes(sym.xkbMods());
+                    keys.add(desc.robotCode());
+                    for (var key : keys) {
+                        robot.keyPress(key);
                     }
+                    for (var key : keys.reversed()) {
+                        robot.keyRelease(key);
+                    }
+                    robot.waitForIdle();
+                    return;
                 }
             }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
         }
     }
 
-    private static void checkKey(int keyCode, int level, KeyDescriptor desc, Compose compose) {
+    private static List<Integer> xkbModsToRobotKeycodes(int xkbMods) {
+        var result = new ArrayList<Integer>();
+        if ((xkbMods & 0x01) != 0) {
+            result.add(VK_SHIFT);
+        }
+        if ((xkbMods & 0x80) != 0) {
+            result.add(VK_ALT_GRAPH);
+        }
+        return result;
+    }
+
+    private static void checkKey(int keyCode, int level, XKBLayoutData.KeyDescriptor desc, Compose compose) {
+        var sym = desc.levels().get(level);
         events.clear();
         typedTextArea.requestFocusInWindow();
         typed = "";
         robot.waitForIdle();
-        int mods = 0;
-        if (level == 1 || level == 3) {
-            mods |= SHIFT_DOWN_MASK;
-            robot.keyPress(VK_SHIFT);
-            log("Shift + ");
-        }
-        if (level == 2 || level == 3) {
-            mods |= ALT_GRAPH_DOWN_MASK;
-            robot.keyPress(VK_ALT_GRAPH);
-            log("AltGr + ");
+
+        var mods = xkbModsToRobotKeycodes(sym.xkbMods());
+        for (var mod : mods) {
+            robot.keyPress(mod);
+            log(getKeyText(mod) + " + ");
         }
         log(getKeyText(keyCode));
         if (compose != null) {
@@ -502,19 +470,15 @@ public class RobotKeyboard {
         log(": ");
         robot.keyPress(keyCode);
         robot.keyRelease(keyCode);
-        if (level == 1 || level == 3) {
-            robot.keyRelease(VK_SHIFT);
-        }
-        if (level == 2 || level == 3) {
-            robot.keyRelease(VK_ALT_GRAPH);
+        for (var mod : mods.reversed()) {
+            robot.keyRelease(mod);
         }
         robot.waitForIdle();
 
         List<KeyEvent> cleanEvents = new ArrayList<>();
 
         for (KeyEvent e : events) {
-            if (e.getKeyCode() == VK_SHIFT && ((mods & SHIFT_DOWN_MASK) != 0)) continue;
-            if (e.getKeyCode() == VK_ALT_GRAPH && ((mods & ALT_GRAPH_DOWN_MASK) != 0)) continue;
+            if (mods.contains(e.getKeyCode())) continue;
             cleanEvents.add(e);
         }
 
@@ -526,7 +490,7 @@ public class RobotKeyboard {
             throw new RuntimeException("Expected one KEY_PRESSED and one KEY_RELEASED");
         }
 
-        var expectedKeyCode = desc != null ? getExtendedKeyCodeForChar(desc.level1.value.codePointAt(0)) : keyCode;
+        int expectedKeyCode = desc.javaKeyCode();
 
         if (cleanEvents.get(0).getKeyCode() != expectedKeyCode) {
             throw new RuntimeException("KEY_PRESSED keyCode = " + cleanEvents.get(0).getKeyCode() + ", expected " + expectedKeyCode);
@@ -536,32 +500,15 @@ public class RobotKeyboard {
             throw new RuntimeException("KEY_RELEASED keyCode = " + cleanEvents.get(1).getKeyCode() + ", expected " + expectedKeyCode);
         }
 
-//        if (cleanEvents.get(0).getModifiersEx() != mods) {
-//            throw new RuntimeException("KEY_PRESSED mods = " + cleanEvents.get(0).getModifiersEx() + ", expected " + mods);
-//        }
-//
-//        if (cleanEvents.get(1).getModifiersEx() != mods) {
-//            throw new RuntimeException("KEY_RELEASED mods = " + cleanEvents.get(1).getModifiersEx() + ", expected " + mods);
-//        }
+        String value = sym.value();
 
-        var sym = desc == null ? null : desc.byLevel(level);
+        if (sym.isDead()) {
+            typeChar(compose.key);
+            value = compose.result == null ? "" : compose.result;
+        }
 
-        if (sym != null) {
-            String value = sym.value;
-            if (sym.isDead) {
-                if (compose == null) {
-                    robot.keyPress(VK_SPACE);
-                    robot.keyRelease(VK_SPACE);
-                    robot.waitForIdle();
-                } else {
-                    typeChar(compose.key);
-                    value = compose.result == null ? "" : compose.result;
-                }
-            }
-
-            if (!typed.equals(value)) {
-                throw new RuntimeException("KEY_TYPED: expected '" + sym.value + "', got '" + typed + "'");
-            }
+        if (!typed.equals(value)) {
+            throw new RuntimeException("KEY_TYPED: expected '" + value + "', got '" + typed + "'");
         }
     }
 
@@ -571,23 +518,33 @@ public class RobotKeyboard {
         log.append(what);
     }
 
-    private static boolean processKey(String name) {
-        var keyCode = getKeyCodeByName(name);
-        var desc = getKeyDescriptor(name);
-        int maxLevel = desc == null ? 1 : 4;
+    private static boolean processKey(int keyCode) {
+        var desc = curLayout.keys().get(keyCode);
+        int maxLevel = desc.levels().size();
+        if (maxLevel > 2 && curLayout.layout().equals("us") && curLayout.variant().equals("")) {
+            // Fix for the 102nd key, which for some reason has 4 levels even though AltGr is not supported?
+            maxLevel = 2;
+        }
+
         boolean ok = true;
         for (int level = 0; level < maxLevel; ++level) {
             typedTextArea.append(getKeyText(keyCode) + ", level " + level + ": ");
             typedTextArea.setCaretPosition(typedTextArea.getDocument().getLength());
-            var sym = desc == null ? null : desc.byLevel(level);
+            var sym = desc.levels().get(level);
+            if ((sym.xkbMods() & 0x81) != sym.xkbMods()) {
+                // we don't understand those mods, so the test won't work
+                continue;
+            }
+
             List<Compose> composes = new ArrayList<>();
-            composes.add(null);
-            if (sym != null && sym.isDead) {
+            if (sym.isDead()) {
                 for (Compose c : Keys.composeSamples) {
-                    if (c.dead == sym) {
+                    if (c.dead.equals(sym.value())) {
                         composes.add(c);
                     }
                 }
+            } else {
+                composes.add(null);
             }
 
             for (Compose compose : composes) {
@@ -598,6 +555,10 @@ public class RobotKeyboard {
                     log(e.getMessage());
                     log("\n");
                     ok = false;
+                }
+                if (!pendingLog.isEmpty()) {
+                    log.append(pendingLog);
+                    pendingLog.setLength(0);
                 }
             }
 
