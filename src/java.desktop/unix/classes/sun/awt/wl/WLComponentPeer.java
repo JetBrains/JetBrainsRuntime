@@ -60,6 +60,7 @@ import java.util.function.Supplier;
 public class WLComponentPeer implements ComponentPeer {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLComponentPeer");
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.wl.focus.WLComponentPeer");
+    private static final PlatformLogger popupLog = PlatformLogger.getLogger("sun.awt.wl.popup.WLComponentPeer");
 
     private static final String appID = System.getProperty("sun.java.command");
 
@@ -224,6 +225,17 @@ public class WLComponentPeer implements ComponentPeer {
         return true;
     }
 
+    private static Window getToplevel(Component component) {
+        Container container = component instanceof Container c ? c : component.getParent();
+        for(Container p = container; p != null; p = p.getParent()) {
+            if (p instanceof Window) {
+                return (Window)p;
+            }
+        }
+
+        return null;
+    }
+
     protected void wlSetVisible(boolean v) {
         this.visible = v;
         if (v) {
@@ -238,7 +250,7 @@ public class WLComponentPeer implements ComponentPeer {
                     final Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
                     final int parentWidth = popupParent.getWidth();
                     final int parentHeight = popupParent.getHeight();
-                    final Window toplevel = SwingUtilities.getWindowAncestor(popupParent);
+                    final Window toplevel = getToplevel(popupParent);
                     // We need to provide popup "parent" location relative to
                     // the surface it is painted upon:
                     final Point toplevelLocation = toplevel == null
@@ -251,6 +263,15 @@ public class WLComponentPeer implements ComponentPeer {
                     final Point offsetFromParent = popup.getLocation();
                     final int offsetX = offsetFromParent.x;
                     final int offsetY = offsetFromParent.y;
+
+                    if (popupLog.isLoggable(PlatformLogger.Level.FINE)) {
+                        popupLog.info("New popup: " + popup);
+                        popupLog.info("\tparent:" + popupParent);
+                        popupLog.info("\ttoplevel: " + toplevel);
+                        popupLog.info("\tanchor from toplevel offset: " + toplevelLocation);
+                        popupLog.info("\toffset from anchor: " + offsetFromParent);
+                    }
+
                     nativeCreateWLPopup(nativePtr,
                             getParentNativePtr(target), parentX, parentY, parentWidth, parentHeight,
                             thisWidth, thisHeight,
