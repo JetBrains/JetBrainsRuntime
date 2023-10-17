@@ -4321,6 +4321,7 @@ void ClassFileParser::check_super_interface_access(const InstanceKlass* this_kla
           (same_module) ? this_klass->joint_in_module_of_loader(k) : this_klass->class_in_module_of_loader(),
           (same_module) ? "" : "; ",
           (same_module) ? "" : k->class_in_module_of_loader());
+        return;
       } else {
         // Add additional message content.
         Exceptions::fthrow(
@@ -4328,6 +4329,7 @@ void ClassFileParser::check_super_interface_access(const InstanceKlass* this_kla
           vmSymbols::java_lang_IllegalAccessError(),
           "superinterface check failed: %s",
           msg);
+        return;
       }
     }
   }
