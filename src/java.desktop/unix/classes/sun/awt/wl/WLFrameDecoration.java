@@ -66,6 +66,8 @@ public class WLFrameDecoration {
     };
 
     private final WLDecoratedPeer peer;
+    private final boolean isUndecorated;
+
 
     private final ButtonState closeButton;
     private final ButtonState maximizeButton;
@@ -76,23 +78,37 @@ public class WLFrameDecoration {
     private boolean pressedInside;
     private Point pressedLocation;
 
-    public WLFrameDecoration(WLDecoratedPeer peer, boolean showMinimize, boolean showMaximize) {
+    public WLFrameDecoration(WLDecoratedPeer peer, boolean isUndecorated, boolean showMinimize, boolean showMaximize) {
         this.peer = peer;
-        closeButton = new ButtonState(this::getCloseButtonCenter, peer::postWindowClosing);
-        maximizeButton = showMaximize ? new ButtonState(this::getMaximizeButtonCenter, this::toggleMaximizedState) : null;
-        minimizeButton = showMinimize ? new ButtonState(this::getMinimizeButtonCenter, this::minimizeWindow) : null;
+        this.isUndecorated = isUndecorated;
+
+        if (isUndecorated) {
+            closeButton = null;
+            maximizeButton = null;
+            minimizeButton = null;
+        } else {
+            closeButton = new ButtonState(this::getCloseButtonCenter, peer::postWindowClosing);
+            maximizeButton = showMaximize ? new ButtonState(this::getMaximizeButtonCenter, this::toggleMaximizedState) : null;
+            minimizeButton = showMinimize ? new ButtonState(this::getMinimizeButtonCenter, this::minimizeWindow) : null;
+        }
     }
 
     public Insets getInsets() {
-        return new Insets(HEIGHT, 0, 0, 0);
+        return isUndecorated
+                ? new Insets(0, 0, 0, 0)
+                : new Insets(HEIGHT, 0, 0, 0);
     }
 
     public Rectangle getBounds() {
-        return new Rectangle(0, 0, peer.getWidth(), HEIGHT);
+        return isUndecorated
+                ? new Rectangle(0, 0, 0, 0)
+                : new Rectangle(0, 0, peer.getWidth(), HEIGHT);
     }
 
     public Dimension getMinimumSize() {
-        return new Dimension(getButtonSpaceWidth(), HEIGHT);
+        return isUndecorated
+                ? new Dimension(0, 0)
+                : new Dimension(getButtonSpaceWidth(), HEIGHT);
     }
 
     private boolean hasMinimizeButton() {
@@ -129,6 +145,8 @@ public class WLFrameDecoration {
     }
 
     public void paint(final Graphics g) {
+        if (isUndecorated) return;
+
         int width = peer.getWidth();
         int height = peer.getHeight();
         if (width <= 0 || height <= 0) return;
@@ -250,17 +268,14 @@ public class WLFrameDecoration {
                 pressedLocation.x < peer.getWidth() - getButtonSpaceWidth();
     }
 
-    void processMouseEvent(MouseEvent e) {
+    boolean processMouseEvent(MouseEvent e) {
+        if (isUndecorated && !peer.isResizable()) return false;
+
         final boolean isLMB = e.getButton() == MouseEvent.BUTTON1;
         final boolean isRMB = e.getButton() == MouseEvent.BUTTON3;
         final boolean isPressed = e.getID() == MouseEvent.MOUSE_PRESSED;
         final boolean isLMBPressed = isLMB && isPressed;
         final boolean isRMBPressed = isRMB && isPressed;
-
-        if (isRMBPressed && getBounds().contains(e.getX(), e.getY())) {
-            peer.showWindowMenu(e.getX(), e.getY());
-            return;
-        }
 
         Point point = e.getPoint();
         if (isLMBPressed && peer.isResizable()) {
@@ -269,9 +284,17 @@ public class WLFrameDecoration {
                 peer.startResize(resizeSide);
                 // workaround for https://gitlab.gnome.org/GNOME/mutter/-/issues/2523
                 WLToolkit.resetPointerInputState();
-                return;
+                return true;
             }
         }
+
+        if (isUndecorated) return false;
+
+        if (isRMBPressed && getBounds().contains(e.getX(), e.getY())) {
+            peer.showWindowMenu(e.getX(), e.getY());
+            return true;
+        }
+
         boolean pointerInside = e.getY() >= HEIGHT && e.getID() != MouseEvent.MOUSE_EXITED ||
                 pressedInside && e.getID() == MouseEvent.MOUSE_DRAGGED;
         if (pointerInside && !this.pointerInside && e.getID() != MouseEvent.MOUSE_ENTERED) {
@@ -287,7 +310,7 @@ public class WLFrameDecoration {
         if (e.getID() == MouseEvent.MOUSE_DRAGGED) {
             pressedInside = pointerInside;
         }
-        if (closeButton.processMouseEvent(e) |
+        if ((closeButton != null && closeButton.processMouseEvent(e)) |
                 (maximizeButton != null && maximizeButton.processMouseEvent(e)) |
                 (minimizeButton != null && minimizeButton.processMouseEvent(e))) {
             peer.notifyClientDecorationsChanged();
@@ -302,6 +325,8 @@ public class WLFrameDecoration {
         } else if (e.getID() == MouseEvent.MOUSE_MOVED && !pointerInside) {
             peer.updateCursorImmediately();
         }
+
+        return true;
     }
 
     private int getResizeEdges(int x, int y) {
@@ -338,7 +363,7 @@ public class WLFrameDecoration {
     private volatile boolean needRepaint = true;
 
     boolean isRepaintNeeded() {
-        return needRepaint;
+        return !isUndecorated && needRepaint;
     }
 
     void markRepaintNeeded() {
@@ -350,7 +375,7 @@ public class WLFrameDecoration {
         if (edges != 0) {
             return Cursor.getPredefinedCursor(RESIZE_CURSOR_TYPES[edges]);
         }
-        if (y < HEIGHT) {
+        if (!isUndecorated && y < HEIGHT) {
             return Cursor.getDefaultCursor();
         }
         return null;
