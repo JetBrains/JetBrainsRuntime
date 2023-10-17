@@ -162,6 +162,7 @@
 
     cellinfo->cacheInfo = _cacheInfo;
     cellinfo->glyphInfo = glyph;
+    cellinfo->glyphSubimage = 0;
     cellinfo->timesRendered = 0;
     cellinfo->x = x;
     cellinfo->y = y;
