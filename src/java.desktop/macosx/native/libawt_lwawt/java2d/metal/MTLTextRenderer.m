@@ -140,7 +140,7 @@ MTLTR_ValidateGlyphCache(MTLContext *mtlc, BMTLSDOps *dstOps, jboolean lcdCache)
  */
 static void
 MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc,
-                      BMTLSDOps *dstOps, jboolean lcdCache)
+                      BMTLSDOps *dstOps, jboolean lcdCache, jint subimage)
 {
     MTLCacheCellInfo *ccinfo;
     MTLGlyphCache* gc;
@@ -166,8 +166,7 @@ MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc,
         }
         MTLTR_ValidateGlyphCache(mtlc, dstOps, lcdCache);
     }
-    [gc addGlyph:glyph];
-    ccinfo = (MTLCacheCellInfo *) glyph->cellInfo;
+    ccinfo = [gc addGlyph:glyph];
 
     if (ccinfo != NULL) {
         // store glyph image in texture cell
@@ -176,10 +175,12 @@ MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc,
                 {w, h, 1}
         };
         if (!lcdCache) {
+            ccinfo->glyphSubimage = subimage;
             NSUInteger bytesPerRow = 1 * w;
             [gc.cacheInfo->texture replaceRegion:region
                              mipmapLevel:0
-                             withBytes:glyph->image
+                             withBytes:glyph->image +
+                                       (glyph->rowBytes * glyph->height) * subimage
                              bytesPerRow:bytesPerRow];
         } else {
             unsigned int imageBytes = w * h * 4;
@@ -276,8 +277,8 @@ static void DisableColorGlyphPainting(MTLContext *mtlc) {
 }
 
 static jboolean
-MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc,
-                                 GlyphInfo *ginfo, jint x, jint y, BMTLSDOps *dstOps)
+MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc, GlyphInfo *ginfo,
+                                 jint x, jint y, BMTLSDOps *dstOps, jint subimage)
 {
     jfloat x1, y1, x2, y2;
 
@@ -293,18 +294,41 @@ MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc,
         glyphMode = MODE_USE_CACHE_GRAY;
     }
 
-    MTLCacheCellInfo *cell = (MTLCacheCellInfo *) (ginfo->cellInfo);
+    MTLCacheCellInfo *cell;
+    int rx = ginfo->subpixelResolutionX;
+    int ry = ginfo->subpixelResolutionY;
+    if (subimage == 0 && ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0)) {
+        // Subpixel rendering disabled, there must be only one cell info
+        cell = (MTLCacheCellInfo *) (ginfo->cellInfo);
+    } else {
+        // Subpixel rendering enabled, find subimage in cell list
+        cell = NULL;
+        MTLCacheCellInfo *c = (MTLCacheCellInfo *) (ginfo->cellInfo);
+        while (c != NULL) {
+            if (c->glyphSubimage == subimage) {
+                cell = c;
+                break;
+            }
+            c = c->nextGCI;
+        }
+    }
+
+
     if (cell == NULL || cell->cacheInfo->mtlc != mtlc) {
         if (cell != NULL) {
             MTLGlyphCache_RemoveCellInfo(cell->glyphInfo, cell);
         }
         // attempt to add glyph to accelerated glyph cache
-        MTLTR_AddToGlyphCache(ginfo, mtlc, dstOps, JNI_FALSE);
+        MTLTR_AddToGlyphCache(ginfo, mtlc, dstOps, JNI_FALSE, subimage);
 
         if (ginfo->cellInfo == NULL) {
             // we'll just no-op in the rare case that the cell is NULL
             return JNI_TRUE;
         }
+        // Our image, added to cache will be the first, so we take it.
+        // If for whatever reason we failed to add it to our cache,
+        // take first cell anyway, it's still better to render glyph
+        // image with wrong subpixel offset than render nothing.
         cell = (MTLCacheCellInfo *) (ginfo->cellInfo);
     }
     cell->timesRendered++;
@@ -358,7 +382,7 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
     if (ginfo->cellInfo == NULL) {
         // attempt to add glyph to accelerated glyph cache
         // TODO : Handle RGB order
-        MTLTR_AddToGlyphCache(ginfo, mtlc, dstOps, JNI_TRUE);
+        MTLTR_AddToGlyphCache(ginfo, mtlc, dstOps, JNI_TRUE, 0);
 
         if (ginfo->cellInfo == NULL) {
             // we'll just no-op in the rare case that the cell is NULL
@@ -392,7 +416,7 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
 
 static jboolean
 MTLTR_DrawGrayscaleGlyphNoCache(MTLContext *mtlc,
-                                GlyphInfo *ginfo, jint x, jint y, BMTLSDOps *dstOps)
+                                GlyphInfo *ginfo, jint x, jint y, BMTLSDOps *dstOps, jint subimage)
 {
     jint tw, th;
     jint sx, sy, sw, sh;
@@ -427,7 +451,8 @@ MTLTR_DrawGrayscaleGlyphNoCache(MTLContext *mtlc,
             J2dTraceLn7(J2D_TRACE_INFO, "sx = %d sy = %d x = %d y = %d sw = %d sh = %d w = %d", sx, sy, x, y, sw, sh, w);
             MTLVertexCache_AddMaskQuad(mtlc,
                                        sx, sy, x, y, sw, sh,
-                                       w, ginfo->image,
+                                       w, ginfo->image +
+                                          (ginfo->rowBytes * ginfo->height) * subimage,
                                        dstOps);
         }
     }
@@ -577,6 +602,9 @@ MTLTR_DrawColorGlyphNoCache(MTLContext *mtlc,
 #define FLOOR_ASSIGN(l, r) \
     if ((r)<0) (l) = ((int)floor(r)); else (l) = ((int)(r))
 
+#define ADJUST_SUBPIXEL_GLYPH_POSITION(coord, res) \
+    if ((res) > 1) (coord) += 0.5f / ((float)(res)) - 0.5f
+
 void
 MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
                     jint totalGlyphs, jboolean usePositions,
@@ -606,10 +634,10 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
         jboolean ok;
         GlyphInfo *ginfo = (GlyphInfo *)jlong_to_ptr(NEXT_LONG(images));
 
-        if (ginfo == NULL) {
+        if (ginfo == NULL || ginfo == (void*) -1) {
             // this shouldn't happen, but if it does we'll just break out...
-            J2dRlsTraceLn(J2D_TRACE_ERROR,
-                          "MTLTR_DrawGlyphList: glyph info is null");
+            J2dRlsTraceLn1(J2D_TRACE_ERROR,
+                          "MTLTR_DrawGlyphList: glyph info is %d", ginfo);
             break;
         }
 
@@ -618,11 +646,15 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
             jfloat posy = NEXT_FLOAT(positions);
             glyphx = glyphListOrigX + posx + ginfo->topLeftX;
             glyphy = glyphListOrigY + posy + ginfo->topLeftY;
+            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphx, ginfo->subpixelResolutionX);
+            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphy, ginfo->subpixelResolutionY);
             FLOOR_ASSIGN(x, glyphx);
             FLOOR_ASSIGN(y, glyphy);
         } else {
             glyphx = glyphListOrigX + ginfo->topLeftX;
             glyphy = glyphListOrigY + ginfo->topLeftY;
+            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphx, ginfo->subpixelResolutionX);
+            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphy, ginfo->subpixelResolutionY);
             FLOOR_ASSIGN(x, glyphx);
             FLOOR_ASSIGN(y, glyphy);
             glyphListOrigX += ginfo->advanceX;
@@ -638,14 +670,22 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
         J2dTraceLn1(J2D_TRACE_INFO, "rowBytes = %d", ginfo->rowBytes);
         if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE) {
             // grayscale or monochrome glyph data
+            int rx = ginfo->subpixelResolutionX;
+            int ry = ginfo->subpixelResolutionY;
+            int subimage;
+            if ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0) {
+                subimage = 0;
+            } else {
+                subimage = (jint)((glyphx - x) * rx) + (jint)((glyphy - y) * ry) * rx;
+            }
             if (ginfo->width <= MTLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= MTLTR_CACHE_CELL_HEIGHT)
             {
                 J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList Grayscale cache");
-                ok = MTLTR_DrawGrayscaleGlyphViaCache(mtlc, ginfo, x, y, dstOps);
+                ok = MTLTR_DrawGrayscaleGlyphViaCache(mtlc, ginfo, x, y, dstOps, subimage);
             } else {
                 J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList Grayscale no cache");
-                ok = MTLTR_DrawGrayscaleGlyphNoCache(mtlc, ginfo, x, y, dstOps);
+                ok = MTLTR_DrawGrayscaleGlyphNoCache(mtlc, ginfo, x, y, dstOps, subimage);
             }
         } else if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_BGRA) {
             J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList color glyph no cache");
