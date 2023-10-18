@@ -678,7 +678,7 @@ registry_global(void *data, struct wl_registry *wl_registry,
     } else if (strcmp(interface, wl_compositor_interface.name) == 0) {
         wl_compositor = wl_registry_bind(wl_registry, name, &wl_compositor_interface, 4);
     } else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
-        xdg_wm_base = wl_registry_bind(wl_registry, name, &xdg_wm_base_interface, 1);
+        xdg_wm_base = wl_registry_bind(wl_registry, name, &xdg_wm_base_interface, 3);
         xdg_wm_base_add_listener(xdg_wm_base, &xdg_wm_base_listener, NULL);
         process_new_listener_before_end_of_init();
     } else if (strcmp(interface, wl_seat_interface.name) == 0) {
