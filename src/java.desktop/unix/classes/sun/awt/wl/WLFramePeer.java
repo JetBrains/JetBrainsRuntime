@@ -133,11 +133,11 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
     }
 
     @Override
-    void notifyConfigured(int newWidth, int newHeight, boolean active, boolean maximized) {
+    void notifyConfigured(int newX, int newY, int newWidth, int newHeight, boolean active, boolean maximized) {
         int widthBefore = getWidth();
         int heightBefore = getHeight();
-
-        super.notifyConfigured(newWidth, newHeight, active, maximized);
+        
+        super.notifyConfigured(newX, newY, newWidth, newHeight, active, maximized);
 
         synchronized (getStateLock()) {
             int oldState = state;
