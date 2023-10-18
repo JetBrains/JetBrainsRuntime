@@ -97,13 +97,10 @@ public class WLComponentPeer implements ComponentPeer {
     boolean isLayouting = false;
     boolean visible = false;
 
-    int x;
-    int y;
-
-    private final Object sizeLock = new Object();
-    int width;  // protected by sizeLock
-    int height; // protected by sizeLock
-    int wlBufferScale; // protected by sizeLock
+    private final Object dataLock = new Object();
+    int width;  // protected by dataLock
+    int height; // protected by dataLock
+    int wlBufferScale; // protected by dataLock
 
     static {
         initIDs();
@@ -116,8 +113,6 @@ public class WLComponentPeer implements ComponentPeer {
         this.target = target;
         this.background = target.getBackground();
         Rectangle bounds = target.getBounds();
-        x = bounds.x;
-        y = bounds.y;
         width = bounds.width;
         height = bounds.height;
         final WLGraphicsConfig config = (WLGraphicsConfig)target.getGraphicsConfiguration();
@@ -125,20 +120,22 @@ public class WLComponentPeer implements ComponentPeer {
         surfaceData = config.createSurfaceData(this);
         nativePtr = nativeCreateFrame();
         paintArea = new WLRepaintArea();
-        log.fine("WLComponentPeer: target=" + target + " x=" + x + " y=" + y +
-                " width=" + width + " height=" + height);
+
+        if (log.isLoggable(Level.FINE)) {
+            log.fine("WLComponentPeer: target=" + target + " with size=" + width + "x" + height);
+        }
         // TODO
         // setup parent window for target
     }
 
     public int getWidth() {
-        synchronized (sizeLock) {
+        synchronized (dataLock) {
             return width;
         }
     }
 
     public int getHeight() {
-        synchronized (sizeLock) {
+        synchronized (dataLock) {
             return height;
         }
     }
@@ -159,7 +156,7 @@ public class WLComponentPeer implements ComponentPeer {
 
     void postPaintEvent() {
         if (isVisible()) {
-            synchronized (sizeLock) {
+            synchronized (dataLock) {
                 postPaintEvent(0, 0, width, height);
             }
         }
@@ -225,7 +222,7 @@ public class WLComponentPeer implements ComponentPeer {
         return true;
     }
 
-    private static Window getToplevel(Component component) {
+    private static Window getToplevelFor(Component component) {
         Container container = component instanceof Container c ? c : component.getParent();
         for(Container p = container; p != null; p = p.getParent()) {
             if (p instanceof Window) {
@@ -250,7 +247,7 @@ public class WLComponentPeer implements ComponentPeer {
                     final Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
                     final int parentWidth = popupParent.getWidth();
                     final int parentHeight = popupParent.getHeight();
-                    final Window toplevel = getToplevel(popupParent);
+                    final Window toplevel = getToplevelFor(popupParent);
                     // We need to provide popup "parent" location relative to
                     // the surface it is painted upon:
                     final Point toplevelLocation = toplevel == null
@@ -268,7 +265,7 @@ public class WLComponentPeer implements ComponentPeer {
                         popupLog.info("New popup: " + popup);
                         popupLog.info("\tparent:" + popupParent);
                         popupLog.info("\ttoplevel: " + toplevel);
-                        popupLog.info("\tanchor from toplevel offset: " + toplevelLocation);
+                        popupLog.info("\toffset of anchor from toplevel: " + toplevelLocation);
                         popupLog.info("\toffset from anchor: " + offsetFromParent);
                     }
 
@@ -320,7 +317,7 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     void configureWLSurface() {
-        synchronized (sizeLock) {
+        synchronized (dataLock) {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
                 log.fine(String.format("%s is configured to %dx%d with %dx scale", this, getBufferWidth(), getBufferHeight(), getBufferScale()));
             }
@@ -399,27 +396,37 @@ public class WLComponentPeer implements ComponentPeer {
         log.info("Not implemented: WLComponentPeer.print(Graphics)");
     }
 
-    public void setBounds(int x, int y, int width, int height, int op) {
-        final boolean positionChanged = this.x != x || this.y != y;
-        if (positionChanged && isVisible()) {
-            performLocked(() -> WLRobotPeer.setLocationOfWLSurface(getWLSurface(nativePtr), x, y));
+    private void setLocationTo(int newX, int newY) {
+        synchronized (dataLock) {
+            var acc = AWTAccessor.getComponentAccessor();
+            acc.setLocation(target, newX, newY);
         }
-        this.x = x;
-        this.y = y;
+    }
+
+    public void setBounds(int newX, int newY, int newWidth, int newHeight, int op) {
+        boolean positionChanged = (op == SET_BOUNDS || op == SET_LOCATION);
+        if (positionChanged && isVisible()) {
+            // Wayland provides the ability to programmatically change the location of popups,
+            // but not top-level windows.
+            if (targetIsWlPopup()) {
+                repositionWlPopup(newX, newY);
+                // the location will be updated in notifyConfigured() following
+                // the xdg_popup::repositioned event
+            } else {
+                performLocked(() -> WLRobotPeer.setLocationOfWLSurface(getWLSurface(nativePtr), newX, newY));
+            }
+        }
 
         if (positionChanged) {
             WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_MOVED));
         }
 
-        Rectangle oldBounds = getVisibleBounds();
-        final boolean sizeChanged = oldBounds.width != width || oldBounds.height != height;
+        boolean sizeChanged = (op == SET_BOUNDS  || op == SET_SIZE || op == SET_CLIENT_SIZE);
         if (sizeChanged) {
-            synchronized (sizeLock) {
-                this.width = width;
-                this.height = height;
-            }
+            setSizeTo(newWidth, newHeight);
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                log.fine(String.format("%s is resizing its buffer to %dx%d with %dx scale", this, getBufferWidth(), getBufferHeight(), getBufferScale()));
+                log.fine(String.format("%s is resizing its buffer to %dx%d with %dx scale",
+                        this, getBufferWidth(), getBufferHeight(), getBufferScale()));
             }
             SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
                     getBufferWidth(), getBufferHeight(), getBufferScale());
@@ -432,8 +439,44 @@ public class WLComponentPeer implements ComponentPeer {
         postPaintEvent();
     }
 
+    private void setSizeTo(int newWidth, int newHeight) {
+        synchronized (dataLock) {
+            this.width = newWidth;
+            this.height = newHeight;
+        }
+    }
+
+    private void repositionWlPopup(int newX, int newY) {
+        final int thisWidth = getWidth();
+        final int thisHeight = getHeight();
+        performLocked(() -> {
+            Window popup = (Window) target;
+            final Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
+            final int parentWidth = popupParent.getWidth();
+            final int parentHeight = popupParent.getHeight();
+            final Window toplevel = getToplevelFor(popupParent);
+            // We need to provide popup "parent" location relative to
+            // the surface it is painted upon:
+            final Point toplevelLocation = toplevel == null
+                    ? new Point(popupParent.getX(), popupParent.getY())
+                    : SwingUtilities.convertPoint(popupParent, 0, 0, toplevel);
+            final int parentX = toplevelLocation.x;
+            final int parentY = toplevelLocation.y;
+            if (popupLog.isLoggable(Level.FINE)) {
+                popupLog.info("Repositioning popup: " + popup);
+                popupLog.info("\tparent:" + popupParent);
+                popupLog.info("\ttoplevel: " + toplevel);
+                popupLog.info("\toffset of anchor from toplevel: " + toplevelLocation);
+                popupLog.info("\toffset from anchor: " + newX + ", " + newY);
+            }
+            nativeRepositionWLPopup(nativePtr, parentX, parentY, parentWidth, parentHeight,
+                    thisWidth, thisHeight,
+                    newX, newY);
+        } );
+    }
+
     public Rectangle getVisibleBounds() {
-        synchronized(sizeLock) {
+        synchronized(dataLock) {
             return new Rectangle(0, 0, width, height);
         }
     }
@@ -446,7 +489,7 @@ public class WLComponentPeer implements ComponentPeer {
      * See wl_surface.set_buffer_scale in wayland.xml for more details.
      */
     int getBufferScale() {
-        synchronized(sizeLock) {
+        synchronized(dataLock) {
             return wlBufferScale;
         }
     }
@@ -464,7 +507,7 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     public Rectangle getBufferBounds() {
-        synchronized (sizeLock) {
+        synchronized (dataLock) {
             return new Rectangle(getBufferWidth(), getBufferHeight());
         }
     }
@@ -817,7 +860,7 @@ public class WLComponentPeer implements ComponentPeer {
     public boolean updateGraphicsData(GraphicsConfiguration gc) {
         final int newScale = ((WLGraphicsConfig)gc).getScale();
 
-        synchronized (sizeLock) {
+        synchronized (dataLock) {
             if (newScale != wlBufferScale) {
                 wlBufferScale = newScale;
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -882,6 +925,12 @@ public class WLComponentPeer implements ComponentPeer {
                                               int parentWidth, int parentHeight,
                                               int width, int height,
                                               int offsetX, int offsetY);
+
+    protected native void nativeRepositionWLPopup(long ptr,
+                                                  int parentX, int parentY,
+                                                  int parentWidth, int parentHeight,
+                                                  int width, int height,
+                                                  int offsetX, int offsetY);
     protected native void nativeHideFrame(long ptr);
 
     protected native void nativeDisposeFrame(long ptr);
@@ -1044,7 +1093,7 @@ public class WLComponentPeer implements ComponentPeer {
         performLocked(() -> nativeStartResize(nativePtr, edges));
     }
 
-    void notifyConfigured(int newWidth, int newHeight, boolean active, boolean maximized) {
+    void notifyConfigured(int newX, int newY, int newWidth, int newHeight, boolean active, boolean maximized) {
         final long wlSurfacePtr = getWLSurface(nativePtr);
         // TODO: this needs to be done only once after wlSetVisible(true)
         SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(wlSurfacePtr);
@@ -1055,7 +1104,11 @@ public class WLComponentPeer implements ComponentPeer {
 
         boolean isWlPopup = targetIsWlPopup();
 
-        if (newWidth != 0 && newHeight != 0) performUnlocked(() ->target.setSize(newWidth, newHeight));
+        if (isWlPopup) { // Only popups provide (relative) location
+            setLocationTo(newX, newY);
+        }
+
+        if (newWidth != 0 && newHeight != 0) performUnlocked(() -> target.setSize(newWidth, newHeight));
 
         if (newWidth == 0 || newHeight == 0 || isWlPopup) {
             // From xdg-shell.xml: "If the width or height arguments are zero,
@@ -1197,6 +1250,8 @@ public class WLComponentPeer implements ComponentPeer {
 
     private static void startMovingWindowTogetherWithMouse(Window window, int mouseButton)
     {
+        if (isWlPopup(window)) return; // xdg_popup's do not support the necessary interface
+
         final AWTAccessor.ComponentAccessor acc = AWTAccessor.getComponentAccessor();
         ComponentPeer peer = acc.getPeer(window);
         if (peer instanceof WLComponentPeer wlComponentPeer) {
