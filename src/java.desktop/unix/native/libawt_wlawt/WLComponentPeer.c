@@ -99,6 +99,8 @@ struct WLFrame {
         struct xdg_popup *xdg_popup;
     };
     jboolean configuredPending;
+    int32_t configuredX;
+    int32_t configuredY;
     int32_t configuredWidth;
     int32_t configuredHeight;
     jboolean configuredActive;
@@ -122,6 +124,7 @@ xdg_surface_configure(void *data,
         const jobject nativeFramePeer = (*env)->NewLocalRef(env, wlFrame->nativeFramePeer);
         if (nativeFramePeer) {
             (*env)->CallVoidMethod(env, nativeFramePeer, notifyConfiguredMID,
+                                   wlFrame->configuredX, wlFrame->configuredY,
                                    wlFrame->configuredWidth, wlFrame->configuredHeight,
                                    wlFrame->configuredActive, wlFrame->configuredMaximized);
             (*env)->DeleteLocalRef(env, nativeFramePeer);
@@ -219,19 +222,21 @@ xdg_toplevel_configure(void *data,
 
 static void
 xdg_popup_configure(void *data,
-                                struct xdg_popup *xdg_popup,
-                                int32_t x,
-                                int32_t y,
-                                int32_t width,
-                                int32_t height)
+                    struct xdg_popup *xdg_popup,
+                    int32_t x,
+                    int32_t y,
+                    int32_t width,
+                    int32_t height)
 {
     J2dTrace(J2D_TRACE_INFO, "WLComponentPeer: xdg_popup_configure(%p, %d, %d, %d, %d)\n",
              xdg_popup, x, y, width, height);
 
-    struct WLFrame *wlFrame = (struct WLFrame*)data;
+    struct WLFrame *wlFrame = data;
     assert(wlFrame);
 
     wlFrame->configuredPending = JNI_TRUE;
+    wlFrame->configuredX = x;
+    wlFrame->configuredY = y;
     wlFrame->configuredWidth = width;
     wlFrame->configuredHeight = height;
 }
@@ -257,6 +262,12 @@ xdg_popup_done(void *data,
     J2dTrace(J2D_TRACE_INFO, "WLComponentPeer: xdg_popup_done(%p)\n", xdg_popup);
 }
 
+static void
+xdg_popup_repositioned(void *data, struct xdg_popup *xdg_popup, uint32_t token)
+{
+    J2dTrace(J2D_TRACE_INFO, "WLComponentPeer: xdg_popup_repositioned(%d)\n", token);
+}
+
 static const struct xdg_toplevel_listener xdg_toplevel_listener = {
         .configure = xdg_toplevel_configure,
         .close = xdg_toplevel_close,
@@ -265,6 +276,7 @@ static const struct xdg_toplevel_listener xdg_toplevel_listener = {
 static const struct xdg_popup_listener xdg_popup_listener = {
         .configure = xdg_popup_configure,
         .popup_done = xdg_popup_done,
+        .repositioned = xdg_popup_repositioned
 };
 
 static void
@@ -289,7 +301,7 @@ Java_sun_awt_wl_WLComponentPeer_initIDs
 {
     CHECK_NULL(nativePtrID = (*env)->GetFieldID(env, clazz, "nativePtr", "J"));
     CHECK_NULL_THROW_IE(env,
-                        notifyConfiguredMID = (*env)->GetMethodID(env, clazz, "notifyConfigured", "(IIZZ)V"),
+                        notifyConfiguredMID = (*env)->GetMethodID(env, clazz, "notifyConfigured", "(IIIIZZ)V"),
                         "Failed to find method WLComponentPeer.notifyConfigured");
     CHECK_NULL_THROW_IE(env,
                         notifyEnteredOutputMID = (*env)->GetMethodID(env, clazz, "notifyEnteredOutput", "(I)V"),
@@ -310,11 +322,11 @@ Java_sun_awt_wl_WLDecoratedPeer_initIDs
 
 JNIEXPORT jlong JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeCreateFrame
-  (JNIEnv *env, jobject obj)
+        (JNIEnv *env, jobject obj)
 {
-    struct WLFrame *frame = (struct WLFrame *) calloc(1, sizeof(struct WLFrame));
+    struct WLFrame *frame = calloc(1, sizeof(struct WLFrame));
     frame->nativeFramePeer = (*env)->NewWeakGlobalRef(env, obj);
-    return (jlong)frame;
+    return ptr_to_jlong(frame);
 }
 
 static void
@@ -410,12 +422,12 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestUnsetFullScreen
 
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
-  (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr,
-   jint x, jint y, jboolean isModal,
-   jstring title, jstring appid)
+      (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr,
+       jint x, jint y, jboolean isModal,
+       jstring title, jstring appid)
 {
-    struct WLFrame *frame = (struct WLFrame *) ptr;
-    struct WLFrame *parentFrame = (struct WLFrame*) parentPtr;
+    struct WLFrame *frame = jlong_to_ptr(ptr);
+    struct WLFrame *parentFrame = jlong_to_ptr(parentPtr);
     if (frame->wl_surface) return;
     frame->wl_surface = wl_compositor_create_surface(wl_compositor);
     frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, frame->wl_surface);
@@ -434,7 +446,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
     if (appid) {
         FrameSetAppID(env, frame, appid);
     }
-    if (parentFrame) {
+    if (parentFrame && parentFrame->toplevel) {
         xdg_toplevel_set_parent(frame->xdg_toplevel, parentFrame->xdg_toplevel);
     }
 
@@ -452,6 +464,26 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
     // setting it up, the client must perform an initial commit
     // without any buffer attached"
     wl_surface_commit(frame->wl_surface);
+}
+
+static struct xdg_positioner *
+newPositioner
+        (jint parentX, jint parentY, jint parentWidth, jint parentHeight,
+         jint width, jint height, jint offsetX, jint offsetY)
+{
+    struct xdg_positioner *xdg_positioner = xdg_wm_base_create_positioner(xdg_wm_base);
+
+    // "For an xdg_positioner object to be considered complete, it must have
+    // a non-zero size set by set_size, and a non-zero anchor rectangle
+    // set by set_anchor_rect."
+    xdg_positioner_set_size(xdg_positioner, width, height);
+    xdg_positioner_set_anchor_rect(xdg_positioner, parentX, parentY, parentWidth, parentHeight);
+    xdg_positioner_set_offset(xdg_positioner, offsetX, offsetY);
+    xdg_positioner_set_anchor(xdg_positioner, XDG_POSITIONER_ANCHOR_TOP_LEFT);
+    xdg_positioner_set_gravity(xdg_positioner, XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
+    xdg_positioner_set_constraint_adjustment(xdg_positioner, XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X |
+                                                             XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y);
+    return xdg_positioner;
 }
 
 JNIEXPORT void JNICALL
@@ -473,18 +505,8 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLPopup
     frame->toplevel = JNI_FALSE;
 
     assert(parentFrame);
-    struct xdg_positioner *xdg_positioner =
-            xdg_wm_base_create_positioner(xdg_wm_base);
-    // "For an xdg_positioner object to be considered complete, it must have
-    // a non-zero size set by set_size, and a non-zero anchor rectangle
-    // set by set_anchor_rect."
-    xdg_positioner_set_size(xdg_positioner, width, height);
-    xdg_positioner_set_anchor_rect(xdg_positioner, parentX, parentY, parentWidth, parentHeight);
-    xdg_positioner_set_offset(xdg_positioner, offsetX, offsetY);
-    xdg_positioner_set_anchor(xdg_positioner, XDG_POSITIONER_ANCHOR_TOP_LEFT);
-    xdg_positioner_set_gravity(xdg_positioner, XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
-    xdg_positioner_set_constraint_adjustment(xdg_positioner, XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X |
-                                                             XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y);
+    struct xdg_positioner *xdg_positioner = newPositioner(parentX, parentY, parentWidth, parentHeight,
+        width, height, offsetX, offsetY);
     frame->xdg_popup = xdg_surface_get_popup(frame->xdg_surface, parentFrame->xdg_surface, xdg_positioner);
     xdg_popup_add_listener(frame->xdg_popup, &xdg_popup_listener, frame);
     xdg_positioner_destroy(xdg_positioner);
@@ -493,6 +515,24 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLPopup
     // setting it up, the client must perform an initial commit
     // without any buffer attached"
     wl_surface_commit(frame->wl_surface);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLComponentPeer_nativeRepositionWLPopup
+        (JNIEnv *env, jobject obj, jlong ptr,
+         jint parentX, jint parentY,
+         jint parentWidth, jint parentHeight,
+         jint width, jint height,
+         jint offsetX, jint offsetY)
+{
+    struct WLFrame *frame = jlong_to_ptr(ptr);
+    assert (!frame->toplevel);
+
+    struct xdg_positioner *xdg_positioner = newPositioner(parentX, parentY, parentWidth, parentHeight,
+        width, height, offsetX, offsetY);
+    static int token = 42; // This will be received by xdg_popup_repositioned(); unused for now.
+    xdg_popup_reposition(frame->xdg_popup, xdg_positioner, token++);
+    xdg_positioner_destroy(xdg_positioner);
 }
 
 static void
@@ -532,7 +572,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeHideFrame
 
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeDisposeFrame
-  (JNIEnv *env, jobject obj, jlong ptr)
+        (JNIEnv *env, jobject obj, jlong ptr)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     DoHide(frame);
@@ -541,13 +581,13 @@ Java_sun_awt_wl_WLComponentPeer_nativeDisposeFrame
 }
 
 JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLComponentPeer_getWLSurface
-  (JNIEnv *env, jobject obj, jlong ptr)
+        (JNIEnv *env, jobject obj, jlong ptr)
 {
     return ptr_to_jlong(((struct WLFrame*)jlong_to_ptr(ptr))->wl_surface);
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartDrag
-  (JNIEnv *env, jobject obj, jlong ptr)
+        (JNIEnv *env, jobject obj, jlong ptr)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel && wl_seat) {
@@ -556,7 +596,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartDrag
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartResize
-  (JNIEnv *env, jobject obj, jlong ptr, jint edges)
+        (JNIEnv *env, jobject obj, jlong ptr, jint edges)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel && wl_seat) {
