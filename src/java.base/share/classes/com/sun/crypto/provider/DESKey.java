@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,8 @@
 
 package com.sun.crypto.provider;
 
+import java.io.IOException;
+import java.io.InvalidObjectException;
 import java.lang.ref.Reference;
 import java.security.MessageDigest;
 import java.security.KeyRep;
@@ -43,7 +45,7 @@ import jdk.internal.ref.CleanerFactory;
 
 final class DESKey implements SecretKey {
 
-    static final long serialVersionUID = 7724971015953279128L;
+    private static final long serialVersionUID = 7724971015953279128L;
 
     private byte[] key;
 
@@ -112,7 +114,7 @@ final class DESKey implements SecretKey {
         for (int i = 1; i < this.key.length; i++) {
             retval += this.key[i] * i;
         }
-        return(retval ^= "des".hashCode());
+        return(retval ^ "des".hashCode());
     }
 
     public boolean equals(Object obj) {
@@ -133,14 +135,27 @@ final class DESKey implements SecretKey {
     }
 
     /**
-     * readObject is called to restore the state of this key from
-     * a stream.
+     * Restores the state of this object from the stream.
+     *
+     * @param  s the {@code ObjectInputStream} from which data is read
+     * @throws IOException if an I/O error occurs
+     * @throws ClassNotFoundException if a serialized class cannot be loaded
      */
     private void readObject(java.io.ObjectInputStream s)
-         throws java.io.IOException, ClassNotFoundException
+         throws IOException, ClassNotFoundException
     {
         s.defaultReadObject();
+        if ((key == null) || (key.length != DESKeySpec.DES_KEY_LEN)) {
+            throw new InvalidObjectException("Wrong key size");
+        }
         key = key.clone();
+
+        DESKeyGenerator.setParityBit(key, 0);
+
+        // Use the cleaner to zero the key when no longer referenced
+        final byte[] k = key;
+        CleanerFactory.cleaner().register(this,
+                () -> java.util.Arrays.fill(k, (byte)0x00));
     }
 
     /**
