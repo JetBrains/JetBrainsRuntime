@@ -108,8 +108,8 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     }
 
     @Override
-    void notifyConfigured(int newWidth, int newHeight, boolean active, boolean maximized) {
-        super.notifyConfigured(newWidth, newHeight, active, maximized);
+    void notifyConfigured(int newX, int newY, int newWidth, int newHeight, boolean active, boolean maximized) {
+        super.notifyConfigured(newX, newY, newWidth, newHeight, active, maximized);
         decoration.setActive(active);
     }
 
@@ -121,8 +121,8 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     }
 
     @Override
-    public void setBounds(int x, int y, int width, int height, int op) {
-        super.setBounds(x, y, width, height, op);
+    public void setBounds(int newX, int newY, int newWidth, int newHeight, int op) {
+        super.setBounds(newX, newY, newWidth, newHeight, op);
         notifyClientDecorationsChanged();
     }
 
