@@ -37,6 +37,7 @@
  */
 
 package sun.awt.X11;
+import java.awt.event.KeyEvent;
 import java.util.Hashtable;
 import jdk.internal.misc.Unsafe;
 
@@ -1716,6 +1717,20 @@ public class XKeysym {
         keysym2JavaKeycodeHash.put( Long.valueOf(XKeySymConstants.hpXK_mute_asciitilde),     new Keysym2JavaKeycode(java.awt.event.KeyEvent.VK_DEAD_TILDE, java.awt.event.KeyEvent.KEY_LOCATION_STANDARD));
 
         keysym2JavaKeycodeHash.put( Long.valueOf(XConstants.NoSymbol),     new Keysym2JavaKeycode(java.awt.event.KeyEvent.VK_UNDEFINED, java.awt.event.KeyEvent.KEY_LOCATION_UNKNOWN));
+
+        /* JetBrains Runtime mappings to fix JBR-6215, they override L3-L10, R1-R4 which have nonsensical defaults. */
+        keysym2JavaKeycodeHash.put ( Long.valueOf(XKeySymConstants.XK_F13), new Keysym2JavaKeycode(java.awt.event.KeyEvent.VK_F13, KeyEvent.KEY_LOCATION_STANDARD));
+        keysym2JavaKeycodeHash.put ( Long.valueOf(XKeySymConstants.XK_F14), new Keysym2JavaKeycode(java.awt.event.KeyEvent.VK_F14, KeyEvent.KEY_LOCATION_STANDARD));
+        keysym2JavaKeycodeHash.put ( Long.valueOf(XKeySymConstants.XK_F15), new Keysym2JavaKeycode(java.awt.event.KeyEvent.VK_F15, KeyEvent.KEY_LOCATION_STANDARD));
+        keysym2JavaKeycodeHash.put ( Long.valueOf(XKeySymConstants.XK_F16), new Keysym2JavaKeycode(java.awt.event.KeyEvent.VK_F16, KeyEvent.KEY_LOCATION_STANDARD));
+        keysym2JavaKeycodeHash.put ( Long.valueOf(XKeySymConstants.XK_F17), new Keysym2JavaKeycode(java.awt.event.KeyEvent.VK_F17, KeyEvent.KEY_LOCATION_STANDARD));
+        keysym2JavaKeycodeHash.put ( Long.valueOf(XKeySymConstants.XK_F18), new Keysym2JavaKeycode(java.awt.event.KeyEvent.VK_F18, KeyEvent.KEY_LOCATION_STANDARD));
+        keysym2JavaKeycodeHash.put ( Long.valueOf(XKeySymConstants.XK_F19), new Keysym2JavaKeycode(java.awt.event.KeyEvent.VK_F19, KeyEvent.KEY_LOCATION_STANDARD));
+        keysym2JavaKeycodeHash.put ( Long.valueOf(XKeySymConstants.XK_F20), new Keysym2JavaKeycode(java.awt.event.KeyEvent.VK_F20, KeyEvent.KEY_LOCATION_STANDARD));
+        keysym2JavaKeycodeHash.put ( Long.valueOf(XKeySymConstants.XK_F21), new Keysym2JavaKeycode(java.awt.event.KeyEvent.VK_F21, KeyEvent.KEY_LOCATION_STANDARD));
+        keysym2JavaKeycodeHash.put ( Long.valueOf(XKeySymConstants.XK_F22), new Keysym2JavaKeycode(java.awt.event.KeyEvent.VK_F22, KeyEvent.KEY_LOCATION_STANDARD));
+        keysym2JavaKeycodeHash.put ( Long.valueOf(XKeySymConstants.XK_F23), new Keysym2JavaKeycode(java.awt.event.KeyEvent.VK_F23, KeyEvent.KEY_LOCATION_STANDARD));
+        keysym2JavaKeycodeHash.put ( Long.valueOf(XKeySymConstants.XK_F24), new Keysym2JavaKeycode(java.awt.event.KeyEvent.VK_F24, KeyEvent.KEY_LOCATION_STANDARD));
 
         /* Reverse search of keysym by keycode. */
 
