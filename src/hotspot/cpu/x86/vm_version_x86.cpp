@@ -745,7 +745,7 @@ void VM_Version::get_processor_features() {
     }
   }
 
-  char buf[512];
+  char buf[1024];
   jio_snprintf(buf, sizeof(buf),
                "(%u cores per cpu, %u threads per core) family %d model %d stepping %d microcode 0x%x"
                "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
