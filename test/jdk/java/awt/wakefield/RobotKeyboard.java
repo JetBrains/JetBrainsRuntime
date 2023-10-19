@@ -80,7 +80,10 @@ public class RobotKeyboard {
                 new Compose(DEAD_MACRON, " ", DEAD_MACRON),
                 new Compose(DEAD_MACRON, "a", "ā"),
                 new Compose(DEAD_MACRON, "A", "Ā"),
+                new Compose(DEAD_MACRON, "и", "ӣ"),
+                new Compose(DEAD_MACRON, "И", "Ӣ"),
                 new Compose(DEAD_MACRON, "b", null),
+                new Compose(DEAD_MACRON, "ы", null),
                 new Compose(DEAD_CEDILLA, " ", DEAD_CEDILLA),
                 new Compose(DEAD_CEDILLA, "c", "ç"),
                 new Compose(DEAD_CEDILLA, "C", "Ç"),
@@ -88,7 +91,11 @@ public class RobotKeyboard {
                 new Compose(DEAD_CIRCUMFLEX, " ", DEAD_CIRCUMFLEX),
                 new Compose(DEAD_CIRCUMFLEX, "a", "â"),
                 new Compose(DEAD_CIRCUMFLEX, "A", "Â"),
+                new Compose(DEAD_CIRCUMFLEX, "3", "³"),
+                new Compose(DEAD_CIRCUMFLEX, "и", "и̂"),
+                new Compose(DEAD_CIRCUMFLEX, "И", "И̂"),
                 new Compose(DEAD_CIRCUMFLEX, "b", null),
+                new Compose(DEAD_CIRCUMFLEX, "ы", null),
                 new Compose(DEAD_HORN, " ", DEAD_HORN),
                 new Compose(DEAD_HORN, "u", "ư"),
                 new Compose(DEAD_HORN, "U", "Ư"),
@@ -120,7 +127,10 @@ public class RobotKeyboard {
                 new Compose(DEAD_ACUTE, " ", DEAD_ACUTE),
                 new Compose(DEAD_ACUTE, "a", "á"),
                 new Compose(DEAD_ACUTE, "A", "Á"),
+                new Compose(DEAD_ACUTE, "г", "ѓ"),
+                new Compose(DEAD_ACUTE, "Г", "Ѓ"),
                 new Compose(DEAD_ACUTE, "b", null),
+                new Compose(DEAD_ACUTE, "ы", null),
                 new Compose(DEAD_DIAERESIS, " ", DEAD_DIAERESIS),
                 new Compose(DEAD_DIAERESIS, "a", "ä"),
                 new Compose(DEAD_DIAERESIS, "A", "Ä"),
@@ -128,7 +138,10 @@ public class RobotKeyboard {
                 new Compose(DEAD_GRAVE, " ", DEAD_GRAVE),
                 new Compose(DEAD_GRAVE, "a", "à"),
                 new Compose(DEAD_GRAVE, "A", "À"),
+                new Compose(DEAD_GRAVE, "и", "ѝ"),
+                new Compose(DEAD_GRAVE, "И", "Ѝ"),
                 new Compose(DEAD_GRAVE, "b", null),
+                new Compose(DEAD_GRAVE, "ы", null),
                 new Compose(DEAD_TILDE, " ", DEAD_TILDE),
                 new Compose(DEAD_TILDE, "a", "ã"),
                 new Compose(DEAD_TILDE, "A", "Ã"),
@@ -288,9 +301,10 @@ public class RobotKeyboard {
     private static JTextArea typedTextArea;
     private static final List<KeyEvent> events = new ArrayList<>();
     private static String typed = "";
-    private static final StringBuffer log = new StringBuffer();
+    private static final StringBuffer stringLog = new StringBuffer();
     private static final StringBuffer pendingLog = new StringBuffer();
     private static XKBLayoutData.LayoutDescriptor curLayout;
+    private static XKBLayoutData.LayoutDescriptor curKeyCodeLayout;
 
     public static void main(String[] args) throws Exception {
         SwingUtilities.invokeAndWait(() -> {
@@ -315,7 +329,7 @@ public class RobotKeyboard {
                         @Override
                         public void keyTyped(KeyEvent e) {
                             typed = typed + e.getKeyChar();
-                            pendingLog.append("\ttyped: U+" + String.format("%04X", (int)e.getKeyChar()) + "\n");
+                            pendingLog.append("\ttyped: U+" + String.format("%04X", (int) e.getKeyChar()) + "\n");
                         }
 
                         @Override
@@ -338,7 +352,7 @@ public class RobotKeyboard {
         });
 
         robot = new Robot();
-        robot.setAutoDelay(50);
+        robot.setAutoDelay(10);
         typedTextArea.requestFocusInWindow();
         robot.delay(500);
 
@@ -354,7 +368,7 @@ public class RobotKeyboard {
         System.err.println("===== TEST RESULT =====");
         System.err.println(ok ? "TEST PASSED" : "TEST FAILED");
         System.err.println("===== FULL TEST LOG =====");
-        System.err.println(log.toString());
+        System.err.println(stringLog.toString());
 
         frame.dispose();
 
@@ -363,11 +377,28 @@ public class RobotKeyboard {
         System.exit(ok ? 0 : 1);
     }
 
+    static void keyPress(int keyCode) {
+        pendingLog.append("\tRobot keyPress: " + getKeyText(keyCode) + "\n");
+        robot.keyPress(keyCode);
+    }
+
+    static void keyRelease(int keyCode) {
+        pendingLog.append("\tRobot keyRelease: " + getKeyText(keyCode) + "\n");
+        robot.keyRelease(keyCode);
+    }
+
     static boolean runTest(XKBLayoutData.LayoutDescriptor layout) {
         curLayout = layout;
+        if (layout.asciiCapable()) {
+            curKeyCodeLayout = curLayout;
+        } else {
+            curKeyCodeLayout = XKBLayoutData.layouts.get(0); // US
+        }
+
         infoTextArea.setText("");
         log("Layout: " + layout.layout() + ", variant: " + layout.variant() + "\n");
-        WLRobotPeer.setXKBLayout(layout.layout(), layout.variant(), "");
+        frame.setTitle(layout.fullName());
+        WLRobotPeer.setXKBLayout(layout.layout(), layout.variant(), "lv3:ralt_switch");
         robot.delay(500);
 
         if (Toolkit.getDefaultToolkit().getLockingKeyState(VK_CAPS_LOCK)) {
@@ -382,25 +413,13 @@ public class RobotKeyboard {
             robot.keyRelease(VK_NUM_LOCK);
         }
 
-        boolean ok = true;
+        robot.delay(500);
 
-//        for (String key : ordinaryKeyNames) {
-//            ok &= processKey(key);
-//        }
+        boolean ok = true;
 
         for (int key : varyingKeys) {
             ok &= processKey(key);
         }
-
-//        for (String key : lockingKeyNames) {
-//            ok &= processKey(key);
-//
-//            // reset the locking state to the previous one
-//            int keyCode = getKeyCodeByName(key);
-//            robot.keyPress(keyCode);
-//            robot.keyRelease(keyCode);
-//            robot.waitForIdle();
-//        }
 
         robot.delay(100);
 
@@ -415,7 +434,7 @@ public class RobotKeyboard {
         }
     }
 
-    private static void typeChar(String what) {
+    private static boolean typeChar(String what) {
         for (var desc : curLayout.keys().values()) {
             for (int level = 0; level < desc.levels().size(); ++level) {
                 var sym = desc.levels().get(level);
@@ -427,16 +446,18 @@ public class RobotKeyboard {
                     var keys = xkbModsToRobotKeycodes(sym.xkbMods());
                     keys.add(desc.robotCode());
                     for (var key : keys) {
-                        robot.keyPress(key);
+                        keyPress(key);
                     }
                     for (var key : keys.reversed()) {
-                        robot.keyRelease(key);
+                        keyRelease(key);
                     }
                     robot.waitForIdle();
-                    return;
+                    return true;
                 }
             }
         }
+
+        return false;
     }
 
     private static List<Integer> xkbModsToRobotKeycodes(int xkbMods) {
@@ -459,7 +480,7 @@ public class RobotKeyboard {
 
         var mods = xkbModsToRobotKeycodes(sym.xkbMods());
         for (var mod : mods) {
-            robot.keyPress(mod);
+            keyPress(mod);
             log(getKeyText(mod) + " + ");
         }
         log(getKeyText(keyCode));
@@ -468,10 +489,10 @@ public class RobotKeyboard {
             log(compose.key);
         }
         log(": ");
-        robot.keyPress(keyCode);
-        robot.keyRelease(keyCode);
+        keyPress(keyCode);
+        keyRelease(keyCode);
         for (var mod : mods.reversed()) {
-            robot.keyRelease(mod);
+            keyRelease(mod);
         }
         robot.waitForIdle();
 
@@ -479,6 +500,7 @@ public class RobotKeyboard {
 
         for (KeyEvent e : events) {
             if (mods.contains(e.getKeyCode())) continue;
+            if (e.getKeyCode() == VK_ALT && mods.contains(VK_ALT_GRAPH)) continue;
             cleanEvents.add(e);
         }
 
@@ -490,7 +512,7 @@ public class RobotKeyboard {
             throw new RuntimeException("Expected one KEY_PRESSED and one KEY_RELEASED");
         }
 
-        int expectedKeyCode = desc.javaKeyCode();
+        int expectedKeyCode = curKeyCodeLayout.keys().get(keyCode).javaKeyCode();
 
         if (cleanEvents.get(0).getKeyCode() != expectedKeyCode) {
             throw new RuntimeException("KEY_PRESSED keyCode = " + cleanEvents.get(0).getKeyCode() + ", expected " + expectedKeyCode);
@@ -503,19 +525,27 @@ public class RobotKeyboard {
         String value = sym.value();
 
         if (sym.isDead()) {
-            typeChar(compose.key);
+            if (!typeChar(compose.key)) {
+                keyPress(VK_ESCAPE);
+                keyRelease(VK_ESCAPE);
+                robot.waitForIdle();
+                log("(skipped)\n");
+                return;
+            }
             value = compose.result == null ? "" : compose.result;
         }
 
         if (!typed.equals(value)) {
             throw new RuntimeException("KEY_TYPED: expected '" + value + "', got '" + typed + "'");
         }
+
+        log("OK\n");
     }
 
     private static void log(String what) {
         infoTextArea.append(what);
         infoTextArea.setCaretPosition(infoTextArea.getDocument().getLength());
-        log.append(what);
+        stringLog.append(what);
     }
 
     private static boolean processKey(int keyCode) {
@@ -550,14 +580,13 @@ public class RobotKeyboard {
             for (Compose compose : composes) {
                 try {
                     checkKey(keyCode, level, desc, compose);
-                    log("OK\n");
                 } catch (RuntimeException e) {
                     log(e.getMessage());
                     log("\n");
                     ok = false;
                 }
                 if (!pendingLog.isEmpty()) {
-                    log.append(pendingLog);
+                    stringLog.append(pendingLog);
                     pendingLog.setLength(0);
                 }
             }

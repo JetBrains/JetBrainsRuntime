@@ -318,16 +318,15 @@ static void
 wl_keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard, uint32_t format,
                    int32_t fd, uint32_t size)
 {
+    JNIEnv* env = getEnv();
     if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
-        JNU_ThrowInternalError(getEnv(),
-                               "wl_keyboard_keymap supplied unknown keymap format");
+        JNU_ThrowInternalError(env, "wl_keyboard_keymap supplied unknown keymap format");
         return;
     }
 
     char *serializedKeymap = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
     if (serializedKeymap == MAP_FAILED) {
-        JNU_ThrowInternalError(getEnv(),
-                               "wl_keyboard_keymap: failed to memory-map keymap");
+        JNU_ThrowInternalError(env, "wl_keyboard_keymap: failed to memory-map keymap");
         return;
     }
 
@@ -335,6 +334,7 @@ wl_keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard, uint32_t format,
 
     munmap(serializedKeymap, size);
     close(fd);
+    JNU_CHECK_EXCEPTION(env);
 }
 
 static void
@@ -362,7 +362,9 @@ static void
 wl_keyboard_key(void *data, struct wl_keyboard *wl_keyboard,
                 uint32_t serial, uint32_t time, uint32_t keycode, uint32_t state)
 {
+    JNIEnv* env = getEnv();
     wlSetKeyState(time, keycode, state ? true : false);
+    JNU_CHECK_EXCEPTION(env);
 }
 
 static void

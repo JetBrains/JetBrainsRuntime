@@ -21,8 +21,8 @@
 // or visit www.oracle.com if you need additional information or have any
 // questions.
 
-#ifndef _WLKEYBOARD_H
-#define _WLKEYBOARD_H
+#ifndef WLKEYBOARD_H_INCLUDED
+#define WLKEYBOARD_H_INCLUDED
 
 #include <stdbool.h>
 #include <stdint.h>

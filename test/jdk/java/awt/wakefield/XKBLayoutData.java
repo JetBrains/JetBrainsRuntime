@@ -31,7 +31,8 @@ public class XKBLayoutData {
     public record KeyDescriptor(int robotCode, int javaKeyCode, int javaKeyCodeUndead, List<KeySymDescriptor> levels) {
     }
 
-    public record LayoutDescriptor(String layout, String variant, Map<Integer, KeyDescriptor> keys) {
+    public record LayoutDescriptor(String layout, String variant, String fullName, boolean asciiCapable,
+                                   Map<Integer, KeyDescriptor> keys) {
     }
 
     public static final List<LayoutDescriptor> layouts;
@@ -39,7 +40,7 @@ public class XKBLayoutData {
     static {
         layouts = new ArrayList<>();
         {
-            var layout = new LayoutDescriptor("us", "", new HashMap<>());
+            var layout = new LayoutDescriptor("us", "", "English (US)", true, new HashMap<>());
             layout.keys.put(KeyEvent.VK_ESCAPE, new KeyDescriptor(KeyEvent.VK_ESCAPE, KeyEvent.VK_ESCAPE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u001b", false, 0))));
             layout.keys.put(KeyEvent.VK_1, new KeyDescriptor(KeyEvent.VK_1, KeyEvent.VK_1, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("1", false, 0), new KeySymDescriptor("!", false, 1))));
             layout.keys.put(KeyEvent.VK_2, new KeyDescriptor(KeyEvent.VK_2, KeyEvent.VK_2, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("2", false, 0), new KeySymDescriptor("@", false, 1))));
@@ -154,7 +155,7 @@ public class XKBLayoutData {
         }
 
         {
-            var layout = new LayoutDescriptor("us", "intl", new HashMap<>());
+            var layout = new LayoutDescriptor("us", "intl", "English (US, intl., with dead keys)", true, new HashMap<>());
             layout.keys.put(KeyEvent.VK_ESCAPE, new KeyDescriptor(KeyEvent.VK_ESCAPE, KeyEvent.VK_ESCAPE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u001b", false, 0))));
             layout.keys.put(KeyEvent.VK_1, new KeyDescriptor(KeyEvent.VK_1, KeyEvent.VK_1, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("1", false, 0), new KeySymDescriptor("!", false, 1), new KeySymDescriptor("\u00a1", false, 128), new KeySymDescriptor("\u00b9", false, 129))));
             layout.keys.put(KeyEvent.VK_2, new KeyDescriptor(KeyEvent.VK_2, KeyEvent.VK_2, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("2", false, 0), new KeySymDescriptor("@", false, 1), new KeySymDescriptor("\u00b2", false, 128), new KeySymDescriptor("\u02dd", true, 129))));
@@ -269,7 +270,7 @@ public class XKBLayoutData {
         }
 
         {
-            var layout = new LayoutDescriptor("us", "altgr-intl", new HashMap<>());
+            var layout = new LayoutDescriptor("us", "altgr-intl", "English (intl., with AltGr dead keys)", true, new HashMap<>());
             layout.keys.put(KeyEvent.VK_ESCAPE, new KeyDescriptor(KeyEvent.VK_ESCAPE, KeyEvent.VK_ESCAPE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u001b", false, 0))));
             layout.keys.put(KeyEvent.VK_1, new KeyDescriptor(KeyEvent.VK_1, KeyEvent.VK_1, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("1", false, 0), new KeySymDescriptor("!", false, 1), new KeySymDescriptor("\u00b9", false, 128), new KeySymDescriptor("\u00a1", false, 129))));
             layout.keys.put(KeyEvent.VK_2, new KeyDescriptor(KeyEvent.VK_2, KeyEvent.VK_2, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("2", false, 0), new KeySymDescriptor("@", false, 1), new KeySymDescriptor("\u00b2", false, 128), new KeySymDescriptor("\u02dd", true, 129))));
@@ -384,7 +385,7 @@ public class XKBLayoutData {
         }
 
         {
-            var layout = new LayoutDescriptor("de", "", new HashMap<>());
+            var layout = new LayoutDescriptor("de", "", "German", true, new HashMap<>());
             layout.keys.put(KeyEvent.VK_ESCAPE, new KeyDescriptor(KeyEvent.VK_ESCAPE, KeyEvent.VK_ESCAPE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u001b", false, 0))));
             layout.keys.put(KeyEvent.VK_1, new KeyDescriptor(KeyEvent.VK_1, KeyEvent.VK_1, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("1", false, 0), new KeySymDescriptor("!", false, 1), new KeySymDescriptor("\u00b9", false, 128), new KeySymDescriptor("\u00a1", false, 129))));
             layout.keys.put(KeyEvent.VK_2, new KeyDescriptor(KeyEvent.VK_2, KeyEvent.VK_2, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("2", false, 0), new KeySymDescriptor("\"", false, 1), new KeySymDescriptor("\u00b2", false, 128), new KeySymDescriptor("\u215b", false, 129))));
@@ -499,7 +500,7 @@ public class XKBLayoutData {
         }
 
         {
-            var layout = new LayoutDescriptor("fr", "", new HashMap<>());
+            var layout = new LayoutDescriptor("fr", "", "French", true, new HashMap<>());
             layout.keys.put(KeyEvent.VK_ESCAPE, new KeyDescriptor(KeyEvent.VK_ESCAPE, KeyEvent.VK_ESCAPE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u001b", false, 0))));
             layout.keys.put(KeyEvent.VK_1, new KeyDescriptor(KeyEvent.VK_1, KeyEvent.VK_AMPERSAND, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("&", false, 0), new KeySymDescriptor("1", false, 1), new KeySymDescriptor("\u00b9", false, 128), new KeySymDescriptor("\u00a1", false, 129))));
             layout.keys.put(KeyEvent.VK_2, new KeyDescriptor(KeyEvent.VK_2, KeyEvent.getExtendedKeyCodeForChar(233), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u00e9", false, 0), new KeySymDescriptor("2", false, 1), new KeySymDescriptor("~", false, 128), new KeySymDescriptor("\u215b", false, 129))));
@@ -614,7 +615,7 @@ public class XKBLayoutData {
         }
 
         {
-            var layout = new LayoutDescriptor("es", "", new HashMap<>());
+            var layout = new LayoutDescriptor("es", "", "Spanish", true, new HashMap<>());
             layout.keys.put(KeyEvent.VK_ESCAPE, new KeyDescriptor(KeyEvent.VK_ESCAPE, KeyEvent.VK_ESCAPE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u001b", false, 0))));
             layout.keys.put(KeyEvent.VK_1, new KeyDescriptor(KeyEvent.VK_1, KeyEvent.VK_1, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("1", false, 0), new KeySymDescriptor("!", false, 1), new KeySymDescriptor("|", false, 128), new KeySymDescriptor("\u00a1", false, 129))));
             layout.keys.put(KeyEvent.VK_2, new KeyDescriptor(KeyEvent.VK_2, KeyEvent.VK_2, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("2", false, 0), new KeySymDescriptor("\"", false, 1), new KeySymDescriptor("@", false, 128), new KeySymDescriptor("\u215b", false, 129))));
@@ -696,6 +697,236 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_NUMPAD3, new KeyDescriptor(KeyEvent.VK_NUMPAD3, KeyEvent.VK_PAGE_DOWN, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("3", false, 16))));
             layout.keys.put(KeyEvent.VK_NUMPAD0, new KeyDescriptor(KeyEvent.VK_NUMPAD0, KeyEvent.VK_INSERT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("0", false, 16))));
             layout.keys.put(KeyEvent.VK_DECIMAL, new KeyDescriptor(KeyEvent.VK_DECIMAL, KeyEvent.VK_DELETE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor(".", false, 16))));
+            layout.keys.put(KeyEvent.VK_LESS, new KeyDescriptor(KeyEvent.VK_LESS, KeyEvent.VK_LESS, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("<", false, 0), new KeySymDescriptor(">", false, 1), new KeySymDescriptor("|", false, 128), new KeySymDescriptor("\u00a6", false, 129))));
+            layout.keys.put(KeyEvent.VK_F11, new KeyDescriptor(KeyEvent.VK_F11, KeyEvent.VK_F11, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F12, new KeyDescriptor(KeyEvent.VK_F12, KeyEvent.VK_F12, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_DIVIDE, new KeyDescriptor(KeyEvent.VK_DIVIDE, KeyEvent.VK_DIVIDE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("/", false, 0), new KeySymDescriptor("/", false, 1), new KeySymDescriptor("/", false, 128), new KeySymDescriptor("/", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_PRINTSCREEN, new KeyDescriptor(KeyEvent.VK_PRINTSCREEN, KeyEvent.VK_PRINTSCREEN, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 8))));
+            layout.keys.put(KeyEvent.VK_ALT_GRAPH, new KeyDescriptor(KeyEvent.VK_ALT_GRAPH, KeyEvent.VK_ALT_GRAPH, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_HOME, new KeyDescriptor(KeyEvent.VK_HOME, KeyEvent.VK_HOME, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_UP, new KeyDescriptor(KeyEvent.VK_UP, KeyEvent.VK_UP, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_PAGE_UP, new KeyDescriptor(KeyEvent.VK_PAGE_UP, KeyEvent.VK_PAGE_UP, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_LEFT, new KeyDescriptor(KeyEvent.VK_LEFT, KeyEvent.VK_LEFT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_RIGHT, new KeyDescriptor(KeyEvent.VK_RIGHT, KeyEvent.VK_RIGHT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_END, new KeyDescriptor(KeyEvent.VK_END, KeyEvent.VK_END, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_DOWN, new KeyDescriptor(KeyEvent.VK_DOWN, KeyEvent.VK_DOWN, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_PAGE_DOWN, new KeyDescriptor(KeyEvent.VK_PAGE_DOWN, KeyEvent.VK_PAGE_DOWN, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_INSERT, new KeyDescriptor(KeyEvent.VK_INSERT, KeyEvent.VK_INSERT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_DELETE, new KeyDescriptor(KeyEvent.VK_DELETE, KeyEvent.VK_DELETE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u007f", false, 0))));
+            layout.keys.put(KeyEvent.VK_PAUSE, new KeyDescriptor(KeyEvent.VK_PAUSE, KeyEvent.VK_PAUSE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 4))));
+            layout.keys.put(KeyEvent.VK_META, new KeyDescriptor(KeyEvent.VK_META, KeyEvent.VK_WINDOWS, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_WINDOWS, new KeyDescriptor(KeyEvent.VK_WINDOWS, KeyEvent.VK_WINDOWS, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F13, new KeyDescriptor(KeyEvent.VK_F13, KeyEvent.VK_F13, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F14, new KeyDescriptor(KeyEvent.VK_F14, KeyEvent.VK_F14, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F15, new KeyDescriptor(KeyEvent.VK_F15, KeyEvent.VK_F15, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F16, new KeyDescriptor(KeyEvent.VK_F16, KeyEvent.VK_F16, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F17, new KeyDescriptor(KeyEvent.VK_F17, KeyEvent.VK_F17, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F18, new KeyDescriptor(KeyEvent.VK_F18, KeyEvent.VK_F18, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F20, new KeyDescriptor(KeyEvent.VK_F20, KeyEvent.VK_F20, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F21, new KeyDescriptor(KeyEvent.VK_F21, KeyEvent.VK_F21, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F22, new KeyDescriptor(KeyEvent.VK_F22, KeyEvent.VK_F22, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F23, new KeyDescriptor(KeyEvent.VK_F23, KeyEvent.VK_F23, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layouts.add(layout);
+        }
+
+        {
+            var layout = new LayoutDescriptor("ru", "", "Russian", false, new HashMap<>());
+            layout.keys.put(KeyEvent.VK_ESCAPE, new KeyDescriptor(KeyEvent.VK_ESCAPE, KeyEvent.VK_ESCAPE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u001b", false, 0))));
+            layout.keys.put(KeyEvent.VK_1, new KeyDescriptor(KeyEvent.VK_1, KeyEvent.VK_1, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("1", false, 0), new KeySymDescriptor("!", false, 1))));
+            layout.keys.put(KeyEvent.VK_2, new KeyDescriptor(KeyEvent.VK_2, KeyEvent.VK_2, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("2", false, 0), new KeySymDescriptor("\"", false, 1))));
+            layout.keys.put(KeyEvent.VK_3, new KeyDescriptor(KeyEvent.VK_3, KeyEvent.VK_3, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("3", false, 0), new KeySymDescriptor("\u2116", false, 1))));
+            layout.keys.put(KeyEvent.VK_4, new KeyDescriptor(KeyEvent.VK_4, KeyEvent.VK_4, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("4", false, 0), new KeySymDescriptor(";", false, 1))));
+            layout.keys.put(KeyEvent.VK_5, new KeyDescriptor(KeyEvent.VK_5, KeyEvent.VK_5, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("5", false, 0), new KeySymDescriptor("%", false, 1))));
+            layout.keys.put(KeyEvent.VK_6, new KeyDescriptor(KeyEvent.VK_6, KeyEvent.VK_6, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("6", false, 0), new KeySymDescriptor(":", false, 1))));
+            layout.keys.put(KeyEvent.VK_7, new KeyDescriptor(KeyEvent.VK_7, KeyEvent.VK_7, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("7", false, 0), new KeySymDescriptor("?", false, 1))));
+            layout.keys.put(KeyEvent.VK_8, new KeyDescriptor(KeyEvent.VK_8, KeyEvent.VK_8, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("8", false, 0), new KeySymDescriptor("*", false, 1), new KeySymDescriptor("\u20bd", false, 128))));
+            layout.keys.put(KeyEvent.VK_9, new KeyDescriptor(KeyEvent.VK_9, KeyEvent.VK_9, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("9", false, 0), new KeySymDescriptor("(", false, 1))));
+            layout.keys.put(KeyEvent.VK_0, new KeyDescriptor(KeyEvent.VK_0, KeyEvent.VK_0, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("0", false, 0), new KeySymDescriptor(")", false, 1))));
+            layout.keys.put(KeyEvent.VK_MINUS, new KeyDescriptor(KeyEvent.VK_MINUS, KeyEvent.VK_MINUS, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("-", false, 0), new KeySymDescriptor("_", false, 1))));
+            layout.keys.put(KeyEvent.VK_EQUALS, new KeyDescriptor(KeyEvent.VK_EQUALS, KeyEvent.VK_EQUALS, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("=", false, 0), new KeySymDescriptor("+", false, 1))));
+            layout.keys.put(KeyEvent.VK_BACK_SPACE, new KeyDescriptor(KeyEvent.VK_BACK_SPACE, KeyEvent.VK_BACK_SPACE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0008", false, 0), new KeySymDescriptor("\u0008", false, 1))));
+            layout.keys.put(KeyEvent.VK_TAB, new KeyDescriptor(KeyEvent.VK_TAB, KeyEvent.VK_TAB, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\t", false, 0), new KeySymDescriptor("", false, 1))));
+            layout.keys.put(KeyEvent.VK_Q, new KeyDescriptor(KeyEvent.VK_Q, KeyEvent.getExtendedKeyCodeForChar(1081), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0439", false, 0), new KeySymDescriptor("\u0419", false, 1))));
+            layout.keys.put(KeyEvent.VK_W, new KeyDescriptor(KeyEvent.VK_W, KeyEvent.getExtendedKeyCodeForChar(1094), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0446", false, 0), new KeySymDescriptor("\u0426", false, 1))));
+            layout.keys.put(KeyEvent.VK_E, new KeyDescriptor(KeyEvent.VK_E, KeyEvent.getExtendedKeyCodeForChar(1091), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0443", false, 0), new KeySymDescriptor("\u0423", false, 1))));
+            layout.keys.put(KeyEvent.VK_R, new KeyDescriptor(KeyEvent.VK_R, KeyEvent.getExtendedKeyCodeForChar(1082), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u043a", false, 0), new KeySymDescriptor("\u041a", false, 1))));
+            layout.keys.put(KeyEvent.VK_T, new KeyDescriptor(KeyEvent.VK_T, KeyEvent.getExtendedKeyCodeForChar(1077), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0435", false, 0), new KeySymDescriptor("\u0415", false, 1))));
+            layout.keys.put(KeyEvent.VK_Y, new KeyDescriptor(KeyEvent.VK_Y, KeyEvent.getExtendedKeyCodeForChar(1085), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u043d", false, 0), new KeySymDescriptor("\u041d", false, 1))));
+            layout.keys.put(KeyEvent.VK_U, new KeyDescriptor(KeyEvent.VK_U, KeyEvent.getExtendedKeyCodeForChar(1075), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0433", false, 0), new KeySymDescriptor("\u0413", false, 1))));
+            layout.keys.put(KeyEvent.VK_I, new KeyDescriptor(KeyEvent.VK_I, KeyEvent.getExtendedKeyCodeForChar(1096), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0448", false, 0), new KeySymDescriptor("\u0428", false, 1))));
+            layout.keys.put(KeyEvent.VK_O, new KeyDescriptor(KeyEvent.VK_O, KeyEvent.getExtendedKeyCodeForChar(1097), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0449", false, 0), new KeySymDescriptor("\u0429", false, 1))));
+            layout.keys.put(KeyEvent.VK_P, new KeyDescriptor(KeyEvent.VK_P, KeyEvent.getExtendedKeyCodeForChar(1079), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0437", false, 0), new KeySymDescriptor("\u0417", false, 1))));
+            layout.keys.put(KeyEvent.VK_OPEN_BRACKET, new KeyDescriptor(KeyEvent.VK_OPEN_BRACKET, KeyEvent.getExtendedKeyCodeForChar(1093), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0445", false, 0), new KeySymDescriptor("\u0425", false, 1))));
+            layout.keys.put(KeyEvent.VK_CLOSE_BRACKET, new KeyDescriptor(KeyEvent.VK_CLOSE_BRACKET, KeyEvent.getExtendedKeyCodeForChar(1098), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u044a", false, 0), new KeySymDescriptor("\u042a", false, 1))));
+            layout.keys.put(KeyEvent.VK_ENTER, new KeyDescriptor(KeyEvent.VK_ENTER, KeyEvent.VK_ENTER, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\r", false, 0))));
+            layout.keys.put(KeyEvent.VK_CONTROL, new KeyDescriptor(KeyEvent.VK_CONTROL, KeyEvent.VK_CONTROL, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_A, new KeyDescriptor(KeyEvent.VK_A, KeyEvent.getExtendedKeyCodeForChar(1092), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0444", false, 0), new KeySymDescriptor("\u0424", false, 1))));
+            layout.keys.put(KeyEvent.VK_S, new KeyDescriptor(KeyEvent.VK_S, KeyEvent.getExtendedKeyCodeForChar(1099), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u044b", false, 0), new KeySymDescriptor("\u042b", false, 1))));
+            layout.keys.put(KeyEvent.VK_D, new KeyDescriptor(KeyEvent.VK_D, KeyEvent.getExtendedKeyCodeForChar(1074), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0432", false, 0), new KeySymDescriptor("\u0412", false, 1))));
+            layout.keys.put(KeyEvent.VK_F, new KeyDescriptor(KeyEvent.VK_F, KeyEvent.getExtendedKeyCodeForChar(1072), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0430", false, 0), new KeySymDescriptor("\u0410", false, 1))));
+            layout.keys.put(KeyEvent.VK_G, new KeyDescriptor(KeyEvent.VK_G, KeyEvent.getExtendedKeyCodeForChar(1087), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u043f", false, 0), new KeySymDescriptor("\u041f", false, 1))));
+            layout.keys.put(KeyEvent.VK_H, new KeyDescriptor(KeyEvent.VK_H, KeyEvent.getExtendedKeyCodeForChar(1088), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0440", false, 0), new KeySymDescriptor("\u0420", false, 1))));
+            layout.keys.put(KeyEvent.VK_J, new KeyDescriptor(KeyEvent.VK_J, KeyEvent.getExtendedKeyCodeForChar(1086), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u043e", false, 0), new KeySymDescriptor("\u041e", false, 1))));
+            layout.keys.put(KeyEvent.VK_K, new KeyDescriptor(KeyEvent.VK_K, KeyEvent.getExtendedKeyCodeForChar(1083), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u043b", false, 0), new KeySymDescriptor("\u041b", false, 1))));
+            layout.keys.put(KeyEvent.VK_L, new KeyDescriptor(KeyEvent.VK_L, KeyEvent.getExtendedKeyCodeForChar(1076), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0434", false, 0), new KeySymDescriptor("\u0414", false, 1))));
+            layout.keys.put(KeyEvent.VK_SEMICOLON, new KeyDescriptor(KeyEvent.VK_SEMICOLON, KeyEvent.getExtendedKeyCodeForChar(1078), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0436", false, 0), new KeySymDescriptor("\u0416", false, 1))));
+            layout.keys.put(KeyEvent.VK_QUOTE, new KeyDescriptor(KeyEvent.VK_QUOTE, KeyEvent.getExtendedKeyCodeForChar(1101), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u044d", false, 0), new KeySymDescriptor("\u042d", false, 1))));
+            layout.keys.put(KeyEvent.VK_BACK_QUOTE, new KeyDescriptor(KeyEvent.VK_BACK_QUOTE, KeyEvent.getExtendedKeyCodeForChar(1105), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0451", false, 0), new KeySymDescriptor("\u0401", false, 1))));
+            layout.keys.put(KeyEvent.VK_SHIFT, new KeyDescriptor(KeyEvent.VK_SHIFT, KeyEvent.VK_SHIFT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_BACK_SLASH, new KeyDescriptor(KeyEvent.VK_BACK_SLASH, KeyEvent.VK_BACK_SLASH, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\\", false, 0), new KeySymDescriptor("/", false, 1))));
+            layout.keys.put(KeyEvent.VK_Z, new KeyDescriptor(KeyEvent.VK_Z, KeyEvent.getExtendedKeyCodeForChar(1103), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u044f", false, 0), new KeySymDescriptor("\u042f", false, 1))));
+            layout.keys.put(KeyEvent.VK_X, new KeyDescriptor(KeyEvent.VK_X, KeyEvent.getExtendedKeyCodeForChar(1095), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0447", false, 0), new KeySymDescriptor("\u0427", false, 1))));
+            layout.keys.put(KeyEvent.VK_C, new KeyDescriptor(KeyEvent.VK_C, KeyEvent.getExtendedKeyCodeForChar(1089), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0441", false, 0), new KeySymDescriptor("\u0421", false, 1))));
+            layout.keys.put(KeyEvent.VK_V, new KeyDescriptor(KeyEvent.VK_V, KeyEvent.getExtendedKeyCodeForChar(1084), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u043c", false, 0), new KeySymDescriptor("\u041c", false, 1))));
+            layout.keys.put(KeyEvent.VK_B, new KeyDescriptor(KeyEvent.VK_B, KeyEvent.getExtendedKeyCodeForChar(1080), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0438", false, 0), new KeySymDescriptor("\u0418", false, 1))));
+            layout.keys.put(KeyEvent.VK_N, new KeyDescriptor(KeyEvent.VK_N, KeyEvent.getExtendedKeyCodeForChar(1090), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0442", false, 0), new KeySymDescriptor("\u0422", false, 1))));
+            layout.keys.put(KeyEvent.VK_M, new KeyDescriptor(KeyEvent.VK_M, KeyEvent.getExtendedKeyCodeForChar(1100), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u044c", false, 0), new KeySymDescriptor("\u042c", false, 1))));
+            layout.keys.put(KeyEvent.VK_COMMA, new KeyDescriptor(KeyEvent.VK_COMMA, KeyEvent.getExtendedKeyCodeForChar(1073), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0431", false, 0), new KeySymDescriptor("\u0411", false, 1))));
+            layout.keys.put(KeyEvent.VK_PERIOD, new KeyDescriptor(KeyEvent.VK_PERIOD, KeyEvent.getExtendedKeyCodeForChar(1102), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u044e", false, 0), new KeySymDescriptor("\u042e", false, 1))));
+            layout.keys.put(KeyEvent.VK_SLASH, new KeyDescriptor(KeyEvent.VK_SLASH, KeyEvent.VK_PERIOD, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(".", false, 0), new KeySymDescriptor(",", false, 1))));
+            layout.keys.put(KeyEvent.VK_MULTIPLY, new KeyDescriptor(KeyEvent.VK_MULTIPLY, KeyEvent.VK_MULTIPLY, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("*", false, 0), new KeySymDescriptor("*", false, 1), new KeySymDescriptor("*", false, 128), new KeySymDescriptor("*", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_ALT, new KeyDescriptor(KeyEvent.VK_ALT, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1))));
+            layout.keys.put(KeyEvent.VK_SPACE, new KeyDescriptor(KeyEvent.VK_SPACE, KeyEvent.VK_SPACE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(" ", false, 0))));
+            layout.keys.put(KeyEvent.VK_CAPS_LOCK, new KeyDescriptor(KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F1, new KeyDescriptor(KeyEvent.VK_F1, KeyEvent.VK_F1, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F2, new KeyDescriptor(KeyEvent.VK_F2, KeyEvent.VK_F2, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F3, new KeyDescriptor(KeyEvent.VK_F3, KeyEvent.VK_F3, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F4, new KeyDescriptor(KeyEvent.VK_F4, KeyEvent.VK_F4, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F5, new KeyDescriptor(KeyEvent.VK_F5, KeyEvent.VK_F5, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F6, new KeyDescriptor(KeyEvent.VK_F6, KeyEvent.VK_F6, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F7, new KeyDescriptor(KeyEvent.VK_F7, KeyEvent.VK_F7, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F8, new KeyDescriptor(KeyEvent.VK_F8, KeyEvent.VK_F8, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F9, new KeyDescriptor(KeyEvent.VK_F9, KeyEvent.VK_F9, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F10, new KeyDescriptor(KeyEvent.VK_F10, KeyEvent.VK_F10, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_NUM_LOCK, new KeyDescriptor(KeyEvent.VK_NUM_LOCK, KeyEvent.VK_NUM_LOCK, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_NUMPAD7, new KeyDescriptor(KeyEvent.VK_NUMPAD7, KeyEvent.VK_HOME, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("7", false, 16))));
+            layout.keys.put(KeyEvent.VK_NUMPAD8, new KeyDescriptor(KeyEvent.VK_NUMPAD8, KeyEvent.VK_KP_UP, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("8", false, 16))));
+            layout.keys.put(KeyEvent.VK_NUMPAD9, new KeyDescriptor(KeyEvent.VK_NUMPAD9, KeyEvent.VK_PAGE_UP, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("9", false, 16))));
+            layout.keys.put(KeyEvent.VK_SUBTRACT, new KeyDescriptor(KeyEvent.VK_SUBTRACT, KeyEvent.VK_SUBTRACT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("-", false, 0), new KeySymDescriptor("-", false, 1), new KeySymDescriptor("-", false, 128), new KeySymDescriptor("-", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_NUMPAD4, new KeyDescriptor(KeyEvent.VK_NUMPAD4, KeyEvent.VK_KP_LEFT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("4", false, 16))));
+            layout.keys.put(KeyEvent.VK_NUMPAD5, new KeyDescriptor(KeyEvent.VK_NUMPAD5, KeyEvent.VK_BEGIN, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("5", false, 16))));
+            layout.keys.put(KeyEvent.VK_NUMPAD6, new KeyDescriptor(KeyEvent.VK_NUMPAD6, KeyEvent.VK_KP_RIGHT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("6", false, 16))));
+            layout.keys.put(KeyEvent.VK_ADD, new KeyDescriptor(KeyEvent.VK_ADD, KeyEvent.VK_ADD, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("+", false, 0), new KeySymDescriptor("+", false, 1), new KeySymDescriptor("+", false, 128), new KeySymDescriptor("+", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_NUMPAD1, new KeyDescriptor(KeyEvent.VK_NUMPAD1, KeyEvent.VK_END, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("1", false, 16))));
+            layout.keys.put(KeyEvent.VK_NUMPAD2, new KeyDescriptor(KeyEvent.VK_NUMPAD2, KeyEvent.VK_KP_DOWN, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("2", false, 16))));
+            layout.keys.put(KeyEvent.VK_NUMPAD3, new KeyDescriptor(KeyEvent.VK_NUMPAD3, KeyEvent.VK_PAGE_DOWN, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("3", false, 16))));
+            layout.keys.put(KeyEvent.VK_NUMPAD0, new KeyDescriptor(KeyEvent.VK_NUMPAD0, KeyEvent.VK_INSERT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("0", false, 16))));
+            layout.keys.put(KeyEvent.VK_DECIMAL, new KeyDescriptor(KeyEvent.VK_DECIMAL, KeyEvent.VK_DELETE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor(",", false, 16))));
+            layout.keys.put(KeyEvent.VK_LESS, new KeyDescriptor(KeyEvent.VK_LESS, KeyEvent.VK_SLASH, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("/", false, 0), new KeySymDescriptor("|", false, 1), new KeySymDescriptor("|", false, 128), new KeySymDescriptor("\u00a6", false, 129))));
+            layout.keys.put(KeyEvent.VK_F11, new KeyDescriptor(KeyEvent.VK_F11, KeyEvent.VK_F11, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F12, new KeyDescriptor(KeyEvent.VK_F12, KeyEvent.VK_F12, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_DIVIDE, new KeyDescriptor(KeyEvent.VK_DIVIDE, KeyEvent.VK_DIVIDE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("/", false, 0), new KeySymDescriptor("/", false, 1), new KeySymDescriptor("/", false, 128), new KeySymDescriptor("/", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_PRINTSCREEN, new KeyDescriptor(KeyEvent.VK_PRINTSCREEN, KeyEvent.VK_PRINTSCREEN, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 8))));
+            layout.keys.put(KeyEvent.VK_ALT_GRAPH, new KeyDescriptor(KeyEvent.VK_ALT_GRAPH, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1))));
+            layout.keys.put(KeyEvent.VK_HOME, new KeyDescriptor(KeyEvent.VK_HOME, KeyEvent.VK_HOME, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_UP, new KeyDescriptor(KeyEvent.VK_UP, KeyEvent.VK_UP, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_PAGE_UP, new KeyDescriptor(KeyEvent.VK_PAGE_UP, KeyEvent.VK_PAGE_UP, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_LEFT, new KeyDescriptor(KeyEvent.VK_LEFT, KeyEvent.VK_LEFT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_RIGHT, new KeyDescriptor(KeyEvent.VK_RIGHT, KeyEvent.VK_RIGHT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_END, new KeyDescriptor(KeyEvent.VK_END, KeyEvent.VK_END, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_DOWN, new KeyDescriptor(KeyEvent.VK_DOWN, KeyEvent.VK_DOWN, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_PAGE_DOWN, new KeyDescriptor(KeyEvent.VK_PAGE_DOWN, KeyEvent.VK_PAGE_DOWN, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_INSERT, new KeyDescriptor(KeyEvent.VK_INSERT, KeyEvent.VK_INSERT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_DELETE, new KeyDescriptor(KeyEvent.VK_DELETE, KeyEvent.VK_DELETE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u007f", false, 0))));
+            layout.keys.put(KeyEvent.VK_PAUSE, new KeyDescriptor(KeyEvent.VK_PAUSE, KeyEvent.VK_PAUSE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 4))));
+            layout.keys.put(KeyEvent.VK_META, new KeyDescriptor(KeyEvent.VK_META, KeyEvent.VK_WINDOWS, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_WINDOWS, new KeyDescriptor(KeyEvent.VK_WINDOWS, KeyEvent.VK_WINDOWS, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F13, new KeyDescriptor(KeyEvent.VK_F13, KeyEvent.VK_F13, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F14, new KeyDescriptor(KeyEvent.VK_F14, KeyEvent.VK_F14, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F15, new KeyDescriptor(KeyEvent.VK_F15, KeyEvent.VK_F15, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F16, new KeyDescriptor(KeyEvent.VK_F16, KeyEvent.VK_F16, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F17, new KeyDescriptor(KeyEvent.VK_F17, KeyEvent.VK_F17, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F18, new KeyDescriptor(KeyEvent.VK_F18, KeyEvent.VK_F18, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F20, new KeyDescriptor(KeyEvent.VK_F20, KeyEvent.VK_F20, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F21, new KeyDescriptor(KeyEvent.VK_F21, KeyEvent.VK_F21, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F22, new KeyDescriptor(KeyEvent.VK_F22, KeyEvent.VK_F22, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F23, new KeyDescriptor(KeyEvent.VK_F23, KeyEvent.VK_F23, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layouts.add(layout);
+        }
+
+        {
+            var layout = new LayoutDescriptor("rs", "", "Serbian", false, new HashMap<>());
+            layout.keys.put(KeyEvent.VK_ESCAPE, new KeyDescriptor(KeyEvent.VK_ESCAPE, KeyEvent.VK_ESCAPE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u001b", false, 0))));
+            layout.keys.put(KeyEvent.VK_1, new KeyDescriptor(KeyEvent.VK_1, KeyEvent.VK_1, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("1", false, 0), new KeySymDescriptor("!", false, 1))));
+            layout.keys.put(KeyEvent.VK_2, new KeyDescriptor(KeyEvent.VK_2, KeyEvent.VK_2, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("2", false, 0), new KeySymDescriptor("\"", false, 1))));
+            layout.keys.put(KeyEvent.VK_3, new KeyDescriptor(KeyEvent.VK_3, KeyEvent.VK_3, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("3", false, 0), new KeySymDescriptor("#", false, 1), new KeySymDescriptor("^", true, 128))));
+            layout.keys.put(KeyEvent.VK_4, new KeyDescriptor(KeyEvent.VK_4, KeyEvent.VK_4, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("4", false, 0), new KeySymDescriptor("$", false, 1))));
+            layout.keys.put(KeyEvent.VK_5, new KeyDescriptor(KeyEvent.VK_5, KeyEvent.VK_5, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("5", false, 0), new KeySymDescriptor("%", false, 1))));
+            layout.keys.put(KeyEvent.VK_6, new KeyDescriptor(KeyEvent.VK_6, KeyEvent.VK_6, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("6", false, 0), new KeySymDescriptor("&", false, 1))));
+            layout.keys.put(KeyEvent.VK_7, new KeyDescriptor(KeyEvent.VK_7, KeyEvent.VK_7, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("7", false, 0), new KeySymDescriptor("/", false, 1), new KeySymDescriptor("`", true, 128))));
+            layout.keys.put(KeyEvent.VK_8, new KeyDescriptor(KeyEvent.VK_8, KeyEvent.VK_8, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("8", false, 0), new KeySymDescriptor("(", false, 1), new KeySymDescriptor("\u030f", true, 128))));
+            layout.keys.put(KeyEvent.VK_9, new KeyDescriptor(KeyEvent.VK_9, KeyEvent.VK_9, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("9", false, 0), new KeySymDescriptor(")", false, 1), new KeySymDescriptor("'", true, 128))));
+            layout.keys.put(KeyEvent.VK_0, new KeyDescriptor(KeyEvent.VK_0, KeyEvent.VK_0, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("0", false, 0), new KeySymDescriptor("=", false, 1), new KeySymDescriptor("\u0311", true, 128))));
+            layout.keys.put(KeyEvent.VK_MINUS, new KeyDescriptor(KeyEvent.VK_MINUS, KeyEvent.VK_QUOTE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("'", false, 0), new KeySymDescriptor("?", false, 1), new KeySymDescriptor("\u00af", true, 128))));
+            layout.keys.put(KeyEvent.VK_EQUALS, new KeyDescriptor(KeyEvent.VK_EQUALS, KeyEvent.VK_PLUS, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("+", false, 0), new KeySymDescriptor("*", false, 1))));
+            layout.keys.put(KeyEvent.VK_BACK_SPACE, new KeyDescriptor(KeyEvent.VK_BACK_SPACE, KeyEvent.VK_BACK_SPACE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0008", false, 0), new KeySymDescriptor("\u0008", false, 1))));
+            layout.keys.put(KeyEvent.VK_TAB, new KeyDescriptor(KeyEvent.VK_TAB, KeyEvent.VK_TAB, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\t", false, 0), new KeySymDescriptor("", false, 1))));
+            layout.keys.put(KeyEvent.VK_Q, new KeyDescriptor(KeyEvent.VK_Q, KeyEvent.getExtendedKeyCodeForChar(1113), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0459", false, 0), new KeySymDescriptor("\u0409", false, 1), new KeySymDescriptor("\\", false, 128))));
+            layout.keys.put(KeyEvent.VK_W, new KeyDescriptor(KeyEvent.VK_W, KeyEvent.getExtendedKeyCodeForChar(1114), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u045a", false, 0), new KeySymDescriptor("\u040a", false, 1), new KeySymDescriptor("|", false, 128))));
+            layout.keys.put(KeyEvent.VK_E, new KeyDescriptor(KeyEvent.VK_E, KeyEvent.getExtendedKeyCodeForChar(1077), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0435", false, 0), new KeySymDescriptor("\u0415", false, 1), new KeySymDescriptor("\u20ac", false, 128), new KeySymDescriptor("\u00a3", false, 129))));
+            layout.keys.put(KeyEvent.VK_R, new KeyDescriptor(KeyEvent.VK_R, KeyEvent.getExtendedKeyCodeForChar(1088), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0440", false, 0), new KeySymDescriptor("\u0420", false, 1), new KeySymDescriptor("\u00b6", false, 128), new KeySymDescriptor("\u00ae", false, 129))));
+            layout.keys.put(KeyEvent.VK_T, new KeyDescriptor(KeyEvent.VK_T, KeyEvent.getExtendedKeyCodeForChar(1090), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0442", false, 0), new KeySymDescriptor("\u0422", false, 1), new KeySymDescriptor("\u2026", false, 128))));
+            layout.keys.put(KeyEvent.VK_Y, new KeyDescriptor(KeyEvent.VK_Y, KeyEvent.getExtendedKeyCodeForChar(1079), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0437", false, 0), new KeySymDescriptor("\u0417", false, 1), new KeySymDescriptor("\u2190", false, 128), new KeySymDescriptor("\u00a5", false, 129))));
+            layout.keys.put(KeyEvent.VK_U, new KeyDescriptor(KeyEvent.VK_U, KeyEvent.getExtendedKeyCodeForChar(1091), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0443", false, 0), new KeySymDescriptor("\u0423", false, 1), new KeySymDescriptor("\u2193", false, 128), new KeySymDescriptor("\u2191", false, 129))));
+            layout.keys.put(KeyEvent.VK_I, new KeyDescriptor(KeyEvent.VK_I, KeyEvent.getExtendedKeyCodeForChar(1080), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0438", false, 0), new KeySymDescriptor("\u0418", false, 1), new KeySymDescriptor("\u2192", false, 128))));
+            layout.keys.put(KeyEvent.VK_O, new KeyDescriptor(KeyEvent.VK_O, KeyEvent.getExtendedKeyCodeForChar(1086), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u043e", false, 0), new KeySymDescriptor("\u041e", false, 1), new KeySymDescriptor("\u00a7", false, 128))));
+            layout.keys.put(KeyEvent.VK_P, new KeyDescriptor(KeyEvent.VK_P, KeyEvent.getExtendedKeyCodeForChar(1087), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u043f", false, 0), new KeySymDescriptor("\u041f", false, 1))));
+            layout.keys.put(KeyEvent.VK_OPEN_BRACKET, new KeyDescriptor(KeyEvent.VK_OPEN_BRACKET, KeyEvent.getExtendedKeyCodeForChar(1096), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0448", false, 0), new KeySymDescriptor("\u0428", false, 1), new KeySymDescriptor("\u00f7", false, 128))));
+            layout.keys.put(KeyEvent.VK_CLOSE_BRACKET, new KeyDescriptor(KeyEvent.VK_CLOSE_BRACKET, KeyEvent.getExtendedKeyCodeForChar(1106), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0452", false, 0), new KeySymDescriptor("\u0402", false, 1), new KeySymDescriptor("\u00d7", false, 128))));
+            layout.keys.put(KeyEvent.VK_ENTER, new KeyDescriptor(KeyEvent.VK_ENTER, KeyEvent.VK_ENTER, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\r", false, 0))));
+            layout.keys.put(KeyEvent.VK_CONTROL, new KeyDescriptor(KeyEvent.VK_CONTROL, KeyEvent.VK_CONTROL, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_A, new KeyDescriptor(KeyEvent.VK_A, KeyEvent.getExtendedKeyCodeForChar(1072), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0430", false, 0), new KeySymDescriptor("\u0410", false, 1))));
+            layout.keys.put(KeyEvent.VK_S, new KeyDescriptor(KeyEvent.VK_S, KeyEvent.getExtendedKeyCodeForChar(1089), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0441", false, 0), new KeySymDescriptor("\u0421", false, 1), new KeySymDescriptor("\u201e", false, 128), new KeySymDescriptor("\u00bb", false, 129))));
+            layout.keys.put(KeyEvent.VK_D, new KeyDescriptor(KeyEvent.VK_D, KeyEvent.getExtendedKeyCodeForChar(1076), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0434", false, 0), new KeySymDescriptor("\u0414", false, 1), new KeySymDescriptor("\u201c", false, 128), new KeySymDescriptor("\u00ab", false, 129))));
+            layout.keys.put(KeyEvent.VK_F, new KeyDescriptor(KeyEvent.VK_F, KeyEvent.getExtendedKeyCodeForChar(1092), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0444", false, 0), new KeySymDescriptor("\u0424", false, 1), new KeySymDescriptor("[", false, 128))));
+            layout.keys.put(KeyEvent.VK_G, new KeyDescriptor(KeyEvent.VK_G, KeyEvent.getExtendedKeyCodeForChar(1075), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0433", false, 0), new KeySymDescriptor("\u0413", false, 1), new KeySymDescriptor("]", false, 128))));
+            layout.keys.put(KeyEvent.VK_H, new KeyDescriptor(KeyEvent.VK_H, KeyEvent.getExtendedKeyCodeForChar(1093), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0445", false, 0), new KeySymDescriptor("\u0425", false, 1))));
+            layout.keys.put(KeyEvent.VK_J, new KeyDescriptor(KeyEvent.VK_J, KeyEvent.getExtendedKeyCodeForChar(1112), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0458", false, 0), new KeySymDescriptor("\u0408", false, 1))));
+            layout.keys.put(KeyEvent.VK_K, new KeyDescriptor(KeyEvent.VK_K, KeyEvent.getExtendedKeyCodeForChar(1082), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u043a", false, 0), new KeySymDescriptor("\u041a", false, 1))));
+            layout.keys.put(KeyEvent.VK_L, new KeyDescriptor(KeyEvent.VK_L, KeyEvent.getExtendedKeyCodeForChar(1083), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u043b", false, 0), new KeySymDescriptor("\u041b", false, 1))));
+            layout.keys.put(KeyEvent.VK_SEMICOLON, new KeyDescriptor(KeyEvent.VK_SEMICOLON, KeyEvent.getExtendedKeyCodeForChar(1095), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0447", false, 0), new KeySymDescriptor("\u0427", false, 1))));
+            layout.keys.put(KeyEvent.VK_QUOTE, new KeyDescriptor(KeyEvent.VK_QUOTE, KeyEvent.getExtendedKeyCodeForChar(1115), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u045b", false, 0), new KeySymDescriptor("\u040b", false, 1))));
+            layout.keys.put(KeyEvent.VK_BACK_QUOTE, new KeyDescriptor(KeyEvent.VK_BACK_QUOTE, KeyEvent.VK_BACK_QUOTE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("`", false, 0), new KeySymDescriptor("~", false, 1), new KeySymDescriptor("\u00b0", false, 128), new KeySymDescriptor("\u00ac", false, 129))));
+            layout.keys.put(KeyEvent.VK_SHIFT, new KeyDescriptor(KeyEvent.VK_SHIFT, KeyEvent.VK_SHIFT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_BACK_SLASH, new KeyDescriptor(KeyEvent.VK_BACK_SLASH, KeyEvent.getExtendedKeyCodeForChar(1078), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0436", false, 0), new KeySymDescriptor("\u0416", false, 1), new KeySymDescriptor("\u00a4", false, 128))));
+            layout.keys.put(KeyEvent.VK_Z, new KeyDescriptor(KeyEvent.VK_Z, KeyEvent.getExtendedKeyCodeForChar(1078), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0436", false, 0), new KeySymDescriptor("\u0416", false, 1), new KeySymDescriptor("\u2018", false, 128))));
+            layout.keys.put(KeyEvent.VK_X, new KeyDescriptor(KeyEvent.VK_X, KeyEvent.getExtendedKeyCodeForChar(1119), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u045f", false, 0), new KeySymDescriptor("\u040f", false, 1), new KeySymDescriptor("\u2019", false, 128))));
+            layout.keys.put(KeyEvent.VK_C, new KeyDescriptor(KeyEvent.VK_C, KeyEvent.getExtendedKeyCodeForChar(1094), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0446", false, 0), new KeySymDescriptor("\u0426", false, 1), new KeySymDescriptor("\u00a2", false, 128), new KeySymDescriptor("\u00a9", false, 129))));
+            layout.keys.put(KeyEvent.VK_V, new KeyDescriptor(KeyEvent.VK_V, KeyEvent.getExtendedKeyCodeForChar(1074), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0432", false, 0), new KeySymDescriptor("\u0412", false, 1), new KeySymDescriptor("@", false, 128))));
+            layout.keys.put(KeyEvent.VK_B, new KeyDescriptor(KeyEvent.VK_B, KeyEvent.getExtendedKeyCodeForChar(1073), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u0431", false, 0), new KeySymDescriptor("\u0411", false, 1), new KeySymDescriptor("{", false, 128))));
+            layout.keys.put(KeyEvent.VK_N, new KeyDescriptor(KeyEvent.VK_N, KeyEvent.getExtendedKeyCodeForChar(1085), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u043d", false, 0), new KeySymDescriptor("\u041d", false, 1), new KeySymDescriptor("}", false, 128))));
+            layout.keys.put(KeyEvent.VK_M, new KeyDescriptor(KeyEvent.VK_M, KeyEvent.getExtendedKeyCodeForChar(1084), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u043c", false, 0), new KeySymDescriptor("\u041c", false, 1), new KeySymDescriptor("^", false, 128))));
+            layout.keys.put(KeyEvent.VK_COMMA, new KeyDescriptor(KeyEvent.VK_COMMA, KeyEvent.VK_COMMA, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(",", false, 0), new KeySymDescriptor(";", false, 1), new KeySymDescriptor("<", false, 128))));
+            layout.keys.put(KeyEvent.VK_PERIOD, new KeyDescriptor(KeyEvent.VK_PERIOD, KeyEvent.VK_PERIOD, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(".", false, 0), new KeySymDescriptor(":", false, 1), new KeySymDescriptor(">", false, 128))));
+            layout.keys.put(KeyEvent.VK_SLASH, new KeyDescriptor(KeyEvent.VK_SLASH, KeyEvent.VK_MINUS, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("-", false, 0), new KeySymDescriptor("_", false, 1), new KeySymDescriptor("\u2014", false, 128), new KeySymDescriptor("\u2013", false, 129))));
+            layout.keys.put(KeyEvent.VK_MULTIPLY, new KeyDescriptor(KeyEvent.VK_MULTIPLY, KeyEvent.VK_MULTIPLY, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("*", false, 0), new KeySymDescriptor("*", false, 1), new KeySymDescriptor("*", false, 128), new KeySymDescriptor("*", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_ALT, new KeyDescriptor(KeyEvent.VK_ALT, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1))));
+            layout.keys.put(KeyEvent.VK_SPACE, new KeyDescriptor(KeyEvent.VK_SPACE, KeyEvent.VK_SPACE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(" ", false, 0))));
+            layout.keys.put(KeyEvent.VK_CAPS_LOCK, new KeyDescriptor(KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F1, new KeyDescriptor(KeyEvent.VK_F1, KeyEvent.VK_F1, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F2, new KeyDescriptor(KeyEvent.VK_F2, KeyEvent.VK_F2, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F3, new KeyDescriptor(KeyEvent.VK_F3, KeyEvent.VK_F3, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F4, new KeyDescriptor(KeyEvent.VK_F4, KeyEvent.VK_F4, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F5, new KeyDescriptor(KeyEvent.VK_F5, KeyEvent.VK_F5, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F6, new KeyDescriptor(KeyEvent.VK_F6, KeyEvent.VK_F6, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F7, new KeyDescriptor(KeyEvent.VK_F7, KeyEvent.VK_F7, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F8, new KeyDescriptor(KeyEvent.VK_F8, KeyEvent.VK_F8, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F9, new KeyDescriptor(KeyEvent.VK_F9, KeyEvent.VK_F9, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_F10, new KeyDescriptor(KeyEvent.VK_F10, KeyEvent.VK_F10, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_NUM_LOCK, new KeyDescriptor(KeyEvent.VK_NUM_LOCK, KeyEvent.VK_NUM_LOCK, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_NUMPAD7, new KeyDescriptor(KeyEvent.VK_NUMPAD7, KeyEvent.VK_HOME, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("7", false, 16))));
+            layout.keys.put(KeyEvent.VK_NUMPAD8, new KeyDescriptor(KeyEvent.VK_NUMPAD8, KeyEvent.VK_KP_UP, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("8", false, 16))));
+            layout.keys.put(KeyEvent.VK_NUMPAD9, new KeyDescriptor(KeyEvent.VK_NUMPAD9, KeyEvent.VK_PAGE_UP, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("9", false, 16))));
+            layout.keys.put(KeyEvent.VK_SUBTRACT, new KeyDescriptor(KeyEvent.VK_SUBTRACT, KeyEvent.VK_SUBTRACT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("-", false, 0), new KeySymDescriptor("-", false, 1), new KeySymDescriptor("-", false, 128), new KeySymDescriptor("-", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_NUMPAD4, new KeyDescriptor(KeyEvent.VK_NUMPAD4, KeyEvent.VK_KP_LEFT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("4", false, 16))));
+            layout.keys.put(KeyEvent.VK_NUMPAD5, new KeyDescriptor(KeyEvent.VK_NUMPAD5, KeyEvent.VK_BEGIN, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("5", false, 16))));
+            layout.keys.put(KeyEvent.VK_NUMPAD6, new KeyDescriptor(KeyEvent.VK_NUMPAD6, KeyEvent.VK_KP_RIGHT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("6", false, 16))));
+            layout.keys.put(KeyEvent.VK_ADD, new KeyDescriptor(KeyEvent.VK_ADD, KeyEvent.VK_ADD, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("+", false, 0), new KeySymDescriptor("+", false, 1), new KeySymDescriptor("+", false, 128), new KeySymDescriptor("+", false, 129), new KeySymDescriptor("", false, 12))));
+            layout.keys.put(KeyEvent.VK_NUMPAD1, new KeyDescriptor(KeyEvent.VK_NUMPAD1, KeyEvent.VK_END, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("1", false, 16))));
+            layout.keys.put(KeyEvent.VK_NUMPAD2, new KeyDescriptor(KeyEvent.VK_NUMPAD2, KeyEvent.VK_KP_DOWN, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("2", false, 16))));
+            layout.keys.put(KeyEvent.VK_NUMPAD3, new KeyDescriptor(KeyEvent.VK_NUMPAD3, KeyEvent.VK_PAGE_DOWN, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("3", false, 16))));
+            layout.keys.put(KeyEvent.VK_NUMPAD0, new KeyDescriptor(KeyEvent.VK_NUMPAD0, KeyEvent.VK_INSERT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("0", false, 16))));
+            layout.keys.put(KeyEvent.VK_DECIMAL, new KeyDescriptor(KeyEvent.VK_DECIMAL, KeyEvent.VK_DELETE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor(",", false, 16))));
             layout.keys.put(KeyEvent.VK_LESS, new KeyDescriptor(KeyEvent.VK_LESS, KeyEvent.VK_LESS, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("<", false, 0), new KeySymDescriptor(">", false, 1), new KeySymDescriptor("|", false, 128), new KeySymDescriptor("\u00a6", false, 129))));
             layout.keys.put(KeyEvent.VK_F11, new KeyDescriptor(KeyEvent.VK_F11, KeyEvent.VK_F11, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
             layout.keys.put(KeyEvent.VK_F12, new KeyDescriptor(KeyEvent.VK_F12, KeyEvent.VK_F12, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));

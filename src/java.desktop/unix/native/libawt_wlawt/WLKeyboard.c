@@ -37,22 +37,9 @@
 #include <jni_util.h>
 #include <stdlib.h>
 
-#define WL_KEYBOARD_DEBUG
+//#define WL_KEYBOARD_DEBUG
 
-JNIEnv *getEnv();
-
-#define XKB_KEYCODE_INVALID (0xffffffff)
-#define XKB_LAYOUT_INVALID  (0xffffffff)
-#define XKB_LEVEL_INVALID   (0xffffffff)
-#define XKB_MOD_INVALID     (0xffffffff)
-#define XKB_LED_INVALID     (0xffffffff)
-
-#define XKB_KEYCODE_MAX     (0xffffffff - 1)
-
-#define xkb_keycode_is_legal_ext(key) (key <= XKB_KEYCODE_MAX)
-#define xkb_keycode_is_legal_x11(key) (key >= 8 && key <= 255)
-
-#define XKB_KEYMAP_USE_ORIGINAL_FORMAT ((enum xkb_keymap_format) -1)
+extern JNIEnv *getEnv();
 
 #define XKB_MOD_NAME_SHIFT      "Shift"
 #define XKB_MOD_NAME_CAPS       "Lock"
@@ -64,6 +51,8 @@ JNIEnv *getEnv();
 #define XKB_LED_NAME_CAPS       "Caps Lock"
 #define XKB_LED_NAME_NUM        "Num Lock"
 #define XKB_LED_NAME_SCROLL     "Scroll Lock"
+
+#define MAX_COMPOSE_UTF8_LENGTH 256
 
 
 typedef uint32_t xkb_keycode_t;
@@ -175,11 +164,11 @@ struct xkb_compose_state;
 typedef void
 (*xkb_keymap_key_iter_t)(struct xkb_keymap *keymap, xkb_keycode_t key, void *data);
 
-static jclass keyboardClass;
-static jclass keyRepeatManagerClass;
-static jmethodID setRepeatInfoMID;
-static jmethodID startRepeatMID;
-static jmethodID cancelRepeatMID;
+static jclass keyboardClass;         // sun.awt.wl.WLKeyboard
+static jclass keyRepeatManagerClass; // sun.awt.wl.WLKeyboard.KeyRepeatManager
+static jmethodID setRepeatInfoMID;   // sun.awt.wl.WLKeyboard.KeyRepeatManager.setRepeatInfo
+static jmethodID startRepeatMID;     // sun.awt.wl.WLKeyboard.KeyRepeatManager.startRepeat
+static jmethodID cancelRepeatMID;    // sun.awt.wl.WLKeyboard.KeyRepeatManager.cancelRepeat
 
 static bool
 initJavaRefs(JNIEnv *env) {
@@ -193,8 +182,8 @@ initJavaRefs(JNIEnv *env) {
 }
 
 static struct WLKeyboardState {
-    jobject instance;
-    jobject keyRepeatManager;
+    jobject instance;         // instance of sun.awt.wl.WLKeyboard
+    jobject keyRepeatManager; // instance of sun.awt.wl.WLKeyboard.KeyRepeatManager
 
     struct xkb_context *context;
     struct xkb_state *state;
@@ -209,13 +198,23 @@ static struct WLKeyboardState {
 
     bool asciiCapable;
 
+    // Remap F13-F24 to proper XKB keysyms (and therefore to proper Java keycodes)
     bool remapExtraKeycodes;
+
+    // Report KEY_PRESS/KEY_RELEASE events on non-ASCII capable layouts
+    // as if they happen on the QWERTY layout
     bool useNationalLayouts;
+
+    // Report dead keys not as KeyEvent.VK_DEAD_something, but as the corresponding 'normal' Java keycode
     bool reportDeadKeysAsNormal;
-    bool reportKeyCodeAsExtended;
+
+    // When this option is true, KeyEvent.keyCode() will be set to the corresponding key code on the
+    // active layout (taking into account the setting for national layouts), instead of the default Java
+    // behavior of setting it to the key code of the key on the QWERTY layout.
+    bool reportJavaKeyCodeForActiveLayout;
 } keyboard;
 
-
+// Symbols for runtime linking with libxkbcommon
 static struct {
     int (*keysym_get_name)(xkb_keysym_t keysym, char *buffer, size_t size);
 
@@ -861,6 +860,8 @@ static const struct KeysymToJavaKeycodeMapItem {
 };
 
 
+// These override specific _physical_ key codes with custom XKB keysyms on any layout.
+// This is only currently used to fix the handling of F13-F24
 static const struct ExtraKeycodeToKeysymMapItem {
     xkb_keycode_t keycode;
     xkb_keysym_t keysym;
@@ -880,6 +881,8 @@ static const struct ExtraKeycodeToKeysymMapItem {
         {0,                 0}
 };
 
+// There's no reliable way to convert a dead XKB keysym to its corresponding Unicode character.
+// This is a lookup table of all the dead keys present in the default Compose file.
 static const struct DeadKeysymValuesMapItem {
     xkb_keysym_t keysym;
     uint16_t noncombining;
@@ -933,6 +936,7 @@ getKeyboardLayoutIndex(void) {
     return 0;
 }
 
+// Compose rules may depend on the system locale.
 static const char *
 getComposeLocale() {
     const char *locale = getenv("LC_ALL");
@@ -952,6 +956,7 @@ getComposeLocale() {
     return locale;
 }
 
+// This is called whenever either the XKB keymap is updated, or the 'group' (layout) is changed
 static void
 onKeyboardLayoutChanged(void) {
     // Determine, whether the current keyboard layout is ASCII-capable.
@@ -1001,7 +1006,7 @@ enum ConvertDeadKeyType {
 
 static xkb_keysym_t
 convertDeadKey(xkb_keysym_t keysym, enum ConvertDeadKeyType type) {
-    for (const struct DeadKeysymValuesMapItem* item = deadKeysymValuesMap; item->keysym; ++item) {
+    for (const struct DeadKeysymValuesMapItem *item = deadKeysymValuesMap; item->keysym; ++item) {
         if (item->keysym == keysym) {
             if (type == CONVERT_TO_NON_COMBINING && item->noncombining != 0) {
                 return item->noncombining;
@@ -1014,8 +1019,13 @@ convertDeadKey(xkb_keysym_t keysym, enum ConvertDeadKeyType type) {
     return 0;
 }
 
+enum TranslateKeycodeType {
+    TRANSLATE_USING_ACTIVE_LAYOUT,
+    TRANSLATE_USING_QWERTY,
+};
+
 static xkb_keysym_t
-translateKeycodeToKeysym(uint32_t keycode, bool useQWERTY) {
+translateKeycodeToKeysym(uint32_t keycode, enum TranslateKeycodeType type) {
     if (keyboard.remapExtraKeycodes) {
         for (const struct ExtraKeycodeToKeysymMapItem *item = extraKeycodeToKeysymMap; item->keysym; ++item) {
             if (item->keycode == keycode) {
@@ -1026,16 +1036,13 @@ translateKeycodeToKeysym(uint32_t keycode, bool useQWERTY) {
 
     const uint32_t xkbKeycode = keycode + 8;
 
-    struct xkb_keymap *keymap;
     struct xkb_state *state;
     xkb_layout_index_t group;
 
-    if (keyboard.qwertyKeymap && useQWERTY) {
-        keymap = keyboard.qwertyKeymap;
+    if (keyboard.qwertyKeymap && type == TRANSLATE_USING_QWERTY) {
         state = keyboard.tmpQwertyState;
         group = 0;
     } else {
-        keymap = keyboard.keymap;
         state = keyboard.tmpState;
         group = getKeyboardLayoutIndex();
     }
@@ -1047,7 +1054,7 @@ translateKeycodeToKeysym(uint32_t keycode, bool useQWERTY) {
 }
 
 static void
-lookupKeysym(xkb_keysym_t keysym, int *javaKeyCode, int *javaKeyLocation) {
+convertKeysymToJavaCode(xkb_keysym_t keysym, int *javaKeyCode, int *javaKeyLocation) {
     if (javaKeyCode) {
         *javaKeyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
     }
@@ -1073,6 +1080,10 @@ lookupKeysym(xkb_keysym_t keysym, int *javaKeyCode, int *javaKeyLocation) {
     uint32_t codepoint = xkb.keysym_to_utf32(keysym);
     if (codepoint != 0) {
         if (javaKeyCode) {
+            // This might not be an actual Java extended key code,
+            // since this doesn't deal with lowercase/uppercase characters.
+            // It later needs to be passed to KeyEvent.getExtendedKeyCodeForChar().
+            // This is done in WLToolkit.java
             *javaKeyCode = 0x1000000 + codepoint;
         }
 
@@ -1082,6 +1093,7 @@ lookupKeysym(xkb_keysym_t keysym, int *javaKeyCode, int *javaKeyLocation) {
     }
 }
 
+// Posts one UTF-16 code unit as a KEY_TYPED event
 static void
 postKeyTypedJavaChar(uint16_t javaChar) {
 #ifdef WL_KEYBOARD_DEBUG
@@ -1100,6 +1112,7 @@ postKeyTypedJavaChar(uint16_t javaChar) {
     wlPostKeyEvent(&event);
 }
 
+// Posts one Unicode code point as KEY_TYPED events
 static void
 postKeyTypedCodepoint(uint32_t codePoint) {
     if (codePoint >= 0x10000) {
@@ -1117,6 +1130,7 @@ postKeyTypedCodepoint(uint32_t codePoint) {
     }
 }
 
+// Posts a UTF-8 encoded string as KEY_TYPED events
 static void
 postKeyTypedEvents(const char *string) {
 #ifdef WL_KEYBOARD_DEBUG
@@ -1170,6 +1184,7 @@ postKeyTypedEvents(const char *string) {
     }
 }
 
+// Posts an XKB keysym as KEY_TYPED events, without consulting the current compose state.
 static void
 handleKeyTypeNoCompose(xkb_keycode_t xkbKeycode) {
     int bufSize = xkb.state_key_get_utf8(keyboard.state, xkbKeycode, NULL, 0) + 1;
@@ -1178,6 +1193,7 @@ handleKeyTypeNoCompose(xkb_keycode_t xkbKeycode) {
     postKeyTypedEvents(buf);
 }
 
+// Handles generating KEY_TYPED events for an XKB keysym, translating it using the active compose state
 static void
 handleKeyType(xkb_keycode_t xkbKeycode) {
     xkb_keysym_t keysym = xkb.state_key_get_one_sym(keyboard.state, xkbKeycode);
@@ -1196,9 +1212,8 @@ handleKeyType(xkb_keycode_t xkbKeycode) {
         case XKB_COMPOSE_COMPOSING:
             break;
         case XKB_COMPOSE_COMPOSED: {
-            int bufSize = xkb.compose_state_get_utf8(keyboard.composeState, NULL, 0) + 1;
-            char buf[bufSize];
-            xkb.compose_state_get_utf8(keyboard.composeState, buf, bufSize);
+            char buf[MAX_COMPOSE_UTF8_LENGTH];
+            xkb.compose_state_get_utf8(keyboard.composeState, buf, sizeof buf);
             postKeyTypedEvents(buf);
             xkb.compose_state_reset(keyboard.composeState);
             break;
@@ -1209,13 +1224,20 @@ handleKeyType(xkb_keycode_t xkbKeycode) {
     }
 }
 
+// Handles a key press or release, identified by the evdev key code.
+// This is called:
+//   1. As the wl_keyboard_key Wayland event handler. In this case, isRepeat = false,
+//      and this function is responsible for setting up the key repeat manager state
+//      by either starting the timer if isPressed = true and the key may be repeated,
+//      or stopping it if isPressed = false.
+//   2. From the key repeat manager. In this case, isRepeat = true and isPressed = true.
 static void
 handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat) {
     JNIEnv *env = getEnv();
 
     xkb_keycode_t xkbKeycode = keycode + 8;
-    xkb_keysym_t keysym = translateKeycodeToKeysym(keycode, false);
-    xkb_keysym_t qwertyKeysym = translateKeycodeToKeysym(keycode, true);
+    xkb_keysym_t keysym = translateKeycodeToKeysym(keycode, TRANSLATE_USING_ACTIVE_LAYOUT);
+    xkb_keysym_t qwertyKeysym = translateKeycodeToKeysym(keycode, TRANSLATE_USING_QWERTY);
 
     int javaKeyCode, javaExtendedKeyCode, javaKeyLocation;
 
@@ -1230,7 +1252,7 @@ handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat) {
     // layout to the QWERTY key map. Hence, the 'qwertyKeysym <= 0x7f' check.
 
     if (keyboard.useNationalLayouts && !keyboard.asciiCapable && qwertyKeysym <= 0x7f) {
-        lookupKeysym(qwertyKeysym, &javaKeyCode, &javaKeyLocation);
+        convertKeysymToJavaCode(qwertyKeysym, &javaKeyCode, &javaKeyLocation);
         javaExtendedKeyCode = javaKeyCode;
     } else {
         xkb_keysym_t report = keysym;
@@ -1241,9 +1263,9 @@ handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat) {
             }
         }
 
-        lookupKeysym(report, &javaExtendedKeyCode, &javaKeyLocation);
-        if (javaExtendedKeyCode >= 0x1000000 && !keyboard.reportKeyCodeAsExtended) {
-            lookupKeysym(qwertyKeysym, &javaKeyCode, NULL);
+        convertKeysymToJavaCode(report, &javaExtendedKeyCode, &javaKeyLocation);
+        if (javaExtendedKeyCode >= 0x1000000 && !keyboard.reportJavaKeyCodeForActiveLayout) {
+            convertKeysymToJavaCode(qwertyKeysym, &javaKeyCode, NULL);
         } else {
             javaKeyCode = javaExtendedKeyCode;
         }
@@ -1274,6 +1296,78 @@ handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat) {
     }
 }
 
+static void
+freeXKB(void) {
+    xkb.compose_state_unref(keyboard.composeState);
+    keyboard.composeState = NULL;
+
+    xkb.compose_table_unref(keyboard.composeTable);
+    keyboard.composeTable = NULL;
+
+    xkb.state_unref(keyboard.tmpQwertyState);
+    keyboard.tmpQwertyState = NULL;
+
+    xkb.keymap_unref(keyboard.qwertyKeymap);
+    keyboard.qwertyKeymap = NULL;
+
+    xkb.state_unref(keyboard.tmpState);
+    keyboard.tmpState = NULL;
+
+    xkb.state_unref(keyboard.state);
+    keyboard.state = NULL;
+
+    xkb.keymap_unref(keyboard.keymap);
+    keyboard.keymap = NULL;
+
+    xkb.context_unref(keyboard.context);
+    keyboard.context = NULL;
+}
+
+static bool
+initXKB(JNIEnv *env) {
+    if (!xkbcommonLoad(env)) {
+        // xkbcommonLoad has thrown
+        return false;
+    }
+
+    keyboard.context = xkb.context_new(XKB_CONTEXT_NO_FLAGS);
+
+    if (!keyboard.context) {
+        JNU_ThrowInternalError(env, "Failed to create an XKB context");
+        return false;
+    }
+
+    struct xkb_rule_names qwertyRuleNames = {
+            .rules = "evdev",
+            .model = "pc105",
+            .layout = "us",
+            .variant = "",
+            .options = ""
+    };
+
+    keyboard.qwertyKeymap = xkb.keymap_new_from_names(keyboard.context, &qwertyRuleNames, 0);
+    if (!keyboard.qwertyKeymap) {
+        freeXKB();
+        JNU_ThrowInternalError(getEnv(), "Failed to create XKB layout 'us'");
+        return false;
+    }
+
+    keyboard.tmpQwertyState = xkb.state_new(keyboard.qwertyKeymap);
+    if (!keyboard.tmpQwertyState) {
+        freeXKB();
+        JNU_ThrowInternalError(getEnv(), "Failed to create XKB state");
+        return false;
+    }
+
+    keyboard.composeTable = xkb.compose_table_new_from_locale(keyboard.context, getComposeLocale(),
+                                                              XKB_COMPOSE_COMPILE_NO_FLAGS);
+    if (keyboard.composeTable) {
+        keyboard.composeState = xkb.compose_state_new(keyboard.composeTable, XKB_COMPOSE_STATE_NO_FLAGS);
+    }
+
+    return true;
+}
+
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLKeyboard_initialize(JNIEnv *env, jobject instance, jobject keyRepeatManager) {
     if (keyboard.instance != NULL) {
@@ -1288,37 +1382,24 @@ Java_sun_awt_wl_WLKeyboard_initialize(JNIEnv *env, jobject instance, jobject key
         return;
     }
 
-    keyboard.instance = (*env)->NewGlobalRef(env, instance);
-    keyboard.keyRepeatManager = (*env)->NewGlobalRef(env, keyRepeatManager);
-
-    if (!xkbcommonLoad(env)) {
+    if (!initXKB(env)) {
+        // Already thrown
         return;
     }
 
-    keyboard.context = xkb.context_new(XKB_CONTEXT_NO_FLAGS);
     keyboard.useNationalLayouts = true;
     keyboard.remapExtraKeycodes = true;
     keyboard.reportDeadKeysAsNormal = false;
-    keyboard.reportKeyCodeAsExtended = true;
+    keyboard.reportJavaKeyCodeForActiveLayout = true;
 
-    struct xkb_rule_names qwertyRuleNames = {
-            .rules = "evdev",
-            .model = "pc105",
-            .layout = "us",
-            .variant = "",
-            .options = ""
-    };
-    keyboard.qwertyKeymap = xkb.keymap_new_from_names(keyboard.context, &qwertyRuleNames, 0);
-    if (!keyboard.qwertyKeymap) {
-        JNU_ThrowInternalError(getEnv(),
-                               "xkb layout 'us' not found");
-    }
-    keyboard.tmpQwertyState = xkb.state_new(keyboard.qwertyKeymap);
-
-    keyboard.composeTable = xkb.compose_table_new_from_locale(keyboard.context, getComposeLocale(),
-                                                              XKB_COMPOSE_COMPILE_NO_FLAGS);
-    if (keyboard.composeTable) {
-        keyboard.composeState = xkb.compose_state_new(keyboard.composeTable, XKB_COMPOSE_STATE_NO_FLAGS);
+    keyboard.instance = (*env)->NewGlobalRef(env, instance);
+    keyboard.keyRepeatManager = (*env)->NewGlobalRef(env, keyRepeatManager);
+    if (!keyboard.instance || !keyboard.keyRepeatManager) {
+        if (keyboard.instance) (*env)->DeleteGlobalRef(env, keyboard.instance);
+        if (keyboard.keyRepeatManager) (*env)->DeleteGlobalRef(env, keyboard.keyRepeatManager);
+        freeXKB();
+        JNU_ThrowOutOfMemoryError(env, "Failed to create reference");
+        return;
     }
 }
 
@@ -1343,16 +1424,28 @@ Java_sun_awt_wl_WLKeyboard_getXKBModifiersMask(JNIEnv *env, jobject instance) {
 
 void
 wlSetKeymap(const char *serializedKeymap) {
-    struct xkb_keymap *new_xkb_keymap = xkb.keymap_new_from_string(
+    struct xkb_keymap *newKeymap = xkb.keymap_new_from_string(
             keyboard.context, serializedKeymap, XKB_KEYMAP_FORMAT_TEXT_V1, 0);
+
+    if (!newKeymap) {
+        JNU_ThrowInternalError(getEnv(), "Failed to create XKB keymap");
+        return;
+    }
+
+    struct xkb_state* newState = xkb.state_new(newKeymap);
+    struct xkb_state* newTmpState = xkb.state_new(newKeymap);
+    if (!newState || !newTmpState) {
+        JNU_ThrowInternalError(getEnv(), "Failed to create XKB state");
+        return;
+    }
 
     xkb.keymap_unref(keyboard.keymap);
     xkb.state_unref(keyboard.state);
     xkb.state_unref(keyboard.tmpState);
 
-    keyboard.state = xkb.state_new(new_xkb_keymap);
-    keyboard.tmpState = xkb.state_new(new_xkb_keymap);
-    keyboard.keymap = new_xkb_keymap;
+    keyboard.state = newState;
+    keyboard.tmpState = newTmpState;
+    keyboard.keymap = newKeymap;
     onKeyboardLayoutChanged();
 }
 
