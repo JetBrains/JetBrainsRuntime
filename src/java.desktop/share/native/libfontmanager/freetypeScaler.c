@@ -443,10 +443,10 @@ Java_sun_font_FreetypeFontScaler_createScalerContextNative(
         ptsz = 1.0;
     }
     context->ptsz = (int)(ptsz * 64);
-    context->transform.xx =  FloatToFTFixed((float)dmat[0]/ptsz);
-    context->transform.yx = -FloatToFTFixed((float)dmat[1]/ptsz);
-    context->transform.xy = -FloatToFTFixed((float)dmat[2]/ptsz);
-    context->transform.yy =  FloatToFTFixed((float)dmat[3]/ptsz);
+    context->transform.xx =  FloatToFTFixed((float)(dmat[0]/ptsz));
+    context->transform.yx = -FloatToFTFixed((float)(dmat[1]/ptsz));
+    context->transform.xy = -FloatToFTFixed((float)(dmat[2]/ptsz));
+    context->transform.yy =  FloatToFTFixed((float)(dmat[3]/ptsz));
     context->aaType = aa;
     context->fmType = fm;
 
