@@ -33,7 +33,6 @@
 #include <dlfcn.h>
 
 #include <java_awt_event_KeyEvent.h>
-#include <jvm_md.h>
 #include <jni_util.h>
 #include <stdlib.h>
 
