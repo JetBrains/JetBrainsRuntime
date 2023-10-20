@@ -112,7 +112,6 @@ case "$bundle_type" in
     bundle_type=""
     ;;
   "nomodft" | "")
-    bundle_type=""
     jbr_name_postfix="_ft"
     ;;
   "fd")
