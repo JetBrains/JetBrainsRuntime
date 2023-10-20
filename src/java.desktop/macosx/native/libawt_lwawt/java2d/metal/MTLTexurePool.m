@@ -26,11 +26,16 @@
 #import "MTLTexturePool.h"
 #import "Trace.h"
 
-#define SCREEN_MEMORY_SIZE_5K (5120*4096*4) //~84 mb
-#define MAX_POOL_ITEM_LIFETIME_SEC 30
+#define SIZE_KB                 1024
+#define SIZE_MB                 (SIZE_KB * SIZE_KB)
 
-#define CELL_WIDTH_BITS 5 // ~ 32 pixel
-#define CELL_HEIGHT_BITS 5 // ~ 32 pixel
+#define SCREEN_MEMORY_SIZE_5K   (5120 * 4096 * 4)   /* ~ 84 mb */
+#define MAX_MEMORY_SIZE         (1024 * SIZE_MB)    /* ~  1 gb */
+
+#define MAX_POOL_ITEM_LIFETIME_SEC  30
+
+#define CELL_WIDTH_BITS     5 // ~ 32 pixel
+#define CELL_HEIGHT_BITS    5 // ~ 32 pixel
 
 @implementation MTLTexturePoolItem
 
@@ -329,6 +334,26 @@
     if (_maxPoolMemory < SCREEN_MEMORY_SIZE_5K) {
         _maxPoolMemory = SCREEN_MEMORY_SIZE_5K;
     }
+    if (_maxPoolMemory > MAX_MEMORY_SIZE) {
+        _maxPoolMemory = MAX_MEMORY_SIZE;
+    }
+
+    if (1) {
+        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLDevice.location:         %lu", self.device.location);
+        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLDevice.locationNumber :  %lu", self.device.locationNumber);
+
+        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLDevice.headless:         %d", self.device.headless);
+        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLDevice.lowPower:         %d", self.device.lowPower);
+        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLDevice.hasUnifiedMemory: %d", self.device.hasUnifiedMemory);
+
+        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLDevice.maxBufferLength:  %lu Kb",
+                       self.device.maxBufferLength / SIZE_KB);
+        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLDevice.recommendedMaxWorkingSetSize: %llu Kb",
+                       self.device.recommendedMaxWorkingSetSize / SIZE_KB);
+
+        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLTexturePool.maxPoolMemory: %llu Kb",
+                       _maxPoolMemory / SIZE_KB);
+    }
 
     return self;
 }
@@ -426,6 +451,8 @@
             minDeltaTpi = [cell createItem:device width:width height:height format:format isMultiSample:isMultiSample];
             _memoryTotalAllocated += requestedBytes;
             J2dTraceLn5(J2D_TRACE_VERBOSE, "MTLTexturePool: created pool item: tex=%p, w=%d h=%d, pf=%d | total memory = %d Kb", minDeltaTpi.texture, width, height, format, _memoryTotalAllocated/1024);
+
+            J2dRlsTraceLn5(J2D_TRACE_INFO, "MTLTexturePool: created pool item: tex=%p, w=%d h=%d, pf=%d | total memory = %d Kb", minDeltaTpi.texture, width, height, format, _memoryTotalAllocated/1024);
         }
 
         minDeltaTpi.isBusy = YES;

@@ -71,6 +71,13 @@
 @property (readonly) id syncEvent;
 @property (readwrite, atomic) UInt64 syncCount;
 
+@property (readonly) jint dispID;
+@property (readonly) jint statID;
+@property (readwrite, atomic) UInt64 statLastSyncCount;
+@property (readwrite) jint statCommits;
+@property (readwrite) jint statWaits;
+@property (readwrite) jint statDisplayed;
+
 /**
  * There are two separate glyph caches: for AA and for LCD.
  * Once one of them is initialized as either GRAY or LCD, it

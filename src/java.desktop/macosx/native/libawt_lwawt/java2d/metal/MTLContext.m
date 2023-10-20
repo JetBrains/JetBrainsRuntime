@@ -47,6 +47,7 @@
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern BOOL isDisplaySyncEnabled();
 extern BOOL MTLLayer_isExtraRedrawEnabled();
+extern BOOL isStatsEnabled();
 
 static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
         {{-1.0, 1.0}, {0.0, 0.0}},
@@ -117,6 +118,8 @@ MTLTransform* tempTransform = nil;
 @end
 
 
+static jlong MTL_CTX_COUNTER = 0;
+
 @implementation MTLContext {
     MTLCommandBufferWrapper * _commandBufferWrapper;
     CVDisplayLinkRef _displayLink;
@@ -141,13 +144,21 @@ MTLTransform* tempTransform = nil;
             commandQueue, blitCommandQueue, vertexBuffer,
             texturePool, paint=_paint, encoderManager=_encoderManager,
             samplerManager=_samplerManager, stencilManager=_stencilManager,
-            syncEvent, syncCount;
+            syncEvent, syncCount,
+            dispID, statID, statLastSyncCount,
+            statCommits, statWaits, statDisplayed;
 
 extern void initSamplers(id<MTLDevice> device);
 
 - (id)initWithDevice:(jint)displayID shadersLib:(NSString*)shadersLib {
     self = [super init];
     if (self) {
+        dispID = displayID;
+        statID = ++MTL_CTX_COUNTER;
+        if (isStatsEnabled()) {
+            J2dRlsTraceLn2(J2D_TRACE_INFO, "initWithDevice(displayID: %d): statId = %d", dispID, statID);
+        }
+
         // Initialization code here.
         device = CGDirectDisplayCopyCurrentMetalDevice(displayID);
         if (device == nil) {
@@ -197,6 +208,13 @@ extern void initSamplers(id<MTLDevice> device);
         self.syncCount = 0;
         _glyphCacheLCD = [[MTLGlyphCache alloc] initWithContext:self];
         _glyphCacheAA = [[MTLGlyphCache alloc] initWithContext:self];
+
+        if (isStatsEnabled()) {
+            statLastSyncCount = 0;
+            statCommits = 0;
+            statWaits = 0;
+            statDisplayed = 0;
+        }
     }
     return self;
 }
@@ -547,6 +565,18 @@ extern void initSamplers(id<MTLDevice> device);
 
 - (void)commitCommandBuffer:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay {
     [self.encoderManager endEncoder];
+
+    if (isStatsEnabled()) {
+        // committed, waited, displayed
+        statCommits++;
+        if (waitUntilCompleted) {
+            statWaits++;
+        }
+        if (updateDisplay) {
+            statDisplayed++;
+        }
+    }
+
     BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
     MTLLayer *layer = nil;
     if (dstOps != NULL) {

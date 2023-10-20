@@ -92,13 +92,8 @@ public abstract class RenderQueue {
         refSet = new HashSet<>();
         buf = RenderBuffer.allocate(BUFFER_SIZE);
 
-        System.out.println("DO_STATS: "+DO_STATS);
+        System.out.println("DO_STATS: " + DO_STATS);
 
-        /*
-        if (DO_STATS) {
-            rqLog.setLevel(PlatformLogger.Level.INFO);
-        }
-*/
         if (rqLog.isLoggable(PlatformLogger.Level.INFO)) {
             rqLog.info("RenderQueue: buffer size = " + (BUFFER_SIZE / 1024) + " Kb");
         }

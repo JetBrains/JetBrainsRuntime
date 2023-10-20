@@ -59,6 +59,9 @@ void rq_plog(JNIEnv* env, int logLevel, const char *formatMsg, ...);
 
 const static uint32 STATS_LEN = sun_java2d_pipe_BufferedOpCodes_DISABLE_LOOKUP_OP + 1;
 
+static jint statFlushs = 0;
+// TODO: add StatLong port for any stats (buffer size) ?
+
 static const char* toStr(uint opcode);
 static const char* mtlOpToStr(uint op);
 static long rqCurrentTimeMillis();
@@ -75,6 +78,32 @@ BOOL isStatsEnabled() {
     }
     return (BOOL)statsEnabled;
 }
+
+static void rqDumpContext(JNIEnv *env, MTLContext *mtlc, const char* message, BOOL reset) {
+    if (mtlc != NULL) {
+        UInt64 syncCount = [mtlc syncCount];
+        UInt64 lastSyncCount = [mtlc statLastSyncCount];
+        jint statCommits = [mtlc statCommits];
+        jint statWaits = [mtlc statWaits];
+        jint statDisplayed = [mtlc statDisplayed];
+
+        rq_plog(env, LL_INFO, "Java_sun_java2d_metal_MTLRenderQueue_rqDumpContext(displayID: %d, statID: %d): "
+                              "[%s] sync: %ld commit: %d wait: %d display: %d (allocated gpu mem: %ld kb)",
+                [mtlc dispID], [mtlc statID], message,
+                (syncCount - lastSyncCount), statCommits, statWaits, statDisplayed,
+                [mtlc.device currentAllocatedSize] / 1024
+        );
+
+        if (reset) {
+            // TODO: new method resetStats()
+            [mtlc setStatLastSyncCount: syncCount];
+            [mtlc setStatCommits: 0];
+            [mtlc setStatWaits: 0];
+            [mtlc setStatDisplayed: 0];
+        }
+    }
+}
+
 
 /**
  * References to the "current" context and destination surface.
@@ -135,6 +164,7 @@ void MTLRenderQueue_CheckPreviousOp(jint op) {
     mtlPreviousOp = op;
 }
 
+
 JNIEXPORT void JNICALL
 Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
     (JNIEnv *env, jobject mtlrq,
@@ -156,18 +186,30 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
     @autoreleasepool {
         const BOOL isStats = isStatsEnabled();
         int statsLevel = -1;
-        static jint* statsOpsPtr = NULL;
+        static jint* statsOps = NULL;
+        static NSMutableSet* ctxSet = NULL;
 
         if (DO_STATS && isStats) {
             statsLevel = LL_INFO;
 
-            if (statsOpsPtr == NULL) {
-                statsOpsPtr = malloc(sizeof(jint) * STATS_LEN); // leak, no-free
+            statFlushs++;
+
+            if (statsOps == NULL) {
+                statsOps = malloc(sizeof(jint) * STATS_LEN); // leak, no-free
                 for (uint32 i = 0; i < STATS_LEN; i++) {
-                    statsOpsPtr[i] = 0;
+                    statsOps[i] = 0;
                 }
             }
+            if (ctxSet == NULL) {
+                ctxSet = [[NSMutableSet alloc] init]; // leak, no-free
+            }
+            if (mtlc != NULL) {
+                [ctxSet addObject: mtlc];
+            }
+
             rq_plog(env, LL_DEBUG, "Java_sun_java2d_metal_MTLRenderQueue_flushBuffer(%d bytes): start", limit);
+
+            if (0) rqDumpContext(env, mtlc, "start", FALSE);
         }
 
         while (b < end) {
@@ -201,7 +243,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_RENDER_OP(MTL_OP_OTHER, dstOps, sync);
 
                     if ([mtlc useXORComposite]) {
-
                         [mtlc commitCommandBuffer:YES display:NO];
                         J2dTraceLn(J2D_TRACE_VERBOSE,
                                    "DRAW_RECT in XOR mode - Force commit earlier draw calls before DRAW_RECT.");
@@ -651,8 +692,12 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                         } else {
                             [mtlc commitCommandBuffer:NO display:NO];
                         }
+                        if (0) rqDumpContext(env, mtlc, "SET_SURFACES", TRUE);
                     }
                     mtlc = [MTLContext setSurfacesEnv:env src:pSrc dst:pDst];
+                    if (DO_STATS && isStats && (mtlc != NULL)) {
+                        [ctxSet addObject: mtlc];
+                    }
                     dstOps = (BMTLSDOps *)jlong_to_ptr(pDst);
                     break;
                 }
@@ -667,10 +712,14 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                         [mtlc.glyphCacheAA free];
                         [mtlc.glyphCacheLCD free];
                         [mtlc commitCommandBuffer:NO display:NO];
+                        if (0) rqDumpContext(env, mtlc, "SET_SCRATCH_SURFACE", TRUE);
                     }
 
                     if (mtlInfo != NULL) {
                         mtlc = mtlInfo->context;
+                        if (DO_STATS && isStats && (mtlc != NULL)) {
+                            [ctxSet addObject: mtlc];
+                        }
                     } else {
                         mtlc = NULL;
                     }
@@ -713,6 +762,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     [mtlc.glyphCacheLCD free];
                     [mtlc.encoderManager endEncoder];
                     MTLGC_DestroyMTLGraphicsConfig(pConfigInfo);
+                    if (DO_STATS && isStats) {
+                        [ctxSet removeObject: mtlc];
+                    }
                     mtlc = NULL;
                     break;
                 }
@@ -925,7 +977,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     return;
             }
             if (DO_STATS && isStats) {
-                statsOpsPtr[opcode]++;
+                statsOps[opcode]++;
             }
         } // buffer loop
 
@@ -949,15 +1001,24 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             if (lastTimeMs == -1) {
                 lastTimeMs = timeMs;
             } else if ((timeMs - lastTimeMs) > STATS_INTERVAL) {
+
+                for (MTLContext *ctx in ctxSet) {
+                    rqDumpContext(env, ctx, "dump", TRUE);
+                }
+
                 rq_plog(env, statsLevel, "Java_sun_java2d_metal_MTLRenderQueue_flushBuffer stats since (%ld ms) {",
                         (timeMs - lastTimeMs));
                 lastTimeMs = timeMs;
 
+                rq_plog(env, statsLevel, "%30s: %d", "FLUSH_BUFFER", statFlushs);
+                // reset:
+                statFlushs = 0;
+
                 for (uint32 i = 0; i < STATS_LEN; i++) {
-                    if (statsOpsPtr[i] != 0) {
-                        rq_plog(env, statsLevel, "%30s: %d", toStr(i), statsOpsPtr[i]);
+                    if (statsOps[i] != 0) {
+                        rq_plog(env, statsLevel, "%30s: %d", toStr(i), statsOps[i]);
                         // reset:
-                        statsOpsPtr[i] = 0;
+                        statsOps[i] = 0;
                     }
                 }
                 rq_plog(env, statsLevel, "}");
