@@ -35,6 +35,7 @@
 #include <poll.h>
 #include <sizecalc.h>
 #include <pthread.h>
+#include <unistd.h>
 
 const int POLL_EVENT_TIMEOUT = 50;
 
