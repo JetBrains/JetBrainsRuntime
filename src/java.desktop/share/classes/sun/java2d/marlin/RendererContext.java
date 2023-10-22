@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,6 +75,7 @@ final class RendererContext extends ReentrantContext implements MarlinConst {
     final PathSimplifier pathSimplifier = new PathSimplifier();
     final Dasher dasher;
     final MarlinTileGenerator ptg;
+    final BBoxAATileGenerator ftg;
     final MarlinCache cache;
     // flag indicating the shape is stroked (1) or filled (0)
     int stroking = 0;
@@ -151,6 +152,8 @@ final class RendererContext extends ReentrantContext implements MarlinConst {
         // Renderer:
         cache = new MarlinCache(this);
         renderer = new Renderer(this); // needs MarlinCache from rdrCtx.cache
+
+        ftg = new BBoxAATileGenerator(stats, renderer, cache); // full tiles
         ptg = new MarlinTileGenerator(stats, renderer, cache);
 
         stroker = new Stroker(this);
