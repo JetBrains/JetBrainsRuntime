@@ -907,7 +907,7 @@ public final class DMarlinRenderingEngine extends RenderingEngine
                                               boolean normalize,
                                               int[] bbox)
     {
-        MarlinTileGenerator ptg = null;
+        BBoxAATileGenerator ptg = null;
         Renderer r = null;
 
         final RendererContext rdrCtx = getRendererContext();
@@ -981,11 +981,10 @@ public final class DMarlinRenderingEngine extends RenderingEngine
 
                 strokeTo(rdrCtx, s, _at, bs, thin, norm, true, r);
             }
-            if (r.endRendering()) {
-                ptg = rdrCtx.ptg.init();
+            if ((ptg = r.endRendering()) != null) {
                 ptg.getBbox(bbox);
                 // note: do not returnRendererContext(rdrCtx)
-                // as it will be called later by MarlinTileGenerator.dispose()
+                // as it will be called later by BBoxAATileGenerator.dispose()
                 r = null;
             }
         } finally {
@@ -1030,7 +1029,7 @@ public final class DMarlinRenderingEngine extends RenderingEngine
             ldx1 = ldy1 = ldx2 = ldy2 = 0.0d;
         }
 
-        MarlinTileGenerator ptg = null;
+        BBoxAATileGenerator ptg = null;
         Renderer r = null;
 
         final RendererContext rdrCtx = getRendererContext();
@@ -1060,11 +1059,10 @@ public final class DMarlinRenderingEngine extends RenderingEngine
             }
             r.pathDone();
 
-            if (r.endRendering()) {
-                ptg = rdrCtx.ptg.init();
+            if ((ptg = r.endRendering()) != null) {
                 ptg.getBbox(bbox);
                 // note: do not returnRendererContext(rdrCtx)
-                // as it will be called later by MarlinTileGenerator.dispose()
+                // as it will be called later by BBoxAATileGenerator.dispose()
                 r = null;
             }
         } finally {
