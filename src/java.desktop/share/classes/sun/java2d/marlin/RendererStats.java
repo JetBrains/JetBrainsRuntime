@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,6 +69,12 @@ public final class RendererStats implements MarlinConst {
         = new StatLong("renderer.addLine");
     final StatLong stat_rdr_addLine_skip
         = new StatLong("renderer.addLine.skip");
+    final StatLong stat_rdr_addLine_slope_length
+        = new StatLong("renderer.addLine.slope.len");
+    final StatLong stat_rdr_addLine_slope_0
+        = new StatLong("renderer.addLine.slope.zero");
+    final StatLong stat_rdr_addLine_slope_small
+        = new StatLong("renderer.addLine.slope.small");
     final StatLong stat_rdr_curveBreak
         = new StatLong("renderer.curveBreakIntoLinesAndAdd");
     final StatLong stat_rdr_curveBreak_dec
@@ -79,6 +85,14 @@ public final class RendererStats implements MarlinConst {
         = new StatLong("renderer.quadBreakIntoLinesAndAdd");
     final StatLong stat_rdr_quadBreak_dec
         = new StatLong("renderer.quadBreakIntoLinesAndAdd.dec");
+    final StatLong stat_rdr_shape_skip
+        = new StatLong("renderer.shape.skip");
+    final StatLong stat_rdr_shape_area
+        = new StatLong("renderer.shape.area");
+    final StatLong stat_rdr_shape_area_constant
+        = new StatLong("renderer.shape.area.constant");
+    final StatLong stat_rdr_edges_constant
+        = new StatLong("renderer.edges.constant");
     final StatLong stat_rdr_edges
         = new StatLong("renderer.edges");
     final StatLong stat_rdr_edges_count
@@ -103,6 +117,10 @@ public final class RendererStats implements MarlinConst {
         = new StatLong("renderer.crossings.msorts");
     final StatLong stat_rdr_crossings_dpqs
         = new StatLong("renderer.crossings.dpqs");
+    final StatLong stat_rdr_iter
+            = new StatLong("renderer.iter");
+    final StatLong stat_rdr_iter_skip
+            = new StatLong("renderer.iter.skip");
     final StatLong stat_str_polystack_curves
         = new StatLong("stroker.polystack.curves");
     final StatLong stat_str_polystack_types
@@ -182,11 +200,18 @@ public final class RendererStats implements MarlinConst {
         stat_cache_tiles,
         stat_rdr_addLine,
         stat_rdr_addLine_skip,
+        stat_rdr_addLine_slope_length,
+        stat_rdr_addLine_slope_0,
+        stat_rdr_addLine_slope_small,
         stat_rdr_curveBreak,
         stat_rdr_curveBreak_dec,
         stat_rdr_curveBreak_inc,
         stat_rdr_quadBreak,
         stat_rdr_quadBreak_dec,
+        stat_rdr_shape_skip,
+        stat_rdr_shape_area,
+        stat_rdr_shape_area_constant,
+        stat_rdr_edges_constant,
         stat_rdr_edges,
         stat_rdr_edges_count,
         stat_rdr_edges_resizes,
@@ -199,6 +224,8 @@ public final class RendererStats implements MarlinConst {
         stat_rdr_crossings_bsearch,
         stat_rdr_crossings_msorts,
         stat_rdr_crossings_dpqs,
+        stat_rdr_iter,
+        stat_rdr_iter_skip,
         stat_str_polystack_types,
         stat_str_polystack_curves,
         stat_cpd_polystack_curves,
@@ -379,6 +406,7 @@ public final class RendererStats implements MarlinConst {
                         statTimer.scheduleAtFixedRate(new TimerTask() {
                             @Override
                             public void run() {
+                                logInfo("--- RendererStats dump at: " + new java.util.Date() + " ---");
                                 dump();
                             }
                         }, DUMP_INTERVAL, DUMP_INTERVAL);
