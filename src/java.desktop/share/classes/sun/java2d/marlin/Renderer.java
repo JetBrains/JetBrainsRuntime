@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,9 @@ import static sun.java2d.marlin.OffHeapArray.SIZE_INT;
 import jdk.internal.misc.Unsafe;
 
 final class Renderer implements DPathConsumer2D, MarlinConst {
+
+    static final boolean TRACE_SLOPE_0 = DO_STATS && false;
+    static final boolean TRACE_RECT    = DO_STATS && false;
 
     static final boolean DISABLE_RENDER = MarlinProperties.isSkipRenderer();
 
@@ -136,6 +139,7 @@ final class Renderer implements DPathConsumer2D, MarlinConst {
     // sublist in the segment lists (the portion of the list that contains
     // all the segments that cross the next scan line).
     private int edgeCount;
+    private int edgeVertCount;
     private int[] edgePtrs;
     // auxiliary storage for edge pointers (merge sort)
     private int[] aux_edgePtrs;
@@ -366,21 +370,57 @@ final class Renderer implements DPathConsumer2D, MarlinConst {
             edgeMaxY = lastCrossing;
         }
 
-        final double slope = (x1 - x2) / (y1 - y2);
+        if (DO_STATS) {
+            rdrCtx.stats.stat_rdr_addLine_slope_length.add(
+                (lastCrossing - firstCrossing + SUBPIXEL_MASK_Y) >> SUBPIXEL_LG_POSITIONS_Y
+            );
+        }
+        if (TRACE_SLOPE_0 && (x1 != x2)) {
+            // TODO: check same end point x (more precisely using integer maths)
+            final int firstX = FloatMath.ceil_int(x1 - 0.5);
+            final int lastX  = FloatMath.ceil_int(x2 - 0.5);
+            if (firstX == lastX) {
+                rdrCtx.stats.stat_rdr_addLine_slope_small.add(
+                    (lastCrossing - firstCrossing + SUBPIXEL_MASK_Y) >> SUBPIXEL_LG_POSITIONS_Y
+                );
+                // TODO: force case: (slope == 0.0) => use purely vertical edge
+            }
+        }
 
-        if (slope >= 0.0d) { // <==> x1 < x2
+        final double slope;
+
+        if (x1 == x2) {
+            slope = 0.0;
+            edgeVertCount++;
+            if (DO_STATS) {
+                rdrCtx.stats.stat_rdr_addLine_slope_0.add(
+                    (lastCrossing - firstCrossing + SUBPIXEL_MASK_Y) >> SUBPIXEL_LG_POSITIONS_Y
+                );
+            }
+
             if (x1 < edgeMinX) {
                 edgeMinX = x1;
             }
-            if (x2 > edgeMaxX) {
-                edgeMaxX = x2;
-            }
-        } else {
-            if (x2 < edgeMinX) {
-                edgeMinX = x2;
-            }
             if (x1 > edgeMaxX) {
                 edgeMaxX = x1;
+            }
+        } else {
+            slope = (x1 - x2) / (y1 - y2);
+
+            if (slope >= 0.0d) { // <==> x1 < x2
+                if (x1 < edgeMinX) {
+                    edgeMinX = x1;
+                }
+                if (x2 > edgeMaxX) {
+                    edgeMaxX = x2;
+                }
+            } else {
+                if (x2 < edgeMinX) {
+                    edgeMinX = x2;
+                }
+                if (x1 > edgeMaxX) {
+                    edgeMaxX = x1;
+                }
             }
         }
 
@@ -596,6 +636,7 @@ final class Renderer implements DPathConsumer2D, MarlinConst {
 
         // reset used mark:
         edgeCount = 0;
+        edgeVertCount = 0;
         activeEdgeMaxUsed = 0;
         edges.used = 0;
 
@@ -1431,12 +1472,12 @@ final class Renderer implements DPathConsumer2D, MarlinConst {
         }
     }
 
-    boolean endRendering() {
-        if (DO_MONITORS) {
-            rdrCtx.stats.mon_rdr_endRendering.start();
-        }
+    BBoxAATileGenerator endRendering() {
         if (edgeMinY == Integer.MAX_VALUE) {
-            return false; // undefined edges bounds
+            if (DO_STATS) {
+                rdrCtx.stats.stat_rdr_shape_skip.add(1);
+            }
+            return null; // undefined edges bounds
         }
 
         // bounds as half-open intervals
@@ -1459,7 +1500,13 @@ final class Renderer implements DPathConsumer2D, MarlinConst {
 
         // test clipping for shapes out of bounds
         if ((spminX >= spmaxX) || (spminY >= spmaxY)) {
-            return false;
+            if (DO_STATS) {
+                rdrCtx.stats.stat_rdr_shape_skip.add(1);
+            }
+            return null;
+        }
+        if (DO_MONITORS) {
+            rdrCtx.stats.mon_rdr_endRendering.start();
         }
 
         // half open intervals
@@ -1471,6 +1518,72 @@ final class Renderer implements DPathConsumer2D, MarlinConst {
         final int pminY =  spminY                    >> SUBPIXEL_LG_POSITIONS_Y;
         // exclusive:
         final int pmaxY = (spmaxY + SUBPIXEL_MASK_Y) >> SUBPIXEL_LG_POSITIONS_Y;
+
+        // bbox area in pixels:
+        if (DO_STATS) {
+            rdrCtx.stats.stat_rdr_iter.add(spmaxY  - spminY);
+            rdrCtx.stats.stat_rdr_shape_area.add(((long)(pmaxX - pminX)) * (pmaxY - pminY));
+        }
+
+        if (edgeVertCount != 0) {
+            final int totalEdgesCount = edges.used / SIZEOF_EDGE_BYTES;
+
+            // check flat ?
+            if (totalEdgesCount == edgeVertCount) {
+                // all edges are constant (vert or horiz):
+                if (DO_STATS) {
+                    rdrCtx.stats.stat_rdr_edges_constant.add(totalEdgesCount);
+                    rdrCtx.stats.stat_rdr_shape_area_constant.add(((long)(pmaxX - pminX)) * (pmaxY - pminY));
+                }
+
+                // check rect ?
+                if (totalEdgesCount == 2) {
+                    if (TRACE_RECT) {
+                        MarlinUtils.logInfo("sp rect   = [" + spminX + " ... " + spmaxX
+                                + "[ [" + spminY + " ... " + spmaxY + "[");
+                    }
+
+                    final int subpixelMask = (spminX & SUBPIXEL_MASK_X) | (spmaxX & SUBPIXEL_MASK_X)
+                            | (spminY & SUBPIXEL_MASK_Y) | (spmaxY & SUBPIXEL_MASK_Y);
+
+                    if (subpixelMask == 0) {
+                        // rectangle aligned on pixel grid:
+                        if (TRACE_RECT) {
+                            MarlinUtils.logInfo("FULL RECT: pXY = [" + pminX + " ... " + pmaxX
+                                    + "[ [" + pminY + " ... " + pmaxY + "[");
+                        }
+                        if (DO_STATS) {
+                            rdrCtx.stats.stat_rdr_iter_skip.add(spmaxY  - spminY);
+                        }
+                        // store BBox to answer ptg.getBBox():
+                        this.cache.initBBox(pminX, pminY, pmaxX, pmaxY);
+
+                        // skip renderer entirely using BBoxAATileGenerator:
+                        return rdrCtx.ftg;
+                    }
+                }
+            }
+        }
+
+        // memorize the rendering bounding box:
+        /* note: bbox_spminX and bbox_spmaxX must be pixel boundaries
+           to have correct coverage computation */
+        // inclusive:
+        bbox_spminX = pminX << SUBPIXEL_LG_POSITIONS_X;
+        // exclusive:
+        bbox_spmaxX = pmaxX << SUBPIXEL_LG_POSITIONS_X;
+        // inclusive:
+        bbox_spminY = spminY;
+        // exclusive:
+        bbox_spmaxY = spmaxY;
+
+        if (DO_LOG_BOUNDS) {
+            MarlinUtils.logInfo("pXY       = [" + pminX + " ... " + pmaxX
+                    + "[ [" + pminY + " ... " + pmaxY + "[");
+            MarlinUtils.logInfo("bbox_spXY = [" + bbox_spminX + " ... "
+                    + bbox_spmaxX + "[ [" + bbox_spminY + " ... "
+                    + bbox_spmaxY + "[");
+        }
 
         // store BBox to answer ptg.getBBox():
         this.cache.init(pminX, pminY, pmaxX, pmaxY);
@@ -1490,26 +1603,6 @@ final class Renderer implements DPathConsumer2D, MarlinConst {
             }
         }
 
-        // memorize the rendering bounding box:
-        /* note: bbox_spminX and bbox_spmaxX must be pixel boundaries
-           to have correct coverage computation */
-        // inclusive:
-        bbox_spminX = pminX << SUBPIXEL_LG_POSITIONS_X;
-        // exclusive:
-        bbox_spmaxX = pmaxX << SUBPIXEL_LG_POSITIONS_X;
-        // inclusive:
-        bbox_spminY = spminY;
-        // exclusive:
-        bbox_spmaxY = spmaxY;
-
-        if (DO_LOG_BOUNDS) {
-            MarlinUtils.logInfo("pXY       = [" + pminX + " ... " + pmaxX
-                                + "[ [" + pminY + " ... " + pmaxY + "[");
-            MarlinUtils.logInfo("bbox_spXY = [" + bbox_spminX + " ... "
-                                + bbox_spmaxX + "[ [" + bbox_spminY + " ... "
-                                + bbox_spmaxY + "[");
-        }
-
         // Prepare alpha line:
         // add 2 to better deal with the last pixel in a pixel row.
         final int width = (pmaxX - pminX) + 2;
@@ -1525,7 +1618,7 @@ final class Renderer implements DPathConsumer2D, MarlinConst {
         // process first tile line:
         endRendering(pminY);
 
-        return true;
+        return rdrCtx.ptg.init();
     }
 
     private int bbox_spminX, bbox_spmaxX, bbox_spminY, bbox_spmaxY;
