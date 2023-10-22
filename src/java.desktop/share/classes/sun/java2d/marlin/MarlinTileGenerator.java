@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,9 +29,7 @@ import java.util.Arrays;
 import sun.java2d.pipe.AATileGenerator;
 import jdk.internal.misc.Unsafe;
 
-final class MarlinTileGenerator implements AATileGenerator, MarlinConst {
-
-    private static final boolean DISABLE_BLEND = false;
+final class MarlinTileGenerator extends BBoxAATileGenerator {
 
     private static final int MAX_TILE_ALPHA_SUM = TILE_W * TILE_H * MAX_AA_ALPHA;
 
@@ -52,19 +50,12 @@ final class MarlinTileGenerator implements AATileGenerator, MarlinConst {
         }
     }
 
-    private final Renderer renderer;
-    private final MarlinCache cache;
     private int x, y;
-
-    // per-thread renderer stats
-    final RendererStats rdrStats;
 
     MarlinTileGenerator(final RendererStats stats, final Renderer r,
                         final MarlinCache cache)
     {
-        this.rdrStats = stats;
-        this.renderer = r;
-        this.cache = cache;
+        super(stats, r, cache);
     }
 
     MarlinTileGenerator init() {
@@ -80,43 +71,10 @@ final class MarlinTileGenerator implements AATileGenerator, MarlinConst {
      */
     @Override
     public void dispose() {
-        if (DO_MONITORS) {
-            // called from AAShapePipe.renderTiles() (render tiles end):
-            rdrStats.mon_pipe_renderTiles.stop();
-        }
         // dispose cache:
         cache.dispose();
         // dispose renderer and recycle the RendererContext instance:
-        renderer.dispose();
-    }
-
-    void getBbox(int[] bbox) {
-        bbox[0] = cache.bboxX0;
-        bbox[1] = cache.bboxY0;
-        bbox[2] = cache.bboxX1;
-        bbox[3] = cache.bboxY1;
-    }
-
-    /**
-     * Gets the width of the tiles that the generator batches output into.
-     * @return the width of the standard alpha tile
-     */
-    @Override
-    public int getTileWidth() {
-        if (DO_MONITORS) {
-            // called from AAShapePipe.renderTiles() (render tiles start):
-            rdrStats.mon_pipe_renderTiles.start();
-        }
-        return TILE_W;
-    }
-
-    /**
-     * Gets the height of the tiles that the generator batches output into.
-     * @return the height of the standard alpha tile
-     */
-    @Override
-    public int getTileHeight() {
-        return TILE_H;
+        super.dispose();
     }
 
     /**
