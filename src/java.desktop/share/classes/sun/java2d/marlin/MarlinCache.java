@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -120,13 +120,17 @@ public final class MarlinCache implements MarlinConst {
         tileMax = Integer.MIN_VALUE;
     }
 
-    void init(int minx, int miny, int maxx, int maxy)
-    {
+    void initBBox(int minx, int miny, int maxx, int maxy) {
         // assert maxy >= miny && maxx >= minx;
         bboxX0 = minx;
         bboxY0 = miny;
         bboxX1 = maxx;
         bboxY1 = maxy;
+    }
+
+    void init(int minx, int miny, int maxx, int maxy)
+    {
+        initBBox(minx, miny, maxx, maxy);
 
         final int width = (maxx - minx);
 
