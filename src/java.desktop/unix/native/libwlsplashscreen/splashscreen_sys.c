@@ -381,11 +381,12 @@ cleanup:
 
 bool
 SplashReconfigureNow(Splash * splash) {
-    int splash_scale = (int) splash->scaleFactor;
+    int scale = (int) splash->scaleFactor;
+
     int offsetX = splash->screenInfo.width - splash->window_width * splash->screenInfo.scale;
     int offsetY = splash->screenInfo.height - splash->window_height * splash->screenInfo.scale;
-    splash->x = (splash->screenInfo.width - splash->width / splash_scale) / 2;
-    splash->y = (splash->screenInfo.height - splash->height / splash_scale) / 2;
+    splash->x = (splash->screenInfo.width - splash->width / scale) / 2;
+    splash->y = (splash->screenInfo.height - splash->height / scale) / 2;
     int localX = (splash->x - offsetX) / splash->screenInfo.scale;
     int localY = (splash->y - offsetY) / splash->screenInfo.scale;
     wl_subsurface_set_position(splash->state->wl_subsurfaces_subsurface, localX, localY);
@@ -398,7 +399,7 @@ SplashReconfigureNow(Splash * splash) {
 
     struct wl_region *region = wl_compositor_create_region(splash->state->wl_compositor);
     wl_region_subtract(region, 0, 0, splash->window_width, splash->window_height);
-    wl_region_add(region, localX, localY, splash->width / splash_scale, splash->height / splash_scale);
+    wl_region_add(region, localX, localY, splash->width / scale, splash->height / scale);
     wl_surface_set_input_region(splash->state->wl_surface, region);
     wl_surface_set_opaque_region(splash->state->wl_surface, region);
     wl_region_destroy(region);
