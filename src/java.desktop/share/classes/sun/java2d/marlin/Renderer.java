@@ -597,6 +597,7 @@ final class Renderer implements DPathConsumer2D, MarlinConst {
                   final int pix_boundsWidth, final int pix_boundsHeight,
                   final int windingRule)
     {
+        this.rdrCtx.doRender = true;
         this.windingRule = windingRule;
 
         // bounds as half-open intervals: minX <= x < maxX and minY <= y < maxY
