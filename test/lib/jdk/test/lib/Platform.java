@@ -82,7 +82,7 @@ public class Platform {
     }
 
     public static boolean isTieredSupported() {
-        return compiler.contains("Tiered Compilers");
+        return (compiler != null) && compiler.contains("Tiered Compilers");
     }
 
     public static boolean isInt() {
