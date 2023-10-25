@@ -175,6 +175,7 @@ public class EventNames {
     public final static String X509Certificate = PREFIX + "X509Certificate";
     public final static String X509Validation = PREFIX + "X509Validation";
     public final static String SecurityProperty = PREFIX + "SecurityPropertyModification";
+    public final static String SecurityProviderService = PREFIX + "SecurityProviderService";
     public final static String Deserialization = PREFIX + "Deserialization";
 
     // Flight Recorder
