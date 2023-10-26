@@ -35,7 +35,6 @@ package gc.epsilon;
  *                   gc.epsilon.TestEpsilonEnabled
  */
 
-import jdk.test.lib.Platform;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 

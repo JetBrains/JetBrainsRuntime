@@ -49,7 +49,6 @@ package gc.epsilon;
  */
 
 import java.lang.management.*;
-import java.util.*;
 
 public class TestMemoryMXBeans {
 

@@ -51,8 +51,6 @@ package gc.epsilon;
  *                   gc.epsilon.TestArraycopyCheckcast
  */
 
-import java.util.Random;
-
 public class TestArraycopyCheckcast {
 
   static int COUNT = Integer.getInteger("count", 1000);
