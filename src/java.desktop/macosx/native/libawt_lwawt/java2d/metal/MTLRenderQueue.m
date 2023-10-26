@@ -143,7 +143,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_RENDER_OP(MTL_OP_OTHER, dstOps, sync);
 
                     if ([mtlc useXORComposite]) {
-
                         [mtlc commitCommandBuffer:YES display:NO];
                         J2dTraceLn(J2D_TRACE_VERBOSE,
                                    "DRAW_RECT in XOR mode - Force commit earlier draw calls before DRAW_RECT.");
@@ -596,6 +595,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     }
                     mtlc = [MTLContext setSurfacesEnv:env src:pSrc dst:pDst];
                     dstOps = (BMTLSDOps *)jlong_to_ptr(pDst);
+                    // J2dRlsTraceLn1(J2D_TRACE_INFO, "SET_SURFACES: dstOps=%p", dstOps);
                     break;
                 }
                 case sun_java2d_pipe_BufferedOpCodes_SET_SCRATCH_SURFACE:
@@ -616,6 +616,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     } else {
                         mtlc = NULL;
                     }
+                    // J2dRlsTraceLn(J2D_TRACE_INFO, "SET_SCRATCH_SURFACE");
                     dstOps = NULL;
                     break;
                 }

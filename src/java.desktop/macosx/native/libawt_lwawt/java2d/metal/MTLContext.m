@@ -42,11 +42,17 @@
 // Amount of blit operations per update to make sure that everything is
 // rendered into the window drawable. It does not slow things down as we
 // use separate command queue for blitting.
-#define REDRAW_INC 2
+#define REDRAW_INC 1
 
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern BOOL isDisplaySyncEnabled();
 extern BOOL MTLLayer_isExtraRedrawEnabled();
+
+static long rqCurrentTimeMicroSeconds() {
+    struct timeval t;
+    gettimeofday(&t, 0);
+    return ((long)t.tv_sec) * 1000000 + (long)(t.tv_usec);
+}
 
 static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
         {{-1.0, 1.0}, {0.0, 0.0}},
@@ -555,11 +561,16 @@ extern void initSamplers(id<MTLDevice> device);
     }
 
     if (layer != nil) {
+        // J2dRlsTraceLn4(J2D_TRACE_INFO, "commitCommandBuffer(wait=%d display: %d) on layer[%p] (count = %d)",
+        //               waitUntilCompleted, updateDisplay,
+        //               layer, layer.redrawCount);
         [layer commitCommandBuffer:self wait:waitUntilCompleted display:updateDisplay];
     } else {
         MTLCommandBufferWrapper * cbwrapper = [self pullCommandBufferWrapper];
         if (cbwrapper != nil) {
             id <MTLCommandBuffer> commandbuf =[cbwrapper getCommandBuffer];
+            //J2dRlsTraceLn2(J2D_TRACE_INFO, "commitCommandBuffer(wait=%d) on buffer[%p]",
+            //               waitUntilCompleted, commandbuf);
             [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
                 [cbwrapper release];
             }];
@@ -576,6 +587,8 @@ extern void initSamplers(id<MTLDevice> device);
     for (MTLLayer *layer in _layers) {
         [layer setNeedsDisplay];
     }
+    // J2dRlsTraceLn2(J2D_TRACE_INFO, "[%ld] MTLContext_redraw(): displayLinkCount=%d",
+    //               rqCurrentTimeMicroSeconds(), _displayLinkCount);
     if (_displayLinkCount > 0) {
         _displayLinkCount--;
     } else {
@@ -592,6 +605,8 @@ extern void initSamplers(id<MTLDevice> device);
 CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* now, const CVTimeStamp* outputTime, CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* displayLinkContext)
 {
     J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_mtlDisplayLinkCallback: ctx=%p", displayLinkContext);
+    // J2dRlsTraceLn3(J2D_TRACE_INFO, "[%ld] MTLContext_mtlDisplayLinkCallback: displayLink=%p ctx=%p",
+    //               rqCurrentTimeMicroSeconds(), displayLink, displayLinkContext);
     @autoreleasepool {
         MTLContext *ctx = (__bridge MTLContext *)displayLinkContext;
         [ctx performSelectorOnMainThread:@selector(redraw) withObject:nil waitUntilDone:NO];
@@ -601,8 +616,9 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
 
 - (void)startRedraw:(MTLLayer*)layer {
     AWT_ASSERT_APPKIT_THREAD;
-    layer.redrawCount += REDRAW_INC;
+    layer.redrawCount = REDRAW_INC;
     J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_startRedraw: ctx=%p layer=%p", self, layer);
+    // J2dRlsTraceLn3(J2D_TRACE_VERBOSE, "MTLContext_startRedraw: ctx=%p layer=%p (count = %d)", self, layer, layer.redrawCount);
     _displayLinkCount = KEEP_ALIVE_COUNT;
     [_layers addObject:layer];
     if (MTLLayer_isExtraRedrawEnabled()) {
@@ -618,6 +634,7 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
 - (void)stopRedraw:(MTLLayer*) layer {
     AWT_ASSERT_APPKIT_THREAD;
     J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_stopRedraw: ctx=%p layer=%p", self, layer);
+    // J2dRlsTraceLn3(J2D_TRACE_VERBOSE, "MTLContext_stopRedraw: ctx=%p layer=%p (count = %d)", self, layer, layer.redrawCount);
     if (_displayLink != nil) {
         if (--layer.redrawCount <= 0) {
             [_layers removeObject:layer];
