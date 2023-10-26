@@ -37,6 +37,7 @@
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
+#include "oops/fieldStreams.inline.hpp"
 #include "oops/klass.inline.hpp"
 #include "oops/objArrayKlass.hpp"
 #include "oops/objArrayOop.inline.hpp"
@@ -48,7 +49,6 @@
 #include "runtime/javaThread.inline.hpp"
 #include "runtime/jniHandles.hpp"
 #include "runtime/os.hpp"
-#include "runtime/reflectionUtils.hpp"
 #include "runtime/threads.hpp"
 #include "runtime/threadSMR.hpp"
 #include "runtime/vframe.hpp"
@@ -1096,7 +1096,7 @@ u4 DumperSupport::instance_size(Klass* k) {
   InstanceKlass* ik = InstanceKlass::cast(k);
   u4 size = 0;
 
-  for (FieldStream fld(ik, false, false); !fld.eos(); fld.next()) {
+  for (HierarchicalFieldStream<JavaFieldStream> fld(ik); !fld.done(); fld.next()) {
     if (!fld.access_flags().is_static()) {
       size += sig2size(fld.signature());
     }
@@ -1108,7 +1108,7 @@ u4 DumperSupport::get_static_fields_size(InstanceKlass* ik, u2& field_count) {
   field_count = 0;
   u4 size = 0;
 
-  for (FieldStream fldc(ik, true, true); !fldc.eos(); fldc.next()) {
+  for (JavaFieldStream fldc(ik); !fldc.done(); fldc.next()) {
     if (fldc.access_flags().is_static()) {
       field_count++;
       size += sig2size(fldc.signature());
@@ -1142,7 +1142,7 @@ void DumperSupport::dump_static_fields(AbstractDumpWriter* writer, Klass* k) {
   InstanceKlass* ik = InstanceKlass::cast(k);
 
   // dump the field descriptors and raw values
-  for (FieldStream fld(ik, true, true); !fld.eos(); fld.next()) {
+  for (JavaFieldStream fld(ik); !fld.done(); fld.next()) {
     if (fld.access_flags().is_static()) {
       Symbol* sig = fld.signature();
 
@@ -1176,7 +1176,7 @@ void DumperSupport::dump_static_fields(AbstractDumpWriter* writer, Klass* k) {
 void DumperSupport::dump_instance_fields(AbstractDumpWriter* writer, oop o) {
   InstanceKlass* ik = InstanceKlass::cast(o->klass());
 
-  for (FieldStream fld(ik, false, false); !fld.eos(); fld.next()) {
+  for (HierarchicalFieldStream<JavaFieldStream> fld(ik); !fld.done(); fld.next()) {
     if (!fld.access_flags().is_static()) {
       Symbol* sig = fld.signature();
       dump_field_value(writer, sig->char_at(0), o, fld.offset());
@@ -1188,7 +1188,7 @@ void DumperSupport::dump_instance_fields(AbstractDumpWriter* writer, oop o) {
 u2 DumperSupport::get_instance_fields_count(InstanceKlass* ik) {
   u2 field_count = 0;
 
-  for (FieldStream fldc(ik, true, true); !fldc.eos(); fldc.next()) {
+  for (JavaFieldStream fldc(ik); !fldc.done(); fldc.next()) {
     if (!fldc.access_flags().is_static()) field_count++;
   }
 
@@ -1200,7 +1200,7 @@ void DumperSupport::dump_instance_field_descriptors(AbstractDumpWriter* writer, 
   InstanceKlass* ik = InstanceKlass::cast(k);
 
   // dump the field descriptors
-  for (FieldStream fld(ik, true, true); !fld.eos(); fld.next()) {
+  for (JavaFieldStream fld(ik); !fld.done(); fld.next()) {
     if (!fld.access_flags().is_static()) {
       Symbol* sig = fld.signature();
 
