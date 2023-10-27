@@ -3,11 +3,10 @@ java/awt/Debug/X11Trace.java JBR-5442 linux-all
 java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java JBR-6058 windows-all
 java/awt/FullScreen/CurrentDisplayModeTest/CurrentDisplayModeTest.java JBR-5059 linux-all
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-4379 windows-all
-java/awt/Frame/FramesGC/FramesGC.java JBR-6057 windows-all
+java/awt/Frame/FramesGC/FramesGC.java 8079069,JBR-6057 macosx-all,windows-all
 java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java JBR-5062 linux-all
 java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5.15.0-46-generic Ubuntu 20.04
 java/awt/dnd/MissedDragEnterTest.java JBR-6091 windows-all
-java/awt/Frame/FramesGC/FramesGC.java JBR-6057 windows-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117 linux-all
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java 8311535 windows-all
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java#id1 JBR-5442 linux-all
@@ -19,7 +18,6 @@ java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.java JBR-5531,JBR-544
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java JBR-5442 linux-all
 java/awt/PopupMenu/PopupMenuLocation.java 8238720,JBR-5442 windows-all,linux-all
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8253184,JBR-5510,JBR-5442,JBR-6092 windows-all,linux-all,macosx-aarch64
-java/awt/Robot/CheckCommonColors/CheckCommonColors.java JBR-6092 macosx-aarch64
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java 8253184,JBR-5442 windows-all,linux-all
 java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390 macosx-all,linux-all
 java/awt/Robot/NonEmptyErrorStream.java JBR-5442 linux-all
@@ -38,7 +36,6 @@ javax/swing/JMenu/4692443/bug4692443.java JBR-6065 windows-all
 javax/swing/JMenuBar/4750590/bug4750590.java JBR-6065 windows-all
 javax/swing/JMenuItem/4171437/bug4171437.java JBR-6065 windows-all
 javax/swing/JTable/7124218/SelectEditTableCell.java JBR-5442 linux-all
-javax/swing/JTextArea/8149849/DNDTextToScaledArea.java 8253184 windows-all
 javax/swing/JTextField/8036819/bug8036819.java JBR-6065 windows-all
 javax/swing/JTree/4927934/bug4927934.java JBR-6065 windows-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-5442 linux-all
