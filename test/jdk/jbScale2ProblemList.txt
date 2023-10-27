@@ -7,10 +7,10 @@ java/awt/event/MouseEvent/FrameMouseEventAbsoluteCoordsTest/FrameMouseEventAbsol
 java/awt/Focus/6378278/InputVerifierTest.java JBR-6090 windows-all
 java/awt/Focus/6382144/EndlessLoopTest.java JBR-6090 windows-all
 java/awt/Focus/8282640/ScrollPaneFocusBugTest.java JBR-6090 windows-all
-java/awt/Focus/ClearLwQueueBreakTest/ClearLwQueueBreakTest.java JBR-6090 windows-all
+java/awt/Focus/ClearLwQueueBreakTest/ClearLwQueueBreakTest.java 8198618,JBR-814,JBR-6090 macosx-all,linux-all,windows-all
 java/awt/Focus/LabelScrollBarFocus.java JBR-6090 windows-x64
 java/awt/Focus/ModalExcludedWindowClickTest/ModalExcludedWindowClickTest.java JBR-6090 windows-x64
-java/awt/Focus/MouseClickRequestFocusRaceTest/MouseClickRequestFocusRaceTest.java JBR-6090 windows-x64
+java/awt/Focus/MouseClickRequestFocusRaceTest/MouseClickRequestFocusRaceTest.java 8194753,JBR-6090 linux-all,macosx-all,windows-x64
 java/awt/Focus/SimpleWindowActivationTest/SimpleWindowActivationTest.java JBR-6089 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java JBR-6090 windows-all
 java/awt/Frame/InvisibleOwner/InvisibleOwner.java JBR-6090 windows-all
@@ -23,7 +23,7 @@ java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java JBR-4199,
 
 java/awt/Graphics/LineClipTest.java                                                 JBR-5071 linux-all
 java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5071,JBR-5359 linux-all,windows-aarch64
-java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java        JBR-5071 linux-all
+java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252,JBR-5050,JBR-5071 windows-all,macosx-all,linux-all
 java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-5359,JBR-5510,JBR-6090 macosx-all,windows-aarch64,linux-5.18.2-arch1-1,windows-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5359,JBR-5510,JBR-6090 windows-aarch64,linux-5.18.2-arch1-1,windows-all
 java/awt/Mixing/MixingOnDialog.java JBR-6090 windows-all
