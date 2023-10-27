@@ -289,6 +289,7 @@ java/awt/Window/Grab/GrabTest.java 8253184 windows-all
 java/awt/Window/GrabSequence/GrabSequence.java 6848409,JBR-5359 macosx-all,linux-all,windows-aarch64
 java/awt/Window/LocationAtScreenCorner/LocationAtScreenCorner.java 8203371 linux-all
 java/awt/Window/WindowAppearanceTest/WindowAppearanceTest.java JBR-3691,JBR-3773 macosx-x64,macosx-aarch64
+java/awt/font/FontScaling/StretchedFontTest.java JBR-6225 macosx-all
 java/awt/font/GlyphVector/NLGlyphTest.java 8273321 linux-all,windows-aarch64
 java/awt/font/JNICheck/JNICheck.sh 8279878,JBR-5011 linux-5.15.0-39-generic,linux-5.15.0-33-generic,linux-all
 java/awt/font/TextLayout/TextLayoutBounds.java 8169188 generic-all
@@ -875,7 +876,7 @@ javax/swing/plaf/windows/WindowsRootPaneUI/WrongAltProcessing/WrongAltProcessing
 
 javax/swing/Box/TestBoxFiller.java JBR-5210 windows-all
 javax/swing/DefaultButtonModel/DefaultButtonModelCrashTest.java JBR-5210,JBR-5799 windows-all
-javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-5210 windows-all
+javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-5210,JBR-6220 windows-all,linux-all
 javax/swing/JButton/4368790/bug4368790.java JBR-5210 windows-all
 javax/swing/JButton/4659800/SpaceKeyActivatesButton.java JBR-4949 linux-all,windows-all
 javax/swing/JButton/8151303/PressedIconTest.java 8266246,JBR-5210,JBR-5510 macosx-aarch64,windows-all,linux-5.18.2-arch1-1
