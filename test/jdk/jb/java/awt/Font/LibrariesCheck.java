@@ -59,7 +59,7 @@ public class LibrariesCheck {
                 Path jdkLibPath = Platform.libDir();
                 Files.copy(jdkLibPath.resolve(testLibName), testLibPath);
 
-                ProcessBuilder pb = ProcessTools.createTestJvm(
+                ProcessBuilder pb = ProcessTools.createTestJavaProcessBuilder(
                         LibrariesCheck.class.getName(),
                         "runtest");
 
