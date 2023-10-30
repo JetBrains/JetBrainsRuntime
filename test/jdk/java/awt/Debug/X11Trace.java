@@ -28,6 +28,7 @@
  * @library /test/lib
  * @run main X11Trace
  */
+
 import java.awt.AWTException;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
@@ -36,6 +37,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Stream;
+
 import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.process.OutputAnalyzer;
 
@@ -44,13 +46,19 @@ public class X11Trace {
         if (args.length > 0 && args[0].equals("runtest")) {
             runTest();
         } else {
-            OutputAnalyzer oa = ProcessTools.executeTestJvm("-Dsun.awt.x11.trace=log,timestamp,stats,td=0", X11Trace.class.getName(), "runtest");
+            OutputAnalyzer oa = new OutputAnalyzer(
+                    ProcessTools.createTestJavaProcessBuilder("-Dsun.awt.x11.trace=log,timestamp,stats,td=0", X11Trace.class.getName(), "runtest")
+                            .start());
             oa.shouldContain("held AWT lock for").shouldContain("AWT Lock usage statistics").shouldHaveExitValue(0);
 
-            oa = ProcessTools.executeTestJvm("-Dsun.awt.x11.trace=log", X11Trace.class.getName(), "runtest");
+            oa = new OutputAnalyzer(
+                    ProcessTools.createTestJavaProcessBuilder("-Dsun.awt.x11.trace=log", X11Trace.class.getName(), "runtest")
+                            .start());
             oa.shouldContain("held AWT lock for").shouldNotContain("AWT Lock usage statistics").shouldHaveExitValue(0);
 
-            oa = ProcessTools.executeTestJvm("-Dsun.awt.x11.trace=log,timestamp,stats,td=0,out:mylog", X11Trace.class.getName(), "runtest");
+            oa = new OutputAnalyzer(
+                    ProcessTools.createTestJavaProcessBuilder("-Dsun.awt.x11.trace=log,timestamp,stats,td=0,out:mylog", X11Trace.class.getName(), "runtest")
+                            .start());
             oa.shouldHaveExitValue(0).stderrShouldBeEmpty();
 
             final String logFileContents = Files.readString(Paths.get("mylog"));
@@ -62,7 +70,7 @@ public class X11Trace {
     public static void delay(int ms) {
         try {
             Thread.sleep(ms);
-        } catch(InterruptedException e) {
+        } catch (InterruptedException e) {
         }
     }
 
