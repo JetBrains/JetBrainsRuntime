@@ -107,7 +107,7 @@ public class OOMEStacksInCrashLog {
         opts.add("-XX:+ErrorFileToStdout");
         opts.add(OOMEStacksInCrashLog.class.getName());
         opts.add("--test");
-        ProcessBuilder pb = ProcessTools.createTestJvm(opts);
+        ProcessBuilder pb = ProcessTools.createTestJavaProcessBuilder(opts);
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         output.outputTo(System.out);
         output.shouldContain("OOME stack traces (most recent first)");
