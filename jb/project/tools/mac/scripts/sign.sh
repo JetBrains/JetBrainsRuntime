@@ -100,7 +100,7 @@ done
 log "Signing whole frameworks..."
 # shellcheck disable=SC2043
 if [ "$JB_SIGN" = true ]; then for f in \
-  "Contents/Home/Frameworks" "Contents/Frameworks"; do
+  "Contents/Frameworks/cef_server.app/Contents/Frameworks" "Contents/Home/Frameworks" "Contents/Frameworks"; do
   if [ -d "$APPLICATION_PATH/$f" ]; then
     find "$APPLICATION_PATH/$f" \( -name '*.framework' -o -name '*.app' \) -maxdepth 1 | while read -r line
       do
