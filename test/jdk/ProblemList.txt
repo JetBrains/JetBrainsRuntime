@@ -588,6 +588,7 @@ java/rmi/activation/ActivationGroup/downloadActivationGroup/DownloadActivationGr
 java/rmi/activation/rmidViaInheritedChannel/InheritedChannelNotServerSocket.java 8170562 generic-all
 
 java/rmi/registry/readTest/CodebaseTest.java                    8173324 windows-all
+java/rmi/registry/multipleRegistries/MultipleRegistries.java    8268182 macosx-all
 
 java/nio/channels/DatagramChannel/ManySourcesAndTargets.java    8264385 macosx-aarch64
 
