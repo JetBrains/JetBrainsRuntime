@@ -558,8 +558,12 @@ public class CDSTestUtils {
 
     // ============================= Logging
     public static OutputAnalyzer executeAndLog(ProcessBuilder pb, String logName) throws Exception {
+        return executeAndLog(pb.start(), logName);
+    }
+
+    public static OutputAnalyzer executeAndLog(Process process, String logName) throws Exception {
         long started = System.currentTimeMillis();
-        OutputAnalyzer output = new OutputAnalyzer(pb.start());
+        OutputAnalyzer output = new OutputAnalyzer(process);
 
         writeFile(getOutputFile(logName + ".stdout"), output.getStdout());
         writeFile(getOutputFile(logName + ".stderr"), output.getStderr());
