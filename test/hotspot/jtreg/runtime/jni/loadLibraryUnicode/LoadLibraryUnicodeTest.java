@@ -37,7 +37,7 @@ public class LoadLibraryUnicodeTest {
 
     public static void main(String args[]) throws Exception {
         String nativePathSetting = "-Dtest.nativepath=" + getSystemProperty("test.nativepath");
-        ProcessBuilder pb = ProcessTools.createTestJvm(nativePathSetting, LoadLibraryUnicode.class.getName());
+        ProcessBuilder pb = ProcessTools.createTestJavaProcessBuilder(nativePathSetting, LoadLibraryUnicode.class.getName());
         pb.environment().put("LC_ALL", "en_US.UTF-8");
         ProcessTools.executeProcess(pb)
                     .outputTo(System.out)
