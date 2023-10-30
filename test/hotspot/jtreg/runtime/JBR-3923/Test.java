@@ -40,7 +40,7 @@ public class Test {
     public static void main(String[] args) throws Exception {
         String jarFile = System.getProperty("test.src") + "/testcase.jar";
 
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-cp", jarFile,
+        ProcessBuilder pb = ProcessTools.createTestJavaProcessBuilder("-cp", jarFile,
                 "-XX:+UnlockDiagnosticVMOptions",
                 "-Xcomp",
                 "-XX:CompileCommand=compileonly,MainKt::test",

@@ -62,7 +62,7 @@ public class JNIRefsInCrashLog {
         opts.add("-XX:+ErrorFileToStdout");
         opts.add(JNIRefsInCrashLog.class.getName());
         opts.add("--test");
-        ProcessBuilder pb = ProcessTools.createTestJvm(opts);
+        ProcessBuilder pb = ProcessTools.createTestJavaProcessBuilder(opts);
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         output.outputTo(System.out);
         output.shouldContain("JNI global refs memory usage:");
