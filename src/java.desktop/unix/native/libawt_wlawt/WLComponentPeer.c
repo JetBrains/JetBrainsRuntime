@@ -50,10 +50,12 @@ struct activation_token_list_item {
     struct activation_token_list_item *next_item;
 };
 
-static struct activation_token_list_item *add_token(struct activation_token_list_item *list,
-                                                    struct xdg_activation_token_v1 *token_to_add) {
+static struct activation_token_list_item *add_token(JNIEnv* env,
+                                                    struct activation_token_list_item *list,
+                                                    struct xdg_activation_token_v1* token_to_add) {
     struct activation_token_list_item *new_item =
         (struct activation_token_list_item *) calloc(1, sizeof(struct activation_token_list_item));
+    CHECK_NULL_THROW_OOME_RETURN(env, new_item, "Failed to allocate a Wayland activation token", NULL);
     new_item->token = token_to_add;
     new_item->next_item = list;
     return new_item;
@@ -430,15 +432,19 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
     struct WLFrame *parentFrame = jlong_to_ptr(parentPtr);
     if (frame->wl_surface) return;
     frame->wl_surface = wl_compositor_create_surface(wl_compositor);
+    CHECK_NULL(frame->wl_surface);
     frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, frame->wl_surface);
+    CHECK_NULL(frame->xdg_surface);
     if (gtk_shell1 != NULL) {
         frame->gtk_surface = gtk_shell1_get_gtk_surface(gtk_shell1, frame->wl_surface);
+        CHECK_NULL(frame->gtk_surface);
     }
 
     wl_surface_add_listener(frame->wl_surface, &wl_surface_listener, frame);
     xdg_surface_add_listener(frame->xdg_surface, &xdg_surface_listener, frame);
     frame->toplevel = JNI_TRUE;
     frame->xdg_toplevel = xdg_surface_get_toplevel(frame->xdg_surface);
+    CHECK_NULL(frame->xdg_toplevel);
     xdg_toplevel_add_listener(frame->xdg_toplevel, &xdg_toplevel_listener, frame);
     if (title) {
         FrameSetTitle(env, frame, title);
@@ -472,6 +478,7 @@ newPositioner
          jint width, jint height, jint offsetX, jint offsetY)
 {
     struct xdg_positioner *xdg_positioner = xdg_wm_base_create_positioner(xdg_wm_base);
+    CHECK_NULL_RETURN(xdg_positioner, NULL);
 
     // "For an xdg_positioner object to be considered complete, it must have
     // a non-zero size set by set_size, and a non-zero anchor rectangle
@@ -498,7 +505,9 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLPopup
     struct WLFrame *parentFrame = (struct WLFrame*) parentPtr;
     if (frame->wl_surface) return;
     frame->wl_surface = wl_compositor_create_surface(wl_compositor);
+    CHECK_NULL(frame->wl_surface);
     frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, frame->wl_surface);
+    CHECK_NULL(frame->xdg_surface);
 
     wl_surface_add_listener(frame->wl_surface, &wl_surface_listener, frame);
     xdg_surface_add_listener(frame->xdg_surface, &xdg_surface_listener, frame);
@@ -507,7 +516,9 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLPopup
     assert(parentFrame);
     struct xdg_positioner *xdg_positioner = newPositioner(parentX, parentY, parentWidth, parentHeight,
         width, height, offsetX, offsetY);
+    CHECK_NULL(xdg_positioner);
     frame->xdg_popup = xdg_surface_get_popup(frame->xdg_surface, parentFrame->xdg_surface, xdg_positioner);
+    CHECK_NULL(frame->xdg_popup);
     xdg_popup_add_listener(frame->xdg_popup, &xdg_popup_listener, frame);
     xdg_positioner_destroy(xdg_positioner);
 
@@ -530,6 +541,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeRepositionWLPopup
 
     struct xdg_positioner *xdg_positioner = newPositioner(parentX, parentY, parentWidth, parentHeight,
         width, height, offsetX, offsetY);
+    CHECK_NULL(xdg_positioner);
     static int token = 42; // This will be received by xdg_popup_repositioned(); unused for now.
     xdg_popup_reposition(frame->xdg_popup, xdg_positioner, token++);
     xdg_positioner_destroy(xdg_positioner);
@@ -599,7 +611,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartResize
         (JNIEnv *env, jobject obj, jlong ptr, jint edges)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
-    if (frame->toplevel && wl_seat) {
+    if (frame->toplevel && wl_seat && frame->xdg_toplevel != NULL) {
         xdg_toplevel_resize(frame->xdg_toplevel, wl_seat, last_mouse_pressed_serial, edges);
     }
 }
@@ -647,12 +659,13 @@ Java_sun_awt_wl_WLComponentPeer_nativeActivate
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->wl_surface && xdg_activation_v1 && wl_seat) {
         struct xdg_activation_token_v1 *token = xdg_activation_v1_get_activation_token(xdg_activation_v1);
+        CHECK_NULL(token);
         xdg_activation_token_v1_add_listener(token, &xdg_activation_token_v1_listener, frame);
         xdg_activation_token_v1_set_serial(token, last_input_or_focus_serial, wl_seat);
         if (wl_surface_in_focus) {
             xdg_activation_token_v1_set_surface(token, wl_surface_in_focus);
         }
         xdg_activation_token_v1_commit(token);
-        frame->activation_token_list = add_token(frame->activation_token_list, token);
+        frame->activation_token_list = add_token(env, frame->activation_token_list, token);
     }
 }
