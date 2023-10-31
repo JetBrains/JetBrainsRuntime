@@ -461,15 +461,30 @@ Java_sun_awt_wl_WLClipboard_initNative(
     if (payload == NULL) {
         (*env)->DeleteGlobalRef(env, clipboardGlobalRef);
     }
-    CHECK_NULL_THROW_OOME_RETURN(env, payload, "failed to allocate memory for DataOfferPayload", 0);
+    CHECK_NULL_THROW_OOME_RETURN(env, payload, "Failed to allocate memory for DataOfferPayload", 0);
 
     if (!isPrimary) {
         // TODO: may be needed by DnD also, initialize in a common place
         wl_data_device = wl_data_device_manager_get_data_device(wl_ddm, wl_seat);
+        if (wl_data_device == NULL) {
+            (*env)->DeleteGlobalRef(env, clipboardGlobalRef);
+            JNU_ThrowByName(env,
+                            "java/awt/AWTError",
+                             "wl_data_device_manager_get_data_device() failed");
+            return 0;
+        }
+
         wl_data_device_add_listener(wl_data_device, &wl_data_device_listener, payload);
     } else {
         if (zwp_selection_dm != NULL) {
             zwp_selection_device = zwp_primary_selection_device_manager_v1_get_device(zwp_selection_dm, wl_seat);
+            if (zwp_selection_device == NULL) {
+                (*env)->DeleteGlobalRef(env, clipboardGlobalRef);
+                JNU_ThrowByName(env,
+                                "java/awt/AWTError",
+                                "zwp_primary_selection_device_manager_v1_get_device() failed");
+                return 0;
+            }
             zwp_primary_selection_device_v1_add_listener(zwp_selection_device, &zwp_selection_device_listener, payload);
         } else {
             (*env)->DeleteGlobalRef(env, clipboardGlobalRef);
