@@ -117,6 +117,7 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCustomCursor_nativeCreateCustomCursor
 
     struct WLCursor *cursor = (struct WLCursor*) malloc(sizeof(struct WLCursor));
     if (!cursor) {
+        JNU_ThrowOutOfMemoryError(env, "Failed to allocate WLCursor");
         wl_buffer_destroy(buffer);
         return 0;
     }
@@ -156,6 +157,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetCursor
     if (!wl_cursor_surface)
         wl_cursor_surface = wl_compositor_create_surface(wl_compositor);
 
+    CHECK_NULL(wl_cursor_surface);
     if (buffer != last_buffer) {
         last_buffer = buffer;
         wl_surface_attach(wl_cursor_surface, buffer, 0, 0);
