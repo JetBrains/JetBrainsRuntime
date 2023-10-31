@@ -65,6 +65,7 @@ function create_image_bundle {
     sed 's/JBR/JBRSDK/g' "$IMAGES_DIR"/"$__root_dir"/release > release
     mv release "$IMAGES_DIR"/"$__root_dir"/release
     cp $IMAGES_DIR/jdk/lib/src.zip "$IMAGES_DIR"/"$__root_dir"/lib
+    cp $IMAGES_DIR/jdk/lib/server/*.jsa "$IMAGES_DIR"/"$__root_dir"/lib/server
     copy_jmods "$__modules" "$__modules_path" "$IMAGES_DIR"/"$__root_dir"/jmods
     zip_native_debug_symbols $IMAGES_DIR/jdk "${JBR}_diz"
   fi
