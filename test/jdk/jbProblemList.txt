@@ -115,7 +115,6 @@
 
 java/awt/Button/DisabledButtonPress.java JBR-5799 windows-aarch64
 java/awt/Desktop/8064934/bug8064934.java JBR-5764 windows-all
-java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java JBR-5915 linux-all
 java/awt/Debug/DumpOnKey/DumpOnKey.java JBR-5225,JBR-5359 windows-all,windows-aarch64
 java/awt/event/MouseEvent/MouseClickTest/MouseClickTest.java 8168389 windows-all,macosx-all
 java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java 8224055 macosx-all
@@ -652,7 +651,7 @@ java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.java JBR-5210 window
 java/awt/FullScreen/8013581/bug8013581.java 8169471,JBR-80 macosx-all,windows-all
 java/awt/event/MouseEvent/RobotLWTest/RobotLWTest.java 8233568,JBR-5583 macosx-all,windows-x64
 java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java 8233568 macosx-all
-java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java 8233568 macosx-all
+java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java 8233568,JBR-5915 macosx-all,linux-all
 java/awt/event/KeyEvent/DeadKey/DeadKeyMacOSXInputText.java 8233568 macosx-all
 java/awt/event/KeyEvent/DeadKey/deadKeyMacOSX.java 8233568 macosx-all
 java/awt/TrayIcon/RightClickWhenBalloonDisplayed/RightClickWhenBalloonDisplayed.java 8238720 windows-all
