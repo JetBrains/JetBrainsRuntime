@@ -658,6 +658,8 @@ process_new_listener_before_end_of_init() {
     // are delivered in-order, this can be used as a barrier to ensure all previous
     // requests and the resulting events have been handled."
     struct wl_callback *callback = wl_display_sync(wl_display);
+    if (callback == NULL) return;
+
     wl_callback_add_listener(callback,
                              &display_sync_listener,
                              callback);
@@ -679,12 +681,16 @@ registry_global(void *data, struct wl_registry *wl_registry,
         wl_compositor = wl_registry_bind(wl_registry, name, &wl_compositor_interface, 4);
     } else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
         xdg_wm_base = wl_registry_bind(wl_registry, name, &xdg_wm_base_interface, 3);
-        xdg_wm_base_add_listener(xdg_wm_base, &xdg_wm_base_listener, NULL);
-        process_new_listener_before_end_of_init();
+        if (xdg_wm_base != NULL) {
+            xdg_wm_base_add_listener(xdg_wm_base, &xdg_wm_base_listener, NULL);
+            process_new_listener_before_end_of_init();
+        }
     } else if (strcmp(interface, wl_seat_interface.name) == 0) {
         wl_seat = wl_registry_bind(wl_registry, name, &wl_seat_interface, 5);
-        wl_seat_add_listener(wl_seat, &wl_seat_listener, NULL);
-        process_new_listener_before_end_of_init();
+        if (wl_seat != NULL) {
+            wl_seat_add_listener(wl_seat, &wl_seat_listener, NULL);
+            process_new_listener_before_end_of_init();
+        }
     } else if (strcmp(interface, wl_output_interface.name) == 0) {
         WLOutputRegister(wl_registry, name);
         process_new_listener_before_end_of_init();
@@ -695,23 +701,25 @@ registry_global(void *data, struct wl_registry *wl_registry,
     } else if (strcmp(interface, wl_data_device_manager_interface.name) == 0) {
       wl_ddm = wl_registry_bind(wl_registry, name,&wl_data_device_manager_interface, 3);
     } else if (strcmp(interface, zwp_primary_selection_device_manager_v1_interface.name) == 0) {
-        zwp_selection_dm = wl_registry_bind(wl_registry, name,&zwp_primary_selection_device_manager_v1_interface, 1);
+        zwp_selection_dm = wl_registry_bind(wl_registry, name, &zwp_primary_selection_device_manager_v1_interface, 1);
     }
 
 #ifdef WAKEFIELD_ROBOT
     else if (strcmp(interface, wakefield_interface.name) == 0) {
         wakefield = wl_registry_bind(wl_registry, name, &wakefield_interface, 1);
-        wakefield_add_listener(wakefield, &wakefield_listener, NULL);
-        robot_queue = wl_display_create_queue(wl_display);
-        if (robot_queue == NULL) {
-            J2dTrace(J2D_TRACE_ERROR, "WLToolkit: Failed to create wakefield robot queue\n");
-            wakefield_destroy(wakefield);
-            wakefield = NULL;
-        } else {
-            wl_proxy_set_queue((struct wl_proxy*)wakefield, robot_queue);
+        if (wakefield != NULL) {
+            wakefield_add_listener(wakefield, &wakefield_listener, NULL);
+            robot_queue = wl_display_create_queue(wl_display);
+            if (robot_queue == NULL) {
+                J2dTrace(J2D_TRACE_ERROR, "WLToolkit: Failed to create wakefield robot queue\n");
+                wakefield_destroy(wakefield);
+                wakefield = NULL;
+            } else {
+                wl_proxy_set_queue((struct wl_proxy*)wakefield, robot_queue);
+            }
+            // TODO: call before destroying the display:
+            //  wl_event_queue_destroy(robot_queue);
         }
-        // TODO: call before destroying the display:
-        //  wl_event_queue_destroy(robot_queue);
     }
 #endif
 }
@@ -931,6 +939,11 @@ Java_sun_awt_wl_WLToolkit_initIDs
     }
 
     struct wl_registry *wl_registry = wl_display_get_registry(wl_display);
+    if (wl_registry == NULL) {
+        JNU_ThrowByName(env, "java/awt/AWTError", "Failed to obtain Wayland registry");
+        return;
+    }
+
     wl_registry_add_listener(wl_registry, &wl_registry_listener, NULL);
     // Process info about Wayland globals here; maybe register more handlers that
     // will have to be processed later in finalize_init().
