@@ -37,7 +37,6 @@ architecture=${3:-x64} # aarch64 or x64
 check_bundle_type_maketest
 
 tag_prefix="jdk-"
-OPENJDK_TAG=$(git log --simplify-by-decoration --decorate=short --pretty=short | grep "$tag_prefix" | cut -d "(" -f2 | cut -d ")" -f1 | awk '{print $2}' | sort -t "-" -k 2 -g | tail -n 1 | tr -d ",")
 VERSION_FEATURE=$(getVersionProp "DEFAULT_VERSION_FEATURE")
 VERSION_INTERIM=$(getVersionProp "DEFAULT_VERSION_INTERIM")
 VERSION_UPDATE=$(getVersionProp "DEFAULT_VERSION_UPDATE")
@@ -45,8 +44,14 @@ VERSION_PATCH=$(getVersionProp "DEFAULT_VERSION_PATCH")
 [[ $VERSION_UPDATE = 0 ]] && JBSDK_VERSION="$VERSION_FEATURE" || JBSDK_VERSION="${VERSION_FEATURE}.${VERSION_INTERIM}.${VERSION_UPDATE}"
 [[ $VERSION_PATCH = 0 ]] || JBSDK_VERSION="${VERSION_FEATURE}.${VERSION_INTERIM}.${VERSION_UPDATE}.${VERSION_PATCH}"
 echo "##teamcity[setParameter name='env.JBSDK_VERSION' value='${JBSDK_VERSION}']"
+OPENJDK_TAG=$(git tag -l | grep "$tag_prefix$JBSDK_VERSION" | grep -v ga | sort -t "-" -k 2 -g | tail -n 1)
 JDK_BUILD_NUMBER=${JDK_BUILD_NUMBER:=$(echo $OPENJDK_TAG | awk -F "-|[+]" '{print $3}')}
 [ -z $JDK_BUILD_NUMBER ] && JDK_BUILD_NUMBER=1
+re='^[0-9]+$'
+if ! [[ $JDK_BUILD_NUMBER =~ $re ]] ; then
+  echo "error: JDK_BUILD_NUMBER Not a number: $JDK_BUILD_NUMBER"
+  JDK_BUILD_NUMBER=1
+fi
 echo "##teamcity[setParameter name='env.JDK_UPDATE_NUMBER' value='${JDK_BUILD_NUMBER}']"
 
 VENDOR_NAME="JetBrains s.r.o."
