@@ -211,11 +211,15 @@ void
 WLOutputRegister(struct wl_registry *wl_registry, uint32_t id)
 {
     WLOutput * output = calloc(1, sizeof(WLOutput));
+    JNIEnv * env = getEnv();
+    CHECK_NULL_THROW_OOME(env, output, "Failed to allocate WLOutput");
 
     output->id = id;
     output->wl_output = wl_registry_bind(wl_registry, id, &wl_output_interface, 2);
+    if (output->wl_output == NULL) {
+        JNU_ThrowByName(env, "java/awt/AWTError", "wl_registry_bind() failed");
+    }
     wl_output_add_listener(output->wl_output, &wl_output_listener, output);
-
     output->next = outputList;
     outputList = output;
 }
