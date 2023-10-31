@@ -1851,6 +1851,7 @@ final class XWM
             Native.putLong(data, 2, 0);
             Native.putLong(data, 3, 0);
 
+            XToolkit.awtLock();
             XErrorHandlerUtil.WITH_XERROR_HANDLER(XErrorHandler.VerifyChangePropertyHandler.getInstance());
             XlibWrapper.XChangeProperty(XToolkit.getDisplay(), window,
                     XA_GTK_FRAME_EXTENTS.getAtom(),
@@ -1859,8 +1860,8 @@ final class XWM
                     data, 4);
             XErrorHandlerUtil.RESTORE_XERROR_HANDLER();
         } finally {
+            XToolkit.awtUnlock();
             unsafe.freeMemory(data);
-            data = 0;
         }
     }
 
