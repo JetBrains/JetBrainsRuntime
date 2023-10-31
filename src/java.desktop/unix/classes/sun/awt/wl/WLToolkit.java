@@ -83,10 +83,10 @@ import java.beans.PropertyChangeListener;
 import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -227,7 +227,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             int result = readEvents();
             if (result == READ_RESULT_ERROR) {
                 log.severe("Wayland protocol I/O error");
-                // TODO: display disconnect handling here?
+                shutDownAfterServerError();
                 break;
             } else if (result == READ_RESULT_FINISHED_WITH_EVENTS) {
                 AWTAutoShutdown.notifyToolkitThreadBusy(); // busy processing events
@@ -248,6 +248,19 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                 }
             }
         }
+    }
+
+    private static void shutDownAfterServerError() {
+        EventQueue.invokeLater(() -> {
+            var frames = Arrays.asList(Frame.getFrames());
+            Collections.reverse(frames);
+            frames.forEach(frame -> frame.dispatchEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING)));
+
+            // They've had their chance to exit from the "window closing" handler code. If we have gotten here,
+            // that chance wasn't taken. But we cannot continue because the connection with the server is
+            // no longer available, so let's exit forcibly.
+            System.exit(0);
+        });
     }
     
     /**
