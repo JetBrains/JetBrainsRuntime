@@ -44,7 +44,7 @@ VERSION_PATCH=$(getVersionProp "DEFAULT_VERSION_PATCH")
 [[ $VERSION_UPDATE = 0 ]] && JBSDK_VERSION="$VERSION_FEATURE" || JBSDK_VERSION="${VERSION_FEATURE}.${VERSION_INTERIM}.${VERSION_UPDATE}"
 [[ $VERSION_PATCH = 0 ]] || JBSDK_VERSION="${VERSION_FEATURE}.${VERSION_INTERIM}.${VERSION_UPDATE}.${VERSION_PATCH}"
 echo "##teamcity[setParameter name='env.JBSDK_VERSION' value='${JBSDK_VERSION}']"
-OPENJDK_TAG=$(git tag -l | grep "$tag_prefix$JBSDK_VERSION" | sort -t "-" -k 2 -g | tail -n 1)
+OPENJDK_TAG=$(git tag -l | grep "$tag_prefix$JBSDK_VERSION" | grep -v ga | sort -t "-" -k 2 -g | tail -n 1)
 JDK_BUILD_NUMBER=${JDK_BUILD_NUMBER:=$(echo $OPENJDK_TAG | awk -F "-|[+]" '{print $3}')}
 [ -z $JDK_BUILD_NUMBER ] && JDK_BUILD_NUMBER=1
 re='^[0-9]+$'
