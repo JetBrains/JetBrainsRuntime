@@ -112,7 +112,7 @@ function create_image_bundle {
 
   echo Creating "$JBR".tar.gz ...
   # Normalize timestamp
-  find "$tmp"/"$__root_dir" -print0 | xargs -0 touch -c -h -t "$TOUCH_TIME"
+  #find "$tmp"/"$__root_dir" -print0 | xargs -0 touch -c -h -t "$TOUCH_TIME"
 
   (cd "$tmp" &&
       find "$__root_dir" -print0 | LC_ALL=C sort -z | \
