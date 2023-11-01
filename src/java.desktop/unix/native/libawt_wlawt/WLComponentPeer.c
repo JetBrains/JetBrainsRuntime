@@ -539,12 +539,14 @@ Java_sun_awt_wl_WLComponentPeer_nativeRepositionWLPopup
     struct WLFrame *frame = jlong_to_ptr(ptr);
     assert (!frame->toplevel);
 
-    struct xdg_positioner *xdg_positioner = newPositioner(parentX, parentY, parentWidth, parentHeight,
-        width, height, offsetX, offsetY);
-    CHECK_NULL(xdg_positioner);
-    static int token = 42; // This will be received by xdg_popup_repositioned(); unused for now.
-    xdg_popup_reposition(frame->xdg_popup, xdg_positioner, token++);
-    xdg_positioner_destroy(xdg_positioner);
+    if (wl_proxy_get_version((struct wl_proxy *)xdg_wm_base) >= 3) {
+        struct xdg_positioner *xdg_positioner = newPositioner(parentX, parentY, parentWidth, parentHeight,
+            width, height, offsetX, offsetY);
+        CHECK_NULL(xdg_positioner);
+        static int token = 42; // This will be received by xdg_popup_repositioned(); unused for now.
+        xdg_popup_reposition(frame->xdg_popup, xdg_positioner, token++);
+        xdg_positioner_destroy(xdg_positioner);
+    }
 }
 
 static void
