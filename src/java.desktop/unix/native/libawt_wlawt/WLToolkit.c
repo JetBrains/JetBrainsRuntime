@@ -680,7 +680,10 @@ registry_global(void *data, struct wl_registry *wl_registry,
     } else if (strcmp(interface, wl_compositor_interface.name) == 0) {
         wl_compositor = wl_registry_bind(wl_registry, name, &wl_compositor_interface, 4);
     } else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
-        xdg_wm_base = wl_registry_bind(wl_registry, name, &xdg_wm_base_interface, 3);
+        // Need version 3, but can work with version 1.
+        // The version will be checked at the point of use.
+        int wm_base_version = MIN(3, version);
+        xdg_wm_base = wl_registry_bind(wl_registry, name, &xdg_wm_base_interface, wm_base_version);
         if (xdg_wm_base != NULL) {
             xdg_wm_base_add_listener(xdg_wm_base, &xdg_wm_base_listener, NULL);
             process_new_listener_before_end_of_init();
