@@ -66,6 +66,7 @@ public class CustomComboBoxFocusTest {
             return;
         }
 
+for (int i = 0; i < 10; i++) {
         SwingUtilities.invokeAndWait(new Runnable() {
             public void run() {
                 test = new CustomComboBoxFocusTest();
@@ -84,6 +85,8 @@ public class CustomComboBoxFocusTest {
         if (!test.match()) {
             throw new RuntimeException("Test failed.");
         }
+System.err.println("-------end of testcase-------");
+}
         System.out.println("Test passed.");
     }
 

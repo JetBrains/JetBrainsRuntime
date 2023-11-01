@@ -508,6 +508,8 @@ public class LWWindowPeer
 
     @Override
     public void updateWindow() {
+      // repaintPeer();
+      // flushOnscreenGraphics();
     }
 
     public final boolean isTextured() {

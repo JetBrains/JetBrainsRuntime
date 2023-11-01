@@ -4440,8 +4440,19 @@ public class Window extends Container implements Accessible {
 
     static {
         AWTAccessor.setWindowAccessor(new AWTAccessor.WindowAccessor() {
+            private static final boolean isLWCToolkit = Toolkit.getDefaultToolkit()
+                    .getClass().getName().equals("sun.lwawt.macosx.LWCToolkit");
+
             public void updateWindow(Window window) {
                 window.updateWindow();
+            }
+
+            public boolean needUpdateWindowAfterPaint(Window window) {
+                return window != null && isLWCToolkit;
+            }
+
+            public boolean needUpdateWindow(Window window) {
+                return window != null && (isLWCToolkit || !window.isOpaque());
             }
 
             public void setSecurityWarningSize(Window window, int width, int height)
