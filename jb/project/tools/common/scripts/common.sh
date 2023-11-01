@@ -105,8 +105,6 @@ else
   WITH_BUNDLED_FREETYPE=""
 fi
 
-WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS="--with-native-debug-symbols=zipped"
-
 REPRODUCIBLE_BUILD_OPTS="--with-source-date=$SOURCE_DATE_EPOCH
   --with-hotspot-build-time=$BUILD_TIME
   --with-copyright-year=$COPYRIGHT_YEAR
