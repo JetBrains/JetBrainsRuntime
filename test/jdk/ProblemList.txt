@@ -375,7 +375,7 @@ java/awt/Modal/MultipleDialogs/MultipleDialogs5Test.java 8198665 macosx-all
 java/awt/Mouse/EnterExitEvents/DragWindowOutOfFrameTest.java 8177326 macosx-all
 java/awt/Mouse/EnterExitEvents/ResizingFrameTest.java 8005021 macosx-all
 java/awt/Mouse/EnterExitEvents/FullscreenEnterEventTest.java 8051455 macosx-all
-java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java 7124407 macosx-all
+java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java 7124407,8302787  macosx-all,windows-all
 java/awt/Mouse/RemovedComponentMouseListener/RemovedComponentMouseListener.java 8157170 macosx-all
 java/awt/Modal/ToFront/DialogToFrontModeless1Test.java 8213530 linux-all
 java/awt/Modal/ToFront/DialogToFrontNonModalTest.java 8221899 linux-all
@@ -453,6 +453,8 @@ java/awt/MenuBar/TestNoScreenMenuBar.java 8265987 macosx-all
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java 8266283 generic-all
 java/awt/Graphics2D/DrawString/RotTransText.java 8316878 linux-all
 java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.java 8257529 windows-x64
+java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeForModalDialogTest/ConsumeForModalDialogTest.java 8302787 windows-all
+java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.java 8302787 windows-all
 
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java 8225787 linux-x64
 java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindowAlwaysOnTop.java 8266243 macosx-aarch64
@@ -577,6 +579,7 @@ java/rmi/transport/rapidExportUnexport/RapidExportUnexport.java 7146541 linux-al
 java/rmi/transport/checkLeaseInfoLeak/CheckLeaseLeak.java       7191877 generic-all
 
 java/rmi/registry/readTest/CodebaseTest.java                    8173324 windows-all
+java/rmi/registry/multipleRegistries/MultipleRegistries.java    8268182 macosx-all
 
 java/rmi/Naming/DefaultRegistryPort.java                        8005619 windows-all
 java/rmi/Naming/legalRegistryNames/LegalRegistryNames.java      8005619 windows-all
@@ -594,8 +597,6 @@ com/sun/nio/sctp/SctpChannel/SocketOptionTests.java             8141694 linux-al
 ############################################################################
 
 # jdk_security
-
-sun/security/pkcs11/sslecc/ClientJSSEServerJSSE.java            8161536 generic-all
 
 sun/security/smartcardio/TestChannel.java                       8039280 generic-all
 sun/security/smartcardio/TestConnect.java                       8039280 generic-all
@@ -724,7 +725,6 @@ java/util/Locale/LocaleProvidersRun.java                        8268379 macosx-x
 sun/util/locale/provider/CalendarDataRegression.java            8268379 macosx-x64
 java/util/concurrent/forkjoin/AsyncShutdownNow.java             8286352 linux-all,windows-x64
 java/util/concurrent/ExecutorService/CloseTest.java             8288899 macosx-aarch64
-java/util/concurrent/SynchronousQueue/Fairness.java             8300663 generic-x64
 
 ############################################################################
 
