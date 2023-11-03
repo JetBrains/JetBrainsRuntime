@@ -182,7 +182,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     }
 
     // 1 or 2 to test double-buffering
-    if (self.nextDrawableCount >= 2) {
+    if (self.nextDrawableCount >= 1) {
         // J2dRlsTraceLn4(J2D_TRACE_INFO, "[%ld] blitTexture: layer[%p] skip blit (nextDrawableCount = %d)",
         //                rqCurrentTimeMicroSeconds(), self, self.redrawCount, self.nextDrawableCount);
 
@@ -224,6 +224,29 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null)");
             // J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null)");
             return;
+        }
+
+        if (0)
+	if (@available(macOS 10.15.4, *)) {
+            [mtlDrawable addPresentedHandler:^(id <MTLDrawable> drawable) {
+                static CFTimeInterval lastMediaTime = -1;
+                static CFTimeInterval lastTime = -1;
+
+          	    CFTimeInterval now = CACurrentMediaTime();
+               	CFTimeInterval offset = (lastMediaTime != -1) ? (now - lastMediaTime) : 0;
+
+       	        CFTimeInterval presTime = [drawable presentedTime];
+               	CFTimeInterval interval = (lastTime != -1) ? (presTime - lastTime) : 0;
+               	CFTimeInterval frameRate = (interval != 0) ? (1.0 / interval) : 0;
+
+               	CFTimeInterval presOffset = (now - presTime);
+
+               	printf("presentedTime: %lf - now: %lf - offset: %lf - interval: %.3lf ms - presOffset: %.3lf - fps: %.2lf\n",
+                     	presTime, now, offset * 1000.0, interval * 1000.0, presOffset * 1000.0, frameRate);
+
+               	lastTime = presTime;
+               	lastMediaTime = now;
+            }];
         }
 
         self.nextDrawableCount++;
