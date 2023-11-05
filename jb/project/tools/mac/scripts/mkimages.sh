@@ -138,10 +138,18 @@ JSDK_MODS_DIR=$IMAGES_DIR/jmods
 JBRSDK_BUNDLE=jbrsdk
 
 if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
-  git apply -p0 < jb/project/tools/patches/add_jcef_module.patch || do_exit $?
-  update_jsdk_mods "$JSDK" "$JCEF_PATH"/jmods "$JSDK"/jmods "$JSDK_MODS_DIR" || do_exit $?
-  cp $JCEF_PATH/jmods/* $JSDK_MODS_DIR # $JSDK/jmods is not changed
-
+  if [ -d "$JCEF_PATH" ]; then
+    git apply -p0 < jb/project/tools/patches/add_jcef_module.patch || do_exit $?
+    update_jsdk_mods "$JSDK" "$JCEF_PATH"/jmods "$JSDK"/jmods "$JSDK_MODS_DIR" || do_exit $?
+    cp $JCEF_PATH/jmods/* $JSDK_MODS_DIR # $JSDK/jmods is not changed
+    #JBR-5426 write JCEF version info inside release file
+  else
+    if [ "$bundle_type" == "jcef" ]; then
+      echo "*** ERROR *** $JCEF_PATH not found" && do_exit 1
+    else
+      echo "*** WARNING *** $JCEF_PATH not found"
+    fi
+  fi
   jbr_name_postfix="_${bundle_type}"
 else
   jbr_name_postfix=""
