@@ -49,6 +49,8 @@ gtest/LargePageGtests.java#use-large-pages initial_run linux-all,windows-all
 gtest/LargePageGtests.java#use-large-pages-1G initial_run linux-all
 gtest/LargePageGtests.java#use-large-pages-sysV initial_run linux-all
 gtest/MetaspaceGtests.java#balanced-no-ccs initial_run generic-all
+gtest/MetaspaceGtests.java#balanced-with-guards JBR-5718 generic-all
+gtest/MetaspaceGtests.java#default-debug JBR-5718 generic-all
 gtest/MetaspaceGtests.java#reclaim-aggressive-ndebug initial_run generic-all
 gtest/MetaspaceGtests.java#reclaim-none-ndebug initial_run generic-all
 gtest/MetaspaceUtilsGtests.java initial_run generic-all
