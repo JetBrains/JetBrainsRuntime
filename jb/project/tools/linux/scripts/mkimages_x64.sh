@@ -104,7 +104,6 @@ jbr_name_postfix=""
 
 case "$bundle_type" in
   "jcef")
-    do_reset_changes=1
     jbr_name_postfix="_${bundle_type}"
     jbrsdk_name_postfix="_${bundle_type}"
     do_maketest=1
@@ -118,7 +117,6 @@ case "$bundle_type" in
     jbrsdk_name_postfix="_ft"
     ;;
   "fd")
-    do_reset_changes=1
     jbr_name_postfix="_${bundle_type}"
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     RELEASE_NAME=linux-x86_64-server-fastdebug
@@ -145,6 +143,7 @@ if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
     update_jsdk_mods $JSDK $JCEF_PATH/jmods $JSDK/jmods $JSDK_MODS_DIR || do_exit $?
     cp $JCEF_PATH/jmods/* $JSDK_MODS_DIR # $JSDK/jmods is not changed
     cat $JCEF_PATH/jcef.version >> $JSDK/release
+    do_reset_changes=1
   else
     if [ "$bundle_type" == "jcef" ]; then
       echo "*** ERROR *** $JCEF_PATH not found" && do_exit 1

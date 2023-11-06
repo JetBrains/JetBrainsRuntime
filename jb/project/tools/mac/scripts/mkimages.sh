@@ -111,14 +111,12 @@ RELEASE_NAME=macosx-${CONF_ARCHITECTURE}-server-release
 
 case "$bundle_type" in
   "jcef")
-    do_reset_changes=1
     do_maketest=1
     ;;
   "nomod" | "")
     bundle_type=""
     ;;
   "fd")
-    do_reset_changes=1
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     RELEASE_NAME=macosx-${CONF_ARCHITECTURE}-server-fastdebug
     JBSDK=macosx-${architecture}-server-release
@@ -143,6 +141,7 @@ if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
     update_jsdk_mods "$JSDK" "$JCEF_PATH"/jmods "$JSDK"/jmods "$JSDK_MODS_DIR" || do_exit $?
     cp $JCEF_PATH/jmods/* $JSDK_MODS_DIR # $JSDK/jmods is not changed
     #JBR-5426 write JCEF version info inside release file
+    do_reset_changes=1
   else
     if [ "$bundle_type" == "jcef" ]; then
       echo "*** ERROR *** $JCEF_PATH not found" && do_exit 1
