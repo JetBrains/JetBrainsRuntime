@@ -105,7 +105,7 @@ public class Test {
 
     static void test1() throws IOException {
         failed = false;
-        Socket s = new Socket ("127.0.0.1", port);
+        Socket s = new Socket (InetAddress.getLoopbackAddress(), port);
         InputStream is = s.getInputStream();
         // server should close connection after 2 seconds. We wait up to 10
         s.setSoTimeout (10000);
