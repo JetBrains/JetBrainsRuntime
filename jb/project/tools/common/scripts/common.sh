@@ -130,6 +130,7 @@ function zip_native_debug_symbols() {
 
 function do_exit() {
   exit_code=$1
+  echo "do_reset_changes=$do_reset_changes"
   [ $do_reset_changes -eq 1 ] && git checkout HEAD jb/project/tools/common/modules.list src/java.desktop/share/classes/module-info.java
   if [ $do_reset_dcevm -eq 1 ]; then
     [ ! -z $HEAD_REVISION ] && git reset --hard $HEAD_REVISION
