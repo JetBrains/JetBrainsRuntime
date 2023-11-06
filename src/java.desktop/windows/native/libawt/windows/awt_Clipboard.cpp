@@ -39,7 +39,7 @@ jobject AwtClipboard::theCurrentClipboard;
 
 /* This flag is set while we call EmptyClipboard to indicate to
    WM_DESTROYCLIPBOARD handler that we are not losing ownership */
-BOOL AwtClipboard::isGettingOwnership = FALSE;
+volatile BOOL AwtClipboard::isGettingOwnership = FALSE;
 
 volatile jmethodID AwtClipboard::handleContentsChangedMID;
 volatile BOOL AwtClipboard::isClipboardViewerRegistered = FALSE;
