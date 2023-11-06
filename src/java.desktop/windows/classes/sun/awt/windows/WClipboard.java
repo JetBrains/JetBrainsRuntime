@@ -31,6 +31,7 @@ import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.IOException;
 import java.util.Map;
 
+import sun.awt.datatransfer.ClipboardTransferable;
 import sun.awt.datatransfer.DataTransferer;
 import sun.awt.datatransfer.SunClipboard;
 
@@ -91,6 +92,39 @@ final class WClipboard extends SunClipboard {
         }
     }
 
+
+    // ======================= JBR-5980 Pasting from clipboard not working reliably in Windows =======================
+    private static final boolean isContentsCacheDisabled;        // initialized in the static block below
+    private static final boolean areOwnershipExtraChecksEnabled; // initialized in the static block below
+
+    @Override
+    public synchronized Transferable getContents(Object requestor) {
+        if (isContentsCacheDisabled) {
+            // JBR-5980: sometimes the cache (this.contents) doesn't reset when something gets copied to the
+            //   system clipboard outside of the Java app. This workaround allows to disable the caching, so
+            //   each call to getContents will result in reading the clipboard content from the system through
+            //   Win32 Clipbaord API.
+
+            return new ClipboardTransferable((SunClipboard)this);
+        }
+
+        return super.getContents(requestor);
+    }
+
+    // Upcall from native
+    private void ensureNoOwnedData() {
+        boolean thereAreOwnedData = false;
+        synchronized (this) {
+            thereAreOwnedData = ((this.owner != null) || (this.contents != null));
+        }
+        if (thereAreOwnedData) {
+            // to properly clear everything
+            lostOwnershipImpl();
+        }
+    }
+    // ===============================================================================================================
+
+
     private void lostSelectionOwnershipImpl() {
         lostOwnershipImpl();
     }
@@ -121,9 +155,27 @@ final class WClipboard extends SunClipboard {
      */
     private native void publishClipboardData(long format, byte[] bytes);
 
-    private static native void init();
+    private static native void init(boolean areOwnershipExtraChecksEnabled);
     static {
-        init();
+        // ====================== JBR-5980 Pasting from clipboard not working reliably in Windows ======================
+        boolean flagInitializer = false; // let's fall back in the default behavior
+        try {
+            flagInitializer =
+                "true".equalsIgnoreCase(System.getProperty("awt.windows.clipboard.cache.disabled", "true"));
+        } catch (Throwable ignored) {
+        }
+        isContentsCacheDisabled = flagInitializer;
+
+        flagInitializer = false; // let's fall back in the default behavior
+        try {
+            flagInitializer =
+                "true".equalsIgnoreCase(System.getProperty("awt.windows.clipboard.extraOwnershipChecksEnabled", "true"));
+        } catch (Throwable ignored) {
+        }
+        areOwnershipExtraChecksEnabled = flagInitializer;
+        // =============================================================================================================
+
+        init(areOwnershipExtraChecksEnabled);
     }
 
     @Override
