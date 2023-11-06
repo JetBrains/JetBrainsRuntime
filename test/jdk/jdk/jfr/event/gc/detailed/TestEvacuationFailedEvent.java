@@ -62,13 +62,17 @@ public class TestEvacuationFailedEvent {
         }
 
         List<RecordedEvent> events = RecordingFile.readAllEvents(Paths.get(JFR_FILE));
+        int minObjectAlignment = 8;
 
         Events.hasEvents(events);
         for (RecordedEvent event : events) {
             long objectCount = Events.assertField(event, "evacuationFailed.objectCount").atLeast(1L).getValue();
             long smallestSize = Events.assertField(event, "evacuationFailed.smallestSize").atLeast(1L).getValue();
+            Asserts.assertTrue((smallestSize % minObjectAlignment) == 0, "smallestSize " + smallestSize + " is not a valid size.");
             long firstSize = Events.assertField(event, "evacuationFailed.firstSize").atLeast(smallestSize).getValue();
+            Asserts.assertTrue((firstSize % minObjectAlignment) == 0, "firstSize " + firstSize + " is not a valid size.");
             long totalSize = Events.assertField(event, "evacuationFailed.totalSize").atLeast(firstSize).getValue();
+            Asserts.assertTrue((totalSize % minObjectAlignment) == 0, "totalSize " + totalSize + " is not a valid size.");
             Asserts.assertLessThanOrEqual(smallestSize * objectCount, totalSize, "smallestSize * objectCount <= totalSize");
         }
     }
