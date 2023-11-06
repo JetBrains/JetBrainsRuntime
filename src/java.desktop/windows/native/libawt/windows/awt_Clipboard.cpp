@@ -49,6 +49,8 @@ volatile BOOL AwtClipboard::isClipboardViewerRegistered = FALSE;
  */
 
 void AwtClipboard::LostOwnership(JNIEnv *env) {
+    (void)::InterlockedExchange(&AwtClipboard::isOwner, FALSE); // isOwner = FALSE;
+
     if (theCurrentClipboard != NULL) {
         env->CallVoidMethod(theCurrentClipboard, lostSelectionOwnershipMID);
         DASSERT(!safe_ExceptionOccurred(env));
@@ -90,6 +92,52 @@ void AwtClipboard::UnregisterClipboardViewer(JNIEnv *env) {
     CATCH_BAD_ALLOC;
 }
 
+
+// ======================== JBR-5980 Pasting from clipboard not working reliably in Windows ===========================
+volatile BOOL AwtClipboard::areOwnershipExtraChecksEnabled = FALSE;
+volatile LONG /* BOOL */ AwtClipboard::isOwner = FALSE;
+jmethodID AwtClipboard::ensureNoOwnedDataMID = nullptr;
+
+void AwtClipboard::SetOwnershipExtraChecksEnabled(BOOL enabled) {
+    areOwnershipExtraChecksEnabled = enabled;
+}
+
+void AwtClipboard::ExtraCheckOfOwnership() {
+    if (areOwnershipExtraChecksEnabled != TRUE) {
+        return;
+    }
+
+    JNIEnv* const env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+    if (env == nullptr) {
+        return;
+    }
+
+    const bool isOwner =
+        // Checks the actual value of AwtClipboard::isOwner without altering it
+        (::InterlockedCompareExchange(&AwtClipboard::isOwner, TRUE, TRUE) != LONG{FALSE});
+    if (isOwner) {
+        const HWND toolkitHwnd = AwtToolkit::GetInstance().GetHWnd();
+
+        if (::OpenClipboard(toolkitHwnd) == 0) {
+            // failed to open the clipboard
+            return;
+        }
+        const HWND clipboardOwnerHwnd = ::GetClipboardOwner();
+        ::CloseClipboard();
+
+        if (clipboardOwnerHwnd != toolkitHwnd) {
+            AwtClipboard::LostOwnership(env);
+        }
+    } else {
+        if ((theCurrentClipboard != nullptr) && (ensureNoOwnedDataMID != nullptr)) {
+            env->CallVoidMethod(theCurrentClipboard, ensureNoOwnedDataMID);
+            DASSERT(!safe_ExceptionOccurred(env));
+        }
+    }
+}
+// ====================================================================================================================
+
+
 extern "C" {
 
 void awt_clipboard_uninitialize(JNIEnv *env) {
@@ -108,13 +156,18 @@ void awt_clipboard_uninitialize(JNIEnv *env) {
  * Signature: ()V
  */
 JNIEXPORT void JNICALL
-Java_sun_awt_windows_WClipboard_init(JNIEnv *env, jclass cls)
+Java_sun_awt_windows_WClipboard_init(JNIEnv *env, jclass cls, jboolean areOwnershipExtraChecksEnabled)
 {
     TRY;
 
     AwtClipboard::lostSelectionOwnershipMID =
         env->GetMethodID(cls, "lostSelectionOwnershipImpl", "()V");
     DASSERT(AwtClipboard::lostSelectionOwnershipMID != NULL);
+
+    AwtClipboard::ensureNoOwnedDataMID = env->GetMethodID(cls, "ensureNoOwnedData", "()V");
+    DASSERT(AwtClipboard::ensureNoOwnedDataMID != nullptr);
+
+    AwtClipboard::SetOwnershipExtraChecksEnabled( (areOwnershipExtraChecksEnabled == JNI_TRUE) ? TRUE : FALSE );
 
     CATCH_BAD_ALLOC;
 }
