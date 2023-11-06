@@ -33,6 +33,7 @@
 #include "jlong.h"
 #include "awt_AWTEvent.h"
 #include "awt_BitmapUtil.h"
+#include "awt_Clipboard.h"
 #include "awt_Component.h"
 #include "awt_Cursor.h"
 #include "awt_Dimension.h"
@@ -1573,6 +1574,12 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           }
           break;
       }
+      case WM_ACTIVATEAPP:
+          if (wParam == TRUE) {
+              // the window is being activated, let's check if we still own the clipboard
+              AwtClipboard::ExtraCheckOfOwnership();
+          }
+          break;
       case WM_MOUSEACTIVATE: {
           AwtWindow *window = GetContainer();
           if (window && window->IsFocusableWindow()) {
