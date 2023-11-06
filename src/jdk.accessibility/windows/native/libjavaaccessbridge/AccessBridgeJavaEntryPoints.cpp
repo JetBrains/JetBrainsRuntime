@@ -31,6 +31,7 @@
 #include "AccessBridgeJavaEntryPoints.h"
 #include "AccessBridgeDebug.h"
 #include "AccessBridgeUtils.h"
+#include "JavaAccessBridgeJniRefsTracker.h"
 
 
 /**
