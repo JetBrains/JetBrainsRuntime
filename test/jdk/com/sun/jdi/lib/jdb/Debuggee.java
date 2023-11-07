@@ -68,6 +68,9 @@ public class Debuggee implements Closeable {
         private String transport = "dt_socket";
         private String address = null;
         private boolean suspended = true;
+        private String onthrow = "";
+        private boolean waitForPortPrint = true;
+        private String expectedOutputBeforeThrow = "";
 
         private Launcher(String mainClass) {
             this.mainClass = mainClass;
@@ -96,18 +99,28 @@ public class Debuggee implements Closeable {
             return this;
         }
 
+        // required to pass non null port with address and emit string before the throw
+        public Launcher enableOnThrow(String value, String expectedOutputBeforeThrow) {
+            this.onthrow = value;
+            this.waitForPortPrint = false;
+            this.expectedOutputBeforeThrow = expectedOutputBeforeThrow;
+            return this;
+        }
+
         public ProcessBuilder prepare() {
             List<String> debuggeeArgs = new LinkedList<>();
+            String onthrowArgs = onthrow.isEmpty() ? "" : ",onthrow=" + onthrow + ",launch=exit";
             debuggeeArgs.add("-agentlib:jdwp=transport=" + transport
                     + (address == null ? "" : ",address=" + address)
-                    + ",server=y,suspend=" + (suspended ? "y" : "n"));
+                    + ",server=y,suspend=" + (suspended ? "y" : "n")
+                    + onthrowArgs);
             debuggeeArgs.addAll(options);
             debuggeeArgs.add(mainClass);
             return ProcessTools.createTestJvm(debuggeeArgs);
         }
 
         public Debuggee launch(String name) {
-            return new Debuggee(prepare(), name);
+            return new Debuggee(prepare(), name, waitForPortPrint, expectedOutputBeforeThrow);
         }
         public Debuggee launch() {
             return launch("debuggee");
@@ -115,10 +128,22 @@ public class Debuggee implements Closeable {
     }
 
     // starts the process, waits for "Listening for transport" output and detects transport/address
-    private Debuggee(ProcessBuilder pb, String name) {
+    private Debuggee(ProcessBuilder pb, String name, boolean waitForPortPrint, String expectedOutputBeforeThrow) {
         // debuggeeListen[0] - transport, debuggeeListen[1] - address
         String[] debuggeeListen = new String[2];
         Pattern listenRegexp = Pattern.compile("Listening for transport \\b(.+)\\b at address: \\b(.+)\\b");
+        if (!waitForPortPrint) {
+            try {
+                p = ProcessTools.startProcess(name, pb, s -> {output.add(s);}, s -> {
+                    return s.equals(expectedOutputBeforeThrow);
+                }, 30, TimeUnit.SECONDS);
+            } catch (IOException | InterruptedException | TimeoutException ex) {
+                throw new RuntimeException("failed to launch debuggee", ex);
+            }
+            transport = null;
+            address = null;
+            return;
+        }
         try {
             p = ProcessTools.startProcess(name, pb,
                     s -> output.add(s),  // output consumer
@@ -167,10 +192,16 @@ public class Debuggee implements Closeable {
     }
 
     String getTransport() {
+        if (transport == null) {
+            throw new IllegalStateException("transport is not available");
+        }
         return transport;
     }
 
     public String getAddress() {
+        if (address == null) {
+            throw new IllegalStateException("address is not available");
+        }
         return address;
     }
 
