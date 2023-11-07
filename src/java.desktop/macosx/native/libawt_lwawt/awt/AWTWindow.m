@@ -1419,18 +1419,16 @@ AWT_ASSERT_APPKIT_THREAD;
     if (self.isCustomTitleBarEnabled) {
         [self forceHideCustomTitleBarTitle:NO];
         [self updateCustomTitleBarInsets:NO];
-    }
-    [self allowMovingChildrenBetweenSpaces:NO];
-    [self fullScreenTransitionFinished];
 
-    if ([self isTransparentTitleBarEnabled]) {
         JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-        NSString *newFullScreeControls = [PropertiesUtilities javaSystemPropertyForKey:@"apple.awt.newFullScreeControls"
-                                                                               withEnv:env];
+        NSString *newFullScreeControls = [PropertiesUtilities
+            javaSystemPropertyForKey:@"apple.awt.newFullScreeControls" withEnv:env];
         if ([@"true" isCaseInsensitiveLike:newFullScreeControls]) {
             [self setWindowFullScreeControls];
         }
     }
+    [self allowMovingChildrenBetweenSpaces:NO];
+    [self fullScreenTransitionFinished];
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CPLATFORM_WINDOW_CLASS();
