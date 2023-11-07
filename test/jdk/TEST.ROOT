@@ -30,7 +30,7 @@ javax/management com/sun/awt sun/awt sun/java2d javax/xml/jaxp/testng/validation
 exclusiveAccess.dirs=java/rmi/Naming java/util/prefs sun/management/jmxremote sun/tools/jstatd \
 sun/security/mscapi java/util/stream java/util/Arrays/largeMemory \
 java/util/BitSet/stream javax/rmi java/net/httpclient/websocket \
-sanity/client
+sanity/client sun/tools/jhsdb
 
 # Group definitions
 groups=TEST.groups
