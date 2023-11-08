@@ -31,6 +31,7 @@ import java.io.Serial;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.security.PrivilegedExceptionAction;
+import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Properties;
 import java.util.StringTokenizer;
@@ -192,11 +193,23 @@ public class Cursor implements java.io.Serializable {
 
         AWTAccessor.setCursorAccessor(
             new AWTAccessor.CursorAccessor() {
+                private final HashMap<Integer, Integer> actualCursorScale = new HashMap<>();
+
+                public long getPData(Cursor cursor, int scale) {
+                    return (actualCursorScale.getOrDefault(cursor.getType(), 0) == scale) ? cursor.pData : 0;
+                }
+
                 public long getPData(Cursor cursor) {
                     return cursor.pData;
                 }
 
+                public void setPData(Cursor cursor, int scale, long pData) {
+                    actualCursorScale.put(cursor.getType(), scale);
+                    cursor.pData = pData;
+                }
+
                 public void setPData(Cursor cursor, long pData) {
+                    actualCursorScale.remove(cursor.getType());
                     cursor.pData = pData;
                 }
 
