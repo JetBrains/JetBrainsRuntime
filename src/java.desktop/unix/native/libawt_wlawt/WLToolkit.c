@@ -334,7 +334,6 @@ wl_keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard, uint32_t format,
 
     munmap(serializedKeymap, size);
     close(fd);
-    JNU_CHECK_EXCEPTION(env);
 }
 
 static void
@@ -358,7 +357,6 @@ wl_keyboard_key(void *data, struct wl_keyboard *wl_keyboard,
 {
     JNIEnv* env = getEnv();
     wlSetKeyState(time, keycode, state ? true : false);
-    JNU_CHECK_EXCEPTION(env);
 }
 
 static void

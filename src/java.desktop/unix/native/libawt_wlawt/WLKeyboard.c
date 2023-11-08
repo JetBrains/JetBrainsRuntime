@@ -937,7 +937,7 @@ getKeyboardLayoutIndex(void) {
 
 // Compose rules may depend on the system locale.
 static const char *
-getComposeLocale() {
+getComposeLocale(void) {
     const char *locale = getenv("LC_ALL");
 
     if (!locale || !*locale) {
@@ -971,9 +971,17 @@ onKeyboardLayoutChanged(void) {
     // bitmask of the latin letters encountered in the layout
     uint32_t latin_letters_seen = 0;
     int latin_letters_seen_count = 0;
+    xkb_keycode_t min_keycode = xkb.keymap_min_keycode(keyboard.keymap);
+    xkb_keycode_t max_keycode = xkb.keymap_max_keycode(keyboard.keymap);
+    if (max_keycode > 255) {
+        // All keys that we are interested in should lie within this range.
+        // The other keys are usually something like XFLaunch* or something of this sort.
+        // Since we are looking for alphanumeric keys here, let's just guard against
+        // layouts that might attempt to remap a lot of keycodes.
+        max_keycode = 255;
+    }
 
-    for (xkb_keycode_t keycode = xkb.keymap_min_keycode(keyboard.keymap);
-         keycode <= xkb.keymap_max_keycode(keyboard.keymap); ++keycode) {
+    for (xkb_keycode_t keycode = min_keycode; keycode <= max_keycode; ++keycode) {
         uint32_t num_levels = xkb.keymap_num_levels_for_key(keyboard.keymap, keycode, layoutIndex);
 
         for (uint32_t lvl = 0; lvl < num_levels; ++lvl) {
@@ -1431,8 +1439,8 @@ wlSetKeymap(const char *serializedKeymap) {
         return;
     }
 
-    struct xkb_state* newState = xkb.state_new(newKeymap);
-    struct xkb_state* newTmpState = xkb.state_new(newKeymap);
+    struct xkb_state *newState = xkb.state_new(newKeymap);
+    struct xkb_state *newTmpState = xkb.state_new(newKeymap);
     if (!newState || !newTmpState) {
         JNU_ThrowInternalError(getEnv(), "Failed to create XKB state");
         return;
