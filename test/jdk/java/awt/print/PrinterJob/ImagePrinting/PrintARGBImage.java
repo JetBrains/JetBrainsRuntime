@@ -53,6 +53,7 @@ public class PrintARGBImage implements Printable {
                     "The test passes if the text shows through the rectangular image.\n";
 
             PassFailJFrame passFailJFrame = new PassFailJFrame(instruction, 10);
+            PassFailJFrame.positionTestWindow(null, PassFailJFrame.Position.HORIZONTAL);
             try {
                 PrinterJob pj = PrinterJob.getPrinterJob();
                 pj.setPrintable(new PrintARGBImage());
