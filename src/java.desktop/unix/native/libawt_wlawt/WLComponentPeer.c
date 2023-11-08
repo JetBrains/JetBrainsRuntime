@@ -145,6 +145,7 @@ wl_surface_entered_output(void *data,
     uint32_t wlOutputID = WLOutputID(output);
     if (wlOutputID == 0) return;
 
+    WLSetOutputScale(wlOutputID);
     JNIEnv *env = getEnv();
     const jobject nativeFramePeer = (*env)->NewLocalRef(env, wlFrame->nativeFramePeer);
     if (nativeFramePeer) {

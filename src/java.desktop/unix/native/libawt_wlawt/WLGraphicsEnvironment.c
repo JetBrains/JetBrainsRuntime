@@ -60,6 +60,8 @@ static jmethodID notifyOutputConfiguredMID;
 static jmethodID notifyOutputDestroyedMID;
 static jmethodID getSingleInstanceMID;
 
+static int last_output_scale = 1;
+
 WLOutput * outputList;
 
 static void
@@ -279,6 +281,22 @@ WLOutputByID(uint32_t id)
     }
 
     return NULL;
+}
+
+void
+WLSetOutputScale(uint32_t id)
+{
+    for(WLOutput * cur = outputList; cur; cur = cur->next) {
+        if (cur->id == id) {
+            last_output_scale = cur->scale;
+        }
+    }
+}
+
+int
+WLGetOutputScale()
+{
+    return last_output_scale;
 }
 
 /*

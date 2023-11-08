@@ -1141,6 +1141,14 @@ public class WLComponentPeer implements ComponentPeer {
             }
         }
 
+        // Entry output device could have different scale compare to previous, so we need to reset current cursor info
+        performLockedGlobal(() -> {
+            for (int i = Cursor.DEFAULT_CURSOR; i < Cursor.MOVE_CURSOR; i++) {
+                Cursor cursor = Cursor.getPredefinedCursor(i);
+                AWTAccessor.getCursorAccessor().setPData(cursor, 0);
+            }
+        });
+
         checkIfOnNewScreen();
     }
 

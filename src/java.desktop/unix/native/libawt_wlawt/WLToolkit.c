@@ -870,7 +870,7 @@ readDesktopProperty(const char* name, char *output, int outputSize) {
     return pclose(fd) ? NULL : res;
 }
 
-static void
+void
 initCursors() {
     char *theme_name;
     int theme_size = 0;
@@ -899,7 +899,7 @@ initCursors() {
         }
     }
 
-    wl_cursor_theme = wl_cursor_theme_load(theme_name, theme_size, wl_shm);
+    wl_cursor_theme = wl_cursor_theme_load(theme_name, theme_size * WLGetOutputScale(), wl_shm);
     if (!wl_cursor_theme) {
         J2dTrace(J2D_TRACE_ERROR, "WLToolkit: Failed to load cursor theme\n");
     }
