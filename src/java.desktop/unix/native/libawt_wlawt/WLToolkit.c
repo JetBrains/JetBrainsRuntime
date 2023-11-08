@@ -73,7 +73,8 @@ struct wl_seat     *wl_seat = NULL;
 struct wl_keyboard *wl_keyboard;
 struct wl_pointer  *wl_pointer;
 
-struct wl_cursor_theme *wl_cursor_theme = NULL;
+#define MAX_CURSOR_SCALE 100
+struct wl_cursor_theme *cursor_themes[MAX_CURSOR_SCALE] = {NULL};
 
 struct wl_surface *wl_surface_in_focus = NULL;
 struct wl_data_device_manager *wl_ddm = NULL;
@@ -672,8 +673,12 @@ readDesktopProperty(const char* name, char *output, int outputSize) {
     return pclose(fd) ? NULL : res;
 }
 
-static void
-initCursors() {
+struct wl_cursor_theme*
+getCursorTheme(int scale) {
+    if (cursor_themes[scale]) {
+        return cursor_themes[scale];
+    }
+
     char *theme_name;
     int theme_size = 0;
     char buffer[256];
@@ -701,10 +706,17 @@ initCursors() {
         }
     }
 
-    wl_cursor_theme = wl_cursor_theme_load(theme_name, theme_size, wl_shm);
-    if (!wl_cursor_theme) {
+    if (scale >= MAX_CURSOR_SCALE) {
+        J2dTrace(J2D_TRACE_ERROR, "WLToolkit: Reach the maximum scale for cursor theme\n");
+        return NULL;
+    }
+
+    cursor_themes[scale] = wl_cursor_theme_load(theme_name, theme_size * scale, wl_shm);
+    if (!cursor_themes[scale]) {
         J2dTrace(J2D_TRACE_ERROR, "WLToolkit: Failed to load cursor theme\n");
     }
+    
+    return cursor_themes[scale];
 }
 
 static void
@@ -754,8 +766,6 @@ Java_sun_awt_wl_WLToolkit_initIDs
     }
 
     J2dTrace(J2D_TRACE_INFO, "WLToolkit: Connection to display(%p) established\n", wl_display);
-
-    initCursors();
 
     finalizeInit(env);
 }
