@@ -29,6 +29,7 @@
 #include <jni_util.h>
 
 #include "WLToolkit.h"
+#include "WLGraphicsEnvironment.h"
 
 struct WLCursor {
     struct wl_buffer *buffer;
@@ -58,16 +59,18 @@ Java_java_awt_Cursor_finalizeImpl
 }
 
 JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLComponentPeer_nativeGetPredefinedCursor
-  (JNIEnv *env, jclass cls, jstring name)
+  (JNIEnv *env, jclass cls, jstring name, jint scale)
 {
-    if (!wl_cursor_theme)
+    struct wl_cursor_theme *cursor_theme = getCursorTheme(scale);
+
+    if (!cursor_theme)
         return 0;
 
     jboolean isCopy = JNI_FALSE;
     const char *name_c_str = JNU_GetStringPlatformChars(env, name, &isCopy);
     if (!name_c_str)
         return 0;
-    struct wl_cursor *wl_cursor = wl_cursor_theme_get_cursor(wl_cursor_theme, name_c_str);
+    struct wl_cursor *wl_cursor = wl_cursor_theme_get_cursor(cursor_theme, name_c_str);
     if (isCopy) {
         JNU_ReleaseStringPlatformChars(env, name, name_c_str);
     }
@@ -86,6 +89,12 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLComponentPeer_nativeGetPredefinedCurso
         cursor->hotspot_y = wl_cursor_image->hotspot_y;
     }
     return ptr_to_jlong(cursor);
+}
+
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeDestroyPredefinedCursor
+        (JNIEnv *env, jclass cls, struct WLCursor *cursor)
+{
+    free(cursor);
 }
 
 JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCustomCursor_nativeCreateCustomCursor
@@ -131,7 +140,7 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCustomCursor_nativeCreateCustomCursor
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetCursor
-  (JNIEnv *env, jclass cls, jlong pData)
+  (JNIEnv *env, jclass cls, jlong pData, jint scale)
 {
     struct wl_buffer *buffer = NULL;
     int32_t width = 0;
@@ -161,6 +170,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetCursor
     if (buffer != last_buffer) {
         last_buffer = buffer;
         wl_surface_attach(wl_cursor_surface, buffer, 0, 0);
+        wl_surface_set_buffer_scale(wl_cursor_surface, scale);
         wl_surface_damage_buffer(wl_cursor_surface, 0, 0, width, height);
         wl_surface_commit(wl_cursor_surface);
     }
@@ -169,7 +179,8 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetCursor
         last_serial = last_pointer_enter_serial;
         last_hotspot_x = hotspot_x;
         last_hotspot_y = hotspot_y;
-        wl_pointer_set_cursor(wl_pointer, last_pointer_enter_serial, wl_cursor_surface, hotspot_x, hotspot_y);
+        wl_pointer_set_cursor(wl_pointer, last_pointer_enter_serial, wl_cursor_surface,
+                              hotspot_x / scale, hotspot_y / scale);
         wlFlushToServer(env);
     }
 }
