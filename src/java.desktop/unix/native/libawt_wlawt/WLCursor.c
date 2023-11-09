@@ -28,8 +28,8 @@
 #include <jni.h>
 #include <jni_util.h>
 
-#include "WLGraphicsEnvironment.h"
 #include "WLToolkit.h"
+#include "WLGraphicsEnvironment.h"
 
 struct WLCursor {
     struct wl_buffer *buffer;
@@ -164,7 +164,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetCursor
     if (buffer != last_buffer) {
         last_buffer = buffer;
         wl_surface_attach(wl_cursor_surface, buffer, 0, 0);
-        wl_surface_set_buffer_scale(wl_cursor_surface, WLGetOutputScale());
+        wl_surface_set_buffer_scale(wl_cursor_surface, getCurrentScale());
         wl_surface_damage_buffer(wl_cursor_surface, 0, 0, width, height);
         wl_surface_commit(wl_cursor_surface);
     }
@@ -174,6 +174,6 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetCursor
         last_hotspot_x = hotspot_x;
         last_hotspot_y = hotspot_y;
         wl_pointer_set_cursor(wl_pointer, last_pointer_enter_serial, wl_cursor_surface,
-                              hotspot_x / WLGetOutputScale(), hotspot_y / WLGetOutputScale());
+                              hotspot_x / getCurrentScale(), hotspot_y / getCurrentScale());
     }
 }

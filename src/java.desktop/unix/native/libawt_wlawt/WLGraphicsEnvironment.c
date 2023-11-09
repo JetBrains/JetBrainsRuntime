@@ -60,8 +60,6 @@ static jmethodID notifyOutputConfiguredMID;
 static jmethodID notifyOutputDestroyedMID;
 static jmethodID getSingleInstanceMID;
 
-static int last_output_scale = 1;
-
 WLOutput * outputList;
 
 static void
@@ -283,20 +281,36 @@ WLOutputByID(uint32_t id)
     return NULL;
 }
 
-void
-WLSetOutputScale(uint32_t id)
-{
-    for(WLOutput * cur = outputList; cur; cur = cur->next) {
-        if (cur->id == id) {
-            last_output_scale = cur->scale;
-        }
+#define OUTPUT_QUEUE_SIZE 3
+static uint32_t outputQueue[OUTPUT_QUEUE_SIZE] = {0};
+
+void addOutputQueue(uint32_t output) {
+    for (int i = OUTPUT_QUEUE_SIZE - 2; i >= 0; i--) {
+        outputQueue[i + 1] = outputQueue[i];
     }
+    outputQueue[0] = output;
 }
 
-int
-WLGetOutputScale()
-{
-    return last_output_scale;
+void removeOutputQueue(uint32_t output) {
+    for (int i = 0; i < OUTPUT_QUEUE_SIZE - 1; i++) {
+        if (outputQueue[i] == output) {
+            for (int j = i; j < OUTPUT_QUEUE_SIZE - 1; j++) {
+                outputQueue[j] = outputQueue[j + 1];
+            }
+            break;
+        }
+    }
+    outputQueue[OUTPUT_QUEUE_SIZE - 1] = 0;
+}
+
+int getCurrentScale() {
+    for(WLOutput * cur = outputList; cur; cur = cur->next) {
+        if (cur->id == outputQueue[0]) {
+            return cur->scale;
+        }
+    }
+
+    return 1;
 }
 
 /*

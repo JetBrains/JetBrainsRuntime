@@ -899,7 +899,7 @@ initCursors() {
         }
     }
 
-    wl_cursor_theme = wl_cursor_theme_load(theme_name, theme_size * WLGetOutputScale(), wl_shm);
+    wl_cursor_theme = wl_cursor_theme_load(theme_name, theme_size * getCurrentScale(), wl_shm);
     if (!wl_cursor_theme) {
         J2dTrace(J2D_TRACE_ERROR, "WLToolkit: Failed to load cursor theme\n");
     }
