@@ -38,7 +38,6 @@ package sun.awt.wl;
  * @param pointerButtonPressedEvent null or the latest PointerButtonEvent such that getIsButtonPressed() == true
  * @param modifiers a bit set of modifiers reflecting currently pressed keys (@see WLInputState.getNewModifiers())
  * @param surfaceForKeyboardInput represents 'struct wl_surface*' that keyboards events should go to
- * @param lockingKeyState a bit set of locking modifiers currently active
  */
 record WLInputState(WLPointerEvent eventWithSurface,
                     WLPointerEvent eventWithSerial,
@@ -47,8 +46,7 @@ record WLInputState(WLPointerEvent eventWithSurface,
                     PointerButtonEvent pointerButtonPressedEvent,
                     int modifiers,
                     long surfaceForKeyboardInput,
-                    boolean isPointerOverSurface,
-                    int lockingKeyState) {
+                    boolean isPointerOverSurface) {
     /**
      * Groups together information about a mouse pointer button event.
      * @param surface 'struct wl_surface*' the button was pressed over
@@ -71,7 +69,7 @@ record WLInputState(WLPointerEvent eventWithSurface,
 
     static WLInputState initialState() {
         return new WLInputState(null, null, null, null,
-                null, 0, 0, false, 0);
+                null, 0, 0, false);
     }
 
     /**
@@ -104,8 +102,7 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 newPointerButtonEvent,
                 newModifiers,
                 surfaceForKeyboardInput,
-                newPointerOverSurface,
-                lockingKeyState);
+                newPointerOverSurface);
     }
 
     public WLInputState updatedFromKeyboardEnterEvent(long serial, long surfacePtr) {
@@ -118,11 +115,10 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 pointerButtonPressedEvent,
                 modifiers,
                 surfacePtr,
-                isPointerOverSurface,
-                lockingKeyState);
+                isPointerOverSurface);
     }
 
-    public WLInputState updatedFromKeyboardModifiersEvent(long serial, int keyboardModifiers, int newLockingKeyState) {
+    public WLInputState updatedFromKeyboardModifiersEvent(long serial, int keyboardModifiers) {
         // "The compositor must send the wl_keyboard.modifiers event after this event".
         final int oldPointerModifiers = modifiers & WLPointerEvent.PointerButtonCodes.combinedMask();
         final int newModifiers = oldPointerModifiers | keyboardModifiers;
@@ -134,8 +130,7 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 pointerButtonPressedEvent,
                 newModifiers,
                 surfaceForKeyboardInput,
-                isPointerOverSurface,
-                newLockingKeyState);
+                isPointerOverSurface);
     }
 
     public WLInputState updatedFromKeyboardLeaveEvent(long serial, long surfacePtr) {
@@ -150,8 +145,7 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 pointerButtonPressedEvent,
                 newModifiers,
                 0,
-                isPointerOverSurface,
-                lockingKeyState);
+                isPointerOverSurface);
     }
 
     public WLInputState resetPointerState() {
@@ -163,8 +157,7 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 pointerButtonPressedEvent,
                 modifiers & ~WLPointerEvent.PointerButtonCodes.combinedMask(),
                 surfaceForKeyboardInput,
-                false,
-                lockingKeyState);
+                false);
     }
 
     private PointerButtonEvent getNewPointerButtonEvent(WLPointerEvent pointerEvent,
