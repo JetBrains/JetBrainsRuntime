@@ -67,8 +67,6 @@
 @property (readwrite, retain) MTLPaint * paint;
 @property (readonly) MTLTransform * transform;
 @property (readonly) MTLClip * clip;
-@property (readonly) id syncEvent;
-@property (readwrite, atomic) UInt64 syncCount;
 
 @property jint          textureFunction;
 @property jboolean      vertexCacheEnabled;
