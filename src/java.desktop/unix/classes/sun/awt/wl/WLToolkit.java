@@ -434,7 +434,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public void setDynamicLayout(boolean b) {
-        log.info("Not implemented: WLToolkit.setDynamicLayout()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.setDynamicLayout()");
+        }
     }
 
     @Override
@@ -444,12 +446,16 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     protected boolean isDynamicLayoutSet() {
-        log.info("Not implemented: WLToolkit.isDynamicLayoutSet()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.isDynamicLayoutSet()");
+        }
         return false;
     }
 
     protected boolean isDynamicLayoutSupported() {
-        log.info("Not implemented: WLToolkit.isDynamicLayoutSupported()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.isDynamicLayoutSupported()");
+        }
         return false;
     }
 
@@ -459,14 +465,18 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     }
 
     @Override
-    public FontPeer getFontPeer(String name, int style){
-        log.info("Not implemented: WLToolkit.getFontPeer()");
+    public FontPeer getFontPeer(String name, int style) {
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.getFontPeer()");
+        }
         return null;
     }
 
     @Override
     public DragSourceContextPeer createDragSourceContextPeer(DragGestureEvent dge) throws InvalidDnDOperationException {
-        log.info("Not implemented: WLToolkit.createDragSourceContextPeer()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createDragSourceContextPeer()");
+        }
         return null;
     }
 
@@ -478,67 +488,89 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                     int srcActions,
                     DragGestureListener dgl)
     {
-        log.info("Not implemented: WLToolkit.createDragGestureRecognizer()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createDragGestureRecognizer()");
+        }
         return null;
     }
 
     @Override
     public CheckboxMenuItemPeer createCheckboxMenuItem(CheckboxMenuItem target) {
-        log.info("Not implemented: WLToolkit.createCheckboxMenuItem()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createCheckboxMenuItem()");
+        }
         return null;
     }
 
     @Override
     public MenuItemPeer createMenuItem(MenuItem target) {
-        log.info("Not implemented: WLToolkit.createMenuItem()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createMenuItem()");
+        }
         return null;
     }
 
     @Override
     public TextFieldPeer createTextField(TextField target) {
-        log.info("Not implemented: WLToolkit.createTextField()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createTextField()");
+        }
         return null;
     }
 
     @Override
     public LabelPeer createLabel(Label target) {
-        log.info("Not implemented: WLToolkit.createLabel()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createLabel()");
+        }
         return null;
     }
 
     @Override
     public ListPeer createList(java.awt.List target) {
-        log.info("Not implemented: WLToolkit.createList()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createList()");
+        }
         return null;
     }
 
     @Override
     public CheckboxPeer createCheckbox(Checkbox target) {
-        log.info("Not implemented: WLToolkit.createCheckbox()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createCheckbox()");
+        }
         return null;
     }
 
     @Override
     public ScrollbarPeer createScrollbar(Scrollbar target) {
-        log.info("Not implemented: WLToolkit.createScrollbar()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createScrollbar()");
+        }
         return null;
     }
 
     @Override
     public ScrollPanePeer createScrollPane(ScrollPane target) {
-        log.info("Not implemented: WLToolkit.createScrollPane()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createScrollPane()");
+        }
         return null;
     }
 
     @Override
     public TextAreaPeer createTextArea(TextArea target) {
-        log.info("Not implemented: WLToolkit.createTextArea()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createTextArea()");
+        }
         return null;
     }
 
     @Override
     public ChoicePeer createChoice(Choice target) {
-        log.info("Not implemented: WLToolkit.createChoice()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createChoice()");
+        }
         return null;
     }
 
@@ -551,7 +583,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public PanelPeer createPanel(Panel target) {
-        log.info("Not implemented: WLToolkit.createPanel()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createPanel()");
+        }
         return null;
     }
 
@@ -571,25 +605,33 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public FileDialogPeer createFileDialog(FileDialog target) {
-        log.info("Not implemented: WLToolkit.createFileDialog()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createFileDialog()");
+        }
         return null;
     }
 
     @Override
     public MenuBarPeer createMenuBar(MenuBar target) {
-        log.info("Not implemented: WLToolkit.createMenuBar()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createMenuBar()");
+        }
         return null;
     }
 
     @Override
     public MenuPeer createMenu(Menu target) {
-        log.info("Not implemented: WLToolkit.createMenu()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createMenu()");
+        }
         return null;
     }
 
     @Override
     public PopupMenuPeer createPopupMenu(PopupMenu target) {
-        log.info("Not implemented: WLToolkit.createPopupMenu()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createPopupMenu()");
+        }
         return null;
     }
 
@@ -613,22 +655,26 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     }
 
     @Override
-    public TrayIconPeer createTrayIcon(TrayIcon target)
-      throws HeadlessException
-    {
-        log.info("Not implemented: WLToolkit.createTrayIcon()");
+    public TrayIconPeer createTrayIcon(TrayIcon target) throws HeadlessException {
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createTrayIcon()");
+        }
         return null;
     }
 
     @Override
     public SystemTrayPeer createSystemTray(SystemTray target) throws HeadlessException {
-        log.info("Not implemented: WLToolkit.createSystemTray()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createSystemTray()");
+        }
         return null;
     }
 
     @Override
     public boolean isTraySupported() {
-        log.info("Not implemented: WLToolkit.isTraySupported()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.isTraySupported()");
+        }
         return false;
     }
 
@@ -650,7 +696,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public Map<TextAttribute, ?> mapInputMethodHighlight( InputMethodHighlight highlight) {
-        log.info("Not implemented: WLToolkit.mapInputMethodHighlight()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.mapInputMethodHighlight()");
+        }
         return null;
     }
     @Override
@@ -676,13 +724,17 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public void beep() {
-        log.info("Not implemented: WLToolkit.beep()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.beep()");
+        }
     }
 
     @Override
     public PrintJob getPrintJob(final Frame frame, final String doctitle,
                                 final Properties props) {
-        log.info("Not implemented: WLToolkit.getPrintJob()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.getPrintJob()");
+        }
         return null;
     }
 
@@ -691,7 +743,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                 final JobAttributes jobAttributes,
                 final PageAttributes pageAttributes)
     {
-        log.info("Not implemented: WLToolkit.getPrintJob()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.getPrintJob()");
+        }
         return null;
     }
 
@@ -706,7 +760,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      */
     @Override
     public InputMethodDescriptor getInputMethodAdapterDescriptor() {
-        log.info("Not implemented: WLToolkit.getInputMethodAdapterDescriptor()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.getInputMethodAdapterDescriptor()");
+        }
         return null;
     }
 
@@ -716,7 +772,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      */
     @Override
     public boolean enableInputMethodsForTextComponent() {
-        log.info("Not implemented: WLToolkit.enableInputMethodsForTextComponent()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.enableInputMethodsForTextComponent()");
+        }
         return true;
     }
 
@@ -756,13 +814,17 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     protected Object lazilyLoadDesktopProperty(String name) {
-        log.info("Not implemented: WLToolkit.lazilyLoadDesktopProperty()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.lazilyLoadDesktopProperty()");
+        }
         return null;
     }
 
     @Override
     public synchronized void addPropertyChangeListener(String name, PropertyChangeListener pcl) {
-        log.info("Not implemented: WLToolkit.addPropertyChangeListener()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.addPropertyChangeListener()");
+        }
     }
 
     /**
@@ -770,7 +832,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      */
     @Override
     protected boolean needsXEmbedImpl() {
-        log.info("Not implemented: WLToolkit.needsXEmbedImpl()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.needsXEmbedImpl()");
+        }
         return false;
     }
 
@@ -782,7 +846,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public boolean isModalExclusionTypeSupported(Dialog.ModalExclusionType exclusionType) {
-        log.info("Not implemented: WLToolkit.isModalExclusionTypeSupported()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.isModalExclusionTypeSupported()");
+        }
         return false;
     }
 
@@ -793,7 +859,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public boolean useBufferPerWindow() {
-        log.info("Not implemented: WLToolkit.useBufferPerWindow()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.useBufferPerWindow()");
+        }
         return false;
     }
 
@@ -802,18 +870,24 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      */
     @Override
     protected boolean syncNativeQueue(long timeout) {
-//        log.info("Not implemented: WLToolkit.syncNativeQueue()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.syncNativeQueue()");
+        }
         return false;
     }
 
     @Override
     public void grab(Window w) {
-        log.info("Not implemented: WLToolkit.grab()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.grab()");
+        }
     }
 
     @Override
     public void ungrab(Window w) {
-        log.info("Not implemented: WLToolkit.ungrab()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.ungrab()");
+        }
     }
     /**
      * Returns if the java.awt.Desktop class is supported on the current
@@ -823,26 +897,34 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      * Check if the running desktop is Gnome by checking the window manager.
      */
     @Override
-    public boolean isDesktopSupported(){
-        log.info("Not implemented: WLToolkit.isDesktopSupported()");
+    public boolean isDesktopSupported() {
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.isDesktopSupported()");
+        }
         return false;
     }
 
     @Override
-    public DesktopPeer createDesktopPeer(Desktop target){
-        log.info("Not implemented: WLToolkit.createDesktopPeer()");
+    public DesktopPeer createDesktopPeer(Desktop target) {
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createDesktopPeer()");
+        }
         return null;
     }
 
     @Override
-    public boolean isTaskbarSupported(){
-        log.info("Not implemented: WLToolkit.isTaskbarSupported()");
+    public boolean isTaskbarSupported() {
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.isTaskbarSupported()");
+        }
         return false;
     }
 
     @Override
-    public TaskbarPeer createTaskbarPeer(Taskbar target){
-        log.info("Not implemented: WLToolkit.createTaskbarPeer()");
+    public TaskbarPeer createTaskbarPeer(Taskbar target) {
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLToolkit.createTaskbarPeer()");
+        }
         return null;
     }
 
