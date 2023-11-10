@@ -178,7 +178,9 @@ public class WLDataTransferer extends DataTransferer {
     @Override
     protected String[] dragQueryFile(byte[] bytes) {
         // TODO
-        log.info("Unimplemented");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Unimplemented");
+        }
         return new String[0];
     }
 
