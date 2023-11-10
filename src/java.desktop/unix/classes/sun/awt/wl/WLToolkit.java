@@ -135,9 +135,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     private static final int MOUSE_BUTTONS_COUNT = 3;
     private static final int AWT_MULTICLICK_DEFAULT_TIME_MS = 500;
 
-    private static final int CAPS_LOCK_MASK = 0x01;
-    private static final int NUM_LOCK_MASK = 0x02;
-
     private static boolean initialized = false;
     private static Thread toolkitThread;
     private final WLClipboard clipboard;
@@ -147,6 +144,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     static {
         if (!GraphicsEnvironment.isHeadless()) {
+            keyboard = new WLKeyboard();
             initIDs();
         }
         initialized = true;
@@ -273,114 +271,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         return AWT_MULTICLICK_DEFAULT_TIME_MS;
     }
 
-
-    /**
-     * The rate of repeating keys in characters per second
-     * Set from the native code  by the 'repeat_info' Wayland event (see wayland.xml).
-     */
-    static volatile int keyRepeatRate = 33;
-
-    /**
-     * Delay in milliseconds since key down until repeating starts.
-     * Set from the native code by the 'repeat_info' Wayland event (see wayland.xml).
-     */
-    static volatile int keyRepeatDelay = 500;
-
-    static int getKeyRepeatRate() {
-        return keyRepeatRate;
-    }
-
-    static int getKeyRepeatDelay() {
-        return keyRepeatDelay;
-    }
-
-    private static class KeyRepeatManager {
-        private Timer keyRepeatTimer;
-        private PostKeyEventTask postKeyEventTask;
-
-        KeyRepeatManager() {
-        }
-
-        private void stopKeyRepeat() {
-            assert EventQueue.isDispatchThread();
-
-            if (postKeyEventTask != null) {
-                postKeyEventTask.cancel();
-                postKeyEventTask = null;
-            }
-        }
-
-        private void initiateDelayedKeyRepeat(long keycode,
-                                              int keyCodePoint,
-                                              WLComponentPeer peer) {
-            assert EventQueue.isDispatchThread();
-            assert postKeyEventTask == null;
-
-            if (keyRepeatTimer == null) {
-                // The following starts a dedicated daemon thread.
-                keyRepeatTimer = new Timer("WLToolkit Key Repeat", true);
-            }
-
-            postKeyEventTask = new PostKeyEventTask(keycode, keyCodePoint, peer);
-
-            assert WLToolkit.keyRepeatRate > 0;
-            assert WLToolkit.keyRepeatDelay > 0;
-
-            keyRepeatTimer.schedule(
-                    postKeyEventTask,
-                    WLToolkit.keyRepeatDelay,
-                    (long)(1000.0 / WLToolkit.keyRepeatRate));
-        }
-
-        static boolean xkbCodeRequiresRepeat(long code) {
-            return !WLKeySym.xkbCodeIsModifier(code);
-        }
-
-        void keyboardEvent(long keycode, int keyCodePoint,
-                           boolean isPressed, WLComponentPeer peer) {
-            stopKeyRepeat();
-            if (isPressed && KeyRepeatManager.xkbCodeRequiresRepeat(keycode)) {
-                initiateDelayedKeyRepeat(keycode, keyCodePoint, peer);
-            }
-        }
-
-        void windowEvent(WindowEvent event) {
-            if (event.getID() == WindowEvent.WINDOW_LOST_FOCUS) {
-                stopKeyRepeat();
-            }
-        }
-
-        private static class PostKeyEventTask extends TimerTask {
-            final long keycode;
-            final int keyCodePoint;
-            final WLComponentPeer peer;
-
-            PostKeyEventTask(long keycode,
-                             int keyCodePoint,
-                             WLComponentPeer peer) {
-                this.keycode = keycode;
-                this.keyCodePoint = keyCodePoint;
-                this.peer = peer;
-            }
-
-            @Override
-            public void run() {
-                final long timestamp = System.currentTimeMillis();
-                try {
-                    EventQueue.invokeAndWait(() -> {
-                        generateKeyEventFrom(timestamp, keycode, keyCodePoint, true, peer);
-                    });
-                } catch (InterruptedException ignored) {
-                } catch (InvocationTargetException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        }
-    }
-
-    private static final KeyRepeatManager keyRepeatManager = new KeyRepeatManager();
-
     private static WLInputState inputState = WLInputState.initialState();
+    private static WLKeyboard keyboard;
 
     private static void dispatchPointerEvent(WLPointerEvent e) {
         // Invoked from the native code
@@ -401,19 +293,15 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         }
     }
 
-    private static void dispatchKeyboardKeyEvent(long serial,
-                                                 long timestamp,
-                                                 long keycode,
-                                                 int keyCodePoint,  // UTF32 character
-                                                 boolean isPressed) {
+    private static void dispatchKeyboardKeyEvent(long timestamp,
+                                                 int id,
+                                                 int keyCode,
+                                                 int keyLocation,
+                                                 int rawCode,
+                                                 int extendedKeyCode,
+                                                 char keyChar) {
         // Invoked from the native code
         assert EventQueue.isDispatchThread();
-
-        if (logKeys.isLoggable(PlatformLogger.Level.FINE)) {
-            logKeys.fine("dispatchKeyboardKeyEvent: keycode " + keycode + ", code point 0x"
-                    + Integer.toHexString(keyCodePoint) + ", " + (isPressed ? "pressed" : "released")
-                    + ", serial " + serial + ", timestamp " + timestamp);
-        }
 
         if (timestamp == 0) {
             // Happens when a surface was focused with keys already pressed.
@@ -424,39 +312,25 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         final long surfacePtr = inputState.getSurfaceForKeyboardInput();
         final WLComponentPeer peer = componentPeerFromSurface(surfacePtr);
         if (peer != null) {
-            generateKeyEventFrom(timestamp, keycode, keyCodePoint, isPressed, peer);
-            keyRepeatManager.keyboardEvent(keycode, keyCodePoint, isPressed, peer);
-        }
-    }
+            if (extendedKeyCode >= 0x1000000) {
+                int ch = extendedKeyCode - 0x1000000;
+                int correctCode = KeyEvent.getExtendedKeyCodeForChar(ch);
+                if (extendedKeyCode == keyCode) {
+                    keyCode = correctCode;
+                }
+                extendedKeyCode = correctCode;
+            }
 
-    private static void generateKeyEventFrom(long timestamp, long keycode, int keyCodePoint,
-                                             boolean isPressed, WLComponentPeer peer) {
-        // See also XWindow.handleKeyPress()
-        final char keyChar = Character.isBmpCodePoint(keyCodePoint)
-                ? (char) keyCodePoint
-                : KeyEvent.CHAR_UNDEFINED;
-        final WLKeySym.KeyDescriptor keyDescriptor = WLKeySym.KeyDescriptor.fromXKBCode(keycode);
-        final int jkeyExtended = keyDescriptor.javaKeyCode() == KeyEvent.VK_UNDEFINED
-                        ? primaryUnicodeToJavaKeycode(keyCodePoint)
-                        : keyDescriptor.javaKeyCode();
-        postKeyEvent(peer.getTarget(),
-                isPressed ? KeyEvent.KEY_PRESSED : KeyEvent.KEY_RELEASED,
-                timestamp,
-                keyDescriptor.javaKeyCode(),
-                keyChar,
-                keyDescriptor.keyLocation(),
-                keycode,
-                jkeyExtended);
-
-        if (isPressed && keyChar != 0 && keyChar != KeyEvent.CHAR_UNDEFINED) {
-            postKeyEvent(peer.getTarget(),
-                    KeyEvent.KEY_TYPED,
+            postKeyEvent(
+                    peer.getTarget(),
+                    id,
                     timestamp,
-                    KeyEvent.VK_UNDEFINED,
+                    keyCode,
                     keyChar,
-                    KeyEvent.KEY_LOCATION_UNKNOWN,
-                    keycode,
-                    KeyEvent.VK_UNDEFINED);
+                    keyLocation,
+                    rawCode,
+                    extendedKeyCode
+            );
         }
     }
 
@@ -484,32 +358,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         postEvent(keyEvent);
     }
 
-    private static void dispatchKeyboardModifiersEvent(long serial,
-                                                       boolean isShiftActive,
-                                                       boolean isAltActive,
-                                                       boolean isCtrlActive,
-                                                       boolean isMetaActive,
-                                                       boolean isCapsActive,
-                                                       boolean isNumActive) {
-        // Invoked from the native code
+    private static void dispatchKeyboardModifiersEvent(long serial) {
         assert EventQueue.isDispatchThread();
-
-        final int newModifiers =
-                  (isShiftActive ? InputEvent.SHIFT_DOWN_MASK : 0)
-                | (isAltActive   ? InputEvent.ALT_DOWN_MASK   : 0)
-                | (isCtrlActive  ? InputEvent.CTRL_DOWN_MASK  : 0)
-                | (isMetaActive  ? InputEvent.META_DOWN_MASK  : 0);
-
-        final int newLockingKeyState =
-                  (isCapsActive ? CAPS_LOCK_MASK : 0)
-                | (isNumActive ? NUM_LOCK_MASK : 0);
-
-        if (logKeys.isLoggable(PlatformLogger.Level.FINE)) {
-            logKeys.fine("dispatchKeyboardModifiersEvent: new modifiers 0x"
-                    + Integer.toHexString(newModifiers));
-        }
-
-        inputState = inputState.updatedFromKeyboardModifiersEvent(serial, newModifiers, newLockingKeyState);
+        inputState = inputState.updatedFromKeyboardModifiersEvent(serial, keyboard.getModifiers());
     }
 
     private static void dispatchKeyboardEnterEvent(long serial, long surfacePtr) {
@@ -540,13 +391,14 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                     + Long.toHexString(surfacePtr));
         }
 
+        keyboard.onLostFocus();
+
         final WLInputState newInputState = inputState.updatedFromKeyboardLeaveEvent(serial, surfacePtr);
         final WLComponentPeer peer = componentPeerFromSurface(surfacePtr);
         if (peer != null && peer.getTarget() instanceof Window window) {
             final WindowEvent winLostFocusEvent = new WindowEvent(window, WindowEvent.WINDOW_LOST_FOCUS);
             WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(null);
             WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusOwner(null);
-            keyRepeatManager.windowEvent(winLostFocusEvent);
             postEvent(winLostFocusEvent);
         }
         inputState = newInputState;
@@ -804,8 +656,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     @Override
     public boolean getLockingKeyState(int key) {
         return switch (key) {
-            case KeyEvent.VK_CAPS_LOCK -> (inputState.lockingKeyState() & CAPS_LOCK_MASK) != 0;
-            case KeyEvent.VK_NUM_LOCK -> (inputState.lockingKeyState() & NUM_LOCK_MASK) != 0;
+            case KeyEvent.VK_CAPS_LOCK -> keyboard.isCapsLockPressed();
+            case KeyEvent.VK_NUM_LOCK -> keyboard.isNumLockPressed();
             case KeyEvent.VK_SCROLL_LOCK, KeyEvent.VK_KANA_LOCK ->
                     throw new UnsupportedOperationException("getting locking key state is not supported for this key");
             default -> throw new IllegalArgumentException("invalid key for Toolkit.getLockingKeyState");
@@ -950,7 +802,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      */
     @Override
     protected boolean syncNativeQueue(long timeout) {
-        log.info("Not implemented: WLToolkit.syncNativeQueue()");
+//        log.info("Not implemented: WLToolkit.syncNativeQueue()");
         return false;
     }
 
