@@ -24,6 +24,7 @@
 
 #include <weston/weston.h>
 #include <libweston/weston-log.h>
+#include <xkbcommon/xkbcommon.h>
 
 #include <pixman.h>
 #include <assert.h>
@@ -74,10 +75,12 @@ notify_motion_absolute(struct weston_seat *seat, const struct timespec *time,
 void
 notify_pointer_frame(struct weston_seat *seat);
 
+int
+weston_seat_update_keymap(struct weston_seat *seat, struct xkb_keymap *keymap);
 
-static struct weston_output*
-get_output_for_point(struct wakefield* wakefield, int32_t x, int32_t y)
-{
+
+static struct weston_output *
+get_output_for_point(struct wakefield *wakefield, int32_t x, int32_t y) {
     struct weston_output *o;
     wl_list_for_each(o, &wakefield->compositor->output_list, link) {
         if (o->destroying)
@@ -95,8 +98,7 @@ static void
 wakefield_get_pixel_color(struct wl_client *client,
                           struct wl_resource *resource,
                           int32_t x,
-                          int32_t y)
-{
+                          int32_t y) {
     struct wakefield *wakefield = wl_resource_get_user_data(resource);
     struct weston_compositor *compositor = wakefield->compositor;
 
@@ -121,7 +123,7 @@ wakefield_get_pixel_color(struct wl_client *client,
         wakefield_send_pixel_color(resource, x, y, 0, WAKEFIELD_ERROR_INVALID_COORDINATES);
         return;
     }
-    
+
     const int output_x = x - output->x;
     const int output_y = y - output->y;
     weston_log_scope_printf(wakefield->log,
@@ -154,8 +156,7 @@ wakefield_get_pixel_color(struct wl_client *client,
 static void
 wakefield_get_surface_location(struct wl_client *client,
                                struct wl_resource *resource,
-                               struct wl_resource *surface_resource)
-{
+                               struct wl_resource *surface_resource) {
     // See also weston-test.c`move_surface() and the corresponding protocol
 
     struct wakefield *wakefield = wl_resource_get_user_data(resource);
@@ -172,8 +173,8 @@ wakefield_get_surface_location(struct wl_client *client,
     float fx;
     float fy;
     weston_view_to_global_float(view, 0, 0, &fx, &fy);
-    const int32_t x = (int32_t)fx;
-    const int32_t y = (int32_t)fy;
+    const int32_t x = (int32_t) fx;
+    const int32_t y = (int32_t) fy;
     weston_log_scope_printf(wakefield->log, "WAKEFIELD: get_location: %d, %d\n", x, y);
 
     wakefield_send_surface_location(resource, surface_resource, x, y,
@@ -185,8 +186,7 @@ wakefield_move_surface(struct wl_client *client,
                        struct wl_resource *resource,
                        struct wl_resource *surface_resource,
                        int32_t x,
-                       int32_t y)
-{
+                       int32_t y) {
     struct wakefield *wakefield = wl_resource_get_user_data(resource);
     struct weston_surface *surface = wl_resource_get_user_data(surface_resource);
     struct weston_view *view = container_of(surface->views.next, struct weston_view, surface_link);
@@ -196,15 +196,14 @@ wakefield_move_surface(struct wl_client *client,
         return;
     }
 
-    weston_view_set_position(view, (float)x, (float)y);
+    weston_view_set_position(view, (float) x, (float) y);
     weston_view_update_transform(view);
 
     weston_log_scope_printf(wakefield->log, "WAKEFIELD: move_surface to (%d, %d)\n", x, y);
 }
 
 static pixman_format_code_t
-wl_shm_format_to_pixman(uint32_t wl_shm_format)
-{
+wl_shm_format_to_pixman(uint32_t wl_shm_format) {
     pixman_format_code_t rc;
 
     switch (wl_shm_format) {
@@ -225,13 +224,12 @@ wl_shm_format_to_pixman(uint32_t wl_shm_format)
  * Returns the number of pixels in the given non-empty region.
  */
 static uint64_t
-size_in_pixels(pixman_region32_t *region)
-{
-    const pixman_box32_t * const e = pixman_region32_extents(region);
+size_in_pixels(pixman_region32_t *region) {
+    const pixman_box32_t *const e = pixman_region32_extents(region);
     assert (e->x2 >= e->x1);
     assert (e->y2 >= e->y1);
 
-    return ((uint64_t)(e->x2 - e->x1))*(e->y2 - e->y1);
+    return ((uint64_t) (e->x2 - e->x1)) * (e->y2 - e->y1);
 }
 
 /**
@@ -242,8 +240,7 @@ size_in_pixels(pixman_region32_t *region)
  * @return largest area size in pixels (could be zero).
  */
 static uint64_t
-get_largest_area_in_one_output(struct weston_compositor *compositor, pixman_region32_t *region, bool *fits_entirely)
-{
+get_largest_area_in_one_output(struct weston_compositor *compositor, pixman_region32_t *region, bool *fits_entirely) {
     uint64_t area = 0; // in pixels
     *fits_entirely = false;
 
@@ -277,11 +274,10 @@ get_largest_area_in_one_output(struct weston_compositor *compositor, pixman_regi
  * Sets every pixel in the given buffer to 0.
  */
 static void
-clear_buffer(struct wl_shm_buffer *buffer)
-{
-    const int32_t  height           = wl_shm_buffer_get_height(buffer);
-    const size_t   stride           = wl_shm_buffer_get_stride(buffer);
-    const size_t   buffer_byte_size = height*stride;
+clear_buffer(struct wl_shm_buffer *buffer) {
+    const int32_t height = wl_shm_buffer_get_height(buffer);
+    const size_t stride = wl_shm_buffer_get_stride(buffer);
+    const size_t buffer_byte_size = height * stride;
 
     wl_shm_buffer_begin_access(buffer);
     {
@@ -307,8 +303,7 @@ clear_buffer(struct wl_shm_buffer *buffer)
 static void
 copy_pixels_to_shm_buffer(struct wl_shm_buffer *buffer, uint32_t *data,
                           int32_t target_x, int32_t target_y,
-                          int32_t width, int32_t height)
-{
+                          int32_t width, int32_t height) {
     assert (target_x >= 0 && target_y >= 0);
     assert (data);
 
@@ -316,12 +311,12 @@ copy_pixels_to_shm_buffer(struct wl_shm_buffer *buffer, uint32_t *data,
 
     wl_shm_buffer_begin_access(buffer);
     {
-        uint32_t * const buffer_data = wl_shm_buffer_get_data(buffer);
+        uint32_t *const buffer_data = wl_shm_buffer_get_data(buffer);
         assert (buffer_data);
 
         for (int32_t y = 0; y < height; y++) {
-            const uint32_t * const src_line = &data[y*width];
-            uint32_t * const       dst_line = &buffer_data[(target_y + y)*buffer_width];
+            const uint32_t *const src_line = &data[y * width];
+            uint32_t *const dst_line = &buffer_data[(target_y + y) * buffer_width];
             for (int32_t x = 0; x < width; x++) {
                 dst_line[target_x + x] = src_line[x];
             }
@@ -336,8 +331,7 @@ copy_pixels_to_shm_buffer(struct wl_shm_buffer *buffer, uint32_t *data,
  */
 static bool
 check_buffer_format_supported(struct wakefield *wakefield, struct wl_resource *resource,
-                              struct wl_resource *buffer_resource, uint32_t buffer_format)
-{
+                              struct wl_resource *buffer_resource, uint32_t buffer_format) {
     if (buffer_format != WL_SHM_FORMAT_ARGB8888
         && buffer_format != WL_SHM_FORMAT_XRGB8888) {
         weston_log_scope_printf(wakefield->log,
@@ -357,8 +351,7 @@ check_buffer_format_supported(struct wakefield *wakefield, struct wl_resource *r
  */
 static bool
 check_buffer_type_supported(struct wakefield *wakefield, struct wl_resource *resource,
-                            struct wl_resource *buffer_resource)
-{
+                            struct wl_resource *buffer_resource) {
     struct wl_shm_buffer *buffer = wl_shm_buffer_get(buffer_resource);
 
     if (!buffer) {
@@ -376,8 +369,7 @@ check_buffer_type_supported(struct wakefield *wakefield, struct wl_resource *res
  */
 static bool
 capture_is_empty(struct wakefield *wakefield, struct wl_resource *resource,
-                    struct wl_resource *buffer_resource, uint64_t largest_capture_area)
-{
+                 struct wl_resource *buffer_resource, uint64_t largest_capture_area) {
     if (largest_capture_area == 0) {
         // All outputs might've just disappeared
         weston_log_scope_printf(wakefield->log,
@@ -394,8 +386,7 @@ wakefield_capture_create(struct wl_client *client,
                          struct wl_resource *resource,
                          struct wl_resource *buffer_resource,
                          int32_t x,
-                         int32_t y)
-{
+                         int32_t y) {
     struct wakefield *wakefield = wl_resource_get_user_data(resource);
 
     if (!check_buffer_type_supported(wakefield, resource, buffer_resource)) {
@@ -411,7 +402,7 @@ wakefield_capture_create(struct wl_client *client,
 
     clear_buffer(buffer); // in case some outputs disappear mid-flight or a part of the capture is out of screen
 
-    const int32_t width  = wl_shm_buffer_get_width(buffer);
+    const int32_t width = wl_shm_buffer_get_width(buffer);
     const int32_t height = wl_shm_buffer_get_height(buffer);
 
     pixman_region32_t region_global;    // capture region in global coordinates
@@ -421,7 +412,8 @@ wakefield_capture_create(struct wl_client *client,
     pixman_region32_init(&region_in_output);
 
     bool fits_entirely;
-    const uint64_t largest_capture_area = get_largest_area_in_one_output(wakefield->compositor, &region_global, &fits_entirely);
+    const uint64_t largest_capture_area = get_largest_area_in_one_output(wakefield->compositor, &region_global,
+                                                                         &fits_entirely);
     if (capture_is_empty(wakefield, resource, buffer_resource, largest_capture_area)) {
         return;
     }
@@ -448,13 +440,14 @@ wakefield_capture_create(struct wl_client *client,
 
         pixman_region32_intersect(&region_in_output, &region_global, &output->region);
         if (pixman_region32_not_empty(&region_in_output)) {
-            const pixman_box32_t * const e = pixman_region32_extents(&region_in_output);
+            const pixman_box32_t *const e = pixman_region32_extents(&region_in_output);
 
             const int32_t region_x_in_global = e->x1;
             const int32_t region_y_in_global = e->y1;
-            const int32_t width_in_output    = e->x2 - e->x1;
-            const int32_t height_in_output   = e->y2 - e->y1;
-            weston_log_scope_printf(wakefield->log, "WAKEFIELD: output '%s' has a chunk of the image at (%d, %d) sized (%d, %d)\n",
+            const int32_t width_in_output = e->x2 - e->x1;
+            const int32_t height_in_output = e->y2 - e->y1;
+            weston_log_scope_printf(wakefield->log,
+                                    "WAKEFIELD: output '%s' has a chunk of the image at (%d, %d) sized (%d, %d)\n",
                                     output->name,
                                     e->x1, e->y1,
                                     width_in_output, height_in_output);
@@ -465,7 +458,7 @@ wakefield_capture_create(struct wl_client *client,
             // Now convert region_in_output from global to output-local coordinates.
             pixman_region32_translate(&region_in_output, -output->x, -output->y);
 
-            const pixman_box32_t * const e_in_output = pixman_region32_extents(&region_in_output);
+            const pixman_box32_t *const e_in_output = pixman_region32_extents(&region_in_output);
             const int32_t x_in_output = e_in_output->x1;
             const int32_t y_in_output = e_in_output->y1;
 
@@ -517,8 +510,7 @@ static void
 wakefield_send_key(struct wl_client *client,
                    struct wl_resource *resource,
                    uint32_t key,
-                   uint32_t state)
-{
+                   uint32_t state) {
     struct wakefield *wakefield = wl_resource_get_user_data(resource);
     struct weston_compositor *compositor = wakefield->compositor;
 
@@ -534,10 +526,9 @@ wakefield_send_key(struct wl_client *client,
     }
 }
 
-static void wakefield_send_cursor(struct wl_client* client,
-                                  struct wl_resource* resource,
-                                  int32_t x, int32_t y)
-{
+static void wakefield_send_cursor(struct wl_client *client,
+                                  struct wl_resource *resource,
+                                  int32_t x, int32_t y) {
     struct wakefield *wakefield = wl_resource_get_user_data(resource);
     struct weston_compositor *compositor = wakefield->compositor;
 
@@ -546,16 +537,15 @@ static void wakefield_send_cursor(struct wl_client* client,
 
     struct weston_seat *seat;
     wl_list_for_each(seat, &compositor->seat_list, link) {
-        notify_motion_absolute(seat, &time, (double)x, (double)y);
+        notify_motion_absolute(seat, &time, (double) x, (double) y);
         notify_pointer_frame(seat);
     }
 }
 
-static void wakefield_send_button(struct wl_client* client,
-                                  struct wl_resource* resource,
+static void wakefield_send_button(struct wl_client *client,
+                                  struct wl_resource *resource,
                                   uint32_t button,
-                                  uint32_t state)
-{
+                                  uint32_t state) {
     struct wakefield *wakefield = wl_resource_get_user_data(resource);
     struct weston_compositor *compositor = wakefield->compositor;
 
@@ -564,16 +554,15 @@ static void wakefield_send_button(struct wl_client* client,
 
     struct weston_seat *seat;
     wl_list_for_each(seat, &compositor->seat_list, link) {
-        notify_button(seat, &time, (int32_t)button,
+        notify_button(seat, &time, (int32_t) button,
                       state ? WL_POINTER_BUTTON_STATE_PRESSED : WL_POINTER_BUTTON_STATE_RELEASED);
         notify_pointer_frame(seat);
     }
 }
 
-static void wakefield_send_wheel(struct wl_client* client,
-                                 struct wl_resource* resource,
-                                 int32_t amount)
-{
+static void wakefield_send_wheel(struct wl_client *client,
+                                 struct wl_resource *resource,
+                                 int32_t amount) {
     struct wakefield *wakefield = wl_resource_get_user_data(resource);
     struct weston_compositor *compositor = wakefield->compositor;
 
@@ -594,6 +583,40 @@ static void wakefield_send_wheel(struct wl_client* client,
     }
 }
 
+static void
+wakefield_set_xkb_rule_names(struct wl_client *client,
+                             struct wl_resource *resource,
+                             const char *rules,
+                             const char *model,
+                             const char *layout,
+                             const char *variant,
+                             const char *options)
+{
+    struct wakefield *wakefield = wl_resource_get_user_data(resource);
+    struct weston_compositor *compositor = wakefield->compositor;
+
+    struct xkb_rule_names rule_names = {
+        .rules = rules,
+        .model = model,
+        .layout = layout,
+        .variant = variant,
+        .options = options
+    };
+
+    weston_compositor_set_xkb_rule_names(compositor, &rule_names);
+
+    struct xkb_keymap* keymap = xkb_keymap_new_from_names(compositor->xkb_context, &compositor->xkb_names, XKB_KEYMAP_COMPILE_NO_FLAGS);
+    if (!keymap) {
+        weston_log_scope_printf(wakefield->log, "WAKEFIELD: failed to create xkb_keymap\n");
+        return;
+    }
+
+    struct weston_seat *seat;
+    wl_list_for_each(seat, &compositor->seat_list, link) {
+        weston_seat_update_keymap(seat, keymap);
+    }
+}
+
 static const struct wakefield_interface wakefield_implementation = {
         .get_surface_location = wakefield_get_surface_location,
         .move_surface = wakefield_move_surface,
@@ -603,11 +626,11 @@ static const struct wakefield_interface wakefield_implementation = {
         .send_cursor = wakefield_send_cursor,
         .send_button = wakefield_send_button,
         .send_wheel = wakefield_send_wheel,
+        .set_xkb_rule_names = wakefield_set_xkb_rule_names,
 };
 
 static void
-wakefield_bind(struct wl_client *client, void *data, uint32_t version, uint32_t id)
-{
+wakefield_bind(struct wl_client *client, void *data, uint32_t version, uint32_t id) {
     struct wakefield *wakefield = data;
 
     struct wl_resource *resource = wl_resource_create(client, &wakefield_interface, 1, id);
@@ -619,8 +642,7 @@ wakefield_bind(struct wl_client *client, void *data, uint32_t version, uint32_t 
 }
 
 static void
-wakefield_destroy(struct wl_listener *listener, void *data)
-{
+wakefield_destroy(struct wl_listener *listener, void *data) {
     struct wakefield *wakefield = container_of(listener, struct wakefield, destroy_listener);
 
     weston_log_scope_printf(wakefield->log, "WAKEFIELD: destroy\n");
@@ -632,8 +654,7 @@ wakefield_destroy(struct wl_listener *listener, void *data)
 }
 
 WL_EXPORT int
-wet_module_init(struct weston_compositor *wc, int *argc, char *argv[])
-{
+wet_module_init(struct weston_compositor *wc, int *argc, char *argv[]) {
     struct wakefield *wakefield = zalloc(sizeof(struct wakefield));
     if (wakefield == NULL)
         return -1;
