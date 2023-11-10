@@ -20,6 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.process.OutputAnalyzer;
 import java.util.List;
@@ -61,6 +62,7 @@ public class WakefieldTestDriver {
         final List<String> jvmArgs = new ArrayList<String>();
         jvmArgs.add("-Dawt.toolkit.name=WLToolkit");
         jvmArgs.add("-Xcheck:jni");
+        jvmArgs.add("--add-exports=java.desktop/sun.awt.wl=ALL-UNNAMED");
 
         int nScreens     = DEFAULT_NUMBER_OF_SCREENS;
         int screenWidth  = DEFAULT_SCREEN_WIDTH;
