@@ -28,6 +28,8 @@
 #include "xdg-shell-client-protocol.h"
 #include "xdg-activation-v1-client-protocol.h"
 #include "primary-selection-client-protocol.h"
+#include "jvm_md.h"
+#include "jni_util.h"
 
 #define CHECK_NULL_THROW_OOME_RETURN(env, x, msg, z)\
     do {                                        \
