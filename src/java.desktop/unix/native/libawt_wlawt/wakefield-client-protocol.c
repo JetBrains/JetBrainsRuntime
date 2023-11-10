@@ -46,6 +46,7 @@ static const struct wl_interface *wakefield_types[] = {
 	NULL,
 	NULL,
 	NULL,
+	NULL,
 	&wl_surface_interface,
 	NULL,
 	NULL,
@@ -63,25 +64,26 @@ static const struct wl_interface *wakefield_types[] = {
 
 static const struct wl_message wakefield_requests[] = {
 	{ "destroy", "", wakefield_types + 0 },
-	{ "move_surface", "oii", wakefield_types + 4 },
-	{ "get_surface_location", "o", wakefield_types + 7 },
+	{ "move_surface", "oii", wakefield_types + 5 },
+	{ "get_surface_location", "o", wakefield_types + 8 },
 	{ "get_pixel_color", "ii", wakefield_types + 0 },
 	{ "send_key", "uu", wakefield_types + 0 },
 	{ "send_cursor", "ii", wakefield_types + 0 },
 	{ "send_button", "uu", wakefield_types + 0 },
 	{ "send_wheel", "i", wakefield_types + 0 },
-	{ "capture_create", "oii", wakefield_types + 8 },
+	{ "set_xkb_rule_names", "sssss", wakefield_types + 0 },
+	{ "capture_create", "oii", wakefield_types + 9 },
 };
 
 static const struct wl_message wakefield_events[] = {
-	{ "surface_location", "oiiu", wakefield_types + 11 },
+	{ "surface_location", "oiiu", wakefield_types + 12 },
 	{ "pixel_color", "iiuu", wakefield_types + 0 },
-	{ "capture_ready", "ou", wakefield_types + 15 },
+	{ "capture_ready", "ou", wakefield_types + 16 },
 };
 
 WL_PRIVATE const struct wl_interface wakefield_interface = {
 	"wakefield", 1,
-	9, wakefield_requests,
+	10, wakefield_requests,
 	3, wakefield_events,
 };
 
