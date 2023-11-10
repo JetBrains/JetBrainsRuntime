@@ -365,7 +365,9 @@ public class WLComponentPeer implements ComponentPeer {
      * @see ComponentPeer
      */
     public void setEnabled(final boolean value) {
-        log.info("Not implemented: WLComponentPeer.setEnabled(boolean)");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLComponentPeer.setEnabled(boolean)");
+        }
     }
 
     @Override
@@ -423,7 +425,9 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     public void print(Graphics g) {
-        log.info("Not implemented: WLComponentPeer.print(Graphics)");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLComponentPeer.print(Graphics)");
+        }
     }
 
     private void setLocationTo(int newX, int newY) {
@@ -645,9 +649,13 @@ public class WLComponentPeer implements ComponentPeer {
             }
         } else if (e instanceof KeyEvent && !((InputEvent) e).isConsumed()) {
             // even if target is disabled.
-            log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): handleF10JavaKeyEvent");
+            if (log.isLoggable(PlatformLogger.Level.INFO)) {
+                log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): handleF10JavaKeyEvent");
+            }
         } else if (e instanceof InputMethodEvent) {
-            log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): handleJavaInputMethodEvent");
+            if (log.isLoggable(PlatformLogger.Level.INFO)) {
+                log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): handleJavaInputMethodEvent");
+            }
         }
 
         int id = e.getID();
@@ -770,7 +778,10 @@ public class WLComponentPeer implements ComponentPeer {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("Set foreground to " + c);
         }
-        log.info("Not implemented: WLComponentPeer.setForeground(Color)");
+
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLComponentPeer.setForeground(Color)");
+        }
     }
 
     @Override
@@ -905,7 +916,9 @@ public class WLComponentPeer implements ComponentPeer {
 
     @Override
     public void setZOrder(ComponentPeer above) {
-        log.info("Not implemented: WLComponentPeer.setZOrder(ComponentPeer)");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLComponentPeer.setZOrder(ComponentPeer)");
+        }
     }
 
     @Override
