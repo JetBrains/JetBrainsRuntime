@@ -200,10 +200,6 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         }
         self.nextDrawableCount++;
         id<MTLCommandBuffer> renderBuffer =  [self.ctx createCommandBuffer];
-        self.ctx.syncCount++;
-        if (@available(macOS 10.14, *)) {
-            [renderBuffer encodeWaitForEvent:self.ctx.syncEvent value:self.ctx.syncCount];
-        }
 
         id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
 
@@ -214,10 +210,6 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 toTexture:mtlDrawable.texture destinationSlice:0 destinationLevel:0
                 destinationOrigin:MTLOriginMake(0, 0, 0)];
         [blitEncoder endEncoding];
-
-        if (@available(macOS 10.14, *)) {
-            [commandBuf encodeSignalEvent:self.ctx.syncEvent value:self.ctx.syncCount];
-        }
 
         if (isDisplaySyncEnabled()) {
             [commandBuf presentDrawable:mtlDrawable];
