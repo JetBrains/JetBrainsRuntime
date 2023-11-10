@@ -167,4 +167,6 @@ public class WLRobotPeer implements RobotPeer {
     private static native void    mouseMoveImpl(int x, int y);
     private static native void    sendMouseButtonImpl(int buttons, boolean pressed);
     private static native void    mouseWheelImpl(int amount);
+
+    public static native void setXKBLayout(String layout, String variant, String options);
 }
