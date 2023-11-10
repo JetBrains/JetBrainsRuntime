@@ -50,6 +50,7 @@ gtest/MetaspaceGtests.java#balanced-no-ccs initial_run generic-all
 gtest/MetaspaceGtests.java#reclaim-aggressive-ndebug initial_run generic-all
 gtest/LargePageGtests.java#use-large-pages initial_run linux-all,windows-all
 
+gtest/NativeHeapTrimmerGtest.java JBR-5718 generic-all
 gtest/NMTGtests.java#nmt-detail JBR-5718 generic-all
 gtest/NMTGtests.java#nmt-off JBR-5718 generic-all
 gtest/NMTGtests.java#nmt-summary JBR-5718 generic-all
@@ -128,6 +129,7 @@ runtime/cds/appcds/methodHandles/MethodHandlesGeneralTest.java initial_run gener
 runtime/ReservedStack/ReservedStackTestCompiler.java initial_run windows-aarch64
 runtime/cds/appcds/dynamicArchive/CDSStreamTestDriver.java initial_run generic-all
 runtime/ErrorHandling/CreateCoredumpOnCrash.java initial_run windows-aarch64
+runtime/ErrorHandling/MachCodeFramesInErrorFile.java JBR-6289 windows-aarch64
 runtime/ReservedStack/ReservedStackTest.java initial_run windows-aarch64
 runtime/cds/appcds/methodHandles/MethodHandlesPermuteArgumentsTest.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesAsCollectorTest.java initial_run generic-all
@@ -137,6 +139,8 @@ runtime/cds/appcds/methodHandles/MethodHandlesSpreadArgumentsTest.java initial_r
 #############################################################################
 
 # :hotspot_serviceability
+
+serviceability/dcmd/vm/TrimLibcHeapTest.java 8312625 linux-all
 
 serviceability/sa/sadebugd/DebugdConnectTest.java 8239062 macosx-x64
 serviceability/sa/TestRevPtrsForInvokeDynamic.java 8241235 generic-all
