@@ -49,7 +49,9 @@ public class WLButtonPeer extends WLComponentPeer implements ButtonPeer {
 
     @Override
     public void setLabel(String label) {
-        log.info("Not implemented: WLButtonPeer.setLabel(String)");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLButtonPeer.setLabel(String)");
+        }
     }
 
     public void setBackground(Color c) {
@@ -58,22 +60,30 @@ public class WLButtonPeer extends WLComponentPeer implements ButtonPeer {
 
     public void focusGained(FocusEvent e) {
         super.focusGained(e);
-        log.info("Not implemented: WLButtonPeer.focusGained(FocusEvent)");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLButtonPeer.focusGained(FocusEvent)");
+        }
     }
 
     public void focusLost(FocusEvent e) {
         super.focusLost(e);
-        log.info("Not implemented: WLButtonPeer.focusLost(FocusEvent)");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLButtonPeer.focusLost(FocusEvent)");
+        }
     }
 
     @Override
     void paintPeer(Graphics g) {
         super.paintPeer(g);
-        log.info("Not implemented: WLButtonPeer.paintPeer(Graphics)");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLButtonPeer.paintPeer(Graphics)");
+        }
     }
 
     public Dimension getMinimumSize() {
-        log.info("Not implemented: WLButtonPeer.getMinimumSize()");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Not implemented: WLButtonPeer.getMinimumSize()");
+        }
         return new Dimension(0, 0);
     }
 }
