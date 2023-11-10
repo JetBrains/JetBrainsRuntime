@@ -115,6 +115,18 @@
             <arg name="amount" type="int" />
         </request>
 
+        <request name="set_xkb_rule_names">
+            <description summary="facilitates switching keyboard layouts">
+                This requests the compositor to load the specified XKB layout and use it in all
+                further keyboard handling.
+            </description>
+            <arg name="rules" type="string" />
+            <arg name="model" type="string" />
+            <arg name="layout" type="string" />
+            <arg name="variant" type="string" />
+            <arg name="options" type="string" />
+        </request>
+
         <enum name="error">
             <entry name="no_error" value="0" summary="error code 0 reserved for the absence of error"/>
             <entry name="invalid_coordinates" value="1" summary="supplied absolute coordinates point
