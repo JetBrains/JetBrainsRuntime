@@ -146,7 +146,8 @@ wakefield_add_listener(struct wakefield *wakefield,
 #define WAKEFIELD_SEND_CURSOR 5
 #define WAKEFIELD_SEND_BUTTON 6
 #define WAKEFIELD_SEND_WHEEL 7
-#define WAKEFIELD_CAPTURE_CREATE 8
+#define WAKEFIELD_SET_XKB_RULE_NAMES 8
+#define WAKEFIELD_CAPTURE_CREATE 9
 
 /**
  * @ingroup iface_wakefield
@@ -193,6 +194,10 @@ wakefield_add_listener(struct wakefield *wakefield,
  * @ingroup iface_wakefield
  */
 #define WAKEFIELD_SEND_WHEEL_SINCE_VERSION 1
+/**
+ * @ingroup iface_wakefield
+ */
+#define WAKEFIELD_SET_XKB_RULE_NAMES_SINCE_VERSION 1
 /**
  * @ingroup iface_wakefield
  */
@@ -315,6 +320,19 @@ wakefield_send_wheel(struct wakefield *wakefield, int32_t amount)
 {
 	wl_proxy_marshal((struct wl_proxy *) wakefield,
 			 WAKEFIELD_SEND_WHEEL, amount);
+}
+
+/**
+ * @ingroup iface_wakefield
+ *
+ * This requests the compositor to load the specified XKB layout and use it in all
+ * further keyboard handling.
+ */
+static inline void
+wakefield_set_xkb_rule_names(struct wakefield *wakefield, const char *rules, const char *model, const char *layout, const char *variant, const char *options)
+{
+	wl_proxy_marshal((struct wl_proxy *) wakefield,
+			 WAKEFIELD_SET_XKB_RULE_NAMES, rules, model, layout, variant, options);
 }
 
 /**
