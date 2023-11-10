@@ -1,4 +1,6 @@
+java/awt/Choice/ChoiceGeneratesItemEvents.java JBR-6284 linux-all
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java 8202931,JBR-5398 macosx-all,linux-all,windows-all
+java/awt/Choice/ChoiceStaysOpenedOnTAB.java JBR-6284 linux-all
 java/awt/Debug/X11Trace.java JBR-5442 linux-all
 java/awt/EmbeddedFrame/GraphicsConfigTest/GraphicsConfigTest.java 8305515
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java 8311535 windows-all
@@ -16,6 +18,9 @@ java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5
 java/awt/Frame/FramesGC/FramesGC.java JBR-6057 windows-all,macosx-all
 java/awt/Robot/NonEmptyErrorStream.java JBR-5442 linux-all
 java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390 macosx-all,linux-all
+java/awt/Robot/NonEmptyErrorStream.java JBR-5442 linux-all
+java/awt/Robot/RobotMoveMultiscreen.java JBR-5442 linux-all
+java/awt/TextArea/TextAreaEditing/TextAreaEditing.java JBR-6282 linux-all
 java/awt/Window/SlowMotion/SlowMotion.java JBR-5442 linux-all
 java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5442 linux-all
 
@@ -75,7 +80,7 @@ java/awt/Mixing/AWT_Mixing/JToggleButtonInGlassPaneOverlapping.java 8158801,JBR-
 java/awt/Mixing/AWT_Mixing/JToggleButtonOverlapping.java 8158801,JBR-5510 windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/ViewportOverlapping.java 8253184,JBR-5510 windows-all,linux-all
 java/awt/Modal/ModalDialogOrderingTest/ModalDialogOrderingTest.java 8066259,8253184,JBR-5510 macosx-all,windows-all,linux-all
-java/awt/Modal/MultipleDialogs/MultipleDialogs4Test.java 8198665,8253184,JBR-5510 macosx-all,windows-all,linux-5.18.2-arch1-1
+java/awt/Modal/MultipleDialogs/MultipleDialogs4Test.java 8198665,8253184,JBR-5510,JBR-6284 macosx-all,windows-all,linux-all
 java/awt/Modal/BlockedMouseInputTest.java nobug linux-all
 java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java 8253184 windows-all,linux-all
 java/awt/MouseInfo/MultiscreenPointerInfo.java nobug linux-all
@@ -83,11 +88,12 @@ java/awt/Multiscreen/LocationRelativeToTest/LocationRelativeToTest.java 8253184 
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java nobug linux-all
 java/awt/Paint/PaintNativeOnUpdate.java 8253184,JBR-5510 windows-all,linux-all
 java/awt/PopupMenu/PopupMenuLocation.java 8238720,8288415 windows-all,macosx-all,linux-all
-java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8277816,8253184,JBR-5510 macosx-aarch64,windows-all,linux-linux-all
+java/awt/PopupMenu/PopupMenuStayOpen.java JBR-6286 linux-all
+java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8277816,8253184,JBR-5510 macosx-aarch64,windows-all,linux-all
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8253184 windows-all,linux-all
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java  8277816,8253184 macosx-aarch64,windows-all,linux-all
-java/awt/Window/8159168/SetShapeTest.java 8253184,JBR-5510 windows-all,linux-linux-all
-java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-5359,JBR-5510 windows-all,linux-5.18.2-arch1-1
+java/awt/Window/8159168/SetShapeTest.java 8253184,JBR-5510 windows-all,linux-all
+java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-5359,JBR-5510 windows-all,linux-all
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java 8222323,JBR-5510 windows-all,linux-all
 java/awt/Window/MultiWindowApp/MultiWindowAppTest.java 8253184,JBR-5510 windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShape.java 8253184,JBR-5510 windows-all,linux-all
@@ -97,7 +103,7 @@ javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java nobug linux
 javax/swing/JButton/8151303/PressedIconTest.java 8266246,JBR-5210,JBR-5510 macosx-aarch64,windows-all,linux-all
 javax/swing/JComponent/7154030/bug7154030.java 8297454,JBR-5359,JBR-5510 macosx-all,windows-aarch64,linux-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184,JBR-5510 windows-all,linux-all
-javax/swing/JEditorPane/8195095/ImageViewTest.java 8253184,JBR-5510 windows-all,linux-all
+javax/swing/JEditorPane/8195095/ImageViewTest.java 8253184,JBR-5510,JBR-6283 windows-all,linux-all,macos-all
 javax/swing/JEditorPane/TestBrowserBGColor.java JBR-5359,JBR-5510 windows-aarch64,linux-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java 8274106,JBR-5359,JBR-5510 macosx-aarch64,windows-all,linux-all
 javax/swing/JInternalFrame/5066752/bug5066752.java 8253184,JBR-5510 windows-all,linux-all
