@@ -166,8 +166,9 @@ final class WClipboard extends SunClipboard {
         // ====================== JBR-5980 Pasting from clipboard not working reliably in Windows ======================
         boolean flagInitializer = false; // let's fall back in the default behavior
         try {
+            // is "false" by default due to JBR-6267
             flagInitializer =
-                "true".equalsIgnoreCase(System.getProperty("awt.windows.clipboard.cache.disabled", "true"));
+                "true".equalsIgnoreCase(System.getProperty("awt.windows.clipboard.cache.disabled", "false"));
         } catch (Throwable ignored) {
         }
         isContentsCacheDisabled = flagInitializer;
