@@ -329,12 +329,16 @@ public final class WLClipboard extends SunClipboard {
     @Override
     protected void registerClipboardViewerChecked() {
         // TODO: is there any need to do more here?
-        log.info("Unimplemented");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Unimplemented");
+        }
     }
 
     @Override
     protected void unregisterClipboardViewerChecked() {
-        log.info("Unimplemented");
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Unimplemented");
+        }
     }
 
     private void notifyOfNewFormats(long[] formats) {
