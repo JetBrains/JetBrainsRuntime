@@ -140,8 +140,7 @@ MTLTransform* tempTransform = nil;
             device, pipelineStateStorage,
             commandQueue, blitCommandQueue, vertexBuffer,
             texturePool, paint=_paint, encoderManager=_encoderManager,
-            samplerManager=_samplerManager, stencilManager=_stencilManager,
-            syncEvent, syncCount;
+            samplerManager=_samplerManager, stencilManager=_stencilManager;
 
 extern void initSamplers(id<MTLDevice> device);
 
@@ -191,10 +190,6 @@ extern void initSamplers(id<MTLDevice> device);
             CVDisplayLinkCreateWithCGDisplay(displayID, &_displayLink);
             CVDisplayLinkSetOutputCallback(_displayLink, &mtlDisplayLinkCallback, (__bridge void *) self);
         }
-        if (@available(macOS 10.14, *)) {
-            syncEvent = [device newEvent];
-        }
-        self.syncCount = 0;
         _glyphCacheLCD = [[MTLGlyphCache alloc] initWithContext:self];
         _glyphCacheAA = [[MTLGlyphCache alloc] initWithContext:self];
     }
@@ -267,10 +262,6 @@ extern void initSamplers(id<MTLDevice> device);
         }
         CVDisplayLinkRelease(_displayLink);
         _displayLink = NULL;
-    }
-
-    if (@available(macOS 10.14, *)) {
-        [syncEvent release];
     }
 
     [super dealloc];
