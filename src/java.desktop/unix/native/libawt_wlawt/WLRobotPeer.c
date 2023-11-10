@@ -525,6 +525,28 @@ Java_sun_awt_wl_WLRobotPeer_mouseWheelImpl
 #endif
 }
 
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLRobotPeer_setXKBLayout(JNIEnv *env, jclass cls, jstring jLayout, jstring jVariant, jstring jOptions)
+{
+#ifdef WAKEFIELD_ROBOT
+    if (!wakefield) {
+        JNU_ThrowByName(env, "java/awt/AWTError", "no 'wakefield' protocol extension");
+        return;
+    }
+
+    const char* layout = (*env)->GetStringUTFChars(env, jLayout, NULL);
+    const char* variant = (*env)->GetStringUTFChars(env, jVariant, NULL);
+    const char* options = (*env)->GetStringUTFChars(env, jOptions, NULL);
+
+    wakefield_set_xkb_rule_names(wakefield, "evdev", "pc105", layout, variant, options);
+
+    (*env)->ReleaseStringUTFChars(env, jOptions, options);
+    (*env)->ReleaseStringUTFChars(env, jVariant, variant);
+    (*env)->ReleaseStringUTFChars(env, jLayout, layout);
+#endif
+}
+
 #ifdef WAKEFIELD_ROBOT
 
 static void wakefield_surface_location(void *data, struct wakefield *wakefield,
