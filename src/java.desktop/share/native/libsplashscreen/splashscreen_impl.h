@@ -29,6 +29,7 @@
 #if !defined(WITH_WIN32)
 #include "splashscreen_config_common.h"
 #include "systemScale.h"
+#include <pthread.h>
 #endif
 
 #include "splashscreen_config.h"
@@ -37,7 +38,6 @@
 
 #include <string.h>
 #include <stdbool.h>
-#include <pthread.h>
 
 JNIEXPORT int
 SplashLoadMemory(void *pdata, int size); /* requires preloading the file */
