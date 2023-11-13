@@ -145,8 +145,6 @@ wl_surface_entered_output(void *data,
     uint32_t wlOutputID = WLOutputID(output);
     if (wlOutputID == 0) return;
 
-    addOutputQueue(wlOutputID);
-
     JNIEnv *env = getEnv();
     const jobject nativeFramePeer = (*env)->NewLocalRef(env, wlFrame->nativeFramePeer);
     if (nativeFramePeer) {
@@ -165,8 +163,6 @@ wl_surface_left_output(void *data,
     struct WLFrame *wlFrame = (struct WLFrame*) data;
     uint32_t wlOutputID = WLOutputID(output);
     if (wlOutputID == 0) return;
-
-    removeOutputQueue(wlOutputID);
 
     JNIEnv *env = getEnv();
     const jobject nativeFramePeer = (*env)->NewLocalRef(env, wlFrame->nativeFramePeer);

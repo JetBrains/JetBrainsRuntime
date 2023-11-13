@@ -281,36 +281,15 @@ WLOutputByID(uint32_t id)
     return NULL;
 }
 
-#define OUTPUT_QUEUE_SIZE 3
-static uint32_t outputQueue[OUTPUT_QUEUE_SIZE] = {0};
-
-void addOutputQueue(uint32_t output) {
-    for (int i = OUTPUT_QUEUE_SIZE - 2; i >= 0; i--) {
-        outputQueue[i + 1] = outputQueue[i];
-    }
-    outputQueue[0] = output;
-}
-
-void removeOutputQueue(uint32_t output) {
-    for (int i = 0; i < OUTPUT_QUEUE_SIZE - 1; i++) {
-        if (outputQueue[i] == output) {
-            for (int j = i; j < OUTPUT_QUEUE_SIZE - 1; j++) {
-                outputQueue[j] = outputQueue[j + 1];
-            }
-            break;
-        }
-    }
-    outputQueue[OUTPUT_QUEUE_SIZE - 1] = 0;
-}
+static int currentScale = 1;
 
 int getCurrentScale() {
-    for(WLOutput * cur = outputList; cur; cur = cur->next) {
-        if (cur->id == outputQueue[0]) {
-            return cur->scale;
-        }
-    }
+    return currentScale;
+}
 
-    return 1;
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLGraphicsEnvironment_setCurrentScale(JNIEnv *env, jclass wlge, jint scale) {
+    currentScale = scale;
 }
 
 /*

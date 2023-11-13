@@ -1199,6 +1199,8 @@ public class WLComponentPeer implements ComponentPeer {
             }
             var acc = AWTAccessor.getComponentAccessor();
             acc.setGraphicsConfiguration(target, gc);
+
+            WLGraphicsEnvironment.setCurrentScale(newDevice.getScale());
         }
     }
 
