@@ -365,7 +365,7 @@ void mutex_init() {
 #endif
   MUTEX_DEFL(JvmtiThreadState_lock          , PaddedMutex  , VThreadTransition_lock); // Used by JvmtiThreadState/JvmtiEventController
   MUTEX_DEFL(SharedDecoder_lock             , PaddedMutex  , NmtVirtualMemory_lock);  // Must be lower than NmtVirtualMemory_lock due to MemTracker::print_containing_region
-  MUTEX_DEFN(OOMEStacks_lock                , PaddedMutex  , safepoint);
+  MUTEX_DEFN(OOMEStacks_lock                , PaddedMutex  , safepoint-1);
 
   // Allocate RecursiveMutex
   MultiArray_lock = new RecursiveMutex();
