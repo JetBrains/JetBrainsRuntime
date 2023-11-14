@@ -40,6 +40,7 @@ public final class MacOSFlags {
     private static boolean oglEnabled;
     private static boolean oglVerbose;
     private static boolean metalEnabled;
+    private static boolean metalDisplaySyncEnabled;
     private static boolean metalVerbose;
 
     private enum PropertyState {ENABLED, DISABLED, UNSPECIFIED}
@@ -111,6 +112,9 @@ public final class MacOSFlags {
             metalEnabled = false;
         }
 
+        metalDisplaySyncEnabled = metalEnabled &&
+                !"false".equals(System.getProperty("sun.java2d.metal.displaySync"));
+
         oglVerbose = isBooleanPropTrueVerbose("sun.java2d.opengl");
         metalVerbose = isBooleanPropTrueVerbose("sun.java2d.metal");
 
@@ -145,6 +149,10 @@ public final class MacOSFlags {
 
     public static boolean isOGLVerbose() {
         return oglVerbose;
+    }
+
+    public static boolean isMetalDisplaySyncEnabled() {
+        return metalDisplaySyncEnabled;
     }
 
     public static String getRenderPipelineName() {
