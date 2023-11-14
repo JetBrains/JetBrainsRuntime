@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -264,9 +264,11 @@ public class SnippetTaglet extends BaseTaglet {
         StyledText externalSnippet = null;
 
         try {
-            Diags d = (text, pos) -> {
+            Diags d = (key, pos) -> {
                 var path = writer.configuration().utils.getCommentHelper(holder)
                         .getDocTreePath(snippetTag.getBody());
+                var resources = writer.configuration().getDocResources();
+                var text = resources.getText(key);
                 writer.configuration().getReporter().print(Diagnostic.Kind.WARNING,
                         path, pos, pos, pos, text);
             };
@@ -286,7 +288,7 @@ public class SnippetTaglet extends BaseTaglet {
 
         try {
             var finalFileObject = fileObject;
-            Diags d = (text, pos) -> writer.configuration().getMessages().warning(finalFileObject, pos, pos, pos, text);
+            Diags d = (key, pos) -> writer.configuration().getMessages().warning(finalFileObject, pos, pos, pos, key);
             if (externalContent != null) {
                 externalSnippet = parse(writer.configuration().getDocResources(), d, language, externalContent);
             }
@@ -373,7 +375,7 @@ public class SnippetTaglet extends BaseTaglet {
     }
 
     public interface Diags {
-        void warn(String text, int pos);
+        void warn(String key, int pos);
     }
 
     private static String stringValueOf(AttributeTree at) throws BadSnippetException {
