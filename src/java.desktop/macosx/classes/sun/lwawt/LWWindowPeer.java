@@ -508,6 +508,7 @@ public class LWWindowPeer
 
     @Override
     public void updateWindow() {
+        getLWGC().flush(this);
     }
 
     public final boolean isTextured() {
@@ -1212,6 +1213,9 @@ public class LWWindowPeer
             }
         }
         flushOnscreenGraphics();
+        if (((LWToolkit) Toolkit.getDefaultToolkit()).needUpdateWindowAfterPaint()) {
+            updateWindow();
+        }
     }
 
     private void blitSurfaceData(final SurfaceData src, final SurfaceData dst) {
