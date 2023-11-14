@@ -199,12 +199,11 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             return;
         }
         self.nextDrawableCount++;
-        id<MTLCommandBuffer> renderBuffer =  [self.ctx createCommandBuffer];
-
         id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
 
         [blitEncoder
-                copyFromTexture:(*self.buffer) sourceSlice:0 sourceLevel:0
+                copyFromTexture:(isDisplaySyncEnabled()) ? (*self.buffer) : (*self.outBuffer)
+                sourceSlice:0 sourceLevel:0
                 sourceOrigin:MTLOriginMake(src_x, src_y, 0)
                 sourceSize:MTLSizeMake(src_w, src_h, 1)
                 toTexture:mtlDrawable.texture destinationSlice:0 destinationLevel:0
@@ -223,6 +222,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
         [self retain];
         [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
+            self.nextDrawableCount--;
             if (@available(macOS 10.15.4, *)) {
                 if (!isDisplaySyncEnabled()) {
                     const NSTimeInterval gpuTime = commandBuf.GPUEndTime - commandBuf.GPUStartTime;
@@ -230,7 +230,6 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                     self.avgBlitFrameTime = gpuTime * a + self.avgBlitFrameTime * (1.0 - a);
                 }
             }
-            self.nextDrawableCount--;
             [self release];
         }];
 
@@ -288,32 +287,46 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         [self.ctx performSelectorOnMainThread:@selector(stopRedraw:) withObject:self waitUntilDone:NO];
     }
 }
+- (void) flushBuffer {
+    if (self.ctx == nil || self.buffer == NULL) {
+        return;
+    }
+    // Copy the rendered texture to the output buffer (blit later) using the render command queue:
+    id <MTLCommandBuffer> commandbuf = [self.ctx createCommandBuffer];
+    id <MTLBlitCommandEncoder> blitEncoder = [commandbuf blitCommandEncoder];
+    [blitEncoder
+            copyFromTexture:(*self.buffer) sourceSlice:0 sourceLevel:0
+               sourceOrigin:MTLOriginMake(0, 0, 0)
+                 sourceSize:MTLSizeMake((*self.buffer).width, (*self.buffer).height, 1)
+                  toTexture:(*self.outBuffer) destinationSlice:0 destinationLevel:0
+          destinationOrigin:MTLOriginMake(0, 0, 0)];
+    [blitEncoder endEncoding];
+    [self retain];
+    [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+        [self startRedraw];
+        [self release];
+    }];
+    [commandbuf commit];
+}
 
 - (void)commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay {
     MTLCommandBufferWrapper * cbwrapper =[mtlc pullCommandBufferWrapper];
 
     if (cbwrapper != nil) {
         id <MTLCommandBuffer> commandbuf =[cbwrapper getCommandBuffer];
-        if (isDisplaySyncEnabled() || !updateDisplay) {
-            [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-                [cbwrapper release];
-            }];
-        } else {
-            [self retain];
-            [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-                [cbwrapper release];
-                [self startRedraw];
-                [self release];
-            }];
-       }
-       [commandbuf commit];
-       if (isDisplaySyncEnabled()) {
+        [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+            [cbwrapper release];
+        }];
+        [commandbuf commit];
+        if (isDisplaySyncEnabled()) {
             [self startRedraw];
-       }
+        } else {
+            [self flushBuffer];
+        }
 
-       if (waitUntilCompleted) {
+        if (isDisplaySyncEnabled() && waitUntilCompleted) {
            [commandbuf waitUntilCompleted];
-       }
+        }
     } else if (updateDisplay) {
         [self startRedraw];
     }
@@ -356,6 +369,7 @@ Java_sun_java2d_metal_MTLLayer_validate
     if (surfaceData != NULL) {
         BMTLSDOps *bmtlsdo = (BMTLSDOps*) SurfaceData_GetOps(env, surfaceData);
         layer.buffer = &bmtlsdo->pTexture;
+        layer.outBuffer = &bmtlsdo->pOutTexture;
         layer.ctx = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->context;
         layer.device = layer.ctx.device;
         layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
@@ -371,7 +385,11 @@ Java_sun_java2d_metal_MTLLayer_validate
         layer.drawableSize =
             CGSizeMake((*layer.buffer).width,
                        (*layer.buffer).height);
-        [layer startRedraw];
+        if (isDisplaySyncEnabled()) {
+            [layer startRedraw];
+        } else {
+            [layer flushBuffer];
+        }
     } else {
         layer.ctx = NULL;
         [layer stopRedraw:YES];
