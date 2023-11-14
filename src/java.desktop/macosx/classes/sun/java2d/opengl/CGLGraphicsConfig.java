@@ -342,6 +342,11 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
         }
     }
 
+    @Override
+    public void flush(LWComponentPeer<?, ?> peer) {
+
+    }
+
     private static class CGLBufferCaps extends BufferCapabilities {
         public CGLBufferCaps(boolean dblBuf) {
             super(imageCaps, imageCaps,
