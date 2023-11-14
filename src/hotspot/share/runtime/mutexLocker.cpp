@@ -347,7 +347,7 @@ void mutex_init() {
   MUTEX_DEFL(JVMCI_lock                     , PaddedMonitor, JVMCIRuntime_lock);
 #endif
   MUTEX_DEFL(JvmtiThreadState_lock          , PaddedMutex  , JvmtiVTMSTransition_lock);   // Used by JvmtiThreadState/JvmtiEventController
-  MUTEX_DEFN(OOMEStacks_lock                , PaddedMutex  , safepoint);
+  MUTEX_DEFN(OOMEStacks_lock                , PaddedMutex  , safepoint-1);
 
   // Allocate RecursiveMutex
   MultiArray_lock = new RecursiveMutex();
