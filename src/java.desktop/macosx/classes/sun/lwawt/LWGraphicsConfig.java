@@ -90,6 +90,11 @@ public interface LWGraphicsConfig {
               int x2, int y2, BufferCapabilities.FlipContents flipAction);
 
     /**
+     * Performs the native flush operation for the given peer
+     */
+    void flush(LWComponentPeer<?, ?> peer);
+
+    /**
      * Creates a new hidden-acceleration image of the given width and height
      * that is associated with the target Component.
      */
