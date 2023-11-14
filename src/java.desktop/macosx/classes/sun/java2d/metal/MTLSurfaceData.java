@@ -53,6 +53,7 @@ import java.awt.image.Raster;
 
 import static sun.java2d.pipe.BufferedOpCodes.DISPOSE_SURFACE;
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_SURFACE;
+import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
 import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_MULTITEXTURE;
 import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_PS30;
 
@@ -643,6 +644,20 @@ public abstract class MTLSurfaceData extends SurfaceData
             buf.putLong(pData);
 
             // this call is expected to complete synchronously, so flush now
+            rq.flushNow();
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    static void flushBuffer(long layer) {
+        MTLRenderQueue rq = MTLRenderQueue.getInstance();
+        rq.lock();
+        try {
+            RenderBuffer buf = rq.getBuffer();
+            rq.ensureCapacityAndAlignment(12, 4);
+            buf.putInt(FLUSH_BUFFER);
+            buf.putLong(layer);
             rq.flushNow();
         } finally {
             rq.unlock();
