@@ -357,7 +357,7 @@ void mutex_init() {
   MUTEX_DEFL(JVMCI_lock                     , PaddedMonitor, JVMCIRuntime_lock);
 #endif
   MUTEX_DEFL(JvmtiVTMSTransition_lock        , PaddedMonitor, JvmtiThreadState_lock); // used for Virtual Thread Mount State transition management
-  MUTEX_DEFN(OOMEStacks_lock                , PaddedMutex  , safepoint);
+  MUTEX_DEFN(OOMEStacks_lock                , PaddedMutex  , safepoint-1);
 
   // Allocate RecursiveMutex
   MultiArray_lock = new RecursiveMutex();
