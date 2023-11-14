@@ -32,6 +32,7 @@
 #import "MTLSurfaceData.h"
 #include "jlong.h"
 
+extern BOOL isDisplaySyncEnabled();
 jboolean MTLSD_InitMTLWindow(JNIEnv *env, BMTLSDOps *bmtlsdo);
 void MTLSD_SetNativeDimensions(JNIEnv *env, BMTLSDOps *bmtlsdo, jint w, jint h);
 
@@ -79,7 +80,11 @@ static jboolean MTLSurfaceData_initTexture(BMTLSDOps *bmtlsdo, jboolean isOpaque
         textureDescriptor.usage = MTLTextureUsageUnknown;
         textureDescriptor.storageMode = MTLStorageModePrivate;
         bmtlsdo->pTexture = [ctx.device newTextureWithDescriptor: textureDescriptor];
-
+        if (sfType == MTLSD_FLIP_BACKBUFFER && !isDisplaySyncEnabled()) {
+            bmtlsdo->pOutTexture = [ctx.device newTextureWithDescriptor: textureDescriptor];
+        } else {
+            bmtlsdo->pOutTexture = NULL;
+        }
         MTLTextureDescriptor *stencilDataDescriptor =
             [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Uint width:width height:height mipmapped:NO];
         stencilDataDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
@@ -190,6 +195,10 @@ MTLSD_Delete(JNIEnv *env, BMTLSDOps *bmtlsdo)
             || bmtlsdo->drawableType == MTLSD_FLIP_BACKBUFFER
     ) {
         [(NSObject *)bmtlsdo->pTexture release];
+        if (bmtlsdo->pOutTexture != NULL) {
+            [(NSObject *)bmtlsdo->pOutTexture release];
+            bmtlsdo->pOutTexture = NULL;
+        }
         [(NSObject *)bmtlsdo->pStencilTexture release];
         [(NSObject *)bmtlsdo->pStencilData release];
         bmtlsdo->pTexture = NULL;
