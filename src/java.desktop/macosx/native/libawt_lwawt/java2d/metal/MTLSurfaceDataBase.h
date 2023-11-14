@@ -76,6 +76,7 @@ typedef struct {
     jint                         width;
     jint                         height;
     void*                        pTexture;
+    void*                        pOutTexture;
     void*                        pStencilData;      // stencil data to be rendered to this buffer
     void*                        pStencilTexture;   // stencil texture byte buffer stencil mask used in main rendering
 } BMTLSDOps;
