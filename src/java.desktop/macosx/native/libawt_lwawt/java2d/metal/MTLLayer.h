@@ -35,6 +35,7 @@
 @property (nonatomic) jobject javaLayer;
 @property (readwrite, assign) MTLContext* ctx;
 @property (readwrite, assign) id<MTLTexture>* buffer;
+@property (readwrite, assign) id<MTLTexture>* outBuffer;
 @property (readwrite, atomic) int nextDrawableCount;
 @property (readwrite, assign) int topInset;
 @property (readwrite, assign) int leftInset;
@@ -54,6 +55,7 @@
 - (void) display;
 - (void) startRedraw;
 - (void) stopRedraw:(BOOL)force;
+- (void) flushBuffer;
 - (void) commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
 @end
 
