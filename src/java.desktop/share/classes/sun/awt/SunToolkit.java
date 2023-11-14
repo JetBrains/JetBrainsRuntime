@@ -1835,6 +1835,10 @@ public abstract class SunToolkit extends Toolkit
         return false;
     }
 
+    public boolean needUpdateWindowAfterPaint() {
+        return false;
+    }
+
     /**
      * Descendants of the SunToolkit should override and put their own logic here.
      */
