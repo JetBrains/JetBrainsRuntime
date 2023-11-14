@@ -77,6 +77,7 @@ public final class BufferedOpCodes {
 
     // multibuffering ops
     @Native public static final int SWAP_BUFFERS         = 80;
+    @Native public static final int FLUSH_BUFFER         = 81;
 
     // special no-op op code (mainly used for achieving 8-byte alignment)
     @Native public static final int NOOP                 = 90;
