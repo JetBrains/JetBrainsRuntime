@@ -1259,6 +1259,12 @@ public class RepaintManager
             g.setClip(x, y, w, h);
             paintingComponent.paintToOffscreen(g, x, y, w, h, x + w, y + h);
         }
+        if (Toolkit.getDefaultToolkit() instanceof SunToolkit tk) {
+            final Window window = SwingUtilities.getWindowAncestor(paintingComponent);
+            if (window != null && tk.needUpdateWindowAfterPaint()) {
+                AWTAccessor.getWindowAccessor().updateWindow(window);
+            }
+        }
     }
 
     /**
