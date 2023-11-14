@@ -861,6 +861,14 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     break;
                 }
 
+                case sun_java2d_pipe_BufferedOpCodes_FLUSH_BUFFER:
+                {
+                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                    jlong pLayerPtr = NEXT_LONG(b);
+                    [mtlc flushBuffer: (MTLLayer*)pLayerPtr];
+                    break;
+                }
+
                 default:
                     J2dRlsTraceLn1(J2D_TRACE_ERROR,
                         "MTLRenderQueue_flushBuffer: invalid opcode=%d", opcode);

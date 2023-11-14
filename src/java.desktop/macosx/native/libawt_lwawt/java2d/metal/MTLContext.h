@@ -243,6 +243,7 @@
 - (id<MTLCommandBuffer>)createCommandBuffer;
 - (id<MTLCommandBuffer>)createBlitCommandBuffer;
 - (void)commitCommandBuffer:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
+- (void)flushBuffer:(MTLLayer*)layer;
 - (void)startRedraw:(MTLLayer*)layer;
 - (void)stopRedraw:(MTLLayer*)layer;
 @end
