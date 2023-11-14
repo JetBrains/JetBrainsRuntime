@@ -589,6 +589,9 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
     }
     return kCVReturnSuccess;
 }
+- (void)flushBuffer:(MTLLayer*)layer {
+    [layer flushBuffer:self];
+}
 
 - (void)startRedraw:(MTLLayer*)layer {
     AWT_ASSERT_APPKIT_THREAD;
