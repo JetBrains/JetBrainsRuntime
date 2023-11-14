@@ -366,7 +366,7 @@ void mutex_init() {
   MUTEX_DEFL(JVMCI_lock                     , PaddedMonitor, JVMCIRuntime_lock);
 #endif
 
-  MUTEX_DEFN(OOMEStacks_lock                , PaddedMutex  , safepoint);
+  MUTEX_DEFN(OOMEStacks_lock                , PaddedMutex  , safepoint-1);
 }
 
 #undef MUTEX_DEFL
