@@ -35,6 +35,7 @@ import java.security.*;
 import java.util.*;
 
 import sun.awt.*;
+import sun.java2d.MacOSFlags;
 import sun.print.*;
 import sun.awt.util.ThreadGroupUtils;
 
@@ -362,6 +363,11 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final boolean isTaskbarSupported() {
         return true;
+    }
+
+    @Override
+    public boolean needUpdateWindowAfterPaint() {
+        return MacOSFlags.isMetalEnabled() && !MacOSFlags.isMetalDisplaySyncEnabled();
     }
 
     @Override
