@@ -861,6 +861,20 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     break;
                 }
 
+                case sun_java2d_pipe_BufferedOpCodes_FLUSH_BUFFER:
+                {
+                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                    jlong pLayerPtr = NEXT_LONG(b);
+                    MTLLayer* layer = (MTLLayer*)pLayerPtr;
+                    if (layer != nil) {
+                        [layer flushBuffer];
+                    } else {
+                        J2dRlsTraceLn(J2D_TRACE_ERROR,
+                                      "MTLRenderQueue_flushBuffer(FLUSH_BUFFER): MTLLayer is nil");
+                    }
+                    break;
+                }
+
                 default:
                     J2dRlsTraceLn(J2D_TRACE_ERROR,
                                   "MTLRenderQueue_flushBuffer: invalid opcode=%d",
