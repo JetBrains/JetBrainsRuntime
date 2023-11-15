@@ -160,10 +160,7 @@ typedef enum awt_toolkit {
     TK_WAYLAND = 2
 } awt_toolkit;
 
-// TODO when wayland support will be fully implemented change to TK_UNKNOWN
-// currently wayland support is not Production-Ready ready so default awt toolkit is X11
-// wayland could be chosen manually via passing -Dawt.toolkit.name=WLToolkit argument
-static awt_toolkit _awt_toolkit = TK_X11;
+static awt_toolkit _awt_toolkit = TK_UNKNOWN;
 
 /*
  * execname accessor from other parts of platform dependent logic
