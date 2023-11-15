@@ -88,6 +88,7 @@ final class CAccessible extends CFRetainedResource implements Accessible {
     private static native void treeNodeCollapsed(long ptr);
     private static native void selectedCellsChanged(long ptr);
     private static native void tableContentCacheClear(long ptr);
+    private static native void updateZoomCaretFocus(long ptr);
 
     private Accessible accessible;
 
@@ -133,6 +134,8 @@ final class CAccessible extends CFRetainedResource implements Accessible {
                 Object oldValue = e.getOldValue();
                 if (name.equals(ACCESSIBLE_CARET_PROPERTY)) {
                     execute(ptr -> selectedTextChanged(ptr));
+                    // Notify macOS Accessibility Zoom to move focus to the new caret location.
+                    execute(ptr -> updateZoomCaretFocus(ptr));
                 } else if (name.equals(ACCESSIBLE_TEXT_PROPERTY)) {
                     AccessibleContext thisAC = accessible.getAccessibleContext();
                     Accessible parentAccessible = thisAC.getAccessibleParent();
