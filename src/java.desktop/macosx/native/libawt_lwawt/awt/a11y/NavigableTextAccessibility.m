@@ -306,6 +306,49 @@ static jmethodID sjm_getAccessibleEditableText = NULL;
     return [super accessibilityParent];
 }
 
+
+/*
+ * Class:     sun_lwawt_macosx_CAccessible
+ * Method:    updateZoomCaretFocus
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_updateZoomCaretFocus
+        (JNIEnv *env, jclass jklass, jlong element)
+{
+    if (!UAZoomEnabled()) return;
+
+    JNI_COCOA_ENTER(env);
+        [ThreadUtilities performOnMainThread:@selector(postZoomChangeCaretFocus)
+                                          on:(NavigableTextAccessibility *) jlong_to_ptr(element)
+                                  withObject:nil
+                               waitUntilDone:NO];
+    JNI_COCOA_EXIT(env);
+}
+
+- (void)postZoomChangeCaretFocus
+{
+    AWT_ASSERT_APPKIT_THREAD;
+
+    if (![self isEqual:[NSApp accessibilityFocusedUIElement]]) return;
+
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+
+    GET_CACCESSIBLETEXT_CLASS();
+    DECLARE_STATIC_METHOD(jm_getCaretRectangle, sjc_CAccessibleText, "getCaretRectangle",
+                          "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)[D");
+    jdoubleArray axCaretBounds = (jdoubleArray) (*env)->CallStaticObjectMethod(env, sjc_CAccessibleText,
+                                                                               jm_getCaretRectangle, fAccessible,
+                                                                               fComponent);
+    CHECK_EXCEPTION();
+    if (axCaretBounds == NULL) return;
+
+    jdouble *values = (*env)->GetDoubleArrayElements(env, axCaretBounds, NULL);
+    CGRect caretRect = CGRectMake(values[0], values[1], values[2], values[3]);
+    (*env)->ReleaseDoubleArrayElements(env, axCaretBounds, values, JNI_ABORT);
+
+    UAZoomChangeFocus(&caretRect, &caretRect, kUAZoomFocusTypeInsertionPoint);
+}
+
 /*
 * Other text methods
 - (NSRange)accessibilitySharedCharacterRange;
