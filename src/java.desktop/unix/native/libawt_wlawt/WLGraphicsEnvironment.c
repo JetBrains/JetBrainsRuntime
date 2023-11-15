@@ -281,17 +281,6 @@ WLOutputByID(uint32_t id)
     return NULL;
 }
 
-static int currentScale = 1;
-
-int getCurrentScale() {
-    return currentScale;
-}
-
-JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLGraphicsEnvironment_setCurrentScale(JNIEnv *env, jclass wlge, jint scale) {
-    currentScale = scale;
-}
-
 /*
  * Class:     sun_awt_wl_WLGraphicsEnvironment
  * Method:    initVKWL

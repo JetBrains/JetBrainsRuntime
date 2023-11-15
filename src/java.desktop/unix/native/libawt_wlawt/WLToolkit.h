@@ -68,6 +68,6 @@ extern uint32_t last_input_or_focus_serial;
 JNIEnv *getEnv();
 
 int wlFlushToServer(JNIEnv* env);
-void initCursors();
+void initCursors(int scale);
 
 struct wl_shm_pool *CreateShmPool(size_t size, const char *name, void **data);

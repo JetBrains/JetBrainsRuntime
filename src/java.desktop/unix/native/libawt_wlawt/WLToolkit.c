@@ -871,7 +871,7 @@ readDesktopProperty(const char* name, char *output, int outputSize) {
 }
 
 void
-initCursors() {
+initCursors(int scale) {
     char *theme_name;
     int theme_size = 0;
     char buffer[256];
@@ -899,7 +899,7 @@ initCursors() {
         }
     }
 
-    wl_cursor_theme = wl_cursor_theme_load(theme_name, theme_size * getCurrentScale(), wl_shm);
+    wl_cursor_theme = wl_cursor_theme_load(theme_name, theme_size * scale, wl_shm);
     if (!wl_cursor_theme) {
         J2dTrace(J2D_TRACE_ERROR, "WLToolkit: Failed to load cursor theme\n");
     }
@@ -956,8 +956,6 @@ Java_sun_awt_wl_WLToolkit_initIDs
     }
 
     J2dTrace1(J2D_TRACE_INFO, "WLToolkit: Connection to display(%p) established\n", wl_display);
-
-    initCursors();
 
     finalizeInit(env);
 }

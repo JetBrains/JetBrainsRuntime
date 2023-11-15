@@ -54,6 +54,7 @@ import java.awt.image.VolatileImage;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.ContainerPeer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -82,6 +83,8 @@ public class WLComponentPeer implements ComponentPeer {
             {"hand"}, // HAND_CURSOR
             {"move"}, // MOVE_CURSOR
     };
+
+    private static final HashMap<Long, Long> CursorDataByScale = new HashMap<>();
 
     private long nativePtr;
     private volatile boolean surfaceAssigned = false;
@@ -755,7 +758,7 @@ public class WLComponentPeer implements ComponentPeer {
         WLComponentPeer peer = inputState.getPeer();
         if (peer == null) return;
         Cursor cursor = peer.getCursor(inputState.getPointerX(), inputState.getPointerY());
-        setCursor(cursor);
+        setCursor(cursor, getGraphicsDevice() != null ? getGraphicsDevice().getScale() : 1);
     }
 
     Cursor getCursor(int x, int y) {
@@ -769,7 +772,7 @@ public class WLComponentPeer implements ComponentPeer {
         return AWTAccessor.getComponentAccessor().getCursor(target);
     }
 
-    private static void setCursor(Cursor c) {
+    private static void setCursor(Cursor c, int scale) {
         Cursor cursor;
         if (c.getType() == Cursor.CUSTOM_CURSOR && !(c instanceof WLCustomCursor)) {
             cursor = Cursor.getDefaultCursor();
@@ -777,27 +780,27 @@ public class WLComponentPeer implements ComponentPeer {
             cursor = c;
         }
         performLockedGlobal(() -> {
-            long pData = AWTAccessor.getCursorAccessor().getPData(cursor);
-            if (pData == 0) {
-                pData = createNativeCursor(cursor.getType());
+            long key = (long)cursor.getType() << 32 | ((long)scale & 0xffffffffL);
+            if (!CursorDataByScale.containsKey(key)) {
+                long pData = createNativeCursor(cursor.getType(), scale);
                 if (pData == 0) {
-                    pData = createNativeCursor(Cursor.DEFAULT_CURSOR);
+                    pData = createNativeCursor(Cursor.DEFAULT_CURSOR, scale);
                 }
                 if (pData == 0) {
                     pData = -1; // mark as unavailable
                 }
-                AWTAccessor.getCursorAccessor().setPData(cursor, pData);
+                CursorDataByScale.put(key, pData);
             }
-            nativeSetCursor(pData);
+            nativeSetCursor(CursorDataByScale.get(key), scale);
         });
     }
 
-    private static long createNativeCursor(int type) {
+    private static long createNativeCursor(int type, int scale) {
         if (type < Cursor.DEFAULT_CURSOR || type > Cursor.MOVE_CURSOR) {
             type = Cursor.DEFAULT_CURSOR;
         }
         for (String name : CURSOR_NAMES[type]) {
-            long pData = nativeGetPredefinedCursor(name);
+            long pData = nativeGetPredefinedCursor(name, scale);
             if (pData != 0) {
                 return pData;
             }
@@ -949,8 +952,8 @@ public class WLComponentPeer implements ComponentPeer {
     private native void nativeSetWindowGeometry(long ptr, int x, int y, int width, int height);
     private native void nativeSetMinimumSize(long ptr, int width, int height);
     private native void nativeSetMaximumSize(long ptr, int width, int height);
-    private static native void nativeSetCursor(long pData);
-    private static native long nativeGetPredefinedCursor(String name);
+    private static native void nativeSetCursor(long pData, int scale);
+    private static native long nativeGetPredefinedCursor(String name, int scale);
     private native void nativeShowWindowMenu(long ptr, int x, int y);
     private native void nativeActivate(long ptr);
 
@@ -1141,14 +1144,6 @@ public class WLComponentPeer implements ComponentPeer {
             }
         }
 
-        // Entry output device could have different scale compare to previous, so we need to reset current cursor info
-        performLockedGlobal(() -> {
-            for (int i = Cursor.DEFAULT_CURSOR; i < Cursor.MOVE_CURSOR; i++) {
-                Cursor cursor = Cursor.getPredefinedCursor(i);
-                AWTAccessor.getCursorAccessor().setPData(cursor, 0);
-            }
-        });
-
         checkIfOnNewScreen();
     }
 
@@ -1199,8 +1194,6 @@ public class WLComponentPeer implements ComponentPeer {
             }
             var acc = AWTAccessor.getComponentAccessor();
             acc.setGraphicsConfiguration(target, gc);
-
-            WLGraphicsEnvironment.setCurrentScale(newDevice.getScale());
         }
     }
 
