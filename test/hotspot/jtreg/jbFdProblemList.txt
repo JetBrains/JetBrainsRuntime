@@ -47,11 +47,12 @@
 
 # :hotspot_compiler
 
-compiler/ciReplay/TestServerVM.java NOBUG generic-all
-compiler/ciReplay/TestInlining.java NOBUG generic-all
+compiler/c2/irTests/TestVectorConditionalMove.java NOBUG windows-aarch64 # compiler.lib.ir_framework.driver.irmatching.IRViolationException: There were one or multiple IR rule failures. Please check stderr for more information.
+compiler/ciReplay/TestInlining.java 8300210 generic-all
 compiler/ciReplay/TestIncrementalInlining.java NOBUG generic-all
 compiler/ciReplay/TestInliningProtectionDomain.java NOBUG generic-all
-compiler/ciReplay/TestLambdas.java NOBUG generic-all
+compiler/ciReplay/TestLambdas.java 8300210 generic-all
+compiler/ciReplay/TestServerVM.java 8300210 generic-all
 compiler/ciReplay/TestUnresolvedClasses.java NOBUG generic-all
 
 #############################################################################
@@ -64,13 +65,13 @@ gc/stress/gcold/TestGCOldWithShenandoah.java#iu-aggressive NOBUG generic-all tim
 
 # :hotspot_runtime
 
-#runtime/CompressedOops/CompressedClassPointers.java 8305765 generic-all
+runtime/cds/appcds/dynamicArchive/TestDynamicDumpAtOom.java JBR-6291 generic-all
 
 #############################################################################
 
 # :hotspot_serviceability
 
-#serviceability/sa/sadebugd/DebugdConnectTest.java 8239062,8270326 macosx-x64,macosx-aarch64
+serviceability/sa/ClhsdbCDSCore.java NOBUG macosx-all Can't attach to the core file
 
 #############################################################################
 
@@ -86,3 +87,4 @@ gc/stress/gcold/TestGCOldWithShenandoah.java#iu-aggressive NOBUG generic-all tim
 #############################################################################
 
 vmTestbase/gc/gctests/LargeObjects/large002/TestDescription.java NOBUG linux-all timeout
+vmTestbase/gc/gctests/StringInternSyncWithGC/StringInternSyncWithGC.java NOBUG macosx-all timeout on macstudio
