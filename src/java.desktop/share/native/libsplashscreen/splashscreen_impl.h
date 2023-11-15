@@ -37,7 +37,6 @@
 
 #include <string.h>
 #include <stdbool.h>
-#include <pthread.h>
 
 JNIEXPORT int
 SplashLoadMemory(void *pdata, int size); /* requires preloading the file */
