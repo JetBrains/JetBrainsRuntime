@@ -1417,6 +1417,7 @@ jb/java/awt/Focus/FocusTraversalOrderTest.java JBR-6060 generic-all
 com/sun/java/swing/plaf/gtk/TestFileChooserSingleDirectorySelection.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Choice/ChoiceGeneratesItemEvents.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Choice/ChoiceStaysOpenedOnTAB.java JBR-5510 linux-5.18.2-arch1-1
+java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Graphics/XORPaint.java#id2 JBR-5510 linux-5.18.2-arch1-1
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureGtkTest.java JBR-5510 linux-5.18.2-arch1-1
