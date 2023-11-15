@@ -163,7 +163,7 @@ java/awt/EventQueue/6980209/bug6980209.java 8198615 macosx-all
 java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.java 8198237 macosx-all
 java/awt/Frame/SetMinimumSizeTest/SetMinimumSizeTest2.java JBR-5210 windows-all
 java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java JBR-5210 windows-all,linux-5.18.2-arch1-1
-java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java 7080150,JBR-4880,8253184  macosx-all,windows-all
+java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java 7080150,JBR-4880,8253184,JBR-5510 macosx-all,windows-all,linux-5.18.2-arch1-1
 java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java 8169109,JBR-4880 linux-all,windows-all
 java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java 8168646 generic-all
 java/awt/Mixing/AWT_Mixing/HierarchyBoundsListenerMixingTest.java 8049405,8253184 generic-all
@@ -337,7 +337,7 @@ java/awt/Choice/ChoiceHandleMouseEvent_2.java JBR-5359 windows-aarch64
 java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java 6849371,7100044,JBR-5210 macosx-all,linux-all,windows-all
 java/awt/Component/F10TopToplevel/F10TopToplevel.java JBR-5687 linux-all
 java/awt/Component/GetScreenLocTest/GetScreenLocTest.java 4753654 generic-all
-java/awt/Component/RepaintTest.java JBR-5359 windows-aarch64
+java/awt/Component/RepaintTest.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
 java/awt/Component/SetComponentsBounds/SetComponentsBounds.java JBR-4275 linux-all
 java/awt/Component/SetEnabledPerformance/SetEnabledPerformance.java 8165863 macosx-all
 java/awt/Clipboard/HTMLTransferTest/HTMLTransferTest.java 8017454 macosx-all
@@ -1043,7 +1043,7 @@ sanity/client/SwingSet/src/TextFieldDemoTest.java JBR-5061 linux-all Ubuntu-22.0
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8293001 linux-all
 sanity/client/SwingSet/src/SliderDemoTest.java 8253184 windows-all
 sanity/client/SwingSet/src/SpinnerDemoTest.java 8253184 windows-all
-sanity/client/SwingSet/src/SplitPaneDemoTest.java JBR-5817 linux-5.19.0-1025-aws
+sanity/client/SwingSet/src/SplitPaneDemoTest.java JBR-5817 linux-all
 sanity/client/SwingSet/src/SwingSet2DemoTest.java 8253184 windows-all
 
 ############################################################################
@@ -1413,3 +1413,27 @@ java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java JBR-5765 macosx-al
 jb/sun/awt/macos/InputMethodTest/FocusMoveUncommitedCharactersTest.java JBR-5765 macosx-all
 
 jb/java/awt/Focus/FocusTraversalOrderTest.java JBR-6060 generic-all
+
+com/sun/java/swing/plaf/gtk/TestFileChooserSingleDirectorySelection.java JBR-5510 linux-5.18.2-arch1-1
+java/awt/Choice/ChoiceGeneratesItemEvents.java JBR-5510 linux-5.18.2-arch1-1
+java/awt/Choice/ChoiceStaysOpenedOnTAB.java JBR-5510 linux-5.18.2-arch1-1
+java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java JBR-5510 linux-5.18.2-arch1-1
+java/awt/Graphics/XORPaint.java#id2 JBR-5510 linux-5.18.2-arch1-1
+java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java JBR-5510 linux-5.18.2-arch1-1
+java/awt/Robot/HiDPIScreenCapture/ScreenCaptureGtkTest.java JBR-5510 linux-5.18.2-arch1-1
+java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java JBR-5510 linux-5.18.2-arch1-1
+java/awt/Robot/NonEmptyErrorStream.java JBR-5510 linux-5.18.2-arch1-1
+java/awt/Toolkit/DesktopProperties/rfe4758438.java JBR-5510 linux-5.18.2-arch1-1
+javax/swing/JComboBox/6406264/bug6406264.java JBR-5510 linux-5.18.2-arch1-1
+javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-5510 linux-5.18.2-arch1-1
+javax/swing/JMenu/TestDisabledMenuForegroundColor.java JBR-5510 linux-5.18.2-arch1-1
+javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-5510 linux-5.18.2-arch1-1
+javax/swing/JProgressBar/TestJProgressBarHighlightColor.java JBR-5510 linux-5.18.2-arch1-1
+javax/swing/JSlider/TestJSliderRendering.java JBR-5510 linux-5.18.2-arch1-1
+javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-5510 linux-5.18.2-arch1-1
+javax/swing/JTextPane/TestJTextPaneBackgroundColor.java JBR-5510 linux-5.18.2-arch1-1
+javax/swing/JToolTip/TestTooltipBackgroundColor.java JBR-5510 linux-5.18.2-arch1-1
+javax/swing/JTree/TestTreeBackgroundColor.java JBR-5510 linux-5.18.2-arch1-1
+javax/swing/plaf/nimbus/TestNimbusBGColor.java JBR-5510 linux-5.18.2-arch1-1
+sanity/client/SwingSet/src/ColorChooserDemoTest.java JBR-5510 linux-5.18.2-arch1-1
+sun/java2d/ClassCastExceptionForInvalidSurface.java JBR-5510 linux-5.18.2-arch1-1
