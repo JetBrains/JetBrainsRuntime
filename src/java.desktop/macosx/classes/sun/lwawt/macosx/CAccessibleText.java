@@ -29,6 +29,7 @@ import java.awt.Component;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.geom.Rectangle2D;
+import java.awt.im.InputMethodRequests;
 import java.util.concurrent.Callable;
 
 import javax.accessibility.Accessible;
@@ -342,5 +343,34 @@ final class CAccessibleText {
         if (line == null) return null;
 
         return new int[] { line.getStartOffset(), line.getEndOffset() };
+    }
+
+    static double[] getCaretRectangle(final Accessible a, final Component c) {
+        final double[] ret = new double[4];
+
+        if (a == null) return null;
+
+        return CAccessibility.invokeAndWait(new Callable<double[]>() {
+            public double[] call() throws Exception {
+                final Accessible sa = CAccessible.getSwingAccessible(a);
+                if (!(sa instanceof Component)) return null;
+
+                final Component component = (Component) sa;
+
+                final InputMethodRequests imr = component.getInputMethodRequests();
+                if (imr == null) return null;
+
+                final Rectangle caretRectangle = imr.getTextLocation(null);
+
+                if (caretRectangle == null) return null;
+
+                ret[0] = caretRectangle.getX();
+                ret[1] = caretRectangle.getY();
+                ret[2] = 1; // Use 1 as caret width.
+                ret[3] = caretRectangle.getHeight();
+
+                return ret;
+            }
+        }, c);
     }
 }
