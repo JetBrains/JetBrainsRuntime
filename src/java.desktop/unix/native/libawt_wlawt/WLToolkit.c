@@ -50,7 +50,6 @@
 #include "sun_awt_wl_WLToolkit.h"
 #include "WLRobotPeer.h"
 #include "WLGraphicsEnvironment.h"
-#include "memory_utils.h"
 #include "java_awt_event_KeyEvent.h"
 
 #ifdef WAKEFIELD_ROBOT
@@ -1074,6 +1073,59 @@ Java_sun_awt_SunToolkit_closeSplashScreen(JNIEnv *env, jclass cls)
 void awt_output_flush()
 {
     wlFlushToServer(getEnv());
+}
+
+static void
+RandomName(char *buf) {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    long r = ts.tv_nsec;
+    while (*buf) {
+        *buf++ = 'A' + (r & 15) + (r & 16) * 2;
+        r >>= 5;
+    }
+}
+
+static int
+CreateSharedMemoryFile(const char* baseName) {
+    // constructing the full name of the form /baseName-XXXXXX
+    int baseLen = strlen(baseName);
+    char *name = (char*) malloc(baseLen + 9);
+    if (!name)
+        return -1;
+    name[0] = '/';
+    strcpy(name + 1, baseName);
+    strcpy(name + baseLen + 1, "-XXXXXX");
+
+    int retries = 100;
+    do {
+        RandomName(name + baseLen + 2);
+        --retries;
+        int fd = shm_open(name, O_RDWR | O_CREAT | O_EXCL, 0600);
+        if (fd >= 0) {
+            shm_unlink(name);
+            free(name);
+            return fd;
+        }
+    } while (retries > 0 && errno == EEXIST);
+    free(name);
+    return -1;
+}
+
+static int
+AllocateSharedMemoryFile(size_t size, const char* baseName) {
+    int fd = CreateSharedMemoryFile(baseName);
+    if (fd < 0)
+        return -1;
+    int ret;
+    do {
+        ret = ftruncate(fd, size);
+    } while (ret < 0 && errno == EINTR);
+    if (ret < 0) {
+        close(fd);
+        return -1;
+    }
+    return fd;
 }
 
 struct wl_shm_pool *CreateShmPool(size_t size, const char *name, void **data) {
