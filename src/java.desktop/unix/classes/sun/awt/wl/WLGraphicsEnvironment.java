@@ -83,8 +83,6 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
 
     private static native boolean initVKWL(boolean verbose, int deviceNumber);
 
-    public static native void setCurrentScale(int scale);
-
     private WLGraphicsEnvironment() {
     }
 
