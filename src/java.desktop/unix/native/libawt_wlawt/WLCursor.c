@@ -170,5 +170,6 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetCursor
         last_hotspot_x = hotspot_x;
         last_hotspot_y = hotspot_y;
         wl_pointer_set_cursor(wl_pointer, last_pointer_enter_serial, wl_cursor_surface, hotspot_x, hotspot_y);
+        wlFlushToServer(env);
     }
 }
