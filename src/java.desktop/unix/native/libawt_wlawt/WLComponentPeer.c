@@ -497,7 +497,7 @@ newPositioner
     xdg_positioner_set_anchor(xdg_positioner, XDG_POSITIONER_ANCHOR_TOP_LEFT);
     xdg_positioner_set_gravity(xdg_positioner, XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
     xdg_positioner_set_constraint_adjustment(xdg_positioner, XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X |
-                                                             XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y);
+                                                             XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y);
     return xdg_positioner;
 }
 
