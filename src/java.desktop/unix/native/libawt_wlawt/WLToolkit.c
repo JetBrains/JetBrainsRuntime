@@ -794,6 +794,9 @@ wlFlushToServer(JNIEnv *env)
 
     while (true) {
         errno = 0;
+        // From Wayland code: "if all data could not be written, errno will be set
+        // to EAGAIN and -1 returned. In that case, use poll on the display
+        // file descriptor to wait for it to become writable again."
         rc = wl_display_flush(wl_display);
         if (rc != -1 || errno != EAGAIN) {
             break;
