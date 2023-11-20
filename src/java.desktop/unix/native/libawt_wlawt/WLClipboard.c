@@ -519,6 +519,7 @@ announceMimeTypesForSource(
         (*env)->ReleaseStringUTFChars(env, s, mimeType);
         (*env)->DeleteLocalRef(env, s);
     }
+    wlFlushToServer(env);
 
     return JNI_TRUE;
 }
@@ -574,6 +575,7 @@ offerData(
                 (struct wl_data_source *)source,
                 eventSerial);
         }
+        wlFlushToServer(env);
     }
 
     return source != NULL;
@@ -627,6 +629,7 @@ Java_sun_awt_wl_WLClipboard_cancelOffer(
     } else {
         wl_data_device_set_selection(wl_data_device, NULL, eventSerial);
     }
+    wlFlushToServer(env);
 }
 
 /**
@@ -662,6 +665,10 @@ Java_sun_awt_wl_WLClipboard_requestDataInFormat(
                 struct wl_data_offer * offer = jlong_to_ptr(clipboardNativePtr);
                 wl_data_offer_receive(offer, mimeType, fds[1]);
             }
+            // Since the request for the clipboard contents can and usually is blocking,
+            // make sure that the server has received it right away.
+            wlFlushToServer(env);
+
             close(fds[1]); // close the "sender" end of the pipe
             fd = fds[0];
         }
