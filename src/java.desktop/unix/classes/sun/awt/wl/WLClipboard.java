@@ -29,7 +29,6 @@ import sun.awt.datatransfer.DataTransferer;
 import sun.awt.datatransfer.SunClipboard;
 import sun.util.logging.PlatformLogger;
 
-import javax.swing.SwingUtilities;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.FlavorTable;
 import java.awt.datatransfer.Transferable;
@@ -71,16 +70,18 @@ public final class WLClipboard extends SunClipboard {
     // to be received from Wayland. Could be empty, but never null.
     private List<Long> newClipboardFormats = new ArrayList<>(INITIAL_MIME_FORMATS_COUNT); // guarded by 'this'
 
+    private static Thread clipboardDispatcherThread;
     static {
         initIDs();
         dataOfferQueuePtr = createDataOfferQueue();
         flavorTable = DataTransferer.adaptFlavorMap(getDefaultFlavorTable());
 
-        final Thread toolkitSystemThread = InnocuousThread.newThread(
+        Thread t = InnocuousThread.newThread(
                 "AWT-Wayland-clipboard-dispatcher",
                 WLClipboard::dispatchDataOfferQueue);
-        toolkitSystemThread.setDaemon(true);
-        toolkitSystemThread.start();
+        t.setDaemon(true);
+        t.start();
+        clipboardDispatcherThread = t;
     }
 
     private final static FlavorTable flavorTable;
@@ -160,7 +161,8 @@ public final class WLClipboard extends SunClipboard {
                 offerData(eventSerial, mime, contents, dataOfferQueuePtr);
 
                 // Once we have offered the data, someone may come back and ask to provide them.
-                // In that event, the transferContentsWithType() will be called from native on EDT.
+                // In that event, the transferContentsWithType() will be called from native on the
+                // clipboard dispatch thread.
                 // A reference to contents is retained until we are notified of the new contents
                 // by the Wayland server.
             }
@@ -183,7 +185,8 @@ public final class WLClipboard extends SunClipboard {
      * @throws IOException in case writing to the given file descriptor failed
      */
     private void transferContentsWithType(Transferable contents, String mime, int destFD) throws IOException {
-        assert SwingUtilities.isEventDispatchThread();
+        assert (Thread.currentThread() == clipboardDispatcherThread);
+
         Objects.requireNonNull(contents);
         Objects.requireNonNull(mime);
 
@@ -208,10 +211,6 @@ public final class WLClipboard extends SunClipboard {
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
                     log.fine("Clipboard: about to write " + (bytes != null ? bytes.length : 0) + " bytes to " + out);
                 }
-                // TODO: large data transfer will block EDT for a long time.
-                //  Implement an option to do the writing on a dedicated thread.
-                //  Alternatively, arrange for this event to arrive on a dedicated queue and
-                //  only work with this queue on a dedicated thread.
                 out.write(bytes);
             }
         }
