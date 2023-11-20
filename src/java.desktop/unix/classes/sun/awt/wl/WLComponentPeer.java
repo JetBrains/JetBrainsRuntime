@@ -1023,7 +1023,7 @@ public class WLComponentPeer implements ComponentPeer {
                     = WLPointerEvent.PointerButtonCodes.recognizedOrNull(e.getButtonCode());
             if (buttonCode != null) {
                 clickCount = newInputState.getClickCount();
-                isPopupTrigger = buttonCode.isPopupTrigger();
+                isPopupTrigger = buttonCode.isPopupTrigger() && e.getIsButtonPressed();
                 buttonChanged = buttonCode.javaCode;
 
                 final MouseEvent mouseEvent = new MouseEvent(getTarget(),
