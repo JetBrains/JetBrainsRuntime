@@ -291,6 +291,8 @@ xdg_activation_token_v1_done(void *data,
     assert(surface);
     xdg_activation_v1_activate(xdg_activation_v1, token, surface);
     frame->activation_token_list = delete_token(frame->activation_token_list, xdg_activation_token_v1);
+    JNIEnv* env = getEnv();
+    wlFlushToServer(env);
 }
 
 static const struct xdg_activation_token_v1_listener xdg_activation_token_v1_listener = {
@@ -378,6 +380,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestMinimized
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
         xdg_toplevel_set_minimized(frame->xdg_toplevel);
+        wlFlushToServer(env);
     }
 }
 
@@ -388,6 +391,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestMaximized
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
         xdg_toplevel_set_maximized(frame->xdg_toplevel);
+        wlFlushToServer(env);
     }
 }
 
@@ -398,6 +402,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestUnmaximized
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
         xdg_toplevel_unset_maximized(frame->xdg_toplevel);
+        wlFlushToServer(env);
     }
 }
 
@@ -409,6 +414,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestFullScreen
     if (frame->xdg_toplevel) {
         struct wl_output *wl_output = WLOutputByID((uint32_t)wlID);
         xdg_toplevel_set_fullscreen(frame->xdg_toplevel, wl_output);
+        wlFlushToServer(env);
     }
 }
 
@@ -419,6 +425,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestUnsetFullScreen
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
         xdg_toplevel_unset_fullscreen(frame->xdg_toplevel);
+        wlFlushToServer(env);
     }
 }
 
@@ -470,6 +477,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
     // setting it up, the client must perform an initial commit
     // without any buffer attached"
     wl_surface_commit(frame->wl_surface);
+    wlFlushToServer(env);
 }
 
 static struct xdg_positioner *
@@ -526,6 +534,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLPopup
     // setting it up, the client must perform an initial commit
     // without any buffer attached"
     wl_surface_commit(frame->wl_surface);
+    wlFlushToServer(env);
 }
 
 JNIEXPORT void JNICALL
@@ -546,11 +555,12 @@ Java_sun_awt_wl_WLComponentPeer_nativeRepositionWLPopup
         static int token = 42; // This will be received by xdg_popup_repositioned(); unused for now.
         xdg_popup_reposition(frame->xdg_popup, xdg_positioner, token++);
         xdg_positioner_destroy(xdg_positioner);
+        wlFlushToServer(env);
     }
 }
 
 static void
-DoHide(struct WLFrame *frame)
+DoHide(JNIEnv *env, struct WLFrame *frame)
 {
     if (frame->wl_surface) {
         if(frame->toplevel) {
@@ -567,6 +577,8 @@ DoHide(struct WLFrame *frame)
         xdg_surface_destroy(frame->xdg_surface);
         wl_surface_destroy(frame->wl_surface);
         delete_all_tokens(frame->activation_token_list);
+        wlFlushToServer(env);
+
         frame->activation_token_list = NULL;
         frame->wl_surface = NULL;
         frame->xdg_surface = NULL;
@@ -581,7 +593,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeHideFrame
   (JNIEnv *env, jobject obj, jlong ptr)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
-    DoHide(frame);
+    DoHide(env, frame);
 }
 
 JNIEXPORT void JNICALL
@@ -589,7 +601,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeDisposeFrame
         (JNIEnv *env, jobject obj, jlong ptr)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
-    DoHide(frame);
+    DoHide(env, frame);
     (*env)->DeleteWeakGlobalRef(env, frame->nativeFramePeer);
     free(frame);
 }
@@ -606,6 +618,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartDrag
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel && wl_seat) {
         xdg_toplevel_move(frame->xdg_toplevel, wl_seat, last_mouse_pressed_serial);
+        wlFlushToServer(env);
     }
 }
 
@@ -615,6 +628,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartResize
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel && wl_seat && frame->xdg_toplevel != NULL) {
         xdg_toplevel_resize(frame->xdg_toplevel, wl_seat, last_mouse_pressed_serial, edges);
+        wlFlushToServer(env);
     }
 }
 
@@ -624,6 +638,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetWindowGeometry
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_surface) {
         xdg_surface_set_window_geometry(frame->xdg_surface, x, y, width, height);
+        wlFlushToServer(env);
     }
 }
 
@@ -633,6 +648,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetMinimumSize
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel) {
         xdg_toplevel_set_min_size(frame->xdg_toplevel, width, height);
+        wlFlushToServer(env);
     }
 }
 
@@ -642,6 +658,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetMaximumSize
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel) {
         xdg_toplevel_set_max_size(frame->xdg_toplevel, width, height);
+        wlFlushToServer(env);
     }
 }
 
@@ -651,6 +668,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeShowWindowMenu
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel) {
         xdg_toplevel_show_window_menu(frame->xdg_toplevel, wl_seat, last_mouse_pressed_serial, x, y);
+        wlFlushToServer(env);
     }
 }
 
@@ -669,5 +687,6 @@ Java_sun_awt_wl_WLComponentPeer_nativeActivate
         }
         xdg_activation_token_v1_commit(token);
         frame->activation_token_list = add_token(env, frame->activation_token_list, token);
+        wlFlushToServer(env);
     }
 }
