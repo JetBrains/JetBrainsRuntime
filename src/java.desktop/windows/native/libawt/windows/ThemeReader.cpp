@@ -90,7 +90,7 @@ typedef HRESULT(__stdcall *PFNCLOSETHEMEDATA)(HTHEME hTheme);
 typedef HRESULT(__stdcall *PFNDRAWTHEMEBACKGROUND)(HTHEME hTheme, HDC hdc,
         int iPartId, int iStateId, const RECT *pRect,  const RECT *pClipRect);
 
-typedef HTHEME(__stdcall *PFNOPENTHEMEDATA)(HWND hwnd, LPCWSTR pszClassList);
+typedef HTHEME(__stdcall *PFNOPENTHEMEDATAFORDPI)(HWND hwnd, LPCWSTR pszClassList, UINT dpi);
 
 typedef HRESULT (__stdcall *PFNDRAWTHEMETEXT)(HTHEME hTheme, HDC hdc,
           int iPartId, int iStateId, LPCWSTR pszText, int iCharCount,
@@ -134,7 +134,7 @@ typedef HRESULT (__stdcall *PFNGETTHEMETRANSITIONDURATION)
                 (HTHEME hTheme, int iPartId, int iStateIdFrom, int iStateIdTo,
                  int iPropId, DWORD *pdwDuration);
 
-static PFNOPENTHEMEDATA OpenThemeData = NULL;
+static PFNOPENTHEMEDATAFORDPI OpenThemeDataForDpiFunc = NULL;
 static PFNDRAWTHEMEBACKGROUND DrawThemeBackground = NULL;
 static PFNCLOSETHEMEDATA CloseThemeData = NULL;
 static PFNDRAWTHEMETEXT DrawThemeText = NULL;
@@ -161,8 +161,8 @@ BOOL InitThemes() {
     DTRACE_PRINTLN1("InitThemes hModThemes = %x\n", hModThemes);
     if(hModThemes) {
         DTRACE_PRINTLN("Loaded UxTheme.dll\n");
-        OpenThemeData = (PFNOPENTHEMEDATA)GetProcAddress(hModThemes,
-                                                        "OpenThemeData");
+        OpenThemeDataForDpiFunc = (PFNOPENTHEMEDATAFORDPI)GetProcAddress(
+                                   hModThemes, "OpenThemeDataForDpi");
         DrawThemeBackground = (PFNDRAWTHEMEBACKGROUND)GetProcAddress(
                                         hModThemes, "DrawThemeBackground");
         CloseThemeData = (PFNCLOSETHEMEDATA)GetProcAddress(
@@ -198,7 +198,7 @@ BOOL InitThemes() {
             (PFNGETTHEMETRANSITIONDURATION)GetProcAddress(hModThemes,
                                         "GetThemeTransitionDuration");
 
-        if(OpenThemeData
+        if(OpenThemeDataForDpiFunc
            && DrawThemeBackground
            && CloseThemeData
            && DrawThemeText
@@ -216,9 +216,12 @@ BOOL InitThemes() {
            && IsThemeBackgroundPartiallyTransparent
           ) {
               DTRACE_PRINTLN("Loaded function pointers.\n");
-              // We need to make sure we can load the Theme. This may not be
-              // the case on a WinXP machine with classic mode enabled.
-              HTHEME hTheme = OpenThemeData(AwtToolkit::GetInstance().GetHWnd(), L"Button");
+              // We need to make sure we can load the Theme.
+              // Use the default DPI value of 96 on windows.
+              constexpr unsigned int defaultDPI = 96;
+              HTHEME hTheme = OpenThemeDataForDpiFunc (
+                              AwtToolkit::GetInstance().GetHWnd(),
+                              L"Button", defaultDPI);
               if(hTheme) {
                   DTRACE_PRINTLN("Loaded Theme data.\n");
                   CloseThemeData(hTheme);
@@ -275,7 +278,7 @@ static void assert_result(HRESULT hres, JNIEnv *env) {
  * Signature: (Ljava/lang/String;)J
  */
 JNIEXPORT jlong JNICALL Java_sun_awt_windows_ThemeReader_openTheme
-(JNIEnv *env, jclass klass, jstring widget) {
+(JNIEnv *env, jclass klass, jstring widget, jint dpi) {
 
     LPCTSTR str = (LPCTSTR) JNU_GetStringPlatformChars(env, widget, NULL);
     if (str == NULL) {
@@ -284,7 +287,9 @@ JNIEXPORT jlong JNICALL Java_sun_awt_windows_ThemeReader_openTheme
     }
     // We need to open the Theme on a Window that will stick around.
     // The best one for that purpose is the Toolkit window.
-    HTHEME htheme = OpenThemeData(AwtToolkit::GetInstance().GetHWnd(), str);
+    HTHEME htheme = OpenThemeDataForDpiFunc(
+                    AwtToolkit::GetInstance().GetHWnd(),
+                    str, dpi);
     JNU_ReleaseStringPlatformChars(env, widget, str);
     return (jlong) htheme;
 }
@@ -417,7 +422,7 @@ static void copyDIBToBufferedImage(int *pDstBits, int *pSrcBits,
  */
 JNIEXPORT void JNICALL Java_sun_awt_windows_ThemeReader_paintBackground
   (JNIEnv *env, jclass klass, jintArray array, jlong theme, jint part, jint state,
-    jint x, jint y, jint w, jint h, jint stride) {
+    jint rectRight, jint rectBottom, jint w, jint h, jint stride) {
 
     int *pDstBits=NULL;
     int *pSrcBits=NULL;
@@ -463,8 +468,8 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_ThemeReader_paintBackground
 
     rect.left = 0;
     rect.top = 0;
-    rect.bottom = h;
-    rect.right = w;
+    rect.bottom = rectBottom;
+    rect.right = rectRight;
 
     ZeroMemory(pSrcBits,(BITS_PER_PIXEL>>3)*w*h);
 
@@ -753,27 +758,6 @@ JNIEXPORT jobject JNICALL Java_sun_awt_windows_ThemeReader_getPosition
     return NULL;
 }
 
-void rescale(SIZE *size) {
-    static int dpiX = -1;
-    static int dpiY = -1;
-    if (dpiX == -1 || dpiY == -1) {
-        HWND hWnd = ::GetDesktopWindow();
-        HDC hDC = ::GetDC(hWnd);
-        dpiX = ::GetDeviceCaps(hDC, LOGPIXELSX);
-        dpiY = ::GetDeviceCaps(hDC, LOGPIXELSY);
-        ::ReleaseDC(hWnd, hDC);
-    }
-
-    if (dpiX !=0 && dpiX != 96) {
-        float invScaleX = 96.0f / dpiX;
-        size->cx = ROUND_TO_INT(size->cx * invScaleX);
-    }
-    if (dpiY != 0 && dpiY != 96) {
-        float invScaleY = 96.0f / dpiY;
-        size->cy = ROUND_TO_INT(size->cy * invScaleY);
-    }
-}
-
 /*
  * Class:     sun_awt_windows_ThemeReader
  * Method:    getPartSize
@@ -800,7 +784,6 @@ JNIEXPORT jobject JNICALL Java_sun_awt_windows_ThemeReader_getPartSize
                 CHECK_NULL_RETURN(dimMID, NULL);
             }
 
-            rescale(&size);
             jobject dimObj = env->NewObject(dimClassID, dimMID, size.cx, size.cy);
             if (safe_ExceptionOccurred(env)) {
                 env->ExceptionDescribe();
