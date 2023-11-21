@@ -66,6 +66,7 @@ public class bug5047379 {
         testRobot.delay(1000);
         testRobot.waitForIdle();
         Point movePoint = getButtonPoint(b);
+        System.out.println("==> move to (" + movePoint.x + ", " + movePoint.y + ")");
         testRobot.mouseMove(movePoint.x, movePoint.y);
         testRobot.delay(2000);
         testRobot.waitForIdle();

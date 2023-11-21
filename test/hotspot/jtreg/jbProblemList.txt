@@ -47,6 +47,8 @@ gtest/LargePageGtests.java#use-large-pages-1G initial_run linux-all
 gtest/GTestWrapper.java initial_run generic-all
 gtest/MetaspaceUtilsGtests.java initial_run generic-all
 gtest/MetaspaceGtests.java#balanced-no-ccs initial_run generic-all
+gtest/MetaspaceGtests.java#balanced-with-guards JBR-5718 generic-all
+gtest/MetaspaceGtests.java#default-debug JBR-5718 generic-all
 gtest/MetaspaceGtests.java#reclaim-aggressive-ndebug initial_run generic-all
 gtest/LargePageGtests.java#use-large-pages initial_run linux-all,windows-all
 
@@ -116,6 +118,11 @@ gc/stress/gcold/TestGCOldWithShenandoah.java initial_run windows-all
 
 runtime/CompressedOops/CompressedClassPointers.java 8262895 generic-aarch64
 
+runtime/cds/TestCDSVMCrash.java JBR-6246 generic-all
+runtime/cds/appcds/CommandLineFlagCombo.java JBR-6246 generic-all
+runtime/cds/appcds/TestDumpClassListSource.java JBR-6099 generic-all
+runtime/cds/appcds/TestZGCWithCDS.java#ZGenerational 8316319 generic-all
+runtime/cds/appcds/dynamicArchive/TestAutoCreateSharedArchiveNoDefaultArchive.java JBR-6246 generic-all
 runtime/cds/appcds/jigsaw/modulepath/ModulePathAndCP_JFR.java 8253437 windows-x64
 runtime/cds/CheckDefaultArchiveFile.java JBR-4227 generic-all
 runtime/cds/DeterministicDump.java 8253495 generic-all
@@ -137,6 +144,7 @@ runtime/cds/appcds/methodHandles/MethodHandlesPermuteArgumentsTest.java initial_
 runtime/cds/appcds/methodHandles/MethodHandlesAsCollectorTest.java initial_run generic-all
 runtime/cds/SharedBaseAddress.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesSpreadArgumentsTest.java initial_run generic-all
+runtime/reflect/ReflectOutOfMemoryError.java 8316060 generic-all
 
 #############################################################################
 
@@ -144,7 +152,7 @@ runtime/cds/appcds/methodHandles/MethodHandlesSpreadArgumentsTest.java initial_r
 
 serviceability/dcmd/vm/TrimLibcHeapTest.java 8312625 linux-all
 
-serviceability/sa/sadebugd/DebugdConnectTest.java 8239062 macosx-x64
+serviceability/sa/sadebugd/DebugdConnectTest.java 8239062,8270326 macosx-x64,macosx-aarch64
 serviceability/sa/TestRevPtrsForInvokeDynamic.java 8241235 generic-all
 
 serviceability/jvmti/ModuleAwareAgents/ThreadStart/MAAThreadStart.java 8225354 windows-all
@@ -157,18 +165,24 @@ serviceability/sa/ClhsdbPrintAs.java initial_run generic-all
 serviceability/sa/ClhsdbFindPC.java#id1 initial_run generic-all
 serviceability/sa/ClhsdbFindPC.java#id2 initial_run generic-all
 serviceability/sa/ClhsdbFindPC.java#id3 initial_run generic-all
+serviceability/sa/ClhsdbFindPC.java#no-xcomp-core 8294316,8267433,JBR-6259 macosx-x64,linux_aarch64,windows-aarch64
 serviceability/sa/ClhsdbFindPC.java#no-xcomp-process 8269881 generic-all 8277079
+serviceability/sa/ClhsdbFindPC.java#xcomp-core 8294316,8267433,JBR-6259 macosx-x64,windows-aarch64
 serviceability/sa/ClhsdbCDSJstackPrintAll.java initial_run windows-aarch64
-serviceability/sa/TestClhsdbJstackLock.java initial_run windows-aarch64
 serviceability/sa/ClhsdbSource.java initial_run windows-aarch64
 serviceability/sa/ClhsdbJdis.java initial_run windows-aarch64
-serviceability/sa/TestJhsdbJstackLock.java initial_run windows-aarch64
 serviceability/sa/ClhsdbCDSCore.java initial_run generic-aarch64
 serviceability/sa/ClhsdbJstack.java#id1 initial_run windows-aarch64
 serviceability/sa/ClhsdbPstack.java#id1 initial_run generic-aarch64
+serviceability/sa/ClhsdbPstack.java#core 8294316,8267433,JBR-6259 macosx-x64,windows-aarch64
 serviceability/sa/ClhsdbPmap.java#id1 initial_run generic-all
+serviceability/sa/ClhsdbPmap.java#core 8294316,8267433,JBR-6259 macosx-x64,windows-aarch64
 serviceability/sa/ClhsdbWhere.java initial_run windows-aarch64
 serviceability/sa/ClhsdbDumpheap.java initial_run windows-aarch64
+serviceability/sa/ClhsdbThreadContext.java JBR-6260 windows-aarch64
+
+serviceability/sa/TestClhsdbJstackLock.java initial_run windows-aarch64
+serviceability/sa/TestJhsdbJstackLock.java initial_run windows-aarch64
 
 #############################################################################
 
@@ -215,6 +229,9 @@ vmTestbase/nsk/jvmti/scenarios/sampling/SP04/sp04t001/TestDescription.java initi
 vmTestbase/nsk/jvmti/scenarios/sampling/SP04/sp04t002/TestDescription.java initial_run windows-x64
 vmTestbase/nsk/jvmti/scenarios/sampling/SP05/sp05t003/TestDescription.java initial_run generic-all
 
+vmTestbase/gc/gctests/LargeObjects/large003/TestDescription.java 8307788 generic-all
+vmTestbase/gc/gctests/LargeObjects/large004/TestDescription.java 8307788 generic-all
+vmTestbase/gc/gctests/LargeObjects/large005/TestDescription.java 8307788 generic-all
 vmTestbase/gc/lock/jni/jnilock002/TestDescription.java 8192647 generic-all
 
 vmTestbase/jit/escape/LockCoarsening/LockCoarsening001.java 8148743 generic-all
@@ -228,7 +245,6 @@ vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2none_a/TestDescription.java 8013
 vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manyDiff_b/TestDescription.java 8013267 generic-all
 vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manySame_b/TestDescription.java 8013267 generic-all
 vmTestbase/vm/mlvm/meth/stress/compiler/deoptimize/Test.java#id0 8269393 macos-aarch64
-
 
 vmTestbase/nsk/jdwp/ThreadReference/ForceEarlyReturn/forceEarlyReturn001/forceEarlyReturn001.java 7199837 generic-all
 
