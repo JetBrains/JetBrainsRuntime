@@ -54,7 +54,6 @@ import java.awt.image.VolatileImage;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.ContainerPeer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Objects;
 import java.util.function.Supplier;
 
