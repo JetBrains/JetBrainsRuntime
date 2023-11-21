@@ -219,9 +219,15 @@ public class WLGraphicsDevice extends GraphicsDevice {
             return;
         }
 
+        boolean fsSupported = isFullScreenSupported();
+        if (fsSupported && old != null) {
+            // enter windowed mode and restore original display mode
+            exitFullScreenExclusive(old);
+        }
+
         super.setFullScreenWindow(w);
 
-        if (isFullScreenSupported()) {
+        if (fsSupported) {
             if (w != null) {
                 enterFullScreenExclusive(w);
             } else {
