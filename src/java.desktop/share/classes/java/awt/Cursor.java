@@ -193,7 +193,7 @@ public class Cursor implements java.io.Serializable {
 
         AWTAccessor.setCursorAccessor(
             new AWTAccessor.CursorAccessor() {
-                final HashMap<Integer, Integer> actualCursorScale = new HashMap<>();
+                private final HashMap<Integer, Integer> actualCursorScale = new HashMap<>();
 
                 public long getPData(Cursor cursor, int scale) {
                     return (actualCursorScale.getOrDefault(cursor.getType(), 0) == scale) ? cursor.pData : 0;

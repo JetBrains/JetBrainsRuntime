@@ -256,6 +256,7 @@ public final class XGlobalCursorManager extends GlobalCursorManager {
         return pData;
     }
 
+
     static void setPData(Cursor c, long pData) {
         try {
             AWTAccessor.getCursorAccessor().setPData(c, pData);
