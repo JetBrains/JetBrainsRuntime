@@ -47,6 +47,9 @@ gtest/LargePageGtests.java#use-large-pages-1G initial_run linux-all
 gtest/GTestWrapper.java initial_run generic-all
 gtest/MetaspaceUtilsGtests.java initial_run generic-all
 gtest/MetaspaceGtests.java#balanced-no-ccs initial_run generic-all
+gtest/MetaspaceGtests.java#balanced-with-guards JBR-5718 generic-all
+gtest/MetaspaceGtests.java#reclaim-aggressive-debug JBR-5718 generic-all
+gtest/MetaspaceGtests.java#reclaim-none-debug JBR-5718 generic-all
 gtest/MetaspaceGtests.java#reclaim-aggressive-ndebug initial_run generic-all
 gtest/LargePageGtests.java#use-large-pages initial_run linux-all,windows-all
 
@@ -99,15 +102,15 @@ gc/epsilon/TestMemoryMXBeans.java 8206434 generic-all
 gc/g1/humongousObjects/objectGraphTest/TestObjectGraphAfterGC.java 8156755 generic-all
 gc/g1/logging/TestG1LoggingFailure.java 8169634 generic-all
 gc/g1/humongousObjects/TestHeapCounters.java 8178918 generic-all
+gc/metaspace/CompressedClassSpaceSizeInJmapHeap.java 8241293 macosx-x64
+gc/metaspace/TestMetaspacePerfCounters.java#id3 initial_run generic-all
 gc/stress/gclocker/TestExcessGCLockerCollections.java 8229120 generic-all
 gc/stress/gclocker/TestGCLockerWithParallel.java 8180622 generic-all
 gc/stress/gclocker/TestGCLockerWithG1.java 8180622 generic-all
-gc/stress/gclocker/TestGCLockerWithShenandoah.java initial_run generic-all
+gc/stress/gclocker/TestGCLockerWithShenandoah.java#aggressive initial_run generic-all
+gc/stress/gcold/TestGCOldWithShenandoah.java#iu-aggressive initial_run windows-all
 gc/stress/TestJNIBlockFullGC/TestJNIBlockFullGC.java 8192647 generic-all
-gc/metaspace/CompressedClassSpaceSizeInJmapHeap.java 8241293 macosx-x64
-gc/metaspace/TestMetaspacePerfCounters.java#id3 initial_run generic-all
 
-gc/stress/gcold/TestGCOldWithShenandoah.java initial_run windows-all
 
 #############################################################################
 
