@@ -1421,10 +1421,12 @@ AWT_ASSERT_APPKIT_THREAD;
         [self updateCustomTitleBarInsets:NO];
 
         JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-        NSString *newFullScreeControls = [PropertiesUtilities
+        NSString *newFullScreenControls1 = [PropertiesUtilities
             javaSystemPropertyForKey:@"apple.awt.newFullScreeControls" withEnv:env];
-        if ([@"true" isCaseInsensitiveLike:newFullScreeControls]) {
-            [self setWindowFullScreeControls];
+        NSString *newFullScreenControls2 = [PropertiesUtilities
+            javaSystemPropertyForKey:@"apple.awt.newFullScreenControls" withEnv:env];
+        if ([@"true" isCaseInsensitiveLike:newFullScreenControls1] || [@"true" isCaseInsensitiveLike:newFullScreenControls2]) {
+            [self setWindowFullScreenControls];
         }
     }
     [self allowMovingChildrenBetweenSpaces:NO];
@@ -1472,7 +1474,7 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 - (void)windowDidExitFullScreen:(NSNotification *)notification {
-    [self resetWindowFullScreeControls];
+    [self resetWindowFullScreenControls];
 
     self.isEnterFullScreen = NO;
 
@@ -1734,7 +1736,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     [self.nsWindow standardWindowButton:NSWindowMiniaturizeButton].hidden = hidden;
 }
 
-- (void) setWindowFullScreeControls {
+- (void) setWindowFullScreenControls {
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
     NSString *dfmMode = [PropertiesUtilities javaSystemPropertyForKey:@"apple.awt.distraction.free.mode" withEnv:env];
     if ([@"true" isCaseInsensitiveLike:dfmMode]) {
@@ -1802,21 +1804,19 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 - (void)updateFullScreenButtons: (BOOL) dfm {
     if (dfm) {
         if (_fullScreenButtons == nil || _fullScreenOriginalButtons == nil) {
-            NSLog(@"WARNING: updateFullScreenButtons after dfm open but _fullScreenButtons == nil");
             return;
         }
         [_fullScreenOriginalButtons.window.contentView setHidden:NO];
-        [self resetWindowFullScreeControls];
+        [self resetWindowFullScreenControls];
     } else {
-        if (_fullScreenButtons != nil) {
-            NSLog(@"WARNING: updateFullScreenButtons after dfm exit but _fullScreenButtons != nil");
+        if (!self.isCustomTitleBarEnabled || _fullScreenButtons != nil) {
             return;
         }
-        [self setWindowFullScreeControls];
+        [self setWindowFullScreenControls];
     }
 }
 
-- (void) resetWindowFullScreeControls {
+- (void) resetWindowFullScreenControls {
     if (_fullScreenButtons != nil) {
         [_fullScreenButtons removeFromSuperview];
         _fullScreenButtons = nil;
@@ -1869,6 +1869,8 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
             } else {
                 [self resetCustomTitleBar];
             }
+        } else {
+            [self updateFullScreenButtons];
         }
     } else if (enabled) {
         [self updateCustomTitleBarConstraints];
