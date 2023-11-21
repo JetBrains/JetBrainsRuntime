@@ -838,7 +838,7 @@ void InterpreterMacroAssembler::unlock_if_synchronized_method(TosState state,
   // Check that all monitors are unlocked.
   {
     NearLabel loop, exception, entry, restart;
-    const int entry_size = frame::interpreter_frame_monitor_size() * wordSize;
+    const int entry_size = frame::interpreter_frame_monitor_size_in_bytes();
     // We use Z_ARG2 so that if we go slow path it will be the correct
     // register for unlock_object to pass to VM directly.
     Register R_current_monitor = Z_ARG2;
@@ -1028,7 +1028,7 @@ void InterpreterMacroAssembler::lock_object(Register monitor, Register object) {
   }
 
   if (LockingMode == LM_LIGHTWEIGHT) {
-    fast_lock(object, /* mark word */ header, tmp, slow_case);
+    lightweight_lock(object, /* mark word */ header, tmp, slow_case);
   } else if (LockingMode == LM_LEGACY) {
 
     // Set header to be (markWord of object | UNLOCK_VALUE).
@@ -1086,7 +1086,7 @@ void InterpreterMacroAssembler::lock_object(Register monitor, Register object) {
   // slow case of monitor enter.
   bind(slow_case);
   if (LockingMode == LM_LIGHTWEIGHT) {
-    // for fast locking we need to use monitorenter_obj, see interpreterRuntime.cpp
+    // for lightweight locking we need to use monitorenter_obj, see interpreterRuntime.cpp
     call_VM(noreg,
             CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter_obj),
             object);
@@ -1185,7 +1185,7 @@ void InterpreterMacroAssembler::unlock_object(Register monitor, Register object)
     z_nill(tmp, markWord::monitor_value);
     z_brne(slow_case);
 
-    fast_unlock(object, header, tmp, slow_case);
+    lightweight_unlock(object, header, tmp, slow_case);
 
     z_bru(done);
   } else {
@@ -2087,7 +2087,7 @@ void InterpreterMacroAssembler::add_monitor_to_stack(bool     stack_is_empty,
 
   const Register Rcurr_slot = Rtemp1;
   const Register Rlimit     = Rtemp2;
-  const jint delta = -frame::interpreter_frame_monitor_size() * wordSize;
+  const jint delta = -frame::interpreter_frame_monitor_size_in_bytes();
 
   assert((delta & LongAlignmentMask) == 0,
          "sizeof BasicObjectLock must be even number of doublewords");
