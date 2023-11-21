@@ -59,11 +59,11 @@ Java_java_awt_Cursor_finalizeImpl
 }
 
 JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLComponentPeer_nativeGetPredefinedCursor
-        (JNIEnv *env, jclass cls, jstring name, jint scale)
+  (JNIEnv *env, jclass cls, jstring name, jint scale)
 {
     struct wl_cursor_theme *cursor_theme = getCursorTheme(scale);
 
-    if (cursor_theme == NULL)
+    if (!cursor_theme)
         return 0;
 
     jboolean isCopy = JNI_FALSE;

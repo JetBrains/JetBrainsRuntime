@@ -873,9 +873,10 @@ readDesktopProperty(const char* name, char *output, int outputSize) {
 
 struct wl_cursor_theme*
 getCursorTheme(int scale) {
-    if (cursor_themes[scale] != NULL) {
+    if (cursor_themes[scale]) {
         return cursor_themes[scale];
     }
+
     char *theme_name;
     int theme_size = 0;
     char buffer[256];
@@ -905,12 +906,14 @@ getCursorTheme(int scale) {
 
     if (scale >= MAX_CURSOR_SCALE) {
         J2dTrace(J2D_TRACE_ERROR, "WLToolkit: Reach the maximum scale for cursor theme\n");
+        return NULL;
     }
 
     cursor_themes[scale] = wl_cursor_theme_load(theme_name, theme_size * scale, wl_shm);
-    if (cursor_themes[scale] == NULL) {
+    if (!cursor_themes[scale]) {
         J2dTrace(J2D_TRACE_ERROR, "WLToolkit: Failed to load cursor theme\n");
     }
+    
     return cursor_themes[scale];
 }
 

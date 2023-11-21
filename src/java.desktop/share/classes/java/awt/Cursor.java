@@ -196,7 +196,7 @@ public class Cursor implements java.io.Serializable {
                 final HashMap<Integer, Integer> actualCursorScale = new HashMap<>();
 
                 public long getPData(Cursor cursor, int scale) {
-                    return (actualCursorScale.getOrDefault(cursor.getType(), 0) == scale) ? getPData(cursor) : 0;
+                    return (actualCursorScale.getOrDefault(cursor.getType(), 0) == scale) ? cursor.pData : 0;
                 }
 
                 public long getPData(Cursor cursor) {
@@ -209,6 +209,7 @@ public class Cursor implements java.io.Serializable {
                 }
 
                 public void setPData(Cursor cursor, long pData) {
+                    actualCursorScale.remove(cursor.getType());
                     cursor.pData = pData;
                 }
 

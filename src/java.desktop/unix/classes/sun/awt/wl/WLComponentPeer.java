@@ -780,9 +780,9 @@ public class WLComponentPeer implements ComponentPeer {
         performLockedGlobal(() -> {
             long pData = AWTAccessor.getCursorAccessor().getPData(cursor, scale);
             if (pData == 0) {
+                // instead of destroying and creating new cursor after changing scale could be used caching
                 long oldPData = AWTAccessor.getCursorAccessor().getPData(cursor);
                 if (oldPData != 0) {
-                    System.out.println("Destroy");
                     nativeDestroyPredefinedCursor(oldPData);
                 }
 
