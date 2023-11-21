@@ -38,7 +38,7 @@ class WLKeyboard {
     }
 
     private class KeyRepeatManager {
-        private final Timer timer = new Timer();
+        private final Timer timer = new Timer("WLKeyboard.KeyRepeatManager", true);
         private TimerTask currentRepeatTask;
         private int delayBeforeRepeatMillis = 500;
         private int delayBetweenRepeatMillis = 50;
