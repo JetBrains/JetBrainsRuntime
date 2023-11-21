@@ -80,7 +80,12 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
 
     @Override
     public SurfaceData getReplacement() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        // It does not seem possible in Wayland to get your window's surface
+        // change mid-flight such that it needs a replacement.
+        // The only scenario when a surface gets forcibly invalidated is
+        // after WLComponentPeer.dispose(), at which point the surface
+        // is no longer needed anyway.
+        return null;
     }
 
     @Override
