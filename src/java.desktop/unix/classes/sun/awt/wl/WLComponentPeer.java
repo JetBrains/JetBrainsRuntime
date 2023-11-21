@@ -84,8 +84,6 @@ public class WLComponentPeer implements ComponentPeer {
             {"move"}, // MOVE_CURSOR
     };
 
-    private static final HashMap<Long, Long> CursorDataByScale = new HashMap<>();
-
     private long nativePtr;
     private volatile boolean surfaceAssigned = false;
     protected final Component target;
@@ -780,18 +778,24 @@ public class WLComponentPeer implements ComponentPeer {
             cursor = c;
         }
         performLockedGlobal(() -> {
-            long key = (long)cursor.getType() << 32 | ((long)scale & 0xffffffffL);
-            if (!CursorDataByScale.containsKey(key)) {
-                long pData = createNativeCursor(cursor.getType(), scale);
+            long pData = AWTAccessor.getCursorAccessor().getPData(cursor, scale);
+            if (pData == 0) {
+                long oldPData = AWTAccessor.getCursorAccessor().getPData(cursor);
+                if (oldPData != 0) {
+                    System.out.println("Destroy");
+                    nativeDestroyPredefinedCursor(oldPData);
+                }
+
+                pData = createNativeCursor(cursor.getType(), scale);
                 if (pData == 0) {
                     pData = createNativeCursor(Cursor.DEFAULT_CURSOR, scale);
                 }
                 if (pData == 0) {
                     pData = -1; // mark as unavailable
                 }
-                CursorDataByScale.put(key, pData);
+                AWTAccessor.getCursorAccessor().setPData(cursor, scale, pData);
             }
-            nativeSetCursor(CursorDataByScale.get(key), scale);
+            nativeSetCursor(pData, scale);
         });
     }
 
@@ -954,6 +958,7 @@ public class WLComponentPeer implements ComponentPeer {
     private native void nativeSetMaximumSize(long ptr, int width, int height);
     private static native void nativeSetCursor(long pData, int scale);
     private static native long nativeGetPredefinedCursor(String name, int scale);
+    private static native long nativeDestroyPredefinedCursor(long pData);
     private native void nativeShowWindowMenu(long ptr, int x, int y);
     private native void nativeActivate(long ptr);
 

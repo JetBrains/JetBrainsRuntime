@@ -59,18 +59,18 @@ Java_java_awt_Cursor_finalizeImpl
 }
 
 JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLComponentPeer_nativeGetPredefinedCursor
-  (JNIEnv *env, jclass cls, jstring name, jint scale)
+        (JNIEnv *env, jclass cls, jstring name, jint scale)
 {
-    initCursors(scale);
+    struct wl_cursor_theme *cursor_theme = getCursorTheme(scale);
 
-    if (!wl_cursor_theme)
+    if (cursor_theme == NULL)
         return 0;
 
     jboolean isCopy = JNI_FALSE;
     const char *name_c_str = JNU_GetStringPlatformChars(env, name, &isCopy);
     if (!name_c_str)
         return 0;
-    struct wl_cursor *wl_cursor = wl_cursor_theme_get_cursor(wl_cursor_theme, name_c_str);
+    struct wl_cursor *wl_cursor = wl_cursor_theme_get_cursor(cursor_theme, name_c_str);
     if (isCopy) {
         JNU_ReleaseStringPlatformChars(env, name, name_c_str);
     }
@@ -89,6 +89,12 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLComponentPeer_nativeGetPredefinedCurso
         cursor->hotspot_y = wl_cursor_image->hotspot_y;
     }
     return ptr_to_jlong(cursor);
+}
+
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeDestroyPredefinedCursor
+        (JNIEnv *env, jclass cls, struct WLCursor *cursor)
+{
+    free(cursor);
 }
 
 JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCustomCursor_nativeCreateCustomCursor
