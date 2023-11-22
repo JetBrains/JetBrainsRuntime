@@ -78,12 +78,6 @@ typedef struct SplashImage
 
 #define SPLASH_COLOR_MAP_SIZE 0x100
 
-typedef struct ScreenInfo {
-    int width;
-    int height;
-    int scale;
-} ScreenInfo;
-
 typedef struct Splash
 {
     ImageFormat screenFormat;   /* must be preset before image decoding */
@@ -95,6 +89,7 @@ typedef struct Splash
     int width;                  /* in pixels */
     int height;                 /* in pixels */
     int frameCount;
+    bool initialized;
     SplashImage *frames;        /* dynamically allocated array of frame descriptors */
     unsigned time;              /* in msec, origin is not important */
     rgbquad_t *overlayData;     /* overlay image data, always rgbquads */
@@ -102,7 +97,6 @@ typedef struct Splash
     ImageFormat overlayFormat;
     void *screenData;
     int screenStride;           /* stored scanline length in bytes */
-    ScreenInfo screenInfo;
     int currentFrame;           // currentFrame==-1 means image is not loaded
     int loopCount;
     int x, y;
@@ -130,12 +124,11 @@ typedef struct Splash
     XWMHints* wmHints;
 #elif defined(WITH_WL)
     int controlpipe[2];
-    Buffer main_buffer;
+    Buffer *main_buffer;
     Buffer *buffers;
-    wayland_state *state;
+    wayland_state *wl_state;
     int window_width;
     int window_height;
-    int native_scale;
     pthread_mutex_t lock;
 #elif defined(WITH_MACOSX)
     pthread_mutex_t lock;
