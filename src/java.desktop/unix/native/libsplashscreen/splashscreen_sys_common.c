@@ -38,6 +38,7 @@
 #include <unistd.h>
 
 const int POLL_EVENT_TIMEOUT = 50;
+const int CURSOR_UPDATE_TIME = 50;
 
 void SplashEventLoop(Splash * splash);
 bool SplashCreateWindow(Splash * splash);
@@ -137,7 +138,7 @@ SplashEventLoop(Splash * splash) {
         rc = poll(pfd, 2, POLL_EVENT_TIMEOUT);
         SplashLock(splash);
 
-        if (SplashTime() - lastCursorUpdate > 100) {
+        if (SplashTime() - lastCursorUpdate > CURSOR_UPDATE_TIME) {
             SplashUpdateCursor(splash);
             lastCursorUpdate = SplashTime();
         }
