@@ -65,7 +65,7 @@ Java_java_awt_SplashScreen__1update(JNIEnv * env, jclass thisClass,
         /* we need a copy anyway, so we'll be using GetIntArrayRegion */
         (*env)->GetIntArrayRegion(env, data, 0, dataSize,
             (jint *) splash->overlayData);
-        initFormat(&splash->overlayFormat, 0xFF0000, 0xFF00, 0xFF, 0xFF000000);
+        initFormat(&splash->overlayFormat, QUAD_RED_MASK, QUAD_GREEN_MASK, QUAD_BLUE_MASK, QUAD_ALPHA_MASK);
         initRect(&splash->overlayRect, x, y, width, height, 1,
             stride * sizeof(rgbquad_t), splash->overlayData,
             &splash->overlayFormat);
