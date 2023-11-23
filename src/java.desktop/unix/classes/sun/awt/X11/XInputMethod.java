@@ -40,6 +40,7 @@ import java.util.stream.Stream;
 
 import sun.awt.AWTAccessor;
 import sun.awt.X11GraphicsDevice;
+import sun.awt.X11GraphicsEnvironment;
 import sun.awt.X11InputMethod;
 
 import sun.util.logging.PlatformLogger;
@@ -375,7 +376,7 @@ public final class XInputMethod extends X11InputMethod {
         final int clientComponentAbsoluteMaxY = clientComponentAbsolutePos.y + clientComponent.getHeight();
 
         // Initial values are the fallback which is the bottom-left corner of the component
-        final Point expectedCandidatesNativeWindowAbsolutePos = new Point(
+        Point expectedCandidatesNativeWindowAbsolutePos = new Point(
             clientComponentAbsolutePos.x,
             clientComponentAbsoluteMaxY
         );
@@ -414,12 +415,14 @@ public final class XInputMethod extends X11InputMethod {
         // To do it properly, we have to know the screen which the point is on.
         // The code below supposes this is the one which clientComponent belongs to, because we've clamped
         //   the point coordinates within the component's bounds above.
+        final X11GraphicsEnvironment graphicsEnvironment =
+                ((X11GraphicsEnvironment) GraphicsEnvironment.getLocalGraphicsEnvironment());
         final X11GraphicsDevice candidatesNativeWindowDevice = getComponentX11Device(clientComponent);
-        if (candidatesNativeWindowDevice != null) {
-            expectedCandidatesNativeWindowAbsolutePos.x =
-                candidatesNativeWindowDevice.scaleUpX(expectedCandidatesNativeWindowAbsolutePos.x);
-            expectedCandidatesNativeWindowAbsolutePos.y =
-                candidatesNativeWindowDevice.scaleUpY(expectedCandidatesNativeWindowAbsolutePos.y);
+        Point scaledExpectedCandidatesNativeWindowAbsolutePos = graphicsEnvironment.scaleUp(candidatesNativeWindowDevice,
+                expectedCandidatesNativeWindowAbsolutePos.x,
+                expectedCandidatesNativeWindowAbsolutePos.y);
+        if (scaledExpectedCandidatesNativeWindowAbsolutePos != null) {
+            expectedCandidatesNativeWindowAbsolutePos = scaledExpectedCandidatesNativeWindowAbsolutePos;
         }
 
         // Clamping within screen bounds (to avoid the input candidates window to appear outside a screen).
@@ -441,13 +444,13 @@ public final class XInputMethod extends X11InputMethod {
 
         if (forceUpdate || !expectedCandidatesNativeWindowAbsolutePos.equals(lastKnownCandidatesNativeWindowAbsolutePosition)) {
             // adjustCandidatesNativeWindowPosition expects coordinates relative to the client window
-            final Point clientComponentWindowAbsolutePos = clientComponentWindow.getLocationOnScreen();
+            Point clientComponentWindowAbsolutePos = clientComponentWindow.getLocationOnScreen();
             final X11GraphicsDevice clientComponentWindowDevice = getComponentX11Device(clientComponentWindow);
-            if (clientComponentWindowDevice != null) {
-                clientComponentWindowAbsolutePos.x =
-                    clientComponentWindowDevice.scaleUpX(clientComponentWindowAbsolutePos.x);
-                clientComponentWindowAbsolutePos.y =
-                    clientComponentWindowDevice.scaleUpY(clientComponentWindowAbsolutePos.y);
+            Point scaledClientComponentWindowAbsolutePos = graphicsEnvironment.scaleUp(clientComponentWindowDevice,
+                    clientComponentWindowAbsolutePos.x,
+                    clientComponentWindowAbsolutePos.y);
+            if (scaledClientComponentWindowAbsolutePos != null) {
+                clientComponentWindowAbsolutePos = scaledClientComponentWindowAbsolutePos;
             }
 
             final int relativeX = expectedCandidatesNativeWindowAbsolutePos.x - clientComponentWindowAbsolutePos.x;
