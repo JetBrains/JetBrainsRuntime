@@ -92,8 +92,9 @@ public final class XMouseInfoPeer implements MouseInfoPeer {
                     if (independentScreens) nearestScreen = i;
                     GraphicsDevice device = gds[nearestScreen];
                     if (device instanceof X11GraphicsDevice x11d) {
-                        point.x = x11d.scaleDownX(point.x);
-                        point.y = x11d.scaleDownY(point.y);
+                        Point p = x11d.scaleDown(point.x, point.y);
+                        point.x = p.x;
+                        point.y = p.y;
                     }
                     return nearestScreen;
                 }
