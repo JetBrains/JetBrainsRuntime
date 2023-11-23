@@ -806,13 +806,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             XMotionEvent ev = e.get_xmotion();
             awtLock();
             try {
-                if (lastCursorPos == null) {
-                    lastCursorPos = new Point(win.scaleDownX(ev.get_x_root()),
-                                              win.scaleDownY(ev.get_y_root()));
-                } else {
-                    lastCursorPos.setLocation(win.scaleDownX(ev.get_x_root()),
-                                              win.scaleDownY(ev.get_y_root()));
-                }
+                lastCursorPos = win.scaleDown(ev.get_x_root(), ev.get_y_root());
             } finally {
                 awtUnlock();
             }
@@ -829,13 +823,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             XCrossingEvent ev = e.get_xcrossing();
             awtLock();
             try {
-                if (lastCursorPos == null) {
-                    lastCursorPos = new Point(win.scaleDownX(ev.get_x_root()),
-                                              win.scaleDownY(ev.get_y_root()));
-                } else {
-                    lastCursorPos.setLocation(win.scaleDownX(ev.get_x_root()),
-                                              win.scaleDownY(ev.get_y_root()));
-                }
+                lastCursorPos = win.scaleDown(ev.get_x_root(), ev.get_y_root());
             } finally {
                 awtUnlock();
             }
@@ -1134,8 +1122,9 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             Rectangle workArea = getWorkArea(XlibUtil.getRootWindow(screenNum));
             Rectangle screen = gc.getBounds();
             if (workArea != null) {
-                workArea.x = x11gd.scaleDownX(workArea.x);
-                workArea.y = x11gd.scaleDownY(workArea.y);
+                Point p = x11gd.scaleDown(workArea.x, workArea.y);
+                workArea.x = p.x;
+                workArea.y = p.y;
                 workArea.width = x11gd.scaleDown(workArea.width);
                 workArea.height = x11gd.scaleDown(workArea.height);
                 workArea = workArea.intersection(screen);
