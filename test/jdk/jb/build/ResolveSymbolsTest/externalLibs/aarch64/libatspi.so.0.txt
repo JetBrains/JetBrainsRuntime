@@ -1,0 +1,616 @@
+Library: /lib64/libatspi.so.0
+Package: at-spi2-core-2.28.0-1.el7.aarch64
+
+
+Symbol table '.dynsym' contains 610 entries:
+   Num:    Value          Size Type    Bind   Vis      Ndx Name
+     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND 
+     1: 000000000000e718     0 SECTION LOCAL  DEFAULT    9 
+     2: 000000000004dbe8     0 SECTION LOCAL  DEFAULT   18 
+     3: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_source_destroy
+     4: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_intern_static_string
+     5: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_io_channel_unref
+     6: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_server_set_data@LIBDBUS_1_3 (2)
+     7: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND memmove@GLIBC_2.17 (3)
+     8: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_list_delete_link
+     9: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_direct_hash
+    10: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_bus_get@LIBDBUS_1_3 (2)
+    11: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_iter_get_basic@LIBDBUS_1_3 (2)
+    12: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_list_append
+    13: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_unref@LIBDBUS_1_3 (2)
+    14: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_iter_init_append@LIBDBUS_1_3 (2)
+    15: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_is_method_call@LIBDBUS_1_3 (2)
+    16: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_timeout_get_data@LIBDBUS_1_3 (2)
+    17: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_bus_add_match@LIBDBUS_1_3 (2)
+    18: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_get_dispatch_status@LIBDBUS_1_3 (2)
+    19: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_malloc
+    20: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_once_init_enter
+    21: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_deregisterTMCloneTable
+    22: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_object_unref
+    23: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_get_sender@LIBDBUS_1_3 (2)
+    24: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_set_error_const@LIBDBUS_1_3 (2)
+    25: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_iter_append_basic@LIBDBUS_1_3 (2)
+    26: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_set_timeout_functions@LIBDBUS_1_3 (2)
+    27: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_free
+    28: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_get_path@LIBDBUS_1_3 (2)
+    29: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_server_set_timeout_functions@LIBDBUS_1_3 (2)
+    30: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_bus_get_unique_name@LIBDBUS_1_3 (2)
+    31: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_get_is_connected@LIBDBUS_1_3 (2)
+    32: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_main_context_wakeup
+    33: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_hash_table_remove
+    34: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_watch_get_flags@LIBDBUS_1_3 (2)
+    35: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_value_unset
+    36: 0000000000000000     0 FUNC    WEAK   DEFAULT  UND __cxa_finalize@GLIBC_2.17 (3)
+    37: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_enum_register_static
+    38: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_get_destination@LIBDBUS_1_3 (2)
+    39: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_str_equal
+    40: 0000000000000000     0 OBJECT  GLOBAL DEFAULT  UND stderr@GLIBC_2.17 (3)
+    41: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_ref@LIBDBUS_1_3 (2)
+    42: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_get_args@LIBDBUS_1_3 (2)
+    43: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_array_sized_new
+    44: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_value_set_boxed
+    45: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_once_init_leave
+    46: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_array_set_size
+    47: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_type_class_unref
+    48: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __ctype_tolower_loc@GLIBC_2.17 (3)
+    49: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_iter_get_signature@LIBDBUS_1_3 (2)
+    50: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_main_context_ref
+    51: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_watch_get_data@LIBDBUS_1_3 (2)
+    52: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_hash_table_lookup
+    53: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_pending_call_set_notify@LIBDBUS_1_3 (2)
+    54: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_source_new
+    55: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_bus_remove_match@LIBDBUS_1_3 (2)
+    56: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_list_prepend
+    57: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_value_set_string
+    58: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_value_get_object
+    59: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_get_signature@LIBDBUS_1_3 (2)
+    60: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_unref@LIBDBUS_1_3 (2)
+    61: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND XFree
+    62: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_iter_close_container@LIBDBUS_1_3 (2)
+    63: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_read_write_dispatch@LIBDBUS_1_3 (2)
+    64: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_set_error
+    65: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_main_context_default
+    66: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_idle_source_new
+    67: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_error_free@LIBDBUS_1_3 (2)
+    68: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_value_set_int
+    69: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_type_class_adjust_private_offset
+    70: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_new_method_return@LIBDBUS_1_3 (2)
+    71: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_pending_call_steal_reply@LIBDBUS_1_3 (2)
+    72: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_assertion_message_expr
+    73: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_slist_remove
+    74: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_utf8_strlen
+    75: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND strncmp@GLIBC_2.17 (3)
+    76: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_return_if_fail_warning
+    77: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_utf8_strrchr
+    78: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_array_new
+    79: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_get_error_name@LIBDBUS_1_3 (2)
+    80: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_queue_push_tail
+    81: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_server_allocate_data_slot@LIBDBUS_1_3 (2)
+    82: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_watch_get_unix_fd@LIBDBUS_1_3 (2)
+    83: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND gettimeofday@GLIBC_2.17 (3)
+    84: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_strconcat
+    85: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_send_with_reply_and_block@LIBDBUS_1_3 (2)
+    86: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_hash_table_new
+    87: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_watch_get_enabled@LIBDBUS_1_3 (2)
+    88: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_source_attach
+    89: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_quark_from_static_string
+    90: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_slist_prepend
+    91: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_timeout_get_interval@LIBDBUS_1_3 (2)
+    92: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_value_set_instance
+    93: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_object_new
+    94: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_hash_table_iter_next
+    95: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_value_copy
+    96: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_timeout_source_new
+    97: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_server_get_data@LIBDBUS_1_3 (2)
+    98: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_direct_equal
+    99: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND strcasecmp@GLIBC_2.17 (3)
+   100: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __ctype_toupper_loc@GLIBC_2.17 (3)
+   101: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_strcmp0
+   102: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_array_free
+   103: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_io_create_watch
+   104: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_value_get_int
+   105: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_ptr_array_add
+   106: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND XOpenDisplay
+   107: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __stack_chk_fail@GLIBC_2.17 (3)
+   108: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_strdup_printf
+   109: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_type_class_peek_parent
+   110: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_main_context_unref
+   111: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_ptr_array_new
+   112: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_ptr_array_new_with_free_func
+   113: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_source_unref
+   114: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_hash_table_new_full
+   115: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND __gmon_start__
+   116: 0000000000000000     0 OBJECT  GLOBAL DEFAULT  UND __stack_chk_guard@GLIBC_2.17 (4)
+   117: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_object_ref
+   118: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_timeout_set_data@LIBDBUS_1_3 (2)
+   119: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_enum_get_value_by_nick
+   120: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_hash_table_size
+   121: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_array_append_vals
+   122: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_new_signal@LIBDBUS_1_3 (2)
+   123: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_new_method_call@LIBDBUS_1_3 (2)
+   124: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_type_add_instance_private
+   125: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_iter_get_fixed_array@LIBDBUS_1_3 (2)
+   126: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_send_with_reply@LIBDBUS_1_3 (2)
+   127: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_io_channel_unix_new
+   128: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_iter_next@LIBDBUS_1_3 (2)
+   129: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_iter_open_container@LIBDBUS_1_3 (2)
+   130: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_ptr_array_set_size
+   131: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_value_dup_boxed
+   132: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __fprintf_chk@GLIBC_2.17 (3)
+   133: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_timeout_get_enabled@LIBDBUS_1_3 (2)
+   134: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND strcmp@GLIBC_2.17 (3)
+   135: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_value_take_boxed
+   136: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_type_check_class_cast
+   137: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_type_register_static
+   138: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __ctype_b_loc@GLIBC_2.17 (3)
+   139: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND XInternAtom
+   140: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_source_set_callback
+   141: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_main_loop_new
+   142: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_object_run_dispose
+   143: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_type_check_value_holds
+   144: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_object_weak_ref
+   145: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_ptr_array_remove
+   146: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_main_loop_run
+   147: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_type_register_static_simple
+   148: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_hash_table_insert
+   149: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_type_class_ref
+   150: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_object_set_qdata_full
+   151: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_log
+   152: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_watch_handle@LIBDBUS_1_3 (2)
+   153: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_hash_table_unref
+   154: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_slist_append
+   155: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_value_get_boxed
+   156: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_queue_new
+   157: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_object_get_qdata
+   158: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_flags_register_static
+   159: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_value_dup_string
+   160: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_list_remove
+   161: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_allocate_data_slot@LIBDBUS_1_3 (2)
+   162: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_get_member@LIBDBUS_1_3 (2)
+   163: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_set_wakeup_main_function@LIBDBUS_1_3 (2)
+   164: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_server_set_watch_functions@LIBDBUS_1_3 (2)
+   165: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_ref@LIBDBUS_1_3 (2)
+   166: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_hash_table_ref
+   167: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_error_init@LIBDBUS_1_3 (2)
+   168: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_hash_table_destroy
+   169: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND XDefaultRootWindow
+   170: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_close@LIBDBUS_1_3 (2)
+   171: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_list_free
+   172: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_timeout_handle@LIBDBUS_1_3 (2)
+   173: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_iter_get_arg_type@LIBDBUS_1_3 (2)
+   174: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_str_hash
+   175: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_bus_register@LIBDBUS_1_3 (2)
+   176: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_enum_get_value
+   177: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_set_error@LIBDBUS_1_3 (2)
+   178: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_get_data@LIBDBUS_1_3 (2)
+   179: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_error_is_set@LIBDBUS_1_3 (2)
+   180: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_pending_call_ref@LIBDBUS_1_3 (2)
+   181: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_type_check_instance_is_a
+   182: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_free_data_slot@LIBDBUS_1_3 (2)
+   183: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_type_check_instance_cast
+   184: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_iter_recurse@LIBDBUS_1_3 (2)
+   185: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _Jv_RegisterClasses
+   186: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_send@LIBDBUS_1_3 (2)
+   187: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_pending_call_unref@LIBDBUS_1_3 (2)
+   188: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_malloc0
+   189: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_hash_table_get_type
+   190: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_boxed_type_register_static
+   191: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_pending_call_cancel@LIBDBUS_1_3 (2)
+   192: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_clear_error
+   193: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_set_data@LIBDBUS_1_3 (2)
+   194: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_get_interface@LIBDBUS_1_3 (2)
+   195: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_strdup
+   196: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_hash_table_iter_init
+   197: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dcgettext@GLIBC_2.17 (3)
+   198: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_iter_init@LIBDBUS_1_3 (2)
+   199: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __isoc99_sscanf@GLIBC_2.17 (3)
+   200: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_getenv
+   201: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_main_loop_quit
+   202: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_add_filter@LIBDBUS_1_3 (2)
+   203: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_ptr_array_free
+   204: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_append_args@LIBDBUS_1_3 (2)
+   205: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_registerTMCloneTable
+   206: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_watch_set_data@LIBDBUS_1_3 (2)
+   207: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_set_error_literal
+   208: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_is_signal@LIBDBUS_1_3 (2)
+   209: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND XGetWindowProperty
+   210: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_free@LIBDBUS_1_3 (2)
+   211: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_quark_from_string
+   212: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_message_get_type@LIBDBUS_1_3 (2)
+   213: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_hash_table_foreach
+   214: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_strndup
+   215: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_queue_pop_head
+   216: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_set_watch_functions@LIBDBUS_1_3 (2)
+   217: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND XCloseDisplay
+   218: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_value_init
+   219: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_open_private@LIBDBUS_1_3 (2)
+   220: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND dbus_connection_dispatch@LIBDBUS_1_3 (2)
+   221: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_type_add_interface_static
+   222: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_type_check_class_is_a
+   223: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_value_dup_object
+   224: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND g_main_depth
+   225: 00000000000205bc   532 FUNC    GLOBAL DEFAULT   11 dbind_send_and_allow_reentry
+   226: 0000000000014fcc   164 FUNC    GLOBAL DEFAULT   11 atspi_editable_text_cut_text
+   227: 000000000000fcf8    68 FUNC    GLOBAL DEFAULT   11 atspi_locale_type_get_type
+   228: 0000000000018f30    16 FUNC    GLOBAL DEFAULT   11 atspi_is_initialized
+   229: 0000000000017ed8   188 FUNC    GLOBAL DEFAULT   11 atspi_image_get_image_extents
+   230: 0000000000014a9c   160 FUNC    GLOBAL DEFAULT   11 atspi_document_get_locale
+   231: 000000000001add4   256 FUNC    GLOBAL DEFAULT   11 _atspi_dbus_send_with_reply_and_block
+   232: 0000000000050b08     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_action
+   233: 0000000000012958    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_text_iface
+   234: 000000000001b5bc    24 FUNC    GLOBAL DEFAULT   11 _atspi_set_allow_sync
+   235: 00000000000136d0   304 FUNC    GLOBAL DEFAULT   11 atspi_collection_get_matches_from
+   236: 00000000000207d0   616 FUNC    GLOBAL DEFAULT   11 dbind_method_call_reentrant_va
+   237: 000000000001f0bc   416 FUNC    GLOBAL DEFAULT   11 atspi_text_get_text_attributes
+   238: 0000000000014d0c   156 FUNC    GLOBAL DEFAULT   11 atspi_document_get_current_page_number
+   239: 0000000000015d68    64 FUNC    GLOBAL DEFAULT   11 _atspi_reregister_event_listeners
+   240: 0000000000010cbc   152 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_toolkit_version
+   241: 00000000000129a8    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_value
+   242: 00000000000192b4   372 FUNC    GLOBAL DEFAULT   11 _atspi_dbus_set_interfaces
+   243: 00000000000175e0   148 FUNC    GLOBAL DEFAULT   11 atspi_hyperlink_get_type
+   244: 0000000000012320    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_action_iface
+   245: 0000000000017674    84 FUNC    GLOBAL DEFAULT   11 _atspi_hyperlink_new
+   246: 0000000000010894   472 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_relation_set
+   247: 000000000001cfc0    72 FUNC    GLOBAL DEFAULT   11 atspi_selection_get_type
+   248: 000000000001ce80   160 FUNC    GLOBAL DEFAULT   11 atspi_selection_select_all
+   249: 000000000001fd18   216 FUNC    GLOBAL DEFAULT   11 atspi_text_get_bounded_ranges
+   250: 000000000001324c    64 FUNC    GLOBAL DEFAULT   11 _atspi_application_new
+   251: 0000000000013b08   276 FUNC    GLOBAL DEFAULT   11 atspi_component_get_extents
+   252: 000000000001e810   116 FUNC    GLOBAL DEFAULT   11 atspi_table_cell_get_column_header_cells
+   253: 0000000000012818    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_table
+   254: 00000000000138f4   108 FUNC    GLOBAL DEFAULT   11 atspi_rect_get_type
+   255: 0000000000012410    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_component
+   256: 000000000001ff4c   112 FUNC    GLOBAL DEFAULT   11 atspi_text_add_selection
+   257: 000000000001ec5c   160 FUNC    GLOBAL DEFAULT   11 atspi_table_cell_get_table
+   258: 0000000000050ae8     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_dec
+   259: 000000000001dda0   120 FUNC    GLOBAL DEFAULT   11 atspi_table_get_column_header
+   260: 0000000000010410   704 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_type
+   261: 0000000000010ec4   140 FUNC    GLOBAL DEFAULT   11 _atspi_accessible_new
+   262: 0000000000011cfc   212 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_attributes
+   263: 000000000001fc2c   236 FUNC    GLOBAL DEFAULT   11 atspi_text_get_range_extents
+   264: 000000000001d100   140 FUNC    GLOBAL DEFAULT   11 atspi_state_set_get_type
+   265: 0000000000050a54     4 OBJECT  GLOBAL DEFAULT   23 _dbus_gmain_connection_slot
+   266: 000000000001bf1c    88 FUNC    GLOBAL DEFAULT   11 atspi_get_desktop_list
+   267: 000000000001d834   120 FUNC    GLOBAL DEFAULT   11 atspi_table_get_accessible_at
+   268: 0000000000019428   212 FUNC    GLOBAL DEFAULT   11 _atspi_dbus_set_state
+   269: 0000000000013588   328 FUNC    GLOBAL DEFAULT   11 atspi_collection_get_matches_to
+   270: 0000000000012a48   268 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_object_locale
+   271: 0000000000017764   184 FUNC    GLOBAL DEFAULT   11 atspi_hyperlink_get_uri
+   272: 000000000001f4c4   116 FUNC    GLOBAL DEFAULT   11 atspi_text_get_default_attributes
+   273: 0000000000017954   128 FUNC    GLOBAL DEFAULT   11 atspi_hyperlink_get_start_index
+   274: 000000000001d9f4   164 FUNC    GLOBAL DEFAULT   11 atspi_table_get_column_at_index
+   275: 0000000000050b20     8 OBJECT  GLOBAL DEFAULT   23 atspi_path_root
+   276: 000000000001c76c   112 FUNC    GLOBAL DEFAULT   11 atspi_key_definition_get_type
+   277: 0000000000010054    72 FUNC    GLOBAL DEFAULT   11 atspi_key_synth_type_get_type
+   278: 000000000001cbf0   164 FUNC    GLOBAL DEFAULT   11 atspi_selection_select_child
+   279: 000000000001e1e0   164 FUNC    GLOBAL DEFAULT   11 atspi_table_add_row_selection
+   280: 000000000001ef60   188 FUNC    GLOBAL DEFAULT   11 atspi_text_get_text
+   281: 000000000001dbe0   164 FUNC    GLOBAL DEFAULT   11 atspi_table_get_row_extent_at
+   282: 000000000001b148   236 FUNC    GLOBAL DEFAULT   11 atspi_set_main_context
+   283: 0000000000013c1c   164 FUNC    GLOBAL DEFAULT   11 atspi_component_get_position
+   284: 0000000000050e00     0 NOTYPE  GLOBAL DEFAULT   24 _end
+   285: 00000000000122d0    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_action
+   286: 000000000001d18c   120 FUNC    GLOBAL DEFAULT   11 _atspi_state_set_new_internal
+   287: 0000000000019c1c   484 FUNC    GLOBAL DEFAULT   11 atspi_init
+   288: 0000000000021aa8   688 FUNC    GLOBAL DEFAULT   11 dbind_any_demarshal_va
+   289: 000000000001202c    16 FUNC    GLOBAL DEFAULT   11 atspi_accessible_is_text
+   290: 0000000000050ac8     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_event_object
+   291: 0000000000010a6c   180 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_localized_role_name
+   292: 000000000001e924   116 FUNC    GLOBAL DEFAULT   11 atspi_table_cell_get_row_header_cells
+   293: 0000000000018e5c    76 FUNC    GLOBAL DEFAULT   11 _atspi_get_live_refs
+   294: 000000000001dff8   160 FUNC    GLOBAL DEFAULT   11 atspi_table_get_n_selected_columns
+   295: 0000000000010fe0   104 FUNC    GLOBAL DEFAULT   11 atspi_accessible_clear_cache
+   296: 000000000001ed48    52 FUNC    GLOBAL DEFAULT   11 atspi_range_copy
+   297: 000000000001dc84   164 FUNC    GLOBAL DEFAULT   11 atspi_table_get_column_extent_at
+   298: 000000000001a4e0    84 FUNC    GLOBAL DEFAULT   11 _atspi_dbus_return_accessible_from_iter
+   299: 0000000000012d34     4 FUNC    GLOBAL DEFAULT   11 atspi_action_get_description
+   300: 000000000001c734    56 FUNC    GLOBAL DEFAULT   11 _atspi_reregister_device_listeners
+   301: 0000000000012bb8    60 FUNC    GLOBAL DEFAULT   11 _atspi_accessible_unref_cache
+   302: 000000000000fea4    72 FUNC    GLOBAL DEFAULT   11 atspi_text_boundary_type_get_type
+   303: 000000000001d5bc   156 FUNC    GLOBAL DEFAULT   11 atspi_table_get_caption
+   304: 000000000000ffc4    72 FUNC    GLOBAL DEFAULT   11 atspi_key_event_type_get_type
+   305: 00000000000116d4   164 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_description
+   306: 00000000000160d0   608 FUNC    GLOBAL DEFAULT   11 _atspi_send_event
+   307: 0000000000020544    72 FUNC    GLOBAL DEFAULT   11 atspi_value_get_type
+   308: 0000000000017a54   160 FUNC    GLOBAL DEFAULT   11 atspi_hyperlink_is_valid
+   309: 000000000001e5b0   164 FUNC    GLOBAL DEFAULT   11 atspi_table_is_selected
+   310: 000000000001204c   644 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_interfaces
+   311: 00000000000103ec    36 FUNC    GLOBAL DEFAULT   11 free_value
+   312: 000000000001bf74   360 FUNC    GLOBAL DEFAULT   11 atspi_register_keystroke_listener
+   313: 0000000000015988   136 FUNC    GLOBAL DEFAULT   11 callback_unref
+   314: 00000000000119b4   224 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_role_name
+   315: 0000000000014f50   124 FUNC    GLOBAL DEFAULT   11 atspi_editable_text_copy_text
+   316: 0000000000020060   188 FUNC    GLOBAL DEFAULT   11 atspi_text_set_selection
+   317: 000000000001009c    72 FUNC    GLOBAL DEFAULT   11 atspi_modifier_type_get_type
+   318: 00000000000112d8   208 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_child_count
+   319: 0000000000012868    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_table_iface
+   320: 0000000000016330  2120 FUNC    GLOBAL DEFAULT   11 _atspi_dbus_handle_event
+   321: 000000000001f7e4   260 FUNC    GLOBAL DEFAULT   11 atspi_text_get_text_at_offset
+   322: 000000000001d8ac   164 FUNC    GLOBAL DEFAULT   11 atspi_table_get_index_at
+   323: 000000000001832c   584 FUNC    GLOBAL DEFAULT   11 atspi_match_rule_new
+   324: 0000000000020ba4   164 FUNC    GLOBAL DEFAULT   11 dbind_emit_signal
+   325: 000000000001cc94   164 FUNC    GLOBAL DEFAULT   11 atspi_selection_deselect_selected_child
+   326: 00000000000125a0    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_editable_text_iface
+   327: 00000000000145b4   172 FUNC    GLOBAL DEFAULT   11 atspi_device_listener_add_callback
+   328: 00000000000101bc    72 FUNC    GLOBAL DEFAULT   11 atspi_key_listener_sync_type_get_type
+   329: 000000000001f6e0   260 FUNC    GLOBAL DEFAULT   11 atspi_text_get_string_at_offset
+   330: 0000000000012500    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_document_iface
+   331: 000000000001e998   392 FUNC    GLOBAL DEFAULT   11 atspi_table_cell_get_position
+   332: 00000000000146cc   228 FUNC    GLOBAL DEFAULT   11 atspi_device_listener_remove_callback
+   333: 000000000001f408   184 FUNC    GLOBAL DEFAULT   11 atspi_text_get_text_attribute_value
+   334: 0000000000015114   164 FUNC    GLOBAL DEFAULT   11 atspi_editable_text_paste_text
+   335: 000000000001e654    72 FUNC    GLOBAL DEFAULT   11 atspi_table_get_type
+   336: 00000000000201fc   152 FUNC    GLOBAL DEFAULT   11 atspi_value_get_current_value
+   337: 0000000000015a68    92 FUNC    GLOBAL DEFAULT   11 atspi_event_listener_new_simple
+   338: 0000000000050ae0     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_device_event_listener
+   339: 0000000000021698  1040 FUNC    GLOBAL DEFAULT   11 dbind_any_demarshal
+   340: 0000000000020d84    32 FUNC    GLOBAL DEFAULT   11 dbind_find_c_alignment
+   341: 000000000001cddc   164 FUNC    GLOBAL DEFAULT   11 atspi_selection_is_child_selected
+   342: 0000000000012b54   100 FUNC    GLOBAL DEFAULT   11 _atspi_accessible_ref_cache
+   343: 0000000000022098    36 FUNC    GLOBAL DEFAULT   11 dbind_any_free
+   344: 000000000001ad2c   168 FUNC    GLOBAL DEFAULT   11 _atspi_dbus_call_partial
+   345: 0000000000050ab0     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_image
+   346: 0000000000012fcc    72 FUNC    GLOBAL DEFAULT   11 atspi_action_get_type
+   347: 0000000000050e00     0 NOTYPE  GLOBAL DEFAULT   24 __end__
+   348: 000000000001d57c    60 FUNC    GLOBAL DEFAULT   11 atspi_state_set_remove
+   349: 0000000000015070   164 FUNC    GLOBAL DEFAULT   11 atspi_editable_text_delete_text
+   350: 0000000000010b20   260 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_attributes_as_array
+   351: 00000000000111bc   128 FUNC    GLOBAL DEFAULT   11 _atspi_accessible_get_cache_mask
+   352: 0000000000011f6c    16 FUNC    GLOBAL DEFAULT   11 atspi_accessible_is_action
+   353: 000000000001012c    72 FUNC    GLOBAL DEFAULT   11 atspi_role_get_type
+   354: 0000000000017d98   160 FUNC    GLOBAL DEFAULT   11 atspi_image_get_image_size
+   355: 0000000000015dd0   708 FUNC    GLOBAL DEFAULT   11 atspi_event_listener_deregister_from_callback
+   356: 0000000000050b44     0 NOTYPE  GLOBAL DEFAULT   23 _edata
+   357: 000000000001d388   128 FUNC    GLOBAL DEFAULT   11 atspi_state_set_compare
+   358: 0000000000012f28   164 FUNC    GLOBAL DEFAULT   11 atspi_action_do_action
+   359: 0000000000018ea8   136 FUNC    GLOBAL DEFAULT   11 get_reference_from_iter
+   360: 0000000000020168   148 FUNC    GLOBAL DEFAULT   11 atspi_value_get_minimum_value
+   361: 0000000000013dd0   112 FUNC    GLOBAL DEFAULT   11 atspi_component_get_mdi_z_order
+   362: 000000000001f25c     4 FUNC    GLOBAL DEFAULT   11 atspi_text_get_attributes
+   363: 0000000000012908    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_text
+   364: 000000000001e470   320 FUNC    GLOBAL DEFAULT   11 atspi_table_get_row_column_extents_at_index
+   365: 00000000000124b0    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_document
+   366: 000000000001e284   164 FUNC    GLOBAL DEFAULT   11 atspi_table_add_column_selection
+   367: 0000000000050de0     8 OBJECT  GLOBAL DEFAULT   24 device_parent_class
+   368: 000000000001e774   156 FUNC    GLOBAL DEFAULT   11 atspi_table_cell_get_column_span
+   369: 00000000000138c0    52 FUNC    GLOBAL DEFAULT   11 atspi_point_copy
+   370: 000000000001382c    72 FUNC    GLOBAL DEFAULT   11 atspi_collection_get_type
+   371: 0000000000014528   140 FUNC    GLOBAL DEFAULT   11 atspi_device_listener_get_type
+   372: 0000000000013470    44 FUNC    GLOBAL DEFAULT   11 atspi_collection_is_ancestor_of
+   373: 0000000000050df8     8 OBJECT  GLOBAL DEFAULT   24 atspi_main_context
+   374: 0000000000020c48    16 FUNC    GLOBAL DEFAULT   11 dbind_set_timeout
+   375: 00000000000176c8   156 FUNC    GLOBAL DEFAULT   11 atspi_hyperlink_get_n_anchors
+   376: 00000000000139d0   184 FUNC    GLOBAL DEFAULT   11 atspi_component_contains
+   377: 0000000000050b44     0 NOTYPE  GLOBAL DEFAULT   24 __bss_start__
+   378: 0000000000018574   720 FUNC    GLOBAL DEFAULT   11 _atspi_match_rule_marshal
+   379: 000000000001cadc   156 FUNC    GLOBAL DEFAULT   11 atspi_selection_get_n_selected_children
+   380: 000000000001d480   236 FUNC    GLOBAL DEFAULT   11 atspi_state_set_get_states
+   381: 000000000001eb20   316 FUNC    GLOBAL DEFAULT   11 atspi_table_cell_get_row_column_span
+   382: 0000000000014c70   156 FUNC    GLOBAL DEFAULT   11 atspi_document_get_page_count
+   383: 0000000000050b00     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_application
+   384: 0000000000017894   192 FUNC    GLOBAL DEFAULT   11 atspi_hyperlink_get_index_range
+   385: 000000000000fdcc    72 FUNC    GLOBAL DEFAULT   11 atspi_collection_match_type_get_type
+   386: 000000000001d2d8    60 FUNC    GLOBAL DEFAULT   11 atspi_state_set_add
+   387: 0000000000011fac    16 FUNC    GLOBAL DEFAULT   11 atspi_accessible_is_document
+   388: 0000000000011048   372 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_process_id
+   389: 0000000000011fbc    16 FUNC    GLOBAL DEFAULT   11 atspi_accessible_is_editable_text
+   390: 0000000000020294   152 FUNC    GLOBAL DEFAULT   11 atspi_value_get_maximum_value
+   391: 0000000000050a68     8 OBJECT  GLOBAL DEFAULT   23 old_cache_signal_type
+   392: 000000000001d314   116 FUNC    GLOBAL DEFAULT   11 atspi_state_set_new
+   393: 0000000000014260    72 FUNC    GLOBAL DEFAULT   11 atspi_component_get_type
+   394: 0000000000050df0     8 OBJECT  GLOBAL DEFAULT   24 atspi_main_loop
+   395: 0000000000011778   360 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_parent
+   396: 0000000000018188   140 FUNC    GLOBAL DEFAULT   11 atspi_match_rule_get_type
+   397: 000000000001db3c   164 FUNC    GLOBAL DEFAULT   11 atspi_table_get_column_description
+   398: 00000000000114d0   296 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_index_in_parent
+   399: 00000000000204ac   152 FUNC    GLOBAL DEFAULT   11 atspi_value_get_minimum_increment
+   400: 0000000000014b3c   184 FUNC    GLOBAL DEFAULT   11 atspi_document_get_document_attribute_value
+   401: 000000000001aed4   608 FUNC    GLOBAL DEFAULT   11 _atspi_ref_accessible
+   402: 000000000001dd28   120 FUNC    GLOBAL DEFAULT   11 atspi_table_get_row_header
+   403: 000000000001c640   244 FUNC    GLOBAL DEFAULT   11 atspi_generate_mouse_event
+   404: 000000000001ecfc    72 FUNC    GLOBAL DEFAULT   11 atspi_table_cell_get_type
+   405: 0000000000050e00     0 NOTYPE  GLOBAL DEFAULT   24 _bss_end__
+   406: 000000000001e328   164 FUNC    GLOBAL DEFAULT   11 atspi_table_remove_row_selection
+   407: 0000000000013878     4 FUNC    GLOBAL DEFAULT   11 atspi_rect_free
+   408: 000000000002032c   384 FUNC    GLOBAL DEFAULT   11 atspi_value_set_current_value
+   409: 0000000000050ad8     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_document
+   410: 000000000001d204   212 FUNC    GLOBAL DEFAULT   11 atspi_state_set_set_by_name
+   411: 0000000000050ad0     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_editable_text
+   412: 0000000000011630   164 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_name
+   413: 000000000001a6b8   180 FUNC    GLOBAL DEFAULT   11 _atspi_dbus_return_hyperlink_from_message
+   414: 000000000000fe5c    72 FUNC    GLOBAL DEFAULT   11 atspi_component_layer_get_type
+   415: 00000000000151b8    72 FUNC    GLOBAL DEFAULT   11 atspi_editable_text_get_type
+   416: 00000000000146b4    24 FUNC    GLOBAL DEFAULT   11 atspi_device_listener_new_simple
+   417: 000000000001b61c   464 FUNC    GLOBAL DEFAULT   11 _atspi_dbus_call
+   418: 000000000001beec     8 FUNC    GLOBAL DEFAULT   11 atspi_get_desktop_count
+   419: 0000000000016b78   112 FUNC    GLOBAL DEFAULT   11 atspi_event_get_type
+   420: 00000000000158d4   180 FUNC    GLOBAL DEFAULT   11 callback_ref
+   421: 000000000001edec   108 FUNC    GLOBAL DEFAULT   11 atspi_range_get_type
+   422: 000000000001ab4c   480 FUNC    GLOBAL DEFAULT   11 _atspi_dbus_call_partial_va
+   423: 000000000001fb70   188 FUNC    GLOBAL DEFAULT   11 atspi_text_get_offset_at_point
+   424: 000000000001c84c   128 FUNC    GLOBAL DEFAULT   11 atspi_relation_get_target
+   425: 0000000000011fec    16 FUNC    GLOBAL DEFAULT   11 atspi_accessible_is_image
+   426: 0000000000012bf8   152 FUNC    GLOBAL DEFAULT   11 atspi_action_get_n_actions
+   427: 000000000001349c   236 FUNC    GLOBAL DEFAULT   11 atspi_collection_get_matches
+   428: 0000000000017e38   160 FUNC    GLOBAL DEFAULT   11 atspi_image_get_image_position
+   429: 000000000001d56c    16 FUNC    GLOBAL DEFAULT   11 atspi_state_set_is_empty
+   430: 0000000000013e40   108 FUNC    GLOBAL DEFAULT   11 atspi_component_grab_focus
+   431: 0000000000013a88   128 FUNC    GLOBAL DEFAULT   11 atspi_component_get_accessible_at_point
+   432: 000000000001123c   156 FUNC    GLOBAL DEFAULT   11 _atspi_accessible_test_cache
+   433: 0000000000013eac   112 FUNC    GLOBAL DEFAULT   11 atspi_component_get_alpha
+   434: 000000000001b5ac    16 FUNC    GLOBAL DEFAULT   11 _atspi_get_allow_sync
+   435: 0000000000018f40    56 FUNC    GLOBAL DEFAULT   11 atspi_event_main
+   436: 00000000000172ec   356 FUNC    GLOBAL DEFAULT   11 atspi_dbus_connection_setup_with_g_main
+   437: 000000000000ff34    72 FUNC    GLOBAL DEFAULT   11 atspi_text_clip_type_get_type
+   438: 00000000000220dc     0 FUNC    GLOBAL DEFAULT   12 _fini
+   439: 0000000000050b30     8 OBJECT  GLOBAL DEFAULT   23 atspi_path_dec
+   440: 000000000001bc90    44 FUNC    GLOBAL DEFAULT   11 atspi_key_definition_free
+   441: 0000000000017af8   156 FUNC    GLOBAL DEFAULT   11 atspi_hypertext_get_n_links
+   442: 000000000001b134    20 FUNC    GLOBAL DEFAULT   11 atspi_set_timeout
+   443: 000000000001eec8   152 FUNC    GLOBAL DEFAULT   11 atspi_text_get_character_count
+   444: 0000000000014100   188 FUNC    GLOBAL DEFAULT   11 atspi_component_set_position
+   445: 000000000001f5dc   260 FUNC    GLOBAL DEFAULT   11 atspi_text_get_text_before_offset
+   446: 000000000001f260   424 FUNC    GLOBAL DEFAULT   11 atspi_text_get_attribute_run
+   447: 0000000000019714   288 FUNC    GLOBAL DEFAULT   11 _atspi_dbus_return_attribute_array_from_message
+   448: 0000000000050a78     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_value
+   449: 000000000001387c    68 FUNC    GLOBAL DEFAULT   11 atspi_rect_copy
+   450: 000000000001c328   272 FUNC    GLOBAL DEFAULT   11 atspi_register_device_event_listener
+   451: 000000000000feec    72 FUNC    GLOBAL DEFAULT   11 atspi_text_granularity_get_type
+   452: 000000000000ff7c    72 FUNC    GLOBAL DEFAULT   11 atspi_state_type_get_type
+   453: 0000000000014e94   188 FUNC    GLOBAL DEFAULT   11 atspi_editable_text_insert_text
+   454: 0000000000015d1c    36 FUNC    GLOBAL DEFAULT   11 atspi_event_listener_register_full
+   455: 0000000000014a18    16 FUNC    GLOBAL DEFAULT   11 _atspi_device_listener_get_path
+   456: 000000000001c8cc   140 FUNC    GLOBAL DEFAULT   11 atspi_relation_get_type
+   457: 0000000000017cb0    72 FUNC    GLOBAL DEFAULT   11 atspi_hypertext_get_type
+   458: 0000000000012d38   164 FUNC    GLOBAL DEFAULT   11 atspi_action_get_key_binding
+   459: 00000000000100e4    72 FUNC    GLOBAL DEFAULT   11 atspi_relation_type_get_type
+   460: 000000000000e718     0 FUNC    GLOBAL DEFAULT    9 _init
+   461: 0000000000012688    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_hypertext_iface
+   462: 00000000000191ac   264 FUNC    GLOBAL DEFAULT   11 _atspi_dbus_attribute_array_from_iter
+   463: 0000000000015d4c    28 FUNC    GLOBAL DEFAULT   11 atspi_event_listener_register
+   464: 0000000000018dec   112 FUNC    GLOBAL DEFAULT   11 _atspi_get_iface_num
+   465: 000000000001e13c   164 FUNC    GLOBAL DEFAULT   11 atspi_table_is_column_selected
+   466: 000000000001fa90   224 FUNC    GLOBAL DEFAULT   11 atspi_text_get_character_extents
+   467: 00000000000129f8    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_value_iface
+   468: 0000000000010e98    44 FUNC    GLOBAL DEFAULT   11 atspi_accessible_is_streamable_content
+   469: 0000000000050b28     8 OBJECT  GLOBAL DEFAULT   23 atspi_path_registry
+   470: 000000000000fe14    72 FUNC    GLOBAL DEFAULT   11 atspi_collection_tree_traversal_type_get_type
+   471: 0000000000050a98     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_table
+   472: 0000000000050b18     8 OBJECT  GLOBAL DEFAULT   23 atspi_bus_registry
+   473: 000000000001cf20   160 FUNC    GLOBAL DEFAULT   11 atspi_selection_clear_selection
+   474: 0000000000010d54   152 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_atspi_version
+   475: 000000000000fd3c    72 FUNC    GLOBAL DEFAULT   11 atspi_coord_type_get_type
+   476: 0000000000012550    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_editable_text
+   477: 00000000000147b0   616 FUNC    GLOBAL DEFAULT   11 _atspi_dbus_handle_DeviceEvent
+   478: 0000000000018038    72 FUNC    GLOBAL DEFAULT   11 atspi_image_get_type
+   479: 000000000001d44c    52 FUNC    GLOBAL DEFAULT   11 atspi_state_set_equals
+   480: 0000000000014660    84 FUNC    GLOBAL DEFAULT   11 atspi_device_listener_new
+   481: 000000000001bdfc    84 FUNC    GLOBAL DEFAULT   11 atspi_key_definition_copy
+   482: 000000000001f4c0     4 FUNC    GLOBAL DEFAULT   11 atspi_text_get_attribute_value
+   483: 00000000000113a8   296 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_child_at_index
+   484: 0000000000050a48     8 OBJECT  GLOBAL DEFAULT   23 str_parent
+   485: 0000000000010f50   144 FUNC    GLOBAL DEFAULT   11 atspi_accessible_set_cache_mask
+   486: 0000000000013f1c   484 FUNC    GLOBAL DEFAULT   11 atspi_component_set_extents
+   487: 0000000000013d60   112 FUNC    GLOBAL DEFAULT   11 atspi_component_get_layer
+   488: 000000000001b324   648 FUNC    GLOBAL DEFAULT   11 _atspi_dbus_update_cache_from_dict
+   489: 0000000000017cfc   156 FUNC    GLOBAL DEFAULT   11 atspi_image_get_image_description
+   490: 0000000000050ab8     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_hypertext
+   491: 0000000000012370    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_collection
+   492: 000000000001b234    52 FUNC    GLOBAL DEFAULT   11 _atspi_name_compat
+   493: 000000000001fdf0   156 FUNC    GLOBAL DEFAULT   11 atspi_text_get_n_selections
+   494: 00000000000128b8    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_table_cell
+   495: 0000000000050af8     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_collection
+   496: 00000000000127c8    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_selection_iface
+   497: 0000000000050a90     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_table_cell
+   498: 0000000000012e80     4 FUNC    GLOBAL DEFAULT   11 atspi_action_get_name
+   499: 0000000000010dec   172 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_id
+   500: 0000000000050b44     0 NOTYPE  GLOBAL DEFAULT   24 __bss_start
+   501: 0000000000011f7c    16 FUNC    GLOBAL DEFAULT   11 atspi_accessible_is_application
+   502: 000000000001cd38   164 FUNC    GLOBAL DEFAULT   11 atspi_selection_deselect_child
+   503: 000000000001fe8c   192 FUNC    GLOBAL DEFAULT   11 atspi_text_get_selection
+   504: 000000000001b268   188 FUNC    GLOBAL DEFAULT   11 atspi_role_get_name
+   505: 0000000000012c90   164 FUNC    GLOBAL DEFAULT   11 atspi_action_get_action_description
+   506: 0000000000011b74   392 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_state_set
+   507: 0000000000012460    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_component_iface
+   508: 0000000000014bf8   116 FUNC    GLOBAL DEFAULT   11 atspi_document_get_document_attributes
+   509: 00000000000220bc    32 FUNC    GLOBAL DEFAULT   11 dbind_any_free_ptr
+   510: 0000000000050b10     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_accessible
+   511: 0000000000015848   140 FUNC    GLOBAL DEFAULT   11 atspi_event_listener_get_type
+   512: 000000000001a534   180 FUNC    GLOBAL DEFAULT   11 _atspi_dbus_return_accessible_from_message
+   513: 0000000000020ad8   204 FUNC    GLOBAL DEFAULT   11 dbind_emit_signal_va
+   514: 0000000000012e84   164 FUNC    GLOBAL DEFAULT   11 atspi_action_get_localized_name
+   515: 000000000001e884   160 FUNC    GLOBAL DEFAULT   11 atspi_table_cell_get_row_span
+   516: 000000000001a5e8   208 FUNC    GLOBAL DEFAULT   11 _atspi_dbus_return_hyperlink_from_iter
+   517: 000000000001e098   164 FUNC    GLOBAL DEFAULT   11 atspi_table_is_row_selected
+   518: 0000000000016094    28 FUNC    GLOBAL DEFAULT   11 atspi_event_listener_deregister
+   519: 0000000000012728    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_image_iface
+   520: 0000000000014bf4     4 FUNC    GLOBAL DEFAULT   11 atspi_document_get_attribute_value
+   521: 000000000001b5d4    72 FUNC    GLOBAL DEFAULT   11 _atspi_set_error_no_sync
+   522: 000000000001c438   260 FUNC    GLOBAL DEFAULT   11 atspi_deregister_device_event_listener
+   523: 00000000000190a4   264 FUNC    GLOBAL DEFAULT   11 _atspi_dbus_hash_from_iter
+   524: 000000000001b7ec   764 FUNC    GLOBAL DEFAULT   11 _atspi_dbus_get_property
+   525: 0000000000011ffc    16 FUNC    GLOBAL DEFAULT   11 atspi_accessible_is_selection
+   526: 000000000001e3cc   164 FUNC    GLOBAL DEFAULT   11 atspi_table_remove_column_selection
+   527: 000000000001203c    16 FUNC    GLOBAL DEFAULT   11 atspi_accessible_is_value
+   528: 000000000001de18   160 FUNC    GLOBAL DEFAULT   11 atspi_table_get_n_selected_rows
+   529: 0000000000014da8    72 FUNC    GLOBAL DEFAULT   11 atspi_document_get_type
+   530: 0000000000050a80     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_cache
+   531: 00000000000126d8    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_image
+   532: 0000000000011fcc    16 FUNC    GLOBAL DEFAULT   11 atspi_accessible_is_hypertext
+   533: 0000000000015a10    88 FUNC    GLOBAL DEFAULT   11 atspi_event_listener_new
+   534: 0000000000013cc0   160 FUNC    GLOBAL DEFAULT   11 atspi_component_get_size
+   535: 000000000001781c   120 FUNC    GLOBAL DEFAULT   11 atspi_hyperlink_get_object
+   536: 0000000000010c24   152 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_toolkit_name
+   537: 0000000000050aa0     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_selection
+   538: 0000000000050de8     4 OBJECT  GLOBAL DEFAULT   24 atspi_no_cache
+   539: 0000000000014c6c     4 FUNC    GLOBAL DEFAULT   11 atspi_document_get_attributes
+   540: 00000000000141bc   164 FUNC    GLOBAL DEFAULT   11 atspi_component_set_size
+   541: 000000000001d658   156 FUNC    GLOBAL DEFAULT   11 atspi_table_get_summary
+   542: 000000000001c958   232 FUNC    GLOBAL DEFAULT   11 _atspi_relation_new_from_iter
+   543: 000000000000fd84    72 FUNC    GLOBAL DEFAULT   11 atspi_collection_sort_order_get_type
+   544: 0000000000050ac0     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_hyperlink
+   545: 00000000000123c0    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_collection_iface
+   546: 00000000000195f4   288 FUNC    GLOBAL DEFAULT   11 _atspi_dbus_return_hash_from_message
+   547: 000000000001ee58   112 FUNC    GLOBAL DEFAULT   11 atspi_text_range_get_type
+   548: 0000000000012638    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_hypertext
+   549: 000000000001200c    16 FUNC    GLOBAL DEFAULT   11 atspi_accessible_is_table
+   550: 000000000001ffbc   164 FUNC    GLOBAL DEFAULT   11 atspi_text_remove_selection
+   551: 00000000000194fc    12 FUNC    GLOBAL DEFAULT   11 _atspi_error_quark
+   552: 000000000001df58   160 FUNC    GLOBAL DEFAULT   11 atspi_table_get_selected_columns
+   553: 000000000001deb8   160 FUNC    GLOBAL DEFAULT   11 atspi_table_get_selected_rows
+   554: 000000000001bb50   140 FUNC    GLOBAL DEFAULT   11 atspi_object_get_type
+   555: 0000000000020a38   160 FUNC    GLOBAL DEFAULT   11 dbind_method_call_reentrant
+   556: 0000000000011f8c    16 FUNC    GLOBAL DEFAULT   11 atspi_accessible_is_collection
+   557: 0000000000050aa8     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_registry
+   558: 000000000001201c    16 FUNC    GLOBAL DEFAULT   11 atspi_accessible_is_table_cell
+   559: 0000000000050a70     8 OBJECT  GLOBAL DEFAULT   23 cache_signal_type
+   560: 0000000000015ac4   600 FUNC    GLOBAL DEFAULT   11 atspi_event_listener_register_from_callback_full
+   561: 0000000000050a88     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_text
+   562: 0000000000012ddc   164 FUNC    GLOBAL DEFAULT   11 atspi_action_get_action_name
+   563: 0000000000020fac   984 FUNC    GLOBAL DEFAULT   11 dbind_any_marshal
+   564: 000000000001c53c   260 FUNC    GLOBAL DEFAULT   11 atspi_generate_keyboard_event
+   565: 00000000000179d4   128 FUNC    GLOBAL DEFAULT   11 atspi_hyperlink_get_end_index
+   566: 0000000000017f94   164 FUNC    GLOBAL DEFAULT   11 atspi_image_get_image_locale
+   567: 000000000001c0dc   588 FUNC    GLOBAL DEFAULT   11 atspi_deregister_keystroke_listener
+   568: 000000000001f8e8   260 FUNC    GLOBAL DEFAULT   11 atspi_text_get_text_after_offset
+   569: 000000000001c838     8 FUNC    GLOBAL DEFAULT   11 atspi_relation_get_relation_type
+   570: 000000000001f01c   160 FUNC    GLOBAL DEFAULT   11 atspi_text_get_caret_offset
+   571: 00000000000118e0   212 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_role
+   572: 00000000000115f8    56 FUNC    GLOBAL DEFAULT   11 _atspi_accessible_add_cache
+   573: 000000000002011c    72 FUNC    GLOBAL DEFAULT   11 atspi_text_get_type
+   574: 000000000001f538   164 FUNC    GLOBAL DEFAULT   11 atspi_text_set_caret_offset
+   575: 0000000000011fdc    16 FUNC    GLOBAL DEFAULT   11 atspi_accessible_is_hyperlink
+   576: 0000000000011f9c    16 FUNC    GLOBAL DEFAULT   11 atspi_accessible_is_component
+   577: 0000000000011a94   224 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_application
+   578: 000000000001da98   164 FUNC    GLOBAL DEFAULT   11 atspi_table_get_row_description
+   579: 000000000001d6f4   160 FUNC    GLOBAL DEFAULT   11 atspi_table_get_n_rows
+   580: 0000000000050e00     0 NOTYPE  GLOBAL DEFAULT   24 __bss_end__
+   581: 000000000001d408    68 FUNC    GLOBAL DEFAULT   11 atspi_state_set_contains
+   582: 0000000000013800    44 FUNC    GLOBAL DEFAULT   11 atspi_collection_get_active_descendant
+   583: 0000000000017450   324 FUNC    GLOBAL DEFAULT   11 atspi_dbus_server_setup_with_g_main
+   584: 0000000000012778    80 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_selection
+   585: 0000000000019834  1000 FUNC    GLOBAL DEFAULT   11 atspi_get_a11y_bus
+   586: 0000000000010174    72 FUNC    GLOBAL DEFAULT   11 atspi_cache_get_type
+   587: 000000000001cb78   120 FUNC    GLOBAL DEFAULT   11 atspi_selection_get_selected_child
+   588: 0000000000013084   140 FUNC    GLOBAL DEFAULT   11 atspi_application_get_type
+   589: 0000000000050af0     8 OBJECT  GLOBAL DEFAULT   23 atspi_interface_component
+   590: 000000000001f9ec   164 FUNC    GLOBAL DEFAULT   11 atspi_text_get_character_at_offset
+   591: 000000000001d794   160 FUNC    GLOBAL DEFAULT   11 atspi_table_get_n_columns
+   592: 00000000000142bc    44 FUNC    GLOBAL DEFAULT   11 atspi_device_event_free
+   593: 0000000000018f78    16 FUNC    GLOBAL DEFAULT   11 atspi_event_quit
+   594: 00000000000125f0    72 FUNC    GLOBAL DEFAULT   11 atspi_accessible_get_hyperlink
+   595: 000000000001c840    12 FUNC    GLOBAL DEFAULT   11 atspi_relation_get_n_targets
+   596: 0000000000015d40    12 FUNC    GLOBAL DEFAULT   11 atspi_event_listener_register_from_callback
+   597: 000000000001d950   164 FUNC    GLOBAL DEFAULT   11 atspi_table_get_row_at_index
+   598: 0000000000017b94   120 FUNC    GLOBAL DEFAULT   11 atspi_hypertext_get_link
+   599: 000000000001bef4    40 FUNC    GLOBAL DEFAULT   11 atspi_get_desktop
+   600: 0000000000014df4   160 FUNC    GLOBAL DEFAULT   11 atspi_editable_text_set_text_contents
+   601: 0000000000014a28   112 FUNC    GLOBAL DEFAULT   11 atspi_device_event_get_type
+   602: 0000000000013960   112 FUNC    GLOBAL DEFAULT   11 atspi_point_get_type
+   603: 0000000000015da8    40 FUNC    GLOBAL DEFAULT   11 atspi_event_listener_register_no_data
+   604: 0000000000019e00    80 FUNC    GLOBAL DEFAULT   11 _atspi_bus
+   605: 000000000001000c    72 FUNC    GLOBAL DEFAULT   11 atspi_event_type_get_type
+   606: 0000000000017c0c   164 FUNC    GLOBAL DEFAULT   11 atspi_hypertext_get_link_index
+   607: 0000000000021384   788 FUNC    GLOBAL DEFAULT   11 dbind_any_marshal_va
+   608: 00000000000160b0    32 FUNC    GLOBAL DEFAULT   11 atspi_event_listener_deregister_no_data
+   609: 0000000000018f88   284 FUNC    GLOBAL DEFAULT   11 atspi_exit
