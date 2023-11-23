@@ -1,0 +1,147 @@
+Library: /lib64/libxkbcommon.so.0
+Package: libxkbcommon-0.7.1-3.el7.aarch64
+
+
+Symbol table '.dynsym' contains 141 entries:
+   Num:    Value          Size Type    Bind   Vis      Ndx Name
+     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND 
+     1: 0000000000004170     0 SECTION LOCAL  DEFAULT   10 
+     2: 000000000004ede0     0 SECTION LOCAL  DEFAULT   19 
+     3: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND memcpy@GLIBC_2.17 (5)
+     4: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND memmove@GLIBC_2.17 (5)
+     5: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND strtoul@GLIBC_2.17 (5)
+     6: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND strlen@GLIBC_2.17 (5)
+     7: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND fputs@GLIBC_2.17 (5)
+     8: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_deregisterTMCloneTable
+     9: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND strtod@GLIBC_2.17 (5)
+    10: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND secure_getenv@GLIBC_2.17 (5)
+    11: 0000000000000000     0 FUNC    WEAK   DEFAULT  UND __cxa_finalize@GLIBC_2.17 (5)
+    12: 0000000000000000     0 OBJECT  GLOBAL DEFAULT  UND stderr@GLIBC_2.17 (5)
+    13: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __strdup@GLIBC_2.17 (5)
+    14: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND eaccess@GLIBC_2.17 (5)
+    15: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND snprintf@GLIBC_2.17 (5)
+    16: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND fileno@GLIBC_2.17 (5)
+    17: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __snprintf_chk@GLIBC_2.17 (5)
+    18: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND fclose@GLIBC_2.17 (5)
+    19: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND fopen@GLIBC_2.17 (5)
+    20: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __vsnprintf_chk@GLIBC_2.17 (5)
+    21: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND malloc@GLIBC_2.17 (5)
+    22: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __strcpy_chk@GLIBC_2.17 (5)
+    23: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND strncmp@GLIBC_2.17 (5)
+    24: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND memset@GLIBC_2.17 (5)
+    25: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __vfprintf_chk@GLIBC_2.17 (5)
+    26: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND calloc@GLIBC_2.17 (5)
+    27: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND bsearch@GLIBC_2.17 (5)
+    28: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND realloc@GLIBC_2.17 (5)
+    29: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND strerror@GLIBC_2.17 (5)
+    30: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __stack_chk_fail@GLIBC_2.17 (5)
+    31: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND __gmon_start__
+    32: 0000000000000000     0 OBJECT  GLOBAL DEFAULT  UND __stack_chk_guard@GLIBC_2.17 (6)
+    33: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND memcmp@GLIBC_2.17 (5)
+    34: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __asprintf_chk@GLIBC_2.17 (5)
+    35: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND strcmp@GLIBC_2.17 (5)
+    36: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND mmap@GLIBC_2.17 (5)
+    37: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND strtol@GLIBC_2.17 (5)
+    38: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND free@GLIBC_2.17 (5)
+    39: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND strncasecmp@GLIBC_2.17 (5)
+    40: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __strndup@GLIBC_2.17 (5)
+    41: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND strchr@GLIBC_2.17 (5)
+    42: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND munmap@GLIBC_2.17 (5)
+    43: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND strcpy@GLIBC_2.17 (5)
+    44: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND memchr@GLIBC_2.17 (5)
+    45: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _Jv_RegisterClasses
+    46: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __fxstat@GLIBC_2.17 (5)
+    47: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND strncpy@GLIBC_2.17 (5)
+    48: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_registerTMCloneTable
+    49: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __assert_fail@GLIBC_2.17 (5)
+    50: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __errno_location@GLIBC_2.17 (5)
+    51: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __xstat@GLIBC_2.17 (5)
+    52: 000000000001d090    80 FUNC    GLOBAL DEFAULT   12 xkb_state_key_get_layout@@V_0.5.0
+    53: 000000000001a78c    12 FUNC    GLOBAL DEFAULT   12 xkb_context_get_user_data@@V_0.5.0
+    54: 000000000001b3d0   284 FUNC    GLOBAL DEFAULT   12 xkb_keysym_get_name@@V_0.5.0
+    55: 000000000001ba4c   292 FUNC    GLOBAL DEFAULT   12 xkb_keysym_to_utf32@@V_0.5.0
+    56: 000000000001a530     8 FUNC    GLOBAL DEFAULT   12 xkb_context_get_log_verbosity@@V_0.5.0
+    57: 000000000001a798     8 FUNC    GLOBAL DEFAULT   12 xkb_context_set_user_data@@V_0.5.0
+    58: 000000000001daac   128 FUNC    GLOBAL DEFAULT   12 xkb_state_key_get_syms@@V_0.5.0
+    59: 000000000001e76c     8 FUNC    GLOBAL DEFAULT   12 xkb_state_key_get_consumed_mods@@V_0.5.0
+    60: 000000000001c474   204 FUNC    GLOBAL DEFAULT   12 xkb_keymap_key_get_syms_by_level@@V_0.5.0
+    61: 000000000001d528    16 FUNC    GLOBAL DEFAULT   12 xkb_state_ref@@V_0.5.0
+    62: 0000000000000000     0 OBJECT  GLOBAL DEFAULT  ABS V_0.7.0
+    63: 000000000001c548     8 FUNC    GLOBAL DEFAULT   12 xkb_keymap_max_keycode@@V_0.5.0
+    64: 000000000001c614   172 FUNC    GLOBAL DEFAULT   12 xkb_keymap_key_by_name@@V_0.6.0
+    65: 000000000001a454     8 FUNC    GLOBAL DEFAULT   12 xkb_context_num_include_paths@@V_0.5.0
+    66: 0000000000006dd8   204 FUNC    GLOBAL DEFAULT   12 xkb_compose_table_new_from_file@@V_0.5.0
+    67: 000000000001a430    36 FUNC    GLOBAL DEFAULT   12 xkb_context_include_path_reset_defaults@@V_0.5.0
+    68: 000000000001e670   100 FUNC    GLOBAL DEFAULT   12 xkb_state_mod_mask_remove_consumed@@V_0.5.0
+    69: 000000000001e150     8 FUNC    GLOBAL DEFAULT   12 xkb_state_mod_index_is_consumed@@V_0.5.0
+    70: 000000000001c24c   148 FUNC    GLOBAL DEFAULT   12 xkb_keymap_layout_get_index@@V_0.5.0
+    71: 000000000001ddd8    72 FUNC    GLOBAL DEFAULT   12 xkb_state_mod_name_is_active@@V_0.5.0
+    72: 000000000001b5a4   928 FUNC    GLOBAL DEFAULT   12 xkb_keysym_from_name@@V_0.5.0
+    73: 000000000001c1dc    68 FUNC    GLOBAL DEFAULT   12 xkb_keymap_mod_get_index@@V_0.5.0
+    74: 000000000001e454   424 FUNC    GLOBAL DEFAULT   12 xkb_state_key_get_utf8@@V_0.5.0
+    75: 000000000001c228    36 FUNC    GLOBAL DEFAULT   12 xkb_keymap_layout_get_name@@V_0.5.0
+    76: 000000000001e5fc   116 FUNC    GLOBAL DEFAULT   12 xkb_state_key_get_utf32@@V_0.5.0
+    77: 000000000001a12c   396 FUNC    GLOBAL DEFAULT   12 xkb_context_include_path_append@@V_0.5.0
+    78: 000000000001e6d4   152 FUNC    GLOBAL DEFAULT   12 xkb_state_key_get_consumed_mods2@@V_0.7.0
+    79: 00000000000069c4   180 FUNC    GLOBAL DEFAULT   12 xkb_compose_state_feed@@V_0.5.0
+    80: 000000000001c3e0   148 FUNC    GLOBAL DEFAULT   12 xkb_keymap_led_get_index@@V_0.5.0
+    81: 000000000001d4e0    72 FUNC    GLOBAL DEFAULT   12 xkb_state_new@@V_0.5.0
+    82: 0000000000006ad8   216 FUNC    GLOBAL DEFAULT   12 xkb_compose_state_get_utf8@@V_0.5.0
+    83: 000000000001c1b0    44 FUNC    GLOBAL DEFAULT   12 xkb_keymap_mod_get_name@@V_0.5.0
+    84: 000000000001db2c    56 FUNC    GLOBAL DEFAULT   12 xkb_state_serialize_mods@@V_0.5.0
+    85: 000000000001d598     8 FUNC    GLOBAL DEFAULT   12 xkb_state_get_keymap@@V_0.5.0
+    86: 000000000001a528     8 FUNC    GLOBAL DEFAULT   12 xkb_context_set_log_level@@V_0.5.0
+    87: 000000000001cff8   136 FUNC    GLOBAL DEFAULT   12 xkb_state_key_get_level@@V_0.5.0
+    88: 000000000001e024    72 FUNC    GLOBAL DEFAULT   12 xkb_state_led_index_is_active@@V_0.5.0
+    89: 0000000000006ea4   220 FUNC    GLOBAL DEFAULT   12 xkb_compose_table_new_from_buffer@@V_0.5.0
+    90: 0000000000006d5c   124 FUNC    GLOBAL DEFAULT   12 xkb_compose_table_unref@@V_0.5.0
+    91: 0000000000006a84    84 FUNC    GLOBAL DEFAULT   12 xkb_compose_state_get_status@@V_0.5.0
+    92: 000000000001c2e0    60 FUNC    GLOBAL DEFAULT   12 xkb_keymap_num_layouts_for_key@@V_0.5.0
+    93: 0000000000006d4c    16 FUNC    GLOBAL DEFAULT   12 xkb_compose_table_ref@@V_0.5.0
+    94: 0000000000006bb0    36 FUNC    GLOBAL DEFAULT   12 xkb_compose_state_get_one_sym@@V_0.5.0
+    95: 000000000001c220     8 FUNC    GLOBAL DEFAULT   12 xkb_keymap_num_layouts@@V_0.5.0
+    96: 000000000001e1d8   140 FUNC    GLOBAL DEFAULT   12 xkb_state_key_get_one_sym@@V_0.5.0
+    97: 000000000001a504    28 FUNC    GLOBAL DEFAULT   12 xkb_context_set_log_fn@@V_0.5.0
+    98: 000000000001bbb0    16 FUNC    GLOBAL DEFAULT   12 xkb_keymap_ref@@V_0.5.0
+    99: 000000000001a45c    72 FUNC    GLOBAL DEFAULT   12 xkb_context_include_path_get@@V_0.5.0
+   100: 000000000001c020   268 FUNC    GLOBAL DEFAULT   12 xkb_keymap_new_from_file@@V_0.5.0
+   101: 0000000000000000     0 OBJECT  GLOBAL DEFAULT  ABS V_0.5.0
+   102: 000000000001a4b4    80 FUNC    GLOBAL DEFAULT   12 xkb_context_unref@@V_0.5.0
+   103: 0000000000006960    16 FUNC    GLOBAL DEFAULT   12 xkb_compose_state_ref@@V_0.5.0
+   104: 000000000001bbc0   472 FUNC    GLOBAL DEFAULT   12 xkb_keymap_unref@@V_0.5.0
+   105: 000000000001d538    96 FUNC    GLOBAL DEFAULT   12 xkb_state_unref@@V_0.5.0
+   106: 000000000001a4a4    16 FUNC    GLOBAL DEFAULT   12 xkb_context_ref@@V_0.5.0
+   107: 000000000001d5a0   880 FUNC    GLOBAL DEFAULT   12 xkb_state_update_key@@V_0.5.0
+   108: 000000000001dc40    92 FUNC    GLOBAL DEFAULT   12 xkb_state_mod_index_is_active@@V_0.5.0
+   109: 000000000001c6c0    60 FUNC    GLOBAL DEFAULT   12 xkb_keymap_key_repeats@@V_0.5.0
+   110: 000000000001de20   332 FUNC    GLOBAL DEFAULT   12 xkb_state_mod_names_are_active@@V_0.5.0
+   111: 000000000001dc9c   316 FUNC    GLOBAL DEFAULT   12 xkb_state_mod_indices_are_active@@V_0.5.0
+   112: 000000000001c540     8 FUNC    GLOBAL DEFAULT   12 xkb_keymap_min_keycode@@V_0.5.0
+   113: 000000000001c550   132 FUNC    GLOBAL DEFAULT   12 xkb_keymap_key_for_each@@V_0.5.0
+   114: 000000000001bd98   300 FUNC    GLOBAL DEFAULT   12 xkb_keymap_new_from_names@@V_0.5.0
+   115: 000000000001c5d4    64 FUNC    GLOBAL DEFAULT   12 xkb_keymap_key_get_name@@V_0.6.0
+   116: 00000000000069bc     8 FUNC    GLOBAL DEFAULT   12 xkb_compose_state_get_compose_table@@V_0.5.0
+   117: 0000000000006970    76 FUNC    GLOBAL DEFAULT   12 xkb_compose_state_unref@@V_0.5.0
+   118: 000000000001d910   412 FUNC    GLOBAL DEFAULT   12 xkb_state_update_mask@@V_0.5.0
+   119: 000000000001c31c   140 FUNC    GLOBAL DEFAULT   12 xkb_keymap_num_levels_for_key@@V_0.5.0
+   120: 000000000001a538     8 FUNC    GLOBAL DEFAULT   12 xkb_context_set_log_verbosity@@V_0.5.0
+   121: 000000000001dbc0    60 FUNC    GLOBAL DEFAULT   12 xkb_state_serialize_layout@@V_0.5.0
+   122: 0000000000006f80   400 FUNC    GLOBAL DEFAULT   12 xkb_compose_table_new_from_locale@@V_0.5.0
+   123: 000000000001a520     8 FUNC    GLOBAL DEFAULT   12 xkb_context_get_log_level@@V_0.5.0
+   124: 0000000000000000     0 OBJECT  GLOBAL DEFAULT  ABS V_0.6.0
+   125: 000000000001a2b8   204 FUNC    GLOBAL DEFAULT   12 xkb_context_include_path_append_default@@V_0.5.0
+   126: 0000000000006900    96 FUNC    GLOBAL DEFAULT   12 xkb_compose_state_new@@V_0.5.0
+   127: 000000000001c1a8     8 FUNC    GLOBAL DEFAULT   12 xkb_keymap_num_mods@@V_0.5.0
+   128: 000000000001a540   588 FUNC    GLOBAL DEFAULT   12 xkb_context_new@@V_0.5.0
+   129: 000000000001bb70    64 FUNC    GLOBAL DEFAULT   12 xkb_keysym_to_utf8@@V_0.5.0
+   130: 000000000001e0ac   164 FUNC    GLOBAL DEFAULT   12 xkb_state_mod_index_is_consumed2@@V_0.7.0
+   131: 000000000001bec4   276 FUNC    GLOBAL DEFAULT   12 xkb_keymap_new_from_buffer@@V_0.5.0
+   132: 000000000001a384   172 FUNC    GLOBAL DEFAULT   12 xkb_context_include_path_clear@@V_0.5.0
+   133: 000000000001e06c    64 FUNC    GLOBAL DEFAULT   12 xkb_state_led_name_is_active@@V_0.5.0
+   134: 000000000001df6c   112 FUNC    GLOBAL DEFAULT   12 xkb_state_layout_index_is_active@@V_0.5.0
+   135: 0000000000006a78    12 FUNC    GLOBAL DEFAULT   12 xkb_compose_state_reset@@V_0.5.0
+   136: 000000000001dfdc    72 FUNC    GLOBAL DEFAULT   12 xkb_state_layout_name_is_active@@V_0.5.0
+   137: 000000000001bfd8    72 FUNC    GLOBAL DEFAULT   12 xkb_keymap_new_from_string@@V_0.5.0
+   138: 000000000001c12c   124 FUNC    GLOBAL DEFAULT   12 xkb_keymap_get_as_string@@V_0.5.0
+   139: 000000000001c3b0    48 FUNC    GLOBAL DEFAULT   12 xkb_keymap_led_get_name@@V_0.5.0
+   140: 000000000001c3a8     8 FUNC    GLOBAL DEFAULT   12 xkb_keymap_num_leds@@V_0.5.0
