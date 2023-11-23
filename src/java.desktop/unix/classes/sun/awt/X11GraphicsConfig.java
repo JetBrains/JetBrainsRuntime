@@ -276,21 +276,9 @@ public class X11GraphicsConfig extends GraphicsConfiguration
     public int scaleUp(int i) {
         return getDevice().scaleUp(i);
     }
-    public int scaleUpX(int x) {
-        return getDevice().scaleUpX(x);
-    }
-    public int scaleUpY(int y) {
-        return getDevice().scaleUpY(y);
-    }
 
     public int scaleDown(int i) {
         return getDevice().scaleDown(i);
-    }
-    public int scaleDownX(int x) {
-        return getDevice().scaleDownX(x);
-    }
-    public int scaleDownY(int y) {
-        return getDevice().scaleDownY(y);
     }
 
     /**
