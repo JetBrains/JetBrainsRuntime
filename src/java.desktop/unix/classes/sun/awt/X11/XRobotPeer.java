@@ -25,6 +25,7 @@
 
 package sun.awt.X11;
 
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.peer.RobotPeer;
@@ -34,6 +35,7 @@ import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
 import sun.awt.X11GraphicsConfig;
 import sun.awt.X11GraphicsDevice;
+import sun.awt.X11GraphicsEnvironment;
 import sun.awt.screencast.ScreencastHelper;
 import sun.awt.screencast.XdgDesktopPortal;
 
@@ -70,11 +72,13 @@ final class XRobotPeer implements RobotPeer {
 
     @Override
     public void mouseMove(int x, int y) {
-        mouseMoveImpl(xgc, xgc.scaleUpX(x), xgc.scaleUpY(y));
+        Point p = ((X11GraphicsEnvironment) X11GraphicsEnvironment.getLocalGraphicsEnvironment())
+                .scaleUp(xgc.getDevice(), x, y);
+        mouseMoveImpl(xgc, p != null ? p.x : x, p != null ? p.y : y);
         if (XdgDesktopPortal.isRemoteDesktop() && ScreencastHelper.isAvailable()) {
             // We still call mouseMoveImpl on purpose to change the mouse position
             // within the XWayland server so that we can retrieve it later.
-            ScreencastHelper.remoteDesktopMouseMove(xgc.scaleUp(x), xgc.scaleUp(y));
+            ScreencastHelper.remoteDesktopMouseMove(p != null ? p.x : x, p != null ? p.y : y);
         }
     }
 
