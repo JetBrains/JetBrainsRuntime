@@ -787,8 +787,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         Point getDeviceLocation() {
             if (location == null) {
                 Point l = AWTAccessor.getComponentAccessor().getLocation(target);
-                l.x = scaleUpX(l.x);
-                l.y = scaleUpY(l.y);
+                l = scaleUp(l.x, l.y);
                 return l;
             } else if (client) {
                 Insets insets = getRealUnscaledInsets();
@@ -802,9 +801,9 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                 return AWTAccessor.getComponentAccessor().getLocation(target);
             } else if (client) {
                 Insets insets = getRealUnscaledInsets();
-                return new Point(scaleDownX(location.x - insets.left), scaleDownY(location.y - insets.top));
+                return scaleDown(location.x - insets.left, location.y - insets.top);
             } else {
-                return new Point(scaleDownX(location.x), scaleDownY(location.y));
+                return scaleDown(location.x, location.y);
             }
         }
     }
@@ -2249,10 +2248,9 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     public void handleXCrossingEvent(XEvent xev) {
         XCrossingEvent xce = xev.get_xcrossing();
         if (grabLog.isLoggable(PlatformLogger.Level.FINE)) {
+            Point p = scaleDown(xce.get_x_root(), xce.get_y_root());
             grabLog.fine("{0}, when grabbed {1}, contains {2}",
-                         xce, isGrabbed(),
-                         containsGlobal(scaleDownX(xce.get_x_root()),
-                                        scaleDownY(xce.get_y_root())));
+                         xce, isGrabbed(), containsGlobal(p.x, p.y));
         }
         if (isGrabbed()) {
             // When window is grabbed, all events are dispatched to
@@ -2278,10 +2276,9 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     public void handleMotionNotify(XEvent xev) {
         XMotionEvent xme = xev.get_xmotion();
         if (grabLog.isLoggable(PlatformLogger.Level.FINER)) {
+            Point p = scaleDown(xme.get_x_root(), xme.get_y_root());
             grabLog.finer("{0}, when grabbed {1}, contains {2}",
-                          xme, isGrabbed(),
-                          containsGlobal(scaleDownX(xme.get_x_root()),
-                                         scaleDownY(xme.get_y_root())));
+                          xme, isGrabbed(), containsGlobal(p.x, p.y));
         }
         if (isGrabbed()) {
             boolean dragging = false;
@@ -2306,8 +2303,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                 // So, I do not want to implement complicated logic for better retargeting.
                 target = pressTarget.isVisible() ? pressTarget : this;
                 xme.set_window(target.getWindow());
-                Point localCoord = target.toLocal(scaleDownX(xme.get_x_root()),
-                                                  scaleDownY(xme.get_y_root()));
+                Point localCoord = target.toLocal(scaleDown(xme.get_x_root(), xme.get_y_root()));
                 xme.set_x(scaleUp(localCoord.x));
                 xme.set_y(scaleUp(localCoord.y));
             }
@@ -2323,8 +2319,8 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
 
             // note that we need to pass dragging events to the grabber (6390326)
             // see comment above for more information.
-            if (!containsGlobal(scaleDownX(xme.get_x_root()),
-                                scaleDownY(xme.get_y_root()))
+            Point p = scaleDown(xme.get_x_root(), xme.get_y_root());
+            if (!containsGlobal(p.x, p.y)
                     && !dragging) {
                 // Outside of Java
                 return;
@@ -2348,10 +2344,10 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             return;
         }
         if (grabLog.isLoggable(PlatformLogger.Level.FINE)) {
+            Point p = scaleDown(xbe.get_x_root(), xbe.get_y_root());
             grabLog.fine("{0}, when grabbed {1}, contains {2} ({3}, {4}, {5}x{6})",
                          xbe, isGrabbed(),
-                         containsGlobal(scaleDownX(xbe.get_x_root()),
-                                        scaleDownY(xbe.get_y_root())),
+                         containsGlobal(p.x, p.y),
                          getAbsoluteX(), getAbsoluteY(),
                          getWidth(), getHeight());
         }
@@ -2379,8 +2375,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                     // see 6390326 for more information.
                     target = pressTarget.isVisible() ? pressTarget : this;
                     xbe.set_window(target.getWindow());
-                    Point localCoord = target.toLocal(scaleDownX(xbe.get_x_root()),
-                                                      scaleDownY(xbe.get_y_root()));
+                    Point localCoord = target.toLocal(scaleDown(xbe.get_x_root(), xbe.get_y_root()));
                     xbe.set_x(scaleUp(localCoord.x));
                     xbe.set_y(scaleUp(localCoord.y));
                     pressTarget = this;
@@ -2394,9 +2389,9 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                     // Target is either us or our content window -
                     // check that event is inside.  'Us' in case of
                     // shell will mean that this will also filter out press on title
+                    Point p = scaleDown(xbe.get_x_root(), xbe.get_y_root());
                     if ((target == this || target == getContentXWindow())
-                            && !containsGlobal(scaleDownX(xbe.get_x_root()),
-                                               scaleDownY(xbe.get_y_root())))
+                            && !containsGlobal(p.x, p.y))
                     {
                         // Outside this toplevel hierarchy
                         // According to the specification of UngrabEvent, post it
