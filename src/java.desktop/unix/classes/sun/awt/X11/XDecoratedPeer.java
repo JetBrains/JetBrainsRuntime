@@ -946,10 +946,9 @@ abstract class XDecoratedPeer extends XWindowPeer {
             insLog.fine("Setting shell bounds on " + this + " to " + rec);
         }
         updateSizeHints(rec.x, rec.y, rec.width, rec.height);
+        Point p = parentWindow == null ? scaleUp(rec.x, rec.y) : new Point(scaleUp(rec.x), scaleUp(rec.y));
         XlibWrapper.XMoveResizeWindow(XToolkit.getDisplay(), getShell(),
-                                      parentWindow == null ? scaleUpX(rec.x) : scaleUp(rec.x),
-                                      parentWindow == null ? scaleUpY(rec.y) : scaleUp(rec.y),
-                                      scaleUp(rec.width), scaleUp(rec.height));
+                                      p.x, p.y, scaleUp(rec.width), scaleUp(rec.height));
     }
 
     private void setShellSize(Rectangle rec) {
@@ -966,9 +965,8 @@ abstract class XDecoratedPeer extends XWindowPeer {
             insLog.fine("Setting shell position on " + this + " to " + rec);
         }
         updateSizeHints(rec.x, rec.y, rec.width, rec.height);
-        XlibWrapper.XMoveWindow(XToolkit.getDisplay(), getShell(),
-                parentWindow == null ? scaleUpX(rec.x) : scaleUp(rec.x),
-                parentWindow == null ? scaleUpY(rec.y) : scaleUp(rec.y));
+        Point p = parentWindow == null ? scaleUp(rec.x, rec.y) : new Point(scaleUp(rec.x), scaleUp(rec.y));
+        XlibWrapper.XMoveWindow(XToolkit.getDisplay(), getShell(), p.x, p.y);
     }
 
     public void setResizable(boolean resizable) {
