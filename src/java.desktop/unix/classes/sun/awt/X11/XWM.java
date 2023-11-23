@@ -1075,10 +1075,10 @@ final class XWM
             }
             window.updateSizeHints(window.getDimensions());
             requestWMExtents(window.getWindow());
+            Point p = window.scaleUp(shellBounds.x, shellBounds.y);
             XlibWrapper.XMoveResizeWindow(XToolkit.getDisplay(),
                                           window.getShell(),
-                                          window.scaleUpX(shellBounds.x),
-                                          window.scaleUpY(shellBounds.y),
+                                          p.x, p.y,
                                           window.scaleUp(shellBounds.width),
                                           window.scaleUp(shellBounds.height));
             /* REMINDER: will need to revisit when setExtendedStateBounds is added */
@@ -1113,10 +1113,10 @@ final class XWM
                 window.updateSizeHints(newDimensions);
                 requestWMExtents(window.getWindow());
                 XToolkit.XSync();
+                Point p = window.scaleUp(shellBounds.x, shellBounds.y);
                 XlibWrapper.XMoveResizeWindow(XToolkit.getDisplay(),
                                               window.getShell(),
-                                              window.scaleUpX(shellBounds.x),
-                                              window.scaleUpY(shellBounds.y),
+                                              p.x, p.y,
                                               window.scaleUp(shellBounds.width),
                                               window.scaleUp(shellBounds.height));
             }
