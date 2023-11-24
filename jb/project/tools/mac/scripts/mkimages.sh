@@ -29,9 +29,9 @@ BOOT_JDK=${BOOT_JDK:=$(/usr/libexec/java_home -v 16)}
 
 function do_configure {
   if [[ "${architecture}" == *aarch64* ]]; then
-    ENABLE_CDS="--enable-cds=no"
+    MACOSX_VERSION_MAX="11.00.00"
   else
-    ENABLE_CDS="--enable-cds=yes"
+    MACOSX_VERSION_MAX="10.12.00"
   fi
   sh configure \
     $WITH_DEBUG_LEVEL \
@@ -44,8 +44,8 @@ function do_configure {
     --with-version-build="$JDK_BUILD_NUMBER" \
     --with-version-opt=b"$build_number" \
     --with-boot-jdk="$BOOT_JDK" \
-    --with-macosx-version-max="${MACOSX_VERSION_MAX:="10.12.00"}" \
-      --enable-cds=yes \
+    --with-macosx-version-max="${MACOSX_VERSION_MAX}" \
+    --enable-cds=yes \
     $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
     $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
