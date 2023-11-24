@@ -55,12 +55,12 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
 
 //    @Override
 //    public void beginLayout() {
-//        log.info("Not implemented: WLFramePeer.beginLayout()");
+//        log.fine("Not implemented: WLFramePeer.beginLayout()");
 //    }
 //
 //    @Override
 //    public void endLayout() {
-//        log.info("Not implemented: WLFramePeer.endLayout()");
+//        log.fine("Not implemented: WLFramePeer.endLayout()");
 //    }
 
     @Override
