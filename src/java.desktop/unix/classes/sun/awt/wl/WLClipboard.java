@@ -98,8 +98,8 @@ public final class WLClipboard extends SunClipboard {
 
     private static void dispatchDataOfferQueue() {
         dispatchDataOfferQueueImpl(dataOfferQueuePtr); // does not return until error or server disconnect
-        if (log.isLoggable(PlatformLogger.Level.INFO)) {
-            log.info("Clipboard: data offer dispatcher exited");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Clipboard: data offer dispatcher exited");
         }
     }
 
@@ -328,15 +328,15 @@ public final class WLClipboard extends SunClipboard {
     @Override
     protected void registerClipboardViewerChecked() {
         // TODO: is there any need to do more here?
-        if (log.isLoggable(PlatformLogger.Level.INFO)) {
-            log.info("Unimplemented");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Unimplemented");
         }
     }
 
     @Override
     protected void unregisterClipboardViewerChecked() {
-        if (log.isLoggable(PlatformLogger.Level.INFO)) {
-            log.info("Unimplemented");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Unimplemented");
         }
     }
 
