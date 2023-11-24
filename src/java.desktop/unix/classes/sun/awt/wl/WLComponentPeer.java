@@ -293,11 +293,11 @@ public class WLComponentPeer implements ComponentPeer {
                     final int offsetY = offsetFromParent.y;
 
                     if (popupLog.isLoggable(PlatformLogger.Level.FINE)) {
-                        popupLog.info("New popup: " + popup);
-                        popupLog.info("\tparent:" + popupParent);
-                        popupLog.info("\ttoplevel: " + toplevel);
-                        popupLog.info("\toffset of anchor from toplevel: " + toplevelLocation);
-                        popupLog.info("\toffset from anchor: " + offsetFromParent);
+                        popupLog.fine("New popup: " + popup);
+                        popupLog.fine("\tparent:" + popupParent);
+                        popupLog.fine("\ttoplevel: " + toplevel);
+                        popupLog.fine("\toffset of anchor from toplevel: " + toplevelLocation);
+                        popupLog.fine("\toffset from anchor: " + offsetFromParent);
                     }
 
                     nativeCreateWLPopup(nativePtr, getParentNativePtr(target),
@@ -365,8 +365,8 @@ public class WLComponentPeer implements ComponentPeer {
      * @see ComponentPeer
      */
     public void setEnabled(final boolean value) {
-        if (log.isLoggable(PlatformLogger.Level.INFO)) {
-            log.info("Not implemented: WLComponentPeer.setEnabled(boolean)");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLComponentPeer.setEnabled(boolean)");
         }
     }
 
@@ -425,8 +425,8 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     public void print(Graphics g) {
-        if (log.isLoggable(PlatformLogger.Level.INFO)) {
-            log.info("Not implemented: WLComponentPeer.print(Graphics)");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLComponentPeer.print(Graphics)");
         }
     }
 
@@ -495,11 +495,11 @@ public class WLComponentPeer implements ComponentPeer {
             final int parentX = toplevelLocation.x;
             final int parentY = toplevelLocation.y;
             if (popupLog.isLoggable(Level.FINE)) {
-                popupLog.info("Repositioning popup: " + popup);
-                popupLog.info("\tparent:" + popupParent);
-                popupLog.info("\ttoplevel: " + toplevel);
-                popupLog.info("\toffset of anchor from toplevel: " + toplevelLocation);
-                popupLog.info("\toffset from anchor: " + newX + ", " + newY);
+                popupLog.fine("Repositioning popup: " + popup);
+                popupLog.fine("\tparent:" + popupParent);
+                popupLog.fine("\ttoplevel: " + toplevel);
+                popupLog.fine("\toffset of anchor from toplevel: " + toplevelLocation);
+                popupLog.fine("\toffset from anchor: " + newX + ", " + newY);
             }
             nativeRepositionWLPopup(nativePtr, thisWidth, thisHeight, parentX + newX, parentY + newY);
         } );
@@ -649,12 +649,12 @@ public class WLComponentPeer implements ComponentPeer {
             }
         } else if (e instanceof KeyEvent && !((InputEvent) e).isConsumed()) {
             // even if target is disabled.
-            if (log.isLoggable(PlatformLogger.Level.INFO)) {
-                log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): handleF10JavaKeyEvent");
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("Not implemented: WLComponentPeer.handleEvent(AWTEvent): handleF10JavaKeyEvent");
             }
         } else if (e instanceof InputMethodEvent) {
-            if (log.isLoggable(PlatformLogger.Level.INFO)) {
-                log.info("Not implemented: WLComponentPeer.handleEvent(AWTEvent): handleJavaInputMethodEvent");
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("Not implemented: WLComponentPeer.handleEvent(AWTEvent): handleJavaInputMethodEvent");
             }
         }
 
@@ -779,8 +779,8 @@ public class WLComponentPeer implements ComponentPeer {
             log.fine("Set foreground to " + c);
         }
 
-        if (log.isLoggable(PlatformLogger.Level.INFO)) {
-            log.info("Not implemented: WLComponentPeer.setForeground(Color)");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLComponentPeer.setForeground(Color)");
         }
     }
 
@@ -916,8 +916,8 @@ public class WLComponentPeer implements ComponentPeer {
 
     @Override
     public void setZOrder(ComponentPeer above) {
-        if (log.isLoggable(PlatformLogger.Level.INFO)) {
-            log.info("Not implemented: WLComponentPeer.setZOrder(ComponentPeer)");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLComponentPeer.setZOrder(ComponentPeer)");
         }
     }
 
