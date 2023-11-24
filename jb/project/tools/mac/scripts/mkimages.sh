@@ -26,11 +26,6 @@ JCEF_PATH=${JCEF_PATH:=./jcef_mac}
 BOOT_JDK=${BOOT_JDK:=$(/usr/libexec/java_home -v 17)}
 
 function do_configure {
-  if [[ "${architecture}" == *aarch64* ]]; then
-    ENABLE_CDS="--enable-cds=no"
-  else
-    ENABLE_CDS="--enable-cds=yes"
-  fi
   sh configure \
     $WITH_DEBUG_LEVEL \
     --with-vendor-name="$VENDOR_NAME" \
