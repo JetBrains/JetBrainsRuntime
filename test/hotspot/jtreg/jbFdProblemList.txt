@@ -71,7 +71,7 @@ runtime/cds/appcds/dynamicArchive/TestDynamicDumpAtOom.java JBR-6291 generic-all
 
 # :hotspot_serviceability
 
-serviceability/sa/ClhsdbCDSCore.java NOBUG macosx-all Can't attach to the core file
+serviceability/sa/ClhsdbCDSCore.java initial_run,NOBUG generic-aarch64,macosx-all Can't attach to the core file
 
 #############################################################################
 

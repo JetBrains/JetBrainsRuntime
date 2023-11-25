@@ -60,6 +60,7 @@ gtest/NMTGtests.java#nmt-summary JBR-5718 generic-all
 
 gc/stress/TestReclaimStringsLeaksMemory.java initial_run windows-all
 
+gc/shenandoah/TestAllocHumongousFragment.java#aggressive 8309622 generic-all
 gc/shenandoah/TestAllocObjects.java#aggressive initial_run generic-all
 gc/shenandoah/TestAllocObjects.java#iu-aggressive initial_run generic-all
 gc/shenandoah/mxbeans/TestChurnNotifications.java#aggressive initial_run generic-all
@@ -75,7 +76,6 @@ compiler/jvmci/jdk.vm.ci.code.test/src/jdk/vm/ci/code/test/NativeCallTest.java 8
 compiler/cpuflags/TestAESIntrinsicsOnSupportedConfig.java 8190680 generic-all
 
 compiler/runtime/Test8168712.java 8211769,8211771 generic-ppc64,generic-ppc64le,linux-s390x
-runtime/Thread/ThreadCountLimit.java 8293872 linux-all
 
 compiler/rtm/locking/TestRTMAbortRatio.java 8183263 generic-x64
 compiler/rtm/locking/TestRTMAbortThreshold.java 8183263 generic-x64
@@ -129,15 +129,17 @@ runtime/memory/ReadFromNoaccessArea.java initial_run windows-aarch64
 runtime/cds/appcds/methodHandles/MethodHandlesInvokersTest.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesCastFailureTest.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesGeneralTest.java initial_run generic-all
-runtime/ReservedStack/ReservedStackTestCompiler.java initial_run windows-aarch64
-runtime/cds/appcds/dynamicArchive/CDSStreamTestDriver.java initial_run generic-all
-runtime/ErrorHandling/CreateCoredumpOnCrash.java initial_run windows-aarch64
-runtime/ErrorHandling/MachCodeFramesInErrorFile.java JBR-6289 windows-aarch64
-runtime/ReservedStack/ReservedStackTest.java initial_run windows-aarch64
 runtime/cds/appcds/methodHandles/MethodHandlesPermuteArgumentsTest.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesAsCollectorTest.java initial_run generic-all
 runtime/cds/SharedBaseAddress.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesSpreadArgumentsTest.java initial_run generic-all
+runtime/cds/appcds/dynamicArchive/CDSStreamTestDriver.java initial_run generic-all
+runtime/ReservedStack/ReservedStackTestCompiler.java initial_run windows-aarch64
+runtime/ErrorHandling/CreateCoredumpOnCrash.java initial_run windows-aarch64
+runtime/ErrorHandling/MachCodeFramesInErrorFile.java JBR-6289 windows-aarch64
+runtime/ReservedStack/ReservedStackTest.java initial_run windows-aarch64
+runtime/Thread/ThreadCountLimit.java 8293872 linux-all
+runtime/Thread/TooSmallStackSize.java JBR-6350 windows-aarch64
 
 #############################################################################
 
@@ -152,6 +154,7 @@ serviceability/jvmti/ModuleAwareAgents/ThreadStart/MAAThreadStart.java 8225354 w
 serviceability/jvmti/RedefineClasses/TestMultipleClasses.java initial_run windows-all
 serviceability/jvmti/SetBreakpoint/TestManyBreakpoints.java initial_run generic-aarch64
 
+serviceability/sa/ClhsdbInspect.java JBR-6351 windows-aarch64
 serviceability/sa/ClhsdbJstackXcompStress.java initial_run windows-all
 
 serviceability/sa/ClhsdbPrintAs.java initial_run generic-all
@@ -227,7 +230,7 @@ vmTestbase/vm/mlvm/indy/func/jvmti/redefineClassInBootstrap/TestDescription.java
 vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2none_a/TestDescription.java 8013267 generic-all
 vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manyDiff_b/TestDescription.java 8013267 generic-all
 vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manySame_b/TestDescription.java 8013267 generic-all
-vmTestbase/vm/mlvm/meth/stress/compiler/deoptimize/Test.java#id0 8269393 macos-aarch64
+vmTestbase/vm/mlvm/meth/stress/compiler/deoptimize/Test.java#id0 8269393 macosx-aarch64
 
 
 vmTestbase/nsk/jdwp/ThreadReference/ForceEarlyReturn/forceEarlyReturn001/forceEarlyReturn001.java 7199837 generic-all
@@ -296,5 +299,6 @@ vmTestbase/nsk/sysdict/vm/stress/btree/btree009/btree009.java initial_run window
 resourcehogs/serviceability/sa/TestHeapDumpForLargeArray.java 8220624   generic-all
 
 testlibrary_tests/ir_framework/tests/TestDTestAndExclude.java initial_run windows-all
+testlibrary_tests/ir_framework/tests/TestSanity.java JBR-6352 windows-x64
 
 jb/applications/ctw/plugins_cucumber_java_lib_cucumber_java.java JBR-6084 windows-all

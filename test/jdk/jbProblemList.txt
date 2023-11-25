@@ -113,6 +113,7 @@
 
 # jdk_awt
 
+java/awt/Button/DisabledButtonPress.java JBR-5799 windows-aarch64
 java/awt/Desktop/8064934/bug8064934.java JBR-5764 windows-all
 java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java JBR-5915 linux-all
 java/awt/event/MouseEvent/MouseClickTest/MouseClickTest.java 8168389 windows-all,macosx-all
@@ -333,7 +334,7 @@ java/awt/Choice/ChoiceGeneratesItemEvents.java JBR-6284 linux-5.18.2-arch1-1
 java/awt/Choice/ChoiceLocationTest/ChoiceLocationTest.java JBR-5799 windows-all
 java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java 7100044,JBR5210 macosx-all,linux-all,windows-all
 java/awt/Choice/ChoiceStaysOpenedOnTAB.java JBR-6284 linux-5.18.2-arch1-1
-java/awt/Choice/GetSizeTest/GetSizeTest.java JBR-837 macosx-11.7.3
+java/awt/Choice/GetSizeTest/GetSizeTest.java JBR-837 macosx-all
 java/awt/Component/F10TopToplevel/F10TopToplevel.java JBR-5687 linux-all
 java/awt/Component/GetScreenLocTest/GetScreenLocTest.java 4753654 generic-all
 java/awt/Component/SetComponentsBounds/SetComponentsBounds.java JBR-4275 linux-all
@@ -852,7 +853,7 @@ javax/sound/sampled/Clip/SetPositionHang.java JBR-4969 linux-aarch64
 
 javax/sound/sampled/Mixers/DisabledAssertionCrash.java 7067310 generic-all
 
-javax/sound/midi/Sequencer/Recording.java 8167580,8265485 linux-all,macosx-aarch64
+javax/sound/midi/Sequencer/Recording.java 8167580,8265485 linux-all,macosx-all
 
 ############################################################################
 
@@ -886,6 +887,8 @@ javax/swing/JButton/PressedButtonRightClickTest.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test6524757.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test6827032.java JBR-5210 windows-all
 javax/swing/JComboBox/6406264/bug6406264.java JBR-5210 windows-all
+javax/swing/JComboBox/bug4890345.java JBR-5799 windows-all
+javax/swing/JComboBox/bug5029504.java JBR-5799 windows-all
 javax/swing/JComponent/6683775/bug6683775.java 8172337 generic-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/JLabel/4138746/JLabelMnemonicsTest.java JBR-4949 linux-all,windows-all
@@ -962,6 +965,7 @@ javax/swing/JToolBar/4529206/bug4529206.java JBR-5387 linux-all
 javax/swing/JToolBar/4529206/bug4529206.java 8288707,JBR-5387 linux-all
 javax/swing/JToolTip/6219960/bug6219960.java 8253184 windows-all
 javax/swing/SwingUtilities/TestBadBreak/TestBadBreak.java 8160720 generic-all
+javax/swing/text/AbstractDocument/8190763/TestCCEOnEditEvent.java JBR-5799 windows-all
 javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java 8194048,JBR-5510,JBR-5547 windows-all,linux-all
 javax/swing/text/DefaultCaret/HidingSelection/MultiSelectionTest.java 8213562 linux-all
 javax/swing/text/TableView/TableViewLayoutTest.java 8194936,JBR-4316,JBR-5510 linux-5.18.2-arch1-1,linux-all
@@ -1250,7 +1254,6 @@ java/awt/event/KeyEvent/DeadKey/DeadKeySystemAssertionDialog.java JBR-4880,JBR-5
 java/awt/event/KeyEvent/KeyCharTest/KeyCharTest.java JBR-4880 windows-all
 java/awt/Frame/LayoutOnMaximizeTest/LayoutOnMaximizeTest.java JBR-4880 windows-all
 java/awt/Frame/MiscUndecorated/UndecoratedInitiallyIconified.java JBR-4880 windows-all
-java/awt/FullScreen/FullscreenWindowProps/FullscreenWindowProps.java JBR-4275,JBR-4880 linux-all,windows-all
 java/awt/FullScreen/SetFSWindow/FSFrame.java 8253184 windows-all
 java/awt/grab/MenuDragEvents/MenuDragEvents.java JBR-4880 windows-all
 java/awt/image/multiresolution/MenuMultiresolutionIconTest.java JBR-4880,8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1

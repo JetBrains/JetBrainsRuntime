@@ -33,6 +33,7 @@ javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-4379 windo
 
 jb/java/awt/dnd/DnDScalingWithHIDPI/DnDScalingWithHIDPITest.java JBR-5442 linux-all
 
+java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 linux-x64,windows-aarch64,macosx-all
 java/awt/Choice/PopdownGeneratesMouseEvents/PopdownGeneratesMouseEvents.java JBR-5510 linux-all
 java/awt/ColorClass/AlphaColorTest.java 8277816,JBR-5359,JBR-5510 macosx-aarch64,windows-aarch64,linux-all
 java/awt/Dialog/DialogAboveFrame/DialogAboveFrameTest.java JBR-5210,JBR-5510 windows-all,linux-all
@@ -116,6 +117,7 @@ javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java nobug linux-all
 javax/swing/JProgressBar/TestJProgressBarHighlightColor.java nobug linux-all
 javax/swing/JRadioButton/8041561/bug8041561.java JBR-5359,JBR-5510 windows-aarch64,linux-all
 javax/swing/JSlider/TestJSliderRendering.java nobug linux-all
+javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-6347 linux-all
 javax/swing/JSpinner/TestSelectedTextBackgroundColor.java nobug linux-all
 javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java JBR-5359,JBR-5510 windows-aarch64,linux-all
 javax/swing/JSplitPane/4885629/bug4885629.java 8019935,JBR-5359,JBR-5510 macosx-all,windows-aarch64,linux-all
