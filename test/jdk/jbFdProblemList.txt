@@ -111,7 +111,9 @@
 
 ############################################################################
 
+java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 linux-x64,windows-aarch64,macosx-all
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-6334 macosx-all
+java/awt/FlowLayout/PreferredLayoutSize.java JBR-6348 windows-aarch64
 java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java JBR-6335,NOBUG linux-all,windows-all #timeout on windows
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java NOBUG windows-all timeout
 java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout
@@ -119,6 +121,7 @@ java/awt/Robot/NonEmptyErrorStream.java JBR-6275 macosx-all
 
 javax/swing/text/CSSBorder/6796710/bug6796710.java NOBUG windows-x64 #timeout
 
+jb/java/awt/CustomTitleBar/FrameNativeControlsMacOSTest.java JBR-6354 macosx-all
 jb/java/awt/Focus/FileDialogClosing.java NOBUG windows-x64 #Unexpected pressed count: 0
 jb/java/awt/Focus/FrameAfterPopup.java NOBUG windows-x64 #timeout
 jb/java/awt/Focus/ModalDialogOverSiblingTest.java NOBUG windows-x64 #NullPointerException
@@ -128,7 +131,7 @@ jb/java/awt/Focus/RequestFocusInParent.java NOBUG windows-x64 #NullPointerExcept
 jb/java/awt/Focus/SecondLevelPopupTest.java NOBUG windows-x64 #NullPointerException
 jb/java/awt/Focus/TitleBarClickTest.java NOBUG windows-x64 #timeout
 jb/java/awt/Focus/WrongFrameFocusedOnModalDialogClosing.java NOBUG windows-x64 #timeout
-jb/java/awt/Window/ModalDialogAndPopup.java NOBUG windows-x64 #timeout
+jb/java/awt/Window/ModalDialogAndPopup.java JBR-4984,NOBUG windows-x64,macosx-all #timeout
 jb/java/awt/Window/UndecoratedDialogInTransientsChain.java NOBUG windows-x64 #Frame should have been closed
 jb/java/jcef/HwFacadeWindowNoFrontTest.java NOBUG windows-x64 #window is not above the bottom frame
 
