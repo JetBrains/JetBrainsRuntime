@@ -494,6 +494,14 @@ TISInputSourceRef GetCurrentUnderlyingLayout(BOOL useNationalLayouts) {
                            CFBooleanGetValue((CFBooleanRef) TISGetInputSourceProperty(currentLayout, kTISPropertyInputSourceIsASCIICapable));
     TISInputSourceRef underlyingLayout = (!useNationalLayouts || currentAscii) ? currentLayout : nil;
 
+    if (currentLayout) {
+        if (underlyingLayout) {
+            CFAutorelease(currentLayout);
+        } else {
+            CFRelease(currentLayout);
+        }
+    }
+
     return underlyingLayout;
 }
 
