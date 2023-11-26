@@ -1,6 +1,7 @@
 java/awt/Dialog/DialogLocationTest.java JBR-6090 windows-all
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java      JBR-5538 windows-all
 java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java                  JBR-6027 windows-all
+java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 linux-x64,windows-aarch64,macosx-all
 java/awt/Focus/6378278/InputVerifierTest.java                                       JBR-5799 windows-all
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java 8252772,JBR-5799,JBR-6031 linux-all,windows-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java                     JBR-6233 windows-x64
