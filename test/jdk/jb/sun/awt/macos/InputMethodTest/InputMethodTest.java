@@ -185,7 +185,7 @@ public class InputMethodTest {
 
     public static void layout(String name) {
         List<String> layouts = new ArrayList<>();
-        if (name.matches("com\\.apple\\.inputmethod\\.(SCIM|TCIM|TYIM|Kotoeri|Korean|VietnameseIM\\.\\w+)\\.\\w+")) {
+        if (name.matches("com\\.apple\\.inputmethod\\.(SCIM|TCIM|TYIM|Korean|VietnameseIM|Kotoeri\\.\\w+)\\.\\w+")) {
             layouts.add(name.replaceFirst("\\.\\w+$", ""));
         }
 
