@@ -140,9 +140,7 @@ public final class LWCToolkit extends LWToolkit {
 
     private static native String[] getKeyboardLayoutListNative(boolean includeAll);
 
-    private static native boolean enableKeyboardLayoutNative(String layoutName);
-
-    private static native boolean disableKeyboardLayoutNative(String layoutName);
+    private static native boolean setKeyboardLayoutEnabledNative(String layoutName, boolean enabled);
 
     public static void switchKeyboardLayout (String layoutName) {
         if (layoutName == null || layoutName.isEmpty()) {
@@ -169,7 +167,7 @@ public final class LWCToolkit extends LWToolkit {
         if (layoutName == null || layoutName.isEmpty()) {
             throw new RuntimeException("A valid layout ID is expected. Found:  " + layoutName);
         }
-        if (!enableKeyboardLayoutNative(layoutName)) {
+        if (!setKeyboardLayoutEnabledNative(layoutName, true)) {
             throw new RuntimeException("Couldn't enable layout " + layoutName);
         }
     }
@@ -178,7 +176,7 @@ public final class LWCToolkit extends LWToolkit {
         if (layoutName == null || layoutName.isEmpty()) {
             throw new RuntimeException("A valid layout ID is expected. Found:  " + layoutName);
         }
-        if (!disableKeyboardLayoutNative(layoutName)) {
+        if (!setKeyboardLayoutEnabledNative(layoutName, false)) {
             throw new RuntimeException("Couldn't disable layout " + layoutName);
         }
     }
