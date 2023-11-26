@@ -47,7 +47,6 @@
 
 # :hotspot_compiler
 
-compiler/c2/irTests/TestVectorConditionalMove.java NOBUG windows-aarch64 # compiler.lib.ir_framework.driver.irmatching.IRViolationException: There were one or multiple IR rule failures. Please check stderr for more information.
 compiler/ciReplay/TestInlining.java 8300210 generic-all
 compiler/ciReplay/TestIncrementalInlining.java NOBUG generic-all
 compiler/ciReplay/TestInliningProtectionDomain.java NOBUG generic-all
@@ -59,7 +58,6 @@ compiler/ciReplay/TestUnresolvedClasses.java NOBUG generic-all
 
 # :hotspot_gc
 
-gc/stress/gcold/TestGCOldWithShenandoah.java#iu-aggressive NOBUG generic-all timeout
 
 #############################################################################
 
@@ -71,7 +69,7 @@ runtime/cds/appcds/dynamicArchive/TestDynamicDumpAtOom.java JBR-6291 generic-all
 
 # :hotspot_serviceability
 
-serviceability/sa/ClhsdbCDSCore.java NOBUG macosx-all Can't attach to the core file
+serviceability/sa/ClhsdbCDSCore.java initial_run,NOBUG generic-aarch64,macosx-all Can't attach to the core file
 
 #############################################################################
 
