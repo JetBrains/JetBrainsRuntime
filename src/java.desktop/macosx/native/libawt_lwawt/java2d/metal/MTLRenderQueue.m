@@ -79,27 +79,41 @@ BOOL isStatsEnabled() {
     return (BOOL)statsEnabled;
 }
 
+BOOL isTraceDisplayEnabled() {
+    static int traceDisplayEnabled = -1;
+    if (traceDisplayEnabled == -1) {
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        if (env == NULL) return NO;
+        NSString *statsEnabledProp = [PropertiesUtilities javaSystemPropertyForKey:@"sun.java2d.rq.trace.display"
+                                                                           withEnv:env];
+        traceDisplayEnabled = [@"true" isCaseInsensitiveLike:statsEnabledProp] ? YES : NO;
+        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLRenderQueue_isTraceDisplayEnabled: %d", traceDisplayEnabled);
+    }
+    return (BOOL)traceDisplayEnabled;
+}
+
 static void rqDumpContext(JNIEnv *env, MTLContext *mtlc, const char* message, BOOL reset) {
     if (mtlc != NULL) {
         UInt64 syncCount = [mtlc syncCount];
         UInt64 lastSyncCount = [mtlc statLastSyncCount];
+
+        UInt64 presCount = [mtlc presCount];
+        UInt64 lastPresCount = [mtlc statLastPresCount];
+
         jint statCommits = [mtlc statCommits];
         jint statWaits = [mtlc statWaits];
         jint statDisplayed = [mtlc statDisplayed];
 
         rq_plog(env, LL_INFO, "Java_sun_java2d_metal_MTLRenderQueue_rqDumpContext(displayID: %d, statID: %d): "
-                              "[%s] sync: %ld commit: %d wait: %d display: %d (allocated gpu mem: %ld kb)",
+                              "[%s] commit: %d wait: %d display: %d - sync: %ld pres: %ld (allocated gpu mem: %ld kb)",
                 [mtlc dispID], [mtlc statID], message,
-                (syncCount - lastSyncCount), statCommits, statWaits, statDisplayed,
+                statCommits, statWaits, statDisplayed,
+                (syncCount - lastSyncCount), (presCount - lastPresCount),
                 [mtlc.device currentAllocatedSize] / 1024
         );
 
         if (reset) {
-            // TODO: new method resetStats()
-            [mtlc setStatLastSyncCount: syncCount];
-            [mtlc setStatCommits: 0];
-            [mtlc setStatWaits: 0];
-            [mtlc setStatDisplayed: 0];
+            [mtlc resetStats];
         }
     }
 }
@@ -699,6 +713,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                         [ctxSet addObject: mtlc];
                     }
                     dstOps = (BMTLSDOps *)jlong_to_ptr(pDst);
+                    if (isTraceDisplayEnabled()) {
+                        J2dRlsTraceLn1(J2D_TRACE_INFO, "SET_SURFACES: dstOps=%p", dstOps);
+                    }
                     break;
                 }
                 case sun_java2d_pipe_BufferedOpCodes_SET_SCRATCH_SURFACE:
@@ -722,6 +739,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                         }
                     } else {
                         mtlc = NULL;
+                    }
+                    if (isTraceDisplayEnabled()) {
+                        J2dRlsTraceLn(J2D_TRACE_INFO, "SET_SCRATCH_SURFACE");
                     }
                     dstOps = NULL;
                     break;

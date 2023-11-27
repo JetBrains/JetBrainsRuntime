@@ -73,7 +73,12 @@ static jboolean MTLSurfaceData_initTexture(BMTLSDOps *bmtlsdo, jboolean isOpaque
         }
 
         MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatBGRA8Unorm width: width height: height mipmapped: NO];
-        textureDescriptor.usage = MTLTextureUsageUnknown;
+        if (true) {
+            textureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
+            //textureDescriptor.hazardTrackingMode = MTLHazardTrackingModeUntracked;
+        } else {
+            textureDescriptor.usage = MTLTextureUsageUnknown;
+        }
         textureDescriptor.storageMode = MTLStorageModePrivate;
         bmtlsdo->pTexture = [ctx.device newTextureWithDescriptor: textureDescriptor];
 
@@ -95,6 +100,8 @@ static jboolean MTLSurfaceData_initTexture(BMTLSDOps *bmtlsdo, jboolean isOpaque
 
         J2dTraceLn6(J2D_TRACE_VERBOSE, "MTLSurfaceData_initTexture: w=%d h=%d bp=%p [tex=%p] opaque=%d sfType=%d",
                     width, height, bmtlsdo, bmtlsdo->pTexture, isOpaque, sfType);
+        J2dRlsTraceLn5(J2D_TRACE_VERBOSE, "MTLSurfaceData_initTexture: w=%d h=%d bp=%p [tex=%p] opaque=%d",
+                    width, height, bmtlsdo, bmtlsdo->pTexture, isOpaque);
         return JNI_TRUE;
     }
 }

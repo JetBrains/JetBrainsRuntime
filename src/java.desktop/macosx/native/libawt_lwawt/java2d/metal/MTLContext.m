@@ -37,17 +37,25 @@
 // Keep displaylink thread alive for KEEP_ALIVE_COUNT more times
 // to avoid multiple start/stop displaylink operations. It speeds up
 // scenarios with multiple subsequent updates.
-#define KEEP_ALIVE_COUNT 4
+#define KEEP_ALIVE_COUNT 10
 
 // Amount of blit operations per update to make sure that everything is
 // rendered into the window drawable. It does not slow things down as we
 // use separate command queue for blitting.
 #define REDRAW_INC 2
+// LBO: 2 or 1
+
+#define TRACE_DIRECT_BUFFER 0
+
 
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern BOOL isDisplaySyncEnabled();
 extern BOOL MTLLayer_isExtraRedrawEnabled();
+
 extern BOOL isStatsEnabled();
+extern BOOL isTraceDisplayEnabled();
+
+extern long rqCurrentTimeMicroSeconds();
 
 static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
         {{-1.0, 1.0}, {0.0, 0.0}},
@@ -144,8 +152,8 @@ static jlong MTL_CTX_COUNTER = 0;
             commandQueue, blitCommandQueue, vertexBuffer,
             texturePool, paint=_paint, encoderManager=_encoderManager,
             samplerManager=_samplerManager, stencilManager=_stencilManager,
-            syncEvent, syncCount,
-            dispID, statID, statLastSyncCount,
+            syncEvent, syncCount, presCount,
+            dispID, statID, statLastSyncCount, statLastPresCount,
             statCommits, statWaits, statDisplayed;
 
 extern void initSamplers(id<MTLDevice> device);
@@ -206,14 +214,13 @@ extern void initSamplers(id<MTLDevice> device);
             syncEvent = [device newEvent];
         }
         self.syncCount = 0;
+        self.presCount = 0;
+
         _glyphCacheLCD = [[MTLGlyphCache alloc] initWithContext:self];
         _glyphCacheAA = [[MTLGlyphCache alloc] initWithContext:self];
 
         if (isStatsEnabled()) {
-            statLastSyncCount = 0;
-            statCommits = 0;
-            statWaits = 0;
-            statDisplayed = 0;
+            [self resetStats];
         }
     }
     return self;
@@ -300,6 +307,15 @@ extern void initSamplers(id<MTLDevice> device);
     // Add code for context state reset here
 }
 
+- (void)resetStats {
+    J2dTraceLn(J2D_TRACE_INFO, "MTLContext.resetStats");
+    statLastSyncCount = self.syncCount;
+    statLastPresCount = self.presCount;
+    statCommits = 0;
+    statWaits = 0;
+    statDisplayed = 0;
+}
+
  - (MTLCommandBufferWrapper *) getCommandBufferWrapper {
     if (_commandBufferWrapper == nil) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "MTLContext : commandBuffer is NULL");
@@ -326,6 +342,9 @@ extern void initSamplers(id<MTLDevice> device);
     }
 
     J2dTraceLn6(J2D_TRACE_VERBOSE, "MTLContext_SetSurfaces: bsrc=%p (tex=%p type=%d), bdst=%p (tex=%p type=%d)", srcOps, srcOps->pTexture, srcOps->drawableType, dstOps, dstOps->pTexture, dstOps->drawableType);
+    if (0) {
+        J2dRlsTraceLn6(J2D_TRACE_INFO, "MTLContext_SetSurfaces: bsrc=%p (tex=%p type=%d), bdst=%p (tex=%p type=%d)", srcOps, srcOps->pTexture, srcOps->drawableType, dstOps, dstOps->pTexture, dstOps->drawableType);
+    }
 
     if (dstOps->drawableType == MTLSD_TEXTURE) {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
@@ -589,11 +608,25 @@ extern void initSamplers(id<MTLDevice> device);
     } else {
         MTLCommandBufferWrapper * cbwrapper = [self pullCommandBufferWrapper];
         if (cbwrapper != nil) {
-            id <MTLCommandBuffer> commandbuf =[cbwrapper getCommandBuffer];
-            [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+            id <MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
+
+            if (TRACE_DIRECT_BUFFER && isTraceDisplayEnabled()) {
+                J2dRlsTraceLn3(J2D_TRACE_INFO, "[%ld] commitCommandBuffer(wait=%d) on buffer[%p]",
+                               rqCurrentTimeMicroSeconds(), waitUntilCompleted, commandbuf);
+            }
+
+            [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
+                if (TRACE_DIRECT_BUFFER && isTraceDisplayEnabled()) {
+                    const NSTimeInterval gpuTime = (commandBuf.GPUEndTime - commandBuf.GPUStartTime);
+
+                    J2dRlsTraceLn3(J2D_TRACE_INFO,
+                                   "[%ld] commitCommandBuffer: CompletedHandler on buffer[%p] = %lf ms",
+                                   rqCurrentTimeMicroSeconds(), commandBuf, gpuTime * 1000.0);
+                }
                 [cbwrapper release];
             }];
             [commandbuf commit];
+
             if (waitUntilCompleted) {
                 [commandbuf waitUntilCompleted];
             }
@@ -603,8 +636,18 @@ extern void initSamplers(id<MTLDevice> device);
 
 - (void) redraw {
     AWT_ASSERT_APPKIT_THREAD;
-    for (MTLLayer *layer in _layers) {
-        [layer setNeedsDisplay];
+    if (false) {
+        if (isTraceDisplayEnabled()) {
+            J2dRlsTraceLn2(J2D_TRACE_INFO, "[%ld] MTLContext_redraw(): displayLinkCount=%d",
+                           rqCurrentTimeMicroSeconds(), _displayLinkCount);
+        }
+        for (MTLLayer *layer in _layers) {
+            if (isTraceDisplayEnabled()) {
+                J2dRlsTraceLn2(J2D_TRACE_INFO, "[%ld] MTLContext_redraw(): layer[%p] => setNeedsDisplay()",
+                               rqCurrentTimeMicroSeconds(), layer);
+            }
+            [layer setNeedsDisplay];
+        }
     }
     if (_displayLinkCount > 0) {
         _displayLinkCount--;
@@ -622,6 +665,10 @@ extern void initSamplers(id<MTLDevice> device);
 CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* now, const CVTimeStamp* outputTime, CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* displayLinkContext)
 {
     J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_mtlDisplayLinkCallback: ctx=%p", displayLinkContext);
+    if (isTraceDisplayEnabled()) {
+        J2dRlsTraceLn3(J2D_TRACE_INFO, "[%ld] MTLContext_mtlDisplayLinkCallback: displayLink=%p ctx=%p",
+                       rqCurrentTimeMicroSeconds(), displayLink, displayLinkContext);
+    }
     @autoreleasepool {
         MTLContext *ctx = (__bridge MTLContext *)displayLinkContext;
         [ctx performSelectorOnMainThread:@selector(redraw) withObject:nil waitUntilDone:NO];
@@ -631,12 +678,20 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
 
 - (void)startRedraw:(MTLLayer*)layer {
     AWT_ASSERT_APPKIT_THREAD;
-    layer.redrawCount += REDRAW_INC;
+    layer.redrawCount = REDRAW_INC;
     J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_startRedraw: ctx=%p layer=%p", self, layer);
+    if (isTraceDisplayEnabled()) {
+        J2dRlsTraceLn4(J2D_TRACE_VERBOSE, "[%ld] MTLContext_startRedraw: ctx=%p layer[%p] (redraw = %d)",
+                       rqCurrentTimeMicroSeconds(), self, layer, layer.redrawCount);
+    }
     _displayLinkCount = KEEP_ALIVE_COUNT;
     [_layers addObject:layer];
     if (MTLLayer_isExtraRedrawEnabled()) {
         // Request for redraw before starting display link to avoid rendering problem on M2 processor
+        if (isTraceDisplayEnabled()) {
+            J2dRlsTraceLn2(J2D_TRACE_INFO, "[%ld] MTLContext_startRedraw(): layer[%p] => setNeedsDisplay()",
+                           rqCurrentTimeMicroSeconds(), layer);
+        }
         [layer setNeedsDisplay];
     }
     if (_displayLink != NULL && !CVDisplayLinkIsRunning(_displayLink)) {
@@ -652,6 +707,10 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
         if (--layer.redrawCount <= 0) {
             [_layers removeObject:layer];
             layer.redrawCount = 0;
+        }
+        if (isTraceDisplayEnabled()) {
+            J2dRlsTraceLn4(J2D_TRACE_VERBOSE, "[%ld] MTLContext_stopRedraw: ctx=%p layer[%p] (redraw = %d)",
+                           rqCurrentTimeMicroSeconds(), self, layer, layer.redrawCount);
         }
         if (_layers.count == 0 && _displayLinkCount == 0) {
             if (CVDisplayLinkIsRunning(_displayLink)) {

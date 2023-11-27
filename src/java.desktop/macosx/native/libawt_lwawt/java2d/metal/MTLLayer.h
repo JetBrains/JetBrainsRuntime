@@ -38,11 +38,20 @@
 @property (readwrite, atomic) int nextDrawableCount;
 @property (readwrite, assign) int topInset;
 @property (readwrite, assign) int leftInset;
+@property (readwrite, atomic) int paintCount;
+@property (readwrite, atomic) int paintedCount;
+@property (readwrite, atomic) int drawCount;
+@property (readwrite, atomic) int displayedCount;
+@property (readwrite, atomic) CFTimeInterval lastDisplayedTime;
 @property (readwrite, atomic) int redrawCount;
+@property (readwrite, atomic) NSTimeInterval avgRenderFrameTime;
 @property (readwrite, atomic) NSTimeInterval avgBlitFrameTime;
+
+@property (readwrite, atomic, retain) id<CAMetalDrawable> currentDrawable;
 
 - (id) initWithJavaLayer:(jobject)layer;
 
+- (id<CAMetalDrawable>) getCurrentDrawable:(BOOL)reset;
 - (void) blitTexture;
 - (void) fillParallelogramCtxX:(jfloat)x
                              Y:(jfloat)y
@@ -53,6 +62,7 @@
 - (void) blitCallback;
 - (void) display;
 - (void) startRedraw;
+- (void) startRedrawIfNeeded;
 - (void) stopRedraw:(BOOL)force;
 - (void) commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
 @end

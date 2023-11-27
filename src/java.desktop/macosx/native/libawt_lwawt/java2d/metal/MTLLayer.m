@@ -24,6 +24,7 @@
  */
 
 #import <sys/sysctl.h>
+#import <sys/time.h>
 #import "PropertiesUtilities.h"
 #import "MTLGraphicsConfig.h"
 #import "MTLLayer.h"
@@ -32,7 +33,29 @@
 #import "MTLSurfaceData.h"
 #import "JNIUtilities.h"
 
-const NSTimeInterval DF_BLIT_FRAME_TIME=1.0/120.0;
+const NSTimeInterval DF_BLIT_FRAME_TIME = 1.0 / 120.0;
+
+const int MAX_DRAWABLE = 3;
+const BOOL VSYNC = YES;
+
+#define TRACE_DRAWABLE_REFS (0)
+
+extern BOOL isTraceDisplayEnabled();
+
+long rqCurrentTimestamp() {
+    struct timeval t;
+    gettimeofday(&t, 0);
+    return ((long)t.tv_sec) * 1000000 + (long)(t.tv_usec);
+}
+
+long rqCurrentTimeMicroSeconds() {
+    static long startTimeStamp = -1L;
+    if (startTimeStamp == -1L) {
+        startTimeStamp = rqCurrentTimestamp();
+    }
+    return rqCurrentTimestamp() - startTimeStamp;
+}
+
 
 BOOL isDisplaySyncEnabled() {
     static int syncEnabled = -1;
@@ -110,6 +133,11 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     return (BOOL)redrawEnabled;
 }
 
+NSTimeInterval MTLLayer_smoothAverage(const NSTimeInterval avgTime, const NSTimeInterval gpuTime) {
+    const NSTimeInterval a = 0.25; // exponential smoothing
+    return gpuTime * a + avgTime * (1.0 - a);
+}
+
 @implementation MTLLayer
 
 - (id) initWithJavaLayer:(jobject)layer
@@ -143,14 +171,51 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     // prohibits blit operations on to the drawable texture
     // obtained from a MTLLayer with framebufferOnly=YES
     self.framebufferOnly = NO;
-    self.nextDrawableCount = 0;
     self.opaque = YES;
+    self.nextDrawableCount = 0;
+
+    self.paintCount = 0;
+    self.paintedCount = 0;
+    self.drawCount = 0;
+    self.displayedCount = 0;
+    self.lastDisplayedTime = 0.0;
+
     self.redrawCount = 0;
     if (@available(macOS 10.13, *)) {
-        self.displaySyncEnabled = isDisplaySyncEnabled();
+        self.displaySyncEnabled = VSYNC; // || isDisplaySyncEnabled();
+        self.maximumDrawableCount = MAX_DRAWABLE;
     }
+    // NOTHING DISPLAYED from callback:
+    if (false) {
+        self.presentsWithTransaction = YES;
+    }
+    self.
+
+    self.currentDrawable = nil;
+
     self.avgBlitFrameTime = DF_BLIT_FRAME_TIME;
+    self.avgRenderFrameTime = DF_BLIT_FRAME_TIME;
     return self;
+}
+
+- (id<CAMetalDrawable>) getCurrentDrawable:(BOOL)reset {
+    id<CAMetalDrawable> mtlDrawable = [self currentDrawable];
+    if (mtlDrawable == nil) {
+        J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer.getCurrentDrawable: currentDrawable is null)");
+        reset = YES;
+    }
+    if (reset) {
+        mtlDrawable = [self nextDrawable];
+        if (mtlDrawable == nil) {
+            J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer.getCurrentDrawable: nextDrawable is null)");
+        }
+        [self setCurrentDrawable: mtlDrawable];
+    }
+    if (TRACE_DRAWABLE_REFS) {
+        J2dRlsTraceLn4(J2D_TRACE_INFO, "[%ld] getCurrentDrawable: layer[%p] drawable(%d) %d refs",
+                       rqCurrentTimeMicroSeconds(), self, [mtlDrawable drawableID], [mtlDrawable retainCount]);
+    }
+    return mtlDrawable;
 }
 
 - (void) blitTexture {
@@ -164,12 +229,37 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         return;
     }
 
-    if (self.nextDrawableCount != 0) {
+    if (isTraceDisplayEnabled()) {
+        J2dRlsTraceLn5(J2D_TRACE_INFO, "[%ld] blitTexture: layer[%p] buffer = %p (redraw = %d nextDrawableCount = %d)",
+                       rqCurrentTimeMicroSeconds(), self, self.buffer, self.redrawCount, self.nextDrawableCount);
+        J2dRlsTraceLn4(J2D_TRACE_INFO, "[%ld] blitTexture: texture[%p] (usage = %d hazardTrackingMode = %d)",
+                       rqCurrentTimeMicroSeconds(), self.buffer, (*self.buffer).usage, (*self.buffer).hazardTrackingMode);
+    }
+
+    // 1 to act as a re-entrance barrier:
+    if (self.nextDrawableCount >= (MAX_DRAWABLE - 1)) {
+        if (isTraceDisplayEnabled()) {
+            J2dRlsTraceLn4(J2D_TRACE_INFO, "[%ld] blitTexture: layer[%p] (redraw = %d) skip blit (nextDrawableCount = %d)",
+                           rqCurrentTimeMicroSeconds(), self, self.redrawCount, self.nextDrawableCount);
+        }
         if (!isDisplaySyncEnabled()) {
             [self performSelectorOnMainThread:@selector(setNeedsDisplay) withObject:nil waitUntilDone:NO];
         }
         return;
     }
+
+    const int paintVersion = self.paintedCount;
+
+    // skip useless blit ie paint version == displayed version:
+    if (false && (paintVersion == self.drawCount)) {
+        if (isTraceDisplayEnabled()) {
+            J2dRlsTraceLn8(J2D_TRACE_INFO, "[%ld] blitTexture: layer[%p] (paint = %d painted = %d draw = %d disp = %d - redraw = %d) skip blit (same version)",
+                           rqCurrentTimeMicroSeconds(), self, self.paintCount, self.paintedCount, self.drawCount, self.displayedCount, self.redrawCount, self.nextDrawableCount);
+        }
+        return;
+    }
+
+    // decrease redraw count:
     [self stopRedraw:NO];
 
     @autoreleasepool {
@@ -193,19 +283,82 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: commandBuf is null");
             return;
         }
+
+        if (isTraceDisplayEnabled()) {
+            J2dRlsTraceLn5(J2D_TRACE_INFO, "[%ld] blitTexture: layer[%p] (redraw = %d) nextDrawable() ? for buffer %p (nextDrawableCount = %d)",
+                           rqCurrentTimeMicroSeconds(), self, self.redrawCount, self.buffer, self.nextDrawableCount);
+        }
+
+//        id<CAMetalDrawable> mtlDrawable = [self getCurrentDrawable: NO];
+
         id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
         if (mtlDrawable == nil) {
-            J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null)");
+            J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer.blitTexture: mtlDrawable is null)");
             return;
         }
         self.nextDrawableCount++;
-        id<MTLCommandBuffer> renderBuffer =  [self.ctx createCommandBuffer];
-        self.ctx.syncCount++;
-        if (@available(macOS 10.14, *)) {
-            [renderBuffer encodeWaitForEvent:self.ctx.syncEvent value:self.ctx.syncCount];
+
+        if (TRACE_DRAWABLE_REFS) {
+            J2dRlsTraceLn4(J2D_TRACE_INFO, "[%ld] blitTexture: layer[%p] drawable(%d) %d refs",
+                           rqCurrentTimeMicroSeconds(), self, [mtlDrawable drawableID], [mtlDrawable retainCount]);
         }
 
-        id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
+        BOOL EXPLICIT_PRESENT = true;
+
+        const CFTimeInterval commitTime = CACurrentMediaTime();
+
+        if (isTraceDisplayEnabled()) {
+            J2dRlsTraceLn9(J2D_TRACE_INFO, "[%ld] blitTexture: layer[%p] (paint = %d painted = %d draw = %d disp = %d - redraw = %d) next drawable(%d) for buffer %p",
+                        rqCurrentTimeMicroSeconds(), self, self.paintCount, self.paintedCount, self.drawCount, self.displayedCount, self.redrawCount, [mtlDrawable drawableID], self.buffer);
+            J2dRlsTraceLn4(J2D_TRACE_INFO, "[%ld] blitTexture: drawable texture[%p] (usage = %d hazardTrackingMode = %d)",
+                           rqCurrentTimeMicroSeconds(), mtlDrawable.texture, mtlDrawable.texture.usage, mtlDrawable.texture.hazardTrackingMode);
+        }
+
+        if (@available(macOS 10.15.4, *)) {
+            [self retain];
+
+            [mtlDrawable addPresentedHandler:^(id <MTLDrawable> drawable) {
+                self.displayedCount = paintVersion;
+
+                if (isTraceDisplayEnabled()) {
+                    const CFTimeInterval presentedTime = CACurrentMediaTime();
+                    const CFTimeInterval presTime = [drawable presentedTime];
+                    const CFTimeInterval interval = ((self.lastDisplayedTime != 0.0) && (presTime != 0.0)) ? (presTime - self.lastDisplayedTime) : 0.0;
+                    const CFTimeInterval frameRate = (interval > 0.0) ? (1.0 / interval) : 0.0;
+                    if (presTime > 0.0) {
+                        self.lastDisplayedTime = presTime;
+                        self.ctx.presCount++;
+                    } else {
+                        J2dRlsTraceLn7(J2D_TRACE_INFO, "[%ld] blitTexture: PresentedHandler layer[%p] (paint = %d painted = %d draw = %d DISP = %d - redraw = %d) SKIPPED Present",
+                                       rqCurrentTimeMicroSeconds(), self, self.paintCount, self.paintedCount, self.drawCount, self.displayedCount, self.redrawCount);
+                    }
+                    const CFTimeInterval presentedOffset = (presTime != 0.0) ? presentedTime - presTime : 0.0;
+                    const CFTimeInterval cmdDelay = (presentedTime - commitTime);
+
+                    J2dRlsTraceLn9(J2D_TRACE_INFO, "[%ld] blitTexture: PresentedHandler layer[%p] (paint = %d painted = %d draw = %d DISP = %d - redraw = %d) interval: %.3lf ms / presentDelay: %lf ms",
+                                   rqCurrentTimeMicroSeconds(), self, self.paintCount, self.paintedCount, self.drawCount, self.displayedCount, self.redrawCount, interval * 1000.0, cmdDelay * 1000.0);
+
+                    J2dRlsTraceLn5(J2D_TRACE_INFO, "[%ld] blitTexture: PresentedHandler layer[%p]: drawable(%d) presented at off = %lf ms - FPS: %lf",
+                                   rqCurrentTimeMicroSeconds(), self, [drawable drawableID],
+                                   1000.0 * presentedOffset, frameRate);
+                }
+                [self release];
+                if (TRACE_DRAWABLE_REFS) {
+                    J2dRlsTraceLn2(J2D_TRACE_INFO, "Exit PresentedHandler: drawable(%d) %d refs",
+                                   [drawable drawableID], [drawable retainCount]);
+                }
+            }];
+        }
+
+        self.ctx.syncCount++;
+        if (false) {
+            id<MTLCommandBuffer> renderBuffer =  [self.ctx createCommandBuffer];
+            if (@available(macOS 10.14, *)) {
+                [renderBuffer encodeWaitForEvent:self.ctx.syncEvent value:self.ctx.syncCount];
+            }
+        }
+
+        id<MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
 
         [blitEncoder
                 copyFromTexture:(*self.buffer) sourceSlice:0 sourceLevel:0
@@ -215,34 +368,104 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 destinationOrigin:MTLOriginMake(0, 0, 0)];
         [blitEncoder endEncoding];
 
-        if (@available(macOS 10.14, *)) {
-            [commandBuf encodeSignalEvent:self.ctx.syncEvent value:self.ctx.syncCount];
+        if (false) {
+            if (@available(macOS 10.14, *)) {
+                [commandBuf encodeSignalEvent:self.ctx.syncEvent value:self.ctx.syncCount];
+            }
         }
 
-        if (isDisplaySyncEnabled()) {
-            [commandBuf presentDrawable:mtlDrawable];
-        } else {
-            if (@available(macOS 10.15.4, *)) {
-                [commandBuf presentDrawable:mtlDrawable afterMinimumDuration:self.avgBlitFrameTime];
-            } else {
+        if (!EXPLICIT_PRESENT) {
+            if (isDisplaySyncEnabled()) {
                 [commandBuf presentDrawable:mtlDrawable];
+            } else {
+                if (@available(macOS 10.15.4, *)) {
+                    [commandBuf presentDrawable:mtlDrawable afterMinimumDuration:self.avgBlitFrameTime];
+                } else {
+                    [commandBuf presentDrawable:mtlDrawable];
+                }
             }
+        }
+
+        if (false) {
+            [self retain];
+            [commandBuf addScheduledHandler:^(id <MTLCommandBuffer> commandbuf) {
+                if (isTraceDisplayEnabled()) {
+                    J2dRlsTraceLn8(J2D_TRACE_INFO,
+                                   "[%ld] blitTexture: ScheduledHandler layer[%p] (paint = %d painted = %d draw = %d disp = %d - redraw = %d) (nextDrawableCount = %d)",
+                                   rqCurrentTimeMicroSeconds(), self, self.paintCount, self.paintedCount,
+                                   self.drawCount,
+                                   self.displayedCount, self.redrawCount, self.nextDrawableCount);
+                }
+                [self release];
+                if (TRACE_DRAWABLE_REFS) {
+                    J2dRlsTraceLn2(J2D_TRACE_INFO, "Exit ScheduledHandler: drawable(%d) %d refs",
+                                   [mtlDrawable drawableID], [mtlDrawable retainCount]);
+                }
+            }];
         }
 
         [self retain];
-        [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
-            if (@available(macOS 10.15.4, *)) {
-                if (!isDisplaySyncEnabled()) {
-                    const NSTimeInterval gpuTime = commandBuf.GPUEndTime - commandBuf.GPUStartTime;
-                    const NSTimeInterval a = 0.25;
-                    self.avgBlitFrameTime = gpuTime * a + self.avgBlitFrameTime * (1.0 - a);
+        [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+            const CFTimeInterval completedTime = CACurrentMediaTime();
+
+            self.drawCount = paintVersion; // NOT protected by texture barrier (hazard tracking)
+
+            const NSTimeInterval gpuTime = (commandbuf.GPUEndTime - commandbuf.GPUStartTime);
+            self.avgBlitFrameTime = MTLLayer_smoothAverage(self.avgBlitFrameTime, gpuTime);
+
+            const CFTimeInterval cmdDelay = (completedTime - commitTime);
+
+            if (isTraceDisplayEnabled()) {
+                J2dRlsTraceLn9(J2D_TRACE_INFO, "[%ld] blitTexture: CompletedHandler layer[%p] (paint = %d painted = %d DRAW = %d disp = %d - redraw = %d) (nextDrawableCount = %d) = %lf ms",
+                               rqCurrentTimeMicroSeconds(), self, self.paintCount, self.paintedCount, self.drawCount, self.displayedCount, self.redrawCount, self.nextDrawableCount, gpuTime * 1000.0);
+                J2dRlsTraceLn5(J2D_TRACE_INFO, "[%ld] blitTexture: CompletedHandler layer[%p]: gpuTime:  %lf ms - %lf ms / completedDelay: %lf ms",
+                               rqCurrentTimeMicroSeconds(), self, gpuTime * 1000.0, self.avgBlitFrameTime * 1000.0, cmdDelay * 1000.0);
+            }
+
+            if (EXPLICIT_PRESENT) {
+                if (false) {
+                    // reset layer drawable:
+                    id<CAMetalDrawable> mtlDrawableNew = [self getCurrentDrawable: YES];
+                    // retain more:
+                    // [mtlDrawableNew retain];
+                }
+
+                if (self.paintedCount > paintVersion) {
+                    if (isTraceDisplayEnabled()) {
+                        J2dRlsTraceLn7(J2D_TRACE_INFO, "[%ld] blitTexture: CompletedHandler layer[%p] (paint = %d painted = %d draw = %d disp = %d - redraw = %d) skip present (new version)",
+                                       rqCurrentTimeMicroSeconds(), self, self.paintCount, self.paintedCount,
+                                       self.drawCount, self.displayedCount, self.redrawCount);
+                    }
+                } else {
+                    // present this drawable:
+                    if (true) {
+                        // direct invoke (do not work with presentsWithTransaction):
+                        [mtlDrawable present];
+                    } else {
+                        [mtlDrawable performSelectorOnMainThread:@selector(present) withObject:nil waitUntilDone:NO];
+                    }
+                    if (isTraceDisplayEnabled()) {
+                        J2dRlsTraceLn3(J2D_TRACE_INFO, "[%ld] blitTexture: CompletedHandler layer[%p]: drawable(%d) Present",
+                                       rqCurrentTimeMicroSeconds(), self, [mtlDrawable drawableID]);
+                    }
                 }
             }
+            // Only once drawable is presented ?
             self.nextDrawableCount--;
             [self release];
+
+            if (TRACE_DRAWABLE_REFS) {
+                J2dRlsTraceLn2(J2D_TRACE_INFO, "Exit CompletedHandler: drawable(%d) %d refs",
+                               [mtlDrawable drawableID], [mtlDrawable retainCount]);
+            }
         }];
 
         [commandBuf commit];
+
+        if (TRACE_DRAWABLE_REFS) {
+            J2dRlsTraceLn2(J2D_TRACE_INFO, "Exit blitTexture: drawable(%d) %d refs",
+                           [mtlDrawable drawableID], [mtlDrawable retainCount]);
+        }
     }
 }
 
@@ -252,11 +475,11 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     self.javaLayer = nil;
     [self stopRedraw:YES];
     self.buffer = NULL;
+    self.currentDrawable = nil;
     [super dealloc];
 }
 
 - (void) blitCallback {
-
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     DECLARE_CLASS(jc_JavaLayer, "sun/java2d/metal/MTLLayer");
     DECLARE_METHOD(jm_drawInMTLContext, jc_JavaLayer, "drawInMTLContext", "()V");
@@ -264,6 +487,10 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
     if ((*env)->IsSameObject(env, javaLayerLocalRef, NULL)) {
         return;
+    }
+
+    if (isTraceDisplayEnabled()) {
+        J2dRlsTraceLn(J2D_TRACE_INFO, "blitCallback: invoke MTLLayer.drawInMTLContext");
     }
 
     (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_drawInMTLContext);
@@ -278,8 +505,43 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     [super display];
 }
 
+- (void)startRedrawIfNeeded {
+    if (isDisplaySyncEnabled()) {
+        if (false) {
+            NSThread* thread = [NSThread currentThread];
+            J2dRlsTraceLn4(J2D_TRACE_INFO, "MTLLayer_startRedrawIfNeeded: thread (%p main=%d) layer[%p] (redraw = %d)",
+                           thread, [thread isMainThread], self, self.redrawCount);
+        }
+        // Should check paint version ?
+        if (self.paintCount > self.drawCount) {
+            if (self.redrawCount == 0) {
+                if (isTraceDisplayEnabled()) {
+                    J2dRlsTraceLn7(J2D_TRACE_INFO,
+                                   "[%ld] startRedrawIfNeeded: layer[%p] (paint = %d painted = %d draw = %d disp = %d - redraw = %d) => startRedraw()",
+                                   rqCurrentTimeMicroSeconds(), self, self.paintCount, self.paintedCount,
+                                   self.drawCount, self.displayedCount, self.redrawCount);
+                }
+                [self startRedraw];
+            } else {
+                if (isTraceDisplayEnabled()) {
+                    J2dRlsTraceLn7(J2D_TRACE_INFO,
+                                   "[%ld] startRedrawIfNeeded: layer[%p] (paint = %d painted = %d draw = %d disp = %d - redraw = %d) => setNeedsDisplay()",
+                                   rqCurrentTimeMicroSeconds(), self, self.paintCount, self.paintedCount,
+                                   self.drawCount, self.displayedCount, self.redrawCount);
+                }
+                [self setNeedsDisplay];
+            }
+        }
+    }
+}
+
 - (void)startRedraw {
     if (isDisplaySyncEnabled()) {
+        if (false) {
+            NSThread* thread = [NSThread currentThread];
+            J2dRlsTraceLn2(J2D_TRACE_INFO, "MTLLayer_startRedraw: thread (%p main=%d)",
+                           thread, [thread isMainThread])
+        }
         if (self.ctx != nil) {
             [self.ctx performSelectorOnMainThread:@selector(startRedraw:) withObject:self waitUntilDone:NO];
         }
@@ -290,6 +552,11 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
 - (void)stopRedraw:(BOOL)force {
     if (self.ctx != nil && isDisplaySyncEnabled()) {
+        if (false) {
+            NSThread *thread = [NSThread currentThread];
+            J2dRlsTraceLn2(J2D_TRACE_INFO, "MTLLayer_stopRedraw: thread (%p main=%d)",
+                           thread, [thread isMainThread])
+        }
         if (force) {
             self.redrawCount = 0;
         }
@@ -298,13 +565,49 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 }
 
 - (void)commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay {
-    MTLCommandBufferWrapper * cbwrapper =[mtlc pullCommandBufferWrapper];
+    MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
 
     if (cbwrapper != nil) {
-        id <MTLCommandBuffer> commandbuf =[cbwrapper getCommandBuffer];
-        if (isDisplaySyncEnabled() || !updateDisplay) {
+        id <MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
+        if (!updateDisplay) {
             [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
                 [cbwrapper release];
+            }];
+        } else if (isDisplaySyncEnabled()) {
+            if (isTraceDisplayEnabled()) {
+                J2dRlsTraceLn6(J2D_TRACE_INFO, "[%ld] commitCommandBuffer(wait=%d display: %d) on layer[%p] (paint = %d redraw = %d)",
+                               rqCurrentTimeMicroSeconds(), waitUntilCompleted, updateDisplay,
+                               self, self.paintCount, self.redrawCount);
+            }
+            const CFTimeInterval paintTime = CACurrentMediaTime();
+            const int paintCount = ++self.paintCount;
+
+            if (isTraceDisplayEnabled()) {
+                J2dRlsTraceLn8(J2D_TRACE_INFO, "[%ld] commitCommandBuffer: commit(%p) on layer[%p] (PAINT = %d painted = %d draw = %d disp = %d - redraw = %d)",
+                               rqCurrentTimeMicroSeconds(), commandbuf, self, self.paintCount, self.paintedCount, self.drawCount, self.displayedCount, self.redrawCount);
+            }
+
+            [self retain];
+            [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
+                const CFTimeInterval paintedTime = CACurrentMediaTime();
+                const CFTimeInterval cmdDelay = (paintedTime - paintTime);
+
+                self.paintedCount = paintCount;
+
+                const NSTimeInterval gpuTime = (commandbuf.GPUEndTime - commandbuf.GPUStartTime);
+                self.avgRenderFrameTime = MTLLayer_smoothAverage(self.avgRenderFrameTime, gpuTime);
+
+                if (isTraceDisplayEnabled()) {
+                    J2dRlsTraceLn9(J2D_TRACE_INFO, "[%ld] commitCommandBuffer: CompletedHandler(%p) on layer[%p] (paint = %d PAINTED = %d draw = %d disp = %d - redraw = %d) = %lf ms",
+                                   rqCurrentTimeMicroSeconds(), commandBuf, self, self.paintCount, self.paintedCount, self.drawCount, self.displayedCount, self.redrawCount, gpuTime * 1000.0);
+                    J2dRlsTraceLn6(J2D_TRACE_INFO, "[%ld] commitCommandBuffer: CompletedHandler(%p) on layer[%p]: gpuTime:  %lf ms - %lf ms / paintDelay: %lf ms",
+                                   rqCurrentTimeMicroSeconds(), commandBuf, self, gpuTime * 1000.0, self.avgRenderFrameTime * 1000.0, cmdDelay * 1000.0);
+                }
+                [cbwrapper release];
+
+                // if layer needs redraw to show new content:
+                [self performSelectorOnMainThread:@selector(startRedrawIfNeeded) withObject:nil waitUntilDone:NO];
+                [self release];
             }];
         } else {
             [self retain];
@@ -313,15 +616,17 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 [self startRedraw];
                 [self release];
             }];
-       }
-       [commandbuf commit];
-       if (isDisplaySyncEnabled()) {
+        }
+        [commandbuf commit];
+        // TODO: fix now or later ?
+        if (false && isDisplaySyncEnabled()) {
             [self startRedraw];
-       }
+        }
 
-       if (waitUntilCompleted) {
+        if (waitUntilCompleted) {
            [commandbuf waitUntilCompleted];
-       }
+           // TODO: wait blit texture too using lock ?
+        }
     } else if (updateDisplay) {
         [self startRedraw];
     }
@@ -376,6 +681,9 @@ Java_sun_java2d_metal_MTLLayer_validate
             layer.colorspace = nil;
         }
 
+        if (isTraceDisplayEnabled()) {
+            J2dRlsTraceLn2(J2D_TRACE_INFO, "layer[%p] buffer=%p", layer, layer.buffer);
+        }
         layer.drawableSize =
             CGSizeMake((*layer.buffer).width,
                        (*layer.buffer).height);

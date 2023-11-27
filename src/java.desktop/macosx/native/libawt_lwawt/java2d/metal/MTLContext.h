@@ -70,13 +70,20 @@
 @property (readonly) MTLClip * clip;
 @property (readonly) id syncEvent;
 @property (readwrite, atomic) UInt64 syncCount;
+@property (readwrite, atomic) UInt64 presCount;
 
 @property (readonly) jint dispID;
 @property (readonly) jint statID;
 @property (readwrite, atomic) UInt64 statLastSyncCount;
+@property (readwrite, atomic) UInt64 statLastPresCount;
 @property (readwrite) jint statCommits;
 @property (readwrite) jint statWaits;
 @property (readwrite) jint statDisplayed;
+
+/**
+ * Resets the statistics
+ */
+- (void)resetStats;
 
 /**
  * There are two separate glyph caches: for AA and for LCD.
