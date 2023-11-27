@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2003, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -257,7 +256,7 @@ final class XTextAreaPeer extends XComponentPeer implements TextAreaPeer {
     }
 
     void repaintText() {
-        SwingUtilities.invokeLater(jtext::repaintNow);
+        jtext.repaintNow();
     }
 
     @Override
