@@ -70,7 +70,7 @@ function create_image_bundle {
   [ -d "$IMAGES_DIR"/"$__root_dir" ] && rm -rf "${IMAGES_DIR:?}"/"$__root_dir"
   $JSDK/bin/jlink \
     --module-path "$__modules_path" --no-man-pages --compress=2 \
-    --add-modules "$__modules" --output "$IMAGES_DIR"/"$__root_dir"
+    --generate-cds-archive --add-modules "$__modules" --output "$IMAGES_DIR"/"$__root_dir"
 
   grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> "$IMAGES_DIR"/"$__root_dir"/release
   if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
