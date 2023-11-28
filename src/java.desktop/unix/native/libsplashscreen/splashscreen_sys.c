@@ -24,24 +24,84 @@
  */
 
 #include "splashscreen_impl.h"
-
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/shape.h>
 #include <X11/Xmd.h>
 #include <X11/Xatom.h>
 #include <X11/cursorfont.h>
+#include <sys/types.h>
 #include <pthread.h>
+#include <signal.h>
+#include <unistd.h>
+#include <sys/time.h>
+#include <errno.h>
 #include <iconv.h>
+#include <langinfo.h>
+#include <locale.h>
+#include <fcntl.h>
+#include <poll.h>
 #include <sizecalc.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
+#include "jni.h"
 
 static Bool shapeSupported;
 static int shapeEventBase, shapeErrorBase;
 
 void SplashRemoveDecoration(Splash * splash);
+
+
+/* Could use npt but decided to cut down on linked code size */
+char* SplashConvertStringAlloc(const char* in, int* size) {
+    const char     *codeset;
+    const char     *codeset_out;
+    iconv_t         cd;
+    size_t          rc;
+    char           *buf = NULL, *out;
+    size_t          bufSize, inSize, outSize;
+    const char* old_locale;
+
+    if (!in) {
+        return NULL;
+    }
+    old_locale = setlocale(LC_ALL, "");
+
+    codeset = nl_langinfo(CODESET);
+    if ( codeset == NULL || codeset[0] == 0 ) {
+        goto done;
+    }
+    /* we don't need BOM in output so we choose native BE or LE encoding here */
+    codeset_out = (platformByteOrder()==BYTE_ORDER_MSBFIRST) ?
+        "UCS-2BE" : "UCS-2LE";
+
+    cd = iconv_open(codeset_out, codeset);
+    if (cd == (iconv_t)-1 ) {
+        goto done;
+    }
+    inSize = strlen(in);
+    buf = SAFE_SIZE_ARRAY_ALLOC(malloc, inSize, 2);
+    if (!buf) {
+        return NULL;
+    }
+    bufSize = inSize*2; // need 2 bytes per char for UCS-2, this is
+                        // 2 bytes per source byte max
+    out = buf; outSize = bufSize;
+    /* linux iconv wants char** source and solaris wants const char**...
+       cast to void* */
+    rc = iconv(cd, (void*)&in, &inSize, &out, &outSize);
+    iconv_close(cd);
+
+    if (rc == (size_t)-1) {
+        free(buf);
+        buf = NULL;
+    } else {
+        if (size) {
+            *size = (bufSize-outSize)/2; /* bytes to wchars */
+        }
+    }
+done:
+    setlocale(LC_ALL, old_locale);
+    return buf;
+}
 
 void
 SplashInitFrameShape(Splash * splash, int imageIndex) {
@@ -74,6 +134,25 @@ SplashInitFrameShape(Splash * splash, int imageIndex) {
         memcpy(frame->rects, rects, frame->numRects * sizeof(XRectangle));
     }
     free(rects);
+}
+
+unsigned
+SplashTime(void) {
+    struct timeval tv;
+    struct timezone tz;
+    unsigned long long msec;
+
+    gettimeofday(&tv, &tz);
+    msec = (unsigned long long) tv.tv_sec * 1000 +
+        (unsigned long long) tv.tv_usec / 1000;
+
+    return (unsigned) msec;
+}
+
+void
+msec2timeval(unsigned time, struct timeval *tv) {
+    tv->tv_sec = time / 1000;
+    tv->tv_usec = (time % 1000) * 1000;
 }
 
 int
@@ -129,8 +208,7 @@ FreeColors(Display * display, Screen * screen, int numColors,
     XFreeColors(display, cmap, pr, numColors, 0);
 }
 
-static void
-SplashCenter(Splash * splash) {
+static void SplashCenter(Splash * splash) {
     Atom type, atom, actual_type;
     int status, actual_format;
     unsigned long nitems, bytes_after;
@@ -158,8 +236,7 @@ SplashCenter(Splash * splash) {
     splash->y = (XHeightOfScreen(splash->screen) - splash->height) / 2;
 }
 
-static void
-SplashUpdateSizeHints(Splash * splash) {
+static void SplashUpdateSizeHints(Splash * splash) {
     if (splash->window) {
         XSizeHints sizeHints;
 
@@ -172,7 +249,7 @@ SplashUpdateSizeHints(Splash * splash) {
     }
 }
 
-bool
+void
 SplashCreateWindow(Splash * splash) {
     XSizeHints sizeHints;
 
@@ -200,8 +277,6 @@ SplashCreateWindow(Splash * splash) {
         splash->wmHints->initial_state = NormalState;
         XSetWMHints(splash->display, splash->window, splash->wmHints);
     }
-
-    return (bool) splash->window;
 }
 
 /* for changing the visible shape of a window to an nonrectangular form */
@@ -258,7 +333,7 @@ SplashRedrawWindow(Splash * splash) {
     // much sense as SplashUpdateScreenData always re-generates
     // the image completely, so whole window is always redrawn
 
-    SplashUpdateScreenData(splash, false);
+    SplashUpdateScreenData(splash);
     ximage = XCreateImage(splash->display, splash->visual,
             splash->screenFormat.depthBytes * 8, ZPixmap, 0, (char *) NULL,
             splash->width, splash->height, 8, 0);
@@ -277,8 +352,7 @@ SplashRedrawWindow(Splash * splash) {
     XFlush(splash->display);
 }
 
-void
-SplashReconfigureNow(Splash * splash) {
+void SplashReconfigureNow(Splash * splash) {
     SplashCenter(splash);
     if (splash->window) {
         XUnmapWindow(splash->display, splash->window);
@@ -293,6 +367,15 @@ SplashReconfigureNow(Splash * splash) {
         SplashRevertShape(splash);
     }
     SplashRedrawWindow(splash);
+}
+
+
+void
+sendctl(Splash * splash, char code) {
+//    if (splash->isVisible>0) {
+    if (splash && splash->controlpipe[1]) {
+        write(splash->controlpipe[1], &code, 1);
+    }
 }
 
 int
@@ -465,38 +548,93 @@ SplashDonePlatform(Splash * splash) {
         XCloseDisplay(splash->display);
 }
 
-bool
-FlushEvents(Splash * splash) {
-    return true;
-}
+void
+SplashEventLoop(Splash * splash) {
 
-bool
-DispatchEvents(Splash * splash) {
-    // we're not using "while(XPending)", processing one event
-    // at a time to avoid control pipe starvation
-    if (XPending(splash->display)) {
-        XEvent evt;
+    /*      Different from win32 implementation - this loop
+       uses poll timeouts instead of a timer */
+    /* we should have splash _locked_ on entry!!! */
 
-        XNextEvent(splash->display, &evt);
-        switch (evt.type) {
-            case Expose:
-                if (splash->isVisible>0) {
-                    // we're doing full redraw so we just
-                    // skip the remaining painting events in the queue
-                    while(XCheckTypedEvent(splash->display, Expose,
-                                           &evt));
-                    SplashRedrawWindow(splash);
+    int xconn = XConnectionNumber(splash->display);
+
+    while (1) {
+        struct pollfd pfd[2];
+        int timeout = -1;
+        int ctl = splash->controlpipe[0];
+        int rc;
+        int pipes_empty;
+
+        pfd[0].fd = xconn;
+        pfd[0].events = POLLIN | POLLPRI;
+
+        pfd[1].fd = ctl;
+        pfd[1].events = POLLIN | POLLPRI;
+
+        errno = 0;
+        if (splash->isVisible>0 && SplashIsStillLooping(splash)) {
+            timeout = splash->time + splash->frames[splash->currentFrame].delay
+                - SplashTime();
+            if (timeout < 0) {
+                timeout = 0;
+            }
+        }
+        SplashUnlock(splash);
+        rc = poll(pfd, 2, timeout);
+        SplashLock(splash);
+        if (splash->isVisible > 0 && splash->currentFrame >= 0 &&
+                SplashTime() >= splash->time + splash->frames[splash->currentFrame].delay) {
+            SplashNextFrame(splash);
+            SplashUpdateShape(splash);
+            SplashRedrawWindow(splash);
+        }
+        if (rc <= 0) {
+            errno = 0;
+            continue;
+        }
+        pipes_empty = 0;
+        while(!pipes_empty) {
+            char buf;
+
+            pipes_empty = 1;
+            if (read(ctl, &buf, sizeof(buf)) > 0) {
+                pipes_empty = 0;
+                switch (buf) {
+                case SPLASHCTL_UPDATE:
+                    if (splash->isVisible>0) {
+                        SplashRedrawWindow(splash);
+                    }
+                    break;
+                case SPLASHCTL_RECONFIGURE:
+                    if (splash->isVisible>0) {
+                        SplashReconfigureNow(splash);
+                    }
+                    break;
+                case SPLASHCTL_QUIT:
+                    return;
                 }
-                break;
-                /* ... */
+            }
+            // we're not using "while(XPending)", processing one event
+            // at a time to avoid control pipe starvation
+            if (XPending(splash->display)) {
+                XEvent evt;
+
+                pipes_empty = 0;
+                XNextEvent(splash->display, &evt);
+                switch (evt.type) {
+                    case Expose:
+                        if (splash->isVisible>0) {
+                            // we're doing full redraw so we just
+                            // skip the remaining painting events in the queue
+                            while(XCheckTypedEvent(splash->display, Expose,
+                                &evt));
+                            SplashRedrawWindow(splash);
+                        }
+                        break;
+                    /* ... */
+                }
+            }
         }
     }
-    return true;
-}
-
-int
-GetDisplayFD(Splash * splash) {
-    return XConnectionNumber(splash->display);
 }
 
 /*  we can't use OverrideRedirect for the window as the window should not be
@@ -587,13 +725,93 @@ SplashRemoveDecoration(Splash * splash) {
 }
 
 void
-SplashSetup(Splash * splash) {
-    SplashRemoveDecoration(splash);
-    XStoreName(splash->display, splash->window, "Java");
-    XMapRaised(splash->display, splash->window);
-    SplashUpdateShape(splash);
+SplashPThreadDestructor(void *arg) {
+    /* this will be used in case of emergency thread exit on xlib error */
+    Splash *splash = (Splash *) arg;
+
+    if (splash) {
+        SplashCleanup(splash);
+    }
+}
+
+void *
+SplashScreenThread(void *param) {
+    Splash *splash = (Splash *) param;
+//    pthread_key_t key;
+
+//    pthread_key_create(&key, SplashPThreadDestructor);
+//    pthread_setspecific(key, splash);
+
+    SplashLock(splash);
+    pipe(splash->controlpipe);
+    fcntl(splash->controlpipe[0], F_SETFL,
+        fcntl(splash->controlpipe[0], F_GETFL, 0) | O_NONBLOCK);
+    splash->time = SplashTime();
+    SplashCreateWindow(splash);
+    fflush(stdout);
+    if (splash->window) {
+        SplashRemoveDecoration(splash);
+        XStoreName(splash->display, splash->window, "Java");
+        XMapRaised(splash->display, splash->window);
+        SplashUpdateShape(splash);
+        SplashRedrawWindow(splash);
+        //map the splash coordinates as per system scale
+        splash->x /= splash->scaleFactor;
+        splash->y /= splash->scaleFactor;
+        SplashEventLoop(splash);
+    }
+    SplashUnlock(splash);
+    SplashDone(splash);
+
+    splash->isVisible=-1;
+    return 0;
 }
 
 void
-SplashUpdateCursor(Splash * splash) {
+SplashCreateThread(Splash * splash) {
+    pthread_t thr;
+    pthread_attr_t attr;
+    int rc;
+
+    pthread_attr_init(&attr);
+    rc = pthread_create(&thr, &attr, SplashScreenThread, (void *) splash);
 }
+
+void
+SplashLock(Splash * splash) {
+    pthread_mutex_lock(&splash->lock);
+}
+
+void
+SplashUnlock(Splash * splash) {
+    pthread_mutex_unlock(&splash->lock);
+}
+
+void
+SplashClosePlatform(Splash * splash) {
+    sendctl(splash, SPLASHCTL_QUIT);
+}
+
+void
+SplashUpdate(Splash * splash) {
+    sendctl(splash, SPLASHCTL_UPDATE);
+}
+
+void
+SplashReconfigure(Splash * splash) {
+    sendctl(splash, SPLASHCTL_RECONFIGURE);
+}
+
+JNIEXPORT jboolean
+SplashGetScaledImageName(const char* jarName, const char* fileName,
+                           float *scaleFactor, char *scaledImgName,
+                           const size_t scaledImageNameLength)
+{
+    *scaleFactor = 1;
+#ifndef __linux__
+    return JNI_FALSE;
+#endif
+    *scaleFactor = (float)getNativeScaleFactor(NULL, 1);
+    return GetScaledImageName(fileName, scaledImgName, scaleFactor, scaledImageNameLength);
+}
+
