@@ -298,6 +298,10 @@ SplashCreateWindow(Splash * splash) {
 
 int
 SplashInitPlatform(Splash * splash) {
+#if (defined DEBUG)
+    _Xdebug = 1;
+#endif
+
     pthread_mutex_init(&splash->lock, NULL);
 
     splash->buffers = 0;

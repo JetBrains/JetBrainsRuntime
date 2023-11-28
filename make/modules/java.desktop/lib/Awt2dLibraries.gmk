@@ -1036,7 +1036,7 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
       CFLAGS := $(LIBWLSPLASHSCREEN_CFLAGS), \
       EXTRA_HEADER_DIRS := $(LIBSPLASHSCREEN_HEADER_DIRS) $(LIBWLSPLASHSCREEN_HEADER_DIRS) libwlsplashscreen, \
       LDFLAGS := $(LIBSPLASHSCREEN_LDFLAGS) -lrt, \
-      LIBS := -lwayland-client -lwayland-cursor $(LIBSPLASHSCREEN_LIBS) -lrt, \
+      LIBS := -lwayland-client -lwayland-cursor $(LIBSPLASHSCREEN_LIBS), \
       LIBS_aix := -liconv, \
   ))
 
