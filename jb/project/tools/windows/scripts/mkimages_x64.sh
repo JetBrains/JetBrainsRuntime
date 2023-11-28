@@ -59,7 +59,7 @@ function create_image_bundle {
   echo Running jlink ...
   ${JSDK}/bin/jlink \
     --module-path $__modules_path --no-man-pages --compress=2 \
-    --add-modules $__modules --output $__root_dir || do_exit $?
+    --generate-cds-archive --add-modules $__modules --output $__root_dir || do_exit $?
 
     grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> $__root_dir/release
     if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
