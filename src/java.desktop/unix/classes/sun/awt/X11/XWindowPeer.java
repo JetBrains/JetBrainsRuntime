@@ -65,6 +65,8 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             = "true".equals(System.getProperty("transients.desktop.check", "true"));
     static final boolean FULL_MODAL_TRANSIENTS_CHAIN
             = "true".equals(System.getProperty("full.modal.transients.chain"));
+    static final boolean RESIZE_WITH_SCALE
+            = "true".equals(System.getProperty("resize.with.scale", "false"));
 
     // should be synchronized on awtLock
     private static Set<XWindowPeer> windows = new HashSet<XWindowPeer>();
@@ -650,8 +652,9 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
      * called to check if we've been moved onto a different screen
      * Based on checkNewXineramaScreen() in awt_GraphicsEnv.c
      * newBounds are specified in device space.
+     * Returns the corrected dimension of this window.
      */
-    public boolean checkIfOnNewScreen(Rectangle newBounds) {
+    public Dimension checkIfOnNewScreen(Rectangle newBounds) {
         if (log.isLoggable(PlatformLogger.Level.FINEST)) {
             log.finest("XWindowPeer: Check if we've been moved to a new screen since we're running in Xinerama mode");
         }
@@ -660,7 +663,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         int curScreenNum = ((X11GraphicsDevice)getGraphicsConfiguration().getDevice()).getScreen();
         int newScreenNum = curScreenNum;
         GraphicsDevice[] gds = XToolkit.localEnv.getScreenDevices();
-        GraphicsConfiguration newGC = null;
+        GraphicsConfiguration newGC = getGraphicsConfiguration();
 
         for (int i = 0; i < gds.length; i++) {
             X11GraphicsDevice device = (X11GraphicsDevice) gds[i];
@@ -680,38 +683,47 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                 }
             }
         }
-        // Ensure that after window will be moved to another monitor and (probably)
-        // resized as a result, majority of its area will stay on the new monitor
-        if (newScreenNum != curScreenNum) {
-            X11GraphicsDevice device = (X11GraphicsDevice) gds[newScreenNum];
-            Rectangle screenBounds = newGC.getBounds();
-            // Rescale screen size to native unscaled coordinates
-            screenBounds.width = device.scaleUp(screenBounds.width);
-            screenBounds.height = device.scaleUp(screenBounds.height);
-            // Rescale window to new screen's scale
-            newBounds.width = newBounds.width * device.getScaleFactor() / graphicsConfig.getScale();
-            newBounds.height = newBounds.height * device.getScaleFactor() / graphicsConfig.getScale();
 
-            Rectangle intersection = screenBounds.intersection(newBounds);
-            if (intersection.isEmpty() ||
-                    intersection.width * intersection.height <= newBounds.width * newBounds.height / 2) {
-                newScreenNum = curScreenNum; // Don't move to new screen
+        Rectangle newScaledBounds = newBounds.getBounds();
+        if (XWindowPeer.RESIZE_WITH_SCALE) {
+            // Try to guess that after the window has been moved to another monitor and (probably)
+            // resized as a result, the majority of its area will still be on that new monitor.
+            // This is a guess since we cannot predict the result of the resize operation where
+            // the window manager has the final say.
+            boolean isMaximized = target instanceof Frame f && (f.getExtendedState() & Frame.MAXIMIZED_BOTH) != 0;
+            if (newScreenNum != curScreenNum && !isMaximized) {
+                X11GraphicsDevice device = (X11GraphicsDevice) gds[newScreenNum];
+                Rectangle screenBounds = newGC.getBounds();
+                // Rescale screen size to native unscaled coordinates
+                screenBounds.width = device.scaleUp(screenBounds.width);
+                screenBounds.height = device.scaleUp(screenBounds.height);
+                // Rescale window to new screen's scale
+                newScaledBounds.width = newBounds.width * device.getScaleFactor() / graphicsConfig.getScale();
+                newScaledBounds.height = newBounds.height * device.getScaleFactor() / graphicsConfig.getScale();
+                Rectangle intersection = screenBounds.intersection(newScaledBounds);
+                if (intersection.isEmpty() ||
+                        intersection.width * intersection.height <= newScaledBounds.width * newScaledBounds.height / 2) {
+                    newScreenNum = curScreenNum; // Don't move to the new screen
+                }
             }
         }
+
+        var device = (X11GraphicsDevice) newGC.getDevice();
+        Dimension newSize = newScaledBounds.getSize();
+        newSize.width = device.scaleDown(newSize.width);
+        newSize.height = device.scaleDown(newSize.height);
         if (newScreenNum != curScreenNum) {
             if (log.isLoggable(PlatformLogger.Level.FINEST)) {
                 log.finest("XWindowPeer: Moved to a new screen");
             }
-            var gc = newGC;
-            var device = (X11GraphicsDevice) gc.getDevice();
             var acc = AWTAccessor.getComponentAccessor();
             syncSizeOnly = true;
-            acc.setSize(target, device.scaleDown(newBounds.width), device.scaleDown(newBounds.height));
-            acc.setGraphicsConfiguration(target, gc);
+            acc.setSize(target, newSize.width, newSize.height);
+            acc.setGraphicsConfiguration(target, newGC);
             syncSizeOnly = false;
-            return true;
         }
-        return false;
+
+        return newSize;
     }
 
     /**
@@ -833,18 +845,20 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             insLog.fine(xe.toString());
         }
 
-        WindowLocation newLocation = getNewLocation(xe);
-        Dimension newDimension = new Dimension(xe.get_width(), xe.get_height());
+        WindowLocation eventLocation = getNewLocation(xe);
+        Dimension eventDimension = new Dimension(xe.get_width(), xe.get_height());
         boolean xinerama = XToolkit.localEnv.runningXinerama();
 
         SunToolkit.executeOnEventHandlerThread(target, () -> {
-            Point newUserLocation = newLocation.getUserLocation();
             Rectangle oldBounds = getBounds();
-
+            Dimension newSize = xinerama
+                    ? checkIfOnNewScreen(new Rectangle(eventLocation.getDeviceLocation(), eventDimension))
+                    : new Dimension(scaleDown(eventDimension.width), scaleDown(eventDimension.height));;
+            Point newUserLocation = eventLocation.getUserLocation();
             x = newUserLocation.x;
             y = newUserLocation.y;
-            width = scaleDown(newDimension.width);
-            height = scaleDown(newDimension.height);
+            width = newSize.width;
+            height = newSize.height;
 
             if (!getBounds().getSize().equals(oldBounds.getSize())) {
                 AWTAccessor.getComponentAccessor().setSize(target, width, height);
@@ -853,10 +867,6 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             if (!getBounds().getLocation().equals(oldBounds.getLocation())) {
                 AWTAccessor.getComponentAccessor().setLocation(target, x, y);
                 postEvent(new ComponentEvent(target, ComponentEvent.COMPONENT_MOVED));
-            }
-
-            if (xinerama) {
-                checkIfOnNewScreen(new Rectangle(newLocation.getDeviceLocation(), newDimension));
             }
         });
     }
