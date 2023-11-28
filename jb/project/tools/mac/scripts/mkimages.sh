@@ -65,7 +65,7 @@ function create_image_bundle {
   echo Running jlink...
   "$JSDK"/bin/jlink \
     --module-path "$__modules_path" --no-man-pages --compress=2 \
-    --add-modules "$__modules" --output "$JRE_CONTENTS/Home" || do_exit $?
+    --generate-cds-archive --add-modules "$__modules" --output "$JRE_CONTENTS/Home" || do_exit $?
 
   grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> "$JRE_CONTENTS/Home/release"
   if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
@@ -132,6 +132,8 @@ IMAGES_DIR=build/$RELEASE_NAME/images
 JSDK=$IMAGES_DIR/jdk-bundle/jdk-$JBSDK_VERSION.jdk/Contents/Home
 JSDK_MODS_DIR=$IMAGES_DIR/jmods
 JBRSDK_BUNDLE=jbrsdk
+
+# test/jdk/jb/java/awt/Focus/FullScreenFocusStealing.java test/jdk/java/awt/color/ICC_ColorSpace/MTTransformReplacedProfile.java test/jdk/java/awt/datatransfer/DataFlavor/DataFlavorRemoteTest.java test/jdk/java/awt/Robot/NonEmptyErrorStream.java
 
 if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
   git apply -p0 < jb/project/tools/patches/add_jcef_module.patch || do_exit $?
