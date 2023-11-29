@@ -631,6 +631,14 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
 
         AWTAccessor.getComponentAccessor().
             setGraphicsConfiguration((Component)target, winGraphicsConfig);
+
+        // Windows may have already sent us WM_PAINT,
+        // which we have processed before updating the GC,
+        // so force full repaint just to be sure we don't leave damaged content.
+        if (oldDev != newDev) {
+            Rectangle b = getBounds();
+            handlePaint(0, 0, b.width, b.height);
+        }
     }
 
     /**
