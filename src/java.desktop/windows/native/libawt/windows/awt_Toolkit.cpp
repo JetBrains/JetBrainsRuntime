@@ -163,6 +163,8 @@ extern "C" JNIEXPORT jboolean JNICALL AWTIsHeadless() {
 #define AWT_DISPLAYCHANGE_RETRY_DELAY 250
 #define AWT_DISPLAYCHANGE_RETRY_LIMIT 20
 
+static BOOL CALLBACK UpdateAllThreadWindowSizes(HWND hWnd, LPARAM);
+
 class DisplayChangeHandler {
 public:
     static BOOL Handle(JNIEnv *env, HWND hWnd) {
@@ -173,6 +175,8 @@ public:
         }
 
         OnDisplayChangeSucceeded(hWnd);
+
+        ::EnumThreadWindows(AwtToolkit::MainThread(), (WNDENUMPROC)UpdateAllThreadWindowSizes, 0);
 
         // Notify Java side - call WToolkit.displayChanged()
         jclass clazz = env->FindClass("sun/awt/windows/WToolkit");
@@ -976,6 +980,20 @@ void AwtToolkit::DestroyComponentHWND(HWND hwnd)
 #else
 void SpyWinMessage(HWND hwnd, UINT message, LPCTSTR szComment);
 #endif
+
+static BOOL CALLBACK UpdateAllThreadWindowSizes(HWND hWnd, LPARAM)
+{
+    TRY;
+    AwtComponent *c = AwtComponent::GetComponent(hWnd);
+    if (c) {
+        RECT r;
+        GetWindowRect(hWnd, &r);
+        c->WmSize(SIZENORMAL, r.right-r.left, r.bottom-r.top);
+        c->Invalidate(NULL);
+    }
+    return TRUE;
+    CATCH_BAD_ALLOC_RET(FALSE);
+}
 
 /*
  * An AwtToolkit window is just a means of routing toolkit messages to here.
