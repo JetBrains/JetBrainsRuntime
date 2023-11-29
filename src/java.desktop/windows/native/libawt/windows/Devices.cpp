@@ -229,6 +229,7 @@ BOOL Devices::UpdateInstance(JNIEnv *env)
     }
     for (i = 0; i < numScreens; ++i) {
         rawDevices[i]->Initialize();
+        rawDevices[i]->InitDesktopScales();
     }
     {
         CriticalSection::Lock l(arrayLock);
