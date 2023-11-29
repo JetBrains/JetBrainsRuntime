@@ -219,11 +219,9 @@ public class Win32GraphicsConfig extends GraphicsConfiguration
         return (super.toString()+"[dev="+device+",pixfmt="+visual+"]");
     }
 
-    private native Rectangle getBounds(int screen);
-
     @Override
     public Rectangle getBounds() {
-        return getBounds(device.getScreen());
+        return device.getBounds();
     }
 
     @Override
