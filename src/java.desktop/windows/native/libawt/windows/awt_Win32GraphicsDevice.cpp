@@ -992,7 +992,7 @@ Java_sun_awt_Win32GraphicsDevice_initIDs(JNIEnv *env, jclass cls)
  */
 
 JNIEXPORT jint JNICALL Java_sun_awt_Win32GraphicsDevice_getMaxConfigsImpl
-    (JNIEnv* jniEnv, jobject theThis, jint screen) {
+    (JNIEnv* jniEnv, jclass clazz, jint screen) {
         TRY;
     HDC hDC = AwtWin32GraphicsDevice::GetDCFromScreen(screen);
 
@@ -1019,7 +1019,7 @@ JNIEXPORT jint JNICALL Java_sun_awt_Win32GraphicsDevice_getMaxConfigsImpl
  */
 
 JNIEXPORT jboolean JNICALL Java_sun_awt_Win32GraphicsDevice_isPixFmtSupported
-    (JNIEnv* env, jobject theThis, jint pixFmtID, jint screen) {
+    (JNIEnv* env, jclass clazz, jint pixFmtID, jint screen) {
         TRY;
     jboolean suppColor = JNI_TRUE;
     HDC hDC = AwtWin32GraphicsDevice::GetDCFromScreen(screen);
@@ -1061,7 +1061,7 @@ JNIEXPORT jboolean JNICALL Java_sun_awt_Win32GraphicsDevice_isPixFmtSupported
  */
 
 JNIEXPORT jint JNICALL Java_sun_awt_Win32GraphicsDevice_getDefaultPixIDImpl
-    (JNIEnv* env, jobject theThis, jint screen) {
+    (JNIEnv* env, jclass clazz, jint screen) {
         TRY;
     int pixFmtID = 0;
     HDC hDC = AwtWin32GraphicsDevice::GetDCFromScreen(screen);
@@ -1093,7 +1093,7 @@ JNIEXPORT jint JNICALL Java_sun_awt_Win32GraphicsDevice_getDefaultPixIDImpl
     }
 
     if (JNI_FALSE == Java_sun_awt_Win32GraphicsDevice_isPixFmtSupported(
-     env, theThis, pixFmtID, screen)) {
+     env, clazz, pixFmtID, screen)) {
         /* Can't find a suitable pixel format ID.  Fall back on 0. */
         pixFmtID = 0;
     }
@@ -1390,7 +1390,7 @@ JNIEXPORT void JNICALL Java_sun_awt_Win32GraphicsDevice_enumDisplayModes
 
 JNIEXPORT jobject JNICALL
     Java_sun_awt_Win32GraphicsDevice_makeColorModel
-    (JNIEnv *env, jobject thisPtr, jint screen, jboolean dynamic)
+    (JNIEnv *env, jclass clazz, jint screen, jboolean dynamic)
 {
     Devices::InstanceAccess devices;
     return devices->GetDevice(screen)->GetColorModel(env, dynamic);
@@ -1403,10 +1403,10 @@ JNIEXPORT jobject JNICALL
  */
 JNIEXPORT void JNICALL
     Java_sun_awt_Win32GraphicsDevice_initDevice
-    (JNIEnv *env, jobject thisPtr, jint screen)
+    (JNIEnv *env, jobject graphicsDevice, jint screen)
 {
     Devices::InstanceAccess devices;
-    devices->GetDevice(screen)->SetJavaDevice(env, thisPtr);
+    devices->GetDevice(screen)->SetJavaDevice(env, graphicsDevice);
 }
 
 /*
@@ -1416,7 +1416,7 @@ JNIEXPORT void JNICALL
  */
 JNIEXPORT void JNICALL
     Java_sun_awt_Win32GraphicsDevice_setNativeScale
-    (JNIEnv *env, jobject thisPtr, jint screen, jfloat scaleX, jfloat scaleY)
+    (JNIEnv *env, jclass clazz, jint screen, jfloat scaleX, jfloat scaleY)
 {
     Devices::InstanceAccess devices;
     AwtWin32GraphicsDevice *device = devices->GetDevice(screen);
@@ -1434,7 +1434,7 @@ JNIEXPORT void JNICALL
  */
 JNIEXPORT jfloat JNICALL
     Java_sun_awt_Win32GraphicsDevice_getNativeScaleX
-    (JNIEnv *env, jobject thisPtr, jint screen)
+    (JNIEnv *env, jclass clazz, jint screen)
 {
     Devices::InstanceAccess devices;
     AwtWin32GraphicsDevice *device = devices->GetDevice(screen);
@@ -1448,7 +1448,7 @@ JNIEXPORT jfloat JNICALL
  */
 JNIEXPORT jfloat JNICALL
     Java_sun_awt_Win32GraphicsDevice_getNativeScaleY
-    (JNIEnv *env, jobject thisPtr, jint screen)
+    (JNIEnv *env, jclass clazz, jint screen)
 {
     Devices::InstanceAccess devices;
     AwtWin32GraphicsDevice *device = devices->GetDevice(screen);
@@ -1462,7 +1462,7 @@ JNIEXPORT jfloat JNICALL
 */
 JNIEXPORT void JNICALL
 Java_sun_awt_Win32GraphicsDevice_initNativeScale
-(JNIEnv *env, jobject thisPtr, jint screen)
+(JNIEnv *env, jclass clazz, jint screen)
 {
     Devices::InstanceAccess devices;
     AwtWin32GraphicsDevice *device = devices->GetDevice(screen);
@@ -1470,4 +1470,49 @@ Java_sun_awt_Win32GraphicsDevice_initNativeScale
     if (device != NULL) {
         device->InitDesktopScales();
     }
+}
+
+/*
+ * Class:     sun_awt_Win32GraphicsDevice
+ * Method:    getBounds
+ * Signature: (I)Ljava/awt/Rectangle
+ */
+JNIEXPORT jobject JNICALL
+    Java_sun_awt_Win32GraphicsDevice_getBounds(JNIEnv *env, jclass clazz, jint screen)
+{
+    jmethodID mid;
+    jobject bounds = NULL;
+
+    clazz = env->FindClass("java/awt/Rectangle");
+    CHECK_NULL_RETURN(clazz, NULL);
+    mid = env->GetMethodID(clazz, "<init>", "(IIII)V");
+    if (mid != 0) {
+        RECT rRW = {0, 0, 0, 0};
+        Devices::InstanceAccess devices;
+        AwtWin32GraphicsDevice *device = devices->GetDevice(screen);
+
+        if (TRUE == MonitorBounds(AwtWin32GraphicsDevice::GetMonitor(screen), &rRW)) {
+            int w = (device == NULL) ? rRW.right - rRW.left
+                                     : device->ScaleDownX(rRW.right - rRW.left);
+            int h = (device == NULL) ? rRW.bottom - rRW.top
+                                     : device->ScaleDownY(rRW.bottom - rRW.top);
+
+            bounds = env->NewObject(clazz, mid, rRW.left, rRW.top, w, h);
+        }
+        else {
+            // 4910760 - don't return a null bounds, return the bounds of the
+            // primary screen
+            int w = ::GetSystemMetrics(SM_CXSCREEN);
+            int h = ::GetSystemMetrics(SM_CYSCREEN);
+
+            bounds = env->NewObject(clazz, mid,
+                                    0, 0,
+                                    device == NULL ? w : device->ScaleDownX(w),
+                                    device == NULL ? h : device->ScaleDownY(h));
+        }
+        if (safe_ExceptionOccurred(env)) {
+           return 0;
+        }
+    }
+    return bounds;
 }
