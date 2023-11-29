@@ -31,6 +31,7 @@ import java.awt.GraphicsDevice;
 import java.awt.peer.ComponentPeer;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.ListIterator;
 
 import sun.awt.windows.WToolkit;
@@ -136,41 +137,23 @@ public final class Win32GraphicsEnvironment extends SunGraphicsEnvironment {
      */
     @Override
     public void displayChanged() {
+        if (screens != null) {
+            if (oldDevices == null) {
+                oldDevices = new ArrayList<>();
+            }
+            for (int i = 0; i < screens.length; i++) {
+                if (screens[i] instanceof Win32GraphicsDevice gd) {
+                    oldDevices.add(new WeakReference<>(gd));
+                } else {
+                    // REMIND: can we ever have anything other than Win32GD?
+                    assert (false) : screens[i];
+                }
+            }
+        }
+        // create the new devices
         // getNumScreens() will return the correct current number of screens
         GraphicsDevice[] newDevices = new GraphicsDevice[getNumScreens()];
-        GraphicsDevice[] oldScreens = screens;
-        // go through the list of current devices and determine if they
-        // could be reused, or will have to be replaced
-        if (oldScreens != null) {
-            for (int i = 0; i < oldScreens.length; i++) {
-                if (!(screens[i] instanceof Win32GraphicsDevice)) {
-                    // REMIND: can we ever have anything other than Win32GD?
-                    assert (false) : oldScreens[i];
-                    continue;
-                }
-                Win32GraphicsDevice gd = (Win32GraphicsDevice)oldScreens[i];
-                // devices may be invalidated from the native code when the
-                // display change happens (device add/removal also causes a
-                // display change)
-                if (!gd.isValid()) {
-                    if (oldDevices == null) {
-                        oldDevices =
-                            new ArrayList<WeakReference<Win32GraphicsDevice>>();
-                    }
-                    oldDevices.add(new WeakReference<Win32GraphicsDevice>(gd));
-                } else if (i < newDevices.length) {
-                    // reuse the device
-                    newDevices[i] = gd;
-                }
-            }
-            oldScreens = null;
-        }
-        // create the new devices (those that weren't reused)
-        for (int i = 0; i < newDevices.length; i++) {
-            if (newDevices[i] == null) {
-                newDevices[i] = makeScreenDevice(i);
-            }
-        }
+        Arrays.setAll(newDevices, this::makeScreenDevice);
         // install the new array of devices
         // Note: no synchronization here, it doesn't matter if a thread gets
         // a new or an old array this time around
