@@ -2312,7 +2312,8 @@ static Bool jbNewXimClient_initializeXICs(
         return False;
     }
     if (xInputMethodConnection == NULL) {
-        jio_fprintf(stderr, "%s: xInputMethodConnection == NULL.\n", __func__);
+        // printf has been disabled because it pollutes stderr in environments without input methods
+        //jio_fprintf(stderr, "%s: xInputMethodConnection == NULL.\n", __func__);
         return False;
     }
     if (pX11IMData == NULL) {
