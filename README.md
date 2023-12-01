@@ -9,11 +9,13 @@ It includes a number of enhancements in font rendering, ligatures, HiDPI support
 Download the latest releases of JetBrains Runtime to use with JetBrains IDEs. The full list
 can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntime/releases).
 
-| IDE Version | Latest JBR                                                                                             | Date Released |
-|  ---        |--------------------------------------------------------------------------------------------------------|---------------|
-| 2023.1      | [17.0.6-b829.1](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.6b829.1)   | 14-Feb-2023   |
-| 2022.3      | [17.0.5-b653.25](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.5b653.25) | 10-Jan-2023   |
-| 2022.2      | [17.0.5-b469.71](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.5b469.71) | 14-Nov-2022   |
+| IDE Version | Latest JBR                                                                                              | Date Released |
+|-------------|---------------------------------------------------------------------------------------------------------|---------------|
+| 2023.3      | [17.0.9b1087.7](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.9b1087.7)   | 20-Nov-2023   |
+| 2023.2      | [17.0.9b1000.46](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.9b1000.46) | 01-Nov-2023   | 
+| 2023.1      | [17.0.6-b829.1](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.6b829.1)    | 14-Feb-2023   |
+| 2022.3      | [17.0.5-b653.25](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.5b653.25)  | 10-Jan-2023   |
+| 2022.2      | [17.0.5-b469.71](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.5b469.71)  | 14-Nov-2022   |
 
 
 ## Contents
