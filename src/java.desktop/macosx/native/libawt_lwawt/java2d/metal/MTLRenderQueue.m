@@ -56,6 +56,7 @@ void rq_plog(JNIEnv* env, int logLevel, const char *formatMsg, ...);
 
 /* Debugging */
 #define DO_TRACE_OP     false
+#define TRACE_DRAW_VERBOSE (0)
 
 const static uint32 STATS_LEN = sun_java2d_pipe_BufferedOpCodes_DISABLE_LOOKUP_OP + 1;
 
@@ -64,7 +65,15 @@ static jint statFlushs = 0;
 
 static const char* toStr(uint opcode);
 static const char* mtlOpToStr(uint op);
-static long rqCurrentTimeMillis();
+
+extern long rqCurrentTimeMicroSeconds();
+
+static long rqCurrentTimeMillis() {
+    struct timeval t;
+    gettimeofday(&t, 0);
+    return ((long)t.tv_sec) * 1000 + (long)(t.tv_usec/1000);
+}
+
 
 BOOL isStatsEnabled() {
     static int statsEnabled = -1;
@@ -194,6 +203,12 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         J2dRlsTraceLn(J2D_TRACE_ERROR,
             "MTLRenderQueue_flushBuffer: cannot get direct buffer address");
         return;
+    }
+
+    if (TRACE_DRAW_VERBOSE) {
+        J2dRlsTraceLn1(J2D_TRACE_INFO, "[%ld] MTLRenderQueue_flushBuffer - ENTER",
+                       rqCurrentTimeMicroSeconds()
+        );
     }
 
     end = b + limit;
@@ -1045,6 +1060,12 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             }
         }
     }
+
+    if (TRACE_DRAW_VERBOSE) {
+        J2dRlsTraceLn1(J2D_TRACE_INFO, "[%ld] MTLRenderQueue_flushBuffer - EXIT",
+                       rqCurrentTimeMicroSeconds()
+        );
+    }
 }
 
 /**
@@ -1226,10 +1247,4 @@ void rq_plog(JNIEnv* env, int logLevel, const char *formatMsg, ...) {
 
 static const char * toCString(id obj) {
     return obj == nil ? "nil" : [NSString stringWithFormat:@"%@", obj].UTF8String;
-}
-
-static long rqCurrentTimeMillis() {
-    struct timeval t;
-    gettimeofday(&t, 0);
-    return ((long)t.tv_sec) * 1000 + (long)(t.tv_usec/1000);
 }

@@ -37,15 +37,19 @@
 // Keep displaylink thread alive for KEEP_ALIVE_COUNT more times
 // to avoid multiple start/stop displaylink operations. It speeds up
 // scenarios with multiple subsequent updates.
-#define KEEP_ALIVE_COUNT 10
+#define KEEP_ALIVE_COUNT 4
 
 // Amount of blit operations per update to make sure that everything is
 // rendered into the window drawable. It does not slow things down as we
 // use separate command queue for blitting.
-#define REDRAW_INC 2
+#define REDRAW_INC 1
 // LBO: 2 or 1
 
 #define TRACE_DIRECT_BUFFER 0
+
+#define TRACE_CVLINK 0
+
+#define PAINT_CVLINK 1
 
 
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
@@ -636,7 +640,15 @@ extern void initSamplers(id<MTLDevice> device);
 
 - (void) redraw {
     AWT_ASSERT_APPKIT_THREAD;
-    if (false) {
+
+    if (TRACE_CVLINK) {
+        J2dRlsTraceLn2(J2D_TRACE_INFO, "[%ld] MTLContext_redraw: ctx=%p - ENTER",
+                       rqCurrentTimeMicroSeconds(), self
+        );
+    }
+
+    // EXTRA REPAINTS:
+    if (PAINT_CVLINK) {
         if (isTraceDisplayEnabled()) {
             J2dRlsTraceLn2(J2D_TRACE_INFO, "[%ld] MTLContext_redraw(): displayLinkCount=%d",
                            rqCurrentTimeMicroSeconds(), _displayLinkCount);
@@ -660,6 +672,12 @@ extern void initSamplers(id<MTLDevice> device);
             J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStop: ctx=%p", self);
         }
     }
+
+    if (TRACE_CVLINK) {
+        J2dRlsTraceLn2(J2D_TRACE_INFO, "[%ld] MTLContext_redraw: ctx=%p - EXIT",
+                       rqCurrentTimeMicroSeconds(), self
+        );
+    }
 }
 
 CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* now, const CVTimeStamp* outputTime, CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* displayLinkContext)
@@ -669,7 +687,18 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
         J2dRlsTraceLn3(J2D_TRACE_INFO, "[%ld] MTLContext_mtlDisplayLinkCallback: displayLink=%p ctx=%p",
                        rqCurrentTimeMicroSeconds(), displayLink, displayLinkContext);
     }
+
     @autoreleasepool {
+        if (isTraceDisplayEnabled()) {
+            // Show info about CVDisplayLink:
+            J2dRlsTraceLn4(J2D_TRACE_INFO, "[%ld] MTLContext_mtlDisplayLinkCallback: displayLink=%p"
+                                           " displayID: %d"
+                                           " actualOutputVideoRefreshPeriod=%lf ms",
+                           rqCurrentTimeMicroSeconds(), displayLink,
+                           CVDisplayLinkGetCurrentCGDisplay(displayLink),
+                           CVDisplayLinkGetActualOutputVideoRefreshPeriod(displayLink)
+            );
+        }
         MTLContext *ctx = (__bridge MTLContext *)displayLinkContext;
         [ctx performSelectorOnMainThread:@selector(redraw) withObject:nil waitUntilDone:NO];
     }
@@ -678,6 +707,13 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
 
 - (void)startRedraw:(MTLLayer*)layer {
     AWT_ASSERT_APPKIT_THREAD;
+
+    if (TRACE_CVLINK) {
+        J2dRlsTraceLn3(J2D_TRACE_INFO, "[%ld] MTLContext_startRedraw: ctx=%p layer[%p] - ENTER",
+                       rqCurrentTimeMicroSeconds(), self,  layer
+        );
+    }
+
     layer.redrawCount = REDRAW_INC;
     J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_startRedraw: ctx=%p layer=%p", self, layer);
     if (isTraceDisplayEnabled()) {
@@ -698,11 +734,24 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
         CVDisplayLinkStart(_displayLink);
         J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStart: ctx=%p", self);
     }
+
+    if (TRACE_CVLINK) {
+        J2dRlsTraceLn3(J2D_TRACE_INFO, "[%ld] MTLContext_startRedraw: ctx=%p layer[%p] - EXIT",
+                       rqCurrentTimeMicroSeconds(), self,  layer
+        );
+    }
 }
 
 - (void)stopRedraw:(MTLLayer*) layer {
     AWT_ASSERT_APPKIT_THREAD;
     J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_stopRedraw: ctx=%p layer=%p", self, layer);
+
+    if (TRACE_CVLINK) {
+        J2dRlsTraceLn3(J2D_TRACE_INFO, "[%ld] MTLContext_stopRedraw: ctx=%p layer[%p] - ENTER",
+                       rqCurrentTimeMicroSeconds(), self,  layer
+        );
+    }
+
     if (_displayLink != nil) {
         if (--layer.redrawCount <= 0) {
             [_layers removeObject:layer];
@@ -718,6 +767,12 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
                 J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStop: ctx=%p", self);
             }
         }
+    }
+
+    if (TRACE_CVLINK) {
+        J2dRlsTraceLn3(J2D_TRACE_INFO, "[%ld] MTLContext_stopRedraw: ctx=%p layer[%p] - EXIT",
+                       rqCurrentTimeMicroSeconds(), self, layer
+        );
     }
 }
 

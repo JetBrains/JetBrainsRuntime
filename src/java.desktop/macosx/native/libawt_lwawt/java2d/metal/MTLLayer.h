@@ -42,16 +42,15 @@
 @property (readwrite, atomic) int paintedCount;
 @property (readwrite, atomic) int drawCount;
 @property (readwrite, atomic) int displayedCount;
+@property (readwrite, atomic) int blitCount;
+@property (readwrite, atomic) CFTimeInterval lastBlitTime;
 @property (readwrite, atomic) CFTimeInterval lastDisplayedTime;
 @property (readwrite, atomic) int redrawCount;
 @property (readwrite, atomic) NSTimeInterval avgRenderFrameTime;
 @property (readwrite, atomic) NSTimeInterval avgBlitFrameTime;
 
-@property (readwrite, atomic, retain) id<CAMetalDrawable> currentDrawable;
-
 - (id) initWithJavaLayer:(jobject)layer;
 
-- (id<CAMetalDrawable>) getCurrentDrawable:(BOOL)reset;
 - (void) blitTexture;
 - (void) fillParallelogramCtxX:(jfloat)x
                              Y:(jfloat)y
