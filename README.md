@@ -126,8 +126,8 @@ $ docker run -v `pwd`../../../../:/JetBrainsRuntime -it 942ea9900054
 ### Ubuntu Linux
 Install the necessary tools, libraries, and headers with:
 ```
-$ sudo apt-get install autoconf make build-essential libx11-dev libxext-dev libxrender-dev libxtst-dev \
-       libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev
+$ sudo apt-get install autoconf make build-essential libwayland-dev libx11-dev libxext-dev libxrender-dev \
+       libxtst-dev libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev
 ```
 Get Java 19 (for instance, [Azul Zulu Builds of OpenJDK 19](https://www.azul.com/downloads/?version=java-19-sts&os=linux&package=jdk)).
 
