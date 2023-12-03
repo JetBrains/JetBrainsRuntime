@@ -40,6 +40,7 @@
 @property (readwrite, assign) int topInset;
 @property (readwrite, assign) int leftInset;
 @property (readwrite, atomic) int redrawCount;
+@property (readwrite, atomic) int renderVersion;
 @property (readwrite, atomic) NSTimeInterval avgBlitFrameTime;
 
 - (id) initWithJavaLayer:(jobject)layer;
@@ -54,6 +55,7 @@
 - (void) blitCallback;
 - (void) display;
 - (void) startRedraw;
+- (void) startRedrawIfNeeded;
 - (void) stopRedraw:(BOOL)force;
 - (void) flushBuffer:(MTLContext*)mtlc;
 - (void) commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
