@@ -1025,7 +1025,7 @@ public class LWWindowPeer
      */
     @Override
     public void notifyKeyEvent(int id, long when, int modifiers,
-                               int keyCode, char keyChar, int keyLocation, int extendedKeyCode)
+                               int keyCode, char keyChar, int keyLocation)
     {
         LWKeyboardFocusManagerPeer kfmPeer = LWKeyboardFocusManagerPeer.getInstance();
         Component focusOwner = kfmPeer.getCurrentFocusOwner();
@@ -1039,13 +1039,9 @@ public class LWWindowPeer
 
         KeyEvent keyEvent = new KeyEvent(focusOwner, id, when, modifiers,
             keyCode, keyChar, keyLocation);
-        if (extendedKeyCode >= 0) {
-            AWTAccessor.getKeyEventAccessor().setExtendedKeyCode(keyEvent, extendedKeyCode);
-        } else {
-            AWTAccessor.getKeyEventAccessor().setExtendedKeyCode(keyEvent,
-                    (keyChar == KeyEvent.CHAR_UNDEFINED) ? keyCode
-                            : ExtendedKeyCodes.getExtendedKeyCodeForChar(keyChar));
-        }
+        AWTAccessor.getKeyEventAccessor().setExtendedKeyCode(keyEvent,
+                (keyChar == KeyEvent.CHAR_UNDEFINED) ? keyCode
+                : ExtendedKeyCodes.getExtendedKeyCodeForChar(keyChar));
         postEvent(keyEvent);
     }
 
