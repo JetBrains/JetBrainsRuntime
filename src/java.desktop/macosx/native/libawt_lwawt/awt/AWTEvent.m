@@ -429,7 +429,7 @@ static void
 NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
                            NSUInteger flags, unsigned short key,
                            jint *keyCode, jint *keyLocation, BOOL *postsTyped,
-                           unichar *deadChar, jint *extendedkeyCode)
+                           unichar *deadChar)
 {
     static size_t size = sizeof(keyTable) / sizeof(struct _key);
     NSInteger offset;
@@ -469,9 +469,10 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
             *postsTyped = YES;
             // do quick conversion
             // the keyCode is off by 32, so adding it here
-            *extendedkeyCode = java_awt_event_KeyEvent_VK_A + offset + 32;
+            *keyCode = java_awt_event_KeyEvent_VK_A + offset + 32;
             *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
-        }
+return;
+         }
     }
 
     if ([[NSCharacterSet decimalDigitCharacterSet] characterIsMember:ch]) {
@@ -694,20 +695,18 @@ JNI_COCOA_ENTER(env);
     jshort keyCode = (jshort)data[3];
 
     jint jkeyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
-    jint jextendedkeyCode = -1;
     jint jkeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
     jint testDeadChar = 0;
 
     NsCharToJavaVirtualKeyCode((unichar)testChar, isDeadChar,
                                (NSUInteger)modifierFlags, (unsigned short)keyCode,
                                &jkeyCode, &jkeyLocation, &postsTyped,
-                               (unichar *) &testDeadChar, &jextendedkeyCode);
+                               (unichar *) &testDeadChar);
 
-    // out = [jkeyCode, jkeyLocation, deadChar, jextendedkeyCode];
+    // out = [jkeyCode, jkeyLocation, deadChar];
     (*env)->SetIntArrayRegion(env, outData, 0, 1, &jkeyCode);
     (*env)->SetIntArrayRegion(env, outData, 1, 1, &jkeyLocation);
     (*env)->SetIntArrayRegion(env, outData, 2, 1, &testDeadChar);
-    (*env)->SetIntArrayRegion(env, outData, 3, 1, &jextendedkeyCode);
 
     (*env)->ReleaseIntArrayElements(env, inData, data, 0);
 
