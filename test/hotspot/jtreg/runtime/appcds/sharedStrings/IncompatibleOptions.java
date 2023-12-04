@@ -120,6 +120,7 @@ public class IncompatibleOptions {
             "-XX:+UseCompressedOops",
             collectorOption,
             "-XX:SharedArchiveConfigFile=" + TestCommon.getSourceFile("SharedStringsBasic.txt"),
+            "-Xlog:cds,cds+hashtables",
             extraOption);
 
         if (expectedWarning != null)
