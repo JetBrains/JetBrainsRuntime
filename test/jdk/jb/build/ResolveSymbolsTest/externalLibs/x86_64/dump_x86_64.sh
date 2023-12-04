@@ -44,6 +44,7 @@ libs=(
     /lib64/libXtst.so.6
     /lib64/libXxf86vm.so.1
     /lib64/libz.so.1
+    /lib64/libwayland-cursor.so.0
 )
 
 for lib_path in "${libs[@]}"
