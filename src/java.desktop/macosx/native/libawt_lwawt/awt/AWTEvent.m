@@ -969,7 +969,6 @@ JNI_COCOA_ENTER(env);
     BOOL reportDeadKeysAsNormal = (data[2] != 0);
 
     jint jkeyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
-    jint jextendedkeyCode = -1;
     jint jkeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
 
     NsCharToJavaVirtualKeyCode((unsigned short)keyCode,

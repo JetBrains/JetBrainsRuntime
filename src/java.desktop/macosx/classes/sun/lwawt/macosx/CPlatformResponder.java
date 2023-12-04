@@ -194,7 +194,6 @@ final class CPlatformResponder {
 
         int jeventType = KeyEvent.KEY_PRESSED;
         int jkeyCode = KeyEvent.VK_UNDEFINED;
-        int jextendedkeyCode = -1;
         int jkeyLocation = KeyEvent.KEY_LOCATION_UNKNOWN;
         boolean spaceKeyTyped = false;
 
@@ -231,7 +230,6 @@ final class CPlatformResponder {
             NSEvent.nsToJavaKeyInfo(in, out);
 
             jkeyCode = out[0];
-            jextendedkeyCode = out[3];
             jkeyLocation = out[1];
             jeventType = isNpapiCallback ? NSEvent.npToJavaEventType(eventType) :
                                            NSEvent.nsToJavaEventType(eventType);
@@ -247,7 +245,7 @@ final class CPlatformResponder {
             lastKeyPressCode = jkeyCode;
         }
         eventNotifier.notifyKeyEvent(jeventType, when, jmodifiers,
-                jkeyCode, javaChar, jkeyLocation, jextendedkeyCode);
+                jkeyCode, javaChar, jkeyLocation);
 
         // That's the reaction on the PRESSED (not RELEASED) event as it comes to
         // appear in MacOSX.
@@ -267,14 +265,14 @@ final class CPlatformResponder {
             for (char ch : actualChars.toCharArray()) {
                 eventNotifier.notifyKeyEvent(KeyEvent.KEY_TYPED, when, jmodifiers,
                         KeyEvent.VK_UNDEFINED, ch,
-                        KeyEvent.KEY_LOCATION_UNKNOWN, jextendedkeyCode);
+                        KeyEvent.KEY_LOCATION_UNKNOWN);
             }
 
             // If events come from Firefox, released events should also be generated.
             if (needsKeyReleased) {
                 eventNotifier.notifyKeyEvent(KeyEvent.KEY_RELEASED, when, jmodifiers,
                         jkeyCode, javaChar,
-                        KeyEvent.KEY_LOCATION_UNKNOWN, jextendedkeyCode);
+                        KeyEvent.KEY_LOCATION_UNKNOWN);
             }
         }
     }
@@ -288,13 +286,13 @@ final class CPlatformResponder {
                 eventNotifier.notifyKeyEvent(KeyEvent.KEY_TYPED,
                         System.currentTimeMillis(),
                         0, KeyEvent.VK_UNDEFINED, c,
-                        KeyEvent.KEY_LOCATION_UNKNOWN, -1);
+                        KeyEvent.KEY_LOCATION_UNKNOWN);
                 index++;
             }
             eventNotifier.notifyKeyEvent(KeyEvent.KEY_RELEASED,
                     System.currentTimeMillis(),
                     0, lastKeyPressCode, c,
-                    KeyEvent.KEY_LOCATION_UNKNOWN, -1);
+                    KeyEvent.KEY_LOCATION_UNKNOWN);
         }
     }
 
