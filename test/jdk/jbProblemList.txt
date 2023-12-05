@@ -1350,7 +1350,7 @@ java/awt/image/DrawImage/IncorrectUnmanagedImageSourceOffset.java JBR-5359 windo
 java/awt/image/DrawImage/SimpleManagedImage.java JBR-5359 windows-aarch64
 java/awt/image/DrawImage/SimpleUnmanagedImage.java JBR-5359 windows-aarch64
 java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5359 windows-aarch64
-java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java JBR-5359,JBR-5510 windows-aarch64,linux-all
+java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java 8049405 windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JInternalFrameOverlapping.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
 java/awt/Mixing/OpaqueTest.java JBR-5707 linux-all
