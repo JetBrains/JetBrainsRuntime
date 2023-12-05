@@ -14,6 +14,7 @@ java/awt/FullScreen/CurrentDisplayModeTest/CurrentDisplayModeTest.java JBR-5059 
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-4379 windows-all
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5442 linux-all
 java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java JBR-5062 linux-all
+java/awt/GraphicsDevice/DisplayModes/ExtraAllocationTest.java JBR-6384 macosx-all
 java/awt/GraphicsDevice/DisplayModes/UnknownRefrshRateTest.java JBR-6336 macosx-aarch64
 java/awt/GraphicsDevice/IncorrectDisplayModeExitFullscreen.java JBR-6336 macosx-aarch64
 java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5.15.0-46-generic Ubuntu 20.04
@@ -54,7 +55,6 @@ java/awt/Mixing/AWT_Mixing/JColorChooserOverlapping.java 8158801,JBR-5510 window
 java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-5359,JBR-5510 macosx-all,windows-aarch64,linux-all
 java/awt/Mixing/AWT_Mixing/JEditorPaneInGlassPaneOverlapping.java 8158801,JBR-5510 windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/JEditorPaneOverlapping.java 8158801,JBR-5510 windows-all,linux-all
-java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java JBR-5359,JBR-5510,JBR-6234 windows-aarch64,linux-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5359,JBR-5510,JBR-6134 windows-aarch64,windows-x64,linux-all
 java/awt/Mixing/AWT_Mixing/JInternalFrameMoveOverlapping.java 6986109,JBR-5510 windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/JInternalFrameOverlapping.java JBR-5359,JBR-5510 windows-aarch64,linux-all
