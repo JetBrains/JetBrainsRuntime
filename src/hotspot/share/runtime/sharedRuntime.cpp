@@ -1236,7 +1236,7 @@ methodHandle SharedRuntime::resolve_helper(bool is_virtual, bool is_optimized, T
   if (JvmtiExport::can_hotswap_or_post_breakpoint()) {
     int retry_count = 0;
     while (!HAS_PENDING_EXCEPTION && callee_method->is_old() &&
-           callee_method->method_holder() != vmClasses::Object_klass()) {
+            callee_method->method_holder()->active_version() != vmClasses::Object_klass()) {
       // If has a pending exception then there is no need to re-try to
       // resolve this method.
       // If the method has been redefined, we need to try again.

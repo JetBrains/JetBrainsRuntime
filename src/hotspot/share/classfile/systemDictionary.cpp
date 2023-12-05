@@ -2362,7 +2362,7 @@ Handle SystemDictionary::link_method_handle_constant(Klass* caller,
 
   // call java.lang.invoke.MethodHandleNatives::linkMethodHandleConstant(Class caller, int refKind, Class callee, String name, Object type) -> MethodHandle
   JavaCallArguments args;
-  args.push_oop(Handle(THREAD, caller->java_mirror()));  // the referring class
+  args.push_oop(Handle(THREAD, caller->newest_version()->java_mirror()));  // the referring class
   args.push_int(ref_kind);
   args.push_oop(Handle(THREAD, callee->java_mirror()));  // the target class
   args.push_oop(name_str);
