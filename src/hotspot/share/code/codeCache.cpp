@@ -725,6 +725,18 @@ void CodeCache::blobs_do(CodeBlobClosure* f) {
   }
 }
 
+void CodeCache::blobs_do_dcevm(CodeBlobClosure* f) {
+  assert_locked_or_safepoint(CodeCache_lock);
+  FOR_ALL_ALLOCABLE_HEAPS(heap) {
+    FOR_ALL_BLOBS(cb, *heap) {
+      if (cb->is_alive()) {
+        f->do_code_blob(cb);
+        // (DCEVM) no validation since oops in nmethod blob could be changed
+      }
+    }
+  }
+}
+
 void CodeCache::verify_clean_inline_caches() {
 #ifdef ASSERT
   NMethodIterator iter(NMethodIterator::only_alive_and_not_unloading);

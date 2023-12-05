@@ -214,6 +214,13 @@ intptr_t jfieldIDWorkaround::encode_klass_hash(Klass* k, intptr_t offset) {
       super_klass = field_klass->super();
     }
     debug_only(NoSafepointVerifier nosafepoint;)
+
+    if (AllowEnhancedClassRedefinition) {
+      while (field_klass->old_version() != NULL) {
+        field_klass = field_klass->old_version();
+      }
+    }
+
     uintptr_t klass_hash = field_klass->identity_hash();
     return ((klass_hash & klass_mask) << klass_shift) | checked_mask_in_place;
   } else {
@@ -232,6 +239,13 @@ intptr_t jfieldIDWorkaround::encode_klass_hash(Klass* k, intptr_t offset) {
 bool jfieldIDWorkaround::klass_hash_ok(Klass* k, jfieldID id) {
   uintptr_t as_uint = (uintptr_t) id;
   intptr_t klass_hash = (as_uint >> klass_shift) & klass_mask;
+
+  if (AllowEnhancedClassRedefinition) {
+    while (k->old_version() != NULL) {
+      k = k->old_version();
+    }
+  }
+
   do {
     debug_only(NoSafepointVerifier nosafepoint;)
     // Could use a non-blocking query for identity_hash here...
@@ -494,8 +508,8 @@ JNI_ENTRY_NO_PRESERVE(jboolean, jni_IsAssignableFrom(JNIEnv *env, jclass sub, jc
     HOTSPOT_JNI_ISASSIGNABLEFROM_RETURN(ret);
     return ret;
   }
-  Klass* sub_klass   = java_lang_Class::as_Klass(sub_mirror);
-  Klass* super_klass = java_lang_Class::as_Klass(super_mirror);
+  Klass* sub_klass   = java_lang_Class::as_Klass(sub_mirror)->newest_version();
+  Klass* super_klass = java_lang_Class::as_Klass(super_mirror)->newest_version();
   assert(sub_klass != NULL && super_klass != NULL, "invalid arguments to jni_IsAssignableFrom");
   jboolean ret = sub_klass->is_subtype_of(super_klass) ?
                    JNI_TRUE : JNI_FALSE;
