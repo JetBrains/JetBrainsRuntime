@@ -342,7 +342,8 @@ void JvmtiManageCapabilities::update() {
   }
 
   JvmtiExport::set_can_get_source_debug_extension(avail.can_get_source_debug_extension);
-  JvmtiExport::set_can_maintain_original_method_order(avail.can_maintain_original_method_order);
+  // (DCEVM) dcevm must keep original method order
+  JvmtiExport::set_can_maintain_original_method_order(AllowEnhancedClassRedefinition || avail.can_maintain_original_method_order);
   JvmtiExport::set_can_post_interpreter_events(interp_events);
   JvmtiExport::set_can_hotswap_or_post_breakpoint(
     avail.can_generate_breakpoint_events ||

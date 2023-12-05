@@ -1770,6 +1770,76 @@ void InstanceKlass::do_nonstatic_fields(FieldClosure* cl) {
   FREE_C_HEAP_ARRAY(int, fields_sorted);
 }
 
+int InstanceKlass::do_nonstatic_fields_dcevm_collect_fields(int* fields, int depth) {
+  int offset;
+  InstanceKlass* super = superklass();
+  if (super != NULL) {
+    offset = super->do_nonstatic_fields_dcevm_collect_fields(fields, depth+1);
+  } else {
+    offset = 0;
+  }
+
+  int length = java_fields_count();
+  fieldDescriptor fd;
+  for (int i = 0; i < length; i += 1) {
+    fd.reinitialize(this, i);
+    if (!fd.is_static()) {
+      fields[offset + 0] = fd.offset();
+      fields[offset + 1] = i;
+      fields[offset + 2] = depth;
+      offset += 3;
+    }
+  }
+
+  int num_injected;
+  const InjectedField* const injected = JavaClasses::get_injected(this->name(), &num_injected);
+  for (int i = length; i < length + num_injected; i++) {
+    FieldInfo* f = this->field(i);
+    if (f->is_internal()) {
+      if (!accessFlags_from(f->access_flags()).is_static()) {
+        fields[offset + 0] = f->offset();
+        fields[offset + 1] = i;
+        fields[offset + 2] = depth;
+        offset += 3;
+      }
+    }
+  }
+  return offset;
+}
+
+void InstanceKlass::do_nonstatic_fields_dcevm(FieldClosureDcevm* cl) {
+  int length = fields()->length()/FieldInfo::field_slots;
+  GrowableArray<InstanceKlass*> class_hiearchy;
+  class_hiearchy.push(this);
+  InstanceKlass* super = superklass();
+  while (super != nullptr) {
+    class_hiearchy.push(super);
+    length += super->fields()->length()/FieldInfo::field_slots;
+    super = super->superklass();
+  }
+
+  fieldDescriptor fd;
+  // In DebugInfo nonstatic fields are sorted by offset.
+  int* fields_sorted = NEW_C_HEAP_ARRAY(int, 3*(length+1), mtClass);
+  int last_offset = do_nonstatic_fields_dcevm_collect_fields(fields_sorted, 0);
+  if (last_offset > 0) {
+    length = last_offset;
+    // _sort_Fn is defined in growableArray.hpp.
+    qsort(fields_sorted, length/3, 3*sizeof(int), (_sort_Fn)compare_fields_by_offset);
+    for (int i = 0; i < length; i += 3) {
+      InstanceKlass* ik = class_hiearchy.at(fields_sorted[i + 2]);
+      if (fields_sorted[i + 1] < ik->java_fields_count()) {
+        fd.reinitialize(ik, fields_sorted[i + 1]);
+        cl->do_field(ik, &fd, NULL);
+      } else {
+        FieldInfo* field = ik->field(fields_sorted[i + 1]);
+        cl->do_field(ik, NULL, field);
+      }
+    }
+  }
+  FREE_C_HEAP_ARRAY(int, fields_sorted);
+}
+
 
 void InstanceKlass::array_klasses_do(void f(Klass* k, TRAPS), TRAPS) {
   if (array_klasses() != NULL)

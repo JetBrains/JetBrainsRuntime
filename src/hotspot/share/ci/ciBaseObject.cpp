@@ -32,7 +32,7 @@
 //
 // Set the unique identity number of a ciBaseObject.
 void ciBaseObject::set_ident(uint id) {
-  assert(_ident == 0, "must only initialize once");
+  assert(AllowEnhancedClassRedefinition || _ident == 0, "must only initialize once");
   _ident = id;
 }
 

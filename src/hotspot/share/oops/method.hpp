@@ -981,7 +981,7 @@ public:
   void release_C_heap_structures();
 
   Method* get_new_method() const {
-    InstanceKlass* holder = method_holder();
+    InstanceKlass* holder = InstanceKlass::cast(method_holder()->newest_version());
     Method* new_method = holder->method_with_idnum(orig_method_idnum());
 
     assert(new_method != NULL, "method_with_idnum() should not be NULL");
