@@ -245,8 +245,6 @@ public class WLComponentPeer implements ComponentPeer {
                 if (isWlPopup) {
                     Window popup = (Window) target;
                     final Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
-                    final int parentWidth = popupParent.getWidth();
-                    final int parentHeight = popupParent.getHeight();
                     final Window toplevel = getToplevelFor(popupParent);
                     // We need to provide popup "parent" location relative to
                     // the surface it is painted upon:
@@ -269,10 +267,9 @@ public class WLComponentPeer implements ComponentPeer {
                         popupLog.fine("\toffset from anchor: " + offsetFromParent);
                     }
 
-                    nativeCreateWLPopup(nativePtr,
-                            getParentNativePtr(target), parentX, parentY, parentWidth, parentHeight,
+                    nativeCreateWLPopup(nativePtr, getParentNativePtr(target),
                             thisWidth, thisHeight,
-                            offsetX, offsetY);
+                            parentX + offsetX, parentY + offsetY);
                 } else {
                     nativeCreateWLSurface(nativePtr,
                             getParentNativePtr(target),
@@ -456,8 +453,6 @@ public class WLComponentPeer implements ComponentPeer {
         performLocked(() -> {
             Window popup = (Window) target;
             final Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
-            final int parentWidth = popupParent.getWidth();
-            final int parentHeight = popupParent.getHeight();
             final Window toplevel = getToplevelFor(popupParent);
             // We need to provide popup "parent" location relative to
             // the surface it is painted upon:
@@ -473,9 +468,7 @@ public class WLComponentPeer implements ComponentPeer {
                 popupLog.fine("\toffset of anchor from toplevel: " + toplevelLocation);
                 popupLog.fine("\toffset from anchor: " + newX + ", " + newY);
             }
-            nativeRepositionWLPopup(nativePtr, parentX, parentY, parentWidth, parentHeight,
-                    thisWidth, thisHeight,
-                    newX, newY);
+            nativeRepositionWLPopup(nativePtr, thisWidth, thisHeight, parentX + newX, parentY + newY);
         } );
     }
 
@@ -940,14 +933,10 @@ public class WLComponentPeer implements ComponentPeer {
                                                 String title, String appID);
 
     protected native void nativeCreateWLPopup(long ptr, long parentPtr,
-                                              int parentX, int parentY,
-                                              int parentWidth, int parentHeight,
                                               int width, int height,
                                               int offsetX, int offsetY);
 
     protected native void nativeRepositionWLPopup(long ptr,
-                                                  int parentX, int parentY,
-                                                  int parentWidth, int parentHeight,
                                                   int width, int height,
                                                   int offsetX, int offsetY);
     protected native void nativeHideFrame(long ptr);
