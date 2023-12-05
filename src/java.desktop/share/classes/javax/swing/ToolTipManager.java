@@ -355,6 +355,14 @@ public final class ToolTipManager extends MouseAdapter implements MouseMotionLis
                     location.y);
             popupFactory.setPopupType(PopupFactory.LIGHT_WEIGHT_POPUP);
 
+            if (isTooltipPositionedRelatively() && tipWindow.getComponent() != null) {
+                // When only relative positioning is available, we cannot know if
+                // the mouse is still over the "hot spot" area where tooltip needs
+                // to be shown. Instead, we allow the tooltip to remain visible
+                // as long as the mouse is over the tooltip window. To implement that,
+                // we want to know when the mouse enters that window.
+                tipWindow.getComponent().addMouseListener(this);
+            }
             tipWindow.show();
 
             Window componentWindow = SwingUtilities.windowForComponent(
@@ -377,6 +385,9 @@ public final class ToolTipManager extends MouseAdapter implements MouseMotionLis
             if (window != null) {
                 window.removeMouseListener(this);
                 window = null;
+            }
+            if (isTooltipPositionedRelatively() && tipWindow.getComponent() != null) {
+                tipWindow.getComponent().removeMouseListener(this);
             }
             tipWindow.hide();
             tipWindow = null;
@@ -452,6 +463,11 @@ public final class ToolTipManager extends MouseAdapter implements MouseMotionLis
      *  @param event  the event in question
      */
     public void mouseEntered(MouseEvent event) {
+        if (isTooltipPositionedRelatively()) {
+            var source = event.getSource();
+            var tooltipComp = tipWindow != null ? tipWindow.getComponent() : null;
+            tooltipWindowEntered = source == tooltipComp;
+        }
         initiateToolTip(event);
     }
 
@@ -516,6 +532,8 @@ public final class ToolTipManager extends MouseAdapter implements MouseMotionLis
      */
     public void mouseExited(MouseEvent event) {
         boolean shouldHide = true;
+        boolean shouldHideImmediately = false;
+
         if (insideComponent == null) {
             // Drag exit
         }
@@ -563,9 +581,21 @@ public final class ToolTipManager extends MouseAdapter implements MouseMotionLis
                     shouldHide = true;
                 }
             }
+        } else if (isTooltipPositionedRelatively()) {
+            boolean hasExitedTooltipWindow = tipWindow != null && tipWindow.getComponent() == event.getSource();
+            if (hasExitedTooltipWindow) {
+                tooltipWindowEntered = false;
+                shouldHideImmediately = true;
+            }
         }
 
-        if (shouldHide) {
+        if (shouldHide && !shouldHideImmediately && isTooltipPositionedRelatively()) {
+            // Let's wait for the tooltip window to get a chance to generate
+            // the "mouse enter" event. It usually doesn't take long;
+            // in fact, that event is probably in the queue already.
+            hideAttemptsCounter = 3;
+            SwingUtilities.invokeLater(this::maybeHideTipWindow);
+        } else if (shouldHide) {
             enterTimer.stop();
         if (insideComponent != null) {
                 insideComponent.removeMouseMotionListener(this);
@@ -575,6 +605,19 @@ public final class ToolTipManager extends MouseAdapter implements MouseMotionLis
             mouseEvent = null;
             hideTipWindow();
             exitTimer.restart();
+        }
+    }
+
+    private int hideAttemptsCounter = 0;
+    private boolean tooltipWindowEntered = false;
+    private void maybeHideTipWindow() {
+        if (tooltipWindowEntered) {
+            // Don't hide as the mouse is within the tooltip bounds
+            hideAttemptsCounter = 0;
+        } else if (hideAttemptsCounter-- > 0) {
+            SwingUtilities.invokeLater(this::maybeHideTipWindow);
+        } else {
+            hideTipWindow();
         }
     }
 
