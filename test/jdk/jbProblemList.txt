@@ -1261,8 +1261,6 @@ jb/java/awt/Toolkit/LWCToolkitInvokeAndWaitTest.java                            
 java/awt/Dialog/NonResizableDialogSysMenuResize/NonResizableDialogSysMenuResize.java JBR-4250 windows-all
 java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                 JBR-4250 windows-all
 
-java/awt/image/DrawImage/BlitRotateClippedArea.java                                 JBR-4674 macosx-all
-
 javax/swing/SwingUtilities/4917669/bug4917669.java                                  JBR-4677 windows-all
 javax/swing/SwingUtilities/7146377/bug7146377.java                                  JBR-4679 windows-all
 
