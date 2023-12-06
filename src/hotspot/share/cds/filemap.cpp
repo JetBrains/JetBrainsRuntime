@@ -407,16 +407,17 @@ bool SharedClassPathEntry::validate(bool is_class_path) const {
       FileMapInfo::fail_continue("directory is not empty: %s", name);
       ok = false;
     }
-  } else if ((has_timestamp() && _timestamp != st.st_mtime) ||
-             _filesize != st.st_size) {
-    ok = false;
-    if (PrintSharedArchiveAndExit) {
-      FileMapInfo::fail_continue(_timestamp != st.st_mtime ?
-                                 "Timestamp mismatch" :
-                                 "File size mismatch");
-    } else {
-      FileMapInfo::fail_continue("A jar file is not the one used while building"
-                                 " the shared archive file: %s", name);
+  } else {
+    bool size_differs = _filesize != st.st_size;
+    bool time_differs = has_timestamp() && _timestamp != st.st_mtime;
+    if (time_differs || size_differs) {
+      ok = false;
+      if (PrintSharedArchiveAndExit) {
+        FileMapInfo::fail_continue(time_differs ? "Timestamp mismatch" : "File size mismatch");
+      } else {
+        FileMapInfo::fail_continue("This file is not the one used while building"
+                                   " the shared archive file: %s", name);
+      }
     }
   }
 
