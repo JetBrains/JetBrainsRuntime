@@ -32,7 +32,8 @@
 #import "MTLSurfaceData.h"
 #import "JNIUtilities.h"
 
-#define MAX_DRAWABLE    3
+#define MAX_DRAWABLE 3
+#define LAST_DRAWABLE (MAX_DRAWABLE - 1)
 
 const BOOL VSYNC = YES;
 const BOOL USE_CATRANSACTION = NO;
@@ -165,6 +166,12 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     return self;
 }
 
+- (void) freeDrawableCount {
+    @synchronized (self) {
+        self.nextDrawableCount--;
+    }
+}
+
 - (void) blitTexture {
     if (self.ctx == NULL || self.javaLayer == NULL || self.buffer == NULL || *self.buffer == nil ||
         self.ctx.device == nil)
@@ -176,116 +183,140 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         return;
     }
 
-    if (isDisplaySyncEnabled() && (self.redrawCount == 0)) {
-        J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: layer[%p] redrawCount = 0", self);
-        return;
+    // MTLDrawable pool barrier:
+    BOOL skipDrawable = YES;
+    int currentDrawableCount = 0;
+
+    @synchronized (self) {
+        if (self.nextDrawableCount < LAST_DRAWABLE) {
+            // increment used drawables to act as the CPU fence:
+            currentDrawableCount = ++self.nextDrawableCount;
+            skipDrawable = NO;
+        }
     }
 
-    if (self.nextDrawableCount >= (MAX_DRAWABLE - 1)) {
-        if (!isDisplaySyncEnabled()) {
-            [self performSelectorOnMainThread:@selector(setNeedsDisplay) withObject:nil waitUntilDone:NO];
-        }
+    if (skipDrawable) {
+        [self startRedraw];
         return;
     }
 
     // Perform blit:
+    // Decrement redrawCount:
     [self stopRedraw:NO];
 
     @autoreleasepool {
-        if (((*self.buffer).width == 0) || ((*self.buffer).height == 0)) {
-            J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: cannot create drawable of size 0");
-            return;
-        }
+        // try-finally block to ensure releasing the CPU fence (abort blit):
+        BOOL releaseFence = YES;
+        @try {
+            if (((*self.buffer).width == 0) || ((*self.buffer).height == 0)) {
+                J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: cannot create drawable of size 0");
+                return;
+            }
 
-        NSUInteger src_x = self.leftInset * self.contentsScale;
-        NSUInteger src_y = self.topInset * self.contentsScale;
-        NSUInteger src_w = (*self.buffer).width - src_x;
-        NSUInteger src_h = (*self.buffer).height - src_y;
+            const NSUInteger src_x = self.leftInset * self.contentsScale;
+            const NSUInteger src_y = self.topInset * self.contentsScale;
+            const NSUInteger src_w = (*self.buffer).width - src_x;
+            const NSUInteger src_h = (*self.buffer).height - src_y;
 
-        if (src_h <= 0 || src_w <= 0) {
-            J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: Invalid src width or height.");
-            return;
-        }
+            if ((src_h <= 0) || (src_w <= 0)) {
+                J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: Invalid src width or height.");
+                return;
+            }
 
-        id<MTLCommandBuffer> commandBuf = [self.ctx createBlitCommandBuffer];
-        if (commandBuf == nil) {
-            J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: commandBuf is null");
-            return;
-        }
-        id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
-        if (mtlDrawable == nil) {
-            J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null)");
-            return;
-        }
-        // increment used drawables:
-        self.nextDrawableCount++;
-        // Get render version:
-        const int blitVersion = self.renderVersion;
+            const id<MTLCommandBuffer> commandBuf = [self.ctx createBlitCommandBuffer];
+            if (commandBuf == nil) {
+                J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: commandBuf is null");
+                return;
+            }
 
-        BOOL usePresentedHandler = NO;
+            const id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
 
-        if (@available(macOS 10.15.4, *)) {
-            usePresentedHandler = YES;
+            if (mtlDrawable == nil) {
+                J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null)");
+                return;
+            } else {
+                // Keep Fence from now:
+                releaseFence = NO;
+            }
+
+            BOOL usePresentedHandler = NO;
+
+            if (@available(macOS 10.15.4, *)) {
+                usePresentedHandler = YES;
+
+                [self retain];
+                [mtlDrawable addPresentedHandler:^(id <MTLDrawable> drawable) {
+                    // note: called anyway even if drawable.present() not called !
+                    // free drawable only once presented:
+                    [self freeDrawableCount];
+                    [self release];
+                }];
+            }
+
+            const id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
+
+            [blitEncoder
+                    copyFromTexture:(isDisplaySyncEnabled()) ? (*self.buffer) : (*self.outBuffer)
+                        sourceSlice:0 sourceLevel:0
+                       sourceOrigin:MTLOriginMake(src_x, src_y, 0)
+                         sourceSize:MTLSizeMake(src_w, src_h, 1)
+                          toTexture:mtlDrawable.texture destinationSlice:0 destinationLevel:0
+                  destinationOrigin:MTLOriginMake(0, 0, 0)];
+            [blitEncoder endEncoding];
+
+            // Get current render version:
+            const int blitVersion = self.renderVersion;
+
+            if (!isDisplaySyncEnabled()) {
+                if (@available(macOS 10.15.4, *)) {
+                    [commandBuf presentDrawable:mtlDrawable afterMinimumDuration:self.avgBlitFrameTime];
+                } else {
+                    [commandBuf presentDrawable:mtlDrawable];
+                }
+            }
 
             [self retain];
-            [mtlDrawable addPresentedHandler:^(id <MTLDrawable> drawable) {
-                // free drawable only once presented:
-                self.nextDrawableCount--;
-                [self release];
-            }];
-        }
-
-        id<MTLCommandBuffer> renderBuffer =  [self.ctx createCommandBuffer];
-
-        id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
-
-        [blitEncoder
-                copyFromTexture:(isDisplaySyncEnabled()) ? (*self.buffer) : (*self.outBuffer)
-                sourceSlice:0 sourceLevel:0
-                sourceOrigin:MTLOriginMake(src_x, src_y, 0)
-                sourceSize:MTLSizeMake(src_w, src_h, 1)
-                toTexture:mtlDrawable.texture destinationSlice:0 destinationLevel:0
-                destinationOrigin:MTLOriginMake(0, 0, 0)];
-        [blitEncoder endEncoding];
-
-        if (!isDisplaySyncEnabled()) {
-            if (@available(macOS 10.15.4, *)) {
-                [commandBuf presentDrawable:mtlDrawable afterMinimumDuration:self.avgBlitFrameTime];
-            } else {
-                [commandBuf presentDrawable:mtlDrawable];
-            }
-        }
-
-        [self retain];
-        [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-            if (!usePresentedHandler) {
-                self.nextDrawableCount--;
-            }
-            if (isDisplaySyncEnabled()) {
-                // check version:
-                if (self.renderVersion == blitVersion) {
-                    [mtlDrawable performSelectorOnMainThread:@selector(present) withObject:nil waitUntilDone:NO];
-                } else {
-                    // discard drawable:
-                    J2dTraceLn2(J2D_TRACE_INFO, "MTLLayer.blitTexture: layer[%p] discard drawable(%d)",
-                                self, [mtlDrawable drawableID]);
-                    if (usePresentedHandler) {
-                        // free drawable:
-                        self.nextDrawableCount--;
+            [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+                if (!usePresentedHandler) {
+                    // free drawable:
+                    [self freeDrawableCount];
+                }
+                if (isDisplaySyncEnabled()) {
+                    // check version:
+                    // ensure 1 drawable over 3 is presented to avoid freeze with too high-speed render animations:
+                    if ((currentDrawableCount == LAST_DRAWABLE) || (self.renderVersion == blitVersion)) {
+                        // present drawable:
+                        [mtlDrawable performSelectorOnMainThread:@selector(present) withObject:nil waitUntilDone:NO];
+                    } else {
+                        // discard drawable:
+                        // Ensure redraw:
+                        [self startRedraw];
                     }
                 }
-            }
-            if (@available(macOS 10.15.4, *)) {
-                if (!isDisplaySyncEnabled()) {
-                    const NSTimeInterval gpuTime = commandBuf.GPUEndTime - commandBuf.GPUStartTime;
-                    const NSTimeInterval a = 0.25;
-                    self.avgBlitFrameTime = gpuTime * a + self.avgBlitFrameTime * (1.0 - a);
+                if (@available(macOS 10.15.4, *)) {
+                    if (!isDisplaySyncEnabled()) {
+                        const NSTimeInterval gpuTime = commandBuf.GPUEndTime - commandBuf.GPUStartTime;
+                        const NSTimeInterval a = 0.25;
+                        self.avgBlitFrameTime = gpuTime * a + self.avgBlitFrameTime * (1.0 - a);
+                    }
+                }
+                [self release];
+            }];
+
+            [commandBuf commit];
+
+        } @finally {
+            // try-finally block to ensure releasing the CPU fence:
+            if (releaseFence) {
+                // free drawable:
+                [self freeDrawableCount];
+
+                if (isDisplaySyncEnabled()) {
+                    // Increment redrawCount:
+                    [self startRedraw];
                 }
             }
-            [self release];
-        }];
-
-        [commandBuf commit];
+        }
     }
 }
 
