@@ -20,13 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package util;
+package test.jb.testhelpers.TitleBar;
 
 import com.jetbrains.WindowDecorations;
+import test.jb.testhelpers.TitleBar.TaskResult;
+import test.jb.testhelpers.TitleBar.TestUtils;
 
-import java.awt.*;
-import java.lang.reflect.InvocationTargetException;
+import java.awt.AWTException;
+import java.awt.Robot;
+import java.awt.Window;
 import java.util.function.Function;
 
 abstract public class Task {
