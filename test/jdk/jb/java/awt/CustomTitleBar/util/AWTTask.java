@@ -2,6 +2,9 @@ package util;
 
 import com.jetbrains.WindowDecorations;
 
+import test.jb.testhelpers.TitleBar.Task;
+import test.jb.testhelpers.TitleBar.TaskResult;
+import test.jb.testhelpers.TitleBar.TestUtils;
 import java.awt.*;
 import java.util.function.Function;
 
