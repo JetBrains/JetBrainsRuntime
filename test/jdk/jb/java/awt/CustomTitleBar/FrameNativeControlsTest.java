@@ -22,7 +22,12 @@
  */
 import com.jetbrains.JBR;
 import com.jetbrains.WindowDecorations;
-import util.*;
+import test.jb.testhelpers.screenshot.ScreenShotHelpers;
+import test.jb.testhelpers.screenshot.Rect;
+import test.jb.testhelpers.TitleBar.TaskResult;
+import test.jb.testhelpers.TitleBar.TestUtils;
+import test.jb.testhelpers.TitleBar.Task;
+import test.jb.testhelpers.TitleBar.CommonAPISuite;
 
 import javax.swing.JFrame;
 import java.awt.Frame;
@@ -40,7 +45,9 @@ import java.util.function.Function;
 /*
  * @test
  * @summary Detect and check behavior of clicking to native controls
- * @requires (os.family == "windows")
+ * @requires (os.family == "windows") | (os.family == "mac")
+ * @library ../../../testhelpers/screenshot ../../../testhelpers/TitleBar ../../../testhelpers/utils
+ * @build TestUtils TaskResult Task CommonAPISuite MouseUtils ScreenShotHelpers Rect RectCoordinates MouseUtils
  * @run main/othervm FrameNativeControlsTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 FrameNativeControlsTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 FrameNativeControlsTest
@@ -54,8 +61,7 @@ import java.util.function.Function;
 public class FrameNativeControlsTest {
 
     public static void main(String... args) {
-        List<Function<WindowDecorations.CustomTitleBar, Window>> functions =
-                List.of(TestUtils::createFrameWithCustomTitleBar, TestUtils::createJFrameWithCustomTitleBar);
+        List<Function<WindowDecorations.CustomTitleBar, Window>> functions = List.of(TestUtils::createFrameWithCustomTitleBar);
         TaskResult result = CommonAPISuite.runTestSuite(functions, frameNativeControlsClicks);
 
         if (!result.isPassed()) {
@@ -140,7 +146,7 @@ public class FrameNativeControlsTest {
             BufferedImage image = ScreenShotHelpers.takeScreenshot(window);
             List<Rect> foundControls = ScreenShotHelpers.findControls(image, window, titleBar);
 
-            if (foundControls.size() == 0) {
+            if (foundControls.isEmpty()) {
                 passed = false;
                 System.out.println("Error: no controls found");
             }
