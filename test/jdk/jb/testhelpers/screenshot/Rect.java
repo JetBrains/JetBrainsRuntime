@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package util;
+package test.jb.testhelpers.screenshot;
 
-import java.awt.Color;
+import java.awt.*;
 import java.util.Objects;
 
 public class Rect {
