@@ -110,10 +110,6 @@ compiler/types/correctness/OffTest.java 8225620 solaris-sparcv9
 
 compiler/c2/Test6852078.java 8194310 generic-all
 
-applications/ctw/modules/java_desktop.java 8189604 windows-all
-applications/ctw/modules/java_desktop_2.java 8189604,8204842 generic-all
-applications/ctw/modules/jdk_jconsole.java 8189604 windows-all
-
 compiler/cpuflags/TestAESIntrinsicsOnSupportedConfig.java 8190680 generic-all
 
 compiler/runtime/Test8168712.java 8211769,8211771 generic-ppc64,generic-ppc64le,linux-s390x
