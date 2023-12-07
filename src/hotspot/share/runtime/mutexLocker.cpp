@@ -225,9 +225,9 @@ void mutex_init() {
 
     def(MarkStackFreeList_lock     , PaddedMutex  , leaf     ,   true,  Monitor::_safepoint_check_never);
     def(MarkStackChunkList_lock    , PaddedMutex  , leaf     ,   true,  Monitor::_safepoint_check_never);
-
-    def(MonitoringSupport_lock     , PaddedMutex  , leaf     ,   true,  Monitor::_safepoint_check_never);      // used for serviceability monitoring support
   }
+  def(MonitoringSupport_lock       , PaddedMutex  , leaf     ,   true,  Monitor::_safepoint_check_never);      // used for serviceability monitoring support
+
 #if INCLUDE_SHENANDOAHGC
   if (UseShenandoahGC) {
     def(SATB_Q_FL_lock             , PaddedMutex  , access,      true,  Monitor::_safepoint_check_never);
