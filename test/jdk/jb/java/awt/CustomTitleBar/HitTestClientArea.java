@@ -22,10 +22,15 @@
  */
 
 import com.jetbrains.JBR;
-import util.*;
 
-import javax.swing.JDialog;
-import javax.swing.JFrame;
+import test.jb.testhelpers.TitleBar.TaskResult;
+import test.jb.testhelpers.TitleBar.TestUtils;
+import test.jb.testhelpers.TitleBar.Task;
+import test.jb.testhelpers.TitleBar.CommonAPISuite;
+import test.jb.testhelpers.utils.MouseUtils;
+import util.AWTTask;
+import util.SwingTask;
+
 import javax.swing.JPanel;
 import java.awt.*;
 import java.awt.event.InputEvent;
@@ -39,6 +44,8 @@ import java.util.List;
  * @test
  * @summary Verify control under native actions in custom title bar
  * @requires (os.family == "windows" | os.family == "mac")
+ * @library ../../../testhelpers/screenshot ../../../testhelpers/TitleBar ../../../testhelpers/utils
+ * @build TestUtils TaskResult Task CommonAPISuite MouseUtils ScreenShotHelpers Rect RectCoordinates MouseUtils
  * @run main/othervm HitTestClientArea
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 HitTestClientArea
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 HitTestClientArea
