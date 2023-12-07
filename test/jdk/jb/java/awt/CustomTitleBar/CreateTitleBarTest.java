@@ -22,10 +22,10 @@
  */
 
 import com.jetbrains.JBR;
-import util.CommonAPISuite;
-import util.Task;
-import util.TaskResult;
-import util.TestUtils;
+import test.jb.testhelpers.TitleBar.CommonAPISuite;
+import test.jb.testhelpers.TitleBar.TaskResult;
+import test.jb.testhelpers.TitleBar.TestUtils;
+import test.jb.testhelpers.TitleBar.Task;
 
 import java.lang.invoke.MethodHandles;
 
@@ -33,6 +33,8 @@ import java.lang.invoke.MethodHandles;
  * @test
  * @summary Verify creating to a custom title bar
  * @requires (os.family == "windows" | os.family == "mac")
+ * @library ../../../testhelpers/screenshot ../../../testhelpers/TitleBar ../../../testhelpers/utils
+ * @build TestUtils TaskResult Task CommonAPISuite MouseUtils ScreenShotHelpers Rect RectCoordinates MouseUtils
  * @run main/othervm CreateTitleBarTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 CreateTitleBarTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 CreateTitleBarTest
