@@ -22,17 +22,23 @@
  */
 
 import com.jetbrains.JBR;
-import util.*;
-
+import test.jb.testhelpers.screenshot.ScreenShotHelpers;
+import test.jb.testhelpers.screenshot.Rect;
+import test.jb.testhelpers.TitleBar.CommonAPISuite;
+import test.jb.testhelpers.TitleBar.TaskResult;
+import test.jb.testhelpers.TitleBar.TestUtils;
+import test.jb.testhelpers.TitleBar.Task;
 import java.awt.Robot;
+import java.util.List;
 import java.awt.image.BufferedImage;
 import java.lang.invoke.MethodHandles;
-import java.util.List;
 
 /*
  * @test
  * @summary Verify a property to change visibility of native controls
  * @requires (os.family == "windows" | os.family == "mac")
+ * @library ../../../testhelpers/screenshot ../../../testhelpers/TitleBar ../../../testhelpers/utils
+ * @build TestUtils TaskResult Task CommonAPISuite MouseUtils ScreenShotHelpers Rect RectCoordinates MouseUtils
  * @run main/othervm NativeControlsVisibilityTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 NativeControlsVisibilityTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 NativeControlsVisibilityTest
