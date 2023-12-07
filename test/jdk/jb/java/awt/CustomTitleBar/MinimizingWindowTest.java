@@ -23,7 +23,12 @@
 
 import com.jetbrains.JBR;
 import util.*;
-
+import test.jb.testhelpers.screenshot.ScreenShotHelpers;
+import test.jb.testhelpers.screenshot.Rect;
+import test.jb.testhelpers.TitleBar.CommonAPISuite;
+import test.jb.testhelpers.TitleBar.TaskResult;
+import test.jb.testhelpers.TitleBar.TestUtils;
+import test.jb.testhelpers.TitleBar.Task;
 import java.awt.Frame;
 import java.awt.event.InputEvent;
 import java.awt.event.WindowAdapter;
@@ -38,6 +43,8 @@ import java.util.List;
  * @test
  * @summary Detect and check behavior of clicking to native controls
  * @requires (os.family == "windows" | os.family == "mac")
+ * @library ../../../testhelpers/screenshot ../../../testhelpers/TitleBar ../../../testhelpers/utils
+ * @build TestUtils TaskResult Task CommonAPISuite MouseUtils ScreenShotHelpers Rect RectCoordinates MouseUtils
  * @run main/othervm MinimizingWindowTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 MinimizingWindowTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 MinimizingWindowTest
