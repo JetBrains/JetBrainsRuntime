@@ -20,24 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package util;
+package test.jb.testhelpers.TitleBar;
 
 import com.jetbrains.JBR;
 import com.jetbrains.WindowDecorations;
 
-import javax.swing.JDialog;
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import java.awt.Color;
-import java.awt.Dialog;
-import java.awt.Dimension;
-import java.awt.Frame;
-import java.awt.Graphics;
-import java.awt.Insets;
-import java.awt.Rectangle;
-import java.awt.Toolkit;
-import java.awt.Window;
+import javax.swing.*;
+import java.awt.*;
 import java.util.List;
 import java.util.function.Function;
 
