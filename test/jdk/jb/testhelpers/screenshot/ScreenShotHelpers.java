@@ -20,11 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package util;
+package test.jb.testhelpers.screenshot;
 
 import com.jetbrains.WindowDecorations;
 
+import test.jb.testhelpers.screenshot.Rect;
+import test.jb.testhelpers.screenshot.RectCoordinates;
+import test.jb.testhelpers.TitleBar.TestUtils;
 import javax.imageio.ImageIO;
+
 import java.awt.AWTException;
 import java.awt.Color;
 import java.awt.Rectangle;
@@ -46,10 +50,9 @@ public class ScreenShotHelpers {
         Robot robot = new Robot();
         robot.delay(1000);
 
-        final BufferedImage screenShot = robot.createScreenCapture(
+        return robot.createScreenCapture(
                 new Rectangle(window.getLocationOnScreen().x, window.getLocationOnScreen().y,
                         window.getWidth(), window.getHeight()));
-        return screenShot;
     }
 
     public static String storeScreenshot(String namePrefix, BufferedImage image) throws IOException {
@@ -277,7 +280,7 @@ public class ScreenShotHelpers {
     }
 
     public static List<Rect> detectControls(BufferedImage image, int titleBarHeight, int leftInset, int rightInset) {
-        RectCoordinates coords = ScreenShotHelpers.findRectangleTitleBar(image, titleBarHeight);
+        RectCoordinates coords = findRectangleTitleBar(image, titleBarHeight);
         System.out.println("Detect controls");
         System.out.println(coords);
 
