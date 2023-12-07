@@ -21,10 +21,10 @@
  * questions.
  */
 import com.jetbrains.JBR;
-import util.CommonAPISuite;
-import util.Task;
-import util.TaskResult;
-import util.TestUtils;
+import test.jb.testhelpers.TitleBar.CommonAPISuite;
+import test.jb.testhelpers.TitleBar.TaskResult;
+import test.jb.testhelpers.TitleBar.TestUtils;
+import test.jb.testhelpers.TitleBar.Task;
 
 import java.awt.Robot;
 import java.lang.invoke.MethodHandles;
@@ -33,6 +33,8 @@ import java.lang.invoke.MethodHandles;
  * @test
  * @summary Verify custom title bar in case of changing visibility of a window
  * @requires (os.family == "windows" | os.family == "mac")
+ * @library ../../../testhelpers/screenshot ../../../testhelpers/TitleBar ../../../testhelpers/utils
+ * @build TestUtils TaskResult Task CommonAPISuite MouseUtils ScreenShotHelpers Rect RectCoordinates MouseUtils
  * @run main/othervm WindowVisibilityTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 WindowVisibilityTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 WindowVisibilityTest
