@@ -22,7 +22,11 @@
  */
 
 import com.jetbrains.JBR;
-import util.*;
+import test.jb.testhelpers.TitleBar.TaskResult;
+import test.jb.testhelpers.TitleBar.TestUtils;
+import test.jb.testhelpers.TitleBar.Task;
+import test.jb.testhelpers.TitleBar.CommonAPISuite;
+import test.jb.testhelpers.utils.MouseUtils;
 
 import javax.swing.*;
 import java.awt.*;
@@ -34,6 +38,8 @@ import java.util.List;
  * @test
  * @summary Verify mouse events in custom title bar's area added by ActionListener
  * @requires (os.family == "windows" | os.family == "mac")
+ * @library ../../../testhelpers/screenshot ../../../testhelpers/TitleBar ../../../testhelpers/utils
+ * @build TestUtils TaskResult Task CommonAPISuite MouseUtils ScreenShotHelpers Rect RectCoordinates MouseUtils
  * @run main/othervm ActionListenerTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 ActionListenerTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 ActionListenerTest
