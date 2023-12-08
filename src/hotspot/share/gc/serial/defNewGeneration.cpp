@@ -887,10 +887,6 @@ void DefNewGeneration::gc_epilogue(bool full) {
     } else if (seen_incremental_collection_failed) {
       log_trace(gc)("DefNewEpilogue: cause(%s), not full, seen_failed, will_clear_seen_failed",
                             GCCause::to_string(gch->gc_cause()));
-      assert(gch->gc_cause() == GCCause::_scavenge_alot ||
-             (GCCause::is_user_requested_gc(gch->gc_cause()) && UseConcMarkSweepGC && ExplicitGCInvokesConcurrent) ||
-             !gch->incremental_collection_failed(),
-             "Twice in a row");
       seen_incremental_collection_failed = false;
     }
 #endif // ASSERT
