@@ -110,6 +110,14 @@ AWT_ASSERT_APPKIT_THREAD;
   Block_release(blockCopy);
 }
 
++ (void)performOnMainThreadIfPossible:(SEL)aSelector on:(id)target withObject:(id)arg {
+    if ([NSThread isMainThread]) {
+        [target performSelector:aSelector withObject:arg];
+    } else {
+        [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:NO];
+    }
+}
+
 + (void)performOnMainThreadWaiting:(BOOL)wait block:(void (^)())block {
     if ([NSThread isMainThread] && wait == YES) {
         block();

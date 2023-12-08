@@ -39,10 +39,17 @@
 // scenarios with multiple subsequent updates.
 #define KEEP_ALIVE_COUNT 4
 
+// Min interval between 2 displaylink callbacks (Main thread may be blocked)
+// ~ 2ms (shorter than 240Hz frame time)
+#define KEEP_ALIVE_MIN_INTERVAL 1.0 / 1000.0
+
 // Amount of blit operations per update to make sure that everything is
 // rendered into the window drawable. It does not slow things down as we
 // use separate command queue for blitting.
 #define REDRAW_COUNT 1
+
+#define REDRAW_MIN_INTERVAL 2.0 / 1000.0
+// ((0.5) / 120.0)
 
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern BOOL isDisplaySyncEnabled();
@@ -122,6 +129,7 @@ MTLTransform* tempTransform = nil;
     CVDisplayLinkRef _displayLink;
     NSMutableSet* _layers;
     int _displayLinkCount;
+    CFTimeInterval _lastRedrawTime;
 
     MTLComposite *     _composite;
     MTLPaint *         _paint;
@@ -192,6 +200,8 @@ extern void initSamplers(id<MTLDevice> device);
         }
         _glyphCacheLCD = [[MTLGlyphCache alloc] initWithContext:self];
         _glyphCacheAA = [[MTLGlyphCache alloc] initWithContext:self];
+
+        _lastRedrawTime = 0.0;
     }
     return self;
 }
@@ -537,6 +547,7 @@ extern void initSamplers(id<MTLDevice> device);
 }
 
 - (void)commitCommandBuffer:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay {
+    /* Invoked by RenderQueue Flusher Thread */
     [self.encoderManager endEncoder];
     BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
     MTLLayer *layer = nil;
@@ -564,7 +575,40 @@ extern void initSamplers(id<MTLDevice> device);
 
 - (void) redraw {
     AWT_ASSERT_APPKIT_THREAD;
+    /*
+     * Avoid repeated invocations by UIKit Main Thread
+     * if blocked while many mtlDisplayLinkCallback() invoked meanwhile
+     */
+    const CFTimeInterval now = CACurrentMediaTime();
+    const CFTimeInterval elapsed = (_lastRedrawTime != 0.0) ? (now - _lastRedrawTime) : 0.0;
+
+    if ((elapsed != 0.0) && (elapsed <= KEEP_ALIVE_MIN_INTERVAL)) {
+        if (0)
+        J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "[%.3lf] MTLContext_redraw: elapsed: %.3lf ms => SKIP",
+                       now, 1000.0 * elapsed);
+        return;
+    }
+    _lastRedrawTime = now;
+
     for (MTLLayer *layer in _layers) {
+        // Check last presented time:
+        const CFTimeInterval presentedLastTime = [layer lastPresentedTime];
+
+        if (presentedLastTime != 0.0) {
+            const CFTimeInterval presentedOffset = (now - presentedLastTime);
+
+            if (0)
+            J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "[%.3lf] MTLContext_redraw: presentedOffset: %.3lf ms",
+                           now, 1000.0 * presentedOffset);
+
+            if (presentedOffset <= REDRAW_MIN_INTERVAL) {
+                if (0)
+                J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "[%.3lf] MTLContext_redraw: presentedOffset: %.3lf ms => SKIP",
+                               now, 1000.0 * presentedOffset);
+                continue;
+            }
+        }
+        // Do call display():
         [layer setNeedsDisplay];
     }
     if (_displayLinkCount > 0) {
