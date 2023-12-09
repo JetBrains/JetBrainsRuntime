@@ -2,6 +2,7 @@ java/awt/Dialog/DialogLocationTest.java JBR-6090 windows-all
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java JBR-5538 windows-all
 java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java JBR-6027 windows-all
 java/awt/dnd/MissedDragEnterTest.java JBR-6091 windows-all
+java/awt/dnd/MozillaDnDTest.java JBR-6442 linux-all
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java JBR-6292 windows-all
 java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java JBR-6292 windows-all
 java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 linux-x64,windows-aarch64,macosx-all
