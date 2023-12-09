@@ -24,12 +24,14 @@
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Robot;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import javax.swing.plaf.FontUIResource;
 
 /* @test
@@ -54,8 +56,7 @@ public class JLabel269 {
         }
     }
 
-    public static void main(String[] args) {
-
+    public static void main(String[] args) throws Exception {
         String labelText = "<html><body><code>A</code></body></html>";
 
         verbose = Arrays.asList(args).contains("-verbose");
@@ -63,23 +64,31 @@ public class JLabel269 {
         JFrame mainFrame = new JFrame();
 
         JPanel container = new JPanel();
-        container.setLayout(new BoxLayout(container, BoxLayout.X_AXIS));
 
         JPanel p1 = new JPanel();
         JLabel l1 = new JLabelTest(labelText);
-        l1.setFont(new FontUIResource("Tahoma", Font.PLAIN, 36));
-        p1.add(l1);
-        container.add(p1);
-
         JPanel p2 = new JPanel();
         JLabel l2 = new JLabelTest(labelText);
-        l2.setFont(new FontUIResource("Tahoma", Font.PLAIN, 72));
-        p2.add(l2);
-        container.add(p2);
 
-        mainFrame.add(container);
-        mainFrame.pack();
-        mainFrame.setVisible(true);
+        Robot robot = new Robot();
+
+        SwingUtilities.invokeAndWait(() -> {
+            container.setLayout(new BoxLayout(container, BoxLayout.X_AXIS));
+
+            l1.setFont(new FontUIResource("Tahoma", Font.PLAIN, 36));
+            p1.add(l1);
+            container.add(p1);
+
+            l2.setFont(new FontUIResource("Tahoma", Font.PLAIN, 72));
+            p2.add(l2);
+            container.add(p2);
+
+            mainFrame.add(container);
+            mainFrame.pack();
+            mainFrame.setVisible(true);
+        });
+        robot.waitForIdle();
+        robot.delay(100);
 
         BufferedImage bi = new BufferedImage(
                 l1.getWidth(), l1.getHeight(), BufferedImage.TYPE_INT_ARGB);
