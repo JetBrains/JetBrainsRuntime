@@ -202,7 +202,10 @@ vmTestbase/nsk/jdi/LaunchingConnector/launchnosuspend/launchnosuspend001/TestDes
 
 vmTestbase/nsk/jdi/ThreadReference/stop/stop001/TestDescription.java 7034630 generic-all
 vmTestbase/nsk/jdi/ReferenceType/instances/instances002/instances002.java initial_run linux-all
+vmTestbase/nsk/jdi/Value/type/type002/type002.java time_out_intermittent macosx-x64
 vmTestbase/nsk/jdi/Value/type/type003/TestDescription.java time_out_intermittent macosx-all
+vmTestbase/nsk/jdi/VirtualMachine/canGetBytecodes/cangetbytecodes001/TestDescription.java time_out_intermittent macosx-aarch64
+vmTestbase/nsk/jdi/VirtualMachine/canGetCurrentContendedMonitor/cangccm001/TestDescription.java time_out_intermittent macosx-aarch64
 
 vmTestbase/metaspace/gc/firstGC_10m/TestDescription.java 8208250 generic-all
 vmTestbase/metaspace/gc/firstGC_50m/TestDescription.java 8208250 generic-all

@@ -115,10 +115,12 @@ java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 linu
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-6334 macosx-all
 java/awt/FlowLayout/PreferredLayoutSize.java JBR-6348 windows-aarch64
 java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java JBR-6335,NOBUG linux-all,windows-all #timeout on windows
+java/awt/Frame/8158918/SetExtendedState.java JBR-6408 linux-x64
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java NOBUG windows-all timeout
 java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout
 java/awt/Robot/NonEmptyErrorStream.java JBR-6275 macosx-all
 
+javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java 8253184,JBR-5510,JBR-803 windows-all,linux-all,macosx-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java NOBUG windows-x64 #timeout
 
 jb/java/awt/CustomTitleBar/FrameNativeControlsMacOSTest.java JBR-6354 macosx-all
@@ -134,15 +136,6 @@ jb/java/awt/Focus/WrongFrameFocusedOnModalDialogClosing.java NOBUG windows-x64 #
 jb/java/awt/Window/ModalDialogAndPopup.java JBR-4984,NOBUG windows-x64,macosx-all #timeout
 jb/java/awt/Window/UndecoratedDialogInTransientsChain.java NOBUG windows-x64 #Frame should have been closed
 jb/java/jcef/HwFacadeWindowNoFrontTest.java NOBUG windows-x64 #window is not above the bottom frame
-
-jb/sun/awt/macos/InputMethodTest/DeadKeysTest.java JBR-6331 macosx-all
-jb/sun/awt/macos/InputMethodTest/KeyCodesTest.java JBR-6331 macosx-all
-jb/sun/awt/macos/InputMethodTest/NextAppWinKeyTest.java JBR-6331 macosx-all
-jb/sun/awt/macos/InputMethodTest/PinyinFullWidthPunctuationTest.java JBR-6331 macosx-all
-jb/sun/awt/macos/InputMethodTest/PinyinHalfWidthPunctuationTest.java JBR-6331 macosx-all
-jb/sun/awt/macos/InputMethodTest/PinyinQuotesTest.java JBR-6331 macosx-all
-jb/sun/awt/macos/InputMethodTest/RomajiYenTest.java JBR-6331 macosx-all
-jb/sun/awt/macos/InputMethodTest/UnderlyingLayoutTest.java JBR-6331 macosx-all
 
 sanity/client/SwingSet/src/EditorPaneDemoTest.java NOBUG windows-x64 #failures: 5
 

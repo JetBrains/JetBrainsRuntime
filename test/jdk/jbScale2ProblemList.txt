@@ -30,7 +30,7 @@ java/awt/PopupMenu/PopupMenuLocation.java                                       
 javax/swing/JComponent/7154030/bug7154030.java 8297454,JBR-5359,JBR-5510,JBR-6134 macosx-all,windows-aarch64,linux-5.18.2-arch1-1,windows-x64
 javax/swing/JEditorPane/8195095/ImageViewTest.java 8253184,JBR-5510,JBR-6283 windows-all,linux-all,macos-all
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      7124313,JBR-5071 macosx-all,linux-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java JBR-6090 windows-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6090 linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java JBR-6090 windows-all
 javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java 8274106,JBR-6090,8253184,JBR-5510,JBR-803 windows-all,linux-all,macosx-all
 
