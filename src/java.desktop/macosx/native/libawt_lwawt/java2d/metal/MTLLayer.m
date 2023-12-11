@@ -316,17 +316,12 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
     if (cbwrapper != nil) {
         id <MTLCommandBuffer> commandbuf =[cbwrapper getCommandBuffer];
-        if (isDisplaySyncEnabled() || !updateDisplay) {
-            [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-                [cbwrapper release];
-            }];
-        } else {
-            [self retain];
-            [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-                [cbwrapper release];
-                [self release];
-            }];
+        if (!isDisplaySyncEnabled() && updateDisplay) {
+            [self flushBuffer:mtlc];
         }
+        [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+            [cbwrapper release];
+        }];
         [commandbuf commit];
         if (isDisplaySyncEnabled()) {
             [self startRedraw];
