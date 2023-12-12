@@ -1890,6 +1890,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                                                      localEnv.displayChanged());
             }
         }
+        super.initializeDesktopProperties();
     }
 
     /**
