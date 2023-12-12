@@ -5,13 +5,13 @@
 JetBrains Runtime is a fork of [OpenJDK](https://github.com/openjdk/jdk) available for Windows, Mac OS X, and Linux.
 It supports enhanced class redefinition ([DCEVM](https://ssw.jku.at/dcevm/)),
 features optional [JCEF](https://github.com/JetBrains/jcef), a framework for embedding Chromium-based browsers,
-includes a number of improvements in font rendering, keyboards support, 
+includes a number of improvements in font rendering, keyboards support,
 windowing/focus subsystems, HiDPI, accessibility, and performance, provides better desktop integration
 and bugfixes not yet present in OpenJDK.
 
-> **_NOTE_**: This is a **development** branch that is periodically synchronized with 
+> **_NOTE_**: This is a **development** branch that is periodically synchronized with
 > the [OpenJDK master](https://github.com/openjdk/jdk/tree/master) branch.
-> 
+>
  Release builds are based on these branches:
  * [jbr11](https://github.com/JetBrains/JetBrainsRuntime/tree/jbr11) (JDK 11)
  * [jbr17](https://github.com/JetBrains/JetBrainsRuntime/tree/jbr17) (JDK 17)
@@ -65,7 +65,7 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
 
 ## Why Use JetBrains Runtime?
 * **Embedded browser**: JetBrains Runtime includes the Java Chromium Embedded Framework ([JCEF](https://github.com/JetBrains/jcef)), which
-  enables you to embed a Chromium-based browsers in your JVM-based application. 
+  enables you to embed a Chromium-based browsers in your JVM-based application.
  To use it, [download a build with JCEF](https://github.com/JetBrains/JetBrainsRuntime/releases).
 * **Enhanced class re-definition** with the [DCEVM](https://ssw.jku.at/dcevm/) technology that makes it easier to reload
   changed code without restarting JVM; this feature needs to be explicitly enabled with `-XX:+AllowEnhancedClassRedefinition`.
@@ -104,11 +104,11 @@ git clone git@github.com:JetBrains/JetBrainsRuntime.git
 ```
 
 ## Configuring the Build Environment
-Here are quick per-platform instructions for those who can't wait to get started. 
+Here are quick per-platform instructions for those who can't wait to get started.
 Please refer to [OpenJDK build docs](https://openjdk.java.net/groups/build/doc/building.html) for in-depth
 coverage of all the details.
 
-> **_TIP:_**  To get a preliminary report of what's missing, run `./configure` and check its output. 
+> **_TIP:_**  To get a preliminary report of what's missing, run `./configure` and check its output.
 > It would usually have meaningful advice on how to solve the problem.
 
 ### Linux (Docker)
@@ -131,7 +131,7 @@ $ docker run -v `pwd`../../../../:/JetBrainsRuntime -it 942ea9900054
 Install the necessary tools, libraries, and headers with:
 ```
 $ sudo apt-get install autoconf make build-essential libx11-dev libxext-dev libxrender-dev libxtst-dev \
-       libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev libspeechd-dev
+       libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev libspeechd-dev libdbus-1-dev
 ```
 Get Java 21 (for instance, [Azul Zulu Builds of OpenJDK 21](https://www.azul.com/downloads/?version=java-21-lts&os=linux&package=jdk#zulu)).
 
@@ -148,7 +148,7 @@ This will build the release configuration under `./build/linux-x86_64-server-rel
 <a name="build-windows"></a>
 Install the following:
 * [Cygwin x64](http://www.cygwin.com/).
-  Required packages: `autoconf`, `binutils`, `cpio`, `diffutils`, `file`, `gawk`, `gcc-core`, `make`, `m4`, `unzip`, `zip`.  
+  Required packages: `autoconf`, `binutils`, `cpio`, `diffutils`, `file`, `gawk`, `gcc-core`, `make`, `m4`, `unzip`, `zip`.
   Install those together with Cygwin.
 * [Visual Studio compiler toolset](https://visualstudio.microsoft.com/downloads/).
   Install with the desktop development kit, which includes Windows SDK and compilers.
@@ -156,14 +156,14 @@ Install the following:
 * Java 21 (for instance, [Azul Zulu Builds of OpenJDK 21](https://www.azul.com/downloads/?version=java-21-lts&os=windows&package=jdk#zulu)).
   If you have problems while configuring, read [Java tips on Cygwin](http://horstmann.com/articles/cygwin-tips.html).
 
-From the command line: 
+From the command line:
 ```
 "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" amd64
 "c:\Program_Files\cygwin64\bin\mintty.exe" /bin/bash -l
 ```
-The first command sets up environment variables, the second starts a Cygwin shell with the proper environment.  
+The first command sets up environment variables, the second starts a Cygwin shell with the proper environment.
 
-In the Cygwin shell: 
+In the Cygwin shell:
 ```
 $ cd JetBrainsRuntime
 $ git checkout main
@@ -224,7 +224,7 @@ configurations (for example, `release` and `fastdebug`), supply the `--conf <con
 Then open the git root directory as a project in IDEA.
 
 ## Contributing
-We are happy to receive your pull requests! 
+We are happy to receive your pull requests!
 Before you submit one, please sign our [Contributor License Agreement (CLA)](https://www.jetbrains.com/agreements/cla/).
 
 ## Resources
