@@ -168,6 +168,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBAWT, \
     DISABLED_WARNINGS_clang_debug_trace.c := format-nonliteral, \
     DISABLED_WARNINGS_clang_Trace.c := format-nonliteral, \
     DISABLED_WARNINGS_clang_TransformHelper.c := sign-compare, \
+    DISABLED_WARNINGS_clang_system_properties.c := format-nonliteral, \
     DISABLED_WARNINGS_microsoft := 4244 4996, \
     DISABLED_WARNINGS_microsoft_awt_Toolkit.cpp := 4267, \
     LDFLAGS_macosx := -L$(INSTALL_LIBRARIES_HERE), \
@@ -892,6 +893,8 @@ ifeq ($(call isTargetOs, macosx), true)
       DISABLED_WARNINGS_clang_OGLBufImgOps.c := format-nonliteral, \
       DISABLED_WARNINGS_clang_OGLPaints.c := format-nonliteral, \
       DISABLED_WARNINGS_clang_PrinterView.m := enum-conversion, \
+      DISABLED_WARNINGS_clang_SystemHotkey.m := format-nonliteral, \
+      DISABLED_WARNINGS_clang_system_properties.c := format-nonliteral, \
       LDFLAGS := -L$(INSTALL_LIBRARIES_HERE), \
       JDK_LIBS_macosx := -lawt -ljava -ljvm -lmlib_image -losxapp, \
       LIBS_macosx := $(LIBM) \
