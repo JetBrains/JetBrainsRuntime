@@ -25,6 +25,7 @@
 package sun.awt;
 
 import java.awt.RenderingHints;
+import java.awt.Toolkit;
 
 import static java.awt.RenderingHints.KEY_TEXT_ANTIALIASING;
 import static java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_DEFAULT;
@@ -50,6 +51,8 @@ import java.awt.image.WritableRaster;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import sun.awt.X11.XBaseWindow;
 import sun.security.action.GetIntegerAction;
@@ -108,6 +111,12 @@ public abstract class UNIXToolkit extends SunToolkit
     private Boolean nativeGTKAvailable;
     private Boolean nativeGTKLoaded;
     private BufferedImage tmpImage = null;
+    private static native void toolkitInit();
+
+    protected UNIXToolkit() {
+        toolkitInit();
+        updateOsThemeProperty();
+    }
 
     public static int getDatatransferTimeout() {
         @SuppressWarnings("removal")
@@ -478,6 +487,8 @@ public abstract class UNIXToolkit extends SunToolkit
         return result;
     }
 
+    private static native int isSystemDarkColorScheme();
+
     @Override
     public boolean isRunningOnWayland() {
         return isOnWayland();
@@ -495,6 +506,16 @@ public abstract class UNIXToolkit extends SunToolkit
     // (e.g. the window's own title or the area in the side dock without
     // application icons).
     private static final WindowFocusListener waylandWindowFocusListener;
+
+    private static final String OS_THEME_IS_DARK = "awt.os.theme.isDark";
+
+    private void updateOsThemeProperty() {
+        int isSystemDarkColorScheme = isSystemDarkColorScheme();
+
+        if (isSystemDarkColorScheme >= 0) {
+            setDesktopProperty(OS_THEME_IS_DARK, isSystemDarkColorScheme != 0);
+        }
+    }
 
     static {
         if (isOnWayland()) {
@@ -529,6 +550,19 @@ public abstract class UNIXToolkit extends SunToolkit
         } else {
             waylandWindowFocusListener = null;
         }
+
+        final int delayBetweenRepeatMillis = 1000;
+        Timer systemPropertyWatcherTimer = new Timer("SystemPropertyWatcher", true);
+
+        TimerTask currentRepeatTask = new TimerTask() {
+            @Override
+            public void run() {
+                if (Toolkit.getDefaultToolkit() instanceof UNIXToolkit unixTK) {
+                    unixTK.updateOsThemeProperty();
+                }
+            }
+        };
+        systemPropertyWatcherTimer.scheduleAtFixedRate(currentRepeatTask, 0, delayBetweenRepeatMillis);
     }
 
     private static void addWaylandWindowFocusListenerToWindow(Window window) {
