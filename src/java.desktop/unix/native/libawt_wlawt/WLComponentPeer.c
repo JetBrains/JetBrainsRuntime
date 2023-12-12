@@ -432,7 +432,8 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestUnsetFullScreen
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
       (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr,
-       jint x, jint y, jboolean isModal,
+       jint x, jint y,
+       jboolean isModal, jboolean isMaximized, jboolean isMinimized,
        jstring title, jstring appid)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
@@ -453,6 +454,12 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
     frame->xdg_toplevel = xdg_surface_get_toplevel(frame->xdg_surface);
     CHECK_NULL(frame->xdg_toplevel);
     xdg_toplevel_add_listener(frame->xdg_toplevel, &xdg_toplevel_listener, frame);
+    if (isMaximized) {
+        xdg_toplevel_set_maximized(frame->xdg_toplevel);
+    }
+    if (isMinimized) {
+        xdg_toplevel_set_minimized(frame->xdg_toplevel);
+    }
     if (title) {
         FrameSetTitle(env, frame, title);
     }
