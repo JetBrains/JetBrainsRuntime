@@ -1840,6 +1840,8 @@ public abstract class SunToolkit extends Toolkit
     /* A variable defined for the convenience of JDK code */
     public static final String DESKTOPFONTHINTS = "awt.font.desktophints";
 
+    public static final String DESKTOPTHEMEISDARK = "awt.os.theme.isDark";
+
     /* Overridden by subclasses to return platform/desktop specific values */
     protected RenderingHints getDesktopAAHints() {
         return null;

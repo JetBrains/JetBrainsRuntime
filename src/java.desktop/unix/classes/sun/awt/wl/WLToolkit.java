@@ -36,6 +36,7 @@ import sun.awt.PeerEvent;
 import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
 import sun.awt.datatransfer.DataTransferer;
+import sun.java2d.SunGraphicsEnvironment;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
@@ -139,6 +140,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     private final WLClipboard selection;
 
     private static native void initIDs();
+    private static native void awt_toolkit_init();
 
     static {
         if (!GraphicsEnvironment.isHeadless()) {
@@ -218,6 +220,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public void run() {
+        awt_toolkit_init();
         while(true) {
             AWTAutoShutdown.notifyToolkitThreadFree(); // will now wait for events
             int result = readEvents();
@@ -831,9 +834,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public synchronized void addPropertyChangeListener(String name, PropertyChangeListener pcl) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.addPropertyChangeListener()");
-        }
+        super.addPropertyChangeListener(name, pcl);
     }
 
     /**

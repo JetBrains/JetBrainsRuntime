@@ -52,6 +52,8 @@
 #include "WLGraphicsEnvironment.h"
 #include "memory_utils.h"
 #include "java_awt_event_KeyEvent.h"
+#include "dbus_interface.h"
+#include "system_properties.h"
 
 #ifdef WAKEFIELD_ROBOT
 #include "wakefield-client-protocol.h"
@@ -735,6 +737,14 @@ finalizeInit(JNIEnv *env) {
 }
 
 JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLToolkit_awt_1toolkit_1init (JNIEnv *env, jclass class) {
+    DBusApi *dBus = DBusApi_setupDBusDefault();
+    if (dBus) {
+        SystemProperties_setup(dBus, env);
+    }
+}
+
+JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLToolkit_initIDs
   (JNIEnv *env, jclass clazz)
 {
@@ -859,6 +869,8 @@ JNIEXPORT jint JNICALL
 Java_sun_awt_wl_WLToolkit_readEvents
   (JNIEnv *env, jobject obj)
 {
+    SystemProperties_pullEvent();
+
     // NB: this method should be modeled after wl_display_dispatch_queue() from the Wayland code
     int rc = 0;
 

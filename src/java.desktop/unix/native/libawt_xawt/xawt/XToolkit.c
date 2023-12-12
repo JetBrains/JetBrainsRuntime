@@ -41,6 +41,8 @@
 #include "awt_Component.h"
 #include "awt_MenuComponent.h"
 #include "awt_util.h"
+#include "dbus_interface.h"
+#include "system_properties.h"
 
 #include "sun_awt_X11_XToolkit.h"
 #include "java_awt_SystemColor.h"
@@ -608,6 +610,11 @@ JNIEXPORT void JNICALL Java_sun_awt_X11_XToolkit_waitForEvents (JNIEnv *env, jcl
 JNIEXPORT void JNICALL Java_sun_awt_X11_XToolkit_awt_1toolkit_1init (JNIEnv *env, jclass class) {
     awt_MainThread = pthread_self();
 
+    DBusApi *dBus = DBusApi_setupDBusDefault();
+    if (dBus) {
+        SystemProperties_setup(dBus, env);
+    }
+
     awt_pipe_init();
     readEnv();
 }
@@ -638,6 +645,8 @@ performPoll(JNIEnv *env, jlong nextTaskTime) {
 
     uint32_t timeout = get_poll_timeout(nextTaskTime);
     int32_t result;
+
+    SystemProperties_pullEvent();
 
     if (!pollFdsInited) {
         pollFds[0].fd = ConnectionNumber(awt_display);
