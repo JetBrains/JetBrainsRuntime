@@ -236,11 +236,17 @@ public class WLComponentPeer implements ComponentPeer {
     protected void wlSetVisible(boolean v) {
         this.visible = v;
         if (v) {
-            final String title = getTitle();
-            final boolean isWlPopup = targetIsWlPopup();
-            final int thisWidth = getWidth();
-            final int thisHeight = getHeight();
-            final boolean isModal = targetIsModal();
+            String title = getTitle();
+            boolean isWlPopup = targetIsWlPopup();
+            int thisWidth = getWidth();
+            int thisHeight = getHeight();
+            boolean isModal = targetIsModal();
+
+            int state = (target instanceof Frame frame)
+                    ? frame.getExtendedState()
+                    : Frame.NORMAL;
+            boolean isMaximized = (state & Frame.MAXIMIZED_BOTH) == Frame.MAXIMIZED_BOTH;
+            boolean isMinimized = (state & Frame.ICONIFIED) == Frame.ICONIFIED;
             performLocked(() -> {
                 if (isWlPopup) {
                     Window popup = (Window) target;
@@ -274,7 +280,7 @@ public class WLComponentPeer implements ComponentPeer {
                     nativeCreateWLSurface(nativePtr,
                             getParentNativePtr(target),
                             target.getX(), target.getY(),
-                            isModal,
+                            isModal, isMaximized, isMinimized,
                             title, appID);
                 }
                 final long wlSurfacePtr = getWLSurface(nativePtr);
@@ -929,7 +935,7 @@ public class WLComponentPeer implements ComponentPeer {
     protected native long nativeCreateFrame();
 
     protected native void nativeCreateWLSurface(long ptr, long parentPtr,
-                                                int x, int y, boolean isModal,
+                                                int x, int y, boolean isModal, boolean isMaximized, boolean isMinimized,
                                                 String title, String appID);
 
     protected native void nativeCreateWLPopup(long ptr, long parentPtr,
