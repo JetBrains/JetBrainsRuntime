@@ -1029,6 +1029,8 @@ AWT_ASSERT_APPKIT_THREAD;
     (*env)->DeleteLocalRef(env, platformWindow);
 
     [AWTWindow synthesizeMouseEnteredExitedEventsForAllWindows];
+
+    [self updateFullScreenButtons];
 }
 
 - (void)windowDidMove:(NSNotification *)notification {
