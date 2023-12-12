@@ -78,6 +78,10 @@ ifeq ($(call isTargetOs, windows), true)
       #
 endif
 
+ifeq ($(DBUS_FOUND), false)
+  LIBAWT_EXFILES += dbus_interface.c dbus_interface.h
+endif
+
 ifeq ($(call isTargetOs, linux macosx aix), true)
   LIBAWT_EXFILES += awt_Font.c CUPSfuncs.c fontpath.c X11Color.c
 endif
@@ -111,6 +115,10 @@ LIBAWT_EXTRA_HEADER_DIRS := \
 LIBAWT_CFLAGS += -D__MEDIALIB_OLD_NAMES -D__USE_J2D_NAMES $(X_CFLAGS)
 
 LIBAWT_CFLAGS += -DMLIB_NO_LIBSUNMATH
+
+ifeq ($(DBUS_FOUND), true)
+  LIBAWT_CFLAGS += -DDBUS_FOUND
+endif
 
 ifeq ($(call isTargetOs, windows), true)
   LIBAWT_CFLAGS += -EHsc -DUNICODE -D_UNICODE
@@ -172,7 +180,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBAWT, \
     EXCLUDES := $(LIBAWT_EXCLUDES), \
     EXCLUDE_FILES := $(LIBAWT_EXFILES), \
     OPTIMIZATION := HIGHEST, \
-    CFLAGS := $(CFLAGS_JDKLIB) $(LIBAWT_CFLAGS), \
+    CFLAGS := $(CFLAGS_JDKLIB) $(LIBAWT_CFLAGS) $(DBUS_CFLAGS), \
     EXTRA_HEADER_DIRS := $(LIBAWT_EXTRA_HEADER_DIRS), \
     DISABLED_WARNINGS_gcc := sign-compare unused-result maybe-uninitialized \
         format-nonliteral parentheses unused-value unused-function, \
@@ -296,7 +304,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         EXTRA_HEADER_DIRS := $(LIBAWT_XAWT_EXTRA_HEADER_DIRS), \
         EXCLUDES := $(LIBAWT_XAWT_EXCLUDES), \
         OPTIMIZATION := LOW, \
-        CFLAGS := $(CFLAGS_JDKLIB) $(LIBAWT_XAWT_CFLAGS) \
+        CFLAGS := $(CFLAGS_JDKLIB) $(LIBAWT_XAWT_CFLAGS) $(DBUS_CFLAGS) \
             $(X_CFLAGS), \
         WARNINGS_AS_ERRORS_xlc := false, \
         DISABLED_WARNINGS_gcc := type-limits pointer-to-int-cast \
@@ -438,7 +446,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
       EXCLUDES := $(LIBAWT_HEADLESS_EXCLUDES), \
       OPTIMIZATION := LOW, \
       CFLAGS := $(CFLAGS_JDKLIB) \
-          $(LIBAWT_HEADLESS_CFLAGS), \
+          $(LIBAWT_HEADLESS_CFLAGS) $(DBUS_CFLAGS), \
       EXTRA_HEADER_DIRS := $(LIBAWT_HEADLESS_EXTRA_HEADER_DIRS), \
       DISABLED_WARNINGS_gcc := unused-function, \
       LDFLAGS := $(LDFLAGS_JDKLIB) \

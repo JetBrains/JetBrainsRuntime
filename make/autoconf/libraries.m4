@@ -34,6 +34,7 @@ m4_include([lib-x11.m4])
 m4_include([lib-fontconfig.m4])
 m4_include([lib-speechd.m4])
 m4_include([lib-nvdacontrollerclient.m4])
+m4_include([lib-dbus.m4])
 m4_include([lib-tests.m4])
 
 ################################################################################
@@ -79,11 +80,13 @@ AC_DEFUN_ONCE([LIB_DETERMINE_DEPENDENCIES],
     NEEDS_LIB_FREETYPE=true
   fi
 
-  # Check if alsa is needed
+  # Check if alsa and dbus is needed
   if test "x$OPENJDK_TARGET_OS" = xlinux; then
     NEEDS_LIB_ALSA=true
+    NEEDS_LIB_DBUS=true
   else
     NEEDS_LIB_ALSA=false
+    NEEDS_LIB_DBUS=false
   fi
 
   # Check if ffi is needed
@@ -117,6 +120,7 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBRARIES],
   LIB_SETUP_MISC_LIBS
   LIB_SETUP_SPEECHD
   LIB_SETUP_NVDACONTROLLERCLIENT
+  LIB_SETUP_DBUS
   LIB_TESTS_SETUP_GTEST
 
   BASIC_JDKLIB_LIBS=""
