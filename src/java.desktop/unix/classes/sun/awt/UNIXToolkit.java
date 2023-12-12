@@ -25,6 +25,7 @@
 package sun.awt;
 
 import java.awt.RenderingHints;
+import java.awt.Toolkit;
 
 import static java.awt.RenderingHints.KEY_TEXT_ANTIALIASING;
 import static java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_DEFAULT;
@@ -51,11 +52,13 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
 
+import jdk.internal.misc.InnocuousThread;
 import sun.awt.X11.XBaseWindow;
 import sun.security.action.GetIntegerAction;
 import com.sun.java.swing.plaf.gtk.GTKConstants.TextDirection;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.security.action.GetPropertyAction;
+import sun.util.logging.PlatformLogger;
 
 public abstract class UNIXToolkit extends SunToolkit
 {
@@ -108,6 +111,18 @@ public abstract class UNIXToolkit extends SunToolkit
     private Boolean nativeGTKAvailable;
     private Boolean nativeGTKLoaded;
     private BufferedImage tmpImage = null;
+    private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.UNIXToolkit");
+
+    private static void printError(String str) {
+        log.fine(str);
+    }
+
+    private static native void toolkitInit();
+
+    protected UNIXToolkit() {
+        toolkitInit();
+        initSystemPropertyWatcher();
+    }
 
     public static int getDatatransferTimeout() {
         @SuppressWarnings("removal")
@@ -478,6 +493,8 @@ public abstract class UNIXToolkit extends SunToolkit
         return result;
     }
 
+    private static native int isSystemDarkColorScheme();
+
     @Override
     public boolean isRunningOnXWayland() {
         return isOnXWayland();
@@ -495,6 +512,35 @@ public abstract class UNIXToolkit extends SunToolkit
     // (e.g. the window's own title or the area in the side dock without
     // application icons).
     private static final WindowFocusListener waylandWindowFocusListener;
+
+    private static final String OS_THEME_IS_DARK = "awt.os.theme.isDark";
+
+    private static Thread systemPropertyWatcher = null;
+
+    private void initSystemPropertyWatcher() {
+        int initialSystemDarkColorScheme = isSystemDarkColorScheme();
+
+        if (initialSystemDarkColorScheme >= 0) {
+            setDesktopProperty(OS_THEME_IS_DARK, initialSystemDarkColorScheme != 0);
+
+            systemPropertyWatcher = InnocuousThread.newThread("SystemPropertyWatcher",
+                    () -> {
+                        while (true) {
+                            try {
+                                int isSystemDarkColorScheme = isSystemDarkColorScheme();
+                                if (isSystemDarkColorScheme >= 0) {
+                                    setDesktopProperty(OS_THEME_IS_DARK, isSystemDarkColorScheme != 0);
+                                }
+
+                                Thread.sleep(1000);
+                            } catch (Exception ignored) {
+                            }
+                        }
+                    });
+            systemPropertyWatcher.setDaemon(true);
+            systemPropertyWatcher.start();
+        }
+    }
 
     static {
         if (isOnXWayland()) {
