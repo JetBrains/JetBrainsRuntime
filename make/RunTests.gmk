@@ -735,8 +735,9 @@ define SetupRunJtregTestBody
     $1_JTREG_BASIC_OPTIONS += -vmoptions:"$$($1_AOT_OPTIONS)"
   endif
 
-  clean-workdir-$1:
+  clean-outputdirs-$1:
 	$$(RM) -r $$($1_TEST_SUPPORT_DIR)
+	$$(RM) -r $$($1_TEST_RESULTS_DIR)
 
   $1_COMMAND_LINE := \
       $$(JAVA) $$($1_JTREG_LAUNCHER_OPTIONS) \
@@ -780,7 +781,7 @@ define SetupRunJtregTestBody
         done
   endif
 
-  run-test-$1: clean-workdir-$1 $$($1_AOT_TARGETS)
+  run-test-$1: clean-outputdirs-$1 $$($1_AOT_TARGETS)
 	$$(call LogWarn)
 	$$(call LogWarn, Running test '$$($1_TEST)')
 	$$(call MakeDir, $$($1_TEST_RESULTS_DIR) $$($1_TEST_SUPPORT_DIR) \
