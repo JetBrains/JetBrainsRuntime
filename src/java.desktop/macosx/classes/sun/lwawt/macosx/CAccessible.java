@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -170,7 +170,7 @@ class CAccessible extends CFRetainedResource implements Accessible {
                             }
                         }
                     }
-                } else if (name.compareTo(ACCESSIBLE_STATE_PROPERTY) == 0) {
+                } else if (name.equals(ACCESSIBLE_STATE_PROPERTY)) {
                     AccessibleContext thisAC = accessible.getAccessibleContext();
                     AccessibleRole thisRole = thisAC.getAccessibleRole();
                     Accessible parentAccessible = thisAC.getAccessibleParent();
@@ -226,12 +226,12 @@ class CAccessible extends CFRetainedResource implements Accessible {
                     if (thisRole == AccessibleRole.CHECK_BOX) {
                         execute(ptr -> valueChanged(ptr));
                     }
-                } else if (name.compareTo(ACCESSIBLE_NAME_PROPERTY) == 0) {
+                } else if (name.equals(ACCESSIBLE_NAME_PROPERTY)) {
                     //for now trigger only for JTabbedPane.
                     if (e.getSource() instanceof JTabbedPane) {
                         execute(ptr -> titleChanged(ptr));
                     }
-                } else if (name.compareTo(ACCESSIBLE_VALUE_PROPERTY) == 0) {
+                } else if (name.equals(ACCESSIBLE_VALUE_PROPERTY)) {
                     AccessibleRole thisRole = accessible.getAccessibleContext()
                                                         .getAccessibleRole();
                     if (thisRole == AccessibleRole.SLIDER ||
