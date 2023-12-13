@@ -545,8 +545,8 @@ public:
     virtual MsgRouting WmPaste();
 
     virtual void SetCompositionWindow(RECT &r);
-    virtual void OpenCandidateWindow(int x, int y);
-    virtual void SetCandidateWindow(int iCandType, int x, int y);
+    virtual void OpenCandidateWindow(int caretLeftX, int caretTopY, int caretRightX, int caretBottomY);
+    virtual void SetCandidateWindow(int iCandType, int caretLeftX, int caretTopY, int caretRightX, int caretBottomY);
     virtual MsgRouting WmImeSetContext(BOOL fSet, LPARAM *lplParam);
     virtual MsgRouting WmImeNotify(WPARAM subMsg, LPARAM bitsCandType);
     virtual MsgRouting WmImeStartComposition();
