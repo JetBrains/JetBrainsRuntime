@@ -1219,16 +1219,33 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
           return (LRESULT)activateKeyboardLayout((HKL)lParam);
       }
       case WM_AWT_OPENCANDIDATEWINDOW: {
-          jobject peerObject = (jobject)wParam;
-          AwtComponent* p = (AwtComponent*)JNI_GET_PDATA(peerObject);
+          jobject peerObject = reinterpret_cast<jobject>(wParam);
+          AwtComponent* p = reinterpret_cast<AwtComponent*>( JNI_GET_PDATA(peerObject) );
           DASSERT( !IsBadReadPtr(p, sizeof(AwtObject)));
-          // fix for 4805862: use GET_X_LPARAM and GET_Y_LPARAM macros
-          // instead of LOWORD and HIWORD
-          p->OpenCandidateWindow(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-          env->DeleteGlobalRef(peerObject);
+
+          ::RECT* caretRect = reinterpret_cast<::RECT*>(lParam);
+          DASSERT( !IsBadReadPtr(caretRect, sizeof(*caretRect)) );
+
+          if ( (p != nullptr) && (caretRect != nullptr) ) {
+              p->OpenCandidateWindow(caretRect->left, caretRect->top, caretRect->right, caretRect->bottom);
+          }
+
+          // Cleaning up
+          if (caretRect != nullptr) {
+              free(caretRect);
+              caretRect = nullptr;
+          }
+          if (peerObject != nullptr) {
+              env->DeleteGlobalRef(peerObject);
+              peerObject = nullptr;
+          }
+          p = nullptr;
+
+          // Returning to AwtToolkit::InvokeInputMethodFunction
           AwtToolkit& tk = AwtToolkit::GetInstance();
           tk.m_inputMethodData = 0;
           ::SetEvent(tk.m_inputMethodWaitEvent);
+
           return 0;
       }
 
