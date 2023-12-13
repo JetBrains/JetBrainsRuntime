@@ -603,27 +603,35 @@ final class WInputMethod extends InputMethodAdapter
         Runnable r = new Runnable() {
             @Override
             public void run() {
-                int x = 0;
-                int y = 0;
                 Component client = getClientComponent();
+                Rectangle caretRect = null;
 
                 if (client != null) {
                     if (!client.isShowing()) {
                         return;
                     }
+
                     if (haveActiveClient()) {
-                            Rectangle rc = inputContext.getTextLocation(TextHitInfo.leading(0));
-                            x = rc.x;
-                            y = rc.y + rc.height;
-                    } else {
-                            Point pt = client.getLocationOnScreen();
-                            Dimension size = client.getSize();
-                            x = pt.x;
-                            y = pt.y + size.height;
+                        caretRect = inputContext.getTextLocation(TextHitInfo.leading(0));
+                    }
+                    if (caretRect == null) {
+                        Point pt = client.getLocationOnScreen();
+                        Dimension size = client.getSize();
+                        caretRect = new Rectangle(pt, size);
                     }
                 }
 
-                openCandidateWindow(awtFocussedComponentPeer, x, y);
+                if (caretRect == null) {
+                    openCandidateWindow(awtFocussedComponentPeer, 0, 0, 0, 0);
+                } else {
+                    openCandidateWindow(
+                        awtFocussedComponentPeer,
+                        caretRect.x,
+                        caretRect.y,
+                        caretRect.x + caretRect.width - ( (caretRect.width > 0) ? 1 : 0),
+                        caretRect.y + caretRect.height - ( (caretRect.height > 0) ? 1 : 0)
+                    );
+                }
             }
         };
         WToolkit.postEvent(WToolkit.targetToAppContext(source),
@@ -667,6 +675,6 @@ final class WInputMethod extends InputMethodAdapter
     private native String getNativeIMMDescription();
     static native Locale getNativeLocale();
     static native boolean setNativeLocale(String localeName);
-    private native void openCandidateWindow(WComponentPeer peer, int x, int y);
+    private native void openCandidateWindow(WComponentPeer peer, int caretLeftX, int caretTopY, int caretRightX, int caretBottomY);
     private native boolean isCompositionStringAvailable(int context);
 }
