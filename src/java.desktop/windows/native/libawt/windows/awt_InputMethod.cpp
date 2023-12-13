@@ -407,7 +407,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WInputMethod_setStatusWindowVisible
  * Signature: (Lsun/awt/windows/WComponentPeer;II)V
  */
 JNIEXPORT void JNICALL Java_sun_awt_windows_WInputMethod_openCandidateWindow
-  (JNIEnv *env, jobject self, jobject peer, jint x, jint y)
+  (JNIEnv *env, jobject self, jobject peer, jint caretLeftX, jint caretTopY, jint caretRightX, jint caretBottomY)
 {
     TRY;
 
@@ -415,19 +415,26 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WInputMethod_openCandidateWindow
     JNI_CHECK_PEER_RETURN(peer);
 
     jobject peerGlobalRef = env->NewGlobalRef(peer);
+    if (peerGlobalRef == nullptr) {
+        return;
+    }
 
-    // WARNING! MAKELONG macro treats the given values as unsigned.
-    //   This may lead to some bugs in multiscreen configurations, as
-    //   coordinates can be negative numbers. So, while handling
-    //   WM_AWT_OPENCANDIDATEWINDOW message in AwtToolkit, we should
-    //   carefully extract right x and y values using GET_X_LPARAM and
-    //   GET_Y_LPARAM, not LOWORD and HIWORD
-    // See CR 4805862, AwtToolkit::WndProc
+    // it'd be better to replace the static_cast with a placement new, but it's broken
+    //   in debug builds because the "new" expression is redefined as a macro
+    ::RECT* const caretRect = static_cast<::RECT*>( safe_Malloc(sizeof(::RECT)) );
+    // safe_Malloc throws an std::bad_alloc if fails, so we don't need to add a nullptr check here
+    *caretRect = ::RECT{ caretLeftX, caretTopY, caretRightX, caretBottomY };
 
-    // use special message to open candidate window in main thread.
-    AwtToolkit::GetInstance().InvokeInputMethodFunction(WM_AWT_OPENCANDIDATEWINDOW,
-                                          (WPARAM)peerGlobalRef, MAKELONG(x, y));
-    // global ref is deleted in message handler
+    // use a special message to open a candidate window in main thread.
+    static_assert( sizeof(peerGlobalRef) <= sizeof(WPARAM), "peerGlobalRef may not fit into WPARAM type" );
+    static_assert( sizeof(caretRect) <= sizeof(LPARAM), "caretRect may not fit into LPARAM type" );
+    AwtToolkit::GetInstance().InvokeInputMethodFunction(
+        WM_AWT_OPENCANDIDATEWINDOW,
+        reinterpret_cast<WPARAM>(peerGlobalRef),
+        reinterpret_cast<LPARAM>(caretRect)
+    );
+
+    // peerGlobalRef and caretRect are deleted in the message handler (AwtToolkit::WndProc)
 
     CATCH_BAD_ALLOC;
 }
