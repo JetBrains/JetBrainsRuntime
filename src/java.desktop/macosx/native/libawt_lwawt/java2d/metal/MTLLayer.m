@@ -289,12 +289,12 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         [self.ctx performSelectorOnMainThread:@selector(stopRedraw:) withObject:self waitUntilDone:NO];
     }
 }
-- (void) flushBuffer:(MTLContext*)mtlc {
-    if (self.buffer == NULL) {
+- (void) flushBuffer {
+    if (self.ctx == nil || self.buffer == NULL) {
         return;
     }
     // Copy the rendered texture to the output buffer (blit later) using the render command queue:
-    id <MTLCommandBuffer> commandbuf = [mtlc createCommandBuffer];
+    id <MTLCommandBuffer> commandbuf = [self.ctx createCommandBuffer];
     id <MTLBlitCommandEncoder> blitEncoder = [commandbuf blitCommandEncoder];
     [blitEncoder
             copyFromTexture:(*self.buffer) sourceSlice:0 sourceLevel:0
@@ -316,15 +316,14 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
     if (cbwrapper != nil) {
         id <MTLCommandBuffer> commandbuf =[cbwrapper getCommandBuffer];
-        if (!isDisplaySyncEnabled() && updateDisplay) {
-            [self flushBuffer:mtlc];
-        }
         [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
             [cbwrapper release];
         }];
         [commandbuf commit];
         if (isDisplaySyncEnabled()) {
             [self startRedraw];
+        } else {
+            [self flushBuffer];
         }
 
         if (isDisplaySyncEnabled() && waitUntilCompleted) {
@@ -391,7 +390,7 @@ Java_sun_java2d_metal_MTLLayer_validate
         if (isDisplaySyncEnabled()) {
             [layer startRedraw];
         } else {
-            [layer flushBuffer:layer.ctx];
+            [layer flushBuffer];
         }
     } else {
         layer.ctx = NULL;
