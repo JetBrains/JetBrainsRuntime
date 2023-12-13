@@ -4019,49 +4019,63 @@ void AwtComponent::SetCompositionWindow(RECT& r)
     ImmReleaseContext(hwnd, hIMC);
 }
 
-void AwtComponent::OpenCandidateWindow(int x, int y)
-{
+void AwtComponent::OpenCandidateWindow(
+    const int caretLeftX,
+    const int caretTopY,
+    const int caretRightX,
+    const int caretBottomY
+) {
     UINT bits = 1;
     POINT p = {0, 0}; // upper left corner of the client area
     HWND hWnd = ImmGetHWnd();
     if (!::IsWindowVisible(hWnd)) {
         return;
     }
+
     HWND hTop = GetTopLevelParentForWindow(hWnd);
     ::ClientToScreen(hTop, &p);
-    int sx = ScaleUpAbsX(x) - p.x;
-    int sy = ScaleUpAbsY(y) - p.y;
+    const int sCaretLeftX   = ScaleUpAbsX(caretLeftX)   - p.x;
+    const int sCaretTopY    = ScaleUpAbsY(caretTopY)    - p.y;
+    const int sCaretRightX  = ScaleUpAbsX(caretRightX)  - p.x;
+    const int sCaretBottomY = ScaleUpAbsY(caretBottomY) - p.y;
+
     if (!m_bitsCandType) {
-        SetCandidateWindow(m_bitsCandType, sx, sy);
+        SetCandidateWindow(m_bitsCandType, sCaretLeftX, sCaretTopY, sCaretRightX, sCaretBottomY);
         return;
     }
     for (int iCandType=0; iCandType<32; iCandType++, bits<<=1) {
         if ( m_bitsCandType & bits )
-            SetCandidateWindow(iCandType, sx, sy);
+            SetCandidateWindow(iCandType, sCaretLeftX, sCaretTopY, sCaretRightX, sCaretBottomY);
     }
 }
 
-void AwtComponent::SetCandidateWindow(int iCandType, int x, int y)
-{
+void AwtComponent::SetCandidateWindow(
+    const int iCandType,
+    const int caretLeftX,
+    const int caretTopY,
+    const int caretRightX,
+    const int caretBottomY
+) {
     HWND hwnd = ImmGetHWnd();
     HIMC hIMC = ImmGetContext(hwnd);
     if (hIMC) {
         CANDIDATEFORM cf;
         cf.dwStyle = CFS_CANDIDATEPOS;
         ImmGetCandidateWindow(hIMC, 0, &cf);
-        if (x != cf.ptCurrentPos.x || y != cf.ptCurrentPos.y) {
+        if (caretLeftX != cf.ptCurrentPos.x || caretBottomY != cf.ptCurrentPos.y) {
             cf.dwIndex = iCandType;
-            cf.dwStyle = CFS_CANDIDATEPOS;
-            cf.ptCurrentPos = {x, y};
-            cf.rcArea = {0, 0, 0, 0};
+            cf.dwStyle = CFS_EXCLUDE;
+            cf.ptCurrentPos = {caretLeftX, caretBottomY};
+            cf.rcArea = {caretLeftX, caretTopY, caretRightX, caretBottomY};
+
             ImmSetCandidateWindow(hIMC, &cf);
         }
         COMPOSITIONFORM cfr;
         cfr.dwStyle = CFS_POINT;
         ImmGetCompositionWindow(hIMC, &cfr);
-        if (x != cfr.ptCurrentPos.x || y != cfr.ptCurrentPos.y) {
+        if (caretLeftX != cfr.ptCurrentPos.x || caretBottomY != cfr.ptCurrentPos.y) {
             cfr.dwStyle = CFS_POINT;
-            cfr.ptCurrentPos = {x, y};
+            cfr.ptCurrentPos = {caretLeftX, caretBottomY};
             cfr.rcArea = {0, 0, 0, 0};
             ImmSetCompositionWindow(hIMC, &cfr);
         }
