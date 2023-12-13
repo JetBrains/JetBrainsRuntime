@@ -114,10 +114,6 @@ public class TestCommon extends CDSTestUtils {
         return createArchive(opts);
     }
 
-    public static String[] makeCommandLineForAppCDS(String... args) throws Exception {
-        return args;
-    }
-
     // Create AppCDS archive using appcds options
     public static OutputAnalyzer createArchive(AppCDSOptions opts)
         throws Exception {
