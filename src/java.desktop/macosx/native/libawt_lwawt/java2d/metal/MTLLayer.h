@@ -55,7 +55,7 @@
 - (void) display;
 - (void) startRedraw;
 - (void) stopRedraw:(BOOL)force;
-- (void) flushBuffer:(MTLContext*)mtlc;
+- (void) flushBuffer;
 - (void) commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
 @end
 

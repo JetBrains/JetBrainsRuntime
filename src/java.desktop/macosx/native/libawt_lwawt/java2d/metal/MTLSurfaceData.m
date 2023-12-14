@@ -32,6 +32,7 @@
 #import "MTLSurfaceData.h"
 #include "jlong.h"
 
+extern BOOL isDisplaySyncEnabled();
 jboolean MTLSD_InitMTLWindow(JNIEnv *env, BMTLSDOps *bmtlsdo);
 void MTLSD_SetNativeDimensions(JNIEnv *env, BMTLSDOps *bmtlsdo, jint w, jint h);
 
@@ -76,7 +77,7 @@ static jboolean MTLSurfaceData_initTexture(BMTLSDOps *bmtlsdo, jboolean isOpaque
         textureDescriptor.usage = MTLTextureUsageUnknown;
         textureDescriptor.storageMode = MTLStorageModePrivate;
         bmtlsdo->pTexture = [ctx.device newTextureWithDescriptor: textureDescriptor];
-        if (sfType == MTLSD_FLIP_BACKBUFFER) {
+        if (sfType == MTLSD_FLIP_BACKBUFFER && !isDisplaySyncEnabled()) {
             bmtlsdo->pOutTexture = [ctx.device newTextureWithDescriptor: textureDescriptor];
         } else {
             bmtlsdo->pOutTexture = NULL;
