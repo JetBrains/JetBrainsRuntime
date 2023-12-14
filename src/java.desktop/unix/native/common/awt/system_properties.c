@@ -236,7 +236,7 @@ static bool isDarkColorScheme() {
     return status && res;
 }
 
-void updateAllProperties() {
+static updateAllProperties() {
     setDesktopProperty(JNU_NewStringPlatform(env, THEMEISDARK_DESKTOPPROPERTY),
                        JNU_NewStringPlatform(env, isDarkColorScheme() ? "1" : "0"));
 }
