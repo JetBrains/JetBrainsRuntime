@@ -865,7 +865,13 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 {
                     CHECK_PREVIOUS_OP(MTL_OP_OTHER);
                     jlong pLayerPtr = NEXT_LONG(b);
-                    [mtlc flushBuffer: (MTLLayer*)pLayerPtr];
+                    MTLLayer* layer = (MTLLayer*)pLayerPtr;
+                    if (layer != nil) {
+                        [layer flushBuffer];
+                    } else {
+                        J2dRlsTraceLn(J2D_TRACE_ERROR,
+                                      "MTLRenderQueue_flushBuffer(FLUSH_BUFFER): MTLLayer is nil");
+                    }
                     break;
                 }
 
