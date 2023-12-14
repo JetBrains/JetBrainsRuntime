@@ -31,6 +31,18 @@
  * Used for signal-chaining. See RFE 4381843.
  */
 
+#include "jni.h"
+
+#ifdef SOLARIS
+/* Our redeclarations of the system functions must not have a less
+ * restrictive linker scoping, so we have to declare them as JNIEXPORT
+ * before including signal.h */
+#include "sys/signal.h"
+JNIEXPORT void (*signal(int sig, void (*disp)(int)))(int);
+JNIEXPORT void (*sigset(int sig, void (*disp)(int)))(int);
+JNIEXPORT int sigaction(int sig, const struct sigaction *act, struct sigaction *oact);
+#endif
+
 #include <dlfcn.h>
 #include <errno.h>
 #include <pthread.h>
@@ -313,7 +325,7 @@ int sigaction(int sig, const struct sigaction *act, struct sigaction *oact) {
 }
 
 /* The three functions for the jvm to call into. */
-void JVM_begin_signal_setting() {
+JNIEXPORT void JVM_begin_signal_setting() {
   signal_lock();
   sigemptyset(&jvmsigs);
   jvm_signal_installing = true;
@@ -321,7 +333,7 @@ void JVM_begin_signal_setting() {
   signal_unlock();
 }
 
-void JVM_end_signal_setting() {
+JNIEXPORT void JVM_end_signal_setting() {
   signal_lock();
   jvm_signal_installed = true;
   jvm_signal_installing = false;
@@ -329,7 +341,7 @@ void JVM_end_signal_setting() {
   signal_unlock();
 }
 
-struct sigaction *JVM_get_signal_action(int sig) {
+JNIEXPORT struct sigaction *JVM_get_signal_action(int sig) {
   allocate_sact();
   /* Does race condition make sense here? */
   if (sigismember(&jvmsigs, sig)) {
