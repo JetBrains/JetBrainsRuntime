@@ -40,7 +40,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 
-import static com.jetbrains.desktop.FontExtensions.featuresToStringArray;
+import static com.jetbrains.desktop.FontExtensions.featuresToString;
 import static com.jetbrains.desktop.FontExtensions.getFeatures;
 
 public class FontExtensionsTest {
@@ -94,8 +94,8 @@ public class FontExtensionsTest {
         return isImageEquals(image1, image2);
     }
 
-    private static String[] fontFeaturesAsString(Font font) {
-        return featuresToStringArray(getFeatures(font));
+    private static String fontFeaturesAsString(Font font) {
+        return featuresToString(getFeatures(font));
     }
 
     @JBRTest
@@ -112,16 +112,16 @@ public class FontExtensionsTest {
                 FontExtensions.FeatureTag.ZERO, FontExtensions.FEATURE_ON,
                 FontExtensions.FeatureTag.SALT, 123,
                 FontExtensions.FeatureTag.FRAC, FontExtensions.FEATURE_OFF)));
-        String[] features = {"calt=0", "frac=0", "kern=0", "liga=0", "salt=123", "zero=1"};
-        return Arrays.equals(fontFeaturesAsString(font), features);
+        String features = "calt=0;frac=0;kern=0;liga=0;salt=123;zero=1";
+        return fontFeaturesAsString(font).equals(features);
     }
 
     @JBRTest
     private static Boolean testFeaturesToString2() {
         Font font = BASE_FONT.deriveFont(Map.of(TextAttribute.LIGATURES, TextAttribute.LIGATURES_ON,
                 TextAttribute.KERNING, TextAttribute.KERNING_ON));
-        String[] features = {"calt=1", "kern=1", "liga=1"};
-        return Arrays.equals(fontFeaturesAsString(font), features);
+        String features = "calt=1;kern=1;liga=1";
+        return fontFeaturesAsString(font).equals(features);
     }
 
     @JBRTest
