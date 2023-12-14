@@ -35,7 +35,7 @@
  * @compile GCStressApp.java
  * @run driver ClassFileInstaller -jar gcstress.jar GCStressApp jdk.test.lib.Utils
  * @run driver ClassFileInstaller -jar WhiteBox.jar sun.hotspot.WhiteBox
- * @run main GCStressTest
+ * @run driver GCStressTest
  */
 
 import jdk.test.lib.process.OutputAnalyzer;

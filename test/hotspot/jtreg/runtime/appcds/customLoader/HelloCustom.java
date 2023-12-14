@@ -33,7 +33,7 @@
  * @run driver ClassFileInstaller -jar hello.jar Hello
  * @run driver ClassFileInstaller -jar hello_custom.jar CustomLoadee
  * @run driver ClassFileInstaller -jar WhiteBox.jar sun.hotspot.WhiteBox
- * @run main HelloCustom
+ * @run driver HelloCustom
  */
 
 import jdk.test.lib.process.OutputAnalyzer;

@@ -34,7 +34,7 @@
  *          java.management
  *          jdk.jartool/sun.tools.jar
  * @compile test-classes/Hello.java
- * @run main MoveJDKTest
+ * @run driver MoveJDKTest
  */
 
 import java.io.File;
