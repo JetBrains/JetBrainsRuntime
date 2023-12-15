@@ -39,16 +39,16 @@ import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSession;
-import jdk.testlibrary.SimpleSSLContext;
+import jdk.test.lib.net.SimpleSSLContext;
 
 /*
  * @test
  * @bug 8169415
- * @library /lib/testlibrary/
+ * @library /test/lib
  * @modules java.logging
  *          java.base/sun.net.www
  *          jdk.httpserver/sun.net.httpserver
- * @build jdk.testlibrary.SimpleSSLContext HTTPTest HTTPTestServer HTTPTestClient
+ * @build jdk.test.lib.net.SimpleSSLContext HTTPTest HTTPTestServer HTTPTestClient
  * @summary A simple HTTP test that starts an echo server supporting Digest
  *          authentication, then starts a regular HTTP client to invoke it.
  *          The client first does a GET request on "/", then follows on

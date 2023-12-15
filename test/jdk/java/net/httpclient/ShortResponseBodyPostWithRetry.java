@@ -24,8 +24,8 @@
 /*
  * @test
  * @summary Run of ShortResponseBodyPost with -Djdk.httpclient.enableAllMethodRetry
- * @library /lib/testlibrary
- * @build jdk.testlibrary.SimpleSSLContext
+ * @library /test/lib
+ * @build jdk.test.lib.net.SimpleSSLContext
  * @build ShortResponseBody ShortResponseBodyPost
  * @run testng/othervm
  *       -Djdk.httpclient.HttpClient.log=headers,errors,channel

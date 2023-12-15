@@ -24,9 +24,8 @@
 /**
  * @test
  * @library /test/lib
- * @library /lib/testlibrary/
  * @modules jdk.httpserver
- * @build jdk.testlibrary.SimpleSSLContext
+ * @build jdk.test.lib.net.SimpleSSLContext
  * @compile RedirectOnPost.java
  * @run main/othervm RedirectOnPost
  * @bug 8029127
@@ -39,7 +38,7 @@ import java.util.*;
 import com.sun.net.httpserver.*;
 import java.util.concurrent.*;
 import javax.net.ssl.*;
-import jdk.testlibrary.SimpleSSLContext;
+import jdk.test.lib.net.SimpleSSLContext;
 import jdk.test.lib.net.URIBuilder;
 
 public class RedirectOnPost {

@@ -29,8 +29,8 @@
  * Concrete tests that extend this abstract class will need to include
  * the following jtreg tags:
  *
- * @library /test/testlibrary http2/server
- * @build jdk.testlibrary.SimpleSSLContext HttpServerAdapters
+ * @library /test/lib http2/server
+ * @build jdk.test.lib.net.SimpleSSLContext HttpServerAdapters
  *        ReferenceTracker AbstractThrowingPushPromises
  *        <concrete-class-name>
  * @modules java.base/sun.net.www.http
@@ -40,7 +40,7 @@
  * @run testng/othervm -Djdk.internal.httpclient.debug=true <concrete-class-name>
  */
 
-import jdk.testlibrary.SimpleSSLContext;
+import jdk.test.lib.net.SimpleSSLContext;
 import org.testng.ITestContext;
 import org.testng.ITestResult;
 import org.testng.SkipException;

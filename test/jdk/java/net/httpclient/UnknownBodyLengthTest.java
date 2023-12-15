@@ -39,13 +39,13 @@ import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import jdk.testlibrary.SimpleSSLContext;
+import jdk.test.lib.net.SimpleSSLContext;
 
 /**
  * @test
  * @bug 8207966
- * @library /lib/testlibrary
- * @build jdk.testlibrary.SimpleSSLContext
+ * @library /test/lib
+ * @build jdk.test.lib.net.SimpleSSLContext
  * @run main/othervm -Djdk.httpclient.enableAllMethodRetry
  *                   -Djdk.tls.acknowledgeCloseNotify=true UnknownBodyLengthTest plain false
  * @run main/othervm -Djdk.httpclient.enableAllMethodRetry
