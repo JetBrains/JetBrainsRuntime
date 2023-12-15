@@ -48,7 +48,7 @@
 // use separate command queue for blitting.
 #define REDRAW_COUNT 1
 
-#define REDRAW_MIN_INTERVAL 2.0 / 1000.0
+#define REDRAW_MIN_INTERVAL 0.2 / 1000.0
 // ((0.5) / 120.0)
 
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
