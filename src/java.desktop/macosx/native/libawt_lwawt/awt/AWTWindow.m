@@ -2603,6 +2603,7 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeSetRoundedCor
         w.contentView.wantsLayer = YES;
         w.contentView.layer.cornerRadius = radius;
         w.contentView.layer.masksToBounds = YES;
+        w.contentView.layer.opaque = NO;
         w.backgroundColor = NSColor.clearColor;
         w.opaque = NO;
         // remove corner radius animation
