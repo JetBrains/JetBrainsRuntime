@@ -267,7 +267,13 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 - (void) display {
     AWT_ASSERT_APPKIT_THREAD;
     J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_display() called");
-    [self blitCallback];
+    if (isDisplaySyncEnabled()) {
+        [self blitCallback];
+    } else {
+        // No need to synchronize RQ for blit as we have a separate
+        // texture with complete frame for presenting
+        [self blitTexture];
+    }
     [super display];
 }
 
