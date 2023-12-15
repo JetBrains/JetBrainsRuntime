@@ -209,7 +209,6 @@ wl_pointer_button(void *data, struct wl_pointer *wl_pointer, uint32_t serial,
     pointer_event.button           = button,
     pointer_event.state            = state;
     if (state) {
-        last_input_or_focus_serial = serial;
         last_mouse_pressed_serial = serial;
     }
 }
