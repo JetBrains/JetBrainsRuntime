@@ -36,7 +36,6 @@ import java.util.concurrent.TimeUnit;
  */
 
 public class PopupIncomingFocusTest {
-    private static final CompletableFuture<Boolean> windowOpened = new CompletableFuture<>();
     private static final CompletableFuture<Boolean> popupOpened = new CompletableFuture<>();
     private static final CompletableFuture<Boolean> result = new CompletableFuture<>();
     private static Robot robot;
@@ -51,7 +50,7 @@ public class PopupIncomingFocusTest {
         robot.setAutoWaitForIdle(true);
         try {
             SwingUtilities.invokeAndWait(PopupIncomingFocusTest::init);
-            windowOpened.get(10, TimeUnit.SECONDS);
+            robot.delay(1000);
             launchProcessWithWindow();
             clickAt(button);
             popupOpened.get(10, TimeUnit.SECONDS);
@@ -74,12 +73,6 @@ public class PopupIncomingFocusTest {
         frame = new JFrame();
         frame.add(button);
         frame.setBounds(50, 50, 200, 100);
-        frame.addWindowFocusListener(new WindowAdapter() {
-            @Override
-            public void windowGainedFocus(WindowEvent e) {
-                windowOpened.complete(Boolean.TRUE);
-            }
-        });
 
         field = new JTextField(10);
         field.getCaret().setBlinkRate(0); // prevent caret blink timer from keeping event thread running
