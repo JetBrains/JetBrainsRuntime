@@ -67,6 +67,9 @@ public class JdkConsoleProviderImpl implements JdkConsoleProvider {
      * public Console class.
      */
     private static class JdkConsoleImpl implements JdkConsole {
+        private final Terminal terminal;
+        private volatile LineReader jline;
+
         @Override
         public PrintWriter writer() {
             return terminal.writer();
@@ -108,6 +111,8 @@ public class JdkConsoleProviderImpl implements JdkConsoleProvider {
                 return jline.readLine(fmt.formatted(args), '\0').toCharArray();
             } catch (EndOfFileException eofe) {
                 return null;
+            } finally {
+                jline.getBuffer().zeroOut();
             }
         }
 
@@ -125,9 +130,6 @@ public class JdkConsoleProviderImpl implements JdkConsoleProvider {
         public Charset charset() {
             return terminal.encoding();
         }
-
-        private final LineReader jline;
-        private final Terminal terminal;
 
         public JdkConsoleImpl(Terminal terminal) {
             this.terminal = terminal;
