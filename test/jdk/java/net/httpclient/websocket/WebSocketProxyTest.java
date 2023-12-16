@@ -25,9 +25,9 @@
  * @test
  * @bug 8217429 8236859
  * @summary WebSocket proxy tunneling tests
- * @library /lib/testlibrary
+ * @library /test/lib
  * @compile SecureSupport.java DummySecureWebSocketServer.java ../ProxyServer.java
- * @build jdk.testlibrary.SimpleSSLContext WebSocketProxyTest
+ * @build jdk.test.lib.net.SimpleSSLContext WebSocketProxyTest
  * @run testng/othervm
  *         -Djdk.internal.httpclient.debug=true
  *         -Djdk.internal.httpclient.websocket.debug=true
@@ -59,7 +59,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import jdk.testlibrary.SimpleSSLContext;
+import jdk.test.lib.net.SimpleSSLContext;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

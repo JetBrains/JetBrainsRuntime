@@ -46,8 +46,8 @@ import javax.net.ssl.SSLContext;
  * @test
  * @bug 8232853
  * @summary AuthenticationFilter.Cache::remove may throw ConcurrentModificationException
- * @library /lib/testlibrary http2/server
- * @build jdk.testlibrary.SimpleSSLContext HttpServerAdapters DigestEchoServer
+ * @library /test/lib http2/server
+ * @build jdk.test.lib.net.SimpleSSLContext HttpServerAdapters DigestEchoServer
  * @modules java.net.http/jdk.internal.net.http.common
  * java.net.http/jdk.internal.net.http.frame
  * java.net.http/jdk.internal.net.http.hpack
@@ -71,7 +71,7 @@ public class AuthFilterCacheTest implements HttpServerAdapters {
 
     static {
         try {
-            context = new jdk.testlibrary.SimpleSSLContext().get();
+            context = new jdk.test.lib.net.SimpleSSLContext().get();
             SSLContext.setDefault(context);
         } catch (Exception x) {
             throw new ExceptionInInitializerError(x);

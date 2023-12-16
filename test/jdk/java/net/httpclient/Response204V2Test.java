@@ -24,8 +24,8 @@
 /*
  * @test
  * @bug 8238270
- * @library /lib/testlibrary/ http2/server
- * @build jdk.testlibrary.SimpleSSLContext HttpServerAdapters
+ * @library /test/lib/ http2/server
+ * @build jdk.test.lib.net.SimpleSSLContext HttpServerAdapters
  *       ReferenceTracker Response204V2Test
  * @modules java.base/sun.net.www.http
  *          java.net.http/jdk.internal.net.http.common
@@ -58,7 +58,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import jdk.testlibrary.SimpleSSLContext;
+import jdk.test.lib.net.SimpleSSLContext;
 import org.testng.ITestContext;
 import org.testng.ITestResult;
 import org.testng.SkipException;

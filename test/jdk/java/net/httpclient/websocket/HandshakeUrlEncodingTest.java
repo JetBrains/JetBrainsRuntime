@@ -25,9 +25,8 @@
  * @test
  * @bug 8245245
  * @summary Test for Websocket URI encoding during HandShake
- * @library /lib/testlibrary
  * @library /test/lib
- * @build jdk.testlibrary.SimpleSSLContext
+ * @build jdk.test.lib.net.SimpleSSLContext
  * @modules java.net.http
  *          jdk.httpserver
  * @run testng/othervm -Djdk.internal.httpclient.debug=true HandshakeUrlEncodingTest
@@ -39,7 +38,7 @@ import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsServer;
 import com.sun.net.httpserver.HttpExchange;
 import jdk.test.lib.net.URIBuilder;
-import jdk.testlibrary.SimpleSSLContext;
+import jdk.test.lib.net.SimpleSSLContext;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;

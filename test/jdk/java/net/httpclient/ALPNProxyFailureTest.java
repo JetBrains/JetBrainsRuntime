@@ -27,8 +27,8 @@
  *          when a 'Connection reset by peer' exception is raised
  *          during the handshake.
  * @bug 8217094
- * @library /lib/testlibrary http2/server
- * @build jdk.testlibrary.SimpleSSLContext HttpServerAdapters DigestEchoServer
+ * @library /test/lib http2/server
+ * @build jdk.test.lib.net.SimpleSSLContext HttpServerAdapters DigestEchoServer
  *        ALPNFailureTest ALPNProxyFailureTest
  * @modules java.net.http/jdk.internal.net.http.common
  *          java.net.http/jdk.internal.net.http.frame
@@ -43,7 +43,7 @@
  */
 import javax.net.ServerSocketFactory;
 import javax.net.ssl.SSLContext;
-import jdk.testlibrary.SimpleSSLContext;
+import jdk.test.lib.net.SimpleSSLContext;
 import java.net.InetAddress;
 import java.net.ProxySelector;
 import java.net.ServerSocket;

@@ -24,8 +24,8 @@
 /*
  * @test
  * @bug 8279842 8282293
- * @library /test/lib /lib/testlibrary
- * @build jdk.testlibrary.SimpleSSLContext
+ * @library /test/lib
+ * @build jdk.test.lib.net.SimpleSSLContext
  * @modules java.base/sun.security.util
  *          java.security.jgss/sun.security.jgss
  *          java.security.jgss/sun.security.jgss.krb5
@@ -94,7 +94,7 @@ import javax.net.ssl.X509ExtendedTrustManager;
 import javax.security.auth.Subject;
 
 import jdk.test.lib.Asserts;
-import jdk.testlibrary.SimpleSSLContext;
+import jdk.test.lib.net.SimpleSSLContext;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSManager;
