@@ -32,100 +32,92 @@
 #include <stdlib.h>
 
 #define SIGNAL_NAME "SettingChanged"
-#define THEMEISDARK_DESKTOPPROPERTY "awt.os.theme.isDark"
-
-static const char *interface = "org.freedesktop.portal.Settings";
-static const char *destination = "org.freedesktop.portal.Desktop";
-static const char *path = "/org/freedesktop/portal/desktop";
-
+#define SETTING_INTERFACE "org.freedesktop.portal.Settings"
+#define DESKTOP_DESTINATION "org.freedesktop.portal.Desktop"
+#define DESKTOP_PATH "/org/freedesktop/portal/desktop"
+#define MATCH_RULE "type='signal',sender='" DESKTOP_DESTINATION "',path='"  DESKTOP_PATH "',interface='"  SETTING_INTERFACE "'"
 #define DBUS_MESSAGE_MAX 1024
-#define REPLY_TIMEOUT 100
+#define REPLY_TIMEOUT 150
 
-static DBusConnection *conn = NULL;
+static DBusConnection *connection = NULL;
 static JNIEnv *env = NULL;
 static DBusApi *dBus = NULL;
 static bool initialized = false;
 
-void updateAllProperties();
+static void updateAllProperties(void);
 
 static DBusHandlerResult messageFilter(DBusConnection *conn, DBusMessage *msg, void *data) {
-    if (dBus->dbus_message_is_signal(msg, interface, SIGNAL_NAME)) {
+    if (dBus->dbus_message_is_signal(msg, SETTING_INTERFACE, SIGNAL_NAME)) {
         updateAllProperties();
         return DBUS_HANDLER_RESULT_HANDLED;
     }
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
+static bool dbusCheckError(DBusError *err, const char *msg) {
+    bool is_error_set = dBus->dbus_error_is_set(err);
+    if (is_error_set) {
+        fprintf(stderr, "DBus error: %s. %s\n", msg, err->message);
+        dBus->dbus_error_free(err);
+    }
+    return is_error_set;
+}
+
 bool SystemProperties_setup(DBusApi *dBus_, JNIEnv *env_) {
     env = env_;
     dBus = dBus_;
     DBusError err;
+    int ret;
 
-    // initialise the error
     dBus->dbus_error_init(&err);
-
-    // connect to the bus and check for errors
-    conn = dBus->dbus_bus_get(DBUS_BUS_SESSION, &err);
-    if (NULL == conn) {
-        fprintf(stderr, "Connection Null\n");
+    if ((connection = dBus->dbus_bus_get(DBUS_BUS_SESSION, &err)) == NULL) {
+        fprintf(stderr, "DBus error: connection is Null\n");
         return false;
     }
-    if (dBus->dbus_error_is_set(&err)) {
-        fprintf(stderr, "Connection Error (%s)\n", err.message);
-        dBus->dbus_error_free(&err);
+    if (dbusCheckError(&err, "connection error")) {
         return false;
     }
 
-    // request our name on the bus and check for errors
-    int ret = dBus->dbus_bus_request_name(conn, "test.selector.server",
-                                DBUS_NAME_FLAG_REPLACE_EXISTING , &err);
-    if (dBus->dbus_error_is_set(&err)) {
-        fprintf(stderr, "Name Error (%s)\n", err.message);
-        dBus->dbus_error_free(&err);
+    if ((ret = dBus->dbus_bus_request_name(connection, "dbus.JBR.server", DBUS_NAME_FLAG_REPLACE_EXISTING , &err))
+            != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
+        fprintf(stderr, "DBus error: failed to replace the current primary owner\n");
         return false;
     }
-    if (DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER != ret) {
-        fprintf(stderr, "Not Primary Owner (%d)\n", ret);
+    if (dbusCheckError(&err, "error request 'dbus.JBR.server' name on the bus")) {
         return false;
     }
 
-    char *match_rule = (char *)(malloc(DBUS_MESSAGE_MAX));
-    sprintf(match_rule, "type='signal',sender='%s',path='%s',interface='%s'", destination, path, interface);
-    dBus->dbus_bus_add_match(conn, match_rule, &err);
-    free(match_rule);
-
-    dBus->dbus_connection_add_filter(conn, &messageFilter, dBus, NULL);
-    if (dBus->dbus_error_is_set(&err)) {
-        fprintf(stderr, "connection_add_filter (%s)\n", err.message);
+    dBus->dbus_bus_add_match(connection, MATCH_RULE, &err);
+    if (dbusCheckError(&err, "cannot set match rule")) {
         return false;
     }
 
-    dBus->dbus_connection_flush(conn);
-    if (dBus->dbus_error_is_set(&err)) {
-        fprintf(stderr, "Match Error (%s)\n", err.message);
+    dBus->dbus_connection_add_filter(connection, &messageFilter, NULL, NULL);
+    if (dbusCheckError(&err, "cannot add filter")) {
         return false;
     }
 
+    dBus->dbus_connection_flush(connection);
     initialized = true;
     updateAllProperties();
 
     return true;
 }
 
-void SystemProperties_pullEvent() {
+void SystemProperties_pullEvent(void) {
     if (initialized) {
-        if (!dBus->dbus_connection_read_write(conn, 0)) {
+        if (!dBus->dbus_connection_read_write(connection, 0)) {
             return;
         }
 
-        while (dBus->dbus_connection_dispatch(conn) == DBUS_DISPATCH_DATA_REMAINS) {
-            usleep(10);
+        while (dBus->dbus_connection_dispatch(connection) == DBUS_DISPATCH_DATA_REMAINS) {
         }
-
     }
 }
 
-static bool get_basic_iter(void *val, DBusMessageIter *iter, int demand_type) {
+// current implementation of object decomposition supports only
+// primitive types (including a recursive type wrapper)
+static bool getBasicIter(void *val, DBusMessageIter *iter, int demand_type) {
     int type = dBus->dbus_message_iter_get_arg_type(iter);
     switch (type)
     {
@@ -146,13 +138,16 @@ static bool get_basic_iter(void *val, DBusMessageIter *iter, int demand_type) {
             dBus->dbus_message_iter_get_basic(iter, val);
             return true;
         }
-        case DBUS_TYPE_VARIANT: {
-            DBusMessageIter *subiter = malloc(DBUS_MESSAGE_MAX);
-            dBus->dbus_message_iter_recurse(iter, subiter);
-            bool res = get_basic_iter(val, subiter, demand_type);
-            if (subiter) {
-                free(subiter);
+        case DBUS_TYPE_VARIANT:
+        {
+            DBusMessageIter *sub_iter = malloc(DBUS_MESSAGE_MAX);
+            if (sub_iter == NULL) {
+                return false;
             }
+            dBus->dbus_message_iter_recurse(iter, sub_iter);
+            bool res = getBasicIter(val, sub_iter, demand_type);
+            free(sub_iter);
+            // current implementation doesn't support types with multiple fields
             if (dBus->dbus_message_iter_next(iter)) {
                 return false;
             }
@@ -168,7 +163,7 @@ static bool sendDBusMessageWithReply(const char *name_function, const char **mes
                                        int *messages_type, int message_count, void *val, int demand_type) {
     DBusError error;
     DBusMessage *message = NULL;
-    DBusMessageIter *iter = malloc(DBUS_MESSAGE_MAX);
+    DBusMessageIter *iter = NULL;
     DBusMessage *reply = NULL;
     bool res = false;
 
@@ -177,31 +172,47 @@ static bool sendDBusMessageWithReply(const char *name_function, const char **mes
     }
 
     dBus->dbus_error_init(&error);
-    message = dBus->dbus_message_new_method_call(NULL, path, interface, name_function);
-    dBus->dbus_message_set_auto_start(message, true);
+    message = dBus->dbus_message_new_method_call(NULL, DESKTOP_PATH, SETTING_INTERFACE, name_function);
     if (message == NULL) {
-        fprintf(stderr, "Couldn't allocate D-Bus message\n");
+        fprintf(stderr, "DBus error: cannot allocate message\n");
         goto cleanup;
     }
 
-    if (!dBus->dbus_message_set_destination(message, destination)) {
-        fprintf(stderr, "Not enough memory\n");
+    dBus->dbus_message_set_auto_start(message, true);
+    if (!dBus->dbus_message_set_destination(message, DESKTOP_DESTINATION)) {
+        fprintf(stderr, "DBus error: cannot set destination\n");
+        goto cleanup;
+    }
+
+    iter = malloc(DBUS_MESSAGE_MAX);
+    if (iter == NULL) {
+        fprintf(stderr, "DBus error: cannot allocate memory\n");
         goto cleanup;
     }
 
     dBus->dbus_message_iter_init_append(message, iter);
     for (int i = 0; i < message_count; i++) {
-        dBus->dbus_message_iter_append_basic(iter, messages_type[i], &messages[i]);
+        if (!dBus->dbus_message_iter_append_basic(iter, messages_type[i], &messages[i])) {
+            fprintf(stderr, "DBus error: cannot append to message\n");
+            goto cleanup;
+        }
     }
 
-    reply = dBus->dbus_connection_send_with_reply_and_block(conn, message, REPLY_TIMEOUT, &error);
+    if ((reply = dBus->dbus_connection_send_with_reply_and_block(connection, message, REPLY_TIMEOUT, &error)) == NULL) {
+        fprintf(stderr, "DBus error: cannot get reply to sent message\n");
+        goto cleanup;
+    }
     if (dBus->dbus_error_is_set(&error)) {
-        fprintf(stderr, "Error %s: %s\n", error.name, error.message);
+        fprintf(stderr, "DBus error: cannot send message. %s\n", error.message);
         goto cleanup;
     }
 
-    dBus->dbus_message_iter_init (reply, iter);
-    res = get_basic_iter(val, iter, demand_type);
+    if (!dBus->dbus_message_iter_init (reply, iter)) {
+        fprintf(stderr, "DBus error: cannot process message\n");
+        goto cleanup;
+    }
+
+    res = getBasicIter(val, iter, demand_type);
 
 cleanup:
     if (iter) {
@@ -218,25 +229,51 @@ cleanup:
 
 static void setDesktopProperty(jstring property, jstring value) {
     jclass TKClass = (*env)->FindClass(env, "java/awt/Toolkit");
+    if (!TKClass) {
+        return;
+    }
 
     jmethodID setDesktopProperty = (*env)->GetMethodID(env, TKClass, "setDesktopProperty", "(Ljava/lang/String;Ljava/lang/Object;)V");
     jmethodID getDefaultToolkit = (*env)->GetStaticMethodID(env, TKClass, "getDefaultToolkit", "()Ljava/awt/Toolkit;");
+    if (!setDesktopProperty || !getDefaultToolkit) {
+        return;
+    }
 
     jobject toolkitObject = (*env)->CallStaticObjectMethod(env, TKClass, getDefaultToolkit);
+    JNU_CHECK_EXCEPTION(env);
+    if (!toolkitObject) {
+        return;
+    }
 
     (*env)->CallVoidMethod(env, toolkitObject, setDesktopProperty, property, value);
+    JNU_CHECK_EXCEPTION(env);
 }
 
-static bool isDarkColorScheme() {
+static void updateProperty(const char *property_name, bool (*getProperty)(char *res)) {
+    char str[DBUS_MESSAGE_MAX];
+    if ((getProperty)(str)) {
+        jstring j_property_name = JNU_NewStringPlatform(env, property_name);
+        jstring j_property_value = JNU_NewStringPlatform(env, str);
+        if (j_property_name && j_property_value) {
+            setDesktopProperty(j_property_name, j_property_value);
+        }
+    }
+}
+
+static bool isDarkColorScheme(char *res) {
     const char *name_function = "Read";
     char *messages[] = { "org.freedesktop.appearance", "color-scheme"};
     int messages_type[] = {DBUS_TYPE_STRING, DBUS_TYPE_STRING};
-    int res = 0;
-    bool status = sendDBusMessageWithReply(name_function, (const char **)messages, messages_type, 2, &res, DBUS_TYPE_UINT32);
-    return status && res;
+    unsigned int int_res = 0;
+    if (!sendDBusMessageWithReply(name_function, (const char **)messages, messages_type, 2, &int_res, DBUS_TYPE_UINT32)) {
+        return false;
+    }
+    if (sprintf(res, "%u", int_res) < 0) {
+        return false;
+    }
+    return true;
 }
 
-static updateAllProperties() {
-    setDesktopProperty(JNU_NewStringPlatform(env, THEMEISDARK_DESKTOPPROPERTY),
-                       JNU_NewStringPlatform(env, isDarkColorScheme() ? "1" : "0"));
+static void updateAllProperties(void) {
+    updateProperty("awt.os.theme.isDark", isDarkColorScheme);
 }

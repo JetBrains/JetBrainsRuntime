@@ -34,7 +34,7 @@
 
 #include "dbus_interface.h"
 
-bool SystemProperties_setup(DBusApi *dBus, JNIEnv *env_);
-void SystemProperties_pullEvent();
+bool SystemProperties_setup(DBusApi *dBus_, JNIEnv *env_);
+void SystemProperties_pullEvent(void);
 
 #endif //JETBRAINSRUNTIME_SYSTEM_PROPERTIES_H

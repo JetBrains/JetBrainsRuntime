@@ -114,13 +114,12 @@ typedef struct DBusApi {
 
     void (*dbus_error_free)(DBusError *error);
 
-    int (*dbus_bus_request_name)(DBusConnection *connection, const char *name,
-                                    unsigned int flags, DBusError *error);
+    int (*dbus_bus_request_name)(DBusConnection *connection, const char *name, unsigned int flags, DBusError *error);
 
     void (*dbus_bus_add_match)(DBusConnection *connection, const char *rule, DBusError *error);
 
     dbus_bool_t (*dbus_connection_add_filter)(DBusConnection *connection, DBusHandleMessageFunction function,
-                                                 void *user_data, DBusFreeFunction free_data_function);
+            void *user_data, DBusFreeFunction free_data_function);
 
     void (*dbus_connection_flush)(DBusConnection *connection);
 
@@ -130,13 +129,14 @@ typedef struct DBusApi {
 
     dbus_bool_t (*dbus_message_is_signal)(DBusMessage *message, const char *iface, const char *signal_name);
 
-    DBusMessage* (*dbus_message_new_method_call)(const char  *bus_name, const char  *path, const char  *iface, const char  *method);
+    DBusMessage* (*dbus_message_new_method_call)(const char *bus_name, const char *path,
+            const char *iface, const char *method);
 
-    dbus_bool_t (*dbus_message_set_destination)(DBusMessage *message, const char    *destination);
+    dbus_bool_t (*dbus_message_set_destination)(DBusMessage *message, const char *destination);
 
     void (*dbus_message_iter_init_append)(DBusMessage *message, DBusMessageIter *iter);
 
-    dbus_bool_t (*dbus_message_iter_append_basic)(DBusMessageIter *iter, int type, const void      *value);
+    dbus_bool_t (*dbus_message_iter_append_basic)(DBusMessageIter *iter, int type, const void *value);
 
     DBusMessage *(*dbus_connection_send_with_reply_and_block)(DBusConnection *connection, DBusMessage *message,
                                                            int timeout_milliseconds, DBusError *error);
