@@ -615,8 +615,6 @@ javax/net/ssl/DTLS/PacketLossRetransmission.java                8169086 macosx-x
 javax/net/ssl/DTLS/RespondToRetransmit.java                     8169086 macosx-all
 javax/net/ssl/DTLS/CipherSuite.java                             8202059 macosx-x64
 
-sun/security/provider/KeyStore/DKSTest.sh                       8180266 windows-all
-
 sun/security/smartcardio/TestChannel.java                       8039280 generic-all
 sun/security/smartcardio/TestConnect.java                       8039280 generic-all
 sun/security/smartcardio/TestConnectAgain.java                  8039280 generic-all
