@@ -185,6 +185,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     }
 
     @Override
+    public boolean needUpdateWindowAfterPaint() {
+        return true;
+    }
+
+    @Override
     public ButtonPeer createButton(Button target) {
         ButtonPeer peer = new WLButtonPeer(target);
         targetCreatedPeer(target, peer);
