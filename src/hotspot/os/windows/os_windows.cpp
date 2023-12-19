@@ -1395,6 +1395,9 @@ const char* os::get_current_directory(char *buf, size_t buflen) {
   return _getcwd(buf, n);
 }
 
+void os::prepare_native_symbols() {
+}
+
 //-----------------------------------------------------------
 // Helper functions for fatal error handler
 #ifdef _WIN64
