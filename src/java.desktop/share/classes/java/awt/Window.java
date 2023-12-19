@@ -4159,18 +4159,8 @@ public class Window extends Container implements Accessible {
         String counters = System.getProperty("awt.window.counters");
 
         AWTAccessor.setWindowAccessor(new AWTAccessor.WindowAccessor() {
-            private static final boolean isWLToolkit = Toolkit.getDefaultToolkit()
-                    .getClass().getName().equals("sun.awt.wl.WLToolkit");
             public void updateWindow(Window window) {
                 window.updateWindow();
-            }
-
-            public boolean needUpdateWindowAfterPaint(Window window) {
-                return window != null && isWLToolkit;
-            }
-
-            public boolean needUpdateWindow(Window window) {
-                return window != null && (isWLToolkit || !window.isOpaque());
             }
 
             public void setPopupParent(Window window, Component component) {
