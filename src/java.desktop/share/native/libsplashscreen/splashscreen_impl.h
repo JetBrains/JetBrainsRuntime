@@ -125,7 +125,7 @@ typedef struct Splash
     int controlpipe[2];
     Buffer *main_buffer;
     Buffer *buffers;
-    wayland_state *wl_state;
+    wayland_state *state;
     int window_width;
     int window_height;
     pthread_mutex_t lock;
