@@ -2694,6 +2694,7 @@ void enableFullScreenSpecial(NSWindow *nsWindow) {
     [nsWindow encodeRestorableStateWithCoder:coder];
     [coder encodeBool:YES forKey:@"NSIsFullScreen"];
     NSKeyedUnarchiver *decoder = [[NSKeyedUnarchiver alloc] initForReadingWithData:coder.encodedData];
+    decoder.requiresSecureCoding = YES;
     [nsWindow restoreStateWithCoder:decoder];
     [decoder finishDecoding];
     [decoder release];
