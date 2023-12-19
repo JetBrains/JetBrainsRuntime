@@ -307,10 +307,6 @@ public final class AWTAccessor {
          */
         void updateWindow(Window window);
 
-        boolean needUpdateWindowAfterPaint(Window window);
-
-        boolean needUpdateWindow(Window window);
-
         void setPopupParent(Window window, Component component);
         Component getPopupParent(Window window);
 
