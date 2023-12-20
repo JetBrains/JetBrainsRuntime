@@ -42,7 +42,7 @@
 // Amount of blit operations per update to make sure that everything is
 // rendered into the window drawable. It does not slow things down as we
 // use separate command queue for blitting.
-#define REDRAW_INC 2
+#define REDRAW_COUNT 1
 
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern BOOL isDisplaySyncEnabled();
@@ -600,7 +600,7 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
 
 - (void)startRedraw:(MTLLayer*)layer {
     AWT_ASSERT_APPKIT_THREAD;
-    layer.redrawCount += REDRAW_INC;
+    layer.redrawCount = REDRAW_COUNT;
     J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_startRedraw: ctx=%p layer=%p", self, layer);
     _displayLinkCount = KEEP_ALIVE_COUNT;
     [_layers addObject:layer];
