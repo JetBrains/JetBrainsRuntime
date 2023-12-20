@@ -32,6 +32,9 @@
 #import "MTLSurfaceData.h"
 #import "JNIUtilities.h"
 
+#define MAX_DRAWABLE    3
+#define LAST_DRAWABLE   (MAX_DRAWABLE - 1)
+
 const NSTimeInterval DF_BLIT_FRAME_TIME=1.0/120.0;
 
 BOOL isDisplaySyncEnabled() {
@@ -149,6 +152,10 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     if (@available(macOS 10.13, *)) {
         self.displaySyncEnabled = isDisplaySyncEnabled();
     }
+    if (@available(macOS 10.13.2, *)) {
+        self.maximumDrawableCount = MAX_DRAWABLE;
+    }
+    self.presentsWithTransaction = NO;
     self.avgBlitFrameTime = DF_BLIT_FRAME_TIME;
     return self;
 }
@@ -164,12 +171,14 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         return;
     }
 
-    if (self.nextDrawableCount != 0) {
+    if (self.nextDrawableCount >= LAST_DRAWABLE) {
         if (!isDisplaySyncEnabled()) {
             [self performSelectorOnMainThread:@selector(setNeedsDisplay) withObject:nil waitUntilDone:NO];
         }
         return;
     }
+
+    // Perform blit:
     [self stopRedraw:NO];
 
     @autoreleasepool {
@@ -198,6 +207,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null)");
             return;
         }
+        // increment used drawables:
         self.nextDrawableCount++;
         id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
 
@@ -221,11 +231,14 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         }
 
         [self retain];
-        [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
+        [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+            // free drawable:
             self.nextDrawableCount--;
+
             if (@available(macOS 10.15.4, *)) {
                 if (!isDisplaySyncEnabled()) {
-                    const NSTimeInterval gpuTime = commandBuf.GPUEndTime - commandBuf.GPUStartTime;
+                    // Exponential smoothing on elapsed time:
+                    const NSTimeInterval gpuTime = commandbuf.GPUEndTime - commandbuf.GPUStartTime;
                     const NSTimeInterval a = 0.25;
                     self.avgBlitFrameTime = gpuTime * a + self.avgBlitFrameTime * (1.0 - a);
                 }
@@ -269,6 +282,17 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     [super display];
 }
 
+- (void)startRedrawIfNeeded {
+    AWT_ASSERT_APPKIT_THREAD;
+    if (isDisplaySyncEnabled()) {
+        if (self.redrawCount == 0) {
+            [self.ctx startRedraw:self];
+        }
+        // Redraw now:
+        [self setNeedsDisplay];
+    }
+}
+
 - (void)startRedraw {
     if (isDisplaySyncEnabled()) {
         if (self.ctx != nil) {
@@ -280,11 +304,13 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 }
 
 - (void)stopRedraw:(BOOL)force {
-    if (self.ctx != nil && isDisplaySyncEnabled()) {
+    if (isDisplaySyncEnabled()) {
         if (force) {
             self.redrawCount = 0;
         }
-        [self.ctx performSelectorOnMainThread:@selector(stopRedraw:) withObject:self waitUntilDone:NO];
+        if (self.ctx != nil) {
+            [self.ctx performSelectorOnMainThread:@selector(stopRedraw:) withObject:self waitUntilDone:NO];
+        }
     }
 }
 - (void) flushBuffer {
@@ -310,21 +336,31 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 }
 
 - (void)commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay {
-    MTLCommandBufferWrapper * cbwrapper =[mtlc pullCommandBufferWrapper];
+    MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
 
     if (cbwrapper != nil) {
-        id <MTLCommandBuffer> commandbuf =[cbwrapper getCommandBuffer];
-        [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-            [cbwrapper release];
-        }];
-        [commandbuf commit];
-        if (isDisplaySyncEnabled()) {
-            [self startRedraw];
-        } else {
-            [self flushBuffer];
-        }
+        id <MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
 
-        if (isDisplaySyncEnabled() && waitUntilCompleted) {
+        [self retain];
+        [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
+            [cbwrapper release];
+            if (updateDisplay && isDisplaySyncEnabled()) {
+                // Ensure layer will be redrawn asap to display new content:
+                [self performSelectorOnMainThread:@selector(startRedrawIfNeeded) withObject:nil waitUntilDone:NO];
+            }
+            [self release];
+        }];
+
+        [commandbuf commit];
+
+        if (updateDisplay) {
+            if (isDisplaySyncEnabled()) {
+                [self startRedraw];
+            } else {
+                [self flushBuffer];
+            }
+        }
+        if (waitUntilCompleted && isDisplaySyncEnabled()) {
            [commandbuf waitUntilCompleted];
         }
     } else if (updateDisplay) {
