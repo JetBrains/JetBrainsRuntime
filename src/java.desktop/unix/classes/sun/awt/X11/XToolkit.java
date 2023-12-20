@@ -1203,15 +1203,25 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         }
     }
 
-    private final Hashtable<GraphicsConfiguration, Insets> cachedInsets = new Hashtable<>();
+    private final Map<GraphicsConfiguration, Insets> cachedInsets = new HashMap<>();
     private void resetScreenInsetsCache() {
-        cachedInsets.clear();
+        XToolkit.awtLock();
+        try {
+            cachedInsets.clear();
+        } finally {
+            XToolkit.awtUnlock();
+        }
     }
 
     @Override
     public Insets getScreenInsets(final GraphicsConfiguration gc) {
         if (useCachedInsets) {
-            return (Insets)cachedInsets.computeIfAbsent(gc, this::getScreenInsetsImpl).clone();
+            XToolkit.awtLock();
+            try {
+                return (Insets) cachedInsets.computeIfAbsent(gc, this::getScreenInsetsImpl).clone();
+            } finally {
+                XToolkit.awtUnlock();
+            }
         } else {
             return getScreenInsetsImpl(gc);
         }
