@@ -65,7 +65,8 @@ public class JBRApiModule {
                 .service("com.jetbrains.WindowMove", "java.awt.Window$WindowMoveService")
                 .service("com.jetbrains.NativeRasterLoader")
                      .withStatic("loadNativeRaster", "loadNativeRaster", "com.jetbrains.desktop.NativeRasterLoader")
-
+                .service("com.jetbrains.FontMetricsAccessor", "sun.font.FontDesignMetrics$Accessor")
+                .clientProxy("sun.font.FontDesignMetrics$Overrider", "com.jetbrains.FontMetricsAccessor$Overrider")
         ;
     }
 }
