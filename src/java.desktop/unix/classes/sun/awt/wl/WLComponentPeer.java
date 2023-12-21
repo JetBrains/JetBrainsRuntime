@@ -82,6 +82,7 @@ public class WLComponentPeer implements ComponentPeer {
             {"hand"}, // HAND_CURSOR
             {"move"}, // MOVE_CURSOR
     };
+    private static final int WHEEL_SCROLL_AMOUNT = 3;
 
     private long nativePtr;
     private volatile boolean surfaceAssigned = false;
@@ -381,9 +382,9 @@ public class WLComponentPeer implements ComponentPeer {
      * Commits changes accumulated in the underlying SurfaceData object
      * to the server for displaying on the screen. The request may not be
      * granted immediately as the server may be busy reading data provided
-     * previously. In the latter case, the commit will happen later when
-     * the server notifies us (through an event on EDT) that the displaying
-     * buffer is ready to accept new data.
+     * previously. In the latter case, the commit will automatically happen
+     * later when the server notifies us (through an event on EDT) that
+     * the displaying buffer is ready to accept new data.
      */
     public void commitToServer() {
         performLocked(() -> {
@@ -391,6 +392,7 @@ public class WLComponentPeer implements ComponentPeer {
                 surfaceData.flush();
             }
         });
+        Toolkit.getDefaultToolkit().sync();
     }
 
     public Component getTarget() {
@@ -1068,7 +1070,7 @@ public class WLComponentPeer implements ComponentPeer {
                     isPopupTrigger,
                     MouseWheelEvent.WHEEL_UNIT_SCROLL,
                     1,
-                    e.getAxis0Value());
+                    Integer.signum(e.getAxis0Value()) * WHEEL_SCROLL_AMOUNT);
             postMouseEvent(mouseEvent);
         }
 
