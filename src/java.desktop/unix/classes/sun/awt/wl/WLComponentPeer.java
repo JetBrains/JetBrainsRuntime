@@ -82,6 +82,7 @@ public class WLComponentPeer implements ComponentPeer {
             {"hand"}, // HAND_CURSOR
             {"move"}, // MOVE_CURSOR
     };
+    private static final int WHEEL_SCROLL_AMOUNT = 3;
 
     private long nativePtr;
     private volatile boolean surfaceAssigned = false;
@@ -391,6 +392,7 @@ public class WLComponentPeer implements ComponentPeer {
                 surfaceData.flush();
             }
         });
+        Toolkit.getDefaultToolkit().sync();
     }
 
     public Component getTarget() {
@@ -1068,7 +1070,7 @@ public class WLComponentPeer implements ComponentPeer {
                     isPopupTrigger,
                     MouseWheelEvent.WHEEL_UNIT_SCROLL,
                     1,
-                    e.getAxis0Value());
+                    Integer.signum(e.getAxis0Value()) * WHEEL_SCROLL_AMOUNT);
             postMouseEvent(mouseEvent);
         }
 
