@@ -63,6 +63,8 @@ public class JBRApiModule {
                     .withStatic("getFeaturesAsString", "getFeaturesAsString", "com.jetbrains.desktop.FontExtensions")
                 .clientProxy("java.awt.Font$Features", "com.jetbrains.FontExtensions$Features")
                 .service("com.jetbrains.WindowMove", "java.awt.Window$WindowMoveService")
+                .service("com.jetbrains.FontMetricsAccessor", "sun.font.FontDesignMetrics$Accessor")
+                .clientProxy("sun.font.FontDesignMetrics$Overrider", "com.jetbrains.FontMetricsAccessor$Overrider")
         ;
     }
 }
