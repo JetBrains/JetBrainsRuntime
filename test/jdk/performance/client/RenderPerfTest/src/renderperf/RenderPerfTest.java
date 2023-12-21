@@ -94,7 +94,7 @@ import javax.swing.WindowConstants;
 
 public final class RenderPerfTest {
 
-    private final static String VERSION = "RenderPerfTest 2023.11";
+    private final static String VERSION = "Render_Perf_Test 2023.12";
     private static final HashSet<String> ignoredTests = new HashSet<>();
 
     static {
@@ -128,7 +128,7 @@ public final class RenderPerfTest {
     private final static boolean DELAY_TEST = "true".equalsIgnoreCase(System.getProperty("DelayTest", "false"));
 
     private final static boolean ROBOT_TIME_DELAY = "true".equalsIgnoreCase(System.getProperty("ROBOT_TIME_DELAY", "true"));
-    private final static boolean ROBOT_TIME_ROUND = "true".equalsIgnoreCase(System.getProperty("ROBOT_TIME_ROUND", "true"));
+    private final static boolean ROBOT_TIME_ROUND = "true".equalsIgnoreCase(System.getProperty("ROBOT_TIME_ROUND", "false"));
 
     private final static boolean TEXT_VERSION = "true".equalsIgnoreCase(System.getProperty("TEXT_VERSION", "true"));
 
