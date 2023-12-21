@@ -39,7 +39,8 @@ import java.io.Serial;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 import java.util.HashMap;
-import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.jetbrains.desktop.FontExtensions;
@@ -145,6 +146,8 @@ public final class FontDesignMetrics extends FontMetrics {
     private transient double[] devmatrix = null;
 
     private transient FontStrike fontStrike;
+
+    private transient Overrider overrider;
 
     private static FontRenderContext DEFAULT_FRC = null;
 
@@ -435,23 +438,26 @@ public final class FontDesignMetrics extends FontMetrics {
         return frc;
     }
 
-    private float preciseCharWidth(char ch) {
-        // default metrics for compatibility with legacy code
-        return (ch < 0x100) ? getLatinCharWidth(ch) : handleCharWidth(ch);
-    }
-
-    public int charWidth(char ch) {
-        return Math.round(preciseCharWidth(ch));
-    }
-
-    public int charWidth(int ch) {
+    private float preciseCharWidth(int ch) {
         if (!Character.isValidCodePoint(ch)) {
             ch = 0xffff;
         }
+        Overrider o = overrider;
+        if (o != null) {
+            float override = o.charWidth(ch);
+            if (!Float.isNaN(override)) {
+                return override;
+            }
+        }
+        return (ch < 0x100) ? getLatinCharWidth((char) ch) : handleCharWidth(ch);
+    }
 
-        float w = handleCharWidth(ch);
+    public int charWidth(char ch) {
+        return charWidth((int) ch);
+    }
 
-        return Math.round(w);
+    public int charWidth(int ch) {
+        return Math.round(preciseCharWidth(ch));
     }
 
     private Rectangle2D.Float textLayoutBounds(Object data, int off, int len) {
@@ -475,7 +481,7 @@ public final class FontDesignMetrics extends FontMetrics {
         assert (data instanceof String || data instanceof char[]);
         float width = 0;
 
-        if (FontExtensions.isComplexRendering(font) && len > 0) {
+        if (overrider == null && FontExtensions.isComplexRendering(font) && len > 0) {
             return textLayoutBounds(data, off, len);
         }
 
@@ -556,30 +562,6 @@ public final class FontDesignMetrics extends FontMetrics {
         return dataWidth(data, off, len);
     }
 
-    /**
-     * Gets the advance widths of the first 256 characters in the
-     * {@code Font}.  The advance is the
-     * distance from the leftmost point to the rightmost point on the
-     * character's baseline.  Note that the advance of a
-     * {@code String} is not necessarily the sum of the advances
-     * of its characters.
-     * @return    an array storing the advance widths of the
-     *                 characters in the {@code Font}
-     *                 described by this {@code FontMetrics} object.
-     */
-    // More efficient than base class implementation - reuses existing cache
-    public int[] getWidths() {
-        int[] widths = new int[256];
-        for (char ch = 0 ; ch < 256 ; ch++) {
-            float w = advCache[ch];
-            if (w == UNKNOWN_WIDTH) {
-                w = advCache[ch] = handleCharWidth(ch);
-            }
-            widths[ch] = Math.round(w);
-        }
-        return widths;
-    }
-
     public int getMaxAdvance() {
         return (int)(0.99f + this.maxAdvance);
     }
@@ -624,5 +606,48 @@ public final class FontDesignMetrics extends FontMetrics {
             height = getAscent() + (int)(roundingUpValue + descent + leading);
         }
         return height;
+    }
+
+    private static class Accessor { // used by JBR API
+        // Keeping metrics instances here prevents them from being garbage collected
+        // and being re-created by FontDesignMetrics.getMetrics method
+        private final Set<FontDesignMetrics> PINNED_METRICS = new HashSet<>();
+
+        FontMetrics getMetrics(Font font, FontRenderContext context) {
+            return FontDesignMetrics.getMetrics(font, context);
+        }
+
+        float codePointWidth(FontMetrics metrics, int codePoint) {
+            return metrics instanceof FontDesignMetrics fdm ? fdm.preciseCharWidth(codePoint)
+                                                            : metrics.charWidth(codePoint);
+        }
+
+        void setOverride(FontMetrics metrics, Overrider overrider) {
+            if (metrics instanceof FontDesignMetrics fdm) {
+                synchronized (PINNED_METRICS) {
+                    if (overrider == null) {
+                        PINNED_METRICS.remove(fdm);
+                    } else {
+                        PINNED_METRICS.add(fdm);
+                    }
+                    fdm.overrider = overrider;
+                }
+            }
+        }
+
+        boolean hasOverride(FontMetrics metrics) {
+            return metrics instanceof FontDesignMetrics fdm && fdm.overrider != null;
+        }
+
+        void removeAllOverrides() {
+            synchronized (PINNED_METRICS) {
+                PINNED_METRICS.forEach(fdm -> fdm.overrider = null);
+                PINNED_METRICS.clear();
+            }
+        }
+    }
+
+    private interface Overrider { // used by JBR API
+        float charWidth(int codePoint);
     }
 }
