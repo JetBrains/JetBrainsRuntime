@@ -150,10 +150,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     @SuppressWarnings("removal")
     public WLToolkit() {
         AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-            final String extraButtons = "sun.awt.enableExtraMouseButtons";
-            areExtraMouseButtonsEnabled =
-                    Boolean.parseBoolean(System.getProperty(extraButtons, "true"));
-            System.setProperty(extraButtons, String.valueOf(areExtraMouseButtonsEnabled));
+            initSystemProperties();
             return null;
         });
 
@@ -178,6 +175,13 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             clipboard = null;
             selection = null;
         }
+    }
+
+    private static void initSystemProperties() {
+        final String extraButtons = "sun.awt.enableExtraMouseButtons";
+        areExtraMouseButtonsEnabled =
+                Boolean.parseBoolean(System.getProperty(extraButtons, "true"));
+        System.setProperty(extraButtons, String.valueOf(areExtraMouseButtonsEnabled));
     }
 
     public static boolean isToolkitThread() {
@@ -861,9 +865,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public boolean useBufferPerWindow() {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.useBufferPerWindow()");
-        }
+        // TODO: this may depend on the rendering engine used.
+        // When rendering is performed into memory buffers shared with Wayland,
+        // there's no sense in having additional buffers in AWT/Swing.
         return false;
     }
 
