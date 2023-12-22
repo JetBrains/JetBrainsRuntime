@@ -386,6 +386,8 @@ public class WhiteBox {
   public native boolean metaspaceShouldConcurrentCollect();
   public native long metaspaceReserveAlignment();
 
+  public native void cleanMetaspaces();
+
   // Don't use these methods directly
   // Use sun.hotspot.gc.GC class instead.
   public native boolean isGCSupported(int name);
