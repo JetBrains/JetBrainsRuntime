@@ -280,7 +280,7 @@ java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java 8253184 windo
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentWindowClick.java 8253184 windows-all
 java/awt/Window/setLocRelativeTo/SetLocationRelativeToTest.java 8253184 windows-all
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-5510,JBR-5359 linux-5.18.2-arch1-1,windows-aarch64
-java/awt/Window/MultiWindowApp/MultiWindowAppTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
+java/awt/Window/MultiWindowApp/MultiWindowAppTest.java 8253184,JBR-5510,JBR-6463 windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java 8222328 windows-all,linux-all,macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/Shaped.java  8222328 windows-all,linux-all,macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/ShapedByAPI.java 8222328 windows-all,linux-all,macosx-all
@@ -888,7 +888,7 @@ javax/swing/plaf/basic/BasicTextUI/8001470/bug8001470.java 8233177 linux-all,win
 javax/swing/plaf/basic/BasicTreeUI/8023474/bug8023474.java 8253184 linux-all,windows-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-javax/swing/plaf/nimbus/TestNimbusBGColor.java JBR-5359 windows-aarch64
+javax/swing/plaf/nimbus/TestNimbusBGColor.java JBR-6464,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/plaf/nimbus/TestNimbusOverride.java 8253184,JBR-5829 windows-all,linux-all
 javax/swing/plaf/windows/6921687/bug6921687.java 8253184 windows-all
 javax/swing/plaf/windows/WindowsRootPaneUI/WrongAltProcessing/WrongAltProcessing.java JBR-4372 windows-all
@@ -945,7 +945,7 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java 802462
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentWindowClickSwing.java 8253184 windows-all
 # The next test below is an intermittent failure
 javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java 8159131 linux-all
-javax/swing/JTree/4330357/bug4330357.java 8253184 windows-all
+javax/swing/JTree/4330357/bug4330357.java 8253184,JBR-6466 windows-all,linux-all
 javax/swing/JTree/4633594/JTreeFocusTest.java 8173125,JBR-5210 macosx-all,windows-all
 javax/swing/JTree/4908142/bug4908142.java JBR-151 windows-all
 javax/swing/AbstractButton/6711682/bug6711682.java 8060765 windows-all,macosx-all,linux-5.15.0-39-generic,linux-5.15.0-33-generic,linux-5.19.0-1025-aws
@@ -1262,6 +1262,7 @@ java/awt/Dialog/NonResizableDialogSysMenuResize/NonResizableDialogSysMenuResize.
 java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                 JBR-4250 windows-all
 
 javax/swing/SwingUtilities/4917669/bug4917669.java                                  JBR-4677 windows-all
+javax/swing/SwingUtilities/7088744/bug7088744.java JBR-4677 windows-all
 javax/swing/SwingUtilities/7146377/bug7146377.java                                  JBR-4679 windows-all
 
 java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java JBR-4880 windows-all
@@ -1383,8 +1384,9 @@ javax/swing/JPopupMenu/7156657/bug7156657.java JBR-5359 windows-aarch64
 javax/swing/JRadioButton/8041561/bug8041561.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
 javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
 javax/swing/Popup/TaskbarPositionTest.java 8310689 windows-all,macosx-all
-javax/swing/PopupFactory/6276087/NonOpaquePopupMenuTest.java 8298124, JBR-5949 macosx-all,linux-all,windows-all
+javax/swing/PopupFactory/6276087/NonOpaquePopupMenuTest.java 8298124,JBR-5949 macosx-all,linux-all,windows-all
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
+javax/swing/text/CSSBorder/6796710/bug6796710.java JBR-6465 windows-all
 javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5359,JBR-5510,JBR-5951 windows-aarch64,linux-5.18.2-arch1-1,windows-x64
 jb/java/awt/CustomTitleBar/ActionListenerTest.java JBR-5819 macosx-all,windows-all
 jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-5359,JBR-5345 windows-aarch64,windows-x64
@@ -1409,7 +1411,6 @@ java/awt/Insets/DialogInsets.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Menu/OpensWithNoGrab/OpensWithNoGrab.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java JBR-5510,JBR-6160 linux-5.18.2-arch1-1,linux-5.4.0-1103-aws
 javax/swing/JMenu/JMenuSelectedColorTest.java JBR-5510 linux-5.18.2-arch1-1
-javax/swing/JMenuItem/8158566/CloseOnMouseClickPropertyTest.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JSpinner/4788637/bug4788637.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/LookAndFeel/8145547/DemandGTK2.sh JBR-5510 linux-5.18.2-arch1-1
