@@ -280,7 +280,7 @@ java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java 8253184 windo
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentWindowClick.java 8253184 windows-all
 java/awt/Window/setLocRelativeTo/SetLocationRelativeToTest.java 8253184 windows-all
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-5510,JBR-5359 linux-5.18.2-arch1-1,windows-aarch64
-java/awt/Window/MultiWindowApp/MultiWindowAppTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
+java/awt/Window/MultiWindowApp/MultiWindowAppTest.java 8253184,JBR-5510,JBR-6463 windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java 8222328 windows-all,linux-all,macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/Shaped.java  8222328 windows-all,linux-all,macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/ShapedByAPI.java 8222328 windows-all,linux-all,macosx-all
@@ -506,7 +506,7 @@ java/awt/Mouse/EnterExitEvents/FullscreenEnterEventTest.java 8051455 macosx-all
 java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.java 8253184,JBR-5709 windows-all,linux-all
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java 8253184 windows-all
 java/awt/Mouse/MouseModifiersUnitTest/ExtraButtonDrag.java 8253184,JBR-6407 windows-all,linux-5.4.0-1103-aws # 5.4.0-1103-aws - Ubuntu 18.04
-java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java 7124407 macosx-all
+java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java 7124407,8302787 macosx-all,windows-all
 java/awt/Mouse/RemovedComponentMouseListener/RemovedComponentMouseListener.java 8157170,8253184 macosx-all,windows-all
 java/awt/MouseAdapter/MouseAdapterUnitTest/MouseAdapterUnitTest.java 8253184 windows-all
 java/awt/MouseInfo/ComponentMousePositionTest.java 8253184 windows-all
@@ -884,7 +884,7 @@ javax/swing/plaf/basic/BasicTextUI/8001470/bug8001470.java 8233177 linux-all,win
 javax/swing/plaf/basic/BasicTreeUI/8023474/bug8023474.java 8253184 linux-all,windows-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-javax/swing/plaf/nimbus/TestNimbusBGColor.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
+javax/swing/plaf/nimbus/TestNimbusBGColor.java JBR-6464,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/plaf/nimbus/TestNimbusOverride.java 8253184,JBR-5829 windows-all,linux-all
 javax/swing/plaf/windows/6921687/bug6921687.java 8253184 windows-all
 javax/swing/plaf/windows/WindowsRootPaneUI/WrongAltProcessing/WrongAltProcessing.java JBR-4372 windows-all
@@ -941,7 +941,7 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java 802462
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentWindowClickSwing.java 8253184 windows-all
 # The next test below is an intermittent failure
 javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java 8159131 linux-all
-javax/swing/JTree/4330357/bug4330357.java 8253184 windows-all
+javax/swing/JTree/4330357/bug4330357.java 8253184,JBR-6466 windows-all,linux-all
 javax/swing/JTree/4633594/JTreeFocusTest.java 7105441,8173125,JBR-5210 macosx-all,windows-all
 javax/swing/JTree/4908142/bug4908142.java 8197552,JBR-151 windows-all
 javax/swing/AbstractButton/6711682/bug6711682.java 8060765 windows-all,macosx-all,linux-5.15.0-39-generic,linux-5.15.0-33-generic,linux-5.19.0-1025-aws
@@ -1261,6 +1261,7 @@ java/nio/file/WatchService/WithSecurityManager.java                             
 java/awt/image/DrawImage/BlitRotateClippedArea.java                                 JBR-4674 macosx-all
 
 javax/swing/SwingUtilities/4917669/bug4917669.java                                  JBR-4677 windows-all
+javax/swing/SwingUtilities/7088744/bug7088744.java JBR-4677 windows-all
 javax/swing/SwingUtilities/7146377/bug7146377.java                                  JBR-4679 windows-all
 
 java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java JBR-4880 windows-all
@@ -1284,6 +1285,7 @@ javax/swing/JSpinner/SpinnerTest.java JBR-4880 windows-all
 javax/swing/JSpinner/TestJSpinnerFocusLost.java JBR-5210 windows-all
 javax/swing/JTable/7068740/bug7068740.java 8197552 windows-all
 javax/swing/JTable/8236907/LastVisibleRow.java JBR-6066 macosx-aarch64
+javax/swing/text/CSSBorder/6796710/bug6796710.java JBR-6465 windows-all
 javax/swing/text/FlowView/LayoutTest.java JBR-4880 windows-all
 javax/swing/text/html/7189299/bug7189299.java JBR-4880 windows-all
 jb/java/jcef/HandleJSQueryTest3314.sh JBR-4866 linux-all
@@ -1382,7 +1384,7 @@ javax/swing/JPopupMenu/7156657/bug7156657.java JBR-5359 windows-aarch64
 javax/swing/JRadioButton/8041561/bug8041561.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
 javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
 javax/swing/Popup/TaskbarPositionTest.java 8310689 windows-all,macosx-all
-javax/swing/PopupFactory/6276087/NonOpaquePopupMenuTest.java 8298124, JBR-5949 macosx-all,linux-all,windows-all
+javax/swing/PopupFactory/6276087/NonOpaquePopupMenuTest.java 8298124,JBR-5949 macosx-all,linux-all,windows-all
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
 javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5359,JBR-5510,JBR-5951 windows-aarch64,linux-5.18.2-arch1-1,windows-x64
 jb/java/awt/CustomTitleBar/ActionListenerTest.java JBR-5819 macosx-all,windows-all
