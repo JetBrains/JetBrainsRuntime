@@ -42,7 +42,7 @@
 // Amount of blit operations per update to make sure that everything is
 // rendered into the window drawable. It does not slow things down as we
 // use separate command queue for blitting.
-#define REDRAW_COUNT 2
+#define REDRAW_COUNT 1
 
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern BOOL isDisplaySyncEnabled();
