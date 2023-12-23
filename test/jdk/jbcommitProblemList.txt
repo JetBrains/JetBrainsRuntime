@@ -40,7 +40,6 @@ javax/swing/JTable/7124218/SelectEditTableCell.java JBR-4894 windows-all
 javax/swing/JToolTip/6219960/bug6219960.java nobug windows-all
 javax/swing/JTree/4633594/JTreeFocusTest.java 8173125 macosx-all,windows-all
 javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java 8159131 linux-all,windows-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8233582,nobug linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java 8024627 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentWindowClickSwing.java nobug windows-all
 javax/swing/plaf/windows/6921687/bug6921687.java nobug windows-all
