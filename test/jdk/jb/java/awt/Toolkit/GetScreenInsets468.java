@@ -97,6 +97,7 @@ public class GetScreenInsets468 implements Runnable {
                 frame.dispose();
             });
         }
+        robot.delay(1000);
     }
 
     public static void main(String[] args) throws Exception {
