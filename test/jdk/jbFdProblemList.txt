@@ -122,3 +122,4 @@ javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java NOBUG macosx-all Sy
 javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,JBR-6274 windows-x64,macosx-all
 
 jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-2651 generic-all
+jb/sun/awt/macos/InputMethodTest/KeyCodesTest.java JBR-6480 macosx-x64

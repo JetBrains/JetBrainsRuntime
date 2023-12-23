@@ -6,6 +6,7 @@ java/awt/FullScreen/CurrentDisplayModeTest/CurrentDisplayModeTest.java JBR-5059 
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-4379 windows-all
 java/awt/Frame/FramesGC/FramesGC.java 8079069,JBR-6057 macosx-all,windows-all
 java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java JBR-5062 linux-all
+java/awt/GraphicsDevice/DisplayModes/ExtraAllocationTest.java JBR-6384 macosx-all
 java/awt/GraphicsDevice/DisplayModes/UnknownRefrshRateTest.java JBR-6336 macosx-aarch64
 java/awt/GraphicsDevice/IncorrectDisplayModeExitFullscreen.java JBR-6336 macosx-aarch64
 java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5.15.0-46-generic Ubuntu 20.04
@@ -145,6 +146,6 @@ javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-5510 windows-all,lin
 javax/swing/plaf/nimbus/TestNimbusBGColor.java JBR-5359,NOBUG windows-aarch64,linux-all
 javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5359,JBR-5510,JBR-5951 windows-aarch64,linux-all,windows-x64
 sanity/client/SwingSet/src/ButtonDemoScreenshotTest.java 8265770,8273312,JBR-5510 windows-all,macosx-all,linux-all
-sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-5359,JBR-5510 windows-aarch64,linux-all
+sanity/client/SwingSet/src/EditorPaneDemoTest.java 8212240,JBR-5359,JBR-5510 windows-aarch64,linux-all
 sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5359,JBR-5366,JBR-5510 windows-all,linux-all
 sun/java2d/GdiRendering/InsetClipping.java 7124403,JBR-5359,JBR-5366,JBR-5510 windows-all,macosx-all,windows-aarch64,linux-all
