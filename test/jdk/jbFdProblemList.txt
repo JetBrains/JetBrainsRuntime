@@ -118,7 +118,7 @@ java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout
 java/awt/Robot/NonEmptyErrorStream.java JBR-6275 macosx-all
 
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6360 linux-all,windows-all
-javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java NOBUG macosx-all Synth ButtonUI does not handle PRESSED & MOUSE_OVER state
+javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-6485 linux-all
 javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,JBR-6274 windows-x64,macosx-all
 
 jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-2651 generic-all

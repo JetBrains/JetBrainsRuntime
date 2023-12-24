@@ -1,6 +1,8 @@
 java/awt/Dialog/DialogLocationTest.java JBR-6090 windows-all
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java JBR-5538 windows-all
 java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java JBR-6027 windows-all
+java/awt/dnd/DropActionChangeTest.java JBR-6489,JBR-5799 generic-all
+java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.java JBR-6442 linux-all
 java/awt/dnd/MissedDragEnterTest.java JBR-6091 windows-all
 java/awt/dnd/MozillaDnDTest.java JBR-6442 linux-all
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java JBR-6292 windows-all
@@ -15,6 +17,7 @@ java/awt/Focus/ClearLwQueueBreakTest/ClearLwQueueBreakTest.java 8198618,JBR-814,
 java/awt/Focus/LabelScrollBarFocus.java JBR-6090 windows-x64
 java/awt/Focus/ModalExcludedWindowClickTest/ModalExcludedWindowClickTest.java JBR-6090 windows-x64
 java/awt/Focus/MouseClickRequestFocusRaceTest/MouseClickRequestFocusRaceTest.java 8194753,JBR-6090 linux-all,macosx-all,windows-x64
+java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 7124275,JBR-5799 macosx-all,windows-all
 java/awt/Focus/SimpleWindowActivationTest/SimpleWindowActivationTest.java JBR-6089 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java JBR-6090 windows-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6233 windows-x64
@@ -40,7 +43,6 @@ javax/swing/JPopupMenu/6580930/bug6580930.java                                  
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6090 linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8233582,JBR-6090,JBR-6481 linux-all,windows-all
 
-sanity/client/SwingSet/src/EditorPaneDemoTest.java 8212240,JBR-5359,JBR-5510,JBR-6285 windows-aarch64,linux-all
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8293001,JBR-6293 linux-all,windows-all
 sun/java2d/GdiRendering/ClipShapeRendering.java                                     JBR-5204 linux-all,windows-all
 
@@ -75,6 +77,7 @@ jb/java/awt/Focus/PopupIncomingFocusTest.java                                   
 jb/java/awt/Focus/RequestFocusInParent.java                                         JBR-5715 windows-all
 jb/java/awt/Focus/SecondLevelPopupTest.java                                         JBR-6090 windows-all
 java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java          JBR-5513 linux-all
+jb/java/awt/Window/BackgroundWindowOrderOnSpaceChange.java JBR-6486 macosx-all
 jb/java/awt/Window/UndecoratedDialogInTransientsChain.java                          JBR-6090 windows-all
 java/awt/Focus/SimpleWindowActivationTest/SimpleWindowActivationTest.java           JBR-6089 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java       JBR-6089 windows-all

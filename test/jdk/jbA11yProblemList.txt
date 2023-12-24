@@ -63,7 +63,6 @@ javax/swing/JToolTip/bug5047379.java JBR-5397 macosx-all
 javax/swing/JTree/4518432/JTreeNodeCopyPasteTest.java JBR-5397 macosx-all
 javax/swing/JTree/4618767/JTreeSelectedElementTest.java JBR-5397 macosx-all
 javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java JBR-5397 macosx-all
-javax/swing/plaf/aqua/CustomComboBoxFocusTest.java JBR-5397 macosx-all
 javax/swing/plaf/aqua/JInternalFrameBorderTest.java JBR-5397 macosx-all
 javax/swing/plaf/basic/BasicMenuUI/4983388/bug4983388.java JBR-5397 macosx-all
 javax/swing/plaf/synth/7158712/bug7158712.java JBR-5397 macosx-all
