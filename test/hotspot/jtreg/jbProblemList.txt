@@ -61,6 +61,7 @@ gtest/NMTGtests.java#nmt-summary JBR-5718 generic-all
 gc/stress/TestReclaimStringsLeaksMemory.java initial_run windows-all
 
 gc/shenandoah/TestAllocHumongousFragment.java#aggressive 8309622 generic-all
+gc/shenandoah/TestAllocIntArrays.java#iu-aggressive 8309622 generic-all
 gc/shenandoah/TestAllocObjects.java#aggressive initial_run generic-all
 gc/shenandoah/TestAllocObjects.java#iu-aggressive initial_run generic-all
 gc/shenandoah/mxbeans/TestChurnNotifications.java#aggressive initial_run generic-all
