@@ -1234,7 +1234,10 @@ com/sun/java/swing/plaf/windows/Test8173145.java                                
 com/sun/java/swing/plaf/windows/AltFocusIssueTest.java                              JBR-4197 windows-all
 
 java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java            JBR-4207 windows-all
+jb/java/awt/Focus/BrokenTraversalAWT.java JBR-5799 windows-all
+jb/java/awt/Focus/ContextMenuAfterPopup.java JBR-5799 windows-all
 jb/java/awt/Focus/EventsOnPopupShowing.java                                         JBR-6230 windows-all
+jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-5799 windows-all
 jb/java/awt/Focus/TitleBarClickTest.java                                            JBR-3180 linux-5.18.2-arch1-1
 jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java                           JBR-5392 windows-aarch64
 jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java                          JBR-6122 windows-all
