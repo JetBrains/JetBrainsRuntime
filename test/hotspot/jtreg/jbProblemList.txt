@@ -217,6 +217,8 @@ vmTestbase/nsk/jdi/LaunchingConnector/launch/launch001/TestDescription.java init
 vmTestbase/nsk/jdi/LaunchingConnector/launch/launch003/TestDescription.java initial_run windows-all
 vmTestbase/nsk/jdi/LaunchingConnector/launchnosuspend/launchnosuspend001/TestDescription.java initial_run windows-all
 
+vmTestbase/nsk/jdi/stress/ClassPrepareEvents/ClassPrepareEvents001/ClassPrepareEvents001.java JBR-6470 macosx-x64
+
 vmTestbase/nsk/jdi/ThreadReference/stop/stop001/TestDescription.java 7034630 generic-all
 vmTestbase/nsk/jdi/ReferenceType/instances/instances002/instances002.java initial_run linux-all
 vmTestbase/nsk/jdi/Value/type/type003/TestDescription.java time_out_intermittent macosx-all
