@@ -25,7 +25,7 @@
 /*
  * @test ClassLoadUnloadTest
  * @bug 8142506
- * @requires vm.opt.final.ClassUnloading
+ * @requires vm.flagless
  * @modules java.base/jdk.internal.misc
  * @library /test/lib /runtime/testlibrary
  * @library classes
@@ -76,6 +76,7 @@ public class ClassLoadUnloadTest {
         Collections.addAll(argsList, args);
         Collections.addAll(argsList, "-Xmn8m");
         Collections.addAll(argsList, "-Dtest.class.path=" + System.getProperty("test.class.path", "."));
+        Collections.addAll(argsList, "-XX:+ClassUnloading");
         Collections.addAll(argsList, ClassUnloadTestMain.class.getName());
         return ProcessTools.createJavaProcessBuilder(argsList);
     }
