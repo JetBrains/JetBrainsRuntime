@@ -264,7 +264,7 @@ $(eval $(call SetTestOpt,TIMEOUT_FACTOR,JTREG))
 
 $(eval $(call ParseKeywordVariable, JTREG, \
     SINGLE_KEYWORDS := JOBS TIMEOUT_FACTOR TEST_MODE ASSERT VERBOSE RETAIN \
-        MAX_MEM RETRY_COUNT REPEAT_COUNT, \
+        MAX_MEM RUN_PROBLEM_LISTS RETRY_COUNT REPEAT_COUNT, \
     STRING_KEYWORDS := OPTIONS JAVA_OPTIONS VM_OPTIONS KEYWORDS \
         EXTRA_PROBLEM_LISTS AOT_MODULES, \
 ))
@@ -639,6 +639,7 @@ define SetupRunJtregTestBody
   endif
   JTREG_VERBOSE ?= fail,error,summary
   JTREG_RETAIN ?= fail,error
+  JTREG_RUN_PROBLEM_LISTS ?= false
   JTREG_RETRY_COUNT ?= 0
   JTREG_REPEAT_COUNT ?= 0
 
@@ -692,13 +693,19 @@ define SetupRunJtregTestBody
     $1_JTREG_BASIC_OPTIONS += -nativepath:$$($1_JTREG_NATIVEPATH)
   endif
 
+  ifeq ($$(JTREG_RUN_PROBLEM_LISTS), true)
+    JTREG_PROBLEM_LIST_PREFIX := -match:
+  else
+    JTREG_PROBLEM_LIST_PREFIX := -exclude:
+  endif
+
   ifneq ($$($1_JTREG_PROBLEM_LIST), )
-    $1_JTREG_BASIC_OPTIONS += $$(addprefix -exclude:, $$($1_JTREG_PROBLEM_LIST))
+    $1_JTREG_BASIC_OPTIONS += $$(addprefix $$(JTREG_PROBLEM_LIST_PREFIX), $$($1_JTREG_PROBLEM_LIST))
   endif
 
   ifneq ($$(JTREG_EXTRA_PROBLEM_LISTS), )
     # Accept both absolute paths as well as relative to the current test root.
-    $1_JTREG_BASIC_OPTIONS += $$(addprefix -exclude:, $$(wildcard \
+    $1_JTREG_BASIC_OPTIONS += $$(addprefix $$(JTREG_PROBLEM_LIST_PREFIX), $$(wildcard \
         $$(JTREG_EXTRA_PROBLEM_LISTS) \
         $$(addprefix $$($1_TEST_ROOT)/, $$(JTREG_EXTRA_PROBLEM_LISTS)) \
     ))
