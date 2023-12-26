@@ -26,6 +26,7 @@
 #ifndef HEADLESS
 
 #include <stdlib.h>
+#include <stdint.h>
 
 #include "sun_java2d_opengl_OGLSurfaceData.h"
 
