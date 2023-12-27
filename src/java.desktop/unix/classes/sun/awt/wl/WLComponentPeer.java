@@ -382,9 +382,9 @@ public class WLComponentPeer implements ComponentPeer {
      * Commits changes accumulated in the underlying SurfaceData object
      * to the server for displaying on the screen. The request may not be
      * granted immediately as the server may be busy reading data provided
-     * previously. In the latter case, the commit will happen later when
-     * the server notifies us (through an event on EDT) that the displaying
-     * buffer is ready to accept new data.
+     * previously. In the latter case, the commit will automatically happen
+     * later when the server notifies us (through an event on EDT) that
+     * the displaying buffer is ready to accept new data.
      */
     public void commitToServer() {
         performLocked(() -> {

@@ -39,9 +39,6 @@
 
 typedef struct WLSurfaceBuffer WLSurfaceBuffer;
 
-extern struct wl_shm_pool *
-CreateShmPool(size_t size, const char *name, void **data); // defined in WLToolkit.c
-
 static WLSurfaceBuffer *
 SurfaceBufferCreate(WLSurfaceBufferManager * manager);
 
@@ -89,9 +86,10 @@ AssertDrawLockIsHeld(WLSurfaceBufferManager* manager, const char * file, int lin
  * If a new frame is ready to be shown when this number is exceeded, the frame
  * is skipped.
  */
-const int SHOW_BUFFER_MAX = 2;
+const int SHOW_BUFFER_MAX = 2; // TODO: more than one seems to be unnecessary
 
-static bool traceEnabled; // set the J2D_STATS env var to enable
+static bool traceEnabled;    // set the J2D_STATS env var to enable
+static bool traceFPSEnabled; // set the J2D_FPS env var to enable
 
 /**
  * Represents one rectangular area linked into a list.
@@ -284,9 +282,10 @@ AssertShowLockIsHeld(WLSurfaceBufferManager* manager, const char * file, int lin
 #endif
 }
 
-static jlong GetJavaTimeNanos(void) {
+static jlong
+GetJavaTimeNanos(void) {
     jlong result = 0;
-    if (traceEnabled) {
+    if (traceEnabled || traceFPSEnabled) {
         struct timespec tp;
         const jlong NANOSECS_PER_SEC = 1000000000L;
         int status = clock_gettime(CLOCK_MONOTONIC, &tp);
@@ -309,6 +308,24 @@ WLBufferTrace(WLSurfaceBufferManager* manager, const char *fmt, ...)
                 manager->bufferForDraw.frameID);
         fflush(stderr);
         va_end(args);
+    }
+}
+
+static void
+WLBufferTraceFrame(WLSurfaceBufferManager* manager)
+{
+    if (traceFPSEnabled) {
+        static jlong lastFrameTime = 0;
+        static int frameCount = 0;
+
+        jlong curTime = GetJavaTimeNanos();
+        frameCount++;
+        if (curTime - lastFrameTime > 1000000000L) {
+            fprintf(stderr, "FPS: %d\n", frameCount);
+            fflush(stderr);
+            lastFrameTime = curTime;
+            frameCount = 0;
+        }
     }
 }
 
@@ -517,6 +534,8 @@ ShowBufferPrepareFreshOne(WLSurfaceBufferManager * manager)
 static void
 TrySendShowBufferToWayland(WLSurfaceBufferManager * manager, bool sendNow)
 {
+    WLBufferTrace(manager, "TrySendShowBufferToWayland(%s)", sendNow ? "now" : "later");
+
     if (sendNow) {
         CopyDrawBufferToShowBuffer(manager);
         SendShowBufferToWayland(manager);
@@ -629,6 +648,7 @@ SendShowBufferToWayland(WLSurfaceBufferManager * manager)
 
     jlong endTime = GetJavaTimeNanos();
     WLBufferTrace(manager, "SendShowBufferToWayland (%lldns)", endTime - startTime);
+    WLBufferTraceFrame(manager);
 }
 
 /**
@@ -693,6 +713,7 @@ WLSurfaceBufferManager *
 WLSBM_Create(jint width, jint height, jint scale, jint bgPixel, jint wlShmFormat)
 {
     traceEnabled = getenv("J2D_STATS");
+    traceFPSEnabled = getenv("J2D_FPS");
 
     WLSurfaceBufferManager * manager = calloc(1, sizeof(WLSurfaceBufferManager));
     if (!manager) {
