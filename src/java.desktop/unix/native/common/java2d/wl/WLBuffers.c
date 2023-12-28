@@ -85,8 +85,11 @@ AssertDrawLockIsHeld(WLSurfaceBufferManager* manager, const char * file, int lin
  * The maximum number of buffers that can be simultaneously "held" by Wayland.
  * If a new frame is ready to be shown when this number is exceeded, the frame
  * is skipped.
+ * Cannot be less than two because some compositors will not release the buffer
+ * given to them until a new one has been attached. See the description of
+ * the wl_buffer::release event in the Wayland documentation.
  */
-const int SHOW_BUFFER_MAX = 2; // TODO: more than one seems to be unnecessary
+const int SHOW_BUFFER_MAX = 2;
 
 static bool traceEnabled;    // set the J2D_STATS env var to enable
 static bool traceFPSEnabled; // set the J2D_FPS env var to enable
@@ -566,6 +569,9 @@ ShowBufferInvalidateForNewSize(WLSurfaceBufferManager * manager)
         manager->buffersFree = next;
     }
 
+    // NB: the buffers that are currently in use will be destroyed
+    // as soon as they are released (see wl_buffer_release()).
+
     ShowBufferCreate(manager);
 
     MUTEX_UNLOCK(manager->showLock);
@@ -673,6 +679,9 @@ CopyDrawBufferToShowBuffer(WLSurfaceBufferManager * manager)
 
     manager->bufferForShow.damageList = manager->bufferForDraw.damageList;
     manager->bufferForDraw.damageList = NULL;
+
+    // Don't know how old the "show" buffer is, so have to copy the entire draw buffer to it.
+    // TODO: There's a room for improvement here.
     memcpy(manager->bufferForShow.wlSurfaceBuffer->data,
            manager->bufferForDraw.data,
            SurfaceBufferSizeInBytes(manager->bufferForShow.wlSurfaceBuffer));
@@ -755,8 +764,12 @@ WLSBM_SurfaceAssign(WLSurfaceBufferManager * manager, struct wl_surface* wl_surf
     J2dTrace2(J2D_TRACE_INFO, "WLSBM_SurfaceAssign: assigned surface %p to manger %p\n", wl_surface, manager);
 
     MUTEX_LOCK(manager->showLock);
-    manager->wlSurface = wl_surface;
-    manager->isBufferAttached = false;
+    if (manager->wlSurface == NULL || wl_surface == NULL) {
+        manager->wlSurface = wl_surface;
+        manager->isBufferAttached = false;
+    } else {
+        assert(manager->wlSurface == wl_surface);
+    }
     MUTEX_UNLOCK(manager->showLock);
 }
 
@@ -840,7 +853,8 @@ WLSBM_SurfaceCommit(WLSurfaceBufferManager * manager)
     const bool frameCallbackScheduled = manager->wl_frame_callback != NULL;
     if (manager->wlSurface && !frameCallbackScheduled) {
         bool canScheduleFrameCallback = manager->isBufferAttached;
-        bool sendNow = !canScheduleFrameCallback; // so as not to overwhelm Wayland with frequent commits
+        // Don't always send the frame immediately so as not to overwhelm Wayland
+        bool sendNow = !canScheduleFrameCallback;
         TrySendShowBufferToWayland(manager, sendNow);
     }
     MUTEX_UNLOCK(manager->showLock);
