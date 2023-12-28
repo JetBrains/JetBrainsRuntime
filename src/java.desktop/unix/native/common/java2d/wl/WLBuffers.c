@@ -43,6 +43,12 @@ static WLSurfaceBuffer *
 SurfaceBufferCreate(WLSurfaceBufferManager * manager);
 
 static void
+SurfaceBufferNotifyReleased(WLSurfaceBufferManager * manager, struct wl_buffer * wl_buffer);
+
+static bool
+ShowBufferIsAvailable(WLSurfaceBufferManager * manager);
+
+static void
 ShowBufferInvalidateForNewSize(WLSurfaceBufferManager * manager);
 
 static void
@@ -74,6 +80,13 @@ AssertDrawLockIsHeld(WLSurfaceBufferManager* manager, const char * file, int lin
 
 #define MUTEX_LOCK(m)   if (pthread_mutex_lock(&(m)))   { WL_FATAL_ERROR("Failed to lock mutex"); }
 #define MUTEX_UNLOCK(m) if (pthread_mutex_unlock(&(m))) { WL_FATAL_ERROR("Failed to unlock mutex"); }
+
+/**
+ * The maximum number of buffers that can be simultaneously "held" by Wayland.
+ * If a new frame is ready to be shown when this number is exceeded, the frame
+ * is skipped.
+ */
+const int SHOW_BUFFER_MAX = 2; // TODO: more than one seems to be unnecessary
 
 static bool traceEnabled;    // set the J2D_STATS env var to enable
 static bool traceFPSEnabled; // set the J2D_FPS env var to enable
@@ -161,6 +174,7 @@ typedef uint32_t frame_id_t;
  * Its dimensions determine the dimensions of the surface.
  */
 typedef struct WLSurfaceBuffer {
+    struct WLSurfaceBuffer * next;      /// links buffers in a list
     struct wl_shm_pool *     wlPool;    /// the pool this buffer was allocated from
     struct wl_buffer *       wlBuffer;  /// the Wayland buffer itself
     pixel_t *                data;      /// points to a memory segment shared with Wayland
@@ -195,9 +209,12 @@ struct WLDrawBuffer {
 /**
  * Contains data necessary to manage multiple backing buffers for one wl_surface.
  *
- * There's one buffer that will be sent to Wayland next: bufferForShow. If it is
- * being used by Wayland when we are ready to deliver a new frame, that frame
- * is skipped.
+ * There's one buffer that will be sent to Wayland next: bufferForShow. When it is
+ * ready to be sent to Wayland, it is added to the buffersInUse list and a new one
+ * is put in its place so that bufferForShow is always available.
+ * If the number of buffers in use is >= SHOW_BUFFER_MAX, no new buffer is sent
+ * to Wayland until some buffers have been released by Wayland. This effectively
+ * skips some of the frames.
  *
  * There's one buffer that can be drawn upon: bufferForDraw. When we're done drawing,
  * pixels from that buffer are copied over to bufferForShow.
@@ -215,13 +232,34 @@ struct WLSurfaceBufferManager {
     struct wl_callback* wl_frame_callback; // only accessed under showLock
 
     pthread_mutex_t     showLock;
-    WLShowBuffer        bufferForShow;       // only accessed under showLock
-    bool                isBufferForShowFree; // only accessed under showLock
+
+    /**
+     * The "show" buffer that is next to be sent to Wayland for showing on the screen.
+     * When sent to Wayland, its WLSurfaceBuffer is added to the buffersInUse list
+     * and a fresh one created or re-used from the buffersFree list so that
+     * this buffer is available at all times.
+     * When the "draw" buffer (bufferForDraw) size is changed, this one is
+     * immediately invalidated along with all those from the buffersFree list.
+     */
+    WLShowBuffer        bufferForShow; // only accessed under showLock
+
+    /// The list of buffers that can be re-used as bufferForShow.wlSurfaceBuffer.
+    WLSurfaceBuffer *   buffersFree;   // only accessed under showLock
+
+    /// The list of buffers sent to Wayland and not yet released; when released,
+    /// they may be added to the buffersFree list.
+    WLSurfaceBuffer *   buffersInUse;  // only accessed under showLock
 
     /// The scale of wl_surface (see Wayland docs for more info on that).
     jint                scale;         // only accessed under showLock
 
     pthread_mutex_t     drawLock;
+
+    /**
+     * The "draw" buffer where new painting is going on, which will be then
+     * copied over to the "show" buffer and finally sent to Wayland for showing
+     * on the screen.
+     */
     WLDrawBuffer        bufferForDraw; // only accessed under drawLock
 };
 
@@ -327,10 +365,7 @@ wl_buffer_release(void * data, struct wl_buffer * wl_buffer)
     /* Sent by the compositor when it's no longer using this buffer */
     WLSurfaceBufferManager * manager = (WLSurfaceBufferManager *) data;
     WLBufferTrace(manager, "wl_buffer_release");
-
-    MUTEX_LOCK(manager->showLock);
-    manager->isBufferForShowFree = true;
-    MUTEX_UNLOCK(manager->showLock);
+    SurfaceBufferNotifyReleased(manager, wl_buffer);
 }
 
 static const struct wl_buffer_listener wl_buffer_listener = {
@@ -390,12 +425,110 @@ SurfaceBufferCreate(WLSurfaceBufferManager * manager)
 }
 
 static void
+SurfaceBufferNotifyReleased(WLSurfaceBufferManager * manager, struct wl_buffer * wl_buffer)
+{
+    assert(manager);
+
+    if (traceEnabled) {
+        int used = 0;
+        int free = 0;
+        WLSurfaceBuffer * cur = manager->buffersInUse;
+        while (cur) {
+            used++;
+            cur = cur->next;
+        }
+        cur = manager->buffersFree;
+        while (cur) {
+            free++;
+            cur = cur->next;
+        }
+        WLBufferTrace(manager, "SurfaceBufferNotifyReleased (%d in use, %d free)", used, free);
+    }
+
+    MUTEX_LOCK(manager->showLock);
+
+    WLSurfaceBuffer * cur = manager->buffersInUse;
+    WLSurfaceBuffer * prev = NULL;
+    while (cur) {
+        if (cur->wlBuffer == wl_buffer) {
+            // Delete from the "in-use" list
+            if (prev) {
+                prev->next = cur->next;
+            } else {
+                manager->buffersInUse = cur->next;
+            }
+
+            // Maybe add to the "free" list, but only if the buffer is still usable
+            const bool curBufferIsUseful =
+                       cur->width  == manager->bufferForDraw.width
+                    && cur->height == manager->bufferForDraw.height;
+            if (curBufferIsUseful) {
+                cur->next = manager->buffersFree;
+                manager->buffersFree = cur;
+            } else {
+                SurfaceBufferDestroy(cur);
+            }
+
+            break;
+        }
+
+        prev = cur;
+        cur = cur->next;
+    }
+
+    MUTEX_UNLOCK(manager->showLock);
+}
+
+static bool
+ShowBufferIsAvailable(WLSurfaceBufferManager * manager)
+{
+    ASSERT_SHOW_LOCK_IS_HELD(manager);
+
+    assert(manager->bufferForShow.wlSurfaceBuffer);
+
+    // Skip sending the next frame if the number of buffers that
+    // had been sent to Wayland for displaying earlier is too large.
+    // Clearly the server can't support our frame rate in that case.
+    int used = 0;
+    WLSurfaceBuffer * cur = manager->buffersInUse;
+    while (cur) {
+        used++;
+        cur = cur->next;
+    }
+    WLBufferTrace(manager, "ShowBufferIsAvailable: %d/%d in use", used, SHOW_BUFFER_MAX);
+    return used <= SHOW_BUFFER_MAX;
+}
+
+static void
 ShowBufferCreate(WLSurfaceBufferManager * manager)
 {
     ASSERT_SHOW_LOCK_IS_HELD(manager);
 
     manager->bufferForShow.wlSurfaceBuffer = SurfaceBufferCreate(manager);
-    manager->isBufferForShowFree = true;
+}
+
+/**
+ * Makes sure that there's a fresh "show" buffer of suitable size available
+ * that can be sent to Wayland. Its content (actual pixels) may be garbage.
+ */
+static void
+ShowBufferPrepareFreshOne(WLSurfaceBufferManager * manager)
+{
+    ASSERT_SHOW_LOCK_IS_HELD(manager);
+
+    manager->bufferForShow.wlSurfaceBuffer = NULL;
+
+    // Re-use one of the free buffers or make a new one
+    if (manager->buffersFree) {
+        assert(manager->bufferForDraw.width == manager->buffersFree->width);
+        assert(manager->bufferForDraw.height == manager->buffersFree->height);
+
+        manager->bufferForShow.wlSurfaceBuffer = manager->buffersFree;
+        manager->buffersFree = manager->buffersFree->next;
+        manager->bufferForShow.wlSurfaceBuffer->next = NULL;
+    } else {
+        ShowBufferCreate(manager);
+    }
 }
 
 static void
@@ -422,8 +555,17 @@ ShowBufferInvalidateForNewSize(WLSurfaceBufferManager * manager)
 
     WLSurfaceBuffer * buffer = manager->bufferForShow.wlSurfaceBuffer;
     if (buffer != NULL) {
+        assert(buffer->next == NULL);
         SurfaceBufferDestroy(buffer);
+        manager->bufferForShow.wlSurfaceBuffer = NULL;
     }
+
+    while (manager->buffersFree) {
+        WLSurfaceBuffer * next = manager->buffersFree->next;
+        SurfaceBufferDestroy(manager->buffersFree);
+        manager->buffersFree = next;
+    }
+
     ShowBufferCreate(manager);
 
     MUTEX_UNLOCK(manager->showLock);
@@ -445,7 +587,7 @@ wl_frame_callback_done(void * data,
     manager->wl_frame_callback = NULL;
 
     if (manager->wlSurface) {
-        const bool canSendNow = manager->isBufferForShowFree && (manager->bufferForDraw.damageList != NULL);
+        const bool canSendNow = ShowBufferIsAvailable(manager) && (manager->bufferForDraw.damageList != NULL);
         TrySendShowBufferToWayland(manager, canSendNow);
     }
 
@@ -478,12 +620,13 @@ SendShowBufferToWayland(WLSurfaceBufferManager * manager)
 {
     ASSERT_SHOW_LOCK_IS_HELD(manager);
     assert(manager->wlSurface);
-    assert(manager->isBufferForShowFree);
 
     jlong startTime = GetJavaTimeNanos();
 
     WLSurfaceBuffer * buffer = manager->bufferForShow.wlSurfaceBuffer;
     assert(buffer);
+
+    ShowBufferPrepareFreshOne(manager);
 
     // wl_buffer_listener will release bufferForShow when Wayland's done with it
     wl_surface_attach(manager->wlSurface, buffer->wlBuffer, 0, 0);
@@ -497,6 +640,9 @@ SendShowBufferToWayland(WLSurfaceBufferManager * manager)
     DamageList_FreeAll(manager->bufferForShow.damageList);
     manager->bufferForShow.damageList = NULL;
 
+    buffer->next = manager->buffersInUse;
+    manager->buffersInUse = buffer;
+
     manager->bufferForShow.frameID = manager->bufferForDraw.frameID;
     manager->bufferForDraw.frameID++;
 
@@ -505,30 +651,8 @@ SendShowBufferToWayland(WLSurfaceBufferManager * manager)
     WLBufferTraceFrame(manager);
 }
 
-static void
-CopyDamagedArea(WLSurfaceBufferManager * manager, jint x, jint y, jint width, jint height)
-{
-    assert(manager->bufferForShow.wlSurfaceBuffer);
-    assert(manager->bufferForDraw.width == manager->bufferForShow.wlSurfaceBuffer->width);
-    assert(manager->bufferForDraw.height == manager->bufferForShow.wlSurfaceBuffer->height);
-    assert(x >= 0);
-    assert(y >= 0);
-    assert(width >= 0);
-    assert(height >= 0);
-    assert(height + y >= 0);
-    assert(width + x >= 0);
-
-    pixel_t * dest = manager->bufferForShow.wlSurfaceBuffer->data;
-    pixel_t * src  = manager->bufferForDraw.data;
-    for (jint i = y; i < height + y; i++) {
-        pixel_t * dest_row = &dest[i * manager->bufferForDraw.width];
-        pixel_t * src_row  = &src [i * manager->bufferForDraw.width];
-        memcpy(&dest_row[x], &src_row[x], width * sizeof(pixel_t));
-    }
-}
-
 /**
- * Copies the damaged areas of the drawing surface to the buffer associated
+ * Copies the contents of the drawing surface to the buffer associated
  * with the Wayland surface for displaying, the "show" buffer.
  *
  * Clears the list of damaged areas from the drawing buffer and
@@ -549,15 +673,12 @@ CopyDrawBufferToShowBuffer(WLSurfaceBufferManager * manager)
 
     manager->bufferForShow.damageList = manager->bufferForDraw.damageList;
     manager->bufferForDraw.damageList = NULL;
-
-    int count = 0;
-    for (DamageList* l = manager->bufferForShow.damageList; l; l = l->next) {
-        CopyDamagedArea(manager, l->x, l->y, l->width, l->height);
-        count++;
-    }
+    memcpy(manager->bufferForShow.wlSurfaceBuffer->data,
+           manager->bufferForDraw.data,
+           SurfaceBufferSizeInBytes(manager->bufferForShow.wlSurfaceBuffer));
 
     jlong endTime = GetJavaTimeNanos();
-    WLBufferTrace(manager, "CopyDrawBufferToShowBuffer: copied %d area(s) in %lldns", count, endTime - startTime);
+    WLBufferTrace(manager, "CopyDrawBufferToShowBuffer: copied in %lldns", endTime - startTime);
 
     MUTEX_UNLOCK(manager->drawLock);
 }
@@ -655,6 +776,18 @@ WLSBM_Destroy(WLSurfaceBufferManager * manager)
 
     if (manager->bufferForShow.wlSurfaceBuffer) {
         SurfaceBufferDestroy(manager->bufferForShow.wlSurfaceBuffer);
+    }
+
+    while (manager->buffersFree) {
+        WLSurfaceBuffer * next = manager->buffersFree->next;
+        SurfaceBufferDestroy(manager->buffersFree);
+        manager->buffersFree = next;
+    }
+
+    while (manager->buffersInUse) {
+        WLSurfaceBuffer * next = manager->buffersInUse->next;
+        SurfaceBufferDestroy(manager->buffersInUse);
+        manager->buffersInUse = next;
     }
 
     MUTEX_UNLOCK(manager->drawLock);
