@@ -82,14 +82,15 @@ AssertDrawLockIsHeld(WLSurfaceBufferManager* manager, const char * file, int lin
 #define MUTEX_UNLOCK(m) if (pthread_mutex_unlock(&(m))) { WL_FATAL_ERROR("Failed to unlock mutex"); }
 
 /**
- * The maximum number of buffers that can be simultaneously "held" by Wayland.
- * If a new frame is ready to be shown when this number is exceeded, the frame
- * is skipped.
+ * The maximum number of buffers that can be simultaneously in use by Wayland.
+ * When a new frame is ready to be sent to Wayland and the number of buffers
+ * already sent plus this new buffer exceeds MAX_BUFFERS_IN_USE, that frame is
+ * skipped. We will wait for a buffer to be released.
  * Cannot be less than two because some compositors will not release the buffer
  * given to them until a new one has been attached. See the description of
  * the wl_buffer::release event in the Wayland documentation.
  */
-const int SHOW_BUFFER_MAX = 2;
+const int MAX_BUFFERS_IN_USE = 2;
 
 static bool traceEnabled;    // set the J2D_STATS env var to enable
 static bool traceFPSEnabled; // set the J2D_FPS env var to enable
@@ -215,22 +216,20 @@ struct WLDrawBuffer {
  * There's one buffer that will be sent to Wayland next: bufferForShow. When it is
  * ready to be sent to Wayland, it is added to the buffersInUse list and a new one
  * is put in its place so that bufferForShow is always available.
- * If the number of buffers in use is >= SHOW_BUFFER_MAX, no new buffer is sent
+ * If the number of buffers in use is >= MAX_BUFFERS_IN_USE, no new buffer is sent
  * to Wayland until some buffers have been released by Wayland. This effectively
  * skips some of the frames.
  *
  * There's one buffer that can be drawn upon: bufferForDraw. When we're done drawing,
  * pixels from that buffer are copied over to bufferForShow.
  *
- * The size of bufferForShow is determined by the width and height fields; the size of
- * bufferForShow can lag behind and will re-adjust after Wayland has released it
- * back to us.
+ * The size of bufferForShow is determined by the width and height fields.
  */
 struct WLSurfaceBufferManager {
-    struct wl_surface * wlSurface;      // only accessed under showLock
-    bool                isBufferAttached; // is there a buffer attached to the surface?
-    int                 bgPixel;
-    int                 format;         // one of enum wl_shm_format
+    struct wl_surface * wlSurface;         // only accessed under showLock
+    bool                isBufferAttached;  // is there a buffer attached to the surface?
+    int                 bgPixel;           // the pixel value to be used for new buffers
+    int                 format;            // one of enum wl_shm_format
 
     struct wl_callback* wl_frame_callback; // only accessed under showLock
 
@@ -498,8 +497,9 @@ ShowBufferIsAvailable(WLSurfaceBufferManager * manager)
         used++;
         cur = cur->next;
     }
-    WLBufferTrace(manager, "ShowBufferIsAvailable: %d/%d in use", used, SHOW_BUFFER_MAX);
-    return used <= SHOW_BUFFER_MAX;
+    WLBufferTrace(manager, "ShowBufferIsAvailable: %d/%d in use", used, MAX_BUFFERS_IN_USE);
+    // NB: account for one extra buffer about to be sent to Wayland and added to the used list
+    return used < MAX_BUFFERS_IN_USE;
 }
 
 static void
@@ -539,6 +539,7 @@ TrySendShowBufferToWayland(WLSurfaceBufferManager * manager, bool sendNow)
 {
     WLBufferTrace(manager, "TrySendShowBufferToWayland(%s)", sendNow ? "now" : "later");
 
+    sendNow = sendNow && ShowBufferIsAvailable(manager);
     if (sendNow) {
         CopyDrawBufferToShowBuffer(manager);
         SendShowBufferToWayland(manager);
@@ -593,8 +594,8 @@ wl_frame_callback_done(void * data,
     manager->wl_frame_callback = NULL;
 
     if (manager->wlSurface) {
-        const bool canSendNow = ShowBufferIsAvailable(manager) && (manager->bufferForDraw.damageList != NULL);
-        TrySendShowBufferToWayland(manager, canSendNow);
+        const bool hasSomethingToSend = (manager->bufferForDraw.damageList != NULL);
+        TrySendShowBufferToWayland(manager, hasSomethingToSend);
     }
 
     MUTEX_UNLOCK(manager->showLock);
