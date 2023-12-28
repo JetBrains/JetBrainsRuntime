@@ -1714,7 +1714,7 @@ Java_sun_java2d_x11_XSurfaceData_loadNativeRasterWithRects
     (JNIEnv *env, jclass clazz,
      jlong sdops, jlong pRaster, jint width, jint height, jlong pRects, jint rectsCount)
 {
-    SurfaceDataOps *dstOps = (SurfaceDataOps *)sdops;
+    SurfaceDataOps *dstOps = (SurfaceDataOps *)jlong_to_ptr(sdops);
     if (dstOps == NULL || pRaster == 0) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "XSurfaceData_loadNativeRasterWithRects: params are null");
         return JNI_FALSE;
@@ -1736,7 +1736,7 @@ Java_sun_java2d_x11_XSurfaceData_loadNativeRasterWithRects
         dstOps->GetRasInfo(env, dstOps, &dstInfo);
         if (dstInfo.rasBase) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "XSurfaceData_loadNativeRasterWithRects: copy whole memory.");
-            memcpy(dstInfo.rasBase, (void *) pRaster, width * height * 4);
+            memcpy(dstInfo.rasBase, (void *)jlong_to_ptr(pRaster), width * height * 4);
         } else {
             J2dRlsTraceLn(J2D_TRACE_ERROR, "XSurfaceData_loadNativeRasterWithRects: can't get pointer of dest raster.");
         }
@@ -1744,7 +1744,7 @@ Java_sun_java2d_x11_XSurfaceData_loadNativeRasterWithRects
         SurfaceData_InvokeRelease(env, dstOps, &dstInfo);
         SurfaceData_InvokeUnlock(env, dstOps, &dstInfo);
     } else {
-        int32_t *pr = (int32_t *) pRects;
+        int32_t *pr = (int32_t *)jlong_to_ptr(pRects);
         for (int c = 0; c < rectsCount; ++c) {
             int32_t x = *(pr++);
             int32_t y = *(pr++);
