@@ -210,8 +210,6 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         // increment used drawables:
         self.nextDrawableCount++;
 
-        id<MTLCommandBuffer> renderBuffer =  [self.ctx createCommandBuffer];
-
         id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
 
         [blitEncoder
