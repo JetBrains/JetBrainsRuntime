@@ -1,6 +1,8 @@
 java/awt/Dialog/DialogLocationTest.java JBR-6090 windows-all
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java      JBR-5538 windows-all
 java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java                  JBR-6027 windows-all
+java/awt/dnd/DropActionChangeTest.java JBR-6489,JBR-5799 generic-all
+java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.java JBR-6442 linux-all
 java/awt/dnd/MozillaDnDTest.java JBR-6442 linux-all
 java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 linux-x64,windows-aarch64,macosx-all
 java/awt/Focus/6378278/InputVerifierTest.java                                       JBR-5799 windows-all
@@ -33,10 +35,6 @@ javax/swing/JEditorPane/8195095/ImageViewTest.java 8253184,JBR-5510,JBR-6283 win
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      7124313,JBR-5071 macosx-all,linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6090 linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8233582,JBR-6481,JBR-6090 linux-all,windows-all
-javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java 8274106,JBR-6090,8253184,JBR-5510,JBR-803 windows-all,linux-all,macosx-all
-
-
-sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-5359,JBR-5510,JBR-6285 windows-aarch64,linux-all
 
 sun/java2d/GdiRendering/ClipShapeRendering.java                                     JBR-5204 linux-all,windows-all
 
@@ -69,6 +67,7 @@ java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-6287 windows-a
 jb/java/awt/Focus/ModalDialogOverSiblingTest.java                                   JBR-5716 windows-all
 jb/java/awt/Focus/RequestFocusInParent.java                                         JBR-5715 windows-all
 jb/java/awt/Focus/SecondLevelPopupTest.java                                         JBR-6090 windows-all
+jb/java/awt/Window/BackgroundWindowOrderOnSpaceChange.java JBR-6486 macosx-all
 jb/java/awt/Window/UndecoratedDialogInTransientsChain.java                          JBR-6090 windows-all
 java/awt/Focus/SimpleWindowActivationTest/SimpleWindowActivationTest.java           JBR-6089 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java       JBR-6089 windows-all

@@ -119,7 +119,7 @@ java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java NOBUG windows-al
 java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout
 java/awt/Robot/NonEmptyErrorStream.java JBR-6275 macosx-all
 
-javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java 8253184,JBR-5510,JBR-803 windows-all,linux-all,macosx-all
+javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-6485 linux-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java NOBUG windows-x64 #timeout
 
 jb/java/awt/CustomTitleBar/FrameNativeControlsMacOSTest.java JBR-6354 macosx-all
@@ -135,7 +135,6 @@ jb/java/awt/Focus/WrongFrameFocusedOnModalDialogClosing.java NOBUG windows-x64 #
 jb/java/awt/Window/ModalDialogAndPopup.java JBR-4984,NOBUG windows-x64,macosx-all #timeout
 jb/java/awt/Window/UndecoratedDialogInTransientsChain.java NOBUG windows-x64 #Frame should have been closed
 jb/java/jcef/HwFacadeWindowNoFrontTest.java NOBUG windows-x64 #window is not above the bottom frame
-
-sanity/client/SwingSet/src/EditorPaneDemoTest.java NOBUG windows-x64 #failures: 5
+jb/sun/awt/macos/InputMethodTest/KeyCodesTest.java JBR-6480 macosx-x64
 
 sun/awt/dnd/8024061/bug8024061.java NOBUG windows-x64 #Timed out waiting for dragEnter()
