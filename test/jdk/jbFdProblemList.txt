@@ -111,7 +111,6 @@
 
 ############################################################################
 
-java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 linux-x64,windows-aarch64,macosx-all
 java/awt/FlowLayout/PreferredLayoutSize.java JBR-6349 linux-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java NOBUG windows-all timeout
 java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout

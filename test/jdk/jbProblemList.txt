@@ -1165,7 +1165,8 @@ java/awt/dnd/DnDFileGroupDescriptor/DnDFileGroupDescriptor.html 8080185 macosx-a
 javax/swing/JTabbedPane/4666224/bug4666224.html 8144124  macosx-all
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java 8253184 windows-all
 javax/swing/JTextArea/7049024/bug7049024.java JBR-5836 linux-all
-java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java 8162380 generic-all
+java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 linux-x64,windows-aarch64,macosx-all
+java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java 8162380,JBR-4207 generic-all,windows-all
 java/awt/image/VolatileImage/VolatileImageConfigurationTest.java 8171069 macosx-all,linux-all
 java/awt/Modal/InvisibleParentTest/InvisibleParentTest.java 8172245 linux-all
 java/awt/Multiscreen/LocationRelativeToTest/LocationRelativeToTest.java 8253184 windows-all
@@ -1249,7 +1250,6 @@ java/awt/dnd/FileListBetweenJVMsTest/FileListBetweenJVMsTest.java               
 com/sun/java/swing/plaf/windows/Test8173145.java                                    JBR-4197 windows-all
 com/sun/java/swing/plaf/windows/AltFocusIssueTest.java                              JBR-4197 windows-all
 
-java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java            JBR-4207 windows-all
 jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java                           JBR-5392 windows-aarch64
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTestLinux.sh                    JBR-4078 linux-all
 jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java                          JBR-5366 windows-all
