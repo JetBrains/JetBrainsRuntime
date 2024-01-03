@@ -1092,6 +1092,6 @@ class CAccessibility implements PropertyChangeListener {
                 }
                 return false;
             }
-        }, c);
+        }, c, false);
     }
 }
