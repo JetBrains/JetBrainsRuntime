@@ -4346,6 +4346,8 @@ void PhaseIdealLoop::verify() const {
   int old_progress = C->major_progress();
   ResourceMark rm;
   PhaseIdealLoop loop_verify(_igvn, this);
+  if (C->failing()) return;
+
   VectorSet visited;
 
   fail = 0;
