@@ -151,6 +151,18 @@ DamageList_Add(DamageList* list, jint x, jint y, jint width, jint height)
     return item;
 }
 
+static DamageList*
+DamageList_AddList(DamageList* list, DamageList* add)
+{
+    assert(list != add);
+
+    for (DamageList* l = add; l != NULL; l = l->next) {
+        list = DamageList_Add(list, l->x, l->y, l->width, l->height);
+    }
+
+    return list;
+}
+
 static void
 DamageList_SendAll(DamageList* list, struct wl_surface* wlSurface)
 {
@@ -189,6 +201,7 @@ typedef struct WLSurfaceBuffer {
     pixel_t *                data;      /// points to a memory segment shared with Wayland
     jint                     width;     /// buffer's width
     jint                     height;    /// buffer's height
+    DamageList *             damageList;/// Accumulated damage relative to the current show buffer
 } WLSurfaceBuffer;
 
 /**
@@ -396,6 +409,7 @@ SurfaceBufferDestroy(WLSurfaceBuffer * buffer)
     //  the surface contents" (source: wayland.xml)
     wl_buffer_destroy(buffer->wlBuffer);
 
+    DamageList_FreeAll(buffer->damageList);
     free(buffer);
 }
 
@@ -411,6 +425,8 @@ SurfaceBufferCreate(WLSurfaceBufferManager * manager)
     buffer->width = manager->bufferForDraw.width;
     buffer->height = manager->bufferForDraw.height;
     MUTEX_UNLOCK(manager->drawLock);
+
+    buffer->damageList = DamageList_Add(NULL, 0, 0, buffer->width, buffer->height);
 
     const size_t size = SurfaceBufferSizeInBytes(buffer);
     buffer->wlPool = CreateShmPool(size, "jwlshm", (void**)&buffer->data);
@@ -664,6 +680,33 @@ SendShowBufferToWayland(WLSurfaceBufferManager * manager)
     WLBufferTraceFrame(manager);
 }
 
+static void
+CopyDamagedArea(WLSurfaceBufferManager * manager, jint x, jint y, jint width, jint height)
+{
+    assert(manager->bufferForShow.wlSurfaceBuffer);
+    assert(manager->bufferForDraw.width == manager->bufferForShow.wlSurfaceBuffer->width);
+    assert(manager->bufferForDraw.height == manager->bufferForShow.wlSurfaceBuffer->height);
+    assert(x >= 0);
+    assert(y >= 0);
+    assert(width >= 0);
+    assert(height >= 0);
+    assert(height + y >= 0);
+    assert(width + x >= 0);
+    assert(width <= manager->bufferForDraw.width);
+    assert(height <= manager->bufferForDraw.height);
+
+    pixel_t * dest = manager->bufferForShow.wlSurfaceBuffer->data;
+    pixel_t * src  = manager->bufferForDraw.data;
+
+    for (jint i = y; i < height + y; i++) {
+        pixel_t * dest_row = &dest[i * manager->bufferForDraw.width];
+        pixel_t * src_row  = &src [i * manager->bufferForDraw.width];
+        for (jint j = x; j < width + x; j++) {
+            dest_row[j] = src_row[j];
+        }
+    }
+}
+
 /**
  * Copies the contents of the drawing surface to the buffer associated
  * with the Wayland surface for displaying, the "show" buffer.
@@ -671,6 +714,8 @@ SendShowBufferToWayland(WLSurfaceBufferManager * manager)
  * Clears the list of damaged areas from the drawing buffer and
  * moves that list to the "show" buffer so that Wayland can get
  * notified of what has changed in the buffer.
+ *
+ * Updates the damaged areas in all the existing free and in-use buffers.
  */
 static void
 CopyDrawBufferToShowBuffer(WLSurfaceBufferManager * manager)
@@ -684,17 +729,38 @@ CopyDrawBufferToShowBuffer(WLSurfaceBufferManager * manager)
 
     jlong startTime = GetJavaTimeNanos();
 
+    // All the existing buffers will now differ even more from the new "show" buffer.
+    // Need to add to their damaged areas.
+    for (WLSurfaceBuffer* buffer = manager->buffersFree; buffer != NULL; buffer = buffer->next) {
+        buffer->damageList = DamageList_AddList(buffer->damageList, manager->bufferForDraw.damageList);
+    }
+
+    for (WLSurfaceBuffer* buffer = manager->buffersInUse; buffer != NULL; buffer = buffer->next) {
+        buffer->damageList = DamageList_AddList(buffer->damageList, manager->bufferForDraw.damageList);
+    }
+
+    // Merge the damage list with the new damage from the draw buffer; this is better than
+    // copying damage from two lists because this way we might avoid copying the same area twice.
+    manager->bufferForShow.wlSurfaceBuffer->damageList
+            = DamageList_AddList(manager->bufferForShow.wlSurfaceBuffer->damageList,
+                                 manager->bufferForDraw.damageList);
+
+    int count = 0;
+    for (DamageList* l = manager->bufferForShow.wlSurfaceBuffer->damageList; l != NULL; l = l->next) {
+        CopyDamagedArea(manager, l->x, l->y, l->width, l->height);
+        count++;
+    }
+
+    // This buffer is now identical to what's on the screen, so clear the difference list:
+    DamageList_FreeAll(manager->bufferForShow.wlSurfaceBuffer->damageList);
+    manager->bufferForShow.wlSurfaceBuffer->damageList = NULL;
+
+    // The list of damage to notify Wayland about:
     manager->bufferForShow.damageList = manager->bufferForDraw.damageList;
     manager->bufferForDraw.damageList = NULL;
 
-    // Don't know how old the "show" buffer is, so have to copy the entire draw buffer to it.
-    // TODO: There's a room for improvement here.
-    memcpy(manager->bufferForShow.wlSurfaceBuffer->data,
-           manager->bufferForDraw.data,
-           SurfaceBufferSizeInBytes(manager->bufferForShow.wlSurfaceBuffer));
-
     jlong endTime = GetJavaTimeNanos();
-    WLBufferTrace(manager, "CopyDrawBufferToShowBuffer: copied in %lldns", endTime - startTime);
+    WLBufferTrace(manager, "CopyDrawBufferToShowBuffer: copied %d area(s) in %lldns", count, endTime - startTime);
 
     MUTEX_UNLOCK(manager->drawLock);
 }
