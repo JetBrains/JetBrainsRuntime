@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,12 +38,12 @@
 #define NEXT_BOOLEAN(buf)   (jboolean)NEXT_INT(buf)
 #define NEXT_LONG(buf)      NEXT_VAL(buf, jlong)
 #define NEXT_DOUBLE(buf)    NEXT_VAL(buf, jdouble)
-#define NEXT_SURFACE(buf) ((VKSurfaceData*) (SurfaceDataOps*) jlong_to_ptr(NEXT_LONG(buf)))
+#define NEXT_SURFACE(buf) ((VKSDOps*) (SurfaceDataOps*) jlong_to_ptr(NEXT_LONG(buf)))
 
 /*
  * Increments a pointer (buf) by the given number of bytes.
  */
-#define SKIP_BYTES(buf, numbytes) (buf) += (numbytes)
+#define SKIP_BYTES(buf, numbytes) (buf) = ((unsigned char*)buf) + (numbytes)
 
 /*
  * Extracts a value at the given offset from the provided packed value.

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,19 +24,41 @@
  * questions.
  */
 
-#ifndef VKPipeline_h_Included
-#define VKPipeline_h_Included
+#ifndef VKVertex_h_Included
+#define VKVertex_h_Included
 
-#include "VKShader.h"
+#include <vulkan/vulkan.h>
+#include "VKBuffer.h"
 
-struct VKPipelines {
-    VKShaders shaders;
-    // TODO we need a pool of pipelines and (optionally) render passes for different formats.
-    vk::raii::RenderPass renderPass = nullptr; // Render pass is only needed if dynamic rendering is off.
-    vk::raii::PipelineLayout testLayout = nullptr;
-    vk::raii::Pipeline test = nullptr;
+#define RGBA_TO_L4(c)              \
+    (((c) >> 16) & (0xFF))/255.0f, \
+    (((c) >> 8) & 0xFF)/255.0f,    \
+    ((c) & 0xFF)/255.0f,           \
+    (((c) >> 24) & 0xFF)/255.0f
 
-    void init(const vk::raii::Device& device, bool dynamicRendering);
-};
+#define ARRAY_TO_VERTEX_BUF(vertices)                                           \
+    VKBuffer_CreateFromData(vertices, ARRAY_SIZE(vertices)*sizeof (vertices[0]))
 
-#endif //VKPipeline_h_Included
+typedef struct {
+    VkVertexInputAttributeDescription *attributeDescriptions;
+    uint32_t attributeDescriptionCount;
+    VkVertexInputBindingDescription* bindingDescriptions;
+    uint32_t bindingDescriptionCount;
+} VKVertexDescr;
+
+typedef struct {
+    float px, py;
+    float u, v;
+} VKTxVertex;
+
+typedef struct {
+    float px, py;
+    float r, g, b, a;
+} VKCVertex;
+
+VKVertexDescr VKVertex_GetTxVertexDescr();
+VKVertexDescr VKVertex_GetCVertexDescr();
+
+
+
+#endif //VKVertex_h_Included

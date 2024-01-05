@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,24 +24,23 @@
  * questions.
  */
 
-#include "VKShader.h"
+#ifndef VKBuffer_h_Included
+#define VKBuffer_h_Included
+#include <vulkan/vulkan.h>
 
-// Inline bytecode of all shaders
-#define INCLUDE_BYTECODE
-#define SHADER_ENTRY(NAME, TYPE) static uint32_t NAME ## _ ## TYPE ## _data[] = {
-#define BYTECODE_END };
-#include "vulkan/shader_list.h"
-#undef INCLUDE_BYTECODE
-#undef SHADER_ENTRY
-#undef BYTECODE_END
+typedef struct {
+    VkBuffer buffer;
+    VkDeviceMemory memory;
+    VkDeviceSize size;
+} VKBuffer;
 
-void VKShaders::init(const vk::raii::Device& device) {
-    // Declare file extensions as stage flags
-    auto vert = vk::ShaderStageFlagBits::eVertex;
-    auto frag = vk::ShaderStageFlagBits::eFragment;
-    // Init all shader modules
-#   define SHADER_ENTRY(NAME, TYPE) \
-    NAME ## _ ## TYPE.init(device, sizeof NAME ## _ ## TYPE ## _data, NAME ## _ ## TYPE ## _data, TYPE);
-#   include "vulkan/shader_list.h"
-#   undef SHADER_ENTRY
-}
+VkResult VKBuffer_FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
+                                 VkMemoryPropertyFlags properties, uint32_t* pMemoryType);
+
+VKBuffer* VKBuffer_Create(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+
+VKBuffer* VKBuffer_CreateFromData(void* vertices, VkDeviceSize bufferSize);
+
+void VKBuffer_free(VKBuffer* buffer);
+
+#endif // VKBuffer_h_Included
