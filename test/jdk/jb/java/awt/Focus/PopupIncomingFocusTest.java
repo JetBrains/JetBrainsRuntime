@@ -52,6 +52,7 @@ public class PopupIncomingFocusTest {
             SwingUtilities.invokeAndWait(PopupIncomingFocusTest::init);
             robot.delay(1000);
             launchProcessWithWindow();
+            robot.delay(1000);
             clickAt(button);
             popupOpened.get(10, TimeUnit.SECONDS);
             clickAt(400, 100); // other process' window
@@ -70,7 +71,7 @@ public class PopupIncomingFocusTest {
             popup.setVisible(true);
         });
 
-        frame = new JFrame();
+        frame = new JFrame("PIFT");
         frame.add(button);
         frame.setBounds(50, 50, 200, 100);
 
@@ -117,29 +118,23 @@ public class PopupIncomingFocusTest {
 
     private static void launchProcessWithWindow() throws Exception {
         String javaPath = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
-        File tmpFile = File.createTempFile("PopupIncomingFocusTest", ".java");
-        tmpFile.deleteOnExit();
-        Files.writeString(tmpFile.toPath(), "import javax.swing.*;\n" +
-                "import java.awt.event.*;\n" +
-                "\n" +
-                "public class TestWindow {\n" +
-                "    public static void main(String[] args) {\n" +
-                "        SwingUtilities.invokeLater(() -> {\n" +
-                "            JFrame f = new JFrame();\n" +
-                "            f.addWindowFocusListener(new WindowAdapter() {\n" +
-                "                @Override\n" +
-                "                public void windowGainedFocus(WindowEvent e) {\n" +
-                "                    System.out.println();\n" +
-                "                }\n" +
-                "            });\n" +
-                "            f.setBounds(300, 50, 200, 100);\n" +
-                "            f.setVisible(true);\n" +
-                "        });\n" +
-                "    }\n" +
-                "}\n");
-        otherProcess = Runtime.getRuntime().exec(new String[]{javaPath, tmpFile.getAbsolutePath()});
+        otherProcess = Runtime.getRuntime().exec(new String[]{javaPath,
+                                                              "-cp",
+                                                              System.getProperty("java.class.path"),
+                                                              "PopupIncomingFocusTestChild"});
         if (otherProcess.getInputStream().read() == -1) {
             throw new RuntimeException("Error starting process");
         }
+    }
+}
+
+class PopupIncomingFocusTestChild {
+    public static void main(String[] args) throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            JFrame f = new JFrame("PIFT 2");
+            f.setBounds(300, 50, 200, 100);
+            f.setVisible(true);
+        });
+        System.out.println();
     }
 }
