@@ -26,8 +26,8 @@
  * @bug 5009033 6603000 6666362 8159142 8198613
  * @summary Verifies that images transformed with bilinear filtering do not
  *          leave artifacts at the edges.
- * @run main/othervm -Dsun.java2d.uiScale=2.5 DrawImageBilinear
- * @run main/othervm -Dsun.java2d.uiScale=2.5 -Dsun.java2d.d3d=false DrawImageBilinear
+ * @run main/othervm -Dverbose=true -Dsun.java2d.uiScale=2.5 DrawImageBilinear
+ * @run main/othervm -Dverbose=true -Dsun.java2d.uiScale=2.5 -Dsun.java2d.d3d=false DrawImageBilinear
  */
 
 import java.awt.Canvas;
@@ -46,6 +46,8 @@ import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
 import java.awt.image.IndexColorModel;
 import java.awt.image.VolatileImage;
+import java.io.File;
+import javax.imageio.ImageIO;
 
 public class DrawImageBilinear extends Canvas {
 
@@ -144,6 +146,8 @@ public class DrawImageBilinear extends Canvas {
 
     public static void main(String[] args) throws Exception {
         try {
+            boolean verbose = Boolean.parseBoolean(System.getProperty("verbose", "false"));
+
             EventQueue.invokeAndWait(() -> createAndShowGUI());
             GraphicsConfiguration gc = frame.getGraphicsConfiguration();
             if (gc.getColorModel() instanceof IndexColorModel) {
@@ -163,6 +167,11 @@ public class DrawImageBilinear extends Canvas {
             robot.waitForIdle();
             if (capture == null) {
                 throw new RuntimeException("Failed: capture is null");
+            }
+
+            if (verbose) {
+                String format = "bmp";
+                ImageIO.write(capture, format, new File("capture" + "." + format));
             }
 
             // Test background color
