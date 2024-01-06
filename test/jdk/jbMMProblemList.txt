@@ -121,7 +121,6 @@ javax/swing/JTable/7124218/SelectEditTableCell.java nobug linux-all
 javax/swing/JTextPane/TestJTextPaneBackgroundColor.java nobug linux-all
 javax/swing/JToolTip/TestTooltipBackgroundColor.java nobug linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8253184,JBR-5510 windows-all,linux-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128,8253184,JBR-5510 macosx-all,windows-all,linux-all
 javax/swing/plaf/basic/BasicHTML/4251579/bug4251579.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java 8277816,8253184,JBR-5510 macosx-aarch64,windows-all,linux-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-5510 windows-all,linux-all
@@ -133,5 +132,4 @@ jb/java/awt/MouseInfo/GetPointerInfoTest.java nobug linux-all
 jb/java/awt/Window/BackgroundWindowOrderOnSpaceChange.java JBR-6486 macosx-all
 
 sun/java2d/GdiRendering/ClipShapeRendering.java 8285604,JBR-5510 windows-all,linux-all
-sun/java2d/GdiRendering/InsetClipping.java 7124403,JBR-5359,JBR-5510 windows-x64,macosx-all,windows-aarch64,linux-all
 

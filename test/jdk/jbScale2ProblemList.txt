@@ -34,7 +34,6 @@ javax/swing/JComponent/7154030/bug7154030.java 8297454,JBR-5359,JBR-5510,JBR-613
 javax/swing/JEditorPane/8195095/ImageViewTest.java 8253184,JBR-5510,JBR-6283 windows-all,linux-all,macos-all
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      7124313,JBR-5071 macosx-all,linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6090 linux-all,windows-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8233582,JBR-6481,JBR-6090 linux-all,windows-all
 
 sun/java2d/GdiRendering/ClipShapeRendering.java                                     JBR-5204 linux-all,windows-all
 
@@ -42,7 +41,9 @@ sun/java2d/GdiRendering/ClipShapeRendering.java                                 
 # the below tests are not intended to be executed in S2 configurations because
 # the tests contains tags to be launched for various scales including S2
 #
-jb/java/awt/CustomTitleBar/ActionListenerTest.java                                  nobug generic-all
+java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java                  nobug generic-all
+java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java                            nobug generic-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java nobug generic-all
 jb/java/awt/CustomTitleBar/ChangeTitleBarHeightTest.java                            nobug generic-all
 jb/java/awt/CustomTitleBar/CheckFullScreen.java                                     nobug generic-all
 jb/java/awt/CustomTitleBar/CreateTitleBarTest.java                                  nobug generic-all
