@@ -111,8 +111,6 @@
 
 ############################################################################
 
-java/awt/FlowLayout/PreferredLayoutSize.java JBR-6349 linux-all
-java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java NOBUG windows-all timeout
 java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout
 java/awt/Robot/NonEmptyErrorStream.java JBR-6275 macosx-all
 
