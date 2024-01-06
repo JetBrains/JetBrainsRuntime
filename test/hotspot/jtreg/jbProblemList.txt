@@ -210,6 +210,8 @@ vmTestbase/nsk/jdi/LaunchingConnector/launchnosuspend/launchnosuspend001/TestDes
 vmTestbase/nsk/jdi/ThreadReference/stop/stop001/TestDescription.java 7034630 generic-all
 vmTestbase/nsk/jdi/ReferenceType/instances/instances002/instances002.java initial_run linux-all
 
+vmTestbase/nsk/jdi/VirtualMachine/allThreads/allthreads001/TestDescription.java JBR-6530 macosx-all
+
 vmTestbase/metaspace/gc/firstGC_10m/TestDescription.java 8208250 generic-all
 vmTestbase/metaspace/gc/firstGC_50m/TestDescription.java 8208250 generic-all
 vmTestbase/metaspace/gc/firstGC_99m/TestDescription.java 8208250 generic-all
