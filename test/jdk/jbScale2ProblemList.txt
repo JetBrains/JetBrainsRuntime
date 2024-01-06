@@ -2,8 +2,8 @@ java/awt/Dialog/DialogLocationTest.java JBR-6090 windows-all
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java JBR-5538 windows-all
 java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java JBR-6027 windows-all
 java/awt/dnd/DropActionChangeTest.java JBR-6489,JBR-5799 generic-all
+java/awt/dnd/ImageTransferTest/ImageTransferTest.java  JBR-6442 linux-all
 java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.java JBR-6442 linux-all
-java/awt/dnd/MissedDragEnterTest.java JBR-6091 windows-all
 java/awt/dnd/MozillaDnDTest.java JBR-6442 linux-all
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java JBR-6292 windows-all
 java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java JBR-6292 windows-all
@@ -19,7 +19,7 @@ java/awt/Focus/MouseClickRequestFocusRaceTest/MouseClickRequestFocusRaceTest.jav
 java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 7124275,JBR-5799 macosx-all,windows-all
 java/awt/Focus/SimpleWindowActivationTest/SimpleWindowActivationTest.java JBR-6089 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java JBR-6090 windows-all
-java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6233 windows-x64
+java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6233,JBR-6509 windows-x64,generic-all
 java/awt/Frame/InvisibleOwner/InvisibleOwner.java JBR-6090 windows-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenSmall.java JBR-6090 windows-all
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
@@ -40,7 +40,6 @@ javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-6100 linux-all
 javax/swing/JComponent/7154030/bug7154030.java JBR-6134 windows-x64
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      JBR-5071 linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6090 linux-all,windows-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8233582,JBR-6090,JBR-6481 linux-all,windows-all
 
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8293001,JBR-6293 linux-all,windows-all
 sun/java2d/GdiRendering/ClipShapeRendering.java                                     JBR-5204 linux-all,windows-all
@@ -49,6 +48,11 @@ sun/java2d/GdiRendering/ClipShapeRendering.java                                 
 # the below tests are not intended to be executed in S2 configurations because
 # the tests contains tags to be launched for various scales including S2
 #
+java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java                  nobug generic-all
+java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java                  nobug generic-all
+java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java                            nobug generic-all
+javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java                  nobug generic-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java nobug generic-all
 jb/java/awt/CustomTitleBar/ActionListenerTest.java                                  nobug generic-all
 jb/java/awt/CustomTitleBar/ChangeTitleBarHeightTest.java                            nobug generic-all
 jb/java/awt/CustomTitleBar/CheckFullScreen.java                                     nobug generic-all
