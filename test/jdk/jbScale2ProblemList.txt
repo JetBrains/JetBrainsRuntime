@@ -1,3 +1,4 @@
+java/awt/Dialog/DialogLocationTest.java JBR-6090 windows-all
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java      JBR-5538 windows-all
 java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java                  JBR-6027 windows-all
 java/awt/Focus/6378278/InputVerifierTest.java                                       JBR-5799 windows-all
@@ -15,7 +16,7 @@ java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 815
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5711,JBR-6234 linux-all,windows-all
 java/awt/List/TriggerActionEventTest.java JBR-6234 windows-all
 java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-5359,JBR-5510 macosx-all,windows-all,linux-all
-java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java JBR-5359,JBR-5510,JBR-6234 windows-aarch64,linux-all
+java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java 8049405,JBR-6234 windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5359,JBR-5510,JBR-6134 windows-aarch64,windows-x64,linux-5.18.2-arch1-1
 java/awt/Modal/BlockedMouseInputTest2.java                                          JBR-6090 windows-all
 java/awt/PopupMenu/PopupMenuLocation.java                                           8238720,8288415,JBR-5071 windows-all,macosx-all,linux-all
@@ -23,7 +24,6 @@ javax/swing/JComponent/7154030/bug7154030.java 8297454,JBR-5359,JBR-5510,JBR-613
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      7124313,JBR-5071 macosx-all,linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java JBR-6090 windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java JBR-6090 windows-all
-javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java                        8274106,JBR-6090 macosx-all,windows-all
 
 sun/java2d/GdiRendering/ClipShapeRendering.java                                     JBR-5204 linux-all,windows-all
 

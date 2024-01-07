@@ -149,7 +149,7 @@ java/awt/dnd/NextDropActionTest/NextDropActionTest.java 8313633 macosx-aarch64
 java/awt/dnd/MissingDragExitEventTest/MissingDragExitEventTest.java JBR-5727 linux-all
 java/awt/dnd/MissingEventsOnModalDialog/MissingEventsOnModalDialogTest.java 8164464 linux-all,macosx-all
 java/awt/dnd/URIListBetweenJVMsTest/URIListBetweenJVMsTest.java 8171510,JBR-881 macosx-all,linux-all
-javax/swing/dnd/7171812/bug7171812.java 8041447,8253184,JBR-6232 macosx-all,windows-all,linux-6.2.0-1014-aws
+javax/swing/dnd/7171812/bug7171812.java 8041447,8253184,JBR-6232 macosx-all,windows-all,linux-6.2.0-1014-aws,linux-6.2.0-1015-aws
 java/awt/Focus/ChildWindowFocusTest/ChildWindowFocusTest.java JBR-5545 linux-all,windows-all
 java/awt/Focus/ChoiceFocus/ChoiceFocus.java 8169103 windows-all,macosx-all
 java/awt/Focus/ClearGlobalFocusOwnerTest/ClearGlobalFocusOwnerTest.java JBR-5907 linux-all
@@ -259,18 +259,18 @@ java/awt/Frame/FramesGC/FramesGC.java 8079069 macosx-all
 java/awt/Scrollbar/ScrollbarMouseWheelTest/ScrollbarMouseWheelTest.java 8196018 windows-all,linux-all
 java/awt/ScrollPane/ScrollPanePreferredSize/ScrollPanePreferredSize.java 8253184 windows-all
 java/awt/TrayIcon/ActionCommand/ActionCommand.java 8150540 windows-all
-java/awt/TrayIcon/ActionEventMask/ActionEventMask.java 8150540,8242801,8295300 windows-all,macosx-all,linux-5.15.0-39-generic,linux-5.15.0-33-generic,linux-6.2.0-1012-aws,linux-6.2.0-1014-aws
+java/awt/TrayIcon/ActionEventMask/ActionEventMask.java 8150540,8242801,8295300 windows-all,macosx-all,linux-all
 java/awt/TrayIcon/ActionEventTest/ActionEventTest.java 8150540,8242801 windows-all,macosx-all
-java/awt/TrayIcon/ModalityTest/ModalityTest.java 8150540,8295300 windows-all,macosx-all,linux-5.15.0-39-generic,linux-5.15.0-33-generic,linux-6.2.0-1012-aws,linux-6.2.0-1014-aws
-java/awt/TrayIcon/MouseEventMask/MouseEventMaskTest.java 8150540,8295300 windows-all,linux-5.15.0-39-generic,linux-5.15.0-33-generic,linux-6.2.0-1012-aws,linux-6.2.0-1014-aws
-java/awt/TrayIcon/MouseMovedTest/MouseMovedTest.java 8150540,8295300 windows-all,linux-5.15.0-39-generic,linux-5.15.0-33-generic,linux-6.2.0-1012-aws,linux-6.2.0-1014-aws
-java/awt/TrayIcon/SecurityCheck/FunctionalityCheck/FunctionalityCheck.java 8150540,8295300 windows-all,linux-5.15.0-39-generic,linux-5.15.0-33-generic,linux-6.2.0-1012-aws,linux-6.2.0-1014-aws
+java/awt/TrayIcon/ModalityTest/ModalityTest.java 8150540,8295300 windows-all,macosx-all,linux-all
+java/awt/TrayIcon/MouseEventMask/MouseEventMaskTest.java 8150540,8295300 windows-all,linux-all
+java/awt/TrayIcon/MouseMovedTest/MouseMovedTest.java 8150540,8295300 windows-all,linux-all
+java/awt/TrayIcon/SecurityCheck/FunctionalityCheck/FunctionalityCheck.java 8150540,8295300 windows-all,linux-all
 java/awt/TrayIcon/SystemTrayInstance/SystemTrayInstanceTest.java 8193543 linux-all
-java/awt/TrayIcon/TrayIconEventModifiers/TrayIconEventModifiersTest.java 8150540,8295300 windows-all,linux-5.15.0-39-generic,linux-5.15.0-33-generic,linux-6.2.0-1012-aws,linux-6.2.0-1014-aws
-java/awt/TrayIcon/TrayIconEvents/TrayIconEventsTest.java 8150540,8295300 windows-all,linux-5.15.0-39-generic,linux-5.15.0-33-generic,linux-6.2.0-1012-aws,linux-6.2.0-1014-aws
+java/awt/TrayIcon/TrayIconEventModifiers/TrayIconEventModifiersTest.java 8150540,8295300 windows-all,linux-all
+java/awt/TrayIcon/TrayIconEvents/TrayIconEventsTest.java 8150540,8295300 windows-all,linux-all
 java/awt/TrayIcon/TrayIconMouseTest/TrayIconMouseTest.java 8150540 windows-all
 java/awt/TrayIcon/TrayIconPopup/TrayIconPopupClickTest.java 8150540 windows-all,macosx-all
-java/awt/TrayIcon/TrayIconPopup/TrayIconPopupTest.java 8150540,8314775,8295300 windows-all,linux-6.2.0-1012-aws,linux-6.2.0-1014-aws,linux-5.15.0-39-generic
+java/awt/TrayIcon/TrayIconPopup/TrayIconPopupTest.java 8150540,8314775,8295300 windows-all,linux-6.2.0-1016-aws,linux-6.2.0-1014-aws,linux-6.2.0-1015-aws,linux-5.15.0-39-generic
 
 java/awt/Window/8027025/Test8027025.java 8253184 windows-all
 java/awt/Window/8159168/SetShapeTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
@@ -335,9 +335,11 @@ java/awt/hidpi/properties/HiDPIPropertiesUnixTest.java JBR-495 macosx-all
 java/awt/FullScreen/DisplayChangeVITest/DisplayChangeVITest.java 8169469 windows-all
 java/awt/print/PrinterJob/PSQuestionMark.java 7003378 generic-all
 java/awt/print/PrinterJob/GlyphPositions.java 7003378 generic-all
+java/awt/Choice/ChoiceGeneratesItemEvents.java JBR-6284 linux-5.18.2-arch1-1
 java/awt/Choice/ChoiceLocationTest/ChoiceLocationTest.java JBR-5799 windows-all
 java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java 7100044,JBR5210 macosx-all,linux-all,windows-all
-java/awt/Choice/GetSizeTest/GetSizeTest.java JBR-837 macosx-11.7.3
+java/awt/Choice/ChoiceStaysOpenedOnTAB.java JBR-6284 linux-5.18.2-arch1-1
+java/awt/Choice/GetSizeTest/GetSizeTest.java JBR-837 macosx-all
 java/awt/Component/F10TopToplevel/F10TopToplevel.java JBR-5687 linux-all
 java/awt/Component/GetScreenLocTest/GetScreenLocTest.java 4753654 generic-all
 java/awt/Component/SetComponentsBounds/SetComponentsBounds.java JBR-4275 linux-all
@@ -506,7 +508,7 @@ java/awt/Mouse/EnterExitEvents/ResizingFrameTest.java 8005021,8253184 macosx-all
 java/awt/Mouse/EnterExitEvents/FullscreenEnterEventTest.java 8051455 macosx-all
 java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.java 8253184,JBR-5709 windows-all,linux-all
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java 8253184 windows-all
-java/awt/Mouse/MouseModifiersUnitTest/ExtraButtonDrag.java 8253184 windows-all
+java/awt/Mouse/MouseModifiersUnitTest/ExtraButtonDrag.java 8253184,JBR-6407 windows-all,linux-5.4.0-1103-aws # 5.4.0-1103-aws - Ubuntu 18.04
 java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java 7124407 macosx-all
 java/awt/Mouse/RemovedComponentMouseListener/RemovedComponentMouseListener.java 8157170,8253184 macosx-all,windows-all
 java/awt/MouseAdapter/MouseAdapterUnitTest/MouseAdapterUnitTest.java 8253184 windows-all
@@ -647,6 +649,7 @@ java/awt/Frame/DisposeParentGC/DisposeParentGC.java 8079786 macosx-all
 
 java/awt/GraphicsDevice/CheckDisplayModes.java 8266242 macosx-aarch64
 java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java 7099223 linux-all,windows-all,macosx-all
+java/awt/GraphicsDevice/DisplayModes/ExtraAllocationTest.java JBR-6384 macosx-all
 java/awt/keyboard/8218917/AltKeyBug.java JBR-3636,JBR-5312 macosx-all,windows-all
 java/awt/keyboard/AltPlusNumberKeyCombinationsTest/AltPlusNumberKeyCombinationsTest.java JBR-5210 windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogButtonTest/EnqueueWithDialogButtonTest.java JBR-5210 windows-all
@@ -916,7 +919,7 @@ javax/swing/JRadioButton/8033699/bug8033699.java 8197552 windows-all
 javax/swing/JRadioButton/8075609/bug8075609.java 8197552,8266085,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/JRadioButton/ButtonGroupFocus/ButtonGroupFocusTest.java 8197552,8266085 windows-all
 javax/swing/JRadioButton/FocusTraversal/FocusTraversal.java 8266085 windows-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8233582 linux-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8233582,JBR-6481 linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582 linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128,8253184,JBR-5510 macosx-all,windows-all,linux-5.18.2-arch1-1
@@ -927,12 +930,12 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentWindowClickSwing.java
 javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java 8159131 linux-all
 javax/swing/JTree/4330357/bug4330357.java 8253184 windows-all
 javax/swing/JTree/4633594/JTreeFocusTest.java 8173125,JBR-5210 macosx-all,windows-all
-javax/swing/AbstractButton/6711682/bug6711682.java 8060765,JBR-6232 windows-all,macosx-all,linux-5.15.0-39-generic,linux-5.15.0-33-generic,linux-6.2.0-1012-aws,linux-6.2.0-1014-aws
-javax/swing/Action/8133039/bug8133039.java JBR-5210,JBR-6232 windows-all,linux-6.2.0-1014-aws
-javax/swing/ButtonGroup/TestButtonGroupFocusTraversal.java JBR-5210,JBR-6232 windows-all,linux-6.2.0-1014-aws
+javax/swing/AbstractButton/6711682/bug6711682.java 8060765,JBR-6232 windows-all,macosx-all,linux-all
+javax/swing/Action/8133039/bug8133039.java JBR-5210,JBR-6232 windows-all,linux-6.2.0-1014-aws,linux-6.2.0-1015-aws
+javax/swing/ButtonGroup/TestButtonGroupFocusTraversal.java JBR-5210,JBR-6232 windows-all,linux-6.2.0-1014-aws,linux-6.2.0-1015-aws
 javax/swing/event/RightAltKeyTest.java JBR-5210 windows-all
 javax/swing/JButton/4659800/EnterKeyActivatesButton.java JBR-5210 windows-all
-javax/swing/JColorChooser/Test6541987.java JBR-5210,JBR-6232 windows-all,linux-6.2.0-1014-aws
+javax/swing/JColorChooser/Test6541987.java JBR-5210,JBR-6232 windows-all,linux-6.2.0-1014-aws,linux-6.2.0-1015-aws
 javax/swing/JColorChooser/Test7194184.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test8051548.java JBR-5210 windows-all
 javax/swing/JComboBox/4743225/bug4743225.java JBR-5210 windows-all
@@ -1011,13 +1014,15 @@ javax/swing/text/GlyphPainter2/6427244/bug6427244.java JBR-896 windows-all
 javax/swing/text/JTextComponent/5074573/bug5074573.java CODETOOLS-7901623,JBR-5386 windows-all,linux-all
 javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-5210 windows-all
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java JBR-180 windows-all
-javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all
+javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all,linux-all
 javax/swing/text/View/8156217/FPMethodCalledTest.java JBR-5541 linux-all
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8253184 windows-all
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java  8277816,8253184 macosx-aarch64,windows-all
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8277816,8253184,JBR-5510 macosx-aarch64,windows-all,linux-5.18.2-arch1-1
 java/awt/ColorClass/AlphaColorTest.java 8277816,JBR-5359,JBR-5510 macosx-aarch64,windows-aarch64,linux-5.18.2-arch1-1
 java/awt/AlphaComposite/WindowAlphaCompositeTest.java 8277816 macosx-aarch64
+
+native_sanity/simplenativelauncher/ProgramTest.java JBR-5287 windows-all
 
 sanity/client/SwingSet/src/ButtonDemoScreenshotTest.java 8265770,8273312,JBR-5510 windows-all,macosx-all,linux-5.18.2-arch1-1
 sanity/client/SwingSet/src/ColorChooserDemoTest.java
@@ -1026,11 +1031,11 @@ sanity/client/SwingSet/src/FrameDemoTest.java 8253184 windows-all
 sanity/client/SwingSet/src/InternalFrameDemoTest.java 8253184 windows-all
 sanity/client/SwingSet/src/GridBagLayoutDemoTest.java 8253184 windows-all
 sanity/client/SwingSet/src/TextFieldDemoTest.java JBR-5061 linux-all
-sanity/client/SwingSet/src/ToolTipDemoTest.java 8225012 windows-all,macosx-all
+sanity/client/SwingSet/src/ToolTipDemoTest.java 8225012,8293001 windows-all,macosx-all,linux-all
 sanity/client/SwingSet/src/ScrollPaneDemoTest.java 8225013 linux-all
 sanity/client/SwingSet/src/SliderDemoTest.java 8253184 windows-all
 sanity/client/SwingSet/src/SpinnerDemoTest.java 8253184 windows-all
-sanity/client/SwingSet/src/SplitPaneDemoTest.java JBR-5817 linux-6.2.0-1012-aws,linux-6.2.0-1014-aws
+sanity/client/SwingSet/src/SplitPaneDemoTest.java JBR-5817 linux-all
 sanity/client/SwingSet/src/SwingSet2DemoTest.java 8253184 windows-all
 
 ############################################################################
@@ -1079,6 +1084,8 @@ com/sun/jdi/AfterThreadDeathTest.java                           8232839 linux-x6
 # svc_tools
 
 sun/tools/jhsdb/HeapDumpTest.java                               8269881 windows-all
+sun/tools/jhsdb/HeapDumpTestWithActiveProcess.java              JBR-6288 windows-all
+sun/tools/jhsdb/JShellHeapDumpTest.java                         8231297,JBR-6288 windows-all
 sun/tools/jstatd/TestJstatdDefaults.java                        8081569,8226420 windows-all
 sun/tools/jstatd/TestJstatdRmiPort.java                         8226420,8251259 windows-all
 sun/tools/jstatd/TestJstatdServer.java                          8081569,8226420 windows-all
@@ -1167,6 +1174,8 @@ java/awt/TextArea/TextAreaTwicePack/TextAreaTwicePack.java 8253184 windows-all
 java/awt/TextField/OverScrollTest/OverScrollTest.java 8253184 windows-all
 java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter.java 8254841 macosx-all
 java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.java 8256289,JBR-5359 windows-x64,windows-aarch64
+java/awt/Focus/RemoveAfterRequest/RemoveAfterRequest.java JBR-6052 macosx-all,linux-all
+java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java JBR-6335 linux-all
 java/awt/Focus/RowToleranceTransitivityTest.java JBR-5751 windows-all
 java/awt/FullScreen/TranslucentWindow/TranslucentWindow.java 8258103,8253184 linux-all,windows-all
 
@@ -1321,7 +1330,7 @@ javax/sound/sampled/spi/MixerProvider/ExpectedNPEOnNull.java JBR-4455 linux-aarc
 javax/sound/sampled/Clip/ClipIsRunningAfterStop.java JBR-4455 linux-aarch64
 javax/sound/sampled/Mixers/BogusMixers.java JBR-4455 linux-aarch64
 
-java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java JBR-5359,JBR-5510,8310487 windows-aarch64,linux-5.18.2-arch1-1,linux-all
+java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java JBR-5359,JBR-5510,8310487 windows-aarch64,linux-5.18.2-arch1-1,linux-all,macosx-all
 java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java JBR-5359,JBR-5510,JBR-5905 windows-aarch64,linux-5.18.2-arch1-1,linux-all
 java/awt/Choice/SelectNewItemTest/SelectNewItemTest.java 8315733 macosx-all
 java/awt/ColorClass/XRenderTranslucentColorDrawTest.java JBR-5359 windows-aarch64
@@ -1342,7 +1351,7 @@ java/awt/image/DrawImage/IncorrectUnmanagedImageSourceOffset.java JBR-5359 windo
 java/awt/image/DrawImage/SimpleManagedImage.java JBR-5359 windows-aarch64
 java/awt/image/DrawImage/SimpleUnmanagedImage.java JBR-5359 windows-aarch64
 java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5359 windows-aarch64
-java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java JBR-5359,JBR-5510 windows-aarch64,linux-all
+java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java 8049405 windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JInternalFrameOverlapping.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
 java/awt/Mixing/OpaqueTest.java JBR-5707 linux-all
@@ -1370,7 +1379,7 @@ jb/java/awt/CustomTitleBar/MinimizingWindowTest.java JBR-5359,JBR-5345 windows-a
 jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java JBR-5910 windows-x64
 jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java JBR-5359,JBR-5345 windows-aarch64,windows-x64
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java JBR-5359,JBR-5345 windows-aarch64,windows-x64
-sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
+sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-5359,JBR-5510,JBR-6285 windows-aarch64,linux-all
 sun/java2d/AcceleratedXORModeTest.java JBR-5359 windows-aarch64
 sun/java2d/ClassCastExceptionForInvalidSurface.java JBR-6022 linux-5.18.2-arch1-1
 sun/java2d/GdiRendering/ClipShapeRendering.java 8285604,JBR-5510 windows-all,linux-5.18.2-arch1-1

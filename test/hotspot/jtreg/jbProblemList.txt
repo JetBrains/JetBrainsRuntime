@@ -47,15 +47,21 @@ gtest/LargePageGtests.java#use-large-pages-1G initial_run linux-all
 gtest/GTestWrapper.java initial_run generic-all
 gtest/MetaspaceUtilsGtests.java initial_run generic-all
 gtest/MetaspaceGtests.java#balanced-no-ccs initial_run generic-all
+gtest/MetaspaceGtests.java#balanced-with-guards JBR-5718 generic-all
+gtest/MetaspaceGtests.java#reclaim-aggressive-debug JBR-5718 generic-all
+gtest/MetaspaceGtests.java#reclaim-none-debug JBR-5718 generic-all
 gtest/MetaspaceGtests.java#reclaim-aggressive-ndebug initial_run generic-all
 gtest/LargePageGtests.java#use-large-pages initial_run linux-all,windows-all
 
+gtest/NativeHeapTrimmerGtest.java JBR-5718 generic-all
 gtest/NMTGtests.java#nmt-detail JBR-5718 generic-all
 gtest/NMTGtests.java#nmt-off JBR-5718 generic-all
 gtest/NMTGtests.java#nmt-summary JBR-5718 generic-all
 
 gc/stress/TestReclaimStringsLeaksMemory.java initial_run windows-all
 
+gc/shenandoah/TestAllocHumongousFragment.java#aggressive 8309622 generic-all
+gc/shenandoah/TestAllocIntArrays.java#iu-aggressive 8309622 generic-all
 gc/shenandoah/TestAllocObjects.java#aggressive initial_run generic-all
 gc/shenandoah/TestAllocObjects.java#iu-aggressive initial_run generic-all
 gc/shenandoah/mxbeans/TestChurnNotifications.java#aggressive initial_run generic-all
@@ -71,7 +77,6 @@ compiler/jvmci/jdk.vm.ci.code.test/src/jdk/vm/ci/code/test/NativeCallTest.java 8
 compiler/cpuflags/TestAESIntrinsicsOnSupportedConfig.java 8190680 generic-all
 
 compiler/runtime/Test8168712.java 8211769,8211771 generic-ppc64,generic-ppc64le,linux-s390x
-runtime/Thread/ThreadCountLimit.java 8293872 linux-all
 
 compiler/rtm/locking/TestRTMAbortRatio.java 8183263 generic-x64
 compiler/rtm/locking/TestRTMAbortThreshold.java 8183263 generic-x64
@@ -98,15 +103,15 @@ gc/epsilon/TestMemoryMXBeans.java 8206434 generic-all
 gc/g1/humongousObjects/objectGraphTest/TestObjectGraphAfterGC.java 8156755 generic-all
 gc/g1/logging/TestG1LoggingFailure.java 8169634 generic-all
 gc/g1/humongousObjects/TestHeapCounters.java 8178918 generic-all
+gc/metaspace/CompressedClassSpaceSizeInJmapHeap.java 8241293 macosx-x64
+gc/metaspace/TestMetaspacePerfCounters.java#id3 initial_run generic-all
 gc/stress/gclocker/TestExcessGCLockerCollections.java 8229120 generic-all
 gc/stress/gclocker/TestGCLockerWithParallel.java 8180622 generic-all
 gc/stress/gclocker/TestGCLockerWithG1.java 8180622 generic-all
-gc/stress/gclocker/TestGCLockerWithShenandoah.java initial_run generic-all
+gc/stress/gclocker/TestGCLockerWithShenandoah.java#aggressive initial_run generic-all
+gc/stress/gcold/TestGCOldWithShenandoah.java#iu-aggressive initial_run windows-all
 gc/stress/TestJNIBlockFullGC/TestJNIBlockFullGC.java 8192647 generic-all
-gc/metaspace/CompressedClassSpaceSizeInJmapHeap.java 8241293 macosx-x64
-gc/metaspace/TestMetaspacePerfCounters.java#id3 initial_run generic-all
 
-gc/stress/gcold/TestGCOldWithShenandoah.java initial_run windows-all
 
 #############################################################################
 
@@ -125,18 +130,23 @@ runtime/memory/ReadFromNoaccessArea.java initial_run windows-aarch64
 runtime/cds/appcds/methodHandles/MethodHandlesInvokersTest.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesCastFailureTest.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesGeneralTest.java initial_run generic-all
-runtime/ReservedStack/ReservedStackTestCompiler.java initial_run windows-aarch64
-runtime/cds/appcds/dynamicArchive/CDSStreamTestDriver.java initial_run generic-all
-runtime/ErrorHandling/CreateCoredumpOnCrash.java initial_run windows-aarch64
-runtime/ReservedStack/ReservedStackTest.java initial_run windows-aarch64
 runtime/cds/appcds/methodHandles/MethodHandlesPermuteArgumentsTest.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesAsCollectorTest.java initial_run generic-all
 runtime/cds/SharedBaseAddress.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesSpreadArgumentsTest.java initial_run generic-all
+runtime/cds/appcds/dynamicArchive/CDSStreamTestDriver.java initial_run generic-all
+runtime/ReservedStack/ReservedStackTestCompiler.java initial_run windows-aarch64
+runtime/ErrorHandling/CreateCoredumpOnCrash.java initial_run windows-aarch64
+runtime/ErrorHandling/MachCodeFramesInErrorFile.java JBR-6289 windows-aarch64
+runtime/ReservedStack/ReservedStackTest.java initial_run windows-aarch64
+runtime/Thread/ThreadCountLimit.java 8293872 linux-all
+runtime/Thread/TooSmallStackSize.java JBR-6350 windows-aarch64
 
 #############################################################################
 
 # :hotspot_serviceability
+
+serviceability/dcmd/vm/TrimLibcHeapTest.java 8312625 linux-all
 
 serviceability/sa/sadebugd/DebugdConnectTest.java 8239062 macosx-x64
 serviceability/sa/TestRevPtrsForInvokeDynamic.java 8241235 generic-all
@@ -145,6 +155,7 @@ serviceability/jvmti/ModuleAwareAgents/ThreadStart/MAAThreadStart.java 8225354 w
 serviceability/jvmti/RedefineClasses/TestMultipleClasses.java initial_run windows-all
 serviceability/jvmti/SetBreakpoint/TestManyBreakpoints.java initial_run generic-aarch64
 
+serviceability/sa/ClhsdbInspect.java JBR-6351 windows-aarch64
 serviceability/sa/ClhsdbJstackXcompStress.java initial_run windows-all
 
 serviceability/sa/ClhsdbPrintAs.java initial_run generic-all
@@ -192,7 +203,11 @@ vmTestbase/nsk/jdi/LaunchingConnector/launchnosuspend/launchnosuspend001/TestDes
 
 vmTestbase/nsk/jdi/ThreadReference/stop/stop001/TestDescription.java 7034630 generic-all
 vmTestbase/nsk/jdi/ReferenceType/instances/instances002/instances002.java initial_run linux-all
+vmTestbase/nsk/jdi/Value/type/type002/type002.java time_out_intermittent macosx-x64
 vmTestbase/nsk/jdi/Value/type/type003/TestDescription.java time_out_intermittent macosx-all
+vmTestbase/nsk/jdi/VirtualMachine/canGetBytecodes/cangetbytecodes001/TestDescription.java time_out_intermittent macosx-aarch64
+vmTestbase/nsk/jdi/VirtualMachine/canGetCurrentContendedMonitor/cangccm001/TestDescription.java time_out_intermittent macosx-aarch64
+vmTestbase/nsk/jdi/VirtualMachine/canGetMonitorInfo/cangetmonitorinfo001/TestDescription.java JBR-6361 macosx-aarch64
 
 vmTestbase/metaspace/gc/firstGC_10m/TestDescription.java 8208250 generic-all
 vmTestbase/metaspace/gc/firstGC_50m/TestDescription.java 8208250 generic-all
@@ -220,7 +235,7 @@ vmTestbase/vm/mlvm/indy/func/jvmti/redefineClassInBootstrap/TestDescription.java
 vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2none_a/TestDescription.java 8013267 generic-all
 vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manyDiff_b/TestDescription.java 8013267 generic-all
 vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manySame_b/TestDescription.java 8013267 generic-all
-vmTestbase/vm/mlvm/meth/stress/compiler/deoptimize/Test.java#id0 8269393 macos-aarch64
+vmTestbase/vm/mlvm/meth/stress/compiler/deoptimize/Test.java#id0 8269393 macosx-aarch64
 
 
 vmTestbase/nsk/jdwp/ThreadReference/ForceEarlyReturn/forceEarlyReturn001/forceEarlyReturn001.java 7199837 generic-all
@@ -289,5 +304,6 @@ vmTestbase/nsk/sysdict/vm/stress/btree/btree009/btree009.java initial_run window
 resourcehogs/serviceability/sa/TestHeapDumpForLargeArray.java 8220624   generic-all
 
 testlibrary_tests/ir_framework/tests/TestDTestAndExclude.java initial_run windows-all
+testlibrary_tests/ir_framework/tests/TestSanity.java JBR-6352 windows-x64
 
 jb/applications/ctw/plugins_cucumber_java_lib_cucumber_java.java JBR-6084 windows-all
