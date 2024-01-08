@@ -40,7 +40,7 @@ import jdk.test.lib.process.OutputAnalyzer;
 public class TestSerialGC {
 
   public static void main(String args[]) throws Exception {
-    ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseSerialGC", "-version");
+    ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder("-XX:+UseSerialGC", "-version");
     OutputAnalyzer output = new OutputAnalyzer(pb.start());
     output.shouldNotContain("deprecated");
     output.shouldNotContain("error");

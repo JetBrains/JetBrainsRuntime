@@ -58,7 +58,7 @@ public class RSSInCrashLog {
         opts.add("-XX:+ErrorFileToStdout");
         opts.add(RSSInCrashLog.class.getName());
         opts.add("--test");
-        ProcessBuilder pb = ProcessTools.createTestJvm(opts);
+        ProcessBuilder pb = ProcessTools.createTestJavaProcessBuilder(opts);
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         output.outputTo(System.out);
         output.shouldContain("Process memory usage");
