@@ -222,7 +222,6 @@ serviceability/sa/TestUniverse.java#id0 8193639,8211767 solaris-all,linux-ppc64l
 #############################################################################
 
 vmTestbase/nsk/monitoring/MemoryPoolMBean/isCollectionUsageThresholdExceeded/isexceeded003/TestDescription.java 8153598 generic-all
-vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Deadlock/JavaDeadlock001/TestDescription.java 8060733 generic-all
 
 vmTestbase/nsk/jdi/AttachingConnector/attachnosuspend/attachnosuspend001/TestDescription.java 8153613 generic-all
 vmTestbase/nsk/jdi/ThreadReference/frameCount/framecount001/TestDescription.java 6530620 generic-all
