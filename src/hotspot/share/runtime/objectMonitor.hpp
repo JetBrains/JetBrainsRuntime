@@ -340,7 +340,6 @@ class ObjectMonitor : public CHeapObj<mtObjectMonitor> {
   void      ReenterI(JavaThread* current, ObjectWaiter* current_node);
   void      UnlinkAfterAcquire(JavaThread* current, ObjectWaiter* current_node);
   int       TryLock(JavaThread* current);
-  int       NotRunnable(JavaThread* current, JavaThread* Owner);
   int       TrySpin(JavaThread* current);
   void      ExitEpilog(JavaThread* current, ObjectWaiter* Wakee);
 
