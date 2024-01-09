@@ -346,7 +346,7 @@ class Address {
   }
 
   bool xmmindex_needs_rex() const {
-    return _xmmindex != xnoreg && _xmmindex->encoding() >= 8;
+    return _xmmindex != xnoreg && ((_xmmindex->encoding() & 8) == 8);
   }
 
   relocInfo::relocType reloc() const { return _rspec.type(); }
