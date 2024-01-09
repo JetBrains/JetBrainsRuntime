@@ -845,4 +845,9 @@ public class ModuleWriterImpl extends HtmlDocletWriter implements ModuleSummaryW
             li.add(deprDiv);
         }
     }
+
+    @Override
+    public boolean isIndexable() {
+        return true;
+    }
 }
