@@ -461,4 +461,9 @@ public class ClassWriterImpl extends SubWriterHolderWriter implements ClassWrite
         }
         return section;
     }
+
+    @Override
+    public boolean isIndexable() {
+        return true;
+    }
 }

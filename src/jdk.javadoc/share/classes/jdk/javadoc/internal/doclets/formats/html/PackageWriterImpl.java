@@ -375,4 +375,9 @@ public class PackageWriterImpl extends HtmlDocletWriter
                 .filter(p -> p != packageElement && filter.test(p))
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public boolean isIndexable() {
+        return true;
+    }
 }
