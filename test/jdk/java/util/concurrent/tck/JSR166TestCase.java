@@ -106,6 +106,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutionException;
@@ -1646,11 +1647,20 @@ public class JSR166TestCase extends TestCase {
         checkTimedGet(f, expectedValue, LONG_DELAY_MS);
     }
 
+    // Avoids unwanted interrupts when run inder jtreg
+    static ThreadGroup topThreadGroup() {
+        for (ThreadGroup g = Thread.currentThread().getThreadGroup(), p; ; g = p)
+            if ((p = g.getParent()) == null)
+                return g;
+    }
+    static final ThreadGroup jsr166TestThreadGroup =
+        new ThreadGroup(topThreadGroup(), "jsr1666TestThreadGroup");
+
     /**
      * Returns a new started daemon Thread running the given runnable.
      */
     Thread newStartedThread(Runnable runnable) {
-        Thread t = new Thread(runnable);
+        Thread t = new Thread(jsr166TestThreadGroup, runnable);
         t.setDaemon(true);
         t.start();
         return t;
@@ -1670,10 +1680,12 @@ public class JSR166TestCase extends TestCase {
      * the thread (in the hope that it may terminate later) and fails.
      */
     void awaitTermination(Thread thread, long timeoutMillis) {
-        try {
-            thread.join(timeoutMillis);
-        } catch (InterruptedException fail) {
-            threadUnexpectedException(fail);
+        for (;;) { // ignore stray interrupts by test harness
+            try {
+                thread.join(timeoutMillis);
+                break;
+            } catch (InterruptedException ignore) {
+            }
         }
         if (thread.getState() != Thread.State.TERMINATED) {
             String detail = String.format(
@@ -1917,6 +1929,8 @@ public class JSR166TestCase extends TestCase {
         @Override protected final void compute() {
             try {
                 realCompute();
+            } catch (CancellationException ex) {
+                throw ex; // expected by some tests
             } catch (Throwable fail) {
                 threadUnexpectedException(fail);
             }
@@ -1932,6 +1946,8 @@ public class JSR166TestCase extends TestCase {
         @Override protected final T compute() {
             try {
                 return realCompute();
+            } catch (CancellationException ex) {
+                throw ex;
             } catch (Throwable fail) {
                 threadUnexpectedException(fail);
             }
