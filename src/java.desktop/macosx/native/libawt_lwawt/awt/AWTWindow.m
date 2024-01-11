@@ -1423,11 +1423,9 @@ AWT_ASSERT_APPKIT_THREAD;
         [self updateCustomTitleBarInsets:NO];
 
         JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-        NSString *newFullScreenControls1 = [PropertiesUtilities
-            javaSystemPropertyForKey:@"apple.awt.newFullScreeControls" withEnv:env];
-        NSString *newFullScreenControls2 = [PropertiesUtilities
+        NSString *newFullScreenControls = [PropertiesUtilities
             javaSystemPropertyForKey:@"apple.awt.newFullScreenControls" withEnv:env];
-        if ([@"true" isCaseInsensitiveLike:newFullScreenControls1] || [@"true" isCaseInsensitiveLike:newFullScreenControls2]) {
+        if ([@"true" isCaseInsensitiveLike:newFullScreenControls]) {
             [self setWindowFullScreenControls];
         }
     }
@@ -2005,7 +2003,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
 - (void)configureColors {
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-    NSString *javaColor = [PropertiesUtilities javaSystemPropertyForKey:@"apple.awt.newFullScreeControls.background" withEnv:env];
+    NSString *javaColor = [PropertiesUtilities javaSystemPropertyForKey:@"apple.awt.newFullScreenControls.background" withEnv:env];
 
     [_color release];
 
