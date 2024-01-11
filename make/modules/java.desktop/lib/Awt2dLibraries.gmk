@@ -272,7 +272,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
             #
     endif
 
-    LIBAWT_XAWT_EXCLUDES := medialib debug wl vulkan
+    LIBAWT_XAWT_EXCLUDES := medialib debug wl vulkan cvulkan
 
     LIBPIPEWIRE_HEADER_DIRS := \
         $(TOPDIR)/src/$(MODULE)/unix/native/libpipewire/include
@@ -367,12 +367,12 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/wayland \
         #
 
-    LIBAWT_WLAWT_EXCLUDES := medialib debug opengl x11
+    LIBAWT_WLAWT_EXCLUDES := medialib debug opengl x11 vulkan
     LIBAWT_WLAWT_EXCLUDE_FILES := common/awt/X11Color.c common/awt/awt_Font.c
 
     # Substitute Vulkan with stubs if disabled.
     ifeq ($(VULKAN_ENABLED), false)
-      LIBAWT_WLAWT_EXCLUDES += vulkan
+      LIBAWT_WLAWT_EXCLUDES += cvulkan
       LIBAWT_WLAWT_EXTRA_FILES += $(TOPDIR)/src/$(MODULE)/share/native/common/java2d/vulkan/VKStubs.c
     endif
 
@@ -384,7 +384,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/awt/systemscale \
         common/font \
         common/java2d/wl \
-        common/java2d/vulkan \
+        common/java2d/cvulkan \
         common/wayland \
         libvmahpp \
         #
