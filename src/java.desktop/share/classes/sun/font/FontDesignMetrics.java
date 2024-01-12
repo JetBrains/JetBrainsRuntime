@@ -39,7 +39,8 @@ import java.io.Serial;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 import java.util.HashMap;
-import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.jetbrains.desktop.FontExtensions;
@@ -616,7 +617,7 @@ public final class FontDesignMetrics extends FontMetrics {
     private static class Accessor { // used by JBR API
         // Keeping metrics instances here prevents them from being garbage collected
         // and being re-created by FontDesignMetrics.getMetrics method
-        private final Map<FontDesignMetrics, Void> PINNED_METRICS = new HashMap<>();
+        private final Set<FontDesignMetrics> PINNED_METRICS = new HashSet<>();
 
         FontMetrics getMetrics(Font font, FontRenderContext context) {
             return FontDesignMetrics.getMetrics(font, context);
@@ -633,7 +634,7 @@ public final class FontDesignMetrics extends FontMetrics {
                     if (overrider == null) {
                         PINNED_METRICS.remove(fdm);
                     } else {
-                        PINNED_METRICS.put(fdm, null);
+                        PINNED_METRICS.add(fdm);
                     }
                     fdm.overrider = overrider;
                 }
@@ -646,7 +647,7 @@ public final class FontDesignMetrics extends FontMetrics {
 
         void removeAllOverrides() {
             synchronized (PINNED_METRICS) {
-                PINNED_METRICS.forEach((fdm, v) -> fdm.overrider = null);
+                PINNED_METRICS.forEach(fdm -> fdm.overrider = null);
                 PINNED_METRICS.clear();
             }
         }
