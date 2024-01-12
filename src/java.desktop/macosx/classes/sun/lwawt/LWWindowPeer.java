@@ -712,7 +712,11 @@ public class LWWindowPeer
         }
         if (tResized || pResized || invalid || isNewDevice) {
             handleResize(w, h, true);
-            repaintPeer();
+            // Changing window size fires up the execution of the current method on AppKit thread and as result it could
+            // leads to race condition with paint event on EDT. Running repaintPeer on EDT eliminates such issue.
+            SunToolkit.executeOnEventHandlerThread(getTarget(), () -> {
+                repaintPeer();
+            });
         }
 
     }
