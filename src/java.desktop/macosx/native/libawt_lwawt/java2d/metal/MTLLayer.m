@@ -288,8 +288,6 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         if (self.redrawCount == 0) {
             [self.ctx startRedraw:self];
         }
-        // Redraw now:
-        [self setNeedsDisplay];
     }
 }
 
