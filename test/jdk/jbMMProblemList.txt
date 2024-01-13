@@ -7,7 +7,7 @@ java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java 8311535 windows-a
 java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java 8292588,JBR-6058 macosx-all,windows-all,linux-all
 java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.java JBR-5531 macosx-all,linux-all
 java/awt/Frame/FramesGC/FramesGC.java JBR-6057 windows-all
-java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117 linux-all
+java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117,JBR-6509 linux-all,generic-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenSmall.java JBR-4379 windows-all
 java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java JBR-4379 windows-all
 java/awt/FullScreen/CurrentDisplayModeTest/CurrentDisplayModeTest.java JBR-5059 linux-all
