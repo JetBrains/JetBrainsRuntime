@@ -259,6 +259,7 @@ java/awt/ScrollPane/ScrollPanePreferredSize/ScrollPanePreferredSize.java 8253184
 java/awt/TrayIcon/ActionCommand/ActionCommand.java 8150540,JBR-3107 windows-all,linux-all
 java/awt/TrayIcon/ActionEventMask/ActionEventMask.java 8150540,8242801,8295300,JBR-3107 windows-all,macosx-all,linux-all
 java/awt/TrayIcon/ActionEventTest/ActionEventTest.java 8150540,8242801 windows-all,macosx-all
+
 java/awt/TrayIcon/ModalityTest/ModalityTest.java 8150540,8295300,JBR-3107 windows-all,macosx-all,linux-all
 java/awt/TrayIcon/MouseEventMask/MouseEventMaskTest.java 8150540,8295300,JBR-3107 windows-all,linux-all
 java/awt/TrayIcon/MouseMovedTest/MouseMovedTest.java 8150540,8295300,JBR-3107 windows-all,linux-all
@@ -270,7 +271,6 @@ java/awt/TrayIcon/TrayIconEvents/TrayIconEventsTest.java 8150540,8295300,JBR-310
 java/awt/TrayIcon/TrayIconMouseTest/TrayIconMouseTest.java 8150540,JBR-3107 windows-all,linux-all
 java/awt/TrayIcon/TrayIconPopup/TrayIconPopupClickTest.java 8150540,JBR-3107 windows-all,macosx-all,linux-all
 java/awt/TrayIcon/TrayIconPopup/TrayIconPopupTest.java 8150540,JBR-3107 windows-all,linux-all
-
 java/awt/Window/8027025/Test8027025.java 8253184 windows-all
 java/awt/Window/8159168/SetShapeTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Window/SetWindowLocationByPlatformTest/SetWindowLocationByPlatformTest.java 8253184,JBR-5728 windows-all,linux-all
@@ -349,6 +349,7 @@ java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/RepaintTest.java 8266244,JBR-5786 macosx-aarch64,generic-all
 java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java 8253184 windows-all
+java/awt/Robot/RobotExtraButton/RobotExtraButton.java JBR-6554 linux-all
 java/awt/Modal/FileDialog/FileDialogAppModal1Test.java 7186009,8253184 macosx-all,windows-all
 java/awt/Modal/FileDialog/FileDialogAppModal2Test.java 7186009,8253184 macosx-all,windows-all
 java/awt/Modal/FileDialog/FileDialogAppModal3Test.java 7186009,8253184 macosx-all,windows-all
@@ -507,7 +508,7 @@ java/awt/Mouse/EnterExitEvents/FullscreenEnterEventTest.java 8051455 macosx-all
 java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.java 8253184,JBR-5709 windows-all,linux-all
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java 8253184 windows-all
 java/awt/Mouse/MouseModifiersUnitTest/ExtraButtonDrag.java 8253184,JBR-6407 windows-all,linux-all
-java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java 7124407 macosx-all
+java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java 7124407,8302787  macosx-all,windows-all
 java/awt/Mouse/RemovedComponentMouseListener/RemovedComponentMouseListener.java 8157170,8253184 macosx-all,windows-all
 java/awt/MouseAdapter/MouseAdapterUnitTest/MouseAdapterUnitTest.java 8253184 windows-all
 java/awt/MouseInfo/ComponentMousePositionTest.java 8253184 windows-all
@@ -1196,7 +1197,7 @@ java/awt/TextArea/TextAreaCursorTest/HoveringAndDraggingTest.java 8024986 macosx
 java/awt/TextArea/TextAreaTwicePack/TextAreaTwicePack.java 8253184 windows-all
 java/awt/TextField/OverScrollTest/OverScrollTest.java 8253184 windows-all
 java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter.java 8254841 macosx-all
-java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.java 8256289 windows-x64
+java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.java 8256289 windows-all
 java/awt/Focus/RemoveAfterRequest/RemoveAfterRequest.java JBR-6052 macosx-all,linux-all
 java/awt/FullScreen/TranslucentWindow/TranslucentWindow.java 8258103,8253184 linux-all,windows-all
 
