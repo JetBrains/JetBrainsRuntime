@@ -259,6 +259,7 @@ java/awt/ScrollPane/ScrollPanePreferredSize/ScrollPanePreferredSize.java 8253184
 java/awt/TrayIcon/ActionCommand/ActionCommand.java 8150540,JBR-3107 windows-all,linux-all
 java/awt/TrayIcon/ActionEventMask/ActionEventMask.java 8150540,8242801,8295300,JBR-3107 windows-all,macosx-all,linux-all
 java/awt/TrayIcon/ActionEventTest/ActionEventTest.java 8150540,8242801 windows-all,macosx-all
+<<<<<<< HEAD
 java/awt/TrayIcon/ModalityTest/ModalityTest.java 8150540,8295300,JBR-3107 windows-all,macosx-all,linux-all
 java/awt/TrayIcon/MouseEventMask/MouseEventMaskTest.java 8150540,8295300,JBR-3107 windows-all,linux-all
 java/awt/TrayIcon/MouseMovedTest/MouseMovedTest.java 8150540,8295300,JBR-3107 windows-all,linux-all
@@ -270,6 +271,19 @@ java/awt/TrayIcon/TrayIconEvents/TrayIconEventsTest.java 8150540,8295300,JBR-310
 java/awt/TrayIcon/TrayIconMouseTest/TrayIconMouseTest.java 8150540,JBR-3107 windows-all,linux-all
 java/awt/TrayIcon/TrayIconPopup/TrayIconPopupClickTest.java 8150540,JBR-3107 windows-all,macosx-all,linux-all
 java/awt/TrayIcon/TrayIconPopup/TrayIconPopupTest.java 8150540,JBR-3107 windows-all,linux-all
+=======
+java/awt/TrayIcon/ModalityTest/ModalityTest.java 8150540,8295300 windows-all,macosx-all,linux-all
+java/awt/TrayIcon/MouseEventMask/MouseEventMaskTest.java 8150540,8295300 windows-all,linux-all
+java/awt/TrayIcon/MouseMovedTest/MouseMovedTest.java 8150540,8295300 windows-all,linux-all
+java/awt/TrayIcon/SecurityCheck/FunctionalityCheck/FunctionalityCheck.java 8150540,8295300 windows-all,linux-all
+java/awt/TrayIcon/SecurityCheck/NoPermissionTest/NoPermissionTest.java JBR-5225 windows-all
+java/awt/TrayIcon/SecurityCheck/PermissionTest/PermissionTest.java JBR-5225 windows-all
+java/awt/TrayIcon/TrayIconEventModifiers/TrayIconEventModifiersTest.java 8150540,8295300 windows-all,linux-all
+java/awt/TrayIcon/TrayIconEvents/TrayIconEventsTest.java 8150540,8295300 windows-all,linux-all
+java/awt/TrayIcon/TrayIconMouseTest/TrayIconMouseTest.java 8150540 windows-all
+java/awt/TrayIcon/TrayIconPopup/TrayIconPopupClickTest.java 8150540 windows-all,macosx-all
+java/awt/TrayIcon/TrayIconPopup/TrayIconPopupTest.java 8150540 windows-all
+>>>>>>> b03341371be (update exclude list on results of 21.0.1_b331.1 test runs)
 
 java/awt/Window/8027025/Test8027025.java 8253184 windows-all
 java/awt/Window/8159168/SetShapeTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
@@ -349,6 +363,7 @@ java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/RepaintTest.java 8266244,JBR-5786 macosx-aarch64,generic-all
 java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java 8253184 windows-all
+java/awt/Robot/RobotExtraButton/RobotExtraButton.java JBR-6554 linux-all
 java/awt/Modal/FileDialog/FileDialogAppModal1Test.java 7186009,8253184 macosx-all,windows-all
 java/awt/Modal/FileDialog/FileDialogAppModal2Test.java 7186009,8253184 macosx-all,windows-all
 java/awt/Modal/FileDialog/FileDialogAppModal3Test.java 7186009,8253184 macosx-all,windows-all
@@ -1350,7 +1365,10 @@ javax/sound/sampled/Mixers/BogusMixers.java JBR-4455 linux-aarch64
 
 java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java JBR-5510,8310487 linux-5.18.2-arch1-1,linux-all
 java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java JBR-5510,JBR-5905 linux-5.18.2-arch1-1,linux-all
+<<<<<<< HEAD
 java/awt/Choice/SelectNewItemTest/SelectNewItemTest.java 8315733 macosx-all
+=======
+>>>>>>> b03341371be (update exclude list on results of 21.0.1_b331.1 test runs)
 java/awt/Frame/InvisibleOwner/InvisibleOwner.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5510 linux-5.18.2-arch1-1
