@@ -111,12 +111,11 @@
 
 ############################################################################
 
-java/awt/Dialog/CloseDialog/CloseDialogTest.java JBR-6537 macosx-all
+java/awt/Dialog/CloseDialog/CloseDialogTest.java JBR-6537,JBR-6538 macosx-all,windows-all
 java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 linux-x64,windows-aarch64,macosx-all
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-6334 macosx-all
 java/awt/FlowLayout/PreferredLayoutSize.java JBR-6348,JBR-6349 windows-aarch64,linux-all
 java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java JBR-6335,NOBUG linux-all,windows-all #timeout on windows
-java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java NOBUG windows-all timeout
 java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout
 java/awt/Robot/NonEmptyErrorStream.java JBR-6275 macosx-all
 

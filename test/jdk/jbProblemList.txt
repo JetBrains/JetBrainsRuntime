@@ -129,6 +129,7 @@ java/awt/Focus/OwnedWindowFocusIMECrashTest/OwnedWindowFocusIMECrashTest.java 81
 java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java 8239801,JBR-5178 macosx-all,windows-all
 java/awt/Focus/VetoableChangeListenerLoopTest.java JBR-5785 linux-all
 java/awt/Frame/7024749/bug7024749.java JBR-5210 windows-all
+java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6509 generic-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java 8296972 macosx-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
@@ -268,7 +269,7 @@ java/awt/TrayIcon/TrayIconEventModifiers/TrayIconEventModifiersTest.java 8150540
 java/awt/TrayIcon/TrayIconEvents/TrayIconEventsTest.java 8150540,8295300,JBR-3107 windows-all,linux-all
 java/awt/TrayIcon/TrayIconMouseTest/TrayIconMouseTest.java 8150540,JBR-3107 windows-all,linux-all
 java/awt/TrayIcon/TrayIconPopup/TrayIconPopupClickTest.java 8150540,JBR-3107 windows-all,macosx-all,linux-all
-java/awt/TrayIcon/TrayIconPopup/TrayIconPopupTest.java 8150540,8314775,8295300,JBR-3107 windows-all,linux-6.2.0-1016-aws,linux-6.2.0-1014-aws,linux-6.2.0-1015-aws,linux-5.15.0-39-generic
+java/awt/TrayIcon/TrayIconPopup/TrayIconPopupTest.java 8150540,8314775,8295300,JBR-3107 windows-all,linux-all
 
 java/awt/Window/8027025/Test8027025.java 8253184 windows-all
 java/awt/Window/8159168/SetShapeTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
@@ -350,6 +351,7 @@ java/awt/Frame/MiscUndecorated/RepaintTest.java 8266244,JBR-816,JBR-5786 macosx-
 java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java 8253184 windows-all
 java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java 8157173 generic-all
 java/awt/Robot/MultiScreenRobotPosition/MultiScreenRobotPosition.java JBR-830 windows-x64
+java/awt/Robot/RobotExtraButton/RobotExtraButton.java JBR-6554 linux-all
 java/awt/Modal/FileDialog/FileDialogAppModal1Test.java 7186009,8253184 macosx-all,windows-all
 java/awt/Modal/FileDialog/FileDialogAppModal2Test.java 7186009,8253184 macosx-all,windows-all
 java/awt/Modal/FileDialog/FileDialogAppModal3Test.java 7186009,8253184 macosx-all,windows-all
