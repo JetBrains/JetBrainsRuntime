@@ -11,10 +11,13 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Insets;
+import java.awt.Robot;
 import java.awt.font.TextLayout;
 import java.awt.image.BufferedImage;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+
 
 // The test against java.awt.font.TextLayout, it draws the text "Gerbera" twise
 // via the methods Graphics.drawString and TextLayout.draw and then it checks
@@ -30,15 +33,53 @@ public class DrawTest {
     static boolean isPassed = true;
     static String errMsg = "";
     static String testCaseName;
+    static JFrame frame;
+    static JPanel panel;
+    static Robot robot;
 
-    public static void main(String[] args) {
-        final JFrame frame = new JFrame();
+    public static void main(String[] args) throws Exception {
+        robot = new Robot();
+
+        SwingUtilities.invokeAndWait(() -> createUI());
+        robot.waitForIdle();
+        robot.delay(100);
+
+        BufferedImage paintImage;
+        for (testCaseNo = 1; testCaseNo <= 2; testCaseNo++) {
+            if (testCaseNo == 2) {
+                panel.revalidate();
+                panel.repaint();
+            }
+            paintImage = getScreenShot(panel);
+            int width1 = charWidth(paintImage, 0, 9, 116, 23);
+            int width2 = charWidth(paintImage, 0, 42, 116, 23);
+
+            if (width1 != width2) {
+                String tmpMsg = testCaseName + ": test case FAILED Wrong width: " + width1 + " != " + width2;
+                System.out.println(tmpMsg);
+                if (errMsg.length() > 0) {
+                    errMsg += "; ";
+                }
+                errMsg += tmpMsg;
+                isPassed = false;
+            } else
+                System.out.println(testCaseName + " test case PASSED");
+        }
+
+        frame.dispose();
+        if (!isPassed) {
+            throw new RuntimeException(errMsg + " logical fonts (Serif) was not correctly handled");
+        }
+    }
+
+    private static void createUI() {
+        frame = new JFrame();
         frame.getContentPane().setPreferredSize(new Dimension(116, 75));
         frame.pack();
         frame.setVisible(true);
         Insets insets = frame.getInsets();
         System.out.println(insets);
-        final JPanel panel = new JPanel() {
+        panel = new JPanel() {
 
             private void drawString(Graphics g, Font font) {
                 g.setFont(font);
@@ -67,14 +108,12 @@ public class DrawTest {
                     // Ok.
                     // For the PLAIN font, the text painted by g.drawString and the text layout are the same.
                     testCaseName = "PLAIN";
-                    errMsg = "plained";
                     drawString(g, plain);
                     drawTextLayout(g, plain);
                 } else {
                     // Not Ok.
                     // For the BOLD font, the text painted by g.drawString and the text layout are NOT the same.
                     testCaseName = "BOLD";
-                    errMsg = "bolded";
                     drawString(g, bold);
                     drawTextLayout(g, bold);
                 }
@@ -82,28 +121,6 @@ public class DrawTest {
         };
         frame.getContentPane().add(panel);
         frame.setVisible(true);
-
-        for (testCaseNo = 1; testCaseNo <= 2; testCaseNo++) {
-            BufferedImage paintImage = getScreenShot(panel);
-            if (testCaseNo == 2) {
-                panel.revalidate();
-                panel.repaint();
-            }
-            paintImage = getScreenShot(panel);
-            int width1 = charWidth(paintImage, 0, 9, 116, 23);
-            int width2 = charWidth(paintImage, 0, 42, 116, 23);
-
-            if (width1 != width2) {
-                System.out.println(testCaseName + " test case FAILED");
-                isPassed = false;
-            } else
-                System.out.println(testCaseName + " test case PASSED");
-        }
-
-        frame.dispose();
-        if (!isPassed) {
-            throw new RuntimeException(errMsg + " logical fonts (Serif) was not correctly handled");
-        }
     }
 
     static private BufferedImage getScreenShot(JPanel panel) {
