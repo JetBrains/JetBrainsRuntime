@@ -11,7 +11,6 @@ java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java nobug windows-all
 java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java nobug windows-all
 java/awt/MenuBar/SeparatorsNavigation/SeparatorsNavigation.java nobug windows-all
 java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.java JBR-4354 windows-all,linux-all # linux: JBR-4354
-java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java nobug windows-all
 java/awt/TextArea/OverScrollTest/OverScrollTest.java nobug windows-all
 java/awt/TextField/OverScrollTest/OverScrollTest.java nobug windows-all
 

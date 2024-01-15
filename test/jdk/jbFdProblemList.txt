@@ -111,6 +111,7 @@
 
 ############################################################################
 
+java/awt/Choice/GetSizeTest/GetSizeTest.java JBR-837 macosx-all,windows-all
 java/awt/Dialog/CloseDialog/CloseDialogTest.java JBR-6537,JBR-6538 macosx-all,windows-all
 java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 linux-x64,windows-aarch64,macosx-all
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-6334 macosx-all

@@ -175,6 +175,7 @@ java/awt/Focus/ClearLwQueueBreakTest/ClearLwQueueBreakTest.java 8198618,JBR-814 
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java 6986252,JBR-5178 windows-all
 java/awt/Focus/ConsumedTabKeyTest.java JBR-5833 windows-all
 java/awt/Focus/KeyEventForBadFocusOwnerTest/KeyEventForBadFocusOwnerTest.java JBR-5210 windows-all
+java/awt/Focus/ModalExcludedWindowClickTest/ModalExcludedWindowClickTest.java JBR-884 windows-x64,linux-all
 java/awt/Focus/MouseClickRequestFocusRaceTest/MouseClickRequestFocusRaceTest.java 8194753 linux-all,macosx-all
 java/awt/Focus/NoAutotransferToDisabledCompTest/NoAutotransferToDisabledCompTest.java 7152980,JBR-5210 macosx-all,windows-all
 java/awt/Focus/TypeAhead/TestFocusFreeze.java 8198622,6447537 macosx-all,windows-all,linux-all
@@ -255,7 +256,7 @@ java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java JBR-4997,JBR-5729 w
 java/awt/Focus/8073453/AWTFocusTransitionTest.java JBR-5210,8298247 windows-all,linux-all
 java/awt/Focus/8073453/SwingFocusTransitionTest.java JBR-5210 windows-all
 java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java JBR-5210 windows-all
-java/awt/event/KeyEvent/AltGraphModifier.java JBR-6085 windows-aarch64
+java/awt/event/KeyEvent/AltGraphModifier.java JBR-6085 windows-all
 java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java 8169476 windows-all
 java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474,8224055,JBR-93 windows-all,linux-all
 java/awt/event/KeyEvent/KeyEventLocationTest.java JBR-5916 linux-all
@@ -529,7 +530,7 @@ java/awt/Mouse/EnterExitEvents/ModalDialogEnterExitEventsTest.java 8253184,JBR-5
 java/awt/Mouse/EnterExitEvents/ResizingFrameTest.java 8005021,8253184 macosx-all,windows-all
 java/awt/Mouse/EnterExitEvents/FullscreenEnterEventTest.java 8051455 macosx-all
 java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.java 8253184,JBR-5709 windows-all,linux-all
-java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java 8253184 windows-all
+java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java 8253184,JBR-6752 windows-all,linux-all
 java/awt/Mouse/MouseModifiersUnitTest/ExtraButtonDrag.java 8253184,JBR-6407 windows-all,linux-all
 java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java 7124407,8302787 macosx-all,windows-all
 java/awt/Mouse/RemovedComponentMouseListener/RemovedComponentMouseListener.java 8157170,8253184 macosx-all,windows-all

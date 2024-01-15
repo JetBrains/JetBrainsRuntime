@@ -12,8 +12,8 @@ java/awt/FullScreen/CurrentDisplayModeTest/CurrentDisplayModeTest.java JBR-5059 
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-4379 windows-all
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5442 linux-all
 java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java JBR-5062 linux-all
-java/awt/GraphicsDevice/DisplayModes/UnknownRefrshRateTest.java JBR-6336 macosx-aarch64
-java/awt/GraphicsDevice/IncorrectDisplayModeExitFullscreen.java JBR-6336 macosx-aarch64
+java/awt/GraphicsDevice/DisplayModes/UnknownRefrshRateTest.java JBR-6336 macosx-all
+java/awt/GraphicsDevice/IncorrectDisplayModeExitFullscreen.java JBR-6336 macosx-all
 java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5.15.0-46-generic Ubuntu 20.04
 java/awt/Robot/NonEmptyErrorStream.java JBR-5442 linux-all
 java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390 macosx-all,linux-all
