@@ -25,10 +25,14 @@ import javax.swing.*;
 import java.awt.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import javax.imageio.ImageIO;
+import java.io.IOException;
+import java.io.File;
 
 /**
  * @test
@@ -36,17 +40,19 @@ import java.util.function.Consumer;
  * @requires (os.family == "windows") & (os.arch == "amd64" | os.arch == "x86_64")
  * @summary JBR-2866 - Tests that HwFacade window used in IDEA does not bring to front when shown.
  * @author Anton Tarasov
- * @run main/othervm HwFacadeWindowNoFrontTest
+ * @run main/othervm HwFacadeWindowNoFrontTest -verbose
  */
  public class HwFacadeWindowNoFrontTest {
     static final Color TRANSPARENT_COLOR = new Color(1, 1, 1, 0);
     static final Color BG_COLOR = Color.red;
 
+    static boolean verbose = false;
     static volatile JFrame bottomFrame;
     static volatile JFrame topFrame;
     static volatile JWindow window;
 
     public static void main(String[] args) throws InterruptedException, AWTException, InvocationTargetException {
+        verbose = Arrays.asList(args).contains("-verbose");
         performAndWait(latch -> EventQueue.invokeLater(() -> showGUI(latch)), "initializing GUI");
         performAndWait(latch -> waitVisibilityChanged(window, latch, true), "waiting for the window to show");
 
@@ -56,6 +62,7 @@ import java.util.function.Consumer;
         // 1) Check window is below top frame
         //
         performAndRepeat(10, robot, "window is not below the top frame", () -> {
+            saveScreenShot(robot, "window is not below the top frame");
             Color pixel = robot.getPixelColor(topFrame.getX() + 100, topFrame.getY() + 100);
             return !pixel.equals(BG_COLOR);
         });
@@ -67,6 +74,7 @@ import java.util.function.Consumer;
         // 2) Check window is above bottom frame
         //
         performAndRepeat(10, robot, "window is not above the bottom frame", () -> {
+            saveScreenShot(robot, "window is not above the bottom frame");
             Color pixel = robot.getPixelColor(bottomFrame.getX() + 100, bottomFrame.getY() + 100);
             return pixel.equals(BG_COLOR);
         });
@@ -77,6 +85,14 @@ import java.util.function.Consumer;
         });
 
         System.out.println("Test PASSED");
+    }
+
+    private static void saveScreenShot(Robot robot, String fileName) {
+        try {
+            ImageIO.write(robot.createScreenCapture(bottomFrame.getBounds()), "png", new File(fileName + ".png"));
+        } catch (IOException ignore) {
+            System.out.println("Couldn't store screen image: " + ignore.getMessage()) ;
+        }
     }
 
     static void showGUI(CountDownLatch latch) {
