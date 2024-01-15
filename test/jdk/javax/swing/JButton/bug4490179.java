@@ -80,11 +80,11 @@ public class bug4490179 {
             robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
             robot.mousePress(InputEvent.BUTTON3_DOWN_MASK);
             robot.mouseRelease(InputEvent.BUTTON3_DOWN_MASK);
-
             if (!passed) {
                 throw new RuntimeException("Test Failed");
             }
         } finally {
+            robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
             SwingUtilities.invokeAndWait(() -> {
                 if (frame != null) {
                     frame.dispose();
