@@ -275,6 +275,7 @@ public interface SignatureMethod extends XMLStructure, AlgorithmMethod {
      */
     String ED448 = "http://www.w3.org/2021/04/xmldsig-more#eddsa-ed448";
 
+
     /**
      * Returns the algorithm-specific input parameters of this
      * <code>SignatureMethod</code>.
