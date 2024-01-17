@@ -293,6 +293,9 @@ public class Main {
                     }
                 }
                 expand();
+                if (!ok) {
+                    return false;
+                }
                 if (!moduleInfos.isEmpty()) {
                     // All actual file entries (excl manifest and module-info.class)
                     Set<String> jentries = new HashSet<>();
@@ -339,6 +342,9 @@ public class Main {
                     tmpFile = createTemporaryFile("tmpjar", ".jar");
                 }
                 expand();
+                if (!ok) {
+                    return false;
+                }
                 try (FileInputStream in = (fname != null) ? new FileInputStream(inputFile)
                         : new FileInputStream(FileDescriptor.in);
                      FileOutputStream out = new FileOutputStream(tmpFile);
