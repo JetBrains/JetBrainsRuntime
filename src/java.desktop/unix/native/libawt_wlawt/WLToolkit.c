@@ -869,8 +869,6 @@ JNIEXPORT jint JNICALL
 Java_sun_awt_wl_WLToolkit_readEvents
   (JNIEnv *env, jobject obj)
 {
-    SystemProperties_pullEvent();
-
     // NB: this method should be modeled after wl_display_dispatch_queue() from the Wayland code
     int rc = 0;
 

@@ -646,8 +646,6 @@ performPoll(JNIEnv *env, jlong nextTaskTime) {
     uint32_t timeout = get_poll_timeout(nextTaskTime);
     int32_t result;
 
-    SystemProperties_pullEvent();
-
     if (!pollFdsInited) {
         pollFds[0].fd = ConnectionNumber(awt_display);
         pollFds[0].events = POLLRDNORM;

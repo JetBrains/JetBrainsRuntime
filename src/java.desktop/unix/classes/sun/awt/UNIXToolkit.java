@@ -24,7 +24,7 @@
  */
 package sun.awt;
 
-import java.awt.RenderingHints;
+import java.awt.*;
 
 import static java.awt.RenderingHints.KEY_TEXT_ANTIALIASING;
 import static java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_DEFAULT;
@@ -36,7 +36,6 @@ import static java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON;
 
 import java.awt.color.ColorSpace;
 
-import java.awt.Window;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowFocusListener;
@@ -478,6 +477,8 @@ public abstract class UNIXToolkit extends SunToolkit
         return result;
     }
 
+    private static native int isSystemDarkColorScheme();
+
     @Override
     public boolean isRunningOnXWayland() {
         return isOnXWayland();
@@ -495,6 +496,12 @@ public abstract class UNIXToolkit extends SunToolkit
     // (e.g. the window's own title or the area in the side dock without
     // application icons).
     private static final WindowFocusListener waylandWindowFocusListener;
+
+    private static final String OS_THEME_IS_DARK = "awt.os.theme.isDark";
+
+    private void fireSystemPropertyChanges(boolean val) {
+        setDesktopProperty(OS_THEME_IS_DARK, val);
+    }
 
     static {
         if (isOnXWayland()) {
@@ -514,6 +521,26 @@ public abstract class UNIXToolkit extends SunToolkit
         } else {
             waylandWindowFocusListener = null;
         }
+
+        Thread systemPropertyWhatcher = new Thread(() -> {
+            try {
+                do {
+                    int isSystemDarkColorScheme = isSystemDarkColorScheme();
+                    Toolkit tk = Toolkit.getDefaultToolkit();
+
+                    if (tk instanceof UNIXToolkit unixTK && isSystemDarkColorScheme >= 0) {
+                        unixTK.fireSystemPropertyChanges(isSystemDarkColorScheme != 0);
+                    }
+
+                    Thread.sleep(1000);
+                } while (true);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        systemPropertyWhatcher.start();
+        systemPropertyWhatcher.setPriority(Thread.MIN_PRIORITY);
+        systemPropertyWhatcher.setName("SystemPropertyWhatcher");
     }
 
     @Override

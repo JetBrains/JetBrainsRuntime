@@ -31,11 +31,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define SIGNAL_NAME "SettingChanged"
+#define UNKNOWN_RESULT -1
 #define SETTING_INTERFACE "org.freedesktop.portal.Settings"
 #define DESKTOP_DESTINATION "org.freedesktop.portal.Desktop"
 #define DESKTOP_PATH "/org/freedesktop/portal/desktop"
-#define MATCH_RULE "type='signal',sender='" DESKTOP_DESTINATION "',path='"  DESKTOP_PATH "',interface='"  SETTING_INTERFACE "'"
 #define DBUS_MESSAGE_MAX 1024
 #define REPLY_TIMEOUT 150
 
@@ -43,16 +42,6 @@ static DBusConnection *connection = NULL;
 static JNIEnv *env = NULL;
 static DBusApi *dBus = NULL;
 static bool initialized = false;
-
-static void updateAllProperties(void);
-
-static DBusHandlerResult messageFilter(DBusConnection *conn, DBusMessage *msg, void *data) {
-    if (dBus->dbus_message_is_signal(msg, SETTING_INTERFACE, SIGNAL_NAME)) {
-        updateAllProperties();
-        return DBUS_HANDLER_RESULT_HANDLED;
-    }
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
 
 static bool dbusCheckError(DBusError *err, const char *msg) {
     bool is_error_set = dBus->dbus_error_is_set(err);
@@ -87,32 +76,10 @@ bool SystemProperties_setup(DBusApi *dBus_, JNIEnv *env_) {
         return false;
     }
 
-    dBus->dbus_bus_add_match(connection, MATCH_RULE, &err);
-    if (dbusCheckError(&err, "cannot set match rule")) {
-        return false;
-    }
-
-    dBus->dbus_connection_add_filter(connection, &messageFilter, NULL, NULL);
-    if (dbusCheckError(&err, "cannot add filter")) {
-        return false;
-    }
-
     dBus->dbus_connection_flush(connection);
     initialized = true;
-    updateAllProperties();
 
     return true;
-}
-
-void SystemProperties_pullEvent(void) {
-    if (initialized) {
-        if (!dBus->dbus_connection_read_write(connection, 0)) {
-            return;
-        }
-
-        while (dBus->dbus_connection_dispatch(connection) == DBUS_DISPATCH_DATA_REMAINS) {
-        }
-    }
 }
 
 // current implementation of object decomposition supports only
@@ -227,53 +194,13 @@ cleanup:
     return res;
 }
 
-static void setDesktopProperty(jstring property, jstring value) {
-    jclass TKClass = (*env)->FindClass(env, "java/awt/Toolkit");
-    if (!TKClass) {
-        return;
-    }
-
-    jmethodID setDesktopProperty = (*env)->GetMethodID(env, TKClass, "setDesktopProperty", "(Ljava/lang/String;Ljava/lang/Object;)V");
-    jmethodID getDefaultToolkit = (*env)->GetStaticMethodID(env, TKClass, "getDefaultToolkit", "()Ljava/awt/Toolkit;");
-    if (!setDesktopProperty || !getDefaultToolkit) {
-        return;
-    }
-
-    jobject toolkitObject = (*env)->CallStaticObjectMethod(env, TKClass, getDefaultToolkit);
-    JNU_CHECK_EXCEPTION(env);
-    if (!toolkitObject) {
-        return;
-    }
-
-    (*env)->CallVoidMethod(env, toolkitObject, setDesktopProperty, property, value);
-    JNU_CHECK_EXCEPTION(env);
-}
-
-static void updateProperty(const char *property_name, bool (*getProperty)(char *res)) {
-    char str[DBUS_MESSAGE_MAX];
-    if ((getProperty)(str)) {
-        jstring j_property_name = JNU_NewStringPlatform(env, property_name);
-        jstring j_property_value = JNU_NewStringPlatform(env, str);
-        if (j_property_name && j_property_value) {
-            setDesktopProperty(j_property_name, j_property_value);
-        }
-    }
-}
-
-static bool isDarkColorScheme(char *res) {
+JNIEXPORT jint JNICALL Java_sun_awt_UNIXToolkit_isSystemDarkColorScheme() {
     const char *name_function = "Read";
     char *messages[] = { "org.freedesktop.appearance", "color-scheme"};
     int messages_type[] = {DBUS_TYPE_STRING, DBUS_TYPE_STRING};
-    unsigned int int_res = 0;
-    if (!sendDBusMessageWithReply(name_function, (const char **)messages, messages_type, 2, &int_res, DBUS_TYPE_UINT32)) {
-        return false;
+    unsigned int res = 0;
+    if (!sendDBusMessageWithReply(name_function, (const char **)messages, messages_type, 2, &res, DBUS_TYPE_UINT32)) {
+        return UNKNOWN_RESULT;
     }
-    if (sprintf(res, "%u", int_res) < 0) {
-        return false;
-    }
-    return true;
-}
-
-static void updateAllProperties(void) {
-    updateProperty("awt.os.theme.isDark", isDarkColorScheme);
+    return res;
 }
