@@ -117,6 +117,8 @@ java/awt/Button/DisabledButtonPress.java JBR-5799 windows-aarch64
 java/awt/Desktop/8064934/bug8064934.java JBR-5764 windows-all
 java/awt/Debug/DumpOnKey/DumpOnKey.java JBR-5225 windows-all
 java/awt/event/MouseEvent/EnterAsGrabbedEvent/EnterAsGrabbedEvent.java JBR-809 windows-all,linux-all
+java/awt/event/MouseEvent/MouseButtonsTest/MouseButtonsTest.java JBR-810 windows-all,linux-all
+java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java JBR-810 windows-all,linux-all
 java/awt/event/MouseEvent/MouseClickTest/MouseClickTest.java 8168389 windows-all,macosx-all
 java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java 8224055 macosx-all
 java/awt/event/StressTest/MouseAndKeyEventStressTest.java JBR-6479 generic-all
@@ -662,7 +664,7 @@ java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java JBR-5210 wind
 java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.java JBR-4074 macosx-all,windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.java JBR-5210 windows-all
 java/awt/FullScreen/8013581/bug8013581.java 8169471,JBR-80 macosx-all,windows-all
-java/awt/event/MouseEvent/RobotLWTest/RobotLWTest.java 8233568,JBR-5583 macosx-all,windows-x64
+java/awt/event/MouseEvent/RobotLWTest/RobotLWTest.java 8233568,JBR-5583 macosx-all,windows-all,linux-all
 java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java 8233568 macosx-all
 java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java 8233568,JBR-5915 macosx-all,linux-all
 java/awt/event/KeyEvent/DeadKey/DeadKeyMacOSXInputText.java 8233568 macosx-all
