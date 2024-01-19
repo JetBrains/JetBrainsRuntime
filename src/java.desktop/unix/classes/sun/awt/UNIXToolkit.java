@@ -24,7 +24,8 @@
  */
 package sun.awt;
 
-import java.awt.*;
+import java.awt.RenderingHints;
+import java.awt.Toolkit;
 
 import static java.awt.RenderingHints.KEY_TEXT_ANTIALIASING;
 import static java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_DEFAULT;
@@ -36,6 +37,7 @@ import static java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON;
 
 import java.awt.color.ColorSpace;
 
+import java.awt.Window;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowFocusListener;
