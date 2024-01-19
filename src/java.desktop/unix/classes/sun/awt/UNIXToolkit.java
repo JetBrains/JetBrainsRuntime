@@ -522,7 +522,7 @@ public abstract class UNIXToolkit extends SunToolkit
             waylandWindowFocusListener = null;
         }
 
-        Thread systemPropertyWhatcher = new Thread(() -> {
+        Thread systemPropertyWatcher = new Thread(() -> {
             try {
                 do {
                     int isSystemDarkColorScheme = isSystemDarkColorScheme();
@@ -538,9 +538,9 @@ public abstract class UNIXToolkit extends SunToolkit
                 throw new RuntimeException(e);
             }
         });
-        systemPropertyWhatcher.start();
-        systemPropertyWhatcher.setPriority(Thread.MIN_PRIORITY);
-        systemPropertyWhatcher.setName("SystemPropertyWhatcher");
+        systemPropertyWatcher.start();
+        systemPropertyWatcher.setPriority(Thread.MIN_PRIORITY);
+        systemPropertyWatcher.setName("systemPropertyWatcher");
     }
 
     @Override
