@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,6 @@
 
 package jdk.test.lib.security;
 
-import jdk.test.lib.Asserts;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -49,15 +48,15 @@ import javax.xml.transform.stream.StreamResult;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
-import java.io.File;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.security.*;
 import java.security.cert.X509Certificate;
+// "8166597: Crypto support for the EdDSA Signature Algorithm" missing in 11.
+//import java.security.interfaces.EdECPrivateKey;
 import java.security.interfaces.RSAKey;
+import java.security.spec.NamedParameterSpec;
 import java.security.spec.PSSParameterSpec;
 import java.util.*;
 
@@ -67,37 +66,6 @@ public class XMLUtils {
 
     private static final XMLSignatureFactory FAC =
             XMLSignatureFactory.getInstance("DOM");
-
-    //////////// MAIN as TEST ////////////
-    public static void main(String[] args) throws Exception {
-        var x = "<a><b>c</b>x</a>";
-        var p = Files.write(Path.of("x.xml"), List.of(x));
-        var b = Path.of("").toUri().toString();
-        var d = string2doc(x);
-        // keytool -keystore ks -keyalg ec -storepass changeit -genkeypair -alias a -dname CN=a
-        var pass = "changeit".toCharArray();
-        var ks = KeyStore.getInstance(new File("ks"), pass);
-        var c = (X509Certificate) ks.getCertificate("a");
-        var pr = (PrivateKey) ks.getKey("a", pass);
-        var pu = c.getPublicKey();
-        var s0 = signer(pr); // No KeyInfo
-        var s1 = signer(pr, pu); // KeyInfo is PublicKey
-        var s2 = signer(pr, c); // KeyInfo is X509Data
-        var s3 = signer(ks, "a", pass); // KeyInfo is KeyName
-        var v1 = validator(); // knows nothing
-        var v2 = validator(ks); // knows KeyName
-        Asserts.assertTrue(v1.validate(s0.sign(d), pu)); // need PublicKey
-        Asserts.assertTrue(v1.validate(s1.sign(d))); // can read KeyInfo
-        Asserts.assertTrue(v1.validate(s2.sign(d))); // can read KeyInfo
-        Asserts.assertTrue(v2.validate(s3.sign(d))); // can read KeyInfo
-        Asserts.assertTrue(v2.secureValidation(false).validate(s3.sign(p.toUri()))); // can read KeyInfo
-        Asserts.assertTrue(v2.secureValidation(false).baseURI(b).validate(
-                s3.sign(p.toAbsolutePath().getParent().toUri(), p.getFileName().toUri()))); // can read KeyInfo
-        Asserts.assertTrue(v1.validate(s1.sign("text"))); // plain text
-        Asserts.assertTrue(v1.validate(s1.sign("binary".getBytes()))); // raw data
-        Asserts.assertTrue(v1.validate(s1.signEnveloping(d, "x", "#x")));
-        Asserts.assertTrue(v1.validate(s1.signEnveloping(d, "x", "#xpointer(id('x'))")));
-    }
 
     //////////// CONVERT ////////////
 
@@ -222,44 +190,20 @@ public class XMLUtils {
 
     public static class Signer {
 
-        PrivateKey privateKey;  // signer key, never null
+        final PrivateKey privateKey;  // signer key, never null
+
         X509Certificate cert;   // certificate, optional
         PublicKey publicKey;    // public key, optional
         String keyName;         // alias, optional
 
-        SignatureMethod sm;     // default determined by privateKey
-        DigestMethod dm;        // default SHA-256
-        CanonicalizationMethod cm;  // default EXCLUSIVE
-        Transform tr;           // default ENVELOPED
+        String sm = null;       // default determined by privateKey
+        SignatureMethodParameterSpec smSpec = null;
+        String dm = DigestMethod.SHA256;
+        String cm = CanonicalizationMethod.EXCLUSIVE;
+        String tr = Transform.ENVELOPED;
 
-        public Signer(PrivateKey privateKey) throws Exception {
-            this.privateKey = privateKey;
-            dm(DigestMethod.SHA256);
-            tr(Transform.ENVELOPED);
-            cm(CanonicalizationMethod.EXCLUSIVE);
-            String alg = privateKey.getAlgorithm();
-            if (alg.equals("RSASSA-PSS")) {
-                PSSParameterSpec pspec
-                        = (PSSParameterSpec) ((RSAKey) privateKey).getParams();
-                /*
-                if (pspec != null) {
-                    sm(SignatureMethod.RSA_PSS, new RSAPSSParameterSpec(pspec));
-                } else {
-                    sm(SignatureMethod.RSA_PSS);
-                }
-                */
-                throw new Exception("Code not expected to be used in tests for 11. Backport 8241306.");
-            } else {
-                if (alg.equals("RSA")) {
-                    sm(SignatureMethod.RSA_SHA256);
-                } else if (alg.equals("DSA")) {
-                    sm(SignatureMethod.DSA_SHA256);
-                } else if (alg.equals("EC")) {
-                    sm(SignatureMethod.ECDSA_SHA256);
-                } else {
-                    throw new InvalidKeyException();
-                }
-            }
+        public Signer(PrivateKey privateKey) {
+            this.privateKey = Objects.requireNonNull(privateKey);
         }
 
         // Change KeyInfo source
@@ -281,47 +225,29 @@ public class XMLUtils {
 
         // Change various methods
 
-        public Signer tr(String transform) throws Exception {
-            TransformParameterSpec params = null;
-            switch (transform) {
-                case Transform.XPATH:
-                    params = new XPathFilterParameterSpec("//.");
-                    break;
-                case Transform.XPATH2:
-                    params = new XPathFilter2ParameterSpec(
-                            Collections.singletonList(new XPathType("//.",
-                                    XPathType.Filter.INTERSECT)));
-                    break;
-            }
-            tr = FAC.newTransform(transform, params);
+        public Signer tr(String transform) {
+            tr = Objects.requireNonNull(transform);
+            return this;
+        }
+
+        public Signer dm(String method) {
+            dm = Objects.requireNonNull(method);
+            return this;
+        }
+
+        public Signer cm(String method) {
+            cm = Objects.requireNonNull(method);
+            return this;
+        }
+
+        public Signer sm(String method, SignatureMethodParameterSpec spec) {
+            sm = method;
+            smSpec = spec;
             return this;
         }
 
         public Signer sm(String method) throws Exception {
-            sm = FAC.newSignatureMethod(method, null);
-            return this;
-        }
-
-        public Signer dm(String method) throws Exception {
-            dm = FAC.newDigestMethod(method, null);
-            return this;
-        }
-
-        public Signer cm(String method) throws Exception {
-            cm = FAC.newCanonicalizationMethod(method, (C14NMethodParameterSpec) null);
-            return this;
-        }
-
-        public Signer sm(String method, SignatureMethodParameterSpec spec)
-                throws Exception {
-            sm = FAC.newSignatureMethod(method, spec);
-            return this;
-        }
-
-        public Signer dm(String method, DigestMethodParameterSpec spec)
-                throws Exception {
-            dm = FAC.newDigestMethod(method, spec);
-            return this;
+            return sm(method, null);
         }
 
         // Signs different sources
@@ -361,7 +287,7 @@ public class XMLUtils {
             Document newDocument = DocumentBuilderFactory.newInstance()
                     .newDocumentBuilder().newDocument();
             FAC.newXMLSignature(
-                    buildSignedInfo(FAC.newReference(ref, dm)),
+                    buildSignedInfo(FAC.newReference(ref, FAC.newDigestMethod(dm, null))),
                     buildKeyInfo(),
                     List.of(FAC.newXMLObject(List.of(new DOMStructure(document.getDocumentElement())),
                             id, null, null)),
@@ -376,7 +302,7 @@ public class XMLUtils {
             Document newDocument = DocumentBuilderFactory.newInstance()
                     .newDocumentBuilder().newDocument();
             FAC.newXMLSignature(
-                    buildSignedInfo(FAC.newReference("#object", dm, List.of
+                    buildSignedInfo(FAC.newReference("#object", FAC.newDigestMethod(dm, null), List.of
                             (FAC.newTransform(Transform.BASE64,
                                     (TransformParameterSpec) null)), null, null)),
                     buildKeyInfo(),
@@ -394,9 +320,11 @@ public class XMLUtils {
             Document newDocument = DocumentBuilderFactory.newInstance()
                     .newDocumentBuilder().newDocument();
             FAC.newXMLSignature(
-                    buildSignedInfo(FAC.newReference("#object", dm)),
+                    buildSignedInfo(
+                            FAC.newReference("#object", FAC.newDigestMethod(dm, null))),
                     buildKeyInfo(),
-                    List.of(FAC.newXMLObject(List.of(new DOMStructure(newDocument.createTextNode(str))),
+                    List.of(FAC.newXMLObject(
+                            List.of(new DOMStructure(newDocument.createTextNode(str))),
                             "object", null, null)),
                     null,
                     null)
@@ -405,22 +333,75 @@ public class XMLUtils {
         }
 
         // Builds a SignedInfo for a string reference
-        private SignedInfo buildSignedInfo(String ref) {
-            return FAC.newSignedInfo(
-                    cm,
-                    sm,
-                    List.of(FAC.newReference(
+        private SignedInfo buildSignedInfo(String ref) throws Exception {
+            TransformParameterSpec pSpec;
+            if (tr.equals(Transform.XPATH)) {
+                pSpec = new XPathFilterParameterSpec("//.");
+            } else if (tr.equals(Transform.XPATH2)) {
+                pSpec = new XPathFilter2ParameterSpec(
+                               Collections.singletonList(new XPathType("//.",
+                                       XPathType.Filter.INTERSECT)));
+            } else {
+                pSpec = null;
+            }
+            return buildSignedInfo(FAC.newReference(
                             ref,
-                            dm,
-                            List.of(tr),
-                            null, null)));
+                            FAC.newDigestMethod(dm, null),
+                            List.of(FAC.newTransform(tr, pSpec)),
+                            null, null));
         }
 
         // Builds a SignedInfo for a Reference
-        private SignedInfo buildSignedInfo(Reference ref) {
+        private SignedInfo buildSignedInfo(Reference ref) throws Exception {
+            SignatureMethod signatureMethod;
+            if (sm == null) {
+                String alg = privateKey.getAlgorithm().toUpperCase(Locale.ROOT);
+                if (alg.equals("RSASSA-PSS")) {
+                    PSSParameterSpec pspec
+                            = (PSSParameterSpec) ((RSAKey) privateKey).getParams();
+                    /*
+                    if (pspec != null) {
+                        signatureMethod = FAC.newSignatureMethod(
+                                SignatureMethod.RSA_PSS, new RSAPSSParameterSpec(pspec));
+                    } else {
+                        signatureMethod = FAC.newSignatureMethod(SignatureMethod.RSA_PSS, null);
+                    }
+                    */
+                    throw new Exception("Code not expected to be used in tests for 11. Backport 8241306.");
+                } else {
+                    if (alg.equals("RSA")) {
+                        signatureMethod = FAC.newSignatureMethod(SignatureMethod.RSA_SHA256, null);
+                    } else if (alg.equals("DSA")) {
+                        signatureMethod = FAC.newSignatureMethod(SignatureMethod.DSA_SHA256, null);
+                    } else if (alg.equals("EC")) {
+                        signatureMethod = FAC.newSignatureMethod(SignatureMethod.ECDSA_SHA256, null);
+                    } else if (alg.equals("ED25519")) {
+                        signatureMethod = FAC.newSignatureMethod("http://www.w3.org/2021/04/xmldsig-more#eddsa-ed25519", null);
+                    } else if (alg.equals("ED448")) {
+                        signatureMethod = FAC.newSignatureMethod("http://www.w3.org/2021/04/xmldsig-more#eddsa-ed448", null);
+                    } else if (alg.equals("EDDSA")) {
+                        /*
+                        if (privateKey instanceof EdECPrivateKey) {
+                            EdECPrivateKey edsk = (EdECPrivateKey)privateKey;
+                            FAC.newSignatureMethod(edsk.getParams().getName()
+                                .equals(NamedParameterSpec.ED25519.getName())
+                                ? "http://www.w3.org/2021/04/xmldsig-more#eddsa-ed25519"
+                                : "http://www.w3.org/2021/04/xmldsig-more#eddsa-ed448", null);
+                        } else {
+                            throw new InvalidKeyException();
+                        }
+                        */
+                        throw new Exception("Code not expected to be used in tests for 11. Backport 8166597.");
+                    } else {
+                        throw new InvalidKeyException();
+                    }
+                }
+            } else {
+                signatureMethod = FAC.newSignatureMethod(sm, smSpec);
+            }
             return FAC.newSignedInfo(
-                    cm,
-                    sm,
+                    FAC.newCanonicalizationMethod(cm, (C14NMethodParameterSpec) null),
+                    signatureMethod,
                     List.of(ref));
         }
 
@@ -526,7 +507,9 @@ public class XMLUtils {
                                             AlgorithmMethod method,
                                             XMLCryptoContext context)
                     throws KeySelectorException {
-                Objects.requireNonNull(keyInfo, "Null KeyInfo object!");
+                if (keyInfo == null) {
+                    throw new IllegalArgumentException("Null KeyInfo object!");
+                }
 
                 for (XMLStructure xmlStructure : keyInfo.getContent()) {
                     PublicKey pk;

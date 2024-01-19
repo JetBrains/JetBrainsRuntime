@@ -210,6 +210,7 @@ jdk_security1 = \
 jdk_security2 = \
     javax/crypto \
     javax/xml/crypto \
+    com/sun/org/apache/xml/internal/security \
     com/oracle/security/ucrypto \
     com/sun/crypto
 
@@ -219,7 +220,6 @@ jdk_security3 = \
     com/sun/jarsigner \
     com/sun/security \
     -com/sun/security/jgss \
-    com/sun/org/apache/xml/internal/security \
     jdk/security \
     sun/security \
     -sun/security/krb5 \
