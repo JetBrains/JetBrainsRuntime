@@ -21,8 +21,6 @@
  * questions.
  */
 
-package com.my;
-
 import com.jetbrains.FontMetricsAccessor;
 import com.jetbrains.JBR;
 
