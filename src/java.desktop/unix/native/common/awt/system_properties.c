@@ -35,7 +35,6 @@
 #define SETTING_INTERFACE "org.freedesktop.portal.Settings"
 #define DESKTOP_DESTINATION "org.freedesktop.portal.Desktop"
 #define DESKTOP_PATH "/org/freedesktop/portal/desktop"
-#define DBUS_MESSAGE_MAX 1024
 #define REPLY_TIMEOUT 150
 
 static DBusConnection *connection = NULL;
@@ -107,13 +106,9 @@ static bool getBasicIter(void *val, DBusMessageIter *iter, int demand_type) {
         }
         case DBUS_TYPE_VARIANT:
         {
-            DBusMessageIter *sub_iter = malloc(DBUS_MESSAGE_MAX);
-            if (sub_iter == NULL) {
-                return false;
-            }
-            dBus->dbus_message_iter_recurse(iter, sub_iter);
-            bool res = getBasicIter(val, sub_iter, demand_type);
-            free(sub_iter);
+            DBusMessageIter sub_iter;
+            dBus->dbus_message_iter_recurse(iter, &sub_iter);
+            bool res = getBasicIter(val, &sub_iter, demand_type);
             // current implementation doesn't support types with multiple fields
             if (dBus->dbus_message_iter_next(iter)) {
                 return false;
@@ -130,8 +125,8 @@ static bool sendDBusMessageWithReply(const char *name_function, const char **mes
                                        int *messages_type, int message_count, void *val, int demand_type) {
     DBusError error;
     DBusMessage *message = NULL;
-    DBusMessageIter *iter = NULL;
     DBusMessage *reply = NULL;
+    DBusMessageIter iter;
     bool res = false;
 
     if (!initialized) {
@@ -151,15 +146,9 @@ static bool sendDBusMessageWithReply(const char *name_function, const char **mes
         goto cleanup;
     }
 
-    iter = malloc(DBUS_MESSAGE_MAX);
-    if (iter == NULL) {
-        fprintf(stderr, "DBus error: cannot allocate memory\n");
-        goto cleanup;
-    }
-
-    dBus->dbus_message_iter_init_append(message, iter);
+    dBus->dbus_message_iter_init_append(message, &iter);
     for (int i = 0; i < message_count; i++) {
-        if (!dBus->dbus_message_iter_append_basic(iter, messages_type[i], &messages[i])) {
+        if (!dBus->dbus_message_iter_append_basic(&iter, messages_type[i], &messages[i])) {
             fprintf(stderr, "DBus error: cannot append to message\n");
             goto cleanup;
         }
@@ -174,17 +163,14 @@ static bool sendDBusMessageWithReply(const char *name_function, const char **mes
         goto cleanup;
     }
 
-    if (!dBus->dbus_message_iter_init (reply, iter)) {
+    if (!dBus->dbus_message_iter_init (reply, &iter)) {
         fprintf(stderr, "DBus error: cannot process message\n");
         goto cleanup;
     }
 
-    res = getBasicIter(val, iter, demand_type);
+    res = getBasicIter(val, &iter, demand_type);
 
 cleanup:
-    if (iter) {
-        free(iter);
-    }
     if (reply) {
         dBus->dbus_message_unref(reply);
     }

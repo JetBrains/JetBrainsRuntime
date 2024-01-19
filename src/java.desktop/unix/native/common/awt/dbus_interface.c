@@ -32,9 +32,21 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define DBUS_LIB_NAME "libdbus-1.so"
+#define JNI_LIB_NAME "libdbus-1.so"
+#define JNI_LIB_NAME_VERSIONED JNI_LIB_NAME ".3"
+
+static bool isCurrentVersionSupported(DBusApi* dBusApi) {
+    int major = 0, minor = 0, micro = 0;
+    dBusApi->dbus_get_version(&major, &minor, &micro);
+    return major == 1;
+}
 
 static bool DBusApi_init(DBusApi* dBusApi, void *libhandle) {
+    dBusApi->dbus_get_version = dlsym(libhandle, "dbus_get_version");
+    if (dBusApi->dbus_get_version == NULL || !isCurrentVersionSupported(dBusApi)) {
+        return false;
+    }
+
     dBusApi->dbus_error_init = dlsym(libhandle, "dbus_error_init");
     dBusApi->dbus_bus_get = dlsym(libhandle, "dbus_bus_get");
     dBusApi->dbus_error_is_set = dlsym(libhandle, "dbus_error_is_set");
@@ -82,9 +94,12 @@ DBusApi* DBusApi_setupDBus(void *libhandle) {
 }
 
 DBusApi* DBusApi_setupDBusDefault() {
-    void *dbus_libhandle = dlopen(DBUS_LIB_NAME, RTLD_LAZY | RTLD_LOCAL);
+    void *dbus_libhandle = dlopen(JNI_LIB_NAME, RTLD_LAZY | RTLD_LOCAL);
     if (dbus_libhandle == NULL) {
-        return NULL;
+        dbus_libhandle = dlopen(JNI_LIB_NAME_VERSIONED, RTLD_LAZY | RTLD_LOCAL);
+        if (dbus_libhandle == NULL) {
+            return NULL;
+        }
     }
 
     return DBusApi_setupDBus(dbus_libhandle);

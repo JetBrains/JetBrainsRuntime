@@ -28,14 +28,14 @@
 #ifndef JETBRAINSRUNTIME_DBUS_INTERFACE_H
 #define JETBRAINSRUNTIME_DBUS_INTERFACE_H
 
-#define DBUS_NAME_FLAG_ALLOW_REPLACEMENT 0x1 /**< Allow another service to become the primary owner if requested */
-#define DBUS_NAME_FLAG_REPLACE_EXISTING  0x2 /**< Request to replace the current primary owner */
-#define DBUS_NAME_FLAG_DO_NOT_QUEUE      0x4 /**< If we can not become the primary owner do not place us in the queue */
+#define DBUS_NAME_FLAG_ALLOW_REPLACEMENT 0x1
+#define DBUS_NAME_FLAG_REPLACE_EXISTING  0x2
+#define DBUS_NAME_FLAG_DO_NOT_QUEUE      0x4
 
-#define DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER  1 /**< Service has become the primary owner of the requested name */
-#define DBUS_REQUEST_NAME_REPLY_IN_QUEUE       2 /**< Service could not become the primary owner and has been placed in the queue */
-#define DBUS_REQUEST_NAME_REPLY_EXISTS         3 /**< Service is already in the queue */
-#define DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER  4 /**< Service is already the primary owner */
+#define DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER  1
+#define DBUS_REQUEST_NAME_REPLY_IN_QUEUE       2
+#define DBUS_REQUEST_NAME_REPLY_EXISTS         3
+#define DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER  4
 
 typedef enum
 {
@@ -60,7 +60,6 @@ typedef enum
 
 typedef struct DBusConnection DBusConnection;
 typedef struct DBusMessage DBusMessage;
-typedef struct DBusMessageIter DBusMessageIter;
 
 typedef DBusHandlerResult (*DBusHandleMessageFunction) (DBusConnection     *connection,
                                                         DBusMessage        *message,
@@ -68,29 +67,44 @@ typedef DBusHandlerResult (*DBusHandleMessageFunction) (DBusConnection     *conn
 
 typedef void (*DBusFreeFunction) (void *memory);
 
-/** Mostly-opaque type representing an error that occurred */
 typedef struct DBusError DBusError;
 
-/**
- * Object representing an exception.
- */
 struct DBusError
 {
-    const char *name;    /**< public error name field */
-    const char *message; /**< public error message field */
+    const char *name;
+    const char *message;
 
-    unsigned int dummy1 : 1; /**< placeholder */
-    unsigned int dummy2 : 1; /**< placeholder */
-    unsigned int dummy3 : 1; /**< placeholder */
-    unsigned int dummy4 : 1; /**< placeholder */
-    unsigned int dummy5 : 1; /**< placeholder */
+    unsigned int dummy1 : 1;
+    unsigned int dummy2 : 1;
+    unsigned int dummy3 : 1;
+    unsigned int dummy4 : 1;
+    unsigned int dummy5 : 1;
 
-    void *padding1; /**< placeholder */
+    void *padding1;
 };
 
-typedef int dbus_int32_t;
 typedef unsigned int dbus_uint32_t;
 typedef dbus_uint32_t  dbus_bool_t;
+
+typedef struct DBusMessageIter DBusMessageIter;
+
+struct DBusMessageIter
+{
+    void *dummy1;
+    void *dummy2;
+    dbus_uint32_t dummy3;
+    int dummy4;
+    int dummy5;
+    int dummy6;
+    int dummy7;
+    int dummy8;
+    int dummy9;
+    int dummy10;
+    int dummy11;
+    int pad1;
+    int pad2;
+    void *pad3;
+};
 
 #define DBUS_TYPE_INT16         ((int) 'n')
 #define DBUS_TYPE_UINT16        ((int) 'q')
@@ -106,6 +120,8 @@ typedef dbus_uint32_t  dbus_bool_t;
 #define DBUS_TYPE_INVALID       ((int) '\0')
 
 typedef struct DBusApi {
+    void (*dbus_get_version)(int *major_version_p, int *minor_version_p, int *micro_version_p);
+
     void (*dbus_error_init)(DBusError *error);
 
     DBusConnection *(*dbus_bus_get)(DBusBusType type, DBusError *error);
