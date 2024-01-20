@@ -3,6 +3,7 @@ java/awt/Dialog/DialogLocationTest.java JBR-6090 windows-all
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java      JBR-5538 windows-all
 java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java                  JBR-6027 windows-all
 java/awt/dnd/DnDAWTLockTest.java JBR-6442 linux-all
+java/awt/dnd/DragSourceGCrashTest.java JBR-6442 linux-all
 java/awt/dnd/DropActionChangeTest.java JBR-6489,JBR-5799 generic-all
 java/awt/dnd/ImageTransferTest/ImageTransferTest.java  JBR-6442 linux-all
 java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.java JBR-6442 linux-all
