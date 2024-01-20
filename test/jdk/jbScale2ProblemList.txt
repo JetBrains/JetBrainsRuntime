@@ -3,6 +3,7 @@ java/awt/Dialog/DialogLocationTest.java JBR-6090 windows-all
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java      JBR-5538 windows-all
 java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java                  JBR-6027 windows-all
 java/awt/dnd/DnDAWTLockTest.java JBR-6442 linux-all
+java/awt/dnd/DragOverDropTargetPerformanceTest.java JBR-5799 windows-all
 java/awt/dnd/DropActionChangeTest.java JBR-6489,JBR-5799 generic-all
 java/awt/dnd/ImageTransferTest/ImageTransferTest.java  JBR-6442 linux-all
 java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.java JBR-6442 linux-all
@@ -10,7 +11,7 @@ java/awt/dnd/MozillaDnDTest.java JBR-6442 linux-all
 java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 linux-x64,windows-aarch64,macosx-all
 java/awt/Focus/6378278/InputVerifierTest.java                                       JBR-5799 windows-all
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java 8252772,JBR-5799,JBR-6031 linux-all,windows-all
-java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java JBR-5799 windows-all
+java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 7124275,JBR-5799 macosx-all,windows-all
 java/awt/Focus/SimpleWindowActivationTest/SimpleWindowActivationTest.java           JBR-6089 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java       JBR-6089 windows-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6233,JBR-6509 windows-all,macosx-all,generic-all
@@ -26,6 +27,7 @@ java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 815
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5711,JBR-6234 linux-all,windows-all,macosx-all
 java/awt/List/TriggerActionEventTest.java JBR-6234 windows-all
 java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-5359,JBR-5510 macosx-all,windows-all,linux-all
+java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java 8049405,JBR-6234 windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5359,JBR-5510,JBR-6134 windows-aarch64,windows-x64,linux-5.18.2-arch1-1
 java/awt/Mixing/LWPopupMenu.java JBR-6134 windows-x64
 java/awt/Mixing/MixingOnDialog.java 8225777,JBR-6134 linux-all,windows-x64
@@ -52,6 +54,7 @@ sun/java2d/GdiRendering/ClipShapeRendering.java                                 
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java                  nobug generic-all
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java                            nobug generic-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java nobug generic-all
+jb/java/awt/CustomTitleBar/ActionListenerTest.java                                  nobug generic-all
 jb/java/awt/CustomTitleBar/ChangeTitleBarHeightTest.java                            nobug generic-all
 jb/java/awt/CustomTitleBar/CheckFullScreen.java                                     nobug generic-all
 jb/java/awt/CustomTitleBar/CreateTitleBarTest.java                                  nobug generic-all
@@ -78,5 +81,8 @@ jb/java/awt/Focus/RequestFocusInParent.java                                     
 jb/java/awt/Focus/SecondLevelPopupTest.java                                         JBR-6090 windows-all
 jb/java/awt/Window/BackgroundWindowOrderOnSpaceChange.java JBR-6486 macosx-all
 jb/java/awt/Window/UndecoratedDialogInTransientsChain.java                          JBR-6090 windows-all
+java/awt/Focus/SimpleWindowActivationTest/SimpleWindowActivationTest.java           JBR-6089 windows-all
+java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java       JBR-6089 windows-all
+java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java          JBR-5513 linux-all
 jb/java/awt/Window/ZOrderOnModalDialogActivation.java                               JBR-5713 windows-all
 jdk/editpad/EditPadTest.java                                                        JBR-5712 windows-all
