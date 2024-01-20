@@ -149,7 +149,7 @@ runtime/Thread/TooSmallStackSize.java JBR-6350 windows-aarch64
 
 serviceability/dcmd/vm/TrimLibcHeapTest.java 8312625 linux-all
 
-serviceability/sa/sadebugd/DebugdConnectTest.java 8239062 macosx-x64
+serviceability/sa/sadebugd/DebugdConnectTest.java 8239062,8270326 macosx-x64,macosx-aarch64
 serviceability/sa/TestRevPtrsForInvokeDynamic.java 8241235 generic-all
 
 serviceability/jvmti/ModuleAwareAgents/ThreadStart/MAAThreadStart.java 8225354 windows-all

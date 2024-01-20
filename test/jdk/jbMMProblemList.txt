@@ -6,7 +6,6 @@ java/awt/EmbeddedFrame/GraphicsConfigTest/GraphicsConfigTest.java 8305515
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java 8311535 windows-all
 java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java 8292588,JBR-6058 macosx-all,windows-all,linux-all
 java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.java JBR-5531 macosx-all,linux-all
-java/awt/Frame/FramesGC/FramesGC.java JBR-6057 windows-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117,JBR-6509 linux-all,generic-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenSmall.java JBR-4379 windows-all
 java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java JBR-4379 windows-all
@@ -17,7 +16,6 @@ java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java JBR-5062 linux-all
 java/awt/GraphicsDevice/DisplayModes/UnknownRefrshRateTest.java JBR-6336 macosx-aarch64
 java/awt/GraphicsDevice/IncorrectDisplayModeExitFullscreen.java JBR-6336 macosx-aarch64
 java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5.15.0-46-generic Ubuntu 20.04
-java/awt/Frame/FramesGC/FramesGC.java JBR-6057 windows-all,macosx-all
 java/awt/Robot/NonEmptyErrorStream.java JBR-5442 linux-all
 java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390 macosx-all,linux-all
 java/awt/Robot/NonEmptyErrorStream.java JBR-5442 linux-all
