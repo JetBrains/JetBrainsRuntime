@@ -517,8 +517,8 @@ void Klass::initialize_supers(Klass* k, Array<InstanceKlass*>* transitive_interf
     set_super(nullptr);
     _primary_supers[0] = this;
     assert(super_depth() == 0, "Object must already be initialized properly");
-  } else if (k != super() || k == vmClasses::Object_klass()) {
-    assert(super() == nullptr || super() == vmClasses::Object_klass(),
+  } else if (k != super() || k == vmClasses::Object_klass() || (k->is_redefining() && k == vmClasses::Object_klass()->newest_version())) {
+    assert(super() == NULL || super() == vmClasses::Object_klass() || k->is_redefining() && super() == vmClasses::Object_klass()->newest_version(),
            "initialize this only once to a non-trivial value");
     set_super(k);
     Klass* sup = k;
@@ -1382,4 +1382,26 @@ void Klass::on_secondary_supers_verification_failure(Klass* super, Klass* sub, b
   sub->print();
   fatal("%s: %s implements %s: linear_search: %d; table_lookup: %d",
         msg, sub->external_name(), super->external_name(), linear_result, table_result);
+}
+
+void Klass::update_supers_dcevm() {
+  if (_super != NULL) {
+    _super = _super->newest_version();
+  }
+  int sup_depth = super_depth();
+  for (int idx = 0; idx < sup_depth; idx++) {
+    Klass* primary = _primary_supers[idx];
+    if (primary == NULL) {
+      break;
+    }
+    _primary_supers[idx] = primary->newest_version();
+  }
+  if (secondary_super_cache() != NULL) {
+    set_secondary_super_cache(secondary_super_cache()->newest_version());
+  }
+
+  int cnt = secondary_supers()->length();
+  for (int i = 0; i < cnt; i++) {
+    secondary_supers()->at_put(i, secondary_supers()->at(i)->newest_version());
+  }
 }
