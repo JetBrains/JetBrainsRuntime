@@ -46,6 +46,8 @@
 #include "utilities/powerOfTwo.hpp"
 #include "utilities/stringUtils.hpp"
 #include "runtime/stubRoutines.hpp"
+#include "c2compiler.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
 
 // Portions of code courtesy of Clifford Click
 
@@ -742,6 +744,17 @@ void Type::Initialize(Compile* current) {
 
   if (_shared_type_dict == nullptr) {
     Initialize_shared(current);
+  } else {
+    if (C2Compiler::is_reinitialize_vm_klasses()) {
+      ThreadInVMfromNative invm(CompilerThread::current());
+      MutexLocker only_one(DcevmCompilationInit_lock, Mutex::_no_safepoint_check_flag);
+
+      if (C2Compiler::is_reinitialize_vm_klasses()) {
+        _shared_type_dict = nullptr;
+        Initialize_shared(current);
+        C2Compiler::clear_reinitialize_vm_klasses();
+      }
+    }
   }
 
   Arena* type_arena = current->type_arena();
