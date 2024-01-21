@@ -228,6 +228,9 @@ class Universe: AllStatic {
 
   static Klass* fillerArrayKlassObj()               { return _fillerArrayKlassObj; }
 
+  // (DCEVM)
+  static void update_vmClasses_dcevm();
+
   static Klass* typeArrayKlassObj(BasicType t) {
     assert((uint)t >= T_BOOLEAN, "range check for type: %s", type2name(t));
     assert((uint)t < T_LONG+1,   "range check for type: %s", type2name(t));
@@ -284,7 +287,7 @@ class Universe: AllStatic {
   // Function to initialize these
   static void initialize_known_methods(TRAPS);
 
-  static void reinitialize_loader_addClass_method(TRAPS);
+  static void reinitialize_known_method_dcevm(TRAPS);
 
   static void create_preallocated_out_of_memory_errors(TRAPS);
 

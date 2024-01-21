@@ -1945,16 +1945,30 @@ void CompileBroker::compiler_thread_loop() {
         if ((UseCompiler || AlwaysCompileLoopMethods) && CompileBroker::should_compile_new_jobs()) {
 
           // TODO: review usage of CompileThread_lock (DCEVM)
-          if (ciObjectFactory::is_reinitialize_vm_klasses())
-          {
-            ASSERT_IN_VM;
-            MutexLocker only_one(CompileThread_lock);
-            if (ciObjectFactory::is_reinitialize_vm_klasses()) {
-              ciObjectFactory::reinitialize_vm_classes();
+          if (AllowEnhancedClassRedefinition) {
+            {
+              // go to native, since dcevm doit() is in a safepoint (_compilation_stopped == true)
+              ThreadToNativeFromVM ttn(thread);
+              MonitorLocker locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
+              // stop all compilations if requested from redefinition
+              while (_compilation_stopped) {
+                locker.wait(20);
+              }
+              Atomic::add(&_active_compilations, 1);
             }
+
+            if (ciObjectFactory::is_reinitialize_vm_klasses()) {
+              MutexLocker only_one(DcevmCompilationInit_lock, Mutex::_no_safepoint_check_flag);
+              if (ciObjectFactory::is_reinitialize_vm_klasses()) {
+                ciObjectFactory::reinitialize_vm_classes_dcevm();
+              }
+            }
+            invoke_compiler_on_method(task);
+            Atomic::sub(&_active_compilations, 1);
+          } else {
+            invoke_compiler_on_method(task);
           }
 
-          invoke_compiler_on_method(task);
           thread->start_idle_timer();
         } else {
           // After compilation is disabled, remove remaining methods from queue
@@ -2276,15 +2290,12 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
         }
       }
       if (AllowEnhancedClassRedefinition) {
-        {
-          MonitorLocker locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
-          while (_compilation_stopped) {
-            locker.wait();
-          }
-          Atomic::add(&_active_compilations, 1);
+        // Skip redefined methods
+        if (task->method()->is_old() || task->method()->method_holder()->new_version() != NULL) {
+          ci_env.record_method_not_compilable("redefined method", true);
+        } else {
+          comp->compile_method(&ci_env, target, osr_bci, true, directive);
         }
-        comp->compile_method(&ci_env, target, osr_bci, true, directive);
-        Atomic::sub(&_active_compilations, 1);
       } else {
         comp->compile_method(&ci_env, target, osr_bci, true, directive);
       }

@@ -543,6 +543,11 @@ public:
 
   // reference type
   ReferenceType reference_type() const     { return (ReferenceType)_reference_type; }
+  // (DCEVM)
+  void set_reference_type(ReferenceType t) {
+    assert(t == (u1)t, "overflow");
+    _reference_type = (u1)t;
+  }
 
   // this class cp index
   u2 this_class_index() const             { return _this_class_index; }
@@ -893,7 +898,8 @@ public:
  private:
   // link this class into the implementors list of every interface it implements
   void process_interfaces();
-
+  // (DCEVM)
+  void do_nonstatic_fields_dcevm_collect_fields(void* fields, int depth);
  public:
   // virtual operations from Klass
   GrowableArray<Klass*>* compute_secondary_supers(int num_extra_slots,
@@ -908,7 +914,7 @@ public:
   void do_local_static_fields(FieldClosure* cl);
   void do_nonstatic_fields(FieldClosure* cl); // including inherited fields
   // (DCEVM)
-  void do_nonstatic_fields_sorted(FieldClosure* cl);
+  void do_nonstatic_fields_dcevm(FieldClosure* cl);
   void do_local_static_fields(void f(fieldDescriptor*, Handle, TRAPS), Handle, TRAPS);
   void print_nonstatic_fields(FieldClosure* cl); // including inherited and injected fields
 

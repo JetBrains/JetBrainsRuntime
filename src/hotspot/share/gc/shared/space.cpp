@@ -337,7 +337,7 @@ void ContiguousSpace::prepare_for_compaction(CompactPoint* cp) {
 
       if (redefinition_run) {
         compact_top = cp->space->forward_with_rescue(cur_obj, size, cp, compact_top, force_forward);
-        if (first_dead == NULL && cast_to_oop(cur_obj)->is_gc_marked()) {
+        if (first_dead == nullptr && cast_to_oop(cur_obj)->is_gc_marked()) {
           /* Was moved (otherwise, forward would reset mark),
              set first_dead to here */
           first_dead = cur_obj;
@@ -413,7 +413,7 @@ int ContiguousSpace::space_index(oop obj) {
 
   int index = 0;
   ContiguousSpace* space = heap->old_gen()->first_compaction_space();
-  while (space != NULL) {
+  while (space != nullptr) {
     if (space->is_in_reserved(obj)) {
       return index;
     }
@@ -422,7 +422,7 @@ int ContiguousSpace::space_index(oop obj) {
   }
 
   space = heap->young_gen()->first_compaction_space();
-  while (space != NULL) {
+  while (space != nullptr) {
     if (space->is_in_reserved(obj)) {
       return index;
     }
@@ -437,7 +437,7 @@ int ContiguousSpace::space_index(oop obj) {
   tty->print_cr("  generation %s: " INTPTR_FORMAT " - " INTPTR_FORMAT, gen->name(), p2i(gen->reserved().start()), p2i(gen->reserved().end()));
 
   space = gen->first_compaction_space();
-  while (space != NULL) {
+  while (space != nullptr) {
     tty->print_cr("    %2d space " INTPTR_FORMAT " - " INTPTR_FORMAT, index, p2i(space->bottom()), p2i(space->end()));
     space = space->next_compaction_space();
     index++;
@@ -447,7 +447,7 @@ int ContiguousSpace::space_index(oop obj) {
   tty->print_cr("  generation %s: " INTPTR_FORMAT " - " INTPTR_FORMAT, gen->name(), p2i(gen->reserved().start()), p2i(gen->reserved().end()));
 
   space = gen->first_compaction_space();
-  while (space != NULL) {
+  while (space != nullptr) {
     tty->print_cr("    %2d space " INTPTR_FORMAT " - " INTPTR_FORMAT, index, p2i(space->bottom()), p2i(space->end()));
     space = space->next_compaction_space();
     index++;
@@ -460,7 +460,7 @@ int ContiguousSpace::space_index(oop obj) {
 
 bool ContiguousSpace::must_rescue(oop old_obj, oop new_obj) {
   // Only redefined objects can have the need to be rescued.
-  if (oop(old_obj)->klass()->new_version() == NULL) return false;
+  if (oop(old_obj)->klass()->new_version() == nullptr) return false;
 
   //if (old_obj->is_perm()) {
   //  // This object is in perm gen: Always rescue to satisfy invariant obj->klass() <= obj.
@@ -513,7 +513,7 @@ HeapWord* ContiguousSpace::rescue(HeapWord* old_obj) {
   HeapWord* rescued_obj = NEW_RESOURCE_ARRAY(HeapWord, size);
   Copy::aligned_disjoint_words(old_obj, rescued_obj, size);
 
-  if (MarkSweep::_rescued_oops == NULL) {
+  if (MarkSweep::_rescued_oops == nullptr) {
     MarkSweep::_rescued_oops = new GrowableArray<HeapWord*>(128);
   }
 
@@ -619,9 +619,9 @@ void ContiguousSpace::compact() {
 
       // copy object and reinit its mark
       assert(redefinition_run || cur_obj != compaction_top, "everything in this pass should be moving");
-      if (redefinition_run && cast_to_oop(cur_obj)->klass()->new_version() != NULL) {
+      if (redefinition_run && cast_to_oop(cur_obj)->klass()->new_version() != nullptr) {
         Klass* new_version = cast_to_oop(cur_obj)->klass()->new_version();
-        if (new_version->update_information() == NULL) {
+        if (new_version->update_information() == nullptr) {
           Copy::aligned_conjoint_words(cur_obj, compaction_top, size);
           cast_to_oop(compaction_top)->set_klass(new_version);
         } else {
@@ -881,7 +881,7 @@ HeapWord* ContiguousSpace::forward_with_rescue(HeapWord* q, size_t size,
   size_t forward_size = size;
 
   // (DCEVM) There is a new version of the class of q => different size
-  if (cast_to_oop(q)->klass()->new_version() != NULL) {
+  if (cast_to_oop(q)->klass()->new_version() != nullptr) {
 
     size_t new_size = cast_to_oop(q)->size_given_klass(cast_to_oop(q)->klass()->new_version());
     // assert(size != new_size, "instances without changed size have to be updated prior to GC run");
@@ -891,7 +891,7 @@ HeapWord* ContiguousSpace::forward_with_rescue(HeapWord* q, size_t size,
   compact_top = forward_compact_top(forward_size, cp, compact_top);
 
   if (must_rescue(cast_to_oop(q), cast_to_oop(compact_top))) {
-    if (MarkSweep::_rescued_oops == NULL) {
+    if (MarkSweep::_rescued_oops == nullptr) {
       MarkSweep::_rescued_oops = new GrowableArray<HeapWord*>(128);
     }
     MarkSweep::_rescued_oops->append(q);
@@ -904,14 +904,14 @@ HeapWord* ContiguousSpace::forward_with_rescue(HeapWord* q, size_t size,
 // Compute the forwarding addresses for the objects that need to be rescued.
 HeapWord* ContiguousSpace::forward_rescued(CompactPoint* cp, HeapWord* compact_top) {
   // TODO: empty the _rescued_oops after ALL spaces are compacted!
-  if (MarkSweep::_rescued_oops != NULL) {
+  if (MarkSweep::_rescued_oops != nullptr) {
     for (int i=0; i<MarkSweep::_rescued_oops->length(); i++) {
       HeapWord* q = MarkSweep::_rescued_oops->at(i);
 
       size_t size = block_size(q);
 
       // (DCEVM) There is a new version of the class of q => different size
-      if (cast_to_oop(q)->klass()->new_version() != NULL) {
+      if (cast_to_oop(q)->klass()->new_version() != nullptr) {
         size_t new_size = cast_to_oop(q)->size_given_klass(cast_to_oop(q)->klass()->new_version());
         // assert(size != new_size, "instances without changed size have to be updated prior to GC run");
         size = new_size;
@@ -921,7 +921,7 @@ HeapWord* ContiguousSpace::forward_rescued(CompactPoint* cp, HeapWord* compact_t
       assert(compact_top <= end(), "must not write over end of space!");
     }
     MarkSweep::_rescued_oops->clear();
-    MarkSweep::_rescued_oops = NULL;
+    MarkSweep::_rescued_oops = nullptr;
   }
   return compact_top;
 }

@@ -484,7 +484,7 @@ void LoaderConstraintTable::verify() {
         if (k != nullptr) {
           // We found the class in the dictionary, so we should
           // make sure that the Klass* matches what we already have.
-          guarantee(k == probe->klass()->newest_version(), "klass should be in dictionary");
+          guarantee(k == probe->klass() || AllowEnhancedClassRedefinition && k->newest_version() == probe->klass()->newest_version(), "klass should be in dictionary");
         } else {
           // If we don't find the class in the dictionary, it
           // has to be in the placeholders table.

@@ -35,6 +35,7 @@
 #include "runtime/stubRoutines.hpp"
 #include "utilities/macros.hpp"
 
+bool C2Compiler::_reinitialize_vm_klasses = false;
 
 // register information defined by ADLC
 extern const char register_save_policy[];

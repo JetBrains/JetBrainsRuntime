@@ -125,33 +125,13 @@ void ciObjectFactory::initialize() {
 }
 
 // (DCEVM) vm classes could be modified
-void ciObjectFactory::reinitialize_vm_classes() {
-  ASSERT_IN_VM;
-  JavaThread* thread = JavaThread::current();
-  HandleMark  handle_mark(thread);
-
-  // This Arena is long lived and exists in the resource mark of the
-  // compiler thread that initializes the initial ciObjectFactory which
-  // creates the shared ciObjects that all later ciObjectFactories use.
-  // Arena* arena = new (mtCompiler) Arena(mtCompiler);
-  ciEnv initial(ciObjectFactory::_initial_arena);
-  ciEnv* env = ciEnv::current();
-  env->_factory->do_reinitialize_vm_classes();
+void ciObjectFactory::reinitialize_vm_classes_dcevm() {
+  // TODO: compiler crashes after 'delete _initial_arena;'
+  // delete ciObjectFactory::_initial_arena;
+  _initialized = false;
+  ciObjectFactory::initialize();
   _reinitialize_vm_klasses = false;
-}
-
-// (DCEVM) vm classes could be modified
-void ciObjectFactory::do_reinitialize_vm_classes() {
-#define VM_CLASS_DEFN(name, ignore_s)   \
-  if (ciEnv::_##name != NULL && ciEnv::_##name->new_version() != NULL) { \
-    int old_ident = ciEnv::_##name->ident(); \
-    ciEnv::_##name = get_metadata(vmClasses::name())->as_instance_klass(); \
-    ciEnv::_##name->compute_nonstatic_fields(); \
-    ciEnv::_##name->set_ident(old_ident); \
-  }
-
-  VM_CLASSES_DO(VM_CLASS_DEFN)
-#undef VM_CLASS_DEFN
+  _initialized = true;
 }
 
 void ciObjectFactory::init_shared_objects() {

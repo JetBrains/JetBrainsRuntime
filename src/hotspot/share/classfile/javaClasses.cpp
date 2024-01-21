@@ -93,6 +93,7 @@
 #if INCLUDE_JVMCI
 #include "jvmci/jvmciJavaClasses.hpp"
 #endif
+#include "prims/jvmtiEnhancedRedefineClasses.hpp"
 
 #define DECLARE_INJECTED_FIELD(klass, name, signature, may_be_java)           \
   { VM_CLASS_ID(klass), VM_SYMBOL_ENUM_NAME(name##_name), VM_SYMBOL_ENUM_NAME(signature), may_be_java },
@@ -709,7 +710,8 @@ char* java_lang_String::as_utf8_string(oop java_string, typeArrayOop value, int 
 }
 
 bool java_lang_String::equals(oop java_string, const jchar* chars, int len) {
-  assert(java_string->klass() == vmClasses::String_klass(),
+  assert(java_string->klass() == vmClasses::String_klass()
+         || VM_EnhancedRedefineClasses::is_inside_redefinition() && java_string->klass()->newest_version() == vmClasses::String_klass(),
          "must be java_string");
   typeArrayOop value = java_lang_String::value_no_keepalive(java_string);
   int length = java_lang_String::length(java_string, value);
@@ -1393,7 +1395,8 @@ BasicType java_lang_Class::as_BasicType(oop java_class, Klass** reference_klass)
 
 oop java_lang_Class::primitive_mirror(BasicType t) {
   oop mirror = Universe::java_mirror(t);
-  assert(mirror != nullptr && mirror->is_a(vmClasses::Class_klass()), "must be a Class");
+  assert(mirror != nullptr && (mirror->is_a(vmClasses::Class_klass())
+         || VM_EnhancedRedefineClasses::is_inside_redefinition() && vmClasses::Class_klass()->old_version() != NULL && mirror->is_a(vmClasses::Class_klass()->old_version())), "must be a Class");
   assert(is_primitive(mirror), "must be primitive");
   return mirror;
 }
