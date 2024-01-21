@@ -255,7 +255,7 @@ ciEnv::ciEnv(Arena* arena) : _ciEnv_arena(mtCompiler, Arena::Tag::tag_cienv) {
   _break_at_compile = false;
   _compiler_data = nullptr;
 #ifndef PRODUCT
-  assert(firstEnv, "must be first");
+  assert(AllowEnhancedClassRedefinition || firstEnv, "must be first");
   firstEnv = false;
 #endif /* !PRODUCT */
 

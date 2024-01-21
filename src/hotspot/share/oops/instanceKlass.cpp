@@ -1988,31 +1988,68 @@ static int compare_fields_by_offset(FieldInfo* a, FieldInfo* b) {
   return a->offset() - b->offset();
 }
 
-void InstanceKlass::do_nonstatic_fields_sorted(FieldClosure* cl) {
+template<typename F, typename S, typename T, typename ALLOC_BASE = ResourceObj>
+class Triple : public ALLOC_BASE {
+public:
+  F first;
+  S second;
+  T third;
+
+  Triple() {}
+  Triple(F f, S s, T t) : first(f), second(s), third(t) {}
+};
+
+void InstanceKlass::do_nonstatic_fields_dcevm_collect_fields(void* fields, int depth) {
   InstanceKlass* super = superklass();
-  if (super != NULL) {
-    super->do_nonstatic_fields_sorted(cl);
+  if (super != nullptr) {
+    super->do_nonstatic_fields_dcevm_collect_fields(fields, depth + 1);
   }
-  fieldDescriptor fd;
+  GrowableArray<Triple<int,int, int> >* all_fields = (GrowableArray<Triple<int,int,int> >*) fields;
   // In DebugInfo nonstatic fields are sorted by offset.
-  GrowableArray<Pair<int,int> > fields_sorted;
-  int i = 0;
   for (AllFieldStream fs(this); !fs.done(); fs.next()) {
     if (!fs.access_flags().is_static()) {
-      fd = fs.field_descriptor();
-      Pair<int,int> f(fs.offset(), fs.index());
-      fields_sorted.push(f);
-      i++;
+      Triple<int,int, int> f(fs.offset(), fs.index(), depth);
+      all_fields->push(f);
     }
   }
-  if (i > 0) {
-    int length = i;
-    assert(length == fields_sorted.length(), "duh");
+}
+
+static int compare_fields_by_offset_dcevm(Triple<int,int,int>* a, Triple<int,int,int>* b) {
+  return a->first - b->first;
+}
+
+void InstanceKlass::do_nonstatic_fields_dcevm(FieldClosure* cl) {
+  int depth = 1;
+  InstanceKlass* super = superklass();
+  while (super != nullptr) {
+    depth++;
+    super = super->superklass();
+  }
+
+  InstanceKlass* class_hiearchy[depth];
+  int i = 0;
+  class_hiearchy[i++] = this;
+  super = superklass();
+  while (super != nullptr) {
+    class_hiearchy[i++] = super;
+    super = super->superklass();
+  }
+
+  GrowableArray<Triple<int,int, int>> fields_sorted;
+  do_nonstatic_fields_dcevm_collect_fields(&fields_sorted, 0);
+
+  int length = fields_sorted.length();
+  if (length > 0) {
     // _sort_Fn is defined in growableArray.hpp.
-    fields_sorted.sort(compare_fields_by_offset);
-    for (int i = 0; i < length; i++) {
-      fd.reinitialize(this, fields_sorted.at(i).second);
-      assert(!fd.is_static() && fd.offset() == fields_sorted.at(i).first, "only nonstatic fields");
+    fields_sorted.sort(compare_fields_by_offset_dcevm);
+
+    fieldDescriptor fd;
+
+    for (i = 0; i < length; i++) {
+      InstanceKlass* ik = class_hiearchy[fields_sorted.at(i).third];
+      fd.reinitialize(ik, fields_sorted.at(i).second);
+      assert(!fd.is_static(), "only nonstatic fields");
+      assert(fd.offset() == fields_sorted.at(i).first, "offset matches");
       cl->do_field(&fd);
     }
   }

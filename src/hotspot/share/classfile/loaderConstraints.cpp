@@ -541,6 +541,7 @@ void LoaderConstraintTable::verify() {
           guarantee(k == probe->klass(), "klass should be in dictionary");
           // If we don't find the class in the dictionary, it is
           // in the process of loading and may or may not be in the placeholder table.
+          guarantee(k == probe->klass() || (AllowEnhancedClassRedefinition && k->newest_version() == probe->klass()->newest_version()), "klass should be in dictionary");
         }
       }
       for (int n = 0; n< probe->num_loaders(); n++) {

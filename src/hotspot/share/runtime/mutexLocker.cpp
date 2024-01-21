@@ -83,6 +83,7 @@ Monitor* CompileTaskWait_lock         = nullptr;
 Monitor* MethodCompileQueue_lock      = nullptr;
 Monitor* CompileThread_lock           = nullptr;
 Monitor* Compilation_lock             = nullptr;
+Mutex*   DcevmCompilationInit_lock    = nullptr;
 Monitor* DcevmCompilation_lock        = nullptr;
 Monitor* CompileTaskAlloc_lock        = nullptr;
 Mutex*   CompileStatistics_lock       = nullptr;
@@ -288,6 +289,7 @@ void mutex_init() {
   }
 
   MUTEX_DEFN(DcevmCompilation_lock           , PaddedMonitor, nosafepoint);
+  MUTEX_DEFN(DcevmCompilationInit_lock       , PaddedMutex,   nosafepoint);
 
 #if INCLUDE_JFR
   MUTEX_DEFN(JfrBuffer_lock                  , PaddedMutex  , event);
