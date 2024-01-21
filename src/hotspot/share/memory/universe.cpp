@@ -1075,12 +1075,33 @@ void Universe::initialize_known_methods(JavaThread* current) {
                           vmSymbols::doStackWalk_signature(), false);
 }
 
-void Universe::reinitialize_loader_addClass_method(JavaThread* current) {
+void Universe::reinitialize_known_method_dcevm(JavaThread* current) {
+  // Set up static method for registering finalizers
+  _finalizer_register_cache.init(current,
+                          vmClasses::Finalizer_klass(),
+                          "register",
+                          vmSymbols::object_void_signature(), true);
+
+  _throw_illegal_access_error_cache.init(current,
+                          vmClasses::internal_Unsafe_klass(),
+                          "throwIllegalAccessError",
+                          vmSymbols::void_method_signature(), true);
+
+  _throw_no_such_method_error_cache.init(current,
+                          vmClasses::internal_Unsafe_klass(),
+                          "throwNoSuchMethodError",
+                          vmSymbols::void_method_signature(), true);
+
   // Set up method for registering loaded classes in class loader vector
   _loader_addClass_cache.init(current,
                               vmClasses::ClassLoader_klass(),
                               "addClass",
                               vmSymbols::class_void_signature(), false);
+  // Set up method for stack walking
+  _do_stack_walk_cache.init(current,
+                            vmClasses::AbstractStackWalker_klass(),
+                            "doStackWalk",
+                            vmSymbols::doStackWalk_signature(), false);
 }
 
 void universe2_init() {
@@ -1388,3 +1409,9 @@ bool Universe::is_in_heap(const void* p) {
 }
 
 #endif // ASSERT
+
+void Universe::update_vmClasses_dcevm() {
+  _the_array_interfaces_array->at_put(0, vmClasses::Cloneable_klass()->newest_version());
+  _the_array_interfaces_array->at_put(1, vmClasses::Serializable_klass()->newest_version());
+}
+
