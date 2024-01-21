@@ -17,7 +17,7 @@
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
  *
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
+ e or visit www.oracle.com if you need additional information or have any
  * questions.
  *
  */
@@ -477,7 +477,8 @@ protected:
      ModifyInstances = ModifyClassSize << 1,     // There are change to the instance format.
      ModifyInstanceSize = ModifyInstances << 1,  // The size of instances changes.
      RemoveSuperType = ModifyInstanceSize << 1,  // A super type of this class is removed.
-     MarkedAsAffected = RemoveSuperType << 1     // This class has been marked as an affected class.
+     MarkedAsAffected = RemoveSuperType << 1,    // This class has been marked as an affected class.
+     PrimaryRedefine = MarkedAsAffected << 1     // This class is from primary redefinition set
    };
 
   // Compiler support
@@ -836,6 +837,8 @@ public:
   // Returns true if this Klass needs to be addressable via narrow Klass ID.
   inline bool needs_narrow_id() const;
 
+  // (DCEVM)
+  void update_supers_dcevm();
 };
 
 #endif // SHARE_OOPS_KLASS_HPP
