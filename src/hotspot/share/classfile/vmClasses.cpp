@@ -261,6 +261,13 @@ BasicType vmClasses::box_klass_type(Klass* k) {
 }
 
 bool vmClasses::update_vm_klass(InstanceKlass* old_klass, InstanceKlass* new_klass) {
+  for (int i = T_BOOLEAN; i < T_VOID+1; i++) {
+    if (_box_klasses[i] == old_klass) {
+      _box_klasses[i] = new_klass;
+      break;
+    }
+  }
+
   for (int id = static_cast<int>(vmClassID::FIRST); id < static_cast<int>(vmClassID::LIMIT); id++) {
     if (_klasses[id] == old_klass) {
       _klasses[id] = new_klass;
