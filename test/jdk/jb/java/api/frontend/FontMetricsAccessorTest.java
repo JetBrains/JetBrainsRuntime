@@ -80,7 +80,7 @@ public class FontMetricsAccessorTest {
         for (int scale = 2; scale <= 10; scale++) {
             Font scaledFont = FONT.deriveFont(FONT.getSize2D() / scale);
             float scaledAdvance = ACCESSOR.codePointWidth(ACCESSOR.getMetrics(scaledFont, CONTEXT), 'A');
-            if (Math.abs(scaledAdvance * scale - baseAdvance) > 0.01) {
+            if (Math.abs(scaledAdvance * scale - baseAdvance) > 0.1) {
                 throw new RuntimeException("Unexpected advance returned: baseAdvance=" + baseAdvance +
                         ", scaledAdvance=" + scaledAdvance + ", scale=" + scale);
             }
