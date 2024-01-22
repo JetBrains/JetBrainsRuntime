@@ -322,7 +322,7 @@ WLBufferTrace(WLSurfaceBufferManager* manager, const char *fmt, ...)
         va_list args;
         va_start(args, fmt);
         jlong t = GetJavaTimeNanos();
-        fprintf(stderr, "[%07dms] ", t / 1000000);
+        fprintf(stderr, "[%07dms] [%04x] ", t / 1000000, ((unsigned long)manager->wlSurface & 0xfffful));
         vfprintf(stderr, fmt, args);
         fprintf(stderr, "; frames [^%03d, *%03d]\n",
                 manager->bufferForShow.frameID,
@@ -617,7 +617,12 @@ wl_frame_callback_done(void * data,
 
     if (manager->wlSurface) {
         const bool hasSomethingToSend = (manager->bufferForDraw.damageList != NULL);
-        TrySendShowBufferToWayland(manager, hasSomethingToSend);
+        if (hasSomethingToSend) {
+            TrySendShowBufferToWayland(manager, true);
+        }
+        // In absence of damage, wait for another WLSBM_SurfaceCommit() instead of waiting
+        // for another frame; the latter may never bring anything different in case of
+        // a static picture, so we'll be cycling frames for nothing.
     }
 
     MUTEX_UNLOCK(manager->showLock);
@@ -632,6 +637,7 @@ ScheduleFrameCallback(WLSurfaceBufferManager * manager)
 {
     ASSERT_SHOW_LOCK_IS_HELD(manager);
     assert(manager->wlSurface);
+    assert(manager->isBufferAttached); // or else wl_callback_add_listener() has no effect
 
     if (!manager->wl_frame_callback) {
         manager->wl_frame_callback = wl_surface_frame(manager->wlSurface);
@@ -835,11 +841,18 @@ void
 WLSBM_SurfaceAssign(WLSurfaceBufferManager * manager, struct wl_surface* wl_surface)
 {
     J2dTrace(J2D_TRACE_INFO, "WLSBM_SurfaceAssign: assigned surface %p to manger %p\n", wl_surface, manager);
+    WLBufferTrace(manager, "WLSBM_SurfaceAssign(%p)", wl_surface);
 
     MUTEX_LOCK(manager->showLock);
     if (manager->wlSurface == NULL || wl_surface == NULL) {
         manager->wlSurface = wl_surface;
         manager->isBufferAttached = false;
+        // The "frame" callback depends on the surface; when changing the surface,
+        // cancel any associated pending callbacks:
+        if (manager->wl_frame_callback) {
+            wl_callback_destroy(manager->wl_frame_callback);
+            manager->wl_frame_callback = NULL;
+        }
     } else {
         assert(manager->wlSurface == wl_surface);
     }
@@ -922,8 +935,13 @@ void
 WLSBM_SurfaceCommit(WLSurfaceBufferManager * manager)
 {
     MUTEX_LOCK(manager->showLock);
-    WLBufferTrace(manager, "WLSBM_SurfaceCommit");
+
     const bool frameCallbackScheduled = manager->wl_frame_callback != NULL;
+
+    WLBufferTrace(manager, "WLSBM_SurfaceCommit (%x, %s)",
+                  manager->wlSurface,
+                  frameCallbackScheduled ? "wait for frame" : "now");
+
     if (manager->wlSurface && !frameCallbackScheduled) {
         bool canScheduleFrameCallback = manager->isBufferAttached;
         // Don't always send the frame immediately so as not to overwhelm Wayland
