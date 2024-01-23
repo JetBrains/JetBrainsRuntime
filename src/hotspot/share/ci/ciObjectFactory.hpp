@@ -92,7 +92,6 @@ private:
   ciInstance* get_unloaded_instance(ciInstanceKlass* klass);
 
   static int compare_cimetadata(ciMetadata** a, ciMetadata** b);
-  void do_reinitialize_vm_classes();
 public:
   static bool is_initialized() { return _initialized; }
 

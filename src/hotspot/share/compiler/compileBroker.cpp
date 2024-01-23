@@ -2003,7 +2003,6 @@ void CompileBroker::compiler_thread_loop() {
           if (AllowEnhancedClassRedefinition) {
             {
               // go to native, since dcevm doit() is in a safepoint (_compilation_stopped == true)
-              NoHandleMark  nhm;
               ThreadToNativeFromVM ttn(thread);
               MonitorLocker locker(DcevmCompilation_lock, Mutex::_no_safepoint_check_flag);
               // stop all compilations if requested from redefinition
@@ -2996,8 +2995,8 @@ void CompileBroker::stopCompilationBeforeEnhancedRedefinition() {
       VM_ThreadsSuspendJVMTI tsj; // force safepoint to run C1/C2 VM op
       VMThread::execute(&tsj);
       locker.wait(10);
-      }
     }
+  }
 }
 
 void CompileBroker::releaseCompilationAfterEnhancedRedefinition() {

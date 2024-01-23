@@ -285,13 +285,13 @@ inline int java_lang_Class::oop_size_raw(oop java_class) {
 }
 
 inline bool java_lang_invoke_DirectMethodHandle::is_instance(oop obj) {
-  return obj != NULL && is_subclass(obj->klass())
-    || VM_EnhancedRedefineClasses::is_inside_redefinition() && is_subclass(obj->klass()->newest_version());
+  return obj != NULL && (is_subclass(obj->klass())
+    || VM_EnhancedRedefineClasses::is_inside_redefinition() && is_subclass(obj->klass()->newest_version()));
 }
 
 inline bool java_lang_invoke_DirectMethodHandle_StaticAccessor::is_instance(oop obj) {
-  return obj != NULL && is_subclass(obj->klass())
-    || VM_EnhancedRedefineClasses::is_inside_redefinition() && is_subclass(obj->klass()->newest_version());
+  return obj != NULL && (is_subclass(obj->klass())
+    || VM_EnhancedRedefineClasses::is_inside_redefinition() && is_subclass(obj->klass()->newest_version()));
 }
 
 inline bool java_lang_invoke_DirectMethodHandle_Accessor::is_instance(oop obj) {

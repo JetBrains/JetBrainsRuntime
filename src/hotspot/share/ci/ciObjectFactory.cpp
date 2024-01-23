@@ -131,20 +131,6 @@ void ciObjectFactory::reinitialize_vm_classes_dcevm() {
   _initialized = true;
 }
 
-// (DCEVM) vm classes could be modified
-void ciObjectFactory::do_reinitialize_vm_classes() {
-#define VM_CLASS_DEFN(name, ignore_s)   \
-  if (ciEnv::_##name != NULL && ciEnv::_##name->new_version() != NULL) { \
-    int old_ident = ciEnv::_##name->ident(); \
-    ciEnv::_##name = get_metadata(vmClasses::name())->as_instance_klass(); \
-    ciEnv::_##name->compute_nonstatic_fields(); \
-    ciEnv::_##name->set_ident(old_ident); \
-  }
-
-  VM_CLASSES_DO(VM_CLASS_DEFN)
-#undef VM_CLASS_DEFN
-}
-
 void ciObjectFactory::init_shared_objects() {
 
   _next_ident = 1;  // start numbering CI objects at 1
