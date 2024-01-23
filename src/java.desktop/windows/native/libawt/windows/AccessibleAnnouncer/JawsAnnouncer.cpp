@@ -31,7 +31,6 @@
 #include "sun_swing_AccessibleAnnouncer.h"
 #include "jni_util.h"                           // JNU_ThrowOutOfMemoryError
 #include "debug_assert.h"                       // DASSERT
-#include <windows.h>                            // GetCurrentThreadId
 #include <initguid.h>                           // DEFINE_GUID
 
 
@@ -57,7 +56,7 @@ public: // assignments
 public:
     HRESULT tryInitialize() {
         if (!isInitialized()) {
-            m_initializeResult = CoInitialize(nullptr);
+            m_initializeResult = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
         }
         return m_initializeResult;
     }
@@ -109,17 +108,7 @@ bool JawsAnnounce(JNIEnv *env, jstring str, jint priority)
     DASSERT(env != nullptr);
     DASSERT(str != nullptr);
 
-    static const DWORD comInitThreadId = ::GetCurrentThreadId();
-
-    const DWORD currThread = ::GetCurrentThreadId();
-    if (currThread != comInitThreadId) {
-#ifdef DEBUG
-        fprintf(stderr, "JawsAnnounce: currThread != comInitThreadId.\n");
-#endif
-        return false;
-    }
-
-    static ComInitializationWrapper comInitializer;
+    ComInitializationWrapper comInitializer;
     comInitializer.tryInitialize();
     if (!comInitializer.isInitialized()) {
 #ifdef DEBUG
