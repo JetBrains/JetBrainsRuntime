@@ -63,8 +63,6 @@ public class WLComponentPeer implements ComponentPeer {
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.wl.focus.WLComponentPeer");
     private static final PlatformLogger popupLog = PlatformLogger.getLogger("sun.awt.wl.popup.WLComponentPeer");
 
-    private static final String appID = System.getProperty("sun.java.command");
-
     // mapping of AWT cursor types to X cursor names
     // multiple variants can be specified, that will be tried in order
     // See https://freedesktop.org/wiki/Specifications/cursor-spec/
@@ -309,7 +307,7 @@ public class WLComponentPeer implements ComponentPeer {
                             getParentNativePtr(target),
                             target.getX(), target.getY(),
                             isModal, isMaximized, isMinimized,
-                            title, appID);
+                            title, WLToolkit.getApplicationID());
                 }
                 final long wlSurfacePtr = getWLSurface(nativePtr);
                 WLToolkit.registerWLSurface(wlSurfacePtr, this);
