@@ -239,6 +239,7 @@ public interface SignatureMethod extends XMLStructure, AlgorithmMethod {
      */
     String HMAC_SHA512 = "http://www.w3.org/2001/04/xmldsig-more#hmac-sha512";
 
+
     /**
      * Returns the algorithm-specific input parameters of this
      * <code>SignatureMethod</code>.

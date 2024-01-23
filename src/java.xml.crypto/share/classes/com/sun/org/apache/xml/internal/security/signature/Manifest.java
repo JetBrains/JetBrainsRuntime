@@ -574,6 +574,7 @@ public class Manifest extends SignatureElementProxy {
      *
      * {@inheritDoc}
      */
+    @Override
     public String getBaseLocalName() {
         return Constants._TAG_MANIFEST;
     }
