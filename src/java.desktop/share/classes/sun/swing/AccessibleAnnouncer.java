@@ -26,10 +26,13 @@
 
 package sun.swing;
 
+import jdk.internal.misc.InnocuousThread;
 import sun.awt.AWTThreading;
 
 import javax.accessibility.Accessible;
 import java.lang.annotation.Native;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
   * This class provides the ability to speak a given string using screen readers.
@@ -47,6 +50,8 @@ public class AccessibleAnnouncer {
      * messages interrupt the current speech, but only when the focus is on the window of the calling application
      */
     @Native public static final int ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT = 1;
+
+    private static ExecutorService executor;
 
     private AccessibleAnnouncer() {}
 
@@ -74,12 +79,20 @@ public class AccessibleAnnouncer {
             throw new IllegalArgumentException("Invalid parameters passed for declaration");
         }
 
-        AWTThreading.executeWaitToolkit(new Runnable() {
-            @Override
-            public void run() {
-                nativeAnnounce(a, str, priority);
+        // On Windows, this doesn't need to run on EDT and may be a long-running operation,
+        // so execute it on a background thread.
+        if (System.getProperty("os.name").startsWith("Windows")) {
+            if (executor == null) {
+                executor = Executors.newSingleThreadExecutor(r -> {
+                    Thread t = InnocuousThread.newSystemThread(AccessibleAnnouncer.class.getSimpleName(), r);
+                    t.setDaemon(true);
+                    return t;
+                });
             }
-        });
+            executor.execute(() -> nativeAnnounce(a, str, priority));
+        } else {
+            AWTThreading.executeWaitToolkit(() -> nativeAnnounce(a, str, priority));
+        }
     }
 
     private static native void nativeAnnounce(Accessible a, final String str, final int priority);
