@@ -143,7 +143,7 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
 
     @Override
     public void updateIconImages() {
-
+        // No support for this from Wayland, icon is a desktop integration feature.
     }
 
     @Override
