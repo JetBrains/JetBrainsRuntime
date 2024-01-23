@@ -22,7 +22,6 @@
  *
  */
 
-#include <opto/c2compiler.hpp>
 #include "precompiled.hpp"
 #include "classfile/classFileParser.hpp"
 #include "classfile/classFileStream.hpp"
@@ -71,6 +70,7 @@
 #include "gc/shared/oopStorageSet.inline.hpp"
 #include "gc/shared/weakProcessor.hpp"
 #include "ci/ciObjectFactory.hpp"
+#include "opto/c2compiler.hpp"
 
 Array<Method*>* VM_EnhancedRedefineClasses::_old_methods = NULL;
 Array<Method*>* VM_EnhancedRedefineClasses::_new_methods = NULL;
@@ -548,8 +548,7 @@ void VM_EnhancedRedefineClasses::doit() {
   // Update vmClasses::*_klass
   for (int i = 0; i < _new_classes->length(); i++) {
     InstanceKlass* cur = _new_classes->at(i);
-    if (vmClasses::update_vm_klass(InstanceKlass::cast(cur->old_version()), cur))
-    {
+    if (vmClasses::update_vm_klass(InstanceKlass::cast(cur->old_version()), cur)) {
       _vm_class_redefined = true;
       log_trace(redefine, class, obsolete, metadata)("Well known class updated %s", cur->external_name());
       ciObjectFactory::set_reinitialize_vm_klasses();
@@ -663,9 +662,6 @@ void VM_EnhancedRedefineClasses::doit() {
     if (state > InstanceKlass::linked) {
       cur->set_init_state(state);
     }
-
-    // transfer reference type
-    cur->set_reference_type(old->reference_type());
   }
 
   // Update objArrayKlasses
@@ -710,7 +706,7 @@ void VM_EnhancedRedefineClasses::doit() {
     ClassUnloadingWithConcurrentMark = false;
   }
 
-  /*if (objectClosure.needs_instance_update())*/ {
+  if (objectClosure.needs_instance_update()) {
     // Do a full garbage collection to update the instance sizes accordingly
 
     if (log_is_enabled(Info, redefine, class, timer)) {
@@ -857,7 +853,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
   GrowableArray<Klass*>* prev_affected_klasses = new (ResourceObj::C_HEAP, mtInternal) GrowableArray<Klass*>(_class_count, mtInternal);
 
   do {
-    err = VM_EnhancedRedefineClasses::load_new_class_versions_single_step(THREAD);
+    err = load_new_class_versions_single_step(THREAD);
     if (err != JVMTI_ERROR_NONE) {
       delete prev_affected_klasses;
       return err;
@@ -1062,6 +1058,19 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions_single_step(TRAPS
     InstanceKlass* new_class = k;
     the_class->set_new_version(new_class);
     _new_classes->append(new_class);
+
+    new_class->set_reference_type(the_class->reference_type());
+    if (the_class == vmClasses::Reference_klass()) {
+      // must set offset+count to skip field "referent". Look at InstanceRefKlass::update_nonstatic_oop_maps
+      OopMapBlock* old_map = the_class->start_of_nonstatic_oop_maps();
+      OopMapBlock* new_map = new_class->start_of_nonstatic_oop_maps();
+      new_map->set_offset(old_map->offset());
+      new_map->set_count(old_map->count());
+    }
+
+    if (new_class->reference_type() != REF_NONE) {
+      assert(new_class->start_of_nonstatic_oop_maps()->offset() == the_class->start_of_nonstatic_oop_maps()->offset(), "oops map offset must be same");
+    }
 
     int redefinition_flags = Klass::NoRedefinition;
     if (not_changed) {
