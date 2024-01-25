@@ -1,1 +1,4 @@
+--with-vendor-url=https://www.jetbrains.com/
+--with-vendor-bug-url=https://youtrack.jetbrains.com/issues/JBR
 --with-vendor-vm-bug-url=https://youtrack.jetbrains.com/issues/JBR
+
