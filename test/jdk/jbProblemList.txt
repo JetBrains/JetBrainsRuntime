@@ -306,7 +306,7 @@ java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucent.java 8222328 windo
 java/awt/Window/ShapedAndTranslucentWindows/StaticallyShaped.java 8165218,8222328 windows-all,macosx-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/Translucent.java 8222328 windows-all,linux-all,macosx-all
 java/awt/Window/AlwaysOnTop/AutoTestOnTop.java 6847593,8253184 linux-all,windows-all
-java/awt/Window/Grab/GrabTest.java 8253184,JBR-6125 windows-all,linux-all
+java/awt/Window/Grab/GrabTest.java 8253184,JBR-6125 windows-all,linux-all,macosx-all
 java/awt/Window/GrabSequence/GrabSequence.java 6848409,JBR-5359 macosx-all,linux-all,windows-aarch64
 java/awt/Window/LocationAtScreenCorner/LocationAtScreenCorner.java 8203371 linux-all
 java/awt/Window/WindowAppearanceTest/WindowAppearanceTest.java JBR-3691,JBR-3773 macosx-x64,macosx-aarch64
