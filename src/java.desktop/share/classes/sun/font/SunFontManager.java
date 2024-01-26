@@ -262,6 +262,10 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
      */
     private static int maxSoftRefCnt = 10;
 
+    protected boolean JREFontsDirExists(String path) {
+        return new File(path).isDirectory();
+    }
+
     private void initJREFontMap() {
 
         /* Key is familyname+style value as an int.
@@ -275,10 +279,10 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
          * are rarely used. Consider removing the other mappings if there's
          * no evidence they are useful in practice.
          */
-        @SuppressWarnings("removal")
-        String[] files = AccessController.doPrivileged((PrivilegedAction<String[]>) () ->
-                        new File(jreFontDirName).list(getTrueTypeFilter()));
-        Collections.addAll(jreBundledFontFiles, files);
+        if (JREFontsDirExists(jreFontDirName)) {
+            String[] files = new File(jreFontDirName).list(getTrueTypeFilter());
+            Collections.addAll(jreBundledFontFiles, files);
+        }
 
         jreFamilyMap.put("Roboto-Light", "Roboto Light");
         jreFamilyMap.put("Roboto-Thin", "Roboto Thin");
@@ -308,14 +312,6 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         jreFontDirName = jreLibDirName + File.separator + "fonts";
 
         maxSoftRefCnt = Integer.getInteger("sun.java2d.font.maxSoftRefs", 10);
-    }
-
-    /**
-     * If the module image layout changes the location of JDK fonts,
-     * this will be updated to reflect that.
-     */
-    public static final String getJDKFontDir() {
-        return jreFontDirName;
     }
 
     public List<Font2D> getAdditionalFallbackFonts() {
@@ -786,6 +782,10 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     }
 
     protected synchronized void registerDeferredJREFonts(String jreDir) {
+        if (!JREFontsDirExists(jreDir)) {
+            return;
+        }
+
         for (FontRegistrationInfo info : deferredFontFiles.values()) {
             if (info.fontFilePath != null &&
                 info.fontFilePath.startsWith(jreDir)) {
