@@ -4075,17 +4075,17 @@ void VM_RedefineClasses::transfer_old_native_function_registrations(InstanceKlas
 // Deoptimize all compiled code that depends on this class.
 //
 // If the can_redefine_classes capability is obtained in the onload
-// phase then the compiler has recorded all dependencies from startup.
-// In that case we need only deoptimize and throw away all compiled code
-// that depends on the class.
+// phase or 'AlwaysRecordEvolDependencies' is true, then the compiler has
+// recorded all dependencies from startup. In that case we need only
+// deoptimize and throw away all compiled code that depends on the class.
 //
-// If can_redefine_classes is obtained sometime after the onload
-// phase then the dependency information may be incomplete. In that case
-// the first call to RedefineClasses causes all compiled code to be
-// thrown away. As can_redefine_classes has been obtained then
-// all future compilations will record dependencies so second and
-// subsequent calls to RedefineClasses need only throw away code
-// that depends on the class.
+// If can_redefine_classes is obtained sometime after the onload phase
+// (and 'AlwaysRecordEvolDependencies' is false) then the dependency
+// information may be incomplete. In that case the first call to
+// RedefineClasses causes all compiled code to be thrown away. As
+// can_redefine_classes has been obtained then all future compilations will
+// record dependencies so second and subsequent calls to RedefineClasses
+// need only throw away code that depends on the class.
 //
 
 // First step is to walk the code cache for each class redefined and mark
@@ -4102,6 +4102,7 @@ void VM_RedefineClasses::mark_dependent_code(InstanceKlass* ik) {
 
 void VM_RedefineClasses::flush_dependent_code() {
   assert(SafepointSynchronize::is_at_safepoint(), "sanity check");
+  assert(JvmtiExport::all_dependencies_are_recorded() || !AlwaysRecordEvolDependencies, "sanity check");
 
   bool deopt_needed;
 
