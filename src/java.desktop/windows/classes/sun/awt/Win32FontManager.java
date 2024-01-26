@@ -254,7 +254,9 @@ public final class Win32FontManager extends SunFontManager {
      */
     static String fontsForPrinting = null;
     protected void registerJREFontsWithPlatform(String pathName) {
-        fontsForPrinting = pathName;
+        if (JREFontsDirExists(pathName)) {
+            fontsForPrinting = pathName;
+        }
     }
 
     public static void registerJREFontsForPrinting() {
