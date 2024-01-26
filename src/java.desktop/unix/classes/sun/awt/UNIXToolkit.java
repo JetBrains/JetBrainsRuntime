@@ -51,6 +51,8 @@ import java.awt.image.WritableRaster;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import sun.awt.X11.XBaseWindow;
 import sun.security.action.GetIntegerAction;
@@ -501,7 +503,7 @@ public abstract class UNIXToolkit extends SunToolkit
 
     private static final String OS_THEME_IS_DARK = "awt.os.theme.isDark";
 
-    private void fireSystemPropertyChanges(boolean val) {
+    private void setOsThemeProperty(boolean val) {
         setDesktopProperty(OS_THEME_IS_DARK, val);
     }
 
@@ -524,25 +526,21 @@ public abstract class UNIXToolkit extends SunToolkit
             waylandWindowFocusListener = null;
         }
 
-        Thread systemPropertyWatcher = new Thread(() -> {
-            try {
-                do {
-                    int isSystemDarkColorScheme = isSystemDarkColorScheme();
-                    Toolkit tk = Toolkit.getDefaultToolkit();
+        final int delayBetweenRepeatMillis = 1000;
+        Timer systemPropertyWatcherTimer = new Timer("SystemPropertyWatcher", true);
 
-                    if (tk instanceof UNIXToolkit unixTK && isSystemDarkColorScheme >= 0) {
-                        unixTK.fireSystemPropertyChanges(isSystemDarkColorScheme != 0);
-                    }
+        TimerTask currentRepeatTask = new TimerTask() {
+            @Override
+            public void run() {
+                int isSystemDarkColorScheme = isSystemDarkColorScheme();
+                Toolkit tk = Toolkit.getDefaultToolkit();
 
-                    Thread.sleep(1000);
-                } while (true);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+                if (tk instanceof UNIXToolkit unixTK && isSystemDarkColorScheme >= 0) {
+                    unixTK.setOsThemeProperty(isSystemDarkColorScheme != 0);
+                }
             }
-        });
-        systemPropertyWatcher.start();
-        systemPropertyWatcher.setPriority(Thread.MIN_PRIORITY);
-        systemPropertyWatcher.setName("systemPropertyWatcher");
+        };
+        systemPropertyWatcherTimer.scheduleAtFixedRate(currentRepeatTask, 0, delayBetweenRepeatMillis);
     }
 
     @Override

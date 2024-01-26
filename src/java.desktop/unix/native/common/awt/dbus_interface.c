@@ -32,8 +32,10 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define JNI_LIB_NAME "libdbus-1.so"
-#define JNI_LIB_NAME_VERSIONED JNI_LIB_NAME ".3"
+#include "jvm_md.h"
+
+#define DBUS_LIB JNI_LIB_NAME("dbus-1")
+#define DBUS_LIB_VERSIONED VERSIONED_JNI_LIB_NAME("dbus-1", "3")
 
 static bool isCurrentVersionSupported(DBusApi* dBusApi) {
     int major = 0, minor = 0, micro = 0;
@@ -94,9 +96,9 @@ DBusApi* DBusApi_setupDBus(void *libhandle) {
 }
 
 DBusApi* DBusApi_setupDBusDefault() {
-    void *dbus_libhandle = dlopen(JNI_LIB_NAME, RTLD_LAZY | RTLD_LOCAL);
+    void *dbus_libhandle = dlopen(DBUS_LIB, RTLD_LAZY | RTLD_LOCAL);
     if (dbus_libhandle == NULL) {
-        dbus_libhandle = dlopen(JNI_LIB_NAME_VERSIONED, RTLD_LAZY | RTLD_LOCAL);
+        dbus_libhandle = dlopen(DBUS_LIB_VERSIONED, RTLD_LAZY | RTLD_LOCAL);
         if (dbus_libhandle == NULL) {
             return NULL;
         }
