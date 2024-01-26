@@ -1980,6 +1980,14 @@ const int ObjectAlignmentInBytes = 8;
           "(default) disables native heap trimming.")                       \
           range(0, UINT_MAX)                                                \
                                                                             \
+  product(bool, ProfileExceptionHandlers, true,                             \
+          "Profile exception handlers")                                     \
+                                                                            \
+  product(bool, AlwaysRecordEvolDependencies, true, EXPERIMENTAL,           \
+                "Unconditionally record nmethod dependencies on class "     \
+                "rewriting/transformation independently of the JVMTI "      \
+                "can_{retransform/redefine}_classes capabilities.")         \
+                                                                            \
   product(bool, AllowEnhancedClassRedefinition, false,                      \
              "Allow enhanced class redefinition beyond swapping method "    \
              "bodies")                                                      \
@@ -1992,7 +2000,6 @@ const int ObjectAlignmentInBytes = 8;
           "external: external HA. use external HA, open required JDK "      \
           "modules.")                                                       \
           constraint(HotswapAgentConstraintFunc, AfterErgo)
-
 
 // end of RUNTIME_FLAGS
 
