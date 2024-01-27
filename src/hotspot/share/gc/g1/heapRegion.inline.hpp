@@ -149,9 +149,7 @@ inline bool HeapRegion::block_is_obj(const HeapWord* p) const {
   // because of this there can be stale objects for unloaded classes left in these regions.
   // During a concurrent cycle class unloading is done after marking is complete and objects
   // for the unloaded classes will be stale until the regions are collected.
-  // (DCEVM) It seems there is a bug where the check for dead objects should always be used. DCEVM can set
-  // ClassUnloading=false; therefore, we force the check for dead objects to avoid crashing.
-  if (ClassUnloading || AllowEnhancedClassRedefinition) {
+  if (ClassUnloading) {
     return !g1h->is_obj_dead(cast_to_oop(p), this);
   }
   return p < top();

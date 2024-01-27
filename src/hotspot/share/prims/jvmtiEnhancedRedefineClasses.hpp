@@ -84,7 +84,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   // true if vmClasses::*_klass is redefined
   bool _vm_class_redefined;
 
-  // (DCEVM) Enhanced class redefinition, affected klasses contain all classes which should be redefined
+  // Enhanced class redefinition, affected klasses contain all classes which should be redefined
   // either because of redefine, class hierarchy or interface change
   GrowableArray<Klass*>*      _affected_klasses;
 
@@ -111,7 +111,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   // - calculate modified fields and mapping to old fields
   // - link new classes
   //
-  // The result is sotred in _affected_klasses(old definitions) and _new_classes(new definitions) arrays.
+  // The result is sorted in _affected_klasses(old definitions) and _new_classes(new definitions) arrays.
   jvmtiError load_new_class_versions(TRAPS);
   jvmtiError load_new_class_versions_single_step(TRAPS);
 
@@ -145,7 +145,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   void transfer_old_native_function_registrations(InstanceKlass* new_class);
 
   // Install the redefinition of a class
-  void redefine_single_class(Thread* current, InstanceKlass* new_class_oop);
+  void redefine_single_class(Thread* current, InstanceKlass* new_class);
 
   // Increment the classRedefinedCount field in the specific InstanceKlass
   // and in all direct and indirect subclasses.
@@ -202,6 +202,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   // Modifiable test must be shared between IsModifiableClass query
   // and redefine implementation
   static bool is_modifiable_class(oop klass_mirror);
+  // true if is inside VM redefinition phase
   static bool is_inside_redefinition() {
     return _is_inside_redefinition;
   }

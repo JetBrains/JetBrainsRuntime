@@ -700,12 +700,6 @@ void VM_EnhancedRedefineClasses::doit() {
     Universe::objectArrayKlassObj()->append_to_sibling_list();
   }
 
-  if (_object_klass_redefined) {
-    // TODO: This is a hack; it keeps old mirror instances on the heap. A correct solution could be to hold the old mirror class in the new mirror class.
-    ClassUnloading = false;
-    ClassUnloadingWithConcurrentMark = false;
-  }
-
   if (objectClosure.needs_instance_update()) {
     // Do a full garbage collection to update the instance sizes accordingly
 
@@ -1042,7 +1036,10 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions_single_step(TRAPS
           return JVMTI_ERROR_NAMES_DONT_MATCH;
         }
         if (k != NULL) {
+          SystemDictionary::remove_from_hierarchy(k);
           k->set_redefining(false);
+          k->old_version()->set_new_version(NULL);
+          k->set_old_version(NULL);
         }
         _affected_klasses->at_put(i, NULL);
         continue;
@@ -2084,12 +2081,11 @@ void VM_EnhancedRedefineClasses::compute_added_deleted_matching_methods() {
 //      a helper method to be specified. The interesting parameters
 //      that we would like to pass to the helper method are saved in
 //      static global fields in the VM operation.
-void VM_EnhancedRedefineClasses::redefine_single_class(Thread* current, InstanceKlass* new_class_oop) {
+void VM_EnhancedRedefineClasses::redefine_single_class(Thread* current, InstanceKlass* new_class) {
 
   HandleMark hm(current);   // make sure handles from this call are freed
 
-  InstanceKlass* new_class = new_class_oop;
-  InstanceKlass* the_class = InstanceKlass::cast(new_class_oop->old_version());
+  InstanceKlass* the_class = InstanceKlass::cast(new_class->old_version());
   assert(the_class != NULL, "must have old version");
 
   // Remove all breakpoints in methods of this class
@@ -2137,7 +2133,7 @@ void VM_EnhancedRedefineClasses::redefine_single_class(Thread* current, Instance
                              new_class->external_name(),
                              java_lang_Class::classRedefinedCount(new_class->java_mirror()));
   }
-} // end redefine_single_class()
+}
 
 
 // Increment the classRedefinedCount field in the specific InstanceKlass
