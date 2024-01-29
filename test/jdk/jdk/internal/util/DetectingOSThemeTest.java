@@ -33,17 +33,21 @@ import java.util.Arrays;
  * @requires (os.family == "linux")
  */
 public class DetectingOSThemeTest {
+    private static final int TIME_TO_WAIT = 2000;
+    private static final String LIGHT_THEME_NAME = "Light";
+    private static final String DARK_THEME_NAME = "Dark";
+
     private static String currentTheme() {
         Boolean val = (Boolean) Toolkit.getDefaultToolkit().getDesktopProperty("awt.os.theme.isDark");
         if (val == null) {
             return "Undefined";
         }
-        return (val) ? "Dark" : "Light";
+        return (val) ? DARK_THEME_NAME : LIGHT_THEME_NAME;
     }
 
     private static void setOsDarkTheme(String val) {
         try {
-            if (val.equals("Dark")) {
+            if (val.equals(DARK_THEME_NAME)) {
                 Runtime.getRuntime().exec("gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita-dark'");
                 Runtime.getRuntime().exec("gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'");
             } else {
@@ -56,27 +60,32 @@ public class DetectingOSThemeTest {
     }
 
     private static int iter = 0;
-    private static final int TIME_TO_WAIT = 2000;
 
     public static void main(String[] args) throws Exception {
-        setOsDarkTheme("Light");
-        if (!currentTheme().equals("Light")) {
-            throw new RuntimeException("Test Failed! Initial OS theme supposed to be Light");
-        }
-
-        ArrayList<String> themesOrder = new ArrayList<>(Arrays.asList("Dark", "Light", "Dark"));
-        Toolkit.getDefaultToolkit().addPropertyChangeListener("awt.os.theme.isDark", evt -> {
-            if (!currentTheme().equals(themesOrder.get(iter++))) {
-                throw new RuntimeException("Test Failed! Current OS theme doesn't matched with detected");
-            }
-        });
-
-        for (int i = 0; i < 3; i++) {
-            setOsDarkTheme(themesOrder.get(i));
+        String currentTheme = currentTheme();
+        try {
+            setOsDarkTheme(LIGHT_THEME_NAME);
             Thread.sleep(TIME_TO_WAIT);
-            if (i + 1 != iter) {
-                throw new RuntimeException("Test Failed! Changing OS theme was not detected");
+            if (!currentTheme().equals(LIGHT_THEME_NAME)) {
+                throw new RuntimeException("Test Failed! Initial OS theme supposed to be Light");
             }
+
+            ArrayList<String> themesOrder = new ArrayList<>(Arrays.asList(DARK_THEME_NAME, LIGHT_THEME_NAME, DARK_THEME_NAME));
+            Toolkit.getDefaultToolkit().addPropertyChangeListener("awt.os.theme.isDark", evt -> {
+                if (!currentTheme().equals(themesOrder.get(iter++))) {
+                    throw new RuntimeException("Test Failed! Current OS theme doesn't matched with detected");
+                }
+            });
+
+            for (int i = 0; i < 3; i++) {
+                setOsDarkTheme(themesOrder.get(i));
+                Thread.sleep(TIME_TO_WAIT);
+                if (i + 1 != iter) {
+                    throw new RuntimeException("Test Failed! Changing OS theme was not detected");
+                }
+            }
+        } finally {
+            setOsDarkTheme(currentTheme);
         }
     }
 }
