@@ -15,9 +15,16 @@ and bugfixes not yet present in OpenJDK.
  Release builds are based on these branches:
  * [jbr11](https://github.com/JetBrains/JetBrainsRuntime/tree/jbr11) (JDK 11)
  * [jbr17](https://github.com/JetBrains/JetBrainsRuntime/tree/jbr17) (JDK 17)
- 
+ * [jbr21](https://github.com/JetBrains/JetBrainsRuntime/tree/jbr21) (JDK 21)
+
 Download the latest releases of JetBrains Runtime to use with JetBrains IDEs. The full list
 can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntime/releases).
+
+## Releases based on JDK 21
+
+| IDE Version | Latest JBR                                                                                             | Date Released |
+|-------------|--------------------------------------------------------------------------------------------------------|---------------|
+| 2024.1      | [21.0.2-b341.4](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.2b341.4)   | 22-Jan-2024   |
 
 ## Releases based on JDK 17
 
