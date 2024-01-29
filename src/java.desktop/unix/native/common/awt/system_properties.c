@@ -190,3 +190,10 @@ JNIEXPORT jint JNICALL Java_sun_awt_UNIXToolkit_isSystemDarkColorScheme() {
     }
     return res;
 }
+
+JNIEXPORT void JNICALL Java_sun_awt_UNIXToolkit_toolkitInit() {
+    DBusApi *dBus = DBusApi_setupDBusDefault();
+    if (dBus) {
+        SystemProperties_setup(dBus, env);
+    }
+}

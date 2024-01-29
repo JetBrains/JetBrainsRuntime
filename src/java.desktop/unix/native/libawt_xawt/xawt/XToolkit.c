@@ -610,11 +610,6 @@ JNIEXPORT void JNICALL Java_sun_awt_X11_XToolkit_waitForEvents (JNIEnv *env, jcl
 JNIEXPORT void JNICALL Java_sun_awt_X11_XToolkit_awt_1toolkit_1init (JNIEnv *env, jclass class) {
     awt_MainThread = pthread_self();
 
-    DBusApi *dBus = DBusApi_setupDBusDefault();
-    if (dBus) {
-        SystemProperties_setup(dBus, env);
-    }
-
     awt_pipe_init();
     readEnv();
 }

@@ -111,6 +111,12 @@ public abstract class UNIXToolkit extends SunToolkit
     private Boolean nativeGTKAvailable;
     private Boolean nativeGTKLoaded;
     private BufferedImage tmpImage = null;
+    private static native void toolkitInit();
+
+    protected UNIXToolkit() {
+        toolkitInit();
+        updateOsThemeProperty();
+    }
 
     public static int getDatatransferTimeout() {
         @SuppressWarnings("removal")
@@ -503,8 +509,12 @@ public abstract class UNIXToolkit extends SunToolkit
 
     private static final String OS_THEME_IS_DARK = "awt.os.theme.isDark";
 
-    private void setOsThemeProperty(boolean val) {
-        setDesktopProperty(OS_THEME_IS_DARK, val);
+    private void updateOsThemeProperty() {
+        int isSystemDarkColorScheme = isSystemDarkColorScheme();
+
+        if (isSystemDarkColorScheme >= 0) {
+            setDesktopProperty(OS_THEME_IS_DARK, isSystemDarkColorScheme != 0);
+        }
     }
 
     static {
@@ -532,11 +542,8 @@ public abstract class UNIXToolkit extends SunToolkit
         TimerTask currentRepeatTask = new TimerTask() {
             @Override
             public void run() {
-                int isSystemDarkColorScheme = isSystemDarkColorScheme();
-                Toolkit tk = Toolkit.getDefaultToolkit();
-
-                if (tk instanceof UNIXToolkit unixTK && isSystemDarkColorScheme >= 0) {
-                    unixTK.setOsThemeProperty(isSystemDarkColorScheme != 0);
+                if (Toolkit.getDefaultToolkit() instanceof UNIXToolkit unixTK) {
+                    unixTK.updateOsThemeProperty();
                 }
             }
         };
