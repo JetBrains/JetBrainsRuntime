@@ -36,7 +36,6 @@ import sun.awt.PeerEvent;
 import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
 import sun.awt.datatransfer.DataTransferer;
-import sun.java2d.SunGraphicsEnvironment;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.*;

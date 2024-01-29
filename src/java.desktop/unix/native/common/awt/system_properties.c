@@ -66,9 +66,9 @@ bool SystemProperties_setup(DBusApi *dBus_, JNIEnv *env_) {
         return false;
     }
 
-    if ((ret = dBus->dbus_bus_request_name(connection, "dbus.JBR.server", DBUS_NAME_FLAG_REPLACE_EXISTING , &err))
-            != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
-        fprintf(stderr, "DBus error: failed to replace the current primary owner\n");
+    ret = dBus->dbus_bus_request_name(connection, "dbus.JBR.server", DBUS_NAME_FLAG_REPLACE_EXISTING , &err);
+    if (ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER && ret != DBUS_REQUEST_NAME_REPLY_IN_QUEUE) {
+        fprintf(stderr, "DBus error: Failed to acquire service name \n");
         return false;
     }
     if (dbusCheckError(&err, "error request 'dbus.JBR.server' name on the bus")) {

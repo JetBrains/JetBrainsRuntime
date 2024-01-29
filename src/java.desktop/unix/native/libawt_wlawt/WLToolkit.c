@@ -52,8 +52,6 @@
 #include "WLGraphicsEnvironment.h"
 #include "memory_utils.h"
 #include "java_awt_event_KeyEvent.h"
-#include "dbus_interface.h"
-#include "system_properties.h"
 
 #ifdef WAKEFIELD_ROBOT
 #include "wakefield-client-protocol.h"

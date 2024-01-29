@@ -41,8 +41,6 @@
 #include "awt_Component.h"
 #include "awt_MenuComponent.h"
 #include "awt_util.h"
-#include "dbus_interface.h"
-#include "system_properties.h"
 
 #include "sun_awt_X11_XToolkit.h"
 #include "java_awt_SystemColor.h"
