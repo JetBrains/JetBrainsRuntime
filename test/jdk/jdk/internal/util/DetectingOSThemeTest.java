@@ -36,11 +36,12 @@ public class DetectingOSThemeTest {
     private static final int TIME_TO_WAIT = 2000;
     private static final String LIGHT_THEME_NAME = "Light";
     private static final String DARK_THEME_NAME = "Dark";
+    private static final String UNDEFINED_THEME_NAME = "Undefined";
 
     private static String currentTheme() {
         Boolean val = (Boolean) Toolkit.getDefaultToolkit().getDesktopProperty("awt.os.theme.isDark");
         if (val == null) {
-            return "Undefined";
+            return UNDEFINED_THEME_NAME;
         }
         return (val) ? DARK_THEME_NAME : LIGHT_THEME_NAME;
     }
@@ -60,9 +61,12 @@ public class DetectingOSThemeTest {
     }
 
     private static int iter = 0;
-
     public static void main(String[] args) throws Exception {
         String currentTheme = currentTheme();
+        if (currentTheme.equals(UNDEFINED_THEME_NAME)) {
+            throw new RuntimeException("Test Failed! Cannot detect current OS theme");
+        }
+
         try {
             setOsDarkTheme(LIGHT_THEME_NAME);
             Thread.sleep(TIME_TO_WAIT);
