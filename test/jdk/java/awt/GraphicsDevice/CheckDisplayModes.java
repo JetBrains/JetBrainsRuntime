@@ -52,29 +52,35 @@ public class CheckDisplayModes {
             checkDisplayMode(defaultDisplayMode);
             graphicDevice.setDisplayMode(defaultDisplayMode);
 
-            DisplayMode[] displayModes = graphicDevice.getDisplayModes();
-            for (int i = 0; i < displayModes.length; i++) {
-                System.out.println("displayModes[" + i + "] = " + displayModes[i]);
-            }
-            boolean isDefaultDisplayModeIncluded = false;
-            for (DisplayMode displayMode : displayModes) {
-                System.out.println("Attempting display mode " + displayMode);
-                checkDisplayMode(displayMode);
-                graphicDevice.setDisplayMode(displayMode);
-                if (defaultDisplayMode.equals(displayMode)) {
-                    isDefaultDisplayModeIncluded = true;
+            try {
+                DisplayMode[] displayModes = graphicDevice.getDisplayModes();
+                for (int i = 0; i < displayModes.length; i++) {
+                    System.out.println("displayModes[" + i + "] = " + displayModes[i]);
                 }
-            }
+                boolean isDefaultDisplayModeIncluded = false;
+                for (DisplayMode displayMode : displayModes) {
+                    System.out.println("Attempting display mode " + displayMode);
+                    checkDisplayMode(displayMode);
+                    graphicDevice.setDisplayMode(displayMode);
+                    if (defaultDisplayMode.equals(displayMode)) {
+                        isDefaultDisplayModeIncluded = true;
+                    }
+                }
 
-            if (!isDefaultDisplayModeIncluded) {
-                throw new RuntimeException("Default display mode is not included");
+                if (!isDefaultDisplayModeIncluded) {
+                    throw new RuntimeException("Default display mode is not included");
+                }
+            } finally {
+                System.out.println("Restoring display mode to " + defaultDisplayMode);
+                graphicDevice.setDisplayMode(defaultDisplayMode);
+                System.out.println("Display mode restored " + defaultDisplayMode);
             }
         }
     }
 
     static void checkDisplayMode(DisplayMode displayMode) {
         if (displayMode == null || displayMode.getWidth() <= 1 || displayMode.getHeight() <= 1) {
-            throw new RuntimeException("invalid display mode");
+            throw new RuntimeException("invalid display mode" + displayMode);
         }
     }
 }
