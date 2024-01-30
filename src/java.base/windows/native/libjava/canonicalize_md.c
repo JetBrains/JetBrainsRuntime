@@ -215,7 +215,8 @@ lastErrorReportable()
         || (errval == ERROR_BAD_NET_NAME)
         || (errval == ERROR_ACCESS_DENIED)
         || (errval == ERROR_NETWORK_UNREACHABLE)
-        || (errval == ERROR_NETWORK_ACCESS_DENIED)) {
+        || (errval == ERROR_NETWORK_ACCESS_DENIED)
+        || (errval == ERROR_NO_MORE_FILES)) {
         return 0;
     }
 
