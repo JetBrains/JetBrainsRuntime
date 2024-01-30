@@ -9,7 +9,6 @@ java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java JBR-5062 linux-all
 java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5.15.0-46-generic Ubuntu 20.04
 java/awt/dnd/MissedDragEnterTest.java JBR-6091 windows-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117 linux-all
-java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java 8311535 windows-all
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java#id1 JBR-5442 linux-all
 java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java 8253184,JBR-5442 windows-all,linux-all
 java/awt/MouseInfo/MultiscreenPointerInfo.java JBR-5442 linux-all
@@ -23,7 +22,6 @@ java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java 8253184,JBR-5442 window
 java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390 macosx-all,linux-all
 java/awt/Robot/NonEmptyErrorStream.java JBR-5442 linux-all
 java/awt/Robot/RobotMoveMultiscreen.java JBR-5442 linux-all
-java/awt/TextArea/TextAreaEditing/TextAreaEditing.java JBR-6282 linux-all
 java/awt/Toolkit/AWTEventListenerProxyTest/AWTEventListenerProxyTest.java JBR-6065 windows-all
 java/awt/Window/SlowMotion/SlowMotion.java JBR-5442 linux-all
 java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5442 linux-all
