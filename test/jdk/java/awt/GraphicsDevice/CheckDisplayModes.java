@@ -41,28 +41,36 @@ public class CheckDisplayModes {
                 continue;
             }
             DisplayMode defaultDisplayMode = graphicDevice.getDisplayMode();
+            System.out.println("Initial Display mode: " + defaultDisplayMode);
             checkDisplayMode(defaultDisplayMode);
             graphicDevice.setDisplayMode(defaultDisplayMode);
 
-            DisplayMode[] displayModes = graphicDevice.getDisplayModes();
-            boolean isDefaultDisplayModeIncluded = false;
-            for (DisplayMode displayMode : displayModes) {
-                checkDisplayMode(displayMode);
-                graphicDevice.setDisplayMode(displayMode);
-                if (defaultDisplayMode.equals(displayMode)) {
-                    isDefaultDisplayModeIncluded = true;
+            try {
+                DisplayMode[] displayModes = graphicDevice.getDisplayModes();
+                boolean isDefaultDisplayModeIncluded = false;
+                for (DisplayMode displayMode : displayModes) {
+                    checkDisplayMode(displayMode);
+                    graphicDevice.setDisplayMode(displayMode);
+                    System.out.println("\tDisplay mode changed to " + displayMode);
+                    if (defaultDisplayMode.equals(displayMode)) {
+                        isDefaultDisplayModeIncluded = true;
+                    }
                 }
-            }
 
-            if (!isDefaultDisplayModeIncluded) {
-                throw new RuntimeException("Default display mode is not included");
+                if (!isDefaultDisplayModeIncluded) {
+                    throw new RuntimeException("Default display mode is not included");
+                }
+            } finally {
+                System.out.println("Restoring display mode to " + defaultDisplayMode);
+                graphicDevice.setDisplayMode(defaultDisplayMode);
+                System.out.println("Display mode restored " + defaultDisplayMode);
             }
         }
     }
 
     static void checkDisplayMode(DisplayMode displayMode) {
         if (displayMode == null || displayMode.getWidth() <= 1 || displayMode.getHeight() <= 1) {
-            throw new RuntimeException("invalid display mode");
+            throw new RuntimeException("invalid display mode" + displayMode);
         }
     }
 }
