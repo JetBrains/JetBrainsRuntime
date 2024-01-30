@@ -43,6 +43,7 @@
 
     // Input method data
     jobject fInputMethodLOCKABLE;
+    BOOL fInputMethodInteractionEnabled;
     BOOL fKeyEventsNeeded;
     BOOL fProcessingKeystroke;
     NSString* actualCharacters;
@@ -68,5 +69,6 @@
 // Input method-related events
 - (void)setInputMethod:(jobject)inputMethod;
 - (void)abandonInput:(jobject) component;
+- (void)enableImInteraction:(BOOL)enabled;
 
 @end
