@@ -445,6 +445,7 @@ final class WInputMethod extends InputMethodAdapter
         disableNativeIME(awtFocussedComponentPeer);
         awtFocussedComponent = null;
         awtFocussedComponentPeer = null;
+        stopListening();
     }
 
     /**
