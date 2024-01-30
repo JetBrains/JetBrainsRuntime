@@ -32,11 +32,8 @@
  * @library /vmTestbase
  *          /test/lib
  * @run driver jdk.test.lib.FileInstaller . .
- * @run main/othervm/native
- *      -XX:-UseGCOverheadLimit
- *      -agentlib:JVMTIAllocLocker
- *      gc.lock.LockerTest
- *      -gp1 randomString
- *      -lockers jvmtiAlloc
+ * @build sun.hotspot.WhiteBox
+ * @run driver ClassFileInstaller sun.hotspot.WhiteBox
+ * @run main/othervm/native -Xbootclasspath/a:. -Xlog:gc=debug:gc.log -XX:+HeapDumpOnOutOfMemoryError -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI -agentlib:JVMTIAllocLocker gc.lock.LockerTest -lockers jvmtiAlloc -t 1
  */
 
