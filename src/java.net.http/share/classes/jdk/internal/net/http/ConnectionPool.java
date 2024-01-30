@@ -104,14 +104,10 @@ final class ConnectionPool {
                 return false;
             }
             if (secure && destination != null) {
-                if (destination.getHostName() != null) {
-                    if (!destination.getHostName().equalsIgnoreCase(
-                            other.destination.getHostName())) {
-                        return false;
-                    }
-                } else {
-                    if (other.destination.getHostName() != null)
-                        return false;
+                String hostString = destination.getHostString();
+                if (hostString == null || !hostString.equalsIgnoreCase(
+                        other.destination.getHostString())) {
+                    return false;
                 }
             }
             return true;
