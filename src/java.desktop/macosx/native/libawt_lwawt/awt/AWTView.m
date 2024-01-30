@@ -87,6 +87,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
 
     m_cPlatformView = cPlatformView;
     fInputMethodLOCKABLE = NULL;
+    fInputMethodInteractionEnabled = YES;
     fKeyEventsNeeded = NO;
     fProcessingKeystroke = NO;
 
@@ -318,7 +319,9 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     fKeyEventsNeeded = ![(NSString *)kbdLayout containsString:@KEYMAN_LAYOUT];
 
     // Allow TSM to look at the event and potentially send back NSTextInputClient messages.
-    [self interpretKeyEvents:[NSArray arrayWithObject:event]];
+    if (fInputMethodInteractionEnabled == YES) {
+        [self interpretKeyEvents:[NSArray arrayWithObject:event]];
+    }
 
     if (fEnablePressAndHold && [event willBeHandledByComplexInputMethod] &&
         fInputMethodLOCKABLE)
@@ -1572,6 +1575,17 @@ static jclass jc_CInputMethod = NULL;
 
     [ThreadUtilities performOnMainThread:@selector(markedTextAbandoned:) on:[NSInputManager currentInputManager] withObject:self waitUntilDone:YES];
     [self unmarkText:component];
+}
+
+-(void)enableImInteraction:(BOOL)enabled
+{
+#ifdef IM_DEBUG
+    fprintf(stderr, "AWTView InputMethod Selector Called : [enableImInteraction:%d]\n", enabled);
+#endif // IM_DEBUG
+
+    AWT_ASSERT_APPKIT_THREAD;
+
+    fInputMethodInteractionEnabled = (enabled == YES) ? YES : NO;
 }
 
 /********************************   END NSTextInputClient Protocol   ********************************/
