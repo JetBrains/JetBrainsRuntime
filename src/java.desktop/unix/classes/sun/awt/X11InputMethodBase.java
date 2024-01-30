@@ -564,7 +564,9 @@ public abstract class X11InputMethodBase extends InputMethodAdapter {
      * @see java.awt.im.spi.InputMethod#removeNotify
      */
     public synchronized void removeNotify() {
-        dispose();
+        stopListening();
+        awtFocussedComponent = null;
+        clientComponentWindow = null;
     }
 
     /**

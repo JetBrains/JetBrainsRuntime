@@ -435,6 +435,7 @@ final class WInputMethod extends InputMethodAdapter
         endCompositionNative(context, DISCARD_INPUT);
         awtFocussedComponent = null;
         awtFocussedComponentPeer = null;
+        stopListening();
     }
 
     /**
