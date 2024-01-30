@@ -201,6 +201,30 @@ JNI_COCOA_EXIT(env);
 
 /*
  * Class:     sun_lwawt_macosx_CInputMethod
+ * Method:    nativeEnableListening
+ * Signature: (JZ)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CInputMethod_nativeEnableListening
+    (JNIEnv *env, jobject this, jlong nativePeer, jboolean enable)
+{
+
+JNI_COCOA_ENTER(env);
+
+    AWTView * const view = (AWTView *)jlong_to_ptr(nativePeer);
+    if (view == NULL) {
+        return;
+    }
+
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+        [view enableImInteraction:(enable == JNI_TRUE ? YES : NO)];
+    }];
+
+JNI_COCOA_EXIT(env);
+
+}
+
+/*
+ * Class:     sun_lwawt_macosx_CInputMethod
  * Method:    getNativeLocale
  * Signature: ()Ljava/util/Locale;
  */
