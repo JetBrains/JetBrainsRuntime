@@ -235,6 +235,8 @@ public class CInputMethod extends InputMethodAdapter {
      */
     public void activate() {
         isActive = true;
+
+        enableListening(true);
     }
 
     public void deactivate(boolean isTemporary) {
@@ -267,6 +269,7 @@ public class CInputMethod extends InputMethodAdapter {
         if (fAwtFocussedComponentPeer != null) {
             long modelPtr = getNativeViewPtr(fAwtFocussedComponentPeer);
             nativeEndComposition(modelPtr, fAwtFocussedComponent);
+            nativeEnableListening(modelPtr, false);
             nativeNotifyPeer(modelPtr, null);
         }
 
@@ -307,6 +310,11 @@ public class CInputMethod extends InputMethodAdapter {
 
             nativeNotifyPeer(modelPtr, imInstance);
         }
+    }
+
+    @Override
+    protected void stopListening() {
+        enableListening(false);
     }
 
     /**
@@ -412,6 +420,16 @@ public class CInputMethod extends InputMethodAdapter {
             return (LWComponentPeer)peer;
 
         return null;
+    }
+
+    private void enableListening(boolean enable) {
+        if (fAwtFocussedComponentPeer != null) {
+            final long modelPtr = getNativeViewPtr(fAwtFocussedComponentPeer);
+
+            if (modelPtr != 0) {
+                nativeEnableListening(modelPtr, enable);
+            }
+        }
     }
 
     // =========================== NSTextInput callbacks ===========================
@@ -809,6 +827,13 @@ public class CInputMethod extends InputMethodAdapter {
     private native void nativeNotifyPeer(long nativePeer, CInputMethod imInstance);
     private native void nativeEndComposition(long nativePeer, Component component);
     private native void nativeHandleEvent(LWComponentPeer<?, ?> peer, AWTEvent event);
+
+    /*
+     * Passing false to the second parameter disables any interaction with
+     *   the AppKit text input management subsystem (i.e. input methods, dead keys, maybe smth else)
+     * Passing true there enables it back
+     */
+    private native void nativeEnableListening(long nativePeerTarget, boolean enable);
 
     // Returns the locale of the active input method.
     static native Locale getNativeLocale();
