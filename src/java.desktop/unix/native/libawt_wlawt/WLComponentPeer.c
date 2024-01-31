@@ -39,7 +39,6 @@
 #include "wakefield-client-protocol.h"
 #endif
 
-static jfieldID nativePtrID;
 static jmethodID postWindowClosingMID;
 static jmethodID notifyConfiguredMID;
 static jmethodID notifyEnteredOutputMID;
@@ -303,7 +302,6 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_initIDs
         (JNIEnv *env, jclass clazz)
 {
-    CHECK_NULL(nativePtrID = (*env)->GetFieldID(env, clazz, "nativePtr", "J"));
     CHECK_NULL_THROW_IE(env,
                         notifyConfiguredMID = (*env)->GetMethodID(env, clazz, "notifyConfigured", "(IIIIZZ)V"),
                         "Failed to find method WLComponentPeer.notifyConfigured");
