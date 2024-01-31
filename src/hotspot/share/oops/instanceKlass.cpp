@@ -1829,19 +1829,11 @@ static int compare_fields_by_offset_dcevm(Triple<int,int,int>* a, Triple<int,int
 }
 
 void InstanceKlass::do_nonstatic_fields_dcevm(FieldClosure* cl) {
-  int depth = 1;
+  GrowableArray<InstanceKlass*> class_hiearchy;
+  class_hiearchy.push(this);
   InstanceKlass* super = superklass();
   while (super != nullptr) {
-    depth++;
-    super = super->superklass();
-  }
-
-  InstanceKlass* class_hiearchy[depth];
-  int i = 0;
-  class_hiearchy[i++] = this;
-  super = superklass();
-  while (super != nullptr) {
-    class_hiearchy[i++] = super;
+    class_hiearchy.push(super);
     super = super->superklass();
   }
 
@@ -1855,8 +1847,8 @@ void InstanceKlass::do_nonstatic_fields_dcevm(FieldClosure* cl) {
 
     fieldDescriptor fd;
 
-    for (i = 0; i < length; i++) {
-      InstanceKlass* ik = class_hiearchy[fields_sorted.at(i).third];
+    for (int i = 0; i < length; i++) {
+      InstanceKlass* ik = class_hiearchy.at(fields_sorted.at(i).third);
       fd.reinitialize(ik, fields_sorted.at(i).second);
       assert(!fd.is_static(), "only nonstatic fields");
       assert(fd.offset() == fields_sorted.at(i).first, "offset matches");

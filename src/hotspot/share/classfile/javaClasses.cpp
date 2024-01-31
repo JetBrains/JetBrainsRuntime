@@ -1396,7 +1396,7 @@ BasicType java_lang_Class::as_BasicType(oop java_class, Klass** reference_klass)
 oop java_lang_Class::primitive_mirror(BasicType t) {
   oop mirror = Universe::java_mirror(t);
   assert(mirror != nullptr && (mirror->is_a(vmClasses::Class_klass())
-         || VM_EnhancedRedefineClasses::is_inside_redefinition() && vmClasses::Class_klass()->old_version() != NULL && mirror->is_a(vmClasses::Class_klass()->old_version())), "must be a Class");
+         || (VM_EnhancedRedefineClasses::is_inside_redefinition() && vmClasses::Class_klass()->old_version() != NULL && mirror->is_a(vmClasses::Class_klass()->old_version()))), "must be a Class");
   assert(is_primitive(mirror), "must be primitive");
   return mirror;
 }
