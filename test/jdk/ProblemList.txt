@@ -607,8 +607,6 @@ sun/security/pkcs11/ec/TestKeyFactory.java                      8026976 generic-
 sun/security/pkcs11/KeyStore/ClientAuth.sh                      8254806 solaris-all
 sun/security/pkcs11/sslecc/ClientJSSEServerJSSE.java            8161536 generic-all
 
-sun/security/tools/keytool/ListKeychainStore.sh                 8156889 macosx-all
-
 javax/net/ssl/DTLS/PacketLossRetransmission.java                8169086 macosx-x64
 javax/net/ssl/DTLS/RespondToRetransmit.java                     8169086 macosx-all
 javax/net/ssl/DTLS/CipherSuite.java                             8202059 macosx-x64
