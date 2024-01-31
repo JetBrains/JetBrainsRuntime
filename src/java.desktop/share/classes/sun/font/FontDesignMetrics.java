@@ -487,7 +487,7 @@ public final class FontDesignMetrics extends FontMetrics {
         assert (data instanceof String || data instanceof char[]);
         float width = 0;
 
-        if (FontExtensions.isComplexRendering(font) && len > 0) {
+        if (overrider == null && FontExtensions.isComplexRendering(font) && len > 0) {
             return textLayoutBounds(data, off, len);
         }
 
