@@ -1809,20 +1809,12 @@ int InstanceKlass::do_nonstatic_fields_dcevm_collect_fields(int* fields, int dep
 
 void InstanceKlass::do_nonstatic_fields_dcevm(FieldClosureDcevm* cl) {
   int length = fields()->length()/FieldInfo::field_slots;
-  int depth = 1;
+  GrowableArray<InstanceKlass*> class_hiearchy;
+  class_hiearchy.push(this);
   InstanceKlass* super = superklass();
-  while (super != NULL) {
-    depth++;
+  while (super != nullptr) {
+    class_hiearchy.push(super);
     length += super->fields()->length()/FieldInfo::field_slots;
-    super = super->superklass();
-  }
-
-  InstanceKlass* class_hiearchy[depth];
-  int i = 0;
-  class_hiearchy[i++] = this;
-  super = superklass();
-  while (super != NULL) {
-    class_hiearchy[i++] = super;
     super = super->superklass();
   }
 
@@ -1834,8 +1826,8 @@ void InstanceKlass::do_nonstatic_fields_dcevm(FieldClosureDcevm* cl) {
     length = last_offset;
     // _sort_Fn is defined in growableArray.hpp.
     qsort(fields_sorted, length/3, 3*sizeof(int), (_sort_Fn)compare_fields_by_offset);
-    for (i = 0; i < length; i += 3) {
-      InstanceKlass* ik = class_hiearchy[fields_sorted[i + 2]];
+    for (int i = 0; i < length; i += 3) {
+      InstanceKlass* ik = class_hiearchy.at(fields_sorted[i + 2]);
       if (fields_sorted[i + 1] < ik->java_fields_count()) {
         fd.reinitialize(ik, fields_sorted[i + 1]);
         cl->do_field(ik, &fd, NULL);
