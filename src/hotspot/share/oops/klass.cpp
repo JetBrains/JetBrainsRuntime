@@ -246,8 +246,8 @@ void Klass::initialize_supers(Klass* k, Array<InstanceKlass*>* transitive_interf
     set_super(NULL);
     _primary_supers[0] = this;
     assert(super_depth() == 0, "Object must already be initialized properly");
-  } else if (k != super() || k == vmClasses::Object_klass() || k->is_redefining() && k == vmClasses::Object_klass()->newest_version()) {
-    assert(super() == NULL || super() == vmClasses::Object_klass() || k->is_redefining() && super() == vmClasses::Object_klass()->newest_version(),
+  } else if (k != super() || k == vmClasses::Object_klass() || (k->is_redefining() && k == vmClasses::Object_klass()->newest_version())) {
+    assert(super() == NULL || super() == vmClasses::Object_klass() || (k->is_redefining() && super() == vmClasses::Object_klass()->newest_version()),
            "initialize this only once to a non-trivial value");
     set_super(k);
     Klass* sup = k;
