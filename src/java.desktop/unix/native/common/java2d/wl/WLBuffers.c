@@ -61,6 +61,9 @@ static void
 ScheduleFrameCallback(WLSurfaceBufferManager * manager);
 
 static void
+CancelFrameCallback(WLSurfaceBufferManager * manager);
+
+static void
 CopyDrawBufferToShowBuffer(WLSurfaceBufferManager * manager);
 
 static void
@@ -584,6 +587,11 @@ ShowBufferInvalidateForNewSize(WLSurfaceBufferManager * manager)
         assert(buffer->next == NULL);
         SurfaceBufferDestroy(buffer);
         manager->bufferForShow.wlSurfaceBuffer = NULL;
+        // Even though technically we didn't detach the buffer from the surface,
+        // we need to attach a new, resized one as soon as possible. If we wait
+        // for the next frame event to do that, Mutter may not remember
+        // the latest size of the window.
+        manager->isBufferAttached = false;
     }
 
     while (manager->buffersFree) {
@@ -596,6 +604,11 @@ ShowBufferInvalidateForNewSize(WLSurfaceBufferManager * manager)
     // as soon as they are released (see wl_buffer_release()).
 
     ShowBufferCreate(manager);
+
+    // Need to wait for WLSBM_SurfaceCommit() with the new content for
+    // the buffer we have just created, so there's no need for the
+    // frame event until then.
+    CancelFrameCallback(manager);
 
     MUTEX_UNLOCK(manager->showLock);
 }
@@ -612,8 +625,7 @@ wl_frame_callback_done(void * data,
     MUTEX_LOCK(manager->showLock);
 
     assert(manager->wl_frame_callback == wl_callback);
-    wl_callback_destroy(manager->wl_frame_callback);
-    manager->wl_frame_callback = NULL;
+    CancelFrameCallback(manager);
 
     if (manager->wlSurface) {
         const bool hasSomethingToSend = (manager->bufferForDraw.damageList != NULL);
@@ -642,6 +654,17 @@ ScheduleFrameCallback(WLSurfaceBufferManager * manager)
     if (!manager->wl_frame_callback) {
         manager->wl_frame_callback = wl_surface_frame(manager->wlSurface);
         wl_callback_add_listener(manager->wl_frame_callback, &wl_frame_callback_listener, manager);
+    }
+}
+
+static void
+CancelFrameCallback(WLSurfaceBufferManager * manager)
+{
+    ASSERT_SHOW_LOCK_IS_HELD(manager);
+
+    if (manager->wl_frame_callback) {
+        wl_callback_destroy(manager->wl_frame_callback);
+        manager->wl_frame_callback = NULL;
     }
 }
 
@@ -849,10 +872,7 @@ WLSBM_SurfaceAssign(WLSurfaceBufferManager * manager, struct wl_surface* wl_surf
         manager->isBufferAttached = false;
         // The "frame" callback depends on the surface; when changing the surface,
         // cancel any associated pending callbacks:
-        if (manager->wl_frame_callback) {
-            wl_callback_destroy(manager->wl_frame_callback);
-            manager->wl_frame_callback = NULL;
-        }
+        CancelFrameCallback(manager);
     } else {
         assert(manager->wlSurface == wl_surface);
     }
@@ -868,9 +888,8 @@ WLSBM_Destroy(WLSurfaceBufferManager * manager)
     // because their callbacks retain a pointer to this manager.
     MUTEX_LOCK(manager->showLock);
     MUTEX_LOCK(manager->drawLock);
-    if (manager->wl_frame_callback) {
-        wl_callback_destroy(manager->wl_frame_callback);
-    }
+
+    CancelFrameCallback(manager);
     DrawBufferDestroy(manager);
 
     if (manager->bufferForShow.wlSurfaceBuffer) {
