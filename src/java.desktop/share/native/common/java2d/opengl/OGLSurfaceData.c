@@ -570,9 +570,9 @@ Java_sun_java2d_opengl_OGLSurfaceData_loadNativeRasterWithRects
     j2d_glLoadIdentity();
     j2d_glOrtho(0.0, (GLdouble)width, (GLdouble)height, 0.0, -1.0, 1.0);
 
-    const bool scissorEnabled = j2d_glIsEnabled(GL_SCISSOR_TEST);
-    const bool depthEnabled = j2d_glIsEnabled(GL_DEPTH_TEST);
-    const bool blendEnabled = j2d_glIsEnabled(GL_BLEND);
+    const GLboolean scissorEnabled = j2d_glIsEnabled(GL_SCISSOR_TEST);
+    const GLboolean depthEnabled = j2d_glIsEnabled(GL_DEPTH_TEST);
+    const GLboolean blendEnabled = j2d_glIsEnabled(GL_BLEND);
     j2d_glDisable(GL_SCISSOR_TEST);
     j2d_glDisable(GL_DEPTH_TEST);
     j2d_glDisable(GL_BLEND);
