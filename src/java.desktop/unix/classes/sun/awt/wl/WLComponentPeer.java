@@ -111,9 +111,9 @@ public class WLComponentPeer implements ComponentPeer {
     WLComponentPeer(Component target) {
         this.target = target;
         this.background = target.getBackground();
-        Rectangle bounds = target.getBounds();
-        width = bounds.width;
-        height = bounds.height;
+        Dimension size = constrainSize(target.getBounds().getSize());
+        width = size.width;
+        height = size.height;
         final WLGraphicsConfig config = (WLGraphicsConfig)target.getGraphicsConfiguration();
         wlBufferScale = config.getScale();
         surfaceData = config.createSurfaceData(this);
@@ -411,6 +411,7 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     public void setBounds(int newX, int newY, int newWidth, int newHeight, int op) {
+        Dimension newSize = constrainSize(newWidth, newHeight);
         boolean positionChanged = (op == SET_BOUNDS || op == SET_LOCATION);
         if (positionChanged && isVisible()) {
             // Wayland provides the ability to programmatically change the location of popups,
@@ -428,9 +429,9 @@ public class WLComponentPeer implements ComponentPeer {
             WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_MOVED));
         }
 
-        boolean sizeChanged = (op == SET_BOUNDS  || op == SET_SIZE || op == SET_CLIENT_SIZE);
+        boolean sizeChanged = (op == SET_BOUNDS || op == SET_SIZE || op == SET_CLIENT_SIZE);
         if (sizeChanged) {
-            setSizeTo(newWidth, newHeight);
+            setSizeTo(newSize.width, newSize.height);
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
                 log.fine(String.format("%s is resizing its buffer to %dx%d with %dx scale",
                         this, getBufferWidth(), getBufferHeight(), getBufferScale()));
@@ -448,8 +449,9 @@ public class WLComponentPeer implements ComponentPeer {
 
     private void setSizeTo(int newWidth, int newHeight) {
         synchronized (dataLock) {
-            this.width = newWidth;
-            this.height = newHeight;
+            Dimension newSize = constrainSize(newWidth, newHeight);
+            this.width = newSize.width;
+            this.height = newSize.height;
         }
     }
 
@@ -680,11 +682,13 @@ public class WLComponentPeer implements ComponentPeer {
     }
     
     void setMinimumSizeTo(Dimension minSize) {
-        performLocked(() -> nativeSetMinimumSize(nativePtr, minSize.width, minSize.height));
+        Dimension constrainedSize = constrainSize(minSize);
+        performLocked(() -> nativeSetMinimumSize(nativePtr, constrainedSize.width, constrainedSize.height));
     }
 
     void setMaximumSizeTo(Dimension maxSize) {
-        performLocked(() -> nativeSetMaximumSize(nativePtr, maxSize.width, maxSize.height));
+        Dimension constrainedSize = constrainSize(maxSize);
+        performLocked(() -> nativeSetMaximumSize(nativePtr, constrainedSize.width, constrainedSize.height));
     }
 
     void showWindowMenu(int x, int y) {
@@ -1207,6 +1211,25 @@ public class WLComponentPeer implements ComponentPeer {
             var acc = AWTAccessor.getComponentAccessor();
             acc.setGraphicsConfiguration(target, gc);
         }
+    }
+
+    private static Dimension getMaxBufferBounds() {
+        // Need to limit the maximum size of the window so that the creation of the underlying
+        // buffers for it may succeed at least in theory. A window that is too large may crash
+        // JVM or even the window manager.
+        Dimension bounds = WLGraphicsEnvironment.getSingleInstance().getTotalDisplayBounds();
+        bounds.width *= 2;
+        bounds.height *= 2;
+        return bounds;
+    }
+
+    private Dimension constrainSize(int width, int height) {
+        Dimension maxBounds = getMaxBufferBounds();
+        return new Dimension(Math.min(width, maxBounds.width), Math.min(height, maxBounds.height));
+    }
+
+    private Dimension constrainSize(Dimension bounds) {
+        return constrainSize(bounds.width, bounds.height);
     }
 
     // The following methods exist to prevent native code from using stale pointers (pointing to memory already
