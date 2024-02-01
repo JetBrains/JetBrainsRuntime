@@ -255,6 +255,10 @@ Java_sun_java2d_wl_WLSMSurfaceData_initOps(JNIEnv *env, jobject wsd,
     wsdo->sdOps.GetRasInfo = WLSD_GetRasInfo;
     wsdo->sdOps.Dispose = WLSD_Dispose;
     wsdo->bufferManager = WLSBM_Create(width, height, scale, backgroundRGB, wlShmFormat);
+    if (wsdo->bufferManager == NULL) {
+        JNU_ThrowOutOfMemoryError(env, "Failed to create Wayland surface buffer manager");
+        return;
+    }
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
     // Recursive mutex is required because blit can be done with both source
