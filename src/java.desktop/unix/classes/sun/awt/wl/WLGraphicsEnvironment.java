@@ -26,15 +26,16 @@
 
 package sun.awt.wl;
 
-import java.awt.EventQueue;
+import java.awt.Dimension;
+import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
+import java.awt.Rectangle;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import sun.awt.SunToolkit;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceManagerFactory;
 import sun.java2d.UnixSurfaceManagerFactory;
@@ -57,6 +58,8 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
     private static String vulkanOptionDeviceNumber =
             AccessController.doPrivileged(
                     (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan.deviceNumber", "0"));
+
+    private final Dimension totalDisplayBounds = new Dimension();
 
     static {
         vulkanRequested = "true".equalsIgnoreCase(vulkanOption);
@@ -157,6 +160,8 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
             }
         }
 
+        updateTotalDisplayBounds();
+
         // Skip notification during the initial configuration events
         if (WLToolkit.isInitialized()) {
             displayChanged();
@@ -198,6 +203,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
             }
         }
 
+        updateTotalDisplayBounds();
         displayChanged();
     }
 
@@ -222,6 +228,26 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
                 }
             }
             return null;
+        }
+    }
+
+    public Dimension getTotalDisplayBounds() {
+        synchronized (totalDisplayBounds) {
+            return totalDisplayBounds.getSize();
+        }
+    }
+
+    private void updateTotalDisplayBounds() {
+        synchronized (devices) {
+            Rectangle virtualBounds = new Rectangle();
+            for (GraphicsDevice gd : devices) {
+                for (GraphicsConfiguration gc : gd.getConfigurations()) {
+                    virtualBounds = virtualBounds.union(gc.getBounds());
+                }
+            }
+            synchronized (totalDisplayBounds) {
+                totalDisplayBounds.setSize(virtualBounds.getSize());
+            }
         }
     }
 }
