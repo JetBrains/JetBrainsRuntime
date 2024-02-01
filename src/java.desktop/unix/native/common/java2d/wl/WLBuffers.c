@@ -26,6 +26,7 @@
 
 #include <stdbool.h>
 #include <sys/mman.h>
+#include <sys/sysinfo.h>
 #include <pthread.h>
 
 #include "Trace.h"
@@ -143,11 +144,16 @@ DamageList_Add(DamageList* list, jint x, jint y, jint width, jint height)
     }
 
     DamageList *item = malloc(sizeof(DamageList));
-    item->x = x;
-    item->y = y;
-    item->width = width;
-    item->height = height;
-    item->next = list;
+    if (!item) {
+        JNIEnv* env = getEnv();
+        JNU_ThrowOutOfMemoryError(env, "Failed to allocate Wayland buffer damage list");
+    } else {
+        item->x = x;
+        item->y = y;
+        item->width = width;
+        item->height = height;
+        item->next = list;
+    }
     return item;
 }
 
@@ -353,6 +359,8 @@ WLBufferTraceFrame(WLSurfaceBufferManager* manager)
 static inline size_t
 SurfaceBufferSizeInBytes(WLSurfaceBuffer * buffer)
 {
+    assert (buffer);
+
     const jint stride = buffer->width * (jint)sizeof(pixel_t);
     return stride * buffer->height;
 }
@@ -403,11 +411,15 @@ SurfaceBufferDestroy(WLSurfaceBuffer * buffer)
     // from Wayland.
     const size_t size = SurfaceBufferSizeInBytes(buffer);
     munmap(buffer->data, size);
-    wl_shm_pool_destroy(buffer->wlPool);
+    if (buffer->wlPool) {
+        wl_shm_pool_destroy(buffer->wlPool);
+    }
 
-    // "Destroying the wl_buffer after wl_buffer.release does not change
-    //  the surface contents" (source: wayland.xml)
-    wl_buffer_destroy(buffer->wlBuffer);
+    if (buffer->wlBuffer) {
+        // "Destroying the wl_buffer after wl_buffer.release does not change
+        //  the surface contents" (source: wayland.xml)
+        wl_buffer_destroy(buffer->wlBuffer);
+    }
 
     DamageList_FreeAll(buffer->damageList);
     free(buffer);
@@ -441,9 +453,16 @@ SurfaceBufferCreate(WLSurfaceBufferManager * manager)
                                                  buffer->height,
                                                  stride,
                                                  manager->format);
-    wl_buffer_add_listener(buffer->wlBuffer,
-                           &wl_buffer_listener,
-                           manager);
+    if (buffer->wlBuffer) {
+        wl_buffer_add_listener(buffer->wlBuffer,
+                               &wl_buffer_listener,
+                               manager);
+    } else {
+        JNIEnv* env = getEnv();
+        JNU_ThrowOutOfMemoryError(env, "Failed to create Wayland buffer memory pool");
+        free (buffer);
+        return NULL;
+    }
 
     return buffer;
 }
@@ -529,7 +548,13 @@ ShowBufferCreate(WLSurfaceBufferManager * manager)
 {
     ASSERT_SHOW_LOCK_IS_HELD(manager);
 
-    manager->bufferForShow.wlSurfaceBuffer = SurfaceBufferCreate(manager);
+    WLSurfaceBuffer* buffer = SurfaceBufferCreate(manager);
+    if (buffer) {
+        manager->bufferForShow.wlSurfaceBuffer = buffer;
+    } else {
+        JNIEnv* env = getEnv();
+        JNU_ThrowOutOfMemoryError(env, "Failed to allocate Wayland surface buffer");
+    }
 }
 
 /**
@@ -679,7 +704,10 @@ SendShowBufferToWayland(WLSurfaceBufferManager * manager)
     jlong startTime = GetJavaTimeNanos();
 
     WLSurfaceBuffer * buffer = manager->bufferForShow.wlSurfaceBuffer;
-    assert(buffer);
+    if (buffer == NULL) {
+        // There should've been an OOME thrown already
+        return;
+    }
 
     ShowBufferPrepareFreshOne(manager);
 
@@ -749,7 +777,11 @@ CopyDrawBufferToShowBuffer(WLSurfaceBufferManager * manager)
     ASSERT_SHOW_LOCK_IS_HELD(manager);
     MUTEX_LOCK(manager->drawLock);
 
-    assert(manager->bufferForShow.wlSurfaceBuffer);
+    if (manager->bufferForShow.wlSurfaceBuffer == NULL) {
+        // There should've been an OOME thrown already
+        return;
+    }
+
     assert(manager->wlSurface != NULL);
     assert(manager->bufferForShow.damageList == NULL);
 
@@ -801,7 +833,14 @@ DrawBufferCreate(WLSurfaceBufferManager * manager)
 
     manager->bufferForDraw.frameID++;
     manager->bufferForDraw.manager = manager;
-    manager->bufferForDraw.data = malloc(DrawBufferSizeInBytes(manager));
+    void * data = malloc(DrawBufferSizeInBytes(manager));
+    manager->bufferForDraw.data = data;
+
+    if (data == NULL) {
+        JNIEnv* env = getEnv();
+        JNU_ThrowOutOfMemoryError(env, "Failed to allocate Wayland surface buffer");
+        return;
+    }
 
     for (jint i = 0; i < DrawBufferSizeInPixels(manager); ++i) {
         manager->bufferForDraw.data[i] = manager->bgPixel;
@@ -817,11 +856,30 @@ DrawBufferDestroy(WLSurfaceBufferManager * manager)
     manager->bufferForDraw.damageList = NULL;
 }
 
+static bool
+HaveEnoughMemoryForWindow(jint width, jint height)
+{
+    if (width == 0 || height == 0) return true;
+
+    struct sysinfo si;
+    sysinfo(&si);
+    unsigned long freeMemBytes = (si.freeram + si.freeswap) * si.mem_unit;
+    unsigned long maxBuffers = freeMemBytes / width / height / sizeof(pixel_t);
+
+    // Prevent the computer from becoming totally unresponsive some time down
+    // the line when the buffers start to allocate and start throwing inevitable OOMEs.
+    return maxBuffers >= 2;
+}
+
 WLSurfaceBufferManager *
 WLSBM_Create(jint width, jint height, jint scale, jint bgPixel, jint wlShmFormat)
 {
     traceEnabled = getenv("J2D_STATS");
     traceFPSEnabled = getenv("J2D_FPS");
+
+    if (!HaveEnoughMemoryForWindow(width, height)) {
+       return NULL;
+    }
 
     WLSurfaceBufferManager * manager = calloc(1, sizeof(WLSurfaceBufferManager));
     if (!manager) {
@@ -991,6 +1049,12 @@ WLSB_DataGet(WLDrawBuffer * buffer)
 void
 WLSBM_SizeChangeTo(WLSurfaceBufferManager * manager, jint width, jint height, jint scale)
 {
+    if (!HaveEnoughMemoryForWindow(width, height)) {
+        JNIEnv* env = getEnv();
+        JNU_ThrowOutOfMemoryError(env, "Wayland surface buffer too large");
+        return;
+    }
+
     MUTEX_LOCK(manager->drawLock);
 
     const bool size_changed = manager->bufferForDraw.width != width || manager->bufferForDraw.height != height;
