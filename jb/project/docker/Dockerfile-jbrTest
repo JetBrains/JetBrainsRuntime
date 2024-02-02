@@ -1,0 +1,57 @@
+# NOTE: This Dockerfile is meant to be used from the mkdocker_jbrtest.sh script.
+
+# Pull a concrete version of Linux that does NOT recieve updates after it's
+# been created.  This is so that the image is as stable as possible to make
+# image creation reproducible.
+# NB: this also means there may be no security-related fixes there, need to
+# move the version to the next manually.
+
+ARG ARCH_FROM
+ARG ARCH=i386
+ARG OS_NAME
+ARG OS_VERSION
+
+# jetbrains/runtime:jbrTest_${os_name}${os_version}-$arch
+FROM ${ARCH_FROM}/${OS_NAME}:${OS_VERSION}
+
+COPY jbr-11_0_16-linux-x86-b2043.64.tar.gz /jbr/
+ARG ARCH
+RUN \
+    if [ "$ARCH" = "i386" ]; then \
+      # Set up boot JDK for building
+      cd /jbr && \
+          tar --strip-components=1 -xzf jbr-11_0_16-linux-x86-b2043.64.tar.gz && \
+          rm jbr-11_0_16-linux-x86-b2043.64.tar.gz; \
+      echo Installing packages required for i386 only; \
+      dpkg --add-architecture i386; \
+      apt-get update -y; \
+      apt-get install -y \
+          libc6:i386 \
+          libncurses5 libncurses5:i386 \
+          libstdc++6:i386 \
+          zlib1g:i386; \
+    else \
+      echo Skipping the step installing packages specific for the platform; \
+    fi; \
+    apt-get update -y; \
+    apt-get install -y \
+        binutils:${ARCH} \
+        libcanberra-gtk-module:${ARCH} \
+        libgtk2.0-0:${ARCH} \
+        libxext6:${ARCH} \
+        libxi6:${ARCH} \
+        libxrender-dev:${ARCH} \
+        libxtst6:${ARCH} \
+        libxrandr2:${ARCH} \
+        libfreetype6:${ARCH} \
+        fontconfig:${ARCH} \
+        libnss3:${ARCH} \
+        libatk-bridge2.0-0:${ARCH} \
+        libgbm1:${ARCH} \
+        libxkbcommon0:${ARCH} \
+        libasound2:${ARCH};\
+    apt-get clean all
+
+ENV JAVA_HOME=/jbr
+ENV DISPLAY=:0
+
