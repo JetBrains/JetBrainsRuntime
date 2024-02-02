@@ -175,8 +175,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
      */
     private void rebuildDevices() {
         initDevices();
-        // Do not notify devices, this was already done in initDevices.
-        displayChanger.notifyListeners();
+        displayChanged();
     }
 
     /**
@@ -233,17 +232,8 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
             displayIDs = new int[]{mainDisplayID};
         }
         for (int id : displayIDs) {
-            old.compute(id, (i, d) -> {
-                if (d != null && d.updateDevice()) {
-                    // Device didn't change -> reuse
-                    devices.put(i, d);
-                    return null;
-                } else {
-                    // Device changed -> create new
-                    devices.put(i, new CGraphicsDevice(i));
-                    return d;
-                }
-            });
+            devices.put(id, old.containsKey(id) ? old.remove(id)
+                                                : new CGraphicsDevice(id));
         }
         // fetch the main display again, the old value might be outdated
         mainDisplayID = getMainDisplayID();
@@ -279,12 +269,9 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
     }
 
     private CGraphicsDevice getSimilarDevice(CGraphicsDevice old) {
-        CGraphicsDevice sameId = devices.get(old.getDisplayID());
-        if (sameId != null) {
-            return sameId;
-        }
         for (CGraphicsDevice device : devices.values()) {
             if (device.getBounds().equals(old.getBounds())) {
+                // for now we will use the bounds only
                 return device;
             }
         }
