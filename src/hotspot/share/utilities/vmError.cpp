@@ -65,6 +65,7 @@
 #include "utilities/events.hpp"
 #include "utilities/vmError.hpp"
 #include "utilities/macros.hpp"
+#include "utilities/pair.hpp"
 #if INCLUDE_JFR
 #include "jfr/jfr.hpp"
 #endif
