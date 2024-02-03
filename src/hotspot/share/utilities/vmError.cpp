@@ -71,6 +71,7 @@
 #include "utilities/macros.hpp"
 #include "utilities/nativeStackPrinter.hpp"
 #include "utilities/ostream.hpp"
+#include "utilities/pair.hpp"
 #include "utilities/vmError.hpp"
 #if INCLUDE_JFR
 #include "jfr/jfr.hpp"
