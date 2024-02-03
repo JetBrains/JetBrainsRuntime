@@ -60,7 +60,6 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   static int           _added_methods_length;
   static Klass*        _the_class_oop;
   static u8            _id_counter;
-  static bool          _is_inside_redefinition;
 
   // The instance fields are used to pass information from
   // doit_prologue() to doit() and doit_epilogue().
@@ -203,8 +202,5 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   // and redefine implementation
   static bool is_modifiable_class(oop klass_mirror);
   // true if is inside VM redefinition phase
-  static bool is_inside_redefinition() {
-    return _is_inside_redefinition;
-  }
 };
 #endif // SHARE_VM_PRIMS_JVMTIREDEFINECLASSES2_HPP
