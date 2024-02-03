@@ -34,6 +34,8 @@
 #include "classfile/dictionary.hpp"
 #include "classfile/classLoaderDataGraph.hpp"
 #include "classfile/loaderConstraints.hpp"
+#include "code/nmethod.hpp"
+#include "code/codeCache.hpp"
 #include "interpreter/linkResolver.hpp"
 #include "interpreter/rewriter.hpp"
 #include "interpreter/bytecodeStream.hpp"
@@ -70,8 +72,13 @@
 #include "gc/shared/oopStorageSet.hpp"
 #include "gc/shared/oopStorageSet.inline.hpp"
 #include "gc/shared/weakProcessor.hpp"
+#if defined(COMPILER1) || defined(COMPILER2)
 #include "ci/ciObjectFactory.hpp"
+#endif
+
+#ifdef COMPILER2
 #include "opto/c2compiler.hpp"
+#endif
 
 Array<Method*>* VM_EnhancedRedefineClasses::_old_methods = nullptr;
 Array<Method*>* VM_EnhancedRedefineClasses::_new_methods = nullptr;
@@ -545,8 +552,12 @@ void VM_EnhancedRedefineClasses::doit() {
     if (vmClasses::update_vm_klass(InstanceKlass::cast(cur->old_version()), cur)) {
       _vm_class_redefined = true;
       log_trace(redefine, class, obsolete, metadata)("Well known class updated %s", cur->external_name());
+#if defined(COMPILER1) || defined(COMPILER2)
       ciObjectFactory::set_reinitialize_vm_klasses();
+#endif
+#ifdef COMPILER2
       C2Compiler::set_reinitialize_vm_klasses();
+#endif
     }
   }
 
@@ -726,7 +737,9 @@ void VM_EnhancedRedefineClasses::doit() {
   LoaderConstraintTable::update_after_redefinition();
 
   // TODO: explain...
+#if defined(COMPILER1) || defined(COMPILER2)
   ciObjectFactory::resort_shared_ci_metadata();
+#endif
 
   // FIXME - check if it was in JDK8. Copied from standard JDK9 hotswap.
   //MethodDataCleaner clean_weak_method_links;
