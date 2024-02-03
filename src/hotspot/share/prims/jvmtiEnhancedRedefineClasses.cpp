@@ -84,7 +84,6 @@ int         VM_EnhancedRedefineClasses::_deleted_methods_length  = 0;
 int         VM_EnhancedRedefineClasses::_added_methods_length    = 0;
 Klass*      VM_EnhancedRedefineClasses::_the_class_oop = nullptr;
 u8        VM_EnhancedRedefineClasses::_id_counter = 0;
-bool      VM_EnhancedRedefineClasses::_is_inside_redefinition = false;
 
 //
 // Create new instance of enhanced class redefiner.
@@ -526,7 +525,7 @@ void VM_EnhancedRedefineClasses::doit() {
     _timer_vm_op_doit.start();
   }
 
-  _is_inside_redefinition = true;
+  Universe::set_inside_redefinition(true);
 
   // Mark methods seen on stack and everywhere else so old methods are not
   // cleaned up if they're on the stack.
@@ -758,7 +757,7 @@ void VM_EnhancedRedefineClasses::doit() {
   }
 #endif
 
-  _is_inside_redefinition = false;
+  Universe::set_inside_redefinition(false);
   _timer_vm_op_doit.stop();
 }
 
