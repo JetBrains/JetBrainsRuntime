@@ -180,7 +180,8 @@ int             Universe::_base_vtable_size = 0;
 bool            Universe::_bootstrapping = false;
 bool            Universe::_module_initialized = false;
 bool            Universe::_fully_initialized = false;
-bool            Universe::_is_redefining_gc_run = false; // FIXME: review
+bool            Universe::_is_redefining_gc_run = false;
+bool            Universe::_is_inside_redefinition = false;
 
 OopStorage*     Universe::_vm_weak = nullptr;
 OopStorage*     Universe::_vm_global = nullptr;
