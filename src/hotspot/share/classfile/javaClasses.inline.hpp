@@ -125,7 +125,7 @@ int java_lang_String::length(oop java_string) {
 
 bool java_lang_String::is_instance(oop obj) {
   return obj != nullptr && (obj->klass() == vmClasses::String_klass()
-         || (VM_EnhancedRedefineClasses::is_inside_redefinition() && obj->klass()->newest_version() == vmClasses::String_klass()));
+         || (Universe::is_inside_redefinition() && obj->klass()->newest_version() == vmClasses::String_klass()));
 }
 
 // Accessors
@@ -267,12 +267,12 @@ inline bool java_lang_invoke_ConstantCallSite::is_instance(oop obj) {
 
 inline bool java_lang_invoke_MemberName::is_instance(oop obj) {
   return obj != nullptr && (obj->klass() == vmClasses::MemberName_klass()
-                         || (VM_EnhancedRedefineClasses::is_inside_redefinition() && obj->klass()->newest_version() == vmClasses::MemberName_klass()));
+                         || (Universe::is_inside_redefinition() && obj->klass()->newest_version() == vmClasses::MemberName_klass()));
 }
 
 inline bool java_lang_invoke_ResolvedMethodName::is_instance(oop obj) {
   return obj != nullptr && (obj->klass() == vmClasses::ResolvedMethodName_klass()
-                         || (VM_EnhancedRedefineClasses::is_inside_redefinition() && obj->klass()->newest_version() == vmClasses::ResolvedMethodName_klass()));
+                         || (Universe::is_inside_redefinition() && obj->klass()->newest_version() == vmClasses::ResolvedMethodName_klass()));
 }
 
 inline bool java_lang_invoke_MethodType::is_instance(oop obj) {
@@ -285,7 +285,7 @@ inline bool java_lang_invoke_MethodHandle::is_instance(oop obj) {
 
 inline bool java_lang_Class::is_instance(oop obj) {
   return obj != nullptr && (obj->klass() == vmClasses::Class_klass()
-                         || (VM_EnhancedRedefineClasses::is_inside_redefinition() && obj->klass()->newest_version() == vmClasses::Class_klass()));
+                         || (Universe::is_inside_redefinition() && obj->klass()->newest_version() == vmClasses::Class_klass()));
 }
 
 inline Klass* java_lang_Class::as_Klass(oop java_class) {
@@ -323,12 +323,12 @@ inline size_t java_lang_Class::oop_size(oop java_class) {
 
 inline bool java_lang_invoke_DirectMethodHandle::is_instance(oop obj) {
   return obj != nullptr && (is_subclass(obj->klass())
-         || (VM_EnhancedRedefineClasses::is_inside_redefinition() && is_subclass(obj->klass()->newest_version())));
+         || (Universe::is_inside_redefinition() && is_subclass(obj->klass()->newest_version())));
 }
 
 inline bool java_lang_invoke_DirectMethodHandle_StaticAccessor::is_instance(oop obj) {
   return obj != nullptr && (is_subclass(obj->klass())
-         || (VM_EnhancedRedefineClasses::is_inside_redefinition() && is_subclass(obj->klass()->newest_version())));
+         || (Universe::is_inside_redefinition() && is_subclass(obj->klass()->newest_version())));
 }
 
 inline bool java_lang_invoke_DirectMethodHandle_Accessor::is_instance(oop obj) {

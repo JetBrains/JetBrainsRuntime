@@ -161,6 +161,7 @@ class Universe: AllStatic {
   static uintptr_t _verify_oop_mask;
   static uintptr_t _verify_oop_bits;
   static bool _is_redefining_gc_run;
+  static bool _is_inside_redefinition;
 
   // Table of primitive type mirrors, excluding T_OBJECT and T_ARRAY
   // but including T_VOID, hence the index including T_VOID
@@ -176,9 +177,11 @@ class Universe: AllStatic {
   static void calculate_verify_data(HeapWord* low_boundary, HeapWord* high_boundary) PRODUCT_RETURN;
   static void set_verify_data(uintptr_t mask, uintptr_t bits) PRODUCT_RETURN;
 
-  // Advanced class redefinition. FIXME: review?
+  // (DCEVM) Advanced class redefinition.
   static bool is_redefining_gc_run()               { return _is_redefining_gc_run; }
   static void set_redefining_gc_run(bool b)        { _is_redefining_gc_run = b;    }
+  static bool is_inside_redefinition()               { return _is_inside_redefinition; }
+  static void set_inside_redefinition(bool b)        { _is_inside_redefinition = b;    }
 
   // Known classes in the VM
   static TypeArrayKlass* boolArrayKlass()        { return typeArrayKlass(T_BOOLEAN); }
