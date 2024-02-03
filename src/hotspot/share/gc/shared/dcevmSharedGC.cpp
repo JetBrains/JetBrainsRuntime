@@ -33,6 +33,7 @@
 #include "oops/instanceRefKlass.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "utilities/macros.hpp"
+#include "utilities/copy.hpp"
 
 void DcevmSharedGC::copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_oops, bool must_be_new) {
   if (rescued_oops != NULL) {
