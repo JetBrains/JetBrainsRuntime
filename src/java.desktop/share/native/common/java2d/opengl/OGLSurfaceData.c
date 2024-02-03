@@ -558,7 +558,7 @@ Java_sun_java2d_opengl_OGLSurfaceData_loadNativeRasterWithRects
 
     // Save GL context
     GLint pv[4];
-    glGetIntegerv(GL_VIEWPORT, pv);
+    j2d_glGetIntegerv(GL_VIEWPORT, pv);
     j2d_glViewport(0, 0, width, height);
 
     j2d_glMatrixMode(GL_MODELVIEW);
