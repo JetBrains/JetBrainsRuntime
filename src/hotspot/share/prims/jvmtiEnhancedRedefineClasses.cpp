@@ -32,6 +32,8 @@
 #include "classfile/verifier.hpp"
 #include "classfile/dictionary.hpp"
 #include "classfile/classLoaderDataGraph.hpp"
+#include "code/nmethod.hpp"
+#include "code/codeCache.hpp"
 #include "interpreter/linkResolver.hpp"
 #include "interpreter/oopMapCache.hpp"
 #include "interpreter/rewriter.hpp"
