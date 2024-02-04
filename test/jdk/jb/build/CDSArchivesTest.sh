@@ -10,6 +10,11 @@ if [ -z "${TESTJAVA}" ]; then
 fi
 
 source ${TESTJAVA}/release
+
+echo "${TESTJAVA}/release"
+cat ${TESTJAVA}/release
+echo
+
 echo "Checking $IMPLEMENTOR_VERSION"
 if [[ "$IMPLEMENTOR_VERSION" != *"JBRSDK"* ]]; then
   echo "Test executed for JBRSDK only"
