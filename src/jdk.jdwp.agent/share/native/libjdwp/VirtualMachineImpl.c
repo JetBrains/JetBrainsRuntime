@@ -487,6 +487,8 @@ redefineClasses(PacketInputStream *in, PacketOutputStream *out)
             }
             for (i = 0; i < classCount; i++) {
                 classIds[i] = commonRef_refToID(env, classDefs[i].klass);
+                /* remove tags of old classes */
+                commonRef_deleteTags(env, classIds[i]);
             }
         }
 
@@ -499,19 +501,17 @@ redefineClasses(PacketInputStream *in, PacketOutputStream *out)
             for ( i = 0 ; i < classCount; i++ ) {
                 eventHandler_freeClassBreakpoints(classDefs[i].klass);
             }
-
-            if (gdata->isEnhancedClassRedefinitionEnabled && classIds != NULL) {
-                /* Update tags in jvmti to use new classes */
-                for ( i = 0 ; i < classCount; i++ ) {
-                    /* pointer in classIds[i] is updated by advanced redefinition to a new class */
-                    error = commonRef_updateTags(env, classIds[i]);
-                    if (error != JVMTI_ERROR_NONE) {
-                        break;
-                    }
-                }
-                jvmtiDeallocate((void*) classIds);
+        }
+        if (gdata->isEnhancedClassRedefinitionEnabled && classIds != NULL) {
+          /* install new tags in jvmti to use new classes */
+          for ( i = 0 ; i < classCount; i++ ) {
+            /* pointer in classIds[i] is updated by advanced redefinition to a new class */
+            error = commonRef_updateTags(env, classIds[i]);
+            if (error != JVMTI_ERROR_NONE) {
+              break;
             }
-
+          }
+          jvmtiDeallocate((void*) classIds);
         }
     }
 
