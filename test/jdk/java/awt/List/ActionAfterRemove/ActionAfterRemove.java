@@ -35,12 +35,13 @@
 import java.awt.*;
 import java.awt.event.*;
 import test.java.awt.regtesthelpers.Util;
+import javax.swing.SwingUtilities;
 
 public class ActionAfterRemove
 {
     private static volatile boolean passed = true;
 
-    public static final void main(String args[])
+    public static final void main(String args[]) throws Exception
     {
         // In order to handle all uncaught exceptions in the EDT
         final Thread.UncaughtExceptionHandler eh = new Thread.UncaughtExceptionHandler()
@@ -53,20 +54,22 @@ public class ActionAfterRemove
             }
         };
 
-        final Frame frame = new Frame();
         final List list = new List();
         Robot robot = null;
 
+        SwingUtilities.invokeAndWait(() -> {
+            final Frame frame = new Frame();
 
-        list.add("will be removed");
-        frame.add(list);
+            list.add("will be removed");
+            frame.add(list);
 
-        frame.setLayout(new FlowLayout());
-        frame.setBounds(100,100,300,300);
-        frame.setVisible(true);
+            frame.setLayout(new FlowLayout());
+            frame.setBounds(100, 100, 300, 300);
+            frame.setVisible(true);
 
-        list.select(0);
-        list.remove(0);
+            list.select(0);
+            list.remove(0);
+        });
 
         try{
             robot = new Robot();
