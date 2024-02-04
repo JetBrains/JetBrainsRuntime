@@ -717,6 +717,35 @@ commonRef_unlock(void)
  * Update JVMTI tags, used from enhanced redefinition
  */
 jvmtiError
+commonRef_deleteTags(JNIEnv *env, jlong id)
+{
+  jvmtiError error;
+
+  error = JVMTI_ERROR_NONE;
+
+  if (id == NULL_OBJECT_ID) {
+    return error;
+  }
+
+  debugMonitorEnter(gdata->refLock); {
+    RefNode *node;
+
+    node = findNodeByID(env, id);
+    if (node != NULL) {
+      error = JVMTI_FUNC_PTR(gdata->jvmti, SetTag)
+              (gdata->jvmti, node->ref, NULL_OBJECT_ID);
+    } else {
+      printf("Node not found\n");
+    }
+  } debugMonitorExit(gdata->refLock);
+
+  return error;
+}
+
+/*
+ * Update JVMTI tags, used from enhanced redefinition
+ */
+jvmtiError
 commonRef_updateTags(JNIEnv *env, jlong id)
 {
     jvmtiError error;
