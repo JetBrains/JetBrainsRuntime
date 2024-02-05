@@ -862,6 +862,7 @@ jdk_awt_wayland = \
     -java/awt/datatransfer/ImageTransfer/ImageTransferTest.java \
     -java/awt/datatransfer/Independence/IndependenceAWTTest.java \
     -java/awt/datatransfer/Independence/IndependenceSwingTest.java \
+    -java/awt/datatransfer/MimeFormatsTest.java \
     -java/awt/datatransfer/SystemFlavorMap/AddFlavorTest.java \
     -java/awt/datatransfer/SystemSelection/SystemSelectionAWTTest.java \
     -java/awt/datatransfer/SystemSelection/SystemSelectionSwingTest.java \
