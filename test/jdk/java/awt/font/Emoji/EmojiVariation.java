@@ -50,7 +50,6 @@ public class EmojiVariation {
 
     // These emoji must be monochrome by default
     private static final String[] SYMBOLS = {
-            "\u0023","\u002a","\u0030","\u0031","\u0032","\u0033","\u0034","\u0035","\u0036","\u0037","\u0038","\u0039",
             "\u00a9","\u00ae","\u203c","\u2049","\u2122","\u2139","\u2194","\u2195","\u2196","\u2197","\u2198","\u2199",
             "\u21a9","\u21aa","\u2328","\u23cf","\u23ed","\u23ee","\u23ef","\u23f1","\u23f2","\u23f8","\u23f9","\u23fa",
             "\u24c2","\u25aa","\u25ab","\u25b6","\u25c0","\u25fb","\u25fc","\u2600","\u2601","\u2602","\u2603","\u2604",
@@ -97,14 +96,14 @@ public class EmojiVariation {
         // Platform-specific tricks
        if (System.getProperty("os.name").toLowerCase().contains("linux")) {
            // Many emoji on Linux don't have monochrome variants
-           Arrays.fill(SYMBOLS, 28, 37, null);
-           Arrays.fill(SYMBOLS, 83, 94, null);
-           Arrays.fill(SYMBOLS, 117, SYMBOLS.length, null);
+           Arrays.fill(SYMBOLS, 16, 25, null);
+           Arrays.fill(SYMBOLS, 71, 82, null);
+           Arrays.fill(SYMBOLS, 105, SYMBOLS.length, null);
         } else if (System.getProperty("os.name").toLowerCase().contains("mac")) {
            // Many emoji on macOS don't have monochrome variants
-           Arrays.fill(SYMBOLS, 28, 36, null);
-           Arrays.fill(SYMBOLS, 81, 94, null);
-           Arrays.fill(SYMBOLS, 127, SYMBOLS.length, null);
+           Arrays.fill(SYMBOLS, 16, 24, null);
+           Arrays.fill(SYMBOLS, 69, 82, null);
+           Arrays.fill(SYMBOLS, 115, SYMBOLS.length, null);
         }
 
         BufferedImage img = new BufferedImage(IMG_WIDTH, IMG_HEIGHT, BufferedImage.TYPE_INT_RGB);
