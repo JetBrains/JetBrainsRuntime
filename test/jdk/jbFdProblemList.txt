@@ -112,11 +112,11 @@
 ############################################################################
 
 java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout
-java/awt/Robot/NonEmptyErrorStream.java JBR-6275 macosx-all
+java/awt/Robot/NonEmptyErrorStream.java JBR-6275,JBR-5510,JBR-6246 macosx-all,linux-5.18.2-arch1-1,generic-all
 
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6360 linux-all,windows-all
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-6485 linux-all
 javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,JBR-6274 windows-x64,macosx-all
 
 jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-2651 generic-all
-jb/sun/awt/macos/InputMethodTest/KeyCodesTest.java JBR-6480 macosx-x64
+jb/sun/awt/macos/InputMethodTest/KeyCodesTest.java JBR-6480 macosx-all
