@@ -75,10 +75,14 @@ abstract class CKey implements Key, Length {
 
     protected final String algorithm;
 
-    protected CKey(String algorithm, NativeHandles handles, int keyLength) {
+    private final boolean isPublic;
+
+    protected CKey(String algorithm, NativeHandles handles, int keyLength,
+            boolean isPublic) {
         this.algorithm = algorithm;
         this.handles = handles;
         this.keyLength = keyLength;
+        this.isPublic = isPublic;
     }
 
     // Native method to cleanup the key handle.
@@ -99,6 +103,18 @@ abstract class CKey implements Key, Length {
 
     public String getAlgorithm() {
         return algorithm;
+    }
+
+    public String toString() {
+        String typeStr;
+        if (handles.hCryptKey != 0) {
+            typeStr = getKeyType(handles.hCryptKey) + ", container=" +
+                    getContainerName(handles.hCryptProv);
+        } else {
+            typeStr = "CNG";
+        }
+        return algorithm + " " + (isPublic ? "PublicKey" : "PrivateKey") +
+                " [size=" + keyLength + " bits, type=" + typeStr + "]";
     }
 
     protected native static String getContainerName(long hCryptProv);
