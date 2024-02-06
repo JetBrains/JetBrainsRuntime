@@ -278,4 +278,8 @@ public final class PlatformEventType extends Type {
     public int getStackTraceOffset() {
         return stackTraceOffset;
     }
+
+    public boolean isMethodSampling() {
+        return isMethodSampling;
+    }
 }
