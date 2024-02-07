@@ -36,7 +36,9 @@ import sun.java2d.wl.WLVolatileSurfaceManager;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.Transparency;
+import java.awt.color.ColorSpace;
 import java.awt.image.ColorModel;
+import java.awt.image.DataBuffer;
 import java.awt.image.DirectColorModel;
 
 /**
@@ -62,11 +64,9 @@ public class WLSMGraphicsConfig extends WLGraphicsConfig
                                boolean translucencyCapable) {
         super(device, width, height, scale);
         this.translucencyCapable = translucencyCapable;
-        this.colorModel
-                = translucencyCapable
-                ? new DirectColorModel(32, 0xff0000, 0xff00, 0xff, 0xff000000)
-                : new DirectColorModel(24, 0xff0000, 0xff00, 0xff);
-        this.surfaceType = translucencyCapable ? SurfaceType.IntArgb : SurfaceType.IntRgb;
+        this.colorModel = colorModelFor(translucencyCapable ? Transparency.TRANSLUCENT : Transparency.OPAQUE);
+        // Note: GNOME Shell definitely expects alpha values to be pre-multiplied
+        this.surfaceType = translucencyCapable ? SurfaceType.IntArgbPre : SurfaceType.IntRgb;
     }
 
     public static WLSMGraphicsConfig getConfig(WLGraphicsDevice device,
@@ -92,12 +92,23 @@ public class WLSMGraphicsConfig extends WLGraphicsConfig
 
     @Override
     public ColorModel getColorModel(int transparency) {
-        return switch (transparency) {
-            case Transparency.OPAQUE -> new DirectColorModel(24, 0xff0000, 0xff00, 0xff);
-            case Transparency.BITMASK ->  new DirectColorModel(25, 0xff0000, 0xff00, 0xff, 0x1000000);
-            case Transparency.TRANSLUCENT -> new DirectColorModel(32, 0xff0000, 0xff00, 0xff, 0xff000000);
-            default -> null;
-        };
+        return colorModelFor(transparency);
+    }
+
+    private static DirectColorModel colorModelFor(int transparency) {
+        switch (transparency) {
+            case Transparency.OPAQUE:
+                return new DirectColorModel(24, 0xff0000, 0xff00, 0xff);
+            case Transparency.BITMASK:
+                return new DirectColorModel(25, 0xff0000, 0xff00, 0xff, 0x1000000);
+            case Transparency.TRANSLUCENT:
+                ColorSpace cs = ColorSpace.getInstance(ColorSpace.CS_sRGB);
+                return new DirectColorModel(cs, 32,
+                        0xff0000, 0xff00, 0xff, 0xff000000,
+                        true, DataBuffer.TYPE_INT);
+        default:
+            return null;
+        }
     }
 
     public SurfaceData createSurfaceData(WLComponentPeer peer) {
