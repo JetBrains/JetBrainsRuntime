@@ -95,6 +95,13 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
 
     @Override
     public Raster getRaster(int x, int y, int w, int h) {
+        // Can do something like the following:
+        // Raster r = getColorModel().createCompatibleWritableRaster(w, h);
+        // copy surface data to this raster
+        // save a reference to this raster
+        // return r;
+        // then in flush() check if raster was modified and take pixels from there
+        // This is obviously suboptimal and shouldn't be used in performance-critical situations.
         throw new UnsupportedOperationException("Not implemented yet");
     }
 
