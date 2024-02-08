@@ -122,6 +122,9 @@ public class FileFontStrike extends PhysicalStrike {
 
     private static boolean useNativesForRotatedText;
 
+    // force text-rendering pipeline to use FreeType
+    private static boolean forceFreeTypeRendering;
+
     private static boolean useDirectWrite;
 
     // DirectWrite rendering options' values can be found in MSDN documentation
@@ -149,6 +152,7 @@ public class FileFontStrike extends PhysicalStrike {
         if (FontUtilities.isWindows && !FontUtilities.useJDKScaler && !GraphicsEnvironment.isHeadless()) {
             String rotatedProperty = System.getProperty("rotated.text.native.rendering");
             useNativesForRotatedText = rotatedProperty == null || Boolean.parseBoolean(rotatedProperty);
+            forceFreeTypeRendering = Boolean.getBoolean("freetype.font.rendering");
             useDirectWrite = Boolean.getBoolean("directwrite.font.rendering") && isDirectWriteAvailable();
             if (useDirectWrite) {
                 String options = System.getProperty("directwrite.font.rendering.options");
@@ -295,8 +299,8 @@ public class FileFontStrike extends PhysicalStrike {
                 pts = Math.abs(matrix[1]);
             }
             intPtSize = (int) pts;
-            useNatives = (rotation == 0 || rotation > 0 && useNativesForRotatedText) && pts >= 3.0 && pts <= 100.0 &&
-                    (getImageWithAdvance || desc.fmHint == INTVAL_FRACTIONALMETRICS_ON) &&
+            useNatives = !forceFreeTypeRendering && (rotation == 0 || rotation > 0 && useNativesForRotatedText) &&
+                    pts >= 3.0 && pts <= 100.0 && (getImageWithAdvance || desc.fmHint == INTVAL_FRACTIONALMETRICS_ON) &&
                     !((TrueTypeFont)fileFont).useEmbeddedBitmapsForSize(intPtSize) &&
                     !((TrueTypeFont)fileFont).hasCOLRTable();
         }
