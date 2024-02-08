@@ -188,24 +188,20 @@ public class WLGraphicsDevice extends GraphicsDevice {
     }
 
     int getResolution() {
-        Rectangle bounds = defaultConfig.getBounds();
-        if (bounds.width == 0 || bounds.height == 0) return 0;
-
-        double diagonalPixel = Math.sqrt(bounds.width * bounds.width + bounds.height * bounds.height);
-        double diagonalMm = Math.sqrt(widthMm * widthMm + heightMm * heightMm);
-        return (int) (diagonalPixel / diagonalMm * MM_IN_INCH);
+        // must match the horizontal resolution to pass tests
+        return getResolutionX(defaultConfig);
     }
 
     int getResolutionX(WLGraphicsConfig config) {
         Rectangle bounds = config.getBounds();
         if (bounds.width == 0) return 0;
-        return (int)((double)bounds.width / widthMm * MM_IN_INCH);
+        return (int)((double)bounds.width  * MM_IN_INCH / widthMm);
     }
 
     int getResolutionY(WLGraphicsConfig config) {
         Rectangle bounds = config.getBounds();
         if (bounds.height == 0) return 0;
-        return (int)((double)bounds.height / heightMm * MM_IN_INCH);
+        return (int)((double)bounds.height * MM_IN_INCH / heightMm);
     }
 
     @Override
