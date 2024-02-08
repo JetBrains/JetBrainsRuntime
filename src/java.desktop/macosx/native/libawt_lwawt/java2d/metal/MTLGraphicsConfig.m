@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,8 @@
 #import "ThreadUtilities.h"
 #import "awt.h"
 
+static pthread_mutex_t destroy_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /**
  * Disposes all memory and resources associated with the given
  * MTLGraphicsConfigInfo (including its native MTLContext data).
@@ -46,10 +48,16 @@ MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo)
         return;
     }
 
-    MTLContext *mtlc = (MTLContext*)mtlinfo->context;
-    if (mtlc != NULL) {
-        [mtlinfo->context release];
-        mtlinfo->context = nil;
+    if (mtlinfo->context != NULL) {
+        // Ensure thread-safe free:
+        pthread_mutex_lock(&destroy_mutex);
+
+        const MTLContext *mtlc = (MTLContext*)mtlinfo->context;
+        if (mtlc != NULL) {
+            mtlinfo->context = nil;
+            [mtlc release];
+        }
+        pthread_mutex_unlock(&destroy_mutex);
     }
     free(mtlinfo);
 }
