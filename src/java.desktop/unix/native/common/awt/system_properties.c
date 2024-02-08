@@ -41,11 +41,30 @@ static DBusConnection *connection = NULL;
 static JNIEnv *env = NULL;
 static DBusApi *dBus = NULL;
 static bool initialized = false;
+extern JavaVM *jvm;
+
+static void printError(const char* fmt, ...) {
+    env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+    char* buf = (char*)malloc(1024);
+
+    if (env && buf) {
+        va_list vargs;
+        va_start(vargs, fmt);
+        vsnprintf(buf, 1024, fmt, vargs);
+        jstring text = JNU_NewStringPlatform(env, buf);
+        free(buf);
+        va_end(vargs);
+
+        jboolean ignoreException;
+        JNU_CallStaticMethodByName(env, &ignoreException, "sun/awt/UNIXToolkit", "printError",
+                                   "(Ljava/lang/String;)V", text);
+    }
+}
 
 static bool dbusCheckError(DBusError *err, const char *msg) {
     bool is_error_set = dBus->dbus_error_is_set(err);
     if (is_error_set) {
-        fprintf(stderr, "DBus error: %s. %s\n", msg, err->message);
+        printError("DBus error: %s. %s\n", msg, err->message);
         dBus->dbus_error_free(err);
     }
     return is_error_set;
@@ -59,7 +78,7 @@ bool SystemProperties_setup(DBusApi *dBus_, JNIEnv *env_) {
 
     dBus->dbus_error_init(&err);
     if ((connection = dBus->dbus_bus_get(DBUS_BUS_SESSION, &err)) == NULL) {
-        fprintf(stderr, "DBus error: connection is Null\n");
+        printError("DBus error: connection is Null\n");
         return false;
     }
     if (dbusCheckError(&err, "connection error")) {
@@ -68,7 +87,7 @@ bool SystemProperties_setup(DBusApi *dBus_, JNIEnv *env_) {
 
     ret = dBus->dbus_bus_request_name(connection, "dbus.JBR.server", DBUS_NAME_FLAG_REPLACE_EXISTING , &err);
     if (ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER && ret != DBUS_REQUEST_NAME_REPLY_IN_QUEUE) {
-        fprintf(stderr, "DBus error: Failed to acquire service name \n");
+        printError("DBus error: Failed to acquire service name \n");
         return false;
     }
     if (dbusCheckError(&err, "error request 'dbus.JBR.server' name on the bus")) {
@@ -136,35 +155,35 @@ static bool sendDBusMessageWithReply(const char *name_function, const char **mes
     dBus->dbus_error_init(&error);
     message = dBus->dbus_message_new_method_call(NULL, DESKTOP_PATH, SETTING_INTERFACE, name_function);
     if (message == NULL) {
-        fprintf(stderr, "DBus error: cannot allocate message\n");
+        printError("DBus error: cannot allocate message\n");
         goto cleanup;
     }
 
     dBus->dbus_message_set_auto_start(message, true);
     if (!dBus->dbus_message_set_destination(message, DESKTOP_DESTINATION)) {
-        fprintf(stderr, "DBus error: cannot set destination\n");
+        printError("DBus error: cannot set destination\n");
         goto cleanup;
     }
 
     dBus->dbus_message_iter_init_append(message, &iter);
     for (int i = 0; i < message_count; i++) {
         if (!dBus->dbus_message_iter_append_basic(&iter, messages_type[i], &messages[i])) {
-            fprintf(stderr, "DBus error: cannot append to message\n");
+            printError("DBus error: cannot append to message\n");
             goto cleanup;
         }
     }
 
     if ((reply = dBus->dbus_connection_send_with_reply_and_block(connection, message, REPLY_TIMEOUT, &error)) == NULL) {
-        fprintf(stderr, "DBus error: cannot get reply to sent message\n");
+        printError("DBus error: cannot get reply to sent message\n");
         goto cleanup;
     }
     if (dBus->dbus_error_is_set(&error)) {
-        fprintf(stderr, "DBus error: cannot send message. %s\n", error.message);
+        printError("DBus error: cannot send message. %s\n", error.message);
         goto cleanup;
     }
 
     if (!dBus->dbus_message_iter_init (reply, &iter)) {
-        fprintf(stderr, "DBus error: cannot process message\n");
+        printError("DBus error: cannot process message\n");
         goto cleanup;
     }
 

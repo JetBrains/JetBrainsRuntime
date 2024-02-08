@@ -59,6 +59,7 @@ import sun.security.action.GetIntegerAction;
 import com.sun.java.swing.plaf.gtk.GTKConstants.TextDirection;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.security.action.GetPropertyAction;
+import sun.util.logging.PlatformLogger;
 
 public abstract class UNIXToolkit extends SunToolkit
 {
@@ -111,6 +112,14 @@ public abstract class UNIXToolkit extends SunToolkit
     private Boolean nativeGTKAvailable;
     private Boolean nativeGTKLoaded;
     private BufferedImage tmpImage = null;
+    private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.UNIXToolkit");
+
+    private static void printError(String str) {
+        if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
+            log.severe(str);
+        }
+    }
+
     private static native void toolkitInit();
 
     protected UNIXToolkit() {
