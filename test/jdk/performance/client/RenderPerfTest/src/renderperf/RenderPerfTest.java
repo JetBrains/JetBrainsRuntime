@@ -1360,14 +1360,14 @@ public final class RenderPerfTest {
             }
             if (VERBOSE) {
                 return String.format("%-25s : %.3f ± %.3f %s [%.3f %s] (p00: %.3f p10: %.3f p25: %.3f p50: %.3f p75: %.3f p90: %.3f p100: %.3f %s) (%d frames)",
-                    name, scores[SCORE_MAIN], scores[SCORE_ERROR], (USE_FPS ? "FPS" : "ms"),
-                    scores[SCORE_OTHER], (USE_FPS ? "ms" : "FPS"),
-                    results[PCT_00], results[PCT_10], results[PCT_25], results[PCT_50], results[PCT_75], results[PCT_90], results[PCT_100],
-                    (USE_FPS ? "FPS" : "ms"),
-                    frames);
+                        name, scores[SCORE_MAIN], scores[SCORE_ERROR], (USE_FPS ? "FPS" : "ms"),
+                        scores[SCORE_OTHER], (USE_FPS ? "ms" : "FPS"),
+                        results[PCT_00], results[PCT_10], results[PCT_25], results[PCT_50], results[PCT_75], results[PCT_90], results[PCT_100],
+                        (USE_FPS ? "FPS" : "ms"),
+                        frames);
             }
             return String.format("%-25s : %.3f ± %.3f %s",
-                     name, scores[SCORE_MAIN], scores[SCORE_ERROR], (USE_FPS ? "FPS" : "ms"));
+                    name, scores[SCORE_MAIN], scores[SCORE_ERROR], (USE_FPS ? "FPS" : "ms"));
         }
 
         protected double fps(long timeNs) {
@@ -1945,7 +1945,7 @@ public final class RenderPerfTest {
         System.out.println("# -v                        : set verbose output");
         System.out.println("#");
         System.out.println("# -e=<mode>                  : set the execution mode (default: " + EXEC_MODE_DEFAULT
-                                + ") among " + EXEC_MODES);
+                + ") among " + EXEC_MODES);
         System.out.println("#");
         System.out.println("# -f                        : use FPS unit (default)");
         System.out.println("# -t                        : use TIME(ms) unit");
@@ -2134,8 +2134,8 @@ public final class RenderPerfTest {
 
         final GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
 
-        for (Font f : ge.getAllFonts()) {
-            fontNames.add(f.getName());
+        for (String name : ge.getAvailableFontFamilyNames()) {
+            fontNames.add(name);
         }
         // Check font:
         if (!fontNames.contains(TEXT_FONT)) {
@@ -2147,8 +2147,9 @@ public final class RenderPerfTest {
             System.out.print("# Available font names: ");
 
             for (String name : fontNames) {
+                System.out.print("'");
                 System.out.print(name);
-                System.out.print(" ");
+                System.out.print("' ");
             }
             System.out.println();
         }
