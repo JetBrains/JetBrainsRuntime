@@ -58,6 +58,7 @@ compiler/ciReplay/TestUnresolvedClasses.java NOBUG generic-all
 
 # :hotspot_gc
 
+gc/stress/TestStressRSetCoarsening.java JBR-6706 windows-x64
 
 #############################################################################
 

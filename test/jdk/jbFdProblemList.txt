@@ -111,11 +111,17 @@
 
 ############################################################################
 
+java/awt/EventQueue/6980209/bug6980209.java JBR-6699 linux-all
+java/awt/Focus/6378278/InputVerifierTest.java JBR-6700 linux-all
+java/awt/Focus/6382144/EndlessLoopTest.java JBR-6701 linux-all
+java/awt/Focus/6981400/Test1.java 8029675,JBR-6702 windows-all,macosx-all,linux-all
 java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout
 java/awt/Robot/NonEmptyErrorStream.java JBR-6275,JBR-5510,JBR-6246 macosx-all,linux-5.18.2-arch1-1,generic-all
 
+javax/swing/JEditorPane/TestBrowserBGColor.java JBR-6697 linux-aarch64
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6360 linux-all,windows-all
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-6485 linux-all
+javax/swing/plaf/nimbus/8041642/bug8041642.java JBR-6698 linux-all
 javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,JBR-6274 windows-x64,macosx-all
 
 jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-2651 generic-all

@@ -3,8 +3,9 @@ java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-5398 linux-all,
 java/awt/Choice/ChoiceStaysOpenedOnTAB.java JBR-6284 linux-all
 java/awt/Debug/X11Trace.java JBR-5442 linux-all
 java/awt/EmbeddedFrame/GraphicsConfigTest/GraphicsConfigTest.java 8305515
-java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java JBR-6058,JBR-6664 windows-all,linux-all
+java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java JBR-6058,JBR-6664 windows-all,linux-all,macosx-all
 java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.java JBR-5531 macosx-all,linux-all
+java/awt/Focus/6981400/Test1.java 8029675,JBR-5510,JBR-6702 windows-all,macosx-all,linux-5.18.2-arch1-1,linux-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117,JBR-6509 linux-all,generic-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenSmall.java JBR-4379 windows-all
 java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java JBR-4379 windows-all
@@ -18,6 +19,7 @@ java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5
 java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390 macosx-all,linux-all
 java/awt/Robot/NonEmptyErrorStream.java JBR-5442,JBR-5510,JBR-6246 JBR-5442,linux-5.18.2-arch1-1,generic-all
 java/awt/Robot/RobotMoveMultiscreen.java JBR-5442 linux-all
+java/awt/Robot/SpuriousMouseEvents/SpuriousMouseEvents.java JBR-6572 linux-all
 java/awt/TextArea/TextAreaEditing/TextAreaEditing.java JBR-6282 linux-all
 java/awt/Toolkit/AWTEventListenerProxyTest/AWTEventListenerProxyTest.java JBR-6065 windows-all
 java/awt/Window/SlowMotion/SlowMotion.java JBR-5442 linux-all
@@ -26,6 +28,7 @@ java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java JBR-5442 linux-all
 javax/swing/SwingWorker/TestDoneBeforeDoInBackground.java JBR-5442 linux-all
 javax/swing/system/6799345/TestShutdown.java JBR-6020 windows-all
+javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java JBR-6572 linux-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-4379 windows-all,linux-all
 
 jb/java/awt/dnd/DnDScalingWithHIDPI/DnDScalingWithHIDPITest.java JBR-5442 linux-all
@@ -116,7 +119,6 @@ javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-6347 linux-all
 javax/swing/JSpinner/TestSelectedTextBackgroundColor.java nobug linux-all
 javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java JBR-5510 linux-all
 javax/swing/JSplitPane/4885629/bug4885629.java 8019935,JBR-5510 macosx-all,linux-all
-javax/swing/JTable/7124218/SelectEditTableCell.java nobug linux-all
 javax/swing/JTextPane/TestJTextPaneBackgroundColor.java nobug linux-all
 javax/swing/JToolTip/TestTooltipBackgroundColor.java nobug linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8253184,JBR-5510 windows-all,linux-all
