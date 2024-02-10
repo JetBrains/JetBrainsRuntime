@@ -116,7 +116,6 @@ javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-6347 linux-all
 javax/swing/JSpinner/TestSelectedTextBackgroundColor.java nobug linux-all
 javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java JBR-5510 linux-all
 javax/swing/JSplitPane/4885629/bug4885629.java 8019935,JBR-5510 macosx-all,linux-all
-javax/swing/JTable/7124218/SelectEditTableCell.java nobug linux-all
 javax/swing/JTextPane/TestJTextPaneBackgroundColor.java nobug linux-all
 javax/swing/JToolTip/TestTooltipBackgroundColor.java nobug linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8253184,JBR-5510 windows-all,linux-all

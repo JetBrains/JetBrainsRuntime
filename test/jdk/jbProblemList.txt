@@ -117,6 +117,7 @@ java/awt/AlphaComposite/WindowAlphaCompositeTest.java JBR-6553 macosx-all
 java/awt/Button/DisabledButtonPress.java JBR-5799 windows-aarch64
 java/awt/Desktop/8064934/bug8064934.java JBR-5764,JBR-5799 windows-all
 java/awt/Debug/DumpOnKey/DumpOnKey.java JBR-5225 windows-all
+java/awt/event/KeyEvent/CorrectTime/CorrectTime.java JBR-6665 linux-all,windows-all
 java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java 8224055,JBR-5906 macosx-all,linux-all
 java/awt/event/MouseEvent/EnterAsGrabbedEvent/EnterAsGrabbedEvent.java JBR-809 windows-all,linux-all
 java/awt/event/MouseEvent/MouseButtonsAndKeyMasksTest/MouseButtonsAndKeyMasksTest.java JBR-6578 windows-all,linux-all
@@ -1040,7 +1041,7 @@ javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java JBR-5210 windows-all
 javax/swing/text/html/StyleSheet/bug4936917.java JBR-899,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id1 JBR-5779 linux-all
 javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-javax/swing/plaf/synth/7158712/bug7158712.java JBR-125 windows-all
+javax/swing/plaf/synth/7158712/bug7158712.java JBR-125 linux-all,windows-all
 javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java 8253184,JBR-5510,JBR-803 windows-all,linux-all,macosx-all
 javax/swing/plaf/synth/SynthScrollbarThumbPainter/SynthScrollbarThumbPainterTest.java 8253184 windows-all
 javax/swing/plaf/synth/Test8043627.java JBR-5767 windows-all
@@ -1295,8 +1296,10 @@ javax/swing/JSpinner/8223788/JSpinnerButtonFocusTest.java JBR-5210 windows-all
 javax/swing/JSpinner/JSpinnerFocusTest.java JBR-5288 windows-all
 javax/swing/JSpinner/SpinnerTest.java JBR-4880 windows-all
 javax/swing/JSpinner/TestJSpinnerFocusLost.java JBR-5210 windows-all
-javax/swing/JTable/7068740/bug7068740.java 8197552 windows-all
+javax/swing/JTable/7068740/bug7068740.java 8197552,JBR-6680 windows-all,linux-all
+javax/swing/JTable/7124218/SelectEditTableCell.java JBR-6679 linux-all,windows-all
 javax/swing/JTable/8236907/LastVisibleRow.java JBR-6066 macosx-aarch64
+javax/swing/JTable/BugCellEditorListener.java JBR-6678 linux-all,windows-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java JBR-6465 windows-all,linux-aarch64
 javax/swing/text/FlowView/LayoutTest.java JBR-4880 windows-all
 javax/swing/text/html/7189299/bug7189299.java JBR-4880 windows-all
