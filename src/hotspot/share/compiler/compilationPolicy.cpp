@@ -863,14 +863,22 @@ bool CompilationPolicy::is_stale(jlong t, jlong timeout, const methodHandle& met
   return false;
 }
 
-// We don't remove old methods from the compile queue even if they have
-// very low activity. See select_task().
-bool CompilationPolicy::is_old(const methodHandle& method) {
+static inline bool is_old_current(const methodHandle& method) {
   int i = method->invocation_count();
   int b = method->backedge_count();
   double k = TieredOldPercentage / 100.0;
 
   return CallPredicate::apply_scaled(method, CompLevel_none, i, b, k) || LoopPredicate::apply_scaled(method, CompLevel_none, i, b, k);
+}
+
+static inline bool is_old_desktop(const methodHandle& method) {
+  return method->invocation_count() > 50000 || method->backedge_count() > 500000;
+}
+
+// We don't remove old methods from the compile queue even if they have
+// very low activity. See select_task().
+bool CompilationPolicy::is_old(const methodHandle& method) {
+  return OptimizeForDesktop ? is_old_desktop(method) : is_old_current(method);
 }
 
 double CompilationPolicy::weight(Method* method) {
@@ -920,10 +928,22 @@ bool CompilationPolicy::is_mature(Method* method) {
   return false;
 }
 
-// If a method is old enough and is still in the interpreter we would want to
-// start profiling without waiting for the compiled method to arrive.
-// We also take the load on compilers into the account.
-bool CompilationPolicy::should_create_mdo(const methodHandle& method, CompLevel cur_level) {
+bool CompilationPolicy::should_create_mdo_desktop(const methodHandle& method, CompLevel cur_level) {
+  if (cur_level != CompLevel_none || force_comp_at_level_simple(method) || CompilationModeFlag::quick_only() || !ProfileInterpreter) {
+    return false;
+  }
+  int i = method->invocation_count();
+  int b = method->backedge_count();
+  double k = Tier0ProfilingStartPercentage / 100.0;
+
+  // If the top level compiler is not keeping up, delay profiling.
+  if (CompileBroker::queue_size(CompLevel_full_optimization) <= Tier0Delay * compiler_count(CompLevel_full_optimization)) {
+    return CallPredicate::apply_scaled(method, CompLevel_full_profile, i, b, k) || LoopPredicate::apply_scaled(method, CompLevel_full_profile, i, b, k);
+  }
+  return false;
+}
+
+bool CompilationPolicy::should_create_mdo_current(const methodHandle& method, CompLevel cur_level) {
   if (cur_level != CompLevel_none || force_comp_at_level_simple(method) || CompilationModeFlag::quick_only() || !ProfileInterpreter) {
     return false;
   }
@@ -939,6 +959,13 @@ bool CompilationPolicy::should_create_mdo(const methodHandle& method, CompLevel 
     return CallPredicate::apply_scaled(method, CompLevel_none, i, b, k) || LoopPredicate::apply_scaled(method, CompLevel_none, i, b, k);
   }
   return false;
+}
+
+// If a method is old enough and is still in the interpreter we would want to
+// start profiling without waiting for the compiled method to arrive.
+// We also take the load on compilers into the account.
+bool CompilationPolicy::should_create_mdo(const methodHandle& method, CompLevel cur_level) {
+  return OptimizeForDesktop ? should_create_mdo_desktop(method, cur_level) : should_create_mdo_current(method, cur_level);
 }
 
 // Inlining control: if we're compiling a profiled method with C1 and the callee
@@ -1104,7 +1131,10 @@ CompLevel CompilationPolicy::common(const methodHandle& method, CompLevel cur_le
 // Determine if a method should be compiled with a normal entry point at a different level.
 CompLevel CompilationPolicy::call_event(const methodHandle& method, CompLevel cur_level, Thread* thread) {
   CompLevel osr_level = MIN2((CompLevel) method->highest_osr_comp_level(), common<LoopPredicate>(method, cur_level, true));
-  CompLevel next_level = common<CallPredicate>(method, cur_level, is_old(method));
+  CompLevel next_level =
+      OptimizeForDesktop
+      ? common<CallPredicate>(method, cur_level, false)
+      : common<CallPredicate>(method, cur_level, is_old(method));
 
   // If OSR method level is greater than the regular method level, the levels should be
   // equalized by raising the regular method level in order to avoid OSRs during each

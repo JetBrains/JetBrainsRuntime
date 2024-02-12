@@ -1255,6 +1255,9 @@ const int ObjectAlignmentInBytes = 8;
           "Select instruction to prefetch ahead of allocation pointer")     \
           constraint(AllocatePrefetchInstrConstraintFunc, AfterMemoryInit)  \
                                                                             \
+  product(bool, OptimizeForDesktop, true,                                   \
+          "Employ a compilation policy optimized for the desktop apps")     \
+                                                                            \
   /* deoptimization */                                                      \
   product(bool, TraceDeoptimization, false, DIAGNOSTIC,                     \
           "Trace deoptimization")                                           \

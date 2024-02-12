@@ -214,6 +214,8 @@ class CompilationPolicy : AllStatic {
   // start profiling without waiting for the compiled method to arrive. This function
   // determines whether we should do that.
   inline static bool should_create_mdo(const methodHandle& method, CompLevel cur_level);
+  static bool should_create_mdo_current(const methodHandle& method, CompLevel cur_level);
+  static bool should_create_mdo_desktop(const methodHandle& method, CompLevel cur_level);
   // Create MDO if necessary.
   static void create_mdo(const methodHandle& mh, JavaThread* THREAD);
   // Is method profiled enough?
