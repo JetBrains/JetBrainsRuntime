@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,7 @@
 @property (readwrite, assign) int topInset;
 @property (readwrite, assign) int leftInset;
 @property (readwrite, atomic) int redrawCount;
+@property (readwrite, atomic) CFTimeInterval lastPresentedTime;
 @property (readwrite, atomic) NSTimeInterval avgBlitFrameTime;
 
 - (id) initWithJavaLayer:(jobject)layer;

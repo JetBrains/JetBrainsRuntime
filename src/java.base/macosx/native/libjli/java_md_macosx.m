@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -288,6 +288,73 @@ JLI_NotifyAWTLoaded()
 
 static int (*main_fptr)(int argc, char **argv) = NULL;
 
+
+void useMainThreadChecker() {
+    BOOL hasEnvMTC = (getenv("JAVA_AWT_MTC") != NULL);
+
+    /* always enable MTC in debug builds */
+#ifndef DEBUG
+    /* check if MTC is enabled on product releases (env variable 'JAVA_AWT_MTC' is set) */
+    if (!hasEnvMTC) {
+        return;
+    }
+#endif
+    /*
+     * See MTC config from https://bryce.co/main-thread-checker-configuration/
+     */
+
+    setenv("MTC_VERBOSE", "0", 1);
+    setenv("MTC_LOG_REPORTS_TO_OS_LOG", "0", 1);
+    setenv("MTC_CALL_BREAKPOINT_SYMBOL", "0", 1);
+
+    // enable MTC_CRASH_ON_REPORT for testing (jtreg...):
+#ifdef DEBUG
+    setenv("MTC_CRASH_ON_REPORT", "1", 1);
+#else
+    /* check if the env variable 'JAVA_AWT_MTC_CRASH' is set */
+    if (getenv("JAVA_AWT_MTC_CRASH") != NULL) {
+        setenv("MTC_CRASH_ON_REPORT", "1", 1);
+    } else {
+        setenv("MTC_CRASH_ON_REPORT", "0", 1);
+    }
+#endif
+
+    /* keep repeated violations */
+    setenv("MTC_MAX_HIT_COUNT", "99999", 1);
+
+    // disables Ignore flags to get more information:
+    setenv("MTC_IGNORE_DUPS_BY_THREAD_PC", "0", 1);
+    setenv("MTC_IGNORE_INLINE_CALLS", "0", 1);
+
+    setenv("MTC_IGNORE_DEALLOC", "1", 1);
+    setenv("MTC_IGNORE_RETAIN_RELEASE", "1", 1);
+
+    if (0) {
+        // Report also violations within apple frameworks (DEV ONLY):
+        setenv("MTC_SUPPRESS_SYSTEM_REPORTS", "0", 1);
+    } else {
+        // disabling internals violations:
+        setenv("MTC_SUPPRESS_SYSTEM_REPORTS", "1", 1);
+    }
+
+    if (0) {
+        // dump selector stats at exit (DEV ONLY):
+        setenv("MTC_PRINT_SELECTOR_STATS", "1", 1);
+    }
+
+    // TODO: get DL_PATH from env vars (no hard-coded path):
+    void *result = dlopen("/Applications/Xcode.app/Contents/Developer/usr/lib/libMainThreadChecker.dylib",
+                          RTLD_NOW | RTLD_GLOBAL | RTLD_NODELETE | RTLD_FIRST
+    );
+    if (hasEnvMTC) {
+        if (result == NULL) {
+            printf("useMainThreadChecker: Failed loading libMainThreadChecker...\n");
+        } else {
+            printf("useMainThreadChecker: Loaded libMainThreadChecker...\n");
+        }
+    }
+}
+
 /*
  * Unwrap the arguments and re-run main()
  */
@@ -334,6 +401,7 @@ static void MacOSXStartup(int argc, char *argv[]) {
     // Thread already started?
     static jboolean started = false;
     if (started) {
+        useMainThreadChecker();
         return;
     }
     started = true;

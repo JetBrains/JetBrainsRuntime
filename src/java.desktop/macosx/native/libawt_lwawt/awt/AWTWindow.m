@@ -2108,7 +2108,6 @@ JNI_COCOA_ENTER(env);
     jobject platformWindow = (*env)->NewWeakGlobalRef(env, obj);
     NSView *contentView = OBJC(contentViewPtr);
     NSRect frameRect = NSMakeRect(x, y, w, h);
-    AWTWindow *owner = [OBJC(ownerPtr) delegate];
 
     BOOL isIgnoreMouseEvents = NO;
     GET_CPLATFORM_WINDOW_CLASS_RETURN(0);
@@ -2121,6 +2120,7 @@ JNI_COCOA_ENTER(env);
         (*env)->DeleteLocalRef(env, awtWindow);
     }
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+        AWTWindow *owner = [OBJC(ownerPtr) delegate];
 
         window = [[AWTWindow alloc] initWithPlatformWindow:platformWindow
                                                ownerWindow:owner
@@ -2534,8 +2534,8 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeSetNSWindowTi
 JNI_COCOA_ENTER(env);
 
     NSWindow *nsWindow = OBJC(windowPtr);
-    [nsWindow performSelectorOnMainThread:@selector(setTitle:)
-                              withObject:JavaStringToNSString(env, jtitle)
+    [ThreadUtilities performOnMainThread:@selector(setTitle:) on:nsWindow
+                             withObject:JavaStringToNSString(env, jtitle)
                            waitUntilDone:NO];
 
 JNI_COCOA_EXIT(env);

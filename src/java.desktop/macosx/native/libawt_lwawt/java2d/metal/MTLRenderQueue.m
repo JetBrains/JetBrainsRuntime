@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,11 @@
 #include "MTLTextRenderer.h"
 #import "ThreadUtilities.h"
 
+#define CHECK_MAIN_THREAD_LATENCY   1
+
+// ~ 2ms is high for main thread:
+#define LATENCY_HIGH_THRESHOLD  2.0
+
 /**
  * References to the "current" context and destination surface.
  */
@@ -47,6 +52,22 @@ jint mtlPreviousOp = MTL_OP_INIT;
 
 extern BOOL isDisplaySyncEnabled();
 extern void MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo);
+
+void checkMainThreadLatency() {
+    const CFTimeInterval start = CACurrentMediaTime();
+
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+        const CFTimeInterval now = CACurrentMediaTime();
+        const CFTimeInterval elapsedMs = 1000.0 * (now - start);
+
+        if ((elapsedMs != 0.0) && (elapsedMs >= LATENCY_HIGH_THRESHOLD)) {
+            J2dRlsTraceLn3(J2D_TRACE_VERBOSE, "[%.3lf] checkMainThreadLatency: MainThread latency: %.3lf ms (> %.3lf ms)",
+                           now, elapsedMs, LATENCY_HIGH_THRESHOLD);
+            return;
+        }
+    }];
+}
+
 
 void MTLRenderQueue_CheckPreviousOp(jint op) {
 
@@ -651,10 +672,24 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_PREVIOUS_OP(MTL_OP_OTHER);
                     jlong pConfigInfo = NEXT_LONG(b);
                     CONTINUE_IF_NULL(mtlc);
+
+                    J2dRlsTraceLn1(J2D_TRACE_INFO, "RQ: DISPOSE_CONFIG: start MTLContext[%p] -----", mtlc);
+
+                    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+                        [mtlc haltRedraw];
+                    }];
                     [mtlc commitCommandBuffer:YES display:NO];
+
+                    // free resources:
+                    if (mtlPreviousOp == MTL_OP_MASK_OP) {
+                        MTLVertexCache_DisableMaskCache(mtlc);
+                    }
                     [mtlc.glyphCacheAA free];
                     [mtlc.glyphCacheLCD free];
+
                     MTLGC_DestroyMTLGraphicsConfig(pConfigInfo);
+
+                    J2dRlsTraceLn1(J2D_TRACE_INFO, "RQ: DISPOSE_CONFIG: end   MTLContext[%p] -----", mtlc);
                     mtlc = NULL;
                     break;
                 }
@@ -880,7 +915,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                         "MTLRenderQueue_flushBuffer: invalid opcode=%d", opcode);
                     return;
             }
-        }
+        } // buffer processing
 
         if (mtlc != NULL) {
             if (mtlPreviousOp == MTL_OP_MASK_OP) {
@@ -894,6 +929,10 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             }
         }
         RESET_PREVIOUS_OP();
+
+#if CHECK_MAIN_THREAD_LATENCY == 1
+        checkMainThreadLatency();
+#endif
     }
 }
 
