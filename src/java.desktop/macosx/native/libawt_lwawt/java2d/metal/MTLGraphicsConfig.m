@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,12 +46,22 @@ MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo)
         return;
     }
 
-    MTLContext *mtlc = (MTLContext*)mtlinfo->context;
-    if (mtlc != NULL) {
-        [mtlinfo->context release];
-        mtlinfo->context = nil;
-    }
-    free(mtlinfo);
+JNI_COCOA_ENTER();
+
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
+        const MTLContext *mtlc = (MTLContext*)mtlinfo->context;
+
+        if (mtlc != NULL) {
+            J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLGC_DestroyMTLGraphicsConfig: freeing MTLContext[%p]", mtlc);
+            mtlinfo->context = NULL;
+            [mtlc release];
+            J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLGC_DestroyMTLGraphicsConfig: released MTLContext[%p]", mtlc);
+            mtlc = nil;
+        }
+        free(mtlinfo);
+    }];
+
+JNI_COCOA_EXIT();
 }
 
 
@@ -78,11 +88,15 @@ JNI_COCOA_ENTER(env);
 
         mtlc = [[MTLContext alloc] initWithDevice:displayID
                                        shadersLib:path];
-        if (mtlc != 0L) {
+
+        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLGC_getMTLConfigInfo: created MTLContext[%p]", mtlc);
+
+        if (mtlc != nil) {
             // create the MTLGraphicsConfigInfo record for this context
             mtlinfo = (MTLGraphicsConfigInfo *)malloc(sizeof(MTLGraphicsConfigInfo));
             if (mtlinfo != NULL) {
                 memset(mtlinfo, 0, sizeof(MTLGraphicsConfigInfo));
+                // retain mtlc reference:
                 mtlinfo->context = mtlc;
             } else {
                 J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGraphicsConfig_getMTLConfigInfo: could not allocate memory for mtlinfo");

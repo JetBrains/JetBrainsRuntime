@@ -98,7 +98,7 @@ static jboolean MTLSurfaceData_initTexture(BMTLSDOps *bmtlsdo, jboolean isOpaque
         bmtlsdo->height = height;
         bmtlsdo->drawableType = sfType;
 
-        J2dTraceLn6(J2D_TRACE_VERBOSE, "MTLSurfaceData_initTexture: w=%d h=%d bp=%p [tex=%p] opaque=%d sfType=%d",
+        J2dRlsTraceLn6(J2D_TRACE_VERBOSE, "MTLSurfaceData_initTexture: w=%d h=%d bp=%p [tex=%p] opaque=%d sfType=%d",
                     width, height, bmtlsdo, bmtlsdo->pTexture, isOpaque, sfType);
         return JNI_TRUE;
     }
@@ -182,7 +182,8 @@ MTLSD_SetNativeDimensions(JNIEnv *env, BMTLSDOps *mtlsdo,
 void
 MTLSD_Delete(JNIEnv *env, BMTLSDOps *bmtlsdo)
 {
-    J2dTraceLn3(J2D_TRACE_VERBOSE, "MTLSD_Delete: type=%d %p [tex=%p]", bmtlsdo->drawableType, bmtlsdo, bmtlsdo->pTexture);
+    J2dRlsTraceLn3(J2D_TRACE_VERBOSE, "MTLSD_Delete: type=%d %p [tex=%p]", bmtlsdo->drawableType, bmtlsdo, bmtlsdo->pTexture);
+
     if (bmtlsdo->drawableType == MTLSD_WINDOW) {
         bmtlsdo->drawableType = MTLSD_UNDEFINED;
     } else if (

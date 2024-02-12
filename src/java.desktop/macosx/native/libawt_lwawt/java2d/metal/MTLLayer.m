@@ -286,6 +286,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     AWT_ASSERT_APPKIT_THREAD;
     if (isDisplaySyncEnabled()) {
         if (self.redrawCount == 0) {
+            J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "MTLLayer_startRedrawIfNeeded: layer = %p redrawCount = %d", self, self.redrawCount);
             [self.ctx startRedraw:self];
         }
     }
@@ -441,6 +442,7 @@ Java_sun_java2d_metal_MTLLayer_nativeSetScale
     // in one call on appkit, otherwise we'll get window's contents blinking,
     // during screen-2-screen moving.
     [ThreadUtilities performOnMainThreadWaiting:[NSThread isMainThread] block:^(){
+        J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "MTLLayer_nativeSetScale: layer = %p scale = %.3lf", layer, scale);
         layer.contentsScale = scale;
     }];
     JNI_COCOA_EXIT(env);
@@ -450,20 +452,30 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_metal_MTLLayer_nativeSetInsets
 (JNIEnv *env, jclass cls, jlong layerPtr, jint top, jint left)
 {
+    /* JNI_COCOA_ENTER(env); */
     MTLLayer *layer = jlong_to_ptr(layerPtr);
-    layer.topInset = top;
-    layer.leftInset = left;
+/*
+    [ThreadUtilities performOnMainThreadWaiting:[NSThread isMainThread] block:^(){
+*/
+        J2dRlsTraceLn3(J2D_TRACE_VERBOSE, "MTLLayer_nativeSetInsets: layer = %p top = %d left = %d", layer, top, left);
+        layer.topInset = top;
+        layer.leftInset = left;
+/*    }];
+    JNI_COCOA_EXIT(env); */
 }
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_metal_MTLLayer_blitTexture
 (JNIEnv *env, jclass cls, jlong layerPtr)
 {
-    J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_blitTexture");
+    J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLLayer_blitTexture: layer = %p", layer);
+
+    JNI_COCOA_ENTER(env);
+
     MTLLayer *layer = jlong_to_ptr(layerPtr);
     MTLContext * ctx = layer.ctx;
     if (layer == nil || ctx == nil) {
-        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_blit : Layer or Context is null");
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_blitTexture : Layer or Context is null");
         if (layer != nil) {
             [layer stopRedraw:YES];
         }
@@ -471,6 +483,8 @@ Java_sun_java2d_metal_MTLLayer_blitTexture
     }
 
     [layer blitTexture];
+
+    JNI_COCOA_EXIT(env);
 }
 
 JNIEXPORT void JNICALL
@@ -479,9 +493,11 @@ Java_sun_java2d_metal_MTLLayer_nativeSetOpaque
 {
     JNI_COCOA_ENTER(env);
 
-    MTLLayer *mtlLayer = OBJC(layerPtr);
+    MTLLayer *layer = jlong_to_ptr(layerPtr);
+
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
-        [mtlLayer setOpaque:(opaque == JNI_TRUE)];
+        J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "MTLLayer_nativeSetOpaque: layer = %p opaque = %d", layer, opaque);
+        [layer setOpaque:(opaque == JNI_TRUE)];
     }];
 
     JNI_COCOA_EXIT(env);

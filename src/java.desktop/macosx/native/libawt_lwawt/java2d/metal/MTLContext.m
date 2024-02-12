@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,6 +47,14 @@
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern BOOL isDisplaySyncEnabled();
 extern BOOL MTLLayer_isExtraRedrawEnabled();
+
+#define CHECK_CVLINK(op, cmd)   \
+{                               \
+CVReturn ret = (CVReturn)(cmd); \
+if (ret != kCVReturnSuccess) {  \
+  J2dTraceImpl(J2D_TRACE_ERROR, JNI_TRUE, "CVDisplayLink[%d] Error: %d", op, ret); \
+}                               \
+}
 
 static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
         {{-1.0, 1.0}, {0.0, 0.0}},
@@ -187,8 +195,9 @@ extern void initSamplers(id<MTLDevice> device);
         if (isDisplaySyncEnabled()) {
             _layers = [[NSMutableSet alloc] init];
             _displayLinkCount = 0;
-            CVDisplayLinkCreateWithCGDisplay(displayID, &_displayLink);
-            CVDisplayLinkSetOutputCallback(_displayLink, &mtlDisplayLinkCallback, (__bridge void *) self);
+
+            CHECK_CVLINK("CreateWithCGDisplay", CVDisplayLinkCreateWithCGDisplay(displayID, &_displayLink));
+            CHECK_CVLINK("SetOutputCallback", CVDisplayLinkSetOutputCallback(_displayLink, &mtlDisplayLinkCallback, (__bridge void *) self));
         }
         _glyphCacheLCD = [[MTLGlyphCache alloc] initWithContext:self];
         _glyphCacheAA = [[MTLGlyphCache alloc] initWithContext:self];
@@ -257,8 +266,8 @@ extern void initSamplers(id<MTLDevice> device);
 
     if (_displayLink != NULL) {
         if (CVDisplayLinkIsRunning(_displayLink)) {
-            CVDisplayLinkStop(_displayLink);
-            J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStop: ctx=%p", self);
+            CHECK_CVLINK("Stop", CVDisplayLinkStop(_displayLink));
+            J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStop: ctx=%p", self);
         }
         CVDisplayLinkRelease(_displayLink);
         _displayLink = NULL;
@@ -574,8 +583,8 @@ extern void initSamplers(id<MTLDevice> device);
             [_layers removeAllObjects];
         }
         if (CVDisplayLinkIsRunning(_displayLink)) {
-            CVDisplayLinkStop(_displayLink);
-            J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStop: ctx=%p", self);
+            CHECK_CVLINK("Stop", CVDisplayLinkStop(_displayLink));
+            J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStop: ctx=%p", self);
         }
     }
 }
@@ -601,8 +610,8 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
         [layer setNeedsDisplay];
     }
     if (_displayLink != NULL && !CVDisplayLinkIsRunning(_displayLink)) {
-        CVDisplayLinkStart(_displayLink);
-        J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStart: ctx=%p", self);
+        CHECK_CVLINK("Start", CVDisplayLinkStart(_displayLink));
+        J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStart: ctx=%p", self);
     }
 }
 
@@ -616,10 +625,23 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
         }
         if (_layers.count == 0 && _displayLinkCount == 0) {
             if (CVDisplayLinkIsRunning(_displayLink)) {
-                CVDisplayLinkStop(_displayLink);
-                J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStop: ctx=%p", self);
+                CHECK_CVLINK("Stop", CVDisplayLinkStop(_displayLink));
+                J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStop: ctx=%p", self);
             }
         }
+    }
+}
+
+- (void)haltRedraw {
+    AWT_ASSERT_APPKIT_THREAD;
+    J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_haltRedraw: ctx=%p", self);
+    if (_displayLink != nil) {
+        if (CVDisplayLinkIsRunning(_displayLink)) {
+            CHECK_CVLINK("Stop", CVDisplayLinkStop(_displayLink));
+            J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStop: ctx=%p", self);
+        }
+        CVDisplayLinkRelease(_displayLink);
+        _displayLink = NULL;
     }
 }
 

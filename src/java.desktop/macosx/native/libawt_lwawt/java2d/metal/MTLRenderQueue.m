@@ -651,10 +651,22 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_PREVIOUS_OP(MTL_OP_OTHER);
                     jlong pConfigInfo = NEXT_LONG(b);
                     CONTINUE_IF_NULL(mtlc);
+
+                    J2dRlsTraceLn1(J2D_TRACE_INFO, "RQ: DISPOSE_CONFIG: start MTLContext[%p] -----", mtlc);
+
+                    if (0) [mtlc performSelectorOnMainThread:@selector(haltRedraw) withObject:nil waitUntilDone:YES];
+                    [mtlc commitCommandBuffer:YES display:NO];
+                    // free resources:
+                    if (mtlPreviousOp == MTL_OP_MASK_OP) {
+                        MTLVertexCache_DisableMaskCache(mtlc);
+                    }
                     [mtlc.glyphCacheAA free];
                     [mtlc.glyphCacheLCD free];
                     [mtlc.encoderManager endEncoder];
                     MTLGC_DestroyMTLGraphicsConfig(pConfigInfo);
+
+                    J2dRlsTraceLn1(J2D_TRACE_INFO, "RQ: DISPOSE_CONFIG: end   MTLContext[%p] -----", mtlc);
+
                     mtlc = NULL;
                     break;
                 }
