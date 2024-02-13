@@ -67,6 +67,7 @@ import sun.font.FontManagerFactory;
 import sun.font.FontUtilities;
 import sun.font.GlyphLayout;
 import sun.font.StandardGlyphVector;
+import sun.font.SunLayoutEngine;
 
 import static sun.font.EAttribute.EBACKGROUND;
 import static sun.font.EAttribute.EBIDI_EMBEDDING;
@@ -2587,6 +2588,15 @@ public class Font implements java.io.Serializable
 
     private static boolean isKerning(Font font) {
         return font.values != null && (font.values.getKerning() != 0);
+    }
+
+    /**
+     * Returns a list of OpenType's features supported by current Font.
+     * Implementation of such logic goes to HarfBuzz library.
+     * @return list of OpenType's features concatenated to String
+     */
+    private static Set<String> getAvailableFeatures(Font font) {
+        return SunLayoutEngine.getAvailableFeatures(FontUtilities.getFont2D(font));
     }
 
     /**
