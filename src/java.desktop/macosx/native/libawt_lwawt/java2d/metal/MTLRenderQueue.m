@@ -655,9 +655,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_PREVIOUS_OP(MTL_OP_OTHER);
                     jlong pConfigInfo = NEXT_LONG(b);
                     CONTINUE_IF_NULL(mtlc);
+                    [mtlc commitCommandBuffer:YES display:NO];
                     MTLTR_FreeGlyphCacheAA();
                     MTLTR_FreeGlyphCacheLCD();
-                    [mtlc.encoderManager endEncoder];
                     MTLGC_DestroyMTLGraphicsConfig(pConfigInfo);
                     mtlc = NULL;
                     break;
