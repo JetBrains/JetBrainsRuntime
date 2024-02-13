@@ -6,25 +6,42 @@
 # NB: this also means there may be no security-related fixes there, need to
 # move the version to the next manually.
 
-ARG ARCH
+ARG ARCH_FROM
+ARG ARCH=i386
 ARG OS_NAME
 ARG OS_VERSION
 
 # jetbrains/runtime:jbrTest_${os_name}${os_version}-$arch
-FROM ${ARCH}/${OS_NAME}:${OS_VERSION}
+FROM ${ARCH_FROM}/${OS_NAME}:${OS_VERSION}
 
-# Install the necessary build tools
-RUN apt-get update -y; \
+ARG ARCH
+RUN \
+    if [ "$ARCH" = "i386" ]; then \
+      echo Installing packages required for i386 only; \
+      dpkg --add-architecture i386; \
+      apt-get update -y; \
+      apt-get install -y \
+          libc6:i386 \
+          libncurses5 libncurses5:i386 \
+          libstdc++6:i386 \
+          zlib1g:i386; \
+    else \
+      echo Skipping the step installing packages specific for the platform; \
+    fi; \
+    apt-get update -y; \
     apt-get install -y \
-        fontconfig \
-        libgtk2.0-0 \
-        libxext6 \
-        libxi6 \
-        libxrender-dev \
-        libxtst6 \
-        xvfb \
-        x11-apps;\
-   apt-get clean all
+        libgtk2.0-0:${ARCH} \
+        libxext6:${ARCH} \
+        libxi6:${ARCH} \
+        libxrender-dev:${ARCH} \
+        libxtst6:${ARCH} \
+        xvfb:${ARCH} \
+        libnss3:${ARCH} \
+        libatk-bridge2.0-0:${ARCH} \
+        libgbm1:${ARCH} \
+        libxkbcommon0:${ARCH} \
+        libasound2:${ARCH};\
+    apt-get clean all
 
 ENV DISPLAY=:0
 
@@ -32,3 +49,14 @@ ADD run_xvfb.sh /run_xvfb.sh
 RUN chmod a+x /run_xvfb.sh
 CMD /run_xvfb.sh
 
+#        fontconfig:i386 \
+#        x11-apps:i386; \
+
+
+#    apt-get install -y \
+#        libgtk2.0-0${LIB_ARCH_POSTFIX}\
+#        libxext6${LIB_ARCH_POSTFIX} \
+#        libxi6${LIB_ARCH_POSTFIX} \
+#        libxrender-dev${LIB_ARCH_POSTFIX} \
+#        libxtst6${LIB_ARCH_POSTFIX} \
+#        xvfb${LIB_ARCH_POSTFIX}; \
