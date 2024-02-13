@@ -48,12 +48,14 @@ import java.security.AccessController;
 import java.security.PrivilegedExceptionAction;
 import java.text.AttributedCharacterIterator.Attribute;
 import java.text.CharacterIterator;
+import java.util.ArrayList;
 import java.util.EventListener;
 import java.util.Hashtable;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.List;
 
 import sun.awt.ComponentFactory;
 import sun.font.AttributeMap;
@@ -71,6 +73,7 @@ import sun.font.FontManagerFactory;
 import sun.font.FontUtilities;
 import sun.font.GlyphLayout;
 import sun.font.StandardGlyphVector;
+import sun.font.SunLayoutEngine;
 
 import static sun.font.EAttribute.EBACKGROUND;
 import static sun.font.EAttribute.EBIDI_EMBEDDING;
@@ -2730,6 +2733,15 @@ public class Font implements java.io.Serializable
 
     private static boolean isKerning(Font font) {
         return font.values != null && (font.values.getKerning() != 0);
+    }
+
+    /**
+     * Returns a list of OpenType's features supported by current Font.
+     * Implementation of such logic goes to HarfBuzz library.
+     * @return list of OpenType's features concatenated to String
+     */
+    private static List<String> getAvailableFeatures(Font font) {
+        return new ArrayList<>(SunLayoutEngine.getAvailableFeatures(FontUtilities.getFont2D(font)));
     }
 
     /**

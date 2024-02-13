@@ -28,6 +28,7 @@ package com.jetbrains;
 import java.awt.*;
 import java.io.Serial;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
@@ -61,7 +62,7 @@ public interface FontExtensions {
         SS16, SS17, SS18, SS19, SS20, SSTY, STCH, SUBS, SUPS, SWSH, TITL, TJMO, TNAM, TNUM, TRAD, TWID, UNIC, VALT, VATU,
         VCHW, VERT, VHAL, VJMO, VKNA, VKRN, VPAL, VRT2, VRTR, ZERO;
 
-        String getName() {
+        public String getName() {
             return toString().toLowerCase();
         }
 
@@ -101,6 +102,8 @@ public interface FontExtensions {
      * @param features   set of OpenType's features wrapped inside {@link Features}
      */
     Font deriveFontWithFeatures(Font font, Features features);
+
+    List<String> getAvailableFeatures(Font font);
 
     Dimension getSubpixelResolution();
 }

@@ -39,6 +39,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.List;
 
 import static com.jetbrains.desktop.FontExtensions.featuresToString;
 import static com.jetbrains.desktop.FontExtensions.getFeatures;
@@ -209,6 +210,14 @@ public class FontExtensionsTest {
     @JBRTest
     private static Boolean testFeaturesEmpty() {
         return textDrawingEquals(BASE_FONT, fontWithFeatures(), TEST_STRING);
+    }
+
+    @JBRTest
+    private static Boolean getAvailableFeatures() {
+        List<String> features = JBR.getFontExtensions().getAvailableFeatures(BASE_FONT);
+        List<FontExtensions.FeatureTag> expected =
+                List.of(FontExtensions.FeatureTag.SS01, FontExtensions.FeatureTag.CV03, FontExtensions.FeatureTag.ZERO);
+        return features.containsAll(expected.stream().map(FontExtensions.FeatureTag::getName).toList());
     }
 
     public static void main(final String[] args) {

@@ -41,6 +41,9 @@ import java.lang.ref.SoftReference;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.WeakHashMap;
 
@@ -159,7 +162,7 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
     private static final WeakHashMap<Font2D, FaceRef> facePtr =
             new WeakHashMap<>();
 
-    private long getFacePtr(Font2D font2D) {
+    private static long getFacePtr(Font2D font2D) {
         FaceRef ref;
         synchronized (facePtr) {
             ref = facePtr.computeIfAbsent(font2D, FaceRef::new);
@@ -175,6 +178,26 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
                System.getProperty("sun.font.layout.ffm", "true"));
         useFFM = "true".equals(prop);
 
+    }
+
+    public static Set<String> getAvailableFeatures(Font2D font) {
+        Set<String> res = new HashSet<>();
+        long pFace = getFacePtr(font);
+        if (pFace == 0) {
+            return res;
+        }
+
+        String features = getFeatures(pFace);
+        // Inconsistent result. Amount of chars should be devidible on 4
+        if (features.length() % 4 != 0) {
+            return res;
+        }
+
+        for (int i = 0; i < features.length() / 4; i++) {
+            res.add(features.substring(i * 4, (i + 1) * 4));
+        }
+
+        return res;
     }
 
     public void layout(FontStrikeDesc desc, float[] mat, float ptSize, int slot, int slotShift,
@@ -243,4 +266,6 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
             disposeFace(facePtr);
         }
     }
+
+    private static native String getFeatures(long pFace);
 }
