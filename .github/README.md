@@ -22,17 +22,18 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
 
 ## Releases based on JDK 21
 
-| IDE Version | Latest JBR                                                                                             | Date Released |
-|-------------|--------------------------------------------------------------------------------------------------------|---------------|
-| 2024.1      | [21.0.2-b346.3](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.2b346.3)   | 30-Jan-2024   |
+| IDE Version | Latest JBR                                                                                              | Date Released |
+|-------------|---------------------------------------------------------------------------------------------------------|---------------|
+| 2024.1      | [17.0.10-b1186.1](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.10b1186.1)| 12-Feb-2024   |
+|             | [21.0.2-b346.3](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.2b346.3)    | 30-Jan-2024   |
 
 ## Releases based on JDK 17
 
 | IDE Version | Latest JBR                                                                                             | Date Released |
 |-------------|--------------------------------------------------------------------------------------------------------|---------------|
-| 2023.3      | [17.0.9-b1087.11](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.9b1087.11) | 05-Jan-2023   |
-| 2023.2      | [17.0.9-b1000.46](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.9b1000.46) | 01-Nov-2023   |
-| 2023.1      | [17.0.7-b829.16](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.7b829.16) | 06-Jun-2023   |
+| 2023.3      | [17.0.10-b1087.17](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.10b1087.17) | 23-Jan-2023|
+| 2023.2      | [17.0.10-b1000.48](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.10b1000.48) | 12-Feb-2024|
+| 2023.1      | [17.0.10-b829.16](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.10b829.26) | 12-Feb-2024  |
 | 2022.3      | [17.0.6-b653.34](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.6b653.34) | 28-Feb-2023   |
 | 2022.2      | [17.0.6-b469.82](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.6b469.82) | 06-Mar-2023   |
 
