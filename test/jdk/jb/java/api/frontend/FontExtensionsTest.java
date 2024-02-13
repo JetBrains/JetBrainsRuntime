@@ -38,7 +38,9 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static com.jetbrains.desktop.FontExtensions.featuresToString;
 import static com.jetbrains.desktop.FontExtensions.getFeatures;
@@ -211,9 +213,21 @@ public class FontExtensionsTest {
         return textDrawingEquals(BASE_FONT, fontWithFeatures(), TEST_STRING);
     }
 
+    @JBRTest
+    private static Boolean getAvailableFeatures1() {
+        Set<String> features = JBR.getFontOpenTypeFeatures().getAvailableFeatures(BASE_FONT);
+        Set<FontExtensions.FeatureTag> expected =
+                Set.of(FontExtensions.FeatureTag.SS01, FontExtensions.FeatureTag.CV03, FontExtensions.FeatureTag.ZERO);
+        return features.containsAll(expected.stream().map(FontExtensions.FeatureTag::getName).toList());
+    }
+
     public static void main(final String[] args) {
         if (!JBR.isFontExtensionsSupported()) {
             throw new RuntimeException("JBR FontExtension API is not available");
+        }
+
+        if (!JBR.isFontOpenTypeFeaturesSupported()) {
+            throw new RuntimeException("JBR FontOpenTypeFeatures API is not available");
         }
 
         String error = "";
