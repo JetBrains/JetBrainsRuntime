@@ -38,9 +38,12 @@ import sun.java2d.DisposerRecord;
 
 import java.awt.geom.Point2D;
 import java.lang.foreign.MemorySegment;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.WeakHashMap;
+import java.util.stream.Collectors;
 
 public final class SunLayoutEngine {
 
@@ -67,6 +70,12 @@ public final class SunLayoutEngine {
         String prop = System.getProperty("sun.font.layout.ffm", "true");
         useFFM = "true".equals(prop);
 
+    }
+
+    public static Set<String> getAvailableFeatures(Font2D font) {
+        long pFace = getFacePtr(font);
+        return (pFace != 0) ? Arrays.stream(getFeatures(pFace)).filter(elem -> elem != null).collect(Collectors.toSet())
+                : Set.of();
     }
 
     public static void layout(Font2D font, int script, FontStrikeDesc desc, float[] mat, float ptSize, int slot, int slotShift,
@@ -134,4 +143,6 @@ public final class SunLayoutEngine {
             disposeFace(facePtr);
         }
     }
+
+    private static native String[] getFeatures(long pFace);
 }
