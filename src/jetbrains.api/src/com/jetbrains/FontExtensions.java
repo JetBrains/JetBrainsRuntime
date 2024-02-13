@@ -61,7 +61,7 @@ public interface FontExtensions {
         SS16, SS17, SS18, SS19, SS20, SSTY, STCH, SUBS, SUPS, SWSH, TITL, TJMO, TNAM, TNUM, TRAD, TWID, UNIC, VALT, VATU,
         VCHW, VERT, VHAL, VJMO, VKNA, VKRN, VPAL, VRT2, VRTR, ZERO;
 
-        String getName() {
+        public String getName() {
             return toString().toLowerCase();
         }
 
