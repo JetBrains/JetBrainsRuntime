@@ -37,9 +37,12 @@ import sun.java2d.DisposerRecord;
 
 import java.awt.geom.Point2D;
 import java.lang.ref.SoftReference;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.WeakHashMap;
+import java.util.stream.Collectors;
 
 /*
  * different ways to do this
@@ -90,7 +93,7 @@ import java.util.WeakHashMap;
  * character.
  *
  * I'd expect that the majority of scripts use the default mapper for
- * a particular font.  Loading the hastable with 40 or so keys 30+ of
+ * a particular font.  Loading the hashtable with 40 or so keys 30+ of
  * which all map to the same object is unfortunate.  It might be worth
  * instead having a per-font list of 'scripts with non-default
  * engines', e.g. the factory has a hashtable mapping fonts to 'script
@@ -156,12 +159,18 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
     private static final WeakHashMap<Font2D, FaceRef> facePtr =
             new WeakHashMap<>();
 
-    private long getFacePtr(Font2D font2D) {
+    private static long getFacePtr(Font2D font2D) {
         FaceRef ref;
         synchronized (facePtr) {
             ref = facePtr.computeIfAbsent(font2D, FaceRef::new);
         }
         return ref.getNativePtr();
+    }
+
+    public static Set<String> getAvailableFeatures(Font2D font) {
+        long pFace = getFacePtr(font);
+        return (pFace != 0) ? Arrays.stream(getFeatures(pFace)).filter(elem -> elem != null).collect(Collectors.toSet())
+                : Set.of();
     }
 
     public void layout(FontStrikeDesc desc, float[] mat, float ptSize, int gmask,
@@ -216,4 +225,6 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
             disposeFace(facePtr);
         }
     }
+
+    private static native String[] getFeatures(long pFace);
 }
