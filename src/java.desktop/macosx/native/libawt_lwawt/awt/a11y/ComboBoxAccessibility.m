@@ -86,7 +86,11 @@ static jmethodID sjm_getAccessibleName = NULL;
 
 - (NSArray *)accessibilitySelectedChildren
 {
-    return [NSArray arrayWithObject:[self accessibleSelection]];
+    CommonComponentAccessibility *accessibleSelection = [self accessibleSelection];
+    if (accessibleSelection == nil) {
+        return nil;
+    }
+    return [NSArray arrayWithObject:accessibleSelection];
 }
 
 - (NSAccessibilityRole)accessibilityRole
