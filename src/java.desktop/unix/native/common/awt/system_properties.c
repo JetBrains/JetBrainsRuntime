@@ -30,9 +30,11 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define UNKNOWN_RESULT -1
 #define SETTING_INTERFACE "org.freedesktop.portal.Settings"
+#define SETTING_INTERFACE_METHOD "Read"
 #define DESKTOP_DESTINATION "org.freedesktop.portal.Desktop"
 #define DESKTOP_PATH "/org/freedesktop/portal/desktop"
 #define REPLY_TIMEOUT 150
@@ -41,9 +43,14 @@ static DBusConnection *connection = NULL;
 static JNIEnv *env = NULL;
 static DBusApi *dBus = NULL;
 static bool initialized = false;
+static bool logEnabled = true;
 extern JavaVM *jvm;
 
 static void printError(const char* fmt, ...) {
+    if (!logEnabled) {
+        return;
+    }
+
     env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
     char* buf = (char*)malloc(1024);
 
@@ -140,8 +147,7 @@ static bool getBasicIter(void *val, DBusMessageIter *iter, int demand_type) {
     }
 }
 
-static bool sendDBusMessageWithReply(const char *name_function, const char **messages,
-                                       int *messages_type, int message_count, void *val, int demand_type) {
+static bool sendDBusMessageWithReply(const char *messages[], int message_count, void *val, int demand_type) {
     DBusError error;
     DBusMessage *message = NULL;
     DBusMessage *reply = NULL;
@@ -153,7 +159,7 @@ static bool sendDBusMessageWithReply(const char *name_function, const char **mes
     }
 
     dBus->dbus_error_init(&error);
-    message = dBus->dbus_message_new_method_call(NULL, DESKTOP_PATH, SETTING_INTERFACE, name_function);
+    message = dBus->dbus_message_new_method_call(NULL, DESKTOP_PATH, SETTING_INTERFACE, SETTING_INTERFACE_METHOD);
     if (message == NULL) {
         printError("DBus error: cannot allocate message\n");
         goto cleanup;
@@ -166,19 +172,16 @@ static bool sendDBusMessageWithReply(const char *name_function, const char **mes
     }
 
     dBus->dbus_message_iter_init_append(message, &iter);
+
     for (int i = 0; i < message_count; i++) {
-        if (!dBus->dbus_message_iter_append_basic(&iter, messages_type[i], &messages[i])) {
+        if (!dBus->dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &messages[i])) {
             printError("DBus error: cannot append to message\n");
             goto cleanup;
         }
     }
 
     if ((reply = dBus->dbus_connection_send_with_reply_and_block(connection, message, REPLY_TIMEOUT, &error)) == NULL) {
-        printError("DBus error: cannot get reply to sent message\n");
-        goto cleanup;
-    }
-    if (dBus->dbus_error_is_set(&error)) {
-        printError("DBus error: cannot send message. %s\n", error.message);
+        printError("DBus error: cannot get reply or sent message. %s\n", dBus->dbus_error_is_set(&error) ? error.message : "");
         goto cleanup;
     }
 
@@ -200,14 +203,31 @@ cleanup:
 }
 
 JNIEXPORT jint JNICALL Java_sun_awt_UNIXToolkit_isSystemDarkColorScheme() {
-    const char *name_function = "Read";
-    char *messages[] = { "org.freedesktop.appearance", "color-scheme"};
-    int messages_type[] = {DBUS_TYPE_STRING, DBUS_TYPE_STRING};
-    unsigned int res = 0;
-    if (!sendDBusMessageWithReply(name_function, (const char **)messages, messages_type, 2, &res, DBUS_TYPE_UINT32)) {
-        return UNKNOWN_RESULT;
+    static int use_freedesktop_appearance = -1;
+    const char *freedesktop_appearance_messages[] = {"org.freedesktop.appearance", "color-scheme"};
+    const char *gnome_desktop_messages[] = {"org.gnome.desktop.interface", "gtk-theme"};
+
+    if (use_freedesktop_appearance == -1) {
+        unsigned int res = 0;
+        logEnabled = false;
+        use_freedesktop_appearance =
+                sendDBusMessageWithReply(freedesktop_appearance_messages, 2, &res, DBUS_TYPE_UINT32);
+        logEnabled = true;
     }
-    return res;
+
+    if (use_freedesktop_appearance) {
+        unsigned int res = 0;
+        if (!sendDBusMessageWithReply(freedesktop_appearance_messages, 2, &res, DBUS_TYPE_UINT32)) {
+            return UNKNOWN_RESULT;
+        }
+        return res;
+    } else {
+        char *res = NULL;
+        if (!sendDBusMessageWithReply(gnome_desktop_messages, 2, &res, DBUS_TYPE_STRING)) {
+            return UNKNOWN_RESULT;
+        }
+        return (res != NULL) ? strstr(res, "dark") != NULL : UNKNOWN_RESULT;
+    }
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_UNIXToolkit_toolkitInit() {
