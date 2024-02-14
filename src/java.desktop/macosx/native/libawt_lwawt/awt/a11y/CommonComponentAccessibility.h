@@ -103,6 +103,7 @@
 - (NSRect)accessibilityFrame;
 - (id _Nullable)accessibilityParent;
 - (BOOL)isAccessibilityElement;
+- (BOOL)isLocationOnScreenValid;
 @end
 
 #endif
