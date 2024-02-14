@@ -48,6 +48,9 @@ static NSString *kbdLayout;
 // Constant for keyman layouts
 #define KEYMAN_LAYOUT "keyman"
 
+// workaround for JBR-6704
+static unichar lastCtrlCombo;
+
 @interface AWTView()
 @property (retain) CDropTarget *_dropTarget;
 @property (retain) CDragSource *_dragSource;
@@ -91,6 +94,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, i
     fInputMethodInteractionEnabled = YES;
     fKeyEventsNeeded = NO;
     fProcessingKeystroke = NO;
+    lastCtrlCombo = 0;
 
     fEnablePressAndHold = shouldUsePressAndHold();
     fInPressAndHold = NO;
@@ -375,6 +379,12 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     fKeyEventsNeeded = ![(NSString *)kbdLayout containsString:@KEYMAN_LAYOUT];
 
     NSString *eventCharacters = [event characters];
+
+    if (([event modifierFlags] & NSControlKeyMask) && [eventCharacters length] == 1) {
+        lastCtrlCombo = [eventCharacters characterAtIndex:0];
+    } else {
+        lastCtrlCombo = 0;
+    }
 
     // Allow TSM to look at the event and potentially send back NSTextInputClient messages.
     if (fInputMethodInteractionEnabled == YES) {
@@ -1133,6 +1143,14 @@ static jclass jc_CInputMethod = NULL;
     fprintf(stderr, "AWTView InputMethod Selector Called : [insertText]: %s\n", [aString UTF8String]);
 #endif // IM_DEBUG
 
+    NSMutableString * useString = [self parseString:aString];
+
+    // See JBR-6704
+    if (lastCtrlCombo && !fProcessingKeystroke && [useString length] == 1 && [useString characterAtIndex:0] == lastCtrlCombo) {
+        lastCtrlCombo = 0;
+        return;
+    }
+
     if (fInputMethodLOCKABLE == NULL) {
         return;
     }
@@ -1145,8 +1163,6 @@ static jclass jc_CInputMethod = NULL;
     // text, or 'text in progress'.  We also need to send the event if we get an insert text out of the blue!
     // (i.e., when the user uses the Character palette or Inkwell), or when the string to insert is a complex
     // Unicode value.
-
-    NSMutableString * useString = [self parseString:aString];
     BOOL usingComplexIM = [self hasMarkedText] || !fProcessingKeystroke;
 
 #ifdef IM_DEBUG
@@ -1156,6 +1172,7 @@ static jclass jc_CInputMethod = NULL;
     NSLog(@"insertText kbdlayout %@ ",(NSString *)kbdLayout);
 
     NSLog(@"utf8Length %lu utf16Length %lu", (unsigned long)utf8Length, (unsigned long)utf16Length);
+    NSLog(@"hasMarkedText: %s, fProcessingKeyStroke: %s", [self hasMarkedText] ? "YES" : "NO", fProcessingKeystroke ? "YES" : "NO");
 #endif // IM_DEBUG
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
@@ -1171,7 +1188,7 @@ static jclass jc_CInputMethod = NULL;
 
     if (usingComplexIM) {
         DECLARE_METHOD(jm_insertText, jc_CInputMethod, "insertText", "(Ljava/lang/String;)V");
-        jstring insertedText =  NSStringToJavaString(env, useString);
+        jstring insertedText = NSStringToJavaString(env, useString);
         (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_insertText, insertedText);
         CHECK_EXCEPTION();
         (*env)->DeleteLocalRef(env, insertedText);
