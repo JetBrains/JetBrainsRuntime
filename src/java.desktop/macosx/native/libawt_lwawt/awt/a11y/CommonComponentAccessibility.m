@@ -425,7 +425,12 @@ static jobject sAccessibilityClass = NULL;
 + (void)postFocusChanged:(id)message
 {
     AWT_ASSERT_APPKIT_THREAD;
-    NSAccessibilityPostNotification([NSApp accessibilityFocusedUIElement], NSAccessibilityFocusedUIElementChangedNotification);
+    id focusedUIElement = [NSApp accessibilityFocusedUIElement];
+    NSAccessibilityPostNotification(focusedUIElement, NSAccessibilityFocusedUIElementChangedNotification);
+
+    if (UAZoomEnabled() && [focusedUIElement isKindOfClass:[CommonComponentAccessibility class]]) {
+        [(CommonComponentAccessibility*)focusedUIElement postZoomChangeFocus];
+    }
 }
 
 + (void)postAnnounceWithCaller:(id)caller andText:(NSString *)text andPriority:(NSNumber *)priority
@@ -1253,6 +1258,68 @@ static jobject sAccessibilityClass = NULL;
     return [self accessiblePerformAction:NSAccessibilityIncrementAction];
 }
 
+- (void)postZoomChangeFocus {
+    AWT_ASSERT_APPKIT_THREAD;
+
+    if (![self isEqual:[NSApp accessibilityFocusedUIElement]] || ![self isLocationOnScreenValid]) return;
+
+    NSRect frame = [self accessibilityFrame];
+
+    if (CGSizeEqualToSize(frame.size, CGSizeZero)) return;
+
+    CommonComponentAccessibility* parent = [self typeSafeParent];
+    if (parent != nil) {
+        NSRect parentFrame = [parent accessibilityFrame];
+        // For scrollable components, the accessibilityFrame's height/width is equal to the full scrollable length.
+        // We want to focus only on the visible part, so limit it to the parent's frame.
+        frame = NSIntersectionRect(frame, parentFrame);
+    }
+
+    // UAZoomChangeFocus needs non flipped coordinates (as in Java).
+    NSRect screenFrame = [[[NSScreen screens] objectAtIndex:0] frame];
+    frame.origin.y = screenFrame.size.height - frame.origin.y - frame.size.height;
+
+    CGRect selectedChildBounds = CGRectNull;
+    NSArray* selectedChildren = [self accessibilitySelectedChildren];
+    if (selectedChildren != nil && selectedChildren.count > 0) {
+        // Use accessibility frame of only the first selected child instead of combined frames of all selected children,
+        // because there may be a lot of selected children and calculating all their accessibility frames
+        // could become a performance issue.
+        CommonComponentAccessibility *child = [selectedChildren objectAtIndex:0];
+        if (child != nil && [child isLocationOnScreenValid]) {
+            NSRect childFrame = [child accessibilityFrame];
+            if (!CGSizeEqualToSize(childFrame.size, CGSizeZero)) {
+                selectedChildBounds = childFrame;
+                selectedChildBounds.origin.y = screenFrame.size.height - selectedChildBounds.origin.y - selectedChildBounds.size.height;
+            }
+        }
+    }
+
+    UAZoomChangeFocus(&frame, !CGRectIsNull(selectedChildBounds) ? &selectedChildBounds : NULL, kUAZoomFocusTypeOther);
+}
+
+// This method checks that getLocationOnScreen won't return null. The accessibilityFrame uses getLocationOnScreen, but
+// it doesn't distinguish between 0;0 location and invalid (null) location. In case of posting UA Zoom focus change,
+// we want to ignore invalid location, but not 0;0 coordinates, so we check it separately.
+// We still need to use accessibilityFrame to get the location and size for Zoom, because components can override
+// accessibilityFrame implementation.
+- (BOOL)isLocationOnScreenValid {
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    GET_ACCESSIBLECOMPONENT_STATIC_METHOD_RETURN(FALSE);
+    jobject axComponent = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, sjm_getAccessibleComponent,
+                                                         fAccessible, fComponent);
+    CHECK_EXCEPTION();
+    DECLARE_STATIC_METHOD_RETURN(jm_getLocationOnScreen, sjc_CAccessibility, "getLocationOnScreen",
+                                 "(Ljavax/accessibility/AccessibleComponent;Ljava/awt/Component;)Ljava/awt/Point;", FALSE);
+    jobject jpoint = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, jm_getLocationOnScreen,
+                                                    axComponent, fComponent);
+    CHECK_EXCEPTION();
+    (*env)->DeleteLocalRef(env, axComponent);
+    BOOL isLocationValid = jpoint != NULL;
+    (*env)->DeleteLocalRef(env, jpoint);
+    return isLocationValid;
+}
+
 @end
 
 /*
@@ -1346,6 +1413,40 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_menuItemSelected
     JNI_COCOA_ENTER(env);
         [ThreadUtilities performOnMainThread:@selector(postMenuItemSelected)
                          on:(CommonComponentAccessibility *)jlong_to_ptr(element)
+                         withObject:nil
+                         waitUntilDone:NO];
+    JNI_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_CAccessibility
+ * Method:    focusChanged
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessibility_focusChanged
+        (JNIEnv *env, jobject jthis)
+{
+    JNI_COCOA_ENTER(env);
+        [ThreadUtilities performOnMainThread:@selector(postFocusChanged:)
+                         on:[CommonComponentAccessibility class]
+                         withObject:nil
+                         waitUntilDone:NO];
+    JNI_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_CAccessible
+ * Method:    updateZoomFocus
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_updateZoomFocus
+        (JNIEnv *env, jclass jklass, jlong element)
+{
+    if (!UAZoomEnabled()) return;
+
+    JNI_COCOA_ENTER(env);
+        [ThreadUtilities performOnMainThread:@selector(postZoomChangeFocus)
+                         on:(CommonComponentAccessibility *) jlong_to_ptr(element)
                          withObject:nil
                          waitUntilDone:NO];
     JNI_COCOA_EXIT(env);
