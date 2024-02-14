@@ -152,6 +152,10 @@ DECLARE_CLASS_ONLY(sjc_CAccessibility);
         return NSMakeRect(point.x, point.y, width, height);
 }
 
+- (BOOL)isLocationOnScreenValid {
+    return [[[self accessibilityChildren] objectAtIndex:0] isLocationOnScreenValid];
+}
+
 - (BOOL)isAccessibilityOrderedByRow
 {
     return YES;
