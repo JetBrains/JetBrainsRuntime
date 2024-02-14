@@ -88,6 +88,7 @@ class CAccessible extends CFRetainedResource implements Accessible {
     private static native void selectedCellsChanged(long ptr);
     private static native void tableContentCacheClear(long ptr);
     private static native void updateZoomCaretFocus(long ptr);
+    private static native void updateZoomFocus(long ptr);
 
     private Accessible accessible;
 
@@ -144,6 +145,9 @@ class CAccessible extends CFRetainedResource implements Accessible {
                     timer = new Timer(SELECTED_CHILDREN_MILLISECONDS, actionEvent -> execute(ptr -> selectionChanged(ptr)));
                     timer.setRepeats(false);
                     timer.start();
+
+                    // Notify the Accessibility Zoom to follow the new selection location.
+                    execute(ptr -> updateZoomFocus(ptr));
                 } else if (name.equals(ACCESSIBLE_TABLE_MODEL_CHANGED)) {
                     execute(ptr -> valueChanged(ptr));
                     if (CAccessible.getSwingAccessible(CAccessible.this) != null) {
