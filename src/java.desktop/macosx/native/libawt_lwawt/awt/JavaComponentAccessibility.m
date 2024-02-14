@@ -1449,19 +1449,6 @@ static NSObject *sAttributeNamesLOCK = nil;
 @end
 
 /*
- * Class:     sun_lwawt_macosx_CAccessibility
- * Method:    focusChanged
- * Signature: ()V
- */
-JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessibility_focusChanged
-(JNIEnv *env, jobject jthis)
-{
-JNI_COCOA_ENTER(env);
-    [ThreadUtilities performOnMainThread:@selector(postFocusChanged:) on:[JavaComponentAccessibility class] withObject:nil waitUntilDone:NO];
-JNI_COCOA_EXIT(env);
-}
-
-/*
  * Class:     sun_lwawt_macosx_CAccessible
  * Method:    valueChanged
  * Signature: (I)V
