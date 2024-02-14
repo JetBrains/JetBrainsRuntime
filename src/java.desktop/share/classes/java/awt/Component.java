@@ -1684,11 +1684,12 @@ public abstract class Component implements ImageObserver, MenuContainer,
                 InputContext inputContext = getInputContext();
                 if (inputContext != null) {
                     inputContext.endComposition();
-                    inputContext.removeNotify(this);
 
                     if ((this.isFocusOwner()) && (inputContext instanceof sun.awt.im.InputContext awtInputContext)) {
                         awtInputContext.disableNativeIM();
                     }
+
+                    inputContext.removeNotify(this);
                 }
             }
             eventMask &= ~AWTEvent.INPUT_METHODS_ENABLED_MASK;
