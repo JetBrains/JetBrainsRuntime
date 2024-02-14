@@ -51,9 +51,8 @@ import java.awt.image.WritableRaster;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
-import java.util.Timer;
-import java.util.TimerTask;
 
+import jdk.internal.misc.InnocuousThread;
 import sun.awt.X11.XBaseWindow;
 import sun.security.action.GetIntegerAction;
 import com.sun.java.swing.plaf.gtk.GTKConstants.TextDirection;
@@ -560,18 +559,20 @@ public abstract class UNIXToolkit extends SunToolkit
             waylandWindowFocusListener = null;
         }
 
-        final int delayBetweenRepeatMillis = 1000;
-        Timer systemPropertyWatcherTimer = new Timer("SystemPropertyWatcher", true);
-
-        TimerTask currentRepeatTask = new TimerTask() {
-            @Override
-            public void run() {
+        final Thread systemPropertyWatcher = InnocuousThread.newThread("SystemPropertyWatcher",
+            () -> {
                 if (Toolkit.getDefaultToolkit() instanceof UNIXToolkit unixTK) {
-                    unixTK.updateOsThemeProperty();
+                    while (true) {
+                        try {
+                            unixTK.updateOsThemeProperty();
+                            Thread.sleep(1000);
+                        } catch (Exception ignored) {
+                        }
+                    }
                 }
-            }
-        };
-        systemPropertyWatcherTimer.scheduleAtFixedRate(currentRepeatTask, 0, delayBetweenRepeatMillis);
+            });
+        systemPropertyWatcher.setDaemon(true);
+        systemPropertyWatcher.start();
     }
 
     private static void addWaylandWindowFocusListenerToWindow(Window window) {
