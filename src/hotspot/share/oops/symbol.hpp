@@ -128,11 +128,6 @@ class Symbol : public MetaspaceObj {
     return (int)heap_word_size(byte_size(length));
   }
 
-  void byte_at_put(int index, int value) {
-    assert(index >=0 && index < _length, "symbol index overflow");
-    _body[index] = value;
-  }
-
   Symbol(const u1* name, int length, int refcount);
   void* operator new(size_t size, int len, TRAPS) throw();
   void* operator new(size_t size, int len, Arena* arena, TRAPS) throw();
