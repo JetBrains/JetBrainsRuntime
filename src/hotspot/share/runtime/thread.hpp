@@ -762,6 +762,31 @@ protected:
   void init_wx();
   WXMode enable_wx(WXMode new_state);
 #endif // __APPLE__ && AARCH64
+
+ private:
+  bool _in_asgct;
+ public:
+  bool in_asgct() const { return _in_asgct; }
+  void set_in_asgct(bool value) { _in_asgct = value; }
+  static bool current_in_asgct() {
+    Thread *cur = Thread::current_or_null_safe();
+    return cur != NULL && cur->in_asgct();
+  }
+};
+
+class ThreadInAsgct {
+ private:
+  Thread* _thread;
+ public:
+  ThreadInAsgct(Thread* thread) : _thread(thread) {
+    assert(thread != NULL, "invariant");
+    assert(!thread->in_asgct(), "invariant");
+    thread->set_in_asgct(true);
+  }
+  ~ThreadInAsgct() {
+    assert(_thread->in_asgct(), "invariant");
+    _thread->set_in_asgct(false);
+  }
 };
 
 // Inline implementation of Thread::current()

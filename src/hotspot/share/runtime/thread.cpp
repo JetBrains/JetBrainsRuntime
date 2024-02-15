@@ -321,6 +321,7 @@ Thread::Thread() {
   }
 
   MACOS_AARCH64_ONLY(DEBUG_ONLY(_wx_init = false));
+  _in_asgct = false;
 }
 
 void Thread::initialize_thread_current() {
