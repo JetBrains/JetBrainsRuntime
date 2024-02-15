@@ -40,6 +40,12 @@ Symbol::Symbol(const u1* name, int length, int refcount) {
   _refcount = refcount;
   _length = length;
   _identity_hash = (short)os::random();
+  // _body[0..1] are allocated in the header just by coincidence in the current
+  // implementation of Symbol. They are read by identity_hash(), so make sure they
+  // are initialized.
+  // No other code should assume that _body[0..1] are always allocated. E.g., do
+  // not unconditionally read base()[0] as that will be invalid for an empty Symbol.
+  _body[0] = _body[1] = 0;
   memcpy(_body, name, length);
 }
 
