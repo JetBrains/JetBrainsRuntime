@@ -59,8 +59,10 @@ function create_image_bundle {
 
   libc_type_suffix=''
   fastdebug_infix=''
+  __cds_opt=''
 
   if is_musl; then libc_type_suffix='musl-' ; fi
+  if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then __cds_opt="--generate-cds-archive"; fi
 
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
   JBR=${__bundle_name}-${JBSDK_VERSION}-linux-${libc_type_suffix}aarch64-${fastdebug_infix}b${build_number}
@@ -70,14 +72,13 @@ function create_image_bundle {
   [ -d "$IMAGES_DIR"/"$__root_dir" ] && rm -rf "${IMAGES_DIR:?}"/"$__root_dir"
   $JSDK/bin/jlink \
     --module-path "$__modules_path" --no-man-pages --compress=2 \
-    --generate-cds-archive --add-modules "$__modules" --output "$IMAGES_DIR"/"$__root_dir"
+    $__cds_opt --add-modules "$__modules" --output "$IMAGES_DIR"/"$__root_dir"
 
   grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> "$IMAGES_DIR"/"$__root_dir"/release
   if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
     sed 's/JBR/JBRSDK/g' "$IMAGES_DIR"/"$__root_dir"/release > release
     mv release "$IMAGES_DIR"/"$__root_dir"/release
     cp $IMAGES_DIR/jdk/lib/src.zip "$IMAGES_DIR"/"$__root_dir"/lib
-    cp $IMAGES_DIR/jdk/lib/server/*.jsa "$IMAGES_DIR"/"$__root_dir"/lib/server
     copy_jmods "$__modules" "$__modules_path" "$IMAGES_DIR"/"$__root_dir"/jmods
     zip_native_debug_symbols $IMAGES_DIR/jdk "${JBR}_diz"
   fi
