@@ -909,8 +909,6 @@ public class Dialog extends Window {
     private boolean conditionalShow(Component toFocus, AtomicLong time) {
         boolean retval;
 
-        closeSplashScreen();
-
         synchronized (getTreeLock()) {
             if (peer == null) {
                 addNotify();

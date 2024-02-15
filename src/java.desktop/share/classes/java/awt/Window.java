@@ -999,7 +999,10 @@ public class Window extends Container implements Accessible {
     private static final AtomicBoolean
         beforeFirstWindowShown = new AtomicBoolean(true);
 
-    final void closeSplashScreen() {
+    /**
+     * Manually manage process of closing SplashScreen
+     */
+    public final void closeSplashScreen() {
         if (isTrayIconWindow) {
             return;
         }
@@ -1074,7 +1077,6 @@ public class Window extends Container implements Accessible {
             toFront();
         } else {
             beforeFirstShow = false;
-            closeSplashScreen();
             Dialog.checkShouldBeBlocked(this);
             super.show();
             locationByPlatform = false;
