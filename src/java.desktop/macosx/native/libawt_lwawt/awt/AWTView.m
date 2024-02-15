@@ -211,24 +211,31 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
         [NSApp activateIgnoringOtherApps:YES];
     }
 
-    NSInputManager *inputManager = [NSInputManager currentInputManager];
-    if ([inputManager wantsToHandleMouseEvents]) {
+    JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+    NSString *checkForInputManagerInMouseDown =
+            [PropertiesUtilities
+             javaSystemPropertyForKey:@"apple.awt.checkForInputManagerInMouseDown"
+                              withEnv:env];
+    if ([@"true" isCaseInsensitiveLike:checkForInputManagerInMouseDown]) {
+        NSInputManager *inputManager = [NSInputManager currentInputManager];
+        if ([inputManager wantsToHandleMouseEvents]) {
 #if IM_DEBUG
-        NSLog(@"-> IM wants to handle event");
+            NSLog(@"-> IM wants to handle event");
 #endif
-        if (![inputManager handleMouseEvent:event]) {
-            [self deliverJavaMouseEvent: event];
+            if ([inputManager handleMouseEvent:event]) {
+#if IM_DEBUG
+                NSLog(@"-> Event was handled.");
+                return;
+#endif
+            }
         } else {
 #if IM_DEBUG
-            NSLog(@"-> Event was handled.");
+            NSLog(@"-> IM does not want to handle event");
 #endif
         }
-    } else {
-#if IM_DEBUG
-        NSLog(@"-> IM does not want to handle event");
-#endif
-        [self deliverJavaMouseEvent: event];
     }
+
+    [self deliverJavaMouseEvent:event];
 }
 
 - (void) mouseUp: (NSEvent *)event {
