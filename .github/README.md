@@ -133,7 +133,7 @@ Install the necessary tools, libraries, and headers with:
 $ sudo apt-get install autoconf make build-essential libx11-dev libxext-dev libxrender-dev libxtst-dev \
        libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev libspeechd-dev
 ```
-Get Java 18 (for instance, [Azul Zulu Builds of OpenJDK 18](https://www.azul.com/downloads/?version=java-18-sts&os=linux&package=jdk)).
+Get Java 21 (for instance, [Azul Zulu Builds of OpenJDK 21](https://www.azul.com/downloads/?version=java-21-lts&os=linux&package=jdk#zulu)).
 
 Then run the following:
 ```
@@ -153,7 +153,7 @@ Install the following:
 * [Visual Studio compiler toolset](https://visualstudio.microsoft.com/downloads/).
   Install with the desktop development kit, which includes Windows SDK and compilers.
   Visual Studio 2019 is supported by default.
-* Java 18 (for instance, [Azul Zulu Builds of OpenJDK 18](https://www.azul.com/downloads/?version=java-18-sts&os=windows&package=jdk)).
+* Java 21 (for instance, [Azul Zulu Builds of OpenJDK 21](https://www.azul.com/downloads/?version=java-21-lts&os=windows&package=jdk#zulu)).
   If you have problems while configuring, read [Java tips on Cygwin](http://horstmann.com/articles/cygwin-tips.html).
 
 From the command line: 
@@ -187,7 +187,7 @@ If you want to disable it, run `configure` with the additional flag `--disable-j
 ### macOS
 Install the following:
 * Xcode command line developer tools and `autoconf` via [Homebrew](https://brew.sh/).
-* Java 18 (for instance, [Azul Zulu Builds of OpenJDK 18](https://www.azul.com/downloads/?version=java-18-sts&os=macos&package=jdk)).
+* Java 21 (for instance, [Azul Zulu Builds of OpenJDK 21](https://www.azul.com/downloads/?version=java-21-lts&os=macos&package=jdk#zulu)).
 
 From the command line:
 ```
