@@ -296,9 +296,12 @@ JNIEXPORT jstring JNICALL Java_sun_font_SunLayoutEngine_getFeatures
     memcpy(res + gposFeatureCount * sizeof(hb_tag_t), gsubFeatureTags, gsubFeatureCount * sizeof(hb_tag_t));
     *(res + (gposFeatureCount + gsubFeatureCount) * sizeof(hb_tag_t)) = '\0';
 
+    jstring jStrRes = (*env)->NewStringUTF(env,res);
     free(gposFeatureTags);
     free(gsubFeatureTags);
-    return (*env)->NewStringUTF(env,res);
+    free(res);
+
+    return jStrRes;
 }
 
 JNIEXPORT jboolean JNICALL Java_sun_font_SunLayoutEngine_shape
