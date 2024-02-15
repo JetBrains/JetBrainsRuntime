@@ -61,16 +61,17 @@ function create_image_bundle {
     --module-path $__modules_path --no-man-pages --compress=2 \
     --add-modules $__modules --output $__root_dir || do_exit $?
 
-    grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> $__root_dir/release
-    if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
+  grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> $__root_dir/release
+  if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
     sed 's/JBR/JBRSDK/g' $__root_dir/release > release
     mv release $__root_dir/release
     cp $IMAGES_DIR/jdk/lib/src.zip $__root_dir/lib
-    cp $IMAGES_DIR/jdk/bin/server/*.jsa $__root_dir/bin/server
     for dir in $(ls -d $IMAGES_DIR/jdk/*); do
       rsync -amv --include="*/" --include="*.pdb" --exclude="*" $dir $__root_dir
     done
     copy_jmods "$__modules" "$__modules_path" "$__root_dir"/jmods
+    "$__root_dir"/bin/java -Xshare:dump
+    "$__root_dir"/bin/java -Xshare:dump -XX:-UseCompressedOops
   fi
 }
 
