@@ -274,6 +274,10 @@ static hb_tag_t *createFeatureTags(hb_face_t *face, int tag, int *count) {
         return NULL;
     }
     hb_tag_t *res = calloc(*count, sizeof(hb_tag_t));
+    if (res == NULL) {
+        *count = 0;
+        return NULL;
+    }
 
     hb_ot_layout_table_get_feature_tags(face, tag, 0, (unsigned int *)count, res);
     for (int i = 0; i < *count; i++) {
@@ -291,12 +295,17 @@ JNIEXPORT jstring JNICALL Java_sun_font_SunLayoutEngine_getFeatures
     hb_tag_t *gposFeatureTags = createFeatureTags(hbface, HB_OT_TAG_GPOS, &gposFeatureCount);
     hb_tag_t *gsubFeatureTags = createFeatureTags(hbface, HB_OT_TAG_GSUB, &gsubFeatureCount);
 
+    jstring jStrRes = NULL;
     char *res = malloc((gposFeatureCount + gsubFeatureCount) * sizeof(hb_tag_t) + 1);
-    memcpy(res, gposFeatureTags, gposFeatureCount * sizeof(hb_tag_t));
-    memcpy(res + gposFeatureCount * sizeof(hb_tag_t), gsubFeatureTags, gsubFeatureCount * sizeof(hb_tag_t));
-    *(res + (gposFeatureCount + gsubFeatureCount) * sizeof(hb_tag_t)) = '\0';
+    if (res) {
+        memcpy(res, gposFeatureTags, gposFeatureCount * sizeof(hb_tag_t));
+        memcpy(res + gposFeatureCount * sizeof(hb_tag_t), gsubFeatureTags, gsubFeatureCount * sizeof(hb_tag_t));
+        *(res + (gposFeatureCount + gsubFeatureCount) * sizeof(hb_tag_t)) = '\0';
+        jStrRes = (*env)->NewStringUTF(env, res);
+    } else {
+        jStrRes = (*env)->NewStringUTF(env, "");
+    }
 
-    jstring jStrRes = (*env)->NewStringUTF(env,res);
     free(gposFeatureTags);
     free(gsubFeatureTags);
     free(res);

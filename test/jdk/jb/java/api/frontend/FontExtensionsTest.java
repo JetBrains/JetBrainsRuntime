@@ -213,11 +213,17 @@ public class FontExtensionsTest {
     }
 
     @JBRTest
-    private static Boolean getAvailableFeatures() {
+    private static Boolean getAvailableFeatures1() {
         List<String> features = JBR.getFontExtensions().getAvailableFeatures(BASE_FONT);
         List<FontExtensions.FeatureTag> expected =
                 List.of(FontExtensions.FeatureTag.SS01, FontExtensions.FeatureTag.CV03, FontExtensions.FeatureTag.ZERO);
         return features.containsAll(expected.stream().map(FontExtensions.FeatureTag::getName).toList());
+    }
+
+    @JBRTest
+    private static Boolean getAvailableFeatures2() {
+        List<String> features = JBR.getFontExtensions().getAvailableFeatures(new Font("Arial", Font.PLAIN, 20));
+        return features.isEmpty();
     }
 
     public static void main(final String[] args) {
