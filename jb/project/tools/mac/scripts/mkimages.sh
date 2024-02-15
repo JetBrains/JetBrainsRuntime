@@ -80,8 +80,9 @@ function create_image_bundle {
     sed 's/JBR/JBRSDK/g' $JRE_CONTENTS/Home/release > release
     mv release $JRE_CONTENTS/Home/release
     cp $IMAGES_DIR/jdk-bundle/jdk-$JBSDK_VERSION.jdk/Contents/Home/lib/src.zip $JRE_CONTENTS/Home/lib
-    cp $IMAGES_DIR/jdk-bundle/jdk-$JBSDK_VERSION.jdk/Contents/Home/lib/server/*.jsa $JRE_CONTENTS/Home/lib/server
     copy_jmods "$__modules" "$__modules_path" "$JRE_CONTENTS"/Home/jmods
+    "$JRE_CONTENTS"/Home/bin/java -Xshare:dump
+    "$JRE_CONTENTS"/Home/bin/java -Xshare:dump -XX:-UseCompressedOops
     zip_native_debug_symbols $IMAGES_DIR/jdk-bundle/jdk-$JBSDK_VERSION.jdk "${JBR}_diz"
   fi
 
@@ -96,7 +97,7 @@ function create_image_bundle {
 
   echo Creating "$JBR".tar.gz ...
   # Normalize timestamp
-  #find "$tmp"/"$__root_dir" -print0 | xargs -0 touch -c -h -t "$TOUCH_TIME"
+  find "$tmp"/"$__root_dir" -print0 | xargs -0 touch -c -h -t "$TOUCH_TIME"
 
   (cd "$tmp" &&
       find "$__root_dir" -print0 | LC_ALL=C sort -z | \
