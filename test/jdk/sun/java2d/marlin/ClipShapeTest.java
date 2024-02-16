@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,24 +52,71 @@ import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageOutputStream;
 
-/**
- * @test
+/*
+ * @test id=PolySingle
  * @bug 8191814
- * @summary Verifies that Marlin rendering generates the same
- * images with and without clipping optimization with all possible
- * stroke (cap/join) and/or dashes or fill modes (EO rules)
- * for paths made of either 9 lines, 4 quads, 2 cubics (random)
- * Note: Use the argument -slow to run more intensive tests (too much time)
- *
+ * @summary Runs the test with "-poly" option, single-precision
  * @run main/othervm/timeout=300 -Dsun.java2d.renderer=sun.java2d.marlin.MarlinRenderingEngine ClipShapeTest -poly
+ */
+
+/*
+ * @test id=PolyDoDashSingle
+ * @bug 8191814
+ * @summary Runs the test with "-poly -doDash" options, single-precision
  * @run main/othervm/timeout=300 -Dsun.java2d.renderer=sun.java2d.marlin.MarlinRenderingEngine ClipShapeTest -poly -doDash
+ */
+
+/*
+ * @test id=CubicSingle
+ * @bug 8191814
+ * @summary Runs the test with "-cubic" option, single-precision
  * @run main/othervm/timeout=300 -Dsun.java2d.renderer=sun.java2d.marlin.MarlinRenderingEngine ClipShapeTest -cubic
+ */
+
+/*
+ * @test id=CubicDoDashSingle
+ * @bug 8191814
+ * @summary Runs the test with "-cubic -doDash" options, single-precision
  * @run main/othervm/timeout=300 -Dsun.java2d.renderer=sun.java2d.marlin.MarlinRenderingEngine ClipShapeTest -cubic -doDash
+ */
+
+/*
+ * @test id=Poly
+ * @bug 8191814
+ * @summary Runs the test with "-poly" option, double-precision
  * @run main/othervm/timeout=300 -Dsun.java2d.renderer=sun.java2d.marlin.DMarlinRenderingEngine ClipShapeTest -poly
+ */
+
+/*
+ * @test id=PolyDoDash
+ * @bug 8191814
+ * @summary Runs the test with "-poly -doDash" options, double-precision
  * @run main/othervm/timeout=300 -Dsun.java2d.renderer=sun.java2d.marlin.DMarlinRenderingEngine ClipShapeTest -poly -doDash
+ */
+
+/*
+ * @test id=Cubic
+ * @bug 8191814
+ * @summary Runs the test with "-cubic" option, double-precision
  * @run main/othervm/timeout=300 -Dsun.java2d.renderer=sun.java2d.marlin.DMarlinRenderingEngine ClipShapeTest -cubic
+ */
+
+/*
+ * @test id=CubicDoDash
+ * @bug 8191814
+ * @summary Runs the test with "-cubic -doDash" options, double-precision
  * @run main/othervm/timeout=300 -Dsun.java2d.renderer=sun.java2d.marlin.DMarlinRenderingEngine ClipShapeTest -cubic -doDash
-*/
+ */
+
+/**
+ * Verifies that Marlin rendering generates the same images with and without
+ * clipping optimization with all possible stroke (cap/join) and/or dashes or
+ * fill modes (EO rules) for paths made of either 9 lines, 4 quads, 2 cubics
+ * (random).
+ * <p>
+ * Note: Use the argument {@code -slow} to run more intensive tests (too much
+ * time).
+ */
 public final class ClipShapeTest {
 
     // test options:
