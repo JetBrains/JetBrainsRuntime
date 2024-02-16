@@ -23,7 +23,23 @@ TRACE=false
 #MODE=Buffer
 MODE=Volatile
 
-if [ $# -eq 1 -a "$1" == "-help"  ] ; then
+while [ $# -ge 1 ] ; do
+  case "$1" in
+    -onscreen) MODE="Robot"
+      shift
+        ;;
+    -volatile) MODE="Volatile"
+      shift
+        ;;
+    -buffer) MODE="Buffer"
+      shift
+        ;;
+      *) break
+        ;;
+  esac
+done    
+
+if [[ ($# -eq 1 && "$1" == "-help") || ($# -eq 0)  ]] ; then
   echo "Usage: run_rp.sh [rp_rendering_mode] [rendering_options] bench_name"
   echo 
   echo "bench_name: ArgbSurfaceBlitImage ArgbSwBlitImage BgrSurfaceBlitImage BgrSwBlitImage"
@@ -45,22 +61,6 @@ if [ $# -eq 1 -a "$1" == "-help"  ] ; then
   echo "$RENDER_OPS_DOC"
   exit 2
 fi 
-
-while [ $# -ge 1 ] ; do
-  case "$1" in
-    -onscreen) MODE="Robot"
-      shift
-        ;;
-    -volatile) MODE="Volatile"
-      shift
-        ;;
-    -buffer) MODE="Buffer"
-      shift
-        ;;
-      *) break
-        ;;
-  esac
-done    
 
 # use time + repeat
 OPTS="$OPTS -r$R -t -e$MODE $1"
