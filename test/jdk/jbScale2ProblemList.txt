@@ -21,14 +21,15 @@ java/awt/Focus/MouseClickRequestFocusRaceTest/MouseClickRequestFocusRaceTest.jav
 java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 7124275,JBR-5799 macosx-all,windows-all
 java/awt/Focus/SimpleWindowActivationTest/SimpleWindowActivationTest.java JBR-6089 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java JBR-6090 windows-all
+java/awt/Frame/DynamicLayout/DynamicLayout.java JBR-5799 windows-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6233,JBR-6509 windows-x64,generic-all
 java/awt/Frame/InvisibleOwner/InvisibleOwner.java JBR-6090 windows-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenSmall.java JBR-6090 windows-all
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
 java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java JBR-6090 windows-all
 java/awt/Frame/WindowDragTest/WindowDragTest.java JBR-6090 windows-x64
-java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java 8238720,JBR-4199,JBR-6090 linux-5.4.0-1083-aws,linux-5.4.0-1103-aws,windows-all
-java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java JBR-4199,JBR-6090 linux-5.4.0-1083-aws,linux-5.4.0-1103-aws,windows-all
+java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java 8238720,8315986,JBR-4199,JBR-6090 windows-all,macosx-all,linux-5.4.0-1083-aws,linux-5.4.0-1103-aws,windows-all
+java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java 8238720,8315986,JBR-4199,JBR-6090 windows-all,macosx-all,linux-5.4.0-1083-aws,linux-5.4.0-1103-aws,windows-all
 
 java/awt/Graphics/LineClipTest.java                                                 JBR-5071 linux-all
 java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5071,JBR-5359 linux-all,windows-aarch64
@@ -50,10 +51,11 @@ java/awt/Window/AlwaysOnTop/AlwaysOnTopEvenOfWindow.java JBR-6686 linux-all
 java/awt/Window/HandleWindowDestroyTest/HandleWindowDestroyTest.java JBR-6540 macosx-all
 java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5513 linux-all
 javax/swing/JComponent/7154030/bug7154030.java 8297454,JBR-5510,JBR-6134 macosx-all,linux-5.18.2-arch1-1,windows-x64
-javax/swing/JEditorPane/8195095/ImageViewTest.java 8253184,JBR-5510,JBR-6283 windows-all,linux-all,macos-all
+javax/swing/JEditorPane/8195095/ImageViewTest.java 8253184,JBR-5510,JBR-6283 windows-all,linux-all,macosx-all
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      7124313,JBR-5071 macosx-all,linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6090 linux-all,windows-all
 
+sanity/client/SwingSet/src/InternalFrameDemoTest.java 8253184,JBR-6685 windows-all,linux-all
 sun/java2d/GdiRendering/ClipShapeRendering.java                                     JBR-5204 linux-all,windows-all
 
 #
