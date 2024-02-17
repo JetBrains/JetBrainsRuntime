@@ -516,7 +516,6 @@ else
     LIBFREETYPE_LIBS := -lfreetype
   endif
 
-  # gcc_ftobjs.c := maybe-uninitialized required for GCC 7 builds.
   $(eval $(call SetupJdkLibrary, BUILD_LIBFREETYPE, \
       NAME := freetype, \
       OPTIMIZATION := HIGHEST, \
@@ -529,7 +528,6 @@ else
       DISABLED_WARNINGS_microsoft := 4018 4267 4244 4312 4819, \
       DISABLED_WARNINGS_gcc := implicit-fallthrough cast-function-type bad-function-cast, \
       DISABLED_WARNINGS_clang := missing-declarations, \
-      DISABLED_WARNINGS_gcc_ftobjs.c := maybe-uninitialized, \
       LDFLAGS := $(LDFLAGS_JDKLIB) \
           $(call SET_SHARED_LIBRARY_ORIGIN), \
   ))
