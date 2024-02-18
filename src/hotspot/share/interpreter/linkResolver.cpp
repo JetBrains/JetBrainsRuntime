@@ -1021,14 +1021,16 @@ void LinkResolver::resolve_field(fieldDescriptor& fd,
                                                      !fd.is_static() &&
                                                      !m->is_object_initializer());
 
-        if (is_initialized_static_final_update || is_initialized_instance_final_update) {
-          ResourceMark rm(THREAD);
-          stringStream ss;
-          ss.print("Update to %s final field %s.%s attempted from a different method (%s) than the initializer method %s ",
-                   is_static ? "static" : "non-static", resolved_klass->external_name(), fd.name()->as_C_string(),
-                   m->name()->as_C_string(),
-                   is_static ? "<clinit>" : "<init>");
-          THROW_MSG(vmSymbols::java_lang_IllegalAccessError(), ss.as_string());
+        if (!AllowEnhancedClassRedefinition || !m->name()->equals("$$ha$clinit")) {
+          if (is_initialized_static_final_update || is_initialized_instance_final_update) {
+            ResourceMark rm(THREAD);
+            stringStream ss;
+            ss.print("Update to %s final field %s.%s attempted from a different method (%s) than the initializer method %s ",
+                    is_static ? "static" : "non-static", resolved_klass->external_name(), fd.name()->as_C_string(),
+                    m->name()->as_C_string(),
+                    is_static ? "<clinit>" : "<init>");
+            THROW_MSG(vmSymbols::java_lang_IllegalAccessError(), ss.as_string());
+          }
         }
       }
     }
