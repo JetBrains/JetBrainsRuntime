@@ -52,7 +52,7 @@ Java_java_awt_Cursor_finalizeImpl
 {
     if (pData != -1) {
         struct WLCursor *cursor = jlong_to_ptr(pData);
-        if (cursor->managed)
+        if (cursor->managed && cursor->buffer)
             wl_buffer_destroy(cursor->buffer);
         free(cursor);
     }
@@ -75,7 +75,7 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLComponentPeer_nativeGetPredefinedCurso
         JNU_ReleaseStringPlatformChars(env, name, name_c_str);
     }
 
-    if (!wl_cursor || !wl_cursor->image_count)
+    if (!wl_cursor || !wl_cursor->image_count || !wl_cursor->images[0])
         return 0;
     struct wl_cursor_image *wl_cursor_image = wl_cursor->images[0]; // animated cursors aren't currently supported
 
@@ -123,6 +123,7 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCustomCursor_nativeCreateCustomCursor
 
     struct wl_buffer *buffer = wl_shm_pool_create_buffer(pool, 0, width, height, width * 4, WL_SHM_FORMAT_ARGB8888);
     wl_shm_pool_destroy(pool);
+    CHECK_NULL_RETURN(buffer, 0);
 
     struct WLCursor *cursor = (struct WLCursor*) malloc(sizeof(struct WLCursor));
     if (!cursor) {
@@ -147,6 +148,8 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetCursor
     int32_t height = 0;
     int32_t hotspot_x = 0;
     int32_t hotspot_y = 0;
+
+    CHECK_NULL(wl_pointer);
 
     if (pData != -1) {
         struct WLCursor *cursor = jlong_to_ptr(pData);
