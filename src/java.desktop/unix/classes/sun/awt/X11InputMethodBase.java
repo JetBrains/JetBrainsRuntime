@@ -565,6 +565,8 @@ public abstract class X11InputMethodBase extends InputMethodAdapter {
      */
     public synchronized void removeNotify() {
         stopListening();
+        awtFocussedComponent = null;
+        clientComponentWindow = null;
     }
 
     /**
