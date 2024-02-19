@@ -41,7 +41,7 @@ public class TestGCCauseWithParallelOld {
         String testID = "ParallelOld";
         String[] vmFlags = {"-XX:+UseParallelGC", "-XX:+UseParallelOldGC"};
         String[] gcNames = {GCHelper.gcParallelScavenge, GCHelper.gcParallelOld};
-        String[] gcCauses = {"Allocation Failure", "Ergonomics", "System.gc()"};
+        String[] gcCauses = {"Allocation Failure", "Ergonomics", "System.gc()", "GCLocker Initiated GC"};
         GCGarbageCollectionUtil.test(testID, vmFlags, gcNames, gcCauses);
     }
 }
