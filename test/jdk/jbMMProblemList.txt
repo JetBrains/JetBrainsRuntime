@@ -28,7 +28,7 @@ java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java JBR-5442 linux-all
 javax/swing/SwingWorker/TestDoneBeforeDoInBackground.java JBR-5442 linux-all
 javax/swing/system/6799345/TestShutdown.java JBR-6020 windows-all
-javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java JBR-6572 linux-all
+javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java 8194945,JBR-6572 linux-all,macosx-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-4379 windows-all,linux-all
 
 jb/java/awt/dnd/DnDScalingWithHIDPI/DnDScalingWithHIDPITest.java JBR-5442 linux-all
@@ -131,6 +131,7 @@ javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5510,JBR-5951 linux-all,wi
 javax/swing/text/html/StyleSheet/bug4936917.java 8277816,JBR-899,JBR-5510 windows-all,macosx-aarch64,linux-all
 jb/java/awt/MouseInfo/GetPointerInfoTest.java nobug linux-all
 jb/java/awt/Window/BackgroundWindowOrderOnSpaceChange.java JBR-6486 macosx-all
+jb/java/awt/Window/ZOrderOnModalDialogActivation.java JBR-5714 windows-all,linux-x64
 
 sun/java2d/GdiRendering/ClipShapeRendering.java 8285604,JBR-5510 windows-all,linux-all
 sun/java2d/GdiRendering/InsetClipping.java 7124403,JBR-5510 windows-x64,macosx-all,linux-all
