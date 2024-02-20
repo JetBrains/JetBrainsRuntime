@@ -87,5 +87,3 @@ serviceability/sa/ClhsdbCDSCore.java initial_run,NOBUG generic-aarch64,macosx-al
 
 vmTestbase/gc/gctests/LargeObjects/large002/TestDescription.java NOBUG linux-all timeout
 vmTestbase/gc/gctests/StringInternSyncWithGC/StringInternSyncWithGC.java NOBUG macosx-all timeout on macstudio
-
-vmTestbase/nsk/jdi/stress/ClassPrepareEvents/ClassPrepareEvents001/ClassPrepareEvents001.java JBR-6470 macosx-x64

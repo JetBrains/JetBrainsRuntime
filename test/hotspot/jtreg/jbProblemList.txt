@@ -257,6 +257,7 @@ vmTestbase/nsk/jdi/ReferenceType/instances/instances002/instances002.java initia
 vmTestbase/nsk/jdi/Value/type/type003/TestDescription.java time_out_intermittent macosx-all
 vmTestbase/nsk/jdi/VirtualMachine/allThreads/allthreads001/TestDescription.java JBR-6530 macosx-all
 vmTestbase/nsk/jdi/VirtualMachine/canGetMonitorInfo/cangetmonitorinfo001/TestDescription.java JBR-6361 macosx-all
+vmTestbase/nsk/jdi/stress/ClassPrepareEvents/ClassPrepareEvents001/ClassPrepareEvents001.java JBR-6470 macosx-all
 
 vmTestbase/metaspace/gc/firstGC_10m/TestDescription.java 8208250 generic-all
 vmTestbase/metaspace/gc/firstGC_50m/TestDescription.java 8208250 generic-all
