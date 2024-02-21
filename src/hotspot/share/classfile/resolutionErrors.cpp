@@ -36,8 +36,8 @@
 // create new error entry
 void ResolutionErrorTable::add_entry(int index, unsigned int hash,
                                      const constantPoolHandle& pool, int cp_index,
-                                     Symbol* error, Symbol* message,
-                                     Symbol* cause, Symbol* cause_msg)
+                                     Symbol* error, const char* message,
+                                     Symbol* cause, const char* cause_msg)
 {
   assert_locked_or_safepoint(SystemDictionary_lock);
   assert(!pool.is_null() && error != NULL, "adding NULL obj");
@@ -95,11 +95,8 @@ void ResolutionErrorEntry::set_error(Symbol* e) {
   }
 }
 
-void ResolutionErrorEntry::set_message(Symbol* c) {
-  _message = c;
-  if (_message != NULL) {
-    _message->increment_refcount();
-  }
+void ResolutionErrorEntry::set_message(const char* c) {
+  _message = c != nullptr ? os::strdup(c) : nullptr;
 }
 
 void ResolutionErrorEntry::set_cause(Symbol* c) {
@@ -109,13 +106,11 @@ void ResolutionErrorEntry::set_cause(Symbol* c) {
   }
 }
 
-void ResolutionErrorEntry::set_cause_msg(Symbol* c) {
-  _cause_msg = c;
-  if (_cause_msg != NULL) {
-    _cause_msg->increment_refcount();
-  }
+void ResolutionErrorEntry::set_cause_msg(const char* c) {
+  _cause_msg = c != nullptr ? os::strdup(c) : nullptr;
 }
 
+// The incoming nest host error message is already in the C-Heap.
 void ResolutionErrorEntry::set_nest_host_error(const char* message) {
   _nest_host_error = message;
 }
@@ -126,13 +121,13 @@ void ResolutionErrorTable::free_entry(ResolutionErrorEntry *entry) {
     entry->error()->decrement_refcount();
   }
   if (entry->message() != NULL) {
-    entry->message()->decrement_refcount();
+    FREE_C_HEAP_ARRAY(char, entry->message());
   }
   if (entry->cause() != NULL) {
     entry->cause()->decrement_refcount();
   }
   if (entry->cause_msg() != NULL) {
-    entry->cause_msg()->decrement_refcount();
+    FREE_C_HEAP_ARRAY(char, entry->cause_msg());
   }
   if (entry->nest_host_error() != NULL) {
     FREE_C_HEAP_ARRAY(char, entry->nest_host_error());

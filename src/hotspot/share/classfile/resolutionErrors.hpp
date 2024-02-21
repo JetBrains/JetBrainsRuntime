@@ -61,11 +61,11 @@ public:
   }
 
   void add_entry(int index, unsigned int hash,
-                 const constantPoolHandle& pool, int which, Symbol* error, Symbol* message,
-                 Symbol* cause, Symbol* cause_msg);
+                 const constantPoolHandle& pool, int cp_index, Symbol* error, const char* error_msg,
+                 Symbol* cause, const char* cause_msg);
 
   void add_entry(int index, unsigned int hash,
-                 const constantPoolHandle& pool, int which, const char* message);
+                 const constantPoolHandle& pool, int cp_index, const char* message);
 
   // find error given the constant pool and constant pool index
   ResolutionErrorEntry* find_entry(int index, unsigned int hash,
@@ -96,9 +96,9 @@ class ResolutionErrorEntry : public HashtableEntry<ConstantPool*, mtClass> {
  private:
   int               _cp_index;
   Symbol*           _error;
-  Symbol*           _message;
+  const char*       _message;
   Symbol*           _cause;
-  Symbol*           _cause_msg;
+  const char*       _cause_msg;
   const char*       _nest_host_error;
 
  public:
@@ -110,16 +110,19 @@ class ResolutionErrorEntry : public HashtableEntry<ConstantPool*, mtClass> {
   Symbol*            error() const              { return _error; }
   void               set_error(Symbol* e);
 
-  Symbol*            message() const            { return _message; }
-  void               set_message(Symbol* c);
+  const char*        message() const            { return _message; }
+  // The incoming message is copied to the C-Heap.
+  void               set_message(const char* c);
 
   Symbol*            cause() const              { return _cause; }
   void               set_cause(Symbol* c);
 
-  Symbol*            cause_msg() const          { return _cause_msg; }
-  void               set_cause_msg(Symbol* c);
+  const char*        cause_msg() const          { return _cause_msg; }
+  // The incoming cause_msg is copied to the C-Heap.
+  void               set_cause_msg(const char* c);
 
   const char*        nest_host_error() const    { return _nest_host_error; }
+  // The incoming nest host error message is already in the C-Heap.
   void               set_nest_host_error(const char* message);
 
   ResolutionErrorEntry* next() const {
