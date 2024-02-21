@@ -786,32 +786,27 @@ jdk_awt_wayland = \
     -java/awt/Button \
     -java/awt/Checkbox \
     -java/awt/Choice \
-    -java/awt/Clipboard \
+    -java/awt/Clipboard/DelayedQueryTest.java \
+    -java/awt/Clipboard/FlavorChangeNotificationTest/SystemClipboardTest.java \
+    -java/awt/Clipboard/HTMLTransferTest/HTMLTransferTest.java \
+    -java/awt/Clipboard/LostOwnershipChainTest/SystemClipboardTest.java \
     -java/awt/ColorClass/AlphaColorTest.java \
     -java/awt/Component/7097771 \
-    -java/awt/Component/CompEventOnHiddenComponent \
     -java/awt/Component/ComponentRedrawnTest.java \
-    -java/awt/Component/CreateImage \
     -java/awt/Component/DimensionEncapsulation \
     -java/awt/Component/F10TopToplevel \
     -java/awt/Component/GetListenersTest.java \
-    -java/awt/Component/GetScreenLocTest \
+    -java/awt/Component/GetScreenLocTest/GetScreenLocTest.java \
     -java/awt/Component/InsetsEncapsulation \
-    -java/awt/Component/isLightweightCrash \
     -java/awt/Component/NativeInLightShow \
-    -java/awt/Component/NoUpdateUponShow \
     -java/awt/Component/PaintAll \
     -java/awt/Component/PrintAllXcheckJNI \
     -java/awt/Component/RepaintTest.java \
-    -java/awt/Component/Revalidate \
-    -java/awt/Component/SetComponentsBounds \
     -java/awt/Component/SetEnabledPerformance \
-    -java/awt/Component/TreeLockDeadlock \
-    -java/awt/Component/UpdatingBootTime \
-    -java/awt/Component/Validate \
     -java/awt/ComponentOrientation \
     -java/awt/Container \
-    -java/awt/Cursor \
+    -java/awt/Cursor/CursorOverlappedPanelsTest/CursorOverlappedPanelsTest.java \
+    -java/awt/Cursor/MultiResolutionCursorTest/MultiResolutionCursorTest.java \
     -java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java \
     -java/awt/datatransfer/ClipboardInterVMTest/ClipboardInterVMTest.java \
     -java/awt/datatransfer/ConstructFlavoredObjectTest/ConstructFlavoredObjectTest.java \
@@ -831,8 +826,55 @@ jdk_awt_wayland = \
     -java/awt/Desktop \
     -java/awt/Dialog \
     -java/awt/dnd \
-    -java/awt/EmbeddedFrame \
-    -java/awt/event \
+    -java/awt/event/ComponentEvent/ComponentItemEventTest.java \
+    -java/awt/event/ComponentEvent/ListItemEventsTest.java \
+    -java/awt/event/ComponentEvent/MovedResizedTardyEventTest/MovedResizedTardyEventTest.java \
+    -java/awt/event/ComponentEvent/MovedResizedTwiceTest/MovedResizedTwiceTest.java \
+    -java/awt/event/ComponentEvent/TextComponentTextEventTest.java \
+    -java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java \
+    -java/awt/event/InputEvent/MouseModsTest.java \
+    -java/awt/event/KeyEvent/AcceleratorTest/AcceleratorTest.html \
+    -java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java \
+    -java/awt/event/KeyEvent/AltGraphModifier.java \
+    -java/awt/event/KeyEvent/CorrectTime/CorrectTime.java \
+    -java/awt/event/KeyEvent/DeadKey/DeadKeySystemAssertionDialog.java \
+    -java/awt/event/KeyEvent/DisabledTargetF10/DisabledTargetF10.java \
+    -java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java \
+    -java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java \
+    -java/awt/event/KeyEvent/KeyChar/KeyCharTest.java \
+    -java/awt/event/KeyEvent/KeyCharTest/KeyCharTest.java \
+    -java/awt/event/KeyEvent/KeyEventLocationTest.java \
+    -java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java \
+    -java/awt/event/KeyEvent/KeyTyped/CancelKeyTyped.java \
+    -java/awt/event/KeyEvent/KeyTyped/CtrlASCII.java \
+    -java/awt/event/KeyEvent/KeyTyped/CtrlSpace.java \
+    -java/awt/event/KeyEvent/KeyTyped/DeleteKeyTyped.java \
+    -java/awt/event/KeyEvent/KeyTyped/EscapeKeyTyped.java \
+    -java/awt/event/KeyEvent/RobotCrash/RobotCrash.java \
+    -java/awt/event/KeyEvent/ShiftF10Test.java \
+    -java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java \
+    -java/awt/event/MouseEvent/AWTPanelSmoothWheel/AWTPanelSmoothWheel.html \
+    -java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java \
+    -java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java \
+    -java/awt/event/MouseEvent/DisabledComponents/DisabledComponentsTest.java \
+    -java/awt/event/MouseEvent/EnterAsGrabbedEvent/EnterAsGrabbedEvent.java \
+    -java/awt/event/MouseEvent/EventTimeInFuture/EventTimeInFuture.java \
+    -java/awt/event/MouseEvent/FrameMouseEventAbsoluteCoordsTest/FrameMouseEventAbsoluteCoordsTest.java \
+    -java/awt/event/MouseEvent/MouseButtonsAndKeyMasksTest/MouseButtonsAndKeyMasksTest.java \
+    -java/awt/event/MouseEvent/MouseButtonsTest/MouseButtonsTest.java \
+    -java/awt/event/MouseEvent/MouseClickTest/MouseClickTest.java \
+    -java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java \
+    -java/awt/event/MouseEvent/RobotLWTest/RobotLWTest.java \
+    -java/awt/event/MouseEvent/SmoothWheel/SmoothWheel.java \
+    -java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter.java \
+    -java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter_1.java \
+    -java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter_2.java \
+    -java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter_3.java \
+    -java/awt/event/MouseWheelEvent \
+    -java/awt/event/OtherEvents/ContainerEventChildTest.java \
+    -java/awt/event/SequencedEvent/MultipleContextsFunctionalTest.java \
+    -java/awt/event/StressTest/MouseAndKeyEventStressTest.java \
+    -java/awt/event/TextEvent \
     -java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java \
     -java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.java \
     -java/awt/EventDispatchThread/PropertyPermissionOnEDT/PropertyPermissionOnEDT.java \
@@ -947,8 +989,6 @@ jdk_awt_wayland = \
     -java/awt/GridBagLayout \
     -java/awt/GridLayout \
     -java/awt/Gtk \
-    -java/awt/hidpi \
-    -java/awt/Icon \
     -java/awt/im \
     -java/awt/image/BufferStrategy/ExceptionAfterComponentDispose.java \
     -java/awt/image/MemoryLeakTest/MemoryLeakTest.java \
@@ -964,7 +1004,7 @@ jdk_awt_wayland = \
     -java/awt/Insets/RemoveMenuBarTest.java \
     -java/awt/InputMethods \
     -java/awt/JAWT \
-    -java/awt/keyboard \
+    -java/awt/keyboard/8218917/AltKeyBug.java \
     -java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest \
     -java/awt/KeyboardFocusmanager/TypeAhead \
     -java/awt/Label \
@@ -980,7 +1020,6 @@ jdk_awt_wayland = \
     -java/awt/Mouse \
     -java/awt/MouseAdapter \
     -java/awt/MouseInfo \
-    -java/awt/MultipleGradientPaint \
     -java/awt/Multiscreen/MouseEventTest/MouseEventTest.java \
     -java/awt/Multiscreen/MultiScreenInsetsTest/MultiScreenInsetsTest.java \
     -java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java \
@@ -992,14 +1031,13 @@ jdk_awt_wayland = \
     -java/awt/Paint/LabelRepaint.java \
     -java/awt/Paint/ListRepaint.java \
     -java/awt/Paint/PaintNativeOnUpdate.java \
-    -java/awt/Panel \
     -java/awt/PopupMenu \
     -java/awt/print \
     -java/awt/PrintJob \
     -java/awt/Robot \
     -java/awt/Scrollbar \
     -java/awt/ScrollPane \
-    -java/awt/security \
+    -java/awt/security/WarningWindowDisposeTest/WarningWindowDisposeCrashTest.java \
     -java/awt/SplashScreen \
     -java/awt/TextArea \
     -java/awt/TextComponent \
@@ -1017,5 +1055,8 @@ jdk_awt_wayland = \
     -java/awt/TrayIcon \
     -java/awt/wakefield \
     -java/awt/Window \
-    -java/awt/WMSpecificTests \
     -java/awt/xembed
+
+# Wayland tests to be executed with -Dawt.toolkit.name=WLToolkit
+jdk_wayland = \
+    :jdk_awt_wayland
