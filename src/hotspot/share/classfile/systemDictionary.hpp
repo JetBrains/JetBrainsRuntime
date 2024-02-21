@@ -281,10 +281,10 @@ public:
   // Record the error when the first attempt to resolve a reference from a constant
   // pool entry to a class fails.
   static void add_resolution_error(const constantPoolHandle& pool, int which, Symbol* error,
-                                   Symbol* message, Symbol* cause = NULL, Symbol* cause_msg = NULL);
+                                   const char* message, Symbol* cause = NULL, const char* cause_msg = NULL);
   static void delete_resolution_error(ConstantPool* pool);
   static Symbol* find_resolution_error(const constantPoolHandle& pool, int which,
-                                       Symbol** message, Symbol** cause, Symbol** cause_msg);
+                                       const char** message, Symbol** cause, const char** cause_msg);
 
 
   // Record a nest host resolution/validation error
