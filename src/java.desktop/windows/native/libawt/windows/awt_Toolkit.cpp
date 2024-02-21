@@ -1310,8 +1310,10 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
       }
       /* Session management */
       case WM_QUERYENDSESSION: {
-          /* Shut down cleanly */
-          if (!isSuddenTerminationEnabled) {
+          // Shut down cleanly
+          // If m_messageLoopResult is EXIT_ALL_ENCLOSING_LOOPS means that application is already in process a closing.
+          // No need to repeat such logic via WM_QUERYENDSESSION and WM_ENDSESSION.
+          if (!isSuddenTerminationEnabled || AwtToolkit::GetInstance().m_messageLoopResult == EXIT_ALL_ENCLOSING_LOOPS) {
               return FALSE;
           }
           if (JVM_RaiseSignal(SIGTERM)) {
