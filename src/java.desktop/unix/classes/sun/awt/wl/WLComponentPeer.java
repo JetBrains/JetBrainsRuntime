@@ -82,6 +82,9 @@ public class WLComponentPeer implements ComponentPeer {
     };
     private static final int WHEEL_SCROLL_AMOUNT = 3;
 
+    private static final int MINIMUM_WIDTH = 1;
+    private static final int MINIMUM_HEIGHT = 1;
+
     private long nativePtr;
     private volatile boolean surfaceAssigned = false;
     protected final Component target;
@@ -1223,9 +1226,12 @@ public class WLComponentPeer implements ComponentPeer {
         return bounds;
     }
 
+
     private Dimension constrainSize(int width, int height) {
         Dimension maxBounds = getMaxBufferBounds();
-        return new Dimension(Math.min(width, maxBounds.width), Math.min(height, maxBounds.height));
+        return new Dimension(
+                Math.max(Math.min(width, maxBounds.width), MINIMUM_WIDTH),
+                Math.max(Math.min(height, maxBounds.height), MINIMUM_HEIGHT));
     }
 
     private Dimension constrainSize(Dimension bounds) {
