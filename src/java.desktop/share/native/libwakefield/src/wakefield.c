@@ -191,7 +191,7 @@ wakefield_move_surface(struct wl_client *client,
     struct weston_surface *surface = wl_resource_get_user_data(surface_resource);
     struct weston_view *view = container_of(surface->views.next, struct weston_view, surface_link);
 
-    if (!view) {
+    if (!view || !view->surface) {
         weston_log_scope_printf(wakefield->log, "WAKEFIELD: move_surface error\n");
         return;
     }
