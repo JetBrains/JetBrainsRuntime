@@ -734,13 +734,16 @@ void ConstantPool::resolve_string_constants_impl(const constantPoolHandle& this_
   }
 }
 
-Symbol* ConstantPool::exception_message(const constantPoolHandle& this_cp, int which, constantTag tag, oop pending_exception) {
+const char* ConstantPool::exception_message(const constantPoolHandle& this_cp, int which, constantTag tag, oop pending_exception) {
+  // Note: caller needs ResourceMark
+
   // Dig out the detailed message to reuse if possible
-  Symbol* message = java_lang_Throwable::detail_message(pending_exception);
-  if (message != NULL) {
-    return message;
+  const char* msg = java_lang_Throwable::message_as_utf8(pending_exception);
+  if (msg != NULL) {
+    return msg;
   }
 
+  Symbol* message = NULL;
   // Return specific message for the tag
   switch (tag.value()) {
   case JVM_CONSTANT_UnresolvedClass:
@@ -763,16 +766,16 @@ Symbol* ConstantPool::exception_message(const constantPoolHandle& this_cp, int w
     ShouldNotReachHere();
   }
 
-  return message;
+  return message != NULL ? message->as_C_string() : NULL;
 }
 
 void ConstantPool::throw_resolution_error(const constantPoolHandle& this_cp, int which, TRAPS) {
-  Symbol* message = NULL;
+  ResourceMark rm(THREAD);
+  const char* message = NULL;
   Symbol* error = SystemDictionary::find_resolution_error(this_cp, which, &message);
   assert(error != NULL && message != NULL, "checking");
   CLEAR_PENDING_EXCEPTION;
-  ResourceMark rm;
-  THROW_MSG(error, message->as_C_string());
+  THROW_MSG(error, message);
 }
 
 // If resolution for Class, Dynamic constant, MethodHandle or MethodType fails, save the
@@ -790,7 +793,9 @@ void ConstantPool::save_and_throw_exception(const constantPoolHandle& this_cp, i
     // and OutOfMemoryError, etc, or if the thread was hit by stop()
     // Needs clarification to section 5.4.3 of the VM spec (see 6308271)
   } else if (this_cp->tag_at(which).value() != error_tag) {
-    Symbol* message = exception_message(this_cp, which, tag, PENDING_EXCEPTION);
+    ResourceMark rm(THREAD);
+
+    const char* message = exception_message(this_cp, which, tag, PENDING_EXCEPTION);
     SystemDictionary::add_resolution_error(this_cp, which, error, message);
     // CAS in the tag.  If a thread beat us to registering this error that's fine.
     // If another thread resolved the reference, this is a race condition. This
