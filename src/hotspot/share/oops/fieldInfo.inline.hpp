@@ -49,6 +49,12 @@ inline Symbol* FieldInfo::signature(ConstantPool* cp) const {
   return cp->symbol_at(index);
 }
 
+inline Symbol* FieldInfo::signature_injected_dcevm() const {
+  assert(_field_flags.is_injected(), "injected only");
+  int index = _signature_index;
+  return lookup_symbol(index);
+}
+
 inline Symbol* FieldInfo::lookup_symbol(int symbol_index) const {
   assert(_field_flags.is_injected(), "only injected fields");
   return Symbol::vm_symbol_at(static_cast<vmSymbolID>(symbol_index));
