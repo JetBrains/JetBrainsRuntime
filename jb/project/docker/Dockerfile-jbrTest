@@ -1,4 +1,4 @@
-# NOTE: This Dockerfile is meant to be used from the mkdocker_xvfb.sh script.
+# NOTE: This Dockerfile is meant to be used from the mkdocker_jbrtest.sh script.
 
 # Pull a concrete version of Linux that does NOT recieve updates after it's
 # been created.  This is so that the image is as stable as possible to make
@@ -55,18 +55,3 @@ RUN \
 ENV JAVA_HOME=/jbr
 ENV DISPLAY=:0
 
-#ADD run_xvfb.sh /run_xvfb.sh
-#RUN chmod a+x /run_xvfb.sh
-#CMD /run_xvfb.sh
-
-#        fontconfig:i386 \
-#        x11-apps:i386; \
-
-
-#    apt-get install -y \
-#        libgtk2.0-0${LIB_ARCH_POSTFIX}\
-#        libxext6${LIB_ARCH_POSTFIX} \
-#        libxi6${LIB_ARCH_POSTFIX} \
-#        libxrender-dev${LIB_ARCH_POSTFIX} \
-#        libxtst6${LIB_ARCH_POSTFIX} \
-#        xvfb${LIB_ARCH_POSTFIX}; \

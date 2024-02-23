@@ -36,7 +36,7 @@ function build {
       --build-arg ARCH_FROM=$arch_from \
       --build-arg OS_NAME=${os_name} \
       --build-arg OS_VERSION="${os_version}" \
-    -f Dockerfile-xvfb .
+    -f Dockerfile-jbrTest .
 
   return 0
 }
@@ -55,9 +55,9 @@ function downloadJBR {
   fi
 
   # Verify that what we've downloaded can be trusted.
-#  sha256sum -c - <<EOF
-#  $JBR_SHA *$JBR_LOCAL_FILE
-#  EOF
+  sha256sum -c - <<EOF
+$JBR_SHA *$JBR_LOCAL_FILE
+EOF
 
   return 0
 }
