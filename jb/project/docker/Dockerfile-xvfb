@@ -14,9 +14,14 @@ ARG OS_VERSION
 # jetbrains/runtime:jbrTest_${os_name}${os_version}-$arch
 FROM ${ARCH_FROM}/${OS_NAME}:${OS_VERSION}
 
+COPY jbr-11_0_16-linux-x86-b2043.64.tar.gz /jbr/
 ARG ARCH
 RUN \
     if [ "$ARCH" = "i386" ]; then \
+      # Set up boot JDK for building
+      cd /jbr && \
+          tar --strip-components=1 -xzf jbr-11_0_16-linux-x86-b2043.64.tar.gz && \
+          rm jbr-11_0_16-linux-x86-b2043.64.tar.gz; \
       echo Installing packages required for i386 only; \
       dpkg --add-architecture i386; \
       apt-get update -y; \
@@ -30,6 +35,8 @@ RUN \
     fi; \
     apt-get update -y; \
     apt-get install -y \
+        binutils:${ARCH} \
+        libcanberra-gtk-module:${ARCH} \
         libgtk2.0-0:${ARCH} \
         libxext6:${ARCH} \
         libxi6:${ARCH} \
@@ -45,6 +52,7 @@ RUN \
         libasound2:${ARCH};\
     apt-get clean all
 
+ENV JAVA_HOME=/jbr
 ENV DISPLAY=:0
 
 #ADD run_xvfb.sh /run_xvfb.sh
