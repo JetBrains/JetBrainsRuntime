@@ -33,7 +33,7 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
 | 2024.1      | [17.0.10-b1207.1](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.10b1207.1)| 20-Feb-2024   |
 | 2023.3      | [17.0.10-b1087.17](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.10b1087.17) | 23-Jan-2024|
 | 2023.2      | [17.0.10-b1000.48](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.10b1000.48) | 12-Feb-2024|
-| 2023.1      | [17.0.10-b829.16](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.10b829.26) | 12-Feb-2024  |
+| 2023.1      | [17.0.10-b829.26](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.10b829.26) | 12-Feb-2024  |
 | 2022.3      | [17.0.6-b653.34](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.6b653.34) | 28-Feb-2023   |
 | 2022.2      | [17.0.6-b469.82](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.6b469.82) | 06-Mar-2023   |
 
