@@ -1514,7 +1514,7 @@ void VM_EnhancedRedefineClasses::calculate_instance_update_information(Klass* ne
           FieldInfo old_field = old_klass->field(i);
           if (old_field.field_flags().is_injected() &&
               old_field.lookup_symbol(old_field.name_index()) == internal_field.lookup_symbol(internal_field.name_index())) {
-            copy(old_field.offset(), type2aelembytes(Signature::basic_type(internal_field.signature(nullptr))));
+            copy(old_field.offset(), type2aelembytes(Signature::basic_type(internal_field.signature_injected_dcevm())));
             if (old_field.offset() < internal_field.offset()) {
               _copy_backwards = true;
             }
