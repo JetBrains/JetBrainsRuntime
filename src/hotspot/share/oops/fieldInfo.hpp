@@ -201,6 +201,9 @@ class FieldInfo {
 
   inline Symbol* signature(ConstantPool* cp) const;
 
+  // (DCEVM) - signature() duplicate for internal fields to resolve gcc compilation "nonnull" issue
+  inline Symbol* signature_injected_dcevm() const;
+
   inline Symbol* lookup_symbol(int symbol_index) const;
 
   void print(outputStream* os, ConstantPool* cp);
