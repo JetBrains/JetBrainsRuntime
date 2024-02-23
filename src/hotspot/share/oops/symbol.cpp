@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,6 +53,7 @@ uint32_t Symbol::pack_hash_and_refcount(short hash, int refcount) {
 }
 
 Symbol::Symbol(const u1* name, int length, int refcount) {
+  assert(length <= max_length(), "SymbolTable should have caught this!");
   _hash_and_refcount =  pack_hash_and_refcount((short)os::random(), refcount);
   _length = (u2)length;
   // _body[0..1] are allocated in the header just by coincidence in the current
