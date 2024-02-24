@@ -507,8 +507,27 @@ public:
   }
 };
 
+class ChangePointersObjectTask : public AbstractGangTask {
+private:
+  ChangePointersOopClosure<StoreBarrier>* _cl;
+  ParallelObjectIterator* _poi;
+  bool _needs_instance_update;
+public:
+  ChangePointersObjectTask(ChangePointersOopClosure<StoreBarrier>* cl, ParallelObjectIterator* poi) : AbstractGangTask("IterateObject Closure"),
+                                                                                                      _cl(cl), _poi(poi), _needs_instance_update(false) { }
 
-// Main transformation method - runs in VM thread.
+  virtual void work(uint worker_id) {
+    HandleMark hm(Thread::current());   // make sure any handles created are deleted
+    ChangePointersObjectClosure objectClosure(_cl);
+    _poi->object_iterate(&objectClosure, worker_id);
+    _needs_instance_update = _needs_instance_update || objectClosure.needs_instance_update();
+  }
+  bool needs_instance_update() {
+    return _needs_instance_update;
+  }
+};
+
+  // Main transformation method - runs in VM thread.
 //  - for each scratch class call redefine_single_class
 //  - clear code cache (flush_dependent_code)
 //  - iterate the heap and update object definitions, check it old/new class fields
@@ -587,7 +606,7 @@ void VM_EnhancedRedefineClasses::doit() {
 
   ChangePointersOopClosure<StoreNoBarrier> oopClosureNoBarrier;
   ChangePointersOopClosure<StoreBarrier> oopClosure;
-  ChangePointersObjectClosure objectClosure(&oopClosure);
+  bool needs_instance_update = false;
 
   log_trace(redefine, class, obsolete, metadata)("Before updating instances");
   {
@@ -609,27 +628,25 @@ void VM_EnhancedRedefineClasses::doit() {
 #endif
     }
 
-    Universe::heap()->ensure_parsability(false);
-#if INCLUDE_G1GC
-    if (UseG1GC) {
-      if (log_is_enabled(Info, redefine, class, timer)) {
-        _timer_heap_iterate.start();
-      }
-      // returns after the iteration is finished
-      G1CollectedHeap::heap()->object_par_iterate(&objectClosure);
-      _timer_heap_iterate.stop();
-    } else {
-#endif
-      if (log_is_enabled(Info, redefine, class, timer)) {
-        _timer_heap_iterate.start();
-      }
-      Universe::heap()->object_iterate(&objectClosure);
-      _timer_heap_iterate.stop();
-#if INCLUDE_G1GC
+    if (log_is_enabled(Info, redefine, class, timer)) {
+      _timer_heap_iterate.start();
     }
-#endif
+    Universe::heap()->ensure_parsability(false);
+    WorkGang* gang = Universe::heap()->safepoint_workers();
+    if (gang != nullptr && gang->active_workers() > 1) {
+      ParallelObjectIterator poi(gang->active_workers());
+      ChangePointersObjectTask objectTask(&oopClosure, &poi);
+      gang->run_task(&objectTask);
+      needs_instance_update = objectTask.needs_instance_update();
+    } else {
+      ChangePointersObjectClosure objectClosure(&oopClosure);
+      Universe::heap()->object_iterate(&objectClosure);
+      needs_instance_update = objectClosure.needs_instance_update();
+    }
 
     root_oops_do(&oopClosureNoBarrier);
+
+    _timer_heap_iterate.stop();
 
 #if INCLUDE_G1GC
     if (UseG1GC) {
@@ -711,9 +728,8 @@ void VM_EnhancedRedefineClasses::doit() {
     Universe::objectArrayKlassObj()->append_to_sibling_list();
   }
 
-  if (objectClosure.needs_instance_update()) {
+  if (needs_instance_update) {
     // Do a full garbage collection to update the instance sizes accordingly
-
     if (log_is_enabled(Info, redefine, class, timer)) {
       _timer_heap_full_gc.start();
     }
