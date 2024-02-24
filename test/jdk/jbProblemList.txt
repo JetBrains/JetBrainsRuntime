@@ -169,7 +169,7 @@ java/awt/Focus/ChoiceFocus/ChoiceFocus.java 8169103 windows-all,macosx-all
 java/awt/Focus/ClearGlobalFocusOwnerTest/ClearGlobalFocusOwnerTest.java JBR-5907 linux-all
 java/awt/Focus/ClearLwQueueBreakTest/ClearLwQueueBreakTest.java 8198618,JBR-814 macosx-all,linux-all
 java/awt/Focus/CloseDialogActivateOwnerTest/CloseDialogActivateOwnerTest.java JBR-5225 windows-all
-java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java 6986252,JBR-5178 macosx-all,windows-all
+java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java 6986252,JBR-5178,JBR-6750 macosx-all,windows-all,linux-all
 java/awt/Focus/ConsumedTabKeyTest.java JBR-5833 windows-all
 java/awt/Focus/KeyEventForBadFocusOwnerTest/KeyEventForBadFocusOwnerTest.java JBR-5210 windows-all
 java/awt/Focus/ModalExcludedWindowClickTest/ModalExcludedWindowClickTest.java JBR-884 windows-x64,linux-x64
@@ -929,6 +929,7 @@ javax/swing/JButton/PressedButtonRightClickTest.java JBR-5210 windows-all
 javax/swing/JButton/TestMnemonicAction.java JBR-6508 windows-x64,linux-all
 javax/swing/JColorChooser/Test6524757.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test6827032.java JBR-5210 windows-all
+javax/swing/JComboBox/4199622/bug4199622.java JBR-6751 winows-x64
 javax/swing/JComboBox/4743225/bug4743225.java JBR-5210 windows-all
 javax/swing/JComboBox/6236162/bug6236162.java JBR-5210 windows-all
 javax/swing/JComboBox/6406264/bug6406264.java JBR-5210,JBR-5510 windows-all,linux-5.18.2-arch1-1
@@ -957,6 +958,7 @@ javax/swing/JMenuItem/6209975/bug6209975.java 8253184 windows-all
 javax/swing/JMenuItem/8158566/CloseOnMouseClickPropertyTest.java JBR-5510,JBR-5545,JBR-6511 windows-all,linux-all,macosx-all
 javax/swing/JMenuItem/bug4839464.java JBR-5911 windows-all
 javax/swing/JMenuItem/6249972/bug6249972.java 8197552 windows-all
+javax/swing/JMenuItem/ActionListenerCalledTwice/ActionListenerCalledTwiceTest.java 8315986 macosx-all
 javax/swing/JOptionPane/7138665/bug7138665.java JBR-5799 windows-all
 javax/swing/JOptionPane/8081019/bug8081019.java JBR-5767 windows-all
 javax/swing/JPopupMenu/4634626/bug4634626.java 8253184 windows-all
@@ -1393,6 +1395,7 @@ jb/java/awt/CustomTitleBar/ActionListenerTest.java JBR-5819 macosx-all,windows-a
 jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-5345 windows-x64
 jb/java/awt/CustomTitleBar/FrameNativeControlsTest.java JBR-5345 windows-x64
 jb/java/awt/CustomTitleBar/JDialogNativeControlsTest.java JBR-5345 windows-x64
+jb/java/awt/CustomTitleBar/HitTestClientArea.java JBR-6675 windows-all
 jb/java/awt/CustomTitleBar/HitTestNonClientArea.java JBR-5465,JBR-5550 windows-all
 jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-5465,JBR-5550 windows-all
 jb/java/awt/CustomTitleBar/MaximizedWindowFocusTest.java JBR-5828 windows-all
@@ -1423,7 +1426,7 @@ jb/java/awt/Focus/FullScreenFocusStealing.java JBR-6246 macosx-all
 jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-5799 windows-all
 jb/java/awt/Focus/TitleBarClickTest.java JBR-6394 linux-5.18.2-arch1-1,windows-all
 
-com/sun/java/swing/plaf/gtk/TestFileChooserSingleDirectorySelection.java JBR-5510 linux-5.18.2-arch1-1
+com/sun/java/swing/plaf/gtk/TestFileChooserSingleDirectorySelection.java JBR-6749 linux-x64
 java/awt/Choice/ChoiceGeneratesItemEvents.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Choice/ChoiceStaysOpenedOnTAB.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Graphics/XORPaint.java#id2 JBR-5510 linux-5.18.2-arch1-1
