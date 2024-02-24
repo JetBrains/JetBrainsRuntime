@@ -501,6 +501,25 @@ public:
   }
 };
 
+class ChangePointersObjectTask : public WorkerTask {
+private:
+  ChangePointersOopClosure<StoreBarrier>* _cl;
+  ParallelObjectIterator* _poi;
+  bool _needs_instance_update;
+public:
+  ChangePointersObjectTask(ChangePointersOopClosure<StoreBarrier>* cl, ParallelObjectIterator* poi) : WorkerTask("IterateObject Closure"),
+                                                                                                      _cl(cl), _poi(poi), _needs_instance_update(false) { }
+
+  virtual void work(uint worker_id) {
+    HandleMark hm(Thread::current());   // make sure any handles created are deleted
+    ChangePointersObjectClosure objectClosure(_cl);
+    _poi->object_iterate(&objectClosure, worker_id);
+    _needs_instance_update = _needs_instance_update || objectClosure.needs_instance_update();
+  }
+  bool needs_instance_update() {
+    return _needs_instance_update;
+  }
+};
 
 // Main transformation method - runs in VM thread.
 //  - for each scratch class call redefine_single_class
@@ -581,7 +600,7 @@ void VM_EnhancedRedefineClasses::doit() {
 
   ChangePointersOopClosure<StoreNoBarrier> oopClosureNoBarrier;
   ChangePointersOopClosure<StoreBarrier> oopClosure;
-  ChangePointersObjectClosure objectClosure(&oopClosure);
+  bool needs_instance_update = false;
 
   log_trace(redefine, class, redefine, metadata)("Before updating instances");
   {
@@ -603,27 +622,25 @@ void VM_EnhancedRedefineClasses::doit() {
 #endif
     }
 
-    Universe::heap()->ensure_parsability(false);
-#if INCLUDE_G1GC
-    if (UseG1GC) {
-      if (log_is_enabled(Info, redefine, class, timer)) {
-        _timer_heap_iterate.start();
-      }
-      // returns after the iteration is finished
-      G1CollectedHeap::heap()->object_par_iterate(&objectClosure);
-      _timer_heap_iterate.stop();
-    } else {
-#endif
-      if (log_is_enabled(Info, redefine, class, timer)) {
-        _timer_heap_iterate.start();
-      }
-      Universe::heap()->object_iterate(&objectClosure);
-      _timer_heap_iterate.stop();
-#if INCLUDE_G1GC
+    if (log_is_enabled(Info, redefine, class, timer)) {
+      _timer_heap_iterate.start();
     }
-#endif
+    Universe::heap()->ensure_parsability(false);
+    WorkerThreads* workers = Universe::heap()->safepoint_workers();
+    if (workers != nullptr && workers->active_workers() > 1) {
+      ParallelObjectIterator poi(workers->active_workers());
+      ChangePointersObjectTask objectTask(&oopClosure, &poi);
+      workers->run_task(&objectTask);
+      needs_instance_update = objectTask.needs_instance_update();
+    } else {
+      ChangePointersObjectClosure objectClosure(&oopClosure);
+      Universe::heap()->object_iterate(&objectClosure);
+      needs_instance_update = objectClosure.needs_instance_update();
+    }
 
     root_oops_do(&oopClosureNoBarrier);
+
+    _timer_heap_iterate.stop();
 
 #if INCLUDE_G1GC
     if (UseG1GC) {
@@ -706,9 +723,8 @@ void VM_EnhancedRedefineClasses::doit() {
     ClassUnloadingWithConcurrentMark = false;
   }
 
-  if (objectClosure.needs_instance_update()) {
+  if (needs_instance_update) {
     // Do a full garbage collection to update the instance sizes accordingly
-
     log_trace(redefine, class, redefine, metadata)("Before redefinition full GC run");
 
     if (log_is_enabled(Info, redefine, class, timer)) {
