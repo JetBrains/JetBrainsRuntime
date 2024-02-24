@@ -1974,11 +1974,6 @@ void G1CollectedHeap::heap_region_iterate(G1HeapRegionIndexClosure* cl) const {
   _hrm.iterate(cl);
 }
 
-void G1CollectedHeap::object_par_iterate(ObjectClosure* cl) {
-  G1IterateObjectClosureTask iocl_task(cl, this);
-  workers()->run_task(&iocl_task);
-}
-
 void G1CollectedHeap::heap_region_par_iterate_from_worker_offset(G1HeapRegionClosure* cl,
                                                                  G1HeapRegionClaimer *hrclaimer,
                                                                  uint worker_id) const {

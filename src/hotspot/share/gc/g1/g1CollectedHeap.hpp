@@ -1065,7 +1065,6 @@ public:
   // Iteration functions.
 
   void object_iterate_parallel(ObjectClosure* cl, uint worker_id, G1HeapRegionClaimer* claimer);
-  void object_par_iterate(ObjectClosure* cl);
 
   // Iterate over all objects, calling "cl.do_object" on each.
   void object_iterate(ObjectClosure* cl) override;
