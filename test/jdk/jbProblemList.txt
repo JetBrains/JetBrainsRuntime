@@ -278,7 +278,6 @@ java/awt/ScrollPane/ScrollPanePreferredSize/ScrollPanePreferredSize.java 8253184
 java/awt/Toolkit/Headless/HeadlessToolkit.java JBR-6550 macosx-all
 java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java JBR-5765 macosx-all
 java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java JBR-5812 linux-all
-java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java JBR-5812 linux-all
 java/awt/Toolkit/SecurityTest/SecurityTest2.java JBR-5225 windows-all
 java/awt/Toolkit/SunDisplayChangerLeakTest/SunDisplayChangerLeakTest.java JBR-5051 windows-all
 java/awt/Toolkit/RealSync/Test.java 6849383,8072110 linux-all,windows-all
@@ -323,6 +322,7 @@ java/awt/Window/LocationAtScreenCorner/LocationAtScreenCorner.java 8203371 linux
 java/awt/Window/WindowAppearanceTest/WindowAppearanceTest.java JBR-3691,JBR-3773 macosx-x64,macosx-aarch64
 java/awt/font/FontScaling/StretchedFontTest.java JBR-6225 macosx-all
 java/awt/font/GlyphVector/NLGlyphTest.java 8273321 linux-all,windows-aarch64
+java/awt/font/JNICheck/FreeTypeScalerJNICheck.java JBR-6061 macosx-all
 java/awt/font/JNICheck/JNICheck.sh 8279878,JBR-5011 linux-5.15.0-39-generic,linux-5.15.0-33-generic,linux-all
 java/awt/font/TextLayout/TextLayoutBounds.java 8169188 generic-all
 java/awt/FontMetrics/FontCrash.java 8198336 windows-all
@@ -340,7 +340,7 @@ sun/java2d/DirectX/RenderingToCachedGraphicsTest/RenderingToCachedGraphicsTest.j
 sun/java2d/SunGraphics2D/DrawImageBilinear.java 8191406,8297175 linux-all,generic-all
 
 java/awt/Graphics2D/CopyAreaOOB.java JBR-5354 macosx-all,windows-all,linux-5.18.2-arch1-1
-java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5010,JBR-5510 linux-aarch64,linux-5.18.2-arch1-1
+java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5010,JBR-5510,JBR-6061 linux-aarch64,linux-5.18.2-arch1-1,macosx-all
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java 8266283 linux-all
 java/awt/Graphics2D/DrawString/TextRenderingTest.java JBR-4260,JBR-5359 macosx-11.7.1,windows-aarch64
 java/awt/Graphics2D/LargeWindowPaintTest.java JBR-5210 windows-all
@@ -373,6 +373,7 @@ java/awt/Frame/MiscUndecorated/RepaintTest.java 8266244,JBR-816,JBR-5786 macosx-
 java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java 8253184 windows-all
 java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java 8157173 generic-all
 java/awt/Robot/MultiScreenRobotPosition/MultiScreenRobotPosition.java JBR-830 windows-x64
+java/awt/Robot/NonEmptyErrorStream.java JBR-6061 macosx-all
 java/awt/Robot/RobotExtraButton/RobotExtraButton.java JBR-6554 linux-all
 java/awt/Modal/FileDialog/FileDialogAppModal1Test.java 7186009,8253184 macosx-all,windows-all
 java/awt/Modal/FileDialog/FileDialogAppModal2Test.java 7186009,8253184 macosx-all,windows-all
@@ -1197,12 +1198,10 @@ java/awt/TextArea/TextAreaCursorTest/HoveringAndDraggingTest.java 8024986 macosx
 java/awt/TextArea/TextAreaTwicePack/TextAreaTwicePack.java 8253184 windows-all
 java/awt/TextField/OverScrollTest/OverScrollTest.java 8253184 windows-all
 java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter.java 8254841 macosx-all
-java/awt/FlowLayout/PreferredLayoutSize.java JBR-6349 linux-all
 java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.java 8256289,JBR-5359 windows-x64,windows-aarch64
-java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java JBR-6335 linux-all
-java/awt/Focus/RequestOnCompWithNullParent/RequestOnCompWithNullParent1.java JBR-6507 linux-all
 java/awt/Focus/RemoveAfterRequest/RemoveAfterRequest.java JBR-6052 macosx-all,linux-all
 java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java JBR-6335 linux-all
+java/awt/Focus/RequestOnCompWithNullParent/RequestOnCompWithNullParent1.java JBR-6507 linux-all
 java/awt/FullScreen/TranslucentWindow/TranslucentWindow.java 8258103,8253184 linux-all,windows-all
 
 java/util/Properties/PropertiesStoreTest.java 8282023 generic-all
