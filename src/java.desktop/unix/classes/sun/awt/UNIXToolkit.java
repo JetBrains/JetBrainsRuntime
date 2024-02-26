@@ -118,9 +118,7 @@ public abstract class UNIXToolkit extends SunToolkit
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.UNIXToolkit");
 
     private static void printError(String str) {
-        if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
-            log.severe(str);
-        }
+        log.fine(str);
     }
 
     private static native void toolkitInit();
