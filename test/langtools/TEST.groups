@@ -20,6 +20,14 @@
 #  questions.
 #
 
+# All tests
+
+all = \
+    :langtools_all
+
+langtools_all = \
+    /
+
 # Tiered testing definitions
 
 # (Nearly) all langtools tests are tier 1.
