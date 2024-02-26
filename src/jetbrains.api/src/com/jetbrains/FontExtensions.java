@@ -108,7 +108,9 @@ public interface FontExtensions {
      *
      * @param font       basic font
      */
-    List<String> getAvailableFeatures(Font font);
+    default List<String> getAvailableFeatures(Font font) {
+        return List.of();
+    }
 
     Dimension getSubpixelResolution();
 }
