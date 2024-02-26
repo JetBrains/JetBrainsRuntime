@@ -40,12 +40,14 @@ import java.lang.foreign.MemorySegment;
 import java.lang.ref.SoftReference;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.WeakHashMap;
+import java.util.stream.Collectors;
 
 /*
  * different ways to do this
@@ -187,17 +189,7 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
             return res;
         }
 
-        String features = getFeatures(pFace);
-        // Inconsistent result. Amount of chars should be devidible on 4
-        if (features.length() % 4 != 0) {
-            return res;
-        }
-
-        for (int i = 0; i < features.length() / 4; i++) {
-            res.add(features.substring(i * 4, (i + 1) * 4));
-        }
-
-        return res;
+        return Arrays.stream(getFeatures(pFace)).collect(Collectors.toSet());
     }
 
     public void layout(FontStrikeDesc desc, float[] mat, float ptSize, int slot, int slotShift,
@@ -267,5 +259,5 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
         }
     }
 
-    private static native String getFeatures(long pFace);
+    private static native String[] getFeatures(long pFace);
 }
