@@ -1533,7 +1533,7 @@ void VM_EnhancedRedefineClasses::calculate_instance_update_information(Klass* ne
         const InjectedField* const injected = JavaClasses::get_injected(old_klass->name(), &num_injected);
         for (int i = java_fields_count; i < java_fields_count+num_injected; i++) {
           FieldInfo *old_field = old_klass->field(i);
-          if (old_field->is_internal() && old_field->name_internal_dcevm() == internal_field->name_internal_dcevm()) {
+          if (old_field->is_internal() && internal_field->is_internal() && old_field->name_internal_dcevm() == internal_field->name_internal_dcevm()) {
             copy(old_field->offset(), type2aelembytes(Signature::basic_type(internal_field->signature_internal_dcevm())));
             if (old_field->offset() < internal_field->offset()) {
               _copy_backwards = true;
