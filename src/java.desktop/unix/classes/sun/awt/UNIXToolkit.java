@@ -125,7 +125,7 @@ public abstract class UNIXToolkit extends SunToolkit
 
     protected UNIXToolkit() {
         toolkitInit();
-        updateOsThemeProperty();
+        initSystemPropertyWatcher();
     }
 
     public static int getDatatransferTimeout() {
@@ -585,11 +585,30 @@ public abstract class UNIXToolkit extends SunToolkit
 
     private static final String OS_THEME_IS_DARK = "awt.os.theme.isDark";
 
-    private void updateOsThemeProperty() {
-        int isSystemDarkColorScheme = isSystemDarkColorScheme();
+    private static Thread systemPropertyWatcher = null;
 
-        if (isSystemDarkColorScheme >= 0) {
-            setDesktopProperty(OS_THEME_IS_DARK, isSystemDarkColorScheme != 0);
+    private void initSystemPropertyWatcher() {
+        int initialSystemDarkColorScheme = isSystemDarkColorScheme();
+
+        if (initialSystemDarkColorScheme >= 0) {
+            setDesktopProperty(OS_THEME_IS_DARK, initialSystemDarkColorScheme != 0);
+
+            systemPropertyWatcher = InnocuousThread.newThread("SystemPropertyWatcher",
+                    () -> {
+                        while (true) {
+                            try {
+                                int isSystemDarkColorScheme = isSystemDarkColorScheme();
+                                if (isSystemDarkColorScheme >= 0) {
+                                    setDesktopProperty(OS_THEME_IS_DARK, isSystemDarkColorScheme != 0);
+                                }
+
+                                Thread.sleep(1000);
+                            } catch (Exception ignored) {
+                            }
+                        }
+                    });
+            systemPropertyWatcher.setDaemon(true);
+            systemPropertyWatcher.start();
         }
     }
 
@@ -626,21 +645,6 @@ public abstract class UNIXToolkit extends SunToolkit
         } else {
             waylandWindowFocusListener = null;
         }
-
-        final Thread systemPropertyWatcher = InnocuousThread.newThread("SystemPropertyWatcher",
-            () -> {
-                if (Toolkit.getDefaultToolkit() instanceof UNIXToolkit unixTK) {
-                    while (true) {
-                        try {
-                            unixTK.updateOsThemeProperty();
-                            Thread.sleep(1000);
-                        } catch (Exception ignored) {
-                        }
-                    }
-                }
-            });
-        systemPropertyWatcher.setDaemon(true);
-        systemPropertyWatcher.start();
     }
 
     private static void addWaylandWindowFocusListenerToWindow(Window window) {
