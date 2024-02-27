@@ -239,6 +239,7 @@ public:
   static void print_oome_stacks(outputStream *st);
   static void print_classloaders_stats(outputStream *st);
   static void print_dup_classes(outputStream *st);
+  static void print_process_memory_usage(outputStream *st);
 };
 
 class VMErrorCallback {
