@@ -39,7 +39,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.List;
 
 import static com.jetbrains.desktop.FontExtensions.featuresToString;
 import static com.jetbrains.desktop.FontExtensions.getFeatures;
