@@ -103,14 +103,5 @@ public interface FontExtensions {
      */
     Font deriveFontWithFeatures(Font font, Features features);
 
-    /**
-     * This method returns set of OpenType's features converted to String supported by current font
-     *
-     * @param font       basic font
-     */
-    default List<String> getAvailableFeatures(Font font) {
-        return List.of();
-    }
-
     Dimension getSubpixelResolution();
 }

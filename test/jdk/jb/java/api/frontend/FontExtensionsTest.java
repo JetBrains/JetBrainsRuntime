@@ -214,7 +214,7 @@ public class FontExtensionsTest {
 
     @JBRTest
     private static Boolean getAvailableFeatures1() {
-        List<String> features = JBR.getFontExtensions().getAvailableFeatures(BASE_FONT);
+        List<String> features = JBR.getFontOpenTypeFeatures().getAvailableFeatures(BASE_FONT);
         List<FontExtensions.FeatureTag> expected =
                 List.of(FontExtensions.FeatureTag.SS01, FontExtensions.FeatureTag.CV03, FontExtensions.FeatureTag.ZERO);
         return features.containsAll(expected.stream().map(FontExtensions.FeatureTag::getName).toList());
@@ -222,13 +222,17 @@ public class FontExtensionsTest {
 
     @JBRTest
     private static Boolean getAvailableFeatures2() {
-        List<String> features = JBR.getFontExtensions().getAvailableFeatures(new Font("Arial", Font.PLAIN, 20));
+        List<String> features = JBR.getFontOpenTypeFeatures().getAvailableFeatures(new Font("Arial", Font.PLAIN, 20));
         return features.isEmpty();
     }
 
     public static void main(final String[] args) {
         if (!JBR.isFontExtensionsSupported()) {
             throw new RuntimeException("JBR FontExtension API is not available");
+        }
+
+        if (!JBR.isFontOpenTypeFeaturesSupported()) {
+            throw new RuntimeException("JBR FontOpenTypeFeatures API is not available");
         }
 
         String error = "";
