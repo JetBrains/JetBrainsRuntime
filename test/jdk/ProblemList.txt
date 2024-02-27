@@ -517,7 +517,6 @@ java/lang/management/MemoryMXBean/PendingAllGC.sh               8158837 generic-
 # jdk_io
 
 java/io/pathNames/GeneralWin32.java                             8180264 windows-all
-java/io/File/createTempFile/SpecialTempFile.java                8274122 windows11
 
 ############################################################################
 
