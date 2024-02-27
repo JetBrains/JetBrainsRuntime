@@ -1180,17 +1180,9 @@ com/sun/jndi/dns/ConfigTests/Timeout.java 8220213 generic-all
 
 # various Windows are created spontaneously during test execution
 
-javax/swing/JComboBox/6559152/bug6559152.java                                       nobug windows-all
-javax/swing/JComboBox/6607130/bug6607130.java                                       nobug windows-all
-
-javax/swing/JComboBox/4199622/bug4199622.java                                       nobug windows-all
-javax/swing/JComboBox/4515752/DefaultButtonTest.java                                nobug windows-all
-
 javax/swing/JComboBox/8032878/bug8032878.java JBR-5210 windows-all
-javax/swing/JComboBox/8057893/bug8057893.java                                       nobug windows-all
 
 javax/swing/JList/4618767/JListSelectedElementTest.java                             JBR-4955 windows-all
-javax/swing/JList/6462008/bug6462008.java                                           nobug windows-all
 
 # no printer found
 java/awt/print/PrinterJob/CheckPrivilege.java                                       JBR-893 generic-all
