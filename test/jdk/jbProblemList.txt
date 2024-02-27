@@ -946,9 +946,6 @@ javax/swing/JButton/4659800/EnterKeyActivatesButton.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test6541987.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test7194184.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test8051548.java JBR-5210 windows-all
-javax/swing/JComboBox/4743225/bug4743225.java JBR-5210 windows-all
-javax/swing/JComboBox/6236162/bug6236162.java JBR-5210 windows-all
-javax/swing/JComboBox/ConsumedKeyTest/ConsumedKeyTest.java JBR-5210 windows-all
 javax/swing/JComboBox/DisabledComboBoxFontTestAuto.java 8310072 linux-all,windows-all
 javax/swing/JEditorPane/bug4714674.java JBR-5810 windows-all
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest_i18n.java JBR-912 windows-all
@@ -1016,7 +1013,7 @@ javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java  JBR-5510 lin
 javax/swing/JInternalFrame/8020708/bug8020708.java JBR-4879 windows-all
 javax/swing/JInternalFrame/8069348/bug8069348.java 8253184,JBR-900 macosx-aarch64,windows-all
 javax/swing/text/DefaultEditorKit/4278839/bug4278839.java CODETOOLS-7901623 windows-all
-javax/swing/text/GlyphPainter2/6427244/bug6427244.java JBR-896 windows-all
+javax/swing/text/GlyphPainter2/6427244/bug6427244.java JBR-896,JBR-6760 windows-all,linux-i386
 javax/swing/text/JTextComponent/5074573/bug5074573.java CODETOOLS-7901623,JBR-5386 windows-all,linux-all
 javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-5210 windows-all
 javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all
@@ -1180,8 +1177,6 @@ com/sun/jndi/dns/ConfigTests/Timeout.java 8220213 generic-all
 
 # various Windows are created spontaneously during test execution
 
-javax/swing/JComboBox/8032878/bug8032878.java JBR-5210 windows-all
-
 javax/swing/JList/4618767/JListSelectedElementTest.java                             JBR-4955 windows-all
 
 # no printer found
@@ -1248,7 +1243,9 @@ javax/swing/JSpinner/SpinnerTest.java JBR-4880 windows-all
 javax/swing/JSpinner/TestJSpinnerFocusLost.java JBR-5210 windows-all
 javax/swing/JTable/7068740/bug7068740.java 8197552 windows-all
 javax/swing/JTable/8236907/LastVisibleRow.java JBR-6066 macosx-aarch64
-javax/swing/text/AbstractDocument/6968363/Test6968363.java JBR-4880 windows-all
+javax/swing/JTable/JTableOrientationNavTest/JTableOrientationNavTest.java JBR-6836 linux-all
+javax/swing/text/AbstractDocument/6968363/Test6968363.java JBR-4880,JBR-6760 windows-all,linux-i386
+
 javax/swing/text/FlowView/LayoutTest.java JBR-4880 windows-all
 javax/swing/text/html/7189299/bug7189299.java JBR-4880 windows-all
 jb/java/jcef/HandleJSQueryTest3314.sh JBR-4866 linux-all
@@ -1348,3 +1345,49 @@ javax/swing/JTextPane/TestJTextPaneBackgroundColor.java JBR-5510 linux-5.18.2-ar
 javax/swing/JToolTip/TestTooltipBackgroundColor.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JTree/TestTreeBackgroundColor.java JBR-5510 linux-5.18.2-arch1-1
 sun/java2d/ClassCastExceptionForInvalidSurface.java JBR-5510 linux-5.18.2-arch1-1
+
+java/awt/font/DoubleAntialiasTest.java JBR-6760 linux-i386
+java/awt/Paint/RepaintOnAWTShutdown.java JBR-6760 linux-i386
+java/awt/Graphics2D/DrawString/RotTransText.java JBR-6760 linux-i386
+java/awt/Graphics2D/DrawString/DrawStrSuper.java JBR-6760 linux-i386
+java/awt/FontClass/NaNTransform.java JBR-6760 linux-i386
+java/awt/FontClass/NonInvertibleTransformTextTest.java JBR-6760 linux-i386
+java/awt/font/Rotate/RotatedItalicsTest.java JBR-6760 linux-i386
+java/awt/font/Rotate/RotatedFontTest.java JBR-6760 linux-i386
+java/awt/font/Outline/OutlineInvarianceTest.java JBR-6760 linux-i386
+java/awt/font/TextLayout/TextLayoutEqualsTest.java JBR-6760 linux-i386
+java/awt/font/TextLayout/FontLayoutStressTest.java JBR-6760 linux-i386
+java/awt/font/TextLayout/StyledFontLayoutTest.java JBR-6760 linux-i386
+java/awt/font/TextLayout/UnderlinePositionTest.java JBR-6760 linux-i386
+java/awt/font/TextLayout/DecorationBoundsTest.java JBR-6760 linux-i386
+java/awt/font/TextLayout/HitTest.java JBR-6760 linux-i386
+java/awt/font/TextLayout/VisibleAdvance.java JBR-6760 linux-i386
+java/awt/font/TextLayout/TestGetPixelBounds.java JBR-6760 linux-i386
+java/awt/font/TextLayout/MissingCodePointLayoutTest.java JBR-6760 linux-i386
+java/awt/font/TextLayout/ArabicDiacriticTest.java JBR-6760 linux-i386
+java/awt/font/GlyphVector/TestLayoutFlags.java JBR-6760 linux-i386
+java/awt/font/GlyphVector/GetGlyphCharIndexTest.java JBR-6760 linux-i386
+java/awt/font/LineBreakMeasurer/FRCTest.java JBR-6760 linux-i386
+java/awt/font/LineBreakMeasurer/AllFontsLBM.java JBR-6760 linux-i386
+java/awt/font/LineBreakMeasurer/TestLineBreakWithFontSub.java JBR-6760 linux-i386
+java/awt/font/LineBreakMeasurer/LineBreakWithTrackingAuto.java JBR-6760 linux-i386
+
+javax/swing/JTextArea/JTextAreaOrientationTest.java JBR-6760 linux-i386
+javax/swing/JTextArea/TextViewOOM/TextViewOOM.java JBR-6760 linux-i386
+javax/swing/tree/DefaultTreeCellEditor/bug4480602.java JBR-6760 linux-i386
+javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-6760 linux-i386
+javax/swing/JSpinner/8008657/bug8008657.java JBR-6760 linux-i386
+javax/swing/JSpinner/6532833/bug6532833.java JBR-6760 linux-i386
+javax/swing/JFileChooser/FCPopupMenuOrientationTest.java JBR-6760 linux-i386
+javax/swing/Headless/HeadlessJColorChooser.java JBR-6760 linux-i386
+javax/swing/Headless/HeadlessJTextArea.java JBR-6760 linux-i386
+javax/swing/Headless/HeadlessJSpinner.java JBR-6760 linux-i386
+javax/swing/Headless/HeadlessJTextField.java JBR-6760 linux-i386
+javax/swing/Headless/HeadlessJEditorPane.java JBR-6760 linux-i386
+javax/swing/text/html/parser/Parser/6836089/bug6836089.java JBR-6760 linux-i386
+javax/swing/text/DevanagariEditor.java JBR-6760 linux-i386
+javax/swing/JLabel/6501991/bug6501991.java JBR-6760 linux-i386
+javax/swing/JTextField/bug4300552.java JBR-6760 linux-i386
+javax/swing/JTextField/SwingUnicodeTest.java JBR-6760 linux-i386
+javax/swing/JTextField/I18NViewNoWrapMinSpan/I18NViewNoWrapMinSpan.java JBR-6760 linux-i386
+javax/swing/JComponent/4337267/bug4337267.java JBR-6760 linux-i386
