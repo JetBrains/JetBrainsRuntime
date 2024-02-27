@@ -1184,6 +1184,13 @@ public class WLComponentPeer implements ComponentPeer {
         checkIfOnNewScreen();
     }
 
+    void notifyPopupDone() {
+        if (targetIsWlPopup()) {
+            setVisible(false);
+            WLToolkit.postEvent(new WindowEvent((Window) target, WindowEvent.WINDOW_CLOSING));
+        }
+    }
+
     private WLGraphicsDevice getGraphicsDevice() {
         int scale = 0;
         WLGraphicsDevice theDevice = null;
