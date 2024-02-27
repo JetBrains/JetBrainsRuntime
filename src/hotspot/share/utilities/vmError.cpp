@@ -82,6 +82,18 @@
 #include <signal.h>
 #endif // PRODUCT
 
+#ifdef LINUX
+#include "os_linux.hpp"
+#endif
+
+#ifdef _WINDOWS
+#include <psapi.h>
+#endif
+
+#ifdef __APPLE__
+#include <mach/mach.h>
+#endif
+
 bool              VMError::coredump_status;
 char              VMError::coredump_message[O_BUFLEN];
 int               VMError::_current_step;
@@ -1271,6 +1283,9 @@ void VMError::report(outputStream* st, bool _verbose) {
   JNIHandles::print_on_unsafe(st);
   JNIHandles::print_memory_usage_on(st);
 
+  STEP_IF("Process memory usage", _verbose)
+  print_process_memory_usage(st);
+
   STEP("OOME stack traces")
   st->print_cr("OOME stack traces (most recent first):");
   print_oome_stacks(st);
@@ -1462,6 +1477,7 @@ void VMError::print_vm_info(outputStream* st) {
   NativeHeapTrimmer::print_state(st);
   st->cr();
 
+  print_process_memory_usage(st);
 
   // STEP("printing system")
   st->print_cr("---------------  S Y S T E M  ---------------");
@@ -2315,3 +2331,72 @@ void VMError::print_dup_classes(outputStream *st) {
   }
 }
 
+#ifdef LINUX
+static void print_process_memory_usage_platform(outputStream *st)
+{
+  // See also os::Linux::print_process_memory_info()
+  os::Linux::meminfo_t info;
+  if (os::Linux::query_process_memory_info(&info)) {
+    ssize_t phys_total_kb = os::physical_memory() / K;
+    ssize_t phys_avail_kb = os::available_memory() / K;
+    int rss_percentile = (int)(info.vmrss * 100.0 / phys_total_kb);
+    st->print_cr("Resident Set Size: %zdK (%d%% of "
+                 "%zdK total physical memory with %zdK free physical memory)",
+                 info.vmrss, rss_percentile, phys_total_kb, phys_avail_kb);
+  } else {
+    st->print_cr("Could not open /proc/self/status to get process memory related information");
+  }
+}
+#endif
+
+#ifdef _WINDOWS
+static void print_process_memory_usage_platform(outputStream *st)
+{
+  // See os::jfr_report_memory_info() in os_windows.cpp
+  PROCESS_MEMORY_COUNTERS_EX pmex;
+  ZeroMemory(&pmex, sizeof(PROCESS_MEMORY_COUNTERS_EX));
+  pmex.cb = sizeof(pmex);
+
+  BOOL ret = GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*) &pmex, sizeof(pmex));
+  if (ret != 0) {
+    ssize_t rss_kb = pmex.WorkingSetSize / K;
+    ssize_t phys_total_kb = os::physical_memory() / K;
+    ssize_t phys_avail_kb = os::available_memory() / K;
+    int rss_percentile = (int)(rss_kb * 100.0 / phys_total_kb);
+    st->print_cr("Resident Set Size: %zdK (%d%% of "
+                 "%zdK total physical memory with %zdK free physical memory)",
+                 rss_kb, rss_percentile, phys_total_kb, phys_avail_kb);
+  } else {
+    st->print_cr("GetProcessMemoryInfo() call did not succeed");
+  }
+}
+#endif
+
+#ifdef __APPLE__
+static void print_process_memory_usage_platform(outputStream *st)
+{
+  // See os::jfr_report_memory_info() in os_bsd.cpp
+  mach_task_basic_info info;
+  mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
+
+  kern_return_t ret = task_info(mach_task_self(), MACH_TASK_BASIC_INFO, (task_info_t)&info, &count);
+  if (ret == KERN_SUCCESS) {
+    ssize_t rss_kb = info.resident_size / K;
+    ssize_t phys_total_kb = os::physical_memory() / K;
+    ssize_t phys_avail_kb = os::available_memory() / K;
+    int rss_percentile = (int)(rss_kb * 100.0 / phys_total_kb);
+    st->print_cr("Resident Set Size: %zdK (%d%% of "
+                 "%zdK total physical memory with %zdK free physical memory)",
+                 rss_kb, rss_percentile, phys_total_kb, phys_avail_kb);
+  } else {
+    st->print_cr("task_info() call did not succeed");
+  }
+}
+#endif
+
+void VMError::print_process_memory_usage(outputStream *st)
+{
+  st->print_cr("Process memory usage:");
+  print_process_memory_usage_platform(st);
+  st->cr();
+}
