@@ -45,7 +45,6 @@ import java.awt.dnd.DragGestureRecognizer;
 import java.awt.dnd.DragSource;
 import java.awt.dnd.InvalidDnDOperationException;
 import java.awt.dnd.peer.DragSourceContextPeer;
-import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
 import java.awt.font.TextAttribute;
@@ -421,21 +420,44 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     /**
      * Maps 'struct wl_surface*' to WLComponentPeer that owns the Wayland surface.
      */
-    private static final Map<Long, WLComponentPeer> wlSurfaceToComponentMap = Collections.synchronizedMap(new HashMap<>());
+    private static final Map<Long, WLComponentPeer> wlSurfaceToComponentMap = new HashMap<>();
 
     static void registerWLSurface(long wlSurfacePtr, WLComponentPeer componentPeer) {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("registerWLSurface: 0x" + Long.toHexString(wlSurfacePtr) + "->" + componentPeer);
         }
-        wlSurfaceToComponentMap.put(wlSurfacePtr, componentPeer);
+        synchronized (wlSurfaceToComponentMap) {
+            wlSurfaceToComponentMap.put(wlSurfacePtr, componentPeer);
+        }
     }
 
     static void unregisterWLSurface(long wlSurfacePtr) {
-        wlSurfaceToComponentMap.remove(wlSurfacePtr);
+        synchronized (wlSurfaceToComponentMap) {
+            wlSurfaceToComponentMap.remove(wlSurfacePtr);
+        }
     }
 
     static WLComponentPeer componentPeerFromSurface(long wlSurfacePtr) {
-        return wlSurfaceToComponentMap.get(wlSurfacePtr);
+        synchronized (wlSurfaceToComponentMap) {
+            return wlSurfaceToComponentMap.get(wlSurfacePtr);
+        }
+    }
+
+    /**
+     * If there's exactly one Wayland surface present, return the native peer
+     * associated with that surface.
+     * Otherwise, throw UOE.
+     */
+    static WLComponentPeer getSingularWindowPeer() {
+        synchronized (wlSurfaceToComponentMap) {
+            if (wlSurfaceToComponentMap.size() > 1) {
+                throw new UnsupportedOperationException("More than one native window");
+            } else if (wlSurfaceToComponentMap.isEmpty()) {
+                throw new UnsupportedOperationException("No native windows");
+            }
+
+            return wlSurfaceToComponentMap.values().iterator().next();
+        }
     }
 
     @Override
