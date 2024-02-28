@@ -121,4 +121,26 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
 
     @Override
     public native void flush();
+
+    public int getRGBPixelAt(int x, int y) {
+        int pixel = pixelAt(x, y);
+        return getSurfaceType().rgbFor(pixel, getColorModel());
+    }
+
+    public int [] getRGBPixelsAt(Rectangle bounds) {
+        int [] pixels = pixelsAt(bounds.x, bounds.y, bounds.width, bounds.height);
+        var surfaceType = getSurfaceType();
+        if (surfaceType.equals(SurfaceType.IntArgbPre) ||  surfaceType.equals(SurfaceType.IntRgb)) {
+            // No conversion is necessary, can return raw pixels
+        } else {
+            var cm = getColorModel();
+            for (int i = 0; i < pixels.length; i++) {
+                pixels[i] = surfaceType.rgbFor(pixels[i], cm);
+            }
+        }
+        return pixels;
+    }
+
+    private native int pixelAt(int x, int y);
+    private native int [] pixelsAt(int x, int y, int width, int height);
 }
