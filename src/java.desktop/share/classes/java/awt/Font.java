@@ -48,7 +48,6 @@ import java.security.AccessController;
 import java.security.PrivilegedExceptionAction;
 import java.text.AttributedCharacterIterator.Attribute;
 import java.text.CharacterIterator;
-import java.util.ArrayList;
 import java.util.EventListener;
 import java.util.Hashtable;
 import java.util.Locale;
@@ -2741,7 +2740,7 @@ public class Font implements java.io.Serializable
      * @return list of OpenType's features concatenated to String
      */
     private static List<String> getAvailableFeatures(Font font) {
-        return new ArrayList<>(SunLayoutEngine.getAvailableFeatures(FontUtilities.getFont2D(font)));
+        return List.copyOf(SunLayoutEngine.getAvailableFeatures(FontUtilities.getFont2D(font)));
     }
 
     /**

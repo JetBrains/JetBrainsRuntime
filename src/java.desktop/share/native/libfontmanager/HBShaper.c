@@ -290,14 +290,10 @@ static void putFeatureTagsToArray(JNIEnv *env, int count, int offset,
         return;
     }
 
+    char feature[sizeof(hb_tag_t) + 1];
     for (int i = 0; i < count; i++) {
-        char *feature = calloc(1, sizeof(hb_tag_t) + 1);
-        if (feature == NULL) {
-            return;
-        }
         hb_tag_to_string(featureTags[i], feature);
         (*env)->SetObjectArrayElement(env, arr, offset + i, (*env)->NewStringUTF(env, feature));
-        free(feature);
     }
 }
 
@@ -312,7 +308,7 @@ JNIEXPORT jobjectArray JNICALL Java_sun_font_SunLayoutEngine_getFeatures
     hb_tag_t *gsubFeatureTags = createFeatureTags(hbface, HB_OT_TAG_GSUB, &gsubFeatureCount);
 
     res = (*env)->NewObjectArray(env, gposFeatureCount + gsubFeatureCount,
-                              (*env)->FindClass(env, "java/lang/String"), (*env)->NewStringUTF(env, ""));
+                              (*env)->FindClass(env, "java/lang/String"), NULL);
     if (res) {
         putFeatureTagsToArray(env, gposFeatureCount, 0, gposFeatureTags, res);
         putFeatureTagsToArray(env, gsubFeatureCount, gposFeatureCount, gsubFeatureTags, res);

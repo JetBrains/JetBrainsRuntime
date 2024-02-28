@@ -43,11 +43,8 @@ import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
-import java.util.HashSet;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.WeakHashMap;
-import java.util.stream.Collectors;
 
 /*
  * different ways to do this
@@ -183,13 +180,8 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
     }
 
     public static Set<String> getAvailableFeatures(Font2D font) {
-        Set<String> res = new HashSet<>();
         long pFace = getFacePtr(font);
-        if (pFace == 0) {
-            return res;
-        }
-
-        return Arrays.stream(getFeatures(pFace)).collect(Collectors.toSet());
+        return (pFace != 0) ? Set.copyOf(Arrays.stream(getFeatures(pFace)).filter(elem -> elem != null).toList()) : Set.of();
     }
 
     public void layout(FontStrikeDesc desc, float[] mat, float ptSize, int slot, int slotShift,
