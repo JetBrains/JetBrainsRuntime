@@ -170,7 +170,7 @@ int NativeCallingConvention::calling_convention(const BasicType* sig_bt, VMStora
 
 int JavaCallingConvention::calling_convention(const BasicType* sig_bt, VMStorage* regs, int num_args) const {
   VMRegPair* vm_regs = NEW_RESOURCE_ARRAY(VMRegPair, num_args);
-  int slots = SharedRuntime::java_calling_convention(sig_bt, vm_regs, num_args);
+  int slots = align_up(SharedRuntime::java_calling_convention(sig_bt, vm_regs, num_args), 2);
   for (int i = 0; i < num_args; i++) {
     VMRegPair pair = vm_regs[i];
     // note, we ignore second here. Signature should consist of register-size values. So there should be
