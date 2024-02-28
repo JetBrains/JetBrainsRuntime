@@ -26,6 +26,9 @@
 
 package sun.awt.wl;
 
+import sun.java2d.SurfaceData;
+import sun.java2d.wl.WLSMSurfaceData;
+
 import java.awt.*;
 import java.awt.peer.RobotPeer;
 
@@ -96,21 +99,60 @@ public class WLRobotPeer implements RobotPeer {
 
     @Override
     public int getRGBPixel(int x, int y) {
-        checkExtensionPresent();
-
-        // The native implementation allows for just one such request at a time
-        synchronized(WLRobotPeer.class) {
-            return getRGBPixelImpl(x, y);
+        if (isRobotExtensionPresent) {
+            // The native implementation allows for just one such request at a time
+            synchronized (WLRobotPeer.class) {
+                return getRGBPixelImpl(x, y);
+            }
+        } else {
+            // Can get pixels from the singular window's surface data,
+            // not necessarily the true value that the user observes.
+            return getRGBPixelOfSingularWindow(x, y);
         }
     }
 
     @Override
     public int [] getRGBPixels(Rectangle bounds) {
-        checkExtensionPresent();
+        if (isRobotExtensionPresent) {
+            // The native implementation allows for just one such request at a time
+            synchronized (WLRobotPeer.class) {
+                return getRGBPixelsImpl(bounds.x, bounds.y, bounds.width, bounds.height);
+            }
+        } else {
+            // Can get pixels from the singular window's surface data,
+            // not necessarily the true value that the user observes.
+            return getRGBPixelsOfSingularWindow(bounds);
+        }
+    }
 
-        // The native implementation allows for just one such request at a time
-        synchronized(WLRobotPeer.class) {
-            return getRGBPixelsImpl(bounds.x, bounds.y, bounds.width, bounds.height);
+    private int getRGBPixelOfSingularWindow(int x, int y) {
+        WLComponentPeer peer = WLToolkit.getSingularWindowPeer();
+        WLToolkit.awtLock();
+        try {
+            checkPeerForPixelGrab(peer);
+            return SurfaceData.convertTo(WLSMSurfaceData.class, peer.surfaceData).getRGBPixelAt(x, y);
+        } finally {
+            WLToolkit.awtUnlock();
+        }
+    }
+
+    private int [] getRGBPixelsOfSingularWindow(Rectangle bounds) {
+        WLComponentPeer peer = WLToolkit.getSingularWindowPeer();
+        WLToolkit.awtLock();
+        try {
+            checkPeerForPixelGrab(peer);
+            return SurfaceData.convertTo(WLSMSurfaceData.class, peer.surfaceData).getRGBPixelsAt(bounds);
+        } finally {
+            WLToolkit.awtUnlock();
+        }
+    }
+
+    private static void checkPeerForPixelGrab(WLComponentPeer peer) {
+        if (!peer.hasSurface()) {
+            throw new UnsupportedOperationException("The window has no backing buffer to read pixels from");
+        }
+        if (! (peer.surfaceData instanceof WLSMSurfaceData)) {
+            throw new UnsupportedOperationException("Reading pixels of a window is only supported for memory-mapped buffers");
         }
     }
 
