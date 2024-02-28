@@ -121,6 +121,89 @@ Java_sun_java2d_wl_WLSMSurfaceData_revalidate(JNIEnv *env, jobject wsd,
 #endif /* !HEADLESS */
 }
 
+JNIEXPORT jint JNICALL
+Java_sun_java2d_wl_WLSMSurfaceData_pixelAt(JNIEnv *env, jobject wsd, jint x, jint y)
+{
+#ifndef HEADLESS
+    J2dTrace(J2D_TRACE_INFO, "Java_sun_java2d_wl_WLSMSurfaceData_pixelAt\n");
+    int pixel = 0xFFB6C1; // the color pink to make errors visible
+
+    SurfaceDataOps *ops = SurfaceData_GetOps(env, wsd);
+    JNU_CHECK_EXCEPTION_RETURN(env, pixel);
+    if (ops == NULL) {
+        return pixel;
+    }
+
+    SurfaceDataRasInfo rasInfo = {.bounds = {x, y, x + 1, y + 1}};
+    if (ops->Lock(env, ops, &rasInfo, SD_LOCK_READ)) {
+        JNU_ThrowByName(env, "java/lang/ArrayIndexOutOfBoundsException", "Coordinate out of bounds");
+        return pixel;
+    }
+
+    ops->GetRasInfo(env, ops, &rasInfo);
+    if (rasInfo.rasBase) {
+        unsigned char *pixelPtr =
+                (unsigned char *) rasInfo.rasBase
+                + (x * rasInfo.pixelStride + y * rasInfo.scanStride);
+        if (rasInfo.pixelStride == 4) {
+            // We don't have any other pixel sizes at the moment,
+            // but this check will future-proof the code somewhat
+            pixel = *(int *) pixelPtr;
+        }
+    }
+    SurfaceData_InvokeRelease(env, ops, &rasInfo);
+    SurfaceData_InvokeUnlock(env, ops, &rasInfo);
+
+    return pixel;
+#endif /* !HEADLESS */
+}
+
+JNIEXPORT jarray JNICALL
+Java_sun_java2d_wl_WLSMSurfaceData_pixelsAt(JNIEnv *env, jobject wsd, jint x, jint y, jint width, jint height)
+{
+#ifndef HEADLESS
+    J2dTrace(J2D_TRACE_INFO, "Java_sun_java2d_wl_WLSMSurfaceData_pixelAt\n");
+
+    SurfaceDataOps *ops = SurfaceData_GetOps(env, wsd);
+    JNU_CHECK_EXCEPTION_RETURN(env, NULL);
+    if (ops == NULL) {
+        return NULL;
+    }
+
+    SurfaceDataRasInfo rasInfo = {.bounds = {x, y, x + width, y + height}};
+    if (ops->Lock(env, ops, &rasInfo, SD_LOCK_READ)) {
+        JNU_ThrowByName(env, "java/lang/ArrayIndexOutOfBoundsException", "Coordinate out of bounds");
+        return NULL;
+    }
+
+    jintArray arrayObj = NULL;
+    ops->GetRasInfo(env, ops, &rasInfo);
+    if (rasInfo.rasBase && rasInfo.pixelStride == sizeof(jint)) {
+        size_t bufferSizeInPixels = width * height;
+        arrayObj = (*env)->NewIntArray(env, bufferSizeInPixels);
+        if (arrayObj != NULL) {
+            jint *array = (*env)->GetPrimitiveArrayCritical(env, arrayObj, NULL);
+            if (array == NULL) {
+                JNU_ThrowOutOfMemoryError(env, "Wayland window pixels capture");
+            } else {
+                for (int i = y; i < y + height; i += 1) {
+                    jint *destRow = &array[(i - y) * width];
+                    jint *srcRow = (int*)((unsigned char *) rasInfo.rasBase + i * rasInfo.scanStride);
+                    for (int j = x; j < x + width; j += 1) {
+                        destRow[j - x] = srcRow[j];
+                    }
+                }
+                (*env)->ReleasePrimitiveArrayCritical(env, arrayObj, array, 0);
+            }
+        }
+    }
+    SurfaceData_InvokeRelease(env, ops, &rasInfo);
+    SurfaceData_InvokeUnlock(env, ops, &rasInfo);
+
+    return arrayObj;
+#endif /* !HEADLESS */
+}
+
 /**
  * This is the implementation of the general surface LockFunc defined in
  * SurfaceData.h.
@@ -136,9 +219,6 @@ WLSD_Lock(JNIEnv *env,
     logWSDOp("WLSD_Lock", wlso, lockflags);
 
     pthread_mutex_lock(&wlso->lock);
-    WLSDPrivate *priv = (WLSDPrivate *) &(pRasInfo->priv);
-    priv->lockFlags = lockflags;
-    priv->wlBuffer = WLSBM_BufferAcquireForDrawing(wlso->bufferManager);
 
     J2dTrace(J2D_TRACE_INFO, "WLSD_Lock() at %d, %d for %dx%d\n",
              pRasInfo->bounds.x1, pRasInfo->bounds.y1,
@@ -149,6 +229,13 @@ WLSD_Lock(JNIEnv *env,
                                     0,
                                     WLSBM_WidthGet(wlso->bufferManager),
                                     WLSBM_HeightGet(wlso->bufferManager));
+    if (pRasInfo->bounds.x2 <= pRasInfo->bounds.x1 || pRasInfo->bounds.y2 <= pRasInfo->bounds.y1) {
+        pthread_mutex_unlock(&wlso->lock);
+        return SD_FAILURE;
+    }
+    WLSDPrivate *priv = (WLSDPrivate *) &(pRasInfo->priv);
+    priv->lockFlags = lockflags;
+    priv->wlBuffer = WLSBM_BufferAcquireForDrawing(wlso->bufferManager);
 #endif
     return SD_SUCCESS;
 }
