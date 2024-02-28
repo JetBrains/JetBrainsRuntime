@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
  * @test TestHeapDumpOnOutOfMemoryError
  * @summary Test verifies that -XX:HeapDumpOnOutOfMemoryError dump heap when OutOfMemory is thrown in heap
  * @library /test/lib
+ * @requires vm.flagless
  * @run driver TestHeapDumpOnOutOfMemoryError run heap
  */
 
