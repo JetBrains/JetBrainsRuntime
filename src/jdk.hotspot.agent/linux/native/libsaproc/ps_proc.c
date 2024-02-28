@@ -142,18 +142,18 @@ static bool process_get_lwp_regs(struct ps_prochandle* ph, pid_t pid, struct use
 #define PTRACE_GETREGS_REQ PT_GETREGS
 #endif
 
-#ifdef PTRACE_GETREGS_REQ
- if (ptrace_getregs(PTRACE_GETREGS_REQ, pid, user, NULL) < 0) {
-   print_debug("ptrace(PTRACE_GETREGS, ...) failed for lwp %d\n", pid);
-   return false;
- }
- return true;
-#elif defined(PTRACE_GETREGSET)
+#if defined(PTRACE_GETREGSET)
  struct iovec iov;
  iov.iov_base = user;
  iov.iov_len = sizeof(*user);
  if (ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, (void*) &iov) < 0) {
    print_debug("ptrace(PTRACE_GETREGSET, ...) failed for lwp %d\n", pid);
+   return false;
+ }
+ return true;
+#elif defined(PTRACE_GETREGS_REQ)
+ if (ptrace_getregs(PTRACE_GETREGS_REQ, pid, user, NULL) < 0) {
+   print_debug("ptrace(PTRACE_GETREGS, ...) failed for lwp %d\n", pid);
    return false;
  }
  return true;
