@@ -262,7 +262,7 @@ xdg_popup_done(void *data,
                struct xdg_popup *xdg_popup)
 {
     J2dTrace1(J2D_TRACE_INFO, "WLComponentPeer: xdg_popup_done(%p)\n", xdg_popup);
-    struct WLFrame *frame = (struct WLFrame *) data;
+    struct WLFrame *frame = data;
     JNIEnv *env = getEnv();
     const jobject nativeFramePeer = (*env)->NewLocalRef(env, frame->nativeFramePeer);
     if (nativeFramePeer) {
