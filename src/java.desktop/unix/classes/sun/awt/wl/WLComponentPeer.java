@@ -165,7 +165,9 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     boolean isVisible() {
-        return visible && hasSurface();
+        synchronized (getStateLock()) {
+            return visible && hasSurface();
+        }
     }
 
     boolean hasSurface() {
@@ -236,7 +238,9 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     protected void wlSetVisible(boolean v) {
-        this.visible = v;
+        synchronized (getStateLock()) {
+            this.visible = v;
+        }
         if (v) {
             String title = getTitle();
             boolean isWlPopup = targetIsWlPopup();
