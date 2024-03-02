@@ -41,6 +41,7 @@ java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java 8253184,J
 java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-6663,JBR-5359 linux-all,windows-aarch64
 java/awt/Insets/DialogInsets.java JBR-5510 linux-all
 java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252,JBR-5050 windows-all,macosx-all,linux-all
+java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java JBR-5893,JBR-6662 linux-aarch64,windows-all
 java/awt/Menu/OpensWithNoGrab/OpensWithNoGrab.java JBR-5510 linux-all
 java/awt/Mixing/AWT_Mixing/JButtonInGlassPaneOverlapping.java 8158801,JBR-5510 windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/JButtonOverlapping.java 8158801,JBR-5510 windows-all,linux-all
