@@ -115,6 +115,7 @@
 
 java/awt/Button/DisabledButtonPress.java JBR-5799 windows-aarch64
 java/awt/Desktop/8064934/bug8064934.java JBR-5764,JBR-5799 windows-all
+java/awt/dnd/ModalDialogOnDropDeadlockTest.java JBR-6529 windows-all
 java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java JBR-5915 linux-all
 java/awt/event/MouseEvent/EnterAsGrabbedEvent/EnterAsGrabbedEvent.java JBR-809 windows-all,linux-all
 java/awt/event/MouseEvent/MouseButtonsTest/MouseButtonsTest.java JBR-810 windows-all,linux-all
