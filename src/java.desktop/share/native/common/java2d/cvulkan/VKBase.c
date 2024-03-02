@@ -33,6 +33,7 @@
 #include <string.h>
 
 #define VULKAN_DLL JNI_LIB_NAME("vulkan")
+#define VULKAN_1_DLL VERSIONED_JNI_LIB_NAME("vulkan", "1")
 static const uint32_t REQUIRED_VULKAN_VERSION = VK_MAKE_API_VERSION(0, 1, 2, 0);
 
 
@@ -99,6 +100,9 @@ void* vulkanLibProc(VkInstance vkInstance, char* procName) {
     static PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = NULL;
     if (pVulkanLib == NULL) {
         pVulkanLib = dlopen(VULKAN_DLL, RTLD_NOW);
+        if (pVulkanLib == NULL) {
+            pVulkanLib = dlopen(VULKAN_1_DLL, RTLD_NOW);
+        }
         if (pVulkanLib == NULL) {
             J2dRlsTrace1(J2D_TRACE_ERROR, "Failed to load %s\n", VULKAN_DLL)
             return NULL;
