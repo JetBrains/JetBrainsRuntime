@@ -26,8 +26,7 @@
  * @summary run CTW for all classes from jdk.jfr module
  *
  * @library /test/lib / /testlibrary/ctw/src
- * @modules java.base/jdk.internal.access
- *          java.base/jdk.internal.jimage
+ * @modules java.base/jdk.internal.jimage
  *          java.base/jdk.internal.misc
  *          java.base/jdk.internal.reflect
  * @modules jdk.jfr
