@@ -150,8 +150,12 @@ int JfrThreadGroupsHelper::populate_thread_group_hierarchy(const JavaThread* jt,
   assert(current != NULL, "invariant");
   assert(_thread_group_hierarchy != NULL, "invariant");
 
+  oop thread_oop = jt->threadObj();
+  if (thread_oop == NULL) {
+    return 0;
+  }
   // immediate thread group
-  Handle thread_group_handle(current, java_lang_Thread::threadGroup(jt->threadObj()));
+  Handle thread_group_handle(current, java_lang_Thread::threadGroup(thread_oop));
   if (thread_group_handle == NULL) {
     return 0;
   }
