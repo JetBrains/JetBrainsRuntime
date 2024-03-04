@@ -277,6 +277,7 @@ java/awt/TrayIcon/ActionEventTest/ActionEventTest.java 8150540,8242801 windows-a
 java/awt/TrayIcon/ModalityTest/ModalityTest.java 8150540,8295300,JBR-3107 windows-all,macosx-all,linux-all
 java/awt/TrayIcon/MouseEventMask/MouseEventMaskTest.java 8150540,8295300,JBR-3107 windows-all,linux-all
 java/awt/TrayIcon/MouseMovedTest/MouseMovedTest.java 8150540,8295300,JBR-3107 windows-all,linux-all
+java/awt/TrayIcon/PopupMenuLeakTest/PopupMenuLeakTest.java JBR-6774 macosx-all
 java/awt/TrayIcon/SecurityCheck/FunctionalityCheck/FunctionalityCheck.java 8150540,8295300,JBR-3107 windows-all,linux-all
 java/awt/TrayIcon/SystemTrayInstance/SystemTrayInstanceTest.java 8193543 linux-all
 java/awt/TrayIcon/TrayIconEventModifiers/TrayIconEventModifiersTest.java 8150540,8295300,JBR-3107 windows-all,linux-all
@@ -821,6 +822,7 @@ sun/security/pkcs11/KeyStore/SecretKeysBasic.java               8209398 generic-
 
 security/infra/java/security/cert/CertPathValidator/certification/ActalisCA.java  8224768 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/AmazonCA.java 8309088 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#microsoftecc2017 8324583 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/GoogleCA.java 8308592 generic-all
 
 sun/security/smartcardio/TestChannel.java                       8039280 generic-all

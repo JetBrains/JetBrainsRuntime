@@ -19,6 +19,7 @@ java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390 macosx-
 java/awt/Robot/NonEmptyErrorStream.java JBR-5442 linux-all
 java/awt/Robot/RobotMoveMultiscreen.java JBR-5442 linux-all
 java/awt/TextArea/TextAreaEditing/TextAreaEditing.java JBR-6282 linux-all
+java/awt/Toolkit/AWTEventListenerProxyTest/AWTEventListenerProxyTest.java JBR-6065 windows-all
 java/awt/Window/SlowMotion/SlowMotion.java JBR-5442 linux-all
 java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5442 linux-all
 
