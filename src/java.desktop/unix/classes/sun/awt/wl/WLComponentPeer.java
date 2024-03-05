@@ -87,18 +87,18 @@ public class WLComponentPeer implements ComponentPeer {
     private static final int MINIMUM_WIDTH = 1;
     private static final int MINIMUM_HEIGHT = 1;
 
-    private long nativePtr;
+    private long nativePtr; // accessed under AWT lock
     private volatile boolean surfaceAssigned = false;
     protected final Component target;
 
     // Graphics devices this top-level component is visible on
     protected final java.util.List<WLGraphicsDevice> devices = new ArrayList<>();
 
-    protected Color background;
-    SurfaceData surfaceData;
-    WLRepaintArea paintArea;
-    boolean paintPending = false;
-    boolean isLayouting = false;
+    protected Color background; // protected by dataLock
+    SurfaceData surfaceData; // accessed under AWT lock
+    final WLRepaintArea paintArea;
+    boolean paintPending = false; // protected by dataLock
+    boolean isLayouting = false; // protected by dataLock
     boolean visible = false;
 
     private final Object dataLock = new Object();
@@ -145,7 +145,9 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     public Color getBackground() {
-        return background;
+        synchronized (dataLock) {
+            return background;
+        }
     }
 
     public void postPaintEvent(int x, int y, int w, int h) {
@@ -160,9 +162,7 @@ public class WLComponentPeer implements ComponentPeer {
 
     void postPaintEvent() {
         if (isVisible()) {
-            synchronized (dataLock) {
-                postPaintEvent(0, 0, width, height);
-            }
+            postPaintEvent(0, 0, getWidth(), getHeight());
         }
     }
 
@@ -183,12 +183,13 @@ public class WLComponentPeer implements ComponentPeer {
 
     @Override
     public boolean isReparentSupported() {
-        throw new UnsupportedOperationException();
+        return false;
     }
 
     @Override
     public boolean isObscured() {
-        throw new UnsupportedOperationException();
+        // In general, it is impossible to know this in Wayland
+        return false;
     }
 
     @Override
@@ -349,13 +350,11 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     void configureWLSurface() {
-        synchronized (dataLock) {
-            if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                log.fine(String.format("%s is configured to %dx%d with %dx scale", this, getBufferWidth(), getBufferHeight(), getBufferScale()));
-            }
-            SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
-                    getBufferWidth(), getBufferHeight(), getBufferScale());
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine(String.format("%s is configured to %dx%d with %dx scale", this, getBufferWidth(), getBufferHeight(), getBufferScale()));
         }
+        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
+                getBufferWidth(), getBufferHeight(), getBufferScale());
     }
 
     @Override
@@ -434,10 +433,8 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     private void setLocationTo(int newX, int newY) {
-        synchronized (dataLock) {
-            var acc = AWTAccessor.getComponentAccessor();
-            acc.setLocation(target, newX, newY);
-        }
+        var acc = AWTAccessor.getComponentAccessor();
+        acc.setLocation(target, newX, newY);
     }
 
     public void setBounds(int newX, int newY, int newWidth, int newHeight, int op) {
@@ -478,8 +475,8 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     private void setSizeTo(int newWidth, int newHeight) {
+        Dimension newSize = constrainSize(newWidth, newHeight);
         synchronized (dataLock) {
-            Dimension newSize = constrainSize(newWidth, newHeight);
             this.width = newSize.width;
             this.height = newSize.height;
         }
@@ -719,21 +716,29 @@ public class WLComponentPeer implements ComponentPeer {
 
     public void beginLayout() {
         // Skip all painting till endLayout
-        isLayouting = true;
+        synchronized (dataLock) {
+            isLayouting = true;
+        }
+    }
 
+    private boolean needPaintEvent() {
+        synchronized (dataLock) {
+            // If not waiting for native painting, repaint the damaged area
+            return !paintPending && !paintArea.isEmpty()
+                    && !AWTAccessor.getComponentAccessor().getIgnoreRepaint(target);
+        }
     }
 
     public void endLayout() {
         if (log.isLoggable(Level.FINE)) {
             log.fine("WLComponentPeer.endLayout(): paintArea.isEmpty() " + paintArea.isEmpty());
         }
-        if (!paintPending && !paintArea.isEmpty()
-                && !AWTAccessor.getComponentAccessor().getIgnoreRepaint(target)) {
-            // if not waiting for native painting repaint damaged area
-            WLToolkit.postEvent(new PaintEvent(target, PaintEvent.PAINT,
-                    new Rectangle()));
+        if (needPaintEvent()) {
+            WLToolkit.postEvent(new PaintEvent(target, PaintEvent.PAINT, new Rectangle()));
         }
-        isLayouting = false;
+        synchronized (dataLock) {
+            isLayouting = false;
+        }
     }
 
     public Dimension getMinimumSize() {
@@ -773,11 +778,13 @@ public class WLComponentPeer implements ComponentPeer {
 
     @Override
     public void setBackground(Color c) {
-        if (Objects.equals(background, c)) {
-            return;
+        synchronized (dataLock) {
+            if (Objects.equals(background, c)) {
+                return;
+            }
+            background = c;
+            // TODO: propagate this change to WLSurfaceData
         }
-        background = c;
-        // TODO: propagate this change to WLSurfaceData
     }
 
     @Override
@@ -1071,7 +1078,7 @@ public class WLComponentPeer implements ComponentPeer {
         final long timestamp = newInputState.getTimestamp();
 
         if (e.hasEnterEvent()) {
-            updateCursorImmediately(newInputState);
+            performUnlocked(() -> updateCursorImmediately(newInputState));
             final MouseEvent mouseEvent = new MouseEvent(getTarget(), MouseEvent.MOUSE_ENTERED,
                     timestamp,
                     newInputState.getModifiers(),
@@ -1175,9 +1182,10 @@ public class WLComponentPeer implements ComponentPeer {
 
     void notifyConfigured(int newX, int newY, int newWidth, int newHeight, boolean active, boolean maximized) {
         final long wlSurfacePtr = getWLSurface(nativePtr);
-        // TODO: this needs to be done only once after wlSetVisible(true)
-        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(wlSurfacePtr);
-        surfaceAssigned = true;
+        if (!surfaceAssigned) {
+            SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(wlSurfacePtr);
+            surfaceAssigned = true;
+        }
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine(String.format("%s configured to %dx%d", this, newWidth, newHeight));
         }
@@ -1276,8 +1284,10 @@ public class WLComponentPeer implements ComponentPeer {
             if (log.isLoggable(Level.FINE)) {
                 log.fine(this + " is on (possibly) new device " + newDevice);
             }
-            var acc = AWTAccessor.getComponentAccessor();
-            acc.setGraphicsConfiguration(target, gc);
+            performUnlocked(() -> {
+                var acc = AWTAccessor.getComponentAccessor();
+                acc.setGraphicsConfiguration(target, gc);
+            });
         }
     }
 
@@ -1352,6 +1362,15 @@ public class WLComponentPeer implements ComponentPeer {
         WLToolkit.awtUnlock();
         try {
             task.run();
+        } finally {
+            WLToolkit.awtLock();
+        }
+    }
+
+    static <T> T performUnlocked(Supplier<T> task) {
+        WLToolkit.awtUnlock();
+        try {
+            return task.get();
         } finally {
             WLToolkit.awtLock();
         }
