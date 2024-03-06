@@ -409,6 +409,7 @@ extern "C" {                                                         \
 #define JVM_ENTRY_FROM_LEAF(env, result_type, header)                \
   { {                                                                \
     JavaThread* thread=JavaThread::thread_from_jni_environment(env); \
+    MACOS_AARCH64_ONLY(ThreadWXEnable __wx(WXWrite, thread));        \
     ThreadInVMfromNative __tiv(thread);                              \
     debug_only(VMNativeEntryWrapper __vew;)                          \
     VM_ENTRY_BASE_FROM_LEAF(result_type, header, thread)
