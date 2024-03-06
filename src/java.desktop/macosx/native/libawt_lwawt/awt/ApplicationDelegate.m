@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -293,7 +293,6 @@ AWT_ASSERT_APPKIT_THREAD;
 
     NSString *url = [[openURLEvent paramDescriptorForKeyword:keyDirectObject] stringValue];
 
-    //fprintf(stderr,"jm_handleOpenURL\n");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jstring jURL = NSStringToJavaString(env, url);
     GET_APPEVENTHANDLER_CLASS();
@@ -337,7 +336,6 @@ AWT_ASSERT_APPKIT_THREAD;
         return;
     }
 
-    //fprintf(stderr,"jm_handleOpenFile\n");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
 
     // if these files were opened from a Spotlight query, try to get the search text from the current AppleEvent
@@ -364,7 +362,6 @@ AWT_ASSERT_APPKIT_THREAD;
 AWT_ASSERT_APPKIT_THREAD;
     if (!fHandlesDocumentTypes) return NSPrintingCancelled;
 
-    //fprintf(stderr,"jm_handlePrintFile\n");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject jFileNamesArray = [self _createFilePathArrayFrom:fileNames withEnv:env];
     GET_APPEVENTHANDLER_CLASS_RETURN(NSPrintingCancelled);
@@ -381,7 +378,6 @@ AWT_ASSERT_APPKIT_THREAD;
 + (void)_notifyJava:(jint)notificationType {
 AWT_ASSERT_APPKIT_THREAD;
 
-    //fprintf(stderr,"jm_handleOpenApplication\n");
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_APPEVENTHANDLER_CLASS();
     DECLARE_STATIC_METHOD(jm_handleNativeNotification, sjc_AppEventHandler, "handleNativeNotification", "(I)V");
@@ -401,7 +397,7 @@ AWT_ASSERT_APPKIT_THREAD;
 
 // Open app handler, registered in -init
 + (void)_willFinishLaunching {
-    [self _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_OPEN_APP];
+    [ApplicationDelegate _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_OPEN_APP];
 }
 
 // ReOpen app handler
@@ -430,47 +426,47 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 + (void)_systemWillPowerOff {
-    [self _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_SHUTDOWN];
+    [ApplicationDelegate _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_SHUTDOWN];
 }
 
 + (void)_appDidActivate {
-    [self _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_ACTIVE_APP_GAINED];
+    [ApplicationDelegate _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_ACTIVE_APP_GAINED];
 }
 
 + (void)_appDidDeactivate {
-    [self _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_ACTIVE_APP_LOST];
+    [ApplicationDelegate _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_ACTIVE_APP_LOST];
 }
 
 + (void)_appDidHide {
-    [self _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_APP_HIDDEN];
+    [ApplicationDelegate _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_APP_HIDDEN];
 }
 
 + (void)_appDidUnhide {
-    [self _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_APP_SHOWN];
+    [ApplicationDelegate _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_APP_SHOWN];
 }
 
 + (void)_sessionDidActivate {
-    [self _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_USER_SESSION_ACTIVE];
+    [ApplicationDelegate _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_USER_SESSION_ACTIVE];
 }
 
 + (void)_sessionDidDeactivate {
-    [self _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_USER_SESSION_INACTIVE];
+    [ApplicationDelegate _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_USER_SESSION_INACTIVE];
 }
 
 + (void)_screenDidSleep {
-    [self _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_SCREEN_SLEEP];
+    [ApplicationDelegate _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_SCREEN_SLEEP];
 }
 
 + (void)_screenDidWake {
-    [self _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_SCREEN_WAKE];
+    [ApplicationDelegate _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_SCREEN_WAKE];
 }
 
 + (void)_systemDidSleep {
-    [self _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_SYSTEM_SLEEP];
+    [ApplicationDelegate _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_SYSTEM_SLEEP];
 }
 
 + (void)_systemDidWake {
-    [self _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_SYSTEM_WAKE];
+    [ApplicationDelegate _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_SYSTEM_WAKE];
 }
 
 + (void)_registerForNotification:(NSNumber *)notificationTypeNum {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,6 +70,7 @@ JNIEXPORT jlong JNICALL
 Java_sun_java2d_metal_MTLGraphicsConfig_getMTLConfigInfo
     (JNIEnv *env, jclass mtlgc, jint displayID, jstring mtlShadersLib)
 {
+    __block MTLContext* mtlc = nil;
     __block MTLGraphicsConfigInfo* mtlinfo = nil;
 
 JNI_COCOA_ENTER(env);
@@ -78,7 +79,7 @@ JNI_COCOA_ENTER(env);
 
     [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
 
-        MTLContext* mtlc = [[MTLContext alloc] initWithDevice:displayID
+        mtlc = [[MTLContext alloc] initWithDevice:displayID
                                        shadersLib:path];
         if (mtlc != 0L) {
             // create the MTLGraphicsConfigInfo record for this context

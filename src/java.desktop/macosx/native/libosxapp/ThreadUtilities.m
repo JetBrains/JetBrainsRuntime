@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,21 @@
 
 #import <AppKit/AppKit.h>
 #import <objc/message.h>
+#include <mach/mach_time.h>
 
 #import "ThreadUtilities.h"
+
+
+/*
+ * Enable the MainThread task monitor to detect slow tasks that may cause high latencies or delays
+ */
+#define CHECK_MAIN_THREAD 0
+#define TRACE_MAIN_THREAD 0
+
+// ~ 2ms is already high for main thread:
+#define LATENCY_HIGH_THRESHOLD 2.0
+
+#define DECORATE_MAIN_THREAD (TRACE_MAIN_THREAD || CHECK_MAIN_THREAD)
 
 
 // The following must be named "jvm", as there are extern references to it in AWT
@@ -110,32 +123,109 @@ AWT_ASSERT_APPKIT_THREAD;
   Block_release(blockCopy);
 }
 
++ (void)performOnMainThreadNowOrLater:(void (^)())block {
+    if ([NSThread isMainThread]) {
+        block();
+    } else {
+        [self performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block) waitUntilDone:NO];
+    }
+}
+
 + (void)performOnMainThreadWaiting:(BOOL)wait block:(void (^)())block {
-    if ([NSThread isMainThread] && wait == YES) {
+    if ([NSThread isMainThread] && wait) {
         block();
     } else {
         [self performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block) waitUntilDone:wait];
     }
 }
 
-+ (void)performOnMainThread:(SEL)aSelector on:(id)target withObject:(id)arg waitUntilDone:(BOOL)wait {
-    if ([NSThread isMainThread] && wait == YES) {
-        [target performSelector:aSelector withObject:arg];
-    } else {
-        if (wait && isEventDispatchThread()) {
-            void (^blockCopy)(void) = Block_copy(^(){
-                setBlockingEventDispatchThread(YES);
-                @try {
-                    [target performSelector:aSelector withObject:arg];
-                } @finally {
-                    setBlockingEventDispatchThread(NO);
-                }
-            });
-            [self performSelectorOnMainThread:@selector(invokeBlockCopy:) withObject:blockCopy waitUntilDone:YES modes:javaModes];
-        } else {
-            [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:wait modes:javaModes];
-        }
++ (NSString*)getCaller {
+#if DECORATE_MAIN_THREAD > 0
+    const NSArray<NSString*> *symbols = NSThread.callStackSymbols;
+
+    for (NSUInteger i = 2, len = [symbols count]; i < len; i++) {
+         NSString* symbol = [symbols objectAtIndex:i];
+         if (![symbol hasPrefix: @"performOnMainThread"]) {
+             return symbol;
+         }
     }
+#endif
+    return nil;
+}
+
++ (void)performOnMainThread:(SEL)aSelector on:(id)target withObject:(id)arg waitUntilDone:(BOOL)wait {
+#if DECORATE_MAIN_THREAD == 0
+    if ([NSThread isMainThread] && wait) {
+        [target performSelector:aSelector withObject:arg];
+    } else if (wait && isEventDispatchThread()) {
+        void (^blockCopy)(void) = Block_copy(^() {
+            setBlockingEventDispatchThread(YES);
+            @try {
+                [target performSelector:aSelector withObject:arg];
+            } @finally {
+                setBlockingEventDispatchThread(NO);
+            }
+        });
+        [self performSelectorOnMainThread:@selector(invokeBlockCopy:) withObject:blockCopy waitUntilDone:YES modes:javaModes];
+    } else {
+        [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:wait modes:javaModes];
+    }
+#else
+    // Perform instrumentation on selector:
+    static mach_timebase_info_data_t* timebase = nil;
+    if (timebase == nil) {
+        timebase = malloc(sizeof (mach_timebase_info_data_t));
+        mach_timebase_info(timebase);
+    }
+
+    const NSString* caller = [self getCaller];
+    BOOL invokeDirect = NO;
+    BOOL blockingEDT;
+
+    if ([NSThread isMainThread] && wait) {
+        invokeDirect = YES;
+        blockingEDT = NO;
+    } else if (wait && isEventDispatchThread()) {
+        blockingEDT = YES;
+    } else {
+        blockingEDT = NO;
+    }
+    const char* operation = (invokeDirect ? "now  " : (blockingEDT ? "block" : "later"));
+
+    void (^blockCopy)(void) = Block_copy(^(){
+        const uint64_t start = mach_absolute_time();
+
+        if (TRACE_MAIN_THREAD) {
+            NSLog(@"performOnMainThread(%s)[before block]: [%@]", operation, caller);
+        }
+
+        if (blockingEDT) {
+            setBlockingEventDispatchThread(YES);
+        }
+        @try {
+            [target performSelector:aSelector withObject:arg];
+        } @finally {
+            if (blockingEDT) {
+                setBlockingEventDispatchThread(NO);
+            }
+
+            const double elapsedMs = ((mach_absolute_time() - start) * timebase->numer) / (1000000.0 * timebase->denom);
+
+            if (TRACE_MAIN_THREAD) {
+                NSLog(@"performOnMainThread(%s)[after block - time: %.3lf ms]: [%@]", operation, elapsedMs, caller);
+            }
+
+            if (CHECK_MAIN_THREAD && (elapsedMs >= LATENCY_HIGH_THRESHOLD)) {
+                NSLog(@"performOnMainThread(%s)[time: %.3lf ms]: [%@]", operation, elapsedMs, caller);
+            }
+        }
+    });
+    if (invokeDirect) {
+        [self performSelector:@selector(invokeBlockCopy:) withObject:blockCopy];
+    } else {
+        [self performSelectorOnMainThread:@selector(invokeBlockCopy:) withObject:blockCopy waitUntilDone:wait modes:javaModes];
+    }
+#endif
 }
 
 + (NSString*)javaRunLoopMode {
