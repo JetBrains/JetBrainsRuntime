@@ -40,21 +40,21 @@ AC_DEFUN([HELP_MSG_MISSING_DEPENDENCY],
     PKGHANDLER_COMMAND=
 
     case $PKGHANDLER in
-      apt-get)
+      *apt-get)
         apt_help     $MISSING_DEPENDENCY ;;
-      yum)
+      *yum)
         yum_help     $MISSING_DEPENDENCY ;;
-      brew)
+      *brew)
         brew_help    $MISSING_DEPENDENCY ;;
-      port)
+      *port)
         port_help    $MISSING_DEPENDENCY ;;
-      pkgutil)
+      *pkgutil)
         pkgutil_help $MISSING_DEPENDENCY ;;
-      pkgadd)
+      *pkgadd)
         pkgadd_help  $MISSING_DEPENDENCY ;;
-      pacman)
+      *pacman)
         pacman_help  $MISSING_DEPENDENCY ;;
-      apk)
+      *apk)
         apk_help     $MISSING_DEPENDENCY ;;
     esac
 
