@@ -807,7 +807,7 @@ public class WLComponentPeer implements ComponentPeer {
             if (pData == 0) {
                 // instead of destroying and creating new cursor after changing scale could be used caching
                 long oldPData = AWTAccessor.getCursorAccessor().getPData(cursor);
-                if (oldPData != 0) {
+                if (oldPData != 0 && oldPData != -1) {
                     nativeDestroyPredefinedCursor(oldPData);
                 }
 
