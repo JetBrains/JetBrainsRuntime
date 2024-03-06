@@ -25,6 +25,13 @@ source jb/project/tools/common/scripts/common.sh
 JCEF_PATH=${JCEF_PATH:=./jcef_linux_x64}
 
 function do_configure {
+  if is_musl; then
+    LINUX_TARGET=""
+  else
+    LINUX_TARGET="\
+      --build=x86_64-unknown-linux-gnu \
+      --openjdk-target=x86_64-unknown-linux-gnu"
+  fi
   sh configure \
     $WITH_DEBUG_LEVEL \
     --with-vendor-name="$VENDOR_NAME" \
@@ -35,8 +42,7 @@ function do_configure {
     --with-version-opt=b"$build_number" \
     --with-boot-jdk="$BOOT_JDK" \
     --enable-cds=yes \
-    --build=x86_64-unknown-linux-gnu \
-    --openjdk-target=x86_64-unknown-linux-gnu \
+    $LINUX_TARGET \
     $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
     $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
