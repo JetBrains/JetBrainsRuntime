@@ -26,6 +26,7 @@
 
 package sun.swing;
 
+import jdk.internal.misc.InnocuousThread;
 import sun.awt.AWTThreading;
 
 import javax.accessibility.Accessible;
@@ -82,7 +83,11 @@ public class AccessibleAnnouncer {
         // so execute it on a background thread.
         if (System.getProperty("os.name").startsWith("Windows")) {
             if (executor == null) {
-                executor = Executors.newSingleThreadExecutor();
+                executor = Executors.newSingleThreadExecutor(r -> {
+                    Thread t = InnocuousThread.newSystemThread(AccessibleAnnouncer.class.getSimpleName(), r);
+                    t.setDaemon(true);
+                    return t;
+                });
             }
             executor.execute(() -> nativeAnnounce(a, str, priority));
         } else {
