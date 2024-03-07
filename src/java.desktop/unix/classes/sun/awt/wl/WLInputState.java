@@ -232,11 +232,23 @@ record WLInputState(WLPointerEvent eventWithSurface,
     }
 
     public int getPointerX() {
-        return eventWithCoordinates != null ? eventWithCoordinates.getSurfaceX() : 0;
+        int x = eventWithCoordinates != null ? eventWithCoordinates.getSurfaceX() : 0;
+        if (!WLGraphicsEnvironment.isDebugScaleEnabled()) {
+            return x;
+        } else {
+            WLComponentPeer peer = getPeer();
+            return peer == null ? x : peer.surfaceUnitsToJavaUnits(x);
+        }
     }
 
     public int getPointerY() {
-        return eventWithCoordinates != null ? eventWithCoordinates.getSurfaceY() : 0;
+        int y = eventWithCoordinates != null ? eventWithCoordinates.getSurfaceY() : 0;
+        if (!WLGraphicsEnvironment.isDebugScaleEnabled()) {
+            return y;
+        } else {
+            WLComponentPeer peer = getPeer();
+            return peer == null ? y : peer.surfaceUnitsToJavaUnits(y);
+        }
     }
 
     public WLComponentPeer getPeer() {
@@ -250,8 +262,8 @@ record WLInputState(WLPointerEvent eventWithSurface,
      */
     public boolean isPointerOverPeer() {
         if (isPointerOverSurface && eventWithCoordinates != null) {
-            int x = eventWithCoordinates.getSurfaceX();
-            int y = eventWithCoordinates.getSurfaceY();
+            int x = getPointerX();
+            int y = getPointerY();
             WLComponentPeer peer = getPeer();
             if (peer != null) {
                 return x >= 0
