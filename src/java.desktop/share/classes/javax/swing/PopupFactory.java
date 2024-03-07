@@ -290,6 +290,11 @@ public class PopupFactory {
             return getMediumWeightPopup(owner, contents, ownerX, ownerY);
         case HEAVY_WEIGHT_POPUP:
             Popup popup = getHeavyWeightPopup(owner, contents, ownerX, ownerY);
+            if (isPopupPositionedRelatively()) {
+                // Or else there are positioning artifacts when moving between monitors
+                // with a different scale and -Dsun.java2d.uiScale=N was specified.
+                ((HeavyWeightPopup)popup).setCacheEnabled(false);
+            }
             return popup;
         }
         return null;
