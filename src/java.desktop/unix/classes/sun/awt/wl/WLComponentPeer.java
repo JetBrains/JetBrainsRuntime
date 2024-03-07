@@ -39,7 +39,26 @@ import sun.util.logging.PlatformLogger;
 import sun.util.logging.PlatformLogger.Level;
 
 import javax.swing.SwingUtilities;
-import java.awt.*;
+import java.awt.AWTEvent;
+import java.awt.AWTException;
+import java.awt.BufferCapabilities;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Cursor;
+import java.awt.Dialog;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Frame;
+import java.awt.Graphics;
+import java.awt.GraphicsConfiguration;
+import java.awt.Image;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.SystemColor;
+import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.event.ComponentEvent;
 import java.awt.event.FocusEvent;
 import java.awt.event.InputEvent;
@@ -103,6 +122,7 @@ public class WLComponentPeer implements ComponentPeer {
     int width;  // protected by dataLock
     int height; // protected by dataLock
     int wlBufferScale; // protected by dataLock
+    double effectiveScale; // protected by dataLock
 
     static {
         initIDs();
@@ -118,7 +138,8 @@ public class WLComponentPeer implements ComponentPeer {
         width = size.width;
         height = size.height;
         final WLGraphicsConfig config = (WLGraphicsConfig)target.getGraphicsConfiguration();
-        wlBufferScale = config.getScale();
+        wlBufferScale = config.getWlScale();
+        effectiveScale = config.getEffectiveScale();
         surfaceData = config.createSurfaceData(this);
         nativePtr = nativeCreateFrame();
         paintArea = new WLRepaintArea();
@@ -241,8 +262,8 @@ public class WLComponentPeer implements ComponentPeer {
         if (v) {
             String title = getTitle();
             boolean isWlPopup = targetIsWlPopup();
-            int thisWidth = getWidth();
-            int thisHeight = getHeight();
+            int thisWidth = javaUnitsToSurfaceUnits(getWidth());
+            int thisHeight = javaUnitsToSurfaceUnits(getHeight());
             boolean isModal = targetIsModal();
 
             int state = (target instanceof Frame frame)
@@ -260,13 +281,13 @@ public class WLComponentPeer implements ComponentPeer {
                     final Point toplevelLocation = toplevel == null
                             ? new Point(popupParent.getX(), popupParent.getY())
                             : SwingUtilities.convertPoint(popupParent, 0, 0, toplevel);
-                    final int parentX = toplevelLocation.x;
-                    final int parentY = toplevelLocation.y;
+                    final int parentX = javaUnitsToSurfaceUnits(toplevelLocation.x);
+                    final int parentY = javaUnitsToSurfaceUnits(toplevelLocation.y);
 
                     // Offset must be relative to the top-left corner of the "parent".
                     final Point offsetFromParent = popup.getLocation();
-                    final int offsetX = offsetFromParent.x;
-                    final int offsetY = offsetFromParent.y;
+                    final int offsetX = javaUnitsToSurfaceUnits(offsetFromParent.x);
+                    final int offsetY = javaUnitsToSurfaceUnits(offsetFromParent.y);
 
                     if (popupLog.isLoggable(PlatformLogger.Level.FINE)) {
                         popupLog.fine("New popup: " + popup);
@@ -280,9 +301,11 @@ public class WLComponentPeer implements ComponentPeer {
                             thisWidth, thisHeight,
                             parentX + offsetX, parentY + offsetY);
                 } else {
+                    int xNative = javaUnitsToSurfaceUnits(target.getX());
+                    int yNative = javaUnitsToSurfaceUnits(target.getY());
                     nativeCreateWLSurface(nativePtr,
                             getParentNativePtr(target),
-                            target.getX(), target.getY(),
+                            xNative, yNative,
                             isModal, isMaximized, isMinimized,
                             title, WLToolkit.getApplicationID());
                 }
@@ -322,12 +345,17 @@ public class WLComponentPeer implements ComponentPeer {
                     || dialog.getModalityType() == Dialog.ModalityType.TOOLKIT_MODAL);
     }
 
+    void updateSurfaceData() {
+        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
+                getBufferWidth(), getBufferHeight(), getBufferScale());
+        updateWindowGeometry();
+    }
+
     void configureWLSurface() {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine(String.format("%s is configured to %dx%d with %dx scale", this, getBufferWidth(), getBufferHeight(), getBufferScale()));
         }
-        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
-                getBufferWidth(), getBufferHeight(), getBufferScale());
+        updateSurfaceData();
     }
 
     @Override
@@ -421,7 +449,9 @@ public class WLComponentPeer implements ComponentPeer {
                 // the location will be updated in notifyConfigured() following
                 // the xdg_popup::repositioned event
             } else {
-                performLocked(() -> WLRobotPeer.setLocationOfWLSurface(getWLSurface(nativePtr), newX, newY));
+                int newXNative = javaUnitsToSurfaceUnits(newX);
+                int newYNative = javaUnitsToSurfaceUnits(newY);
+                performLocked(() -> WLRobotPeer.setLocationOfWLSurface(getWLSurface(nativePtr), newXNative, newYNative));
             }
         }
 
@@ -436,9 +466,7 @@ public class WLComponentPeer implements ComponentPeer {
                 log.fine(String.format("%s is resizing its buffer to %dx%d with %dx scale",
                         this, getBufferWidth(), getBufferHeight(), getBufferScale()));
             }
-            SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
-                    getBufferWidth(), getBufferHeight(), getBufferScale());
-            updateWindowGeometry();
+            updateSurfaceData();
             layout();
 
             WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_RESIZED));
@@ -467,8 +495,10 @@ public class WLComponentPeer implements ComponentPeer {
             final Point toplevelLocation = toplevel == null
                     ? new Point(popupParent.getX(), popupParent.getY())
                     : SwingUtilities.convertPoint(popupParent, 0, 0, toplevel);
-            final int parentX = toplevelLocation.x;
-            final int parentY = toplevelLocation.y;
+            final int parentX = javaUnitsToSurfaceUnits(toplevelLocation.x);
+            final int parentY = javaUnitsToSurfaceUnits(toplevelLocation.y);
+            int newXNative = javaUnitsToSurfaceUnits(newX);
+            int newYNative = javaUnitsToSurfaceUnits(newY);
             if (popupLog.isLoggable(Level.FINE)) {
                 popupLog.fine("Repositioning popup: " + popup);
                 popupLog.fine("\tparent:" + popupParent);
@@ -476,7 +506,7 @@ public class WLComponentPeer implements ComponentPeer {
                 popupLog.fine("\toffset of anchor from toplevel: " + toplevelLocation);
                 popupLog.fine("\toffset from anchor: " + newX + ", " + newY);
             }
-            nativeRepositionWLPopup(nativePtr, thisWidth, thisHeight, parentX + newX, parentY + newY);
+            nativeRepositionWLPopup(nativePtr, thisWidth, thisHeight, parentX + newXNative, parentY + newYNative);
         } );
     }
 
@@ -499,16 +529,16 @@ public class WLComponentPeer implements ComponentPeer {
         }
     }
 
-    private int toBufferUnits(int x) {
-        return x * getBufferScale();
-    }
-
     public int getBufferWidth() {
-        return toBufferUnits(getWidth());
+        synchronized (dataLock) {
+            return (int)(width * effectiveScale);
+        }
     }
 
     public int getBufferHeight() {
-        return toBufferUnits(getHeight());
+        synchronized (dataLock) {
+            return (int)(height * effectiveScale);
+        }
     }
 
     public Rectangle getBufferBounds() {
@@ -523,10 +553,14 @@ public class WLComponentPeer implements ComponentPeer {
         //	user's perspective. Client-side decorations often have invisible
         //	portions like drop-shadows which should be ignored for the
         //	purposes of aligning, placing and constraining windows"
-        final Rectangle visibleBounds = getVisibleBounds();
+        Rectangle nativeVisibleBounds = getVisibleBounds();
+        nativeVisibleBounds.x = javaUnitsToSurfaceUnits(nativeVisibleBounds.x);
+        nativeVisibleBounds.y = javaUnitsToSurfaceUnits(nativeVisibleBounds.y);
+        nativeVisibleBounds.width = javaUnitsToSurfaceUnits(nativeVisibleBounds.width);
+        nativeVisibleBounds.height = javaUnitsToSurfaceUnits(nativeVisibleBounds.height);
         performLocked(() -> nativeSetWindowGeometry(nativePtr,
-                visibleBounds.x, visibleBounds.y,
-                visibleBounds.width, visibleBounds.height));
+                nativeVisibleBounds.x, nativeVisibleBounds.y,
+                nativeVisibleBounds.width, nativeVisibleBounds.height));
     }
 
     public void coalescePaintEvent(PaintEvent e) {
@@ -690,17 +724,23 @@ public class WLComponentPeer implements ComponentPeer {
     }
     
     void setMinimumSizeTo(Dimension minSize) {
-        Dimension constrainedSize = constrainSize(minSize);
-        performLocked(() -> nativeSetMinimumSize(nativePtr, constrainedSize.width, constrainedSize.height));
+        Dimension nativeSize = constrainSize(minSize);
+        nativeSize.width = javaUnitsToSurfaceUnits(nativeSize.width);
+        nativeSize.height = javaUnitsToSurfaceUnits(nativeSize.height);
+        performLocked(() -> nativeSetMinimumSize(nativePtr, nativeSize.width, nativeSize.height));
     }
 
     void setMaximumSizeTo(Dimension maxSize) {
-        Dimension constrainedSize = constrainSize(maxSize);
-        performLocked(() -> nativeSetMaximumSize(nativePtr, constrainedSize.width, constrainedSize.height));
+        Dimension nativeSize = constrainSize(maxSize);
+        nativeSize.width = javaUnitsToSurfaceUnits(nativeSize.width);
+        nativeSize.height = javaUnitsToSurfaceUnits(nativeSize.height);
+        performLocked(() -> nativeSetMaximumSize(nativePtr, nativeSize.width, nativeSize.height));
     }
 
     void showWindowMenu(int x, int y) {
-        performLocked(() -> nativeShowWindowMenu(nativePtr, x, y));
+        int xNative = javaUnitsToSurfaceUnits(x);
+        int yNative = javaUnitsToSurfaceUnits(y);
+        performLocked(() -> nativeShowWindowMenu(nativePtr, xNative, yNative));
     }
 
     @Override
@@ -781,7 +821,7 @@ public class WLComponentPeer implements ComponentPeer {
         WLComponentPeer peer = inputState.getPeer();
         if (peer == null) return;
         Cursor cursor = peer.getCursor(inputState.getPointerX(), inputState.getPointerY());
-        setCursor(cursor, getGraphicsDevice() != null ? getGraphicsDevice().getScale() : 1);
+        setCursor(cursor, getGraphicsDevice() != null ? getGraphicsDevice().getWlScale() : 1);
     }
 
     Cursor getCursor(int x, int y) {
@@ -892,17 +932,16 @@ public class WLComponentPeer implements ComponentPeer {
 
     @Override
     public boolean updateGraphicsData(GraphicsConfiguration gc) {
-        final int newScale = ((WLGraphicsConfig)gc).getScale();
+        final int newWlScale = ((WLGraphicsConfig)gc).getWlScale();
 
         synchronized (dataLock) {
-            if (newScale != wlBufferScale) {
-                wlBufferScale = newScale;
+            if (newWlScale != wlBufferScale) {
+                wlBufferScale = newWlScale;
+                effectiveScale = ((WLGraphicsConfig)gc).getEffectiveScale();
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
                     log.fine(String.format("%s is updating buffer to %dx%d with %dx scale", this, getBufferWidth(), getBufferHeight(), wlBufferScale));
                 }
-                SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
-                        getBufferWidth(), getBufferHeight(), wlBufferScale);
-
+                updateSurfaceData();
                 postPaintEvent();
             }
         }
@@ -1124,7 +1163,37 @@ public class WLComponentPeer implements ComponentPeer {
         performLocked(() -> nativeStartResize(nativePtr, edges));
     }
 
-    void notifyConfigured(int newX, int newY, int newWidth, int newHeight, boolean active, boolean maximized) {
+    /**
+     * Converts a value in the Wayland surface-local coordinate system
+     * into the Java coordinate system.
+     */
+    int surfaceUnitsToJavaUnits(int value) {
+        if (!WLGraphicsEnvironment.isDebugScaleEnabled()) {
+            return value;
+        } else {
+            synchronized (dataLock) {
+                return (int)(value * wlBufferScale / effectiveScale);
+            }
+        }
+    }
+
+    /**
+     * Converts a value in the Java coordinate system into the Wayland
+     * surface-local coordinate system.
+     */
+    int javaUnitsToSurfaceUnits(int value) {
+        if (!WLGraphicsEnvironment.isDebugScaleEnabled()) {
+            return value;
+        } else {
+            synchronized (dataLock) {
+                return (int)(value * effectiveScale / wlBufferScale);
+            }
+        }
+    }
+
+    void notifyConfigured(int newXNative, int newYNative, int newWidthNative, int newHeightNative, boolean active, boolean maximized) {
+        int newWidth = surfaceUnitsToJavaUnits(newWidthNative);
+        int newHeight = surfaceUnitsToJavaUnits(newHeightNative);
         final long wlSurfacePtr = getWLSurface(nativePtr);
         if (!surfaceAssigned) {
             SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(wlSurfacePtr);
@@ -1137,6 +1206,8 @@ public class WLComponentPeer implements ComponentPeer {
         boolean isWlPopup = targetIsWlPopup();
 
         if (isWlPopup) { // Only popups provide (relative) location
+            int newX = surfaceUnitsToJavaUnits(newXNative);
+            int newY = surfaceUnitsToJavaUnits(newYNative);
             setLocationTo(newX, newY);
         }
 
@@ -1204,8 +1275,8 @@ public class WLComponentPeer implements ComponentPeer {
         // Wayland's output and are removed as soon as we have left.
         synchronized (devices) {
             for (WLGraphicsDevice gd : devices) {
-                if (gd.getScale() > scale) {
-                    scale = gd.getScale();
+                if (gd.getWlScale() > scale) {
+                    scale = gd.getWlScale();
                     theDevice = gd;
                 }
             }
