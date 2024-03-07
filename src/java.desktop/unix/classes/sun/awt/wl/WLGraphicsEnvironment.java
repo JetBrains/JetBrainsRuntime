@@ -49,6 +49,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
     private static boolean verboseVulkanStatus = false;
     private static boolean vulkanRequested = false;
     private static int vulkanRequestedDeviceNumber = -1;
+    private static final boolean debugScaleEnabled;
     @SuppressWarnings("removal")
     private static String vulkanOption =
             AccessController.doPrivileged(
@@ -84,6 +85,8 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
         if (log.isLoggable(Level.FINE)) {
             log.fine("Vulkan rendering enabled: " + (vulkanEnabled?"YES":"NO"));
         }
+
+        debugScaleEnabled = SunGraphicsEnvironment.isUIScaleEnabled() && SunGraphicsEnvironment.getDebugScale() >= 1;
 
         // Make sure the toolkit is loaded because otherwise this GE is going to be empty
         WLToolkit.isInitialized();
@@ -148,6 +151,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
                 if (gd.getID() == wlID) {
                     newOutput = false;
                     if (gd.isSameDeviceAs(wlID, x, y)) {
+                        // These coordinates and the size are not scaled.
                         gd.updateConfiguration(humanID, width, height, scale);
                     } else {
                         final WLGraphicsDevice updatedDevice = WLGraphicsDevice.createWithConfiguration(wlID, humanID,
@@ -254,5 +258,13 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
                 totalDisplayBounds.setSize(virtualBounds.getSize());
             }
         }
+    }
+
+    static double effectiveScaleFrom(int displayScale) {
+        return debugScaleEnabled ? SunGraphicsEnvironment.getDebugScale() : displayScale;
+    }
+
+    static boolean isDebugScaleEnabled() {
+        return debugScaleEnabled;
     }
 }
