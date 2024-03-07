@@ -1059,9 +1059,15 @@ WLSBM_SizeChangeTo(WLSurfaceBufferManager * manager, jint width, jint height, ji
     }
 
     MUTEX_LOCK(manager->drawLock);
+    MUTEX_LOCK(manager->showLock);
+    const bool change_needed =
+               manager->bufferForDraw.width != width
+            || manager->bufferForDraw.height != height
+            || manager->scale != scale;
+    manager->scale = scale;
+    MUTEX_UNLOCK(manager->showLock);
 
-    const bool size_changed = manager->bufferForDraw.width != width || manager->bufferForDraw.height != height;
-    if (size_changed) {
+    if (change_needed) {
         DrawBufferDestroy(manager);
 
         manager->bufferForDraw.width  = width;
@@ -1071,12 +1077,6 @@ WLSBM_SizeChangeTo(WLSurfaceBufferManager * manager, jint width, jint height, ji
         DrawBufferCreate(manager);
         WLBufferTrace(manager, "WLSBM_SizeChangeTo %dx%d", width, height);
     }
-
-    MUTEX_LOCK(manager->showLock);
-    if (manager->scale != scale) {
-        manager->scale = scale;
-    }
-    MUTEX_UNLOCK(manager->showLock);
 
     MUTEX_UNLOCK(manager->drawLock);
 }
