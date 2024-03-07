@@ -60,7 +60,7 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
         final int backgroundRGB = peer.getBackground() != null
                 ? peer.getBackground().getRGB()
                 : 0;
-        int scale = ((WLGraphicsConfig)peer.getGraphicsConfiguration()).getScale();
+        int scale = ((WLGraphicsConfig)peer.getGraphicsConfiguration()).getWlScale();
         initOps(peer.getBufferWidth(), peer.getBufferHeight(), scale, backgroundRGB);
     }
 
