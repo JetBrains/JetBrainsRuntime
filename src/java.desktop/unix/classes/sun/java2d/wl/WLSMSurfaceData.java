@@ -75,7 +75,7 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
         }
         ColorModel cm = graphicsConfig.getColorModel();
         SurfaceType surfaceType = graphicsConfig.getSurfaceType();
-        return new WLSMSurfaceData(peer, surfaceType, cm, graphicsConfig.getScale(), graphicsConfig.getWlShmFormat());
+        return new WLSMSurfaceData(peer, surfaceType, cm, graphicsConfig.getWlScale(), graphicsConfig.getWlShmFormat());
     }
 
     @Override
