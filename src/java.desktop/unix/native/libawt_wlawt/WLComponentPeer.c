@@ -638,7 +638,8 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetWindowGeometry
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_surface) {
         xdg_surface_set_window_geometry(frame->xdg_surface, x, y, width, height);
-        wlFlushToServer(env);
+        // Do not flush here as this update needs to be committed together with the change
+        // of the buffer's size and scale, if any.
     }
 }
 
@@ -648,7 +649,8 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetMinimumSize
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel) {
         xdg_toplevel_set_min_size(frame->xdg_toplevel, width, height);
-        wlFlushToServer(env);
+        // Do not flush here as this update needs to be committed together with the change
+        // of the buffer's size and scale, if any.
     }
 }
 
@@ -658,7 +660,8 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetMaximumSize
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel) {
         xdg_toplevel_set_max_size(frame->xdg_toplevel, width, height);
-        wlFlushToServer(env);
+        // Do not flush here as this update needs to be committed together with the change
+        // of the buffer's size and scale, if any.
     }
 }
 
