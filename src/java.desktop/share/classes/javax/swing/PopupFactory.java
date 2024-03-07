@@ -297,6 +297,12 @@ public class PopupFactory {
                 (EmbeddedFrame.getAppletIfAncestorOf(owner) != null)) {
                 ((HeavyWeightPopup)popup).setCacheEnabled(false);
             }
+
+            if (isPopupPositionedRelatively()) {
+                // Or else there are positioning artifacts when moving between monitors
+                // with a different scale and -Dsun.java2d.uiScale=N was specified.
+                ((HeavyWeightPopup)popup).setCacheEnabled(false);
+            }
             return popup;
         }
         return null;
