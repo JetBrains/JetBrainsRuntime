@@ -25,7 +25,14 @@
 package sun.awt.wl;
 
 import sun.awt.AWTAccessor;
-import java.awt.*;
+
+import java.awt.Component;
+import java.awt.Dialog;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Insets;
+import java.awt.SystemColor;
+import java.awt.Window;
 import java.awt.event.WindowEvent;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.WindowPeer;
@@ -139,6 +146,13 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
         // TODO: make sure this is called when our target's maximum size changes
         final Dimension maxSize = target.isMaximumSizeSet() ? target.getMaximumSize() : null;
         if (maxSize != null) super.setMaximumSizeTo(maxSize);
+    }
+
+    @Override
+    void updateSurfaceData() {
+        updateMinimumSize();
+        updateMaximumSize();
+        super.updateSurfaceData();
     }
 
     @Override
