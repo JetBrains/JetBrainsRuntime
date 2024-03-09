@@ -4377,7 +4377,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
         /**
          * The back buffers
          */
-        protected VolatileImage[] backBuffers; // = null
+        protected volatile VolatileImage[] backBuffers; // = null
         /**
          * Whether or not the drawing buffer has been recently restored from
          * a lost state.
@@ -4414,12 +4414,14 @@ public abstract class Component implements ImageObserver, MenuContainer,
          * @since 1.6
          */
         public void dispose() {
+            final VolatileImage[] backBuffers = this.backBuffers;
             if (backBuffers != null) {
                 for (int counter = backBuffers.length - 1; counter >= 0;
                      counter--) {
-                    if (backBuffers[counter] != null) {
-                        backBuffers[counter].flush();
-                        backBuffers[counter] = null;
+                    VolatileImage backBuffer = backBuffers[counter];
+                    backBuffers[counter] = null;
+                    if (backBuffer != null) {
+                        backBuffer.flush();
                     }
                 }
             }
@@ -4454,9 +4456,10 @@ public abstract class Component implements ImageObserver, MenuContainer,
                 } else {
                     // flush any existing backbuffers
                     for (int i = 0; i < numBuffers; i++) {
-                        if (backBuffers[i] != null) {
-                            backBuffers[i].flush();
-                            backBuffers[i] = null;
+                        VolatileImage backBuffer = backBuffers[i];
+                        backBuffers[i] = null;
+                        if (backBuffer != null) {
+                            backBuffer.flush();
                         }
                     }
                 }
@@ -4496,6 +4499,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
          * If there is no back buffer, returns null.
          */
         Image getBackBuffer() {
+            VolatileImage[] backBuffers = this.backBuffers;
             if (backBuffers != null) {
                 return backBuffers[backBuffers.length - 1];
             } else {
@@ -4522,6 +4526,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
          * buffer.
          */
         void showSubRegion(int x1, int y1, int x2, int y2) {
+            final VolatileImage[] backBuffers = this.backBuffers;
             if (backBuffers == null) {
                 return;
             }
@@ -4539,14 +4544,17 @@ public abstract class Component implements ImageObserver, MenuContainer,
                 // First image copy is in terms of Frame's coordinates, need
                 // to translate to client area.
                 g.translate(insets.left, insets.top);
-                for (int i = 0; i < backBuffers.length; i++) {
-                    g.drawImage(backBuffers[i],
+                for (int i = 0; i < backBuffers.length && this.backBuffers != null; i++) {
+                    final VolatileImage backBuffer = backBuffers[i];
+                    if (backBuffer != null) {
+                        g.drawImage(backBuffer,
                                 x1, y1, x2, y2,
                                 x1, y1, x2, y2,
                                 null);
-                    g.dispose();
-                    g = null;
-                    g = backBuffers[i].getGraphics();
+                        g.dispose();
+                        g = null;
+                        g = backBuffer.getGraphics();
+                    }
                 }
             } finally {
                 if (g != null) {
@@ -4604,10 +4612,16 @@ public abstract class Component implements ImageObserver, MenuContainer,
          * {@code getDrawGraphics}
          */
         public boolean contentsLost() {
+            final VolatileImage[] backBuffers = this.backBuffers;
             if (backBuffers == null) {
                 return false;
             } else {
-                return backBuffers[backBuffers.length - 1].contentsLost();
+                VolatileImage backBuffer = backBuffers[backBuffers.length - 1];
+                if (backBuffer != null) {
+                    return backBuffer.contentsLost();
+                } else {
+                    return false;
+                }
             }
         }
 
