@@ -30,6 +30,10 @@
 #include "jni.h"
 
 typedef struct {
+    char* name;
+} VKPhysicalDeviceInfo;
+
+typedef struct {
     VkDevice            device;
     VkPhysicalDevice    physicalDevice;
     char*               name;
@@ -59,6 +63,8 @@ typedef struct {
 
 
 jboolean VK_Init(jboolean verbose, jint requestedDevice);
+jboolean VK_CreateLogicalDevice(jint requestedDevice);
+
 VKGraphicsEnvironment* VKGE_graphics_environment();
 void* vulkanLibProc(VkInstance vkInstance, char* procName);
 

@@ -130,7 +130,10 @@ void* vulkanLibProc(VkInstance vkInstance, char* procName) {
 jboolean VK_Init(jboolean verb, jint requestedDevice) {
     verbose = verb;
     requestedDeviceNumber = requestedDevice;
-    return VKGE_graphics_environment() != NULL;
+    if (VKGE_graphics_environment() == NULL) {
+        return JNI_FALSE;
+    }
+    return VK_CreateLogicalDevice(requestedDevice);
 }
 
 static const char* physicalDeviceTypeString(VkPhysicalDeviceType type)
@@ -159,7 +162,7 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
                         VK_NULL_HANDLE, "vkEnumerateInstanceExtensionProperties");
         PFN_vkEnumerateInstanceLayerProperties vkEnumerateInstanceLayerProperties =
                 (PFN_vkEnumerateInstanceLayerProperties) vulkanLibProc(
-                        VK_NULL_HANDLE,"vkEnumerateInstanceLayerProperties");
+                        VK_NULL_HANDLE, "vkEnumerateInstanceLayerProperties");
         PFN_vkCreateInstance vkCreateInstance =
                 (PFN_vkCreateInstance) vulkanLibProc(
                         VK_NULL_HANDLE, "vkCreateInstance");
@@ -213,8 +216,8 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
 
         // Get the number of extensions and layers
         if (vkEnumerateInstanceExtensionProperties(NULL,
-                                                  &geInstance->extensionsCount,
-                                                  NULL) != VK_SUCCESS)
+                                                   &geInstance->extensionsCount,
+                                                   NULL) != VK_SUCCESS)
         {
             J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: vkEnumerateInstanceExtensionProperties fails\n")
             vulkanLibClose();
@@ -230,8 +233,8 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
         }
 
         if (vkEnumerateInstanceExtensionProperties(NULL,
-                                                  &geInstance->extensionsCount,
-                                                  geInstance->extensions) != VK_SUCCESS)
+                                                   &geInstance->extensionsCount,
+                                                   geInstance->extensions) != VK_SUCCESS)
         {
             J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: vkEnumerateInstanceExtensionProperties fails\n")
             vulkanLibClose();
@@ -427,15 +430,11 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
         PFN_vkEnumerateDeviceExtensionProperties vkEnumerateDeviceExtensionProperties =
                 (PFN_vkEnumerateDeviceExtensionProperties)
                         vulkanLibProc(geInstance->vkInstance, "vkEnumerateDeviceExtensionProperties");
-        PFN_vkCreateDevice vkCreateDevice =
-                (PFN_vkCreateDevice)
-                        vulkanLibProc(geInstance->vkInstance, "vkCreateDevice");
 
         if(vkGetPhysicalDeviceFeatures2 == NULL ||
            vkGetPhysicalDeviceProperties2 == NULL ||
            vkGetPhysicalDeviceQueueFamilyProperties == NULL ||
-           vkEnumerateDeviceLayerProperties == NULL ||
-           vkCreateDevice == NULL)
+           vkEnumerateDeviceLayerProperties == NULL)
         {
             J2dRlsTrace(J2D_TRACE_ERROR, "Required api is not supported\n")
             vulkanLibClose();
@@ -445,7 +444,7 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
         PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR vkGetPhysicalDeviceWaylandPresentationSupportKHR =
                 (PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR) vulkanLibProc(
                         geInstance->vkInstance, "vkGetPhysicalDeviceWaylandPresentationSupportKHR");
-        if(vkGetPhysicalDeviceWaylandPresentationSupportKHR == NULL) {
+        if (vkGetPhysicalDeviceWaylandPresentationSupportKHR == NULL) {
             J2dRlsTrace(J2D_TRACE_ERROR, "vkGetPhysicalDeviceWaylandPresentationSupportKHR is not supported\n")
             vulkanLibClose();
             return NULL;
@@ -693,61 +692,74 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
             }
             fprintf(stderr, "\n");
         }
-
-        VkDeviceQueueCreateInfo queueCreateInfo = {};
-        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfo.queueFamilyIndex = geInstance->devices[geInstance->enabledDeviceNum].queueFamily;  // obtained separately
-        queueCreateInfo.queueCount = 1;
-        float queuePriority = 1.0f;
-        queueCreateInfo.pQueuePriorities = &queuePriority;
-
-        VkPhysicalDeviceFeatures features10 = {};  // set features you need
-        features10.logicOp = VK_TRUE;
-
-        VkPhysicalDeviceVulkan12Features features12 = {};
-        features12.timelineSemaphore = VK_TRUE;
-        pNext = &features12;
-        VkPhysicalDeviceSynchronization2FeaturesKHR synchronization2Features = {};
-        if (geInstance->devices[geInstance->enabledDeviceNum].hasKhrSynchronization2) {
-            synchronization2Features.synchronization2 = VK_TRUE;
-            synchronization2Features.pNext = pNext;
-            pNext = &synchronization2Features;
-        }
-
-        VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures;
-        if (geInstance->devices[geInstance->enabledDeviceNum].hasKhrDynamicRendering) {
-            dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
-            dynamicRenderingFeatures.pNext = pNext;
-            pNext = &dynamicRenderingFeatures;
-        }
-        VkDeviceCreateInfo createInfo = (VkDeviceCreateInfo){
-                VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-                pNext,
-                0,
-                1,
-                &queueCreateInfo,
-                geInstance->devices[geInstance->enabledDeviceNum].enabledLayersCount,
-                (const char *const *) geInstance->devices[geInstance->enabledDeviceNum].enabledLayers,
-                geInstance->devices[geInstance->enabledDeviceNum].enabledExtensionsCount,
-                (const char *const *) geInstance->devices[geInstance->enabledDeviceNum].enabledExtensions,
-                &features10
-        };
-        if (vkCreateDevice(
-                   geInstance->devices[geInstance->enabledDeviceNum].physicalDevice,
-                   &createInfo,
-                   NULL,
-                   &geInstance->devices[geInstance->enabledDeviceNum].device) != VK_SUCCESS)
-        {
-               J2dRlsTrace1(J2D_TRACE_ERROR, "Cannot create device:\n    %s\n",
-                            geInstance->devices[geInstance->enabledDeviceNum].name)
-               vulkanLibClose();
-               return NULL;
-        } else {
-               J2dRlsTrace1(J2D_TRACE_INFO, "Logical device (%s) created\n",
-                            geInstance->devices[geInstance->enabledDeviceNum].name)
-        }
     }
     return geInstance;
+}
+
+jboolean VK_CreateLogicalDevice(jint requestedDevice) {
+    if (geInstance == NULL) {
+        J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: VKGraphicsEnvironment is not initialized\n");
+        return JNI_FALSE;
+    }
+
+    PFN_vkCreateDevice vkCreateDevice =
+            (PFN_vkCreateDevice)
+                    vulkanLibProc(geInstance->vkInstance, "vkCreateDevice");
+    if(vkCreateDevice == NULL)
+    {
+        J2dRlsTrace(J2D_TRACE_ERROR, "Required api is not supported\n")
+        vulkanLibClose();
+        return JNI_FALSE;
+    }
+    VkDeviceQueueCreateInfo queueCreateInfo = {};
+    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo.queueFamilyIndex = geInstance->devices[geInstance->enabledDeviceNum].queueFamily;  // obtained separately
+    queueCreateInfo.queueCount = 1;
+    float queuePriority = 1.0f;
+    queueCreateInfo.pQueuePriorities = &queuePriority;
+    VkPhysicalDeviceFeatures features10 = {};  // set features you need
+    features10.logicOp = VK_TRUE;
+    VkPhysicalDeviceVulkan12Features features12 = {};
+    features12.timelineSemaphore = VK_TRUE;
+    void *pNext = &features12;
+    VkPhysicalDeviceSynchronization2FeaturesKHR synchronization2Features = {};
+    if (geInstance->devices[geInstance->enabledDeviceNum].hasKhrSynchronization2) {
+        synchronization2Features.synchronization2 = VK_TRUE;
+        synchronization2Features.pNext = pNext;
+        pNext = &synchronization2Features;
+    }
+    VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures;
+    if (geInstance->devices[geInstance->enabledDeviceNum].hasKhrDynamicRendering) {
+        dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
+        dynamicRenderingFeatures.pNext = pNext;
+        pNext = &dynamicRenderingFeatures;
+    }
+    VkDeviceCreateInfo createInfo = (VkDeviceCreateInfo){
+        VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        pNext,
+        0,
+        1,
+        &queueCreateInfo,
+        geInstance->devices[geInstance->enabledDeviceNum].enabledLayersCount,
+        (const char *const *) geInstance->devices[geInstance->enabledDeviceNum].enabledLayers,
+        geInstance->devices[geInstance->enabledDeviceNum].enabledExtensionsCount,
+        (const char *const *) geInstance->devices[geInstance->enabledDeviceNum].enabledExtensions,
+        &features10
+    };
+    if (vkCreateDevice(
+            geInstance->devices[geInstance->enabledDeviceNum].physicalDevice,
+            &createInfo,
+            NULL,
+            &geInstance->devices[geInstance->enabledDeviceNum].device) != VK_SUCCESS)
+    {
+        J2dRlsTrace1(J2D_TRACE_ERROR, "Cannot create device:\n    %s\n",
+                     geInstance->devices[geInstance->enabledDeviceNum].name)vulkanLibClose();
+        return JNI_FALSE;
+    } else {
+        J2dRlsTrace1(J2D_TRACE_INFO, "Logical device (%s) created\n",
+                     geInstance->devices[geInstance->enabledDeviceNum].name)
+    }
+    return JNI_TRUE;
 }
 
 JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved) {
