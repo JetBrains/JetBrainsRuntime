@@ -121,6 +121,7 @@ java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout
 java/awt/Robot/NonEmptyErrorStream.java JBR-6275 macosx-all
 
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-6485 linux-all
+javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-6698 windows-all,linux-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java NOBUG windows-x64 #timeout
 
 jb/java/awt/CustomTitleBar/FrameNativeControlsMacOSTest.java JBR-6354 macosx-all
