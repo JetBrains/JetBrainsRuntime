@@ -617,6 +617,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                         CONTINUE_IF_NULL(mtlc);
                         [mtlc.glyphCacheAA free];
                         [mtlc.glyphCacheLCD free];
+                        [mtlc commitCommandBuffer:YES display:NO];
                         MTLSD_Delete(env, mtlsdo);
                     }
                     break;
@@ -640,9 +641,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_PREVIOUS_OP(MTL_OP_OTHER);
                     jlong pConfigInfo = NEXT_LONG(b);
                     CONTINUE_IF_NULL(mtlc);
-                    [mtlc commitCommandBuffer:YES display:NO];
                     [mtlc.glyphCacheAA free];
                     [mtlc.glyphCacheLCD free];
+                    [mtlc commitCommandBuffer:YES display:NO];
                     MTLGC_DestroyMTLGraphicsConfig(pConfigInfo);
                     mtlc = NULL;
                     break;
