@@ -1110,7 +1110,7 @@ bool G1CollectedHeap::do_full_collection(bool explicit_gc,
 
   G1FullGCMark gc_mark;
   GCTraceTime(Info, gc) tm("Pause Full", NULL, gc_cause(), true);
-  G1FullCollector collector(this, explicit_gc, do_clear_all_soft_refs, do_maximum_compaction);
+  G1FullCollector collector(this, explicit_gc, do_clear_all_soft_refs, do_maximum_compaction, gc_mark.tracer());
 
   collector.prepare_collection();
   collector.collect();
@@ -2981,7 +2981,7 @@ void G1CollectedHeap::do_collection_pause_at_safepoint_helper(double target_paus
 
   // Inner scope for scope based logging, timers, and stats collection
   {
-    GCTraceCPUTime tcpu;
+    GCTraceCPUTime tcpu(_gc_tracer_stw);
 
     char young_gc_name[MaxYoungGCNameLength];
     set_young_gc_name(young_gc_name);
