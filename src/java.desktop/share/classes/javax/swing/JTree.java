@@ -4996,9 +4996,15 @@ public class JTree extends JComponent implements Scrollable, Accessible
                         if (treeModel != null) {
                             index = treeModel.getIndexOfChild(objParent, obj);
                         }
-                        accessibleParent = new AccessibleJTreeNode(tree,
-                                                                   parentPath,
-                                                                   null);
+                        // If the root is not visible and the parent is the root,
+                        // don't create an accessible node for it.
+                        if (!isRootVisible() && parentPath.getParentPath() == null) {
+                            accessibleParent = tree;
+                        } else {
+                            accessibleParent = new AccessibleJTreeNode(tree,
+                                                                       parentPath,
+                                                                       null);
+                        }
                         this.setAccessibleParent(accessibleParent);
                     } else if (treeModel != null) {
                         accessibleParent = tree; // we're the top!
