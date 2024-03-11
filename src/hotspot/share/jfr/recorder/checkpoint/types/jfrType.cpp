@@ -101,7 +101,7 @@ void JfrCheckpointThreadClosure::do_thread(Thread* t) {
   if (t->is_Java_thread()) {
     JavaThread* const jt = (JavaThread*)t;
     _writer.write(jt->name());
-    _writer.write(java_lang_Thread::thread_id(jt->threadObj()));
+    _writer.write(jt->threadObj() != NULL ? java_lang_Thread::thread_id(jt->threadObj()) : 0);
     _writer.write(JfrThreadGroup::thread_group_id(jt, _curthread));
     // since we are iterating threads during a safepoint, also issue notification
     JfrJavaEventWriter::notify(jt);
