@@ -111,7 +111,7 @@ void InlineCacheBuffer::init_next_stub() {
 
 void InlineCacheBuffer::initialize() {
   if (_buffer != NULL) return; // already initialized
-  _buffer = new StubQueue(new ICStubInterface, 10*K, InlineCacheBuffer_lock, "InlineCacheBuffer");
+  _buffer = new StubQueue(new ICStubInterface, checked_cast<int>(InlineCacheBufferSize), InlineCacheBuffer_lock, "InlineCacheBuffer");
   assert (_buffer != NULL, "cannot allocate InlineCacheBuffer");
   init_next_stub();
 }

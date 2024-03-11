@@ -409,6 +409,9 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
   product(bool, UseInlineCaches, true,                                      \
           "Use Inline Caches for virtual calls ")                           \
                                                                             \
+  experimental(size_t, InlineCacheBufferSize, 10*K,                         \
+          "InlineCacheBuffer size")                                         \
+                                                                            \
   diagnostic(bool, InlineArrayCopy, true,                                   \
           "Inline arraycopy native that is known to be part of "            \
           "base library DLL")                                               \
