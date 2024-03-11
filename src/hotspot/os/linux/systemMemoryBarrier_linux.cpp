@@ -24,7 +24,7 @@
 
 #include "precompiled.hpp"
 #include "logging/log.hpp"
-#include "runtime/os.hpp"
+#include "os_linux.hpp"
 #include "utilities/debug.hpp"
 #include "utilities/systemMemoryBarrier.hpp"
 
@@ -70,6 +70,18 @@ static int membarrier(int cmd, unsigned int flags, int cpu_id) {
 }
 
 bool LinuxSystemMemoryBarrier::initialize() {
+#if defined(RISCV)
+// RISCV port was introduced in kernel 4.4.
+// 4.4 also made membar private expedited mandatory.
+// But RISCV actually don't support it until 6.9.
+  long major, minor;
+  os::Linux::kernel_version(&major, &minor);
+  if (!(major > 6 || (major == 6 && minor >= 9))) {
+    log_info(os)("Linux kernel %ld.%ld does not support MEMBARRIER PRIVATE_EXPEDITED on RISC-V.",
+                 major, minor);
+    return false;
+  }
+#endif
   int ret = membarrier(MEMBARRIER_CMD_QUERY, 0, 0);
   if (ret < 0) {
     log_info(os)("MEMBARRIER_CMD_QUERY unsupported");
