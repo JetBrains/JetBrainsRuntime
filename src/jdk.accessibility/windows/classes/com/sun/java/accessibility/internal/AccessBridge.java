@@ -6452,9 +6452,15 @@ public final class AccessBridge {
                     java.lang.System.arraycopy(objPath, 0, objParentPath,
                                                0, objPath.length-1);
                     TreePath parentPath = new TreePath(objParentPath);
-                    accessibleParent = new AccessibleJTreeNode(tree,
-                                                               parentPath,
-                                                               null);
+                    // If the root is not visible and the parent is the root,
+                    // don't create an accessible node for it.
+                    if (!tree.isRootVisible() && parentPath.getParentPath() == null) {
+                        accessibleParent = tree;
+                    } else {
+                        accessibleParent = new AccessibleJTreeNode(tree,
+                                                                   parentPath,
+                                                                   null);
+                    }
                     this.setAccessibleParent(accessibleParent);
                 } else if (treeModel != null) {
                     accessibleParent = tree; // we're the top!
