@@ -39,6 +39,7 @@ class ContiguousSpace;
 class CSpaceCounters;
 class DefNewYoungerGenClosure;
 class DefNewScanClosure;
+class DefNewTracer;
 class ScanWeakRefClosure;
 class SerialHeap;
 class STWGCTimer;
@@ -138,6 +139,8 @@ protected:
   ContiguousSpace* _to_space;
 
   STWGCTimer* _gc_timer;
+
+  DefNewTracer* _gc_tracer;
 
   enum SomeProtectedConstants {
     // Generations are GenGrain-aligned and have size that are multiples of
@@ -329,6 +332,8 @@ protected:
   bool promo_failure_scan_is_complete() const {
     return _promo_failure_scan_stack.is_empty();
   }
+
+  DefNewTracer* gc_tracer() const { return _gc_tracer; }
 
  protected:
   // If clear_space is true, clear the survivor spaces.  Eden is
