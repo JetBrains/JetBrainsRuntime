@@ -3506,12 +3506,13 @@ public final class Class<T> implements java.io.Serializable,
 
     // Fetches the factory for reflective objects
     private static ReflectionFactory getReflectionFactory() {
-        if (reflectionFactory == null) {
-            reflectionFactory =
-                java.security.AccessController.doPrivileged
-                    (new ReflectionFactory.GetReflectionFactoryAction());
+        var factory = reflectionFactory;
+        if (factory != null) {
+            return factory;
         }
-        return reflectionFactory;
+        return reflectionFactory =
+                java.security.AccessController.doPrivileged
+                        (new ReflectionFactory.GetReflectionFactoryAction());
     }
     private static ReflectionFactory reflectionFactory;
 
