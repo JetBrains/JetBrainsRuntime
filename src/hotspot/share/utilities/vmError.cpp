@@ -2347,7 +2347,7 @@ public:
 void VMError::print_dup_classes(outputStream *st) {
   if (_thread) {
     ResourceMark rm(_thread);
-    MutexLocker ma(_thread, MultiArray_lock);
+    RecursiveLocker rl(MultiArray_lock, _thread);
     MutexLocker mcld(_thread, ClassLoaderDataGraph_lock);
 
     DuplicateKlassClosure::TABLE classes_count(100, 200);
