@@ -374,7 +374,7 @@ setXICWindowFocus(XIC ic, Window w)
 #define INITIAL_LOOKUP_BUF_SIZE 512
 
 Boolean
-awt_x11inputmethod_lookupString(XKeyPressedEvent *event, KeySym *keysymp)
+awt_x11inputmethod_lookupString(XKeyPressedEvent *event, KeySym *keysymp, Boolean /* not used */)
 {
     JNIEnv *env = GetJNIEnv();
     X11InputMethodData *pX11IMData = NULL;
