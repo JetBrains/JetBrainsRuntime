@@ -99,11 +99,68 @@ public final class XInputMethod extends X11InputMethod {
     @Override
     public void dispatchEvent(AWTEvent e) {
         if (doesSupportMovingCandidatesNativeWindow) {
+            if (e.getID() == MouseEvent.MOUSE_PRESSED) {
+                /* doesSupportMovingCandidatesNativeWindow == true means that natively the IM uses XIMPreeditPosition
+                 *   input mode (the term "input style" is used in XOrg docs).
+                 * The main flaw of this mode is that AWT doesn't receive any information about changes in the
+                 *   currently composed preedit text. In other words, Java applications don't know whether
+                 *   composing is happening now or not and don't have a way to get the current preedit text. Therefore,
+                 *   when the caret position changes in response to mouse clicks, Swing doesn't understand that
+                 *   there's a need to discard the preedit text (because it thinks there is no any), see
+                 *   javax.swing.text.JTextComponent.ComposedTextCaret#positionCaret.
+                 * To prevent the preedit text from following the caret when it's moved in response to mouse clicks,
+                 *   let's manually discard the preedit text here.
+                 */
+                endComposition();
+            }
             clientComponentCaretPositionTracker.onDispatchEvent(e);
         }
         super.dispatchEvent(e);
     }
 
+    @Override
+    public void endComposition() {
+        if (!doesSupportMovingCandidatesNativeWindow) {
+            // Use the old implementation if
+            //   the IM isn't using the new mode introduced in JBR-2460 (XIMPreeditPosition)
+            super.endComposition();
+            return;
+        }
+
+        if (disposed) {
+            return;
+        }
+
+        String preeditText = invokeResetXIC();
+        needResetXIC = false;
+
+        awtLock();
+        try {
+            if (composedText != null) {
+                composedText = null;
+                // Remove any existing composed text by posting an InputMethodEvent with null composed text
+                postInputMethodEvent(
+                    InputMethodEvent.INPUT_METHOD_TEXT_CHANGED,
+                    null,
+                    0,
+                    null,
+                    null,
+                    EventQueue.getMostRecentEventTime()
+                );
+            }
+
+            if (committedText != null) {
+                preeditText = preeditText == null ? committedText : committedText + preeditText;
+                committedText = null;
+            }
+
+            if (preeditText != null && !preeditText.isEmpty()) {
+                dispatchCommittedText(preeditText);
+            }
+        } finally {
+            awtUnlock();
+        }
+    }
 
     // Is called from native
     private static boolean isJbNewXimClientEnabled() {
