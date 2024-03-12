@@ -30,6 +30,7 @@ import java.awt.AWTException;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.EventQueue;
+import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.InputMethodEvent;
 import java.awt.font.TextAttribute;
@@ -52,6 +53,7 @@ import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.regex.Pattern;
 
+import sun.awt.X11.XToolkit;
 import sun.awt.im.InputMethodAdapter;
 import sun.util.logging.PlatformLogger;
 
@@ -256,7 +258,7 @@ public abstract class X11InputMethodBase extends InputMethodAdapter {
         */
         if (needResetXIC && haveActiveClient() &&
             getClientComponent() != needResetXICClient.get()){
-            resetXIC();
+            resetXICWrapper();
 
             // needs to reset the last xic focussed component.
             lastXICFocussedComponent = null;
@@ -311,7 +313,7 @@ public abstract class X11InputMethodBase extends InputMethodAdapter {
             lastXICFocussedComponent = null;
             isLastXICActive = false;
 
-            resetXIC();
+            resetXICWrapper();
             needResetXICClient.clear();
             needResetXIC = false;
         }
@@ -370,7 +372,7 @@ public abstract class X11InputMethodBase extends InputMethodAdapter {
         // method could get the input focus.
         disableInputMethod();
         if (needResetXIC) {
-            resetXIC();
+            resetXICWrapper();
             needResetXICClient.clear();
             needResetXIC = false;
         }
@@ -614,7 +616,7 @@ public abstract class X11InputMethodBase extends InputMethodAdapter {
             return;
         }
 
-        String text = resetXIC();
+        String text = resetXICWrapper();
         /* needResetXIC is only set to true for active client. So passive
            client should not reset the flag to false. */
         if (active) {
@@ -797,6 +799,15 @@ public abstract class X11InputMethodBase extends InputMethodAdapter {
             }
             return s.toString();
         }
+    }
+
+    private String resetXICWrapper() {
+        if (Toolkit.getDefaultToolkit() instanceof XToolkit xToolkit) {
+            // TODO: check if resetXIC actually returned null
+            // TODO: race condition?
+            xToolkit.markNextKeyEventAsFirstAfterXResetIc();
+        }
+        return resetXIC();
     }
 
     /*

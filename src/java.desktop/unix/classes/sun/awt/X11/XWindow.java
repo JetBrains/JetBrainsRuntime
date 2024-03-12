@@ -1019,7 +1019,8 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
 
     // REMIND: need to implement looking for disabled events
     private native boolean x11inputMethodLookupString(long event,
-                                                      long[] keysymArray);
+                                                      long[] keysymArray,
+                                                      boolean isKeyEventFirstAfterXResetIc);
 
     private native boolean haveCurrentX11InputMethodInstance();
 
@@ -1278,7 +1279,11 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         if ( //TODO check if there's an active input method instance
              // without calling a native method. Is it necessary though?
             haveCurrentX11InputMethodInstance()) {
-            if (x11inputMethodLookupString(ev.pData, keysym)) {
+
+            final boolean isKeyEventFirstAfterXResetIc =
+                Toolkit.getDefaultToolkit() instanceof XToolkit xToolkit && xToolkit.isCurrentlyDispatchedKeyEventFirstAfterXResetIc();
+
+            if (x11inputMethodLookupString(ev.pData, keysym, isKeyEventFirstAfterXResetIc)) {
                 if (keyEventLog.isLoggable(PlatformLogger.Level.FINE)) {
                     keyEventLog.fine("--XWindow.java XIM did process event; return; dec keysym processed:"+(keysym[0])+
                                    "; hex keysym processed:"+Long.toHexString(keysym[0])

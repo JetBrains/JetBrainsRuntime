@@ -991,6 +991,13 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                     processXkbChanges(ev);
                 }
 
+                final boolean isKeyEvent = ( (ev.get_type() == XConstants.KeyPress) ||
+                                             (ev.get_type() == XConstants.KeyRelease) );
+                if (isKeyEvent) {
+                    isCurrentKeyEventFirstAfterXResetIc = isNextKeyEventFirstAfterXResetIc;
+                    isNextKeyEventFirstAfterXResetIc = false;
+                }
+
                 if (XDropTargetEventProcessor.processEvent(ev) ||
                     XDragSourceContextPeer.processEvent(ev)) {
                     continue;
@@ -1012,9 +1019,6 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                         }
                     }
                 }
-
-                final boolean isKeyEvent = ( (ev.get_type() == XConstants.KeyPress) ||
-                                             (ev.get_type() == XConstants.KeyRelease) );
 
                 if (keyEventLog.isLoggable(PlatformLogger.Level.FINE) && isKeyEvent) {
                     keyEventLog.fine("before XFilterEvent:" + ev);
@@ -1047,10 +1051,26 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 // In case of ThreadDeath thread is still alive in finally block so we have to duplicate freeing
                 XlibWrapper.XFreeEventData(getDisplay(), ev.pData);
             } finally {
+                isCurrentKeyEventFirstAfterXResetIc = false;
                 awtUnlock();
             }
         }
     }
+
+
+    private volatile boolean isCurrentKeyEventFirstAfterXResetIc = false;
+    private volatile boolean isNextKeyEventFirstAfterXResetIc = false;
+
+    public void markNextKeyEventAsFirstAfterXResetIc()
+    {
+        isNextKeyEventFirstAfterXResetIc = true;
+    }
+
+    public boolean isCurrentlyDispatchedKeyEventFirstAfterXResetIc()
+    {
+        return isCurrentKeyEventFirstAfterXResetIc;
+    }
+
 
     /**
      * Listener installed to detect display changes.
