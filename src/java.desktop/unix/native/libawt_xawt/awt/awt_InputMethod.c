@@ -541,7 +541,7 @@ setXICWindowFocus(XIC ic, Window w)
 #define INITIAL_LOOKUP_BUF_SIZE 512
 
 Boolean
-awt_x11inputmethod_lookupString(XKeyPressedEvent *event, KeySym *keysymp)
+awt_x11inputmethod_lookupString(XKeyPressedEvent *event, KeySym *keysymp, const Boolean keyPressContainsThePreeditTextOfLastXResetIC)
 {
     JNIEnv *env = GetJNIEnv();
     X11InputMethodData *pX11IMData = NULL;
@@ -627,17 +627,22 @@ awt_x11inputmethod_lookupString(XKeyPressedEvent *event, KeySym *keysymp)
         /*FALLTHRU*/
     case XLookupChars:
         /*
-        printf("lookupString: status=XLookupChars, type=%d, state=%x, keycode=%x, keysym=%x\n",
-               event->type, event->state, event->keycode, keysym);
+        printf("lookupString: status=XLookupChars, type=%d, state=%x, keycode=%x, keysym=%x, keyPressContainsThePreeditTextOfLastXResetIC=%d\n",
+               event->type, event->state, event->keycode, keysym, (int)keyPressContainsThePreeditTextOfLastXResetIC);
         */
-        javastr = JNU_NewStringPlatform(env, (const char *)pX11IMData->lookup_buf);
-        if (javastr != NULL) {
-            JNU_CallMethodByName(env, NULL,
-                                 currentX11InputMethodInstance,
-                                 "dispatchCommittedText",
-                                 "(Ljava/lang/String;J)V",
-                                 javastr,
-                                 event->time);
+
+        // JBR-3112
+        // See sun.awt.X11.XToolkit#doesCurrentlyDispatchedKeyPressContainThePreeditTextOfLastXResetIC
+        if (!keyPressContainsThePreeditTextOfLastXResetIC) {
+            javastr = JNU_NewStringPlatform(env, (const char *)pX11IMData->lookup_buf);
+            if (javastr != NULL) {
+                JNU_CallMethodByName(env, NULL,
+                                     currentX11InputMethodInstance,
+                                     "dispatchCommittedText",
+                                     "(Ljava/lang/String;J)V",
+                                     javastr,
+                                     event->time);
+            }
         }
         break;
 
