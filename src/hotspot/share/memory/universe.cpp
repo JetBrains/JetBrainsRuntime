@@ -840,7 +840,14 @@ jint universe_init() {
   return JNI_OK;
 }
 
+#include "runtime/safefetch.hpp"
+
 jint Universe::initialize_heap() {
+  char* mem = os::reserve_memory(16 * K, false, mtGC);
+  intptr_t value = SafeFetchN((intptr_t*)mem, 1);
+
+  log_info(gc)("Reserved memory read: " PTR_FORMAT " " PTR_FORMAT, p2i(mem), value);
+
   assert(_collectedHeap == nullptr, "Heap already created");
   _collectedHeap = GCConfig::arguments()->create_heap();
 
