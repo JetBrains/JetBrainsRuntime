@@ -894,7 +894,7 @@ javax/imageio/plugins/external_plugin_tests/TestClassPathPlugin.sh JBR-5363 wind
 # jdk_swing
 
 javax/swing/plaf/aqua/CustomComboBoxFocusTest.java JBR-6488 macosx-all
-javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java 8194945 macosx-all
+javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java 8194945 linux-all,macosx-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-5342 linux-all
 javax/swing/plaf/basic/BasicHTML/4251579/bug4251579.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/plaf/basic/BasicMenuUI/4983388/bug4983388.java 8253184,JBR-6727 windows-all,linux-all
