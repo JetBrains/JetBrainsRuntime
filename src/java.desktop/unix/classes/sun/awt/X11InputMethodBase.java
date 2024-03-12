@@ -30,6 +30,7 @@ import java.awt.AWTException;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.EventQueue;
+import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.InputMethodEvent;
 import java.awt.font.TextAttribute;
@@ -37,10 +38,6 @@ import java.awt.font.TextHitInfo;
 import java.awt.im.InputMethodHighlight;
 import java.awt.im.spi.InputMethodContext;
 import java.awt.peer.ComponentPeer;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.lang.Character.Subset;
 import java.lang.ref.WeakReference;
 import java.text.AttributedCharacterIterator;
@@ -49,9 +46,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.StringTokenizer;
-import java.util.regex.Pattern;
 
+import sun.awt.X11.XToolkit;
 import sun.awt.im.InputMethodAdapter;
 import sun.util.logging.PlatformLogger;
 
@@ -255,7 +251,7 @@ public abstract class X11InputMethodBase extends InputMethodAdapter {
         */
         if (needResetXIC && haveActiveClient() &&
             getClientComponent() != needResetXICClient.get()){
-            resetXIC();
+            invokeResetXIC();
 
             // needs to reset the last xic focused component.
             lastXICFocussedComponent = null;
@@ -313,7 +309,7 @@ public abstract class X11InputMethodBase extends InputMethodAdapter {
             lastXICFocussedComponent = null;
             isLastXICActive = false;
 
-            resetXIC();
+            invokeResetXIC();
             needResetXICClient.clear();
             needResetXIC = false;
         }
@@ -375,7 +371,7 @@ public abstract class X11InputMethodBase extends InputMethodAdapter {
         // method could get the input focus.
         disableInputMethod();
         if (needResetXIC) {
-            resetXIC();
+            invokeResetXIC();
             needResetXICClient.clear();
             needResetXIC = false;
         }
@@ -477,7 +473,7 @@ public abstract class X11InputMethodBase extends InputMethodAdapter {
         }
     }
 
-    private void dispatchCommittedText(String str) {
+    protected final void dispatchCommittedText(String str) {
         dispatchCommittedText(str, EventQueue.getMostRecentEventTime());
     }
 
@@ -625,7 +621,7 @@ public abstract class X11InputMethodBase extends InputMethodAdapter {
             return;
         }
 
-        String text = resetXIC();
+        String text = invokeResetXIC();
         /* needResetXIC is only set to true for active client. So passive
            client should not reset the flag to false. */
         if (active) {
@@ -812,6 +808,27 @@ public abstract class X11InputMethodBase extends InputMethodAdapter {
         }
     }
 
+    protected final String invokeResetXIC() {
+        if (Toolkit.getDefaultToolkit() instanceof XToolkit xToolkit) {
+            awtLock();
+            try {
+                final String resetResult = resetXIC();
+                if (resetResult == null) {
+                    // If XmbResetIC/XwcResetIC returns null, it means one of the following:
+                    //   * There was no preedit text
+                    //   * In case of iBus/fcitx4, the preedit text is sent later to the toolkit via
+                    //     a synthetic KeyPress event + XmbLookupString/XwcLookupString applied to it
+                    xToolkit.xResetICMayReturnThePreeditTextViaNextKeyPressEvent();
+                }
+                return resetResult;
+            } finally {
+                awtUnlock();
+            }
+        } else {
+            return resetXIC();
+        }
+    }
+
     /*
      * Native methods
      */
@@ -826,6 +843,7 @@ public abstract class X11InputMethodBase extends InputMethodAdapter {
 
     protected native void disposeXIC();
 
+    /** Don't use it directly, use {@link #invokeResetXIC} instead */
     private native String resetXIC();
 
     protected native boolean setCompositionEnabledNative(boolean enable);
