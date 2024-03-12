@@ -955,6 +955,14 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                     processXkbChanges(ev);
                 }
 
+                if (ev.get_type() == XConstants.KeyPress) {
+                    doesCurrentlyDispatchedKeyPressContainThePreeditTextOfLastXResetIC =
+                        mayXResetICReturnThePreeditTextViaNextKeyPressEvent &&
+                        isKeyPressSyntetic(ev.get_xkey());
+
+                    mayXResetICReturnThePreeditTextViaNextKeyPressEvent = false;
+                }
+
                 if (XDropTargetEventProcessor.processEvent(ev) ||
                     XDragSourceContextPeer.processEvent(ev)) {
                     continue;
@@ -1003,12 +1011,69 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 XBaseWindow.ungrabInput();
                 processException(thr);
             } finally {
+                doesCurrentlyDispatchedKeyPressContainThePreeditTextOfLastXResetIC = false;
                 // free event data if XGetEventData was called
                 XlibWrapper.XFreeEventData(getDisplay(), ev.pData);
                 awtUnlock();
             }
         }
     }
+
+
+    // ================================================================================================================
+    // JBR-3112 Linux: Last character issue with Korean.
+    // XmbResetIC/XwcResetIC are called (by sun.awt.X11InputMethodBase#endComposition) when
+    //   the keyboard focus goes to another Java component.
+    // By the X11 specification, these functions must return the current preedit text. However, some
+    //   input methods (e.g., iBus and fcitx4) don't return the preedit text, but instead send it later
+    //   (asynchronously) via a combination of a synthetic KeyPress event + XmbLookupString applied to it.
+    // Not only does this behavior breaks the X11 specification,
+    //   but it also causes the preedit text to wrongly go to the newly focused Java component rather than
+    //   its intended target, the previously focused component for which the preedit text was originally composed.
+    // Thus, in order to prevent the "outdated" preedit text from going to the newly focused component, let's
+    //   at least discard it at all.
+    // *How* it's done: the toolkit gets notified whenever XmbResetIC/XwcResetIC gets called and then
+    //   discards the preedit text returned from XmbLookupString/XwcLookupString, applied to the next
+    //   KeyPress event being dispatched.
+    // ================================================================================================================
+
+    private volatile boolean mayXResetICReturnThePreeditTextViaNextKeyPressEvent = false;
+    private boolean doesCurrentlyDispatchedKeyPressContainThePreeditTextOfLastXResetIC = false;
+
+    /**
+     * Notifies the toolkit that XmbResetIC/XwcResetIC has recently returned null
+     *   (likely meaning that the preedit text will be sent later via a synthetic KeyPress event,
+     *    although the focus may have already moved to another component)
+     */
+    public void xResetICMayReturnThePreeditTextViaNextKeyPressEvent() {
+        mayXResetICReturnThePreeditTextViaNextKeyPressEvent = true;
+    }
+
+    /**
+     * @return true if the composed text returned from XmbLookupString/XwcLookupString
+     *              (see function awt_x11inputmethod_lookupString in awt_InputMethod.c), applied to the currently
+     *              dispatched KeyEvent, must be discarded (instead of being dispatched to the focused component) ;
+     *         false otherwise
+     * @see XWindow#handleKeyPress(XKeyEvent)
+     */
+    public boolean doesCurrentlyDispatchedKeyPressContainThePreeditTextOfLastXResetIC() {
+        assert isToolkitThread();
+        return doesCurrentlyDispatchedKeyPressContainThePreeditTextOfLastXResetIC;
+    }
+
+    private static boolean isKeyPressSyntetic(XKeyEvent ev) {
+        assert (ev.get_type() == XConstants.KeyPress);
+
+        return ( (ev.get_root()      == 0) &&
+                 (ev.get_subwindow() == 0) &&
+                 (ev.get_time()      == 0) &&
+                 (ev.get_x()         == 0) &&
+                 (ev.get_y()         == 0) &&
+                 (ev.get_x_root()    == 0) &&
+                 (ev.get_y_root()    == 0) &&
+                 (ev.get_state()     == 0) );
+    }
+
 
     /**
      * Listener installed to detect display changes.
