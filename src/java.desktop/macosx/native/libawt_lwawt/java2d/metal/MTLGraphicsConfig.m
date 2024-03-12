@@ -38,7 +38,7 @@ MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLGC_DestroyMTLGraphicsConfig");
     JNI_COCOA_ENTER(env);
-    [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
         MTLGraphicsConfigInfo *mtlinfo =
             (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
         if (mtlinfo == NULL) {
