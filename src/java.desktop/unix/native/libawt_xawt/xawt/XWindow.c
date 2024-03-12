@@ -86,7 +86,7 @@ jfieldID targetID;
 jfieldID graphicsConfigID;
 
 extern jobject currentX11InputMethodInstance;
-extern Boolean awt_x11inputmethod_lookupString(XKeyPressedEvent *, KeySym *);
+extern Boolean awt_x11inputmethod_lookupString(XKeyPressedEvent *, KeySym *, Boolean keyPressContainsThePreeditTextOfLastXResetIC);
 Boolean awt_UseType4Patch = False;
 Boolean awt_ServerDetected = False;
 Boolean awt_XKBDetected = False;
@@ -1103,7 +1103,7 @@ JNIEXPORT jboolean JNICALL Java_sun_awt_X11_XWindow_haveCurrentX11InputMethodIns
 }
 
 JNIEXPORT jboolean JNICALL Java_sun_awt_X11_XWindow_x11inputMethodLookupString
-(JNIEnv *env, jobject object, jlong event, jlongArray keysymArray) {
+(JNIEnv *env, jobject object, jlong event, jlongArray keysymArray, jboolean keyPressContainsThePreeditTextOfLastXResetIC) {
    KeySym keysym = NoSymbol;
    Boolean boo;
    /* keysymArray (and testbuf[]) have dimension 2 because we put there two
@@ -1117,7 +1117,11 @@ JNIEXPORT jboolean JNICALL Java_sun_awt_X11_XWindow_x11inputMethodLookupString
 
    testbuf[1]=0;
 
-   boo = awt_x11inputmethod_lookupString((XKeyPressedEvent*)jlong_to_ptr(event), &keysym);
+   boo = awt_x11inputmethod_lookupString(
+       (XKeyPressedEvent*)jlong_to_ptr(event),
+       &keysym,
+       (keyPressContainsThePreeditTextOfLastXResetIC == JNI_TRUE) ? True : False
+   );
    testbuf[0] = keysym;
 
    (*env)->SetLongArrayRegion(env, keysymArray, 0, 2, (jlong *)(testbuf));
