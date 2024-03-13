@@ -54,7 +54,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.List;
 
 import sun.awt.ComponentFactory;
 import sun.font.AttributeMap;
