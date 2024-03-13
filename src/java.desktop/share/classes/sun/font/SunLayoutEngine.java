@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.WeakHashMap;
+import java.util.stream.Collectors;
 
 /*
  * different ways to do this
@@ -181,7 +182,8 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
 
     public static Set<String> getAvailableFeatures(Font2D font) {
         long pFace = getFacePtr(font);
-        return (pFace != 0) ? Set.copyOf(Arrays.stream(getFeatures(pFace)).filter(elem -> elem != null).toList()) : Set.of();
+        return (pFace != 0) ? Arrays.stream(getFeatures(pFace)).filter(elem -> elem != null).collect(Collectors.toSet())
+                : Set.of();
     }
 
     public void layout(FontStrikeDesc desc, float[] mat, float ptSize, int slot, int slotShift,

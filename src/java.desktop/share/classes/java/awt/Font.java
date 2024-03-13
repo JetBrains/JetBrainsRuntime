@@ -2739,8 +2739,8 @@ public class Font implements java.io.Serializable
      * Implementation of such logic goes to HarfBuzz library.
      * @return list of OpenType's features concatenated to String
      */
-    private static List<String> getAvailableFeatures(Font font) {
-        return List.copyOf(SunLayoutEngine.getAvailableFeatures(FontUtilities.getFont2D(font)));
+    private static Set<String> getAvailableFeatures(Font font) {
+        return SunLayoutEngine.getAvailableFeatures(FontUtilities.getFont2D(font));
     }
 
     /**

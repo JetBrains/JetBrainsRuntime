@@ -40,6 +40,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static com.jetbrains.desktop.FontExtensions.featuresToString;
 import static com.jetbrains.desktop.FontExtensions.getFeatures;
@@ -214,15 +215,15 @@ public class FontExtensionsTest {
 
     @JBRTest
     private static Boolean getAvailableFeatures1() {
-        List<String> features = JBR.getFontOpenTypeFeatures().getAvailableFeatures(BASE_FONT);
-        List<FontExtensions.FeatureTag> expected =
-                List.of(FontExtensions.FeatureTag.SS01, FontExtensions.FeatureTag.CV03, FontExtensions.FeatureTag.ZERO);
+        Set<String> features = JBR.getFontOpenTypeFeatures().getAvailableFeatures(BASE_FONT);
+        Set<FontExtensions.FeatureTag> expected =
+                Set.of(FontExtensions.FeatureTag.SS01, FontExtensions.FeatureTag.CV03, FontExtensions.FeatureTag.ZERO);
         return features.containsAll(expected.stream().map(FontExtensions.FeatureTag::getName).toList());
     }
 
     @JBRTest
     private static Boolean getAvailableFeatures2() {
-        List<String> features = JBR.getFontOpenTypeFeatures().getAvailableFeatures(new Font("Arial", Font.PLAIN, 20));
+        Set<String> features = JBR.getFontOpenTypeFeatures().getAvailableFeatures(new Font("Arial", Font.PLAIN, 20));
         return features.isEmpty();
     }
 

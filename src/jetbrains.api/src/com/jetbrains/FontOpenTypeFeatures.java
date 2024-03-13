@@ -26,7 +26,7 @@
 package com.jetbrains;
 
 import java.awt.*;
-import java.util.List;
+import java.util.Set;
 
 @Deprecated(forRemoval=true)
 public interface FontOpenTypeFeatures {
@@ -35,5 +35,5 @@ public interface FontOpenTypeFeatures {
      *
      * @param font       basic font
      */
-    List<String> getAvailableFeatures(Font font);
+    Set<String> getAvailableFeatures(Font font);
 }
