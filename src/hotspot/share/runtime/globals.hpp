@@ -1980,6 +1980,10 @@ const int ObjectAlignmentInBytes = 8;
           "(default) disables native heap trimming.")                       \
           range(0, UINT_MAX)                                                \
                                                                             \
+  product(bool, CautiousSafeFetch, false,                                   \
+             "SafeSafetch functions will try to ascertain if the memory "   \
+             "is readable before accessing it. MacOSX only.")               \
+                                                                            \
   product(bool, AllowEnhancedClassRedefinition, false,                      \
              "Allow enhanced class redefinition beyond swapping method "    \
              "bodies")                                                      \

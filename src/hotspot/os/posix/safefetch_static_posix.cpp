@@ -63,3 +63,59 @@ bool handle_safefetch(int sig, address pc, void* context) {
 }
 
 #endif // SAFEFETCH_METHOD_STATIC_ASSEMBLY
+
+#ifdef __APPLE__
+
+#include <mach/mach.h>
+
+static int is_readable_address(void *addr, size_t size) {
+  mach_port_t task = mach_task_self();
+  vm_address_t region_addr = (vm_address_t) addr;
+  vm_size_t region_size;
+  vm_region_basic_info_data_64_t info;
+  mach_msg_type_number_t info_count = VM_REGION_BASIC_INFO_COUNT_64;
+  memory_object_name_t object_name;
+
+  kern_return_t kr = vm_region_64(task, &region_addr, &region_size, VM_REGION_BASIC_INFO_64,
+                                  (vm_region_info_t) &info, &info_count, &object_name);
+  if (kr == KERN_SUCCESS) {
+    if ((vm_address_t) addr >= region_addr
+        && (vm_address_t) addr + size <= region_addr + region_size) {
+      if (info.protection & VM_PROT_READ) {
+        return 1;
+      }
+    }
+  } else {
+    return -1; // could be due to KERN_INVALID_ADDRESS or who knows what
+  }
+
+  return 0;
+}
+
+int SafeFetch32(int *adr, int errValue) {
+  if (CautiousSafeFetch) {
+    int rc = is_readable_address(adr, sizeof(adr));
+    if (rc == 1) {
+      return *adr;
+    }
+
+    return errValue;
+  } else {
+    return SafeFetch32_impl(adr, errValue);
+  }
+}
+
+intptr_t SafeFetchN(intptr_t *adr, intptr_t errValue) {
+  if (CautiousSafeFetch) {
+    int rc = is_readable_address(adr, sizeof(adr));
+    if (rc == 1) {
+      return *adr;
+    }
+
+    return errValue;
+  } else {
+    return SafeFetchN_impl(adr, errValue);
+  }
+}
+
+#endif // __APPLE__

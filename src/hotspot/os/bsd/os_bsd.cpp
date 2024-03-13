@@ -96,6 +96,7 @@
 # include <sys/time.h>
 # include <sys/times.h>
 # include <sys/types.h>
+#include <sys/utsname.h>
 # include <time.h>
 # include <unistd.h>
 
@@ -1970,6 +1971,18 @@ extern "C" {
   }
 }
 
+static bool is_macos_10_14_4_plus() {
+  struct utsname system_info;
+  uname(&system_info);
+
+  if (strcmp(system_info.sysname, "Darwin") == 0 &&
+      strncmp(system_info.release, "23.4", strlen("23.4")) == 0) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 // this is called _after_ the global arguments have been parsed
 jint os::init_2(void) {
 
@@ -1991,6 +2004,12 @@ jint os::init_2(void) {
   // Not supported.
   FLAG_SET_ERGO(UseNUMA, false);
   FLAG_SET_ERGO(UseNUMAInterleaving, false);
+
+  if (FLAG_IS_DEFAULT(CautiousSafeFetch)) {
+    if (is_macos_10_14_4_plus()) {
+      FLAG_SET_ERGO(CautiousSafeFetch, true);
+    }
+  }
 
   if (MaxFDLimit) {
     // set the number of file descriptors to max. print out error

@@ -46,7 +46,10 @@
   #define SAFEFETCH_METHOD_STATIC_ASSEMBLY
 #endif
 
-
+#ifdef __APPLE__
+int SafeFetch32(int* adr, int errValue);
+intptr_t SafeFetchN(intptr_t* adr, intptr_t errValue);
+#else
 inline int SafeFetch32(int* adr, int errValue) {
   return SafeFetch32_impl(adr, errValue);
 }
@@ -54,5 +57,6 @@ inline int SafeFetch32(int* adr, int errValue) {
 inline intptr_t SafeFetchN(intptr_t* adr, intptr_t errValue) {
   return SafeFetchN_impl(adr, errValue);
 }
+#endif
 
 #endif // SHARE_RUNTIME_SAFEFETCH_HPP
