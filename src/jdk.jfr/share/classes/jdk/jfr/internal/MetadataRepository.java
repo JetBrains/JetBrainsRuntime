@@ -144,7 +144,7 @@ public final class MetadataRepository {
         handler.setRegistered(true);
         typeLibrary.addType(handler.getPlatformEventType());
         if (jvm.isRecording()) {
-            settingsManager.setEventControl(handler.getEventControl());
+            settingsManager.setEventControl(handler.getEventControl(), true);
             settingsManager.updateRetransform(Collections.singletonList((eventClass)));
        }
        setStaleMetadata();
@@ -199,8 +199,8 @@ public final class MetadataRepository {
     }
 
 
-    public synchronized void setSettings(List<Map<String, String>> list) {
-        settingsManager.setSettings(list);
+    public synchronized void setSettings(List<Map<String, String>> list, boolean writeSettingEvents) {
+        settingsManager.setSettings(list, writeSettingEvents);
     }
 
     synchronized void disableEvents() {

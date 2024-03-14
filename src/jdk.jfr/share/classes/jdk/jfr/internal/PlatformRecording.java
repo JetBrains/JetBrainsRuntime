@@ -468,7 +468,7 @@ public final class PlatformRecording implements AutoCloseable {
         synchronized (recorder) {
             this.settings.put(id, value);
             if (getState() == RecordingState.RUNNING) {
-                recorder.updateSettings();
+                recorder.updateSettings(true);
             }
         }
     }
@@ -489,7 +489,7 @@ public final class PlatformRecording implements AutoCloseable {
         synchronized (recorder) {
             this.settings = new LinkedHashMap<>(settings);
             if (getState() == RecordingState.RUNNING && update) {
-                recorder.updateSettings();
+                recorder.updateSettings(true);
             }
         }
     }
