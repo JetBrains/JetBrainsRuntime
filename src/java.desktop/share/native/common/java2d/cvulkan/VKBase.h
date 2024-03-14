@@ -36,6 +36,9 @@ typedef struct {
 typedef struct {
     VkDevice            device;
     VkPhysicalDevice    physicalDevice;
+    VkFormat            depthFormat;
+    VkPipelineCache     pipelineCache;
+    VkRenderPass        renderPass;
     char*               name;
     uint32_t            queueFamily;
     VkBool32            hasExtMemoryBudget;
@@ -59,11 +62,20 @@ typedef struct {
     uint32_t                extensionsCount;
     VkLayerProperties*      layers;
     uint32_t                layersCount;
+
+    PFN_vkEnumeratePhysicalDevices vkEnumeratePhysicalDevices;
+    PFN_vkGetPhysicalDeviceFeatures2 vkGetPhysicalDeviceFeatures2;
+    PFN_vkGetPhysicalDeviceProperties2 vkGetPhysicalDeviceProperties2;
+    PFN_vkGetPhysicalDeviceQueueFamilyProperties vkGetPhysicalDeviceQueueFamilyProperties;
+    PFN_vkEnumerateDeviceLayerProperties vkEnumerateDeviceLayerProperties;
+    PFN_vkEnumerateDeviceExtensionProperties vkEnumerateDeviceExtensionProperties;
+    PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR vkGetPhysicalDeviceWaylandPresentationSupportKHR;
 } VKGraphicsEnvironment;
 
 
 jboolean VK_Init(jboolean verbose, jint requestedDevice);
-jboolean VK_CreateLogicalDevice(jint requestedDevice);
+jboolean VK_FindDevices();
+jboolean VK_CreateLogicalDevice(jint requestedDeviceNumber);
 
 VKGraphicsEnvironment* VKGE_graphics_environment();
 void* vulkanLibProc(VkInstance vkInstance, char* procName);
