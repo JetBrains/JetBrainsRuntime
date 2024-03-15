@@ -239,6 +239,8 @@ public class WLComponentPeer implements ComponentPeer {
 
     protected void wlSetVisible(boolean v) {
         synchronized (getStateLock()) {
+            if (this.visible == v) return;
+            
             this.visible = v;
         }
         if (v) {
