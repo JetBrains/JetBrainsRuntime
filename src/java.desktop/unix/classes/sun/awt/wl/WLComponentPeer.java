@@ -1193,6 +1193,7 @@ public class WLComponentPeer implements ComponentPeer {
     void notifyPopupDone() {
         assert(targetIsWlPopup());
         setVisible(false);
+        // TODO: may need a better way of notifying interested components about popup disappearance
         WLToolkit.postEvent(new WindowEvent((Window) target, WindowEvent.WINDOW_CLOSING));
     }
 
