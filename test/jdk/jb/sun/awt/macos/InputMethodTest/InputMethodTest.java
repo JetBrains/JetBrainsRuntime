@@ -259,6 +259,8 @@ public class InputMethodTest {
         for (var modKey : modKeys) {
             robot.keyRelease(modKey);
         }
+
+        robot.delay(100);
     }
 
     public static void setCapsLockState(boolean desiredState) {
