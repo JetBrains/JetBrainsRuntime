@@ -40,7 +40,7 @@ java/awt/dnd/DnDTestWithHIDPI/DragTestWithHIDPI.java nobug linux-all
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java nobug linux-all
 java/awt/Graphics2D/CopyAreaOOB.java JBR-5354 macosx-all,windows-all,linux-all
 java/awt/im/memoryleak/InputContextMemoryLeakTest.java JBR-6065 windows-all
-java/awt/image/multiresolution/MenuMultiresolutionIconTest.java JBR-4880,8253184,JBR-5510 windows-all,linux-all
+java/awt/image/multiresolution/MenuMultiresolutionIconTest.java JBR-4880,8253184,JBR-5510,JBR-6833 windows-all,linux-all,macosx-all
 java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java 8253184,JBR-5510 windows-all,linux-all
 java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-6663 linux-all
 java/awt/Insets/DialogInsets.java JBR-5510 linux-all
