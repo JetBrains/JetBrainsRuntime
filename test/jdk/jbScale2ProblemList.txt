@@ -1,6 +1,7 @@
 java/awt/Dialog/DialogLocationTest.java JBR-6090 windows-all
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java JBR-5538 windows-all
 java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java JBR-6027 windows-all
+java/awt/dnd/DragOverDropTargetPerformanceTest.java JBR-5799 windows-all
 java/awt/dnd/DropActionChangeTest.java JBR-6489,JBR-5799 generic-all
 java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.java JBR-6442 linux-all
 java/awt/dnd/MozillaDnDTest.java JBR-6442 linux-all
@@ -19,6 +20,7 @@ java/awt/Focus/MouseClickRequestFocusRaceTest/MouseClickRequestFocusRaceTest.jav
 java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 7124275,JBR-5799 macosx-all,windows-all
 java/awt/Focus/SimpleWindowActivationTest/SimpleWindowActivationTest.java JBR-6089 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java JBR-6090 windows-all
+java/awt/Frame/DynamicLayout/DynamicLayout.java JBR-5799 windows-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6233 windows-x64
 java/awt/Frame/InvisibleOwner/InvisibleOwner.java JBR-6090 windows-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenSmall.java JBR-6090 windows-all
@@ -36,6 +38,7 @@ java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5510,JBR-6090 linu
 java/awt/Mixing/MixingOnDialog.java JBR-6090 windows-all
 java/awt/Modal/BlockedMouseInputTest2.java JBR-6090 windows-all
 java/awt/PopupMenu/PopupMenuLocation.java                                           8238720,JBR-5071 windows-all,macosx-all,linux-all
+java/awt/Window/TopLevelLocation/TopLevelLocation.java JBR-5799 windows-all
 javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-6100 linux-all
 javax/swing/JComponent/7154030/bug7154030.java JBR-6134 windows-x64
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      JBR-5071 linux-all
@@ -73,7 +76,10 @@ jb/java/awt/CustomTitleBar/WindowVisibilityTest.java                            
 
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-6287 windows-all
 
+jb/java/awt/Focus/FileDialogClosing.java JBR-5799 windows-all
+jb/java/awt/Focus/ModalDialogFromMenuTest.java JBR-5799 windows-all
 jb/java/awt/Focus/ModalDialogOverSiblingTest.java                                   JBR-5716 windows-all
+jb/java/awt/Focus/PopupFromMenuTest.java JBR-5799 windows-all
 jb/java/awt/Focus/PopupIncomingFocusTest.java                                       JBR-2651 generic-all
 jb/java/awt/Focus/RequestFocusInParent.java                                         JBR-5715 windows-all
 jb/java/awt/Focus/SecondLevelPopupTest.java                                         JBR-6090 windows-all
