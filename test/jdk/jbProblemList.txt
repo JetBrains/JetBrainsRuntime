@@ -1248,7 +1248,9 @@ javax/swing/JSpinner/SpinnerTest.java JBR-4880 windows-all
 javax/swing/JSpinner/TestJSpinnerFocusLost.java JBR-5210 windows-all
 javax/swing/JTable/7068740/bug7068740.java 8197552 windows-all
 javax/swing/JTable/8236907/LastVisibleRow.java JBR-6066 macosx-aarch64
+javax/swing/JTable/JTableOrientationNavTest/JTableOrientationNavTest.java JBR-6836 linux-all
 javax/swing/text/AbstractDocument/6968363/Test6968363.java JBR-4880 windows-all
+
 javax/swing/text/FlowView/LayoutTest.java JBR-4880 windows-all
 javax/swing/text/html/7189299/bug7189299.java JBR-4880 windows-all
 jb/java/jcef/HandleJSQueryTest3314.sh JBR-4866 linux-all
