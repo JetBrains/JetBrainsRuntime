@@ -541,7 +541,7 @@ setXICWindowFocus(XIC ic, Window w)
 #define INITIAL_LOOKUP_BUF_SIZE 512
 
 Boolean
-awt_x11inputmethod_lookupString(XKeyPressedEvent *event, KeySym *keysymp, const Boolean isKeyEventFirstAfterXResetIc)
+awt_x11inputmethod_lookupString(XKeyPressedEvent *event, KeySym *keysymp, const Boolean keyPressContainsThePreeditTextOfLastXResetIC)
 {
     JNIEnv *env = GetJNIEnv();
     X11InputMethodData *pX11IMData = NULL;
@@ -551,7 +551,6 @@ awt_x11inputmethod_lookupString(XKeyPressedEvent *event, KeySym *keysymp, const 
     jstring javastr;
     XIC ic;
     Boolean result = True;
-    Boolean isEventSynteticForForwardingReturnValueOfXResetIc = False;
     static Boolean composing = False;
 
     /*
@@ -628,37 +627,13 @@ awt_x11inputmethod_lookupString(XKeyPressedEvent *event, KeySym *keysymp, const 
         /*FALLTHRU*/
     case XLookupChars:
         /*
-        printf("lookupString: status=XLookupChars, type=%d, state=%x, keycode=%x, keysym=%x, isKeyEventFirstAfterXResetIc=%d\n",
-               event->type, event->state, event->keycode, keysym, (int)isKeyEventFirstAfterXResetIc);
+        printf("lookupString: status=XLookupChars, type=%d, state=%x, keycode=%x, keysym=%x, keyPressContainsThePreeditTextOfLastXResetIC=%d\n",
+               event->type, event->state, event->keycode, keysym, (int)keyPressContainsThePreeditTextOfLastXResetIC);
         */
 
-        isEventSynteticForForwardingReturnValueOfXResetIc =
-            (isKeyEventFirstAfterXResetIc == True) &&
-            (event->type == KeyPress) &&
-            (event->root == 0) &&
-            (event->subwindow == 0) &&
-            (event->time == 0) &&
-            (event->x == 0) &&
-            (event->y == 0) &&
-            (event->x_root == 0) &&
-            (event->y_root == 0) &&
-            (event->state == 0) &&
-            (event->keycode == 0);
-
-        if (!isEventSynteticForForwardingReturnValueOfXResetIc) {
-            /*
-             * JBR-3112 Linux: Last character issue with Korean.
-             * XmbResetIC, XwcResetIC are called when the keyboard focus goes to another Java component.
-             * By the X11 specification, these functions must return the current preedit text. However, some
-             *   input methods (e.g. iBus and fcitx4) don't return the preedit text, but instead send it later
-             *   (asynchronously) via a combination of a syntetic KeyPress event + XmbLookupString applied to it.
-             * Apart from the fact that this behavior breaks the X11 specification, it also causes that the preedit text
-             *   goes to the wrong Java component (to the new focused component instead of the previous one, which
-             *   the preedit text was composed to).
-             * Thus, in order to prevent the "outdated" preedit text from going to the newly focused component, let's
-             * at least discard it at all.
-             */
-
+        // JBR-3112
+        // See sun.awt.X11.XToolkit#doesCurrentlyDispatchedKeyPressContainThePreeditTextOfLastXResetIC
+        if (!keyPressContainsThePreeditTextOfLastXResetIC) {
             javastr = JNU_NewStringPlatform(env, (const char *)pX11IMData->lookup_buf);
             if (javastr != NULL) {
                 JNU_CallMethodByName(env, NULL,
