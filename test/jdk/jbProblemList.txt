@@ -315,6 +315,7 @@ java/awt/Window/ShapedAndTranslucentWindows/ShapedByAPI.java 8222328 windows-all
 java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucent.java 8222328 windows-all,linux-all,macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/StaticallyShaped.java 8165218,8222328 windows-all,macosx-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/Translucent.java 8222328 windows-all,linux-all,macosx-all
+java/awt/Window/AlwaysOnTop/AlwaysOnTopEvenOfWindow.java JBR-6686 linux-aarch64
 java/awt/Window/AlwaysOnTop/AutoTestOnTop.java 6847593,8253184 linux-all,windows-all
 java/awt/Window/AlwaysOnTop/TestAlwaysOnTopBeforeShow.java JBR-6661 windows-all
 java/awt/Window/Grab/GrabTest.java 8253184 windows-all
@@ -329,7 +330,7 @@ java/awt/font/TextLayout/TextLayoutBounds.java 8169188 generic-all
 java/awt/image/BufferedImage/ICMColorDataTest/ICMColorDataTest.java 8233028 generic-all
 java/awt/image/DrawImage/IncorrectAlphaSurface2SW.java 8056077 linux-all
 java/awt/image/multiresolution/Corrupted2XImageTest.java 8264053 macosx-all
-java/awt/image/multiresolution/MenuMultiresolutionIconTest.java JBR-4880,8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
+java/awt/image/multiresolution/MenuMultiresolutionIconTest.java JBR-4880,8253184,JBR-5510,JBR-6833 windows-all,linux-5.18.2-arch1-1,macosx-all
 java/awt/image/multiresolution/MultiresolutionIconTest.java 8252812 windows-all,linux-all
 java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/print/Headless/HeadlessPrinterJob.java 8196088 windows-all
@@ -1316,8 +1317,9 @@ javax/swing/JSpinner/SpinnerTest.java JBR-4880 windows-all
 javax/swing/JSpinner/TestJSpinnerFocusLost.java JBR-5210 windows-all
 javax/swing/JTable/7068740/bug7068740.java 8197552,JBR-6680 windows-all,linux-all
 javax/swing/JTable/7124218/SelectEditTableCell.java JBR-6679 linux-all,windows-all
-javax/swing/JTable/8236907/LastVisibleRow.java JBR-6066 macosx-aarch64
+javax/swing/JTable/8236907/LastVisibleRow.java JBR-6066 macosx-aarch64,linux-aarch64
 javax/swing/JTable/BugCellEditorListener.java JBR-6678 linux-all,windows-all
+javax/swing/JTable/JTableOrientationNavTest/JTableOrientationNavTest.java JBR-6836 linux-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java JBR-6465 windows-all,linux-aarch64
 javax/swing/text/FlowView/LayoutTest.java JBR-4880 windows-all
 javax/swing/text/html/7189299/bug7189299.java JBR-4880 windows-all
@@ -1407,7 +1409,7 @@ jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-5465,JBR-5550 windows-all
 jb/java/awt/CustomTitleBar/MaximizedWindowFocusTest.java JBR-5828 windows-all
 jb/java/awt/CustomTitleBar/MinimizingWindowTest.java JBR-5345 windows-x64
 jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java JBR-5910 windows-x64
-jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java JBR-5345 windows-all
+jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java JBR-5345,JBR-6835 windows-all,macosx-all
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java JBR-5345 windows-all
 jb/java/awt/CustomTitleBar/WindowResizeTest.java JBR-5592 windows-all
 sanity/client/SwingSet/src/EditorPaneDemoTest.java 8212240,JBR-5510,JBR-6285,8253184 macosx-all,linux-all,windows-all
