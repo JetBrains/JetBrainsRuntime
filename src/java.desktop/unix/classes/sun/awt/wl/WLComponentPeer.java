@@ -164,7 +164,9 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     boolean isVisible() {
-        return visible && hasSurface();
+        synchronized (getStateLock()) {
+            return visible && hasSurface();
+        }
     }
 
     boolean hasSurface() {
@@ -254,7 +256,11 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     protected void wlSetVisible(boolean v) {
-        this.visible = v;
+        synchronized (getStateLock()) {
+            if (this.visible == v) return;
+            
+            this.visible = v;
+        }
         if (v) {
             String title = getTitle();
             boolean isWlPopup = targetIsWlPopup();
@@ -1177,6 +1183,13 @@ public class WLComponentPeer implements ComponentPeer {
         }
 
         checkIfOnNewScreen();
+    }
+
+    void notifyPopupDone() {
+        assert(targetIsWlPopup());
+        setVisible(false);
+        // TODO: may need a better way of notifying interested components about popup disappearance
+        WLToolkit.postEvent(new WindowEvent((Window) target, WindowEvent.WINDOW_CLOSING));
     }
 
     private WLGraphicsDevice getGraphicsDevice() {
