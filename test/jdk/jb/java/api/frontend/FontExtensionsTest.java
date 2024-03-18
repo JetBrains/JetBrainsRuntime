@@ -221,12 +221,6 @@ public class FontExtensionsTest {
         return features.containsAll(expected.stream().map(FontExtensions.FeatureTag::getName).toList());
     }
 
-    @JBRTest
-    private static Boolean getAvailableFeatures2() {
-        Set<String> features = JBR.getFontOpenTypeFeatures().getAvailableFeatures(new Font("Arial", Font.PLAIN, 20));
-        return features.isEmpty();
-    }
-
     public static void main(final String[] args) {
         if (!JBR.isFontExtensionsSupported()) {
             throw new RuntimeException("JBR FontExtension API is not available");
