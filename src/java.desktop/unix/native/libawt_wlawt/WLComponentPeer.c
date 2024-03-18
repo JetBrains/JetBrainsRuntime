@@ -44,6 +44,7 @@ static jmethodID postWindowClosingMID;
 static jmethodID notifyConfiguredMID;
 static jmethodID notifyEnteredOutputMID;
 static jmethodID notifyLeftOutputMID;
+static jmethodID notifyPopupDoneMID;
 
 struct activation_token_list_item {
     struct xdg_activation_token_v1 *token;
@@ -263,6 +264,14 @@ xdg_popup_done(void *data,
                struct xdg_popup *xdg_popup)
 {
     J2dTrace(J2D_TRACE_INFO, "WLComponentPeer: xdg_popup_done(%p)\n", xdg_popup);
+    struct WLFrame *frame = data;
+    JNIEnv *env = getEnv();
+    const jobject nativeFramePeer = (*env)->NewLocalRef(env, frame->nativeFramePeer);
+    if (nativeFramePeer) {
+        (*env)->CallVoidMethod(env, nativeFramePeer, notifyPopupDoneMID);
+        (*env)->DeleteLocalRef(env, nativeFramePeer);
+        JNU_CHECK_EXCEPTION(env);
+    }
 }
 
 static void
@@ -313,6 +322,9 @@ Java_sun_awt_wl_WLComponentPeer_initIDs
     CHECK_NULL_THROW_IE(env,
                         notifyLeftOutputMID = (*env)->GetMethodID(env, clazz, "notifyLeftOutput", "(I)V"),
                         "Failed to find method WLComponentPeer.notifyLeftOutput");
+    CHECK_NULL_THROW_IE(env,
+                        notifyPopupDoneMID = (*env)->GetMethodID(env, clazz, "notifyPopupDone", "()V"),
+                        "Failed to find method WLComponentPeer.notifyPopupDone");
 }
 
 JNIEXPORT void JNICALL
