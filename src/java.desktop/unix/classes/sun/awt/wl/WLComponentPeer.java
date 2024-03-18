@@ -934,6 +934,8 @@ public class WLComponentPeer implements ComponentPeer {
     public boolean updateGraphicsData(GraphicsConfiguration gc) {
         final int newWlScale = ((WLGraphicsConfig)gc).getWlScale();
 
+        WLGraphicsDevice gd = ((WLGraphicsConfig) gc).getDevice();
+        gd.addWindow(this);
         synchronized (dataLock) {
             if (newWlScale != wlBufferScale) {
                 wlBufferScale = newWlScale;
@@ -1230,7 +1232,7 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     void notifyEnteredOutput(int wlOutputID) {
-        // Called from native code whenever the corresponding wl_surface enters a new output
+        // NB: May also be called from native code whenever the corresponding wl_surface enters a new output
         synchronized (devices) {
             final WLGraphicsEnvironment ge = (WLGraphicsEnvironment)WLGraphicsEnvironment.getLocalGraphicsEnvironment();
             final WLGraphicsDevice gd = ge.notifySurfaceEnteredOutput(this, wlOutputID);
@@ -1291,6 +1293,11 @@ public class WLComponentPeer implements ComponentPeer {
             final GraphicsConfiguration gc = newDevice.getDefaultConfiguration();
             if (log.isLoggable(Level.FINE)) {
                 log.fine(this + " is on (possibly) new device " + newDevice);
+            }
+            var oldDevice = (WLGraphicsDevice) target.getGraphicsConfiguration().getDevice();
+            if (oldDevice != newDevice) {
+                oldDevice.removeWindow(this);
+                newDevice.addWindow(this);
             }
             performUnlocked(() -> {
                 var acc = AWTAccessor.getComponentAccessor();
