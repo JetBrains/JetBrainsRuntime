@@ -216,7 +216,6 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
         synchronized (devices) {
             for (WLGraphicsDevice gd : devices) {
                 if (gd.getID() == wlOutputID) {
-                    gd.addWindow(wlComponentPeer);
                     return gd;
                 }
             }
@@ -228,7 +227,6 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
         synchronized (devices) {
             for (WLGraphicsDevice gd : devices) {
                 if (gd.getID() == wlOutputID) {
-                    gd.removeWindow(wlComponentPeer);
                     return gd;
                 }
             }
