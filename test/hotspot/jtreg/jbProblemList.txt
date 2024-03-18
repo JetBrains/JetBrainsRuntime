@@ -212,6 +212,7 @@ vmTestbase/nsk/jdi/VirtualMachine/canGetBytecodes/cangetbytecodes001/TestDescrip
 vmTestbase/nsk/jdi/VirtualMachine/canGetCurrentContendedMonitor/cangccm001/TestDescription.java time_out_intermittent macosx-aarch64
 vmTestbase/nsk/jdi/VirtualMachine/canGetMonitorInfo/cangetmonitorinfo001/TestDescription.java JBR-6361 macosx-aarch64
 vmTestbase/nsk/jdi/VirtualMachine/canGetSourceDebugExtension/cangetsde001/TestDescription.java JBR-6645 macosx-aarch64
+vmTestbase/nsk/jdi/VirtualMachine/canGetSyntheticAttribute/cangetattr001/TestDescription.java JBR-6840 macosx-aarch64
 
 vmTestbase/metaspace/gc/firstGC_10m/TestDescription.java 8208250 generic-all
 vmTestbase/metaspace/gc/firstGC_50m/TestDescription.java 8208250 generic-all
@@ -227,6 +228,7 @@ vmTestbase/nsk/jvmti/scenarios/sampling/SP04/sp04t001/TestDescription.java initi
 vmTestbase/nsk/jvmti/scenarios/sampling/SP04/sp04t002/TestDescription.java initial_run windows-x64
 vmTestbase/nsk/jvmti/scenarios/sampling/SP05/sp05t003/TestDescription.java initial_run generic-all
 
+vmTestbase/gc/gctests/StringInternSyncWithGC/StringInternSyncWithGC.java JBR-6841 macosx-all timeout on macstudio
 vmTestbase/gc/lock/jni/jnilock002/TestDescription.java 8192647 generic-all
 
 vmTestbase/jit/escape/LockCoarsening/LockCoarsening001.java 8148743 generic-all

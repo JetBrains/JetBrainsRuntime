@@ -168,12 +168,13 @@ java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-al
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java 8296972 macosx-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
 java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java 8160558 windows-all
+java/awt/dnd/DropTargetingTest.java JBR-6729 windows-all
 javax/swing/dnd/7171812/bug7171812.java 8253184,JBR-6232 windows-all,linux-6.2.0-1014-aws,linux-6.2.0-1015-aws
 java/awt/Focus/ChildWindowFocusTest/ChildWindowFocusTest.java JBR-5545 linux-all,windows-all
 java/awt/Focus/ChoiceFocus/ChoiceFocus.java 8169103 windows-all,macosx-all
 java/awt/Focus/ClearGlobalFocusOwnerTest/ClearGlobalFocusOwnerTest.java JBR-5907 linux-all
 java/awt/Focus/ClearLwQueueBreakTest/ClearLwQueueBreakTest.java 8198618,JBR-814 macosx-all,linux-all
-java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java 6986252,JBR-5178 windows-all
+java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java 6986252,JBR-5178,JBR-6750 windows-all,linux-all
 java/awt/Focus/ConsumedTabKeyTest.java JBR-5833 windows-all
 java/awt/Focus/KeyEventForBadFocusOwnerTest/KeyEventForBadFocusOwnerTest.java JBR-5210 windows-all
 java/awt/Focus/ModalExcludedWindowClickTest/ModalExcludedWindowClickTest.java JBR-884 windows-x64,linux-all
@@ -956,6 +957,8 @@ javax/swing/JOptionPane/7138665/bug7138665.java JBR-5799 windows-all
 javax/swing/JPopupMenu/6415145/bug6415145.java 8197552 windows-all
 javax/swing/JPopupMenu/6515446/bug6515446.java 8197552,JBR-6531 windows-all,linux-all
 javax/swing/JPopupMenu/6544309/bug6544309.java JBR-6532 windows-all,linux-all
+javax/swing/JPopupMenu/6987844/bug6987844.java JBR-6718 linux-all,windows-all
+javax/swing/JPopupMenu/8075063/ContextMenuScrollTest.java JBR-6717 linux-all
 javax/swing/JPopupMenu/SetInvokerJPopupMenuTest.java JBR-6021 linux-all
 javax/swing/JRadioButton/8033699/bug8033699.java 8197552 windows-all
 javax/swing/JRadioButton/8075609/bug8075609.java 8197552,8266085,JBR-5510 windows-all,linux-5.18.2-arch1-1
@@ -1206,6 +1209,7 @@ java/awt/TrayIcon/DragEventSource/DragEventSource.java 8252242 macosx-all
 java/awt/FileDialog/DefaultFocusOwner/DefaultFocusOwner.java 7187728 macosx-all,linux-all
 java/awt/FileDialog/RegexpFilterTest/RegexpFilterTest.html 7187728 macosx-all,linux-all
 java/awt/print/PageFormat/Orient.java 8016055 macosx-all
+java/awt/TextArea/AutoScrollOnSelectAndAppend/AutoScrollOnSelectAndAppend.java JBR-6839 linux-all
 java/awt/TextArea/OverScrollTest/OverScrollTest.java 8253184 windows-all
 java/awt/TextArea/ScrollbarIntersectionTest/ScrollbarIntersectionTest.java 8253184 windows-all
 java/awt/TextArea/TextAreaCaretVisibilityTest/bug7129742.java JBR-5439 linux-all
