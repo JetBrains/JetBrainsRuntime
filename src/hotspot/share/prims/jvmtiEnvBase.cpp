@@ -988,7 +988,7 @@ JvmtiEnvBase::get_owned_monitors(JavaThread *calling_thread, JavaThread* java_th
 
   // Get off stack monitors. (e.g. acquired via jni MonitorEnter).
   JvmtiMonitorClosure jmc(calling_thread, owned_monitors_list, this);
-  ObjectSynchronizer::monitors_iterate(&jmc, java_thread);
+  ObjectSynchronizer::owned_monitors_iterate(&jmc, java_thread);
   err = jmc.error();
 
   return err;
@@ -1015,7 +1015,7 @@ JvmtiEnvBase::get_owned_monitors(JavaThread* calling_thread, JavaThread* java_th
 
   // Get off stack monitors. (e.g. acquired via jni MonitorEnter).
   JvmtiMonitorClosure jmc(calling_thread, owned_monitors_list, this);
-  ObjectSynchronizer::monitors_iterate(&jmc, java_thread);
+  ObjectSynchronizer::owned_monitors_iterate(&jmc, java_thread);
   err = jmc.error();
 
   return err;
@@ -2178,6 +2178,13 @@ JvmtiMonitorClosure::do_monitor(ObjectMonitor* mon) {
   }
   // Filter out on stack monitors collected during stack walk.
   oop obj = mon->object();
+
+  if (obj == nullptr) {
+    // This can happen if JNI code drops all references to the
+    // owning object.
+    return;
+  }
+
   bool found = false;
   for (int j = 0; j < _owned_monitors_list->length(); j++) {
     jobject jobj = ((jvmtiMonitorStackDepthInfo*)_owned_monitors_list->at(j))->monitor;
