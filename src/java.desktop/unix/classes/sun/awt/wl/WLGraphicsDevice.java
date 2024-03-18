@@ -34,6 +34,8 @@ import java.awt.GraphicsDevice;
 import java.awt.Insets;
 import java.awt.Rectangle;
 import java.awt.Window;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Corresponds to Wayland's output and is identified by its wlID and x, y coordinates
@@ -70,6 +72,10 @@ public class WLGraphicsDevice extends GraphicsDevice {
 
     // The default config is an object from the configs array
     private volatile WLGraphicsConfig defaultConfig = null;
+
+    // Top-level window peers that consider this device as their primary one
+    // and get their graphics configuration from it
+    private final Set<WLComponentPeer> toplevels = new HashSet<>(); // guarded by 'this'
 
     private WLGraphicsDevice(int id, int x, int y, int widthMm, int heightMm) {
         this.wlID = id;
@@ -109,6 +115,24 @@ public class WLGraphicsDevice extends GraphicsDevice {
             configs = newConfigs;
             defaultConfig = newDefaultConfig;
         }
+
+        // It is important that by the time displayChanged() events are delivered,
+        // all the peers on this device had their graphics configuration updated
+        // to refer to the new ones with, perhaps, different scale or resolution.
+        // This affects various BufferStrategy that use volatile images as their buffers.
+        notifyToplevels();
+    }
+
+    private void notifyToplevels() {
+        Set<WLComponentPeer> toplevelsCopy = new HashSet<>(toplevels.size());
+        synchronized (this) {
+            toplevelsCopy.addAll(toplevels);
+        }
+        int wlOutputID = this.wlID;
+        // NB: each of those peers will likely receive another such notification
+        // from Wayland when it gets the wl_surface::enter event, but the second one
+        // will effectively be a no-op.
+        toplevelsCopy.forEach((peer) -> peer.notifyEnteredOutput(wlOutputID));
     }
 
     /**
@@ -247,13 +271,15 @@ public class WLGraphicsDevice extends GraphicsDevice {
     }
 
     public void addWindow(WLComponentPeer peer) {
-        // TODO: may be needed to keep track of windows on the device to notify
-        // them of display change events, perhaps.
+        synchronized (this) {
+            toplevels.add(peer);
+        }
     }
 
     public void removeWindow(WLComponentPeer peer) {
-        // TODO: may be needed to keep track of windows on the device to notify
-        // them of display change events, perhaps.
+        synchronized (this) {
+            toplevels.remove(peer);
+        }
     }
 
     @Override
