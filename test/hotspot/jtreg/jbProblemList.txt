@@ -208,6 +208,7 @@ vmTestbase/nsk/jdi/Value/type/type003/TestDescription.java time_out_intermittent
 vmTestbase/nsk/jdi/VirtualMachine/canGetBytecodes/cangetbytecodes001/TestDescription.java time_out_intermittent macosx-aarch64
 vmTestbase/nsk/jdi/VirtualMachine/canGetCurrentContendedMonitor/cangccm001/TestDescription.java time_out_intermittent macosx-aarch64
 vmTestbase/nsk/jdi/VirtualMachine/canGetMonitorInfo/cangetmonitorinfo001/TestDescription.java JBR-6361 macosx-aarch64
+vmTestbase/nsk/jdi/VirtualMachine/canGetOwnedMonitorInfo/cangetinfo001/TestDescription.java JBR-6831 macosx-aarch64
 
 vmTestbase/metaspace/gc/firstGC_10m/TestDescription.java 8208250 generic-all
 vmTestbase/metaspace/gc/firstGC_50m/TestDescription.java 8208250 generic-all
