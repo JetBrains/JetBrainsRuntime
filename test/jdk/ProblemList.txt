@@ -788,8 +788,6 @@ sun/tools/jstat/jstatLineCounts4.sh                             8248691,8268211 
 
 # jdk_other
 
-javax/rmi/ssl/SSLSocketParametersTest.sh                        8162906 generic-all
-
 javax/script/Test7.java                                         8239361 generic-all
 
 ############################################################################
