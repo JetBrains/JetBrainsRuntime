@@ -523,45 +523,6 @@ AC_DEFUN_ONCE([JDKOPT_SETUP_JLINK_OPTIONS],
 
 ################################################################################
 #
-# Check if building of the jtreg failure handler should be enabled.
-#
-AC_DEFUN_ONCE([JDKOPT_ENABLE_DISABLE_FAILURE_HANDLER],
-[
-  AC_ARG_ENABLE([jtreg-failure-handler], [AS_HELP_STRING([--enable-jtreg-failure-handler],
-    [forces build of the jtreg failure handler to be enabled, missing dependencies
-     become fatal errors. Default is auto, where the failure handler is built if all
-     dependencies are present and otherwise just disabled.])])
-
-  AC_MSG_CHECKING([if jtreg failure handler should be built])
-
-  if test "x$enable_jtreg_failure_handler" = "xyes"; then
-    if test "x$JT_HOME" = "x"; then
-      AC_MSG_ERROR([Cannot enable jtreg failure handler without jtreg.])
-    else
-      BUILD_FAILURE_HANDLER=true
-      AC_MSG_RESULT([yes, forced])
-    fi
-  elif test "x$enable_jtreg_failure_handler" = "xno"; then
-    BUILD_FAILURE_HANDLER=false
-    AC_MSG_RESULT([no, forced])
-  elif test "x$enable_jtreg_failure_handler" = "xauto" \
-      || test "x$enable_jtreg_failure_handler" = "x"; then
-    if test "x$JT_HOME" = "x"; then
-      BUILD_FAILURE_HANDLER=false
-      AC_MSG_RESULT([no, missing jtreg])
-    else
-      BUILD_FAILURE_HANDLER=true
-      AC_MSG_RESULT([yes, jtreg present])
-    fi
-  else
-    AC_MSG_ERROR([Invalid value for --enable-jtreg-failure-handler: $enable_jtreg_failure_handler])
-  fi
-
-  AC_SUBST(BUILD_FAILURE_HANDLER)
-])
-
-################################################################################
-#
 # Enable or disable generation of the classlist at build time
 #
 AC_DEFUN_ONCE([JDKOPT_ENABLE_DISABLE_GENERATE_CLASSLIST],
