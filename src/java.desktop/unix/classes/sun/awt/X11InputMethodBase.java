@@ -468,7 +468,7 @@ public abstract class X11InputMethodBase extends InputMethodAdapter {
         }
     }
 
-    private void dispatchCommittedText(String str) {
+    protected final void dispatchCommittedText(String str) {
         dispatchCommittedText(str, EventQueue.getMostRecentEventTime());
     }
 
@@ -795,7 +795,7 @@ public abstract class X11InputMethodBase extends InputMethodAdapter {
         }
     }
 
-    private String invokeResetXIC() {
+    protected final String invokeResetXIC() {
         if (Toolkit.getDefaultToolkit() instanceof XToolkit xToolkit) {
             awtLock();
             try {
