@@ -122,6 +122,12 @@ java/awt/event/MouseEvent/MouseClickTest/MouseClickTest.java 8168389,JBR-52 wind
 java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java 8233568,JBR-810 macosx-all,windows-all,linux-all
 java/awt/event/MouseEvent/RobotLWTest/RobotLWTest.java 8233568,JBR-5583 macosx-all,windows-all,linux-all
 java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java 8224055,JBR-5906 macosx-all,linux-all
+java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_1.java 8204200 windows-all,macosx-all,linux-all
+java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_2.java 8204200 windows-all,macosx-all,linux-all
+java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_3.java JBR-811 windows-all,linux-all
+java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_4.java 8204200 windows-all,macosx-all,linux-all
+java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion.java JBR-811 windows-all,linux-all
+java/awt/event/MouseWheelEvent/WheelModifier/WheelModifier.java 8169475 linux-all,windows-all
 java/awt/event/StressTest/MouseAndKeyEventStressTest.java JBR-6479 generic-all
 java/awt/FlowLayout/PreferredLayoutSize.java JBR-6349 linux-all
 java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java 8081489 generic-all
@@ -141,11 +147,6 @@ java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-al
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java 8296972 macosx-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
 java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java 8160558 windows-all
-java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_1.java 8204200,8060176,JBR-811 windows-all,macosx-all,linux-all
-java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_2.java 8204200,JBR-811 windows-all,macosx-all,linux-all
-java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_3.java JBR-811 windows-all,macosx-all,linux-all
-java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_4.java 8204200,JBR-811 windows-all,macosx-all,linux-all
-java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion.java  8060176,JBR-811 windows-all,macosx-all,linux-all
 java/awt/event/MouseWheelEvent/WheelModifier/WheelModifier.java 8169475 linux-all,windows-all
 java/awt/dnd/Button2DragTest/Button2DragTest.java 8310490 linux-all
 java/awt/dnd/DropActionChangeTest.java JBR-6489 generic-all
@@ -173,7 +174,7 @@ java/awt/Focus/ToFrontFocusTest/ToFrontFocus.java 7156130 linux-all
 java/awt/Focus/WindowInitialFocusTest/WindowInitialFocusTest.java JBR-69 windows-all
 java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java 8169096,JBR-4880,JBR-5387 windows-all,linux-all
 java/awt/event/KeyEvent/CorrectTime/CorrectTime.java 6626492 generic-all
-java/awt/EventQueue/6980209/bug6980209.java 8198615 macosx-all
+java/awt/EventQueue/6980209/bug6980209.java 8198615,JBR-6699 macosx-all,linux-all
 java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.java 8198237 macosx-all
 java/awt/Frame/SetMinimumSizeTest/SetMinimumSizeTest2.java JBR-5210 windows-all
 java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java 8144030,JBR-5210 macosx-all,linux-all,windows-all
@@ -242,13 +243,15 @@ java/awt/FullScreen/FullscreenWindowProps/FullscreenWindowProps.java JBR-4275,JB
 java/awt/FullScreen/NoResizeEventOnDMChangeTest/NoResizeEventOnDMChangeTest.java 7188711,8253184 linux-all,windows-all
 java/awt/FullScreen/UninitializedDisplayModeChangeTest/UninitializedDisplayModeChangeTest.java 7188711,8273617,JBR-4880,8253184 macosx-all,linux-all,windows-all
 java/awt/Focus/8013611/JDK8013611.java 8175366 windows-all,macosx-all
+java/awt/Focus/6378278/InputVerifierTest.java JBR-6700 linux-all
+java/awt/Focus/6382144/EndlessLoopTest.java JBR-6701 linux-all
 java/awt/Focus/6981400/Test1.java 8029675,JBR-5510 windows-all,macosx-all,linux-5.18.2-arch1-1
 java/awt/Focus/6981400/Test3.java 8173264 generic-all
 java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java JBR-4997,JBR-5729 windows-all,linux-all
 java/awt/Focus/8073453/AWTFocusTransitionTest.java JBR-5210,8298247 windows-all,linux-all
 java/awt/Focus/8073453/SwingFocusTransitionTest.java JBR-5210 windows-all
 java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java JBR-5210 windows-all
-java/awt/event/KeyEvent/AltGraphModifier.java JBR-6085 windows-aarch64
+java/awt/event/KeyEvent/AltGraphModifier.java JBR-6085 windows-all
 java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java 8169476 windows-all
 java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474,8224055,JBR-93 windows-all,linux-all
 java/awt/event/KeyEvent/KeyEventLocationTest.java JBR-5916 linux-all
@@ -831,6 +834,22 @@ sun/security/pkcs11/KeyStore/SecretKeysBasic.java               8209398 generic-
 security/infra/java/security/cert/CertPathValidator/certification/ActalisCA.java  8224768 generic-all
 java/security/cert/CertPathBuilder/targetConstraints/BuildEEBasicConstraints.java 8296485 generic-all
 java/security/cert/pkix/policyChanges/TestPolicy.java 8296480 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/AmazonCA.java 8309088 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#actalisauthenticationrootca 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#quovadisrootca1g3 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#quovadisrootca3g3 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#digicerttlsrsarootg5 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#digicerttlseccrootg5 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#emsigneccrootcag3 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#emsignrootcag1 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#globalsigneccrootcar4 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootcar1 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootcar2 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootecccar3 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootecccar4 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#microsoftecc2017 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/EmSignRootG2CA.java 8327084 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/GoogleCA.java 8308592 generic-all
 
 sun/security/smartcardio/TestChannel.java                       8039280 generic-all
 sun/security/smartcardio/TestConnect.java                       8039280 generic-all
@@ -979,7 +998,7 @@ javax/swing/JFileChooser/8041694/bug8041694.java JBR-5210 windows-all
 javax/swing/JFileChooser/8062561/bug8062561.java JBR-5808 windows-all
 javax/swing/JFileChooser/6396844/TwentyThousandTest.java 8198003 generic-all
 javax/swing/JFileChooser/6520101/bug6520101.java JBR-5703 linux-5.8.0-1032-raspi
-javax/swing/JFileChooser/8194044/FileSystemRootTest.java 8305413 windows-aarch64
+javax/swing/JFileChooser/8194044/FileSystemRootTest.java 8305413,JBR-5767 windows-aarch64,windows-all
 javax/swing/JFrame/8016356/bug8016356.java JBR-108 windows-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java 8274106,JBR-5359,JBR-5510 macosx-aarch64,windows-all,linux-5.18.2-arch1-1
 javax/swing/JPopupMenu/6580930/bug6580930.java 7124313 macosx-all
@@ -1183,7 +1202,8 @@ javax/swing/SwingUtilities/TestTextPosInPrint.java 8227025 windows-all
 java/awt/print/PrinterJob/ScaledText/ScaledText.java 8231226 macosx-all
 java/awt/font/ComplexEmoji.java JBR-5009 linux-aarch64
 java/awt/font/OutlineTextRendererEmoji.java JBR-5009 linux-aarch64
-java/awt/font/EmojiVariation.java JBR-5009,JBR-5510 linux-aarch64,linux-5.18.2-arch1-1
+java/awt/font/Rotate/RotatedFontMetricsTest.java 8219641 linux-all
+java/awt/font/EmojiVariation.java JBR-5009,JBR-5510,JBR-6651 linux-aarch64,linux-5.18.2-arch1-1,windows-aarch64
 java/awt/font/TextLayout/TestJustification.html 8250791 macosx-all
 java/awt/font/TextLayout/TestSinhalaChar.java JBR-5103 generic-all
 javax/swing/JTableHeader/6884066/bug6884066.java 8305778 linux-all
@@ -1269,6 +1289,7 @@ jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-5799 windows-all
 jb/java/awt/Focus/TitleBarClickTest.java                                            JBR-3180 linux-5.18.2-arch1-1
 jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java                           JBR-5392 windows-aarch64
 jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java                          JBR-6122 windows-all
+jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTest.java JBR-6681 windows-all
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTestLinux.sh                    JBR-4078 linux-all
 jb/java/awt/Font/font430.sh                                                         JBR-4956 linux-all
 jb/java/awt/Font/Font467.java                                                       JBR-3960 generic-all
@@ -1283,6 +1304,7 @@ java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java            
 java/nio/file/WatchService/WithSecurityManager.java                                 nobug macosx-all
 
 jb/hotspot/AbortHandler.java                                                        JBR-4669 macosx-all
+jb/hotspot/JNIRefsInCrashLog.java                                                   JBR-5466 windows-aarch64
 javax/swing/SwingUtilities/4917669/bug4917669.java                                  JBR-4677,8197552 windows-all
 javax/swing/SwingUtilities/7146377/bug7146377.java                                  JBR-4679 windows-all
 
@@ -1429,7 +1451,7 @@ java/awt/Insets/DialogInsets.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Menu/OpensWithNoGrab/OpensWithNoGrab.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java JBR-5510,JBR-6160 linux-all
 javax/swing/JMenu/JMenuSelectedColorTest.java JBR-5510 linux-5.18.2-arch1-1
-javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-5510 linux-5.18.2-arch1-1
+javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-6684 generic-all
 javax/swing/JSpinner/4788637/bug4788637.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/LookAndFeel/8145547/DemandGTK2.sh JBR-5510 linux-5.18.2-arch1-1
 javax/swing/LookAndFeel/8145547/DemandGTK3.sh JBR-5510 linux-5.18.2-arch1-1
