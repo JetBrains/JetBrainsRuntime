@@ -146,11 +146,6 @@ java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-al
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java 8296972 macosx-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
 java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java 8160558 windows-all
-java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_1.java 8204200 windows-all,macosx-all,linux-all
-java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_2.java 8204200 windows-all,macosx-all,linux-all
-java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_3.java JBR-811
-java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_4.java 8204200 windows-all,macosx-all,linux-all
-java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion.java JBR-811
 java/awt/event/MouseWheelEvent/WheelModifier/WheelModifier.java 8169475 linux-all,windows-all
 java/awt/dnd/Button2DragTest/Button2DragTest.java 8310490 linux-all
 java/awt/dnd/DropTargetEnterExitTest/ExtraDragEnterTest.java 8029680 generic-all
