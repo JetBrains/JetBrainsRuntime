@@ -36,7 +36,10 @@
                          constraint)                                      \
                                                                           \
 product(bool, UseOSErrorReporting, false,                                 \
-        "Let VM fatal error propagate to the OS (ie. WER on Windows)")
+        "Let VM fatal error propagate to the OS (ie. WER on Windows)")    \
+                                                                          \
+product(bool, UseCriticalSection, true, EXPERIMENTAL,                     \
+        "Use the critical section API instead of WaitForSingleObject")
 
 // end of RUNTIME_OS_FLAGS
 
