@@ -38,6 +38,8 @@ static INIT_ONCE initialized = INIT_ONCE_STATIC_INIT;
 static int lock_count = 0;
 static HANDLE lock_event;
 static DWORD lock_owner = 0;
+static CRITICAL_SECTION critical_section;
+
 
 //
 // Note that Microsoft's critical region code contains a race
@@ -51,8 +53,13 @@ static DWORD lock_owner = 0;
 //
 
 static BOOL WINAPI initialize(PINIT_ONCE InitOnce, PVOID Parameter, PVOID *Context) {
-  lock_event = CreateEvent(nullptr, false, true, nullptr);
-  assert(lock_event != nullptr, "unexpected return value from CreateEvent");
+  if (UseCriticalSection) {
+    bool success = InitializeCriticalSectionAndSpinCount(&critical_section, 0x00000400);
+    assert(success, "unexpected return value from InitializeCriticalSectionAndSpinCount");
+  } else {
+    lock_event = CreateEvent(nullptr, false, true, nullptr);
+    assert(lock_event != nullptr, "unexpected return value from CreateEvent");
+    }
   return true;
 }
 
@@ -61,10 +68,14 @@ ThreadCritical::ThreadCritical() {
 
   DWORD current_thread = GetCurrentThreadId();
   if (lock_owner != current_thread) {
-    // Grab the lock before doing anything.
-    DWORD ret = WaitForSingleObject(lock_event,  INFINITE);
-    assert(ret != WAIT_FAILED,   "WaitForSingleObject failed with error code: %lu", GetLastError());
-    assert(ret == WAIT_OBJECT_0, "WaitForSingleObject failed with return value: %lu", ret);
+    if (UseCriticalSection) {
+      EnterCriticalSection(&critical_section);
+    } else {
+      // Grab the lock before doing anything.
+      DWORD ret = WaitForSingleObject(lock_event, INFINITE);
+      assert(ret != WAIT_FAILED, "WaitForSingleObject failed with error code: %lu", GetLastError());
+      assert(ret == WAIT_OBJECT_0, "WaitForSingleObject failed with return value: %lu", ret);
+    }
     lock_owner = current_thread;
   }
   // Atomicity isn't required. Bump the recursion count.
@@ -79,8 +90,12 @@ ThreadCritical::~ThreadCritical() {
   if (lock_count == 0) {
     // We're going to unlock
     lock_owner = 0;
-    // No lost wakeups, lock_event stays signaled until reset.
-    DWORD ret = SetEvent(lock_event);
-    assert(ret != 0, "unexpected return value from SetEvent");
+    if (UseCriticalSection) {
+      LeaveCriticalSection(&critical_section);
+    } else {
+      // No lost wakeups, lock_event stays signaled until reset.
+      DWORD ret = SetEvent(lock_event);
+      assert(ret != 0, "unexpected return value from SetEvent");
+    }
   }
 }
