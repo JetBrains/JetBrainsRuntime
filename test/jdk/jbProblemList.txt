@@ -824,6 +824,20 @@ sun/security/pkcs11/KeyStore/SecretKeysBasic.java               8209398 generic-
 
 security/infra/java/security/cert/CertPathValidator/certification/ActalisCA.java  8224768 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/AmazonCA.java 8309088 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#actalisauthenticationrootca 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#quovadisrootca1g3 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#quovadisrootca3g3 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#digicerttlsrsarootg5 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#digicerttlseccrootg5 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#emsigneccrootcag3 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#emsignrootcag1 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#globalsigneccrootcar4 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootcar1 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootcar2 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootecccar3 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootecccar4 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#microsoftecc2017 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/EmSignRootG2CA.java 8327084 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/GoogleCA.java 8308592 generic-all
 
 sun/security/smartcardio/TestChannel.java                       8039280 generic-all
@@ -1259,6 +1273,7 @@ jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-5799 windows-all
 jb/java/awt/Focus/TitleBarClickTest.java                                            JBR-3180 linux-5.18.2-arch1-1
 jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java                           JBR-5392 windows-aarch64
 jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java                          JBR-6122 windows-all
+jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTest.java JBR-6681 windows-all
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTestLinux.sh                    JBR-4078 linux-all
 jb/java/awt/Font/font430.sh                                                         JBR-4956 linux-all
 jb/java/awt/Font/Font467.java                                                       JBR-3960 generic-all

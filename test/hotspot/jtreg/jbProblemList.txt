@@ -221,7 +221,7 @@ vmTestbase/vm/mlvm/indy/func/jvmti/redefineClassInBootstrap/TestDescription.java
 vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2none_a/TestDescription.java 8013267 generic-all
 vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manyDiff_b/TestDescription.java 8013267 generic-all
 vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manySame_b/TestDescription.java 8013267 generic-all
-vmTestbase/vm/mlvm/meth/stress/compiler/deoptimize/Test.java#id0 8269393 macos-all
+vmTestbase/vm/mlvm/meth/stress/compiler/deoptimize/Test.java#id0 8269393 macosx-aarch64
 vmTestbase/vm/mlvm/meth/stress/compiler/sequences/Test.java 8269393 macos-all
 
 
