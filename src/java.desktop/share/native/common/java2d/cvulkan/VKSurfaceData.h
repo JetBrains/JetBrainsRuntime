@@ -58,6 +58,7 @@ typedef struct {
     VkPipelineStageFlagBits lastWriteStage;
     VkAccessFlagBits        lastAccess;
     VkAccessFlagBits        lastWriteAccess;
+    VkSurfaceKHR            surface;
 } VKSDOps;
 
 

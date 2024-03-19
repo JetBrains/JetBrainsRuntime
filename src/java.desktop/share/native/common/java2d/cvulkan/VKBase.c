@@ -220,7 +220,10 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
             /* vkGetPhysicalDeviceQueueFamilyProperties */ NULL,
             /* vkEnumerateDeviceLayerProperties */ NULL,
             /* vkEnumerateDeviceExtensionProperties */ NULL,
-            /* vkGetPhysicalDeviceWaylandPresentationSupportKHR */ NULL
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+            /* vkGetPhysicalDeviceWaylandPresentationSupportKHR */ NULL,
+            /* vkCreateWaylandSurfaceKHR */ NULL
+#endif
         };
 
         // Get the number of extensions and layers
@@ -423,8 +426,14 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
         geInstance->vkGetPhysicalDeviceWaylandPresentationSupportKHR =
                 (PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR) vulkanLibProc(
                         geInstance->vkInstance, "vkGetPhysicalDeviceWaylandPresentationSupportKHR");
-        if (geInstance->vkGetPhysicalDeviceWaylandPresentationSupportKHR == NULL) {
-            J2dRlsTrace(J2D_TRACE_ERROR, "vkGetPhysicalDeviceWaylandPresentationSupportKHR is not supported\n")
+        geInstance->vkCreateWaylandSurfaceKHR =
+                (PFN_vkCreateWaylandSurfaceKHR) vulkanLibProc(
+                        geInstance->vkInstance, "vkCreateWaylandSurfaceKHR");
+
+        if (geInstance->vkGetPhysicalDeviceWaylandPresentationSupportKHR == NULL ||
+            geInstance->vkCreateWaylandSurfaceKHR == NULL)
+        {
+            J2dRlsTrace(J2D_TRACE_ERROR, "Wayland platform API is not supported\n")
             vulkanLibClose();
             return NULL;
         }

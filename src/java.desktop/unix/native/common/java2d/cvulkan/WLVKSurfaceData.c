@@ -79,6 +79,22 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_assignSurface(JNIEnv *env, jobject wsd, j
         return;
     }
     wlvksdo->wl_surface = (struct wl_surface*)jlong_to_ptr(wlSurfacePtr);
+    VkWaylandSurfaceCreateInfoKHR surfaceCreateInfo = {};
+    surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
+    surfaceCreateInfo.display = wl_display;
+    surfaceCreateInfo.surface = wlvksdo->wl_surface;
+
+    if (VKGE_graphics_environment()->vkCreateWaylandSurfaceKHR(VKGE_graphics_environment()->vkInstance,
+                                  &surfaceCreateInfo,
+                                  NULL,
+                                  &vksdo->surface) != VK_SUCCESS)
+    {
+        J2dRlsTrace(J2D_TRACE_ERROR, "WLVKSurfaceData_assignSurface: WLVKSDOps is NULL");
+        return;
+    }
+
+    J2dRlsTraceLn(J2D_TRACE_INFO, "WLVKSurfaceData_assignSurface: Created WaylandSurfaceKHR");
+
     J2dTraceLn2(J2D_TRACE_INFO, "WLVKSurfaceData_assignSurface wl_surface(%p) wl_display(%p)", wlSurface, wl_display);
 #endif /* !HEADLESS */
 }
