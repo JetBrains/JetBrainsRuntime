@@ -359,13 +359,14 @@ java/awt/hidpi/ClientAreaOriginWindowsTest.java JBR-630 windows-all
 sun/java2d/X11SurfaceData/SharedMemoryPixmapsTest/SharedMemoryPixmapsTest.sh 8221451 linux-all,macosx-all
 java/awt/hidpi/SetMaximizedBoundsTest.java JBR-5443 windows-all
 java/awt/hidpi/properties/HiDPIPropertiesUnixTest.java JBR-495 macosx-all
-java/awt/FullScreen/DisplayChangeVITest/DisplayChangeVITest.java 8169469,8273617,JBR-6476 windows-all,macosx-aarch64,macosx-all
+java/awt/FullScreen/DisplayChangeVITest/DisplayChangeVITest.java 8169469,8273617,JBR-6476,JBR-6779 windows-all,macosx-aarch64,macosx-all,linux-x64
 java/awt/print/PrinterJob/GetUserNameTest.java JBR-5225 windows-all
 java/awt/print/PrinterJob/PSQuestionMark.java 7003378 generic-all
 java/awt/print/PrinterJob/GlyphPositions.java 7003378 generic-all
 java/awt/Choice/ChoiceLocationTest/ChoiceLocationTest.java JBR-5799 windows-all
 java/awt/Choice/ChoiceFocusLostTest.java JBR-5799 windows-x64
 java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java 6849371,6849371,JBR-5210 macosx-all,linux-all,windows-all
+java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-6857 macosx-all
 java/awt/ColorClass/AlphaColorTest.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/color/ICC_ColorSpace/MTTransformReplacedProfile.java JBR-6246 generic-all
 java/awt/Component/F10TopToplevel/F10TopToplevel.java JBR-5687 linux-all
@@ -534,7 +535,7 @@ java/awt/Mouse/EnterExitEvents/ModalDialogEnterExitEventsTest.java 8253184,JBR-5
 java/awt/Mouse/EnterExitEvents/ResizingFrameTest.java 8005021,8253184 macosx-all,windows-all
 java/awt/Mouse/EnterExitEvents/FullscreenEnterEventTest.java 8051455 macosx-all
 java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.java 8253184,JBR-5709 windows-all,linux-all
-java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java 8253184 windows-all
+java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java 8253184,JBR-6752 windows-all,linux-all
 java/awt/Mouse/MouseModifiersUnitTest/ExtraButtonDrag.java 8253184,JBR-6407 windows-all,linux-all
 java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java 7124407,8302787 macosx-all,windows-all
 java/awt/Mouse/RemovedComponentMouseListener/RemovedComponentMouseListener.java 8157170,8253184 macosx-all,windows-all
@@ -1043,7 +1044,7 @@ javax/swing/JComboBox/8182031/ComboPopupTest.java 8253184 windows-all
 javax/swing/JInternalFrame/6288609/TestJInternalFrameDispose.java JBR-788 windows-all,linux-all
 javax/swing/JInternalFrame/6647340/bug6647340.java 8253184 windows-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java JBR-788 windows-all,linux-all
-javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java JBR-5539 windows-all
+javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java JBR-5539 windows-all,,linux-5.18.2-arch1-1
 javax/swing/JInternalFrame/Test6325652.java JBR-6111 windows-all
 javax/swing/JInternalFrame/Test6505027.java JBR-5954 linux-all,osx-all
 javax/swing/JInternalFrame/Test6802868.java 8253184 windows-all
@@ -1324,6 +1325,7 @@ javax/swing/text/CSSBorder/6796710/bug6796710.java JBR-6465 windows-all,linux-aa
 javax/swing/text/FlowView/LayoutTest.java JBR-4880 windows-all
 javax/swing/text/html/7189299/bug7189299.java JBR-4880 windows-all
 jb/java/jcef/HandleJSQueryTest3314.sh JBR-4866 linux-all
+jb/java/jcef/HwFacadeWindowNoFrontTest.java
 
 jb/sun/awt/macos/InputMethodTest/FocusMoveUncommitedCharactersTest.java JBR-5765 macosx-all
 jb/sun/awt/macos/InputMethodTest/PinyinCapsLockTest.java JBR-5282 macosx-all
