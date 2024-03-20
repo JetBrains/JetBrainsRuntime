@@ -398,6 +398,12 @@ bool SharedClassPathEntry::validate(bool is_class_path) const {
 
   bool ok = true;
   log_info(class, path)("checking shared classpath entry: %s", name);
+
+  if (SharedArchiveNoFileSystemChecks) {
+      log_info(class, path)("checking skipped because of -XX:+SharedArchiveNoFileSystemChecks");
+      return ok;
+  }
+
   if (os::stat(name, &st) != 0 && is_class_path) {
     // If the archived module path entry does not exist at runtime, it is not fatal
     // (no need to invalid the shared archive) because the shared runtime visibility check

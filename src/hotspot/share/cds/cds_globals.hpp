@@ -49,6 +49,9 @@
   product(bool, AutoCreateSharedArchive, false,                             \
           "Create shared archive at exit if cds mapping failed")            \
                                                                             \
+  product(bool, SharedArchiveNoFileSystemChecks, false,                     \
+          "Do not perform cds file system consistency checks")              \
+                                                                            \
   product(bool, PrintSharedArchiveAndExit, false,                           \
           "Print shared archive file contents")                             \
                                                                             \
