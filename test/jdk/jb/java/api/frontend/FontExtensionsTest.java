@@ -221,6 +221,20 @@ public class FontExtensionsTest {
         return features.containsAll(expected.stream().map(FontExtensions.FeatureTag::getName).toList());
     }
 
+    @JBRTest
+    private static Boolean getAvailableFeatures2() {
+        Set<String> features = JBR.getFontOpenTypeFeatures().getAvailableFeatures(new Font("Inconsolata", Font.PLAIN, 20));
+        return features.isEmpty();
+    }
+
+    @JBRTest
+    private static Boolean getAvailableFeatures3() {
+        Set<String> features = JBR.getFontOpenTypeFeatures().getAvailableFeatures(new Font("Inter", Font.PLAIN, 20));
+        Set<FontExtensions.FeatureTag> expected =
+                Set.of(FontExtensions.FeatureTag.SS01, FontExtensions.FeatureTag.SS02, FontExtensions.FeatureTag.SS03);
+        return features.containsAll(expected.stream().map(FontExtensions.FeatureTag::getName).toList());
+    }
+
     public static void main(final String[] args) {
         if (!JBR.isFontExtensionsSupported()) {
             throw new RuntimeException("JBR FontExtension API is not available");

@@ -290,7 +290,7 @@ static void putFeatureTagsToArray(JNIEnv *env, int count, int offset,
         return;
     }
 
-    char feature[sizeof(hb_tag_t) + 1];
+    char feature[sizeof(hb_tag_t) + 1] = {0};
     for (int i = 0; i < count; i++) {
         hb_tag_to_string(featureTags[i], feature);
         (*env)->SetObjectArrayElement(env, arr, offset + i, (*env)->NewStringUTF(env, feature));
