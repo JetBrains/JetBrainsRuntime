@@ -36,7 +36,7 @@ java/awt/MouseInfo/MultiscreenPointerInfo.java nobug linux-all
 java/awt/Multiscreen/LocationRelativeToTest/LocationRelativeToTest.java 8253184 windows-all,linux-all
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java nobug linux-all
 java/awt/PopupMenu/PopupMenuLocation.java 8238720,8288415 windows-all,macosx-all,linux-all
-java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8277816,8253184,JBR-5510 macosx-aarch64,windows-all,linux-linux-all
+java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8277816,8253184,JBR-5510,JBR-6092 macosx-aarch64,windows-all,linux-all
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java nobug linux-all
 javax/swing/JTable/7124218/SelectEditTableCell.java nobug linux-all
 javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java 8277816,8253184,JBR-5510 macosx-aarch64,windows-all,linux-all

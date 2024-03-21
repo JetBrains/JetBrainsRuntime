@@ -1046,7 +1046,7 @@ javax/swing/ToolTipManager/Test6256140.java 8197552 windows-all
 javax/swing/text/DefaultEditorKit/4278839/bug4278839.java CODETOOLS-7901623 windows-all
 javax/swing/text/GlyphPainter2/6427244/bug6427244.java JBR-896 windows-all
 javax/swing/text/JTextComponent/5074573/bug5074573.java CODETOOLS-7901623,JBR-5386 windows-all,linux-all
-javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-5210 windows-all
+javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-5210,JBR-6687 windows-all,linux-5.18.2-arch1-1
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java JBR-180 windows-all
 javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all,linux-all
 javax/swing/text/View/8156217/FPMethodCalledTest.java JBR-5541 linux-all
@@ -1188,6 +1188,7 @@ javax/swing/SwingUtilities/TestTextPosInPrint.java 8227025 windows-all
 java/awt/print/PrinterJob/ScaledText/ScaledText.java 8231226 macosx-all
 java/awt/font/ComplexEmoji.java JBR-5009 linux-aarch64
 java/awt/font/OutlineTextRendererEmoji.java JBR-5009 linux-aarch64
+java/awt/font/Rotate/RotatedFontMetricsTest.java 8219641 linux-all
 java/awt/font/EmojiVariation.java JBR-5009,JBR-5510,JBR-6651 linux-aarch64,linux-5.18.2-arch1-1,windows-aarch64
 java/awt/font/TextLayout/TestJustification.html 8250791 macosx-all
 java/awt/font/TextLayout/TestSinhalaChar.java JBR-5103 generic-all
