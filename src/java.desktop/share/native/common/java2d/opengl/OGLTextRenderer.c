@@ -1216,10 +1216,6 @@ extern int lcdSubPixelPosSupported;
 extern int useFontSmoothing;
 #endif
 
-// see DrawGlyphList.c for more on this macro...
-#define FLOOR_ASSIGN(l, r) \
-    if ((r)<0) (l) = ((int)floor(r)); else (l) = ((int)(r))
-
 #define ADJUST_SUBPIXEL_GLYPH_POSITION(coord, res) \
     if ((res) > 1) (coord) += 0.5f / ((float)(res)) - 0.5f
 
@@ -1290,19 +1286,30 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
             jfloat posy = NEXT_FLOAT(positions);
             glyphx = glyphListOrigX + posx + ginfo->topLeftX;
             glyphy = glyphListOrigY + posy + ginfo->topLeftY;
-            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphx, ginfo->subpixelResolutionX);
-            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphy, ginfo->subpixelResolutionY);
-            FLOOR_ASSIGN(x, glyphx);
-            FLOOR_ASSIGN(y, glyphy);
         } else {
             glyphx = glyphListOrigX + ginfo->topLeftX;
             glyphy = glyphListOrigY + ginfo->topLeftY;
-            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphx, ginfo->subpixelResolutionX);
-            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphy, ginfo->subpixelResolutionY);
-            FLOOR_ASSIGN(x, glyphx);
-            FLOOR_ASSIGN(y, glyphy);
             glyphListOrigX += ginfo->advanceX;
             glyphListOrigY += ginfo->advanceY;
+        }
+
+        int rx = ginfo->subpixelResolutionX;
+        int ry = ginfo->subpixelResolutionY;
+        ADJUST_SUBPIXEL_GLYPH_POSITION(glyphx, rx);
+        ADJUST_SUBPIXEL_GLYPH_POSITION(glyphy, ry);
+        int subx = 0, suby = 0;
+        // see DrawGlyphList.c FLOOR_ASSIGN & getSubpixelGlyphImage
+        if (glyphx >= 0.0f && glyphy >= 0.0f) {
+            x = (int) glyphx;
+            y = (int) glyphy;
+            subx = ((int) (glyphx * (float) rx)) % rx;
+            suby = ((int) (glyphy * (float) ry)) % ry;
+        } else {
+            float fx = floor(glyphx), fy = floor(glyphy);
+            x = (int) fx;
+            y = (int) fy;
+            subx = (int) ((glyphx - fx) * (float) rx);
+            suby = (int) ((glyphy - fy) * (float) ry);
         }
 
         if (ginfo->image == NULL) {
@@ -1314,13 +1321,11 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
                 OGLContext_InitGrayRenderHints(env, oglc);
             }
             // grayscale or monochrome glyph data
-            int rx = ginfo->subpixelResolutionX;
-            int ry = ginfo->subpixelResolutionY;
             int subimage;
             if ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0) {
                 subimage = 0;
             } else {
-                subimage = (jint)((glyphx - x) * rx) + (jint)((glyphy - y) * ry) * rx;
+                subimage = subx + suby * rx;
             }
             if (ginfo->width <= OGLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= OGLTR_CACHE_CELL_HEIGHT)
