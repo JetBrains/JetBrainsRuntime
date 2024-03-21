@@ -611,10 +611,6 @@ MTLTR_DrawColorGlyphNoCache(MTLContext *mtlc,
     return JNI_TRUE;
 }
 
-// see DrawGlyphList.c for more on this macro...
-#define FLOOR_ASSIGN(l, r) \
-    if ((r)<0) (l) = ((int)floor(r)); else (l) = ((int)(r))
-
 #define ADJUST_SUBPIXEL_GLYPH_POSITION(coord, res) \
     if ((res) > 1) (coord) += 0.5f / ((float)(res)) - 0.5f
 
@@ -659,19 +655,30 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
             jfloat posy = NEXT_FLOAT(positions);
             glyphx = glyphListOrigX + posx + ginfo->topLeftX;
             glyphy = glyphListOrigY + posy + ginfo->topLeftY;
-            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphx, ginfo->subpixelResolutionX);
-            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphy, ginfo->subpixelResolutionY);
-            FLOOR_ASSIGN(x, glyphx);
-            FLOOR_ASSIGN(y, glyphy);
         } else {
             glyphx = glyphListOrigX + ginfo->topLeftX;
             glyphy = glyphListOrigY + ginfo->topLeftY;
-            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphx, ginfo->subpixelResolutionX);
-            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphy, ginfo->subpixelResolutionY);
-            FLOOR_ASSIGN(x, glyphx);
-            FLOOR_ASSIGN(y, glyphy);
             glyphListOrigX += ginfo->advanceX;
             glyphListOrigY += ginfo->advanceY;
+        }
+
+        int rx = ginfo->subpixelResolutionX;
+        int ry = ginfo->subpixelResolutionY;
+        ADJUST_SUBPIXEL_GLYPH_POSITION(glyphx, rx);
+        ADJUST_SUBPIXEL_GLYPH_POSITION(glyphy, ry);
+        int subx = 0, suby = 0;
+        // see DrawGlyphList.c FLOOR_ASSIGN & getSubpixelGlyphImage
+        if (glyphx >= 0.0f && glyphy >= 0.0f) {
+            x = (int) glyphx;
+            y = (int) glyphy;
+            subx = ((int) (glyphx * (float) rx)) % rx;
+            suby = ((int) (glyphy * (float) ry)) % ry;
+        } else {
+            float fx = floor(glyphx), fy = floor(glyphy);
+            x = (int) fx;
+            y = (int) fy;
+            subx = (int) ((glyphx - fx) * (float) rx);
+            suby = (int) ((glyphy - fy) * (float) ry);
         }
 
         if (ginfo->image == NULL) {
@@ -683,13 +690,11 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
         J2dTraceLn(J2D_TRACE_INFO, "rowBytes = %d", ginfo->rowBytes);
         if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE) {
             // grayscale or monochrome glyph data
-            int rx = ginfo->subpixelResolutionX;
-            int ry = ginfo->subpixelResolutionY;
             int subimage;
             if ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0) {
                 subimage = 0;
             } else {
-                subimage = (jint)((glyphx - x) * rx) + (jint)((glyphy - y) * ry) * rx;
+                subimage = subx + suby * rx;
             }
             if (ginfo->width <= MTLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= MTLTR_CACHE_CELL_HEIGHT)
