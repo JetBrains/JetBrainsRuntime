@@ -30,12 +30,12 @@ import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import jdk.test.lib.JDKToolLauncher;
 import jdk.test.lib.Platform;
 import jtreg.SkippedException;
+import java.util.List;
 
 public class SATestUtils {
     /**
