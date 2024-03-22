@@ -959,7 +959,7 @@ javax/swing/JPopupMenu/6415145/bug6415145.java 8197552 windows-all
 javax/swing/JPopupMenu/6515446/bug6515446.java 8197552,JBR-6531 windows-all,linux-all
 javax/swing/JPopupMenu/6544309/bug6544309.java JBR-6532 windows-all,linux-all
 javax/swing/JPopupMenu/6987844/bug6987844.java JBR-6718 linux-all,windows-all
-javax/swing/JPopupMenu/8075063/ContextMenuScrollTest.java JBR-6717 linux-all
+javax/swing/JPopupMenu/8075063/ContextMenuScrollTest.java JBR-4894,JBR-6717 windows-all,linux-all
 javax/swing/JPopupMenu/SetInvokerJPopupMenuTest.java JBR-6021 linux-all
 javax/swing/JRadioButton/8033699/bug8033699.java 8197552 windows-all
 javax/swing/JRadioButton/8075609/bug8075609.java 8197552,8266085,JBR-5510 windows-all,linux-5.18.2-arch1-1
