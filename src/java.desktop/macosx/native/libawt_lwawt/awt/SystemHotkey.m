@@ -71,7 +71,10 @@ void plog(int logLevel, const char *formatMsg, ...) {
     va_start(args, formatMsg);
     const int bufSize = 512;
     char buf[bufSize];
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wformat-nonliteral"
     vsnprintf(buf, bufSize, formatMsg, args);
+    #pragma clang diagnostic pop
     va_end(args);
 
     JNIEnv* env;
