@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -226,6 +226,10 @@ enum X509Authentication implements SSLAuthentication {
         private SSLPossession createClientPossession(
                 ClientHandshakeContext chc, String keyType) {
             X509ExtendedKeyManager km = chc.sslContext.getX509KeyManager();
+            if (SSLLogger.isOn && SSLLogger.isOn("ssl")) {
+                SSLLogger.finest("X509KeyManager class: " +
+                        km.getClass().getName());
+            }
             String clientAlias = null;
             if (chc.conContext.transport instanceof SSLSocketImpl) {
                 clientAlias = km.chooseClientAlias(
@@ -283,6 +287,10 @@ enum X509Authentication implements SSLAuthentication {
         private SSLPossession createServerPossession(
                 ServerHandshakeContext shc, String keyType) {
             X509ExtendedKeyManager km = shc.sslContext.getX509KeyManager();
+            if (SSLLogger.isOn && SSLLogger.isOn("ssl")) {
+                SSLLogger.finest("X509KeyManager class: " +
+                        km.getClass().getName());
+            }
             String serverAlias = null;
             if (shc.conContext.transport instanceof SSLSocketImpl) {
                 serverAlias = km.chooseServerAlias(keyType,
