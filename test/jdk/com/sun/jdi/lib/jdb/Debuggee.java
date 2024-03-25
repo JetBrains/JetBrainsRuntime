@@ -23,8 +23,8 @@
 
 package lib.jdb;
 
+import jdk.test.lib.JDWP;
 import jdk.test.lib.Utils;
-import jdk.test.lib.util.Pair;
 import jdk.test.lib.process.ProcessTools;
 
 import java.io.Closeable;
@@ -128,7 +128,7 @@ public class Debuggee implements Closeable {
         public Debuggee launch(String name) {
             return new Debuggee(prepare(), name,
                 onthrow.isEmpty() ?
-                    Launcher::parseListenAddress :
+                    JDWP::parseListenAddress :
                     Launcher::parseLaunchEchoListenAddress
             );
         }
@@ -140,47 +140,29 @@ public class Debuggee implements Closeable {
          * Parses debuggee output to get listening transport and address, printed by `launch=echo`.
          * Returns null if the string specified does not contain required info.
          */
-        private static Pair<String, String> parseLaunchEchoListenAddress(String debuggeeOutput) {
+        private static JDWP.ListenAddress parseLaunchEchoListenAddress(String debuggeeOutput) {
             Pattern listenRegexp = Pattern.compile(LAUNCH_ECHO_STRING + " \\b(.+)\\b \\b(.+)\\b");
             Matcher m = listenRegexp.matcher(debuggeeOutput);
             if (m.find()) {
-                return new Pair<String, String>(m.group(1), m.group(2));
-            }
-            return null;
-        }
-
-        /**
-         * Parses debuggee output to get listening transport and address, printed by `launch=echo`.
-         * Returns null if the string specified does not contain required info.
-         */
-        private static Pair<String, String> parseListenAddress(String debuggeeOutput) {
-            Pattern listenRegexp = Pattern.compile("Listening for transport \\b(.+)\\b at address: \\b(.+)\\b");
-            Matcher m = listenRegexp.matcher(debuggeeOutput);
-            if (m.find()) {
-                return new Pair<String, String>(m.group(1), m.group(2));
+                return new JDWP.ListenAddress(m.group(1), m.group(2));
             }
             return null;
         }
     }
 
     // starts the process, waits until the provided addressDetector detects transport/address from the process output
-    private Debuggee(ProcessBuilder pb, String name, Function<String, Pair<String, String>> addressDetector) {
-        String[] debuggeeListen = new String[2];
+    private Debuggee(ProcessBuilder pb, String name, Function<String, JDWP.ListenAddress> addressDetector) {
+        JDWP.ListenAddress[] listenAddress = new JDWP.ListenAddress[1];
         try {
             p = ProcessTools.startProcess(name, pb,
                     s -> output.add(s),  // output consumer
                     s -> {
-                        Pair<String, String> addr = addressDetector.apply(s);
-                        if (addr != null) {
-                            debuggeeListen[0] = addr.first;
-                            debuggeeListen[1] = addr.second;
-                            return true;
-                        }
-                        return false;
+                        listenAddress[0] = addressDetector.apply(s);
+                        return listenAddress[0] != null;
                     },
                     30, TimeUnit.SECONDS);
-            transport = debuggeeListen[0];
-            address = debuggeeListen[1];
+            transport = listenAddress[0].transport();
+            address = listenAddress[0].address();
         } catch (IOException | InterruptedException | TimeoutException ex) {
             throw new RuntimeException("failed to launch debuggee", ex);
         }
