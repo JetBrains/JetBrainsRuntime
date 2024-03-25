@@ -1013,6 +1013,7 @@ javax/swing/JTabbedPane/TestBackgroundScrollPolicy.java 8253184,windows-all
 javax/swing/JToolBar/4529206/bug4529206.java 8288707,JBR-5387 linux-all
 javax/swing/JToolTip/6219960/bug6219960.java 8253184 windows-all
 javax/swing/SwingUtilities/TestBadBreak/TestBadBreak.java 8160720 generic-all
+javax/swing/system/6799345/TestShutdown.java JBR-6881 windows-all
 javax/swing/text/AbstractDocument/8190763/TestCCEOnEditEvent.java JBR-5799 windows-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java 8252812 linux-x64
 javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java 8194048,JBR-5510,JBR-5547 windows-all,linux-all
@@ -1205,7 +1206,7 @@ javax/swing/JTableHeader/6889007/bug6889007.java 8253184,8197552,JBR-5387 window
 javax/swing/JTextField/8036819/bug8036819.java 8197552 windows-all
 javax/swing/JTree/4908142/bug4908142.java 8197552 windows-all
 javax/swing/JTree/4927934/bug4927934.java 8197552 windows-all
-javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952 windows-x64
+javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952 windows-all
 java/awt/TrayIcon/DragEventSource/DragEventSource.java 8252242 macosx-all
 java/awt/FileDialog/DefaultFocusOwner/DefaultFocusOwner.java 7187728 macosx-all,linux-all
 java/awt/FileDialog/RegexpFilterTest/RegexpFilterTest.html 7187728 macosx-all,linux-all

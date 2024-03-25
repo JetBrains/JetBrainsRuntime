@@ -123,6 +123,7 @@ java/awt/Focus/6981400/Test1.java 8029675,JBR-5510,JBR-6702 windows-all,macosx-a
 java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java JBR-6335,NOBUG linux-all,windows-all #timeout on windows
 java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout
 java/awt/Robot/NonEmptyErrorStream.java JBR-6275 macosx-all
+java/awt/ScrollPane/ScrollPaneScrollEnd.java JBR-6882 windows-all
 
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-6485 linux-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-6698 windows-all,linux-all
