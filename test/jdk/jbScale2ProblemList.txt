@@ -65,9 +65,11 @@ sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5204 linux-all,macosx-all,wi
 # the below tests are not intended to be executed in S2 configurations because
 # the tests contains tags to be launched for various scales including S2
 #
-java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java                  nobug generic-all
+java/awt/Graphics/XORPaint.java                                                     nobug generic-all
+java/awt/Graphics2D/LargeWindowPaintTest.java                                       nobug generic-all
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java                  nobug generic-all
 java/awt/Paint/PaintNativeOnUpdate.java                                             nobug generic-all
+java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java                  nobug generic-all
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java                            nobug generic-all
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java                  nobug generic-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java nobug generic-all
