@@ -111,6 +111,7 @@
 
 ############################################################################
 
+java/awt/Dialog/CloseDialog/CloseDialogTest.java JBR-6538 windows-all
 java/awt/EventQueue/6980209/bug6980209.java JBR-6699 linux-all
 java/awt/Focus/6378278/InputVerifierTest.java JBR-6700 linux-all
 java/awt/Focus/6382144/EndlessLoopTest.java JBR-6701 linux-all

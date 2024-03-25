@@ -1031,6 +1031,7 @@ javax/swing/JToggleButton/TestSelectedKey.java JBR-5846 windows-all
 javax/swing/JToolBar/4529206/bug4529206.java JBR-5387 linux-all
 javax/swing/JToolTip/6219960/bug6219960.java 8253184 windows-all
 javax/swing/SwingUtilities/TestBadBreak/TestBadBreak.java 8160720 generic-all
+javax/swing/system/6799345/TestShutdown.java JBR-6881 windows-all
 javax/swing/text/AbstractDocument/8190763/TestCCEOnEditEvent.java JBR-5799 windows-all
 javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/text/TableView/TableViewLayoutTest.java 8194936,JBR-4316,JBR-5510 linux-5.18.2-arch1-1,linux-all
@@ -1077,7 +1078,7 @@ javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-5210 windows-all
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java JBR-180 windows-all
 javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all,linux-all
 javax/swing/text/View/8156217/FPMethodCalledTest.java JBR-5541 linux-all
-javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,JBR-6061 windows-x64,macosx-all
+javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,JBR-6061 windows-all,macosx-all
 javax/swing/UIDefaults/6795356/TableTest.java JBR-5767 windows-all
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8253184,JBR-1656 windows-all,linux-all
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
