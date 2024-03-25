@@ -87,13 +87,6 @@ jobs:
         with:
           platform: linux-x64
 
-        # Use linux-x64 JDK bundle as build JDK
-      - name: 'Get build JDK'
-        id: buildjdk
-        uses: ./.github/actions/get-bundles
-        with:
-          platform: linux-x64
-
         # Upgrading apt to solve libc6 installation bugs, see JDK-8260460.
       - name: 'Install toolchain and dependencies'
         run: |
@@ -154,7 +147,6 @@ jobs:
           --disable-precompiled-headers
           --openjdk-target=${{ matrix.gnu-arch }}-linux-gnu${{ matrix.gnu-abi}}
           --with-sysroot=sysroot
-          --with-build-jdk=${{ steps.buildjdk.outputs.jdk-path }}
           CC=${{ matrix.gnu-arch }}-linux-gnu${{ matrix.gnu-abi}}-gcc-${{ inputs.gcc-major-version }}
           CXX=${{ matrix.gnu-arch }}-linux-gnu${{ matrix.gnu-abi}}-g++-${{ inputs.gcc-major-version }}
           ${{ inputs.extra-conf-options }} ${{ inputs.configure-arguments }} || (
