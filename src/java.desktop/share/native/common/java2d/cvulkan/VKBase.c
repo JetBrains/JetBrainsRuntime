@@ -50,6 +50,14 @@ static jint requestedDeviceNumber = -1;
 static VKGraphicsEnvironment* geInstance = NULL;
 static void* pVulkanLib = NULL;
 
+#define INCLUDE_BYTECODE
+#define SHADER_ENTRY(NAME, TYPE) static uint32_t NAME ## _ ## TYPE ## _data[] = {
+#define BYTECODE_END };
+#include "vulkan/shader_list.h"
+#undef INCLUDE_BYTECODE
+#undef SHADER_ENTRY
+#undef BYTECODE_END
+
 static void vulkanLibClose() {
     if (pVulkanLib != NULL) {
         if (geInstance != NULL) {
@@ -222,8 +230,12 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
             /* vkEnumerateDeviceExtensionProperties */ NULL,
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
             /* vkGetPhysicalDeviceWaylandPresentationSupportKHR */ NULL,
-            /* vkCreateWaylandSurfaceKHR */ NULL
+            /* vkCreateWaylandSurfaceKHR */ NULL,
 #endif
+            /* vkCreateShaderModule */ NULL,
+            /* vkCreatePipelineLayout */ NULL,
+            /* vkCreateGraphicsPipelines */ NULL,
+            /* vkDestroyShaderModule */ NULL
         };
 
         // Get the number of extensions and layers
@@ -409,13 +421,28 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
         geInstance->vkEnumerateDeviceExtensionProperties =
                 (PFN_vkEnumerateDeviceExtensionProperties)
                         vulkanLibProc(geInstance->vkInstance, "vkEnumerateDeviceExtensionProperties");
+        geInstance->vkCreateShaderModule =
+                (PFN_vkCreateShaderModule) vulkanLibProc(geInstance->vkInstance, "vkCreateShaderModule");
+
+        geInstance->vkCreatePipelineLayout =
+                (PFN_vkCreatePipelineLayout) vulkanLibProc(geInstance->vkInstance, "vkCreatePipelineLayout");
+
+        geInstance->vkCreateGraphicsPipelines =
+                (PFN_vkCreateGraphicsPipelines) vulkanLibProc(geInstance->vkInstance, "vkCreateGraphicsPipelines");
+
+        geInstance->vkDestroyShaderModule =
+                (PFN_vkDestroyShaderModule) vulkanLibProc(geInstance->vkInstance, "vkDestroyShaderModule");
 
         if(geInstance->vkEnumeratePhysicalDevices == NULL ||
            geInstance->vkGetPhysicalDeviceFeatures2 == NULL ||
            geInstance->vkGetPhysicalDeviceProperties2 == NULL ||
            geInstance->vkGetPhysicalDeviceQueueFamilyProperties == NULL ||
            geInstance->vkEnumerateDeviceLayerProperties == NULL ||
-           geInstance->vkEnumerateDeviceExtensionProperties == NULL)
+           geInstance->vkEnumerateDeviceExtensionProperties == NULL ||
+           geInstance->vkCreateShaderModule == NULL ||
+           geInstance->vkCreatePipelineLayout == NULL ||
+           geInstance->vkCreateGraphicsPipelines == NULL ||
+           geInstance->vkDestroyShaderModule == NULL)
         {
             J2dRlsTrace(J2D_TRACE_ERROR, "Required api is not supported\n")
             vulkanLibClose();
@@ -442,6 +469,47 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
     }
     return geInstance;
 }
+/*
+VkShaderModule createShaderModule(VkDevice device, const char* name) {
+    FILE* f = fopen(name, "rb");
+    if (f == NULL) {
+        J2dRlsTrace1(J2D_TRACE_ERROR, "Cannot open %s \n", name)
+        return VK_NULL_HANDLE;
+    }
+
+    fseek(f, 0L, SEEK_END);
+    long sz = ftell(f);
+    rewind(f);
+    char* shader = malloc(sz);
+    fread(shader, 1, sz, f);
+    fclose(f);
+
+    VkShaderModuleCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    createInfo.codeSize = sz;
+    createInfo.pCode = (uint32_t*)shader;
+    VkShaderModule shaderModule;
+    if (geInstance->vkCreateShaderModule(device, &createInfo, NULL, &shaderModule) != VK_SUCCESS) {
+        J2dRlsTrace1(J2D_TRACE_ERROR, "failed to create shader module %s\n", name)
+        return VK_NULL_HANDLE;
+    }
+    free(shader);
+    return shaderModule;
+} */
+
+VkShaderModule createShaderModule(VkDevice device, uint32_t* shader, uint32_t sz) {
+    VkShaderModuleCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    createInfo.codeSize = sz;
+    createInfo.pCode = (uint32_t*)shader;
+    VkShaderModule shaderModule;
+    if (geInstance->vkCreateShaderModule(device, &createInfo, NULL, &shaderModule) != VK_SUCCESS) {
+        J2dRlsTrace(J2D_TRACE_ERROR, "failed to create shader module\n")
+        return VK_NULL_HANDLE;
+    }
+    return shaderModule;
+}
+
 
 jboolean VK_FindDevices() {
     if (geInstance->vkEnumeratePhysicalDevices(geInstance->vkInstance,
@@ -870,6 +938,119 @@ jboolean VK_CreateLogicalDevice(jint requestedDevice) {
         J2dRlsTrace(J2D_TRACE_INFO, "Cannot create render pass for device")
         return JNI_FALSE;
     }
+
+    // Create graphics pipeline
+    VkShaderModule vertShaderModule = createShaderModule(device, test_vert_data, sizeof (test_vert_data));
+    VkShaderModule fragShaderModule = createShaderModule(device, test_frag_data, sizeof (test_frag_data));
+
+    VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
+    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertShaderStageInfo.module = vertShaderModule;
+    vertShaderStageInfo.pName = "main";
+
+    VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
+    fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragShaderStageInfo.module = fragShaderModule;
+    fragShaderStageInfo.pName = "main";
+
+    VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertexInputInfo.vertexBindingDescriptionCount = 0;
+    vertexInputInfo.vertexAttributeDescriptionCount = 0;
+
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
+    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+    VkPipelineViewportStateCreateInfo viewportState = {};
+    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportState.viewportCount = 1;
+    viewportState.scissorCount = 1;
+
+    VkPipelineRasterizationStateCreateInfo rasterizer = {};
+    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer.depthClampEnable = VK_FALSE;
+    rasterizer.rasterizerDiscardEnable = VK_FALSE;
+    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizer.lineWidth = 1.0f;
+    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterizer.depthBiasEnable = VK_FALSE;
+    rasterizer.depthBiasConstantFactor = 0.0f; // Optional
+    rasterizer.depthBiasClamp = 0.0f; // Optional
+    rasterizer.depthBiasSlopeFactor = 0.0f; // Optional
+
+    VkPipelineMultisampleStateCreateInfo multisampling = {};
+    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampling.sampleShadingEnable = VK_FALSE;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+    VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
+    colorBlendAttachment.colorWriteMask =
+            VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.blendEnable = VK_FALSE;
+
+    VkPipelineColorBlendStateCreateInfo colorBlending = {};
+    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlending.logicOpEnable = VK_FALSE;
+    colorBlending.logicOp = VK_LOGIC_OP_COPY; // Optional
+    colorBlending.attachmentCount = 1;
+    colorBlending.pAttachments = &colorBlendAttachment;
+    colorBlending.blendConstants[0] = 0.0f; // Optional
+    colorBlending.blendConstants[1] = 0.0f; // Optional
+    colorBlending.blendConstants[2] = 0.0f; // Optional
+    colorBlending.blendConstants[3] = 0.0f; // Optional
+
+    VkDynamicState dynamicStates[] = {
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR
+    };
+
+    VkPipelineDynamicStateCreateInfo dynamicState = {};
+    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicState.dynamicStateCount = 2;
+    dynamicState.pDynamicStates = dynamicStates;
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 0; // Optional
+    pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
+
+    if (geInstance->vkCreatePipelineLayout(device, &pipelineLayoutInfo, NULL, &logicalDevice->pipelineLayout) != VK_SUCCESS) {
+        J2dRlsTrace(J2D_TRACE_INFO, "failed to create pipeline layout!\n")
+        return JNI_FALSE;
+    }
+
+    VkGraphicsPipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.stageCount = 2;
+    pipelineInfo.pStages = shaderStages;
+    pipelineInfo.pVertexInputState = &vertexInputInfo;
+    pipelineInfo.pInputAssemblyState = &inputAssembly;
+    pipelineInfo.pViewportState = &viewportState;
+    pipelineInfo.pRasterizationState = &rasterizer;
+    pipelineInfo.pMultisampleState = &multisampling;
+    pipelineInfo.pColorBlendState = &colorBlending;
+    pipelineInfo.pDynamicState = &dynamicState;
+    pipelineInfo.layout = logicalDevice->pipelineLayout;
+    pipelineInfo.renderPass = logicalDevice->renderPass;
+    pipelineInfo.subpass = 0;
+    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
+    pipelineInfo.basePipelineIndex = -1; // Optional
+
+    if (geInstance->vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL,
+                                              &logicalDevice->graphicsPipeline) != VK_SUCCESS)
+    {
+        J2dRlsTrace(J2D_TRACE_INFO, "failed to create graphics pipeline!\n")
+        return JNI_FALSE;
+    }
+    geInstance->vkDestroyShaderModule(device, fragShaderModule, NULL);
+    geInstance->vkDestroyShaderModule(device, vertShaderModule, NULL);
 
     return JNI_TRUE;
 }

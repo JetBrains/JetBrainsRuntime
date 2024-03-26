@@ -38,6 +38,8 @@ typedef struct {
     VkPhysicalDevice    physicalDevice;
     VkPipelineCache     pipelineCache;
     VkRenderPass        renderPass;
+    VkPipelineLayout    pipelineLayout;
+    VkPipeline          graphicsPipeline;
     char*               name;
     uint32_t            queueFamily;
     VkBool32            hasExtMemoryBudget;
@@ -72,6 +74,10 @@ typedef struct {
     PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR vkGetPhysicalDeviceWaylandPresentationSupportKHR;
     PFN_vkCreateWaylandSurfaceKHR vkCreateWaylandSurfaceKHR;
 #endif
+    PFN_vkCreateShaderModule vkCreateShaderModule;
+    PFN_vkCreatePipelineLayout vkCreatePipelineLayout;
+    PFN_vkCreateGraphicsPipelines vkCreateGraphicsPipelines;
+    PFN_vkDestroyShaderModule vkDestroyShaderModule;
 } VKGraphicsEnvironment;
 
 
