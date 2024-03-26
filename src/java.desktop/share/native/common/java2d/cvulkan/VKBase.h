@@ -36,7 +36,6 @@ typedef struct {
 typedef struct {
     VkDevice            device;
     VkPhysicalDevice    physicalDevice;
-    VkFormat            depthFormat;
     VkPipelineCache     pipelineCache;
     VkRenderPass        renderPass;
     char*               name;

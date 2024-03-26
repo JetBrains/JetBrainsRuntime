@@ -443,38 +443,6 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
     return geInstance;
 }
 
-VkBool32 VK_GetSupportedDepthFormat(VkPhysicalDevice physicalDevice, VkFormat *depthFormat)
-{
-    PFN_vkGetPhysicalDeviceFormatProperties vkGetPhysicalDeviceFormatProperties =
-            (PFN_vkGetPhysicalDeviceFormatProperties)
-                    vulkanLibProc(geInstance->vkInstance, "vkGetPhysicalDeviceFormatProperties");
-    // Since all depth formats may be optional, we need to find a suitable depth format to use
-    // Start with the highest precision packed format
-    VkFormat depthFormats[] = {
-            VK_FORMAT_D32_SFLOAT_S8_UINT,
-            VK_FORMAT_D32_SFLOAT,
-            VK_FORMAT_D24_UNORM_S8_UINT,
-            VK_FORMAT_D16_UNORM_S8_UINT,
-            VK_FORMAT_D16_UNORM
-    };
-
-    for (uint32_t i = 0; i < COUNT_OF(depthFormats); i++) {
-        VkFormatProperties formatProps;
-        vkGetPhysicalDeviceFormatProperties(physicalDevice, depthFormats[i], &formatProps);
-        // Format must support depth stencil attachment for optimal tiling
-        if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
-        {
-            *depthFormat = depthFormats[i];
-            J2dRlsTrace1(J2D_TRACE_INFO, "Device supported depth format %d\n", *depthFormat)
-
-            return VK_TRUE;
-        }
-    }
-    J2dRlsTrace(J2D_TRACE_INFO, "No device supported depth format found\n")
-
-    return VK_FALSE;
-}
-
 jboolean VK_FindDevices() {
     if (geInstance->vkEnumeratePhysicalDevices(geInstance->vkInstance,
                                                &geInstance->physicalDevicesCount,
@@ -839,12 +807,7 @@ jboolean VK_CreateLogicalDevice(jint requestedDevice) {
         return JNI_FALSE;
     }
 
-    if (!VK_GetSupportedDepthFormat(logicalDevice->physicalDevice, &logicalDevice->depthFormat)) {
-        J2dRlsTrace(J2D_TRACE_INFO, "Cannot get depth format cache for device")
-        return JNI_FALSE;
-    }
-
-    VkAttachmentDescription attachments[2] = {};
+    VkAttachmentDescription attachments[1] = {};
     // Color attachment
     attachments[0].format = VK_FORMAT_B8G8R8A8_UNORM; //TODO: swapChain colorFormat
     attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
@@ -854,15 +817,6 @@ jboolean VK_CreateLogicalDevice(jint requestedDevice) {
     attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    // Depth attachment
-    attachments[1].format = logicalDevice->depthFormat;
-    attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
-    attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
     VkAttachmentReference colorReference = {};
     colorReference.attachment = 0;
@@ -897,7 +851,7 @@ jboolean VK_CreateLogicalDevice(jint requestedDevice) {
     dependencies[1].srcSubpass = 0;
     dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
     dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependencies[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    dependencies[1].dstStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
     dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
     dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
