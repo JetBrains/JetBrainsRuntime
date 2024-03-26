@@ -74,6 +74,11 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
     }
 
     @Override
+    public boolean isInteractivelyResizable() {
+        return getFrame().isResizable() && !isMaximized();
+    }
+
+    @Override
     public String getTitle() {
         return getFrame().getTitle();
     }
@@ -106,6 +111,10 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
         synchronized(getStateLock()) {
             return state;
         }
+    }
+
+    public boolean isMaximized() {
+        return (getState() & Frame.MAXIMIZED_BOTH) != 0;
     }
 
     @Override
