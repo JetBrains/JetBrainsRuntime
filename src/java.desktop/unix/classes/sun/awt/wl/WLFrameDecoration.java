@@ -278,7 +278,7 @@ public class WLFrameDecoration {
         final boolean isRMBPressed = isRMB && isPressed;
 
         Point point = e.getPoint();
-        if (isLMBPressed && peer.isResizable()) {
+        if (isLMBPressed && peer.isInteractivelyResizable()) {
             int resizeSide = getResizeEdges(point.x, point.y);
             if (resizeSide != 0) {
                 peer.startResize(resizeSide);
@@ -330,7 +330,7 @@ public class WLFrameDecoration {
     }
 
     private int getResizeEdges(int x, int y) {
-        if (!peer.isResizable()) return 0;
+        if (!peer.isInteractivelyResizable()) return 0;
         int edges = 0;
         if (x < RESIZE_EDGE_THICKNESS) {
             edges |= XDG_TOPLEVEL_RESIZE_EDGE_LEFT;
