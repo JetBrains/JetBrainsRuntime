@@ -50,6 +50,11 @@ public class WLDialogPeer extends WLDecoratedPeer implements DialogPeer {
     }
 
     @Override
+    public boolean isInteractivelyResizable() {
+        return isResizable();
+    }
+
+    @Override
     public String getTitle() {
         return ((Dialog)target).getTitle();
     }
