@@ -235,7 +235,12 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
             /* vkCreateShaderModule */ NULL,
             /* vkCreatePipelineLayout */ NULL,
             /* vkCreateGraphicsPipelines */ NULL,
-            /* vkDestroyShaderModule */ NULL
+            /* vkDestroyShaderModule */ NULL,
+            /* vkGetPhysicalDeviceSurfaceCapabilitiesKHR */ NULL,
+            /* vkGetPhysicalDeviceSurfaceFormatsKHR */ NULL,
+            /* vkGetPhysicalDeviceSurfacePresentModesKHR */ NULL,
+            /* vkCreateSwapchainKHR */ NULL,
+            /* vkGetSwapchainImagesKHR */ NULL
         };
 
         // Get the number of extensions and layers
@@ -433,6 +438,22 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
         geInstance->vkDestroyShaderModule =
                 (PFN_vkDestroyShaderModule) vulkanLibProc(geInstance->vkInstance, "vkDestroyShaderModule");
 
+        geInstance->vkGetPhysicalDeviceSurfaceCapabilitiesKHR =
+                (PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR) vulkanLibProc(geInstance->vkInstance, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR");
+
+        geInstance->vkGetPhysicalDeviceSurfaceFormatsKHR =
+                (PFN_vkGetPhysicalDeviceSurfaceFormatsKHR) vulkanLibProc(geInstance->vkInstance, "vkGetPhysicalDeviceSurfaceFormatsKHR");
+
+        geInstance->vkGetPhysicalDeviceSurfacePresentModesKHR =
+                (PFN_vkGetPhysicalDeviceSurfacePresentModesKHR) vulkanLibProc(geInstance->vkInstance, "vkGetPhysicalDeviceSurfacePresentModesKHR");
+
+        geInstance->vkCreateSwapchainKHR =
+                (PFN_vkCreateSwapchainKHR) vulkanLibProc(geInstance->vkInstance, "vkCreateSwapchainKHR");
+
+        geInstance->vkGetSwapchainImagesKHR =
+                (PFN_vkGetSwapchainImagesKHR) vulkanLibProc(geInstance->vkInstance, "vkGetSwapchainImagesKHR");
+
+
         if(geInstance->vkEnumeratePhysicalDevices == NULL ||
            geInstance->vkGetPhysicalDeviceFeatures2 == NULL ||
            geInstance->vkGetPhysicalDeviceProperties2 == NULL ||
@@ -442,7 +463,12 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
            geInstance->vkCreateShaderModule == NULL ||
            geInstance->vkCreatePipelineLayout == NULL ||
            geInstance->vkCreateGraphicsPipelines == NULL ||
-           geInstance->vkDestroyShaderModule == NULL)
+           geInstance->vkDestroyShaderModule == NULL ||
+           geInstance->vkGetPhysicalDeviceSurfaceCapabilitiesKHR == NULL ||
+           geInstance->vkGetPhysicalDeviceSurfaceFormatsKHR == NULL ||
+           geInstance->vkGetPhysicalDeviceSurfacePresentModesKHR == NULL ||
+           geInstance->vkCreateSwapchainKHR == NULL ||
+           geInstance->vkGetSwapchainImagesKHR == NULL)
         {
             J2dRlsTrace(J2D_TRACE_ERROR, "Required api is not supported\n")
             vulkanLibClose();
@@ -469,33 +495,6 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
     }
     return geInstance;
 }
-/*
-VkShaderModule createShaderModule(VkDevice device, const char* name) {
-    FILE* f = fopen(name, "rb");
-    if (f == NULL) {
-        J2dRlsTrace1(J2D_TRACE_ERROR, "Cannot open %s \n", name)
-        return VK_NULL_HANDLE;
-    }
-
-    fseek(f, 0L, SEEK_END);
-    long sz = ftell(f);
-    rewind(f);
-    char* shader = malloc(sz);
-    fread(shader, 1, sz, f);
-    fclose(f);
-
-    VkShaderModuleCreateInfo createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.codeSize = sz;
-    createInfo.pCode = (uint32_t*)shader;
-    VkShaderModule shaderModule;
-    if (geInstance->vkCreateShaderModule(device, &createInfo, NULL, &shaderModule) != VK_SUCCESS) {
-        J2dRlsTrace1(J2D_TRACE_ERROR, "failed to create shader module %s\n", name)
-        return VK_NULL_HANDLE;
-    }
-    free(shader);
-    return shaderModule;
-} */
 
 VkShaderModule createShaderModule(VkDevice device, uint32_t* shader, uint32_t sz) {
     VkShaderModuleCreateInfo createInfo = {};

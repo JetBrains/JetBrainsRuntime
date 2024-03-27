@@ -59,6 +59,18 @@ typedef struct {
     VkAccessFlagBits        lastAccess;
     VkAccessFlagBits        lastWriteAccess;
     VkSurfaceKHR            surface;
+    VkSurfaceCapabilitiesKHR capabilitiesKhr;
+    VkSurfaceFormatKHR*     formatsKhr;
+    uint32_t                formatsKhrCount;
+    VkPresentModeKHR*       presentModesKhr;
+    uint32_t                presentModeKhrCount;
+    VkSwapchainKHR          swapchainKhr;
+    VkImage*                swapChainImages;
+    uint32_t                swapChainImagesCount;
+    VkFormat                swapChainImageFormat;
+    VkExtent2D              swapChainExtent;
+    VkImageView*            swapChainImageViews;
+    uint32_t                swapChainImageViewsCount;
 } VKSDOps;
 
 

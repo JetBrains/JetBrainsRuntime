@@ -78,6 +78,11 @@ typedef struct {
     PFN_vkCreatePipelineLayout vkCreatePipelineLayout;
     PFN_vkCreateGraphicsPipelines vkCreateGraphicsPipelines;
     PFN_vkDestroyShaderModule vkDestroyShaderModule;
+    PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
+    PFN_vkGetPhysicalDeviceSurfaceFormatsKHR vkGetPhysicalDeviceSurfaceFormatsKHR;
+    PFN_vkGetPhysicalDeviceSurfacePresentModesKHR vkGetPhysicalDeviceSurfacePresentModesKHR;
+    PFN_vkCreateSwapchainKHR vkCreateSwapchainKHR;
+    PFN_vkGetSwapchainImagesKHR vkGetSwapchainImagesKHR;
 } VKGraphicsEnvironment;
 
 
