@@ -20,6 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package jdk.httpclient.test.lib.common;
 
 import com.sun.net.httpserver.Filter;
 import com.sun.net.httpserver.Headers;
@@ -27,6 +28,9 @@ import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import jdk.httpclient.test.lib.http2.Http2Handler;
+import jdk.httpclient.test.lib.http2.Http2TestExchange;
+import jdk.httpclient.test.lib.http2.Http2TestServer;
 import jdk.internal.net.http.common.HttpHeadersBuilder;
 
 import java.net.InetAddress;
