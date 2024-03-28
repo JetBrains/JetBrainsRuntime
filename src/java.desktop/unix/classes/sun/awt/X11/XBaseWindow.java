@@ -213,6 +213,10 @@ public class XBaseWindow {
         }
     }
 
+    protected boolean isInitialising() {
+        return initialising == InitialiseState.INITIALISING;
+    }
+
     public boolean checkInitialised() {
         awtLock();
         try {
