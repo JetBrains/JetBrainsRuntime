@@ -136,58 +136,12 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBAWT, \
         -framework OpenGL, \
     LIBS_windows := advapi32.lib comctl32.lib comdlg32.lib delayimp.lib \
         gdi32.lib imm32.lib kernel32.lib ole32.lib shell32.lib shlwapi.lib \
-        user32.lib uuid.lib winmm.lib winspool.lib, \
+        user32.lib uuid.lib winmm.lib winspool.lib dwmapi.lib, \
     VERSIONINFO_RESOURCE := $(LIBAWT_VERSIONINFO_RESOURCE), \
     EXTRA_RCFLAGS := $(LIBAWT_RCFLAGS), \
 ))
 
 TARGETS += $(BUILD_LIBAWT)
-
-# Mac and Windows only use the native AWT lib, do not build libawt_headless
-ifeq ($(call isTargetOs, windows macosx), false)
-  ##############################################################################
-  ## Build libawt_headless
-  ##############################################################################
-
-  LIBAWT_HEADLESS_EXTRA_SRC := \
-      common/font \
-      common/java2d \
-      $(TOPDIR)/src/$(MODULE)/$(OPENJDK_TARGET_OS_TYPE)/native/common/awt \
-      #
-
-  LIBAWT_HEADLESS_EXTRA_HEADER_DIRS := \
-      $(LIBAWT_DEFAULT_HEADER_DIRS) \
-      common/awt/debug \
-      common/font \
-      common/java2d/opengl \
-      java.base:libjvm \
-      #
-
-  # These are the object files provided by the awt native
-  # library. Do not include these external (non-awt_headless library)
-  # objects in the static library. When statically linking the java
-  # launcher with all JDK and VM static libraries, we use the
-  # --whole-archive linker option. The duplicate objects in different
-  # static libraries cause linking errors due to duplicate symbols.
-  LIBAWT_HEADLESS_STATIC_EXCLUDE_OBJS := systemScale.o
-
-  $(eval $(call SetupJdkLibrary, BUILD_LIBAWT_HEADLESS, \
-      NAME := awt_headless, \
-      EXTRA_SRC := $(LIBAWT_HEADLESS_EXTRA_SRC), \
-      EXCLUDES := medialib, \
-      OPTIMIZATION := LOW, \
-      CFLAGS := -DHEADLESS=true $(CUPS_CFLAGS) $(FONTCONFIG_CFLAGS) \
-          $(X_CFLAGS), \
-      EXTRA_HEADER_DIRS := $(LIBAWT_HEADLESS_EXTRA_HEADER_DIRS), \
-      DISABLED_WARNINGS_gcc_X11Renderer.c := unused-function, \
-      DISABLED_WARNINGS_gcc_X11SurfaceData.c := unused-function, \
-      JDK_LIBS := libawt java.base:libjava, \
-      LIBS_linux := $(LIBDL) $(LIBM), \
-      STATIC_LIB_EXCLUDE_OBJS := $(LIBAWT_HEADLESS_STATIC_EXCLUDE_OBJS), \
-  ))
-
-  TARGETS += $(BUILD_LIBAWT_HEADLESS)
-endif
 
 ifeq ($(call isTargetOs, windows macosx)+$(ENABLE_HEADLESS_ONLY), false+false)
   ##############################################################################
