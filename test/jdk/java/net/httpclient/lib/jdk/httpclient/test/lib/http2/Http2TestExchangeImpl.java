@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,8 @@
  * questions.
  */
 
+package jdk.httpclient.test.lib.http2;
+
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.IOException;
@@ -39,21 +41,21 @@ public class Http2TestExchangeImpl implements Http2TestExchange {
 
     static final String HEAD = "HEAD";
     final HttpHeaders reqheaders;
-    final HttpHeadersBuilder rspheadersBuilder;
+    protected final HttpHeadersBuilder rspheadersBuilder;
     final URI uri;
     final String method;
     final InputStream is;
-    final BodyOutputStream os;
+    protected final BodyOutputStream os;
     final SSLSession sslSession;
-    final int streamid;
+    protected final int streamid;
     final boolean pushAllowed;
-    final Http2TestServerConnection conn;
+    protected final Http2TestServerConnection conn;
     final Http2TestServer server;
 
     int responseCode = -1;
-    long responseLength;
+    protected long responseLength;
 
-    Http2TestExchangeImpl(int streamid,
+    public Http2TestExchangeImpl(int streamid,
                           String method,
                           HttpHeaders reqheaders,
                           HttpHeadersBuilder rspheadersBuilder,
@@ -146,7 +148,7 @@ public class Http2TestExchangeImpl implements Http2TestExchange {
 
         if (responseLength < 0 || rCode == 204) {
             response.setFlag(HeadersFrame.END_STREAM);
-            os.closeInternal();
+            os.markClosed();
         }
         conn.outputQ.put(response);
         os.goodToGo();
