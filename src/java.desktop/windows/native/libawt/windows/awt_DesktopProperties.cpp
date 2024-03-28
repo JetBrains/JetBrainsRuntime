@@ -38,6 +38,8 @@
 #include <shellapi.h>
 #include <shlobj.h>
 
+#include <dwmapi.h>
+
 // WDesktopProperties fields
 jfieldID AwtDesktopProperties::pDataID = 0;
 jmethodID AwtDesktopProperties::setBooleanPropertyID = 0;
@@ -509,6 +511,16 @@ void AwtDesktopProperties::GetColorParameters() {
     SetColorProperty(TEXT("win.desktop.backgroundColor"), GetSysColor(COLOR_DESKTOP));
     SetColorProperty(TEXT("win.frame.activeCaptionColor"), GetSysColor(COLOR_ACTIVECAPTION));
     SetColorProperty(TEXT("win.frame.activeBorderColor"), GetSysColor(COLOR_ACTIVEBORDER));
+
+    BOOL enabled;
+    DwmIsCompositionEnabled(&enabled);
+    if (enabled) {
+        DWORD color;
+        BOOL opaque = FALSE;
+        // [tav] todo: listen WM_DWMCOLORIZATIONCOLORCHANGED
+        DwmGetColorizationColor(&color, &opaque);
+        SetColorProperty(TEXT("win.dwm.colorizationColor"), RGB(GetBValue(color), GetGValue(color), GetRValue(color)));
+    }
 
     // ?? ?? ??
     SetColorProperty(TEXT("win.frame.color"), GetSysColor(COLOR_WINDOWFRAME)); // ?? WHAT THE HECK DOES THIS MEAN ??
