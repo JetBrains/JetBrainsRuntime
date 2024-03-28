@@ -36,6 +36,11 @@ import java.util.stream.Stream;
 
 import javax.net.ssl.SSLContext;
 
+import jdk.httpclient.test.lib.common.HttpServerAdapters;
+import jdk.httpclient.test.lib.common.HttpServerAdapters.HttpTestExchange;
+import jdk.httpclient.test.lib.common.HttpServerAdapters.HttpTestHandler;
+import jdk.httpclient.test.lib.common.HttpServerAdapters.HttpTestServer;
+import jdk.httpclient.test.lib.http2.Http2TestServer;
 import jdk.test.lib.net.IPSupport;
 import jdk.test.lib.net.SimpleSSLContext;
 import org.junit.jupiter.api.AfterAll;
@@ -54,16 +59,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * @test
  * @bug 8305906
  * @summary verify that the HttpClient pools and reuses a connection for HTTP/2 requests
- * @library /test/lib server/ ../
- * @build jdk.test.lib.net.SimpleSSLContext HttpServerAdapters
- *        ReferenceTracker jdk.test.lib.net.IPSupport
- * @modules java.net.http/jdk.internal.net.http.common
- *          java.net.http/jdk.internal.net.http.frame
- *          java.net.http/jdk.internal.net.http.hpack
- *          java.logging
- *          java.base/sun.net.www.http
- *          java.base/sun.net.www
- *          java.base/sun.net
+ * @library /test/lib /test/jdk/java/net/httpclient/lib ../
+ * @build jdk.test.lib.net.SimpleSSLContext
+ *        jdk.test.lib.net.IPSupport
+ *        jdk.httpclient.test.lib.common.HttpServerAdapters
+ *        ReferenceTracker
  *
  * @run junit/othervm ConnectionReuseTest
  * @run junit/othervm -Djava.net.preferIPv6Addresses=true ConnectionReuseTest
