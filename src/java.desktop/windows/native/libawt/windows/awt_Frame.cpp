@@ -1790,18 +1790,23 @@ MsgRouting AwtFrame::WmNcCalcSize(BOOL wParam, LPNCCALCSIZE_PARAMS lpncsp, LRESU
     if (!wParam || !HasCustomDecoration()) {
         return AwtWindow::WmNcCalcSize(wParam, lpncsp, retVal);
     }
-    if (::IsZoomed(GetHWnd())) {
-        RECT insets;
-        GetSysInsets(&insets);
-        static int xBorder = ::GetSystemMetrics(SM_CXBORDER);
-        static int yBorder = ::GetSystemMetrics(SM_CYBORDER);
 
-        // When maximized we should include insets or otherwise the client area edges get out of a screen
-        lpncsp->rgrc[0].left = lpncsp->rgrc[0].left + insets.left - xBorder;
-        lpncsp->rgrc[0].top = lpncsp->rgrc[0].top + insets.bottom - yBorder; // do not count caption
-        lpncsp->rgrc[0].right = lpncsp->rgrc[0].right - insets.right + xBorder;
-        lpncsp->rgrc[0].bottom = lpncsp->rgrc[0].bottom - insets.bottom + yBorder;
+    RECT insets;
+    GetSysInsets(&insets);
+    RECT* rect = &lpncsp->rgrc[0];
+
+    rect->left = rect->left + insets.left;
+    if (::IsZoomed(GetHWnd())) {
+        lpncsp->rgrc[0].top = lpncsp->rgrc[0].top + insets.bottom;
     }
+    else {
+        // this makes the native caption go uncovered
+        // int yBorder = ::GetSystemMetrics(SM_CYBORDER);
+        // lpncsp->rgrc[0].top = lpncsp->rgrc[0].top + yBorder;
+    }
+    rect->right = rect->right - insets.right;
+    rect->bottom = rect->bottom - insets.bottom;
+
     retVal = 0L;
     return mrConsume;
 }
