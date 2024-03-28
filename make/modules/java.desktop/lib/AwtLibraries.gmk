@@ -148,7 +148,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBAWT, \
         -framework OpenGL, \
     LIBS_windows := advapi32.lib comctl32.lib comdlg32.lib delayimp.lib \
         gdi32.lib imm32.lib kernel32.lib ole32.lib shell32.lib shlwapi.lib \
-        user32.lib uuid.lib winmm.lib winspool.lib, \
+        user32.lib uuid.lib winmm.lib winspool.lib dwmapi.lib, \
     VERSIONINFO_RESOURCE := $(LIBAWT_VERSIONINFO_RESOURCE), \
     EXTRA_RCFLAGS := $(LIBAWT_RCFLAGS), \
     STATIC_LIB_EXCLUDE_OBJS := $(LIBAWT_STATIC_EXCLUDE_OBJS), \
