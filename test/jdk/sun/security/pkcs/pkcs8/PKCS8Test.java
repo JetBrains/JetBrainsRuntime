@@ -25,6 +25,7 @@
  * @test
  * @bug 8048357
  * @summary PKCS8 Standards Conformance Tests
+ * @library /test/lib
  * @requires (os.family != "solaris")
  * @modules java.base/sun.security.pkcs
  *          java.base/sun.security.util
@@ -42,17 +43,15 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.util.Arrays;
-import sun.security.util.HexDumpEncoder;
 import sun.security.pkcs.PKCS8Key;
 import sun.security.provider.DSAPrivateKey;
 import sun.security.util.DerOutputStream;
 import sun.security.util.DerValue;
 import sun.security.x509.AlgorithmId;
+import jdk.test.lib.hexdump.HexPrinter;
 import static java.lang.System.out;
 
 public class PKCS8Test {
-
-    static final HexDumpEncoder hexDump = new HexDumpEncoder();
 
     static final DerOutputStream derOutput = new DerOutputStream();
 
@@ -281,6 +280,6 @@ public class PKCS8Test {
 
     static void dumpByteArray(String nm, byte[] bytes) throws IOException {
         out.println(nm + " length: " + bytes.length);
-        hexDump.encodeBuffer(bytes, out);
+        HexPrinter.simple().dest(out).format(bytes);
     }
 }
